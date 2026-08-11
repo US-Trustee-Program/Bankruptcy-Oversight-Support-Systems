@@ -921,6 +921,7 @@ describe('Case Detail sort, search, and filter tests', () => {
       fireEvent.change(screen.getByTestId('docket-date-range-date-start'), {
         target: { value: '2023-07-01' },
       });
+      act(() => vi.advanceTimersByTime(500));
 
       expectSingleChanged('Docket Date Range Start Only Filter Changed');
     });
@@ -931,38 +932,142 @@ describe('Case Detail sort, search, and filter tests', () => {
       fireEvent.change(screen.getByTestId('docket-date-range-date-end'), {
         target: { value: '2023-06-30' },
       });
+      act(() => vi.advanceTimersByTime(500));
 
       expectSingleChanged('Docket Date Range End Only Filter Changed');
     });
 
-    test('fires Docket Date Range Complete Filter Changed when both start and end are set', async () => {
+    test('fires exactly one Docket Complete Date Range Filter Changed event when end then start are set in quick succession', async () => {
       await renderAndNavigateToDocket();
 
       fireEvent.change(screen.getByTestId('docket-date-range-date-end'), {
         target: { value: '2023-08-31' },
       });
-      mockTrackEvent.mockReset();
-
       fireEvent.change(screen.getByTestId('docket-date-range-date-start'), {
         target: { value: '2023-07-01' },
       });
+      act(() => vi.advanceTimersByTime(500));
 
-      expectSingleChanged('Docket Date Range Complete Filter Changed');
+      expectSingleChanged('Docket Complete Date Range Filter Changed');
+      expect(changedCalls('Docket Date Range Start Only Filter Changed')).toHaveLength(0);
+      expect(changedCalls('Docket Date Range End Only Filter Changed')).toHaveLength(0);
     });
 
-    test('fires Docket Date Range Filter Cleared when the start date is directly cleared', async () => {
+    test('fires exactly one Docket Complete Date Range Filter Changed event when start then end are set in quick succession', async () => {
       await renderAndNavigateToDocket();
 
       fireEvent.change(screen.getByTestId('docket-date-range-date-start'), {
         target: { value: '2023-07-01' },
       });
+      fireEvent.change(screen.getByTestId('docket-date-range-date-end'), {
+        target: { value: '2023-08-31' },
+      });
+      act(() => vi.advanceTimersByTime(500));
+
+      expectSingleChanged('Docket Complete Date Range Filter Changed');
+      expect(changedCalls('Docket Date Range Start Only Filter Changed')).toHaveLength(0);
+      expect(changedCalls('Docket Date Range End Only Filter Changed')).toHaveLength(0);
+    });
+
+    test('fires Docket Date Range Start Only Filter Cleared when the start date is directly cleared', async () => {
+      await renderAndNavigateToDocket();
+
+      fireEvent.change(screen.getByTestId('docket-date-range-date-start'), {
+        target: { value: '2023-07-01' },
+      });
+      act(() => vi.advanceTimersByTime(500));
       mockTrackEvent.mockReset();
 
       fireEvent.change(screen.getByTestId('docket-date-range-date-start'), {
         target: { value: '' },
       });
+      act(() => vi.advanceTimersByTime(500));
 
-      expectSingleCleared('Docket Date Range Filter Cleared');
+      expectSingleCleared('Docket Date Range Start Only Filter Cleared');
+    });
+
+    test('fires Docket Date Range End Only Filter Cleared when the end date is directly cleared', async () => {
+      await renderAndNavigateToDocket();
+
+      fireEvent.change(screen.getByTestId('docket-date-range-date-end'), {
+        target: { value: '2023-08-31' },
+      });
+      act(() => vi.advanceTimersByTime(500));
+      mockTrackEvent.mockReset();
+
+      fireEvent.change(screen.getByTestId('docket-date-range-date-end'), {
+        target: { value: '' },
+      });
+      act(() => vi.advanceTimersByTime(500));
+
+      expectSingleCleared('Docket Date Range End Only Filter Cleared');
+    });
+
+    test('fires Docket Complete Date Range Filter Cleared when both bounds are cleared', async () => {
+      await renderAndNavigateToDocket();
+
+      fireEvent.change(screen.getByTestId('docket-date-range-date-end'), {
+        target: { value: '2023-08-31' },
+      });
+      fireEvent.change(screen.getByTestId('docket-date-range-date-start'), {
+        target: { value: '2023-07-01' },
+      });
+      act(() => vi.advanceTimersByTime(500));
+      mockTrackEvent.mockReset();
+
+      fireEvent.change(screen.getByTestId('docket-date-range-date-start'), {
+        target: { value: '' },
+      });
+      fireEvent.change(screen.getByTestId('docket-date-range-date-end'), {
+        target: { value: '' },
+      });
+      act(() => vi.advanceTimersByTime(500));
+
+      expectSingleCleared('Docket Complete Date Range Filter Cleared');
+    });
+
+    test('fires Docket Date Range End Only Filter Changed (not Cleared) when only the start date is cleared from a complete range', async () => {
+      await renderAndNavigateToDocket();
+
+      fireEvent.change(screen.getByTestId('docket-date-range-date-end'), {
+        target: { value: '2023-08-31' },
+      });
+      fireEvent.change(screen.getByTestId('docket-date-range-date-start'), {
+        target: { value: '2023-07-01' },
+      });
+      act(() => vi.advanceTimersByTime(500));
+      mockTrackEvent.mockReset();
+
+      fireEvent.change(screen.getByTestId('docket-date-range-date-start'), {
+        target: { value: '' },
+      });
+      act(() => vi.advanceTimersByTime(500));
+
+      expectSingleChanged('Docket Date Range End Only Filter Changed');
+      expect(clearedCalls('Docket Date Range Start Only Filter Cleared')).toHaveLength(0);
+      expect(clearedCalls('Docket Complete Date Range Filter Cleared')).toHaveLength(0);
+    });
+
+    test('fires Docket Date Range Start Only Filter Changed (not Cleared) when only the end date is cleared from a complete range', async () => {
+      await renderAndNavigateToDocket();
+
+      fireEvent.change(screen.getByTestId('docket-date-range-date-end'), {
+        target: { value: '2023-08-31' },
+      });
+      fireEvent.change(screen.getByTestId('docket-date-range-date-start'), {
+        target: { value: '2023-07-01' },
+      });
+      act(() => vi.advanceTimersByTime(500));
+      mockTrackEvent.mockReset();
+
+      fireEvent.change(screen.getByTestId('docket-date-range-date-end'), {
+        target: { value: '' },
+      });
+      act(() => vi.advanceTimersByTime(500));
+
+      expectSingleChanged('Docket Date Range Start Only Filter Changed');
+      expect(clearedCalls('Docket Date Range End Only Filter Cleared')).toHaveLength(0);
+      expect(clearedCalls('Docket Complete Date Range Filter Cleared')).toHaveLength(0);
     });
 
     test('Clear All Filters fires one Docket All Filters Cleared event and suppresses per-field Cleared when filters were active', async () => {
@@ -983,7 +1088,9 @@ describe('Case Detail sort, search, and filter tests', () => {
       expect(clearedCalls('Docket Text Search Filter Cleared')).toHaveLength(0);
       expect(clearedCalls('Docket Summary Filter Cleared')).toHaveLength(0);
       expect(clearedCalls('Docket Document Number Filter Cleared')).toHaveLength(0);
-      expect(clearedCalls('Docket Date Range Filter Cleared')).toHaveLength(0);
+      expect(clearedCalls('Docket Date Range Start Only Filter Cleared')).toHaveLength(0);
+      expect(clearedCalls('Docket Date Range End Only Filter Cleared')).toHaveLength(0);
+      expect(clearedCalls('Docket Complete Date Range Filter Cleared')).toHaveLength(0);
     });
 
     test('Clear All Filters fires nothing when no filters were active', async () => {
@@ -1059,6 +1166,34 @@ describe('Case Detail sort, search, and filter tests', () => {
 
       expect(clearedCalls('Docket Filters Combination Cleared')).toHaveLength(0);
       expectSingleCleared('Docket All Filters Cleared');
+    });
+
+    test('fires Docket Filters Combination Changed with DateRangeStartOnly when only the start date is set', async () => {
+      await renderAndNavigateToDocket();
+
+      fireEvent.change(screen.getByTestId('docket-date-range-date-start'), {
+        target: { value: '2023-07-01' },
+      });
+      act(() => vi.advanceTimersByTime(500));
+
+      const calls = changedCalls('Docket Filters Combination Changed');
+      expect(calls).toHaveLength(1);
+      expect(calls[0][1]).toEqual({ filters: 'DateRangeStartOnly' });
+    });
+
+    test('fires Docket Filters Combination Changed with DateRangeComplete when both start and end are set', async () => {
+      await renderAndNavigateToDocket();
+
+      fireEvent.change(screen.getByTestId('docket-date-range-date-end'), {
+        target: { value: '2023-08-31' },
+      });
+      fireEvent.change(screen.getByTestId('docket-date-range-date-start'), {
+        target: { value: '2023-07-01' },
+      });
+      act(() => vi.advanceTimersByTime(500));
+
+      const calls = changedCalls('Docket Filters Combination Changed');
+      expect(calls[calls.length - 1][1]).toEqual({ filters: 'DateRangeComplete' });
     });
 
     test('never includes raw filter values in the combination event properties', async () => {
