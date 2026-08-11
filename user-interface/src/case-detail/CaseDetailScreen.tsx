@@ -31,6 +31,7 @@ import CaseNotes from './panels/case-notes/CaseNotes';
 import CaseDetailTrusteeAndAssignedStaff from './panels/CaseDetailTrusteeAndAssignedStaff';
 import CaseDetailTrusteePanel from './panels/CaseDetailTrusteePanel';
 import useFilterUsageTelemetry from '@/lib/hooks/UseFilterUsageTelemetry';
+import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
 
 const CaseDetailHeader = lazy(() => import('./panels/CaseDetailHeader'));
 const CaseDetailOverview = lazy(() => import('./panels/CaseDetailOverview'));
@@ -228,6 +229,7 @@ export default function CaseDetailScreen(props: Readonly<CaseDetailProps>) {
   const findByDocketNumberRef = useRef<InputRef>(null);
   const dateRangeRef = useRef<DateRangePickerRef>(null);
   const facetPickerRef = useRef<ComboBoxRef>(null);
+  const suppressClearRef = useRef(false);
 
   let hasDocketEntries = caseDocketEntries && !!caseDocketEntries.length;
 
@@ -301,6 +303,18 @@ export default function CaseDetailScreen(props: Readonly<CaseDetailProps>) {
   }
 
   function clearDocketFilters() {
+    const hasActiveFilter =
+      searchInDocketText !== '' ||
+      documentNumber !== null ||
+      selectedFacets.length > 0 ||
+      !!selectedDateRange.start ||
+      !!selectedDateRange.end;
+
+    if (hasActiveFilter) {
+      suppressClearRef.current = true;
+      getAppInsights().appInsights.trackEvent({ name: 'Docket All Filters Cleared' });
+    }
+
     setSearchInDocketText('');
     findInDocketRef.current?.clearValue();
     setDocumentNumber(null);
@@ -403,37 +417,62 @@ export default function CaseDetailScreen(props: Readonly<CaseDetailProps>) {
     },
   );
 
-  const docketResultCount = filteredDocketEntries?.length ?? 0;
-
   useFilterUsageTelemetry(searchInDocketText, {
     changedEventName: 'Docket Text Search Filter Changed',
     clearedEventName: 'Docket Text Search Filter Cleared',
-    resultCount: docketResultCount,
     isEmpty: (v) => v === '',
     debounceMs: 500,
+    suppressClearRef,
   });
 
   useFilterUsageTelemetry(documentNumber, {
     changedEventName: 'Docket Document Number Filter Changed',
     clearedEventName: 'Docket Document Number Filter Cleared',
-    resultCount: docketResultCount,
     isEmpty: (v) => v === null,
     debounceMs: 500,
+    suppressClearRef,
   });
 
   useFilterUsageTelemetry(selectedFacets, {
     changedEventName: 'Docket Summary Filter Changed',
     clearedEventName: 'Docket Summary Filter Cleared',
-    resultCount: docketResultCount,
     isEmpty: (v) => v.length === 0,
     isEqual: (a, b) => a.length === b.length && a.every((v, i) => v === b[i]),
+    suppressClearRef,
   });
 
   useFilterUsageTelemetry(selectedDateRange, {
-    changedEventName: 'Docket Date Range Filter Changed',
+    changedEventName: (value: DateRange) =>
+      value.start && value.end
+        ? 'Docket Date Range Complete Filter Changed'
+        : value.start
+          ? 'Docket Date Range Start Only Filter Changed'
+          : 'Docket Date Range End Only Filter Changed',
     clearedEventName: 'Docket Date Range Filter Cleared',
-    resultCount: docketResultCount,
     isEmpty: (v) => !v.start && !v.end,
+    suppressClearRef,
+  });
+
+  const activeFilterFields = [
+    searchInDocketText !== '' ? 'TextSearch' : null,
+    documentNumber !== null ? 'DocumentNumber' : null,
+    selectedFacets.length > 0 ? 'Summary' : null,
+    selectedDateRange.start || selectedDateRange.end ? 'DateRange' : null,
+  ]
+    .filter((field): field is string => field !== null)
+    .join(',');
+
+  useFilterUsageTelemetry(activeFilterFields, {
+    changedEventName: 'Docket Filters Combination Changed',
+    clearedEventName: 'Docket Filters Combination Cleared',
+    isEmpty: (v) => v === '',
+    debounceMs: 500,
+    suppressClearRef,
+    changedProperties: (v) => ({ filters: v }),
+  });
+
+  useEffect(() => {
+    suppressClearRef.current = false;
   });
 
   return (
