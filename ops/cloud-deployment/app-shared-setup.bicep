@@ -40,7 +40,11 @@ param virtualNetworkName string = virtualNetworkNameFor(stackName)
 
 param privateEndpointSubnetName string = privateEndpointSubnetNameFor(stackName)
 
-param privateDnsZoneResourceGroup string = resourceGroup().name
+// Must be the network RG, not resourceGroup().name (this template's own
+// app-RG scope) — the KV private DNS zone and its vnet link live in the
+// network RG. A wrong RG here creates a second zone object with the same
+// DNS name, which Azure rejects when linking the vnet to it.
+param privateDnsZoneResourceGroup string = networkResourceGroupName
 
 @description('DNS Zone Subscription ID. USTP uses a different subscription for prod deployment.')
 param privateDnsZoneSubscriptionId string = subscription().subscriptionId
