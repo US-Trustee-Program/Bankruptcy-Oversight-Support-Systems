@@ -67,7 +67,8 @@ jobs:
 
   deploy-webapp-slot:
     runs-on: ubuntu-latest
-    environment: ${{ inputs.ghaEnvironment == 'Main-Gov' && 'deploy-code-main' || 'deploy-code-branch' }}
+    environment:
+      ${{ inputs.ghaEnvironment == 'Main-Gov' && 'deploy-code-main' || 'deploy-code-branch' }}
     permissions:
       contents: read
       id-token: write
@@ -98,12 +99,11 @@ jobs:
           fi
           _val=$(az keyvault secret show --vault-name "$KV" --name AZ-APP-RG --query value -o tsv)
           echo "::add-mask::${_val}"
-          AZ_APP_RG_BASE="${_val}"
-          if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
-            echo "AZ_APP_RG=${AZ_APP_RG_BASE}" >> "$GITHUB_ENV"
-          else
-            echo "AZ_APP_RG=${AZ_APP_RG_BASE}-${{ inputs.environmentHash }}" >> "$GITHUB_ENV"
-          fi
+          # CAMS-760, Option E / Slice 2: branches deploy into the SAME stable
+          # app RG main uses, distinguished by per-branch-unique resource
+          # names, rather than a per-branch hash-suffixed RG (matches
+          # reusable-deploy.yml's derivation — keep both in lockstep).
+          echo "AZ_APP_RG=${_val}" >> "$GITHUB_ENV"
           _val=$(az keyvault secret show --vault-name "$KV" --name SLOT-NAME --query value -o tsv 2>/dev/null || true)
           if [[ -z "${_val}" ]]; then
             echo "ERROR: SLOT-NAME secret not found in Key Vault '${KV}'. Cannot deploy to slot." >&2
@@ -131,7 +131,8 @@ jobs:
 
   deploy-api-slot:
     runs-on: ubuntu-latest
-    environment: ${{ inputs.ghaEnvironment == 'Main-Gov' && 'deploy-code-main' || 'deploy-code-branch' }}
+    environment:
+      ${{ inputs.ghaEnvironment == 'Main-Gov' && 'deploy-code-main' || 'deploy-code-branch' }}
     permissions:
       contents: read
       id-token: write
@@ -162,12 +163,11 @@ jobs:
           fi
           _val=$(az keyvault secret show --vault-name "$KV" --name AZ-APP-RG --query value -o tsv)
           echo "::add-mask::${_val}"
-          AZ_APP_RG_BASE="${_val}"
-          if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
-            echo "AZ_APP_RG=${AZ_APP_RG_BASE}" >> "$GITHUB_ENV"
-          else
-            echo "AZ_APP_RG=${AZ_APP_RG_BASE}-${{ inputs.environmentHash }}" >> "$GITHUB_ENV"
-          fi
+          # CAMS-760, Option E / Slice 2: branches deploy into the SAME stable
+          # app RG main uses, distinguished by per-branch-unique resource
+          # names, rather than a per-branch hash-suffixed RG (matches
+          # reusable-deploy.yml's derivation — keep both in lockstep).
+          echo "AZ_APP_RG=${_val}" >> "$GITHUB_ENV"
           _val=$(az keyvault secret show --vault-name "$KV" --name SLOT-NAME --query value -o tsv 2>/dev/null || true)
           if [[ -z "${_val}" ]]; then
             echo "ERROR: SLOT-NAME secret not found in Key Vault '${KV}'. Cannot deploy to slot." >&2
@@ -188,7 +188,8 @@ jobs:
 
   deploy-dataflows-slot:
     runs-on: ubuntu-latest
-    environment: ${{ inputs.ghaEnvironment == 'Main-Gov' && 'deploy-code-main' || 'deploy-code-branch' }}
+    environment:
+      ${{ inputs.ghaEnvironment == 'Main-Gov' && 'deploy-code-main' || 'deploy-code-branch' }}
     permissions:
       contents: read
       id-token: write
@@ -219,12 +220,11 @@ jobs:
           fi
           _val=$(az keyvault secret show --vault-name "$KV" --name AZ-APP-RG --query value -o tsv)
           echo "::add-mask::${_val}"
-          AZ_APP_RG_BASE="${_val}"
-          if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
-            echo "AZ_APP_RG=${AZ_APP_RG_BASE}" >> "$GITHUB_ENV"
-          else
-            echo "AZ_APP_RG=${AZ_APP_RG_BASE}-${{ inputs.environmentHash }}" >> "$GITHUB_ENV"
-          fi
+          # CAMS-760, Option E / Slice 2: branches deploy into the SAME stable
+          # app RG main uses, distinguished by per-branch-unique resource
+          # names, rather than a per-branch hash-suffixed RG (matches
+          # reusable-deploy.yml's derivation — keep both in lockstep).
+          echo "AZ_APP_RG=${_val}" >> "$GITHUB_ENV"
           _val=$(az keyvault secret show --vault-name "$KV" --name SLOT-NAME --query value -o tsv 2>/dev/null || true)
           if [[ -z "${_val}" ]]; then
             echo "ERROR: SLOT-NAME secret not found in Key Vault '${KV}'. Cannot deploy to slot." >&2
@@ -290,7 +290,8 @@ jobs:
     if: ${{ inputs.initialDeployment != 'true' }}
     runs-on: ubuntu-latest
     needs: [deploy-webapp-slot, deploy-api-slot, deploy-dataflows-slot, execute-e2e-test]
-    environment: ${{ inputs.ghaEnvironment == 'Main-Gov' && 'deploy-code-main' || 'deploy-code-branch' }}
+    environment:
+      ${{ inputs.ghaEnvironment == 'Main-Gov' && 'deploy-code-main' || 'deploy-code-branch' }}
     permissions:
       contents: read
       id-token: write
@@ -316,12 +317,11 @@ jobs:
           fi
           _val=$(az keyvault secret show --vault-name "$KV" --name AZ-APP-RG --query value -o tsv)
           echo "::add-mask::${_val}"
-          AZ_APP_RG_BASE="${_val}"
-          if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
-            echo "AZ_APP_RG=${AZ_APP_RG_BASE}" >> "$GITHUB_ENV"
-          else
-            echo "AZ_APP_RG=${AZ_APP_RG_BASE}-${{ inputs.environmentHash }}" >> "$GITHUB_ENV"
-          fi
+          # CAMS-760, Option E / Slice 2: branches deploy into the SAME stable
+          # app RG main uses, distinguished by per-branch-unique resource
+          # names, rather than a per-branch hash-suffixed RG (matches
+          # reusable-deploy.yml's derivation — keep both in lockstep).
+          echo "AZ_APP_RG=${_val}" >> "$GITHUB_ENV"
           _val=$(az keyvault secret show --vault-name "$KV" --name SLOT-NAME --query value -o tsv 2>/dev/null || true)
           if [[ -z "${_val}" ]]; then
             echo "ERROR: SLOT-NAME secret not found in Key Vault '${KV}'. Cannot deploy to slot." >&2
@@ -339,7 +339,8 @@ jobs:
     if: ${{ inputs.initialDeployment != 'true' }}
     runs-on: ubuntu-latest
     needs: [deploy-webapp-slot, deploy-api-slot, deploy-dataflows-slot, execute-e2e-test]
-    environment: ${{ inputs.ghaEnvironment == 'Main-Gov' && 'deploy-code-main' || 'deploy-code-branch' }}
+    environment:
+      ${{ inputs.ghaEnvironment == 'Main-Gov' && 'deploy-code-main' || 'deploy-code-branch' }}
     permissions:
       contents: read
       id-token: write
@@ -365,12 +366,11 @@ jobs:
           fi
           _val=$(az keyvault secret show --vault-name "$KV" --name AZ-APP-RG --query value -o tsv)
           echo "::add-mask::${_val}"
-          AZ_APP_RG_BASE="${_val}"
-          if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
-            echo "AZ_APP_RG=${AZ_APP_RG_BASE}" >> "$GITHUB_ENV"
-          else
-            echo "AZ_APP_RG=${AZ_APP_RG_BASE}-${{ inputs.environmentHash }}" >> "$GITHUB_ENV"
-          fi
+          # CAMS-760, Option E / Slice 2: branches deploy into the SAME stable
+          # app RG main uses, distinguished by per-branch-unique resource
+          # names, rather than a per-branch hash-suffixed RG (matches
+          # reusable-deploy.yml's derivation — keep both in lockstep).
+          echo "AZ_APP_RG=${_val}" >> "$GITHUB_ENV"
           _val=$(az keyvault secret show --vault-name "$KV" --name SLOT-NAME --query value -o tsv 2>/dev/null || true)
           if [[ -z "${_val}" ]]; then
             echo "ERROR: SLOT-NAME secret not found in Key Vault '${KV}'. Cannot deploy to slot." >&2
@@ -388,7 +388,8 @@ jobs:
     if: ${{ inputs.initialDeployment != 'true' }}
     runs-on: ubuntu-latest
     needs: [deploy-webapp-slot, deploy-api-slot, deploy-dataflows-slot, execute-e2e-test]
-    environment: ${{ inputs.ghaEnvironment == 'Main-Gov' && 'deploy-code-main' || 'deploy-code-branch' }}
+    environment:
+      ${{ inputs.ghaEnvironment == 'Main-Gov' && 'deploy-code-main' || 'deploy-code-branch' }}
     permissions:
       contents: read
       id-token: write
@@ -412,12 +413,11 @@ jobs:
           fi
           _val=$(az keyvault secret show --vault-name "$KV" --name AZ-APP-RG --query value -o tsv)
           echo "::add-mask::${_val}"
-          AZ_APP_RG_BASE="${_val}"
-          if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
-            echo "AZ_APP_RG=${AZ_APP_RG_BASE}" >> "$GITHUB_ENV"
-          else
-            echo "AZ_APP_RG=${AZ_APP_RG_BASE}-${{ inputs.environmentHash }}" >> "$GITHUB_ENV"
-          fi
+          # CAMS-760, Option E / Slice 2: branches deploy into the SAME stable
+          # app RG main uses, distinguished by per-branch-unique resource
+          # names, rather than a per-branch hash-suffixed RG (matches
+          # reusable-deploy.yml's derivation — keep both in lockstep).
+          echo "AZ_APP_RG=${_val}" >> "$GITHUB_ENV"
           _val=$(az keyvault secret show --vault-name "$KV" --name SLOT-NAME --query value -o tsv 2>/dev/null || true)
           if [[ -z "${_val}" ]]; then
             echo "ERROR: SLOT-NAME secret not found in Key Vault '${KV}'. Cannot deploy to slot." >&2
@@ -458,7 +458,8 @@ jobs:
   enable-access:
     runs-on: ubuntu-latest
     needs: [endpoint-test-application-post-swap]
-    environment: ${{ inputs.ghaEnvironment == 'Main-Gov' && 'deploy-code-main' || 'deploy-code-branch' }}
+    environment:
+      ${{ inputs.ghaEnvironment == 'Main-Gov' && 'deploy-code-main' || 'deploy-code-branch' }}
     permissions:
       contents: read
       id-token: write
@@ -485,12 +486,11 @@ jobs:
           fi
           _val=$(az keyvault secret show --vault-name "$KV" --name AZ-APP-RG --query value -o tsv)
           echo "::add-mask::${_val}"
-          AZ_APP_RG_BASE="${_val}"
-          if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
-            echo "AZ_APP_RG=${AZ_APP_RG_BASE}" >> "$GITHUB_ENV"
-          else
-            echo "AZ_APP_RG=${AZ_APP_RG_BASE}-${{ inputs.environmentHash }}" >> "$GITHUB_ENV"
-          fi
+          # CAMS-760, Option E / Slice 2: branches deploy into the SAME stable
+          # app RG main uses, distinguished by per-branch-unique resource
+          # names, rather than a per-branch hash-suffixed RG (matches
+          # reusable-deploy.yml's derivation — keep both in lockstep).
+          echo "AZ_APP_RG=${_val}" >> "$GITHUB_ENV"
           _val=$(az keyvault secret show --vault-name "$KV" --name SLOT-NAME --query value -o tsv 2>/dev/null || true)
           if [[ -z "${_val}" ]]; then
             echo "ERROR: SLOT-NAME secret not found in Key Vault '${KV}'. Cannot deploy to slot." >&2

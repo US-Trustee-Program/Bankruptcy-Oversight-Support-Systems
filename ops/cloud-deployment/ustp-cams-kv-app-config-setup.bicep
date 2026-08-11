@@ -1,6 +1,7 @@
 /*
-  This template is invoked automatically by main.bicep as part of the standard deployment workflow.
-  It no longer needs to be run separately before deploying a new environment.
+  This template is invoked automatically by app-shared-setup.bicep, which must run before main.bicep
+  as part of the standard deployment workflow. It no longer needs to be run separately before
+  deploying a new environment.
 
   For standalone/manual execution:
   az deployment group create -w \
@@ -28,10 +29,26 @@ param deployedAt string = utcNow()
 
 param deployDns bool = true
 
+// Microsoft.Authorization/* write permissions by deploy identity, as observed in CI:
+//   Identity            roleAssignments/write   locks/write
+//   Flexion Main-Gov    yes                     no
+//   USTP/ADO            no                      no
+// Both actions are excluded by Contributor's NotActions, but not identically
+// across identities — don't assume one implies the other for a future
+// Microsoft.Authorization/*-gated resource.
 @description('When false, no role assignments are created (used for USTP deployments where the ADO service principal lacks role assignment permissions).')
 param makeRoleAssignment bool = true
 
-@description('When true, deploys CanNotDelete resource locks on the shared Key Vault and its managed identity (GH #2749 defense-in-depth). Defaults to false because no deploy identity currently in use — Flexion or USTP — has been granted Microsoft.Authorization/locks/write; enable only once that permission has actually been granted to the deploying identity.')
+// Defense-in-depth against a repeat of the shared-KV deletion incident
+// (GH #2749) would ideally layer this lock on top of the structural fix
+// (this template's plain, non-stack deployment) and the pre-commit/script
+// guards. But per the permissions matrix above, no deploy identity in any
+// environment today (Flexion or USTP) has locks/write — so with the
+// current default of false, this layer is dormant everywhere, not just
+// disabled in some environments. Don't read the lock code below as an
+// active control; the structural fix and guards are the only things
+// currently enforcing this.
+@description('When true, deploys CanNotDelete resource locks on the shared Key Vault and its managed identity. Defaults to false — see the permissions matrix above.')
 param enableResourceLocks bool = false
 
 param location string = resourceGroup().location
@@ -57,6 +74,9 @@ param privateDnsZoneResourceGroup string = resourceGroup().name
 @description('Subscription of target Private DNS Zone. Defaults to subscription of current deployment')
 param privateDnsZoneSubscriptionId string = subscription().subscriptionId
 
+// Also hardcoded in az-delete-branch-resources.sh (kvPrivateDnsZoneName) to
+// find and delete this zone's per-branch vnet link during teardown — can't
+// share the literal across bash/bicep, keep both in lockstep by hand.
 var keyvaultPrivateDnsZoneName = 'privatelink.vaultcore.usgovcloudapi.net'
 
 @description('Application Configuration network access control settings')
@@ -119,14 +139,17 @@ module appConfigIdentity './lib/identity/managed-identity.bicep' = {
   }
 }
 
-// Same rationale as appConfigKeyvaultLock below — see that module's comment.
-// Gated on enableResourceLocks, not makeRoleAssignment: lock writes
-// (Microsoft.Authorization/locks/write) and role assignment writes
-// (Microsoft.Authorization/roleAssignments/write) are both excluded by
-// Contributor's NotActions, but that doesn't mean the same identities are
-// missing both — the Flexion Main-Gov deploy identity has makeRoleAssignment
-// permission but not locks/write, which broke every deploy on main until
-// this was split into its own flag (see enableResourceLocks description).
+// Defense-in-depth against a repeat of GH #2749: a branch's Deployment Stack
+// teardown once deleted this shared managed identity because a stack owns
+// every resource its template creates, in any resource group. This lock (and
+// appConfigKeyvaultLock below, which shares this rationale) is independent of,
+// not a replacement for, the script-level guards in
+// az-delete-branch-resources.sh and the guard-app-deploy-not-stacked
+// pre-commit hook — the primary GH #2749 mitigation is structural (shared
+// resources are never stack-managed); these locks are a secondary safeguard.
+// Gated on enableResourceLocks, not makeRoleAssignment — see the permissions
+// matrix above for why these two Microsoft.Authorization/* writes can't be
+// assumed to travel together.
 module appConfigIdentityLock './lib/identity/managed-identity-lock.bicep' = if (enableResourceLocks) {
   name: '${stackName}-id-app-config-lock-module'
   scope: resourceGroup(kvResourceGroup)
@@ -151,16 +174,7 @@ module appConfigKeyvault './lib/keyvault/keyvault.bicep' = {
   }
 }
 
-// Defense-in-depth against a repeat of GH #2749: a resource
-// lock that survives even if a future change to the deploy/teardown scripts
-// incorrectly wraps this shared Key Vault (or its managed identity) in a
-// Deployment Stack again. This is independent of, not a replacement for, the
-// script-level guards in az-delete-branch-resources.sh and the
-// guard-app-deploy-not-stacked pre-commit hook. The primary mitigation for
-// GH #2749 is structural (shared resources are never stack-managed); this
-// lock is a secondary safeguard, not a substitute for that.
-// Gated on enableResourceLocks — see appConfigIdentityLock above for why
-// this isn't gated on makeRoleAssignment.
+// Same rationale as appConfigIdentityLock above.
 module appConfigKeyvaultLock './lib/keyvault/keyvault-lock.bicep' = if (enableResourceLocks) {
   name: '${stackName}-kv-app-config-lock-module'
   scope: resourceGroup(kvResourceGroup)
@@ -192,11 +206,18 @@ resource ustpVirtualNetwork 'Microsoft.Network/virtualNetworks@2022-11-01' exist
   scope: resourceGroup(networkResourceGroup)
 }
 
+// stackName (the per-branch/main-unique identifier), not kvName (the fixed,
+// shared vault name), is used to name the private endpoint and its vnet link
+// below: the Key Vault itself is shared, but each branch has its own isolated
+// VNet and needs its own private endpoint + link into it. Passing kvName here
+// previously gave every branch's private endpoint the same fixed name
+// (pep-${kvName}), so concurrent or sequential branch deploys collided on one
+// PE resource that can only ever point at one branch's subnet at a time.
 module ustpPrivateDnsZone './lib/network/private-dns-zones.bicep' = {
-  name: '${kvName}-private-dns-zone-module'
+  name: '${stackName}-private-dns-zone-module'
   scope: resourceGroup(privateDnsZoneSubscriptionId, privateDnsZoneResourceGroup)
   params: {
-    stackName: kvName
+    stackName: stackName
     virtualNetworkId: ustpVirtualNetwork.id
     privateDnsZoneName: keyvaultPrivateDnsZoneName
     deployDns: deployDns
@@ -204,12 +225,12 @@ module ustpPrivateDnsZone './lib/network/private-dns-zones.bicep' = {
 }
 
 module appConfigKeyvaultPrivateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
-  name: '${kvName}-kv-app-config-module'
+  name: '${stackName}-kv-app-config-module'
   scope: resourceGroup(networkResourceGroup)
   params: {
     location: location
     privateLinkServiceId: appConfigKeyvault.outputs.vaultId
-    stackName: kvName
+    stackName: stackName
     privateEndpointSubnetId: privateEndpointSubnetId
     privateLinkGroup: 'vault'
     privateDnsZoneName: keyvaultPrivateDnsZoneName

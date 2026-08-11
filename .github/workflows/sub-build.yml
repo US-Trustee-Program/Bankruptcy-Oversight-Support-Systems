@@ -24,10 +24,6 @@ on:
       environment:
         required: true
         type: string
-      environmentHash:
-        required: false
-        type: string
-        default: ''
       launchDarklyEnvironment:
         required: true
         type: string
@@ -64,7 +60,6 @@ jobs:
       camsBasePath: ${{ vars.CAMS_BASE_PATH }}
       webappName: ${{ inputs.webappName }}
       environment: ${{ inputs.environment }}
-      environmentHash: ${{ inputs.environmentHash }}
       launchDarklyEnvironment: ${{ vars.CAMS_LAUNCH_DARKLY_ENV }}
 
   backend:
