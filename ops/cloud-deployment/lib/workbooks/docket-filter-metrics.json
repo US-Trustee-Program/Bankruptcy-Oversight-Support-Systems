@@ -4,7 +4,7 @@
     {
       "type": 1,
       "content": {
-        "json": "# Docket Filter Usage\n\nUsage metrics for CAMS-850: how often each Court Docket filter is used, how usage compares across the four filters, which combinations of filters get used together, and what share of Court Docket panel sessions engage with filtering at all — to inform display order and removal decisions.\n\n**Instrumented events** (all in `customEvents`):\n- `Docket Text Search Filter Changed` / `Cleared` — 500ms-debounced free-text search in the docket\n- `Docket Document Number Filter Changed` / `Cleared` — 500ms-debounced jump-to-document-number; `Cleared` also fires when a non-numeric value replaces a valid one, so its count includes validation churn, not only deliberate clears\n- `Docket Summary Filter Changed` / `Cleared` — multi-select facet picker, immediate (no debounce)\n- `Docket Date Range Start Only Filter Changed` / `Docket Date Range End Only Filter Changed` / `Docket Date Range Complete Filter Changed` / `Docket Date Range Filter Cleared` — start/end date picker, immediate (no debounce); which Changed event fires depends on whether only the start, only the end, or both bounds are currently set\n- `Docket All Filters Cleared` — fired once when Clear All Filters is used and at least one filter was active; suppresses the 4 per-field Cleared events above for that action, so those now reflect manual single-field clears only\n- `Docket Filters Combination Changed` / `Cleared` — fired whenever the set of currently-populated filters changes, carrying a `filters` property (a fixed, comma-joined list of field labels — e.g. `TextSearch,Summary` — never raw values)\n\nNo event carries the actual search text, document number, selected values, or dates. All `Cleared` events carry no properties. The only property anywhere in this feature is `Combination Changed`'s `filters` field, always a combination of a small, fixed set of field-name labels — a `customDimensions` field, never `customMeasurements`."
+        "json": "# Docket Filter Usage\n\nUsage metrics for CAMS-850: how often each Court Docket filter is used, how usage compares across the four filters, which combinations of filters get used together, and what share of Court Docket panel sessions engage with filtering at all — to inform display order and removal decisions.\n\n**Instrumented events** (all in `customEvents`):\n- `Docket Text Search Filter Changed` / `Cleared` — 500ms-debounced free-text search in the docket\n- `Docket Document Number Filter Changed` / `Cleared` — 500ms-debounced jump-to-document-number; `Cleared` also fires when a non-numeric value replaces a valid one, so its count includes validation churn, not only deliberate clears\n- `Docket Date Range Start Only Filter Changed` / `Cleared` — only the start bound is set; 500ms-debounced (added to prevent a single \"pick a range\" action from double-firing across two field edits)\n- `Docket Date Range End Only Filter Changed` / `Cleared` — only the end bound is set; same debounce\n- `Docket Complete Date Range Filter Changed` / `Cleared` — both bounds are set; same debounce. Reducing a complete range down to one bound fires the corresponding Start Only/End Only *Changed* event, never a Cleared event — Cleared only fires when both bounds become empty\n- `Docket Summary Filter Changed` / `Cleared` — multi-select facet picker, immediate (no debounce)\n- `Docket All Filters Cleared` — fired once when Clear All Filters is used and at least one filter was active; suppresses the 6 per-field Cleared events above for that action, so those now reflect manual single-field/single-bound clears only\n- `Docket Filters Combination Changed` / `Cleared` — fired whenever the set of currently-populated filters changes, carrying a `filters` property (a fixed, comma-joined list of field labels — e.g. `TextSearch,DateRangeComplete` — never raw values); Date Range contributes one of `DateRangeStartOnly` / `DateRangeEndOnly` / `DateRangeComplete`\n\nNo event carries the actual search text, document number, selected values, or dates. All `Cleared` events carry no properties. The only property anywhere in this feature is `Combination Changed`'s `filters` field, always a combination of a small, fixed set of field-name labels — a `customDimensions` field, never `customMeasurements`."
       },
       "name": "header"
     },
@@ -57,7 +57,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "customEvents\n| where timestamp {TimeRange}\n| where name in (\n    \"Docket Text Search Filter Changed\",\n    \"Docket Document Number Filter Changed\",\n    \"Docket Summary Filter Changed\",\n    \"Docket Date Range Start Only Filter Changed\",\n    \"Docket Date Range End Only Filter Changed\",\n    \"Docket Date Range Complete Filter Changed\"\n  )\n| extend Filter = case(\n    name == \"Docket Text Search Filter Changed\", \"Text Search\",\n    name == \"Docket Document Number Filter Changed\", \"Document Number\",\n    name == \"Docket Summary Filter Changed\", \"Summary\",\n    name has \"Date Range\", \"Date Range\",\n    name\n  )\n| summarize ChangedCount = count() by Filter\n| order by ChangedCount desc",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name in (\n    \"Docket Text Search Filter Changed\",\n    \"Docket Document Number Filter Changed\",\n    \"Docket Summary Filter Changed\",\n    \"Docket Date Range Start Only Filter Changed\",\n    \"Docket Date Range End Only Filter Changed\",\n    \"Docket Complete Date Range Filter Changed\"\n  )\n| extend Filter = case(\n    name == \"Docket Text Search Filter Changed\", \"Text Search\",\n    name == \"Docket Document Number Filter Changed\", \"Document Number\",\n    name == \"Docket Summary Filter Changed\", \"Summary\",\n    name == \"Docket Date Range Start Only Filter Changed\", \"Date Range (Start Only)\",\n    name == \"Docket Date Range End Only Filter Changed\", \"Date Range (End Only)\",\n    \"Complete Date Range\"\n  )\n| summarize ChangedCount = count() by Filter\n| order by ChangedCount desc",
         "size": 0,
         "title": "Filter Usage Volume (Relative Frequency Across All 4 Filters)",
         "timeContextFromParameter": "TimeRange",
@@ -79,32 +79,31 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "customEvents\n| where timestamp {TimeRange}\n| where name in (\n    \"Docket Text Search Filter Changed\", \"Docket Text Search Filter Cleared\",\n    \"Docket Document Number Filter Changed\", \"Docket Document Number Filter Cleared\",\n    \"Docket Summary Filter Changed\", \"Docket Summary Filter Cleared\",\n    \"Docket Date Range Start Only Filter Changed\",\n    \"Docket Date Range End Only Filter Changed\",\n    \"Docket Date Range Complete Filter Changed\",\n    \"Docket Date Range Filter Cleared\"\n  )\n| extend Filter = case(\n    name has \"Text Search\", \"Text Search\",\n    name has \"Document Number\", \"Document Number\",\n    name has \"Summary\", \"Summary\",\n    name has \"Date Range\", \"Date Range\",\n    name\n  )\n| summarize\n    Changed = countif(name has \"Changed\"),\n    Cleared = countif(name has \"Cleared\")\n  by Filter\n| order by Changed desc",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name in (\n    \"Docket Text Search Filter Cleared\",\n    \"Docket Document Number Filter Cleared\",\n    \"Docket Summary Filter Cleared\",\n    \"Docket Date Range Start Only Filter Cleared\",\n    \"Docket Date Range End Only Filter Cleared\",\n    \"Docket Complete Date Range Filter Cleared\",\n    \"Docket All Filters Cleared\"\n  )\n| extend ClearType = case(\n    name == \"Docket Text Search Filter Cleared\", \"Text Search\",\n    name == \"Docket Document Number Filter Cleared\", \"Document Number\",\n    name == \"Docket Summary Filter Cleared\", \"Summary\",\n    name == \"Docket Date Range Start Only Filter Cleared\", \"Date Range (Start Only)\",\n    name == \"Docket Date Range End Only Filter Cleared\", \"Date Range (End Only)\",\n    name == \"Docket Complete Date Range Filter Cleared\", \"Complete Date Range\",\n    \"Clear All\"\n  )\n| summarize ClearedCount = count() by ClearType\n| order by ClearedCount desc",
         "size": 0,
-        "title": "Changed vs. Cleared Events per Filter",
+        "title": "Cleared Events Breakdown (Manual Clears + Clear All)",
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.insights/components",
-        "visualization": "unstackedbar",
+        "visualization": "barchart",
         "chartSettings": {
-          "xAxis": "Filter",
-          "yAxis": ["Changed", "Cleared"],
+          "xAxis": "ClearType",
+          "yAxis": ["ClearedCount"],
           "seriesLabelSettings": [
-            { "seriesName": "Changed", "label": "Changed", "color": "blue" },
-            { "seriesName": "Cleared", "label": "Cleared", "color": "orange" }
+            { "seriesName": "ClearedCount", "label": "Cleared Events", "color": "orange" }
           ]
         }
       },
       "customWidth": "50",
-      "name": "filter-changed-vs-cleared"
+      "name": "filter-cleared-breakdown"
     },
     {
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "customEvents\n| where timestamp {TimeRange}\n| where name in (\n    \"Docket Text Search Filter Changed\", \"Docket Text Search Filter Cleared\",\n    \"Docket Document Number Filter Changed\", \"Docket Document Number Filter Cleared\",\n    \"Docket Summary Filter Changed\", \"Docket Summary Filter Cleared\",\n    \"Docket Date Range Start Only Filter Changed\",\n    \"Docket Date Range End Only Filter Changed\",\n    \"Docket Date Range Complete Filter Changed\",\n    \"Docket Date Range Filter Cleared\"\n  )\n| summarize\n    TextSearchChanged = countif(name == \"Docket Text Search Filter Changed\"),\n    TextSearchCleared = countif(name == \"Docket Text Search Filter Cleared\"),\n    DocNumberChanged = countif(name == \"Docket Document Number Filter Changed\"),\n    DocNumberCleared = countif(name == \"Docket Document Number Filter Cleared\"),\n    SummaryChanged = countif(name == \"Docket Summary Filter Changed\"),\n    SummaryCleared = countif(name == \"Docket Summary Filter Cleared\"),\n    DateRangeChanged = countif(name has \"Date Range\" and name has \"Changed\"),\n    DateRangeCleared = countif(name == \"Docket Date Range Filter Cleared\")\n  by Day = bin(timestamp, 1d)\n| order by Day asc",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name in (\n    \"Docket Text Search Filter Changed\",\n    \"Docket Document Number Filter Changed\",\n    \"Docket Summary Filter Changed\",\n    \"Docket Date Range Start Only Filter Changed\",\n    \"Docket Date Range End Only Filter Changed\",\n    \"Docket Complete Date Range Filter Changed\",\n    \"Docket All Filters Cleared\"\n  )\n| summarize\n    TextSearchChanged = countif(name == \"Docket Text Search Filter Changed\"),\n    DocNumberChanged = countif(name == \"Docket Document Number Filter Changed\"),\n    SummaryChanged = countif(name == \"Docket Summary Filter Changed\"),\n    DateRangeStartOnlyChanged = countif(name == \"Docket Date Range Start Only Filter Changed\"),\n    DateRangeEndOnlyChanged = countif(name == \"Docket Date Range End Only Filter Changed\"),\n    CompleteDateRangeChanged = countif(name == \"Docket Complete Date Range Filter Changed\"),\n    ClearAllCount = countif(name == \"Docket All Filters Cleared\")\n  by Day = bin(timestamp, 1d)\n| order by Day asc",
         "size": 0,
-        "title": "Filter Activity Over Time (All 4 Filters, Changed + Cleared)",
+        "title": "Filter Activity Over Time (All 4 Filters, Changed + Clear All)",
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.insights/components",
@@ -114,21 +113,28 @@
           "showDataPoints": true,
           "seriesLabelSettings": [
             { "seriesName": "TextSearchChanged", "label": "Text Search Changed", "color": "blue" },
-            { "seriesName": "TextSearchCleared", "label": "Text Search Cleared", "color": "teal" },
             {
               "seriesName": "DocNumberChanged",
               "label": "Document Number Changed",
               "color": "green"
             },
+            { "seriesName": "SummaryChanged", "label": "Summary Changed", "color": "purple" },
             {
-              "seriesName": "DocNumberCleared",
-              "label": "Document Number Cleared",
+              "seriesName": "DateRangeStartOnlyChanged",
+              "label": "Date Range Start Only Changed",
+              "color": "orange"
+            },
+            {
+              "seriesName": "DateRangeEndOnlyChanged",
+              "label": "Date Range End Only Changed",
               "color": "yellow"
             },
-            { "seriesName": "SummaryChanged", "label": "Summary Changed", "color": "purple" },
-            { "seriesName": "SummaryCleared", "label": "Summary Cleared", "color": "pink" },
-            { "seriesName": "DateRangeChanged", "label": "Date Range Changed", "color": "orange" },
-            { "seriesName": "DateRangeCleared", "label": "Date Range Cleared", "color": "blue" }
+            {
+              "seriesName": "CompleteDateRangeChanged",
+              "label": "Complete Date Range Changed",
+              "color": "red"
+            },
+            { "seriesName": "ClearAllCount", "label": "Clear All", "color": "teal" }
           ],
           "ySettings": {
             "numberFormatSettings": {
@@ -139,43 +145,6 @@
         }
       },
       "name": "combined-filter-activity-trend"
-    },
-    {
-      "type": 3,
-      "content": {
-        "version": "KqlItem/1.0",
-        "query": "customEvents\n| where timestamp {TimeRange}\n| where name in (\n    \"Docket Date Range Start Only Filter Changed\",\n    \"Docket Date Range End Only Filter Changed\",\n    \"Docket Date Range Complete Filter Changed\"\n  )\n| extend RangeType = case(\n    name == \"Docket Date Range Start Only Filter Changed\", \"Start Only\",\n    name == \"Docket Date Range End Only Filter Changed\", \"End Only\",\n    \"Complete Range\"\n  )\n| summarize ChangedCount = count() by RangeType\n| order by ChangedCount desc",
-        "size": 0,
-        "title": "Date Range Usage by Type (Start Only / End Only / Complete)",
-        "timeContextFromParameter": "TimeRange",
-        "queryType": 0,
-        "resourceType": "microsoft.insights/components",
-        "visualization": "barchart",
-        "chartSettings": {
-          "xAxis": "RangeType",
-          "yAxis": ["ChangedCount"],
-          "seriesLabelSettings": [
-            { "seriesName": "ChangedCount", "label": "Changed Events", "color": "green" }
-          ]
-        }
-      },
-      "customWidth": "50",
-      "name": "date-range-usage-by-type"
-    },
-    {
-      "type": 3,
-      "content": {
-        "version": "KqlItem/1.0",
-        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"Docket All Filters Cleared\"\n| summarize ClearAllCount = count()",
-        "size": 0,
-        "title": "Clear All Filters — Usage Count",
-        "timeContextFromParameter": "TimeRange",
-        "queryType": 0,
-        "resourceType": "microsoft.insights/components",
-        "visualization": "grid"
-      },
-      "customWidth": "50",
-      "name": "clear-all-usage"
     },
     {
       "type": 3,
@@ -198,7 +167,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "let DocketPanelSessions = pageViews\n    | where timestamp {TimeRange}\n    | where url contains \"court-docket\"\n    | distinct session_Id;\nlet TotalSessions = toscalar(DocketPanelSessions | count);\ncustomEvents\n| where timestamp {TimeRange}\n| where name in (\n    \"Docket Text Search Filter Changed\",\n    \"Docket Document Number Filter Changed\",\n    \"Docket Summary Filter Changed\",\n    \"Docket Date Range Start Only Filter Changed\",\n    \"Docket Date Range End Only Filter Changed\",\n    \"Docket Date Range Complete Filter Changed\"\n  )\n| join kind=inner DocketPanelSessions on session_Id\n| summarize SessionsUsingAnyFilter = dcount(session_Id)\n| extend TotalSessions = toscalar(DocketPanelSessions | count)\n| extend PctSessionsUsingAnyFilter = round(iif(TotalSessions > 0, todouble(SessionsUsingAnyFilter) / todouble(TotalSessions) * 100, 0.0), 1)\n| project SessionsUsingAnyFilter, TotalSessions, PctSessionsUsingAnyFilter",
+        "query": "let DocketPanelSessions = pageViews\n    | where timestamp {TimeRange}\n    | where url contains \"court-docket\"\n    | distinct session_Id;\nlet TotalSessions = toscalar(DocketPanelSessions | count);\ncustomEvents\n| where timestamp {TimeRange}\n| where name in (\n    \"Docket Text Search Filter Changed\",\n    \"Docket Document Number Filter Changed\",\n    \"Docket Summary Filter Changed\",\n    \"Docket Date Range Start Only Filter Changed\",\n    \"Docket Date Range End Only Filter Changed\",\n    \"Docket Complete Date Range Filter Changed\"\n  )\n| join kind=inner DocketPanelSessions on session_Id\n| summarize SessionsUsingAnyFilter = dcount(session_Id)\n| extend TotalSessions = toscalar(DocketPanelSessions | count)\n| extend PctSessionsUsingAnyFilter = round(iif(TotalSessions > 0, todouble(SessionsUsingAnyFilter) / todouble(TotalSessions) * 100, 0.0), 1)\n| project SessionsUsingAnyFilter, TotalSessions, PctSessionsUsingAnyFilter",
         "size": 0,
         "title": "Overall Filter Adoption — % of Court Docket Panel Sessions Using Any Filter",
         "timeContextFromParameter": "TimeRange",

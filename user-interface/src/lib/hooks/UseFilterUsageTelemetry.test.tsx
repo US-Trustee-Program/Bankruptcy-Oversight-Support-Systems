@@ -295,6 +295,43 @@ describe('useFilterUsageTelemetry', () => {
     expect(trackEvent).toHaveBeenNthCalledWith(2, { name: 'Long' });
   });
 
+  test('evaluates a function-form clearedEventName with the previous (pre-clear) value to pick the event name', () => {
+    const pickClearedName = (previous: string) =>
+      previous.length < 4 ? 'ShortCleared' : 'LongCleared';
+
+    const { rerender } = renderHook(
+      ({ value, options }) => useFilterUsageTelemetry(value, options),
+      {
+        initialProps: {
+          value: 'ab',
+          options: stringOptions({ clearedEventName: pickClearedName }),
+        },
+      },
+    );
+
+    rerender({ value: '', options: stringOptions({ clearedEventName: pickClearedName }) });
+    act(() => vi.advanceTimersByTime(500));
+
+    expect(trackEvent).toHaveBeenCalledTimes(1);
+    expect(trackEvent).toHaveBeenCalledWith({ name: 'ShortCleared' });
+
+    const { rerender: rerender2 } = renderHook(
+      ({ value, options }) => useFilterUsageTelemetry(value, options),
+      {
+        initialProps: {
+          value: 'abcdef',
+          options: stringOptions({ clearedEventName: pickClearedName }),
+        },
+      },
+    );
+
+    rerender2({ value: '', options: stringOptions({ clearedEventName: pickClearedName }) });
+    act(() => vi.advanceTimersByTime(500));
+
+    expect(trackEvent).toHaveBeenCalledTimes(2);
+    expect(trackEvent).toHaveBeenNthCalledWith(2, { name: 'LongCleared' });
+  });
+
   test('never applies changedProperties to Cleared', () => {
     const { rerender } = renderHook(
       ({ value, options }) => useFilterUsageTelemetry(value, options),
