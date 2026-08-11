@@ -18,6 +18,9 @@ param privateDnsZoneName string = 'privatelink.azurewebsites.us'
 @description('Optional array of resource ids of virtual network to link to private dns zone')
 param linkVnetIds array = []
 
+@description('Set true when the caller has already confirmed some link already exists from virtualNetworkId into this zone (see vnet-links.bicep) -- skips creating a second, differently-named link that Azure would reject.')
+param vnetLinkAlreadyExists bool = false
+
 /*
   Private DNS Zone and linked virtual networks
 */
@@ -43,6 +46,7 @@ module vnetLinks './vnet-links.bicep' = {
     virtualNetworkId: virtualNetworkId
     privateDnsZoneName: ((deployDns) ? ustpPrivateDnsZoneNew.name : ustpPrivateDnsZoneExisting.name)
     linkVnetIds: linkVnetIds
+    vnetLinkAlreadyExists: vnetLinkAlreadyExists
   }
 }
 output privateDnsZoneId string = ((deployDns) ? ustpPrivateDnsZoneNew.id : ustpPrivateDnsZoneExisting.id)

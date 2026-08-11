@@ -49,6 +49,9 @@ param privateDnsZoneResourceGroup string = networkResourceGroupName
 @description('DNS Zone Subscription ID. USTP uses a different subscription for prod deployment.')
 param privateDnsZoneSubscriptionId string = subscription().subscriptionId
 
+@description('Set true when the deploying pipeline has already confirmed a vnet link into the KV private DNS zone exists (see vnet-links.bicep) -- avoids a Conflict from trying to create a second, differently-named link.')
+param vnetLinkAlreadyExists bool = false
+
 @description('Resource group containing the app-config Key Vault')
 param kvAppConfigResourceGroupName string
 
@@ -102,6 +105,7 @@ module kvSetup './ustp-cams-kv-app-config-setup.bicep' = {
     privateEndpointSubnetId: privateEndpointSubnetExisting.id
     privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
     privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
+    vnetLinkAlreadyExists: vnetLinkAlreadyExists
     managedIdentityName: idKeyvaultAppConfiguration
     makeRoleAssignment: !isUstpDeployment
   }

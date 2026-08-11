@@ -74,6 +74,9 @@ param privateDnsZoneResourceGroup string = resourceGroup().name
 @description('Subscription of target Private DNS Zone. Defaults to subscription of current deployment')
 param privateDnsZoneSubscriptionId string = subscription().subscriptionId
 
+@description('Set true when the deploying pipeline has already confirmed a vnet link into this zone exists (see vnet-links.bicep) -- avoids a Conflict from trying to create a second, differently-named link.')
+param vnetLinkAlreadyExists bool = false
+
 // Also hardcoded in az-delete-branch-resources.sh (kvPrivateDnsZoneName) to
 // find and delete this zone's per-branch vnet link during teardown — can't
 // share the literal across bash/bicep, keep both in lockstep by hand.
@@ -221,6 +224,7 @@ module ustpPrivateDnsZone './lib/network/private-dns-zones.bicep' = {
     virtualNetworkId: ustpVirtualNetwork.id
     privateDnsZoneName: keyvaultPrivateDnsZoneName
     deployDns: deployDns
+    vnetLinkAlreadyExists: vnetLinkAlreadyExists
   }
 }
 
