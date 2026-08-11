@@ -1070,6 +1070,49 @@ describe('Case Detail sort, search, and filter tests', () => {
       expect(clearedCalls('Docket Complete Date Range Filter Cleared')).toHaveLength(0);
     });
 
+    describe('Date Range debounce override (temporary, CAMS-850)', () => {
+      afterEach(() => {
+        window.history.pushState({}, '', '/');
+      });
+
+      test('delays Date Range Changed until the overridden debounce elapses, not the default 500ms', async () => {
+        window.history.pushState({}, '', '?dateRangeDebounceMs=1500');
+        await renderAndNavigateToDocket();
+
+        fireEvent.change(screen.getByTestId('docket-date-range-date-start'), {
+          target: { value: '2023-07-01' },
+        });
+        act(() => vi.advanceTimersByTime(500));
+
+        expect(changedCalls('Docket Date Range Start Only Filter Changed')).toHaveLength(0);
+
+        act(() => vi.advanceTimersByTime(1000));
+
+        expectSingleChanged('Docket Date Range Start Only Filter Changed');
+      });
+
+      test('leaves Text Search at its own 500ms debounce even when a Date Range override is present', async () => {
+        window.history.pushState({}, '', '?dateRangeDebounceMs=1500');
+        await renderAndNavigateToDocket();
+
+        typeAndWait('basic-search-field', 'motion');
+
+        expectSingleChanged('Docket Text Search Filter Changed');
+      });
+
+      test('falls back to 500ms when dateRangeDebounceMs is not a valid non-negative number', async () => {
+        window.history.pushState({}, '', '?dateRangeDebounceMs=not-a-number');
+        await renderAndNavigateToDocket();
+
+        fireEvent.change(screen.getByTestId('docket-date-range-date-start'), {
+          target: { value: '2023-07-01' },
+        });
+        act(() => vi.advanceTimersByTime(500));
+
+        expectSingleChanged('Docket Date Range Start Only Filter Changed');
+      });
+    });
+
     test('Clear All Filters fires one Docket All Filters Cleared event and suppresses per-field Cleared when filters were active', async () => {
       await renderAndNavigateToDocket();
       const docketFacetContainer = screen.getByTestId('facet-multi-select-container-test-id');

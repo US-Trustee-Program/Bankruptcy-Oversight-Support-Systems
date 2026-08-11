@@ -57,6 +57,19 @@ interface DocketSortAndFilterOptions {
   selectedDateRange: DateRange;
 }
 
+// TEMPORARY (CAMS-850): lets `?dateRangeDebounceMs=<n>` in the URL override the Date Range
+// filter's telemetry debounce, so the right value can be found experimentally without an Azure
+// redeploy per attempt. Scoped to Date Range only -- Text Search, Document Number, and the
+// filter-combination signal keep their own tuned 500ms. Remove once a final value is settled on.
+function getDateRangeDebounceMsOverride(): number | undefined {
+  const raw = new URLSearchParams(window.location.search).get('dateRangeDebounceMs');
+  if (raw === null) {
+    return undefined;
+  }
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
+}
+
 export function findDocketLimits(docket: CaseDocket): DocketLimits {
   const dateRange: DateRange = { start: undefined, end: undefined };
   const documentRange: DocumentRange = { first: 0, last: 0 };
@@ -456,7 +469,7 @@ export default function CaseDetailScreen(props: Readonly<CaseDetailProps>) {
           : 'Docket Date Range End Only Filter Cleared',
     isEmpty: (v) => !v.start && !v.end,
     isEqual: (a, b) => a.start === b.start && a.end === b.end,
-    debounceMs: 500,
+    debounceMs: getDateRangeDebounceMsOverride() ?? 500,
     suppressClearRef,
   });
 
