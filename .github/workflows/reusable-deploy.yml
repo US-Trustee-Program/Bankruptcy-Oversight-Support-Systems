@@ -69,7 +69,7 @@ jobs:
       - name: Fetch config from Key Vault
         env:
           GHA_ENVIRONMENT: ${{ inputs.ghaEnvironment }}
-          ENVIRONMENT_HASH: ${{ inputs.environmentHash }}
+          STACK_NAME: ${{ inputs.stackName }}
         run: |
           set -euo pipefail
           if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
@@ -83,13 +83,13 @@ jobs:
           _val=$(az keyvault secret show --vault-name "$KV" --name AZ-NETWORK-RG --query value -o tsv)
           echo "::add-mask::${_val}"
           AZ_NETWORK_RG_BASE="${_val}"
-          if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
-            AZ_APP_RG="${AZ_APP_RG_BASE}"
-            AZ_NETWORK_RG="${AZ_NETWORK_RG_BASE}"
-          else
-            AZ_APP_RG="${AZ_APP_RG_BASE}-${ENVIRONMENT_HASH}"
-            AZ_NETWORK_RG="${AZ_NETWORK_RG_BASE}-${ENVIRONMENT_HASH}"
-          fi
+          # CAMS-760, Option E / Slice 2: branches deploy into the SAME stable
+          # app/network RGs main uses, distinguished by per-branch-unique resource
+          # names, rather than creating a per-branch RG (which forced
+          # subscription-scope Contributor on the branch deploy identity — Azure
+          # RBAC has no wildcard scoping over dynamically-named RGs).
+          AZ_APP_RG="${AZ_APP_RG_BASE}"
+          AZ_NETWORK_RG="${AZ_NETWORK_RG_BASE}"
           echo "AZ_APP_RG=${AZ_APP_RG}" >> "$GITHUB_ENV"
           echo "AZ_NETWORK_RG=${AZ_NETWORK_RG}" >> "$GITHUB_ENV"
           _val=$(az keyvault secret show --vault-name "$KV" --name AZURE-RG --query value -o tsv)
@@ -115,7 +115,22 @@ jobs:
           echo "SLOT_NAME=${_val}" >> "$GITHUB_ENV"
           _val=$(az keyvault secret show --vault-name "$KV" --name AZ-NETWORK-VNET-NAME --query value -o tsv)
           echo "::add-mask::${_val}"
-          echo "AZ_NETWORK_VNET_NAME=${_val}" >> "$GITHUB_ENV"
+          # CAMS-760, Option E / Slice 2: each branch owns its own uniquely-named
+          # VNet (vnet-<stackName>, matching bicep's own default) so it can safely
+          # coexist with main's and every other branch's VNet in the now-shared
+          # network RG. Main keeps the fixed KV-sourced name. (Branches already
+          # each created their own VNet before this change; only the identical
+          # forced name was the bug — see the Slice 2 design notes.)
+          # This "vnet-${STACK_NAME}" formula is duplicated in
+          # reusable-build-info.yml's "Check Vnet && Initial Deployment" step and
+          # in main.bicep/network.bicep/app-shared-setup.bicep's virtualNetworkName
+          # param default — keep all of these in lockstep if it ever changes.
+          if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
+            AZ_NETWORK_VNET_NAME="${_val}"
+          else
+            AZ_NETWORK_VNET_NAME="vnet-${STACK_NAME}"
+          fi
+          echo "AZ_NETWORK_VNET_NAME=${AZ_NETWORK_VNET_NAME}" >> "$GITHUB_ENV"
           _val=$(az keyvault secret show --vault-name "$KV" --name AZ-PLAN-TYPE --query value -o tsv)
           echo "::add-mask::${_val}"
           echo "AZ_PLAN_TYPE=${_val}" >> "$GITHUB_ENV"
@@ -195,22 +210,58 @@ jobs:
           DEPLOY_VNET: ${{ inputs.deployVnet }}
           AZ_LOCATION: ${{ secrets.AZ_LOCATION }} # pragma: allowlist secret
         run: |
+          # CAMS-760, Option E / Slice 2: the Private DNS Zone is a genuinely
+          # shared resource (one zone, many VNet links) — only main ever
+          # creates/manages it. A branch declaring it too would let that
+          # branch's stack delete DNS resolution for everyone on teardown, the
+          # same bug shape as the shared Key Vault incident (GH #2749).
+          deployDns=$([[ "${IS_BRANCH_DEPLOYMENT}" == "true" ]] && echo false || echo true)
           ./ops/scripts/pipeline/azure-deploy-network.sh \
             --file ./ops/cloud-deployment/network.bicep \
             --stackName "${STACK_NAME}" \
             --networkResourceGroupName "${{ env.AZ_NETWORK_RG }}" \
             --virtualNetworkName "${{ env.AZ_NETWORK_VNET_NAME }}" \
             --deployVnet "${DEPLOY_VNET}" \
+            --deployDns "${deployDns}" \
             --isBranchDeployment "${IS_BRANCH_DEPLOYMENT}" \
             --branchName "${BRANCH_NAME}" \
             --branchHashId "${ENVIRONMENT_HASH}" \
+            -l "${AZ_LOCATION}"
+
+      - name: Deploy Azure app shared-setup resources
+        id: azure-app-shared-setup-deploy
+        env:
+          STACK_NAME: ${{ inputs.stackName }}
+          IS_BRANCH_DEPLOYMENT: ${{ github.ref != 'refs/heads/main' && 'true' || 'false' }}
+          AZ_SQL_SERVER_NAME: ${{ secrets.AZ_SQL_SERVER_NAME }} # pragma: allowlist secret
+          AZ_SQL_IDENTITY_NAME: ${{ secrets.AZ_SQL_IDENTITY_NAME }} # pragma: allowlist secret
+          AZ_LOCATION: ${{ secrets.AZ_LOCATION }} # pragma: allowlist secret
+        run: |
+          # Same rationale as the network step above — only main creates/manages
+          # the KV's own Private DNS Zone (privatelink.vaultcore.usgovcloudapi.net).
+          deployDns=$([[ "${IS_BRANCH_DEPLOYMENT}" == "true" ]] && echo false || echo true)
+          ./ops/scripts/pipeline/azure-deploy-app-shared-setup.sh \
+            --file ./ops/cloud-deployment/app-shared-setup.bicep \
+            --resource-group "${AZURE_RG}" \
+            --stackName "${STACK_NAME}" \
+            --deployDns "${deployDns}" \
+            --networkResourceGroupName ${{ env.AZ_NETWORK_RG }} \
+            --virtualNetworkName ${{ env.AZ_NETWORK_VNET_NAME }} \
+            --kvAppConfigResourceGroupName "${AZURE_RG}" \
+            --kvAppConfigName ${{ env.AZ_KV_APP_CONFIG_NAME }} \
+            --idKeyvaultAppConfiguration ${{ env.AZ_KV_APP_CONFIG_MANAGED_ID }} \
+            --sqlServerName "${AZ_SQL_SERVER_NAME}" \
+            --sqlServerResourceGroupName "${AZURE_RG}" \
+            --sqlServerIdentityName "${AZ_SQL_IDENTITY_NAME}" \
             -l "${AZ_LOCATION}"
 
       - name: Deploy Azure resources
         id: azure-deploy
         env:
           STACK_NAME: ${{ inputs.stackName }}
+          BRANCH_NAME: ${{ github.ref_name }}
           ENVIRONMENT_HASH: ${{ inputs.environmentHash }}
+          IS_BRANCH_DEPLOYMENT: ${{ github.ref != 'refs/heads/main' && 'true' || 'false' }}
           DEPLOY_VNET: ${{ inputs.deployVnet }}
           CREATE_ALERTS: ${{ inputs.ghaEnvironment == 'Main-Gov' }}
           LOGIN_PROVIDER_CONFIG: ${{ vars.CAMS_LOGIN_PROVIDER_CONFIG }}
@@ -228,6 +279,9 @@ jobs:
             --resource-group ${{ env.AZ_APP_RG }} \
             --file ./ops/cloud-deployment/main.bicep \
             --stackName "${STACK_NAME}" \
+            --isBranchDeployment "${IS_BRANCH_DEPLOYMENT}" \
+            --branchName "${BRANCH_NAME}" \
+            --branchHashId "${ENVIRONMENT_HASH}" \
             --slotName ${{ env.SLOT_NAME }} \
             --networkResourceGroupName ${{ env.AZ_NETWORK_RG }} \
             --virtualNetworkName ${{ env.AZ_NETWORK_VNET_NAME }} \

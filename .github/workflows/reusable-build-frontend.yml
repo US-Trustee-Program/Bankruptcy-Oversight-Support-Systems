@@ -30,10 +30,6 @@ on:
       launchDarklyEnvironment:
         required: true
         type: string
-      environmentHash:
-        required: false
-        type: string
-        default: ''
     secrets:
       AZ_CLIENT_ID:
         required: true
@@ -50,7 +46,8 @@ permissions:
 jobs:
   build-frontend:
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment == 'Main-Gov' && 'build-frontend-main' || 'build-frontend-branch' }}
+    environment:
+      ${{ inputs.environment == 'Main-Gov' && 'build-frontend-main' || 'build-frontend-branch' }}
     permissions:
       contents: read
       id-token: write
@@ -67,7 +64,6 @@ jobs:
       - name: Fetch config from Key Vault
         env:
           GHA_ENVIRONMENT: ${{ inputs.environment }}
-          ENVIRONMENT_HASH: ${{ inputs.environmentHash }}
         run: |
           set -euo pipefail
           if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
@@ -77,12 +73,11 @@ jobs:
           fi
           _val=$(az keyvault secret show --vault-name "$KV" --name AZ-APP-RG --query value -o tsv)
           echo "::add-mask::${_val}"
-          AZ_APP_RG_BASE="${_val}"
-          if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
-            echo "AZ_APP_RG=${AZ_APP_RG_BASE}" >> "$GITHUB_ENV"
-          else
-            echo "AZ_APP_RG=${AZ_APP_RG_BASE}-${ENVIRONMENT_HASH}" >> "$GITHUB_ENV"
-          fi
+          # CAMS-760, Option E / Slice 2: branches deploy into the SAME stable
+          # app RG main uses, distinguished by per-branch-unique resource
+          # names, rather than a per-branch hash-suffixed RG (matches
+          # reusable-deploy.yml's derivation — keep both in lockstep).
+          echo "AZ_APP_RG=${_val}" >> "$GITHUB_ENV"
           _val=$(az keyvault secret show --vault-name "$KV" --name SLOT-NAME --query value -o tsv 2>/dev/null || true)
           if [[ -n "${_val}" ]]; then echo "::add-mask::${_val}"; fi
           echo "SLOT_NAME=${_val}" >> "$GITHUB_ENV"

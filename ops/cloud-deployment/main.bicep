@@ -22,12 +22,13 @@ param appResourceGroup string = resourceGroup().name
 // network.bicep imports too — so the `existing` lookups below
 // (ustpVirtualNetwork, *SubnetExisting), for resources network.bicep creates,
 // can no longer silently drift out of sync.
+// app-shared-setup.bicep already imports and uses virtualNetworkNameFor
+// from naming.bicep too. Only reusable-deploy.yml / reusable-build-info.yml
+// still duplicate this formula in bash for their vnet-existence checks —
+// those two still need manual lockstep.
 param virtualNetworkName string = virtualNetworkNameFor(stackName)
 
 param networkResourceGroupName string
-
-@description('Flag: determines the setup of DNS Zone, Link virtual networks to zone.')
-param deployDns bool = true
 
 param privateDnsZoneName string = 'privatelink.azurewebsites.us'
 
@@ -154,6 +155,17 @@ var dataflowsTags = {
   'deployed-at': deployedAt
 }
 
+// GUARD (CAMS-760, GH #2749 bug shape): this module deploys into the SHARED
+// analyticsResourceGroupName, but main.bicep itself is wrapped in a per-branch
+// Deployment Stack for branch deploys (see azure-deploy.sh). That combination
+// is exactly what deleted the shared Key Vault in GH #2749. It is safe ONLY
+// because createAlerts is wired to `ghaEnvironment == 'Main-Gov'`
+// (reusable-deploy.yml), so this module never actually instantiates for a
+// branch deploy, and Main-Gov itself is never stacked. Before changing
+// createAlerts to also be true for a branch/dev environment, first move this
+// module into app-shared-setup.bicep (the metrics/log alert-rule modules that
+// reference it do so by an `existing` name+RG lookup, not a bicep dependsOn,
+// so relocating it is safe) — do not just flip the flag.
 module actionGroup './lib/monitoring-alerts/alert-action-group.bicep' =
   if (createAlerts) {
     name: '${actionGroupName}-action-group-module'
@@ -192,23 +204,25 @@ resource dataflowsFunctionSubnetExisting 'Microsoft.Network/virtualNetworks/subn
   parent: ustpVirtualNetwork
 }
 
-module kvSetup './ustp-cams-kv-app-config-setup.bicep' = {
-  name: '${stackName}-kv-setup-module'
-  params: {
-    stackName: stackName
-    location: location
-    deployDns: deployDns
-    kvResourceGroup: kvAppConfigResourceGroupName
-    kvName: kvAppConfigName
-    networkResourceGroup: networkResourceGroupName
-    virtualNetworkName: virtualNetworkName
-    privateEndpointSubnetId: privateEndpointSubnetExisting.id
-    privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
-    privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
-    managedIdentityName: idKeyvaultAppConfiguration
-    makeRoleAssignment: !isUstpDeployment
-  }
-}
+// The app-config Key Vault (+ its managed identity, DNS zone, and secret role
+// assignments) and the SQL managed identity are deployed separately by
+// app-shared-setup.bicep — always a plain (non-stack) deployment, before this
+// template runs, because they are genuinely shared across main and every
+// branch (CAMS-760, Option E / Slice 2; see app-shared-setup.bicep for why).
+// This template references them by the name/id strings passed in as params.
+//
+// This does NOT mean every module below is RG-local: the webapp/api/dataflows
+// private endpoints (into the shared network RG) and the two SQL vnet-rule
+// modules (into the shared SQL RG) declared in frontend-webapp-deploy.bicep,
+// backend-api-deploy.bicep, and dataflows-resource-deploy.bicep are also
+// cross-scope. Those are safe to leave inside this (stacked, for branches)
+// template because each one is named using this branch's own stackName-derived
+// value (webappName/apiFunctionName/dataflowsFunctionName, further disambiguated
+// by uniqueString(subnetId) for the SQL vnet rules) — so a branch's own app
+// stack owning and deleting them on teardown is the intended behavior, not the
+// GH #2749 bug shape. Only resources with a FIXED, shared name (not derived
+// from this branch's stackName) must live outside this stack, as the Key
+// Vault and SQL managed identity do above.
 
 module ustpWebapp 'frontend-webapp-deploy.bicep' = {
     name: '${stackName}-webapp-module'
@@ -243,7 +257,6 @@ module ustpWebapp 'frontend-webapp-deploy.bicep' = {
 
 module acsEmail './lib/email/acs-email.bicep' = {
   name: '${stackName}-acs-email-module'
-  dependsOn: [kvSetup]
   params: {
     stackName: stackName
     kvAppConfigName: kvAppConfigName
@@ -260,8 +273,9 @@ module acsEmail './lib/email/acs-email.bicep' = {
 module ustpApiFunction 'backend-api-deploy.bicep' = {
     name: '${stackName}-function-module'
     scope: resourceGroup(appResourceGroup)
-    dependsOn: [kvSetup, acsEmail]
+    dependsOn: [acsEmail]
     params: {
+      stackName: stackName
       deployAppInsights: deployAppInsights
       analyticsWorkspaceId: deployAppInsights ? analyticsWorkspaceId : ''
       location: location
@@ -306,8 +320,8 @@ module ustpApiFunction 'backend-api-deploy.bicep' = {
 module ustpDataflowsFunction 'dataflows-resource-deploy.bicep' = {
   name: '${stackName}-dataflows-module'
   scope: resourceGroup(appResourceGroup)
-  dependsOn: [kvSetup]
   params: {
+    stackName: stackName
     deployAppInsights: deployAppInsights
     analyticsWorkspaceId: deployAppInsights ? analyticsWorkspaceId : ''
     location: location

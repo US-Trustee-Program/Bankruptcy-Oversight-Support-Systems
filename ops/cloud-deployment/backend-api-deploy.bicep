@@ -1,3 +1,9 @@
+import {
+  acsConnectionStringSecretName as acsConnectionStringSecretNameFor
+  acsSenderAddressSecretName as acsSenderAddressSecretNameFor
+  sqlIdentityName as sqlIdentityNameFor
+} from './lib/naming.bicep'
+
 param location string = resourceGroup().location
 
 @description('Application service plan name')
@@ -384,8 +390,14 @@ var apiSlotBaseAppSettingsObject = union(
     MAX_OBJECT_DEPTH: maxObjectDepth
     MAX_OBJECT_KEY_COUNT: maxObjectKeyCount
     DEFAULT_NOTIFICATION_RECIPIENT: defaultNotificationRecipient
-    ACS_EMAIL_CONNECTION_STRING: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACS-EMAIL-CONNECTION-STRING)'
-    ACS_EMAIL_SENDER_ADDRESS: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACS-EMAIL-SENDER-ADDRESS)'
+    // Branch-qualified to match acs-email.bicep's per-stack secret names
+    // (CAMS-760, GH #2749 bug shape fix) — each branch has its own ACS
+    // communication service, so its connection string/sender address must
+    // read from that same branch's secret, not a name shared across
+    // branches. Both names come from naming.bicep, imported above, so the
+    // two files can't drift apart on this name.
+    ACS_EMAIL_CONNECTION_STRING: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=${acsConnectionStringSecretNameFor(stackName)})'
+    ACS_EMAIL_SENDER_ADDRESS: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=${acsSenderAddressSecretNameFor(stackName)})'
   },
   isUstpDeployment
     ? {
@@ -471,20 +483,14 @@ module setApiFunctionSqlServerVnetRule './lib/network/sql-vnet-rule.bicep' = if 
   }
 }
 
-var sqlIdentityName = !empty(sqlServerIdentityName) ? sqlServerIdentityName : 'id-sql-${apiFunctionName}-readonly'
+// The identity itself is created once, in app-shared-setup.bicep (CAMS-760,
+// Option E / Slice 2) — its name is a fixed value shared by main and every
+// branch, so it must never be created/managed inside a branch's app stack.
+// Referenced here as `existing` only.
+var sqlIdentityName = !empty(sqlServerIdentityName) ? sqlServerIdentityName : sqlIdentityNameFor(stackName)
 var sqlIdentityRG = !empty(sqlServerIdentityResourceGroupName)
   ? sqlServerIdentityResourceGroupName
   : sqlServerResourceGroupName
-
-module sqlManagedIdentity './lib/identity/managed-identity.bicep' = if (createSqlServerVnetRule) {
-  scope: resourceGroup(sqlIdentityRG)
-  name: '${apiFunctionName}-sql-identity-module'
-  params: {
-    managedIdentityName: sqlIdentityName
-    location: location
-    tags: tags
-  }
-}
 
 resource sqlIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
   name: sqlIdentityName
