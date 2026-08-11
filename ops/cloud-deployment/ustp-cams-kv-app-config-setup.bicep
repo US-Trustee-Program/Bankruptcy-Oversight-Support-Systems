@@ -78,8 +78,10 @@ param privateDnsZoneSubscriptionId string = subscription().subscriptionId
 param vnetLinkAlreadyExists bool = false
 
 // Also hardcoded in az-delete-branch-resources.sh (kvPrivateDnsZoneName) to
-// find and delete this zone's per-branch vnet link during teardown — can't
-// share the literal across bash/bicep, keep both in lockstep by hand.
+// find and delete this zone's per-branch vnet link during teardown, and in
+// azure-deploy-app-shared-setup.sh (kvPrivateDnsZoneName) to check for an
+// existing vnet link before deploying — three copies total, can't share the
+// literal across bash/bicep, keep all three in lockstep by hand.
 var keyvaultPrivateDnsZoneName = 'privatelink.vaultcore.usgovcloudapi.net'
 
 @description('Application Configuration network access control settings')
