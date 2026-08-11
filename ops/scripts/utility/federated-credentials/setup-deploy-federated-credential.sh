@@ -29,8 +29,9 @@
 # deploy time and so cannot be pre-scoped (Azure RBAC has no wildcard scoping).
 # Rather than diverge main (static RGs, scopable) from branch (dynamic RGs, not
 # scopable), both environments use the same subscription-scope Contributor grant
-# for consistency. Narrowing this is deferred to a focused follow-up that decides
-# the branch approach (see the branch-deploy least-privilege design doc).
+# for consistency. Narrowing this is deferred to a focused follow-up that must
+# first decide the branch approach. See the "Azure Federated Credentials" section
+# of docs/architecture/decision-records/GithubActionsOidcLeastPrivilege.md.
 #
 # Prerequisites:
 #   - az CLI logged in as an Entra ID admin (can create app registrations and role assignments)
