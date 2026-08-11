@@ -122,8 +122,8 @@ fi
 # creating its own when one is already there (see vnet-links.bicep).
 # Hardcoded zone name matches keyvaultPrivateDnsZoneName in
 # ustp-cams-kv-app-config-setup.bicep and kvPrivateDnsZoneName in
-# az-delete-branch-resources.sh — can't share the literal across bash/bicep,
-# keep all three in lockstep by hand.
+# az-delete-branch-resources.sh — three copies total, can't share the literal
+# across bash/bicep, keep all three in lockstep by hand.
 kvPrivateDnsZoneName='privatelink.vaultcore.usgovcloudapi.net'
 
 # app-shared-setup.bicep defaults privateDnsZoneResourceGroup/
