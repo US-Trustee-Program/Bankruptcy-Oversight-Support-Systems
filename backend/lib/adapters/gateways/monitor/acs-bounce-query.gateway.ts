@@ -1,9 +1,19 @@
-import { LogsQueryClient, LogsQueryResultStatus } from '@azure/monitor-query-logs';
+import {
+  LogsQueryClient,
+  LogsQueryResultStatus,
+  KnownMonitorLogsQueryAudience,
+} from '@azure/monitor-query-logs';
 import { DefaultAzureCredential } from '@azure/identity';
 import { BounceLogRow, EmailBounceQueryGateway } from '../../../use-cases/gateways.types';
 import { ServerConfigError } from '../../../common-errors/server-config-error';
 
 const MODULE_NAME = 'ACS-BOUNCE-QUERY-GATEWAY';
+
+// @azure/monitor-query-logs@1.0.0 hardcodes the managed-identity token scope to the commercial
+// cloud and ignores the `audience` option, so in Azure Government the identity endpoint is asked
+// for a token it can't issue and throws AuthenticationRequiredError. Passing the Gov endpoint and
+// scope explicitly works around it: https://github.com/Azure/azure-sdk-for-js/issues/39506
+const GOV_LOG_ANALYTICS_AUDIENCE = KnownMonitorLogsQueryAudience.AzureGovernment;
 
 const BOUNCE_QUERY = `
 ACSEmailStatusUpdateOperational
@@ -27,7 +37,12 @@ function defaultClientFactory(): LogsQueryClient {
       message: 'ANALYTICS_IDENTITY_CLIENT_ID must be configured to query for ACS bounces.',
     });
   }
-  return new LogsQueryClient(new DefaultAzureCredential({ managedIdentityClientId: clientId }));
+  const credential = new DefaultAzureCredential({ managedIdentityClientId: clientId });
+  return new LogsQueryClient(credential, {
+    endpoint: `${GOV_LOG_ANALYTICS_AUDIENCE}/v1`,
+    audience: GOV_LOG_ANALYTICS_AUDIENCE,
+    credentials: { scopes: [`${GOV_LOG_ANALYTICS_AUDIENCE}/.default`] },
+  });
 }
 
 export class AcsBounceQueryGateway implements EmailBounceQueryGateway {
