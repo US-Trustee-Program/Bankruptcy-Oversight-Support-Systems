@@ -40,16 +40,10 @@ param virtualNetworkName string = virtualNetworkNameFor(stackName)
 
 param privateEndpointSubnetName string = privateEndpointSubnetNameFor(stackName)
 
-// Must default to the network RG, not resourceGroup().name (this template's
-// own app-RG scope) — the KV private DNS zone and its vnet link live in the
-// network RG. main.bicep's pre-CAMS-760 kvSetup module used
-// networkResourceGroupName for this exact reason; defaulting to
-// resourceGroup().name here made this template try to create a second,
-// separate zone object (same DNS name, wrong RG) and link the same vnet to
-// it, which Azure rejects: "cannot be linked to multiple zones with
-// overlapping namespaces." Broke every main deploy after CAMS-760 Slice 2
-// merged (kv-setup-module -> private-dns-zone-module -> vnet-links-module
-// failing with that exact BadRequest).
+// Must be the network RG, not resourceGroup().name (this template's own
+// app-RG scope) — the KV private DNS zone and its vnet link live in the
+// network RG. A wrong RG here creates a second zone object with the same
+// DNS name, which Azure rejects when linking the vnet to it.
 param privateDnsZoneResourceGroup string = networkResourceGroupName
 
 @description('DNS Zone Subscription ID. USTP uses a different subscription for prod deployment.')
