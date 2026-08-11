@@ -444,21 +444,36 @@ export default function CaseDetailScreen(props: Readonly<CaseDetailProps>) {
   useFilterUsageTelemetry(selectedDateRange, {
     changedEventName: (value: DateRange) =>
       value.start && value.end
-        ? 'Docket Date Range Complete Filter Changed'
+        ? 'Docket Complete Date Range Filter Changed'
         : value.start
           ? 'Docket Date Range Start Only Filter Changed'
           : 'Docket Date Range End Only Filter Changed',
-    clearedEventName: 'Docket Date Range Filter Cleared',
+    clearedEventName: (previousValue: DateRange) =>
+      previousValue.start && previousValue.end
+        ? 'Docket Complete Date Range Filter Cleared'
+        : previousValue.start
+          ? 'Docket Date Range Start Only Filter Cleared'
+          : 'Docket Date Range End Only Filter Cleared',
     isEmpty: (v) => !v.start && !v.end,
     isEqual: (a, b) => a.start === b.start && a.end === b.end,
+    debounceMs: 500,
     suppressClearRef,
   });
+
+  const dateRangeFieldLabel =
+    selectedDateRange.start && selectedDateRange.end
+      ? 'DateRangeComplete'
+      : selectedDateRange.start
+        ? 'DateRangeStartOnly'
+        : selectedDateRange.end
+          ? 'DateRangeEndOnly'
+          : null;
 
   const activeFilterFields = [
     searchInDocketText !== '' ? 'TextSearch' : null,
     documentNumber !== null ? 'DocumentNumber' : null,
     selectedFacets.length > 0 ? 'Summary' : null,
-    selectedDateRange.start || selectedDateRange.end ? 'DateRange' : null,
+    dateRangeFieldLabel,
   ]
     .filter((field): field is string => field !== null)
     .join(',');

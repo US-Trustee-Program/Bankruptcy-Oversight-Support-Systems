@@ -4,7 +4,7 @@ import { getAppInsights } from './UseApplicationInsights';
 
 export interface FilterUsageTelemetryOptions<T> {
   changedEventName: string | ((value: T) => string);
-  clearedEventName: string;
+  clearedEventName: string | ((previousValue: T) => string);
   changedProperties?: (value: T) => Record<string, string> | undefined;
   suppressClearRef?: { current: boolean };
   isEmpty: (value: T) => boolean;
@@ -37,7 +37,14 @@ function useFilterUsageTelemetry<T>(value: T, options: FilterUsageTelemetryOptio
 
       if (currentlyEmpty) {
         if (!previouslyEmpty && !suppressThisClear) {
-          getAppInsights().appInsights.trackEvent({ name: opts.clearedEventName });
+          // lastReportedRef.current still holds the pre-clear value here; the assignment at the
+          // end of evaluate() runs after this branch, so a function-form clearedEventName can
+          // name the event from the value that was active right before the clear.
+          const clearedName =
+            typeof opts.clearedEventName === 'string'
+              ? opts.clearedEventName
+              : opts.clearedEventName(lastReportedRef.current);
+          getAppInsights().appInsights.trackEvent({ name: clearedName });
         }
       } else if (previouslyEmpty || !(opts.isEqual ?? Object.is)(value, lastReportedRef.current)) {
         const name =
