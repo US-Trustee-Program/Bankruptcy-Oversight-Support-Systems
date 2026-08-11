@@ -187,6 +187,71 @@ describe('useFilterUsageTelemetry', () => {
     expect(trackEvent).toHaveBeenCalledWith({ name: CHANGED });
   });
 
+  test('fires Changed on every reference change when no isEqual is provided, even with identical content', () => {
+    const objectOptions = (
+      overrides: Partial<FilterUsageTelemetryOptions<{ start?: string; end?: string }>> = {},
+    ): FilterUsageTelemetryOptions<{ start?: string; end?: string }> => ({
+      changedEventName: CHANGED,
+      clearedEventName: CLEARED,
+      isEmpty: (v) => !v.start && !v.end,
+      ...overrides,
+    });
+
+    const { rerender } = renderHook(
+      ({
+        value,
+        options,
+      }: {
+        value: { start?: string; end?: string };
+        options: FilterUsageTelemetryOptions<{ start?: string; end?: string }>;
+      }) => useFilterUsageTelemetry(value, options),
+      { initialProps: { value: {}, options: objectOptions() } },
+    );
+
+    rerender({ value: { start: 'a' }, options: objectOptions() });
+    expect(trackEvent).toHaveBeenCalledTimes(1);
+
+    // A new object literal with the exact same content — no isEqual means the default
+    // reference-equality (Object.is) check treats this as a genuine change.
+    rerender({ value: { start: 'a' }, options: objectOptions() });
+    expect(trackEvent).toHaveBeenCalledTimes(2);
+  });
+
+  test('isEqual suppresses Changed on a reference-only change with identical object content', () => {
+    const objectOptions = (
+      overrides: Partial<FilterUsageTelemetryOptions<{ start?: string; end?: string }>> = {},
+    ): FilterUsageTelemetryOptions<{ start?: string; end?: string }> => ({
+      changedEventName: CHANGED,
+      clearedEventName: CLEARED,
+      isEmpty: (v) => !v.start && !v.end,
+      isEqual: (a, b) => a.start === b.start && a.end === b.end,
+      ...overrides,
+    });
+
+    const { rerender } = renderHook(
+      ({
+        value,
+        options,
+      }: {
+        value: { start?: string; end?: string };
+        options: FilterUsageTelemetryOptions<{ start?: string; end?: string }>;
+      }) => useFilterUsageTelemetry(value, options),
+      { initialProps: { value: {}, options: objectOptions() } },
+    );
+
+    rerender({ value: { start: 'a' }, options: objectOptions() });
+    expect(trackEvent).toHaveBeenCalledTimes(1);
+
+    // A new object literal with the exact same content — isEqual correctly recognizes this
+    // as unchanged, so no second Changed event fires.
+    rerender({ value: { start: 'a' }, options: objectOptions() });
+    expect(trackEvent).toHaveBeenCalledTimes(1);
+
+    // Genuinely different content still fires.
+    rerender({ value: { start: 'a', end: 'b' }, options: objectOptions() });
+    expect(trackEvent).toHaveBeenCalledTimes(2);
+  });
+
   test('never includes the raw value in any trackEvent call', () => {
     const { rerender } = renderHook(
       ({ value, options }) => useFilterUsageTelemetry(value, options),
