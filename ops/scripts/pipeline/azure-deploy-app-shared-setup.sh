@@ -123,15 +123,34 @@ fi
 # Hardcoded zone name matches keyvaultPrivateDnsZoneName in
 # ustp-cams-kv-app-config-setup.bicep and kvPrivateDnsZoneName in
 # az-delete-branch-resources.sh — can't share the literal across bash/bicep,
-# keep all three in lockstep by hand. Assumes the zone lives in
-# networkResourceGroupName, matching app-shared-setup.bicep's
-# privateDnsZoneResourceGroup default — only true as long as nothing passes
-# an explicit override via --parameters.
+# keep all three in lockstep by hand.
 kvPrivateDnsZoneName='privatelink.vaultcore.usgovcloudapi.net'
+
+# app-shared-setup.bicep defaults privateDnsZoneResourceGroup/
+# privateDnsZoneSubscriptionId to networkResourceGroupName/the current
+# subscription, but callers can override either via -p/--parameters (e.g.
+# USTP's prod pipeline, which deploys the zone into a different
+# subscription — see the param descriptions in app-shared-setup.bicep). Parse
+# the same overrides out of extra_parameters so the existence check looks in
+# the same place the deployment actually will, instead of always assuming the
+# defaults.
+private_dns_zone_rg="${network_rg}"
+private_dns_zone_subscription_args=()
+for param in ${extra_parameters}; do
+    case "${param}" in
+    privateDnsZoneResourceGroup=*)
+        private_dns_zone_rg="${param#privateDnsZoneResourceGroup=}"
+        ;;
+    privateDnsZoneSubscriptionId=*)
+        private_dns_zone_subscription_args=(--subscription "${param#privateDnsZoneSubscriptionId=}")
+        ;;
+    esac
+done
+
 vnetId=$(az network vnet show -g "${network_rg}" -n "${vnet_name}" --query id -o tsv 2>/dev/null || echo "")
 vnet_link_already_exists=false
 if [[ -n "${vnetId}" ]]; then
-    existingLink=$(az network private-dns link vnet list -g "${network_rg}" --zone-name "${kvPrivateDnsZoneName}" --query "[?virtualNetwork.id=='${vnetId}'].name | [0]" -o tsv 2>/dev/null || echo "")
+    existingLink=$(az network private-dns link vnet list -g "${private_dns_zone_rg}" "${private_dns_zone_subscription_args[@]}" --zone-name "${kvPrivateDnsZoneName}" --query "[?virtualNetwork.id=='${vnetId}'].name | [0]" -o tsv 2>/dev/null || echo "")
     if [[ -n "${existingLink}" ]]; then
         echo "Vnet ${vnet_name} is already linked to ${kvPrivateDnsZoneName} via '${existingLink}'; skipping creation of a second link."
         vnet_link_already_exists=true
