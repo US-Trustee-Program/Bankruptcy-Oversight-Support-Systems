@@ -450,6 +450,7 @@ export default function CaseDetailScreen(props: Readonly<CaseDetailProps>) {
           : 'Docket Date Range End Only Filter Changed',
     clearedEventName: 'Docket Date Range Filter Cleared',
     isEmpty: (v) => !v.start && !v.end,
+    isEqual: (a, b) => a.start === b.start && a.end === b.end,
     suppressClearRef,
   });
 
