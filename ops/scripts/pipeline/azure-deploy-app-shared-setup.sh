@@ -177,6 +177,8 @@ if [[ -n "${vnetId}" ]]; then
     if [[ -n "${existingLink}" ]]; then
         echo "Vnet ${vnet_name} is already linked to ${kvPrivateDnsZoneName} via '${existingLink}'; skipping creation of a second link."
         vnet_link_already_exists=true
+    else
+        echo "No existing link from vnet ${vnet_name} into ${kvPrivateDnsZoneName} in ${private_dns_zone_rg}; the template will create one."
     fi
 fi
 
@@ -231,7 +233,7 @@ function az_deploy_with_retry_func() {
     done
 }
 
-echo "Deploying app shared-setup resources to ${resource_group} (plain resource-group deployment; always non-stack — see app-shared-setup.bicep)"
+echo "Deploying app shared-setup resources to ${resource_group} (plain resource-group deployment; always non-stack — see app-shared-setup.bicep), vnetLinkAlreadyExists=${vnet_link_already_exists}"
 # --name pins the deployment RECORD name so every branch/main deploying this
 # same template to the same shared RG doesn't race on the CLI's default
 # (the template's base filename) — reduces exactly the 409 contention the
