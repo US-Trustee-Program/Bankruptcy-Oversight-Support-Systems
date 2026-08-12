@@ -921,7 +921,27 @@ describe('Case Detail sort, search, and filter tests', () => {
       fireEvent.change(screen.getByTestId('docket-date-range-date-start'), {
         target: { value: '2023-07-01' },
       });
-      act(() => vi.advanceTimersByTime(500));
+      act(() => vi.advanceTimersByTime(15000));
+
+      expectSingleChanged('Docket Date Range Start Only Filter Changed');
+    });
+
+    test('filters docket entries immediately on a Date Range change, before the telemetry debounce fires', async () => {
+      await renderAndNavigateToDocket();
+      expect(screen.getByTestId('searchable-docket').children.length).toEqual(
+        testCaseDocketEntries.length,
+      );
+
+      fireEvent.change(screen.getByTestId('docket-date-range-date-start'), {
+        target: { value: '2023-07-01' },
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('searchable-docket').children.length).toEqual(2);
+      });
+      expect(changedCalls('Docket Date Range Start Only Filter Changed')).toHaveLength(0);
+
+      act(() => vi.advanceTimersByTime(15000));
 
       expectSingleChanged('Docket Date Range Start Only Filter Changed');
     });
@@ -932,7 +952,7 @@ describe('Case Detail sort, search, and filter tests', () => {
       fireEvent.change(screen.getByTestId('docket-date-range-date-end'), {
         target: { value: '2023-06-30' },
       });
-      act(() => vi.advanceTimersByTime(500));
+      act(() => vi.advanceTimersByTime(15000));
 
       expectSingleChanged('Docket Date Range End Only Filter Changed');
     });
@@ -946,7 +966,7 @@ describe('Case Detail sort, search, and filter tests', () => {
       fireEvent.change(screen.getByTestId('docket-date-range-date-start'), {
         target: { value: '2023-07-01' },
       });
-      act(() => vi.advanceTimersByTime(500));
+      act(() => vi.advanceTimersByTime(15000));
 
       expectSingleChanged('Docket Complete Date Range Filter Changed');
       expect(changedCalls('Docket Date Range Start Only Filter Changed')).toHaveLength(0);
@@ -962,7 +982,7 @@ describe('Case Detail sort, search, and filter tests', () => {
       fireEvent.change(screen.getByTestId('docket-date-range-date-end'), {
         target: { value: '2023-08-31' },
       });
-      act(() => vi.advanceTimersByTime(500));
+      act(() => vi.advanceTimersByTime(15000));
 
       expectSingleChanged('Docket Complete Date Range Filter Changed');
       expect(changedCalls('Docket Date Range Start Only Filter Changed')).toHaveLength(0);
@@ -975,13 +995,13 @@ describe('Case Detail sort, search, and filter tests', () => {
       fireEvent.change(screen.getByTestId('docket-date-range-date-start'), {
         target: { value: '2023-07-01' },
       });
-      act(() => vi.advanceTimersByTime(500));
+      act(() => vi.advanceTimersByTime(15000));
       mockTrackEvent.mockReset();
 
       fireEvent.change(screen.getByTestId('docket-date-range-date-start'), {
         target: { value: '' },
       });
-      act(() => vi.advanceTimersByTime(500));
+      act(() => vi.advanceTimersByTime(15000));
 
       expectSingleCleared('Docket Date Range Start Only Filter Cleared');
     });
@@ -992,13 +1012,13 @@ describe('Case Detail sort, search, and filter tests', () => {
       fireEvent.change(screen.getByTestId('docket-date-range-date-end'), {
         target: { value: '2023-08-31' },
       });
-      act(() => vi.advanceTimersByTime(500));
+      act(() => vi.advanceTimersByTime(15000));
       mockTrackEvent.mockReset();
 
       fireEvent.change(screen.getByTestId('docket-date-range-date-end'), {
         target: { value: '' },
       });
-      act(() => vi.advanceTimersByTime(500));
+      act(() => vi.advanceTimersByTime(15000));
 
       expectSingleCleared('Docket Date Range End Only Filter Cleared');
     });
@@ -1012,7 +1032,7 @@ describe('Case Detail sort, search, and filter tests', () => {
       fireEvent.change(screen.getByTestId('docket-date-range-date-start'), {
         target: { value: '2023-07-01' },
       });
-      act(() => vi.advanceTimersByTime(500));
+      act(() => vi.advanceTimersByTime(15000));
       mockTrackEvent.mockReset();
 
       fireEvent.change(screen.getByTestId('docket-date-range-date-start'), {
@@ -1021,7 +1041,7 @@ describe('Case Detail sort, search, and filter tests', () => {
       fireEvent.change(screen.getByTestId('docket-date-range-date-end'), {
         target: { value: '' },
       });
-      act(() => vi.advanceTimersByTime(500));
+      act(() => vi.advanceTimersByTime(15000));
 
       expectSingleCleared('Docket Complete Date Range Filter Cleared');
     });
@@ -1035,13 +1055,13 @@ describe('Case Detail sort, search, and filter tests', () => {
       fireEvent.change(screen.getByTestId('docket-date-range-date-start'), {
         target: { value: '2023-07-01' },
       });
-      act(() => vi.advanceTimersByTime(500));
+      act(() => vi.advanceTimersByTime(15000));
       mockTrackEvent.mockReset();
 
       fireEvent.change(screen.getByTestId('docket-date-range-date-start'), {
         target: { value: '' },
       });
-      act(() => vi.advanceTimersByTime(500));
+      act(() => vi.advanceTimersByTime(15000));
 
       expectSingleChanged('Docket Date Range End Only Filter Changed');
       expect(clearedCalls('Docket Date Range Start Only Filter Cleared')).toHaveLength(0);
@@ -1057,13 +1077,13 @@ describe('Case Detail sort, search, and filter tests', () => {
       fireEvent.change(screen.getByTestId('docket-date-range-date-start'), {
         target: { value: '2023-07-01' },
       });
-      act(() => vi.advanceTimersByTime(500));
+      act(() => vi.advanceTimersByTime(15000));
       mockTrackEvent.mockReset();
 
       fireEvent.change(screen.getByTestId('docket-date-range-date-end'), {
         target: { value: '' },
       });
-      act(() => vi.advanceTimersByTime(500));
+      act(() => vi.advanceTimersByTime(15000));
 
       expectSingleChanged('Docket Date Range Start Only Filter Changed');
       expect(clearedCalls('Docket Date Range End Only Filter Cleared')).toHaveLength(0);
