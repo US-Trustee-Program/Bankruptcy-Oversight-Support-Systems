@@ -12,7 +12,11 @@ import {
 } from '../../../lib/storage-queues';
 import factory from '../../../lib/factory';
 import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
-import { handleRateLimitRetry } from '../dataflows-rate-limit';
+import {
+  computeBackoffSecondsWithJitter,
+  handleRateLimitRetry,
+  RATE_LIMIT_RETRY_LIMIT,
+} from '../dataflows-rate-limit';
 import { pageByByteBudget } from '../dataflows-paging';
 import { getCamsError } from '../../../lib/common-errors/error-utilities';
 import { CamsError } from '../../../lib/common-errors/cams-error';
@@ -39,6 +43,12 @@ type PageMessage = {
   events: TrusteeAppointmentSyncEvent[];
   retryCount?: number;
   firstAttemptAt?: string;
+  // Separate retry counter for retryableEvents (transient infra errors), tracked independently
+  // from retryCount above (which belongs to the not-yet-synced-case retry policy). A page can
+  // produce both kinds of retryable events in the same invocation, and they follow different
+  // retry policies (fixed 4-hour delay vs. exponential backoff) with different limits, so they
+  // cannot share one counter on a combined requeue message.
+  retryableRetryCount?: number;
 };
 
 // Queues
@@ -135,11 +145,11 @@ async function handleStart(
       return;
     }
 
-    const useCase = new SyncTrusteeCaseAppointmentsUseCase(context);
+    const deps = SyncTrusteeCaseAppointmentsUseCase.createDeps(context);
 
     if (startMessage.deleteAll) {
       logger.info(MODULE_NAME, 'deleteAll flag detected — deleting all case appointment records.');
-      const deleteResult = await useCase.deleteAll();
+      const deleteResult = await SyncTrusteeCaseAppointmentsUseCase.deleteAll(deps);
       if (deleteResult.error) {
         invocationContext.extraOutputs.set(
           DLQ,
@@ -155,11 +165,13 @@ async function handleStart(
       }
     }
 
-    const { events, latestSyncDate, petitionLatestSyncDate } = await useCase.getAppointmentEvents(
-      startMessage.lastSyncDate,
-      startMessage.reset || startMessage.deleteAll,
-      startMessage.overrideRuntimeState,
-    );
+    const { events, latestSyncDate, petitionLatestSyncDate } =
+      await SyncTrusteeCaseAppointmentsUseCase.getAppointmentEvents(
+        deps,
+        startMessage.lastSyncDate,
+        startMessage.reset || startMessage.deleteAll,
+        startMessage.overrideRuntimeState,
+      );
 
     if (!events.length) {
       completeDataflowTrace(observability, trace, MODULE_NAME, 'handleStart', logger, {
@@ -173,10 +185,13 @@ async function handleStart(
     const { pagesQueued, rejectedCount } = await queueEventPages(events, connectionString);
 
     if (latestSyncDate) {
-      await useCase.storeRuntimeState(latestSyncDate);
+      await SyncTrusteeCaseAppointmentsUseCase.storeRuntimeState(deps, latestSyncDate);
     }
     if (petitionLatestSyncDate) {
-      await useCase.storePetitionRuntimeState(petitionLatestSyncDate);
+      await SyncTrusteeCaseAppointmentsUseCase.storePetitionRuntimeState(
+        deps,
+        petitionLatestSyncDate,
+      );
     }
     completeDataflowTrace(observability, trace, MODULE_NAME, 'handleStart', logger, {
       documentsWritten: 0,
@@ -218,11 +233,44 @@ async function handlePage(message: PageMessage, invocationContext: InvocationCon
   const trace = appContext.observability.startTrace(invocationContext.invocationId);
 
   try {
-    const useCase = new SyncTrusteeCaseAppointmentsUseCase(appContext);
-    const { successCount, dlqMessages, scenarioDistribution, notYetSyncedEvents } =
-      await useCase.processAppointments(events);
+    const deps = SyncTrusteeCaseAppointmentsUseCase.createDeps(appContext);
+    const { successCount, dlqMessages, scenarioDistribution, notYetSyncedEvents, retryableEvents } =
+      await SyncTrusteeCaseAppointmentsUseCase.processAppointments(deps, events);
 
     const finalDlqMessages = [...dlqMessages];
+    // Depth at which this page's retryable events arrived (0 the first time any event on the
+    // page hit a transient error). Reported as a metric below so an operator can distinguish
+    // "many events retrying once" from "a few events near RATE_LIMIT_RETRY_LIMIT exhaustion" --
+    // undefined (surfaced as 0) when the page had no retryable events this invocation.
+    let retryableRetryDepth = 0;
+
+    if (retryableEvents.length > 0) {
+      const currentRetryableRetryCount = message.retryableRetryCount ?? 0;
+      retryableRetryDepth = currentRetryableRetryCount;
+      if (currentRetryableRetryCount < RATE_LIMIT_RETRY_LIMIT) {
+        const nextRetryableRetryCount = currentRetryableRetryCount + 1;
+        const visibilityTimeout = computeBackoffSecondsWithJitter(nextRetryableRetryCount);
+        const queueClient = StorageQueueHumbleObject.fromConnectionString(
+          connectionString,
+          PAGE.queueName,
+        );
+        const retryMessage: PageMessage = {
+          events: retryableEvents,
+          retryableRetryCount: nextRetryableRetryCount,
+        };
+        await queueClient.sendMessage(JSON.stringify(retryMessage), visibilityTimeout);
+        appContext.logger.info(
+          MODULE_NAME,
+          `Requeued ${retryableEvents.length} event(s) that hit a transient error with a ${visibilityTimeout}s backoff delay (retry ${nextRetryableRetryCount}/${RATE_LIMIT_RETRY_LIMIT}).`,
+        );
+      } else {
+        appContext.logger.error(
+          MODULE_NAME,
+          `Rate-limit retry limit exceeded for ${retryableEvents.length} event(s) (retry count ${currentRetryableRetryCount}) — routing to DLQ.`,
+        );
+        finalDlqMessages.push(...retryableEvents);
+      }
+    }
 
     if (notYetSyncedEvents.length > 0) {
       const currentRetryCount = message.retryCount ?? 0;
@@ -286,21 +334,34 @@ async function handlePage(message: PageMessage, invocationContext: InvocationCon
           highConfidenceMatchCount: String(scenarioDistribution.highConfidenceMatchCount),
           noMatchCount: String(scenarioDistribution.noMatchCount),
           multipleMatchCount: String(scenarioDistribution.multipleMatchCount),
+          perfectMatchInactiveCount: String(scenarioDistribution.perfectMatchInactiveCount),
           reVerificationCount: String(scenarioDistribution.reVerificationCount),
           reservedIdSkippedCount: String(scenarioDistribution.reservedIdSkippedCount),
+          verificationBucketHitCount: String(scenarioDistribution.verificationBucketHitCount),
           fingerprintHitCount: String(scenarioDistribution.fingerprintHitCount),
           fingerprintMissCount: String(scenarioDistribution.fingerprintMissCount),
+          retryableCount: String(scenarioDistribution.retryableCount),
         },
         additionalMetrics: [
           { name: 'TrusteeAutoMatchRate', value: autoMatchRate },
           { name: 'TrusteeTotalEventsProcessed', value: totalEvents },
           { name: 'TrusteeHighConfidenceMatchRate', value: highConfidenceRate },
+          {
+            name: 'TrusteePerfectMatchInactiveCount',
+            value: scenarioDistribution.perfectMatchInactiveCount,
+          },
           { name: 'TrusteeReVerificationCount', value: scenarioDistribution.reVerificationCount },
           {
             name: 'TrusteeReservedIdSkippedCount',
             value: scenarioDistribution.reservedIdSkippedCount,
           },
+          {
+            name: 'TrusteeVerificationBucketHitCount',
+            value: scenarioDistribution.verificationBucketHitCount,
+          },
           { name: 'TrusteeFingerprintHitRate', value: fingerprintHitRate },
+          { name: 'TrusteeRetryableEventCount', value: scenarioDistribution.retryableCount },
+          { name: 'TrusteeRetryableRetryDepth', value: retryableRetryDepth },
         ],
       },
     );

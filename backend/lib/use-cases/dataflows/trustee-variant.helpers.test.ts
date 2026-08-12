@@ -19,7 +19,7 @@ describe('trustee-variant.helpers', () => {
     },
   };
 
-  test('collapses whitespace and letter-case noise to the identical fingerprint', () => {
+  test('does not collapse whitespace or letter-case differences (raw demographics only)', () => {
     const reformatted: DxtrTrusteeParty = {
       ...origin,
       firstName: 'JOHN',
@@ -34,7 +34,19 @@ describe('trustee-variant.helpers', () => {
     const originFingerprint = computeFingerprint(buildVariant(origin));
     const reformattedFingerprint = computeFingerprint(buildVariant(reformatted));
 
-    expect(reformattedFingerprint).toBe(originFingerprint);
+    expect(reformattedFingerprint).not.toBe(originFingerprint);
+  });
+
+  test('produces the identical fingerprint for byte-identical demographics', () => {
+    const identical: DxtrTrusteeParty = {
+      ...origin,
+      legacy: { ...origin.legacy },
+    };
+
+    const originFingerprint = computeFingerprint(buildVariant(origin));
+    const identicalFingerprint = computeFingerprint(buildVariant(identical));
+
+    expect(identicalFingerprint).toBe(originFingerprint);
   });
 
   test('does not collapse a genuinely different demographic record', () => {
@@ -86,5 +98,41 @@ describe('trustee-variant.helpers', () => {
     };
 
     expect(buildVariant(reordered)).toBe(buildVariant(origin));
+  });
+
+  test('substitutes empty string for every absent optional field, including a missing legacy block', () => {
+    const sparse: DxtrTrusteeParty = { fullName: 'Jane Doe' };
+
+    const shape = JSON.parse(buildVariant(sparse));
+
+    expect(shape).toEqual({
+      firstName: '',
+      middleName: '',
+      lastName: '',
+      generation: '',
+      address1: '',
+      address2: '',
+      address3: '',
+      cityStateZipCountry: '',
+      phone: '',
+      fax: '',
+      email: '',
+    });
+  });
+
+  test('excludes parsedCityStateZip from the fingerprint, since it is derived diagnostic data, not raw DXTR input', () => {
+    const withoutParsed: DxtrTrusteeParty = { ...origin };
+    const withParsed: DxtrTrusteeParty = {
+      ...origin,
+      legacy: {
+        ...origin.legacy,
+        parsedCityStateZip: { city: 'Springfield', state: 'IL', zipCode: '62701' },
+      },
+    };
+
+    const withoutParsedFingerprint = computeFingerprint(buildVariant(withoutParsed));
+    const withParsedFingerprint = computeFingerprint(buildVariant(withParsed));
+
+    expect(withParsedFingerprint).toBe(withoutParsedFingerprint);
   });
 });

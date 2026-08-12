@@ -6,15 +6,14 @@
  *
  *   - All 5 match verification types:
  *     1. NO_TRUSTEE_MATCH - No candidates found
- *     2. MULTIPLE_TRUSTEES_MATCH - Multiple equally-scored candidates
+ *     2. AMBIGUOUS_MATCH_UNRESOLVED - Multiple equally-scored candidates
  *     3. IMPERFECT_MATCH - Single candidate with low confidence score
- *     4. HIGH_CONFIDENCE_MATCH - Single candidate with high confidence score
+ *     4. AMBIGUOUS_MATCH_RESOLVED - Single candidate with high confidence score
  *     5. PERFECT_MATCH_INACTIVE_STATUS - Perfect match but trustee/appointment inactive
  *
- *   - 7 inactive status variations for PERFECT_MATCH_INACTIVE_STATUS:
+ *   - 6 inactive status variations for PERFECT_MATCH_INACTIVE_STATUS:
  *     - Inactive trustee + active appointment
  *     - Active trustee + inactive appointment
- *     - Inactive trustee + inactive appointment
  *     - Inactive trustee + terminated appointment
  *     - Inactive trustee + resigned appointment
  *     - Inactive trustee + removed appointment
@@ -35,7 +34,6 @@ const CASE_IMPERFECT_MATCH = '091-99-92748'; // Ch 12 (Botsford LLC)
 const CASE_HIGH_CONFIDENCE = '091-99-87899'; // Ch 11 (reuse)
 const CASE_INACTIVE_TRUSTEE = '091-99-00874'; // Ch 11 (reuse)
 const CASE_INACTIVE_APPOINTMENT = '091-99-92748'; // Ch 12 (reuse)
-const _CASE_BOTH_INACTIVE = '091-99-87899'; // Ch 11 (reuse)
 const CASE_TERMINATED = '091-99-00874'; // Ch 11 (reuse)
 const CASE_RESIGNED = '091-99-92748'; // Ch 12 (reuse)
 const CASE_REMOVED = '091-99-87899'; // Ch 11 (reuse)
@@ -321,7 +319,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       ],
     },
 
-    // ── Cosmos: Match Verification Type 2 - MULTIPLE_TRUSTEES_MATCH ──────────
+    // ── Cosmos: Match Verification Type 2 - AMBIGUOUS_MATCH_UNRESOLVED ───────
     {
       db: 'cams',
       collectionOrTable: 'trustee-match-verification',
@@ -334,7 +332,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           courtId: '0208',
           status: 'pending',
           taskDate: '2015-02-19T00:00:00.000Z',
-          mismatchReason: 'MULTIPLE_TRUSTEES_MATCH',
+          mismatchReason: 'AMBIGUOUS_MATCH_UNRESOLVED',
           dxtrTrustee: {
             firstName: 'T',
             lastName: 'Multimatch',
@@ -426,7 +424,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       ],
     },
 
-    // ── Cosmos: Match Verification Type 4 - HIGH_CONFIDENCE_MATCH ────────────
+    // ── Cosmos: Match Verification Type 4 - AMBIGUOUS_MATCH_RESOLVED ─────────
     {
       db: 'cams',
       collectionOrTable: 'trustee-match-verification',
@@ -439,7 +437,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           courtId: '0208',
           status: 'pending',
           taskDate: '2010-05-12T00:00:00.000Z',
-          mismatchReason: 'HIGH_CONFIDENCE_MATCH',
+          mismatchReason: 'AMBIGUOUS_MATCH_RESOLVED',
           dxtrTrustee: {
             firstName: 'Alex',
             lastName: 'Highconfidence',

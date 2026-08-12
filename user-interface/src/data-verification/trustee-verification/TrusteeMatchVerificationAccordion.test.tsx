@@ -24,7 +24,7 @@ const sampleOrder: TrusteeMatchVerificationListItem = {
   caseId: '081-22-11111',
   courtId: '0881',
   status: 'pending',
-  mismatchReason: 'HIGH_CONFIDENCE_MATCH',
+  mismatchReason: 'AMBIGUOUS_MATCH_RESOLVED',
   dxtrTrustee: { fullName: 'John Doe' },
   preselectedCandidate: null,
   candidateCount: 0,
@@ -40,7 +40,7 @@ const sampleOrderDetail: EnrichedTrusteeMatchVerification = {
   caseId: '081-22-11111',
   courtId: '0881',
   status: 'pending',
-  mismatchReason: 'HIGH_CONFIDENCE_MATCH',
+  mismatchReason: 'AMBIGUOUS_MATCH_RESOLVED',
   dxtrTrustee: { fullName: 'John Doe' },
   matchCandidates: [],
   updatedOn: '2026-01-15T10:00:00.000Z',
@@ -167,6 +167,19 @@ describe('TrusteeMatchVerificationAccordion', () => {
     expect(searchButton.closest('.search-link-container')).toHaveTextContent(
       'There are no suggested matches in CAMS.',
     );
+  });
+
+  test('should render an error message when loading candidate details fails', async () => {
+    vi.spyOn(Api2, 'getTrusteeMatchVerificationDetail').mockRejectedValue(
+      new Error('Network error'),
+    );
+    renderWithProps({ order: sampleOrderWithCandidates });
+
+    await expandAccordion(sampleOrderWithCandidates.id);
+
+    expect(
+      screen.getByText('Failed to load candidate details. Please try again later.'),
+    ).toBeInTheDocument();
   });
 
   test('should render candidate-info section with Confirm Match button for pending order', async () => {
@@ -895,13 +908,13 @@ describe('TrusteeMatchVerificationAccordion', () => {
       // After expand, the component derives preselected from enrichedOrder.matchCandidates.
       const listItem: TrusteeMatchVerificationListItem = {
         ...sampleOrder,
-        mismatchReason: 'MULTIPLE_TRUSTEES_MATCH',
+        mismatchReason: 'AMBIGUOUS_MATCH_UNRESOLVED',
         preselectedCandidate: null,
         candidateCount: totalCandidates,
       };
       const detail: EnrichedTrusteeMatchVerification = {
         ...sampleOrderDetail,
-        mismatchReason: 'MULTIPLE_TRUSTEES_MATCH',
+        mismatchReason: 'AMBIGUOUS_MATCH_UNRESOLVED',
         matchCandidates: candidates,
       };
       return [listItem, detail];
@@ -1086,13 +1099,13 @@ describe('TrusteeMatchVerificationAccordion', () => {
       // preselectedCandidate: null avoids crash on initial render (pre-expand candidatesToShow[0] is undefined)
       const multipleMatchOrder: TrusteeMatchVerificationListItem = {
         ...sampleOrder,
-        mismatchReason: 'MULTIPLE_TRUSTEES_MATCH',
+        mismatchReason: 'AMBIGUOUS_MATCH_UNRESOLVED',
         preselectedCandidate: null,
         candidateCount: 2,
       };
       const multipleMatchDetail: EnrichedTrusteeMatchVerification = {
         ...sampleOrderDetail,
-        mismatchReason: 'MULTIPLE_TRUSTEES_MATCH',
+        mismatchReason: 'AMBIGUOUS_MATCH_UNRESOLVED',
         matchCandidates: multipleCandidates,
       };
       renderWithProps({ order: multipleMatchOrder });
@@ -1173,11 +1186,11 @@ describe('TrusteeMatchVerificationAccordion', () => {
     test('should still render original problem statement for other mismatch types', async () => {
       const highConfidenceOrder: TrusteeMatchVerificationListItem = {
         ...sampleOrderWithCandidates,
-        mismatchReason: 'HIGH_CONFIDENCE_MATCH',
+        mismatchReason: 'AMBIGUOUS_MATCH_RESOLVED',
       };
       const highConfidenceDetail: EnrichedTrusteeMatchVerification = {
         ...sampleOrderWithCandidatesDetail,
-        mismatchReason: 'HIGH_CONFIDENCE_MATCH',
+        mismatchReason: 'AMBIGUOUS_MATCH_RESOLVED',
       };
       renderWithProps({ order: highConfidenceOrder });
       await mockDetailAndExpand(highConfidenceDetail);
@@ -1191,7 +1204,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
 
     test('should render "Trustee Mismatch" as task type label for non-inactive mismatch types', () => {
       renderWithProps({
-        order: { ...sampleOrderWithCandidates, mismatchReason: 'HIGH_CONFIDENCE_MATCH' },
+        order: { ...sampleOrderWithCandidates, mismatchReason: 'AMBIGUOUS_MATCH_RESOLVED' },
       });
 
       const heading = screen.getByTestId(`accordion-heading-${sampleOrder.id}`);
@@ -1200,7 +1213,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
     });
   });
 
-  describe('MULTIPLE_TRUSTEES_MATCH rendering', () => {
+  describe('AMBIGUOUS_MATCH_UNRESOLVED rendering', () => {
     const multipleCandidates: CandidateScore[] = [
       {
         trusteeId: 'trustee-low',
@@ -1271,18 +1284,18 @@ describe('TrusteeMatchVerificationAccordion', () => {
     // because the component uses candidatesToShow[0] which is undefined pre-expand for multiple match.
     const multipleCandidatesOrder: TrusteeMatchVerificationListItem = {
       ...sampleOrder,
-      mismatchReason: 'MULTIPLE_TRUSTEES_MATCH',
+      mismatchReason: 'AMBIGUOUS_MATCH_UNRESOLVED',
       preselectedCandidate: null,
       candidateCount: 3,
     };
 
     const multipleCandidatesDetail: EnrichedTrusteeMatchVerification = {
       ...sampleOrderDetail,
-      mismatchReason: 'MULTIPLE_TRUSTEES_MATCH',
+      mismatchReason: 'AMBIGUOUS_MATCH_UNRESOLVED',
       matchCandidates: multipleCandidates,
     };
 
-    test('renders all 3 candidates for MULTIPLE_TRUSTEES_MATCH pending order', async () => {
+    test('renders all 3 candidates for AMBIGUOUS_MATCH_UNRESOLVED pending order', async () => {
       renderWithProps({ order: multipleCandidatesOrder });
       await mockDetailAndExpand(multipleCandidatesDetail);
 
@@ -1428,7 +1441,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
       });
     });
 
-    test('readonly mode for rejected MULTIPLE_TRUSTEES_MATCH shows all candidates without radio buttons', async () => {
+    test('readonly mode for rejected AMBIGUOUS_MATCH_UNRESOLVED shows all candidates without radio buttons', async () => {
       const rejectedMultipleOrder: TrusteeMatchVerificationListItem = {
         ...multipleCandidatesOrder,
         status: 'rejected',
@@ -1448,7 +1461,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
       expect(screen.queryByTestId('approve-selected-button')).not.toBeInTheDocument();
     });
 
-    test('does not show score breakdown in readonly mode for rejected MULTIPLE_TRUSTEES_MATCH', async () => {
+    test('does not show score breakdown in readonly mode for rejected AMBIGUOUS_MATCH_UNRESOLVED', async () => {
       const rejectedMultipleOrder: TrusteeMatchVerificationListItem = {
         ...multipleCandidatesOrder,
         status: 'rejected',
@@ -1465,16 +1478,16 @@ describe('TrusteeMatchVerificationAccordion', () => {
       expect(screen.queryByTestId('candidate-scores-trustee-low')).not.toBeInTheDocument();
     });
 
-    test('HIGH_CONFIDENCE_MATCH still renders single pre-selected candidate (regression check)', async () => {
+    test('AMBIGUOUS_MATCH_RESOLVED still renders single pre-selected candidate (regression check)', async () => {
       const highConfidenceOrder: TrusteeMatchVerificationListItem = {
         ...sampleOrder,
-        mismatchReason: 'HIGH_CONFIDENCE_MATCH',
+        mismatchReason: 'AMBIGUOUS_MATCH_RESOLVED',
         preselectedCandidate: { trusteeId: 'trustee-1', trusteeName: 'Jane Smith' },
         candidateCount: 1,
       };
       const highConfidenceDetail: EnrichedTrusteeMatchVerification = {
         ...sampleOrderDetail,
-        mismatchReason: 'HIGH_CONFIDENCE_MATCH',
+        mismatchReason: 'AMBIGUOUS_MATCH_RESOLVED',
         matchCandidates: [
           {
             trusteeId: 'trustee-1',
@@ -1510,6 +1523,31 @@ describe('TrusteeMatchVerificationAccordion', () => {
 
       expect(screen.queryByTestId('multiple-candidates-info')).not.toBeInTheDocument();
       expect(screen.queryByTestId('candidate-info')).not.toBeInTheDocument();
+      const searchButton = screen.getByRole('button', {
+        name: /Search for a trustee/,
+        hidden: true,
+      });
+      expect(searchButton).toBeInTheDocument();
+    });
+
+    test('CANDIDATE_LOAD_FAILED renders no-candidates view without the "Multiple Match" label', () => {
+      // Distinct from AMBIGUOUS_MATCH_UNRESOLVED: this reason means scoring couldn't load any
+      // candidate's data, not that scoring ran and found no winner among real candidates. If it
+      // were misclassified as AMBIGUOUS_MATCH_UNRESOLVED, isMultipleMatch would be true and the
+      // task type column would read "Multiple Match" right next to a "no suggested matches"
+      // message — this proves that does not happen for the new reason code.
+      renderWithProps({
+        order: {
+          ...sampleOrder,
+          mismatchReason: 'CANDIDATE_LOAD_FAILED',
+          preselectedCandidate: null,
+          candidateCount: 0,
+        },
+      });
+
+      expect(screen.queryByTestId('multiple-candidates-info')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('candidate-info')).not.toBeInTheDocument();
+      expect(screen.queryByText('Multiple Match')).not.toBeInTheDocument();
       const searchButton = screen.getByRole('button', {
         name: /Search for a trustee/,
         hidden: true,
