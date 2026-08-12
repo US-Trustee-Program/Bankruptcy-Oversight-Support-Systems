@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
 
 # Title:        azure-deploy-network.sh
-# Description:  Deploy the USTP CAMS network resources (vnet, subnets, private DNS
-#               zone) into the network resource group. For branch deployments the
-#               network resources are deployed as an Azure Deployment Stack so they
+# Description:  Deploy the USTP CAMS network resources (vnet, subnets) into the
+#               network resource group. For branch deployments the network
+#               resources are deployed as an Azure Deployment Stack so they
 #               can be torn down as a unit without deleting the resource group
 #               (CAMS-760, Option E). For main the resources are deployed with a
-#               plain resource-group deployment (behavior preserved).
+#               plain resource-group deployment (behavior preserved). The webapp
+#               private DNS zone is deployed separately, always as a plain
+#               deployment, by azure-deploy-app-shared-setup.sh / app-shared-setup.bicep
+#               — never here, since this template IS a Deployment Stack for branches.
 #
 # Exitcodes
 # ==========
@@ -26,7 +29,6 @@ network_rg=''
 stack_name=''
 vnet_name=''
 deploy_vnet=false
-deploy_dns=true
 location=''
 is_branch_deployment=false
 branch_name=''
@@ -79,10 +81,6 @@ while [[ $# -gt 0 ]]; do
         deploy_vnet="${2}"
         shift 2
         ;;
-    --deployDns)
-        deploy_dns="${2}"
-        shift 2
-        ;;
     -l | --location)
         location="${2}"
         shift 2
@@ -120,7 +118,7 @@ if [[ ${#missingParams[@]} -gt 0 ]]; then
     exit 10
 fi
 
-deployment_parameters="stackName=${stack_name} networkResourceGroupName=${network_rg} virtualNetworkName=${vnet_name} location=${location} deployDns=${deploy_dns}"
+deployment_parameters="stackName=${stack_name} networkResourceGroupName=${network_rg} virtualNetworkName=${vnet_name} location=${location}"
 
 # Deploy the vnet when explicitly requested, when it does not yet exist, or
 # unconditionally for branches: branches deploy this as a Deployment Stack
