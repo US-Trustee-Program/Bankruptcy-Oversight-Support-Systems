@@ -210,19 +210,18 @@ jobs:
           DEPLOY_VNET: ${{ inputs.deployVnet }}
           AZ_LOCATION: ${{ secrets.AZ_LOCATION }} # pragma: allowlist secret
         run: |
-          # CAMS-760, Option E / Slice 2: the Private DNS Zone is a genuinely
-          # shared resource (one zone, many VNet links) — only main ever
-          # creates/manages it. A branch declaring it too would let that
-          # branch's stack delete DNS resolution for everyone on teardown, the
-          # same bug shape as the shared Key Vault incident (GH #2749).
-          deployDns=$([[ "${IS_BRANCH_DEPLOYMENT}" == "true" ]] && echo false || echo true)
+          # The webapp private DNS zone used to be deployed here, gated on
+          # deployDns. It moved to the "Deploy Azure app shared-setup
+          # resources" step (always a plain, never-stacked deployment) —
+          # this template IS a Deployment Stack for branches, so any resource
+          # declared here, even conditionally, is subject to that stack's
+          # manage/unmanage tracking. See app-shared-setup.bicep's header.
           ./ops/scripts/pipeline/azure-deploy-network.sh \
             --file ./ops/cloud-deployment/network.bicep \
             --stackName "${STACK_NAME}" \
             --networkResourceGroupName "${{ env.AZ_NETWORK_RG }}" \
             --virtualNetworkName "${{ env.AZ_NETWORK_VNET_NAME }}" \
             --deployVnet "${DEPLOY_VNET}" \
-            --deployDns "${deployDns}" \
             --isBranchDeployment "${IS_BRANCH_DEPLOYMENT}" \
             --branchName "${BRANCH_NAME}" \
             --branchHashId "${ENVIRONMENT_HASH}" \
@@ -237,8 +236,16 @@ jobs:
           AZ_SQL_IDENTITY_NAME: ${{ secrets.AZ_SQL_IDENTITY_NAME }} # pragma: allowlist secret
           AZ_LOCATION: ${{ secrets.AZ_LOCATION }} # pragma: allowlist secret
         run: |
-          # Same rationale as the network step above — only main creates/manages
-          # the KV's own Private DNS Zone (privatelink.vaultcore.usgovcloudapi.net).
+          # CAMS-760, Option E / Slice 2: both private DNS zones (the KV's own
+          # privatelink.vaultcore.usgovcloudapi.net and the shared webapp/api/
+          # dataflows privatelink.azurewebsites.us) are genuinely shared
+          # resources (one zone, many VNet links) — only main ever
+          # creates/manages either. A branch declaring either would let that
+          # branch's stack delete DNS resolution for everyone on teardown, the
+          # same bug shape as the shared Key Vault incident (GH #2749). This
+          # template is always a plain, never-stacked deployment (see
+          # app-shared-setup.bicep's header), so it's safe for both zones to
+          # live here with create-if-missing semantics.
           deployDns=$([[ "${IS_BRANCH_DEPLOYMENT}" == "true" ]] && echo false || echo true)
           ./ops/scripts/pipeline/azure-deploy-app-shared-setup.sh \
             --file ./ops/cloud-deployment/app-shared-setup.bicep \

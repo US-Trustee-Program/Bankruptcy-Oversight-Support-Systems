@@ -3,6 +3,7 @@
 # Title:        azure-deploy-app-shared-setup.sh
 # Description:  Deploy the USTP CAMS app-tier shared setup resources (the
 #               app-config Key Vault + its managed identity/role assignments,
+#               the webapp/api/dataflows private DNS zone + its vnet link,
 #               and the read-only SQL managed identity) into the shared
 #               AZURE_RG. Always a plain resource-group deployment for both
 #               main and branches (CAMS-760, Option E) — these resources are
@@ -17,6 +18,10 @@
 # 10+ Validation check errors
 
 set -euo pipefail # ensure job step fails in CI pipeline when error occurs
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=ops/scripts/pipeline/_vnet-link-check.sh
+source "$SCRIPT_DIR/_vnet-link-check.sh"
 
 deployment_file=''
 resource_group=''
@@ -115,27 +120,31 @@ if [[ -z "${deployment_file}" || -z "${resource_group}" || -z "${stack_name}" ||
 fi
 
 # Azure allows only ONE vnet-to-zone link regardless of the link resource's
-# own name, so if some link into the KV's private DNS zone already exists for
-# this vnet (e.g. a legacy private endpoint from before the current naming
-# scheme), creating a second, differently-named one fails with a Conflict.
-# Check for any existing link before deploying and tell the template to skip
-# creating its own when one is already there (see vnet-links.bicep).
-# Hardcoded zone name matches keyvaultPrivateDnsZoneName in
+# own name, so if some link into the KV zone already exists for this vnet
+# (e.g. a legacy private endpoint from before the current naming scheme),
+# creating a second, differently-named one fails with a Conflict. Check for
+# any existing link before deploying and tell the template to skip creating
+# its own when one is already there (see vnet-links.bicep). Hardcoded zone
+# name matches keyvaultPrivateDnsZoneName in
 # ustp-cams-kv-app-config-setup.bicep and kvPrivateDnsZoneName in
 # az-delete-branch-resources.sh — can't share the literal across bash/bicep,
-# keep all three in lockstep by hand. Assumes the zone lives in
+# keep both in lockstep by hand. Assumes the zone lives in
 # networkResourceGroupName, matching app-shared-setup.bicep's
 # privateDnsZoneResourceGroup default — only true as long as nothing passes
 # an explicit override via --parameters.
+#
+# The webapp/api/dataflows zone's own vnet-link check used to live here too,
+# but CAMS-760 moved that link's creation out of app-shared-setup.bicep and
+# into main.bicep's ustpWebappDnsZoneLink module (so it's stack-managed and
+# self-cleans on branch teardown) — so the equivalent existence check now
+# lives in azure-deploy.sh, the script that actually deploys main.bicep. This
+# script only ever creates the KV zone's link, so it only needs the KV check.
 kvPrivateDnsZoneName='privatelink.vaultcore.usgovcloudapi.net'
-vnetId=$(az network vnet show -g "${network_rg}" -n "${vnet_name}" --query id -o tsv 2>/dev/null || echo "")
+existingLink=$(vnet_link_already_exists_for "${network_rg}" "${kvPrivateDnsZoneName}" "${network_rg}" "${vnet_name}")
 vnet_link_already_exists=false
-if [[ -n "${vnetId}" ]]; then
-    existingLink=$(az network private-dns link vnet list -g "${network_rg}" --zone-name "${kvPrivateDnsZoneName}" --query "[?virtualNetwork.id=='${vnetId}'].name | [0]" -o tsv 2>/dev/null || echo "")
-    if [[ -n "${existingLink}" ]]; then
-        echo "Vnet ${vnet_name} is already linked to ${kvPrivateDnsZoneName} via '${existingLink}'; skipping creation of a second link."
-        vnet_link_already_exists=true
-    fi
+if [[ -n "${existingLink}" ]]; then
+    echo "Vnet ${vnet_name} is already linked to ${kvPrivateDnsZoneName} via '${existingLink}'; skipping creation of a second link."
+    vnet_link_already_exists=true
 fi
 
 deployment_parameters="stackName=${stack_name} location=${location} networkResourceGroupName=${network_rg} virtualNetworkName=${vnet_name} kvAppConfigResourceGroupName=${kv_app_config_rg} isUstpDeployment=${is_ustp_deployment} deployDns=${deploy_dns} vnetLinkAlreadyExists=${vnet_link_already_exists}"

@@ -5,9 +5,6 @@ param location string = resourceGroup().location
 @description('Disable creating Azure virtual network by default.')
 param deployVnet bool = false
 
-@description('Deploy Azure Network resources: Private DNS Zone, and DNS Zone Vnet links')
-param deployDns bool = true
-
 param networkResourceGroupName string
 
 // This is a leaf module: its only caller (network.bicep) computes every one
@@ -19,8 +16,6 @@ param networkResourceGroupName string
 // 10.10.13.0/28) without ever surfacing, since they were dead code. Required
 // (no default) so a caller that omits one fails loudly instead of silently.
 param virtualNetworkName string
-
-param linkVnetIds array = []
 
 param vnetAddressPrefix array = ['10.10.0.0/16']
 
@@ -46,15 +41,6 @@ param privateEndpointSubnetName string
 
 param privateEndpointSubnetAddressPrefix string
 
-@description('Private DNS Zone Name')
-param privateDnsZoneName string = 'privatelink.azurewebsites.us'
-
-@description('Private DNS Zone Resource Group')
-param privateDnsZoneResourceGroup string = networkResourceGroupName
-
-@description('Private DNS Zone subscription, all 3 params here are set because the Prod environment uses a different subscription and RG for these')
-param privateDnsZoneSubscriptionId string = subscription().subscriptionId
-
 module targetVnet './vnet.bicep' = if (deployVnet) {
   name: '${stackName}-vnet-module'
   scope: resourceGroup(networkResourceGroupName)
@@ -68,20 +54,6 @@ module targetVnet './vnet.bicep' = if (deployVnet) {
 resource ustpVirtualNetwork 'Microsoft.Network/virtualNetworks@2022-11-01' existing = {
   name: virtualNetworkName
   scope: resourceGroup(networkResourceGroupName)
-}
-
-module ustpDnsZones './private-dns-zones.bicep' = {
-  name: '${stackName}-network-dns-module'
-  scope: resourceGroup(privateDnsZoneSubscriptionId, privateDnsZoneResourceGroup)
-  params: {
-    stackName: stackName
-    virtualNetworkId: ustpVirtualNetwork.id
-    linkVnetIds: linkVnetIds
-    privateDnsZoneName: privateDnsZoneName
-    deployDns: deployDns
-    privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
-    privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
-  }
 }
 
 /*
@@ -111,7 +83,6 @@ module privateEndpointSubnet './subnet.bicep' = {
   }
   dependsOn: [
     ustpVirtualNetwork
-    ustpDnsZones
   ]
 }
 
@@ -147,7 +118,6 @@ module apiFunctionSubnet './subnet.bicep' = {
   }
   dependsOn: [
     ustpVirtualNetwork
-    ustpDnsZones
     privateEndpointSubnet
   ]
 }
@@ -184,7 +154,6 @@ module dataflowsFunctionSubnet './subnet.bicep' = {
   }
   dependsOn: [
     ustpVirtualNetwork
-    ustpDnsZones
     privateEndpointSubnet
     apiFunctionSubnet
   ]
@@ -209,7 +178,6 @@ module webappSubnet './subnet.bicep' = {
   }
   dependsOn: [
     ustpVirtualNetwork
-    ustpDnsZones
     apiFunctionSubnet
     dataflowsFunctionSubnet
   ]
@@ -220,7 +188,6 @@ output privateEndpointSubnetId string = privateEndpointSubnet.outputs.subnetId
 output apiFunctionSubnetId string = apiFunctionSubnet.outputs.subnetId
 output webappSubnetId string = webappSubnet.outputs.subnetId
 output dataflowsFunctionSubnetId string = dataflowsFunctionSubnet.outputs.subnetId
-output privateDnsZoneId string = ustpDnsZones.outputs.privateDnsZoneId
 output cosmosDbAllowedSubnets array = [
   privateEndpointSubnet.outputs.subnetId
   apiFunctionSubnet.outputs.subnetId

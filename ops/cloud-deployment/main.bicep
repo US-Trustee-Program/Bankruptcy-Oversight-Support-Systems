@@ -37,6 +37,9 @@ param privateDnsZoneResourceGroup string = networkResourceGroupName
 @description('DNS Zone Subscription ID. USTP uses a different subscription for prod deployment.')
 param privateDnsZoneSubscriptionId string = subscription().subscriptionId
 
+@description('Set true when the deploying pipeline has already confirmed a vnet link into the webapp private DNS zone exists (see vnet-links.bicep) -- avoids a Conflict from trying to create a second, differently-named link. Mirrors the param of the same shape that used to live on app-shared-setup.bicep before the webapp zone\'s vnet link moved here.')
+param webappVnetLinkAlreadyExists bool = false
+
 param privateEndpointSubnetName string = privateEndpointSubnetNameFor(stackName)
 
 param webappName string = webappNameFor(stackName)
@@ -175,10 +178,15 @@ module actionGroup './lib/monitoring-alerts/alert-action-group.bicep' =
     }
   }
 
-// The virtual network, subnets, and private DNS zone are deployed by network.bicep
-// as a separate deployment (its own Azure Deployment Stack — CAMS-760, Option E).
-// main.bicep is app-resource-group scoped and consumes those subnets via `existing`
+// The virtual network and subnets are deployed by network.bicep as a separate
+// deployment (its own Azure Deployment Stack — CAMS-760, Option E). main.bicep
+// is app-resource-group scoped and consumes those subnets via `existing`
 // references, so network.bicep MUST be deployed before this template.
+// The private DNS zone itself is deployed separately too, always as a plain
+// (non-stack) resource-group deployment, by app-shared-setup.bicep (see its
+// header for why) — this template only consumes the zone by name/RG via the
+// privateDnsZoneName/privateDnsZoneResourceGroup params above and creates its
+// own vnet-link into it below (ustpWebappDnsZoneLink).
 resource ustpVirtualNetwork 'Microsoft.Network/virtualNetworks@2023-11-01' existing = {
   name: virtualNetworkName
   scope: resourceGroup(networkResourceGroupName)
@@ -223,6 +231,25 @@ resource dataflowsFunctionSubnetExisting 'Microsoft.Network/virtualNetworks/subn
 // GH #2749 bug shape. Only resources with a FIXED, shared name (not derived
 // from this branch's stackName) must live outside this stack, as the Key
 // Vault and SQL managed identity do above.
+//
+// The webapp/api/dataflows private DNS zone's vnet link is another instance
+// of that same stackName-derived shape: the zone itself (privateDnsZoneName,
+// a fixed shared name) is created in app-shared-setup.bicep, but its link
+// (privateDnsZoneName-vnet-link-${stackName}) is unique per branch and
+// meaningless once that branch's VNet is deleted. Creating it here, inside
+// this branch's stack, makes it stack-managed and self-cleaning on branch
+// teardown -- matching the private-endpoint precedent above -- instead of
+// requiring az-delete-branch-resources.sh to delete it by hand.
+module ustpWebappDnsZoneLink './lib/network/vnet-links.bicep' = {
+  name: '${stackName}-webapp-dns-zone-link-module'
+  scope: resourceGroup(privateDnsZoneSubscriptionId, privateDnsZoneResourceGroup)
+  params: {
+    stackName: stackName
+    virtualNetworkId: ustpVirtualNetwork.id
+    privateDnsZoneName: privateDnsZoneName
+    vnetLinkAlreadyExists: webappVnetLinkAlreadyExists
+  }
+}
 
 module ustpWebapp 'frontend-webapp-deploy.bicep' = {
     name: '${stackName}-webapp-module'

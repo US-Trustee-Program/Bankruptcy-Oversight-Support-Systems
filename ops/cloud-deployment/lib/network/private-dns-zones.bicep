@@ -21,6 +21,9 @@ param linkVnetIds array = []
 @description('Set true when the caller has already confirmed some link already exists from virtualNetworkId into this zone (see vnet-links.bicep) -- skips creating a second, differently-named link that Azure would reject.')
 param vnetLinkAlreadyExists bool = false
 
+@description('Set false when the caller only wants the zone created/looked-up here and will create the vnet link itself elsewhere (e.g. inside a per-branch stack, so the link is stack-managed and self-cleans on teardown). Defaults to true so existing callers that bundle zone+link together (e.g. the KV zone) are unaffected.')
+param createVnetLink bool = true
+
 /*
   Private DNS Zone and linked virtual networks
 */
@@ -38,8 +41,14 @@ resource ustpPrivateDnsZoneExisting 'Microsoft.Network/privateDnsZones@2020-06-0
 // previously meant every caller that reused an existing zone (e.g. every
 // branch reusing main's KV private DNS zone) never linked its own VNet to it,
 // so DNS resolution for the private endpoint silently never worked.
-module vnetLinks './vnet-links.bicep' = {
-  name: 'vnet-links-module'
+// Named per-zone-per-stack, not a bare 'vnet-links-module' literal: this
+// module is now instantiated more than once within a single deployment
+// operation (app-shared-setup.bicep calls this file once for the KV zone
+// and once for the webapp zone, with no dependency forcing them to
+// serialize) -- a shared literal name would collide as two concurrent
+// nested ARM deployments at the same {scope, name}.
+module vnetLinks './vnet-links.bicep' = if (createVnetLink) {
+  name: '${stackName}-${uniqueString(privateDnsZoneName)}-vnet-links-module'
   scope: resourceGroup(privateDnsZoneSubscriptionId, privateDnsZoneResourceGroup)
   params: {
     stackName: stackName

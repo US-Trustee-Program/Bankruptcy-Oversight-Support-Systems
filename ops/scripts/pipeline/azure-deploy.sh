@@ -12,6 +12,10 @@
 
 set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=ops/scripts/pipeline/_vnet-link-check.sh
+source "$SCRIPT_DIR/_vnet-link-check.sh"
+
 deployment_parameters=''
 is_ustp_deployment=false
 inputParams=()
@@ -134,6 +138,12 @@ while [[ $# -gt 0 ]]; do
         ;;
     --networkResourceGroupName)
         inputParams+=("${1}")
+        # Also captured bare (not just as a bicep parameter string) because the
+        # webapp vnet-link existence check below (CAMS-760 hotfix) needs it to
+        # call `az network vnet show` / `az network private-dns link vnet list`
+        # directly, the same way azure-deploy-app-shared-setup.sh and
+        # azure-deploy-network.sh already do for their own existence checks.
+        network_rg="${2}"
         network_rg_param="networkResourceGroupName=${2}"
         deployment_parameters="${deployment_parameters} ${network_rg_param}"
         shift 2
@@ -153,6 +163,8 @@ while [[ $# -gt 0 ]]; do
         ;;
     --virtualNetworkName)
         inputParams+=("${1}")
+        # Also captured bare — see --networkResourceGroupName above for why.
+        vnet_name="${2}"
         vnet_name_param="virtualNetworkName=${2}"
         deployment_parameters="${deployment_parameters} ${vnet_name_param}"
         shift 2
@@ -168,18 +180,32 @@ while [[ $# -gt 0 ]]; do
         ;;
     --privateDnsZoneName)
         inputParams+=("${1}")
+        # Also captured bare so the webapp vnet-link existence check below
+        # (CAMS-760 hotfix) can query the same zone this deployment will
+        # actually target, instead of assuming main.bicep's default.
+        private_dns_zone_name="${2}"
         private_dns_zone_name_param="privateDnsZoneName=${2}"
         deployment_parameters="${deployment_parameters} ${private_dns_zone_name_param}"
         shift 2
         ;;
     --privateDnsZoneSubscriptionId)
         inputParams+=("${1}")
+        # Also captured bare — see --networkResourceGroupName above for why.
+        # Needed so the webapp vnet-link existence check below runs against
+        # the SAME subscription main.bicep's ustpWebappDnsZoneLink module
+        # targets (USTP prod uses a non-default subscription there); without
+        # this, the check silently queries the CLI's default subscription,
+        # finds nothing, and main.bicep tries to create a second, conflicting
+        # link in the correct subscription.
+        private_dns_zone_sub_id="${2}"
         private_dns_zone_sub_id_param="privateDnsZoneSubscriptionId=${2}"
         deployment_parameters="${deployment_parameters} ${private_dns_zone_sub_id_param}"
         shift 2
         ;;
     --privateDnsZoneResourceGroup)
         inputParams+=("${1}")
+        # Also captured bare — see --privateDnsZoneName above for why.
+        private_dns_zone_rg="${2}"
         private_dns_zone_rg_param="privateDnsZoneResourceGroup=${2}"
         deployment_parameters="${deployment_parameters} ${private_dns_zone_rg_param}"
         shift 2
@@ -418,6 +444,39 @@ done
 
 
 validateParameters
+
+# Azure allows only ONE vnet-to-zone link regardless of the link resource's
+# own name, so if some link into the webapp/api/dataflows private DNS zone
+# already exists for this vnet (e.g. a leftover link from a previous run of
+# this script, or one created by hand before the current naming scheme),
+# creating a second, differently-named one fails with a Conflict. This is the
+# CAMS-760 hotfix check: the link itself moved from app-shared-setup.bicep
+# into main.bicep's ustpWebappDnsZoneLink module (so it's stack-managed and
+# self-cleans on branch teardown), which means THIS script — the one that
+# actually deploys main.bicep — now has to perform the existence check that
+# used to live in azure-deploy-app-shared-setup.sh, and forward the result via
+# main.bicep's webappVnetLinkAlreadyExists parameter (see vnet-links.bicep).
+# Mirrors the identical check azure-deploy-app-shared-setup.sh still performs
+# for the KV zone's own (unmoved) link (both now call the shared
+# vnet_link_already_exists_for helper — see _vnet-link-check.sh). Falls back
+# to the same defaults main.bicep itself uses (privateDnsZoneName default
+# 'privatelink.azurewebsites.us', privateDnsZoneResourceGroup default
+# networkResourceGroupName) when --privateDnsZoneName/--privateDnsZoneResourceGroup
+# weren't passed in, so the check still targets the zone this deployment will
+# actually link against. Also passes --privateDnsZoneSubscriptionId through
+# (empty/unset unless USTP prod overrides it) so the check runs against the
+# same subscription main.bicep's ustpWebappDnsZoneLink module targets.
+webappPrivateDnsZoneName="${private_dns_zone_name:-privatelink.azurewebsites.us}"
+webappPrivateDnsZoneRg="${private_dns_zone_rg:-${network_rg:-}}"
+webapp_vnet_link_already_exists=false
+if [[ -n "${network_rg:-}" && -n "${vnet_name:-}" ]]; then
+    existingWebappLink=$(vnet_link_already_exists_for "${webappPrivateDnsZoneRg}" "${webappPrivateDnsZoneName}" "${network_rg}" "${vnet_name}" "${private_dns_zone_sub_id:-}")
+    if [[ -n "${existingWebappLink}" ]]; then
+        echo "Vnet ${vnet_name} is already linked to ${webappPrivateDnsZoneName} via '${existingWebappLink}'; skipping creation of a second link."
+        webapp_vnet_link_already_exists=true
+    fi
+fi
+deployment_parameters="${deployment_parameters} webappVnetLinkAlreadyExists=${webapp_vnet_link_already_exists}"
 
 # The virtual network is deployed separately by azure-deploy-network.sh before this
 # script runs (CAMS-760, Option E); vnet existence / deployVnet handling lives there.
