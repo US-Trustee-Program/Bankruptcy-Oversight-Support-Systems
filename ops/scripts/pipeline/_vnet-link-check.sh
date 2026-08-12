@@ -7,26 +7,81 @@
 # own name, so if some link into a zone already exists for a given vnet
 # (e.g. a legacy link from before the current naming scheme, or a link this
 # same script created on a prior run), creating a second, differently-named
-# one fails with a Conflict. azure-deploy-app-shared-setup.sh (KV zone) and
-# azure-deploy.sh (webapp/api/dataflows zone, CAMS-760 hotfix) both need this
-# exact "look up the vnet, then look up an existing link into the zone
-# matching that vnet" check. Single source of truth here so the two scripts
-# can't independently reconstruct the query and drift apart — see
-# _network-stackname.sh for the identical rationale on a different formula.
+# one fails with a Conflict. Azure's one-link-per-vnet-per-zone constraint is
+# enforced per zone NAME (namespace), not per zone object — confirmed live
+# 2026-08-11: a stray link sitting in an unrelated, same-named zone in a
+# DIFFERENT resource group blocked main's vnet from linking into the correct
+# one, even though the target zone's own resource group had no link. So this
+# checks both the intended zone AND every other same-named zone in the same
+# subscription before concluding it's safe for the caller's template to
+# create a new link.
+#
+# azure-deploy-app-shared-setup.sh (KV zone) and azure-deploy.sh (webapp/api/
+# dataflows zone, CAMS-760 hotfix) both need this exact check. Single source
+# of truth here so the two scripts can't independently reconstruct the query
+# and drift apart — see _network-stackname.sh for the identical rationale on
+# a different formula.
 #
 # Exports:
 #   vnet_link_already_exists_for ZONE_RG ZONE_NAME VNET_RG VNET_NAME [SUBSCRIPTION_ID]
-#     -> prints the matched link's name to stdout, or an empty string if no
-#        link exists (or the vnet itself doesn't exist yet). SUBSCRIPTION_ID
-#        is optional; pass an empty string or omit it to use the CLI's
-#        current default subscription — `az ... --subscription ""` is a
-#        malformed call, so this deliberately omits the flag entirely rather
-#        than pass an empty value.
+#     Sets vnet_link_check_result to the matched link's name, or empty string
+#     if no link exists anywhere (the target zone, or any other same-named
+#     zone in the subscription) and it's safe for the caller to create one.
+#     SUBSCRIPTION_ID is optional; pass an empty string or omit it to use the
+#     CLI's current default subscription — `az ... --subscription ""` is a
+#     malformed call, so this deliberately omits the flag entirely rather
+#     than pass an empty value.
+#
+#     MUST be called as a plain statement, e.g.
+#       vnet_link_already_exists_for "$rg" "$zone" "$vnetRg" "$vnetName"
+#       existingLink="${vnet_link_check_result}"
+#     NEVER via command substitution (`x=$(vnet_link_already_exists_for ...)`)
+#     — this function calls `exit` on a genuine failure, and `exit` inside a
+#     `$(...)` subshell only kills the subshell. Worse, under `set -e` a
+#     plain `var=$(cmd)` assignment's exit status is never checked (a
+#     well-known bash gotcha), so the parent script would silently continue
+#     with `vnet_link_check_result` unset instead of actually stopping —
+#     exactly the class of silent failure this check exists to prevent.
+#     Setting a global result variable instead of printing to stdout is what
+#     makes calling this safely, without a subshell, possible.
+#
+#     Exits the whole script (via `exit 1`) rather than returning on: a
+#     genuine az CLI failure looking up the vnet or an existing link (auth
+#     expiry, throttling, transient API error — indistinguishable from "not
+#     found" if silently swallowed), or finding a stray link into a
+#     different, same-named zone. Letting the deploy proceed in either case
+#     would hit a confusing Conflict, or worse, silently leave DNS
+#     resolution broken — both look nothing like this check, so the failure
+#     is surfaced here instead.
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   echo "ERROR: This script must be sourced, not executed directly." >&2
   exit 1
 fi
+
+# Runs "$@", capturing stdout and stderr separately into
+# _vnet_link_check_stdout/_vnet_link_check_stderr rather than merging them
+# (2>&1). A successful call's stdout must never be trusted if stderr is
+# spliced into it — a CLI upgrade nag, extension auto-install message, or
+# deprecation notice printed alongside a clean success would otherwise
+# corrupt the value used in the comparisons below, silently reintroducing
+# the Conflict this check exists to prevent, or producing a false "link
+# exists" that skips real link creation and leaves DNS resolution broken.
+# Returns the command's own exit code; safe to call as the condition of
+# `if !` (which exempts the whole function body, not just its own return,
+# from set -e). Not prefixed with a leading underscore-only local scope
+# (it sets caller-visible globals, same as vnet_link_already_exists_for) —
+# both are internal to this file's contract, callers only ever read
+# vnet_link_check_result.
+_vnet_link_check_call() {
+  local stderrFile
+  stderrFile=$(mktemp)
+  _vnet_link_check_stdout=$("$@" 2>"${stderrFile}")
+  local rc=$?
+  _vnet_link_check_stderr=$(cat "${stderrFile}")
+  rm -f "${stderrFile}"
+  return "${rc}"
+}
 
 vnet_link_already_exists_for() {
   local zoneRg=$1
@@ -40,14 +95,75 @@ vnet_link_already_exists_for() {
     subscriptionArg="--subscription ${subscriptionId}"
   fi
 
-  local vnetId
+  # The vnet is deployed by the network step immediately before any caller of
+  # this check runs, so it must already exist here — a failure looking it up
+  # (auth blip, throttling, transient API error) is a real problem, not "no
+  # link exists yet." Fail loud instead of silently treating it as the
+  # latter, which would let the deploy proceed to hit a Conflict for a
+  # reason that looks nothing like this check.
   # shellcheck disable=SC2086 # REASON: intentional word-splitting of optional --subscription flag
-  vnetId=$(az network vnet show -g "${vnetRg}" -n "${vnetName}" ${subscriptionArg} --query id -o tsv 2>/dev/null || echo "")
+  if ! _vnet_link_check_call az network vnet show -g "${vnetRg}" -n "${vnetName}" ${subscriptionArg} --query id -o tsv; then
+    echo "ERROR: failed to look up vnet ${vnetName} in ${vnetRg}: ${_vnet_link_check_stderr}" >&2
+    exit 1
+  fi
+  local vnetId="${_vnet_link_check_stdout}"
   if [[ -z "${vnetId}" ]]; then
-    echo ""
+    # shellcheck disable=SC2034 # REASON: read by callers in other sourcing scripts, not within this file
+    vnet_link_check_result=""
     return
   fi
 
+  # Unlike the vnet, the zone genuinely may not exist yet (e.g. the very
+  # first deploy, before deployDns=true has ever created it) — that's a
+  # legitimate "no link possible" case, not an error. Only a failure other
+  # than the zone itself being missing should be treated as fatal.
+  local existingLink
   # shellcheck disable=SC2086 # REASON: intentional word-splitting of optional --subscription flag
-  az network private-dns link vnet list -g "${zoneRg}" --zone-name "${zoneName}" ${subscriptionArg} --query "[?virtualNetwork.id=='${vnetId}'].name | [0]" -o tsv 2>/dev/null || echo ""
+  if ! _vnet_link_check_call az network private-dns link vnet list -g "${zoneRg}" ${subscriptionArg} --zone-name "${zoneName}" --query "[?virtualNetwork.id=='${vnetId}'].name | [0]" -o tsv; then
+    if grep -qi "ResourceNotFound" <<<"${_vnet_link_check_stderr}"; then
+      existingLink=""
+    else
+      echo "ERROR: failed to check for an existing vnet link into ${zoneName} in ${zoneRg}: ${_vnet_link_check_stderr}" >&2
+      exit 1
+    fi
+  else
+    existingLink="${_vnet_link_check_stdout}"
+  fi
+
+  if [[ -n "${existingLink}" ]]; then
+    # shellcheck disable=SC2034 # REASON: read by callers in other sourcing scripts, not within this file
+    vnet_link_check_result="${existingLink}"
+    return
+  fi
+
+  # Azure's one-link-per-vnet-per-zone constraint is enforced per zone NAME,
+  # not per zone object (confirmed live 2026-08-11) — a miss in zoneRg alone
+  # isn't enough to conclude it's safe to create a new link. Search every
+  # OTHER zone with this same name in the same subscription (a collision via
+  # a zone in a DIFFERENT subscription isn't checked) for a link already
+  # satisfying this vnet before returning "safe to create."
+  local otherZoneRgs
+  # shellcheck disable=SC2086 # REASON: intentional word-splitting of optional --subscription flag
+  if ! _vnet_link_check_call az network private-dns zone list ${subscriptionArg} --query "[?name=='${zoneName}' && resourceGroup!='${zoneRg}'].resourceGroup" -o tsv; then
+    echo "ERROR: failed to search for other zones named ${zoneName}: ${_vnet_link_check_stderr}" >&2
+    exit 1
+  fi
+  otherZoneRgs="${_vnet_link_check_stdout}"
+
+  local otherRg strayLink
+  for otherRg in ${otherZoneRgs}; do
+    # shellcheck disable=SC2086 # REASON: intentional word-splitting of optional --subscription flag
+    if ! _vnet_link_check_call az network private-dns link vnet list -g "${otherRg}" ${subscriptionArg} --zone-name "${zoneName}" --query "[?virtualNetwork.id=='${vnetId}'].name | [0]" -o tsv; then
+      echo "ERROR: failed to check zone ${zoneName} in ${otherRg} for a stray link: ${_vnet_link_check_stderr}" >&2
+      exit 1
+    fi
+    strayLink="${_vnet_link_check_stdout}"
+    if [[ -n "${strayLink}" ]]; then
+      echo "ERROR: vnet ${vnetName} is already linked to a DIFFERENT ${zoneName} zone in ${otherRg} (via '${strayLink}'), not the intended one in ${zoneRg}. Azure will not allow linking to the correct zone until this stray link is removed — manual cleanup required." >&2
+      exit 1
+    fi
+  done
+
+  # shellcheck disable=SC2034 # REASON: read by callers in other sourcing scripts, not within this file
+  vnet_link_check_result=""
 }
