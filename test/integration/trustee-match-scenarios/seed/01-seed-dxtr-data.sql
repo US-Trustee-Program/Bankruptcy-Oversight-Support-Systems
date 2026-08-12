@@ -181,19 +181,21 @@ INSERT INTO dbo.AO_PY (
 );
 GO
 
--- 12. fingerprint-repeat (Slice 5) — same underlying trustee as scenario 2 (whitespace/case
---     noise only), no profCode. Should auto-link via the TRUSTEE_VARIATION fingerprint bucket
+-- 12. fingerprint-repeat (Slice 5) — byte-identical demographics to scenario 2 (same underlying
+--     trustee), no profCode. Should auto-link via the TRUSTEE_VARIATION fingerprint bucket
 --     written when scenario 2 resolved, bypassing matchTrusteeByName entirely — which would
 --     otherwise be ambiguous, since scenario 2's trustee shares its name with a decoy trustee
---     seeded specifically for scenarios 12/13 (see seed-cosmos in the harness script).
+--     seeded specifically for scenarios 12/13 (see seed-cosmos in the harness script). Must be
+--     byte-identical, not merely reformatted: fingerprinting hashes raw DXTR demographics with
+--     no normalization, so whitespace/case differences no longer collapse to the same fingerprint.
 INSERT INTO dbo.AO_PY (
   CS_CASEID, COURT_ID, PY_ROLE, PY_FIRST_NAME, PY_MIDDLE_NAME, PY_LAST_NAME, PY_GENERATION,
   PY_ADDRESS1, PY_ADDRESS2, PY_ADDRESS3, PY_CITY, PY_STATE, PY_ZIP, PY_COUNTRY,
   PY_PHONENO, PY_FAX_PHONE, PY_E_MAIL
 ) VALUES (
-  '999999411', '0210', 'tr', 'PERFECT', 'M', 'ProfessionalId', '',
-  '1  Perfect   Pid Rd', '', '', 'SCENARIO CITY', 'SC', '11111', 'USA',
-  '555-100-0001', '', 'PERFECT.PID@EXAMPLE.COM'
+  '999999411', '0210', 'tr', 'Perfect', 'M', 'ProfessionalId', '',
+  '1 Perfect Pid Rd', '', '', 'Scenario City', 'SC', '11111', 'USA',
+  '555-100-0001', '', 'perfect.pid@example.com'
 );
 GO
 

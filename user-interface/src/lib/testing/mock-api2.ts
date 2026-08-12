@@ -818,7 +818,7 @@ const trusteeMatchVerificationOrders: TrusteeMatchVerificationListItem[] = [
     caseId: '081-22-11111',
     courtId: '0881',
     status: 'pending',
-    mismatchReason: 'HIGH_CONFIDENCE_MATCH',
+    mismatchReason: 'AMBIGUOUS_MATCH_RESOLVED',
     dxtrTrustee: {
       fullName: 'Smith John',
       legacy: {

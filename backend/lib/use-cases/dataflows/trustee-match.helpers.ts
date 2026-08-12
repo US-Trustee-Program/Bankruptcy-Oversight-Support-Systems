@@ -1,5 +1,4 @@
 import { ApplicationContext } from '../../adapters/types/basic';
-import { CamsError } from '../../common-errors/cams-error';
 import {
   DxtrTrusteeParty,
   CandidateScore,
@@ -11,8 +10,20 @@ import { LegacyAddress } from '@common/cams/parties';
 import { Address, PhoneNumber } from '@common/cams/contact';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { Trustee } from '@common/cams/trustees';
+import { isTooManyRequestsError } from '../../common-errors/too-many-requests-error';
+import { isGatewayTimeoutError } from '../../common-errors/gateway-timeout';
 
 const MODULE_NAME = 'TRUSTEE-MATCH';
+
+/**
+ * Minimum totalScore for a multi-candidate fuzzy-match winner to be considered.
+ */
+const FUZZY_MATCH_SCORE_THRESHOLD = 75;
+
+/**
+ * Minimum point gap a multi-candidate winner must have over the runner-up.
+ */
+const FUZZY_MATCH_MIN_GAP = 5;
 
 /**
  * Normalizes a name by trimming whitespace and collapsing multiple spaces.
@@ -130,6 +141,19 @@ export function normalizeChapter(chapter: string): string {
 }
 
 /**
+ * Determines whether an appointment covers a given division, checking both
+ * the deprecated singular `divisionCode` and the current `divisionCodes`
+ * array (modern appointments, including multi-division panel appointments,
+ * only populate `divisionCodes`).
+ */
+function appointmentCoversDivision(appointment: TrusteeAppointment, divisionCode: string): boolean {
+  return (
+    appointment.divisionCode === divisionCode ||
+    (appointment.divisionCodes?.includes(divisionCode) ?? false)
+  );
+}
+
+/**
  * Determines if a trustee is a "perfect match" for a case.
  * A perfect match requires a SINGLE active appointment that matches
  * court + division + chapter on the same record.
@@ -147,7 +171,7 @@ export function isPerfectMatch(
     (a) =>
       a.status === 'active' &&
       a.courtId === courtId &&
-      a.divisionCode === divisionCode &&
+      appointmentCoversDivision(a, divisionCode) &&
       normalizeChapter(a.chapter) === normalizedChapter,
   );
 }
@@ -170,7 +194,7 @@ export function findInactivePerfectMatch(
     (a) =>
       a.status !== 'active' &&
       a.courtId === courtId &&
-      a.divisionCode === divisionCode &&
+      appointmentCoversDivision(a, divisionCode) &&
       normalizeChapter(a.chapter) === normalizedChapter,
   );
   if (matches.length === 0) return undefined;
@@ -199,7 +223,7 @@ export function calculateDistrictDivisionScore(
 
   // Check for exact court + division match
   const exactMatch = activeAppointments.some((a) => {
-    return a.courtId === caseCourtId && a.divisionCode === caseDivisionCode;
+    return a.courtId === caseCourtId && appointmentCoversDivision(a, caseDivisionCode);
   });
   if (exactMatch) return 100;
 
@@ -426,22 +450,31 @@ export function calculateCandidateScore(
   return candidateScore;
 }
 
-type FuzzyMatchResult = {
-  winnerId: string;
-  candidateScores: CandidateScore[];
-};
+/**
+ * Outcome of a name-collision scoring attempt (see resolveNameCollisionByScoring):
+ *  - 'resolved': a clear winner was found (score >75% AND 5+ points ahead of the runner-up).
+ *  - 'no-match': every candidate failed to load, so nothing could be scored.
+ *  - 'unresolved': candidates were scored but none stood out as a clear winner.
+ */
+export type ScoringOutcome =
+  | { kind: 'resolved'; trusteeId: string; candidateScores: CandidateScore[] }
+  | { kind: 'no-match' }
+  | { kind: 'unresolved'; candidateScores: CandidateScore[] };
 
 /**
- * Resolves a trustee from multiple candidates using fuzzy matching.
- * Scores each candidate based on address, district/division, and chapter alignment.
+ * Resolves a name collision (matchTrusteeByName found more than one raw candidate) by scoring
+ * each candidate on address, district/division, and chapter alignment.
  * Winner criteria: score >75% AND 5+ points ahead of next candidate.
- * Returns winning trusteeId with candidate scores, or throws enhanced error.
+ * Returns a ScoringOutcome discriminated union for all three business outcomes. A transient
+ * infrastructure error (Cosmos RU throttling, a read/write timeout) encountered while fetching a
+ * candidate's data still propagates as a thrown error — see the try/catch below — since that is
+ * not a business decision this function can make.
  */
-export async function resolveTrusteeWithFuzzyMatching(
+export async function resolveNameCollisionByScoring(
   context: ApplicationContext,
   event: TrusteeAppointmentSyncEvent,
   candidateTrusteeIds: string[],
-): Promise<FuzzyMatchResult> {
+): Promise<ScoringOutcome> {
   // Score all candidates - fetch data in parallel to avoid N+1 queries
   const trusteesRepo = factory.getTrusteesRepository(context);
   const appointmentsRepo = factory.getTrusteeAppointmentsRepository(context);
@@ -454,6 +487,18 @@ export async function resolveTrusteeWithFuzzyMatching(
       ]);
       return { trusteeId, trustee, appointments, error: null };
     } catch (error) {
+      // A transient infrastructure error (Cosmos RU throttling, a read/write timeout) is not
+      // evidence that this candidate is unscorable — it means we don't yet know. Rethrowing
+      // here rejects the enclosing Promise.all, aborting the whole fuzzy-match attempt for this
+      // event rather than silently continuing with a smaller (possibly empty) candidate set that
+      // could otherwise misclassify a transient failure as NO_TRUSTEE_MATCH or
+      // AMBIGUOUS_MATCH_UNRESOLVED — both permanent classifications. The caller
+      // (sync-trustee-case-appointments.ts) is responsible for routing this to retryableEvents.
+      // This reimplements sync-trustee-case-appointments.ts's isTransientInfraError check rather
+      // than importing it, since that module imports this one — importing back would be circular.
+      if (isTooManyRequestsError(error) || isGatewayTimeoutError(error)) {
+        throw error;
+      }
       const errorMessage = error instanceof Error ? error.message : String(error);
       return { trusteeId, trustee: null, appointments: null, error: errorMessage };
     }
@@ -483,12 +528,11 @@ export async function resolveTrusteeWithFuzzyMatching(
 
   // Guard against empty results (all candidates failed to load)
   if (candidateScores.length === 0) {
-    throw new CamsError(MODULE_NAME, {
-      message: `Fuzzy matching failed: no valid candidates could be scored for case ${event.caseId}`,
-      data: {
-        mismatchReason: 'NO_TRUSTEE_MATCH',
-      },
-    });
+    context.logger.warn(
+      MODULE_NAME,
+      `Fuzzy matching failed: no valid candidates could be scored for case ${event.caseId}`,
+    );
+    return { kind: 'no-match' };
   }
 
   // Sort by totalScore descending
@@ -497,49 +541,67 @@ export async function resolveTrusteeWithFuzzyMatching(
   const winner = candidateScores[0];
   const runnerUp = candidateScores[1];
 
-  // Apply winner criteria: >75% AND 5+ point gap
-  const meetsThreshold = winner.totalScore > 75;
-  const hasSignificantGap = !runnerUp || winner.totalScore - runnerUp.totalScore >= 5;
+  const meetsThreshold = winner.totalScore > FUZZY_MATCH_SCORE_THRESHOLD;
+  const hasSignificantGap =
+    !runnerUp || winner.totalScore - runnerUp.totalScore >= FUZZY_MATCH_MIN_GAP;
 
   if (meetsThreshold && hasSignificantGap) {
     context.logger.info(
       MODULE_NAME,
       `Fuzzy matching resolved to ${winner.trusteeId} with score ${winner.totalScore}`,
     );
-    return { winnerId: winner.trusteeId, candidateScores };
+    return { kind: 'resolved', trusteeId: winner.trusteeId, candidateScores };
   }
 
-  // No clear winner - throw error with scores
+  // No clear winner
   const candidateList = candidateScores
     .map((score) => `${score.trusteeId} (${score.totalScore} pts)`)
     .join(', ');
+  context.logger.warn(
+    MODULE_NAME,
+    `Fuzzy matching failed: no clear winner among ${candidateScores.length} candidates [${candidateList}]`,
+  );
 
-  throw new CamsError(MODULE_NAME, {
-    message: `Fuzzy matching failed: no clear winner among ${candidateScores.length} candidates [${candidateList}]`,
-    data: {
-      mismatchReason: 'MULTIPLE_TRUSTEES_MATCH',
-      matchCandidates: candidateScores,
-    },
-  });
+  return { kind: 'unresolved', candidateScores };
 }
 
+/**
+ * Outcome of a name-lookup attempt (see matchTrusteeByName):
+ *  - 'resolved': exactly one CAMS trustee matched the name.
+ *  - 'no-match': zero CAMS trustees matched the name.
+ *  - 'ambiguous': more than one CAMS trustee matched the name (raw, unscored candidates), which
+ *    the caller resolves via resolveNameCollisionByScoring.
+ */
+export type NameMatchResult =
+  | { kind: 'resolved'; trusteeId: string }
+  | { kind: 'no-match' }
+  | { kind: 'ambiguous'; matchCandidates: CandidateScore[] };
+
+/**
+ * Looks up CAMS trustees by name and returns a NameMatchResult discriminated union for all three
+ * business outcomes (resolved/no-match/ambiguous). Does NOT wrap the repository call in a
+ * try/catch — a repository failure here is a genuine infrastructure error and propagates as a
+ * thrown error, unchanged.
+ */
 export async function matchTrusteeByName(
   context: ApplicationContext,
   trusteeName: string,
-): Promise<string> {
+): Promise<NameMatchResult> {
   const normalized = normalizeName(trusteeName);
   const trusteesRepo = factory.getTrusteesRepository(context);
   const matches = await trusteesRepo.findTrusteesByName(normalized);
 
   if (matches.length === 0) {
-    throw new CamsError(MODULE_NAME, {
-      message: `No CAMS trustee found matching name "${normalized}".`,
-      data: { mismatchReason: 'NO_TRUSTEE_MATCH' },
-    });
+    context.logger.warn(MODULE_NAME, `No CAMS trustee found matching name "${normalized}".`);
+    return { kind: 'no-match' };
   }
 
   if (matches.length > 1) {
     const candidates = matches.map((t) => `${t.trusteeId} ("${t.name}")`).join(', ');
+    context.logger.info(
+      MODULE_NAME,
+      `Multiple CAMS trustees found matching name "${normalized}": ${candidates}.`,
+    );
     const matchCandidates: CandidateScore[] = matches.map((t) => ({
       trusteeId: t.trusteeId,
       trusteeName: t.name,
@@ -554,14 +616,8 @@ export async function matchTrusteeByName(
       phone: t.public.phone,
       email: t.public.email,
     }));
-    throw new CamsError(MODULE_NAME, {
-      message: `Multiple CAMS trustees found matching name "${normalized}": ${candidates}.`,
-      data: {
-        mismatchReason: 'MULTIPLE_TRUSTEES_MATCH',
-        matchCandidates,
-      },
-    });
+    return { kind: 'ambiguous', matchCandidates };
   }
 
-  return matches[0].trusteeId;
+  return { kind: 'resolved', trusteeId: matches[0].trusteeId };
 }
