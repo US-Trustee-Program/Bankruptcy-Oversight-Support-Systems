@@ -30,7 +30,12 @@
 #     SUBSCRIPTION_ID is optional; pass an empty string or omit it to use the
 #     CLI's current default subscription — `az ... --subscription ""` is a
 #     malformed call, so this deliberately omits the flag entirely rather
-#     than pass an empty value.
+#     than pass an empty value. Only applied to the zone-side lookups: the
+#     vnet itself is always scoped to the CLI's current/default subscription
+#     in every caller's Bicep, never to privateDnsZoneSubscriptionId — USTP
+#     prod overrides that param to a DIFFERENT subscription than the vnet's
+#     own, so applying it to the vnet lookup too would fail loud with a
+#     misleading error on exactly the deploy path this exists to support.
 #
 #     MUST be called as a plain statement, e.g.
 #       vnet_link_already_exists_for "$rg" "$zone" "$vnetRg" "$vnetName"
@@ -98,14 +103,23 @@ vnet_link_already_exists_for() {
     subscriptionArg="--subscription ${subscriptionId}"
   fi
 
+  # The vnet's own Bicep scope (resourceGroup(networkResourceGroupName), a
+  # single-arg — implicit/current subscription) never uses
+  # privateDnsZoneSubscriptionId, unlike the zone lookups below — so
+  # subscriptionArg must NOT be applied here. USTP prod deliberately
+  # overrides privateDnsZoneSubscriptionId to a DIFFERENT subscription than
+  # the vnet's own; applying it to this lookup too would look for the vnet
+  # in the wrong subscription and fail loud below with a misleading "failed
+  # to look up vnet" error on exactly the deploy path that override exists
+  # to support.
+  #
   # The vnet is deployed by the network step immediately before any caller of
   # this check runs, so it must already exist here — a failure looking it up
   # (auth blip, throttling, transient API error) is a real problem, not "no
   # link exists yet." Fail loud instead of silently treating it as the
   # latter, which would let the deploy proceed to hit a Conflict for a
   # reason that looks nothing like this check.
-  # shellcheck disable=SC2086 # REASON: intentional word-splitting of optional --subscription flag
-  if ! _vnet_link_check_call az network vnet show -g "${vnetRg}" -n "${vnetName}" ${subscriptionArg} --query id -o tsv; then
+  if ! _vnet_link_check_call az network vnet show -g "${vnetRg}" -n "${vnetName}" --query id -o tsv; then
     echo "ERROR: failed to look up vnet ${vnetName} in ${vnetRg}: ${_vnet_link_check_stderr}" >&2
     exit 1
   fi
