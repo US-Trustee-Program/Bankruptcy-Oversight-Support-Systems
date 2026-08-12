@@ -478,6 +478,15 @@ if [[ -n "${network_rg:-}" && -n "${vnet_name:-}" ]]; then
     else
         echo "No existing link from vnet ${vnet_name} into ${webappPrivateDnsZoneName} in ${webappPrivateDnsZoneRg} (or any other same-named zone); the template will create one."
     fi
+else
+    # validateParameters only checks --networkResourceGroupName/--virtualNetworkName
+    # were passed, not that their values are non-empty, so this guard can't
+    # be assumed unreachable. Not fatal here — the template still applies its
+    # own safe default (webappVnetLinkAlreadyExists=false, i.e. attempt
+    # creation normally) — but silently skipping the check left zero
+    # diagnostic trail, unlike the KV-zone call site's unconditional (fail-
+    # loud) contract in azure-deploy-app-shared-setup.sh.
+    echo "WARNING: skipping webapp DNS zone vnet-link existence check — networkResourceGroupName ('${network_rg:-}') or virtualNetworkName ('${vnet_name:-}') is empty." >&2
 fi
 deployment_parameters="${deployment_parameters} webappVnetLinkAlreadyExists=${webapp_vnet_link_already_exists}"
 
