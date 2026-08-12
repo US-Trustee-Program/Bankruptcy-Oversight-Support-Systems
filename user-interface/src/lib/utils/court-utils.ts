@@ -306,8 +306,10 @@ interface DivisionOption {
 /**
  * Builds combined "District (Division)" ComboBox options from a flat courts list.
  *
- * For each district, prepends an "All [CourtName]" option (value: `${courtId}|ALL`)
- * followed by individual divisions (value: `${courtId}|${courtDivisionCode}`).
+ * For each district with more than one division, prepends an "All [CourtName]" option
+ * (value: `${courtId}|ALL`) followed by individual divisions (value:
+ * `${courtId}|${courtDivisionCode}`). Districts with only a single division are redundant
+ * with an "All" option, so only their one division option is included.
  * Options are sorted by state then court name; divisions within a court are sorted
  * alphabetically by division name.
  *
@@ -329,11 +331,13 @@ export function getDistrictDivisionComboOptions(
       .get(district.courtId)!
       .sort((a, b) => a.courtDivisionName.localeCompare(b.courtDivisionName));
 
-    options.push({
-      value: `${district.courtId}|ALL`,
-      label: `${district.courtName} (All)`,
-      selectedLabel: `${district.courtName} (All)`,
-    });
+    if (divisions.length > 1) {
+      options.push({
+        value: `${district.courtId}|ALL`,
+        label: `${district.courtName} (All)`,
+        selectedLabel: `${district.courtName} (All)`,
+      });
+    }
 
     for (const div of divisions) {
       options.push({
@@ -545,6 +549,7 @@ export function autoUpgradeToAll(
     const allCodes = allDivisionsByDistrict.get(courtId);
     if (
       allCodes &&
+      allCodes.size > 1 &&
       selectedCodes.size === allCodes.size &&
       [...selectedCodes].every((c) => allCodes.has(c))
     ) {
