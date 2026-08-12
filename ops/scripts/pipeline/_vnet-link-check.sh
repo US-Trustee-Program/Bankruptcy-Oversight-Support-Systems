@@ -36,14 +36,17 @@
 #       vnet_link_already_exists_for "$rg" "$zone" "$vnetRg" "$vnetName"
 #       existingLink="${vnet_link_check_result}"
 #     NEVER via command substitution (`x=$(vnet_link_already_exists_for ...)`)
-#     — this function calls `exit` on a genuine failure, and `exit` inside a
-#     `$(...)` subshell only kills the subshell. Worse, under `set -e` a
-#     plain `var=$(cmd)` assignment's exit status is never checked (a
-#     well-known bash gotcha), so the parent script would silently continue
-#     with `vnet_link_check_result` unset instead of actually stopping —
-#     exactly the class of silent failure this check exists to prevent.
-#     Setting a global result variable instead of printing to stdout is what
-#     makes calling this safely, without a subshell, possible.
+#     — this function communicates via the global vnet_link_check_result
+#     variable rather than stdout specifically so it CAN be called this way;
+#     a subshell's mutation of a global never reaches the caller, so
+#     capturing it via `$(...)` would silently leave vnet_link_check_result
+#     unset (or stale from a previous call) in the parent shell regardless of
+#     exit-status handling — exactly the class of silent failure this check
+#     exists to prevent. (A bare, non-`local` `var=$(cmd)` assignment's exit
+#     status IS checked under `set -e` — it's specifically `local
+#     var=$(cmd)` that masks it, since `local`'s own status is what `-e`
+#     observes. That's not why this matters here, though: the subshell
+#     boundary breaks the global-variable contract regardless.)
 #
 #     Exits the whole script (via `exit 1`) rather than returning on: a
 #     genuine az CLI failure looking up the vnet or an existing link (auth
