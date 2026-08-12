@@ -1,16 +1,39 @@
 // Shared cross-scope resources for the app tier (CAMS-760, Option E / Slice 2).
 //
 // Deploys resources that are genuinely SHARED across main and every branch: the
-// app-config Key Vault (+ its managed identity, its own private DNS zone, and
-// per-secret role assignments) and the read-only SQL managed identity used by
-// the API and dataflows function apps. Always a plain (non-stack) deployment
-// for both main and branches — these resources must never be managed by a
-// branch's Deployment Stack. An earlier version wrapped the whole app deploy
-// (including these cross-scope resources) in a stack, and a branch teardown
-// deleted the shared Key Vault + ~15 role assignments (GH #2749). This template
-// must be deployed before main.bicep (which references the KV identity and SQL
+// app-config Key Vault (+ its managed identity, its own private DNS zone, its
+// vnet link, and per-secret role assignments), the webapp/api/dataflows
+// private DNS zone (privatelink.azurewebsites.us) — ZONE ONLY, not its vnet
+// link, see below — and the read-only SQL managed identity used by the API
+// and dataflows function apps. Always a plain (non-stack) deployment for both
+// main and branches — these resources must never be managed by a branch's
+// Deployment Stack. An earlier version wrapped the whole app deploy (including
+// these cross-scope resources) in a stack, and a branch teardown deleted the
+// shared Key Vault + ~15 role assignments (GH #2749). This template must be
+// deployed before main.bicep (which references the KV identity and SQL
 // identity by name/id, not by bicep dependency, since they now live in a
-// separate deployment).
+// separate deployment). Note network.bicep's subnets have no dependency on
+// either DNS zone and may deploy before or after this template.
+//
+// The webapp zone used to be created by network.bicep, which is deployed as
+// a Deployment Stack for branches — exactly the shape that got the shared KV
+// deleted (see above). deployDns=false already suppressed branches from ever
+// creating it there, but nothing ever created it in the new shared branch
+// network RG (rg-cams-network-dev) either, since only main's deployDns=true
+// path ever ran. Moving it here (always-plain, like the KV zone) lets every
+// branch's first deploy safely create-if-missing without stack risk.
+//
+// Unlike the KV zone, the webapp zone's vnet link is NOT created here. The
+// KV zone bundles zone+link+private-endpoint together because all three are
+// deployed together in ustp-cams-kv-app-config-setup.bicep, called from this
+// same plain deployment. The webapp zone has no private endpoint of its own
+// here — the webapp/api/dataflows private endpoints that actually need this
+// DNS resolution live in main.bicep, which IS a per-branch Deployment Stack
+// for branches. The webapp zone's link is named per-stack
+// (privatelink.azurewebsites.us-vnet-link-${stackName}), so it is safe to
+// create inside that stack instead (see main.bicep for the module and
+// rationale) — doing so makes the link self-cleaning on branch teardown,
+// removing the need for az-delete-branch-resources.sh to delete it by hand.
 targetScope = 'resourceGroup'
 
 import {
@@ -52,6 +75,15 @@ param privateDnsZoneSubscriptionId string = subscription().subscriptionId
 @description('Set true when the deploying pipeline has already confirmed a vnet link into the KV private DNS zone exists (see vnet-links.bicep) -- avoids a Conflict from trying to create a second, differently-named link.')
 param vnetLinkAlreadyExists bool = false
 
+// Not a param: nothing overrides it (the deploy script hardcodes the same
+// literal locally rather than passing it through -- see
+// azure-deploy-app-shared-setup.sh), and this value is also hardcoded in
+// az-delete-branch-resources.sh -- keep all three in lockstep by hand.
+// Matches the keyvaultPrivateDnsZoneName var in
+// ustp-cams-kv-app-config-setup.bicep, which uses the same non-overridable
+// shape for the same reason.
+var webappPrivateDnsZoneName = 'privatelink.azurewebsites.us'
+
 @description('Resource group containing the app-config Key Vault')
 param kvAppConfigResourceGroupName string
 
@@ -90,6 +122,26 @@ resource ustpVirtualNetwork 'Microsoft.Network/virtualNetworks@2023-11-01' exist
 resource privateEndpointSubnetExisting 'Microsoft.Network/virtualNetworks/subnets@2023-11-01' existing = {
   name: privateEndpointSubnetName
   parent: ustpVirtualNetwork
+}
+
+// The webapp/api/dataflows zone is shared the same way the KV zone is (one
+// zone shared across main and every branch) -- see the file header. Unlike
+// the KV zone, only the ZONE is created here now; its vnet link is a
+// per-branch-uniquely-named resource (webappPrivateDnsZoneName-vnet-link-${stackName})
+// and is instead created inside main.bicep, where it becomes stack-managed
+// and self-cleans on branch teardown (see main.bicep's ustpWebappDnsZoneLink
+// module for the rationale). createVnetLink: false suppresses the link here;
+// deployDns still governs whether the zone itself is created vs. looked up.
+module webappDnsZone './lib/network/private-dns-zones.bicep' = {
+  name: '${stackName}-webapp-dns-zone-module'
+  scope: resourceGroup(privateDnsZoneSubscriptionId, privateDnsZoneResourceGroup)
+  params: {
+    stackName: stackName
+    virtualNetworkId: ustpVirtualNetwork.id
+    privateDnsZoneName: webappPrivateDnsZoneName
+    deployDns: deployDns
+    createVnetLink: false
+  }
 }
 
 module kvSetup './ustp-cams-kv-app-config-setup.bicep' = {

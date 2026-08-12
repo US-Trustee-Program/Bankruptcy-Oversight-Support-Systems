@@ -249,6 +249,25 @@ function stack_exists() {
     az stack group list --resource-group "${rg}" --query "[?name=='${escapedName}'].id" -o tsv
 }
 
+# Shared by the KV and webapp private DNS zone vnet-link cleanup below --
+# same lookup-by-zone-and-stack-name / delete-if-found / log-if-not-found
+# shape for both zones. Explicit params (not closure-captured globals) to
+# match stack_exists's style above.
+function delete_vnet_link_if_exists() {
+    local zoneName=$1
+    local label=$2
+    local rg=$3
+    local stackName=$4
+    local id
+    id=$(az network private-dns link vnet list --resource-group "${rg}" --zone-name "${zoneName}" --query "[?name=='${zoneName}-vnet-link-${stackName}'].id" -o tsv)
+    if [[ -n "${id}" ]]; then
+        echo "Deleting ${label} private DNS zone vnet link ${zoneName}-vnet-link-${stackName} in ${rg}"
+        az resource delete --ids "${id}"
+    else
+        echo "No ${label} private DNS zone vnet link ${zoneName}-vnet-link-${stackName} found in ${rg}; nothing to delete"
+    fi
+}
+
 # Safety guard (CAMS-760, GH #2749). The hash-suffix check applies only to the
 # legacy per-branch path, where this script deletes the resource group
 # outright — it MUST be the per-branch, hash-suffixed RG, never a shared RG.
@@ -514,10 +533,10 @@ elif [[ "${netExists}" == "true" ]]; then
             az group delete -n "${network_rg}" --yes
         else
             # Shared network RG (Slice 2): the network stack never manages the
-            # KV private endpoint or its DNS zone vnet link — app-shared-setup.bicep
-            # creates both as a plain (non-stack) deployment, per-branch-named
-            # (pep-${stack_name} / <zone>-vnet-link-${stack_name}), both in the
-            # shared network RG (the zone itself lives there too — see
+            # KV private endpoint or the KV private DNS zone's vnet link —
+            # app-shared-setup.bicep creates both as a plain (non-stack)
+            # deployment, per-branch-named (pep-${stack_name} /
+            # <zone>-vnet-link-${stack_name}), in the shared network RG (see
             # app-shared-setup.bicep's privateDnsZoneResourceGroup, which
             # defaults to networkResourceGroupName, not the KV's own RG).
             # Unlike the per-branch path above (whole-RG delete sweeps these
@@ -525,13 +544,27 @@ elif [[ "${netExists}" == "true" ]]; then
             # explicitly here, BEFORE the stack delete: the PE still occupying
             # the private-endpoint subnet is exactly what makes `az stack
             # group delete` fail with InUseSubnetCannotBeDeleted.
-            # Matches keyvaultPrivateDnsZoneName in
-            # ustp-cams-kv-app-config-setup.bicep — that's the only other
-            # place this literal appears. Can't share it across bash/bicep
-            # without a codegen step, so keep both in lockstep by hand: if
-            # one changes, this vnet-link lookup silently stops matching and
-            # falls to the "nothing to delete" branch, leaking the link.
+            #
+            # The webapp/api/dataflows zone's vnet link is DIFFERENT since
+            # CAMS-760: its creation moved from app-shared-setup.bicep into
+            # main.bicep's ustpWebappDnsZoneLink module, so it's now managed
+            # by this branch's APP stack (appStack, deleted earlier above)
+            # and self-cleans on that stack's teardown. The
+            # delete_vnet_link_if_exists call for it below is therefore
+            # normally a no-op by the time we get here — it stays only as
+            # defense-in-depth for cases where the app stack delete failed
+            # above, or ran with unmanage semantics that don't remove this
+            # link, rather than as this link's primary cleanup path.
+            #
+            # Matches keyvaultPrivateDnsZoneName / webappPrivateDnsZoneName in
+            # ustp-cams-kv-app-config-setup.bicep / app-shared-setup.bicep —
+            # those are the only other places these literals appear. Can't
+            # share them across bash/bicep without a codegen step, so keep
+            # all in lockstep by hand: if one changes, its vnet-link lookup
+            # silently stops matching and falls to the "nothing to delete"
+            # branch, leaking the link.
             kvPrivateDnsZoneName='privatelink.vaultcore.usgovcloudapi.net'
+            webappPrivateDnsZoneName='privatelink.azurewebsites.us'
             pepName="pep-${stack_name}"
             pepId=$(az resource list -g "${network_rg}" --resource-type Microsoft.Network/privateEndpoints --query "[?name=='${pepName}'].id" -o tsv)
             if [[ -n "${pepId}" ]]; then
@@ -540,13 +573,8 @@ elif [[ "${netExists}" == "true" ]]; then
             else
                 echo "No KV private endpoint ${pepName} found in ${network_rg}; nothing to delete"
             fi
-            vnetLinkId=$(az network private-dns link vnet list --resource-group "${network_rg}" --zone-name "${kvPrivateDnsZoneName}" --query "[?name=='${kvPrivateDnsZoneName}-vnet-link-${stack_name}'].id" -o tsv)
-            if [[ -n "${vnetLinkId}" ]]; then
-                echo "Deleting KV private DNS zone vnet link ${kvPrivateDnsZoneName}-vnet-link-${stack_name} in ${network_rg}"
-                az resource delete --ids "${vnetLinkId}"
-            else
-                echo "No KV private DNS zone vnet link ${kvPrivateDnsZoneName}-vnet-link-${stack_name} found in ${network_rg}; nothing to delete"
-            fi
+            delete_vnet_link_if_exists "${kvPrivateDnsZoneName}" "KV" "${network_rg}" "${stack_name}"
+            delete_vnet_link_if_exists "${webappPrivateDnsZoneName}" "webapp" "${network_rg}" "${stack_name}"
 
             # Captured as its own statement (not inline inside the `[[ ]]`
             # test below) so a real stack_exists CLI failure aborts this
