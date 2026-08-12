@@ -190,11 +190,20 @@ fi
 # error when the SAME branch redeploys while its own prior deployment to
 # that name is still active — that one prints no literal "409" anywhere in
 # the CLI output, so it needs its own pattern. Only retries when the
-# captured output actually looks like one of these two; a genuine
-# template/validation error fails immediately instead of silently burning
-# ~45s of pointless retries first. Output is captured (not streamed live)
-# so it can be inspected before deciding whether to retry, then echoed in
-# full either way so it's still visible in CI logs.
+# captured output actually looks like one of these two named shapes — NOT a
+# bare "409", which used to be a third alternative here but is too broad: a
+# genuine vnet-link Conflict (e.g. a concurrent branch/main deploy creating
+# the same link between this script's existence check and this deployment
+# call, now a real possibility since every branch shares this RG) is also
+# reported as a 409, and deployment_parameters' vnetLinkAlreadyExists is
+# computed once, before this retry loop even starts — so retrying that case
+# would just resend the same stale value and hit the identical Conflict
+# again, burning attempts before failing with a message that obscures the
+# real cause. A genuine template/validation error (or an unrecognized 409)
+# fails immediately instead of silently burning ~45s of pointless retries
+# first. Output is captured (not streamed live) so it can be inspected
+# before deciding whether to retry, then echoed in full either way so it's
+# still visible in CI logs.
 function az_deploy_with_retry_func() {
     local maxAttempts=3
     local attempt=1
@@ -210,7 +219,7 @@ function az_deploy_with_retry_func() {
         if [[ ${rc} -eq 0 ]]; then
             return 0
         fi
-        if [[ ${attempt} -ge ${maxAttempts} ]] || ! grep -qi "AnotherOperationInProgress\|409\|DeploymentActive" <<< "${output}"; then
+        if [[ ${attempt} -ge ${maxAttempts} ]] || ! grep -qi "AnotherOperationInProgress\|DeploymentActive" <<< "${output}"; then
             echo "ERROR: deployment failed after ${attempt} attempt(s)." >&2
             return 1
         fi
