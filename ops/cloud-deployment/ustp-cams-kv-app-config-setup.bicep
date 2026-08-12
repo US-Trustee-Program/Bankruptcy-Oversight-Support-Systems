@@ -74,9 +74,14 @@ param privateDnsZoneResourceGroup string = resourceGroup().name
 @description('Subscription of target Private DNS Zone. Defaults to subscription of current deployment')
 param privateDnsZoneSubscriptionId string = subscription().subscriptionId
 
+@description('Set true when the deploying pipeline has already confirmed a vnet link into this zone exists (see vnet-links.bicep) -- avoids a Conflict from trying to create a second, differently-named link.')
+param vnetLinkAlreadyExists bool = false
+
 // Also hardcoded in az-delete-branch-resources.sh (kvPrivateDnsZoneName) to
-// find and delete this zone's per-branch vnet link during teardown — can't
-// share the literal across bash/bicep, keep both in lockstep by hand.
+// find and delete this zone's per-branch vnet link during teardown, and in
+// azure-deploy-app-shared-setup.sh (kvPrivateDnsZoneName) to check for an
+// existing vnet link before deploying — three copies total, can't share the
+// literal across bash/bicep, keep all three in lockstep by hand.
 var keyvaultPrivateDnsZoneName = 'privatelink.vaultcore.usgovcloudapi.net'
 
 @description('Application Configuration network access control settings')
@@ -221,9 +226,22 @@ module ustpPrivateDnsZone './lib/network/private-dns-zones.bicep' = {
     virtualNetworkId: ustpVirtualNetwork.id
     privateDnsZoneName: keyvaultPrivateDnsZoneName
     deployDns: deployDns
+    vnetLinkAlreadyExists: vnetLinkAlreadyExists
   }
 }
 
+// dependsOn is required here, not just implied by the matching
+// privateDnsZoneName/ResourceGroup/SubscriptionId params: this module's
+// subnet-private-endpoint.bicep resolves the zone via a plain `existing`
+// lookup by name/scope, which Bicep does NOT treat as a dependency edge (only
+// referencing a module's own symbolic outputs, e.g. ustpPrivateDnsZone.id,
+// would). Without this, ARM has no guarantee it creates the zone (module
+// ustpPrivateDnsZone above, when deployDns=true) before this module's DNS
+// zone group tries to reference it -- harmless as long as the zone always
+// already existed (main's has, for years), but a genuine race the first time
+// a branch's deploy creates it fresh in this same deployment (CAMS-760
+// zone-bootstrap fix). Confirmed live 2026-08-12: InvalidPrivateDnsZoneIds
+// when the race was lost.
 module appConfigKeyvaultPrivateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
   name: '${stackName}-kv-app-config-module'
   scope: resourceGroup(networkResourceGroup)
@@ -238,4 +256,7 @@ module appConfigKeyvaultPrivateEndpoint './lib/network/subnet-private-endpoint.b
     privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
     tags: tags
   }
+  dependsOn: [
+    ustpPrivateDnsZone
+  ]
 }
