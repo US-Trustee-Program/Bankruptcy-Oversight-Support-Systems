@@ -8,6 +8,11 @@ import {
   autoUpgradeToAll,
   resolveCombinedSelections,
   getUserDivisionCodes,
+  getDistrictDivisionComboOptions,
+  groupDivisionsByDistrict,
+  separateDefaultOptions,
+  sortTrusteeAppointments,
+  encodeDivisionCodes,
 } from './court-utils';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
@@ -280,6 +285,48 @@ describe('court-utils', () => {
         expect(sorted.map((i) => i.appointmentType)).toEqual(['elected', 'off-panel', 'panel']);
       });
 
+      test('should skip chapter/appointmentType comparison when one side is missing the field', () => {
+        const items = [
+          {
+            state: 'NY',
+            courtName: 'Southern District of New York',
+            courtDivisionName: 'Manhattan',
+            chapter: '7',
+            appointmentType: 'panel',
+          },
+          {
+            state: 'NY',
+            courtName: 'Southern District of New York',
+            courtDivisionName: 'Manhattan',
+          },
+        ];
+
+        const sorted = sortByCourtLocation(items, { includeAppointmentDetails: true });
+
+        expect(sorted).toEqual(items);
+      });
+
+      test('should handle a non-numeric chapter by treating it as chapter 0 for sorting', () => {
+        const items = [
+          {
+            state: 'NY',
+            courtName: 'Southern District of New York',
+            courtDivisionName: 'Manhattan',
+            chapter: '7',
+          },
+          {
+            state: 'NY',
+            courtName: 'Southern District of New York',
+            courtDivisionName: 'Manhattan',
+            chapter: 'unknown',
+          },
+        ];
+
+        const sorted = sortByCourtLocation(items, { includeAppointmentDetails: true });
+
+        expect(sorted.map((i) => i.chapter)).toEqual(['unknown', '7']);
+      });
+
       test('should not sort by chapter/appointmentType when includeAppointmentDetails is false', () => {
         const items = [
           {
@@ -337,6 +384,18 @@ describe('court-utils', () => {
         expect(sorted[1].state).toBe('CA');
       });
 
+      test('should treat two items both missing state as equal on that field', () => {
+        const items = [
+          { courtName: 'Southern District of New York', courtDivisionName: 'White Plains' },
+          { courtName: 'Southern District of New York', courtDivisionName: 'Manhattan' },
+        ];
+
+        const sorted = sortByCourtLocation(items);
+
+        // Falls through to division-name comparison since both states are missing
+        expect(sorted.map((i) => i.courtDivisionName)).toEqual(['Manhattan', 'White Plains']);
+      });
+
       test('should handle missing courtName field', () => {
         const items = [
           { state: 'NY', courtDivisionName: 'Manhattan' },
@@ -354,6 +413,18 @@ describe('court-utils', () => {
         expect(sorted[1].courtName).toBe('Southern District of New York');
       });
 
+      test('should treat two items both missing courtName as equal on that field', () => {
+        const items = [
+          { state: 'NY', courtDivisionName: 'White Plains' },
+          { state: 'NY', courtDivisionName: 'Manhattan' },
+        ];
+
+        const sorted = sortByCourtLocation(items);
+
+        // Falls through to division-name comparison since both courtNames are missing
+        expect(sorted.map((i) => i.courtDivisionName)).toEqual(['Manhattan', 'White Plains']);
+      });
+
       test('should handle missing courtDivisionName field', () => {
         const items = [
           { state: 'NY', courtName: 'Southern District of New York' },
@@ -369,6 +440,18 @@ describe('court-utils', () => {
         // Empty division sorts first within same court
         expect(sorted[0].courtDivisionName).toBeUndefined();
         expect(sorted[1].courtDivisionName).toBe('Manhattan');
+      });
+
+      test('should treat two items both missing courtDivisionName as equal on that field', () => {
+        const items = [
+          { state: 'NY', courtName: 'Southern District of New York', chapter: '13' },
+          { state: 'NY', courtName: 'Southern District of New York', chapter: '7' },
+        ];
+
+        const sorted = sortByCourtLocation(items, { includeAppointmentDetails: true });
+
+        // Falls through to chapter comparison since both courtDivisionNames are missing
+        expect(sorted.map((i) => i.chapter)).toEqual(['7', '13']);
       });
 
       test('should not mutate the original array', () => {
@@ -602,6 +685,335 @@ describe('court-utils', () => {
     });
   });
 
+  describe('groupDivisionsByDistrict', () => {
+    test('groups multiple divisions under their shared courtId', () => {
+      const courts: CourtDivisionDetails[] = [
+        {
+          officeName: 'Manhattan',
+          officeCode: '081-M',
+          courtId: 'NYSB',
+          courtName: 'Southern District of New York',
+          courtDivisionCode: '081',
+          courtDivisionName: 'Manhattan',
+          groupDesignator: 'NY',
+          regionId: '02',
+          regionName: 'Region 2',
+          state: 'NY',
+        },
+        {
+          officeName: 'White Plains',
+          officeCode: '087-W',
+          courtId: 'NYSB',
+          courtName: 'Southern District of New York',
+          courtDivisionCode: '087',
+          courtDivisionName: 'White Plains',
+          groupDesignator: 'NY',
+          regionId: '02',
+          regionName: 'Region 2',
+          state: 'NY',
+        },
+        {
+          officeName: 'Rutland',
+          officeCode: '088-R',
+          courtId: 'VTB',
+          courtName: 'District of Vermont',
+          courtDivisionCode: '088',
+          courtDivisionName: 'Rutland',
+          groupDesignator: 'VT',
+          regionId: '01',
+          regionName: 'Region 1',
+          state: 'VT',
+        },
+      ];
+
+      const grouped = groupDivisionsByDistrict(courts);
+
+      expect(grouped.size).toBe(2);
+      expect(grouped.get('NYSB')?.map((d) => d.courtDivisionCode)).toEqual(['081', '087']);
+      expect(grouped.get('VTB')?.map((d) => d.courtDivisionCode)).toEqual(['088']);
+    });
+
+    test('returns an empty map for an empty input', () => {
+      expect(groupDivisionsByDistrict([]).size).toBe(0);
+    });
+  });
+
+  describe('separateDefaultOptions', () => {
+    const options = [
+      { value: '081', label: 'Manhattan' },
+      { value: '088', label: 'Rutland' },
+      { value: '089', label: 'Los Angeles' },
+    ];
+
+    test('places default options first, marked with isAriaDefault', () => {
+      const result = separateDefaultOptions(options, new Set(['081', '088']));
+
+      expect(result.map((o) => o.value)).toEqual(['081', '088', '089']);
+      expect(result[0].isAriaDefault).toBe(true);
+      expect(result[1].isAriaDefault).toBe(true);
+      expect(result[2].isAriaDefault).toBeUndefined();
+    });
+
+    test('adds a divider to the last default only when non-defaults follow', () => {
+      const result = separateDefaultOptions(options, new Set(['081', '088']));
+
+      expect(result[0].divider).toBe(false);
+      expect(result[1].divider).toBe(true);
+    });
+
+    test('does not add a divider to the last default when there are no non-defaults', () => {
+      const allDefaults = options.slice(0, 2);
+      const result = separateDefaultOptions(allDefaults, new Set(['081', '088']));
+
+      expect(result.every((o) => !o.divider)).toBe(true);
+    });
+
+    test('matches a comma-separated option value against any contained default code', () => {
+      const comboOptions = [{ value: '081,087', label: 'Southern District of New York (All)' }];
+
+      const result = separateDefaultOptions(comboOptions, new Set(['087']));
+
+      expect(result[0].isAriaDefault).toBe(true);
+    });
+
+    test('returns all options as non-defaults when defaultValues is empty', () => {
+      const result = separateDefaultOptions(options, new Set());
+
+      expect(result).toEqual(options);
+      expect(result.every((o) => o.isAriaDefault === undefined)).toBe(true);
+    });
+  });
+
+  describe('sortTrusteeAppointments', () => {
+    test('sorts by state name parsed from courtName', () => {
+      const appointments = [
+        MockData.getTrusteeAppointment({ courtName: 'Southern District of New York' }),
+        MockData.getTrusteeAppointment({ courtName: 'District of Nevada' }),
+      ];
+
+      const sorted = sortTrusteeAppointments(appointments);
+
+      expect(sorted.map((a) => a.courtName)).toEqual([
+        'District of Nevada',
+        'Southern District of New York',
+      ]);
+    });
+
+    test('sorts by region within the same state when states match', () => {
+      const appointments = [
+        MockData.getTrusteeAppointment({ courtName: 'Western District of New York' }),
+        MockData.getTrusteeAppointment({ courtName: 'Eastern District of New York' }),
+      ];
+
+      const sorted = sortTrusteeAppointments(appointments);
+
+      expect(sorted.map((a) => a.courtName)).toEqual([
+        'Eastern District of New York',
+        'Western District of New York',
+      ]);
+    });
+
+    test('sorts by chapter number within the same state and region', () => {
+      const appointments = [
+        MockData.getTrusteeAppointment({ courtName: 'District of Vermont', chapter: '13' }),
+        MockData.getTrusteeAppointment({ courtName: 'District of Vermont', chapter: '7' }),
+      ];
+
+      const sorted = sortTrusteeAppointments(appointments);
+
+      expect(sorted.map((a) => a.chapter)).toEqual(['7', '13']);
+    });
+
+    test('sorts by appointment type within the same state, region, and chapter', () => {
+      const appointments = [
+        MockData.getTrusteeAppointment({
+          courtName: 'District of Vermont',
+          chapter: '7',
+          appointmentType: 'panel',
+        }),
+        MockData.getTrusteeAppointment({
+          courtName: 'District of Vermont',
+          chapter: '7',
+          appointmentType: 'elected',
+        }),
+      ];
+
+      const sorted = sortTrusteeAppointments(appointments);
+
+      expect(sorted.map((a) => a.appointmentType)).toEqual(['elected', 'panel']);
+    });
+
+    test('parses courtName with no region prefix as an empty region', () => {
+      const appointments = [
+        MockData.getTrusteeAppointment({ courtName: 'District of Vermont' }),
+        MockData.getTrusteeAppointment({ courtName: 'Eastern District of Vermont' }),
+      ];
+
+      const sorted = sortTrusteeAppointments(appointments);
+
+      // Empty region ('') sorts before 'Eastern'
+      expect(sorted.map((a) => a.courtName)).toEqual([
+        'District of Vermont',
+        'Eastern District of Vermont',
+      ]);
+    });
+
+    test('falls back to courtId when courtName is not present', () => {
+      const appointments = [
+        MockData.getTrusteeAppointment({ courtName: undefined, courtId: '0208' }),
+      ];
+
+      const sorted = sortTrusteeAppointments(appointments);
+
+      expect(sorted).toHaveLength(1);
+      expect(sorted[0].courtId).toBe('0208');
+    });
+
+    test('does not mutate the original array', () => {
+      const appointments = [
+        MockData.getTrusteeAppointment({ courtName: 'Southern District of New York' }),
+        MockData.getTrusteeAppointment({ courtName: 'District of Nevada' }),
+      ];
+      const originalOrder = [...appointments];
+
+      sortTrusteeAppointments(appointments);
+
+      expect(appointments).toEqual(originalOrder);
+    });
+  });
+
+  describe('encodeDivisionCodes', () => {
+    const courts: CourtDivisionDetails[] = [
+      {
+        officeName: 'Manhattan',
+        officeCode: '081-M',
+        courtId: 'NYSB',
+        courtName: 'Southern District of New York',
+        courtDivisionCode: '081',
+        courtDivisionName: 'Manhattan',
+        groupDesignator: 'NY',
+        regionId: '02',
+        regionName: 'Region 2',
+        state: 'NY',
+      },
+      {
+        officeName: 'White Plains',
+        officeCode: '087-W',
+        courtId: 'NYSB',
+        courtName: 'Southern District of New York',
+        courtDivisionCode: '087',
+        courtDivisionName: 'White Plains',
+        groupDesignator: 'NY',
+        regionId: '02',
+        regionName: 'Region 2',
+        state: 'NY',
+      },
+    ];
+
+    test('returns undefined for an empty selection', () => {
+      expect(encodeDivisionCodes([], courts)).toBeUndefined();
+    });
+
+    test('returns the specific code for a non-ALL selection', () => {
+      expect(encodeDivisionCodes([{ value: 'NYSB|081', label: 'Manhattan' }], courts)).toEqual([
+        '081',
+      ]);
+    });
+
+    test('expands an ALL selection to every division code for that court', () => {
+      const result = encodeDivisionCodes([{ value: 'NYSB|ALL', label: 'All' }], courts);
+      expect(result).toEqual(expect.arrayContaining(['081', '087']));
+      expect(result).toHaveLength(2);
+    });
+
+    test('returns undefined when an ALL selection matches no courts', () => {
+      const result = encodeDivisionCodes([{ value: 'ZZZ|ALL', label: 'All' }], courts);
+      expect(result).toBeUndefined();
+    });
+
+    test('de-duplicates codes when ALL overlaps with a specific selection', () => {
+      const result = encodeDivisionCodes(
+        [
+          { value: 'NYSB|ALL', label: 'All' },
+          { value: 'NYSB|081', label: 'Manhattan' },
+        ],
+        courts,
+      );
+      expect(result).toEqual(expect.arrayContaining(['081', '087']));
+      expect(result).toHaveLength(2);
+    });
+  });
+
+  describe('getDistrictDivisionComboOptions', () => {
+    const multiDivisionCourts: CourtDivisionDetails[] = [
+      {
+        officeName: 'Manhattan',
+        officeCode: '081-M',
+        courtId: 'NYSB',
+        courtName: 'Southern District of New York',
+        courtDivisionCode: '081',
+        courtDivisionName: 'Manhattan',
+        groupDesignator: 'NY',
+        regionId: '02',
+        regionName: 'Region 2',
+        state: 'NY',
+      },
+      {
+        officeName: 'White Plains',
+        officeCode: '087-W',
+        courtId: 'NYSB',
+        courtName: 'Southern District of New York',
+        courtDivisionCode: '087',
+        courtDivisionName: 'White Plains',
+        groupDesignator: 'NY',
+        regionId: '02',
+        regionName: 'Region 2',
+        state: 'NY',
+      },
+    ];
+
+    const singleDivisionCourt: CourtDivisionDetails[] = [
+      {
+        officeName: 'Rutland',
+        officeCode: '088-R',
+        courtId: 'VTB',
+        courtName: 'District of Vermont',
+        courtDivisionCode: '088',
+        courtDivisionName: 'Rutland',
+        groupDesignator: 'VT',
+        regionId: '01',
+        regionName: 'Region 1',
+        state: 'VT',
+      },
+    ];
+
+    test('includes an "(All)" option and each division for a multi-division district', () => {
+      const options = getDistrictDivisionComboOptions(multiDivisionCourts);
+
+      expect(options).toHaveLength(3);
+      expect(options.map((o) => o.value)).toEqual(['NYSB|ALL', 'NYSB|081', 'NYSB|087']);
+    });
+
+    test('omits the "(All)" option for a single-division district, even alongside a multi-division district', () => {
+      const soloOptions = getDistrictDivisionComboOptions(singleDivisionCourt);
+      expect(soloOptions).toEqual([
+        {
+          value: 'VTB|088',
+          label: 'District of Vermont (Rutland)',
+          selectedLabel: 'District of Vermont (Rutland)',
+        },
+      ]);
+
+      const mixedOptions = getDistrictDivisionComboOptions([
+        ...multiDivisionCourts,
+        ...singleDivisionCourt,
+      ]);
+      expect(mixedOptions.find((o) => o.value === 'VTB|ALL')).toBeUndefined();
+      expect(mixedOptions.find((o) => o.value === 'VTB|088')).toBeDefined();
+      expect(mixedOptions.find((o) => o.value === 'NYSB|ALL')).toBeDefined();
+    });
+  });
+
   describe('buildDivisionsDisplay', () => {
     const alaskaCourts: CourtDivisionDetails[] = [
       {
@@ -684,6 +1096,11 @@ describe('court-utils', () => {
     test('should look up name from divisionCode when courts data is available', () => {
       const result = buildDivisionsDisplay({ courtId: '097', divisionCode: '711' }, alaskaCourts);
       expect(result).toBe('Nome');
+    });
+
+    test('should fall back to raw divisionCode when the code is not found in courts data', () => {
+      const result = buildDivisionsDisplay({ courtId: '097', divisionCode: '999' }, alaskaCourts);
+      expect(result).toBe('999');
     });
 
     test('should fall back to raw divisionCode when courts data is empty', () => {
@@ -797,20 +1214,29 @@ describe('autoUpgradeToAll', () => {
     expect(result.find((s) => s.value === 'NYSB|ALL')).toBeUndefined();
   });
 
-  test('upgrades only the fully-selected district, leaves others unchanged', () => {
+  test('upgrades only the fully-selected multi-division district, leaves single-division district unchanged', () => {
     const selections: ComboOption[] = [
       { value: 'NYSB|081', label: 'Southern District of New York (Manhattan)' },
       { value: 'NYSB|087', label: 'Southern District of New York (White Plains)' },
       { value: 'VTB|088', label: 'District of Vermont (Rutland)' },
     ];
     const result = autoUpgradeToAll(selections, allDistricts);
-    // VTB has only one division, so it gets upgraded too
     // NYSB gets upgraded since both divisions selected
+    // VTB has only one division, so it is never upgraded to ALL
     expect(result.find((s) => s.value === 'NYSB|ALL')).toBeDefined();
-    expect(result.find((s) => s.value === 'VTB|ALL')).toBeDefined();
+    expect(result.find((s) => s.value === 'VTB|ALL')).toBeUndefined();
     expect(result.find((s) => s.value === 'NYSB|081')).toBeUndefined();
     expect(result.find((s) => s.value === 'NYSB|087')).toBeUndefined();
-    expect(result.find((s) => s.value === 'VTB|088')).toBeUndefined();
+    expect(result.find((s) => s.value === 'VTB|088')).toBeDefined();
+  });
+
+  test('never upgrades a single-division district to ALL', () => {
+    const selections: ComboOption[] = [
+      { value: 'VTB|088', label: 'District of Vermont (Rutland)' },
+    ];
+    const result = autoUpgradeToAll(selections, allDistricts);
+    expect(result).toEqual(selections);
+    expect(result.find((s) => s.value === 'VTB|ALL')).toBeUndefined();
   });
 
   test('returns selections unchanged when ALL already selected', () => {
@@ -947,5 +1373,36 @@ describe('getUserDivisionCodes', () => {
     };
     const codes = getUserDivisionCodes(session);
     expect(codes).toEqual(new Set(['081', '087', '088']));
+  });
+
+  test('skips a division with an empty divisionCode', () => {
+    const session: CamsSession = {
+      ...MockData.getCamsSession(),
+      user: {
+        ...MockData.getCamsSession().user,
+        offices: [
+          {
+            officeCode: '081',
+            officeName: 'Manhattan',
+            idpGroupName: 'Manhattan',
+            regionId: '02',
+            regionName: 'New York',
+            groups: [
+              {
+                groupDesignator: 'NY',
+                divisions: [
+                  {
+                    divisionCode: '',
+                    court: { courtId: 'NYSB', courtName: 'SDNY' },
+                    courtOffice: { courtOfficeCode: '081', courtOfficeName: 'Manhattan' },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    };
+    expect(getUserDivisionCodes(session).size).toBe(0);
   });
 });
