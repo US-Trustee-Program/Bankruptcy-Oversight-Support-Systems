@@ -160,7 +160,7 @@ for param in ${extra_parameters}; do
     esac
 done
 
-vnet_link_already_exists_for "${private_dns_zone_rg}" "${kvPrivateDnsZoneName}" "${network_rg}" "${vnet_name}" "${private_dns_zone_subscription_id}"
+vnet_link_already_exists_for "${private_dns_zone_rg}" "${kvPrivateDnsZoneName}" "${network_rg}" "${vnet_name}" "${stack_name}" "${private_dns_zone_subscription_id}"
 existingLink="${vnet_link_check_result}"
 vnet_link_already_exists=false
 if [[ -n "${existingLink}" ]]; then

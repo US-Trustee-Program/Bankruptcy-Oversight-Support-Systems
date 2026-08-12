@@ -23,10 +23,26 @@
 # a different formula.
 #
 # Exports:
-#   vnet_link_already_exists_for ZONE_RG ZONE_NAME VNET_RG VNET_NAME [SUBSCRIPTION_ID]
+#   vnet_link_already_exists_for ZONE_RG ZONE_NAME VNET_RG VNET_NAME STACK_NAME [SUBSCRIPTION_ID]
 #     Sets vnet_link_check_result to the matched link's name, or empty string
-#     if no link exists anywhere (the target zone, or any other same-named
-#     zone in the subscription) and it's safe for the caller to create one.
+#     if no CONFLICTING link exists anywhere (the target zone, or any other
+#     same-named zone in the subscription) and it's safe for the caller's
+#     template to (re-)create its own link. STACK_NAME is the caller's own
+#     stackName, used to compute its own expected link name
+#     (${ZONE_NAME}-vnet-link-${STACK_NAME}, matching vnet-links.bicep's
+#     naming) — a match on that specific name is this same template's own
+#     link from a prior run, not a conflict, and must NOT set the result.
+#     Confirmed live 2026-08-12: getting this wrong isn't just a false-
+#     positive nuisance. For a caller whose template is deployed as an Azure
+#     Deployment Stack with --action-on-unmanage deleteResources
+#     (main.bicep's branch path, via azure-deploy.sh), wrongly setting
+#     vnetLinkAlreadyExists=true for the stack's OWN link (found by this
+#     same check on the stack's own prior deploy) flips that link's Bicep
+#     condition to false, dropping it out of the template — which the stack
+#     then deletes as "unmanaged." The next deploy finds nothing and
+#     recreates it; the one after deletes it again, oscillating on every
+#     other redeploy of a branch and silently breaking DNS resolution until
+#     a push happens to land on a "create" cycle.
 #     SUBSCRIPTION_ID is optional; pass an empty string or omit it to use the
 #     CLI's current default subscription — `az ... --subscription ""` is a
 #     malformed call, so this deliberately omits the flag entirely rather
@@ -38,7 +54,7 @@
 #     misleading error on exactly the deploy path this exists to support.
 #
 #     MUST be called as a plain statement, e.g.
-#       vnet_link_already_exists_for "$rg" "$zone" "$vnetRg" "$vnetName"
+#       vnet_link_already_exists_for "$rg" "$zone" "$vnetRg" "$vnetName" "$stackName"
 #       existingLink="${vnet_link_check_result}"
 #     NEVER via command substitution (`x=$(vnet_link_already_exists_for ...)`)
 #     — this function communicates via the global vnet_link_check_result
@@ -96,7 +112,9 @@ vnet_link_already_exists_for() {
   local zoneName=$2
   local vnetRg=$3
   local vnetName=$4
-  local subscriptionId="${5:-}"
+  local stackName=$5
+  local subscriptionId="${6:-}"
+  local ownLinkName="${zoneName}-vnet-link-${stackName}"
 
   local subscriptionArg=""
   if [[ -n "${subscriptionId}" ]]; then
@@ -148,6 +166,19 @@ vnet_link_already_exists_for() {
   fi
 
   if [[ -n "${existingLink}" ]]; then
+    if [[ "${existingLink}" == "${ownLinkName}" ]]; then
+      # This IS the caller's own link, from a prior successful run of this
+      # same template (matched by vnet ID, which doesn't distinguish "mine"
+      # from "a stray" on its own) — not a conflict. Recreating a resource
+      # under the SAME name is an idempotent PUT, so letting the template
+      # re-include it is harmless for a plain deployment and, for a
+      # Deployment Stack caller, is what keeps it "managed" instead of
+      # oscillating out of the template and getting deleted (see the
+      # oscillation note in vnet_link_check_result's docs above).
+      # shellcheck disable=SC2034 # REASON: read by callers in other sourcing scripts, not within this file
+      vnet_link_check_result=""
+      return
+    fi
     # shellcheck disable=SC2034 # REASON: read by callers in other sourcing scripts, not within this file
     vnet_link_check_result="${existingLink}"
     return
