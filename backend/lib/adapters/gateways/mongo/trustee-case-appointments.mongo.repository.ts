@@ -34,7 +34,7 @@ const TRUSTEE_COLLECTION = 'trustee-case-appointments';
 
 const CASES_COLLECTION = 'cases';
 
-const { using, and } = QueryBuilder;
+const { using, and, orderBy } = QueryBuilder;
 const { source } = QueryPipeline;
 
 const apptDoc = source<CaseAppointmentDocument>(TRUSTEE_COLLECTION);
@@ -51,6 +51,19 @@ function assertValidChapter(chapter: string | undefined): void {
       data: { chapter },
     });
   }
+}
+
+// The Mongo driver returns raw documents including Mongo's own _id, which is not part of the
+// CaseAppointment type but is present at runtime and not stripped by the driver itself. That _id
+// is only ever valid within the partition it was read from — a case may exist in two partitions
+// (case-keyed and trustee-keyed), each with its own, independently-assigned _id — so a document
+// read from one partition must never be spread into a write targeting either partition. Strip it
+// here, at the read boundary, so it never leaks into any downstream caller's write payload; this
+// is the fix for a leaked-_id bug that was previously patched only at one specific write call
+// site (updateCaseAppointment) rather than at its actual source.
+function stripMongoId(document: CaseAppointmentDocument): CaseAppointment {
+  const { _id: _mongoId, ...rest } = document as CaseAppointmentDocument & { _id?: unknown };
+  return rest;
 }
 
 export type CaseAppointmentDocument = CaseAppointment & {
@@ -127,7 +140,8 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
         doc('documentType').equals('CASE_APPOINTMENT'),
         doc('caseId').equals(caseId),
       );
-      return await this.casePartition.adapter<CaseAppointmentDocument>().find(query);
+      const results = await this.casePartition.adapter<CaseAppointmentDocument>().find(query);
+      return results.map(stripMongoId);
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: `Failed to retrieve case appointments for case ${caseId}.`,
@@ -141,6 +155,16 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
    * real active appointment and with each other on the same case. `isSurrogate` uses `$ne`
    * (via notEqual), which matches documents where the field is absent as well as `false` —
    * required so rows written before this field existed are still treated as real.
+   *
+   * Sorted by assignedOn DESCENDING so that if more than one active appointment ever exists for
+   * a case (a known, currently-unprevented race between concurrent writers resolving the same
+   * case to different trustees — see CAMS-809's dual-active-appointment discussion), this
+   * deterministically returns the MOST RECENTLY ASSIGNED one as authoritative, rather than an
+   * arbitrary or stale row that can vary between calls. assignedOn is the court's own
+   * appointment date (event.appointedDate), not a Cosmos write timestamp, making it the correct
+   * domain tiebreaker — and it's still the same field the existing {caseId, assignedOn} index
+   * below was built to serve, so only the sort direction changed; the query remains fully
+   * index-seekable.
    */
   async getActiveByCaseId(caseId: string): Promise<CaseAppointment | null> {
     try {
@@ -152,7 +176,11 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
         doc('trusteeId').notEqual(SENTINEL_TRUSTEE_ID),
         doc('isSurrogate').notEqual(true),
       );
-      return await this.casePartition.adapter<CaseAppointmentDocument>().findOne(query);
+      const sort = orderBy<CaseAppointmentDocument>(['assignedOn', 'DESCENDING']);
+      const results = await this.casePartition
+        .adapter<CaseAppointmentDocument>()
+        .find(query, sort, 1);
+      return results[0] ? stripMongoId(results[0]) : null;
     } catch (originalError) {
       if (isNotFoundError(originalError)) return null;
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
@@ -305,9 +333,18 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
   ): Promise<CaseAppointment> {
     assertValidChapter(appointment.chapter);
 
+    // Defensive strip: CaseAppointmentInput's declared type has no _id field, but TypeScript's
+    // excess-property check only fires on object literals, not variables — a caller spreading a
+    // raw read result into this parameter would carry _id through undetected otherwise. See
+    // stripMongoId's comment for why this partition's _id must never leak into either partition's
+    // replaceOne payload below.
+    const { _id: _mongoId, ...appointmentWithoutMongoId } = appointment as (
+      CaseAppointmentInput | CaseAppointmentMigrationInput
+    ) & { _id?: unknown };
+
     // Compute caseStatus whenever dateFiled is present (i.e. a migrated/enriched doc).
     const appointmentWithStatus: CaseAppointmentInput & { caseStatus?: 'OPEN' | 'CLOSED' } = {
-      ...appointment,
+      ...appointmentWithoutMongoId,
     };
     if (appointment.dateFiled) {
       appointmentWithStatus.caseStatus = isCaseClosed(appointment) ? 'CLOSED' : 'OPEN';
@@ -361,8 +398,21 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
   async updateCaseAppointment(appointment: CaseAppointment): Promise<CaseAppointment> {
     assertValidChapter(appointment.chapter);
 
+    // getActiveByCaseId/getByCaseId strip Mongo's own _id at the read boundary (see
+    // stripMongoId), so most callers no longer carry it here. findActiveMissingAppointedDate
+    // is a genuine exception — it needs _id for cursor pagination, so it's honestly typed as
+    // CaseAppointment & { _id: string } and does carry it through to callers like
+    // backfill-case-appointment-dates.ts. Strip defensively here too, since this partition's
+    // _id is only ever valid within THIS partition — the trustee partition's copy of the same
+    // logical appointment has its own, independently-assigned _id — so it must never leak into
+    // either partition's replaceOne payload below.
+    const { _id: _caseAppointmentMongoId, ...appointmentWithoutMongoId } =
+      appointment as CaseAppointment & {
+        _id?: unknown;
+      };
+
     // Compute caseStatus whenever dateFiled is present (enriched doc).
-    const appointmentWithStatus = { ...appointment };
+    const appointmentWithStatus = { ...appointmentWithoutMongoId };
     if (appointment.dateFiled) {
       appointmentWithStatus.caseStatus = isCaseClosed(appointment) ? 'CLOSED' : 'OPEN';
     }

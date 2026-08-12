@@ -9,8 +9,9 @@
  *   3. Calls SyncTrusteeCaseAppointmentsUseCase.getAppointmentEvents() — reads DXTR,
  *      asserts both event types (appointment + petition) are parsed correctly.
  *   4. Calls .processAppointments(events) — asserts professional-id fast-path
- *      matching auto-links both events to the seeded trustee and writes a
- *      case appointment + an approved trustee-match-verification record.
+ *      matching auto-links both events to the seeded trustee and writes a case
+ *      appointment. No trustee-match-verification record is written for this
+ *      auto-matched outcome — it was never reviewed by a human.
  *
  * Two environments via INTEGRATION_ENV:
  *   local  (default) — localhost containers started by start-services.sh
@@ -499,9 +500,13 @@ async function run() {
   console.log('  Reads AO_TX/AO_CS/AO_CS_DIV/AO_PY from DXTR SQL\n');
 
   const context = await getAppContext();
-  const useCase = new SyncTrusteeCaseAppointmentsUseCase(context);
+  const deps = SyncTrusteeCaseAppointmentsUseCase.createDeps(context);
 
-  const { events } = await useCase.getAppointmentEvents(undefined, true);
+  const { events } = await SyncTrusteeCaseAppointmentsUseCase.getAppointmentEvents(
+    deps,
+    undefined,
+    true,
+  );
   const testEvents = events.filter((e) => e.caseId === TEST_CASE_ID);
 
   if (testEvents.length === 2) {
@@ -568,7 +573,7 @@ async function run() {
     '  Matches by acmsProfessionalId, auto-links perfect match, writes case appointment\n',
   );
 
-  const result = await useCase.processAppointments(testEvents);
+  const result = await SyncTrusteeCaseAppointmentsUseCase.processAppointments(deps, testEvents);
 
   if (result.successCount === 2) {
     pass(`processAppointments successCount === 2`);
@@ -610,18 +615,17 @@ async function run() {
       );
     }
 
+    // Auto-matched cases were never reviewed by a human, so no trustee-match-verification doc
+    // is written at all — nothing belongs in the human-review queue for them.
     const verification = await db
       .collection('trustee-match-verification')
       .findOne({ caseId: TEST_CASE_ID });
 
-    if (
-      verification?.status === 'approved' &&
-      verification?.resolvedTrusteeId === TEST_TRUSTEE_ID
-    ) {
-      pass(`trustee-match-verification approved for ${TEST_TRUSTEE_ID}`);
+    if (verification === null) {
+      pass(`no trustee-match-verification doc written for auto-matched ${TEST_TRUSTEE_ID}`);
     } else {
       fail(
-        `expected approved verification for ${TEST_TRUSTEE_ID}, got: ${JSON.stringify(verification)}`,
+        `expected no verification doc for ${TEST_TRUSTEE_ID}, got: ${JSON.stringify(verification)}`,
       );
     }
   } finally {
