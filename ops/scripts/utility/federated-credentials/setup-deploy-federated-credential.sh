@@ -22,6 +22,13 @@
 #       on KV secrets; Contributor does not include roleAssignments/write.
 #       Scoped to the KV resource (not the RG) to minimise privilege escalation surface.
 #   - Key Vault Secrets User on each individual KV secret
+#   - Custom role "CAMS Deployment Stack Deny Setting Operator" on the network RG
+#       (branch only): azure-deploy-network.sh creates branch network resources
+#       as an Azure Deployment Stack with --deny-settings-mode denyDelete.
+#       Microsoft.Resources/deploymentStacks/manageDenySetting/action is not part
+#       of Contributor, and Azure's own built-in "Deployment Stack Contributor"
+#       role deliberately excludes it too (only "Deployment Stack Owner" — a much
+#       broader grant — includes it). Scoped to the network RG only.
 #
 # NOTE on least privilege: subscription-scope Contributor is broader than ideal.
 # A least-privilege approach (resource-group-scoped grants) is incompatible with
@@ -39,6 +46,9 @@
 # Required environment variables:
 #   AZ_MAIN_KV_RG    — resource group containing the main Key Vault
 #   AZ_BRANCH_KV_RG  — resource group containing the dev/branch Key Vault
+#   AZ_NETWORK_RG    — resource group containing the (shared) branch/main network
+#                      resources; required only when provisioning the branch
+#                      identity (TARGET=branch or TARGET=all)
 #
 # This script is idempotent — re-running it will update existing resources in place
 # rather than creating duplicates.
@@ -69,6 +79,9 @@ MAIN_KV_RG="${AZ_MAIN_KV_RG:-}"
 # Resource group that contains the dev/branch Key Vault (kv-ustp-cams-dev)
 BRANCH_KV_NAME="kv-ustp-cams-dev"
 BRANCH_KV_RG="${AZ_BRANCH_KV_RG:-}"
+# Resource group containing the shared branch/main network resources (rg-cams-network).
+# Only needed for the branch identity — see ensure_deployment_stack_deny_setting_role.
+NETWORK_RG="${AZ_NETWORK_RG:-}"
 # KV-Workflows: reusable-deploy.yml
 KV_SECRETS=(
   "AZ-APP-RG"
@@ -91,6 +104,8 @@ KV_SECRETS_USER_ROLE="4633458b-17de-408a-b874-0445c86b69e6" # Key Vault Secrets 
 
 # Custom role name for KV role assignment operations (replaces User Access Administrator)
 KV_ROLE_ASSIGNMENT_ROLE_NAME="CAMS KV Role Assignment Operator"
+# Custom role name for the branch network Deployment Stack's deny-setting management
+DEPLOYMENT_STACK_DENY_SETTING_ROLE_NAME="CAMS Deployment Stack Deny Setting Operator"
 # ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
@@ -139,6 +154,57 @@ EOF
 )" --output none
   echo "    Custom role created." >&2
   ROLE_ID=$(wait_for_role_definition "$KV_ROLE_ASSIGNMENT_ROLE_NAME")
+  echo "$ROLE_ID"
+}
+
+# ---------------------------------------------------------------------------
+# Helper: create or skip the deployment-stack deny-setting operator role (idempotent)
+#
+# Grants only Microsoft.Resources/deploymentStacks/manageDenySetting/action.
+# Required because azure-deploy-network.sh deploys branch network resources as
+# an Azure Deployment Stack with --deny-settings-mode denyDelete (CAMS-760,
+# "Harden branch stacks with denyDelete setting"). Contributor does not
+# include this action, and Azure's own built-in "Deployment Stack Contributor"
+# role deliberately excludes it too — only "Deployment Stack Owner" includes
+# it, which also grants unrelated deploymentStacks actions (delete, etc.) this
+# identity doesn't need. A narrow custom role avoids that broader grant, same
+# rationale as ensure_kv_role_assignment_role above.
+# ---------------------------------------------------------------------------
+# Echoes the role definition GUID on stdout (progress goes to stderr) so the
+# caller can assign by ID rather than the lagging display-name filter.
+ensure_deployment_stack_deny_setting_role() {
+  local SUBSCRIPTION_ID="$1"
+
+  echo "==> Checking custom role: '$DEPLOYMENT_STACK_DENY_SETTING_ROLE_NAME'..." >&2
+  local ROLE_ID
+  ROLE_ID=$(az role definition list --custom-role-only true \
+    --query "[?roleName=='${DEPLOYMENT_STACK_DENY_SETTING_ROLE_NAME}'].name | [0]" -o tsv 2>/dev/null || true)
+
+  if [[ -n "$ROLE_ID" ]]; then
+    echo "    Custom role already exists, skipping creation." >&2
+    echo "$ROLE_ID"
+    return
+  fi
+
+  echo "    Creating custom role '$DEPLOYMENT_STACK_DENY_SETTING_ROLE_NAME'..." >&2
+  az role definition create --role-definition "$(cat <<EOF
+{
+  "Name": "${DEPLOYMENT_STACK_DENY_SETTING_ROLE_NAME}",
+  "Description": "Allows CAMS branch deploy identity to manage deny settings on its own Azure Deployment Stacks. Required for azure-deploy-network.sh's --deny-settings-mode denyDelete. Narrower than the built-in Deployment Stack Owner role.",
+  "Actions": [
+    "Microsoft.Resources/deploymentStacks/manageDenySetting/action"
+  ],
+  "NotActions": [],
+  "DataActions": [],
+  "NotDataActions": [],
+  "AssignableScopes": [
+    "/subscriptions/${SUBSCRIPTION_ID}"
+  ]
+}
+EOF
+)" --output none
+  echo "    Custom role created." >&2
+  ROLE_ID=$(wait_for_role_definition "$DEPLOYMENT_STACK_DENY_SETTING_ROLE_NAME")
   echo "$ROLE_ID"
 }
 
@@ -226,6 +292,22 @@ provision_identity() {
     local SECRET_SCOPE="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${KV_RG}/providers/Microsoft.KeyVault/vaults/${KV_NAME}/secrets/${SECRET_NAME}"
     ensure_role_assignment "$SP_ID" "$KV_SECRETS_USER_ROLE" "$SECRET_SCOPE"
   done
+
+  # Deployment-stack deny-setting operator on the network RG (branch only):
+  # main's network deploy is never stacked (see azure-deploy-network.sh's
+  # is_branch_deployment gate), so it never needs this action.
+  if [[ "$GITHUB_ENVIRONMENT" == *"branch"* ]]; then
+    if [[ -z "$NETWORK_RG" ]]; then
+      echo "ERROR: AZ_NETWORK_RG is required when provisioning the branch environment." >&2
+      exit 1
+    fi
+    local DENY_SETTING_ROLE_ID
+    DENY_SETTING_ROLE_ID=$(ensure_deployment_stack_deny_setting_role "$SUBSCRIPTION_ID")
+
+    local NETWORK_RG_SCOPE="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${NETWORK_RG}"
+    echo "==> Checking '$DEPLOYMENT_STACK_DENY_SETTING_ROLE_NAME' on ${NETWORK_RG}..."
+    ensure_role_assignment "$SP_ID" "$DENY_SETTING_ROLE_ID" "$NETWORK_RG_SCOPE"
+  fi
 
   set_github_environment_secret "$GITHUB_ENVIRONMENT" "AZ_CLIENT_ID" "$APP_ID"
 
