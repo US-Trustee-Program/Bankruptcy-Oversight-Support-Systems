@@ -77,6 +77,28 @@
 #     would hit a confusing Conflict, or worse, silently leave DNS
 #     resolution broken — both look nothing like this check, so the failure
 #     is surfaced here instead.
+#
+#   zone_exists_for ZONE_RG ZONE_NAME [SUBSCRIPTION_ID]
+#     Sets zone_check_result to "true" or "false". Same plain-statement
+#     calling convention and same fail-loud-on-genuine-error /
+#     tolerate-ResourceNotFound behavior as vnet_link_already_exists_for
+#     above (reuses the same _vnet_link_check_call helper). Exists because
+#     app-shared-setup.bicep's single deployDns flag is what actually gates
+#     creation of both the KV and webapp zones, but nothing previously
+#     computed that flag based on whether either zone exists — branches
+#     always passed deployDns=false unconditionally (see
+#     azure-deploy-app-shared-setup.sh's caller), which was fine for the
+#     shared prod RGs (main already created both zones there long ago) but
+#     left a newly-provisioned shared branch RG (rg-cams-network-dev) with
+#     no zones for any branch to ever create, since only main's deployDns=
+#     true path ever ran anywhere. Confirmed live 2026-08-12:
+#     ParentResourceNotFound trying to link into a zone that plain doesn't
+#     exist. Safe for ANY caller (branch or main) to flip deployDns to true
+#     when a zone is found missing — app-shared-setup.bicep is always a
+#     plain, non-stack deployment for both (see its header), and the zone
+#     resource itself is a plain declarative PUT, so creating it when it
+#     already exists (e.g. main, or a branch redeploying after its own first
+#     deploy already bootstrapped it) is an idempotent no-op, not a conflict.
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   echo "ERROR: This script must be sourced, not executed directly." >&2
@@ -214,4 +236,28 @@ vnet_link_already_exists_for() {
 
   # shellcheck disable=SC2034 # REASON: read by callers in other sourcing scripts, not within this file
   vnet_link_check_result=""
+}
+
+zone_exists_for() {
+  local zoneRg=$1
+  local zoneName=$2
+  local subscriptionId="${3:-}"
+
+  local subscriptionArg=""
+  if [[ -n "${subscriptionId}" ]]; then
+    subscriptionArg="--subscription ${subscriptionId}"
+  fi
+
+  # shellcheck disable=SC2086 # REASON: intentional word-splitting of optional --subscription flag
+  if ! _vnet_link_check_call az network private-dns zone show -g "${zoneRg}" -n "${zoneName}" ${subscriptionArg} --query name -o tsv; then
+    if grep -qi "ResourceNotFound" <<<"${_vnet_link_check_stderr}"; then
+      # shellcheck disable=SC2034 # REASON: read by callers in other sourcing scripts, not within this file
+      zone_check_result="false"
+      return
+    fi
+    echo "ERROR: failed to check whether zone ${zoneName} exists in ${zoneRg}: ${_vnet_link_check_stderr}" >&2
+    exit 1
+  fi
+  # shellcheck disable=SC2034 # REASON: read by callers in other sourcing scripts, not within this file
+  zone_check_result="true"
 }
