@@ -103,6 +103,7 @@ jobs:
       - name: Fetch config from Key Vault
         env:
           GHA_ENVIRONMENT: ${{ inputs.ghaEnvironment }}
+          STACK_NAME: ${{ inputs.stackName }}
         run: |
           set -euo pipefail
           if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
@@ -144,7 +145,20 @@ jobs:
           echo "AZ_KV_APP_CONFIG_RG_NAME=${_val}" >> "$GITHUB_ENV"
           _val=$(az keyvault secret show --vault-name "$KV" --name AZ-NETWORK-VNET-NAME --query value -o tsv)
           echo "::add-mask::${_val}"
-          echo "AZ_NETWORK_VNET_NAME=${_val}" >> "$GITHUB_ENV"
+          # CAMS-760, Option E / Slice 2: each branch owns its own uniquely-named
+          # VNet (vnet-<stackName>) in the now-shared network RG, not the fixed
+          # KV-sourced name -- matches reusable-deploy.yml's identical
+          # derivation (keep both in lockstep). Missing this made the vnet
+          # subnet lookup below silently target main's vnet name for every
+          # branch, which doesn't exist under that name, since main and
+          # branches were never guaranteed to differ before Slice 2, and
+          # differ unconditionally now.
+          if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
+            AZ_NETWORK_VNET_NAME="${_val}"
+          else
+            AZ_NETWORK_VNET_NAME="vnet-${STACK_NAME}"
+          fi
+          echo "AZ_NETWORK_VNET_NAME=${AZ_NETWORK_VNET_NAME}" >> "$GITHUB_ENV"
 
       - name: Generate E2E name
         id: generateE2eName
