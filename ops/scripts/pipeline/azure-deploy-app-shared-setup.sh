@@ -147,6 +147,10 @@ fi
 # same place the deployment actually will, instead of always assuming the
 # defaults.
 kvPrivateDnsZoneName='privatelink.vaultcore.usgovcloudapi.net'
+# Also hardcoded (as webappPrivateDnsZoneName) in app-shared-setup.bicep,
+# where it's a fixed var, not a param -- can't share the literal across
+# bash/bicep, keep both in lockstep by hand.
+webappPrivateDnsZoneName='privatelink.azurewebsites.us'
 private_dns_zone_rg="${network_rg}"
 private_dns_zone_subscription_id=""
 for param in ${extra_parameters}; do
@@ -159,6 +163,26 @@ for param in ${extra_parameters}; do
         ;;
     esac
 done
+
+# app-shared-setup.bicep's single deployDns param gates creation of BOTH the
+# KV and webapp zones, but the caller (reusable-deploy.yml) computes it
+# purely from IS_BRANCH_DEPLOYMENT, unconditionally false for every branch --
+# fine for the stable prod RGs (main's deployDns=true path created both
+# zones there long ago) but leaves a newly-provisioned shared branch RG with
+# no zones at all, since nothing else ever creates them. Only relevant when
+# the caller passed false: main already passes true unconditionally, and
+# checking here too would just be a redundant (though harmless -- zone
+# creation is an idempotent PUT) no-op.
+if [[ "${deploy_dns}" != "true" ]]; then
+    zone_exists_for "${private_dns_zone_rg}" "${kvPrivateDnsZoneName}" "${private_dns_zone_subscription_id}"
+    kvZoneExists="${zone_check_result}"
+    zone_exists_for "${private_dns_zone_rg}" "${webappPrivateDnsZoneName}" "${private_dns_zone_subscription_id}"
+    webappZoneExists="${zone_check_result}"
+    if [[ "${kvZoneExists}" != "true" || "${webappZoneExists}" != "true" ]]; then
+        echo "Zone bootstrap: ${kvPrivateDnsZoneName} exists=${kvZoneExists}, ${webappPrivateDnsZoneName} exists=${webappZoneExists} in ${private_dns_zone_rg} -- at least one is missing; deploying with deployDns=true to create it."
+        deploy_dns=true
+    fi
+fi
 
 vnet_link_already_exists_for "${private_dns_zone_rg}" "${kvPrivateDnsZoneName}" "${network_rg}" "${vnet_name}" "${stack_name}" "${private_dns_zone_subscription_id}"
 existingLink="${vnet_link_check_result}"
