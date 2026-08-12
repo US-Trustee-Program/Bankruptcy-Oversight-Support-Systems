@@ -23,12 +23,14 @@
 #       Scoped to the KV resource (not the RG) to minimise privilege escalation surface.
 #   - Key Vault Secrets User on each individual KV secret
 #   - Custom role "CAMS Deployment Stack Deny Setting Operator" on the network RG
-#       (branch only): azure-deploy-network.sh creates branch network resources
-#       as an Azure Deployment Stack with --deny-settings-mode denyDelete.
-#       Microsoft.Resources/deploymentStacks/manageDenySetting/action is not part
-#       of Contributor, and Azure's own built-in "Deployment Stack Contributor"
-#       role deliberately excludes it too (only "Deployment Stack Owner" — a much
-#       broader grant — includes it). Scoped to the network RG only.
+#       AND the app RG (branch only): both azure-deploy-network.sh (network
+#       resources) and azure-deploy.sh (app resources, main.bicep) deploy their
+#       branch resources as an Azure Deployment Stack with --deny-settings-mode
+#       denyDelete, each in its own resource group. Microsoft.Resources/
+#       deploymentStacks/manageDenySetting/action is not part of Contributor,
+#       and Azure's own built-in "Deployment Stack Contributor" role
+#       deliberately excludes it too (only "Deployment Stack Owner" — a much
+#       broader grant — includes it). Scoped to just these two resource groups.
 #
 # NOTE on least privilege: subscription-scope Contributor is broader than ideal.
 # A least-privilege approach (resource-group-scoped grants) is incompatible with
@@ -48,6 +50,9 @@
 #   AZ_MAIN_KV_RG    — resource group containing the main Key Vault
 #   AZ_BRANCH_KV_RG  — resource group containing the dev/branch Key Vault
 #   AZ_NETWORK_RG    — resource group containing the (shared) branch/main network
+#                      resources; required only when provisioning the branch
+#                      identity (TARGET=branch or TARGET=all)
+#   AZ_APP_RG        — resource group containing the (shared) branch/main app
 #                      resources; required only when provisioning the branch
 #                      identity (TARGET=branch or TARGET=all)
 #
@@ -83,6 +88,9 @@ BRANCH_KV_RG="${AZ_BRANCH_KV_RG:-}"
 # Resource group containing the shared branch/main network resources (rg-cams-network).
 # Only needed for the branch identity — see ensure_deployment_stack_deny_setting_role.
 NETWORK_RG="${AZ_NETWORK_RG:-}"
+# Resource group containing the shared branch/main app resources (rg-cams-app).
+# Only needed for the branch identity — see ensure_deployment_stack_deny_setting_role.
+APP_RG="${AZ_APP_RG:-}"
 # KV-Workflows: reusable-deploy.yml
 KV_SECRETS=(
   "AZ-APP-RG"
@@ -162,14 +170,16 @@ EOF
 # Helper: create or skip the deployment-stack deny-setting operator role (idempotent)
 #
 # Grants only Microsoft.Resources/deploymentStacks/manageDenySetting/action.
-# Required because azure-deploy-network.sh deploys branch network resources as
-# an Azure Deployment Stack with --deny-settings-mode denyDelete (CAMS-760,
-# "Harden branch stacks with denyDelete setting"). Contributor does not
-# include this action, and Azure's own built-in "Deployment Stack Contributor"
-# role deliberately excludes it too — only "Deployment Stack Owner" includes
-# it, which also grants unrelated deploymentStacks actions (delete, etc.) this
-# identity doesn't need. A narrow custom role avoids that broader grant, same
-# rationale as ensure_kv_role_assignment_role above.
+# Required because both azure-deploy-network.sh (network resources) and
+# azure-deploy.sh (app resources, main.bicep) deploy branch resources as an
+# Azure Deployment Stack with --deny-settings-mode denyDelete (CAMS-760,
+# "Harden branch stacks with denyDelete setting") -- each in its own resource
+# group, so this role gets assigned twice (see provision_identity). Contributor
+# does not include this action, and Azure's own built-in "Deployment Stack
+# Contributor" role deliberately excludes it too — only "Deployment Stack
+# Owner" includes it, which also grants unrelated deploymentStacks actions
+# (delete, etc.) this identity doesn't need. A narrow custom role avoids that
+# broader grant, same rationale as ensure_kv_role_assignment_role above.
 # ---------------------------------------------------------------------------
 # Echoes the role definition GUID on stdout (progress goes to stderr) so the
 # caller can assign by ID rather than the lagging display-name filter.
@@ -191,7 +201,7 @@ ensure_deployment_stack_deny_setting_role() {
   az role definition create --role-definition "$(cat <<EOF
 {
   "Name": "${DEPLOYMENT_STACK_DENY_SETTING_ROLE_NAME}",
-  "Description": "Allows CAMS branch deploy identity to manage deny settings on its own Azure Deployment Stacks. Required for azure-deploy-network.sh's --deny-settings-mode denyDelete. Narrower than the built-in Deployment Stack Owner role.",
+  "Description": "Allows CAMS branch deploy identity to manage deny settings on its own Azure Deployment Stacks. Required for azure-deploy-network.sh's and azure-deploy.sh's --deny-settings-mode denyDelete. Narrower than the built-in Deployment Stack Owner role.",
   "Actions": [
     "Microsoft.Resources/deploymentStacks/manageDenySetting/action"
   ],
@@ -294,12 +304,18 @@ provision_identity() {
     ensure_role_assignment "$SP_ID" "$KV_SECRETS_USER_ROLE" "$SECRET_SCOPE"
   done
 
-  # Deployment-stack deny-setting operator on the network RG (branch only):
-  # main's network deploy is never stacked (see azure-deploy-network.sh's
-  # is_branch_deployment gate), so it never needs this action.
+  # Deployment-stack deny-setting operator on the network RG AND the app RG
+  # (branch only): main's network and app deploys are never stacked (see
+  # azure-deploy-network.sh's/azure-deploy.sh's is_branch_deployment gates),
+  # so main never needs this action. Branch deploys both as Deployment Stacks
+  # in their own resource groups, so the grant is needed in both places.
   if [[ "$GITHUB_ENVIRONMENT" == *"branch"* ]]; then
     if [[ -z "$NETWORK_RG" ]]; then
       echo "ERROR: AZ_NETWORK_RG is required when provisioning the branch environment." >&2
+      exit 1
+    fi
+    if [[ -z "$APP_RG" ]]; then
+      echo "ERROR: AZ_APP_RG is required when provisioning the branch environment." >&2
       exit 1
     fi
     local DENY_SETTING_ROLE_ID
@@ -308,6 +324,10 @@ provision_identity() {
     local NETWORK_RG_SCOPE="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${NETWORK_RG}"
     echo "==> Checking '$DEPLOYMENT_STACK_DENY_SETTING_ROLE_NAME' on ${NETWORK_RG}..."
     ensure_role_assignment "$SP_ID" "$DENY_SETTING_ROLE_ID" "$NETWORK_RG_SCOPE"
+
+    local APP_RG_SCOPE="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${APP_RG}"
+    echo "==> Checking '$DEPLOYMENT_STACK_DENY_SETTING_ROLE_NAME' on ${APP_RG}..."
+    ensure_role_assignment "$SP_ID" "$DENY_SETTING_ROLE_ID" "$APP_RG_SCOPE"
   fi
 
   set_github_environment_secret "$GITHUB_ENVIRONMENT" "AZ_CLIENT_ID" "$APP_ID"
