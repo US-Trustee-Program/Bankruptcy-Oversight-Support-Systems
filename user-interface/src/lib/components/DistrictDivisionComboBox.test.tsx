@@ -1,7 +1,8 @@
+import React, { createRef } from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi, describe, test, expect, beforeEach } from 'vitest';
-import DistrictDivisionComboBox from './DistrictDivisionComboBox';
+import DistrictDivisionComboBox, { DistrictDivisionComboBoxRef } from './DistrictDivisionComboBox';
 import Api2 from '@/lib/models/api2';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import LocalStorage from '@/lib/utils/local-storage';
@@ -61,6 +62,21 @@ function renderComboBox(
   );
 }
 
+function renderComboBoxWithProps(
+  props: Partial<React.ComponentProps<typeof DistrictDivisionComboBox>> = {},
+  ref?: React.Ref<DistrictDivisionComboBoxRef>,
+) {
+  return render(
+    <DistrictDivisionComboBox
+      id="test-district-division"
+      onDivisionCodesChange={vi.fn()}
+      onSelectionsChange={vi.fn()}
+      ref={ref}
+      {...props}
+    />,
+  );
+}
+
 describe('DistrictDivisionComboBox', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -96,6 +112,58 @@ describe('DistrictDivisionComboBox', () => {
           ),
         ).toBeInTheDocument();
       });
+    });
+  });
+
+  describe('callback props', () => {
+    test('calls onCourtsLoaded with the fetched courts', async () => {
+      const onCourtsLoaded = vi.fn();
+      renderComboBoxWithProps({ onCourtsLoaded });
+      await screen.findByRole('combobox', { name: /district \(division\)/i });
+      expect(onCourtsLoaded).toHaveBeenCalledWith(mockCourts);
+    });
+
+    test('calls onDefaultsApplied after defaults are computed', async () => {
+      const onDefaultsApplied = vi.fn();
+      renderComboBoxWithProps({ onDefaultsApplied });
+      await screen.findByRole('combobox', { name: /district \(division\)/i });
+      await waitFor(() => expect(onDefaultsApplied).toHaveBeenCalled());
+    });
+
+    test('calls onDefaultsApplied even when disableDefaultDivisionCodes is true', async () => {
+      const onDefaultsApplied = vi.fn();
+      renderComboBoxWithProps({ onDefaultsApplied, disableDefaultDivisionCodes: true });
+      await screen.findByRole('combobox', { name: /district \(division\)/i });
+      expect(onDefaultsApplied).toHaveBeenCalled();
+    });
+  });
+
+  describe('imperative ref API', () => {
+    test('setSelections updates the combobox to reflect the given selections', async () => {
+      const ref = createRef<DistrictDivisionComboBoxRef>();
+      renderComboBoxWithProps({}, ref);
+      const combo = await screen.findByRole('combobox', { name: /district \(division\)/i });
+
+      ref.current?.setSelections([
+        { value: 'NYSB|081', label: 'Southern District of New York (Manhattan)' },
+      ]);
+
+      await waitFor(() => {
+        expect(combo).toHaveValue('Southern District of New York (Manhattan)');
+      });
+    });
+
+    test('disable toggles the combobox disabled state', async () => {
+      const ref = createRef<DistrictDivisionComboBoxRef>();
+      renderComboBoxWithProps({}, ref);
+      const combo = await screen.findByRole('combobox', { name: /district \(division\)/i });
+      expect(combo).not.toBeDisabled();
+
+      ref.current?.disable(true);
+      await waitFor(() => expect(combo).toBeDisabled());
+
+      ref.current?.disable(false);
+      await waitFor(() => expect(combo).not.toBeDisabled());
     });
   });
 
@@ -232,14 +300,11 @@ describe('DistrictDivisionComboBox', () => {
       vi.spyOn(LocalStorage, 'getSession').mockReturnValue(sessionWithManhattanOffice());
       const onDivisionCodesChange = vi.fn();
       const onSelectionsChange = vi.fn();
-      render(
-        <DistrictDivisionComboBox
-          id="test-district-division"
-          onDivisionCodesChange={onDivisionCodesChange}
-          onSelectionsChange={onSelectionsChange}
-          disableDefaultDivisionCodes={true}
-        />,
-      );
+      renderComboBoxWithProps({
+        onDivisionCodesChange,
+        onSelectionsChange,
+        disableDefaultDivisionCodes: true,
+      });
       await screen.findByRole('combobox', { name: /district \(division\)/i });
       expect(onDivisionCodesChange).not.toHaveBeenCalled();
       expect(onSelectionsChange).not.toHaveBeenCalled();
@@ -249,14 +314,11 @@ describe('DistrictDivisionComboBox', () => {
       vi.spyOn(LocalStorage, 'getSession').mockReturnValue(sessionWithManhattanOffice());
       const onDivisionCodesChange = vi.fn();
       const onSelectionsChange = vi.fn();
-      render(
-        <DistrictDivisionComboBox
-          id="test-district-division"
-          onDivisionCodesChange={onDivisionCodesChange}
-          onSelectionsChange={onSelectionsChange}
-          disableDefaultDivisionCodes={false}
-        />,
-      );
+      renderComboBoxWithProps({
+        onDivisionCodesChange,
+        onSelectionsChange,
+        disableDefaultDivisionCodes: false,
+      });
       await waitFor(() => {
         expect(onDivisionCodesChange).toHaveBeenCalledWith(expect.arrayContaining(['081']));
         expect(onSelectionsChange).toHaveBeenCalledWith(
@@ -313,11 +375,7 @@ describe('DistrictDivisionComboBox', () => {
       renderComboBox(onDivisionCodesChange);
       const combo = await screen.findByRole('combobox', { name: /district \(division\)/i });
       await user.click(combo);
-      await user.click(
-        await screen.findByText('Southern District of New York (Manhattan)', {
-          selector: 'li span',
-        }),
-      );
+      await user.click(await screen.findByRole('option', { name: /manhattan/i }));
       expect(onDivisionCodesChange).toHaveBeenCalledWith(expect.arrayContaining(['081']));
     });
 
@@ -327,11 +385,7 @@ describe('DistrictDivisionComboBox', () => {
       renderComboBox(vi.fn(), undefined, onSelectionsChange);
       const combo = await screen.findByRole('combobox', { name: /district \(division\)/i });
       await user.click(combo);
-      await user.click(
-        await screen.findByText('Southern District of New York (Manhattan)', {
-          selector: 'li span',
-        }),
-      );
+      await user.click(await screen.findByRole('option', { name: /manhattan/i }));
       expect(onSelectionsChange).toHaveBeenCalledWith(
         expect.arrayContaining([expect.objectContaining({ value: 'NYSB|081' })]),
       );
@@ -344,7 +398,7 @@ describe('DistrictDivisionComboBox', () => {
       const combo = await screen.findByRole('combobox', { name: /district \(division\)/i });
       await user.click(combo);
       await user.click(
-        await screen.findByText('Southern District of New York (All)', { selector: 'li span' }),
+        await screen.findByRole('option', { name: /southern district of new york \(all\)/i }),
       );
       expect(onDivisionCodesChange).toHaveBeenCalledWith(expect.arrayContaining(['081', '087']));
     });
@@ -355,11 +409,7 @@ describe('DistrictDivisionComboBox', () => {
       renderComboBox(onDivisionCodesChange);
       const combo = await screen.findByRole('combobox', { name: /district \(division\)/i });
       await user.click(combo);
-      await user.click(
-        await screen.findByText('Southern District of New York (Manhattan)', {
-          selector: 'li span',
-        }),
-      );
+      await user.click(await screen.findByRole('option', { name: /manhattan/i }));
       onDivisionCodesChange.mockClear();
       const clearAll = screen.getByRole('button', { name: /Clear all District \(Division\)/i });
       await user.click(clearAll);
@@ -372,14 +422,10 @@ describe('DistrictDivisionComboBox', () => {
       renderComboBox(vi.fn(), undefined, onSelectionsChange);
       const combo = await screen.findByRole('combobox', { name: /district \(division\)/i });
       await user.click(combo);
-      await user.click(
-        await screen.findByText('Southern District of New York (Manhattan)', {
-          selector: 'li span',
-        }),
-      );
+      await user.click(await screen.findByRole('option', { name: /manhattan/i }));
       onSelectionsChange.mockClear();
       await user.click(
-        await screen.findByText('Southern District of New York (All)', { selector: 'li span' }),
+        await screen.findByRole('option', { name: /southern district of new york \(all\)/i }),
       );
       const lastCall = onSelectionsChange.mock.calls.at(-1)![0] as ComboOption[];
       expect(lastCall.find((s) => s.value === 'NYSB|081')).toBeUndefined();
@@ -393,14 +439,10 @@ describe('DistrictDivisionComboBox', () => {
       const combo = await screen.findByRole('combobox', { name: /district \(division\)/i });
       await user.click(combo);
       await user.click(
-        await screen.findByText('Southern District of New York (All)', { selector: 'li span' }),
+        await screen.findByRole('option', { name: /southern district of new york \(all\)/i }),
       );
       onSelectionsChange.mockClear();
-      await user.click(
-        await screen.findByText('Southern District of New York (Manhattan)', {
-          selector: 'li span',
-        }),
-      );
+      await user.click(await screen.findByRole('option', { name: /manhattan/i }));
       const lastCall = onSelectionsChange.mock.calls.at(-1)![0] as ComboOption[];
       expect(lastCall.find((s) => s.value === 'NYSB|ALL')).toBeUndefined();
       expect(lastCall.find((s) => s.value === 'NYSB|081')).toBeDefined();
@@ -412,11 +454,9 @@ describe('DistrictDivisionComboBox', () => {
       renderComboBox(vi.fn(), undefined, onSelectionsChange);
       const combo = await screen.findByRole('combobox', { name: /district \(division\)/i });
       await user.click(combo);
+      await user.click(await screen.findByRole('option', { name: /rutland/i }));
       await user.click(
-        await screen.findByText('District of Vermont (Rutland)', { selector: 'li span' }),
-      );
-      await user.click(
-        await screen.findByText('Southern District of New York (All)', { selector: 'li span' }),
+        await screen.findByRole('option', { name: /southern district of new york \(all\)/i }),
       );
       const lastCall = onSelectionsChange.mock.calls.at(-1)![0] as ComboOption[];
       // Vermont is a single-division district, so it has no All option and stays as its division
@@ -447,19 +487,9 @@ describe('DistrictDivisionComboBox', () => {
       renderComboBox(vi.fn(), undefined, vi.fn(), ['081']);
       const combo = await screen.findByRole('combobox', { name: /district \(division\)/i });
       await user.click(combo);
-      expect(
-        await screen.findByText('Southern District of New York (Manhattan)', {
-          selector: 'li span',
-        }),
-      ).toBeInTheDocument();
-      expect(
-        screen.queryByText('Southern District of New York (White Plains)', {
-          selector: 'li span',
-        }),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByText('District of Vermont (Rutland)', { selector: 'li span' }),
-      ).not.toBeInTheDocument();
+      expect(await screen.findByRole('option', { name: /manhattan/i })).toBeInTheDocument();
+      expect(screen.queryByRole('option', { name: /white plains/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('option', { name: /rutland/i })).not.toBeInTheDocument();
     });
 
     test('excludes the district "All" option when the allow list does not cover every division in that district', async () => {
@@ -467,11 +497,9 @@ describe('DistrictDivisionComboBox', () => {
       renderComboBox(vi.fn(), undefined, vi.fn(), ['081']);
       const combo = await screen.findByRole('combobox', { name: /district \(division\)/i });
       await user.click(combo);
-      await screen.findByText('Southern District of New York (Manhattan)', {
-        selector: 'li span',
-      });
+      await screen.findByRole('option', { name: /manhattan/i });
       expect(
-        screen.queryByText('Southern District of New York (All)', { selector: 'li span' }),
+        screen.queryByRole('option', { name: /southern district of new york \(all\)/i }),
       ).not.toBeInTheDocument();
     });
 
@@ -481,7 +509,7 @@ describe('DistrictDivisionComboBox', () => {
       const combo = await screen.findByRole('combobox', { name: /district \(division\)/i });
       await user.click(combo);
       expect(
-        await screen.findByText('Southern District of New York (All)', { selector: 'li span' }),
+        await screen.findByRole('option', { name: /southern district of new york \(all\)/i }),
       ).toBeInTheDocument();
     });
 
@@ -616,17 +644,9 @@ describe('DistrictDivisionComboBox', () => {
       );
     });
 
-    test('combobox is reachable by accessible name "District (Division)"', async () => {
-      renderComboBox();
-      await waitFor(() => {
-        expect(
-          screen.getByRole('combobox', { name: /district \(division\)/i }),
-        ).toBeInTheDocument();
-      });
-    });
-
     test('ComboBox label is visible and provides the accessible name', async () => {
       renderComboBox();
+      // Confirms the accessible name comes from a real, visible label element
       await screen.findByRole('combobox', { name: /district \(division\)/i });
       const label = document.querySelector('#test-district-division-label');
       expect(label).toBeInTheDocument();

@@ -256,7 +256,7 @@ function parseDistrictName(courtName: string): { state: string; region: string }
 export function sortTrusteeAppointments(appointments: TrusteeAppointment[]): TrusteeAppointment[] {
   return [...appointments]
     .map((appt) => {
-      const parsed = parseDistrictName(appt.courtName ?? appt.courtId ?? '');
+      const parsed = parseDistrictName(appt.courtName ?? appt.courtId);
       return {
         appointment: appt,
         state: parsed.state,
@@ -273,15 +273,12 @@ export function sortTrusteeAppointments(appointments: TrusteeAppointment[]): Tru
       if (regionComparison !== 0) return regionComparison;
 
       // 3. Sort by chapter number
-      const chapterA = a.appointment.chapter ?? '';
-      const chapterB = b.appointment.chapter ?? '';
-      const chapterComparison = getChapterNumber(chapterA) - getChapterNumber(chapterB);
+      const chapterComparison =
+        getChapterNumber(a.appointment.chapter) - getChapterNumber(b.appointment.chapter);
       if (chapterComparison !== 0) return chapterComparison;
 
       // 4. Sort by appointment type
-      const typeA = a.appointment.appointmentType ?? '';
-      const typeB = b.appointment.appointmentType ?? '';
-      return caseInsensitiveCompare(typeA, typeB);
+      return caseInsensitiveCompare(a.appointment.appointmentType, b.appointment.appointmentType);
     })
     .map((wrapper) => wrapper.appointment);
 }
@@ -557,7 +554,7 @@ export function autoUpgradeToAll(
         const [sCourt, sCode] = s.value.split('|');
         return sCourt !== courtId || sCode === 'ALL';
       });
-      const courtName = courtNameById.get(courtId) ?? courtId;
+      const courtName = courtNameById.get(courtId)!;
       result.push({
         value: `${courtId}|ALL`,
         label: `${courtName} (All)`,
