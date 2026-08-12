@@ -8,6 +8,7 @@ import {
   autoUpgradeToAll,
   resolveCombinedSelections,
   getUserDivisionCodes,
+  getDistrictDivisionComboOptions,
 } from './court-utils';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
@@ -602,6 +603,76 @@ describe('court-utils', () => {
     });
   });
 
+  describe('getDistrictDivisionComboOptions', () => {
+    const multiDivisionCourts: CourtDivisionDetails[] = [
+      {
+        officeName: 'Manhattan',
+        officeCode: '081-M',
+        courtId: 'NYSB',
+        courtName: 'Southern District of New York',
+        courtDivisionCode: '081',
+        courtDivisionName: 'Manhattan',
+        groupDesignator: 'NY',
+        regionId: '02',
+        regionName: 'Region 2',
+        state: 'NY',
+      },
+      {
+        officeName: 'White Plains',
+        officeCode: '087-W',
+        courtId: 'NYSB',
+        courtName: 'Southern District of New York',
+        courtDivisionCode: '087',
+        courtDivisionName: 'White Plains',
+        groupDesignator: 'NY',
+        regionId: '02',
+        regionName: 'Region 2',
+        state: 'NY',
+      },
+    ];
+
+    const singleDivisionCourt: CourtDivisionDetails[] = [
+      {
+        officeName: 'Rutland',
+        officeCode: '088-R',
+        courtId: 'VTB',
+        courtName: 'District of Vermont',
+        courtDivisionCode: '088',
+        courtDivisionName: 'Rutland',
+        groupDesignator: 'VT',
+        regionId: '01',
+        regionName: 'Region 1',
+        state: 'VT',
+      },
+    ];
+
+    test('includes an "(All)" option and each division for a multi-division district', () => {
+      const options = getDistrictDivisionComboOptions(multiDivisionCourts);
+
+      expect(options).toHaveLength(3);
+      expect(options.map((o) => o.value)).toEqual(['NYSB|ALL', 'NYSB|081', 'NYSB|087']);
+    });
+
+    test('omits the "(All)" option for a single-division district, even alongside a multi-division district', () => {
+      const soloOptions = getDistrictDivisionComboOptions(singleDivisionCourt);
+      expect(soloOptions).toEqual([
+        {
+          value: 'VTB|088',
+          label: 'District of Vermont (Rutland)',
+          selectedLabel: 'District of Vermont (Rutland)',
+        },
+      ]);
+
+      const mixedOptions = getDistrictDivisionComboOptions([
+        ...multiDivisionCourts,
+        ...singleDivisionCourt,
+      ]);
+      expect(mixedOptions.find((o) => o.value === 'VTB|ALL')).toBeUndefined();
+      expect(mixedOptions.find((o) => o.value === 'VTB|088')).toBeDefined();
+      expect(mixedOptions.find((o) => o.value === 'NYSB|ALL')).toBeDefined();
+    });
+  });
+
   describe('buildDivisionsDisplay', () => {
     const alaskaCourts: CourtDivisionDetails[] = [
       {
@@ -797,20 +868,29 @@ describe('autoUpgradeToAll', () => {
     expect(result.find((s) => s.value === 'NYSB|ALL')).toBeUndefined();
   });
 
-  test('upgrades only the fully-selected district, leaves others unchanged', () => {
+  test('upgrades only the fully-selected multi-division district, leaves single-division district unchanged', () => {
     const selections: ComboOption[] = [
       { value: 'NYSB|081', label: 'Southern District of New York (Manhattan)' },
       { value: 'NYSB|087', label: 'Southern District of New York (White Plains)' },
       { value: 'VTB|088', label: 'District of Vermont (Rutland)' },
     ];
     const result = autoUpgradeToAll(selections, allDistricts);
-    // VTB has only one division, so it gets upgraded too
     // NYSB gets upgraded since both divisions selected
+    // VTB has only one division, so it is never upgraded to ALL
     expect(result.find((s) => s.value === 'NYSB|ALL')).toBeDefined();
-    expect(result.find((s) => s.value === 'VTB|ALL')).toBeDefined();
+    expect(result.find((s) => s.value === 'VTB|ALL')).toBeUndefined();
     expect(result.find((s) => s.value === 'NYSB|081')).toBeUndefined();
     expect(result.find((s) => s.value === 'NYSB|087')).toBeUndefined();
-    expect(result.find((s) => s.value === 'VTB|088')).toBeUndefined();
+    expect(result.find((s) => s.value === 'VTB|088')).toBeDefined();
+  });
+
+  test('never upgrades a single-division district to ALL', () => {
+    const selections: ComboOption[] = [
+      { value: 'VTB|088', label: 'District of Vermont (Rutland)' },
+    ];
+    const result = autoUpgradeToAll(selections, allDistricts);
+    expect(result).toEqual(selections);
+    expect(result.find((s) => s.value === 'VTB|ALL')).toBeUndefined();
   });
 
   test('returns selections unchanged when ALL already selected', () => {

@@ -419,8 +419,8 @@ describe('DistrictDivisionComboBox', () => {
         await screen.findByText('Southern District of New York (All)', { selector: 'li span' }),
       );
       const lastCall = onSelectionsChange.mock.calls.at(-1)![0] as ComboOption[];
-      // Vermont upgrades to All (single division court); NYSB All also present
-      expect(lastCall.find((s) => s.value === 'VTB|ALL')).toBeDefined();
+      // Vermont is a single-division district, so it has no All option and stays as its division
+      expect(lastCall.find((s) => s.value === 'VTB|088')).toBeDefined();
       expect(lastCall.find((s) => s.value === 'NYSB|ALL')).toBeDefined();
     });
 
