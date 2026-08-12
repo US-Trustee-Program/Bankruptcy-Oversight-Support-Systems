@@ -19,7 +19,6 @@ import React, {
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
-import useFeatureFlags, { TRUSTEE_DISTRICT_DIVISION } from '@/lib/hooks/UseFeatureFlags';
 
 const TrusteeDistrictFilter_ = (
   props: TrusteeDistrictFilterProps,
@@ -33,8 +32,6 @@ const TrusteeDistrictFilter_ = (
     onCourtsLoaded,
     onDivisionDefaultsApplied,
   } = props;
-  const flags = useFeatureFlags();
-  const districtDivisionEnabled = !!flags[TRUSTEE_DISTRICT_DIVISION];
   const [nameSearch, setNameSearch] = useState('');
   const store: TrusteeDistrictFilterStore = useTrusteeDistrictFilterStoreReact();
   const controls: TrusteeDistrictFilterControls = useTrusteeDistrictFilterControlsReact();
@@ -46,27 +43,20 @@ const TrusteeDistrictFilter_ = (
     },
     [handleFilterName],
   );
-  const previousDistrictsRef = useRef<ComboOption[] | undefined>(undefined);
   const previousChaptersRef = useRef<ComboOption[] | undefined>(undefined);
   const previousDivisionsRef = useRef<ComboOption[] | undefined>(undefined);
   const useCase = trusteeDistrictFilterUseCase(
     store,
-    controls,
-    props.handleFilterDistrict,
-    previousDistrictsRef,
     props.handleFilterChapter,
     previousChaptersRef,
     props.handleFilterDivision,
     previousDivisionsRef,
-    districtDivisionEnabled,
   );
   const globalAlert = useGlobalAlert();
 
   useImperativeHandle(ref, () => {
     return {
       refresh: useCase.fetchDistricts,
-      focus: useCase.focusOnDistrictFilter,
-      clearAll: useCase.handleClearAll,
     };
   });
 
@@ -100,20 +90,14 @@ const TrusteeDistrictFilter_ = (
   const viewModel: TrusteeDistrictFilterViewModel = {
     districts: store.districts,
     districtsError: store.districtsError,
-    selectedDistricts: store.selectedDistricts,
     selectedChapters: store.selectedChapters,
     selectedDivisions: store.selectedDivisions,
-    districtDivisionEnabled,
     isExpanded: store.isExpanded,
-    districtFilterRef: controls.districtFilterRef,
     chapterFilterRef: controls.chapterFilterRef,
     nameSearch,
     statusFilter,
     onDivisionDefaultsApplied,
-    districtsToComboOptions: useCase.districtsToComboOptions,
     chaptersToComboOptions: useCase.chaptersToComboOptions,
-    handleFilterChange: useCase.handleFilterChange,
-    handleClearAll: useCase.handleClearAll,
     handleToggleExpanded: useCase.handleToggleExpanded,
     handleFilterChapter: useCase.handleFilterChapter,
     handleClearAllChapters: useCase.handleClearAllChapters,
@@ -131,8 +115,6 @@ export default TrusteeDistrictFilter;
 function useTrusteeDistrictFilterStoreReact() {
   const [districts, setDistricts] = useState<CourtDivisionDetails[]>([]);
   const [districtsError, setDistrictsError] = useState<boolean>(false);
-  const [selectedDistricts, setSelectedDistricts] = useState<ComboOption[]>([]);
-  const [defaultDistricts, setDefaultDistricts] = useState<ComboOption[]>([]);
   const [selectedChapters, setSelectedChapters] = useState<ComboOption[]>([]);
   const [selectedDivisions, setSelectedDivisions] = useState<ComboOption[]>([]);
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
@@ -142,10 +124,6 @@ function useTrusteeDistrictFilterStoreReact() {
     setDistricts,
     districtsError,
     setDistrictsError,
-    selectedDistricts,
-    setSelectedDistricts,
-    defaultDistricts,
-    setDefaultDistricts,
     selectedChapters,
     setSelectedChapters,
     selectedDivisions,
@@ -156,11 +134,9 @@ function useTrusteeDistrictFilterStoreReact() {
 }
 
 function useTrusteeDistrictFilterControlsReact() {
-  const districtFilterRef = useRef<ComboBoxRef>(null);
   const chapterFilterRef = useRef<ComboBoxRef>(null);
 
   return {
-    districtFilterRef,
     chapterFilterRef,
   };
 }

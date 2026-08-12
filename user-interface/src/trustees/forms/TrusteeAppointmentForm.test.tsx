@@ -10,7 +10,6 @@ import MockData from '@common/cams/test-utilities/mock-data';
 import * as useCamsNavigatorModule from '@/lib/hooks/UseCamsNavigator';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { AppointmentType } from '@common/cams/trustees';
-import * as courtUtils from '@/lib/utils/court-utils';
 
 const TEST_TRUSTEE_ID = 'test-trustee-123';
 const TEST_APPOINTED_DATE = '2024-01-01';
@@ -23,8 +22,8 @@ const chapter = {
 };
 
 const courtDivisionName = {
-  alaskaJ: 'District of Alaska (Juneau)',
-  alaskaN: 'District of Alaska (Nome)',
+  alaskaJ: 'District of Alaska',
+  alaskaN: 'Western District of Washington',
 };
 
 const appointmentType = {
@@ -108,6 +107,10 @@ async function selectStatus(userEvent: CamsUserEvent, optionLabel: string) {
 }
 
 function fillDate(appointedDate: string) {
+  // fireEvent.change is used intentionally here: the DatePicker component renders a plain
+  // <input type="date"> and relies on the DOM `change` event. userEvent.type does not
+  // produce a synthetic `change` event on date inputs, so fireEvent is necessary to
+  // update the value and trigger the component's onChange handler.
   const appointedDateInput = screen.getByLabelText(/appointment date/i) as HTMLInputElement;
   fireEvent.change(appointedDateInput, { target: { value: appointedDate } });
 }
@@ -678,25 +681,6 @@ describe('TrusteeAppointmentForm Tests', () => {
 
       expect(postSpy).not.toHaveBeenCalled();
     });
-
-    test('should call validation and return early on programmatic submit when validation fails', async () => {
-      const postSpy = vi.spyOn(Api2, 'postTrusteeAppointment').mockResolvedValue(undefined);
-
-      renderWithProps({
-        trusteeId: TEST_TRUSTEE_ID,
-        existingAppointments: [mockActiveAppointment],
-      });
-
-      await setAppointmentTypeOnDefaultCompleteForm(userEvent, 'Panel');
-
-      const form = screen.getByTestId('trustee-appointment-form') as HTMLFormElement;
-
-      fireEvent.submit(form);
-
-      await waitFor(() => {
-        expect(postSpy).not.toHaveBeenCalled();
-      });
-    });
   });
 
   describe('"All Divisions" Validation Logic', () => {
@@ -730,29 +714,29 @@ describe('TrusteeAppointmentForm Tests', () => {
     });
 
     test('should allow appointment when existing has divisionCodes but no overlap', async () => {
-      const mockDifferentDivisionAppointment: TrusteeAppointment = {
+      const mockAlaskaAppointment: TrusteeAppointment = {
         ...mockActiveAppointment,
         id: 'appointment-diff',
         courtId: '097-',
-        divisionCode: '720', // Nome
-        divisionCodes: ['720'], // Single division, different from default
-        courtDivisionName: 'Nome',
+        divisionCode: '710',
+        divisionCodes: ['710', '720', '730'],
+        courtDivisionName: 'Juneau',
       };
 
       renderWithProps({
         trusteeId: TEST_TRUSTEE_ID,
-        existingAppointments: [mockDifferentDivisionAppointment],
+        existingAppointments: [mockAlaskaAppointment],
       });
 
-      // Create appointment for Juneau (710) - no overlap with Nome (720)
+      // Create appointment for Western District of Washington - no overlap with Alaska
       await fillCompleteForm(userEvent, {
-        district: courtDivisionName.alaskaJ, // Juneau - different division
+        district: courtDivisionName.alaskaN, // Western District of Washington - different court
         chapter: chapter.seven,
         appointmentType: 'Panel',
         appointedDate: TEST_APPOINTED_DATE,
       });
 
-      // No validation error - different divisions
+      // No validation error - different districts
       expect(screen.queryByText(/An active appointment already exists/i)).not.toBeInTheDocument();
 
       const submitButton = screen.getByRole('button', { name: /save/i });
@@ -1123,11 +1107,13 @@ describe('TrusteeAppointmentForm Tests', () => {
       const appointmentToEdit: TrusteeAppointment = {
         ...mockActiveAppointment,
         id: 'appointment-being-edited',
-        courtId: '097-',
-        divisionCode: '720',
+        courtId: '0981', // Western District of Washington — different from Alaska (097-)
+        divisionCode: '081',
         chapter: '13',
         appointmentType: 'standing',
         status: 'active',
+        courtName: 'Western District of Washington',
+        courtDivisionName: 'Seattle',
       };
 
       const conflictingAppointment: TrusteeAppointment = {
@@ -1150,7 +1136,7 @@ describe('TrusteeAppointmentForm Tests', () => {
         expect(document.querySelector('#district')).toBeInTheDocument();
       });
 
-      await selectDistrict(userEvent, courtDivisionName.alaskaJ);
+      await selectDistrict(userEvent, courtDivisionName.alaskaJ); // Change to District of Alaska
       await selectChapter(userEvent, chapter.seven);
       await selectAppointmentType(userEvent, 'Panel');
 
@@ -1416,25 +1402,29 @@ describe('TrusteeAppointmentForm Tests', () => {
   });
 
   describe('District Dropdown Sorting Tests', () => {
-    test('should call sortByCourtLocation when loading districts', async () => {
-      const sortSpy = vi.spyOn(courtUtils, 'sortByCourtLocation');
-
+    test('should render one district option per unique courtId, not per division', async () => {
       renderWithProps();
 
       await waitFor(() => {
-        expect(sortSpy).toHaveBeenCalled();
+        expect(document.querySelector('#district')).toBeInTheDocument();
       });
 
-      // Verify it was called with the courts data from the API
-      const callArgs = sortSpy.mock.calls[0];
-      expect(callArgs[0]).toBeInstanceOf(Array);
-      expect(callArgs[0].length).toBeGreaterThan(0);
-      // Should have court data with state field
-      expect(callArgs[0][0]).toHaveProperty('state');
+      await userEvent.click(document.querySelector('#district-expand')!);
+
+      await waitFor(() => {
+        expect(screen.getByText(courtDivisionName.alaskaJ)).toBeVisible();
+      });
+
+      const optionItems = document.querySelectorAll('#district-item-list li[role="option"]');
+      const uniqueCourtIds = new Set(MockData.getCourts().map((court) => court.courtId));
+
+      // MockData.getCourts() contains multiple division rows per district (courtId);
+      // the dropdown should collapse those down to one option per district.
+      expect(optionItems).toHaveLength(uniqueCourtIds.size);
     });
 
-    test('should display district options in parentheses format', async () => {
-      // Verifies options use "District (Division)" format, not "District - Division"
+    test('should display district options as court names without division suffix', async () => {
+      // Verifies options use court name only (unique districts), not "District (Division)" format
       // Sorting behavior is tested in court-utils.test.ts
       renderWithProps();
 
@@ -1453,20 +1443,12 @@ describe('TrusteeAppointmentForm Tests', () => {
 
       expect(optionTexts.length).toBeGreaterThan(0);
       optionTexts.forEach((text) => {
-        expect(text).toMatch(/\(.+\)$/); // Should end with (something)
         expect(text).not.toMatch(/ - [^-]+$/); // Should NOT have " - something" at end
       });
     });
   });
 
   describe('Accessibility Enhancements', () => {
-    beforeEach(() => {
-      vi.spyOn(FeatureFlagHook, 'default').mockReturnValue({
-        'trustee-management': true,
-        'trustee-district-division': true,
-      } as FeatureFlagSet);
-    });
-
     test('should move focus to validation error when overlap is detected', async () => {
       renderWithProps({
         trusteeId: TEST_TRUSTEE_ID,
@@ -1536,6 +1518,137 @@ describe('TrusteeAppointmentForm Tests', () => {
           'Divisions where this trustee will be assigned in District of Alaska',
         );
       });
+    });
+  });
+
+  describe('Division Selection', () => {
+    test('should enable division combobox after district is selected and allow selecting a specific division', async () => {
+      renderWithProps({
+        trusteeId: TEST_TRUSTEE_ID,
+        existingAppointments: [],
+      });
+
+      await waitFor(() => {
+        expect(document.querySelector('#district')).toBeInTheDocument();
+      });
+
+      // Before district selection: division combobox is disabled
+      const divisionExpandButton = document.querySelector('#division-expand') as HTMLButtonElement;
+      expect(divisionExpandButton).toBeDisabled();
+
+      // Select a district
+      await selectDistrict(userEvent, 'District of Alaska');
+
+      // After district selection: "All Divisions" is auto-selected and division combobox is enabled
+      await waitFor(() => {
+        expect(divisionExpandButton).not.toBeDisabled();
+      });
+
+      // Division combobox should show options when opened; open it and pick a specific division
+      await userEvent.click(divisionExpandButton);
+
+      await waitFor(() => {
+        expect(screen.getByText('Anchorage')).toBeVisible();
+      });
+
+      // Select a specific division (not "All Divisions")
+      await userEvent.click(screen.getByText('Anchorage'));
+
+      // Verify "All Divisions" pill is no longer shown; Anchorage pill should be shown
+      await waitFor(() => {
+        const divisionInput = document.querySelector(
+          '#division-combo-box-input',
+        ) as HTMLInputElement;
+        expect(divisionInput).toHaveValue('Anchorage');
+      });
+    });
+  });
+
+  describe('Merge Path Tests', () => {
+    test('should call putTrusteeAppointment when a merge target exists for same court/chapter/type but different division', async () => {
+      // Existing active appointment for Alaska Ch7 Panel but only in Nome (720).
+      // The form will add Anchorage (730) — different division so no validation conflict,
+      // but findMergeTarget matches same courtId/chapter/appointmentType/active → merge path.
+      const existingNomeAppointment: TrusteeAppointment = {
+        ...mockActiveAppointment,
+        id: 'appointment-nome',
+        courtId: '097-',
+        divisionCode: '720',
+        divisionCodes: ['720'],
+        chapter: '7',
+        appointmentType: 'panel',
+        status: 'active',
+        courtDivisionName: 'Nome',
+      };
+
+      const putSpy = vi.spyOn(Api2, 'putTrusteeAppointment').mockResolvedValue({
+        data: existingNomeAppointment,
+      });
+      const postSpy = vi.spyOn(Api2, 'postTrusteeAppointment').mockResolvedValue(undefined);
+
+      renderWithProps({
+        trusteeId: TEST_TRUSTEE_ID,
+        existingAppointments: [existingNomeAppointment],
+      });
+
+      await waitFor(() => {
+        expect(document.querySelector('#district')).toBeInTheDocument();
+      });
+
+      // Select district (Alaska)
+      await selectDistrict(userEvent, 'District of Alaska');
+
+      // After district selection, division auto-selects "All Divisions". Switch to Anchorage only.
+      await waitFor(() => {
+        expect(document.querySelector('#division-expand') as HTMLButtonElement).not.toBeDisabled();
+      });
+
+      await userEvent.click(document.querySelector('#division-expand')!);
+      await waitFor(() => expect(screen.getByText('Anchorage')).toBeVisible());
+      await userEvent.click(screen.getByText('Anchorage'));
+
+      // Wait for Anchorage to be selected
+      await waitFor(() => {
+        const divisionInput = document.querySelector(
+          '#division-combo-box-input',
+        ) as HTMLInputElement;
+        expect(divisionInput).toHaveValue('Anchorage');
+      });
+
+      // Select chapter and appointment type
+      await selectChapter(userEvent, chapter.seven);
+      await waitFor(() => {
+        const appointmentTypeContainer = document.querySelector(
+          '#appointmentType .input-container',
+        ) as HTMLElement;
+        expect(appointmentTypeContainer).not.toHaveClass('disabled');
+      });
+      await selectAppointmentType(userEvent, 'Panel');
+
+      // Fill in the appointment date
+      fillDate(TEST_APPOINTED_DATE);
+
+      const submitButton = screen.getByRole('button', { name: /save/i });
+      await waitFor(() => {
+        expect(submitButton).not.toBeDisabled();
+      });
+
+      await userEvent.click(submitButton);
+
+      // Merge path should call PUT (not POST) with the existing appointment's id
+      await waitFor(() => {
+        expect(putSpy).toHaveBeenCalledWith(
+          TEST_TRUSTEE_ID,
+          'appointment-nome',
+          expect.objectContaining({
+            courtId: '097-',
+            chapter: '7',
+            appointmentType: 'panel',
+          }),
+        );
+      });
+
+      expect(postSpy).not.toHaveBeenCalled();
     });
   });
 });

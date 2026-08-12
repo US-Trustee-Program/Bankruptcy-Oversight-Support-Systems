@@ -72,6 +72,10 @@ This produces subjects of the form:
 repo:US-Trustee-Program/Bankruptcy-Oversight-Support-Systems:workflow:Continuous Deployment:environment:ENV-NAME
 ```
 
+This setting is **repository-wide**, and that has a consequence beyond Azure. It shapes the subject of every OIDC token the repository issues, including tokens for consumers that have nothing to do with Azure federated credentials. GitHub Pages deployment via `actions/deploy-pages` is the current second consumer.
+
+Because the template expects an `environment` claim, `id-token: write` should be granted only to jobs that actually exchange a token *and* declare an `environment:`. A job holding the permission without an environment does not produce the subject shape this template describes. This is not hypothetical: the Pages workflow's `build` job carried `id-token: write` without an environment and broke Pages deployment until the permission was removed (GH #2809).
+
 ### GitHub Environment Naming Convention
 
 Each reusable workflow that requires Azure access is assigned a dedicated GitHub environment. Environment names follow the convention `<workflow-purpose>-<target>` where target is `main` for production and `branch` for non-production:
@@ -80,20 +84,45 @@ Each reusable workflow that requires Azure access is assigned a dedicated GitHub
 |---|---|
 | `reusable-deploy.yml` | `deploy-main`, `deploy-branch` |
 | `reusable-infrastructure-deploy.yml` | `infrastructure-deploy-main`, `infrastructure-deploy-branch` |
-| `reusable-deploy-code.yml` | `deploy-code-main`, `deploy-code-branch` |
+| `sub-deploy-code.yml`, `sub-deploy-code-slot.yml` | `deploy-code-main`, `deploy-code-branch` |
 | `reusable-build-info.yml` | `build-info-main`, `build-info-branch` |
 | `reusable-build-frontend.yml` | `build-frontend-main`, `build-frontend-branch` |
 | `reusable-e2e.yml` | `e2e-main`, `e2e-branch` |
 | `reusable-dast.yml` | `dast-main`, `dast-branch` |
 | `reusable-endpoint-test.yml` | `endpoint-test-main`, `endpoint-test-branch` |
-| `sub-security-scan.yml` | `security-scan` |
+| `sub-security-scan.yml`, `deploy-security-scan-storage.yml` | `security-scan` |
 | `azure-remove-branch.yml` | `remove-branch` |
 
-These GitHub environments hold **no secrets or variables**. Their sole purpose is to produce a stable, branch-independent OIDC subject.
+These GitHub environments hold **no variables and exactly one secret**: `AZ_CLIENT_ID`, the client ID of the app registration that environment's federated credential is attached to. It must live at environment scope precisely because it differs per environment — that is what makes the environment an OIDC anchor. Everything shared across environments (`AZ_TENANT_ID`, `AZ_SUBSCRIPTION_ID`, `AZURE_ENVIRONMENT`) stays at repository scope, and `security-scan` holds nothing at all, reading the repository-level `AZ_SECURITY_SCAN_CLIENT_ID` instead.
+
+This is distinct from the legacy `Main-Gov` and `Develop` environments, which still carry the full set of resource names and connection strings pending completion of the Key Vault migration.
 
 ### Azure Federated Credentials
 
-Each GitHub environment maps to one Azure federated credential on a dedicated app registration. App registrations are scoped to the minimum Azure RBAC roles required for that workflow's work.
+Each GitHub environment maps to one Azure federated credential on a dedicated app registration. Least privilege is expressed primarily through **role choice** rather than assignment scope: with the single exception of `security-scan`, every identity's primary role is assigned at subscription scope, and the bound on what it can do comes from how narrow that role is.
+
+| Identity | Primary role | Scope |
+|---|---|---|
+| `build-frontend-*`, `build-info-*` | Reader | Subscription |
+| `deploy-code-*`, `endpoint-test-*` | Website Contributor | Subscription |
+| `dast-*` | Website Contributor, SQL Server Contributor | Subscription |
+| `deploy-*`, `infrastructure-deploy-*`, `e2e-*`, `remove-branch` | Contributor | Subscription |
+| `security-scan` | Storage Blob Data Contributor | Storage account |
+
+Every identity additionally holds Key Vault Secrets User on each **individual secret** it reads, never at vault scope. Many secrets are deliberately shared across identities — `AZ-APP-RG` is granted to eight of the ten, `SLOT-NAME` to six — so this does not isolate workflows from one another. What it bounds is the tail: an identity can read only the secrets it was explicitly granted, not the rest of the vault.
+
+Subscription-scope assignment is broader than ideal and is a deliberate, temporary tradeoff. Resource-group-scoped grants are incompatible with branch deployments, whose resource groups are created per-commit-hash at deploy time and so cannot be pre-scoped — Azure RBAC has no wildcard scoping. Rather than diverge main (static resource groups, scopable) from branch (dynamic, not scopable), both environments use the same subscription-scope grant. Narrowing this requires first deciding the branch approach, and is deferred to a focused follow-up.
+
+### Role Assignments Created by Bicep
+
+Contributor does not include `Microsoft.Authorization/roleAssignments/write`. Any Bicep module that creates a role assignment therefore requires the identity deploying it to hold that permission **at the scope of the assignment being created**, granted separately from Contributor.
+
+Today that is the custom role `CAMS KV Role Assignment Operator`, held by the deploy identities on the Key Vault *resource* — deliberately narrower than User Access Administrator, and narrower than the resource group, to limit privilege-escalation surface. A Bicep module that creates a role assignment at any **other** scope will fail at deploy time until the deploy identity is granted `roleAssignments/write` there as well. This failure surfaces only during deployment; nothing at commit time detects it.
+
+Which side owns the grant depends on whose identity it is for:
+
+- Grants **to the function apps' managed identity** are authored in Bicep and gated on `!isUstpDeployment`, because the USTP ADO service principal cannot create role assignments — the USTP EA team provisions those separately on request.
+- Grants **to a CI/CD deploy identity** are authored in the federated-credential runbooks under `ops/scripts/utility/federated-credentials/`, never in Bicep.
 
 ### Key Vault Migration
 
@@ -121,10 +150,12 @@ Accepted
 ## Consequences
 
 - Long-lived `AZURE_CREDENTIALS` secrets are eliminated from all workflows
-- Each workflow's Azure access is bounded to the duration of the run and scoped to its minimum required permissions
+- Each workflow's Azure access is bounded to the duration of the run and to the narrowest Azure role that covers its work; most roles are assigned at subscription scope, so the bound is the role, not the scope
 - GitHub environments contain no secrets or variables; all environment-specific configuration lives in Azure Key Vault
 - Two Key Vaults are maintained (main and branch) with identical secret names; any change to a vault secret is a two-step operation — update main vault, then branch vault
 - A compromise of one vault cannot affect the other environment
-- Adding a new workflow that requires Azure access requires: creating a GitHub environment (no values), creating an Azure app registration with a federated credential, and granting Key Vault Secrets User access to the specific secrets needed in each vault
+- Adding a new workflow that requires Azure access requires: creating a GitHub environment (no values), creating an Azure app registration with a federated credential, granting the narrowest Azure role that covers its work, and granting Key Vault Secrets User access to the specific secrets needed in each vault
+- Adding a Bicep module that creates a role assignment additionally requires granting the deploying identity `roleAssignments/write` at that assignment's scope; omitting it fails at deploy time with no earlier signal
 - The `PGP_SIGNING_PASSPHRASE` encrypted-input pattern is no longer needed once Key Vault migration is complete
 - Non-deployment workflows (security scan, DAST) that previously had no GitHub environment can now be given stable OIDC subjects without branch constraints
+- The subject customization applies repository-wide, so it reaches OIDC consumers unrelated to Azure. `id-token: write` becomes a permission to grant deliberately rather than defensively: a job that holds it without declaring an `environment:` does not produce a subject matching the template, and granting it to a job that never exchanges a token widens the blast radius of any action running in that job for no benefit
