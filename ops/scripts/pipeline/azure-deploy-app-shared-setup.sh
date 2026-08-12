@@ -147,16 +147,38 @@ for param in ${extra_parameters}; do
     esac
 done
 
+# Runs "$@", capturing stdout and stderr separately into az_call_stdout/
+# az_call_stderr rather than merging them (2>&1) as the four checks below
+# used to. A successful call's stdout must never be trusted if stderr is
+# spliced into it — a CLI upgrade nag, extension auto-install message, or
+# deprecation notice printed alongside a clean success would otherwise
+# corrupt the value used in later comparisons, silently reintroducing the
+# Conflict this PR fixes or producing a false "link exists" that skips real
+# link creation and leaves DNS resolution broken. Returns the command's own
+# exit code; safe to call as the condition of `if !` (which exempts the
+# whole function body, not just its own return, from set -e — verified
+# live: a failing "$@" here does not abort the script before rc is read).
+function az_call_func() {
+    local stderrFile
+    stderrFile=$(mktemp)
+    az_call_stdout=$("$@" 2>"${stderrFile}")
+    local rc=$?
+    az_call_stderr=$(cat "${stderrFile}")
+    rm -f "${stderrFile}"
+    return "${rc}"
+}
+
 # The vnet is deployed by the network step immediately before this one in
 # reusable-deploy.yml, so it must already exist here — a failure looking it
 # up (auth blip, throttling, transient API error) is a real problem, not "no
 # link exists yet." Fail loud instead of silently treating it as the latter,
 # which would let the deploy proceed to hit a Conflict for a reason that
 # looks nothing like this check.
-if ! vnetId=$(az network vnet show -g "${network_rg}" -n "${vnet_name}" --query id -o tsv 2>&1); then
-    echo "ERROR: failed to look up vnet ${vnet_name} in ${network_rg}: ${vnetId}" >&2
+if ! az_call_func az network vnet show -g "${network_rg}" -n "${vnet_name}" --query id -o tsv; then
+    echo "ERROR: failed to look up vnet ${vnet_name} in ${network_rg}: ${az_call_stderr}" >&2
     exit 1
 fi
+vnetId="${az_call_stdout}"
 
 vnet_link_already_exists=false
 if [[ -n "${vnetId}" ]]; then
@@ -164,15 +186,15 @@ if [[ -n "${vnetId}" ]]; then
     # first deploy, before deployDns=true has ever created it) — that's a
     # legitimate "no link possible" case, not an error. Only a failure other
     # than the zone itself being missing should be treated as fatal.
-    if ! existingLinkOutput=$(az network private-dns link vnet list -g "${private_dns_zone_rg}" "${private_dns_zone_subscription_args[@]+"${private_dns_zone_subscription_args[@]}"}" --zone-name "${kvPrivateDnsZoneName}" --query "[?virtualNetwork.id=='${vnetId}'].name | [0]" -o tsv 2>&1); then
-        if grep -qi "ResourceNotFound" <<<"${existingLinkOutput}"; then
+    if ! az_call_func az network private-dns link vnet list -g "${private_dns_zone_rg}" "${private_dns_zone_subscription_args[@]+"${private_dns_zone_subscription_args[@]}"}" --zone-name "${kvPrivateDnsZoneName}" --query "[?virtualNetwork.id=='${vnetId}'].name | [0]" -o tsv; then
+        if grep -qi "ResourceNotFound" <<<"${az_call_stderr}"; then
             existingLink=""
         else
-            echo "ERROR: failed to check for an existing vnet link into ${kvPrivateDnsZoneName}: ${existingLinkOutput}" >&2
+            echo "ERROR: failed to check for an existing vnet link into ${kvPrivateDnsZoneName}: ${az_call_stderr}" >&2
             exit 1
         fi
     else
-        existingLink="${existingLinkOutput}"
+        existingLink="${az_call_stdout}"
     fi
     if [[ -n "${existingLink}" ]]; then
         echo "Vnet ${vnet_name} is already linked to ${kvPrivateDnsZoneName} via '${existingLink}'; skipping creation of a second link."
@@ -192,15 +214,17 @@ if [[ -n "${vnetId}" ]]; then
         # deploy proceed would either hit the same Conflict or, worse,
         # silently "succeed" while DNS resolution stays broken. Fail loud and
         # name the offending resource instead.
-        if ! otherZoneRgs=$(az network private-dns zone list "${private_dns_zone_subscription_args[@]+"${private_dns_zone_subscription_args[@]}"}" --query "[?name=='${kvPrivateDnsZoneName}' && resourceGroup!='${private_dns_zone_rg}'].resourceGroup" -o tsv 2>&1); then
-            echo "ERROR: failed to search for other zones named ${kvPrivateDnsZoneName}: ${otherZoneRgs}" >&2
+        if ! az_call_func az network private-dns zone list "${private_dns_zone_subscription_args[@]+"${private_dns_zone_subscription_args[@]}"}" --query "[?name=='${kvPrivateDnsZoneName}' && resourceGroup!='${private_dns_zone_rg}'].resourceGroup" -o tsv; then
+            echo "ERROR: failed to search for other zones named ${kvPrivateDnsZoneName}: ${az_call_stderr}" >&2
             exit 1
         fi
+        otherZoneRgs="${az_call_stdout}"
         for otherRg in ${otherZoneRgs}; do
-            if ! strayLink=$(az network private-dns link vnet list -g "${otherRg}" "${private_dns_zone_subscription_args[@]+"${private_dns_zone_subscription_args[@]}"}" --zone-name "${kvPrivateDnsZoneName}" --query "[?virtualNetwork.id=='${vnetId}'].name | [0]" -o tsv 2>&1); then
-                echo "ERROR: failed to check zone ${kvPrivateDnsZoneName} in ${otherRg} for a stray link: ${strayLink}" >&2
+            if ! az_call_func az network private-dns link vnet list -g "${otherRg}" "${private_dns_zone_subscription_args[@]+"${private_dns_zone_subscription_args[@]}"}" --zone-name "${kvPrivateDnsZoneName}" --query "[?virtualNetwork.id=='${vnetId}'].name | [0]" -o tsv; then
+                echo "ERROR: failed to check zone ${kvPrivateDnsZoneName} in ${otherRg} for a stray link: ${az_call_stderr}" >&2
                 exit 1
             fi
+            strayLink="${az_call_stdout}"
             if [[ -n "${strayLink}" ]]; then
                 echo "ERROR: vnet ${vnet_name} is already linked to a DIFFERENT ${kvPrivateDnsZoneName} zone in ${otherRg} (via '${strayLink}'), not the intended one in ${private_dns_zone_rg}. Azure will not allow linking to the correct zone until this stray link is removed — manual cleanup required." >&2
                 exit 1
