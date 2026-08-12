@@ -164,7 +164,7 @@ if [[ -n "${vnetId}" ]]; then
     # first deploy, before deployDns=true has ever created it) — that's a
     # legitimate "no link possible" case, not an error. Only a failure other
     # than the zone itself being missing should be treated as fatal.
-    if ! existingLinkOutput=$(az network private-dns link vnet list -g "${private_dns_zone_rg}" "${private_dns_zone_subscription_args[@]}" --zone-name "${kvPrivateDnsZoneName}" --query "[?virtualNetwork.id=='${vnetId}'].name | [0]" -o tsv 2>&1); then
+    if ! existingLinkOutput=$(az network private-dns link vnet list -g "${private_dns_zone_rg}" "${private_dns_zone_subscription_args[@]+"${private_dns_zone_subscription_args[@]}"}" --zone-name "${kvPrivateDnsZoneName}" --query "[?virtualNetwork.id=='${vnetId}'].name | [0]" -o tsv 2>&1); then
         if grep -qi "ResourceNotFound" <<<"${existingLinkOutput}"; then
             existingLink=""
         else
@@ -192,12 +192,12 @@ if [[ -n "${vnetId}" ]]; then
         # deploy proceed would either hit the same Conflict or, worse,
         # silently "succeed" while DNS resolution stays broken. Fail loud and
         # name the offending resource instead.
-        if ! otherZoneRgs=$(az network private-dns zone list "${private_dns_zone_subscription_args[@]}" --query "[?name=='${kvPrivateDnsZoneName}' && resourceGroup!='${private_dns_zone_rg}'].resourceGroup" -o tsv 2>&1); then
+        if ! otherZoneRgs=$(az network private-dns zone list "${private_dns_zone_subscription_args[@]+"${private_dns_zone_subscription_args[@]}"}" --query "[?name=='${kvPrivateDnsZoneName}' && resourceGroup!='${private_dns_zone_rg}'].resourceGroup" -o tsv 2>&1); then
             echo "ERROR: failed to search for other zones named ${kvPrivateDnsZoneName}: ${otherZoneRgs}" >&2
             exit 1
         fi
         for otherRg in ${otherZoneRgs}; do
-            if ! strayLink=$(az network private-dns link vnet list -g "${otherRg}" "${private_dns_zone_subscription_args[@]}" --zone-name "${kvPrivateDnsZoneName}" --query "[?virtualNetwork.id=='${vnetId}'].name | [0]" -o tsv 2>&1); then
+            if ! strayLink=$(az network private-dns link vnet list -g "${otherRg}" "${private_dns_zone_subscription_args[@]+"${private_dns_zone_subscription_args[@]}"}" --zone-name "${kvPrivateDnsZoneName}" --query "[?virtualNetwork.id=='${vnetId}'].name | [0]" -o tsv 2>&1); then
                 echo "ERROR: failed to check zone ${kvPrivateDnsZoneName} in ${otherRg} for a stray link: ${strayLink}" >&2
                 exit 1
             fi
