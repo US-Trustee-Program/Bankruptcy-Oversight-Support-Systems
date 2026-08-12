@@ -230,6 +230,18 @@ module ustpPrivateDnsZone './lib/network/private-dns-zones.bicep' = {
   }
 }
 
+// dependsOn is required here, not just implied by the matching
+// privateDnsZoneName/ResourceGroup/SubscriptionId params: this module's
+// subnet-private-endpoint.bicep resolves the zone via a plain `existing`
+// lookup by name/scope, which Bicep does NOT treat as a dependency edge (only
+// referencing a module's own symbolic outputs, e.g. ustpPrivateDnsZone.id,
+// would). Without this, ARM has no guarantee it creates the zone (module
+// ustpPrivateDnsZone above, when deployDns=true) before this module's DNS
+// zone group tries to reference it -- harmless as long as the zone always
+// already existed (main's has, for years), but a genuine race the first time
+// a branch's deploy creates it fresh in this same deployment (CAMS-760
+// zone-bootstrap fix). Confirmed live 2026-08-12: InvalidPrivateDnsZoneIds
+// when the race was lost.
 module appConfigKeyvaultPrivateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
   name: '${stackName}-kv-app-config-module'
   scope: resourceGroup(networkResourceGroup)
@@ -244,4 +256,7 @@ module appConfigKeyvaultPrivateEndpoint './lib/network/subnet-private-endpoint.b
     privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
     tags: tags
   }
+  dependsOn: [
+    ustpPrivateDnsZone
+  ]
 }
