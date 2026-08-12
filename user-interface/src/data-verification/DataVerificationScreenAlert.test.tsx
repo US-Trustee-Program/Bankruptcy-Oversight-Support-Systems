@@ -206,7 +206,7 @@ describe('Review Orders screen - Alert', () => {
       caseId: '081-22-11111',
       courtId: '0881',
       status: 'pending',
-      mismatchReason: 'HIGH_CONFIDENCE_MATCH',
+      mismatchReason: 'AMBIGUOUS_MATCH_RESOLVED',
       dxtrTrustee: { fullName: 'John Doe' },
       preselectedCandidate: { trusteeId: 'trustee-1', trusteeName: 'Jane Smith' },
       candidateCount: 1,

@@ -111,7 +111,7 @@ export class TrusteeMatchVerificationUseCase {
   ): TrusteeCandidate | null {
     if (verification.matchCandidates.length === 0) return null;
     const isMultipleMatch =
-      verification.mismatchReason === TrusteeAppointmentSyncErrorCode.MultipleTrusteesMatch;
+      verification.mismatchReason === TrusteeAppointmentSyncErrorCode.AmbiguousMatchUnresolved;
     const best = isMultipleMatch
       ? verification.matchCandidates.reduce((a, b) => (b.totalScore > a.totalScore ? b : a))
       : verification.matchCandidates[0];
@@ -242,7 +242,7 @@ export class TrusteeMatchVerificationUseCase {
       const userRef = getCamsUserReference(context.session.user);
 
       // 2. Record the resolved fingerprint/variant mapping so future auto-matching
-      // short-circuits on it — mirrors recordAutoMatch's TRUSTEE_VARIATION write on the
+      // short-circuits on it — mirrors autoLinkTrustee's TRUSTEE_VARIATION write on the
       // sync path. Bucket+verify: fetch the fingerprint's bucket, compare variant exactly.
       const variationRepo = factory.getTrusteeVariationRepository(context);
       const variationBucket = await variationRepo.findByFingerprint(verification.fingerprint);

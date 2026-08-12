@@ -5,6 +5,7 @@ import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import { CollectionHumble } from '../../../humble-objects/mongo-humble';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import { TooManyRequestsError } from '../../../common-errors/too-many-requests-error';
+import { NotFoundError } from '../../../common-errors/not-found-error';
 import {
   CaseAppointment,
   CaseAppointmentInput,
@@ -78,11 +79,23 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       expect(result).toHaveLength(0);
       repo.release();
     });
+
+    test('should strip Mongo _id from returned documents', async () => {
+      const rawDocument = { ...baseAppointment, _id: 'mongo-object-id-abc123' };
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([rawDocument]);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const result = await repo.getByCaseId(CASE_ID);
+
+      expect(result[0]).not.toHaveProperty('_id');
+      repo.release();
+    });
   });
 
   describe('getActiveByCaseId', () => {
     test('should return the active appointment when one exists', async () => {
-      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(baseAppointment);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([baseAppointment]);
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
 
@@ -93,8 +106,20 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       repo.release();
     });
 
+    test('should strip Mongo _id from the returned appointment', async () => {
+      const rawDocument = { ...baseAppointment, _id: 'mongo-object-id-xyz789' };
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([rawDocument]);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const result = await repo.getActiveByCaseId(CASE_ID);
+
+      expect(result).not.toHaveProperty('_id');
+      repo.release();
+    });
+
     test('should return null when no active appointment exists', async () => {
-      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(null);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
 
@@ -105,16 +130,14 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
     });
 
     test('should exclude sentinel appointment documents (trusteeId = null UUID)', async () => {
-      const findOneSpy = vi
-        .spyOn(MongoCollectionAdapter.prototype, 'findOne')
-        .mockResolvedValue(null);
+      const findSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
 
       await repo.getActiveByCaseId(CASE_ID);
 
-      // Verify the query passed to findOne includes the sentinel trustee ID guard
-      const query = findOneSpy.mock.calls[0][0];
+      // Verify the query passed to find includes the sentinel trustee ID guard
+      const query = findSpy.mock.calls[0][0];
       expect(query).toBeDefined();
       // The query should include a notEquals condition for the sentinel trustee ID
       const queryStr = JSON.stringify(query);
@@ -128,21 +151,82 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
     });
 
     test('should exclude surrogate appointment documents (isSurrogate = true)', async () => {
-      const findOneSpy = vi
-        .spyOn(MongoCollectionAdapter.prototype, 'findOne')
-        .mockResolvedValue(null);
+      const findSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
 
       await repo.getActiveByCaseId(CASE_ID);
 
-      const query = findOneSpy.mock.calls[0][0];
+      const query = findSpy.mock.calls[0][0];
       const queryValues = (query as Record<string, unknown>).values as Record<string, unknown>[];
       const isSurrogateCondition = queryValues.find(
         (v) => (v.leftOperand as { name: string })?.name === 'isSurrogate',
       );
       expect(isSurrogateCondition).toEqual(
         expect.objectContaining({ condition: 'NOT_EQUALS', rightOperand: true }),
+      );
+      repo.release();
+    });
+
+    test('should sort by assignedOn descending and limit to 1, returning the most recently assigned active appointment deterministically across repeated calls', async () => {
+      const olderAppointment: CaseAppointment = {
+        ...baseAppointment,
+        id: 'appt-older',
+        assignedOn: '2023-06-01',
+      };
+      const newerAppointment: CaseAppointment = {
+        ...baseAppointment,
+        id: 'appt-newer',
+        assignedOn: '2024-01-15',
+      };
+
+      // A real DESCENDING sort would put the newest row first; this mock simulates that
+      // server-side ordering directly (getActiveByCaseId just takes the first result, it does
+      // not re-sort client-side) to prove the function returns whichever row the query's sort
+      // direction puts first, rather than relying on incidental array order. Newest-first
+      // matters if more than one active row ever exists for a case (see CAMS-809's
+      // dual-active-appointment discussion) -- this must consistently surface the most recently
+      // assigned appointment as authoritative, not the oldest.
+      const findSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockResolvedValue([newerAppointment, olderAppointment]);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const first = await repo.getActiveByCaseId(CASE_ID);
+      const second = await repo.getActiveByCaseId(CASE_ID);
+
+      expect(first?.id).toBe('appt-newer');
+      expect(second?.id).toBe('appt-newer');
+
+      expect(findSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        { fields: [{ field: { name: 'assignedOn' }, direction: 'DESCENDING' }] },
+        1,
+      );
+      repo.release();
+    });
+
+    test('returns null when find rejects with a NotFoundError', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(
+        new NotFoundError('TRUSTEE-CASE-APPOINTMENTS-MONGO-REPOSITORY'),
+      );
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const result = await repo.getActiveByCaseId(CASE_ID);
+
+      expect(result).toBeNull();
+      repo.release();
+    });
+
+    test('wraps and rethrows a non-NotFound error', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(new Error('boom'));
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(repo.getActiveByCaseId(CASE_ID)).rejects.toThrow(
+        `Failed to retrieve active case appointment for case ${CASE_ID}.`,
       );
       repo.release();
     });
@@ -228,6 +312,34 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
 
       expect(result.id).toBe('appt-new');
       expect(result.caseId).toBe(CASE_ID);
+      repo.release();
+    });
+
+    test('should never write a caller-supplied Mongo _id into the replaceOne payload', async () => {
+      const replaceOneSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
+        .mockResolvedValue({
+          id: 'appt-new',
+          modifiedCount: 0,
+          upsertedCount: 1,
+        });
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const inputWithMongoId = {
+        caseId: CASE_ID,
+        trusteeId: TRUSTEE_ID,
+        assignedOn: '2024-01-15',
+        _id: 'mongo-object-id-leaked-in',
+      } as CaseAppointmentInput;
+
+      const result = await repo.upsert(inputWithMongoId);
+
+      expect(result).not.toHaveProperty('_id');
+      const casePartitionDocument = replaceOneSpy.mock.calls[0][1] as Record<string, unknown>;
+      expect(casePartitionDocument).not.toHaveProperty('_id');
+      const trusteePartitionDocument = replaceOneSpy.mock.calls[1][1] as Record<string, unknown>;
+      expect(trusteePartitionDocument).not.toHaveProperty('_id');
       repo.release();
     });
 
@@ -364,6 +476,9 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       expect(result.chapter).toBe('7');
       expect(result.courtDivisionCode).toBe('ABC');
       expect(result.caseStatus).toBe('CLOSED');
+      expect(_capturedDocument?.dateFiled).toBe('2023-01-10');
+      expect(_capturedDocument?.chapter).toBe('7');
+      expect(_capturedDocument?.courtDivisionCode).toBe('ABC');
       repo.release();
     });
   });
@@ -476,6 +591,41 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       expect(result.chapter).toBe('7');
       expect(result.courtDivisionCode).toBe('ABC');
       expect(result.caseStatus).toBe('CLOSED');
+      expect(_capturedDocument?.dateFiled).toBe('2023-01-10');
+      expect(_capturedDocument?.chapter).toBe('7');
+      expect(_capturedDocument?.courtDivisionCode).toBe('ABC');
+      repo.release();
+    });
+
+    test('strips a leaked Mongo _id from the input before writing to either partition', async () => {
+      // Reproduces a production bug: appointment objects read via getActiveByCaseId/getByCaseId
+      // carry the case partition's raw Mongo _id (not part of the CaseAppointment type, but
+      // present at runtime since find/findOne don't strip it). Replaying that _id verbatim
+      // against the trustee partition's replaceOne fails with "Performing an update would modify
+      // the immutable field _id", because the trustee partition's copy of this same logical
+      // appointment has its own, independently-assigned _id.
+      const capturedDocuments: Array<Record<string, unknown>> = [];
+      vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockImplementation(
+        async (_query, doc) => {
+          capturedDocuments.push(doc as Record<string, unknown>);
+          return undefined;
+        },
+      );
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const appointmentWithLeakedMongoId = {
+        ...baseAppointment,
+        _id: 'case-partition-mongo-object-id',
+        unassignedOn: '2024-06-01',
+      };
+
+      await repo.updateCaseAppointment(appointmentWithLeakedMongoId);
+
+      expect(capturedDocuments).toHaveLength(2);
+      capturedDocuments.forEach((doc) => {
+        expect(doc).not.toHaveProperty('_id');
+      });
       repo.release();
     });
   });

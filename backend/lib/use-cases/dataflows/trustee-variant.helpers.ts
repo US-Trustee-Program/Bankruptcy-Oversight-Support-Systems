@@ -2,39 +2,37 @@ import { createHash } from 'node:crypto';
 import { DxtrTrusteeParty } from '@common/cams/dataflow-events';
 
 /**
- * Trims, collapses internal whitespace runs to a single space, and case-folds a field
- * value. This is the entirety of variant normalization — no punctuation stripping, no
- * field reordering, no abbreviation expansion. Scope stops here deliberately: this only
- * eliminates pure encoding noise (how a value is rendered, not what it says), rather than
- * making an interpretive equivalence judgment. Punctuation, field reordering, and
- * abbreviation expansion require the same kind of judgment Slices 1-4's name/address/phone
- * scoring already owns — folding that judgment into the variant would blur "identical record,
- * differently rendered" with "different record that might still be the same trustee."
+ * Substitutes '' for an absent field so the variant's shape (key set) never changes based on
+ * which optional DXTR fields happened to be present — JSON.stringify otherwise omits
+ * undefined-valued keys entirely. Anything actually present passes through byte-for-byte: no
+ * trim, no whitespace collapse, no case-fold. Fingerprints must reflect demographics exactly as
+ * DXTR rendered them, because normalization rules can change over time — if the variant folded
+ * rendering differences, a later change to those rules would silently invalidate every fingerprint
+ * already stored in TRUSTEE_VARIATION.
  */
-function normalizeField(value: string | undefined): string {
-  if (!value) return '';
-  return value.trim().replace(/\s+/g, ' ').toLowerCase();
+function rawField(value: string | undefined): string {
+  return value ?? '';
 }
 
 /**
- * Builds the "variant" — the lightly-canonicalized demographic string identifying one DXTR
- * trustee-party record for one sync event. Two events whose relevant fields are identical
- * after normalization produce the same variant (and therefore the same fingerprint), even
- * if the raw DXTR record differed in whitespace or letter case.
+ * Builds the "variant" — the raw demographic string identifying one DXTR trustee-party record
+ * for one sync event, exactly as DXTR rendered it. Two events produce the same variant (and
+ * therefore the same fingerprint) only when every relevant field is byte-for-byte identical.
+ * Deliberately NOT case- or whitespace-normalized: see rawField.
  */
 export function buildVariant(dxtrTrustee: DxtrTrusteeParty): string {
   const shape = {
-    firstName: normalizeField(dxtrTrustee.firstName),
-    middleName: normalizeField(dxtrTrustee.middleName),
-    lastName: normalizeField(dxtrTrustee.lastName),
-    generation: normalizeField(dxtrTrustee.generation),
-    address1: normalizeField(dxtrTrustee.legacy?.address1),
-    address2: normalizeField(dxtrTrustee.legacy?.address2),
-    address3: normalizeField(dxtrTrustee.legacy?.address3),
-    cityStateZipCountry: normalizeField(dxtrTrustee.legacy?.cityStateZipCountry),
-    phone: normalizeField(dxtrTrustee.legacy?.phone),
-    fax: normalizeField(dxtrTrustee.legacy?.fax),
-    email: normalizeField(dxtrTrustee.legacy?.email),
+    firstName: rawField(dxtrTrustee.firstName),
+    middleName: rawField(dxtrTrustee.middleName),
+    lastName: rawField(dxtrTrustee.lastName),
+    generation: rawField(dxtrTrustee.generation),
+    address1: rawField(dxtrTrustee.legacy?.address1),
+    address2: rawField(dxtrTrustee.legacy?.address2),
+    address3: rawField(dxtrTrustee.legacy?.address3),
+    cityStateZipCountry: rawField(dxtrTrustee.legacy?.cityStateZipCountry),
+    phone: rawField(dxtrTrustee.legacy?.phone),
+    fax: rawField(dxtrTrustee.legacy?.fax),
+    email: rawField(dxtrTrustee.legacy?.email),
   };
   return JSON.stringify(shape);
 }

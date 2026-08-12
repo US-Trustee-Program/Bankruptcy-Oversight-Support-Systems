@@ -295,7 +295,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   const courtName = order.courtName ?? courtDetails?.courtName ?? order.courtId;
 
   const isMultipleMatch =
-    order.mismatchReason === TrusteeAppointmentSyncErrorCode.MultipleTrusteesMatch;
+    order.mismatchReason === TrusteeAppointmentSyncErrorCode.AmbiguousMatchUnresolved;
   const isInactiveStatus =
     order.mismatchReason === TrusteeAppointmentSyncErrorCode.PerfectMatchInactiveStatus;
   const taskTypeLabel = isMultipleMatch
