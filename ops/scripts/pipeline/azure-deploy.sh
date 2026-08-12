@@ -470,10 +470,13 @@ webappPrivateDnsZoneName="${private_dns_zone_name:-privatelink.azurewebsites.us}
 webappPrivateDnsZoneRg="${private_dns_zone_rg:-${network_rg:-}}"
 webapp_vnet_link_already_exists=false
 if [[ -n "${network_rg:-}" && -n "${vnet_name:-}" ]]; then
-    existingWebappLink=$(vnet_link_already_exists_for "${webappPrivateDnsZoneRg}" "${webappPrivateDnsZoneName}" "${network_rg}" "${vnet_name}" "${private_dns_zone_sub_id:-}")
+    vnet_link_already_exists_for "${webappPrivateDnsZoneRg}" "${webappPrivateDnsZoneName}" "${network_rg}" "${vnet_name}" "${private_dns_zone_sub_id:-}"
+    existingWebappLink="${vnet_link_check_result}"
     if [[ -n "${existingWebappLink}" ]]; then
         echo "Vnet ${vnet_name} is already linked to ${webappPrivateDnsZoneName} via '${existingWebappLink}'; skipping creation of a second link."
         webapp_vnet_link_already_exists=true
+    else
+        echo "No existing link from vnet ${vnet_name} into ${webappPrivateDnsZoneName} in ${webappPrivateDnsZoneRg} (or any other same-named zone); the template will create one."
     fi
 fi
 deployment_parameters="${deployment_parameters} webappVnetLinkAlreadyExists=${webapp_vnet_link_already_exists}"

@@ -127,11 +127,8 @@ fi
 # its own when one is already there (see vnet-links.bicep). Hardcoded zone
 # name matches keyvaultPrivateDnsZoneName in
 # ustp-cams-kv-app-config-setup.bicep and kvPrivateDnsZoneName in
-# az-delete-branch-resources.sh — can't share the literal across bash/bicep,
-# keep both in lockstep by hand. Assumes the zone lives in
-# networkResourceGroupName, matching app-shared-setup.bicep's
-# privateDnsZoneResourceGroup default — only true as long as nothing passes
-# an explicit override via --parameters.
+# az-delete-branch-resources.sh — three copies total, can't share the literal
+# across bash/bicep, keep all three in lockstep by hand.
 #
 # The webapp/api/dataflows zone's own vnet-link check used to live here too,
 # but CAMS-760 moved that link's creation out of app-shared-setup.bicep and
@@ -139,12 +136,38 @@ fi
 # self-cleans on branch teardown) — so the equivalent existence check now
 # lives in azure-deploy.sh, the script that actually deploys main.bicep. This
 # script only ever creates the KV zone's link, so it only needs the KV check.
+#
+# The check must run against wherever the zone actually is, not just where it
+# defaults to: app-shared-setup.bicep defaults privateDnsZoneResourceGroup/
+# privateDnsZoneSubscriptionId to networkResourceGroupName/the current
+# subscription, but callers can override either via -p/--parameters (e.g.
+# USTP's prod pipeline, which deploys the zone into a different
+# subscription — see the param descriptions in app-shared-setup.bicep). Parse
+# the same overrides out of extra_parameters below so the check looks in the
+# same place the deployment actually will, instead of always assuming the
+# defaults.
 kvPrivateDnsZoneName='privatelink.vaultcore.usgovcloudapi.net'
-existingLink=$(vnet_link_already_exists_for "${network_rg}" "${kvPrivateDnsZoneName}" "${network_rg}" "${vnet_name}")
+private_dns_zone_rg="${network_rg}"
+private_dns_zone_subscription_id=""
+for param in ${extra_parameters}; do
+    case "${param}" in
+    privateDnsZoneResourceGroup=*)
+        private_dns_zone_rg="${param#privateDnsZoneResourceGroup=}"
+        ;;
+    privateDnsZoneSubscriptionId=*)
+        private_dns_zone_subscription_id="${param#privateDnsZoneSubscriptionId=}"
+        ;;
+    esac
+done
+
+vnet_link_already_exists_for "${private_dns_zone_rg}" "${kvPrivateDnsZoneName}" "${network_rg}" "${vnet_name}" "${private_dns_zone_subscription_id}"
+existingLink="${vnet_link_check_result}"
 vnet_link_already_exists=false
 if [[ -n "${existingLink}" ]]; then
     echo "Vnet ${vnet_name} is already linked to ${kvPrivateDnsZoneName} via '${existingLink}'; skipping creation of a second link."
     vnet_link_already_exists=true
+else
+    echo "No existing link from vnet ${vnet_name} into ${kvPrivateDnsZoneName} in ${private_dns_zone_rg} (or any other same-named zone); the template will create one."
 fi
 
 deployment_parameters="stackName=${stack_name} location=${location} networkResourceGroupName=${network_rg} virtualNetworkName=${vnet_name} kvAppConfigResourceGroupName=${kv_app_config_rg} isUstpDeployment=${is_ustp_deployment} deployDns=${deploy_dns} vnetLinkAlreadyExists=${vnet_link_already_exists}"
@@ -198,7 +221,7 @@ function az_deploy_with_retry_func() {
     done
 }
 
-echo "Deploying app shared-setup resources to ${resource_group} (plain resource-group deployment; always non-stack — see app-shared-setup.bicep)"
+echo "Deploying app shared-setup resources to ${resource_group} (plain resource-group deployment; always non-stack — see app-shared-setup.bicep), vnetLinkAlreadyExists=${vnet_link_already_exists}"
 # --name pins the deployment RECORD name so every branch/main deploying this
 # same template to the same shared RG doesn't race on the CLI's default
 # (the template's base filename) — reduces exactly the 409 contention the
