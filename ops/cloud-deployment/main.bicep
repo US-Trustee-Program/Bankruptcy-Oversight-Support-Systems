@@ -309,6 +309,7 @@ module ustpWebapp 'frontend-webapp-deploy.bicep' = {
 
 module acsEmail './lib/email/acs-email.bicep' = {
   name: '${stackName}-acs-email-module'
+  scope: resourceGroup(appResourceGroup)
   params: {
     stackName: stackName
     kvAppConfigName: kvAppConfigName
