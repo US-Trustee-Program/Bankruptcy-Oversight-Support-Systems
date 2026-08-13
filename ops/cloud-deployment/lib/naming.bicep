@@ -47,10 +47,10 @@ func acsConnectionStringSecretName(stackName string) string => 'ACS-EMAIL-CONNEC
 func acsSenderAddressSecretName(stackName string) string => 'ACS-EMAIL-SENDER-ADDRESS-${stackName}'
 
 // The read-only SQL managed identity is created once in app-shared-setup.bicep
-// (fixed name shared by main and every branch) and looked up by name via
-// `existing` in backend-api-deploy.bicep/dataflows-resource-deploy.bicep.
-// Both call sites must fall back to the same formula the creator uses when
-// sqlServerIdentityName isn't explicitly passed, or the `existing` lookup
-// targets an identity that was never created.
+// (fixed name shared by main and every branch) and referenced by constructed
+// resource ID in backend-api-deploy.bicep/dataflows-resource-deploy.bicep.
+// Every call site must fall back to this same formula when
+// sqlServerIdentityName isn't explicitly passed, or it targets an identity
+// that was never created.
 @export()
 func sqlIdentityName(stackName string) string => 'id-sql-${stackName}-readonly'
