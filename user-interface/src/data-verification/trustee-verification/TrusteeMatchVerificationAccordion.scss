@@ -20,8 +20,8 @@
   }
 
   .affected-cases-list {
-    .case-list-separator {
-      padding-right: 0.25rem;
+    .affected-case-item:not(:last-child) {
+      margin-right: 0.25rem;
     }
   }
 
