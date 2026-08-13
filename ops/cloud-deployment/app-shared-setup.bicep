@@ -174,6 +174,8 @@ var sqlIdentityName = !empty(sqlServerIdentityName) ? sqlServerIdentityName : sq
 var sqlIdentityRG = !empty(sqlServerIdentityResourceGroupName)
   ? sqlServerIdentityResourceGroupName
   : sqlServerResourceGroupName
+// Takes no subscription override: this never deploys on USTP (!isUstpDeployment),
+// the only topology that would need a foreign subscription.
 var createSqlIdentity = !empty(sqlServerResourceGroupName) && !empty(sqlServerName) && !isUstpDeployment
 
 module sqlManagedIdentity './lib/identity/managed-identity.bicep' = if (createSqlIdentity) {

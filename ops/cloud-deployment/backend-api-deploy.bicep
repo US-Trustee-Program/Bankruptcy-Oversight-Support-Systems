@@ -66,6 +66,9 @@ param sqlServerIdentityName string = ''
 
 param sqlServerIdentityResourceGroupName string = ''
 
+@description('Subscription containing the SQL managed identity; defaults to the deploying subscription.')
+param sqlServerIdentitySubscriptionId string = ''
+
 @description('Resource group name of the app config KeyVault')
 param kvAppConfigResourceGroupName string = ''
 
@@ -172,7 +175,7 @@ var userAssignedIdentities = union(
   {
     '${appConfigIdentity.id}': {}
   },
-  createSqlServerVnetRule ? { '${sqlIdentity.id}': {} } : {}
+  createSqlServerVnetRule ? { '${sqlIdentityResourceId}': {} } : {}
 )
 
 resource apiFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
@@ -193,7 +196,6 @@ resource apiFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
   }
   dependsOn: [
     appConfigIdentity
-    sqlIdentity
   ]
 
   resource apiFunctionConfig 'config' = {
@@ -486,15 +488,26 @@ module setApiFunctionSqlServerVnetRule './lib/network/sql-vnet-rule.bicep' = if 
 // The identity itself is created once, in app-shared-setup.bicep (CAMS-760,
 // Option E / Slice 2) — its name is a fixed value shared by main and every
 // branch, so it must never be created/managed inside a branch's app stack.
-// Referenced here as `existing` only.
+// Referenced here by constructed resource ID only. An `existing` declaration
+// emits an ARM resource entry for its scope; for USTP, that can force resolution
+// of the SQL resource group in the deploying subscription even when the identity
+// is not attached. This block only needs an ID string for the optional Function
+// App identity map, so resourceId() avoids scope resolution and supports a
+// foreign identity subscription. Wrong values are only validated if the ID is
+// actually consumed.
 var sqlIdentityName = !empty(sqlServerIdentityName) ? sqlServerIdentityName : sqlIdentityNameFor(stackName)
 var sqlIdentityRG = !empty(sqlServerIdentityResourceGroupName)
   ? sqlServerIdentityResourceGroupName
   : sqlServerResourceGroupName
+var sqlIdentitySubscriptionId = !empty(sqlServerIdentitySubscriptionId)
+  ? sqlServerIdentitySubscriptionId
+  : subscription().subscriptionId
 
-resource sqlIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
-  name: sqlIdentityName
-  scope: resourceGroup(sqlIdentityRG)
-}
+var sqlIdentityResourceId = resourceId(
+  sqlIdentitySubscriptionId,
+  sqlIdentityRG,
+  'Microsoft.ManagedIdentity/userAssignedIdentities',
+  sqlIdentityName
+)
 
 output appInsightsId string = createApplicationInsights ? apiFunctionAppInsights.outputs.id : ''
