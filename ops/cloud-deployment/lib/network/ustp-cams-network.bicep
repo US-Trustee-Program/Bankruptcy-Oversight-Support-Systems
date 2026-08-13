@@ -51,11 +51,6 @@ module targetVnet './vnet.bicep' = if (deployVnet) {
   }
 }
 
-resource ustpVirtualNetwork 'Microsoft.Network/virtualNetworks@2022-11-01' existing = {
-  name: virtualNetworkName
-  scope: resourceGroup(networkResourceGroupName)
-}
-
 /*
   Create subnet for private endpoint
 */
@@ -82,7 +77,7 @@ module privateEndpointSubnet './subnet.bicep' = {
     ]
   }
   dependsOn: [
-    ustpVirtualNetwork
+    targetVnet
   ]
 }
 
@@ -117,7 +112,6 @@ module apiFunctionSubnet './subnet.bicep' = {
     ]
   }
   dependsOn: [
-    ustpVirtualNetwork
     privateEndpointSubnet
   ]
 }
@@ -153,7 +147,6 @@ module dataflowsFunctionSubnet './subnet.bicep' = {
     ]
   }
   dependsOn: [
-    ustpVirtualNetwork
     privateEndpointSubnet
     apiFunctionSubnet
   ]
@@ -177,7 +170,6 @@ module webappSubnet './subnet.bicep' = {
     ]
   }
   dependsOn: [
-    ustpVirtualNetwork
     apiFunctionSubnet
     dataflowsFunctionSubnet
   ]
