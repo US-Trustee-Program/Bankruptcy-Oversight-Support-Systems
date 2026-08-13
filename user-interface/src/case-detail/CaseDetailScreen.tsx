@@ -30,6 +30,8 @@ import { CamsRole } from '@common/cams/roles';
 import CaseNotes from './panels/case-notes/CaseNotes';
 import CaseDetailTrusteeAndAssignedStaff from './panels/CaseDetailTrusteeAndAssignedStaff';
 import CaseDetailTrusteePanel from './panels/CaseDetailTrusteePanel';
+import useFilterUsageTelemetry from '@/lib/hooks/UseFilterUsageTelemetry';
+import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
 
 const CaseDetailHeader = lazy(() => import('./panels/CaseDetailHeader'));
 const CaseDetailOverview = lazy(() => import('./panels/CaseDetailOverview'));
@@ -227,6 +229,7 @@ export default function CaseDetailScreen(props: Readonly<CaseDetailProps>) {
   const findByDocketNumberRef = useRef<InputRef>(null);
   const dateRangeRef = useRef<DateRangePickerRef>(null);
   const facetPickerRef = useRef<ComboBoxRef>(null);
+  const suppressClearRef = useRef(false);
 
   let hasDocketEntries = caseDocketEntries && !!caseDocketEntries.length;
 
@@ -300,6 +303,18 @@ export default function CaseDetailScreen(props: Readonly<CaseDetailProps>) {
   }
 
   function clearDocketFilters() {
+    const hasActiveFilter =
+      searchInDocketText !== '' ||
+      documentNumber !== null ||
+      selectedFacets.length > 0 ||
+      !!selectedDateRange.start ||
+      !!selectedDateRange.end;
+
+    if (hasActiveFilter) {
+      suppressClearRef.current = true;
+      getAppInsights().appInsights.trackEvent({ name: 'Docket All Filters Cleared' });
+    }
+
     setSearchInDocketText('');
     findInDocketRef.current?.clearValue();
     setDocumentNumber(null);
@@ -401,6 +416,80 @@ export default function CaseDetailScreen(props: Readonly<CaseDetailProps>) {
       selectedDateRange,
     },
   );
+
+  useFilterUsageTelemetry(searchInDocketText, {
+    changedEventName: 'Docket Text Search Filter Changed',
+    clearedEventName: 'Docket Text Search Filter Cleared',
+    isEmpty: (v) => v === '',
+    debounceMs: 500,
+    suppressClearRef,
+  });
+
+  useFilterUsageTelemetry(documentNumber, {
+    changedEventName: 'Docket Document Number Filter Changed',
+    clearedEventName: 'Docket Document Number Filter Cleared',
+    isEmpty: (v) => v === null,
+    debounceMs: 500,
+    suppressClearRef,
+  });
+
+  useFilterUsageTelemetry(selectedFacets, {
+    changedEventName: 'Docket Summary Filter Changed',
+    clearedEventName: 'Docket Summary Filter Cleared',
+    isEmpty: (v) => v.length === 0,
+    isEqual: (a, b) => a.length === b.length && a.every((v, i) => v === b[i]),
+    suppressClearRef,
+  });
+
+  useFilterUsageTelemetry(selectedDateRange, {
+    changedEventName: (value: DateRange) =>
+      value.start && value.end
+        ? 'Docket Complete Date Range Filter Changed'
+        : value.start
+          ? 'Docket Date Range Start Only Filter Changed'
+          : 'Docket Date Range End Only Filter Changed',
+    clearedEventName: (previousValue: DateRange) =>
+      previousValue.start && previousValue.end
+        ? 'Docket Complete Date Range Filter Cleared'
+        : previousValue.start
+          ? 'Docket Date Range Start Only Filter Cleared'
+          : 'Docket Date Range End Only Filter Cleared',
+    isEmpty: (v) => !v.start && !v.end,
+    isEqual: (a, b) => a.start === b.start && a.end === b.end,
+    debounceMs: 15000,
+    suppressClearRef,
+  });
+
+  const dateRangeFieldLabel =
+    selectedDateRange.start && selectedDateRange.end
+      ? 'DateRangeComplete'
+      : selectedDateRange.start
+        ? 'DateRangeStartOnly'
+        : selectedDateRange.end
+          ? 'DateRangeEndOnly'
+          : null;
+
+  const activeFilterFields = [
+    searchInDocketText !== '' ? 'TextSearch' : null,
+    documentNumber !== null ? 'DocumentNumber' : null,
+    selectedFacets.length > 0 ? 'Summary' : null,
+    dateRangeFieldLabel,
+  ]
+    .filter((field): field is string => field !== null)
+    .join(',');
+
+  useFilterUsageTelemetry(activeFilterFields, {
+    changedEventName: 'Docket Filters Combination Changed',
+    clearedEventName: 'Docket Filters Combination Cleared',
+    isEmpty: (v) => v === '',
+    debounceMs: 500,
+    suppressClearRef,
+    changedProperties: (v) => ({ filters: v }),
+  });
+
+  useEffect(() => {
+    suppressClearRef.current = false;
+  });
 
   return (
     <MainContent className="record-detail" data-testid="case-detail">
