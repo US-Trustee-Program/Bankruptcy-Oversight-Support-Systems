@@ -37,7 +37,9 @@ style rules exist in the codebase that are never applied to the live UI.
 all unused `_tables.scss` variables (except `$tableBorder`), `$eagle`, `$warning-text`,
 `$warning-light`, `$borderRadius`, and `$cams-theme-background` are gone. Note: `$secondary-darker`
 was also removed by this commit despite the note below saying not to — see issue #9, which turned
-out to be unactionable because its target file doesn't exist in this repo.
+out to be unactionable because its target file doesn't exist in this repo. A separate leftover
+boilerplate block, `.App-logo`/`.App-link` (`#61dafb`, unreferenced by any `className` anywhere in
+the app), was found and removed in CAMS-839.
 
 **Dead Code Locations**:
 
@@ -70,10 +72,17 @@ out to be unactionable because its target file doesn't exist in this repo.
 
 ### 3. Inconsistent ComboBox Placeholder Text Color in Trustee Search Modal
 
-**Status**: Cleanup Needed **Priority**: Low **Description**: The Trustee Search Modal applies a
-one-off gray (`#757575`) to the ComboBox selection label when nothing is selected, making it look
-like placeholder text. No other ComboBox in the application does this — they all inherit the default
-body text color (`#1b1b1b`).
+**Status**: Design Question Still Open (value centralized in CAMS-839) **Priority**: Low
+**Description**: The Trustee Search Modal applies a one-off gray (`#757575`) to the ComboBox
+selection label when nothing is selected, making it look like placeholder text. No other ComboBox in
+the application does this — they all inherit the default body text color (`#1b1b1b`).
+
+**Note**: A wider hardcoded-color survey during CAMS-839 independently flagged this same `#757575`
+and centralized it as `colors.$gray-50` (exact match to USWDS `gray-50`) in `_colors.scss` — see
+`_colors.scss` and issue #12. That only formalizes the existing value into a shared variable; it
+does **not** answer this issue's actual question of whether the gray-placeholder treatment should
+exist here at all, or be applied consistently everywhere, or removed. That design decision is still
+open.
 
 **Technical Details**:
 
@@ -263,33 +272,30 @@ reference `_colors.scss` variables (`$gray-hover-light`, `$gray-cool-50`, `$gray
 
 ### 12. Gray Proliferation — No Standardized Gray Scale
 
-**Status**: Partially Resolved (CAMS-839) **Priority**: Medium **Description**: There are 9+ gray
-shades hardcoded across components with no system or naming convention. This makes it difficult to
-maintain visual consistency and means small variations creep in over time.
+**Status**: Resolved (CAMS-839) **Priority**: Medium **Description**: There are 9+ gray shades
+hardcoded across components with no system or naming convention. This makes it difficult to maintain
+visual consistency and means small variations creep in over time.
 
 **Hardcoded grays found across the codebase**: `#5c5c5c`, `#565c65`, `#71767a`, `#949494`,
 `#b0b0b0`, `#c6c6c6`, `#c6cace`, `#d0d0d0`, `#e0e0e0`, `#e9ecef`, `#f0f0f0`
 
-**Resolution so far (CAMS-839)**: A gray scale was added to `_colors.scss` — `$gray-5`, `$gray-60`,
-`$gray-cool-20`, `$gray-cool-50`, `$gray-cool-60` (verified exact matches to real USWDS
-gray/gray-cool tokens), plus component grays `$gray-border`, `$gray-border-light`,
-`$gray-hover-light`, `$gray-selected-border`, `$gray-selected-background`, `$gray-hover-background`.
-ComboBox.scss and RichTextEditor.scss now reference these instead of raw hex (see issues #10, #11).
+**Resolution (CAMS-839)**: A gray scale was added to `_colors.scss` — `$gray-5`, `$gray-50`,
+`$gray-60`, `$gray-100`, `$gray-cool-20`, `$gray-cool-50`, `$gray-cool-60` (verified exact matches
+to real USWDS gray/gray-cool tokens), plus component grays `$gray-border`, `$gray-border-light`,
+`$gray-hover-light`, `$gray-selected-border`, `$gray-selected-background`, `$gray-hover-background`,
+`$gray-shadow`, `$gray-near-white`, `$gray-input-border`, and `$table-border`. ComboBox.scss and
+RichTextEditor.scss reference these (see issues #10, #11).
 
-**Still outstanding** (not addressed by CAMS-839, kept intentionally scoped to GH issue #2725's
-named components): `#c6c6c6` in `_tables.scss` (`$tableBorder`, consumed app-wide via `App.scss`)
-was left untouched — deliberately not merged with `$gray-cool-20` (`#c6cace`) to avoid a visual
-change to every table border in the app without a dedicated review. A wider codebase survey during
-CAMS-839 also turned up additional un-standardized grays this issue's list didn't cover: `#757575`
-(TrusteeSearchModal.scss — exact match to USWDS `gray-50`), `#aaa` (ConsolidationOrderModal.scss and
-AssignAttorneyModal.scss, identical value in both), and `#fefefe`/`#dddddd`/`#f0f0f0`
-(CaseDetailHeader.scss). Tracked separately.
-
-**Next Steps**:
-
-- Decide whether to consolidate `#c6c6c6` (table borders) with `$gray-cool-20` and confirm no
-  visible regression across all tables
-- Address the additional stray grays found in the wider survey (see follow-up issue)
+A wider codebase survey during CAMS-839 also turned up additional un-standardized grays this issue's
+original list didn't cover — all addressed in a follow-up commit the same day: `#757575`
+(TrusteeSearchModal.scss, `$gray-50` — exact match to USWDS `gray-50`; the underlying design
+question of whether this override should exist at all is separate and still open, see issue #3),
+`#aaa` (ConsolidationOrderModal.scss and AssignAttorneyModal.scss, `$gray-input-border`, identical
+value in both), `#fefefe`/`#dddddd` (CaseDetailHeader.scss, `$gray-near-white`/`$gray-shadow`;
+`#f0f0f0` there now shares `$gray-5`), and `#c6c6c6` (`_tables.scss`'s `$tableBorder`, now
+`$table-border`) — kept as its own variable rather than merged with `$gray-cool-20` (`#c6cace`)
+since they're visually close but not identical, and merging would change every table border's shade
+app-wide.
 
 ---
 
