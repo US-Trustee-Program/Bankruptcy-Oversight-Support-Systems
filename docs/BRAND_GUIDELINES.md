@@ -241,6 +241,7 @@ component (see issues #10, #11, #12):
 - **`#aaa`** (`$gray-input-border`) - ConsolidationOrderModal and AssignAttorneyModal list borders
 - **`#fefefe`** (`$gray-near-white`) - Case Detail Header sticky-header background
 - **`#dddddd`** (`$gray-shadow`) - Case Detail Header sticky-header box shadow
+- **`#333`** (`$gray-hover-border`) - ComboBox list item hover/focus border color
 
 ### Blue Accent Colors
 
