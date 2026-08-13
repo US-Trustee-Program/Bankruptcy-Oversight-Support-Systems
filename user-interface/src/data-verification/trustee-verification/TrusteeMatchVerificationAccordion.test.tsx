@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import {
   TrusteeMatchVerificationAccordion,
@@ -1598,6 +1598,23 @@ describe('TrusteeMatchVerificationAccordion', () => {
       expect(screen.getByRole('link', { name: /22-11111/, hidden: true })).toBeInTheDocument();
       expect(screen.getByRole('link', { name: /22-22222/, hidden: true })).toBeInTheDocument();
       expect(screen.getByRole('link', { name: /22-33333/, hidden: true })).toBeInTheDocument();
+    });
+
+    test('renders affected case links sorted ascending by case ID regardless of input order', async () => {
+      const multiCaseOrder: TrusteeMatchVerificationListItem = {
+        ...sampleOrder,
+        affectedCaseCount: 3,
+      };
+      const multiCaseDetail: EnrichedTrusteeMatchVerification = {
+        ...sampleOrderDetail,
+        affectedCaseIds: ['081-22-33333', '081-22-11111', '081-22-22222'],
+      };
+      renderWithProps({ order: multiCaseOrder });
+      await mockDetailAndExpand(multiCaseDetail);
+
+      const affectedCases = screen.getByTestId('affected-cases');
+      const links = within(affectedCases).getAllByRole('link', { hidden: true });
+      expect(links.map((link) => link.textContent)).toEqual(['22-11111', '22-22222', '22-33333']);
     });
 
     test('falls back to the originating case when affectedCaseCount is 0 (resolution already in progress)', () => {
