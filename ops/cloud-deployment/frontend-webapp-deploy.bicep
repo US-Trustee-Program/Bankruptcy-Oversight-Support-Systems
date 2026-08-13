@@ -40,6 +40,9 @@ var planTypeToSkuMap = {
 param webappName string
 param slotName string
 
+@description('Branch/stack-unique name, passed through to the workbook modules below so their guid() seeds don\'t collide across branches sharing this resource group (CAMS-760, Option E).')
+param stackName string
+
 @description('Determine host instance operating system type. false for Windows OS and true for Linux OS.')
 param hostOSType bool = true
 
@@ -194,6 +197,7 @@ module searchWorkbooks 'lib/workbooks/search-workbooks.bicep' = if (createApplic
   name: '${webappName}-search-workbooks-module'
   params: {
     location: location
+    stackName: stackName
     appInsightsResourceId: webappInsights.outputs.id
     dataflowsAppInsightsResourceId: dataflowsAppInsightsId
     nodeApiAppInsightsResourceId: nodeApiAppInsightsId
@@ -205,6 +209,7 @@ module frontendWorkbooks 'lib/workbooks/frontend-workbooks.bicep' = if (createAp
   name: '${webappName}-frontend-workbooks-module'
   params: {
     location: location
+    stackName: stackName
     appInsightsResourceId: webappInsights.outputs.id
     nodeApiAppInsightsResourceId: nodeApiAppInsightsId
     tags: tags

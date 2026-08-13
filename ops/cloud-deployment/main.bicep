@@ -260,6 +260,7 @@ module ustpWebapp 'frontend-webapp-deploy.bicep' = {
       planName: 'plan-${webappName}'
       planType: webappPlanType
       webappName: webappName
+      stackName: stackName
       location: location
       virtualNetworkResourceGroupName: networkResourceGroupName
       createAlerts: createAlerts
