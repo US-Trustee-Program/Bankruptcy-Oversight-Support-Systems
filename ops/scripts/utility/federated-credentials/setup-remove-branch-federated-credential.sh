@@ -11,9 +11,26 @@
 # The subject format is:
 #   repo:ORG/REPO:workflow:CALLER-WORKFLOW-NAME:environment:remove-branch
 #
+# Permissions granted:
+#   - Contributor at subscription scope: discovers and deletes branch resource
+#       groups by tag (names aren't known in advance, so this can't be pre-scoped).
+#   - Key Vault Secrets User on each individual KV secret listed below.
+#   - Custom role "CAMS Deployment Stack Deny Setting Operator" on the shared
+#       app RG AND network RG: az-delete-branch-resources.sh's `az stack group
+#       delete` targets branch Deployment Stacks created with
+#       --deny-settings-mode denyDelete (CAMS-760, "Harden branch stacks with
+#       denyDelete setting") -- deleting one requires manageDenySetting the
+#       same as creating one does. Missing this grant meant every branch
+#       teardown silently failed to delete either stack (cams-xjqlj).
+#
 # Prerequisites:
 #   - az CLI logged in as an Entra ID admin (can create app registrations and role assignments)
 #   - The Azure subscription already exists
+#
+# Required environment variables:
+#   AZ_BRANCH_KV_RG  — resource group containing the dev/branch Key Vault
+#   AZ_APP_RG        — resource group containing the shared branch app resources (rg-cams-app-dev)
+#   AZ_NETWORK_RG    — resource group containing the shared branch network resources (rg-cams-network-dev)
 #
 # This script is idempotent — re-running it will update existing resources in place
 # rather than creating duplicates.
@@ -37,6 +54,10 @@ CREDENTIAL_NAME="gha-remove-branch"
 # Resource group that contains the dev/branch Key Vault (kv-ustp-cams-dev)
 BRANCH_KV_NAME="kv-ustp-cams-dev"
 BRANCH_KV_RG="${AZ_BRANCH_KV_RG:-}"
+# Resource groups containing the shared branch app/network resources
+# (rg-cams-app-dev / rg-cams-network-dev) -- see ensure_deployment_stack_deny_setting_role.
+APP_RG="${AZ_APP_RG:-}"
+NETWORK_RG="${AZ_NETWORK_RG:-}"
 # KV-Workflows: azure-remove-branch.yml
 KV_SECRETS=(
   "AZ-COSMOS-MONGO-ACCOUNT-NAME"
@@ -92,6 +113,36 @@ for SECRET_NAME in "${KV_SECRETS[@]}"; do
   SECRET_SCOPE="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${BRANCH_KV_RG}/providers/Microsoft.KeyVault/vaults/${BRANCH_KV_NAME}/secrets/${SECRET_NAME}"
   ensure_role_assignment "$SP_ID" "$KV_SECRETS_USER_ROLE" "$SECRET_SCOPE"
 done
+
+# Deployment-stack deny-setting operator on the app RG AND the network RG:
+# az-delete-branch-resources.sh's `az stack group delete` targets branch app
+# and network Deployment Stacks created with --deny-settings-mode denyDelete
+# (CAMS-760, "Harden branch stacks with denyDelete setting"). Deleting a
+# denyDelete-protected stack requires manageDenySetting the same as CREATING
+# one does -- Contributor doesn't include it, and this identity had never
+# been granted it, so every branch teardown was silently unable to delete
+# either stack (confirmed live 2026-08-12, cams-xjqlj: 26 orphaned resources
+# left behind after a real post-merge teardown). Unlike the deploy identity
+# (setup-deploy-federated-credential.sh), this identity ONLY EVER handles
+# branches -- there's no main-teardown case to gate on -- so both grants are
+# unconditional.
+if [[ -z "$APP_RG" ]]; then
+  echo "ERROR: AZ_APP_RG is required to grant deployment-stack deny-setting access." >&2
+  exit 1
+fi
+if [[ -z "$NETWORK_RG" ]]; then
+  echo "ERROR: AZ_NETWORK_RG is required to grant deployment-stack deny-setting access." >&2
+  exit 1
+fi
+DENY_SETTING_ROLE_ID=$(ensure_deployment_stack_deny_setting_role "$SUBSCRIPTION_ID")
+
+APP_RG_SCOPE="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${APP_RG}"
+echo "==> Checking '$DEPLOYMENT_STACK_DENY_SETTING_ROLE_NAME' on ${APP_RG}..."
+ensure_role_assignment "$SP_ID" "$DENY_SETTING_ROLE_ID" "$APP_RG_SCOPE"
+
+NETWORK_RG_SCOPE="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${NETWORK_RG}"
+echo "==> Checking '$DEPLOYMENT_STACK_DENY_SETTING_ROLE_NAME' on ${NETWORK_RG}..."
+ensure_role_assignment "$SP_ID" "$DENY_SETTING_ROLE_ID" "$NETWORK_RG_SCOPE"
 
 set_github_environment_secret "$GITHUB_ENVIRONMENT" "AZ_CLIENT_ID" "$APP_ID"
 
