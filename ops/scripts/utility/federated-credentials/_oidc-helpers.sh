@@ -5,10 +5,14 @@
 # Exports:
 #   GITHUB_ORG   - GitHub organization (override via env var)
 #   GITHUB_REPO  - GitHub repository name (override via env var)
+#   DEPLOYMENT_STACK_DENY_SETTING_ROLE_NAME - shared custom role display name
 #   lookup_or_create_app        APP_NAME  -> prints app (client) ID to stdout
 #   lookup_or_create_sp         APP_ID    -> prints SP object ID to stdout
 #   upsert_federated_credential APP_ID CREDENTIAL_NAME SUBJECT
 #   set_github_environment_secret ENVIRONMENT SECRET_NAME VALUE
+#   wait_for_role_definition    ROLE_NAME [ATTEMPTS] -> prints role definition GUID to stdout
+#   ensure_role_assignment      SP_ID ROLE SCOPE
+#   ensure_deployment_stack_deny_setting_role SUBSCRIPTION_ID -> prints role definition GUID to stdout
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   echo "ERROR: This script must be sourced, not executed directly." >&2
@@ -17,6 +21,11 @@ fi
 
 GITHUB_ORG="${GITHUB_ORG:-US-Trustee-Program}"
 GITHUB_REPO="${GITHUB_REPO:-Bankruptcy-Oversight-Support-Systems}"
+
+# Custom role name shared by every identity that creates or deletes an Azure
+# Deployment Stack with --deny-settings-mode denyDelete -- see
+# ensure_deployment_stack_deny_setting_role below.
+DEPLOYMENT_STACK_DENY_SETTING_ROLE_NAME="CAMS Deployment Stack Deny Setting Operator"
 
 if [[ ! "$GITHUB_ORG" =~ ^[A-Za-z0-9_-]+$ ]] || [[ ! "$GITHUB_REPO" =~ ^[A-Za-z0-9_.-]+$ ]]; then
   echo "ERROR: GITHUB_ORG ('$GITHUB_ORG') or GITHUB_REPO ('$GITHUB_REPO') contains unexpected characters." >&2
@@ -168,4 +177,57 @@ ensure_role_assignment() {
   else
     echo "    '$ROLE' already assigned — skipping."
   fi
+}
+
+# Create or skip the deployment-stack deny-setting operator role (idempotent).
+#
+# Grants only Microsoft.Resources/deploymentStacks/manageDenySetting/action.
+# Required by any identity that CREATES an Azure Deployment Stack with
+# --deny-settings-mode denyDelete (azure-deploy-network.sh, azure-deploy.sh)
+# or DELETES one (az-delete-branch-resources.sh's az stack group delete) --
+# both directions need this action, each in whatever resource group(s) that
+# identity operates on. Contributor does not include this action, and
+# Azure's own built-in "Deployment Stack Contributor" role deliberately
+# excludes it too — only "Deployment Stack Owner" includes it, which also
+# grants unrelated deploymentStacks actions (delete, etc.) these identities
+# don't need. A narrow custom role avoids that broader grant. Shared here
+# (not duplicated per runbook) since the deploy and teardown identities both
+# need the exact same role, just assigned at different scopes.
+#
+# Echoes the role definition GUID on stdout (progress goes to stderr) so the
+# caller can assign by ID rather than the lagging display-name filter.
+ensure_deployment_stack_deny_setting_role() {
+  local SUBSCRIPTION_ID="$1"
+
+  echo "==> Checking custom role: '$DEPLOYMENT_STACK_DENY_SETTING_ROLE_NAME'..." >&2
+  local ROLE_ID
+  ROLE_ID=$(az role definition list --custom-role-only true \
+    --query "[?roleName=='${DEPLOYMENT_STACK_DENY_SETTING_ROLE_NAME}'].name | [0]" -o tsv 2>/dev/null || true)
+
+  if [[ -n "$ROLE_ID" ]]; then
+    echo "    Custom role already exists, skipping creation." >&2
+    echo "$ROLE_ID"
+    return
+  fi
+
+  echo "    Creating custom role '$DEPLOYMENT_STACK_DENY_SETTING_ROLE_NAME'..." >&2
+  az role definition create --role-definition "$(cat <<EOF
+{
+  "Name": "${DEPLOYMENT_STACK_DENY_SETTING_ROLE_NAME}",
+  "Description": "Allows CAMS branch deploy and teardown identities to manage deny settings on Azure Deployment Stacks. Required for --deny-settings-mode denyDelete on both stack creation (azure-deploy-network.sh, azure-deploy.sh) and stack deletion (az-delete-branch-resources.sh). Narrower than the built-in Deployment Stack Owner role.",
+  "Actions": [
+    "Microsoft.Resources/deploymentStacks/manageDenySetting/action"
+  ],
+  "NotActions": [],
+  "DataActions": [],
+  "NotDataActions": [],
+  "AssignableScopes": [
+    "/subscriptions/${SUBSCRIPTION_ID}"
+  ]
+}
+EOF
+)" --output none
+  echo "    Custom role created." >&2
+  ROLE_ID=$(wait_for_role_definition "$DEPLOYMENT_STACK_DENY_SETTING_ROLE_NAME")
+  echo "$ROLE_ID"
 }
