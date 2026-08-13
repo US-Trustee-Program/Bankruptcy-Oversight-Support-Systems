@@ -230,10 +230,12 @@ global `_colors.scss` or USWDS tokens. This makes the component visually inconsi
 of the app and impossible to retheme centrally.
 
 **Resolution**: `$separatorColor`, `$sectionSeparatorColor`, `$listItemSelectedBorderColor`,
-`$listItemSelectedBackground`, and `$listItemHoverBackground` now reference `_colors.scss` gray
-variables (`$gray-cool-20`, `$gray-cool-60`, `$gray-selected-border`, `$gray-selected-background`,
-`$gray-hover-background`) instead of raw hex. `$listItemHoverBorderColor` (`#333`) was left as-is —
-it wasn't part of this issue's or #12's cited list and has no clear USWDS/system match.
+`$listItemSelectedBackground`, `$listItemHoverBackground`, and `$listItemHoverBorderColor` now
+reference `_colors.scss` gray variables (`$gray-cool-20`, `$gray-cool-60`, `$gray-selected-border`,
+`$gray-selected-background`, `$gray-hover-background`, `$gray-hover-border`) instead of raw hex.
+`$gray-hover-border` (`#333`) has no matching USWDS token — confirmed by checking every color family
+in `node_modules/@uswds/uswds/packages/uswds-tokens/colors/` — so it's a plain named constant like
+the other component-specific grays.
 
 **Technical Details**:
 
