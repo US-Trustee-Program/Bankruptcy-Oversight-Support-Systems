@@ -470,12 +470,9 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
         <strong>{affectedCaseCount} cases</strong>
         {enrichedOrder && (
           <span className="affected-cases-list">
-            {sortedAffectedCaseIds.map((caseId, i) => (
-              <span key={caseId}>
+            {sortedAffectedCaseIds.map((caseId) => (
+              <span key={caseId} className="affected-case-item">
                 <NewTabLink to={`/case-detail/${caseId}`} label={getCaseNumber(caseId)} />
-                {i < sortedAffectedCaseIds.length - 1 && (
-                  <span className="case-list-separator">, </span>
-                )}
               </span>
             ))}
           </span>
