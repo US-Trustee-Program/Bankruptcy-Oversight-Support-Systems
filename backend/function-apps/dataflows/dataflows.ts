@@ -35,6 +35,7 @@ import BackfillTrusteeAppointmentsDownstreamDataflow from './migrations/backfill
 import BackfillTransferOrderTaskDate from './migrations/backfill-transfer-order-task-date';
 import BackfillConsolidationOrderTaskDate from './migrations/backfill-consolidation-order-task-date';
 import BackfillTrusteeVerificationTaskDate from './migrations/backfill-trustee-verification-task-date';
+import BackfillTrusteeProfessionalIds from './migrations/backfill-trustee-professional-ids';
 
 const MODULE_NAME = 'DATAFLOWS-SETUP';
 
@@ -134,6 +135,7 @@ dataflows.register(
   BackfillTransferOrderTaskDate,
   BackfillConsolidationOrderTaskDate,
   BackfillTrusteeVerificationTaskDate,
+  BackfillTrusteeProfessionalIds,
 );
 
 const registeredDataflows = dataflows.list().join(', ').replaceAll('-', '_');

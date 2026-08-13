@@ -519,24 +519,9 @@ describe('ACMS gateway tests', () => {
     });
   });
 
-  describe('getTrusteeProfessionalIds', () => {
-    test('should return formatted professional IDs for matching trustee', async () => {
-      const dbResults = [{ acmsProfessionalId: 'NY-00123' }, { acmsProfessionalId: 'UT-05321' }];
-      vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
-        success: true,
-        results: { recordset: dbResults },
-        message: '',
-      });
-
-      const context = await createMockApplicationContext();
-      const gateway = new AcmsGatewayImpl(context);
-      const result = await gateway.getTrusteeProfessionalIds(context, 'Harvey', 'Barr', 'NY');
-
-      expect(result).toEqual(['NY-00123', 'UT-05321']);
-    });
-
-    test('should return empty array when no matching professional IDs found', async () => {
-      vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+  describe('getAllTrusteeProfessionalRecords', () => {
+    test('should select the widened set of demographic columns and filter by PROF_TYPE = TR', async () => {
+      const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
         success: true,
         results: { recordset: [] },
         message: '',
@@ -544,51 +529,23 @@ describe('ACMS gateway tests', () => {
 
       const context = await createMockApplicationContext();
       const gateway = new AcmsGatewayImpl(context);
-      const result = await gateway.getTrusteeProfessionalIds(context, 'Unknown', 'Trustee', 'TX');
-
-      expect(result).toEqual([]);
-    });
-
-    test('should throw CamsError when executeQuery fails', async () => {
-      vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockRejectedValue(
-        new Error('connection failed'),
-      );
-
-      const context = await createMockApplicationContext();
-      const gateway = new AcmsGatewayImpl(context);
-
-      await expect(gateway.getTrusteeProfessionalIds(context, 'John', 'Doe', 'CA')).rejects.toThrow(
-        CamsError,
-      );
-    });
-  });
-
-  describe('getAllTrusteeProfessionalRecords', () => {
-    test('should return the full set of trustee professional records filtered by PROF_TYPE = TR', async () => {
-      const dbResults = [
-        { acmsProfessionalId: 'NY-00063', firstName: 'Harvey', lastName: 'Barr', state: 'NY' },
-        { acmsProfessionalId: 'UT-05321', firstName: 'Jane', lastName: 'Smith', state: 'UT' },
-      ];
-      const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
-        success: true,
-        results: { recordset: dbResults },
-        message: '',
-      });
-
-      const context = await createMockApplicationContext();
-      const gateway = new AcmsGatewayImpl(context);
-      const result = await gateway.getAllTrusteeProfessionalRecords(context);
-
-      expect(result).toEqual(dbResults);
+      await gateway.getAllTrusteeProfessionalRecords(context);
 
       // These SQL-substring assertions are intentional: the mock returns canned
       // rows regardless of query text, so behavior alone cannot verify that the
-      // compound (GROUP_DESIGNATOR, PROF_CODE) key is used (never PROF_CODE alone)
-      // or that the PROF_TYPE = 'TR' filter is applied. Both are correctness
-      // invariants against live ACMS data, so we assert them at the query level.
+      // compound (GROUP_DESIGNATOR, PROF_CODE) key is used (never PROF_CODE alone),
+      // that the PROF_TYPE = 'TR' filter is applied, or that the widened column
+      // list is actually selected. All are correctness invariants against live
+      // ACMS data, so we assert them at the query level.
       const query = spy.mock.calls[0][1] as string;
       expect(query).toContain('GROUP_DESIGNATOR');
       expect(query).toContain("PROF_TYPE = 'TR'");
+      expect(query).toContain('PROF_MI');
+      expect(query).toContain('PROF_ADDRESS1');
+      expect(query).toContain('PROF_ADDRESS2');
+      expect(query).toContain('PROF_CITY');
+      expect(query).toContain('PROF_ZIP');
+      expect(query).toContain('PROF_COMMERCIAL_PHONE_NBR');
 
       // Uses the extended per-request timeout (large fetch), like the other CMMPR/CMMAP reads.
       // Assert the actual configured value is threaded through, not just any positive number —
@@ -598,6 +555,47 @@ describe('ACMS gateway tests', () => {
         ? Number.parseInt(process.env.ACMS_REQUEST_TIMEOUT_MS, 10)
         : 300000;
       expect(timeoutArg).toBe(expectedTimeout);
+    });
+
+    test('should return the full set of trustee professional records with all widened fields', async () => {
+      const dbResults = [
+        {
+          acmsProfessionalId: 'NY-00063',
+          firstName: 'Harvey',
+          lastName: 'Barr',
+          middleInitial: 'Q',
+          address1: '123 Main St',
+          address2: 'Suite 100',
+          city: 'Albany',
+          state: 'NY',
+          zip: 12207,
+          phone: 5185551234,
+        },
+      ];
+      vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: dbResults },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      const result = await gateway.getAllTrusteeProfessionalRecords(context);
+
+      expect(result).toEqual([
+        {
+          acmsProfessionalId: 'NY-00063',
+          firstName: 'Harvey',
+          lastName: 'Barr',
+          middleInitial: 'Q',
+          address1: '123 Main St',
+          address2: 'Suite 100',
+          city: 'Albany',
+          state: 'NY',
+          zip: '12207',
+          phone: '5185551234',
+        },
+      ]);
     });
 
     test('should return empty array when no professional records found', async () => {
@@ -623,6 +621,91 @@ describe('ACMS gateway tests', () => {
       const gateway = new AcmsGatewayImpl(context);
 
       await expect(gateway.getAllTrusteeProfessionalRecords(context)).rejects.toThrow(CamsError);
+    });
+
+    describe('numeric-to-string normalization', () => {
+      async function fetchOneRecord(rawRow: Record<string, unknown>) {
+        vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+          success: true,
+          results: { recordset: [rawRow] },
+          message: '',
+        });
+
+        const context = await createMockApplicationContext();
+        const gateway = new AcmsGatewayImpl(context);
+        const [result] = await gateway.getAllTrusteeProfessionalRecords(context);
+        return result;
+      }
+
+      const baseRow = {
+        acmsProfessionalId: 'NY-00063',
+        firstName: 'Harvey',
+        lastName: 'Barr',
+        middleInitial: null,
+        address1: null,
+        address2: null,
+        city: null,
+        state: 'NY',
+      };
+
+      test('normalizes a 9-digit ACMS zip (NUMERIC(9,0)) to the first 5 digits', async () => {
+        const result = await fetchOneRecord({ ...baseRow, zip: 122075678, phone: null });
+        expect(result.zip).toBe('12207');
+      });
+
+      test('preserves leading zeros for a zip with fewer than 5 significant digits', async () => {
+        // A NUMERIC column strips leading zeros, so a "00501"-style zip arrives as 501.
+        const result = await fetchOneRecord({ ...baseRow, zip: 501, phone: null });
+        expect(result.zip).toBe('00501');
+      });
+
+      test('normalizes zero zip to null', async () => {
+        const result = await fetchOneRecord({ ...baseRow, zip: 0, phone: null });
+        expect(result.zip).toBeNull();
+      });
+
+      test('normalizes null zip to null', async () => {
+        const result = await fetchOneRecord({ ...baseRow, zip: null, phone: null });
+        expect(result.zip).toBeNull();
+      });
+
+      test('normalizes a full 10-digit ACMS phone number to a string', async () => {
+        const result = await fetchOneRecord({ ...baseRow, zip: null, phone: 5185551234 });
+        expect(result.phone).toBe('5185551234');
+      });
+
+      test('zero-pads a phone number with fewer than 10 significant digits', async () => {
+        // A NUMERIC column strips leading zeros, so a "0185551234"-style number
+        // (a legacy area code artifact) arrives as 185551234 — 9 digits.
+        const result = await fetchOneRecord({ ...baseRow, zip: null, phone: 185551234 });
+        expect(result.phone).toBe('0185551234');
+      });
+
+      test('normalizes zero phone to null', async () => {
+        const result = await fetchOneRecord({ ...baseRow, zip: null, phone: 0 });
+        expect(result.phone).toBeNull();
+      });
+
+      test('normalizes null phone to null', async () => {
+        const result = await fetchOneRecord({ ...baseRow, zip: null, phone: null });
+        expect(result.phone).toBeNull();
+      });
+
+      test('normalizes empty-string demographic fields to null', async () => {
+        const result = await fetchOneRecord({
+          ...baseRow,
+          middleInitial: '',
+          address1: '',
+          address2: '',
+          city: '',
+          zip: null,
+          phone: null,
+        });
+        expect(result.middleInitial).toBeNull();
+        expect(result.address1).toBeNull();
+        expect(result.address2).toBeNull();
+        expect(result.city).toBeNull();
+      });
     });
   });
 
@@ -714,6 +797,237 @@ describe('ACMS gateway tests', () => {
         expect.arrayContaining([expect.objectContaining({ name: 'cutoffDate', value: 20240101 })]),
         300000,
       );
+    });
+  });
+
+  describe('getCmmapAppointmentsForProfessionalIds', () => {
+    test('should return an empty array without querying when given an empty batch', async () => {
+      const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery');
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      const result = await gateway.getCmmapAppointmentsForProfessionalIds(context, []);
+
+      expect(result).toEqual([]);
+      expect(spy).not.toHaveBeenCalled();
+    });
+
+    test('should issue exactly one query for a batch of professional IDs (one round trip, not per-id)', async () => {
+      const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: [] },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      const acmsProfessionalIds = ['NY-00123', 'UT-05321', 'CA-00001'];
+      await gateway.getCmmapAppointmentsForProfessionalIds(context, acmsProfessionalIds);
+
+      expect(spy).toHaveBeenCalledTimes(1);
+
+      const [, query, input] = spy.mock.calls[0];
+      expect(query).toContain('IN (@profId0, @profId1, @profId2)');
+      expect(input).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ name: 'profId0', value: 'NY-00123' }),
+          expect.objectContaining({ name: 'profId1', value: 'UT-05321' }),
+          expect.objectContaining({ name: 'profId2', value: 'CA-00001' }),
+        ]),
+      );
+    });
+
+    test('should return rows for all requested professional IDs, including closed cases', async () => {
+      const dbResults = [
+        {
+          acmsProfessionalId: 'NY-00123',
+          caseId: '081-24-12345',
+          courtDivisionCode: '081',
+          chapter: '7A',
+        },
+        {
+          // A closed/pre-2018 case — must still be returned, since this method
+          // applies no open-case filter.
+          acmsProfessionalId: 'UT-05321',
+          caseId: '087-10-00042',
+          courtDivisionCode: '087',
+          chapter: '11',
+        },
+      ];
+      vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: dbResults },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      const result = await gateway.getCmmapAppointmentsForProfessionalIds(context, [
+        'NY-00123',
+        'UT-05321',
+      ]);
+
+      expect(result).toEqual(dbResults);
+    });
+
+    test('should not apply an open-case filter (no CLOSED_BY_COURT_DATE/CLOSED_BY_UST_DATE clause)', async () => {
+      const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: [] },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      await gateway.getCmmapAppointmentsForProfessionalIds(context, ['NY-00123']);
+
+      const query = spy.mock.calls[0][1] as string;
+      expect(query).not.toContain('CLOSED_BY_COURT_DATE');
+      expect(query).not.toContain('CLOSED_BY_UST_DATE');
+      expect(query).not.toContain('20180101');
+    });
+
+    test('should not join CMMKE', async () => {
+      const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: [] },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      await gateway.getCmmapAppointmentsForProfessionalIds(context, ['NY-00123']);
+
+      const query = spy.mock.calls[0][1] as string;
+      expect(query).not.toContain('CMMKE');
+    });
+
+    test.each([
+      ['exclude soft-deleted CMMAP records', "m.DELETE_CODE != 'D'"],
+      ['filter to trustee appointment type only', "m.APPT_TYPE = 'TR'"],
+      ['exclude soft-deleted CMMDB records', "c.DELETE_CODE != 'D'"],
+      ['join CMMAP to CMMDB', 'INNER JOIN [dbo].[CMMDB]'],
+    ])('should %s', async (_desc, expectedQueryFragment) => {
+      const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: [] },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      await gateway.getCmmapAppointmentsForProfessionalIds(context, ['NY-00123']);
+
+      expect(spy).toHaveBeenCalledWith(
+        context,
+        expect.stringContaining(expectedQueryFragment),
+        expect.any(Array),
+        300000,
+      );
+    });
+
+    test('should throw CamsError when executeQuery fails', async () => {
+      vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockRejectedValue(
+        new Error('connection failed'),
+      );
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+
+      await expect(
+        gateway.getCmmapAppointmentsForProfessionalIds(context, ['NY-00123']),
+      ).rejects.toThrow(CamsError);
+    });
+  });
+
+  describe('getDivisionToCourtMap', () => {
+    test('should return a Map of zero-padded CASE_DIV -> COURT_ID from CMMDO', async () => {
+      const dbResults = [
+        { caseDiv: 81, courtId: 'NY' },
+        { caseDiv: 1, courtId: 'ME' },
+        { caseDiv: 900, courtId: 'DC' },
+      ];
+      vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: dbResults },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      const result = await gateway.getDivisionToCourtMap(context);
+
+      expect(result).toBeInstanceOf(Map);
+      expect(result).toEqual(
+        new Map([
+          ['081', 'NY'],
+          ['001', 'ME'],
+          ['900', 'DC'],
+        ]),
+      );
+    });
+
+    test('should return an empty Map, not an error, when CMMDO returns no rows', async () => {
+      vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: [] },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      const result = await gateway.getDivisionToCourtMap(context);
+
+      expect(result).toBeInstanceOf(Map);
+      expect(result.size).toBe(0);
+    });
+
+    test('should round-trip every row into the map with no rows dropped or duplicated', async () => {
+      const dbResults = Array.from({ length: 271 }, (_, i) => ({
+        caseDiv: i + 1,
+        courtId: `C${i}`,
+      }));
+      vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: dbResults },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      const result = await gateway.getDivisionToCourtMap(context);
+
+      expect(result.size).toBe(dbResults.length);
+      for (const row of dbResults) {
+        expect(result.get(String(row.caseDiv).padStart(3, '0'))).toBe(row.courtId);
+      }
+    });
+
+    test('should exclude soft-deleted rows (DELETE_CODE != D)', async () => {
+      const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: [] },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      await gateway.getDivisionToCourtMap(context);
+
+      const query = spy.mock.calls[0][1] as string;
+      expect(query).toContain("DELETE_CODE != 'D'");
+      expect(query).toContain('[dbo].[CMMDO]');
+    });
+
+    test('should throw CamsError when executeQuery fails', async () => {
+      vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockRejectedValue(
+        new Error('connection failed'),
+      );
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+
+      await expect(gateway.getDivisionToCourtMap(context)).rejects.toThrow(CamsError);
     });
   });
 });
