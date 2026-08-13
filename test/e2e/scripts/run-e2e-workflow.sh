@@ -214,6 +214,13 @@ start_pod_and_wait_for_backend() {
     echo -e "${BLUE}⏳ Step 2: Starting pod and services...${NC}"
 
     # Create the pod — publishes the ports that need host access
+    #
+    # NOTE: this function is invoked as the condition of `until ...; do` below,
+    # a context in which bash suppresses `errexit` for the function's entire
+    # execution. Each container-start command below must therefore check its
+    # own exit status explicitly — otherwise a failure here (e.g. a port
+    # conflict) would silently fall through to the health-check wait and only
+    # surface ~180s later as a generic timeout instead of the real cause.
     podman pod create \
         --name "${POD_NAME}" \
         --publish 7071:7071 \
@@ -221,7 +228,12 @@ start_pod_and_wait_for_backend() {
         --publish 27017:27017 \
         --publish 10000:10000 \
         --publish 10001:10001 \
-        --publish 10002:10002
+        --publish 10002:10002 \
+        || { echo -e "${RED}❌ Failed to create pod ${POD_NAME}${NC}"; return 1; }
+
+    # From here on, something exists that the EXIT trap must tear down, even
+    # if a later command in this function fails and returns early.
+    CLEANUP_NEEDED=true
 
     # Start SQL Edge in the pod (from GHCR cache)
     podman run -d \
@@ -230,20 +242,23 @@ start_pod_and_wait_for_backend() {
         -e ACCEPT_EULA=Y \
         -e MSSQL_SA_PASSWORD="${MSSQL_PASS}" \
         -e MSSQL_PID=Developer \
-        "${IMAGE_SQLEDGE}"
+        "${IMAGE_SQLEDGE}" \
+        || { echo -e "${RED}❌ Failed to start cams-sqledge-e2e${NC}"; return 1; }
 
     # Start MongoDB in the pod (from GHCR cache)
     podman run -d \
         --pod "${POD_NAME}" \
         --name cams-mongodb-e2e \
-        "${IMAGE_MONGODB}" --bind_ip_all
+        "${IMAGE_MONGODB}" --bind_ip_all \
+        || { echo -e "${RED}❌ Failed to start cams-mongodb-e2e${NC}"; return 1; }
 
     # Start Azurite in the pod (from GHCR cache)
     podman run -d \
         --pod "${POD_NAME}" \
         --name cams-azurite-e2e \
         "${IMAGE_AZURITE}" \
-        azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0 --location /data
+        azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0 --location /data \
+        || { echo -e "${RED}❌ Failed to start cams-azurite-e2e${NC}"; return 1; }
 
     # Start backend in the pod (waits for DBs, seeds, starts Functions host)
     podman run -d \
@@ -267,9 +282,9 @@ start_pod_and_wait_for_backend() {
         -e CAMS_LOGIN_PROVIDER_CONFIG="${CAMS_LOGIN_PROVIDER_CONFIG}" \
         -e CAMS_USER_GROUP_GATEWAY_CONFIG="${CAMS_USER_GROUP_GATEWAY_CONFIG}" \
         -e OKTA_API_KEY="${OKTA_API_KEY}" \
-        e2e_backend:latest
+        e2e_backend:latest \
+        || { echo -e "${RED}❌ Failed to start cams-backend-e2e${NC}"; return 1; }
 
-    CLEANUP_NEEDED=true
     echo ""
 
     # Verify backend container started
