@@ -1,15 +1,17 @@
+@use '@/styles/abstracts/colors' as colors;
+
 .cams-banner {
   .usa-banner__inner {
     max-width: none;
   }
 
   .development {
-    background-color: #207bc0;
+    background-color: colors.$environment-banner-info;
     color: white;
   }
 
   .test {
-    background-color: #ffd700;
+    background-color: colors.$environment-banner-test;
     color: black;
   }
 

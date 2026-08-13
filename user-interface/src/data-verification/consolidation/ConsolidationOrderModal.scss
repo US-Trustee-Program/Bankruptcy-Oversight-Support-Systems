@@ -1,3 +1,5 @@
+@use '@/styles/abstracts/colors' as colors;
+
 .consolidation-order-modal {
   input[type='radio'] {
     margin-right: 0.5rem;
@@ -6,7 +8,7 @@
   .modal-case-list-container {
     overflow-y: auto;
     min-height: 50px;
-    border: 1px solid #aaa;
+    border: 1px solid colors.$gray-input-border;
     border-radius: 3px;
     margin: 0.5rem 0;
 

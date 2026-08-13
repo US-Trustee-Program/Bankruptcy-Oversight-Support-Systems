@@ -252,7 +252,7 @@
             }
             #user-menu-item-list {
               li {
-                background-color: #207bc0;
+                background-color: colors.$environment-banner-info;
                 color: white;
                 border-top: none;
                 a {
@@ -301,7 +301,7 @@
       }
 
       &:focus {
-        outline: 0.25rem solid #2491ff;
+        outline: 0.25rem solid colors.$focus-blue;
         outline-offset: 0.125rem;
       }
     }
@@ -501,7 +501,7 @@ body.usa-mobile-nav-active {
           }
           #user-menu-item-list {
             li {
-              background-color: #207bc0;
+              background-color: colors.$environment-banner-info;
               color: white;
               border-top: none;
               a {
@@ -547,7 +547,7 @@ body.usa-mobile-nav-active {
     }
 
     &:focus {
-      outline: 0.25rem solid #2491ff;
+      outline: 0.25rem solid colors.$focus-blue;
       outline-offset: 0.125rem;
     }
   }
