@@ -266,16 +266,51 @@ export type AcmsCaseAppointmentRawRecord = {
 };
 
 /**
+ * A single `CMMAP` (appointment) row joined to `CMMDB` (case) for one professional
+ * ID in a batch requested via `getCmmapAppointmentsForProfessionalIds`. Drives the
+ * district/chapter set-overlap scoring dimensions of the ACMS → CAMS
+ * professional-ID backfill (see `AcmsTrusteeProfessionalRecord`).
+ *
+ * Deliberately **not** filtered to "still relevant" cases and **not** joined to
+ * `CMMKE` — unlike `AcmsCaseAppointmentRecord` (used by the completed
+ * `migrate-case-appointments` migration), a closed/pre-2018 case is still valid
+ * identity evidence for this matching problem, so every appointment for the
+ * requested professional IDs is returned regardless of case open/closed status.
+ *
+ * `courtDivisionCode` is the raw `CASE_DIV` value — resolving it to a `courtId`
+ * is the caller's responsibility (via a separate `CASE_DIV -> COURT_ID` map), not
+ * this method's.
+ */
+export type AcmsProfessionalAppointmentRecord = {
+  acmsProfessionalId: string;
+  caseId: string;
+  courtDivisionCode: string;
+  chapter: string | null;
+};
+
+/**
  * A single ACMS trustee professional record from CMMPR, keyed on the compound
- * `(GROUP_DESIGNATOR, PROF_CODE)` professional ID and carrying the name/state
- * fields needed to match the record back to a CAMS trustee. Used by the
- * inverse (ACMS → CAMS) professional-ID backfill pass.
+ * `(GROUP_DESIGNATOR, PROF_CODE)` professional ID and carrying the demographic
+ * fields needed to match the record back to a CAMS trustee (name, middle
+ * initial, address, and phone). Used by the inverse (ACMS → CAMS)
+ * professional-ID backfill pass.
+ *
+ * `zip` and `phone` are normalized to strings inside the gateway (ACMS stores
+ * them as NUMERIC columns) — `zip` is truncated/left-padded to 5 digits and
+ * `phone` is zero-padded to 10 digits, matching CAMS's own conventions. Any
+ * field that is empty or zero in ACMS normalizes to `null`, never `''` or `0`.
  */
 export type AcmsTrusteeProfessionalRecord = {
   acmsProfessionalId: string;
   firstName: string;
   lastName: string;
+  middleInitial: string | null;
+  address1: string | null;
+  address2: string | null;
+  city: string | null;
   state: string;
+  zip: string | null;
+  phone: string | null;
 };
 
 export function formatCaseId(div: number, year: number, num: number): string {
@@ -300,12 +335,6 @@ export interface AcmsGateway {
     context: ApplicationContext,
     lastChangeDate: string,
   ): Promise<{ caseIds: string[]; latestDeletedCaseDate: string }>;
-  getTrusteeProfessionalIds(
-    context: ApplicationContext,
-    firstName: string,
-    lastName: string,
-    state: string,
-  ): Promise<string[]>;
   /**
    * Return the full set of ACMS trustee professional records from CMMPR
    * (PROF_TYPE = 'TR'), independent of ATS, keyed on the compound
@@ -327,6 +356,30 @@ export interface AcmsGateway {
     pageSize: number,
     cutoffDate: string | null,
   ): Promise<AcmsCaseAppointmentRawRecord[]>;
+  /**
+   * Fetch `CMMAP`+`CMMDB`-joined appointment rows for a batch of ACMS
+   * professional IDs, in one SQL round trip — not paginated globally and not
+   * queried per professional ID. Unlike `getCmmapAppointments`, this drops the
+   * open-case filter and the `CMMKE` join entirely: a closed case is still
+   * identity evidence for this matching problem. Drives the district/chapter
+   * set-overlap scoring dimensions of the ACMS → CAMS professional-ID backfill.
+   */
+  getCmmapAppointmentsForProfessionalIds(
+    context: ApplicationContext,
+    acmsProfessionalIds: string[],
+  ): Promise<AcmsProfessionalAppointmentRecord[]>;
+  /**
+   * Fetch the full `CASE_DIV -> COURT_ID` division/office map from `CMMDO`
+   * (~271 rows), live, once per dataflow run — not a hand-copied static
+   * table. `CMMDO` rarely changes, but a static table would be a second
+   * source of truth that can silently drift from the real schema; a live
+   * query against an already-open connection cannot drift, at negligible
+   * extra cost. Keys are `CASE_DIV` zero-padded to 3 digits (matching this
+   * gateway's `courtDivisionCode`/`caseId` formatting convention elsewhere),
+   * values are the raw `COURT_ID`. Excludes soft-deleted (`DELETE_CODE = 'D'`)
+   * rows.
+   */
+  getDivisionToCourtMap(context: ApplicationContext): Promise<Map<string, string>>;
 }
 
 export interface AtsGateway {

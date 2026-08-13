@@ -9,9 +9,7 @@ import {
   detectAmbiguousFlagTrustees,
   AmbiguousFlagTrustee,
 } from '../../adapters/gateways/ats/cleansing/ats-mappings';
-import DateHelper from '@common/date-helper';
 import { getCamsError } from '../../common-errors/error-utilities';
-import { isTooManyRequestsError } from '../../common-errors/too-many-requests-error';
 import factory from '../../factory';
 import { MaybeData } from './queue-types';
 import { Trustee } from '@common/cams/trustees';
@@ -20,7 +18,7 @@ import { CamsUserReference } from '@common/cams/users';
 import { LegacyAddress } from '@common/cams/parties';
 import { normalizeName } from './trustee-match.helpers';
 import { UstpOfficeDetails } from '@common/cams/offices';
-import { AcmsTrusteeProfessionalRecord, ObjectStorageGateway } from '../gateways.types';
+import { ObjectStorageGateway } from '../gateways.types';
 const MODULE_NAME = 'MIGRATE-TRUSTEES-USE-CASE';
 
 /**
@@ -28,23 +26,6 @@ const MODULE_NAME = 'MIGRATE-TRUSTEES-USE-CASE';
  * Transient failures (network issues, temporary DB locks) may succeed on retry.
  */
 const MAX_RETRY_ATTEMPTS = 2;
-
-/**
- * Exponential-backoff parameters for the heal (professional-ID backfill) page
- * processor's in-place 429 handling. Distinct from MAX_RETRY_ATTEMPTS (which
- * governs the richer ATS trustee-processing pipeline): heal's failure mode is
- * simple lookup/write throttling from Cosmos, so it retries in place with
- * exponential backoff and hands remaining work back to the caller (escape hatch)
- * when the next sleep would exceed the wall-clock budget.
- */
-const HEAL_BASE_DELAY_MS = 30_000;
-const HEAL_MAX_BACKOFF_MS = 10 * 60 * 1000;
-// Azure Function execution budget (host.json functionTimeout 01:00:00) minus a
-// 4-minute safety buffer. Once elapsed + next backoff would exceed this, the
-// page processor stops and returns its remaining records for re-enqueue.
-const HEAL_SAFE_THRESHOLD_MS = 56 * 60 * 1000;
-
-const healSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 /**
  * Division information extracted from DXTR offices data
@@ -300,7 +281,6 @@ type TrusteeProcessingResult = {
   todIds: string[];
   success: boolean;
   appointmentsProcessed: number;
-  professionalIdsStored?: number;
   failedAppointments?: FailedAppointment[];
   error?: string;
 };
@@ -717,69 +697,6 @@ async function fetchAndAggregateAppointments(
 }
 
 /**
- * Look up ACMS professional IDs for a trustee and store them in the cross-reference collection.
- * Non-fatal: ACMS failures are logged as warnings and do not block trustee migration.
- *
- * @returns Count of professional IDs successfully stored
- */
-export async function upsertProfessionalIds(
-  context: ApplicationContext,
-  trusteeId: string,
-  firstName: string,
-  lastName: string,
-  state: string,
-): Promise<number> {
-  if (!firstName || !lastName || !state) {
-    return 0;
-  }
-
-  let acmsProfessionalIds: string[];
-
-  try {
-    acmsProfessionalIds = await factory
-      .getAcmsGateway(context)
-      .getTrusteeProfessionalIds(context, firstName, lastName, state);
-  } catch (originalError) {
-    context.logger.warn(
-      MODULE_NAME,
-      `Failed to retrieve ACMS professional IDs for trustee ${trusteeId} — skipping`,
-      { error: getCamsError(originalError, MODULE_NAME).message },
-    );
-    return 0;
-  }
-
-  const repo = factory.getTrusteeProfessionalIdsRepository(context);
-
-  const results = await Promise.allSettled(
-    acmsProfessionalIds.map((acmsProfessionalId) =>
-      repo.createProfessionalId(trusteeId, acmsProfessionalId, SYSTEM_USER),
-    ),
-  );
-
-  let stored = 0;
-  for (const result of results) {
-    if (result.status === 'fulfilled') {
-      stored++;
-    } else {
-      context.logger.warn(
-        MODULE_NAME,
-        `Failed to store a professional ID for trustee ${trusteeId} — continuing`,
-        { error: getCamsError(result.reason, MODULE_NAME).message },
-      );
-    }
-  }
-
-  if (stored > 0) {
-    context.logger.info(
-      MODULE_NAME,
-      `Stored ${stored} ACMS professional ID(s) for trustee ${trusteeId}`,
-    );
-  }
-
-  return stored;
-}
-
-/**
  * Retry wrapper for processing a trustee with fixed retry attempts.
  * Handles exponential backoff and logging for retry attempts.
  *
@@ -907,19 +824,9 @@ async function processTrusteeWithAppointments(
     }
   }
 
-  // 4. Professional IDs (isolated error handling - NON-FATAL, already handles errors internally)
-  const professionalIdsStored = await upsertProfessionalIds(
-    context,
-    trustee.trusteeId,
-    primary.FIRST_NAME ?? '',
-    primary.LAST_NAME ?? '',
-    primary.STATE ?? '',
-  );
-
   // Log statistics
   context.logger.info(MODULE_NAME, `Trustee TOD IDs ${todIds.join(', ')} stats:`, {
     ...stats,
-    professionalIdsStored,
   });
 
   return {
@@ -928,7 +835,6 @@ async function processTrusteeWithAppointments(
     todIds,
     success: true, // Trustee saved = success
     appointmentsProcessed,
-    professionalIdsStored,
     failedAppointments,
   };
 }
@@ -1003,7 +909,6 @@ export async function processPageOfTrustees(
   let appointments = 0;
   let errors = 0;
   const failedAppointments: FailedAppointment[] = [];
-  const unmatchedProfessionalIds: Array<{ trusteeId: string; name: string; todIds: string[] }> = [];
 
   // Process each deduplicated group
   for (const [dedupeKey, trusteeGroup] of deduplicatedMap.entries()) {
@@ -1035,14 +940,6 @@ export async function processPageOfTrustees(
       if (result.failedAppointments && result.failedAppointments.length > 0) {
         failedAppointments.push(...result.failedAppointments);
       }
-
-      if (!result.professionalIdsStored) {
-        unmatchedProfessionalIds.push({
-          trusteeId: result.trusteeId,
-          name: result.name,
-          todIds: result.todIds,
-        });
-      }
     } else {
       errors++;
     }
@@ -1052,10 +949,6 @@ export async function processPageOfTrustees(
     MODULE_NAME,
     `Page complete: ${processed} unique trustees, ${appointments} appointments, ${failedAppointments.length} failed, ${errors} errors`,
   );
-
-  if (unmatchedProfessionalIds.length > 0) {
-    await writeUnmatchedProfessionalIds(context, unmatchedProfessionalIds, outputContainerName);
-  }
 
   return {
     data: {
@@ -1094,340 +987,6 @@ async function writeAmbiguousFlagTrustees(
         fileName,
       },
     );
-  }
-}
-
-async function writeUnmatchedProfessionalIds(
-  context: ApplicationContext,
-  unmatched: Array<{ trusteeId: string; name: string; todIds: string[] }>,
-  outputContainerName: string,
-): Promise<void> {
-  const objectStorage: ObjectStorageGateway = factory.getObjectStorageGateway(context);
-  const timestamp = DateHelper.getCurrentIsoTimestamp().replace(/[:.]/g, '-');
-  const fileName = `unmatched-professional-ids-${timestamp}.jsonl`;
-  const content = unmatched.map((r) => JSON.stringify(r)).join('\n');
-
-  try {
-    await objectStorage.writeObject(outputContainerName, fileName, content);
-    context.logger.info(
-      MODULE_NAME,
-      `Wrote ${unmatched.length} unmatched professional ID trustees to ${outputContainerName}/${fileName}`,
-    );
-  } catch (originalError) {
-    context.logger.warn(
-      MODULE_NAME,
-      `Failed to write unmatched professional IDs file — continuing`,
-      { error: getCamsError(originalError, MODULE_NAME).message },
-    );
-  }
-}
-
-/**
- * Reason an ACMS professional record could not be matched to a CAMS trustee.
- */
-type UnmatchedReason =
-  | 'INCOMPLETE_NAME_OR_STATE'
-  | 'LOOKUP_FAILED'
-  | 'NO_TRUSTEE_MATCH'
-  | 'CREATE_FAILED'
-  | 'REENQUEUE_FAILED';
-
-/**
- * An ACMS professional record that could not be matched to a CAMS trustee
- * during the backfill pass. Routed to the heal-unmatched-professional-ids queue
- * for later review (retrieved via the flushQueues intent).
- */
-type UnmatchedProfessionalId = {
-  acmsProfessionalId: string;
-  firstName: string;
-  lastName: string;
-  state: string;
-  reason: UnmatchedReason;
-};
-
-/**
- * Build an UnmatchedProfessionalId from an ACMS record + reason, trimming the
- * name/state fields consistently. Centralizes the repeated object shape.
- */
-function makeUnmatched(
-  record: AcmsTrusteeProfessionalRecord,
-  reason: UnmatchedReason,
-): UnmatchedProfessionalId {
-  return {
-    acmsProfessionalId: record.acmsProfessionalId,
-    firstName: (record.firstName ?? '').trim(),
-    lastName: (record.lastName ?? '').trim(),
-    state: (record.state ?? '').trim(),
-    reason,
-  };
-}
-
-/**
- * Outcome of processing a single ACMS professional record.
- */
-type ProcessRecordResult =
-  | { kind: 'alreadyMapped' }
-  | { kind: 'created' }
-  | { kind: 'unmatched'; value: UnmatchedProfessionalId }
-  | { kind: 'rateLimited' };
-
-/**
- * Result of processing one heal page (chunk of ACMS professional records).
- *
- * `remaining` holds records the escape hatch deferred (429 backoff would have
- * exceeded the wall-clock budget); the caller re-enqueues them as a fresh page.
- */
-export type BackfillProfessionalIdsPageResult = {
-  alreadyMapped: number;
-  created: number;
-  unmatched: UnmatchedProfessionalId[];
-  remaining: AcmsTrusteeProfessionalRecord[];
-  recommendedVisibilitySeconds: number;
-};
-
-function computeHealBackoffMs(attempt: number, baseDelayMs: number): number {
-  return Math.min(Math.pow(2, attempt + 1) * baseDelayMs, HEAL_MAX_BACKOFF_MS);
-}
-
-function healShouldEscape(startedAt: number, safeThresholdMs: number, nextBackoffMs: number) {
-  return Date.now() - startedAt + nextBackoffMs >= safeThresholdMs;
-}
-
-/**
- * Reader half of the heal redesign: fetch the full set of ACMS trustee
- * professional records (CMMPR, PROF_TYPE='TR'). The handler chunks the result
- * in memory and enqueues one heal-page message per chunk — no per-page ACMS
- * re-query. ~10k records is an acceptable single-fetch size.
- */
-export async function readAllTrusteeProfessionalRecords(
-  context: ApplicationContext,
-): Promise<MaybeData<AcmsTrusteeProfessionalRecord[]>> {
-  try {
-    const acmsGateway = factory.getAcmsGateway(context);
-    const acmsRecords = await acmsGateway.getAllTrusteeProfessionalRecords(context);
-    context.logger.info(
-      MODULE_NAME,
-      `Backfill reader: fetched ${acmsRecords.length} ACMS professional records`,
-    );
-    return { data: acmsRecords };
-  } catch (originalError) {
-    return {
-      error: getCamsError(originalError, MODULE_NAME, 'Failed to read ACMS professional records'),
-    };
-  }
-}
-
-/**
- * Process a single ACMS professional record against CAMS:
- * - skip if a mapping already exists (idempotent),
- * - route incomplete name/state to unmatched,
- * - match by name+state and create the mapping.
- *
- * Cosmos 429 (TooManyRequestsError) on the lookup or create is surfaced as
- * `rateLimited` so the caller can back off and retry the SAME record in place —
- * it is NOT counted as unmatched. Any other error is logged and routed to
- * unmatched with the appropriate reason code.
- */
-async function processAcmsRecord(
-  context: ApplicationContext,
-  record: AcmsTrusteeProfessionalRecord,
-  professionalIdsRepo: ReturnType<typeof factory.getTrusteeProfessionalIdsRepository>,
-  trusteesRepo: ReturnType<typeof factory.getTrusteesRepository>,
-): Promise<ProcessRecordResult> {
-  const firstName = (record.firstName ?? '').trim();
-  const lastName = (record.lastName ?? '').trim();
-  const state = (record.state ?? '').trim();
-  const { acmsProfessionalId } = record;
-
-  // Skip records that already have a mapping (idempotent — leaves existing
-  // ATS-driven mappings untouched).
-  let existing: Awaited<ReturnType<typeof professionalIdsRepo.findByAcmsProfessionalId>>;
-  try {
-    existing = await professionalIdsRepo.findByAcmsProfessionalId(acmsProfessionalId);
-  } catch (originalError) {
-    if (isTooManyRequestsError(originalError)) {
-      return { kind: 'rateLimited' };
-    }
-    context.logger.warn(
-      MODULE_NAME,
-      `Backfill: failed to check existing mapping for ACMS professional ${acmsProfessionalId} — routing to unmatched`,
-      { error: getCamsError(originalError, MODULE_NAME).message },
-    );
-    return { kind: 'unmatched', value: makeUnmatched(record, 'LOOKUP_FAILED') };
-  }
-  if (existing.length > 0) {
-    return { kind: 'alreadyMapped' };
-  }
-
-  if (!firstName || !lastName || !state) {
-    return { kind: 'unmatched', value: makeUnmatched(record, 'INCOMPLETE_NAME_OR_STATE') };
-  }
-
-  // Match ACMS professional → CAMS trustee by name + state (same rules as the
-  // ATS-driven pass).
-  let camsTrustee: Trustee | null;
-  try {
-    camsTrustee = await trusteesRepo.findTrusteeByNameAndState(firstName, lastName, state);
-  } catch (originalError) {
-    if (isTooManyRequestsError(originalError)) {
-      return { kind: 'rateLimited' };
-    }
-    context.logger.warn(
-      MODULE_NAME,
-      `Backfill: failed to look up CAMS trustee for ACMS professional ${acmsProfessionalId} — routing to unmatched`,
-      { error: getCamsError(originalError, MODULE_NAME).message },
-    );
-    return { kind: 'unmatched', value: makeUnmatched(record, 'LOOKUP_FAILED') };
-  }
-
-  if (!camsTrustee) {
-    return { kind: 'unmatched', value: makeUnmatched(record, 'NO_TRUSTEE_MATCH') };
-  }
-
-  try {
-    await professionalIdsRepo.createProfessionalId(
-      camsTrustee.trusteeId,
-      acmsProfessionalId,
-      SYSTEM_USER,
-    );
-    return { kind: 'created' };
-  } catch (originalError) {
-    if (isTooManyRequestsError(originalError)) {
-      return { kind: 'rateLimited' };
-    }
-    context.logger.warn(
-      MODULE_NAME,
-      `Backfill: failed to create mapping for CAMS trustee ${camsTrustee.trusteeId} and ACMS professional ${acmsProfessionalId} — continuing`,
-      { error: getCamsError(originalError, MODULE_NAME).message },
-    );
-    return { kind: 'unmatched', value: makeUnmatched(record, 'CREATE_FAILED') };
-  }
-}
-
-/** A terminal per-record outcome, or an escape-hatch signal with the backoff used. */
-type RecordOutcome =
-  | { kind: 'alreadyMapped' }
-  | { kind: 'created' }
-  | { kind: 'unmatched'; value: UnmatchedProfessionalId }
-  | { kind: 'escape'; backoffMs: number };
-
-/**
- * Process a single record, retrying in place on 429 with exponential backoff.
- * Returns the terminal outcome, or 'escape' (with the next backoff) when the
- * wall-clock budget would be exceeded before the next retry.
- */
-async function processRecordWithRetry(
-  context: ApplicationContext,
-  record: AcmsTrusteeProfessionalRecord,
-  professionalIdsRepo: ReturnType<typeof factory.getTrusteeProfessionalIdsRepository>,
-  opts: {
-    trusteesRepo: ReturnType<typeof factory.getTrusteesRepository>;
-    startedAt: number;
-    safeThresholdMs: number;
-    baseDelayMs: number;
-  },
-): Promise<RecordOutcome> {
-  let attempt = 0;
-  while (true) {
-    const result = await processAcmsRecord(context, record, professionalIdsRepo, opts.trusteesRepo);
-    if (result.kind !== 'rateLimited') {
-      return result;
-    }
-
-    const nextBackoffMs = computeHealBackoffMs(attempt, opts.baseDelayMs);
-    if (healShouldEscape(opts.startedAt, opts.safeThresholdMs, nextBackoffMs)) {
-      return { kind: 'escape', backoffMs: nextBackoffMs };
-    }
-    await healSleep(nextBackoffMs);
-    attempt++;
-  }
-}
-
-/**
- * Process one heal page (chunk of ACMS professional records) — the writer half
- * of the heal redesign.
- *
- * Idempotent: records that already have a `trustee-professional-ids` entry are
- * skipped, and `repo.createProfessionalId` de-dupes the `(camsTrusteeId,
- * acmsProfessionalId)` pair, so re-runs converge to the same state.
- *
- * 429 resilience: on Cosmos TooManyRequestsError the same record is retried in
- * place with exponential backoff. If the next backoff sleep would push
- * wall-clock elapsed past `safeThresholdMs`, the escape hatch fires and the
- * unprocessed tail (including the current record) is returned in `remaining` so
- * the caller can re-enqueue it as a new heal page.
- *
- * @param startedAt - wall-clock ms at invocation start; injectable for testing.
- * @param safeThresholdMs - wall-clock budget before the escape hatch fires.
- */
-export async function backfillProfessionalIdsPage(
-  context: ApplicationContext,
-  records: AcmsTrusteeProfessionalRecord[],
-  options: { startedAt?: number; safeThresholdMs?: number; baseDelayMs?: number } = {},
-): Promise<MaybeData<BackfillProfessionalIdsPageResult>> {
-  const {
-    startedAt = Date.now(),
-    safeThresholdMs = HEAL_SAFE_THRESHOLD_MS,
-    baseDelayMs = HEAL_BASE_DELAY_MS,
-  } = options;
-  try {
-    const professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
-    const trusteesRepo = factory.getTrusteesRepository(context);
-
-    let alreadyMapped = 0;
-    let created = 0;
-    const unmatched: UnmatchedProfessionalId[] = [];
-
-    for (let i = 0; i < records.length; i++) {
-      const outcome = await processRecordWithRetry(context, records[i], professionalIdsRepo, {
-        trusteesRepo,
-        startedAt,
-        safeThresholdMs,
-        baseDelayMs,
-      });
-
-      if (outcome.kind === 'escape') {
-        context.logger.warn(
-          MODULE_NAME,
-          `Backfill: escape hatch — deferring ${records.length - i} records after 429 backoff would exceed budget`,
-        );
-        return {
-          data: {
-            alreadyMapped,
-            created,
-            unmatched,
-            remaining: records.slice(i),
-            recommendedVisibilitySeconds: Math.ceil(outcome.backoffMs / 1000),
-          },
-        };
-      }
-
-      if (outcome.kind === 'alreadyMapped') {
-        alreadyMapped++;
-      } else if (outcome.kind === 'created') {
-        created++;
-      } else {
-        unmatched.push(outcome.value);
-      }
-    }
-
-    return {
-      data: {
-        alreadyMapped,
-        created,
-        unmatched,
-        remaining: [],
-        recommendedVisibilitySeconds: 0,
-      },
-    };
-  } catch (originalError) {
-    return {
-      error: getCamsError(
-        originalError,
-        MODULE_NAME,
-        'Failed to backfill trustee professional IDs page',
-      ),
-    };
   }
 }
 
@@ -1534,17 +1093,6 @@ class MigrateTrusteesUseCase {
 
   deleteAllTrusteesAndAppointments(): ReturnType<typeof deleteAllTrusteesAndAppointments> {
     return deleteAllTrusteesAndAppointments(this.context);
-  }
-
-  readAllTrusteeProfessionalRecords(): ReturnType<typeof readAllTrusteeProfessionalRecords> {
-    return readAllTrusteeProfessionalRecords(this.context);
-  }
-
-  backfillProfessionalIdsPage(
-    records: Parameters<typeof backfillProfessionalIdsPage>[1],
-    options?: Parameters<typeof backfillProfessionalIdsPage>[2],
-  ): ReturnType<typeof backfillProfessionalIdsPage> {
-    return backfillProfessionalIdsPage(this.context, records, options);
   }
 }
 

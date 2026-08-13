@@ -9,6 +9,7 @@ import {
   AcmsCaseAppointmentRecord,
   AcmsCaseAppointmentRawRecord,
   AcmsTrusteeProfessionalRecord,
+  AcmsProfessionalAppointmentRecord,
 } from '../../../use-cases/gateways.types';
 import { ApplicationContext } from '../../types/basic';
 import { AbstractMssqlClient } from '../abstract-mssql-client';
@@ -263,41 +264,6 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
     }
   }
 
-  async getTrusteeProfessionalIds(
-    context: ApplicationContext,
-    firstName: string,
-    lastName: string,
-    state: string,
-  ): Promise<string[]> {
-    const input: DbTableFieldSpec[] = [
-      { name: 'firstName', type: mssql.VarChar, value: firstName },
-      { name: 'lastName', type: mssql.VarChar, value: lastName },
-      { name: 'state', type: mssql.VarChar, value: state },
-    ];
-
-    const query = `
-      SELECT
-        CONCAT(ACMS.GROUP_DESIGNATOR, '-', RIGHT(CONCAT('0000', ACMS.UST_PROF_CODE), 5)) AS acmsProfessionalId
-      FROM [dbo].[CMMPR] AS ACMS
-      WHERE ACMS.PROF_FIRST_NAME = @firstName
-        AND ACMS.PROF_LAST_NAME = @lastName
-        AND ACMS.PROF_STATE = @state
-        AND (ACMS.PROF_TYPE = 'TR' OR ACMS.PROF_TYPE IS NULL)`;
-
-    try {
-      const { results } = await this.executeQuery<{ acmsProfessionalId: string }>(
-        context,
-        query,
-        input,
-      );
-      return (results as mssql.IResult<{ acmsProfessionalId: string }>).recordset.map(
-        (r) => r.acmsProfessionalId,
-      );
-    } catch (originalError) {
-      throwCamsError(originalError);
-    }
-  }
-
   async getAllTrusteeProfessionalRecords(
     context: ApplicationContext,
   ): Promise<AcmsTrusteeProfessionalRecord[]> {
@@ -305,26 +271,89 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
     // independent of ATS. Keyed on the compound (GROUP_DESIGNATOR, PROF_CODE)
     // professional ID — never PROF_CODE alone, since one CAMS trustee can hold
     // multiple ACMS professional IDs across groups. Filtered by PROF_TYPE = 'TR'.
+    // PROF_ZIP (NUMERIC(9,0)) and PROF_COMMERCIAL_PHONE_NBR (NUMERIC(10,0)) are
+    // fetched as raw numerics here and normalized to zero-padded strings below —
+    // normalizing at the SQL layer would silently reintroduce leading-zero loss.
     const query = `
       SELECT
         CONCAT(ACMS.GROUP_DESIGNATOR, '-', RIGHT(CONCAT('0000', ACMS.UST_PROF_CODE), 5)) AS acmsProfessionalId,
         ACMS.PROF_FIRST_NAME AS firstName,
         ACMS.PROF_LAST_NAME AS lastName,
-        ACMS.PROF_STATE AS state
+        ACMS.PROF_MI AS middleInitial,
+        ACMS.PROF_ADDRESS1 AS address1,
+        ACMS.PROF_ADDRESS2 AS address2,
+        ACMS.PROF_CITY AS city,
+        ACMS.PROF_STATE AS state,
+        ACMS.PROF_ZIP AS zip,
+        ACMS.PROF_COMMERCIAL_PHONE_NBR AS phone
       FROM [dbo].[CMMPR] AS ACMS
       WHERE ACMS.PROF_TYPE = 'TR'`;
 
+    type RawRow = Omit<AcmsTrusteeProfessionalRecord, 'zip' | 'phone'> & {
+      zip: number | string | null;
+      phone: number | string | null;
+    };
+
     try {
-      const { results } = await this.executeQuery<AcmsTrusteeProfessionalRecord>(
+      const { results } = await this.executeQuery<RawRow>(
         context,
         query,
         [],
         ACMS_REQUEST_TIMEOUT_MS,
       );
-      return (results as mssql.IResult<AcmsTrusteeProfessionalRecord>).recordset;
+      const recordset = (results as mssql.IResult<RawRow>).recordset;
+      return recordset.map((row) => ({
+        ...row,
+        middleInitial: this.normalizeAcmsString(row.middleInitial),
+        address1: this.normalizeAcmsString(row.address1),
+        address2: this.normalizeAcmsString(row.address2),
+        city: this.normalizeAcmsString(row.city),
+        zip: this.normalizeAcmsZip(row.zip),
+        phone: this.normalizeAcmsPhone(row.phone),
+      }));
     } catch (originalError) {
       throwCamsError(originalError);
     }
+  }
+
+  /**
+   * Normalize an ACMS text field to `null` when empty, rather than leaking an
+   * empty string across the gateway boundary.
+   */
+  private normalizeAcmsString(value: string | null | undefined): string | null {
+    if (value === null || value === undefined || value.trim() === '') {
+      return null;
+    }
+    return value;
+  }
+
+  /**
+   * Normalize ACMS's NUMERIC(9,0) PROF_ZIP to CAMS's 5-digit zip convention.
+   * NUMERIC columns arrive stripped of leading zeros, so a short number is
+   * left-padded to 5 digits before truncating to the first 5 — this preserves
+   * a zip like "00501" (which SQL returns as the number 501) instead of
+   * silently truncating it to "00000" or dropping significant digits.
+   * A zero/empty value normalizes to null, never "00000".
+   */
+  private normalizeAcmsZip(value: number | string | null | undefined): string | null {
+    if (value === null || value === undefined || value === 0 || value === '') {
+      return null;
+    }
+    const padded = String(value).padStart(5, '0');
+    return padded.slice(0, 5);
+  }
+
+  /**
+   * Normalize ACMS's NUMERIC(10,0) PROF_COMMERCIAL_PHONE_NBR to a zero-padded
+   * 10-digit string. NUMERIC columns arrive stripped of leading zeros, so the
+   * value is left-padded to 10 digits, not just stringified. A zero/empty
+   * value normalizes to null, never "0000000000".
+   */
+  private normalizeAcmsPhone(value: number | string | null | undefined): string | null {
+    if (value === null || value === undefined || value === 0 || value === '') {
+      return null;
+    }
+    return String(value).padStart(10, '0');
   }
 
   async getCmmapAppointments(
@@ -510,6 +539,104 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
         ACMS_REQUEST_TIMEOUT_MS,
       );
       return (results as mssql.IResult<AcmsCaseAppointmentRawRecord>).recordset;
+    } catch (originalError) {
+      throwCamsError(originalError);
+    }
+  }
+
+  async getCmmapAppointmentsForProfessionalIds(
+    context: ApplicationContext,
+    acmsProfessionalIds: string[],
+  ): Promise<AcmsProfessionalAppointmentRecord[]> {
+    if (acmsProfessionalIds.length === 0) {
+      return [];
+    }
+
+    // Batched by a SET of professional IDs, not keyset-paginated — one SQL round
+    // trip for the whole batch, unlike getCmmapAppointments'/getCmmapAppointmentsRaw's
+    // global `WHERE m.id > @lastId ... FETCH NEXT @pageSize ROWS` sweep. Each
+    // acmsProfessionalId ("{GROUP_DESIGNATOR}-{PROF_CODE:5}") is matched via the
+    // same CONCAT-based expression used to produce it, parameterized per-id — the
+    // same `CONCAT(...) IN (@p0, @p1, ...)` shape used by
+    // getAppointmentDatesByCaseIds in dxtr/cases.dxtr.gateway.ts.
+    const input: DbTableFieldSpec[] = acmsProfessionalIds.map((id, idx) => ({
+      name: `profId${idx}`,
+      type: mssql.VarChar,
+      value: id,
+    }));
+    const profIdVars = acmsProfessionalIds.map((_, idx) => `@profId${idx}`).join(', ');
+
+    // Reuses the CMMAP INNER JOIN CMMDB join pattern and CONCAT-based caseId/
+    // acmsProfessionalId formatting from getCmmapAppointments verbatim, but
+    // deliberately drops that method's open-case filter
+    // (CLOSED_BY_COURT_DATE/CLOSED_BY_UST_DATE) and its CMMKE join — a closed
+    // case is still valid identity evidence for this matching problem, unlike
+    // the "still relevant to current oversight" question that filter answers
+    // for the completed migrate-case-appointments migration. Only
+    // DELETE_CODE != 'D' and APPT_TYPE = 'TR' are kept on CMMAP, and
+    // DELETE_CODE != 'D' on CMMDB.
+    const query = `
+      SELECT
+        CONCAT(m.GROUP_DESIGNATOR, '-', RIGHT('00000' + CAST(m.PROF_CODE AS VARCHAR), 5)) AS acmsProfessionalId,
+        CONCAT(
+          RIGHT('000' + CAST(m.CASE_DIV AS VARCHAR), 3),
+          '-',
+          RIGHT('00' + CAST(m.CASE_YEAR AS VARCHAR), 2),
+          '-',
+          RIGHT('00000' + CAST(m.CASE_NUMBER AS VARCHAR), 5)
+        ) AS caseId,
+        RIGHT('000' + CAST(m.CASE_DIV AS VARCHAR), 3) AS courtDivisionCode,
+        c.CURR_CASE_CHAPT AS chapter
+      FROM [dbo].[CMMAP] m
+      INNER JOIN [dbo].[CMMDB] c
+        ON m.CASE_DIV = c.CASE_DIV
+        AND m.CASE_YEAR = c.CASE_YEAR
+        AND m.CASE_NUMBER = c.CASE_NUMBER
+      WHERE m.DELETE_CODE != 'D'
+        AND m.APPT_TYPE = 'TR'
+        AND c.DELETE_CODE != 'D'
+        AND CONCAT(m.GROUP_DESIGNATOR, '-', RIGHT('00000' + CAST(m.PROF_CODE AS VARCHAR), 5)) IN (${profIdVars})`;
+
+    try {
+      const { results } = await this.executeQuery<AcmsProfessionalAppointmentRecord>(
+        context,
+        query,
+        input,
+        ACMS_REQUEST_TIMEOUT_MS,
+      );
+      return (results as mssql.IResult<AcmsProfessionalAppointmentRecord>).recordset;
+    } catch (originalError) {
+      throwCamsError(originalError);
+    }
+  }
+
+  async getDivisionToCourtMap(context: ApplicationContext): Promise<Map<string, string>> {
+    // Live join against CMMDO (Division/Office Master File, ~271 rows), fetched
+    // once per dataflow run — deliberately NOT a hand-copied static TypeScript
+    // table. CMMDO rarely changes, but a static table is a second source of
+    // truth that can silently drift from the real schema over time; a live
+    // query against an already-open connection cannot drift, at negligible
+    // extra cost for a table this small. Excludes soft-deleted rows.
+    const query = `
+      SELECT
+        CASE_DIV AS caseDiv,
+        COURT_ID AS courtId
+      FROM [dbo].[CMMDO]
+      WHERE DELETE_CODE != 'D'`;
+
+    type ResultType = {
+      caseDiv: number;
+      courtId: string;
+    };
+
+    try {
+      const { results } = await this.executeQuery<ResultType>(context, query);
+      const recordset = (results as mssql.IResult<ResultType>).recordset;
+      const divisionToCourtMap = new Map<string, string>();
+      for (const row of recordset) {
+        divisionToCourtMap.set(String(row.caseDiv).padStart(3, '0'), row.courtId);
+      }
+      return divisionToCourtMap;
     } catch (originalError) {
       throwCamsError(originalError);
     }
