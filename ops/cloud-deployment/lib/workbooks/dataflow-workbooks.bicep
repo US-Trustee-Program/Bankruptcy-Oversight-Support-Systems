@@ -1,12 +1,15 @@
 param location string = resourceGroup().location
 
+@description('Branch/stack-unique name. Included in each workbook\'s guid() seed so branches sharing a resource group (CAMS-760, Option E) get distinct physical workbook resources instead of colliding on the same guid(name, resourceGroup().id).')
+param stackName string
+
 @description('Resource ID of the Application Insights instance for the dataflows function app.')
 param appInsightsResourceId string
 
 param tags object = {}
 
 resource operationsWorkbook 'Microsoft.Insights/workbooks@2023-06-01' = {
-  name: guid('dataflow-operations-workbook', resourceGroup().id)
+  name: guid('dataflow-operations-workbook', resourceGroup().id, stackName)
   location: location
   tags: tags
   kind: 'shared'
@@ -20,7 +23,7 @@ resource operationsWorkbook 'Microsoft.Insights/workbooks@2023-06-01' = {
 }
 
 resource troubleshootingWorkbook 'Microsoft.Insights/workbooks@2023-06-01' = {
-  name: guid('dataflow-troubleshooting-workbook', resourceGroup().id)
+  name: guid('dataflow-troubleshooting-workbook', resourceGroup().id, stackName)
   location: location
   tags: tags
   kind: 'shared'
@@ -34,7 +37,7 @@ resource troubleshootingWorkbook 'Microsoft.Insights/workbooks@2023-06-01' = {
 }
 
 resource trusteeNotesEngagementWorkbook 'Microsoft.Insights/workbooks@2023-06-01' = {
-  name: guid('trustee-notes-engagement-workbook', resourceGroup().id)
+  name: guid('trustee-notes-engagement-workbook', resourceGroup().id, stackName)
   location: location
   tags: tags
   kind: 'shared'
@@ -48,7 +51,7 @@ resource trusteeNotesEngagementWorkbook 'Microsoft.Insights/workbooks@2023-06-01
 }
 
 resource trusteeDueDateMetricsWorkbook 'Microsoft.Insights/workbooks@2023-06-01' = {
-  name: guid('trustee-due-date-metrics-workbook', resourceGroup().id)
+  name: guid('trustee-due-date-metrics-workbook', resourceGroup().id, stackName)
   location: location
   tags: tags
   kind: 'shared'

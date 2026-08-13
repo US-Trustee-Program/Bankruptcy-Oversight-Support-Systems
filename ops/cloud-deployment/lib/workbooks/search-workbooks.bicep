@@ -1,5 +1,8 @@
 param location string = resourceGroup().location
 
+@description('Branch/stack-unique name. Included in each workbook\'s guid() seed so branches sharing a resource group (CAMS-760, Option E) get distinct physical workbook resources instead of colliding on the same guid(name, resourceGroup().id).')
+param stackName string
+
 @description('Resource ID of the Application Insights instance for the webapp.')
 param appInsightsResourceId string
 
@@ -12,7 +15,7 @@ param nodeApiAppInsightsResourceId string
 param tags object = {}
 
 resource debtorNameSearchWorkbook 'Microsoft.Insights/workbooks@2023-06-01' = {
-  name: guid('debtor-name-search-workbook', resourceGroup().id)
+  name: guid('debtor-name-search-workbook', resourceGroup().id, stackName)
   location: location
   tags: tags
   kind: 'shared'
@@ -30,7 +33,7 @@ var dataflowsAppInsightsName = last(split(dataflowsAppInsightsResourceId, '/'))
 var nodeApiAppInsightsName = last(split(nodeApiAppInsightsResourceId, '/'))
 
 resource trusteeMatchingAnalyticsWorkbook 'Microsoft.Insights/workbooks@2023-06-01' = {
-  name: guid('trustee-matching-analytics-workbook', resourceGroup().id)
+  name: guid('trustee-matching-analytics-workbook', resourceGroup().id, stackName)
   location: location
   tags: tags
   kind: 'shared'
@@ -52,7 +55,7 @@ resource trusteeMatchingAnalyticsWorkbook 'Microsoft.Insights/workbooks@2023-06-
 }
 
 resource caseSearchMetricsWorkbook 'Microsoft.Insights/workbooks@2023-06-01' = {
-  name: guid('case-search-metrics-workbook', resourceGroup().id)
+  name: guid('case-search-metrics-workbook', resourceGroup().id, stackName)
   location: location
   tags: tags
   kind: 'shared'

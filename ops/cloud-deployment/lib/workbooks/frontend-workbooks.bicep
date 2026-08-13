@@ -1,5 +1,8 @@
 param location string = resourceGroup().location
 
+@description('Branch/stack-unique name. Included in each workbook\'s guid() seed so branches sharing a resource group (CAMS-760, Option E) get distinct physical workbook resources instead of colliding on the same guid(name, resourceGroup().id).')
+param stackName string
+
 @description('Resource ID of the Application Insights instance for the webapp.')
 param appInsightsResourceId string
 
@@ -11,7 +14,7 @@ param tags object = {}
 var nodeApiAppInsightsName = last(split(nodeApiAppInsightsResourceId, '/'))
 
 resource trusteeDistrictFilterMetricsWorkbook 'Microsoft.Insights/workbooks@2023-06-01' = {
-  name: guid('trustee-district-filter-metrics-workbook', resourceGroup().id)
+  name: guid('trustee-district-filter-metrics-workbook', resourceGroup().id, stackName)
   location: location
   tags: tags
   kind: 'shared'
@@ -25,7 +28,7 @@ resource trusteeDistrictFilterMetricsWorkbook 'Microsoft.Insights/workbooks@2023
 }
 
 resource trusteeNameManagementMetricsWorkbook 'Microsoft.Insights/workbooks@2023-06-01' = {
-  name: guid('trustee-name-management-metrics-workbook', resourceGroup().id)
+  name: guid('trustee-name-management-metrics-workbook', resourceGroup().id, stackName)
   location: location
   tags: tags
   kind: 'shared'
@@ -43,7 +46,7 @@ resource trusteeNameManagementMetricsWorkbook 'Microsoft.Insights/workbooks@2023
 }
 
 resource trusteeCaseDetailInfoEngagementWorkbook 'Microsoft.Insights/workbooks@2023-06-01' = {
-  name: guid('trustee-case-detail-info-engagement-workbook', resourceGroup().id)
+  name: guid('trustee-case-detail-info-engagement-workbook', resourceGroup().id, stackName)
   location: location
   tags: tags
   kind: 'shared'
@@ -57,7 +60,7 @@ resource trusteeCaseDetailInfoEngagementWorkbook 'Microsoft.Insights/workbooks@2
 }
 
 resource docketFilterMetricsWorkbook 'Microsoft.Insights/workbooks@2023-06-01' = {
-  name: guid('docket-filter-metrics-workbook', resourceGroup().id)
+  name: guid('docket-filter-metrics-workbook', resourceGroup().id, stackName)
   location: location
   tags: tags
   kind: 'shared'
