@@ -19,6 +19,12 @@
     margin: 1.5rem 0;
   }
 
+  .affected-cases-list {
+    .case-list-separator {
+      padding-right: 0.25rem;
+    }
+  }
+
   p.other-matches-count {
     font-weight: bold;
     margin: 0 0 0.75rem;
