@@ -1,3 +1,5 @@
+@use '@/styles/abstracts/colors' as colors;
+
 .usa-modal .usa-modal__content h2.usa-modal__heading {
   text-align: left;
   .case-number {
@@ -50,7 +52,7 @@
     overflow-y: auto;
     max-height: 250px;
 
-    border: 1px solid #aaa;
+    border: 1px solid colors.$gray-input-border;
     border-radius: 3px;
 
     .usa-form-group {

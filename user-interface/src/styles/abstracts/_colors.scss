@@ -13,7 +13,9 @@ $disabledInputBackground: #c9c9c9;
 
 // Neutral gray scale (values match USWDS gray/gray-cool tokens)
 $gray-5: #f0f0f0; // USWDS gray-5
+$gray-50: #757575; // USWDS gray-50
 $gray-60: #5c5c5c; // USWDS gray-60
+$gray-100: #000; // USWDS gray-100
 $gray-cool-20: #c6cace; // USWDS gray-cool-20
 $gray-cool-50: #71767a; // USWDS gray-cool-50
 $gray-cool-60: #565c65; // USWDS gray-cool-60
@@ -25,9 +27,20 @@ $gray-hover-light: #e9ecef;
 $gray-selected-border: #949494;
 $gray-selected-background: #d0d0d0;
 $gray-hover-background: #b0b0b0;
+$gray-shadow: #dddddd;
+$gray-near-white: #fefefe;
+$gray-input-border: #aaa;
+$table-border: #c6c6c6;
 
 $toggle-active: #0050d8; // USWDS blue-warm-vivid-60
 $toggle-inactive: $gray-60;
+
+$focus-blue: #2491ff; // USWDS blue-vivid-40
+$environment-banner-info: #207bc0;
+$environment-banner-test: #ffd700;
+
+$error-text: #d54309; // USWDS red-warm-vivid-50
+$error-text-hover: #b51d06;
 
 // TODO figure out how to load USWDS styles in
 //color: $theme-color-disabled-text;

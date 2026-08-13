@@ -100,7 +100,7 @@ $listItemHoverBackground: colors.$gray-hover-background;
     }
     .input-container:has(.combo-box-input:focus) {
       outline-width: 4px;
-      outline-color: rgb(36, 145, 255);
+      outline-color: colors.$focus-blue;
       outline-style: solid;
       outline-offset: -4px;
     }
