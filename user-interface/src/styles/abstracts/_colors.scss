@@ -11,6 +11,24 @@ $secondary-dark: #b50909;
 $disabledInputText: #454545;
 $disabledInputBackground: #c9c9c9;
 
+// Neutral gray scale (values match USWDS gray/gray-cool tokens)
+$gray-5: #f0f0f0; // USWDS gray-5
+$gray-60: #5c5c5c; // USWDS gray-60
+$gray-cool-20: #c6cace; // USWDS gray-cool-20
+$gray-cool-50: #71767a; // USWDS gray-cool-50
+$gray-cool-60: #565c65; // USWDS gray-cool-60
+
+// Component grays with no matching USWDS token
+$gray-border: #ccc;
+$gray-border-light: #e0e0e0;
+$gray-hover-light: #e9ecef;
+$gray-selected-border: #949494;
+$gray-selected-background: #d0d0d0;
+$gray-hover-background: #b0b0b0;
+
+$toggle-active: #0050d8; // USWDS blue-warm-vivid-60
+$toggle-inactive: $gray-60;
+
 // TODO figure out how to load USWDS styles in
 //color: $theme-color-disabled-text;
 //background-color: $theme-color-disabled;

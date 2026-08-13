@@ -2,7 +2,7 @@
 
 .editor-container {
   .editor-wrapper {
-    border: 1px solid #ccc; // match RichTextEditor border
+    border: 1px solid colors.$gray-border;
     border-radius: 0.25rem;
     min-height: 120px;
 
@@ -11,7 +11,7 @@
       display: flex;
       gap: 0.25rem;
       padding: 0.5rem;
-      border-bottom: 1px solid #e0e0e0;
+      border-bottom: 1px solid colors.$gray-border-light;
       background-color: #ffffff;
       flex-wrap: wrap;
 
@@ -44,12 +44,12 @@
         }
       }
       button:hover {
-        background-color: #e9ecef;
+        background-color: colors.$gray-hover-light;
         color: colors.$ink;
         cursor: pointer;
       }
       button.is-active {
-        background-color: #71767a;
+        background-color: colors.$gray-cool-50;
         color: #ffffff;
         svg {
           fill: #ffffff;
@@ -63,8 +63,8 @@
         top: 3.5rem;
         left: 1rem;
         z-index: 10;
-        background-color: #f0f0f0;
-        border: 1px solid #ccc;
+        background-color: colors.$gray-5;
+        border: 1px solid colors.$gray-border;
         border-radius: 0.25rem;
         padding: 0.5rem;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
@@ -100,7 +100,7 @@
         height: 1.5rem;
 
         &:hover {
-          color: #005ea6;
+          color: colors.$primary;
           cursor: pointer;
         }
       }
@@ -112,8 +112,8 @@
       display: flex;
 
       &.disabled {
-        background-color: #f0f0f0;
-        color: #565c65;
+        background-color: colors.$gray-5;
+        color: colors.$gray-cool-60;
         cursor: not-allowed;
       }
 
