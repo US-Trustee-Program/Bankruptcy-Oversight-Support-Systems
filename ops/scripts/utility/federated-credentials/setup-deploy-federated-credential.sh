@@ -113,8 +113,10 @@ KV_SECRETS_USER_ROLE="4633458b-17de-408a-b874-0445c86b69e6" # Key Vault Secrets 
 
 # Custom role name for KV role assignment operations (replaces User Access Administrator)
 KV_ROLE_ASSIGNMENT_ROLE_NAME="CAMS KV Role Assignment Operator"
-# Custom role name for the branch network Deployment Stack's deny-setting management
-DEPLOYMENT_STACK_DENY_SETTING_ROLE_NAME="CAMS Deployment Stack Deny Setting Operator"
+# DEPLOYMENT_STACK_DENY_SETTING_ROLE_NAME and ensure_deployment_stack_deny_setting_role
+# come from _oidc-helpers.sh -- shared with setup-remove-branch-federated-credential.sh,
+# which needs the identical role for the teardown (delete) side of the same
+# --deny-settings-mode denyDelete requirement.
 # ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
@@ -163,59 +165,6 @@ EOF
 )" --output none
   echo "    Custom role created." >&2
   ROLE_ID=$(wait_for_role_definition "$KV_ROLE_ASSIGNMENT_ROLE_NAME")
-  echo "$ROLE_ID"
-}
-
-# ---------------------------------------------------------------------------
-# Helper: create or skip the deployment-stack deny-setting operator role (idempotent)
-#
-# Grants only Microsoft.Resources/deploymentStacks/manageDenySetting/action.
-# Required because both azure-deploy-network.sh (network resources) and
-# azure-deploy.sh (app resources, main.bicep) deploy branch resources as an
-# Azure Deployment Stack with --deny-settings-mode denyDelete (CAMS-760,
-# "Harden branch stacks with denyDelete setting") -- each in its own resource
-# group, so this role gets assigned twice (see provision_identity). Contributor
-# does not include this action, and Azure's own built-in "Deployment Stack
-# Contributor" role deliberately excludes it too — only "Deployment Stack
-# Owner" includes it, which also grants unrelated deploymentStacks actions
-# (delete, etc.) this identity doesn't need. A narrow custom role avoids that
-# broader grant, same rationale as ensure_kv_role_assignment_role above.
-# ---------------------------------------------------------------------------
-# Echoes the role definition GUID on stdout (progress goes to stderr) so the
-# caller can assign by ID rather than the lagging display-name filter.
-ensure_deployment_stack_deny_setting_role() {
-  local SUBSCRIPTION_ID="$1"
-
-  echo "==> Checking custom role: '$DEPLOYMENT_STACK_DENY_SETTING_ROLE_NAME'..." >&2
-  local ROLE_ID
-  ROLE_ID=$(az role definition list --custom-role-only true \
-    --query "[?roleName=='${DEPLOYMENT_STACK_DENY_SETTING_ROLE_NAME}'].name | [0]" -o tsv 2>/dev/null || true)
-
-  if [[ -n "$ROLE_ID" ]]; then
-    echo "    Custom role already exists, skipping creation." >&2
-    echo "$ROLE_ID"
-    return
-  fi
-
-  echo "    Creating custom role '$DEPLOYMENT_STACK_DENY_SETTING_ROLE_NAME'..." >&2
-  az role definition create --role-definition "$(cat <<EOF
-{
-  "Name": "${DEPLOYMENT_STACK_DENY_SETTING_ROLE_NAME}",
-  "Description": "Allows CAMS branch deploy identity to manage deny settings on its own Azure Deployment Stacks. Required for azure-deploy-network.sh's and azure-deploy.sh's --deny-settings-mode denyDelete. Narrower than the built-in Deployment Stack Owner role.",
-  "Actions": [
-    "Microsoft.Resources/deploymentStacks/manageDenySetting/action"
-  ],
-  "NotActions": [],
-  "DataActions": [],
-  "NotDataActions": [],
-  "AssignableScopes": [
-    "/subscriptions/${SUBSCRIPTION_ID}"
-  ]
-}
-EOF
-)" --output none
-  echo "    Custom role created." >&2
-  ROLE_ID=$(wait_for_role_definition "$DEPLOYMENT_STACK_DENY_SETTING_ROLE_NAME")
   echo "$ROLE_ID"
 }
 
