@@ -299,6 +299,62 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
     });
   });
 
+  describe('findByAcmsProfessionalIds', () => {
+    const acmsProfessionalIds = ['AK-01414', 'NY-00063'];
+    const expectedQuery = {
+      condition: 'CONTAINS',
+      leftOperand: { name: 'acmsProfessionalId' },
+      rightOperand: acmsProfessionalIds,
+    };
+
+    test('should find all trustees matching a batch of ACMS professional IDs in one query', async () => {
+      const mockProfessionalIds: TrusteeProfessionalIdDocument[] = [
+        { ...sampleProfessionalId, id: 'prof-id-1', acmsProfessionalId: 'AK-01414' },
+        { ...sampleProfessionalId, id: 'prof-id-2', acmsProfessionalId: 'NY-00063' },
+      ];
+
+      const findSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockResolvedValue(mockProfessionalIds);
+
+      const result = await repository.findByAcmsProfessionalIds(acmsProfessionalIds);
+
+      expect(findSpy).toHaveBeenCalledTimes(1);
+      expect(findSpy).toHaveBeenCalledWith(expectedQuery);
+      expect(result).toHaveLength(2);
+      expect(result.map((r) => r.acmsProfessionalId).sort()).toEqual(
+        ['AK-01414', 'NY-00063'].sort(),
+      );
+    });
+
+    test('should return an empty array and skip the query when given an empty array', async () => {
+      const findSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'find');
+
+      const result = await repository.findByAcmsProfessionalIds([]);
+
+      expect(findSpy).not.toHaveBeenCalled();
+      expect(result).toEqual([]);
+    });
+
+    test('should return an empty array when none of the IDs have a mapping', async () => {
+      const findSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+
+      const result = await repository.findByAcmsProfessionalIds(acmsProfessionalIds);
+
+      expect(findSpy).toHaveBeenCalledWith(expectedQuery);
+      expect(result).toHaveLength(0);
+    });
+
+    test('should handle database errors', async () => {
+      const error = new Error('Database connection failed');
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(error);
+
+      await expect(repository.findByAcmsProfessionalIds(acmsProfessionalIds)).rejects.toThrow(
+        `Failed to find trustees with ACMS professional IDs ${acmsProfessionalIds.join(', ')}.`,
+      );
+    });
+  });
+
   describe('deleteByCamsTrusteeId', () => {
     const camsTrusteeId = 'trustee-1';
     const expectedQuery = {

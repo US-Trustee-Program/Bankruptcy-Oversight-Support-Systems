@@ -4,9 +4,9 @@
 // synchronization dataflows that need a tombstone/resume-pointer across an indefinite number of
 // future runs. This is a true one-time migration over a small (~6,000-record) ACMS dataset that
 // will never be revisited; recovery from an interrupted run is simply re-invoking handleStart
-// fresh (safe, not merely tolerable -- see createProfessionalId's idempotency and the
-// converged design doc's "Dataflow shape" section). Do NOT "fix" this by bolting a state
-// document on.
+// fresh (safe, not merely tolerable -- see createProfessionalId's idempotency, which de-dupes on
+// (camsTrusteeId, acmsProfessionalId), so a full re-run always converges to the same end state).
+// Do NOT "fix" this by bolting a state document on.
 import { app, InvocationContext, output } from '@azure/functions';
 import ApplicationContextCreator from '../../azure/application-context-creator';
 import {
@@ -16,7 +16,7 @@ import {
   dumpQueueToBlob,
   ensureContainersExist,
 } from '../dataflows-common';
-import BackfillTrusteeProfessionalIdsUseCase, {
+import {
   readAllAcmsProfessionalRecords,
   processAcmsProfessionalRecordsPage,
 } from '../../../lib/use-cases/dataflows/backfill-trustee-professional-ids';
@@ -65,7 +65,8 @@ const OUTPUT_CONTAINER = buildContainerName(MODULE_NAME, 'out');
  * there is nothing to resume from and nothing to fence against. `handleStart` always does the
  * full bulk read-and-dispatch pass in a single invocation (see handleStart below) -- re-running
  * it (send `{}` again) is the only "recovery" mechanism this migration has, and it is safe by
- * construction (see createProfessionalId's idempotency and the converged design doc).
+ * construction: createProfessionalId's uniqueness derives from the source CMMPR query's own
+ * keying, so re-dispatching the same records is idempotent.
  */
 export type BackfillTrusteeProfessionalIdsStartMessage = {
   flushQueues?: boolean; // standalone diagnostic action; dumps queue contents to blob
@@ -337,5 +338,4 @@ function setup() {
   });
 }
 
-export { BackfillTrusteeProfessionalIdsUseCase };
 export default { MODULE_NAME, setup };

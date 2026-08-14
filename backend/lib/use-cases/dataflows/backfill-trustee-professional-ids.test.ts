@@ -1,5 +1,5 @@
 import { describe, expect, test, vi, beforeEach } from 'vitest';
-import BackfillTrusteeProfessionalIdsUseCase, {
+import {
   readAllAcmsProfessionalRecords,
   getCandidateTrustees,
   processAcmsProfessionalRecordsPage,
@@ -102,61 +102,35 @@ describe('Backfill Trustee Professional Ids Use Case', () => {
   });
 
   describe('getCandidateTrustees', () => {
-    test('unions Tier 1 (exact name+state) and Tier 2 (phonetic search) results, de-duped', async () => {
-      const tier1Trustee = makeTrustee({ trusteeId: 'trustee-tier1' });
-      const tier2Trustee = makeTrustee({ trusteeId: 'trustee-tier2' });
+    test('returns phonetic search results, de-duped by trusteeId', async () => {
+      const trusteeA = makeTrustee({ trusteeId: 'trustee-a' });
+      const trusteeB = makeTrustee({ trusteeId: 'trustee-b' });
 
-      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue(
-        tier1Trustee,
-      );
       vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored').mockResolvedValue([
-        tier2Trustee,
+        trusteeA,
+        trusteeB,
+        trusteeA,
       ]);
 
       const candidates = await getCandidateTrustees(context, makeAcmsRecord());
 
       expect(candidates).toHaveLength(2);
-      expect(candidates.map((c) => c.trusteeId).sort()).toEqual(['trustee-tier1', 'trustee-tier2']);
+      expect(candidates.map((c) => c.trusteeId).sort()).toEqual(['trustee-a', 'trustee-b']);
     });
 
-    test('de-dupes by trusteeId when both tiers return the same trustee', async () => {
-      const trustee = makeTrustee({ trusteeId: 'trustee-shared' });
+    test('does not fall back to an exact name+state match', async () => {
+      // findTrusteeByNameAndState is deliberately never called -- an earlier version of this
+      // function unioned it in as a "free recall safety net," which reintroduced the exact
+      // brittle-matching strategy this dataflow exists to replace (CAMS-2-36t).
+      const findTrusteeSpy = vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState');
+      vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored').mockResolvedValue([]);
 
-      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue(
-        trustee,
-      );
-      vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored').mockResolvedValue([
-        trustee,
-      ]);
+      await getCandidateTrustees(context, makeAcmsRecord());
 
-      const candidates = await getCandidateTrustees(context, makeAcmsRecord());
-
-      expect(candidates).toHaveLength(1);
+      expect(findTrusteeSpy).not.toHaveBeenCalled();
     });
 
-    test('Tier 1 catches a correct match that Tier 2 phonetic ranking excludes from its top N', async () => {
-      // Tier 1's exact match is the correct trustee, but it is NOT among Tier 2's top-10
-      // phonetically-ranked results (simulating Tier 2 under-ranking it past the cutoff).
-      const correctTrustee = makeTrustee({ trusteeId: 'trustee-correct' });
-      const otherPhoneticMatches = Array.from({ length: 10 }, (_, i) =>
-        makeTrustee({ trusteeId: `trustee-phonetic-${i}` }),
-      );
-
-      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue(
-        correctTrustee,
-      );
-      vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored').mockResolvedValue(
-        otherPhoneticMatches,
-      );
-
-      const candidates = await getCandidateTrustees(context, makeAcmsRecord());
-
-      expect(candidates.map((c) => c.trusteeId)).toContain('trustee-correct');
-      expect(candidates).toHaveLength(11);
-    });
-
-    test('caps Tier 2 results at the top 10', async () => {
-      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue(null);
+    test('caps results at the shortlist limit (10)', async () => {
       const manyMatches = Array.from({ length: 25 }, (_, i) =>
         makeTrustee({ trusteeId: `trustee-${i}` }),
       );
@@ -176,7 +150,7 @@ describe('Backfill Trustee Professional Ids Use Case', () => {
     test('skips already-mapped records, counts them, and never scores them', async () => {
       const record = makeAcmsRecord({ acmsProfessionalId: 'WA-00001' });
 
-      vi.spyOn(MockMongoRepository.prototype, 'findByAcmsProfessionalId').mockResolvedValue([
+      vi.spyOn(MockMongoRepository.prototype, 'findByAcmsProfessionalIds').mockResolvedValue([
         { id: 'x', trusteeId: 'trustee-1', acmsProfessionalId: 'WA-00001' } as never,
       ]);
       const cmmapSpy = vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
@@ -209,8 +183,7 @@ describe('Backfill Trustee Professional Ids Use Case', () => {
         makeAcmsRecord({ acmsProfessionalId: 'WA-00003' }),
       ];
 
-      vi.spyOn(MockMongoRepository.prototype, 'findByAcmsProfessionalId').mockResolvedValue([]);
-      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue(null);
+      vi.spyOn(MockMongoRepository.prototype, 'findByAcmsProfessionalIds').mockResolvedValue([]);
       vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored').mockResolvedValue([]);
 
       const getCmmapMock = vi.fn().mockResolvedValue([]);
@@ -229,8 +202,7 @@ describe('Backfill Trustee Professional Ids Use Case', () => {
     test('zero candidates yields unmatched with no scoring attempted', async () => {
       const record = makeAcmsRecord();
 
-      vi.spyOn(MockMongoRepository.prototype, 'findByAcmsProfessionalId').mockResolvedValue([]);
-      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue(null);
+      vi.spyOn(MockMongoRepository.prototype, 'findByAcmsProfessionalIds').mockResolvedValue([]);
       vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored').mockResolvedValue([]);
       vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
         getCmmapAppointmentsForProfessionalIds: vi.fn().mockResolvedValue([]),
@@ -260,11 +232,10 @@ describe('Backfill Trustee Professional Ids Use Case', () => {
       const record = makeAcmsRecord({ acmsProfessionalId: 'WA-00001' });
       const candidate = makeTrustee({ trusteeId: 'trustee-winner' });
 
-      vi.spyOn(MockMongoRepository.prototype, 'findByAcmsProfessionalId').mockResolvedValue([]);
-      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue(
+      vi.spyOn(MockMongoRepository.prototype, 'findByAcmsProfessionalIds').mockResolvedValue([]);
+      vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored').mockResolvedValue([
         candidate,
-      );
-      vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored').mockResolvedValue([]);
+      ]);
       vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([]);
       vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
         getCmmapAppointmentsForProfessionalIds: vi.fn().mockResolvedValue([]),
@@ -295,8 +266,7 @@ describe('Backfill Trustee Professional Ids Use Case', () => {
     test('unmatched outcome is only logged/counted -- no mapping created, no artifact written', async () => {
       const record = makeAcmsRecord();
 
-      vi.spyOn(MockMongoRepository.prototype, 'findByAcmsProfessionalId').mockResolvedValue([]);
-      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue(null);
+      vi.spyOn(MockMongoRepository.prototype, 'findByAcmsProfessionalIds').mockResolvedValue([]);
       vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored').mockResolvedValue([
         makeTrustee(),
       ]);
@@ -323,11 +293,10 @@ describe('Backfill Trustee Professional Ids Use Case', () => {
       const record = makeAcmsRecord({ acmsProfessionalId: 'WA-00001' });
       const candidate = makeTrustee({ trusteeId: 'trustee-1' });
 
-      vi.spyOn(MockMongoRepository.prototype, 'findByAcmsProfessionalId').mockResolvedValue([]);
-      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue(
+      vi.spyOn(MockMongoRepository.prototype, 'findByAcmsProfessionalIds').mockResolvedValue([]);
+      vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored').mockResolvedValue([
         candidate,
-      );
-      vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored').mockResolvedValue([]);
+      ]);
 
       // ACMS side: appointment rows carry no status field at all (the batched gateway query has
       // none), but include rows spanning what would be active and long-closed cases on the ACMS
@@ -396,7 +365,7 @@ describe('Backfill Trustee Professional Ids Use Case', () => {
     });
 
     test('returns an error when a gateway call fails', async () => {
-      vi.spyOn(MockMongoRepository.prototype, 'findByAcmsProfessionalId').mockRejectedValue(
+      vi.spyOn(MockMongoRepository.prototype, 'findByAcmsProfessionalIds').mockRejectedValue(
         new Error('mongo down'),
       );
 
@@ -407,33 +376,6 @@ describe('Backfill Trustee Professional Ids Use Case', () => {
       );
 
       expect(result.error).toBeDefined();
-    });
-  });
-
-  describe('BackfillTrusteeProfessionalIdsUseCase', () => {
-    test('readAllAcmsProfessionalRecords delegates to the module function with bound context', async () => {
-      vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
-        getAllTrusteeProfessionalRecords: vi.fn().mockResolvedValue([]),
-      } as unknown as AcmsGateway);
-
-      const useCase = new BackfillTrusteeProfessionalIdsUseCase(context);
-      const result = await useCase.readAllAcmsProfessionalRecords();
-
-      expect(result.data).toEqual([]);
-    });
-
-    test('getPage delegates to processAcmsProfessionalRecordsPage with bound context', async () => {
-      vi.spyOn(MockMongoRepository.prototype, 'findByAcmsProfessionalId').mockResolvedValue([]);
-      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue(null);
-      vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored').mockResolvedValue([]);
-      vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
-        getCmmapAppointmentsForProfessionalIds: vi.fn().mockResolvedValue([]),
-      } as unknown as AcmsGateway);
-
-      const useCase = new BackfillTrusteeProfessionalIdsUseCase(context);
-      const result = await useCase.getPage([makeAcmsRecord()], new Map());
-
-      expect(result.data).toEqual({ matched: 0, unmatched: 1, alreadyMapped: 0 });
     });
   });
 });

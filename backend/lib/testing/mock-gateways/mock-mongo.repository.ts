@@ -713,6 +713,13 @@ export class MockMongoRepository
     );
   }
 
+  findByAcmsProfessionalIds(acmsProfessionalIds: string[]): Promise<TrusteeProfessionalId[]> {
+    const idSet = new Set(acmsProfessionalIds);
+    return Promise.resolve(
+      Array.from(this.professionalIds.values()).filter((m) => idSet.has(m.acmsProfessionalId)),
+    );
+  }
+
   deleteByCamsTrusteeId(camsTrusteeId: string): Promise<number> {
     let count = 0;
     for (const [key, mapping] of this.professionalIds) {
