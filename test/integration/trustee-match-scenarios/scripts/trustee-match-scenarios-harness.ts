@@ -31,17 +31,17 @@
  * read — sidestepping the DXTR query's TX_DATE DESC ordering entirely rather than relying on
  * intra-batch processing order.
  *
- * Two further stages, independent of the 13 DXTR-driven scenarios above, guard regressions real
- * Cosmos can catch but a fully-mocked unit test cannot:
+ * Three further stages, independent of the 13 DXTR-driven scenarios above, guard regressions
+ * real Cosmos/Mongo can catch but a fully-mocked unit test cannot:
  *
  *   Stage 5 (sort/index) - getActiveByCaseId (trustee-case-appointments.mongo.repository.ts)
- *     sorts by assignedOn ASCENDING and relies on the {caseId:1, assignedOn:1} compound index
- *     declared in cosmos-collections.bicep for case-trustee-appointments. Seeds two active
- *     appointments for one case with different assignedOn values and asserts the real
- *     repository returns the OLDEST one — the class of bug (Cosmos index-policy enforcement)
- *     that only a real Cosmos instance can catch (see
- *     trustee-match-verification-search/scripts/run-tests.ts's Test 1 for the same pattern
- *     applied to a different collection/index).
+ *     sorts by assignedOn DESCENDING (with createdOn DESCENDING as a tiebreaker) and relies on
+ *     the {caseId:1, assignedOn:1} compound index declared in cosmos-collections.bicep for
+ *     case-trustee-appointments. Seeds two active appointments for one case with different
+ *     assignedOn values and asserts the real repository returns the MOST RECENTLY ASSIGNED one
+ *     — the class of bug (Cosmos index-policy enforcement) that only a real Cosmos instance can
+ *     catch (see trustee-match-verification-search/scripts/run-tests.ts's Test 1 for the same
+ *     pattern applied to a different collection/index).
  *
  *   Stage 6 (stable-assignedOn idempotency) - applyResolvedTrustee/writeSurrogateAppointment
  *     derive assignedOn from event.appointedDate (not wall-clock time) specifically so upsert's
@@ -50,6 +50,15 @@
  *     real SyncTrusteeCaseAppointmentsUseCase.processAppointments() and asserts exactly one
  *     case-trustee-appointments document exists afterward — proof against a real replaceOne
  *     upsert, which a mocked repository's recorded call args cannot provide.
+ *
+ *   Stage 7 (dual-partition divergence repair) - upsert()/updateCaseAppointment() write
+ *     casePartition then trusteePartition sequentially and non-transactionally; a transient
+ *     failure on the second write leaves casePartition showing a trustee active while
+ *     trusteePartition never received the matching row. Seeds exactly that divergence directly
+ *     (casePartition active, trusteePartition empty) and asserts applyResolvedTrustee's
+ *     existsInTrusteePartition check detects it and repairs trusteePartition via
+ *     replaceOneInTrusteePartition — proof against a real trustee partition collection, which a
+ *     mocked repository's recorded call args cannot provide.
  *
  * This is a one-shot script - NOT a Vitest test.
  *
@@ -210,11 +219,21 @@ const IDEMPOTENCY_TRUSTEE = { id: 'ms-trustee-idempotency', name: 'Idempotency P
 const IDEMPOTENCY_PID = 'MS-00007';
 const IDEMPOTENCY_APPOINTED_DATE = '2026-01-14';
 
-const STAGE_5_6_CASE_IDS = [SORT_INDEX_CASE_ID, IDEMPOTENCY_CASE_ID];
-const STAGE_5_6_TRUSTEE_IDS = [
+// Stage 7: one case seeded with a genuinely diverged dual-write — active in casePartition,
+// missing from trusteePartition — to prove applyResolvedTrustee's existsInTrusteePartition
+// check detects and repairs the divergence on the next retry, against real Mongo semantics a
+// mocked-repository unit test cannot exercise.
+const DIVERGENCE_CASE_ID = '083-26-88922';
+const DIVERGENCE_TRUSTEE = { id: 'ms-trustee-divergence', name: 'Divergence P Trustee' };
+const DIVERGENCE_PID = 'MS-00008';
+const DIVERGENCE_ASSIGNED_ON = '2026-01-20';
+
+const STAGE_5_6_7_CASE_IDS = [SORT_INDEX_CASE_ID, IDEMPOTENCY_CASE_ID, DIVERGENCE_CASE_ID];
+const STAGE_5_6_7_TRUSTEE_IDS = [
   SORT_INDEX_TRUSTEE_OLDER,
   SORT_INDEX_TRUSTEE_NEWER,
   IDEMPOTENCY_TRUSTEE.id,
+  DIVERGENCE_TRUSTEE.id,
 ];
 
 // ---------------------------------------------------------------------------
@@ -836,11 +855,11 @@ async function clean() {
     await pool.close();
   }
 
-  // Stage 5/6 fixtures are seeded directly into Cosmos (no DXTR row), so their case/trustee ids
-  // are tracked separately from ALL_CASE_IDS/ALL_TRUSTEE_IDS — see the STAGE_5_6_* constants'
-  // own comment for why they aren't folded into those arrays.
-  const allCaseIds = [...ALL_CASE_IDS, ...STAGE_5_6_CASE_IDS];
-  const allTrusteeIds = [...ALL_TRUSTEE_IDS, ...STAGE_5_6_TRUSTEE_IDS];
+  // Stage 5/6/7 fixtures are seeded directly into Cosmos (no DXTR row), so their case/trustee
+  // ids are tracked separately from ALL_CASE_IDS/ALL_TRUSTEE_IDS — see the STAGE_5_6_7_*
+  // constants' own comment for why they aren't folded into those arrays.
+  const allCaseIds = [...ALL_CASE_IDS, ...STAGE_5_6_7_CASE_IDS];
+  const allTrusteeIds = [...ALL_TRUSTEE_IDS, ...STAGE_5_6_7_TRUSTEE_IDS];
 
   const { client, db } = await getMongoDb();
   try {
@@ -1408,6 +1427,9 @@ async function runScenarios() {
 
   // ── Stage 6: stable-assignedOn idempotency proof ──────────────────────────
   await runIdempotencyStage(deps);
+
+  // ── Stage 7: dual-partition divergence repair proof ───────────────────────
+  await runDivergenceRepairStage(deps);
 }
 
 // ---------------------------------------------------------------------------
@@ -1491,14 +1513,14 @@ async function runSortIndexStage(context: Awaited<ReturnType<typeof getAppContex
   const repository = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
   const active = await repository.getActiveByCaseId(SORT_INDEX_CASE_ID);
   if (
-    active?.trusteeId === SORT_INDEX_TRUSTEE_OLDER &&
-    active?.assignedOn === SORT_INDEX_ASSIGNED_ON_OLDER
+    active?.trusteeId === SORT_INDEX_TRUSTEE_NEWER &&
+    active?.assignedOn === SORT_INDEX_ASSIGNED_ON_NEWER
   ) {
     pass(
-      '5. getActiveByCaseId returns the OLDEST active appointment (assignedOn ASCENDING), not an arbitrary one',
+      '5. getActiveByCaseId returns the MOST RECENTLY ASSIGNED active appointment (assignedOn DESCENDING), not an arbitrary one',
     );
   } else {
-    fail(`5. getActiveByCaseId: expected the older appointment, got: ${JSON.stringify(active)}`);
+    fail(`5. getActiveByCaseId: expected the newer appointment, got: ${JSON.stringify(active)}`);
   }
 }
 
@@ -1658,6 +1680,202 @@ async function runIdempotencyStage(
     }
   } finally {
     await idempotencyClient.close();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Stage 7 — dual-partition divergence repair proof
+// ---------------------------------------------------------------------------
+
+/**
+ * Proves applyResolvedTrustee's existsInTrusteePartition check (see
+ * sync-trustee-case-appointments.ts) detects and repairs a genuinely diverged dual-write against
+ * real Mongo: seeds an active row directly into casePartition (case-trustee-appointments) only,
+ * leaving trusteePartition (trustee-case-appointments) with no matching document — the exact
+ * state a transient failure on the second half of upsert()'s sequential dual-write would leave
+ * behind. Then runs the same event through processAppointments once and checks that
+ * trusteePartition now has the matching row. A mocked-repository unit test can only assert
+ * existsInTrusteePartition/replaceOneInTrusteePartition were called with the right arguments —
+ * it cannot prove the repaired document is actually queryable back out of a real trustee
+ * partition collection afterward, which is what this stage checks directly.
+ */
+async function runDivergenceRepairStage(
+  deps: ReturnType<typeof SyncTrusteeCaseAppointmentsUseCase.createDeps>,
+) {
+  console.log(
+    '\nStage 7: dual-partition divergence repair — casePartition active, trusteePartition missing, real repository\n',
+  );
+
+  const now = new Date().toISOString();
+  const systemUser = { id: 'SYSTEM', name: 'SYSTEM' };
+  const { client, db } = await getMongoDb();
+  try {
+    await db.collection('cases').replaceOne(
+      { documentType: 'SYNCED_CASE', caseId: DIVERGENCE_CASE_ID },
+      {
+        documentType: 'SYNCED_CASE',
+        caseId: DIVERGENCE_CASE_ID,
+        dxtrId: DIVERGENCE_CASE_ID,
+        courtId: COURT_ID,
+        courtName: 'Integration Test Court',
+        courtDivisionCode: DIV,
+        courtDivisionName: 'Matching Scenarios Division',
+        officeCode: '1',
+        officeName: 'Matching Scenarios Division',
+        groupDesignator: 'MS',
+        regionId: '02',
+        regionName: 'Region 2',
+        chapter: CHAPTER,
+        caseTitle: 'Divergence Stage Debtor',
+        dateFiled: '2026-01-01',
+        debtor: { name: 'Divergence Stage Debtor' },
+        updatedOn: now,
+        updatedBy: systemUser,
+      },
+      { upsert: true },
+    );
+
+    await db.collection('trustees').replaceOne(
+      { documentType: 'TRUSTEE', trusteeId: DIVERGENCE_TRUSTEE.id },
+      {
+        documentType: 'TRUSTEE',
+        trusteeId: DIVERGENCE_TRUSTEE.id,
+        name: DIVERGENCE_TRUSTEE.name,
+        firstName: 'Divergence',
+        middleName: 'P',
+        lastName: 'Trustee',
+        public: {
+          address: {
+            address1: '1 Divergence Rd',
+            city: 'Scenario City',
+            state: 'SC',
+            zipCode: '11111',
+            countryCode: 'US',
+          },
+        },
+        updatedOn: now,
+        updatedBy: systemUser,
+      },
+      { upsert: true },
+    );
+
+    await db.collection('trustee-professional-ids').replaceOne(
+      { acmsProfessionalId: DIVERGENCE_PID, camsTrusteeId: DIVERGENCE_TRUSTEE.id },
+      {
+        documentType: 'TRUSTEE_PROFESSIONAL_ID',
+        camsTrusteeId: DIVERGENCE_TRUSTEE.id,
+        acmsProfessionalId: DIVERGENCE_PID,
+        updatedOn: now,
+        updatedBy: systemUser,
+      },
+      { upsert: true },
+    );
+
+    await db.collection('trustee-appointments').replaceOne(
+      { documentType: 'TRUSTEE_APPOINTMENT', trusteeId: DIVERGENCE_TRUSTEE.id, courtId: COURT_ID },
+      {
+        documentType: 'TRUSTEE_APPOINTMENT',
+        trusteeId: DIVERGENCE_TRUSTEE.id,
+        chapter: CHAPTER,
+        appointmentType: 'panel',
+        courtId: COURT_ID,
+        divisionCode: DIV,
+        appointedDate: '2020-01-01',
+        status: 'active',
+        effectiveDate: '2020-01-01',
+        updatedOn: now,
+        updatedBy: systemUser,
+        createdOn: now,
+        createdBy: systemUser,
+      },
+      { upsert: true },
+    );
+
+    // Seed the divergence directly: an active row in casePartition only. This is the exact
+    // state left behind by a transient failure on upsert()'s trusteePartition write after its
+    // casePartition write already succeeded.
+    await db.collection('case-trustee-appointments').replaceOne(
+      { documentType: 'CASE_APPOINTMENT', caseId: DIVERGENCE_CASE_ID },
+      {
+        documentType: 'CASE_APPOINTMENT',
+        caseId: DIVERGENCE_CASE_ID,
+        trusteeId: DIVERGENCE_TRUSTEE.id,
+        assignedOn: DIVERGENCE_ASSIGNED_ON,
+        appointedDate: DIVERGENCE_ASSIGNED_ON,
+        chapter: CHAPTER,
+        courtDivisionCode: DIV,
+        updatedOn: now,
+        updatedBy: systemUser,
+        createdOn: now,
+        createdBy: systemUser,
+      },
+      { upsert: true },
+    );
+    pass('7. seeded casePartition-only active appointment (trusteePartition deliberately empty)');
+
+    const trusteePartitionBefore = await db
+      .collection('trustee-case-appointments')
+      .find({ documentType: 'CASE_APPOINTMENT', caseId: DIVERGENCE_CASE_ID })
+      .toArray();
+    if (trusteePartitionBefore.length === 0) {
+      pass('7. confirmed trusteePartition has no matching document before repair');
+    } else {
+      fail(
+        `7. expected trusteePartition to be empty before repair, found ${trusteePartitionBefore.length} document(s)`,
+      );
+    }
+  } finally {
+    await client.close();
+  }
+
+  const event: TrusteeAppointmentSyncEvent = {
+    caseId: DIVERGENCE_CASE_ID,
+    courtId: COURT_ID,
+    // firstName/lastName must be distinct from every other stage's dxtrTrustee: buildVariant
+    // substitutes empty strings for missing fields (see trustee-variant.helpers.ts), so a
+    // fullName-only dxtrTrustee (Stage 6's shape) produces an identical all-blank fingerprint
+    // for every stage using it, colliding on the same TRUSTEE_VARIATION bucket entry.
+    dxtrTrustee: {
+      fullName: DIVERGENCE_TRUSTEE.name,
+      firstName: 'Divergence',
+      lastName: 'Trustee',
+    },
+    appointedDate: DIVERGENCE_ASSIGNED_ON,
+    chapter: CHAPTER,
+    courtDivisionCode: DIV,
+    acmsProfessionalId: DIVERGENCE_PID,
+  };
+
+  const result = await SyncTrusteeCaseAppointmentsUseCase.processAppointments(deps, [event]);
+  if (result.dlqMessages.length === 0 && result.scenarioDistribution.autoMatchCount === 1) {
+    pass('7. processAppointments handles the same-trustee-already-active event without error');
+  } else {
+    fail(
+      `7. expected no DLQ messages and autoMatchCount 1, got dlqMessages=${result.dlqMessages.length}, autoMatchCount=${result.scenarioDistribution.autoMatchCount}`,
+    );
+  }
+
+  const { client: repairClient, db: repairDb } = await getMongoDb();
+  try {
+    const trusteePartitionAfter = await repairDb
+      .collection('trustee-case-appointments')
+      .find({ documentType: 'CASE_APPOINTMENT', caseId: DIVERGENCE_CASE_ID })
+      .toArray();
+    if (
+      trusteePartitionAfter.length === 1 &&
+      trusteePartitionAfter[0].trusteeId === DIVERGENCE_TRUSTEE.id &&
+      trusteePartitionAfter[0].assignedOn === DIVERGENCE_ASSIGNED_ON
+    ) {
+      pass(
+        '7. trusteePartition repaired: exactly ONE matching document now exists after reprocessing (existsInTrusteePartition + replaceOneInTrusteePartition against real Mongo)',
+      );
+    } else {
+      fail(
+        `7. expected exactly 1 repaired trusteePartition document, got ${trusteePartitionAfter.length}: ${JSON.stringify(trusteePartitionAfter)}`,
+      );
+    }
+  } finally {
+    await repairClient.close();
   }
 }
 

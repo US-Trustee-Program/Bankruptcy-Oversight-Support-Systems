@@ -651,6 +651,35 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
     return results.map(stripMongoId);
   }
 
+  /**
+   * True when a document matching this exact natural key (documentType + caseId + trusteeId +
+   * assignedOn) exists in the trustee partition — used to detect dual-write divergence (see
+   * applyResolvedTrustee in sync-trustee-case-appointments.ts): upsert()/updateCaseAppointment()
+   * write casePartition then trusteePartition sequentially, so a transient failure on the second
+   * write after the first succeeds can leave casePartition showing the trustee active while
+   * trusteePartition never received the matching row. getActiveByCaseId only reads casePartition,
+   * so without this check a retry would silently treat the case as already handled and never
+   * repair trusteePartition. Scoped by the full natural key, not just caseId+trusteeId, since a
+   * stale trusteePartition row from a PRIOR assignedOn is not evidence this write succeeded.
+   */
+  async existsInTrusteePartition(
+    caseId: string,
+    trusteeId: string,
+    assignedOn: string,
+  ): Promise<boolean> {
+    const doc = using<CaseAppointmentDocument>();
+    const query = and(
+      doc('documentType').equals('CASE_APPOINTMENT'),
+      doc('caseId').equals(caseId),
+      doc('trusteeId').equals(trusteeId),
+      doc('assignedOn').equals(assignedOn),
+    );
+    const results = await this.trusteePartition
+      .adapter<CaseAppointmentDocument>()
+      .find(query, undefined, 1);
+    return results.length > 0;
+  }
+
   async replaceOneInTrusteePartition(
     query: { caseId: string; trusteeId: string; assignedOn: string },
     document: CaseAppointmentDocument,

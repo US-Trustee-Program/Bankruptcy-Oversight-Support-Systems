@@ -384,7 +384,33 @@ async function applyResolvedTrustee(
   const existingAppointment = await appointmentsRepo.getActiveByCaseId(event.caseId);
 
   if (existingAppointment && existingAppointment.trusteeId === trusteeId) {
-    return null; // Same trustee already active — nothing to do
+    // getActiveByCaseId only reads casePartition. upsert()/updateCaseAppointment() write
+    // casePartition then trusteePartition sequentially and non-transactionally — a transient
+    // failure on the trusteePartition write after casePartition already succeeded gets this
+    // event requeued as retryable, and without this check the retry would land here and
+    // silently treat the case as already handled, permanently diverging trusteePartition (which
+    // backs a trustee's case list) with no telemetry or DLQ trace. Repair it directly via the
+    // same idempotent primitive migrate-case-appointments.ts's heal job already uses, rather
+    // than re-running the full soft-close/create sequence, which casePartition already proves
+    // is unnecessary here.
+    const inSync = await appointmentsRepo.existsInTrusteePartition(
+      event.caseId,
+      trusteeId,
+      existingAppointment.assignedOn,
+    );
+    if (!inSync) {
+      context.logger.error(
+        MODULE_NAME,
+        `TRUSTEE PARTITION DIVERGENCE: case ${event.caseId}, trustee ${trusteeId} is active in ` +
+          `casePartition but missing from trusteePartition — a prior dual-write must have failed ` +
+          `partway through. Repairing trusteePartition now.`,
+      );
+      await appointmentsRepo.replaceOneInTrusteePartition(
+        { caseId: event.caseId, trusteeId, assignedOn: existingAppointment.assignedOn },
+        { ...existingAppointment, documentType: 'CASE_APPOINTMENT' },
+      );
+    }
+    return null; // Same trustee already active — nothing further to do
   }
 
   if (existingAppointment && existingAppointment.trusteeId !== trusteeId) {
