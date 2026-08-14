@@ -23,6 +23,8 @@ set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=ops/scripts/pipeline/_network-stackname.sh
 source "$SCRIPT_DIR/_network-stackname.sh"
+# shellcheck source=ops/scripts/pipeline/_az-deploy-retry.sh
+source "$SCRIPT_DIR/_az-deploy-retry.sh"
 
 deployment_file=''
 network_rg=''
@@ -158,8 +160,12 @@ if [[ "${is_branch_deployment}" == "true" ]]; then
     # resources (e.g. `az network vnet delete` run by hand against the shared
     # network RG) without affecting the stack's own lifecycle operations (this
     # script's own `az stack group delete` is exempt).
+    # az_deploy_with_retry_func (sourced above) tolerates the transient
+    # AnotherOperationInProgress/DeploymentActive contention this shared RG can
+    # hit from a concurrent branch/main deploy (cams-6us1n) — without it, that
+    # purely transient collision fails this whole CI job.
     # shellcheck disable=SC2086 # REASON: intentional word-splitting of --parameters
-    az stack group create \
+    az_deploy_with_retry_func az stack group create \
         --name "${network_stack_name}" \
         --resource-group "${network_rg}" \
         --template-file "${deployment_file}" \
