@@ -2083,7 +2083,7 @@ describe('TrusteesUseCase tests', () => {
       await vi.waitFor(() =>
         expect(errorSpy).toHaveBeenCalledWith(
           'TRUSTEE-CHANGE-NOTIFICATION',
-          "Failed to send trustee change notification to 'ch7-oversight@example.test' (covers: chapter:7, chapter:11, chapter:12, chapter:13).",
+          'Failed to notify ch7-oversight@example.test (covers: chapter:7, chapter:11, chapter:12, chapter:13): Simulated provider failure',
           expect.any(Error),
         ),
       );

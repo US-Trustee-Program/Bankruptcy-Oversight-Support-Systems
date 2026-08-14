@@ -118,7 +118,9 @@ describe('AcsNotificationGateway', () => {
     const error = await gateway.send(notification).catch((e) => e);
 
     expect(error).toBeInstanceOf(CamsError);
-    expect(error.message).toContain("Email send failed with status 'Failed' (id: msg-2)");
+    expect(error.message).toContain(
+      "Email service rejected the message with status 'Failed' (id: msg-2)",
+    );
   });
 
   test('logs an error when ACS returns a non-Succeeded status', async () => {
@@ -128,7 +130,9 @@ describe('AcsNotificationGateway', () => {
 
     expect(mockLogger.error).toHaveBeenCalledWith(
       'ACS-NOTIFICATION-GATEWAY',
-      expect.stringContaining("Email send failed with status 'Failed' (id: msg-err)"),
+      expect.stringContaining(
+        "Email service rejected the message with status 'Failed' (id: msg-err)",
+      ),
       expect.objectContaining({ id: 'msg-err', to: 'recipient@example.com' }),
     );
   });

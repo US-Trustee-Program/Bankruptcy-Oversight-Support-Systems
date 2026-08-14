@@ -654,6 +654,9 @@ export class TrusteesUseCase {
       }
       const notificationUseCase = new TrusteeChangeNotificationUseCase(context);
       const summary = await notificationUseCase.notify(context, changeSet);
+      if (summary.failures.length > 0) {
+        context.notificationWarnings.push(...summary.failures.map((f) => f.message));
+      }
       context.observability.completeTrace(trace, 'Trustee Change Notification', {
         success: summary.failed === 0,
         properties: {
