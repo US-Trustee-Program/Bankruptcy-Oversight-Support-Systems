@@ -397,9 +397,13 @@ until start_pod_and_wait_for_backend; do
 done
 
 # Start frontend (standalone — not in pod, port 3000)
+# Same slirp4netns override as the backend pod above: pasta's port-publish
+# forwarding has shown the same "listener up, zero bytes forwarded" failure
+# on standalone containers too, not just pods.
 echo "Starting frontend..."
 podman run -d \
     --name cams-frontend-e2e \
+    --network slirp4netns:port_handler=slirp4netns \
     --publish 3000:3000 \
     -e BROWSER=none \
     -e DOTENV_CONFIG_SILENT=true \
