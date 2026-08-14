@@ -16,7 +16,7 @@ import { isCamsError } from '../../common-errors/cams-error';
 
 const MODULE_NAME = 'TRUSTEE-CHANGE-NOTIFICATION';
 
-export type NotificationFailureReason = 'connection' | 'send' | 'skipped';
+type NotificationFailureReason = 'connection' | 'send' | 'skipped';
 
 export type NotificationFailure = {
   address?: string;
