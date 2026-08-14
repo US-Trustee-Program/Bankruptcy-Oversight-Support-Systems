@@ -1693,6 +1693,48 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
     });
   });
 
+  describe('existsInTrusteePartition', () => {
+    test('should return true when a matching document exists in the trustee partition', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([baseAppointment]);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const result = await repo.existsInTrusteePartition(CASE_ID, TRUSTEE_ID, '2024-01-15');
+
+      expect(result).toBe(true);
+      repo.release();
+    });
+
+    test('should return false when no matching document exists in the trustee partition', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const result = await repo.existsInTrusteePartition(CASE_ID, TRUSTEE_ID, '2024-01-15');
+
+      expect(result).toBe(false);
+      repo.release();
+    });
+
+    test('should scope the query by the full natural key, not just caseId+trusteeId', async () => {
+      const findSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await repo.existsInTrusteePartition(CASE_ID, TRUSTEE_ID, '2024-01-15');
+
+      const query = findSpy.mock.calls[0][0];
+      const queryValues = (query as Record<string, unknown>).values as Record<string, unknown>[];
+      const assignedOnCondition = queryValues.find(
+        (v) => (v.leftOperand as { name: string })?.name === 'assignedOn',
+      );
+      expect(assignedOnCondition).toEqual(
+        expect.objectContaining({ condition: 'EQUALS', rightOperand: '2024-01-15' }),
+      );
+      repo.release();
+    });
+  });
+
   describe('replaceOneInTrusteePartition', () => {
     const query = { caseId: CASE_ID, trusteeId: TRUSTEE_ID, assignedOn: '2024-01-15' };
     const document = {

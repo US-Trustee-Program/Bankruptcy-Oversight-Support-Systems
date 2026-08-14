@@ -280,6 +280,95 @@ describe('SyncTrusteeCaseAppointments', () => {
       );
     });
 
+    test('does nothing further when the same trustee is already active in both partitions', async () => {
+      const existingAppointment: CaseAppointment = {
+        id: 'ca-1',
+        caseId: 'case-001',
+        trusteeId: 'trustee-123',
+        assignedOn: '2024-01-01',
+        createdOn: '2024-01-01T00:00:00Z',
+        createdBy: { id: 'system', name: 'System' },
+        updatedOn: '2024-01-01T00:00:00Z',
+        updatedBy: { id: 'system', name: 'System' },
+      };
+      (
+        mockTrusteeCaseAppointmentsRepo.getActiveByCaseId as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(existingAppointment);
+      const existsInTrusteePartition = vi.fn().mockResolvedValue(true);
+      mockTrusteeCaseAppointmentsRepo.existsInTrusteePartition = existsInTrusteePartition;
+      const replaceOneInTrusteePartition = vi.fn();
+      mockTrusteeCaseAppointmentsRepo.replaceOneInTrusteePartition = replaceOneInTrusteePartition;
+
+      const { successCount } = await SyncTrusteeCaseAppointments.processAppointments(
+        SyncTrusteeCaseAppointments.createDeps(context),
+        [makeEvent('case-001', 'John Doe')],
+      );
+
+      expect(existsInTrusteePartition).toHaveBeenCalledWith(
+        'case-001',
+        'trustee-123',
+        '2024-01-01',
+      );
+      expect(replaceOneInTrusteePartition).not.toHaveBeenCalled();
+      expect(mockTrusteeCaseAppointmentsRepo.upsert).not.toHaveBeenCalled();
+      expect(mockTrusteeCaseAppointmentsRepo.updateCaseAppointment).not.toHaveBeenCalled();
+      expect(successCount).toBe(1);
+    });
+
+    test('repairs trusteePartition when casePartition shows the trustee active but trusteePartition is missing the row', async () => {
+      // Simulates the dual-partition-write divergence this fix targets: upsert()/
+      // updateCaseAppointment() write casePartition then trusteePartition sequentially and
+      // non-transactionally. A transient failure on the trusteePartition write after
+      // casePartition already succeeded gets this event requeued as retryable — on retry,
+      // getActiveByCaseId (casePartition-only) sees the trustee already active and would
+      // silently skip re-attempting the trusteePartition write without this check.
+      const existingAppointment: CaseAppointment = {
+        id: 'ca-1',
+        caseId: 'case-001',
+        trusteeId: 'trustee-123',
+        assignedOn: '2024-01-01',
+        createdOn: '2024-01-01T00:00:00Z',
+        createdBy: { id: 'system', name: 'System' },
+        updatedOn: '2024-01-01T00:00:00Z',
+        updatedBy: { id: 'system', name: 'System' },
+      };
+      (
+        mockTrusteeCaseAppointmentsRepo.getActiveByCaseId as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(existingAppointment);
+      const existsInTrusteePartition = vi.fn().mockResolvedValue(false);
+      mockTrusteeCaseAppointmentsRepo.existsInTrusteePartition = existsInTrusteePartition;
+      const replaceOneInTrusteePartition = vi.fn().mockResolvedValue(undefined);
+      mockTrusteeCaseAppointmentsRepo.replaceOneInTrusteePartition = replaceOneInTrusteePartition;
+      const errorSpy = vi.spyOn(context.logger, 'error');
+
+      const { successCount } = await SyncTrusteeCaseAppointments.processAppointments(
+        SyncTrusteeCaseAppointments.createDeps(context),
+        [makeEvent('case-001', 'John Doe')],
+      );
+
+      expect(existsInTrusteePartition).toHaveBeenCalledWith(
+        'case-001',
+        'trustee-123',
+        '2024-01-01',
+      );
+      expect(replaceOneInTrusteePartition).toHaveBeenCalledWith(
+        { caseId: 'case-001', trusteeId: 'trustee-123', assignedOn: '2024-01-01' },
+        expect.objectContaining({
+          ...existingAppointment,
+          documentType: 'CASE_APPOINTMENT',
+        }),
+      );
+      expect(errorSpy).toHaveBeenCalledWith(
+        'SYNC-TRUSTEE-CASE-APPOINTMENTS-USE-CASE',
+        expect.stringContaining('TRUSTEE PARTITION DIVERGENCE'),
+      );
+      // The event still counts as a success — casePartition was already correct, and the
+      // repair is a background-visible correction, not a new business outcome.
+      expect(successCount).toBe(1);
+      expect(mockTrusteeCaseAppointmentsRepo.upsert).not.toHaveBeenCalled();
+      expect(mockTrusteeCaseAppointmentsRepo.updateCaseAppointment).not.toHaveBeenCalled();
+    });
+
     test('should collect a not-yet-synced outcome (not DLQ, not thrown) when getCaseOrMovedCase returns null', async () => {
       (mockCasesRepo.getCaseOrMovedCase as ReturnType<typeof vi.fn>).mockResolvedValue(null);
 
