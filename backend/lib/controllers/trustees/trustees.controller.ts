@@ -164,6 +164,9 @@ export class TrusteesController implements CamsController {
           self: context.request.url,
         },
         data: updatedTrustee,
+        ...(context.notificationWarnings.length > 0
+          ? { warnings: context.notificationWarnings }
+          : {}),
       },
     });
   }

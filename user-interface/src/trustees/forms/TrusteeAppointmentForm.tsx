@@ -369,7 +369,10 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
 
     try {
       if (isEditMode && appointment) {
-        await Api2.putTrusteeAppointment(trusteeId, appointment.id, payload);
+        const response = await Api2.putTrusteeAppointment(trusteeId, appointment.id, payload);
+        if (response?.warnings?.length) {
+          globalAlert?.warning(response.warnings.join(' '));
+        }
       } else {
         const mergeTarget = findMergeTarget(
           courtId,
@@ -380,15 +383,25 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
         const mergeResult = buildMergeResult(mergeTarget, payload, allCourts);
 
         if (mergeResult.type === 'merged') {
-          await Api2.putTrusteeAppointment(trusteeId, mergeResult.targetId, mergeResult.payload);
-          globalAlert?.success(
-            `Updated existing appointment to include ${mergeResult.addedNames.join(', ')}`,
+          const response = await Api2.putTrusteeAppointment(
+            trusteeId,
+            mergeResult.targetId,
+            mergeResult.payload,
           );
+          const successMessage = `Updated existing appointment to include ${mergeResult.addedNames.join(', ')}`;
+          if (response?.warnings?.length) {
+            globalAlert?.warning(`${successMessage} ${response.warnings.join(' ')}`);
+          } else {
+            globalAlert?.success(successMessage);
+          }
           navigateToAppointments(trusteeId, navigate);
           return;
         }
 
-        await Api2.postTrusteeAppointment(trusteeId, payload);
+        const response = await Api2.postTrusteeAppointment(trusteeId, payload);
+        if (response?.warnings?.length) {
+          globalAlert?.warning(response.warnings.join(' '));
+        }
       }
       navigateToAppointments(trusteeId, navigate);
     } catch (e) {
