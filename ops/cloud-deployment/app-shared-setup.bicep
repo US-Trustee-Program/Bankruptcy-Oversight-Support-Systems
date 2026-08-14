@@ -296,7 +296,6 @@ module acsEmail './lib/email/acs-email.bicep' = {
     senderAddressSecretName: acsSenderAddressSecretName
     kvAppConfigName: kvAppConfigName
     kvAppConfigResourceGroupName: kvAppConfigResourceGroupName
-    location: location
     tags: tags
     customDomain: customDomain
     analyticsWorkspaceId: acsAnalyticsWorkspaceId
