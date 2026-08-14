@@ -205,48 +205,6 @@ podman rm -f cams-frontend-e2e cams-playwright-e2e >/dev/null 2>&1 || true
 rm -rf container-logs/*.log test-results/* playwright-report/*
 echo ""
 
-# Captures the state of Podman's rootless networking stack when a pod's
-# published ports don't work, so a real failure gives hard evidence (network
-# backend in use, whether the pasta/rootlessport helper is even running, what
-# the host thinks is listening) instead of forcing us to guess after the fact.
-capture_network_diagnostics() {
-    local out_dir="container-logs"
-    mkdir -p "${out_dir}"
-    local out_file="${out_dir}/podman-network-diagnostics-attempt-${POD_ATTEMPT}.txt"
-
-    {
-        echo "=== podman info ==="
-        podman info
-
-        echo ""
-        echo "=== podman pod inspect ${POD_NAME} ==="
-        podman pod inspect "${POD_NAME}"
-
-        echo ""
-        echo "=== rootless network helper processes (pasta/rootlessport/slirp4netns) ==="
-        pgrep -af 'pasta|rootlessport|slirp4netns'
-
-        echo ""
-        echo "=== host-side listeners on published ports ==="
-        ss -tlnp
-
-        echo ""
-        echo "=== /etc/subuid, /etc/subgid ==="
-        cat /etc/subuid
-        cat /etc/subgid
-
-        echo ""
-        echo "=== current process uid_map ==="
-        cat /proc/self/uid_map
-
-        echo ""
-        echo "=== podman unshare uid_map (rootless container userns) ==="
-        podman unshare cat /proc/self/uid_map
-    } > "${out_file}" 2>&1
-
-    echo -e "${BLUE}🔎 Network diagnostics saved to ${out_dir}/$(basename "${out_file}")${NC}"
-}
-
 # Podman's rootless port-publish setup occasionally fails to bind for a pod on
 # GH-hosted runners (host↔pod forwarding never comes up, even though the
 # Functions host itself starts and serves fine inside the pod). This is a
@@ -373,8 +331,6 @@ start_pod_and_wait_for_backend() {
     if podman exec cams-backend-e2e curl -s -o /dev/null -w "%{http_code}" --max-time 3 http://localhost:7071/api/healthcheck 2>/dev/null | grep -q "200"; then
         echo -e "${YELLOW}⚠️  Backend responds when probed from inside its own container, but the published port never received a request — Podman host↔pod port forwarding likely failed to come up for this pod.${NC}"
     fi
-
-    capture_network_diagnostics
 
     podman logs --tail 50 cams-backend-e2e 2>&1 | sed 's/^/  /'
     return 1
