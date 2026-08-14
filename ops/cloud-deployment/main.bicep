@@ -155,9 +155,6 @@ param enabledDataflows string = ''
 @description('Rows fetched from ACMS per migrate-case-appointments continuation. Empty string uses the function app default.')
 param migrateCaseAppointmentsFetchSize string = ''
 
-@description('Custom domain FQDN for sending email. Leave empty to use Azure-managed subdomain.')
-param customDomain string = ''
-
 @description('Name of the blob container used for migration and operational artifacts.')
 param objectContainerName string = 'migration-files'
 
@@ -189,19 +186,7 @@ var emailTags = {
 
 var acsBounceAlertRuleName = '${stackName}-acs-email-bounce-alert'
 var acsSendFailureAlertRuleName = '${stackName}-acs-send-failure-alert'
-
-// customerId (a GUID) is distinct from analyticsWorkspaceId (the full ARM resource ID) --
-// the bounce-poll dataflow's Logs Query SDK call needs the former, not the latter. Gated
-// identically to the analyticsWorkspaceId value passed to the dataflows module below
-// (deployAppInsights && !empty(analyticsWorkspaceId)), so customerId is never non-empty
-// when the module actually receives an empty workspace id.
-resource analyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10-01' existing =
-  if (deployAppInsights && !empty(analyticsWorkspaceId)) {
-    name: last(split(analyticsWorkspaceId, '/'))
-    scope: resourceGroup(analyticsResourceGroupName)
-  }
-
-var analyticsWorkspaceCustomerId = analyticsWorkspace.?properties.?customerId ?? ''
+var isStandaloneEnvironment = createAlerts || isUstpDeployment
 
 // GUARD (CAMS-760, GH #2749 bug shape): this module deploys into the SHARED
 // analyticsResourceGroupName, but main.bicep itself is wrapped in a per-branch
@@ -358,23 +343,6 @@ module ustpWebapp 'frontend-webapp-deploy.bicep' = {
     }
 }
 
-module acsEmail './lib/email/acs-email.bicep' = {
-  name: '${stackName}-acs-email-module'
-  scope: resourceGroup(appResourceGroup)
-  params: {
-    stackName: stackName
-    kvAppConfigName: kvAppConfigName
-    kvAppConfigResourceGroupName: kvAppConfigResourceGroupName
-    customDomain: customDomain
-    analyticsWorkspaceId: deployAppInsights ? analyticsWorkspaceId : ''
-    tags: {
-      app: 'cams'
-      component: 'email'
-      'deployed-at': deployedAt
-    }
-  }
-}
-
 module adminActionGroup './lib/monitoring-alerts/admin-notification-action-group.bicep' =
   if (!empty(adminNotificationEmail) && deployAppInsights && !empty(analyticsWorkspaceId)) {
     name: '${stackName}-admin-action-group-module'
@@ -387,7 +355,7 @@ module adminActionGroup './lib/monitoring-alerts/admin-notification-action-group
   }
 
 module acsBounceAlert './lib/monitoring-alerts/scheduled-query-alert-rule.bicep' =
-  if (!empty(adminNotificationEmail) && deployAppInsights && !empty(analyticsWorkspaceId)) {
+  if (isStandaloneEnvironment && !empty(adminNotificationEmail) && deployAppInsights && !empty(analyticsWorkspaceId)) {
     name: '${stackName}-acs-bounce-alert-module'
     scope: resourceGroup(analyticsResourceGroupName)
     params: {
@@ -439,7 +407,6 @@ module acsSendFailureAlert './lib/monitoring-alerts/scheduled-query-alert-rule.b
 module ustpApiFunction 'backend-api-deploy.bicep' = {
     name: '${stackName}-function-module'
     scope: resourceGroup(appResourceGroup)
-    dependsOn: [acsEmail]
     params: {
       stackName: stackName
       deployAppInsights: deployAppInsights
@@ -531,8 +498,6 @@ module ustpDataflowsFunction 'dataflows-resource-deploy.bicep' = {
     enabledDataflows: enabledDataflows
     migrateCaseAppointmentsFetchSize: migrateCaseAppointmentsFetchSize
     objectContainerName: objectContainerName
-    analyticsResourceGroupName: analyticsResourceGroupName
-    analyticsWorkspaceCustomerId: analyticsWorkspaceCustomerId
     adminNotificationEmail: adminNotificationEmail
     gitSha: gitSha
     tags: dataflowsTags
