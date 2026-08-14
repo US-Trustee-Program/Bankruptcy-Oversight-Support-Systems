@@ -40,7 +40,7 @@ var planTypeToSkuMap = {
 param webappName string
 param slotName string
 
-@description('Branch/stack-unique name, passed through to the workbook modules below so their guid() seeds don\'t collide across branches sharing this resource group (CAMS-760, Option E).')
+@description('Branch-unique name, passed through to the workbook modules below for their guid() seeds.')
 param stackName string
 
 @description('Determine host instance operating system type. false for Windows OS and true for Linux OS.')

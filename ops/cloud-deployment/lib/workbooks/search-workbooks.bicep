@@ -1,6 +1,6 @@
 param location string = resourceGroup().location
 
-@description('Branch/stack-unique name. Included in each workbook\'s guid() seed so branches sharing a resource group (CAMS-760, Option E) get distinct physical workbook resources instead of colliding on the same guid(name, resourceGroup().id).')
+@description('Branch-unique name, folded into each workbook\'s guid() seed to prevent collisions across branches sharing this resource group.')
 param stackName string
 
 @description('Resource ID of the Application Insights instance for the webapp.')
