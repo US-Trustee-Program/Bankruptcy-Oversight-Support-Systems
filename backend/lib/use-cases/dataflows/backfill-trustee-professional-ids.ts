@@ -2,8 +2,7 @@
  * Use case for the ACMS trustee-professional-ids backfill -- a one-time migration that
  * cross-references CAMS trustees to ACMS professional IDs by demographic/appointment-history
  * matching, replacing the exact firstName+lastName+state matching that both the ATS-migration-time
- * path and the (now-deleted) recurring heal path used. See
- * TRUSTEE-ACMS-BACKFILL_CONVERGED_DESIGN.md for the full design.
+ * path and the (now-deleted) recurring heal path used.
  *
  * This is a different data flow from migrate-trustees.ts (ACMS-driven identity matching, not
  * ATS-driven import) and is kept as its own file deliberately, per Screaming Architecture.
@@ -42,9 +41,12 @@ const SYSTEM_USER: CamsUserReference = {
   name: 'ACMS Professional ID Backfill',
 };
 
-/** Tier 2 phonetic-search shortlist size. A tuning knob with no principled derivation -- see
- * the converged design doc's "Candidate-selection strategy" section. */
-const TIER_2_CANDIDATE_LIMIT = 10;
+/** Phonetic-search shortlist size. A tuning knob with no principled derivation. Kept at 10 after
+ * explicit investigation (CAMS-2-7a1): searchTrusteesByNameScored's Mongo aggregation has no limit() and
+ * already ranks every phonetically-matching trustee before this app-level truncation, so raising
+ * this number would cost nothing at the query layer -- Brian reviewed that finding and decided 10
+ * remains adequate now that it is the sole candidate-recall mechanism (see CAMS-2-36t). */
+const CANDIDATE_SHORTLIST_LIMIT = 10;
 
 export type BackfillPageResult = {
   matched: number;
@@ -79,16 +81,16 @@ export async function readAllAcmsProfessionalRecords(
 }
 
 /**
- * Builds the Tier 1 ∪ Tier 2 candidate shortlist for one ACMS professional record, de-duplicated
- * by `trusteeId`.
+ * Builds the candidate shortlist for one ACMS professional record via `searchTrusteesByNameScored`
+ * (phonetic search), built from `firstName [middleInitial] lastName`, capped at the top
+ * `CANDIDATE_SHORTLIST_LIMIT` results.
  *
- * Tier 1 (`findTrusteeByNameAndState`, exact name+state match) is purely additive -- a free recall
- * safety net for cases where Tier 2's phonetic ranking might under-rank a correct match past the
- * shortlist cutoff. It is never auto-accepted and never gates the candidate set; it is only ever
- * unioned into it.
- *
- * Tier 2 (`searchTrusteesByNameScored`, phonetic search) takes the top `TIER_2_CANDIDATE_LIMIT`
- * results, built from `firstName [middleInitial] lastName`.
+ * Deliberately does NOT fall back to an exact firstName+lastName+state match. An earlier version of
+ * this function unioned in `findTrusteeByNameAndState` as a "free recall safety net" -- per explicit
+ * user direction (CAMS-2-36t), that reintroduced the exact brittle-matching strategy this whole
+ * dataflow exists to replace, so it was removed. Phonetic search is now the sole candidate-recall
+ * mechanism; see CAMS-2-7a1 for the investigation into whether its cutoff is still adequate without
+ * that fallback (conclusion: yes, at the current limit).
  */
 export async function getCandidateTrustees(
   context: ApplicationContext,
@@ -98,25 +100,15 @@ export async function getCandidateTrustees(
 
   const firstName = (record.firstName ?? '').trim();
   const lastName = (record.lastName ?? '').trim();
-  const state = (record.state ?? '').trim();
   const middleInitial = (record.middleInitial ?? '').trim();
 
   const fullName = [firstName, middleInitial, lastName].filter(Boolean).join(' ');
 
-  const [tier1Result, tier2Results] = await Promise.all([
-    firstName && lastName && state
-      ? trusteesRepo.findTrusteeByNameAndState(firstName, lastName, state)
-      : Promise.resolve(null),
-    fullName ? trusteesRepo.searchTrusteesByNameScored(fullName) : Promise.resolve([]),
-  ]);
-
-  const tier2Top = tier2Results.slice(0, TIER_2_CANDIDATE_LIMIT);
+  const results = fullName ? await trusteesRepo.searchTrusteesByNameScored(fullName) : [];
+  const shortlisted = results.slice(0, CANDIDATE_SHORTLIST_LIMIT);
 
   const candidatesById = new Map<string, Trustee>();
-  if (tier1Result) {
-    candidatesById.set(tier1Result.trusteeId, tier1Result);
-  }
-  for (const candidate of tier2Top) {
+  for (const candidate of shortlisted) {
     if (!candidatesById.has(candidate.trusteeId)) {
       candidatesById.set(candidate.trusteeId, candidate);
     }
@@ -146,8 +138,7 @@ function resolveCourtId(
  * CRITICAL -- NO ACTIVE-ONLY FILTERING: `AcmsProfessionalAppointmentRecord` carries no status field
  * at all (the batched gateway query deliberately drops the open-case filter), so there is nothing
  * to filter here by construction -- every row returned for this professional counts toward its
- * district/chapter Sets, including rows for closed/pre-2018 cases. See the converged design doc's
- * "No active-only filtering" decision.
+ * district/chapter Sets, including rows for closed/pre-2018 cases.
  */
 function buildAcmsAppointmentSets(
   rows: AcmsProfessionalAppointmentRecord[],
@@ -228,14 +219,12 @@ async function scoreAndResolveRecord(
   );
 
   // Diagnostic-level, per-candidate score breakdown -- logged BEFORE the accept-rule decision is
-  // applied to any candidate, per every scored candidate (not just the eventual winner). This is
-  // the instrumentation the converged design doc's "Auto-match threshold" validation plan depends
-  // on: a future lower-environment run needs to sample the full score distribution
-  // (near-threshold, well above, well below) to confirm ACMS_AUTO_MATCH_THRESHOLD (90) and
+  // applied to any candidate, for every scored candidate (not just the eventual winner). A future
+  // lower-environment run can sample the full score distribution (near-threshold, well above,
+  // well below) from these logs to confirm ACMS_AUTO_MATCH_THRESHOLD (90) and
   // ACMS_FUZZY_MATCH_MIN_GAP (5) line up with actual correct/incorrect matches before the real
   // production run. Logged at `debug` (not `info`) since this fires once per scored candidate,
-  // not once per record -- see
-  // BACKFILL-TRUSTEE-PROFESSIONAL-IDS-VALIDATION-PLAN.md for how to run that validation pass.
+  // not once per record.
   const logCandidateScore = (breakdown: CandidateScoreBreakdown) => {
     context.logger.debug(
       MODULE_NAME,
@@ -299,14 +288,19 @@ export async function processAcmsProfessionalRecordsPage(
     const professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
     const acmsGateway = factory.getAcmsGateway(context);
 
+    // Batched, ONE call for the whole page's professional IDs -- not per record. Mirrors the same
+    // batching discipline applied to the ACMS appointment fetch below and the CAMS appointment
+    // fetch in scoreAndResolveRecord.
+    const allProfessionalIds = records.map((record) => record.acmsProfessionalId);
+    const existingMappings =
+      await professionalIdsRepo.findByAcmsProfessionalIds(allProfessionalIds);
+    const alreadyMappedIds = new Set(existingMappings.map((m) => m.acmsProfessionalId));
+
     let alreadyMapped = 0;
     const recordsToScore: AcmsTrusteeProfessionalRecord[] = [];
 
     for (const record of records) {
-      const existing = await professionalIdsRepo.findByAcmsProfessionalId(
-        record.acmsProfessionalId,
-      );
-      if (existing.length > 0) {
+      if (alreadyMappedIds.has(record.acmsProfessionalId)) {
         alreadyMapped++;
       } else {
         recordsToScore.push(record);
@@ -360,33 +354,3 @@ export async function processAcmsProfessionalRecordsPage(
     };
   }
 }
-
-/**
- * BackfillTrusteeProfessionalIdsUseCase class.
- *
- * Wraps the stateless exported functions as instance methods, with the ApplicationContext bound at
- * construction time, per this repo's DI convention (context injected via constructor, everything
- * else obtained via `factory.get*(context)` calls inside methods -- repositories/gateways are never
- * injected directly). All underlying named exports remain intact so tests can continue to import
- * and call them directly.
- */
-class BackfillTrusteeProfessionalIdsUseCase {
-  private readonly context: ApplicationContext;
-
-  constructor(context: ApplicationContext) {
-    this.context = context;
-  }
-
-  readAllAcmsProfessionalRecords(): ReturnType<typeof readAllAcmsProfessionalRecords> {
-    return readAllAcmsProfessionalRecords(this.context);
-  }
-
-  getPage(
-    records: Parameters<typeof processAcmsProfessionalRecordsPage>[1],
-    divisionToCourtMap: Parameters<typeof processAcmsProfessionalRecordsPage>[2],
-  ): ReturnType<typeof processAcmsProfessionalRecordsPage> {
-    return processAcmsProfessionalRecordsPage(this.context, records, divisionToCourtMap);
-  }
-}
-
-export default BackfillTrusteeProfessionalIdsUseCase;

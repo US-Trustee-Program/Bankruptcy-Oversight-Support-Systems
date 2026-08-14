@@ -502,10 +502,9 @@ describe('resolveAcmsProfessionalMatch', () => {
   });
 
   describe('onCandidateScored diagnostic hook', () => {
-    // This hook is the instrumentation the converged design doc's "Auto-match threshold"
-    // validation plan depends on existing: a future lower-environment validation run needs every
-    // scored candidate's full breakdown (not just the winner's), to sample across the score
-    // distribution and confirm the threshold/gap constants before the production run.
+    // A future lower-environment validation run can use every scored candidate's full breakdown
+    // (not just the winner's) to sample across the score distribution and confirm the
+    // threshold/gap constants before the production run.
 
     test('is not invoked at all when there are zero candidates (no scoring attempted)', () => {
       const onCandidateScored = vi.fn();

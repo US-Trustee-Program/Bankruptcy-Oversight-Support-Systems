@@ -1,18 +1,16 @@
 /**
- * Scoring helpers for the ACMS trustee-professional-ids backfill (a one-time migration,
- * see TRUSTEE-ACMS-BACKFILL_CONVERGED_DESIGN.md). Kept as a separate file from
- * trustee-match.helpers.ts (the live DXTR-sync scoring path) deliberately -- this file's
- * functions have a different lifecycle and caller, and should not grow the live-sync path's
- * edit surface.
+ * Scoring helpers for the ACMS trustee-professional-ids backfill (a one-time migration). Kept as a
+ * separate file from trustee-match.helpers.ts (the live DXTR-sync scoring path) deliberately --
+ * this file's functions have a different lifecycle and caller, and should not grow the live-sync
+ * path's edit surface.
  */
 
 import {
-  calculateNameScore,
+  calculateNamePartsScore,
   calculatePhoneScore,
   calculateTotalScore,
   normalizeChapter,
 } from './trustee-match.helpers';
-import { DxtrTrusteeParty } from '@common/cams/dataflow-events';
 import { Address, PhoneNumber } from '@common/cams/contact';
 import { Trustee } from '@common/cams/trustees';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
@@ -20,29 +18,31 @@ import { AcmsTrusteeProfessionalRecord } from '../gateways.types';
 
 /**
  * Calculates a name match score between an ACMS professional record and a CAMS trustee.
- * Delegates to (mirrors the exact logic of) `trustee-match.helpers.ts`'s `calculateNameScore` --
- * not reimplemented here, so any future change to the underlying first/last/middle comparison
- * rules only needs to happen in one place.
+ * Delegates to `calculateNamePartsScore` (`trustee-match.helpers.ts`) -- the actual comparison
+ * logic shared with the live DXTR-sync path's `calculateNameScore`, taking plain
+ * `{firstName, lastName, middleName}` strings directly rather than requiring a fabricated
+ * `DxtrTrusteeParty` (a DXTR-specific type from an unrelated subsystem) just to satisfy a
+ * parameter type.
  *
  * ACMS's `PROF_MI` column is `CHAR(1)` -- it can only ever hold a bare single-character initial,
- * never a full middle name. This means `calculateNameScore`'s "both sides have a full identical
- * middle name" 100-point branch can structurally never fire when called from the ACMS side: any
- * non-neutral comparison lands on either the initial-vs-full (85) or conflict (15) branch, never
- * the full-match branch, even when the CAMS side happens to have a full middle name that matches
- * the initial.
+ * never a full middle name. This means the "both sides have a full identical middle name"
+ * 100-point branch can structurally never fire when called from the ACMS side: any non-neutral
+ * comparison lands on either the initial-vs-full (85) or conflict (15) branch, never the
+ * full-match branch, even when the CAMS side happens to have a full middle name that matches the
+ * initial.
  */
 export function calculateAcmsNameScore(
   acmsProfessional: { firstName: string; lastName: string; middleInitial: string | null },
   camsTrustee: Trustee,
 ): number {
-  const dxtrTrustee: DxtrTrusteeParty = {
-    fullName: `${acmsProfessional.firstName} ${acmsProfessional.lastName}`,
-    firstName: acmsProfessional.firstName,
-    lastName: acmsProfessional.lastName,
-    middleName: acmsProfessional.middleInitial ?? undefined,
-  };
-
-  return calculateNameScore(dxtrTrustee, camsTrustee);
+  return calculateNamePartsScore(
+    {
+      firstName: acmsProfessional.firstName,
+      lastName: acmsProfessional.lastName,
+      middleName: acmsProfessional.middleInitial ?? undefined,
+    },
+    camsTrustee,
+  );
 }
 
 /**
@@ -184,14 +184,12 @@ export function calculateSetOverlapScore(a: Set<string>, b: Set<string>): number
  * (trustee-match.helpers.ts) so a future reader isn't left wondering why this migration picked an
  * unexplained different bar.
  *
- * See "Auto-match threshold -- the accept-rule shape fix" in
- * TRUSTEE-ACMS-BACKFILL_CONVERGED_DESIGN.md for the full defect analysis this constant's usage
- * closes: a naive design with an independent single-candidate threshold and a *separate*, lower
- * multi-candidate threshold-plus-gap lets a multi-candidate winner auto-accept at a score a lone
- * candidate with the identical score would be rejected for -- purely because a weaker, irrelevant
- * second candidate happened to also show up. `resolveAcmsProfessionalMatch` below applies this one
- * bar to the winner unconditionally, by construction, so that inversion cannot occur for any value
- * of this constant or `ACMS_FUZZY_MATCH_MIN_GAP`.
+ * This closes a defect in a naive design with an independent single-candidate threshold and a
+ * *separate*, lower multi-candidate threshold-plus-gap: that shape lets a multi-candidate winner
+ * auto-accept at a score a lone candidate with the identical score would be rejected for -- purely
+ * because a weaker, irrelevant second candidate happened to also show up. `resolveAcmsProfessionalMatch`
+ * below applies this one bar to the winner unconditionally, by construction, so that inversion
+ * cannot occur for any value of this constant or `ACMS_FUZZY_MATCH_MIN_GAP`.
  */
 export const ACMS_AUTO_MATCH_THRESHOLD = 90;
 
@@ -214,12 +212,10 @@ type ScoredCandidate = {
 
 /**
  * Full per-dimension score breakdown for one scored candidate, surfaced to callers via the
- * `onCandidateScored` hook below. This is the diagnostic detail the converged design doc's
- * "Auto-match threshold" validation plan depends on existing: a future lower-environment
- * validation run needs every candidate's full breakdown (not just the winner's total), sampled
- * across the score distribution (near-threshold, well above, well below) to confirm
- * ACMS_AUTO_MATCH_THRESHOLD/ACMS_FUZZY_MATCH_MIN_GAP line up with actual correct/incorrect
- * matches before the production run.
+ * `onCandidateScored` hook below. A future lower-environment validation run can use every
+ * candidate's full breakdown (not just the winner's total), sampled across the score distribution
+ * (near-threshold, well above, well below), to confirm ACMS_AUTO_MATCH_THRESHOLD/
+ * ACMS_FUZZY_MATCH_MIN_GAP line up with actual correct/incorrect matches before the production run.
  */
 export type CandidateScoreBreakdown = {
   acmsProfessionalId: string;
@@ -237,8 +233,8 @@ export type CandidateScoreBreakdown = {
  * candidate shortlist and each candidate's already-fetched appointment history.
  *
  * This function is deliberately I/O-free (no repository/gateway calls) -- callers are responsible
- * for assembling `candidateTrustees` (Tier 1 ∪ Tier 2 shortlist, see
- * `TRUSTEE-ACMS-BACKFILL_CONVERGED_DESIGN.md`'s "Candidate-selection strategy") and for fetching
+ * for assembling `candidateTrustees` (the phonetic-search shortlist, see `getCandidateTrustees`)
+ * and for fetching
  * each candidate's `TrusteeAppointment[]` (e.g. via `TrusteeAppointmentsRepository`'s batched
  * `getAppointmentsByTrusteeIds`) ahead of calling this function. This keeps the accept-rule logic
  * -- the highest-risk mechanism in this whole effort -- pure and easy to unit test without mocking
@@ -255,12 +251,11 @@ export type CandidateScoreBreakdown = {
  * CRITICAL -- NO ACTIVE-ONLY FILTERING: `candidateAppointmentsByTrusteeId` must carry each
  * candidate's FULL appointment history, any status, not just `status === 'active'` appointments.
  * This function builds the CAMS-side district/chapter sets directly from whatever appointments it
- * is given, with no status filtering of its own, and callers must not add any upstream either. See
- * the converged design doc's "No active-only filtering" decision: filtering to active-only would
- * empty exactly the population this backfill exists to correctly resolve (genuinely legacy ACMS
- * professionals, who are likely to have only disposed/inactive appointments by now), collapsing
- * ~60% of the scoring weight onto name+address+phone alone for precisely the records where
- * district/chapter corroboration matters most.
+ * is given, with no status filtering of its own, and callers must not add any upstream either.
+ * Filtering to active-only would empty exactly the population this backfill exists to correctly
+ * resolve (genuinely legacy ACMS professionals, who are likely to have only disposed/inactive
+ * appointments by now), collapsing ~60% of the scoring weight onto name+address+phone alone for
+ * precisely the records where district/chapter corroboration matters most.
  *
  * Accept-rule shape (the fix -- see ACMS_AUTO_MATCH_THRESHOLD/ACMS_FUZZY_MATCH_MIN_GAP docs above
  * for the defect this closes):

@@ -15,9 +15,9 @@
 -- GROUP_DESIGNATOR/PROF_CODE, DELETE_CODE, APPT_TYPE on CMMAP; CURR_CASE_CHAPT/DELETE_CODE on
 -- CMMDB) -- reused verbatim rather than re-derived, since this harness's query drops that
 -- migration's open-case filter and CMMKE join but reuses the same join keys and PROF_TYPE='TR'
--- appointment shape. CMMKE is NOT created here -- getCmmapAppointmentsForProfessionalIds does
--- not join it (that's precisely the point of the new query -- see the converged design doc's
--- "Appointment-context query shape" section).
+-- appointment shape. CMMKE is NOT created here -- getCmmapAppointmentsForProfessionalIds
+-- deliberately does not join it, since this query needs every appointment (open or closed) for
+-- district/chapter scoring, not just currently-open cases.
 --
 -- CMMPR columns are the union of the two existing local CMMPR DDL variants in this repo
 -- (test/integration/migrate-trustees/seed/05-seed-heal-cmmpr.sql, which has

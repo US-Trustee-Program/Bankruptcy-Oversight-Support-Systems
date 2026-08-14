@@ -935,6 +935,13 @@ export interface TrusteeProfessionalIdsRepository extends Releasable {
   findAll(): Promise<TrusteeProfessionalId[]>;
   findByCamsTrusteeId(camsTrusteeId: string): Promise<TrusteeProfessionalId[]>;
   findByAcmsProfessionalId(acmsProfessionalId: string): Promise<TrusteeProfessionalId[]>;
+  /**
+   * Batched form of `findByAcmsProfessionalId` -- one query for a whole set of ACMS professional
+   * IDs, mirroring the `contains()` pattern used by
+   * `TrusteeAppointmentsRepository.getAppointmentsByTrusteeIds`. Callers with a page's worth of IDs
+   * to check should use this instead of looping `findByAcmsProfessionalId` per ID.
+   */
+  findByAcmsProfessionalIds(acmsProfessionalIds: string[]): Promise<TrusteeProfessionalId[]>;
   deleteByCamsTrusteeId(camsTrusteeId: string): Promise<number>;
   deleteAll(): Promise<number>;
 }

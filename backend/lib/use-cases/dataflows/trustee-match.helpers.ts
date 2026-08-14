@@ -271,7 +271,11 @@ function normalizeNamePart(namePart?: string): string {
 }
 
 /**
- * Calculates a name match score between DXTR and CAMS trustee parties.
+ * Calculates a name match score between two { firstName, lastName, middleName } parties, given as
+ * plain strings. This is the actual comparison logic shared by `calculateNameScore` (DXTR-vs-CAMS,
+ * the live sync path) and `calculateAcmsNameScore` (ACMS-vs-CAMS, the one-time backfill) -- neither
+ * caller needs to construct a fake object of the other's domain type to reuse it.
+ *
  * Scoring:
  * - First and last name must both normalize-match exactly, or the score is 0
  *   (no partial credit for close-but-not-exact first/last names).
@@ -282,28 +286,39 @@ function normalizeNamePart(namePart?: string): string {
  *     character: 85 (initial-vs-full relationship)
  *   - Both present and genuinely differ: 15 (moderate conflict penalty)
  */
-export function calculateNameScore(dxtrTrustee: DxtrTrusteeParty, camsTrustee: Trustee): number {
-  const dxtrFirst = normalizeNamePart(dxtrTrustee.firstName);
-  const dxtrLast = normalizeNamePart(dxtrTrustee.lastName);
-  const camsFirst = normalizeNamePart(camsTrustee.firstName);
-  const camsLast = normalizeNamePart(camsTrustee.lastName);
+export function calculateNamePartsScore(
+  a: { firstName?: string; lastName?: string; middleName?: string },
+  b: { firstName?: string; lastName?: string; middleName?: string },
+): number {
+  const aFirst = normalizeNamePart(a.firstName);
+  const aLast = normalizeNamePart(a.lastName);
+  const bFirst = normalizeNamePart(b.firstName);
+  const bLast = normalizeNamePart(b.lastName);
 
-  if (!dxtrFirst || dxtrFirst !== camsFirst || !dxtrLast || dxtrLast !== camsLast) {
+  if (!aFirst || aFirst !== bFirst || !aLast || aLast !== bLast) {
     return 0;
   }
 
-  const dxtrMiddle = normalizeNamePart(dxtrTrustee.middleName);
-  const camsMiddle = normalizeNamePart(camsTrustee.middleName);
+  const aMiddle = normalizeNamePart(a.middleName);
+  const bMiddle = normalizeNamePart(b.middleName);
 
-  if (!dxtrMiddle || !camsMiddle) return 100;
-  if (dxtrMiddle === camsMiddle) return 100;
+  if (!aMiddle || !bMiddle) return 100;
+  if (aMiddle === bMiddle) return 100;
 
   const isInitialOf = (initial: string, full: string) =>
     initial.length === 1 && full[0] === initial;
 
-  if (isInitialOf(dxtrMiddle, camsMiddle) || isInitialOf(camsMiddle, dxtrMiddle)) return 85;
+  if (isInitialOf(aMiddle, bMiddle) || isInitialOf(bMiddle, aMiddle)) return 85;
 
   return 15;
+}
+
+/**
+ * Calculates a name match score between DXTR and CAMS trustee parties. Delegates to
+ * `calculateNamePartsScore` -- see that function for the actual comparison logic.
+ */
+export function calculateNameScore(dxtrTrustee: DxtrTrusteeParty, camsTrustee: Trustee): number {
+  return calculateNamePartsScore(dxtrTrustee, camsTrustee);
 }
 
 /**
@@ -349,20 +364,25 @@ export function calculateEmailScore(
 /**
  * Calculates the weighted total score from the individual score components.
  * Weighting: 5% address, 25% name, 5% phone, 5% email, 30% district/division,
- * 30% chapter. Phone and email are nullable ("not comparable" - data missing
- * on either side): when null, that dimension's weight is excluded from the
- * calculation entirely and redistributed proportionally among the remaining
- * applicable dimensions, rather than penalizing the candidate with a 0.
- * Shared by calculateCandidateScore and handleInactivePerfectMatch so the
- * weight distribution only needs to change in one place.
+ * 30% chapter. Every dimension is nullable ("not comparable" - data missing
+ * on either side, or the dimension doesn't apply for this caller): when null,
+ * that dimension's weight is excluded from the calculation entirely and
+ * redistributed proportionally among the remaining applicable dimensions,
+ * rather than penalizing the candidate with a 0. In practice, only phone and
+ * email are ever null for `calculateCandidateScore`/`handleInactivePerfectMatch`
+ * (the live DXTR-sync callers) -- `districtDivisionScore`/`chapterScore` are
+ * typed nullable too because `calculateAcmsTotalScore` (the ACMS backfill's
+ * caller) can legitimately pass `null` for either, per `calculateSetOverlapScore`'s
+ * own return type. Shared by all these callers so the weight distribution only
+ * needs to change in one place.
  */
 export function calculateTotalScore(scores: {
   addressScore: number;
   nameScore: number;
   phoneScore: number | null;
   emailScore: number | null;
-  districtDivisionScore: number;
-  chapterScore: number;
+  districtDivisionScore: number | null;
+  chapterScore: number | null;
 }): number {
   const WEIGHTS = {
     addressScore: 0.05,

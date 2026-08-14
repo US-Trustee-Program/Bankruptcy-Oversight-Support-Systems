@@ -129,6 +129,19 @@ export class TrusteeProfessionalIdsMongoRepository
     }
   }
 
+  async findByAcmsProfessionalIds(acmsProfessionalIds: string[]): Promise<TrusteeProfessionalId[]> {
+    if (acmsProfessionalIds.length === 0) return [];
+    try {
+      const doc = using<TrusteeProfessionalIdDocument>();
+      const query = doc('acmsProfessionalId').contains(acmsProfessionalIds);
+      return await this.getAdapter<TrusteeProfessionalIdDocument>().find(query);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to find trustees with ACMS professional IDs ${acmsProfessionalIds.join(', ')}.`,
+      });
+    }
+  }
+
   async deleteByCamsTrusteeId(camsTrusteeId: string): Promise<number> {
     try {
       const doc = using<TrusteeProfessionalIdDocument>();
