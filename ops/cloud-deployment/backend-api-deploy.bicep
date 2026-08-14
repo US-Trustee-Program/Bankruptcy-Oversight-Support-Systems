@@ -1,8 +1,4 @@
-import {
-  acsConnectionStringSecretName as acsConnectionStringSecretNameFor
-  acsSenderAddressSecretName as acsSenderAddressSecretNameFor
-  sqlIdentityName as sqlIdentityNameFor
-} from './lib/naming.bicep'
+import { sqlIdentityName as sqlIdentityNameFor } from './lib/naming.bicep'
 
 param location string = resourceGroup().location
 
@@ -428,14 +424,8 @@ var apiSlotBaseAppSettingsObject = union(
     MAX_OBJECT_DEPTH: maxObjectDepth
     MAX_OBJECT_KEY_COUNT: maxObjectKeyCount
     DEFAULT_NOTIFICATION_RECIPIENT: defaultNotificationRecipient
-    // Branch-qualified to match acs-email.bicep's per-stack secret names
-    // (CAMS-760, GH #2749 bug shape fix) — each branch has its own ACS
-    // communication service, so its connection string/sender address must
-    // read from that same branch's secret, not a name shared across
-    // branches. Both names come from naming.bicep, imported above, so the
-    // two files can't drift apart on this name.
-    ACS_EMAIL_CONNECTION_STRING: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=${acsConnectionStringSecretNameFor(stackName)})'
-    ACS_EMAIL_SENDER_ADDRESS: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=${acsSenderAddressSecretNameFor(stackName)})'
+    ACS_EMAIL_CONNECTION_STRING: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACS-EMAIL-CONNECTION-STRING)'
+    ACS_EMAIL_SENDER_ADDRESS: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACS-EMAIL-SENDER-ADDRESS)'
   },
   isUstpDeployment
     ? {

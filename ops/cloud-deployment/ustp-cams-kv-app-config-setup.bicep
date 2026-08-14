@@ -137,6 +137,7 @@ var functionAppSecrets = [
   'OKTA-API-KEY'
   'ACS-EMAIL-CONNECTION-STRING'
   'ACS-EMAIL-SENDER-ADDRESS'
+  'ANALYTICS-WORKSPACE-CUSTOMER-ID-SHARED'
 ]
 
 module appConfigIdentity './lib/identity/managed-identity.bicep' = {
@@ -265,3 +266,5 @@ module appConfigKeyvaultPrivateEndpoint './lib/network/subnet-private-endpoint.b
     ustpPrivateDnsZone
   ]
 }
+
+output principalId string = appConfigIdentity.outputs.principalId
