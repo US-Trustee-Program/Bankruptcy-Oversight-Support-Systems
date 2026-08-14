@@ -15,6 +15,8 @@ set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=ops/scripts/pipeline/_vnet-link-check.sh
 source "$SCRIPT_DIR/_vnet-link-check.sh"
+# shellcheck source=ops/scripts/pipeline/_az-deploy-retry.sh
+source "$SCRIPT_DIR/_az-deploy-retry.sh"
 
 deployment_parameters=''
 is_ustp_deployment=false
@@ -82,8 +84,12 @@ function az_stack_deploy_func() {
     # without affecting the stack's own lifecycle operations (this script's own
     # `az stack group delete` is exempt) or in-place updates like the VNET
     # integration removal az-delete-branch-resources.sh performs before teardown.
+    # az_deploy_with_retry_func (sourced from _az-deploy-retry.sh) tolerates the
+    # transient AnotherOperationInProgress/DeploymentActive contention this
+    # shared RG can hit from a concurrent branch/main deploy (cams-6us1n) —
+    # without it, that purely transient collision fails this whole CI job.
     # shellcheck disable=SC2086 # REASON: Adds unwanted quotes after --parameters
-    az stack group create \
+    az_deploy_with_retry_func az stack group create \
         --name "${stack_name}-app" \
         --resource-group "${rg}" \
         --template-file "${templateFile}" \
