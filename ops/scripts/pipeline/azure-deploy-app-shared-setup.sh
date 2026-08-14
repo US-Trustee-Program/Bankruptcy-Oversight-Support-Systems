@@ -22,6 +22,8 @@ set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=ops/scripts/pipeline/_vnet-link-check.sh
 source "$SCRIPT_DIR/_vnet-link-check.sh"
+# shellcheck source=ops/scripts/pipeline/_az-deploy-retry.sh
+source "$SCRIPT_DIR/_az-deploy-retry.sh"
 
 deployment_file=''
 resource_group=''
@@ -205,55 +207,16 @@ if [[ -n "${extra_parameters}" ]]; then
     deployment_parameters="${deployment_parameters} ${extra_parameters}"
 fi
 
-# Every branch (plus main) deploys this template to the SAME shared resource
-# group. A deployment NAME collision there can hit a transient conflict —
-# retry with backoff rather than failing the whole pipeline run on what is
-# usually just a timing collision. Two known conflict shapes: a 409
-# AnotherOperationInProgress on the resource group itself, and (since --name
-# below pins one deployment record per stack name) a (DeploymentActive)
-# error when the SAME branch redeploys while its own prior deployment to
-# that name is still active — that one prints no literal "409" anywhere in
-# the CLI output, so it needs its own pattern. Only retries when the
-# captured output actually looks like one of these two named shapes — NOT a
-# bare "409", which used to be a third alternative here but is too broad: a
-# genuine vnet-link Conflict (e.g. a concurrent branch/main deploy creating
-# the same link between this script's existence check and this deployment
-# call, now a real possibility since every branch shares this RG) is also
-# reported as a 409, and deployment_parameters' vnetLinkAlreadyExists is
-# computed once, before this retry loop even starts — so retrying that case
-# would just resend the same stale value and hit the identical Conflict
-# again, burning attempts before failing with a message that obscures the
-# real cause. A genuine template/validation error (or an unrecognized 409)
-# fails immediately instead of silently burning ~45s of pointless retries
-# first. Output is captured (not streamed live) so it can be inspected
-# before deciding whether to retry, then echoed in full either way so it's
-# still visible in CI logs.
-function az_deploy_with_retry_func() {
-    local maxAttempts=3
-    local attempt=1
-    local delaySeconds=15
-    local output
-    local rc
-    while true; do
-        set +e
-        output=$("$@" 2>&1)
-        rc=$?
-        set -e
-        echo "${output}"
-        if [[ ${rc} -eq 0 ]]; then
-            return 0
-        fi
-        if [[ ${attempt} -ge ${maxAttempts} ]] || ! grep -qi "AnotherOperationInProgress\|DeploymentActive" <<< "${output}"; then
-            echo "ERROR: deployment failed after ${attempt} attempt(s)." >&2
-            return 1
-        fi
-        echo "WARNING: deployment attempt ${attempt} failed with what looks like a concurrent operation in progress; retrying in ${delaySeconds}s." >&2
-        sleep "${delaySeconds}"
-        attempt=$((attempt + 1))
-        delaySeconds=$((delaySeconds * 2))
-    done
-}
-
+# az_deploy_with_retry_func (sourced above from _az-deploy-retry.sh) only
+# retries AnotherOperationInProgress/DeploymentActive — deliberately NOT a
+# bare 409, since a genuine vnet-link Conflict (e.g. a concurrent
+# branch/main deploy creating the same link between this script's existence
+# check and this deployment call, a real possibility since every branch
+# shares this RG) is also reported as a 409, and deployment_parameters'
+# vnetLinkAlreadyExists is computed once, before this call — retrying that
+# case would just resend the same stale value and hit the identical
+# Conflict again, burning attempts before failing with a message that
+# obscures the real cause.
 echo "Deploying app shared-setup resources to ${resource_group} (plain resource-group deployment; always non-stack — see app-shared-setup.bicep), vnetLinkAlreadyExists=${vnet_link_already_exists}"
 # --name pins the deployment RECORD name so every branch/main deploying this
 # same template to the same shared RG doesn't race on the CLI's default
