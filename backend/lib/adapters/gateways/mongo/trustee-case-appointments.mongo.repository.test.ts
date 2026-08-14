@@ -201,9 +201,48 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
 
       expect(findSpy).toHaveBeenCalledWith(
         expect.anything(),
-        { fields: [{ field: { name: 'assignedOn' }, direction: 'DESCENDING' }] },
+        {
+          fields: [
+            { field: { name: 'assignedOn' }, direction: 'DESCENDING' },
+            { field: { name: 'createdOn' }, direction: 'DESCENDING' },
+          ],
+        },
         1,
       );
+      repo.release();
+    });
+
+    test('should break ties on identical assignedOn by createdOn descending, not an arbitrary row', async () => {
+      // MongoDB/Cosmos does not guarantee stable ordering among tied sort-key values without an
+      // explicit tiebreaker. Two active rows sharing the same assignedOn (e.g. two trustees both
+      // resolved from the same DXTR appointment date during the CAMS-809 dual-active-appointment
+      // race) must still resolve deterministically to the one written most recently.
+      const firstWritten: CaseAppointment = {
+        ...baseAppointment,
+        id: 'appt-first-written',
+        assignedOn: '2024-01-15',
+        createdOn: '2024-01-15T08:00:00.000Z',
+      };
+      const secondWritten: CaseAppointment = {
+        ...baseAppointment,
+        id: 'appt-second-written',
+        assignedOn: '2024-01-15',
+        createdOn: '2024-01-15T09:30:00.000Z',
+      };
+
+      // Real DESCENDING-on-createdOn sort would put the more-recently-written row first; this
+      // mock simulates that server-side ordering to prove getActiveByCaseId takes whichever row
+      // the query's sort puts first, not the array's incidental order.
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([
+        secondWritten,
+        firstWritten,
+      ]);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const result = await repo.getActiveByCaseId(CASE_ID);
+
+      expect(result?.id).toBe('appt-second-written');
       repo.release();
     });
 
@@ -1496,6 +1535,18 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       expect(result).toHaveLength(0);
       repo.release();
     });
+
+    test('should strip Mongo _id from returned documents', async () => {
+      const rawDocument = { ...baseAppointment, _id: 'mongo-object-id-trustee-partition' };
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([rawDocument]);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const result = await repo.getActiveByTrusteeIdFromTrusteePartition(TRUSTEE_ID);
+
+      expect(result[0]).not.toHaveProperty('_id');
+      repo.release();
+    });
   });
 
   describe('getSurrogatesByFingerprint', () => {
@@ -1550,6 +1601,18 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       expect(trusteeIdCondition).toEqual(
         expect.objectContaining({ condition: 'EQUALS', rightOperand: FINGERPRINT }),
       );
+      repo.release();
+    });
+
+    test('should strip Mongo _id from returned documents', async () => {
+      const rawDocument = { ...surrogateAppointment, _id: 'mongo-object-id-surrogate' };
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([rawDocument]);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const result = await repo.getSurrogatesByFingerprint(FINGERPRINT);
+
+      expect(result[0]).not.toHaveProperty('_id');
       repo.release();
     });
   });
@@ -1609,6 +1672,23 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
           rightOperand: [FINGERPRINT_A, FINGERPRINT_B],
         }),
       );
+      repo.release();
+    });
+
+    test('should strip Mongo _id from returned documents', async () => {
+      const rawDocument = {
+        ...baseAppointment,
+        trusteeId: FINGERPRINT_A,
+        isSurrogate: true,
+        _id: 'mongo-object-id-surrogates-batch',
+      };
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([rawDocument]);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const result = await repo.getSurrogatesByFingerprints([FINGERPRINT_A]);
+
+      expect(result[0]).not.toHaveProperty('_id');
       repo.release();
     });
   });
