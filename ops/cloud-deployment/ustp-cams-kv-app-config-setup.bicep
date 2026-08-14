@@ -22,6 +22,11 @@
   Note: Key Vault secrets are provisioned manually and are not part of this template.
 */
 
+import {
+  acsConnectionStringSecretName as acsConnectionStringSecretNameFor
+  acsSenderAddressSecretName as acsSenderAddressSecretNameFor
+} from './lib/naming.bicep'
+
 @description('Application name will be use to name keyvault prepended by kv-')
 param stackName string
 
@@ -132,8 +137,15 @@ var functionAppSecrets = [
   'FEATURE-FLAG-SDK-KEY'
   'CAMS-USER-GROUP-GATEWAY-CONFIG'
   'OKTA-API-KEY'
-  'ACS-EMAIL-CONNECTION-STRING'
-  'ACS-EMAIL-SENDER-ADDRESS'
+  // ACS-EMAIL-CONNECTION-STRING/SENDER-ADDRESS are created per-stack (see
+  // acs-email.bicep) with the stackName baked into the secret name itself,
+  // unlike every other secret above which has a fixed name. Key Vault RBAC
+  // is scoped to the exact secret name, so granting the bare
+  // 'ACS-EMAIL-CONNECTION-STRING' name here would create a role assignment
+  // on a secret object that no branch (or main) deployment actually has --
+  // it must be run through the same naming function acs-email.bicep uses.
+  acsConnectionStringSecretNameFor(stackName)
+  acsSenderAddressSecretNameFor(stackName)
 ]
 
 module appConfigIdentity './lib/identity/managed-identity.bicep' = {
