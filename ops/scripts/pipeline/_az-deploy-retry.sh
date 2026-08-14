@@ -18,9 +18,23 @@
 # the identical Conflict again, burning attempts before failing with a
 # message that obscures the real cause. A genuine template/validation error
 # (or an unrecognized 409) fails immediately instead of silently burning
-# ~45s of pointless retries first. Output is captured (not streamed live) so
-# it can be inspected before deciding whether to retry, then echoed in full
-# either way so it's still visible in CI logs.
+# ~45s of pointless retries first. Output is streamed live via `tee` (not
+# buffered until the command finishes) — the original single-command-
+# substitution version of this function went quiet for the whole duration of
+# the wrapped command and dumped everything at once on completion, which is
+# fine for the sub-second shared-setup deployment this was written for, but
+# reads as a hang on the considerably longer-running `az stack group create`
+# calls it was extended to cover (cams-6us1n PR review). The output is also
+# captured to a temp file (cleaned up on return) so it can still be pattern-
+# matched afterward to decide whether to retry.
+#
+# NOTE: the AnotherOperationInProgress/DeploymentActive matching below was
+# derived from `az deployment group create` output (the shared-setup case).
+# It's a reasonable bet that `az stack group create` reports the same
+# literal text for the same underlying ARM resource-group lock contention,
+# but that assumption is unverified — there's no test harness for this
+# script family — and worth confirming in the logs the first time it
+# actually fires against a stack create.
 #
 # Originally specific to azure-deploy-app-shared-setup.sh's plain
 # `az deployment group create` calls; extracted here so azure-deploy.sh's
@@ -46,12 +60,15 @@ az_deploy_with_retry_func() {
     local delaySeconds=15
     local output
     local rc
+    local outputFile
+    outputFile=$(mktemp)
+    trap 'rm -f "${outputFile}"' RETURN
     while true; do
         set +e
-        output=$("$@" 2>&1)
-        rc=$?
+        "$@" 2>&1 | tee "${outputFile}"
+        rc=${PIPESTATUS[0]}
         set -e
-        echo "${output}"
+        output=$(<"${outputFile}")
         if [[ ${rc} -eq 0 ]]; then
             return 0
         fi
