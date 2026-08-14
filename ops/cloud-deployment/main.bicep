@@ -422,9 +422,9 @@ module acsSendFailureAlert './lib/monitoring-alerts/scheduled-query-alert-rule.b
       logQueryScopeResourceId: analyticsWorkspaceId
       actionGroupId: adminActionGroup!.outputs.actionGroupId
       query: '''
-        traces
-        | where message has '[ERROR] [ACS-NOTIFICATION-GATEWAY]' or message has '[ERROR] [TRUSTEE-CHANGE-NOTIFICATION]'
-        | project timestamp, message
+        AppTraces
+        | where Message has '[ERROR] [ACS-NOTIFICATION-GATEWAY]' or Message has '[ERROR] [TRUSTEE-CHANGE-NOTIFICATION]'
+        | project TimeGenerated, Message
       '''
       timeAggregation: 'Count'
       threshold: 0
