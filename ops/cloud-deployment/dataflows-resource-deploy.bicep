@@ -767,6 +767,7 @@ module dataflowWorkbooks 'lib/workbooks/dataflow-workbooks.bicep' = if (createAp
   scope: resourceGroup()
   params: {
     location: location
+    stackName: stackName
     appInsightsResourceId: dataflowsFunctionAppInsights.outputs.id
     tags: tags
   }
