@@ -145,7 +145,7 @@ describe('TrusteeChangeNotificationUseCase', () => {
     const summary = await useCase.notify(context, buildChangeSet([buildField()]));
 
     expect(mockGateway.getRecorded()).toHaveLength(1);
-    expect(summary).toEqual({ attempted: 1, failed: 0, failedAddresses: [] });
+    expect(summary).toEqual({ attempted: 1, failed: 0, failures: [] });
     expect(
       errorSpy.mock.calls.some(
         (call) =>
@@ -271,11 +271,21 @@ describe('TrusteeChangeNotificationUseCase', () => {
     seedRouting([]);
     const errorSpy = vi.spyOn(context.logger, 'error');
 
-    await useCase.notify(context, buildChangeSet([buildField()]));
+    const summary = await useCase.notify(context, buildChangeSet([buildField()]));
 
     expect(mockGateway.getRecorded()).toEqual([]);
     expect(errorSpy).toHaveBeenCalled();
-    expect(errorSpy.mock.calls[0][1]).toContain('No routing record for key');
+    expect(errorSpy.mock.calls[0][1]).toContain('No mailing list is configured');
+    expect(summary).toEqual({
+      attempted: 0,
+      failed: 1,
+      failures: [
+        {
+          reason: 'skipped',
+          message: expect.stringContaining('No mailing list is configured'),
+        },
+      ],
+    });
   });
 
   test('routes a SubV profile change to the SubV recipient', async () => {
@@ -446,7 +456,14 @@ describe('TrusteeChangeNotificationUseCase', () => {
     expect(summary).toEqual({
       attempted: 2,
       failed: 1,
-      failedAddresses: ['primary@example.test'],
+      failures: [
+        {
+          address: 'primary@example.test',
+          reason: 'send',
+          message:
+            'Failed to notify primary@example.test (covers: chapter:7): ACS rejected this address',
+        },
+      ],
     });
     sendSpy.mockRestore();
   });
@@ -493,7 +510,20 @@ describe('TrusteeChangeNotificationUseCase', () => {
     expect(summary).toEqual({
       attempted: 4,
       failed: 2,
-      failedAddresses: ['ch7-first@example.test', 'zoom-last@example.test'],
+      failures: [
+        {
+          address: 'ch7-first@example.test',
+          reason: 'send',
+          message:
+            'Failed to notify ch7-first@example.test (covers: chapter:7): ACS rejected ch7-first@example.test',
+        },
+        {
+          address: 'zoom-last@example.test',
+          reason: 'send',
+          message:
+            'Failed to notify zoom-last@example.test (covers: category:zoom-341): ACS rejected zoom-last@example.test',
+        },
+      ],
     });
 
     const ch7FirstErrorCall = errorSpy.mock.calls.find(

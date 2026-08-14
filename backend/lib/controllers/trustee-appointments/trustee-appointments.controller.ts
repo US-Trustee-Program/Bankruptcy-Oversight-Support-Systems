@@ -113,6 +113,9 @@ export class TrusteeAppointmentsController implements CamsController {
           self: `${context.request.url}/${createdAppointment.id}`,
         },
         data: undefined,
+        ...(context.notificationWarnings.length > 0
+          ? { warnings: context.notificationWarnings }
+          : {}),
       },
     });
   }
@@ -152,6 +155,9 @@ export class TrusteeAppointmentsController implements CamsController {
           self: context.request.url,
         },
         data: undefined,
+        ...(context.notificationWarnings.length > 0
+          ? { warnings: context.notificationWarnings }
+          : {}),
       },
     });
   }

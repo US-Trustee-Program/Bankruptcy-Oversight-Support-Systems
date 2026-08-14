@@ -188,6 +188,7 @@ var emailTags = {
 }
 
 var acsBounceAlertRuleName = '${stackName}-acs-email-bounce-alert'
+var acsSendFailureAlertRuleName = '${stackName}-acs-send-failure-alert'
 
 // customerId (a GUID) is distinct from analyticsWorkspaceId (the full ARM resource ID) --
 // the bounce-poll dataflow's Logs Query SDK call needs the former, not the latter. Gated
@@ -409,6 +410,29 @@ module acsBounceAlert './lib/monitoring-alerts/scheduled-query-alert-rule.bicep'
       windowSizeMinutes: 15
       severity: 2
       alertDescription: 'One or more trustee-notification emails failed to deliver via ACS. Check the admin notification-routing page for a wrong recipient address, or search Log Analytics/application traces around the reported timestamp for the correlationId (logged as messageId in application traces) to find the trusteeId.'
+    }
+  }
+
+module acsSendFailureAlert './lib/monitoring-alerts/scheduled-query-alert-rule.bicep' =
+  if (!empty(adminNotificationEmail) && deployAppInsights && !empty(analyticsWorkspaceId)) {
+    name: '${stackName}-acs-send-failure-alert-module'
+    scope: resourceGroup(analyticsResourceGroupName)
+    params: {
+      alertRuleName: acsSendFailureAlertRuleName
+      logQueryScopeResourceId: analyticsWorkspaceId
+      actionGroupId: adminActionGroup!.outputs.actionGroupId
+      query: '''
+        traces
+        | where message has '[ERROR] [ACS-NOTIFICATION-GATEWAY]' or message has '[ERROR] [TRUSTEE-CHANGE-NOTIFICATION]'
+        | project timestamp, message
+      '''
+      timeAggregation: 'Count'
+      threshold: 0
+      operator: 'GreaterThan'
+      evaluationFrequencyMinutes: 15
+      windowSizeMinutes: 15
+      severity: 2
+      alertDescription: 'The API could not reach ACS or ACS rejected a trustee-notification email at send time (as opposed to a later bounce), or no mailing list was configured for the change -- so no notification was even attempted. Search Log Analytics traces around the reported timestamp for ACS-NOTIFICATION-GATEWAY or TRUSTEE-CHANGE-NOTIFICATION to see the specific failure.'
     }
   }
 
