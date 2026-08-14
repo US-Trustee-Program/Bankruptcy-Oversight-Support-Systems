@@ -163,8 +163,11 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
    * arbitrary or stale row that can vary between calls. assignedOn is the court's own
    * appointment date (event.appointedDate), not a Cosmos write timestamp, making it the correct
    * domain tiebreaker — and it's still the same field the existing {caseId, assignedOn} index
-   * below was built to serve, so only the sort direction changed; the query remains fully
-   * index-seekable.
+   * below was built to serve. createdOn DESCENDING is a secondary sort key so ordering stays
+   * deterministic even when two active rows share an identical assignedOn (e.g. two trustees
+   * both resolved from the same DXTR appointment date) — MongoDB/Cosmos does not guarantee
+   * stable ordering among tied sort-key values without an explicit tiebreaker. createdOn is set
+   * by createAuditRecord on every write, so ties are broken by whichever row was written last.
    */
   async getActiveByCaseId(caseId: string): Promise<CaseAppointment | null> {
     try {
@@ -176,7 +179,10 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
         doc('trusteeId').notEqual(SENTINEL_TRUSTEE_ID),
         doc('isSurrogate').notEqual(true),
       );
-      const sort = orderBy<CaseAppointmentDocument>(['assignedOn', 'DESCENDING']);
+      const sort = orderBy<CaseAppointmentDocument>(
+        ['assignedOn', 'DESCENDING'],
+        ['createdOn', 'DESCENDING'],
+      );
       const results = await this.casePartition
         .adapter<CaseAppointmentDocument>()
         .find(query, sort, 1);
@@ -602,7 +608,8 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
       doc('trusteeId').equals(trusteeId),
       doc('unassignedOn').notExists(),
     );
-    return this.trusteePartition.adapter<CaseAppointmentDocument>().find(query);
+    const results = await this.trusteePartition.adapter<CaseAppointmentDocument>().find(query);
+    return results.map(stripMongoId);
   }
 
   /**
@@ -622,7 +629,8 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
       doc('unassignedOn').notExists(),
       doc('isSurrogate').equals(true),
     );
-    return this.trusteePartition.adapter<CaseAppointmentDocument>().find(query);
+    const results = await this.trusteePartition.adapter<CaseAppointmentDocument>().find(query);
+    return results.map(stripMongoId);
   }
 
   /**
@@ -639,7 +647,8 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
       doc('unassignedOn').notExists(),
       doc('isSurrogate').equals(true),
     );
-    return this.trusteePartition.adapter<CaseAppointmentDocument>().find(query);
+    const results = await this.trusteePartition.adapter<CaseAppointmentDocument>().find(query);
+    return results.map(stripMongoId);
   }
 
   async replaceOneInTrusteePartition(

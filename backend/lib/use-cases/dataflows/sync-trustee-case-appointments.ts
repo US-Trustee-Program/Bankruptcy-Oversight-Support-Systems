@@ -124,6 +124,9 @@ type ProcessAppointmentsResult = {
  * directly; resolveNameCollisionByScoring in trustee-match.helpers.ts reimplements the same
  * isTooManyRequestsError/isGatewayTimeoutError check independently rather than importing it,
  * since that module is imported BY this one and importing back here would be circular.
+ *
+ * Exported for testing only — no production importer outside this module; every other
+ * production caller reaches this indirectly through processOneEvent's catch block.
  */
 export function isTransientInfraError(error: unknown): boolean {
   return isTooManyRequestsError(error) || isGatewayTimeoutError(error);
@@ -180,6 +183,8 @@ export async function resolveGroupMatchedProfessionalId(
  * this event, so nothing is corrupt; a later retry re-reads state and does close-then-create
  * cleanly. Returns (does not throw) when softCloseError is a permanent failure — the caller is
  * responsible for logging and proceeding with the create in that case.
+ *
+ * Exported for testing only — no production importer outside this module.
  */
 export function throwIfTransientSoftCloseFailure(
   context: ApplicationContext,
@@ -210,6 +215,8 @@ export function throwIfTransientSoftCloseFailure(
  * applyResolvedTrustee (the soft-close-failed path and the normal create path), which write an
  * identical payload and log line — extracted so a future field addition to the payload cannot
  * drift between the two copies.
+ *
+ * Exported for testing only — no production importer outside this module.
  */
 export async function createNewAppointment(
   context: ApplicationContext,
@@ -242,6 +249,8 @@ export async function createNewAppointment(
  * Downstream notification is gated on soft-close success — firing a close event for a soft-close
  * that never actually happened in Cosmos would misinform downstream, and skips
  * resolveGroupMatchedProfessionalId's gateway reads on a path that's already failing.
+ *
+ * Exported for testing only — no production importer outside this module.
  */
 export async function softCloseExistingAppointment(
   context: ApplicationContext,
@@ -343,8 +352,12 @@ export async function softCloseExistingAppointment(
  * processing of the same logical event, or a retry/replay produces a different assignedOn and
  * the natural-key upsert inserts a second, duplicate-active row instead of replacing the first.
  * event.appointedDate is derived from a fixed field in the source DXTR transaction record (see
- * cases.dxtr.gateway.ts), so it is stable across retries, unlike wall-clock time. This function
- * falls back to wall-clock only when the event carries no appointedDate.
+ * cases.dxtr.gateway.ts), so it is stable across retries, unlike wall-clock time — there is no
+ * safe fallback to wall-clock, since that would differ on every retry/replay of the same event
+ * and defeat the natural key. parseDxtrDate (cases.dxtr.gateway.ts) returns undefined for a
+ * blank/'000000'/malformed source date, which is a genuine, if rare, DXTR data-quality condition,
+ * not something to silently paper over — this throws instead, loudly and unambiguously, so it
+ * surfaces rather than risk a duplicate active appointment.
  */
 async function applyResolvedTrustee(
   context: ApplicationContext,
@@ -353,8 +366,20 @@ async function applyResolvedTrustee(
   syncedCase: SyncedCase,
   appointmentsRepo: TrusteeCaseAppointmentsRepository,
 ): Promise<TrusteeAppointmentSyncError | null> {
-  const now = new Date().toISOString();
-  const assignedOn = event.appointedDate ?? now;
+  if (!event.appointedDate) {
+    context.logger.error(
+      MODULE_NAME,
+      `TRUSTEE APPOINTMENT DATA INTEGRITY ERROR: case ${event.caseId}, trustee ${trusteeId} — ` +
+        `event.appointedDate is missing/unparseable. Refusing to fall back to wall-clock time ` +
+        `for assignedOn, since that would break upsert()'s natural-key idempotency across ` +
+        `retries and could create a duplicate active appointment. This event cannot be safely ` +
+        `processed until its source DXTR appointment date is corrected.`,
+    );
+    throw new CamsError(MODULE_NAME, {
+      message: `Case ${event.caseId}, trustee ${trusteeId}: missing/unparseable appointedDate, cannot safely derive assignedOn.`,
+    });
+  }
+  const assignedOn = event.appointedDate;
 
   const existingAppointment = await appointmentsRepo.getActiveByCaseId(event.caseId);
 
@@ -487,6 +512,9 @@ function findByVariant<T extends { variant: string }>(bucket: T[], variant: stri
  * the try block, and the catch block's NoTrusteeMatch/AmbiguousMatchUnresolved/
  * AmbiguousMatchResolved handling), so a future code path that breaks the ordering fails loudly
  * here instead of as an opaque TypeError inside writeSurrogateAppointment.
+ *
+ * Exported for testing only — no production importer outside this module; called internally
+ * from handleClassifiedMismatch below.
  */
 export function assertSyncedCase(syncedCase: SyncedCase | undefined): SyncedCase {
   if (!syncedCase) {
@@ -576,6 +604,9 @@ async function upsertMatchVerification(
  * matchCandidates) and syncedCase — no writeSurrogateAppointment callback field: since that
  * function is a plain deps-first free function (not a bound class method), this calls it
  * directly via ctx.deps rather than threading a closure through the options object.
+ *
+ * Exported for testing only — no production importer outside this module; called internally
+ * from resolveByScoring and applyMatchOutcome above.
  */
 export async function handleClassifiedMismatch(
   ctx: MatchContext,

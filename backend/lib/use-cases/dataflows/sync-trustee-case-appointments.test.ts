@@ -59,6 +59,10 @@ describe('SyncTrusteeCaseAppointments', () => {
         courtId: '081',
         courtDivisionCode: '081',
         chapter: '7',
+        // appointedDate must be present: applyResolvedTrustee now throws rather than falling
+        // back to wall-clock time when it's missing, since wall-clock would break upsert()'s
+        // natural-key idempotency across retries.
+        appointedDate: '2024-01-15',
         // firstName/lastName are derived from fullName (rather than left undefined like the
         // real fullName-only shape used to be) so each distinct fullName in this test file
         // produces a distinct trustee-variant fingerprint — otherwise every event sharing the
@@ -248,6 +252,32 @@ describe('SyncTrusteeCaseAppointments', () => {
         return { caseId: arg.caseId, trusteeId: arg.trusteeId, assignedOn: arg.assignedOn };
       };
       expect(naturalKey(firstCall)).toEqual(naturalKey(secondCall));
+    });
+
+    test('routes to dlqMessages with a loud, unambiguous error log instead of falling back to wall-clock time when appointedDate is missing', async () => {
+      // parseDxtrDate (cases.dxtr.gateway.ts) returns undefined for a blank/'000000'/malformed
+      // source date — a genuine DXTR data-quality condition, not a hypothetical one. Falling
+      // back to wall-clock time here would defeat upsert()'s natural-key idempotency (a retry
+      // of this same event would compute a different assignedOn and insert a duplicate active
+      // row), so this must surface loudly instead of silently guessing.
+      const errorSpy = vi.spyOn(context.logger, 'error');
+      const event: TrusteeAppointmentSyncEvent = {
+        ...makeEvent('case-001', 'John Doe'),
+        appointedDate: undefined,
+      };
+
+      const { successCount, dlqMessages } = await SyncTrusteeCaseAppointments.processAppointments(
+        SyncTrusteeCaseAppointments.createDeps(context),
+        [event],
+      );
+
+      expect(mockTrusteeCaseAppointmentsRepo.upsert).not.toHaveBeenCalled();
+      expect(successCount).toBe(0);
+      expect(dlqMessages).toHaveLength(1);
+      expect(errorSpy).toHaveBeenCalledWith(
+        'SYNC-TRUSTEE-CASE-APPOINTMENTS-USE-CASE',
+        expect.stringContaining('TRUSTEE APPOINTMENT DATA INTEGRITY ERROR'),
+      );
     });
 
     test('should collect a not-yet-synced outcome (not DLQ, not thrown) when getCaseOrMovedCase returns null', async () => {
