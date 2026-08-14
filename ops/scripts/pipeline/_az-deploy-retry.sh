@@ -57,7 +57,7 @@ az_deploy_with_retry_func() {
         fi
         if [[ ${attempt} -ge ${maxAttempts} ]] || ! grep -qi "AnotherOperationInProgress\|DeploymentActive" <<< "${output}"; then
             echo "ERROR: deployment failed after ${attempt} attempt(s)." >&2
-            return 1
+            return "${rc}"
         fi
         echo "WARNING: deployment attempt ${attempt} failed with what looks like a concurrent operation in progress; retrying in ${delaySeconds}s." >&2
         sleep "${delaySeconds}"
