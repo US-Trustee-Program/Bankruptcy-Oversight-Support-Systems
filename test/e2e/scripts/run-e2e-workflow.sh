@@ -205,102 +205,161 @@ podman rm -f cams-frontend-e2e cams-playwright-e2e >/dev/null 2>&1 || true
 rm -rf container-logs/*.log test-results/* playwright-report/*
 echo ""
 
-echo -e "${BLUE}⏳ Step 2: Starting pod and services...${NC}"
+# Podman's rootless port-publish setup occasionally fails to bind for a pod on
+# GH-hosted runners (host↔pod forwarding never comes up, even though the
+# Functions host itself starts and serves fine inside the pod). This is a
+# transient environment race, not an app issue — recreating the pod fixes it,
+# so we retry a bounded number of times here instead of failing the whole job.
+start_pod_and_wait_for_backend() {
+    echo -e "${BLUE}⏳ Step 2: Starting pod and services...${NC}"
 
-# Create the pod — publishes the ports that need host access
-podman pod create \
-    --name "${POD_NAME}" \
-    --publish 7071:7071 \
-    --publish 1433:1433 \
-    --publish 27017:27017 \
-    --publish 10000:10000 \
-    --publish 10001:10001 \
-    --publish 10002:10002
+    # Create the pod — publishes the ports that need host access
+    #
+    # NOTE: this function is invoked as the condition of `until ...; do` below,
+    # a context in which bash suppresses `errexit` for the function's entire
+    # execution. Each container-start command below must therefore check its
+    # own exit status explicitly — otherwise a failure here (e.g. a port
+    # conflict) would silently fall through to the health-check wait and only
+    # surface ~180s later as a generic timeout instead of the real cause.
+    # Force slirp4netns instead of the runner image's bundled pasta binary.
+    # Diagnostics from a real failure (container-logs/podman-network-diagnostics-*)
+    # showed pasta's listener bound and accepting on the host side for every
+    # published port, yet zero bytes ever reached the container — a forwarding
+    # bug in that specific pasta build, not a bind race. slirp4netns is the
+    # apt-packaged (not runner-image-bundled) rootless backend and has its own
+    # built-in port forwarder (port_handler=slirp4netns), bypassing pasta and
+    # rootlessport entirely.
+    podman pod create \
+        --name "${POD_NAME}" \
+        --network slirp4netns:port_handler=slirp4netns \
+        --publish 7071:7071 \
+        --publish 1433:1433 \
+        --publish 27017:27017 \
+        --publish 10000:10000 \
+        --publish 10001:10001 \
+        --publish 10002:10002 \
+        || { echo -e "${RED}❌ Failed to create pod ${POD_NAME}${NC}"; return 1; }
 
-# Start SQL Edge in the pod (from GHCR cache)
-podman run -d \
-    --pod "${POD_NAME}" \
-    --name cams-sqledge-e2e \
-    -e ACCEPT_EULA=Y \
-    -e MSSQL_SA_PASSWORD="${MSSQL_PASS}" \
-    -e MSSQL_PID=Developer \
-    "${IMAGE_SQLEDGE}"
+    # From here on, something exists that the EXIT trap must tear down, even
+    # if a later command in this function fails and returns early.
+    CLEANUP_NEEDED=true
 
-# Start MongoDB in the pod (from GHCR cache)
-podman run -d \
-    --pod "${POD_NAME}" \
-    --name cams-mongodb-e2e \
-    "${IMAGE_MONGODB}" --bind_ip_all
+    # Start SQL Edge in the pod (from GHCR cache)
+    podman run -d \
+        --pod "${POD_NAME}" \
+        --name cams-sqledge-e2e \
+        -e ACCEPT_EULA=Y \
+        -e MSSQL_SA_PASSWORD="${MSSQL_PASS}" \
+        -e MSSQL_PID=Developer \
+        "${IMAGE_SQLEDGE}" \
+        || { echo -e "${RED}❌ Failed to start cams-sqledge-e2e${NC}"; return 1; }
 
-# Start Azurite in the pod (from GHCR cache)
-podman run -d \
-    --pod "${POD_NAME}" \
-    --name cams-azurite-e2e \
-    "${IMAGE_AZURITE}" \
-    azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0 --location /data
+    # Start MongoDB in the pod (from GHCR cache)
+    podman run -d \
+        --pod "${POD_NAME}" \
+        --name cams-mongodb-e2e \
+        "${IMAGE_MONGODB}" --bind_ip_all \
+        || { echo -e "${RED}❌ Failed to start cams-mongodb-e2e${NC}"; return 1; }
 
-# Start backend in the pod (waits for DBs, seeds, starts Functions host)
-podman run -d \
-    --pod "${POD_NAME}" \
-    --name cams-backend-e2e \
-    -e NODE_ENV=development \
-    -e DOTENV_CONFIG_SILENT=true \
-    -e COSMOS_DATABASE_NAME="${COSMOS_DATABASE_NAME}" \
-    -e MONGO_CONNECTION_STRING="mongodb://localhost:27017/cams-e2e?retrywrites=false" \
-    -e DATABASE_MOCK="${DATABASE_MOCK}" \
-    -e MSSQL_HOST=localhost \
-    -e MSSQL_DATABASE="${MSSQL_DATABASE:-}" \
-    -e MSSQL_DATABASE_DXTR="${MSSQL_DATABASE_DXTR}" \
-    -e MSSQL_USER="${MSSQL_USER}" \
-    -e MSSQL_PASS="${MSSQL_PASS}" \
-    -e MSSQL_ENCRYPT="${MSSQL_ENCRYPT}" \
-    -e MSSQL_TRUST_UNSIGNED_CERT="${MSSQL_TRUST_UNSIGNED_CERT}" \
-    -e MSSQL_REQUEST_TIMEOUT="${MSSQL_REQUEST_TIMEOUT:-60000}" \
-    -e SLOT_NAME="${SLOT_NAME}" \
-    -e CAMS_LOGIN_PROVIDER="${CAMS_LOGIN_PROVIDER}" \
-    -e CAMS_LOGIN_PROVIDER_CONFIG="${CAMS_LOGIN_PROVIDER_CONFIG}" \
-    -e CAMS_USER_GROUP_GATEWAY_CONFIG="${CAMS_USER_GROUP_GATEWAY_CONFIG}" \
-    -e OKTA_API_KEY="${OKTA_API_KEY}" \
-    e2e_backend:latest
+    # Start Azurite in the pod (from GHCR cache)
+    podman run -d \
+        --pod "${POD_NAME}" \
+        --name cams-azurite-e2e \
+        "${IMAGE_AZURITE}" \
+        azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0 --location /data \
+        || { echo -e "${RED}❌ Failed to start cams-azurite-e2e${NC}"; return 1; }
 
-CLEANUP_NEEDED=true
-echo ""
+    # Start backend in the pod (waits for DBs, seeds, starts Functions host)
+    podman run -d \
+        --pod "${POD_NAME}" \
+        --name cams-backend-e2e \
+        -e NODE_ENV=development \
+        -e DOTENV_CONFIG_SILENT=true \
+        -e COSMOS_DATABASE_NAME="${COSMOS_DATABASE_NAME}" \
+        -e MONGO_CONNECTION_STRING="mongodb://localhost:27017/cams-e2e?retrywrites=false" \
+        -e DATABASE_MOCK="${DATABASE_MOCK}" \
+        -e MSSQL_HOST=localhost \
+        -e MSSQL_DATABASE="${MSSQL_DATABASE:-}" \
+        -e MSSQL_DATABASE_DXTR="${MSSQL_DATABASE_DXTR}" \
+        -e MSSQL_USER="${MSSQL_USER}" \
+        -e MSSQL_PASS="${MSSQL_PASS}" \
+        -e MSSQL_ENCRYPT="${MSSQL_ENCRYPT}" \
+        -e MSSQL_TRUST_UNSIGNED_CERT="${MSSQL_TRUST_UNSIGNED_CERT}" \
+        -e MSSQL_REQUEST_TIMEOUT="${MSSQL_REQUEST_TIMEOUT:-60000}" \
+        -e SLOT_NAME="${SLOT_NAME}" \
+        -e CAMS_LOGIN_PROVIDER="${CAMS_LOGIN_PROVIDER}" \
+        -e CAMS_LOGIN_PROVIDER_CONFIG="${CAMS_LOGIN_PROVIDER_CONFIG}" \
+        -e CAMS_USER_GROUP_GATEWAY_CONFIG="${CAMS_USER_GROUP_GATEWAY_CONFIG}" \
+        -e OKTA_API_KEY="${OKTA_API_KEY}" \
+        e2e_backend:latest \
+        || { echo -e "${RED}❌ Failed to start cams-backend-e2e${NC}"; return 1; }
 
-# Verify backend container started
-if ! podman ps --filter name=cams-backend-e2e --format "{{.Names}}" | grep -q cams-backend-e2e; then
-    echo -e "${RED}❌ Backend container failed to start${NC}"
-    podman logs cams-backend-e2e 2>&1 | tail -30
-    exit 1
-fi
+    echo ""
 
-# Wait for backend healthcheck
-echo "Waiting for backend (databases + seeding + Functions host)..."
-APP_WAIT_COUNT=0
-APP_MAX_WAIT=180
-
-while [ $APP_WAIT_COUNT -lt $APP_MAX_WAIT ]; do
-    BACKEND_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 3 http://localhost:7071/api/healthcheck 2>/dev/null || echo "000")
-    if [ "$BACKEND_STATUS" = "200" ]; then
-        echo -e "${GREEN}✅ Backend healthy${NC}"
-        break
+    # Verify backend container started
+    if ! podman ps --filter name=cams-backend-e2e --format "{{.Names}}" | grep -q cams-backend-e2e; then
+        echo -e "${RED}❌ Backend container failed to start${NC}"
+        podman logs cams-backend-e2e 2>&1 | tail -30
+        return 1
     fi
-    echo -n "."
-    sleep 2
-    APP_WAIT_COUNT=$((APP_WAIT_COUNT + 2))
+
+    # Wait for backend healthcheck
+    echo "Waiting for backend (databases + seeding + Functions host)..."
+    local app_wait_count=0
+    local app_max_wait=180
+
+    while [ $app_wait_count -lt $app_max_wait ]; do
+        local backend_status
+        backend_status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 3 http://localhost:7071/api/healthcheck 2>/dev/null || echo "000")
+        if [ "$backend_status" = "200" ]; then
+            echo -e "${GREEN}✅ Backend healthy${NC}"
+            echo ""
+            return 0
+        fi
+        echo -n "."
+        sleep 2
+        app_wait_count=$((app_wait_count + 2))
+    done
+
+    echo ""
+    echo -e "${RED}❌ Backend failed to become healthy within ${app_max_wait}s${NC}"
+
+    # Distinguish "app is broken" from "port forwarding to the pod is broken":
+    # if the app answers when probed from inside its own container but never
+    # once received a request via the published port, the pod's host↔pod
+    # forwarding didn't come up — recreating the pod is the fix, not debugging the app.
+    if podman exec cams-backend-e2e curl -s -o /dev/null -w "%{http_code}" --max-time 3 http://localhost:7071/api/healthcheck 2>/dev/null | grep -q "200"; then
+        echo -e "${YELLOW}⚠️  Backend responds when probed from inside its own container, but the published port never received a request — Podman host↔pod port forwarding likely failed to come up for this pod.${NC}"
+    fi
+
+    podman logs --tail 50 cams-backend-e2e 2>&1 | sed 's/^/  /'
+    return 1
+}
+
+POD_ATTEMPT=1
+POD_MAX_ATTEMPTS=2
+until start_pod_and_wait_for_backend; do
+    if [ "$POD_ATTEMPT" -ge "$POD_MAX_ATTEMPTS" ]; then
+        echo ""
+        echo -e "${RED}❌ Backend did not become healthy after ${POD_MAX_ATTEMPTS} attempts${NC}"
+        exit 1
+    fi
+    POD_ATTEMPT=$((POD_ATTEMPT + 1))
+    echo ""
+    echo -e "${YELLOW}🔁 Recreating pod and retrying (attempt ${POD_ATTEMPT}/${POD_MAX_ATTEMPTS})...${NC}"
+    echo ""
+    podman pod stop "${POD_NAME}" 2>/dev/null || true
+    podman pod rm -f "${POD_NAME}" 2>/dev/null || true
 done
 
-if [ $APP_WAIT_COUNT -ge $APP_MAX_WAIT ]; then
-    echo ""
-    echo -e "${RED}❌ Backend failed to become healthy within ${APP_MAX_WAIT}s${NC}"
-    podman logs --tail 50 cams-backend-e2e 2>&1 | sed 's/^/  /'
-    exit 1
-fi
-echo ""
-
 # Start frontend (standalone — not in pod, port 3000)
+# Same slirp4netns override as the backend pod above: pasta's port-publish
+# forwarding has shown the same "listener up, zero bytes forwarded" failure
+# on standalone containers too, not just pods.
 echo "Starting frontend..."
 podman run -d \
     --name cams-frontend-e2e \
+    --network slirp4netns:port_handler=slirp4netns \
     --publish 3000:3000 \
     -e BROWSER=none \
     -e DOTENV_CONFIG_SILENT=true \

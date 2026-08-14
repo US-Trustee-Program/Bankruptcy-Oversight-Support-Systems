@@ -40,7 +40,7 @@
   "license": "CC0 v1.0",
   "devDependencies": {
     "@eslint/js": "10.0.0",
-    "@playwright/test": "1.62.0",
+    "@playwright/test": "1.62.1",
     "@types/node": "24.13.3",
     "dotenv": "17.4.2",
     "eslint": "10.8.0",
