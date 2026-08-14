@@ -816,6 +816,13 @@ export class MockMongoRepository
     }
   }
 
+  // Mock implementation for existsInTrusteePartition
+  async existsInTrusteePartition(
+    ..._args: [caseId: string, trusteeId: string, assignedOn: string]
+  ): Promise<boolean> {
+    return true; // Mock defaults to "already in sync" — test spies will override
+  }
+
   // Mock implementation for replaceOneInTrusteePartition
   async replaceOneInTrusteePartition(_query: any, _document: any): Promise<void> {
     // Mock does nothing — test spies will override
