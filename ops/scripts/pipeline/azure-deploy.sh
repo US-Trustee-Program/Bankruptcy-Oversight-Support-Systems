@@ -538,7 +538,6 @@ while [[ $# -gt 0 ]]; do
         shift 2
         ;;
 
-
     *)
         echo "Exit on param: ${1}"
         exit 2 # error on unknown flag/switch
