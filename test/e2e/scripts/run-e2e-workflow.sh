@@ -263,8 +263,17 @@ start_pod_and_wait_for_backend() {
     # own exit status explicitly — otherwise a failure here (e.g. a port
     # conflict) would silently fall through to the health-check wait and only
     # surface ~180s later as a generic timeout instead of the real cause.
+    # Force slirp4netns instead of the runner image's bundled pasta binary.
+    # Diagnostics from a real failure (container-logs/podman-network-diagnostics-*)
+    # showed pasta's listener bound and accepting on the host side for every
+    # published port, yet zero bytes ever reached the container — a forwarding
+    # bug in that specific pasta build, not a bind race. slirp4netns is the
+    # apt-packaged (not runner-image-bundled) rootless backend and has its own
+    # built-in port forwarder (port_handler=slirp4netns), bypassing pasta and
+    # rootlessport entirely.
     podman pod create \
         --name "${POD_NAME}" \
+        --network slirp4netns:port_handler=slirp4netns \
         --publish 7071:7071 \
         --publish 1433:1433 \
         --publish 27017:27017 \
