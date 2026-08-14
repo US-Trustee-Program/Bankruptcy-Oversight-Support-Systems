@@ -63,6 +63,9 @@ param sqlServerIdentityName string = ''
 
 param sqlServerIdentityResourceGroupName string = ''
 
+@description('Subscription containing the SQL managed identity; defaults to the deploying subscription.')
+param sqlServerIdentitySubscriptionId string = ''
+
 @description('Resource group name of the app config KeyVault')
 param kvAppConfigResourceGroupName string = ''
 
@@ -216,7 +219,7 @@ var userAssignedIdentities = union(
   {
     '${appConfigIdentity.id}': {}
   },
-  createSqlServerVnetRule ? { '${sqlIdentity.id}': {} } : {}
+  createSqlServerVnetRule ? { '${sqlIdentityResourceId}': {} } : {}
 )
 
 resource dataflowsFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
@@ -256,7 +259,6 @@ resource dataflowsFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
   }
   dependsOn: [
     appConfigIdentity
-    sqlIdentity
   ]
 
   resource slotConfigName 'config' = {
@@ -765,16 +767,22 @@ module setDataflowFunctionSqlServerVnetRule './lib/network/sql-vnet-rule.bicep' 
 // The identity itself is created once, in app-shared-setup.bicep (CAMS-760,
 // Option E / Slice 2) — its name is a fixed value shared by main and every
 // branch, so it must never be created/managed inside a branch's app stack.
-// Referenced here as `existing` only.
+// Referenced here by resource ID only, deliberately not via `resource ...
+// existing` — see the block in backend-api-deploy.bicep for the rationale.
 var sqlIdentityName = !empty(sqlServerIdentityName) ? sqlServerIdentityName : sqlIdentityNameFor(stackName)
 var sqlIdentityRG = !empty(sqlServerIdentityResourceGroupName)
   ? sqlServerIdentityResourceGroupName
   : sqlServerResourceGroupName
+var sqlIdentitySubscriptionId = !empty(sqlServerIdentitySubscriptionId)
+  ? sqlServerIdentitySubscriptionId
+  : subscription().subscriptionId
 
-resource sqlIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
-  name: sqlIdentityName
-  scope: resourceGroup(sqlIdentityRG)
-}
+var sqlIdentityResourceId = resourceId(
+  sqlIdentitySubscriptionId,
+  sqlIdentityRG,
+  'Microsoft.ManagedIdentity/userAssignedIdentities',
+  sqlIdentityName
+)
 
 //Deploy Dataflow Workbooks
 

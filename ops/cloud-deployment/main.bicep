@@ -79,6 +79,9 @@ param sqlServerIdentityName string = ''
 
 param sqlServerIdentityResourceGroupName string = ''
 
+@description('Subscription containing the SQL managed identity; defaults to the deploying subscription.')
+param sqlServerIdentitySubscriptionId string = ''
+
 @description('Name of the managed identity with read access to the keyvault storing application configurations. ')
 @secure()
 param idKeyvaultAppConfiguration string
@@ -404,6 +407,7 @@ module ustpApiFunction 'backend-api-deploy.bicep' = {
       sqlServerResourceGroupName: sqlServerResourceGroupName
       sqlServerIdentityName: sqlServerIdentityName
       sqlServerIdentityResourceGroupName: sqlServerIdentityResourceGroupName
+      sqlServerIdentitySubscriptionId: sqlServerIdentitySubscriptionId
       apiCorsAllowOrigins: ['https://${webappName}.azurewebsites.us','https://portal.azure.us']
       apiSlotCorsAllowOrigins: ['https://${webappName}-${slotName}.azurewebsites.us','https://portal.azure.us']
       idKeyvaultAppConfiguration: idKeyvaultAppConfiguration
@@ -451,6 +455,7 @@ module ustpDataflowsFunction 'dataflows-resource-deploy.bicep' = {
     sqlServerResourceGroupName: sqlServerResourceGroupName
     sqlServerIdentityName: sqlServerIdentityName
     sqlServerIdentityResourceGroupName: sqlServerIdentityResourceGroupName
+    sqlServerIdentitySubscriptionId: sqlServerIdentitySubscriptionId
     dataflowsCorsAllowOrigins: ['https://portal.azure.us']
     idKeyvaultAppConfiguration: idKeyvaultAppConfiguration
     kvAppConfigResourceGroupName: kvAppConfigResourceGroupName
