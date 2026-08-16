@@ -187,14 +187,17 @@ provision_identity() {
   local APP_NAME="$1"
   local CREDENTIAL_NAME="$2"
   local GITHUB_ENVIRONMENT="$3"
+  # Explicit main/branch signal for control flow below, rather than
+  # re-deriving it by pattern-matching GITHUB_ENVIRONMENT (which exists to
+  # build the OIDC subject claim, not to drive dispatch) — the dispatch case
+  # block at the bottom of this script already knows unambiguously which
+  # target it's calling for, so it passes that here directly instead of
+  # everyone downstream re-parsing a string for the same answer.
+  local IS_MAIN="$4"
   local SUBJECT="repo:${GITHUB_ORG}/${GITHUB_REPO}:workflow:${GITHUB_WORKFLOW}:environment:${GITHUB_ENVIRONMENT}"
 
-  # Fail fast on an unrecognized environment instead of silently falling
-  # through to the branch path below (the *main*/else checks further down
-  # rely on this having already validated GITHUB_ENVIRONMENT is one or the
-  # other).
-  if [[ "$GITHUB_ENVIRONMENT" != *"main"* && "$GITHUB_ENVIRONMENT" != *"branch"* ]]; then
-    echo "ERROR: Unsupported GITHUB_ENVIRONMENT='$GITHUB_ENVIRONMENT'. Expected a value containing 'main' or 'branch'." >&2
+  if [[ "$IS_MAIN" != "true" && "$IS_MAIN" != "false" ]]; then
+    echo "ERROR: provision_identity's IS_MAIN argument must be 'true' or 'false', got '$IS_MAIN'." >&2
     exit 1
   fi
 
@@ -239,7 +242,7 @@ provision_identity() {
   # ---------------------------------------------------------------------------
   local SUBSCRIPTION_SCOPE="/subscriptions/${SUBSCRIPTION_ID}"
 
-  if [[ "$GITHUB_ENVIRONMENT" == *"main"* ]]; then
+  if [[ "$IS_MAIN" == "true" ]]; then
     echo "==> Checking Contributor role assignment at subscription scope..."
     ensure_role_assignment "$SP_ID" "Contributor" "$SUBSCRIPTION_SCOPE"
   else
@@ -257,10 +260,14 @@ provision_identity() {
     ensure_role_assignment "$SP_ID" "Contributor" "$BRANCH_APP_RG_SCOPE"
     echo "==> Checking Contributor role assignment on ${BRANCH_NETWORK_RG}..."
     ensure_role_assignment "$SP_ID" "Contributor" "$BRANCH_NETWORK_RG_SCOPE"
+    echo "    REMINDER: this only ADDS the RG-scoped grant above — if this identity still" >&2
+    echo "    also has the old subscription-scope Contributor, that broader grant remains" >&2
+    echo "    in effect (Azure RBAC is additive) until revoked via the separate manual" >&2
+    echo "    runbook. See the header NOTE on least privilege." >&2
   fi
 
   # KV role assignment operator on the KV resource + Key Vault Secrets User per secret
-  if [[ "$GITHUB_ENVIRONMENT" == *"main"* ]]; then
+  if [[ "$IS_MAIN" == "true" ]]; then
     if [[ -z "$MAIN_KV_RG" ]]; then
       echo "ERROR: AZ_MAIN_KV_RG is required when provisioning the main environment." >&2
       exit 1
@@ -298,7 +305,7 @@ provision_identity() {
   # and their _SCOPE strings were already validated and computed above for
   # the Contributor grant — same two resource groups, reused here rather
   # than re-validated.
-  if [[ "$GITHUB_ENVIRONMENT" == *"branch"* ]]; then
+  if [[ "$IS_MAIN" == "false" ]]; then
     local DENY_SETTING_ROLE_ID
     DENY_SETTING_ROLE_ID=$(ensure_deployment_stack_deny_setting_role "$SUBSCRIPTION_ID")
 
@@ -325,14 +332,14 @@ provision_identity() {
 # ---------------------------------------------------------------------------
 case "$TARGET" in
   main)
-    provision_identity "cams-deploy-main-oidc" "gha-deploy-main" "deploy-main"
+    provision_identity "cams-deploy-main-oidc" "gha-deploy-main" "deploy-main" true
     ;;
   branch)
-    provision_identity "cams-deploy-branch-oidc" "gha-deploy-branch" "deploy-branch"
+    provision_identity "cams-deploy-branch-oidc" "gha-deploy-branch" "deploy-branch" false
     ;;
   all)
-    provision_identity "cams-deploy-main-oidc" "gha-deploy-main" "deploy-main"
-    provision_identity "cams-deploy-branch-oidc" "gha-deploy-branch" "deploy-branch"
+    provision_identity "cams-deploy-main-oidc" "gha-deploy-main" "deploy-main" true
+    provision_identity "cams-deploy-branch-oidc" "gha-deploy-branch" "deploy-branch" false
     ;;
   *)
     echo "ERROR: Unknown TARGET='$TARGET'. Use main, branch, or omit for all." >&2
