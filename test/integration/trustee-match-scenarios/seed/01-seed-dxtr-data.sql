@@ -9,13 +9,13 @@
 --   CS_DIV='084', GRP_DES='XX', COURT_ID='0210', CS_DIV_ACMS='084' — #1 only (reserved id
 --     requires GRP_DES='XX' so acmsProfessionalId comes out as the reserved 'XX-99999')
 
-DELETE FROM dbo.AO_TX WHERE CS_CASEID BETWEEN '999999400' AND '999999412' AND COURT_ID = '0210';
+DELETE FROM dbo.AO_TX WHERE CS_CASEID BETWEEN '999999400' AND '999999413' AND COURT_ID = '0210';
 GO
 
-DELETE FROM dbo.AO_PY WHERE CS_CASEID BETWEEN '999999400' AND '999999412' AND COURT_ID = '0210';
+DELETE FROM dbo.AO_PY WHERE CS_CASEID BETWEEN '999999400' AND '999999413' AND COURT_ID = '0210';
 GO
 
-DELETE FROM dbo.AO_CS WHERE CS_CASEID BETWEEN '999999400' AND '999999412' AND COURT_ID = '0210';
+DELETE FROM dbo.AO_CS WHERE CS_CASEID BETWEEN '999999400' AND '999999413' AND COURT_ID = '0210';
 GO
 
 DELETE FROM dbo.AO_CS_DIV WHERE (CS_DIV = '083' AND GRP_DES = 'MS') OR (CS_DIV = '084' AND GRP_DES = 'XX');
@@ -41,7 +41,8 @@ VALUES
   ('999999409', '0210', '26-88909', '083', '7'), -- 10. case-moved
   ('999999410', '0210', '26-88910', '083', '7'), -- 11. re-verification
   ('999999411', '0210', '26-88911', '083', '7'), -- 12. fingerprint-repeat (Slice 5)
-  ('999999412', '0210', '26-88912', '083', '7'); -- 13. fingerprint-no-false-collapse (Slice 5)
+  ('999999412', '0210', '26-88912', '083', '7'), -- 13. fingerprint-no-false-collapse (Slice 5)
+  ('999999413', '0210', '26-88913', '083', '7'); -- 14. bad-rec-date-falls-back-to-tx-date (CAMS-809)
 GO
 
 -- 1. reserved-id-skip — name is irrelevant, never reached (skipped before any matching).
@@ -212,6 +213,29 @@ INSERT INTO dbo.AO_PY (
   '999 Decoy Fingerprint Ave', '', '', 'Faraway', 'FA', '99999', 'USA',
   '555-999-0000', '', 'decoy.fingerprint@example.com'
 );
+GO
+
+-- 14. bad-rec-date-falls-back-to-tx-date (CAMS-809) — not part of the 13-scenario matching
+--     pipeline (excluded from ALL_CASE_IDS); a standalone DXTR-gateway-only proof that
+--     CasesDxtrGateway falls back to TX.TX_DATE when REC's embedded appointment date is blank
+--     ('000000'), rather than leaving appointedDate undefined and routing the event to the DLQ.
+INSERT INTO dbo.AO_PY (
+  CS_CASEID, COURT_ID, PY_ROLE, PY_FIRST_NAME, PY_MIDDLE_NAME, PY_LAST_NAME, PY_GENERATION,
+  PY_ADDRESS1, PY_ADDRESS2, PY_ADDRESS3, PY_CITY, PY_STATE, PY_ZIP, PY_COUNTRY,
+  PY_PHONENO, PY_FAX_PHONE, PY_E_MAIL
+) VALUES (
+  '999999413', '0210', 'tr', 'BadRec', 'D', 'DateFallback', '',
+  '1 Bad Rec Date Way', '', '', 'Scenario City', 'SC', '11111', 'USA',
+  '555-100-0014', '', 'bad.rec.date@example.com'
+);
+GO
+
+-- REC's aptDate substring (position 24-29) is left blank (all spaces from REPLICATE), which
+-- parseDxtrDate treats identically to the '000000' sentinel — both fail its numeric validation
+-- and return undefined. TX_DATE is 2026-01-14, so a correct fallback yields appointedDate
+-- '2026-01-14'.
+INSERT INTO dbo.AO_TX (CS_CASEID, COURT_ID, TX_TYPE, TX_CODE, TX_DATE, REC)
+VALUES ('999999413', '0210', 'A', 'TR', '2026-01-14T00:00:00', REPLICATE(' ', 237));
 GO
 
 -- Appointment transactions: TX_TYPE='A', TX_CODE='TR'. REC packs profCode at position
