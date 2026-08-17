@@ -59,7 +59,7 @@ export default function PastKeyDates(props: Readonly<PastKeyDatesProps>) {
       field.kind === 'year'
         ? (data?.lastAuditFiscalYear?.toString() ?? NO_DATE)
         : formatDateOrDefault(data?.[field.key as keyof TrusteeUpcomingKeyDates] as string);
-    return { label: field.displayLabel, value, testId: field.testId };
+    return { label: field.displayLabel, value, testId: field.testId, stacked: field.stacked };
   });
 
   return (
