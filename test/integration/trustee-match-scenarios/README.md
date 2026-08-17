@@ -64,6 +64,16 @@ directly into Cosmos (no DXTR row involved):
   one `case-trustee-appointments` document exists afterward — proof against a real `replaceOne`
   upsert, which a mocked repository's recorded call args cannot provide.
 
+- **Stage 8 (bad REC date falls back to TX_DATE)** — `CasesDxtrGateway.getTrusteeAppointments`
+  (`cases.dxtr.gateway.ts`) falls back to `TX.TX_DATE` when REC's fixed-width embedded appointment
+  date is blank/unparseable (CAMS-809). Seeds one `AO_TX` row (CS_CASEID `999999413`, case
+  `083-26-88913`) with a blank REC date and asserts the real DXTR query still returns the correct
+  `appointedDate`, sourced from `TX_DATE` — proof the `FORMAT(TX.TX_DATE, 'yyyy-MM-dd')` SQL
+  actually compiles and returns the expected value against a real SQL Server table, which a
+  mocked-gateway unit test cannot provide. Unlike Stages 5-7, this DOES round-trip through DXTR
+  (via `casesGateway.getTrusteeAppointments` directly, not `processAppointments`) but is otherwise
+  standalone: excluded from the 13-scenario matching pipeline, no Cosmos writes.
+
 Explicitly out of scope: fault-injecting real Cosmos throttling to test the transient
 soft-close-failure path (`TooManyRequestsError`/`GatewayTimeoutError` aborting before create). That
 path is already covered by `sync-trustee-case-appointments.test.ts`'s mocked `test.each` and isn't
