@@ -1,6 +1,6 @@
 import './EditUpcomingKeyDates.scss';
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   TrusteeUpcomingKeyDates,
   TrusteeUpcomingKeyDatesInput,
@@ -94,28 +94,32 @@ function buildUpcomingKeyDatesInput(
   };
 }
 
+function deriveVariant(chapter: string, appointmentType: string): PastKeyDatesVariant {
+  if (chapter === '11-subchapter-v' && appointmentType === 'pool') return 'subv-pool';
+  return 'chapter7-panel';
+}
+
 export default function PastKeyDatesForm() {
   const { trusteeId, appointmentId } = useParams<{
     trusteeId: string;
     appointmentId: string;
   }>();
   const navigate = useNavigate();
-  const location = useLocation();
   const globalAlert = useGlobalAlert();
-
-  const variant: PastKeyDatesVariant =
-    (location.state as { variant?: PastKeyDatesVariant } | null)?.variant ?? 'chapter7-panel';
-  const activeFields = PAST_KEY_DATES_FIELD_CONFIG[variant];
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [variant, setVariant] = useState<PastKeyDatesVariant>('chapter7-panel');
   const [form, setForm] = useState<PastKeyDatesFormState>(EMPTY_FORM);
   const [original, setOriginal] = useState<TrusteeUpcomingKeyDates | null>(null);
 
   useEffect(() => {
-    Api2.getUpcomingKeyDates(trusteeId!, appointmentId!)
-      .then((response) => {
-        const data = response.data;
+    Promise.all([
+      Api2.getUpcomingKeyDates(trusteeId!, appointmentId!),
+      Api2.getTrusteeAppointments(trusteeId!),
+    ])
+      .then(([keyDatesResponse, appointmentsResponse]) => {
+        const data = keyDatesResponse.data;
         if (data) {
           setOriginal(data);
           setForm({
@@ -126,6 +130,10 @@ export default function PastKeyDatesForm() {
             lastMonthlyReportReceived: data.lastMonthlyReportReceived ?? '',
             lastAuditFiscalYear: data.lastAuditFiscalYear ?? '',
           });
+        }
+        const appointment = appointmentsResponse.data?.find((a) => a.id === appointmentId);
+        if (appointment) {
+          setVariant(deriveVariant(appointment.chapter, appointment.appointmentType));
         }
       })
       .catch((err) => {
@@ -172,7 +180,7 @@ export default function PastKeyDatesForm() {
   return (
     <div className="edit-upcoming-key-dates" data-testid="edit-past-key-dates">
       <h3>Edit Past Key Dates</h3>
-      {activeFields.map((field) =>
+      {PAST_KEY_DATES_FIELD_CONFIG[variant].map((field) =>
         field.kind === 'year' ? (
           <div className="usa-form-group" key={field.inputId}>
             <label className="usa-label" htmlFor={field.inputId}>
