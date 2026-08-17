@@ -30,8 +30,16 @@ Chrome (which should support the CSS Custom Highlight API).
 
 ### 2. Dead Code — Unused Color Variables and Boilerplate Styles
 
-**Status**: Cleanup Needed **Priority**: Low **Description**: Several color definitions and style
-rules exist in the codebase that are never applied to the live UI.
+**Status**: Resolved (CAMS-838) **Priority**: Low **Description**: Several color definitions and
+style rules exist in the codebase that are never applied to the live UI.
+
+**Resolution**: Removed in CAMS-838 (`Remove unused CSS variables and dead code`) — `.App-header`,
+all unused `_tables.scss` variables (except `$tableBorder`), `$eagle`, `$warning-text`,
+`$warning-light`, `$borderRadius`, and `$cams-theme-background` are gone. Note: `$secondary-darker`
+was also removed by this commit despite the note below saying not to — see issue #9, which turned
+out to be unactionable because its target file doesn't exist in this repo. A separate leftover
+boilerplate block, `.App-logo`/`.App-link` (`#61dafb`, unreferenced by any `className` anywhere in
+the app), was found and removed in CAMS-839.
 
 **Dead Code Locations**:
 
@@ -64,10 +72,17 @@ rules exist in the codebase that are never applied to the live UI.
 
 ### 3. Inconsistent ComboBox Placeholder Text Color in Trustee Search Modal
 
-**Status**: Cleanup Needed **Priority**: Low **Description**: The Trustee Search Modal applies a
-one-off gray (`#757575`) to the ComboBox selection label when nothing is selected, making it look
-like placeholder text. No other ComboBox in the application does this — they all inherit the default
-body text color (`#1b1b1b`).
+**Status**: Design Question Still Open (value centralized in CAMS-839) **Priority**: Low
+**Description**: The Trustee Search Modal applies a one-off gray (`#757575`) to the ComboBox
+selection label when nothing is selected, making it look like placeholder text. No other ComboBox in
+the application does this — they all inherit the default body text color (`#1b1b1b`).
+
+**Note**: A wider hardcoded-color survey during CAMS-839 independently flagged this same `#757575`
+and centralized it as `colors.$gray-50` (exact match to USWDS `gray-50`) in `_colors.scss` — see
+`_colors.scss` and issue #12. That only formalizes the existing value into a shared variable; it
+does **not** answer this issue's actual question of whether the gray-placeholder treatment should
+exist here at all, or be applied consistently everywhere, or removed. That design decision is still
+open.
 
 **Technical Details**:
 
@@ -134,9 +149,11 @@ enough that the case title scrolls out of view. This is not currently working.
 
 ### 7. RichTextEditor Link Color Nearly Identical to $primary But Hardcoded Differently
 
-**Status**: Cleanup Needed **Priority**: Low **Description**: The RichTextEditor hardcodes `#005ea6`
-for link color, which is almost identical to `$primary` (`#005ea2`) but slightly different. This is
-almost certainly unintentional and should use the `$primary` variable instead.
+**Status**: Resolved (CAMS-839) **Priority**: Low **Description**: The RichTextEditor hardcodes
+`#005ea6` for link color, which is almost identical to `$primary` (`#005ea2`) but slightly
+different. This is almost certainly unintentional and should use the `$primary` variable instead.
+
+**Resolution**: `#005ea6` replaced with `colors.$primary` in RichTextEditor.scss.
 
 **Technical Details**:
 
@@ -152,9 +169,12 @@ almost certainly unintentional and should use the `$primary` variable instead.
 
 ### 8. ToggleButton Colors Not in Color Variables
 
-**Status**: Cleanup Needed **Priority**: Low **Description**: The ToggleButton component hardcodes
-its active and inactive state colors without referencing `_colors.scss`. These should be added as
-named variables so they can be referenced consistently.
+**Status**: Resolved (CAMS-839) **Priority**: Low **Description**: The ToggleButton component
+hardcodes its active and inactive state colors without referencing `_colors.scss`. These should be
+added as named variables so they can be referenced consistently.
+
+**Resolution**: Added `$toggle-active` (`#0050d8`) and `$toggle-inactive` (aliases `$gray-60`) to
+`_colors.scss`; ToggleButton.scss now references both.
 
 **Technical Details**:
 
@@ -171,33 +191,51 @@ named variables so they can be referenced consistently.
 
 ### 9. Error Hover Color Inconsistency — Hardcoded Value Differs from Defined Variable
 
-**Status**: Decision Made — Cleanup Needed **Priority**: Low **Description**: The error/delete
-button hover state uses `#8b0a0a` hardcoded in `Permissions.scss`, while `$secondary-darker`
-(`#8b0a03`) exists in `_colors.scss` seemingly for this exact purpose. The two values are slightly
-different. Confirmed: `$secondary-darker` (`#8b0a03`) matches USWDS's `red-70v` token exactly — it
-is the spec-correct value and should be used in place of the hardcoded `#8b0a0a`.
+**Status**: Invalid — Target File Does Not Exist **Priority**: Low **Description**: The error/delete
+button hover state was believed to use `#8b0a0a` hardcoded in `Permissions.scss`, while
+`$secondary-darker` (`#8b0a03`) existed in `_colors.scss` seemingly for this exact purpose.
+
+**Investigation (CAMS-839)**: `user-interface/src/admin/permissions/Permissions.tsx` and
+`Permissions.scss` do not exist anywhere in this repository — not in the working tree, and not
+anywhere in git history (`git log --all --diff-filter=A/D`, `--follow`, and a full-history content
+search for `8b0a0a` all came up empty outside this documentation). The closest real admin feature,
+`PrivilegedIdentity.tsx`, is a different component with no table markup and no matching hover color.
+There is no evidence this file was ever real code in this repo — this entry appears to describe a
+component that was never built, or was hallucinated during the original audit.
+
+Compounding this: `$secondary-darker` no longer exists in `_colors.scss` — it was removed as unused
+by CAMS-838 (see issue #2), despite that commit's own note saying to keep it for this issue.
 
 **Technical Details**:
 
-- Hardcoded in: `user-interface/src/admin/permissions/Permissions.scss`
-- Hardcoded value: `#8b0a0a`
-- Correct value: `$secondary-darker` (`#8b0a03`) in `_colors.scss` — verified to equal USWDS
-  `red-70v`
+- Believed location: `user-interface/src/admin/permissions/Permissions.scss` (does not exist)
+- Hardcoded value cited: `#8b0a0a`
+- Variable cited: `$secondary-darker` (`#8b0a03`) — no longer defined anywhere in `_colors.scss`
 
 **Next Steps**:
 
-- Replace the hardcoded `#8b0a0a` in `Permissions.scss` with `colors.$secondary-darker`
-- Update `BRAND_GUIDELINES.md` once the code change lands to remove references to `#8b0a0a` as the
-  actual hover color
+- No code action possible until/unless a real Permissions admin panel is built
+- If a Permissions feature is planned, re-add `$secondary-darker` (`#8b0a03`, matches USWDS
+  `red-70v`) to `_colors.scss` at that time
+- Treat this document's content about `Permissions.scss` as unverified until a real component is
+  found or built
 
 ---
 
 ### 10. ComboBox Has Its Own Private Hardcoded Color Palette
 
-**Status**: Cleanup Needed **Priority**: Medium **Description**: The ComboBox component defines all
-of its colors as local hardcoded variables at the top of its SCSS file with no connection to the
+**Status**: Resolved (CAMS-839) **Priority**: Medium **Description**: The ComboBox component defines
+all of its colors as local hardcoded variables at the top of its SCSS file with no connection to the
 global `_colors.scss` or USWDS tokens. This makes the component visually inconsistent with the rest
 of the app and impossible to retheme centrally.
+
+**Resolution**: `$separatorColor`, `$sectionSeparatorColor`, `$listItemSelectedBorderColor`,
+`$listItemSelectedBackground`, `$listItemHoverBackground`, and `$listItemHoverBorderColor` now
+reference `_colors.scss` gray variables (`$gray-cool-20`, `$gray-cool-60`, `$gray-selected-border`,
+`$gray-selected-background`, `$gray-hover-background`, `$gray-hover-border`) instead of raw hex.
+`$gray-hover-border` (`#333`) has no matching USWDS token — confirmed by checking every color family
+in `node_modules/@uswds/uswds/packages/uswds-tokens/colors/` — so it's a plain named constant like
+the other component-specific grays.
 
 **Technical Details**:
 
@@ -214,8 +252,12 @@ of the app and impossible to retheme centrally.
 
 ### 11. RichTextEditor Has Its Own Private Hardcoded Color Palette
 
-**Status**: Cleanup Needed **Priority**: Medium **Description**: Similar to the ComboBox, the
+**Status**: Resolved (CAMS-839) **Priority**: Medium **Description**: Similar to the ComboBox, the
 RichTextEditor hardcodes all of its colors with no connection to the global color system.
+
+**Resolution**: `#e9ecef`, `#71767a`, `#f0f0f0`, `#565c65`, `#e0e0e0`, and `#ccc` (border) now
+reference `_colors.scss` variables (`$gray-hover-light`, `$gray-cool-50`, `$gray-5`,
+`$gray-cool-60`, `$gray-border-light`, `$gray-border`). Link color addressed per issue #7.
 
 **Technical Details**:
 
@@ -232,22 +274,30 @@ RichTextEditor hardcodes all of its colors with no connection to the global colo
 
 ### 12. Gray Proliferation — No Standardized Gray Scale
 
-**Status**: Cleanup Needed **Priority**: Medium **Description**: There are 9+ gray shades hardcoded
-across components with no system or naming convention. This makes it difficult to maintain visual
-consistency and means small variations creep in over time.
+**Status**: Resolved (CAMS-839) **Priority**: Medium **Description**: There are 9+ gray shades
+hardcoded across components with no system or naming convention. This makes it difficult to maintain
+visual consistency and means small variations creep in over time.
 
 **Hardcoded grays found across the codebase**: `#5c5c5c`, `#565c65`, `#71767a`, `#949494`,
 `#b0b0b0`, `#c6c6c6`, `#c6cace`, `#d0d0d0`, `#e0e0e0`, `#e9ecef`, `#f0f0f0`
 
-**Next Steps**:
+**Resolution (CAMS-839)**: A gray scale was added to `_colors.scss` — `$gray-5`, `$gray-50`,
+`$gray-60`, `$gray-100`, `$gray-cool-20`, `$gray-cool-50`, `$gray-cool-60` (verified exact matches
+to real USWDS gray/gray-cool tokens), plus component grays `$gray-border`, `$gray-border-light`,
+`$gray-hover-light`, `$gray-selected-border`, `$gray-selected-background`, `$gray-hover-background`,
+`$gray-shadow`, `$gray-near-white`, `$gray-input-border`, and `$table-border`. ComboBox.scss and
+RichTextEditor.scss reference these (see issues #10, #11).
 
-- Define a standardized gray scale in `_colors.scss` (e.g., `$gray-dark`, `$gray-medium`,
-  `$gray-light`, etc.) or map to USWDS gray tokens
-- Audit components and replace hardcoded values with variables
-- Consider using USWDS gray tokens directly where applicable
-- Specific consolidation candidate: `#c6c6c6` (mobile responsive table row borders) and `#c6cace`
-  (ComboBox separator) are visually near-identical — consider merging to a single gray rather than
-  keeping both
+A wider codebase survey during CAMS-839 also turned up additional un-standardized grays this issue's
+original list didn't cover — all addressed in a follow-up commit the same day: `#757575`
+(TrusteeSearchModal.scss, `$gray-50` — exact match to USWDS `gray-50`; the underlying design
+question of whether this override should exist at all is separate and still open, see issue #3),
+`#aaa` (ConsolidationOrderModal.scss and AssignAttorneyModal.scss, `$gray-input-border`, identical
+value in both), `#fefefe`/`#dddddd` (CaseDetailHeader.scss, `$gray-near-white`/`$gray-shadow`;
+`#f0f0f0` there now shares `$gray-5`), and `#c6c6c6` (`_tables.scss`'s `$tableBorder`, now
+`$table-border`) — kept as its own variable rather than merged with `$gray-cool-20` (`#c6cace`)
+since they're visually close but not identical, and merging would change every table border's shade
+app-wide.
 
 ---
 
@@ -845,10 +895,16 @@ elements and is just attribute noise.
 
 ### 43. (Low) TransferredCaseIcon Hardcodes Colors Instead of Using currentColor
 
-**Status**: Cleanup Needed **Priority**: Low **Description**: `TransferredCaseIcon` in
+**Status**: Resolved (CAMS-839) **Priority**: Low **Description**: `TransferredCaseIcon` in
 `RawSvgIcon.tsx` hardcodes `fill="#005EA2"` and `fill="white"` on its paths. Unlike `LeadCaseIcon`
 and `MemberCaseIcon` which use `currentColor`, `TransferredCaseIcon` cannot be recolored via CSS.
 This makes it inflexible and inconsistent with the other custom icons.
+
+**Resolution**: Inline `fill` attributes removed from `RawSvgIcon.tsx`; `TransferredCaseIcon` now
+uses the same `.transfer-icon path` / `path:first-of-type` CSS-class pattern in `RawSvgIcon.scss`
+already used by `LeadCaseIcon`/`MemberCaseIcon` (first path = `colors.$primary`, remaining paths =
+white). Visually identical to before (verified via compiled CSS diff); contrast between `$primary`
+and white is ~6.7:1, comfortably above both the 3:1 non-text and 4.5:1 text WCAG AA thresholds.
 
 **Technical Details**:
 
@@ -924,34 +980,31 @@ three different ways across components, with no shared convention.
 
 ### 46. Replace 3-Digit Hex Shorthand `#ddd` with Full `#dddddd`
 
-**Status**: Cleanup Needed **Priority**: Low **Description**: `#ddd` (3-digit hex shorthand for
+**Status**: Resolved (CAMS-838) **Priority**: Low **Description**: `#ddd` (3-digit hex shorthand for
 `#dddddd`) is used in the codebase. For clarity and to avoid ambiguity with visually similar grays
 (`#d0d0d0`, `#d6d6d6`), it should be written out in full as `#dddddd`.
 
-**Technical Details**:
-
-- `user-interface/src/case-detail/panels/CaseDetailHeader.scss` (line 46) —
-  `box-shadow: 0px 1px 5px #ddd;` (non-functioning sticky header — see issue #6)
-
-Note: Two other `#ddd` usages previously cited here — `BankruptcySoftware.scss` (dead code, see
-issue #4) and `Table.scss`'s unused `small-table` mixin (see issue #17) — no longer exist; both were
-removed in CAMS-837.
-
-**Next Steps**:
-
-- Replace `#ddd` with `#dddddd` in the file above
-- Update `BRAND_GUIDELINES.md` to reflect `#dddddd` once the code change lands
+**Resolution**: CAMS-838 expanded `#ddd` to `#dddddd` in all three files that had it —
+`CaseDetailHeader.scss`, `BankruptcySoftware.scss`, and `Table.scss`.
 
 ---
 
 ### 47. Verify USWDS SCSS Color Variables Are Properly Imported Before Redefining Them
 
-**Status**: Needs Investigation **Priority**: Medium **Description**: CAMS defines its own custom
-variables in `_colors.scss`/`theme.scss` for several colors that already exist as USWDS theme tokens
-(e.g., `$theme-color-warning-lighter`, `$theme-color-secondary-dark`). This duplication may have
-originated from early trouble getting USWDS SCSS color variables to import/resolve correctly. If
-USWDS variables are in fact properly imported and usable throughout the app, the redundant custom
-variables could be removed in favor of referencing USWDS directly.
+**Status**: Investigated (CAMS-839) — No Action Needed **Priority**: Medium **Description**: CAMS
+defines its own custom variables in `_colors.scss`/`theme.scss` for several colors that already
+exist as USWDS theme tokens (e.g., `$theme-color-warning-lighter`, `$theme-color-secondary-dark`).
+This duplication may have originated from early trouble getting USWDS SCSS color variables to
+import/resolve correctly. If USWDS variables are in fact properly imported and usable throughout the
+app, the redundant custom variables could be removed in favor of referencing USWDS directly.
+
+**Investigation (CAMS-839)**: USWDS theme tokens import and resolve correctly elsewhere in the app —
+`Notes.scss` does `@use 'uswds-core' as *;` then `color($theme-color-secondary-dark)` and
+`color($theme-color-warning-lighter)` successfully. No redundant custom variable in `_colors.scss`
+duplicates either of these two specific tokens by name or value — they're referenced directly, not
+shadowed. `_colors.scss` itself still has an unresolved
+`// TODO figure out how to load USWDS styles in` blocker (its own attempt to `@use uswds-core`
+doesn't currently work), which is a separate, larger problem left out of scope for CAMS-839.
 
 **Technical Details**:
 
