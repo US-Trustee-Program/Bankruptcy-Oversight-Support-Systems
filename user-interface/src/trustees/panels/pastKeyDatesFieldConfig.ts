@@ -16,6 +16,8 @@ export interface PastKeyDatesFieldConfig {
   testId: string;
   inputId: string;
   kind: 'date' | 'year';
+  /** Renders the value on its own line below the label on the display card. */
+  stacked?: boolean;
 }
 
 export const PAST_KEY_DATES_FIELD_CONFIG: Record<PastKeyDatesVariant, PastKeyDatesFieldConfig[]> = {
@@ -69,6 +71,7 @@ export const PAST_KEY_DATES_FIELD_CONFIG: Record<PastKeyDatesVariant, PastKeyDat
       testId: 'past-last-monthly-report-received-row',
       inputId: 'past-last-monthly-report-received',
       kind: 'date',
+      stacked: true,
     },
   ],
 };
