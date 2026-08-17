@@ -574,6 +574,79 @@ describe('SyncTrusteeCaseAppointments', () => {
       });
     });
 
+    describe('empty demographics', () => {
+      test('skips matching and verification entirely when fullName and all legacy/contact fields are blank', async () => {
+        const events: TrusteeAppointmentSyncEvent[] = [
+          {
+            ...makeEvent('case-001', ''),
+            dxtrTrustee: { fullName: '' },
+          },
+        ];
+
+        const { successCount, dlqMessages, notYetSyncedEvents, scenarioDistribution } =
+          await SyncTrusteeCaseAppointments.processAppointments(
+            SyncTrusteeCaseAppointments.createDeps(context),
+            events,
+          );
+
+        expect(trusteeMatchHelpers.matchTrusteeByName).not.toHaveBeenCalled();
+        expect(mockVerificationRepo.getVerification).not.toHaveBeenCalled();
+        expect(mockVerificationRepo.upsertVerification).not.toHaveBeenCalled();
+        expect(mockCasesRepo.getCaseOrMovedCase).not.toHaveBeenCalled();
+        expect(mockTrusteeCaseAppointmentsRepo.upsert).not.toHaveBeenCalled();
+
+        expect(successCount).toBe(0);
+        expect(dlqMessages).toHaveLength(0);
+        expect(notYetSyncedEvents).toHaveLength(0);
+        expect(scenarioDistribution.emptyDemographicsSkippedCount).toBe(1);
+      });
+
+      test('treats a whitespace-only fullName the same as blank', async () => {
+        const events: TrusteeAppointmentSyncEvent[] = [
+          {
+            ...makeEvent('case-001', ''),
+            dxtrTrustee: { fullName: '   ' },
+          },
+        ];
+
+        const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          events,
+        );
+
+        expect(trusteeMatchHelpers.matchTrusteeByName).not.toHaveBeenCalled();
+        expect(scenarioDistribution.emptyDemographicsSkippedCount).toBe(1);
+      });
+
+      test('still proceeds to matching when fullName is blank but legacy contact fields are present', async () => {
+        const events: TrusteeAppointmentSyncEvent[] = [
+          {
+            ...makeEvent('case-001', ''),
+            dxtrTrustee: { fullName: '', legacy: { address1: '123 Main St' } },
+          },
+        ];
+
+        const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          events,
+        );
+
+        expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalledWith(context, '');
+        expect(scenarioDistribution.emptyDemographicsSkippedCount).toBe(0);
+      });
+
+      test('does not skip a normal event with a usable name', async () => {
+        const events = [makeEvent('case-001', 'John Doe')];
+
+        const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          events,
+        );
+
+        expect(scenarioDistribution.emptyDemographicsSkippedCount).toBe(0);
+      });
+    });
+
     describe('fingerprint hit/miss counters', () => {
       test('counts a TRUSTEE_VARIATION bucket hit as fingerprintHitCount', async () => {
         const event = makeEvent('case-001', 'John Doe');
@@ -3577,6 +3650,7 @@ describe('handleClassifiedMismatch', () => {
       fingerprintMissCount: 0,
       retryableCount: 0,
       candidateLoadFailedCount: 0,
+      emptyDemographicsSkippedCount: 0,
     };
   }
 
