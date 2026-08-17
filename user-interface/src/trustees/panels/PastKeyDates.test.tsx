@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
 import PastKeyDates, { PastKeyDatesProps } from './PastKeyDates';
@@ -292,6 +292,17 @@ describe('PastKeyDates', () => {
       expect(screen.queryByTestId('past-last-audit-fiscal-year-row')).not.toBeInTheDocument();
       expect(screen.queryByTestId('past-tpr-submission-row')).not.toBeInTheDocument();
       expect(screen.getByText('Last Monthly Report Received:')).toBeInTheDocument();
+    });
+
+    test('renders Last Monthly Report Received value stacked below its label', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent(subVProps);
+
+      const row = await screen.findByTestId('past-last-monthly-report-received-row');
+      const { getByText } = within(row);
+      const valueNode = getByText('No date added');
+      expect(valueNode.closest('.info-card-value-stacked')).not.toBeNull();
     });
 
     test('renders "No date added" when lastMonthlyReportReceived is absent', async () => {
