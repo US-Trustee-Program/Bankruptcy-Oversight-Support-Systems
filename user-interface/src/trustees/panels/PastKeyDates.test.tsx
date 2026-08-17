@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
 import PastKeyDates, { PastKeyDatesProps } from './PastKeyDates';
@@ -19,6 +19,7 @@ vi.mock('react-router-dom', async () => {
 });
 
 const defaultProps: PastKeyDatesProps = {
+  variant: 'chapter7-panel',
   trusteeId: 'trustee-001',
   appointmentId: 'appointment-001',
   appointmentHeading: 'Southern District of New York (Manhattan) - Chapter 7 Panel',
@@ -56,10 +57,11 @@ function renderComponent(props?: Partial<PastKeyDatesProps>) {
 }
 
 describe('PastKeyDates', () => {
-  const mockNavigate = vi.fn();
+  let mockNavigate: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    mockNavigate = vi.fn();
     mockUseNavigate.mockReturnValue(mockNavigate);
     TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
   });
@@ -135,12 +137,21 @@ describe('PastKeyDates', () => {
       expect(screen.getByTestId('past-key-dates-list')).toBeInTheDocument();
     });
 
-    const listItems = screen.getByTestId('past-key-dates-list').querySelectorAll('li');
-    expect(listItems[0]).toHaveAttribute('data-testid', 'past-background-question-row');
-    expect(listItems[1]).toHaveAttribute('data-testid', 'past-field-exam-row');
-    expect(listItems[2]).toHaveAttribute('data-testid', 'past-audit-row');
-    expect(listItems[3]).toHaveAttribute('data-testid', 'past-last-audit-fiscal-year-row');
-    expect(listItems[4]).toHaveAttribute('data-testid', 'past-tpr-submission-row');
+    // Assert relative DOM order via the rows' own testIds (PastKeyDates' actual
+    // contract), rather than assuming InfoCard renders each row as an <li>.
+    const expectedOrder = [
+      'past-background-question-row',
+      'past-field-exam-row',
+      'past-audit-row',
+      'past-last-audit-fiscal-year-row',
+      'past-tpr-submission-row',
+    ];
+    const rows = expectedOrder.map((testId) => screen.getByTestId(testId));
+    for (let i = 0; i < rows.length - 1; i++) {
+      expect(
+        rows[i].compareDocumentPosition(rows[i + 1]) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    }
   });
 
   test('Edit button is visible for TrusteeAdmin users', async () => {
@@ -232,7 +243,7 @@ describe('PastKeyDates', () => {
 
     expect(mockNavigate).toHaveBeenCalledWith(
       `/trustees/${defaultProps.trusteeId}/appointments/${defaultProps.appointmentId}/past-key-dates/edit`,
-      { state: { subHeading: defaultProps.appointmentHeading } },
+      { state: { subHeading: defaultProps.appointmentHeading, variant: 'chapter7-panel' } },
     );
   });
 
@@ -249,7 +260,107 @@ describe('PastKeyDates', () => {
 
     expect(mockNavigate).toHaveBeenCalledWith(
       `/trustees/${defaultProps.trusteeId}/appointments/${defaultProps.appointmentId}/past-key-dates/edit`,
-      { state: { subHeading: '' } },
+      { state: { subHeading: '', variant: 'chapter7-panel' } },
     );
+  });
+
+  describe('subv-pool variant', () => {
+    const subVProps: PastKeyDatesProps = {
+      variant: 'subv-pool',
+      trusteeId: 'trustee-001',
+      appointmentId: 'appointment-001',
+      appointmentHeading:
+        'Southern District of New York (Manhattan) - Chapter 11 Subchapter V Pool',
+    };
+
+    test('renders exactly one row: Last Monthly Report Received', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent(subVProps);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
+      });
+
+      // Assert via PastKeyDates' own testId contract (which fields it renders),
+      // not InfoCard's internal markup — none of the chapter7-panel-only rows
+      // should be present alongside the single subv-pool row.
+      expect(screen.getByTestId('past-last-monthly-report-received-row')).toBeInTheDocument();
+      expect(screen.queryByTestId('past-background-question-row')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('past-field-exam-row')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('past-audit-row')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('past-last-audit-fiscal-year-row')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('past-tpr-submission-row')).not.toBeInTheDocument();
+      expect(screen.getByText('Last Monthly Report Received:')).toBeInTheDocument();
+    });
+
+    test('renders Last Monthly Report Received value stacked below its label', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent(subVProps);
+
+      const row = await screen.findByTestId('past-last-monthly-report-received-row');
+      const { getByText } = within(row);
+      const valueNode = getByText('No date added');
+      expect(valueNode.closest('.info-card-value-stacked')).not.toBeNull();
+    });
+
+    test('renders "No date added" when lastMonthlyReportReceived is absent', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent(subVProps);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('past-last-monthly-report-received-row')).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('past-last-monthly-report-received-row')).toHaveTextContent(
+        'No date added',
+      );
+    });
+
+    test('renders the saved date when lastMonthlyReportReceived is present', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({
+        data: { ...populatedDocument, lastMonthlyReportReceived: '2024-11-15' },
+      });
+
+      renderComponent(subVProps);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('past-last-monthly-report-received-row')).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('past-last-monthly-report-received-row')).toHaveTextContent(
+        '11/15/2024',
+      );
+    });
+
+    test('Edit button is visible for TrusteeAdmin users', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent(subVProps);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
+      });
+
+      expect(screen.getByRole('button', { name: /edit past key dates/i })).toBeInTheDocument();
+    });
+
+    test('Edit button is not visible for non-TrusteeAdmin users (read-only card)', async () => {
+      TestingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent(subVProps);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
+      });
+
+      expect(
+        screen.queryByRole('button', { name: /edit past key dates/i }),
+      ).not.toBeInTheDocument();
+      expect(screen.getByTestId('past-last-monthly-report-received-row')).toBeInTheDocument();
+    });
   });
 });

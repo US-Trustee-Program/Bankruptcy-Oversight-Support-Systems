@@ -58,7 +58,7 @@ describe('trustees-comprehensive scenario', () => {
       expect(appt.documentType).toBe('TRUSTEE_APPOINTMENT');
       expect(appt.trusteeId).toBeTruthy();
       expect(appt.chapter).toBeTruthy();
-      expect(appt.appointmentType).toMatch(/^(panel|standing|off-panel|case-by-case)$/);
+      expect(appt.appointmentType).toMatch(/^(panel|standing|off-panel|case-by-case|pool)$/);
       expect(Array.isArray(appt.divisionCodes)).toBe(true);
       expect((appt.divisionCodes as unknown[]).length).toBeGreaterThan(0);
     });
@@ -95,7 +95,7 @@ describe('trustees-comprehensive scenario', () => {
     expect(chapters).toContain('11-subchapter-v');
   });
 
-  test('includes both panel and standing appointment types', async () => {
+  test('includes panel, standing, and pool appointment types', async () => {
     const ops = await generate(mockContext);
     const appointments =
       ops.find((op) => op.collectionOrTable === 'trustee-appointments')?.data || [];
@@ -103,6 +103,7 @@ describe('trustees-comprehensive scenario', () => {
 
     expect(types).toContain('panel');
     expect(types).toContain('standing');
+    expect(types).toContain('pool');
   });
 
   test('includes a trustee with appointments in multiple courts', async () => {

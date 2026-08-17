@@ -14,7 +14,7 @@
  *   - Chapter 11 (panel): 6 trustees
  *   - Chapter 12 (standing): 3 trustees
  *   - Chapter 13 (standing): 9 trustees
- *   - Chapter 11 Subchapter V (panel): 3 trustees
+ *   - Chapter 11 Subchapter V (pool): 3 trustees
  *
  * Multi-Division Support (CAMS-740):
  *   - Single-division appointments (29 trustees)
@@ -110,7 +110,7 @@ function createAppointment(opts: {
   id: string;
   trusteeId: string;
   chapter: string;
-  appointmentType: 'panel' | 'standing' | 'off-panel' | 'case-by-case';
+  appointmentType: 'panel' | 'standing' | 'off-panel' | 'case-by-case' | 'pool';
   courtId: string;
   divisionCodes: string[];
   courtName: string;
@@ -494,7 +494,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
     }),
   );
 
-  // NY-6: Ch11 Subchapter V Panel
+  // NY-6: Ch11 Subchapter V Pool
   trustees.push(
     createTrustee({
       id: 'seed-trustee-ny-006',
@@ -511,7 +511,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       id: 'seed-appt-ny-006-ch11v',
       trusteeId: 'seed-trustee-ny-006',
       chapter: '11-subchapter-v',
-      appointmentType: 'panel',
+      appointmentType: 'pool',
       courtId: '0208',
       divisionCodes: ['081'],
       courtName: 'U.S. Bankruptcy Court Southern District of New York',
@@ -830,7 +830,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
     }),
   );
 
-  // Additional-16: Ch11 Subchapter V Panel (081)
+  // Additional-16: Ch11 Subchapter V Pool (081)
   trustees.push(
     createTrustee({
       id: 'seed-trustee-add-016',
@@ -846,7 +846,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       id: 'seed-appt-add-016-ch11v',
       trusteeId: 'seed-trustee-add-016',
       chapter: '11-subchapter-v',
-      appointmentType: 'panel',
+      appointmentType: 'pool',
       courtId: '0208',
       divisionCodes: ['081'],
       courtName: 'U.S. Bankruptcy Court Southern District of New York',
@@ -985,7 +985,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
     }),
   );
 
-  // Additional-22: Ch11 Subchapter V Panel (081)
+  // Additional-22: Ch11 Subchapter V Pool (081)
   trustees.push(
     createTrustee({
       id: 'seed-trustee-add-022',
@@ -1001,7 +1001,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       id: 'seed-appt-add-022-ch11v',
       trusteeId: 'seed-trustee-add-022',
       chapter: '11-subchapter-v',
-      appointmentType: 'panel',
+      appointmentType: 'pool',
       courtId: '0208',
       divisionCodes: ['081'],
       courtName: 'U.S. Bankruptcy Court Southern District of New York',

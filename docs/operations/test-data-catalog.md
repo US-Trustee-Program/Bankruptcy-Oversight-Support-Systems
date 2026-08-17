@@ -63,7 +63,9 @@ Ethan Nostaff, Ava Nostaff
 
 ### Key Dates
 
-**Trustees:** Marcus Keydates, Diana Keydates, Samuel Keydates, Emily Nokeydates
+**Trustees:** Marcus Keydates, Diana Keydates, Samuel Keydates, Emily Nokeydates, Priya Keydates
+(Chapter 11 Subchapter V Pool, Last Monthly Report Received populated), Priya Nokeydates (Chapter 11
+Subchapter V Pool, no key dates)
 
 ### 341 Meeting Info
 

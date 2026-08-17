@@ -14,6 +14,8 @@ import {
 } from '@common/cams/trustee-upcoming-key-dates';
 import Validators from '@common/cams/validators';
 import { NotFoundError } from '../../common-errors/not-found-error';
+import { CamsRole } from '@common/cams/roles';
+import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 
 const MODULE_NAME = 'TRUSTEE-UPCOMING-KEY-DATES-CONTROLLER';
 
@@ -28,7 +30,10 @@ export class TrusteeUpcomingKeyDatesController implements CamsController {
     context: ApplicationContext,
   ): Promise<CamsHttpResponseInit | CamsHttpResponseInit<TrusteeUpcomingKeyDates>> {
     try {
-      if (!context.featureFlags['display-chpt7-panel-upcoming-key-dates']) {
+      const keyDatesFlagEnabled =
+        context.featureFlags['display-chpt7-panel-upcoming-key-dates'] ||
+        context.featureFlags['display-chpt11-subv-past-key-dates'];
+      if (!keyDatesFlagEnabled) {
         throw new NotFoundError(MODULE_NAME);
       }
       const { trusteeId, appointmentId } = context.request.params;
@@ -45,6 +50,11 @@ export class TrusteeUpcomingKeyDatesController implements CamsController {
       const useCase = new TrusteeUpcomingKeyDatesUseCase(context);
 
       if (context.request.method === 'PUT') {
+        if (!this.hasRequiredRole(context)) {
+          throw new UnauthorizedError(MODULE_NAME, {
+            message: 'User does not have permission to manage trustee key dates',
+          });
+        }
         const input = context.request.body as TrusteeUpcomingKeyDatesInput;
         const invalidFields = DATE_FIELDS.filter(
           (field) => input[field] !== null && !Validators.isValidDate(input[field]).valid,
@@ -77,5 +87,13 @@ export class TrusteeUpcomingKeyDatesController implements CamsController {
     } finally {
       await finalizeDeferrable(context);
     }
+  }
+
+  private hasRequiredRole(context: ApplicationContext): boolean {
+    const user = context.session?.user;
+    if (!user?.roles) {
+      return false;
+    }
+    return user.roles.includes(CamsRole.TrusteeAdmin);
   }
 }
