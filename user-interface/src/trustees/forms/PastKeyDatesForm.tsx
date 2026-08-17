@@ -19,6 +19,9 @@ import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import DatePicker from '@/lib/components/uswds/DatePicker';
+import LocalStorage from '@/lib/utils/local-storage';
+import { CamsRole } from '@common/cams/roles';
+import { Stop } from '@/lib/components/Stop';
 
 type PastKeyDatesFormState = Record<PastDateFieldKey, string> & {
   lastAuditFiscalYear: number | '';
@@ -106,6 +109,7 @@ export default function PastKeyDatesForm() {
   }>();
   const navigate = useNavigate();
   const globalAlert = useGlobalAlert();
+  const canManage = !!LocalStorage.getSession()?.user?.roles?.includes(CamsRole.TrusteeAdmin);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -175,6 +179,17 @@ export default function PastKeyDatesForm() {
 
   if (isLoading) {
     return <LoadingSpinner id="edit-past-key-dates-loading" />;
+  }
+
+  if (!canManage) {
+    return (
+      <Stop
+        id="forbidden-alert"
+        title="Forbidden"
+        message="You do not have permission to manage Trustee Past Key Dates"
+        asError
+      />
+    );
   }
 
   return (
