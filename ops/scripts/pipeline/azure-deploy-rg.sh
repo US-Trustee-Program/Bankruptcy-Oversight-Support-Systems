@@ -78,7 +78,28 @@ function validation_func() {
 }
 
 function az_rg_exists_func() {
+    # Explicitly checks its own command's exit status and exits loudly on
+    # failure, rather than letting a genuine `az group exists` failure
+    # (auth/network/throttling -- it does not fail for a legitimately-missing
+    # RG) silently resolve to an empty string that gets misread as "RG
+    # doesn't exist". This alone isn't sufficient, though: `exit` inside a
+    # function invoked via command substitution only terminates that
+    # subshell, not the calling script -- callers MUST capture the result as
+    # its own statement (e.g. `x=$(az_rg_exists_func ...)`) rather than
+    # inline inside an `if [ ... ]` test's condition, or set -e won't
+    # propagate the failure either way (bash suspends errexit for
+    # substitutions embedded directly in a test's condition). See the call
+    # sites below.
+    local rgExists
+    local rc
+    set +e
     rgExists=$(az group exists -n "$1")
+    rc=$?
+    set -e
+    if [[ ${rc} -ne 0 ]]; then
+        echo "ERROR: 'az group exists -n $1' failed (exit ${rc}) -- cannot determine whether the resource group exists." >&2
+        exit "${rc}"
+    fi
     echo "${rgExists}"
 }
 
@@ -139,33 +160,48 @@ validation_func "${location}" "${deployment_file}" "${deployment_parameters}"
 deployment_parameters="${deployment_parameters} location=${location}"
 
 needsCreate=false
-if [ "$(az_rg_exists_func "${databaseResourceGroupName}")" != true ]; then
+# Each result is captured as its own statement, not inline inside the `[ ]`
+# test below: a command substitution used directly as a test's condition has
+# its exit status ignored by set -e (see az_rg_exists_func), so a real `az
+# group exists` CLI failure would otherwise silently read as "RG missing"
+# instead of aborting the script.
+databaseRgExists=$(az_rg_exists_func "${databaseResourceGroupName}")
+if [ "${databaseRgExists}" != true ]; then
 deployment_parameters="${deployment_parameters} createDatabaseRG=true"
 needsCreate=true
 fi
-if [ "$(az_rg_exists_func "${networkResourceGroupName}")" != true ]; then
+networkRgExists=$(az_rg_exists_func "${networkResourceGroupName}")
+if [ "${networkRgExists}" != true ]; then
 deployment_parameters="${deployment_parameters} createNetworkRG=true"
 needsCreate=true
 fi
-if [ "$(az_rg_exists_func "${webappResourceGroupName}")" != true ]; then
+webappRgExists=$(az_rg_exists_func "${webappResourceGroupName}")
+if [ "${webappRgExists}" != true ]; then
 deployment_parameters="${deployment_parameters} createAppRG=true"
 needsCreate=true
 fi
 # Only create analytics resource group for non-branch deployments (main branch)
-if [ "${isBranchDeployment}" != "true" ] && [ "$(az_rg_exists_func "${analyticsResourceGroupName}")" != true ]; then
+if [ "${isBranchDeployment}" != "true" ]; then
+analyticsRgExists=$(az_rg_exists_func "${analyticsResourceGroupName}")
+if [ "${analyticsRgExists}" != true ]; then
 deployment_parameters="${deployment_parameters} createAnalyticsRG=true"
 needsCreate=true
+fi
 fi
 
 # Skip the deployment call entirely when every resource group already exists.
 # This isn't just an optimization: az deployment sub create is a subscription-scope
 # operation regardless of whether the underlying bicep template creates anything
 # (the create<X>RG params above only gate bicep-internal conditionals, not the API
-# call itself). For branch deployments, all four RGs are always pre-existing,
-# shared, stable resource groups that main owns (CAMS-760) -- this call would
-# otherwise be a guaranteed no-op requiring subscription-scope write on every
-# single branch deploy, forever, which is exactly the permission branch's
-# RG-scoped Contributor grant (Slice 3) does not have.
+# call itself). For branch deployments, the database/network/webapp RGs it
+# actually checks are always pre-existing, shared, stable resource groups
+# every branch uses (rg-cams-app-dev/rg-cams-network-dev, CAMS-760) --
+# analytics is a main-only resource and its existence is never checked for
+# branch (see the isBranchDeployment guard below), not verified-and-found-
+# present. This call would otherwise be a guaranteed no-op requiring
+# subscription-scope write on every single branch deploy, forever, which is
+# exactly the permission branch's RG-scoped Contributor grant (Slice 3) does
+# not have.
 if [ "${needsCreate}" = true ]; then
 az_deploy_func "${location}" "${deployment_file}" "${deployment_parameters}"
 else
