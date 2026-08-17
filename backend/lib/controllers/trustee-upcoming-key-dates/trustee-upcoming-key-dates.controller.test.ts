@@ -11,6 +11,7 @@ import {
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import HttpStatusCodes from '@common/api/http-status-codes';
 import { NotFoundError } from '../../common-errors/not-found-error';
+import { CamsRole } from '@common/cams/roles';
 
 function buildMockDocument(
   overrides: Partial<TrusteeUpcomingKeyDates> = {},
@@ -35,6 +36,7 @@ describe('TrusteeUpcomingKeyDatesController', () => {
     vi.restoreAllMocks();
     context = await createMockApplicationContext();
     context.featureFlags['display-chpt7-panel-upcoming-key-dates'] = true;
+    context.session.user.roles = [CamsRole.TrusteeAdmin];
   });
 
   test('throws NotFoundError when both key-dates flags are disabled', async () => {
@@ -152,6 +154,37 @@ describe('TrusteeUpcomingKeyDatesController', () => {
         ...overrides,
       };
     }
+
+    test('PUT returns 401 when user lacks TrusteeAdmin role', async () => {
+      context.session.user.roles = [CamsRole.TrialAttorney];
+      context.request = mockCamsHttpRequest({
+        method: 'PUT',
+        params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
+        body: buildValidInput(),
+      });
+
+      const controller = new TrusteeUpcomingKeyDatesController(context);
+
+      await expect(controller.handleRequest(context)).rejects.toMatchObject({
+        status: 401,
+        message: 'User does not have permission to manage trustee key dates',
+      });
+    });
+
+    test('PUT returns 401 when user roles are undefined', async () => {
+      delete context.session.user.roles;
+      context.request = mockCamsHttpRequest({
+        method: 'PUT',
+        params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
+        body: buildValidInput(),
+      });
+
+      const controller = new TrusteeUpcomingKeyDatesController(context);
+
+      await expect(controller.handleRequest(context)).rejects.toMatchObject({
+        status: 401,
+      });
+    });
 
     test('PUT with valid ISO body returns 200', async () => {
       vi.spyOn(
