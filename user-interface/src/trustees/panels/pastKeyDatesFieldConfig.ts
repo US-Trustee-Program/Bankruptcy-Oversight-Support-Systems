@@ -7,18 +7,28 @@ export type PastDateFieldKey =
   | 'pastTprSubmission'
   | 'lastMonthlyReportReceived';
 
-export interface PastKeyDatesFieldConfig {
-  key: PastDateFieldKey | 'lastAuditFiscalYear';
+interface PastKeyDatesFieldConfigBase {
   /** Label shown on the read-only Past Key Dates display card. */
   displayLabel: string;
   /** Label shown on the Edit Past Key Dates form. Differs from displayLabel for pastTprSubmission. */
   formLabel: string;
   testId: string;
   inputId: string;
-  kind: 'date' | 'year';
   /** Renders the value on its own line below the label on the display card. */
   stacked?: boolean;
 }
+
+interface DateField extends PastKeyDatesFieldConfigBase {
+  kind: 'date';
+  key: PastDateFieldKey;
+}
+
+interface YearField extends PastKeyDatesFieldConfigBase {
+  kind: 'year';
+  key: 'lastAuditFiscalYear';
+}
+
+export type PastKeyDatesFieldConfig = DateField | YearField;
 
 export const PAST_KEY_DATES_FIELD_CONFIG: Record<PastKeyDatesVariant, PastKeyDatesFieldConfig[]> = {
   'chapter7-panel': [
