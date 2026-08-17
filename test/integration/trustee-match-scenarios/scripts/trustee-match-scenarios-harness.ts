@@ -1899,8 +1899,11 @@ async function runDivergenceRepairStage(
  * TX.TX_DATE when REC's fixed-width embedded appointment date is blank/unparseable, against a
  * real SQL Server AO_TX row rather than a mocked query result (see CAMS-809). A mocked-gateway
  * unit test can assert the TypeScript fallback logic runs, but only a real database round trip
- * proves the FORMAT(TX.TX_DATE, 'yyyy-MM-dd') SQL actually compiles and returns the expected
- * value shape. Standalone: not part of the 13-scenario matching pipeline, no Cosmos writes.
+ * proves the SQL actually compiles and returns the expected value shape — this is exactly how
+ * an earlier version of this fallback (using FORMAT(TX.TX_DATE, 'yyyy-MM-dd')) was caught
+ * failing against a real SQL Edge container with "Common Language Runtime(CLR) is not enabled
+ * on this instance." and replaced with CONVERT(VARCHAR(10), TX.TX_DATE, 120), which has no CLR
+ * dependency. Standalone: not part of the 13-scenario matching pipeline, no Cosmos writes.
  */
 async function runBadRecDateFallbackStage(
   deps: ReturnType<typeof SyncTrusteeCaseAppointmentsUseCase.createDeps>,
