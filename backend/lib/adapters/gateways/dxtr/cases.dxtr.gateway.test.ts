@@ -1982,8 +1982,11 @@ describe('getTrusteePetitionEvents', () => {
   test.each([
     { label: 'aptDate', expectedFragment: 'SUBSTRING(TX.REC, 91, 6) AS aptDate' },
     { label: 'profCode', expectedFragment: 'SUBSTRING(TX.REC, 86, 5) AS profCode' },
-    // CAMS-809: txDate backs appointedDate's fallback when REC's date is unparseable.
-    { label: 'txDate', expectedFragment: "FORMAT(TX.TX_DATE, 'yyyy-MM-dd') AS txDate" },
+    // CAMS-809: txDate backs appointedDate's fallback when REC's date is unparseable. CONVERT
+    // (not FORMAT) is required — FORMAT() depends on the CLR, which is disabled by default on
+    // SQL Edge/many SQL Server instances and fails with "Common Language Runtime(CLR) is not
+    // enabled on this instance." (confirmed against a real SQL Edge container).
+    { label: 'txDate', expectedFragment: 'CONVERT(VARCHAR(10), TX.TX_DATE, 120) AS txDate' },
   ])('reads $label as part of the type-1 (petition) query', async (testCase) => {
     querySpy.mockResolvedValue({
       success: true,

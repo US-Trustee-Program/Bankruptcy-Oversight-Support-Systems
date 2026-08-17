@@ -68,9 +68,12 @@ directly into Cosmos (no DXTR row involved):
   (`cases.dxtr.gateway.ts`) falls back to `TX.TX_DATE` when REC's fixed-width embedded appointment
   date is blank/unparseable (CAMS-809). Seeds one `AO_TX` row (CS_CASEID `999999413`, case
   `083-26-88913`) with a blank REC date and asserts the real DXTR query still returns the correct
-  `appointedDate`, sourced from `TX_DATE` — proof the `FORMAT(TX.TX_DATE, 'yyyy-MM-dd')` SQL
-  actually compiles and returns the expected value against a real SQL Server table, which a
-  mocked-gateway unit test cannot provide. Unlike Stages 5-7, this DOES round-trip through DXTR
+  `appointedDate`, sourced from `TX_DATE` via `CONVERT(VARCHAR(10), TX.TX_DATE, 120)` — proof this
+  SQL actually compiles and returns the expected value against a real SQL Server table, which a
+  mocked-gateway unit test cannot provide. This exact stage caught an earlier version of the fix
+  that used `FORMAT(TX.TX_DATE, 'yyyy-MM-dd')` instead, which fails against SQL Edge (and many SQL
+  Server instances) with "Common Language Runtime(CLR) is not enabled on this instance." — `FORMAT`
+  depends on the CLR; `CONVERT` does not. Unlike Stages 5-7, this DOES round-trip through DXTR
   (via `casesGateway.getTrusteeAppointments` directly, not `processAppointments`) but is otherwise
   standalone: excluded from the 13-scenario matching pipeline, no Cosmos writes.
 
