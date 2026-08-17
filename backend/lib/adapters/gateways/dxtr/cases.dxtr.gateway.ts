@@ -1373,7 +1373,7 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
         P.PY_FAX_PHONE AS fax,
         CONVERT(VARCHAR(23), TX.TX_DATE, 126) + 'Z' AS latestSyncDate,
         SUBSTRING(TX.REC, ${aptDateOffset}, 6) AS aptDate,
-        FORMAT(TX.TX_DATE, 'yyyy-MM-dd') AS txDate,
+        CONVERT(VARCHAR(10), TX.TX_DATE, 120) AS txDate,
         SUBSTRING(TX.REC, ${profCodeOffset}, 5) AS profCode
       FROM AO_TX TX
       JOIN AO_CS C ON TX.CS_CASEID = C.CS_CASEID AND TX.COURT_ID = C.COURT_ID
@@ -1474,7 +1474,7 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
       SELECT
         CONCAT(CS_DIV.CS_DIV_ACMS, '-', C.CASE_ID) AS caseId,
         SUBSTRING(TX.REC, 24, 6) AS aptDate,
-        FORMAT(TX.TX_DATE, 'yyyy-MM-dd') AS txDate
+        CONVERT(VARCHAR(10), TX.TX_DATE, 120) AS txDate
       FROM AO_TX TX
       JOIN AO_CS C ON TX.CS_CASEID = C.CS_CASEID AND TX.COURT_ID = C.COURT_ID
       JOIN AO_CS_DIV AS CS_DIV ON C.CS_DIV = CS_DIV.CS_DIV
