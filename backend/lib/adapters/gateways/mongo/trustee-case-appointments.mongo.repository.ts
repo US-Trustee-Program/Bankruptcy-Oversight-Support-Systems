@@ -162,12 +162,19 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
    * deterministically returns the MOST RECENTLY ASSIGNED one as authoritative, rather than an
    * arbitrary or stale row that can vary between calls. assignedOn is the court's own
    * appointment date (event.appointedDate), not a Cosmos write timestamp, making it the correct
-   * domain tiebreaker — and it's still the same field the existing {caseId, assignedOn} index
-   * below was built to serve. createdOn DESCENDING is a secondary sort key so ordering stays
-   * deterministic even when two active rows share an identical assignedOn (e.g. two trustees
-   * both resolved from the same DXTR appointment date) — MongoDB/Cosmos does not guarantee
-   * stable ordering among tied sort-key values without an explicit tiebreaker. createdOn is set
-   * by createAuditRecord on every write, so ties are broken by whichever row was written last.
+   * domain tiebreaker — and it's the same field the {caseId, assignedOn} index (see
+   * cosmos-collections.bicep) is built to serve.
+   *
+   * A createdOn-DESCENDING secondary sort was tried here and reverted (CAMS-809): createdOn is
+   * only a Cosmos write timestamp, with no relationship to which of two same-assignedOn rows is
+   * the domain-correct appointment, so it was silently picking an arbitrary row and presenting it
+   * as deterministic rather than fixing anything. It also required widening the composite index
+   * to {caseId, assignedOn, createdOn}, since Cosmos DB's Mongo API rejects any ORDER BY not
+   * fully covered by one composite index.
+   *
+   * Fetches 2 rows (not 1) so a same-assignedOn tie can actually be detected and logged as a
+   * WARNING for operator follow-up, instead of being silently resolved by whichever row Cosmos
+   * happens to return first when the sort keys are equal.
    */
   async getActiveByCaseId(caseId: string): Promise<CaseAppointment | null> {
     try {
@@ -179,13 +186,27 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
         doc('trusteeId').notEqual(SENTINEL_TRUSTEE_ID),
         doc('isSurrogate').notEqual(true),
       );
-      const sort = orderBy<CaseAppointmentDocument>(
-        ['assignedOn', 'DESCENDING'],
-        ['createdOn', 'DESCENDING'],
-      );
+      const sort = orderBy<CaseAppointmentDocument>(['assignedOn', 'DESCENDING']);
       const results = await this.casePartition
         .adapter<CaseAppointmentDocument>()
-        .find(query, sort, 1);
+        .find(query, sort, 2);
+
+      if (results.length > 1 && results[0].assignedOn === results[1].assignedOn) {
+        this.context.logger.warn(
+          MODULE_NAME,
+          `AMBIGUOUS ACTIVE APPOINTMENT: case ${caseId} has multiple active, non-surrogate case ` +
+            `appointments with the same assignedOn (${results[0].assignedOn}). Returning ` +
+            `trusteeId ${results[0].trusteeId} (appointment id ${results[0].id}) arbitrarily — ` +
+            `this choice is NOT guaranteed stable across calls. Investigate and resolve the ` +
+            `duplicate active appointment for this case.`,
+          {
+            caseId,
+            assignedOn: results[0].assignedOn,
+            candidateIds: [results[0].id, results[1].id],
+          },
+        );
+      }
+
       return results[0] ? stripMongoId(results[0]) : null;
     } catch (originalError) {
       if (isNotFoundError(originalError)) return null;
