@@ -3,6 +3,7 @@ import TrusteeVerificationRemapUseCase from './trustee-verification-remap';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import factory from '../../factory';
 import { TooManyRequestsError } from '../../common-errors/too-many-requests-error';
+import { GatewayTimeoutError } from '../../common-errors/gateway-timeout';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CaseAppointment } from '@common/cams/trustee-appointments';
@@ -172,6 +173,27 @@ describe('TrusteeVerificationRemapUseCase', () => {
     await expect(useCase.remapPage(makeMessage(), 25)).rejects.toThrow(tooManyError);
     expect(mockUpsert).toHaveBeenCalledTimes(1);
     expect(mockDelete).not.toHaveBeenCalled();
+  });
+
+  test('a gateway-timeout error mid-page rethrows instead of being counted as a per-case failure', async () => {
+    // CAMS-809: a Cosmos deleteOne timeout (surfaced as a GatewayTimeoutError, HTTP 504) was
+    // previously swallowed as a permanent per-case failure here, never reaching handleRemap's
+    // outer handleRateLimitRetry — which already treats isTooManyRequestsError and
+    // isGatewayTimeoutError as the same retriable batch-level signal (see
+    // dataflows-rate-limit.ts). Must rethrow the same way a rate-limit error does.
+    const surrogateA = makeSurrogate({ id: 'surrogate-a', caseId: '081-25-00001' });
+    const surrogateB = makeSurrogate({ id: 'surrogate-b', caseId: '081-25-00002' });
+    mockGetSurrogatesByFingerprint.mockResolvedValue([surrogateA, surrogateB]);
+    const timeoutError = new GatewayTimeoutError(
+      'TRUSTEE-CASE-APPOINTMENTS-MONGO-REPOSITORY_ADAPTER',
+      {
+        message: 'Query failed. Search request timed out.',
+      },
+    );
+    mockDelete.mockRejectedValueOnce(timeoutError).mockResolvedValue(undefined);
+
+    await expect(useCase.remapPage(makeMessage(), 25)).rejects.toThrow(timeoutError);
+    expect(mockDelete).toHaveBeenCalledTimes(1);
   });
 
   test('queues a downstream event per remapped case when the feature flag is on', async () => {
