@@ -11,6 +11,12 @@
 # The subject format is:
 #   repo:ORG/REPO:workflow:CALLER-WORKFLOW-NAME:environment:remove-branch
 #
+# Exitcodes
+# ==========
+# 0   No error
+# 10+ Validation check errors (a required environment variable is missing --
+#     see require_var in _oidc-helpers.sh)
+#
 # Permissions granted:
 #   - Contributor at subscription scope: discovers and deletes branch resource
 #       groups by tag (names aren't known in advance, so this can't be pre-scoped).

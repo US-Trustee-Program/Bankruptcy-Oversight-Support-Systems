@@ -12,6 +12,13 @@
 #   repo:ORG/REPO:workflow:Continuous Deployment:environment:deploy-main
 #   repo:ORG/REPO:workflow:Continuous Deployment:environment:deploy-branch
 #
+# Exitcodes
+# ==========
+# 0   No error
+# 1   Invalid usage (unknown TARGET, or an internal invariant violation)
+# 10+ Validation check errors (a required environment variable is missing --
+#     see require_var in _oidc-helpers.sh)
+#
 # Permissions granted:
 #   - main: Contributor at subscription scope. Covers az deployment sub
 #       create, resource group creation/reads, and az deployment group create
@@ -231,12 +238,19 @@ provision_identity() {
   # ---------------------------------------------------------------------------
   # Role assignments
   #
-  # Contributor: main gets subscription scope (covers az deployment sub
-  # create, resource group creation/reads, and az deployment group create
-  # inside whatever resource groups it deploys to). Branch deploys into the
-  # same two stable resource groups every time (CAMS-760 Slice 3), so branch
-  # gets Contributor scoped to just those two RGs instead of the whole
-  # subscription. This call only ever ADDS grants — see the header NOTE on
+  # Contributor: main gets subscription scope; branch gets Contributor scoped
+  # to just its two stable resource groups (CAMS-760 Slice 3) instead of the
+  # whole subscription. This is deliberately asymmetric, not an oversight:
+  # both main and branch run through the identical az_rg_exists_func/
+  # needsCreate check in azure-deploy-rg.sh, and `az deployment sub create`
+  # (used there to CREATE a resource group that doesn't exist yet) is
+  # inherently a subscription-scope operation -- you cannot grant RG-scoped
+  # permissions on an RG that doesn't exist. Main keeps that bootstrap
+  # capability (rare -- fresh environment/DR) at subscription scope; branch
+  # deliberately does NOT, so a branch deploy hitting a missing shared RG now
+  # fails loudly with AuthorizationFailed instead of an ephemeral branch
+  # identity silently auto-provisioning shared, production-adjacent
+  # infrastructure. This call only ever ADDS grants — see the header NOTE on
   # least privilege for why revoking branch's former subscription-scope grant
   # is a separate, manual, out-of-band step, not something this script does.
   #

@@ -13,7 +13,8 @@
 #   wait_for_role_definition    ROLE_NAME [ATTEMPTS] -> prints role definition GUID to stdout
 #   ensure_role_assignment      SP_ID ROLE SCOPE
 #   ensure_deployment_stack_deny_setting_role SUBSCRIPTION_ID -> prints role definition GUID to stdout
-#   require_var                 VALUE ENV_VAR_NAME CONTEXT -> exits 1 with a consistent error if VALUE is empty
+#   require_var                 VALUE ENV_VAR_NAME CONTEXT -> exits 10 (validation error, see consuming
+#                                script's Exitcodes header) with a consistent error if VALUE is empty
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   echo "ERROR: This script must be sourced, not executed directly." >&2
@@ -38,13 +39,17 @@ fi
 # `if [[ -z "$VAR" ]]; then echo "ERROR: ..."; exit 1; fi` shape that had
 # accumulated across both runbooks in this directory (7 near-identical
 # occurrences) as each new required variable was added independently.
+# Exits 10 rather than 1 -- matches the "10+ Validation check errors" bucket
+# already established by sibling scripts (e.g. az-delete-branch-resources.sh),
+# distinct from the invalid-usage/configuration errors (exit 1) elsewhere in
+# these two runbooks.
 require_var() {
   local value="$1"
   local env_var_name="$2"
   local context="$3"
   if [[ -z "$value" ]]; then
     echo "ERROR: ${env_var_name} is required ${context}." >&2
-    exit 1
+    exit 10
   fi
 }
 
