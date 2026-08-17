@@ -57,10 +57,11 @@ function renderComponent(props?: Partial<PastKeyDatesProps>) {
 }
 
 describe('PastKeyDates', () => {
-  const mockNavigate = vi.fn();
+  let mockNavigate: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    mockNavigate = vi.fn();
     mockUseNavigate.mockReturnValue(mockNavigate);
     TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
   });
@@ -136,12 +137,21 @@ describe('PastKeyDates', () => {
       expect(screen.getByTestId('past-key-dates-list')).toBeInTheDocument();
     });
 
-    const listItems = screen.getByTestId('past-key-dates-list').querySelectorAll('li');
-    expect(listItems[0]).toHaveAttribute('data-testid', 'past-background-question-row');
-    expect(listItems[1]).toHaveAttribute('data-testid', 'past-field-exam-row');
-    expect(listItems[2]).toHaveAttribute('data-testid', 'past-audit-row');
-    expect(listItems[3]).toHaveAttribute('data-testid', 'past-last-audit-fiscal-year-row');
-    expect(listItems[4]).toHaveAttribute('data-testid', 'past-tpr-submission-row');
+    // Assert relative DOM order via the rows' own testIds (PastKeyDates' actual
+    // contract), rather than assuming InfoCard renders each row as an <li>.
+    const expectedOrder = [
+      'past-background-question-row',
+      'past-field-exam-row',
+      'past-audit-row',
+      'past-last-audit-fiscal-year-row',
+      'past-tpr-submission-row',
+    ];
+    const rows = expectedOrder.map((testId) => screen.getByTestId(testId));
+    for (let i = 0; i < rows.length - 1; i++) {
+      expect(
+        rows[i].compareDocumentPosition(rows[i + 1]) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    }
   });
 
   test('Edit button is visible for TrusteeAdmin users', async () => {
@@ -272,9 +282,15 @@ describe('PastKeyDates', () => {
         expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
       });
 
-      const listItems = screen.getByTestId('past-key-dates-list').querySelectorAll('li');
-      expect(listItems).toHaveLength(1);
-      expect(listItems[0]).toHaveAttribute('data-testid', 'past-last-monthly-report-received-row');
+      // Assert via PastKeyDates' own testId contract (which fields it renders),
+      // not InfoCard's internal markup — none of the chapter7-panel-only rows
+      // should be present alongside the single subv-pool row.
+      expect(screen.getByTestId('past-last-monthly-report-received-row')).toBeInTheDocument();
+      expect(screen.queryByTestId('past-background-question-row')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('past-field-exam-row')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('past-audit-row')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('past-last-audit-fiscal-year-row')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('past-tpr-submission-row')).not.toBeInTheDocument();
       expect(screen.getByText('Last Monthly Report Received:')).toBeInTheDocument();
     });
 

@@ -15,6 +15,7 @@ import {
 } from '@/lib/hooks/UseFeatureFlags';
 
 const mockUseNavigate = vi.hoisted(() => vi.fn());
+const mockUseCourts = vi.hoisted(() => vi.fn());
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');
@@ -24,19 +25,21 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
+vi.mock('@/lib/hooks/UseCourts', () => ({
+  default: mockUseCourts,
+}));
+
 describe('AppointmentCard', () => {
   const mockNavigate = vi.fn();
 
   beforeEach(() => {
+    vi.restoreAllMocks();
     mockUseNavigate.mockReturnValue(mockNavigate);
-    vi.clearAllMocks();
+    mockUseCourts.mockReturnValue({ courts: [], loading: false, error: null });
     TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
   const mockAppointment: TrusteeAppointment = {
     id: 'appointment-001',
     trusteeId: 'trustee-123',
@@ -316,7 +319,9 @@ describe('AppointmentCard', () => {
       appointment: { ...mockAppointment, chapter: '7', appointmentType: 'converted-case' },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await waitFor(() => {
+      expect(screen.getByText(/District:/i)).toBeInTheDocument();
+    });
     expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
   });
 
@@ -325,7 +330,9 @@ describe('AppointmentCard', () => {
       appointment: { ...mockAppointment, chapter: '13', appointmentType: 'panel' },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await waitFor(() => {
+      expect(screen.getByText(/District:/i)).toBeInTheDocument();
+    });
     expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
   });
 
@@ -336,7 +343,9 @@ describe('AppointmentCard', () => {
       appointment: { ...mockAppointment, chapter: '7', appointmentType: 'panel' },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await waitFor(() => {
+      expect(screen.getByText(/District:/i)).toBeInTheDocument();
+    });
     expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
   });
 
@@ -349,7 +358,9 @@ describe('AppointmentCard', () => {
       appointment: { ...mockAppointment, chapter: '7', appointmentType: 'panel' },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await waitFor(() => {
+      expect(screen.getByText(/District:/i)).toBeInTheDocument();
+    });
     expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
   });
 
@@ -360,7 +371,11 @@ describe('AppointmentCard', () => {
       appointmentType: 'pool',
     };
 
-    test('renders PastKeyDates card (read-only) for non-TrusteeAdmin user when flag enabled', async () => {
+    // AppointmentCard's own concern is whether the PastKeyDates card renders
+    // at all (the flag/chapter/appointmentType gate) — NOT whether its Edit
+    // button shows for a given role. That role-based visibility is
+    // PastKeyDates' own contract and is covered in PastKeyDates.test.tsx.
+    test('renders PastKeyDates card for non-TrusteeAdmin user when flag enabled (no canManage gate)', async () => {
       vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
         [DISPLAY_CHPT11_SUBV_PAST_KEY_DATES]: true,
       });
@@ -371,12 +386,9 @@ describe('AppointmentCard', () => {
       await waitFor(() => {
         expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
       });
-      expect(
-        screen.queryByRole('button', { name: /edit past key dates/i }),
-      ).not.toBeInTheDocument();
     });
 
-    test('renders PastKeyDates card with Edit for TrusteeAdmin when flag enabled', async () => {
+    test('renders PastKeyDates card for TrusteeAdmin when flag enabled', async () => {
       vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
         [DISPLAY_CHPT11_SUBV_PAST_KEY_DATES]: true,
       });
@@ -384,7 +396,7 @@ describe('AppointmentCard', () => {
       renderWithProps({ appointment: subVAppointment });
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: /edit past key dates/i })).toBeInTheDocument();
+        expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
       });
     });
 
@@ -408,7 +420,9 @@ describe('AppointmentCard', () => {
 
       renderWithProps({ appointment: subVAppointment });
 
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      await waitFor(() => {
+        expect(screen.getByText(/District:/i)).toBeInTheDocument();
+      });
       expect(screen.queryByTestId('past-key-dates-card')).not.toBeInTheDocument();
     });
 
@@ -421,8 +435,74 @@ describe('AppointmentCard', () => {
         appointment: { ...mockAppointment, chapter: '11-subchapter-v', appointmentType: 'panel' },
       });
 
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      await waitFor(() => {
+        expect(screen.getByText(/District:/i)).toBeInTheDocument();
+      });
       expect(screen.queryByTestId('past-key-dates-card')).not.toBeInTheDocument();
     });
+  });
+
+  test('logs an error and still renders when courts fail to load', async () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mockUseCourts.mockReturnValue({
+      courts: [],
+      loading: false,
+      error: new Error('courts unavailable'),
+    });
+
+    renderWithProps();
+
+    await waitFor(() => {
+      expect(screen.getByText(/District:/i)).toBeInTheDocument();
+    });
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'Error loading courts:',
+      new Error('courts unavailable'),
+    );
+  });
+
+  test('Divisions field resolves a division code to its name using loaded courts', () => {
+    mockUseCourts.mockReturnValue({
+      courts: [
+        {
+          officeName: 'Manhattan Office',
+          officeCode: '08',
+          courtId: '0208',
+          courtName: 'Southern District of New York',
+          courtDivisionCode: '081',
+          courtDivisionName: 'Manhattan Division',
+          groupDesignator: 'NY',
+          regionId: '02',
+          regionName: 'Region 2',
+          state: 'NY',
+        },
+      ],
+      loading: false,
+      error: null,
+    });
+
+    renderWithProps({
+      appointment: {
+        ...mockAppointment,
+        courtDivisionName: undefined,
+        divisionCode: '081',
+      },
+    });
+
+    expect(screen.getByText('Manhattan Division', { selector: 'li' })).toBeInTheDocument();
+  });
+
+  test('Divisions field falls back to the raw division code when no match is found', () => {
+    mockUseCourts.mockReturnValue({ courts: [], loading: false, error: null });
+
+    renderWithProps({
+      appointment: {
+        ...mockAppointment,
+        courtDivisionName: undefined,
+        divisionCode: '081',
+      },
+    });
+
+    expect(screen.getByText('081', { selector: 'li' })).toBeInTheDocument();
   });
 });

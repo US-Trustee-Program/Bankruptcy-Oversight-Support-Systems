@@ -6,6 +6,7 @@ import Api2 from '@/lib/models/api2';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
+import { GlobalAlertContext } from '@/App';
 
 const mockUseNavigate = vi.hoisted(() => vi.fn());
 const mockUseParams = vi.hoisted(() =>
@@ -45,12 +46,33 @@ const populatedDocument: TrusteeUpcomingKeyDates = {
   tirSubmission: '1900-10-15',
   tirReview: '1900-11-01',
   lastAuditFiscalYear: 2022,
+  tirSemiAnnualReviewPeriodStart: '1900-01-01',
+  tirSemiAnnualReviewPeriodEnd: '1900-06-30',
+  tirSemiAnnualSubmission: '1900-07-30',
+  tirSemiAnnualReview: '1900-09-28',
+  upcomingExamOrAuditYear: 2029,
+  upcomingExamOrAuditType: 'Field Exam',
+  tirFrequency: 'SEMI_ANNUAL',
+};
+
+const mockGlobalAlertRef = {
+  current: {
+    success: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn(),
+    warning: vi.fn(),
+    show: vi.fn(),
+    hide: vi.fn(),
+    clear: vi.fn(),
+  },
 };
 
 function renderComponent() {
   return render(
     <BrowserRouter>
-      <PastKeyDatesForm />
+      <GlobalAlertContext.Provider value={mockGlobalAlertRef}>
+        <PastKeyDatesForm />
+      </GlobalAlertContext.Provider>
     </BrowserRouter>,
   );
 }
@@ -62,6 +84,7 @@ describe('PastKeyDatesForm', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     mockNavigate.mockClear();
+    mockGlobalAlertRef.current.error.mockClear();
     mockUseNavigate.mockReturnValue(mockNavigate);
     mockUseLocation.mockReturnValue({ state: null });
     userEvent = TestingUtilities.setupUserEvent();
@@ -146,6 +169,13 @@ describe('PastKeyDatesForm', () => {
           tirReviewPeriodEnd: '1900-06-30',
           tirSubmission: '1900-10-15',
           tirReview: '1900-11-01',
+          tirSemiAnnualReviewPeriodStart: '1900-01-01',
+          tirSemiAnnualReviewPeriodEnd: '1900-06-30',
+          tirSemiAnnualSubmission: '1900-07-30',
+          tirSemiAnnualReview: '1900-09-28',
+          upcomingExamOrAuditYear: 2029,
+          upcomingExamOrAuditType: 'Field Exam',
+          tirFrequency: 'SEMI_ANNUAL',
         }),
       ),
     );
@@ -208,6 +238,10 @@ describe('PastKeyDatesForm', () => {
     await waitFor(() => {
       expect(screen.getByTestId('edit-past-key-dates')).toBeInTheDocument();
     });
+
+    expect(mockGlobalAlertRef.current.error).toHaveBeenCalledWith(
+      'Failed to load past key dates: Network failure',
+    );
   });
 
   test('shows error alert when save fails and re-enables save button', async () => {
@@ -228,6 +262,9 @@ describe('PastKeyDatesForm', () => {
       expect(saveButton).toHaveTextContent('Save');
     });
     expect(mockNavigate).not.toHaveBeenCalled();
+    expect(mockGlobalAlertRef.current.error).toHaveBeenCalledWith(
+      'Failed to save past key dates: Server error',
+    );
   });
 
   test('disables save button and shows Saving text while save is in progress', async () => {
@@ -343,6 +380,7 @@ describe('PastKeyDatesForm', () => {
     ['Field Exam', 'Field Exam Report Date'],
     ['Audit', 'Audit Report Date'],
     ['TPR Submission', 'Trustee Interim Report Letter Date'],
+    ['Last Audit Fiscal Year', "Last Audit's Fiscal Year"],
   ])('renders updated label for %s', async (_desc, expectedLabel) => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
