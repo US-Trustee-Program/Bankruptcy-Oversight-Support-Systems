@@ -7,6 +7,7 @@ import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
+import { CamsRole } from '@common/cams/roles';
 import { GlobalAlertContext } from '@/App';
 
 const mockUseNavigate = vi.hoisted(() => vi.fn());
@@ -107,8 +108,23 @@ describe('PastKeyDatesForm', () => {
     mockNavigate.mockClear();
     mockGlobalAlertRef.current.error.mockClear();
     mockUseNavigate.mockReturnValue(mockNavigate);
+    TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
     vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [chapter7Appointment] });
     userEvent = TestingUtilities.setupUserEvent();
+  });
+
+  test('shows forbidden message when user lacks TrusteeAdmin role', async () => {
+    TestingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+    renderComponent();
+
+    const forbiddenAlert = await screen.findByTestId('alert-forbidden-alert');
+    expect(forbiddenAlert).toBeInTheDocument();
+    expect(forbiddenAlert).toHaveTextContent('Forbidden');
+    expect(forbiddenAlert).toHaveTextContent(
+      'You do not have permission to manage Trustee Past Key Dates',
+    );
   });
 
   test('renders all date picker inputs', async () => {
