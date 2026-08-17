@@ -5,6 +5,7 @@ import PastKeyDatesForm from './PastKeyDatesForm';
 import Api2 from '@/lib/models/api2';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
+import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { GlobalAlertContext } from '@/App';
 
@@ -12,7 +13,6 @@ const mockUseNavigate = vi.hoisted(() => vi.fn());
 const mockUseParams = vi.hoisted(() =>
   vi.fn(() => ({ trusteeId: 'trustee-001', appointmentId: 'appointment-001' })),
 );
-const mockUseLocation = vi.hoisted(() => vi.fn((): { state: unknown } => ({ state: null })));
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');
@@ -20,9 +20,30 @@ vi.mock('react-router-dom', async () => {
     ...actual,
     useNavigate: mockUseNavigate,
     useParams: mockUseParams,
-    useLocation: mockUseLocation,
   };
 });
+
+const chapter7Appointment: TrusteeAppointment = {
+  id: 'appointment-001',
+  trusteeId: 'trustee-001',
+  chapter: '7',
+  appointmentType: 'panel',
+  courtId: '0208',
+  courtName: 'Southern District of New York',
+  status: 'active',
+  appointedDate: '2020-01-15T00:00:00.000Z',
+  effectiveDate: '2020-01-15T00:00:00.000Z',
+  createdOn: '2020-01-10T14:30:00.000Z',
+  createdBy: SYSTEM_USER_REFERENCE,
+  updatedOn: '2020-01-10T14:30:00.000Z',
+  updatedBy: SYSTEM_USER_REFERENCE,
+};
+
+const subvAppointment: TrusteeAppointment = {
+  ...chapter7Appointment,
+  chapter: '11-subchapter-v',
+  appointmentType: 'pool',
+};
 
 const populatedDocument: TrusteeUpcomingKeyDates = {
   id: 'doc-001',
@@ -86,7 +107,7 @@ describe('PastKeyDatesForm', () => {
     mockNavigate.mockClear();
     mockGlobalAlertRef.current.error.mockClear();
     mockUseNavigate.mockReturnValue(mockNavigate);
-    mockUseLocation.mockReturnValue({ state: null });
+    vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [chapter7Appointment] });
     userEvent = TestingUtilities.setupUserEvent();
   });
 
@@ -409,7 +430,7 @@ describe('PastKeyDatesForm', () => {
 
   describe('subv-pool variant', () => {
     beforeEach(() => {
-      mockUseLocation.mockReturnValue({ state: { variant: 'subv-pool' } });
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [subvAppointment] });
     });
 
     test('renders exactly one date input: Last Monthly Report Received', async () => {
