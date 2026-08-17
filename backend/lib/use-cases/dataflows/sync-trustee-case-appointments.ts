@@ -807,10 +807,14 @@ function assertValidChapter(caseId: string, chapter: string): CaseChapter {
  *
  * Idempotency is scoped to this exact fingerprint: re-processing the same unresolved event
  * must not create a duplicate surrogate. upsert's natural key includes assignedOn (see
- * trustee-case-appointments.mongo.repository.ts), so assignedOn is derived from the event's
- * stable appointedDate (falling back to wall-clock only when absent) rather than fresh
- * wall-clock time — the same reasoning as applyResolvedTrustee above. Two genuinely different
- * pending mismatches on the same case each still get their own surrogate row.
+ * trustee-case-appointments.mongo.repository.ts), so assignedOn must be derived from the
+ * event's stable appointedDate — never wall-clock time, which would differ on every retry of
+ * the same event and mint a new, duplicate surrogate row under the same fingerprint each time
+ * (CAMS-809: this previously fell back to `?? now`, exactly the bug applyResolvedTrustee's own
+ * docblock above warns against). Refuses the same way applyResolvedTrustee does when
+ * appointedDate is missing/unparseable, so the event surfaces via the DLQ instead of silently
+ * proceeding. Two genuinely different pending mismatches on the same case each still get their
+ * own surrogate row.
  */
 async function writeSurrogateAppointment(
   deps: SyncTrusteeCaseAppointmentsDeps,
@@ -819,6 +823,21 @@ async function writeSurrogateAppointment(
   variant: string,
   syncedCase: SyncedCase,
 ): Promise<void> {
+  if (!event.appointedDate) {
+    deps.context.logger.error(
+      MODULE_NAME,
+      `TRUSTEE APPOINTMENT DATA INTEGRITY ERROR: case ${event.caseId}, fingerprint ${fingerprint} — ` +
+        `event.appointedDate is missing/unparseable. Refusing to fall back to wall-clock time ` +
+        `for the surrogate's assignedOn, since that would break upsert()'s natural-key ` +
+        `idempotency across retries and mint a duplicate surrogate row every time this event is ` +
+        `reprocessed. This event cannot be safely processed until its source DXTR appointment ` +
+        `date is corrected.`,
+    );
+    throw new CamsError(MODULE_NAME, {
+      message: `Case ${event.caseId}, fingerprint ${fingerprint}: missing/unparseable appointedDate, cannot safely derive surrogate assignedOn.`,
+    });
+  }
+
   const existingAppointments = await deps.caseAppointmentsRepo.getByCaseId(event.caseId);
   const alreadySurrogateForThisFingerprint = existingAppointments.some(
     (appointment) =>
@@ -828,11 +847,10 @@ async function writeSurrogateAppointment(
     return;
   }
 
-  const now = new Date().toISOString();
   await deps.caseAppointmentsRepo.upsert({
     caseId: event.caseId,
     trusteeId: fingerprint,
-    assignedOn: event.appointedDate ?? now,
+    assignedOn: event.appointedDate,
     appointedDate: event.appointedDate,
     isSurrogate: true,
     variant,

@@ -3536,6 +3536,10 @@ describe('handleClassifiedMismatch', () => {
     courtId: '081',
     courtDivisionCode: '081',
     chapter: '7',
+    // appointedDate must be present: writeSurrogateAppointment now throws rather than falling
+    // back to wall-clock time when it's missing, since wall-clock would break upsert()'s
+    // natural-key idempotency across retries (see the missing-appointedDate test below).
+    appointedDate: '2024-01-15',
     dxtrTrustee: { fullName: 'Jane Doe' },
   };
   const syncedCase = {
@@ -3603,14 +3607,15 @@ describe('handleClassifiedMismatch', () => {
     caseAppointmentsRepo: TrusteeCaseAppointmentsRepository,
     scenarioDistribution: ReturnType<typeof buildScenarioDistribution>,
     audit: ReturnType<typeof buildAudit>,
+    ctxEvent: TrusteeAppointmentSyncEvent = event,
   ) {
     return {
       deps: {
-        context: { logger: { info: vi.fn(), warn: vi.fn() } },
+        context: { logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } },
         verificationRepo,
         caseAppointmentsRepo,
       } as unknown as ReturnType<typeof SyncTrusteeCaseAppointments.createDeps>,
-      event,
+      event: ctxEvent,
       fingerprint: 'fingerprint-1',
       variant: 'variant-1',
       audit,
@@ -3701,5 +3706,38 @@ describe('handleClassifiedMismatch', () => {
     );
 
     expect(scenarioDistribution.reVerificationCount).toBe(1);
+  });
+
+  test('throws instead of falling back to wall-clock time when appointedDate is missing, without writing a surrogate', async () => {
+    // CAMS-809: writeSurrogateAppointment previously fell back to `event.appointedDate ?? now`,
+    // which would mint a new, distinct surrogate row under the same fingerprint on every retry
+    // of the same malformed event (upsert()'s natural key includes assignedOn, so a
+    // wall-clock-derived assignedOn never matches a prior write). It must refuse the same way
+    // applyResolvedTrustee does, so the event surfaces via the DLQ instead of proceeding.
+    const verificationRepo = buildVerificationRepo(false);
+    const caseAppointmentsRepo = buildCaseAppointmentsRepo();
+    const scenarioDistribution = buildScenarioDistribution();
+    const audit = buildAudit();
+    const eventWithoutAppointedDate: TrusteeAppointmentSyncEvent = {
+      ...event,
+      appointedDate: undefined,
+    };
+    const ctx = buildCtx(
+      verificationRepo,
+      caseAppointmentsRepo,
+      scenarioDistribution,
+      audit,
+      eventWithoutAppointedDate,
+    );
+
+    await expect(
+      handleClassifiedMismatch(ctx, syncedCase, TrusteeAppointmentSyncErrorCode.NoTrusteeMatch, []),
+    ).rejects.toThrow(/missing\/unparseable appointedDate/);
+
+    expect(caseAppointmentsRepo.upsert).not.toHaveBeenCalled();
+    expect(ctx.deps.context.logger.error).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.stringContaining('TRUSTEE APPOINTMENT DATA INTEGRITY ERROR'),
+    );
   });
 });
