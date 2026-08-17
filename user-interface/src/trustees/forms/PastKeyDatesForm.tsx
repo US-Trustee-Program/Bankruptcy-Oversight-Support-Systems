@@ -40,13 +40,9 @@ function buildUpcomingKeyDatesInput(
   ids: { trusteeId: string; appointmentId: string },
   original: TrusteeUpcomingKeyDates | null,
   form: PastKeyDatesFormState,
-  variant: PastKeyDatesVariant,
+  opts: { activeDateKeys: Set<PastDateFieldKey>; hasYearField: boolean },
 ): TrusteeUpcomingKeyDatesInput {
-  const activeFields = PAST_KEY_DATES_FIELD_CONFIG[variant];
-  const activeDateKeys = new Set(
-    activeFields.filter((field) => field.kind === 'date').map((field) => field.key),
-  );
-  const hasYearField = activeFields.some((field) => field.kind === 'year');
+  const { activeDateKeys, hasYearField } = opts;
 
   function dateValue(key: PastDateFieldKey): string | null {
     return activeDateKeys.has(key) ? form[key] || null : (original?.[key] ?? null);
@@ -156,11 +152,16 @@ export default function PastKeyDatesForm() {
 
   async function handleSave() {
     setIsSaving(true);
+    const activeFields = PAST_KEY_DATES_FIELD_CONFIG[variant];
+    const activeDateKeys = new Set(
+      activeFields.filter((field) => field.kind === 'date').map((field) => field.key),
+    );
+    const hasYearField = activeFields.some((field) => field.kind === 'year');
     const isoInput = buildUpcomingKeyDatesInput(
       { trusteeId: trusteeId!, appointmentId: appointmentId! },
       original,
       form,
-      variant,
+      { activeDateKeys, hasYearField },
     );
 
     try {
