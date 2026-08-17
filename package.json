@@ -57,8 +57,8 @@
     "@eslint-react/eslint-plugin": "5.18.1",
     "@eslint/js": "10.0.0",
     "@types/node": "24.13.3",
-    "@typescript-eslint/eslint-plugin": "8.65.0",
-    "@typescript-eslint/parser": "8.65.0",
+    "@typescript-eslint/eslint-plugin": "8.66.0",
+    "@typescript-eslint/parser": "8.66.0",
     "@vitest/eslint-plugin": "1.6.26",
     "eslint": "10.8.0",
     "eslint-config-prettier": "10.1.8",
@@ -73,7 +73,7 @@
     "prettier": "3.9.6",
     "react": "19.2.8",
     "typescript": "6.0.3",
-    "typescript-eslint": "8.65.0"
+    "typescript-eslint": "8.66.0"
   },
   "overrides": {
     "dompurify": "3.4.13",
