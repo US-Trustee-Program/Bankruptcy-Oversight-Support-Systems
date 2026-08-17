@@ -31,7 +31,7 @@
     "@stryker-mutator/typescript-checker": "9.6.1",
     "@stryker-mutator/vitest-runner": "9.6.1",
     "@types/node": "24.13.3",
-    "@typescript-eslint/parser": "8.65.0",
+    "@typescript-eslint/parser": "8.66.0",
     "@vitest/coverage-v8": "4.1.10",
     "dependency-cruiser": "18.1.1",
     "eslint": "10.8.0",
@@ -40,7 +40,7 @@
     "prettier": "3.9.6",
     "ts-node": "10.9.2",
     "typescript": "6.0.3",
-    "typescript-eslint": "8.65.0",
+    "typescript-eslint": "8.66.0",
     "vitest": "4.1.10"
   }
 }
