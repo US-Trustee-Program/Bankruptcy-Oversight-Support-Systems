@@ -168,7 +168,7 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       repo.release();
     });
 
-    test('should sort by assignedOn descending and limit to 1, returning the most recently assigned active appointment deterministically across repeated calls', async () => {
+    test('should sort by assignedOn descending and limit to 2, returning the most recently assigned active appointment deterministically across repeated calls', async () => {
       const olderAppointment: CaseAppointment = {
         ...baseAppointment,
         id: 'appt-older',
@@ -186,7 +186,8 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       // direction puts first, rather than relying on incidental array order. Newest-first
       // matters if more than one active row ever exists for a case (see CAMS-809's
       // dual-active-appointment discussion) -- this must consistently surface the most recently
-      // assigned appointment as authoritative, not the oldest.
+      // assigned appointment as authoritative, not the oldest. limit is 2, not 1, so a
+      // same-assignedOn tie can be detected and logged rather than silently hidden.
       const findSpy = vi
         .spyOn(MongoCollectionAdapter.prototype, 'find')
         .mockResolvedValue([newerAppointment, olderAppointment]);
@@ -202,47 +203,88 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       expect(findSpy).toHaveBeenCalledWith(
         expect.anything(),
         {
-          fields: [
-            { field: { name: 'assignedOn' }, direction: 'DESCENDING' },
-            { field: { name: 'createdOn' }, direction: 'DESCENDING' },
-          ],
+          fields: [{ field: { name: 'assignedOn' }, direction: 'DESCENDING' }],
         },
-        1,
+        2,
       );
       repo.release();
     });
 
-    test('should break ties on identical assignedOn by createdOn descending, not an arbitrary row', async () => {
-      // MongoDB/Cosmos does not guarantee stable ordering among tied sort-key values without an
-      // explicit tiebreaker. Two active rows sharing the same assignedOn (e.g. two trustees both
-      // resolved from the same DXTR appointment date during the CAMS-809 dual-active-appointment
-      // race) must still resolve deterministically to the one written most recently.
-      const firstWritten: CaseAppointment = {
+    test('should log a WARNING and return the first row (without pretending it is authoritative) when two active rows share an identical assignedOn', async () => {
+      // createdOn is a Cosmos write timestamp, not a domain fact -- it has no relationship to
+      // which of two same-assignedOn rows is the actually-correct appointment (see CAMS-809: a
+      // createdOn-DESCENDING tiebreaker was tried and reverted because it silently picked an
+      // arbitrary row and presented it as deterministic). This ambiguous state must instead
+      // surface as an operator-visible WARNING for investigation, not be silently resolved.
+      const firstReturned: CaseAppointment = {
         ...baseAppointment,
-        id: 'appt-first-written',
+        id: 'appt-first-returned',
         assignedOn: '2024-01-15',
-        createdOn: '2024-01-15T08:00:00.000Z',
       };
-      const secondWritten: CaseAppointment = {
+      const secondReturned: CaseAppointment = {
         ...baseAppointment,
-        id: 'appt-second-written',
+        id: 'appt-second-returned',
         assignedOn: '2024-01-15',
-        createdOn: '2024-01-15T09:30:00.000Z',
       };
 
-      // Real DESCENDING-on-createdOn sort would put the more-recently-written row first; this
-      // mock simulates that server-side ordering to prove getActiveByCaseId takes whichever row
-      // the query's sort puts first, not the array's incidental order.
       vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([
-        secondWritten,
-        firstWritten,
+        firstReturned,
+        secondReturned,
       ]);
       const context = await createMockApplicationContext();
+      const warnSpy = vi.spyOn(context.logger, 'warn');
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
 
       const result = await repo.getActiveByCaseId(CASE_ID);
 
-      expect(result?.id).toBe('appt-second-written');
+      expect(result?.id).toBe('appt-first-returned');
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.stringContaining('AMBIGUOUS ACTIVE APPOINTMENT'),
+        expect.objectContaining({
+          caseId: CASE_ID,
+          assignedOn: '2024-01-15',
+          candidateIds: ['appt-first-returned', 'appt-second-returned'],
+        }),
+      );
+      repo.release();
+    });
+
+    test('should NOT log a WARNING when only one active row is returned', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([baseAppointment]);
+      const context = await createMockApplicationContext();
+      const warnSpy = vi.spyOn(context.logger, 'warn');
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await repo.getActiveByCaseId(CASE_ID);
+
+      expect(warnSpy).not.toHaveBeenCalled();
+      repo.release();
+    });
+
+    test('should NOT log a WARNING when two active rows have different assignedOn values', async () => {
+      const olderAppointment: CaseAppointment = {
+        ...baseAppointment,
+        id: 'appt-older',
+        assignedOn: '2023-06-01',
+      };
+      const newerAppointment: CaseAppointment = {
+        ...baseAppointment,
+        id: 'appt-newer',
+        assignedOn: '2024-01-15',
+      };
+
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([
+        newerAppointment,
+        olderAppointment,
+      ]);
+      const context = await createMockApplicationContext();
+      const warnSpy = vi.spyOn(context.logger, 'warn');
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await repo.getActiveByCaseId(CASE_ID);
+
+      expect(warnSpy).not.toHaveBeenCalled();
       repo.release();
     });
 

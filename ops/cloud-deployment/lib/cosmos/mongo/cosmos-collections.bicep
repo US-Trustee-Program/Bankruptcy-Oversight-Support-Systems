@@ -569,11 +569,9 @@ resource caseTrusteeAppointmentsCollection 'Microsoft.DocumentDB/databaseAccount
           // instead of fetching every active appointment for the case and sorting in memory.
           // The remaining filter predicates (unassignedOn not-exists, trusteeId $ne, isSurrogate
           // $ne) are not index-seekable and are evaluated as residual filters regardless of what
-          // else is in this key, so they are deliberately not included here. The query also sorts
-          // by createdOn DESC as a secondary tiebreaker for the rare case where two active rows
-          // share an identical assignedOn — that field is intentionally NOT part of this index,
-          // since it only needs to disambiguate a single-digit-count in-memory result set on ties,
-          // not drive the primary index seek.
+          // else is in this key, so they are deliberately not included here. createdOn is
+          // deliberately NOT part of this key -- see getActiveByCaseId's docblock for why it was
+          // tried and reverted as a secondary sort key (CAMS-809).
           key: {
             keys: ['caseId', 'assignedOn']
           }
