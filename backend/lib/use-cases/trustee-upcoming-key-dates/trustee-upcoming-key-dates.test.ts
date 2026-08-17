@@ -303,5 +303,47 @@ describe('TrusteeUpcomingKeyDatesUseCase', () => {
         }),
       );
     });
+
+    test.each([
+      ['lastAuditFiscalYear', { lastAuditFiscalYear: 2022 }, { lastAuditFiscalYear: null }],
+      [
+        'upcomingExamOrAuditYear',
+        { upcomingExamOrAuditYear: 2027 },
+        { upcomingExamOrAuditYear: null },
+      ],
+      [
+        'upcomingExamOrAuditType',
+        { upcomingExamOrAuditType: 'Field Exam' },
+        { upcomingExamOrAuditType: null },
+      ],
+    ])(
+      'scalar field cleared (%s → null): history shows old value in before, absent from after',
+      async (_field, existingOverride, inputOverride) => {
+        const existing = buildMockDocument(existingOverride);
+        vi.spyOn(MockMongoRepository.prototype, 'getByAppointmentId').mockResolvedValue(existing);
+        vi.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue(undefined);
+        const createHistorySpy = vi
+          .spyOn(MockMongoRepository.prototype, 'createHistory')
+          .mockResolvedValue(undefined);
+
+        const context = await createMockApplicationContext();
+        const useCase = new TrusteeUpcomingKeyDatesUseCase(context);
+        const input = buildMockInput(inputOverride);
+
+        await useCase.upsertUpcomingKeyDates(
+          'trustee-001',
+          'appointment-001',
+          input,
+          SYSTEM_USER_REFERENCE,
+        );
+
+        expect(createHistorySpy).toHaveBeenCalledWith(
+          expect.objectContaining({
+            before: existingOverride,
+            after: {},
+          }),
+        );
+      },
+    );
   });
 });
