@@ -97,6 +97,7 @@ type FormState = {
   tirSemiAnnualReviewPeriodStart: string;
   tirSemiAnnualReviewPeriodEnd: string;
   lastAuditFiscalYear: number | null;
+  lastMonthlyReportReceived: string;
 };
 
 const EMPTY_FORM: FormState = {
@@ -117,6 +118,7 @@ const EMPTY_FORM: FormState = {
   tirSemiAnnualReviewPeriodStart: '',
   tirSemiAnnualReviewPeriodEnd: '',
   lastAuditFiscalYear: null,
+  lastMonthlyReportReceived: '',
 };
 
 const currentYear = new Date().getFullYear();
@@ -192,6 +194,7 @@ export default function UpcomingKeyDatesForm() {
             tirSemiAnnualReviewPeriodStart: data.tirSemiAnnualReviewPeriodStart ?? '',
             tirSemiAnnualReviewPeriodEnd: data.tirSemiAnnualReviewPeriodEnd ?? '',
             lastAuditFiscalYear: data.lastAuditFiscalYear ?? null,
+            lastMonthlyReportReceived: data.lastMonthlyReportReceived ?? '',
           });
         }
       })
@@ -314,6 +317,7 @@ export default function UpcomingKeyDatesForm() {
       tirSemiAnnualSubmission,
       tirSemiAnnualReview,
       lastAuditFiscalYear: form.lastAuditFiscalYear,
+      lastMonthlyReportReceived: form.lastMonthlyReportReceived || null,
     };
 
     const result = validateTrusteeUpcomingKeyDates(isoInput);

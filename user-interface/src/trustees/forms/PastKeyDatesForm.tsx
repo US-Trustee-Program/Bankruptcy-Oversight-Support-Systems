@@ -6,6 +6,11 @@ import {
   TrusteeUpcomingKeyDatesInput,
   isoToSentinel,
 } from '@common/cams/trustee-upcoming-key-dates';
+import {
+  PAST_KEY_DATES_FIELD_CONFIG,
+  PastDateFieldKey,
+  PastKeyDatesVariant,
+} from '@/trustees/panels/pastKeyDatesFieldConfig';
 
 const CURRENT_YEAR = new Date().getFullYear();
 const FISCAL_YEAR_OPTIONS = Array.from({ length: 21 }, (_, i) => CURRENT_YEAR - i);
@@ -14,12 +19,11 @@ import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import DatePicker from '@/lib/components/uswds/DatePicker';
+import LocalStorage from '@/lib/utils/local-storage';
+import { CamsRole } from '@common/cams/roles';
+import { Stop } from '@/lib/components/Stop';
 
-type PastKeyDatesFormState = {
-  pastBackgroundQuestion: string;
-  pastFieldExam: string;
-  pastAudit: string;
-  pastTprSubmission: string;
+type PastKeyDatesFormState = Record<PastDateFieldKey, string> & {
   lastAuditFiscalYear: number | '';
 };
 
@@ -28,6 +32,7 @@ const EMPTY_FORM: PastKeyDatesFormState = {
   pastFieldExam: '',
   pastAudit: '',
   pastTprSubmission: '',
+  lastMonthlyReportReceived: '',
   lastAuditFiscalYear: '',
 };
 
@@ -35,14 +40,22 @@ function buildUpcomingKeyDatesInput(
   ids: { trusteeId: string; appointmentId: string },
   original: TrusteeUpcomingKeyDates | null,
   form: PastKeyDatesFormState,
+  opts: { activeDateKeys: Set<PastDateFieldKey>; hasYearField: boolean },
 ): TrusteeUpcomingKeyDatesInput {
+  const { activeDateKeys, hasYearField } = opts;
+
+  function dateValue(key: PastDateFieldKey): string | null {
+    return activeDateKeys.has(key) ? form[key] || null : (original?.[key] ?? null);
+  }
+
   return {
     trusteeId: ids.trusteeId,
     appointmentId: ids.appointmentId,
-    pastBackgroundQuestion: form.pastBackgroundQuestion || null,
-    pastFieldExam: form.pastFieldExam || null,
-    pastAudit: form.pastAudit || null,
-    pastTprSubmission: form.pastTprSubmission || null,
+    pastBackgroundQuestion: dateValue('pastBackgroundQuestion'),
+    pastFieldExam: dateValue('pastFieldExam'),
+    pastAudit: dateValue('pastAudit'),
+    pastTprSubmission: dateValue('pastTprSubmission'),
+    lastMonthlyReportReceived: dateValue('lastMonthlyReportReceived'),
     tprReviewPeriodStart: original?.tprReviewPeriodStart
       ? isoToSentinel(original.tprReviewPeriodStart)
       : null,
@@ -74,8 +87,15 @@ function buildUpcomingKeyDatesInput(
     upcomingExamOrAuditYear: original?.upcomingExamOrAuditYear ?? null,
     upcomingExamOrAuditType: original?.upcomingExamOrAuditType ?? null,
     tirFrequency: original?.tirFrequency ?? null,
-    lastAuditFiscalYear: form.lastAuditFiscalYear || null,
+    lastAuditFiscalYear: hasYearField
+      ? form.lastAuditFiscalYear || null
+      : (original?.lastAuditFiscalYear ?? null),
   };
+}
+
+function deriveVariant(chapter: string, appointmentType: string): PastKeyDatesVariant {
+  if (chapter === '11-subchapter-v' && appointmentType === 'pool') return 'subv-pool';
+  return 'chapter7-panel';
 }
 
 export default function PastKeyDatesForm() {
@@ -85,16 +105,21 @@ export default function PastKeyDatesForm() {
   }>();
   const navigate = useNavigate();
   const globalAlert = useGlobalAlert();
+  const canManage = !!LocalStorage.getSession()?.user?.roles?.includes(CamsRole.TrusteeAdmin);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [variant, setVariant] = useState<PastKeyDatesVariant>('chapter7-panel');
   const [form, setForm] = useState<PastKeyDatesFormState>(EMPTY_FORM);
   const [original, setOriginal] = useState<TrusteeUpcomingKeyDates | null>(null);
 
   useEffect(() => {
-    Api2.getUpcomingKeyDates(trusteeId!, appointmentId!)
-      .then((response) => {
-        const data = response.data;
+    Promise.all([
+      Api2.getUpcomingKeyDates(trusteeId!, appointmentId!),
+      Api2.getTrusteeAppointments(trusteeId!),
+    ])
+      .then(([keyDatesResponse, appointmentsResponse]) => {
+        const data = keyDatesResponse.data;
         if (data) {
           setOriginal(data);
           setForm({
@@ -102,8 +127,13 @@ export default function PastKeyDatesForm() {
             pastFieldExam: data.pastFieldExam ?? '',
             pastAudit: data.pastAudit ?? '',
             pastTprSubmission: data.pastTprSubmission ?? '',
+            lastMonthlyReportReceived: data.lastMonthlyReportReceived ?? '',
             lastAuditFiscalYear: data.lastAuditFiscalYear ?? '',
           });
+        }
+        const appointment = appointmentsResponse.data?.find((a) => a.id === appointmentId);
+        if (appointment) {
+          setVariant(deriveVariant(appointment.chapter, appointment.appointmentType));
         }
       })
       .catch((err) => {
@@ -114,13 +144,7 @@ export default function PastKeyDatesForm() {
       });
   }, [trusteeId, appointmentId]);
 
-  function handleSimpleChange(field: 'pastBackgroundQuestion' | 'pastTprSubmission') {
-    return (ev: React.ChangeEvent<HTMLInputElement>) => {
-      setForm((prev) => ({ ...prev, [field]: ev.target.value }));
-    };
-  }
-
-  function handleChange(field: 'pastFieldExam' | 'pastAudit') {
+  function handleDateChange(field: PastDateFieldKey) {
     return (ev: React.ChangeEvent<HTMLInputElement>) => {
       setForm((prev) => ({ ...prev, [field]: ev.target.value }));
     };
@@ -128,10 +152,16 @@ export default function PastKeyDatesForm() {
 
   async function handleSave() {
     setIsSaving(true);
+    const activeFields = PAST_KEY_DATES_FIELD_CONFIG[variant];
+    const activeDateKeys = new Set(
+      activeFields.filter((field) => field.kind === 'date').map((field) => field.key),
+    );
+    const hasYearField = activeFields.some((field) => field.kind === 'year');
     const isoInput = buildUpcomingKeyDatesInput(
       { trusteeId: trusteeId!, appointmentId: appointmentId! },
       original,
       form,
+      { activeDateKeys, hasYearField },
     );
 
     try {
@@ -152,60 +182,56 @@ export default function PastKeyDatesForm() {
     return <LoadingSpinner id="edit-past-key-dates-loading" />;
   }
 
+  if (!canManage) {
+    return (
+      <Stop
+        id="forbidden-alert"
+        title="Forbidden"
+        message="You do not have permission to manage Trustee Past Key Dates"
+        asError
+      />
+    );
+  }
+
   return (
     <div className="edit-upcoming-key-dates" data-testid="edit-past-key-dates">
       <h3>Edit Past Key Dates</h3>
-      <DatePicker
-        id="past-background-question"
-        label="Last Update to Background Questionnaire"
-        value={form.pastBackgroundQuestion}
-        onChange={handleSimpleChange('pastBackgroundQuestion')}
-        disableMax
-      />
-      <DatePicker
-        id="past-field-exam"
-        label="Field Exam Report Date"
-        value={form.pastFieldExam}
-        onChange={handleChange('pastFieldExam')}
-        disableMax
-      />
-      <DatePicker
-        id="past-audit"
-        label="Audit Report Date"
-        value={form.pastAudit}
-        onChange={handleChange('pastAudit')}
-        disableMax
-      />
-      <div className="usa-form-group">
-        <label className="usa-label" htmlFor="last-audit-fiscal-year">
-          Last Audit&apos;s Fiscal Year
-        </label>
-        <span className="usa-hint">The fiscal year of the TIR data audited</span>
-        <select
-          className="usa-select"
-          id="last-audit-fiscal-year"
-          data-testid="last-audit-fiscal-year"
-          value={form.lastAuditFiscalYear}
-          onChange={(ev) => {
-            const val = ev.target.value;
-            setForm((prev) => ({ ...prev, lastAuditFiscalYear: val ? Number(val) : '' }));
-          }}
-        >
-          <option value="">- Select -</option>
-          {FISCAL_YEAR_OPTIONS.map((year) => (
-            <option key={year} value={year}>
-              {year}
-            </option>
-          ))}
-        </select>
-      </div>
-      <DatePicker
-        id="past-tpr-submission"
-        label="Trustee Interim Report Letter Date"
-        value={form.pastTprSubmission}
-        onChange={handleSimpleChange('pastTprSubmission')}
-        disableMax
-      />
+      {PAST_KEY_DATES_FIELD_CONFIG[variant].map((field) =>
+        field.kind === 'year' ? (
+          <div className="usa-form-group" key={field.inputId}>
+            <label className="usa-label" htmlFor={field.inputId}>
+              {field.formLabel}
+            </label>
+            <span className="usa-hint">The fiscal year of the TIR data audited</span>
+            <select
+              className="usa-select"
+              id={field.inputId}
+              data-testid={field.inputId}
+              value={form.lastAuditFiscalYear}
+              onChange={(ev) => {
+                const val = ev.target.value;
+                setForm((prev) => ({ ...prev, lastAuditFiscalYear: val ? Number(val) : '' }));
+              }}
+            >
+              <option value="">- Select -</option>
+              {FISCAL_YEAR_OPTIONS.map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : (
+          <DatePicker
+            key={field.inputId}
+            id={field.inputId}
+            label={field.formLabel}
+            value={form[field.key]}
+            onChange={handleDateChange(field.key)}
+            disableMax
+          />
+        ),
+      )}
       <div className="usa-button-group">
         <Button
           id="save-past-key-dates"

@@ -7,6 +7,7 @@ import * as TrusteesModule from '@common/cams/trustees';
 import { ContactInformation } from '@common/cams/contact';
 import MockData from '@common/cams/test-utilities/mock-data';
 import TestingUtilities from '@/lib/testing/testing-utilities';
+import { CamsRole } from '@common/cams/roles';
 import Api2 from '@/lib/models/api2';
 import useFeatureFlags from '@/lib/hooks/UseFeatureFlags';
 import { testFeatureFlags } from '@common/feature-flags';
@@ -609,6 +610,41 @@ describe('TrusteeDetailScreen', () => {
         // When feature flag is disabled, GoHome is rendered instead of the edit form
         expect(screen.queryByTestId('edit-upcoming-key-dates')).not.toBeInTheDocument();
       });
+    });
+  });
+
+  describe('past-key-dates/edit route flag gate', () => {
+    beforeEach(() => {
+      TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
+      vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [] });
+    });
+
+    test.each([
+      [true, true, true],
+      [true, false, true],
+      [false, true, true],
+      [false, false, false],
+    ])('ch7=%s subv=%s → route enabled=%s', async (ch7Flag, subvFlag, expectEnabled) => {
+      mockUseFeatureFlags.mockReturnValue({
+        ...testFeatureFlags,
+        'display-chpt7-panel-upcoming-key-dates': ch7Flag,
+        'display-chpt11-subv-past-key-dates': subvFlag,
+      });
+
+      renderWithRouter(['/trustees/123/appointments/appt-1/past-key-dates/edit']);
+
+      if (expectEnabled) {
+        await waitFor(() => {
+          expect(screen.getByTestId('edit-past-key-dates')).toBeInTheDocument();
+        });
+      } else {
+        await waitFor(() => {
+          expect(screen.queryByTestId('edit-past-key-dates')).not.toBeInTheDocument();
+        });
+      }
     });
   });
 

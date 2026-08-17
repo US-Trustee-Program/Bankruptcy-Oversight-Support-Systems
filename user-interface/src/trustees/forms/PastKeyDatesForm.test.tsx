@@ -5,7 +5,10 @@ import PastKeyDatesForm from './PastKeyDatesForm';
 import Api2 from '@/lib/models/api2';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
+import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
+import { CamsRole } from '@common/cams/roles';
+import { GlobalAlertContext } from '@/App';
 
 const mockUseNavigate = vi.hoisted(() => vi.fn());
 const mockUseParams = vi.hoisted(() =>
@@ -20,6 +23,28 @@ vi.mock('react-router-dom', async () => {
     useParams: mockUseParams,
   };
 });
+
+const chapter7Appointment: TrusteeAppointment = {
+  id: 'appointment-001',
+  trusteeId: 'trustee-001',
+  chapter: '7',
+  appointmentType: 'panel',
+  courtId: '0208',
+  courtName: 'Southern District of New York',
+  status: 'active',
+  appointedDate: '2020-01-15T00:00:00.000Z',
+  effectiveDate: '2020-01-15T00:00:00.000Z',
+  createdOn: '2020-01-10T14:30:00.000Z',
+  createdBy: SYSTEM_USER_REFERENCE,
+  updatedOn: '2020-01-10T14:30:00.000Z',
+  updatedBy: SYSTEM_USER_REFERENCE,
+};
+
+const subvAppointment: TrusteeAppointment = {
+  ...chapter7Appointment,
+  chapter: '11-subchapter-v',
+  appointmentType: 'pool',
+};
 
 const populatedDocument: TrusteeUpcomingKeyDates = {
   id: 'doc-001',
@@ -43,12 +68,33 @@ const populatedDocument: TrusteeUpcomingKeyDates = {
   tirSubmission: '1900-10-15',
   tirReview: '1900-11-01',
   lastAuditFiscalYear: 2022,
+  tirSemiAnnualReviewPeriodStart: '1900-01-01',
+  tirSemiAnnualReviewPeriodEnd: '1900-06-30',
+  tirSemiAnnualSubmission: '1900-07-30',
+  tirSemiAnnualReview: '1900-09-28',
+  upcomingExamOrAuditYear: 2029,
+  upcomingExamOrAuditType: 'Field Exam',
+  tirFrequency: 'SEMI_ANNUAL',
+};
+
+const mockGlobalAlertRef = {
+  current: {
+    success: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn(),
+    warning: vi.fn(),
+    show: vi.fn(),
+    hide: vi.fn(),
+    clear: vi.fn(),
+  },
 };
 
 function renderComponent() {
   return render(
     <BrowserRouter>
-      <PastKeyDatesForm />
+      <GlobalAlertContext.Provider value={mockGlobalAlertRef}>
+        <PastKeyDatesForm />
+      </GlobalAlertContext.Provider>
     </BrowserRouter>,
   );
 }
@@ -60,8 +106,25 @@ describe('PastKeyDatesForm', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     mockNavigate.mockClear();
+    mockGlobalAlertRef.current.error.mockClear();
     mockUseNavigate.mockReturnValue(mockNavigate);
+    TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
+    vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [chapter7Appointment] });
     userEvent = TestingUtilities.setupUserEvent();
+  });
+
+  test('shows forbidden message when user lacks TrusteeAdmin role', async () => {
+    TestingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+    renderComponent();
+
+    const forbiddenAlert = await screen.findByTestId('alert-forbidden-alert');
+    expect(forbiddenAlert).toBeInTheDocument();
+    expect(forbiddenAlert).toHaveTextContent('Forbidden');
+    expect(forbiddenAlert).toHaveTextContent(
+      'You do not have permission to manage Trustee Past Key Dates',
+    );
   });
 
   test('renders all date picker inputs', async () => {
@@ -143,6 +206,13 @@ describe('PastKeyDatesForm', () => {
           tirReviewPeriodEnd: '1900-06-30',
           tirSubmission: '1900-10-15',
           tirReview: '1900-11-01',
+          tirSemiAnnualReviewPeriodStart: '1900-01-01',
+          tirSemiAnnualReviewPeriodEnd: '1900-06-30',
+          tirSemiAnnualSubmission: '1900-07-30',
+          tirSemiAnnualReview: '1900-09-28',
+          upcomingExamOrAuditYear: 2029,
+          upcomingExamOrAuditType: 'Field Exam',
+          tirFrequency: 'SEMI_ANNUAL',
         }),
       ),
     );
@@ -205,6 +275,10 @@ describe('PastKeyDatesForm', () => {
     await waitFor(() => {
       expect(screen.getByTestId('edit-past-key-dates')).toBeInTheDocument();
     });
+
+    expect(mockGlobalAlertRef.current.error).toHaveBeenCalledWith(
+      'Failed to load past key dates: Network failure',
+    );
   });
 
   test('shows error alert when save fails and re-enables save button', async () => {
@@ -225,6 +299,9 @@ describe('PastKeyDatesForm', () => {
       expect(saveButton).toHaveTextContent('Save');
     });
     expect(mockNavigate).not.toHaveBeenCalled();
+    expect(mockGlobalAlertRef.current.error).toHaveBeenCalledWith(
+      'Failed to save past key dates: Server error',
+    );
   });
 
   test('disables save button and shows Saving text while save is in progress', async () => {
@@ -340,6 +417,7 @@ describe('PastKeyDatesForm', () => {
     ['Field Exam', 'Field Exam Report Date'],
     ['Audit', 'Audit Report Date'],
     ['TPR Submission', 'Trustee Interim Report Letter Date'],
+    ['Last Audit Fiscal Year', "Last Audit's Fiscal Year"],
   ])('renders updated label for %s', async (_desc, expectedLabel) => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
@@ -364,5 +442,109 @@ describe('PastKeyDatesForm', () => {
 
     expect(putSpy).not.toHaveBeenCalled();
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');
+  });
+
+  describe('subv-pool variant', () => {
+    beforeEach(() => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [subvAppointment] });
+    });
+
+    test('renders exactly one date input: Last Monthly Report Received', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-past-key-dates')).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('past-last-monthly-report-received')).toBeInTheDocument();
+      expect(screen.queryByTestId('past-background-question')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('past-field-exam')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('past-audit')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('past-tpr-submission')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('last-audit-fiscal-year')).not.toBeInTheDocument();
+    });
+
+    test('pre-populates from API response', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({
+        data: { ...populatedDocument, lastMonthlyReportReceived: '2024-11-15' },
+      });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('past-last-monthly-report-received')).toHaveValue('2024-11-15');
+      });
+    });
+
+    test('shows empty input when API returns null', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('past-last-monthly-report-received')).toHaveValue('');
+      });
+    });
+
+    test('save persists lastMonthlyReportReceived and preserves untouched fields from original', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+      const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('past-last-monthly-report-received')).toBeInTheDocument();
+      });
+
+      fireEvent.change(screen.getByTestId('past-last-monthly-report-received'), {
+        target: { value: '2024-11-15' },
+      });
+      await userEvent.click(screen.getByTestId('button-save-past-key-dates'));
+
+      await waitFor(() =>
+        expect(putSpy).toHaveBeenCalledWith(
+          'trustee-001',
+          'appointment-001',
+          expect.objectContaining({
+            lastMonthlyReportReceived: '2024-11-15',
+            // fields not shown by this variant must be preserved from the original doc
+            pastBackgroundQuestion: populatedDocument.pastBackgroundQuestion,
+            pastFieldExam: populatedDocument.pastFieldExam,
+            pastAudit: populatedDocument.pastAudit,
+            pastTprSubmission: populatedDocument.pastTprSubmission,
+            lastAuditFiscalYear: populatedDocument.lastAuditFiscalYear,
+          }),
+        ),
+      );
+      expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');
+    });
+
+    test('Cancel navigates without calling PUT', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+      const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-past-key-dates')).toBeInTheDocument();
+      });
+
+      await userEvent.click(screen.getByTestId('button-cancel-past-key-dates'));
+
+      expect(putSpy).not.toHaveBeenCalled();
+      expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');
+    });
+
+    test('renders the Last Monthly Report Received label', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByText('Last Monthly Report Received')).toBeInTheDocument();
+      });
+    });
   });
 });

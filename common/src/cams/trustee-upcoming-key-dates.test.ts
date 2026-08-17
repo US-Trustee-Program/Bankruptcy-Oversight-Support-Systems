@@ -25,275 +25,139 @@ import V from './validators';
 import { VALID } from './validation';
 
 describe('trustee-upcoming-key-dates date conversion helpers', () => {
-  describe('isoToMMDDYYYY', () => {
-    test('converts standard date', () => {
-      expect(isoToMMDDYYYY('2026-02-21')).toBe('02/21/2026');
-    });
-
-    test('pads single-digit month and day', () => {
-      expect(isoToMMDDYYYY('2026-03-05')).toBe('03/05/2026');
-    });
-
-    test('converts year-end boundary date', () => {
-      expect(isoToMMDDYYYY('2025-12-31')).toBe('12/31/2025');
-    });
-
-    test('converts year-start boundary date', () => {
-      expect(isoToMMDDYYYY('2025-01-01')).toBe('01/01/2025');
-    });
+  test.each([
+    ['2026-02-21', '02/21/2026'],
+    ['2026-03-05', '03/05/2026'],
+    ['2025-12-31', '12/31/2025'],
+    ['2025-01-01', '01/01/2025'],
+  ])('isoToMMDDYYYY(%s) -> %s', (input, expected) => {
+    expect(isoToMMDDYYYY(input)).toBe(expected);
   });
 
-  describe('isoToMMYYYY', () => {
-    test('converts standard month/year', () => {
-      expect(isoToMMYYYY('2026-02-01')).toBe('02/2026');
-    });
-
-    test('pads single-digit month', () => {
-      expect(isoToMMYYYY('2026-03-01')).toBe('03/2026');
-    });
-
-    test('converts December', () => {
-      expect(isoToMMYYYY('2025-12-01')).toBe('12/2025');
-    });
+  test.each([
+    ['2026-02-01', '02/2026'],
+    ['2026-03-01', '03/2026'],
+    ['2025-12-01', '12/2025'],
+  ])('isoToMMYYYY(%s) -> %s', (input, expected) => {
+    expect(isoToMMYYYY(input)).toBe(expected);
   });
 
-  describe('isoToMMDD', () => {
-    test('converts sentinel year date', () => {
-      expect(isoToMMDD('1900-04-30')).toBe('04/30');
-    });
-
-    test('pads single-digit month and day', () => {
-      expect(isoToMMDD('1900-03-05')).toBe('03/05');
-    });
-
-    test('converts year-end boundary', () => {
-      expect(isoToMMDD('1900-12-31')).toBe('12/31');
-    });
+  test.each([
+    ['1900-04-30', '04/30'],
+    ['1900-03-05', '03/05'],
+    ['1900-12-31', '12/31'],
+  ])('isoToMMDD(%s) -> %s', (input, expected) => {
+    expect(isoToMMDD(input)).toBe(expected);
   });
 
-  describe('isoRangeToMMDD', () => {
-    test('formats range crossing year boundary', () => {
-      expect(isoRangeToMMDD('1900-04-01', '1900-03-31')).toBe('04/01 - 03/31');
-    });
-
-    test('formats same-month range', () => {
-      expect(isoRangeToMMDD('1900-06-01', '1900-06-30')).toBe('06/01 - 06/30');
-    });
-
-    test('formats single-day range', () => {
-      expect(isoRangeToMMDD('1900-01-15', '1900-01-15')).toBe('01/15 - 01/15');
-    });
+  test.each([
+    ['1900-04-01', '1900-03-31', '04/01 - 03/31'],
+    ['1900-06-01', '1900-06-30', '06/01 - 06/30'],
+    ['1900-01-15', '1900-01-15', '01/15 - 01/15'],
+  ])('isoRangeToMMDD(%s, %s) -> %s', (start, end, expected) => {
+    expect(isoRangeToMMDD(start, end)).toBe(expected);
   });
 
-  describe('mmddyyyyToISO', () => {
-    test('converts standard date', () => {
-      expect(mmddyyyyToISO('02/21/2026')).toBe('2026-02-21');
-    });
-
-    test('preserves zero-padded month and day', () => {
-      expect(mmddyyyyToISO('03/05/2026')).toBe('2026-03-05');
-    });
-
-    test('converts year-end boundary', () => {
-      expect(mmddyyyyToISO('12/31/2025')).toBe('2025-12-31');
-    });
+  test.each([
+    ['02/21/2026', '2026-02-21'],
+    ['03/05/2026', '2026-03-05'],
+    ['12/31/2025', '2025-12-31'],
+  ])('mmddyyyyToISO(%s) -> %s', (input, expected) => {
+    expect(mmddyyyyToISO(input)).toBe(expected);
   });
 
-  describe('mmyyyyToISO', () => {
-    test('converts standard month/year', () => {
-      expect(mmyyyyToISO('02/2026')).toBe('2026-02-01');
-    });
-
-    test('preserves zero-padded month', () => {
-      expect(mmyyyyToISO('03/2026')).toBe('2026-03-01');
-    });
-
-    test('converts December', () => {
-      expect(mmyyyyToISO('12/2025')).toBe('2025-12-01');
-    });
+  test.each([
+    ['02/2026', '2026-02-01'],
+    ['03/2026', '2026-03-01'],
+    ['12/2025', '2025-12-01'],
+  ])('mmyyyyToISO(%s) -> %s', (input, expected) => {
+    expect(mmyyyyToISO(input)).toBe(expected);
   });
 
-  describe('mmddToISO', () => {
-    test('converts standard mm/dd with sentinel year', () => {
-      expect(mmddToISO('04/30')).toBe('1900-04-30');
-    });
-
-    test('preserves zero-padded month and day', () => {
-      expect(mmddToISO('03/05')).toBe('1900-03-05');
-    });
-
-    test('converts year-end boundary', () => {
-      expect(mmddToISO('12/31')).toBe('1900-12-31');
-    });
+  test.each([
+    ['04/30', '1900-04-30'],
+    ['03/05', '1900-03-05'],
+    ['12/31', '1900-12-31'],
+  ])('mmddToISO(%s) -> %s', (input, expected) => {
+    expect(mmddToISO(input)).toBe(expected);
   });
 });
 
 describe('display-format validators', () => {
   describe('validateMMDDYYYY', () => {
-    test('valid date passes', () => {
-      expect(validateMMDDYYYY('02/21/2026')).toEqual(VALID);
+    test.each([['02/21/2026'], ['03/05/2026']])('%s passes', (value) => {
+      expect(validateMMDDYYYY(value)).toEqual(VALID);
     });
 
-    test('zero-padded month and day pass', () => {
-      expect(validateMMDDYYYY('03/05/2026')).toEqual(VALID);
-    });
-
-    test('invalid month fails with correct error', () => {
-      expect(validateMMDDYYYY('13/15/2026')).toMatchObject({
-        reasons: ['Must be a valid date mm/dd/yyyy.'],
-      });
-    });
-
-    test('invalid day fails', () => {
-      expect(validateMMDDYYYY('02/32/2026')).toMatchObject({
-        reasons: ['Must be a valid date mm/dd/yyyy.'],
-      });
-    });
-
-    test('invalid calendar date (Feb 30) fails', () => {
-      expect(validateMMDDYYYY('02/30/2026')).toMatchObject({
-        reasons: ['Must be a valid date mm/dd/yyyy.'],
-      });
-    });
-
-    test('wrong format fails', () => {
-      expect(validateMMDDYYYY('2/21/2026')).toMatchObject({
-        reasons: ['Must be a valid date mm/dd/yyyy.'],
-      });
-    });
-
-    test('rejects date with leading characters before the pattern', () => {
-      expect(validateMMDDYYYY('x02/21/2026')).toMatchObject({
-        reasons: ['Must be a valid date mm/dd/yyyy.'],
-      });
-    });
-
-    test('rejects date with trailing characters after the pattern', () => {
-      expect(validateMMDDYYYY('02/21/2026x')).toMatchObject({
+    test.each([
+      ['13/15/2026', 'invalid month'],
+      ['02/32/2026', 'invalid day'],
+      ['02/30/2026', 'invalid calendar date (Feb 30)'],
+      ['2/21/2026', 'wrong format'],
+      ['x02/21/2026', 'leading characters before the pattern'],
+      ['02/21/2026x', 'trailing characters after the pattern'],
+    ])('%s fails (%s)', (value) => {
+      expect(validateMMDDYYYY(value)).toMatchObject({
         reasons: ['Must be a valid date mm/dd/yyyy.'],
       });
     });
   });
 
   describe('validateMMYYYY', () => {
-    test('valid month/year passes', () => {
-      expect(validateMMYYYY('02/2026')).toEqual(VALID);
+    test.each([['02/2026'], ['12/2025'], ['01/2026']])('%s passes', (value) => {
+      expect(validateMMYYYY(value)).toEqual(VALID);
     });
 
-    test('December passes', () => {
-      expect(validateMMYYYY('12/2025')).toEqual(VALID);
-    });
-
-    test('invalid month 13 fails with correct error', () => {
-      expect(validateMMYYYY('13/2026')).toMatchObject({
+    test.each([
+      ['13/2026', 'invalid month 13'],
+      ['00/2026', 'invalid month 00'],
+      ['2/2026', 'wrong format'],
+      ['x02/2026', 'leading characters'],
+      ['02/2026x', 'trailing characters'],
+    ])('%s fails (%s)', (value) => {
+      expect(validateMMYYYY(value)).toMatchObject({
         reasons: ['Must be a valid date mm/yyyy.'],
       });
-    });
-
-    test('invalid month 00 fails', () => {
-      expect(validateMMYYYY('00/2026')).toMatchObject({
-        reasons: ['Must be a valid date mm/yyyy.'],
-      });
-    });
-
-    test('wrong format fails', () => {
-      expect(validateMMYYYY('2/2026')).toMatchObject({
-        reasons: ['Must be a valid date mm/yyyy.'],
-      });
-    });
-
-    test('rejects date with leading characters', () => {
-      expect(validateMMYYYY('x02/2026')).toMatchObject({
-        reasons: ['Must be a valid date mm/yyyy.'],
-      });
-    });
-
-    test('rejects date with trailing characters', () => {
-      expect(validateMMYYYY('02/2026x')).toMatchObject({
-        reasons: ['Must be a valid date mm/yyyy.'],
-      });
-    });
-
-    test('accepts month of exactly 1 (January)', () => {
-      expect(validateMMYYYY('01/2026')).toEqual(VALID);
     });
   });
 
   describe('validateMMDD', () => {
-    test('valid date passes', () => {
-      expect(validateMMDD('04/30')).toEqual(VALID);
+    test.each([
+      ['04/30', 'valid date'],
+      ['02/29', 'Feb 29 (uses leap year 2000)'],
+    ])('%s passes (%s)', (value) => {
+      expect(validateMMDD(value)).toEqual(VALID);
     });
 
-    test('Feb 29 passes (uses leap year 2000)', () => {
-      expect(validateMMDD('02/29')).toEqual(VALID);
-    });
-
-    test('invalid month and day fails with correct error', () => {
-      expect(validateMMDD('13/45')).toMatchObject({
-        reasons: ['Must be a valid date mm/dd.'],
-      });
-    });
-
-    test('invalid calendar date (Feb 30) fails', () => {
-      expect(validateMMDD('02/30')).toMatchObject({
-        reasons: ['Must be a valid date mm/dd.'],
-      });
-    });
-
-    test('wrong format fails', () => {
-      expect(validateMMDD('4/30')).toMatchObject({
-        reasons: ['Must be a valid date mm/dd.'],
-      });
-    });
-
-    test('rejects date with leading characters', () => {
-      expect(validateMMDD('x04/30')).toMatchObject({
-        reasons: ['Must be a valid date mm/dd.'],
-      });
-    });
-
-    test('rejects date with trailing characters', () => {
-      expect(validateMMDD('04/30x')).toMatchObject({
+    test.each([
+      ['13/45', 'invalid month and day'],
+      ['02/30', 'invalid calendar date (Feb 30)'],
+      ['4/30', 'wrong format'],
+      ['x04/30', 'leading characters'],
+      ['04/30x', 'trailing characters'],
+    ])('%s fails (%s)', (value) => {
+      expect(validateMMDD(value)).toMatchObject({
         reasons: ['Must be a valid date mm/dd.'],
       });
     });
   });
 
   describe('validateMMDDRange', () => {
-    test('valid range passes', () => {
-      expect(validateMMDDRange('04/01 - 03/31')).toEqual(VALID);
+    test.each([
+      ['04/01 - 03/31', 'valid range'],
+      ['06/01 - 06/30', 'same-month range'],
+    ])('%s passes (%s)', (value) => {
+      expect(validateMMDDRange(value)).toEqual(VALID);
     });
 
-    test('same-month range passes', () => {
-      expect(validateMMDDRange('06/01 - 06/30')).toEqual(VALID);
-    });
-
-    test('invalid start fails with correct error', () => {
-      expect(validateMMDDRange('13/45 - 01/15')).toMatchObject({
-        reasons: ['Must be a valid date mm/dd.'],
-      });
-    });
-
-    test('invalid end fails', () => {
-      expect(validateMMDDRange('01/15 - 13/45')).toMatchObject({
-        reasons: ['Must be a valid date mm/dd.'],
-      });
-    });
-
-    test('wrong format (single date) fails', () => {
-      expect(validateMMDDRange('04/01')).toMatchObject({
-        reasons: ['Must be a valid date mm/dd.'],
-      });
-    });
-
-    test('rejects range with leading characters', () => {
-      expect(validateMMDDRange('x04/01 - 03/31')).toMatchObject({
-        reasons: ['Must be a valid date mm/dd.'],
-      });
-    });
-
-    test('rejects range with trailing characters', () => {
-      expect(validateMMDDRange('04/01 - 03/31x')).toMatchObject({
+    test.each([
+      ['13/45 - 01/15', 'invalid start'],
+      ['01/15 - 13/45', 'invalid end'],
+      ['04/01', 'wrong format (single date)'],
+      ['x04/01 - 03/31', 'leading characters'],
+      ['04/01 - 03/31x', 'trailing characters'],
+    ])('%s fails (%s)', (value) => {
+      expect(validateMMDDRange(value)).toMatchObject({
         reasons: ['Must be a valid date mm/dd.'],
       });
     });
@@ -315,53 +179,31 @@ describe('display-format validators', () => {
 
 describe('calculation helpers', () => {
   describe('calculateTirSubmission', () => {
-    test('adds 30 days to a standard quarter-end', () => {
-      expect(calculateTirSubmission('1900-03-31')).toBe('1900-04-30');
-    });
-
-    test('adds 30 days to June 30', () => {
-      expect(calculateTirSubmission('1900-06-30')).toBe('1900-07-30');
-    });
-
-    test('adds 30 days to September 30', () => {
-      expect(calculateTirSubmission('1900-09-30')).toBe('1900-10-30');
-    });
-
-    test('adds 30 days to December 31, wrapping to next month', () => {
-      expect(calculateTirSubmission('1900-12-31')).toBe('1900-01-30');
-    });
-
-    test('adds 30 days crossing a month boundary', () => {
-      expect(calculateTirSubmission('1900-01-15')).toBe('1900-02-14');
+    test.each([
+      ['1900-03-31', '1900-04-30', 'standard quarter-end'],
+      ['1900-06-30', '1900-07-30', 'June 30'],
+      ['1900-09-30', '1900-10-30', 'September 30'],
+      ['1900-12-31', '1900-01-30', 'December 31, wrapping to next month'],
+      ['1900-01-15', '1900-02-14', 'crossing a month boundary'],
+      ['1900-04-01', '1900-05-01', 'day is zero-padded when result day is single digit'],
+    ])('adds 30 days to %s -> %s (%s)', (input, expected) => {
+      expect(calculateTirSubmission(input)).toBe(expected);
     });
 
     test('result uses sentinel year 1900 not arithmetic year', () => {
       const result = calculateTirSubmission('1900-01-01');
       expect(result).toMatch(/^1900-/);
     });
-
-    test('day is zero-padded when result day is single digit', () => {
-      // 1900-04-01 + 30 days = 1900-05-01, day = 1, should be '01'
-      const result = calculateTirSubmission('1900-04-01');
-      expect(result).toBe('1900-05-01');
-    });
   });
 
   describe('calculateTirReview', () => {
-    test('adds 60 days to April 30', () => {
-      expect(calculateTirReview('1900-04-30')).toBe('1900-06-29');
-    });
-
-    test('adds 60 days to July 30', () => {
-      expect(calculateTirReview('1900-07-30')).toBe('1900-09-28');
-    });
-
-    test('adds 60 days to October 30', () => {
-      expect(calculateTirReview('1900-10-30')).toBe('1900-12-29');
-    });
-
-    test('adds 60 days wrapping past year end', () => {
-      expect(calculateTirReview('1900-11-30')).toBe('1900-01-29');
+    test.each([
+      ['1900-04-30', '1900-06-29'],
+      ['1900-07-30', '1900-09-28'],
+      ['1900-10-30', '1900-12-29'],
+      ['1900-11-30', '1900-01-29'],
+    ])('adds 60 days to %s -> %s', (input, expected) => {
+      expect(calculateTirReview(input)).toBe(expected);
     });
   });
 
@@ -370,119 +212,103 @@ describe('calculation helpers', () => {
       expect(calculateNextAuditDate(undefined, undefined, 3)).toBeNull();
     });
 
-    test('uses fieldExam when audit is undefined', () => {
-      expect(calculateNextAuditDate('2025-03-31', undefined, 3)).toBe('2028-03-01');
-    });
-
-    test('uses audit when fieldExam is undefined', () => {
-      expect(calculateNextAuditDate(undefined, '2025-06-30', 3)).toBe('2028-06-01');
-    });
-
-    test('uses the most recent date when both are provided', () => {
-      expect(calculateNextAuditDate('2023-03-31', '2025-06-30', 3)).toBe('2028-06-01');
-    });
-
-    test('uses fieldExam when it is more recent than audit', () => {
-      expect(calculateNextAuditDate('2025-09-30', '2024-12-31', 3)).toBe('2028-09-01');
-    });
-
-    test('aligns to next quarter end when result is mid-quarter', () => {
-      // 2025-04-15 + 3 years = 2028-04-15, which aligns to 2028-06-30
-      expect(calculateNextAuditDate('2025-04-15', undefined, 3)).toBe('2028-06-01');
-    });
-
-    test('calculates 6-year independent audit date', () => {
-      expect(calculateNextAuditDate('2025-03-31', undefined, 6)).toBe('2031-03-01');
-    });
-
-    test('calculates 6-year date using most recent of both', () => {
-      expect(calculateNextAuditDate('2023-03-31', '2025-06-30', 6)).toBe('2031-06-01');
-    });
-
-    test('aligns December date to December 31 quarter end', () => {
-      expect(calculateNextAuditDate('2025-12-31', undefined, 3)).toBe('2028-12-01');
-    });
-
-    test('aligns mid-December date to December 31 quarter end', () => {
-      // 2025-10-15 + 3 years = 2028-10-15, aligns to 2028-12-31
-      expect(calculateNextAuditDate('2025-10-15', undefined, 3)).toBe('2028-12-01');
-    });
-
-    test('date exactly on March 31 aligns to March 31 (not next quarter)', () => {
-      expect(calculateNextAuditDate('2025-03-31', undefined, 3)).toBe('2028-03-01');
-    });
-
-    test('date exactly on June 30 aligns to June 30', () => {
-      expect(calculateNextAuditDate('2025-06-30', undefined, 3)).toBe('2028-06-01');
-    });
-
-    test('date on April 1 (after March 31 quarter end) aligns to June 30', () => {
-      // 2025-04-01 + 3 years = 2028-04-01 → aligns to June 30
-      expect(calculateNextAuditDate('2025-04-01', undefined, 3)).toBe('2028-06-01');
-    });
-
-    test('date on September 30 aligns to September 30', () => {
-      expect(calculateNextAuditDate('2025-09-30', undefined, 3)).toBe('2028-09-01');
-    });
-
-    test('date on October 1 (after September 30) aligns to December 31', () => {
-      expect(calculateNextAuditDate('2025-10-01', undefined, 3)).toBe('2028-12-01');
-    });
-
-    test('year in result is correctly 4 digits', () => {
-      const result = calculateNextAuditDate('2025-06-30', undefined, 3);
-      expect(result?.split('-')[0]).toHaveLength(4);
+    test.each([
+      ['2025-03-31', undefined, 3, '2028-03-01', 'uses fieldExam when audit is undefined'],
+      [undefined, '2025-06-30', 3, '2028-06-01', 'uses audit when fieldExam is undefined'],
+      [
+        '2023-03-31',
+        '2025-06-30',
+        3,
+        '2028-06-01',
+        'uses the most recent date when both are provided',
+      ],
+      [
+        '2025-09-30',
+        '2024-12-31',
+        3,
+        '2028-09-01',
+        'uses fieldExam when it is more recent than audit',
+      ],
+      [
+        '2025-04-15',
+        undefined,
+        3,
+        '2028-06-01',
+        'aligns to next quarter end when result is mid-quarter',
+      ],
+      ['2025-03-31', undefined, 6, '2031-03-01', 'calculates 6-year independent audit date'],
+      [
+        '2023-03-31',
+        '2025-06-30',
+        6,
+        '2031-06-01',
+        'calculates 6-year date using most recent of both',
+      ],
+      ['2025-12-31', undefined, 3, '2028-12-01', 'aligns December date to December 31 quarter end'],
+      [
+        '2025-10-15',
+        undefined,
+        3,
+        '2028-12-01',
+        'aligns mid-December date to December 31 quarter end',
+      ],
+      [
+        '2025-03-31',
+        undefined,
+        3,
+        '2028-03-01',
+        'date exactly on March 31 aligns to March 31 (not next quarter)',
+      ],
+      ['2025-06-30', undefined, 3, '2028-06-01', 'date exactly on June 30 aligns to June 30'],
+      [
+        '2025-04-01',
+        undefined,
+        3,
+        '2028-06-01',
+        'date on April 1 (after March 31 quarter end) aligns to June 30',
+      ],
+      ['2025-09-30', undefined, 3, '2028-09-01', 'date on September 30 aligns to September 30'],
+      [
+        '2025-10-01',
+        undefined,
+        3,
+        '2028-12-01',
+        'date on October 1 (after September 30) aligns to December 31',
+      ],
+    ])('%s / %s / +%i years -> %s (%s)', (fieldExam, audit, years, expected, _desc) => {
+      expect(calculateNextAuditDate(fieldExam, audit, years)).toBe(expected);
     });
   });
 });
 
 describe('validateMonthDay', () => {
-  test('returns VALID for empty string', () => {
-    expect(validateMonthDay('')).toEqual(VALID);
+  test.each([
+    ['', 'empty string'],
+    [null, 'null'],
+    [undefined, 'undefined'],
+    ['1900-04-30', 'a valid sentinel date'],
+  ])('returns VALID for %s (%s)', (value, _desc) => {
+    expect(validateMonthDay(value)).toEqual(VALID);
   });
 
-  test('returns VALID for null', () => {
-    expect(validateMonthDay(null)).toEqual(VALID);
-  });
-
-  test('returns VALID for undefined', () => {
-    expect(validateMonthDay(undefined)).toEqual(VALID);
-  });
-
-  test('returns VALID for a valid sentinel date', () => {
-    expect(validateMonthDay('1900-04-30')).toEqual(VALID);
-  });
-
-  test('returns error for an invalid sentinel date (Feb 30)', () => {
-    expect(validateMonthDay('1900-02-30')).toMatchObject({
-      reasons: ['Must be a valid date mm/dd.'],
-    });
-  });
-
-  test('returns error for a partial sentinel date (month only)', () => {
-    expect(validateMonthDay('1900-04-')).toMatchObject({
-      reasons: ['Must be a valid date mm/dd.'],
-    });
-  });
-
-  test('returns error for a completely invalid string', () => {
-    expect(validateMonthDay('not-a-date')).toMatchObject({
+  test.each([
+    ['1900-02-30', 'an invalid sentinel date (Feb 30)'],
+    ['1900-04-', 'a partial sentinel date (month only)'],
+    ['not-a-date', 'a completely invalid string'],
+  ])('returns error for %s (%s)', (value, _desc) => {
+    expect(validateMonthDay(value)).toMatchObject({
       reasons: ['Must be a valid date mm/dd.'],
     });
   });
 });
 
 describe('validateMonthDayRange', () => {
-  test('returns VALID when both start and end are empty', () => {
-    expect(validateMonthDayRange('', '')).toEqual(VALID);
-  });
-
-  test('returns VALID when both start and end are null', () => {
-    expect(validateMonthDayRange(null, null)).toEqual(VALID);
-  });
-
-  test('returns VALID when both start and end are valid dates', () => {
-    expect(validateMonthDayRange('1900-04-01', '1900-03-31')).toEqual(VALID);
+  test.each([
+    ['', '', 'both start and end are empty'],
+    [null, null, 'both start and end are null'],
+    ['1900-04-01', '1900-03-31', 'both start and end are valid dates'],
+  ])('returns VALID when %s', (start, end, _desc) => {
+    expect(validateMonthDayRange(start, end)).toEqual(VALID);
   });
 
   test('returns error for invalid start date', () => {
@@ -542,6 +368,7 @@ describe('validateTrusteeUpcomingKeyDates', () => {
       tirSemiAnnualSubmission: null,
       tirSemiAnnualReview: null,
       lastAuditFiscalYear: null,
+      lastMonthlyReportReceived: null,
     };
   }
 
@@ -656,6 +483,26 @@ describe('validateTrusteeUpcomingKeyDates', () => {
     expect(result.reasonMap?.pastFieldExam?.reasons?.[0]).toBe('Must be a valid date mm/dd/yyyy.');
   });
 
+  test('returns VALID when lastMonthlyReportReceived is a valid full date', () => {
+    expect(
+      validateTrusteeUpcomingKeyDates({
+        ...baseInput(),
+        lastMonthlyReportReceived: '2024-11-15',
+      }),
+    ).toEqual(VALID);
+  });
+
+  test('returns error when lastMonthlyReportReceived contains an invalid ISO date', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      lastMonthlyReportReceived: '2024-13-01',
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.lastMonthlyReportReceived?.reasons?.[0]).toBe(
+      'Must be a valid date mm/dd/yyyy.',
+    );
+  });
+
   test('returns VALID when tirSemiAnnualReviewPeriodStart and tirSemiAnnualReviewPeriodEnd are both set', () => {
     expect(
       validateTrusteeUpcomingKeyDates({
@@ -712,20 +559,13 @@ describe('validateTrusteeUpcomingKeyDates', () => {
 });
 
 describe('validateTprDuePair', () => {
-  test('returns empty string when both are empty', () => {
-    expect(validateTprDuePair('', '')).toBe('');
-  });
-
-  test('returns empty string when both are null', () => {
-    expect(validateTprDuePair(null, null)).toBe('');
-  });
-
-  test('returns empty string when both are undefined', () => {
-    expect(validateTprDuePair(undefined, undefined)).toBe('');
-  });
-
-  test('returns empty string when both tprDue and tprDueYearType are valid', () => {
-    expect(validateTprDuePair('1900-09-15', 'EVEN')).toBe('');
+  test.each([
+    ['', '', 'both are empty'],
+    [null, null, 'both are null'],
+    [undefined, undefined, 'both are undefined'],
+    ['1900-09-15', 'EVEN', 'both tprDue and tprDueYearType are valid'],
+  ])('returns empty string when %s', (tprDue, tprDueYearType, _desc) => {
+    expect(validateTprDuePair(tprDue, tprDueYearType)).toBe('');
   });
 
   test('returns date error when tprDue is an invalid partial date', () => {
@@ -744,28 +584,20 @@ describe('validateTprDuePair', () => {
 });
 
 describe('calculateAuditReqBy', () => {
-  test('returns null when input is null', () => {
-    expect(calculateAuditReqBy(null)).toBeNull();
+  test.each([
+    [null, null],
+    [undefined, null],
+  ])('returns null when input is %s', (input, expected) => {
+    expect(calculateAuditReqBy(input)).toBe(expected);
   });
 
-  test('returns null when input is undefined', () => {
-    expect(calculateAuditReqBy(undefined)).toBeNull();
-  });
-
-  test('returns year + 3 for a valid year', () => {
-    expect(calculateAuditReqBy(2024)).toBe(2027);
-  });
-
-  test('returns correct value for a recent year', () => {
-    expect(calculateAuditReqBy(2022)).toBe(2025);
-  });
-
-  test('returns lastAuditFiscalYear + 3', () => {
-    expect(calculateAuditReqBy(2020)).toBe(2023);
-  });
-
-  test('returns lastAuditFiscalYear + 3 not + 4', () => {
-    expect(calculateAuditReqBy(2021)).toBe(2024);
+  test.each([
+    [2024, 2027],
+    [2022, 2025],
+    [2020, 2023],
+    [2021, 2024],
+  ])('returns %i + 3 = %i', (input, expected) => {
+    expect(calculateAuditReqBy(input)).toBe(expected);
   });
 });
 

@@ -7,6 +7,8 @@ interface InfoCardField {
   label: string;
   value: ReactNode;
   testId?: string;
+  /** Renders the value on its own line below the label instead of inline. */
+  stacked?: boolean;
 }
 
 interface InfoCardProps {
@@ -47,8 +49,12 @@ export default function InfoCard(props: Readonly<InfoCardProps>) {
           <ul className="info-card-list" data-testid={listTestId}>
             {fields.map((field, index) => (
               <li key={field.testId ?? `${field.label}-${index}`} data-testid={field.testId}>
-                {field.label && <span className="info-card-label">{field.label}:</span>}{' '}
-                {field.value}
+                {field.label && <span className="info-card-label">{field.label}:</span>}
+                {field.stacked ? (
+                  <div className="info-card-value-stacked">{field.value}</div>
+                ) : (
+                  <> {field.value}</>
+                )}
               </li>
             ))}
           </ul>
