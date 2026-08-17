@@ -236,6 +236,14 @@ const STAGE_5_6_7_TRUSTEE_IDS = [
   DIVERGENCE_TRUSTEE.id,
 ];
 
+// Stage 8: unlike Stages 5-7, this DOES round-trip through DXTR (seed/01-seed-dxtr-data.sql
+// scenario 14, CS_CASEID 999999413) — it exists specifically to prove the real SQL fallback,
+// which Stages 5-7 have no need to exercise. Excluded from ALL_CASE_IDS/the 13-scenario
+// matching pipeline (no Cosmos synced-case fixture, no trustee, never passed to
+// processAppointments) since it's read directly via casesGateway.getTrusteeAppointments.
+const BAD_REC_DATE_CASE_ID = '083-26-88913';
+const BAD_REC_DATE_TX_DATE = '2026-01-14';
+
 // ---------------------------------------------------------------------------
 // Environment loading
 // ---------------------------------------------------------------------------
@@ -479,7 +487,7 @@ async function seedSql() {
   try {
     const seedDir = path.join(HARNESS_DIR, 'seed');
     await executeSqlFile(pool, path.join(seedDir, '01-seed-dxtr-data.sql'));
-    pass('01-seed-dxtr-data.sql seeded (13 scenario cases)');
+    pass('01-seed-dxtr-data.sql seeded (13 scenario cases + Stage 8 bad-REC-date case)');
   } finally {
     await pool.close();
   }
@@ -845,12 +853,12 @@ async function clean() {
   const pool = await getDxtrSqlPool(dxtrDatabase);
   try {
     await pool.request().query(`
-      DELETE FROM dbo.AO_TX WHERE CS_CASEID BETWEEN '999999400' AND '999999412' AND COURT_ID = '${COURT_ID}';
-      DELETE FROM dbo.AO_PY WHERE CS_CASEID BETWEEN '999999400' AND '999999412' AND COURT_ID = '${COURT_ID}';
-      DELETE FROM dbo.AO_CS WHERE CS_CASEID BETWEEN '999999400' AND '999999412' AND COURT_ID = '${COURT_ID}';
+      DELETE FROM dbo.AO_TX WHERE CS_CASEID BETWEEN '999999400' AND '999999413' AND COURT_ID = '${COURT_ID}';
+      DELETE FROM dbo.AO_PY WHERE CS_CASEID BETWEEN '999999400' AND '999999413' AND COURT_ID = '${COURT_ID}';
+      DELETE FROM dbo.AO_CS WHERE CS_CASEID BETWEEN '999999400' AND '999999413' AND COURT_ID = '${COURT_ID}';
       DELETE FROM dbo.AO_CS_DIV WHERE (CS_DIV = '083' AND GRP_DES = 'MS') OR (CS_DIV = '084' AND GRP_DES = 'XX');
     `);
-    pass('Deleted DXTR fixture rows for cases 999999400-999999412');
+    pass('Deleted DXTR fixture rows for cases 999999400-999999413');
   } finally {
     await pool.close();
   }
@@ -1430,6 +1438,9 @@ async function runScenarios() {
 
   // ── Stage 7: dual-partition divergence repair proof ───────────────────────
   await runDivergenceRepairStage(deps);
+
+  // ── Stage 8: bad REC date falls back to TX_DATE ───────────────────────────
+  await runBadRecDateFallbackStage(deps);
 }
 
 // ---------------------------------------------------------------------------
@@ -1876,6 +1887,47 @@ async function runDivergenceRepairStage(
     }
   } finally {
     await repairClient.close();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Stage 8 — bad REC date falls back to TX_DATE
+// ---------------------------------------------------------------------------
+
+/**
+ * Proves CasesDxtrGateway.getTrusteeAppointments (cases.dxtr.gateway.ts) falls back to
+ * TX.TX_DATE when REC's fixed-width embedded appointment date is blank/unparseable, against a
+ * real SQL Server AO_TX row rather than a mocked query result (see CAMS-809). A mocked-gateway
+ * unit test can assert the TypeScript fallback logic runs, but only a real database round trip
+ * proves the FORMAT(TX.TX_DATE, 'yyyy-MM-dd') SQL actually compiles and returns the expected
+ * value shape. Standalone: not part of the 13-scenario matching pipeline, no Cosmos writes.
+ */
+async function runBadRecDateFallbackStage(
+  deps: ReturnType<typeof SyncTrusteeCaseAppointmentsUseCase.createDeps>,
+) {
+  console.log(
+    '\nStage 8: bad REC date falls back to TX_DATE — real DXTR round trip, no mocks\n',
+  );
+
+  const { events } = await deps.casesGateway.getTrusteeAppointments(
+    deps.context,
+    '2026-01-01T00:00:00.000Z',
+  );
+  const event = events.find((e) => e.caseId === BAD_REC_DATE_CASE_ID);
+
+  if (!event) {
+    fail(`8. expected an event for case ${BAD_REC_DATE_CASE_ID}, found none`);
+    return;
+  }
+
+  if (event.appointedDate === BAD_REC_DATE_TX_DATE) {
+    pass(
+      `8. appointedDate fell back to TX_DATE (${BAD_REC_DATE_TX_DATE}) when REC's embedded date was blank`,
+    );
+  } else {
+    fail(
+      `8. expected appointedDate ${BAD_REC_DATE_TX_DATE} (TX_DATE fallback), got ${event.appointedDate}`,
+    );
   }
 }
 
