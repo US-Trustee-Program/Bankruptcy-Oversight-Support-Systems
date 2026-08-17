@@ -30,7 +30,7 @@ import {
 import {
   matchTrusteeByName,
   resolveNameCollisionByScoring,
-  isPerfectMatch,
+  isAppointmentMatch,
   findInactivePerfectMatch,
   calculateCandidateScore,
   calculateAddressScore,
@@ -1183,7 +1183,9 @@ async function applyMatchOutcome(
   const { context } = deps;
   const trusteeAppointments = await deps.appointmentsRepo.getTrusteeAppointments(trusteeId);
 
-  if (isPerfectMatch(trusteeAppointments, event.courtId, event.courtDivisionCode, event.chapter)) {
+  if (
+    isAppointmentMatch(trusteeAppointments, event.courtId, event.courtDivisionCode, event.chapter)
+  ) {
     const dlqFailure = await autoLinkTrustee(
       ctx,
       syncedCase,
@@ -1221,12 +1223,14 @@ async function applyMatchOutcome(
 
   // No no-review auto-match on totalScore alone: districtDivisionScore/chapterScore are each
   // computed independently across all of the trustee's active appointments (see their doc
-  // comments), not from a single shared record — isPerfectMatch above already ruled out any
+  // comments), not from a single shared record — isAppointmentMatch above already ruled out any
   // record that satisfies court+division+chapter together, so a same-record requirement can
   // never hold here. A trustee could otherwise clear a high score via two different
   // appointments (one matching court+division, a different one matching chapter) despite never
   // holding an appointment covering this case's actual combination. Every single-candidate
-  // non-perfect-match falls through to ImperfectMatch below for human review.
+  // non-perfect-match falls through to ImperfectMatch below for human review. (The equivalent gap
+  // for the MULTI-candidate fuzzy-scoring path is closed in resolveNameCollisionByScoring itself,
+  // via the same isAppointmentMatch check on the winning candidate.)
   audit.matchOutcome = 'imperfect-match';
   audit.matchedTrusteeId = trusteeId;
   audit.scoringBreakdown = {

@@ -154,13 +154,13 @@ function appointmentCoversDivision(appointment: TrusteeAppointment, divisionCode
 }
 
 /**
- * Determines if a trustee is a "perfect match" for a case.
- * A perfect match requires a SINGLE active appointment that matches
- * court + division + chapter on the same record.
- * This is stricter than the individual scoring functions which check
- * these criteria independently across all appointments.
+ * Determines whether a SINGLE one of a trustee's active appointments matches court + division +
+ * chapter all on that same record — used both for perfect-match auto-linking and (see
+ * resolveNameCollisionByScoring) as a gate ensuring a fuzzy-match winner's district/division and
+ * chapter evidence didn't come from two different appointments. This is stricter than the
+ * individual scoring functions, which check these criteria independently across all appointments.
  */
-export function isPerfectMatch(
+export function isAppointmentMatch(
   appointments: TrusteeAppointment[],
   courtId: string,
   divisionCode: string,
@@ -544,8 +544,23 @@ export async function resolveNameCollisionByScoring(
   const meetsThreshold = winner.totalScore > FUZZY_MATCH_SCORE_THRESHOLD;
   const hasSignificantGap =
     !runnerUp || winner.totalScore - runnerUp.totalScore >= FUZZY_MATCH_MIN_GAP;
+  // districtDivisionScore/chapterScore are each computed independently via .some() across every
+  // one of the winner's active appointments (see calculateDistrictDivisionScore/
+  // calculateChapterScore's doc comments) — a trustee holding two active appointments, one
+  // matching the case's division and a different one matching its chapter, can reach a high
+  // combined totalScore for a division/chapter combination they were never actually appointed to.
+  // isAppointmentMatch already requires court + division + chapter to match on a SINGLE record
+  // for the perfect-match path; the no-human-review auto-link gate below must be at least as
+  // strict, so it reuses that same single-record check rather than trusting the additive score
+  // alone.
+  const sameAppointmentMatch = isAppointmentMatch(
+    winner.appointments ?? [],
+    event.courtId,
+    event.courtDivisionCode ?? '',
+    event.chapter ?? '',
+  );
 
-  if (meetsThreshold && hasSignificantGap) {
+  if (meetsThreshold && hasSignificantGap && sameAppointmentMatch) {
     context.logger.info(
       MODULE_NAME,
       `Fuzzy matching resolved to ${winner.trusteeId} with score ${winner.totalScore}`,
