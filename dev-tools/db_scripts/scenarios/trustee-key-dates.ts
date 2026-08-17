@@ -9,6 +9,9 @@
  *   - Calculated next exam/audit dates with quarter alignment
  *   - Mix of quarter-boundary and mid-quarter dates
  *
+ * Also seeds two Chapter 11 Subchapter V (Pool) trustees to exercise the
+ * Last Monthly Report Received past key date: one populated, one empty.
+ *
  * NOTE: Key dates are separate documents with documentType='TRUSTEE_UPCOMING_REPORT_DATES'.
  */
 
@@ -329,6 +332,132 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           trusteeId: 'seed-trustee-keydates-empty',
           appointmentId: 'seed-appointment-keydates-empty',
           // All fields null/undefined - tests empty form state
+          updatedOn: '2025-03-01T00:00:00.000Z',
+          updatedBy: SEEDER,
+        },
+      ],
+    },
+
+    // ── Cosmos: Chapter 11 Subchapter V (Pool) Trustee with a saved date ─────
+    {
+      db: 'cams',
+      collectionOrTable: 'trustees',
+      data: [
+        {
+          ...createTrusteeBase({
+            id: 'seed-trustee-keydates-subv-001',
+            firstName: 'Priya',
+            lastName: 'Keydates',
+            status: 'active',
+            address1: '500 Key Dates Way',
+            city: 'New York',
+            state: 'NY',
+            zipCode: '10005',
+            phone: '212-555-1200',
+            email: 'priya.keydates@example.com',
+          }),
+          updatedOn: '2025-03-01T00:00:00.000Z',
+          updatedBy: SEEDER,
+        },
+      ],
+    },
+
+    {
+      db: 'cams',
+      collectionOrTable: 'trustee-appointments',
+      data: [
+        {
+          id: 'seed-appointment-keydates-subv-001',
+          documentType: 'TRUSTEE_APPOINTMENT',
+          trusteeId: 'seed-trustee-keydates-subv-001',
+          chapter: '11-subchapter-v',
+          appointmentType: 'pool',
+          courtId: '0208',
+          divisionCodes: ['081'],
+          appointedDate: '2023-01-01',
+          status: 'active',
+          effectiveDate: '2023-01-01',
+          courtName: 'U.S. Bankruptcy Court Southern District of New York',
+          courtDivisionName: 'Manhattan',
+          updatedOn: '2025-03-01T00:00:00.000Z',
+          updatedBy: SEEDER,
+        },
+      ],
+    },
+
+    {
+      db: 'cams',
+      collectionOrTable: 'trustees',
+      data: [
+        {
+          id: 'seed-key-dates-subv-001',
+          documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
+          trusteeId: 'seed-trustee-keydates-subv-001',
+          appointmentId: 'seed-appointment-keydates-subv-001',
+          lastMonthlyReportReceived: '2024-11-15',
+          updatedOn: '2025-03-01T00:00:00.000Z',
+          updatedBy: SEEDER,
+        },
+      ],
+    },
+
+    // ── Cosmos: Chapter 11 Subchapter V (Pool) Trustee with no saved date ────
+    {
+      db: 'cams',
+      collectionOrTable: 'trustees',
+      data: [
+        {
+          ...createTrusteeBase({
+            id: 'seed-trustee-keydates-subv-empty',
+            firstName: 'Priya',
+            lastName: 'Nokeydates',
+            status: 'active',
+            address1: '600 Key Dates Way',
+            city: 'New York',
+            state: 'NY',
+            zipCode: '10006',
+            phone: '212-555-1300',
+            email: 'priya.nokeydates@example.com',
+          }),
+          updatedOn: '2025-03-01T00:00:00.000Z',
+          updatedBy: SEEDER,
+        },
+      ],
+    },
+
+    {
+      db: 'cams',
+      collectionOrTable: 'trustee-appointments',
+      data: [
+        {
+          id: 'seed-appointment-keydates-subv-empty',
+          documentType: 'TRUSTEE_APPOINTMENT',
+          trusteeId: 'seed-trustee-keydates-subv-empty',
+          chapter: '11-subchapter-v',
+          appointmentType: 'pool',
+          courtId: '0208',
+          divisionCodes: ['081'],
+          appointedDate: '2023-01-01',
+          status: 'active',
+          effectiveDate: '2023-01-01',
+          courtName: 'U.S. Bankruptcy Court Southern District of New York',
+          courtDivisionName: 'Manhattan',
+          updatedOn: '2025-03-01T00:00:00.000Z',
+          updatedBy: SEEDER,
+        },
+      ],
+    },
+
+    {
+      db: 'cams',
+      collectionOrTable: 'trustees',
+      data: [
+        {
+          id: 'seed-key-dates-subv-empty',
+          documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
+          trusteeId: 'seed-trustee-keydates-subv-empty',
+          appointmentId: 'seed-appointment-keydates-subv-empty',
+          // lastMonthlyReportReceived omitted - tests "No date added" / empty form state
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
         },

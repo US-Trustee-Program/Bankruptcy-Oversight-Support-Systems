@@ -50,6 +50,7 @@ function buildMockInput(
     tirSemiAnnualSubmission: null,
     tirSemiAnnualReview: null,
     lastAuditFiscalYear: null,
+    lastMonthlyReportReceived: null,
     ...overrides,
   };
 }
@@ -135,6 +136,37 @@ describe('TrusteeUpcomingKeyDatesUseCase', () => {
         expect.objectContaining({
           before: { pastFieldExam: '2026-01-15' },
           after: { pastFieldExam: '2026-06-15' },
+        }),
+      );
+    });
+
+    test('new doc: saves lastMonthlyReportReceived and creates history without any ad hoc use-case handling', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'getByAppointmentId').mockResolvedValue(null);
+      const upsertSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'upsert')
+        .mockResolvedValue(undefined);
+      const createHistorySpy = vi
+        .spyOn(MockMongoRepository.prototype, 'createHistory')
+        .mockResolvedValue(undefined);
+
+      const context = await createMockApplicationContext();
+      const useCase = new TrusteeUpcomingKeyDatesUseCase(context);
+      const input = buildMockInput({ lastMonthlyReportReceived: '2024-11-15' });
+
+      await useCase.upsertUpcomingKeyDates(
+        'trustee-001',
+        'appointment-001',
+        input,
+        SYSTEM_USER_REFERENCE,
+      );
+
+      expect(upsertSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ lastMonthlyReportReceived: '2024-11-15' }),
+      );
+      expect(createHistorySpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          documentType: 'AUDIT_UPCOMING_REPORT_DATES',
+          after: expect.objectContaining({ lastMonthlyReportReceived: '2024-11-15' }),
         }),
       );
     });

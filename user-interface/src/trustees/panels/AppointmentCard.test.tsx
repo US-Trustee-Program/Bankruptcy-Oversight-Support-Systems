@@ -9,7 +9,10 @@ import TestingUtilities from '@/lib/testing/testing-utilities';
 import { CamsRole } from '@common/cams/roles';
 import Api2 from '@/lib/models/api2';
 import * as featureFlagsHook from '@/lib/hooks/UseFeatureFlags';
-import { DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES } from '@/lib/hooks/UseFeatureFlags';
+import {
+  DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES,
+  DISPLAY_CHPT11_SUBV_PAST_KEY_DATES,
+} from '@/lib/hooks/UseFeatureFlags';
 
 const mockUseNavigate = vi.hoisted(() => vi.fn());
 
@@ -348,5 +351,78 @@ describe('AppointmentCard', () => {
 
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
+  });
+
+  describe('Chapter 11 Subchapter V Pool past key dates', () => {
+    const subVAppointment: TrusteeAppointment = {
+      ...mockAppointment,
+      chapter: '11-subchapter-v',
+      appointmentType: 'pool',
+    };
+
+    test('renders PastKeyDates card (read-only) for non-TrusteeAdmin user when flag enabled', async () => {
+      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+        [DISPLAY_CHPT11_SUBV_PAST_KEY_DATES]: true,
+      });
+      TestingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
+
+      renderWithProps({ appointment: subVAppointment });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
+      });
+      expect(
+        screen.queryByRole('button', { name: /edit past key dates/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    test('renders PastKeyDates card with Edit for TrusteeAdmin when flag enabled', async () => {
+      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+        [DISPLAY_CHPT11_SUBV_PAST_KEY_DATES]: true,
+      });
+
+      renderWithProps({ appointment: subVAppointment });
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /edit past key dates/i })).toBeInTheDocument();
+      });
+    });
+
+    test('does not render UpcomingKeyDates card for Ch11-SubV appointment', async () => {
+      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+        [DISPLAY_CHPT11_SUBV_PAST_KEY_DATES]: true,
+      });
+
+      renderWithProps({ appointment: subVAppointment });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
+      });
+      expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
+    });
+
+    test('does not render PastKeyDates card when flag is disabled', async () => {
+      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+        [DISPLAY_CHPT11_SUBV_PAST_KEY_DATES]: false,
+      });
+
+      renderWithProps({ appointment: subVAppointment });
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(screen.queryByTestId('past-key-dates-card')).not.toBeInTheDocument();
+    });
+
+    test('does not render PastKeyDates card for a non-pool Ch11-SubV appointment type', async () => {
+      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+        [DISPLAY_CHPT11_SUBV_PAST_KEY_DATES]: true,
+      });
+
+      renderWithProps({
+        appointment: { ...mockAppointment, chapter: '11-subchapter-v', appointmentType: 'panel' },
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(screen.queryByTestId('past-key-dates-card')).not.toBeInTheDocument();
+    });
   });
 });

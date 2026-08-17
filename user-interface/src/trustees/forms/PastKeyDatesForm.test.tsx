@@ -11,6 +11,7 @@ const mockUseNavigate = vi.hoisted(() => vi.fn());
 const mockUseParams = vi.hoisted(() =>
   vi.fn(() => ({ trusteeId: 'trustee-001', appointmentId: 'appointment-001' })),
 );
+const mockUseLocation = vi.hoisted(() => vi.fn((): { state: unknown } => ({ state: null })));
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');
@@ -18,6 +19,7 @@ vi.mock('react-router-dom', async () => {
     ...actual,
     useNavigate: mockUseNavigate,
     useParams: mockUseParams,
+    useLocation: mockUseLocation,
   };
 });
 
@@ -61,6 +63,7 @@ describe('PastKeyDatesForm', () => {
     vi.restoreAllMocks();
     mockNavigate.mockClear();
     mockUseNavigate.mockReturnValue(mockNavigate);
+    mockUseLocation.mockReturnValue({ state: null });
     userEvent = TestingUtilities.setupUserEvent();
   });
 
@@ -364,5 +367,109 @@ describe('PastKeyDatesForm', () => {
 
     expect(putSpy).not.toHaveBeenCalled();
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');
+  });
+
+  describe('subv-pool variant', () => {
+    beforeEach(() => {
+      mockUseLocation.mockReturnValue({ state: { variant: 'subv-pool' } });
+    });
+
+    test('renders exactly one date input: Last Monthly Report Received', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-past-key-dates')).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('past-last-monthly-report-received')).toBeInTheDocument();
+      expect(screen.queryByTestId('past-background-question')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('past-field-exam')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('past-audit')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('past-tpr-submission')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('last-audit-fiscal-year')).not.toBeInTheDocument();
+    });
+
+    test('pre-populates from API response', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({
+        data: { ...populatedDocument, lastMonthlyReportReceived: '2024-11-15' },
+      });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('past-last-monthly-report-received')).toHaveValue('2024-11-15');
+      });
+    });
+
+    test('shows empty input when API returns null', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('past-last-monthly-report-received')).toHaveValue('');
+      });
+    });
+
+    test('save persists lastMonthlyReportReceived and preserves untouched fields from original', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+      const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('past-last-monthly-report-received')).toBeInTheDocument();
+      });
+
+      fireEvent.change(screen.getByTestId('past-last-monthly-report-received'), {
+        target: { value: '2024-11-15' },
+      });
+      await userEvent.click(screen.getByTestId('button-save-past-key-dates'));
+
+      await waitFor(() =>
+        expect(putSpy).toHaveBeenCalledWith(
+          'trustee-001',
+          'appointment-001',
+          expect.objectContaining({
+            lastMonthlyReportReceived: '2024-11-15',
+            // fields not shown by this variant must be preserved from the original doc
+            pastBackgroundQuestion: populatedDocument.pastBackgroundQuestion,
+            pastFieldExam: populatedDocument.pastFieldExam,
+            pastAudit: populatedDocument.pastAudit,
+            pastTprSubmission: populatedDocument.pastTprSubmission,
+            lastAuditFiscalYear: populatedDocument.lastAuditFiscalYear,
+          }),
+        ),
+      );
+      expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');
+    });
+
+    test('Cancel navigates without calling PUT', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+      const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-past-key-dates')).toBeInTheDocument();
+      });
+
+      await userEvent.click(screen.getByTestId('button-cancel-past-key-dates'));
+
+      expect(putSpy).not.toHaveBeenCalled();
+      expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');
+    });
+
+    test('renders the Last Monthly Report Received label', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByText('Last Monthly Report Received')).toBeInTheDocument();
+      });
+    });
   });
 });

@@ -10,6 +10,7 @@ import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
 import useFeatureFlags, {
   DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES,
+  DISPLAY_CHPT11_SUBV_PAST_KEY_DATES,
 } from '@/lib/hooks/UseFeatureFlags';
 import useCourts from '@/lib/hooks/UseCourts';
 import { buildDivisionsDisplay } from '@/lib/utils/court-utils';
@@ -40,6 +41,7 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
   const featureFlags = useFeatureFlags();
   const displayChpt7PanelUpcomingKeyDates =
     featureFlags[DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES] === true;
+  const displayChpt11SubVPastKeyDates = featureFlags[DISPLAY_CHPT11_SUBV_PAST_KEY_DATES] === true;
   const { chapter, appointmentType } = props.appointment;
   const formattedChapter = formatChapterType(chapter);
   const formattedAppointmentType = formatAppointmentType(appointmentType);
@@ -84,6 +86,8 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
 
   const isPanelChapter7 =
     props.appointment.chapter === '7' && props.appointment.appointmentType === 'panel';
+  const isSubVPool =
+    props.appointment.chapter === '11-subchapter-v' && props.appointment.appointmentType === 'pool';
 
   return (
     <div className="appointment-card-container">
@@ -113,11 +117,20 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
               appointmentHeading={appointmentHeading}
             />
             <PastKeyDates
+              variant="chapter7-panel"
               trusteeId={props.appointment.trusteeId}
               appointmentId={props.appointment.id}
               appointmentHeading={appointmentHeading}
             />
           </>
+        )}
+        {displayChpt11SubVPastKeyDates && isSubVPool && (
+          <PastKeyDates
+            variant="subv-pool"
+            trusteeId={props.appointment.trusteeId}
+            appointmentId={props.appointment.id}
+            appointmentHeading={appointmentHeading}
+          />
         )}
       </div>
     </div>

@@ -6,8 +6,10 @@ import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
 import InfoCard from './InfoCard';
+import { PAST_KEY_DATES_FIELD_CONFIG, PastKeyDatesVariant } from './pastKeyDatesFieldConfig';
 
 export interface PastKeyDatesProps {
+  variant: PastKeyDatesVariant;
   trusteeId: string;
   appointmentId: string;
   appointmentHeading?: string;
@@ -15,8 +17,12 @@ export interface PastKeyDatesProps {
 
 const NO_DATE = 'No date added';
 
+function formatDateOrDefault(isoDate: string | undefined): string {
+  return isoDate ? isoToMMDDYYYY(isoDate) : NO_DATE;
+}
+
 export default function PastKeyDates(props: Readonly<PastKeyDatesProps>) {
-  const { trusteeId, appointmentId, appointmentHeading } = props;
+  const { variant, trusteeId, appointmentId, appointmentHeading } = props;
   const navigate = useNavigate();
   const session = LocalStorage.getSession();
   const canManage = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
@@ -40,23 +46,21 @@ export default function PastKeyDates(props: Readonly<PastKeyDatesProps>) {
 
   function openEdit() {
     navigate(`/trustees/${trusteeId}/appointments/${appointmentId}/past-key-dates/edit`, {
-      state: { subHeading: appointmentHeading ?? '' },
+      state: { subHeading: appointmentHeading ?? '', variant },
     });
   }
-
-  function formatDateOrDefault(isoDate: string | undefined): string {
-    return isoDate ? isoToMMDDYYYY(isoDate) : NO_DATE;
-  }
-
-  const backgroundQuestion = formatDateOrDefault(data?.pastBackgroundQuestion);
-  const fieldExam = formatDateOrDefault(data?.pastFieldExam);
-  const audit = formatDateOrDefault(data?.pastAudit);
-  const lastAuditFiscalYear = data?.lastAuditFiscalYear?.toString() ?? NO_DATE;
-  const tprSubmission = formatDateOrDefault(data?.pastTprSubmission);
 
   if (isLoading) {
     return <LoadingSpinner id="past-key-dates-loading" />;
   }
+
+  const fields = PAST_KEY_DATES_FIELD_CONFIG[variant].map((field) => {
+    const value =
+      field.kind === 'year'
+        ? (data?.lastAuditFiscalYear?.toString() ?? NO_DATE)
+        : formatDateOrDefault(data?.[field.key as keyof TrusteeUpcomingKeyDates] as string);
+    return { label: field.displayLabel, value, testId: field.testId };
+  });
 
   return (
     <InfoCard
@@ -67,21 +71,7 @@ export default function PastKeyDates(props: Readonly<PastKeyDatesProps>) {
       editTitle="Edit past key dates"
       testId="past-key-dates-card"
       listTestId="past-key-dates-list"
-      fields={[
-        {
-          label: 'Last Update to Background Questionnaire',
-          value: backgroundQuestion,
-          testId: 'past-background-question-row',
-        },
-        { label: 'Field Exam Report Date', value: fieldExam, testId: 'past-field-exam-row' },
-        { label: 'Audit Report Date', value: audit, testId: 'past-audit-row' },
-        {
-          label: "Last Audit's Fiscal Year",
-          value: lastAuditFiscalYear,
-          testId: 'past-last-audit-fiscal-year-row',
-        },
-        { label: 'TIR Letter', value: tprSubmission, testId: 'past-tpr-submission-row' },
-      ]}
+      fields={fields}
     />
   );
 }
