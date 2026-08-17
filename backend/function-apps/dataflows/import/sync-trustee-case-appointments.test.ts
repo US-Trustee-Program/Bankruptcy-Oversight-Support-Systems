@@ -39,6 +39,7 @@ const makeEmptyScenarioDistribution = () => ({
   fingerprintMissCount: 0,
   retryableCount: 0,
   candidateLoadFailedCount: 0,
+  emptyDemographicsSkippedCount: 0,
 });
 
 describe('sync-trustee-case-appointments handlePage', () => {

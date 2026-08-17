@@ -39,6 +39,7 @@ import {
   calculateEmailScore,
   calculateTotalScore,
   parseCityStateZip,
+  normalizeName,
 } from './trustee-match.helpers';
 import { buildVariant, computeFingerprint } from './trustee-variant.helpers';
 import { TRUSTEE_VARIATION_DOCUMENT_TYPE } from '@common/cams/trustee-variation';
@@ -70,6 +71,14 @@ type ScenarioDistribution = {
    * clear winner. See TrusteeAppointmentSyncErrorCode.CandidateLoadFailed's doc comment.
    */
   candidateLoadFailedCount: number;
+  /**
+   * dxtrTrustee had NO usable demographics at all (blank name AND no other legacy/contact
+   * fields) — an event this sparse cannot be safely attributed to any trustee, since absent
+   * demographics could describe any of them. Never routed to matching or verification; logged
+   * loudly instead, so this genuine data-quality condition is visible without polluting a real
+   * trustee's review queue.
+   */
+  emptyDemographicsSkippedCount: number;
 };
 
 type MatchAuditEntry = {
@@ -1270,6 +1279,63 @@ function isReservedProfessionalIdEvent(event: TrusteeAppointmentSyncEvent): bool
 }
 
 /**
+ * True when dxtrTrustee carries no usable demographics at all — blank fullName (see
+ * normalizeName) AND no legacy/contact fields (address, phone, email) either. Checked before
+ * matchTrusteeByName in processOneEvent: absent demographics could describe any trustee, so an
+ * event this sparse cannot be safely attributed to one and must never reach matching or
+ * verification. See ScenarioDistribution.emptyDemographicsSkippedCount's doc comment.
+ */
+function hasNoUsableDemographics(event: TrusteeAppointmentSyncEvent): boolean {
+  const { dxtrTrustee } = event;
+  const hasName = Boolean(normalizeName(dxtrTrustee.fullName ?? ''));
+  const legacy = dxtrTrustee.legacy;
+  const hasContact = Boolean(
+    legacy?.address1 ||
+    legacy?.address2 ||
+    legacy?.address3 ||
+    legacy?.cityStateZipCountry ||
+    legacy?.phone ||
+    legacy?.email,
+  );
+  return !hasName && !hasContact;
+}
+
+/**
+ * Combines the two checks that can short-circuit processOneEvent before any repo call is made —
+ * a reserved acmsProfessionalId, or a dxtrTrustee with no usable demographics at all — into one
+ * decision procedure, per this file's whole-procedure-extraction convention (see
+ * resolveTrusteeIdByName's doc comment): collapsing both into a single guard in the caller, rather
+ * than two separate ifs, is what keeps processOneEvent's own measured complexity from growing as
+ * pre-match conditions are added. Returns null when neither applies, so the caller proceeds
+ * normally.
+ */
+function resolvePreMatchShortCircuit(
+  deps: SyncTrusteeCaseAppointmentsDeps,
+  event: TrusteeAppointmentSyncEvent,
+  scenarioDistribution: ScenarioDistribution,
+): EventOutcome | null {
+  if (isReservedProfessionalIdEvent(event)) {
+    // Reserved values never correspond to a real trustee, so there is nothing to match
+    // or verify. The event is still fully and correctly handled — it simply requires no
+    // document write — so it counts toward successCount like any other handled event.
+    scenarioDistribution.reservedIdSkippedCount++;
+    return { kind: 'success', dlqFailure: null };
+  }
+
+  if (hasNoUsableDemographics(event)) {
+    deps.context.logger.warn(
+      MODULE_NAME,
+      `Trustee appointment event for case ${event.caseId} has no usable demographics ` +
+        `(blank name, no address/phone/email) — cannot be safely attributed to any trustee. Skipping.`,
+    );
+    scenarioDistribution.emptyDemographicsSkippedCount++;
+    return { kind: 'none' };
+  }
+
+  return null;
+}
+
+/**
  * True when this fingerprint/variant is already a known, pending mismatch — meaning this case
  * simply becomes a member of it via its own surrogate row, with no need to re-run matching or
  * write a second verification document. Performs that surrogate write and bookkeeping itself when
@@ -1357,13 +1423,8 @@ async function processOneEvent(
 ): Promise<EventOutcome> {
   const { context } = deps;
 
-  if (isReservedProfessionalIdEvent(event)) {
-    // Reserved values never correspond to a real trustee, so there is nothing to match
-    // or verify. The event is still fully and correctly handled — it simply requires no
-    // document write — so it counts toward successCount like any other handled event.
-    scenarioDistribution.reservedIdSkippedCount++;
-    return { kind: 'success', dlqFailure: null };
-  }
+  const preMatchOutcome = resolvePreMatchShortCircuit(deps, event, scenarioDistribution);
+  if (preMatchOutcome) return preMatchOutcome;
 
   const cityStateZipCountry = event.dxtrTrustee.legacy?.cityStateZipCountry;
   if (event.dxtrTrustee.legacy && cityStateZipCountry) {
@@ -1490,6 +1551,7 @@ async function processAppointments(
     fingerprintMissCount: 0,
     retryableCount: 0,
     candidateLoadFailedCount: 0,
+    emptyDemographicsSkippedCount: 0,
   };
 
   for (const event of events) {
