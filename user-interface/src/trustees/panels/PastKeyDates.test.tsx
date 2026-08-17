@@ -19,6 +19,7 @@ vi.mock('react-router-dom', async () => {
 });
 
 const defaultProps: PastKeyDatesProps = {
+  variant: 'chapter7-panel',
   trusteeId: 'trustee-001',
   appointmentId: 'appointment-001',
   appointmentHeading: 'Southern District of New York (Manhattan) - Chapter 7 Panel',
@@ -232,7 +233,7 @@ describe('PastKeyDates', () => {
 
     expect(mockNavigate).toHaveBeenCalledWith(
       `/trustees/${defaultProps.trusteeId}/appointments/${defaultProps.appointmentId}/past-key-dates/edit`,
-      { state: { subHeading: defaultProps.appointmentHeading } },
+      { state: { subHeading: defaultProps.appointmentHeading, variant: 'chapter7-panel' } },
     );
   });
 
@@ -249,7 +250,90 @@ describe('PastKeyDates', () => {
 
     expect(mockNavigate).toHaveBeenCalledWith(
       `/trustees/${defaultProps.trusteeId}/appointments/${defaultProps.appointmentId}/past-key-dates/edit`,
-      { state: { subHeading: '' } },
+      { state: { subHeading: '', variant: 'chapter7-panel' } },
     );
+  });
+
+  describe('subv-pool variant', () => {
+    const subVProps: PastKeyDatesProps = {
+      variant: 'subv-pool',
+      trusteeId: 'trustee-001',
+      appointmentId: 'appointment-001',
+      appointmentHeading:
+        'Southern District of New York (Manhattan) - Chapter 11 Subchapter V Pool',
+    };
+
+    test('renders exactly one row: Last Monthly Report Received', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent(subVProps);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
+      });
+
+      const listItems = screen.getByTestId('past-key-dates-list').querySelectorAll('li');
+      expect(listItems).toHaveLength(1);
+      expect(listItems[0]).toHaveAttribute('data-testid', 'past-last-monthly-report-received-row');
+      expect(screen.getByText('Last Monthly Report Received:')).toBeInTheDocument();
+    });
+
+    test('renders "No date added" when lastMonthlyReportReceived is absent', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent(subVProps);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('past-last-monthly-report-received-row')).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('past-last-monthly-report-received-row')).toHaveTextContent(
+        'No date added',
+      );
+    });
+
+    test('renders the saved date when lastMonthlyReportReceived is present', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({
+        data: { ...populatedDocument, lastMonthlyReportReceived: '2024-11-15' },
+      });
+
+      renderComponent(subVProps);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('past-last-monthly-report-received-row')).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('past-last-monthly-report-received-row')).toHaveTextContent(
+        '11/15/2024',
+      );
+    });
+
+    test('Edit button is visible for TrusteeAdmin users', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent(subVProps);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
+      });
+
+      expect(screen.getByRole('button', { name: /edit past key dates/i })).toBeInTheDocument();
+    });
+
+    test('Edit button is not visible for non-TrusteeAdmin users (read-only card)', async () => {
+      TestingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent(subVProps);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
+      });
+
+      expect(
+        screen.queryByRole('button', { name: /edit past key dates/i }),
+      ).not.toBeInTheDocument();
+      expect(screen.getByTestId('past-last-monthly-report-received-row')).toBeInTheDocument();
+    });
   });
 });

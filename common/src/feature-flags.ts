@@ -16,6 +16,7 @@ export const testFeatureFlags: FeatureFlagSet = {
   'chapter-twelve-enabled': true,
   'consolidations-enabled': true,
   'display-chpt7-panel-upcoming-key-dates': true,
+  'display-chpt11-subv-past-key-dates': true,
   'phonetic-search-enabled': true,
   'privileged-identity-management': true,
   'show-debtor-name-column': true,

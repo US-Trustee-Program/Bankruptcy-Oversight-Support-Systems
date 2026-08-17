@@ -542,6 +542,7 @@ describe('validateTrusteeUpcomingKeyDates', () => {
       tirSemiAnnualSubmission: null,
       tirSemiAnnualReview: null,
       lastAuditFiscalYear: null,
+      lastMonthlyReportReceived: null,
     };
   }
 
@@ -654,6 +655,26 @@ describe('validateTrusteeUpcomingKeyDates', () => {
     });
     expect(result.valid).toBeFalsy();
     expect(result.reasonMap?.pastFieldExam?.reasons?.[0]).toBe('Must be a valid date mm/dd/yyyy.');
+  });
+
+  test('returns VALID when lastMonthlyReportReceived is a valid full date', () => {
+    expect(
+      validateTrusteeUpcomingKeyDates({
+        ...baseInput(),
+        lastMonthlyReportReceived: '2024-11-15',
+      }),
+    ).toEqual(VALID);
+  });
+
+  test('returns error when lastMonthlyReportReceived contains an invalid ISO date', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      lastMonthlyReportReceived: '2024-13-01',
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.lastMonthlyReportReceived?.reasons?.[0]).toBe(
+      'Must be a valid date mm/dd/yyyy.',
+    );
   });
 
   test('returns VALID when tirSemiAnnualReviewPeriodStart and tirSemiAnnualReviewPeriodEnd are both set', () => {

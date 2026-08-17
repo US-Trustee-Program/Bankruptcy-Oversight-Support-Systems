@@ -133,6 +133,7 @@ function validateDateFields(): ValidatorFunction {
       'pastFieldExam',
       'pastAudit',
       'pastTprSubmission',
+      'lastMonthlyReportReceived',
     ];
 
     fullDateFields.forEach((field) => {
@@ -221,6 +222,7 @@ export type TrusteeUpcomingKeyDates = Auditable &
     tirSemiAnnualSubmission?: string;
     tirSemiAnnualReview?: string;
     lastAuditFiscalYear?: number;
+    lastMonthlyReportReceived?: string;
   };
 
 export type TrusteeUpcomingKeyDatesInput = {
@@ -246,6 +248,7 @@ export type TrusteeUpcomingKeyDatesInput = {
   tirSemiAnnualSubmission: string | null;
   tirSemiAnnualReview: string | null;
   lastAuditFiscalYear: number | null;
+  lastMonthlyReportReceived: string | null;
 };
 
 export type TrusteeUpcomingKeyDatesHistory = AbstractTrusteeHistory<
@@ -271,7 +274,8 @@ type DateField =
   | 'tirSemiAnnualReviewPeriodStart'
   | 'tirSemiAnnualReviewPeriodEnd'
   | 'tirSemiAnnualSubmission'
-  | 'tirSemiAnnualReview';
+  | 'tirSemiAnnualReview'
+  | 'lastMonthlyReportReceived';
 
 export const DATE_FIELDS: DateField[] = [
   'pastBackgroundQuestion',
@@ -289,6 +293,7 @@ export const DATE_FIELDS: DateField[] = [
   'tirSemiAnnualReviewPeriodEnd',
   'tirSemiAnnualSubmission',
   'tirSemiAnnualReview',
+  'lastMonthlyReportReceived',
 ];
 
 type TextField = 'tprDueYearType' | 'tirFrequency';

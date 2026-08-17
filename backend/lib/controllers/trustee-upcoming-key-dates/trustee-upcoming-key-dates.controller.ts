@@ -28,7 +28,10 @@ export class TrusteeUpcomingKeyDatesController implements CamsController {
     context: ApplicationContext,
   ): Promise<CamsHttpResponseInit | CamsHttpResponseInit<TrusteeUpcomingKeyDates>> {
     try {
-      if (!context.featureFlags['display-chpt7-panel-upcoming-key-dates']) {
+      const keyDatesFlagEnabled =
+        context.featureFlags['display-chpt7-panel-upcoming-key-dates'] ||
+        context.featureFlags['display-chpt11-subv-past-key-dates'];
+      if (!keyDatesFlagEnabled) {
         throw new NotFoundError(MODULE_NAME);
       }
       const { trusteeId, appointmentId } = context.request.params;
