@@ -313,7 +313,7 @@ describe('TrusteeUpcomingKeyDatesUseCase', () => {
       ],
       [
         'upcomingExamOrAuditType',
-        { upcomingExamOrAuditType: 'Field Exam' },
+        { upcomingExamOrAuditType: 'Field Exam' as const },
         { upcomingExamOrAuditType: null },
       ],
     ])(
