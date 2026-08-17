@@ -130,6 +130,7 @@ describe('SyncTrusteeCaseAppointments', () => {
         getByCaseId: vi.fn().mockResolvedValue([]),
         upsert: vi.fn().mockResolvedValue({}),
         updateCaseAppointment: vi.fn().mockResolvedValue({}),
+        findStrandedActiveInTrusteePartition: vi.fn().mockResolvedValue(null),
         release: vi.fn(),
       };
 
@@ -367,6 +368,79 @@ describe('SyncTrusteeCaseAppointments', () => {
       expect(successCount).toBe(1);
       expect(mockTrusteeCaseAppointmentsRepo.upsert).not.toHaveBeenCalled();
       expect(mockTrusteeCaseAppointmentsRepo.updateCaseAppointment).not.toHaveBeenCalled();
+    });
+
+    test('repairs a stranded old-trustee trusteePartition row left behind by a failed reassignment retry', async () => {
+      // Mirror-direction divergence to the "repairs trusteePartition" test above: a prior
+      // reassignment attempt soft-closed the OLD trustee's casePartition row (so
+      // getActiveByCaseId now returns null — nothing active in casePartition for this case) but
+      // failed transiently on that same old trustee's trusteePartition write, leaving a stranded
+      // active row behind. Without this repair, that row would remain permanently active with no
+      // telemetry, and the old trustee's case list would incorrectly keep showing this case.
+      const strandedRow: CaseAppointment = {
+        id: 'ca-old',
+        caseId: 'case-001',
+        trusteeId: 'trustee-old',
+        assignedOn: '2023-06-01',
+        createdOn: '2023-06-01T00:00:00Z',
+        createdBy: { id: 'system', name: 'System' },
+        updatedOn: '2023-06-01T00:00:00Z',
+        updatedBy: { id: 'system', name: 'System' },
+      };
+      const closedCaseRow: CaseAppointment = {
+        ...strandedRow,
+        unassignedOn: '2024-01-01T00:00:00Z',
+      };
+      (
+        mockTrusteeCaseAppointmentsRepo.getActiveByCaseId as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(null);
+      (mockTrusteeCaseAppointmentsRepo.getByCaseId as ReturnType<typeof vi.fn>).mockResolvedValue([
+        closedCaseRow,
+      ]);
+      const findStrandedActiveInTrusteePartition = vi.fn().mockResolvedValue(strandedRow);
+      mockTrusteeCaseAppointmentsRepo.findStrandedActiveInTrusteePartition =
+        findStrandedActiveInTrusteePartition;
+      const replaceOneInTrusteePartition = vi.fn().mockResolvedValue(undefined);
+      mockTrusteeCaseAppointmentsRepo.replaceOneInTrusteePartition = replaceOneInTrusteePartition;
+      const errorSpy = vi.spyOn(context.logger, 'error');
+
+      const { successCount } = await SyncTrusteeCaseAppointments.processAppointments(
+        SyncTrusteeCaseAppointments.createDeps(context),
+        [makeEvent('case-001', 'John Doe')],
+      );
+
+      expect(findStrandedActiveInTrusteePartition).toHaveBeenCalledWith('case-001', 'trustee-123');
+      expect(replaceOneInTrusteePartition).toHaveBeenCalledWith(
+        { caseId: 'case-001', trusteeId: 'trustee-old', assignedOn: '2023-06-01' },
+        expect.objectContaining({
+          ...closedCaseRow,
+          documentType: 'CASE_APPOINTMENT',
+        }),
+      );
+      expect(errorSpy).toHaveBeenCalledWith(
+        'SYNC-TRUSTEE-CASE-APPOINTMENTS-USE-CASE',
+        expect.stringContaining('TRUSTEE PARTITION DIVERGENCE'),
+      );
+      expect(successCount).toBe(1);
+    });
+
+    test('does not repair trusteePartition when no stranded row exists for this case', async () => {
+      (
+        mockTrusteeCaseAppointmentsRepo.getActiveByCaseId as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(null);
+      const findStrandedActiveInTrusteePartition = vi.fn().mockResolvedValue(null);
+      mockTrusteeCaseAppointmentsRepo.findStrandedActiveInTrusteePartition =
+        findStrandedActiveInTrusteePartition;
+      const replaceOneInTrusteePartition = vi.fn();
+      mockTrusteeCaseAppointmentsRepo.replaceOneInTrusteePartition = replaceOneInTrusteePartition;
+
+      await SyncTrusteeCaseAppointments.processAppointments(
+        SyncTrusteeCaseAppointments.createDeps(context),
+        [makeEvent('case-001', 'John Doe')],
+      );
+
+      expect(findStrandedActiveInTrusteePartition).toHaveBeenCalledWith('case-001', 'trustee-123');
+      expect(replaceOneInTrusteePartition).not.toHaveBeenCalled();
     });
 
     test('should collect a not-yet-synced outcome (not DLQ, not thrown) when getCaseOrMovedCase returns null', async () => {
@@ -3021,6 +3095,7 @@ describe('SyncTrusteeCaseAppointments', () => {
         getByCaseId: vi.fn().mockResolvedValue([]),
         upsert: vi.fn().mockResolvedValue({}),
         updateCaseAppointment: vi.fn().mockResolvedValue({}),
+        findStrandedActiveInTrusteePartition: vi.fn().mockResolvedValue(null),
         release: vi.fn(),
       };
 

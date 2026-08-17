@@ -1183,7 +1183,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
       );
     });
 
-    test('should still render original problem statement for other mismatch types', async () => {
+    test('should render distinct problem statement for a resolved fuzzy match, not the generic "does not match" copy', async () => {
       const highConfidenceOrder: TrusteeMatchVerificationListItem = {
         ...sampleOrderWithCandidates,
         mismatchReason: 'AMBIGUOUS_MATCH_RESOLVED',
@@ -1196,10 +1196,31 @@ describe('TrusteeMatchVerificationAccordion', () => {
       await mockDetailAndExpand(highConfidenceDetail);
 
       const content = screen.getByTestId(`accordion-content-${sampleOrder.id}`);
+      expect(content.textContent).toContain('CAMS found a possible match');
+      expect(content.textContent).not.toContain(
+        'Trustee sent from the court does not match a CAMS Trustee',
+      );
+      expect(content.textContent).not.toContain('inactive');
+    });
+
+    test('should still render original "does not match" problem statement for an unresolved multiple-match', async () => {
+      const unresolvedOrder: TrusteeMatchVerificationListItem = {
+        ...sampleOrderWithCandidates,
+        mismatchReason: 'AMBIGUOUS_MATCH_UNRESOLVED',
+      };
+      const unresolvedDetail: EnrichedTrusteeMatchVerification = {
+        ...sampleOrderWithCandidatesDetail,
+        mismatchReason: 'AMBIGUOUS_MATCH_UNRESOLVED',
+      };
+      renderWithProps({ order: unresolvedOrder });
+      await mockDetailAndExpand(unresolvedDetail);
+
+      const content = screen.getByTestId(`accordion-content-${sampleOrder.id}`);
       expect(content.textContent).toContain(
         'Trustee sent from the court does not match a CAMS Trustee',
       );
       expect(content.textContent).not.toContain('inactive');
+      expect(content.textContent).not.toContain('CAMS found a possible match');
     });
 
     test('should render "Trustee Mismatch" as task type label for non-inactive mismatch types', () => {
