@@ -30,27 +30,6 @@ function addDaysToSentinel(sentinel: string, days: number): string {
   return `1900-${mm}-${dd}`;
 }
 
-// Helper to align date to quarter end
-function _alignToQuarterEnd(isoDate: string): string {
-  const [year, month, day] = isoDate.split('-').map(Number);
-  const _date = new Date(year, month - 1, day);
-
-  const quarterEnds = [
-    { month: 2, day: 31 }, // March 31
-    { month: 5, day: 30 }, // June 30
-    { month: 8, day: 30 }, // September 30
-    { month: 11, day: 31 }, // December 31
-  ];
-
-  for (const qe of quarterEnds) {
-    if (month - 1 < qe.month || (month - 1 === qe.month && day <= qe.day)) {
-      return `${year}-${String(qe.month + 1).padStart(2, '0')}-01`;
-    }
-  }
-  // Past December 31 — advance to March 31 of next year
-  return `${year + 1}-03-01`;
-}
-
 export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
   return [
     // ── Cosmos: Ch7 Trustee for key dates testing ────────────────────────────
