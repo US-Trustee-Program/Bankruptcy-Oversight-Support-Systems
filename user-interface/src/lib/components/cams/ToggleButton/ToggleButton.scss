@@ -1,3 +1,5 @@
+@use '@/styles/abstracts/colors' as colors;
+
 button.toggle-button {
   display: inline-flex;
   flex-flow: row;
@@ -16,7 +18,7 @@ button.toggle-button {
 }
 
 button.toggle-button.inactive {
-  background: #5c5c5c;
+  background: colors.$toggle-inactive;
   font-weight: normal;
   svg {
     display: none;
@@ -25,7 +27,7 @@ button.toggle-button.inactive {
 }
 
 button.toggle-button.active {
-  background: #0050d8;
+  background: colors.$toggle-active;
   font-weight: bold;
   svg {
     display: inline;

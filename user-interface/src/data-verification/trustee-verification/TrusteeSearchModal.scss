@@ -1,3 +1,5 @@
+@use '@/styles/abstracts/colors' as colors;
+
 .trustee-search-modal {
   .trustee-details {
     margin-top: 2rem;
@@ -9,7 +11,7 @@
 
   [id^='trustee-search-combobox-']:not(:has(.clear-all-button)) {
     .selection-label {
-      color: #757575;
+      color: colors.$gray-50;
     }
   }
 }
