@@ -50,10 +50,10 @@ directly into Cosmos (no DXTR row involved):
 
 - **Stage 5 (sort/index)** — `getActiveByCaseId`
   (`backend/lib/adapters/gateways/mongo/trustee-case-appointments.mongo.repository.ts`) sorts by
-  `assignedOn` ASCENDING and relies on the `{caseId:1, assignedOn:1}` compound index declared in
+  `assignedOn` DESCENDING and relies on the `{caseId:1, assignedOn:1}` compound index declared in
   `cosmos-collections.bicep` for `case-trustee-appointments`. This stage seeds two active
   appointments on one case with different `assignedOn` values and asserts the real repository
-  returns the OLDEST one. In `azure` mode it also asserts the index itself exists on the collection,
+  returns the NEWEST one. In `azure` mode it also asserts the index itself exists on the collection,
   mirroring `trustee-match-verification-search/scripts/run-tests.ts`'s Test 1 — this is the class of
   bug (Cosmos index-policy enforcement) a fully-mocked unit test cannot catch.
 - **Stage 6 (stable-`assignedOn` idempotency)** — `applyResolvedTrustee`/
@@ -73,8 +73,8 @@ directly into Cosmos (no DXTR row involved):
   mocked-gateway unit test cannot provide. This exact stage caught an earlier version of the fix
   that used `FORMAT(TX.TX_DATE, 'yyyy-MM-dd')` instead, which fails against SQL Edge (and many SQL
   Server instances) with "Common Language Runtime(CLR) is not enabled on this instance." — `FORMAT`
-  depends on the CLR; `CONVERT` does not. Unlike Stages 5-7, this DOES round-trip through DXTR
-  (via `casesGateway.getTrusteeAppointments` directly, not `processAppointments`) but is otherwise
+  depends on the CLR; `CONVERT` does not. Unlike Stages 5-7, this DOES round-trip through DXTR (via
+  `casesGateway.getTrusteeAppointments` directly, not `processAppointments`) but is otherwise
   standalone: excluded from the 13-scenario matching pipeline, no Cosmos writes.
 
 Explicitly out of scope: fault-injecting real Cosmos throttling to test the transient

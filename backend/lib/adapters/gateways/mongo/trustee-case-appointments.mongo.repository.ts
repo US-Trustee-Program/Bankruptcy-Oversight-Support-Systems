@@ -701,6 +701,39 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
     return results.length > 0;
   }
 
+  /**
+   * Finds an active (unassignedOn not set) trustee-partition row for this case belonging to a
+   * DIFFERENT trustee than excludeTrusteeId — the mirror-direction divergence to
+   * existsInTrusteePartition's same-trustee check. On a reassignment (case ${caseId} moving from
+   * an old trustee to trusteeId), softCloseExistingAppointment writes casePartition then
+   * trusteePartition sequentially and non-transactionally for the OLD trustee's row. A transient
+   * failure on that trusteePartition write after casePartition already committed means a retry's
+   * getActiveByCaseId (casePartition-only) sees nothing active for this case at all — the whole
+   * reassignment-repair branch in applyResolvedTrustee is skipped, createNewAppointment runs
+   * directly for the new trustee, and the old trustee's trusteePartition row is left permanently
+   * active with no telemetry. migrate-case-appointments.ts's heal job cannot catch this either,
+   * since it only scans casePartition-active documents forward, not stale trusteePartition rows
+   * for a trustee who is no longer the active one. Scoped by caseId (not trusteeId, this
+   * collection's shard key), so this fans out across trusteePartition's physical partitions —
+   * acceptable here since it only runs on the narrow reassignment path, not a hot path.
+   */
+  async findStrandedActiveInTrusteePartition(
+    caseId: string,
+    excludeTrusteeId: string,
+  ): Promise<CaseAppointment | null> {
+    const doc = using<CaseAppointmentDocument>();
+    const query = and(
+      doc('documentType').equals('CASE_APPOINTMENT'),
+      doc('caseId').equals(caseId),
+      doc('trusteeId').notEqual(excludeTrusteeId),
+      doc('unassignedOn').notExists(),
+    );
+    const results = await this.trusteePartition
+      .adapter<CaseAppointmentDocument>()
+      .find(query, undefined, 1);
+    return results[0] ? stripMongoId(results[0]) : null;
+  }
+
   async replaceOneInTrusteePartition(
     query: { caseId: string; trusteeId: string; assignedOn: string },
     document: CaseAppointmentDocument,

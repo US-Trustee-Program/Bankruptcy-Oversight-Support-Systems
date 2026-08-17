@@ -572,6 +572,10 @@ export interface TrusteeCaseAppointmentsRepository extends Releasable {
   getSurrogatesByFingerprint(fingerprint: string): Promise<Array<CaseAppointment>>;
   getSurrogatesByFingerprints(fingerprints: string[]): Promise<Array<CaseAppointment>>;
   existsInTrusteePartition(caseId: string, trusteeId: string, assignedOn: string): Promise<boolean>;
+  findStrandedActiveInTrusteePartition(
+    caseId: string,
+    excludeTrusteeId: string,
+  ): Promise<CaseAppointment | null>;
   replaceOneInTrusteePartition(
     query: { caseId: string; trusteeId: string; assignedOn: string },
     document: CaseAppointment & { documentType: 'CASE_APPOINTMENT' },

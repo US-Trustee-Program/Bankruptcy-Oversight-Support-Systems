@@ -1448,8 +1448,9 @@ async function runScenarios() {
 // ---------------------------------------------------------------------------
 
 /**
- * Proves getActiveByCaseId (trustee-case-appointments.mongo.repository.ts) returns the OLDEST
- * of several active appointments on one case, and — in azure mode, where index-policy
+ * Proves getActiveByCaseId (trustee-case-appointments.mongo.repository.ts) returns the NEWEST
+ * of several active appointments on one case (assignedOn DESCENDING — the newer trustee wins a
+ * momentary duplicate-active-appointment race), and — in azure mode, where index-policy
  * enforcement is real — that the supporting {caseId:1, assignedOn:1} index actually exists.
  * This is the class of bug (Cosmos index-policy enforcement) a fully-mocked unit test cannot
  * catch: an unindexed sort fails against real Cosmos with HTTP 500 ("index path... excluded"),
@@ -1908,9 +1909,7 @@ async function runDivergenceRepairStage(
 async function runBadRecDateFallbackStage(
   deps: ReturnType<typeof SyncTrusteeCaseAppointmentsUseCase.createDeps>,
 ) {
-  console.log(
-    '\nStage 8: bad REC date falls back to TX_DATE — real DXTR round trip, no mocks\n',
-  );
+  console.log('\nStage 8: bad REC date falls back to TX_DATE — real DXTR round trip, no mocks\n');
 
   const { events } = await deps.casesGateway.getTrusteeAppointments(
     deps.context,

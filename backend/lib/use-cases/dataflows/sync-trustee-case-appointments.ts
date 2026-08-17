@@ -437,6 +437,42 @@ async function applyResolvedTrustee(
     }
   }
 
+  // Mirror-direction check to the same-trustee branch's existsInTrusteePartition repair above.
+  // A prior reassignment attempt for this case may have soft-closed the OLD trustee's
+  // casePartition row (so getActiveByCaseId above now sees nothing active, existingAppointment is
+  // null) but then failed transiently on that same old trustee's trusteePartition write — leaving
+  // a stranded active trusteePartition row behind. Checked unconditionally here (not just inside
+  // the reassignment branch above) since that is exactly the retry state this repairs: this
+  // event's own reassignment attempt already ran once and casePartition no longer shows it.
+  const strandedRow = await appointmentsRepo.findStrandedActiveInTrusteePartition(
+    event.caseId,
+    trusteeId,
+  );
+  if (strandedRow) {
+    context.logger.error(
+      MODULE_NAME,
+      `TRUSTEE PARTITION DIVERGENCE: case ${event.caseId}, old trustee ${strandedRow.trusteeId} ` +
+        `is stranded active in trusteePartition after being reassigned to ${trusteeId} — a prior ` +
+        `dual-write must have failed partway through soft-closing the old trustee's row. ` +
+        `Repairing trusteePartition now.`,
+    );
+    // casePartition already has this row's authoritative unassignedOn from the original
+    // (partially-failed) soft-close attempt — copy it as-is, the same convention the
+    // same-trustee branch above uses, rather than fabricating a new close timestamp here.
+    const caseHistory = await appointmentsRepo.getByCaseId(event.caseId);
+    const closedCaseRow = caseHistory.find(
+      (a) => a.trusteeId === strandedRow.trusteeId && a.assignedOn === strandedRow.assignedOn,
+    );
+    await appointmentsRepo.replaceOneInTrusteePartition(
+      {
+        caseId: event.caseId,
+        trusteeId: strandedRow.trusteeId,
+        assignedOn: strandedRow.assignedOn,
+      },
+      { ...(closedCaseRow ?? strandedRow), documentType: 'CASE_APPOINTMENT' },
+    );
+  }
+
   await createNewAppointment(context, appointmentsRepo, event, trusteeId, assignedOn);
 
   if (context.featureFlags['downstream-trustee-appointments-enabled']) {
@@ -486,7 +522,7 @@ async function applyResolvedTrustee(
  *
  * Takes MatchContext (absorbing context/event/fingerprint/variant/audit/scenarioDistribution, plus
  * caseAppointmentsRepo/variationRepo via ctx.deps) and only the values genuinely specific to this
- * call site: trusteeId, syncedCase, variationTrusteeId, logMessage, scoringBreakdown.
+ * call site: trusteeId, syncedCase, variationTrusteeId, logMessage.
  */
 async function autoLinkTrustee(
   ctx: MatchContext,
@@ -494,7 +530,6 @@ async function autoLinkTrustee(
   trusteeId: string,
   variationTrusteeId: string | null,
   logMessage: string,
-  scoringBreakdown: { districtDivisionScore: number; chapterScore: number } | null,
 ): Promise<TrusteeAppointmentSyncError | TrusteeAppointmentSyncEvent | null> {
   const { deps, event, fingerprint, variant, audit, scenarioDistribution } = ctx;
   const { context } = deps;
@@ -524,9 +559,6 @@ async function autoLinkTrustee(
   audit.matchOutcome = 'auto-matched';
   audit.matchedTrusteeId = trusteeId;
   audit.appointmentStatus = 'active';
-  if (scoringBreakdown) {
-    audit.scoringBreakdown = scoringBreakdown;
-  }
   return softCloseFailure;
 }
 
@@ -1192,7 +1224,6 @@ async function applyMatchOutcome(
       trusteeId,
       variationTrusteeId,
       `Perfect match: case ${event.caseId} auto-linked to trustee ${trusteeId}`,
-      null,
     );
     return { outcome: 'auto-linked', dlqFailure };
   }

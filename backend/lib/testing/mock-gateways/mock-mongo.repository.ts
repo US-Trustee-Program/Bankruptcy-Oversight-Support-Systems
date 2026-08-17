@@ -823,6 +823,13 @@ export class MockMongoRepository
     return true; // Mock defaults to "already in sync" — test spies will override
   }
 
+  // Mock implementation for findStrandedActiveInTrusteePartition
+  async findStrandedActiveInTrusteePartition(
+    ..._args: [caseId: string, excludeTrusteeId: string]
+  ): Promise<CaseAppointment | null> {
+    return null; // Mock defaults to "nothing stranded" — test spies will override
+  }
+
   // Mock implementation for replaceOneInTrusteePartition
   async replaceOneInTrusteePartition(_query: any, _document: any): Promise<void> {
     // Mock does nothing — test spies will override
