@@ -114,7 +114,7 @@ accessibility standards.
   - Header component background
   - Used in: Main application header
 
-- **Blue Accent**: `#207bc0`
+- **Blue Accent**: `#207bc0` (`$environment-banner-info` as of CAMS-839)
   - User menu dropdown item backgrounds
   - DEVELOPMENT environment banner background
 
@@ -128,8 +128,11 @@ accessibility standards.
   - Search result highlighting in Court Docket panel
   - Note: Uses CSS Custom Highlight API (browser support limited)
 
-- **Banner Gold**: `#ffd700`
+- **Banner Gold**: `#ffd700` (`$environment-banner-test` as of CAMS-839)
   - TEST environment banner background
+  - Note: a different "gold" from `$gold` (`#ffbe2e`) above - same near-duplicate-value pattern as
+    the RichTextEditor `#005ea6` fix (issue #7), kept as its own variable since consolidating would
+    change the TEST banner's actual color
 
 ### Semantic/Status Colors
 
@@ -141,11 +144,13 @@ accessibility standards.
 
 - **Error**: Uses USWDS `usa-alert--error`
   - Background: `#f4e3db` (red-warm-10)
-  - Left border: `#d54309` (red-warm-50v)
+  - Left border: `#d54309` (red-warm-50v; also `$error-text` in `_colors.scss` as of CAMS-839, used
+    for PhoneEntryList's remove-button text, with `$error-text-hover` `#b51d06` on hover)
   - Text: `#1b1b1b` (default body text — applied because background is light)
-  - Note: `#b50909` and hover `#8b0a0a` are used separately for remove/delete button text in the
-    Permissions admin panel — the hover value should be replaced with `$secondary-darker`
-    (`#8b0a03`, matching USWDS `red-70v`) — see issue #9
+  - Note: `#b50909` (`$secondary-dark`) is used for remove/delete button text. A "Permissions" admin
+    panel with an `#8b0a0a` hover state was previously documented here, but no such component exists
+    anywhere in this repo (working tree or git history) — see issue #9. Treat that prior note as
+    unverified/likely erroneous.
 
 - **Warning**: Uses USWDS `usa-alert--warning`
   - Background: `#faf3d1` (yellow-5)
@@ -167,8 +172,8 @@ accessibility standards.
 - **Disabled Text**: `#454545`
   - Placeholder text, disabled input text
 
-- **Muted Controls**: `#565c65`
-  - Used in: Rich text editor controls
+- **Muted Controls**: `#565c65` (`$gray-cool-60` as of CAMS-839)
+  - Used in: Rich text editor controls, ComboBox section divider
 
 ### Background Colors
 
@@ -177,7 +182,7 @@ accessibility standards.
   - RichTextEditor toolbar button hover and active states
   - Case Detail Header border when in sticky/fixed position (see issue #6 — sticky header not
     currently working; feature may be removed)
-- **Near-White**: `#fefefe`
+- **Near-White**: `#fefefe` (`$gray-near-white` as of CAMS-839)
   - Case Detail Header background when in sticky/fixed position (see issue #6 — sticky header not
     currently working; feature may be removed)
 - **Disabled Input**: `#c9c9c9` - Disabled ComboBox background (e.g., "New Court" field in Data
@@ -185,8 +190,10 @@ accessibility standards.
 
 ### Border & Divider Colors
 
-- **Black**: `#000000`
+- **Black**: `#000000` (also `$gray-100` in `_colors.scss` as of CAMS-839, used for PhoneEntryList's
+  divider border)
   - Note item dividers (Case Notes and Trustee Notes panels)
+  - PhoneEntryList divider border
   - Loading spinner text
   - TEST environment banner text
   - Search result highlight text (Court Docket)
@@ -197,42 +204,59 @@ accessibility standards.
 
 ### Border & Divider Colors (Not Actually Used)
 
-- **Light Gray**: `#ddd` (3-digit hex shorthand for `#dddddd`)
+- **Light Gray**: `#dddddd` (`$gray-shadow` as of CAMS-839; CAMS-838 previously expanded the 3-digit
+  `#ddd` shorthand this replaced — see issue #46)
   - `CaseDetailHeader.scss` box shadow on sticky header (non-functioning — see issue #6)
 
 ### Component-Specific Colors
 
-**Rich Text Editor** (hardcoded in component):
+**Rich Text Editor** (as of CAMS-839, references `_colors.scss` — no longer hardcoded):
 
-- Toolbar Background: `#e9ecef`
-- Active Button Background: `#71767a` (with white text)
-- Hover State: `#f0f0f0`
-- Link Color: `#005ea6`
-- Muted Controls: `#565c65`
+- Toolbar Background: `colors.$gray-hover-light` (`#e9ecef`)
+- Active Button Background: `colors.$gray-cool-50` (`#71767a`, with white text)
+- Hover State: `colors.$gray-5` (`#f0f0f0`)
+- Link Color: `colors.$primary` (`#005ea2`, fixed from a near-duplicate `#005ea6` — see issue #7)
+- Muted Controls: `colors.$gray-cool-60` (`#565c65`)
 
 ### Additional Grays in Use
 
-- **`#565c65`** - ComboBox section divider color; RichTextEditor muted control text
-- **`#5c5c5c`** - ToggleButton inactive state background
-- **`#0050d8`** - ToggleButton active state background (My Cases, ComboBox, RichTextEditor)
-- **`#949494`** - ComboBox selected item border color
-- **`#b0b0b0`** - ComboBox list item hover background
-- **`#c6c6c6`** - Mobile responsive table row borders (via `$tableBorder` in App.scss)
-- **`#c6cace`** - ComboBox separator between input and expand button
-- **`#d0d0d0`** - ComboBox selected item background
-- **`#e0e0e0`** - RichTextEditor toolbar bottom border
-- **`#e9ecef`** - RichTextEditor toolbar background
+As of CAMS-839, the values below are centralized in `_colors.scss` rather than hardcoded per
+component (see issues #10, #11, #12):
+
+- **`#565c65`** (`$gray-cool-60`) - ComboBox section divider color; RichTextEditor muted control
+  text
+- **`#5c5c5c`** (`$gray-60`) - ToggleButton inactive state background
+- **`#0050d8`** (`$toggle-active`) - ToggleButton active state background (My Cases, ComboBox,
+  RichTextEditor)
+- **`#949494`** (`$gray-selected-border`) - ComboBox selected item border color
+- **`#b0b0b0`** (`$gray-hover-background`) - ComboBox list item hover background
+- **`#c6c6c6`** (`$table-border`) - Mobile responsive table row borders (via `$tableBorder` in
+  `_tables.scss`) — kept as its own variable rather than merged with `$gray-cool-20` (visually close
+  but not identical; merging would change every table border's shade)
+- **`#c6cace`** (`$gray-cool-20`) - ComboBox separator between input and expand button
+- **`#d0d0d0`** (`$gray-selected-background`) - ComboBox selected item background
+- **`#e0e0e0`** (`$gray-border-light`) - RichTextEditor toolbar bottom border
+- **`#e9ecef`** (`$gray-hover-light`) - RichTextEditor toolbar background
+- **`#757575`** (`$gray-50`) - TrusteeSearchModal selection-label text
+- **`#aaa`** (`$gray-input-border`) - ConsolidationOrderModal and AssignAttorneyModal list borders
+- **`#fefefe`** (`$gray-near-white`) - Case Detail Header sticky-header background
+- **`#dddddd`** (`$gray-shadow`) - Case Detail Header sticky-header box shadow
+- **`#333`** (`$gray-hover-border`) - ComboBox list item hover/focus border color
+
+### Blue Accent Colors
+
+- **`#2491ff`** (`$focus-blue`, matches USWDS `blue-vivid-40`) - Header.scss focus outlines;
+  previously also hardcoded as `rgb(36, 145, 255)` in ComboBox.scss (same color, different notation)
+  — both now reference the same variable as of CAMS-839
 
 ---
 
 ## Available But Unused Colors
 
-These colors are defined in `styles/abstracts/_colors.scss` but not currently used:
-
-- `$secondary-darker` (`#8b0a03`) - matches USWDS `red-70v` exactly; should replace the hardcoded,
-  slightly-off hover state `#8b0a0a` — see issue #9
-- `$warning-text` (`#990000`)
-- `$warning-light` (`#ffffca`) - USWDS provides warning colors instead
+`$warning-text` (`#990000`), `$warning-light` (`#ffffca`), and `$secondary-darker` (`#8b0a03`) were
+removed from `_colors.scss` as unused by CAMS-838. `$secondary-darker` matched USWDS `red-70v`
+exactly and was intended for a "Permissions" admin panel hover state, but that component does not
+exist anywhere in this repo — see issue #9. If a real need for it arises, re-add it at that time.
 
 ---
 
@@ -268,13 +292,17 @@ These come directly from USWDS:
 
 ### Implementation Notes
 
-- **Variable vs Hardcoded**: Many colors appear both as SCSS variables AND hardcoded in different
-  files
-- **Gray Proliferation**: Many gray shades are hardcoded rather than standardized via variables
-- **USWDS Reliance**: CAMS relies heavily on USWDS for semantic alert colors
-- **Component-Specific**: Rich Text Editor has its own hardcoded color palette
-- **Hover States**: Error hover uses `#8b0a0a` (hardcoded), not the defined `$secondary-darker`
-  (`#8b0a03`), which matches USWDS `red-70v` exactly and should be used instead — see issue #9
+- **Variable vs Hardcoded**: As of CAMS-839, RichTextEditor, ToggleButton, ComboBox,
+  TransferredCaseIcon, Header, Banner, PhoneEntryList, CaseDetailHeader, TrusteeSearchModal,
+  ConsolidationOrderModal, AssignAttorneyModal, and `_tables.scss` reference `_colors.scss`
+  variables rather than hardcoding hex
+- **Gray Proliferation**: Resolved — a standardized gray scale now exists in `_colors.scss` and all
+  hardcoded grays found (including a wider codebase survey beyond this issue's original list) have
+  been migrated (see issue #12)
+- **USWDS Reliance**: CAMS relies heavily on USWDS for semantic alert colors; confirmed USWDS theme
+  tokens import and resolve correctly when referenced directly (see issue #47)
+- **Component-Specific**: Rich Text Editor's private color palette was resolved in CAMS-839 — see
+  issue #11
 
 ---
 

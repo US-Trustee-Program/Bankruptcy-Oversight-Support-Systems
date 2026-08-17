@@ -1,13 +1,13 @@
 @use 'uswds-core';
 @use '../../../styles/abstracts/colors';
 
-$separatorColor: #c6cace;
-$sectionSeparatorColor: #565c65;
-$listItemHoverBorderColor: #333;
-$listItemSelectedBorderColor: #949494;
+$separatorColor: colors.$gray-cool-20;
+$sectionSeparatorColor: colors.$gray-cool-60;
+$listItemHoverBorderColor: colors.$gray-hover-border;
+$listItemSelectedBorderColor: colors.$gray-selected-border;
 $listItemTextColor: colors.$ink;
-$listItemSelectedBackground: #d0d0d0;
-$listItemHoverBackground: #b0b0b0;
+$listItemSelectedBackground: colors.$gray-selected-background;
+$listItemHoverBackground: colors.$gray-hover-background;
 
 .combo-box-form-group {
   max-width: 30rem;
@@ -100,7 +100,7 @@ $listItemHoverBackground: #b0b0b0;
     }
     .input-container:has(.combo-box-input:focus) {
       outline-width: 4px;
-      outline-color: rgb(36, 145, 255);
+      outline-color: colors.$focus-blue;
       outline-style: solid;
       outline-offset: -4px;
     }

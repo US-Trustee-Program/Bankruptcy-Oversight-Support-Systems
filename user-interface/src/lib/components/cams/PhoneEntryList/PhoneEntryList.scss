@@ -1,4 +1,4 @@
-@import '@/styles/abstracts/colors';
+@use '@/styles/abstracts/colors' as colors;
 
 .phone-entry-list {
   .phone-entry-list__entry {
@@ -48,7 +48,7 @@
         gap: 0.25rem;
         // Align vertically with the input boxes (label + hint push inputs down ~2.5rem)
         margin-top: 3.75rem;
-        color: #d54309;
+        color: colors.$error-text;
         white-space: nowrap;
 
         .usa-icon {
@@ -57,7 +57,7 @@
         }
 
         &:hover {
-          color: #b51d06;
+          color: colors.$error-text-hover;
         }
       }
 
@@ -70,7 +70,7 @@
 
     .phone-entry-list__divider {
       border: none;
-      border-top: 1px solid #000;
+      border-top: 1px solid colors.$gray-100;
       margin: 0 0 20px 0;
     }
   }
