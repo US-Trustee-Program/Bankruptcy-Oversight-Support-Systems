@@ -13,6 +13,7 @@
 #   wait_for_role_definition    ROLE_NAME [ATTEMPTS] -> prints role definition GUID to stdout
 #   ensure_role_assignment      SP_ID ROLE SCOPE
 #   ensure_deployment_stack_deny_setting_role SUBSCRIPTION_ID -> prints role definition GUID to stdout
+#   require_var                 VALUE ENV_VAR_NAME CONTEXT -> exits 1 with a consistent error if VALUE is empty
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   echo "ERROR: This script must be sourced, not executed directly." >&2
@@ -32,6 +33,20 @@ if [[ ! "$GITHUB_ORG" =~ ^[A-Za-z0-9_-]+$ ]] || [[ ! "$GITHUB_REPO" =~ ^[A-Za-z0
   echo "       These values control the OIDC trust boundary. Set them intentionally." >&2
   exit 1
 fi
+
+# Fails fast with a consistent message if VALUE is empty. Replaces the
+# `if [[ -z "$VAR" ]]; then echo "ERROR: ..."; exit 1; fi` shape that had
+# accumulated across both runbooks in this directory (7 near-identical
+# occurrences) as each new required variable was added independently.
+require_var() {
+  local value="$1"
+  local env_var_name="$2"
+  local context="$3"
+  if [[ -z "$value" ]]; then
+    echo "ERROR: ${env_var_name} is required ${context}." >&2
+    exit 1
+  fi
+}
 
 # Look up an app registration by display name, or create one if absent.
 # Fails with exit 1 if multiple registrations share the display name to prevent

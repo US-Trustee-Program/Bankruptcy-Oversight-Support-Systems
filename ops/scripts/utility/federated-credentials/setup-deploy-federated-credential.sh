@@ -17,13 +17,16 @@
 #       create, resource group creation/reads, and az deployment group create
 #       inside whatever resource groups this identity deploys to.
 #   - branch: Contributor scoped to just the two stable app/network resource
-#       groups (AZ_BRANCH_APP_RG, AZ_BRANCH_NETWORK_RG) it deploys into.
+#       groups (AZ_BRANCH_APP_RG, AZ_BRANCH_NETWORK_RG) it deploys into --
+#       rg-cams-app-dev/rg-cams-network-dev, shared across every branch but
+#       distinct from main's own (unsuffixed) rg-cams-app/rg-cams-network.
 #       Branch resource groups used to be created dynamically per-hash
 #       (Azure RBAC has no wildcard scoping over dynamic names), which forced
 #       subscription-scope Contributor here too. CAMS-760 Slices 1-2 moved
-#       branch deploys onto the SAME stable resource groups main uses
-#       (distinguished by per-branch-unique resource names instead of a
-#       per-branch RG), so branch can now be pre-scoped to just those two RGs.
+#       branch deploys onto these two SAME stable resource groups every
+#       branch now shares (distinguished by per-branch-unique resource names
+#       instead of a per-branch RG), so branch can now be pre-scoped to just
+#       those two RGs.
 #   - Custom role "CAMS KV Role Assignment Operator" on the KV resource
 #       (main and branch, identical): the Bicep kv-setup-module creates
 #       Microsoft.Authorization/roleAssignments on KV secrets; Contributor
@@ -93,12 +96,15 @@ MAIN_KV_RG="${AZ_MAIN_KV_RG:-}"
 # Resource group that contains the dev/branch Key Vault (kv-ustp-cams-dev)
 BRANCH_KV_NAME="kv-ustp-cams-dev"
 BRANCH_KV_RG="${AZ_BRANCH_KV_RG:-}"
-# Stable resource groups branch deploys into (CAMS-760 Slice 3) — same RGs
-# main uses, values come from the same AZ-APP-RG/AZ-NETWORK-RG KV secrets the
-# deploy pipeline itself reads. Used both for the Contributor scoping below
-# and for the deny-setting role grant (see ensure_deployment_stack_deny_setting_role)
-# — it's the same two resource groups for both purposes, so one pair of
-# variables serves both rather than introducing a second, redundant pair.
+# Stable resource groups every branch deploys into (CAMS-760 Slice 3) --
+# rg-cams-app-dev/rg-cams-network-dev, the values the branch deploy pipeline
+# itself reads from the AZ-APP-RG/AZ-NETWORK-RG secrets in kv-ustp-cams-dev
+# (distinct from main's own rg-cams-app/rg-cams-network, read from the
+# same-named secrets in kv-ustp-cams). Used both for the Contributor scoping
+# below and for the deny-setting role grant (see
+# ensure_deployment_stack_deny_setting_role) — it's the same two resource
+# groups for both purposes, so one pair of variables serves both rather than
+# introducing a second, redundant pair.
 BRANCH_APP_RG="${AZ_BRANCH_APP_RG:-}"
 BRANCH_NETWORK_RG="${AZ_BRANCH_NETWORK_RG:-}"
 # KV-Workflows: reusable-deploy.yml
@@ -246,14 +252,8 @@ provision_identity() {
     echo "==> Checking Contributor role assignment at subscription scope..."
     ensure_role_assignment "$SP_ID" "Contributor" "$SUBSCRIPTION_SCOPE"
   else
-    if [[ -z "$BRANCH_APP_RG" ]]; then
-      echo "ERROR: AZ_BRANCH_APP_RG is required when provisioning the branch environment." >&2
-      exit 1
-    fi
-    if [[ -z "$BRANCH_NETWORK_RG" ]]; then
-      echo "ERROR: AZ_BRANCH_NETWORK_RG is required when provisioning the branch environment." >&2
-      exit 1
-    fi
+    require_var "$BRANCH_APP_RG" "AZ_BRANCH_APP_RG" "when provisioning the branch environment"
+    require_var "$BRANCH_NETWORK_RG" "AZ_BRANCH_NETWORK_RG" "when provisioning the branch environment"
     local BRANCH_APP_RG_SCOPE="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${BRANCH_APP_RG}"
     local BRANCH_NETWORK_RG_SCOPE="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${BRANCH_NETWORK_RG}"
     echo "==> Checking Contributor role assignment on ${BRANCH_APP_RG}..."
@@ -268,17 +268,11 @@ provision_identity() {
 
   # KV role assignment operator on the KV resource + Key Vault Secrets User per secret
   if [[ "$IS_MAIN" == "true" ]]; then
-    if [[ -z "$MAIN_KV_RG" ]]; then
-      echo "ERROR: AZ_MAIN_KV_RG is required when provisioning the main environment." >&2
-      exit 1
-    fi
+    require_var "$MAIN_KV_RG" "AZ_MAIN_KV_RG" "when provisioning the main environment"
     local KV_NAME="$MAIN_KV_NAME"
     local KV_RG="$MAIN_KV_RG"
   else
-    if [[ -z "$BRANCH_KV_RG" ]]; then
-      echo "ERROR: AZ_BRANCH_KV_RG is required when provisioning the branch environment." >&2
-      exit 1
-    fi
+    require_var "$BRANCH_KV_RG" "AZ_BRANCH_KV_RG" "when provisioning the branch environment"
     local KV_NAME="$BRANCH_KV_NAME"
     local KV_RG="$BRANCH_KV_RG"
   fi
