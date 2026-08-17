@@ -16,4 +16,12 @@
   &.member-case-icon path:first-of-type {
     fill: colors.$primary;
   }
+
+  &.transfer-icon path {
+    fill: white;
+  }
+
+  &.transfer-icon path:first-of-type {
+    fill: colors.$primary;
+  }
 }
