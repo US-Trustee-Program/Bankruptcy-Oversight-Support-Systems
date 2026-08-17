@@ -528,7 +528,7 @@ async function seedIntegration() {
     });
     pass(`Inserted Trustee: ${trusteeId} (name="${TEST_SYNC_EVENT.dxtrTrustee.fullName}")`);
 
-    // Step 3 — TrusteeAppointment (panel appointment — drives isPerfectMatch)
+    // Step 3 — TrusteeAppointment (panel appointment — drives isAppointmentMatch)
     await db.collection('trustee-appointments').insertOne({
       documentType: 'TRUSTEE_APPOINTMENT',
       id: randomUUID(),
@@ -610,8 +610,7 @@ async function run() {
 
   console.log('\nStep 1b: Extract downstream events from extraOutputs');
   const queuedEvents = invocationContext.extraOutputs.get(TRUSTEE_APPOINTMENT_EVENT_QUEUE) as
-    | TrusteeAppointmentDownstreamEvent[]
-    | undefined;
+    TrusteeAppointmentDownstreamEvent[] | undefined;
 
   const events: TrusteeAppointmentDownstreamEvent[] = Array.isArray(queuedEvents)
     ? queuedEvents

@@ -190,7 +190,7 @@ describe('SyncTrusteeCaseAppointments', () => {
         kind: 'resolved',
         trusteeId: 'trustee-123',
       });
-      vi.spyOn(trusteeMatchHelpers, 'isPerfectMatch').mockReturnValue(true);
+      vi.spyOn(trusteeMatchHelpers, 'isAppointmentMatch').mockReturnValue(true);
     });
 
     test('should create a new CASE_APPOINTMENT when no existing appointment', async () => {
@@ -1220,7 +1220,7 @@ describe('SyncTrusteeCaseAppointments', () => {
     );
 
     test('should persist IMPERFECT_MATCH to verification collection, not DLQ', async () => {
-      vi.spyOn(trusteeMatchHelpers, 'isPerfectMatch').mockReturnValue(false);
+      vi.spyOn(trusteeMatchHelpers, 'isAppointmentMatch').mockReturnValue(false);
       vi.spyOn(trusteeMatchHelpers, 'calculateCandidateScore').mockReturnValue({
         trusteeId: 'trustee-123',
         trusteeName: 'John Doe',
@@ -1257,11 +1257,11 @@ describe('SyncTrusteeCaseAppointments', () => {
       // districtDivisionScore/chapterScore are each computed independently across all of a
       // trustee's appointments (see calculateDistrictDivisionScore/calculateChapterScore),
       // so a perfect-looking totalScore here does not guarantee a single appointment record
-      // actually covers this case's court+division+chapter combination — isPerfectMatch above
+      // actually covers this case's court+division+chapter combination — isAppointmentMatch above
       // (mocked false) is the only check that verifies that. There is no score-based auto-match
       // path for a single non-perfect candidate; every one of them is a human-reviewed
       // ImperfectMatch regardless of how high totalScore is.
-      vi.spyOn(trusteeMatchHelpers, 'isPerfectMatch').mockReturnValue(false);
+      vi.spyOn(trusteeMatchHelpers, 'isAppointmentMatch').mockReturnValue(false);
       vi.spyOn(trusteeMatchHelpers, 'calculateCandidateScore').mockReturnValue({
         trusteeId: 'trustee-123',
         trusteeName: 'John Doe',
@@ -1316,7 +1316,7 @@ describe('SyncTrusteeCaseAppointments', () => {
         // Event 3: imperfect match
         .mockResolvedValueOnce({ kind: 'resolved', trusteeId: 'trustee-3' });
 
-      vi.spyOn(trusteeMatchHelpers, 'isPerfectMatch')
+      vi.spyOn(trusteeMatchHelpers, 'isAppointmentMatch')
         .mockReturnValueOnce(true) // Event 1
         .mockReturnValueOnce(false); // Event 3
 
@@ -1379,7 +1379,7 @@ describe('SyncTrusteeCaseAppointments', () => {
     });
 
     test('should emit TRUSTEE_MATCH_AUDIT log for IMPERFECT_MATCH event', async () => {
-      vi.spyOn(trusteeMatchHelpers, 'isPerfectMatch').mockReturnValue(false);
+      vi.spyOn(trusteeMatchHelpers, 'isAppointmentMatch').mockReturnValue(false);
       vi.spyOn(trusteeMatchHelpers, 'calculateCandidateScore').mockReturnValue({
         trusteeId: 'trustee-123',
         trusteeName: 'John Doe',
@@ -1499,7 +1499,7 @@ describe('SyncTrusteeCaseAppointments', () => {
 
     describe('TrusteeMatchVerification persistence', () => {
       test('upserts verification doc for IMPERFECT_MATCH outcome', async () => {
-        vi.spyOn(trusteeMatchHelpers, 'isPerfectMatch').mockReturnValue(false);
+        vi.spyOn(trusteeMatchHelpers, 'isAppointmentMatch').mockReturnValue(false);
         vi.spyOn(trusteeMatchHelpers, 'calculateCandidateScore').mockReturnValue({
           trusteeId: 'trustee-123',
           trusteeName: 'John Doe',
@@ -1529,7 +1529,7 @@ describe('SyncTrusteeCaseAppointments', () => {
       });
 
       test('carries acmsProfessionalId and appointedDate from the event onto a new verification doc', async () => {
-        vi.spyOn(trusteeMatchHelpers, 'isPerfectMatch').mockReturnValue(false);
+        vi.spyOn(trusteeMatchHelpers, 'isAppointmentMatch').mockReturnValue(false);
         vi.spyOn(trusteeMatchHelpers, 'calculateCandidateScore').mockReturnValue({
           trusteeId: 'trustee-123',
           trusteeName: 'John Doe',
@@ -1753,7 +1753,7 @@ describe('SyncTrusteeCaseAppointments', () => {
             fingerprint: computeFingerprint(buildVariant(event.dxtrTrustee)),
           },
         ]);
-        vi.spyOn(trusteeMatchHelpers, 'isPerfectMatch').mockReturnValue(false);
+        vi.spyOn(trusteeMatchHelpers, 'isAppointmentMatch').mockReturnValue(false);
         vi.spyOn(trusteeMatchHelpers, 'calculateCandidateScore').mockReturnValue({
           trusteeId: 'trustee-123',
           trusteeName: 'John Doe',
@@ -1898,7 +1898,7 @@ describe('SyncTrusteeCaseAppointments', () => {
       };
 
       beforeEach(() => {
-        vi.spyOn(trusteeMatchHelpers, 'isPerfectMatch').mockReturnValue(false);
+        vi.spyOn(trusteeMatchHelpers, 'isAppointmentMatch').mockReturnValue(false);
         vi.spyOn(trusteeMatchHelpers, 'findInactivePerfectMatch').mockReturnValue(
           inactiveAppointment,
         );
@@ -2052,11 +2052,11 @@ describe('SyncTrusteeCaseAppointments', () => {
           // Event 3: no match
           .mockResolvedValueOnce({ kind: 'no-match' });
 
-        vi.spyOn(trusteeMatchHelpers, 'isPerfectMatch')
+        vi.spyOn(trusteeMatchHelpers, 'isAppointmentMatch')
           .mockReturnValueOnce(true) // Event 1
           .mockReturnValueOnce(false); // Event 2
 
-        // Event 1 takes the isPerfectMatch=true branch, so findInactivePerfectMatch is not called.
+        // Event 1 takes the isAppointmentMatch=true branch, so findInactivePerfectMatch is not called.
         // Only Event 2 calls it.
         vi.spyOn(trusteeMatchHelpers, 'findInactivePerfectMatch').mockReturnValueOnce(
           inactiveAppointment,
@@ -2285,7 +2285,7 @@ describe('SyncTrusteeCaseAppointments', () => {
         // processAppointments) rather than via a thrown/caught/classified error, so there is no
         // intermediary "missing matchCandidates" shape to default away — the real call site
         // always passes [candidateScore] directly to handleClassifiedMismatch.
-        vi.spyOn(trusteeMatchHelpers, 'isPerfectMatch').mockReturnValue(false);
+        vi.spyOn(trusteeMatchHelpers, 'isAppointmentMatch').mockReturnValue(false);
         vi.spyOn(trusteeMatchHelpers, 'calculateCandidateScore').mockReturnValue({
           trusteeId: 'trustee-123',
           trusteeName: 'John Doe',
@@ -2533,7 +2533,7 @@ describe('SyncTrusteeCaseAppointments', () => {
       });
 
       test('should track reVerificationCount when IMPERFECT_MATCH already resolved', async () => {
-        vi.spyOn(trusteeMatchHelpers, 'isPerfectMatch').mockReturnValue(false);
+        vi.spyOn(trusteeMatchHelpers, 'isAppointmentMatch').mockReturnValue(false);
         vi.spyOn(trusteeMatchHelpers, 'calculateCandidateScore').mockReturnValue({
           trusteeId: 'trustee-123',
           trusteeName: 'John Doe',
@@ -3065,7 +3065,7 @@ describe('SyncTrusteeCaseAppointments', () => {
         kind: 'resolved',
         trusteeId: 'trustee-123',
       });
-      vi.spyOn(trusteeMatchHelpers, 'isPerfectMatch').mockReturnValue(true);
+      vi.spyOn(trusteeMatchHelpers, 'isAppointmentMatch').mockReturnValue(true);
     });
 
     test('should emit active appointment event when acmsProfessionalId is resolved', async () => {
