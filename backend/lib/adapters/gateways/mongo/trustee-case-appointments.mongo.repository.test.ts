@@ -1777,6 +1777,58 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
     });
   });
 
+  describe('findStrandedActiveInTrusteePartition', () => {
+    test('should return the stranded row when an active document exists for a different trustee', async () => {
+      const strandedAppointment: CaseAppointment = {
+        ...baseAppointment,
+        trusteeId: 'TRUSTEE-OLD',
+      };
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([strandedAppointment]);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const result = await repo.findStrandedActiveInTrusteePartition(CASE_ID, TRUSTEE_ID);
+
+      expect(result).toEqual(strandedAppointment);
+      repo.release();
+    });
+
+    test('should return null when no stranded document exists', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const result = await repo.findStrandedActiveInTrusteePartition(CASE_ID, TRUSTEE_ID);
+
+      expect(result).toBeNull();
+      repo.release();
+    });
+
+    test('should scope the query by caseId, excluded trusteeId, and active status', async () => {
+      const findSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await repo.findStrandedActiveInTrusteePartition(CASE_ID, TRUSTEE_ID);
+
+      const query = findSpy.mock.calls[0][0];
+      const queryValues = (query as Record<string, unknown>).values as Record<string, unknown>[];
+      const trusteeIdCondition = queryValues.find(
+        (v) => (v.leftOperand as { name: string })?.name === 'trusteeId',
+      );
+      const unassignedOnCondition = queryValues.find(
+        (v) => (v.leftOperand as { name: string })?.name === 'unassignedOn',
+      );
+      expect(trusteeIdCondition).toEqual(
+        expect.objectContaining({ condition: 'NOT_EQUALS', rightOperand: TRUSTEE_ID }),
+      );
+      expect(unassignedOnCondition).toEqual(
+        expect.objectContaining({ condition: 'EXISTS', rightOperand: false }),
+      );
+      repo.release();
+    });
+  });
+
   describe('replaceOneInTrusteePartition', () => {
     const query = { caseId: CASE_ID, trusteeId: TRUSTEE_ID, assignedOn: '2024-01-15' };
     const document = {

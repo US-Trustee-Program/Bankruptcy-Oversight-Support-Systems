@@ -26,7 +26,7 @@ const MODULE_NAME = 'SYNC-TRUSTEE-CASE-APPOINTMENTS';
 const PAGE_SIZE = 100;
 
 // A case not yet synced by sync-cases retries twice (3 total attempts, tracked via
-// PageMessage.retryCount since each retry sends a new queue message) with a 4-hour
+// PageMessage.notYetSyncedRetryCount since each retry sends a new queue message) with a 4-hour
 // visibility delay, then routes to the DLQ.
 const CASE_NOT_YET_SYNCED_RETRY_LIMIT = 2;
 const CASE_NOT_YET_SYNCED_VISIBILITY_SECONDS = 4 * 60 * 60;
@@ -41,10 +41,18 @@ type SyncTrusteeCaseAppointmentsStartMessage = StartMessage & {
 
 type PageMessage = {
   events: TrusteeAppointmentSyncEvent[];
+  // Retry counter for the not-yet-synced-case retry policy (fixed 4-hour delay, limit
+  // CASE_NOT_YET_SYNCED_RETRY_LIMIT) — deliberately NOT named retryCount. handleRateLimitRetry
+  // (dataflows-rate-limit.ts) is a shared generic helper used by multiple dataflows that reads/
+  // writes its own transient-infra-error counter on `message.retryCount` (exponential backoff,
+  // limit RATE_LIMIT_RETRY_LIMIT) via the outer catch below. Those are two independent retry
+  // policies with different limits and delays; a generic transient error hitting the outer catch
+  // for a page that also has not-yet-synced events must not perturb this counter, and vice versa.
+  notYetSyncedRetryCount?: number;
   retryCount?: number;
   firstAttemptAt?: string;
-  // Separate retry counter for retryableEvents (transient infra errors), tracked independently
-  // from retryCount above (which belongs to the not-yet-synced-case retry policy). A page can
+  // Separate retry counter for retryableEvents (transient infra errors surfaced as a business
+  // outcome from processAppointments), tracked independently from both counters above. A page can
   // produce both kinds of retryable events in the same invocation, and they follow different
   // retry policies (fixed 4-hour delay vs. exponential backoff) with different limits, so they
   // cannot share one counter on a combined requeue message.
@@ -273,7 +281,7 @@ async function handlePage(message: PageMessage, invocationContext: InvocationCon
     }
 
     if (notYetSyncedEvents.length > 0) {
-      const currentRetryCount = message.retryCount ?? 0;
+      const currentRetryCount = message.notYetSyncedRetryCount ?? 0;
       if (currentRetryCount < CASE_NOT_YET_SYNCED_RETRY_LIMIT) {
         const queueClient = StorageQueueHumbleObject.fromConnectionString(
           connectionString,
@@ -281,7 +289,7 @@ async function handlePage(message: PageMessage, invocationContext: InvocationCon
         );
         const retryMessage: PageMessage = {
           events: notYetSyncedEvents,
-          retryCount: currentRetryCount + 1,
+          notYetSyncedRetryCount: currentRetryCount + 1,
         };
         await queueClient.sendMessage(
           JSON.stringify(retryMessage),

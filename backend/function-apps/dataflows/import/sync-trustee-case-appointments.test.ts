@@ -261,6 +261,40 @@ describe('sync-trustee-case-appointments handlePage', () => {
     );
   });
 
+  test('does not let notYetSyncedRetryCount and the generic rate-limit retryCount cross-contaminate', async () => {
+    // A page can carry a notYetSyncedRetryCount from a prior not-yet-synced-case retry AND then
+    // hit a generic transient error (429) in a later invocation of the same page. Before this fix,
+    // both policies shared one `retryCount` field: a not-yet-synced retry could reach the
+    // not-yet-synced DLQ threshold after only one real not-yet-synced attempt if a rate-limit
+    // retry had already bumped the shared counter, or vice versa. This asserts the two counters
+    // are read/written independently: notYetSyncedRetryCount is preserved unchanged on the
+    // rate-limit retry message, and handleRateLimitRetry's own retryCount starts from its own
+    // field, not from notYetSyncedRetryCount.
+    const { handlePage } = await import('./sync-trustee-case-appointments');
+    const events = [makeTrusteeEvent('001-25-00001')];
+    const message = { events, notYetSyncedRetryCount: 1, retryCount: 0 };
+    const invocationContext = makeInvocationContext();
+
+    const tooManyError = new TooManyRequestsError('SYNC-TRUSTEE-CASE-APPOINTMENTS');
+    vi.spyOn(SyncTrusteeCaseAppointmentsModule.default, 'processAppointments').mockRejectedValue(
+      tooManyError,
+    );
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
+      await createMockApplicationContext(),
+    );
+
+    const mockSendMessage = vi.fn().mockResolvedValue(undefined);
+    vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
+      sendMessage: mockSendMessage,
+    } as unknown as StorageQueueHumbleObject);
+
+    await handlePage(message, invocationContext);
+
+    const sentMessage = JSON.parse(mockSendMessage.mock.calls[0][0] as string);
+    expect(sentMessage.notYetSyncedRetryCount).toBe(1);
+    expect(sentMessage.retryCount).toBe(1);
+  });
+
   test('should route to DLQ and emit telemetry when retry limit exhausted', async () => {
     const { handlePage } = await import('./sync-trustee-case-appointments');
     const events = [makeTrusteeEvent('001-25-00001')];
@@ -335,7 +369,7 @@ describe('sync-trustee-case-appointments handlePage', () => {
     await handlePage(message, invocationContext);
 
     expect(mockSendMessage).toHaveBeenCalledWith(
-      JSON.stringify({ events: [notYetSyncedEvent], retryCount: 1 }),
+      JSON.stringify({ events: [notYetSyncedEvent], notYetSyncedRetryCount: 1 }),
       4 * 60 * 60,
     );
   });
@@ -343,7 +377,7 @@ describe('sync-trustee-case-appointments handlePage', () => {
   test('should requeue with an incremented retryCount when at the retry limit (second retry)', async () => {
     const { handlePage } = await import('./sync-trustee-case-appointments');
     const notYetSyncedEvent = makeTrusteeEvent('001-25-00003');
-    const message = { events: [notYetSyncedEvent], retryCount: 1 };
+    const message = { events: [notYetSyncedEvent], notYetSyncedRetryCount: 1 };
     const invocationContext = makeInvocationContext();
 
     vi.spyOn(SyncTrusteeCaseAppointmentsModule.default, 'processAppointments').mockResolvedValue({
@@ -364,7 +398,7 @@ describe('sync-trustee-case-appointments handlePage', () => {
     await handlePage(message, invocationContext);
 
     expect(mockSendMessage).toHaveBeenCalledWith(
-      JSON.stringify({ events: [notYetSyncedEvent], retryCount: 2 }),
+      JSON.stringify({ events: [notYetSyncedEvent], notYetSyncedRetryCount: 2 }),
       4 * 60 * 60,
     );
   });
@@ -372,7 +406,7 @@ describe('sync-trustee-case-appointments handlePage', () => {
   test('should route not-yet-synced events to DLQ instead of retrying once the retry limit is exceeded', async () => {
     const { handlePage } = await import('./sync-trustee-case-appointments');
     const notYetSyncedEvent = makeTrusteeEvent('001-25-00003');
-    const message = { events: [notYetSyncedEvent], retryCount: 2 };
+    const message = { events: [notYetSyncedEvent], notYetSyncedRetryCount: 2 };
     const invocationContext = makeInvocationContext();
 
     vi.spyOn(SyncTrusteeCaseAppointmentsModule.default, 'processAppointments').mockResolvedValue({

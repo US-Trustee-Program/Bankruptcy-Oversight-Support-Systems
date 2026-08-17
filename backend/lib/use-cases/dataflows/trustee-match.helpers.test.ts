@@ -1096,6 +1096,122 @@ describe('resolveNameCollisionByScoring', () => {
     expect(result.candidateScores).toHaveLength(2);
   });
 
+  test('does not resolve a single candidate at exactly the 75-point threshold (boundary: > not >=)', async () => {
+    // name=100 (25%), phone=100/email=0 (5%/5%), district=50/same-court-different-division
+    // (30%), chapter=100 (30%), address=0 (5%) => weighted total = exactly 75. meetsThreshold
+    // requires totalScore > FUZZY_MATCH_SCORE_THRESHOLD (75), so this must NOT auto-resolve.
+    const event = makeEvent({
+      courtId: '081',
+      courtDivisionCode: '1',
+      chapter: '7',
+      dxtrTrustee: {
+        fullName: 'John Doe',
+        firstName: 'John',
+        lastName: 'Doe',
+        legacy: { phone: '5555551234', email: 'dxtr@example.com' },
+      },
+    });
+    const candidate = makeTrustee({
+      trusteeId: 'trustee-1',
+      name: 'John Doe',
+      public: {
+        address: undefined,
+        phone: { number: '5555551234' },
+        email: 'cams@example.com',
+      },
+    });
+    const appointments = [
+      makeAppointment({
+        id: 'appointment-trustee-1',
+        trusteeId: 'trustee-1',
+        chapter: '7',
+        courtId: '081',
+        divisionCode: '2', // same court, different division => districtDivisionScore 50
+      }),
+    ];
+
+    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>).mockResolvedValue(candidate);
+    (mockAppointmentsRepo.getTrusteeAppointments as ReturnType<typeof vi.fn>).mockResolvedValue(
+      appointments,
+    );
+
+    const result = await resolveNameCollisionByScoring(context, event, ['trustee-1']);
+
+    expect(result.kind).toBe('unresolved');
+    if (result.kind !== 'unresolved') throw new Error('expected unresolved outcome');
+    expect(result.candidateScores[0].totalScore).toBe(75);
+  });
+
+  test('resolves when the winner/runner-up gap is exactly the 5-point minimum (boundary: >= not >)', async () => {
+    // Both candidates: address=0 (no dxtr cityStateZipCountry), name=100, phone=0 (mismatched,
+    // comparable), district=100, chapter=100 (same-appointment match on both) — differing only on
+    // email: winner matches (100) => total 90, runner-up mismatches (0) => total 85. Gap is
+    // exactly 5 == FUZZY_MATCH_MIN_GAP, which hasSignificantGap requires via >=, so this must
+    // resolve.
+    const event = makeEvent({
+      courtId: '081',
+      courtDivisionCode: '1',
+      chapter: '7',
+      dxtrTrustee: {
+        fullName: 'John Doe',
+        firstName: 'John',
+        lastName: 'Doe',
+        legacy: { phone: '5555550000', email: 'shared@example.com' },
+      },
+    });
+    const winner = makeTrustee({
+      trusteeId: 'trustee-1',
+      name: 'John Doe',
+      public: {
+        address: undefined,
+        phone: { number: '5555559999' },
+        email: 'shared@example.com',
+      },
+    });
+    const runnerUp = makeTrustee({
+      trusteeId: 'trustee-2',
+      name: 'John Doe',
+      public: {
+        address: undefined,
+        phone: { number: '5555559999' },
+        email: 'different@example.com',
+      },
+    });
+    const winnerAppointments = [
+      makeAppointment({
+        id: 'appointment-trustee-1',
+        trusteeId: 'trustee-1',
+        chapter: '7',
+        courtId: '081',
+        divisionCode: '1',
+      }),
+    ];
+    const runnerUpAppointments = [
+      makeAppointment({
+        id: 'appointment-trustee-2',
+        trusteeId: 'trustee-2',
+        chapter: '7',
+        courtId: '081',
+        divisionCode: '1',
+      }),
+    ];
+
+    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce(winner)
+      .mockResolvedValueOnce(runnerUp);
+    (mockAppointmentsRepo.getTrusteeAppointments as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce(winnerAppointments)
+      .mockResolvedValueOnce(runnerUpAppointments);
+
+    const result = await resolveNameCollisionByScoring(context, event, ['trustee-1', 'trustee-2']);
+
+    expect(result.kind).toBe('resolved');
+    if (result.kind !== 'resolved') throw new Error('expected resolved outcome');
+    expect(result.trusteeId).toBe('trustee-1');
+    expect(result.candidateScores.find((c) => c.trusteeId === 'trustee-1')?.totalScore).toBe(90);
+    expect(result.candidateScores.find((c) => c.trusteeId === 'trustee-2')?.totalScore).toBe(85);
+  });
+
   test('should return an unresolved outcome when no candidate scores >75%', async () => {
     const event = makeEvent();
     const candidate1 = makeTrustee({

@@ -19,7 +19,7 @@
  * backend/lib/adapters/gateways/mongo/trustee-case-appointments.mongo.repository.ts):
  * caseId equality (the shard key) narrows to one physical partition, and
  * assignedOn as the compound suffix lets Cosmos return the
- * ORDER BY assignedOn ASC / limit 1 result directly from the index instead of
+ * ORDER BY assignedOn DESC / limit 1 result directly from the index instead of
  * fetching every active appointment for the case and sorting in memory.
  *
  * Idempotent and safe to re-run: createIndex on an index that already exists
