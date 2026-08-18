@@ -85,6 +85,7 @@ describe('mongoUpsert', () => {
     await expect(mongoUpsert('mongodb://test', 'cams', 'cases', docs)).rejects.toThrow(
       "Document missing 'id' field in collection 'cases'",
     );
+    expect(mockDeleteOne).not.toHaveBeenCalled();
     expect(mockInsertOne).not.toHaveBeenCalled();
   });
 
