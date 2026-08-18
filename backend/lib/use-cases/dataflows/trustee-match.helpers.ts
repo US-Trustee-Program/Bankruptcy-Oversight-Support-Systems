@@ -41,6 +41,90 @@ export function escapeRegex(str: string): string {
 }
 
 /**
+ * Removes any parenthetical annotation from a name, wherever it appears - court-office codes
+ * ("(SV)", "(ND)"), role markers ("(TR)", "(MON)"), or a mid-name nickname ("(Bill)").
+ * Example: "Wilbur J. (Bill) Babin Jr." -> "Wilbur J. Babin Jr."
+ */
+export function stripParentheticalAnnotations(name: string): string {
+  return name
+    .replace(/ ?\([^)]*\)/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Removes a trailing trustee-role marker: " tr", " Trustee", or "-Trustee" (case-insensitive).
+ * Example: "J. Kevin Bird tr" -> "J. Kevin Bird".
+ */
+export function stripTrusteeRoleSuffix(name: string): string {
+  return name
+    .trim()
+    .replace(/(?:\s+(?:tr|trustee)|-trustee)$/i, '')
+    .trim();
+}
+
+/**
+ * Removes a trailing chapter/subchapter annotation, e.g. " - Ch 11 SubV" or " -SBRA V".
+ * Example: "Behrooz P. Vida -SBRA V" -> "Behrooz P. Vida".
+ */
+export function stripChapterAnnotation(name: string): string {
+  return name
+    .trim()
+    .replace(/\s*-\s*ch(?:apter)?\.?\s*\d+\s*(?:sub\s*v)?$/i, '')
+    .replace(/\s*-\s*sbra\s*v$/i, '')
+    .trim();
+}
+
+/**
+ * Removes trailing source-system artifacts: a "_\d+" suffix (e.g. "_13") or a bare trailing
+ * apostrophe left behind by an upstream export (e.g. "Soule'").
+ * Example: "Nacole M. Jipping_13" -> "Nacole M. Jipping".
+ */
+export function stripSourceSystemArtifacts(name: string): string {
+  return name
+    .replace(/_\d+\s*$/, '')
+    .replace(/'\s*$/, '')
+    .trim();
+}
+
+/**
+ * Normalizes a trailing generational suffix (Jr, Sr, II, III, IV) so that formatting differences
+ * (a preceding comma, a trailing period) don't prevent two names from comparing equal.
+ * Example: "Robert Yaquinto Jr." and "Robert Yaquinto, Jr." both normalize to "Robert Yaquinto Jr".
+ */
+export function normalizeGenerationalSuffix(name: string): string {
+  return name.trim().replace(/,?\s+(Jr|Sr|II|III|IV)\.?$/i, ' $1');
+}
+
+/**
+ * Final normalization pass for name-matching comparison: lowercases, drops apostrophes, converts
+ * periods and hyphens to spaces (so "M.A." and "M. A." converge, and "Jean-Pierre" splits into
+ * separate words), and collapses whitespace.
+ * Example: "Kevin D ORourke" and "Kevin D. O'Rourke" both normalize to "kevin d orourke".
+ */
+export function stripNamePunctuation(name: string): string {
+  return name.toLowerCase().replace(/'/g, '').replace(/[.-]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Orchestrates the normalization pipeline used to compare a DXTR trustee name against a CAMS
+ * trustee's stored name when matchTrusteeByName's exact-match path finds nothing. Order matters -
+ * outermost/most specific annotations are stripped first, generic punctuation last. Distinct from
+ * normalizeName, which is used for query construction (findTrusteesByName /
+ * findTrusteeByNameAndState) and write paths (migrate-trustees.ts, import-zoom-csv.ts) and is
+ * intentionally left unchanged.
+ */
+export function normalizeNameForMatching(name: string): string {
+  return stripNamePunctuation(
+    normalizeGenerationalSuffix(
+      stripSourceSystemArtifacts(
+        stripChapterAnnotation(stripTrusteeRoleSuffix(stripParentheticalAnnotations(name))),
+      ),
+    ),
+  );
+}
+
+/**
  * Parses a legacy cityStateZipCountry string into components.
  * Format: "City, ST zipCode" with segments separated by a comma, whitespace,
  * or both, and an optional trailing country segment in any form (or none).
@@ -593,10 +677,37 @@ export type NameMatchResult =
   | { kind: 'ambiguous'; matchCandidates: CandidateScore[] };
 
 /**
+ * Builds the UNSCORED CandidateScore[] shape used for an ambiguous NameMatchResult, whether the
+ * candidates came from the exact-match path or the fuzzy fallback below - these candidates have
+ * not been through resolveNameCollisionByScoring yet, so every score field is UNSCORED.
+ */
+function toUnscoredCandidates(trustees: Trustee[]): CandidateScore[] {
+  return trustees.map((t) => ({
+    trusteeId: t.trusteeId,
+    trusteeName: t.name,
+    totalScore: UNSCORED,
+    addressScore: UNSCORED,
+    nameScore: UNSCORED,
+    phoneScore: UNSCORED,
+    emailScore: UNSCORED,
+    districtDivisionScore: UNSCORED,
+    chapterScore: UNSCORED,
+    address: t.public.address,
+    phone: t.public.phone,
+    email: t.public.email,
+  }));
+}
+
+/**
  * Looks up CAMS trustees by name and returns a NameMatchResult discriminated union for all three
  * business outcomes (resolved/no-match/ambiguous). Does NOT wrap the repository call in a
  * try/catch — a repository failure here is a genuine infrastructure error and propagates as a
  * thrown error, unchanged.
+ *
+ * When the exact-match path (findTrusteesByName) finds nothing, falls back to the broader
+ * phonetic candidate search (searchTrusteesByNameScored) and compares candidates against the
+ * DXTR name using normalizeNameForMatching - this bridges punctuation/suffix/spacing gaps that
+ * findTrusteesByName's anchored regex (normalized only by normalizeName) cannot.
  */
 export async function matchTrusteeByName(
   context: ApplicationContext,
@@ -606,33 +717,38 @@ export async function matchTrusteeByName(
   const trusteesRepo = factory.getTrusteesRepository(context);
   const matches = await trusteesRepo.findTrusteesByName(normalized);
 
-  if (matches.length === 0) {
-    context.logger.warn(MODULE_NAME, `No CAMS trustee found matching name "${normalized}".`);
-    return { kind: 'no-match' };
-  }
-
   if (matches.length > 1) {
     const candidates = matches.map((t) => `${t.trusteeId} ("${t.name}")`).join(', ');
     context.logger.info(
       MODULE_NAME,
       `Multiple CAMS trustees found matching name "${normalized}": ${candidates}.`,
     );
-    const matchCandidates: CandidateScore[] = matches.map((t) => ({
-      trusteeId: t.trusteeId,
-      trusteeName: t.name,
-      totalScore: UNSCORED,
-      addressScore: UNSCORED,
-      nameScore: UNSCORED,
-      phoneScore: UNSCORED,
-      emailScore: UNSCORED,
-      districtDivisionScore: UNSCORED,
-      chapterScore: UNSCORED,
-      address: t.public.address,
-      phone: t.public.phone,
-      email: t.public.email,
-    }));
-    return { kind: 'ambiguous', matchCandidates };
+    return { kind: 'ambiguous', matchCandidates: toUnscoredCandidates(matches) };
   }
 
-  return { kind: 'resolved', trusteeId: matches[0].trusteeId };
+  if (matches.length === 1) {
+    return { kind: 'resolved', trusteeId: matches[0].trusteeId };
+  }
+
+  const scoredCandidates = await trusteesRepo.searchTrusteesByNameScored(trusteeName);
+  const normalizedTarget = normalizeNameForMatching(trusteeName);
+  const fallbackMatches = scoredCandidates.filter(
+    (candidate) => normalizeNameForMatching(candidate.name) === normalizedTarget,
+  );
+
+  if (fallbackMatches.length === 0) {
+    context.logger.warn(MODULE_NAME, `No CAMS trustee found matching name "${normalized}".`);
+    return { kind: 'no-match' };
+  }
+
+  if (fallbackMatches.length > 1) {
+    const candidates = fallbackMatches.map((t) => `${t.trusteeId} ("${t.name}")`).join(', ');
+    context.logger.info(
+      MODULE_NAME,
+      `Multiple CAMS trustees found matching normalized name "${normalizedTarget}": ${candidates}.`,
+    );
+    return { kind: 'ambiguous', matchCandidates: toUnscoredCandidates(fallbackMatches) };
+  }
+
+  return { kind: 'resolved', trusteeId: fallbackMatches[0].trusteeId };
 }

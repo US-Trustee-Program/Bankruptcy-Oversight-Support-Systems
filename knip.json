@@ -25,7 +25,8 @@
       ],
       "project": ["**/*.ts"],
       "ignore": [],
-      "ignoreFiles": ["function-apps/api/index.ts"]
+      "ignoreFiles": ["function-apps/api/index.ts"],
+      "ignoreDependencies": ["@faker-js/faker"]
     },
     "user-interface": {
       "entry": ["test/**/*.ts", "src/**/*.test.ts", "src/**/*.test.tsx"],
