@@ -45,16 +45,21 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
 
   // Helper functions to compute min/max with defaults
   const getMin = () => (typeof props.min === 'string' ? props.min : undefined) ?? DEFAULT_MIN_DATE;
-  const getMax = () => {
-    if (props.disableMax) return undefined;
-    return (typeof props.max === 'string' ? props.max : undefined) ?? DateHelper.getTodaysIsoDate();
-  };
+
+  function getMax(): string {
+    if (props.disableMax) return '9999-12-31';
+    if (typeof props.max === 'string') return props.max;
+    return DateHelper.getTodaysIsoDate();
+  }
 
   // Centralized validation helper
   function validateDateValue(value: string | null): string[] {
     if (!value) return [];
 
     const errors: string[] = [];
+
+    const yearPart = value.split('-')[0];
+    if (yearPart.length > 4) return ['Year must be 4 digits.'];
 
     const isCompleteDate = /^\d{4}-\d{2}-\d{2}$/.test(value);
     if (!isCompleteDate) return errors;
