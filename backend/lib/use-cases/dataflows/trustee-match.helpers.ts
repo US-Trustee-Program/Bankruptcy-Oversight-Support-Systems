@@ -43,7 +43,7 @@ export function escapeRegex(str: string): string {
 /**
  * Removes any parenthetical annotation from a name, wherever it appears - court-office codes
  * ("(SV)", "(ND)"), role markers ("(TR)", "(MON)"), or a mid-name nickname ("(Bill)").
- * Example: "Wilbur J. (Bill) Babin Jr." -> "Wilbur J. Babin Jr."
+ * Example: "John J. (Johnny) Doe Jr." -> "John J. Doe Jr."
  */
 export function stripParentheticalAnnotations(name: string): string {
   return name
@@ -53,19 +53,24 @@ export function stripParentheticalAnnotations(name: string): string {
 }
 
 /**
- * Removes a trailing trustee-role marker: " tr", " Trustee", or "-Trustee" (case-insensitive).
- * Example: "J. Kevin Bird tr" -> "J. Kevin Bird".
+ * Removes a trailing trustee-role marker: " Trustee" or "-Trustee" (case-insensitive).
+ * Example: "John R. Doe-Trustee" -> "John R. Doe".
+ * Deliberately does NOT strip a bare trailing " tr"/"Tr" - that pattern is indistinguishable from
+ * a real name ending in a token that looks like "Tr" (e.g. a surname or transliterated initial),
+ * and over-strips in practice ("John Doe Tr" -> "John Doe"). A DXTR name relying on that
+ * bare-tr convention will fall through to no-match and route to human verification instead, same
+ * as before this pipeline existed - safer than risking a false auto-link.
  */
 export function stripTrusteeRoleSuffix(name: string): string {
   return name
     .trim()
-    .replace(/(?:\s+(?:tr|trustee)|-trustee)$/i, '')
+    .replace(/(?:\s+trustee|-trustee)$/i, '')
     .trim();
 }
 
 /**
  * Removes a trailing chapter/subchapter annotation, e.g. " - Ch 11 SubV" or " -SBRA V".
- * Example: "Behrooz P. Vida -SBRA V" -> "Behrooz P. Vida".
+ * Example: "John P. Doe -SBRA V" -> "John P. Doe".
  */
 export function stripChapterAnnotation(name: string): string {
   return name
@@ -78,7 +83,7 @@ export function stripChapterAnnotation(name: string): string {
 /**
  * Removes trailing source-system artifacts: a "_\d+" suffix (e.g. "_13") or a bare trailing
  * apostrophe left behind by an upstream export (e.g. "Soule'").
- * Example: "Nacole M. Jipping_13" -> "Nacole M. Jipping".
+ * Example: "John M. Doe_13" -> "John M. Doe".
  */
 export function stripSourceSystemArtifacts(name: string): string {
   return name
@@ -90,17 +95,33 @@ export function stripSourceSystemArtifacts(name: string): string {
 /**
  * Normalizes a trailing generational suffix (Jr, Sr, II, III, IV) so that formatting differences
  * (a preceding comma, a trailing period) don't prevent two names from comparing equal.
- * Example: "Robert Yaquinto Jr." and "Robert Yaquinto, Jr." both normalize to "Robert Yaquinto Jr".
+ * Example: "John Doe Jr." and "John Doe, Jr." both normalize to "John Doe Jr".
+ * Does NOT bridge a suffix present on only one side (e.g. "John Doe" vs "John Doe, Jr.") - see
+ * stripGenerationalSuffix for that case, used as a second-pass fallback only.
  */
 export function normalizeGenerationalSuffix(name: string): string {
   return name.trim().replace(/,?\s+(Jr|Sr|II|III|IV)\.?$/i, ' $1');
 }
 
 /**
+ * Removes a trailing generational suffix (Jr, Sr, II, III, IV) entirely, rather than reformatting
+ * it - so "John Doe" and "John Doe, Jr." compare equal. Deliberately NOT part of
+ * normalizeNameForMatching's main pipeline: discarding the suffix can only be done as a narrower,
+ * second-pass fallback (see matchTrusteeByName) after confirming exactly one candidate remains,
+ * since two real trustees sharing a base name specifically distinguished by "Jr."/"Sr." (a
+ * genuine father/son or namesake pair - confirmed to exist in the CAMS trustees collection, e.g.
+ * "Perry A. Stacks" vs "Perry A. Stacks, Jr.") would otherwise silently collapse into the same
+ * comparison key and risk auto-linking to the wrong one.
+ */
+export function stripGenerationalSuffix(name: string): string {
+  return name.trim().replace(/,?\s+(Jr|Sr|II|III|IV)\.?$/i, '');
+}
+
+/**
  * Final normalization pass for name-matching comparison: lowercases, drops apostrophes, converts
  * periods and hyphens to spaces (so "M.A." and "M. A." converge, and "Jean-Pierre" splits into
  * separate words), and collapses whitespace.
- * Example: "Kevin D ORourke" and "Kevin D. O'Rourke" both normalize to "kevin d orourke".
+ * Example: "John D ODoe" and "John D. O'Doe" both normalize to "john d odoe".
  */
 export function stripNamePunctuation(name: string): string {
   return name.toLowerCase().replace(/'/g, '').replace(/[.-]/g, ' ').replace(/\s+/g, ' ').trim();
@@ -117,6 +138,24 @@ export function stripNamePunctuation(name: string): string {
 export function normalizeNameForMatching(name: string): string {
   return stripNamePunctuation(
     normalizeGenerationalSuffix(
+      stripSourceSystemArtifacts(
+        stripChapterAnnotation(stripTrusteeRoleSuffix(stripParentheticalAnnotations(name))),
+      ),
+    ),
+  );
+}
+
+/**
+ * Second-pass fallback for matchTrusteeByName's fuzzy stage: same pipeline as
+ * normalizeNameForMatching, but discards a generational suffix entirely instead of just
+ * reformatting it - bridges "John Doe" vs "John Doe, Jr." (suffix present on only one side).
+ * Only ever applied narrowly, after normalizeNameForMatching's stricter comparison has already
+ * found zero matches - see stripGenerationalSuffix's doc comment for why this can't be folded
+ * into the main pipeline directly.
+ */
+export function normalizeNameForMatchingWithoutGeneration(name: string): string {
+  return stripNamePunctuation(
+    stripGenerationalSuffix(
       stripSourceSystemArtifacts(
         stripChapterAnnotation(stripTrusteeRoleSuffix(stripParentheticalAnnotations(name))),
       ),
@@ -736,11 +775,6 @@ export async function matchTrusteeByName(
     (candidate) => normalizeNameForMatching(candidate.name) === normalizedTarget,
   );
 
-  if (fallbackMatches.length === 0) {
-    context.logger.warn(MODULE_NAME, `No CAMS trustee found matching name "${normalized}".`);
-    return { kind: 'no-match' };
-  }
-
   if (fallbackMatches.length > 1) {
     const candidates = fallbackMatches.map((t) => `${t.trusteeId} ("${t.name}")`).join(', ');
     context.logger.info(
@@ -750,5 +784,39 @@ export async function matchTrusteeByName(
     return { kind: 'ambiguous', matchCandidates: toUnscoredCandidates(fallbackMatches) };
   }
 
-  return { kind: 'resolved', trusteeId: fallbackMatches[0].trusteeId };
+  if (fallbackMatches.length === 1) {
+    return { kind: 'resolved', trusteeId: fallbackMatches[0].trusteeId };
+  }
+
+  // Second-pass fallback: the stricter comparison (generational suffix reformatted but not
+  // discarded) found nothing - retry discarding a generational suffix entirely, in case one side
+  // carries "Jr."/"Sr."/etc. that the other omits. A single match here is still a confident
+  // resolution (all other name/address/phone/email signal already agreed); multiple matches
+  // means the discarded suffix WAS the disambiguator between two real trustees (e.g. a genuine
+  // father/son pair) - correctly downgraded to ambiguous for human review rather than guessing.
+  const normalizedTargetWithoutGeneration = normalizeNameForMatchingWithoutGeneration(trusteeName);
+  const withoutGenerationMatches = scoredCandidates.filter(
+    (candidate) =>
+      normalizeNameForMatchingWithoutGeneration(candidate.name) ===
+      normalizedTargetWithoutGeneration,
+  );
+
+  if (withoutGenerationMatches.length === 0) {
+    context.logger.warn(MODULE_NAME, `No CAMS trustee found matching name "${normalized}".`);
+    return { kind: 'no-match' };
+  }
+
+  if (withoutGenerationMatches.length > 1) {
+    const candidates = withoutGenerationMatches
+      .map((t) => `${t.trusteeId} ("${t.name}")`)
+      .join(', ');
+    context.logger.info(
+      MODULE_NAME,
+      `Multiple CAMS trustees found matching name "${normalizedTargetWithoutGeneration}" ` +
+        `once a generational suffix is disregarded: ${candidates}.`,
+    );
+    return { kind: 'ambiguous', matchCandidates: toUnscoredCandidates(withoutGenerationMatches) };
+  }
+
+  return { kind: 'resolved', trusteeId: withoutGenerationMatches[0].trusteeId };
 }

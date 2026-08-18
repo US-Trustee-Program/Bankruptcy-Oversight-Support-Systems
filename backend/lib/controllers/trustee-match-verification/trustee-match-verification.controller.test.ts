@@ -20,7 +20,7 @@ describe('TrusteeMatchVerificationController', () => {
     caseId: 'case-001',
     courtId: '081',
     status: 'pending',
-    mismatchReason: 'AMBIGUOUS_MATCH_RESOLVED',
+    mismatchReason: 'AMBIGUOUS_MATCH_UNRESOLVED',
     dxtrTrustee: { fullName: 'John Doe' },
     matchCandidates: [
       {

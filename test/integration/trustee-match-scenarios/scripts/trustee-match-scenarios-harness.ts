@@ -116,10 +116,6 @@ import * as mssql from 'mssql';
 import ApplicationContextCreator from '../../../../backend/function-apps/azure/application-context-creator';
 import SyncTrusteeCaseAppointmentsUseCase from '../../../../backend/lib/use-cases/dataflows/sync-trustee-case-appointments';
 import { TrusteeCaseAppointmentsMongoRepository } from '../../../../backend/lib/adapters/gateways/mongo/trustee-case-appointments.mongo.repository';
-import {
-  buildVariant,
-  computeFingerprint,
-} from '../../../../backend/lib/use-cases/dataflows/trustee-variant.helpers';
 import { TrusteeAppointmentSyncEvent } from '../../../../common/src/cams/dataflow-events';
 import {
   standUpEphemeralCosmosDatabase,
@@ -1004,11 +1000,13 @@ async function runScenarios() {
   const dist = result.scenarioDistribution;
   const expectations: [string, number, number][] = [
     ['reservedIdSkippedCount', dist.reservedIdSkippedCount, 1],
-    ['autoMatchCount', dist.autoMatchCount, 2], // perfect-match-professional-id + perfect-match-by-name
+    // perfect-match-professional-id + perfect-match-by-name + multiple-match-high-confidence
+    // (a clear fuzzy-scoring winner auto-links exactly like an exact-name match — see
+    // resolveByScoring's 'resolved' case in sync-trustee-case-appointments.ts)
+    ['autoMatchCount', dist.autoMatchCount, 3],
     ['perfectMatchInactiveCount', dist.perfectMatchInactiveCount, 1],
     ['imperfectMatchCount', dist.imperfectMatchCount, 1],
     ['noMatchCount', dist.noMatchCount, 1],
-    ['highConfidenceMatchCount', dist.highConfidenceMatchCount, 1],
     ['multipleMatchCount', dist.multipleMatchCount, 1],
   ];
   for (const [label, actual, expected] of expectations) {
@@ -1148,37 +1146,30 @@ async function runScenarios() {
       fail(`6. no-match: unexpected verification: ${JSON.stringify(verification6)}`);
     }
 
-    // 7. multiple-match-high-confidence: pending, AMBIGUOUS_MATCH_RESOLVED, winner is the "real" trustee.
+    // 7. multiple-match-high-confidence: a clear fuzzy-scoring winner now auto-links (same
+    // isAppointmentMatch gate as any other resolved trusteeId) — no verification doc, no
+    // surrogate; a real case-trustee-appointment is written directly to the real trustee.
     const verification7 = await db
       .collection('trustee-match-verification')
       .findOne({ caseId: CASES.multipleMatchHighConfidence.caseId });
-    const winner7 = verification7?.matchCandidates?.find(
-      (c: { totalScore: number }) => c.totalScore > 75,
-    );
-    if (
-      verification7?.status === 'pending' &&
-      verification7?.mismatchReason === 'AMBIGUOUS_MATCH_RESOLVED' &&
-      winner7?.trusteeId === TRUSTEES.ambiguousWinnerReal.id
-    ) {
-      pass('7. multiple-match-high-confidence: pending verification, winner is the real trustee');
+    if (verification7 === null) {
+      pass('7. multiple-match-high-confidence: no verification doc written for auto-linked case');
     } else {
       fail(
-        `7. multiple-match-high-confidence: unexpected verification: ${JSON.stringify(verification7)}`,
+        `7. multiple-match-high-confidence: expected no verification doc, got: ${JSON.stringify(verification7)}`,
       );
     }
     const appt7 = await db.collection('case-trustee-appointments').findOne({
       documentType: 'CASE_APPOINTMENT',
       caseId: CASES.multipleMatchHighConfidence.caseId,
     });
-    const event7 = eventFor(CASES.multipleMatchHighConfidence.caseId);
-    const expectedFingerprint7 = event7 && computeFingerprint(buildVariant(event7.dxtrTrustee));
-    if (appt7?.isSurrogate === true && appt7?.trusteeId === expectedFingerprint7) {
+    if (appt7?.trusteeId === TRUSTEES.ambiguousWinnerReal.id && appt7?.isSurrogate !== true) {
       pass(
-        '7. multiple-match-high-confidence: surrogate case appointment written, keyed by fingerprint (still awaits human approval)',
+        '7. multiple-match-high-confidence: real case appointment auto-linked to the real trustee',
       );
     } else {
       fail(
-        `7. multiple-match-high-confidence: expected a surrogate appointment keyed by fingerprint ${expectedFingerprint7}, got: ${JSON.stringify(appt7)}`,
+        `7. multiple-match-high-confidence: expected a real appointment linked to ${TRUSTEES.ambiguousWinnerReal.id}, got: ${JSON.stringify(appt7)}`,
       );
     }
 
@@ -1271,13 +1262,15 @@ async function runScenarios() {
       `12. fingerprint-repeat: expected autoMatchCount 1, got ${fingerprintResult.scenarioDistribution.autoMatchCount}`,
     );
   }
-  if (fingerprintResult.scenarioDistribution.highConfidenceMatchCount === 1) {
+  // A clear fuzzy-scoring winner now auto-links (counted via autoMatchCount, same as scenario 12's
+  // fingerprint hit), so this event contributes to the same counter rather than a separate one.
+  if (fingerprintResult.scenarioDistribution.autoMatchCount === 2) {
     pass(
-      '13. fingerprint-no-false-collapse: highConfidenceMatchCount === 1 (fell through to fuzzy matching)',
+      '13. fingerprint-no-false-collapse: autoMatchCount === 2 (fell through to fuzzy matching, then auto-linked)',
     );
   } else {
     fail(
-      `13. fingerprint-no-false-collapse: expected highConfidenceMatchCount 1, got ${fingerprintResult.scenarioDistribution.highConfidenceMatchCount}`,
+      `13. fingerprint-no-false-collapse: expected autoMatchCount 2, got ${fingerprintResult.scenarioDistribution.autoMatchCount}`,
     );
   }
 
@@ -1309,24 +1302,16 @@ async function runScenarios() {
       );
     }
 
-    // 13. fingerprint-no-false-collapse: pending verification, AMBIGUOUS_MATCH_RESOLVED, decoy wins.
+    // 13. fingerprint-no-false-collapse: a clear fuzzy-scoring winner (the decoy, not perfectPid)
+    // now auto-links — no verification doc, no surrogate; a real appointment is written directly.
     const verification13 = await db4
       .collection('trustee-match-verification')
       .findOne({ caseId: CASES.fingerprintNoFalseCollapse.caseId });
-    const winner13 = verification13?.matchCandidates?.find(
-      (c: { totalScore: number }) => c.totalScore > 75,
-    );
-    if (
-      verification13?.status === 'pending' &&
-      verification13?.mismatchReason === 'AMBIGUOUS_MATCH_RESOLVED' &&
-      winner13?.trusteeId === TRUSTEES.perfectPidDecoy.id
-    ) {
-      pass(
-        '13. fingerprint-no-false-collapse: pending verification, fuzzy-match winner is the decoy, not perfectPid',
-      );
+    if (verification13 === null) {
+      pass('13. fingerprint-no-false-collapse: no verification doc written for auto-linked case');
     } else {
       fail(
-        `13. fingerprint-no-false-collapse: unexpected verification: ${JSON.stringify(verification13)}`,
+        `13. fingerprint-no-false-collapse: expected no verification doc, got: ${JSON.stringify(verification13)}`,
       );
     }
 
@@ -1334,14 +1319,13 @@ async function runScenarios() {
       documentType: 'CASE_APPOINTMENT',
       caseId: CASES.fingerprintNoFalseCollapse.caseId,
     });
-    const expectedFingerprint13 = computeFingerprint(buildVariant(fingerprintEvent13.dxtrTrustee));
-    if (appt13?.isSurrogate === true && appt13?.trusteeId === expectedFingerprint13) {
+    if (appt13?.trusteeId === TRUSTEES.perfectPidDecoy.id && appt13?.isSurrogate !== true) {
       pass(
-        '13. fingerprint-no-false-collapse: surrogate case appointment written, keyed by fingerprint (still awaits human approval)',
+        '13. fingerprint-no-false-collapse: real case appointment auto-linked to the decoy, not perfectPid',
       );
     } else {
       fail(
-        `13. fingerprint-no-false-collapse: expected a surrogate appointment keyed by fingerprint ${expectedFingerprint13}, got: ${JSON.stringify(appt13)}`,
+        `13. fingerprint-no-false-collapse: expected a real appointment linked to ${TRUSTEES.perfectPidDecoy.id}, got: ${JSON.stringify(appt13)}`,
       );
     }
   } finally {

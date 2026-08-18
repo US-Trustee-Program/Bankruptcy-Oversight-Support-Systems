@@ -216,7 +216,6 @@ describe('SyncTrusteeCaseAppointments', () => {
       expect(dlqMessages).toHaveLength(0);
       expect(scenarioDistribution.autoMatchCount).toBe(1);
       expect(scenarioDistribution.imperfectMatchCount).toBe(0);
-      expect(scenarioDistribution.highConfidenceMatchCount).toBe(0);
       expect(scenarioDistribution.noMatchCount).toBe(0);
       expect(scenarioDistribution.multipleMatchCount).toBe(0);
       expect(mockVerificationRepo.upsertVerification).not.toHaveBeenCalled();
@@ -1098,7 +1097,7 @@ describe('SyncTrusteeCaseAppointments', () => {
       expect(scenarioDistribution.noMatchCount).toBe(1);
     });
 
-    test('should persist AMBIGUOUS_MATCH_RESOLVED to verification collection, not DLQ', async () => {
+    test('should auto-link a fuzzy-scoring clear winner whose appointment matches court/division/chapter', async () => {
       (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
         makeAmbiguousNameMatch(),
       );
@@ -1133,6 +1132,10 @@ describe('SyncTrusteeCaseAppointments', () => {
         trusteeId: 't-1',
         candidateScores: scoredCandidates,
       });
+      // A clear fuzzy winner is routed through the same applyMatchOutcome/isAppointmentMatch gate
+      // as any other resolved trusteeId — auto-link when the winner's appointment covers this
+      // case's court/division/chapter, exactly like an exact-name-match winner would.
+      vi.spyOn(trusteeMatchHelpers, 'isAppointmentMatch').mockReturnValue(true);
 
       const { successCount, dlqMessages, scenarioDistribution } =
         await SyncTrusteeCaseAppointments.processAppointments(
@@ -1145,18 +1148,74 @@ describe('SyncTrusteeCaseAppointments', () => {
         makeEvent('case-001', 'Common Name'),
         ['t-1', 't-2'],
       );
-      // Fuzzy winner should NOT be auto-linked — saved to verification collection, but a
-      // surrogate appointment IS written so the case reflects a pending mismatch
+      expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          caseId: 'case-001',
+          trusteeId: 't-1',
+        }),
+      );
+      expect(mockVerificationRepo.upsertVerification).not.toHaveBeenCalled();
+      expect(successCount).toBe(1);
+      expect(dlqMessages).toHaveLength(0);
+      expect(scenarioDistribution.autoMatchCount).toBe(1);
+    });
+
+    test('should route a fuzzy-scoring clear winner to human review when their appointment does not match court/division/chapter', async () => {
+      (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+        makeAmbiguousNameMatch(),
+      );
+
+      const scoredCandidates = [
+        {
+          trusteeId: 't-1',
+          trusteeName: 'Trustee 1',
+          totalScore: 90,
+          addressScore: 100,
+          nameScore: 100,
+          phoneScore: null,
+          emailScore: null,
+          districtDivisionScore: 100,
+          chapterScore: 100,
+        },
+        {
+          trusteeId: 't-2',
+          trusteeName: 'Trustee 2',
+          totalScore: 40,
+          addressScore: 0,
+          nameScore: 0,
+          phoneScore: null,
+          emailScore: null,
+          districtDivisionScore: 50,
+          chapterScore: 0,
+        },
+      ];
+      vi.spyOn(trusteeMatchHelpers, 'resolveNameCollisionByScoring').mockResolvedValueOnce({
+        kind: 'resolved',
+        trusteeId: 't-1',
+        candidateScores: scoredCandidates,
+      });
+      // The winner is resolved by name, but has no active appointment covering this case's
+      // court/division/chapter, so it falls through to ImperfectMatch instead of auto-linking.
+      vi.spyOn(trusteeMatchHelpers, 'isAppointmentMatch').mockReturnValue(false);
+
+      const { successCount, dlqMessages, scenarioDistribution } =
+        await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          [makeEvent('case-001', 'Common Name')],
+        );
+
       expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
           caseId: 'case-001',
           isSurrogate: true,
         }),
       );
+      expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
+        expect.objectContaining({ mismatchReason: 'IMPERFECT_MATCH' }),
+      );
       expect(successCount).toBe(0);
       expect(dlqMessages).toHaveLength(0);
-      expect(mockVerificationRepo.upsertVerification).toHaveBeenCalled();
-      expect(scenarioDistribution.highConfidenceMatchCount).toBe(1);
+      expect(scenarioDistribution.imperfectMatchCount).toBe(1);
     });
 
     test('should persist AMBIGUOUS_MATCH_UNRESOLVED to verification collection when fuzzy matching fails, not DLQ', async () => {
@@ -1420,7 +1479,6 @@ describe('SyncTrusteeCaseAppointments', () => {
       const sum =
         scenarioDistribution.autoMatchCount +
         scenarioDistribution.imperfectMatchCount +
-        scenarioDistribution.highConfidenceMatchCount +
         scenarioDistribution.noMatchCount +
         scenarioDistribution.multipleMatchCount;
 
@@ -1483,7 +1541,7 @@ describe('SyncTrusteeCaseAppointments', () => {
       );
     });
 
-    test('should emit TRUSTEE_MATCH_AUDIT log for AMBIGUOUS_MATCH_RESOLVED event', async () => {
+    test('should emit TRUSTEE_MATCH_AUDIT log for auto-linked fuzzy-scoring clear winner', async () => {
       (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
         makeAmbiguousNameMatch(),
       );
@@ -1515,6 +1573,7 @@ describe('SyncTrusteeCaseAppointments', () => {
           },
         ],
       });
+      vi.spyOn(trusteeMatchHelpers, 'isAppointmentMatch').mockReturnValue(true);
       const infoSpy = vi.spyOn(context.logger, 'info');
 
       await SyncTrusteeCaseAppointments.processAppointments(
@@ -1526,9 +1585,8 @@ describe('SyncTrusteeCaseAppointments', () => {
       expect(auditCalls).toHaveLength(1);
       expect(auditCalls[0][2]).toEqual(
         expect.objectContaining({
-          matchOutcome: 'ambiguous-match-resolved',
+          matchOutcome: 'auto-matched',
           matchedTrusteeId: 't-1',
-          scoringBreakdown: { districtDivisionScore: 100, chapterScore: 100 },
         }),
       );
     });
@@ -1636,7 +1694,7 @@ describe('SyncTrusteeCaseAppointments', () => {
         );
       });
 
-      test('upserts verification doc for AMBIGUOUS_MATCH_RESOLVED outcome', async () => {
+      test('does not write a verification doc for a fuzzy-scoring clear winner — auto-links instead', async () => {
         (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
           makeAmbiguousNameMatch(),
         );
@@ -1669,19 +1727,18 @@ describe('SyncTrusteeCaseAppointments', () => {
           trusteeId: 't-1',
           candidateScores: scoredCandidates,
         });
+        vi.spyOn(trusteeMatchHelpers, 'isAppointmentMatch').mockReturnValue(true);
 
         await SyncTrusteeCaseAppointments.processAppointments(
           SyncTrusteeCaseAppointments.createDeps(context),
           [makeEvent('case-001', 'Common Name')],
         );
 
-        expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
+        expect(mockVerificationRepo.upsertVerification).not.toHaveBeenCalled();
+        expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
           expect.objectContaining({
-            documentType: 'TRUSTEE_MATCH_VERIFICATION',
             caseId: 'case-001',
-            mismatchReason: 'AMBIGUOUS_MATCH_RESOLVED',
-            matchCandidates: scoredCandidates,
-            status: 'pending',
+            trusteeId: 't-1',
           }),
         );
       });
@@ -2388,7 +2445,11 @@ describe('SyncTrusteeCaseAppointments', () => {
         );
       });
 
-      test('should track reVerificationCount when AMBIGUOUS_MATCH_RESOLVED already resolved', async () => {
+      test('should auto-link a fuzzy-scoring clear winner even when a prior approved verification exists for this fingerprint', async () => {
+        // A clear winner never calls upsertMatchVerification (it auto-links instead), so a
+        // pre-existing approved verification record for this fingerprint/variant has no effect
+        // on this event — reVerificationCount stays 0, unlike the no-match/unresolved outcomes,
+        // which still check for and count re-verification of an existing record.
         const matchCandidates = [
           {
             trusteeId: 't-1',
@@ -2434,6 +2495,7 @@ describe('SyncTrusteeCaseAppointments', () => {
             },
           ],
         });
+        vi.spyOn(trusteeMatchHelpers, 'isAppointmentMatch').mockReturnValue(true);
         const event = makeEvent('case-001', 'Common Name');
         (mockVerificationRepo.findByFingerprint as ReturnType<typeof vi.fn>).mockResolvedValue([
           {
@@ -2448,16 +2510,24 @@ describe('SyncTrusteeCaseAppointments', () => {
           },
         ]);
 
-        const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
-          SyncTrusteeCaseAppointments.createDeps(context),
-          [event],
-        );
+        const { successCount, scenarioDistribution } =
+          await SyncTrusteeCaseAppointments.processAppointments(
+            SyncTrusteeCaseAppointments.createDeps(context),
+            [event],
+          );
 
-        expect(scenarioDistribution.reVerificationCount).toBe(1);
-        expect(scenarioDistribution.highConfidenceMatchCount).toBe(1);
+        expect(mockVerificationRepo.upsertVerification).not.toHaveBeenCalled();
+        expect(successCount).toBe(1);
+        expect(scenarioDistribution.reVerificationCount).toBe(0);
+        expect(scenarioDistribution.autoMatchCount).toBe(1);
       });
 
-      test('should omit scoringBreakdown when fuzzy winner is not in candidateScores', async () => {
+      test('should auto-link using the winning trusteeId even when it is absent from candidateScores', async () => {
+        // resolveByScoring's 'resolved' case uses scoringOutcome.trusteeId directly — it no
+        // longer looks the winner up inside candidateScores (that lookup only existed for the
+        // scoringBreakdown audit field on the old pending-verification path, which is gone now
+        // that a clear winner auto-links). A winner trusteeId absent from its own
+        // candidateScores array (defensive/malformed-data edge case) still auto-links correctly.
         const matchCandidates = [
           {
             trusteeId: 't-1',
@@ -2514,9 +2584,8 @@ describe('SyncTrusteeCaseAppointments', () => {
         expect(auditCalls).toHaveLength(1);
         expect(auditCalls[0][2]).toEqual(
           expect.objectContaining({
-            matchOutcome: 'ambiguous-match-resolved',
+            matchOutcome: 'auto-matched',
             matchedTrusteeId: 'unknown-winner',
-            scoringBreakdown: null,
           }),
         );
       });
@@ -3714,7 +3783,6 @@ describe('handleClassifiedMismatch', () => {
     return {
       autoMatchCount: 0,
       imperfectMatchCount: 0,
-      highConfidenceMatchCount: 0,
       noMatchCount: 0,
       multipleMatchCount: 0,
       perfectMatchInactiveCount: 0,
