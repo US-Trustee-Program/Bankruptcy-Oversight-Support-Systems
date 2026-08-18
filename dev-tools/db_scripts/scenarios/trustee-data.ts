@@ -17,6 +17,7 @@
 import type { SeedContext, SeedOperation } from '../../runner.js';
 import { ensureDxtrCase } from '../lib/ensure-dxtr-case.js';
 import { createDebtor, createTrusteeBase } from '../lib/test-data-utils.js';
+import { computeFingerprint } from '../lib/compute-fingerprint.js';
 
 const ACTIVE_TRUSTEE_ID = 'seed-trustee-active-001';
 const INACTIVE_TRUSTEE_ID = 'seed-trustee-inactive-001';
@@ -179,6 +180,11 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
           status: 'pending',
           taskDate: '2025-03-01T00:00:00.000Z',
           mismatchReason: 'IMPERFECT_MATCH',
+          fingerprint: computeFingerprint({
+            firstName: 'Samuel',
+            lastName: 'Seedtrustee',
+            fullName: 'Samuel Seedtrustee',
+          }),
           dxtrTrustee: {
             firstName: 'Samuel',
             lastName: 'Seedtrustee',
