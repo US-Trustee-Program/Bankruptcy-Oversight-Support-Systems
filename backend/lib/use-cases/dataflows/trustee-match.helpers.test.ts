@@ -575,6 +575,49 @@ describe('calculateAddressScore', () => {
   });
 
   test.each([
+    [
+      'DXTR has a ZIP+4 extension CAMS lacks, same base ZIP5',
+      'New York, NY 10001-1234',
+      '10001',
+      100,
+    ],
+    [
+      'CAMS has a ZIP+4 extension DXTR lacks, same base ZIP5',
+      'New York, NY 10001',
+      '10001-5678',
+      100,
+    ],
+    [
+      'both sides have a ZIP+4 extension but they differ, same base ZIP5',
+      'New York, NY 10001-1234',
+      '10001-5678',
+      100,
+    ],
+    [
+      'the base ZIP5 itself genuinely differs despite a ZIP+4 on one side',
+      'New York, NY 10002-1234',
+      '10001',
+      40,
+    ],
+  ])('should return correct score when %s', (_desc, cityStateZipCountry, camsZipCode, expected) => {
+    const dxtrAddress: LegacyAddress = {
+      cityStateZipCountry,
+      address1: '123 Main St',
+    };
+
+    const camsAddress: Address = {
+      city: 'New York',
+      state: 'NY',
+      zipCode: camsZipCode,
+      address1: '456 Different St',
+      countryCode: 'US',
+    };
+
+    const score = calculateAddressScore(dxtrAddress, camsAddress);
+    expect(score).toBe(expected);
+  });
+
+  test.each([
     ['case-insensitive', 'NEW YORK, ny 10001', 'new york', 100],
     ['cityStateZipCountry is malformed', 'Invalid Format', 'New York', 0],
     ['cityStateZipCountry has a country suffix', 'New York, NY 10001 US', 'New York', 100],
