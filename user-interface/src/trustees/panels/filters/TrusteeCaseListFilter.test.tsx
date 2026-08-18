@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi, describe, test, expect, beforeEach } from 'vitest';
 import TrusteeCaseListFilter from './TrusteeCaseListFilter';
@@ -94,15 +94,15 @@ describe('TrusteeCaseListFilter', () => {
 
   test('renders Case Filed Date range inputs', async () => {
     await renderFilter();
-    expect(screen.getByLabelText('Case filed date from')).toBeInTheDocument();
-    expect(screen.getByLabelText('Case filed date to')).toBeInTheDocument();
+    expect(screen.getByLabelText('Case Filed Date Start')).toBeInTheDocument();
+    expect(screen.getByLabelText('Case Filed Date End')).toBeInTheDocument();
   });
 
   test('calls onFilterChange with filedDateFrom when from date is entered', async () => {
     const onFilterChange = vi.fn();
     await renderFilter(onFilterChange);
-    const fromInput = screen.getByLabelText('Case filed date from');
-    await userEvent.type(fromInput, '2024-01-01');
+    const fromInput = screen.getByLabelText('Case Filed Date Start');
+    fireEvent.change(fromInput, { target: { value: '2024-01-01' } });
     expect(onFilterChange).toHaveBeenCalledWith(
       expect.objectContaining({ filedDateFrom: '2024-01-01' }),
     );
@@ -111,8 +111,8 @@ describe('TrusteeCaseListFilter', () => {
   test('calls onFilterChange with filedDateTo when to date is entered', async () => {
     const onFilterChange = vi.fn();
     await renderFilter(onFilterChange);
-    const toInput = screen.getByLabelText('Case filed date to');
-    await userEvent.type(toInput, '2024-12-31');
+    const toInput = screen.getByLabelText('Case Filed Date End');
+    fireEvent.change(toInput, { target: { value: '2024-12-31' } });
     expect(onFilterChange).toHaveBeenCalledWith(
       expect.objectContaining({ filedDateTo: '2024-12-31' }),
     );
@@ -121,15 +121,15 @@ describe('TrusteeCaseListFilter', () => {
   test('calls onFilterChange when valid date range is entered', async () => {
     const onFilterChange = vi.fn();
     await renderFilter(onFilterChange);
-    const fromInput = screen.getByLabelText('Case filed date from');
-    const toInput = screen.getByLabelText('Case filed date to');
+    const fromInput = screen.getByLabelText('Case Filed Date Start');
+    const toInput = screen.getByLabelText('Case Filed Date End');
 
-    await userEvent.type(fromInput, '2024-01-01');
+    fireEvent.change(fromInput, { target: { value: '2024-01-01' } });
     onFilterChange.mockClear();
 
-    await userEvent.type(toInput, '2024-12-31');
+    fireEvent.change(toInput, { target: { value: '2024-12-31' } });
 
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(document.querySelector('.date-error')?.textContent).toBeFalsy();
     expect(onFilterChange).toHaveBeenCalledWith(
       expect.objectContaining({ filedDateFrom: '2024-01-01', filedDateTo: '2024-12-31' }),
     );
@@ -138,22 +138,24 @@ describe('TrusteeCaseListFilter', () => {
   test('shows validation error when filed to-date is before from-date', async () => {
     const onFilterChange = vi.fn();
     await renderFilter(onFilterChange);
-    const fromInput = screen.getByLabelText('Case filed date from');
-    const toInput = screen.getByLabelText('Case filed date to');
+    const fromInput = screen.getByLabelText('Case Filed Date Start');
+    const toInput = screen.getByLabelText('Case Filed Date End');
 
-    await userEvent.type(fromInput, '2024-06-01');
+    fireEvent.change(fromInput, { target: { value: '2024-06-01' } });
     onFilterChange.mockClear();
 
-    await userEvent.type(toInput, '2024-01-01');
+    fireEvent.change(toInput, { target: { value: '2024-01-01' } });
 
-    expect(screen.getByRole('alert')).toHaveTextContent('End date must be on or after start date');
+    expect(document.querySelector('.date-error')).toHaveTextContent(
+      'Start date must be before end date.',
+    );
     expect(onFilterChange).not.toHaveBeenCalled();
   });
 
   test('shows filed date pill when filedDateFrom is set', async () => {
     await renderFilter();
-    const fromInput = screen.getByLabelText('Case filed date from');
-    await userEvent.type(fromInput, '2024-01-01');
+    const fromInput = screen.getByLabelText('Case Filed Date Start');
+    fireEvent.change(fromInput, { target: { value: '2024-01-01' } });
     await waitFor(() => {
       expect(screen.getByText(/Filed:/)).toBeInTheDocument();
     });
@@ -204,10 +206,10 @@ describe('TrusteeCaseListFilter', () => {
     );
     const accordionButton = screen.getByRole('button', { name: 'Filters' });
     await userEvent.click(accordionButton);
-    expect((screen.getByLabelText('Case filed date from') as HTMLInputElement).value).toBe(
+    expect((screen.getByLabelText('Case Filed Date Start') as HTMLInputElement).value).toBe(
       '2024-01-01',
     );
-    expect((screen.getByLabelText('Case filed date to') as HTMLInputElement).value).toBe(
+    expect((screen.getByLabelText('Case Filed Date End') as HTMLInputElement).value).toBe(
       '2024-12-31',
     );
   });
@@ -216,8 +218,8 @@ describe('TrusteeCaseListFilter', () => {
     const onFilterChange = vi.fn();
     await renderFilter(onFilterChange);
 
-    const fromInput = screen.getByLabelText('Case filed date from');
-    await userEvent.type(fromInput, '2024-01-01');
+    const fromInput = screen.getByLabelText('Case Filed Date Start');
+    fireEvent.change(fromInput, { target: { value: '2024-01-01' } });
     onFilterChange.mockClear();
 
     const select = screen.getByLabelText('Filter by case status');
@@ -271,8 +273,8 @@ describe('TrusteeCaseListFilter', () => {
   test('removing filed date pill clears the date range', async () => {
     const onFilterChange = vi.fn();
     await renderFilter(onFilterChange);
-    const fromInput = screen.getByLabelText('Case filed date from');
-    await userEvent.type(fromInput, '2024-01-01');
+    const fromInput = screen.getByLabelText('Case Filed Date Start');
+    fireEvent.change(fromInput, { target: { value: '2024-01-01' } });
     onFilterChange.mockClear();
 
     await screen.findByText(/Filed:/);
@@ -369,8 +371,8 @@ describe('TrusteeCaseListFilter', () => {
 
     test('announces filed date filter applied', async () => {
       await renderFilter();
-      const fromInput = screen.getByLabelText('Case filed date from');
-      await userEvent.type(fromInput, '2024-01-01');
+      const fromInput = screen.getByLabelText('Case Filed Date Start');
+      fireEvent.change(fromInput, { target: { value: '2024-01-01' } });
       await waitFor(() => {
         expect(screen.getByTestId('filter-announcement')).toHaveTextContent(
           'Filed date filter applied',
@@ -381,17 +383,15 @@ describe('TrusteeCaseListFilter', () => {
     test('announces filed date filter cleared', async () => {
       const onFilterChange = vi.fn();
       await renderFilter(onFilterChange);
-      const fromInput = screen.getByLabelText('Case filed date from');
-      await userEvent.type(fromInput, '2024-01-01');
+      const fromInput = screen.getByLabelText('Case Filed Date Start');
+      fireEvent.change(fromInput, { target: { value: '2024-01-01' } });
       await waitFor(() =>
         expect(screen.getByTestId('filter-announcement')).toHaveTextContent(
           'Filed date filter applied',
         ),
       );
 
-      await userEvent.clear(fromInput);
-      await userEvent.type(fromInput, ' ');
-      await userEvent.clear(fromInput);
+      fireEvent.change(fromInput, { target: { value: '' } });
 
       await waitFor(() => {
         expect(screen.getByTestId('filter-announcement')).toHaveTextContent(

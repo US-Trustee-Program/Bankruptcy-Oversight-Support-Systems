@@ -44,6 +44,36 @@
     }
   }
 
+  .filter-control--filed-date {
+    flex: 2 1 24rem;
+    min-width: 20rem;
+    max-width: 32rem;
+
+    .usa-date-range-picker {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .usa-form-group {
+      flex: 1 1 10rem;
+      min-width: 9rem;
+      // DateRangePicker only zeroes margin-top on the first field (for its usual
+      // stacked layout); side-by-side here, both fields must start flush at the top.
+      margin-top: 0;
+    }
+
+    // This layout's narrower, side-by-side fields render the input at a height
+    // where DatePicker's default fixed `top: 1rem` no longer centers the icon —
+    // recenter it here only, without touching DatePicker's shared styling.
+    // (Extra .usa-date-picker qualifier keeps this selector more specific than
+    // DatePicker.scss's own rule, so it wins regardless of CSS load order.)
+    .usa-date-picker .calendar-picker-button {
+      top: 60%;
+      transform: translateY(-50%);
+    }
+  }
+
   .filter-pills-container {
     margin-top: 1rem;
     margin-bottom: 1.25rem;
