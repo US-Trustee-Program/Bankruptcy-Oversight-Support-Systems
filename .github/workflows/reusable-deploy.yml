@@ -70,6 +70,7 @@ jobs:
         env:
           GHA_ENVIRONMENT: ${{ inputs.ghaEnvironment }}
           STACK_NAME: ${{ inputs.stackName }}
+          AZ_LOCATION: ${{ secrets.AZ_LOCATION }} # pragma: allowlist secret
         run: |
           set -euo pipefail
           if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
@@ -145,6 +146,14 @@ jobs:
             _val="EP1"
           fi
           echo "AZ_FUNCTIONS_PLAN_TYPE=${_val}" >> "$GITHUB_ENV"
+          # Optional -- absent in environments that haven't opted into a separate
+          # region for the App Service Plans/Function Apps/VNet, in which case they
+          # deploy into the same region as everything else (AZ_LOCATION).
+          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-FUNCTIONS-LOCATION --query value -o tsv 2>/dev/null || true)
+          if [[ -z "${_val}" ]]; then
+            _val="${AZ_LOCATION}"
+          fi
+          echo "AZ_FUNCTIONS_LOCATION=${_val}" >> "$GITHUB_ENV"
           _val=$(az keyvault secret show --vault-name "$KV" --name CAMS-LOGIN-PROVIDER --query value -o tsv)
           echo "::add-mask::${_val}"
           echo "CAMS_LOGIN_PROVIDER=${_val}" >> "$GITHUB_ENV"
@@ -219,7 +228,6 @@ jobs:
           BRANCH_NAME: ${{ github.ref_name }}
           ENVIRONMENT_HASH: ${{ inputs.environmentHash }}
           DEPLOY_VNET: ${{ inputs.deployVnet }}
-          AZ_LOCATION: ${{ secrets.AZ_LOCATION }} # pragma: allowlist secret
         run: |
           # The webapp private DNS zone used to be deployed here, gated on
           # deployDns. It moved to the "Deploy Azure app shared-setup
@@ -236,7 +244,7 @@ jobs:
             --isBranchDeployment "${IS_BRANCH_DEPLOYMENT}" \
             --branchName "${BRANCH_NAME}" \
             --branchHashId "${ENVIRONMENT_HASH}" \
-            -l "${AZ_LOCATION}"
+            -l ${{ env.AZ_FUNCTIONS_LOCATION }}
 
       - name: Deploy Azure app shared-setup resources
         id: azure-app-shared-setup-deploy
@@ -271,6 +279,7 @@ jobs:
             --sqlServerName "${AZ_SQL_SERVER_NAME}" \
             --sqlServerResourceGroupName "${AZURE_RG}" \
             --sqlServerIdentityName "${AZ_SQL_IDENTITY_NAME}" \
+            --networkLocation ${{ env.AZ_FUNCTIONS_LOCATION }} \
             -l "${AZ_LOCATION}"
 
       - name: Deploy Azure resources
@@ -317,6 +326,7 @@ jobs:
             --analyticsWorkspaceId ${{ steps.analytics-workspace.outputs.workspaceId }} \
             --webappPlanType ${{ env.AZ_PLAN_TYPE }} \
             --functionsPlanType ${{ env.AZ_FUNCTIONS_PLAN_TYPE }} \
+            --location ${{ env.AZ_FUNCTIONS_LOCATION }} \
             --loginProvider ${{ env.CAMS_LOGIN_PROVIDER }} \
             --loginProviderConfig "${LOGIN_PROVIDER_CONFIG}" \
             --sqlServerName "${AZ_SQL_SERVER_NAME}" \

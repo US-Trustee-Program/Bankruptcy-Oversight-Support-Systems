@@ -40,6 +40,7 @@ sql_server_identity_rg=''
 is_ustp_deployment=false
 deploy_dns=true
 location=''
+network_location=''
 extra_parameters=''
 
 while [[ $# -gt 0 ]]; do
@@ -104,6 +105,15 @@ while [[ $# -gt 0 ]]; do
         location="${2}"
         shift 2
         ;;
+    # Region for the Key Vault private endpoint specifically -- must match
+    # the (possibly separately-located) branch VNet/subnet it's placed into,
+    # independent of the shared Key Vault itself which always stays on
+    # --location. Defaults to --location when not passed, matching the
+    # previous, always-single-region behavior.
+    --networkLocation)
+        network_location="${2}"
+        shift 2
+        ;;
     # Space-delimited "key=value" bicep parameters passed straight through
     -p | --parameters)
         extra_parameters="${2}"
@@ -120,6 +130,8 @@ if [[ -z "${deployment_file}" || -z "${resource_group}" || -z "${stack_name}" ||
     echo "Error: --file, --resource-group, --stackName, --networkResourceGroupName, --virtualNetworkName, --kvAppConfigResourceGroupName and --location are required"
     exit 10
 fi
+
+network_location="${network_location:-${location}}"
 
 # Azure allows only ONE vnet-to-zone link regardless of the link resource's
 # own name, so if some link into the KV zone already exists for this vnet
@@ -196,7 +208,7 @@ else
     echo "No existing link from vnet ${vnet_name} into ${kvPrivateDnsZoneName} in ${private_dns_zone_rg} (or any other same-named zone); the template will create one."
 fi
 
-deployment_parameters="stackName=${stack_name} location=${location} networkResourceGroupName=${network_rg} virtualNetworkName=${vnet_name} kvAppConfigResourceGroupName=${kv_app_config_rg} isUstpDeployment=${is_ustp_deployment} deployDns=${deploy_dns} vnetLinkAlreadyExists=${vnet_link_already_exists}"
+deployment_parameters="stackName=${stack_name} location=${location} networkLocation=${network_location} networkResourceGroupName=${network_rg} virtualNetworkName=${vnet_name} kvAppConfigResourceGroupName=${kv_app_config_rg} isUstpDeployment=${is_ustp_deployment} deployDns=${deploy_dns} vnetLinkAlreadyExists=${vnet_link_already_exists}"
 [[ -n "${kv_app_config_name}" ]] && deployment_parameters="${deployment_parameters} kvAppConfigName=${kv_app_config_name}"
 [[ -n "${id_keyvault_app_config}" ]] && deployment_parameters="${deployment_parameters} idKeyvaultAppConfiguration=${id_keyvault_app_config}"
 [[ -n "${sql_server_name}" ]] && deployment_parameters="${deployment_parameters} sqlServerName=${sql_server_name}"
