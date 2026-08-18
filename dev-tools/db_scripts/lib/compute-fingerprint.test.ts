@@ -12,7 +12,7 @@ describe('computeFingerprint', () => {
         lastName: 'Seedtrustee',
         fullName: 'Samuel Seedtrustee',
       }),
-    ).toBe('360859706c1d41be9bfc7e3fcb2fe917f57e147343a446c7b71c5bfbb754ebea');
+    ).toBe('360859706c1d41be9bfc7e3fcb2fe917f57e147343a446c7b71c5bfbb754ebea'); // pragma: allowlist secret
   });
 
   test('normalizes case and whitespace so equivalent names produce the same fingerprint', () => {
