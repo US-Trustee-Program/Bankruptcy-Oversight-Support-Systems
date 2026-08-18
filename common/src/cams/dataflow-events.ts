@@ -121,18 +121,13 @@ export type TrusteeAppointmentSyncEvent = {
 };
 
 /**
- * Match-outcome vocabulary for trustee appointment sync. `AmbiguousMatchUnresolved` and
- * `AmbiguousMatchResolved` are two named outcomes of the same disambiguation attempt (an
- * unscored name collision that always triggers a fuzzy-match attempt is not itself a member of
- * this enum — matchTrusteeByName signals it via the bare 'ambiguous' branch of its
- * NameMatchResult return value instead, since it is never persisted):
+ * Match-outcome vocabulary for trustee appointment sync. A name collision that resolves to a
+ * clear scoring winner (score > FUZZY_MATCH_SCORE_THRESHOLD, gap >= FUZZY_MATCH_MIN_GAP,
+ * isAppointmentMatch passes) is treated the same as any other resolved trusteeId and auto-linked
+ * — it is never persisted here, since minimizing human review is the point of scoring in the
+ * first place. Only genuinely unresolved outcomes reach this enum:
  *  - AmbiguousMatchUnresolved: the fuzzy-match attempt failed to find a clear winner (scored, no
  *    resolution). Persisted, countable, verification-triggering.
- *  - AmbiguousMatchResolved: the fuzzy-match attempt succeeded with a clear winner. Never
- *    auto-linked — always saved for human verification via the same
- *    upsertMatchVerification/writeSurrogateAppointment sequence as the failure outcome above,
- *    which is why this is grouped as a sibling of the same disambiguation attempt rather
- *    than kept as a separate confidence tier.
  *  - CandidateLoadFailed: matchTrusteeByName found more than one raw name candidate (so this is
  *    NOT "no trustee matched this name" — NoTrusteeMatch would be misleading here), but scoring
  *    could not load ANY of their trustee/appointment records (e.g. every candidate rejected with
@@ -141,16 +136,31 @@ export type TrusteeAppointmentSyncEvent = {
  *    "Multiple Match" label (gated on AmbiguousMatchUnresolved) appear next to zero candidates,
  *    which is its own kind of misleading. Still routed through the same
  *    upsertMatchVerification/writeSurrogateAppointment sequence for human review.
- * Each now has its own distinct wire value (AMBIGUOUS_MATCH_UNRESOLVED / AMBIGUOUS_MATCH_RESOLVED)
- * — no production data existed under the prior shared/misaligned names, so there was no
- * migration constraint blocking this realignment.
  */
 export const TrusteeAppointmentSyncErrorCode = {
+  // matchTrusteeByName found zero CAMS trustees with a name matching the DXTR trustee, and the
+  // fuzzy-normalization fallback also found nothing — no candidate exists to review at all.
   NoTrusteeMatch: 'NO_TRUSTEE_MATCH',
+  // The name resolved to exactly one CAMS trustee, but that trustee's data doesn't clear the
+  // court+division+chapter appointment-match bar (isAppointmentMatch fails) — e.g. no
+  // appointments at all, or only appointments that don't cover this case. One known candidate,
+  // but not with enough confidence to auto-link, so a human reviews the single candidate.
   ImperfectMatch: 'IMPERFECT_MATCH',
-  AmbiguousMatchResolved: 'AMBIGUOUS_MATCH_RESOLVED',
+  // matchTrusteeByName found more than one raw name-collision candidate, and scoring
+  // (resolveNameCollisionByScoring) ran but found no clear winner (no candidate cleared the
+  // score/gap threshold, or the winner's appointment doesn't cover this case's
+  // court/division/chapter). Genuinely ambiguous — needs a human to pick among the candidates.
   AmbiguousMatchUnresolved: 'AMBIGUOUS_MATCH_UNRESOLVED',
+  // The name resolved to exactly one CAMS trustee with an appointment that matches this case's
+  // court/division/chapter, but that appointment's status isn't 'active' (e.g. suspended,
+  // terminated, resigned, deceased) — otherwise a perfect match, so a human confirms the
+  // trustee's current status is still correct before linking.
   PerfectMatchInactiveStatus: 'PERFECT_MATCH_INACTIVE_STATUS',
+  // matchTrusteeByName found more than one raw name-collision candidate, but scoring could not
+  // load ANY of their trustee/appointment records (e.g. every candidate rejected with a
+  // non-transient error) — distinct from AmbiguousMatchUnresolved, which means scoring DID run
+  // and simply found no clear winner. See the doc comment above this object for why conflating
+  // the two would mislead the Data Verification UI's "Multiple Match" label.
   CandidateLoadFailed: 'CANDIDATE_LOAD_FAILED',
 } as const;
 

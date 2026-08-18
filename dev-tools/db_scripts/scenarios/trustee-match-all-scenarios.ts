@@ -4,12 +4,14 @@
  *
  * Seeds comprehensive trustee match verification data to exercise all match types:
  *
- *   - All 5 match verification types:
+ *   - All 4 match verification types (a fuzzy-scoring clear winner now auto-links instead of
+ *     reaching this collection - see resolveByScoring's 'resolved' case in
+ *     sync-trustee-case-appointments.ts - so it has no verification-document scenario to seed
+ *     here):
  *     1. NO_TRUSTEE_MATCH - No candidates found
  *     2. AMBIGUOUS_MATCH_UNRESOLVED - Multiple equally-scored candidates
  *     3. IMPERFECT_MATCH - Single candidate with low confidence score
- *     4. AMBIGUOUS_MATCH_RESOLVED - Single candidate with high confidence score
- *     5. PERFECT_MATCH_INACTIVE_STATUS - Perfect match but trustee/appointment inactive
+ *     4. PERFECT_MATCH_INACTIVE_STATUS - Perfect match but trustee/appointment inactive
  *
  *   - 6 inactive status variations for PERFECT_MATCH_INACTIVE_STATUS:
  *     - Inactive trustee + active appointment
@@ -32,7 +34,6 @@ const SEEDER = { id: 'SEED', name: 'Test Data Seeder' };
 const CASE_NO_MATCH = '091-99-87899'; // Ch 11 (Kassulke Group)
 const CASE_MULTIPLE_MATCH = '091-99-00874'; // Ch 11
 const CASE_IMPERFECT_MATCH = '091-99-92748'; // Ch 12 (Botsford LLC)
-const CASE_HIGH_CONFIDENCE = '091-99-87899'; // Ch 11 (reuse)
 const CASE_INACTIVE_TRUSTEE = '091-99-00874'; // Ch 11 (reuse)
 const CASE_INACTIVE_APPOINTMENT = '091-99-92748'; // Ch 12 (reuse)
 const CASE_TERMINATED = '091-99-00874'; // Ch 11 (reuse)
@@ -155,7 +156,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       ],
     },
 
-    // Active trustee for high confidence match
+    // Active trustee, later given only an inactive appointment (status variation below)
     {
       db: 'cams',
       collectionOrTable: 'trustees',
@@ -467,16 +468,16 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       ],
     },
 
-    // ── Cosmos: Match Verification Type 4 - AMBIGUOUS_MATCH_RESOLVED ─────────
+    // ── Cosmos: Match Verification Type 4 - Status Variations ─────────────────
     {
       db: 'cams',
       collectionOrTable: 'trustee-match-verification',
       data: [
         {
-          id: `seed-match-highconf-${CASE_HIGH_CONFIDENCE}`,
+          id: `seed-match-highconf-${CASE_INACTIVE_TRUSTEE}`,
           documentType: 'TRUSTEE_MATCH_VERIFICATION',
           taskType: 'trustee-match',
-          caseId: CASE_HIGH_CONFIDENCE,
+          caseId: CASE_INACTIVE_TRUSTEE,
           courtId: '0208',
           status: 'pending',
           taskDate: '2010-05-12T00:00:00.000Z',

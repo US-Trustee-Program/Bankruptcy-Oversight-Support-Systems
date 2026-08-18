@@ -311,8 +311,6 @@ async function handlePage(message: PageMessage, invocationContext: InvocationCon
     const totalEvents = events.length;
     const autoMatchRate =
       totalEvents > 0 ? (scenarioDistribution.autoMatchCount / totalEvents) * 100 : 0;
-    const highConfidenceRate =
-      totalEvents > 0 ? (scenarioDistribution.highConfidenceMatchCount / totalEvents) * 100 : 0;
     const fingerprintHitRate =
       totalEvents > 0 ? (scenarioDistribution.fingerprintHitCount / totalEvents) * 100 : 0;
 
@@ -339,7 +337,6 @@ async function handlePage(message: PageMessage, invocationContext: InvocationCon
           totalEvents: String(totalEvents),
           autoMatchCount: String(scenarioDistribution.autoMatchCount),
           imperfectMatchCount: String(scenarioDistribution.imperfectMatchCount),
-          highConfidenceMatchCount: String(scenarioDistribution.highConfidenceMatchCount),
           noMatchCount: String(scenarioDistribution.noMatchCount),
           multipleMatchCount: String(scenarioDistribution.multipleMatchCount),
           perfectMatchInactiveCount: String(scenarioDistribution.perfectMatchInactiveCount),
@@ -353,7 +350,6 @@ async function handlePage(message: PageMessage, invocationContext: InvocationCon
         additionalMetrics: [
           { name: 'TrusteeAutoMatchRate', value: autoMatchRate },
           { name: 'TrusteeTotalEventsProcessed', value: totalEvents },
-          { name: 'TrusteeHighConfidenceMatchRate', value: highConfidenceRate },
           {
             name: 'TrusteePerfectMatchInactiveCount',
             value: scenarioDistribution.perfectMatchInactiveCount,

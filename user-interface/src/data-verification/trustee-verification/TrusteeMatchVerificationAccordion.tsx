@@ -298,8 +298,6 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     order.mismatchReason === TrusteeAppointmentSyncErrorCode.AmbiguousMatchUnresolved;
   const isInactiveStatus =
     order.mismatchReason === TrusteeAppointmentSyncErrorCode.PerfectMatchInactiveStatus;
-  const isResolvedMatch =
-    order.mismatchReason === TrusteeAppointmentSyncErrorCode.AmbiguousMatchResolved;
   const taskTypeLabel = isMultipleMatch
     ? 'Multiple Match'
     : isInactiveStatus
@@ -703,14 +701,6 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
                 <p className="problem-statement">
                   <span>
                     Trustee is inactive in CAMS but was appointed to{' '}
-                    {affectedCaseCount > 1 ? '' : 'case: '}
-                  </span>
-                  {caseLink}
-                </p>
-              ) : isResolvedMatch ? (
-                <p className="problem-statement">
-                  <span>
-                    CAMS found a possible match — please verify the trustee appointed to{' '}
                     {affectedCaseCount > 1 ? '' : 'case: '}
                   </span>
                   {caseLink}

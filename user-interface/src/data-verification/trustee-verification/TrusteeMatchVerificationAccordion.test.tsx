@@ -24,7 +24,7 @@ const sampleOrder: TrusteeMatchVerificationListItem = {
   caseId: '081-22-11111',
   courtId: '0881',
   status: 'pending',
-  mismatchReason: 'AMBIGUOUS_MATCH_RESOLVED',
+  mismatchReason: 'NO_TRUSTEE_MATCH',
   dxtrTrustee: { fullName: 'John Doe' },
   preselectedCandidate: null,
   candidateCount: 0,
@@ -40,7 +40,7 @@ const sampleOrderDetail: EnrichedTrusteeMatchVerification = {
   caseId: '081-22-11111',
   courtId: '0881',
   status: 'pending',
-  mismatchReason: 'AMBIGUOUS_MATCH_RESOLVED',
+  mismatchReason: 'NO_TRUSTEE_MATCH',
   dxtrTrustee: { fullName: 'John Doe' },
   matchCandidates: [],
   updatedOn: '2026-01-15T10:00:00.000Z',
@@ -1183,26 +1183,6 @@ describe('TrusteeMatchVerificationAccordion', () => {
       );
     });
 
-    test('should render distinct problem statement for a resolved fuzzy match, not the generic "does not match" copy', async () => {
-      const highConfidenceOrder: TrusteeMatchVerificationListItem = {
-        ...sampleOrderWithCandidates,
-        mismatchReason: 'AMBIGUOUS_MATCH_RESOLVED',
-      };
-      const highConfidenceDetail: EnrichedTrusteeMatchVerification = {
-        ...sampleOrderWithCandidatesDetail,
-        mismatchReason: 'AMBIGUOUS_MATCH_RESOLVED',
-      };
-      renderWithProps({ order: highConfidenceOrder });
-      await mockDetailAndExpand(highConfidenceDetail);
-
-      const content = screen.getByTestId(`accordion-content-${sampleOrder.id}`);
-      expect(content.textContent).toContain('CAMS found a possible match');
-      expect(content.textContent).not.toContain(
-        'Trustee sent from the court does not match a CAMS Trustee',
-      );
-      expect(content.textContent).not.toContain('inactive');
-    });
-
     test('should still render original "does not match" problem statement for an unresolved multiple-match', async () => {
       const unresolvedOrder: TrusteeMatchVerificationListItem = {
         ...sampleOrderWithCandidates,
@@ -1225,7 +1205,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
 
     test('should render "Trustee Mismatch" as task type label for non-inactive mismatch types', () => {
       renderWithProps({
-        order: { ...sampleOrderWithCandidates, mismatchReason: 'AMBIGUOUS_MATCH_RESOLVED' },
+        order: { ...sampleOrderWithCandidates, mismatchReason: 'IMPERFECT_MATCH' },
       });
 
       const heading = screen.getByTestId(`accordion-heading-${sampleOrder.id}`);
@@ -1499,16 +1479,17 @@ describe('TrusteeMatchVerificationAccordion', () => {
       expect(screen.queryByTestId('candidate-scores-trustee-low')).not.toBeInTheDocument();
     });
 
-    test('AMBIGUOUS_MATCH_RESOLVED still renders single pre-selected candidate (regression check)', async () => {
-      const highConfidenceOrder: TrusteeMatchVerificationListItem = {
+    test('PERFECT_MATCH_INACTIVE_STATUS still renders single pre-selected candidate (regression check)', async () => {
+      const inactiveOrder: TrusteeMatchVerificationListItem = {
         ...sampleOrder,
-        mismatchReason: 'AMBIGUOUS_MATCH_RESOLVED',
+        mismatchReason: 'PERFECT_MATCH_INACTIVE_STATUS',
         preselectedCandidate: { trusteeId: 'trustee-1', trusteeName: 'Jane Smith' },
         candidateCount: 1,
       };
-      const highConfidenceDetail: EnrichedTrusteeMatchVerification = {
+      const inactiveDetail: EnrichedTrusteeMatchVerification = {
         ...sampleOrderDetail,
-        mismatchReason: 'AMBIGUOUS_MATCH_RESOLVED',
+        mismatchReason: 'PERFECT_MATCH_INACTIVE_STATUS',
+        inactiveAppointmentStatus: 'voluntarily-suspended',
         matchCandidates: [
           {
             trusteeId: 'trustee-1',
@@ -1523,8 +1504,8 @@ describe('TrusteeMatchVerificationAccordion', () => {
           },
         ],
       };
-      renderWithProps({ order: highConfidenceOrder });
-      await mockDetailAndExpand(highConfidenceDetail);
+      renderWithProps({ order: inactiveOrder });
+      await mockDetailAndExpand(inactiveDetail);
 
       expect(screen.getByTestId('candidate-info')).toBeInTheDocument();
       expect(screen.queryByTestId('multiple-candidates-info')).not.toBeInTheDocument();

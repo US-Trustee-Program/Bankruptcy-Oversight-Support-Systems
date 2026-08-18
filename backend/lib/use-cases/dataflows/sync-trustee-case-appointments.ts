@@ -54,7 +54,6 @@ const MODULE_NAME = 'SYNC-TRUSTEE-CASE-APPOINTMENTS-USE-CASE';
 type ScenarioDistribution = {
   autoMatchCount: number;
   imperfectMatchCount: number;
-  highConfidenceMatchCount: number;
   noMatchCount: number;
   multipleMatchCount: number;
   perfectMatchInactiveCount: number;
@@ -576,9 +575,9 @@ function findByVariant<T extends { variant: string }>(bucket: T[], variant: stri
 /**
  * Guards the "syncedCase is always assigned before a classified mismatch outcome is reached"
  * invariant relied on by processAppointments' surrogate writes (the direct ImperfectMatch call in
- * the try block, and the catch block's NoTrusteeMatch/AmbiguousMatchUnresolved/
- * AmbiguousMatchResolved handling), so a future code path that breaks the ordering fails loudly
- * here instead of as an opaque TypeError inside writeSurrogateAppointment.
+ * the try block, and the catch block's NoTrusteeMatch/AmbiguousMatchUnresolved handling), so a
+ * future code path that breaks the ordering fails loudly here instead of as an opaque TypeError
+ * inside writeSurrogateAppointment.
  *
  * Exported for testing only — no production importer outside this module; called internally
  * from handleClassifiedMismatch below.
@@ -1116,34 +1115,16 @@ async function resolveByScoring(
   );
 
   switch (scoringOutcome.kind) {
-    case 'resolved': {
-      const { trusteeId: winnerId, candidateScores } = scoringOutcome;
-      deps.context.logger.info(
-        MODULE_NAME,
-        `Fuzzy match winner ${winnerId} for case ${event.caseId} saved for verification`,
-      );
-      scenarioDistribution.highConfidenceMatchCount++;
-      const isReVerification = await upsertMatchVerification(
-        deps.verificationRepo,
-        event,
-        TrusteeAppointmentSyncErrorCode.AmbiguousMatchResolved,
-        candidateScores,
-        fingerprint,
-        variant,
-      );
-      if (isReVerification) scenarioDistribution.reVerificationCount++;
-      const winnerScore = candidateScores.find((c) => c.trusteeId === winnerId);
-      audit.matchOutcome = 'ambiguous-match-resolved';
-      audit.matchedTrusteeId = winnerId;
-      if (winnerScore) {
-        audit.scoringBreakdown = {
-          districtDivisionScore: winnerScore.districtDivisionScore,
-          chapterScore: winnerScore.chapterScore,
-        };
-      }
-      await writeSurrogateAppointment(deps, event, fingerprint, variant, syncedCase);
-      return { outcome: 'handled' };
-    }
+    // A clear scoring winner (score > FUZZY_MATCH_SCORE_THRESHOLD, gap >= FUZZY_MATCH_MIN_GAP,
+    // isAppointmentMatch already checked by resolveNameCollisionByScoring itself) is treated the
+    // same as any other resolved trusteeId — the caller (processOneEvent) routes it through
+    // applyMatchOutcome, which re-verifies isAppointmentMatch and auto-links on a pass or falls
+    // through to ImperfectMatch human review on a miss. Minimizes human review wherever the
+    // existing scoring already gives high confidence, whether that confidence comes from
+    // disambiguating a raw name collision (this path) or from a fuzzy name-normalization match
+    // with only one candidate (matchTrusteeByName's fallback in trustee-match.helpers.ts).
+    case 'resolved':
+      return { outcome: 'resolved', trusteeId: scoringOutcome.trusteeId };
 
     case 'no-match': {
       // NOT the same as NoTrusteeMatch: matchTrusteeByName found more than one raw name
@@ -1575,7 +1556,6 @@ async function processAppointments(
   const scenarioDistribution: ScenarioDistribution = {
     autoMatchCount: 0,
     imperfectMatchCount: 0,
-    highConfidenceMatchCount: 0,
     noMatchCount: 0,
     multipleMatchCount: 0,
     perfectMatchInactiveCount: 0,
