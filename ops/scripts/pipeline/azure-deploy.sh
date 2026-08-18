@@ -27,7 +27,7 @@ requiredUSTPParams=("--enabledDataflows" "--mssqlRequestTimeout" "--migrateCaseA
 requiredFlexionParams=("--enabledDataflows" "--mssqlRequestTimeout" "--migrateCaseAppointmentsFetchSize" "--resource-group" "--file" "--stackName" "--slotName" "--gitSha" "--networkResourceGroupName" "--kvAppConfigName" "--kvAppConfigResourceGroupName" "--virtualNetworkName" "--analyticsResourceGroupName" "--idKeyvaultAppConfiguration" "--cosmosDatabaseName" "--ustpIssueCollectorHash" "--createAlerts" "--deployAppInsights" "--loginProvider" "--loginProviderConfig" "--sqlServerName" "--sqlServerResourceGroupName" "--sqlServerIdentityName" "--actionGroupName" "--oktaUrl" "--e2eDatabaseName" "--e2eSqlDatabaseName")
 
 # shellcheck disable=SC2034 # REASON: to have a reference for all possible parameters
-allParams=("--enabledDataflows" "--mssqlRequestTimeout" "--migrateCaseAppointmentsFetchSize" "--isUstpDeployment" "--resource-group" "--file" "--stackName" "--slotName" "--gitSha" "--networkResourceGroupName" "--virtualNetworkName" "--analyticsWorkspaceId" "--idKeyvaultAppConfiguration" "--kvAppConfigName" "--cosmosDatabaseName" "--deployVnet" "--ustpIssueCollectorHash" "--createAlerts" "--deployAppInsights" "--apiFunctionPlanName" "--dataflowsFunctionPlanName" "--webappPlanType" "--functionsPlanType" "--loginProvider" "--loginProviderConfig" "--sqlServerName" "--sqlServerResourceGroupName" "--sqlServerIdentityResourceGroupName" "--sqlServerIdentityName" "--sqlServerIdentitySubscriptionId" "--actionGroupName" "--oktaUrl" "--location" "--webappSubnetName" "--apiFunctionSubnetName" "--privateEndpointSubnetName" "--webappSubnetAddressPrefix" "--apiFunctionSubnetAddressPrefix" "--dataflowsSubnetName" "--dataflowsSubnetAddressPrefix" "--vnetAddressPrefix" "--linkVnetIds" "--privateDnsZoneName" "--privateDnsZoneResourceGroup" "--privateDnsZoneSubscriptionId" "--analyticsResourceGroupName" "--kvAppConfigResourceGroupName" "--deployDns" "--e2eDatabaseName" "--e2eSqlDatabaseName" "--customDomain")
+allParams=("--enabledDataflows" "--mssqlRequestTimeout" "--migrateCaseAppointmentsFetchSize" "--isUstpDeployment" "--resource-group" "--file" "--stackName" "--slotName" "--gitSha" "--networkResourceGroupName" "--virtualNetworkName" "--analyticsWorkspaceId" "--idKeyvaultAppConfiguration" "--kvAppConfigName" "--cosmosDatabaseName" "--deployVnet" "--ustpIssueCollectorHash" "--createAlerts" "--deployAppInsights" "--apiFunctionPlanName" "--dataflowsFunctionPlanName" "--webappPlanType" "--functionsPlanType" "--loginProvider" "--loginProviderConfig" "--sqlServerName" "--sqlServerResourceGroupName" "--sqlServerIdentityResourceGroupName" "--sqlServerIdentityName" "--sqlServerIdentitySubscriptionId" "--actionGroupName" "--oktaUrl" "--location" "--webappSubnetName" "--apiFunctionSubnetName" "--privateEndpointSubnetName" "--webappSubnetAddressPrefix" "--apiFunctionSubnetAddressPrefix" "--dataflowsSubnetName" "--dataflowsSubnetAddressPrefix" "--vnetAddressPrefix" "--linkVnetIds" "--privateDnsZoneName" "--privateDnsZoneResourceGroup" "--privateDnsZoneSubscriptionId" "--analyticsResourceGroupName" "--kvAppConfigResourceGroupName" "--deployDns" "--e2eDatabaseName" "--e2eSqlDatabaseName" "--customDomain" "--useSqlPrivateLink")
 
 
 function validateParameters() {
@@ -466,6 +466,13 @@ while [[ $# -gt 0 ]]; do
         shift 2
         ;;
 
+    --useSqlPrivateLink)
+        inputParams+=("${1}")
+        use_sql_private_link_param="useSqlPrivateLink=${2}"
+        deployment_parameters="${deployment_parameters} ${use_sql_private_link_param}"
+        shift 2
+        ;;
+
     *)
         echo "Exit on param: ${1}"
         exit 2 # error on unknown flag/switch
@@ -520,6 +527,34 @@ else
     echo "WARNING: skipping webapp DNS zone vnet-link existence check — networkResourceGroupName ('${network_rg:-}') or virtualNetworkName ('${vnet_name:-}') is empty." >&2
 fi
 deployment_parameters="${deployment_parameters} webappVnetLinkAlreadyExists=${webapp_vnet_link_already_exists}"
+
+# Same Conflict-avoidance check as above, for the SQL Private Link zone
+# (privatelink.database.usgovcloudapi.net). Only relevant when
+# useSqlPrivateLink=true (cross-region branches, CAMS-760), but it's cheap
+# and harmless to compute unconditionally -- the same way the webapp check
+# above runs for every deployment regardless of whether main.bicep will
+# actually consume the result. main.bicep's ustpSqlDnsZoneLink module links
+# this vnet into the SAME privateDnsZoneResourceGroup/privateDnsZoneSubscriptionId
+# scope as the webapp zone link (just a different zone name), so this reuses
+# webappPrivateDnsZoneRg/private_dns_zone_sub_id rather than introducing a
+# separate --sqlPrivateDnsZoneResourceGroup param that doesn't exist.
+sqlPrivateDnsZoneName='privatelink.database.usgovcloudapi.net'
+sql_vnet_link_already_exists=false
+if [[ -n "${network_rg:-}" && -n "${vnet_name:-}" ]]; then
+    vnet_link_already_exists_for "${webappPrivateDnsZoneRg}" "${sqlPrivateDnsZoneName}" "${network_rg}" "${vnet_name}" "${stack_name}" "${private_dns_zone_sub_id:-}"
+    existingSqlLink="${vnet_link_check_result}"
+    if [[ -n "${existingSqlLink}" ]]; then
+        echo "Vnet ${vnet_name} is already linked to ${sqlPrivateDnsZoneName} via '${existingSqlLink}'; skipping creation of a second link."
+        sql_vnet_link_already_exists=true
+    else
+        echo "No existing link from vnet ${vnet_name} into ${sqlPrivateDnsZoneName} in ${webappPrivateDnsZoneRg} (or any other same-named zone); the template will create one."
+    fi
+else
+    # Same rationale as the webapp check above: not fatal, the template's
+    # own default (sqlVnetLinkAlreadyExists=false) still applies.
+    echo "WARNING: skipping SQL DNS zone vnet-link existence check — networkResourceGroupName ('${network_rg:-}') or virtualNetworkName ('${vnet_name:-}') is empty." >&2
+fi
+deployment_parameters="${deployment_parameters} sqlVnetLinkAlreadyExists=${sql_vnet_link_already_exists}"
 
 # The virtual network is deployed separately by azure-deploy-network.sh before this
 # script runs (CAMS-760, Option E); vnet existence / deployVnet handling lives there.

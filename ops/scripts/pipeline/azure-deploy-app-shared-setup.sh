@@ -165,6 +165,15 @@ kvPrivateDnsZoneName='privatelink.vaultcore.usgovcloudapi.net'
 # where it's a fixed var, not a param -- can't share the literal across
 # bash/bicep, keep both in lockstep by hand.
 webappPrivateDnsZoneName='privatelink.azurewebsites.us'
+# Also hardcoded (as sqlPrivateDnsZoneName) in app-shared-setup.bicep, where
+# it's a fixed var, not a param -- can't share the literal across bash/bicep,
+# keep both in lockstep by hand. app-shared-setup.bicep's sqlDnsZone module
+# call is unconditional (not gated on useSqlPrivateLink), so every deploy of
+# this shared-setup template -- including branches that never opt into SQL
+# Private Link -- resolves this zone as `existing` when deployDns=false. If
+# this zone doesn't exist yet in the target RG, that lookup fails the
+# deployment outright, so it must be checked here alongside kv/webapp.
+sqlPrivateDnsZoneName='privatelink.database.usgovcloudapi.net'
 private_dns_zone_rg="${network_rg}"
 private_dns_zone_subscription_id=""
 for param in ${extra_parameters}; do
@@ -178,13 +187,13 @@ for param in ${extra_parameters}; do
     esac
 done
 
-# app-shared-setup.bicep's single deployDns param gates creation of BOTH the
-# KV and webapp zones, but the caller (reusable-deploy.yml) computes it
+# app-shared-setup.bicep's single deployDns param gates creation of ALL THREE
+# zones (KV, webapp, SQL), but the caller (reusable-deploy.yml) computes it
 # purely from IS_BRANCH_DEPLOYMENT, unconditionally false for every branch --
-# fine for the stable prod RGs (main's deployDns=true path created both
-# zones there long ago) but leaves a newly-provisioned shared branch RG with
-# no zones at all, since nothing else ever creates them. Only relevant when
-# the caller passed false: main already passes true unconditionally, and
+# fine for the stable prod RGs (main's deployDns=true path created them
+# there long ago) but leaves a newly-provisioned shared branch RG with no
+# zones at all, since nothing else ever creates them. Only relevant when the
+# caller passed false: main already passes true unconditionally, and
 # checking here too would just be a redundant (though harmless -- zone
 # creation is an idempotent PUT) no-op.
 if [[ "${deploy_dns}" != "true" ]]; then
@@ -192,8 +201,10 @@ if [[ "${deploy_dns}" != "true" ]]; then
     kvZoneExists="${zone_check_result}"
     zone_exists_for "${private_dns_zone_rg}" "${webappPrivateDnsZoneName}" "${private_dns_zone_subscription_id}"
     webappZoneExists="${zone_check_result}"
-    if [[ "${kvZoneExists}" != "true" || "${webappZoneExists}" != "true" ]]; then
-        echo "Zone bootstrap: ${kvPrivateDnsZoneName} exists=${kvZoneExists}, ${webappPrivateDnsZoneName} exists=${webappZoneExists} in ${private_dns_zone_rg} -- at least one is missing; deploying with deployDns=true to create it."
+    zone_exists_for "${private_dns_zone_rg}" "${sqlPrivateDnsZoneName}" "${private_dns_zone_subscription_id}"
+    sqlZoneExists="${zone_check_result}"
+    if [[ "${kvZoneExists}" != "true" || "${webappZoneExists}" != "true" || "${sqlZoneExists}" != "true" ]]; then
+        echo "Zone bootstrap: ${kvPrivateDnsZoneName} exists=${kvZoneExists}, ${webappPrivateDnsZoneName} exists=${webappZoneExists}, ${sqlPrivateDnsZoneName} exists=${sqlZoneExists} in ${private_dns_zone_rg} -- at least one is missing; deploying with deployDns=true to create it."
         deploy_dns=true
     fi
 fi

@@ -87,6 +87,33 @@ param vnetLinkAlreadyExists bool = false
 // shape for the same reason.
 var webappPrivateDnsZoneName = 'privatelink.azurewebsites.us'
 
+// Same non-overridable shape as webappPrivateDnsZoneName above, for the same
+// reason -- EXCEPT az-delete-branch-resources.sh does NOT hardcode this
+// literal: unlike the KV zone's PE (a plain, non-stack deployment that needs
+// explicit teardown), this zone's per-branch vnet link (ustpSqlDnsZoneLink)
+// and PE (apiSqlPrivateEndpoint/dataflowsSqlPrivateEndpoint) both live inside
+// the branch's app Deployment Stack in main.bicep, so they self-clean on
+// stack teardown the same way the webapp zone's link already does -- no
+// defense-in-depth delete call needed here. Only the zone itself (this var,
+// consumed below by the sqlDnsZone module) must stay in lockstep with the
+// bash literal in azure-deploy-app-shared-setup.sh, which uses it to decide
+// whether to bootstrap-create all three shared zones (kv/webapp/sql).
+//
+// This is the fixed Azure Government private-link DNS zone name for Azure
+// SQL (Microsoft.Sql/servers, subresource sqlServer) -- see
+// https://learn.microsoft.com/en-us/azure/private-link/private-endpoint-dns
+// for the public-vs-Gov cloud zone-name mapping.
+//
+// IMPORTANT: the sqlDnsZone module below is created/looked-up UNCONDITIONALLY
+// for every branch and main, exactly like webappDnsZone -- it is NOT gated on
+// useSqlPrivateLink. Only the per-branch vnet link (ustpSqlDnsZoneLink in
+// main.bicep) and the PE (backend-api-deploy.bicep/
+// dataflows-resource-deploy.bicep's useSqlPrivateLink param) are conditional.
+// That means this zone must exist in the target RG (or deployDns=true must
+// create it) for EVERY deployment of this template, including same-region
+// branches and main that never use the SQL Private Endpoint path.
+var sqlPrivateDnsZoneName = 'privatelink.database.usgovcloudapi.net'
+
 @description('Resource group containing the app-config Key Vault')
 param kvAppConfigResourceGroupName string
 
@@ -142,6 +169,32 @@ module webappDnsZone './lib/network/private-dns-zones.bicep' = {
     stackName: stackName
     virtualNetworkId: ustpVirtualNetwork.id
     privateDnsZoneName: webappPrivateDnsZoneName
+    deployDns: deployDns
+    createVnetLink: false
+  }
+}
+
+// SQL Private Link DNS zone, mirroring webappDnsZone above exactly: only the
+// ZONE is created here (create-if-missing, shared across main and every
+// branch); the per-branch vnet-link lives in main.bicep (ustpSqlDnsZoneLink)
+// so it is stack-managed and self-cleans on branch teardown. Azure Private
+// Endpoints (unlike VNet Service Endpoints/sql-vnet-rule.bicep) have no
+// same-region requirement between the SQL server and the linked subnet, so
+// this zone + its per-branch PE (created per-function-app, see
+// backend-api-deploy.bicep/dataflows-resource-deploy.bicep) is the mechanism
+// cross-region branches use for SQL connectivity instead of the VNet rule.
+// This module call is unconditional (every branch/main runs it, same as
+// webappDnsZone above) -- azure-deploy-app-shared-setup.sh's zone-bootstrap
+// check must know about sqlPrivateDnsZoneName too, or a branch whose RG
+// already has the kv/webapp zones but not this new one will pass
+// deployDns=false and fail resolving this zone as `existing`.
+module sqlDnsZone './lib/network/private-dns-zones.bicep' = {
+  name: '${stackName}-sql-dns-zone-module'
+  scope: resourceGroup(privateDnsZoneSubscriptionId, privateDnsZoneResourceGroup)
+  params: {
+    stackName: stackName
+    virtualNetworkId: ustpVirtualNetwork.id
+    privateDnsZoneName: sqlPrivateDnsZoneName
     deployDns: deployDns
     createVnetLink: false
   }

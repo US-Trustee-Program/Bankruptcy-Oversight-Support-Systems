@@ -327,6 +327,7 @@ jobs:
             --webappPlanType ${{ env.AZ_PLAN_TYPE }} \
             --functionsPlanType ${{ env.AZ_FUNCTIONS_PLAN_TYPE }} \
             --location ${{ env.AZ_FUNCTIONS_LOCATION }} \
+            --useSqlPrivateLink ${{ env.IS_BRANCH_DEPLOYMENT }} \
             --loginProvider ${{ env.CAMS_LOGIN_PROVIDER }} \
             --loginProviderConfig "${LOGIN_PROVIDER_CONFIG}" \
             --sqlServerName "${AZ_SQL_SERVER_NAME}" \
