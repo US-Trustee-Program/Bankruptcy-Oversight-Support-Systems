@@ -12,13 +12,13 @@
 
 set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
-requiredParams=("databaseResourceGroupName" "networkResourceGroupName" "webappResourceGroupName" "analyticsResourceGroupName" "isBranchDeployment")
-requiredBranchDeployParams=("branchName" "branchHashId") # To setup the appropriate Azure resource tagging, these should be required when isBranchDeployment == true
+requiredParams=("databaseResourceGroupName" "networkResourceGroupName" "webappResourceGroupName" "analyticsResourceGroupName")
 
 function validation_func() {
     local location=$1
     local deployment_file=$2
     local deployment_parameters=$3
+    local isBranchDeployment=$4
 
     if [[ -z "${location}" ]]; then
         echo "Error: Missing location parameter"
@@ -40,6 +40,11 @@ function validation_func() {
         exit 13
     fi
 
+    if [[ -z "${isBranchDeployment}" ]]; then
+        echo "Error: Missing parameter (isBranchDeployment)"
+        exit 14
+    fi
+
     # Parse deployment_parameters and set required params as variables if it exists
     for p in $deployment_parameters; do
         case "${p}" in
@@ -47,9 +52,6 @@ function validation_func() {
         networkResourceGroupName=*) networkResourceGroupName=${p/*=/} ;;
         webappResourceGroupName=*) webappResourceGroupName=${p/*=/} ;;
         analyticsResourceGroupName=*) analyticsResourceGroupName=${p/*=/} ;;
-        isBranchDeployment=*) isBranchDeployment=${p/*=/} ;;
-        branchName=*) branchName=${p/*=/} ;;
-        branchHashId=*) branchHashId=${p/*=/} ;;
         *)
             # skipped unmatched keys
             ;;
@@ -64,17 +66,6 @@ function validation_func() {
             exit 14
         fi
     done
-    # Check that required params for branch deployments has been set
-    if [[ "${isBranchDeployment}" == "true" ]]; then
-        echo "Recognize branch deployment for ${branchName} ${branchHashId}"
-        for r in "${requiredBranchDeployParams[@]}"; do
-            varOfVar=${r}
-            if [[ -z ${!varOfVar} ]]; then
-                echo "Error: Missing parameter required for branch deployments (${r})"
-                exit 15
-            fi
-        done
-    fi
 }
 
 function az_rg_exists_func() {
@@ -121,7 +112,7 @@ while [[ $# -gt 0 ]]; do
     case $1 in
     -h | --help)
         printf ""
-        printf "USAGE: azure-deploy-rg.sh -sw -l eastus -f ../cloud-deployment/ustp-cams.bicep -p 'key01=value-01 key02=value-02 arrays=[\"test\resource\"] keyBool=true'"
+        printf "USAGE: azure-deploy-rg.sh -sw -l eastus -f ../cloud-deployment/ustp-cams.bicep -p 'key01=value-01 key02=value-02 arrays=[\"test\resource\"] keyBool=true' --isBranchDeployment true"
         printf ""
         shift
         ;;
@@ -148,13 +139,18 @@ while [[ $# -gt 0 ]]; do
         shift 2
         ;;
 
+    --isBranchDeployment)
+        isBranchDeployment="${2}"
+        shift 2
+        ;;
+
     *)
         exit 2 # error on unknown flag/switch
         ;;
     esac
 done
 
-validation_func "${location}" "${deployment_file}" "${deployment_parameters}"
+validation_func "${location}" "${deployment_file}" "${deployment_parameters}" "${isBranchDeployment:-}"
 
 # include location to deployment parameters
 deployment_parameters="${deployment_parameters} location=${location}"
