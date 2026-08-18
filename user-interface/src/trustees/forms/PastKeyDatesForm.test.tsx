@@ -142,6 +142,61 @@ describe('PastKeyDatesForm', () => {
     expect(screen.getByTestId('past-tpr-submission')).toBeInTheDocument();
   });
 
+  test('disables Save when a date field has an invalid value, re-enables once corrected', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+
+    renderComponent();
+
+    await waitFor(() => expect(screen.getByTestId('past-field-exam')).toHaveValue('2024-02-21'));
+
+    const saveButton = screen.getByTestId('button-save-past-key-dates');
+    expect(saveButton).toBeEnabled();
+
+    const fieldExamInput = screen.getByTestId('past-field-exam');
+    fireEvent.change(fieldExamInput, { target: { value: '1900-01-01' } });
+
+    await waitFor(() => {
+      expect(saveButton).toBeDisabled();
+    });
+
+    fireEvent.change(fieldExamInput, { target: { value: '2024-03-01' } });
+
+    await waitFor(() => {
+      expect(saveButton).toBeEnabled();
+    });
+  });
+
+  test('keeps Save disabled until all invalid date fields are corrected', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+
+    renderComponent();
+
+    await waitFor(() => expect(screen.getByTestId('past-field-exam')).toHaveValue('2024-02-21'));
+
+    const saveButton = screen.getByTestId('button-save-past-key-dates');
+    const fieldExamInput = screen.getByTestId('past-field-exam');
+    const auditInput = screen.getByTestId('past-audit');
+
+    fireEvent.change(fieldExamInput, { target: { value: '1900-01-01' } });
+    fireEvent.change(auditInput, { target: { value: '1900-01-01' } });
+
+    await waitFor(() => {
+      expect(saveButton).toBeDisabled();
+    });
+
+    fireEvent.change(fieldExamInput, { target: { value: '2024-03-01' } });
+
+    await waitFor(() => {
+      expect(saveButton).toBeDisabled();
+    });
+
+    fireEvent.change(auditInput, { target: { value: '2024-03-01' } });
+
+    await waitFor(() => {
+      expect(saveButton).toBeEnabled();
+    });
+  });
+
   test('pre-populates form from API response', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
 
