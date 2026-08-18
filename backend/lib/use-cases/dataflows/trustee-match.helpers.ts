@@ -211,7 +211,10 @@ export function parseCityStateZip(cityStateZipCountry?: string): {
  * - City match (state implied): 40 points (medium confidence)
  * - State match only: 30 points (low confidence)
  * - No match: 0 points
- * Case-insensitive comparison, missing fields treated as no match.
+ * Case-insensitive comparison, missing fields treated as no match. Zip comparison uses only the
+ * base 5-digit ZIP - a ZIP+4 extension present on one side (or a differing extension on both)
+ * does not contradict an otherwise-matching base ZIP, since DXTR's cityStateZipCountry is
+ * inconsistent about carrying the +4 suffix at all.
  */
 export function calculateAddressScore(
   dxtrAddress: LegacyAddress | undefined,
@@ -222,14 +225,15 @@ export function calculateAddressScore(
   if (!parsed) return 0;
 
   const normalizeField = (field?: string) => field?.trim().toLowerCase() || '';
+  const zip5 = (zip: string) => zip.split('-')[0];
 
   const dxtrCity = normalizeField(parsed.city);
   const dxtrState = normalizeField(parsed.state);
-  const dxtrZip = normalizeField(parsed.zipCode);
+  const dxtrZip = zip5(normalizeField(parsed.zipCode));
 
   const camsCity = normalizeField(camsAddress.city);
   const camsState = normalizeField(camsAddress.state);
-  const camsZip = normalizeField(camsAddress.zipCode);
+  const camsZip = zip5(normalizeField(camsAddress.zipCode));
 
   const stateMatch = dxtrState && camsState && dxtrState === camsState;
   const cityMatch = dxtrCity && camsCity && dxtrCity === camsCity;
