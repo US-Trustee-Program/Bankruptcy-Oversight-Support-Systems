@@ -54,6 +54,13 @@ param webappSubnetName string = webappSubnetNameFor(stackName)
 ])
 param webappPlanType string = 'P1v2'
 
+@description('SKU for the API and dataflows function app plans. EP1 (Elastic Premium) is the default; S1 (Standard) is available for environments where EP1 capacity is constrained.')
+@allowed([
+  'EP1'
+  'S1'
+])
+param functionsPlanType string = 'EP1'
+
 param apiFunctionName string = apiFunctionNameFor(stackName)
 
 param apiFunctionSubnetName string = apiFunctionSubnetNameFor(stackName)
@@ -311,6 +318,7 @@ module ustpApiFunction 'backend-api-deploy.bicep' = {
       analyticsWorkspaceId: deployAppInsights ? analyticsWorkspaceId : ''
       location: location
       apiPlanName: apiFunctionPlanName
+      functionsPlanType: functionsPlanType
       apiFunctionName: apiFunctionName
       slotName: slotName
       apiFunctionSubnetId: apiFunctionSubnetExisting.id
@@ -358,6 +366,7 @@ module ustpDataflowsFunction 'dataflows-resource-deploy.bicep' = {
     analyticsWorkspaceId: deployAppInsights ? analyticsWorkspaceId : ''
     location: location
     dataflowsPlanName: dataflowsFunctionPlanName
+    functionsPlanType: functionsPlanType
     apiFunctionName: apiFunctionName
     dataflowsFunctionName: dataflowsFunctionName
     slotName: slotName

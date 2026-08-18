@@ -9,6 +9,13 @@ param location string = resourceGroup().location
 @description('Application service plan name')
 param apiPlanName string
 
+@description('SKU for the API function app plan. EP1 (Elastic Premium) is the default; S1 (Standard) is available for environments where EP1 capacity is constrained.')
+@allowed([
+  'EP1'
+  'S1'
+])
+param functionsPlanType string = 'EP1'
+
 param stackName string = 'ustp-cams'
 
 @description('Azure functions version')
@@ -128,28 +135,36 @@ resource appConfigIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@202
   scope: resourceGroup(kvAppConfigResourceGroupName)
 }
 
+var functionsPlanTypeToSkuMap = {
+  EP1: { name: 'EP1', tier: 'ElasticPremium', family: 'EP' }
+  S1: { name: 'S1', tier: 'Standard' }
+}
+var isElasticFunctionsPlan = functionsPlanType == 'EP1'
+
 resource apiServicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
   location: location
   name: apiPlanName
   tags: tags
-  sku: {
-    name: 'EP1'
-    tier: 'ElasticPremium'
-    family: 'EP'
-  }
-  kind: 'elastic'
-  properties: {
-    perSiteScaling: true
-    elasticScaleEnabled: true
-    maximumElasticWorkerCount: 10
-    isSpot: false
-    reserved: true // set true for Linux
-    isXenon: false
-    hyperV: false
-    targetWorkerCount: 1
-    targetWorkerSizeId: 1
-    zoneRedundant: false
-  }
+  sku: functionsPlanTypeToSkuMap[functionsPlanType]
+  kind: isElasticFunctionsPlan ? 'elastic' : 'linux'
+  properties: union(
+    {
+      perSiteScaling: true
+      isSpot: false
+      reserved: true // set true for Linux
+      isXenon: false
+      hyperV: false
+      targetWorkerCount: 1
+      targetWorkerSizeId: 1
+      zoneRedundant: false
+    },
+    isElasticFunctionsPlan
+      ? {
+          elasticScaleEnabled: true
+          maximumElasticWorkerCount: 10
+        }
+      : {}
+  )
 }
 
 
@@ -244,8 +259,8 @@ resource apiSlotSiteConfig 'Microsoft.Web/sites/slots/config@2023-12-01' = {
     numberOfWorkers: baseApiFunctionAppConfigProperties.numberOfWorkers
     alwaysOn: baseApiFunctionAppConfigProperties.alwaysOn
     http20Enabled: baseApiFunctionAppConfigProperties.http20Enabled
-    functionAppScaleLimit: baseApiFunctionAppConfigProperties.functionAppScaleLimit
-    minimumElasticInstanceCount: baseApiFunctionAppConfigProperties.minimumElasticInstanceCount
+    functionAppScaleLimit: baseApiFunctionAppConfigProperties.?functionAppScaleLimit
+    minimumElasticInstanceCount: baseApiFunctionAppConfigProperties.?minimumElasticInstanceCount
     publicNetworkAccess: baseApiFunctionAppConfigProperties.publicNetworkAccess
     ipSecurityRestrictions: stagingIpSecurityRestrictionsRules
     ipSecurityRestrictionsDefaultAction: 'Deny'
@@ -288,12 +303,11 @@ resource apiSlotAppSettings 'Microsoft.Web/sites/slots/config@2023-12-01' = {
   ]
 }
 
-var baseApiFunctionAppConfigProperties = {
+var baseApiFunctionAppConfigProperties = union(
+  {
     numberOfWorkers: 1
     alwaysOn: true
     http20Enabled: true
-    functionAppScaleLimit: 1
-    minimumElasticInstanceCount: 1
     publicNetworkAccess: 'Enabled'
     ipSecurityRestrictionsDefaultAction: isUstpDeployment ? 'Deny' : 'Allow'
     scmIpSecurityRestrictions: [
@@ -309,7 +323,14 @@ var baseApiFunctionAppConfigProperties = {
     scmIpSecurityRestrictionsUseMain: false
     linuxFxVersion: linuxFxVersionMap['${functionsRuntime}']
     ftpsState: 'Disabled'
-  }
+  },
+  isElasticFunctionsPlan
+    ? {
+        functionAppScaleLimit: 1
+        minimumElasticInstanceCount: 1
+      }
+    : {}
+)
 
   var prodFunctionAppConfigProperties = union(baseApiFunctionAppConfigProperties, {
     ipSecurityRestrictions: productionIpSecurityRestrictionsRules

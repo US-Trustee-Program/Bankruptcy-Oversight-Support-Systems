@@ -5,6 +5,13 @@ param location string = resourceGroup().location
 @description('Application service plan name')
 param dataflowsPlanName string
 
+@description('SKU for the dataflows function app plan. EP1 (Elastic Premium) is the default; S1 (Standard) is available for environments where EP1 capacity is constrained.')
+@allowed([
+  'EP1'
+  'S1'
+])
+param functionsPlanType string = 'EP1'
+
 param stackName string = 'ustp-cams'
 
 @description('Azure functions version')
@@ -131,28 +138,36 @@ resource appConfigIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@202
   scope: resourceGroup(kvAppConfigResourceGroupName)
 }
 
+var functionsPlanTypeToSkuMap = {
+  EP1: { name: 'EP1', tier: 'ElasticPremium', family: 'EP' }
+  S1: { name: 'S1', tier: 'Standard' }
+}
+var isElasticFunctionsPlan = functionsPlanType == 'EP1'
+
 resource dataflowsServicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
   location: location
   name: dataflowsPlanName
   tags: tags
-  sku: {
-    name: 'EP1'
-    tier: 'ElasticPremium'
-    family: 'EP'
-  }
-  kind: 'elastic'
-  properties: {
-    perSiteScaling: true
-    elasticScaleEnabled: true
-    maximumElasticWorkerCount: 10
-    isSpot: false
-    reserved: true // set true for Linux
-    isXenon: false
-    hyperV: false
-    targetWorkerCount: 0
-    targetWorkerSizeId: 0
-    zoneRedundant: false
-  }
+  sku: functionsPlanTypeToSkuMap[functionsPlanType]
+  kind: isElasticFunctionsPlan ? 'elastic' : 'linux'
+  properties: union(
+    {
+      perSiteScaling: true
+      isSpot: false
+      reserved: true // set true for Linux
+      isXenon: false
+      hyperV: false
+      targetWorkerCount: 0
+      targetWorkerSizeId: 0
+      zoneRedundant: false
+    },
+    isElasticFunctionsPlan
+      ? {
+          elasticScaleEnabled: true
+          maximumElasticWorkerCount: 10
+        }
+      : {}
+  )
 }
 
 //Storage Account Resources
@@ -236,8 +251,8 @@ resource dataflowsFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
       numberOfWorkers: dataflowsFunctionConfigProperties.numberOfWorkers
       alwaysOn: dataflowsFunctionConfigProperties.alwaysOn
       http20Enabled: dataflowsFunctionConfigProperties.http20Enabled
-      functionAppScaleLimit: dataflowsFunctionConfigProperties.functionAppScaleLimit
-      minimumElasticInstanceCount: dataflowsFunctionConfigProperties.minimumElasticInstanceCount
+      functionAppScaleLimit: dataflowsFunctionConfigProperties.?functionAppScaleLimit
+      minimumElasticInstanceCount: dataflowsFunctionConfigProperties.?minimumElasticInstanceCount
       publicNetworkAccess: dataflowsFunctionConfigProperties.publicNetworkAccess
       ipSecurityRestrictions: dataflowsFunctionConfigProperties.ipSecurityRestrictions
       ipSecurityRestrictionsDefaultAction: dataflowsFunctionConfigProperties.ipSecurityRestrictionsDefaultAction
@@ -323,8 +338,8 @@ resource dataflowsSlotSiteConfig 'Microsoft.Web/sites/slots/config@2023-12-01' =
     numberOfWorkers: dataflowsFunctionConfigProperties.numberOfWorkers
     alwaysOn: dataflowsFunctionConfigProperties.alwaysOn
     http20Enabled: dataflowsFunctionConfigProperties.http20Enabled
-    functionAppScaleLimit: dataflowsFunctionConfigProperties.functionAppScaleLimit
-    minimumElasticInstanceCount: dataflowsFunctionConfigProperties.minimumElasticInstanceCount
+    functionAppScaleLimit: dataflowsFunctionConfigProperties.?functionAppScaleLimit
+    minimumElasticInstanceCount: dataflowsFunctionConfigProperties.?minimumElasticInstanceCount
     publicNetworkAccess: dataflowsFunctionConfigProperties.publicNetworkAccess
     ipSecurityRestrictions: dataflowsFunctionConfigProperties.ipSecurityRestrictions
     ipSecurityRestrictionsDefaultAction: dataflowsFunctionConfigProperties.ipSecurityRestrictionsDefaultAction
@@ -365,15 +380,19 @@ resource dataflowsSlotAppSettings 'Microsoft.Web/sites/slots/config@2023-12-01' 
   ]
 }
 
-var dataflowsFunctionConfigProperties = {
+// alwaysOn is forced true whenever the plan isn't elastic: dataflows is queue/timer
+// triggered, and a Dedicated (non-EP) plan can unload an idle Functions host without
+// it, causing missed or delayed trigger firing. EP relies on
+// minimumElasticInstanceCount instead to keep an instance warm, which is why this
+// was previously false unconditionally.
+var dataflowsFunctionConfigProperties = union(
+  {
     cors: {
       allowedOrigins: dataflowsCorsAllowOrigins
     }
     numberOfWorkers: 4
-    alwaysOn: false
+    alwaysOn: isElasticFunctionsPlan ? false : true
     http20Enabled: true
-    functionAppScaleLimit: 4
-    minimumElasticInstanceCount: 1
     publicNetworkAccess: 'Enabled'
     ipSecurityRestrictions: dataflowsIpSecurityRestrictionsRules
     ipSecurityRestrictionsDefaultAction: 'Deny'
@@ -394,7 +413,14 @@ var dataflowsFunctionConfigProperties = {
     linuxFxVersion: linuxFxVersionMap['${functionsRuntime}']
     appSettings: dataflowsApplicationSettings
     ftpsState: 'Disabled'
-  }
+  },
+  isElasticFunctionsPlan
+    ? {
+        functionAppScaleLimit: 4
+        minimumElasticInstanceCount: 1
+      }
+    : {}
+)
 
 //Create App Insights
 
