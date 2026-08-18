@@ -27,6 +27,7 @@ export type DatePickerProps = JSX.IntrinsicElements['input'] & {
   disableMax?: boolean;
   customErrorMessage?: string;
   validators?: ValidatorFunction[];
+  onValidationChange?: (hasError: boolean) => void;
 };
 
 function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
@@ -112,6 +113,12 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
     const errors = validateDateValue(dateValue);
     setErrorMessage(errors.join(' '));
   }, [props.min, props.max, dateValue]);
+
+  // Notify parent of the current effective error state
+  useEffect(() => {
+    props.onValidationChange?.(!!displayErrorMessage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [displayErrorMessage]);
 
   function setClassName() {
     return `usa-input ${props.className} ${displayErrorMessage.length ? 'usa-input--error' : ''}`;

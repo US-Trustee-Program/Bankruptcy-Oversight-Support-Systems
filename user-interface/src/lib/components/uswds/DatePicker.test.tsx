@@ -210,6 +210,31 @@ describe('DatePicker additional coverage tests', () => {
     });
   });
 
+  test('should call onValidationChange(true) when an invalid date is entered and onValidationChange(false) once corrected', async () => {
+    const min = '2024-01-01';
+    const max = '2024-12-31';
+    const onValidationChange = vi.fn();
+    renderWithProps({ min, max, onChange: mockOnChange, onValidationChange });
+
+    const inputEl = screen.getByTestId(DEFAULT_ID);
+
+    fireEvent.change(inputEl, { target: { value: '2023-12-31' } });
+
+    await waitFor(() => {
+      expect(onValidationChange).toHaveBeenCalledWith(true);
+    });
+
+    fireEvent.change(inputEl, { target: { value: '2024-06-15' } });
+
+    await waitFor(() => {
+      expect(onValidationChange).toHaveBeenCalledWith(false);
+    });
+  });
+
+  test('should not throw when rendered without onValidationChange', () => {
+    expect(() => renderWithProps()).not.toThrow();
+  });
+
   test('should handle empty setValue gracefully', () => {
     const initialValue = '2024-01-01';
     const view = renderWithProps({ value: initialValue });

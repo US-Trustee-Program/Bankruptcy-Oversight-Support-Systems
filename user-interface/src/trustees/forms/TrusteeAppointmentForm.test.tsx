@@ -327,6 +327,85 @@ describe('TrusteeAppointmentForm Tests', () => {
     });
   });
 
+  test('should disable submit button when appointedDate is invalid, and re-enable once corrected', async () => {
+    renderWithProps();
+
+    await waitFor(() => {
+      expect(document.querySelector('#district')).toBeInTheDocument();
+    });
+
+    const appointedDateInput = screen.getByLabelText(/appointment date/i) as HTMLInputElement;
+
+    await selectDistrict(userEvent, courtDivisionName.alaskaJ);
+    await selectChapter(userEvent, chapter.seven);
+    await selectAppointmentType(userEvent, 'Panel');
+    fillDate(TEST_APPOINTED_DATE);
+
+    const submitButton = screen.getByRole('button', { name: /save/i });
+    await waitFor(() => {
+      expect(submitButton).not.toBeDisabled();
+    });
+
+    fillDate('1900-01-01');
+    await waitFor(() => {
+      expect(submitButton).toBeDisabled();
+    });
+
+    fillDate(TEST_APPOINTED_DATE);
+    await waitFor(() => {
+      expect(appointedDateInput.value).toBe(TEST_APPOINTED_DATE);
+    });
+    await waitFor(() => {
+      expect(submitButton).not.toBeDisabled();
+    });
+  });
+
+  test('should disable submit button when effectiveDate is invalid in edit mode', async () => {
+    const appointmentToEdit: TrusteeAppointment = {
+      ...mockActiveAppointment,
+      chapter: '7',
+      appointmentType: appointmentType.panel as AppointmentType,
+      status: 'active',
+    };
+
+    renderWithProps({
+      trusteeId: TEST_TRUSTEE_ID,
+      appointment: appointmentToEdit,
+    });
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/status effective date/i)).toBeInTheDocument();
+    });
+
+    const submitButton = screen.getByRole('button', { name: /save/i });
+    await waitFor(() => {
+      expect(submitButton).not.toBeDisabled();
+    });
+
+    const effectiveDateInput = screen.getByLabelText(/status effective date/i) as HTMLInputElement;
+    fireEvent.change(effectiveDateInput, { target: { value: '1900-01-01' } });
+
+    await waitFor(() => {
+      expect(submitButton).toBeDisabled();
+    });
+
+    fireEvent.change(effectiveDateInput, { target: { value: '2023-06-01' } });
+
+    await waitFor(() => {
+      expect(submitButton).not.toBeDisabled();
+    });
+  });
+
+  test('should render form with noValidate to suppress native browser validation', async () => {
+    renderWithProps();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('trustee-appointment-form')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('trustee-appointment-form')).toHaveAttribute('novalidate');
+  });
+
   test('should handle successful form submission', async () => {
     vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [] });
     const postSpy = vi.spyOn(Api2, 'postTrusteeAppointment').mockResolvedValue(undefined);
