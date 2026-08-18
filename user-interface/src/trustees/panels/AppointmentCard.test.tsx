@@ -12,6 +12,7 @@ import * as featureFlagsHook from '@/lib/hooks/UseFeatureFlags';
 import {
   DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES,
   DISPLAY_CHPT11_SUBV_PAST_KEY_DATES,
+  DISPLAY_CHPT12_STANDING_KEY_DATES,
 } from '@/lib/hooks/UseFeatureFlags';
 
 const mockUseNavigate = vi.hoisted(() => vi.fn());
@@ -439,6 +440,52 @@ describe('AppointmentCard', () => {
         expect(screen.getByText(/District:/i)).toBeInTheDocument();
       });
       expect(screen.queryByTestId('past-key-dates-card')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('when DISPLAY_CHPT12_STANDING_KEY_DATES flag is enabled', () => {
+    const ch12StandingAppointment: TrusteeAppointment = {
+      ...mockAppointment,
+      chapter: '12',
+      appointmentType: 'standing',
+    };
+
+    test('renders PastKeyDates card for chapter 12 standing appointment', async () => {
+      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+        [DISPLAY_CHPT12_STANDING_KEY_DATES]: true,
+      });
+
+      renderWithProps({ appointment: ch12StandingAppointment });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
+      });
+    });
+
+    test('does not render PastKeyDates card when flag is disabled', async () => {
+      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+        [DISPLAY_CHPT12_STANDING_KEY_DATES]: false,
+      });
+
+      renderWithProps({ appointment: ch12StandingAppointment });
+
+      await waitFor(() => {
+        expect(screen.getByText(/District:/i)).toBeInTheDocument();
+      });
+      expect(screen.queryByTestId('past-key-dates-card')).not.toBeInTheDocument();
+    });
+
+    test('does not render UpcomingKeyDates card for chapter 12 standing appointment', async () => {
+      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+        [DISPLAY_CHPT12_STANDING_KEY_DATES]: true,
+      });
+
+      renderWithProps({ appointment: ch12StandingAppointment });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
+      });
+      expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
     });
   });
 

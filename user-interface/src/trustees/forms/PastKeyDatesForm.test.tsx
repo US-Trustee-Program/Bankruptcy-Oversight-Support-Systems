@@ -46,6 +46,12 @@ const subvAppointment: TrusteeAppointment = {
   appointmentType: 'pool',
 };
 
+const ch12StandingAppointment: TrusteeAppointment = {
+  ...chapter7Appointment,
+  chapter: '12',
+  appointmentType: 'standing',
+};
+
 const populatedDocument: TrusteeUpcomingKeyDates = {
   id: 'doc-001',
   documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
@@ -442,6 +448,72 @@ describe('PastKeyDatesForm', () => {
 
     expect(putSpy).not.toHaveBeenCalled();
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');
+  });
+
+  describe('chapter12-standing variant', () => {
+    beforeEach(() => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({
+        data: [ch12StandingAppointment],
+      });
+    });
+
+    test('renders exactly 2 date inputs and 1 year dropdown', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-past-key-dates')).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('past-background-question')).toBeInTheDocument();
+      expect(screen.getByTestId('past-audit')).toBeInTheDocument();
+      expect(screen.getByTestId('last-audit-fiscal-year')).toBeInTheDocument();
+      expect(screen.queryByTestId('past-field-exam')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('past-tpr-submission')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('past-last-monthly-report-received')).not.toBeInTheDocument();
+    });
+
+    test('renders correct field labels from chapter12-standing variant config', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByText('Last Update to Background Questionnaire')).toBeInTheDocument();
+      });
+
+      expect(screen.getByText('Audit Report Date')).toBeInTheDocument();
+      expect(screen.getByText("Last Audit's Fiscal Year")).toBeInTheDocument();
+    });
+
+    test('save preserves non-chapter12 fields from original doc', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+      const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('past-background-question')).toBeInTheDocument();
+      });
+
+      await userEvent.click(screen.getByTestId('button-save-past-key-dates'));
+
+      await waitFor(() =>
+        expect(putSpy).toHaveBeenCalledWith(
+          'trustee-001',
+          'appointment-001',
+          expect.objectContaining({
+            pastBackgroundQuestion: populatedDocument.pastBackgroundQuestion,
+            pastAudit: populatedDocument.pastAudit,
+            lastAuditFiscalYear: populatedDocument.lastAuditFiscalYear,
+            // fields not shown by this variant must be preserved from the original doc
+            pastFieldExam: populatedDocument.pastFieldExam,
+            pastTprSubmission: populatedDocument.pastTprSubmission,
+          }),
+        ),
+      );
+    });
   });
 
   describe('subv-pool variant', () => {
