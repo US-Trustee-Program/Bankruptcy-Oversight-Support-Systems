@@ -46,6 +46,9 @@ param stackName string
 
 param location string = resourceGroup().location
 
+@description('Region for the Key Vault private endpoint specifically, since it must live in the same region as the (possibly separately-located) branch VNet/subnet it is placed into. Defaults to location, matching the previous, always-single-region behavior.')
+param networkLocation string = location
+
 param isUstpDeployment bool = false
 
 @description('Flag: determines the setup of DNS Zone, Link virtual networks to zone.')
@@ -149,6 +152,7 @@ module kvSetup './ustp-cams-kv-app-config-setup.bicep' = {
   params: {
     stackName: stackName
     location: location
+    networkLocation: networkLocation
     deployDns: deployDns
     kvResourceGroup: kvAppConfigResourceGroupName
     kvName: kvAppConfigName
