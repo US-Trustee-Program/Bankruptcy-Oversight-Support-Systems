@@ -42,6 +42,41 @@ describe('TrusteeUpcomingKeyDatesController', () => {
   test('throws NotFoundError when both key-dates flags are disabled', async () => {
     context.featureFlags['display-chpt7-panel-upcoming-key-dates'] = false;
     context.featureFlags['display-chpt11-subv-past-key-dates'] = false;
+    context.featureFlags['display-chpt12-standing-key-dates'] = false;
+    context.request = mockCamsHttpRequest({
+      method: 'GET',
+      params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
+    });
+
+    const controller = new TrusteeUpcomingKeyDatesController(context);
+
+    await expect(controller.handleRequest(context)).rejects.toThrow(
+      new NotFoundError(expect.anything()),
+    );
+  });
+
+  test('GET succeeds when only display-chpt12-standing-key-dates flag is enabled', async () => {
+    context.featureFlags['display-chpt7-panel-upcoming-key-dates'] = false;
+    context.featureFlags['display-chpt11-subv-past-key-dates'] = false;
+    context.featureFlags['display-chpt12-standing-key-dates'] = true;
+    vi.spyOn(TrusteeUpcomingKeyDatesUseCase.prototype, 'getUpcomingKeyDates').mockResolvedValue(
+      null,
+    );
+    context.request = mockCamsHttpRequest({
+      method: 'GET',
+      params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
+    });
+
+    const controller = new TrusteeUpcomingKeyDatesController(context);
+    const response = await controller.handleRequest(context);
+
+    expect(response.statusCode).toBe(HttpStatusCodes.OK);
+  });
+
+  test('throws NotFoundError when all three key-dates flags are disabled', async () => {
+    context.featureFlags['display-chpt7-panel-upcoming-key-dates'] = false;
+    context.featureFlags['display-chpt11-subv-past-key-dates'] = false;
+    context.featureFlags['display-chpt12-standing-key-dates'] = false;
     context.request = mockCamsHttpRequest({
       method: 'GET',
       params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },

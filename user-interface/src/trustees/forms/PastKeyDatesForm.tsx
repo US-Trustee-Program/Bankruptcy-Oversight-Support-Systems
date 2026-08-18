@@ -95,6 +95,7 @@ function buildUpcomingKeyDatesInput(
 
 function deriveVariant(chapter: string, appointmentType: string): PastKeyDatesVariant {
   if (chapter === '11-subchapter-v' && appointmentType === 'pool') return 'subv-pool';
+  if (chapter === '12' && appointmentType === 'standing') return 'chapter12-standing';
   return 'chapter7-panel';
 }
 
