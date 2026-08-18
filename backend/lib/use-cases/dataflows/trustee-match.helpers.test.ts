@@ -1,4 +1,5 @@
 import { vi } from 'vitest';
+import { faker } from '@faker-js/faker';
 import {
   escapeRegex,
   normalizeName,
@@ -15,6 +16,13 @@ import {
   resolveNameCollisionByScoring,
   isAppointmentMatch,
   findInactivePerfectMatch,
+  stripParentheticalAnnotations,
+  stripTrusteeRoleSuffix,
+  stripChapterAnnotation,
+  stripSourceSystemArtifacts,
+  normalizeGenerationalSuffix,
+  stripNamePunctuation,
+  normalizeNameForMatching,
 } from './trustee-match.helpers';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
@@ -23,12 +31,21 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { LegacyAddress } from '@common/cams/parties';
 import { Address, PhoneNumber } from '@common/cams/contact';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
-import { DxtrTrusteeParty, TrusteeAppointmentSyncEvent } from '@common/cams/dataflow-events';
+import {
+  DxtrTrusteeParty,
+  TrusteeAppointmentSyncEvent,
+  UNSCORED,
+} from '@common/cams/dataflow-events';
 import { AppointmentChapterType, Trustee } from '@common/cams/trustees';
 import factory from '../../factory';
 import { TrusteesRepository, TrusteeAppointmentsRepository } from '../gateways.types';
 import { TooManyRequestsError } from '../../common-errors/too-many-requests-error';
 import { GatewayTimeoutError } from '../../common-errors/gateway-timeout';
+
+// Faker occasionally generates a name part containing its own punctuation (e.g. "O'Kon",
+// "Smith-Jones"). Tests that build an expected string by hand rather than through the function
+// under test need a punctuation-free part so that hand-built expectation stays deterministic.
+const alphaNamePart = () => faker.person.lastName().replace(/[^a-zA-Z]/g, '');
 
 // Centralized test fixture builders
 const makeAppointment = (overrides: Partial<TrusteeAppointment> = {}): TrusteeAppointment => ({
@@ -126,6 +143,242 @@ describe('escapeRegex', () => {
   });
 });
 
+describe('stripParentheticalAnnotations', () => {
+  test('should strip a trailing role marker, e.g. "(TR)"', () => {
+    const name = faker.person.fullName();
+    expect(stripParentheticalAnnotations(`${name} (TR)`)).toBe(name);
+  });
+
+  test('should strip a trailing court-office code, e.g. "(MON)"', () => {
+    const name = faker.person.fullName();
+    expect(stripParentheticalAnnotations(`${name} (MON)`)).toBe(name);
+  });
+
+  test('should strip two parenthetical groups in the same name', () => {
+    const first = faker.person.firstName();
+    const middleInitial = faker.person.firstName()[0];
+    const last = faker.person.lastName();
+    const courtCode = faker.helpers.arrayElement(['SV', 'ND']);
+    expect(
+      stripParentheticalAnnotations(`${first} (${courtCode}) ${middleInitial} ${last} (TR)`),
+    ).toBe(`${first} ${middleInitial} ${last}`);
+  });
+
+  test('should strip a mid-name nickname group', () => {
+    const first = faker.person.firstName();
+    const nickname = faker.person.firstName();
+    const last = faker.person.lastName();
+    expect(stripParentheticalAnnotations(`${first} (${nickname}) ${last} Jr.`)).toBe(
+      `${first} ${last} Jr.`,
+    );
+  });
+
+  test('should leave a name with no parenthetical group unchanged', () => {
+    const name = faker.person.fullName();
+    expect(stripParentheticalAnnotations(name)).toBe(name);
+  });
+});
+
+describe('stripTrusteeRoleSuffix', () => {
+  test('should strip a trailing " tr"', () => {
+    const name = faker.person.fullName();
+    expect(stripTrusteeRoleSuffix(`${name} tr`)).toBe(name);
+  });
+
+  test('should strip a trailing " Trustee"', () => {
+    const name = faker.person.fullName();
+    expect(stripTrusteeRoleSuffix(`${name} Trustee`)).toBe(name);
+  });
+
+  test('should strip a trailing "-Trustee"', () => {
+    const name = faker.person.fullName();
+    expect(stripTrusteeRoleSuffix(`${name}-Trustee`)).toBe(name);
+  });
+
+  test('should leave a name with no role suffix unchanged', () => {
+    const name = faker.person.fullName();
+    expect(stripTrusteeRoleSuffix(name)).toBe(name);
+  });
+});
+
+describe('stripChapterAnnotation', () => {
+  test('should strip a "- Ch 11 SubV" annotation', () => {
+    const name = faker.person.fullName();
+    expect(stripChapterAnnotation(`${name} - Ch 11 SubV`)).toBe(name);
+  });
+
+  test('should strip a "-SBRA V" annotation', () => {
+    const name = faker.person.fullName();
+    expect(stripChapterAnnotation(`${name} -SBRA V`)).toBe(name);
+  });
+
+  test('should leave a name with no chapter annotation unchanged', () => {
+    const name = faker.person.fullName();
+    expect(stripChapterAnnotation(name)).toBe(name);
+  });
+});
+
+describe('stripSourceSystemArtifacts', () => {
+  test('should strip a trailing "_<digits>" artifact', () => {
+    const name = faker.person.fullName();
+    const suffix = faker.number.int({ min: 1, max: 99 });
+    expect(stripSourceSystemArtifacts(`${name}_${suffix}`)).toBe(name);
+  });
+
+  test('should strip a trailing bare apostrophe', () => {
+    const name = faker.person.fullName();
+    expect(stripSourceSystemArtifacts(`${name}'`)).toBe(name);
+  });
+
+  test('should leave a name with no artifact unchanged', () => {
+    const name = faker.person.fullName();
+    expect(stripSourceSystemArtifacts(name)).toBe(name);
+  });
+});
+
+describe('normalizeGenerationalSuffix', () => {
+  test('should normalize "Jr." with no comma', () => {
+    const name = faker.person.fullName();
+    expect(normalizeGenerationalSuffix(`${name} Jr.`)).toBe(`${name} Jr`);
+  });
+
+  test('should normalize ", Jr." with a comma', () => {
+    const name = faker.person.fullName();
+    expect(normalizeGenerationalSuffix(`${name}, Jr.`)).toBe(`${name} Jr`);
+  });
+
+  test('should normalize "III" with no comma', () => {
+    const name = faker.person.fullName();
+    expect(normalizeGenerationalSuffix(`${name} III`)).toBe(`${name} III`);
+  });
+
+  test('should normalize ", III" with a comma', () => {
+    const name = faker.person.fullName();
+    expect(normalizeGenerationalSuffix(`${name}, III`)).toBe(`${name} III`);
+  });
+
+  test('should leave a name with no generational suffix unchanged', () => {
+    const name = faker.person.fullName();
+    expect(normalizeGenerationalSuffix(name)).toBe(name);
+  });
+
+  test('should make comma and no-comma forms compare equal', () => {
+    const name = faker.person.fullName();
+    expect(normalizeGenerationalSuffix(`${name} Jr.`)).toBe(
+      normalizeGenerationalSuffix(`${name}, Jr.`),
+    );
+  });
+});
+
+describe('stripNamePunctuation', () => {
+  test('should drop an apostrophe', () => {
+    const first = alphaNamePart();
+    const middleInitial = alphaNamePart()[0];
+    const lastRoot = alphaNamePart();
+    expect(stripNamePunctuation(`${first} ${middleInitial} O'${lastRoot}`)).toBe(
+      `${first} ${middleInitial} o${lastRoot}`.toLowerCase(),
+    );
+  });
+
+  test('should convert a hyphen to a space', () => {
+    const firstA = alphaNamePart();
+    const firstB = alphaNamePart();
+    const last = alphaNamePart();
+    expect(stripNamePunctuation(`${firstA}-${firstB} ${last}`)).toBe(
+      `${firstA} ${firstB} ${last}`.toLowerCase(),
+    );
+  });
+
+  test('should make unspaced and spaced double initials compare equal', () => {
+    const first = faker.person.firstName();
+    const initial1 = faker.person.firstName()[0];
+    const initial2 = faker.person.firstName()[0];
+    const last = faker.person.lastName();
+    expect(stripNamePunctuation(`${first} ${initial1}.${initial2}. ${last}`)).toBe(
+      stripNamePunctuation(`${first} ${initial1}. ${initial2}. ${last}`),
+    );
+  });
+
+  test('should convert a hyphen within a compound surname to a space', () => {
+    const first = alphaNamePart();
+    const surnamePartA = alphaNamePart();
+    const surnamePartB = alphaNamePart();
+    expect(stripNamePunctuation(`${first} ${surnamePartA}-${surnamePartB}`)).toBe(
+      `${first} ${surnamePartA} ${surnamePartB}`.toLowerCase(),
+    );
+  });
+
+  test('should drop an apostrophe within a compound surname', () => {
+    const first = alphaNamePart();
+    const surnameRoot = alphaNamePart();
+    expect(stripNamePunctuation(`${first} O'${surnameRoot}`)).toBe(
+      `${first} o${surnameRoot}`.toLowerCase(),
+    );
+  });
+});
+
+describe('normalizeNameForMatching', () => {
+  test('should compose stripping a role marker with the rest of the pipeline', () => {
+    const first = alphaNamePart();
+    const last = alphaNamePart();
+    expect(normalizeNameForMatching(`${first} ${last} (TR)`)).toBe(
+      `${first} ${last}`.toLowerCase(),
+    );
+  });
+
+  test('should compose stripping a chapter annotation with the rest of the pipeline', () => {
+    const first = alphaNamePart();
+    const middleInitial = alphaNamePart()[0];
+    const last = alphaNamePart();
+    expect(normalizeNameForMatching(`${first} ${middleInitial}. ${last} -SBRA V`)).toBe(
+      `${first} ${middleInitial} ${last}`.toLowerCase(),
+    );
+  });
+
+  test('should make differently-formatted generational suffixes compare equal', () => {
+    const first = faker.person.firstName();
+    const last = faker.person.lastName();
+    expect(normalizeNameForMatching(`${first} ${last} Jr.`)).toBe(
+      normalizeNameForMatching(`${first} ${last}, Jr.`),
+    );
+  });
+
+  test('should make a punctuation-only variant compare equal to its plain form', () => {
+    const first = faker.person.firstName();
+    const middleInitial = faker.person.firstName()[0];
+    const last = faker.person.lastName();
+    expect(normalizeNameForMatching(`${first} ${middleInitial} ${last}`)).toBe(
+      normalizeNameForMatching(`${first} ${middleInitial}. ${last}`),
+    );
+  });
+
+  test('should make a hyphenated compound surname compare equal to its space-separated form', () => {
+    const first = alphaNamePart();
+    const surnamePartA = alphaNamePart();
+    const surnamePartB = alphaNamePart();
+    expect(normalizeNameForMatching(`${first} ${surnamePartA}-${surnamePartB}`)).toBe(
+      normalizeNameForMatching(`${first} ${surnamePartA} ${surnamePartB}`),
+    );
+  });
+
+  // Edge case, not a bug: a dropped/added middle initial is a genuine content difference, not a
+  // punctuation gap - stripSourceSystemArtifacts removes the "_<digits>" artifact, but the
+  // remaining names still correctly compare unequal so the record falls through to human
+  // verification instead of being force-matched. Real-world example: "Nacole M. Jipping_13" vs
+  // the CAMS record "Nacole Jipping" (no middle initial) - it's fine for this to stay a no-match.
+  test('should leave a source-system artifact intentionally unresolved when a middle initial also differs', () => {
+    const first = alphaNamePart();
+    const middleInitial = alphaNamePart()[0];
+    const last = alphaNamePart();
+    const withArtifactAndMiddleInitial = `${first} ${middleInitial}. ${last}_13`;
+    const withoutMiddleInitial = `${first} ${last}`;
+
+    expect(normalizeNameForMatching(withArtifactAndMiddleInitial)).not.toBe(
+      normalizeNameForMatching(withoutMiddleInitial),
+    );
+  });
+});
+
 describe('matchTrusteeByName', () => {
   let context: ApplicationContext;
 
@@ -179,6 +432,94 @@ describe('matchTrusteeByName', () => {
     await matchTrusteeByName(context, '  ' + trustee.name + '  ');
 
     expect(findSpy).toHaveBeenCalledWith(trustee.name);
+  });
+
+  test('should not call the fuzzy fallback when the exact-match path finds a result', async () => {
+    const trustee = MockData.getTrustee();
+    vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([trustee]);
+    const scoredSpy = vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored');
+
+    await matchTrusteeByName(context, trustee.name);
+
+    expect(scoredSpy).not.toHaveBeenCalled();
+  });
+
+  test('should fall back to the scored search and resolve when normalization bridges a punctuation gap', async () => {
+    const first = alphaNamePart();
+    const last = alphaNamePart();
+    const trustee = MockData.getTrustee({ name: `${first} ${last}, Jr.` });
+    vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([]);
+    const scoredSpy = vi
+      .spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored')
+      .mockResolvedValue([trustee]);
+
+    const result = await matchTrusteeByName(context, `${first} ${last} Jr.`);
+
+    expect(scoredSpy).toHaveBeenCalledWith(`${first} ${last} Jr.`);
+    expect(result).toEqual({ kind: 'resolved', trusteeId: trustee.trusteeId });
+  });
+
+  test('should return no-match when the exact-match path and the fuzzy fallback both find nothing', async () => {
+    vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([]);
+    vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored').mockResolvedValue([]);
+
+    const result = await matchTrusteeByName(context, faker.person.fullName());
+
+    expect(result).toEqual({ kind: 'no-match' });
+  });
+
+  test('should return no-match when fuzzy candidates exist but none normalize-match', async () => {
+    const trustee = MockData.getTrustee({ name: faker.person.fullName() });
+    vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([]);
+    vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored').mockResolvedValue([
+      trustee,
+    ]);
+
+    const result = await matchTrusteeByName(context, `${alphaNamePart()} ${alphaNamePart()} Jr.`);
+
+    expect(result).toEqual({ kind: 'no-match' });
+  });
+
+  // Edge case, not a bug: same real-world pattern as "Nacole M. Jipping_13" vs CAMS's
+  // "Nacole Jipping" - a source-system artifact is stripped, but the DXTR name still carries a
+  // middle initial the CAMS record doesn't have. That's a genuine content difference, not a
+  // punctuation gap, so it's correct for this to surface as no-match and go to human
+  // verification rather than being force-matched.
+  test('should return no-match when a fuzzy candidate differs by more than punctuation, e.g. a dropped middle initial', async () => {
+    const first = alphaNamePart();
+    const middleInitial = alphaNamePart()[0];
+    const last = alphaNamePart();
+    const trustee = MockData.getTrustee({ name: `${first} ${last}` });
+    vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([]);
+    vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored').mockResolvedValue([
+      trustee,
+    ]);
+
+    const result = await matchTrusteeByName(context, `${first} ${middleInitial}. ${last}_13`);
+
+    expect(result).toEqual({ kind: 'no-match' });
+  });
+
+  test('should return ambiguous with UNSCORED candidates when multiple fuzzy candidates normalize-match', async () => {
+    const first = alphaNamePart();
+    const last = alphaNamePart();
+    const trustee1 = MockData.getTrustee({ name: `${first} ${last} Jr.` });
+    const trustee2 = MockData.getTrustee({ name: `${first} ${last}, Jr.` });
+    vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([]);
+    vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored').mockResolvedValue([
+      trustee1,
+      trustee2,
+    ]);
+
+    const result = await matchTrusteeByName(context, `${first} ${last} Jr`);
+
+    expect(result).toEqual({
+      kind: 'ambiguous',
+      matchCandidates: expect.arrayContaining([
+        expect.objectContaining({ trusteeId: trustee1.trusteeId, totalScore: UNSCORED }),
+        expect.objectContaining({ trusteeId: trustee2.trusteeId, totalScore: UNSCORED }),
+      ]),
+    });
   });
 });
 
