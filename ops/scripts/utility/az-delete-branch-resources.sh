@@ -599,15 +599,22 @@ elif [[ "${netExists}" == "true" ]]; then
             # above, or ran with unmanage semantics that don't remove this
             # link, rather than as this link's primary cleanup path.
             #
-            # Matches keyvaultPrivateDnsZoneName / webappPrivateDnsZoneName in
-            # ustp-cams-kv-app-config-setup.bicep / app-shared-setup.bicep —
-            # those are the only other places these literals appear. Can't
-            # share them across bash/bicep without a codegen step, so keep
-            # all in lockstep by hand: if one changes, its vnet-link lookup
-            # silently stops matching and falls to the "nothing to delete"
-            # branch, leaking the link.
+            # Matches keyvaultPrivateDnsZoneName / webappPrivateDnsZoneName /
+            # sqlPrivateDnsZoneName in ustp-cams-kv-app-config-setup.bicep /
+            # app-shared-setup.bicep / main.bicep — those are the only other
+            # places these literals appear. Can't share them across
+            # bash/bicep without a codegen step, so keep all in lockstep by
+            # hand: if one changes, its vnet-link lookup silently stops
+            # matching and falls to the "nothing to delete" branch, leaking
+            # the link.
+            #
+            # The SQL zone's vnet link is unconditional (CAMS-760 follow-up —
+            # see main.bicep's ustpSqlDnsZoneLink module for why), so it is
+            # subject to the exact same self-cleaning-normally /
+            # defense-in-depth-here shape as the webapp link above.
             kvPrivateDnsZoneName='privatelink.vaultcore.usgovcloudapi.net'
             webappPrivateDnsZoneName='privatelink.azurewebsites.us'
+            sqlPrivateDnsZoneName='privatelink.database.usgovcloudapi.net'
             pepName="pep-${stack_name}"
             pepId=$(az resource list -g "${network_rg}" --resource-type Microsoft.Network/privateEndpoints --query "[?name=='${pepName}'].id" -o tsv)
             if [[ -n "${pepId}" ]]; then
@@ -618,6 +625,7 @@ elif [[ "${netExists}" == "true" ]]; then
             fi
             delete_vnet_link_if_exists "${kvPrivateDnsZoneName}" "KV" "${private_dns_zone_rg}" "${stack_name}" "${private_dns_zone_subscription_id}"
             delete_vnet_link_if_exists "${webappPrivateDnsZoneName}" "webapp" "${private_dns_zone_rg}" "${stack_name}" "${private_dns_zone_subscription_id}"
+            delete_vnet_link_if_exists "${sqlPrivateDnsZoneName}" "SQL" "${private_dns_zone_rg}" "${stack_name}" "${private_dns_zone_subscription_id}"
 
             # Captured as its own statement (not inline inside the `[[ ]]`
             # test below) so a real stack_exists CLI failure aborts this
