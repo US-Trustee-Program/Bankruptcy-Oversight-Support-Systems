@@ -57,11 +57,6 @@ const trusteeCaseListFilterUseCase = (
   };
 
   const handleFiledDateChange = (from: string, to: string) => {
-    if (from && to && to < from) {
-      store.setFiledDateError('End date must be on or after start date');
-      return;
-    }
-    store.setFiledDateError('');
     store.setFiledDateFrom(from);
     store.setFiledDateTo(to);
     onFilterChange(
