@@ -96,7 +96,7 @@ describe('validateDateValue (pure function)', () => {
 });
 
 describe('Test DatePicker component', async () => {
-  afterEach(() => {
+  beforeEach(() => {
     vi.restoreAllMocks();
   });
 
@@ -174,7 +174,7 @@ describe('Test DatePicker component', async () => {
 });
 
 describe('DatePicker additional coverage tests', () => {
-  afterEach(() => {
+  beforeEach(() => {
     vi.restoreAllMocks();
   });
 
@@ -525,7 +525,7 @@ describe('DatePicker additional coverage tests', () => {
 });
 
 describe('DatePicker edge case coverage', () => {
-  afterEach(() => {
+  beforeEach(() => {
     vi.restoreAllMocks();
     vi.clearAllTimers();
   });
@@ -809,7 +809,7 @@ describe('DatePicker edge case coverage', () => {
 });
 
 describe('DatePicker announcement formatting', () => {
-  afterEach(() => {
+  beforeEach(() => {
     vi.restoreAllMocks();
   });
 
@@ -878,7 +878,7 @@ describe('DatePicker announcement formatting', () => {
 });
 
 describe('DatePicker calendar button', () => {
-  afterEach(() => {
+  beforeEach(() => {
     vi.restoreAllMocks();
   });
 

@@ -31,7 +31,7 @@ function renderDateRangePicker(
 }
 
 describe('Test DateRangePicker component', () => {
-  afterEach(() => {
+  beforeEach(() => {
     vi.restoreAllMocks();
   });
 
@@ -144,7 +144,7 @@ describe('Test DateRangePicker component', () => {
 });
 
 describe('DateRangePicker additional coverage tests', () => {
-  afterEach(() => {
+  beforeEach(() => {
     vi.restoreAllMocks();
   });
 
@@ -522,7 +522,7 @@ describe('DateRangePicker additional coverage tests', () => {
 });
 
 describe('DateRangePicker validation tests', () => {
-  afterEach(() => {
+  beforeEach(() => {
     vi.restoreAllMocks();
   });
 

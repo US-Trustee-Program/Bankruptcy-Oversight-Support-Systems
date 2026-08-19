@@ -192,6 +192,8 @@ describe('TrusteeAppointmentForm Tests', () => {
   let userEvent: CamsUserEvent;
 
   beforeEach(() => {
+    vi.restoreAllMocks();
+
     userEvent = TestingUtilities.setupUserEvent();
     TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
 
@@ -203,10 +205,6 @@ describe('TrusteeAppointmentForm Tests', () => {
     vi.spyOn(Api2, 'getCourts').mockResolvedValue({
       data: MockData.getCourts(),
     });
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   test('should show disabled message when feature flag is disabled', async () => {
