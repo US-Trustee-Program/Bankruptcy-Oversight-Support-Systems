@@ -48,16 +48,12 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
       }
     : null;
 
-  function handleFiledDateStartChange(ev: React.ChangeEvent<HTMLInputElement>) {
-    const from = ev.target.dataset.start || ev.target.value;
-    const to = ev.target.dataset.end ?? '';
-    viewModel.handleFiledDateChange(from, to);
+  function handleFiledDateStartChange(from: string) {
+    viewModel.handleFiledDateChange(from, filedDateTo);
   }
 
-  function handleFiledDateEndChange(ev: React.ChangeEvent<HTMLInputElement>) {
-    const from = ev.target.dataset.start ?? '';
-    const to = ev.target.dataset.end || ev.target.value;
-    viewModel.handleFiledDateChange(from, to);
+  function handleFiledDateEndChange(to: string) {
+    viewModel.handleFiledDateChange(filedDateFrom, to);
   }
 
   const allPills: ComboOption[] = [
