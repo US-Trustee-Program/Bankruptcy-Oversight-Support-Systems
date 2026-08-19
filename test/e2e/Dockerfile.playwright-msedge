@@ -13,13 +13,12 @@
 # ghcr.io digest. reusable-e2e.yml uses the plain official image instead,
 # since test/e2e's Playwright config does not currently test msedge.
 #
-# Base digest below is the linux/amd64 platform manifest for
-# mcr.microsoft.com/playwright:v1.62.1-noble (matches GitHub Actions
-# ubuntu-latest runners), resolved via:
-#   docker pull mcr.microsoft.com/playwright:v1.62.1-noble
-#   docker manifest inspect mcr.microsoft.com/playwright:v1.62.1-noble
-# Keep in lockstep with @playwright/test in test/e2e/package.json and
-# user-interface/package.json.
-FROM mcr.microsoft.com/playwright@sha256:c091b21d9fae78c76e85cd4356431e9b018402f172a214fc7d7a5e9a7e29d8ac
+# Version tag tracked by Renovate (see the customManager in renovate.json
+# keyed on @playwright/test), matching the pattern already used by
+# test/e2e/Dockerfile.playwright. Keep in lockstep with @playwright/test
+# in test/e2e/package.json and user-interface/package.json — Renovate
+# updates this tag and the matching one in build-playwright-msedge-image.yml
+# together whenever @playwright/test bumps.
+FROM mcr.microsoft.com/playwright:v1.62.1-noble
 
 RUN npx playwright install msedge --with-deps
