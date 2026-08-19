@@ -17,6 +17,15 @@ on:
         options:
           - 'false'
           - 'true'
+      fastDeploy:
+        description:
+          'fastDeploy: If deploying a feature branch, skip checks for a faster deployment.'
+        required: true
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
 
 permissions: read-all
 
@@ -40,6 +49,7 @@ jobs:
       contents: read
     with:
       path: user-interface
+      skip: ${{ (! startsWith(github.ref, 'refs/heads/main')) && inputs.deployBranch && inputs.fastDeploy }}
 
   unit-test-frontend:
     uses: ./.github/workflows/reusable-unit-test.yml
