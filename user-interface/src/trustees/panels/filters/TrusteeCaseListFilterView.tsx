@@ -7,6 +7,7 @@ import DistrictDivisionComboBox, {
   DistrictDivisionComboBoxRef,
 } from '@/lib/components/DistrictDivisionComboBox';
 import { useRef } from 'react';
+import { DateRangePickerRef } from '@/lib/type-declarations/input-fields';
 import './TrusteeCaseListFilter.scss';
 
 const FILED_DATE_PILL_VALUE = 'filed-date';
@@ -33,6 +34,7 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
   } = viewModel;
 
   const divisionRef = useRef<DistrictDivisionComboBoxRef>(null);
+  const filedDateRef = useRef<DateRangePickerRef>(null);
 
   const hasFiledDate = !!(filedDateFrom || filedDateTo);
 
@@ -80,6 +82,7 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
             <div className="filter-controls-row">
               <div className="filter-control filter-control--filed-date">
                 <DateRangePicker
+                  ref={filedDateRef}
                   id="case-filed-date"
                   startDateLabel="Case Filed Date Start"
                   endDateLabel="Case Filed Date End"
@@ -167,6 +170,7 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
               viewModel.handleStatusChange('ALL');
             }
             if (filedDateRemoved) {
+              filedDateRef.current?.clearValue();
               viewModel.handleFiledDateChange('', '');
             }
             if (updatedChapters.length !== selectedChapters.length) {
