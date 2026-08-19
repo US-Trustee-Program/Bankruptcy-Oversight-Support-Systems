@@ -8,3 +8,7 @@ local.settings.json
 # addresses, phones, emails) and a hand-built ground truth derived from them. Never committed —
 # local-only, re-created per investigation session.
 trustee-match-normalization/fixtures/
+
+# trustee-variation-audit: fixtures/ holds a real trustee-variation collection export and a real
+# trustees export (both trustee PII). Never committed — local-only, re-created per audit session.
+trustee-variation-audit/fixtures/
