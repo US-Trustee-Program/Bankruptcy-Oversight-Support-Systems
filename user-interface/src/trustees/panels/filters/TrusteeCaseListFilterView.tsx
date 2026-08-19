@@ -113,7 +113,6 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
                   <option value="CLOSED">Closed</option>
                   <option value="OPEN">Open</option>
                 </select>
-                <div className="filter-status-error-spacer" aria-hidden="true"></div>
               </div>
             </div>
 
