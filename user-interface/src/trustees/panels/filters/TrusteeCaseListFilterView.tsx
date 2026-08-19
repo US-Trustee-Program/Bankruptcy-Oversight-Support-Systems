@@ -93,7 +93,10 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
                 />
               </div>
 
-              <div className="filter-control">
+              <div className="filter-control filter-control--status">
+                <span className="usa-label" aria-hidden="true">
+                  &nbsp;
+                </span>
                 <label htmlFor="case-status-select" className="usa-label">
                   Case Status
                 </label>
@@ -110,6 +113,7 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
                   <option value="CLOSED">Closed</option>
                   <option value="OPEN">Open</option>
                 </select>
+                <div className="filter-status-error-spacer" aria-hidden="true"></div>
               </div>
             </div>
 
