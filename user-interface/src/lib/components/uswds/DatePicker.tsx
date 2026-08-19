@@ -11,7 +11,7 @@ import React, {
 } from 'react';
 import Validators from '@common/cams/validators';
 import { ValidatorFunction } from '@common/cams/validation';
-import DateHelper, { DEFAULT_MIN_DATE } from '@common/date-helper';
+import DateHelper, { DEFAULT_MIN_DATE, MAX_ISO_DATE } from '@common/date-helper';
 import Icon from './Icon';
 
 export type DatePickerProps = JSX.IntrinsicElements['input'] & {
@@ -97,7 +97,7 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
   const getMin = () => (typeof props.min === 'string' ? props.min : undefined) ?? DEFAULT_MIN_DATE;
 
   function getMax(): string {
-    if (props.disableMax) return '9999-12-31';
+    if (props.disableMax) return MAX_ISO_DATE;
     if (typeof props.max === 'string') return props.max;
     return DateHelper.getTodaysIsoDate();
   }
