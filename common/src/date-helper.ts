@@ -2,6 +2,9 @@
 // October 1, 1979 - the inception of the USTP trustee program pilot for the U.S. Bankruptcy Code
 export const DEFAULT_MIN_DATE = '1979-10-01';
 
+// Sentinel used when a date picker has no effective upper bound (e.g. disableMax).
+export const MAX_ISO_DATE = '9999-12-31';
+
 function sortDates(dateA: Date | string, dateB: Date | string): number {
   //Sort DESC
   if (dateA > dateB) {

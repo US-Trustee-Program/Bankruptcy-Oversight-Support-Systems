@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import DatePicker, { DatePickerProps, validateDateValue } from './DatePicker';
 import { InputRef } from '@/lib/type-declarations/input-fields';
 import { ValidatorFunction } from '@common/cams/validation';
+import { MAX_ISO_DATE } from '@common/date-helper';
 
 // NOTE For some reason (known issue) a date input element can not be changed by typing a date
 // in the formation that the UI expects. The date may only be changed using a change event and
@@ -574,6 +575,40 @@ describe('DatePicker edge case coverage', () => {
     );
   });
 
+  describe('year must be 4 digits', () => {
+    test('5-digit year value shows inline year error after debounce', async () => {
+      renderWithProps({ onChange: mockOnChange });
+      const input = getInput(DEFAULT_ID);
+
+      fireEvent.change(input, { target: { value: '11111-11-11' } });
+
+      await waitFor(() => {
+        expect(getErrorText()).toBe('Year must be 4 digits.');
+      });
+    });
+
+    test('5-digit year value shows inline year error on blur', async () => {
+      renderWithProps({ onChange: mockOnChange });
+      const input = getInput(DEFAULT_ID);
+
+      fireEvent.change(input, { target: { value: '11111-11-11' } });
+      fireEvent.blur(input);
+
+      expect(getErrorText()).toBe('Year must be 4 digits.');
+    });
+
+    test('normal 4-digit year does not trigger year error', async () => {
+      renderWithProps({ onChange: mockOnChange });
+      const input = getInput(DEFAULT_ID);
+
+      fireEvent.change(input, { target: { value: '2024-06-15' } });
+
+      await waitFor(() => {
+        expect(getErrorText()).toBe('');
+      });
+    });
+  });
+
   test('should allow dates with years before 1900 when within min/max range', async () => {
     renderWithProps({ min: '1800-01-01', max: '2024-12-31', onChange: mockOnChange });
 
@@ -629,6 +664,14 @@ describe('DatePicker edge case coverage', () => {
     const inputEl = getInput(DEFAULT_ID);
 
     expect(inputEl).toHaveAttribute('max', customMax);
+  });
+
+  test('should set max attribute to MAX_ISO_DATE when disableMax is set', () => {
+    renderWithProps({ disableMax: true, onChange: mockOnChange });
+
+    const inputEl = getInput(DEFAULT_ID);
+
+    expect(inputEl).toHaveAttribute('max', MAX_ISO_DATE);
   });
 
   test('should run multiple custom validators and concatenate error messages', async () => {

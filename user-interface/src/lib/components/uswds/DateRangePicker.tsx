@@ -81,8 +81,6 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
   const endDateMin = getEndDateMin();
 
   type RangeValidationResult = {
-    startValid: boolean;
-    endValid: boolean;
     rangeValid: boolean;
     startError?: string;
     endError?: string;
@@ -124,8 +122,6 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
     }
 
     return {
-      startValid: !!startValidation.valid,
-      endValid: !!endValidation.valid,
       rangeValid,
       startError,
       endError,
