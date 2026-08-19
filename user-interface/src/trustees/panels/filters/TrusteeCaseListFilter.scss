@@ -8,7 +8,7 @@
   .filter-content {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 2.5rem; // 40px fixed gap between filter rows
   }
 
   .filter-controls-row {
@@ -41,19 +41,10 @@
     }
   }
 
-  .filter-control--chapter {
+  .filter-control--chapter,
+  .filter-control--district {
     .combo-box-form-group {
       margin-top: 0;
-    }
-  }
-
-  // A blank label-height spacer sits above the visible "Case Status" label,
-  // so that label lines up with the mm/dd/yyyy hint row of the date fields
-  // beside it, and the reserved error-message slot below keeps the total
-  // height matched so the dropdown still lines up with the date inputs.
-  .filter-control--status {
-    .filter-status-error-spacer {
-      padding: 0.5rem 0;
     }
   }
 
@@ -74,6 +65,18 @@
       // DateRangePicker only zeroes margin-top on the first field (for its usual
       // stacked layout); side-by-side here, both fields must start flush at the top.
       margin-top: 0;
+      // Error messages must not grow the row height — row 2 gap is fixed at 40px.
+      position: relative;
+      padding-bottom: 0;
+
+      .date-error {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        padding: 0;
+        margin-top: 0.25rem;
+      }
     }
 
     // This layout's narrower, side-by-side fields render the input at a height
