@@ -6,6 +6,9 @@ on:
       path:
         required: true
         type: string
+      skip:
+        required: true
+        type: boolean
 
 permissions:
   contents: read
@@ -20,22 +23,27 @@ jobs:
       CI: true
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: ${{ ! inputs.skip }}
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        if: ${{ ! inputs.skip }}
         with:
           node-version-file: ".nvmrc"
           cache: "npm"
           cache-dependency-path: package-lock.json
 
       - name: Install Dependencies
+        if: ${{ ! inputs.skip }}
         run: npm ci
 
       - name: Build Common (if needed)
+        if: ${{ ! inputs.skip }}
         run: |
           if [ "${{ inputs.path }}" != "common" ]; then
             npm run build:common
           fi
 
       - name: Run unit tests with code coverage
+        if: ${{ ! inputs.skip }}
         working-directory: ${{ inputs.path }}
         shell: bash
         run: |

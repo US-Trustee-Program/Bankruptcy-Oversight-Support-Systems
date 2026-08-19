@@ -9,6 +9,10 @@ on:
         required: true
       AZ_SUBSCRIPTION_ID:
         required: true
+    inputs:
+      skip:
+        required: true
+        type: boolean
 
 permissions:
   contents: read
@@ -24,8 +28,10 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: ${{ ! inputs.skip }}
 
       - uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3.0.0
+        if: ${{ ! inputs.skip }}
         with:
           client-id: ${{ secrets.AZ_SECURITY_SCAN_CLIENT_ID }}
           tenant-id: ${{ secrets.AZ_TENANT_ID }}
@@ -33,34 +39,38 @@ jobs:
           environment: ${{ vars.AZURE_ENVIRONMENT }}
 
       - name: Fetch secrets from Key Vault
+        if: ${{ ! inputs.skip }}
         run: |
           echo "AZ_SECURITY_SCAN_STORAGE_NAME=$(az keyvault secret show --vault-name kv-ustp-cams --name AZ-SECURITY-SCAN-STORAGE-NAME --query value -o tsv)" >> "$GITHUB_ENV"
           echo "SNYK_OAUTH_CLIENT_ID=$(az keyvault secret show --vault-name kv-ustp-cams --name SNYK-OAUTH-CLIENT-ID --query value -o tsv)" >> "$GITHUB_ENV"
           echo "SNYK_OAUTH_CLIENT_SECRET=$(az keyvault secret show --vault-name kv-ustp-cams --name SNYK-OAUTH-CLIENT-SECRET --query value -o tsv)" >> "$GITHUB_ENV"
 
       - name: Setup Snyk CLI
+        if: ${{ ! inputs.skip }}
         uses: snyk/actions/setup@9adf32b1121593767fc3c057af55b55db032dc04 # v1.0.0
         with:
           snyk-version: latest
 
       - name: Authenticate with Snyk
+        if: ${{ ! inputs.skip }}
         run: snyk auth --auth-type=oauth --client-secret="$SNYK_OAUTH_CLIENT_SECRET" --client-id="$SNYK_OAUTH_CLIENT_ID"
         env:
           SNYK_API: https://api.snykgov.io
 
       - name: Run Snyk SCA scan
+        if: ${{ ! inputs.skip }}
         run: snyk test --all-projects --exclude=function-apps,integration --severity-threshold=medium --policy-path=. --sarif-file-output=snyk-sca.sarif
         env:
           SNYK_API: https://api.snykgov.io
 
       - name: Monitor project in Snyk
-        if: always()
+        if: ${{ ! inputs.skip }}
         run: snyk monitor --all-projects --exclude=function-apps,integration
         env:
           SNYK_API: https://api.snykgov.io
 
       - name: Upload raw SARIF to Azure Storage
-        if: always()
+        if: ${{ ! inputs.skip }}
         run: |
           if [ -f snyk-sca.sarif ]; then
             az storage blob upload \
@@ -73,7 +83,7 @@ jobs:
           fi
 
       - name: Sanitize SARIF for GitHub upload
-        if: always()
+        if: ${{ ! inputs.skip }}
         run: |
           if [ -f snyk-sca.sarif ]; then
             jq 'walk(
@@ -86,7 +96,7 @@ jobs:
           fi
 
       - name: Upload SARIF to GitHub
-        if: always()
+        if: ${{ ! inputs.skip }}
         uses: github/codeql-action/upload-sarif@d1ba80a13dd99fba24a470575428917156a28b43 # v4.37.5
         with:
           sarif_file: snyk-sca.sarif
@@ -101,8 +111,10 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: ${{ ! inputs.skip }}
 
       - uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3.0.0
+        if: ${{ ! inputs.skip }}
         with:
           client-id: ${{ secrets.AZ_SECURITY_SCAN_CLIENT_ID }}
           tenant-id: ${{ secrets.AZ_TENANT_ID }}
@@ -110,22 +122,26 @@ jobs:
           environment: ${{ vars.AZURE_ENVIRONMENT }}
 
       - name: Fetch secrets from Key Vault
+        if: ${{ ! inputs.skip }}
         run: |
           echo "AZ_SECURITY_SCAN_STORAGE_NAME=$(az keyvault secret show --vault-name kv-ustp-cams --name AZ-SECURITY-SCAN-STORAGE-NAME --query value -o tsv)" >> "$GITHUB_ENV"
           echo "SNYK_OAUTH_CLIENT_ID=$(az keyvault secret show --vault-name kv-ustp-cams --name SNYK-OAUTH-CLIENT-ID --query value -o tsv)" >> "$GITHUB_ENV"
           echo "SNYK_OAUTH_CLIENT_SECRET=$(az keyvault secret show --vault-name kv-ustp-cams --name SNYK-OAUTH-CLIENT-SECRET --query value -o tsv)" >> "$GITHUB_ENV"
 
       - name: Setup Snyk CLI
+        if: ${{ ! inputs.skip }}
         uses: snyk/actions/setup@9adf32b1121593767fc3c057af55b55db032dc04 # v1.0.0
         with:
           snyk-version: latest
 
       - name: Authenticate with Snyk
+        if: ${{ ! inputs.skip }}
         run: snyk auth --auth-type=oauth --client-secret="$SNYK_OAUTH_CLIENT_SECRET" --client-id="$SNYK_OAUTH_CLIENT_ID"
         env:
           SNYK_API: https://api.snykgov.io
 
       - name: Run Snyk Code (SAST) scan
+        if: ${{ ! inputs.skip }}
         id: snyk-scan
         continue-on-error: true
         run: snyk code test --severity-threshold=medium --sarif-file-output=snyk-code.sarif
@@ -133,7 +149,7 @@ jobs:
           SNYK_API: https://api.snykgov.io
 
       - name: Upload raw SARIF to Azure Storage
-        if: always()
+        if: ${{ ! inputs.skip }}
         run: |
           if [ -f snyk-code.sarif ]; then
             az storage blob upload \
@@ -147,7 +163,7 @@ jobs:
 
       - name: Download SAST baseline
         id: baseline
-        if: always()
+        if: ${{ ! inputs.skip }}
         run: |
           if az storage blob download \
             --account-name "$AZ_SECURITY_SCAN_STORAGE_NAME" \
@@ -163,7 +179,7 @@ jobs:
 
       - name: Compare against baseline
         id: baseline-compare
-        if: ${{ always() && steps.snyk-scan.outcome == 'failure' }}
+        if: ${{ ! inputs.skip && steps.snyk-scan.outcome == 'failure' }}
         run: |
           if ops/scripts/pipeline/snyk-baseline-compare.sh snyk-code.sarif snyk-code-baseline.txt; then
             echo "has_new_findings=false" >> "$GITHUB_OUTPUT"
@@ -172,7 +188,7 @@ jobs:
           fi
 
       - name: Sanitize SARIF for GitHub upload
-        if: always()
+        if: ${{ ! inputs.skip }}
         run: |
           if [ -f snyk-code.sarif ]; then
             jq 'walk(
@@ -185,13 +201,13 @@ jobs:
           fi
 
       - name: Upload SARIF to GitHub
-        if: always()
+        if: ${{ ! inputs.skip }}
         uses: github/codeql-action/upload-sarif@d1ba80a13dd99fba24a470575428917156a28b43 # v4.37.5
         with:
           sarif_file: snyk-code.sarif
 
       - name: Fail on new findings
-        if: always()
+        if: ${{ ! inputs.skip }}
         env:
           SCAN_OUTCOME: ${{ steps.snyk-scan.outcome }}
           HAS_NEW_FINDINGS: ${{ steps.baseline-compare.outputs.has_new_findings }}
