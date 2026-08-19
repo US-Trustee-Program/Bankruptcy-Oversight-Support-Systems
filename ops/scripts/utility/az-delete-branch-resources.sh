@@ -98,7 +98,7 @@ Help()
   echo "                                stray per-branch RG from before Slice 2 shipped)."
   echo "                                It is intentionally unreferenced by CI, not dead code."
   echo "  --private-dns-zone-resource-group=<rg>"
-  echo "                                Resource group containing the KV/webapp private DNS"
+  echo "                                Resource group containing the KV/webapp/SQL private DNS"
   echo "                                zones, if different from --network-resource-group."
   echo "                                Must match whatever override (if any) was passed to"
   echo "                                azure-deploy-app-shared-setup.sh's -p/--parameters"
@@ -107,7 +107,7 @@ Help()
   echo "                                Optional - defaults to --network-resource-group."
   echo "                                Can be set via PRIVATE_DNS_ZONE_RESOURCE_GROUP."
   echo "  --private-dns-zone-subscription-id=<id>"
-  echo "                                Subscription containing the KV/webapp private DNS"
+  echo "                                Subscription containing the KV/webapp/SQL private DNS"
   echo "                                zones, if different from the current subscription"
   echo "                                (e.g. USTP prod). Must match whatever override was"
   echo "                                passed as privateDnsZoneSubscriptionId on the create"
@@ -285,24 +285,45 @@ function stack_exists() {
     az stack group list --resource-group "${rg}" --query "[?name=='${escapedName}'].id" -o tsv
 }
 
-# Shared by the KV and webapp private DNS zone vnet-link cleanup below --
-# same lookup-by-zone-and-stack-name / delete-if-found / log-if-not-found
-# shape for both zones. Explicit params (not closure-captured globals) to
+# Shared by the KV, webapp, and SQL private DNS zone vnet-link cleanup below
+# -- same lookup-by-zone-and-stack-name / delete-if-found / log-if-not-found
+# shape for all three zones. Explicit params (not closure-captured globals) to
 # match stack_exists's style above. subscriptionId is optional (defaults to
 # the CLI's current subscription) -- `az ... --subscription ""` is a
 # malformed call, so it's omitted entirely rather than passed empty.
+#
+# The zone itself may not exist yet (e.g. a shared RG created before this
+# zone was added to azure-deploy-app-shared-setup.sh, torn down before its
+# own bootstrap run ever created it) -- that's a legitimate "nothing to
+# delete" case, not an error, so ResourceNotFound is tolerated here the same
+# way _vnet-link-check.sh's vnet_link_already_exists_for tolerates it on the
+# create-side check. Any other failure (auth expiry, throttling, transient
+# API error) still aborts loud via the enclosing `set -euo pipefail`
+# subshell, rather than being silently swallowed.
 function delete_vnet_link_if_exists() {
     local zoneName=$1
     local label=$2
     local rg=$3
     local stackName=$4
     local subscriptionId="${5:-}"
-    local id
+    local subscriptionArg=""
     if [[ -n "${subscriptionId}" ]]; then
-        id=$(az network private-dns link vnet list --resource-group "${rg}" --subscription "${subscriptionId}" --zone-name "${zoneName}" --query "[?name=='${zoneName}-vnet-link-${stackName}'].id" -o tsv)
-    else
-        id=$(az network private-dns link vnet list --resource-group "${rg}" --zone-name "${zoneName}" --query "[?name=='${zoneName}-vnet-link-${stackName}'].id" -o tsv)
+        subscriptionArg="--subscription ${subscriptionId}"
     fi
+    local id stderrFile stderrText
+    stderrFile=$(mktemp)
+    # shellcheck disable=SC2086 # REASON: intentional word-splitting of optional --subscription flag
+    if ! id=$(az network private-dns link vnet list --resource-group "${rg}" ${subscriptionArg} --zone-name "${zoneName}" --query "[?name=='${zoneName}-vnet-link-${stackName}'].id" -o tsv 2>"${stderrFile}"); then
+        stderrText=$(cat "${stderrFile}")
+        rm -f "${stderrFile}"
+        if grep -qi "ResourceNotFound" <<<"${stderrText}"; then
+            echo "No ${label} private DNS zone ${zoneName} found in ${rg} (zone doesn't exist); nothing to delete"
+            return
+        fi
+        echo "ERROR: failed to check for ${label} private DNS zone vnet link in ${zoneName}: ${stderrText}" >&2
+        exit 1
+    fi
+    rm -f "${stderrFile}"
     if [[ -n "${id}" ]]; then
         echo "Deleting ${label} private DNS zone vnet link ${zoneName}-vnet-link-${stackName} in ${rg}"
         az resource delete --ids "${id}"

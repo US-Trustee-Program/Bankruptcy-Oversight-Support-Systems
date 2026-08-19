@@ -63,6 +63,44 @@ function requireValue() {
     fi
 }
 
+# Wraps vnet_link_already_exists_for (see _vnet-link-check.sh) with the
+# warn-and-default-false fallback shared by every private-DNS-zone
+# vnet-link check below (webapp, SQL, ...), so the call sites can't
+# independently drift out of sync -- see _vnet-link-check.sh's own header
+# for why that's a real risk here, not hypothetical: the KV/webapp/SQL
+# zone-name literals already have to be kept in lockstep by hand across
+# multiple files.
+#
+# Sets check_vnet_link_result to "true"/"false" for the caller to fold into
+# deployment_parameters (deliberately a different global than
+# vnet_link_check_result, which this still calls through to, so a caller
+# reading the result after this returns can't confuse the two contracts).
+function check_vnet_link_or_warn() {
+    local zoneRg=$1
+    local zoneName=$2
+    local label=$3
+    check_vnet_link_result=false
+    if [[ -n "${network_rg:-}" && -n "${vnet_name:-}" ]]; then
+        vnet_link_already_exists_for "${zoneRg}" "${zoneName}" "${network_rg}" "${vnet_name}" "${stack_name}" "${private_dns_zone_sub_id:-}"
+        local existingLink="${vnet_link_check_result}"
+        if [[ -n "${existingLink}" ]]; then
+            echo "Vnet ${vnet_name} is already linked to ${zoneName} via '${existingLink}'; skipping creation of a second link."
+            check_vnet_link_result=true
+        else
+            echo "No existing link from vnet ${vnet_name} into ${zoneName} in ${zoneRg} (or any other same-named zone); the template will create one."
+        fi
+    else
+        # validateParameters only checks --networkResourceGroupName/--virtualNetworkName
+        # were passed, not that their values are non-empty, so this guard can't
+        # be assumed unreachable. Not fatal here -- the template still applies its
+        # own safe default (*VnetLinkAlreadyExists=false, i.e. attempt creation
+        # normally) -- but silently skipping the check left zero diagnostic
+        # trail, unlike the KV-zone call site's unconditional (fail-loud)
+        # contract in azure-deploy-app-shared-setup.sh.
+        echo "WARNING: skipping ${label} DNS zone vnet-link existence check — networkResourceGroupName ('${network_rg:-}') or virtualNetworkName ('${vnet_name:-}') is empty." >&2
+    fi
+}
+
 function az_deploy_func() {
     local rg=$1
     local templateFile=$2
@@ -506,55 +544,28 @@ validateParameters
 # same subscription main.bicep's ustpWebappDnsZoneLink module targets.
 webappPrivateDnsZoneName="${private_dns_zone_name:-privatelink.azurewebsites.us}"
 webappPrivateDnsZoneRg="${private_dns_zone_rg:-${network_rg:-}}"
-webapp_vnet_link_already_exists=false
-if [[ -n "${network_rg:-}" && -n "${vnet_name:-}" ]]; then
-    vnet_link_already_exists_for "${webappPrivateDnsZoneRg}" "${webappPrivateDnsZoneName}" "${network_rg}" "${vnet_name}" "${stack_name}" "${private_dns_zone_sub_id:-}"
-    existingWebappLink="${vnet_link_check_result}"
-    if [[ -n "${existingWebappLink}" ]]; then
-        echo "Vnet ${vnet_name} is already linked to ${webappPrivateDnsZoneName} via '${existingWebappLink}'; skipping creation of a second link."
-        webapp_vnet_link_already_exists=true
-    else
-        echo "No existing link from vnet ${vnet_name} into ${webappPrivateDnsZoneName} in ${webappPrivateDnsZoneRg} (or any other same-named zone); the template will create one."
-    fi
-else
-    # validateParameters only checks --networkResourceGroupName/--virtualNetworkName
-    # were passed, not that their values are non-empty, so this guard can't
-    # be assumed unreachable. Not fatal here — the template still applies its
-    # own safe default (webappVnetLinkAlreadyExists=false, i.e. attempt
-    # creation normally) — but silently skipping the check left zero
-    # diagnostic trail, unlike the KV-zone call site's unconditional (fail-
-    # loud) contract in azure-deploy-app-shared-setup.sh.
-    echo "WARNING: skipping webapp DNS zone vnet-link existence check — networkResourceGroupName ('${network_rg:-}') or virtualNetworkName ('${vnet_name:-}') is empty." >&2
-fi
-deployment_parameters="${deployment_parameters} webappVnetLinkAlreadyExists=${webapp_vnet_link_already_exists}"
+check_vnet_link_or_warn "${webappPrivateDnsZoneRg}" "${webappPrivateDnsZoneName}" "webapp"
+deployment_parameters="${deployment_parameters} webappVnetLinkAlreadyExists=${check_vnet_link_result}"
 
 # Same Conflict-avoidance check as above, for the SQL Private Link zone
-# (privatelink.database.usgovcloudapi.net). Only relevant when
-# useSqlPrivateLink=true (cross-region branches, CAMS-760), but it's cheap
-# and harmless to compute unconditionally -- the same way the webapp check
-# above runs for every deployment regardless of whether main.bicep will
-# actually consume the result. main.bicep's ustpSqlDnsZoneLink module links
-# this vnet into the SAME privateDnsZoneResourceGroup/privateDnsZoneSubscriptionId
-# scope as the webapp zone link (just a different zone name), so this reuses
+# (privatelink.database.usgovcloudapi.net). Unlike the webapp link,
+# main.bicep's ustpSqlDnsZoneLink module is UNCONDITIONAL -- not gated on
+# useSqlPrivateLink -- because the SQL server auto-redirects its public FQDN
+# to the privatelink subdomain server-wide the instant any branch's PE is
+# approved, which would strand main and every other non-PE consumer if only
+# the PE-using branch were linked to the zone (see main.bicep's comment on
+# that module for the full rationale). This check MUST therefore also run
+# unconditionally for every deploy, including main's -- do NOT gate it on
+# useSqlPrivateLink, or main's redeploy will hit a Conflict trying to
+# recreate a link this check should have detected already exists.
+# main.bicep's ustpSqlDnsZoneLink module links this vnet into the SAME
+# privateDnsZoneResourceGroup/privateDnsZoneSubscriptionId scope as the
+# webapp zone link (just a different zone name), so this reuses
 # webappPrivateDnsZoneRg/private_dns_zone_sub_id rather than introducing a
 # separate --sqlPrivateDnsZoneResourceGroup param that doesn't exist.
 sqlPrivateDnsZoneName='privatelink.database.usgovcloudapi.net'
-sql_vnet_link_already_exists=false
-if [[ -n "${network_rg:-}" && -n "${vnet_name:-}" ]]; then
-    vnet_link_already_exists_for "${webappPrivateDnsZoneRg}" "${sqlPrivateDnsZoneName}" "${network_rg}" "${vnet_name}" "${stack_name}" "${private_dns_zone_sub_id:-}"
-    existingSqlLink="${vnet_link_check_result}"
-    if [[ -n "${existingSqlLink}" ]]; then
-        echo "Vnet ${vnet_name} is already linked to ${sqlPrivateDnsZoneName} via '${existingSqlLink}'; skipping creation of a second link."
-        sql_vnet_link_already_exists=true
-    else
-        echo "No existing link from vnet ${vnet_name} into ${sqlPrivateDnsZoneName} in ${webappPrivateDnsZoneRg} (or any other same-named zone); the template will create one."
-    fi
-else
-    # Same rationale as the webapp check above: not fatal, the template's
-    # own default (sqlVnetLinkAlreadyExists=false) still applies.
-    echo "WARNING: skipping SQL DNS zone vnet-link existence check — networkResourceGroupName ('${network_rg:-}') or virtualNetworkName ('${vnet_name:-}') is empty." >&2
-fi
-deployment_parameters="${deployment_parameters} sqlVnetLinkAlreadyExists=${sql_vnet_link_already_exists}"
+check_vnet_link_or_warn "${webappPrivateDnsZoneRg}" "${sqlPrivateDnsZoneName}" "SQL"
+deployment_parameters="${deployment_parameters} sqlVnetLinkAlreadyExists=${check_vnet_link_result}"
 
 # The virtual network is deployed separately by azure-deploy-network.sh before this
 # script runs (CAMS-760, Option E); vnet existence / deployVnet handling lives there.
