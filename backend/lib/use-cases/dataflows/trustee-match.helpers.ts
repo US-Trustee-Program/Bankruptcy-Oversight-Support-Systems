@@ -398,39 +398,88 @@ function normalizeNamePart(namePart?: string): string {
 }
 
 /**
- * Calculates a name match score between DXTR and CAMS trustee parties.
- * Scoring:
- * - First and last name must both normalize-match exactly, or the score is 0
- *   (no partial credit for close-but-not-exact first/last names).
- * - When first and last match, a middle-name sub-score determines the result:
+ * Normalizes a discrete lastName field for strict matching, same as normalizeNamePart but first
+ * discards a trailing generational suffix (Jr, Sr, II, III, IV) via stripGenerationalSuffix - some
+ * CAMS trustee records carry the suffix baked into lastName itself (e.g. "Malloy, III", "Eggmann,
+ * III") rather than in a separate field, which DXTR's clean, suffix-free lastName ("Malloy",
+ * "Eggmann") can never equal under plain normalizeNamePart even though the person is the same.
+ * Comparing the generation field separately (DxtrTrusteeParty.generation) is not attempted here -
+ * this function only needs lastName equality to hold so a real candidate isn't missed, not to
+ * reconcile whether both sides agree on the generation itself.
+ */
+function normalizeLastNamePart(namePart?: string): string {
+  return normalizeNamePart(stripGenerationalSuffix(namePart ?? ''));
+}
+
+const isInitialOf = (initial: string, full: string): boolean =>
+  initial.length === 1 && full.length > 0 && full[0] === initial;
+
+/**
+ * Scores how well two already-normalized firstName values compare. Unlike scoreMiddleNamePart,
+ * a firstName is expected to always be present on a real trustee record and is much stronger
+ * disqualifying evidence when it genuinely differs (two different first names is a strong signal
+ * these are different people) - so missing or a genuine mismatch both score 0, same as the
+ * pre-existing exact-match-only behavior. The one relaxation added on top of that: an
+ * initial-vs-full relationship (e.g. DXTR "G." vs CAMS "George") scores 85, the same
+ * corroborating-but-not-certain credit scoreMiddleNamePart gives that relationship.
+ */
+function scoreFirstNamePart(a: string, b: string): number {
+  if (!a || !b) return 0;
+  if (a === b) return 100;
+  if (isInitialOf(a, b) || isInitialOf(b, a)) return 85;
+  return 0;
+}
+
+/**
+ * Scores how well two already-normalized middleName values compare. A middle name is legitimately
+ * optional, so its absence on either side is neutral rather than disqualifying, and a genuine
+ * conflict is only a moderate penalty rather than a hard disqualifier - contrast
+ * scoreFirstNamePart, where both of those cases are harsher.
  *   - Missing on either or both sides: 100 (neutral - absence isn't evidence)
  *   - Both present and identical: 100 (full match)
  *   - One side is a single-character initial matching the other side's first
  *     character: 85 (initial-vs-full relationship)
  *   - Both present and genuinely differ: 15 (moderate conflict penalty)
  */
-export function calculateNameScore(dxtrTrustee: DxtrTrusteeParty, camsTrustee: Trustee): number {
-  const dxtrFirst = normalizeNamePart(dxtrTrustee.firstName);
-  const dxtrLast = normalizeNamePart(dxtrTrustee.lastName);
-  const camsFirst = normalizeNamePart(camsTrustee.firstName);
-  const camsLast = normalizeNamePart(camsTrustee.lastName);
+function scoreMiddleNamePart(a: string, b: string): number {
+  if (!a || !b) return 100;
+  if (a === b) return 100;
+  if (isInitialOf(a, b) || isInitialOf(b, a)) return 85;
+  return 15;
+}
 
-  if (!dxtrFirst || dxtrFirst !== camsFirst || !dxtrLast || dxtrLast !== camsLast) {
+/**
+ * Calculates a name match score between DXTR and CAMS trustee parties.
+ * Scoring:
+ * - Last name must normalize-match exactly (see normalizeLastNamePart), or the score is 0 - no
+ *   relaxation on lastName beyond stripping a baked-in generational suffix, since it is the one
+ *   part of the name most likely to distinguish two genuinely different people.
+ * - First name must also match, or relax to an initial-vs-full relationship (see
+ *   scoreFirstNamePart) - a genuine first-name mismatch is still disqualifying (score 0).
+ * - When last and first both clear their bar, a middle-name sub-score (see scoreMiddleNamePart)
+ *   determines the final result - the lower of the first/middle sub-scores wins, so an
+ *   initial-vs-full relationship on either part still caps the result at 85.
+ */
+export function calculateNameScore(dxtrTrustee: DxtrTrusteeParty, camsTrustee: Trustee): number {
+  const dxtrLast = normalizeLastNamePart(dxtrTrustee.lastName);
+  const camsLast = normalizeLastNamePart(camsTrustee.lastName);
+
+  if (!dxtrLast || dxtrLast !== camsLast) {
     return 0;
   }
 
-  const dxtrMiddle = normalizeNamePart(dxtrTrustee.middleName);
-  const camsMiddle = normalizeNamePart(camsTrustee.middleName);
+  const firstScore = scoreFirstNamePart(
+    normalizeNamePart(dxtrTrustee.firstName),
+    normalizeNamePart(camsTrustee.firstName),
+  );
+  if (firstScore === 0) return 0;
 
-  if (!dxtrMiddle || !camsMiddle) return 100;
-  if (dxtrMiddle === camsMiddle) return 100;
+  const middleScore = scoreMiddleNamePart(
+    normalizeNamePart(dxtrTrustee.middleName),
+    normalizeNamePart(camsTrustee.middleName),
+  );
 
-  const isInitialOf = (initial: string, full: string) =>
-    initial.length === 1 && full[0] === initial;
-
-  if (isInitialOf(dxtrMiddle, camsMiddle) || isInitialOf(camsMiddle, dxtrMiddle)) return 85;
-
-  return 15;
+  return Math.min(firstScore, middleScore);
 }
 
 /**
@@ -778,6 +827,55 @@ function toUnscoredCandidates(trustees: Trustee[]): CandidateScore[] {
 }
 
 /**
+ * Filters scored candidates down to those with a plausible but not fully-confirmed name match:
+ * lastName must normalize-match exactly (via normalizeLastNamePart - see its doc comment for why
+ * lastName needs a generational-suffix-stripping pass first, e.g. CAMS "Ivy, Sr." vs DXTR's clean
+ * "Ivy"), firstName must either normalize-match exactly or relax to an initial-vs-full
+ * relationship (e.g. DXTR "G." vs CAMS "George" - a genuine firstName conflict, unlike middleName,
+ * is NOT relaxed here, mirroring scoreFirstNamePart's harsher treatment), and at least one of
+ * firstName/middleName must NOT be a full, already-identical match - a candidate whose first AND
+ * middle both already agree (or are both absent) is a fully-confirmed match, not weaker evidence,
+ * and belongs in the composed-name fuzzy tiers above (which resolve it directly at nameScore 100),
+ * not demoted to this tier's weaker "surface as ambiguous, needs corroboration" treatment. Without
+ * that exclusion, a pure generational-suffix gap with otherwise-identical first/middle names would
+ * ALSO satisfy this tier's equality checks purely because normalizeLastNamePart strips the suffix.
+ * Deliberately does NOT score or filter beyond that: calculateNameScore already scores a genuinely
+ * differing middle name correctly (85/15), and resolveNameCollisionByScoring's existing
+ * threshold+gap+appointment-match gate already rejects a genuine conflict (15 points) as a low
+ * scorer. Duplicating that judgment here would risk disagreeing with the scorer that actually
+ * decides the outcome.
+ * Requires both firstName and lastName on the DXTR side - there's nothing to relax against
+ * without them.
+ */
+function findNameRelaxedMatches(
+  dxtrTrustee: DxtrTrusteeParty,
+  scoredCandidates: Trustee[],
+): Trustee[] {
+  const dxtrFirst = normalizeNamePart(dxtrTrustee.firstName);
+  const dxtrLast = normalizeLastNamePart(dxtrTrustee.lastName);
+  if (!dxtrFirst || !dxtrLast) return [];
+
+  const dxtrMiddle = normalizeNamePart(dxtrTrustee.middleName);
+
+  return scoredCandidates.filter((candidate) => {
+    const candidateFirst = normalizeNamePart(candidate.firstName);
+    if (
+      candidateFirst !== dxtrFirst &&
+      !isInitialOf(dxtrFirst, candidateFirst) &&
+      !isInitialOf(candidateFirst, dxtrFirst)
+    ) {
+      return false;
+    }
+    if (normalizeLastNamePart(candidate.lastName) !== dxtrLast) return false;
+
+    const candidateMiddle = normalizeNamePart(candidate.middleName);
+    const firstAlreadyIdentical = candidateFirst === dxtrFirst;
+    const middleAlreadyIdentical = dxtrMiddle === candidateMiddle;
+    return !(firstAlreadyIdentical && middleAlreadyIdentical);
+  });
+}
+
+/**
  * Looks up CAMS trustees by name and returns a NameMatchResult discriminated union for all three
  * business outcomes (resolved/no-match/ambiguous). Does NOT wrap the repository call in a
  * try/catch — a repository failure here is a genuine infrastructure error and propagates as a
@@ -790,8 +888,9 @@ function toUnscoredCandidates(trustees: Trustee[]): CandidateScore[] {
  */
 export async function matchTrusteeByName(
   context: ApplicationContext,
-  trusteeName: string,
+  dxtrTrustee: DxtrTrusteeParty,
 ): Promise<NameMatchResult> {
+  const trusteeName = dxtrTrustee.fullName;
   const normalized = normalizeName(trusteeName);
   const trusteesRepo = factory.getTrusteesRepository(context);
   const matches = await trusteesRepo.findTrusteesByName(normalized);
@@ -838,7 +937,30 @@ export async function matchTrusteeByName(
     };
   }
 
-  // Second-pass fallback: the stricter comparison (generational suffix reformatted but not
+  // Third-pass fallback: first/last name match (allowing an initial-vs-full relationship on
+  // firstName) but the candidate isn't already a fully-confirmed match (see
+  // findNameRelaxedMatches's doc comment for exactly what that excludes). Unlike the other tiers
+  // above, this one is NOT resolved directly here - an initial-vs-full relationship is weaker
+  // evidence than a full string match (an initial only narrows down to one of many possible full
+  // names), so it is surfaced as 'ambiguous' even when exactly one candidate is found. This routes
+  // it through resolveNameCollisionByScoring's existing threshold+gap+appointment-match gate (same
+  // scoring calculateCandidateScore/calculateNameScore already do for a raw name collision), rather
+  // than trusting a single candidate's weaker signal outright. More common in practice than a bare
+  // generational-suffix gap (DXTR frequently sends an initial where CAMS has the expanded name, or
+  // vice versa), so it is tried first to short-circuit before that rarer case.
+  const nameRelaxedMatches = findNameRelaxedMatches(dxtrTrustee, scoredCandidates);
+
+  if (nameRelaxedMatches.length > 0) {
+    const candidates = nameRelaxedMatches.map((t) => `${t.trusteeId} ("${t.name}")`).join(', ');
+    context.logger.info(
+      MODULE_NAME,
+      `CAMS trustee(s) found matching "${normalized}" on first/last name only, first or middle ` +
+        `name differs: ${candidates}.`,
+    );
+    return { kind: 'ambiguous', matchCandidates: toUnscoredCandidates(nameRelaxedMatches) };
+  }
+
+  // Fourth-pass fallback: the stricter comparison (generational suffix reformatted but not
   // discarded) found nothing - retry discarding a generational suffix entirely, in case one side
   // carries "Jr."/"Sr."/etc. that the other omits. A single match here is still a confident
   // resolution (all other name/address/phone/email signal already agreed); multiple matches

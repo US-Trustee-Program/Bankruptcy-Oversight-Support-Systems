@@ -161,10 +161,42 @@ type GroundTruthFile = {
   pairs: GroundTruthPair[];
 };
 
+type VerificationRecord = {
+  id: string;
+  dxtrTrustee: {
+    firstName?: string;
+    middleName?: string;
+    lastName?: string;
+    generation?: string;
+    fullName: string;
+    legacy?: unknown;
+  };
+};
+
+/**
+ * Loads the raw verification export and indexes it by `id` (== ground-truth.json's
+ * verificationId) so run() can pass matchTrusteeByName the full DxtrTrusteeParty - structured
+ * firstName/middleName/lastName included - instead of just the flattened dxtrFullName string
+ * ground-truth.json stores. Structured fields are required for matchTrusteeByName's
+ * middle-name-relaxed fallback tier to have anything to key off.
+ */
+function loadVerificationById(): Map<string, VerificationRecord> {
+  const verificationPath = path.join(FIXTURES_DIR, '2026-08-18-trustee-verification.json');
+  const raw: VerificationRecord[] = JSON.parse(fs.readFileSync(verificationPath, 'utf-8'));
+  return new Map(raw.map((record) => [record.id, record]));
+}
+
 type ReplayOutcome =
   | 'exact-match' // matchTrusteeByName resolved to exactly the expected trusteeId(s)
   | 'wrong-match' // resolved, but to a trustee NOT in expectedTrusteeIds
-  | 'false-ambiguous' // came back ambiguous, but expected exactly one trustee
+  // came back ambiguous with EXACTLY the one expected trusteeId as its sole candidate - the
+  // middle-name-relaxed tier's weaker-evidence design (see matchTrusteeByName's doc comment):
+  // correctly found the right trustee, but surfaces as 'ambiguous' rather than 'resolved' so it
+  // is forced through resolveNameCollisionByScoring's threshold/gap/appointment-match gate in
+  // production, rather than auto-resolving on a single initial-vs-full-name candidate alone. NOT
+  // a failure - this is the tier working as designed.
+  | 'single-candidate-relaxed-match'
+  | 'false-ambiguous' // came back ambiguous, but not the single-candidate-relaxed-match case above
   | 'correctly-ambiguous' // came back ambiguous, and expected 2+ trustees (matches ground truth)
   | 'false-no-match' // came back no-match, but a real trustee was expected
   | 'correctly-no-match'; // came back no-match, and ground truth also expects zero (placeholder/absent)
@@ -174,12 +206,14 @@ async function run() {
 
   const groundTruthPath = path.join(FIXTURES_DIR, 'ground-truth.json');
   const groundTruth: GroundTruthFile = JSON.parse(fs.readFileSync(groundTruthPath, 'utf-8'));
+  const verificationById = loadVerificationById();
 
   const context = await getAppContext();
 
   const outcomeCounts: Record<ReplayOutcome, number> = {
     'exact-match': 0,
     'wrong-match': 0,
+    'single-candidate-relaxed-match': 0,
     'false-ambiguous': 0,
     'correctly-ambiguous': 0,
     'false-no-match': 0,
@@ -195,7 +229,9 @@ async function run() {
   }> = [];
 
   for (const pair of groundTruth.pairs) {
-    const result = await matchTrusteeByName(context, pair.dxtrFullName);
+    const verification = verificationById.get(pair.verificationId);
+    const dxtrTrustee = verification?.dxtrTrustee ?? { fullName: pair.dxtrFullName };
+    const result = await matchTrusteeByName(context, dxtrTrustee);
     const expectedIds = new Set(pair.expectedTrusteeIds);
 
     let outcome: ReplayOutcome;
@@ -213,7 +249,13 @@ async function run() {
       actualDescription = `ambiguous -> [${candidateIds.join(', ')}]`;
       const sameSet =
         expectedIds.size === candidateIds.length && candidateIds.every((id) => expectedIds.has(id));
-      outcome = expectedIds.size >= 2 && sameSet ? 'correctly-ambiguous' : 'false-ambiguous';
+      if (expectedIds.size >= 2 && sameSet) {
+        outcome = 'correctly-ambiguous';
+      } else if (candidateIds.length === 1 && expectedIds.size === 1 && sameSet) {
+        outcome = 'single-candidate-relaxed-match';
+      } else {
+        outcome = 'false-ambiguous';
+      }
     } else {
       actualDescription = 'no-match';
       outcome = expectedIds.size === 0 ? 'correctly-no-match' : 'false-no-match';
@@ -239,6 +281,14 @@ async function run() {
     '\nDetail — false-no-match (real trustee exists but matchTrusteeByName found nothing):',
   );
   for (const d of detail.filter((d) => d.outcome === 'false-no-match')) {
+    console.log(`  [${d.confidence}] "${d.dxtrFullName}" — expected ${d.expected.join(' / ')}`);
+  }
+
+  console.log(
+    '\nDetail — single-candidate-relaxed-match (middle-name-relaxed tier found the right ' +
+      'trustee, surfaced as ambiguous by design - see matchTrusteeByName):',
+  );
+  for (const d of detail.filter((d) => d.outcome === 'single-candidate-relaxed-match')) {
     console.log(`  [${d.confidence}] "${d.dxtrFullName}" — expected ${d.expected.join(' / ')}`);
   }
 
