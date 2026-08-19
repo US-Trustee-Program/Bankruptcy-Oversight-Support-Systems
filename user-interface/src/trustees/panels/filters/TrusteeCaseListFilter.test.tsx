@@ -5,6 +5,7 @@ import TrusteeCaseListFilter from './TrusteeCaseListFilter';
 import Api2 from '@/lib/models/api2';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import LocalStorage from '@/lib/utils/local-storage';
+import DateHelper, { DEFAULT_MIN_DATE } from '@common/date-helper';
 
 const mockCourts: CourtDivisionDetails[] = [
   {
@@ -150,6 +151,57 @@ describe('TrusteeCaseListFilter', () => {
       'Start date must be before end date.',
     );
     expect(onFilterChange).not.toHaveBeenCalled();
+  });
+
+  test('sets min attribute to DEFAULT_MIN_DATE and max attribute to today on both date inputs', async () => {
+    await renderFilter();
+    const today = DateHelper.getTodaysIsoDate();
+    const fromInput = screen.getByLabelText('Case Filed Date Start');
+    const toInput = screen.getByLabelText('Case Filed Date End');
+
+    expect(fromInput).toHaveAttribute('min', DEFAULT_MIN_DATE);
+    expect(fromInput).toHaveAttribute('max', today);
+    expect(toInput).toHaveAttribute('min', DEFAULT_MIN_DATE);
+    expect(toInput).toHaveAttribute('max', today);
+  });
+
+  test('shows validation error when filed start date is before the minimum allowed date', async () => {
+    const onFilterChange = vi.fn();
+    await renderFilter(onFilterChange);
+    const fromInput = screen.getByLabelText('Case Filed Date Start');
+    const toInput = screen.getByLabelText('Case Filed Date End');
+
+    fireEvent.change(fromInput, { target: { value: '1970-01-01' } });
+    fireEvent.change(toInput, { target: { value: '2024-01-01' } });
+    fireEvent.blur(fromInput);
+
+    await waitFor(() => {
+      const startError = document.getElementById('case-filed-date-date-start-error');
+      expect(startError).toHaveTextContent(/Must be on or after/);
+    });
+    expect(onFilterChange).not.toHaveBeenCalledWith(
+      expect.objectContaining({ filedDateFrom: '1970-01-01' }),
+    );
+  });
+
+  test('shows validation error when filed end date is after today', async () => {
+    const onFilterChange = vi.fn();
+    await renderFilter(onFilterChange);
+    const fromInput = screen.getByLabelText('Case Filed Date Start');
+    const toInput = screen.getByLabelText('Case Filed Date End');
+    const futureDate = '9999-12-31';
+
+    fireEvent.change(fromInput, { target: { value: '2024-01-01' } });
+    fireEvent.change(toInput, { target: { value: futureDate } });
+    fireEvent.blur(toInput);
+
+    await waitFor(() => {
+      const endError = document.getElementById('case-filed-date-date-end-error');
+      expect(endError).toHaveTextContent(/Must be on or before/);
+    });
+    expect(onFilterChange).not.toHaveBeenCalledWith(
+      expect.objectContaining({ filedDateTo: futureDate }),
+    );
   });
 
   test('shows filed date pill when filedDateFrom is set', async () => {

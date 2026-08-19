@@ -15,7 +15,10 @@
     display: flex;
     flex-wrap: wrap;
     gap: 1rem;
-    align-items: flex-end;
+    // flex-start (not flex-end) so labels/inputs stay top-aligned even when
+    // a date field's variable-height error message grows that column taller
+    // than its siblings.
+    align-items: flex-start;
   }
 
   .filter-control,
