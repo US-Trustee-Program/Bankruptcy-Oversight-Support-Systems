@@ -78,6 +78,23 @@ const sampleOrderWithCandidatesDetail: EnrichedTrusteeMatchVerification = {
   matchCandidates: [candidateJaneSmith],
 };
 
+// AMBIGUOUS_MATCH_UNRESOLVED with only ONE candidate: the first-token-lastName search tier can
+// surface a single candidate that scores below the auto-link threshold, reaching this same
+// mismatchReason without a genuine 2+ raw-candidate collision (see isMultipleMatch's doc comment
+// in TrusteeMatchVerificationAccordion.tsx).
+const singleCandidateAmbiguousOrder: TrusteeMatchVerificationListItem = {
+  ...sampleOrder,
+  mismatchReason: 'AMBIGUOUS_MATCH_UNRESOLVED',
+  preselectedCandidate: { trusteeId: 'trustee-1', trusteeName: 'Jane Smith' },
+  candidateCount: 1,
+};
+
+const singleCandidateAmbiguousDetail: EnrichedTrusteeMatchVerification = {
+  ...sampleOrderDetail,
+  mismatchReason: 'AMBIGUOUS_MATCH_UNRESOLVED',
+  matchCandidates: [candidateJaneSmith],
+};
+
 function renderWithProps(props: Partial<TrusteeMatchVerificationAccordionProps> = {}) {
   const defaultProps: TrusteeMatchVerificationAccordionProps = {
     order: sampleOrder,
@@ -1351,6 +1368,23 @@ describe('TrusteeMatchVerificationAccordion', () => {
       const heading = screen.getByTestId(`accordion-heading-${sampleOrder.id}`);
       expect(heading.textContent).toContain('Multiple Match');
       expect(heading.textContent).not.toContain('Trustee Mismatch');
+    });
+
+    test('shows "Trustee Mismatch", not "Multiple Match", for AMBIGUOUS_MATCH_UNRESOLVED with only one candidate', () => {
+      renderWithProps({ order: singleCandidateAmbiguousOrder });
+
+      const heading = screen.getByTestId(`accordion-heading-${sampleOrder.id}`);
+      expect(heading.textContent).toContain('Trustee Mismatch');
+      expect(heading.textContent).not.toContain('Multiple Match');
+    });
+
+    test('shows zero "Other Potential Matches" for AMBIGUOUS_MATCH_UNRESOLVED with only one candidate', async () => {
+      renderWithProps({ order: singleCandidateAmbiguousOrder });
+      await mockDetailAndExpand(singleCandidateAmbiguousDetail);
+
+      const content = screen.getByTestId(`accordion-content-${sampleOrder.id}`);
+      expect(content.textContent).toContain('CAMS Strongest Match');
+      expect(content.textContent).not.toContain('Other Potential Matches');
     });
 
     test('shows both "CAMS Strongest Match" and "Other Potential Matches" headings', async () => {

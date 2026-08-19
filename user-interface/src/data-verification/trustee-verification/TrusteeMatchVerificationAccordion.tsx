@@ -294,8 +294,15 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   const courtDetails = courts.find((c) => c.courtDivisionCode === divisionCode);
   const courtName = order.courtName ?? courtDetails?.courtName ?? order.courtId;
 
+  // AmbiguousMatchUnresolved no longer guarantees 2+ raw candidates: the first-token-lastName
+  // search tier (see matchTrusteeByName in trustee-match.helpers.ts) can surface a single
+  // candidate that resolveNameCollisionByScoring then scores below the auto-link threshold,
+  // landing here with only one entry in matchCandidates. Labeling that "Multiple Match" is
+  // misleading (there are no "other potential matches" to compare against), so this also
+  // requires candidateCount >= 2 - a genuine raw-candidate collision, not just a low score.
   const isMultipleMatch =
-    order.mismatchReason === TrusteeAppointmentSyncErrorCode.AmbiguousMatchUnresolved;
+    order.mismatchReason === TrusteeAppointmentSyncErrorCode.AmbiguousMatchUnresolved &&
+    order.candidateCount >= 2;
   const isInactiveStatus =
     order.mismatchReason === TrusteeAppointmentSyncErrorCode.PerfectMatchInactiveStatus;
   const taskTypeLabel = isMultipleMatch

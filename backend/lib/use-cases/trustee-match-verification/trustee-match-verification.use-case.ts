@@ -110,8 +110,15 @@ export class TrusteeMatchVerificationUseCase {
     verification: TrusteeMatchVerificationSearchResult,
   ): TrusteeCandidate | null {
     if (verification.matchCandidates.length === 0) return null;
+    // AmbiguousMatchUnresolved no longer guarantees 2+ raw candidates (see
+    // TrusteeMatchVerificationAccordion.tsx's isMultipleMatch for the full explanation) — but
+    // reduce() over a single-element array returns that element unchanged, so this branch's
+    // result is identical either way. Kept aligned with the UI's isMultipleMatch condition
+    // anyway for clarity, since a reader comparing the two shouldn't have to notice they're
+    // subtly different definitions of the same concept.
     const isMultipleMatch =
-      verification.mismatchReason === TrusteeAppointmentSyncErrorCode.AmbiguousMatchUnresolved;
+      verification.mismatchReason === TrusteeAppointmentSyncErrorCode.AmbiguousMatchUnresolved &&
+      verification.matchCandidates.length >= 2;
     const best = isMultipleMatch
       ? verification.matchCandidates.reduce((a, b) => (b.totalScore > a.totalScore ? b : a))
       : verification.matchCandidates[0];
