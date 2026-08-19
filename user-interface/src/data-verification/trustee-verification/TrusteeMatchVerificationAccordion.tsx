@@ -28,6 +28,75 @@ import { TrusteeSearchResult } from '@common/cams/trustee-search';
 import { ResponseBody } from '@common/api/response';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 
+/**
+ * Maps a raw per-field CandidateScore value (e.g. nameScore, addressScore) to a match-quality
+ * icon: 100 (full match) -> green check, 0 (no match) -> red X, any other value (partial credit -
+ * e.g. nameScore's 85/15, addressScore's 60/40/30, districtDivisionScore's 50) -> yellow "close
+ * equivalent" icon, null (not comparable - data missing on one side, e.g. calculatePhoneScore/
+ * calculateEmailScore in trustee-match.helpers.ts) -> a neutral gray icon. Intentionally uses the
+ * RAW per-field score, never calculateTotalScore's weighted aggregate - the aggregate only has
+ * algorithmic value for the auto-link threshold, not for a human reviewer judging one field.
+ */
+function scoreToIconName(score: number | null): string {
+  if (score === null) return 'remove';
+  if (score === 100) return 'check_circle';
+  if (score === 0) return 'cancel';
+  return 'warning';
+}
+
+function scoreToIconClassName(score: number | null): string {
+  if (score === null) return 'score-icon-neutral';
+  if (score === 100) return 'score-icon-match';
+  if (score === 0) return 'score-icon-no-match';
+  return 'score-icon-partial';
+}
+
+function scoreToLabel(fieldLabel: string, score: number | null): string {
+  if (score === null) return `${fieldLabel}: not comparable`;
+  if (score === 100) return `${fieldLabel}: match`;
+  if (score === 0) return `${fieldLabel}: no match`;
+  return `${fieldLabel}: partial match`;
+}
+
+type ScoreIconProps = {
+  label: string;
+  score: number | null;
+};
+
+/**
+ * A single match-quality icon reflecting the CAMS Strongest Match candidate's score for one
+ * field - see scoreToIconName's doc comment for the icon mapping. Not color-only signaling: the
+ * icon's meaning is also conveyed via a visually-hidden text label (usa-sr-only) for screen
+ * readers, per WCAG 1.4.1. `label` never renders visibly - use ColumnHeaderWithScore instead when
+ * the field also needs a visible column-header label.
+ */
+function ScoreIcon({ label, score }: ScoreIconProps) {
+  return (
+    <span className="score-icon">
+      <Icon name={scoreToIconName(score)} className={scoreToIconClassName(score)} decorative />
+      <span className="usa-sr-only">{scoreToLabel(label, score)}</span>
+    </span>
+  );
+}
+
+type ColumnHeaderWithScoreProps = {
+  label: string;
+  score: number | null;
+};
+
+/**
+ * A column header label with an adjacent match-quality icon (see ScoreIcon) reflecting the CAMS
+ * Strongest Match candidate's score for that field.
+ */
+function ColumnHeaderWithScore({ label, score }: ColumnHeaderWithScoreProps) {
+  return (
+    <span className="column-header-with-score">
+      {label}
+      <ScoreIcon label={label} score={score} />
+    </span>
+  );
+}
+
 type TrusteeSearchLinkProps = {
   linkLabel: string;
   linkMessage?: string;
@@ -189,17 +258,61 @@ type CandidateTableProps = {
   candidates: CandidateScore[];
   onApprove?: (candidate: CandidateScore) => void;
   isProcessing?: boolean;
+  // Set only for the CAMS Strongest Match table (always exactly one candidate) - shows a
+  // match-quality icon on each column header reflecting that candidate's own score. NOT shown for
+  // the Other Potential Matches table (multiple candidates, no single score a header could
+  // represent) - see cams-fjmk6 for why this is scoped to the strongest match only for now.
+  scoreCandidate?: CandidateScore;
 };
 
-function CandidateTable({ candidates, onApprove, isProcessing }: CandidateTableProps) {
+function CandidateTable({
+  candidates,
+  onApprove,
+  isProcessing,
+  scoreCandidate,
+}: CandidateTableProps) {
   return (
     <div className="trustee-data-grid trustee-candidates-grid">
       <div className="trustee-data-header grid-row grid-gap-lg">
-        <div className="trustee-data-cell grid-col-2">Name</div>
-        <div className="trustee-data-cell grid-col-2">Address</div>
-        <div className="trustee-data-cell grid-col-1">Phone</div>
-        <div className="trustee-data-cell grid-col-2">Email</div>
-        <div className="trustee-data-cell grid-col-3">Trustee Appointment</div>
+        <div className="trustee-data-cell grid-col-2">
+          {scoreCandidate ? (
+            <ColumnHeaderWithScore label="Name" score={scoreCandidate.nameScore} />
+          ) : (
+            'Name'
+          )}
+        </div>
+        <div className="trustee-data-cell grid-col-2">
+          {scoreCandidate ? (
+            <ColumnHeaderWithScore label="Address" score={scoreCandidate.addressScore} />
+          ) : (
+            'Address'
+          )}
+        </div>
+        <div className="trustee-data-cell grid-col-1">
+          {scoreCandidate ? (
+            <ColumnHeaderWithScore label="Phone" score={scoreCandidate.phoneScore} />
+          ) : (
+            'Phone'
+          )}
+        </div>
+        <div className="trustee-data-cell grid-col-2">
+          {scoreCandidate ? (
+            <ColumnHeaderWithScore label="Email" score={scoreCandidate.emailScore} />
+          ) : (
+            'Email'
+          )}
+        </div>
+        <div className="trustee-data-cell grid-col-3">
+          {scoreCandidate ? (
+            <span className="column-header-with-score">
+              Trustee Appointment
+              <ScoreIcon label="District/Division" score={scoreCandidate.districtDivisionScore} />
+              <ScoreIcon label="Chapter" score={scoreCandidate.chapterScore} />
+            </span>
+          ) : (
+            'Trustee Appointment'
+          )}
+        </div>
         <div className="trustee-data-cell grid-col-2">Action</div>
       </div>
       {candidates.map((candidate) => (
@@ -522,6 +635,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
                   candidates={[candidatesToShow[0]]}
                   onApprove={openConfirmation}
                   isProcessing={isProcessing}
+                  scoreCandidate={candidatesToShow[0]}
                 />
                 <h3>Other Potential Matches</h3>
                 <p className="other-matches-subtext">
@@ -565,6 +679,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
                   candidates={candidatesToShow}
                   onApprove={openConfirmation}
                   isProcessing={isProcessing}
+                  scoreCandidate={candidatesToShow[0]}
                 />
                 <TrusteeSearchLink
                   linkMessage="There are no other suggested matches in CAMS."
@@ -580,7 +695,10 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
             {isMultipleMatch ? (
               <>
                 <h3>CAMS Strongest Match</h3>
-                <CandidateTable candidates={[candidatesToShow[0]]} />
+                <CandidateTable
+                  candidates={[candidatesToShow[0]]}
+                  scoreCandidate={candidatesToShow[0]}
+                />
                 <h3>Other Potential Matches</h3>
                 <p className="other-matches-subtext">
                   Results are ordered from strongest to weakest match. If you don&apos;t find the
@@ -617,7 +735,10 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
             ) : (
               <>
                 <h3>CAMS Strongest Match</h3>
-                <CandidateTable candidates={candidatesToShow} />
+                <CandidateTable
+                  candidates={candidatesToShow}
+                  scoreCandidate={candidatesToShow[0]}
+                />
                 <TrusteeSearchLink
                   linkMessage="There are no other suggested matches in CAMS."
                   linkLabel="Search for a different trustee."
