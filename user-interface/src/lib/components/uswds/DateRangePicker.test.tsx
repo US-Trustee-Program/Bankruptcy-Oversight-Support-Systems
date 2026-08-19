@@ -712,9 +712,7 @@ describe('DateRangePicker validation tests', () => {
 
     await waitFor(() => {
       expect(mockHandlerStart).toHaveBeenCalledTimes(1);
-      expect(mockHandlerStart).toHaveBeenCalledWith(
-        expect.objectContaining({ target: expect.objectContaining({ value: '2024-01-01' }) }),
-      );
+      expect(mockHandlerStart).toHaveBeenCalledWith('2024-01-01');
     });
   });
 
@@ -733,9 +731,7 @@ describe('DateRangePicker validation tests', () => {
 
     await waitFor(() => {
       expect(mockHandlerEnd).toHaveBeenCalledTimes(1);
-      expect(mockHandlerEnd).toHaveBeenCalledWith(
-        expect.objectContaining({ target: expect.objectContaining({ value: '2024-12-31' }) }),
-      );
+      expect(mockHandlerEnd).toHaveBeenCalledWith('2024-12-31');
     });
   });
 
@@ -876,7 +872,7 @@ describe('DateRangePicker validation tests', () => {
     });
   });
 
-  test('should pass both start and end dates in dataset when either date is changed with valid range', async () => {
+  test('should call handlers with the semantic string value that changed, valid range', async () => {
     const mockHandlerStart = vi.fn();
     const mockHandlerEnd = vi.fn();
     const { startInput, endInput } = renderDateRangePicker({
@@ -889,10 +885,7 @@ describe('DateRangePicker validation tests', () => {
     fireEvent.change(startInput, { target: { value: '2024-01-01' } });
 
     await waitFor(() => {
-      expect(mockHandlerStart).toHaveBeenCalled();
-      const startCallArgs = mockHandlerStart.mock.calls[0][0];
-      expect(startCallArgs.target.dataset.start).toBe('2024-01-01');
-      expect(startCallArgs.target.dataset.end).toBe('2024-12-31');
+      expect(mockHandlerStart).toHaveBeenCalledWith('2024-01-01');
     });
 
     mockHandlerStart.mockClear();
@@ -902,10 +895,7 @@ describe('DateRangePicker validation tests', () => {
     fireEvent.change(endInput, { target: { value: '2024-06-30' } });
 
     await waitFor(() => {
-      expect(mockHandlerEnd).toHaveBeenCalled();
-      const endCallArgs = mockHandlerEnd.mock.calls[0][0];
-      expect(endCallArgs.target.dataset.start).toBe('2024-06-01');
-      expect(endCallArgs.target.dataset.end).toBe('2024-06-30');
+      expect(mockHandlerEnd).toHaveBeenCalledWith('2024-06-30');
     });
   });
 
@@ -937,10 +927,7 @@ describe('DateRangePicker validation tests', () => {
     fireEvent.change(endInput, { target: { value: '2024-12-31' } });
 
     await waitFor(() => {
-      expect(mockHandlerEnd).toHaveBeenCalled();
-      const callArgs = mockHandlerEnd.mock.calls[0][0];
-      expect(callArgs.target.dataset.start).toBe('2024-12-31');
-      expect(callArgs.target.dataset.end).toBe('2024-12-31');
+      expect(mockHandlerEnd).toHaveBeenCalledWith('2024-12-31');
     });
   });
 

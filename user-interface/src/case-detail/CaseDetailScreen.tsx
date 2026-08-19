@@ -339,16 +339,12 @@ export default function CaseDetailScreen(props: Readonly<CaseDetailProps>) {
     setSelectedFacets(selected);
   }
 
-  function handleStartDateChange(ev: React.ChangeEvent<HTMLInputElement>) {
-    const start = ev.target.dataset.start || ev.target.value;
-    const end = ev.target.dataset.end;
-    setSelectedDateRange({ start, end });
+  function handleStartDateChange(start: string) {
+    setSelectedDateRange({ start, end: selectedDateRange.end });
   }
 
-  function handleEndDateChange(ev: React.ChangeEvent<HTMLInputElement>) {
-    const start = ev.target.dataset.start;
-    const end = ev.target.dataset.end || ev.target.value;
-    setSelectedDateRange({ start, end });
+  function handleEndDateChange(end: string) {
+    setSelectedDateRange({ start: selectedDateRange.start, end });
   }
 
   function handleCaseAssignment(assignment: AssignAttorneyModalCallbackProps) {

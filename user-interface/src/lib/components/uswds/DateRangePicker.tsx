@@ -23,8 +23,8 @@ export const formatDateForVoiceOver = (dateString: string) => {
 };
 
 interface DateRangePickerProps extends Omit<DatePickerProps, 'value' | 'validators'> {
-  onStartDateChange?: (ev: React.ChangeEvent<HTMLInputElement>) => void;
-  onEndDateChange?: (ev: React.ChangeEvent<HTMLInputElement>) => void;
+  onStartDateChange?: (start: string) => void;
+  onEndDateChange?: (end: string) => void;
   startDateLabel?: string;
   endDateLabel?: string;
   value?: DateRange;
@@ -133,10 +133,10 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
   }
 
   function handleDateChange(
-    ev: React.ChangeEvent<HTMLInputElement>,
+    changedValue: string,
     startValue: string,
     endValue: string,
-    callback?: (ev: React.ChangeEvent<HTMLInputElement>) => void,
+    callback?: (value: string) => void,
   ) {
     setStartDateError('');
     setEndDateError('');
@@ -144,7 +144,7 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
     // If both values are empty, call the callback to trigger search with no dates
     if (!startValue && !endValue) {
       if (callback) {
-        callback(ev);
+        callback(changedValue);
       }
       return;
     }
@@ -155,7 +155,7 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
     if (endError) setEndDateError(endError);
 
     if (!startError && !endError && rangeValid && callback) {
-      callback(ev);
+      callback(changedValue);
     }
   }
 
@@ -164,15 +164,7 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
     const currentEndValue = endDateRef.current?.getValue() ?? '';
     setStartDateValue(newStartValue);
     setEndDateValue(currentEndValue);
-    const syntheticEvent = {
-      ...ev,
-      target: {
-        ...ev.target,
-        value: newStartValue,
-        dataset: { start: newStartValue, end: currentEndValue },
-      },
-    } as React.ChangeEvent<HTMLInputElement>;
-    handleDateChange(syntheticEvent, newStartValue, currentEndValue, props.onStartDateChange);
+    handleDateChange(newStartValue, newStartValue, currentEndValue, props.onStartDateChange);
   }
 
   function onEndDateChange(ev: React.ChangeEvent<HTMLInputElement>) {
@@ -180,15 +172,7 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
     const newEndValue = ev.target.value;
     setStartDateValue(currentStartValue);
     setEndDateValue(newEndValue);
-    const syntheticEvent = {
-      ...ev,
-      target: {
-        ...ev.target,
-        value: newEndValue,
-        dataset: { start: currentStartValue, end: newEndValue },
-      },
-    } as React.ChangeEvent<HTMLInputElement>;
-    handleDateChange(syntheticEvent, currentStartValue, newEndValue, props.onEndDateChange);
+    handleDateChange(newEndValue, currentStartValue, newEndValue, props.onEndDateChange);
   }
 
   function handleDateBlur(startValue: string, endValue: string) {
