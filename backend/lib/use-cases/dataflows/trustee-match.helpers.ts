@@ -96,25 +96,13 @@ export function stripSourceSystemArtifacts(name: string): string {
  * Normalizes a trailing generational suffix (Jr, Sr, II, III, IV) so that formatting differences
  * (a preceding comma, a trailing period) don't prevent two names from comparing equal.
  * Example: "John Doe Jr." and "John Doe, Jr." both normalize to "John Doe Jr".
- * Does NOT bridge a suffix present on only one side (e.g. "John Doe" vs "John Doe, Jr.") - see
- * stripGenerationalSuffix for that case, used as a second-pass fallback only.
+ * Does NOT bridge a suffix present on only one side (e.g. "John Doe" vs "John Doe, Jr.") - that
+ * gap (and any other trailing noise after the real surname) is instead handled by the
+ * first-token-lastName search tier in matchTrusteeByName (see firstLastNameToken), which sidesteps
+ * needing a dedicated suffix-discarding pass at all.
  */
 export function normalizeGenerationalSuffix(name: string): string {
   return name.trim().replace(/,?\s+(Jr|Sr|II|III|IV)\.?$/i, ' $1');
-}
-
-/**
- * Removes a trailing generational suffix (Jr, Sr, II, III, IV) entirely, rather than reformatting
- * it - so "John Doe" and "John Doe, Jr." compare equal. Deliberately NOT part of
- * normalizeNameForMatching's main pipeline: discarding the suffix can only be done as a narrower,
- * second-pass fallback (see matchTrusteeByName) after confirming exactly one candidate remains,
- * since two real trustees sharing a base name specifically distinguished by "Jr."/"Sr." (a
- * genuine father/son or namesake pair - confirmed to exist in the CAMS trustees collection, e.g.
- * "Perry A. Stacks" vs "Perry A. Stacks, Jr.") would otherwise silently collapse into the same
- * comparison key and risk auto-linking to the wrong one.
- */
-export function stripGenerationalSuffix(name: string): string {
-  return name.trim().replace(/,?\s+(Jr|Sr|II|III|IV)\.?$/i, '');
 }
 
 /**
@@ -138,24 +126,6 @@ export function stripNamePunctuation(name: string): string {
 export function normalizeNameForMatching(name: string): string {
   return stripNamePunctuation(
     normalizeGenerationalSuffix(
-      stripSourceSystemArtifacts(
-        stripChapterAnnotation(stripTrusteeRoleSuffix(stripParentheticalAnnotations(name))),
-      ),
-    ),
-  );
-}
-
-/**
- * Second-pass fallback for matchTrusteeByName's fuzzy stage: same pipeline as
- * normalizeNameForMatching, but discards a generational suffix entirely instead of just
- * reformatting it - bridges "John Doe" vs "John Doe, Jr." (suffix present on only one side).
- * Only ever applied narrowly, after normalizeNameForMatching's stricter comparison has already
- * found zero matches - see stripGenerationalSuffix's doc comment for why this can't be folded
- * into the main pipeline directly.
- */
-export function normalizeNameForMatchingWithoutGeneration(name: string): string {
-  return stripNamePunctuation(
-    stripGenerationalSuffix(
       stripSourceSystemArtifacts(
         stripChapterAnnotation(stripTrusteeRoleSuffix(stripParentheticalAnnotations(name))),
       ),
@@ -398,17 +368,26 @@ function normalizeNamePart(namePart?: string): string {
 }
 
 /**
- * Normalizes a discrete lastName field for strict matching, same as normalizeNamePart but first
- * discards a trailing generational suffix (Jr, Sr, II, III, IV) via stripGenerationalSuffix - some
- * CAMS trustee records carry the suffix baked into lastName itself (e.g. "Malloy, III", "Eggmann,
- * III") rather than in a separate field, which DXTR's clean, suffix-free lastName ("Malloy",
- * "Eggmann") can never equal under plain normalizeNamePart even though the person is the same.
- * Comparing the generation field separately (DxtrTrusteeParty.generation) is not attempted here -
- * this function only needs lastName equality to hold so a real candidate isn't missed, not to
- * reconcile whether both sides agree on the generation itself.
+ * Reduces a raw lastName field to just its first word: drops apostrophes (so "O'Brien" stays one
+ * word, matching stripNamePunctuation's convention), replaces remaining punctuation with spaces,
+ * collapses runs of whitespace, splits, and returns the first token (lowercased). Used both for
+ * candidate discovery (see the first-token-lastName search tier in matchTrusteeByName) and for
+ * calculateNameScore's own lastName comparison - one lastName-comparison strategy rather than two,
+ * since trailing noise after the real surname's first word varies in shape (a role marker
+ * "(TR)"/"Trustee"/"tr", a comma before it, a generational suffix like "Jr."/", III", etc.) and
+ * taking only the first token sidesteps needing to enumerate and strip each specific pattern (as
+ * normalizeNameForMatching's pipeline does for the composed fullName string) - by definition,
+ * anything after the first token is not the real surname. Trade-off: a genuinely hyphenated
+ * compound surname ("Garcia-Miranda") also reduces to just its first word ("garcia") - the
+ * downstream scoring/appointment-match gate, not this function, is responsible for confirming
+ * whether that first word alone was enough to identify the right person.
+ * Example: "Marshack (TR)" -> "marshack", "Wallo, Trustee" -> "wallo", "Malloy, III" -> "malloy",
+ * "O'Brien" -> "obrien".
  */
-function normalizeLastNamePart(namePart?: string): string {
-  return normalizeNamePart(stripGenerationalSuffix(namePart ?? ''));
+export function firstLastNameToken(namePart?: string): string {
+  const withoutApostrophes = (namePart ?? '').toLowerCase().replace(/'/g, '');
+  const spaced = withoutApostrophes.replace(/[^a-z0-9]+/g, ' ');
+  return spaced.trim().split(' ')[0] ?? '';
 }
 
 const isInitialOf = (initial: string, full: string): boolean =>
@@ -451,9 +430,9 @@ function scoreMiddleNamePart(a: string, b: string): number {
 /**
  * Calculates a name match score between DXTR and CAMS trustee parties.
  * Scoring:
- * - Last name must normalize-match exactly (see normalizeLastNamePart), or the score is 0 - no
- *   relaxation on lastName beyond stripping a baked-in generational suffix, since it is the one
- *   part of the name most likely to distinguish two genuinely different people.
+ * - Last name must match on its first token (see firstLastNameToken), or the score is 0 - no
+ *   further relaxation on lastName, since it is the one part of the name most likely to
+ *   distinguish two genuinely different people.
  * - First name must also match, or relax to an initial-vs-full relationship (see
  *   scoreFirstNamePart) - a genuine first-name mismatch is still disqualifying (score 0).
  * - When last and first both clear their bar, a middle-name sub-score (see scoreMiddleNamePart)
@@ -461,8 +440,8 @@ function scoreMiddleNamePart(a: string, b: string): number {
  *   initial-vs-full relationship on either part still caps the result at 85.
  */
 export function calculateNameScore(dxtrTrustee: DxtrTrusteeParty, camsTrustee: Trustee): number {
-  const dxtrLast = normalizeLastNamePart(dxtrTrustee.lastName);
-  const camsLast = normalizeLastNamePart(camsTrustee.lastName);
+  const dxtrLast = firstLastNameToken(dxtrTrustee.lastName);
+  const camsLast = firstLastNameToken(camsTrustee.lastName);
 
   if (!dxtrLast || dxtrLast !== camsLast) {
     return 0;
@@ -827,52 +806,49 @@ function toUnscoredCandidates(trustees: Trustee[]): CandidateScore[] {
 }
 
 /**
- * Filters scored candidates down to those with a plausible but not fully-confirmed name match:
- * lastName must normalize-match exactly (via normalizeLastNamePart - see its doc comment for why
- * lastName needs a generational-suffix-stripping pass first, e.g. CAMS "Ivy, Sr." vs DXTR's clean
- * "Ivy"), firstName must either normalize-match exactly or relax to an initial-vs-full
- * relationship (e.g. DXTR "G." vs CAMS "George" - a genuine firstName conflict, unlike middleName,
- * is NOT relaxed here, mirroring scoreFirstNamePart's harsher treatment), and at least one of
- * firstName/middleName must NOT be a full, already-identical match - a candidate whose first AND
- * middle both already agree (or are both absent) is a fully-confirmed match, not weaker evidence,
- * and belongs in the composed-name fuzzy tiers above (which resolve it directly at nameScore 100),
- * not demoted to this tier's weaker "surface as ambiguous, needs corroboration" treatment. Without
- * that exclusion, a pure generational-suffix gap with otherwise-identical first/middle names would
- * ALSO satisfy this tier's equality checks purely because normalizeLastNamePart strips the suffix.
- * Deliberately does NOT score or filter beyond that: calculateNameScore already scores a genuinely
- * differing middle name correctly (85/15), and resolveNameCollisionByScoring's existing
- * threshold+gap+appointment-match gate already rejects a genuine conflict (15 points) as a low
- * scorer. Duplicating that judgment here would risk disagreeing with the scorer that actually
- * decides the outcome.
- * Requires both firstName and lastName on the DXTR side - there's nothing to relax against
+ * Searches CAMS trustees by just the first token of the DXTR trustee's lastName (see
+ * firstLastNameToken's doc comment for why a first-token-only query sidesteps needing to know the
+ * shape of whatever trailing noise DXTR's lastName carries), then narrows the results to those
+ * with at least one active appointment in the event's court - the same courtId filter
+ * TrusteeSearchUseCase applies for the UI's manual trustee-search feature, so this tier surfaces
+ * the same candidate set a human reviewer would see searching by hand.
+ * Deliberately returns raw, unscored candidates rather than filtering by firstName/middleName here
+ * - a first-token lastName search alone is broad (a common surname can return dozens of same-
+ * surname trustees), so this tier leans entirely on the caller routing the result through
+ * resolveNameCollisionByScoring's existing address/phone/email/district/chapter/name scoring and
+ * appointment-match gate to do the actual discrimination, exactly as it already does for a raw
+ * multi-candidate name collision - duplicating any of that judgment here would risk disagreeing
+ * with the scorer that actually decides the outcome.
+ * Requires a lastName on the DXTR side and a courtId - there's nothing to search or filter by
  * without them.
  */
-function findNameRelaxedMatches(
+async function findLastNameTokenMatches(
+  context: ApplicationContext,
   dxtrTrustee: DxtrTrusteeParty,
-  scoredCandidates: Trustee[],
-): Trustee[] {
-  const dxtrFirst = normalizeNamePart(dxtrTrustee.firstName);
-  const dxtrLast = normalizeLastNamePart(dxtrTrustee.lastName);
-  if (!dxtrFirst || !dxtrLast) return [];
+  courtId: string | undefined,
+): Promise<Trustee[]> {
+  const token = firstLastNameToken(dxtrTrustee.lastName);
+  if (!token || !courtId) return [];
 
-  const dxtrMiddle = normalizeNamePart(dxtrTrustee.middleName);
+  const trusteesRepo = factory.getTrusteesRepository(context);
+  const appointmentsRepo = factory.getTrusteeAppointmentsRepository(context);
 
-  return scoredCandidates.filter((candidate) => {
-    const candidateFirst = normalizeNamePart(candidate.firstName);
-    if (
-      candidateFirst !== dxtrFirst &&
-      !isInitialOf(dxtrFirst, candidateFirst) &&
-      !isInitialOf(candidateFirst, dxtrFirst)
-    ) {
-      return false;
-    }
-    if (normalizeLastNamePart(candidate.lastName) !== dxtrLast) return false;
+  const candidates = await trusteesRepo.searchTrusteesByNameScored(token);
+  if (candidates.length === 0) return [];
 
-    const candidateMiddle = normalizeNamePart(candidate.middleName);
-    const firstAlreadyIdentical = candidateFirst === dxtrFirst;
-    const middleAlreadyIdentical = dxtrMiddle === candidateMiddle;
-    return !(firstAlreadyIdentical && middleAlreadyIdentical);
-  });
+  const trusteeIds = candidates.map((c) => c.trusteeId);
+  const appointments = await appointmentsRepo.getAppointmentsByTrusteeIds(trusteeIds);
+
+  const appointmentsByTrustee = new Map<string, TrusteeAppointment[]>();
+  for (const appt of appointments) {
+    const list = appointmentsByTrustee.get(appt.trusteeId) ?? [];
+    list.push(appt);
+    appointmentsByTrustee.set(appt.trusteeId, list);
+  }
+
+  return candidates.filter((candidate) =>
+    (appointmentsByTrustee.get(candidate.trusteeId) ?? []).some((appt) => appt.courtId === courtId),
+  );
 }
 
 /**
@@ -889,6 +865,7 @@ function findNameRelaxedMatches(
 export async function matchTrusteeByName(
   context: ApplicationContext,
   dxtrTrustee: DxtrTrusteeParty,
+  courtId?: string,
 ): Promise<NameMatchResult> {
   const trusteeName = dxtrTrustee.fullName;
   const normalized = normalizeName(trusteeName);
@@ -937,63 +914,27 @@ export async function matchTrusteeByName(
     };
   }
 
-  // Third-pass fallback: first/last name match (allowing an initial-vs-full relationship on
-  // firstName) but the candidate isn't already a fully-confirmed match (see
-  // findNameRelaxedMatches's doc comment for exactly what that excludes). Unlike the other tiers
-  // above, this one is NOT resolved directly here - an initial-vs-full relationship is weaker
-  // evidence than a full string match (an initial only narrows down to one of many possible full
-  // names), so it is surfaced as 'ambiguous' even when exactly one candidate is found. This routes
-  // it through resolveNameCollisionByScoring's existing threshold+gap+appointment-match gate (same
-  // scoring calculateCandidateScore/calculateNameScore already do for a raw name collision), rather
-  // than trusting a single candidate's weaker signal outright. More common in practice than a bare
-  // generational-suffix gap (DXTR frequently sends an initial where CAMS has the expanded name, or
-  // vice versa), so it is tried first to short-circuit before that rarer case.
-  const nameRelaxedMatches = findNameRelaxedMatches(dxtrTrustee, scoredCandidates);
+  // Third-pass fallback: neither the composed-name comparison nor its stricter variant found a
+  // match - search by just the first token of DXTR's lastName instead (see
+  // findLastNameTokenMatches's doc comment), narrowed to trustees with an active appointment in
+  // this event's court. This tier is NOT resolved directly here even for a single candidate - a
+  // first-token lastName search alone is much weaker evidence than a full string match, so it is
+  // surfaced as 'ambiguous' to route through resolveNameCollisionByScoring's existing
+  // address/phone/email/district/chapter/name scoring and appointment-match gate, rather than
+  // trusting a single candidate's weaker signal outright.
+  const lastNameTokenMatches = await findLastNameTokenMatches(context, dxtrTrustee, courtId);
 
-  if (nameRelaxedMatches.length > 0) {
-    const candidates = nameRelaxedMatches.map((t) => `${t.trusteeId} ("${t.name}")`).join(', ');
-    context.logger.info(
-      MODULE_NAME,
-      `CAMS trustee(s) found matching "${normalized}" on first/last name only, first or middle ` +
-        `name differs: ${candidates}.`,
-    );
-    return { kind: 'ambiguous', matchCandidates: toUnscoredCandidates(nameRelaxedMatches) };
-  }
-
-  // Fourth-pass fallback: the stricter comparison (generational suffix reformatted but not
-  // discarded) found nothing - retry discarding a generational suffix entirely, in case one side
-  // carries "Jr."/"Sr."/etc. that the other omits. A single match here is still a confident
-  // resolution (all other name/address/phone/email signal already agreed); multiple matches
-  // means the discarded suffix WAS the disambiguator between two real trustees (e.g. a genuine
-  // father/son pair) - correctly downgraded to ambiguous for human review rather than guessing.
-  const normalizedTargetWithoutGeneration = normalizeNameForMatchingWithoutGeneration(trusteeName);
-  const withoutGenerationMatches = scoredCandidates.filter(
-    (candidate) =>
-      normalizeNameForMatchingWithoutGeneration(candidate.name) ===
-      normalizedTargetWithoutGeneration,
-  );
-
-  if (withoutGenerationMatches.length === 0) {
-    context.logger.warn(MODULE_NAME, `No CAMS trustee found matching name "${normalized}".`);
-    return { kind: 'no-match' };
-  }
-
-  if (withoutGenerationMatches.length > 1) {
-    const candidates = withoutGenerationMatches
-      .map((t) => `${t.trusteeId} ("${t.name}")`)
+  if (lastNameTokenMatches.length > 0) {
+    const candidates = lastNameTokenMatches
+      .map((t: Trustee) => `${t.trusteeId} ("${t.name}")`)
       .join(', ');
     context.logger.info(
       MODULE_NAME,
-      `Multiple CAMS trustees found matching name "${normalizedTargetWithoutGeneration}" ` +
-        `once a generational suffix is disregarded: ${candidates}.`,
+      `CAMS trustee(s) found matching "${normalized}" by first-token lastName search: ${candidates}.`,
     );
-    return { kind: 'ambiguous', matchCandidates: toUnscoredCandidates(withoutGenerationMatches) };
+    return { kind: 'ambiguous', matchCandidates: toUnscoredCandidates(lastNameTokenMatches) };
   }
 
-  return {
-    kind: 'resolved',
-    trusteeId: withoutGenerationMatches[0].trusteeId,
-    nameScore: 100,
-    nameMatchQuality: 'fuzzy',
-  };
+  context.logger.warn(MODULE_NAME, `No CAMS trustee found matching name "${normalized}".`);
+  return { kind: 'no-match' };
 }

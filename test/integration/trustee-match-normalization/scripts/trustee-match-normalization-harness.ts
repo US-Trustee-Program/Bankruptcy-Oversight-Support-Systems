@@ -8,8 +8,16 @@
  * (../fixtures/2026-08-18-trustees.json) and replays a hand-verified ground truth of DXTR
  * fullName -> expected CAMS trustee(s) (../fixtures/ground-truth.json, built by inspecting
  * ../fixtures/2026-08-18-trustee-verification.json's no-match-candidate records against the
- * trustees export) through the REAL matchTrusteeByName() exactly as
- * sync-trustee-case-appointments.ts calls it.
+ * trustees export) through the REAL matchTrusteeByName(), WITHOUT a courtId (unlike
+ * sync-trustee-case-appointments.ts's real call, which always passes one). This harness only
+ * seeds the trustees collection, not trustee-appointments, so there is no real appointment data
+ * to filter against - passing a courtId would make matchTrusteeByName's first-token-lastName
+ * search tier (see firstLastNameToken) exclude every candidate it finds, since none would have a
+ * matching-court appointment on file. Omitting courtId means that tier's own court-filtering
+ * behavior is NOT exercised by this harness at all (it has its own passing unit test coverage in
+ * trustee-match.helpers.test.ts) - this harness measures demographic/name-search matching only,
+ * consistent with staging's own observation that court/division/chapter mismatches are already
+ * correctly caught and routed to human review.
  *
  * matchTrusteeByName -> findTrusteesByName does an exact, whitespace-only-normalized,
  * case-insensitive full-name regex match. Every ground-truth pair with confidence
@@ -46,7 +54,11 @@ import * as path from 'path';
 import { InvocationContext } from '@azure/functions';
 import { MongoClient } from 'mongodb';
 import ApplicationContextCreator from '../../../../backend/function-apps/azure/application-context-creator';
-import { matchTrusteeByName } from '../../../../backend/lib/use-cases/dataflows/trustee-match.helpers';
+import {
+  matchTrusteeByName,
+  firstLastNameToken,
+} from '../../../../backend/lib/use-cases/dataflows/trustee-match.helpers';
+import factory from '../../../../backend/lib/factory';
 
 const HARNESS_DIR = path.resolve(__dirname, '../');
 const FIXTURES_DIR = path.join(HARNESS_DIR, 'fixtures');
@@ -158,6 +170,7 @@ type GroundTruthPair = {
 };
 
 type GroundTruthFile = {
+  sourceFiles?: { verification?: string; trustees?: string };
   pairs: GroundTruthPair[];
 };
 
@@ -178,10 +191,14 @@ type VerificationRecord = {
  * verificationId) so run() can pass matchTrusteeByName the full DxtrTrusteeParty - structured
  * firstName/middleName/lastName included - instead of just the flattened dxtrFullName string
  * ground-truth.json stores. Structured fields are required for matchTrusteeByName's
- * middle-name-relaxed fallback tier to have anything to key off.
+ * name-relaxed fallback tier to have anything to key off.
+ * Reads the filename from ground-truth.json's own sourceFiles.verification field rather than a
+ * hardcoded date, since a fresh export/regeneration is expected periodically as new staging data
+ * comes in - falls back to the (dated) name below only if that field is somehow absent.
  */
-function loadVerificationById(): Map<string, VerificationRecord> {
-  const verificationPath = path.join(FIXTURES_DIR, '2026-08-18-trustee-verification.json');
+function loadVerificationById(groundTruth: GroundTruthFile): Map<string, VerificationRecord> {
+  const filename = groundTruth.sourceFiles?.verification ?? '2026-08-18-trustee-verification.json';
+  const verificationPath = path.join(FIXTURES_DIR, filename);
   const raw: VerificationRecord[] = JSON.parse(fs.readFileSync(verificationPath, 'utf-8'));
   return new Map(raw.map((record) => [record.id, record]));
 }
@@ -189,16 +206,24 @@ function loadVerificationById(): Map<string, VerificationRecord> {
 type ReplayOutcome =
   | 'exact-match' // matchTrusteeByName resolved to exactly the expected trusteeId(s)
   | 'wrong-match' // resolved, but to a trustee NOT in expectedTrusteeIds
-  // came back ambiguous with EXACTLY the one expected trusteeId as its sole candidate - the
-  // middle-name-relaxed tier's weaker-evidence design (see matchTrusteeByName's doc comment):
-  // correctly found the right trustee, but surfaces as 'ambiguous' rather than 'resolved' so it
-  // is forced through resolveNameCollisionByScoring's threshold/gap/appointment-match gate in
-  // production, rather than auto-resolving on a single initial-vs-full-name candidate alone. NOT
-  // a failure - this is the tier working as designed.
+  // came back ambiguous with EXACTLY the one expected trusteeId as its sole candidate - this
+  // harness's courtId-less call bypasses the first-token-lastName tier's court filter (see this
+  // file's header comment), so any 'ambiguous' result seen here comes from a composed-name fuzzy
+  // tier finding a weaker-evidence match and correctly deferring to resolveNameCollisionByScoring
+  // rather than a court-filtered result. NOT a failure - this is the tier working as designed.
   | 'single-candidate-relaxed-match'
   | 'false-ambiguous' // came back ambiguous, but not the single-candidate-relaxed-match case above
   | 'correctly-ambiguous' // came back ambiguous, and expected 2+ trustees (matches ground truth)
-  | 'false-no-match' // came back no-match, but a real trustee was expected
+  // matchTrusteeByName itself returned no-match (its first-token-lastName tier never fires
+  // without a courtId - see this file's header comment), but a DIRECT first-token-lastName
+  // search (bypassing the court filter entirely, purely to measure demographic/name-search
+  // matching in isolation) DOES contain the expected trustee among its results. This is what
+  // production would find via the real tier once corroborated by a matching-court appointment -
+  // not a guarantee it will auto-link, just confirmation the search step itself finds the right
+  // person. See findLastNameTokenMatches in trustee-match.helpers.ts for the real, court-filtered
+  // version this approximates.
+  | 'demographic-match-needs-court-corroboration'
+  | 'false-no-match' // came back no-match, and no first-token-lastName search finds them either
   | 'correctly-no-match'; // came back no-match, and ground truth also expects zero (placeholder/absent)
 
 async function run() {
@@ -206,7 +231,7 @@ async function run() {
 
   const groundTruthPath = path.join(FIXTURES_DIR, 'ground-truth.json');
   const groundTruth: GroundTruthFile = JSON.parse(fs.readFileSync(groundTruthPath, 'utf-8'));
-  const verificationById = loadVerificationById();
+  const verificationById = loadVerificationById(groundTruth);
 
   const context = await getAppContext();
 
@@ -216,9 +241,12 @@ async function run() {
     'single-candidate-relaxed-match': 0,
     'false-ambiguous': 0,
     'correctly-ambiguous': 0,
+    'demographic-match-needs-court-corroboration': 0,
     'false-no-match': 0,
     'correctly-no-match': 0,
   };
+
+  const trusteesRepo = factory.getTrusteesRepository(context);
 
   const detail: Array<{
     dxtrFullName: string;
@@ -256,9 +284,21 @@ async function run() {
       } else {
         outcome = 'false-ambiguous';
       }
-    } else {
+    } else if (expectedIds.size === 0) {
       actualDescription = 'no-match';
-      outcome = expectedIds.size === 0 ? 'correctly-no-match' : 'false-no-match';
+      outcome = 'correctly-no-match';
+    } else {
+      const token = firstLastNameToken(dxtrTrustee.lastName);
+      const tokenCandidates = token ? await trusteesRepo.searchTrusteesByNameScored(token) : [];
+      const tokenCandidateIds = new Set(tokenCandidates.map((c) => c.trusteeId));
+      const foundExpected = [...expectedIds].some((id) => tokenCandidateIds.has(id));
+      if (foundExpected) {
+        actualDescription = `no-match, but first-token search "${token}" contains expected trustee`;
+        outcome = 'demographic-match-needs-court-corroboration';
+      } else {
+        actualDescription = 'no-match';
+        outcome = 'false-no-match';
+      }
     }
 
     outcomeCounts[outcome]++;
@@ -274,18 +314,30 @@ async function run() {
   console.log(`Replayed ${groundTruth.pairs.length} ground-truth pairs.\n`);
   console.log('Outcome summary:');
   for (const [outcome, count] of Object.entries(outcomeCounts)) {
-    console.log(`  ${outcome.padEnd(22)} ${count}`);
+    console.log(`  ${outcome.padEnd(46)} ${count}`);
   }
 
   console.log(
-    '\nDetail — false-no-match (real trustee exists but matchTrusteeByName found nothing):',
+    '\nDetail — false-no-match (real trustee exists but neither matchTrusteeByName nor a ' +
+      'first-token-lastName search found them):',
   );
   for (const d of detail.filter((d) => d.outcome === 'false-no-match')) {
     console.log(`  [${d.confidence}] "${d.dxtrFullName}" — expected ${d.expected.join(' / ')}`);
   }
 
   console.log(
-    '\nDetail — single-candidate-relaxed-match (middle-name-relaxed tier found the right ' +
+    '\nDetail — demographic-match-needs-court-corroboration (a direct first-token-lastName ' +
+      "search finds the expected trustee, but matchTrusteeByName's real courtId-filtered tier " +
+      "wasn't exercised by this harness - see this file's header comment):",
+  );
+  for (const d of detail.filter(
+    (d) => d.outcome === 'demographic-match-needs-court-corroboration',
+  )) {
+    console.log(`  [${d.confidence}] "${d.dxtrFullName}" — expected ${d.expected.join(' / ')}`);
+  }
+
+  console.log(
+    '\nDetail — single-candidate-relaxed-match (a composed-name fuzzy tier found the right ' +
       'trustee, surfaced as ambiguous by design - see matchTrusteeByName):',
   );
   for (const d of detail.filter((d) => d.outcome === 'single-candidate-relaxed-match')) {
