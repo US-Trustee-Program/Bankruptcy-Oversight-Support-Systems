@@ -2,6 +2,10 @@ name: Knip Unused Code Check
 
 on:
   workflow_call:
+    inputs:
+      skip:
+        required: true
+        type: boolean
 
 permissions:
   contents: read
@@ -14,12 +18,16 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: ${{ ! inputs.skip }}
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        if: ${{ ! inputs.skip }}
         with:
           node-version-file: ".nvmrc"
           cache: "npm"
           cache-dependency-path: package-lock.json
       - name: Install Dependencies
+        if: ${{ ! inputs.skip }}
         run: npm ci --include=dev
       - name: Run Knip
+        if: ${{ ! inputs.skip }}
         run: npm run knip
