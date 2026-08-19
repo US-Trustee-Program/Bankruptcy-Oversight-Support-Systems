@@ -418,7 +418,11 @@ describe('DatePicker additional coverage tests', () => {
     act(() => expect(ref.current?.getValue()).toBe(''));
   });
 
-  test('should clear errors when field becomes empty', async () => {
+  test.each([
+    ['empty value', ''],
+    ['incomplete date', '2024-06'],
+    ['invalid date (Feb 31)', '2024-02-31'],
+  ])('should clear errors when follow-up value is %s', async (_label, followUpValue) => {
     renderWithProps({ min: '2024-01-01', max: '2024-12-31', onChange: mockOnChange });
 
     const inputEl = screen.getByTestId(DEFAULT_ID);
@@ -429,43 +433,7 @@ describe('DatePicker additional coverage tests', () => {
 
     expect(getErrorText()).toContain('Must be on or after');
 
-    fireEvent.change(inputEl, { target: { value: '' } });
-
-    await waitFor(() => {
-      expect(getErrorText()).toBe('');
-    });
-  });
-
-  test('should clear errors when date is incomplete', async () => {
-    renderWithProps({ min: '2024-01-01', max: '2024-12-31', onChange: mockOnChange });
-
-    const inputEl = screen.getByTestId(DEFAULT_ID);
-
-    fireEvent.change(inputEl, { target: { value: '2023-12-15' } });
-
-    await waitForValidation();
-
-    expect(getErrorText()).toContain('Must be on or after');
-
-    fireEvent.change(inputEl, { target: { value: '2024-06' } });
-
-    await waitFor(() => {
-      expect(getErrorText()).toBe('');
-    });
-  });
-
-  test('should clear errors for invalid dates', async () => {
-    renderWithProps({ min: '2024-01-01', max: '2024-12-31', onChange: mockOnChange });
-
-    const inputEl = screen.getByTestId(DEFAULT_ID);
-
-    fireEvent.change(inputEl, { target: { value: '2023-12-15' } });
-
-    await waitForValidation();
-
-    expect(getErrorText()).toContain('Must be on or after');
-
-    fireEvent.change(inputEl, { target: { value: '2024-02-31' } });
+    fireEvent.change(inputEl, { target: { value: followUpValue } });
 
     await waitFor(() => {
       expect(getErrorText()).toBe('');
