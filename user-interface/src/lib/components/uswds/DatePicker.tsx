@@ -136,6 +136,9 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
   // Notify parent of the current effective error state
   useEffect(() => {
     props.onValidationChange?.(!!displayErrorMessage);
+    // onValidationChange intentionally omitted: callers wrap a stable registerFieldError
+    // (useCallback), so parent error state stays correct across re-renders without
+    // re-firing when only the callback reference changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [displayErrorMessage]);
 

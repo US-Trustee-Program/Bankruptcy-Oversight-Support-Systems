@@ -984,6 +984,34 @@ describe('DateRangePicker validation tests', () => {
     });
   });
 
+  test('should not call either callback while start date is out of range, even after entering a valid end date', async () => {
+    const mockHandlerStart = vi.fn();
+    const mockHandlerEnd = vi.fn();
+    const { startInput, endInput } = renderDateRangePicker({
+      id: 'date-picker-start-below-min-independent-end',
+      min: '2020-01-01',
+      onStartDateChange: mockHandlerStart,
+      onEndDateChange: mockHandlerEnd,
+    });
+
+    fireEvent.change(startInput, { target: { value: '2019-12-31' } });
+    fireEvent.blur(startInput);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Must be on or after/)).toBeInTheDocument();
+    });
+
+    expect(mockHandlerStart).not.toHaveBeenCalled();
+
+    fireEvent.change(endInput, { target: { value: '2020-02-01' } });
+
+    await waitFor(() => {
+      expect(endInput).toHaveValue('2020-02-01');
+    });
+
+    expect(mockHandlerEnd).not.toHaveBeenCalled();
+  });
+
   test('should call callback when only start date is set', async () => {
     const mockHandlerStart = vi.fn();
     const { startInput } = renderDateRangePicker({

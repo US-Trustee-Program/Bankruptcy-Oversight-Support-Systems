@@ -93,6 +93,9 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
               </div>
 
               <div className="filter-control filter-control--status">
+                {/* Invisible spacer reusing DatePicker's own .usa-hint class (not a copy of its
+                    styling) so this stays vertically aligned with the DateRangePicker's hint
+                    line automatically, without a separate "Case Status" hint to display. */}
                 <span className="usa-hint" aria-hidden="true">
                   &nbsp;
                 </span>
