@@ -1075,7 +1075,7 @@ async function resolveTrusteeIdByName(
   syncedCase: SyncedCase,
 ): Promise<NameResolution> {
   const { deps, event } = ctx;
-  const nameMatch = await matchTrusteeByName(deps.context, event.dxtrTrustee);
+  const nameMatch = await matchTrusteeByName(deps.context, event.dxtrTrustee, event.courtId);
 
   switch (nameMatch.kind) {
     case 'resolved':
