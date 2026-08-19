@@ -138,19 +138,19 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
           />
         )}
         {displayChpt12StandingKeyDates && isStandingChapter12 && (
-          <PastKeyDates
-            variant="chapter12-standing"
-            trusteeId={props.appointment.trusteeId}
-            appointmentId={props.appointment.id}
-            appointmentHeading={appointmentHeading}
-          />
-        )}
-        {displayChpt12StandingKeyDates && isStandingChapter12 && (
-          <Chapter12StandingUpcomingKeyDates
-            trusteeId={props.appointment.trusteeId}
-            appointmentId={props.appointment.id}
-            appointmentHeading={appointmentHeading}
-          />
+          <>
+            <Chapter12StandingUpcomingKeyDates
+              trusteeId={props.appointment.trusteeId}
+              appointmentId={props.appointment.id}
+              appointmentHeading={appointmentHeading}
+            />
+            <PastKeyDates
+              variant="chapter12-standing"
+              trusteeId={props.appointment.trusteeId}
+              appointmentId={props.appointment.id}
+              appointmentHeading={appointmentHeading}
+            />
+          </>
         )}
       </div>
     </div>
