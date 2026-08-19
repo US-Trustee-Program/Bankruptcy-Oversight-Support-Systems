@@ -530,9 +530,21 @@ export function calculateCandidateScore(
   chapter: string,
   camsTrustee: Trustee,
   appointments: TrusteeAppointment[],
+  nameScoreOverride?: number,
 ): CandidateScore {
   const addressScore = calculateAddressScore(dxtrTrustee.legacy, camsTrustee.public.address);
-  const nameScore = calculateNameScore(dxtrTrustee, camsTrustee);
+  // nameScoreOverride is passed by callers (applyMatchOutcome's ImperfectMatch/
+  // PerfectMatchInactiveStatus paths) that already know how this trusteeId was resolved - via a
+  // fingerprint hit, professional-id match, or matchTrusteeByName's exact/fuzzy tiers - and so
+  // already have a trustworthy nameScore. Falling back to calculateNameScore's discrete
+  // firstName/lastName comparison in that case would re-derive name confidence from scratch and
+  // can produce a WRONG answer when a CAMS trustee's own name fields carry data-quality issues
+  // (e.g. a generational suffix baked into lastName, like "Eggmann, III", where DXTR's clean
+  // "Eggmann" + separate generation field never equals it under discrete-field comparison even
+  // though the composed name string the matcher actually used matched perfectly). Only
+  // resolveNameCollisionByScoring's multi-candidate discrimination (no trusteeId decided yet,
+  // genuinely comparing raw candidates against each other) omits this and gets a fresh score.
+  const nameScore = nameScoreOverride ?? calculateNameScore(dxtrTrustee, camsTrustee);
   const phoneScore = calculatePhoneScore(dxtrTrustee.legacy?.phone, camsTrustee.public.phone);
   const emailScore = calculateEmailScore(dxtrTrustee.legacy?.email, camsTrustee.public.email);
   const districtDivisionScore = calculateDistrictDivisionScore(
@@ -708,14 +720,38 @@ export async function resolveNameCollisionByScoring(
 }
 
 /**
+ * How a 'resolved' NameMatchResult reached its answer - the qualitative counterpart to
+ * nameScore's quantified confidence:
+ *  - 'exact': findTrusteesByName's anchored, whitespace-only-normalized regex matched exactly
+ *    one CAMS trustee. No fuzzy normalization was needed at all.
+ *  - 'fuzzy': the exact-match path found nothing, but one of matchTrusteeByName's fuzzy fallback
+ *    tiers (normalizeNameForMatching, or its generational-suffix-discarding second pass) matched
+ *    exactly one scored candidate. Both fallback tiers share this single label - discarding a
+ *    generational suffix is just one more normalization step in the same fuzzy pipeline, no more
+ *    a distinct category than any of the pipeline's other steps (stripping a parenthetical
+ *    annotation, a source-system artifact, etc.), none of which get their own label either.
+ */
+type NameMatchQuality = 'exact' | 'fuzzy';
+
+/**
  * Outcome of a name-lookup attempt (see matchTrusteeByName):
- *  - 'resolved': exactly one CAMS trustee matched the name.
+ *  - 'resolved': exactly one CAMS trustee matched the name. Carries nameScore (always 100 here -
+ *    every tier that can produce 'resolved' represents a name the matcher is fully confident in,
+ *    with no discrete-field partial-credit ambiguity to represent) and nameMatchQuality (see
+ *    NameMatchQuality) so a caller scoring this candidate later (e.g. applyMatchOutcome's
+ *    ImperfectMatch/PerfectMatchInactiveStatus paths) uses THIS determination instead of
+ *    independently re-deriving name confidence from raw firstName/lastName fields via
+ *    calculateNameScore - which can diverge from what actually matched when a CAMS trustee's own
+ *    name fields carry data-quality issues (e.g. a generational suffix baked into lastName, like
+ *    "Eggmann, III", that DXTR's clean "Eggmann" + separate generation field will never equal
+ *    under discrete-field comparison even though the composed name string matched here just
+ *    fine).
  *  - 'no-match': zero CAMS trustees matched the name.
  *  - 'ambiguous': more than one CAMS trustee matched the name (raw, unscored candidates), which
  *    the caller resolves via resolveNameCollisionByScoring.
  */
 export type NameMatchResult =
-  | { kind: 'resolved'; trusteeId: string }
+  | { kind: 'resolved'; trusteeId: string; nameScore: number; nameMatchQuality: NameMatchQuality }
   | { kind: 'no-match' }
   | { kind: 'ambiguous'; matchCandidates: CandidateScore[] };
 
@@ -770,7 +806,12 @@ export async function matchTrusteeByName(
   }
 
   if (matches.length === 1) {
-    return { kind: 'resolved', trusteeId: matches[0].trusteeId };
+    return {
+      kind: 'resolved',
+      trusteeId: matches[0].trusteeId,
+      nameScore: 100,
+      nameMatchQuality: 'exact',
+    };
   }
 
   const scoredCandidates = await trusteesRepo.searchTrusteesByNameScored(trusteeName);
@@ -789,7 +830,12 @@ export async function matchTrusteeByName(
   }
 
   if (fallbackMatches.length === 1) {
-    return { kind: 'resolved', trusteeId: fallbackMatches[0].trusteeId };
+    return {
+      kind: 'resolved',
+      trusteeId: fallbackMatches[0].trusteeId,
+      nameScore: 100,
+      nameMatchQuality: 'fuzzy',
+    };
   }
 
   // Second-pass fallback: the stricter comparison (generational suffix reformatted but not
@@ -822,5 +868,10 @@ export async function matchTrusteeByName(
     return { kind: 'ambiguous', matchCandidates: toUnscoredCandidates(withoutGenerationMatches) };
   }
 
-  return { kind: 'resolved', trusteeId: withoutGenerationMatches[0].trusteeId };
+  return {
+    kind: 'resolved',
+    trusteeId: withoutGenerationMatches[0].trusteeId,
+    nameScore: 100,
+    nameMatchQuality: 'fuzzy',
+  };
 }

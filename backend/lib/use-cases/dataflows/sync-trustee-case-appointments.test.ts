@@ -190,6 +190,8 @@ describe('SyncTrusteeCaseAppointments', () => {
       vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({
         kind: 'resolved',
         trusteeId: 'trustee-123',
+        nameScore: 100,
+        nameMatchQuality: 'exact',
       });
       vi.spyOn(trusteeMatchHelpers, 'isAppointmentMatch').mockReturnValue(true);
     });
@@ -2064,13 +2066,14 @@ describe('SyncTrusteeCaseAppointments', () => {
             matchCandidates: [
               expect.objectContaining({
                 trusteeId: 'trustee-123',
-                // addressScore mocked to 100; dxtrTrustee/trustee fixtures here have no
-                // firstName/lastName so calculateNameScore (real) yields 0.
+                // addressScore mocked to 100; nameScore comes from matchTrusteeByName's
+                // already-resolved score (100 for the default exact-match mock), not a
+                // fresh calculateNameScore re-derivation.
                 // phone/email null (fixture sets no phone/email) -> applicableWeight = 0.9
-                // weightedSum = 100*0.05 + 0*0.25 + 100*0.3 + 100*0.3 = 5 + 0 + 30 + 30 = 65
-                // 65 / 0.9 = 72.2222
-                totalScore: expect.closeTo(72.2222, 4),
-                nameScore: 0,
+                // weightedSum = 100*0.05 + 100*0.25 + 100*0.3 + 100*0.3 = 5 + 25 + 30 + 30 = 90
+                // 90 / 0.9 = 100
+                totalScore: expect.closeTo(100, 4),
+                nameScore: 100,
                 phoneScore: null,
                 emailScore: null,
                 districtDivisionScore: 100,
@@ -2134,13 +2137,14 @@ describe('SyncTrusteeCaseAppointments', () => {
             matchCandidates: [
               expect.objectContaining({
                 trusteeId: 'trustee-123',
-                // addressScore mocked to 100; dxtrTrustee/trustee fixtures here have no
-                // firstName/lastName so calculateNameScore (real) yields 0.
+                // addressScore mocked to 100; nameScore comes from matchTrusteeByName's
+                // already-resolved score (100 for the default exact-match mock), not a
+                // fresh calculateNameScore re-derivation.
                 // phone and email both match (real calculatePhoneScore/calculateEmailScore).
-                // (100*0.05) + (0*0.25) + (100*0.05) + (100*0.05) + (100*0.3) + (100*0.3)
-                // = 5 + 0 + 5 + 5 + 30 + 30 = 75
-                totalScore: 75,
-                nameScore: 0,
+                // (100*0.05) + (100*0.25) + (100*0.05) + (100*0.05) + (100*0.3) + (100*0.3)
+                // = 5 + 25 + 5 + 5 + 30 + 30 = 100
+                totalScore: 100,
+                nameScore: 100,
                 phoneScore: 100,
                 emailScore: 100,
                 districtDivisionScore: 100,
@@ -3208,6 +3212,8 @@ describe('SyncTrusteeCaseAppointments', () => {
       vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({
         kind: 'resolved',
         trusteeId: 'trustee-123',
+        nameScore: 100,
+        nameMatchQuality: 'exact',
       });
       vi.spyOn(trusteeMatchHelpers, 'isAppointmentMatch').mockReturnValue(true);
     });
