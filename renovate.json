@@ -140,10 +140,13 @@
   ],
   "customManagers": [
     {
-      "description": "Track Playwright base image version in Dockerfile.playwright to keep it in sync with @playwright/test npm package",
+      "description": "Track Playwright base image version in Dockerfile.playwright(-msedge) and the msedge image's build workflow tag, to keep them in sync with @playwright/test npm package",
       "customType": "regex",
-      "fileMatch": ["test/e2e/Dockerfile\\.playwright"],
-      "matchStrings": ["FROM mcr\\.microsoft\\.com/playwright:v(?<currentValue>[0-9.]+)-noble"],
+      "managerFilePatterns": ["/test/e2e/Dockerfile\\.playwright/", "/^\\.github/workflows/build-playwright-msedge-image\\.yml$/"],
+      "matchStrings": [
+        "FROM mcr\\.microsoft\\.com/playwright:v(?<currentValue>[0-9.]+)-noble",
+        "type=raw,value=v(?<currentValue>[0-9.]+)-noble"
+      ],
       "depNameTemplate": "@playwright/test",
       "datasourceTemplate": "npm"
     }
