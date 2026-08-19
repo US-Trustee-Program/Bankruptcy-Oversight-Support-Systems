@@ -218,6 +218,77 @@ describe('TrusteeMatchVerificationAccordion', () => {
     expect(screen.queryByTestId('candidate-info')).not.toBeInTheDocument();
   });
 
+  describe('CAMS Strongest Match column-header score icons', () => {
+    // candidateJaneSmith: nameScore 90 (partial), addressScore 90 (partial), phoneScore null
+    // (not comparable), emailScore null (not comparable), districtDivisionScore 100 (match),
+    // chapterScore 95 (partial) - exercises all three visible icon states plus the null state.
+    test('shows a visually-hidden accessible label for each score, not color alone', async () => {
+      renderWithProps({ order: sampleOrderWithCandidates });
+      await mockDetailAndExpand(sampleOrderWithCandidatesDetail);
+
+      const candidateInfo = screen.getByTestId('candidate-info');
+      expect(candidateInfo.textContent).toContain('Name: partial match');
+      expect(candidateInfo.textContent).toContain('Address: partial match');
+      expect(candidateInfo.textContent).toContain('Phone: not comparable');
+      expect(candidateInfo.textContent).toContain('Email: not comparable');
+      expect(candidateInfo.textContent).toContain('District/Division: match');
+      expect(candidateInfo.textContent).toContain('Chapter: partial match');
+    });
+
+    test('shows a full-match label when a score is exactly 100', async () => {
+      renderWithProps({
+        order: sampleOrderWithCandidates,
+      });
+      await mockDetailAndExpand({
+        ...sampleOrderWithCandidatesDetail,
+        matchCandidates: [{ ...candidateJaneSmith, nameScore: 100 }],
+      });
+
+      const candidateInfo = screen.getByTestId('candidate-info');
+      expect(candidateInfo.textContent).toContain('Name: match');
+    });
+
+    test('shows a no-match label when a score is exactly 0', async () => {
+      renderWithProps({ order: sampleOrderWithCandidates });
+      await mockDetailAndExpand({
+        ...sampleOrderWithCandidatesDetail,
+        matchCandidates: [{ ...candidateJaneSmith, nameScore: 0 }],
+      });
+
+      const candidateInfo = screen.getByTestId('candidate-info');
+      expect(candidateInfo.textContent).toContain('Name: no match');
+    });
+
+    test('does not show score icons in the Other Potential Matches table', async () => {
+      const secondCandidate: CandidateScore = {
+        ...candidateJaneSmith,
+        trusteeId: 'trustee-2',
+        trusteeName: 'John Roe',
+        totalScore: 80,
+      };
+      const twoCandidateOrder: TrusteeMatchVerificationListItem = {
+        ...sampleOrder,
+        mismatchReason: 'AMBIGUOUS_MATCH_UNRESOLVED',
+        preselectedCandidate: null,
+        candidateCount: 2,
+      };
+      const twoCandidateDetail: EnrichedTrusteeMatchVerification = {
+        ...sampleOrderDetail,
+        mismatchReason: 'AMBIGUOUS_MATCH_UNRESOLVED',
+        matchCandidates: [candidateJaneSmith, secondCandidate],
+      };
+      renderWithProps({ order: twoCandidateOrder });
+      await mockDetailAndExpand(twoCandidateDetail);
+
+      const content = screen.getByTestId(`accordion-content-${sampleOrder.id}`);
+      // "Name: partial match" would only appear from a column-header score icon - the strongest
+      // match's own header renders it once; it must not appear a second time for the "Other
+      // Potential Matches" table's header.
+      const occurrences = content.textContent?.split('Name: partial match').length ?? 0;
+      expect(occurrences - 1).toBe(1);
+    });
+  });
+
   test('should render resolved statement for approved order with trustee name and case link', () => {
     renderWithProps({
       order: {
