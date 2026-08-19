@@ -64,13 +64,13 @@ jobs:
           SNYK_API: https://api.snykgov.io
 
       - name: Monitor project in Snyk
-        if: ${{ ! inputs.skip }}
+        if: ${{ ! inputs.skip && always() }}
         run: snyk monitor --all-projects --exclude=function-apps,integration
         env:
           SNYK_API: https://api.snykgov.io
 
       - name: Upload raw SARIF to Azure Storage
-        if: ${{ ! inputs.skip }}
+        if: ${{ ! inputs.skip && always() }}
         run: |
           if [ -f snyk-sca.sarif ]; then
             az storage blob upload \
@@ -83,7 +83,7 @@ jobs:
           fi
 
       - name: Sanitize SARIF for GitHub upload
-        if: ${{ ! inputs.skip }}
+        if: ${{ ! inputs.skip && always() }}
         run: |
           if [ -f snyk-sca.sarif ]; then
             jq 'walk(
@@ -96,7 +96,7 @@ jobs:
           fi
 
       - name: Upload SARIF to GitHub
-        if: ${{ ! inputs.skip }}
+        if: ${{ ! inputs.skip && always() }}
         uses: github/codeql-action/upload-sarif@d1ba80a13dd99fba24a470575428917156a28b43 # v4.37.5
         with:
           sarif_file: snyk-sca.sarif
@@ -149,7 +149,7 @@ jobs:
           SNYK_API: https://api.snykgov.io
 
       - name: Upload raw SARIF to Azure Storage
-        if: ${{ ! inputs.skip }}
+        if: ${{ ! inputs.skip && always() }}
         run: |
           if [ -f snyk-code.sarif ]; then
             az storage blob upload \
@@ -163,7 +163,7 @@ jobs:
 
       - name: Download SAST baseline
         id: baseline
-        if: ${{ ! inputs.skip }}
+        if: ${{ ! inputs.skip && always() }}
         run: |
           if az storage blob download \
             --account-name "$AZ_SECURITY_SCAN_STORAGE_NAME" \
@@ -179,7 +179,7 @@ jobs:
 
       - name: Compare against baseline
         id: baseline-compare
-        if: ${{ ! inputs.skip && steps.snyk-scan.outcome == 'failure' }}
+        if: ${{ ! inputs.skip && always() && steps.snyk-scan.outcome == 'failure' }}
         run: |
           if ops/scripts/pipeline/snyk-baseline-compare.sh snyk-code.sarif snyk-code-baseline.txt; then
             echo "has_new_findings=false" >> "$GITHUB_OUTPUT"
@@ -188,7 +188,7 @@ jobs:
           fi
 
       - name: Sanitize SARIF for GitHub upload
-        if: ${{ ! inputs.skip }}
+        if: ${{ ! inputs.skip && always() }}
         run: |
           if [ -f snyk-code.sarif ]; then
             jq 'walk(
@@ -201,13 +201,13 @@ jobs:
           fi
 
       - name: Upload SARIF to GitHub
-        if: ${{ ! inputs.skip }}
+        if: ${{ ! inputs.skip && always() }}
         uses: github/codeql-action/upload-sarif@d1ba80a13dd99fba24a470575428917156a28b43 # v4.37.5
         with:
           sarif_file: snyk-code.sarif
 
       - name: Fail on new findings
-        if: ${{ ! inputs.skip }}
+        if: ${{ ! inputs.skip && always() }}
         env:
           SCAN_OUTCOME: ${{ steps.snyk-scan.outcome }}
           HAS_NEW_FINDINGS: ${{ steps.baseline-compare.outputs.has_new_findings }}
