@@ -192,11 +192,20 @@ module apiFunctionSlotStorageAccount './lib/storage/storage-account.bicep' = {
   }
 }
 
+// Attach the SQL managed identity whenever this function app connects to
+// SQL at all, regardless of which of the two mutually-exclusive mechanisms
+// (VNet rule vs. Private Endpoint) is used for the network path -- the
+// identity is needed for authentication either way. Gating this on
+// createSqlServerVnetRule alone (its original condition, before the
+// Private Endpoint alternative existed) silently dropped the identity for
+// any function app using useSqlPrivateLink, since createSqlServerVnetRule
+// is false in that case -- causing ManagedIdentityCredential SQL auth
+// failures with no compile-time signal.
 var userAssignedIdentities = union(
   {
     '${appConfigIdentity.id}': {}
   },
-  createSqlServerVnetRule ? { '${sqlIdentityResourceId}': {} } : {}
+  (createSqlServerVnetRule || createSqlPrivateEndpoint) ? { '${sqlIdentityResourceId}': {} } : {}
 )
 
 resource apiFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
