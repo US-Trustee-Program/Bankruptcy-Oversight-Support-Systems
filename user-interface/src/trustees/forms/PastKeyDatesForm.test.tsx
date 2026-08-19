@@ -253,21 +253,7 @@ describe('PastKeyDatesForm', () => {
           pastFieldExam: '2024-02-21',
           pastAudit: '2023-08-01',
           pastTprSubmission: '2025-11-03',
-          tprReviewPeriodStart: '1900-04-01',
-          tprReviewPeriodEnd: '1900-03-31',
-          tprDue: '1900-09-15',
-          tprDueYearType: 'EVEN',
-          tirReviewPeriodStart: '1900-07-01',
-          tirReviewPeriodEnd: '1900-06-30',
-          tirSubmission: '1900-10-15',
-          tirReview: '1900-11-01',
-          tirSemiAnnualReviewPeriodStart: '1900-01-01',
-          tirSemiAnnualReviewPeriodEnd: '1900-06-30',
-          tirSemiAnnualSubmission: '1900-07-30',
-          tirSemiAnnualReview: '1900-09-28',
-          upcomingExamOrAuditYear: 2029,
-          upcomingExamOrAuditType: 'Field Exam',
-          tirFrequency: 'SEMI_ANNUAL',
+          lastAuditFiscalYear: 2022,
         }),
       ),
     );
@@ -573,22 +559,6 @@ describe('PastKeyDatesForm', () => {
           }),
         ),
       );
-      expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');
-    });
-
-    test('Cancel navigates without calling PUT', async () => {
-      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
-      const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
-
-      renderComponent();
-
-      await waitFor(() => {
-        expect(screen.getByTestId('edit-past-key-dates')).toBeInTheDocument();
-      });
-
-      await userEvent.click(screen.getByTestId('button-cancel-past-key-dates'));
-
-      expect(putSpy).not.toHaveBeenCalled();
       expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');
     });
 

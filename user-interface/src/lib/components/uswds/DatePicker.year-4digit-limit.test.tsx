@@ -1,18 +1,12 @@
-import React, { act } from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import React from 'react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import DatePicker from './DatePicker';
 
 const DEFAULT_ID = 'test-datepicker';
 
 function getErrorText() {
-  return (document.querySelector('.date-error') as HTMLElement | null)?.textContent ?? '';
-}
-
-async function waitForValidation(ms = 600) {
-  await act(async () => {
-    await new Promise((resolve) => setTimeout(resolve, ms));
-  });
+  return document.getElementById(`${DEFAULT_ID}-error`)?.textContent ?? '';
 }
 
 function renderDatePicker(props: Partial<React.ComponentProps<typeof DatePicker>> = {}) {
@@ -25,16 +19,14 @@ function renderDatePicker(props: Partial<React.ComponentProps<typeof DatePicker>
 }
 
 describe('DatePicker — year must be 4 digits', () => {
-  afterEach(() => vi.restoreAllMocks());
-
   test('5-digit year value shows inline year error after debounce', async () => {
     const view = renderDatePicker();
 
     fireEvent.change(view, { target: { value: '11111-11-11' } });
 
-    await waitForValidation();
-
-    expect(getErrorText()).toBe('Year must be 4 digits.');
+    await waitFor(() => {
+      expect(getErrorText()).toBe('Year must be 4 digits.');
+    });
   });
 
   test('5-digit year value shows inline year error on blur', async () => {
@@ -51,9 +43,9 @@ describe('DatePicker — year must be 4 digits', () => {
 
     fireEvent.change(view, { target: { value: '2024-06-15' } });
 
-    await waitForValidation();
-
-    expect(getErrorText()).toBe('');
+    await waitFor(() => {
+      expect(getErrorText()).toBe('');
+    });
   });
 
   test('min-date error still fires for an in-range year but out-of-range date', async () => {
@@ -61,8 +53,8 @@ describe('DatePicker — year must be 4 digits', () => {
 
     fireEvent.change(view, { target: { value: '2023-12-31' } });
 
-    await waitForValidation();
-
-    expect(getErrorText()).toContain('Must be on or after');
+    await waitFor(() => {
+      expect(getErrorText()).toContain('Must be on or after');
+    });
   });
 });
