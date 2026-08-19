@@ -9,7 +9,15 @@
  *     sync-trustee-case-appointments.ts - so it has no verification-document scenario to seed
  *     here):
  *     1. NO_TRUSTEE_MATCH - No candidates found
- *     2. AMBIGUOUS_MATCH_UNRESOLVED - Multiple equally-scored candidates
+ *     2. AMBIGUOUS_MATCH_UNRESOLVED - Multiple equally-scored candidates (genuine raw-candidate
+ *        collision - the UI's "Multiple Match" label and "Other Potential Matches" section)
+ *     2b. AMBIGUOUS_MATCH_UNRESOLVED - a SINGLE candidate that scored below the auto-link
+ *        threshold (see resolveNameCollisionByScoring/matchTrusteeByName's first-token-lastName
+ *        search tier in trustee-match.helpers.ts) - same mismatchReason as #2, but only one raw
+ *        candidate ever existed. The UI (TrusteeMatchVerificationAccordion.tsx's isMultipleMatch)
+ *        distinguishes this from #2 by candidateCount, showing "Trustee Mismatch" (not "Multiple
+ *        Match") and zero "Other Potential Matches" - this scenario exists specifically to
+ *        exercise that distinction against real seeded data, not just unit-test mocks.
  *     3. IMPERFECT_MATCH - Single candidate with low confidence score
  *     4. PERFECT_MATCH_INACTIVE_STATUS - Perfect match but trustee/appointment inactive
  *
@@ -33,6 +41,7 @@ const SEEDER = { id: 'SEED', name: 'Test Data Seeder' };
 // Existing DXTR cases (Buffalo district)
 const CASE_NO_MATCH = '091-99-87899'; // Ch 11 (Kassulke Group)
 const CASE_MULTIPLE_MATCH = '091-99-00874'; // Ch 11
+const CASE_SINGLE_CANDIDATE_AMBIGUOUS = '091-99-92748'; // Ch 12 (reuse)
 const CASE_IMPERFECT_MATCH = '091-99-92748'; // Ch 12 (Botsford LLC)
 const CASE_INACTIVE_TRUSTEE = '091-99-00874'; // Ch 11 (reuse)
 const CASE_INACTIVE_APPOINTMENT = '091-99-92748'; // Ch 12 (reuse)
@@ -132,6 +141,26 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           zipCode: '10003',
           phone: '212-555-3001',
           email: 'tyler.multimatch@example.com',
+        }),
+      ],
+    },
+
+    // Active trustee for single-candidate AMBIGUOUS_MATCH_UNRESOLVED (below auto-link threshold)
+    {
+      db: 'cams',
+      collectionOrTable: 'trustees',
+      data: [
+        createTrusteeBase({
+          id: 'seed-trustee-match-lowconf',
+          firstName: 'Sam',
+          lastName: 'Lowconfidence',
+          status: 'active',
+          address1: '350 Match Way',
+          city: 'New York',
+          state: 'NY',
+          zipCode: '10003',
+          phone: '212-555-3500',
+          email: 'sam.lowconfidence@example.com',
         }),
       ],
     },
@@ -419,6 +448,54 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
               },
               phone: { number: '212-555-3001' },
               email: 'tyler.multimatch@example.com',
+            },
+          ],
+          updatedOn: '2025-03-01T00:00:00.000Z',
+          updatedBy: SEEDER,
+        },
+      ],
+    },
+
+    // ── Cosmos: Match Verification Type 2b - AMBIGUOUS_MATCH_UNRESOLVED (single candidate) ──
+    // Same mismatchReason as Type 2, but only ONE raw candidate scored below the auto-link
+    // threshold - not a genuine 2+ candidate collision. Exercises the UI's candidateCount-based
+    // distinction (see TrusteeMatchVerificationAccordion.tsx's isMultipleMatch): this should
+    // render as "Trustee Mismatch" with zero "Other Potential Matches", not "Multiple Match".
+    {
+      db: 'cams',
+      collectionOrTable: 'trustee-match-verification',
+      data: [
+        {
+          id: `seed-match-lowconf-${CASE_SINGLE_CANDIDATE_AMBIGUOUS}`,
+          documentType: 'TRUSTEE_MATCH_VERIFICATION',
+          taskType: 'trustee-match',
+          caseId: CASE_SINGLE_CANDIDATE_AMBIGUOUS,
+          courtId: '0208',
+          status: 'pending',
+          taskDate: '2016-04-11T00:00:00.000Z',
+          mismatchReason: 'AMBIGUOUS_MATCH_UNRESOLVED',
+          dxtrTrustee: {
+            firstName: 'S',
+            lastName: 'Lowconfidence',
+            fullName: 'S Lowconfidence',
+          },
+          matchCandidates: [
+            {
+              trusteeId: 'seed-trustee-match-lowconf',
+              trusteeName: 'Sam Lowconfidence',
+              totalScore: 70,
+              addressScore: 100,
+              districtDivisionScore: 100,
+              chapterScore: 100,
+              address: {
+                address1: '350 Match Way',
+                city: 'New York',
+                state: 'NY',
+                zipCode: '10003',
+                countryCode: 'US',
+              },
+              phone: { number: '212-555-3500' },
+              email: 'sam.lowconfidence@example.com',
             },
           ],
           updatedOn: '2025-03-01T00:00:00.000Z',
