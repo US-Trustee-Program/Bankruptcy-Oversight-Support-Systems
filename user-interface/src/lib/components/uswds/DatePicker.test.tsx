@@ -1,8 +1,9 @@
 import React, { act } from 'react';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
-import DatePicker, { DatePickerProps } from './DatePicker';
+import DatePicker, { DatePickerProps, validateDateValue } from './DatePicker';
 import { InputRef } from '@/lib/type-declarations/input-fields';
+import { ValidatorFunction } from '@common/cams/validation';
 
 // NOTE For some reason (known issue) a date input element can not be changed by typing a date
 // in the formation that the UI expects. The date may only be changed using a change event and
@@ -42,6 +43,56 @@ async function waitForValidation(ms = DEBOUNCE_MS) {
     await new Promise((resolve) => setTimeout(resolve, ms));
   });
 }
+
+describe('validateDateValue (pure function)', () => {
+  test('returns no errors for null or empty value', () => {
+    expect(validateDateValue(null)).toEqual([]);
+    expect(validateDateValue('')).toEqual([]);
+  });
+
+  test('returns a 4-digit-year error for a year longer than 4 digits', () => {
+    expect(validateDateValue('11111-11-11')).toEqual(['Year must be 4 digits.']);
+  });
+
+  test('returns no errors for an incomplete date (year-month only)', () => {
+    expect(validateDateValue('2024-06')).toEqual([]);
+  });
+
+  test('returns no errors for a calendar-invalid month (month 13) since Date parsing rejects it before min/max runs', () => {
+    expect(validateDateValue('2024-13-01', { min: '2024-01-01', max: '2024-12-31' })).toEqual([]);
+  });
+
+  test('returns an error for a calendar-invalid day (Feb 31) since dateMinMax round-trips through toISOString', () => {
+    expect(validateDateValue('2024-02-31', { min: '2024-01-01', max: '2024-12-31' })).toEqual([
+      'Must be a valid date',
+    ]);
+  });
+
+  test('returns a "must be on or after" error when the date is before min', () => {
+    expect(validateDateValue('2023-12-31', { min: '2024-01-01', max: '2024-12-31' })).toEqual([
+      'Must be on or after 01/01/2024.',
+    ]);
+  });
+
+  test('returns a "must be on or before" error when the date is after max', () => {
+    expect(validateDateValue('2025-01-01', { min: '2024-01-01', max: '2024-12-31' })).toEqual([
+      'Must be on or before 12/31/2024.',
+    ]);
+  });
+
+  test('includes custom validator failure reasons', () => {
+    const failingValidator: ValidatorFunction = () => ({
+      reasons: ['Custom reason.'],
+    });
+    expect(
+      validateDateValue('2024-06-15', {
+        min: '2024-01-01',
+        max: '2024-12-31',
+        validators: [failingValidator],
+      }),
+    ).toEqual(['Custom reason.']);
+  });
+});
 
 describe('Test DatePicker component', async () => {
   afterEach(() => {
@@ -479,6 +530,12 @@ describe('DatePicker edge case coverage', () => {
   });
 
   describe('invalid date handling', () => {
+    // NOTE: jsdom (like real browsers) sanitizes these syntactically-invalid/incomplete
+    // values to '' at the native <input type="date"> before any change event fires, so
+    // these tests exercise the empty-value-clears-error path, not validateDateValue's
+    // invalid-date branches directly. See the `validateDateValue (pure function)` describe
+    // block above for direct, non-DOM coverage of validateDateValue's actual behavior for
+    // these exact strings.
     test.each([
       ['incomplete date (year-month only)', '2024-06'],
       ['invalid date like Feb 31', '2024-02-31'],

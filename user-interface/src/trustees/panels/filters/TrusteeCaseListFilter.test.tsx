@@ -147,7 +147,7 @@ describe('TrusteeCaseListFilter', () => {
 
     fireEvent.change(toInput, { target: { value: '2024-01-01' } });
 
-    expect(document.querySelector('.date-error')).toHaveTextContent(
+    expect(document.getElementById('case-filed-date-date-start-error')).toHaveTextContent(
       'Start date must be before end date.',
     );
     expect(onFilterChange).not.toHaveBeenCalled();
@@ -336,6 +336,9 @@ describe('TrusteeCaseListFilter', () => {
     expect(onFilterChange).toHaveBeenCalledWith(
       expect.objectContaining({ filedDateFrom: undefined, filedDateTo: undefined }),
     );
+    await waitFor(() => {
+      expect((fromInput as HTMLInputElement).value).toBe('');
+    });
   });
 
   describe('screen reader accessibility', () => {
