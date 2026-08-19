@@ -6,6 +6,9 @@ on:
       path:
         required: true
         type: string
+      skip:
+        required: true
+        type: boolean
 
 permissions:
   contents: read
@@ -20,18 +23,22 @@ jobs:
     steps:
       - name: Get source code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: ${{ ! inputs.skip }}
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        if: ${{ ! inputs.skip }}
         with:
           node-version-file: '.nvmrc'
           cache: 'npm'
           cache-dependency-path: package-lock.json
 
       - name: Install Node dependencies
+        if: ${{ ! inputs.skip }}
         run: |
           npm ci
           npm install serve -g
 
       - name: Run UI in mock mode
+        if: ${{ ! inputs.skip }}
         env:
           INPUT_PATH: ${{ inputs.path }}
         run: |
@@ -47,16 +54,18 @@ jobs:
           popd
 
       - name: Install Playwright Browsers
+        if: ${{ ! inputs.skip }}
         working-directory: ${{ inputs.path }}
         run: npx playwright install --with-deps chromium msedge
 
       - name: Run Playwright a11y Tests
+        if: ${{ ! inputs.skip }}
         id: playwrightA11yTests
         run: npm run test:a11y --workspace=user-interface
 
       - name: Upload report
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        if: always()
+        if: ${{ ! inputs.skip && always() }}
         with:
           name: playwright-a11y-report
           path: ${{ inputs.path }}/playwright-report/
