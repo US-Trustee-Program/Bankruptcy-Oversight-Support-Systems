@@ -369,6 +369,8 @@ describe('validateTrusteeUpcomingKeyDates', () => {
       tirSemiAnnualReview: null,
       lastAuditFiscalYear: null,
       lastMonthlyReportReceived: null,
+      leaseExpiration: null,
+      idExpiration: null,
     };
   }
 
@@ -555,6 +557,38 @@ describe('validateTrusteeUpcomingKeyDates', () => {
     });
     expect(result.valid).toBeFalsy();
     expect(result.reasonMap?.tirSemiAnnualReview?.reasons?.[0]).toBe('Must be a valid date mm/dd.');
+  });
+
+  test('returns VALID when leaseExpiration is a valid full date', () => {
+    expect(
+      validateTrusteeUpcomingKeyDates({ ...baseInput(), leaseExpiration: '2027-06-30' }),
+    ).toEqual(VALID);
+  });
+
+  test('returns error when leaseExpiration contains an invalid ISO date', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      leaseExpiration: '2027-13-01',
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.leaseExpiration?.reasons?.[0]).toBe(
+      'Must be a valid date mm/dd/yyyy.',
+    );
+  });
+
+  test('returns VALID when idExpiration is a valid full date', () => {
+    expect(validateTrusteeUpcomingKeyDates({ ...baseInput(), idExpiration: '2028-01-15' })).toEqual(
+      VALID,
+    );
+  });
+
+  test('returns error when idExpiration contains an invalid ISO date', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      idExpiration: '2028-00-15',
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.idExpiration?.reasons?.[0]).toBe('Must be a valid date mm/dd/yyyy.');
   });
 });
 

@@ -90,6 +90,8 @@ function buildUpcomingKeyDatesInput(
     lastAuditFiscalYear: hasYearField
       ? form.lastAuditFiscalYear || null
       : (original?.lastAuditFiscalYear ?? null),
+    leaseExpiration: original?.leaseExpiration ?? null,
+    idExpiration: original?.idExpiration ?? null,
   };
 }
 
