@@ -130,7 +130,7 @@ describe('TrusteeCaseListFilter', () => {
 
     fireEvent.change(toInput, { target: { value: '2024-12-31' } });
 
-    expect(document.querySelector('.date-error')?.textContent).toBeFalsy();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(onFilterChange).toHaveBeenCalledWith(
       expect.objectContaining({ filedDateFrom: '2024-01-01', filedDateTo: '2024-12-31' }),
     );

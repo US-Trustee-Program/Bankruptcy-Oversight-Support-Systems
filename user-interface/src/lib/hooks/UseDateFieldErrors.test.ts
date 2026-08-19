@@ -33,21 +33,22 @@ describe('useDateFieldErrors', () => {
     expect(result.current.hasErrorAmong(['fieldA'])).toBe(false);
   });
 
-  test('registerFieldError does not trigger a state update when the value is unchanged', () => {
+  test('registerFieldError with unchanged value does not create new state — hasErrorAmong result is stable', () => {
     const { result } = renderHook(() => useDateFieldErrors());
-    const registerFieldError = result.current.registerFieldError;
 
     act(() => {
-      registerFieldError('fieldA', true);
+      result.current.registerFieldError('fieldA', true);
     });
+
+    // Capture hasErrorAmong after the first (state-changing) call.
+    // useCallback only re-creates the function when errorsByField changes.
+    // A duplicate registration must not change errorsByField, so the reference stays stable.
     const hasErrorAmongAfterFirst = result.current.hasErrorAmong;
 
     act(() => {
-      registerFieldError('fieldA', true);
+      result.current.registerFieldError('fieldA', true);
     });
-    const hasErrorAmongAfterSecond = result.current.hasErrorAmong;
 
-    // hasErrorAmong is memoized on errorsByField, so identity is stable when state didn't change
-    expect(hasErrorAmongAfterFirst).toBe(hasErrorAmongAfterSecond);
+    expect(result.current.hasErrorAmong).toBe(hasErrorAmongAfterFirst);
   });
 });

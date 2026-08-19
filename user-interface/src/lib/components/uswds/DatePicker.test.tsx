@@ -14,7 +14,7 @@ const IMMEDIATE_MS = 100;
 const mockOnChange = vi.fn();
 
 function getErrorText() {
-  return (document.querySelector('.date-error') as HTMLElement | null)?.textContent ?? '';
+  return document.getElementById(`${DEFAULT_ID}-error`)?.textContent ?? '';
 }
 
 function getInput(id: string) {
@@ -390,31 +390,18 @@ describe('DatePicker additional coverage tests', () => {
     });
   });
 
-  test('should handle clearDateValue setTimeout behavior', () => {
-    const spy = vi.spyOn(window, 'setTimeout');
-
-    render(<DatePicker id="test-setTimeout" />);
-
-    const component = document.getElementById('test-setTimeout');
-    expect(component).toBeInTheDocument();
-    expect(spy).toHaveBeenCalledTimes(0);
-    spy.mockRestore();
-  });
-
-  test('should execute setTimeout callback in clearDateValue', async () => {
-    const setTimeoutSpy = vi.spyOn(window, 'setTimeout');
-
+  test('clearValue clears the input value', async () => {
     const ref = React.createRef<InputRef>();
-    render(<DatePicker id="test-timeout-callback" ref={ref} value="2024-01-01" />);
+    render(<DatePicker id="test-clear-value" ref={ref} value="2024-01-01" />);
+
+    const inputEl = screen.getByTestId('test-clear-value') as HTMLInputElement;
+    expect(inputEl.value).toBe('2024-01-01');
 
     act(() => ref.current?.clearValue());
 
-    expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 100);
-
-    const callback = setTimeoutSpy.mock.calls[0][0] as () => void;
-    act(() => callback());
-
-    setTimeoutSpy.mockRestore();
+    await waitFor(() => {
+      expect(inputEl.value).toBe('');
+    });
   });
 
   test('should test getValue method through ref', () => {
@@ -444,11 +431,9 @@ describe('DatePicker additional coverage tests', () => {
 
     fireEvent.change(inputEl, { target: { value: '' } });
 
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 100));
+    await waitFor(() => {
+      expect(getErrorText()).toBe('');
     });
-
-    expect(getErrorText()).toBe('');
   });
 
   test('should clear errors when date is incomplete', async () => {
@@ -464,11 +449,9 @@ describe('DatePicker additional coverage tests', () => {
 
     fireEvent.change(inputEl, { target: { value: '2024-06' } });
 
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 100));
+    await waitFor(() => {
+      expect(getErrorText()).toBe('');
     });
-
-    expect(getErrorText()).toBe('');
   });
 
   test('should clear errors for invalid dates', async () => {
@@ -478,21 +461,15 @@ describe('DatePicker additional coverage tests', () => {
 
     fireEvent.change(inputEl, { target: { value: '2023-12-15' } });
 
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 600));
-    });
+    await waitForValidation();
 
-    let errorElement = document.querySelector('.date-error');
-    expect(errorElement?.textContent).toContain('Must be on or after');
+    expect(getErrorText()).toContain('Must be on or after');
 
     fireEvent.change(inputEl, { target: { value: '2024-02-31' } });
 
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 100));
+    await waitFor(() => {
+      expect(getErrorText()).toBe('');
     });
-
-    errorElement = document.querySelector('.date-error');
-    expect(errorElement?.textContent).toBe('');
   });
 
   test('should clear error message when resetValue() is called', async () => {
@@ -510,21 +487,18 @@ describe('DatePicker additional coverage tests', () => {
     );
 
     const inputEl = screen.getByTestId('test-reset-error');
+    const errorEl = document.getElementById('test-reset-error-error');
 
     fireEvent.change(inputEl, { target: { value: '2025-12-31' } });
 
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 600));
+    await waitFor(() => {
+      expect(errorEl?.textContent).toContain('Must be on or before');
     });
-
-    let errorElement = document.querySelector('.date-error');
-    expect(errorElement?.textContent).toContain('Must be on or before');
 
     act(() => ref.current?.resetValue());
 
     await waitFor(() => {
-      errorElement = document.querySelector('.date-error');
-      expect(errorElement?.textContent).toBe('');
+      expect(errorEl?.textContent).toBe('');
       expect(inputEl).toHaveValue('2024-06-15');
     });
   });
