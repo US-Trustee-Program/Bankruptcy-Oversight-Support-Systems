@@ -49,7 +49,7 @@ jobs:
       contents: read
     with:
       path: user-interface
-      skip: ${{ (! startsWith(github.ref, 'refs/heads/main')) && inputs.deployBranch && inputs.fastDeploy }}
+      skip: ${{ (! startsWith(github.ref, 'refs/heads/main')) && inputs.deployBranch == 'true' && inputs.fastDeploy == 'true' }}
 
   unit-test-frontend:
     uses: ./.github/workflows/reusable-unit-test.yml
