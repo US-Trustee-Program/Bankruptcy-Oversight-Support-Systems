@@ -34,7 +34,6 @@ import {
   findInactivePerfectMatch,
   calculateCandidateScore,
   calculateAddressScore,
-  calculateNameScore,
   calculatePhoneScore,
   calculateEmailScore,
   calculateTotalScore,
@@ -711,11 +710,15 @@ async function handleInactivePerfectMatch(
   trusteeId: string,
   trusteeAppointments: TrusteeAppointment[],
   inactiveMatch: TrusteeAppointment,
+  nameScore: number,
 ): Promise<void> {
   const { deps, event, fingerprint, variant, audit, scenarioDistribution } = ctx;
   const trustee = await deps.trusteesRepo.read(trusteeId);
   const addressScore = calculateAddressScore(event.dxtrTrustee.legacy, trustee.public.address);
-  const nameScore = calculateNameScore(event.dxtrTrustee, trustee);
+  // nameScore is already known (the trusteeId came from a fingerprint hit, professional-id
+  // match, or matchTrusteeByName's exact/fuzzy tiers) - see calculateCandidateScore's
+  // nameScoreOverride doc comment for why re-deriving it here via calculateNameScore's discrete
+  // firstName/lastName comparison would risk contradicting an already-correct match.
   const phoneScore = calculatePhoneScore(event.dxtrTrustee.legacy?.phone, trustee.public.phone);
   const emailScore = calculateEmailScore(event.dxtrTrustee.legacy?.email, trustee.public.email);
   const candidateScore: CandidateScore = {
@@ -1023,11 +1026,15 @@ type MatchContext = {
 };
 
 /**
- * Outcome of resolveTrusteeIdByName/resolveByScoring: either a trusteeId to proceed with, or a
- * signal that the step already fully handled the event (wrote its audit/verification/surrogate)
- * and the caller should treat this event as done for this pass.
+ * Outcome of resolveTrusteeIdByName/resolveByScoring: either a trusteeId to proceed with (plus
+ * the nameScore already established for it, carried through so applyMatchOutcome's downstream
+ * scoring doesn't need to independently re-derive name confidence - see NameMatchResult's doc
+ * comment in trustee-match.helpers.ts for why that re-derivation can diverge from what actually
+ * matched), or a signal that the step already fully handled the event (wrote its
+ * audit/verification/surrogate) and the caller should treat this event as done for this pass.
  */
-type NameResolution = { outcome: 'resolved'; trusteeId: string } | { outcome: 'handled' };
+type NameResolution =
+  { outcome: 'resolved'; trusteeId: string; nameScore: number } | { outcome: 'handled' };
 
 /**
  * Outcome of applyMatchOutcome (perfect/inactive/imperfect-match stage). 'auto-linked' counts
@@ -1072,7 +1079,11 @@ async function resolveTrusteeIdByName(
 
   switch (nameMatch.kind) {
     case 'resolved':
-      return { outcome: 'resolved', trusteeId: nameMatch.trusteeId };
+      return {
+        outcome: 'resolved',
+        trusteeId: nameMatch.trusteeId,
+        nameScore: nameMatch.nameScore,
+      };
 
     case 'no-match':
       await handleClassifiedMismatch(
@@ -1123,8 +1134,22 @@ async function resolveByScoring(
     // existing scoring already gives high confidence, whether that confidence comes from
     // disambiguating a raw name collision (this path) or from a fuzzy name-normalization match
     // with only one candidate (matchTrusteeByName's fallback in trustee-match.helpers.ts).
-    case 'resolved':
-      return { outcome: 'resolved', trusteeId: scoringOutcome.trusteeId };
+    case 'resolved': {
+      // The winner's own nameScore, already computed with real data by calculateCandidateScore
+      // inside resolveNameCollisionByScoring/calculateNameScore - a genuine per-candidate score,
+      // not a re-derivation of an already-known match (contrast with matchTrusteeByName's fuzzy
+      // fallback, which fixes its nameScore at 100 since it isn't scoring between candidates,
+      // just confirming one already-identified match). Falls back to 100 only in the
+      // (should-never-happen) case the winner is somehow absent from its own candidateScores.
+      const winnerScore = scoringOutcome.candidateScores.find(
+        (c) => c.trusteeId === scoringOutcome.trusteeId,
+      );
+      return {
+        outcome: 'resolved',
+        trusteeId: scoringOutcome.trusteeId,
+        nameScore: winnerScore?.nameScore ?? 100,
+      };
+    }
 
     case 'no-match': {
       // NOT the same as NoTrusteeMatch: matchTrusteeByName found more than one raw name
@@ -1191,6 +1216,7 @@ async function applyMatchOutcome(
   syncedCase: SyncedCase,
   trusteeId: string,
   variationTrusteeId: string | null,
+  nameScore: number,
 ): Promise<MatchOutcomeResolution> {
   const { deps, event, fingerprint, variant, audit } = ctx;
   const { context } = deps;
@@ -1217,7 +1243,7 @@ async function applyMatchOutcome(
   );
 
   if (inactiveMatch) {
-    await handleInactivePerfectMatch(ctx, trusteeId, trusteeAppointments, inactiveMatch);
+    await handleInactivePerfectMatch(ctx, trusteeId, trusteeAppointments, inactiveMatch, nameScore);
     await writeSurrogateAppointment(deps, event, fingerprint, variant, syncedCase);
     return { outcome: 'handled' };
   }
@@ -1231,6 +1257,7 @@ async function applyMatchOutcome(
     event.chapter,
     trustee,
     trusteeAppointments,
+    nameScore,
   );
 
   // No no-review auto-match on totalScore alone: districtDivisionScore/chapterScore are each
@@ -1480,15 +1507,28 @@ async function processOneEvent(
       variationTrusteeId ?? (await matchTrusteeByProfessionalId(deps, event.acmsProfessionalId));
 
     let trusteeId: string;
+    let nameScore: number;
     if (preResolvedTrusteeId) {
+      // Neither a fingerprint hit nor a professional-id match involved any name comparison at
+      // all - there is no name-based uncertainty to represent, so 100 is accurate here, not a
+      // fudge (same reasoning as matchTrusteeByName's 'resolved' tiers - see NameMatchResult's
+      // doc comment in trustee-match.helpers.ts).
       trusteeId = preResolvedTrusteeId;
+      nameScore = 100;
     } else {
       const resolution = await resolveTrusteeIdByName(ctx, syncedCase);
       if (resolution.outcome === 'handled') return { kind: 'none' };
       trusteeId = resolution.trusteeId;
+      nameScore = resolution.nameScore;
     }
 
-    const matchOutcome = await applyMatchOutcome(ctx, syncedCase, trusteeId, variationTrusteeId);
+    const matchOutcome = await applyMatchOutcome(
+      ctx,
+      syncedCase,
+      trusteeId,
+      variationTrusteeId,
+      nameScore,
+    );
     return matchOutcome.outcome === 'auto-linked'
       ? { kind: 'success', dlqFailure: matchOutcome.dlqFailure }
       : { kind: 'none' };

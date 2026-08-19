@@ -366,7 +366,12 @@ describe('matchTrusteeByName', () => {
 
     const result = await matchTrusteeByName(context, trustee.name);
 
-    expect(result).toEqual({ kind: 'resolved', trusteeId: trustee.trusteeId });
+    expect(result).toEqual({
+      kind: 'resolved',
+      trusteeId: trustee.trusteeId,
+      nameScore: 100,
+      nameMatchQuality: 'exact',
+    });
   });
 
   test('should return a no-match outcome when no trustees match', async () => {
@@ -427,7 +432,12 @@ describe('matchTrusteeByName', () => {
     const result = await matchTrusteeByName(context, 'John Doe Jr.');
 
     expect(scoredSpy).toHaveBeenCalledWith('John Doe Jr.');
-    expect(result).toEqual({ kind: 'resolved', trusteeId: trustee.trusteeId });
+    expect(result).toEqual({
+      kind: 'resolved',
+      trusteeId: trustee.trusteeId,
+      nameScore: 100,
+      nameMatchQuality: 'fuzzy',
+    });
   });
 
   // Each case is a distinct way matchTrusteeByName's fallback tiers can still find nothing:
@@ -490,7 +500,12 @@ describe('matchTrusteeByName', () => {
     const result = await matchTrusteeByName(context, 'John Doe');
 
     expect(scoredSpy).toHaveBeenCalledWith('John Doe');
-    expect(result).toEqual({ kind: 'resolved', trusteeId: trustee.trusteeId });
+    expect(result).toEqual({
+      kind: 'resolved',
+      trusteeId: trustee.trusteeId,
+      nameScore: 100,
+      nameMatchQuality: 'fuzzy',
+    });
   });
 
   // Real CAMS trustees.json contains genuine father/son (or namesake) pairs distinguished only
