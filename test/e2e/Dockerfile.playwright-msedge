@@ -1,0 +1,25 @@
+# Playwright image used to run E2E tests in GitHub Actions, extending the
+# official Playwright image with Microsoft Edge.
+#
+# The client's hardware only permits Microsoft Edge and Chrome, so Edge
+# coverage is a hard requirement — it cannot be dropped from the a11y or
+# e2e suites. The official mcr.microsoft.com/playwright image ships only
+# Chromium, Firefox, and WebKit (no msedge), so this image layers msedge
+# on top.
+#
+# Built and published to ghcr.io by
+# .github/workflows/build-playwright-msedge-image.yml. Referenced by
+# reusable-accessibility.yml (container: key), pinned to the resulting
+# ghcr.io digest. reusable-e2e.yml uses the plain official image instead,
+# since test/e2e's Playwright config does not currently test msedge.
+#
+# Base digest below is the linux/amd64 platform manifest for
+# mcr.microsoft.com/playwright:v1.62.1-noble (matches GitHub Actions
+# ubuntu-latest runners), resolved via:
+#   docker pull mcr.microsoft.com/playwright:v1.62.1-noble
+#   docker manifest inspect mcr.microsoft.com/playwright:v1.62.1-noble
+# Keep in lockstep with @playwright/test in test/e2e/package.json and
+# user-interface/package.json.
+FROM mcr.microsoft.com/playwright@sha256:c091b21d9fae78c76e85cd4356431e9b018402f172a214fc7d7a5e9a7e29d8ac
+
+RUN npx playwright install msedge --with-deps
