@@ -540,7 +540,11 @@ describe('SyncTrusteeCaseAppointments', () => {
       );
 
       expect(professionalIdsRepo.findByAcmsProfessionalId).toHaveBeenCalledWith('081-00123');
-      expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalledWith(context, 'John Doe');
+      expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalledWith(context, {
+        fullName: 'John Doe',
+        firstName: 'John',
+        lastName: 'Doe',
+      });
       expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
         expect.objectContaining({ caseId: 'case-001', trusteeId: 'trustee-123' }),
       );
@@ -562,7 +566,11 @@ describe('SyncTrusteeCaseAppointments', () => {
         events,
       );
 
-      expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalledWith(context, 'John Doe');
+      expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalledWith(context, {
+        fullName: 'John Doe',
+        firstName: 'John',
+        lastName: 'Doe',
+      });
       expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
         expect.objectContaining({ caseId: 'case-001', trusteeId: 'trustee-123' }),
       );
@@ -579,7 +587,11 @@ describe('SyncTrusteeCaseAppointments', () => {
       );
 
       expect(professionalIdsRepo.findByAcmsProfessionalId).not.toHaveBeenCalled();
-      expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalledWith(context, 'John Doe');
+      expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalledWith(context, {
+        fullName: 'John Doe',
+        firstName: 'John',
+        lastName: 'Doe',
+      });
     });
 
     describe('reserved acmsProfessionalId values', () => {
@@ -644,7 +656,11 @@ describe('SyncTrusteeCaseAppointments', () => {
           events,
         );
 
-        expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalledWith(context, 'John Doe');
+        expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalledWith(context, {
+          fullName: 'John Doe',
+          firstName: 'John',
+          lastName: 'Doe',
+        });
         expect(scenarioDistribution.reservedIdSkippedCount).toBe(0);
       });
     });
@@ -706,7 +722,10 @@ describe('SyncTrusteeCaseAppointments', () => {
           events,
         );
 
-        expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalledWith(context, '');
+        expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalledWith(context, {
+          fullName: '',
+          legacy: { address1: '123 Main St' },
+        });
         expect(scenarioDistribution.emptyDemographicsSkippedCount).toBe(0);
       });
 

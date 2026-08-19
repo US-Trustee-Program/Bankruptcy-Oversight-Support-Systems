@@ -355,6 +355,14 @@ describe('normalizeNameForMatchingWithoutGeneration', () => {
 describe('matchTrusteeByName', () => {
   let context: ApplicationContext;
 
+  const dxtrNamed = (
+    fullName: string,
+    overrides: Partial<DxtrTrusteeParty> = {},
+  ): DxtrTrusteeParty => ({
+    fullName,
+    ...overrides,
+  });
+
   beforeEach(async () => {
     vi.restoreAllMocks();
     context = await createMockApplicationContext();
@@ -364,7 +372,7 @@ describe('matchTrusteeByName', () => {
     const trustee = MockData.getTrustee();
     vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([trustee]);
 
-    const result = await matchTrusteeByName(context, trustee.name);
+    const result = await matchTrusteeByName(context, dxtrNamed(trustee.name));
 
     expect(result).toEqual({
       kind: 'resolved',
@@ -376,8 +384,9 @@ describe('matchTrusteeByName', () => {
 
   test('should return a no-match outcome when no trustees match', async () => {
     vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([]);
+    vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored').mockResolvedValue([]);
 
-    const result = await matchTrusteeByName(context, 'Nonexistent Trustee');
+    const result = await matchTrusteeByName(context, dxtrNamed('Nonexistent Trustee'));
 
     expect(result).toEqual({ kind: 'no-match' });
   });
@@ -390,7 +399,7 @@ describe('matchTrusteeByName', () => {
       trustee2,
     ]);
 
-    const result = await matchTrusteeByName(context, trustee1.name);
+    const result = await matchTrusteeByName(context, dxtrNamed(trustee1.name));
 
     expect(result).toEqual({
       kind: 'ambiguous',
@@ -407,7 +416,7 @@ describe('matchTrusteeByName', () => {
       .spyOn(MockMongoRepository.prototype, 'findTrusteesByName')
       .mockResolvedValue([trustee]);
 
-    await matchTrusteeByName(context, '  ' + trustee.name + '  ');
+    await matchTrusteeByName(context, dxtrNamed('  ' + trustee.name + '  '));
 
     expect(findSpy).toHaveBeenCalledWith(trustee.name);
   });
@@ -417,7 +426,7 @@ describe('matchTrusteeByName', () => {
     vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([trustee]);
     const scoredSpy = vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored');
 
-    await matchTrusteeByName(context, trustee.name);
+    await matchTrusteeByName(context, dxtrNamed(trustee.name));
 
     expect(scoredSpy).not.toHaveBeenCalled();
   });
@@ -429,7 +438,7 @@ describe('matchTrusteeByName', () => {
       .spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored')
       .mockResolvedValue([trustee]);
 
-    const result = await matchTrusteeByName(context, 'John Doe Jr.');
+    const result = await matchTrusteeByName(context, dxtrNamed('John Doe Jr.'));
 
     expect(scoredSpy).toHaveBeenCalledWith('John Doe Jr.');
     expect(result).toEqual({
@@ -442,9 +451,11 @@ describe('matchTrusteeByName', () => {
 
   // Each case is a distinct way matchTrusteeByName's fallback tiers can still find nothing:
   // no candidates at all; a candidate present but not normalize-matching; a candidate differing
-  // by more than punctuation (a middle-initial content gap alongside a source-system artifact -
-  // real-world pattern: DXTR "John M. Doe_13" vs CAMS "John Doe"); and a candidate that only
-  // fails to match even after the generational-suffix-discarding second pass.
+  // by more than punctuation (a source-system artifact alongside content that isn't just a
+  // middle-name gap - real-world pattern: DXTR "John M. Doe_13" vs CAMS "John Doe" with no
+  // firstName/lastName set on the DXTR side here, so the middle-name-relaxed tier has nothing to
+  // key off and correctly falls through); and a candidate that only fails to match even after the
+  // generational-suffix-discarding second pass.
   test.each([
     ['no scored candidates at all', [], 'John Doe'],
     ['a scored candidate that does not normalize-match', [{ name: 'Jane Roe' }], 'John Doe Jr.'],
@@ -465,7 +476,7 @@ describe('matchTrusteeByName', () => {
       trustees,
     );
 
-    const result = await matchTrusteeByName(context, queryName);
+    const result = await matchTrusteeByName(context, dxtrNamed(queryName));
 
     expect(result).toEqual({ kind: 'no-match' });
   });
@@ -479,7 +490,7 @@ describe('matchTrusteeByName', () => {
       trustee2,
     ]);
 
-    const result = await matchTrusteeByName(context, 'John Doe Jr');
+    const result = await matchTrusteeByName(context, dxtrNamed('John Doe Jr'));
 
     expect(result).toEqual({
       kind: 'ambiguous',
@@ -497,7 +508,7 @@ describe('matchTrusteeByName', () => {
       .spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored')
       .mockResolvedValue([trustee]);
 
-    const result = await matchTrusteeByName(context, 'John Doe');
+    const result = await matchTrusteeByName(context, dxtrNamed('John Doe'));
 
     expect(scoredSpy).toHaveBeenCalledWith('John Doe');
     expect(result).toEqual({
@@ -524,7 +535,7 @@ describe('matchTrusteeByName', () => {
       trusteeWithSuffix,
     ]);
 
-    const result = await matchTrusteeByName(context, 'Perry A. Stacks, Sr.');
+    const result = await matchTrusteeByName(context, dxtrNamed('Perry A. Stacks, Sr.'));
 
     expect(result).toEqual({
       kind: 'ambiguous',
@@ -535,6 +546,237 @@ describe('matchTrusteeByName', () => {
         }),
         expect.objectContaining({ trusteeId: trusteeWithSuffix.trusteeId, totalScore: UNSCORED }),
       ]),
+    });
+  });
+
+  // Name-relaxed tier: first/last match (allowing an initial-vs-full relationship on firstName)
+  // but the candidate isn't already a fully-confirmed match. Real-world pattern: DXTR
+  // "Patrick J. Malloy III" vs CAMS "Patrick Joseph Malloy, III". This tier always surfaces as
+  // 'ambiguous' even for a single candidate - unlike the composed-name fuzzy tiers above, an
+  // initial-vs-full match is weaker evidence (it narrows down to one of many possible full names,
+  // not a confirmed match), so it must go through resolveNameCollisionByScoring's
+  // scoring/threshold/appointment-match gate rather than auto-resolving.
+  test('should surface a single candidate as ambiguous when the DXTR middle name is an initial matching the CAMS full middle name', async () => {
+    const trustee = MockData.getTrustee({
+      firstName: 'Patrick',
+      middleName: 'Joseph',
+      lastName: 'Malloy',
+      name: 'Patrick Joseph Malloy, III',
+    });
+    vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([]);
+    vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored').mockResolvedValue([
+      trustee,
+    ]);
+
+    const result = await matchTrusteeByName(
+      context,
+      dxtrNamed('Patrick J. Malloy III', {
+        firstName: 'Patrick',
+        middleName: 'J',
+        lastName: 'Malloy',
+      }),
+    );
+
+    expect(result).toEqual({
+      kind: 'ambiguous',
+      matchCandidates: [expect.objectContaining({ trusteeId: trustee.trusteeId })],
+    });
+  });
+
+  test('should surface a single candidate as ambiguous when the middle name is present on only one side', async () => {
+    const trustee = MockData.getTrustee({
+      firstName: 'John',
+      lastName: 'Doe',
+      name: 'John Doe',
+    });
+    vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([]);
+    vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored').mockResolvedValue([
+      trustee,
+    ]);
+
+    const result = await matchTrusteeByName(
+      context,
+      dxtrNamed('John Quincy Doe', { firstName: 'John', middleName: 'Quincy', lastName: 'Doe' }),
+    );
+
+    expect(result).toEqual({
+      kind: 'ambiguous',
+      matchCandidates: [expect.objectContaining({ trusteeId: trustee.trusteeId })],
+    });
+  });
+
+  test('should surface every candidate sharing the same first/last name as ambiguous', async () => {
+    const trusteeInitial = MockData.getTrustee({
+      firstName: 'John',
+      middleName: 'Q',
+      lastName: 'Doe',
+      name: 'John Q. Doe',
+    });
+    const trusteeFull = MockData.getTrustee({
+      firstName: 'John',
+      middleName: 'Quincy',
+      lastName: 'Doe',
+      name: 'John Quincy Doe',
+    });
+    vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([]);
+    vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored').mockResolvedValue([
+      trusteeInitial,
+      trusteeFull,
+    ]);
+
+    const result = await matchTrusteeByName(
+      context,
+      dxtrNamed('John Adams Doe', { firstName: 'John', middleName: 'Adams', lastName: 'Doe' }),
+    );
+
+    expect(result).toEqual({
+      kind: 'ambiguous',
+      matchCandidates: expect.arrayContaining([
+        expect.objectContaining({ trusteeId: trusteeInitial.trusteeId }),
+        expect.objectContaining({ trusteeId: trusteeFull.trusteeId }),
+      ]),
+    });
+  });
+
+  test('should not surface a candidate whose last name differs, even if the middle name would relax-match', async () => {
+    const trustee = MockData.getTrustee({
+      firstName: 'John',
+      middleName: 'Q',
+      lastName: 'Roe',
+      name: 'John Q. Roe',
+    });
+    vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([]);
+    vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored').mockResolvedValue([
+      trustee,
+    ]);
+
+    const result = await matchTrusteeByName(
+      context,
+      dxtrNamed('John Quincy Doe', { firstName: 'John', middleName: 'Quincy', lastName: 'Doe' }),
+    );
+
+    expect(result).toEqual({ kind: 'no-match' });
+  });
+
+  test('should surface a single candidate as ambiguous when the DXTR first name is an initial matching the CAMS full first name', async () => {
+    const trustee = MockData.getTrustee({
+      firstName: 'George',
+      middleName: 'Adam',
+      lastName: 'Sanford',
+      name: 'George Adam Sanford',
+    });
+    vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([]);
+    vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored').mockResolvedValue([
+      trustee,
+    ]);
+
+    const result = await matchTrusteeByName(
+      context,
+      dxtrNamed('G. Adam Sanford', { firstName: 'G', middleName: 'Adam', lastName: 'Sanford' }),
+    );
+
+    expect(result).toEqual({
+      kind: 'ambiguous',
+      matchCandidates: [expect.objectContaining({ trusteeId: trustee.trusteeId })],
+    });
+  });
+
+  test('should not surface a candidate whose first name genuinely differs (not an initial relationship)', async () => {
+    const trustee = MockData.getTrustee({
+      firstName: 'Jane',
+      lastName: 'Doe',
+      name: 'Jane Doe',
+    });
+    vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([]);
+    vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored').mockResolvedValue([
+      trustee,
+    ]);
+
+    const result = await matchTrusteeByName(
+      context,
+      dxtrNamed('John Doe', { firstName: 'John', lastName: 'Doe' }),
+    );
+
+    expect(result).toEqual({ kind: 'no-match' });
+  });
+
+  test('should not apply the name-relaxed tier when a candidate is a fully-confirmed match once a baked-in generational suffix is stripped from lastName', async () => {
+    const trustee = MockData.getTrustee({
+      firstName: 'Timothy',
+      middleName: 'H',
+      lastName: 'Ivy, Sr.',
+      name: 'Timothy H. Ivy, Sr.',
+    });
+    vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([]);
+    const scoredSpy = vi
+      .spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored')
+      .mockResolvedValue([trustee]);
+
+    // First and middle both already agree exactly - the only gap is the generational suffix
+    // baked into CAMS's lastName, which is a fully-confirmed match, not weaker relaxed evidence.
+    // It should resolve via the (later) generational-suffix-discarding fallback tier, not surface
+    // as ambiguous here.
+    const result = await matchTrusteeByName(
+      context,
+      dxtrNamed('Timothy H. Ivy', { firstName: 'Timothy', middleName: 'H', lastName: 'Ivy' }),
+    );
+
+    expect(scoredSpy).toHaveBeenCalledWith('Timothy H. Ivy');
+    expect(result).toEqual({
+      kind: 'resolved',
+      trusteeId: trustee.trusteeId,
+      nameScore: 100,
+      nameMatchQuality: 'fuzzy',
+    });
+  });
+
+  test('should not apply the middle-name-relaxed tier when the DXTR event carries no structured firstName/lastName', async () => {
+    const trustee = MockData.getTrustee({
+      firstName: 'John',
+      lastName: 'Doe',
+      name: 'John Doe',
+    });
+    vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([]);
+    vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored').mockResolvedValue([
+      trustee,
+    ]);
+
+    // Only fullName is set - no firstName/lastName to relax against - so despite "John Quincy
+    // Doe" sharing first/last tokens with the candidate, this tier can't run and falls through
+    // to no-match (same as before this tier existed).
+    const result = await matchTrusteeByName(context, dxtrNamed('John Quincy Doe'));
+
+    expect(result).toEqual({ kind: 'no-match' });
+  });
+
+  test('should try the middle-name-relaxed tier before discarding a generational suffix', async () => {
+    const middleNameCandidate = MockData.getTrustee({
+      firstName: 'John',
+      middleName: 'Quincy',
+      lastName: 'Doe',
+      name: 'John Quincy Doe',
+    });
+    // Also present, but should never be reached: it would only surface via the (rarer)
+    // generational-suffix-discarding fallback, which sits after the middle-name-relaxed tier.
+    const suffixCandidate = MockData.getTrustee({
+      firstName: 'Jane',
+      lastName: 'Roe',
+      name: 'Jane Roe, Jr.',
+    });
+    vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([]);
+    vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored').mockResolvedValue([
+      middleNameCandidate,
+      suffixCandidate,
+    ]);
+
+    const result = await matchTrusteeByName(
+      context,
+      dxtrNamed('John Q. Doe', { firstName: 'John', middleName: 'Q', lastName: 'Doe' }),
+    );
+
+    expect(result).toEqual({
+      kind: 'ambiguous',
+      matchCandidates: [expect.objectContaining({ trusteeId: middleNameCandidate.trusteeId })],
     });
   });
 });
@@ -1092,6 +1334,41 @@ describe('calculateNameScore', () => {
     expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(15);
   });
 
+  test('should return 85 when dxtr first name is a single initial matching cams first name first letter', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'G. Doe',
+      firstName: 'G',
+      lastName: 'Doe',
+    };
+    const camsTrustee = makeTrustee({ firstName: 'George', lastName: 'Doe' });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(85);
+  });
+
+  test('should return 85 when cams first name is a single initial matching dxtr first name first letter', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'George Doe',
+      firstName: 'George',
+      lastName: 'Doe',
+    };
+    const camsTrustee = makeTrustee({ firstName: 'G', lastName: 'Doe' });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(85);
+  });
+
+  test('should return the lower of the first/middle sub-scores when both relax', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'G. Quincy Doe',
+      firstName: 'G',
+      middleName: 'Quincy',
+      lastName: 'Doe',
+    };
+    const camsTrustee = makeTrustee({ firstName: 'George', middleName: 'Robert', lastName: 'Doe' });
+
+    // firstScore=85 (initial-vs-full), middleScore=15 (genuine conflict) - min is 15.
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(15);
+  });
+
   test('should return 0 when first name does not match', () => {
     const dxtrTrustee: DxtrTrusteeParty = {
       fullName: 'Jane Doe',
@@ -1101,6 +1378,33 @@ describe('calculateNameScore', () => {
     const camsTrustee = makeTrustee({ firstName: 'John', lastName: 'Doe' });
 
     expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(0);
+  });
+
+  test('should return 0 when first name is missing on one side (unlike a missing middle name)', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'Doe',
+      lastName: 'Doe',
+    };
+    const camsTrustee = makeTrustee({ firstName: 'John', lastName: 'Doe' });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(0);
+  });
+
+  test('should return 100 when lastName carries a baked-in generational suffix the other side omits', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'Patrick J. Malloy III',
+      firstName: 'Patrick',
+      middleName: 'J',
+      lastName: 'Malloy',
+    };
+    const camsTrustee = makeTrustee({
+      firstName: 'Patrick',
+      middleName: 'Joseph',
+      lastName: 'Malloy, III',
+    });
+
+    // lastName equality holds once the baked-in suffix is stripped; middle is initial-vs-full.
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(85);
   });
 
   test('should return 0 when last name does not match', () => {
