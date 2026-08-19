@@ -3,6 +3,7 @@ $input-max-width: 20.75rem;
 .edit-upcoming-key-dates {
   .usa-form-group {
     max-width: $input-max-width;
+    margin-top: 1rem;
   }
 
   .month-day-selector {
@@ -91,10 +92,10 @@ $input-max-width: 20.75rem;
 
   .exam-audit-group {
     max-width: $input-max-width;
-    margin-top: 1.5rem;
 
     > .usa-label {
       margin-bottom: 0;
+      margin-top: 1rem;
     }
 
     &__row {
