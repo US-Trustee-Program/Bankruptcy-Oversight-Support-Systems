@@ -149,15 +149,12 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
       return;
     }
 
-    const { startValid, endValid, rangeValid, startError, endError } = validateRange(
-      startValue,
-      endValue,
-    );
+    const { rangeValid, startError, endError } = validateRange(startValue, endValue);
 
     if (startError) setStartDateError(startError);
     if (endError) setEndDateError(endError);
 
-    if ((startValid || endValid) && rangeValid && callback) {
+    if (!startError && !endError && rangeValid && callback) {
       callback(ev);
     }
   }

@@ -94,7 +94,7 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
               </div>
 
               <div className="filter-control filter-control--status">
-                <span className="usa-label" aria-hidden="true">
+                <span className="usa-hint" aria-hidden="true">
                   &nbsp;
                 </span>
                 <label htmlFor="case-status-select" className="usa-label">
