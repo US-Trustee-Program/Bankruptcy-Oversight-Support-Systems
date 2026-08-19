@@ -44,6 +44,16 @@
     }
   }
 
+  // A blank label-height spacer sits above the visible "Case Status" label,
+  // so that label lines up with the mm/dd/yyyy hint row of the date fields
+  // beside it, and the reserved error-message slot below keeps the total
+  // height matched so the dropdown still lines up with the date inputs.
+  .filter-control--status {
+    .filter-status-error-spacer {
+      padding: 0.5rem 0;
+    }
+  }
+
   .filter-control--filed-date {
     flex: 2 1 24rem;
     min-width: 20rem;
@@ -77,6 +87,10 @@
   .filter-pills-container {
     margin-top: 1rem;
     margin-bottom: 1.25rem;
+    // Align with the filter inputs, not the accordion's outer edge —
+    // .usa-accordion__content indents its content by 1.25rem, but this
+    // container is a sibling of the Accordion, outside that padding.
+    padding-left: 1.25rem;
   }
 
   .usa-accordion__content:not([hidden]) + .filter-pills-container {
