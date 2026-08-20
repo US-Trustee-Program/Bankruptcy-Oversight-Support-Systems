@@ -57,7 +57,6 @@ type ScenarioDistribution = {
   multipleMatchCount: number;
   perfectMatchInactiveCount: number;
   reVerificationCount: number;
-  reservedIdSkippedCount: number;
   verificationBucketHitCount: number;
   fingerprintHitCount: number;
   fingerprintMissCount: number;
@@ -140,13 +139,6 @@ export function isTransientInfraError(error: unknown): boolean {
 }
 
 const SENTINEL_PROFESSIONAL_ID = 'XX-99999';
-
-/**
- * ACMS-emitted acmsProfessionalId values that are placeholder/reserved and never correspond
- * to a real trustee. Events carrying one of these values must never be routed to trustee
- * matching or verification — there is no possible corrective action a reviewer could take.
- */
-const RESERVED_PROFESSIONAL_IDS = ['XX-00000', 'XX-98000', 'XX-99999'];
 
 /**
  * Resolves the ACMS professional ID for a trustee that matches the case's group designator.
@@ -627,7 +619,6 @@ async function upsertMatchVerification(
       mismatchReason,
       matchCandidates,
       inactiveAppointmentStatus,
-      acmsProfessionalId: event.acmsProfessionalId,
       appointedDate: event.appointedDate,
       updatedOn: new Date().toISOString(),
       updatedBy: SYSTEM_USER_REFERENCE,
@@ -642,7 +633,6 @@ async function upsertMatchVerification(
         mismatchReason,
         matchCandidates,
         inactiveAppointmentStatus,
-        acmsProfessionalId: event.acmsProfessionalId,
         appointedDate: event.appointedDate,
         taskType: 'trustee-match',
         status: 'pending',
@@ -901,22 +891,6 @@ async function writeSurrogateAppointment(
     chapter: assertValidChapter(event.caseId, syncedCase.chapter),
     courtDivisionCode: syncedCase.courtDivisionCode,
   });
-}
-
-/**
- * Resolves a trusteeId directly from event.acmsProfessionalId when it maps to exactly
- * one CAMS trustee, sidestepping fuzzy name matching entirely. Returns null on zero or
- * multiple matches (ambiguous), or when the event carries no acmsProfessionalId, so the
- * caller can fall back to matchTrusteeByName.
- */
-async function matchTrusteeByProfessionalId(
-  deps: SyncTrusteeCaseAppointmentsDeps,
-  acmsProfessionalId: string | undefined,
-): Promise<string | null> {
-  if (!acmsProfessionalId) return null;
-
-  const matches = await deps.professionalIdsRepo.findByAcmsProfessionalId(acmsProfessionalId);
-  return matches.length === 1 ? matches[0].camsTrusteeId : null;
 }
 
 async function resolveSyncState<D extends RuntimeStateDocumentType>(
@@ -1311,17 +1285,6 @@ type EventOutcome =
   | { kind: 'none' };
 
 /**
- * True when acmsProfessionalId is one of the reserved placeholder values that never correspond to
- * a real trustee — checked before anything else in processOneEvent, so no fingerprint/case-sync
- * work is done for an event that can never be matched or verified.
- */
-function isReservedProfessionalIdEvent(event: TrusteeAppointmentSyncEvent): boolean {
-  return Boolean(
-    event.acmsProfessionalId && RESERVED_PROFESSIONAL_IDS.includes(event.acmsProfessionalId),
-  );
-}
-
-/**
  * True when dxtrTrustee carries no usable demographics at all — blank fullName (see
  * normalizeName) AND no legacy/contact fields (address, phone, email) either. Checked before
  * matchTrusteeByName in processOneEvent: absent demographics could describe any trustee, so an
@@ -1344,27 +1307,14 @@ function hasNoUsableDemographics(event: TrusteeAppointmentSyncEvent): boolean {
 }
 
 /**
- * Combines the two checks that can short-circuit processOneEvent before any repo call is made —
- * a reserved acmsProfessionalId, or a dxtrTrustee with no usable demographics at all — into one
- * decision procedure, per this file's whole-procedure-extraction convention (see
- * resolveTrusteeIdByName's doc comment): collapsing both into a single guard in the caller, rather
- * than two separate ifs, is what keeps processOneEvent's own measured complexity from growing as
- * pre-match conditions are added. Returns null when neither applies, so the caller proceeds
- * normally.
+ * Short-circuits processOneEvent before any repo call is made when dxtrTrustee has no usable
+ * demographics at all. Returns null when it doesn't apply, so the caller proceeds normally.
  */
 function resolvePreMatchShortCircuit(
   deps: SyncTrusteeCaseAppointmentsDeps,
   event: TrusteeAppointmentSyncEvent,
   scenarioDistribution: ScenarioDistribution,
 ): EventOutcome | null {
-  if (isReservedProfessionalIdEvent(event)) {
-    // Reserved values never correspond to a real trustee, so there is nothing to match
-    // or verify. The event is still fully and correctly handled — it simply requires no
-    // document write — so it counts toward successCount like any other handled event.
-    scenarioDistribution.reservedIdSkippedCount++;
-    return { kind: 'success', dlqFailure: null };
-  }
-
   if (hasNoUsableDemographics(event)) {
     deps.context.logger.warn(
       MODULE_NAME,
@@ -1444,9 +1394,9 @@ async function resolveSyncedCase(
 }
 
 /**
- * Processes a single trustee appointment event end to end: reserved-id short-circuit
- * (isReservedProfessionalIdEvent), fingerprint lookup, case-sync/moved-case resolution
- * (resolveSyncedCase), verification-bucket-hit short-circuit (handleVerificationBucketHit),
+ * Processes a single trustee appointment event end to end: fingerprint lookup, case-sync/
+ * moved-case resolution (resolveSyncedCase), verification-bucket-hit short-circuit
+ * (handleVerificationBucketHit),
  * trustee resolution (resolveTrusteeIdByName/resolveByScoring), and match-outcome application
  * (applyMatchOutcome). Extracted from processAppointments' main loop for the same reason as every
  * helper above — whole-procedure extraction removes a decision's branching and nesting cost from
@@ -1503,17 +1453,14 @@ async function processOneEvent(
       return { kind: 'none' };
     }
 
-    const preResolvedTrusteeId =
-      variationTrusteeId ?? (await matchTrusteeByProfessionalId(deps, event.acmsProfessionalId));
-
     let trusteeId: string;
     let nameScore: number;
-    if (preResolvedTrusteeId) {
-      // Neither a fingerprint hit nor a professional-id match involved any name comparison at
-      // all - there is no name-based uncertainty to represent, so 100 is accurate here, not a
-      // fudge (same reasoning as matchTrusteeByName's 'resolved' tiers - see NameMatchResult's
-      // doc comment in trustee-match.helpers.ts).
-      trusteeId = preResolvedTrusteeId;
+    if (variationTrusteeId) {
+      // A fingerprint hit involved no name comparison at all - there is no name-based
+      // uncertainty to represent, so 100 is accurate here, not a fudge (same reasoning as
+      // matchTrusteeByName's 'resolved' tiers - see NameMatchResult's doc comment in
+      // trustee-match.helpers.ts).
+      trusteeId = variationTrusteeId;
       nameScore = 100;
     } else {
       const resolution = await resolveTrusteeIdByName(ctx, syncedCase);
@@ -1600,7 +1547,6 @@ async function processAppointments(
     multipleMatchCount: 0,
     perfectMatchInactiveCount: 0,
     reVerificationCount: 0,
-    reservedIdSkippedCount: 0,
     verificationBucketHitCount: 0,
     fingerprintHitCount: 0,
     fingerprintMissCount: 0,

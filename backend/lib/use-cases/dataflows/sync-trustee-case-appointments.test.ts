@@ -502,83 +502,7 @@ describe('SyncTrusteeCaseAppointments', () => {
       );
     });
 
-    test('resolves trusteeId via professional-ID lookup when event.acmsProfessionalId has exactly one match, skipping name matching', async () => {
-      const professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
-      (professionalIdsRepo.findByAcmsProfessionalId as ReturnType<typeof vi.fn>).mockResolvedValue([
-        { camsTrusteeId: 'trustee-999', acmsProfessionalId: '081-00123' },
-      ]);
-
-      const events: TrusteeAppointmentSyncEvent[] = [
-        { ...makeEvent('case-001', 'John Doe'), acmsProfessionalId: '081-00123' },
-      ];
-
-      await SyncTrusteeCaseAppointments.processAppointments(
-        SyncTrusteeCaseAppointments.createDeps(context),
-        events,
-      );
-
-      expect(professionalIdsRepo.findByAcmsProfessionalId).toHaveBeenCalledWith('081-00123');
-      expect(trusteeMatchHelpers.matchTrusteeByName).not.toHaveBeenCalled();
-      expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
-        expect.objectContaining({ caseId: 'case-001', trusteeId: 'trustee-999' }),
-      );
-    });
-
-    test('falls back to name matching when the professional-ID lookup has no match', async () => {
-      const professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
-      (professionalIdsRepo.findByAcmsProfessionalId as ReturnType<typeof vi.fn>).mockResolvedValue(
-        [],
-      );
-
-      const events: TrusteeAppointmentSyncEvent[] = [
-        { ...makeEvent('case-001', 'John Doe'), acmsProfessionalId: '081-00123' },
-      ];
-
-      await SyncTrusteeCaseAppointments.processAppointments(
-        SyncTrusteeCaseAppointments.createDeps(context),
-        events,
-      );
-
-      expect(professionalIdsRepo.findByAcmsProfessionalId).toHaveBeenCalledWith('081-00123');
-      expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalledWith(
-        context,
-        { fullName: 'John Doe', firstName: 'John', lastName: 'Doe' },
-        '081',
-      );
-      expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
-        expect.objectContaining({ caseId: 'case-001', trusteeId: 'trustee-123' }),
-      );
-    });
-
-    test('falls back to name matching when the professional-ID lookup is ambiguous (multiple matches)', async () => {
-      const professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
-      (professionalIdsRepo.findByAcmsProfessionalId as ReturnType<typeof vi.fn>).mockResolvedValue([
-        { camsTrusteeId: 'trustee-999', acmsProfessionalId: '081-00123' },
-        { camsTrusteeId: 'trustee-888', acmsProfessionalId: '081-00123' },
-      ]);
-
-      const events: TrusteeAppointmentSyncEvent[] = [
-        { ...makeEvent('case-001', 'John Doe'), acmsProfessionalId: '081-00123' },
-      ];
-
-      await SyncTrusteeCaseAppointments.processAppointments(
-        SyncTrusteeCaseAppointments.createDeps(context),
-        events,
-      );
-
-      expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalledWith(
-        context,
-        { fullName: 'John Doe', firstName: 'John', lastName: 'Doe' },
-        '081',
-      );
-      expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
-        expect.objectContaining({ caseId: 'case-001', trusteeId: 'trustee-123' }),
-      );
-    });
-
-    test('skips the professional-ID lookup entirely when the event has no acmsProfessionalId', async () => {
-      const professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
-
+    test('falls back to name matching when there is no professional ID', async () => {
       const events = [makeEvent('case-001', 'John Doe')];
 
       await SyncTrusteeCaseAppointments.processAppointments(
@@ -586,83 +510,11 @@ describe('SyncTrusteeCaseAppointments', () => {
         events,
       );
 
-      expect(professionalIdsRepo.findByAcmsProfessionalId).not.toHaveBeenCalled();
       expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalledWith(
         context,
         { fullName: 'John Doe', firstName: 'John', lastName: 'Doe' },
         '081',
       );
-    });
-
-    describe('reserved acmsProfessionalId values', () => {
-      test.each(['XX-00000', 'XX-98000', 'XX-99999'])(
-        'skips matching and verification entirely for reserved acmsProfessionalId %s, counting it as success',
-        async (reservedId) => {
-          const professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
-
-          const events: TrusteeAppointmentSyncEvent[] = [
-            { ...makeEvent('case-001', 'John Doe'), acmsProfessionalId: reservedId },
-          ];
-
-          const { successCount, dlqMessages, notYetSyncedEvents, scenarioDistribution } =
-            await SyncTrusteeCaseAppointments.processAppointments(
-              SyncTrusteeCaseAppointments.createDeps(context),
-              events,
-            );
-
-          expect(professionalIdsRepo.findByAcmsProfessionalId).not.toHaveBeenCalled();
-          expect(trusteeMatchHelpers.matchTrusteeByName).not.toHaveBeenCalled();
-          expect(mockVerificationRepo.getVerification).not.toHaveBeenCalled();
-          expect(mockVerificationRepo.upsertVerification).not.toHaveBeenCalled();
-          expect(mockCasesRepo.getCaseOrMovedCase).not.toHaveBeenCalled();
-          expect(mockTrusteeCaseAppointmentsRepo.upsert).not.toHaveBeenCalled();
-
-          expect(successCount).toBe(1);
-          expect(dlqMessages).toHaveLength(0);
-          expect(notYetSyncedEvents).toHaveLength(0);
-          expect(scenarioDistribution.reservedIdSkippedCount).toBe(1);
-        },
-      );
-
-      test('continues normal matching for a real (non-reserved) acmsProfessionalId', async () => {
-        const professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
-        (
-          professionalIdsRepo.findByAcmsProfessionalId as ReturnType<typeof vi.fn>
-        ).mockResolvedValue([{ camsTrusteeId: 'trustee-999', acmsProfessionalId: '081-00123' }]);
-
-        const events: TrusteeAppointmentSyncEvent[] = [
-          { ...makeEvent('case-001', 'John Doe'), acmsProfessionalId: '081-00123' },
-        ];
-
-        const { successCount, scenarioDistribution } =
-          await SyncTrusteeCaseAppointments.processAppointments(
-            SyncTrusteeCaseAppointments.createDeps(context),
-            events,
-          );
-
-        expect(professionalIdsRepo.findByAcmsProfessionalId).toHaveBeenCalledWith('081-00123');
-        expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
-          expect.objectContaining({ caseId: 'case-001', trusteeId: 'trustee-999' }),
-        );
-        expect(successCount).toBe(1);
-        expect(scenarioDistribution.reservedIdSkippedCount).toBe(0);
-      });
-
-      test('falls through to name matching when acmsProfessionalId is undefined', async () => {
-        const events = [makeEvent('case-001', 'John Doe')];
-
-        const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
-          SyncTrusteeCaseAppointments.createDeps(context),
-          events,
-        );
-
-        expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalledWith(
-          context,
-          { fullName: 'John Doe', firstName: 'John', lastName: 'Doe' },
-          '081',
-        );
-        expect(scenarioDistribution.reservedIdSkippedCount).toBe(0);
-      });
     });
 
     describe('empty demographics', () => {
@@ -772,27 +624,9 @@ describe('SyncTrusteeCaseAppointments', () => {
         expect(scenarioDistribution.fingerprintMissCount).toBe(1);
       });
 
-      test('does not increment either fingerprint counter for reserved-id-skipped events', async () => {
-        const events: TrusteeAppointmentSyncEvent[] = [
-          { ...makeEvent('case-001', 'John Doe'), acmsProfessionalId: 'XX-99999' },
-        ];
-
-        const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
-          SyncTrusteeCaseAppointments.createDeps(context),
-          events,
-        );
-
-        expect(scenarioDistribution.fingerprintHitCount).toBe(0);
-        expect(scenarioDistribution.fingerprintMissCount).toBe(0);
-      });
-
       test('tallies fingerprintHitCount/fingerprintMissCount correctly across a mixed batch', async () => {
         const hitEvent = makeEvent('case-001', 'Known Trustee');
         const missEvent = makeEvent('case-002', 'Unknown Trustee');
-        const skippedEvent: TrusteeAppointmentSyncEvent = {
-          ...makeEvent('case-003', 'Reserved'),
-          acmsProfessionalId: 'XX-00000',
-        };
         const hitVariant = buildVariant(hitEvent.dxtrTrustee);
         const hitFingerprint = computeFingerprint(hitVariant);
         (mockVariationRepo.findByFingerprint as ReturnType<typeof vi.fn>).mockImplementation(
@@ -811,12 +645,11 @@ describe('SyncTrusteeCaseAppointments', () => {
 
         const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
           SyncTrusteeCaseAppointments.createDeps(context),
-          [hitEvent, missEvent, skippedEvent],
+          [hitEvent, missEvent],
         );
 
         expect(scenarioDistribution.fingerprintHitCount).toBe(1);
         expect(scenarioDistribution.fingerprintMissCount).toBe(1);
-        expect(scenarioDistribution.reservedIdSkippedCount).toBe(1);
       });
     });
 
@@ -1682,7 +1515,7 @@ describe('SyncTrusteeCaseAppointments', () => {
         );
       });
 
-      test('carries acmsProfessionalId and appointedDate from the event onto a new verification doc', async () => {
+      test('carries appointedDate from the event onto a new verification doc', async () => {
         vi.spyOn(trusteeMatchHelpers, 'isAppointmentMatch').mockReturnValue(false);
         vi.spyOn(trusteeMatchHelpers, 'calculateCandidateScore').mockReturnValue({
           trusteeId: 'trustee-123',
@@ -1701,7 +1534,6 @@ describe('SyncTrusteeCaseAppointments', () => {
           [
             {
               ...makeEvent('case-001', 'John Doe'),
-              acmsProfessionalId: '081-00123',
               appointedDate: '2025-06-01',
             },
           ],
@@ -1710,7 +1542,6 @@ describe('SyncTrusteeCaseAppointments', () => {
         expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
           expect.objectContaining({
             caseId: 'case-001',
-            acmsProfessionalId: '081-00123',
             appointedDate: '2025-06-01',
           }),
         );
@@ -3813,7 +3644,6 @@ describe('handleClassifiedMismatch', () => {
       multipleMatchCount: 0,
       perfectMatchInactiveCount: 0,
       reVerificationCount: 0,
-      reservedIdSkippedCount: 0,
       verificationBucketHitCount: 0,
       fingerprintHitCount: 0,
       fingerprintMissCount: 0,
