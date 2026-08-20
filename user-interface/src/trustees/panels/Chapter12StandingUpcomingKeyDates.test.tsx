@@ -57,10 +57,25 @@ describe('Chapter12StandingUpcomingKeyDates', () => {
     vi.restoreAllMocks();
     mockUseNavigate.mockReturnValue(mockNavigate);
     TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
   });
 
   test('renders "No date added" for all editable fields when API returns null', async () => {
-    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('ch12-upcoming-key-dates-card')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('audit-req-by-row')).toHaveTextContent('No date added');
+    expect(screen.getByTestId('tpr-review-period-row')).toHaveTextContent('No date added');
+    expect(screen.getByTestId('tpr-due-row')).toHaveTextContent('No date added');
+    expect(screen.getByTestId('lease-expiration-row')).toHaveTextContent('No date added');
+    expect(screen.getByTestId('id-expiration-row')).toHaveTextContent('No date added');
+  });
+
+  test('renders without crashing when API rejects', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockRejectedValue(new Error('Network error'));
 
     renderComponent();
 
@@ -68,14 +83,14 @@ describe('Chapter12StandingUpcomingKeyDates', () => {
       expect(screen.getByTestId('ch12-upcoming-key-dates-card')).toBeInTheDocument();
     });
 
-    // Audit Req. By, TPR Period, TPR Due, Lease Expiration, ID Expiration = 5 "No date added"
-    const noDateElements = screen.getAllByText('No date added');
-    expect(noDateElements.length).toBe(5);
+    expect(screen.getByTestId('audit-req-by-row')).toHaveTextContent('No date added');
+    expect(screen.getByTestId('tpr-review-period-row')).toHaveTextContent('No date added');
+    expect(screen.getByTestId('tpr-due-row')).toHaveTextContent('No date added');
+    expect(screen.getByTestId('lease-expiration-row')).toHaveTextContent('No date added');
+    expect(screen.getByTestId('id-expiration-row')).toHaveTextContent('No date added');
   });
 
   test('renders all 8 row labels', async () => {
-    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
-
     renderComponent();
 
     await waitFor(() => {
@@ -92,7 +107,7 @@ describe('Chapter12StandingUpcomingKeyDates', () => {
     expect(screen.getByTestId('id-expiration-row')).toBeInTheDocument();
   });
 
-  test('shows calculated Audit Req. By (lastAuditFiscalYear + 3) when set', async () => {
+  test('shows Audit Req. By year derived from lastAuditFiscalYear when set', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
 
     renderComponent();
@@ -115,8 +130,6 @@ describe('Chapter12StandingUpcomingKeyDates', () => {
   });
 
   test('Annual Report Due to OO always shows 09/30', async () => {
-    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
-
     renderComponent();
 
     await waitFor(() => {
@@ -125,8 +138,6 @@ describe('Chapter12StandingUpcomingKeyDates', () => {
   });
 
   test('Budget Submission Due always shows 05/01', async () => {
-    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
-
     renderComponent();
 
     await waitFor(() => {
@@ -135,12 +146,42 @@ describe('Chapter12StandingUpcomingKeyDates', () => {
   });
 
   test('Budget Review to OO always shows 06/01', async () => {
-    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
-
     renderComponent();
 
     await waitFor(() => {
       expect(screen.getByTestId('budget-review-to-oo-row')).toHaveTextContent('06/01');
+    });
+  });
+
+  test('shows formatted tprReviewPeriod when both start and end are set', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('tpr-review-period-row')).toHaveTextContent('01/01 - 12/31');
+    });
+  });
+
+  test('shows formatted tprDue with year type when both are set', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('tpr-due-row')).toHaveTextContent('03/15 ODD');
+    });
+  });
+
+  test('shows "No date added" for tprDue when tprDueYearType is missing', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({
+      data: { ...populatedDocument, tprDueYearType: undefined },
+    });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('tpr-due-row')).toHaveTextContent('No date added');
     });
   });
 
@@ -165,8 +206,6 @@ describe('Chapter12StandingUpcomingKeyDates', () => {
   });
 
   test('shows Edit button when user has TrusteeAdmin role', async () => {
-    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
-
     renderComponent();
 
     await waitFor(() => {
@@ -176,7 +215,6 @@ describe('Chapter12StandingUpcomingKeyDates', () => {
 
   test('does not render Edit button when user lacks TrusteeAdmin role', async () => {
     TestingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
-    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderComponent();
 
@@ -190,7 +228,6 @@ describe('Chapter12StandingUpcomingKeyDates', () => {
   });
 
   test('Edit button navigates to upcoming-key-dates/edit', async () => {
-    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
     const user = TestingUtilities.setupUserEvent();
 
     renderComponent();
