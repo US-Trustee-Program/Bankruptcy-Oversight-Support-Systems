@@ -214,9 +214,9 @@ describe('TrusteeMatchVerificationUseCase', () => {
       expect(result[0].courtName).toBe('Test Court - Other Division');
     });
 
-    test('selects the highest-scoring candidate as preselectedCandidate for MultipleTrusteesMatch', async () => {
+    test('selects the highest-scoring candidate as preselectedCandidate for AmbiguousMatchUnresolved', async () => {
       mockSearch.mockResolvedValue([
-        { ...sampleVerification, mismatchReason: 'MULTIPLE_TRUSTEES_MATCH' },
+        { ...sampleVerification, mismatchReason: 'AMBIGUOUS_MATCH_UNRESOLVED' },
       ]);
 
       const result = await useCase.getVerifications(context, {});
@@ -226,6 +226,24 @@ describe('TrusteeMatchVerificationUseCase', () => {
         trusteeName: 'Alice',
       });
       expect(result[0].candidateCount).toBe(2);
+    });
+
+    test('preselects the sole candidate for AmbiguousMatchUnresolved with only one candidate', async () => {
+      mockSearch.mockResolvedValue([
+        {
+          ...sampleVerification,
+          mismatchReason: 'AMBIGUOUS_MATCH_UNRESOLVED',
+          matchCandidates: [sampleVerification.matchCandidates[0]],
+        },
+      ]);
+
+      const result = await useCase.getVerifications(context, {});
+
+      expect(result[0].preselectedCandidate).toEqual({
+        trusteeId: 'trustee-a',
+        trusteeName: 'Alice',
+      });
+      expect(result[0].candidateCount).toBe(1);
     });
 
     test('preselects the first candidate for non-multiple-match mismatch reasons', async () => {

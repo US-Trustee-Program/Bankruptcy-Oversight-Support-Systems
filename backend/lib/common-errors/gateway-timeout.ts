@@ -13,3 +13,7 @@ export class GatewayTimeoutError extends CamsError {
     });
   }
 }
+
+export function isGatewayTimeoutError(error: unknown): error is GatewayTimeoutError {
+  return error instanceof GatewayTimeoutError;
+}

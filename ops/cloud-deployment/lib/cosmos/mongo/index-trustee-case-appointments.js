@@ -69,6 +69,17 @@ const TARGET_INDEXES = [
     name: 'chapter_1',
     key: { chapter: 1 },
   },
+  // Supports existsInTrusteePartition and findStrandedActiveInTrusteePartition (see
+  // trustee-case-appointments.mongo.repository.ts), both of which $match on caseId against this
+  // trusteeId-sharded collection to detect dual-partition write divergence. Without this index,
+  // caseId equality is not index-seekable within a trustee's shard, so every call fans an
+  // unindexed scan out across every physical partition -- the same chapter_1 failure mode
+  // documented above, on a query that runs on every trustee-appointment sync event, not just an
+  // occasional chapter filter.
+  {
+    name: 'caseId_1',
+    key: { caseId: 1 },
+  },
 ];
 
 function sleep(ms) {

@@ -285,7 +285,7 @@ describe('Review Orders screen', () => {
     caseId: '081-22-11111',
     courtId: '0881',
     status: 'pending',
-    mismatchReason: 'HIGH_CONFIDENCE_MATCH',
+    mismatchReason: 'NO_TRUSTEE_MATCH',
     dxtrTrustee: { fullName: 'John Doe' },
     preselectedCandidate: null,
     candidateCount: 0,
