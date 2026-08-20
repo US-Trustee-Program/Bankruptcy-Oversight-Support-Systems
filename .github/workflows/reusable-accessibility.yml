@@ -32,6 +32,14 @@ jobs:
     permissions:
       contents: read
       packages: read
+    # GitHub Actions defaults `run:` steps to `sh` (not `bash`) when a job
+    # runs inside a `container:` — unlike on a bare runner, where bash is
+    # the default. Without this, `pushd`/`popd` below (bash builtins) fail
+    # with "not found". Observed empirically: run
+    # https://github.com/US-Trustee-Program/Bankruptcy-Oversight-Support-Systems/actions/runs/32318056108
+    defaults:
+      run:
+        shell: bash
     env:
       CI: true
     steps:
