@@ -73,7 +73,13 @@ jobs:
           export CAMS_LOGIN_PROVIDER=none
           npm run build:user-interface
           pushd "${INPUT_PATH}"
-          serve -s build &
+          # Redirect serve's own stdout/stderr to a file (not captured at
+          # all otherwise, since it's backgrounded) so a crash/hang has a
+          # log to inspect rather than just "connection refused" from the
+          # test side. `disown` detaches it from this step's shell job
+          # table so it isn't SIGHUP'd when this step's shell exits.
+          serve -s build > /tmp/serve.log 2>&1 &
+          disown
           # Use a bash built-in TCP check rather than `nc`, which isn't
           # guaranteed to be present in the official Playwright image.
           if ! timeout 120s bash -c 'until (echo > /dev/tcp/localhost/3000) 2>/dev/null; do sleep 1; done'; then
@@ -86,6 +92,10 @@ jobs:
         if: ${{ ! inputs.skip }}
         id: playwrightA11yTests
         run: npm run test:a11y --workspace=user-interface
+
+      - name: Upload serve log
+        if: ${{ ! inputs.skip && always() }}
+        run: cat /tmp/serve.log || echo "No serve log found"
 
       - name: Upload report
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
