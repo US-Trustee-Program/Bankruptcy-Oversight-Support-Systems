@@ -1979,7 +1979,15 @@ describe('getTrusteePetitionEvents', () => {
     );
   });
 
-  test('reads aptDate from the type-1 (petition) REC offset 91-96, not the type-A offset', async () => {
+  test.each([
+    { label: 'aptDate', expectedFragment: 'SUBSTRING(TX.REC, 91, 6) AS aptDate' },
+    { label: 'profCode', expectedFragment: 'SUBSTRING(TX.REC, 86, 5) AS profCode' },
+    // CAMS-809: txDate backs appointedDate's fallback when REC's date is unparseable. CONVERT
+    // (not FORMAT) is required — FORMAT() depends on the CLR, which is disabled by default on
+    // SQL Edge/many SQL Server instances and fails with "Common Language Runtime(CLR) is not
+    // enabled on this instance." (confirmed against a real SQL Edge container).
+    { label: 'txDate', expectedFragment: 'CONVERT(VARCHAR(10), TX.TX_DATE, 120) AS txDate' },
+  ])('reads $label as part of the type-1 (petition) query', async (testCase) => {
     querySpy.mockResolvedValue({
       success: true,
       results: { recordset: [] },
@@ -1990,24 +1998,7 @@ describe('getTrusteePetitionEvents', () => {
 
     expect(querySpy).toHaveBeenCalledWith(
       applicationContext,
-      expect.stringContaining('SUBSTRING(TX.REC, 91, 6) AS aptDate'),
-      expect.anything(),
-      expect.anything(),
-    );
-  });
-
-  test('reads profCode from the type-1 (petition) REC offset 86-90, not the type-A offset', async () => {
-    querySpy.mockResolvedValue({
-      success: true,
-      results: { recordset: [] },
-      message: '',
-    } as QueryResults);
-
-    await gateway.getTrusteePetitionEvents(applicationContext, '2026-01-01T00:00:00.000Z');
-
-    expect(querySpy).toHaveBeenCalledWith(
-      applicationContext,
-      expect.stringContaining('SUBSTRING(TX.REC, 86, 5) AS profCode'),
+      expect.stringContaining(testCase.expectedFragment),
       expect.anything(),
       expect.anything(),
     );
@@ -2076,6 +2067,55 @@ describe('getTrusteePetitionEvents', () => {
 
     expect(result.events).toEqual([]);
   });
+
+  // CAMS-809: REC's fixed-width embedded date is occasionally blank/'000000'/malformed — a
+  // genuine DXTR data-quality gap. TX.TX_DATE is a datetime2 NOT NULL column on the same
+  // 'Trustee Appointed' transaction row and can never be missing, so appointedDate must fall
+  // back to it rather than leaving the event stuck with no appointedDate at all — but REC's date
+  // is still preferred when it parses, since it's the more precise, pre-existing source.
+  test.each([
+    { aptDate: '000000', txDate: '2026-04-07', expected: '2026-04-07', label: 'falls back' },
+    { aptDate: '260407', txDate: '2026-04-09', expected: '2026-04-07', label: 'prefers REC' },
+  ])('$label to the correct appointedDate (aptDate=$aptDate, txDate=$txDate)', async (testCase) => {
+    querySpy.mockResolvedValue({
+      success: true,
+      results: {
+        recordset: [
+          {
+            caseId: '081-24-12345',
+            courtId: '081',
+            chapter: '7',
+            courtDivisionCode: '081',
+            firstName: 'Jane',
+            middleName: '',
+            lastName: 'Doe',
+            generation: '',
+            address1: '',
+            address2: '',
+            address3: '',
+            city: '',
+            state: '',
+            zip: '',
+            country: '',
+            email: '',
+            phone: '',
+            fax: '',
+            latestSyncDate: '2026-04-07T00:00:00.000Z',
+            aptDate: testCase.aptDate,
+            txDate: testCase.txDate,
+          },
+        ],
+      },
+      message: '',
+    } as QueryResults);
+
+    const result = await gateway.getTrusteePetitionEvents(
+      applicationContext,
+      '2026-01-01T00:00:00.000Z',
+    );
+
+    expect(result.events[0].appointedDate).toBe(testCase.expected);
+  });
 });
 
 describe('getAppointmentDatesByCaseIds', () => {
@@ -2135,18 +2175,21 @@ describe('getAppointmentDatesByCaseIds', () => {
     expect(result.size).toBe(1);
   });
 
-  test('excludes entries where aptDate is sentinel 000000', async () => {
+  test('falls back to txDate when aptDate is sentinel 000000', async () => {
+    // CAMS-809: REC's embedded date can be blank/'000000'/malformed. TX.TX_DATE is a datetime2
+    // NOT NULL column on the same transaction row, so the backfill can still recover a date
+    // instead of leaving the appointment permanently missing appointedDate.
     querySpy.mockResolvedValue({
       success: true,
       results: {
-        recordset: [{ caseId: '081-24-12345', aptDate: '000000' }],
+        recordset: [{ caseId: '081-24-12345', aptDate: '000000', txDate: '2026-04-07' }],
       },
       message: '',
     } as QueryResults);
 
     const result = await gateway.getAppointmentDatesByCaseIds(applicationContext, ['081-24-12345']);
 
-    expect(result.size).toBe(0);
+    expect(result.get('081-24-12345')).toBe('2026-04-07');
   });
 
   test('returns empty map when no records returned from DXTR', async () => {

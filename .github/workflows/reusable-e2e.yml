@@ -42,6 +42,22 @@ on:
 permissions:
   contents: read
 
+# NOTE: This job intentionally stays as a SINGLE job (enable access → seed →
+# test → disable access), matching the pre-existing pattern. A prior attempt
+# split this into playwright-e2e-setup / playwright-e2e-test /
+# playwright-e2e-teardown jobs so the "Run E2E Tests" step could use a
+# job-level `container:` key. That broke IP allow-listing:
+# dev-add-allowed-ip.sh detects the *executing runner's own public IP* and
+# adds an Azure access-restriction rule for it, which only works if the step
+# that adds the rule and the step that sends the test traffic run on the SAME
+# runner. GitHub-hosted runners are one-VM-per-job with independent egress
+# IPs, so splitting setup from test execution meant the allow-listed IP no
+# longer matched the IP the test traffic came from. It also required
+# threading Key Vault secrets across job boundaries via `needs.*.outputs`,
+# but `::add-mask::` masking does not carry across jobs, so those values
+# could be echoed unmasked downstream. Keeping everything in one job (and
+# invoking the custom Playwright image via `docker run` instead of the
+# job-level `container:` key, below) avoids all of that.
 jobs:
   playwright-e2e-test:
     environment: ${{ inputs.ghaEnvironment == 'Main-Gov' && 'e2e-main' || 'e2e-branch' }}
@@ -51,6 +67,17 @@ jobs:
       id-token: write
     env:
       priority: 201
+      # Plain official Playwright image (chromium/firefox/webkit only).
+      # test/e2e/playwright.config.ts's "Microsoft Edge" project is
+      # currently commented out, so e2e does not test msedge today and
+      # does not need the custom msedge derivative image (unlike
+      # reusable-accessibility.yml, whose UI Edge project IS active).
+      # Digest reused from test/e2e/Dockerfile.playwright-msedge's FROM
+      # line, which resolves the same v1.62.1-noble tag. If the msedge
+      # project in test/e2e/playwright.config.ts is ever re-enabled,
+      # switch this to the shared custom image (ghcr.io playwright-msedge
+      # / Dockerfile.playwright-msedge) instead.
+      PLAYWRIGHT_IMAGE: mcr.microsoft.com/playwright@sha256:c091b21d9fae78c76e85cd4356431e9b018402f172a214fc7d7a5e9a7e29d8ac
     steps:
       - name: Get source code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -160,9 +187,11 @@ jobs:
 
       - name: Install E2E Node dependencies
         working-directory: test/e2e
-        run: |
-          npm ci
-          npx playwright install chromium msedge
+        # Browsers (chromium + msedge) no longer need `npx playwright
+        # install` here — the "Run E2E Tests" step below runs the tests
+        # inside the custom Playwright+msedge container image, which has
+        # both pre-installed with OS deps.
+        run: npm ci
 
       - name: Seed e2e database
         env:
@@ -215,7 +244,44 @@ jobs:
         run: |
           echo "Running Playwright Tests..."
           mkdir -p playwright/.auth
-          SLOT_NAME=${{ env.SLOT_NAME }} TARGET_HOST="https://${WEBAPP_NAME}-${{ env.SLOT_NAME }}.azurewebsites.us" CAMS_LOGIN_PROVIDER=${{ env.CAMS_LOGIN_PROVIDER }} npx playwright test --reporter=list,html
+
+          # Run the tests via `docker run` (not a job-level `container:` key)
+          # so this stays in the SAME step/runner as "Enable GHA runner
+          # access" and "Disable GHA runner access" above/below — required
+          # for the runner's allow-listed IP to match the IP the test
+          # traffic actually comes from (see note at the top of this file).
+          #
+          # Mounting github.workspace and running node_modules installed by
+          # the host `npm ci` steps above (rather than re-running `npm ci`
+          # inside the container) avoids duplicating that work. Node
+          # versions match closely enough (.nvmrc vs. the image's bundled
+          # Node) and test/e2e has no compiled/native dependencies, so the
+          # host-installed node_modules are usable as-is inside the
+          # container. Default docker bridge networking is sufficient
+          # because TARGET_HOST is a public HTTPS endpoint
+          # (*.azurewebsites.us), not localhost.
+          #
+          # --user "$(id -u):$(id -g)" runs the container as the runner's
+          # own (non-root) user so files written to the bind-mounted
+          # workspace (playwright/.auth, test-results, playwright-report)
+          # are owned by that user rather than root, avoiding any risk of
+          # the "Upload report" step below failing to read them. Playwright's
+          # browser sandboxing generally tolerates a non-root --user in
+          # headless CI, but this hasn't been empirically verified in this
+          # repo yet — smoke-test on the first real run.
+          docker run --rm \
+            --shm-size=1g \
+            --user "$(id -u):$(id -g)" \
+            -v "${{ github.workspace }}:/workspace" \
+            -w /workspace/test/e2e \
+            -e TARGET_HOST="https://${WEBAPP_NAME}-${{ env.SLOT_NAME }}.azurewebsites.us" \
+            -e SLOT_NAME="${{ env.SLOT_NAME }}" \
+            -e CAMS_LOGIN_PROVIDER="${{ env.CAMS_LOGIN_PROVIDER }}" \
+            -e OKTA_USER_NAME="${OKTA_USER_NAME}" \
+            -e OKTA_PASSWORD="${OKTA_PASSWORD}" \
+            -e CI=true \
+            "${{ env.PLAYWRIGHT_IMAGE }}" \
+            npx playwright test --reporter=list,html
 
       - name: Upload report
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

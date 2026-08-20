@@ -22,12 +22,12 @@ deployment_parameters=''
 is_ustp_deployment=false
 inputParams=()
 
-requiredUSTPParams=("--enabledDataflows" "--mssqlRequestTimeout" "--migrateCaseAppointmentsFetchSize" "--isUstpDeployment" "--resource-group" "--file" "--stackName" "--slotName" "--gitSha" "--networkResourceGroupName" "--virtualNetworkName" "--idKeyvaultAppConfiguration" "--kvAppConfigName" "--cosmosDatabaseName" "--ustpIssueCollectorHash" "--createAlerts" "--deployAppInsights" "--apiFunctionPlanName" "--dataflowsFunctionPlanName" "--webappPlanType" "--loginProvider" "--loginProviderConfig" "--sqlServerName" "--sqlServerResourceGroupName" "--oktaUrl" "--location" "--webappSubnetName" "--apiFunctionSubnetName" "--privateEndpointSubnetName" "--dataflowsSubnetName" "--privateDnsZoneName" "--privateDnsZoneResourceGroup" "--privateDnsZoneSubscriptionId" "--analyticsResourceGroupName" "--kvAppConfigResourceGroupName" "--deployDns")
+requiredUSTPParams=("--enabledDataflows" "--mssqlRequestTimeout" "--migrateCaseAppointmentsFetchSize" "--isUstpDeployment" "--resource-group" "--file" "--stackName" "--slotName" "--gitSha" "--networkResourceGroupName" "--virtualNetworkName" "--idKeyvaultAppConfiguration" "--kvAppConfigName" "--cosmosDatabaseName" "--ustpIssueCollectorHash" "--createAlerts" "--deployAppInsights" "--apiFunctionPlanName" "--dataflowsFunctionPlanName" "--webappPlanType" "--functionsPlanType" "--loginProvider" "--loginProviderConfig" "--sqlServerName" "--sqlServerResourceGroupName" "--oktaUrl" "--location" "--webappSubnetName" "--apiFunctionSubnetName" "--privateEndpointSubnetName" "--dataflowsSubnetName" "--privateDnsZoneName" "--privateDnsZoneResourceGroup" "--privateDnsZoneSubscriptionId" "--analyticsResourceGroupName" "--kvAppConfigResourceGroupName" "--deployDns")
 
 requiredFlexionParams=("--enabledDataflows" "--mssqlRequestTimeout" "--migrateCaseAppointmentsFetchSize" "--resource-group" "--file" "--stackName" "--slotName" "--gitSha" "--networkResourceGroupName" "--kvAppConfigName" "--kvAppConfigResourceGroupName" "--virtualNetworkName" "--analyticsResourceGroupName" "--idKeyvaultAppConfiguration" "--cosmosDatabaseName" "--ustpIssueCollectorHash" "--createAlerts" "--deployAppInsights" "--loginProvider" "--loginProviderConfig" "--sqlServerName" "--sqlServerResourceGroupName" "--sqlServerIdentityName" "--actionGroupName" "--oktaUrl" "--e2eDatabaseName" "--e2eSqlDatabaseName")
 
 # shellcheck disable=SC2034 # REASON: to have a reference for all possible parameters
-allParams=("--enabledDataflows" "--mssqlRequestTimeout" "--migrateCaseAppointmentsFetchSize" "--isUstpDeployment" "--resource-group" "--file" "--stackName" "--slotName" "--gitSha" "--networkResourceGroupName" "--virtualNetworkName" "--analyticsWorkspaceId" "--idKeyvaultAppConfiguration" "--kvAppConfigName" "--cosmosDatabaseName" "--deployVnet" "--ustpIssueCollectorHash" "--createAlerts" "--deployAppInsights" "--apiFunctionPlanName" "--dataflowsFunctionPlanName" "--webappPlanType" "--loginProvider" "--loginProviderConfig" "--sqlServerName" "--sqlServerResourceGroupName" "--sqlServerIdentityResourceGroupName" "--sqlServerIdentityName" "--sqlServerIdentitySubscriptionId" "--actionGroupName" "--oktaUrl" "--location" "--webappSubnetName" "--apiFunctionSubnetName" "--privateEndpointSubnetName" "--webappSubnetAddressPrefix" "--apiFunctionSubnetAddressPrefix" "--dataflowsSubnetName" "--dataflowsSubnetAddressPrefix" "--vnetAddressPrefix" "--linkVnetIds" "--privateDnsZoneName" "--privateDnsZoneResourceGroup" "--privateDnsZoneSubscriptionId" "--analyticsResourceGroupName" "--kvAppConfigResourceGroupName" "--deployDns" "--e2eDatabaseName" "--e2eSqlDatabaseName" "--customDomain")
+allParams=("--enabledDataflows" "--mssqlRequestTimeout" "--migrateCaseAppointmentsFetchSize" "--isUstpDeployment" "--resource-group" "--file" "--stackName" "--slotName" "--gitSha" "--networkResourceGroupName" "--virtualNetworkName" "--analyticsWorkspaceId" "--idKeyvaultAppConfiguration" "--kvAppConfigName" "--cosmosDatabaseName" "--deployVnet" "--ustpIssueCollectorHash" "--createAlerts" "--deployAppInsights" "--apiFunctionPlanName" "--dataflowsFunctionPlanName" "--webappPlanType" "--functionsPlanType" "--loginProvider" "--loginProviderConfig" "--sqlServerName" "--sqlServerResourceGroupName" "--sqlServerIdentityResourceGroupName" "--sqlServerIdentityName" "--sqlServerIdentitySubscriptionId" "--actionGroupName" "--oktaUrl" "--location" "--webappSubnetName" "--apiFunctionSubnetName" "--privateEndpointSubnetName" "--webappSubnetAddressPrefix" "--apiFunctionSubnetAddressPrefix" "--dataflowsSubnetName" "--dataflowsSubnetAddressPrefix" "--vnetAddressPrefix" "--linkVnetIds" "--privateDnsZoneName" "--privateDnsZoneResourceGroup" "--privateDnsZoneSubscriptionId" "--analyticsResourceGroupName" "--kvAppConfigResourceGroupName" "--deployDns" "--e2eDatabaseName" "--e2eSqlDatabaseName" "--customDomain" "--useSqlPrivateLink")
 
 
 function validateParameters() {
@@ -60,6 +60,44 @@ function requireValue() {
     if [[ -z "${value}" || "${value}" == --* ]]; then
         echo "Parameter: ${flag} requires a value"
         exit 12
+    fi
+}
+
+# Wraps vnet_link_already_exists_for (see _vnet-link-check.sh) with the
+# warn-and-default-false fallback shared by every private-DNS-zone
+# vnet-link check below (webapp, SQL, ...), so the call sites can't
+# independently drift out of sync -- see _vnet-link-check.sh's own header
+# for why that's a real risk here, not hypothetical: the KV/webapp/SQL
+# zone-name literals already have to be kept in lockstep by hand across
+# multiple files.
+#
+# Sets check_vnet_link_result to "true"/"false" for the caller to fold into
+# deployment_parameters (deliberately a different global than
+# vnet_link_check_result, which this still calls through to, so a caller
+# reading the result after this returns can't confuse the two contracts).
+function check_vnet_link_or_warn() {
+    local zoneRg=$1
+    local zoneName=$2
+    local label=$3
+    check_vnet_link_result=false
+    if [[ -n "${network_rg:-}" && -n "${vnet_name:-}" ]]; then
+        vnet_link_already_exists_for "${zoneRg}" "${zoneName}" "${network_rg}" "${vnet_name}" "${stack_name}" "${private_dns_zone_sub_id:-}"
+        local existingLink="${vnet_link_check_result}"
+        if [[ -n "${existingLink}" ]]; then
+            echo "Vnet ${vnet_name} is already linked to ${zoneName} via '${existingLink}'; skipping creation of a second link."
+            check_vnet_link_result=true
+        else
+            echo "No existing link from vnet ${vnet_name} into ${zoneName} in ${zoneRg} (or any other same-named zone); the template will create one."
+        fi
+    else
+        # validateParameters only checks --networkResourceGroupName/--virtualNetworkName
+        # were passed, not that their values are non-empty, so this guard can't
+        # be assumed unreachable. Not fatal here -- the template still applies its
+        # own safe default (*VnetLinkAlreadyExists=false, i.e. attempt creation
+        # normally) -- but silently skipping the check left zero diagnostic
+        # trail, unlike the KV-zone call site's unconditional (fail-loud)
+        # contract in azure-deploy-app-shared-setup.sh.
+        echo "WARNING: skipping ${label} DNS zone vnet-link existence check — networkResourceGroupName ('${network_rg:-}') or virtualNetworkName ('${vnet_name:-}') is empty." >&2
     fi
 }
 
@@ -374,6 +412,13 @@ while [[ $# -gt 0 ]]; do
         shift 2
         ;;
 
+    --functionsPlanType)
+        inputParams+=("${1}")
+        functions_plan_type_param="functionsPlanType=${2}"
+        deployment_parameters="${deployment_parameters} ${functions_plan_type_param}"
+        shift 2
+        ;;
+
     --apiFunctionPlanName)
         inputParams+=("${1}")
         api_function_plan_name_param="apiFunctionPlanName=${2}"
@@ -459,6 +504,13 @@ while [[ $# -gt 0 ]]; do
         shift 2
         ;;
 
+    --useSqlPrivateLink)
+        inputParams+=("${1}")
+        use_sql_private_link_param="useSqlPrivateLink=${2}"
+        deployment_parameters="${deployment_parameters} ${use_sql_private_link_param}"
+        shift 2
+        ;;
+
     *)
         echo "Exit on param: ${1}"
         exit 2 # error on unknown flag/switch
@@ -492,27 +544,28 @@ validateParameters
 # same subscription main.bicep's ustpWebappDnsZoneLink module targets.
 webappPrivateDnsZoneName="${private_dns_zone_name:-privatelink.azurewebsites.us}"
 webappPrivateDnsZoneRg="${private_dns_zone_rg:-${network_rg:-}}"
-webapp_vnet_link_already_exists=false
-if [[ -n "${network_rg:-}" && -n "${vnet_name:-}" ]]; then
-    vnet_link_already_exists_for "${webappPrivateDnsZoneRg}" "${webappPrivateDnsZoneName}" "${network_rg}" "${vnet_name}" "${stack_name}" "${private_dns_zone_sub_id:-}"
-    existingWebappLink="${vnet_link_check_result}"
-    if [[ -n "${existingWebappLink}" ]]; then
-        echo "Vnet ${vnet_name} is already linked to ${webappPrivateDnsZoneName} via '${existingWebappLink}'; skipping creation of a second link."
-        webapp_vnet_link_already_exists=true
-    else
-        echo "No existing link from vnet ${vnet_name} into ${webappPrivateDnsZoneName} in ${webappPrivateDnsZoneRg} (or any other same-named zone); the template will create one."
-    fi
-else
-    # validateParameters only checks --networkResourceGroupName/--virtualNetworkName
-    # were passed, not that their values are non-empty, so this guard can't
-    # be assumed unreachable. Not fatal here — the template still applies its
-    # own safe default (webappVnetLinkAlreadyExists=false, i.e. attempt
-    # creation normally) — but silently skipping the check left zero
-    # diagnostic trail, unlike the KV-zone call site's unconditional (fail-
-    # loud) contract in azure-deploy-app-shared-setup.sh.
-    echo "WARNING: skipping webapp DNS zone vnet-link existence check — networkResourceGroupName ('${network_rg:-}') or virtualNetworkName ('${vnet_name:-}') is empty." >&2
-fi
-deployment_parameters="${deployment_parameters} webappVnetLinkAlreadyExists=${webapp_vnet_link_already_exists}"
+check_vnet_link_or_warn "${webappPrivateDnsZoneRg}" "${webappPrivateDnsZoneName}" "webapp"
+deployment_parameters="${deployment_parameters} webappVnetLinkAlreadyExists=${check_vnet_link_result}"
+
+# Same Conflict-avoidance check as above, for the SQL Private Link zone
+# (privatelink.database.usgovcloudapi.net). Unlike the webapp link,
+# main.bicep's ustpSqlDnsZoneLink module is UNCONDITIONAL -- not gated on
+# useSqlPrivateLink -- because the SQL server auto-redirects its public FQDN
+# to the privatelink subdomain server-wide the instant any branch's PE is
+# approved, which would strand main and every other non-PE consumer if only
+# the PE-using branch were linked to the zone (see main.bicep's comment on
+# that module for the full rationale). This check MUST therefore also run
+# unconditionally for every deploy, including main's -- do NOT gate it on
+# useSqlPrivateLink, or main's redeploy will hit a Conflict trying to
+# recreate a link this check should have detected already exists.
+# main.bicep's ustpSqlDnsZoneLink module links this vnet into the SAME
+# privateDnsZoneResourceGroup/privateDnsZoneSubscriptionId scope as the
+# webapp zone link (just a different zone name), so this reuses
+# webappPrivateDnsZoneRg/private_dns_zone_sub_id rather than introducing a
+# separate --sqlPrivateDnsZoneResourceGroup param that doesn't exist.
+sqlPrivateDnsZoneName='privatelink.database.usgovcloudapi.net'
+check_vnet_link_or_warn "${webappPrivateDnsZoneRg}" "${sqlPrivateDnsZoneName}" "SQL"
+deployment_parameters="${deployment_parameters} sqlVnetLinkAlreadyExists=${check_vnet_link_result}"
 
 # The virtual network is deployed separately by azure-deploy-network.sh before this
 # script runs (CAMS-760, Option E); vnet existence / deployVnet handling lives there.

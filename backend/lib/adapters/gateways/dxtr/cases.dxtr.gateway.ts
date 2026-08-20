@@ -95,6 +95,7 @@ type TrusteeAppointmentEventRecord = {
   fax?: string;
   latestSyncDate: string;
   aptDate?: string;
+  txDate: string;
   groupDesignator?: string;
   profCode?: string;
 };
@@ -1372,6 +1373,7 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
         P.PY_FAX_PHONE AS fax,
         CONVERT(VARCHAR(23), TX.TX_DATE, 126) + 'Z' AS latestSyncDate,
         SUBSTRING(TX.REC, ${aptDateOffset}, 6) AS aptDate,
+        CONVERT(VARCHAR(10), TX.TX_DATE, 120) AS txDate,
         SUBSTRING(TX.REC, ${profCodeOffset}, 5) AS profCode
       FROM AO_TX TX
       JOIN AO_CS C ON TX.CS_CASEID = C.CS_CASEID AND TX.COURT_ID = C.COURT_ID
@@ -1435,7 +1437,16 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
         courtDivisionCode: record.courtDivisionCode,
         acmsProfessionalId,
         dxtrTrustee,
-        appointedDate: parseDxtrDate(record.aptDate),
+        // REC's fixed-width embedded date (positions vary by TX_TYPE/TX_CODE — see
+        // TX_TYPE_A_APT_DATE_OFFSET/TX_TYPE_1_APT_DATE_OFFSET) is occasionally blank,
+        // '000000', or otherwise unparseable — a genuine DXTR data-quality gap (see CAMS-809).
+        // TX.TX_DATE is a datetime2 NOT NULL column on the very same transaction row (the
+        // 'Trustee Appointed' transaction itself), so it can never be missing/malformed the way
+        // a REC substring can. Falling back to it keeps the appointment date tied to a real,
+        // stable DXTR fact instead of refusing the event outright or (worse) wall-clock time,
+        // while still preferring REC's date when it parses since that's the more precise,
+        // pre-existing source.
+        appointedDate: parseDxtrDate(record.aptDate) ?? record.txDate,
       };
     });
 
@@ -1463,7 +1474,7 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
       SELECT
         CONCAT(CS_DIV.CS_DIV_ACMS, '-', C.CASE_ID) AS caseId,
         SUBSTRING(TX.REC, 24, 6) AS aptDate,
-        TX.TX_DATE
+        CONVERT(VARCHAR(10), TX.TX_DATE, 120) AS txDate
       FROM AO_TX TX
       JOIN AO_CS C ON TX.CS_CASEID = C.CS_CASEID AND TX.COURT_ID = C.COURT_ID
       JOIN AO_CS_DIV AS CS_DIV ON C.CS_DIV = CS_DIV.CS_DIV
@@ -1478,6 +1489,7 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
     type AppointmentDateRecord = {
       caseId: string;
       aptDate?: string;
+      txDate: string;
     };
 
     const records = this.trusteeAppointmentsQueryCallback<AppointmentDateRecord>(
@@ -1488,13 +1500,17 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
     return this.getMostRecentAppointmentDates(records);
   }
 
+  // REC's embedded date can be blank/'000000'/malformed (see CAMS-809); TX.TX_DATE is a
+  // datetime2 NOT NULL column on the same 'Trustee Appointed' transaction row and can never be
+  // missing, so it's used whenever REC's date fails to parse (same fallback as
+  // mapTrusteeAppointmentEventRecords above).
   private getMostRecentAppointmentDates(
-    records: { caseId: string; aptDate?: string }[],
+    records: { caseId: string; aptDate?: string; txDate: string }[],
   ): Map<string, string> {
     const result = new Map<string, string>();
     for (const record of records) {
       if (result.has(record.caseId)) continue;
-      const appointedDate = parseDxtrDate(record.aptDate);
+      const appointedDate = parseDxtrDate(record.aptDate) ?? record.txDate;
       if (appointedDate) {
         result.set(record.caseId, appointedDate);
       }

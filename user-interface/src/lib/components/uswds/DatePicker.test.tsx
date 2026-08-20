@@ -1,8 +1,10 @@
 import React, { act } from 'react';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
-import DatePicker, { DatePickerProps } from './DatePicker';
+import DatePicker, { DatePickerProps, validateDateValue } from './DatePicker';
 import { InputRef } from '@/lib/type-declarations/input-fields';
+import { ValidatorFunction } from '@common/cams/validation';
+import { MAX_ISO_DATE } from '@common/date-helper';
 
 // NOTE For some reason (known issue) a date input element can not be changed by typing a date
 // in the formation that the UI expects. The date may only be changed using a change event and
@@ -14,7 +16,7 @@ const IMMEDIATE_MS = 100;
 const mockOnChange = vi.fn();
 
 function getErrorText() {
-  return (document.querySelector('.date-error') as HTMLElement | null)?.textContent ?? '';
+  return document.getElementById(`${DEFAULT_ID}-error`)?.textContent ?? '';
 }
 
 function getInput(id: string) {
@@ -43,8 +45,58 @@ async function waitForValidation(ms = DEBOUNCE_MS) {
   });
 }
 
+describe('validateDateValue (pure function)', () => {
+  test('returns no errors for null or empty value', () => {
+    expect(validateDateValue(null)).toEqual([]);
+    expect(validateDateValue('')).toEqual([]);
+  });
+
+  test('returns a 4-digit-year error for a year longer than 4 digits', () => {
+    expect(validateDateValue('11111-11-11')).toEqual(['Year must be 4 digits.']);
+  });
+
+  test('returns no errors for an incomplete date (year-month only)', () => {
+    expect(validateDateValue('2024-06')).toEqual([]);
+  });
+
+  test('returns no errors for a calendar-invalid month (month 13) since Date parsing rejects it before min/max runs', () => {
+    expect(validateDateValue('2024-13-01', { min: '2024-01-01', max: '2024-12-31' })).toEqual([]);
+  });
+
+  test('returns an error for a calendar-invalid day (Feb 31) since dateMinMax round-trips through toISOString', () => {
+    expect(validateDateValue('2024-02-31', { min: '2024-01-01', max: '2024-12-31' })).toEqual([
+      'Must be a valid date',
+    ]);
+  });
+
+  test('returns a "must be on or after" error when the date is before min', () => {
+    expect(validateDateValue('2023-12-31', { min: '2024-01-01', max: '2024-12-31' })).toEqual([
+      'Must be on or after 01/01/2024.',
+    ]);
+  });
+
+  test('returns a "must be on or before" error when the date is after max', () => {
+    expect(validateDateValue('2025-01-01', { min: '2024-01-01', max: '2024-12-31' })).toEqual([
+      'Must be on or before 12/31/2024.',
+    ]);
+  });
+
+  test('includes custom validator failure reasons', () => {
+    const failingValidator: ValidatorFunction = () => ({
+      reasons: ['Custom reason.'],
+    });
+    expect(
+      validateDateValue('2024-06-15', {
+        min: '2024-01-01',
+        max: '2024-12-31',
+        validators: [failingValidator],
+      }),
+    ).toEqual(['Custom reason.']);
+  });
+});
+
 describe('Test DatePicker component', async () => {
-  afterEach(() => {
+  beforeEach(() => {
     vi.restoreAllMocks();
   });
 
@@ -122,7 +174,7 @@ describe('Test DatePicker component', async () => {
 });
 
 describe('DatePicker additional coverage tests', () => {
-  afterEach(() => {
+  beforeEach(() => {
     vi.restoreAllMocks();
   });
 
@@ -208,6 +260,31 @@ describe('DatePicker additional coverage tests', () => {
       const errorElement = document.querySelector('.date-error');
       expect(errorElement).toHaveTextContent('Must be on or after 01/01/2024.');
     });
+  });
+
+  test('should call onValidationChange(true) when an invalid date is entered and onValidationChange(false) once corrected', async () => {
+    const min = '2024-01-01';
+    const max = '2024-12-31';
+    const onValidationChange = vi.fn();
+    renderWithProps({ min, max, onChange: mockOnChange, onValidationChange });
+
+    const inputEl = screen.getByTestId(DEFAULT_ID);
+
+    fireEvent.change(inputEl, { target: { value: '2023-12-31' } });
+
+    await waitFor(() => {
+      expect(onValidationChange).toHaveBeenCalledWith(true);
+    });
+
+    fireEvent.change(inputEl, { target: { value: '2024-06-15' } });
+
+    await waitFor(() => {
+      expect(onValidationChange).toHaveBeenCalledWith(false);
+    });
+  });
+
+  test('should not throw when rendered without onValidationChange', () => {
+    expect(() => renderWithProps()).not.toThrow();
   });
 
   test('should handle empty setValue gracefully', () => {
@@ -365,31 +442,18 @@ describe('DatePicker additional coverage tests', () => {
     });
   });
 
-  test('should handle clearDateValue setTimeout behavior', () => {
-    const spy = vi.spyOn(window, 'setTimeout');
-
-    render(<DatePicker id="test-setTimeout" />);
-
-    const component = document.getElementById('test-setTimeout');
-    expect(component).toBeInTheDocument();
-    expect(spy).toHaveBeenCalledTimes(0);
-    spy.mockRestore();
-  });
-
-  test('should execute setTimeout callback in clearDateValue', async () => {
-    const setTimeoutSpy = vi.spyOn(window, 'setTimeout');
-
+  test('clearValue clears the input value', async () => {
     const ref = React.createRef<InputRef>();
-    render(<DatePicker id="test-timeout-callback" ref={ref} value="2024-01-01" />);
+    render(<DatePicker id="test-clear-value" ref={ref} value="2024-01-01" />);
+
+    const inputEl = screen.getByTestId('test-clear-value') as HTMLInputElement;
+    expect(inputEl.value).toBe('2024-01-01');
 
     act(() => ref.current?.clearValue());
 
-    expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 100);
-
-    const callback = setTimeoutSpy.mock.calls[0][0] as () => void;
-    act(() => callback());
-
-    setTimeoutSpy.mockRestore();
+    await waitFor(() => {
+      expect(inputEl.value).toBe('');
+    });
   });
 
   test('should test getValue method through ref', () => {
@@ -406,7 +470,11 @@ describe('DatePicker additional coverage tests', () => {
     act(() => expect(ref.current?.getValue()).toBe(''));
   });
 
-  test('should clear errors when field becomes empty', async () => {
+  test.each([
+    ['empty value', ''],
+    ['incomplete date', '2024-06'],
+    ['invalid date (Feb 31)', '2024-02-31'],
+  ])('should clear errors when follow-up value is %s', async (_label, followUpValue) => {
     renderWithProps({ min: '2024-01-01', max: '2024-12-31', onChange: mockOnChange });
 
     const inputEl = screen.getByTestId(DEFAULT_ID);
@@ -417,57 +485,11 @@ describe('DatePicker additional coverage tests', () => {
 
     expect(getErrorText()).toContain('Must be on or after');
 
-    fireEvent.change(inputEl, { target: { value: '' } });
+    fireEvent.change(inputEl, { target: { value: followUpValue } });
 
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 100));
+    await waitFor(() => {
+      expect(getErrorText()).toBe('');
     });
-
-    expect(getErrorText()).toBe('');
-  });
-
-  test('should clear errors when date is incomplete', async () => {
-    renderWithProps({ min: '2024-01-01', max: '2024-12-31', onChange: mockOnChange });
-
-    const inputEl = screen.getByTestId(DEFAULT_ID);
-
-    fireEvent.change(inputEl, { target: { value: '2023-12-15' } });
-
-    await waitForValidation();
-
-    expect(getErrorText()).toContain('Must be on or after');
-
-    fireEvent.change(inputEl, { target: { value: '2024-06' } });
-
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 100));
-    });
-
-    expect(getErrorText()).toBe('');
-  });
-
-  test('should clear errors for invalid dates', async () => {
-    renderWithProps({ min: '2024-01-01', max: '2024-12-31', onChange: mockOnChange });
-
-    const inputEl = screen.getByTestId(DEFAULT_ID);
-
-    fireEvent.change(inputEl, { target: { value: '2023-12-15' } });
-
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 600));
-    });
-
-    let errorElement = document.querySelector('.date-error');
-    expect(errorElement?.textContent).toContain('Must be on or after');
-
-    fireEvent.change(inputEl, { target: { value: '2024-02-31' } });
-
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 100));
-    });
-
-    errorElement = document.querySelector('.date-error');
-    expect(errorElement?.textContent).toBe('');
   });
 
   test('should clear error message when resetValue() is called', async () => {
@@ -485,33 +507,36 @@ describe('DatePicker additional coverage tests', () => {
     );
 
     const inputEl = screen.getByTestId('test-reset-error');
+    const errorEl = document.getElementById('test-reset-error-error');
 
     fireEvent.change(inputEl, { target: { value: '2025-12-31' } });
 
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 600));
+    await waitFor(() => {
+      expect(errorEl?.textContent).toContain('Must be on or before');
     });
-
-    let errorElement = document.querySelector('.date-error');
-    expect(errorElement?.textContent).toContain('Must be on or before');
 
     act(() => ref.current?.resetValue());
 
     await waitFor(() => {
-      errorElement = document.querySelector('.date-error');
-      expect(errorElement?.textContent).toBe('');
+      expect(errorEl?.textContent).toBe('');
       expect(inputEl).toHaveValue('2024-06-15');
     });
   });
 });
 
 describe('DatePicker edge case coverage', () => {
-  afterEach(() => {
+  beforeEach(() => {
     vi.restoreAllMocks();
     vi.clearAllTimers();
   });
 
   describe('invalid date handling', () => {
+    // NOTE: jsdom (like real browsers) sanitizes these syntactically-invalid/incomplete
+    // values to '' at the native <input type="date"> before any change event fires, so
+    // these tests exercise the empty-value-clears-error path, not validateDateValue's
+    // invalid-date branches directly. See the `validateDateValue (pure function)` describe
+    // block above for direct, non-DOM coverage of validateDateValue's actual behavior for
+    // these exact strings.
     test.each([
       ['incomplete date (year-month only)', '2024-06'],
       ['invalid date like Feb 31', '2024-02-31'],
@@ -548,6 +573,40 @@ describe('DatePicker edge case coverage', () => {
         expect(getErrorText()).toBe('');
       },
     );
+  });
+
+  describe('year must be 4 digits', () => {
+    test('5-digit year value shows inline year error after debounce', async () => {
+      renderWithProps({ onChange: mockOnChange });
+      const input = getInput(DEFAULT_ID);
+
+      fireEvent.change(input, { target: { value: '11111-11-11' } });
+
+      await waitFor(() => {
+        expect(getErrorText()).toBe('Year must be 4 digits.');
+      });
+    });
+
+    test('5-digit year value shows inline year error on blur', async () => {
+      renderWithProps({ onChange: mockOnChange });
+      const input = getInput(DEFAULT_ID);
+
+      fireEvent.change(input, { target: { value: '11111-11-11' } });
+      fireEvent.blur(input);
+
+      expect(getErrorText()).toBe('Year must be 4 digits.');
+    });
+
+    test('normal 4-digit year does not trigger year error', async () => {
+      renderWithProps({ onChange: mockOnChange });
+      const input = getInput(DEFAULT_ID);
+
+      fireEvent.change(input, { target: { value: '2024-06-15' } });
+
+      await waitFor(() => {
+        expect(getErrorText()).toBe('');
+      });
+    });
   });
 
   test('should allow dates with years before 1900 when within min/max range', async () => {
@@ -605,6 +664,14 @@ describe('DatePicker edge case coverage', () => {
     const inputEl = getInput(DEFAULT_ID);
 
     expect(inputEl).toHaveAttribute('max', customMax);
+  });
+
+  test('should set max attribute to MAX_ISO_DATE when disableMax is set', () => {
+    renderWithProps({ disableMax: true, onChange: mockOnChange });
+
+    const inputEl = getInput(DEFAULT_ID);
+
+    expect(inputEl).toHaveAttribute('max', MAX_ISO_DATE);
   });
 
   test('should run multiple custom validators and concatenate error messages', async () => {
@@ -742,7 +809,7 @@ describe('DatePicker edge case coverage', () => {
 });
 
 describe('DatePicker announcement formatting', () => {
-  afterEach(() => {
+  beforeEach(() => {
     vi.restoreAllMocks();
   });
 
@@ -811,7 +878,7 @@ describe('DatePicker announcement formatting', () => {
 });
 
 describe('DatePicker calendar button', () => {
-  afterEach(() => {
+  beforeEach(() => {
     vi.restoreAllMocks();
   });
 

@@ -1,6 +1,7 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import factory from '../../factory';
 import { isTooManyRequestsError } from '../../common-errors/too-many-requests-error';
+import { isGatewayTimeoutError } from '../../common-errors/gateway-timeout';
 import { resolveGroupMatchedProfessionalId } from './sync-trustee-case-appointments';
 import { CaseAppointment } from '@common/cams/trustee-appointments';
 import {
@@ -113,9 +114,12 @@ class TrusteeVerificationRemapUseCase {
    * canonical upsert succeeded but whose surrogate delete failed; the idempotent upsert makes
    * reprocessing it a no-op and the retry completes the delete.
    *
-   * A rate-limit error mid-page rethrows immediately rather than being counted as a per-case
-   * failure — it is a batch-level condition the caller must back off and retry, not a permanent
-   * failure for the one case that happened to hit it while the rest of the page is untouched.
+   * A rate-limit or gateway-timeout error mid-page rethrows immediately rather than being
+   * counted as a per-case failure — both are batch-level Cosmos infra-pressure conditions the
+   * caller must back off and retry (same convention as isTransientInfraError in
+   * sync-trustee-case-appointments.ts and resolveNameCollisionByScoring in
+   * trustee-match.helpers.ts), not a permanent failure for the one case that happened to hit it
+   * while the rest of the page is untouched.
    */
   async remapPage(
     message: TrusteeVerificationRemapMessage,
@@ -140,7 +144,7 @@ class TrusteeVerificationRemapUseCase {
           downstreamNotificationFailedCount++;
         }
       } catch (perCaseError) {
-        if (isTooManyRequestsError(perCaseError)) {
+        if (isTooManyRequestsError(perCaseError) || isGatewayTimeoutError(perCaseError)) {
           throw perCaseError;
         }
         documentsFailed++;

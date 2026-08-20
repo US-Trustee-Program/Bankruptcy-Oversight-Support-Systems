@@ -2189,7 +2189,7 @@
         "caseId": "081-91-06221",
         "courtId": "0208",
         "status": "pending",
-        "mismatchReason": "HIGH_CONFIDENCE_MATCH",
+        "mismatchReason": "AMBIGUOUS_MATCH_RESOLVED",
         "dxtrTrustee": {
           "fullName": "E2E Dxtr Trustee 2"
         },
@@ -2289,7 +2289,7 @@
         "caseId": "081-65-67641",
         "courtId": "0208",
         "status": "rejected",
-        "mismatchReason": "HIGH_CONFIDENCE_MATCH",
+        "mismatchReason": "AMBIGUOUS_MATCH_RESOLVED",
         "dxtrTrustee": {
           "fullName": "E2E Dxtr Trustee Rejected"
         },

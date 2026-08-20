@@ -11,7 +11,7 @@ import React, {
 } from 'react';
 import Validators from '@common/cams/validators';
 import { ValidatorFunction } from '@common/cams/validation';
-import DateHelper, { DEFAULT_MIN_DATE } from '@common/date-helper';
+import DateHelper, { DEFAULT_MIN_DATE, MAX_ISO_DATE } from '@common/date-helper';
 import Icon from './Icon';
 
 export type DatePickerProps = JSX.IntrinsicElements['input'] & {
@@ -27,7 +27,57 @@ export type DatePickerProps = JSX.IntrinsicElements['input'] & {
   disableMax?: boolean;
   customErrorMessage?: string;
   validators?: ValidatorFunction[];
+  onValidationChange?: (hasError: boolean) => void;
 };
+
+export type ValidateDateValueOptions = {
+  min?: string;
+  max?: string;
+  validators?: ValidatorFunction[];
+};
+
+// Pure validation logic, extracted so it can be unit-tested directly without
+// going through a native <input type="date">, which silently sanitizes
+// syntactically-invalid values to '' before any DOM event fires.
+export function validateDateValue(
+  value: string | null,
+  options: ValidateDateValueOptions = {},
+): string[] {
+  if (!value) return [];
+
+  const min = options.min ?? DEFAULT_MIN_DATE;
+  const max = options.max ?? DateHelper.getTodaysIsoDate();
+
+  const errors: string[] = [];
+
+  const yearPart = value.split('-')[0];
+  if (yearPart.length > 4) return ['Year must be 4 digits.'];
+
+  const isCompleteDate = /^\d{4}-\d{2}-\d{2}$/.test(value);
+  if (!isCompleteDate) return errors;
+
+  const date = new Date(value);
+  if (isNaN(date.getTime())) return errors;
+
+  // Min/max validation
+  const minMaxValidator = Validators.dateMinMax(min, max);
+  const minMaxResult = minMaxValidator(value);
+  if (!minMaxResult.valid && minMaxResult.reasons) {
+    errors.push(...minMaxResult.reasons);
+  }
+
+  // Custom validators
+  if (options.validators) {
+    options.validators.forEach((validator) => {
+      const result = validator(value);
+      if (!result.valid && result.reasons) {
+        errors.push(...result.reasons);
+      }
+    });
+  }
+
+  return [...new Set(errors)];
+}
 
 function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
   const { id, label, hint = 'mm/dd/yyyy' } = props;
@@ -45,41 +95,16 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
 
   // Helper functions to compute min/max with defaults
   const getMin = () => (typeof props.min === 'string' ? props.min : undefined) ?? DEFAULT_MIN_DATE;
-  const getMax = () => {
-    if (props.disableMax) return undefined;
-    return (typeof props.max === 'string' ? props.max : undefined) ?? DateHelper.getTodaysIsoDate();
-  };
 
-  // Centralized validation helper
-  function validateDateValue(value: string | null): string[] {
-    if (!value) return [];
+  function getMax(): string {
+    if (props.disableMax) return MAX_ISO_DATE;
+    if (typeof props.max === 'string') return props.max;
+    return DateHelper.getTodaysIsoDate();
+  }
 
-    const errors: string[] = [];
-
-    const isCompleteDate = /^\d{4}-\d{2}-\d{2}$/.test(value);
-    if (!isCompleteDate) return errors;
-
-    const date = new Date(value);
-    if (isNaN(date.getTime())) return errors;
-
-    // Min/max validation
-    const minMaxValidator = Validators.dateMinMax(getMin(), getMax());
-    const minMaxResult = minMaxValidator(value);
-    if (!minMaxResult.valid && minMaxResult.reasons) {
-      errors.push(...minMaxResult.reasons);
-    }
-
-    // Custom validators
-    if (props.validators) {
-      props.validators.forEach((validator) => {
-        const result = validator(value);
-        if (!result.valid && result.reasons) {
-          errors.push(...result.reasons);
-        }
-      });
-    }
-
-    return [...new Set(errors)];
+  // Runs the pure validateDateValue with this instance's current min/max/validators
+  function runValidation(value: string | null): string[] {
+    return validateDateValue(value, { min: getMin(), max: getMax(), validators: props.validators });
   }
 
   // Reset value helper
@@ -104,9 +129,18 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
 
   // Re-validate when min/max constraints change
   useEffect(() => {
-    const errors = validateDateValue(dateValue);
+    const errors = runValidation(dateValue);
     setErrorMessage(errors.join(' '));
   }, [props.min, props.max, dateValue]);
+
+  // Notify parent of the current effective error state
+  useEffect(() => {
+    props.onValidationChange?.(!!displayErrorMessage);
+    // onValidationChange intentionally omitted: callers wrap a stable registerFieldError
+    // (useCallback), so parent error state stays correct across re-renders without
+    // re-firing when only the callback reference changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [displayErrorMessage]);
 
   function setClassName() {
     return `usa-input ${props.className} ${displayErrorMessage.length ? 'usa-input--error' : ''}`;
@@ -172,7 +206,7 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
 
     // Debounce validation to avoid showing errors while user is typing
     validationTimeoutRef.current = setTimeout(() => {
-      const errors = validateDateValue(rawValue);
+      const errors = runValidation(rawValue);
       setErrorMessage(errors.join(' '));
     }, 500);
   }
@@ -188,7 +222,7 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
     if (inputRef.current && inputRef.current.validity.badInput) {
       errors.push(invalidDateMessage);
     } else {
-      errors.push(...validateDateValue(dateValue));
+      errors.push(...runValidation(dateValue));
     }
 
     setErrorMessage([...new Set(errors)].join(' '));

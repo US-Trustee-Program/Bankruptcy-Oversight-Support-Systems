@@ -6,6 +6,9 @@ on:
       path:
         required: true
         type: string
+      skip:
+        required: true
+        type: boolean
 
 permissions:
   contents: read
@@ -13,25 +16,56 @@ permissions:
 jobs:
   playwright-accessibility-test:
     runs-on: ubuntu-latest
+    container:
+      # Custom image = official mcr.microsoft.com/playwright image
+      # (pinned to match @playwright/test in test/e2e/package.json and
+      # user-interface/package.json) plus msedge. The client's hardware
+      # only permits Microsoft Edge and Chrome, so Edge coverage can't be
+      # dropped, and the official image doesn't bundle it. Built and
+      # published to ghcr.io by build-playwright-msedge-image.yml from
+      # test/e2e/Dockerfile.playwright-msedge. Digest-pinned per this
+      # repo's SHA-pinning convention for external references.
+      image: ghcr.io/us-trustee-program/bankruptcy-oversight-support-systems/playwright-msedge@sha256:d11e1afb951e497f8439f054426f5f731362225fa6f0eb921a1cd875423ac545 # v1.62.1-noble + msedge, from run https://github.com/US-Trustee-Program/Bankruptcy-Oversight-Support-Systems/actions/runs/32315510801
+      # Docker/podman default /dev/shm to 64MB, which commonly causes
+      # headless Chromium to crash or become unresponsive under repeated
+      # page loads - matches the --shm-size=1g added to reusable-e2e.yml's
+      # docker run for the same reason (Sourcery review on PR #2856).
+      options: --shm-size=1g
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     permissions:
       contents: read
+      packages: read
+    # GitHub Actions defaults `run:` steps to `sh` (not `bash`) when a job
+    # runs inside a `container:` — unlike on a bare runner, where bash is
+    # the default. Without this, `pushd`/`popd` below (bash builtins) fail
+    # with "not found". Observed empirically: run
+    # https://github.com/US-Trustee-Program/Bankruptcy-Oversight-Support-Systems/actions/runs/32318056108
+    defaults:
+      run:
+        shell: bash
     env:
       CI: true
     steps:
       - name: Get source code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: ${{ ! inputs.skip }}
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        if: ${{ ! inputs.skip }}
         with:
           node-version-file: '.nvmrc'
           cache: 'npm'
           cache-dependency-path: package-lock.json
 
       - name: Install Node dependencies
+        if: ${{ ! inputs.skip }}
         run: |
           npm ci
           npm install serve -g
 
       - name: Run UI in mock mode
+        if: ${{ ! inputs.skip }}
         env:
           INPUT_PATH: ${{ inputs.path }}
         run: |
@@ -39,24 +73,33 @@ jobs:
           export CAMS_LOGIN_PROVIDER=none
           npm run build:user-interface
           pushd "${INPUT_PATH}"
-          serve -s build &
-          if ! timeout 120s sh -c 'until nc -z localhost 3000; do sleep 1; done'; then
+          # Redirect serve's own stdout/stderr to a file (not captured at
+          # all otherwise, since it's backgrounded) so a crash/hang has a
+          # log to inspect rather than just "connection refused" from the
+          # test side. `disown` detaches it from this step's shell job
+          # table so it isn't SIGHUP'd when this step's shell exits.
+          serve -s build > /tmp/serve.log 2>&1 &
+          disown
+          # Use a bash built-in TCP check rather than `nc`, which isn't
+          # guaranteed to be present in the official Playwright image.
+          if ! timeout 120s bash -c 'until (echo > /dev/tcp/localhost/3000) 2>/dev/null; do sleep 1; done'; then
               echo "Webapp check timed out"
               exit 1
           fi
           popd
 
-      - name: Install Playwright Browsers
-        working-directory: ${{ inputs.path }}
-        run: npx playwright install --with-deps chromium msedge
-
       - name: Run Playwright a11y Tests
+        if: ${{ ! inputs.skip }}
         id: playwrightA11yTests
         run: npm run test:a11y --workspace=user-interface
 
+      - name: Upload serve log
+        if: ${{ ! inputs.skip && always() }}
+        run: cat /tmp/serve.log || echo "No serve log found"
+
       - name: Upload report
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        if: always()
+        if: ${{ ! inputs.skip && always() }}
         with:
           name: playwright-a11y-report
           path: ${{ inputs.path }}/playwright-report/
