@@ -57,11 +57,12 @@ const trusteeCaseListFilterUseCase = (
   };
 
   const handleFiledDateChange = (from: string, to: string) => {
-    if (from && to && to < from) {
-      store.setFiledDateError('End date must be on or after start date');
-      return;
-    }
-    store.setFiledDateError('');
+    // Defense-in-depth: DateRangePicker already gates its onStartDateChange/onEndDateChange
+    // callbacks so this only fires with a valid range, but a future caller invoking this
+    // directly (bypassing DateRangePicker) should not be able to push an inverted range
+    // through to onFilterChange and the backend's unguarded date-range query.
+    if (from && to && to < from) return;
+
     store.setFiledDateFrom(from);
     store.setFiledDateTo(to);
     onFilterChange(

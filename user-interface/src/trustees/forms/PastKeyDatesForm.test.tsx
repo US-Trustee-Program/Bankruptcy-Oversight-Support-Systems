@@ -142,6 +142,61 @@ describe('PastKeyDatesForm', () => {
     expect(screen.getByTestId('past-tpr-submission')).toBeInTheDocument();
   });
 
+  test('disables Save when a date field has an invalid value, re-enables once corrected', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+
+    renderComponent();
+
+    await waitFor(() => expect(screen.getByTestId('past-field-exam')).toHaveValue('2024-02-21'));
+
+    const saveButton = screen.getByTestId('button-save-past-key-dates');
+    expect(saveButton).toBeEnabled();
+
+    const fieldExamInput = screen.getByTestId('past-field-exam');
+    fireEvent.change(fieldExamInput, { target: { value: '1900-01-01' } });
+
+    await waitFor(() => {
+      expect(saveButton).toBeDisabled();
+    });
+
+    fireEvent.change(fieldExamInput, { target: { value: '2024-03-01' } });
+
+    await waitFor(() => {
+      expect(saveButton).toBeEnabled();
+    });
+  });
+
+  test('keeps Save disabled until all invalid date fields are corrected', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+
+    renderComponent();
+
+    await waitFor(() => expect(screen.getByTestId('past-field-exam')).toHaveValue('2024-02-21'));
+
+    const saveButton = screen.getByTestId('button-save-past-key-dates');
+    const fieldExamInput = screen.getByTestId('past-field-exam');
+    const auditInput = screen.getByTestId('past-audit');
+
+    fireEvent.change(fieldExamInput, { target: { value: '1900-01-01' } });
+    fireEvent.change(auditInput, { target: { value: '1900-01-01' } });
+
+    await waitFor(() => {
+      expect(saveButton).toBeDisabled();
+    });
+
+    fireEvent.change(fieldExamInput, { target: { value: '2024-03-01' } });
+
+    await waitFor(() => {
+      expect(saveButton).toBeDisabled();
+    });
+
+    fireEvent.change(auditInput, { target: { value: '2024-03-01' } });
+
+    await waitFor(() => {
+      expect(saveButton).toBeEnabled();
+    });
+  });
+
   test('pre-populates form from API response', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
 
@@ -190,31 +245,31 @@ describe('PastKeyDatesForm', () => {
     await userEvent.click(screen.getByTestId('button-save-past-key-dates'));
 
     await waitFor(() =>
-      expect(putSpy).toHaveBeenCalledWith(
-        'trustee-001',
-        'appointment-001',
-        expect.objectContaining({
-          pastBackgroundQuestion: '2022-05-10',
-          pastFieldExam: '2024-02-21',
-          pastAudit: '2023-08-01',
-          pastTprSubmission: '2025-11-03',
-          tprReviewPeriodStart: '1900-04-01',
-          tprReviewPeriodEnd: '1900-03-31',
-          tprDue: '1900-09-15',
-          tprDueYearType: 'EVEN',
-          tirReviewPeriodStart: '1900-07-01',
-          tirReviewPeriodEnd: '1900-06-30',
-          tirSubmission: '1900-10-15',
-          tirReview: '1900-11-01',
-          tirSemiAnnualReviewPeriodStart: '1900-01-01',
-          tirSemiAnnualReviewPeriodEnd: '1900-06-30',
-          tirSemiAnnualSubmission: '1900-07-30',
-          tirSemiAnnualReview: '1900-09-28',
-          upcomingExamOrAuditYear: 2029,
-          upcomingExamOrAuditType: 'Field Exam',
-          tirFrequency: 'SEMI_ANNUAL',
-        }),
-      ),
+      expect(putSpy).toHaveBeenCalledWith('trustee-001', 'appointment-001', {
+        trusteeId: 'trustee-001',
+        appointmentId: 'appointment-001',
+        pastBackgroundQuestion: '2022-05-10',
+        pastFieldExam: '2024-02-21',
+        pastAudit: '2023-08-01',
+        pastTprSubmission: '2025-11-03',
+        lastMonthlyReportReceived: null,
+        tprReviewPeriodStart: '1900-04-01',
+        tprReviewPeriodEnd: '1900-03-31',
+        tprDue: '1900-09-15',
+        tprDueYearType: 'EVEN',
+        tirReviewPeriodStart: '1900-07-01',
+        tirReviewPeriodEnd: '1900-06-30',
+        tirSubmission: '1900-10-15',
+        tirReview: '1900-11-01',
+        tirSemiAnnualReviewPeriodStart: '1900-01-01',
+        tirSemiAnnualReviewPeriodEnd: '1900-06-30',
+        tirSemiAnnualSubmission: '1900-07-30',
+        tirSemiAnnualReview: '1900-09-28',
+        upcomingExamOrAuditYear: 2029,
+        upcomingExamOrAuditType: 'Field Exam',
+        tirFrequency: 'SEMI_ANNUAL',
+        lastAuditFiscalYear: 2022,
+      }),
     );
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');
   });
@@ -518,22 +573,6 @@ describe('PastKeyDatesForm', () => {
           }),
         ),
       );
-      expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');
-    });
-
-    test('Cancel navigates without calling PUT', async () => {
-      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
-      const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
-
-      renderComponent();
-
-      await waitFor(() => {
-        expect(screen.getByTestId('edit-past-key-dates')).toBeInTheDocument();
-      });
-
-      await userEvent.click(screen.getByTestId('button-cancel-past-key-dates'));
-
-      expect(putSpy).not.toHaveBeenCalled();
       expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');
     });
 

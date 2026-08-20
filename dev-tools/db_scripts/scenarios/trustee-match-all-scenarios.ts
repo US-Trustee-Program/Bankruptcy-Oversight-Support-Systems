@@ -25,6 +25,7 @@
 
 import type { SeedContext, SeedOperation } from '../../runner.js';
 import { createTrusteeBase } from '../lib/test-data-utils.js';
+import { computeFingerprint } from '../lib/compute-fingerprint.js';
 
 const SEEDER = { id: 'SEED', name: 'Test Data Seeder' };
 
@@ -40,6 +41,57 @@ const CASE_TERMINATED = '091-99-00874'; // Ch 11 (reuse)
 const CASE_RESIGNED = '091-99-92748'; // Ch 12 (reuse)
 const CASE_REMOVED = '091-99-87899'; // Ch 11 (reuse)
 const CASE_DECEASED = '091-99-00874'; // Ch 11 (reuse)
+
+// DXTR trustee identities shared between `fingerprint` (via computeFingerprint) and
+// `dxtrTrustee` below, so the two can never drift out of sync with each other.
+const DXTR_NO_MATCH = { firstName: 'Unique', lastName: 'Nomatch', fullName: 'Unique Nomatch' };
+const DXTR_MULTIPLE_MATCH = { firstName: 'T', lastName: 'Multimatch', fullName: 'T Multimatch' };
+const DXTR_IMPERFECT_MATCH = {
+  firstName: 'J',
+  lastName: 'Imperfectmatch',
+  fullName: 'J Imperfectmatch',
+};
+const DXTR_HIGH_CONFIDENCE = {
+  firstName: 'Alex',
+  lastName: 'Highconfidence',
+  fullName: 'Alex Highconfidence',
+};
+const DXTR_INACTIVE_TRUSTEE_ACTIVE_APPT = {
+  firstName: 'Morgan',
+  middleName: 'A',
+  lastName: 'Inactivematch',
+  fullName: 'Morgan A Inactivematch',
+};
+const DXTR_ACTIVE_TRUSTEE_INACTIVE_APPT = {
+  firstName: 'Alex',
+  middleName: 'Q',
+  lastName: 'Highconfidence',
+  fullName: 'Alex Q Highconfidence',
+};
+const DXTR_INACTIVE_TRUSTEE_TERMINATED_APPT = {
+  firstName: 'Morgan',
+  middleName: 'B',
+  lastName: 'Inactivematch',
+  fullName: 'Morgan B Inactivematch',
+};
+const DXTR_INACTIVE_TRUSTEE_RESIGNED_APPT = {
+  firstName: 'Morgan',
+  middleName: 'C',
+  lastName: 'Inactivematch',
+  fullName: 'Morgan C Inactivematch',
+};
+const DXTR_INACTIVE_TRUSTEE_REMOVED_APPT = {
+  firstName: 'Morgan',
+  middleName: 'D',
+  lastName: 'Inactivematch',
+  fullName: 'Morgan D Inactivematch',
+};
+const DXTR_INACTIVE_TRUSTEE_DECEASED_APPT = {
+  firstName: 'Morgan',
+  middleName: 'E',
+  lastName: 'Inactivematch',
+  fullName: 'Morgan E Inactivematch',
+};
 
 export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
   return [
@@ -309,11 +361,8 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           status: 'pending',
           taskDate: '2011-07-08T00:00:00.000Z',
           mismatchReason: 'NO_TRUSTEE_MATCH',
-          dxtrTrustee: {
-            firstName: 'Unique',
-            lastName: 'Nomatch',
-            fullName: 'Unique Nomatch',
-          },
+          fingerprint: computeFingerprint(DXTR_NO_MATCH),
+          dxtrTrustee: DXTR_NO_MATCH,
           matchCandidates: [],
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
@@ -335,11 +384,8 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           status: 'pending',
           taskDate: '2015-02-19T00:00:00.000Z',
           mismatchReason: 'MULTIPLE_TRUSTEES_MATCH',
-          dxtrTrustee: {
-            firstName: 'T',
-            lastName: 'Multimatch',
-            fullName: 'T Multimatch',
-          },
+          fingerprint: computeFingerprint(DXTR_MULTIPLE_MATCH),
+          dxtrTrustee: DXTR_MULTIPLE_MATCH,
           matchCandidates: [
             {
               trusteeId: 'seed-trustee-match-multi-a',
@@ -396,11 +442,8 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           status: 'pending',
           taskDate: '2019-11-30T00:00:00.000Z',
           mismatchReason: 'IMPERFECT_MATCH',
-          dxtrTrustee: {
-            firstName: 'J',
-            lastName: 'Imperfectmatch',
-            fullName: 'J Imperfectmatch',
-          },
+          fingerprint: computeFingerprint(DXTR_IMPERFECT_MATCH),
+          dxtrTrustee: DXTR_IMPERFECT_MATCH,
           matchCandidates: [
             {
               trusteeId: 'seed-trustee-match-imperfect',
@@ -440,11 +483,8 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           status: 'pending',
           taskDate: '2010-05-12T00:00:00.000Z',
           mismatchReason: 'HIGH_CONFIDENCE_MATCH',
-          dxtrTrustee: {
-            firstName: 'Alex',
-            lastName: 'Highconfidence',
-            fullName: 'Alex Highconfidence',
-          },
+          fingerprint: computeFingerprint(DXTR_HIGH_CONFIDENCE),
+          dxtrTrustee: DXTR_HIGH_CONFIDENCE,
           matchCandidates: [
             {
               trusteeId: 'seed-trustee-match-highconf',
@@ -486,11 +526,8 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           status: 'pending',
           taskDate: '2014-10-25T00:00:00.000Z',
           mismatchReason: 'PERFECT_MATCH_INACTIVE_STATUS',
-          dxtrTrustee: {
-            firstName: 'Morgan',
-            lastName: 'Inactivematch',
-            fullName: 'Morgan Inactivematch',
-          },
+          fingerprint: computeFingerprint(DXTR_INACTIVE_TRUSTEE_ACTIVE_APPT),
+          dxtrTrustee: DXTR_INACTIVE_TRUSTEE_ACTIVE_APPT,
           matchCandidates: [
             {
               trusteeId: 'seed-trustee-match-inactive',
@@ -531,11 +568,8 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           status: 'pending',
           taskDate: '2023-04-07T00:00:00.000Z',
           mismatchReason: 'PERFECT_MATCH_INACTIVE_STATUS',
-          dxtrTrustee: {
-            firstName: 'Alex',
-            lastName: 'Highconfidence',
-            fullName: 'Alex Highconfidence',
-          },
+          fingerprint: computeFingerprint(DXTR_ACTIVE_TRUSTEE_INACTIVE_APPT),
+          dxtrTrustee: DXTR_ACTIVE_TRUSTEE_INACTIVE_APPT,
           matchCandidates: [
             {
               trusteeId: 'seed-trustee-match-highconf',
@@ -576,11 +610,8 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           status: 'pending',
           taskDate: '2013-01-16T00:00:00.000Z',
           mismatchReason: 'PERFECT_MATCH_INACTIVE_STATUS',
-          dxtrTrustee: {
-            firstName: 'Morgan',
-            lastName: 'Inactivematch',
-            fullName: 'Morgan Inactivematch',
-          },
+          fingerprint: computeFingerprint(DXTR_INACTIVE_TRUSTEE_TERMINATED_APPT),
+          dxtrTrustee: DXTR_INACTIVE_TRUSTEE_TERMINATED_APPT,
           matchCandidates: [
             {
               trusteeId: 'seed-trustee-match-inactive',
@@ -621,11 +652,8 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           status: 'pending',
           taskDate: '2017-08-22T00:00:00.000Z',
           mismatchReason: 'PERFECT_MATCH_INACTIVE_STATUS',
-          dxtrTrustee: {
-            firstName: 'Morgan',
-            lastName: 'Inactivematch',
-            fullName: 'Morgan Inactivematch',
-          },
+          fingerprint: computeFingerprint(DXTR_INACTIVE_TRUSTEE_RESIGNED_APPT),
+          dxtrTrustee: DXTR_INACTIVE_TRUSTEE_RESIGNED_APPT,
           matchCandidates: [
             {
               trusteeId: 'seed-trustee-match-inactive',
@@ -666,11 +694,8 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           status: 'pending',
           taskDate: '2016-12-09T00:00:00.000Z',
           mismatchReason: 'PERFECT_MATCH_INACTIVE_STATUS',
-          dxtrTrustee: {
-            firstName: 'Morgan',
-            lastName: 'Inactivematch',
-            fullName: 'Morgan Inactivematch',
-          },
+          fingerprint: computeFingerprint(DXTR_INACTIVE_TRUSTEE_REMOVED_APPT),
+          dxtrTrustee: DXTR_INACTIVE_TRUSTEE_REMOVED_APPT,
           matchCandidates: [
             {
               trusteeId: 'seed-trustee-match-inactive',
@@ -711,11 +736,8 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           status: 'pending',
           taskDate: '2020-03-28T00:00:00.000Z',
           mismatchReason: 'PERFECT_MATCH_INACTIVE_STATUS',
-          dxtrTrustee: {
-            firstName: 'Morgan',
-            lastName: 'Inactivematch',
-            fullName: 'Morgan Inactivematch',
-          },
+          fingerprint: computeFingerprint(DXTR_INACTIVE_TRUSTEE_DECEASED_APPT),
+          dxtrTrustee: DXTR_INACTIVE_TRUSTEE_DECEASED_APPT,
           matchCandidates: [
             {
               trusteeId: 'seed-trustee-match-inactive',

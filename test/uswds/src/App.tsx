@@ -240,12 +240,8 @@ function App() {
                 id="date-range-picker-example"
                 label="Select a date range"
                 value={dateRange}
-                onStartDateChange={(e: ChangeEvent<HTMLInputElement>) =>
-                  setDateRange({ ...dateRange, start: e.target.value })
-                }
-                onEndDateChange={(e: ChangeEvent<HTMLInputElement>) =>
-                  setDateRange({ ...dateRange, end: e.target.value })
-                }
+                onStartDateChange={(start: string) => setDateRange({ ...dateRange, start })}
+                onEndDateChange={(end: string) => setDateRange({ ...dateRange, end })}
               />
             </div>
           </section>
@@ -318,11 +314,7 @@ function App() {
 
           <section className="showcase-section">
             <h2>Modal</h2>
-            <OpenModalButton
-              id="open-modal-btn"
-              modalId="example-modal"
-              modalRef={modalRef}
-            >
+            <OpenModalButton id="open-modal-btn" modalId="example-modal" modalRef={modalRef}>
               Open Modal
             </OpenModalButton>
             <Modal
@@ -331,7 +323,7 @@ function App() {
               heading="Example Modal"
               content={<p>This is an example modal content.</p>}
               actionButtonGroup={{
-                modalId: "example-modal",
+                modalId: 'example-modal',
                 modalRef: modalRef,
                 submitButton: {
                   label: 'Confirm',
