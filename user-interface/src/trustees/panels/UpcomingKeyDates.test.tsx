@@ -312,6 +312,60 @@ describe('UpcomingKeyDates', () => {
     expect(noDateElements.length).toBe(7);
   });
 
+  test('defaults to chapter7-panel variant when no variant prop is passed', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+
+    render(
+      <BrowserRouter>
+        <UpcomingKeyDates
+          trusteeId={defaultProps.trusteeId}
+          appointmentId={defaultProps.appointmentId}
+        />
+      </BrowserRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('upcoming-key-dates-card')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('upcoming-exam-audit-row')).toBeInTheDocument();
+    expect(screen.getByTestId('tir-review-row')).toBeInTheDocument();
+  });
+
+  describe('ch12-13-case-by-case variant', () => {
+    test('renders 4 rows with constant fields always showing 09/01 and 09/15', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+
+      renderComponent({ variant: 'ch12-13-case-by-case' });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('upcoming-key-dates-card')).toBeInTheDocument();
+      });
+
+      const list = screen.getByTestId('upcoming-key-dates-list');
+      expect(list.querySelectorAll('li')).toHaveLength(4);
+      expect(screen.getByTestId('annual-report-submission-row')).toHaveTextContent('09/01');
+      expect(screen.getByTestId('annual-report-due-oo-row')).toHaveTextContent('09/15');
+      expect(screen.getByTestId('tpr-review-period-row')).toHaveTextContent('04/01 - 03/31');
+      expect(screen.getByTestId('tpr-due-row')).toHaveTextContent('09/15 EVEN');
+    });
+
+    test('renders constant fields the same even when no key-dates document exists', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent({ variant: 'ch12-13-case-by-case' });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('upcoming-key-dates-card')).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('annual-report-submission-row')).toHaveTextContent('09/01');
+      expect(screen.getByTestId('annual-report-due-oo-row')).toHaveTextContent('09/15');
+      expect(screen.getByTestId('tpr-review-period-row')).toHaveTextContent('No date added');
+      expect(screen.getByTestId('tpr-due-row')).toHaveTextContent('No date added');
+    });
+  });
+
   test('Edit button navigates to edit route', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 

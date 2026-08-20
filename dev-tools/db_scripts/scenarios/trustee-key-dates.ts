@@ -12,6 +12,9 @@
  * Also seeds two Chapter 11 Subchapter V (Pool) trustees to exercise the
  * Last Monthly Report Received past key date: one populated, one empty.
  *
+ * Also seeds two Chapter 12/13 Case by Case trustees to exercise the
+ * Upcoming Key Dates card's TPR Period/Due fields: one populated, one empty.
+ *
  * NOTE: Key dates are separate documents with documentType='TRUSTEE_UPCOMING_REPORT_DATES'.
  */
 
@@ -437,6 +440,135 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           trusteeId: 'seed-trustee-keydates-subv-empty',
           appointmentId: 'seed-appointment-keydates-subv-empty',
           // lastMonthlyReportReceived omitted - tests "No date added" / empty form state
+          updatedOn: '2025-03-01T00:00:00.000Z',
+          updatedBy: SEEDER,
+        },
+      ],
+    },
+
+    // ── Cosmos: Chapter 12 Case by Case Trustee with saved TPR dates ─────────
+    {
+      db: 'cams',
+      collectionOrTable: 'trustees',
+      data: [
+        {
+          ...createTrusteeBase({
+            id: 'seed-trustee-keydates-ch12-cbc-001',
+            firstName: 'Nadia',
+            lastName: 'Keydates',
+            status: 'active',
+            address1: '700 Key Dates Way',
+            city: 'New York',
+            state: 'NY',
+            zipCode: '10007',
+            phone: '212-555-1400',
+            email: 'nadia.keydates@example.com',
+          }),
+          updatedOn: '2025-03-01T00:00:00.000Z',
+          updatedBy: SEEDER,
+        },
+      ],
+    },
+
+    {
+      db: 'cams',
+      collectionOrTable: 'trustee-appointments',
+      data: [
+        {
+          id: 'seed-appointment-keydates-ch12-cbc-001',
+          documentType: 'TRUSTEE_APPOINTMENT',
+          trusteeId: 'seed-trustee-keydates-ch12-cbc-001',
+          chapter: '12',
+          appointmentType: 'case-by-case',
+          courtId: '0208',
+          divisionCodes: ['081'],
+          appointedDate: '2023-01-01',
+          status: 'active',
+          effectiveDate: '2023-01-01',
+          courtName: 'U.S. Bankruptcy Court Southern District of New York',
+          courtDivisionName: 'Manhattan',
+          updatedOn: '2025-03-01T00:00:00.000Z',
+          updatedBy: SEEDER,
+        },
+      ],
+    },
+
+    {
+      db: 'cams',
+      collectionOrTable: 'trustees',
+      data: [
+        {
+          id: 'seed-key-dates-ch12-cbc-001',
+          documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
+          trusteeId: 'seed-trustee-keydates-ch12-cbc-001',
+          appointmentId: 'seed-appointment-keydates-ch12-cbc-001',
+          tprReviewPeriodStart: '1900-04-01',
+          tprReviewPeriodEnd: '1900-09-30',
+          tprDue: '1900-10-15',
+          tprDueYearType: 'EVEN',
+          updatedOn: '2025-03-01T00:00:00.000Z',
+          updatedBy: SEEDER,
+        },
+      ],
+    },
+
+    // ── Cosmos: Chapter 13 Case by Case Trustee with no saved date ───────────
+    {
+      db: 'cams',
+      collectionOrTable: 'trustees',
+      data: [
+        {
+          ...createTrusteeBase({
+            id: 'seed-trustee-keydates-ch13-cbc-empty',
+            firstName: 'Nadia',
+            lastName: 'Nokeydates',
+            status: 'active',
+            address1: '800 Key Dates Way',
+            city: 'New York',
+            state: 'NY',
+            zipCode: '10008',
+            phone: '212-555-1500',
+            email: 'nadia.nokeydates@example.com',
+          }),
+          updatedOn: '2025-03-01T00:00:00.000Z',
+          updatedBy: SEEDER,
+        },
+      ],
+    },
+
+    {
+      db: 'cams',
+      collectionOrTable: 'trustee-appointments',
+      data: [
+        {
+          id: 'seed-appointment-keydates-ch13-cbc-empty',
+          documentType: 'TRUSTEE_APPOINTMENT',
+          trusteeId: 'seed-trustee-keydates-ch13-cbc-empty',
+          chapter: '13',
+          appointmentType: 'case-by-case',
+          courtId: '0208',
+          divisionCodes: ['081'],
+          appointedDate: '2023-01-01',
+          status: 'active',
+          effectiveDate: '2023-01-01',
+          courtName: 'U.S. Bankruptcy Court Southern District of New York',
+          courtDivisionName: 'Manhattan',
+          updatedOn: '2025-03-01T00:00:00.000Z',
+          updatedBy: SEEDER,
+        },
+      ],
+    },
+
+    {
+      db: 'cams',
+      collectionOrTable: 'trustees',
+      data: [
+        {
+          id: 'seed-key-dates-ch13-cbc-empty',
+          documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
+          trusteeId: 'seed-trustee-keydates-ch13-cbc-empty',
+          appointmentId: 'seed-appointment-keydates-ch13-cbc-empty',
+          // All optional fields omitted - tests "No date added" placeholder state
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
         },

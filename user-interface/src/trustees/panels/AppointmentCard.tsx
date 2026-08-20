@@ -11,6 +11,7 @@ import { CamsRole } from '@common/cams/roles';
 import useFeatureFlags, {
   DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES,
   DISPLAY_CHPT11_SUBV_PAST_KEY_DATES,
+  DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES,
 } from '@/lib/hooks/UseFeatureFlags';
 import useCourts from '@/lib/hooks/UseCourts';
 import { buildDivisionsDisplay } from '@/lib/utils/court-utils';
@@ -42,6 +43,8 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
   const displayChpt7PanelUpcomingKeyDates =
     featureFlags[DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES] === true;
   const displayChpt11SubVPastKeyDates = featureFlags[DISPLAY_CHPT11_SUBV_PAST_KEY_DATES] === true;
+  const displayChpt1213CaseByCaseUpcomingKeyDates =
+    featureFlags[DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES] === true;
   const { chapter, appointmentType } = props.appointment;
   const formattedChapter = formatChapterType(chapter);
   const formattedAppointmentType = formatAppointmentType(appointmentType);
@@ -88,6 +91,9 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
     props.appointment.chapter === '7' && props.appointment.appointmentType === 'panel';
   const isSubVPool =
     props.appointment.chapter === '11-subchapter-v' && props.appointment.appointmentType === 'pool';
+  const isCh1213CaseByCase =
+    (props.appointment.chapter === '12' || props.appointment.chapter === '13') &&
+    props.appointment.appointmentType === 'case-by-case';
 
   return (
     <div className="appointment-card-container">
@@ -127,6 +133,14 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
         {displayChpt11SubVPastKeyDates && isSubVPool && (
           <PastKeyDates
             variant="subv-pool"
+            trusteeId={props.appointment.trusteeId}
+            appointmentId={props.appointment.id}
+            appointmentHeading={appointmentHeading}
+          />
+        )}
+        {displayChpt1213CaseByCaseUpcomingKeyDates && isCh1213CaseByCase && (
+          <UpcomingKeyDates
+            variant="ch12-13-case-by-case"
             trusteeId={props.appointment.trusteeId}
             appointmentId={props.appointment.id}
             appointmentHeading={appointmentHeading}
