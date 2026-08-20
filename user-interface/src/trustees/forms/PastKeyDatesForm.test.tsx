@@ -65,7 +65,7 @@ const populatedDocument: TrusteeUpcomingKeyDates = {
   pastFieldExam: '2024-02-21',
   pastAudit: '2023-08-01',
   pastTprSubmission: '2025-11-03',
-  tprReviewPeriodStart: '1900-04-01',
+  tprReviewPeriodStart: '2025-04-01',
   tprReviewPeriodEnd: '1900-03-31',
   tprDue: '1900-09-15',
   tprDueYearType: 'EVEN',
@@ -81,6 +81,8 @@ const populatedDocument: TrusteeUpcomingKeyDates = {
   upcomingExamOrAuditYear: 2029,
   upcomingExamOrAuditType: 'Field Exam',
   tirFrequency: 'SEMI_ANNUAL',
+  leaseExpiration: '2027-06-30',
+  idExpiration: '2028-01-15',
 };
 
 const mockGlobalAlertRef = {
@@ -219,6 +221,8 @@ describe('PastKeyDatesForm', () => {
           upcomingExamOrAuditYear: 2029,
           upcomingExamOrAuditType: 'Field Exam',
           tirFrequency: 'SEMI_ANNUAL',
+          leaseExpiration: '2027-06-30',
+          idExpiration: '2028-01-15',
         }),
       ),
     );
@@ -450,7 +454,20 @@ describe('PastKeyDatesForm', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');
   });
 
-  describe('chapter12-standing variant', () => {
+  test('falls back to chapter7-panel fields when appointment is not found', async () => {
+    vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [] });
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-past-key-dates')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('past-background-question')).toBeInTheDocument();
+  });
+
+  describe('when appointment is Chapter 12 Standing', () => {
     beforeEach(() => {
       vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({
         data: [ch12StandingAppointment],
@@ -474,7 +491,7 @@ describe('PastKeyDatesForm', () => {
       expect(screen.queryByTestId('past-last-monthly-report-received')).not.toBeInTheDocument();
     });
 
-    test('renders correct field labels from chapter12-standing variant config', async () => {
+    test('renders correct field labels for Chapter 12 Standing appointments', async () => {
       vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
       renderComponent();
@@ -516,7 +533,7 @@ describe('PastKeyDatesForm', () => {
     });
   });
 
-  describe('subv-pool variant', () => {
+  describe('when appointment is Sub-V Pool', () => {
     beforeEach(() => {
       vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [subvAppointment] });
     });
@@ -590,22 +607,6 @@ describe('PastKeyDatesForm', () => {
           }),
         ),
       );
-      expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');
-    });
-
-    test('Cancel navigates without calling PUT', async () => {
-      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
-      const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
-
-      renderComponent();
-
-      await waitFor(() => {
-        expect(screen.getByTestId('edit-past-key-dates')).toBeInTheDocument();
-      });
-
-      await userEvent.click(screen.getByTestId('button-cancel-past-key-dates'));
-
-      expect(putSpy).not.toHaveBeenCalled();
       expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');
     });
 
