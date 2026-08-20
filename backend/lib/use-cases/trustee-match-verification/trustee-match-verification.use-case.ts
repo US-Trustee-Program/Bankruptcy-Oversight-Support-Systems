@@ -268,17 +268,6 @@ export class TrusteeMatchVerificationUseCase {
         );
       }
 
-      // 2b. Close the trustee-professional-ids mapping loop now that a human has
-      // confirmed the trustee, using the professional ID carried on the verification doc.
-      if (verification.acmsProfessionalId) {
-        const professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
-        await professionalIdsRepo.createProfessionalId(
-          resolvedTrusteeId,
-          verification.acmsProfessionalId,
-          userRef,
-        );
-      }
-
       // 3. Enqueue the async batch remap BEFORE flipping status — every surrogate
       // CaseAppointment sharing this fingerprint (not just verification.caseId) gets
       // remapped to resolvedTrusteeId by the queue-triggered trustee-verification-remap
