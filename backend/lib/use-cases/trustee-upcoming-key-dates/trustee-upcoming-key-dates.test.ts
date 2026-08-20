@@ -51,6 +51,8 @@ function buildMockInput(
     tirSemiAnnualReview: null,
     lastAuditFiscalYear: null,
     lastMonthlyReportReceived: null,
+    leaseExpiration: null,
+    idExpiration: null,
     ...overrides,
   };
 }

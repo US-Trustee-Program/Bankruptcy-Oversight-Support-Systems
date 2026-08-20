@@ -67,6 +67,10 @@ const populatedDocument: TrusteeUpcomingKeyDates = {
 
 const mockGlobalAlertRef = {
   current: {
+    show: vi.fn(),
+    info: vi.fn(),
+    success: vi.fn(),
+    warning: vi.fn(),
     error: vi.fn(),
   },
 };
