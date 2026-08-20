@@ -9,6 +9,13 @@ param location string = resourceGroup().location
 @description('Application service plan name')
 param apiPlanName string
 
+@description('SKU for the API function app plan. EP1 (Elastic Premium) is the default; S1 (Standard) is available for environments where EP1 capacity is constrained.')
+@allowed([
+  'EP1'
+  'S1'
+])
+param functionsPlanType string = 'EP1'
+
 param stackName string = 'ustp-cams'
 
 @description('Azure functions version')
@@ -101,6 +108,12 @@ param privateDnsZoneName string = 'privatelink.azurewebsites.us'
 
 param privateDnsZoneResourceGroup string = virtualNetworkResourceGroupName
 
+@description('When true, reach the SQL server via a Private Endpoint instead of the sql-vnet-rule.bicep VNet rule -- see the createSqlServerVnetRule/createSqlPrivateEndpoint vars below for the mutual-exclusivity rationale.')
+param useSqlPrivateLink bool = false
+
+@description('Fixed Azure Government private-link DNS zone name for Azure SQL. Only consumed when useSqlPrivateLink is true.')
+param sqlPrivateDnsZoneName string = 'privatelink.database.usgovcloudapi.net'
+
 @description('DNS Zone Subscription ID. USTP uses a different subscription for prod deployment.')
 param privateDnsZoneSubscriptionId string = subscription().subscriptionId
 
@@ -128,28 +141,36 @@ resource appConfigIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@202
   scope: resourceGroup(kvAppConfigResourceGroupName)
 }
 
+var functionsPlanTypeToSkuMap = {
+  EP1: { name: 'EP1', tier: 'ElasticPremium', family: 'EP' }
+  S1: { name: 'S1', tier: 'Standard' }
+}
+var isElasticFunctionsPlan = functionsPlanType == 'EP1'
+
 resource apiServicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
   location: location
   name: apiPlanName
   tags: tags
-  sku: {
-    name: 'EP1'
-    tier: 'ElasticPremium'
-    family: 'EP'
-  }
-  kind: 'elastic'
-  properties: {
-    perSiteScaling: true
-    elasticScaleEnabled: true
-    maximumElasticWorkerCount: 10
-    isSpot: false
-    reserved: true // set true for Linux
-    isXenon: false
-    hyperV: false
-    targetWorkerCount: 1
-    targetWorkerSizeId: 1
-    zoneRedundant: false
-  }
+  sku: functionsPlanTypeToSkuMap[functionsPlanType]
+  kind: isElasticFunctionsPlan ? 'elastic' : 'linux'
+  properties: union(
+    {
+      perSiteScaling: true
+      isSpot: false
+      reserved: true // set true for Linux
+      isXenon: false
+      hyperV: false
+      targetWorkerCount: 1
+      targetWorkerSizeId: 1
+      zoneRedundant: false
+    },
+    isElasticFunctionsPlan
+      ? {
+          elasticScaleEnabled: true
+          maximumElasticWorkerCount: 10
+        }
+      : {}
+  )
 }
 
 
@@ -171,11 +192,20 @@ module apiFunctionSlotStorageAccount './lib/storage/storage-account.bicep' = {
   }
 }
 
+// Attach the SQL managed identity whenever this function app connects to
+// SQL at all, regardless of which of the two mutually-exclusive mechanisms
+// (VNet rule vs. Private Endpoint) is used for the network path -- the
+// identity is needed for authentication either way. Gating this on
+// createSqlServerVnetRule alone (its original condition, before the
+// Private Endpoint alternative existed) silently dropped the identity for
+// any function app using useSqlPrivateLink, since createSqlServerVnetRule
+// is false in that case -- causing ManagedIdentityCredential SQL auth
+// failures with no compile-time signal.
 var userAssignedIdentities = union(
   {
     '${appConfigIdentity.id}': {}
   },
-  createSqlServerVnetRule ? { '${sqlIdentityResourceId}': {} } : {}
+  (createSqlServerVnetRule || createSqlPrivateEndpoint) ? { '${sqlIdentityResourceId}': {} } : {}
 )
 
 resource apiFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
@@ -244,8 +274,8 @@ resource apiSlotSiteConfig 'Microsoft.Web/sites/slots/config@2023-12-01' = {
     numberOfWorkers: baseApiFunctionAppConfigProperties.numberOfWorkers
     alwaysOn: baseApiFunctionAppConfigProperties.alwaysOn
     http20Enabled: baseApiFunctionAppConfigProperties.http20Enabled
-    functionAppScaleLimit: baseApiFunctionAppConfigProperties.functionAppScaleLimit
-    minimumElasticInstanceCount: baseApiFunctionAppConfigProperties.minimumElasticInstanceCount
+    functionAppScaleLimit: baseApiFunctionAppConfigProperties.?functionAppScaleLimit
+    minimumElasticInstanceCount: baseApiFunctionAppConfigProperties.?minimumElasticInstanceCount
     publicNetworkAccess: baseApiFunctionAppConfigProperties.publicNetworkAccess
     ipSecurityRestrictions: stagingIpSecurityRestrictionsRules
     ipSecurityRestrictionsDefaultAction: 'Deny'
@@ -288,12 +318,11 @@ resource apiSlotAppSettings 'Microsoft.Web/sites/slots/config@2023-12-01' = {
   ]
 }
 
-var baseApiFunctionAppConfigProperties = {
+var baseApiFunctionAppConfigProperties = union(
+  {
     numberOfWorkers: 1
     alwaysOn: true
     http20Enabled: true
-    functionAppScaleLimit: 1
-    minimumElasticInstanceCount: 1
     publicNetworkAccess: 'Enabled'
     ipSecurityRestrictionsDefaultAction: isUstpDeployment ? 'Deny' : 'Allow'
     scmIpSecurityRestrictions: [
@@ -309,7 +338,14 @@ var baseApiFunctionAppConfigProperties = {
     scmIpSecurityRestrictionsUseMain: false
     linuxFxVersion: linuxFxVersionMap['${functionsRuntime}']
     ftpsState: 'Disabled'
-  }
+  },
+  isElasticFunctionsPlan
+    ? {
+        functionAppScaleLimit: 1
+        minimumElasticInstanceCount: 1
+      }
+    : {}
+)
 
   var prodFunctionAppConfigProperties = union(baseApiFunctionAppConfigProperties, {
     ipSecurityRestrictions: productionIpSecurityRestrictionsRules
@@ -473,7 +509,16 @@ module apiSlotPrivateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
 }
 
 
-var createSqlServerVnetRule = !empty(sqlServerResourceGroupName) && !empty(sqlServerName) && !isUstpDeployment
+// useSqlPrivateLink and !useSqlPrivateLink make these mutually exclusive:
+// exactly one of the VNet rule or the Private Endpoint is ever deployed for a
+// given function app's SQL connectivity, never both. The VNet rule remains
+// the default (useSqlPrivateLink defaults to false) since Azure enforces
+// same-region between a SQL server and any subnet referenced by a
+// virtualNetworkRules resource -- fine for main and same-region branches,
+// but it fails for a cross-region branch whose subnets follow compute region
+// (AZ-FUNCTIONS-LOCATION). A Private Endpoint has no such restriction, so
+// cross-region branches opt into it instead.
+var createSqlServerVnetRule = !useSqlPrivateLink && !empty(sqlServerResourceGroupName) && !empty(sqlServerName) && !isUstpDeployment
 
 module setApiFunctionSqlServerVnetRule './lib/network/sql-vnet-rule.bicep' = if (createSqlServerVnetRule) {
   scope: resourceGroup(sqlServerResourceGroupName)
@@ -482,6 +527,37 @@ module setApiFunctionSqlServerVnetRule './lib/network/sql-vnet-rule.bicep' = if 
     stackName: apiFunctionName
     sqlServerName: sqlServerName
     subnetId: apiFunctionSubnetId
+  }
+}
+
+var createSqlPrivateEndpoint = useSqlPrivateLink && !empty(sqlServerResourceGroupName) && !empty(sqlServerName) && !isUstpDeployment
+
+// The SQL server is never declared `existing` in this codebase -- see the
+// comment above sqlIdentityName below for why constructed resource IDs are
+// preferred here for scope resolution. Assumes the SQL server lives in the
+// deploying subscription (no dedicated sqlServerSubscriptionId param exists
+// anywhere else in this codebase either).
+var sqlServerResourceId = resourceId(sqlServerResourceGroupName, 'Microsoft.Sql/servers', sqlServerName)
+
+module apiSqlPrivateEndpoint './lib/network/subnet-private-endpoint.bicep' = if (createSqlPrivateEndpoint) {
+  name: '${apiFunctionName}-sql-pep-module'
+  scope: resourceGroup(virtualNetworkResourceGroupName)
+  params: {
+    privateLinkGroup: 'sqlServer'
+    stackName: '${apiFunctionName}-sql'
+    // Overrides subnet-private-endpoint.bicep's default
+    // 'privatelink_azurewebsites_${stackName}' config-entry name, which would
+    // otherwise mislabel this SQL DNS zone config as "azurewebsites". This is
+    // a brand-new resource on first deploy, so there is no existing config
+    // entry to rename/replace.
+    dnsZoneConfigName: 'privatelink_database_${apiFunctionName}-sql'
+    location: location
+    privateLinkServiceId: sqlServerResourceId
+    privateEndpointSubnetId: privateEndpointSubnetId
+    privateDnsZoneName: sqlPrivateDnsZoneName
+    privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
+    privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
+    tags: tags
   }
 }
 

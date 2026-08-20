@@ -25,7 +25,6 @@ export default function TrusteeCaseListFilter({
   );
   const [filedDateFrom, setFiledDateFrom] = useState(initialValue?.filedDateFrom ?? '');
   const [filedDateTo, setFiledDateTo] = useState(initialValue?.filedDateTo ?? '');
-  const [filedDateError, setFiledDateError] = useState('');
   const [filterAnnouncement, setFilterAnnouncement] = useState('');
   const [courts, setCourts] = useState<CourtDivisionDetails[]>([]);
   const [selectedDivisions, setSelectedDivisions] = useState<ComboOption[]>([]);
@@ -61,8 +60,6 @@ export default function TrusteeCaseListFilter({
       setFiledDateFrom,
       filedDateTo,
       setFiledDateTo,
-      filedDateError,
-      setFiledDateError,
       filterAnnouncement,
       setFilterAnnouncement,
       courts,
@@ -80,7 +77,6 @@ export default function TrusteeCaseListFilter({
     selectedChapters,
     filedDateFrom,
     filedDateTo,
-    filedDateError,
     filterAnnouncement,
     selectedDivisions,
     initialDivisionCodes: initialValue?.divisionCodes,

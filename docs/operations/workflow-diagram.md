@@ -1,9 +1,9 @@
 # GitHub Actions Workflow Analysis
 
 ## Summary
-- **Total Workflows**: 30
-- **Main Workflows**: 16
-- **Reusable Workflows**: 14
+- **Total Workflows**: 31
+- **Main Workflows**: 14
+- **Reusable Workflows**: 17
 
 ## Legend
 
@@ -101,12 +101,15 @@ flowchart LR
 ### Push Triggered Workflows
 
 Workflows triggered by `push`:
+- **Build Playwright msedge Image** (`build-playwright-msedge-image.yml`)
 - **Deploy GitHub Pages** (`deploy-pages.yml`)
 - **Continuous Deployment** (`continuous-deployment.yml`)
 
 ```mermaid
 flowchart LR
     trigger_push(["push"])
+    build_playwright_msedge_image_yml["Build Playwright msedge Image"]
+    build_playwright_msedge_image_yml_build_and_push["build-and-push"]
     deploy_pages_yml["Deploy GitHub Pages"]
     deploy_pages_yml_build["build"]
     deploy_pages_yml_deploy["deploy"]
@@ -123,13 +126,13 @@ flowchart LR
     continuous_deployment_yml_unit_test_backend["unit-test-backend"]
     continuous_deployment_yml_unit_test_common["unit-test-common"]
     continuous_deployment_yml_knip["knip"]
-    reusable_knip_yml["Knip Unused Code Check"]
+    reusable_knip_yml["reusable-knip.yml"]
     reusable_knip_yml_knip["Knip"]
     continuous_deployment_yml_lint["lint"]
-    reusable_lint_yml["ESLint"]
+    reusable_lint_yml["reusable-lint.yml"]
     reusable_lint_yml_lint["Lint"]
     continuous_deployment_yml_typecheck["typecheck"]
-    reusable_typecheck_yml["TypeScript Type Check"]
+    reusable_typecheck_yml["reusable-typecheck.yml"]
     reusable_typecheck_yml_typecheck["TypeScript"]
     continuous_deployment_yml_security_scan["Security"]
     sub_security_scan_yml["sub-security-scan.yml"]
@@ -175,6 +178,8 @@ flowchart LR
     sub_deploy_code_slot_yml_endpoint_test_application_post_swap["endpoint-test-application-post-swap"]
     sub_deploy_code_slot_yml_enable_access["enable-access"]
 
+    trigger_push --> build_playwright_msedge_image_yml
+    build_playwright_msedge_image_yml --> build_playwright_msedge_image_yml_build_and_push
     trigger_push --> deploy_pages_yml
     deploy_pages_yml --> deploy_pages_yml_build
     deploy_pages_yml --> deploy_pages_yml_deploy
@@ -254,6 +259,8 @@ flowchart LR
     classDef job fill:#f1f8e9,stroke:#33691e,stroke-width:1px,color:#000000
 
     class trigger_push trigger
+    class build_playwright_msedge_image_yml mainWorkflow
+    class build_playwright_msedge_image_yml_build_and_push job
     class deploy_pages_yml mainWorkflow
     class deploy_pages_yml_build job
     class deploy_pages_yml_deploy job
@@ -270,13 +277,13 @@ flowchart LR
     class continuous_deployment_yml_unit_test_backend job
     class continuous_deployment_yml_unit_test_common job
     class continuous_deployment_yml_knip job
-    class reusable_knip_yml mainWorkflow
+    class reusable_knip_yml reusable
     class reusable_knip_yml_knip job
     class continuous_deployment_yml_lint job
-    class reusable_lint_yml mainWorkflow
+    class reusable_lint_yml reusable
     class reusable_lint_yml_lint job
     class continuous_deployment_yml_typecheck job
-    class reusable_typecheck_yml mainWorkflow
+    class reusable_typecheck_yml reusable
     class reusable_typecheck_yml_typecheck job
     class continuous_deployment_yml_security_scan job
     class sub_security_scan_yml reusable
@@ -454,6 +461,7 @@ flowchart LR
 ### Schedule Triggered Workflows
 
 Workflows triggered by `schedule`:
+- **Build Playwright msedge Image** (`build-playwright-msedge-image.yml`)
 - **Clean up Flexion Azure Resources** (`azure-remove-branch.yml`)
 - **Prune E2E Image Cache** (`prune-e2e-image-cache.yml`)
 - **Refresh E2E Base Image Cache** (`refresh-e2e-base-images.yml`)
@@ -464,6 +472,8 @@ Workflows triggered by `schedule`:
 ```mermaid
 flowchart LR
     trigger_schedule(["schedule"])
+    build_playwright_msedge_image_yml["Build Playwright msedge Image"]
+    build_playwright_msedge_image_yml_build_and_push["build-and-push"]
     azure_remove_branch_yml["Clean up Flexion Azure Resources"]
     azure_remove_branch_yml_list["list"]
     azure_remove_branch_yml_check["check"]
@@ -484,6 +494,8 @@ flowchart LR
     reusable_dast_yml["reusable-dast.yml"]
     reusable_dast_yml_zap_dast_scan["zap-dast-scan"]
 
+    trigger_schedule --> build_playwright_msedge_image_yml
+    build_playwright_msedge_image_yml --> build_playwright_msedge_image_yml_build_and_push
     trigger_schedule --> azure_remove_branch_yml
     azure_remove_branch_yml --> azure_remove_branch_yml_list
     azure_remove_branch_yml --> azure_remove_branch_yml_check
@@ -510,6 +522,8 @@ flowchart LR
     classDef job fill:#f1f8e9,stroke:#33691e,stroke-width:1px,color:#000000
 
     class trigger_schedule trigger
+    class build_playwright_msedge_image_yml mainWorkflow
+    class build_playwright_msedge_image_yml_build_and_push job
     class azure_remove_branch_yml mainWorkflow
     class azure_remove_branch_yml_list job
     class azure_remove_branch_yml_check job
@@ -529,44 +543,6 @@ flowchart LR
     class dast_scan_yml_execute_dast_scan job
     class reusable_dast_yml reusable
     class reusable_dast_yml_zap_dast_scan job
-```
-
-### Workflow_call Triggered Workflows
-
-Workflows triggered by `workflow_call`:
-- **Knip Unused Code Check** (`reusable-knip.yml`)
-- **TypeScript Type Check** (`reusable-typecheck.yml`)
-- **ESLint** (`reusable-lint.yml`)
-
-```mermaid
-flowchart LR
-    trigger_workflow_call(["workflow_call"])
-    reusable_knip_yml["Knip Unused Code Check"]
-    reusable_knip_yml_knip["Knip"]
-    reusable_typecheck_yml["TypeScript Type Check"]
-    reusable_typecheck_yml_typecheck["TypeScript"]
-    reusable_lint_yml["ESLint"]
-    reusable_lint_yml_lint["Lint"]
-
-    trigger_workflow_call --> reusable_knip_yml
-    reusable_knip_yml --> reusable_knip_yml_knip
-    trigger_workflow_call --> reusable_typecheck_yml
-    reusable_typecheck_yml --> reusable_typecheck_yml_typecheck
-    trigger_workflow_call --> reusable_lint_yml
-    reusable_lint_yml --> reusable_lint_yml_lint
-
-    classDef reusable fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000000
-    classDef mainWorkflow fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000000
-    classDef trigger fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000000
-    classDef job fill:#f1f8e9,stroke:#33691e,stroke-width:1px,color:#000000
-
-    class trigger_workflow_call trigger
-    class reusable_knip_yml mainWorkflow
-    class reusable_knip_yml_knip job
-    class reusable_typecheck_yml mainWorkflow
-    class reusable_typecheck_yml_typecheck job
-    class reusable_lint_yml mainWorkflow
-    class reusable_lint_yml_lint job
 ```
 
 ### Workflow_dispatch Triggered Workflows
@@ -625,6 +601,29 @@ flowchart LR
     class build_azure_cli_image_yml_build_and_push job
 ```
 
+#### Build Playwright msedge Image
+
+Manual execution of `build-playwright-msedge-image.yml`
+
+```mermaid
+flowchart LR
+    trigger_workflow_dispatch(["workflow_dispatch"])
+    build_playwright_msedge_image_yml["Build Playwright msedge Image"]
+    build_playwright_msedge_image_yml_build_and_push["build-and-push"]
+
+    trigger_workflow_dispatch --> build_playwright_msedge_image_yml
+    build_playwright_msedge_image_yml --> build_playwright_msedge_image_yml_build_and_push
+
+    classDef reusable fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000000
+    classDef mainWorkflow fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000000
+    classDef trigger fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000000
+    classDef job fill:#f1f8e9,stroke:#33691e,stroke-width:1px,color:#000000
+
+    class trigger_workflow_dispatch trigger
+    class build_playwright_msedge_image_yml mainWorkflow
+    class build_playwright_msedge_image_yml_build_and_push job
+```
+
 #### Constrained Test Report
 
 Manual execution of `constrained-test-report.yml`
@@ -668,13 +667,13 @@ flowchart LR
     continuous_deployment_yml_unit_test_backend["unit-test-backend"]
     continuous_deployment_yml_unit_test_common["unit-test-common"]
     continuous_deployment_yml_knip["knip"]
-    reusable_knip_yml["Knip Unused Code Check"]
+    reusable_knip_yml["reusable-knip.yml"]
     reusable_knip_yml_knip["Knip"]
     continuous_deployment_yml_lint["lint"]
-    reusable_lint_yml["ESLint"]
+    reusable_lint_yml["reusable-lint.yml"]
     reusable_lint_yml_lint["Lint"]
     continuous_deployment_yml_typecheck["typecheck"]
-    reusable_typecheck_yml["TypeScript Type Check"]
+    reusable_typecheck_yml["reusable-typecheck.yml"]
     reusable_typecheck_yml_typecheck["TypeScript"]
     continuous_deployment_yml_security_scan["Security"]
     sub_security_scan_yml["sub-security-scan.yml"]
@@ -809,13 +808,13 @@ flowchart LR
     class continuous_deployment_yml_unit_test_backend job
     class continuous_deployment_yml_unit_test_common job
     class continuous_deployment_yml_knip job
-    class reusable_knip_yml mainWorkflow
+    class reusable_knip_yml reusable
     class reusable_knip_yml_knip job
     class continuous_deployment_yml_lint job
-    class reusable_lint_yml mainWorkflow
+    class reusable_lint_yml reusable
     class reusable_lint_yml_lint job
     class continuous_deployment_yml_typecheck job
-    class reusable_typecheck_yml mainWorkflow
+    class reusable_typecheck_yml reusable
     class reusable_typecheck_yml_typecheck job
     class continuous_deployment_yml_security_scan job
     class sub_security_scan_yml reusable
@@ -1235,7 +1234,16 @@ flowchart LR
 
 ```mermaid
 flowchart LR
+    trigger_schedule(["schedule"])
+    build_playwright_msedge_image_yml["Build Playwright msedge Image"]
+    azure_remove_branch_yml["Clean up Flexion Azure Resources"]
+    prune_e2e_image_cache_yml["Prune E2E Image Cache"]
+    refresh_e2e_base_images_yml["Refresh E2E Base Image Cache"]
+    constrained_test_report_yml["Constrained Test Report"]
+    build_azure_cli_image_yml["Build Custom Azure CLI Runner Image"]
+    dast_scan_yml["Stand Alone DAST Scan"]
     trigger_workflow_dispatch(["workflow_dispatch"])
+    build_playwright_msedge_image_yml["Build Playwright msedge Image"]
     deploy_security_scan_storage_yml["Deploy Security Scan Storage"]
     deploy_pages_yml["Deploy GitHub Pages"]
     e2e_test_yml["Stand Alone E2E Test Runs"]
@@ -1248,27 +1256,25 @@ flowchart LR
     build_azure_cli_image_yml["Build Custom Azure CLI Runner Image"]
     dast_scan_yml["Stand Alone DAST Scan"]
     update_dependencies_yml["NPM Package Updates"]
-    trigger_workflow_call(["workflow_call"])
-    reusable_knip_yml["Knip Unused Code Check"]
-    reusable_typecheck_yml["TypeScript Type Check"]
-    reusable_lint_yml["ESLint"]
     trigger_push(["push"])
+    build_playwright_msedge_image_yml["Build Playwright msedge Image"]
     deploy_pages_yml["Deploy GitHub Pages"]
     continuous_deployment_yml["Continuous Deployment"]
     trigger_delete(["delete"])
     azure_remove_branch_yml["Clean up Flexion Azure Resources"]
-    trigger_schedule(["schedule"])
-    azure_remove_branch_yml["Clean up Flexion Azure Resources"]
-    prune_e2e_image_cache_yml["Prune E2E Image Cache"]
-    refresh_e2e_base_images_yml["Refresh E2E Base Image Cache"]
-    constrained_test_report_yml["Constrained Test Report"]
-    build_azure_cli_image_yml["Build Custom Azure CLI Runner Image"]
-    dast_scan_yml["Stand Alone DAST Scan"]
     trigger_pull_request(["pull_request"])
     pr_validation_yml["Pull Request E2E Validation"]
     trigger_workflow_run(["workflow_run"])
     slack_notification_yml["slack-notification"]
 
+    trigger_schedule --> build_playwright_msedge_image_yml
+    trigger_schedule --> azure_remove_branch_yml
+    trigger_schedule --> prune_e2e_image_cache_yml
+    trigger_schedule --> refresh_e2e_base_images_yml
+    trigger_schedule --> constrained_test_report_yml
+    trigger_schedule --> build_azure_cli_image_yml
+    trigger_schedule --> dast_scan_yml
+    trigger_workflow_dispatch --> build_playwright_msedge_image_yml
     trigger_workflow_dispatch --> deploy_security_scan_storage_yml
     trigger_workflow_dispatch --> deploy_pages_yml
     trigger_workflow_dispatch --> e2e_test_yml
@@ -1281,34 +1287,24 @@ flowchart LR
     trigger_workflow_dispatch --> build_azure_cli_image_yml
     trigger_workflow_dispatch --> dast_scan_yml
     trigger_workflow_dispatch --> update_dependencies_yml
-    trigger_workflow_call --> reusable_knip_yml
-    trigger_workflow_call --> reusable_typecheck_yml
-    trigger_workflow_call --> reusable_lint_yml
+    trigger_push --> build_playwright_msedge_image_yml
     trigger_push --> deploy_pages_yml
     trigger_push --> continuous_deployment_yml
     trigger_delete --> azure_remove_branch_yml
-    trigger_schedule --> azure_remove_branch_yml
-    trigger_schedule --> prune_e2e_image_cache_yml
-    trigger_schedule --> refresh_e2e_base_images_yml
-    trigger_schedule --> constrained_test_report_yml
-    trigger_schedule --> build_azure_cli_image_yml
-    trigger_schedule --> dast_scan_yml
     trigger_pull_request --> pr_validation_yml
     trigger_workflow_run --> slack_notification_yml
 
     classDef mainWorkflow fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000000
     classDef trigger fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000000
 
+    class trigger_schedule trigger
     class trigger_workflow_dispatch trigger
-    class trigger_workflow_call trigger
     class trigger_push trigger
     class trigger_delete trigger
-    class trigger_schedule trigger
     class trigger_pull_request trigger
     class trigger_workflow_run trigger
+    class build_playwright_msedge_image_yml mainWorkflow
     class deploy_security_scan_storage_yml mainWorkflow
-    class reusable_knip_yml mainWorkflow
-    class reusable_typecheck_yml mainWorkflow
     class deploy_pages_yml mainWorkflow
     class e2e_test_yml mainWorkflow
     class azure_remove_branch_yml mainWorkflow
@@ -1317,7 +1313,6 @@ flowchart LR
     class pr_validation_yml mainWorkflow
     class constrained_test_report_yml mainWorkflow
     class continuous_deployment_yml mainWorkflow
-    class reusable_lint_yml mainWorkflow
     class build_azure_cli_image_yml mainWorkflow
     class dast_scan_yml mainWorkflow
     class update_dependencies_yml mainWorkflow
@@ -1327,14 +1322,11 @@ flowchart LR
 ## Workflow Details
 
 ### Main Workflows
+- **Build Playwright msedge Image** (`build-playwright-msedge-image.yml`)
+  - Triggers: schedule, workflow_dispatch, push
+  - Jobs: 1
 - **Deploy Security Scan Storage** (`deploy-security-scan-storage.yml`)
   - Triggers: workflow_dispatch
-  - Jobs: 1
-- **Knip Unused Code Check** (`reusable-knip.yml`)
-  - Triggers: workflow_call
-  - Jobs: 1
-- **TypeScript Type Check** (`reusable-typecheck.yml`)
-  - Triggers: workflow_call
   - Jobs: 1
 - **Deploy GitHub Pages** (`deploy-pages.yml`)
   - Triggers: push, workflow_dispatch
@@ -1360,9 +1352,6 @@ flowchart LR
 - **Continuous Deployment** (`continuous-deployment.yml`)
   - Triggers: push, workflow_dispatch
   - Jobs: 11
-- **ESLint** (`reusable-lint.yml`)
-  - Triggers: workflow_call
-  - Jobs: 1
 - **Build Custom Azure CLI Runner Image** (`build-azure-cli-image.yml`)
   - Triggers: schedule, workflow_dispatch
   - Jobs: 1
@@ -1381,9 +1370,13 @@ flowchart LR
   - Jobs: 4
 - **Security** (`sub-security-scan.yml`)
   - Jobs: 2
+- **Knip Unused Code Check** (`reusable-knip.yml`)
+  - Jobs: 1
 - **Azure Deployment - Supporting Infrastructure** (`reusable-infrastructure-deploy.yml`)
   - Jobs: 2
 - **End-to-end Tests** (`reusable-e2e.yml`)
+  - Jobs: 1
+- **TypeScript Type Check** (`reusable-typecheck.yml`)
   - Jobs: 1
 - **Deploy code for slot** (`sub-deploy-code-slot.yml`)
   - Jobs: 11
@@ -1401,6 +1394,8 @@ flowchart LR
   - Jobs: 1
 - **Build** (`sub-build.yml`)
   - Jobs: 2
+- **ESLint** (`reusable-lint.yml`)
+  - Jobs: 1
 - **Build Info** (`reusable-build-info.yml`)
   - Jobs: 1
 - **DAST Scan** (`reusable-dast.yml`)

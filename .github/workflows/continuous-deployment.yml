@@ -17,6 +17,15 @@ on:
         options:
           - 'false'
           - 'true'
+      fastDeploy:
+        description:
+          'fastDeploy: If deploying a feature branch, skip checks for a faster deployment.'
+        required: true
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
 
 permissions: read-all
 
@@ -38,8 +47,10 @@ jobs:
     uses: ./.github/workflows/reusable-accessibility.yml
     permissions:
       contents: read
+      packages: read
     with:
       path: user-interface
+      skip: ${{ (! startsWith(github.ref, 'refs/heads/main')) && inputs.deployBranch == 'true' && inputs.fastDeploy == 'true' }}
 
   unit-test-frontend:
     uses: ./.github/workflows/reusable-unit-test.yml
@@ -47,6 +58,7 @@ jobs:
       contents: read
     with:
       path: user-interface
+      skip: ${{ (! startsWith(github.ref, 'refs/heads/main')) && inputs.deployBranch == 'true' && inputs.fastDeploy == 'true' }}
 
   unit-test-backend:
     uses: ./.github/workflows/reusable-unit-test.yml
@@ -54,6 +66,7 @@ jobs:
       contents: read
     with:
       path: backend
+      skip: ${{ (! startsWith(github.ref, 'refs/heads/main')) && inputs.deployBranch == 'true' && inputs.fastDeploy == 'true' }}
 
   unit-test-common:
     uses: ./.github/workflows/reusable-unit-test.yml
@@ -61,21 +74,28 @@ jobs:
       contents: read
     with:
       path: common
+      skip: ${{ (! startsWith(github.ref, 'refs/heads/main')) && inputs.deployBranch == 'true' && inputs.fastDeploy == 'true' }}
 
   knip:
     uses: ./.github/workflows/reusable-knip.yml
     permissions:
       contents: read
+    with:
+      skip: ${{ (! startsWith(github.ref, 'refs/heads/main')) && inputs.deployBranch == 'true' && inputs.fastDeploy == 'true' }}
 
   lint:
     uses: ./.github/workflows/reusable-lint.yml
     permissions:
       contents: read
+    with:
+      skip: ${{ (! startsWith(github.ref, 'refs/heads/main')) && inputs.deployBranch == 'true' && inputs.fastDeploy == 'true' }}
 
   typecheck:
     uses: ./.github/workflows/reusable-typecheck.yml
     permissions:
       contents: read
+    with:
+      skip: ${{ (! startsWith(github.ref, 'refs/heads/main')) && inputs.deployBranch == 'true' && inputs.fastDeploy == 'true' }}
 
   security-scan:
     name: Security
@@ -88,6 +108,8 @@ jobs:
       AZ_SECURITY_SCAN_CLIENT_ID: ${{ secrets.AZ_SECURITY_SCAN_CLIENT_ID }} # pragma: allowlist secret
       AZ_TENANT_ID: ${{ secrets.AZ_TENANT_ID }} # pragma: allowlist secret
       AZ_SUBSCRIPTION_ID: ${{ secrets.AZ_SUBSCRIPTION_ID }} # pragma: allowlist secret
+    with:
+      skip: ${{ (! startsWith(github.ref, 'refs/heads/main')) && inputs.deployBranch == 'true' && inputs.fastDeploy == 'true' }}
 
   build:
     name: Build

@@ -25,8 +25,6 @@ export interface TrusteeCaseListFilterStore {
   setFiledDateFrom(val: string): void;
   filedDateTo: string;
   setFiledDateTo(val: string): void;
-  filedDateError: string;
-  setFiledDateError(val: string): void;
   filterAnnouncement: string;
   setFilterAnnouncement(val: string): void;
   courts: CourtDivisionDetails[];
@@ -54,7 +52,6 @@ export interface TrusteeCaseListFilterViewModel extends TrusteeCaseListFilterHan
   selectedChapters: ComboOption[];
   filedDateFrom: string;
   filedDateTo: string;
-  filedDateError: string;
   filterAnnouncement: string;
   selectedDivisions: ComboOption[];
   initialDivisionCodes?: string[];

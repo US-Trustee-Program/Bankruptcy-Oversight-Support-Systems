@@ -1,11 +1,13 @@
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 import PillBox from '@/lib/components/PillBox';
 import { Accordion, AccordionGroup } from '@/lib/components/uswds/Accordion';
+import DateRangePicker from '@/lib/components/uswds/DateRangePicker';
 import { formatCaseStatus, TrusteeCaseListFilterViewProps } from './trusteeCaseListFilter.types';
 import DistrictDivisionComboBox, {
   DistrictDivisionComboBoxRef,
 } from '@/lib/components/DistrictDivisionComboBox';
 import { useRef } from 'react';
+import { DateRangePickerRef } from '@/lib/type-declarations/input-fields';
 import './TrusteeCaseListFilter.scss';
 
 const FILED_DATE_PILL_VALUE = 'filed-date';
@@ -23,7 +25,6 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
     selectedChapters,
     filedDateFrom,
     filedDateTo,
-    filedDateError,
     filterAnnouncement,
     selectedDivisions,
     initialDivisionCodes,
@@ -33,6 +34,7 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
   } = viewModel;
 
   const divisionRef = useRef<DistrictDivisionComboBoxRef>(null);
+  const filedDateRef = useRef<DateRangePickerRef>(null);
 
   const hasFiledDate = !!(filedDateFrom || filedDateTo);
 
@@ -47,6 +49,14 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
         label: formatDatePillLabel('Filed', filedDateFrom, filedDateTo),
       }
     : null;
+
+  function handleFiledDateStartChange(from: string) {
+    viewModel.handleFiledDateChange(from, filedDateTo);
+  }
+
+  function handleFiledDateEndChange(to: string) {
+    viewModel.handleFiledDateChange(filedDateFrom, to);
+  }
 
   const allPills: ComboOption[] = [
     ...(statusPill ? [statusPill] : []),
@@ -70,41 +80,25 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
           <span>Filters</span>
           <div id="case-list-filter-content" className="filter-content">
             <div className="filter-controls-row">
-              <div className="filter-control">
-                <label htmlFor="filed-date-from" className="usa-label">
-                  Case Filed Date Start
-                </label>
-                <span className="usa-hint">mm/dd/yyyy</span>
-                <input
-                  id="filed-date-from"
-                  type="date"
-                  className="usa-input"
-                  value={filedDateFrom}
-                  onChange={(e) => viewModel.handleFiledDateChange(e.target.value, filedDateTo)}
-                  aria-label="Case filed date from"
-                  aria-live="off"
-                  aria-atomic="false"
+              <div className="filter-control filter-control--filed-date">
+                <DateRangePicker
+                  ref={filedDateRef}
+                  id="case-filed-date"
+                  startDateLabel="Case Filed Date Start"
+                  endDateLabel="Case Filed Date End"
+                  value={{ start: filedDateFrom, end: filedDateTo }}
+                  onStartDateChange={handleFiledDateStartChange}
+                  onEndDateChange={handleFiledDateEndChange}
                 />
               </div>
 
-              <div className="filter-control">
-                <label htmlFor="filed-date-to" className="usa-label">
-                  Case Filed Date End
-                </label>
-                <span className="usa-hint">mm/dd/yyyy</span>
-                <input
-                  id="filed-date-to"
-                  type="date"
-                  className="usa-input"
-                  value={filedDateTo}
-                  onChange={(e) => viewModel.handleFiledDateChange(filedDateFrom, e.target.value)}
-                  aria-label="Case filed date to"
-                  aria-live="off"
-                  aria-atomic="false"
-                />
-              </div>
-
-              <div className="filter-control">
+              <div className="filter-control filter-control--status">
+                {/* Invisible spacer reusing DatePicker's own .usa-hint class (not a copy of its
+                    styling) so this stays vertically aligned with the DateRangePicker's hint
+                    line automatically, without a separate "Case Status" hint to display. */}
+                <span className="usa-hint" aria-hidden="true">
+                  &nbsp;
+                </span>
                 <label htmlFor="case-status-select" className="usa-label">
                   Case Status
                 </label>
@@ -123,12 +117,6 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
                 </select>
               </div>
             </div>
-
-            {filedDateError && (
-              <span className="usa-error-message" role="alert">
-                {filedDateError}
-              </span>
-            )}
 
             <div className="filter-controls-row">
               <div className="filter-control filter-control--chapter">
@@ -185,6 +173,7 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
               viewModel.handleStatusChange('ALL');
             }
             if (filedDateRemoved) {
+              filedDateRef.current?.clearValue();
               viewModel.handleFiledDateChange('', '');
             }
             if (updatedChapters.length !== selectedChapters.length) {
