@@ -47,6 +47,7 @@ jobs:
     uses: ./.github/workflows/reusable-accessibility.yml
     permissions:
       contents: read
+      packages: read
     with:
       path: user-interface
       skip: ${{ (! startsWith(github.ref, 'refs/heads/main')) && inputs.deployBranch == 'true' && inputs.fastDeploy == 'true' }}
