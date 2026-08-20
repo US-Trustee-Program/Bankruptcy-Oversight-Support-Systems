@@ -128,6 +128,12 @@
       "minimumReleaseAge": "0 days"
     },
     {
+      "description": "Digest-only docker updates lack a releaseTimestamp to age against, so minimumReleaseAge would leave them stuck in Pending Status Checks indefinitely. Verified empirically for the playwright-msedge image: Renovate resolved the correct digest from ghcr.io but flagged pendingChecks=true with minimumReleaseAgeBehaviour=timestamp-required.",
+      "matchDatasources": ["docker"],
+      "matchUpdateTypes": ["digest"],
+      "minimumReleaseAge": "0 days"
+    },
+    {
       "description": "Do not auto-update npm overrides — they are deliberate security/compatibility pins (e.g. protobufjs held at 7.x, @opentelemetry/exporter-prometheus kept in lockstep with sdk-node). Bumping them desyncs from the packages that pin them exactly and breaks lockfile resolution. Change override values by hand.",
       "matchDepTypes": ["overrides"],
       "enabled": false
