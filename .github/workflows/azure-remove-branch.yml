@@ -178,20 +178,31 @@ jobs:
               # it 404s on an otherwise-existing branch.
               encodedBranchName=$(jq -rn --arg b "${branchName}" '$b | @uri')
 
-              # A 404 here (gh exits non-zero) means the branch was deleted
-              # without the `delete` event trigger catching it, e.g. this
-              # workflow was disabled at the time. Disable errexit only
-              # around the call so that expected 404s don't abort the script.
+              # A confirmed 404 here means the branch was deleted without the
+              # `delete` event trigger catching it, e.g. this workflow was
+              # disabled at the time — orphaned, safe to clean up. Any other
+              # failure (rate limit, 5xx, transient network error) is
+              # inconclusive, so it's treated as "leave it running" rather
+              # than "assume gone" — deleting an active branch's env on a
+              # flaky API call would be worse than skipping it for a night.
+              # Disable errexit only around the call so failures don't abort
+              # the script before they can be inspected.
               set +e
-              branchInfo=$(gh api "repos/${GITHUB_REPOSITORY}/branches/${encodedBranchName}" 2>/dev/null)
-              branchExists=$?
+              branchApiOutput=$(gh api "repos/${GITHUB_REPOSITORY}/branches/${encodedBranchName}" 2>&1)
+              branchLookupExitCode=$?
               set -e
 
-              if [[ "${branchExists}" -ne 0 ]]; then
-                echo "Branch '${branchName}' no longer exists; env ${branchHashId} is orphaned and will be cleaned up."
-                targets=$(jq -c --arg h "${branchHashId}" '. + [$h]' <<<"${targets}")
+              if [[ "${branchLookupExitCode}" -ne 0 ]]; then
+                if grep -q "HTTP 404" <<<"${branchApiOutput}"; then
+                  echo "Branch '${branchName}' no longer exists; env ${branchHashId} is orphaned and will be cleaned up."
+                  targets=$(jq -c --arg h "${branchHashId}" '. + [$h]' <<<"${targets}")
+                else
+                  echo "::warning::Could not verify branch '${branchName}' (${branchApiOutput}); leaving env ${branchHashId} in place rather than risk deleting it in error."
+                fi
                 continue
               fi
+
+              branchInfo="${branchApiOutput}"
 
               commitDate=$(jq -r '.commit.commit.committer.date' <<<"${branchInfo}")
               commitEpoch=$(date -u -d "${commitDate}" +%s)
