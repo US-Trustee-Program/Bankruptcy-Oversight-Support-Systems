@@ -129,27 +129,15 @@ describe('Chapter12StandingUpcomingKeyDates', () => {
     });
   });
 
-  test('Annual Report Due to OO always shows 09/30', async () => {
+  test.each([
+    ['annual-report-due-row', '09/30'],
+    ['budget-submission-due-row', '05/01'],
+    ['budget-review-to-oo-row', '06/01'],
+  ])('fixed-value row %s always shows %s', async (testId, expectedValue) => {
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByTestId('annual-report-due-row')).toHaveTextContent('09/30');
-    });
-  });
-
-  test('Budget Submission Due always shows 05/01', async () => {
-    renderComponent();
-
-    await waitFor(() => {
-      expect(screen.getByTestId('budget-submission-due-row')).toHaveTextContent('05/01');
-    });
-  });
-
-  test('Budget Review to OO always shows 06/01', async () => {
-    renderComponent();
-
-    await waitFor(() => {
-      expect(screen.getByTestId('budget-review-to-oo-row')).toHaveTextContent('06/01');
+      expect(screen.getByTestId(testId)).toHaveTextContent(expectedValue);
     });
   });
 
