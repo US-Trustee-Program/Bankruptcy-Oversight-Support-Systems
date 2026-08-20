@@ -183,17 +183,24 @@ export default function UpcomingKeyDatesForm() {
     !tprDueRowFocused && tprDueRowHasInteracted && tprDueDateComplete && !form.tprDueYearType;
 
   useEffect(() => {
-    Promise.all([
-      Api2.getUpcomingKeyDates(trusteeId!, appointmentId!),
-      Api2.getTrusteeAppointments(trusteeId!),
-    ])
-      .then(([keyDatesResponse, appointmentsResponse]) => {
-        const data = keyDatesResponse.data;
-        const appointments = appointmentsResponse.data ?? [];
-        const appointment = appointments.find((a) => a.id === appointmentId);
+    let failed = false;
+
+    Api2.getTrusteeAppointments(trusteeId!)
+      .then((appointmentsResponse) => {
+        const appointment = (appointmentsResponse.data ?? []).find((a) => a.id === appointmentId);
         if (appointment) {
           setVariant(deriveVariant(appointment.chapter, appointment.appointmentType));
         }
+      })
+      .catch((err) => {
+        failed = true;
+        globalAlert?.error(`Failed to load appointment: ${(err as Error).message}`);
+      });
+
+    Api2.getUpcomingKeyDates(trusteeId!, appointmentId!)
+      .then((keyDatesResponse) => {
+        if (failed) return;
+        const data = keyDatesResponse.data;
         if (data) {
           const freq: TirFrequency = data.tirFrequency ?? '';
           const periodKey = findPeriodKey(data.tirReviewPeriodStart, data.tirReviewPeriodEnd, freq);

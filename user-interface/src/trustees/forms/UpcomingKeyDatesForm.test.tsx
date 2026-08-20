@@ -432,6 +432,18 @@ describe('UpcomingKeyDatesForm', () => {
       );
     });
 
+    test('shows error alert when appointments API fails on load', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockRejectedValue(new Error('Appointments error'));
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(mockGlobalAlertRef.current.error).toHaveBeenCalledWith(
+          'Failed to load appointment: Appointments error',
+        );
+      });
+    });
+
     test('Cancel navigates without calling PUT', async () => {
       const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
 
