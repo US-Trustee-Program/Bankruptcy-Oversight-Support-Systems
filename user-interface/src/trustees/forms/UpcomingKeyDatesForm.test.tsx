@@ -8,6 +8,7 @@ import {
   TrusteeUpcomingKeyDates,
   TrusteeUpcomingKeyDatesInput,
 } from '@common/cams/trustee-upcoming-key-dates';
+import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 
 const mockUseNavigate = vi.hoisted(() => vi.fn());
@@ -25,6 +26,22 @@ vi.mock('react-router-dom', async () => {
 });
 
 const currentYear = new Date().getFullYear();
+
+const chapter7Appointment: TrusteeAppointment = {
+  id: 'appointment-001',
+  trusteeId: 'trustee-001',
+  chapter: '7',
+  appointmentType: 'panel',
+  courtId: '0208',
+  courtName: 'Southern District of New York',
+  status: 'active',
+  appointedDate: '2020-01-15T00:00:00.000Z',
+  effectiveDate: '2020-01-15T00:00:00.000Z',
+  createdOn: '2020-01-10T14:30:00.000Z',
+  createdBy: SYSTEM_USER_REFERENCE,
+  updatedOn: '2020-01-10T14:30:00.000Z',
+  updatedBy: SYSTEM_USER_REFERENCE,
+};
 
 const populatedDocument: TrusteeUpcomingKeyDates = {
   id: 'doc-001',
@@ -66,6 +83,7 @@ describe('UpcomingKeyDatesForm', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     mockUseNavigate.mockReturnValue(mockNavigate);
+    vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [chapter7Appointment] });
     userEvent = TestingUtilities.setupUserEvent();
   });
 
@@ -486,6 +504,64 @@ describe('UpcomingKeyDatesForm', () => {
 
       expect(screen.getByTestId('tpr-review-period-error')).toBeInTheDocument();
       expect(putSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('ch12-13-case-by-case variant', () => {
+    const ch1213Appointment: TrusteeAppointment = {
+      ...chapter7Appointment,
+      chapter: '12',
+      appointmentType: 'case-by-case',
+    };
+
+    test('does not render Field Exam/Audit group or TIR Period group', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch1213Appointment] });
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByTestId('upcoming-exam-audit-year')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('tir-frequency')).not.toBeInTheDocument();
+    });
+
+    test('still renders TPR Period and TPR Due groups', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch1213Appointment] });
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+      });
+
+      expect(document.getElementById('tpr-review-period-start-month')).toBeInTheDocument();
+      expect(document.getElementById('tpr-due-month')).toBeInTheDocument();
+    });
+
+    test('save passes through fields other than TPR from the original record unchanged', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch1213Appointment] });
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+      const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+      });
+
+      await userEvent.click(screen.getByTestId('button-save-upcoming-key-dates'));
+
+      await waitFor(() => expect(putSpy).toHaveBeenCalled());
+      const payload = putSpy.mock.calls[0][2] as TrusteeUpcomingKeyDatesInput;
+      expect(payload.pastFieldExam).toBe(populatedDocument.pastFieldExam);
+      expect(payload.pastAudit).toBe(populatedDocument.pastAudit);
+      expect(payload.upcomingExamOrAuditYear).toBe(populatedDocument.upcomingExamOrAuditYear);
+      expect(payload.tprReviewPeriodStart).toBe(populatedDocument.tprReviewPeriodStart);
+      expect(payload.tprDue).toBe(populatedDocument.tprDue);
     });
   });
 
