@@ -150,6 +150,7 @@ const DEFAULT_DATAFLOWS = listDataflowNames(
   SyncTrusteeCaseAppointments,
   SyncTrusteeDueDateMetrics,
   SyncTrusteeNotesMetrics,
+  TrusteeVerificationRemap,
 );
 
 const additional = envVarToNames(process.env.CAMS_ENABLED_DATAFLOWS);

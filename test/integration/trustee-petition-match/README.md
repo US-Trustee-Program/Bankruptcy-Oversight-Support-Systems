@@ -13,8 +13,9 @@ instance (mimicked locally with SQL Edge), instead of the mocked recordsets used
    - `TX_TYPE='1'`, `TX_CODE='1'` — petition transactions
 2. **Match + write path** — `processAppointments()` matches each event to a CAMS trustee via the
    `acmsProfessionalId` fast path, confirms a "perfect match" against a seeded active
-   `TrusteeAppointment`, and writes a case appointment + an approved `trustee-match-verification`
-   record.
+   `TrusteeAppointment`, and writes a case appointment. No `trustee-match-verification` record is
+   written for this auto-matched outcome — it was never reviewed by a human, so nothing belongs in
+   the human-review queue.
 
 No DDL for the DXTR schema exists elsewhere in this repo — `seed/00-seed-dxtr-schema.sql` is a
 hand-crafted subset covering only the columns/joins those two gateway queries use, see its header
