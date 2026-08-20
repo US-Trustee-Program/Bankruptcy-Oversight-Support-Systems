@@ -689,5 +689,17 @@ describe('UpcomingKeyDatesForm', () => {
         ),
       );
     });
+
+    test('Save button is enabled by default when no date picker errors exist', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch12Appointment] });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/Lease Expiration/i)).toBeInTheDocument();
+      });
+
+      expect(screen.getByRole('button', { name: /save/i })).not.toBeDisabled();
+    });
   });
 });

@@ -154,8 +154,11 @@ export default function UpcomingKeyDatesForm() {
     tprReviewPeriodEnd: '',
     tprDue: '',
     tprDueYearType: '',
+    leaseExpiration: '',
+    idExpiration: '',
   });
   const [validationState, setValidationState] = useState({ tprReviewPeriod: true });
+  const [tprReviewPeriodFocused, setTprReviewPeriodFocused] = useState(false);
   const [tprDueRowFocused, setTprDueRowFocused] = useState(false);
   const [tprDueRowHasInteracted, setTprDueRowHasInteracted] = useState(false);
 
@@ -358,6 +361,8 @@ export default function UpcomingKeyDatesForm() {
       tprReviewPeriodEnd: result.reasonMap?.tprReviewPeriodEnd?.reasons?.[0] ?? '',
       tprDue: result.reasonMap?.tprDue?.reasons?.[0] ?? '',
       tprDueYearType: result.reasonMap?.tprDueYearType?.reasons?.[0] ?? '',
+      leaseExpiration: result.reasonMap?.leaseExpiration?.reasons?.[0] ?? '',
+      idExpiration: result.reasonMap?.idExpiration?.reasons?.[0] ?? '',
     });
 
     if (!validationState.tprReviewPeriod || !result.valid) {
@@ -394,19 +399,28 @@ export default function UpcomingKeyDatesForm() {
     return (
       <div className="edit-upcoming-key-dates" data-testid="edit-upcoming-key-dates">
         <h3>Edit Upcoming Key Dates</h3>
-        <MonthDayRangeSelector
-          id="tpr-review-period"
-          label="Trustee Performance Review (TPR) Period"
-          startValue={form.tprReviewPeriodStart}
-          endValue={form.tprReviewPeriodEnd}
-          onStartChange={handleMonthDayChange('tprReviewPeriodStart')}
-          onEndChange={handleMonthDayChange('tprReviewPeriodEnd')}
-          onValidationChange={(isValid) =>
-            setValidationState((prev) => ({ ...prev, tprReviewPeriod: isValid }))
-          }
-          externalError={errors.tprReviewPeriodStart || errors.tprReviewPeriodEnd}
-          submitted={submitted}
-        />
+        <div
+          onFocus={() => setTprReviewPeriodFocused(true)}
+          onBlur={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+              setTprReviewPeriodFocused(false);
+            }
+          }}
+        >
+          <MonthDayRangeSelector
+            id="tpr-review-period"
+            label="Trustee Performance Review (TPR) Period"
+            startValue={form.tprReviewPeriodStart}
+            endValue={form.tprReviewPeriodEnd}
+            onStartChange={handleMonthDayChange('tprReviewPeriodStart')}
+            onEndChange={handleMonthDayChange('tprReviewPeriodEnd')}
+            onValidationChange={(isValid) =>
+              setValidationState((prev) => ({ ...prev, tprReviewPeriod: isValid }))
+            }
+            externalError={errors.tprReviewPeriodStart || errors.tprReviewPeriodEnd}
+            submitted={submitted}
+          />
+        </div>
         <div className="tpr-due-group">
           <div className="tpr-due-group__header">
             <label className="usa-label" htmlFor="tpr-due-month">
@@ -453,15 +467,33 @@ export default function UpcomingKeyDatesForm() {
           label="Lease Expiration"
           value={form.leaseExpiration}
           onChange={(e) => setForm((prev) => ({ ...prev, leaseExpiration: e.target.value }))}
+          onValidationChange={(hasError) =>
+            setErrors((prev) => ({ ...prev, leaseExpiration: hasError ? 'invalid' : '' }))
+          }
         />
         <DatePicker
           id="id-expiration"
           label="ID Expiration"
           value={form.idExpiration}
           onChange={(e) => setForm((prev) => ({ ...prev, idExpiration: e.target.value }))}
+          onValidationChange={(hasError) =>
+            setErrors((prev) => ({ ...prev, idExpiration: hasError ? 'invalid' : '' }))
+          }
         />
         <div className="usa-button-group">
-          <Button id="save-upcoming-key-dates" onClick={handleSave} disabled={isSaving}>
+          <Button
+            id="save-upcoming-key-dates"
+            onClick={handleSave}
+            disabled={
+              isSaving ||
+              (!validationState.tprReviewPeriod && !tprReviewPeriodFocused) ||
+              !!errors.tprDue ||
+              !!errors.tprDueYearType ||
+              !!tprDueBlurError ||
+              !!errors.leaseExpiration ||
+              !!errors.idExpiration
+            }
+          >
             {isSaving ? 'Saving...' : 'Save'}
           </Button>
           <Button
