@@ -270,6 +270,7 @@ jobs:
           # headless CI, but this hasn't been empirically verified in this
           # repo yet — smoke-test on the first real run.
           docker run --rm \
+            --shm-size=1g \
             --user "$(id -u):$(id -g)" \
             -v "${{ github.workspace }}:/workspace" \
             -w /workspace/test/e2e \
