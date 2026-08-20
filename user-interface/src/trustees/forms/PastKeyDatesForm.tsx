@@ -19,6 +19,7 @@ import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import DatePicker from '@/lib/components/uswds/DatePicker';
+import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
 import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
 import { Stop } from '@/lib/components/Stop';
@@ -112,6 +113,7 @@ export default function PastKeyDatesForm() {
   const [variant, setVariant] = useState<PastKeyDatesVariant>('chapter7-panel');
   const [form, setForm] = useState<PastKeyDatesFormState>(EMPTY_FORM);
   const [original, setOriginal] = useState<TrusteeUpcomingKeyDates | null>(null);
+  const { registerFieldError, hasErrorAmong } = useDateFieldErrors();
 
   useEffect(() => {
     Promise.all([
@@ -193,6 +195,11 @@ export default function PastKeyDatesForm() {
     );
   }
 
+  const activeDateFieldIds = PAST_KEY_DATES_FIELD_CONFIG[variant]
+    .filter((field) => field.kind === 'date')
+    .map((field) => field.inputId);
+  const hasAnyDateError = hasErrorAmong(activeDateFieldIds);
+
   return (
     <div className="edit-upcoming-key-dates" data-testid="edit-past-key-dates">
       <h3>Edit Past Key Dates</h3>
@@ -228,6 +235,7 @@ export default function PastKeyDatesForm() {
             label={field.formLabel}
             value={form[field.key]}
             onChange={handleDateChange(field.key)}
+            onValidationChange={(hasError) => registerFieldError(field.inputId, hasError)}
             disableMax
           />
         ),
@@ -237,7 +245,7 @@ export default function PastKeyDatesForm() {
           id="save-past-key-dates"
           data-testid="button-save-past-key-dates"
           onClick={handleSave}
-          disabled={isSaving}
+          disabled={isSaving || hasAnyDateError}
         >
           {isSaving ? 'Saving...' : 'Save'}
         </Button>

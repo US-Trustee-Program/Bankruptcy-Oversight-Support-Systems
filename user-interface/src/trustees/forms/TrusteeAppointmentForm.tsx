@@ -4,6 +4,7 @@ import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import DatePicker from '@/lib/components/uswds/DatePicker';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import useFeatureFlags, { TRUSTEE_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags';
+import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
 import Api2 from '@/lib/models/api2';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import LocalStorage from '@/lib/utils/local-storage';
@@ -132,6 +133,10 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
   });
 
   const canManage = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
+
+  const { registerFieldError, hasErrorAmong } = useDateFieldErrors();
+  const activeDateFieldIds = isEditMode ? ['appointedDate', 'effectiveDate'] : ['appointedDate'];
+  const hasAnyDateError = hasErrorAmong(activeDateFieldIds);
 
   // Accessibility: focus management for validation errors
   const validationAlertRef = useRef<HTMLDivElement>(null);
@@ -329,7 +334,8 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
     !!formData.status &&
     (!isEditMode || !!formData.effectiveDate) &&
     !!formData.appointedDate &&
-    !validationError;
+    !validationError &&
+    !hasAnyDateError;
 
   const handleSubmit = async (ev: React.SubmitEvent<HTMLFormElement>): Promise<void> => {
     ev.preventDefault();
@@ -475,6 +481,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
         aria-label={isEditMode ? 'Edit Trustee Appointment' : 'Add Trustee Appointment'}
         data-testid="trustee-appointment-form"
         onSubmit={handleSubmit}
+        noValidate
       >
         <FormRequirementsNotice />
 
@@ -591,6 +598,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
                 required={true}
                 value={formData.appointedDate}
                 onChange={(e) => handleDateChange('appointedDate', e)}
+                onValidationChange={(hasError) => registerFieldError('appointedDate', hasError)}
               />
             </div>
 
@@ -617,6 +625,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
                   required={true}
                   value={formData.effectiveDate}
                   onChange={(e) => handleDateChange('effectiveDate', e)}
+                  onValidationChange={(hasError) => registerFieldError('effectiveDate', hasError)}
                 />
               </div>
             )}
