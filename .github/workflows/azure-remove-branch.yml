@@ -165,6 +165,10 @@ jobs:
             # deleted, only its Azure env is; owners are asked via Slack to
             # remove the branch themselves once it's flagged stale.
             staleDaysThreshold="${STALE_BRANCH_DAYS:-5}"
+            if [[ ! "${staleDaysThreshold}" =~ ^[0-9]+$ ]]; then
+              echo "::warning::STALE_BRANCH_DAYS ('${staleDaysThreshold}') is not a valid non-negative integer; falling back to the default of 5."
+              staleDaysThreshold=5
+            fi
             nowEpoch=$(date -u +%s)
             targets='[]'
             notices='[]'
@@ -204,8 +208,20 @@ jobs:
 
               branchInfo="${branchApiOutput}"
 
+              # A single candidate with an unparseable commit date shouldn't
+              # abort the whole sweep and leave every other candidate
+              # unprocessed for the night — skip just this one instead.
               commitDate=$(jq -r '.commit.commit.committer.date' <<<"${branchInfo}")
-              commitEpoch=$(date -u -d "${commitDate}" +%s)
+              set +e
+              commitEpoch=$(date -u -d "${commitDate}" +%s 2>/dev/null)
+              dateParseExitCode=$?
+              set -e
+
+              if [[ "${dateParseExitCode}" -ne 0 || -z "${commitEpoch}" ]]; then
+                echo "::warning::Could not parse last-commit date '${commitDate}' for branch '${branchName}'; leaving env ${branchHashId} in place rather than risk deleting it in error."
+                continue
+              fi
+
               idleDays=$(( (nowEpoch - commitEpoch) / 86400 ))
 
               if [[ "${idleDays}" -lt "${staleDaysThreshold}" ]]; then
@@ -219,9 +235,9 @@ jobs:
                 --arg branchName "${branchName}" \
                 --arg branchHashId "${branchHashId}" \
                 --argjson idleDays "${idleDays}" \
-                --arg authorLogin "$(jq -r '.commit.author.login // ""' <<<"${branchInfo}")" \
-                --arg authorEmail "$(jq -r '.commit.commit.author.email // ""' <<<"${branchInfo}")" \
-                '{branchName: $branchName, branchHashId: $branchHashId, idleDays: $idleDays, authorLogin: $authorLogin, authorEmail: $authorEmail}')
+                --arg committerLogin "$(jq -r '.commit.committer.login // ""' <<<"${branchInfo}")" \
+                --arg committerEmail "$(jq -r '.commit.commit.committer.email // ""' <<<"${branchInfo}")" \
+                '{branchName: $branchName, branchHashId: $branchHashId, idleDays: $idleDays, committerLogin: $committerLogin, committerEmail: $committerEmail}')
               notices=$(jq -c --argjson n "${notice}" '. + [$n]' <<<"${notices}")
             done < <(jq -c '.[]' <<<"${candidates}")
 
@@ -290,20 +306,23 @@ jobs:
         run: |
           set -euo pipefail
           staleDaysThreshold="${STALE_BRANCH_DAYS:-5}"
+          if [[ ! "${staleDaysThreshold}" =~ ^[0-9]+$ ]]; then
+            staleDaysThreshold=5
+          fi
 
           echo "${STALE_BRANCH_NOTICES}" | jq -c '.[]' | while IFS= read -r notice; do
             branchName=$(jq -r '.branchName' <<<"${notice}")
             idleDays=$(jq -r '.idleDays' <<<"${notice}")
-            authorLogin=$(jq -r '.authorLogin' <<<"${notice}")
-            authorEmail=$(jq -r '.authorEmail' <<<"${notice}")
+            committerLogin=$(jq -r '.committerLogin' <<<"${notice}")
+            committerEmail=$(jq -r '.committerEmail' <<<"${notice}")
 
-            slackId=$(echo "${SLACK_USER_MAPPING}" | jq -r --arg email "${authorEmail}" --arg username "${authorLogin}" \
+            slackId=$(echo "${SLACK_USER_MAPPING}" | jq -r --arg email "${committerEmail}" --arg username "${committerLogin}" \
               '.[] | select(.email == $email or .github == $username) | .slack // empty' | head -1)
 
             if [[ -n "${slackId}" ]]; then
               who=" <@${slackId}>"
             else
-              who=" (${authorLogin:-${authorEmail:-unknown author}})"
+              who=" (${committerLogin:-${committerEmail:-unknown committer}})"
             fi
 
             message=$(printf '🧹 Branch `%s` has had no commits for %sd (stale threshold: %sd) — its Azure branch environment is being torn down tonight.%s If you'"'"'re still using this branch, push a commit to redeploy it; otherwise please delete the branch.' \
