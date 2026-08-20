@@ -107,25 +107,19 @@ describe('Chapter12StandingUpcomingKeyDates', () => {
     expect(screen.getByTestId('id-expiration-row')).toBeInTheDocument();
   });
 
-  test('shows Audit Req. By year derived from lastAuditFiscalYear when set', async () => {
+  test.each([
+    ['audit-req-by-row', '2025'],
+    ['tpr-review-period-row', '01/01 - 12/31'],
+    ['tpr-due-row', '03/15 ODD'],
+    ['lease-expiration-row', '06/30/2027'],
+    ['id-expiration-row', '01/15/2028'],
+  ])('shows formatted value for %s when data is populated', async (testId, expectedValue) => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
 
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByTestId('audit-req-by-row')).toHaveTextContent('2025');
-    });
-  });
-
-  test('shows "No date added" for Audit Req. By when lastAuditFiscalYear is not set', async () => {
-    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({
-      data: { ...populatedDocument, lastAuditFiscalYear: undefined },
-    });
-
-    renderComponent();
-
-    await waitFor(() => {
-      expect(screen.getByTestId('audit-req-by-row')).toHaveTextContent('No date added');
+      expect(screen.getByTestId(testId)).toHaveTextContent(expectedValue);
     });
   });
 
@@ -141,23 +135,15 @@ describe('Chapter12StandingUpcomingKeyDates', () => {
     });
   });
 
-  test('shows formatted tprReviewPeriod when both start and end are set', async () => {
-    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
-
-    renderComponent();
-
-    await waitFor(() => {
-      expect(screen.getByTestId('tpr-review-period-row')).toHaveTextContent('01/01 - 12/31');
+  test('shows "No date added" for Audit Req. By when lastAuditFiscalYear is not set', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({
+      data: { ...populatedDocument, lastAuditFiscalYear: undefined },
     });
-  });
-
-  test('shows formatted tprDue with year type when both are set', async () => {
-    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
 
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByTestId('tpr-due-row')).toHaveTextContent('03/15 ODD');
+      expect(screen.getByTestId('audit-req-by-row')).toHaveTextContent('No date added');
     });
   });
 
@@ -170,26 +156,6 @@ describe('Chapter12StandingUpcomingKeyDates', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('tpr-due-row')).toHaveTextContent('No date added');
-    });
-  });
-
-  test('shows formatted leaseExpiration when set', async () => {
-    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
-
-    renderComponent();
-
-    await waitFor(() => {
-      expect(screen.getByTestId('lease-expiration-row')).toHaveTextContent('06/30/2027');
-    });
-  });
-
-  test('shows formatted idExpiration when set', async () => {
-    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
-
-    renderComponent();
-
-    await waitFor(() => {
-      expect(screen.getByTestId('id-expiration-row')).toHaveTextContent('01/15/2028');
     });
   });
 
