@@ -40,6 +40,15 @@ param privateDnsZoneSubscriptionId string = subscription().subscriptionId
 @description('Set true when the deploying pipeline has already confirmed a vnet link into the webapp private DNS zone exists (see vnet-links.bicep) -- avoids a Conflict from trying to create a second, differently-named link. Mirrors the param of the same shape that used to live on app-shared-setup.bicep before the webapp zone\'s vnet link moved here.')
 param webappVnetLinkAlreadyExists bool = false
 
+@description('When true, the API and dataflows function apps reach the SQL server via a Private Endpoint (privatelink.database.usgovcloudapi.net) instead of the sql-vnet-rule.bicep VNet rule. Required for cross-region branches (AZ-FUNCTIONS-LOCATION set) because Azure enforces same-region between a SQL server and any subnet referenced by a virtualNetworkRules resource, but a Private Endpoint has no such restriction. Defaults to false, preserving today\'s VNet-rule behavior for main and same-region branches unchanged.')
+param useSqlPrivateLink bool = false
+
+@description('Fixed Azure Government private-link DNS zone name for Azure SQL -- see app-shared-setup.bicep (sqlDnsZone module) for why this is a separate zone from the webapp/api/dataflows one and where it is created.')
+param sqlPrivateDnsZoneName string = 'privatelink.database.usgovcloudapi.net'
+
+@description('Set true when the deploying pipeline has already confirmed a vnet link into the SQL private DNS zone exists (see vnet-links.bicep) -- avoids a Conflict from trying to create a second, differently-named link. Mirrors webappVnetLinkAlreadyExists above.')
+param sqlVnetLinkAlreadyExists bool = false
+
 param privateEndpointSubnetName string = privateEndpointSubnetNameFor(stackName)
 
 param webappName string = webappNameFor(stackName)
@@ -53,6 +62,13 @@ param webappSubnetName string = webappSubnetNameFor(stackName)
   'S1'
 ])
 param webappPlanType string = 'P1v2'
+
+@description('SKU for the API and dataflows function app plans. EP1 (Elastic Premium) is the default; S1 (Standard) is available for environments where EP1 capacity is constrained.')
+@allowed([
+  'EP1'
+  'S1'
+])
+param functionsPlanType string = 'EP1'
 
 param apiFunctionName string = apiFunctionNameFor(stackName)
 
@@ -254,6 +270,36 @@ module ustpWebappDnsZoneLink './lib/network/vnet-links.bicep' = {
   }
 }
 
+// Same self-cleaning-per-branch-stack shape as ustpWebappDnsZoneLink above,
+// for the SQL Private Link zone (see app-shared-setup.bicep's sqlDnsZone
+// module for where the zone itself is created).
+//
+// UNCONDITIONAL, unlike the SQL Private Endpoint modules below (in
+// backend-api-deploy.bicep / dataflows-resource-deploy.bicep), which stay
+// gated on `useSqlPrivateLink`. This looks asymmetric right next to that
+// condition, but it is deliberate, not an oversight: the SQL server
+// (sql-ustp-cams) is shared across main and every branch. The moment ANY
+// consumer's Private Endpoint against that server is approved, Azure
+// CNAME-redirects the server's public FQDN to its privatelink subdomain --
+// server-wide, not scoped to the requesting branch. Any other consumer of
+// that server whose VNet isn't linked into this zone would then lose DNS
+// resolution to it (their queries hit the CNAME, then fail to resolve
+// because their VNet isn't linked to the zone holding the actual A record).
+// Linking every branch's VNet here, unconditionally, keeps SQL DNS
+// resolution working for everyone regardless of which single branch first
+// flips useSqlPrivateLink on. Do not re-add an `if (useSqlPrivateLink)`
+// condition to this module.
+module ustpSqlDnsZoneLink './lib/network/vnet-links.bicep' = {
+  name: '${stackName}-sql-dns-zone-link-module'
+  scope: resourceGroup(privateDnsZoneSubscriptionId, privateDnsZoneResourceGroup)
+  params: {
+    stackName: stackName
+    virtualNetworkId: ustpVirtualNetwork.id
+    privateDnsZoneName: sqlPrivateDnsZoneName
+    vnetLinkAlreadyExists: sqlVnetLinkAlreadyExists
+  }
+}
+
 module ustpWebapp 'frontend-webapp-deploy.bicep' = {
     name: '${stackName}-webapp-module'
     scope: resourceGroup(appResourceGroup)
@@ -311,6 +357,7 @@ module ustpApiFunction 'backend-api-deploy.bicep' = {
       analyticsWorkspaceId: deployAppInsights ? analyticsWorkspaceId : ''
       location: location
       apiPlanName: apiFunctionPlanName
+      functionsPlanType: functionsPlanType
       apiFunctionName: apiFunctionName
       slotName: slotName
       apiFunctionSubnetId: apiFunctionSubnetExisting.id
@@ -332,6 +379,8 @@ module ustpApiFunction 'backend-api-deploy.bicep' = {
       privateDnsZoneName: privateDnsZoneName
       privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
       privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
+      useSqlPrivateLink: useSqlPrivateLink
+      sqlPrivateDnsZoneName: sqlPrivateDnsZoneName
       loginProviderConfig: loginProviderConfig
       loginProvider: loginProvider
       cosmosDatabaseName: cosmosDatabaseName
@@ -358,6 +407,7 @@ module ustpDataflowsFunction 'dataflows-resource-deploy.bicep' = {
     analyticsWorkspaceId: deployAppInsights ? analyticsWorkspaceId : ''
     location: location
     dataflowsPlanName: dataflowsFunctionPlanName
+    functionsPlanType: functionsPlanType
     apiFunctionName: apiFunctionName
     dataflowsFunctionName: dataflowsFunctionName
     slotName: slotName
@@ -379,6 +429,8 @@ module ustpDataflowsFunction 'dataflows-resource-deploy.bicep' = {
     privateDnsZoneName: privateDnsZoneName
     privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
     privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
+    useSqlPrivateLink: useSqlPrivateLink
+    sqlPrivateDnsZoneName: sqlPrivateDnsZoneName
     loginProviderConfig: loginProviderConfig
     loginProvider: loginProvider
     cosmosDatabaseName: cosmosDatabaseName

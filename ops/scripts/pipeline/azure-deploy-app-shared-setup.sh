@@ -40,6 +40,7 @@ sql_server_identity_rg=''
 is_ustp_deployment=false
 deploy_dns=true
 location=''
+network_location=''
 extra_parameters=''
 
 while [[ $# -gt 0 ]]; do
@@ -104,6 +105,15 @@ while [[ $# -gt 0 ]]; do
         location="${2}"
         shift 2
         ;;
+    # Region for the Key Vault private endpoint specifically -- must match
+    # the (possibly separately-located) branch VNet/subnet it's placed into,
+    # independent of the shared Key Vault itself which always stays on
+    # --location. Defaults to --location when not passed, matching the
+    # previous, always-single-region behavior.
+    --networkLocation)
+        network_location="${2}"
+        shift 2
+        ;;
     # Space-delimited "key=value" bicep parameters passed straight through
     -p | --parameters)
         extra_parameters="${2}"
@@ -120,6 +130,8 @@ if [[ -z "${deployment_file}" || -z "${resource_group}" || -z "${stack_name}" ||
     echo "Error: --file, --resource-group, --stackName, --networkResourceGroupName, --virtualNetworkName, --kvAppConfigResourceGroupName and --location are required"
     exit 10
 fi
+
+network_location="${network_location:-${location}}"
 
 # Azure allows only ONE vnet-to-zone link regardless of the link resource's
 # own name, so if some link into the KV zone already exists for this vnet
@@ -153,6 +165,15 @@ kvPrivateDnsZoneName='privatelink.vaultcore.usgovcloudapi.net'
 # where it's a fixed var, not a param -- can't share the literal across
 # bash/bicep, keep both in lockstep by hand.
 webappPrivateDnsZoneName='privatelink.azurewebsites.us'
+# Also hardcoded (as sqlPrivateDnsZoneName) in app-shared-setup.bicep, where
+# it's a fixed var, not a param -- can't share the literal across bash/bicep,
+# keep both in lockstep by hand. app-shared-setup.bicep's sqlDnsZone module
+# call is unconditional (not gated on useSqlPrivateLink), so every deploy of
+# this shared-setup template -- including branches that never opt into SQL
+# Private Link -- resolves this zone as `existing` when deployDns=false. If
+# this zone doesn't exist yet in the target RG, that lookup fails the
+# deployment outright, so it must be checked here alongside kv/webapp.
+sqlPrivateDnsZoneName='privatelink.database.usgovcloudapi.net'
 private_dns_zone_rg="${network_rg}"
 private_dns_zone_subscription_id=""
 for param in ${extra_parameters}; do
@@ -166,13 +187,13 @@ for param in ${extra_parameters}; do
     esac
 done
 
-# app-shared-setup.bicep's single deployDns param gates creation of BOTH the
-# KV and webapp zones, but the caller (reusable-deploy.yml) computes it
+# app-shared-setup.bicep's single deployDns param gates creation of ALL THREE
+# zones (KV, webapp, SQL), but the caller (reusable-deploy.yml) computes it
 # purely from IS_BRANCH_DEPLOYMENT, unconditionally false for every branch --
-# fine for the stable prod RGs (main's deployDns=true path created both
-# zones there long ago) but leaves a newly-provisioned shared branch RG with
-# no zones at all, since nothing else ever creates them. Only relevant when
-# the caller passed false: main already passes true unconditionally, and
+# fine for the stable prod RGs (main's deployDns=true path created them
+# there long ago) but leaves a newly-provisioned shared branch RG with no
+# zones at all, since nothing else ever creates them. Only relevant when the
+# caller passed false: main already passes true unconditionally, and
 # checking here too would just be a redundant (though harmless -- zone
 # creation is an idempotent PUT) no-op.
 if [[ "${deploy_dns}" != "true" ]]; then
@@ -180,8 +201,10 @@ if [[ "${deploy_dns}" != "true" ]]; then
     kvZoneExists="${zone_check_result}"
     zone_exists_for "${private_dns_zone_rg}" "${webappPrivateDnsZoneName}" "${private_dns_zone_subscription_id}"
     webappZoneExists="${zone_check_result}"
-    if [[ "${kvZoneExists}" != "true" || "${webappZoneExists}" != "true" ]]; then
-        echo "Zone bootstrap: ${kvPrivateDnsZoneName} exists=${kvZoneExists}, ${webappPrivateDnsZoneName} exists=${webappZoneExists} in ${private_dns_zone_rg} -- at least one is missing; deploying with deployDns=true to create it."
+    zone_exists_for "${private_dns_zone_rg}" "${sqlPrivateDnsZoneName}" "${private_dns_zone_subscription_id}"
+    sqlZoneExists="${zone_check_result}"
+    if [[ "${kvZoneExists}" != "true" || "${webappZoneExists}" != "true" || "${sqlZoneExists}" != "true" ]]; then
+        echo "Zone bootstrap: ${kvPrivateDnsZoneName} exists=${kvZoneExists}, ${webappPrivateDnsZoneName} exists=${webappZoneExists}, ${sqlPrivateDnsZoneName} exists=${sqlZoneExists} in ${private_dns_zone_rg} -- at least one is missing; deploying with deployDns=true to create it."
         deploy_dns=true
     fi
 fi
@@ -196,7 +219,7 @@ else
     echo "No existing link from vnet ${vnet_name} into ${kvPrivateDnsZoneName} in ${private_dns_zone_rg} (or any other same-named zone); the template will create one."
 fi
 
-deployment_parameters="stackName=${stack_name} location=${location} networkResourceGroupName=${network_rg} virtualNetworkName=${vnet_name} kvAppConfigResourceGroupName=${kv_app_config_rg} isUstpDeployment=${is_ustp_deployment} deployDns=${deploy_dns} vnetLinkAlreadyExists=${vnet_link_already_exists}"
+deployment_parameters="stackName=${stack_name} location=${location} networkLocation=${network_location} networkResourceGroupName=${network_rg} virtualNetworkName=${vnet_name} kvAppConfigResourceGroupName=${kv_app_config_rg} isUstpDeployment=${is_ustp_deployment} deployDns=${deploy_dns} vnetLinkAlreadyExists=${vnet_link_already_exists}"
 [[ -n "${kv_app_config_name}" ]] && deployment_parameters="${deployment_parameters} kvAppConfigName=${kv_app_config_name}"
 [[ -n "${id_keyvault_app_config}" ]] && deployment_parameters="${deployment_parameters} idKeyvaultAppConfiguration=${id_keyvault_app_config}"
 [[ -n "${sql_server_name}" ]] && deployment_parameters="${deployment_parameters} sqlServerName=${sql_server_name}"
