@@ -166,6 +166,12 @@ jobs:
           _val=$(az keyvault secret show --vault-name "$KV" --name MIGRATE-CASE-APPOINTMENTS-FETCH-SIZE --query value -o tsv)
           echo "::add-mask::${_val}"
           echo "MIGRATE_CASE_APPOINTMENTS_FETCH_SIZE=${_val}" >> "$GITHUB_ENV"
+          _val=$(az keyvault secret show --vault-name "$KV" --name ADMIN-NOTIFICATION-EMAIL --query value -o tsv 2>/dev/null || true)
+          if [[ -n "${_val}" ]]; then echo "::add-mask::${_val}"; fi
+          echo "ADMIN_NOTIFICATION_EMAIL=${_val}" >> "$GITHUB_ENV"
+          _val=$(az keyvault secret show --vault-name "$KV" --name DEFAULT-NOTIFICATION-RECIPIENT --query value -o tsv 2>/dev/null || true)
+          if [[ -n "${_val}" ]]; then echo "::add-mask::${_val}"; fi
+          echo "DEFAULT_NOTIFICATION_RECIPIENT=${_val}" >> "$GITHUB_ENV"
 
       - name: Create Azure resource groups
         id: azure-resource-group
@@ -251,6 +257,8 @@ jobs:
         env:
           STACK_NAME: ${{ inputs.stackName }}
           IS_BRANCH_DEPLOYMENT: ${{ github.ref != 'refs/heads/main' && 'true' || 'false' }}
+          GHA_ENVIRONMENT: ${{ inputs.ghaEnvironment }}
+          ANALYTICS_WORKSPACE_ID: ${{ steps.analytics-workspace.outputs.workspaceId }}
           AZ_SQL_SERVER_NAME: ${{ secrets.AZ_SQL_SERVER_NAME }} # pragma: allowlist secret
           AZ_SQL_IDENTITY_NAME: ${{ secrets.AZ_SQL_IDENTITY_NAME }} # pragma: allowlist secret
           AZ_LOCATION: ${{ secrets.AZ_LOCATION }} # pragma: allowlist secret
@@ -266,6 +274,7 @@ jobs:
           # app-shared-setup.bicep's header), so it's safe for both zones to
           # live here with create-if-missing semantics.
           deployDns=$([[ "${IS_BRANCH_DEPLOYMENT}" == "true" ]] && echo false || echo true)
+          createAlerts=$([[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]] && echo true || echo false)
           ./ops/scripts/pipeline/azure-deploy-app-shared-setup.sh \
             --file ./ops/cloud-deployment/app-shared-setup.bicep \
             --resource-group "${AZURE_RG}" \
@@ -280,6 +289,7 @@ jobs:
             --sqlServerResourceGroupName "${AZURE_RG}" \
             --sqlServerIdentityName "${AZ_SQL_IDENTITY_NAME}" \
             --networkLocation ${{ env.AZ_FUNCTIONS_LOCATION }} \
+            -p "createAlerts=${createAlerts} analyticsResourceGroupName=${AZ_ANALYTICS_RG} analyticsWorkspaceId=${ANALYTICS_WORKSPACE_ID} adminNotificationEmail=${ADMIN_NOTIFICATION_EMAIL}" \
             -l "${AZ_LOCATION}"
 
       - name: Deploy Azure resources
@@ -340,4 +350,6 @@ jobs:
             --migrateCaseAppointmentsFetchSize ${{ env.MIGRATE_CASE_APPOINTMENTS_FETCH_SIZE }} \
             --maxObjectDepth "${MAX_OBJECT_DEPTH}" \
             --maxObjectKeyCount "${MAX_OBJECT_KEY_COUNT}" \
+            --adminNotificationEmail "${{ env.ADMIN_NOTIFICATION_EMAIL }}" \
+            --defaultNotificationRecipient "${{ env.DEFAULT_NOTIFICATION_RECIPIENT }}" \
             --gitSha "${GIT_SHA}"

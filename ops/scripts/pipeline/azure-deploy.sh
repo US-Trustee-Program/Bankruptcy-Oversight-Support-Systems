@@ -27,7 +27,7 @@ requiredUSTPParams=("--enabledDataflows" "--mssqlRequestTimeout" "--migrateCaseA
 requiredFlexionParams=("--enabledDataflows" "--mssqlRequestTimeout" "--migrateCaseAppointmentsFetchSize" "--resource-group" "--file" "--stackName" "--slotName" "--gitSha" "--networkResourceGroupName" "--kvAppConfigName" "--kvAppConfigResourceGroupName" "--virtualNetworkName" "--analyticsResourceGroupName" "--idKeyvaultAppConfiguration" "--cosmosDatabaseName" "--ustpIssueCollectorHash" "--createAlerts" "--deployAppInsights" "--loginProvider" "--loginProviderConfig" "--sqlServerName" "--sqlServerResourceGroupName" "--sqlServerIdentityName" "--actionGroupName" "--oktaUrl" "--e2eDatabaseName" "--e2eSqlDatabaseName")
 
 # shellcheck disable=SC2034 # REASON: to have a reference for all possible parameters
-allParams=("--enabledDataflows" "--mssqlRequestTimeout" "--migrateCaseAppointmentsFetchSize" "--isUstpDeployment" "--resource-group" "--file" "--stackName" "--slotName" "--gitSha" "--networkResourceGroupName" "--virtualNetworkName" "--analyticsWorkspaceId" "--idKeyvaultAppConfiguration" "--kvAppConfigName" "--cosmosDatabaseName" "--deployVnet" "--ustpIssueCollectorHash" "--createAlerts" "--deployAppInsights" "--apiFunctionPlanName" "--dataflowsFunctionPlanName" "--webappPlanType" "--functionsPlanType" "--loginProvider" "--loginProviderConfig" "--sqlServerName" "--sqlServerResourceGroupName" "--sqlServerIdentityResourceGroupName" "--sqlServerIdentityName" "--sqlServerIdentitySubscriptionId" "--actionGroupName" "--oktaUrl" "--location" "--webappSubnetName" "--apiFunctionSubnetName" "--privateEndpointSubnetName" "--webappSubnetAddressPrefix" "--apiFunctionSubnetAddressPrefix" "--dataflowsSubnetName" "--dataflowsSubnetAddressPrefix" "--vnetAddressPrefix" "--linkVnetIds" "--privateDnsZoneName" "--privateDnsZoneResourceGroup" "--privateDnsZoneSubscriptionId" "--analyticsResourceGroupName" "--kvAppConfigResourceGroupName" "--deployDns" "--e2eDatabaseName" "--e2eSqlDatabaseName" "--customDomain" "--useSqlPrivateLink")
+allParams=("--enabledDataflows" "--mssqlRequestTimeout" "--migrateCaseAppointmentsFetchSize" "--isUstpDeployment" "--resource-group" "--file" "--stackName" "--slotName" "--gitSha" "--networkResourceGroupName" "--virtualNetworkName" "--analyticsWorkspaceId" "--idKeyvaultAppConfiguration" "--kvAppConfigName" "--cosmosDatabaseName" "--deployVnet" "--ustpIssueCollectorHash" "--createAlerts" "--deployAppInsights" "--apiFunctionPlanName" "--dataflowsFunctionPlanName" "--webappPlanType" "--functionsPlanType" "--loginProvider" "--loginProviderConfig" "--sqlServerName" "--sqlServerResourceGroupName" "--sqlServerIdentityResourceGroupName" "--sqlServerIdentityName" "--sqlServerIdentitySubscriptionId" "--actionGroupName" "--adminNotificationEmail" "--defaultNotificationRecipient" "--oktaUrl" "--location" "--webappSubnetName" "--apiFunctionSubnetName" "--privateEndpointSubnetName" "--webappSubnetAddressPrefix" "--apiFunctionSubnetAddressPrefix" "--dataflowsSubnetName" "--dataflowsSubnetAddressPrefix" "--vnetAddressPrefix" "--linkVnetIds" "--privateDnsZoneName" "--privateDnsZoneResourceGroup" "--privateDnsZoneSubscriptionId" "--analyticsResourceGroupName" "--kvAppConfigResourceGroupName" "--deployDns" "--e2eDatabaseName" "--e2eSqlDatabaseName" "--useSqlPrivateLink")
 
 
 function validateParameters() {
@@ -399,6 +399,18 @@ while [[ $# -gt 0 ]]; do
         deployment_parameters="${deployment_parameters} ${action_group_name_param}"
         shift 2
         ;;
+    --adminNotificationEmail)
+        inputParams+=("${1}")
+        admin_notification_email_param="adminNotificationEmail=${2}"
+        deployment_parameters="${deployment_parameters} ${admin_notification_email_param}"
+        shift 2
+        ;;
+    --defaultNotificationRecipient)
+        inputParams+=("${1}")
+        default_notification_recipient_param="defaultNotificationRecipient=${2}"
+        deployment_parameters="${deployment_parameters} ${default_notification_recipient_param}"
+        shift 2
+        ;;
     --deployAppInsights)
         inputParams+=("${1}")
         deploy_app_insights_param="deployAppInsights=${2}"
@@ -497,19 +509,13 @@ while [[ $# -gt 0 ]]; do
         shift 2
         ;;
 
-    --customDomain)
-        inputParams+=("${1}")
-        custom_domain_param="customDomain=${2}"
-        deployment_parameters="${deployment_parameters} ${custom_domain_param}"
-        shift 2
-        ;;
-
     --useSqlPrivateLink)
         inputParams+=("${1}")
         use_sql_private_link_param="useSqlPrivateLink=${2}"
         deployment_parameters="${deployment_parameters} ${use_sql_private_link_param}"
         shift 2
         ;;
+
 
     *)
         echo "Exit on param: ${1}"

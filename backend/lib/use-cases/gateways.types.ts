@@ -84,6 +84,7 @@ import {
   NotificationRoutingRecord,
   NotificationRoutingUpdateInput,
   NotificationRoutingAuditHistory,
+  TrusteeChangeSet,
 } from '@common/cams/notifications';
 
 export type ReplaceResult = {
@@ -416,8 +417,20 @@ export interface ListsRepository extends Releasable {
   deleteBank(id: string): Promise<void>;
 }
 
+export type NotificationSendResult = {
+  /** The provider's own message id for this send (e.g. ACS's beginSend() poller result.id). */
+  messageId: string;
+};
+
 export interface NotificationGateway {
-  send(notification: Notification): Promise<void>;
+  send(notification: Notification): Promise<NotificationSendResult>;
+}
+
+export type DomainVerificationResult = 'valid' | 'not-found' | 'indeterminate';
+
+export interface DomainVerificationGateway {
+  /** Checks whether a domain appears able to accept email (MX, falling back to A/AAAA). */
+  verifyMailDomain(domain: string): Promise<DomainVerificationResult>;
 }
 
 export interface NotificationRoutingRepository extends Releasable {
@@ -432,6 +445,34 @@ export interface NotificationRoutingRepository extends Releasable {
   ): Promise<NotificationRoutingRecord>;
   /** Records an audit entry for a routing record change. */
   createRoutingAuditRecord(record: Creatable<NotificationRoutingAuditHistory>): Promise<void>;
+}
+
+export type EmailNotificationArchiveRecord = {
+  /** ACS's own message id (EmailClient.beginSend()'s poller result.id), the correlation key. */
+  messageId: string;
+  /** The specific recipient address this messageId was sent to. */
+  recipientAddress: string;
+  /** The changeSet used to compile the original email; re-running compileTrusteeChangeTemplate against it reproduces the same subject/html/text. */
+  changeSet: TrusteeChangeSet;
+};
+
+export interface EmailNotificationArchiveRepository extends Releasable {
+  /** Persists a record of a sent notification, keyed by ACS messageId, for later bounce reconstruction. */
+  archiveSentEmail(record: EmailNotificationArchiveRecord): Promise<void>;
+  /** Returns the record for a given ACS messageId, or null if not found (e.g. already TTL-expired). */
+  readArchivedEmail(messageId: string): Promise<EmailNotificationArchiveRecord | null>;
+}
+
+export type BounceLogRow = {
+  /** ISO 8601 (UTC) timestamp of the underlying resource log row. */
+  timeGenerated: string;
+  /** ACS's CorrelationId column -- populated with the messageId returned by the original send. */
+  messageId: string;
+};
+
+export interface EmailBounceQueryGateway {
+  /** Returns bounce rows with timeGenerated strictly after `since`, ascending by timeGenerated. */
+  queryBounces(workspaceId: string, since: string): Promise<BounceLogRow[]>;
 }
 
 export interface BanksRepository extends Releasable {
@@ -661,7 +702,8 @@ export type RuntimeStateDocumentType =
   | 'DELETED_CASES_SYNC_STATE'
   | 'ZOOM_CSV_IMPORT_STATE'
   | 'TRUSTEE_APPOINTMENTS_DOWNSTREAM_BACKFILL_STATE'
-  | 'PROFESSIONAL_ID_COUNTER';
+  | 'PROFESSIONAL_ID_COUNTER'
+  | 'ACS_BOUNCE_POLL_STATE';
 
 export type RuntimeState = {
   id?: string;
@@ -764,6 +806,12 @@ export type TrusteeNotesMetricsState = RuntimeState & {
 export type DeletedCasesSyncState = RuntimeState & {
   documentType: 'DELETED_CASES_SYNC_STATE';
   lastChangeDate: string;
+};
+
+export type AcsBouncePollState = RuntimeState & {
+  documentType: 'ACS_BOUNCE_POLL_STATE';
+  /** ISO 8601 timestamp of the latest TimeGenerated value observed across all bounce rows processed so far. */
+  lastProcessedTimeGenerated: string;
 };
 
 export type ProfessionalIdCounterState = RuntimeState & {
