@@ -1,12 +1,18 @@
 #!/usr/bin/env bash
 
 # Title:        azure-deploy-sql-hub-setup.sh
-# Description:  Deploy the SQL Private Link hub (Goal 1 of cams-vwsp3's
-#               hub-and-spoke rework) -- a dedicated hub VNet/subnet, ONE
-#               Private Endpoint against sql-ustp-cams, and a hub-owned
-#               Private DNS Zone (privatelink.database.usgovcloudapi.net) --
+# Description:  Deploy the SQL Private Link hub CORE -- a dedicated hub
+#               VNet/subnet and ONE Private Endpoint against sql-ustp-cams --
 #               into bankruptcy-oversight-support-systems, the SQL server's
 #               own resource group.
+#
+#               The hub creates NO DNS zone of its own. Its Private Endpoint
+#               registers into the existing privatelink.database.usgovcloudapi.net
+#               zones that consumers are already linked to, so adopting it needs
+#               no consumer to unlink and relink its VNet -- Azure rejects
+#               linking one VNet to two zones of the same name, which would make
+#               that a hard resolution outage per consumer. See
+#               lib/network/sql-hub.bicep.
 #
 #               This is standalone, one-time/shared infra with its own
 #               lifecycle, deliberately NOT folded into
@@ -15,9 +21,18 @@
 #               Deployment Stack (bankruptcy-oversight-support-systems is not
 #               otherwise stack-managed).
 #
-#               Peering main/branch VNets to this hub and migrating them off
-#               their existing per-consumer PEs/zones are LATER goals of
-#               cams-vwsp3, not performed by this script.
+#               Run via the manual "Deploy SQL Private Link Hub" workflow
+#               (.github/workflows/deploy-sql-hub.yml). Deliberately NOT part of
+#               continuous deployment: every environment's SQL resolution
+#               depends on this one endpoint, so redeploying it must be a
+#               deliberate act, never a side effect of a branch deploy.
+#
+#               Spoke peerings are NOT created here. Each spoke owns its own,
+#               as its own targeted deployment -- branches via
+#               azure-deploy-network.sh, main via main.bicep's
+#               createMainHubPeering. Migrating consumers off their existing
+#               per-consumer Private Endpoints is a separate, staged operation;
+#               see docs/operations/deployment.md.
 #
 # Exitcodes
 # ==========
@@ -44,8 +59,7 @@ while [[ $# -gt 0 ]]; do
         shift 2
         ;;
     # Runs `az deployment group what-if` instead of `az deployment group
-    # create` -- the required mode while this hub is still under review and
-    # not yet approved for an actual deploy (cams-vwsp3 Goal 1).
+    # create`. Preview first: this endpoint is shared by every environment.
     --what-if)
         what_if=true
         shift 1
