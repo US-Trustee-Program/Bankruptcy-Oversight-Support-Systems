@@ -291,6 +291,11 @@ jobs:
           IS_BRANCH_DEPLOYMENT: ${{ github.ref != 'refs/heads/main' && 'true' || 'false' }}
           DEPLOY_VNET: ${{ inputs.deployVnet }}
           CREATE_ALERTS: ${{ inputs.ghaEnvironment == 'Main-Gov' }}
+          # GH #2749-follow-up incident fix: pep-ustp-cams-main-sql (and its
+          # DNS Zone Group / VNet Link) is main-only and fixed-name, so it's
+          # only declared for the Main-Gov deploy -- same shape as
+          # CREATE_ALERTS above.
+          CREATE_MAIN_SQL_PRIVATE_ENDPOINT: ${{ inputs.ghaEnvironment == 'Main-Gov' }}
           LOGIN_PROVIDER_CONFIG: ${{ vars.CAMS_LOGIN_PROVIDER_CONFIG }}
           OKTA_URL: ${{ vars.OKTA_URL }}
           MAX_OBJECT_DEPTH: ${{ vars.MAX_OBJECT_DEPTH }}
@@ -322,6 +327,7 @@ jobs:
             --deployVnet "${DEPLOY_VNET}" \
             --ustpIssueCollectorHash "${USTP_ISSUE_COLLECTOR_HASH}" \
             --createAlerts "${CREATE_ALERTS}" \
+            --createMainSqlPrivateEndpoint "${CREATE_MAIN_SQL_PRIVATE_ENDPOINT}" \
             --deployAppInsights true \
             --analyticsWorkspaceId ${{ steps.analytics-workspace.outputs.workspaceId }} \
             --webappPlanType ${{ env.AZ_PLAN_TYPE }} \

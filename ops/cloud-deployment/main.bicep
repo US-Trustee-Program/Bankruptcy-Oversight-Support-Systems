@@ -110,6 +110,26 @@ param kvAppConfigName string = 'kv-${stackName}'
 @description('Flag: Determines creation and configuration of Alerts.')
 param createAlerts bool = false
 
+// GH #2749-follow-up incident fix (2026-08-20): main's Function Apps had a
+// live SQL connectivity outage (getaddrinfo ENOTFOUND, then ETIMEOUT) caused
+// by DNS/network topology bugs around Azure SQL Private Link for
+// sql-ustp-cams. The fix was to give main's own app tier a direct,
+// main-only Private Endpoint into sql-ustp-cams (separate from the
+// per-branch, useSqlPrivateLink-gated PEs that backend-api-deploy.bicep/
+// dataflows-resource-deploy.bicep create for branches), restoring
+// connectivity without depending on the VNet-rule path that broke.
+//
+// This flag/module pair lives here, not in app-shared-setup.bicep, following
+// the actionGroup precedent below: the resource is fixed-name and main-only,
+// but main.bicep's own deploy of itself for Main-Gov is never wrapped in a
+// per-branch Deployment Stack (see azure-deploy.sh) -- only branch deploys
+// are stacked, and this flag is never true for a branch (mirrors createAlerts
+// exactly). Gated on createMainSqlPrivateEndpoint (wired to
+// `ghaEnvironment == 'Main-Gov'` in reusable-deploy.yml) so branches don't
+// needlessly re-declare a resource that is only ever meaningful for main.
+@description('Flag: creates the main-only SQL Private Endpoint (pep-ustp-cams-main-sql), its DNS Zone Group, and its VNet Link. Should only be true for the Main-Gov deploy.')
+param createMainSqlPrivateEndpoint bool = false
+
 param actionGroupName string =''
 
 @description('Flag: determines creation and configuration of Application Insights for the Azure Function.')
@@ -297,6 +317,63 @@ module ustpSqlDnsZoneLink './lib/network/vnet-links.bicep' = {
     virtualNetworkId: ustpVirtualNetwork.id
     privateDnsZoneName: sqlPrivateDnsZoneName
     vnetLinkAlreadyExists: sqlVnetLinkAlreadyExists
+  }
+}
+
+// Main-only SQL Private Endpoint (incident follow-up -- see
+// createMainSqlPrivateEndpoint's param description above). Reuses this
+// template's own existing-resource lookups/params instead of duplicating
+// fixed literals: for the Main-Gov deploy that is the only context this
+// module ever instantiates in, networkResourceGroupName/virtualNetworkName
+// already resolve to rg-cams-network/vnet-ustp-cams (the same values a prior
+// iteration of this fix hardcoded as mainNetworkResourceGroupName/
+// mainVirtualNetworkName), and sqlServerName/sqlServerResourceGroupName
+// already resolve to the shared sql-ustp-cams server. stackName passed into
+// the module below is NOT this template's own stackName param -- it's
+// subnet-private-endpoint.bicep's naming input, fixed to 'ustp-cams-main-sql'
+// so the module produces the exact live resource names already created
+// manually during the incident (pep-ustp-cams-main-sql /
+// pep-connection-ustp-cams-main-sql), making this deployment an in-place
+// update of those resources, not a recreate.
+module mainSqlPrivateEndpoint './lib/network/subnet-private-endpoint.bicep' = if (createMainSqlPrivateEndpoint) {
+  name: '${stackName}-main-sql-private-endpoint-module'
+  scope: resourceGroup(networkResourceGroupName)
+  params: {
+    stackName: 'ustp-cams-main-sql'
+    location: location
+    privateLinkServiceId: resourceId(sqlServerResourceGroupName, 'Microsoft.Sql/servers', sqlServerName)
+    privateLinkGroup: 'sqlServer'
+    privateEndpointSubnetId: privateEndpointSubnetExisting.id
+    privateDnsZoneName: sqlPrivateDnsZoneName
+    privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
+    privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
+    dnsZoneConfigName: 'privatelink_database_ustp-cams-main-sql'
+    tags: {
+      app: 'cams'
+      component: 'network'
+      'deployed-at': deployedAt
+    }
+  }
+}
+
+// Main-only VNet Link registering main's own VNet (ustpVirtualNetwork) into
+// the SQL Private Link zone -- same incident follow-up as
+// mainSqlPrivateEndpoint above. Unlike ustpSqlDnsZoneLink above (this
+// deployment's own stackName-derived link, unconditional for every branch
+// and main), this link is fixed-name (see rationale below) so it stays
+// gated on createMainSqlPrivateEndpoint. vnetLinkAlreadyExists is NOT set
+// true here: the live link this deploys against already carries this exact
+// name (privatelink.database.usgovcloudapi.net-vnet-link-ustp-cams-main,
+// from the manual incident fix), so declaring it lets Azure treat this as
+// an in-place update of that same resource, matched by name -- not a
+// second, conflicting link.
+module mainSqlDnsZoneVnetLink './lib/network/vnet-links.bicep' = if (createMainSqlPrivateEndpoint) {
+  name: '${stackName}-main-sql-dns-zone-link-module'
+  scope: resourceGroup(privateDnsZoneSubscriptionId, privateDnsZoneResourceGroup)
+  params: {
+    stackName: 'ustp-cams-main'
+    virtualNetworkId: ustpVirtualNetwork.id
+    privateDnsZoneName: sqlPrivateDnsZoneName
   }
 }
 
