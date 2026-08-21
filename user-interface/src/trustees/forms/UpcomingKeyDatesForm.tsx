@@ -1,6 +1,6 @@
 import './EditUpcomingKeyDates.scss';
 import { useEffect, useState, type FocusEvent } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   TrusteeUpcomingKeyDatesInput,
   validateTrusteeUpcomingKeyDates,
@@ -23,11 +23,7 @@ import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
 import { Stop } from '@/lib/components/Stop';
 
-type UpcomingKeyDatesVariant = 'chapter7-panel' | 'chapter12-standing';
-
-function deriveVariant(chapter: string, appointmentType: string): UpcomingKeyDatesVariant {
-  return isChapter12Standing(chapter, appointmentType) ? 'chapter12-standing' : 'chapter7-panel';
-}
+type UpcomingKeyDatesVariant = 'chapter7-panel' | 'ch12-13-case-by-case' | 'chapter12-standing';
 
 type TirFrequency = 'ANNUAL' | 'SEMI_ANNUAL' | '';
 
@@ -141,19 +137,33 @@ const EMPTY_FORM: FormState = {
 const currentYear = new Date().getFullYear();
 const YEAR_OPTIONS = Array.from({ length: 11 }, (_, i) => currentYear + i);
 
+function deriveVariant(chapter: string, appointmentType: string): UpcomingKeyDatesVariant {
+  if ((chapter === '12' || chapter === '13') && appointmentType === 'case-by-case') {
+    return 'ch12-13-case-by-case';
+  }
+  if (isChapter12Standing(chapter, appointmentType)) {
+    return 'chapter12-standing';
+  }
+  return 'chapter7-panel';
+}
+
 export default function UpcomingKeyDatesForm() {
   const { trusteeId, appointmentId } = useParams<{
     trusteeId: string;
     appointmentId: string;
   }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const globalAlert = useGlobalAlert();
   const canManage = !!LocalStorage.getSession()?.user?.roles?.includes(CamsRole.TrusteeAdmin);
 
+  const variantFromState = (location.state as { variant?: UpcomingKeyDatesVariant } | null)
+    ?.variant;
+
+  const [variant, setVariant] = useState<UpcomingKeyDatesVariant | undefined>(variantFromState);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [variant, setVariant] = useState<UpcomingKeyDatesVariant>('chapter7-panel');
   const [submitted, setSubmitted] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [errors, setErrors] = useState({
@@ -192,23 +202,36 @@ export default function UpcomingKeyDatesForm() {
     !tprDueRowFocused && tprDueRowHasInteracted && tprDueDateComplete && !form.tprDueYearType;
 
   useEffect(() => {
+    const appointmentsPromise = variantFromState
+      ? Promise.resolve(null)
+      : Api2.getTrusteeAppointments(trusteeId!);
+
     Promise.allSettled([
-      Api2.getTrusteeAppointments(trusteeId!),
+      appointmentsPromise,
       Api2.getUpcomingKeyDates(trusteeId!, appointmentId!),
     ]).then(([appointmentsResult, keyDatesResult]) => {
-      if (appointmentsResult.status === 'fulfilled') {
-        const appointment = (appointmentsResult.value.data ?? []).find(
-          (a) => a.id === appointmentId,
-        );
-        if (appointment) {
-          setVariant(deriveVariant(appointment.chapter, appointment.appointmentType));
+      if (!variantFromState) {
+        if (appointmentsResult.status === 'fulfilled') {
+          const appointment = (appointmentsResult.value?.data ?? []).find(
+            (a) => a.id === appointmentId,
+          );
+          if (appointment) {
+            setVariant(deriveVariant(appointment.chapter, appointment.appointmentType));
+          } else {
+            globalAlert?.error('Could not determine appointment type; showing default fields.');
+            setVariant('chapter7-panel');
+          }
+        } else {
+          setLoadError(true);
+          setVariant('chapter7-panel');
         }
-      } else {
-        setLoadError(true);
       }
 
       if (keyDatesResult.status === 'fulfilled') {
-        const data = appointmentsResult.status === 'rejected' ? null : keyDatesResult.value.data;
+        const data =
+          !variantFromState && appointmentsResult.status === 'rejected'
+            ? null
+            : keyDatesResult.value.data;
         if (data) {
           const freq: TirFrequency = data.tirFrequency ?? '';
           const periodKey = findPeriodKey(data.tirReviewPeriodStart, data.tirReviewPeriodEnd, freq);
@@ -243,7 +266,7 @@ export default function UpcomingKeyDatesForm() {
 
       setIsLoading(false);
     });
-  }, [trusteeId, appointmentId]);
+  }, [trusteeId, appointmentId, variantFromState, globalAlert]);
 
   function handleMonthDayChange(field: keyof FormState) {
     return (value: string) => {
@@ -395,7 +418,7 @@ export default function UpcomingKeyDatesForm() {
         ? SEMI_ANNUAL_OPTIONS
         : [];
 
-  if (isLoading) {
+  if (isLoading || !variant) {
     return <LoadingSpinner id="edit-upcoming-key-dates-loading" />;
   }
 
@@ -537,57 +560,59 @@ export default function UpcomingKeyDatesForm() {
   return (
     <div className="edit-upcoming-key-dates" data-testid="edit-upcoming-key-dates">
       <h3>Edit Upcoming Key Dates</h3>
-      <div className="exam-audit-group">
-        <p className="usa-label">Field Exam or Audit</p>
-        <div className="exam-audit-group__row">
-          <div className="usa-form-group">
-            <label className="usa-hint" htmlFor="upcoming-exam-audit-year">
-              Year
-            </label>
-            <select
-              className="usa-select"
-              id="upcoming-exam-audit-year"
-              data-testid="upcoming-exam-audit-year"
-              value={form.upcomingExamOrAuditYear}
-              onChange={(e) => {
-                const val = e.target.value;
-                setForm((prev) => ({
-                  ...prev,
-                  upcomingExamOrAuditYear: val ? Number(val) : '',
-                }));
-              }}
-            >
-              <option value="">- Select -</option>
-              {YEAR_OPTIONS.map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="usa-form-group">
-            <label className="usa-hint" htmlFor="upcoming-exam-audit-type">
-              Type
-            </label>
-            <select
-              className="usa-select"
-              id="upcoming-exam-audit-type"
-              data-testid="upcoming-exam-audit-type"
-              value={form.upcomingExamOrAuditType}
-              onChange={(e) => {
-                setForm((prev) => ({
-                  ...prev,
-                  upcomingExamOrAuditType: e.target.value as 'Field Exam' | 'Audit' | '',
-                }));
-              }}
-            >
-              <option value="">- Select -</option>
-              <option value="Field Exam">Field Exam</option>
-              <option value="Audit">Audit</option>
-            </select>
+      {variant === 'chapter7-panel' && (
+        <div className="exam-audit-group">
+          <p className="usa-label">Field Exam or Audit</p>
+          <div className="exam-audit-group__row">
+            <div className="usa-form-group">
+              <label className="usa-hint" htmlFor="upcoming-exam-audit-year">
+                Year
+              </label>
+              <select
+                className="usa-select"
+                id="upcoming-exam-audit-year"
+                data-testid="upcoming-exam-audit-year"
+                value={form.upcomingExamOrAuditYear}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setForm((prev) => ({
+                    ...prev,
+                    upcomingExamOrAuditYear: val ? Number(val) : '',
+                  }));
+                }}
+              >
+                <option value="">- Select -</option>
+                {YEAR_OPTIONS.map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="usa-form-group">
+              <label className="usa-hint" htmlFor="upcoming-exam-audit-type">
+                Type
+              </label>
+              <select
+                className="usa-select"
+                id="upcoming-exam-audit-type"
+                data-testid="upcoming-exam-audit-type"
+                value={form.upcomingExamOrAuditType}
+                onChange={(e) => {
+                  setForm((prev) => ({
+                    ...prev,
+                    upcomingExamOrAuditType: e.target.value as 'Field Exam' | 'Audit' | '',
+                  }));
+                }}
+              >
+                <option value="">- Select -</option>
+                <option value="Field Exam">Field Exam</option>
+                <option value="Audit">Audit</option>
+              </select>
+            </div>
           </div>
         </div>
-      </div>
+      )}
       <MonthDayRangeSelector
         id="tpr-review-period"
         label="Trustee Performance Review (TPR) Period"
@@ -642,47 +667,49 @@ export default function UpcomingKeyDatesForm() {
           </span>
         )}
       </div>
-      <div className="tir-period-group">
-        <p className="usa-label">Trustee Interim Report (TIR) Period</p>
-        <div className="tir-period-group__row">
-          <div className="usa-form-group">
-            <label className="usa-hint" htmlFor="tir-frequency">
-              Frequency
-            </label>
-            <select
-              className="usa-select"
-              id="tir-frequency"
-              data-testid="tir-frequency"
-              value={form.tirFrequency}
-              onChange={handleFrequencyChange}
-            >
-              <option value="">- Select -</option>
-              <option value="ANNUAL">Annual</option>
-              <option value="SEMI_ANNUAL">Semi-Annual</option>
-            </select>
-          </div>
-          <div className="usa-form-group">
-            <label className="usa-hint" htmlFor="tir-period">
-              Period
-            </label>
-            <select
-              className="usa-select"
-              id="tir-period"
-              data-testid="tir-period"
-              value={form.tirPeriodKey}
-              onChange={handlePeriodChange}
-              disabled={!form.tirFrequency}
-            >
-              <option value="">- Select -</option>
-              {periodOptions.map((o) => (
-                <option key={o.key} value={o.key}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
+      {variant === 'chapter7-panel' && (
+        <div className="tir-period-group">
+          <p className="usa-label">Trustee Interim Report (TIR) Period</p>
+          <div className="tir-period-group__row">
+            <div className="usa-form-group">
+              <label className="usa-hint" htmlFor="tir-frequency">
+                Frequency
+              </label>
+              <select
+                className="usa-select"
+                id="tir-frequency"
+                data-testid="tir-frequency"
+                value={form.tirFrequency}
+                onChange={handleFrequencyChange}
+              >
+                <option value="">- Select -</option>
+                <option value="ANNUAL">Annual</option>
+                <option value="SEMI_ANNUAL">Semi-Annual</option>
+              </select>
+            </div>
+            <div className="usa-form-group">
+              <label className="usa-hint" htmlFor="tir-period">
+                Period
+              </label>
+              <select
+                className="usa-select"
+                id="tir-period"
+                data-testid="tir-period"
+                value={form.tirPeriodKey}
+                onChange={handlePeriodChange}
+                disabled={!form.tirFrequency}
+              >
+                <option value="">- Select -</option>
+                {periodOptions.map((o) => (
+                  <option key={o.key} value={o.key}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
-      </div>
+      )}
       <div className="usa-button-group">
         <Button id="save-upcoming-key-dates" onClick={handleSave} disabled={isSaving}>
           {isSaving ? 'Saving...' : 'Save'}

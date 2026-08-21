@@ -11,6 +11,7 @@ import * as featureFlagsHook from '@/lib/hooks/UseFeatureFlags';
 import {
   DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES,
   DISPLAY_CHPT11_SUBV_PAST_KEY_DATES,
+  DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES,
   DISPLAY_CHPT12_STANDING_KEY_DATES,
 } from '@/lib/hooks/UseFeatureFlags';
 
@@ -424,6 +425,69 @@ describe('AppointmentCard', () => {
       });
 
       expect(screen.queryByTestId('past-key-dates-card')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Chapter 12/13 Case by Case upcoming key dates', () => {
+    const ch12CaseByCaseAppointment: TrusteeAppointment = {
+      ...mockAppointment,
+      chapter: '12',
+      appointmentType: 'case-by-case',
+    };
+
+    test('renders UpcomingKeyDates card for Ch12 case-by-case appointment when flag enabled', () => {
+      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+        [DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES]: true,
+      });
+
+      renderWithProps({ appointment: ch12CaseByCaseAppointment });
+
+      expect(screen.getByTestId('upcoming-key-dates-card')).toBeInTheDocument();
+    });
+
+    test('renders UpcomingKeyDates card for Ch13 case-by-case appointment when flag enabled', () => {
+      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+        [DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES]: true,
+      });
+
+      renderWithProps({
+        appointment: { ...ch12CaseByCaseAppointment, chapter: '13' },
+      });
+
+      expect(screen.getByTestId('upcoming-key-dates-card')).toBeInTheDocument();
+    });
+
+    test('does not render a PastKeyDates card for Ch12/13 case-by-case appointment', () => {
+      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+        [DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES]: true,
+      });
+
+      renderWithProps({ appointment: ch12CaseByCaseAppointment });
+
+      expect(screen.getByTestId('upcoming-key-dates-card')).toBeInTheDocument();
+      expect(screen.queryByTestId('past-key-dates-card')).not.toBeInTheDocument();
+    });
+
+    test('does not render UpcomingKeyDates card when flag is disabled', () => {
+      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+        [DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES]: false,
+      });
+
+      renderWithProps({ appointment: ch12CaseByCaseAppointment });
+
+      expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
+    });
+
+    test('does not render UpcomingKeyDates card for Ch12/13 Standing appointment type', () => {
+      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+        [DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES]: true,
+      });
+
+      renderWithProps({
+        appointment: { ...ch12CaseByCaseAppointment, appointmentType: 'standing' },
+      });
+
+      expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
     });
   });
 

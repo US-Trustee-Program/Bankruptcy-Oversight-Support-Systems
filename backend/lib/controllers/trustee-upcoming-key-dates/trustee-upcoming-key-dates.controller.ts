@@ -33,6 +33,7 @@ export class TrusteeUpcomingKeyDatesController implements CamsController {
       const keyDatesFlagEnabled =
         context.featureFlags['display-chpt7-panel-upcoming-key-dates'] ||
         context.featureFlags['display-chpt11-subv-past-key-dates'] ||
+        context.featureFlags['display-chpt12-13-case-by-case-upcoming-key-dates'] ||
         context.featureFlags['display-chpt12-standing-key-dates'];
       if (!keyDatesFlagEnabled) {
         throw new NotFoundError(MODULE_NAME);

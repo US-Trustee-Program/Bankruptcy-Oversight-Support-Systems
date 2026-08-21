@@ -1,29 +1,18 @@
 import { render, screen, waitFor, act, fireEvent } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import { BrowserRouter } from 'react-router-dom';
+import { BrowserRouter, MemoryRouter, Route, Routes } from 'react-router-dom';
 import UpcomingKeyDatesForm from './UpcomingKeyDatesForm';
 import Api2 from '@/lib/models/api2';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
-import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
-import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
+import {
+  TrusteeUpcomingKeyDates,
+  TrusteeUpcomingKeyDatesInput,
+} from '@common/cams/trustee-upcoming-key-dates';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
+import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
+import { UpcomingKeyDatesVariant } from '@/trustees/panels/upcomingKeyDatesFieldConfig';
 import { GlobalAlertContext } from '@/App';
 import { CamsRole } from '@common/cams/roles';
-
-const ch7Appointment: TrusteeAppointment = {
-  id: 'appointment-001',
-  trusteeId: 'trustee-001',
-  chapter: '7',
-  appointmentType: 'panel',
-  courtId: '0208',
-  courtDivisionName: 'Manhattan',
-  courtName: 'U.S. Bankruptcy Court Southern District of New York',
-  appointedDate: '2020-01-01',
-  status: 'active',
-  effectiveDate: '2020-01-01',
-  updatedOn: '2026-01-01T00:00:00.000Z',
-  updatedBy: SYSTEM_USER_REFERENCE,
-};
 
 const mockUseNavigate = vi.hoisted(() => vi.fn());
 const mockUseParams = vi.hoisted(() =>
@@ -40,6 +29,22 @@ vi.mock('react-router-dom', async () => {
 });
 
 const currentYear = new Date().getFullYear();
+
+const chapter7Appointment: TrusteeAppointment = {
+  id: 'appointment-001',
+  trusteeId: 'trustee-001',
+  chapter: '7',
+  appointmentType: 'panel',
+  courtId: '0208',
+  courtName: 'Southern District of New York',
+  status: 'active',
+  appointedDate: '2020-01-15T00:00:00.000Z',
+  effectiveDate: '2020-01-15T00:00:00.000Z',
+  createdOn: '2020-01-10T14:30:00.000Z',
+  createdBy: SYSTEM_USER_REFERENCE,
+  updatedOn: '2020-01-10T14:30:00.000Z',
+  updatedBy: SYSTEM_USER_REFERENCE,
+};
 
 const populatedDocument: TrusteeUpcomingKeyDates = {
   id: 'doc-001',
@@ -68,11 +73,13 @@ const populatedDocument: TrusteeUpcomingKeyDates = {
 
 const mockGlobalAlertRef = {
   current: {
-    show: vi.fn(),
-    info: vi.fn(),
     success: vi.fn(),
-    warning: vi.fn(),
     error: vi.fn(),
+    info: vi.fn(),
+    warning: vi.fn(),
+    show: vi.fn(),
+    hide: vi.fn(),
+    clear: vi.fn(),
   },
 };
 
@@ -83,6 +90,18 @@ function renderComponent() {
         <UpcomingKeyDatesForm />
       </GlobalAlertContext.Provider>
     </BrowserRouter>,
+  );
+}
+
+function renderWithRouteState(state?: { variant?: UpcomingKeyDatesVariant }) {
+  return render(
+    <MemoryRouter initialEntries={[{ pathname: '/edit', state }]}>
+      <GlobalAlertContext.Provider value={mockGlobalAlertRef}>
+        <Routes>
+          <Route path="/edit" element={<UpcomingKeyDatesForm />} />
+        </Routes>
+      </GlobalAlertContext.Provider>
+    </MemoryRouter>,
   );
 }
 
@@ -97,7 +116,7 @@ describe('UpcomingKeyDatesForm', () => {
     mockUseNavigate.mockReturnValue(mockNavigate);
     TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
     userEvent = TestingUtilities.setupUserEvent();
-    vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch7Appointment] });
+    vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [chapter7Appointment] });
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
   });
 
@@ -512,6 +531,119 @@ describe('UpcomingKeyDatesForm', () => {
 
       expect(screen.getByTestId('tpr-review-period-error')).toBeInTheDocument();
       expect(putSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('ch12-13-case-by-case variant', () => {
+    const ch1213Appointment: TrusteeAppointment = {
+      ...chapter7Appointment,
+      chapter: '12',
+      appointmentType: 'case-by-case',
+    };
+
+    test('does not render Field Exam/Audit group or TIR Period group', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch1213Appointment] });
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByTestId('upcoming-exam-audit-year')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('tir-frequency')).not.toBeInTheDocument();
+    });
+
+    test('still renders TPR Period and TPR Due groups', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch1213Appointment] });
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+      });
+
+      expect(document.getElementById('tpr-review-period-start-month')).toBeInTheDocument();
+      expect(document.getElementById('tpr-due-month')).toBeInTheDocument();
+    });
+
+    test('save passes through fields other than TPR from the original record unchanged', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch1213Appointment] });
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+      const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+      });
+
+      await userEvent.click(screen.getByTestId('button-save-upcoming-key-dates'));
+
+      await waitFor(() => expect(putSpy).toHaveBeenCalled());
+      const payload = putSpy.mock.calls[0][2] as TrusteeUpcomingKeyDatesInput;
+      expect(payload.pastFieldExam).toBe(populatedDocument.pastFieldExam);
+      expect(payload.pastAudit).toBe(populatedDocument.pastAudit);
+      expect(payload.upcomingExamOrAuditYear).toBe(populatedDocument.upcomingExamOrAuditYear);
+      expect(payload.tprReviewPeriodStart).toBe(populatedDocument.tprReviewPeriodStart);
+      expect(payload.tprDue).toBe(populatedDocument.tprDue);
+    });
+  });
+
+  describe('variant via route state', () => {
+    test('uses the variant passed in route state and skips fetching appointments', async () => {
+      const getTrusteeAppointmentsSpy = vi.spyOn(Api2, 'getTrusteeAppointments');
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderWithRouteState({ variant: 'ch12-13-case-by-case' });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByTestId('upcoming-exam-audit-year')).not.toBeInTheDocument();
+      expect(getTrusteeAppointmentsSpy).not.toHaveBeenCalled();
+    });
+
+    test('falls back to fetching the appointment when no variant is in route state', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [chapter7Appointment] });
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderWithRouteState();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('upcoming-exam-audit-year')).toBeInTheDocument();
+      });
+    });
+
+    test('shows the load-error alert when the appointment fetch fails', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockRejectedValue(new Error('Network error'));
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderWithRouteState();
+
+      await waitFor(() => {
+        expect(screen.getByText('Something went wrong')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByTestId('edit-upcoming-key-dates')).not.toBeInTheDocument();
+    });
+
+    test('surfaces an alert and falls back to chapter7-panel when the appointment is not found', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [] });
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderWithRouteState();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('upcoming-exam-audit-year')).toBeInTheDocument();
+      });
+
+      expect(mockGlobalAlertRef.current.error).toHaveBeenCalledWith(
+        'Could not determine appointment type; showing default fields.',
+      );
     });
   });
 
