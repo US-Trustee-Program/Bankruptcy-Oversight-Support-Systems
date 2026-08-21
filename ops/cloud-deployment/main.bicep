@@ -332,10 +332,16 @@ module ustpSqlDnsZoneLink './lib/network/vnet-links.bicep' = if (sqlDnsZoneExist
 // through the hub's Private Endpoint instead is a later goal. This module
 // call declares ONLY main's side of the bidirectional peering (see
 // vnet-peering.bicep's header for why one module call is one side, not
-// both). The hub side -- the matching peering resource in
-// hubVirtualNetworkResourceGroupName, pointing back at main -- is created
-// separately by sql-hub.bicep's spokeVirtualNetworks array (see that file's
-// header for why the hub, not main's deploy, owns that side).
+// both).
+//
+// Main owns BOTH sides of its own peering, declared as two separately-scoped
+// modules here. sql-hub.bicep used to create the hub side via a
+// spokeVirtualNetworks array onboarded by "append an entry and re-run", which
+// meant onboarding main redeployed the shared Private Endpoint every other
+// environment depends on. Each spoke owning its own peering keeps one
+// environment's deploy from touching anything another environment needs --
+// branches already work this way via azure-deploy-network.sh, which creates
+// both sides as its own targeted per-branch deployments.
 module mainHubPeering './lib/network/vnet-peering.bicep' = if (createMainHubPeering) {
   name: '${stackName}-main-hub-peering-module'
   scope: resourceGroup(networkResourceGroupName)
@@ -343,6 +349,21 @@ module mainHubPeering './lib/network/vnet-peering.bicep' = if (createMainHubPeer
     localVirtualNetworkName: virtualNetworkName
     remoteVirtualNetworkId: resourceId(hubVirtualNetworkResourceGroupName, 'Microsoft.Network/virtualNetworks', hubVirtualNetworkName)
     peeringName: 'peer-${virtualNetworkName}-to-${hubVirtualNetworkName}'
+  }
+}
+
+// The matching hub-side resource. A bidirectional peering is two independent
+// resources, one nested under each VNet in that VNet's own resource group, so
+// this is scoped to the hub RG rather than main's network RG. Without it main's
+// side sits in Initiated and never reaches Connected, so no traffic flows.
+// Requires the deploying identity to hold peering write on the hub RG.
+module mainHubPeeringHubSide './lib/network/vnet-peering.bicep' = if (createMainHubPeering) {
+  name: '${stackName}-hub-main-peering-module'
+  scope: resourceGroup(hubVirtualNetworkResourceGroupName)
+  params: {
+    localVirtualNetworkName: hubVirtualNetworkName
+    remoteVirtualNetworkId: ustpVirtualNetwork.id
+    peeringName: 'peer-${hubVirtualNetworkName}-to-${virtualNetworkName}'
   }
 }
 

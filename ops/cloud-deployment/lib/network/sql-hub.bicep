@@ -37,28 +37,8 @@
   zone name during that window MUST RG-qualify (`-g`) to avoid operating on
   the wrong instance.
 
-  Goal 2 addition (spokeVirtualNetworks / hubToSpokePeering below): gives
-  this file a NEW capability -- creating the HUB SIDE of a VNet peering
-  against each onboarded spoke. Ownership design: a bidirectional peering is
-  two independent resources, one nested under each VNet in that VNet's own
-  RG (see vnet-peering.bicep's header for the full mechanics). The spoke
-  side (main's, or a branch's) is created by that spoke's OWN deploy
-  (main.bicep's createMainHubPeering-gated module call, for main); the HUB
-  side is logically owned by the hub, not by any spoke's deploy, because
-  bankruptcy-oversight-support-systems is this hub's own RG/lifecycle, not
-  any spoke's -- a spoke's deploy has no business holding write access to
-  it, and this hub's deploy already treats "grow this RG's contents over
-  time via a re-run" as the norm (the PE/zone above were stood up the same
-  way). Concretely: onboarding a new spoke means appending one entry to
-  spokeVirtualNetworks and re-running this deployment. Because this is a
-  plain (non-stack) `az deployment group create`/`what-if` using ARM's
-  default Incremental mode, re-running with an appended array only adds the
-  new spoke's peering resource -- it does not touch or remove any
-  previously-created entry's resource, even though that entry's peering
-  isn't declared inline as its own module call. Entries should only ever be
-  appended (never reordered or removed) so a later switch to Complete mode,
-  or any other stricter deployment, can't misread an incidental array-order
-  change as "these spokes were deliberately un-peered."
+  Spoke peerings are NOT declared here -- see the note above the outputs for
+  why each spoke owns its own, as a separate targeted deployment.
 */
 
 param location string = resourceGroup().location
@@ -94,9 +74,6 @@ param tags object = {
   app: 'cams'
   component: 'network'
 }
-
-@description('Spoke VNets to peer the hub with -- one hub-side peering resource per entry (see header above for the append-only, re-run-to-onboard mechanism). Each entry: { name: <spoke VNet name>, resourceGroupName: <spoke VNet\'s resource group> }. Empty by default so a bare hub deploy/what-if (Goal 1 shape) remains a no-op for peering -- Goal 2 onboards spokes by passing this array, it does not change the default.')
-param spokeVirtualNetworks array = []
 
 // Fixed identity used purely for labeling/naming the Private Endpoint
 // (subnet-private-endpoint.bicep's pep-<stackName> / pep-connection-<stackName>
@@ -168,24 +145,22 @@ module hubSqlPrivateEndpoint './subnet-private-endpoint.bicep' = {
   }
 }
 
-// Hub-side peering resource for each onboarded spoke -- see header for why
-// this lives here (hub-owned RG) rather than in each spoke's own deploy, and
-// why appending to spokeVirtualNetworks is the onboarding mechanism. No
-// `dependsOn: [hubVnet]` needed: hubVnet is a module (already-created
-// resource by the time any spoke onboards, in practice), and this module's
-// `existing` lookup of hubVirtualNetworkName inside vnet-peering.bicep
-// resolves by name at deploy time regardless of module ordering within this
-// same deployment.
-module hubToSpokePeering './vnet-peering.bicep' = [
-  for spoke in spokeVirtualNetworks: {
-    name: '${hubStackName}-peering-to-${spoke.name}-module'
-    params: {
-      localVirtualNetworkName: hubVirtualNetworkName
-      remoteVirtualNetworkId: resourceId(spoke.resourceGroupName, 'Microsoft.Network/virtualNetworks', spoke.name)
-      peeringName: 'peer-${hubVirtualNetworkName}-to-${spoke.name}'
-    }
-  }
-]
+// This template is hub-CORE only: VNet, subnet, and the one shared Private
+// Endpoint. It deliberately declares NO spoke peerings.
+//
+// An earlier revision carried a spokeVirtualNetworks array whose documented
+// onboarding mechanism was "append an entry and re-run this deployment". That
+// made onboarding or removing any single spoke redeploy the Private Endpoint
+// every other environment's SQL resolution depends on, and made a reordered or
+// dropped array entry able to silently un-peer an unrelated environment -- the
+// file's own comment conceded entries "should only ever be appended, never
+// reordered or removed", which is a landmine rather than a contract.
+//
+// Each spoke now owns its own peering, created as its own targeted, per-spoke
+// deployment: branches via azure-deploy-network.sh (both sides, each with its
+// own --name), main via main.bicep's createMainHubPeering-gated modules. So a
+// spoke's lifecycle can never touch this shared endpoint, which is what the
+// environment-isolation invariant on cams-vwsp3 requires.
 
 output hubVirtualNetworkId string = resourceId('Microsoft.Network/virtualNetworks', hubVirtualNetworkName)
 output hubPrivateEndpointSubnetId string = hubPrivateEndpointSubnet.outputs.subnetId
