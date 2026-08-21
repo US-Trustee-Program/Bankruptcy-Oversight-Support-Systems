@@ -166,11 +166,14 @@ describe('TrusteeUpcomingKeyDatesController', () => {
         tirSemiAnnualReviewPeriodEnd: null,
         tirSemiAnnualSubmission: null,
         tirSemiAnnualReview: null,
+        upcomingExamOrAuditYear: null,
+        upcomingExamOrAuditType: null,
+        lastAuditFiscalYear: null,
         lastMonthlyReportReceived: null,
         leaseExpiration: null,
         idExpiration: null,
         ...overrides,
-      } as TrusteeUpcomingKeyDatesInput;
+      };
     }
 
     test('PUT returns 401 when user lacks TrusteeAdmin role', async () => {
