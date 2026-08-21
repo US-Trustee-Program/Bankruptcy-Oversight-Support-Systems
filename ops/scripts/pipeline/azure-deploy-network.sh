@@ -62,6 +62,12 @@ is_branch_deployment=false
 branch_name=''
 branch_hash_id=''
 max_slot_attempts=''
+# Opt-in only. A branch VNet outside the address pool is a legacy branch still
+# on network.bicep's old static 10.10.0.0/16; re-addressing it in place breaks
+# any subnet already hosting VNet integration or a private endpoint, which is
+# true of every branch that exists today. Default false means those branches
+# keep deploying unchanged and simply do not get hub peering.
+allow_legacy_vnet_readdress=false
 
 function az_vnet_exists_func() {
     local rg=$1
@@ -236,6 +242,10 @@ while [[ $# -gt 0 ]]; do
         max_slot_attempts="${2}"
         shift 2
         ;;
+    --allowLegacyVnetReaddress)
+        allow_legacy_vnet_readdress="${2}"
+        shift 2
+        ;;
     *)
         echo "Exit on param: ${1}"
         exit 2
@@ -333,6 +343,36 @@ if [[ "${is_branch_deployment}" == "true" ]]; then
         slot_cidr=$(az network vnet show -g "${network_rg}" -n "${vnet_name}" --query "addressSpace.addressPrefixes[0]" -o tsv)
         current_slot_idx=$(branch_network_slot_index_for_cidr "${slot_cidr}")
         echo "Branch VNet ${vnet_name} already exists with address space ${slot_cidr}."
+    fi
+
+    # Case (c): the VNet exists but sits OUTSIDE the pool -- a legacy branch
+    # created before this feature, still on network.bicep's old static
+    # 10.10.0.0/16. branch_network_slot_index_for_cidr returns empty for it
+    # (wrong prefix length, wrong second octet), which previously fell through
+    # to the same "stranded" handling as case (b) below and re-entered the claim
+    # loop -- silently re-addressing a LIVE VNet to a disjoint pool slot while
+    # its subnets still host App Service VNet integration and private endpoints.
+    # Azure rejects address-space changes on in-use subnets, so this aborts the
+    # job at best; the loop's own "no dependent resources exist this early in a
+    # branch's lifecycle" justification is simply false for this population,
+    # which is EVERY branch that exists today.
+    #
+    # Left alone deliberately. A legacy branch keeps working exactly as it does
+    # now (its own VNet rule / Private Endpoint path); it just does not get hub
+    # connectivity, which it never had. Migrating one is an explicit, opt-in act
+    # via --allowLegacyVnetReaddress, to be done when nothing is deployed into
+    # those subnets -- not a silent side effect of an unrelated push.
+    if [[ "${branch_vnet_exists}" == "true" && -z "${current_slot_idx}" && "${allow_legacy_vnet_readdress}" != "true" ]]; then
+        echo "Branch VNet ${vnet_name} is at ${slot_cidr}, outside the ${BRANCH_NETWORK_POOL_SLOT_COUNT}-slot pool (10.${BRANCH_NETWORK_POOL_SECOND_OCTET_BASE}.0.0/12) -- a legacy branch predating dynamic allocation."
+        echo "Leaving its address space untouched and skipping hub peering. Re-addressing a live VNet would break subnets that already host VNet integration and private endpoints."
+        echo "To migrate it deliberately (only safe when nothing is deployed into those subnets), re-run with --allowLegacyVnetReaddress true."
+        # shellcheck disable=SC2086 # REASON: intentional word-splitting of --parameters
+        deploy_network_stack_func "${network_stack_name}" "${network_rg}" "${deployment_file}" "${deployment_parameters}"
+        need_claim_loop=false
+    elif [[ "${branch_vnet_exists}" == "true" ]]; then
+        if [[ -z "${current_slot_idx}" ]]; then
+            echo "WARNING: --allowLegacyVnetReaddress was set; branch VNet ${vnet_name} at ${slot_cidr} WILL be re-addressed into the pool. This fails if anything is deployed into its subnets." >&2
+        fi
 
         # `list` (not `show`), mirroring az_vnet_exists_func's/stack_exists's
         # reasoning elsewhere in this file family: a genuinely absent
