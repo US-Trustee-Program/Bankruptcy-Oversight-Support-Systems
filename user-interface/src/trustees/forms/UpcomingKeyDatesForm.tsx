@@ -1,6 +1,6 @@
 import './EditUpcomingKeyDates.scss';
 import { useEffect, useState, type FocusEvent } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   TrusteeUpcomingKeyDatesInput,
   validateTrusteeUpcomingKeyDates,
@@ -138,9 +138,13 @@ export default function UpcomingKeyDatesForm() {
     appointmentId: string;
   }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const globalAlert = useGlobalAlert();
 
-  const [variant, setVariant] = useState<UpcomingKeyDatesVariant>('chapter7-panel');
+  const variantFromState = (location.state as { variant?: UpcomingKeyDatesVariant } | null)
+    ?.variant;
+
+  const [variant, setVariant] = useState<UpcomingKeyDatesVariant | undefined>(variantFromState);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -216,17 +220,26 @@ export default function UpcomingKeyDatesForm() {
   }, [trusteeId, appointmentId]);
 
   useEffect(() => {
+    if (variantFromState) {
+      return;
+    }
+
     Api2.getTrusteeAppointments(trusteeId!)
       .then((response) => {
         const appointment = response.data?.find((a) => a.id === appointmentId);
         if (appointment) {
           setVariant(deriveVariant(appointment.chapter, appointment.appointmentType));
+        } else {
+          globalAlert?.error('Could not determine appointment type; showing default fields.');
+          setVariant('chapter7-panel');
         }
       })
       .catch((err) => {
         console.error('Could not load trustee appointment', err);
+        globalAlert?.error('Could not determine appointment type; showing default fields.');
+        setVariant('chapter7-panel');
       });
-  }, [trusteeId, appointmentId]);
+  }, [trusteeId, appointmentId, variantFromState, globalAlert]);
 
   function handleMonthDayChange(field: keyof FormState) {
     return (value: string) => {
@@ -376,7 +389,7 @@ export default function UpcomingKeyDatesForm() {
         ? SEMI_ANNUAL_OPTIONS
         : [];
 
-  if (isLoading) {
+  if (isLoading || !variant) {
     return <LoadingSpinner id="edit-upcoming-key-dates-loading" />;
   }
 

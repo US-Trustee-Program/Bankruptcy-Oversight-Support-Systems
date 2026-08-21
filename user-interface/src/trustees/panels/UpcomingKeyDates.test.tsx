@@ -271,7 +271,7 @@ describe('UpcomingKeyDates', () => {
 
     expect(mockNavigate).toHaveBeenCalledWith(
       `/trustees/${defaultProps.trusteeId}/appointments/${defaultProps.appointmentId}/upcoming-key-dates/edit`,
-      { state: { subHeading: defaultProps.appointmentHeading } },
+      { state: { subHeading: defaultProps.appointmentHeading, variant: 'chapter7-panel' } },
     );
   });
 });
