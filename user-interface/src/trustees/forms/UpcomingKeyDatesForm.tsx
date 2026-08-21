@@ -15,6 +15,19 @@ import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import MonthDayRangeSelector from '@/lib/components/uswds/MonthDayRangeSelector';
 import MonthDaySelector from '@/lib/components/uswds/MonthDaySelector';
+import DatePicker from '@/lib/components/uswds/DatePicker';
+import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import { isChapter12Standing } from '@common/cams/trustee-appointments';
+import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
+import LocalStorage from '@/lib/utils/local-storage';
+import { CamsRole } from '@common/cams/roles';
+import { Stop } from '@/lib/components/Stop';
+
+type UpcomingKeyDatesVariant = 'chapter7-panel' | 'chapter12-standing';
+
+function deriveVariant(chapter: string, appointmentType: string): UpcomingKeyDatesVariant {
+  return isChapter12Standing(chapter, appointmentType) ? 'chapter12-standing' : 'chapter7-panel';
+}
 
 type TirFrequency = 'ANNUAL' | 'SEMI_ANNUAL' | '';
 
@@ -98,6 +111,8 @@ type FormState = {
   tirSemiAnnualReviewPeriodEnd: string;
   lastAuditFiscalYear: number | null;
   lastMonthlyReportReceived: string;
+  leaseExpiration: string;
+  idExpiration: string;
 };
 
 const EMPTY_FORM: FormState = {
@@ -119,6 +134,8 @@ const EMPTY_FORM: FormState = {
   tirSemiAnnualReviewPeriodEnd: '',
   lastAuditFiscalYear: null,
   lastMonthlyReportReceived: '',
+  leaseExpiration: '',
+  idExpiration: '',
 };
 
 const currentYear = new Date().getFullYear();
@@ -131,9 +148,12 @@ export default function UpcomingKeyDatesForm() {
   }>();
   const navigate = useNavigate();
   const globalAlert = useGlobalAlert();
+  const canManage = !!LocalStorage.getSession()?.user?.roles?.includes(CamsRole.TrusteeAdmin);
 
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [variant, setVariant] = useState<UpcomingKeyDatesVariant>('chapter7-panel');
   const [submitted, setSubmitted] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [errors, setErrors] = useState({
@@ -142,7 +162,9 @@ export default function UpcomingKeyDatesForm() {
     tprDue: '',
     tprDueYearType: '',
   });
+  const { registerFieldError, hasErrorAmong } = useDateFieldErrors();
   const [validationState, setValidationState] = useState({ tprReviewPeriod: true });
+  const [tprReviewPeriodFocused, setTprReviewPeriodFocused] = useState(false);
   const [tprDueRowFocused, setTprDueRowFocused] = useState(false);
   const [tprDueRowHasInteracted, setTprDueRowHasInteracted] = useState(false);
 
@@ -170,9 +192,23 @@ export default function UpcomingKeyDatesForm() {
     !tprDueRowFocused && tprDueRowHasInteracted && tprDueDateComplete && !form.tprDueYearType;
 
   useEffect(() => {
-    Api2.getUpcomingKeyDates(trusteeId!, appointmentId!)
-      .then((response) => {
-        const data = response.data;
+    Promise.allSettled([
+      Api2.getTrusteeAppointments(trusteeId!),
+      Api2.getUpcomingKeyDates(trusteeId!, appointmentId!),
+    ]).then(([appointmentsResult, keyDatesResult]) => {
+      if (appointmentsResult.status === 'fulfilled') {
+        const appointment = (appointmentsResult.value.data ?? []).find(
+          (a) => a.id === appointmentId,
+        );
+        if (appointment) {
+          setVariant(deriveVariant(appointment.chapter, appointment.appointmentType));
+        }
+      } else {
+        setLoadError(true);
+      }
+
+      if (keyDatesResult.status === 'fulfilled') {
+        const data = appointmentsResult.status === 'rejected' ? null : keyDatesResult.value.data;
         if (data) {
           const freq: TirFrequency = data.tirFrequency ?? '';
           const periodKey = findPeriodKey(data.tirReviewPeriodStart, data.tirReviewPeriodEnd, freq);
@@ -195,15 +231,18 @@ export default function UpcomingKeyDatesForm() {
             tirSemiAnnualReviewPeriodEnd: data.tirSemiAnnualReviewPeriodEnd ?? '',
             lastAuditFiscalYear: data.lastAuditFiscalYear ?? null,
             lastMonthlyReportReceived: data.lastMonthlyReportReceived ?? '',
+            leaseExpiration: data.leaseExpiration ?? '',
+            idExpiration: data.idExpiration ?? '',
           });
         }
-      })
-      .catch((err) => {
-        globalAlert?.error(`Failed to load upcoming key dates: ${(err as Error).message}`);
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
+      } else {
+        globalAlert?.error(
+          `Failed to load upcoming key dates: ${(keyDatesResult.reason as Error).message}`,
+        );
+      }
+
+      setIsLoading(false);
+    });
   }, [trusteeId, appointmentId]);
 
   function handleMonthDayChange(field: keyof FormState) {
@@ -318,6 +357,8 @@ export default function UpcomingKeyDatesForm() {
       tirSemiAnnualReview,
       lastAuditFiscalYear: form.lastAuditFiscalYear,
       lastMonthlyReportReceived: form.lastMonthlyReportReceived || null,
+      leaseExpiration: form.leaseExpiration || null,
+      idExpiration: form.idExpiration || null,
     };
 
     const result = validateTrusteeUpcomingKeyDates(isoInput);
@@ -356,6 +397,141 @@ export default function UpcomingKeyDatesForm() {
 
   if (isLoading) {
     return <LoadingSpinner id="edit-upcoming-key-dates-loading" />;
+  }
+
+  if (!canManage) {
+    return (
+      <Stop
+        id="forbidden-alert"
+        title="Forbidden"
+        message="You do not have permission to manage Trustee Upcoming Key Dates"
+        asError
+      />
+    );
+  }
+
+  if (loadError) {
+    return (
+      <Alert
+        id="upcoming-key-dates-load-error"
+        type={UswdsAlertStyle.Error}
+        title="Something went wrong"
+        show
+        inline
+      >
+        Please refresh and try again.
+      </Alert>
+    );
+  }
+
+  if (variant === 'chapter12-standing') {
+    return (
+      <div className="edit-upcoming-key-dates" data-testid="edit-upcoming-key-dates">
+        <h3>Edit Upcoming Key Dates</h3>
+        <div
+          onFocus={() => setTprReviewPeriodFocused(true)}
+          onBlur={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+              setTprReviewPeriodFocused(false);
+            }
+          }}
+        >
+          <MonthDayRangeSelector
+            id="tpr-review-period"
+            label="Trustee Performance Review (TPR) Period"
+            startValue={form.tprReviewPeriodStart}
+            endValue={form.tprReviewPeriodEnd}
+            onStartChange={handleMonthDayChange('tprReviewPeriodStart')}
+            onEndChange={handleMonthDayChange('tprReviewPeriodEnd')}
+            onValidationChange={(isValid) =>
+              setValidationState((prev) => ({ ...prev, tprReviewPeriod: isValid }))
+            }
+            externalError={errors.tprReviewPeriodStart || errors.tprReviewPeriodEnd}
+            submitted={submitted}
+          />
+        </div>
+        <div className="tpr-due-group">
+          <div className="tpr-due-group__header">
+            <label className="usa-label" htmlFor="tpr-due-month">
+              Trustee Performance Review (TPR) Due
+            </label>
+          </div>
+          <div
+            className="tpr-due-group__row"
+            onFocus={handleTprDueRowFocus}
+            onBlur={handleTprDueRowBlur}
+          >
+            <MonthDaySelector
+              id="tpr-due"
+              value={form.tprDue}
+              onChange={handleMonthDayChange('tprDue')}
+              hasError={!!errors.tprDue || (!tprDueDateComplete && !!tprDueBlurError)}
+            />
+            <div className="usa-form-group year-type-selector">
+              <label htmlFor="tpr-due-year-type" className="usa-hint">
+                Year Type
+              </label>
+              <select
+                className={`usa-select${errors.tprDueYearType || tprDueYearTypeBlurError ? ' usa-input--error' : ''}`}
+                id="tpr-due-year-type"
+                data-testid="tpr-due-year-type"
+                value={form.tprDueYearType}
+                onChange={handleYearTypeChange}
+                aria-invalid={errors.tprDueYearType ? 'true' : undefined}
+              >
+                <option value="">- Select -</option>
+                <option value="EVEN">EVEN</option>
+                <option value="ODD">ODD</option>
+              </select>
+            </div>
+          </div>
+          {(tprDueBlurError || errors.tprDue || errors.tprDueYearType) && (
+            <span className="usa-error-message" data-testid="tpr-due-error">
+              {tprDueBlurError || errors.tprDue || errors.tprDueYearType}
+            </span>
+          )}
+        </div>
+        <DatePicker
+          id="lease-expiration"
+          label="Lease Expiration"
+          value={form.leaseExpiration}
+          disableMax
+          onChange={(e) => setForm((prev) => ({ ...prev, leaseExpiration: e.target.value }))}
+          onValidationChange={(hasError) => registerFieldError('lease-expiration', hasError)}
+        />
+        <DatePicker
+          id="id-expiration"
+          label="ID Expiration"
+          value={form.idExpiration}
+          disableMax
+          onChange={(e) => setForm((prev) => ({ ...prev, idExpiration: e.target.value }))}
+          onValidationChange={(hasError) => registerFieldError('id-expiration', hasError)}
+        />
+        <div className="usa-button-group">
+          <Button
+            id="save-upcoming-key-dates"
+            onClick={handleSave}
+            disabled={
+              isSaving ||
+              (!validationState.tprReviewPeriod && !tprReviewPeriodFocused) ||
+              !!errors.tprDue ||
+              !!errors.tprDueYearType ||
+              !!tprDueBlurError ||
+              hasErrorAmong(['lease-expiration', 'id-expiration'])
+            }
+          >
+            {isSaving ? 'Saving...' : 'Save'}
+          </Button>
+          <Button
+            id="cancel-upcoming-key-dates"
+            uswdsStyle={UswdsButtonStyle.Unstyled}
+            onClick={handleCancel}
+          >
+            Cancel
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   return (

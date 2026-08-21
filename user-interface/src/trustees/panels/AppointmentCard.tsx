@@ -1,6 +1,7 @@
 import './AppointmentCard.scss';
 import UpcomingKeyDates from './UpcomingKeyDates';
 import PastKeyDates from './PastKeyDates';
+import Chapter12StandingUpcomingKeyDates from './Chapter12StandingUpcomingKeyDates';
 import InfoCard from './InfoCard';
 import { TrusteeAppointment, formatAppointmentStatus } from '@common/cams/trustee-appointments';
 import { formatChapterType, formatAppointmentType } from '@common/cams/trustees';
@@ -11,9 +12,11 @@ import { CamsRole } from '@common/cams/roles';
 import useFeatureFlags, {
   DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES,
   DISPLAY_CHPT11_SUBV_PAST_KEY_DATES,
+  DISPLAY_CHPT12_STANDING_KEY_DATES,
 } from '@/lib/hooks/UseFeatureFlags';
 import useCourts from '@/lib/hooks/UseCourts';
 import { buildDivisionsDisplay } from '@/lib/utils/court-utils';
+import { isChapter12Standing } from '@common/cams/trustee-appointments';
 
 export interface AppointmentCardProps {
   appointment: TrusteeAppointment;
@@ -42,6 +45,7 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
   const displayChpt7PanelUpcomingKeyDates =
     featureFlags[DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES] === true;
   const displayChpt11SubVPastKeyDates = featureFlags[DISPLAY_CHPT11_SUBV_PAST_KEY_DATES] === true;
+  const displayChpt12StandingKeyDates = featureFlags[DISPLAY_CHPT12_STANDING_KEY_DATES] === true;
   const { chapter, appointmentType } = props.appointment;
   const formattedChapter = formatChapterType(chapter);
   const formattedAppointmentType = formatAppointmentType(appointmentType);
@@ -88,6 +92,10 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
     props.appointment.chapter === '7' && props.appointment.appointmentType === 'panel';
   const isSubVPool =
     props.appointment.chapter === '11-subchapter-v' && props.appointment.appointmentType === 'pool';
+  const isStandingChapter12 = isChapter12Standing(
+    props.appointment.chapter,
+    props.appointment.appointmentType,
+  );
 
   return (
     <div className="appointment-card-container">
@@ -131,6 +139,21 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
             appointmentId={props.appointment.id}
             appointmentHeading={appointmentHeading}
           />
+        )}
+        {displayChpt12StandingKeyDates && isStandingChapter12 && (
+          <>
+            <Chapter12StandingUpcomingKeyDates
+              trusteeId={props.appointment.trusteeId}
+              appointmentId={props.appointment.id}
+              appointmentHeading={appointmentHeading}
+            />
+            <PastKeyDates
+              variant="chapter12-standing"
+              trusteeId={props.appointment.trusteeId}
+              appointmentId={props.appointment.id}
+              appointmentHeading={appointmentHeading}
+            />
+          </>
         )}
       </div>
     </div>
