@@ -4,14 +4,14 @@
  * Exercises the full pipeline:
  *   1. Seeds a case + trustee party + two AO_TX rows (an 'A'/'TR' appointment
  *      transaction and a '1'/'1' petition transaction) into a local DXTR mimic.
- *   2. Seeds a synced case, a Trustee, a TrusteeProfessionalId mapping, and an
- *      active TrusteeAppointment (perfect-match target) into Cosmos.
+ *   2. Seeds a synced case, a Trustee, and an active TrusteeAppointment
+ *      (perfect-match target) into Cosmos.
  *   3. Calls SyncTrusteeCaseAppointmentsUseCase.getAppointmentEvents() — reads DXTR,
  *      asserts both event types (appointment + petition) are parsed correctly.
- *   4. Calls .processAppointments(events) — asserts professional-id fast-path
- *      matching auto-links both events to the seeded trustee and writes a case
- *      appointment. No trustee-match-verification record is written for this
- *      auto-matched outcome — it was never reviewed by a human.
+ *   4. Calls .processAppointments(events) — asserts name-based matching auto-links
+ *      both events to the seeded trustee and writes a case appointment. No
+ *      trustee-match-verification record is written for this auto-matched
+ *      outcome — it was never reviewed by a human.
  *
  * Two environments via INTEGRATION_ENV:
  *   local  (default) — localhost containers started by start-services.sh
@@ -35,7 +35,7 @@
  *   check-env     Verify required environment variables are set
  *   seed-schema   [local] Create DXTR_INT database + apply AO_* DDL
  *   seed-sql      Drop/recreate DXTR fixture rows (idempotent)
- *   seed-cosmos   Seed synced case, Trustee, ProfessionalId, TrusteeAppointment
+ *   seed-cosmos   Seed synced case, Trustee, TrusteeAppointment
  *   run           Full test: clean → seed → read DXTR → process → assert
  *   clean         Remove test documents/rows from both databases
  *   help          Show this help
@@ -66,9 +66,6 @@ const TEST_CS_DIV = '081';
 const TEST_GRP_DES = 'NY';
 const TEST_CASE_ID = '081-26-99999'; // CS_DIV_ACMS + '-' + CASE_ID
 const TEST_CHAPTER = '7';
-
-const TEST_PROF_CODE = '00063';
-const TEST_ACMS_PROFESSIONAL_ID = `${TEST_GRP_DES}-${TEST_PROF_CODE}`;
 
 const TEST_TRUSTEE_ID = 'integration-trustee-petition-match-001';
 const TEST_TRUSTEE_NAME = 'Integration Trustee';
@@ -294,13 +291,11 @@ async function seedSql() {
 }
 
 // ---------------------------------------------------------------------------
-// seed-cosmos  (synced case, Trustee, ProfessionalId, TrusteeAppointment)
+// seed-cosmos  (synced case, Trustee, TrusteeAppointment)
 // ---------------------------------------------------------------------------
 
 async function seedCosmos() {
-  console.log(
-    '\nSeeding synced case, Trustee, ProfessionalId, and TrusteeAppointment into Cosmos...\n',
-  );
+  console.log('\nSeeding synced case, Trustee, and TrusteeAppointment into Cosmos...\n');
 
   const now = new Date().toISOString();
   const { client, db } = await getMongoDb();
@@ -357,21 +352,8 @@ async function seedCosmos() {
     );
     pass(`Upserted Trustee: ${TEST_TRUSTEE_ID} (name="${TEST_TRUSTEE_NAME}")`);
 
-    await db.collection('trustee-professional-ids').replaceOne(
-      { acmsProfessionalId: TEST_ACMS_PROFESSIONAL_ID, camsTrusteeId: TEST_TRUSTEE_ID },
-      {
-        documentType: 'TRUSTEE_PROFESSIONAL_ID',
-        camsTrusteeId: TEST_TRUSTEE_ID,
-        acmsProfessionalId: TEST_ACMS_PROFESSIONAL_ID,
-        updatedOn: now,
-        updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
-      },
-      { upsert: true },
-    );
-    pass(`Upserted TrusteeProfessionalId: ${TEST_ACMS_PROFESSIONAL_ID} → ${TEST_TRUSTEE_ID}`);
-
     // Active appointment in the same court/division/chapter as the DXTR events —
-    // the "perfect match" target so professional-id-matched events auto-link.
+    // the "perfect match" target so the name-matched events auto-link.
     await db.collection('trustee-appointments').replaceOne(
       { documentType: 'TRUSTEE_APPOINTMENT', trusteeId: TEST_TRUSTEE_ID, courtId: TEST_COURT_ID },
       {
@@ -442,12 +424,6 @@ async function clean() {
       .deleteMany({ documentType: 'TRUSTEE_APPOINTMENT', trusteeId: TEST_TRUSTEE_ID });
     pass(`Deleted ${r3.deletedCount} TrusteeAppointment(s) for ${TEST_TRUSTEE_ID}`);
 
-    const r4 = await db.collection('trustee-professional-ids').deleteMany({
-      acmsProfessionalId: TEST_ACMS_PROFESSIONAL_ID,
-      camsTrusteeId: TEST_TRUSTEE_ID,
-    });
-    pass(`Deleted ${r4.deletedCount} TrusteeProfessionalId(s)`);
-
     const r5 = await db
       .collection('trustees')
       .deleteMany({ documentType: 'TRUSTEE', trusteeId: TEST_TRUSTEE_ID });
@@ -489,9 +465,7 @@ async function run() {
   await seedSql();
   console.log('');
 
-  console.log(
-    'Step 2: Seed Cosmos fixtures (synced case, Trustee, ProfessionalId, TrusteeAppointment)',
-  );
+  console.log('Step 2: Seed Cosmos fixtures (synced case, Trustee, TrusteeAppointment)');
   await seedCosmos();
   console.log('');
 
@@ -542,13 +516,6 @@ async function run() {
         `${label} event dxtrTrustee.fullName: expected "${TEST_TRUSTEE_NAME}", got "${event.dxtrTrustee.fullName}"`,
       );
     }
-    if (event.acmsProfessionalId === TEST_ACMS_PROFESSIONAL_ID) {
-      pass(`${label} event acmsProfessionalId === "${TEST_ACMS_PROFESSIONAL_ID}"`);
-    } else {
-      fail(
-        `${label} event acmsProfessionalId: expected "${TEST_ACMS_PROFESSIONAL_ID}", got "${event.acmsProfessionalId}"`,
-      );
-    }
     if (
       event.courtId === TEST_COURT_ID &&
       event.courtDivisionCode === TEST_CS_DIV &&
@@ -569,9 +536,7 @@ async function run() {
 
   // ── Stage 2: Match + write path ───────────────────────────────────────────
   console.log('\nStage 2: SyncTrusteeCaseAppointmentsUseCase.processAppointments()');
-  console.log(
-    '  Matches by acmsProfessionalId, auto-links perfect match, writes case appointment\n',
-  );
+  console.log('  Matches by name, auto-links perfect match, writes case appointment\n');
 
   const result = await SyncTrusteeCaseAppointmentsUseCase.processAppointments(deps, testEvents);
 
@@ -677,9 +642,7 @@ async function main() {
       console.log('  1. ./trustee-petition-match/scripts/start-services.sh');
       console.log(`  2. ${HARNESS} seed-schema  (create DXTR_INT + apply AO_* DDL)`);
       console.log(`  3. ${HARNESS} seed-sql     (seed case/trustee/AO_TX rows in SQL)`);
-      console.log(
-        `  4. ${HARNESS} seed-cosmos  (seed synced case/Trustee/ProfessionalId/TrusteeAppointment)`,
-      );
+      console.log(`  4. ${HARNESS} seed-cosmos  (seed synced case/Trustee/TrusteeAppointment)`);
       console.log(`  5. ${HARNESS} run          (read DXTR → match → write, then assert)`);
       console.log(`  6. ${HARNESS} clean        (remove all test data from both databases)`);
       console.log('  7. ./trustee-petition-match/scripts/stop-services.sh');
@@ -687,7 +650,7 @@ async function main() {
       console.log('  check-env    Verify required environment variables');
       console.log('  seed-schema  [local] Create DXTR_INT + apply AO_* DDL');
       console.log('  seed-sql     Seed AO_CS_DIV/AO_CS/AO_PY/AO_TX fixture rows');
-      console.log('  seed-cosmos  Seed synced case, Trustee, ProfessionalId, TrusteeAppointment');
+      console.log('  seed-cosmos  Seed synced case, Trustee, TrusteeAppointment');
       console.log('  run          Full test: clean → seed → read DXTR → process → assert');
       console.log('  clean        Remove seeded data from DXTR SQL + Cosmos');
       console.log('  help         Show this help');
