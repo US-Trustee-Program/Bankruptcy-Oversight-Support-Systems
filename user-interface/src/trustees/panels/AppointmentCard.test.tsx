@@ -486,7 +486,7 @@ describe('AppointmentCard', () => {
     });
   });
 
-  test('logs an error and still renders when courts fail to load', () => {
+  test('still renders when courts fail to load', () => {
     mockUseCourts.mockReturnValue({
       courts: [],
       loading: false,
