@@ -559,6 +559,22 @@ describe('PastKeyDatesForm', () => {
       expect(screen.getByText("Last Audit's Fiscal Year")).toBeInTheDocument();
     });
 
+    test('pre-populates each field with its own source value', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('past-background-question')).toHaveValue(
+          populatedDocument.pastBackgroundQuestion,
+        );
+      });
+      expect(screen.getByTestId('past-audit')).toHaveValue(populatedDocument.pastAudit);
+      expect(screen.getByTestId('last-audit-fiscal-year')).toHaveValue(
+        String(populatedDocument.lastAuditFiscalYear),
+      );
+    });
+
     test('save preserves non-chapter12 fields from original doc', async () => {
       vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
       const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
