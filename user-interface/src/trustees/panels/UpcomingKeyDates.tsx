@@ -33,7 +33,7 @@ export default function UpcomingKeyDates(props: Readonly<UpcomingKeyDatesProps>)
 
   function openEdit() {
     navigate(`/trustees/${trusteeId}/appointments/${appointmentId}/upcoming-key-dates/edit`, {
-      state: { subHeading: appointmentHeading ?? '' },
+      state: { subHeading: appointmentHeading ?? '', variant },
     });
   }
 

@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import { BrowserRouter } from 'react-router-dom';
+import { BrowserRouter, MemoryRouter, Route, Routes } from 'react-router-dom';
 import UpcomingKeyDatesForm from './UpcomingKeyDatesForm';
 import Api2 from '@/lib/models/api2';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
@@ -10,6 +10,8 @@ import {
 } from '@common/cams/trustee-upcoming-key-dates';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
+import { UpcomingKeyDatesVariant } from '@/trustees/panels/upcomingKeyDatesFieldConfig';
+import { GlobalAlertContext } from '@/App';
 
 const mockUseNavigate = vi.hoisted(() => vi.fn());
 const mockUseParams = vi.hoisted(() =>
@@ -68,11 +70,37 @@ const populatedDocument: TrusteeUpcomingKeyDates = {
   lastAuditFiscalYear: 2024,
 };
 
+const mockGlobalAlertRef = {
+  current: {
+    success: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn(),
+    warning: vi.fn(),
+    show: vi.fn(),
+    hide: vi.fn(),
+    clear: vi.fn(),
+  },
+};
+
 function renderComponent() {
   return render(
     <BrowserRouter>
-      <UpcomingKeyDatesForm />
+      <GlobalAlertContext.Provider value={mockGlobalAlertRef}>
+        <UpcomingKeyDatesForm />
+      </GlobalAlertContext.Provider>
     </BrowserRouter>,
+  );
+}
+
+function renderWithRouteState(state?: { variant?: UpcomingKeyDatesVariant }) {
+  return render(
+    <MemoryRouter initialEntries={[{ pathname: '/edit', state }]}>
+      <GlobalAlertContext.Provider value={mockGlobalAlertRef}>
+        <Routes>
+          <Route path="/edit" element={<UpcomingKeyDatesForm />} />
+        </Routes>
+      </GlobalAlertContext.Provider>
+    </MemoryRouter>,
   );
 }
 
@@ -85,6 +113,7 @@ describe('UpcomingKeyDatesForm', () => {
     mockUseNavigate.mockReturnValue(mockNavigate);
     vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [chapter7Appointment] });
     userEvent = TestingUtilities.setupUserEvent();
+    mockGlobalAlertRef.current.error.mockClear();
   });
 
   describe('rendering', () => {
@@ -562,6 +591,63 @@ describe('UpcomingKeyDatesForm', () => {
       expect(payload.upcomingExamOrAuditYear).toBe(populatedDocument.upcomingExamOrAuditYear);
       expect(payload.tprReviewPeriodStart).toBe(populatedDocument.tprReviewPeriodStart);
       expect(payload.tprDue).toBe(populatedDocument.tprDue);
+    });
+  });
+
+  describe('variant via route state', () => {
+    test('uses the variant passed in route state and skips fetching appointments', async () => {
+      const getTrusteeAppointmentsSpy = vi.spyOn(Api2, 'getTrusteeAppointments');
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderWithRouteState({ variant: 'ch12-13-case-by-case' });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByTestId('upcoming-exam-audit-year')).not.toBeInTheDocument();
+      expect(getTrusteeAppointmentsSpy).not.toHaveBeenCalled();
+    });
+
+    test('falls back to fetching the appointment when no variant is in route state', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [chapter7Appointment] });
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderWithRouteState();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('upcoming-exam-audit-year')).toBeInTheDocument();
+      });
+    });
+
+    test('surfaces an alert and falls back to chapter7-panel when the appointment fetch fails', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockRejectedValue(new Error('Network error'));
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderWithRouteState();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('upcoming-exam-audit-year')).toBeInTheDocument();
+      });
+
+      expect(mockGlobalAlertRef.current.error).toHaveBeenCalledWith(
+        'Could not determine appointment type; showing default fields.',
+      );
+    });
+
+    test('surfaces an alert and falls back to chapter7-panel when the appointment is not found', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [] });
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderWithRouteState();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('upcoming-exam-audit-year')).toBeInTheDocument();
+      });
+
+      expect(mockGlobalAlertRef.current.error).toHaveBeenCalledWith(
+        'Could not determine appointment type; showing default fields.',
+      );
     });
   });
 
