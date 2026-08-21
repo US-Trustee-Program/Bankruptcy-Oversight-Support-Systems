@@ -81,8 +81,14 @@ param sqlServerName string = 'sql-ustp-cams'
 @description('Resource group containing the SQL server -- also where this entire hub (VNet, subnet, PE, DNS zone) is deployed, since the SQL server is this hub\'s architectural center.')
 param sqlServerResourceGroupName string = resourceGroup().name
 
-@description('Fixed Azure Government private-link DNS zone name for Azure SQL. This hub creates its OWN zone object with this name in sqlServerResourceGroupName -- deliberately NOT reusing the existing same-named zones in rg-cams-network/rg-cams-network-dev, which this hub is intended to supersede once consumers are migrated onto it (a later goal, not done here).')
+@description('Fixed Azure Government private-link DNS zone name for Azure SQL.')
 param sqlPrivateDnsZoneName string = 'privatelink.database.usgovcloudapi.net'
+
+@description('Resource groups holding the EXISTING privatelink.database.usgovcloudapi.net zones that consumers already resolve through -- main\'s (rg-cams-network) and the branches\' (rg-cams-network-dev). The hub Private Endpoint registers its A record into every one of them, rather than into a new hub-owned zone. See the header for why. Order matters only in that entries should be appended, never reordered: the first becomes the endpoint\'s primary DNS zone config and the rest are suffixed by index.')
+param consumerPrivateDnsZoneResourceGroups array = [
+  'rg-cams-network'
+  'rg-cams-network-dev'
+]
 
 param tags object = {
   app: 'cams'
@@ -121,27 +127,28 @@ module hubPrivateEndpointSubnet './subnet.bicep' = {
   ]
 }
 
-// Hub-owned zone -- a NEW zone object in sqlServerResourceGroupName, not the
-// existing rg-cams-network/rg-cams-network-dev zones. deployDns is always
-// true here since this file's only job is to stand the zone up; createVnetLink
-// is false because the hub PE's own subnet doesn't need (and peered
-// consumers aren't wired up yet in this goal) a vnet link created through
-// this path -- the hub VNet's link into its own zone is unnecessary since
-// the zone lives in the same RG the PE's DNS zone group points at directly.
-module hubSqlDnsZone './private-dns-zones.bicep' = {
-  name: '${hubStackName}-dns-zone-module'
-  params: {
-    deployDns: true
-    stackName: hubStackName
-    // Unused when createVnetLink is false (this call), but the shared module
-    // still requires a value -- computed directly rather than via
-    // hubVnet.outputs.vnetName, since vnet.bicep only outputs the VNet's
-    // name, not its resource id.
-    virtualNetworkId: resourceId('Microsoft.Network/virtualNetworks', hubVirtualNetworkName)
-    privateDnsZoneName: sqlPrivateDnsZoneName
-    createVnetLink: false
-  }
-}
+// This hub deliberately creates NO DNS zone of its own. It registers into the
+// zones consumers are ALREADY linked to, computed below from
+// consumerPrivateDnsZoneResourceGroups.
+//
+// An earlier revision minted a third object named
+// privatelink.database.usgovcloudapi.net in this RG, alongside the existing ones
+// in rg-cams-network and rg-cams-network-dev, and left migrating consumers onto
+// it as a later goal. That migration is not possible without an outage: Azure
+// rejects linking one VNet to two zones sharing a name (confirmed live), so each
+// consumer would have to UNLINK from its current zone before it could link to
+// this one, and between those two operations it resolves nothing. Registering
+// into the existing zones instead makes adoption a single in-place A-record
+// update per zone, with rollback the same shape, and removes the three-
+// identically-named-zones hazard entirely.
+var consumerPrivateDnsZoneIds = [
+  for rg in consumerPrivateDnsZoneResourceGroups: resourceId(
+    subscription().subscriptionId,
+    rg,
+    'Microsoft.Network/privateDnsZones',
+    sqlPrivateDnsZoneName
+  )
+]
 
 module hubSqlPrivateEndpoint './subnet-private-endpoint.bicep' = {
   name: '${hubStackName}-private-endpoint-module'
@@ -153,8 +160,9 @@ module hubSqlPrivateEndpoint './subnet-private-endpoint.bicep' = {
     privateEndpointSubnetId: hubPrivateEndpointSubnet.outputs.subnetId
     privateDnsZoneName: sqlPrivateDnsZoneName
     privateDnsZoneSubscriptionId: subscription().subscriptionId
-    privateDnsZoneResourceGroup: sqlServerResourceGroupName
-    privateDnsZoneId: hubSqlDnsZone.outputs.privateDnsZoneId
+    privateDnsZoneResourceGroup: consumerPrivateDnsZoneResourceGroups[0]
+    privateDnsZoneId: consumerPrivateDnsZoneIds[0]
+    additionalPrivateDnsZoneIds: skip(consumerPrivateDnsZoneIds, 1)
     dnsZoneConfigName: 'privatelink_database_${hubStackName}'
     tags: tags
   }
@@ -185,4 +193,4 @@ output hubPrivateEndpointSubnetId string = hubPrivateEndpointSubnet.outputs.subn
 // deterministic ('pep-<stackName>', see that module), so its id is computed
 // here rather than duplicating/extending that module for one extra output.
 output hubPrivateEndpointId string = resourceId('Microsoft.Network/privateEndpoints', 'pep-${hubStackName}')
-output hubPrivateDnsZoneId string = hubSqlDnsZone.outputs.privateDnsZoneId
+output sqlPrivateDnsZoneIds array = consumerPrivateDnsZoneIds
