@@ -49,6 +49,9 @@ param sqlPrivateDnsZoneName string = 'privatelink.database.usgovcloudapi.net'
 @description('Set true when the deploying pipeline has already confirmed a vnet link into the SQL private DNS zone exists (see vnet-links.bicep) -- avoids a Conflict from trying to create a second, differently-named link. Mirrors webappVnetLinkAlreadyExists above.')
 param sqlVnetLinkAlreadyExists bool = false
 
+@description('Set true when the deploying pipeline has confirmed the SQL private DNS zone itself exists in privateDnsZoneResourceGroup (azure-deploy.sh computes this via zone_exists_for). Gates ustpSqlDnsZoneLink below, because a vnet link is a child of the zone and linking into an absent zone fails the whole deployment with ParentResourceNotFound rather than degrading. Distinct from sqlVnetLinkAlreadyExists above: that one asks whether a LINK exists, this one asks whether the ZONE does. Defaults false so any caller that does not compute it -- notably the USTP ADO pipeline template, which cannot be changed without a multi-step change on government-furnished equipment -- gets the safe no-op instead of a failed deploy.')
+param sqlDnsZoneExists bool = false
+
 param privateEndpointSubnetName string = privateEndpointSubnetNameFor(stackName)
 
 param webappName string = webappNameFor(stackName)
@@ -289,7 +292,19 @@ module ustpWebappDnsZoneLink './lib/network/vnet-links.bicep' = {
 // resolution working for everyone regardless of which single branch first
 // flips useSqlPrivateLink on. Do not re-add an `if (useSqlPrivateLink)`
 // condition to this module.
-module ustpSqlDnsZoneLink './lib/network/vnet-links.bicep' = {
+//
+// It IS gated on sqlDnsZoneExists, which is a different axis and not a
+// weakening of the above. A vnet link is a CHILD resource of the zone, so
+// when the zone is absent this module cannot degrade gracefully -- it fails
+// the entire deployment with ParentResourceNotFound. USTP hits exactly that:
+// its ADO pipeline never runs app-shared-setup.bicep (which bootstraps this
+// zone on Flexion) and passes deployDns=false, so the zone has never existed
+// there and USTP staging could not deploy at all (confirmed live 2026-08-21).
+// Skipping a link into a zone that does not exist strands nobody: with no
+// zone there is no privatelink A record for anything to resolve against, so
+// every consumer in that environment is resolving the SQL FQDN publicly
+// already. The rationale above only binds where the zone is actually present.
+module ustpSqlDnsZoneLink './lib/network/vnet-links.bicep' = if (sqlDnsZoneExists) {
   name: '${stackName}-sql-dns-zone-link-module'
   scope: resourceGroup(privateDnsZoneSubscriptionId, privateDnsZoneResourceGroup)
   params: {
