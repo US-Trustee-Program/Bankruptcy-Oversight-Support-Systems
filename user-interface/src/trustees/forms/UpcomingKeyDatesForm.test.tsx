@@ -701,5 +701,21 @@ describe('UpcomingKeyDatesForm', () => {
 
       expect(screen.getByRole('button', { name: /save/i })).not.toBeDisabled();
     });
+
+    test('Save button remains enabled when lease and ID expiration are future dates', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch12Appointment] });
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: ch12Document });
+
+      renderComponent();
+
+      await waitFor(() => {
+        const leaseInput = screen.getByLabelText(/Lease Expiration/i) as HTMLInputElement;
+        expect(leaseInput.value).toBe('2027-06-30');
+      });
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /save/i })).not.toBeDisabled();
+      });
+    });
   });
 });

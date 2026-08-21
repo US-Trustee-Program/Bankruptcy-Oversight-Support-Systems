@@ -469,6 +469,7 @@ export default function UpcomingKeyDatesForm() {
           id="lease-expiration"
           label="Lease Expiration"
           value={form.leaseExpiration}
+          disableMax
           onChange={(e) => setForm((prev) => ({ ...prev, leaseExpiration: e.target.value }))}
           onValidationChange={(hasError) =>
             setErrors((prev) => ({ ...prev, leaseExpiration: hasError ? 'invalid' : '' }))
@@ -478,6 +479,7 @@ export default function UpcomingKeyDatesForm() {
           id="id-expiration"
           label="ID Expiration"
           value={form.idExpiration}
+          disableMax
           onChange={(e) => setForm((prev) => ({ ...prev, idExpiration: e.target.value }))}
           onValidationChange={(hasError) =>
             setErrors((prev) => ({ ...prev, idExpiration: hasError ? 'invalid' : '' }))
