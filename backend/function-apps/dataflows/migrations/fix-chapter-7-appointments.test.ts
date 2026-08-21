@@ -451,7 +451,7 @@ describe('fix-chapter-7-appointments', () => {
       );
 
       const retryLogCalls = loggerInfoSpy.mock.calls.filter((call) =>
-        String(call[1]).includes('RU-throttled'),
+        String(call[1]).includes('hit a transient error'),
       );
       expect(retryLogCalls).toHaveLength(1);
       expect(String(retryLogCalls[0][1])).toContain('matchChapter=7A');

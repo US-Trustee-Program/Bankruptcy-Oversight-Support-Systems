@@ -33,6 +33,7 @@ import useFeatureFlags, {
   DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES,
   DISPLAY_CHPT11_SUBV_PAST_KEY_DATES,
   DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES,
+  DISPLAY_CHPT12_STANDING_KEY_DATES,
   TRUSTEE_SOFTWARE_BANK_DISPLAY,
   TRUSTEE_ASSIGNED_STAFF_ENABLED,
   TRUSTEE_CASE_LIST,
@@ -265,7 +266,8 @@ export default function TrusteeDetailScreen() {
       path: 'appointments/:appointmentId/upcoming-key-dates/edit',
       disabled: !(
         featureFlags[DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES] ||
-        featureFlags[DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES]
+        featureFlags[DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES] ||
+        featureFlags[DISPLAY_CHPT12_STANDING_KEY_DATES]
       ),
       subHeading: (location.state as { subHeading?: string } | null)?.subHeading ?? '',
       content: <UpcomingKeyDatesForm />,
@@ -274,7 +276,8 @@ export default function TrusteeDetailScreen() {
       path: 'appointments/:appointmentId/past-key-dates/edit',
       disabled: !(
         featureFlags[DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES] ||
-        featureFlags[DISPLAY_CHPT11_SUBV_PAST_KEY_DATES]
+        featureFlags[DISPLAY_CHPT11_SUBV_PAST_KEY_DATES] ||
+        featureFlags[DISPLAY_CHPT12_STANDING_KEY_DATES]
       ),
       subHeading: (location.state as { subHeading?: string } | null)?.subHeading ?? '',
       content: <PastKeyDatesForm />,

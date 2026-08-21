@@ -362,7 +362,7 @@ async function handleWriter(message: WriterMessage, invocationContext: Invocatio
     if (rateLimitRetryStatus === 'retried') {
       logger.info(
         MODULE_NAME,
-        `handleWriter: operation=${message.operation} matchChapter=${message.matchChapter} RU-throttled on ${message.idPairs.length} id pair(s) — re-enqueued with backoff (retryCount=${(message.retryCount ?? 0) + 1}).`,
+        `handleWriter: operation=${message.operation} matchChapter=${message.matchChapter} hit a transient error (RU throttling or gateway timeout) on ${message.idPairs.length} id pair(s) — re-enqueued with backoff (retryCount=${(message.retryCount ?? 0) + 1}).`,
       );
       completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleWriter', logger, {
         documentsWritten: 0,

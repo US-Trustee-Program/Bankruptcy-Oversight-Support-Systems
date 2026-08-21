@@ -33,10 +33,12 @@ const makeEmptyScenarioDistribution = () => ({
   multipleMatchCount: 0,
   reVerificationCount: 0,
   perfectMatchInactiveCount: 0,
-  reservedIdSkippedCount: 0,
   verificationBucketHitCount: 0,
   fingerprintHitCount: 0,
   fingerprintMissCount: 0,
+  retryableCount: 0,
+  candidateLoadFailedCount: 0,
+  emptyDemographicsSkippedCount: 0,
 });
 
 describe('sync-trustee-case-appointments handlePage', () => {
@@ -56,11 +58,11 @@ describe('sync-trustee-case-appointments handlePage', () => {
       dlqMessages: [],
       scenarioDistribution: makeEmptyScenarioDistribution(),
       notYetSyncedEvents: [],
+      retryableEvents: [],
     };
-    vi.spyOn(
-      SyncTrusteeCaseAppointmentsModule.default.prototype,
-      'processAppointments',
-    ).mockResolvedValue(processResult);
+    vi.spyOn(SyncTrusteeCaseAppointmentsModule.default, 'processAppointments').mockResolvedValue(
+      processResult,
+    );
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
       await createMockApplicationContext(),
     );
@@ -68,9 +70,10 @@ describe('sync-trustee-case-appointments handlePage', () => {
 
     await handlePage(message, invocationContext);
 
-    expect(
-      SyncTrusteeCaseAppointmentsModule.default.prototype.processAppointments,
-    ).toHaveBeenCalledWith(events);
+    expect(SyncTrusteeCaseAppointmentsModule.default.processAppointments).toHaveBeenCalledWith(
+      expect.anything(),
+      events,
+    );
     expect(telemetrySpy).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
@@ -78,44 +81,6 @@ describe('sync-trustee-case-appointments handlePage', () => {
       'handlePage',
       expect.anything(),
       expect.objectContaining({ success: true, documentsWritten: 2, documentsFailed: 0 }),
-    );
-  });
-
-  test('should surface reservedIdSkippedCount in the dataflow-run summary and metrics', async () => {
-    const { handlePage } = await import('./sync-trustee-case-appointments');
-    const events = [makeTrusteeEvent('001-25-00001'), makeTrusteeEvent('001-25-00002')];
-    const message = { events };
-    const invocationContext = makeInvocationContext();
-
-    const processResult = {
-      successCount: 2,
-      dlqMessages: [],
-      scenarioDistribution: { ...makeEmptyScenarioDistribution(), reservedIdSkippedCount: 2 },
-      notYetSyncedEvents: [],
-    };
-    vi.spyOn(
-      SyncTrusteeCaseAppointmentsModule.default.prototype,
-      'processAppointments',
-    ).mockResolvedValue(processResult);
-    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
-      await createMockApplicationContext(),
-    );
-    const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
-
-    await handlePage(message, invocationContext);
-
-    expect(telemetrySpy).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.anything(),
-      'SYNC-TRUSTEE-CASE-APPOINTMENTS',
-      'handlePage',
-      expect.anything(),
-      expect.objectContaining({
-        details: expect.objectContaining({ reservedIdSkippedCount: '2' }),
-        additionalMetrics: expect.arrayContaining([
-          { name: 'TrusteeReservedIdSkippedCount', value: 2 },
-        ]),
-      }),
     );
   });
 
@@ -139,11 +104,11 @@ describe('sync-trustee-case-appointments handlePage', () => {
         fingerprintMissCount: 3,
       },
       notYetSyncedEvents: [],
+      retryableEvents: [],
     };
-    vi.spyOn(
-      SyncTrusteeCaseAppointmentsModule.default.prototype,
-      'processAppointments',
-    ).mockResolvedValue(processResult);
+    vi.spyOn(SyncTrusteeCaseAppointmentsModule.default, 'processAppointments').mockResolvedValue(
+      processResult,
+    );
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
       await createMockApplicationContext(),
     );
@@ -169,6 +134,48 @@ describe('sync-trustee-case-appointments handlePage', () => {
     );
   });
 
+  test('should surface retryableCount in the dataflow-run summary and metrics', async () => {
+    const { handlePage } = await import('./sync-trustee-case-appointments');
+    const events = [makeTrusteeEvent('001-25-00001'), makeTrusteeEvent('001-25-00002')];
+    const message = { events };
+    const invocationContext = makeInvocationContext();
+    const retryableEvent = makeTrusteeEvent('001-25-00002');
+
+    const processResult = {
+      successCount: 1,
+      dlqMessages: [],
+      scenarioDistribution: { ...makeEmptyScenarioDistribution(), retryableCount: 1 },
+      notYetSyncedEvents: [],
+      retryableEvents: [retryableEvent],
+    };
+    vi.spyOn(SyncTrusteeCaseAppointmentsModule.default, 'processAppointments').mockResolvedValue(
+      processResult,
+    );
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
+      await createMockApplicationContext(),
+    );
+    vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
+      sendMessage: vi.fn().mockResolvedValue(undefined),
+    } as unknown as StorageQueueHumbleObject);
+    const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+
+    await handlePage(message, invocationContext);
+
+    expect(telemetrySpy).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      'SYNC-TRUSTEE-CASE-APPOINTMENTS',
+      'handlePage',
+      expect.anything(),
+      expect.objectContaining({
+        details: expect.objectContaining({ retryableCount: '1' }),
+        additionalMetrics: expect.arrayContaining([
+          { name: 'TrusteeRetryableEventCount', value: 1 },
+        ]),
+      }),
+    );
+  });
+
   test('should throw when AzureWebJobsDataflowsStorage is not configured', async () => {
     delete process.env.AzureWebJobsDataflowsStorage;
     const { handlePage } = await import('./sync-trustee-case-appointments');
@@ -188,10 +195,9 @@ describe('sync-trustee-case-appointments handlePage', () => {
     const invocationContext = makeInvocationContext();
 
     const tooManyError = new TooManyRequestsError('SYNC-TRUSTEE-CASE-APPOINTMENTS');
-    vi.spyOn(
-      SyncTrusteeCaseAppointmentsModule.default.prototype,
-      'processAppointments',
-    ).mockRejectedValue(tooManyError);
+    vi.spyOn(SyncTrusteeCaseAppointmentsModule.default, 'processAppointments').mockRejectedValue(
+      tooManyError,
+    );
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
       await createMockApplicationContext(),
     );
@@ -216,6 +222,40 @@ describe('sync-trustee-case-appointments handlePage', () => {
     );
   });
 
+  test('does not let notYetSyncedRetryCount and the generic rate-limit retryCount cross-contaminate', async () => {
+    // A page can carry a notYetSyncedRetryCount from a prior not-yet-synced-case retry AND then
+    // hit a generic transient error (429) in a later invocation of the same page. Before this fix,
+    // both policies shared one `retryCount` field: a not-yet-synced retry could reach the
+    // not-yet-synced DLQ threshold after only one real not-yet-synced attempt if a rate-limit
+    // retry had already bumped the shared counter, or vice versa. This asserts the two counters
+    // are read/written independently: notYetSyncedRetryCount is preserved unchanged on the
+    // rate-limit retry message, and handleRateLimitRetry's own retryCount starts from its own
+    // field, not from notYetSyncedRetryCount.
+    const { handlePage } = await import('./sync-trustee-case-appointments');
+    const events = [makeTrusteeEvent('001-25-00001')];
+    const message = { events, notYetSyncedRetryCount: 1, retryCount: 0 };
+    const invocationContext = makeInvocationContext();
+
+    const tooManyError = new TooManyRequestsError('SYNC-TRUSTEE-CASE-APPOINTMENTS');
+    vi.spyOn(SyncTrusteeCaseAppointmentsModule.default, 'processAppointments').mockRejectedValue(
+      tooManyError,
+    );
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
+      await createMockApplicationContext(),
+    );
+
+    const mockSendMessage = vi.fn().mockResolvedValue(undefined);
+    vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
+      sendMessage: mockSendMessage,
+    } as unknown as StorageQueueHumbleObject);
+
+    await handlePage(message, invocationContext);
+
+    const sentMessage = JSON.parse(mockSendMessage.mock.calls[0][0] as string);
+    expect(sentMessage.notYetSyncedRetryCount).toBe(1);
+    expect(sentMessage.retryCount).toBe(1);
+  });
+
   test('should route to DLQ and emit telemetry when retry limit exhausted', async () => {
     const { handlePage } = await import('./sync-trustee-case-appointments');
     const events = [makeTrusteeEvent('001-25-00001')];
@@ -223,10 +263,9 @@ describe('sync-trustee-case-appointments handlePage', () => {
     const invocationContext = makeInvocationContext();
 
     const tooManyError = new TooManyRequestsError('SYNC-TRUSTEE-CASE-APPOINTMENTS');
-    vi.spyOn(
-      SyncTrusteeCaseAppointmentsModule.default.prototype,
-      'processAppointments',
-    ).mockRejectedValue(tooManyError);
+    vi.spyOn(SyncTrusteeCaseAppointmentsModule.default, 'processAppointments').mockRejectedValue(
+      tooManyError,
+    );
     const mockContext = await createMockApplicationContext();
     const extraOutputsSetSpy = vi.spyOn(mockContext.extraOutputs, 'set');
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
@@ -257,10 +296,9 @@ describe('sync-trustee-case-appointments handlePage', () => {
     const invocationContext = makeInvocationContext();
 
     const error = new CamsError('SYNC-TRUSTEE-CASE-APPOINTMENTS', { message: 'Database error' });
-    vi.spyOn(
-      SyncTrusteeCaseAppointmentsModule.default.prototype,
-      'processAppointments',
-    ).mockRejectedValue(error);
+    vi.spyOn(SyncTrusteeCaseAppointmentsModule.default, 'processAppointments').mockRejectedValue(
+      error,
+    );
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
       await createMockApplicationContext(),
     );
@@ -274,14 +312,12 @@ describe('sync-trustee-case-appointments handlePage', () => {
     const message = { events: [notYetSyncedEvent] };
     const invocationContext = makeInvocationContext();
 
-    vi.spyOn(
-      SyncTrusteeCaseAppointmentsModule.default.prototype,
-      'processAppointments',
-    ).mockResolvedValue({
+    vi.spyOn(SyncTrusteeCaseAppointmentsModule.default, 'processAppointments').mockResolvedValue({
       successCount: 0,
       dlqMessages: [],
       scenarioDistribution: makeEmptyScenarioDistribution(),
       notYetSyncedEvents: [notYetSyncedEvent],
+      retryableEvents: [],
     });
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
       await createMockApplicationContext(),
@@ -294,7 +330,7 @@ describe('sync-trustee-case-appointments handlePage', () => {
     await handlePage(message, invocationContext);
 
     expect(mockSendMessage).toHaveBeenCalledWith(
-      JSON.stringify({ events: [notYetSyncedEvent], retryCount: 1 }),
+      JSON.stringify({ events: [notYetSyncedEvent], notYetSyncedRetryCount: 1 }),
       4 * 60 * 60,
     );
   });
@@ -302,17 +338,15 @@ describe('sync-trustee-case-appointments handlePage', () => {
   test('should requeue with an incremented retryCount when at the retry limit (second retry)', async () => {
     const { handlePage } = await import('./sync-trustee-case-appointments');
     const notYetSyncedEvent = makeTrusteeEvent('001-25-00003');
-    const message = { events: [notYetSyncedEvent], retryCount: 1 };
+    const message = { events: [notYetSyncedEvent], notYetSyncedRetryCount: 1 };
     const invocationContext = makeInvocationContext();
 
-    vi.spyOn(
-      SyncTrusteeCaseAppointmentsModule.default.prototype,
-      'processAppointments',
-    ).mockResolvedValue({
+    vi.spyOn(SyncTrusteeCaseAppointmentsModule.default, 'processAppointments').mockResolvedValue({
       successCount: 0,
       dlqMessages: [],
       scenarioDistribution: makeEmptyScenarioDistribution(),
       notYetSyncedEvents: [notYetSyncedEvent],
+      retryableEvents: [],
     });
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
       await createMockApplicationContext(),
@@ -325,7 +359,7 @@ describe('sync-trustee-case-appointments handlePage', () => {
     await handlePage(message, invocationContext);
 
     expect(mockSendMessage).toHaveBeenCalledWith(
-      JSON.stringify({ events: [notYetSyncedEvent], retryCount: 2 }),
+      JSON.stringify({ events: [notYetSyncedEvent], notYetSyncedRetryCount: 2 }),
       4 * 60 * 60,
     );
   });
@@ -333,17 +367,15 @@ describe('sync-trustee-case-appointments handlePage', () => {
   test('should route not-yet-synced events to DLQ instead of retrying once the retry limit is exceeded', async () => {
     const { handlePage } = await import('./sync-trustee-case-appointments');
     const notYetSyncedEvent = makeTrusteeEvent('001-25-00003');
-    const message = { events: [notYetSyncedEvent], retryCount: 2 };
+    const message = { events: [notYetSyncedEvent], notYetSyncedRetryCount: 2 };
     const invocationContext = makeInvocationContext();
 
-    vi.spyOn(
-      SyncTrusteeCaseAppointmentsModule.default.prototype,
-      'processAppointments',
-    ).mockResolvedValue({
+    vi.spyOn(SyncTrusteeCaseAppointmentsModule.default, 'processAppointments').mockResolvedValue({
       successCount: 0,
       dlqMessages: [],
       scenarioDistribution: makeEmptyScenarioDistribution(),
       notYetSyncedEvents: [notYetSyncedEvent],
+      retryableEvents: [],
     });
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
       await createMockApplicationContext(),
@@ -367,19 +399,134 @@ describe('sync-trustee-case-appointments handlePage', () => {
     expect(mockSendMessage).toHaveBeenCalledWith(JSON.stringify(notYetSyncedEvent));
   });
 
+  test('should requeue retryableEvents with an exponential backoff (+/-10% jitter) visibility delay and an incremented retryableRetryCount', async () => {
+    const { handlePage } = await import('./sync-trustee-case-appointments');
+    const { computeBackoffSeconds } = await import('../dataflows-rate-limit');
+    // Stub the jitter entropy source so the visibility timeout is deterministic. This asserts an
+    // exact value again (rand=0 -> low end of the jitter band), but against
+    // computeBackoffSecondsWithJitter's contract rather than the pre-jitter formula, so it stays
+    // meaningful as regression coverage instead of just re-deriving the production calculation.
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+    const retryableEvent = makeTrusteeEvent('001-25-00005');
+    const message = { events: [retryableEvent] };
+    const invocationContext = makeInvocationContext();
+
+    vi.spyOn(SyncTrusteeCaseAppointmentsModule.default, 'processAppointments').mockResolvedValue({
+      successCount: 0,
+      dlqMessages: [],
+      scenarioDistribution: makeEmptyScenarioDistribution(),
+      notYetSyncedEvents: [],
+      retryableEvents: [retryableEvent],
+    });
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
+      await createMockApplicationContext(),
+    );
+    const mockSendMessage = vi.fn().mockResolvedValue(undefined);
+    vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
+      sendMessage: mockSendMessage,
+    } as unknown as StorageQueueHumbleObject);
+
+    await handlePage(message, invocationContext);
+
+    expect(mockSendMessage).toHaveBeenCalledTimes(1);
+    const [sentBody, sentVisibilityTimeout] = mockSendMessage.mock.calls[0];
+    expect(JSON.parse(sentBody)).toEqual({
+      events: [retryableEvent],
+      retryableRetryCount: 1,
+    });
+    const base = computeBackoffSeconds(1);
+    expect(sentVisibilityTimeout).toBe(Math.round(base * 0.9));
+    // Sanity-check the timeout also stays within the documented +/-10% band, independent of the
+    // exact rounding chosen above.
+    expect(sentVisibilityTimeout).toBeGreaterThanOrEqual(Math.round(base * 0.9));
+    expect(sentVisibilityTimeout).toBeLessThanOrEqual(Math.round(base * 1.1));
+  });
+
+  test('should surface the incoming retryableRetryCount as a retry-depth metric when requeuing', async () => {
+    const { handlePage } = await import('./sync-trustee-case-appointments');
+    const retryableEvent = makeTrusteeEvent('001-25-00005');
+    // Page arrives already at retry depth 3 -- a prior invocation requeued it twice before.
+    const message = { events: [retryableEvent], retryableRetryCount: 3 };
+    const invocationContext = makeInvocationContext();
+
+    vi.spyOn(SyncTrusteeCaseAppointmentsModule.default, 'processAppointments').mockResolvedValue({
+      successCount: 0,
+      dlqMessages: [],
+      scenarioDistribution: { ...makeEmptyScenarioDistribution(), retryableCount: 1 },
+      notYetSyncedEvents: [],
+      retryableEvents: [retryableEvent],
+    });
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
+      await createMockApplicationContext(),
+    );
+    vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
+      sendMessage: vi.fn().mockResolvedValue(undefined),
+    } as unknown as StorageQueueHumbleObject);
+    const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+
+    await handlePage(message, invocationContext);
+
+    expect(telemetrySpy).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      'SYNC-TRUSTEE-CASE-APPOINTMENTS',
+      'handlePage',
+      expect.anything(),
+      expect.objectContaining({
+        additionalMetrics: expect.arrayContaining([
+          { name: 'TrusteeRetryableRetryDepth', value: 3 },
+        ]),
+      }),
+    );
+  });
+
+  test('should route retryableEvents to DLQ instead of retrying once the rate-limit retry limit is exceeded', async () => {
+    const { handlePage } = await import('./sync-trustee-case-appointments');
+    const { RATE_LIMIT_RETRY_LIMIT } = await import('../dataflows-rate-limit');
+    const retryableEvent = makeTrusteeEvent('001-25-00005');
+    const message = { events: [retryableEvent], retryableRetryCount: RATE_LIMIT_RETRY_LIMIT };
+    const invocationContext = makeInvocationContext();
+
+    vi.spyOn(SyncTrusteeCaseAppointmentsModule.default, 'processAppointments').mockResolvedValue({
+      successCount: 0,
+      dlqMessages: [],
+      scenarioDistribution: makeEmptyScenarioDistribution(),
+      notYetSyncedEvents: [],
+      retryableEvents: [retryableEvent],
+    });
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
+      await createMockApplicationContext(),
+    );
+    const mockSendMessage = vi.fn().mockResolvedValue(undefined);
+    const fromConnectionStringSpy = vi
+      .spyOn(StorageQueueHumbleObject, 'fromConnectionString')
+      .mockReturnValue({ sendMessage: mockSendMessage } as unknown as StorageQueueHumbleObject);
+
+    await handlePage(message, invocationContext);
+
+    const pageQueueCalls = fromConnectionStringSpy.mock.calls.filter(([, queueName]) =>
+      queueName?.includes('page'),
+    );
+    expect(pageQueueCalls).toHaveLength(0);
+
+    expect(fromConnectionStringSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining('dlq'),
+    );
+    expect(mockSendMessage).toHaveBeenCalledWith(JSON.stringify(retryableEvent));
+  });
+
   test('should not retry or DLQ a transferred-case skip (no notYetSyncedEvents produced)', async () => {
     const { handlePage } = await import('./sync-trustee-case-appointments');
     const message = { events: [makeTrusteeEvent('001-25-00004')] };
     const invocationContext = makeInvocationContext();
 
-    vi.spyOn(
-      SyncTrusteeCaseAppointmentsModule.default.prototype,
-      'processAppointments',
-    ).mockResolvedValue({
+    vi.spyOn(SyncTrusteeCaseAppointmentsModule.default, 'processAppointments').mockResolvedValue({
       successCount: 0,
       dlqMessages: [],
       scenarioDistribution: makeEmptyScenarioDistribution(),
       notYetSyncedEvents: [],
+      retryableEvents: [],
     });
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
       await createMockApplicationContext(),
@@ -444,25 +591,21 @@ describe('sync-trustee-case-appointments handleStart', () => {
   }) {
     const mockContext = await createMockApplicationContext();
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
-    vi.spyOn(
-      SyncTrusteeCaseAppointmentsModule.default.prototype,
-      'getAppointmentEvents',
-    ).mockResolvedValue(
+    vi.spyOn(SyncTrusteeCaseAppointmentsModule.default, 'getAppointmentEvents').mockResolvedValue(
       overrides?.getAppointmentEventsResult ?? {
         events: [],
         latestSyncDate: '',
         petitionLatestSyncDate: '',
       },
     );
+    vi.spyOn(SyncTrusteeCaseAppointmentsModule.default, 'storeRuntimeState').mockResolvedValue(
+      undefined,
+    );
     vi.spyOn(
-      SyncTrusteeCaseAppointmentsModule.default.prototype,
-      'storeRuntimeState',
-    ).mockResolvedValue(undefined);
-    vi.spyOn(
-      SyncTrusteeCaseAppointmentsModule.default.prototype,
+      SyncTrusteeCaseAppointmentsModule.default,
       'storePetitionRuntimeState',
     ).mockResolvedValue(undefined);
-    vi.spyOn(SyncTrusteeCaseAppointmentsModule.default.prototype, 'deleteAll').mockResolvedValue(
+    vi.spyOn(SyncTrusteeCaseAppointmentsModule.default, 'deleteAll').mockResolvedValue(
       overrides?.deleteAllResult ?? { data: { deleted: 0 } },
     );
     const mockSendMessage = vi.fn().mockResolvedValue(undefined);
@@ -491,9 +634,10 @@ describe('sync-trustee-case-appointments handleStart', () => {
     expect(mockSendMessage).toHaveBeenCalledTimes(1);
     expect(mockSendMessage).toHaveBeenCalledWith(JSON.stringify({ events }));
 
-    expect(
-      SyncTrusteeCaseAppointmentsModule.default.prototype.storeRuntimeState,
-    ).toHaveBeenCalledWith('2025-06-01T00:00:00Z');
+    expect(SyncTrusteeCaseAppointmentsModule.default.storeRuntimeState).toHaveBeenCalledWith(
+      expect.anything(),
+      '2025-06-01T00:00:00Z',
+    );
     expect(telemetrySpy).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
@@ -520,8 +664,8 @@ describe('sync-trustee-case-appointments handleStart', () => {
     await handleStart({}, invocationContext);
 
     expect(
-      SyncTrusteeCaseAppointmentsModule.default.prototype.storePetitionRuntimeState,
-    ).toHaveBeenCalledWith('2025-05-01T00:00:00Z');
+      SyncTrusteeCaseAppointmentsModule.default.storePetitionRuntimeState,
+    ).toHaveBeenCalledWith(expect.anything(), '2025-05-01T00:00:00Z');
   });
 
   test('should queue multiple pages when events exceed the page size', async () => {
@@ -646,9 +790,10 @@ describe('sync-trustee-case-appointments handleStart', () => {
       }),
     );
 
-    expect(
-      SyncTrusteeCaseAppointmentsModule.default.prototype.storeRuntimeState,
-    ).toHaveBeenCalledWith('2025-06-01T00:00:00Z');
+    expect(SyncTrusteeCaseAppointmentsModule.default.storeRuntimeState).toHaveBeenCalledWith(
+      expect.anything(),
+      '2025-06-01T00:00:00Z',
+    );
     expect(telemetrySpy).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
@@ -656,6 +801,64 @@ describe('sync-trustee-case-appointments handleStart', () => {
       'handleStart',
       expect.anything(),
       expect.objectContaining({ success: true, documentsFailed: 1 }),
+    );
+  });
+
+  test('should forward every event to the DLQ and queue zero pages when all events individually exceed the byte budget', async () => {
+    // Distinct from the "mixed" case above: pageByByteBudget's pages array is empty here, so
+    // the for..of page-queueing loop runs zero iterations (no queueClient.sendMessage for
+    // 'page') while still reporting success -- this is a real, previously-uncovered branch
+    // combination, not just a larger version of the mixed-rejection case.
+    const { handleStart } = await import('./sync-trustee-case-appointments');
+    const invocationContext = makeInvocationContext();
+    const oversizedEvents = [
+      { ...makeEvent('001-25-00000'), dxtrTrustee: { fullName: 'x'.repeat(70_000) } },
+      { ...makeEvent('001-25-00001'), dxtrTrustee: { fullName: 'y'.repeat(70_000) } },
+    ] as TrusteeAppointmentSyncEvent[];
+
+    const { mockSendMessage, fromConnectionStringSpy } = await setupMocks({
+      getAppointmentEventsResult: {
+        events: oversizedEvents,
+        latestSyncDate: '2025-06-01T00:00:00Z',
+        petitionLatestSyncDate: undefined,
+      },
+    });
+    const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+
+    await handleStart({}, invocationContext);
+
+    // The page queue client is still constructed (queueEventPages builds it before the
+    // page-queueing loop runs), but with zero pages to send, sendMessage is never invoked for
+    // it -- this is the zero-iteration for..of branch this test exists to cover.
+    expect(fromConnectionStringSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining('page'),
+    );
+    expect(fromConnectionStringSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining('dlq'),
+    );
+
+    const sentMessages = mockSendMessage.mock.calls.map(
+      ([body]) => JSON.parse(body as string) as Record<string, unknown>,
+    );
+    const pageMessages = sentMessages.filter((m) => 'events' in m);
+    const dlqMessages = sentMessages.filter((m) => m.type === 'QUEUE_ERROR');
+
+    expect(pageMessages).toHaveLength(0);
+    expect(dlqMessages).toHaveLength(2);
+
+    expect(telemetrySpy).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      'SYNC-TRUSTEE-CASE-APPOINTMENTS',
+      'handleStart',
+      expect.anything(),
+      expect.objectContaining({
+        success: true,
+        documentsFailed: 2,
+        details: expect.objectContaining({ pagesQueued: '0' }),
+      }),
     );
   });
 
@@ -674,9 +877,7 @@ describe('sync-trustee-case-appointments handleStart', () => {
 
     await handleStart({}, invocationContext);
 
-    expect(
-      SyncTrusteeCaseAppointmentsModule.default.prototype.storeRuntimeState,
-    ).not.toHaveBeenCalled();
+    expect(SyncTrusteeCaseAppointmentsModule.default.storeRuntimeState).not.toHaveBeenCalled();
     expect(telemetrySpy).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
@@ -696,9 +897,12 @@ describe('sync-trustee-case-appointments handleStart', () => {
 
     await handleStart({ reset: true }, invocationContext);
 
-    expect(
-      SyncTrusteeCaseAppointmentsModule.default.prototype.getAppointmentEvents,
-    ).toHaveBeenCalledWith(undefined, true, undefined);
+    expect(SyncTrusteeCaseAppointmentsModule.default.getAppointmentEvents).toHaveBeenCalledWith(
+      expect.anything(),
+      undefined,
+      true,
+      undefined,
+    );
   });
 
   test('should pass overrideRuntimeState flag to getAppointmentEvents', async () => {
@@ -713,9 +917,12 @@ describe('sync-trustee-case-appointments handleStart', () => {
 
     await handleStart({ overrideRuntimeState: override }, invocationContext);
 
-    expect(
-      SyncTrusteeCaseAppointmentsModule.default.prototype.getAppointmentEvents,
-    ).toHaveBeenCalledWith(undefined, undefined, override);
+    expect(SyncTrusteeCaseAppointmentsModule.default.getAppointmentEvents).toHaveBeenCalledWith(
+      expect.anything(),
+      undefined,
+      undefined,
+      override,
+    );
   });
 
   test('should call deleteAll and reset state when deleteAll flag is set', async () => {
@@ -733,10 +940,13 @@ describe('sync-trustee-case-appointments handleStart', () => {
 
     await handleStart({ deleteAll: true }, invocationContext);
 
-    expect(SyncTrusteeCaseAppointmentsModule.default.prototype.deleteAll).toHaveBeenCalled();
-    expect(
-      SyncTrusteeCaseAppointmentsModule.default.prototype.getAppointmentEvents,
-    ).toHaveBeenCalledWith(undefined, true, undefined);
+    expect(SyncTrusteeCaseAppointmentsModule.default.deleteAll).toHaveBeenCalled();
+    expect(SyncTrusteeCaseAppointmentsModule.default.getAppointmentEvents).toHaveBeenCalledWith(
+      expect.anything(),
+      undefined,
+      true,
+      undefined,
+    );
     expect(telemetrySpy).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
@@ -760,9 +970,7 @@ describe('sync-trustee-case-appointments handleStart', () => {
       (invocationContext.extraOutputs as unknown as Map<{ queueName: string }, unknown>).entries(),
     );
     expect(outputs.find(([key]) => key.queueName?.includes('dlq'))).toBeDefined();
-    expect(
-      SyncTrusteeCaseAppointmentsModule.default.prototype.getAppointmentEvents,
-    ).not.toHaveBeenCalled();
+    expect(SyncTrusteeCaseAppointmentsModule.default.getAppointmentEvents).not.toHaveBeenCalled();
     expect(telemetrySpy).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
@@ -782,9 +990,7 @@ describe('sync-trustee-case-appointments handleStart', () => {
 
     await handleStart({ flushQueues: true }, invocationContext);
 
-    expect(
-      SyncTrusteeCaseAppointmentsModule.default.prototype.getAppointmentEvents,
-    ).not.toHaveBeenCalled();
+    expect(SyncTrusteeCaseAppointmentsModule.default.getAppointmentEvents).not.toHaveBeenCalled();
     expect(telemetrySpy).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
@@ -801,10 +1007,7 @@ describe('sync-trustee-case-appointments handleStart', () => {
 
     const mockContext = await createMockApplicationContext();
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
-    vi.spyOn(
-      SyncTrusteeCaseAppointmentsModule.default.prototype,
-      'getAppointmentEvents',
-    ).mockRejectedValue(
+    vi.spyOn(SyncTrusteeCaseAppointmentsModule.default, 'getAppointmentEvents').mockRejectedValue(
       new CamsError('SYNC-TRUSTEE-CASE-APPOINTMENTS', { message: 'DXTR unavailable' }),
     );
     const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
@@ -840,9 +1043,7 @@ describe('sync-trustee-case-appointments handleStart', () => {
 
     await handleStart({}, invocationContext);
 
-    expect(
-      SyncTrusteeCaseAppointmentsModule.default.prototype.storeRuntimeState,
-    ).not.toHaveBeenCalled();
+    expect(SyncTrusteeCaseAppointmentsModule.default.storeRuntimeState).not.toHaveBeenCalled();
   });
 });
 

@@ -57,7 +57,6 @@ describe('TrusteeMatchVerificationUseCase', () => {
 
   let mockFindById: ReturnType<typeof vi.fn>;
   let mockUpdate: ReturnType<typeof vi.fn>;
-  let mockCreateProfessionalId: ReturnType<typeof vi.fn>;
   let mockFindVariationByFingerprint: ReturnType<typeof vi.fn>;
   let mockCreateVariation: ReturnType<typeof vi.fn>;
   let mockQueueTrusteeVerificationRemap: Mock<
@@ -75,7 +74,6 @@ describe('TrusteeMatchVerificationUseCase', () => {
 
     mockFindById = vi.fn().mockResolvedValue(sampleVerification);
     mockUpdate = vi.fn().mockResolvedValue({ ...sampleVerification, status: 'approved' });
-    mockCreateProfessionalId = vi.fn().mockResolvedValue({});
     mockFindVariationByFingerprint = vi.fn().mockResolvedValue([]);
     mockCreateVariation = vi.fn().mockResolvedValue({});
     mockQueueTrusteeVerificationRemap = vi.fn().mockResolvedValue(undefined);
@@ -90,11 +88,6 @@ describe('TrusteeMatchVerificationUseCase', () => {
       Object.assign(new MockMongoRepository(), {
         findById: mockFindById,
         update: mockUpdate,
-      }),
-    );
-    vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue(
-      Object.assign(new MockMongoRepository(), {
-        createProfessionalId: mockCreateProfessionalId,
       }),
     );
     vi.spyOn(factory, 'getTrusteeVariationRepository').mockReturnValue(
@@ -214,9 +207,9 @@ describe('TrusteeMatchVerificationUseCase', () => {
       expect(result[0].courtName).toBe('Test Court - Other Division');
     });
 
-    test('selects the highest-scoring candidate as preselectedCandidate for MultipleTrusteesMatch', async () => {
+    test('selects the highest-scoring candidate as preselectedCandidate for AmbiguousMatchUnresolved', async () => {
       mockSearch.mockResolvedValue([
-        { ...sampleVerification, mismatchReason: 'MULTIPLE_TRUSTEES_MATCH' },
+        { ...sampleVerification, mismatchReason: 'AMBIGUOUS_MATCH_UNRESOLVED' },
       ]);
 
       const result = await useCase.getVerifications(context, {});
@@ -226,6 +219,24 @@ describe('TrusteeMatchVerificationUseCase', () => {
         trusteeName: 'Alice',
       });
       expect(result[0].candidateCount).toBe(2);
+    });
+
+    test('preselects the sole candidate for AmbiguousMatchUnresolved with only one candidate', async () => {
+      mockSearch.mockResolvedValue([
+        {
+          ...sampleVerification,
+          mismatchReason: 'AMBIGUOUS_MATCH_UNRESOLVED',
+          matchCandidates: [sampleVerification.matchCandidates[0]],
+        },
+      ]);
+
+      const result = await useCase.getVerifications(context, {});
+
+      expect(result[0].preselectedCandidate).toEqual({
+        trusteeId: 'trustee-a',
+        trusteeName: 'Alice',
+      });
+      expect(result[0].candidateCount).toBe(1);
     });
 
     test('preselects the first candidate for non-multiple-match mismatch reasons', async () => {
@@ -441,27 +452,6 @@ describe('TrusteeMatchVerificationUseCase', () => {
       // The status write must not have happened -- a failed enqueue must not leave the
       // verification permanently 'approved' with no way to re-trigger the remap.
       expect(mockUpdate).not.toHaveBeenCalled();
-    });
-
-    test('creates a trustee-professional-ids mapping when the verification has acmsProfessionalId', async () => {
-      mockFindById.mockResolvedValue({
-        ...sampleVerification,
-        acmsProfessionalId: '081-00123',
-      });
-
-      await useCase.approveVerification(context, 'verification-1', 'trustee-new');
-
-      expect(mockCreateProfessionalId).toHaveBeenCalledWith(
-        'trustee-new',
-        '081-00123',
-        expect.objectContaining({ id: expect.any(String) }),
-      );
-    });
-
-    test('does not attempt a professional-ids mapping when the verification has no acmsProfessionalId', async () => {
-      await useCase.approveVerification(context, 'verification-1', 'trustee-new');
-
-      expect(mockCreateProfessionalId).not.toHaveBeenCalled();
     });
   });
 

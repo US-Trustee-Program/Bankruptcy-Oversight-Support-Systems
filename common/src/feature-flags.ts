@@ -15,6 +15,7 @@ export const testFeatureFlags: FeatureFlagSet = {
   'chapter-eleven-enabled': true,
   'chapter-twelve-enabled': true,
   'consolidations-enabled': true,
+  'display-chpt12-standing-key-dates': true,
   'display-chpt7-panel-upcoming-key-dates': true,
   'display-chpt11-subv-past-key-dates': true,
   'display-chpt12-13-case-by-case-upcoming-key-dates': true,

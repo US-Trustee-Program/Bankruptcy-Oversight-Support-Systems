@@ -5,6 +5,13 @@ param location string = resourceGroup().location
 @description('Application service plan name')
 param dataflowsPlanName string
 
+@description('SKU for the dataflows function app plan. EP1 (Elastic Premium) is the default; S1 (Standard) is available for environments where EP1 capacity is constrained.')
+@allowed([
+  'EP1'
+  'S1'
+])
+param functionsPlanType string = 'EP1'
+
 param stackName string = 'ustp-cams'
 
 @description('Azure functions version')
@@ -120,6 +127,12 @@ param privateDnsZoneResourceGroup string = virtualNetworkResourceGroupName
 @description('DNS Zone Subscription ID. USTP uses a different subscription for prod deployment.')
 param privateDnsZoneSubscriptionId string = subscription().subscriptionId
 
+@description('When true, reach the SQL server via a Private Endpoint instead of the sql-vnet-rule.bicep VNet rule -- see the createSqlServerVnetRule/createSqlPrivateEndpoint vars below for the mutual-exclusivity rationale.')
+param useSqlPrivateLink bool = false
+
+@description('Fixed Azure Government private-link DNS zone name for Azure SQL. Only consumed when useSqlPrivateLink is true.')
+param sqlPrivateDnsZoneName string = 'privatelink.database.usgovcloudapi.net'
+
 param gitSha string
 
 param tags object = {}
@@ -131,28 +144,36 @@ resource appConfigIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@202
   scope: resourceGroup(kvAppConfigResourceGroupName)
 }
 
+var functionsPlanTypeToSkuMap = {
+  EP1: { name: 'EP1', tier: 'ElasticPremium', family: 'EP' }
+  S1: { name: 'S1', tier: 'Standard' }
+}
+var isElasticFunctionsPlan = functionsPlanType == 'EP1'
+
 resource dataflowsServicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
   location: location
   name: dataflowsPlanName
   tags: tags
-  sku: {
-    name: 'EP1'
-    tier: 'ElasticPremium'
-    family: 'EP'
-  }
-  kind: 'elastic'
-  properties: {
-    perSiteScaling: true
-    elasticScaleEnabled: true
-    maximumElasticWorkerCount: 10
-    isSpot: false
-    reserved: true // set true for Linux
-    isXenon: false
-    hyperV: false
-    targetWorkerCount: 0
-    targetWorkerSizeId: 0
-    zoneRedundant: false
-  }
+  sku: functionsPlanTypeToSkuMap[functionsPlanType]
+  kind: isElasticFunctionsPlan ? 'elastic' : 'linux'
+  properties: union(
+    {
+      perSiteScaling: true
+      isSpot: false
+      reserved: true // set true for Linux
+      isXenon: false
+      hyperV: false
+      targetWorkerCount: 0
+      targetWorkerSizeId: 0
+      zoneRedundant: false
+    },
+    isElasticFunctionsPlan
+      ? {
+          elasticScaleEnabled: true
+          maximumElasticWorkerCount: 10
+        }
+      : {}
+  )
 }
 
 //Storage Account Resources
@@ -206,11 +227,20 @@ module dataflowsObjectContainer './lib/storage/storage-blob-container.bicep' = {
 }
 
 //Function App Resources
+// Attach the SQL managed identity whenever this function app connects to
+// SQL at all, regardless of which of the two mutually-exclusive mechanisms
+// (VNet rule vs. Private Endpoint) is used for the network path -- the
+// identity is needed for authentication either way. Gating this on
+// createSqlServerVnetRule alone (its original condition, before the
+// Private Endpoint alternative existed) silently dropped the identity for
+// any function app using useSqlPrivateLink, since createSqlServerVnetRule
+// is false in that case -- causing ManagedIdentityCredential SQL auth
+// failures with no compile-time signal.
 var userAssignedIdentities = union(
   {
     '${appConfigIdentity.id}': {}
   },
-  createSqlServerVnetRule ? { '${sqlIdentityResourceId}': {} } : {}
+  (createSqlServerVnetRule || createSqlPrivateEndpoint) ? { '${sqlIdentityResourceId}': {} } : {}
 )
 
 resource dataflowsFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
@@ -236,8 +266,8 @@ resource dataflowsFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
       numberOfWorkers: dataflowsFunctionConfigProperties.numberOfWorkers
       alwaysOn: dataflowsFunctionConfigProperties.alwaysOn
       http20Enabled: dataflowsFunctionConfigProperties.http20Enabled
-      functionAppScaleLimit: dataflowsFunctionConfigProperties.functionAppScaleLimit
-      minimumElasticInstanceCount: dataflowsFunctionConfigProperties.minimumElasticInstanceCount
+      functionAppScaleLimit: dataflowsFunctionConfigProperties.?functionAppScaleLimit
+      minimumElasticInstanceCount: dataflowsFunctionConfigProperties.?minimumElasticInstanceCount
       publicNetworkAccess: dataflowsFunctionConfigProperties.publicNetworkAccess
       ipSecurityRestrictions: dataflowsFunctionConfigProperties.ipSecurityRestrictions
       ipSecurityRestrictionsDefaultAction: dataflowsFunctionConfigProperties.ipSecurityRestrictionsDefaultAction
@@ -323,8 +353,8 @@ resource dataflowsSlotSiteConfig 'Microsoft.Web/sites/slots/config@2023-12-01' =
     numberOfWorkers: dataflowsFunctionConfigProperties.numberOfWorkers
     alwaysOn: dataflowsFunctionConfigProperties.alwaysOn
     http20Enabled: dataflowsFunctionConfigProperties.http20Enabled
-    functionAppScaleLimit: dataflowsFunctionConfigProperties.functionAppScaleLimit
-    minimumElasticInstanceCount: dataflowsFunctionConfigProperties.minimumElasticInstanceCount
+    functionAppScaleLimit: dataflowsFunctionConfigProperties.?functionAppScaleLimit
+    minimumElasticInstanceCount: dataflowsFunctionConfigProperties.?minimumElasticInstanceCount
     publicNetworkAccess: dataflowsFunctionConfigProperties.publicNetworkAccess
     ipSecurityRestrictions: dataflowsFunctionConfigProperties.ipSecurityRestrictions
     ipSecurityRestrictionsDefaultAction: dataflowsFunctionConfigProperties.ipSecurityRestrictionsDefaultAction
@@ -365,15 +395,19 @@ resource dataflowsSlotAppSettings 'Microsoft.Web/sites/slots/config@2023-12-01' 
   ]
 }
 
-var dataflowsFunctionConfigProperties = {
+// alwaysOn is forced true whenever the plan isn't elastic: dataflows is queue/timer
+// triggered, and a Dedicated (non-EP) plan can unload an idle Functions host without
+// it, causing missed or delayed trigger firing. EP relies on
+// minimumElasticInstanceCount instead to keep an instance warm, which is why this
+// was previously false unconditionally.
+var dataflowsFunctionConfigProperties = union(
+  {
     cors: {
       allowedOrigins: dataflowsCorsAllowOrigins
     }
     numberOfWorkers: 4
-    alwaysOn: false
+    alwaysOn: isElasticFunctionsPlan ? false : true
     http20Enabled: true
-    functionAppScaleLimit: 4
-    minimumElasticInstanceCount: 1
     publicNetworkAccess: 'Enabled'
     ipSecurityRestrictions: dataflowsIpSecurityRestrictionsRules
     ipSecurityRestrictionsDefaultAction: 'Deny'
@@ -394,7 +428,14 @@ var dataflowsFunctionConfigProperties = {
     linuxFxVersion: linuxFxVersionMap['${functionsRuntime}']
     appSettings: dataflowsApplicationSettings
     ftpsState: 'Disabled'
-  }
+  },
+  isElasticFunctionsPlan
+    ? {
+        functionAppScaleLimit: 4
+        minimumElasticInstanceCount: 1
+      }
+    : {}
+)
 
 //Create App Insights
 
@@ -728,7 +769,10 @@ module dataflowsSlotPrivateEndpoint './lib/network/subnet-private-endpoint.bicep
   ]
 }
 
-var createSqlServerVnetRule = !empty(sqlServerResourceGroupName) && !empty(sqlServerName) && !isUstpDeployment
+// useSqlPrivateLink and !useSqlPrivateLink make these mutually exclusive --
+// see the equivalent block in backend-api-deploy.bicep for the full
+// same-region-restriction rationale.
+var createSqlServerVnetRule = !useSqlPrivateLink && !empty(sqlServerResourceGroupName) && !empty(sqlServerName) && !isUstpDeployment
 
 module setDataflowFunctionSqlServerVnetRule './lib/network/sql-vnet-rule.bicep' = if (createSqlServerVnetRule) {
   scope: resourceGroup(sqlServerResourceGroupName)
@@ -737,6 +781,37 @@ module setDataflowFunctionSqlServerVnetRule './lib/network/sql-vnet-rule.bicep' 
     stackName: dataflowsFunctionName
     sqlServerName: sqlServerName
     subnetId: dataflowsFunctionSubnetId
+  }
+}
+
+var createSqlPrivateEndpoint = useSqlPrivateLink && !empty(sqlServerResourceGroupName) && !empty(sqlServerName) && !isUstpDeployment
+
+// The SQL server is never declared `existing` in this codebase -- see the
+// comment above sqlIdentityName below for why constructed resource IDs are
+// preferred here for scope resolution. Assumes the SQL server lives in the
+// deploying subscription (no dedicated sqlServerSubscriptionId param exists
+// anywhere else in this codebase either).
+var sqlServerResourceId = resourceId(sqlServerResourceGroupName, 'Microsoft.Sql/servers', sqlServerName)
+
+module dataflowsSqlPrivateEndpoint './lib/network/subnet-private-endpoint.bicep' = if (createSqlPrivateEndpoint) {
+  name: '${dataflowsFunctionName}-sql-pep-module'
+  scope: resourceGroup(virtualNetworkResourceGroupName)
+  params: {
+    privateLinkGroup: 'sqlServer'
+    stackName: '${dataflowsFunctionName}-sql'
+    // Overrides subnet-private-endpoint.bicep's default
+    // 'privatelink_azurewebsites_${stackName}' config-entry name, which would
+    // otherwise mislabel this SQL DNS zone config as "azurewebsites". This is
+    // a brand-new resource on first deploy, so there is no existing config
+    // entry to rename/replace.
+    dnsZoneConfigName: 'privatelink_database_${dataflowsFunctionName}-sql'
+    location: location
+    privateLinkServiceId: sqlServerResourceId
+    privateEndpointSubnetId: privateEndpointSubnetId
+    privateDnsZoneName: sqlPrivateDnsZoneName
+    privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
+    privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
+    tags: tags
   }
 }
 

@@ -561,6 +561,21 @@ resource caseTrusteeAppointmentsCollection 'Microsoft.DocumentDB/databaseAccount
             keys: ['trusteeId']
           }
         }
+        {
+          // Supports getActiveByCaseId's query (see
+          // trustee-case-appointments.mongo.repository.ts): caseId equality (the shard key)
+          // narrows to one physical partition, and assignedOn as the compound suffix lets
+          // Cosmos return the ORDER BY assignedOn DESC / limit 1 result directly from the index
+          // instead of fetching every active appointment for the case and sorting in memory.
+          // The remaining filter predicates (unassignedOn not-exists, trusteeId $ne, isSurrogate
+          // $ne) are not index-seekable and are evaluated as residual filters regardless of what
+          // else is in this key, so they are deliberately not included here. createdOn is
+          // deliberately NOT part of this key -- see getActiveByCaseId's docblock for why it was
+          // tried and reverted as a secondary sort key (CAMS-809).
+          key: {
+            keys: ['caseId', 'assignedOn']
+          }
+        }
       ]
     }
   }
