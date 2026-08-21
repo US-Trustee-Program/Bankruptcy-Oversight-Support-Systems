@@ -357,9 +357,10 @@ if [[ "${is_branch_deployment}" == "true" ]]; then
     # branch's lifecycle" justification is simply false for this population,
     # which is EVERY branch that exists today.
     #
-    # Left alone deliberately. A legacy branch keeps working exactly as it does
-    # now (its own VNet rule / Private Endpoint path); it just does not get hub
-    # connectivity, which it never had. Migrating one is an explicit, opt-in act
+    # Its address space is left alone deliberately, but it is still OFFERED hub
+    # peering at that existing address (see below) -- "do not re-address" and "do
+    # not peer" are separable, and conflating them stranded the one branch that
+    # most needs the hub. Migrating the ADDRESS is an explicit, opt-in act
     # via --allowLegacyVnetReaddress, to be done when nothing is deployed into
     # those subnets -- not a silent side effect of an unrelated push.
     if [[ "${branch_vnet_exists}" == "true" && -z "${current_slot_idx}" && "${allow_legacy_vnet_readdress}" != "true" ]]; then
@@ -369,6 +370,50 @@ if [[ "${is_branch_deployment}" == "true" ]]; then
         # shellcheck disable=SC2086 # REASON: intentional word-splitting of --parameters
         deploy_network_stack_func "${network_stack_name}" "${network_rg}" "${deployment_file}" "${deployment_parameters}"
         need_claim_loop=false
+
+        # Offer hub peering anyway, at the existing address space. A legacy
+        # 10.10.0.0/16 does not overlap the hub's own 10.20.0.0/24, so the
+        # peering itself is valid -- the address pool exists to keep BRANCHES
+        # from overlapping EACH OTHER, and only matters once a second branch
+        # wants in. Since every legacy branch shares 10.10.0.0/16, exactly one
+        # can hold a hub peering at a time; the rest get Azure's overlap
+        # rejection, which is handled below rather than treated as fatal.
+        #
+        # This matters concretely: a cross-region branch (AZ-FUNCTIONS-LOCATION
+        # set) CANNOT use the SQL VNet-rule path at all, because Azure requires
+        # the rule's subnet to be in the server's region. The hub is its only
+        # route to SQL. Refusing to peer it purely because its address predates
+        # the pool would strand exactly the branch that most needs the hub.
+        #
+        # Failure here is never fatal. A legacy branch without hub peering is
+        # simply in the state it was already in, so this can only add
+        # connectivity, never remove it.
+        set +e
+        hub_vnet_id=$(az network vnet show -g "${hub_rg}" -n "${hub_vnet_name}" --query id -o tsv 2>/dev/null)
+        hubLookupRc=$?
+        set -e
+        if [[ ${hubLookupRc} -ne 0 || -z "${hub_vnet_id}" ]]; then
+            echo "WARNING: hub VNet ${hub_vnet_name} not found in ${hub_rg}; leaving legacy branch ${vnet_name} unpeered. It keeps its existing SQL path." >&2
+        else
+            branch_vnet_id=$(az network vnet show -g "${network_rg}" -n "${vnet_name}" --query id -o tsv)
+            echo "Offering hub peering to legacy branch ${vnet_name} at its existing ${slot_cidr}"
+            set +e
+            attempt_peering_func "${hub_rg}" "${hub_vnet_name}" "${branch_vnet_id}" "${hub_peering_name}"
+            legacyPeeringRc=$?
+            set -e
+            if [[ ${legacyPeeringRc} -eq 0 ]]; then
+                az_deploy_with_retry_func az deployment group create \
+                    -g "${network_rg}" \
+                    --name "${branch_peering_name}" \
+                    --template-file "${peering_deployment_file}" \
+                    --parameters localVirtualNetworkName="${vnet_name}" remoteVirtualNetworkId="${hub_vnet_id}" peeringName="${branch_peering_name}"
+                echo "Legacy branch ${vnet_name} is now peered to the hub at ${slot_cidr}."
+            elif [[ ${legacyPeeringRc} -eq 2 ]]; then
+                echo "WARNING: cannot peer legacy branch ${vnet_name} at ${slot_cidr} -- another VNet with an overlapping range is already peered to the hub. Only one branch can hold a hub peering at the shared legacy address. This branch keeps its existing SQL path; re-address it into the pool to join the hub." >&2
+            else
+                echo "WARNING: hub peering failed for legacy branch ${vnet_name}; it keeps its existing SQL path." >&2
+            fi
+        fi
     elif [[ "${branch_vnet_exists}" == "true" ]]; then
         if [[ -z "${current_slot_idx}" ]]; then
             echo "WARNING: --allowLegacyVnetReaddress was set; branch VNet ${vnet_name} at ${slot_cidr} WILL be re-addressed into the pool. This fails if anything is deployed into its subnets." >&2
