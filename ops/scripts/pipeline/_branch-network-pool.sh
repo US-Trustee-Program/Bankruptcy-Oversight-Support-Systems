@@ -90,24 +90,29 @@ branch_network_slot_cidr() {
   echo "10.${secondOctet}.${thirdOctet}.0/${BRANCH_NETWORK_POOL_SLOT_PREFIX_LEN}"
 }
 
-# Carves the same relative .10/.11/.12/.13 /28 offsets network.bicep's static
-# defaults use within 10.10.0.0/16 today, out of the FIRST /24 of the given
-# /20 slot. A /20's base address always has its third octet at a multiple of
-# 16 and its last octet at 0 (enforced by branch_network_slot_cidr above), so
-# offsetting the first /24 of that /20 this way is always valid and never
-# crosses out of the slot.
+# Mirrors the +10/+11/+12/+13 THIRD-octet offsets network.bicep's static
+# defaults use inside 10.10.0.0/16 today (10.10.10.0/28, 10.10.11.0/28,
+# 10.10.12.0/28, 10.10.13.0/28), applied relative to the given /20 slot's own
+# third octet. So slot 10.128.16.0/20 yields 10.128.26.0/28 .. 10.128.29.0/28.
+#
+# Always valid, and never crosses out of the slot: branch_network_slot_cidr
+# guarantees the slot's third octet is a multiple of 16 and its fourth octet is
+# 0, a /20 spans 16 third-octet values, and the largest offset used is +13.
+# Keeping the fourth octet at 0 also keeps every /28 network-aligned, which ARM
+# requires -- it rejects a prefix with host bits set (e.g. 10.128.0.10/28).
 branch_network_subnet_prefixes() {
   local slotCidr=$1
   local base=${slotCidr%/*}
-  local baseOctets=${base%.0}
+  local o1 o2 o3 o4
+  IFS='.' read -r o1 o2 o3 o4 <<<"${base}"
   # shellcheck disable=SC2034 # REASON: read by callers in other sourcing scripts, not within this file
-  branch_slot_webapp_subnet_prefix="${baseOctets}.10/28"
+  branch_slot_webapp_subnet_prefix="${o1}.${o2}.$((o3 + 10)).0/28"
   # shellcheck disable=SC2034 # REASON: read by callers in other sourcing scripts, not within this file
-  branch_slot_api_subnet_prefix="${baseOctets}.11/28"
+  branch_slot_api_subnet_prefix="${o1}.${o2}.$((o3 + 11)).0/28"
   # shellcheck disable=SC2034 # REASON: read by callers in other sourcing scripts, not within this file
-  branch_slot_private_endpoint_subnet_prefix="${baseOctets}.12/28"
+  branch_slot_private_endpoint_subnet_prefix="${o1}.${o2}.$((o3 + 12)).0/28"
   # shellcheck disable=SC2034 # REASON: read by callers in other sourcing scripts, not within this file
-  branch_slot_dataflows_subnet_prefix="${baseOctets}.13/28"
+  branch_slot_dataflows_subnet_prefix="${o1}.${o2}.$((o3 + 13)).0/28"
 }
 
 branch_network_slot_index_for_cidr() {
@@ -127,37 +132,71 @@ branch_network_slot_index_for_cidr() {
 # Derived from `remoteAddressSpace.addressPrefixes[0]` on each of the hub's
 # live peerings -- the address space Azure itself recorded for that peering's
 # remote VNet, not a separate `az network vnet show` per peering. This is the
-# live, no-ledger "what's in use" signal the whole design relies on. If a
-# peering's remote address space can't be read (unexpected API shape), it is
-# silently skipped here rather than erroring: at worst that makes this
-# function under-report claimed slots, and an under-reported slot that is
-# actually still taken is still caught -- just one retry later -- by Azure's
-# own overlap rejection when the hub-side peering deploy is actually
-# attempted (see azure-deploy-network.sh). It can never over-claim and lock
-# out a slot that is genuinely free.
+# live, no-ledger "what's in use" signal the whole design relies on.
+#
+# Communicates the result via the global branch_network_claimed_indices rather
+# than stdout, and MUST be called as a plain statement. That is deliberate, for
+# the same reason _vnet-link-check.sh's helpers do it: an earlier version
+# returned the indices on stdout and was consumed as
+# `claimed=" $(branch_network_claimed_slot_indices ... | tr '\n' ' ') "`. Being
+# inside a pipeline inside a command substitution exempts it from errexit AND
+# discards its exit status, so a failed `az` call -- expired token, throttling,
+# hub VNet not yet created -- produced an EMPTY prefix list that read as "no
+# slots claimed." Every branch deploying during that window would then be handed
+# slot 0. `return 1` and `exit 1` are both swallowed the same way there, so
+# failing loud is only possible off the stdout path.
+#
+# A single peering whose remote address space can't be parsed is still skipped
+# silently: that under-reports one slot, and Azure's own peering overlap
+# rejection catches it a retry later. The distinction that matters is between
+# "one unreadable entry" (benign, recoverable) and "the whole query failed"
+# (must not be read as an empty pool).
 branch_network_claimed_slot_indices() {
   local hubRg=$1
   local hubVnet=$2
-  local prefixes
-  prefixes=$(az network vnet peering list --resource-group "${hubRg}" --vnet-name "${hubVnet}" --query "[].remoteAddressSpace.addressPrefixes[0]" -o tsv)
-  local prefix
+  # shellcheck disable=SC2034 # REASON: read by callers in other sourcing scripts, not within this file
+  branch_network_claimed_indices=""
+  local prefixes errFile rc
+  errFile=$(mktemp)
+  # stderr captured separately, never merged with 2>&1 -- a CLI upgrade nag or
+  # deprecation notice spliced into stdout would be parsed as an address prefix.
+  prefixes=$(az network vnet peering list --resource-group "${hubRg}" --vnet-name "${hubVnet}" --query "[].remoteAddressSpace.addressPrefixes[0]" -o tsv 2>"${errFile}")
+  rc=$?
+  if [[ ${rc} -ne 0 ]]; then
+    echo "ERROR: failed to list peerings on hub vnet ${hubVnet} in ${hubRg} (exit ${rc}): $(cat "${errFile}")" >&2
+    echo "ERROR: cannot determine which address-pool slots are claimed; refusing to treat this as an empty pool." >&2
+    rm -f "${errFile}"
+    return 1
+  fi
+  rm -f "${errFile}"
+  local prefix idx claimed=""
   while IFS= read -r prefix; do
     [[ -z "${prefix}" ]] && continue
-    branch_network_slot_index_for_cidr "${prefix}"
+    idx=$(branch_network_slot_index_for_cidr "${prefix}")
+    [[ -n "${idx}" ]] && claimed+="${idx} "
   done <<<"${prefixes}"
+  # shellcheck disable=SC2034 # REASON: read by callers in other sourcing scripts, not within this file
+  branch_network_claimed_indices="${claimed}"
 }
 
+# Sets branch_network_free_slot to the lowest unclaimed, non-excluded slot
+# index. Same plain-statement contract as branch_network_claimed_slot_indices
+# above -- do NOT call via `x=$(branch_network_find_free_slot ...)`, or a failure
+# to read the claimed set becomes indistinguishable from "pool exhausted."
 branch_network_find_free_slot() {
   local hubRg=$1
   local hubVnet=$2
   local excluded=" ${3:-} "
-  local claimed
-  claimed=" $(branch_network_claimed_slot_indices "${hubRg}" "${hubVnet}" | tr '\n' ' ') "
+  # shellcheck disable=SC2034 # REASON: read by callers in other sourcing scripts, not within this file
+  branch_network_free_slot=""
+  branch_network_claimed_slot_indices "${hubRg}" "${hubVnet}" || return 1
+  local claimed=" ${branch_network_claimed_indices} "
   local idx
   for (( idx=0; idx<BRANCH_NETWORK_POOL_SLOT_COUNT; idx++ )); do
     [[ "${claimed}" == *" ${idx} "* ]] && continue
     [[ "${excluded}" == *" ${idx} "* ]] && continue
-    echo "${idx}"
+    # shellcheck disable=SC2034 # REASON: read by callers in other sourcing scripts, not within this file
+    branch_network_free_slot="${idx}"
     return 0
   done
   echo "ERROR: branch network address pool exhausted -- all ${BRANCH_NETWORK_POOL_SLOT_COUNT} slots are claimed or were tried and lost a race this run." >&2

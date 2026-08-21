@@ -351,7 +351,14 @@ if [[ "${is_branch_deployment}" == "true" ]]; then
         attempt=1
         claimed=false
         while [[ ${attempt} -le ${max_slot_attempts} ]]; do
-            candidate_idx=$(branch_network_find_free_slot "${hub_rg}" "${hub_vnet_name}" "${excluded_indices}")
+            # Plain statement, NOT `candidate_idx=$(...)` -- see
+            # branch_network_find_free_slot's contract in _branch-network-pool.sh.
+            # Called in a command substitution, a failure to read the hub's
+            # peering list would be silently indistinguishable from "slot 0 is
+            # free", and every branch deploying during an az outage would claim
+            # the same range.
+            branch_network_find_free_slot "${hub_rg}" "${hub_vnet_name}" "${excluded_indices}"
+            candidate_idx="${branch_network_free_slot}"
             candidate_cidr=$(branch_network_slot_cidr "${candidate_idx}")
             echo "Attempt ${attempt}/${max_slot_attempts}: claiming pool slot ${candidate_idx} (${candidate_cidr}) for branch VNet ${vnet_name}"
 
