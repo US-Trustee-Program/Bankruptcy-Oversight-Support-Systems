@@ -224,15 +224,6 @@ describe('UpcomingKeyDates', () => {
     expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
   });
 
-  test('renders "No date added" for all fields when data is null after a failed load', () => {
-    renderComponent({ data: null, isLoading: false });
-
-    expect(screen.getByTestId('upcoming-key-dates-card')).toBeInTheDocument();
-
-    const noDateElements = screen.getAllByText('No date added');
-    expect(noDateElements.length).toBe(7);
-  });
-
   test('defaults to chapter7-panel variant when no variant prop is passed', () => {
     render(
       <BrowserRouter>

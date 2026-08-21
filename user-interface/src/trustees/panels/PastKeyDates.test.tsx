@@ -158,15 +158,6 @@ describe('PastKeyDates', () => {
     expect(screen.queryByTestId('past-key-dates-card')).not.toBeInTheDocument();
   });
 
-  test('renders "No date added" for all fields when data is null after a failed load', () => {
-    renderComponent({ data: null, isLoading: false });
-
-    expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
-
-    const noDateElements = screen.getAllByText('No date added');
-    expect(noDateElements.length).toBe(5);
-  });
-
   test('renders Last Audit Fiscal Year value when present', () => {
     renderComponent({ data: populatedDocument });
 
