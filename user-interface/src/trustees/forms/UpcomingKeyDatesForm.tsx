@@ -19,6 +19,9 @@ import DatePicker from '@/lib/components/uswds/DatePicker';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { isChapter12Standing } from '@common/cams/trustee-appointments';
 import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
+import LocalStorage from '@/lib/utils/local-storage';
+import { CamsRole } from '@common/cams/roles';
+import { Stop } from '@/lib/components/Stop';
 
 type UpcomingKeyDatesVariant = 'chapter7-panel' | 'chapter12-standing';
 
@@ -145,6 +148,7 @@ export default function UpcomingKeyDatesForm() {
   }>();
   const navigate = useNavigate();
   const globalAlert = useGlobalAlert();
+  const canManage = !!LocalStorage.getSession()?.user?.roles?.includes(CamsRole.TrusteeAdmin);
 
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -393,6 +397,17 @@ export default function UpcomingKeyDatesForm() {
 
   if (isLoading) {
     return <LoadingSpinner id="edit-upcoming-key-dates-loading" />;
+  }
+
+  if (!canManage) {
+    return (
+      <Stop
+        id="forbidden-alert"
+        title="Forbidden"
+        message="You do not have permission to manage Trustee Upcoming Key Dates"
+        asError
+      />
+    );
   }
 
   if (loadError) {
