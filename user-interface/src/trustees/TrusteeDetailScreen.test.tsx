@@ -580,6 +580,7 @@ describe('TrusteeDetailScreen', () => {
 
   describe('upcoming-key-dates/edit route', () => {
     beforeEach(() => {
+      TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
       vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
       vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
     });
@@ -589,6 +590,7 @@ describe('TrusteeDetailScreen', () => {
         ...testFeatureFlags,
         'display-chpt7-panel-upcoming-key-dates': true,
       });
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [] });
       vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
       renderWithRouter(['/trustees/123/appointments/appt-1/upcoming-key-dates/edit']);

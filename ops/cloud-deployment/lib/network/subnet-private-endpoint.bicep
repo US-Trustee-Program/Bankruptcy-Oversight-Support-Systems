@@ -22,7 +22,12 @@ param privateDnsZoneId string = ''
 @description('Name for the DNS zone group (default: "default", use "zone-group" for slots to match existing infrastructure)')
 param dnsZoneGroupName string = 'default'
 
+@description('Name for the DNS zone config entry inside the zone group. Defaults to the historical "privatelink_azurewebsites_\${stackName}" literal for backward compatibility with existing call sites (webapp/api/dataflows/slot/KV private endpoints) -- changing that default would rename the deployed config entry, which Azure treats as delete+recreate, not an in-place update. Pass an explicit value for new, non-webapp call sites (e.g. the SQL private endpoints) so the config entry name reflects what it actually is instead of being misleadingly labeled "azurewebsites".')
+param dnsZoneConfigName string = ''
+
 param tags object = {}
+
+var effectiveDnsZoneConfigName = empty(dnsZoneConfigName) ? 'privatelink_azurewebsites_${stackName}' : dnsZoneConfigName
 
 resource privateEndpoint 'Microsoft.Network/privateEndpoints@2023-11-01' = {
   name: 'pep-${stackName}'
@@ -64,7 +69,7 @@ resource privateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneG
   properties: {
     privateDnsZoneConfigs: [
       {
-        name: 'privatelink_azurewebsites_${stackName}'
+        name: effectiveDnsZoneConfigName
         properties: {
           privateDnsZoneId: dnsZoneId
         }

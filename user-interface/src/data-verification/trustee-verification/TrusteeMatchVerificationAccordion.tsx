@@ -294,8 +294,15 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   const courtDetails = courts.find((c) => c.courtDivisionCode === divisionCode);
   const courtName = order.courtName ?? courtDetails?.courtName ?? order.courtId;
 
+  // AmbiguousMatchUnresolved no longer guarantees 2+ raw candidates: the first-token-lastName
+  // search tier (see matchTrusteeByName in trustee-match.helpers.ts) can surface a single
+  // candidate that resolveNameCollisionByScoring then scores below the auto-link threshold,
+  // landing here with only one entry in matchCandidates. Labeling that "Multiple Match" is
+  // misleading (there are no "other potential matches" to compare against), so this also
+  // requires candidateCount >= 2 - a genuine raw-candidate collision, not just a low score.
   const isMultipleMatch =
-    order.mismatchReason === TrusteeAppointmentSyncErrorCode.MultipleTrusteesMatch;
+    order.mismatchReason === TrusteeAppointmentSyncErrorCode.AmbiguousMatchUnresolved &&
+    order.candidateCount >= 2;
   const isInactiveStatus =
     order.mismatchReason === TrusteeAppointmentSyncErrorCode.PerfectMatchInactiveStatus;
   const taskTypeLabel = isMultipleMatch
@@ -462,18 +469,20 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     />
   );
 
+  const sortedAffectedCaseIds = [...affectedCaseIds].sort();
+
   const caseLink =
     affectedCaseCount > 1 ? (
       <span data-testid="affected-cases">
         <strong>{affectedCaseCount} cases</strong>
         {enrichedOrder && (
-          <ul className="affected-cases-list">
-            {affectedCaseIds.map((caseId) => (
-              <li key={caseId}>
+          <span className="affected-cases-list">
+            {sortedAffectedCaseIds.map((caseId) => (
+              <span key={caseId} className="affected-case-item">
                 <NewTabLink to={`/case-detail/${caseId}`} label={getCaseNumber(caseId)} />
-              </li>
+              </span>
             ))}
-          </ul>
+          </span>
         )}
       </span>
     ) : (

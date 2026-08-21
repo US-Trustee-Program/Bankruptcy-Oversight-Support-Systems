@@ -112,25 +112,63 @@ export type TrusteeAppointmentSyncEvent = {
   retryCount?: number;
   chapter?: string;
   courtDivisionCode?: string;
-  /**
-   * Compound ACMS key ("{GROUP_DESIGNATOR}-{PROF_CODE}") extracted from the DXTR
-   * transaction record (TX.REC) at the time the event was sourced. Undefined when
-   * either component is missing from the source row.
-   */
-  acmsProfessionalId?: string;
 };
 
+/**
+ * Match-outcome vocabulary for trustee appointment sync. A name collision that resolves to a
+ * clear scoring winner (score > FUZZY_MATCH_SCORE_THRESHOLD, gap >= FUZZY_MATCH_MIN_GAP,
+ * isAppointmentMatch passes) is treated the same as any other resolved trusteeId and auto-linked
+ * — it is never persisted here, since minimizing human review is the point of scoring in the
+ * first place. Only genuinely unresolved outcomes reach this enum:
+ *  - AmbiguousMatchUnresolved: the fuzzy-match attempt failed to find a clear winner (scored, no
+ *    resolution). Persisted, countable, verification-triggering.
+ *  - CandidateLoadFailed: matchTrusteeByName found more than one raw name candidate (so this is
+ *    NOT "no trustee matched this name" — NoTrusteeMatch would be misleading here), but scoring
+ *    could not load ANY of their trustee/appointment records (e.g. every candidate rejected with
+ *    a non-transient error). Distinct from AmbiguousMatchUnresolved, which means scoring DID run
+ *    and simply found no clear winner — conflating the two would make the Data Verification UI's
+ *    "Multiple Match" label (gated on AmbiguousMatchUnresolved) appear next to zero candidates,
+ *    which is its own kind of misleading. Still routed through the same
+ *    upsertMatchVerification/writeSurrogateAppointment sequence for human review.
+ */
 export const TrusteeAppointmentSyncErrorCode = {
+  // matchTrusteeByName found zero CAMS trustees with a name matching the DXTR trustee, and the
+  // fuzzy-normalization fallback also found nothing — no candidate exists to review at all.
   NoTrusteeMatch: 'NO_TRUSTEE_MATCH',
-  MultipleTrusteesMatch: 'MULTIPLE_TRUSTEES_MATCH',
+  // The name resolved to exactly one CAMS trustee, but that trustee's data doesn't clear the
+  // court+division+chapter appointment-match bar (isAppointmentMatch fails) — e.g. no
+  // appointments at all, or only appointments that don't cover this case. One known candidate,
+  // but not with enough confidence to auto-link, so a human reviews the single candidate.
   ImperfectMatch: 'IMPERFECT_MATCH',
-  HighConfidenceMatch: 'HIGH_CONFIDENCE_MATCH',
+  // matchTrusteeByName found more than one raw name-collision candidate, and scoring
+  // (resolveNameCollisionByScoring) ran but found no clear winner (no candidate cleared the
+  // score/gap threshold, or the winner's appointment doesn't cover this case's
+  // court/division/chapter). Genuinely ambiguous — needs a human to pick among the candidates.
+  AmbiguousMatchUnresolved: 'AMBIGUOUS_MATCH_UNRESOLVED',
+  // The name resolved to exactly one CAMS trustee with an appointment that matches this case's
+  // court/division/chapter, but that appointment's status isn't 'active' (e.g. suspended,
+  // terminated, resigned, deceased) — otherwise a perfect match, so a human confirms the
+  // trustee's current status is still correct before linking.
   PerfectMatchInactiveStatus: 'PERFECT_MATCH_INACTIVE_STATUS',
-  SoftCloseWriteFailed: 'SOFT_CLOSE_WRITE_FAILED',
+  // matchTrusteeByName found more than one raw name-collision candidate, but scoring could not
+  // load ANY of their trustee/appointment records (e.g. every candidate rejected with a
+  // non-transient error) — distinct from AmbiguousMatchUnresolved, which means scoring DID run
+  // and simply found no clear winner. See the doc comment above this object for why conflating
+  // the two would mislead the Data Verification UI's "Multiple Match" label.
+  CandidateLoadFailed: 'CANDIDATE_LOAD_FAILED',
 } as const;
 
 export type TrusteeAppointmentSyncErrorCode =
   (typeof TrusteeAppointmentSyncErrorCode)[keyof typeof TrusteeAppointmentSyncErrorCode];
+
+/**
+ * Wire value persisted for a soft-close write failure. Not a match outcome — it is a
+ * post-resolution write-failure concern (the trustee was already resolved; persisting the new
+ * appointment failed) — so it is kept out of TrusteeAppointmentSyncErrorCode rather than
+ * collapsed into the same enum as the match-outcome vocabulary above.
+ */
+export const SoftCloseWriteFailed = 'SOFT_CLOSE_WRITE_FAILED' as const;
+export type SoftCloseWriteFailed = typeof SoftCloseWriteFailed;
 
 /**
  * Sentinel value indicating a candidate trustee has not been scored yet.
@@ -161,40 +199,13 @@ export type CandidateScore = {
 /**
  * Sent to the DLQ when a trustee appointment cannot be processed due to a known, permanent error.
  * Extends the original event to preserve full context for future recovery processing.
+ * mismatchReason additionally accepts SoftCloseWriteFailed (a post-resolution write-failure,
+ * not a match outcome) since a soft-close failure is also reported via this same DLQ shape.
  */
 export type TrusteeAppointmentSyncError = TrusteeAppointmentSyncEvent & {
-  mismatchReason: TrusteeAppointmentSyncErrorCode;
+  mismatchReason: TrusteeAppointmentSyncErrorCode | SoftCloseWriteFailed;
   matchCandidates: CandidateScore[];
 };
-
-/**
- * Data shape for a MULTIPLE_TRUSTEES_MATCH error.
- */
-export type MultipleTrusteesMatchErrorData = {
-  mismatchReason: 'MULTIPLE_TRUSTEES_MATCH';
-  matchCandidates: CandidateScore[];
-};
-
-/**
- * Type predicate to check if error data is a MULTIPLE_TRUSTEES_MATCH error.
- */
-export function isMultipleTrusteesMatchError(
-  data: unknown,
-): data is MultipleTrusteesMatchErrorData {
-  if (typeof data !== 'object' || data === null) {
-    return false;
-  }
-
-  const candidate = data as {
-    mismatchReason?: unknown;
-    matchCandidates?: unknown;
-  };
-
-  return (
-    candidate.mismatchReason === TrusteeAppointmentSyncErrorCode.MultipleTrusteesMatch &&
-    Array.isArray(candidate.matchCandidates)
-  );
-}
 
 /**
  * Event triggered to start trustee migration from ATS.

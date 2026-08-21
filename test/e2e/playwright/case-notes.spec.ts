@@ -57,14 +57,20 @@ test.describe('Case Notes', () => {
     await page.locator('[data-testid="editor-content"] > div').fill(noteContentEdit);
 
     await expect(page.locator('[data-testid="button-note-modal-submit-button"]')).toBeEnabled();
-    // The save button uses a 300ms throttle; retry the click until the modal actually closes,
-    // rather than guessing a fixed wait duration for the throttle to clear. The inner assertion
-    // uses a short timeout so a throttled click doesn't consume the entire outer retry budget.
+    // The save button uses a 300ms throttle; retry until the modal actually closes, rather
+    // than guessing a fixed wait duration for the throttle to clear. Each retry only clicks
+    // if the modal is still open -- a prior click's save can succeed just after the inner
+    // assertion's short timeout elapses, and blindly re-clicking on every retry would target
+    // an already-closed, stale/hidden button, causing Playwright's actionability wait to spin
+    // for its full internal timeout on an element that will never become clickable again. The
+    // inner assertion uses a short timeout so a throttled-but-still-open modal doesn't consume
+    // the entire outer retry budget.
     await expect(async () => {
-      await page.locator('[data-testid="button-note-modal-submit-button"]').click();
-      await expect(page.locator('[data-testid="modal-content-note-modal"]')).not.toBeVisible({
-        timeout: 1000,
-      });
+      const noteModal = page.locator('[data-testid="modal-content-note-modal"]');
+      if (await noteModal.isVisible()) {
+        await page.locator('[data-testid="button-note-modal-submit-button"]').click();
+      }
+      await expect(noteModal).not.toBeVisible({ timeout: 1000 });
     }).toPass(timeoutOption);
     caseNoteHeader = page.getByTestId('note-item-0-header');
     await expect(caseNoteHeader).toBeVisible(timeoutOption);

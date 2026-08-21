@@ -12,9 +12,16 @@ import {
   calculatePhoneScore,
   calculateEmailScore,
   calculateTotalScore,
-  resolveTrusteeWithFuzzyMatching,
-  isPerfectMatch,
+  resolveNameCollisionByScoring,
+  isAppointmentMatch,
   findInactivePerfectMatch,
+  stripParentheticalAnnotations,
+  stripTrusteeRoleSuffix,
+  stripChapterAnnotation,
+  stripSourceSystemArtifacts,
+  normalizeGenerationalSuffix,
+  stripNamePunctuation,
+  normalizeNameForMatching,
 } from './trustee-match.helpers';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
@@ -23,10 +30,16 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { LegacyAddress } from '@common/cams/parties';
 import { Address, PhoneNumber } from '@common/cams/contact';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
-import { DxtrTrusteeParty, TrusteeAppointmentSyncEvent } from '@common/cams/dataflow-events';
+import {
+  DxtrTrusteeParty,
+  TrusteeAppointmentSyncEvent,
+  UNSCORED,
+} from '@common/cams/dataflow-events';
 import { AppointmentChapterType, Trustee } from '@common/cams/trustees';
 import factory from '../../factory';
 import { TrusteesRepository, TrusteeAppointmentsRepository } from '../gateways.types';
+import { TooManyRequestsError } from '../../common-errors/too-many-requests-error';
+import { GatewayTimeoutError } from '../../common-errors/gateway-timeout';
 
 // Centralized test fixture builders
 const makeAppointment = (overrides: Partial<TrusteeAppointment> = {}): TrusteeAppointment => ({
@@ -124,33 +137,214 @@ describe('escapeRegex', () => {
   });
 });
 
+describe('stripParentheticalAnnotations', () => {
+  test('should strip a trailing role marker, e.g. "(TR)"', () => {
+    expect(stripParentheticalAnnotations('John Doe (TR)')).toBe('John Doe');
+  });
+
+  test('should strip a trailing court-office code, e.g. "(MON)"', () => {
+    expect(stripParentheticalAnnotations('John Doe (MON)')).toBe('John Doe');
+  });
+
+  test('should strip two parenthetical groups in the same name', () => {
+    expect(stripParentheticalAnnotations('John (SV) R Doe (TR)')).toBe('John R Doe');
+  });
+
+  test('should strip a mid-name nickname group', () => {
+    expect(stripParentheticalAnnotations('John (Johnny) Doe Jr.')).toBe('John Doe Jr.');
+  });
+
+  test('should leave a name with no parenthetical group unchanged', () => {
+    expect(stripParentheticalAnnotations('John Doe')).toBe('John Doe');
+  });
+});
+
+describe('stripTrusteeRoleSuffix', () => {
+  test('should strip a trailing " Trustee"', () => {
+    expect(stripTrusteeRoleSuffix('John Doe Trustee')).toBe('John Doe');
+  });
+
+  test('should strip a trailing "-Trustee"', () => {
+    expect(stripTrusteeRoleSuffix('John Doe-Trustee')).toBe('John Doe');
+  });
+
+  test('should leave a name with no role suffix unchanged', () => {
+    expect(stripTrusteeRoleSuffix('John Doe')).toBe('John Doe');
+  });
+
+  // Deliberately NOT stripped - see stripTrusteeRoleSuffix's doc comment. A bare trailing "tr"/
+  // "Tr" is indistinguishable from a real name ending in a similar-looking token, and stripping
+  // it caused a verified false-positive risk (e.g. "Charles Li Tr" -> "Charles Li").
+  test('should leave a bare trailing "tr" unchanged', () => {
+    expect(stripTrusteeRoleSuffix('John Doe tr')).toBe('John Doe tr');
+  });
+});
+
+describe('stripChapterAnnotation', () => {
+  test('should strip a "- Ch 11 SubV" annotation', () => {
+    expect(stripChapterAnnotation('John Doe - Ch 11 SubV')).toBe('John Doe');
+  });
+
+  test('should strip a "-SBRA V" annotation', () => {
+    expect(stripChapterAnnotation('John Doe -SBRA V')).toBe('John Doe');
+  });
+
+  test('should leave a name with no chapter annotation unchanged', () => {
+    expect(stripChapterAnnotation('John Doe')).toBe('John Doe');
+  });
+});
+
+describe('stripSourceSystemArtifacts', () => {
+  test('should strip a trailing "_<digits>" artifact', () => {
+    expect(stripSourceSystemArtifacts('John Doe_13')).toBe('John Doe');
+  });
+
+  test('should strip a trailing bare apostrophe', () => {
+    expect(stripSourceSystemArtifacts("John Doe'")).toBe('John Doe');
+  });
+
+  test('should leave a name with no artifact unchanged', () => {
+    expect(stripSourceSystemArtifacts('John Doe')).toBe('John Doe');
+  });
+});
+
+describe('normalizeGenerationalSuffix', () => {
+  test('should normalize "Jr." with no comma', () => {
+    expect(normalizeGenerationalSuffix('John Doe Jr.')).toBe('John Doe Jr');
+  });
+
+  test('should normalize ", Jr." with a comma', () => {
+    expect(normalizeGenerationalSuffix('John Doe, Jr.')).toBe('John Doe Jr');
+  });
+
+  test('should normalize "III" with no comma', () => {
+    expect(normalizeGenerationalSuffix('John Doe III')).toBe('John Doe III');
+  });
+
+  test('should normalize ", III" with a comma', () => {
+    expect(normalizeGenerationalSuffix('John Doe, III')).toBe('John Doe III');
+  });
+
+  test('should leave a name with no generational suffix unchanged', () => {
+    expect(normalizeGenerationalSuffix('John Doe')).toBe('John Doe');
+  });
+
+  test('should make comma and no-comma forms compare equal', () => {
+    expect(normalizeGenerationalSuffix('John Doe Jr.')).toBe(
+      normalizeGenerationalSuffix('John Doe, Jr.'),
+    );
+  });
+});
+
+describe('stripNamePunctuation', () => {
+  test('should drop an apostrophe', () => {
+    expect(stripNamePunctuation("John R O'Doe")).toBe('john r odoe');
+  });
+
+  test('should convert a hyphen to a space', () => {
+    expect(stripNamePunctuation('John-Rae Doe')).toBe('john rae doe');
+  });
+
+  test('should make unspaced and spaced double initials compare equal', () => {
+    expect(stripNamePunctuation('John A.R. Doe')).toBe(stripNamePunctuation('John A. R. Doe'));
+  });
+
+  test('should convert a hyphen within a compound surname to a space', () => {
+    expect(stripNamePunctuation('John Doe-Ashe')).toBe('john doe ashe');
+  });
+
+  test('should drop an apostrophe within a compound surname', () => {
+    expect(stripNamePunctuation("John O'Doe")).toBe('john odoe');
+  });
+});
+
+describe('normalizeNameForMatching', () => {
+  test('should compose stripping a role marker with the rest of the pipeline', () => {
+    expect(normalizeNameForMatching('John Doe (TR)')).toBe('john doe');
+  });
+
+  test('should compose stripping a chapter annotation with the rest of the pipeline', () => {
+    expect(normalizeNameForMatching('John R. Doe -SBRA V')).toBe('john r doe');
+  });
+
+  test('should make differently-formatted generational suffixes compare equal', () => {
+    expect(normalizeNameForMatching('John Doe Jr.')).toBe(
+      normalizeNameForMatching('John Doe, Jr.'),
+    );
+  });
+
+  test('should make a punctuation-only variant compare equal to its plain form', () => {
+    expect(normalizeNameForMatching('John R Doe')).toBe(normalizeNameForMatching('John R. Doe'));
+  });
+
+  test('should make a hyphenated compound surname compare equal to its space-separated form', () => {
+    expect(normalizeNameForMatching('John Doe-Ashe')).toBe(
+      normalizeNameForMatching('John Doe Ashe'),
+    );
+  });
+
+  // Edge case, not a bug: a dropped/added middle initial is a genuine content difference, not a
+  // punctuation gap - stripSourceSystemArtifacts removes the "_<digits>" artifact, but the
+  // remaining names still correctly compare unequal so the record falls through to human
+  // verification instead of being force-matched. Real-world example: a DXTR name like
+  // "John M. Doe_13" vs a CAMS record "John Doe" (no middle initial) - it's fine for this to stay
+  // a no-match.
+  test('should leave a source-system artifact intentionally unresolved when a middle initial also differs', () => {
+    expect(normalizeNameForMatching('John R. Doe_13')).not.toBe(
+      normalizeNameForMatching('John Doe'),
+    );
+  });
+
+  // Edge case, not a bug: a generational suffix present on only one side is a genuine content
+  // difference the main pipeline intentionally does not bridge - matchTrusteeByName's
+  // first-token-lastName search tier handles this case instead (see firstLastNameToken).
+  test('should leave a generational suffix present on only one side intentionally unresolved', () => {
+    expect(normalizeNameForMatching('John Doe')).not.toBe(
+      normalizeNameForMatching('John Doe, Jr.'),
+    );
+  });
+});
+
 describe('matchTrusteeByName', () => {
   let context: ApplicationContext;
+
+  const dxtrNamed = (
+    fullName: string,
+    overrides: Partial<DxtrTrusteeParty> = {},
+  ): DxtrTrusteeParty => ({
+    fullName,
+    ...overrides,
+  });
 
   beforeEach(async () => {
     vi.restoreAllMocks();
     context = await createMockApplicationContext();
   });
 
-  test('should return trusteeId when exactly one trustee matches', async () => {
+  test('should return a resolved outcome when exactly one trustee matches', async () => {
     const trustee = MockData.getTrustee();
     vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([trustee]);
 
-    const result = await matchTrusteeByName(context, trustee.name);
+    const result = await matchTrusteeByName(context, dxtrNamed(trustee.name));
 
-    expect(result).toBe(trustee.trusteeId);
-  });
-
-  test('should throw with mismatchReason NO_TRUSTEE_MATCH when no trustees match', async () => {
-    vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([]);
-
-    await expect(matchTrusteeByName(context, 'Nonexistent Trustee')).rejects.toMatchObject({
-      message: expect.stringContaining('No CAMS trustee found matching name "Nonexistent Trustee"'),
-      data: { mismatchReason: 'NO_TRUSTEE_MATCH' },
+    expect(result).toEqual({
+      kind: 'resolved',
+      trusteeId: trustee.trusteeId,
+      nameScore: 100,
+      nameMatchQuality: 'exact',
     });
   });
 
-  test('should throw with mismatchReason MULTIPLE_TRUSTEES_MATCH and matchCandidates when multiple trustees match', async () => {
+  test('should return a no-match outcome when no trustees match', async () => {
+    vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([]);
+    vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored').mockResolvedValue([]);
+
+    const result = await matchTrusteeByName(context, dxtrNamed('Nonexistent Trustee'));
+
+    expect(result).toEqual({ kind: 'no-match' });
+  });
+
+  test('should return an ambiguous outcome with matchCandidates when multiple trustees match', async () => {
     const trustee1 = MockData.getTrustee();
     const trustee2 = MockData.getTrustee();
     vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([
@@ -158,15 +352,14 @@ describe('matchTrusteeByName', () => {
       trustee2,
     ]);
 
-    await expect(matchTrusteeByName(context, trustee1.name)).rejects.toMatchObject({
-      message: expect.stringContaining('Multiple CAMS trustees found matching name'),
-      data: {
-        mismatchReason: 'MULTIPLE_TRUSTEES_MATCH',
-        matchCandidates: expect.arrayContaining([
-          expect.objectContaining({ trusteeId: trustee1.trusteeId }),
-          expect.objectContaining({ trusteeId: trustee2.trusteeId }),
-        ]),
-      },
+    const result = await matchTrusteeByName(context, dxtrNamed(trustee1.name));
+
+    expect(result).toEqual({
+      kind: 'ambiguous',
+      matchCandidates: expect.arrayContaining([
+        expect.objectContaining({ trusteeId: trustee1.trusteeId }),
+        expect.objectContaining({ trusteeId: trustee2.trusteeId }),
+      ]),
     });
   });
 
@@ -176,9 +369,215 @@ describe('matchTrusteeByName', () => {
       .spyOn(MockMongoRepository.prototype, 'findTrusteesByName')
       .mockResolvedValue([trustee]);
 
-    await matchTrusteeByName(context, '  ' + trustee.name + '  ');
+    await matchTrusteeByName(context, dxtrNamed('  ' + trustee.name + '  '));
 
     expect(findSpy).toHaveBeenCalledWith(trustee.name);
+  });
+
+  test('should not call the fuzzy fallback when the exact-match path finds a result', async () => {
+    const trustee = MockData.getTrustee();
+    vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([trustee]);
+    const scoredSpy = vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored');
+
+    await matchTrusteeByName(context, dxtrNamed(trustee.name));
+
+    expect(scoredSpy).not.toHaveBeenCalled();
+  });
+
+  test('should fall back to the scored search and resolve when normalization bridges a punctuation gap', async () => {
+    const trustee = MockData.getTrustee({ name: 'John Doe, Jr.' });
+    vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([]);
+    const scoredSpy = vi
+      .spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored')
+      .mockResolvedValue([trustee]);
+
+    const result = await matchTrusteeByName(context, dxtrNamed('John Doe Jr.'));
+
+    expect(scoredSpy).toHaveBeenCalledWith('John Doe Jr.');
+    expect(result).toEqual({
+      kind: 'resolved',
+      trusteeId: trustee.trusteeId,
+      nameScore: 100,
+      nameMatchQuality: 'fuzzy',
+    });
+  });
+
+  // Each case is a distinct way matchTrusteeByName's fallback tiers can still find nothing:
+  // no candidates at all; a candidate present but not normalize-matching; a candidate differing
+  // by more than punctuation (a source-system artifact alongside content that isn't just a
+  // middle-name gap - real-world pattern: DXTR "John M. Doe_13" vs CAMS "John Doe" with no
+  // firstName/lastName set on the DXTR side here, so the first-token-lastName search tier has no
+  // lastName to search on and correctly falls through); and no matching lastName token at all.
+  test.each([
+    ['no scored candidates at all', [], 'John Doe'],
+    ['a scored candidate that does not normalize-match', [{ name: 'Jane Roe' }], 'John Doe Jr.'],
+    [
+      'a scored candidate differing by more than punctuation (dropped middle initial)',
+      [{ name: 'John Doe' }],
+      'John M. Doe_13',
+    ],
+  ])('should return no-match when %s', async (_description, trusteeOverrides, queryName) => {
+    const trustees = trusteeOverrides.map((overrides) => MockData.getTrustee(overrides));
+    vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([]);
+    vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored').mockResolvedValue(
+      trustees,
+    );
+
+    const result = await matchTrusteeByName(context, dxtrNamed(queryName));
+
+    expect(result).toEqual({ kind: 'no-match' });
+  });
+
+  test('should return ambiguous with UNSCORED candidates when multiple fuzzy candidates normalize-match', async () => {
+    const trustee1 = MockData.getTrustee({ name: 'John Doe Jr.' });
+    const trustee2 = MockData.getTrustee({ name: 'John Doe, Jr.' });
+    vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([]);
+    vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored').mockResolvedValue([
+      trustee1,
+      trustee2,
+    ]);
+
+    const result = await matchTrusteeByName(context, dxtrNamed('John Doe Jr'));
+
+    expect(result).toEqual({
+      kind: 'ambiguous',
+      matchCandidates: expect.arrayContaining([
+        expect.objectContaining({ trusteeId: trustee1.trusteeId, totalScore: UNSCORED }),
+        expect.objectContaining({ trusteeId: trustee2.trusteeId, totalScore: UNSCORED }),
+      ]),
+    });
+  });
+
+  // First-token-lastName search tier: neither composed-name tier above found a match, so this
+  // tier searches CAMS by just the first token of DXTR's lastName (see firstLastNameToken) and
+  // narrows results to trustees with an active appointment in the event's court - the same
+  // courtId filter TrusteeSearchUseCase applies for the UI's manual search feature. Weaker
+  // evidence than a full string match, so it always surfaces as 'ambiguous' even for a single
+  // candidate, routing through resolveNameCollisionByScoring's scoring/appointment-match gate
+  // rather than auto-resolving.
+  describe('first-token-lastName search tier', () => {
+    test('should surface a single candidate as ambiguous when found by first-token lastName search with a matching court appointment', async () => {
+      const trustee = MockData.getTrustee({
+        firstName: 'Richard',
+        lastName: 'Marshack',
+        name: 'Richard Marshack',
+      });
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([]);
+      vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored')
+        .mockResolvedValueOnce([]) // full-name search (tiers 1-2)
+        .mockResolvedValueOnce([trustee]); // first-token lastName search
+      vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([
+        { trusteeId: trustee.trusteeId, courtId: '081' },
+      ]);
+
+      const result = await matchTrusteeByName(
+        context,
+        dxtrNamed('Richard A Marshack (TR)', {
+          firstName: 'Richard',
+          middleName: 'A',
+          lastName: 'Marshack (TR)',
+        }),
+        '081',
+      );
+
+      expect(result).toEqual({
+        kind: 'ambiguous',
+        matchCandidates: [expect.objectContaining({ trusteeId: trustee.trusteeId })],
+      });
+    });
+
+    test('should search using only the first token of a lastName carrying trailing junk', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([]);
+      const scoredSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored')
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
+
+      await matchTrusteeByName(
+        context,
+        dxtrNamed('Kc Cohen Trustee', { firstName: 'Kc', lastName: 'Cohen Trustee' }),
+        '081',
+      );
+
+      expect(scoredSpy).toHaveBeenNthCalledWith(2, 'cohen');
+    });
+
+    test('should exclude a candidate with no active appointment in the event court', async () => {
+      const trustee = MockData.getTrustee({
+        firstName: 'Richard',
+        lastName: 'Marshack',
+        name: 'Richard Marshack',
+      });
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([]);
+      vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored')
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([trustee]);
+      vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([
+        { trusteeId: trustee.trusteeId, courtId: '999' },
+      ]);
+
+      const result = await matchTrusteeByName(
+        context,
+        dxtrNamed('Richard Marshack (TR)', { firstName: 'Richard', lastName: 'Marshack (TR)' }),
+        '081',
+      );
+
+      expect(result).toEqual({ kind: 'no-match' });
+    });
+
+    test('should surface every candidate sharing the lastName token and a matching court appointment', async () => {
+      const trustee1 = MockData.getTrustee({ lastName: 'Cohen', name: 'Aaron Cohen' });
+      const trustee2 = MockData.getTrustee({ lastName: 'Cohen', name: 'Merrill Cohen' });
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([]);
+      vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored')
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([trustee1, trustee2]);
+      vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([
+        { trusteeId: trustee1.trusteeId, courtId: '081' },
+        { trusteeId: trustee2.trusteeId, courtId: '081' },
+      ]);
+
+      const result = await matchTrusteeByName(
+        context,
+        dxtrNamed('Kc Cohen Trustee', { firstName: 'Kc', lastName: 'Cohen Trustee' }),
+        '081',
+      );
+
+      expect(result).toEqual({
+        kind: 'ambiguous',
+        matchCandidates: expect.arrayContaining([
+          expect.objectContaining({ trusteeId: trustee1.trusteeId }),
+          expect.objectContaining({ trusteeId: trustee2.trusteeId }),
+        ]),
+      });
+    });
+
+    test('should not apply this tier when the DXTR event carries no lastName', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([]);
+      const scoredSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored')
+        .mockResolvedValueOnce([]);
+
+      const result = await matchTrusteeByName(context, dxtrNamed('John Quincy Doe'), '081');
+
+      expect(scoredSpy).toHaveBeenCalledTimes(1); // only the tier-2 full-name search, no second call
+      expect(result).toEqual({ kind: 'no-match' });
+    });
+
+    test('should not apply this tier when no courtId is provided', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([]);
+      const scoredSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored')
+        .mockResolvedValueOnce([]); // tier-2 full-name search finds nothing
+
+      const result = await matchTrusteeByName(
+        context,
+        dxtrNamed('Kc Cohen Trustee', { firstName: 'Kc', lastName: 'Cohen Trustee' }),
+      );
+
+      expect(scoredSpy).toHaveBeenCalledTimes(1); // only the tier-2 full-name search
+      expect(result).toEqual({ kind: 'no-match' });
+    });
   });
 });
 
@@ -224,6 +623,49 @@ describe('calculateAddressScore', () => {
       city: camsFields.city,
       state: camsFields.state,
       zipCode: camsFields.zipCode,
+      address1: '456 Different St',
+      countryCode: 'US',
+    };
+
+    const score = calculateAddressScore(dxtrAddress, camsAddress);
+    expect(score).toBe(expected);
+  });
+
+  test.each([
+    [
+      'DXTR has a ZIP+4 extension CAMS lacks, same base ZIP5',
+      'New York, NY 10001-1234',
+      '10001',
+      100,
+    ],
+    [
+      'CAMS has a ZIP+4 extension DXTR lacks, same base ZIP5',
+      'New York, NY 10001',
+      '10001-5678',
+      100,
+    ],
+    [
+      'both sides have a ZIP+4 extension but they differ, same base ZIP5',
+      'New York, NY 10001-1234',
+      '10001-5678',
+      100,
+    ],
+    [
+      'the base ZIP5 itself genuinely differs despite a ZIP+4 on one side',
+      'New York, NY 10002-1234',
+      '10001',
+      40,
+    ],
+  ])('should return correct score when %s', (_desc, cityStateZipCountry, camsZipCode, expected) => {
+    const dxtrAddress: LegacyAddress = {
+      cityStateZipCountry,
+      address1: '123 Main St',
+    };
+
+    const camsAddress: Address = {
+      city: 'New York',
+      state: 'NY',
+      zipCode: camsZipCode,
       address1: '456 Different St',
       countryCode: 'US',
     };
@@ -398,6 +840,32 @@ describe('calculateDistrictDivisionScore', () => {
     ];
     const score = calculateDistrictDivisionScore('081', '1', appointments);
     expect(score).toBe(100);
+  });
+
+  test('should return 100 when case division is included in a multi-division divisionCodes array', () => {
+    const appointments = [
+      makeAppointment({
+        courtId: '081',
+        divisionCode: undefined,
+        divisionCodes: ['235', '236', '237'],
+        status: 'active',
+      }),
+    ];
+    const score = calculateDistrictDivisionScore('081', '237', appointments);
+    expect(score).toBe(100);
+  });
+
+  test('should return 50 when case division is not in the divisionCodes array but court matches', () => {
+    const appointments = [
+      makeAppointment({
+        courtId: '081',
+        divisionCode: undefined,
+        divisionCodes: ['235', '236'],
+        status: 'active',
+      }),
+    ];
+    const score = calculateDistrictDivisionScore('081', '237', appointments);
+    expect(score).toBe(50);
   });
 });
 
@@ -666,6 +1134,41 @@ describe('calculateNameScore', () => {
     expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(15);
   });
 
+  test('should return 85 when dxtr first name is a single initial matching cams first name first letter', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'G. Doe',
+      firstName: 'G',
+      lastName: 'Doe',
+    };
+    const camsTrustee = makeTrustee({ firstName: 'George', lastName: 'Doe' });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(85);
+  });
+
+  test('should return 85 when cams first name is a single initial matching dxtr first name first letter', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'George Doe',
+      firstName: 'George',
+      lastName: 'Doe',
+    };
+    const camsTrustee = makeTrustee({ firstName: 'G', lastName: 'Doe' });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(85);
+  });
+
+  test('should return the lower of the first/middle sub-scores when both relax', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'G. Quincy Doe',
+      firstName: 'G',
+      middleName: 'Quincy',
+      lastName: 'Doe',
+    };
+    const camsTrustee = makeTrustee({ firstName: 'George', middleName: 'Robert', lastName: 'Doe' });
+
+    // firstScore=85 (initial-vs-full), middleScore=15 (genuine conflict) - min is 15.
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(15);
+  });
+
   test('should return 0 when first name does not match', () => {
     const dxtrTrustee: DxtrTrusteeParty = {
       fullName: 'Jane Doe',
@@ -675,6 +1178,33 @@ describe('calculateNameScore', () => {
     const camsTrustee = makeTrustee({ firstName: 'John', lastName: 'Doe' });
 
     expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(0);
+  });
+
+  test('should return 0 when first name is missing on one side (unlike a missing middle name)', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'Doe',
+      lastName: 'Doe',
+    };
+    const camsTrustee = makeTrustee({ firstName: 'John', lastName: 'Doe' });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(0);
+  });
+
+  test('should return 100 when lastName carries a baked-in generational suffix the other side omits', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'Patrick J. Malloy III',
+      firstName: 'Patrick',
+      middleName: 'J',
+      lastName: 'Malloy',
+    };
+    const camsTrustee = makeTrustee({
+      firstName: 'Patrick',
+      middleName: 'Joseph',
+      lastName: 'Malloy, III',
+    });
+
+    // lastName equality holds once the baked-in suffix is stripped; middle is initial-vs-full.
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(85);
   });
 
   test('should return 0 when last name does not match', () => {
@@ -864,23 +1394,23 @@ describe('calculateTotalScore', () => {
   });
 });
 
-describe('isPerfectMatch', () => {
+describe('isAppointmentMatch', () => {
   test('should return true when active appointment matches court, division, and chapter', () => {
     const appointments = [
       makeAppointment({ courtId: '081', divisionCode: '1', chapter: '7', status: 'active' }),
     ];
-    expect(isPerfectMatch(appointments, '081', '1', '7')).toBe(true);
+    expect(isAppointmentMatch(appointments, '081', '1', '7')).toBe(true);
   });
 
   test('should return false when appointments array is empty', () => {
-    expect(isPerfectMatch([], '081', '1', '7')).toBe(false);
+    expect(isAppointmentMatch([], '081', '1', '7')).toBe(false);
   });
 
   test('should return false when matching appointment has status inactive', () => {
     const appointments = [
       makeAppointment({ courtId: '081', divisionCode: '1', chapter: '7', status: 'inactive' }),
     ];
-    expect(isPerfectMatch(appointments, '081', '1', '7')).toBe(false);
+    expect(isAppointmentMatch(appointments, '081', '1', '7')).toBe(false);
   });
 
   test('should return false when matching appointment has status voluntarily-suspended', () => {
@@ -892,21 +1422,21 @@ describe('isPerfectMatch', () => {
         status: 'voluntarily-suspended',
       }),
     ];
-    expect(isPerfectMatch(appointments, '081', '1', '7')).toBe(false);
+    expect(isAppointmentMatch(appointments, '081', '1', '7')).toBe(false);
   });
 
   test('should return false when court and division match but chapter does not', () => {
     const appointments = [
       makeAppointment({ courtId: '081', divisionCode: '1', chapter: '13', status: 'active' }),
     ];
-    expect(isPerfectMatch(appointments, '081', '1', '7')).toBe(false);
+    expect(isAppointmentMatch(appointments, '081', '1', '7')).toBe(false);
   });
 
   test('should return false when chapter matches but court does not', () => {
     const appointments = [
       makeAppointment({ courtId: '082', divisionCode: '1', chapter: '7', status: 'active' }),
     ];
-    expect(isPerfectMatch(appointments, '081', '1', '7')).toBe(false);
+    expect(isAppointmentMatch(appointments, '081', '1', '7')).toBe(false);
   });
 
   test('should return false when court and chapter match on different appointments', () => {
@@ -914,21 +1444,21 @@ describe('isPerfectMatch', () => {
       makeAppointment({ courtId: '081', divisionCode: '1', chapter: '13', status: 'active' }),
       makeAppointment({ courtId: '082', divisionCode: '2', chapter: '7', status: 'active' }),
     ];
-    expect(isPerfectMatch(appointments, '081', '1', '7')).toBe(false);
+    expect(isAppointmentMatch(appointments, '081', '1', '7')).toBe(false);
   });
 
   test('should return true with chapter normalization: case "07" matches appointment "7"', () => {
     const appointments = [
       makeAppointment({ courtId: '081', divisionCode: '1', chapter: '7', status: 'active' }),
     ];
-    expect(isPerfectMatch(appointments, '081', '1', '07')).toBe(true);
+    expect(isAppointmentMatch(appointments, '081', '1', '07')).toBe(true);
   });
 
   test('should return true with chapter normalization: case "11-subchapter-v" matches appointment "11"', () => {
     const appointments = [
       makeAppointment({ courtId: '081', divisionCode: '1', chapter: '11', status: 'active' }),
     ];
-    expect(isPerfectMatch(appointments, '081', '1', '11-subchapter-v')).toBe(true);
+    expect(isAppointmentMatch(appointments, '081', '1', '11-subchapter-v')).toBe(true);
   });
 
   test('should return true when multiple appointments exist and one is a perfect match', () => {
@@ -937,11 +1467,37 @@ describe('isPerfectMatch', () => {
       makeAppointment({ courtId: '081', divisionCode: '1', chapter: '7', status: 'active' }),
       makeAppointment({ courtId: '083', divisionCode: '3', chapter: '11', status: 'inactive' }),
     ];
-    expect(isPerfectMatch(appointments, '081', '1', '7')).toBe(true);
+    expect(isAppointmentMatch(appointments, '081', '1', '7')).toBe(true);
+  });
+
+  test('should return true when case division is included in a multi-division divisionCodes array', () => {
+    const appointments = [
+      makeAppointment({
+        courtId: '081',
+        divisionCode: undefined,
+        divisionCodes: ['235', '236', '237'],
+        chapter: '7',
+        status: 'active',
+      }),
+    ];
+    expect(isAppointmentMatch(appointments, '081', '237', '7')).toBe(true);
+  });
+
+  test('should return false when case division is not in the divisionCodes array', () => {
+    const appointments = [
+      makeAppointment({
+        courtId: '081',
+        divisionCode: undefined,
+        divisionCodes: ['235', '236'],
+        chapter: '7',
+        status: 'active',
+      }),
+    ];
+    expect(isAppointmentMatch(appointments, '081', '237', '7')).toBe(false);
   });
 });
 
-describe('resolveTrusteeWithFuzzyMatching', () => {
+describe('resolveNameCollisionByScoring', () => {
   let context: ApplicationContext;
   let mockTrusteesRepo: Partial<TrusteesRepository>;
   let mockAppointmentsRepo: Partial<TrusteeAppointmentsRepository>;
@@ -1036,16 +1592,131 @@ describe('resolveTrusteeWithFuzzyMatching', () => {
       .mockResolvedValueOnce(winnerAppointments)
       .mockResolvedValueOnce(loserAppointments);
 
-    const result = await resolveTrusteeWithFuzzyMatching(context, event, [
-      'trustee-1',
-      'trustee-2',
-    ]);
+    const result = await resolveNameCollisionByScoring(context, event, ['trustee-1', 'trustee-2']);
 
-    expect(result.winnerId).toBe('trustee-1');
+    expect(result.kind).toBe('resolved');
+    if (result.kind !== 'resolved') throw new Error('expected resolved outcome');
+    expect(result.trusteeId).toBe('trustee-1');
     expect(result.candidateScores).toHaveLength(2);
   });
 
-  test('should throw error when no candidate scores >75%', async () => {
+  test('does not resolve a single candidate at exactly the 75-point threshold (boundary: > not >=)', async () => {
+    // name=100 (25%), phone=100/email=0 (5%/5%), district=50/same-court-different-division
+    // (30%), chapter=100 (30%), address=0 (5%) => weighted total = exactly 75. meetsThreshold
+    // requires totalScore > FUZZY_MATCH_SCORE_THRESHOLD (75), so this must NOT auto-resolve.
+    const event = makeEvent({
+      courtId: '081',
+      courtDivisionCode: '1',
+      chapter: '7',
+      dxtrTrustee: {
+        fullName: 'John Doe',
+        firstName: 'John',
+        lastName: 'Doe',
+        legacy: { phone: '5555551234', email: 'dxtr@example.com' },
+      },
+    });
+    const candidate = makeTrustee({
+      trusteeId: 'trustee-1',
+      name: 'John Doe',
+      public: {
+        address: undefined,
+        phone: { number: '5555551234' },
+        email: 'cams@example.com',
+      },
+    });
+    const appointments = [
+      makeAppointment({
+        id: 'appointment-trustee-1',
+        trusteeId: 'trustee-1',
+        chapter: '7',
+        courtId: '081',
+        divisionCode: '2', // same court, different division => districtDivisionScore 50
+      }),
+    ];
+
+    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>).mockResolvedValue(candidate);
+    (mockAppointmentsRepo.getTrusteeAppointments as ReturnType<typeof vi.fn>).mockResolvedValue(
+      appointments,
+    );
+
+    const result = await resolveNameCollisionByScoring(context, event, ['trustee-1']);
+
+    expect(result.kind).toBe('unresolved');
+    if (result.kind !== 'unresolved') throw new Error('expected unresolved outcome');
+    expect(result.candidateScores[0].totalScore).toBe(75);
+  });
+
+  test('resolves when the winner/runner-up gap is exactly the 5-point minimum (boundary: >= not >)', async () => {
+    // Both candidates: address=0 (no dxtr cityStateZipCountry), name=100, phone=0 (mismatched,
+    // comparable), district=100, chapter=100 (same-appointment match on both) — differing only on
+    // email: winner matches (100) => total 90, runner-up mismatches (0) => total 85. Gap is
+    // exactly 5 == FUZZY_MATCH_MIN_GAP, which hasSignificantGap requires via >=, so this must
+    // resolve.
+    const event = makeEvent({
+      courtId: '081',
+      courtDivisionCode: '1',
+      chapter: '7',
+      dxtrTrustee: {
+        fullName: 'John Doe',
+        firstName: 'John',
+        lastName: 'Doe',
+        legacy: { phone: '5555550000', email: 'shared@example.com' },
+      },
+    });
+    const winner = makeTrustee({
+      trusteeId: 'trustee-1',
+      name: 'John Doe',
+      public: {
+        address: undefined,
+        phone: { number: '5555559999' },
+        email: 'shared@example.com',
+      },
+    });
+    const runnerUp = makeTrustee({
+      trusteeId: 'trustee-2',
+      name: 'John Doe',
+      public: {
+        address: undefined,
+        phone: { number: '5555559999' },
+        email: 'different@example.com',
+      },
+    });
+    const winnerAppointments = [
+      makeAppointment({
+        id: 'appointment-trustee-1',
+        trusteeId: 'trustee-1',
+        chapter: '7',
+        courtId: '081',
+        divisionCode: '1',
+      }),
+    ];
+    const runnerUpAppointments = [
+      makeAppointment({
+        id: 'appointment-trustee-2',
+        trusteeId: 'trustee-2',
+        chapter: '7',
+        courtId: '081',
+        divisionCode: '1',
+      }),
+    ];
+
+    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce(winner)
+      .mockResolvedValueOnce(runnerUp);
+    (mockAppointmentsRepo.getTrusteeAppointments as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce(winnerAppointments)
+      .mockResolvedValueOnce(runnerUpAppointments);
+
+    const result = await resolveNameCollisionByScoring(context, event, ['trustee-1', 'trustee-2']);
+
+    expect(result.kind).toBe('resolved');
+    if (result.kind !== 'resolved') throw new Error('expected resolved outcome');
+    expect(result.trusteeId).toBe('trustee-1');
+    expect(result.candidateScores.find((c) => c.trusteeId === 'trustee-1')?.totalScore).toBe(90);
+    expect(result.candidateScores.find((c) => c.trusteeId === 'trustee-2')?.totalScore).toBe(85);
+  });
+
+  test('should return an unresolved outcome when no candidate scores >75%', async () => {
     const event = makeEvent();
     const candidate1 = makeTrustee({
       trusteeId: 'trustee-1',
@@ -1101,21 +1772,18 @@ describe('resolveTrusteeWithFuzzyMatching', () => {
       .mockResolvedValueOnce(appointments1)
       .mockResolvedValueOnce(appointments2);
 
-    await expect(
-      resolveTrusteeWithFuzzyMatching(context, event, ['trustee-1', 'trustee-2']),
-    ).rejects.toMatchObject({
-      message: expect.stringContaining('Fuzzy matching failed'),
-      data: {
-        mismatchReason: 'MULTIPLE_TRUSTEES_MATCH',
-        matchCandidates: expect.arrayContaining([
-          expect.objectContaining({ trusteeId: 'trustee-1' }),
-          expect.objectContaining({ trusteeId: 'trustee-2' }),
-        ]),
-      },
+    const result = await resolveNameCollisionByScoring(context, event, ['trustee-1', 'trustee-2']);
+
+    expect(result).toEqual({
+      kind: 'unresolved',
+      candidateScores: expect.arrayContaining([
+        expect.objectContaining({ trusteeId: 'trustee-1' }),
+        expect.objectContaining({ trusteeId: 'trustee-2' }),
+      ]),
     });
   });
 
-  test('should throw error when top scores within 5 points', async () => {
+  test('should return an unresolved outcome when top scores within 5 points', async () => {
     const event = makeEvent();
     const candidate1 = makeTrustee({
       trusteeId: 'trustee-1',
@@ -1171,14 +1839,11 @@ describe('resolveTrusteeWithFuzzyMatching', () => {
       .mockResolvedValueOnce(appointments1)
       .mockResolvedValueOnce(appointments2);
 
-    await expect(
-      resolveTrusteeWithFuzzyMatching(context, event, ['trustee-1', 'trustee-2']),
-    ).rejects.toMatchObject({
-      message: expect.stringContaining('Fuzzy matching failed'),
-      data: {
-        mismatchReason: 'MULTIPLE_TRUSTEES_MATCH',
-        matchCandidates: expect.any(Array),
-      },
+    const result = await resolveNameCollisionByScoring(context, event, ['trustee-1', 'trustee-2']);
+
+    expect(result).toEqual({
+      kind: 'unresolved',
+      candidateScores: expect.any(Array),
     });
   });
 
@@ -1210,19 +1875,79 @@ describe('resolveTrusteeWithFuzzyMatching', () => {
         trusteeId: 'trustee-1',
         chapter: '7',
         courtId: '081',
-        divisionCode: '2',
+        divisionCode: '1',
       }),
-    ]; // 80 points
+    ]; // court + division + chapter all match on this single appointment
 
     (mockTrusteesRepo.read as ReturnType<typeof vi.fn>).mockResolvedValue(candidate);
     (mockAppointmentsRepo.getTrusteeAppointments as ReturnType<typeof vi.fn>).mockResolvedValue(
       appointments,
     );
 
-    const result = await resolveTrusteeWithFuzzyMatching(context, event, ['trustee-1']);
+    const result = await resolveNameCollisionByScoring(context, event, ['trustee-1']);
 
-    expect(result.winnerId).toBe('trustee-1');
+    expect(result.kind).toBe('resolved');
+    if (result.kind !== 'resolved') throw new Error('expected resolved outcome');
+    expect(result.trusteeId).toBe('trustee-1');
     expect(result.candidateScores).toHaveLength(1);
+  });
+
+  test('does not auto-resolve when district/division and chapter scores each come from a different active appointment', async () => {
+    // Trustee holds two active appointments: one matches the case's division (different
+    // chapter), the other matches the case's chapter (different division). Neither appointment
+    // alone matches court + division + chapter, so isAppointmentMatch is false for both — but
+    // districtDivisionScore and chapterScore are each computed independently via .some() across
+    // all appointments, so the combined score can still clear the auto-match threshold. This
+    // must fall through to 'unresolved' (human review) rather than auto-linking.
+    const event = makeEvent({
+      courtId: '081',
+      courtDivisionCode: '2',
+      chapter: '7',
+      dxtrTrustee: {
+        fullName: 'John Doe',
+        firstName: 'John',
+        lastName: 'Doe',
+        legacy: { cityStateZipCountry: 'New York, NY 10001' },
+      },
+    });
+    const candidate = makeTrustee({
+      trusteeId: 'trustee-1',
+      name: 'John Doe',
+      public: {
+        address: {
+          address1: '123 Main St',
+          city: 'New York',
+          state: 'NY',
+          zipCode: '10001',
+          countryCode: 'US',
+        },
+      },
+    });
+    const appointments = [
+      makeAppointment({
+        id: 'appointment-division-match',
+        trusteeId: 'trustee-1',
+        chapter: '13',
+        courtId: '081',
+        divisionCode: '2',
+      }),
+      makeAppointment({
+        id: 'appointment-chapter-match',
+        trusteeId: 'trustee-1',
+        chapter: '7',
+        courtId: '081',
+        divisionCode: '1',
+      }),
+    ];
+
+    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>).mockResolvedValue(candidate);
+    (mockAppointmentsRepo.getTrusteeAppointments as ReturnType<typeof vi.fn>).mockResolvedValue(
+      appointments,
+    );
+
+    const result = await resolveNameCollisionByScoring(context, event, ['trustee-1']);
+
+    expect(result.kind).toBe('unresolved');
   });
 
   test('should lazy-load trustee and appointment data', async () => {
@@ -1264,7 +1989,7 @@ describe('resolveTrusteeWithFuzzyMatching', () => {
       appointments,
     );
 
-    await resolveTrusteeWithFuzzyMatching(context, event, ['trustee-1']);
+    await resolveNameCollisionByScoring(context, event, ['trustee-1']);
 
     expect(mockTrusteesRepo.read).toHaveBeenCalledWith('trustee-1');
     expect(mockAppointmentsRepo.getTrusteeAppointments).toHaveBeenCalledWith('trustee-1');
@@ -1294,16 +2019,15 @@ describe('resolveTrusteeWithFuzzyMatching', () => {
         }),
       ]);
 
-    const result = await resolveTrusteeWithFuzzyMatching(context, event, [
-      'trustee-1',
-      'trustee-2',
-    ]);
+    const result = await resolveNameCollisionByScoring(context, event, ['trustee-1', 'trustee-2']);
 
-    expect(result.winnerId).toBe('trustee-2');
+    expect(result.kind).toBe('resolved');
+    if (result.kind !== 'resolved') throw new Error('expected resolved outcome');
+    expect(result.trusteeId).toBe('trustee-2');
     expect(result.candidateScores).toHaveLength(1);
   });
 
-  test('should skip candidate and throw NO_TRUSTEE_MATCH when repository fetch throws an Error', async () => {
+  test('should return a no-match outcome when repository fetch throws an Error for every candidate', async () => {
     const event = makeEvent();
 
     (mockTrusteesRepo.read as ReturnType<typeof vi.fn>).mockRejectedValue(
@@ -1311,26 +2035,80 @@ describe('resolveTrusteeWithFuzzyMatching', () => {
     );
     (mockAppointmentsRepo.getTrusteeAppointments as ReturnType<typeof vi.fn>).mockResolvedValue([]);
 
-    await expect(
-      resolveTrusteeWithFuzzyMatching(context, event, ['trustee-1']),
-    ).rejects.toMatchObject({
-      message: expect.stringContaining('no valid candidates could be scored'),
-      data: { mismatchReason: 'NO_TRUSTEE_MATCH' },
-    });
+    const result = await resolveNameCollisionByScoring(context, event, ['trustee-1']);
+
+    expect(result).toEqual({ kind: 'no-match' });
   });
 
-  test('should skip candidate and throw NO_TRUSTEE_MATCH when repository fetch throws a non-Error value', async () => {
+  test('should return a no-match outcome when repository fetch throws a non-Error value for every candidate', async () => {
     const event = makeEvent();
 
     (mockTrusteesRepo.read as ReturnType<typeof vi.fn>).mockRejectedValue('timeout');
     (mockAppointmentsRepo.getTrusteeAppointments as ReturnType<typeof vi.fn>).mockResolvedValue([]);
 
-    await expect(
-      resolveTrusteeWithFuzzyMatching(context, event, ['trustee-1']),
-    ).rejects.toMatchObject({
-      message: expect.stringContaining('no valid candidates could be scored'),
-      data: { mismatchReason: 'NO_TRUSTEE_MATCH' },
+    const result = await resolveNameCollisionByScoring(context, event, ['trustee-1']);
+
+    expect(result).toEqual({ kind: 'no-match' });
+  });
+
+  test.each([
+    ['TooManyRequestsError', new TooManyRequestsError('TEST', { message: 'Throttled.' })],
+    ['GatewayTimeoutError', new GatewayTimeoutError('TEST', { message: 'Timed out.' })],
+  ])(
+    'should reject (not resolve with a truncated candidate set) when a candidate lookup fails with a transient error (%s)',
+    async (_label, transientError) => {
+      const event = makeEvent();
+
+      (mockTrusteesRepo.read as ReturnType<typeof vi.fn>)
+        .mockRejectedValueOnce(transientError)
+        .mockResolvedValueOnce(makeTrustee({ trusteeId: 'trustee-2', name: 'John Doe 2' }));
+      (mockAppointmentsRepo.getTrusteeAppointments as ReturnType<typeof vi.fn>)
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([
+          makeAppointment({
+            trusteeId: 'trustee-2',
+            chapter: '7',
+            courtId: '081',
+            divisionCode: '1',
+          }),
+        ]);
+
+      await expect(
+        resolveNameCollisionByScoring(context, event, ['trustee-1', 'trustee-2']),
+      ).rejects.toBe(transientError);
+    },
+  );
+
+  test('should still skip a candidate and continue scoring the rest when the failure is non-transient (regression guard)', async () => {
+    const event = makeEvent({
+      dxtrTrustee: {
+        fullName: 'John Doe',
+        firstName: 'John',
+        lastName: 'Doe',
+        legacy: { cityStateZipCountry: 'New York, NY 10001' },
+      },
     });
+
+    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>)
+      .mockRejectedValueOnce(new Error('trustee-1 not found'))
+      .mockResolvedValueOnce(makeTrustee({ trusteeId: 'trustee-2', name: 'John Doe 2' }));
+    (mockAppointmentsRepo.getTrusteeAppointments as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        makeAppointment({
+          trusteeId: 'trustee-2',
+          chapter: '7',
+          courtId: '081',
+          divisionCode: '1',
+        }),
+      ]);
+
+    const result = await resolveNameCollisionByScoring(context, event, ['trustee-1', 'trustee-2']);
+
+    expect(result.kind).toBe('resolved');
+    if (result.kind !== 'resolved') throw new Error('expected resolved outcome');
+    expect(result.trusteeId).toBe('trustee-2');
+    expect(result.candidateScores).toHaveLength(1);
   });
 });
 
@@ -1433,5 +2211,28 @@ describe('findInactivePerfectMatch', () => {
     });
     const result = findInactivePerfectMatch([activeNonMatching, inactiveMatching], '081', '1', '7');
     expect(result).toBe(inactiveMatching);
+  });
+
+  test('should return appointment when case division is included in a multi-division divisionCodes array', () => {
+    const appointment = makeAppointment({
+      courtId: '081',
+      divisionCode: undefined,
+      divisionCodes: ['235', '236', '237'],
+      chapter: '7',
+      status: 'inactive',
+    });
+    const result = findInactivePerfectMatch([appointment], '081', '237', '7');
+    expect(result).toBe(appointment);
+  });
+
+  test('should return undefined when case division is not in the divisionCodes array', () => {
+    const appointment = makeAppointment({
+      courtId: '081',
+      divisionCode: undefined,
+      divisionCodes: ['235', '236'],
+      chapter: '7',
+      status: 'inactive',
+    });
+    expect(findInactivePerfectMatch([appointment], '081', '237', '7')).toBeUndefined();
   });
 });

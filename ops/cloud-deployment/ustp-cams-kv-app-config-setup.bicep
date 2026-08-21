@@ -53,6 +53,9 @@ param enableResourceLocks bool = false
 
 param location string = resourceGroup().location
 
+@description('Region for the Private Endpoint specifically, since it must live in the same region as the (possibly separately-located) branch VNet/subnet it is placed into, independent of the Key Vault itself which always stays on location. Defaults to location, matching the previous, always-single-region behavior.')
+param networkLocation string = location
+
 @description('Target resource group to provision App Configuration Keyvault')
 param kvResourceGroup string
 
@@ -246,7 +249,7 @@ module appConfigKeyvaultPrivateEndpoint './lib/network/subnet-private-endpoint.b
   name: '${stackName}-kv-app-config-module'
   scope: resourceGroup(networkResourceGroup)
   params: {
-    location: location
+    location: networkLocation
     privateLinkServiceId: appConfigKeyvault.outputs.vaultId
     stackName: stackName
     privateEndpointSubnetId: privateEndpointSubnetId

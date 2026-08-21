@@ -574,5 +574,78 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
         },
       ],
     },
+
+    // ── Cosmos: Chapter 12 Standing Trustee with key dates ───────────────────
+    {
+      db: 'cams',
+      collectionOrTable: 'trustees',
+      data: [
+        {
+          ...createTrusteeBase({
+            id: 'seed-trustee-keydates-ch12-001',
+            firstName: 'Catherine',
+            lastName: 'Keydates',
+            status: 'active',
+            address1: '700 Standing Ave',
+            city: 'New York',
+            state: 'NY',
+            zipCode: '10007',
+            phone: '212-555-1400',
+            email: 'catherine.keydates@example.com',
+          }),
+          updatedOn: '2025-03-01T00:00:00.000Z',
+          updatedBy: SEEDER,
+        },
+      ],
+    },
+
+    {
+      db: 'cams',
+      collectionOrTable: 'trustee-appointments',
+      data: [
+        {
+          id: 'seed-appointment-keydates-ch12-001',
+          documentType: 'TRUSTEE_APPOINTMENT',
+          trusteeId: 'seed-trustee-keydates-ch12-001',
+          chapter: '12',
+          appointmentType: 'standing',
+          courtId: '0208',
+          divisionCodes: ['081'],
+          appointedDate: '2021-03-15',
+          status: 'active',
+          effectiveDate: '2021-03-15',
+          courtName: 'U.S. Bankruptcy Court Southern District of New York',
+          courtDivisionName: 'Manhattan',
+          updatedOn: '2025-03-01T00:00:00.000Z',
+          updatedBy: SEEDER,
+        },
+      ],
+    },
+
+    {
+      db: 'cams',
+      collectionOrTable: 'trustees',
+      data: [
+        {
+          id: 'seed-key-dates-ch12-001',
+          documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
+          trusteeId: 'seed-trustee-keydates-ch12-001',
+          appointmentId: 'seed-appointment-keydates-ch12-001',
+          // Past Key Dates (chapter12-standing variant)
+          pastBackgroundQuestion: '2023-04-10',
+          pastAudit: '2022-09-15',
+          lastAuditFiscalYear: 2022, // Audit Req. By = 2025
+          // Upcoming Key Dates (chapter12-standing variant)
+          tprReviewPeriodStart: '1900-01-01',
+          tprReviewPeriodEnd: '1900-12-31',
+          tprDue: '1900-03-15',
+          tprDueYearType: 'ODD',
+          leaseExpiration: '2027-06-30',
+          idExpiration: '2028-01-15',
+          updatedOn: '2025-03-01T00:00:00.000Z',
+          updatedBy: SEEDER,
+        },
+      ],
+    },
   ];
 }

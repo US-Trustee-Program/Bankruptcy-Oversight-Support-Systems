@@ -1,4 +1,4 @@
-export type PastKeyDatesVariant = 'chapter7-panel' | 'subv-pool';
+export type PastKeyDatesVariant = 'chapter7-panel' | 'subv-pool' | 'chapter12-standing';
 
 export type PastDateFieldKey =
   | 'pastBackgroundQuestion'
@@ -71,6 +71,32 @@ export const PAST_KEY_DATES_FIELD_CONFIG: Record<PastKeyDatesVariant, PastKeyDat
       testId: 'past-tpr-submission-row',
       inputId: 'past-tpr-submission',
       kind: 'date',
+    },
+  ],
+  'chapter12-standing': [
+    {
+      key: 'pastBackgroundQuestion',
+      displayLabel: 'Last Update to Background Questionnaire',
+      formLabel: 'Last Update to Background Questionnaire',
+      testId: 'past-background-question-row',
+      inputId: 'past-background-question',
+      kind: 'date',
+    },
+    {
+      key: 'pastAudit',
+      displayLabel: 'Audit Report',
+      formLabel: 'Audit Report Date',
+      testId: 'past-audit-row',
+      inputId: 'past-audit',
+      kind: 'date',
+    },
+    {
+      key: 'lastAuditFiscalYear',
+      displayLabel: "Last Audit's Fiscal Year",
+      formLabel: "Last Audit's Fiscal Year",
+      testId: 'past-last-audit-fiscal-year-row',
+      inputId: 'last-audit-fiscal-year',
+      kind: 'year',
     },
   ],
   'subv-pool': [

@@ -11,11 +11,10 @@ import {
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import HttpStatusCodes from '@common/api/http-status-codes';
 import { NotFoundError } from '../../common-errors/not-found-error';
+import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import { CamsRole } from '@common/cams/roles';
 
-function buildMockDocument(
-  overrides: Partial<TrusteeUpcomingKeyDates> = {},
-): TrusteeUpcomingKeyDates {
+function buildMockDocument(): TrusteeUpcomingKeyDates {
   return {
     id: 'test-id-001',
     documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
@@ -25,7 +24,6 @@ function buildMockDocument(
     createdOn: '2026-01-01T00:00:00.000Z',
     updatedBy: SYSTEM_USER_REFERENCE,
     updatedOn: '2026-01-01T00:00:00.000Z',
-    ...overrides,
   };
 }
 
@@ -43,6 +41,7 @@ describe('TrusteeUpcomingKeyDatesController', () => {
     context.featureFlags['display-chpt7-panel-upcoming-key-dates'] = false;
     context.featureFlags['display-chpt11-subv-past-key-dates'] = false;
     context.featureFlags['display-chpt12-13-case-by-case-upcoming-key-dates'] = false;
+    context.featureFlags['display-chpt12-standing-key-dates'] = false;
     context.request = mockCamsHttpRequest({
       method: 'GET',
       params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
@@ -59,6 +58,7 @@ describe('TrusteeUpcomingKeyDatesController', () => {
     context.featureFlags['display-chpt7-panel-upcoming-key-dates'] = false;
     context.featureFlags['display-chpt11-subv-past-key-dates'] = true;
     context.featureFlags['display-chpt12-13-case-by-case-upcoming-key-dates'] = false;
+    context.featureFlags['display-chpt12-standing-key-dates'] = false;
     vi.spyOn(TrusteeUpcomingKeyDatesUseCase.prototype, 'getUpcomingKeyDates').mockResolvedValue(
       null,
     );
@@ -77,6 +77,7 @@ describe('TrusteeUpcomingKeyDatesController', () => {
     context.featureFlags['display-chpt7-panel-upcoming-key-dates'] = false;
     context.featureFlags['display-chpt11-subv-past-key-dates'] = false;
     context.featureFlags['display-chpt12-13-case-by-case-upcoming-key-dates'] = true;
+    context.featureFlags['display-chpt12-standing-key-dates'] = false;
     vi.spyOn(TrusteeUpcomingKeyDatesUseCase.prototype, 'getUpcomingKeyDates').mockResolvedValue(
       null,
     );
@@ -89,6 +90,27 @@ describe('TrusteeUpcomingKeyDatesController', () => {
     const response = await controller.handleRequest(context);
 
     expect(response.statusCode).toBe(HttpStatusCodes.OK);
+    expect(response.body).toEqual({ data: null });
+  });
+
+  test('GET succeeds when only display-chpt12-standing-key-dates flag is enabled', async () => {
+    context.featureFlags['display-chpt7-panel-upcoming-key-dates'] = false;
+    context.featureFlags['display-chpt11-subv-past-key-dates'] = false;
+    context.featureFlags['display-chpt12-13-case-by-case-upcoming-key-dates'] = false;
+    context.featureFlags['display-chpt12-standing-key-dates'] = true;
+    vi.spyOn(TrusteeUpcomingKeyDatesUseCase.prototype, 'getUpcomingKeyDates').mockResolvedValue(
+      null,
+    );
+    context.request = mockCamsHttpRequest({
+      method: 'GET',
+      params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
+    });
+
+    const controller = new TrusteeUpcomingKeyDatesController(context);
+    const response = await controller.handleRequest(context);
+
+    expect(response.statusCode).toBe(HttpStatusCodes.OK);
+    expect(response.body).toEqual({ data: null });
   });
 
   test('GET returns 200 with document when found', async () => {
@@ -150,8 +172,8 @@ describe('TrusteeUpcomingKeyDatesController', () => {
       return {
         trusteeId: 'trustee-001',
         appointmentId: 'appointment-001',
-        pastBackgroundQuestion: null,
         pastFieldExam: '2026-06-15',
+        pastBackgroundQuestion: null,
         pastAudit: null,
         pastTprSubmission: null,
         tprReviewPeriodStart: null,
@@ -162,15 +184,17 @@ describe('TrusteeUpcomingKeyDatesController', () => {
         tirReviewPeriodEnd: null,
         tirSubmission: null,
         tirReview: null,
-        upcomingExamOrAuditYear: null,
-        upcomingExamOrAuditType: null,
         tirFrequency: null,
         tirSemiAnnualReviewPeriodStart: null,
         tirSemiAnnualReviewPeriodEnd: null,
         tirSemiAnnualSubmission: null,
         tirSemiAnnualReview: null,
+        upcomingExamOrAuditYear: null,
+        upcomingExamOrAuditType: null,
         lastAuditFiscalYear: null,
         lastMonthlyReportReceived: null,
+        leaseExpiration: null,
+        idExpiration: null,
         ...overrides,
       };
     }
@@ -185,10 +209,7 @@ describe('TrusteeUpcomingKeyDatesController', () => {
 
       const controller = new TrusteeUpcomingKeyDatesController(context);
 
-      await expect(controller.handleRequest(context)).rejects.toMatchObject({
-        status: 401,
-        message: 'User does not have permission to manage trustee key dates',
-      });
+      await expect(controller.handleRequest(context)).rejects.toThrow(UnauthorizedError);
     });
 
     test('PUT returns 401 when user roles are undefined', async () => {
@@ -201,9 +222,7 @@ describe('TrusteeUpcomingKeyDatesController', () => {
 
       const controller = new TrusteeUpcomingKeyDatesController(context);
 
-      await expect(controller.handleRequest(context)).rejects.toMatchObject({
-        status: 401,
-      });
+      await expect(controller.handleRequest(context)).rejects.toThrow(UnauthorizedError);
     });
 
     test('PUT with valid ISO body returns 200', async () => {
@@ -238,11 +257,7 @@ describe('TrusteeUpcomingKeyDatesController', () => {
       });
     });
 
-    // Representative wiring check that the controller invokes
-    // validateTrusteeUpcomingKeyDates's pair-requirement rules on PUT.
-    // Exhaustive pair-rule permutations (TPR/TIR/TIR-semi-annual, both
-    // directions) are covered by common/src/cams/trustee-upcoming-key-dates.test.ts.
-    test('PUT with tprReviewPeriodStart set but tprReviewPeriodEnd null returns 400', async () => {
+    test('PUT with tprReviewPeriodStart set but tprReviewPeriodEnd null returns 400 (representative wiring check; exhaustive pair-rule permutations covered in trustee-upcoming-key-dates.test.ts)', async () => {
       context.request = mockCamsHttpRequest({
         method: 'PUT',
         params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
