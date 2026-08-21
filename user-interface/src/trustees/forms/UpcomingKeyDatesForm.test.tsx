@@ -8,6 +8,7 @@ import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { GlobalAlertContext } from '@/App';
+import { CamsRole } from '@common/cams/roles';
 
 const ch7Appointment: TrusteeAppointment = {
   id: 'appointment-001',
@@ -94,9 +95,24 @@ describe('UpcomingKeyDatesForm', () => {
     mockNavigate.mockClear();
     mockGlobalAlertRef.current.error.mockClear();
     mockUseNavigate.mockReturnValue(mockNavigate);
+    TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
     userEvent = TestingUtilities.setupUserEvent();
     vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch7Appointment] });
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+  });
+
+  test('shows forbidden message when user lacks TrusteeAdmin role', async () => {
+    TestingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+    renderComponent();
+
+    const forbiddenAlert = await screen.findByTestId('alert-forbidden-alert');
+    expect(forbiddenAlert).toBeInTheDocument();
+    expect(forbiddenAlert).toHaveTextContent('Forbidden');
+    expect(forbiddenAlert).toHaveTextContent(
+      'You do not have permission to manage Trustee Upcoming Key Dates',
+    );
   });
 
   describe('rendering', () => {
