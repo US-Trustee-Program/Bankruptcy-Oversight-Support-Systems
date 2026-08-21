@@ -1,7 +1,5 @@
-import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
-import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
@@ -16,30 +14,22 @@ export interface UpcomingKeyDatesProps {
   trusteeId: string;
   appointmentId: string;
   appointmentHeading?: string;
+  data: TrusteeUpcomingKeyDates | null;
+  isLoading: boolean;
 }
 
 export default function UpcomingKeyDates(props: Readonly<UpcomingKeyDatesProps>) {
-  const { variant = 'chapter7-panel', trusteeId, appointmentId, appointmentHeading } = props;
+  const {
+    variant = 'chapter7-panel',
+    trusteeId,
+    appointmentId,
+    appointmentHeading,
+    data,
+    isLoading,
+  } = props;
   const navigate = useNavigate();
   const session = LocalStorage.getSession();
   const canManage = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
-
-  const [isLoading, setIsLoading] = useState(true);
-  const [data, setData] = useState<TrusteeUpcomingKeyDates | null>(null);
-
-  useEffect(() => {
-    Api2.getUpcomingKeyDates(trusteeId, appointmentId)
-      .then((response) => {
-        setData(response.data);
-      })
-      .catch((error) => {
-        console.error('Could not load upcoming key dates', error);
-        setData(null);
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
-  }, [trusteeId, appointmentId]);
 
   function openEdit() {
     navigate(`/trustees/${trusteeId}/appointments/${appointmentId}/upcoming-key-dates/edit`, {

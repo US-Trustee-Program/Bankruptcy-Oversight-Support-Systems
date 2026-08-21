@@ -1,9 +1,11 @@
 import './AppointmentCard.scss';
+import { useEffect, useState } from 'react';
 import UpcomingKeyDates from './UpcomingKeyDates';
 import PastKeyDates from './PastKeyDates';
 import InfoCard from './InfoCard';
 import { TrusteeAppointment, formatAppointmentStatus } from '@common/cams/trustee-appointments';
 import { formatChapterType, formatAppointmentType } from '@common/cams/trustees';
+import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import { formatDate } from '@/lib/utils/datetime';
 import { useNavigate } from 'react-router-dom';
 import LocalStorage from '@/lib/utils/local-storage';
@@ -15,6 +17,7 @@ import useFeatureFlags, {
 } from '@/lib/hooks/UseFeatureFlags';
 import useCourts from '@/lib/hooks/UseCourts';
 import { buildDivisionsDisplay } from '@/lib/utils/court-utils';
+import Api2 from '@/lib/models/api2';
 
 export interface AppointmentCardProps {
   appointment: TrusteeAppointment;
@@ -95,6 +98,33 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
     (props.appointment.chapter === '12' || props.appointment.chapter === '13') &&
     props.appointment.appointmentType === 'case-by-case';
 
+  const showsChpt7KeyDatesCards = displayChpt7PanelUpcomingKeyDates && isPanelChapter7 && canManage;
+  const showsSubVPastKeyDatesCard = displayChpt11SubVPastKeyDates && isSubVPool;
+  const showsCh1213UpcomingKeyDatesCard =
+    displayChpt1213CaseByCaseUpcomingKeyDates && isCh1213CaseByCase;
+  const shouldFetchKeyDates =
+    showsChpt7KeyDatesCards || showsSubVPastKeyDatesCard || showsCh1213UpcomingKeyDatesCard;
+
+  const [keyDatesData, setKeyDatesData] = useState<TrusteeUpcomingKeyDates | null>(null);
+  const [isKeyDatesLoading, setIsKeyDatesLoading] = useState(shouldFetchKeyDates);
+
+  useEffect(() => {
+    if (!shouldFetchKeyDates) {
+      return;
+    }
+    Api2.getUpcomingKeyDates(props.appointment.trusteeId, props.appointment.id)
+      .then((response) => {
+        setKeyDatesData(response.data);
+      })
+      .catch((error) => {
+        console.error('Could not load upcoming key dates', error);
+        setKeyDatesData(null);
+      })
+      .finally(() => {
+        setIsKeyDatesLoading(false);
+      });
+  }, [props.appointment.trusteeId, props.appointment.id, shouldFetchKeyDates]);
+
   return (
     <div className="appointment-card-container">
       <h3 className="appointment-card-heading">{appointmentCardHeaderText}</h3>
@@ -115,35 +145,43 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
             { label: 'Status Effective', value: formattedEffectiveDate },
           ]}
         />
-        {displayChpt7PanelUpcomingKeyDates && isPanelChapter7 && canManage && (
+        {showsChpt7KeyDatesCards && (
           <>
             <UpcomingKeyDates
               trusteeId={props.appointment.trusteeId}
               appointmentId={props.appointment.id}
               appointmentHeading={appointmentHeading}
+              data={keyDatesData}
+              isLoading={isKeyDatesLoading}
             />
             <PastKeyDates
               variant="chapter7-panel"
               trusteeId={props.appointment.trusteeId}
               appointmentId={props.appointment.id}
               appointmentHeading={appointmentHeading}
+              data={keyDatesData}
+              isLoading={isKeyDatesLoading}
             />
           </>
         )}
-        {displayChpt11SubVPastKeyDates && isSubVPool && (
+        {showsSubVPastKeyDatesCard && (
           <PastKeyDates
             variant="subv-pool"
             trusteeId={props.appointment.trusteeId}
             appointmentId={props.appointment.id}
             appointmentHeading={appointmentHeading}
+            data={keyDatesData}
+            isLoading={isKeyDatesLoading}
           />
         )}
-        {displayChpt1213CaseByCaseUpcomingKeyDates && isCh1213CaseByCase && (
+        {showsCh1213UpcomingKeyDatesCard && (
           <UpcomingKeyDates
             variant="ch12-13-case-by-case"
             trusteeId={props.appointment.trusteeId}
             appointmentId={props.appointment.id}
             appointmentHeading={appointmentHeading}
+            data={keyDatesData}
+            isLoading={isKeyDatesLoading}
           />
         )}
       </div>
