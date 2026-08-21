@@ -11,6 +11,12 @@
 # The subject format is:
 #   repo:ORG/REPO:workflow:CALLER-WORKFLOW-NAME:environment:remove-branch
 #
+# Exitcodes
+# ==========
+# 0   No error
+# 10+ Validation check errors (a required environment variable is missing --
+#     see require_var in _oidc-helpers.sh)
+#
 # Permissions granted:
 #   - Contributor at subscription scope: discovers and deletes branch resource
 #       groups by tag (names aren't known in advance, so this can't be pre-scoped).
@@ -28,9 +34,9 @@
 #   - The Azure subscription already exists
 #
 # Required environment variables:
-#   AZ_BRANCH_KV_RG  — resource group containing the dev/branch Key Vault
-#   AZ_APP_RG        — resource group containing the shared branch app resources (rg-cams-app-dev)
-#   AZ_NETWORK_RG    — resource group containing the shared branch network resources (rg-cams-network-dev)
+#   AZ_BRANCH_KV_RG      — resource group containing the dev/branch Key Vault
+#   AZ_BRANCH_APP_RG     — resource group containing the shared branch app resources (rg-cams-app-dev)
+#   AZ_BRANCH_NETWORK_RG — resource group containing the shared branch network resources (rg-cams-network-dev)
 #
 # This script is idempotent — re-running it will update existing resources in place
 # rather than creating duplicates.
@@ -56,8 +62,8 @@ BRANCH_KV_NAME="kv-ustp-cams-dev"
 BRANCH_KV_RG="${AZ_BRANCH_KV_RG:-}"
 # Resource groups containing the shared branch app/network resources
 # (rg-cams-app-dev / rg-cams-network-dev) -- see ensure_deployment_stack_deny_setting_role.
-APP_RG="${AZ_APP_RG:-}"
-NETWORK_RG="${AZ_NETWORK_RG:-}"
+BRANCH_APP_RG="${AZ_BRANCH_APP_RG:-}"
+BRANCH_NETWORK_RG="${AZ_BRANCH_NETWORK_RG:-}"
 # KV-Workflows: azure-remove-branch.yml
 KV_SECRETS=(
   "AZ-COSMOS-MONGO-ACCOUNT-NAME"
@@ -104,10 +110,7 @@ SUBSCRIPTION_SCOPE="/subscriptions/${SUBSCRIPTION_ID}"
 echo "==> Checking Contributor role assignment at subscription scope..."
 ensure_role_assignment "$SP_ID" "Contributor" "$SUBSCRIPTION_SCOPE"
 
-if [[ -z "$BRANCH_KV_RG" ]]; then
-  echo "ERROR: AZ_BRANCH_KV_RG is required to grant Key Vault access." >&2
-  exit 1
-fi
+require_var "$BRANCH_KV_RG" "AZ_BRANCH_KV_RG" "to grant Key Vault access"
 echo "==> Checking Key Vault Secrets User role assignments on ${BRANCH_KV_NAME} (per-secret)..."
 for SECRET_NAME in "${KV_SECRETS[@]}"; do
   SECRET_SCOPE="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${BRANCH_KV_RG}/providers/Microsoft.KeyVault/vaults/${BRANCH_KV_NAME}/secrets/${SECRET_NAME}"
@@ -126,23 +129,17 @@ done
 # (setup-deploy-federated-credential.sh), this identity ONLY EVER handles
 # branches -- there's no main-teardown case to gate on -- so both grants are
 # unconditional.
-if [[ -z "$APP_RG" ]]; then
-  echo "ERROR: AZ_APP_RG is required to grant deployment-stack deny-setting access." >&2
-  exit 1
-fi
-if [[ -z "$NETWORK_RG" ]]; then
-  echo "ERROR: AZ_NETWORK_RG is required to grant deployment-stack deny-setting access." >&2
-  exit 1
-fi
+require_var "$BRANCH_APP_RG" "AZ_BRANCH_APP_RG" "to grant deployment-stack deny-setting access"
+require_var "$BRANCH_NETWORK_RG" "AZ_BRANCH_NETWORK_RG" "to grant deployment-stack deny-setting access"
 DENY_SETTING_ROLE_ID=$(ensure_deployment_stack_deny_setting_role "$SUBSCRIPTION_ID")
 
-APP_RG_SCOPE="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${APP_RG}"
-echo "==> Checking '$DEPLOYMENT_STACK_DENY_SETTING_ROLE_NAME' on ${APP_RG}..."
-ensure_role_assignment "$SP_ID" "$DENY_SETTING_ROLE_ID" "$APP_RG_SCOPE"
+BRANCH_APP_RG_SCOPE="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${BRANCH_APP_RG}"
+echo "==> Checking '$DEPLOYMENT_STACK_DENY_SETTING_ROLE_NAME' on ${BRANCH_APP_RG}..."
+ensure_role_assignment "$SP_ID" "$DENY_SETTING_ROLE_ID" "$BRANCH_APP_RG_SCOPE"
 
-NETWORK_RG_SCOPE="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${NETWORK_RG}"
-echo "==> Checking '$DEPLOYMENT_STACK_DENY_SETTING_ROLE_NAME' on ${NETWORK_RG}..."
-ensure_role_assignment "$SP_ID" "$DENY_SETTING_ROLE_ID" "$NETWORK_RG_SCOPE"
+BRANCH_NETWORK_RG_SCOPE="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${BRANCH_NETWORK_RG}"
+echo "==> Checking '$DEPLOYMENT_STACK_DENY_SETTING_ROLE_NAME' on ${BRANCH_NETWORK_RG}..."
+ensure_role_assignment "$SP_ID" "$DENY_SETTING_ROLE_ID" "$BRANCH_NETWORK_RG_SCOPE"
 
 set_github_environment_secret "$GITHUB_ENVIRONMENT" "AZ_CLIENT_ID" "$APP_ID"
 

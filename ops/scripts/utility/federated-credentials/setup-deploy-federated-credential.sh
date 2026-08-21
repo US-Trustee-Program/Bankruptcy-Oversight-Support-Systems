@@ -12,49 +12,85 @@
 #   repo:ORG/REPO:workflow:Continuous Deployment:environment:deploy-main
 #   repo:ORG/REPO:workflow:Continuous Deployment:environment:deploy-branch
 #
-# Permissions granted:
-#   - Contributor at subscription scope (main and branch, identical):
-#       covers az deployment sub create, resource group creation/reads, and
-#       az deployment group create inside the (statically- or dynamically-named)
-#       resource groups this identity deploys to.
-#   - Custom role "CAMS KV Role Assignment Operator" on the KV resource:
-#       the Bicep kv-setup-module creates Microsoft.Authorization/roleAssignments
-#       on KV secrets; Contributor does not include roleAssignments/write.
-#       Scoped to the KV resource (not the RG) to minimise privilege escalation surface.
-#   - Key Vault Secrets User on each individual KV secret
-#   - Custom role "CAMS Deployment Stack Deny Setting Operator" on the network RG
-#       AND the app RG (branch only): both azure-deploy-network.sh (network
-#       resources) and azure-deploy.sh (app resources, main.bicep) deploy their
-#       branch resources as an Azure Deployment Stack with --deny-settings-mode
-#       denyDelete, each in its own resource group. Microsoft.Resources/
-#       deploymentStacks/manageDenySetting/action is not part of Contributor,
-#       and Azure's own built-in "Deployment Stack Contributor" role
-#       deliberately excludes it too (only "Deployment Stack Owner" — a much
-#       broader grant — includes it). Scoped to just these two resource groups.
+# Exitcodes
+# ==========
+# 0   No error
+# 1   Invalid usage (unknown TARGET, or an internal invariant violation)
+# 10+ Validation check errors (a required environment variable is missing --
+#     see require_var in _oidc-helpers.sh)
 #
-# NOTE on least privilege: subscription-scope Contributor is broader than ideal.
-# A least-privilege approach (resource-group-scoped grants) is incompatible with
-# branch deployments, whose resource groups are created dynamically per-hash at
-# deploy time and so cannot be pre-scoped (Azure RBAC has no wildcard scoping).
-# Rather than diverge main (static RGs, scopable) from branch (dynamic RGs, not
-# scopable), both environments use the same subscription-scope Contributor grant
-# for consistency. Narrowing this is deferred to a focused follow-up that must
-# first decide the branch approach. See the "Azure Federated Credentials" section
-# of docs/architecture/decision-records/GithubActionsOidcLeastPrivilege.md.
+# Permissions granted:
+#   - main: Contributor at subscription scope. Covers az deployment sub
+#       create, resource group creation/reads, and az deployment group create
+#       inside whatever resource groups this identity deploys to.
+#   - branch: Contributor scoped to four stable resource groups instead of the
+#       whole subscription -- exactly the same four RGs main's own grant
+#       already covers:
+#         AZ_BRANCH_APP_RG       -- rg-cams-app-dev; branch-only, distinct from
+#         AZ_BRANCH_NETWORK_RG   -- rg-cams-network-dev; main's unsuffixed
+#                                   rg-cams-app/rg-cams-network
+#         AZ_BRANCH_ANALYTICS_RG -- rg-analytics; shared with main
+#         AZ_BRANCH_AZURE_RG     -- bankruptcy-oversight-support-systems;
+#                                   shared with main (see below)
+#       Branch resource groups used to be created dynamically per-hash
+#       (Azure RBAC has no wildcard scoping over dynamic names), which forced
+#       subscription-scope Contributor here too. CAMS-760 Slices 1-2 moved
+#       branch's app/network deploys onto the same two stable RGs main uses
+#       (distinguished by per-branch-unique resource names instead of a
+#       per-branch RG), so branch can now be pre-scoped like main is. The
+#       other two RGs (analytics, azure/shared-config) were never
+#       per-branch -- every branch deploy already writes into them today
+#       (azure-deploy-app-shared-setup.sh's KV/managed-identity setup, and the
+#       branch-only Log Analytics Workspace deploy in reusable-deploy.yml) --
+#       so they must be included in branch's scoped grant too, or narrowing
+#       Contributor down to just the app/network RGs would break those two
+#       steps on every branch deploy once the old subscription-scope grant is
+#       revoked. Confirmed via a full static trace of every az CLI call the
+#       deploy-branch identity makes across a branch deploy (cams-aolb notes,
+#       2026-08-18) before revoking anything live.
+#   - Custom role "CAMS KV Role Assignment Operator" on the KV resource
+#       (main and branch, identical): the Bicep kv-setup-module creates
+#       Microsoft.Authorization/roleAssignments on KV secrets; Contributor
+#       does not include roleAssignments/write. Scoped to the KV resource
+#       (not the RG) to minimise privilege escalation surface.
+#   - Key Vault Secrets User on each individual KV secret (main and branch, identical)
+#   - Custom role "CAMS Deployment Stack Deny Setting Operator" on the same two
+#       branch resource groups (AZ_BRANCH_APP_RG, AZ_BRANCH_NETWORK_RG; branch
+#       only): both azure-deploy-network.sh (network resources) and
+#       azure-deploy.sh (app resources, main.bicep) deploy their branch
+#       resources as an Azure Deployment Stack with --deny-settings-mode
+#       denyDelete. Microsoft.Resources/deploymentStacks/manageDenySetting/action
+#       is not part of Contributor, and Azure's own built-in "Deployment Stack
+#       Contributor" role deliberately excludes it too (only "Deployment Stack
+#       Owner" — a much broader grant — includes it).
+#
+# NOTE on least privilege: this script only GRANTS — it never revokes. Cutting
+# branch over from its former subscription-scope Contributor (plus, historically,
+# User Access Administrator) to the RG-scoped grant above requires a manual,
+# out-of-band runbook procedure, because Azure RBAC is additive across scopes:
+# as long as the old subscription-scope grant still exists, the new RG-scoped
+# grant is a complete no-op for permission-checking purposes, so the old grant
+# must be revoked before the new scope's sufficiency can even be verified. See
+# branch-deploy-shared-rgs.slice-3-prompts.md (Manual Runbook Procedure) in the
+# ustp-cams-fdp spec repo for the exact grant -> revoke -> verify -> rollback
+# sequence, including live-Azure cleanup of orphaned grants left over from an
+# earlier, abandoned per-RG RBAC design.
 #
 # Prerequisites:
 #   - az CLI logged in as an Entra ID admin (can create app registrations and role assignments)
 #   - The Azure subscription already exists
 #
 # Required environment variables:
-#   AZ_MAIN_KV_RG    — resource group containing the main Key Vault
-#   AZ_BRANCH_KV_RG  — resource group containing the dev/branch Key Vault
-#   AZ_NETWORK_RG    — resource group containing the (shared) branch/main network
-#                      resources; required only when provisioning the branch
-#                      identity (TARGET=branch or TARGET=all)
-#   AZ_APP_RG        — resource group containing the (shared) branch/main app
-#                      resources; required only when provisioning the branch
-#                      identity (TARGET=branch or TARGET=all)
+#   AZ_MAIN_KV_RG          — resource group containing the main Key Vault
+#   AZ_BRANCH_KV_RG        — resource group containing the dev/branch Key Vault
+#   AZ_BRANCH_APP_RG       — stable app resource group branch deploys into
+#                            (branch only; also where the deny-setting role is granted)
+#   AZ_BRANCH_NETWORK_RG   — stable network resource group branch deploys into
+#                            (branch only; also where the deny-setting role is granted)
+#   AZ_BRANCH_ANALYTICS_RG — shared analytics resource group (rg-analytics) every
+#                            branch deploy also writes into (branch only)
+#   AZ_BRANCH_AZURE_RG     — shared app-config/SQL-identity resource group every
+#                            branch deploy also writes into (branch only)
 #
 # This script is idempotent — re-running it will update existing resources in place
 # rather than creating duplicates.
@@ -85,12 +121,22 @@ MAIN_KV_RG="${AZ_MAIN_KV_RG:-}"
 # Resource group that contains the dev/branch Key Vault (kv-ustp-cams-dev)
 BRANCH_KV_NAME="kv-ustp-cams-dev"
 BRANCH_KV_RG="${AZ_BRANCH_KV_RG:-}"
-# Resource group containing the shared branch/main network resources (rg-cams-network).
-# Only needed for the branch identity — see ensure_deployment_stack_deny_setting_role.
-NETWORK_RG="${AZ_NETWORK_RG:-}"
-# Resource group containing the shared branch/main app resources (rg-cams-app).
-# Only needed for the branch identity — see ensure_deployment_stack_deny_setting_role.
-APP_RG="${AZ_APP_RG:-}"
+# Stable resource groups every branch deploys into (CAMS-760 Slice 3).
+# App/network are branch-only (rg-cams-app-dev/rg-cams-network-dev, distinct
+# from main's own rg-cams-app/rg-cams-network); analytics and azure/shared-
+# config are the SAME two RGs main already writes into (rg-analytics,
+# bankruptcy-oversight-support-systems) -- every branch deploy also writes
+# there today (the branch-only Log Analytics Workspace deploy, and the
+# app-shared-setup KV/managed-identity setup that runs for every deploy
+# regardless of branch/main), confirmed by tracing every az CLI call the
+# deploy-branch identity makes across reusable-deploy.yml. App/network are
+# also reused below for the deny-setting role grant (see
+# ensure_deployment_stack_deny_setting_role) -- analytics/azure are Contributor
+# only, since those two deployments are always plain (never stacked).
+BRANCH_APP_RG="${AZ_BRANCH_APP_RG:-}"
+BRANCH_NETWORK_RG="${AZ_BRANCH_NETWORK_RG:-}"
+BRANCH_ANALYTICS_RG="${AZ_BRANCH_ANALYTICS_RG:-}"
+BRANCH_AZURE_RG="${AZ_BRANCH_AZURE_RG:-}"
 # KV-Workflows: reusable-deploy.yml
 KV_SECRETS=(
   "AZ-APP-RG"
@@ -177,7 +223,19 @@ provision_identity() {
   local APP_NAME="$1"
   local CREDENTIAL_NAME="$2"
   local GITHUB_ENVIRONMENT="$3"
+  # Explicit main/branch signal for control flow below, rather than
+  # re-deriving it by pattern-matching GITHUB_ENVIRONMENT (which exists to
+  # build the OIDC subject claim, not to drive dispatch) — the dispatch case
+  # block at the bottom of this script already knows unambiguously which
+  # target it's calling for, so it passes that here directly instead of
+  # everyone downstream re-parsing a string for the same answer.
+  local IS_MAIN="$4"
   local SUBJECT="repo:${GITHUB_ORG}/${GITHUB_REPO}:workflow:${GITHUB_WORKFLOW}:environment:${GITHUB_ENVIRONMENT}"
+
+  if [[ "$IS_MAIN" != "true" && "$IS_MAIN" != "false" ]]; then
+    echo "ERROR: provision_identity's IS_MAIN argument must be 'true' or 'false', got '$IS_MAIN'." >&2
+    exit 1
+  fi
 
   echo ""
   echo "==================================================================="
@@ -203,14 +261,21 @@ provision_identity() {
   # ---------------------------------------------------------------------------
   # Role assignments
   #
-  # Contributor at subscription scope: covers az deployment sub create, resource
-  # group creation/reads, and az deployment group create inside the resource
-  # groups this identity deploys to. Applied identically to main and branch.
-  #
-  # See the header NOTE on least privilege: resource-group-scoped grants are
-  # incompatible with branch deployments (dynamic per-hash RGs that cannot be
-  # pre-scoped), so both environments share this grant for consistency, pending
-  # a focused follow-up.
+  # Contributor: main gets subscription scope; branch gets Contributor scoped
+  # to just its four stable resource groups (CAMS-760 Slice 3) instead of the
+  # whole subscription -- see the header for exactly which four and why. This
+  # is branch's actual least-privilege payoff: branch's resource groups used
+  # to be created dynamically per-hash, which forced subscription-scope
+  # Contributor here (Azure RBAC has no wildcard scoping); now that they're
+  # stable, branch can be pre-scoped like main already could have been.
+  # Main's own subscription-scope grant is NOT defended as necessary here --
+  # main's four resource groups are equally static and known, so main likely
+  # doesn't need standing subscription-scope Contributor either. That cleanup
+  # is real but deliberately out of scope for this script's branch-focused
+  # change; see cams-y8s2 for the live-Azure audit and decision on narrowing
+  # main separately. This call only ever ADDS grants — see the header NOTE on
+  # least privilege for why revoking branch's former subscription-scope grant
+  # is a separate, manual, out-of-band step, not something this script does.
   #
   # KV role assignment operator (custom role) on the KV resource: the Bicep
   # kv-setup-module creates Microsoft.Authorization/roleAssignments on KV secrets
@@ -220,22 +285,39 @@ provision_identity() {
   # ---------------------------------------------------------------------------
   local SUBSCRIPTION_SCOPE="/subscriptions/${SUBSCRIPTION_ID}"
 
-  echo "==> Checking Contributor role assignment at subscription scope..."
-  ensure_role_assignment "$SP_ID" "Contributor" "$SUBSCRIPTION_SCOPE"
+  if [[ "$IS_MAIN" == "true" ]]; then
+    echo "==> Checking Contributor role assignment at subscription scope..."
+    ensure_role_assignment "$SP_ID" "Contributor" "$SUBSCRIPTION_SCOPE"
+  else
+    require_var "$BRANCH_APP_RG" "AZ_BRANCH_APP_RG" "when provisioning the branch environment"
+    require_var "$BRANCH_NETWORK_RG" "AZ_BRANCH_NETWORK_RG" "when provisioning the branch environment"
+    require_var "$BRANCH_ANALYTICS_RG" "AZ_BRANCH_ANALYTICS_RG" "when provisioning the branch environment"
+    require_var "$BRANCH_AZURE_RG" "AZ_BRANCH_AZURE_RG" "when provisioning the branch environment"
+    local BRANCH_APP_RG_SCOPE="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${BRANCH_APP_RG}"
+    local BRANCH_NETWORK_RG_SCOPE="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${BRANCH_NETWORK_RG}"
+    local BRANCH_ANALYTICS_RG_SCOPE="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${BRANCH_ANALYTICS_RG}"
+    local BRANCH_AZURE_RG_SCOPE="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${BRANCH_AZURE_RG}"
+    echo "==> Checking Contributor role assignment on ${BRANCH_APP_RG}..."
+    ensure_role_assignment "$SP_ID" "Contributor" "$BRANCH_APP_RG_SCOPE"
+    echo "==> Checking Contributor role assignment on ${BRANCH_NETWORK_RG}..."
+    ensure_role_assignment "$SP_ID" "Contributor" "$BRANCH_NETWORK_RG_SCOPE"
+    echo "==> Checking Contributor role assignment on ${BRANCH_ANALYTICS_RG}..."
+    ensure_role_assignment "$SP_ID" "Contributor" "$BRANCH_ANALYTICS_RG_SCOPE"
+    echo "==> Checking Contributor role assignment on ${BRANCH_AZURE_RG}..."
+    ensure_role_assignment "$SP_ID" "Contributor" "$BRANCH_AZURE_RG_SCOPE"
+    echo "    REMINDER: this only ADDS the RG-scoped grants above — if this identity still" >&2
+    echo "    also has the old subscription-scope Contributor, that broader grant remains" >&2
+    echo "    in effect (Azure RBAC is additive) until revoked via the separate manual" >&2
+    echo "    runbook. See the header NOTE on least privilege." >&2
+  fi
 
   # KV role assignment operator on the KV resource + Key Vault Secrets User per secret
-  if [[ "$GITHUB_ENVIRONMENT" == *"main"* ]]; then
-    if [[ -z "$MAIN_KV_RG" ]]; then
-      echo "ERROR: AZ_MAIN_KV_RG is required when provisioning the main environment." >&2
-      exit 1
-    fi
+  if [[ "$IS_MAIN" == "true" ]]; then
+    require_var "$MAIN_KV_RG" "AZ_MAIN_KV_RG" "when provisioning the main environment"
     local KV_NAME="$MAIN_KV_NAME"
     local KV_RG="$MAIN_KV_RG"
   else
-    if [[ -z "$BRANCH_KV_RG" ]]; then
-      echo "ERROR: AZ_BRANCH_KV_RG is required when provisioning the branch environment." >&2
-      exit 1
-    fi
+    require_var "$BRANCH_KV_RG" "AZ_BRANCH_KV_RG" "when provisioning the branch environment"
     local KV_NAME="$BRANCH_KV_NAME"
     local KV_RG="$BRANCH_KV_RG"
   fi
@@ -255,30 +337,26 @@ provision_identity() {
     ensure_role_assignment "$SP_ID" "$KV_SECRETS_USER_ROLE" "$SECRET_SCOPE"
   done
 
-  # Deployment-stack deny-setting operator on the network RG AND the app RG
-  # (branch only): main's network and app deploys are never stacked (see
-  # azure-deploy-network.sh's/azure-deploy.sh's is_branch_deployment gates),
-  # so main never needs this action. Branch deploys both as Deployment Stacks
-  # in their own resource groups, so the grant is needed in both places.
-  if [[ "$GITHUB_ENVIRONMENT" == *"branch"* ]]; then
-    if [[ -z "$NETWORK_RG" ]]; then
-      echo "ERROR: AZ_NETWORK_RG is required when provisioning the branch environment." >&2
-      exit 1
-    fi
-    if [[ -z "$APP_RG" ]]; then
-      echo "ERROR: AZ_APP_RG is required when provisioning the branch environment." >&2
-      exit 1
-    fi
+  # Deployment-stack deny-setting operator on just the app + network RGs
+  # (branch only) -- deliberately NOT the analytics/azure RGs too: only the
+  # network and app tiers are ever deployed as Azure Deployment Stacks with
+  # --deny-settings-mode denyDelete (azure-deploy-network.sh/azure-deploy.sh's
+  # is_branch_deployment gates); the analytics and azure/shared-config
+  # deploys are always plain (never stacked), so they only ever need
+  # Contributor, granted above, and never need manageDenySetting. Main's
+  # network and app deploys are never stacked either, so main never needs
+  # this action at all. BRANCH_APP_RG/BRANCH_NETWORK_RG and their _SCOPE
+  # strings were already validated and computed above for the Contributor
+  # grant — reused here rather than re-validated.
+  if [[ "$IS_MAIN" == "false" ]]; then
     local DENY_SETTING_ROLE_ID
     DENY_SETTING_ROLE_ID=$(ensure_deployment_stack_deny_setting_role "$SUBSCRIPTION_ID")
 
-    local NETWORK_RG_SCOPE="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${NETWORK_RG}"
-    echo "==> Checking '$DEPLOYMENT_STACK_DENY_SETTING_ROLE_NAME' on ${NETWORK_RG}..."
-    ensure_role_assignment "$SP_ID" "$DENY_SETTING_ROLE_ID" "$NETWORK_RG_SCOPE"
+    echo "==> Checking '$DEPLOYMENT_STACK_DENY_SETTING_ROLE_NAME' on ${BRANCH_NETWORK_RG}..."
+    ensure_role_assignment "$SP_ID" "$DENY_SETTING_ROLE_ID" "$BRANCH_NETWORK_RG_SCOPE"
 
-    local APP_RG_SCOPE="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${APP_RG}"
-    echo "==> Checking '$DEPLOYMENT_STACK_DENY_SETTING_ROLE_NAME' on ${APP_RG}..."
-    ensure_role_assignment "$SP_ID" "$DENY_SETTING_ROLE_ID" "$APP_RG_SCOPE"
+    echo "==> Checking '$DEPLOYMENT_STACK_DENY_SETTING_ROLE_NAME' on ${BRANCH_APP_RG}..."
+    ensure_role_assignment "$SP_ID" "$DENY_SETTING_ROLE_ID" "$BRANCH_APP_RG_SCOPE"
   fi
 
   set_github_environment_secret "$GITHUB_ENVIRONMENT" "AZ_CLIENT_ID" "$APP_ID"
@@ -291,20 +369,21 @@ provision_identity() {
 # ---------------------------------------------------------------------------
 # Dispatch
 #
-# Subscription-scope Contributor means the per-RG names are no longer needed
-# here; only the KV resource group (AZ_MAIN_KV_RG / AZ_BRANCH_KV_RG) is required,
-# and that is validated inside provision_identity.
+# Required env vars differ by target: main needs AZ_MAIN_KV_RG; branch needs
+# AZ_BRANCH_KV_RG, AZ_BRANCH_APP_RG, AZ_BRANCH_NETWORK_RG,
+# AZ_BRANCH_ANALYTICS_RG, and AZ_BRANCH_AZURE_RG. All validated
+# inside provision_identity.
 # ---------------------------------------------------------------------------
 case "$TARGET" in
   main)
-    provision_identity "cams-deploy-main-oidc" "gha-deploy-main" "deploy-main"
+    provision_identity "cams-deploy-main-oidc" "gha-deploy-main" "deploy-main" true
     ;;
   branch)
-    provision_identity "cams-deploy-branch-oidc" "gha-deploy-branch" "deploy-branch"
+    provision_identity "cams-deploy-branch-oidc" "gha-deploy-branch" "deploy-branch" false
     ;;
   all)
-    provision_identity "cams-deploy-main-oidc" "gha-deploy-main" "deploy-main"
-    provision_identity "cams-deploy-branch-oidc" "gha-deploy-branch" "deploy-branch"
+    provision_identity "cams-deploy-main-oidc" "gha-deploy-main" "deploy-main" true
+    provision_identity "cams-deploy-branch-oidc" "gha-deploy-branch" "deploy-branch" false
     ;;
   *)
     echo "ERROR: Unknown TARGET='$TARGET'. Use main, branch, or omit for all." >&2

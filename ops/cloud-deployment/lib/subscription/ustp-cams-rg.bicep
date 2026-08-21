@@ -12,13 +12,6 @@ param location string = 'eastus'
 @secure()
 param azSubscription string
 
-@description('Set to true if creating resource group for branch deployment')
-param isBranchDeployment bool = false
-@description('Git branch name resources are deployed from')
-param branchName string = ''
-@description('Short hash identifier of branch deployment')
-param branchHashId string = ''
-
 var resourceGroupNames = [ {
     name: databaseResourceGroupName
     create: createDatabaseRG
@@ -36,16 +29,14 @@ var resourceGroupNames = [ {
     create: createAnalyticsRG
   }
 ]
+// Any tags added here must never imply that a resource group belongs
+// exclusively to a branch that it does not actually belong exclusively to.
 module resourceGroup './resource-group-deploy.bicep' = [for item in resourceGroupNames: if (item.create) {
   scope: subscription(azSubscription)
   name: 'rg-module-${item.name}'
   params: {
     location: location
     resourceGroupName: item.name
-    tags: isBranchDeployment ? {
-      isBranchDeployment: isBranchDeployment
-      branchName: branchName
-      branchHashId: branchHashId
-    } : {}
+    tags: {}
   }
 }]
