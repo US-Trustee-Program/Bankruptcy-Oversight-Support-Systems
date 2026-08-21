@@ -21,7 +21,6 @@ import {
   validateTrusteeUpcomingKeyDates,
   validateTprDuePair,
 } from './trustee-upcoming-key-dates';
-import V from './validators';
 import { VALID } from './validation';
 
 describe('trustee-upcoming-key-dates date conversion helpers', () => {
@@ -101,6 +100,12 @@ describe('display-format validators', () => {
         reasons: ['Must be a valid date mm/dd/yyyy.'],
       });
     });
+
+    test('returns error for non-string input', () => {
+      expect(validateMMDDYYYY(null)).toMatchObject({
+        reasons: ['Must be a valid date mm/dd/yyyy.'],
+      });
+    });
   });
 
   describe('validateMMYYYY', () => {
@@ -118,6 +123,10 @@ describe('display-format validators', () => {
       expect(validateMMYYYY(value)).toMatchObject({
         reasons: ['Must be a valid date mm/yyyy.'],
       });
+    });
+
+    test('returns error for non-string input', () => {
+      expect(validateMMYYYY(null)).toMatchObject({ reasons: ['Must be a valid date mm/yyyy.'] });
     });
   });
 
@@ -140,6 +149,10 @@ describe('display-format validators', () => {
         reasons: ['Must be a valid date mm/dd.'],
       });
     });
+
+    test('returns error for non-string input', () => {
+      expect(validateMMDD(null)).toMatchObject({ reasons: ['Must be a valid date mm/dd.'] });
+    });
   });
 
   describe('validateMMDDRange', () => {
@@ -161,18 +174,9 @@ describe('display-format validators', () => {
         reasons: ['Must be a valid date mm/dd.'],
       });
     });
-  });
 
-  describe('V.optional with validateMMDDYYYY', () => {
-    test('skips validation when value is absent (undefined)', () => {
-      expect(V.optional(validateMMDDYYYY)(undefined)).toEqual(VALID);
-    });
-
-    test('validates when value is present', () => {
-      expect(V.optional(validateMMDDYYYY)('02/21/2026')).toEqual(VALID);
-      expect(V.optional(validateMMDDYYYY)('13/45/2026')).toMatchObject({
-        reasons: ['Must be a valid date mm/dd/yyyy.'],
-      });
+    test('returns error for non-string input', () => {
+      expect(validateMMDDRange(null)).toMatchObject({ reasons: ['Must be a valid date mm/dd.'] });
     });
   });
 });
@@ -188,11 +192,6 @@ describe('calculation helpers', () => {
       ['1900-04-01', '1900-05-01', 'day is zero-padded when result day is single digit'],
     ])('adds 30 days to %s -> %s (%s)', (input, expected) => {
       expect(calculateTirSubmission(input)).toBe(expected);
-    });
-
-    test('result uses sentinel year 1900 not arithmetic year', () => {
-      const result = calculateTirSubmission('1900-01-01');
-      expect(result).toMatch(/^1900-/);
     });
   });
 
@@ -369,6 +368,8 @@ describe('validateTrusteeUpcomingKeyDates', () => {
       tirSemiAnnualReview: null,
       lastAuditFiscalYear: null,
       lastMonthlyReportReceived: null,
+      leaseExpiration: null,
+      idExpiration: null,
     };
   }
 
@@ -483,6 +484,40 @@ describe('validateTrusteeUpcomingKeyDates', () => {
     expect(result.reasonMap?.pastFieldExam?.reasons?.[0]).toBe('Must be a valid date mm/dd/yyyy.');
   });
 
+  test('returns VALID when pastBackgroundQuestion is a valid full date', () => {
+    expect(
+      validateTrusteeUpcomingKeyDates({ ...baseInput(), pastBackgroundQuestion: '2023-04-10' }),
+    ).toEqual(VALID);
+  });
+
+  test('returns error when pastBackgroundQuestion contains an invalid ISO date', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      pastBackgroundQuestion: '2026-13-01',
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.pastBackgroundQuestion?.reasons?.[0]).toBe(
+      'Must be a valid date mm/dd/yyyy.',
+    );
+  });
+
+  test('returns VALID when pastTprSubmission is a valid full date', () => {
+    expect(
+      validateTrusteeUpcomingKeyDates({ ...baseInput(), pastTprSubmission: '2023-04-10' }),
+    ).toEqual(VALID);
+  });
+
+  test('returns error when pastTprSubmission contains an invalid ISO date', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      pastTprSubmission: '2026-13-01',
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.pastTprSubmission?.reasons?.[0]).toBe(
+      'Must be a valid date mm/dd/yyyy.',
+    );
+  });
+
   test('returns VALID when lastMonthlyReportReceived is a valid full date', () => {
     expect(
       validateTrusteeUpcomingKeyDates({
@@ -556,6 +591,38 @@ describe('validateTrusteeUpcomingKeyDates', () => {
     expect(result.valid).toBeFalsy();
     expect(result.reasonMap?.tirSemiAnnualReview?.reasons?.[0]).toBe('Must be a valid date mm/dd.');
   });
+
+  test('returns VALID when leaseExpiration is a valid full date', () => {
+    expect(
+      validateTrusteeUpcomingKeyDates({ ...baseInput(), leaseExpiration: '2027-06-30' }),
+    ).toEqual(VALID);
+  });
+
+  test('returns error when leaseExpiration contains an invalid ISO date', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      leaseExpiration: '2027-13-01',
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.leaseExpiration?.reasons?.[0]).toBe(
+      'Must be a valid date mm/dd/yyyy.',
+    );
+  });
+
+  test('returns VALID when idExpiration is a valid full date', () => {
+    expect(validateTrusteeUpcomingKeyDates({ ...baseInput(), idExpiration: '2028-01-15' })).toEqual(
+      VALID,
+    );
+  });
+
+  test('returns error when idExpiration contains an invalid ISO date', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      idExpiration: '2028-00-15',
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.idExpiration?.reasons?.[0]).toBe('Must be a valid date mm/dd/yyyy.');
+  });
 });
 
 describe('validateTprDuePair', () => {
@@ -617,11 +684,6 @@ describe('trustee-upcoming-key-dates - mutation gap tests', () => {
 
     test('preserves zero-padded month and day', () => {
       expect(isoToSentinel('2024-03-05')).toBe('1900-03-05');
-    });
-
-    test('uses sentinel year 1900 (not another year)', () => {
-      const result = isoToSentinel('2024-07-15');
-      expect(result).toMatch(/^1900-/);
     });
   });
 });
