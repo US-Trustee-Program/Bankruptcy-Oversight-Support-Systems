@@ -70,7 +70,9 @@ jobs:
     outputs:
       executeCleanup: ${{ steps.check.outputs.executeCleanup }}
       targetBranchHashIds: ${{ steps.check.outputs.targetBranchHashIds }}
+      staleBranchNotices: ${{ steps.check.outputs.staleBranchNotices }}
       stackName: ${{ steps.check.outputs.stackName }}
+      staleDaysThreshold: ${{ steps.check.outputs.staleDaysThreshold }}
     steps:
       - uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3.0.0
         with:
@@ -105,6 +107,8 @@ jobs:
           # pattern used elsewhere in this file and repo (Sourcery review,
           # PR #2773).
           GHA_ENVIRONMENT: 'Develop'
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          STALE_BRANCH_DAYS: ${{ vars.STALE_BRANCH_DAYS }}
         run: |
           set -euo pipefail
 
@@ -136,12 +140,13 @@ jobs:
               echo "Skipping scheduled cleanup because Pacific local hour is ${localHour}, not 21."
               echo "executeCleanup=false" >> "$GITHUB_OUTPUT"
               echo 'targetBranchHashIds=[]' >> "$GITHUB_OUTPUT"
+              echo 'staleBranchNotices=[]' >> "$GITHUB_OUTPUT"
               exit 0
             fi
 
             networkStacks=$(az stack group list -g "${networkRgBase}" --query "[?tags.isBranchDeployment == 'true' && tags.branchHashId != null].{name:name, branchName:tags.branchName, branchHashId:tags.branchHashId}" -o json)
             appStacks=$(az stack group list -g "${appRgBase}" --query "[?tags.isBranchDeployment == 'true' && tags.branchHashId != null].{name:name, branchName:tags.branchName, branchHashId:tags.branchHashId}" -o json)
-            targets=$(jq -c -n --argjson net "${networkStacks}" --argjson app "${appStacks}" '
+            candidates=$(jq -c -n --argjson net "${networkStacks}" --argjson app "${appStacks}" '
               ($net + $app)
               | [
                   .[]
@@ -149,18 +154,104 @@ jobs:
                   | select((.branchName // "") as $branch | $branch != "main" and $branch != "refs/heads/main")
                   | .branchHashId as $branchHashId
                   | select(.name | test("-" + $branchHashId + "-(network|app)$"))
-                  | .branchHashId
+                  | {branchName, branchHashId}
                 ]
-              | unique
+              | unique_by(.branchHashId)
             ')
+
+            # Only tear down envs whose branch is gone (orphaned, no staleness
+            # check needed) or whose branch has had no commits for
+            # STALE_BRANCH_DAYS — everything else is left running even though
+            # this is a nightly sweep. A branch that still exists is never
+            # deleted, only its Azure env is; owners are asked via Slack to
+            # remove the branch themselves once it's flagged stale.
+            staleDaysThreshold="${STALE_BRANCH_DAYS:-5}"
+            if [[ ! "${staleDaysThreshold}" =~ ^[0-9]+$ ]]; then
+              echo "::warning::STALE_BRANCH_DAYS ('${staleDaysThreshold}') is not a valid non-negative integer; falling back to the default of 5."
+              staleDaysThreshold=5
+            fi
+            echo "staleDaysThreshold=${staleDaysThreshold}" >> "$GITHUB_OUTPUT"
+            nowEpoch=$(date -u +%s)
+            targets='[]'
+            notices='[]'
+
+            while IFS= read -r candidate; do
+              branchName=$(jq -r '.branchName' <<<"${candidate}")
+              branchHashId=$(jq -r '.branchHashId' <<<"${candidate}")
+
+              # Branch names can contain slashes (e.g. "codex/foo"), which the
+              # GitHub API requires percent-encoded in this path segment or
+              # it 404s on an otherwise-existing branch.
+              encodedBranchName=$(jq -rn --arg b "${branchName}" '$b | @uri')
+
+              # A confirmed 404 here means the branch was deleted without the
+              # `delete` event trigger catching it, e.g. this workflow was
+              # disabled at the time — orphaned, safe to clean up. Any other
+              # failure (rate limit, 5xx, transient network error) is
+              # inconclusive, so it's treated as "leave it running" rather
+              # than "assume gone" — deleting an active branch's env on a
+              # flaky API call would be worse than skipping it for a night.
+              # Disable errexit only around the call so failures don't abort
+              # the script before they can be inspected.
+              set +e
+              branchApiOutput=$(gh api "repos/${GITHUB_REPOSITORY}/branches/${encodedBranchName}" 2>&1)
+              branchLookupExitCode=$?
+              set -e
+
+              if [[ "${branchLookupExitCode}" -ne 0 ]]; then
+                if grep -q "HTTP 404" <<<"${branchApiOutput}"; then
+                  echo "Branch '${branchName}' no longer exists; env ${branchHashId} is orphaned and will be cleaned up."
+                  targets=$(jq -c --arg h "${branchHashId}" '. + [$h]' <<<"${targets}")
+                else
+                  echo "::warning::Could not verify branch '${branchName}' ($(head -c 200 <<<"${branchApiOutput}")); leaving env ${branchHashId} in place rather than risk deleting it in error."
+                fi
+                continue
+              fi
+
+              branchInfo="${branchApiOutput}"
+
+              # A single candidate with an unparseable commit date shouldn't
+              # abort the whole sweep and leave every other candidate
+              # unprocessed for the night — skip just this one instead.
+              commitDate=$(jq -r '.commit.commit.committer.date' <<<"${branchInfo}")
+              set +e
+              commitEpoch=$(date -u -d "${commitDate}" +%s 2>/dev/null)
+              dateParseExitCode=$?
+              set -e
+
+              if [[ "${dateParseExitCode}" -ne 0 || -z "${commitEpoch}" ]]; then
+                echo "::warning::Could not parse last-commit date '${commitDate}' for branch '${branchName}'; leaving env ${branchHashId} in place rather than risk deleting it in error."
+                continue
+              fi
+
+              idleDays=$(( (nowEpoch - commitEpoch) / 86400 ))
+
+              if [[ "${idleDays}" -lt "${staleDaysThreshold}" ]]; then
+                echo "Branch '${branchName}' last active ${idleDays}d ago (< ${staleDaysThreshold}d threshold); leaving env ${branchHashId} in place."
+                continue
+              fi
+
+              echo "Branch '${branchName}' idle for ${idleDays}d (>= ${staleDaysThreshold}d threshold); tearing down env ${branchHashId} and notifying the branch owner."
+              targets=$(jq -c --arg h "${branchHashId}" '. + [$h]' <<<"${targets}")
+              notice=$(jq -c -n \
+                --arg branchName "${branchName}" \
+                --arg branchHashId "${branchHashId}" \
+                --argjson idleDays "${idleDays}" \
+                --arg committerLogin "$(jq -r '.commit.committer.login // ""' <<<"${branchInfo}")" \
+                --arg committerEmail "$(jq -r '.commit.commit.committer.email // ""' <<<"${branchInfo}")" \
+                '{branchName: $branchName, branchHashId: $branchHashId, idleDays: $idleDays, committerLogin: $committerLogin, committerEmail: $committerEmail}')
+              notices=$(jq -c --argjson n "${notice}" '. + [$n]' <<<"${notices}")
+            done < <(jq -c '.[]' <<<"${candidates}")
+
             echo "targetBranchHashIds=${targets}" >> "$GITHUB_OUTPUT"
+            echo "staleBranchNotices=${notices}" >> "$GITHUB_OUTPUT"
 
             targetCount=$(echo "${targets}" | jq length)
             if [[ "${targetCount}" -gt 0 ]]; then
-              echo "Found ${targetCount} existing Azure branch resource set(s) to clean up."
+              echo "Found ${targetCount} stale or orphaned Azure branch resource set(s) to clean up."
               echo "executeCleanup=true" >> "$GITHUB_OUTPUT"
             else
-              echo "No existing Azure branch resources found to clean up."
+              echo "No stale or orphaned Azure branch resources found to clean up."
               echo "executeCleanup=false" >> "$GITHUB_OUTPUT"
             fi
           else
@@ -169,6 +260,7 @@ jobs:
               echo "Target branch hash '${target}' is not a valid six-character hex hash."
               echo "executeCleanup=false" >> "$GITHUB_OUTPUT"
               echo 'targetBranchHashIds=[]' >> "$GITHUB_OUTPUT"
+              echo 'staleBranchNotices=[]' >> "$GITHUB_OUTPUT"
               exit 0
             fi
 
@@ -186,6 +278,7 @@ jobs:
                 ]
               | length
             ')
+            echo 'staleBranchNotices=[]' >> "$GITHUB_OUTPUT"
             if [[ $count -gt 0 ]]; then
               echo 'Expected Azure branch resources found.'
               echo "targetBranchHashIds=[\"${target}\"]" >> "$GITHUB_OUTPUT"
@@ -201,6 +294,48 @@ jobs:
           stackName=$(ops/scripts/pipeline/generate-stackname.sh Develop "${APP_NAME}" "${DEV_SUFFIX}" "")
           echo "Stack Name (base): $stackName"
           echo "stackName=$stackName" >> $GITHUB_OUTPUT
+
+      - name: Notify stale branch owners
+        if: steps.check.outputs.staleBranchNotices != '[]'
+        # Best-effort: a Slack outage shouldn't block the actual teardown
+        # below, so this step's failure doesn't fail the job.
+        continue-on-error: true
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_USER_MAPPING: ${{ secrets.SLACK_USER_MAPPING }}
+          STALE_BRANCH_NOTICES: ${{ steps.check.outputs.staleBranchNotices }}
+          STALE_DAYS_THRESHOLD: ${{ steps.check.outputs.staleDaysThreshold }}
+        run: |
+          set -euo pipefail
+          staleDaysThreshold="${STALE_DAYS_THRESHOLD}"
+
+          echo "${STALE_BRANCH_NOTICES}" | jq -c '.[]' | while IFS= read -r notice; do
+            branchName=$(jq -r '.branchName' <<<"${notice}")
+            idleDays=$(jq -r '.idleDays' <<<"${notice}")
+            committerLogin=$(jq -r '.committerLogin' <<<"${notice}")
+            committerEmail=$(jq -r '.committerEmail' <<<"${notice}")
+
+            # Match on committerLogin only: it's GitHub's verified linked-account
+            # identity, whereas committerEmail comes from raw git commit metadata
+            # that anyone with push access can set to an arbitrary string
+            # (git config user.email). committerEmail is still used below as a
+            # display fallback, just not as a lookup key.
+            slackId=$(echo "${SLACK_USER_MAPPING}" | jq -r --arg username "${committerLogin}" \
+              '.[] | select(.github == $username) | .slack // empty' | head -1)
+
+            if [[ -n "${slackId}" ]]; then
+              who=" <@${slackId}>"
+            else
+              who=" (${committerLogin:-${committerEmail:-unknown committer}})"
+            fi
+
+            message=$(printf '🧹 Branch `%s` has had no commits for %sd (stale threshold: %sd) — its Azure branch environment is being torn down tonight.%s If you'"'"'re still using this branch, push a commit to redeploy it; otherwise please delete the branch.' \
+              "${branchName}" "${idleDays}" "${staleDaysThreshold}" "${who}")
+
+            curl -X POST -H 'Content-type: application/json' \
+              --data "$(jq -n --arg text "${message}" '{text: $text}')" \
+              "${SLACK_WEBHOOK_URL}"
+          done
 
   clean-up:
     runs-on: ubuntu-latest
