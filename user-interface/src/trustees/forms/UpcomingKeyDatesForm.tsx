@@ -18,6 +18,7 @@ import MonthDaySelector from '@/lib/components/uswds/MonthDaySelector';
 import DatePicker from '@/lib/components/uswds/DatePicker';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { isChapter12Standing } from '@common/cams/trustee-appointments';
+import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
 
 type UpcomingKeyDatesVariant = 'chapter7-panel' | 'chapter12-standing';
 
@@ -156,9 +157,8 @@ export default function UpcomingKeyDatesForm() {
     tprReviewPeriodEnd: '',
     tprDue: '',
     tprDueYearType: '',
-    leaseExpiration: '',
-    idExpiration: '',
   });
+  const { registerFieldError, hasErrorAmong } = useDateFieldErrors();
   const [validationState, setValidationState] = useState({ tprReviewPeriod: true });
   const [tprReviewPeriodFocused, setTprReviewPeriodFocused] = useState(false);
   const [tprDueRowFocused, setTprDueRowFocused] = useState(false);
@@ -363,8 +363,6 @@ export default function UpcomingKeyDatesForm() {
       tprReviewPeriodEnd: result.reasonMap?.tprReviewPeriodEnd?.reasons?.[0] ?? '',
       tprDue: result.reasonMap?.tprDue?.reasons?.[0] ?? '',
       tprDueYearType: result.reasonMap?.tprDueYearType?.reasons?.[0] ?? '',
-      leaseExpiration: result.reasonMap?.leaseExpiration?.reasons?.[0] ?? '',
-      idExpiration: result.reasonMap?.idExpiration?.reasons?.[0] ?? '',
     });
 
     if (!validationState.tprReviewPeriod || !result.valid) {
@@ -484,9 +482,7 @@ export default function UpcomingKeyDatesForm() {
           value={form.leaseExpiration}
           disableMax
           onChange={(e) => setForm((prev) => ({ ...prev, leaseExpiration: e.target.value }))}
-          onValidationChange={(hasError) =>
-            setErrors((prev) => ({ ...prev, leaseExpiration: hasError ? 'invalid' : '' }))
-          }
+          onValidationChange={(hasError) => registerFieldError('lease-expiration', hasError)}
         />
         <DatePicker
           id="id-expiration"
@@ -494,9 +490,7 @@ export default function UpcomingKeyDatesForm() {
           value={form.idExpiration}
           disableMax
           onChange={(e) => setForm((prev) => ({ ...prev, idExpiration: e.target.value }))}
-          onValidationChange={(hasError) =>
-            setErrors((prev) => ({ ...prev, idExpiration: hasError ? 'invalid' : '' }))
-          }
+          onValidationChange={(hasError) => registerFieldError('id-expiration', hasError)}
         />
         <div className="usa-button-group">
           <Button
@@ -508,8 +502,7 @@ export default function UpcomingKeyDatesForm() {
               !!errors.tprDue ||
               !!errors.tprDueYearType ||
               !!tprDueBlurError ||
-              !!errors.leaseExpiration ||
-              !!errors.idExpiration
+              hasErrorAmong(['lease-expiration', 'id-expiration'])
             }
           >
             {isSaving ? 'Saving...' : 'Save'}
