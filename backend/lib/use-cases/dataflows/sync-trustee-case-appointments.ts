@@ -705,8 +705,8 @@ async function handleInactivePerfectMatch(
   const { deps, event, fingerprint, variant, audit, scenarioDistribution } = ctx;
   const trustee = await deps.trusteesRepo.read(trusteeId);
   const addressScore = calculateAddressScore(event.dxtrTrustee.legacy, trustee.public.address);
-  // nameScore is already known (the trusteeId came from a fingerprint hit, professional-id
-  // match, or matchTrusteeByName's exact/fuzzy tiers) - see calculateCandidateScore's
+  // nameScore is already known (the trusteeId came from a fingerprint hit or
+  // matchTrusteeByName's exact/fuzzy tiers) - see calculateCandidateScore's
   // nameScoreOverride doc comment for why re-deriving it here via calculateNameScore's discrete
   // firstName/lastName comparison would risk contradicting an already-correct match.
   const phoneScore = calculatePhoneScore(event.dxtrTrustee.legacy?.phone, trustee.public.phone);
@@ -776,7 +776,6 @@ function createDeps(context: ApplicationContext) {
     verificationRepo: factory.getTrusteeMatchVerificationRepository(context),
     runtimeStateRepo: factory.getTrusteeAppointmentsSyncStateRepo(context),
     petitionSyncStateRepo: factory.getTrusteePetitionSyncStateRepo(context),
-    professionalIdsRepo: factory.getTrusteeProfessionalIdsRepository(context),
     variationRepo: factory.getTrusteeVariationRepository(context),
   };
 }
@@ -1031,7 +1030,7 @@ type MatchOutcomeResolution =
   | { outcome: 'handled' };
 
 /**
- * Resolves a trusteeId by name when no professional-id/fingerprint pre-match exists. Extracted
+ * Resolves a trusteeId by name when no fingerprint pre-match exists. Extracted
  * from processAppointments' main loop (cams-joiwy follow-on) — replaces what was previously two
  * nested switch statements inline in that function with a single call site there, since sonarjs's
  * cognitive-complexity rule counts the switch/case/nesting-depth cost at the point a branching
@@ -1259,7 +1258,7 @@ async function applyMatchOutcome(
 
 /**
  * Outcome of processOneEvent, reported back to processAppointments' thin aggregation loop:
- *  - 'success': count toward successCount (reserved-id skip or an auto-linked match). May also
+ *  - 'success': count toward successCount (an auto-linked match). May also
  *    carry a non-null dlqFailure — an auto-linked match whose soft-close permanently failed still
  *    reports 'success' (the name/scoring resolution itself succeeded), but processAppointments
  *    must also route dlqFailure to dlqMessages, in the same aggregation loop as every other DLQ
@@ -1527,7 +1526,7 @@ async function processOneEvent(
  * 3. Auto-linking only perfect matches; persisting all others to trustee-match-verification collection
  *
  * A thin loop over processOneEvent above, which owns the entire per-event pipeline (previously
- * inline here) — reserved-id/fingerprint/case-sync/verification-bucket checks, name/scoring
+ * inline here) — fingerprint/case-sync/verification-bucket checks, name/scoring
  * resolution, match-outcome application, and the one transient-error catch boundary. This function
  * only aggregates each event's EventOutcome into the four result buckets below; scenarioDistribution
  * is updated by reference inside processOneEvent and its callees, so nothing here re-derives it.
