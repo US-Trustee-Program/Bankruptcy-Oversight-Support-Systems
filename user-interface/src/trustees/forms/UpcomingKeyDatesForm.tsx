@@ -186,24 +186,26 @@ export default function UpcomingKeyDatesForm() {
     !tprDueRowFocused && tprDueRowHasInteracted && tprDueDateComplete && !form.tprDueYearType;
 
   useEffect(() => {
-    let failed = false;
-
-    Api2.getTrusteeAppointments(trusteeId!)
-      .then((appointmentsResponse) => {
-        const appointment = (appointmentsResponse.data ?? []).find((a) => a.id === appointmentId);
+    Promise.allSettled([
+      Api2.getTrusteeAppointments(trusteeId!),
+      Api2.getUpcomingKeyDates(trusteeId!, appointmentId!),
+    ]).then(([appointmentsResult, keyDatesResult]) => {
+      if (appointmentsResult.status === 'fulfilled') {
+        const appointment = (appointmentsResult.value.data ?? []).find(
+          (a) => a.id === appointmentId,
+        );
         if (appointment) {
           setVariant(deriveVariant(appointment.chapter, appointment.appointmentType));
         }
-      })
-      .catch((err) => {
-        failed = true;
-        globalAlert?.error(`Failed to load appointment: ${(err as Error).message}`);
-      });
+      } else {
+        globalAlert?.error(
+          `Failed to load appointment: ${(appointmentsResult.reason as Error).message}`,
+        );
+      }
 
-    Api2.getUpcomingKeyDates(trusteeId!, appointmentId!)
-      .then((keyDatesResponse) => {
-        if (failed) return;
-        const data = keyDatesResponse.data;
+      if (keyDatesResult.status === 'fulfilled') {
+        if (appointmentsResult.status === 'rejected') return;
+        const data = keyDatesResult.value.data;
         if (data) {
           const freq: TirFrequency = data.tirFrequency ?? '';
           const periodKey = findPeriodKey(data.tirReviewPeriodStart, data.tirReviewPeriodEnd, freq);
@@ -230,13 +232,14 @@ export default function UpcomingKeyDatesForm() {
             idExpiration: data.idExpiration ?? '',
           });
         }
-      })
-      .catch((err) => {
-        globalAlert?.error(`Failed to load upcoming key dates: ${(err as Error).message}`);
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
+      } else {
+        globalAlert?.error(
+          `Failed to load upcoming key dates: ${(keyDatesResult.reason as Error).message}`,
+        );
+      }
+
+      setIsLoading(false);
+    });
   }, [trusteeId, appointmentId]);
 
   function handleMonthDayChange(field: keyof FormState) {
