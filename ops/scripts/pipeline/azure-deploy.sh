@@ -570,6 +570,30 @@ sqlPrivateDnsZoneName='privatelink.database.usgovcloudapi.net'
 check_vnet_link_or_warn "${webappPrivateDnsZoneRg}" "${sqlPrivateDnsZoneName}" "SQL"
 deployment_parameters="${deployment_parameters} sqlVnetLinkAlreadyExists=${check_vnet_link_result}"
 
+# A vnet link is a CHILD of the zone, so linking into a zone that doesn't
+# exist fails the whole deployment with ParentResourceNotFound -- it is not
+# tolerated the way a missing link is. On Flexion the zone is bootstrapped by
+# app-shared-setup.bicep before this script runs, so it is always present. The
+# USTP ADO pipeline never runs app-shared-setup.bicep and passes
+# --deployDns false, so nothing has ever created this zone there, and USTP
+# staging's main.bicep deploy fails outright (confirmed live 2026-08-21).
+#
+# Gate the link on the zone actually existing rather than on which pipeline is
+# deploying: this is the real precondition, it self-heals the moment USTP does
+# bootstrap the zone, and it protects Flexion from the identical failure in a
+# freshly-provisioned shared network RG. zone_exists_for tolerates
+# ResourceNotFound but still fails loud on a genuine az error, so a throttle or
+# auth blip can't be silently misread as "no zone" (see _vnet-link-check.sh).
+#
+# Computed here rather than accepted as a CLI flag, exactly like
+# sqlVnetLinkAlreadyExists above -- so this needs no entry in allParams and,
+# critically, no change to the USTP ADO pipeline template.
+zone_exists_for "${webappPrivateDnsZoneRg}" "${sqlPrivateDnsZoneName}" "${private_dns_zone_sub_id:-}"
+if [[ "${zone_check_result}" != "true" ]]; then
+    echo "SQL private DNS zone ${sqlPrivateDnsZoneName} not found in ${webappPrivateDnsZoneRg}; skipping its vnet link (nothing in this environment uses the SQL Private Endpoint path)."
+fi
+deployment_parameters="${deployment_parameters} sqlDnsZoneExists=${zone_check_result}"
+
 # The virtual network is deployed separately by azure-deploy-network.sh before this
 # script runs (CAMS-760, Option E); vnet existence / deployVnet handling lives there.
 #
