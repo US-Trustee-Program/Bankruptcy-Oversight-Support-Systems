@@ -484,6 +484,36 @@ describe('AppointmentCard', () => {
 
       expect(screen.queryByTestId('ch12-upcoming-key-dates-card')).not.toBeInTheDocument();
     });
+
+    test('does not render Ch12 card for chapter 12 case-by-case appointment', () => {
+      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+        [DISPLAY_CHPT12_STANDING_KEY_DATES]: true,
+      });
+      const ch12CaseByCaseAppointment: TrusteeAppointment = {
+        ...mockAppointment,
+        chapter: '12',
+        appointmentType: 'case-by-case',
+      };
+
+      renderWithProps({ appointment: ch12CaseByCaseAppointment });
+
+      expect(screen.queryByTestId('ch12-upcoming-key-dates-card')).not.toBeInTheDocument();
+    });
+
+    test('does not render Ch12 card for chapter 13 standing appointment', () => {
+      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+        [DISPLAY_CHPT12_STANDING_KEY_DATES]: true,
+      });
+      const ch13StandingAppointment: TrusteeAppointment = {
+        ...mockAppointment,
+        chapter: '13',
+        appointmentType: 'standing',
+      };
+
+      renderWithProps({ appointment: ch13StandingAppointment });
+
+      expect(screen.queryByTestId('ch12-upcoming-key-dates-card')).not.toBeInTheDocument();
+    });
   });
 
   test('still renders when courts fail to load', () => {
