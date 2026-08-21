@@ -4,11 +4,25 @@ import { BrowserRouter } from 'react-router-dom';
 import UpcomingKeyDatesForm from './UpcomingKeyDatesForm';
 import Api2 from '@/lib/models/api2';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
-import {
-  TrusteeUpcomingKeyDates,
-  TrusteeUpcomingKeyDatesInput,
-} from '@common/cams/trustee-upcoming-key-dates';
+import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
+import { TrusteeAppointment } from '@common/cams/trustee-appointments';
+import { GlobalAlertContext } from '@/App';
+
+const ch7Appointment: TrusteeAppointment = {
+  id: 'appointment-001',
+  trusteeId: 'trustee-001',
+  chapter: '7',
+  appointmentType: 'panel',
+  courtId: '0208',
+  courtDivisionName: 'Manhattan',
+  courtName: 'U.S. Bankruptcy Court Southern District of New York',
+  appointedDate: '2020-01-01',
+  status: 'active',
+  effectiveDate: '2020-01-01',
+  updatedOn: '2026-01-01T00:00:00.000Z',
+  updatedBy: SYSTEM_USER_REFERENCE,
+};
 
 const mockUseNavigate = vi.hoisted(() => vi.fn());
 const mockUseParams = vi.hoisted(() =>
@@ -51,10 +65,22 @@ const populatedDocument: TrusteeUpcomingKeyDates = {
   lastAuditFiscalYear: 2024,
 };
 
+const mockGlobalAlertRef = {
+  current: {
+    show: vi.fn(),
+    info: vi.fn(),
+    success: vi.fn(),
+    warning: vi.fn(),
+    error: vi.fn(),
+  },
+};
+
 function renderComponent() {
   return render(
     <BrowserRouter>
-      <UpcomingKeyDatesForm />
+      <GlobalAlertContext.Provider value={mockGlobalAlertRef}>
+        <UpcomingKeyDatesForm />
+      </GlobalAlertContext.Provider>
     </BrowserRouter>,
   );
 }
@@ -65,14 +91,16 @@ describe('UpcomingKeyDatesForm', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    mockNavigate.mockClear();
+    mockGlobalAlertRef.current.error.mockClear();
     mockUseNavigate.mockReturnValue(mockNavigate);
     userEvent = TestingUtilities.setupUserEvent();
+    vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch7Appointment] });
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
   });
 
   describe('rendering', () => {
     test('renders year dropdown and type dropdown', async () => {
-      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
-
       renderComponent();
 
       await waitFor(() => {
@@ -84,8 +112,6 @@ describe('UpcomingKeyDatesForm', () => {
     });
 
     test('renders frequency and period dropdowns', async () => {
-      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
-
       renderComponent();
 
       await waitFor(() => {
@@ -96,22 +122,7 @@ describe('UpcomingKeyDatesForm', () => {
       expect(screen.getByTestId('tir-period')).toBeInTheDocument();
     });
 
-    test('does not render TIR Submission or TIR Review input fields', async () => {
-      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
-
-      renderComponent();
-
-      await waitFor(() => {
-        expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
-      });
-
-      expect(document.getElementById('tir-submission-month')).not.toBeInTheDocument();
-      expect(document.getElementById('tir-review-month')).not.toBeInTheDocument();
-    });
-
     test('TPR labels show "Trustee Performance Review Period" and "Trustee Performance Review Due"', async () => {
-      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
-
       renderComponent();
 
       await waitFor(() => {
@@ -125,8 +136,6 @@ describe('UpcomingKeyDatesForm', () => {
     });
 
     test('year dropdown shows current year through current year + 10', async () => {
-      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
-
       renderComponent();
 
       await waitFor(() => {
@@ -143,8 +152,6 @@ describe('UpcomingKeyDatesForm', () => {
     });
 
     test('type dropdown has "Field Exam" and "Audit" options', async () => {
-      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
-
       renderComponent();
 
       await waitFor(() => {
@@ -160,8 +167,6 @@ describe('UpcomingKeyDatesForm', () => {
     });
 
     test('frequency dropdown has "Annual" and "Semi-Annual" options', async () => {
-      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
-
       renderComponent();
 
       await waitFor(() => {
@@ -173,8 +178,6 @@ describe('UpcomingKeyDatesForm', () => {
     });
 
     test('period dropdown shows 4 options when Annual is selected', async () => {
-      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
-
       renderComponent();
 
       await waitFor(() => {
@@ -189,8 +192,6 @@ describe('UpcomingKeyDatesForm', () => {
     });
 
     test('period dropdown shows 4 pair options when Semi-Annual is selected', async () => {
-      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
-
       renderComponent();
 
       await waitFor(() => {
@@ -206,8 +207,6 @@ describe('UpcomingKeyDatesForm', () => {
     });
 
     test('changing frequency clears period selection', async () => {
-      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
-
       renderComponent();
 
       await waitFor(() => {
@@ -250,8 +249,6 @@ describe('UpcomingKeyDatesForm', () => {
     });
 
     test('shows empty selects when API returns null', async () => {
-      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
-
       renderComponent();
 
       await waitFor(() => {
@@ -266,7 +263,6 @@ describe('UpcomingKeyDatesForm', () => {
 
   describe('saving', () => {
     test('save with Annual period: tirSubmission and tirReview calculated; tirSemiAnnualSubmission and tirSemiAnnualReview null', async () => {
-      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
       const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
 
       renderComponent();
@@ -279,19 +275,23 @@ describe('UpcomingKeyDatesForm', () => {
       await userEvent.selectOptions(screen.getByTestId('tir-period'), '07/01-06/30');
       await userEvent.click(screen.getByTestId('button-save-upcoming-key-dates'));
 
-      await waitFor(() => expect(putSpy).toHaveBeenCalled());
-      const payload = putSpy.mock.calls[0][2] as TrusteeUpcomingKeyDatesInput;
-      // tirReviewPeriodEnd = 1900-06-30; submission = +30 = 1900-07-30; review = +60 = 1900-09-28
-      expect(payload.tirSubmission).toBe('1900-07-30');
-      expect(payload.tirReview).toBe('1900-09-28');
-      expect(payload.tirSemiAnnualSubmission).toBeNull();
-      expect(payload.tirSemiAnnualReview).toBeNull();
-      expect(payload.tirSemiAnnualReviewPeriodStart).toBeNull();
-      expect(payload.tirSemiAnnualReviewPeriodEnd).toBeNull();
+      await waitFor(() =>
+        expect(putSpy).toHaveBeenCalledWith(
+          'trustee-001',
+          'appointment-001',
+          expect.objectContaining({
+            tirSubmission: '1900-07-30',
+            tirReview: '1900-09-28',
+            tirSemiAnnualSubmission: null,
+            tirSemiAnnualReview: null,
+            tirSemiAnnualReviewPeriodStart: null,
+            tirSemiAnnualReviewPeriodEnd: null,
+          }),
+        ),
+      );
     });
 
     test('save with Semi-Annual period: all four TIR dates calculated correctly', async () => {
-      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
       const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
 
       renderComponent();
@@ -304,16 +304,18 @@ describe('UpcomingKeyDatesForm', () => {
       await userEvent.selectOptions(screen.getByTestId('tir-period'), '01/01-06/30 & 07/01-12/31');
       await userEvent.click(screen.getByTestId('button-save-upcoming-key-dates'));
 
-      await waitFor(() => expect(putSpy).toHaveBeenCalled());
-      const payload = putSpy.mock.calls[0][2] as TrusteeUpcomingKeyDatesInput;
-      // period1 end = 1900-06-30; sub1 = +30 = 1900-07-30; rev1 = +60 = 1900-09-28
-      expect(payload.tirSubmission).toBe('1900-07-30');
-      expect(payload.tirReview).toBe('1900-09-28');
-      // period2 end = 1900-12-31; sub2 = +30 = 1900-01-30
-      // rev2 = 1900-01-30 + 60 days; arithmetic uses year 2000 (leap year: Feb has 29 days)
-      // Jan 30 + 60: Jan=1, Feb=29, Mar=30 → 1900-03-30
-      expect(payload.tirSemiAnnualSubmission).toBe('1900-01-30');
-      expect(payload.tirSemiAnnualReview).toBe('1900-03-30');
+      await waitFor(() =>
+        expect(putSpy).toHaveBeenCalledWith(
+          'trustee-001',
+          'appointment-001',
+          expect.objectContaining({
+            tirSubmission: '1900-07-30',
+            tirReview: '1900-09-28',
+            tirSemiAnnualSubmission: '1900-01-30',
+            tirSemiAnnualReview: '1900-03-30',
+          }),
+        ),
+      );
     });
 
     test('lastAuditFiscalYear is preserved in PUT payload', async () => {
@@ -337,7 +339,6 @@ describe('UpcomingKeyDatesForm', () => {
     });
 
     test('upcomingExamOrAuditYear and upcomingExamOrAuditType saved in PUT payload', async () => {
-      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
       const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
 
       renderComponent();
@@ -365,7 +366,6 @@ describe('UpcomingKeyDatesForm', () => {
     });
 
     test('saves selected Year Type in PUT payload', async () => {
-      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
       const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
 
       renderComponent();
@@ -411,8 +411,6 @@ describe('UpcomingKeyDatesForm', () => {
     });
 
     test('shows error alert when save fails and re-enables save button', async () => {
-      mockNavigate.mockClear();
-      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
       vi.spyOn(Api2, 'putUpcomingKeyDates').mockRejectedValue(new Error('Server error'));
 
       renderComponent();
@@ -429,10 +427,52 @@ describe('UpcomingKeyDatesForm', () => {
         expect(saveButton).toHaveTextContent('Save');
       });
       expect(mockNavigate).not.toHaveBeenCalled();
+      expect(mockGlobalAlertRef.current.error).toHaveBeenCalledWith(
+        'Failed to save upcoming key dates: Server error',
+      );
+    });
+
+    test('shows error alert when appointments API fails on load', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockRejectedValue(new Error('Appointments error'));
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(mockGlobalAlertRef.current.error).toHaveBeenCalledWith(
+          'Failed to load appointment: Appointments error',
+        );
+      });
+    });
+
+    test('shows error alert when key dates API fails on load', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockRejectedValue(new Error('Key dates error'));
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(mockGlobalAlertRef.current.error).toHaveBeenCalledWith(
+          'Failed to load upcoming key dates: Key dates error',
+        );
+      });
+    });
+
+    test('navigates to appointments page after successful save', async () => {
+      vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+      });
+
+      await userEvent.click(screen.getByTestId('button-save-upcoming-key-dates'));
+
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');
+      });
     });
 
     test('Cancel navigates without calling PUT', async () => {
-      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
       const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
 
       renderComponent();
@@ -450,7 +490,6 @@ describe('UpcomingKeyDatesForm', () => {
 
   describe('TPR Review Period validation', () => {
     test('shows error and blocks save when review period start is set without end', async () => {
-      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
       const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
 
       renderComponent();
@@ -471,7 +510,6 @@ describe('UpcomingKeyDatesForm', () => {
     });
 
     test('shows error and blocks save when review period end is set without start', async () => {
-      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
       const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
 
       renderComponent();
@@ -487,11 +525,85 @@ describe('UpcomingKeyDatesForm', () => {
       expect(screen.getByTestId('tpr-review-period-error')).toBeInTheDocument();
       expect(putSpy).not.toHaveBeenCalled();
     });
+
+    test('Save button is disabled when TPR Period has a validation error', async () => {
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+      });
+
+      await userEvent.selectOptions(
+        document.getElementById('tpr-review-period-start-month')!,
+        '04',
+      );
+      await userEvent.selectOptions(document.getElementById('tpr-review-period-start-day')!, '01');
+
+      const saveButton = screen.getByTestId('button-save-upcoming-key-dates');
+      await userEvent.click(saveButton);
+
+      expect(saveButton).toBeDisabled();
+    });
+
+    test('Save button re-enables when TPR Period validation error is resolved', async () => {
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+      });
+
+      await userEvent.selectOptions(
+        document.getElementById('tpr-review-period-start-month')!,
+        '04',
+      );
+      await userEvent.selectOptions(document.getElementById('tpr-review-period-start-day')!, '01');
+      await userEvent.click(screen.getByTestId('button-save-upcoming-key-dates'));
+
+      expect(screen.getByTestId('button-save-upcoming-key-dates')).toBeDisabled();
+
+      await userEvent.selectOptions(document.getElementById('tpr-review-period-end-month')!, '03');
+      await userEvent.selectOptions(document.getElementById('tpr-review-period-end-day')!, '31');
+
+      expect(screen.getByTestId('button-save-upcoming-key-dates')).not.toBeDisabled();
+    });
+
+    test('Save button stays enabled while user is still focused in TPR Period despite incomplete range', async () => {
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+      });
+
+      await userEvent.selectOptions(
+        document.getElementById('tpr-review-period-start-month')!,
+        '04',
+      );
+      await userEvent.selectOptions(document.getElementById('tpr-review-period-start-day')!, '01');
+
+      expect(screen.getByTestId('button-save-upcoming-key-dates')).not.toBeDisabled();
+    });
+
+    test('Save button is not disabled on load when record has asymmetric TPR Review Period', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({
+        data: {
+          ...populatedDocument,
+          tprReviewPeriodStart: '1900-04-01',
+          tprReviewPeriodEnd: undefined,
+        },
+      });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('button-save-upcoming-key-dates')).not.toBeDisabled();
+    });
   });
 
   describe('TPR Due validation', () => {
     test('highlights Year Type field when date is complete but Year Type not set', async () => {
-      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
       const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
 
       renderComponent();
@@ -504,16 +616,48 @@ describe('UpcomingKeyDatesForm', () => {
       await userEvent.selectOptions(document.getElementById('tpr-due-day')!, '15');
       await userEvent.click(screen.getByTestId('button-save-upcoming-key-dates'));
 
-      expect(screen.getByTestId('tpr-due-year-type')).toHaveClass('usa-input--error');
+      expect(screen.getByTestId('tpr-due-year-type')).toHaveAttribute('aria-invalid', 'true');
       expect(screen.getByTestId('tpr-due-error')).toHaveTextContent(
         'TPR Due Year Type is required.',
       );
       expect(putSpy).not.toHaveBeenCalled();
     });
 
-    test('clears errors when user selects Year Type', async () => {
-      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+    test('Save button is disabled when TPR Due has a validation error', async () => {
+      renderComponent();
 
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+      });
+
+      await userEvent.selectOptions(document.getElementById('tpr-due-month')!, '09');
+      await userEvent.selectOptions(document.getElementById('tpr-due-day')!, '15');
+
+      const saveButton = screen.getByTestId('button-save-upcoming-key-dates');
+      await userEvent.click(saveButton);
+
+      expect(saveButton).toBeDisabled();
+    });
+
+    test('Save button re-enables when TPR Due validation error is resolved', async () => {
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+      });
+
+      await userEvent.selectOptions(document.getElementById('tpr-due-month')!, '09');
+      await userEvent.selectOptions(document.getElementById('tpr-due-day')!, '15');
+      await userEvent.click(screen.getByTestId('button-save-upcoming-key-dates'));
+
+      expect(screen.getByTestId('button-save-upcoming-key-dates')).toBeDisabled();
+
+      await userEvent.selectOptions(screen.getByTestId('tpr-due-year-type'), 'ODD');
+
+      expect(screen.getByTestId('button-save-upcoming-key-dates')).not.toBeDisabled();
+    });
+
+    test('clears errors when user selects Year Type', async () => {
       renderComponent();
 
       await waitFor(() => {
@@ -533,17 +677,171 @@ describe('UpcomingKeyDatesForm', () => {
       expect(screen.queryByTestId('tpr-due-error')).not.toBeInTheDocument();
     });
 
-    test('no clear buttons are shown for TPR fields', async () => {
-      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
-
+    test('Save button is disabled when Year Type is selected but TPR Due date is not set', async () => {
       renderComponent();
 
       await waitFor(() => {
         expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
       });
 
-      expect(screen.queryByTestId('button-tpr-due-clear')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('button-tpr-review-period-clear')).not.toBeInTheDocument();
+      await userEvent.selectOptions(screen.getByTestId('tpr-due-year-type'), 'ODD');
+      const saveButton = screen.getByTestId('button-save-upcoming-key-dates');
+      await userEvent.click(saveButton);
+
+      expect(saveButton).toBeDisabled();
+      expect(screen.getByTestId('tpr-due-error')).toHaveTextContent('Must be a valid date mm/dd.');
+    });
+  });
+
+  describe('chapter12-standing variant', () => {
+    const ch12Appointment: TrusteeAppointment = {
+      id: 'appointment-001',
+      trusteeId: 'trustee-001',
+      chapter: '12',
+      appointmentType: 'standing',
+      courtId: '0208',
+      courtDivisionName: 'Manhattan',
+      courtName: 'U.S. Bankruptcy Court Southern District of New York',
+      appointedDate: '2021-03-15',
+      status: 'active',
+      effectiveDate: '2021-03-15',
+      updatedOn: '2026-01-01T00:00:00.000Z',
+      updatedBy: SYSTEM_USER_REFERENCE,
+    };
+
+    const ch12Document: TrusteeUpcomingKeyDates = {
+      id: 'doc-ch12-001',
+      documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
+      trusteeId: 'trustee-001',
+      appointmentId: 'appointment-001',
+      createdBy: SYSTEM_USER_REFERENCE,
+      createdOn: '2026-01-01T00:00:00.000Z',
+      updatedBy: SYSTEM_USER_REFERENCE,
+      updatedOn: '2026-01-01T00:00:00.000Z',
+      tprReviewPeriodStart: '1900-01-01',
+      tprReviewPeriodEnd: '1900-12-31',
+      tprDue: '1900-03-15',
+      tprDueYearType: 'ODD',
+      leaseExpiration: '2027-06-30',
+      idExpiration: '2028-01-15',
+      lastAuditFiscalYear: 2022,
+    };
+
+    beforeEach(() => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch12Appointment] });
+    });
+
+    test('renders TPR Period input', async () => {
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByText(/Trustee Performance Review \(TPR\) Period/i)).toBeInTheDocument();
+      });
+    });
+
+    test('renders TPR Due input with year type selector', async () => {
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByText(/Trustee Performance Review \(TPR\) Due/i)).toBeInTheDocument();
+      });
+      expect(screen.getByTestId('tpr-due-year-type')).toBeInTheDocument();
+    });
+
+    test('renders Lease Expiration date picker', async () => {
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/Lease Expiration/i)).toBeInTheDocument();
+      });
+    });
+
+    test('renders ID Expiration date picker', async () => {
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/ID Expiration/i)).toBeInTheDocument();
+      });
+    });
+
+    test('does not render Field Exam / Audit section', async () => {
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/Lease Expiration/i)).toBeInTheDocument();
+      });
+      expect(screen.queryByText(/Field Exam or Audit/i)).not.toBeInTheDocument();
+    });
+
+    test('does not render TIR Period section', async () => {
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/Lease Expiration/i)).toBeInTheDocument();
+      });
+      expect(screen.queryByText(/Trustee Interim Report \(TIR\) Period/i)).not.toBeInTheDocument();
+    });
+
+    test('pre-populates leaseExpiration and idExpiration from existing key dates', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: ch12Document });
+
+      renderComponent();
+
+      await waitFor(() => {
+        const leaseInput = screen.getByLabelText(/Lease Expiration/i) as HTMLInputElement;
+        expect(leaseInput.value).toBe('2027-06-30');
+      });
+      const idInput = screen.getByLabelText(/ID Expiration/i) as HTMLInputElement;
+      expect(idInput.value).toBe('2028-01-15');
+    });
+
+    test('on save, includes leaseExpiration and idExpiration in PUT payload', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: ch12Document });
+      const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/Lease Expiration/i)).toBeInTheDocument();
+      });
+
+      await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+      await waitFor(() =>
+        expect(putSpy).toHaveBeenCalledWith(
+          'trustee-001',
+          'appointment-001',
+          expect.objectContaining({
+            leaseExpiration: '2027-06-30',
+            idExpiration: '2028-01-15',
+          }),
+        ),
+      );
+    });
+
+    test('Save button is enabled by default when no date picker errors exist', async () => {
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/Lease Expiration/i)).toBeInTheDocument();
+      });
+
+      expect(screen.getByRole('button', { name: /save/i })).not.toBeDisabled();
+    });
+
+    test('Save button remains enabled when lease and ID expiration are future dates', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: ch12Document });
+
+      renderComponent();
+
+      await waitFor(() => {
+        const leaseInput = screen.getByLabelText(/Lease Expiration/i) as HTMLInputElement;
+        expect(leaseInput.value).toBe('2027-06-30');
+      });
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /save/i })).not.toBeDisabled();
+      });
     });
   });
 });
