@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act, fireEvent } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
 import UpcomingKeyDatesForm from './UpcomingKeyDatesForm';
@@ -700,6 +700,25 @@ describe('UpcomingKeyDatesForm', () => {
       });
 
       expect(screen.getByRole('button', { name: /save/i })).not.toBeDisabled();
+    });
+
+    test('Save button is disabled when lease expiration has an invalid date', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch12Appointment] });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/Lease Expiration/i)).toBeInTheDocument();
+      });
+
+      const leaseInput = screen.getByLabelText(/Lease Expiration/i) as HTMLInputElement;
+      fireEvent.change(leaseInput, { target: { value: '1900-01-01' } });
+
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 600));
+      });
+
+      expect(screen.getByRole('button', { name: /save/i })).toBeDisabled();
     });
 
     test('Save button remains enabled when lease and ID expiration are future dates', async () => {
