@@ -72,6 +72,7 @@ jobs:
       targetBranchHashIds: ${{ steps.check.outputs.targetBranchHashIds }}
       staleBranchNotices: ${{ steps.check.outputs.staleBranchNotices }}
       stackName: ${{ steps.check.outputs.stackName }}
+      staleDaysThreshold: ${{ steps.check.outputs.staleDaysThreshold }}
     steps:
       - uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3.0.0
         with:
@@ -169,6 +170,7 @@ jobs:
               echo "::warning::STALE_BRANCH_DAYS ('${staleDaysThreshold}') is not a valid non-negative integer; falling back to the default of 5."
               staleDaysThreshold=5
             fi
+            echo "staleDaysThreshold=${staleDaysThreshold}" >> "$GITHUB_OUTPUT"
             nowEpoch=$(date -u +%s)
             targets='[]'
             notices='[]'
@@ -201,7 +203,7 @@ jobs:
                   echo "Branch '${branchName}' no longer exists; env ${branchHashId} is orphaned and will be cleaned up."
                   targets=$(jq -c --arg h "${branchHashId}" '. + [$h]' <<<"${targets}")
                 else
-                  echo "::warning::Could not verify branch '${branchName}' (${branchApiOutput}); leaving env ${branchHashId} in place rather than risk deleting it in error."
+                  echo "::warning::Could not verify branch '${branchName}' ($(head -c 200 <<<"${branchApiOutput}")); leaving env ${branchHashId} in place rather than risk deleting it in error."
                 fi
                 continue
               fi
@@ -302,13 +304,10 @@ jobs:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           SLACK_USER_MAPPING: ${{ secrets.SLACK_USER_MAPPING }}
           STALE_BRANCH_NOTICES: ${{ steps.check.outputs.staleBranchNotices }}
-          STALE_BRANCH_DAYS: ${{ vars.STALE_BRANCH_DAYS }}
+          STALE_DAYS_THRESHOLD: ${{ steps.check.outputs.staleDaysThreshold }}
         run: |
           set -euo pipefail
-          staleDaysThreshold="${STALE_BRANCH_DAYS:-5}"
-          if [[ ! "${staleDaysThreshold}" =~ ^[0-9]+$ ]]; then
-            staleDaysThreshold=5
-          fi
+          staleDaysThreshold="${STALE_DAYS_THRESHOLD}"
 
           echo "${STALE_BRANCH_NOTICES}" | jq -c '.[]' | while IFS= read -r notice; do
             branchName=$(jq -r '.branchName' <<<"${notice}")
@@ -316,8 +315,13 @@ jobs:
             committerLogin=$(jq -r '.committerLogin' <<<"${notice}")
             committerEmail=$(jq -r '.committerEmail' <<<"${notice}")
 
-            slackId=$(echo "${SLACK_USER_MAPPING}" | jq -r --arg email "${committerEmail}" --arg username "${committerLogin}" \
-              '.[] | select(.email == $email or .github == $username) | .slack // empty' | head -1)
+            # Match on committerLogin only: it's GitHub's verified linked-account
+            # identity, whereas committerEmail comes from raw git commit metadata
+            # that anyone with push access can set to an arbitrary string
+            # (git config user.email). committerEmail is still used below as a
+            # display fallback, just not as a lookup key.
+            slackId=$(echo "${SLACK_USER_MAPPING}" | jq -r --arg username "${committerLogin}" \
+              '.[] | select(.github == $username) | .slack // empty' | head -1)
 
             if [[ -n "${slackId}" ]]; then
               who=" <@${slackId}>"
