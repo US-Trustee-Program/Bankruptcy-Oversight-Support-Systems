@@ -1,3 +1,6 @@
+// TODO: This component shares significant structure with UpcomingKeyDates.tsx.
+// Once upcoming key dates are implemented for additional chapter types, revisit
+// whether a shared hook or config-driven pattern makes sense across all variants.
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
