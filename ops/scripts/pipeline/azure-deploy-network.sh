@@ -159,19 +159,36 @@ function attempt_peering_func() {
     local peeringName=$4
     local outputFile
     outputFile=$(mktemp)
-    trap 'rm -f "${outputFile}"' RETURN
+    # No `trap ... RETURN` here, for the reason documented in
+    # _az-deploy-retry.sh: bash RETURN traps are global, so one set here fires
+    # again on the NEXT function return anywhere in the script, by which point
+    # outputFile is out of scope and `set -u` aborts. This function is called
+    # inside the claim retry loop, so the next iteration's
+    # branch_network_find_free_slot return would trip it -- killing the retry
+    # that exists to recover from a lost slot race.
     set +e
+    # --name is REQUIRED, not cosmetic. Without it ARM derives the deployment
+    # name from the template filename ("vnet-peering"), so every branch peering
+    # into the shared hub RG concurrently collides on ONE deployment name. That
+    # surfaces as AnotherOperationInProgress, gets swallowed as transient
+    # contention by the retry wrapper, and burns the slot-attempt budget. Naming
+    # per peering keeps concurrent branches from interfering -- the environment
+    # isolation invariant on cams-vwsp3.
     az_deploy_with_retry_func az deployment group create \
         -g "${rg}" \
+        --name "${peeringName}" \
         --template-file "${peering_deployment_file}" \
         --parameters localVirtualNetworkName="${localVnetName}" remoteVirtualNetworkId="${remoteVnetId}" peeringName="${peeringName}" \
         2>&1 | tee "${outputFile}"
     local rc=${PIPESTATUS[0]}
     set -e
+    local out
+    out=$(cat "${outputFile}")
+    rm -f "${outputFile}"
     if [[ ${rc} -eq 0 ]]; then
         return 0
     fi
-    if branch_network_is_overlap_error "$(cat "${outputFile}")"; then
+    if branch_network_is_overlap_error "${out}"; then
         return 2
     fi
     return 1
@@ -338,6 +355,7 @@ if [[ "${is_branch_deployment}" == "true" ]]; then
             echo "Ensuring branch-side peering ${branch_peering_name} in ${network_rg}"
             az_deploy_with_retry_func az deployment group create \
                 -g "${network_rg}" \
+                --name "${branch_peering_name}" \
                 --template-file "${peering_deployment_file}" \
                 --parameters localVirtualNetworkName="${vnet_name}" remoteVirtualNetworkId="${hub_vnet_id}" peeringName="${branch_peering_name}"
             need_claim_loop=false
@@ -384,6 +402,7 @@ if [[ "${is_branch_deployment}" == "true" ]]; then
                 echo "Hub-side peering succeeded for slot ${candidate_idx}; creating branch-side peering ${branch_peering_name} in ${network_rg}"
                 az_deploy_with_retry_func az deployment group create \
                     -g "${network_rg}" \
+                    --name "${branch_peering_name}" \
                     --template-file "${peering_deployment_file}" \
                     --parameters localVirtualNetworkName="${vnet_name}" remoteVirtualNetworkId="${hub_vnet_id}" peeringName="${branch_peering_name}"
                 claimed=true
