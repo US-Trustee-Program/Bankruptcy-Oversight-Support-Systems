@@ -16,6 +16,7 @@ import useFeatureFlags, {
 } from '@/lib/hooks/UseFeatureFlags';
 import useCourts from '@/lib/hooks/UseCourts';
 import { buildDivisionsDisplay } from '@/lib/utils/court-utils';
+import { isChapter12Standing } from '@common/cams/trustee-appointments';
 
 export interface AppointmentCardProps {
   appointment: TrusteeAppointment;
@@ -91,8 +92,10 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
     props.appointment.chapter === '7' && props.appointment.appointmentType === 'panel';
   const isSubVPool =
     props.appointment.chapter === '11-subchapter-v' && props.appointment.appointmentType === 'pool';
-  const isStandingChapter12 =
-    props.appointment.chapter === '12' && props.appointment.appointmentType === 'standing';
+  const isStandingChapter12 = isChapter12Standing(
+    props.appointment.chapter,
+    props.appointment.appointmentType,
+  );
 
   return (
     <div className="appointment-card-container">

@@ -17,12 +17,12 @@ import MonthDayRangeSelector from '@/lib/components/uswds/MonthDayRangeSelector'
 import MonthDaySelector from '@/lib/components/uswds/MonthDaySelector';
 import DatePicker from '@/lib/components/uswds/DatePicker';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import { isChapter12Standing } from '@common/cams/trustee-appointments';
 
 type UpcomingKeyDatesVariant = 'chapter7-panel' | 'chapter12-standing';
 
 function deriveVariant(chapter: string, appointmentType: string): UpcomingKeyDatesVariant {
-  if (chapter === '12' && appointmentType === 'standing') return 'chapter12-standing';
-  return 'chapter7-panel';
+  return isChapter12Standing(chapter, appointmentType) ? 'chapter12-standing' : 'chapter7-panel';
 }
 
 type TirFrequency = 'ANNUAL' | 'SEMI_ANNUAL' | '';
