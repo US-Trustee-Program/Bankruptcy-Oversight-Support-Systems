@@ -16,6 +16,7 @@ import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import MonthDayRangeSelector from '@/lib/components/uswds/MonthDayRangeSelector';
 import MonthDaySelector from '@/lib/components/uswds/MonthDaySelector';
 import DatePicker from '@/lib/components/uswds/DatePicker';
+import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 
 type UpcomingKeyDatesVariant = 'chapter7-panel' | 'chapter12-standing';
 
@@ -145,6 +146,7 @@ export default function UpcomingKeyDatesForm() {
   const globalAlert = useGlobalAlert();
 
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [variant, setVariant] = useState<UpcomingKeyDatesVariant>('chapter7-panel');
   const [submitted, setSubmitted] = useState(false);
@@ -198,14 +200,11 @@ export default function UpcomingKeyDatesForm() {
           setVariant(deriveVariant(appointment.chapter, appointment.appointmentType));
         }
       } else {
-        globalAlert?.error(
-          `Failed to load appointment: ${(appointmentsResult.reason as Error).message}`,
-        );
+        setLoadError(true);
       }
 
       if (keyDatesResult.status === 'fulfilled') {
-        if (appointmentsResult.status === 'rejected') return;
-        const data = keyDatesResult.value.data;
+        const data = appointmentsResult.status === 'rejected' ? null : keyDatesResult.value.data;
         if (data) {
           const freq: TirFrequency = data.tirFrequency ?? '';
           const periodKey = findPeriodKey(data.tirReviewPeriodStart, data.tirReviewPeriodEnd, freq);
@@ -396,6 +395,20 @@ export default function UpcomingKeyDatesForm() {
 
   if (isLoading) {
     return <LoadingSpinner id="edit-upcoming-key-dates-loading" />;
+  }
+
+  if (loadError) {
+    return (
+      <Alert
+        id="upcoming-key-dates-load-error"
+        type={UswdsAlertStyle.Error}
+        title="Something went wrong"
+        show
+        inline
+      >
+        Please refresh and try again.
+      </Alert>
+    );
   }
 
   if (variant === 'chapter12-standing') {

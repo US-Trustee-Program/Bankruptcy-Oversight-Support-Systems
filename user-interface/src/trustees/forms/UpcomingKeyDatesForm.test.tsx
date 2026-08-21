@@ -432,16 +432,16 @@ describe('UpcomingKeyDatesForm', () => {
       );
     });
 
-    test('shows error alert when appointments API fails on load', async () => {
+    test('shows inline error alert when appointments API fails on load', async () => {
       vi.spyOn(Api2, 'getTrusteeAppointments').mockRejectedValue(new Error('Appointments error'));
 
       renderComponent();
 
       await waitFor(() => {
-        expect(mockGlobalAlertRef.current.error).toHaveBeenCalledWith(
-          'Failed to load appointment: Appointments error',
-        );
+        expect(screen.getByText('Something went wrong')).toBeInTheDocument();
+        expect(screen.getByText('Please refresh and try again.')).toBeInTheDocument();
       });
+      expect(screen.queryByTestId('edit-upcoming-key-dates')).not.toBeInTheDocument();
     });
 
     test('Cancel navigates without calling PUT', async () => {
