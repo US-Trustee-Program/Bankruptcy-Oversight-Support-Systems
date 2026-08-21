@@ -137,6 +137,8 @@ set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=ops/scripts/pipeline/_network-stackname.sh
 source "$SCRIPT_DIR/../pipeline/_network-stackname.sh"
+# shellcheck source=ops/scripts/pipeline/_private-dns-zone-names.sh
+source "$SCRIPT_DIR/../pipeline/_private-dns-zone-names.sh"
 
 # Parse named parameters
 while [[ $# -gt 0 ]]; do
@@ -620,22 +622,21 @@ elif [[ "${netExists}" == "true" ]]; then
             # above, or ran with unmanage semantics that don't remove this
             # link, rather than as this link's primary cleanup path.
             #
-            # Matches keyvaultPrivateDnsZoneName / webappPrivateDnsZoneName /
-            # sqlPrivateDnsZoneName in ustp-cams-kv-app-config-setup.bicep /
-            # app-shared-setup.bicep / main.bicep — those are the only other
-            # places these literals appear. Can't share them across
-            # bash/bicep without a codegen step, so keep all in lockstep by
-            # hand: if one changes, its vnet-link lookup silently stops
-            # matching and falls to the "nothing to delete" branch, leaking
-            # the link.
+            # kvPrivateDnsZoneName / webappPrivateDnsZoneName /
+            # sqlPrivateDnsZoneName come from _private-dns-zone-names.sh,
+            # shared with azure-deploy.sh / azure-deploy-app-shared-setup.sh.
+            # They must also match keyvaultPrivateDnsZoneName /
+            # webappPrivateDnsZoneName / sqlPrivateDnsZoneName in
+            # ustp-cams-kv-app-config-setup.bicep / app-shared-setup.bicep /
+            # main.bicep. Can't share those across bash/bicep without a
+            # codegen step, so keep the Bicep copies in lockstep by hand: if
+            # one changes, its vnet-link lookup silently stops matching and
+            # falls to the "nothing to delete" branch, leaking the link.
             #
             # The SQL zone's vnet link is unconditional (CAMS-760 follow-up —
             # see main.bicep's ustpSqlDnsZoneLink module for why), so it is
             # subject to the exact same self-cleaning-normally /
             # defense-in-depth-here shape as the webapp link above.
-            kvPrivateDnsZoneName='privatelink.vaultcore.usgovcloudapi.net'
-            webappPrivateDnsZoneName='privatelink.azurewebsites.us'
-            sqlPrivateDnsZoneName='privatelink.database.usgovcloudapi.net'
             pepName="pep-${stack_name}"
             pepId=$(az resource list -g "${network_rg}" --resource-type Microsoft.Network/privateEndpoints --query "[?name=='${pepName}'].id" -o tsv)
             if [[ -n "${pepId}" ]]; then

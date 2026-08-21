@@ -24,6 +24,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/_vnet-link-check.sh"
 # shellcheck source=ops/scripts/pipeline/_az-deploy-retry.sh
 source "$SCRIPT_DIR/_az-deploy-retry.sh"
+# shellcheck source=ops/scripts/pipeline/_private-dns-zone-names.sh
+source "$SCRIPT_DIR/_private-dns-zone-names.sh"
 
 deployment_file=''
 resource_group=''
@@ -138,11 +140,11 @@ network_location="${network_location:-${location}}"
 # (e.g. a legacy private endpoint from before the current naming scheme),
 # creating a second, differently-named one fails with a Conflict. Check for
 # any existing link before deploying and tell the template to skip creating
-# its own when one is already there (see vnet-links.bicep). Hardcoded zone
-# name matches keyvaultPrivateDnsZoneName in
-# ustp-cams-kv-app-config-setup.bicep and kvPrivateDnsZoneName in
-# az-delete-branch-resources.sh — three copies total, can't share the literal
-# across bash/bicep, keep all three in lockstep by hand.
+# its own when one is already there (see vnet-links.bicep). kvPrivateDnsZoneName
+# comes from _private-dns-zone-names.sh (shared with az-delete-branch-resources.sh)
+# and must also match keyvaultPrivateDnsZoneName in
+# ustp-cams-kv-app-config-setup.bicep — can't share the literal across
+# bash/bicep, keep that one in lockstep by hand.
 #
 # The webapp/api/dataflows zone's own vnet-link check used to live here too,
 # but CAMS-760 moved that link's creation out of app-shared-setup.bicep and
@@ -160,20 +162,20 @@ network_location="${network_location:-${location}}"
 # the same overrides out of extra_parameters below so the check looks in the
 # same place the deployment actually will, instead of always assuming the
 # defaults.
-kvPrivateDnsZoneName='privatelink.vaultcore.usgovcloudapi.net'
-# Also hardcoded (as webappPrivateDnsZoneName) in app-shared-setup.bicep,
+# kvPrivateDnsZoneName, webappPrivateDnsZoneName, and sqlPrivateDnsZoneName
+# come from _private-dns-zone-names.sh. webappPrivateDnsZoneName is also
+# hardcoded (as a fixed var, not a param) in app-shared-setup.bicep --
+# can't share the literal across bash/bicep, keep them in lockstep by hand.
+#
+# sqlPrivateDnsZoneName is likewise also hardcoded in app-shared-setup.bicep,
 # where it's a fixed var, not a param -- can't share the literal across
-# bash/bicep, keep both in lockstep by hand.
-webappPrivateDnsZoneName='privatelink.azurewebsites.us'
-# Also hardcoded (as sqlPrivateDnsZoneName) in app-shared-setup.bicep, where
-# it's a fixed var, not a param -- can't share the literal across bash/bicep,
-# keep both in lockstep by hand. app-shared-setup.bicep's sqlDnsZone module
-# call is unconditional (not gated on useSqlPrivateLink), so every deploy of
-# this shared-setup template -- including branches that never opt into SQL
-# Private Link -- resolves this zone as `existing` when deployDns=false. If
-# this zone doesn't exist yet in the target RG, that lookup fails the
-# deployment outright, so it must be checked here alongside kv/webapp.
-sqlPrivateDnsZoneName='privatelink.database.usgovcloudapi.net'
+# bash/bicep, keep both in lockstep by hand. app-shared-setup.bicep's
+# sqlDnsZone module call is unconditional (not gated on useSqlPrivateLink),
+# so every deploy of this shared-setup template -- including branches that
+# never opt into SQL Private Link -- resolves this zone as `existing` when
+# deployDns=false. If this zone doesn't exist yet in the target RG, that
+# lookup fails the deployment outright, so it must be checked here alongside
+# kv/webapp.
 private_dns_zone_rg="${network_rg}"
 private_dns_zone_subscription_id=""
 for param in ${extra_parameters}; do

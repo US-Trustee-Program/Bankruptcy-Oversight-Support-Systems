@@ -17,6 +17,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/_vnet-link-check.sh"
 # shellcheck source=ops/scripts/pipeline/_az-deploy-retry.sh
 source "$SCRIPT_DIR/_az-deploy-retry.sh"
+# shellcheck source=ops/scripts/pipeline/_private-dns-zone-names.sh
+source "$SCRIPT_DIR/_private-dns-zone-names.sh"
 
 deployment_parameters=''
 is_ustp_deployment=false
@@ -536,25 +538,26 @@ validateParameters
 # for the KV zone's own (unmoved) link (both now call the shared
 # vnet_link_already_exists_for helper — see _vnet-link-check.sh). Falls back
 # to the same defaults main.bicep itself uses (privateDnsZoneName default
-# 'privatelink.azurewebsites.us', privateDnsZoneResourceGroup default
-# networkResourceGroupName) when --privateDnsZoneName/--privateDnsZoneResourceGroup
-# weren't passed in, so the check still targets the zone this deployment will
-# actually link against. Also passes --privateDnsZoneSubscriptionId through
-# (empty/unset unless USTP prod overrides it) so the check runs against the
-# same subscription main.bicep's ustpWebappDnsZoneLink module targets.
-webappPrivateDnsZoneName="${private_dns_zone_name:-privatelink.azurewebsites.us}"
+# webappPrivateDnsZoneName from _private-dns-zone-names.sh,
+# privateDnsZoneResourceGroup default networkResourceGroupName) when
+# --privateDnsZoneName/--privateDnsZoneResourceGroup weren't passed in, so the
+# check still targets the zone this deployment will actually link against.
+# Also passes --privateDnsZoneSubscriptionId through (empty/unset unless USTP
+# prod overrides it) so the check runs against the same subscription
+# main.bicep's ustpWebappDnsZoneLink module targets.
+webappPrivateDnsZoneName="${private_dns_zone_name:-$webappPrivateDnsZoneName}"
 webappPrivateDnsZoneRg="${private_dns_zone_rg:-${network_rg:-}}"
 check_vnet_link_or_warn "${webappPrivateDnsZoneRg}" "${webappPrivateDnsZoneName}" "webapp"
 deployment_parameters="${deployment_parameters} webappVnetLinkAlreadyExists=${check_vnet_link_result}"
 
 # Same Conflict-avoidance check as above, for the SQL Private Link zone
-# (privatelink.database.usgovcloudapi.net). Unlike the webapp link,
-# main.bicep's ustpSqlDnsZoneLink module is UNCONDITIONAL -- not gated on
-# useSqlPrivateLink -- because the SQL server auto-redirects its public FQDN
-# to the privatelink subdomain server-wide the instant any branch's PE is
-# approved, which would strand main and every other non-PE consumer if only
-# the PE-using branch were linked to the zone (see main.bicep's comment on
-# that module for the full rationale). This check MUST therefore also run
+# (sqlPrivateDnsZoneName from _private-dns-zone-names.sh). Unlike the webapp
+# link, main.bicep's ustpSqlDnsZoneLink module is UNCONDITIONAL -- not gated
+# on useSqlPrivateLink -- because the SQL server auto-redirects its public
+# FQDN to the privatelink subdomain server-wide the instant any branch's PE
+# is approved, which would strand main and every other non-PE consumer if
+# only the PE-using branch were linked to the zone (see main.bicep's comment
+# on that module for the full rationale). This check MUST therefore also run
 # unconditionally for every deploy, including main's -- do NOT gate it on
 # useSqlPrivateLink, or main's redeploy will hit a Conflict trying to
 # recreate a link this check should have detected already exists.
@@ -563,7 +566,6 @@ deployment_parameters="${deployment_parameters} webappVnetLinkAlreadyExists=${ch
 # webapp zone link (just a different zone name), so this reuses
 # webappPrivateDnsZoneRg/private_dns_zone_sub_id rather than introducing a
 # separate --sqlPrivateDnsZoneResourceGroup param that doesn't exist.
-sqlPrivateDnsZoneName='privatelink.database.usgovcloudapi.net'
 check_vnet_link_or_warn "${webappPrivateDnsZoneRg}" "${sqlPrivateDnsZoneName}" "SQL"
 deployment_parameters="${deployment_parameters} sqlVnetLinkAlreadyExists=${check_vnet_link_result}"
 
