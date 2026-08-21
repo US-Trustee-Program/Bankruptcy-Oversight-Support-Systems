@@ -37,7 +37,19 @@ jobs:
   deploy-sql-hub:
     name: Deploy SQL Private Link Hub
     runs-on: ubuntu-latest
-    environment: sql-hub
+    # Reuses the existing infrastructure-deploy-main OIDC anchor rather than a
+    # dedicated one. That identity already holds Contributor at subscription
+    # scope, which covers everything this deploy needs -- creating the hub
+    # VNet/subnet/endpoint, and writing the A record into the existing private
+    # DNS zones in rg-cams-network and rg-cams-network-dev. A dedicated identity
+    # would need those same permissions granted from scratch, so it would add a
+    # principal without narrowing anything.
+    #
+    # The repo's OIDC subject template is repo+workflow+environment, so the
+    # federated credential backing this must name THIS workflow, not just the
+    # environment: it is a separate credential from the Continuous Deployment
+    # one on the same app registration.
+    environment: infrastructure-deploy-main
     permissions:
       contents: read
       id-token: write

@@ -106,28 +106,47 @@ It is deliberately **not** part of continuous deployment. Every environment's SQ
 resolution depends on this one endpoint, so redeploying it must be a deliberate
 act, never a side effect of a branch deploy or teardown.
 
-### Required role assignments
+### Identity and permissions
+
+**No additional role assignments are required.** The workflow authenticates as
+`cams-infrastructure-deploy-main-oidc` through the existing
+`infrastructure-deploy-main` environment, and that identity already holds
+`Contributor` at **subscription** scope. That covers everything involved:
+creating the hub VNet, subnet, and Private Endpoint, and writing the A record
+into the private DNS zones in `rg-cams-network` and `rg-cams-network-dev`.
+
+A dedicated `sql-hub` identity was considered and rejected: it would need those
+same permissions granted from scratch, so it would add a principal without
+narrowing anything.
+
+Note that the hub writes into **consumer-owned** zones, which inverts "the hub
+owns its own lifecycle". That is the deliberate trade for a zero-downtime
+cutover. The alternative — a third zone of the same name in the hub RG — cannot
+be adopted without an outage, because Azure rejects linking one VNet to two zones
+sharing a name, so every consumer would have to unlink before it could relink and
+would resolve nothing in between.
 
 > [!IMPORTANT]
-> These are **prerequisites**. Without them the hub deploy and main's peering
-> both fail, and the failure messages point away from the real cause.
+> What this workflow **does** require is its own federated credential. The
+> repository's OIDC subject template is `repo + workflow + environment`
+> (see [GitHub Actions OIDC Least Privilege](../architecture/decision-records/GithubActionsOidcLeastPrivilege.md)),
+> so the subject names the workflow, not just the environment. A standalone
+> `workflow_dispatch` workflow reports its **own** name; only reusable workflows
+> invoked from Continuous Deployment report the caller's name. Reusing an
+> environment is therefore not sufficient on its own.
 
-| Identity | Role | Scope | Why |
-| --- | --- | --- | --- |
-| `sql-hub` federated credential | Contributor | Hub resource group (`bankruptcy-oversight-support-systems`) | Creates the hub VNet, subnet, and Private Endpoint |
-| `sql-hub` federated credential | Private DNS Zone Contributor | `rg-cams-network` **and** `rg-cams-network-dev` | The endpoint registers its A record into the **existing** zones consumers already resolve through, rather than a new hub-owned zone |
-| `deploy-main` federated credential | peering write (Network Contributor or equivalent) | Hub resource group | `main.bicep` creates **both** sides of main's peering; the hub side lives in the hub RG |
+The credential already exists (`gha-deploy-sql-hub` on
+`cams-infrastructure-deploy-main-oidc`). Any future standalone workflow needs its
+own, created like this:
 
-The DNS grant intentionally inverts "the hub owns its own lifecycle": the hub
-writes into consumer-owned zones. That is the trade for a zero-downtime cutover.
-The alternative — a third zone of the same name in the hub RG — cannot be adopted
-without an outage, because Azure rejects linking one VNet to two zones sharing a
-name, so every consumer would have to unlink before it could relink and would
-resolve nothing in between.
-
-A new `sql-hub` GitHub environment holding the `AZ_CLIENT_ID` secret, plus its
-Azure federated credential, must exist before the workflow can authenticate. See
-[GitHub Actions OIDC Least Privilege](../architecture/decision-records/GithubActionsOidcLeastPrivilege.md).
+```bash
+az ad app federated-credential create --id <app-object-id> --parameters '{
+  "name": "gha-<workflow-slug>",
+  "issuer": "https://token.actions.githubusercontent.com",
+  "subject": "repo:US-Trustee-Program/Bankruptcy-Oversight-Support-Systems:workflow:<Workflow Name>:environment:<environment>",
+  "audiences": ["api://AzureADTokenExchange"]
+}'
+```
 
 ### Migrating a consumer onto the hub
 
