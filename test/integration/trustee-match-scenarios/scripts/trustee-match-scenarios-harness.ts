@@ -230,7 +230,7 @@ const STAGE_5_6_7_TRUSTEE_IDS = [
 
 // Stage 8: unlike Stages 5-7, this DOES round-trip through DXTR (seed/01-seed-dxtr-data.sql
 // scenario 14, CS_CASEID 999999413) — it exists specifically to prove the real SQL fallback,
-// which Stages 5-7 have no need to exercise. Excluded from ALL_CASE_IDS/the 13-scenario
+// which Stages 5-7 have no need to exercise. Excluded from ALL_CASE_IDS/the 12-scenario
 // matching pipeline (no Cosmos synced-case fixture, no trustee, never passed to
 // processAppointments) since it's read directly via casesGateway.getTrusteeAppointments.
 const BAD_REC_DATE_CASE_ID = '083-26-88913';
@@ -479,7 +479,7 @@ async function seedSql() {
   try {
     const seedDir = path.join(HARNESS_DIR, 'seed');
     await executeSqlFile(pool, path.join(seedDir, '01-seed-dxtr-data.sql'));
-    pass('01-seed-dxtr-data.sql seeded (13 scenario cases + Stage 8 bad-REC-date case)');
+    pass('01-seed-dxtr-data.sql seeded (12 scenario cases + Stage 8 bad-REC-date case)');
   } finally {
     await pool.close();
   }
@@ -1831,7 +1831,7 @@ async function runDivergenceRepairStage(
  * an earlier version of this fallback (using FORMAT(TX.TX_DATE, 'yyyy-MM-dd')) was caught
  * failing against a real SQL Edge container with "Common Language Runtime(CLR) is not enabled
  * on this instance." and replaced with CONVERT(VARCHAR(10), TX.TX_DATE, 120), which has no CLR
- * dependency. Standalone: not part of the 13-scenario matching pipeline, no Cosmos writes.
+ * dependency. Standalone: not part of the 12-scenario matching pipeline, no Cosmos writes.
  */
 async function runBadRecDateFallbackStage(
   deps: ReturnType<typeof SyncTrusteeCaseAppointmentsUseCase.createDeps>,

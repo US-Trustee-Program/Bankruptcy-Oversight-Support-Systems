@@ -174,7 +174,6 @@ describe('SyncTrusteeCaseAppointments', () => {
       );
       vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue({
         findByCamsTrusteeId: vi.fn().mockResolvedValue([]),
-        findByAcmsProfessionalId: vi.fn().mockResolvedValue([]),
         release: vi.fn(),
       } as unknown as TrusteeProfessionalIdsRepository);
       vi.spyOn(factory, 'getOfficesGateway').mockReturnValue({
@@ -610,6 +609,10 @@ describe('SyncTrusteeCaseAppointments', () => {
 
         expect(scenarioDistribution.fingerprintHitCount).toBe(1);
         expect(scenarioDistribution.fingerprintMissCount).toBe(0);
+        expect(trusteeMatchHelpers.matchTrusteeByName).not.toHaveBeenCalled();
+        expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
+          expect.objectContaining({ caseId: 'case-001', trusteeId: 'trustee-123' }),
+        );
       });
 
       test('counts a TRUSTEE_VARIATION bucket miss as fingerprintMissCount', async () => {
