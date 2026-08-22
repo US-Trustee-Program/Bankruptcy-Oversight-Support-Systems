@@ -160,7 +160,20 @@ branch_network_claimed_slot_indices() {
   errFile=$(mktemp)
   # stderr captured separately, never merged with 2>&1 -- a CLI upgrade nag or
   # deprecation notice spliced into stdout would be parsed as an address prefix.
-  prefixes=$(az network vnet peering list --resource-group "${hubRg}" --vnet-name "${hubVnet}" --query "[].remoteAddressSpace.addressPrefixes[0]" -o tsv 2>"${errFile}")
+  # Disconnected peerings are excluded: that state means the remote VNet (or its
+  # side of the peering) is gone, so the slot it names is genuinely free. Without
+  # this, every torn-down branch permanently consumes a slot -- observed live on
+  # the first real run, where branch ef1bab was removed but
+  # peer-vnet-ustp-cams-sql-hub-to-vnet-ustp-cams-dev-ef1bab survived as
+  # Disconnected, still reporting remoteAddressSpace 10.128.0.0/20 and holding
+  # slot 0. Teardown is supposed to delete it, but relying on teardown having run
+  # is exactly the assumption that leaks; keying on the state Azure itself
+  # reports makes the pool self-healing.
+  #
+  # Initiated is deliberately still counted as claimed. It means one side exists
+  # and the other has not been created yet -- a claim in progress, not an
+  # abandoned one -- so freeing it would let a concurrent branch take the range.
+  prefixes=$(az network vnet peering list --resource-group "${hubRg}" --vnet-name "${hubVnet}" --query "[?peeringState!='Disconnected'].remoteAddressSpace.addressPrefixes[0]" -o tsv 2>"${errFile}")
   rc=$?
   if [[ ${rc} -ne 0 ]]; then
     echo "ERROR: failed to list peerings on hub vnet ${hubVnet} in ${hubRg} (exit ${rc}): $(cat "${errFile}")" >&2
