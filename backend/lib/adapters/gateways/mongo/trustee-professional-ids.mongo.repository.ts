@@ -3,7 +3,10 @@ import { getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { TrusteeProfessionalIdsRepository } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import QueryBuilder from '../../../query/query-builder';
-import { TrusteeProfessionalId } from '@common/cams/trustee-professional-ids';
+import {
+  TrusteeProfessionalId,
+  TrusteeProfessionalIdError,
+} from '@common/cams/trustee-professional-ids';
 import { createAuditRecord } from '@common/cams/auditable';
 import { CamsUserReference } from '@common/cams/users';
 import { Creatable } from '@common/cams/creatable';
@@ -16,6 +19,13 @@ const { and, using } = QueryBuilder;
 export type TrusteeProfessionalIdDocument = TrusteeProfessionalId & {
   documentType: 'TRUSTEE_PROFESSIONAL_ID';
 };
+
+// Excludes documents carrying an `error` — those are unmatched placeholder records keyed by
+// fingerprint rather than a real trusteeId, and must stay invisible to callers resolving real
+// trustee<->ACMS links. See TrusteeProfessionalIdsRepository's JSDoc.
+function notErrored<T extends { error?: unknown }>(doc: ReturnType<typeof using<T>>) {
+  return doc('error').notExists();
+}
 
 export class TrusteeProfessionalIdsMongoRepository
   extends BaseMongoRepository
@@ -58,7 +68,6 @@ export class TrusteeProfessionalIdsMongoRepository
     user: CamsUserReference,
   ): Promise<TrusteeProfessionalId> {
     try {
-      // Check if this exact mapping already exists (idempotent)
       const doc = using<TrusteeProfessionalIdDocument>();
       const query = and(
         doc('documentType').equals('TRUSTEE_PROFESSIONAL_ID'),
@@ -72,7 +81,6 @@ export class TrusteeProfessionalIdsMongoRepository
         return existing[0];
       }
 
-      // Create new mapping
       const document = createAuditRecord<Creatable<TrusteeProfessionalIdDocument>>(
         {
           documentType: 'TRUSTEE_PROFESSIONAL_ID',
@@ -93,10 +101,40 @@ export class TrusteeProfessionalIdsMongoRepository
     }
   }
 
+  async createErroredProfessionalId(
+    fingerprint: string,
+    acmsProfessionalId: string,
+    variant: string,
+    error: TrusteeProfessionalIdError,
+    user: CamsUserReference,
+  ): Promise<TrusteeProfessionalId> {
+    try {
+      const document = createAuditRecord<Creatable<TrusteeProfessionalIdDocument>>(
+        {
+          documentType: 'TRUSTEE_PROFESSIONAL_ID',
+          camsTrusteeId: fingerprint,
+          acmsProfessionalId,
+          variant,
+          error,
+        },
+        user,
+      );
+
+      const id =
+        await this.getAdapter<Creatable<TrusteeProfessionalIdDocument>>().insertOne(document);
+
+      return { id, ...document };
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to create errored professional ID record for ACMS ID ${acmsProfessionalId}.`,
+      });
+    }
+  }
+
   async findAll(): Promise<TrusteeProfessionalId[]> {
     try {
       const doc = using<TrusteeProfessionalIdDocument>();
-      const query = doc('documentType').equals('TRUSTEE_PROFESSIONAL_ID');
+      const query = and(doc('documentType').equals('TRUSTEE_PROFESSIONAL_ID'), notErrored(doc));
       return await this.getAdapter<TrusteeProfessionalIdDocument>().find(query);
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
@@ -108,7 +146,7 @@ export class TrusteeProfessionalIdsMongoRepository
   async findByCamsTrusteeId(camsTrusteeId: string): Promise<TrusteeProfessionalId[]> {
     try {
       const doc = using<TrusteeProfessionalIdDocument>();
-      const query = doc('camsTrusteeId').equals(camsTrusteeId);
+      const query = and(doc('camsTrusteeId').equals(camsTrusteeId), notErrored(doc));
       return await this.getAdapter<TrusteeProfessionalIdDocument>().find(query);
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
@@ -120,7 +158,7 @@ export class TrusteeProfessionalIdsMongoRepository
   async findByAcmsProfessionalId(acmsProfessionalId: string): Promise<TrusteeProfessionalId[]> {
     try {
       const doc = using<TrusteeProfessionalIdDocument>();
-      const query = doc('acmsProfessionalId').equals(acmsProfessionalId);
+      const query = and(doc('acmsProfessionalId').equals(acmsProfessionalId), notErrored(doc));
       return await this.getAdapter<TrusteeProfessionalIdDocument>().find(query);
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {

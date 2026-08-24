@@ -155,4 +155,118 @@ describe('Runtime State Repo', () => {
       );
     });
   });
+
+  describe('atomicIncrement', () => {
+    let counterRepo: RuntimeStateMongoRepository<ProfessionalIdCounterState>;
+
+    beforeEach(() => {
+      counterRepo = new RuntimeStateMongoRepository<ProfessionalIdCounterState>(context);
+    });
+
+    test('should atomically increment the field via a single findOneAndUpdate $inc', async () => {
+      const findOneAndUpdateSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'findOneAndUpdate')
+        .mockResolvedValue({
+          documentType: 'PROFESSIONAL_ID_COUNTER',
+          lastAssigned: 5,
+        });
+
+      await counterRepo.atomicIncrement('PROFESSIONAL_ID_COUNTER', 'lastAssigned', 1);
+
+      expect(findOneAndUpdateSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        { $inc: { lastAssigned: 1 } },
+        { returnDocument: 'after' },
+      );
+    });
+
+    test('should default amount to 1 when not provided', async () => {
+      const findOneAndUpdateSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'findOneAndUpdate')
+        .mockResolvedValue({
+          documentType: 'PROFESSIONAL_ID_COUNTER',
+          lastAssigned: 1,
+        });
+
+      await counterRepo.atomicIncrement('PROFESSIONAL_ID_COUNTER', 'lastAssigned');
+
+      expect(findOneAndUpdateSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        { $inc: { lastAssigned: 1 } },
+        { returnDocument: 'after' },
+      );
+    });
+
+    test('should return the post-increment field value from the returned document', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOneAndUpdate').mockResolvedValue({
+        documentType: 'PROFESSIONAL_ID_COUNTER',
+        lastAssigned: 42,
+      });
+
+      const result = await counterRepo.atomicIncrement(
+        'PROFESSIONAL_ID_COUNTER',
+        'lastAssigned',
+        1,
+      );
+
+      expect(result).toEqual(42);
+    });
+
+    test('should throw when the document is not found', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOneAndUpdate').mockResolvedValue(null);
+
+      await expect(
+        counterRepo.atomicIncrement('PROFESSIONAL_ID_COUNTER', 'lastAssigned', 1),
+      ).rejects.toThrow(CamsError);
+    });
+
+    test('should throw when the incremented field is not a number', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOneAndUpdate').mockResolvedValue({
+        documentType: 'PROFESSIONAL_ID_COUNTER',
+        lastAssigned: 'not-a-number' as unknown as number,
+      });
+
+      await expect(
+        counterRepo.atomicIncrement('PROFESSIONAL_ID_COUNTER', 'lastAssigned', 1),
+      ).rejects.toThrow(CamsError);
+    });
+
+    test('should rewrap driver errors via getCamsError', async () => {
+      const driverError = new Error('driver-failure');
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOneAndUpdate').mockRejectedValue(driverError);
+
+      await expect(
+        counterRepo.atomicIncrement('PROFESSIONAL_ID_COUNTER', 'lastAssigned', 1),
+      ).rejects.toThrow(
+        expect.objectContaining({
+          isCamsError: true,
+        }),
+      );
+    });
+  });
+
+  describe('setField', () => {
+    test('should atomically $set the given dotted path via a single findOneAndUpdate, upserting if absent', async () => {
+      const findOneAndUpdateSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'findOneAndUpdate')
+        .mockResolvedValue({ documentType: 'ORDERS_SYNC_STATE' });
+
+      await repo.setField('ORDERS_SYNC_STATE', 'someMap.NY', 63);
+
+      expect(findOneAndUpdateSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        { $set: { 'someMap.NY': 63 }, $setOnInsert: { documentType: 'ORDERS_SYNC_STATE' } },
+        { upsert: true },
+      );
+    });
+
+    test('should rewrap driver errors via getCamsError', async () => {
+      const driverError = new Error('driver-failure');
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOneAndUpdate').mockRejectedValue(driverError);
+
+      await expect(repo.setField('ORDERS_SYNC_STATE', 'someMap.NY', 63)).rejects.toThrow(
+        expect.objectContaining({ isCamsError: true }),
+      );
+    });
+  });
 });
