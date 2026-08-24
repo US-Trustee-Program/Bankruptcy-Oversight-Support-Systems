@@ -2,7 +2,6 @@ import './AppointmentCard.scss';
 import { useEffect, useState } from 'react';
 import UpcomingKeyDates from './UpcomingKeyDates';
 import PastKeyDates from './PastKeyDates';
-import Chapter12StandingUpcomingKeyDates from './Chapter12StandingUpcomingKeyDates';
 import InfoCard from './InfoCard';
 import { TrusteeAppointment, formatAppointmentStatus } from '@common/cams/trustee-appointments';
 import { formatChapterType, formatAppointmentType } from '@common/cams/trustees';
@@ -198,7 +197,8 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
         )}
         {showsChpt12StandingKeyDatesCards && (
           <>
-            <Chapter12StandingUpcomingKeyDates
+            <UpcomingKeyDates
+              variant="chapter12-standing"
               trusteeId={props.appointment.trusteeId}
               appointmentId={props.appointment.id}
               appointmentHeading={appointmentHeading}
