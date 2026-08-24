@@ -213,7 +213,7 @@ export default function PastKeyDatesForm() {
             <label className="usa-label" htmlFor={field.inputId}>
               {field.formLabel}
             </label>
-            <span className="usa-hint">The fiscal year of the TIR data audited</span>
+            {field.hint && <span className="usa-hint">{field.hint}</span>}
             <select
               className="usa-select"
               id={field.inputId}
