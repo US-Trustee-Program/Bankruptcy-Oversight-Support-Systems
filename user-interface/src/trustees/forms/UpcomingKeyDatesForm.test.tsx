@@ -701,6 +701,65 @@ describe('UpcomingKeyDatesForm', () => {
     });
   });
 
+  describe('Save button disabled state (chapter7-panel)', () => {
+    test('Save button is disabled after TPR Period start is set without end', async () => {
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+      });
+
+      await userEvent.selectOptions(
+        document.getElementById('tpr-review-period-start-month')!,
+        '04',
+      );
+      await userEvent.selectOptions(document.getElementById('tpr-review-period-start-day')!, '01');
+      await userEvent.click(screen.getByTestId('button-save-upcoming-key-dates'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('button-save-upcoming-key-dates')).toBeDisabled();
+      });
+    });
+
+    test('Save button is disabled after TPR Due date set without Year Type', async () => {
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+      });
+
+      await userEvent.selectOptions(document.getElementById('tpr-due-month')!, '09');
+      await userEvent.selectOptions(document.getElementById('tpr-due-day')!, '15');
+      await userEvent.click(screen.getByTestId('button-save-upcoming-key-dates'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('button-save-upcoming-key-dates')).toBeDisabled();
+      });
+    });
+
+    test('Save button re-enables after selecting Year Type following TPR Due error', async () => {
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+      });
+
+      await userEvent.selectOptions(document.getElementById('tpr-due-month')!, '09');
+      await userEvent.selectOptions(document.getElementById('tpr-due-day')!, '15');
+      await userEvent.click(screen.getByTestId('button-save-upcoming-key-dates'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('button-save-upcoming-key-dates')).toBeDisabled();
+      });
+
+      await userEvent.selectOptions(screen.getByTestId('tpr-due-year-type'), 'EVEN');
+
+      await waitFor(() => {
+        expect(screen.getByTestId('button-save-upcoming-key-dates')).not.toBeDisabled();
+      });
+    });
+  });
+
   describe('chapter12-standing variant', () => {
     const ch12Appointment: TrusteeAppointment = {
       id: 'appointment-001',

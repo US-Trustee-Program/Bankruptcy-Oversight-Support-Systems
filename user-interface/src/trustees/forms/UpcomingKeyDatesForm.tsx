@@ -456,6 +456,14 @@ export default function UpcomingKeyDatesForm() {
     .filter((d): d is DatePickerFieldDescriptor => typeof d !== 'string')
     .map((d) => d.id);
 
+  const isSaveDisabled =
+    isSaving ||
+    (!validationState.tprReviewPeriod && !tprReviewPeriodFocused) ||
+    !!errors.tprDue ||
+    !!errors.tprDueYearType ||
+    !!tprDueBlurError ||
+    (datePickerIds.length > 0 && hasErrorAmong(datePickerIds));
+
   function renderField(descriptor: UpcomingFormFieldDescriptor) {
     const kind = typeof descriptor === 'string' ? descriptor : descriptor.kind;
     switch (kind) {
@@ -658,19 +666,7 @@ export default function UpcomingKeyDatesForm() {
       <h3>Edit Upcoming Key Dates</h3>
       {config.map(renderField)}
       <div className="usa-button-group">
-        <Button
-          id="save-upcoming-key-dates"
-          onClick={handleSave}
-          disabled={
-            isSaving ||
-            (variant === 'chapter12-standing' &&
-              ((!validationState.tprReviewPeriod && !tprReviewPeriodFocused) ||
-                !!errors.tprDue ||
-                !!errors.tprDueYearType ||
-                !!tprDueBlurError)) ||
-            (datePickerIds.length > 0 && hasErrorAmong(datePickerIds))
-          }
-        >
+        <Button id="save-upcoming-key-dates" onClick={handleSave} disabled={isSaveDisabled}>
           {isSaving ? 'Saving...' : 'Save'}
         </Button>
         <Button
