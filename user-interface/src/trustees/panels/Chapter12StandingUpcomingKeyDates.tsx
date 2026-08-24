@@ -1,7 +1,6 @@
 // TODO: This component shares significant structure with UpcomingKeyDates.tsx.
 // Once upcoming key dates are implemented for additional chapter types, revisit
 // whether a shared hook or config-driven pattern makes sense across all variants.
-import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   TrusteeUpcomingKeyDates,
@@ -10,7 +9,6 @@ import {
   isoToMMDDYYYY,
   calculateAuditReqBy,
 } from '@common/cams/trustee-upcoming-key-dates';
-import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
@@ -20,6 +18,8 @@ export interface Chapter12StandingUpcomingKeyDatesProps {
   trusteeId: string;
   appointmentId: string;
   appointmentHeading?: string;
+  data: TrusteeUpcomingKeyDates | null;
+  isLoading: boolean;
 }
 
 const NO_DATE = 'No date added';
@@ -27,31 +27,14 @@ const NO_DATE = 'No date added';
 export default function Chapter12StandingUpcomingKeyDates(
   props: Readonly<Chapter12StandingUpcomingKeyDatesProps>,
 ) {
-  const { trusteeId, appointmentId, appointmentHeading } = props;
+  const { trusteeId, appointmentId, appointmentHeading, data, isLoading } = props;
   const navigate = useNavigate();
   const session = LocalStorage.getSession();
   const canManage = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [data, setData] = useState<TrusteeUpcomingKeyDates | null>(null);
-
-  useEffect(() => {
-    Api2.getUpcomingKeyDates(trusteeId, appointmentId)
-      .then((response) => {
-        setData(response.data);
-      })
-      .catch((error) => {
-        console.error('Could not load upcoming key dates', error);
-        setData(null);
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
-  }, [trusteeId, appointmentId]);
-
   function openEdit() {
     navigate(`/trustees/${trusteeId}/appointments/${appointmentId}/upcoming-key-dates/edit`, {
-      state: { subHeading: appointmentHeading ?? '' },
+      state: { subHeading: appointmentHeading ?? '', variant: 'chapter12-standing' },
     });
   }
 
