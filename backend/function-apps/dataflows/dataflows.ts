@@ -25,6 +25,7 @@ import SyncDeletedCases from './import/sync-deleted-cases';
 import SyncOrders from './import/sync-orders';
 import SyncOfficeStaff from './import/sync-office-staff';
 import SyncTrusteeCaseAppointments from './import/sync-trustee-case-appointments';
+import SyncAcmsProfessionalIds from './import/sync-acms-professional-ids';
 import SyncTrusteeNotesMetrics from './metrics/sync-trustee-notes-metrics';
 import SyncTrusteeDueDateMetrics from './metrics/sync-trustee-due-date-metrics';
 import PollNotificationBounces from './metrics/poll-notification-bounces';
@@ -125,6 +126,7 @@ dataflows.register(
   SyncOfficeStaff,
   SyncOrders,
   SyncTrusteeCaseAppointments,
+  SyncAcmsProfessionalIds,
   SyncTrusteeNotesMetrics,
   SyncTrusteeDueDateMetrics,
   StaffAssignmentDownstream,
@@ -151,6 +153,7 @@ const DEFAULT_DATAFLOWS = listDataflowNames(
   SyncOfficeStaff,
   SyncOrders,
   SyncTrusteeCaseAppointments,
+  SyncAcmsProfessionalIds,
   SyncTrusteeDueDateMetrics,
   SyncTrusteeNotesMetrics,
   TrusteeVerificationRemap,

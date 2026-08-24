@@ -30,6 +30,12 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
     updatedBy: mockUser,
   };
 
+  const notErroredCondition = {
+    condition: 'EXISTS',
+    leftOperand: { name: 'error' },
+    rightOperand: false,
+  };
+
   beforeEach(async () => {
     process.env.MONGO_CONNECTION_STRING = 'mongodb://localhost:27017';
     context = await createMockApplicationContext();
@@ -85,32 +91,8 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
     const camsTrusteeId = 'trustee-123';
     const acmsProfessionalId = 'NY-00063';
 
-    test('should be idempotent - return existing mapping when exact pair already exists', async () => {
-      const existingMapping: TrusteeProfessionalIdDocument = {
-        ...sampleProfessionalId,
-        id: 'existing-prof-id',
-        camsTrusteeId,
-        acmsProfessionalId,
-      };
-
-      const findSpy = vi
-        .spyOn(MongoCollectionAdapter.prototype, 'find')
-        .mockResolvedValue([existingMapping]);
-
-      const result = await repository.createProfessionalId(
-        camsTrusteeId,
-        acmsProfessionalId,
-        mockUser,
-      );
-
-      expect(findSpy).toHaveBeenCalled();
-      expect(result.id).toBe('existing-prof-id');
-      expect(result.camsTrusteeId).toBe(camsTrusteeId);
-      expect(result.acmsProfessionalId).toBe(acmsProfessionalId);
-    });
-
     test('should create a new professional ID mapping successfully', async () => {
-      const findSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
       const insertOneSpy = vi
         .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
         .mockResolvedValue('new-prof-id');
@@ -121,7 +103,6 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
         mockUser,
       );
 
-      expect(findSpy).toHaveBeenCalled();
       expect(insertOneSpy).toHaveBeenCalled();
       expect(result.id).toBe('new-prof-id');
       expect(result.camsTrusteeId).toBe(camsTrusteeId);
@@ -129,7 +110,49 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
       expect(result.documentType).toBe('TRUSTEE_PROFESSIONAL_ID');
     });
 
-    test('should allow same ACMS ID mapped to different trustees (many-to-one)', async () => {
+    test('should return the existing mapping idempotently when the exact same pair already exists', async () => {
+      const existingMapping: TrusteeProfessionalIdDocument = {
+        ...sampleProfessionalId,
+        id: 'existing-prof-id',
+        camsTrusteeId,
+        acmsProfessionalId,
+      };
+      const findSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockResolvedValue([existingMapping]);
+      const insertOneSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne');
+
+      const result = await repository.createProfessionalId(
+        camsTrusteeId,
+        acmsProfessionalId,
+        mockUser,
+      );
+
+      expect(findSpy).toHaveBeenCalledWith({
+        conjunction: 'AND',
+        values: [
+          {
+            condition: 'EQUALS',
+            leftOperand: { name: 'documentType' },
+            rightOperand: 'TRUSTEE_PROFESSIONAL_ID',
+          },
+          {
+            condition: 'EQUALS',
+            leftOperand: { name: 'camsTrusteeId' },
+            rightOperand: camsTrusteeId,
+          },
+          {
+            condition: 'EQUALS',
+            leftOperand: { name: 'acmsProfessionalId' },
+            rightOperand: acmsProfessionalId,
+          },
+        ],
+      });
+      expect(insertOneSpy).not.toHaveBeenCalled();
+      expect(result).toEqual(existingMapping);
+    });
+
+    test('should allow the same ACMS ID mapped to a different trustee (many-to-one)', async () => {
       const differentTrusteeId = 'different-trustee-456';
 
       vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
@@ -153,16 +176,90 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
 
       await expect(
         repository.createProfessionalId(camsTrusteeId, acmsProfessionalId, mockUser),
-      ).rejects.toThrow();
+      ).rejects.toThrow(
+        `Failed to create professional ID mapping for trustee ${camsTrusteeId} and ACMS ID ${acmsProfessionalId}.`,
+      );
+    });
+  });
+
+  describe('createErroredProfessionalId', () => {
+    const fingerprint = 'the-fingerprint';
+    const acmsProfessionalId = 'NY-00063';
+    const variant = 'the-variant-string';
+
+    test('should create a record keyed by fingerprint, decorated with variant and error', async () => {
+      const insertOneSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
+        .mockResolvedValue('errored-prof-id');
+
+      const result = await repository.createErroredProfessionalId(
+        fingerprint,
+        acmsProfessionalId,
+        variant,
+        { disposition: 'no-match' },
+        mockUser,
+      );
+
+      expect(insertOneSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          documentType: 'TRUSTEE_PROFESSIONAL_ID',
+          camsTrusteeId: fingerprint,
+          acmsProfessionalId,
+          variant,
+          error: { disposition: 'no-match' },
+        }),
+      );
+      expect(result.id).toBe('errored-prof-id');
+      expect(result.camsTrusteeId).toBe(fingerprint);
+      expect(result.error).toEqual({ disposition: 'no-match' });
+    });
+
+    test('should not check for an existing record before inserting (always creates a new one)', async () => {
+      const findSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'find');
+      vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockResolvedValue('errored-prof-id');
+
+      await repository.createErroredProfessionalId(
+        fingerprint,
+        acmsProfessionalId,
+        variant,
+        { disposition: 'ambiguous', trustees: ['t1', 't2'] },
+        mockUser,
+      );
+
+      expect(findSpy).not.toHaveBeenCalled();
+    });
+
+    test('should wrap and throw on database errors', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockRejectedValue(
+        new Error('Write failed'),
+      );
+
+      await expect(
+        repository.createErroredProfessionalId(
+          fingerprint,
+          acmsProfessionalId,
+          variant,
+          { disposition: 'no-match' },
+          mockUser,
+        ),
+      ).rejects.toThrow(
+        `Failed to create errored professional ID record for ACMS ID ${acmsProfessionalId}.`,
+      );
     });
   });
 
   describe('findByCamsTrusteeId', () => {
     const camsTrusteeId = 'trustee-1';
     const expectedQuery = {
-      condition: 'EQUALS',
-      leftOperand: { name: 'camsTrusteeId' },
-      rightOperand: camsTrusteeId,
+      conjunction: 'AND',
+      values: [
+        {
+          condition: 'EQUALS',
+          leftOperand: { name: 'camsTrusteeId' },
+          rightOperand: camsTrusteeId,
+        },
+        notErroredCondition,
+      ],
     };
 
     test('should find all professional IDs for a trustee', async () => {
@@ -202,9 +299,15 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
       const result = await repository.findByCamsTrusteeId('trustee-unknown');
 
       expect(findSpy).toHaveBeenCalledWith({
-        condition: 'EQUALS',
-        leftOperand: { name: 'camsTrusteeId' },
-        rightOperand: 'trustee-unknown',
+        conjunction: 'AND',
+        values: [
+          {
+            condition: 'EQUALS',
+            leftOperand: { name: 'camsTrusteeId' },
+            rightOperand: 'trustee-unknown',
+          },
+          notErroredCondition,
+        ],
       });
       expect(result).toHaveLength(0);
     });
@@ -223,9 +326,15 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
   describe('findByAcmsProfessionalId', () => {
     const acmsProfessionalId = 'AK-01414';
     const expectedQuery = {
-      condition: 'EQUALS',
-      leftOperand: { name: 'acmsProfessionalId' },
-      rightOperand: acmsProfessionalId,
+      conjunction: 'AND',
+      values: [
+        {
+          condition: 'EQUALS',
+          leftOperand: { name: 'acmsProfessionalId' },
+          rightOperand: acmsProfessionalId,
+        },
+        notErroredCondition,
+      ],
     };
 
     test('should find all trustees with a given ACMS professional ID', async () => {
@@ -243,18 +352,6 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
           camsTrusteeId: 'trustee-13340',
           acmsProfessionalId,
         },
-        {
-          ...sampleProfessionalId,
-          id: 'prof-id-3',
-          camsTrusteeId: 'trustee-17287',
-          acmsProfessionalId,
-        },
-        {
-          ...sampleProfessionalId,
-          id: 'prof-id-4',
-          camsTrusteeId: 'trustee-27472',
-          acmsProfessionalId,
-        },
       ];
 
       const findSpy = vi
@@ -264,15 +361,29 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
       const result = await repository.findByAcmsProfessionalId(acmsProfessionalId);
 
       expect(findSpy).toHaveBeenCalledWith(expectedQuery);
-      expect(result).toHaveLength(4);
+      expect(result).toHaveLength(2);
       expect(result[0].camsTrusteeId).toBe('trustee-11092');
       expect(result[1].camsTrusteeId).toBe('trustee-13340');
-      expect(result[2].camsTrusteeId).toBe('trustee-17287');
-      expect(result[3].camsTrusteeId).toBe('trustee-27472');
+    });
+
+    test('should find the single trustee mapped to a given ACMS professional ID', async () => {
+      const mockProfessionalId: TrusteeProfessionalIdDocument = {
+        ...sampleProfessionalId,
+        id: 'prof-id-1',
+        camsTrusteeId: 'trustee-11092',
+        acmsProfessionalId,
+      };
+
+      const findSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockResolvedValue([mockProfessionalId]);
+
+      const result = await repository.findByAcmsProfessionalId(acmsProfessionalId);
+
+      expect(findSpy).toHaveBeenCalledWith(expectedQuery);
+      expect(result).toHaveLength(1);
+      expect(result[0].camsTrusteeId).toBe('trustee-11092');
       expect(result[0].acmsProfessionalId).toBe(acmsProfessionalId);
-      expect(result[1].acmsProfessionalId).toBe(acmsProfessionalId);
-      expect(result[2].acmsProfessionalId).toBe(acmsProfessionalId);
-      expect(result[3].acmsProfessionalId).toBe(acmsProfessionalId);
     });
 
     test('should return empty array when ACMS ID has no trustees', async () => {
@@ -281,9 +392,15 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
       const result = await repository.findByAcmsProfessionalId('XX-99999');
 
       expect(findSpy).toHaveBeenCalledWith({
-        condition: 'EQUALS',
-        leftOperand: { name: 'acmsProfessionalId' },
-        rightOperand: 'XX-99999',
+        conjunction: 'AND',
+        values: [
+          {
+            condition: 'EQUALS',
+            leftOperand: { name: 'acmsProfessionalId' },
+            rightOperand: 'XX-99999',
+          },
+          notErroredCondition,
+        ],
       });
       expect(result).toHaveLength(0);
     });
@@ -407,7 +524,7 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
   });
 
   describe('findAll', () => {
-    test('should return all professional ID mappings', async () => {
+    test('should return all non-errored professional ID mappings', async () => {
       const allMappings: TrusteeProfessionalId[] = [
         { ...sampleProfessionalId, id: 'p1', camsTrusteeId: 't1', acmsProfessionalId: 'NY-00063' },
         { ...sampleProfessionalId, id: 'p2', camsTrusteeId: 't2', acmsProfessionalId: 'UT-05321' },
@@ -418,13 +535,17 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
 
       const result = await repository.findAll();
 
-      expect(findSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          condition: 'EQUALS',
-          leftOperand: { name: 'documentType' },
-          rightOperand: 'TRUSTEE_PROFESSIONAL_ID',
-        }),
-      );
+      expect(findSpy).toHaveBeenCalledWith({
+        conjunction: 'AND',
+        values: [
+          {
+            condition: 'EQUALS',
+            leftOperand: { name: 'documentType' },
+            rightOperand: 'TRUSTEE_PROFESSIONAL_ID',
+          },
+          notErroredCondition,
+        ],
+      });
       expect(result).toHaveLength(2);
     });
 
