@@ -52,7 +52,7 @@ function tprDueField(data: TrusteeUpcomingKeyDates | null): UpcomingKeyDatesDisp
 }
 
 export const UPCOMING_KEY_DATES_FIELD_CONFIG: Record<
-  UpcomingKeyDatesVariant,
+  UpcomingKeyDatesDisplayVariant,
   UpcomingKeyDatesFieldConfig[]
 > = {
   'chapter7-panel': [
