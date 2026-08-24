@@ -1,4 +1,4 @@
-import { render, screen, waitFor, act, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { BrowserRouter, MemoryRouter, Route, Routes } from 'react-router-dom';
 import UpcomingKeyDatesForm from './UpcomingKeyDatesForm';
@@ -122,7 +122,6 @@ describe('UpcomingKeyDatesForm', () => {
 
   test('shows forbidden message when user lacks TrusteeAdmin role', async () => {
     TestingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
-    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderComponent();
 
@@ -736,28 +735,7 @@ describe('UpcomingKeyDatesForm', () => {
       lastAuditFiscalYear: 2022,
     };
 
-    test('renders TPR Period input', async () => {
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch12Appointment] });
-
-      renderComponent();
-
-      await waitFor(() => {
-        expect(screen.getByText(/Trustee Performance Review \(TPR\) Period/i)).toBeInTheDocument();
-      });
-    });
-
-    test('renders TPR Due input with year type selector', async () => {
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch12Appointment] });
-
-      renderComponent();
-
-      await waitFor(() => {
-        expect(screen.getByText(/Trustee Performance Review \(TPR\) Due/i)).toBeInTheDocument();
-      });
-      expect(screen.getByTestId('tpr-due-year-type')).toBeInTheDocument();
-    });
-
-    test('renders Lease Expiration date picker', async () => {
+    test('renders chapter12-standing field groups', async () => {
       vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch12Appointment] });
 
       renderComponent();
@@ -765,16 +743,10 @@ describe('UpcomingKeyDatesForm', () => {
       await waitFor(() => {
         expect(screen.getByLabelText(/Lease Expiration/i)).toBeInTheDocument();
       });
-    });
-
-    test('renders ID Expiration date picker', async () => {
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch12Appointment] });
-
-      renderComponent();
-
-      await waitFor(() => {
-        expect(screen.getByLabelText(/ID Expiration/i)).toBeInTheDocument();
-      });
+      expect(screen.getByText(/Trustee Performance Review \(TPR\) Period/i)).toBeInTheDocument();
+      expect(screen.getByText(/Trustee Performance Review \(TPR\) Due/i)).toBeInTheDocument();
+      expect(screen.getByTestId('tpr-due-year-type')).toBeInTheDocument();
+      expect(screen.getByLabelText(/ID Expiration/i)).toBeInTheDocument();
     });
 
     test('does not render Field Exam / Audit section', async () => {
@@ -862,11 +834,9 @@ describe('UpcomingKeyDatesForm', () => {
       const leaseInput = screen.getByLabelText(/Lease Expiration/i) as HTMLInputElement;
       fireEvent.change(leaseInput, { target: { value: '1900-01-01' } });
 
-      await act(async () => {
-        await new Promise((resolve) => setTimeout(resolve, 600));
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /save/i })).toBeDisabled();
       });
-
-      expect(screen.getByRole('button', { name: /save/i })).toBeDisabled();
     });
 
     test('Save button remains enabled when lease and ID expiration are future dates', async () => {

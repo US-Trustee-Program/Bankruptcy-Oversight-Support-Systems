@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
 import AppointmentCard, { AppointmentCardProps } from './AppointmentCard';
+import Api2 from '@/lib/models/api2';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import userEvent from '@testing-library/user-event';
@@ -45,6 +46,7 @@ describe('AppointmentCard', () => {
     mockUseNavigate.mockReturnValue(mockNavigate);
     mockUseCourts.mockReturnValue({ courts: [], loading: false, error: null });
     TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
   });
 
   const mockAppointment: TrusteeAppointment = {
@@ -240,7 +242,6 @@ describe('AppointmentCard', () => {
     expect(
       screen.getByText(/Southern District of New York: Chapter 7 - Panel/i),
     ).toBeInTheDocument();
-    expect(screen.getAllByText(/Southern District of New York/i).length).toBeGreaterThan(0);
   });
 
   test('should display "Court information not available" when courtName, courtDivisionName, and courtId are missing', () => {
@@ -256,7 +257,6 @@ describe('AppointmentCard', () => {
     expect(
       screen.getByText(/Court information not available: Chapter 7 - Panel/i),
     ).toBeInTheDocument();
-    expect(screen.getAllByText(/Court information not available/i).length).toBeGreaterThan(0);
   });
 
   test('should render Edit button when user has TrusteeAdmin role', () => {
@@ -523,16 +523,6 @@ describe('AppointmentCard', () => {
       renderWithProps({ appointment: ch12StandingAppointment });
 
       expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
-      expect(screen.getByTestId('upcoming-key-dates-card')).toBeInTheDocument();
-    });
-
-    test('renders UpcomingKeyDates card when flag is enabled', () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT12_STANDING_KEY_DATES]: true,
-      });
-
-      renderWithProps({ appointment: ch12StandingAppointment });
-
       expect(screen.getByTestId('upcoming-key-dates-card')).toBeInTheDocument();
     });
 
