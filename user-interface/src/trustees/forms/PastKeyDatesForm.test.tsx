@@ -493,6 +493,18 @@ describe('PastKeyDatesForm', () => {
     });
   });
 
+  test('renders audit-year hint text for chapter7-panel', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-past-key-dates')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('The fiscal year of the TIR data audited')).toBeInTheDocument();
+  });
+
   test('Cancel navigates without calling PUT', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
     const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
@@ -557,6 +569,18 @@ describe('PastKeyDatesForm', () => {
 
       expect(screen.getByText('Audit Report Date')).toBeInTheDocument();
       expect(screen.getByText("Last Audit's Fiscal Year")).toBeInTheDocument();
+    });
+
+    test('does not render audit-year hint text for chapter12-standing', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('last-audit-fiscal-year')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByText('The fiscal year of the TIR data audited')).not.toBeInTheDocument();
     });
 
     test('pre-populates each field with its own source value', async () => {
