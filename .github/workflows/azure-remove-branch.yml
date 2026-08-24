@@ -70,9 +70,7 @@ jobs:
     outputs:
       executeCleanup: ${{ steps.check.outputs.executeCleanup }}
       targetBranchHashIds: ${{ steps.check.outputs.targetBranchHashIds }}
-      staleBranchNotices: ${{ steps.check.outputs.staleBranchNotices }}
       stackName: ${{ steps.check.outputs.stackName }}
-      staleDaysThreshold: ${{ steps.check.outputs.staleDaysThreshold }}
     steps:
       - uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3.0.0
         with:
@@ -235,11 +233,10 @@ jobs:
               targets=$(jq -c --arg h "${branchHashId}" '. + [$h]' <<<"${targets}")
               notice=$(jq -c -n \
                 --arg branchName "${branchName}" \
-                --arg branchHashId "${branchHashId}" \
                 --argjson idleDays "${idleDays}" \
                 --arg committerLogin "$(jq -r '.commit.committer.login // ""' <<<"${branchInfo}")" \
                 --arg committerEmail "$(jq -r '.commit.commit.committer.email // ""' <<<"${branchInfo}")" \
-                '{branchName: $branchName, branchHashId: $branchHashId, idleDays: $idleDays, committerLogin: $committerLogin, committerEmail: $committerEmail}')
+                '{branchName: $branchName, idleDays: $idleDays, committerLogin: $committerLogin, committerEmail: $committerEmail}')
               notices=$(jq -c --argjson n "${notice}" '. + [$n]' <<<"${notices}")
             done < <(jq -c '.[]' <<<"${candidates}")
 
