@@ -944,4 +944,47 @@ describe('UpcomingKeyDatesForm', () => {
       });
     });
   });
+
+  describe('chapter13-standing variant', () => {
+    const ch13Appointment: TrusteeAppointment = {
+      id: 'appointment-001',
+      trusteeId: 'trustee-001',
+      chapter: '13',
+      appointmentType: 'standing',
+      courtId: '0208',
+      courtName: 'Southern District of New York',
+      appointedDate: '2021-03-15',
+      status: 'active',
+      effectiveDate: '2021-03-15',
+      updatedOn: '2026-01-01T00:00:00.000Z',
+      updatedBy: SYSTEM_USER_REFERENCE,
+    };
+
+    test('deriveVariant returns chapter13-standing for chapter 13 standing appointment', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch13Appointment] });
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+      });
+
+      expect(screen.getByLabelText(/Lease Expiration/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/ID Expiration/i)).toBeInTheDocument();
+    });
+
+    test('form renders TPR fields for chapter 13 standing appointment', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch13Appointment] });
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByText(/Trustee Performance Review \(TPR\) Period/i)).toBeInTheDocument();
+      });
+
+      expect(screen.getByText(/Trustee Performance Review \(TPR\) Due/i)).toBeInTheDocument();
+    });
+  });
 });

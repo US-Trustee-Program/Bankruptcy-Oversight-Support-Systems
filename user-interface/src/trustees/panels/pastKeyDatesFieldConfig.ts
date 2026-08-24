@@ -1,11 +1,13 @@
-export type PastKeyDatesVariant = 'chapter7-panel' | 'subv-pool' | 'chapter12-standing';
+export type PastKeyDatesVariant =
+  'chapter7-panel' | 'subv-pool' | 'chapter12-standing' | 'chapter13-standing';
 
 export type PastDateFieldKey =
   | 'pastBackgroundQuestion'
   | 'pastFieldExam'
   | 'pastAudit'
   | 'pastTprSubmission'
-  | 'lastMonthlyReportReceived';
+  | 'lastMonthlyReportReceived'
+  | 'lastCompensationStudy';
 
 interface PastKeyDatesFieldConfigBase {
   /** Label shown on the read-only Past Key Dates display card. */
@@ -28,7 +30,12 @@ interface YearField extends PastKeyDatesFieldConfigBase {
   key: 'lastAuditFiscalYear';
 }
 
-export type PastKeyDatesFieldConfig = DateField | YearField;
+interface MonthYearField extends PastKeyDatesFieldConfigBase {
+  kind: 'month-year';
+  key: 'lastCompensationStudy';
+}
+
+export type PastKeyDatesFieldConfig = DateField | YearField | MonthYearField;
 
 export const PAST_KEY_DATES_FIELD_CONFIG: Record<PastKeyDatesVariant, PastKeyDatesFieldConfig[]> = {
   'chapter7-panel': [
@@ -108,6 +115,32 @@ export const PAST_KEY_DATES_FIELD_CONFIG: Record<PastKeyDatesVariant, PastKeyDat
       inputId: 'past-last-monthly-report-received',
       kind: 'date',
       stacked: true,
+    },
+  ],
+  'chapter13-standing': [
+    {
+      key: 'pastBackgroundQuestion',
+      displayLabel: 'Last Update to Background Questionnaire',
+      formLabel: 'Last Update to Background Questionnaire',
+      testId: 'past-background-question-row',
+      inputId: 'past-background-question',
+      kind: 'date',
+    },
+    {
+      key: 'pastAudit',
+      displayLabel: 'Audit Report',
+      formLabel: 'Audit Report Date',
+      testId: 'past-audit-row',
+      inputId: 'past-audit',
+      kind: 'date',
+    },
+    {
+      key: 'lastCompensationStudy',
+      displayLabel: 'Last Compensation Study',
+      formLabel: 'Last Compensation Study',
+      testId: 'last-compensation-study-row',
+      inputId: 'last-compensation-study',
+      kind: 'month-year',
     },
   ],
 };

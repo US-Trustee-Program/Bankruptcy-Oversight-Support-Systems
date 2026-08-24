@@ -25,7 +25,7 @@ import { CamsRole } from '@common/cams/roles';
 import { Stop } from '@/lib/components/Stop';
 
 export type UpcomingKeyDatesVariant =
-  'chapter7-panel' | 'ch12-13-case-by-case' | 'chapter12-standing';
+  'chapter7-panel' | 'ch12-13-case-by-case' | 'chapter12-standing' | 'chapter13-standing';
 
 type TirFrequency = 'ANNUAL' | 'SEMI_ANNUAL' | '';
 
@@ -143,11 +143,11 @@ function deriveVariant(chapter: string, appointmentType: string): UpcomingKeyDat
   if ((chapter === '12' || chapter === '13') && appointmentType === 'case-by-case') {
     return 'ch12-13-case-by-case';
   }
-  if (
-    isChapter12Standing(chapter, appointmentType) ||
-    (chapter === '13' && appointmentType === 'standing')
-  ) {
+  if (isChapter12Standing(chapter, appointmentType)) {
     return 'chapter12-standing';
+  }
+  if (chapter === '13' && appointmentType === 'standing') {
+    return 'chapter13-standing';
   }
   return 'chapter7-panel';
 }
@@ -432,6 +432,7 @@ export default function UpcomingKeyDatesForm() {
       lastMonthlyReportReceived: form.lastMonthlyReportReceived || null,
       leaseExpiration: form.leaseExpiration || null,
       idExpiration: form.idExpiration || null,
+      lastCompensationStudy: null,
     };
 
     const result = validateTrusteeUpcomingKeyDates(isoInput);
@@ -504,7 +505,7 @@ export default function UpcomingKeyDatesForm() {
     !!errors.tprDueYearType ||
     !!tprDueBlurError;
 
-  if (variant === 'chapter12-standing') {
+  if (variant === 'chapter12-standing' || variant === 'chapter13-standing') {
     return (
       <div className="edit-upcoming-key-dates" data-testid="edit-upcoming-key-dates">
         <h3>Edit Upcoming Key Dates</h3>

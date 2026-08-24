@@ -20,6 +20,7 @@ import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import DatePicker from '@/lib/components/uswds/DatePicker';
+import MonthYearSelector from '@/lib/components/uswds/MonthYearSelector';
 import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
 import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
@@ -35,6 +36,7 @@ const EMPTY_FORM: PastKeyDatesFormState = {
   pastAudit: '',
   pastTprSubmission: '',
   lastMonthlyReportReceived: '',
+  lastCompensationStudy: '',
   lastAuditFiscalYear: '',
 };
 
@@ -94,11 +96,13 @@ function buildUpcomingKeyDatesInput(
       : (original?.lastAuditFiscalYear ?? null),
     leaseExpiration: original?.leaseExpiration ?? null,
     idExpiration: original?.idExpiration ?? null,
+    lastCompensationStudy: dateValue('lastCompensationStudy'),
   };
 }
 
 function deriveVariant(chapter: string, appointmentType: string): PastKeyDatesVariant {
   if (chapter === '11-subchapter-v' && appointmentType === 'pool') return 'subv-pool';
+  if (chapter === '13' && appointmentType === 'standing') return 'chapter13-standing';
   if (isChapter12Standing(chapter, appointmentType)) return 'chapter12-standing';
   return 'chapter7-panel';
 }
@@ -134,6 +138,7 @@ export default function PastKeyDatesForm() {
             pastAudit: data.pastAudit ?? '',
             pastTprSubmission: data.pastTprSubmission ?? '',
             lastMonthlyReportReceived: data.lastMonthlyReportReceived ?? '',
+            lastCompensationStudy: data.lastCompensationStudy ?? '',
             lastAuditFiscalYear: data.lastAuditFiscalYear ?? '',
           });
         }
@@ -160,7 +165,9 @@ export default function PastKeyDatesForm() {
     setIsSaving(true);
     const activeFields = PAST_KEY_DATES_FIELD_CONFIG[variant];
     const activeDateKeys = new Set(
-      activeFields.filter((field) => field.kind === 'date').map((field) => field.key),
+      activeFields
+        .filter((field) => field.kind === 'date' || field.kind === 'month-year')
+        .map((field) => field.key),
     );
     const hasYearField = activeFields.some((field) => field.kind === 'year');
     const isoInput = buildUpcomingKeyDatesInput(
@@ -200,7 +207,7 @@ export default function PastKeyDatesForm() {
   }
 
   const activeDateFieldIds = PAST_KEY_DATES_FIELD_CONFIG[variant]
-    .filter((field) => field.kind === 'date')
+    .filter((field) => field.kind === 'date' || field.kind === 'month-year')
     .map((field) => field.inputId);
   const hasAnyDateError = hasErrorAmong(activeDateFieldIds);
 
@@ -232,6 +239,15 @@ export default function PastKeyDatesForm() {
               ))}
             </select>
           </div>
+        ) : field.kind === 'month-year' ? (
+          <MonthYearSelector
+            key={field.inputId}
+            id={field.inputId}
+            label={field.formLabel}
+            value={form[field.key as PastDateFieldKey]}
+            onChange={(val) => setForm((prev) => ({ ...prev, [field.key]: val }))}
+            onValidationChange={(hasError) => registerFieldError(field.inputId, hasError)}
+          />
         ) : (
           <DatePicker
             key={field.inputId}
