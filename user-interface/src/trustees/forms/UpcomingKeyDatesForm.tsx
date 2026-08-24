@@ -684,7 +684,17 @@ export default function UpcomingKeyDatesForm() {
         </div>
       </div>
       <div className="usa-button-group">
-        <Button id="save-upcoming-key-dates" onClick={handleSave} disabled={isSaving}>
+        <Button
+          id="save-upcoming-key-dates"
+          onClick={handleSave}
+          disabled={
+            isSaving ||
+            (!validationState.tprReviewPeriod && !tprReviewPeriodFocused) ||
+            !!errors.tprDue ||
+            !!errors.tprDueYearType ||
+            !!tprDueBlurError
+          }
+        >
           {isSaving ? 'Saving...' : 'Save'}
         </Button>
         <Button
