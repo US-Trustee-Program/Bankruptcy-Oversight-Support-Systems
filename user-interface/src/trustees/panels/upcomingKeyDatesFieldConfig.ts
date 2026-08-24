@@ -1,11 +1,13 @@
 import {
   TrusteeUpcomingKeyDates,
   isoToMMDD,
+  isoToMMDDYYYY,
   isoRangeToMMDD,
   calculateAuditReqBy,
 } from '@common/cams/trustee-upcoming-key-dates';
 
-export type UpcomingKeyDatesDisplayVariant = 'chapter7-panel' | 'ch12-13-case-by-case';
+export type UpcomingKeyDatesDisplayVariant =
+  'chapter7-panel' | 'ch12-13-case-by-case' | 'chapter13-standing';
 
 const NO_DATE = 'No date added';
 
@@ -153,6 +155,57 @@ export const UPCOMING_KEY_DATES_FIELD_CONFIG: Record<
       kind: 'computed',
       key: 'tprDue',
       buildField: tprDueField,
+    },
+  ],
+  'chapter13-standing': [
+    {
+      kind: 'constant',
+      key: 'annualAuditReviewPeriod',
+      displayLabel: 'Annual Audit Review Period',
+      value: '10/01 - 09/30',
+      testId: 'annual-audit-review-period-row',
+    },
+    {
+      kind: 'computed',
+      key: 'tprReviewPeriod',
+      buildField: tprReviewPeriodField,
+    },
+    {
+      kind: 'computed',
+      key: 'tprDue',
+      buildField: tprDueField,
+    },
+    {
+      kind: 'computed',
+      key: 'leaseExpiration',
+      buildField: (data) => ({
+        label: 'Lease Expiration',
+        value: data?.leaseExpiration ? isoToMMDDYYYY(data.leaseExpiration) : NO_DATE,
+        testId: 'lease-expiration-row',
+      }),
+    },
+    {
+      kind: 'constant',
+      key: 'budgetSubmissionDue',
+      displayLabel: 'Budget Submission Due',
+      value: '07/01',
+      testId: 'budget-submission-due-row',
+    },
+    {
+      kind: 'constant',
+      key: 'budgetReviewToOO',
+      displayLabel: 'Budget Review to OO',
+      value: '08/15',
+      testId: 'budget-review-to-oo-row',
+    },
+    {
+      kind: 'computed',
+      key: 'idExpiration',
+      buildField: (data) => ({
+        label: 'ID Expiration',
+        value: data?.idExpiration ? isoToMMDDYYYY(data.idExpiration) : NO_DATE,
+        testId: 'id-expiration-row',
+      }),
     },
   ],
 };

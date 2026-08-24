@@ -370,6 +370,7 @@ describe('validateTrusteeUpcomingKeyDates', () => {
       lastMonthlyReportReceived: null,
       leaseExpiration: null,
       idExpiration: null,
+      lastCompensationStudy: null,
     };
   }
 

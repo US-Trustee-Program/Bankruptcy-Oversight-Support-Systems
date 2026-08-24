@@ -194,6 +194,74 @@ describe('PastKeyDates', () => {
     );
   });
 
+  describe('chapter13-standing variant', () => {
+    const ch13Props: PastKeyDatesProps = {
+      variant: 'chapter13-standing',
+      trusteeId: 'trustee-001',
+      appointmentId: 'appointment-001',
+      appointmentHeading: 'Southern District of New York (Manhattan) - Chapter 13 Standing',
+      data: null,
+      isLoading: false,
+    };
+
+    test('renders exactly 3 rows: Background Questionnaire, Audit Report, Last Compensation Study', () => {
+      renderComponent(ch13Props);
+
+      expect(screen.getByTestId('past-background-question-row')).toBeInTheDocument();
+      expect(screen.getByTestId('past-audit-row')).toBeInTheDocument();
+      expect(screen.getByTestId('last-compensation-study-row')).toBeInTheDocument();
+      expect(screen.queryByTestId('past-field-exam-row')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('past-last-audit-fiscal-year-row')).not.toBeInTheDocument();
+    });
+
+    test('displays Audit Report (not Audit Report Date) as field label', () => {
+      renderComponent(ch13Props);
+
+      expect(screen.getByText('Audit Report:')).toBeInTheDocument();
+    });
+
+    test('displays No date added for all fields when data is null', () => {
+      renderComponent(ch13Props);
+
+      const noDateElements = screen.getAllByText('No date added');
+      expect(noDateElements.length).toBe(3);
+    });
+
+    test('displays lastCompensationStudy as MM/YYYY when set', () => {
+      renderComponent({
+        ...ch13Props,
+        data: { ...populatedDocument, lastCompensationStudy: '2023-08-01' },
+      });
+
+      expect(screen.getByTestId('last-compensation-study-row')).toHaveTextContent('08/2023');
+    });
+
+    test('displays No date added for lastCompensationStudy when not set', () => {
+      renderComponent({
+        ...ch13Props,
+        data: { ...populatedDocument, lastCompensationStudy: undefined },
+      });
+
+      expect(screen.getByTestId('last-compensation-study-row')).toHaveTextContent('No date added');
+    });
+
+    test('Edit button shown for TrusteeAdmin', () => {
+      renderComponent(ch13Props);
+
+      expect(screen.getByRole('button', { name: /edit past key dates/i })).toBeInTheDocument();
+    });
+
+    test('Edit button hidden for non-TrusteeAdmin', () => {
+      TestingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
+
+      renderComponent(ch13Props);
+
+      expect(
+        screen.queryByRole('button', { name: /edit past key dates/i }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
   describe('subv-pool variant', () => {
     const subVProps: PastKeyDatesProps = {
       variant: 'subv-pool',

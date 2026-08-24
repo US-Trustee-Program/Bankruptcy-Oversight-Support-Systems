@@ -53,6 +53,7 @@ function buildMockInput(
     lastMonthlyReportReceived: null,
     leaseExpiration: null,
     idExpiration: null,
+    lastCompensationStudy: null,
     ...overrides,
   };
 }
