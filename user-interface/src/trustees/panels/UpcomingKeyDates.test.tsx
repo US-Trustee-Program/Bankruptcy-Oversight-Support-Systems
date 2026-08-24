@@ -242,6 +242,89 @@ describe('UpcomingKeyDates', () => {
     expect(screen.getByTestId('tir-review-row')).toBeInTheDocument();
   });
 
+  describe('chapter12-standing variant', () => {
+    const ch12StandingProps: UpcomingKeyDatesProps = {
+      ...defaultProps,
+      variant: 'chapter12-standing',
+      trusteeId: 'trustee-ch12-001',
+      appointmentId: 'appointment-ch12-001',
+      appointmentHeading: 'Southern District of New York (Manhattan) - Chapter 12 Standing',
+    };
+
+    const ch12StandingDoc: TrusteeUpcomingKeyDates = {
+      id: 'doc-ch12-001',
+      documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
+      trusteeId: 'trustee-ch12-001',
+      appointmentId: 'appointment-ch12-001',
+      createdBy: SYSTEM_USER_REFERENCE,
+      createdOn: '2026-01-01T00:00:00.000Z',
+      updatedBy: SYSTEM_USER_REFERENCE,
+      updatedOn: '2026-01-01T00:00:00.000Z',
+      lastAuditFiscalYear: 2022,
+      tprReviewPeriodStart: '1900-01-01',
+      tprReviewPeriodEnd: '1900-12-31',
+      tprDue: '1900-03-15',
+      tprDueYearType: 'ODD',
+      leaseExpiration: '2027-06-30',
+      idExpiration: '2028-01-15',
+    };
+
+    test('renders 8 rows', () => {
+      renderComponent({ ...ch12StandingProps, data: ch12StandingDoc });
+
+      const list = screen.getByTestId('upcoming-key-dates-list');
+      expect(list.querySelectorAll('li')).toHaveLength(8);
+    });
+
+    test('renders "No date added" for computed fields when data is null', () => {
+      renderComponent({ ...ch12StandingProps, data: null });
+
+      expect(screen.getByTestId('audit-req-by-row')).toHaveTextContent('No date added');
+      expect(screen.getByTestId('tpr-review-period-row')).toHaveTextContent('No date added');
+      expect(screen.getByTestId('tpr-due-row')).toHaveTextContent('No date added');
+      expect(screen.getByTestId('lease-expiration-row')).toHaveTextContent('No date added');
+      expect(screen.getByTestId('id-expiration-row')).toHaveTextContent('No date added');
+    });
+
+    test.each([
+      ['audit-req-by-row', '2025'],
+      ['tpr-review-period-row', '01/01 - 12/31'],
+      ['tpr-due-row', '03/15 ODD'],
+      ['lease-expiration-row', '06/30/2027'],
+      ['id-expiration-row', '01/15/2028'],
+    ])('shows formatted value for %s when data is populated', (testId, expectedValue) => {
+      renderComponent({ ...ch12StandingProps, data: ch12StandingDoc });
+
+      expect(screen.getByTestId(testId)).toHaveTextContent(expectedValue);
+    });
+
+    test.each([
+      ['annual-report-due-row', '09/30'],
+      ['budget-submission-due-row', '05/01'],
+      ['budget-review-to-oo-row', '06/01'],
+    ])('constant row %s always shows %s', (testId, expectedValue) => {
+      renderComponent({ ...ch12StandingProps, data: null });
+
+      expect(screen.getByTestId(testId)).toHaveTextContent(expectedValue);
+    });
+
+    test('Edit button navigates with chapter12-standing variant', () => {
+      renderComponent(ch12StandingProps);
+
+      screen.getByRole('button', { name: /edit upcoming key dates/i }).click();
+
+      expect(mockNavigate).toHaveBeenCalledWith(
+        `/trustees/${ch12StandingProps.trusteeId}/appointments/${ch12StandingProps.appointmentId}/upcoming-key-dates/edit`,
+        {
+          state: {
+            subHeading: ch12StandingProps.appointmentHeading,
+            variant: 'chapter12-standing',
+          },
+        },
+      );
+    });
+  });
+
   describe('ch12-13-case-by-case variant', () => {
     test('renders 4 rows with constant fields always showing 09/01 and 09/15', () => {
       renderComponent({ variant: 'ch12-13-case-by-case', data: populatedDocument });

@@ -36,9 +36,6 @@ vi.mock('./UpcomingKeyDates', () => ({
 vi.mock('./PastKeyDates', () => ({
   default: () => <div data-testid="past-key-dates-card" />,
 }));
-vi.mock('./Chapter12StandingUpcomingKeyDates', () => ({
-  default: () => <div data-testid="ch12-upcoming-key-dates-card" />,
-}));
 
 describe('AppointmentCard', () => {
   const mockNavigate = vi.fn();
@@ -518,7 +515,7 @@ describe('AppointmentCard', () => {
       expect(screen.queryByTestId('past-key-dates-card')).not.toBeInTheDocument();
     });
 
-    test('does not render Ch7 UpcomingKeyDates card for chapter 12 standing appointment', () => {
+    test('renders both UpcomingKeyDates and PastKeyDates cards for chapter 12 standing appointment', () => {
       vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
         [DISPLAY_CHPT12_STANDING_KEY_DATES]: true,
       });
@@ -526,27 +523,27 @@ describe('AppointmentCard', () => {
       renderWithProps({ appointment: ch12StandingAppointment });
 
       expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
-      expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
+      expect(screen.getByTestId('upcoming-key-dates-card')).toBeInTheDocument();
     });
 
-    test('renders Chapter12StandingUpcomingKeyDates card when flag is enabled', () => {
+    test('renders UpcomingKeyDates card when flag is enabled', () => {
       vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
         [DISPLAY_CHPT12_STANDING_KEY_DATES]: true,
       });
 
       renderWithProps({ appointment: ch12StandingAppointment });
 
-      expect(screen.getByTestId('ch12-upcoming-key-dates-card')).toBeInTheDocument();
+      expect(screen.getByTestId('upcoming-key-dates-card')).toBeInTheDocument();
     });
 
-    test('does not render Chapter12StandingUpcomingKeyDates card when flag is disabled', () => {
+    test('does not render UpcomingKeyDates card when flag is disabled', () => {
       vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
         [DISPLAY_CHPT12_STANDING_KEY_DATES]: false,
       });
 
       renderWithProps({ appointment: ch12StandingAppointment });
 
-      expect(screen.queryByTestId('ch12-upcoming-key-dates-card')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
     });
 
     test('does not render Ch12 card for chapter 12 case-by-case appointment', () => {
@@ -561,7 +558,7 @@ describe('AppointmentCard', () => {
 
       renderWithProps({ appointment: ch12CaseByCaseAppointment });
 
-      expect(screen.queryByTestId('ch12-upcoming-key-dates-card')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
     });
 
     test('does not render Ch12 card for chapter 13 standing appointment', () => {
@@ -576,7 +573,7 @@ describe('AppointmentCard', () => {
 
       renderWithProps({ appointment: ch13StandingAppointment });
 
-      expect(screen.queryByTestId('ch12-upcoming-key-dates-card')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
     });
   });
 
