@@ -7,9 +7,7 @@ import {
 } from '@common/cams/trustee-upcoming-key-dates';
 
 export type UpcomingKeyDatesVariant =
-  | 'chapter7-panel'
-  | 'ch12-13-case-by-case'
-  | 'chapter12-standing';
+  'chapter7-panel' | 'ch12-13-case-by-case' | 'chapter12-standing';
 
 const NO_DATE = 'No date added';
 
