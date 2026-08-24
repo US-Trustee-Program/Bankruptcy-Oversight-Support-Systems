@@ -2,18 +2,15 @@
  * Scenario: trustee-key-dates
  * Database: cams only
  *
- * Seeds trustee key dates for Ch7 trustees to exercise upcoming key dates features:
+ * Seeds trustee key dates to exercise upcoming/past key date features:
  *
- *   - TIR Review Period dates with auto-calculated submission/review
- *   - Past Field Exam and Audit dates
- *   - Calculated next exam/audit dates with quarter alignment
- *   - Mix of quarter-boundary and mid-quarter dates
- *
- * Also seeds two Chapter 11 Subchapter V (Pool) trustees to exercise the
- * Last Monthly Report Received past key date: one populated, one empty.
- *
- * Also seeds two Chapter 12/13 Case by Case trustees to exercise the
- * Upcoming Key Dates card's TPR Period/Due fields: one populated, one empty.
+ *   - Ch7 trustees: TIR Review Period dates with auto-calculated submission/review,
+ *     past Field Exam and Audit dates, calculated next exam/audit dates with quarter
+ *     alignment, and a mix of quarter-boundary and mid-quarter dates
+ *   - Two Chapter 11 Subchapter V (Pool) trustees to exercise the Last Monthly Report
+ *     Received past key date: one populated, one empty
+ *   - Two Chapter 12/13 Case by Case trustees to exercise the Upcoming Key Dates
+ *     card's TPR Period/Due fields: one populated, one empty
  *
  * NOTE: Key dates are separate documents with documentType='TRUSTEE_UPCOMING_REPORT_DATES'.
  */
