@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
 import AppointmentCard, { AppointmentCardProps } from './AppointmentCard';
@@ -9,6 +9,7 @@ import userEvent from '@testing-library/user-event';
 import TestingUtilities from '@/lib/testing/testing-utilities';
 import { CamsRole } from '@common/cams/roles';
 import * as featureFlagsHook from '@/lib/hooks/UseFeatureFlags';
+import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import {
   DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES,
   DISPLAY_CHPT11_SUBV_PAST_KEY_DATES,
@@ -32,10 +33,22 @@ vi.mock('@/lib/hooks/UseCourts', () => ({
 }));
 
 vi.mock('./UpcomingKeyDates', () => ({
-  default: () => <div data-testid="upcoming-key-dates-card" />,
+  default: (props: { data: unknown; isLoading: boolean }) => (
+    <div
+      data-testid="upcoming-key-dates-card"
+      data-is-loading={String(props.isLoading)}
+      data-has-data={String(props.data !== null)}
+    />
+  ),
 }));
 vi.mock('./PastKeyDates', () => ({
-  default: () => <div data-testid="past-key-dates-card" />,
+  default: (props: { data: unknown; isLoading: boolean }) => (
+    <div
+      data-testid="past-key-dates-card"
+      data-is-loading={String(props.isLoading)}
+      data-has-data={String(props.data !== null)}
+    />
+  ),
 }));
 
 describe('AppointmentCard', () => {
@@ -485,6 +498,64 @@ describe('AppointmentCard', () => {
       });
 
       expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('shared upcoming key dates fetch', () => {
+    const mockKeyDatesData: TrusteeUpcomingKeyDates = {
+      trusteeId: 'trustee-123',
+      appointmentId: 'appointment-001',
+    } as TrusteeUpcomingKeyDates;
+
+    test('fetches key dates once and forwards the same data/isLoading to UpcomingKeyDates and PastKeyDates', async () => {
+      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+        [DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES]: true,
+      });
+      const getUpcomingKeyDatesSpy = vi
+        .spyOn(Api2, 'getUpcomingKeyDates')
+        .mockResolvedValue({ data: mockKeyDatesData });
+
+      renderWithProps();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('upcoming-key-dates-card')).toHaveAttribute(
+          'data-is-loading',
+          'false',
+        );
+      });
+
+      expect(getUpcomingKeyDatesSpy).toHaveBeenCalledTimes(1);
+      expect(getUpcomingKeyDatesSpy).toHaveBeenCalledWith('trustee-123', 'appointment-001');
+
+      const upcomingCard = screen.getByTestId('upcoming-key-dates-card');
+      const pastCard = screen.getByTestId('past-key-dates-card');
+      expect(upcomingCard).toHaveAttribute('data-has-data', 'true');
+      expect(pastCard).toHaveAttribute('data-has-data', 'true');
+      expect(upcomingCard).toHaveAttribute('data-is-loading', 'false');
+      expect(pastCard).toHaveAttribute('data-is-loading', 'false');
+    });
+
+    test('sets isLoading false and data null when the fetch rejects', async () => {
+      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+        [DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES]: true,
+      });
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockRejectedValue(new Error('failed to load'));
+
+      renderWithProps();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('upcoming-key-dates-card')).toHaveAttribute(
+          'data-is-loading',
+          'false',
+        );
+      });
+
+      expect(screen.getByTestId('upcoming-key-dates-card')).toHaveAttribute(
+        'data-has-data',
+        'false',
+      );
+      expect(screen.getByTestId('past-key-dates-card')).toHaveAttribute('data-has-data', 'false');
     });
   });
 
