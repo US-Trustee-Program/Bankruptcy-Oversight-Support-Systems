@@ -1841,6 +1841,64 @@ describe('getTrusteeAppointments', () => {
       600000,
     );
   });
+
+  test('reads profCode from the type-A (TR) REC offset 17-21', async () => {
+    querySpy.mockResolvedValue({
+      success: true,
+      results: { recordset: [] },
+      message: '',
+    } as QueryResults);
+
+    await gateway.getTrusteeAppointments(applicationContext, '2026-01-01T00:00:00.000Z');
+
+    expect(querySpy).toHaveBeenCalledWith(
+      applicationContext,
+      expect.stringContaining('SUBSTRING(TX.REC, 17, 5) AS profCode'),
+      expect.anything(),
+      expect.anything(),
+    );
+  });
+
+  test('carries profCode onto the mapped TrusteeAppointmentSyncEvent', async () => {
+    querySpy.mockResolvedValue({
+      success: true,
+      results: {
+        recordset: [
+          {
+            caseId: '081-24-12345',
+            courtId: '081',
+            chapter: '7',
+            courtDivisionCode: '081',
+            firstName: 'Jane',
+            middleName: '',
+            lastName: 'Doe',
+            generation: '',
+            address1: '',
+            address2: '',
+            address3: '',
+            city: '',
+            state: '',
+            zip: '',
+            country: '',
+            email: '',
+            phone: '',
+            fax: '',
+            latestSyncDate: '2026-04-07T00:00:00.000Z',
+            aptDate: '260407',
+            profCode: '00000',
+          },
+        ],
+      },
+      message: '',
+    } as QueryResults);
+
+    const result = await gateway.getTrusteeAppointments(
+      applicationContext,
+      '2026-01-01T00:00:00.000Z',
+    );
+
+    expect(result.events[0].profCode).toBe('00000');
+  });
 });
 
 describe('getTrusteePetitionEvents', () => {
@@ -1964,6 +2022,23 @@ describe('getTrusteePetitionEvents', () => {
     );
 
     expect(result.events).toEqual([]);
+  });
+
+  test('reads profCode from the type-1 (N1TRUS) REC offset 86-90', async () => {
+    querySpy.mockResolvedValue({
+      success: true,
+      results: { recordset: [] },
+      message: '',
+    } as QueryResults);
+
+    await gateway.getTrusteePetitionEvents(applicationContext, '2026-01-01T00:00:00.000Z');
+
+    expect(querySpy).toHaveBeenCalledWith(
+      applicationContext,
+      expect.stringContaining('SUBSTRING(TX.REC, 86, 5) AS profCode'),
+      expect.anything(),
+      expect.anything(),
+    );
   });
 
   // CAMS-809: REC's fixed-width embedded date is occasionally blank/'000000'/malformed — a

@@ -77,6 +77,23 @@ directly into Cosmos (no DXTR row involved):
   `casesGateway.getTrusteeAppointments` directly, not `processAppointments`) but is otherwise
   standalone: excluded from the 12-scenario matching pipeline, no Cosmos writes.
 
+- **Stage 9 (sentinel professional code skip rule, CAMS-882)** — `sync-trustee-case-appointments.ts`
+  skips a DXTR trustee-appointment event when its embedded professional code (`AO_TX.REC` offset
+  17-21 for `TX_TYPE='A'`/`TX_CODE='TR'`, parsed via `TX_TYPE_A_PROF_CODE_OFFSET`) is a sentinel
+  value (`"00000"` = no trustee appointed, `"99999"` = professional ID unavailable) combined with
+  either no name/address at all, or a name matching a bogus/administrative keyword
+  (`isBogusTrusteeName`) even when contact fields are populated. Seeds four `AO_TX` rows (CS_CASEID
+  `999999414`-`999999417`, cases `083-26-88914`-`88917`) covering: sentinel + no name/address
+  (skip), sentinel + bogus name with populated contact fields (skip), sentinel + genuine synthetic
+  name/address (NOT skipped — reaches matching, resolves to `NO_TRUSTEE_MATCH`), and a non-sentinel
+  code with no demographics (skipped only by the pre-existing empty-demographics rule). Like Stage
+  8, round-trips through DXTR directly (proving the real `SUBSTRING(TX.REC, 17, 5)` extraction) and
+  additionally through `processAppointments()` for the skip/no-skip decision — proof against real
+  query results and real `hasNoUsableDemographics`/`isSentinelWithNoIdentity` orchestration, which a
+  mocked-gateway unit test cannot provide. Seeds exactly one Cosmos `SYNCED_CASE` fixture (for the
+  one non-skipped case) directly in the stage itself rather than joining the shared 12-scenario
+  fixture set.
+
 Explicitly out of scope: fault-injecting real Cosmos throttling to test the transient
 soft-close-failure path (`TooManyRequestsError`/`GatewayTimeoutError` aborting before create). That
 path is already covered by `sync-trustee-case-appointments.test.ts`'s mocked `test.each` and isn't
@@ -167,7 +184,7 @@ INTEGRATION_ENV=azure npm run trustee-match-scenarios -- run
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `check-env`   | Verify required environment variables are set                                                                                                     |
 | `seed-schema` | (local only) Create `DXTR_INT` database + apply `AO_*` DDL                                                                                        |
-| `seed-sql`    | Drop/recreate DXTR fixture rows: 12 scenarios + the Stage 8 bad-REC-date case (idempotent)                                                        |
+| `seed-sql`    | Drop/recreate DXTR fixture rows: 12 scenarios + Stage 8 bad-REC-date case + Stage 9 sentinel-profCode cases (idempotent)                          |
 | `seed-cosmos` | Seed synced cases, trustees, appointments                                                                                                         |
 | `run`         | Full test: (azure: provision ephemeral DB) → clean → seed → read DXTR → match/process (x4) → Stage 5/6 → assert → (azure: tear down ephemeral DB) |
 | `clean`       | Remove seeded rows/documents from both databases                                                                                                  |

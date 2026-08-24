@@ -1283,6 +1283,35 @@ type EventOutcome =
   | { kind: 'dlq'; message: TrusteeAppointmentSyncError | TrusteeAppointmentSyncEvent }
   | { kind: 'none' };
 
+const SENTINEL_NO_TRUSTEE_APPOINTED = '00000';
+const SENTINEL_PROFESSIONAL_ID_UNAVAILABLE = '99999';
+
+// Substrings observed in real DXTR data standing in for "no trustee"/"placeholder" on
+// sentinel-coded records (CAMS-882) — e.g. "No Trustee", "TRUSTEE NOT APPOINTED", "Awaiting
+// Trustee Assignment", "Not Assigned - XX", "For Internal Use Only", "CHAPTER 11 - XX". Scoped
+// strictly to what's been evidenced; do not add speculative variants without direct evidence.
+const BOGUS_TRUSTEE_NAME_KEYWORDS = [
+  'trustee',
+  'assign',
+  'chapter',
+  'internal use',
+  'not appointed',
+];
+
+/**
+ * True when a sentinel-coded record's name is itself a bogus/administrative placeholder rather
+ * than a genuine trustee name (e.g. "No Trustee", "CHAPTER 11 - XX") — checked against lastName,
+ * falling back to fullName. Must ONLY be evaluated when the event's profCode is already a known
+ * sentinel value (see isSentinelWithNoIdentity below): a genuine trustee's name or firm name can
+ * plausibly contain one of these substrings (e.g. a name suffixed "(TR)" wouldn't match, but nothing
+ * rules out a real name containing "Trustee"), so this check alone must never be disqualifying.
+ */
+function isBogusTrusteeName(event: TrusteeAppointmentSyncEvent): boolean {
+  const { dxtrTrustee } = event;
+  const name = (dxtrTrustee.lastName || dxtrTrustee.fullName || '').toLowerCase();
+  return BOGUS_TRUSTEE_NAME_KEYWORDS.some((keyword) => name.includes(keyword));
+}
+
 /**
  * True when dxtrTrustee carries no usable demographics at all — blank fullName (see
  * normalizeName) AND no legacy/contact fields (address, phone, email) either. Checked before
@@ -1302,7 +1331,43 @@ function hasNoUsableDemographics(event: TrusteeAppointmentSyncEvent): boolean {
     legacy?.phone ||
     legacy?.email,
   );
-  return !hasName && !hasContact;
+  if (!hasName && !hasContact) {
+    return true;
+  }
+
+  return (
+    isSentinelWithNoIdentity(event, SENTINEL_NO_TRUSTEE_APPOINTED) ||
+    isSentinelWithNoIdentity(event, SENTINEL_PROFESSIONAL_ID_UNAVAILABLE)
+  );
+}
+
+/**
+ * True when event.profCode equals the given sentinel value (DXTR can supply an incorrect ACMS
+ * professional code — see CAMS-873, which removed this same field's prior use as a trusted
+ * auto-link identity signal — so profCode is used here only as this negative signal, never to
+ * pick which trustee an event belongs to) AND the record's name/address don't establish a real
+ * identity: either nothing at all (no firstName, no legacy address fields), or a name that is
+ * itself a bogus/administrative placeholder (isBogusTrusteeName) even when contact fields ARE
+ * populated — DXTR's sentinel population is inconsistent, so some sentinel-coded records carry
+ * a placeholder name alongside a real-looking address/phone/email (e.g. an office's general
+ * contact info), which the no-name-and-no-address check alone would miss.
+ */
+function isSentinelWithNoIdentity(
+  event: TrusteeAppointmentSyncEvent,
+  sentinelProfCode: string,
+): boolean {
+  if (event.profCode !== sentinelProfCode) {
+    return false;
+  }
+  const { dxtrTrustee } = event;
+  const legacy = dxtrTrustee.legacy;
+  const hasNoNameAndNoAddress =
+    !dxtrTrustee.firstName &&
+    !legacy?.address1 &&
+    !legacy?.address2 &&
+    !legacy?.address3 &&
+    !legacy?.cityStateZipCountry;
+  return hasNoNameAndNoAddress || isBogusTrusteeName(event);
 }
 
 /**
