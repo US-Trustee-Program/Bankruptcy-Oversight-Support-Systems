@@ -12,6 +12,7 @@ import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { Trustee } from '@common/cams/trustees';
 import { isTooManyRequestsError } from '../../common-errors/too-many-requests-error';
 import { isGatewayTimeoutError } from '../../common-errors/gateway-timeout';
+import { generateBigrams } from '../../adapters/utils/phonetic-helper';
 
 const MODULE_NAME = 'TRUSTEE-MATCH';
 
@@ -174,17 +175,127 @@ export function parseCityStateZip(cityStateZipCountry?: string): {
 }
 
 /**
- * Calculates address match score between DXTR and CAMS addresses.
- * Scoring:
- * - City + State + Zip match: 100 points (perfect match)
- * - Zip match (state implied): 60 points (high confidence - zip is specific)
- * - City match (state implied): 40 points (medium confidence)
- * - State match only: 30 points (low confidence)
- * - No match: 0 points
- * Case-insensitive comparison, missing fields treated as no match. Zip comparison uses only the
- * base 5-digit ZIP - a ZIP+4 extension present on one side (or a differing extension on both)
- * does not contradict an otherwise-matching base ZIP, since DXTR's cityStateZipCountry is
- * inconsistent about carrying the +4 suffix at all.
+ * Computes Jaccard similarity (intersection over union) between two bigram sets, scaled to
+ * 0-100. Duplicate bigrams within either input are deduplicated before comparison (Jaccard
+ * operates on sets, not multisets) - repeating a bigram doesn't make it more "present." Returns 0
+ * when either set is empty, including when both are empty - two blank inputs have no positive
+ * evidence of similarity to report, so this is distinct from Jaccard's mathematically-undefined
+ * 0/0 case, which this function never actually reaches.
+ */
+export function jaccardSimilarity(bigramsA: string[], bigramsB: string[]): number {
+  const setA = new Set(bigramsA);
+  const setB = new Set(bigramsB);
+
+  if (setA.size === 0 || setB.size === 0) return 0;
+
+  let intersectionSize = 0;
+  for (const bigram of setA) {
+    if (setB.has(bigram)) intersectionSize++;
+  }
+
+  const unionSize = setA.size + setB.size - intersectionSize;
+  return (intersectionSize / unionSize) * 100;
+}
+
+/**
+ * Common USPS street-suffix, secondary-unit-designator, and directional abbreviations
+ * encountered in trustee office addresses (DXTR and CAMS). Scoped to what's plausible for a law
+ * office/professional address, not the full USPS Publication 28 standard - expanding an
+ * abbreviation to its full word form before bigramming means "St" and "Street" (or "Ste" and
+ * "Suite") share bigrams instead of scoring as unrelated tokens, which is the whole point of
+ * normalizing before Jaccard comparison. Keys are matched as whole tokens only (see
+ * normalizeAddressLine), so this never mis-expands an abbreviation embedded inside a longer word.
+ */
+const ADDRESS_ABBREVIATIONS: Record<string, string> = {
+  st: 'street',
+  ave: 'avenue',
+  blvd: 'boulevard',
+  dr: 'drive',
+  rd: 'road',
+  ln: 'lane',
+  ct: 'court',
+  pl: 'place',
+  ste: 'suite',
+  apt: 'apartment',
+  fl: 'floor',
+  bldg: 'building',
+  n: 'north',
+  s: 'south',
+  e: 'east',
+  w: 'west',
+};
+
+/** Unit designators (post-expansion) that already convey the same thing a bare "#" marker does. */
+const UNIT_DESIGNATOR_WORDS = new Set(['suite', 'apartment', 'floor', 'unit', 'room']);
+
+/**
+ * Normalizes a single address line (or lines already joined into one string) for Jaccard/bigram
+ * comparison: lowercases, strips punctuation (periods, commas), expands common USPS
+ * street-suffix/unit/directional abbreviations (see ADDRESS_ABBREVIATIONS) token-by-token,
+ * resolves a bare "#" unit marker (see below), and collapses whitespace. Returns an empty string
+ * for undefined/blank input - there is nothing to bigram, and jaccardSimilarity already treats an
+ * empty bigram set as 0 similarity rather than this function needing to special-case it.
+ *
+ * "#" is handled separately from the simple abbreviation map: expanding it to "suite"
+ * unconditionally would double up when the line already spells out a unit designator ("Suite #4"
+ * would otherwise become "suite suite 4"). Instead, a "#" is dropped when the immediately
+ * preceding token already expanded to a unit designator (see UNIT_DESIGNATOR_WORDS), and
+ * expanded to "suite" only when it stands alone as the unit marker ("123 Main St #4").
+ *
+ * Example: "123 Main St., Suite #4" -> "123 main street suite 4".
+ * Example: "123 Main St. #4" -> "123 main street suite 4".
+ */
+export function normalizeAddressLine(line?: string): string {
+  if (!line) return '';
+
+  const withoutPunctuation = line
+    .toLowerCase()
+    .replace(/#/g, ' # ')
+    .replace(/[.,]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!withoutPunctuation) return '';
+
+  const tokens = withoutPunctuation
+    .split(' ')
+    .map((token) => ADDRESS_ABBREVIATIONS[token] ?? token);
+
+  const resolved: string[] = [];
+  for (const token of tokens) {
+    if (token === '#') {
+      const previous = resolved[resolved.length - 1];
+      if (!UNIT_DESIGNATOR_WORDS.has(previous)) resolved.push('suite');
+      continue;
+    }
+    resolved.push(token);
+  }
+
+  return resolved.join(' ').replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Calculates address match score between DXTR and CAMS addresses as a weighted blend of three
+ * independently-scored components, rather than a single discrete tier keyed off which fields
+ * happen to match exactly:
+ * - Address lines (50%): Jaccard/bigram similarity of address1+address2+address3 (all non-empty
+ *   lines concatenated per side, normalized via normalizeAddressLine) - the most distinguishing
+ *   signal, since two genuinely different offices rarely share a street address even when they
+ *   share a city or ZIP (see CAMS-880: this component didn't exist at all before this fix, which
+ *   is exactly how a same-city/same-ZIP, different-office false match reached 100).
+ * - ZIP (30%): exact match on the base 5-digit ZIP only - a ZIP+4 extension present on one side
+ *   (or a differing extension on both) does not contradict an otherwise-matching base ZIP, since
+ *   DXTR's cityStateZipCountry is inconsistent about carrying the +4 suffix at all. Deliberately
+ *   NOT fuzzy-matched (unlike the other two components): a ZIP is a short, structured code where a
+ *   single-digit difference means a genuinely different location, not a data-entry variant to
+ *   tolerate.
+ * - City+State (20%): Jaccard/bigram similarity of city+state concatenated per side - the weakest
+ *   signal of the three, since many genuinely different offices share a city and state.
+ * Returns 0 immediately if DXTR's cityStateZipCountry can't be parsed at all (parseCityStateZip
+ * returns null) - with no city/state/zip to anchor against, an address1-only comparison isn't
+ * trustworthy enough to score on its own.
+ * All comparisons case-insensitive; a missing address1 on either side scores that component 0
+ * (no bigram overlap possible) without failing the other two components.
  */
 export function calculateAddressScore(
   dxtrAddress: LegacyAddress | undefined,
@@ -194,35 +305,37 @@ export function calculateAddressScore(
 
   if (!parsed) return 0;
 
-  const normalizeField = (field?: string) => field?.trim().toLowerCase() || '';
-  const zip5 = (zip: string) => zip.split('-')[0];
+  const zip5 = (zip: string) => zip.trim().split('-')[0].toLowerCase();
 
-  const dxtrCity = normalizeField(parsed.city);
-  const dxtrState = normalizeField(parsed.state);
-  const dxtrZip = zip5(normalizeField(parsed.zipCode));
+  const joinAddressLines = (address?: LegacyAddress | Address) =>
+    [address?.address1, address?.address2, address?.address3]
+      .filter((line): line is string => !!line && line.trim().length > 0)
+      .join(' ');
 
-  const camsCity = normalizeField(camsAddress.city);
-  const camsState = normalizeField(camsAddress.state);
-  const camsZip = zip5(normalizeField(camsAddress.zipCode));
+  const dxtrAddressLines = normalizeAddressLine(joinAddressLines(dxtrAddress));
+  const camsAddressLines = normalizeAddressLine(joinAddressLines(camsAddress));
+  const addressLinesScore = jaccardSimilarity(
+    generateBigrams(dxtrAddressLines),
+    generateBigrams(camsAddressLines),
+  );
 
-  const stateMatch = dxtrState && camsState && dxtrState === camsState;
-  const cityMatch = dxtrCity && camsCity && dxtrCity === camsCity;
-  const zipMatch = dxtrZip && camsZip && dxtrZip === camsZip;
+  const dxtrCityState = normalizeAddressLine(`${parsed.city} ${parsed.state}`);
+  const camsCityState = normalizeAddressLine(`${camsAddress.city} ${camsAddress.state}`);
+  const cityStateScore = jaccardSimilarity(
+    generateBigrams(dxtrCityState),
+    generateBigrams(camsCityState),
+  );
 
-  // Perfect match: city, state, and zip all match
-  if (cityMatch && stateMatch && zipMatch) return 100;
+  const dxtrZip = zip5(parsed.zipCode);
+  const camsZip = zip5(camsAddress.zipCode);
+  const zipScore = dxtrZip && camsZip && dxtrZip === camsZip ? 100 : 0;
 
-  // High confidence: zip match (zip is more specific than city)
-  if (zipMatch) return 60;
-
-  // Medium confidence: city match (zip differs or missing)
-  if (cityMatch) return 40;
-
-  // State only (both city and zip missing): low confidence
-  if (stateMatch) return 30;
-
-  // No match
-  return 0;
+  // Rounded to the nearest integer so this behaves like every other CandidateScore sub-score
+  // (nameScore, districtDivisionScore, chapterScore are always whole numbers) - the Jaccard blend
+  // above is the only source of fractional values in this scoring pipeline, and an odd-precision
+  // addressScore (e.g. 33.076923...) next to whole-number siblings would look like a display bug
+  // in the Data Verifier UI rather than a deliberate score.
+  return Math.round(addressLinesScore * 0.5 + zipScore * 0.3 + cityStateScore * 0.2);
 }
 
 /**
