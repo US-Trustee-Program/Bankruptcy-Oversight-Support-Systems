@@ -593,6 +593,148 @@ describe('SyncTrusteeCaseAppointments', () => {
       });
     });
 
+    describe('sentinel professional code', () => {
+      test.each([['00000'], ['99999']])(
+        'skips an event with profCode %s and no name/address at all',
+        async (profCode) => {
+          const events: TrusteeAppointmentSyncEvent[] = [
+            { ...makeEvent('case-001', ''), dxtrTrustee: { fullName: '' }, profCode },
+          ];
+
+          const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+            SyncTrusteeCaseAppointments.createDeps(context),
+            events,
+          );
+
+          expect(trusteeMatchHelpers.matchTrusteeByName).not.toHaveBeenCalled();
+          expect(mockVerificationRepo.upsertVerification).not.toHaveBeenCalled();
+          expect(scenarioDistribution.emptyDemographicsSkippedCount).toBe(1);
+        },
+      );
+
+      test.each([
+        ['00000', 'No Trustee'],
+        ['99999', 'No Trustee'],
+        ['00000', 'TRUSTEE NOT APPOINTED'],
+        ['00000', 'Awaiting Trustee Assignment'],
+        ['00000', 'Not Assigned - XX'],
+        ['00000', 'For Internal Use Only'],
+        ['00000', 'CHAPTER 11 - XX'],
+      ])(
+        'skips an event with profCode %s and bogus name %s, even with contact fields populated',
+        async (profCode, bogusName) => {
+          const events: TrusteeAppointmentSyncEvent[] = [
+            {
+              ...makeEvent('case-001', ''),
+              dxtrTrustee: {
+                fullName: bogusName,
+                lastName: bogusName,
+                legacy: {
+                  address1: '123 Fake St',
+                  phone: '555-555-5555',
+                  email: 'fake@example.com',
+                },
+              },
+              profCode,
+            },
+          ];
+
+          const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+            SyncTrusteeCaseAppointments.createDeps(context),
+            events,
+          );
+
+          expect(trusteeMatchHelpers.matchTrusteeByName).not.toHaveBeenCalled();
+          expect(mockVerificationRepo.upsertVerification).not.toHaveBeenCalled();
+          expect(scenarioDistribution.emptyDemographicsSkippedCount).toBe(1);
+        },
+      );
+
+      test.each([['00000'], ['99999']])(
+        'does not skip an event with profCode %s and a genuine name but no contact fields',
+        async (profCode) => {
+          const events: TrusteeAppointmentSyncEvent[] = [
+            { ...makeEvent('case-001', 'Jane A Example'), profCode },
+          ];
+
+          const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+            SyncTrusteeCaseAppointments.createDeps(context),
+            events,
+          );
+
+          expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalled();
+          expect(scenarioDistribution.emptyDemographicsSkippedCount).toBe(0);
+        },
+      );
+
+      test.each([['00000'], ['99999']])(
+        'does not skip an event with profCode %s and a genuine name and address',
+        async (profCode) => {
+          const events: TrusteeAppointmentSyncEvent[] = [
+            {
+              ...makeEvent('case-001', 'Jane A Example'),
+              dxtrTrustee: {
+                fullName: 'Jane A Example',
+                firstName: 'Jane',
+                lastName: 'Example',
+                legacy: { address1: '123 Fake St' },
+              },
+              profCode,
+            },
+          ];
+
+          const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+            SyncTrusteeCaseAppointments.createDeps(context),
+            events,
+          );
+
+          expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalled();
+          expect(scenarioDistribution.emptyDemographicsSkippedCount).toBe(0);
+        },
+      );
+
+      test('does not skip an event with a non-sentinel profCode, even with no name/address', async () => {
+        const events: TrusteeAppointmentSyncEvent[] = [
+          {
+            ...makeEvent('case-001', ''),
+            dxtrTrustee: { fullName: '' },
+            profCode: '12345',
+          },
+        ];
+
+        const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          events,
+        );
+
+        // Unaffected by the sentinel rule — falls through to the existing empty-demographics
+        // rule, which still applies regardless of profCode.
+        expect(scenarioDistribution.emptyDemographicsSkippedCount).toBe(1);
+      });
+
+      test('does not treat a real trustee name containing "trustee" as bogus when profCode is not a sentinel', async () => {
+        const events: TrusteeAppointmentSyncEvent[] = [
+          {
+            ...makeEvent('case-001', 'Jane A Example'),
+            dxtrTrustee: {
+              fullName: 'Jane A Example (TR)',
+              firstName: 'Jane',
+              lastName: 'Example (TR)',
+            },
+            profCode: '12345',
+          },
+        ];
+
+        const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          events,
+        );
+
+        expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalled();
+        expect(scenarioDistribution.emptyDemographicsSkippedCount).toBe(0);
+      });
+    });
+
     describe('fingerprint hit/miss counters', () => {
       test('counts a TRUSTEE_VARIATION bucket hit as fingerprintHitCount', async () => {
         const event = makeEvent('case-001', 'John Doe');

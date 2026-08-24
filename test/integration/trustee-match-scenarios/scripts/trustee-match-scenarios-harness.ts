@@ -236,6 +236,31 @@ const STAGE_5_6_7_TRUSTEE_IDS = [
 const BAD_REC_DATE_CASE_ID = '083-26-88913';
 const BAD_REC_DATE_TX_DATE = '2026-01-14';
 
+// Stage 9 (CAMS-882): sentinel professional code skip rule. Like Stage 8, these round-trip
+// through DXTR directly (seed/01-seed-dxtr-data.sql fixtures 15a-15d, CS_CASEID 999999414-417)
+// rather than joining the 13-scenario Cosmos matching pipeline — excluded from ALL_CASE_IDS, no
+// Cosmos synced-case/trustee fixtures needed for the cases expected to be skipped before
+// matching ever runs. The one case expected to proceed to matching (15c) is asserted only via
+// matchTrusteeByName having been invoked, not via a full auto-link/verification outcome — a
+// dedicated synced-case/trustee fixture for that single case isn't worth the setup for what
+// sync-trustee-case-appointments.test.ts's mocked unit tests already cover exhaustively; this
+// stage's job is proving the real REC SUBSTRING extraction and skip decision, not re-proving the
+// matching algorithm itself.
+const SENTINEL_NO_NAME_NO_ADDRESS_CASE_ID = '083-26-88914';
+const SENTINEL_BOGUS_NAME_WITH_CONTACT_CASE_ID = '083-26-88915';
+const SENTINEL_GENUINE_NAME_AND_ADDRESS_CASE_ID = '083-26-88916';
+const NON_SENTINEL_EMPTY_DEMOGRAPHICS_CASE_ID = '083-26-88917';
+// Like BAD_REC_DATE_CASE_ID, these DO have DXTR rows (so they're covered by the
+// 999999400-999999417 SQL DELETE range in clean() already) but aren't part of ALL_CASE_IDS —
+// tracked separately here purely so clean() also removes the one Cosmos SYNCED_CASE fixture
+// runSentinelProfCodeStage seeds for the non-skipped case.
+const STAGE_9_CASE_IDS = [
+  SENTINEL_NO_NAME_NO_ADDRESS_CASE_ID,
+  SENTINEL_BOGUS_NAME_WITH_CONTACT_CASE_ID,
+  SENTINEL_GENUINE_NAME_AND_ADDRESS_CASE_ID,
+  NON_SENTINEL_EMPTY_DEMOGRAPHICS_CASE_ID,
+];
+
 // ---------------------------------------------------------------------------
 // Environment loading
 // ---------------------------------------------------------------------------
@@ -479,7 +504,9 @@ async function seedSql() {
   try {
     const seedDir = path.join(HARNESS_DIR, 'seed');
     await executeSqlFile(pool, path.join(seedDir, '01-seed-dxtr-data.sql'));
-    pass('01-seed-dxtr-data.sql seeded (12 scenario cases + Stage 8 bad-REC-date case)');
+    pass(
+      '01-seed-dxtr-data.sql seeded (12 scenario cases + Stage 8 bad-REC-date case + Stage 9 sentinel-profCode cases)',
+    );
   } finally {
     await pool.close();
   }
@@ -819,12 +846,12 @@ async function clean() {
   const pool = await getDxtrSqlPool(dxtrDatabase);
   try {
     await pool.request().query(`
-      DELETE FROM dbo.AO_TX WHERE CS_CASEID BETWEEN '999999400' AND '999999413' AND COURT_ID = '${COURT_ID}';
-      DELETE FROM dbo.AO_PY WHERE CS_CASEID BETWEEN '999999400' AND '999999413' AND COURT_ID = '${COURT_ID}';
-      DELETE FROM dbo.AO_CS WHERE CS_CASEID BETWEEN '999999400' AND '999999413' AND COURT_ID = '${COURT_ID}';
+      DELETE FROM dbo.AO_TX WHERE CS_CASEID BETWEEN '999999400' AND '999999417' AND COURT_ID = '${COURT_ID}';
+      DELETE FROM dbo.AO_PY WHERE CS_CASEID BETWEEN '999999400' AND '999999417' AND COURT_ID = '${COURT_ID}';
+      DELETE FROM dbo.AO_CS WHERE CS_CASEID BETWEEN '999999400' AND '999999417' AND COURT_ID = '${COURT_ID}';
       DELETE FROM dbo.AO_CS_DIV WHERE (CS_DIV = '083' AND GRP_DES = 'MS') OR (CS_DIV = '084' AND GRP_DES = 'XX');
     `);
-    pass('Deleted DXTR fixture rows for cases 999999400-999999413');
+    pass('Deleted DXTR fixture rows for cases 999999400-999999417');
   } finally {
     await pool.close();
   }
@@ -832,7 +859,7 @@ async function clean() {
   // Stage 5/6/7 fixtures are seeded directly into Cosmos (no DXTR row), so their case/trustee
   // ids are tracked separately from ALL_CASE_IDS/ALL_TRUSTEE_IDS — see the STAGE_5_6_7_*
   // constants' own comment for why they aren't folded into those arrays.
-  const allCaseIds = [...ALL_CASE_IDS, ...STAGE_5_6_7_CASE_IDS];
+  const allCaseIds = [...ALL_CASE_IDS, ...STAGE_5_6_7_CASE_IDS, ...STAGE_9_CASE_IDS];
   const allTrusteeIds = [...ALL_TRUSTEE_IDS, ...STAGE_5_6_7_TRUSTEE_IDS];
 
   const { client, db } = await getMongoDb();
@@ -1394,6 +1421,9 @@ async function runScenarios() {
 
   // ── Stage 8: bad REC date falls back to TX_DATE ───────────────────────────
   await runBadRecDateFallbackStage(deps);
+
+  // ── Stage 9: sentinel professional code skip rule (CAMS-882) ──────────────
+  await runSentinelProfCodeStage(deps);
 }
 
 // ---------------------------------------------------------------------------
@@ -1857,6 +1887,131 @@ async function runBadRecDateFallbackStage(
     fail(
       `8. expected appointedDate ${BAD_REC_DATE_TX_DATE} (TX_DATE fallback), got ${event.appointedDate}`,
     );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Stage 9 (CAMS-882) — sentinel professional code skip rule
+// ---------------------------------------------------------------------------
+
+/**
+ * Proves the sentinel professional code skip rule (CAMS-882) against a real DXTR round trip —
+ * both that CasesDxtrGateway correctly extracts profCode from REC's fixed-width offset (17-21
+ * for TX_TYPE='A'/TX_CODE='TR'), and that sync-trustee-case-appointments.ts's
+ * isSentinelWithNoIdentity/isBogusTrusteeName correctly decide skip vs. proceed against real
+ * query results rather than a hand-built mock event. Standalone: not part of the 13-scenario
+ * matching pipeline (seed/01-seed-dxtr-data.sql fixtures 15a-15d, CS_CASEID 999999414-417,
+ * excluded from ALL_CASE_IDS) — this stage seeds only the one Cosmos SYNCED_CASE fixture the one
+ * non-skipped case (15c) needs to reach NO_TRUSTEE_MATCH, rather than joining the full pipeline's
+ * shared fixture set and expectation counts.
+ */
+async function runSentinelProfCodeStage(
+  deps: ReturnType<typeof SyncTrusteeCaseAppointmentsUseCase.createDeps>,
+) {
+  console.log('\nStage 9: sentinel professional code skip rule — real DXTR round trip, no mocks\n');
+
+  const now = new Date().toISOString();
+  const systemUser = { id: 'SYSTEM', name: 'SYSTEM' };
+  const { client, db } = await getMongoDb();
+  try {
+    // Only 15c (sentinel-00000-genuine-name-and-address) is expected to reach matching — it's
+    // the only one of the four that needs a SYNCED_CASE fixture at all.
+    await db.collection('cases').replaceOne(
+      { documentType: 'SYNCED_CASE', caseId: SENTINEL_GENUINE_NAME_AND_ADDRESS_CASE_ID },
+      {
+        documentType: 'SYNCED_CASE',
+        caseId: SENTINEL_GENUINE_NAME_AND_ADDRESS_CASE_ID,
+        dxtrId: SENTINEL_GENUINE_NAME_AND_ADDRESS_CASE_ID,
+        courtId: COURT_ID,
+        courtName: 'Integration Test Court',
+        courtDivisionCode: DIV,
+        courtDivisionName: 'Matching Scenarios Division',
+        officeCode: '1',
+        officeName: 'Matching Scenarios Division',
+        groupDesignator: 'MS',
+        regionId: '02',
+        regionName: 'Region 2',
+        chapter: CHAPTER,
+        caseTitle: 'Scenario Debtor Sentinel',
+        dateFiled: '2026-01-01',
+        debtor: { name: 'Scenario Debtor Sentinel' },
+        updatedOn: now,
+        updatedBy: systemUser,
+      },
+      { upsert: true },
+    );
+  } finally {
+    await client.close();
+  }
+
+  const stageCaseIds = [
+    SENTINEL_NO_NAME_NO_ADDRESS_CASE_ID,
+    SENTINEL_BOGUS_NAME_WITH_CONTACT_CASE_ID,
+    SENTINEL_GENUINE_NAME_AND_ADDRESS_CASE_ID,
+    NON_SENTINEL_EMPTY_DEMOGRAPHICS_CASE_ID,
+  ];
+
+  const { events } = await deps.casesGateway.getTrusteeAppointments(
+    deps.context,
+    '2026-01-01T00:00:00.000Z',
+  );
+  const stageEvents = events.filter((e) => stageCaseIds.includes(e.caseId));
+
+  if (stageEvents.length === stageCaseIds.length) {
+    pass(`9. getTrusteeAppointments returned all ${stageCaseIds.length} Stage 9 events`);
+  } else {
+    fail(`9. expected ${stageCaseIds.length} Stage 9 events, got ${stageEvents.length}`);
+    return;
+  }
+
+  const profCodeByCase = new Map(stageEvents.map((e) => [e.caseId, e.profCode]));
+  const expectedProfCodes: [string, string][] = [
+    [SENTINEL_NO_NAME_NO_ADDRESS_CASE_ID, '00000'],
+    [SENTINEL_BOGUS_NAME_WITH_CONTACT_CASE_ID, '99999'],
+    [SENTINEL_GENUINE_NAME_AND_ADDRESS_CASE_ID, '00000'],
+    [NON_SENTINEL_EMPTY_DEMOGRAPHICS_CASE_ID, '12345'],
+  ];
+  for (const [caseId, expected] of expectedProfCodes) {
+    if (profCodeByCase.get(caseId) === expected) {
+      pass(`9. ${caseId} profCode correctly extracted from REC offset 17-21 as "${expected}"`);
+    } else {
+      fail(`9. ${caseId}: expected profCode "${expected}", got "${profCodeByCase.get(caseId)}"`);
+    }
+  }
+
+  const result = await SyncTrusteeCaseAppointmentsUseCase.processAppointments(deps, stageEvents);
+
+  // 15a, 15b, 15d are all expected to be skipped before matching (three distinct reasons: no
+  // name/address at all; a bogus name despite populated contact fields; and the pre-existing
+  // empty-demographics rule for a non-sentinel code) — all three route through the same
+  // emptyDemographicsSkippedCount counter (see hasNoUsableDemographics's orchestration).
+  if (result.scenarioDistribution.emptyDemographicsSkippedCount === 3) {
+    pass('9. three sentinel/empty-demographics cases (15a, 15b, 15d) were all skipped');
+  } else {
+    fail(
+      `9. expected emptyDemographicsSkippedCount 3, got ${result.scenarioDistribution.emptyDemographicsSkippedCount}`,
+    );
+  }
+
+  // 15c is expected to proceed to matching, resolve to NO_TRUSTEE_MATCH (no seeded trustee named
+  // "Jane A Example"), and write a pending trustee-match-verification doc — proof it was NOT
+  // skipped, since a skipped event never reaches upsertMatchVerification at all.
+  const { client: verifyClient, db: verifyDb } = await getMongoDb();
+  try {
+    const verification = await verifyDb
+      .collection('trustee-match-verification')
+      .findOne({ caseId: SENTINEL_GENUINE_NAME_AND_ADDRESS_CASE_ID });
+    if (verification?.status === 'pending' && verification?.mismatchReason === 'NO_TRUSTEE_MATCH') {
+      pass(
+        '9. sentinel-00000-genuine-name-and-address (15c) was NOT skipped — reached matching and wrote a pending NO_TRUSTEE_MATCH verification',
+      );
+    } else {
+      fail(
+        `9. expected a pending NO_TRUSTEE_MATCH verification for 15c, got: ${JSON.stringify(verification)}`,
+      );
+    }
+  } finally {
+    await verifyClient.close();
   }
 }
 
