@@ -124,6 +124,7 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
     if (!shouldFetchKeyDates) {
       return;
     }
+    setIsKeyDatesLoading(true);
     Api2.getUpcomingKeyDates(props.appointment.trusteeId, props.appointment.id)
       .then((response) => {
         setKeyDatesData(response.data);

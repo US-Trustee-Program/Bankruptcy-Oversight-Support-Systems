@@ -23,7 +23,8 @@ import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
 import { Stop } from '@/lib/components/Stop';
 
-type UpcomingKeyDatesVariant = 'chapter7-panel' | 'ch12-13-case-by-case' | 'chapter12-standing';
+export type UpcomingKeyDatesVariant =
+  'chapter7-panel' | 'ch12-13-case-by-case' | 'chapter12-standing';
 
 type TirFrequency = 'ANNUAL' | 'SEMI_ANNUAL' | '';
 
@@ -141,7 +142,10 @@ function deriveVariant(chapter: string, appointmentType: string): UpcomingKeyDat
   if ((chapter === '12' || chapter === '13') && appointmentType === 'case-by-case') {
     return 'ch12-13-case-by-case';
   }
-  if (isChapter12Standing(chapter, appointmentType)) {
+  if (
+    isChapter12Standing(chapter, appointmentType) ||
+    (chapter === '13' && appointmentType === 'standing')
+  ) {
     return 'chapter12-standing';
   }
   return 'chapter7-panel';

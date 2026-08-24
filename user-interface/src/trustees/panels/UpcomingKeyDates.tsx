@@ -6,11 +6,11 @@ import { CamsRole } from '@common/cams/roles';
 import InfoCard from './InfoCard';
 import {
   UPCOMING_KEY_DATES_FIELD_CONFIG,
-  UpcomingKeyDatesVariant,
+  UpcomingKeyDatesDisplayVariant,
 } from './upcomingKeyDatesFieldConfig';
 
 export interface UpcomingKeyDatesProps {
-  variant?: UpcomingKeyDatesVariant;
+  variant?: UpcomingKeyDatesDisplayVariant;
   trusteeId: string;
   appointmentId: string;
   appointmentHeading?: string;

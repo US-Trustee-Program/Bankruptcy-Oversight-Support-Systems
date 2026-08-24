@@ -10,7 +10,7 @@ import {
 } from '@common/cams/trustee-upcoming-key-dates';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
-import { UpcomingKeyDatesVariant } from '@/trustees/panels/upcomingKeyDatesFieldConfig';
+import { UpcomingKeyDatesVariant } from './UpcomingKeyDatesForm';
 import { GlobalAlertContext } from '@/App';
 import { CamsRole } from '@common/cams/roles';
 

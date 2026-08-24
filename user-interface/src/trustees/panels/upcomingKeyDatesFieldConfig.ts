@@ -5,7 +5,7 @@ import {
   calculateAuditReqBy,
 } from '@common/cams/trustee-upcoming-key-dates';
 
-export type UpcomingKeyDatesVariant = 'chapter7-panel' | 'ch12-13-case-by-case';
+export type UpcomingKeyDatesDisplayVariant = 'chapter7-panel' | 'ch12-13-case-by-case';
 
 const NO_DATE = 'No date added';
 
@@ -48,7 +48,7 @@ function tprDueField(data: TrusteeUpcomingKeyDates | null): UpcomingKeyDatesDisp
 }
 
 export const UPCOMING_KEY_DATES_FIELD_CONFIG: Record<
-  UpcomingKeyDatesVariant,
+  UpcomingKeyDatesDisplayVariant,
   UpcomingKeyDatesFieldConfig[]
 > = {
   'chapter7-panel': [

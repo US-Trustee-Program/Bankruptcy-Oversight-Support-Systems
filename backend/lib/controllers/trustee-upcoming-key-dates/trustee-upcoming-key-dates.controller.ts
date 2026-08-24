@@ -19,6 +19,13 @@ import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 
 const MODULE_NAME = 'TRUSTEE-UPCOMING-KEY-DATES-CONTROLLER';
 
+const KEY_DATE_FEATURE_FLAGS = [
+  'display-chpt7-panel-upcoming-key-dates',
+  'display-chpt11-subv-past-key-dates',
+  'display-chpt12-13-case-by-case-upcoming-key-dates',
+  'display-chpt12-standing-key-dates',
+] as const;
+
 export class TrusteeUpcomingKeyDatesController implements CamsController {
   private readonly applicationContext: ApplicationContext;
 
@@ -30,11 +37,7 @@ export class TrusteeUpcomingKeyDatesController implements CamsController {
     context: ApplicationContext,
   ): Promise<CamsHttpResponseInit | CamsHttpResponseInit<TrusteeUpcomingKeyDates>> {
     try {
-      const keyDatesFlagEnabled =
-        context.featureFlags['display-chpt7-panel-upcoming-key-dates'] ||
-        context.featureFlags['display-chpt11-subv-past-key-dates'] ||
-        context.featureFlags['display-chpt12-13-case-by-case-upcoming-key-dates'] ||
-        context.featureFlags['display-chpt12-standing-key-dates'];
+      const keyDatesFlagEnabled = KEY_DATE_FEATURE_FLAGS.some((flag) => context.featureFlags[flag]);
       if (!keyDatesFlagEnabled) {
         throw new NotFoundError(MODULE_NAME);
       }
