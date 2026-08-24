@@ -424,6 +424,13 @@ export default function UpcomingKeyDatesForm() {
     );
   }
 
+  const isSaveDisabled =
+    isSaving ||
+    (!validationState.tprReviewPeriod && !tprReviewPeriodFocused) ||
+    !!errors.tprDue ||
+    !!errors.tprDueYearType ||
+    !!tprDueBlurError;
+
   if (variant === 'chapter12-standing') {
     return (
       <div className="edit-upcoming-key-dates" data-testid="edit-upcoming-key-dates">
@@ -511,14 +518,7 @@ export default function UpcomingKeyDatesForm() {
           <Button
             id="save-upcoming-key-dates"
             onClick={handleSave}
-            disabled={
-              isSaving ||
-              (!validationState.tprReviewPeriod && !tprReviewPeriodFocused) ||
-              !!errors.tprDue ||
-              !!errors.tprDueYearType ||
-              !!tprDueBlurError ||
-              hasErrorAmong(['lease-expiration', 'id-expiration'])
-            }
+            disabled={isSaveDisabled || hasErrorAmong(['lease-expiration', 'id-expiration'])}
           >
             {isSaving ? 'Saving...' : 'Save'}
           </Button>
@@ -684,7 +684,7 @@ export default function UpcomingKeyDatesForm() {
         </div>
       </div>
       <div className="usa-button-group">
-        <Button id="save-upcoming-key-dates" onClick={handleSave} disabled={isSaving}>
+        <Button id="save-upcoming-key-dates" onClick={handleSave} disabled={isSaveDisabled}>
           {isSaving ? 'Saving...' : 'Save'}
         </Button>
         <Button
