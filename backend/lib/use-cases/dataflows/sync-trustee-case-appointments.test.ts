@@ -612,6 +612,35 @@ describe('SyncTrusteeCaseAppointments', () => {
         },
       );
 
+      test.each([['00000'], ['99999']])(
+        // Regression (CAMS-882 review): isBogusTrusteeName's lastName-then-fullName fallback
+        // must use normalizeName (not plain truthiness) — a whitespace-only lastName is truthy
+        // in JS and would otherwise suppress the fallback to fullName, hiding a genuine name.
+        'falls back to fullName when lastName is whitespace-only, with profCode %s',
+        async (profCode) => {
+          const events: TrusteeAppointmentSyncEvent[] = [
+            {
+              ...makeEvent('case-001', 'Jane Trustee Services'),
+              dxtrTrustee: {
+                fullName: 'Jane Trustee Services',
+                lastName: '   ',
+              },
+              profCode,
+            },
+          ];
+
+          const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+            SyncTrusteeCaseAppointments.createDeps(context),
+            events,
+          );
+
+          // lastName is blank, so isBogusTrusteeName falls back to fullName — which contains
+          // "trustee" — and no contact info is present, so this is correctly skipped.
+          expect(trusteeMatchHelpers.matchTrusteeByName).not.toHaveBeenCalled();
+          expect(scenarioDistribution.sentinelBogusNameSkippedCount).toBe(1);
+        },
+      );
+
       test.each([
         ['00000', 'No Trustee'],
         ['99999', 'No Trustee'],
@@ -621,14 +650,40 @@ describe('SyncTrusteeCaseAppointments', () => {
         ['00000', 'For Internal Use Only'],
         ['00000', 'CHAPTER 11 - XX'],
       ])(
-        'skips an event with profCode %s and bogus name %s, even with contact fields populated',
+        'skips an event with profCode %s and bogus name %s when no contact fields are populated',
         async (profCode, bogusName) => {
           const events: TrusteeAppointmentSyncEvent[] = [
             {
               ...makeEvent('case-001', ''),
+              dxtrTrustee: { fullName: bogusName, lastName: bogusName },
+              profCode,
+            },
+          ];
+
+          const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+            SyncTrusteeCaseAppointments.createDeps(context),
+            events,
+          );
+
+          expect(trusteeMatchHelpers.matchTrusteeByName).not.toHaveBeenCalled();
+          expect(mockVerificationRepo.upsertVerification).not.toHaveBeenCalled();
+          expect(scenarioDistribution.sentinelBogusNameSkippedCount).toBe(1);
+        },
+      );
+
+      test.each([['00000'], ['99999']])(
+        // Regression (CAMS-882 review, BLOCKER): isBogusTrusteeName must never disqualify a
+        // record that also carries real contact info — otherwise a genuine trustee named e.g.
+        // "John Doe, Trustee" or a firm "ABC Chapter 13 Services" with a sentinel profCode and a
+        // real address/phone/email would be silently dropped before ever reaching matching.
+        'does not skip an event with profCode %s and a bogus-looking name when contact fields are populated',
+        async (profCode) => {
+          const events: TrusteeAppointmentSyncEvent[] = [
+            {
+              ...makeEvent('case-001', ''),
               dxtrTrustee: {
-                fullName: bogusName,
-                lastName: bogusName,
+                fullName: 'John Doe, Trustee',
+                lastName: 'Doe, Trustee',
                 legacy: {
                   address1: '123 Fake St',
                   phone: '555-555-5555',
@@ -644,9 +699,9 @@ describe('SyncTrusteeCaseAppointments', () => {
             events,
           );
 
-          expect(trusteeMatchHelpers.matchTrusteeByName).not.toHaveBeenCalled();
-          expect(mockVerificationRepo.upsertVerification).not.toHaveBeenCalled();
-          expect(scenarioDistribution.emptyDemographicsSkippedCount).toBe(1);
+          expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalled();
+          expect(scenarioDistribution.emptyDemographicsSkippedCount).toBe(0);
+          expect(scenarioDistribution.sentinelBogusNameSkippedCount).toBe(0);
         },
       );
 
@@ -694,6 +749,53 @@ describe('SyncTrusteeCaseAppointments', () => {
       );
 
       test.each([['00000'], ['99999']])(
+        // Regression (mattstankey review): isSentinelWithNoIdentity's contact check must
+        // recognize phone/email the same way hasNoUsableDemographics's hasContact does — an
+        // address-only check would wrongly conclude "no contact" for a record with only a
+        // phone or email, which is exactly the kind of legitimate contact signal the outer
+        // check already treats as usable.
+        'does not skip an event with profCode %s, blank name/address, but a populated phone',
+        async (profCode) => {
+          const events: TrusteeAppointmentSyncEvent[] = [
+            {
+              ...makeEvent('case-001', ''),
+              dxtrTrustee: { fullName: '', legacy: { phone: '555-555-5555' } },
+              profCode,
+            },
+          ];
+
+          const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+            SyncTrusteeCaseAppointments.createDeps(context),
+            events,
+          );
+
+          expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalled();
+          expect(scenarioDistribution.emptyDemographicsSkippedCount).toBe(0);
+        },
+      );
+
+      test.each([['00000'], ['99999']])(
+        'does not skip an event with profCode %s, blank name/address, but a populated email',
+        async (profCode) => {
+          const events: TrusteeAppointmentSyncEvent[] = [
+            {
+              ...makeEvent('case-001', ''),
+              dxtrTrustee: { fullName: '', legacy: { email: 'fake@example.com' } },
+              profCode,
+            },
+          ];
+
+          const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+            SyncTrusteeCaseAppointments.createDeps(context),
+            events,
+          );
+
+          expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalled();
+          expect(scenarioDistribution.emptyDemographicsSkippedCount).toBe(0);
+        },
+      );
+
+      test.each([['00000'], ['99999']])(
         'does not skip an event with profCode %s and a genuine fullName but no separate firstName field',
         async (profCode) => {
           // Regression: isSentinelWithNoIdentity's no-name check must recognize a usable
@@ -718,7 +820,7 @@ describe('SyncTrusteeCaseAppointments', () => {
         },
       );
 
-      test('does not skip an event with a non-sentinel profCode, even with no name/address', async () => {
+      test('a non-sentinel profCode still hits the pre-existing empty-demographics rule, even with no name/address', async () => {
         const events: TrusteeAppointmentSyncEvent[] = [
           {
             ...makeEvent('case-001', ''),
@@ -742,9 +844,9 @@ describe('SyncTrusteeCaseAppointments', () => {
           {
             ...makeEvent('case-001', 'Jane A Example'),
             dxtrTrustee: {
-              fullName: 'Jane A Example (TR)',
+              fullName: 'Jane A Robert Trustee',
               firstName: 'Jane',
-              lastName: 'Example (TR)',
+              lastName: 'Robert Trustee',
             },
             profCode: '12345',
           },
@@ -758,6 +860,41 @@ describe('SyncTrusteeCaseAppointments', () => {
         expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalled();
         expect(scenarioDistribution.emptyDemographicsSkippedCount).toBe(0);
       });
+
+      test.each([['00000'], ['99999']])(
+        // Regression (CAMS-882 review): the only prior test aimed at "trustee"-substring safety
+        // used a non-sentinel profCode, so isBogusTrusteeName never actually ran. This exercises
+        // it directly with a sentinel profCode, a name containing a bogus-name keyword, AND real
+        // contact info — the exact combination the BLOCKER fix above is meant to protect.
+        'does not skip a genuinely-named trustee whose name contains "trustee" with profCode %s and real contact info',
+        async (profCode) => {
+          const events: TrusteeAppointmentSyncEvent[] = [
+            {
+              ...makeEvent('case-001', 'Robert Trustee'),
+              dxtrTrustee: {
+                fullName: 'Robert Trustee',
+                firstName: 'Robert',
+                lastName: 'Trustee',
+                legacy: {
+                  address1: '123 Fake St',
+                  phone: '555-555-5555',
+                  email: 'fake@example.com',
+                },
+              },
+              profCode,
+            },
+          ];
+
+          const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+            SyncTrusteeCaseAppointments.createDeps(context),
+            events,
+          );
+
+          expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalled();
+          expect(scenarioDistribution.emptyDemographicsSkippedCount).toBe(0);
+          expect(scenarioDistribution.sentinelBogusNameSkippedCount).toBe(0);
+        },
+      );
     });
 
     describe('fingerprint hit/miss counters', () => {
@@ -3820,6 +3957,7 @@ describe('handleClassifiedMismatch', () => {
       retryableCount: 0,
       candidateLoadFailedCount: 0,
       emptyDemographicsSkippedCount: 0,
+      sentinelBogusNameSkippedCount: 0,
     };
   }
 

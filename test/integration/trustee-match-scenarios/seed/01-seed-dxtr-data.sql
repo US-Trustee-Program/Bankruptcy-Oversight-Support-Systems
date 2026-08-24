@@ -241,8 +241,9 @@ GO
 
 -- 15b. sentinel-99999-bogus-name-with-contact: profCode is the professional-ID-unavailable
 --      sentinel, name is a bogus/administrative placeholder (matches the "assign" keyword), but
---      contact fields ARE populated — proving the no-name-and-no-address check alone would miss
---      this. Expect: event is still skipped (bogus-name-keyword check fires).
+--      contact fields ARE populated. Expect: NOT skipped — a bogus-looking name must never
+--      override real contact info (CAMS-882 review fix), since that would silently drop a
+--      genuine trustee whose name happens to contain a keyword like "assign" or "trustee".
 INSERT INTO dbo.AO_PY (
   CS_CASEID, COURT_ID, PY_ROLE, PY_FIRST_NAME, PY_MIDDLE_NAME, PY_LAST_NAME, PY_GENERATION,
   PY_ADDRESS1, PY_ADDRESS2, PY_ADDRESS3, PY_CITY, PY_STATE, PY_ZIP, PY_COUNTRY,

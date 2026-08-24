@@ -1912,34 +1912,42 @@ async function runSentinelProfCodeStage(
 
   const now = new Date().toISOString();
   const systemUser = { id: 'SYSTEM', name: 'SYSTEM' };
+  // 15b (bogus name, real contact) and 15c (genuine name and address) are both expected to
+  // reach matching under the fixed rule — a bogus-looking name must never override real contact
+  // info (CAMS-882 review fix) — so both need a SYNCED_CASE fixture. 15a and 15d have no usable
+  // demographics at all and are skipped before ever reaching the cases collection.
+  const casesReachingMatching = [
+    { caseId: SENTINEL_BOGUS_NAME_WITH_CONTACT_CASE_ID, debtorName: 'Scenario Debtor Sentinel B' },
+    { caseId: SENTINEL_GENUINE_NAME_AND_ADDRESS_CASE_ID, debtorName: 'Scenario Debtor Sentinel C' },
+  ];
   const { client, db } = await getMongoDb();
   try {
-    // Only 15c (sentinel-00000-genuine-name-and-address) is expected to reach matching — it's
-    // the only one of the four that needs a SYNCED_CASE fixture at all.
-    await db.collection('cases').replaceOne(
-      { documentType: 'SYNCED_CASE', caseId: SENTINEL_GENUINE_NAME_AND_ADDRESS_CASE_ID },
-      {
-        documentType: 'SYNCED_CASE',
-        caseId: SENTINEL_GENUINE_NAME_AND_ADDRESS_CASE_ID,
-        dxtrId: SENTINEL_GENUINE_NAME_AND_ADDRESS_CASE_ID,
-        courtId: COURT_ID,
-        courtName: 'Integration Test Court',
-        courtDivisionCode: DIV,
-        courtDivisionName: 'Matching Scenarios Division',
-        officeCode: '1',
-        officeName: 'Matching Scenarios Division',
-        groupDesignator: 'MS',
-        regionId: '02',
-        regionName: 'Region 2',
-        chapter: CHAPTER,
-        caseTitle: 'Scenario Debtor Sentinel',
-        dateFiled: '2026-01-01',
-        debtor: { name: 'Scenario Debtor Sentinel' },
-        updatedOn: now,
-        updatedBy: systemUser,
-      },
-      { upsert: true },
-    );
+    for (const { caseId, debtorName } of casesReachingMatching) {
+      await db.collection('cases').replaceOne(
+        { documentType: 'SYNCED_CASE', caseId },
+        {
+          documentType: 'SYNCED_CASE',
+          caseId,
+          dxtrId: caseId,
+          courtId: COURT_ID,
+          courtName: 'Integration Test Court',
+          courtDivisionCode: DIV,
+          courtDivisionName: 'Matching Scenarios Division',
+          officeCode: '1',
+          officeName: 'Matching Scenarios Division',
+          groupDesignator: 'MS',
+          regionId: '02',
+          regionName: 'Region 2',
+          chapter: CHAPTER,
+          caseTitle: debtorName,
+          dateFiled: '2026-01-01',
+          debtor: { name: debtorName },
+          updatedOn: now,
+          updatedBy: systemUser,
+        },
+        { upsert: true },
+      );
+    }
   } finally {
     await client.close();
   }
@@ -1981,34 +1989,69 @@ async function runSentinelProfCodeStage(
 
   const result = await SyncTrusteeCaseAppointmentsUseCase.processAppointments(deps, stageEvents);
 
-  // 15a, 15b, 15d are all expected to be skipped before matching (three distinct reasons: no
-  // name/address at all; a bogus name despite populated contact fields; and the pre-existing
-  // empty-demographics rule for a non-sentinel code) — all three route through the same
-  // emptyDemographicsSkippedCount counter (see hasNoUsableDemographics's orchestration).
-  if (result.scenarioDistribution.emptyDemographicsSkippedCount === 3) {
-    pass('9. three sentinel/empty-demographics cases (15a, 15b, 15d) were all skipped');
+  // 15a and 15d are both expected to be skipped before matching — neither has any usable
+  // demographics at all — via the pre-existing empty-demographics rule (15a's sentinel profCode
+  // is irrelevant here since the record has nothing to found an identity on either way; 15d's
+  // non-sentinel profCode never even reaches the sentinel-specific logic). Asserted individually
+  // below (not just via the aggregate counter) so a mix-up between which case skipped can't hide
+  // behind a correct total.
+  if (result.scenarioDistribution.emptyDemographicsSkippedCount === 2) {
+    pass('9. emptyDemographicsSkippedCount is 2 (15a, 15d)');
   } else {
     fail(
-      `9. expected emptyDemographicsSkippedCount 3, got ${result.scenarioDistribution.emptyDemographicsSkippedCount}`,
+      `9. expected emptyDemographicsSkippedCount 2, got ${result.scenarioDistribution.emptyDemographicsSkippedCount}`,
+    );
+  }
+  if (result.scenarioDistribution.sentinelBogusNameSkippedCount === 0) {
+    pass('9. sentinelBogusNameSkippedCount is 0 — 15b was NOT skipped (real contact present)');
+  } else {
+    fail(
+      `9. expected sentinelBogusNameSkippedCount 0, got ${result.scenarioDistribution.sentinelBogusNameSkippedCount}`,
     );
   }
 
-  // 15c is expected to proceed to matching, resolve to NO_TRUSTEE_MATCH (no seeded trustee named
-  // "Jane A Example"), and write a pending trustee-match-verification doc — proof it was NOT
-  // skipped, since a skipped event never reaches upsertMatchVerification at all.
   const { client: verifyClient, db: verifyDb } = await getMongoDb();
   try {
-    const verification = await verifyDb
-      .collection('trustee-match-verification')
-      .findOne({ caseId: SENTINEL_GENUINE_NAME_AND_ADDRESS_CASE_ID });
-    if (verification?.status === 'pending' && verification?.mismatchReason === 'NO_TRUSTEE_MATCH') {
-      pass(
-        '9. sentinel-00000-genuine-name-and-address (15c) was NOT skipped — reached matching and wrote a pending NO_TRUSTEE_MATCH verification',
-      );
-    } else {
-      fail(
-        `9. expected a pending NO_TRUSTEE_MATCH verification for 15c, got: ${JSON.stringify(verification)}`,
-      );
+    // 15a, 15d: skipped before matching — no verification doc should exist for either.
+    for (const [label, caseId] of [
+      ['15a', SENTINEL_NO_NAME_NO_ADDRESS_CASE_ID],
+      ['15d', NON_SENTINEL_EMPTY_DEMOGRAPHICS_CASE_ID],
+    ] as const) {
+      const verification = await verifyDb
+        .collection('trustee-match-verification')
+        .findOne({ caseId });
+      if (!verification) {
+        pass(`9. ${label} (${caseId}) was skipped — no verification doc written`);
+      } else {
+        fail(
+          `9. ${label} (${caseId}) expected no verification doc, got: ${JSON.stringify(verification)}`,
+        );
+      }
+    }
+
+    // 15b, 15c: both expected to proceed to matching, resolve to NO_TRUSTEE_MATCH (no seeded
+    // trustee named "Not Assigned - XX" or "Jane A Example"), and write a pending
+    // trustee-match-verification doc — proof neither was skipped, since a skipped event never
+    // reaches upsertMatchVerification at all.
+    for (const [label, caseId] of [
+      ['15b', SENTINEL_BOGUS_NAME_WITH_CONTACT_CASE_ID],
+      ['15c', SENTINEL_GENUINE_NAME_AND_ADDRESS_CASE_ID],
+    ] as const) {
+      const verification = await verifyDb
+        .collection('trustee-match-verification')
+        .findOne({ caseId });
+      if (
+        verification?.status === 'pending' &&
+        verification?.mismatchReason === 'NO_TRUSTEE_MATCH'
+      ) {
+        pass(
+          `9. ${label} (${caseId}) was NOT skipped — reached matching and wrote a pending NO_TRUSTEE_MATCH verification`,
+        );
+      } else {
+        fail(
+          `9. ${label} (${caseId}) expected a pending NO_TRUSTEE_MATCH verification, got: ${JSON.stringify(verification)}`,
+        );
+      }
     }
   } finally {
     await verifyClient.close();
