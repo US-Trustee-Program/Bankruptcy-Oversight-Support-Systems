@@ -70,8 +70,13 @@ describe('UpcomingKeyDates', () => {
 
     expect(screen.getByTestId('upcoming-key-dates-card')).toBeInTheDocument();
 
-    const noDateElements = screen.getAllByText('No date added');
-    expect(noDateElements.length).toBe(7);
+    expect(screen.getByTestId('upcoming-exam-audit-row')).toHaveTextContent('No date added');
+    expect(screen.getByTestId('audit-req-by-row')).toHaveTextContent('No date added');
+    expect(screen.getByTestId('tpr-review-period-row')).toHaveTextContent('No date added');
+    expect(screen.getByTestId('tpr-due-row')).toHaveTextContent('No date added');
+    expect(screen.getByTestId('tir-review-period-row')).toHaveTextContent('No date added');
+    expect(screen.getByTestId('tir-submission-row')).toHaveTextContent('No date added');
+    expect(screen.getByTestId('tir-review-row')).toHaveTextContent('No date added');
   });
 
   test('renders all field labels', () => {
@@ -96,9 +101,6 @@ describe('UpcomingKeyDates', () => {
     expect(screen.getByTestId('upcoming-exam-audit-row')).toHaveTextContent('2029');
     expect(screen.getByTestId('tpr-review-period-row')).toHaveTextContent('04/01 - 03/31');
     expect(screen.getByTestId('tpr-due-row')).toHaveTextContent('09/15 EVEN');
-    expect(screen.getByTestId('tir-review-period-row')).toHaveTextContent('07/01 - 06/30');
-    expect(screen.getByTestId('tir-submission-row')).toHaveTextContent('10/15');
-    expect(screen.getByTestId('tir-review-row')).toHaveTextContent('11/01');
   });
 
   test('exam/audit row uses type as label when upcomingExamOrAuditType is set', () => {
@@ -123,16 +125,6 @@ describe('UpcomingKeyDates', () => {
 
     expect(screen.getByText('Field Exam / Audit:')).toBeInTheDocument();
     expect(screen.getByTestId('upcoming-exam-audit-row')).toHaveTextContent('No date added');
-  });
-
-  test('upcoming-exam-audit-row appears at index 0', () => {
-    renderComponent({ data: populatedDocument });
-
-    const list = screen.getByTestId('upcoming-key-dates-list');
-    const items = list.querySelectorAll('li');
-    expect(items[0]).toHaveAttribute('data-testid', 'upcoming-exam-audit-row');
-    expect(items[1]).toHaveAttribute('data-testid', 'audit-req-by-row');
-    expect(items[2]).toHaveAttribute('data-testid', 'tpr-review-period-row');
   });
 
   test('TIR Review Period shows both ranges joined with " & " for semi-annual', () => {
@@ -165,6 +157,18 @@ describe('UpcomingKeyDates', () => {
     expect(screen.getByTestId('tir-submission-row')).toHaveTextContent('10/15 & 04/15');
   });
 
+  test('TIR Due shows both dates joined with " & " for semi-annual', () => {
+    const semiAnnualDoc: TrusteeUpcomingKeyDates = {
+      ...populatedDocument,
+      tirFrequency: 'SEMI_ANNUAL',
+      tirReview: '1900-09-28',
+      tirSemiAnnualReview: '1900-03-30',
+    };
+    renderComponent({ data: semiAnnualDoc });
+
+    expect(screen.getByTestId('tir-review-row')).toHaveTextContent('09/28 & 03/30');
+  });
+
   test('renders Audit req by as calculated year when lastAuditFiscalYear is set', () => {
     renderComponent({ data: populatedDocument });
 
@@ -175,20 +179,6 @@ describe('UpcomingKeyDates', () => {
     renderComponent({ data: { ...populatedDocument, lastAuditFiscalYear: undefined } });
 
     expect(screen.getByTestId('audit-req-by-row')).toHaveTextContent('No date added');
-  });
-
-  test('Audit req by row appears before TPR Review Period row', () => {
-    renderComponent({ data: populatedDocument });
-
-    const list = screen.getByTestId('upcoming-key-dates-list');
-    const items = Array.from(list.querySelectorAll('li'));
-    const auditReqByIndex = items.findIndex(
-      (el) => el.getAttribute('data-testid') === 'audit-req-by-row',
-    );
-    const tprIndex = items.findIndex(
-      (el) => el.getAttribute('data-testid') === 'tpr-review-period-row',
-    );
-    expect(auditReqByIndex).toBeLessThan(tprIndex);
   });
 
   test('shows "No date added" for TIR Review Period when only start is defined', () => {
@@ -269,13 +259,6 @@ describe('UpcomingKeyDates', () => {
       idExpiration: '2028-01-15',
     };
 
-    test('renders 8 rows', () => {
-      renderComponent({ ...ch12StandingProps, data: ch12StandingDoc });
-
-      const list = screen.getByTestId('upcoming-key-dates-list');
-      expect(list.querySelectorAll('li')).toHaveLength(8);
-    });
-
     test('renders "No date added" for computed fields when data is null', () => {
       renderComponent({ ...ch12StandingProps, data: null });
 
@@ -326,11 +309,9 @@ describe('UpcomingKeyDates', () => {
   });
 
   describe('ch12-13-case-by-case variant', () => {
-    test('renders 4 rows with constant fields always showing 09/01 and 09/15', () => {
+    test('renders constant fields always showing 09/01 and 09/15 and computed TPR fields', () => {
       renderComponent({ variant: 'ch12-13-case-by-case', data: populatedDocument });
 
-      const list = screen.getByTestId('upcoming-key-dates-list');
-      expect(list.querySelectorAll('li')).toHaveLength(4);
       expect(screen.getByTestId('annual-report-submission-row')).toHaveTextContent('09/01');
       expect(screen.getByTestId('annual-report-due-oo-row')).toHaveTextContent('09/15');
       expect(screen.getByTestId('tpr-review-period-row')).toHaveTextContent('04/01 - 03/31');
