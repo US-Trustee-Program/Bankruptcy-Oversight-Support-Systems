@@ -1952,7 +1952,7 @@ describe('resolveNameCollisionByScoring', () => {
     expect(result.candidateScores).toHaveLength(1);
   });
 
-  test('does not auto-resolve when district/division and chapter scores each come from a different active appointment', async () => {
+  test('remains unresolved because chapterScore is scoped to the division-matching appointment', async () => {
     // Trustee holds two active appointments: one matches the case's division (different
     // chapter), the other matches the case's chapter (different division). Neither appointment
     // alone matches court + division + chapter, so isAppointmentMatch is false for both. CAMS-880:
