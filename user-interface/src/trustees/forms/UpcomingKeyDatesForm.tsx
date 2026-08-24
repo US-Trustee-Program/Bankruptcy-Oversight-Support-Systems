@@ -2,6 +2,7 @@ import './EditUpcomingKeyDates.scss';
 import { useEffect, useState, type FocusEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
+  TrusteeUpcomingKeyDates,
   TrusteeUpcomingKeyDatesInput,
   validateTrusteeUpcomingKeyDates,
   validateTprDuePair,
@@ -9,6 +10,7 @@ import {
   calculateTirReview,
   isoToSentinel,
 } from '@common/cams/trustee-upcoming-key-dates';
+import { TrusteeAppointment, isChapter12Standing } from '@common/cams/trustee-appointments';
 import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
@@ -17,7 +19,6 @@ import MonthDayRangeSelector from '@/lib/components/uswds/MonthDayRangeSelector'
 import MonthDaySelector from '@/lib/components/uswds/MonthDaySelector';
 import DatePicker from '@/lib/components/uswds/DatePicker';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import { isChapter12Standing } from '@common/cams/trustee-appointments';
 import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
 import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
@@ -151,6 +152,82 @@ function deriveVariant(chapter: string, appointmentType: string): UpcomingKeyDat
   return 'chapter7-panel';
 }
 
+function buildFormStateFromData(data: TrusteeUpcomingKeyDates): FormState {
+  const tirFrequency: TirFrequency = data.tirFrequency ?? '';
+  return {
+    pastBackgroundQuestion: data.pastBackgroundQuestion ?? '',
+    pastFieldExam: data.pastFieldExam ?? '',
+    pastAudit: data.pastAudit ?? '',
+    pastTprSubmission: data.pastTprSubmission ?? '',
+    tprReviewPeriodStart: data.tprReviewPeriodStart ?? '',
+    tprReviewPeriodEnd: data.tprReviewPeriodEnd ?? '',
+    tprDue: data.tprDue ?? '',
+    tprDueYearType: data.tprDueYearType ?? '',
+    upcomingExamOrAuditYear: data.upcomingExamOrAuditYear ?? '',
+    upcomingExamOrAuditType: data.upcomingExamOrAuditType ?? '',
+    tirFrequency,
+    tirPeriodKey: findPeriodKey(data.tirReviewPeriodStart, data.tirReviewPeriodEnd, tirFrequency),
+    tirReviewPeriodStart: data.tirReviewPeriodStart ?? '',
+    tirReviewPeriodEnd: data.tirReviewPeriodEnd ?? '',
+    tirSemiAnnualReviewPeriodStart: data.tirSemiAnnualReviewPeriodStart ?? '',
+    tirSemiAnnualReviewPeriodEnd: data.tirSemiAnnualReviewPeriodEnd ?? '',
+    lastAuditFiscalYear: data.lastAuditFiscalYear ?? null,
+    lastMonthlyReportReceived: data.lastMonthlyReportReceived ?? '',
+    leaseExpiration: data.leaseExpiration ?? '',
+    idExpiration: data.idExpiration ?? '',
+  };
+}
+
+type FormLoadResult = {
+  variant: UpcomingKeyDatesVariant;
+  loadError: boolean;
+  variantAlert: string | null;
+  formState: FormState | null;
+  keyDatesAlert: string | null;
+};
+
+function resolveFormLoadResult(
+  variantFromState: UpcomingKeyDatesVariant | undefined,
+  appointmentId: string,
+  appointmentsResult: PromiseSettledResult<{ data: TrusteeAppointment[] } | null>,
+  keyDatesResult: PromiseSettledResult<{ data: TrusteeUpcomingKeyDates | null }>,
+): FormLoadResult {
+  let variant: UpcomingKeyDatesVariant = variantFromState ?? 'chapter7-panel';
+  let loadError = false;
+  let variantAlert: string | null = null;
+
+  if (!variantFromState) {
+    if (appointmentsResult.status === 'fulfilled') {
+      const appointment = (appointmentsResult.value?.data ?? []).find(
+        (a) => a.id === appointmentId,
+      );
+      if (appointment) {
+        variant = deriveVariant(appointment.chapter, appointment.appointmentType);
+      } else {
+        variantAlert = 'Could not determine appointment type; showing default fields.';
+      }
+    } else {
+      loadError = true;
+    }
+  }
+
+  let formState: FormState | null = null;
+  let keyDatesAlert: string | null = null;
+  if (keyDatesResult.status === 'fulfilled') {
+    const data =
+      !variantFromState && appointmentsResult.status === 'rejected'
+        ? null
+        : keyDatesResult.value.data;
+    if (data) {
+      formState = buildFormStateFromData(data);
+    }
+  } else {
+    keyDatesAlert = `Failed to load upcoming key dates: ${(keyDatesResult.reason as Error).message}`;
+  }
+
+  return { variant, loadError, variantAlert, formState, keyDatesAlert };
+}
+
 export default function UpcomingKeyDatesForm() {
   const { trusteeId, appointmentId } = useParams<{
     trusteeId: string;
@@ -214,58 +291,27 @@ export default function UpcomingKeyDatesForm() {
       appointmentsPromise,
       Api2.getUpcomingKeyDates(trusteeId!, appointmentId!),
     ]).then(([appointmentsResult, keyDatesResult]) => {
-      if (!variantFromState) {
-        if (appointmentsResult.status === 'fulfilled') {
-          const appointment = (appointmentsResult.value?.data ?? []).find(
-            (a) => a.id === appointmentId,
-          );
-          if (appointment) {
-            setVariant(deriveVariant(appointment.chapter, appointment.appointmentType));
-          } else {
-            globalAlert?.error('Could not determine appointment type; showing default fields.');
-            setVariant('chapter7-panel');
-          }
-        } else {
-          setLoadError(true);
-          setVariant('chapter7-panel');
-        }
-      }
+      const result = resolveFormLoadResult(
+        variantFromState,
+        appointmentId!,
+        appointmentsResult,
+        keyDatesResult,
+      );
 
-      if (keyDatesResult.status === 'fulfilled') {
-        const data =
-          !variantFromState && appointmentsResult.status === 'rejected'
-            ? null
-            : keyDatesResult.value.data;
-        if (data) {
-          const freq: TirFrequency = data.tirFrequency ?? '';
-          const periodKey = findPeriodKey(data.tirReviewPeriodStart, data.tirReviewPeriodEnd, freq);
-          setForm({
-            pastBackgroundQuestion: data.pastBackgroundQuestion ?? '',
-            pastFieldExam: data.pastFieldExam ?? '',
-            pastAudit: data.pastAudit ?? '',
-            pastTprSubmission: data.pastTprSubmission ?? '',
-            tprReviewPeriodStart: data.tprReviewPeriodStart ?? '',
-            tprReviewPeriodEnd: data.tprReviewPeriodEnd ?? '',
-            tprDue: data.tprDue ?? '',
-            tprDueYearType: data.tprDueYearType ?? '',
-            upcomingExamOrAuditYear: data.upcomingExamOrAuditYear ?? '',
-            upcomingExamOrAuditType: data.upcomingExamOrAuditType ?? '',
-            tirFrequency: freq,
-            tirPeriodKey: periodKey,
-            tirReviewPeriodStart: data.tirReviewPeriodStart ?? '',
-            tirReviewPeriodEnd: data.tirReviewPeriodEnd ?? '',
-            tirSemiAnnualReviewPeriodStart: data.tirSemiAnnualReviewPeriodStart ?? '',
-            tirSemiAnnualReviewPeriodEnd: data.tirSemiAnnualReviewPeriodEnd ?? '',
-            lastAuditFiscalYear: data.lastAuditFiscalYear ?? null,
-            lastMonthlyReportReceived: data.lastMonthlyReportReceived ?? '',
-            leaseExpiration: data.leaseExpiration ?? '',
-            idExpiration: data.idExpiration ?? '',
-          });
-        }
-      } else {
-        globalAlert?.error(
-          `Failed to load upcoming key dates: ${(keyDatesResult.reason as Error).message}`,
-        );
+      if (!variantFromState) {
+        setVariant(result.variant);
+      }
+      if (result.loadError) {
+        setLoadError(true);
+      }
+      if (result.variantAlert) {
+        globalAlert?.error(result.variantAlert);
+      }
+      if (result.formState) {
+        setForm(result.formState);
+      }
+      if (result.keyDatesAlert) {
+        globalAlert?.error(result.keyDatesAlert);
       }
 
       setIsLoading(false);
