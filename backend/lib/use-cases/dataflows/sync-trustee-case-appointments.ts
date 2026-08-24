@@ -1346,7 +1346,9 @@ function hasNoUsableDemographics(event: TrusteeAppointmentSyncEvent): boolean {
  * professional code — see CAMS-873, which removed this same field's prior use as a trusted
  * auto-link identity signal — so profCode is used here only as this negative signal, never to
  * pick which trustee an event belongs to) AND the record's name/address don't establish a real
- * identity: either nothing at all (no firstName, no legacy address fields), or a name that is
+ * identity: either nothing at all (no usable fullName per normalizeName — the same presence
+ * check hasNoUsableDemographics itself uses, not just a blank firstName, which DXTR can leave
+ * unset even when fullName is populated — and no legacy address fields), or a name that is
  * itself a bogus/administrative placeholder (isBogusTrusteeName) even when contact fields ARE
  * populated — DXTR's sentinel population is inconsistent, so some sentinel-coded records carry
  * a placeholder name alongside a real-looking address/phone/email (e.g. an office's general
@@ -1362,7 +1364,7 @@ function isSentinelWithNoIdentity(
   const { dxtrTrustee } = event;
   const legacy = dxtrTrustee.legacy;
   const hasNoNameAndNoAddress =
-    !dxtrTrustee.firstName &&
+    !normalizeName(dxtrTrustee.fullName ?? '') &&
     !legacy?.address1 &&
     !legacy?.address2 &&
     !legacy?.address3 &&

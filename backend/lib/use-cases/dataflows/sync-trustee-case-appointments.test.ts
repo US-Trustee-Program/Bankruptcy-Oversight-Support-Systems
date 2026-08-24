@@ -693,6 +693,31 @@ describe('SyncTrusteeCaseAppointments', () => {
         },
       );
 
+      test.each([['00000'], ['99999']])(
+        'does not skip an event with profCode %s and a genuine fullName but no separate firstName field',
+        async (profCode) => {
+          // Regression: isSentinelWithNoIdentity's no-name check must recognize a usable
+          // fullName the same way hasNoUsableDemographics does, even when DXTR supplies no
+          // separate firstName field — a firstName-only check would wrongly conclude "no name"
+          // for a record hasNoUsableDemographics itself already treated as named.
+          const events: TrusteeAppointmentSyncEvent[] = [
+            {
+              ...makeEvent('case-001', 'Jane A Example'),
+              dxtrTrustee: { fullName: 'Jane A Example' },
+              profCode,
+            },
+          ];
+
+          const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+            SyncTrusteeCaseAppointments.createDeps(context),
+            events,
+          );
+
+          expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalled();
+          expect(scenarioDistribution.emptyDemographicsSkippedCount).toBe(0);
+        },
+      );
+
       test('does not skip an event with a non-sentinel profCode, even with no name/address', async () => {
         const events: TrusteeAppointmentSyncEvent[] = [
           {
