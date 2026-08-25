@@ -1,18 +1,8 @@
 name: Deploy SQL Private Link Hub
 
-# One-time / rarely-run shared infrastructure, deliberately manual.
-#
-# This deploys hub CORE only: the hub VNet, its private-endpoint subnet, and the
-# ONE shared Private Endpoint against the SQL server. It creates no DNS zone --
-# the endpoint registers into the zones consumers already resolve through (see
-# ops/cloud-deployment/lib/network/sql-hub.bicep).
-#
-# It is NOT wired into continuous deployment on purpose. Every environment's SQL
-# resolution depends on that single endpoint, so redeploying it must be a
-# deliberate act, never a side effect of onboarding or tearing down a branch.
-# Spoke peerings are owned by each spoke's own deploy (branches via
-# azure-deploy-network.sh, main via main.bicep's createMainHubPeering), so
-# onboarding a spoke never re-runs this workflow.
+# Deploys hub core only -- see ops/cloud-deployment/lib/network/sql-hub.bicep.
+# Manual by design: every environment's SQL resolution depends on that one
+# endpoint, so redeploying it must never be a side effect of a branch deploy.
 
 on:
   workflow_dispatch:
@@ -52,18 +42,9 @@ jobs:
   deploy-sql-hub:
     name: Deploy SQL Private Link Hub
     runs-on: ubuntu-latest
-    # Reuses the existing infrastructure-deploy-main OIDC anchor rather than a
-    # dedicated one. That identity already holds Contributor at subscription
-    # scope, which covers everything this deploy needs -- creating the hub
-    # VNet/subnet/endpoint, and writing the A record into the existing private
-    # DNS zones in rg-cams-network and rg-cams-network-dev. A dedicated identity
-    # would need those same permissions granted from scratch, so it would add a
-    # principal without narrowing anything.
-    #
-    # The repo's OIDC subject template is repo+workflow+environment, so the
-    # federated credential backing this must name THIS workflow, not just the
-    # environment: it is a separate credential from the Continuous Deployment
-    # one on the same app registration.
+    # Needs its own federated credential naming THIS workflow: the OIDC subject
+    # template is repo+workflow+environment, so sharing the environment with
+    # Continuous Deployment is not enough. See docs/operations/deployment.md.
     environment: infrastructure-deploy-main
     permissions:
       contents: read

@@ -188,10 +188,11 @@ var dataflowsTags = {
   'deployed-at': deployedAt
 }
 
-// GUARD (CAMS-760, GH #2749 bug shape): this module deploys into the SHARED
-// analyticsResourceGroupName, but main.bicep itself is wrapped in a per-branch
-// Deployment Stack for branch deploys (see azure-deploy.sh). That combination
-// is exactly what deleted the shared Key Vault in GH #2749. It is safe ONLY
+// GUARD: this module deploys into the SHARED analyticsResourceGroupName, but
+// main.bicep is wrapped in a per-branch Deployment Stack for branch deploys
+// (see azure-deploy.sh). A stack owns -- and on teardown DELETES -- every
+// resource its template creates in ANY resource group, which is how a branch
+// teardown once deleted the shared Key Vault. It is safe ONLY
 // because createAlerts is wired to `ghaEnvironment == 'Main-Gov'`
 // (reusable-deploy.yml), so this module never actually instantiates for a
 // branch deploy, and Main-Gov itself is never stacked. Before changing
@@ -246,8 +247,8 @@ resource dataflowsFunctionSubnetExisting 'Microsoft.Network/virtualNetworks/subn
 // assignments) and the SQL managed identity are deployed separately by
 // app-shared-setup.bicep — always a plain (non-stack) deployment, before this
 // template runs, because they are genuinely shared across main and every
-// branch (CAMS-760, Option E / Slice 2; see app-shared-setup.bicep for why).
-// This template references them by the name/id strings passed in as params.
+// branch (see app-shared-setup.bicep for why). This template references them
+// by the name/id strings passed in as params.
 //
 // This does NOT mean every module below is RG-local: the webapp/api/dataflows
 // private endpoints (into the shared network RG) and the two SQL vnet-rule
@@ -257,19 +258,9 @@ resource dataflowsFunctionSubnetExisting 'Microsoft.Network/virtualNetworks/subn
 // template because each one is named using this branch's own stackName-derived
 // value (webappName/apiFunctionName/dataflowsFunctionName, further disambiguated
 // by uniqueString(subnetId) for the SQL vnet rules) — so a branch's own app
-// stack owning and deleting them on teardown is the intended behavior, not the
-// GH #2749 bug shape. Only resources with a FIXED, shared name (not derived
-// from this branch's stackName) must live outside this stack, as the Key
-// Vault and SQL managed identity do above.
-//
-// The webapp/api/dataflows private DNS zone's vnet link is another instance
-// of that same stackName-derived shape: the zone itself (privateDnsZoneName,
-// a fixed shared name) is created in app-shared-setup.bicep, but its link
-// (privateDnsZoneName-vnet-link-${stackName}) is unique per branch and
-// meaningless once that branch's VNet is deleted. Creating it here, inside
-// this branch's stack, makes it stack-managed and self-cleaning on branch
-// teardown -- matching the private-endpoint precedent above -- instead of
-// requiring az-delete-branch-resources.sh to delete it by hand.
+// stack deleting them on teardown is the intended behavior. The rule: only
+// resources with a FIXED, shared name must live outside this stack, as the
+// Key Vault and SQL managed identity do above.
 module ustpWebappDnsZoneLink './lib/network/vnet-links.bicep' = {
   name: '${stackName}-webapp-dns-zone-link-module'
   scope: resourceGroup(privateDnsZoneSubscriptionId, privateDnsZoneResourceGroup)
@@ -307,8 +298,8 @@ module ustpWebappDnsZoneLink './lib/network/vnet-links.bicep' = {
 // the entire deployment with ParentResourceNotFound. USTP hits exactly that:
 // its ADO pipeline never runs app-shared-setup.bicep (which bootstraps this
 // zone on Flexion) and passes deployDns=false, so the zone has never existed
-// there and USTP staging could not deploy at all (confirmed live 2026-08-21).
-// Skipping a link into a zone that does not exist strands nobody: with no
+// there and USTP staging could not deploy at all. Skipping a link into a zone
+// that does not exist strands nobody: with no
 // zone there is no privatelink A record for anything to resolve against, so
 // every consumer in that environment is resolving the SQL FQDN publicly
 // already. The rationale above only binds where the zone is actually present.
@@ -323,25 +314,12 @@ module ustpSqlDnsZoneLink './lib/network/vnet-links.bicep' = if (sqlDnsZoneExist
   }
 }
 
-// Main-only VNet peering connecting main's own VNet to the shared SQL
-// Private Link hub (Goal 2 of cams-vwsp3). Purely additive network
-// connectivity -- it does not change how main currently reaches SQL
-// (sql-vnet-rule.bicep / the per-branch/main SQL Private Endpoint modules in
-// backend-api-deploy.bicep and dataflows-resource-deploy.bicep are untouched
-// and still what main actually uses); actually migrating main to route
-// through the hub's Private Endpoint instead is a later goal. This module
-// call declares ONLY main's side of the bidirectional peering (see
-// vnet-peering.bicep's header for why one module call is one side, not
-// both).
-//
-// Main owns BOTH sides of its own peering, declared as two separately-scoped
-// modules here. sql-hub.bicep used to create the hub side via a
-// spokeVirtualNetworks array onboarded by "append an entry and re-run", which
-// meant onboarding main redeployed the shared Private Endpoint every other
-// environment depends on. Each spoke owning its own peering keeps one
-// environment's deploy from touching anything another environment needs --
-// branches already work this way via azure-deploy-network.sh, which creates
-// both sides as its own targeted per-branch deployments.
+// Connects main's VNet to the shared SQL Private Link hub. Purely additive:
+// main still reaches SQL through its existing path, and migrating it onto the
+// hub's endpoint is a separate operation. Main owns BOTH sides of its own
+// peering, declared as two separately-scoped modules here -- one module call
+// is one side (see vnet-peering.bicep's header) -- so onboarding a spoke never
+// redeploys the shared endpoint every other environment depends on.
 module mainHubPeering './lib/network/vnet-peering.bicep' = if (createMainHubPeering) {
   name: '${stackName}-main-hub-peering-module'
   scope: resourceGroup(networkResourceGroupName)
