@@ -1,8 +1,8 @@
 # GitHub Actions Workflow Analysis
 
 ## Summary
-- **Total Workflows**: 31
-- **Main Workflows**: 14
+- **Total Workflows**: 32
+- **Main Workflows**: 15
 - **Reusable Workflows**: 17
 
 ## Legend
@@ -1076,6 +1076,29 @@ flowchart LR
     class deploy_security_scan_storage_yml_deploy_storage job
 ```
 
+#### Deploy SQL Private Link Hub
+
+Manual execution of `deploy-sql-hub.yml`
+
+```mermaid
+flowchart LR
+    trigger_workflow_dispatch(["workflow_dispatch"])
+    deploy_sql_hub_yml["Deploy SQL Private Link Hub"]
+    deploy_sql_hub_yml_deploy_sql_hub["Deploy SQL Private Link Hub"]
+
+    trigger_workflow_dispatch --> deploy_sql_hub_yml
+    deploy_sql_hub_yml --> deploy_sql_hub_yml_deploy_sql_hub
+
+    classDef reusable fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000000
+    classDef mainWorkflow fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000000
+    classDef trigger fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000000
+    classDef job fill:#f1f8e9,stroke:#33691e,stroke-width:1px,color:#000000
+
+    class trigger_workflow_dispatch trigger
+    class deploy_sql_hub_yml mainWorkflow
+    class deploy_sql_hub_yml_deploy_sql_hub job
+```
+
 #### Stand Alone E2E Test Runs
 
 Manual execution of `e2e-test.yml`
@@ -1234,15 +1257,8 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    trigger_schedule(["schedule"])
-    build_playwright_msedge_image_yml["Build Playwright msedge Image"]
-    azure_remove_branch_yml["Clean up Flexion Azure Resources"]
-    prune_e2e_image_cache_yml["Prune E2E Image Cache"]
-    refresh_e2e_base_images_yml["Refresh E2E Base Image Cache"]
-    constrained_test_report_yml["Constrained Test Report"]
-    build_azure_cli_image_yml["Build Custom Azure CLI Runner Image"]
-    dast_scan_yml["Stand Alone DAST Scan"]
     trigger_workflow_dispatch(["workflow_dispatch"])
+    deploy_sql_hub_yml["Deploy SQL Private Link Hub"]
     build_playwright_msedge_image_yml["Build Playwright msedge Image"]
     deploy_security_scan_storage_yml["Deploy Security Scan Storage"]
     deploy_pages_yml["Deploy GitHub Pages"]
@@ -1256,6 +1272,14 @@ flowchart LR
     build_azure_cli_image_yml["Build Custom Azure CLI Runner Image"]
     dast_scan_yml["Stand Alone DAST Scan"]
     update_dependencies_yml["NPM Package Updates"]
+    trigger_schedule(["schedule"])
+    build_playwright_msedge_image_yml["Build Playwright msedge Image"]
+    azure_remove_branch_yml["Clean up Flexion Azure Resources"]
+    prune_e2e_image_cache_yml["Prune E2E Image Cache"]
+    refresh_e2e_base_images_yml["Refresh E2E Base Image Cache"]
+    constrained_test_report_yml["Constrained Test Report"]
+    build_azure_cli_image_yml["Build Custom Azure CLI Runner Image"]
+    dast_scan_yml["Stand Alone DAST Scan"]
     trigger_push(["push"])
     build_playwright_msedge_image_yml["Build Playwright msedge Image"]
     deploy_pages_yml["Deploy GitHub Pages"]
@@ -1267,13 +1291,7 @@ flowchart LR
     trigger_workflow_run(["workflow_run"])
     slack_notification_yml["slack-notification"]
 
-    trigger_schedule --> build_playwright_msedge_image_yml
-    trigger_schedule --> azure_remove_branch_yml
-    trigger_schedule --> prune_e2e_image_cache_yml
-    trigger_schedule --> refresh_e2e_base_images_yml
-    trigger_schedule --> constrained_test_report_yml
-    trigger_schedule --> build_azure_cli_image_yml
-    trigger_schedule --> dast_scan_yml
+    trigger_workflow_dispatch --> deploy_sql_hub_yml
     trigger_workflow_dispatch --> build_playwright_msedge_image_yml
     trigger_workflow_dispatch --> deploy_security_scan_storage_yml
     trigger_workflow_dispatch --> deploy_pages_yml
@@ -1287,6 +1305,13 @@ flowchart LR
     trigger_workflow_dispatch --> build_azure_cli_image_yml
     trigger_workflow_dispatch --> dast_scan_yml
     trigger_workflow_dispatch --> update_dependencies_yml
+    trigger_schedule --> build_playwright_msedge_image_yml
+    trigger_schedule --> azure_remove_branch_yml
+    trigger_schedule --> prune_e2e_image_cache_yml
+    trigger_schedule --> refresh_e2e_base_images_yml
+    trigger_schedule --> constrained_test_report_yml
+    trigger_schedule --> build_azure_cli_image_yml
+    trigger_schedule --> dast_scan_yml
     trigger_push --> build_playwright_msedge_image_yml
     trigger_push --> deploy_pages_yml
     trigger_push --> continuous_deployment_yml
@@ -1297,12 +1322,13 @@ flowchart LR
     classDef mainWorkflow fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000000
     classDef trigger fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000000
 
-    class trigger_schedule trigger
     class trigger_workflow_dispatch trigger
+    class trigger_schedule trigger
     class trigger_push trigger
     class trigger_delete trigger
     class trigger_pull_request trigger
     class trigger_workflow_run trigger
+    class deploy_sql_hub_yml mainWorkflow
     class build_playwright_msedge_image_yml mainWorkflow
     class deploy_security_scan_storage_yml mainWorkflow
     class deploy_pages_yml mainWorkflow
@@ -1322,6 +1348,9 @@ flowchart LR
 ## Workflow Details
 
 ### Main Workflows
+- **Deploy SQL Private Link Hub** (`deploy-sql-hub.yml`)
+  - Triggers: workflow_dispatch
+  - Jobs: 1
 - **Build Playwright msedge Image** (`build-playwright-msedge-image.yml`)
   - Triggers: schedule, workflow_dispatch, push
   - Jobs: 1
