@@ -22,6 +22,8 @@ import {
   normalizeGenerationalSuffix,
   stripNamePunctuation,
   normalizeNameForMatching,
+  jaccardSimilarity,
+  normalizeAddressLine,
 } from './trustee-match.helpers';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
@@ -82,9 +84,13 @@ const makeTrustee = (overrides: Partial<Trustee> = {}): Trustee => ({
   ...overrides,
 });
 
-const makeDxtrTrustee = (cityStateZip?: string): DxtrTrusteeParty => ({
+// address1's default is intentionally kept equal to makeTrustee's default address1 ('123 Main
+// St') so a test that doesn't care about the address dimension (only passing cityStateZip) still
+// scores a full address match rather than an incidental partial one - callers that DO care about
+// the address dimension should pass address1 explicitly rather than relying on this coincidence.
+const makeDxtrTrustee = (cityStateZip?: string, address1 = '123 Main St'): DxtrTrusteeParty => ({
   fullName: 'John Doe',
-  legacy: cityStateZip ? { cityStateZipCountry: cityStateZip } : undefined,
+  legacy: cityStateZip ? { cityStateZipCountry: cityStateZip, address1 } : undefined,
 });
 
 const makeEvent = (
@@ -583,166 +589,196 @@ describe('matchTrusteeByName', () => {
 
 describe('calculateAddressScore', () => {
   test.each([
+    ['address lines, city, state, and zip all match exactly', '123 Main St', '123 Main St', 100],
+    // addressLinesScore=0 (50%) + zipScore=100 (30%) + cityStateScore=100 (20%) = 50 - a complete
+    // address-line mismatch caps the total well below what locale-only agreement can reach alone.
     [
-      'all fields match (city, state, zipCode)',
-      'New York, NY 10001',
-      { city: 'New York', state: 'NY', zipCode: '10001' },
+      'city/state/zip match but address lines are completely different',
+      '123 Main St',
+      '456 Oak Ave',
+      50,
+    ],
+    // normalizeAddressLine expands "St" -> "street" on the DXTR side, so both sides normalize to
+    // the identical string "123 main street" - addressLinesScore=100 (50%) + zipScore=100 (30%)
+    // + cityStateScore=100 (20%) = 100
+    [
+      'an abbreviation and its expanded form are treated as an exact address-line match',
+      '123 Main St',
+      '123 Main Street',
       100,
     ],
+  ])('should return correct score when %s', (_desc, dxtrAddress1, camsAddress1, expected) => {
+    const dxtrAddress: LegacyAddress = {
+      cityStateZipCountry: 'New York, NY 10001',
+      address1: dxtrAddress1,
+    };
+    const camsAddress: Address = {
+      city: 'New York',
+      state: 'NY',
+      zipCode: '10001',
+      address1: camsAddress1,
+      countryCode: 'US',
+    };
+
+    expect(calculateAddressScore(dxtrAddress, camsAddress)).toBe(expected);
+  });
+
+  // Regression coverage: bigram similarity alone cannot distinguish a single-digit house/suite
+  // number, since generateBigrams drops any token shorter than 2 characters. Without the
+  // numeric-token handling in calculateAddressScore's address-lines component, two different
+  // single-digit suite numbers in the same building would score a false 100 here. Multi-digit
+  // numbers already clear generateBigrams's length floor but are still diluted by the word
+  // bigrams around them, so a mismatch there must also score below a true match. Expected values
+  // are exact (not just "below 100") so this pins the fix's magnitude, not just its direction -
+  // a future change that weakens the numeric-token penalty should fail these.
+  test.each([
     [
-      'city and state match but zipCode differs',
-      'New York, NY 10001',
-      { city: 'New York', state: 'NY', zipCode: '10002' },
-      40,
+      'a single-digit suite number mismatch in an otherwise-identical address',
+      '123 Main St Suite 4',
+      '123 Main St Suite 5',
+      84,
     ],
+    ['a single-digit house number mismatch', '4 Main St', '5 Main St', 70],
     [
-      'zip matches but city differs',
-      'Somewhere, NY 10001',
-      { city: 'New York', state: 'NY', zipCode: '10001' },
-      60,
+      'a multi-digit suite number mismatch, even though bigram overlap alone is high',
+      '100 Main Street Suite 100',
+      '100 Main Street Suite 200',
+      86,
     ],
+    // Asymmetric case: a numeric token present on only one side scores a real partial penalty
+    // rather than being ignored (see calculateNumericTokenScore's doc comment) - this is the
+    // shape a missing suite number in DXTR or CAMS data actually produces.
     [
-      'only state matches',
-      'New York, NY 10001',
-      { city: 'Brooklyn', state: 'NY', zipCode: '11201' },
-      30,
+      'a numeric token present on only one side (missing suite number)',
+      '123 Main St Suite 4',
+      '123 Main St',
+      79,
     ],
+  ])('should score exactly %i for %s', (_desc, dxtrAddress1, camsAddress1, expected) => {
+    const dxtrAddress: LegacyAddress = {
+      cityStateZipCountry: 'New York, NY 10001',
+      address1: dxtrAddress1,
+    };
+    const camsAddress: Address = {
+      city: 'New York',
+      state: 'NY',
+      zipCode: '10001',
+      address1: camsAddress1,
+      countryCode: 'US',
+    };
+
+    expect(calculateAddressScore(dxtrAddress, camsAddress)).toBe(expected);
+  });
+
+  test('should treat a number and its leading-zero-padded form as an exact numeric match', () => {
+    const dxtrAddress: LegacyAddress = {
+      cityStateZipCountry: 'New York, NY 10001',
+      address1: '123 Main St Suite 4',
+    };
+    const camsAddress: Address = {
+      city: 'New York',
+      state: 'NY',
+      zipCode: '10001',
+      address1: '123 Main St Suite 04',
+      countryCode: 'US',
+    };
+
+    expect(calculateAddressScore(dxtrAddress, camsAddress)).toBe(100);
+  });
+
+  // Neither side has a numeric token at all, so calculateNumericTokenScore returns null and
+  // calculateAddressScore must fall back to bigram similarity alone for the address-lines
+  // component - if that fallback were broken (e.g. a missing numeric score defaulted to 0
+  // instead of being excluded), this would score 50, not 100, since bigram similarity alone is
+  // already a perfect match once "St" expands to "Street".
+  test('should fall back to bigram-only scoring when neither address line has a numeric token', () => {
+    const dxtrAddress: LegacyAddress = {
+      cityStateZipCountry: 'New York, NY 10001',
+      address1: 'Main St',
+    };
+    const camsAddress: Address = {
+      city: 'New York',
+      state: 'NY',
+      zipCode: '10001',
+      address1: 'Main Street',
+      countryCode: 'US',
+    };
+
+    expect(calculateAddressScore(dxtrAddress, camsAddress)).toBe(100);
+  });
+
+  test('should score zip match + address line mismatch + city mismatch below a full match', () => {
+    const dxtrAddress: LegacyAddress = {
+      cityStateZipCountry: 'Somewhere, NY 10001',
+      address1: '123 Main St',
+    };
+    const camsAddress: Address = {
+      city: 'New York',
+      state: 'NY',
+      zipCode: '10001',
+      address1: '456 Oak Ave',
+      countryCode: 'US',
+    };
+
+    // addressLinesScore=0 (50%) + zipScore=100 (30%) + cityStateScore~15.38 (20%) ~= 33.08,
+    // rounded to the nearest integer
+    expect(calculateAddressScore(dxtrAddress, camsAddress)).toBe(33);
+  });
+
+  test('should return 0 when address lines, city, state, and zip all differ', () => {
+    const dxtrAddress: LegacyAddress = {
+      cityStateZipCountry: 'New York, NY 10001',
+      address1: '123 Main St',
+    };
+    const camsAddress: Address = {
+      city: 'Los Angeles',
+      state: 'CA',
+      zipCode: '90001',
+      address1: '456 Oak Ave',
+      countryCode: 'US',
+    };
+
+    expect(calculateAddressScore(dxtrAddress, camsAddress)).toBe(0);
+  });
+
+  test('should be case-insensitive', () => {
+    const dxtrAddress: LegacyAddress = {
+      cityStateZipCountry: 'NEW YORK, ny 10001',
+      address1: '123 MAIN ST',
+    };
+    const camsAddress: Address = {
+      city: 'new york',
+      state: 'NY',
+      zipCode: '10001',
+      address1: '123 main st',
+      countryCode: 'US',
+    };
+
+    expect(calculateAddressScore(dxtrAddress, camsAddress)).toBe(100);
+  });
+
+  test.each([
+    ['DXTR address is undefined', undefined, 0],
     [
-      'no fields match',
-      'New York, NY 10001',
-      { city: 'Los Angeles', state: 'CA', zipCode: '90001' },
+      'cityStateZipCountry is malformed',
+      { cityStateZipCountry: 'Invalid Format', address1: '123 Main St' },
       0,
     ],
-  ])('should return correct score when %s', (_desc, cityStateZipCountry, camsFields, expected) => {
-    const dxtrAddress: LegacyAddress = {
-      cityStateZipCountry,
-      address1: '123 Main St',
-    };
-
-    const camsAddress: Address = {
-      city: camsFields.city,
-      state: camsFields.state,
-      zipCode: camsFields.zipCode,
-      address1: '456 Different St',
-      countryCode: 'US',
-    };
-
-    const score = calculateAddressScore(dxtrAddress, camsAddress);
-    expect(score).toBe(expected);
-  });
-
-  test.each([
     [
-      'DXTR has a ZIP+4 extension CAMS lacks, same base ZIP5',
-      'New York, NY 10001-1234',
-      '10001',
+      'cityStateZipCountry has a country suffix',
+      { cityStateZipCountry: 'New York, NY 10001 US', address1: '123 Main St' },
       100,
     ],
-    [
-      'CAMS has a ZIP+4 extension DXTR lacks, same base ZIP5',
-      'New York, NY 10001',
-      '10001-5678',
-      100,
-    ],
-    [
-      'both sides have a ZIP+4 extension but they differ, same base ZIP5',
-      'New York, NY 10001-1234',
-      '10001-5678',
-      100,
-    ],
-    [
-      'the base ZIP5 itself genuinely differs despite a ZIP+4 on one side',
-      'New York, NY 10002-1234',
-      '10001',
-      40,
-    ],
-  ])('should return correct score when %s', (_desc, cityStateZipCountry, camsZipCode, expected) => {
-    const dxtrAddress: LegacyAddress = {
-      cityStateZipCountry,
-      address1: '123 Main St',
-    };
-
-    const camsAddress: Address = {
-      city: 'New York',
-      state: 'NY',
-      zipCode: camsZipCode,
-      address1: '456 Different St',
-      countryCode: 'US',
-    };
-
-    const score = calculateAddressScore(dxtrAddress, camsAddress);
-    expect(score).toBe(expected);
-  });
-
-  test.each([
-    ['case-insensitive', 'NEW YORK, ny 10001', 'new york', 100],
-    ['cityStateZipCountry is malformed', 'Invalid Format', 'New York', 0],
-    ['cityStateZipCountry has a country suffix', 'New York, NY 10001 US', 'New York', 100],
-  ])('should handle when %s', (_desc, cityStateZipCountry, city, expected) => {
-    const dxtrAddress: LegacyAddress = {
-      cityStateZipCountry,
-      address1: '123 Main St',
-    };
-
-    const camsAddress: Address = {
-      city,
-      state: 'NY',
-      zipCode: '10001',
-      address1: '456 Different St',
-      countryCode: 'US',
-    };
-
-    const score = calculateAddressScore(dxtrAddress, camsAddress);
-    expect(score).toBe(expected);
-  });
-
-  test('should return 0 when DXTR address is undefined', () => {
+  ])('should handle when %s', (_desc, dxtrAddress, expected) => {
     const camsAddress: Address = {
       city: 'New York',
       state: 'NY',
       zipCode: '10001',
-      address1: '456 Different St',
-      countryCode: 'US',
-    };
-
-    const score = calculateAddressScore(undefined, camsAddress);
-    expect(score).toBe(0);
-  });
-
-  test('should return 0 when cityStateZipCountry is malformed', () => {
-    const dxtrAddress: LegacyAddress = {
-      cityStateZipCountry: 'Invalid Format',
       address1: '123 Main St',
-    };
-
-    const camsAddress: Address = {
-      city: 'New York',
-      state: 'NY',
-      zipCode: '10001',
-      address1: '456 Different St',
       countryCode: 'US',
     };
 
-    const score = calculateAddressScore(dxtrAddress, camsAddress);
-    expect(score).toBe(0);
-  });
-
-  test('should handle cityStateZipCountry with country suffix', () => {
-    const dxtrAddress: LegacyAddress = {
-      cityStateZipCountry: 'New York, NY 10001 US',
-      address1: '123 Main St',
-    };
-
-    const camsAddress: Address = {
-      city: 'New York',
-      state: 'NY',
-      zipCode: '10001',
-      address1: '456 Different St',
-      countryCode: 'US',
-    };
-
-    const score = calculateAddressScore(dxtrAddress, camsAddress);
-    expect(score).toBe(100);
+    expect(calculateAddressScore(dxtrAddress, camsAddress)).toBe(expected);
   });
 
   test.each([
@@ -754,17 +790,155 @@ describe('calculateAddressScore', () => {
       cityStateZipCountry,
       address1: '123 Main St',
     };
-
     const camsAddress: Address = {
       city: 'Corinth',
       state: 'MS',
       zipCode: '38834',
-      address1: '456 Different St',
+      address1: '123 Main St',
       countryCode: 'US',
     };
 
-    const score = calculateAddressScore(dxtrAddress, camsAddress);
-    expect(score).toBe(100);
+    expect(calculateAddressScore(dxtrAddress, camsAddress)).toBe(100);
+  });
+
+  test.each([
+    ['DXTR has a ZIP+4 extension CAMS lacks, same base ZIP5', 'New York, NY 10001-1234', '10001'],
+    ['CAMS has a ZIP+4 extension DXTR lacks, same base ZIP5', 'New York, NY 10001', '10001-5678'],
+    [
+      'both sides have a ZIP+4 extension but they differ, same base ZIP5',
+      'New York, NY 10001-1234',
+      '10001-5678',
+    ],
+  ])('should return 100 when %s', (_desc, cityStateZipCountry, camsZipCode) => {
+    const dxtrAddress: LegacyAddress = {
+      cityStateZipCountry,
+      address1: '123 Main St',
+    };
+    const camsAddress: Address = {
+      city: 'New York',
+      state: 'NY',
+      zipCode: camsZipCode,
+      address1: '123 Main St',
+      countryCode: 'US',
+    };
+
+    expect(calculateAddressScore(dxtrAddress, camsAddress)).toBe(100);
+  });
+
+  test('should score lower when the base ZIP5 genuinely differs despite a ZIP+4 on one side', () => {
+    const dxtrAddress: LegacyAddress = {
+      cityStateZipCountry: 'New York, NY 10002-1234',
+      address1: '123 Main St',
+    };
+    const camsAddress: Address = {
+      city: 'New York',
+      state: 'NY',
+      zipCode: '10001',
+      address1: '123 Main St',
+      countryCode: 'US',
+    };
+
+    // addressLinesScore=100 (50%) + zipScore=0 (30%) + cityStateScore=100 (20%) = 70
+    expect(calculateAddressScore(dxtrAddress, camsAddress)).toBe(70);
+  });
+});
+
+describe('jaccardSimilarity', () => {
+  test('should return 100 for identical bigram sets', () => {
+    expect(jaccardSimilarity(['ab', 'bc', 'cd'], ['ab', 'bc', 'cd'])).toBe(100);
+  });
+
+  test('should return 0 for completely disjoint bigram sets', () => {
+    expect(jaccardSimilarity(['ab', 'bc'], ['xy', 'yz'])).toBe(0);
+  });
+
+  test('should return a partial score proportional to overlap', () => {
+    // intersection {ab, bc} = 2, union {ab, bc, cd, ef} = 4 -> 2/4 = 50
+    expect(jaccardSimilarity(['ab', 'bc', 'cd'], ['ab', 'bc', 'ef'])).toBe(50);
+  });
+
+  test('should return 0 when both sets are empty', () => {
+    expect(jaccardSimilarity([], [])).toBe(0);
+  });
+
+  test('should return 0 when only one set is empty', () => {
+    expect(jaccardSimilarity(['ab'], [])).toBe(0);
+    expect(jaccardSimilarity([], ['ab'])).toBe(0);
+  });
+
+  test('should treat duplicate bigrams within a set as a single member', () => {
+    // intersection {ab} = 1, union {ab, bc} = 2 -> 1/2 = 50, duplicates don't inflate either set
+    expect(jaccardSimilarity(['ab', 'ab', 'bc'], ['ab'])).toBe(50);
+  });
+});
+
+describe('normalizeAddressLine', () => {
+  test('should lowercase and strip punctuation', () => {
+    expect(normalizeAddressLine('123 Main St., Suite #4')).toBe('123 main street suite 4');
+  });
+
+  test.each([
+    ['St', 'Street'],
+    ['St.', 'Street'],
+    ['Ave', 'Avenue'],
+    ['Blvd', 'Boulevard'],
+    ['Dr', 'Drive'],
+    ['Rd', 'Road'],
+    ['Ln', 'Lane'],
+    ['Ct', 'Court'],
+    ['Pl', 'Place'],
+    ['Ste', 'Suite'],
+    ['Apt', 'Apartment'],
+    ['Fl', 'Floor'],
+    ['Bldg', 'Building'],
+  ])('should expand street/unit abbreviation %s to %s', (abbreviation, expanded) => {
+    const result = normalizeAddressLine(`123 Main ${abbreviation}`);
+    expect(result).toBe(`123 main ${expanded.toLowerCase()}`);
+  });
+
+  test.each([
+    ['N', 'North'],
+    ['S', 'South'],
+    ['E', 'East'],
+    ['W', 'West'],
+  ])('should expand standalone directional %s to %s', (abbreviation, expanded) => {
+    const result = normalizeAddressLine(`123 ${abbreviation} Main Street`);
+    expect(result).toBe(`123 ${expanded.toLowerCase()} main street`);
+  });
+
+  test('should expand a # unit marker to suite', () => {
+    expect(normalizeAddressLine('123 Main Street #4')).toBe('123 main street suite 4');
+  });
+
+  test.each([
+    ['Suite', 'suite'],
+    ['Apt', 'apartment'],
+    ['Floor', 'floor'],
+    ['Unit', 'unit'],
+    ['Room', 'room'],
+  ])(
+    'should not duplicate the unit designator when # follows an already-spelled-out %s',
+    (spelled, expanded) => {
+      expect(normalizeAddressLine(`123 Main St., ${spelled} #4`)).toBe(
+        `123 main street ${expanded} 4`,
+      );
+    },
+  );
+
+  test('should expand a leading # with no preceding unit designator to suite', () => {
+    expect(normalizeAddressLine('#4 Main St')).toBe('suite 4 main street');
+  });
+
+  test('should collapse repeated whitespace', () => {
+    expect(normalizeAddressLine('123   Main    Street')).toBe('123 main street');
+  });
+
+  test('should return an empty string for undefined input', () => {
+    expect(normalizeAddressLine(undefined)).toBe('');
+  });
+
+  test('should return an empty string for blank input', () => {
+    expect(normalizeAddressLine('   ')).toBe('');
   });
 });
 
@@ -875,35 +1049,74 @@ describe('calculateChapterScore', () => {
     ['chapter matches after normalization', '7', '07'],
     ['chapter with subchapter matches', '11', '11-subchapter-v'],
   ])('should return 100 when %s', (_desc, appointmentChapter, queryChapter) => {
-    const appointments = [makeAppointment({ chapter: appointmentChapter, status: 'active' })];
-    const score = calculateChapterScore(queryChapter, appointments);
+    const appointments = [
+      makeAppointment({
+        courtId: '081',
+        divisionCode: '1',
+        chapter: appointmentChapter,
+        status: 'active',
+      }),
+    ];
+    const score = calculateChapterScore('081', '1', queryChapter, appointments);
     expect(score).toBe(100);
   });
 
   test('should return 0 when no matching chapter', () => {
-    const appointments = [makeAppointment({ chapter: '11', status: 'active' })];
-    const score = calculateChapterScore('7', appointments);
+    const appointments = [
+      makeAppointment({ courtId: '081', divisionCode: '1', chapter: '11', status: 'active' }),
+    ];
+    const score = calculateChapterScore('081', '1', '7', appointments);
     expect(score).toBe(0);
   });
 
   test('should return 0 when matching appointment is not active', () => {
-    const appointments = [makeAppointment({ chapter: '7', status: 'inactive' })];
-    const score = calculateChapterScore('7', appointments);
+    const appointments = [
+      makeAppointment({ courtId: '081', divisionCode: '1', chapter: '7', status: 'inactive' }),
+    ];
+    const score = calculateChapterScore('081', '1', '7', appointments);
     expect(score).toBe(0);
   });
 
   test('should return 0 when appointments array is empty', () => {
-    const score = calculateChapterScore('7', []);
+    const score = calculateChapterScore('081', '1', '7', []);
     expect(score).toBe(0);
   });
 
-  test('should return 100 when multiple appointments and one matches', () => {
+  test('should return 100 when multiple division-matching appointments and one matches chapter', () => {
     const appointments = [
-      makeAppointment({ chapter: '11', status: 'active' }),
-      makeAppointment({ chapter: '7', status: 'active' }),
-      makeAppointment({ chapter: '13', status: 'active' }),
+      makeAppointment({ courtId: '081', divisionCode: '1', chapter: '11', status: 'active' }),
+      makeAppointment({ courtId: '081', divisionCode: '1', chapter: '7', status: 'active' }),
+      makeAppointment({ courtId: '081', divisionCode: '1', chapter: '13', status: 'active' }),
     ];
-    const score = calculateChapterScore('7', appointments);
+    const score = calculateChapterScore('081', '1', '7', appointments);
+    expect(score).toBe(100);
+  });
+
+  test('should return 0 when the trustee has no appointment covering the case division, even if a different-division appointment matches the case chapter', () => {
+    const appointments = [
+      makeAppointment({ courtId: '081', divisionCode: '2', chapter: '7', status: 'active' }),
+    ];
+    const score = calculateChapterScore('081', '1', '7', appointments);
+    expect(score).toBe(0);
+  });
+
+  test('should return 0 when a division-matching appointment has a different chapter, even though an unrelated-division appointment matches the case chapter', () => {
+    const appointments = [
+      // Covers the case's division (081/1), but a different chapter (11).
+      makeAppointment({ courtId: '081', divisionCode: '1', chapter: '11', status: 'active' }),
+      // Matches the case's chapter (7), but an unrelated division (2) — must not count.
+      makeAppointment({ courtId: '081', divisionCode: '2', chapter: '7', status: 'active' }),
+    ];
+    const score = calculateChapterScore('081', '1', '7', appointments);
+    expect(score).toBe(0);
+  });
+
+  test('should return 100 when a division-matching appointment also matches chapter, even alongside an unrelated-division appointment', () => {
+    const appointments = [
+      makeAppointment({ courtId: '081', divisionCode: '1', chapter: '7', status: 'active' }),
+      makeAppointment({ courtId: '081', divisionCode: '2', chapter: '13', status: 'active' }),
+    ];
+    const score = calculateChapterScore('081', '1', '7', appointments);
     expect(score).toBe(100);
   });
 });
@@ -918,7 +1131,13 @@ describe('calculateCandidateScore', () => {
   test('should return totalScore 100 when all scores are 100', () => {
     const score = calculateCandidateScore(
       context,
-      { ...makeDxtrTrustee('New York, NY 10001'), firstName: 'John', lastName: 'Doe' },
+      // address1 explicit (matches makeTrustee()'s default) so addressScore=100 is visibly
+      // intentional here, not a coincidence of two fixtures' defaults happening to agree.
+      {
+        ...makeDxtrTrustee('New York, NY 10001', '123 Main St'),
+        firstName: 'John',
+        lastName: 'Doe',
+      },
       '081',
       '1',
       '7',
@@ -960,20 +1179,26 @@ describe('calculateCandidateScore', () => {
       [makeAppointment({ chapter: '7', courtId: '081', divisionCode: '2', status: 'active' })],
     );
 
-    expect(score.addressScore).toBe(40); // City + state match (different zip)
+    // addressLinesScore=100 (identical address1, 50%) + zipScore=0 (mismatch, 30%) +
+    // cityStateScore=100 (match, 20%) = 70
+    expect(score.addressScore).toBe(70); // Address lines + city/state match, zip differs
     expect(score.nameScore).toBe(100); // First and last name match
     expect(score.districtDivisionScore).toBe(50); // Same court, different division
-    expect(score.chapterScore).toBe(100); // Chapter matches
+    // The only appointment here (division '2') doesn't cover the case's division ('1'), so
+    // chapter cannot be credited even though its chapter value equals the case's chapter.
+    expect(score.chapterScore).toBe(0);
     // phone/email null (no phone/email on either side) -> applicableWeight = 0.9
-    // weightedSum = 40*0.05 + 100*0.25 + 50*0.3 + 100*0.3 = 2 + 25 + 15 + 30 = 72
-    // 72 / 0.9 = 80
-    expect(score.totalScore).toBeCloseTo(80, 10);
+    // weightedSum = 70*0.05 + 100*0.25 + 50*0.3 + 0*0.3 = 3.5 + 25 + 15 + 0 = 43.5
+    // 43.5 / 0.9 = 48.3333
+    expect(score.totalScore).toBeCloseTo(48.3333, 4);
   });
 
   test('should return totalScore ~5.56 when only address matches (phone/email null)', () => {
     const score = calculateCandidateScore(
       context,
-      makeDxtrTrustee('New York, NY 10001'), // No firstName/lastName - nameScore is 0
+      // address1 explicit (matches makeTrustee()'s default) so addressScore=100 below is
+      // visibly intentional, not a coincidence of two fixtures' defaults happening to agree.
+      makeDxtrTrustee('New York, NY 10001', '123 Main St'), // No firstName/lastName - nameScore is 0
       '082',
       '1',
       '11',
@@ -1012,7 +1237,9 @@ describe('calculateCandidateScore', () => {
     expect(score.totalScore).toBeCloseTo(33.3333, 4);
   });
 
-  test('should return totalScore ~33.33 when only chapter matches (phone/email null)', () => {
+  test('should return totalScore 0 when court differs, even though the case chapter equals the trustee appointment chapter', () => {
+    // A matching chapter value alone must NOT be creditable when no active appointment covers
+    // the case's court+division.
     const score = calculateCandidateScore(
       context,
       makeDxtrTrustee(), // No address, no firstName/lastName - nameScore is 0
@@ -1026,11 +1253,10 @@ describe('calculateCandidateScore', () => {
     expect(score.addressScore).toBe(0);
     expect(score.nameScore).toBe(0);
     expect(score.districtDivisionScore).toBe(0);
-    expect(score.chapterScore).toBe(100);
+    expect(score.chapterScore).toBe(0);
     // phone/email null -> applicableWeight = 0.9
-    // weightedSum = 0*0.05 + 0*0.25 + 0*0.3 + 100*0.3 = 30
-    // 30 / 0.9 = 33.3333
-    expect(score.totalScore).toBeCloseTo(33.3333, 4);
+    // weightedSum = 0*0.05 + 0*0.25 + 0*0.3 + 0*0.3 = 0
+    expect(score.totalScore).toBeCloseTo(0, 10);
   });
 
   test('should populate phoneScore/emailScore as null when DXTR has no phone/email', () => {
@@ -1601,27 +1827,40 @@ describe('resolveNameCollisionByScoring', () => {
   });
 
   test('does not resolve a single candidate at exactly the 75-point threshold (boundary: > not >=)', async () => {
-    // name=100 (25%), phone=100/email=0 (5%/5%), district=50/same-court-different-division
-    // (30%), chapter=100 (30%), address=0 (5%) => weighted total = exactly 75. meetsThreshold
-    // requires totalScore > FUZZY_MATCH_SCORE_THRESHOLD (75), so this must NOT auto-resolve.
+    // address=100 (5%), name=0/genuine mismatch (25%), phone=100/email=100 (5%/5%),
+    // district=100/chapter=100 (30%/30%) => weighted total = exactly 75. meetsThreshold requires
+    // totalScore > FUZZY_MATCH_SCORE_THRESHOLD (75), so this must NOT auto-resolve. district=100
+    // and chapter=100 must come from a single division+chapter-matching appointment, not two
+    // different ones, so this fixture's one appointment covers both.
     const event = makeEvent({
       courtId: '081',
       courtDivisionCode: '1',
       chapter: '7',
       dxtrTrustee: {
-        fullName: 'John Doe',
+        fullName: 'John Smith',
         firstName: 'John',
-        lastName: 'Doe',
-        legacy: { phone: '5555551234', email: 'dxtr@example.com' },
+        lastName: 'Smith',
+        legacy: {
+          address1: '123 Main St',
+          cityStateZipCountry: 'New York, NY 10001',
+          phone: '5555551234',
+          email: 'shared@example.com',
+        },
       },
     });
     const candidate = makeTrustee({
       trusteeId: 'trustee-1',
-      name: 'John Doe',
+      name: 'John Doe', // genuine last-name mismatch vs. DXTR's "Smith" => nameScore 0
       public: {
-        address: undefined,
+        address: {
+          address1: '123 Main St',
+          city: 'New York',
+          state: 'NY',
+          zipCode: '10001',
+          countryCode: 'US',
+        },
         phone: { number: '5555551234' },
-        email: 'cams@example.com',
+        email: 'shared@example.com',
       },
     });
     const appointments = [
@@ -1630,7 +1869,7 @@ describe('resolveNameCollisionByScoring', () => {
         trusteeId: 'trustee-1',
         chapter: '7',
         courtId: '081',
-        divisionCode: '2', // same court, different division => districtDivisionScore 50
+        divisionCode: '1', // exact court+division+chapter match on this one record
       }),
     ];
 
@@ -1892,13 +2131,13 @@ describe('resolveNameCollisionByScoring', () => {
     expect(result.candidateScores).toHaveLength(1);
   });
 
-  test('does not auto-resolve when district/division and chapter scores each come from a different active appointment', async () => {
+  test('remains unresolved because chapterScore is scoped to the division-matching appointment', async () => {
     // Trustee holds two active appointments: one matches the case's division (different
     // chapter), the other matches the case's chapter (different division). Neither appointment
-    // alone matches court + division + chapter, so isAppointmentMatch is false for both — but
-    // districtDivisionScore and chapterScore are each computed independently via .some() across
-    // all appointments, so the combined score can still clear the auto-match threshold. This
-    // must fall through to 'unresolved' (human review) rather than auto-linking.
+    // alone matches court + division + chapter, so isAppointmentMatch is false for both, and
+    // chapterScore is 0 since the division-matching appointment's chapter differs from the
+    // case's. Guards the outcome at the resolveNameCollisionByScoring level, on top of
+    // calculateChapterScore's own unit coverage of the same scenario.
     const event = makeEvent({
       courtId: '081',
       courtDivisionCode: '2',

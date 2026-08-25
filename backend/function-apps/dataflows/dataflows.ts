@@ -27,6 +27,7 @@ import SyncOfficeStaff from './import/sync-office-staff';
 import SyncTrusteeCaseAppointments from './import/sync-trustee-case-appointments';
 import SyncTrusteeNotesMetrics from './metrics/sync-trustee-notes-metrics';
 import SyncTrusteeDueDateMetrics from './metrics/sync-trustee-due-date-metrics';
+import PollNotificationBounces from './metrics/poll-notification-bounces';
 import StaffAssignmentDownstream from './downstream/staff-assignment-downstream';
 import TrusteeAppointmentDownstream from './downstream/trustee-appointment-downstream';
 import TrusteeVerificationRemap from './trustee-verification-remap';
@@ -134,6 +135,7 @@ dataflows.register(
   BackfillTransferOrderTaskDate,
   BackfillConsolidationOrderTaskDate,
   BackfillTrusteeVerificationTaskDate,
+  PollNotificationBounces,
 );
 
 const registeredDataflows = dataflows.list().join(', ').replaceAll('-', '_');
@@ -143,6 +145,7 @@ const DEFAULT_DATAFLOWS = listDataflowNames(
   AcmsDailySync,
   CaseAssignmentEvent,
   CaseClosedEvent,
+  PollNotificationBounces,
   SyncCases,
   SyncDeletedCases,
   SyncOfficeStaff,
