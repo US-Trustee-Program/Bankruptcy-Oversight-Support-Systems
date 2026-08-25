@@ -17,15 +17,18 @@ set -euo pipefail
 # Scans every file in main.bicep's own stacked module tree, not just
 # main.bicep itself — the bug this guard exists to catch (a fixed-name,
 # cross-scope shared resource inside a per-branch stack) has already
-# reappeared once in a module main.bicep calls (acs-email.bicep's KV
-# secrets), not in main.bicep's own text.
+# reappeared once in a module main.bicep used to call (acs-email.bicep's KV
+# secrets). acs-email.bicep is no longer in this list because main.bicep no
+# longer calls it at all -- ACS is created solely by app-shared-setup.bicep
+# (always a plain, never-stacked deployment) for every environment now, not
+# just the shared dev tier, so a fixed secret/resource name there is safe by
+# construction, not just by an `if` condition this hook can't see.
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 TARGETS=(
   "$REPO_ROOT/ops/cloud-deployment/main.bicep"
   "$REPO_ROOT/ops/cloud-deployment/backend-api-deploy.bicep"
   "$REPO_ROOT/ops/cloud-deployment/dataflows-resource-deploy.bicep"
   "$REPO_ROOT/ops/cloud-deployment/frontend-webapp-deploy.bicep"
-  "$REPO_ROOT/ops/cloud-deployment/lib/email/acs-email.bicep"
   "$REPO_ROOT/ops/cloud-deployment/lib/monitoring-alerts/alert-action-group.bicep"
 )
 # Whenever main.bicep gains a NEW cross-scope module call (any module with

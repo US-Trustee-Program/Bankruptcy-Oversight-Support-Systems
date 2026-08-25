@@ -593,6 +593,309 @@ describe('SyncTrusteeCaseAppointments', () => {
       });
     });
 
+    describe('sentinel professional code', () => {
+      test.each([['00000'], ['99999']])(
+        'skips an event with profCode %s and no name/address at all',
+        async (profCode) => {
+          const events: TrusteeAppointmentSyncEvent[] = [
+            { ...makeEvent('case-001', ''), dxtrTrustee: { fullName: '' }, profCode },
+          ];
+
+          const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+            SyncTrusteeCaseAppointments.createDeps(context),
+            events,
+          );
+
+          expect(trusteeMatchHelpers.matchTrusteeByName).not.toHaveBeenCalled();
+          expect(mockVerificationRepo.upsertVerification).not.toHaveBeenCalled();
+          expect(scenarioDistribution.emptyDemographicsSkippedCount).toBe(1);
+        },
+      );
+
+      test.each([['00000'], ['99999']])(
+        // Regression: isBogusTrusteeName's lastName-then-fullName fallback must use
+        // normalizeName (not plain truthiness) — a whitespace-only lastName is truthy in JS and
+        // would otherwise suppress the fallback to fullName, hiding a genuine name.
+        'falls back to fullName when lastName is whitespace-only, with profCode %s',
+        async (profCode) => {
+          const events: TrusteeAppointmentSyncEvent[] = [
+            {
+              ...makeEvent('case-001', 'Jane Trustee Services'),
+              dxtrTrustee: {
+                fullName: 'Jane Trustee Services',
+                lastName: '   ',
+              },
+              profCode,
+            },
+          ];
+
+          const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+            SyncTrusteeCaseAppointments.createDeps(context),
+            events,
+          );
+
+          // lastName is blank, so isBogusTrusteeName falls back to fullName — which contains
+          // "trustee" — and no contact info is present, so this is correctly skipped.
+          expect(trusteeMatchHelpers.matchTrusteeByName).not.toHaveBeenCalled();
+          expect(scenarioDistribution.sentinelBogusNameSkippedCount).toBe(1);
+        },
+      );
+
+      test.each([
+        ['00000', 'No Trustee'],
+        ['99999', 'No Trustee'],
+        ['00000', 'TRUSTEE NOT APPOINTED'],
+        ['00000', 'Awaiting Trustee Assignment'],
+        ['00000', 'Not Assigned - XX'],
+        ['00000', 'For Internal Use Only'],
+        ['00000', 'CHAPTER 11 - XX'],
+      ])(
+        'skips an event with profCode %s and bogus name %s when no contact fields are populated',
+        async (profCode, bogusName) => {
+          const events: TrusteeAppointmentSyncEvent[] = [
+            {
+              ...makeEvent('case-001', ''),
+              dxtrTrustee: { fullName: bogusName, lastName: bogusName },
+              profCode,
+            },
+          ];
+
+          const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+            SyncTrusteeCaseAppointments.createDeps(context),
+            events,
+          );
+
+          expect(trusteeMatchHelpers.matchTrusteeByName).not.toHaveBeenCalled();
+          expect(mockVerificationRepo.upsertVerification).not.toHaveBeenCalled();
+          expect(scenarioDistribution.sentinelBogusNameSkippedCount).toBe(1);
+        },
+      );
+
+      test.each([['00000'], ['99999']])(
+        // isBogusTrusteeName must never disqualify a record that also carries real contact
+        // info — otherwise a genuine trustee named e.g. "John Doe, Trustee" or a firm "ABC
+        // Chapter 13 Services" with a sentinel profCode and a real address/phone/email would be
+        // silently dropped before ever reaching matching.
+        'does not skip an event with profCode %s and a bogus-looking name when contact fields are populated',
+        async (profCode) => {
+          const events: TrusteeAppointmentSyncEvent[] = [
+            {
+              ...makeEvent('case-001', ''),
+              dxtrTrustee: {
+                fullName: 'John Doe, Trustee',
+                lastName: 'Doe, Trustee',
+                legacy: {
+                  address1: '123 Fake St',
+                  phone: '555-555-5555',
+                  email: 'fake@example.com',
+                },
+              },
+              profCode,
+            },
+          ];
+
+          const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+            SyncTrusteeCaseAppointments.createDeps(context),
+            events,
+          );
+
+          expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalled();
+          expect(scenarioDistribution.emptyDemographicsSkippedCount).toBe(0);
+          expect(scenarioDistribution.sentinelBogusNameSkippedCount).toBe(0);
+        },
+      );
+
+      test.each([['00000'], ['99999']])(
+        'does not skip an event with profCode %s and a genuine name but no contact fields',
+        async (profCode) => {
+          const events: TrusteeAppointmentSyncEvent[] = [
+            { ...makeEvent('case-001', 'Jane A Example'), profCode },
+          ];
+
+          const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+            SyncTrusteeCaseAppointments.createDeps(context),
+            events,
+          );
+
+          expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalled();
+          expect(scenarioDistribution.emptyDemographicsSkippedCount).toBe(0);
+        },
+      );
+
+      test.each([['00000'], ['99999']])(
+        'does not skip an event with profCode %s and a genuine name and address',
+        async (profCode) => {
+          const events: TrusteeAppointmentSyncEvent[] = [
+            {
+              ...makeEvent('case-001', 'Jane A Example'),
+              dxtrTrustee: {
+                fullName: 'Jane A Example',
+                firstName: 'Jane',
+                lastName: 'Example',
+                legacy: { address1: '123 Fake St' },
+              },
+              profCode,
+            },
+          ];
+
+          const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+            SyncTrusteeCaseAppointments.createDeps(context),
+            events,
+          );
+
+          expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalled();
+          expect(scenarioDistribution.emptyDemographicsSkippedCount).toBe(0);
+        },
+      );
+
+      test.each([['00000'], ['99999']])(
+        // Regression (mattstankey review): isSentinelWithNoIdentity's contact check must
+        // recognize phone/email the same way hasNoUsableDemographics's hasContact does — an
+        // address-only check would wrongly conclude "no contact" for a record with only a
+        // phone or email, which is exactly the kind of legitimate contact signal the outer
+        // check already treats as usable.
+        'does not skip an event with profCode %s, blank name/address, but a populated phone',
+        async (profCode) => {
+          const events: TrusteeAppointmentSyncEvent[] = [
+            {
+              ...makeEvent('case-001', ''),
+              dxtrTrustee: { fullName: '', legacy: { phone: '555-555-5555' } },
+              profCode,
+            },
+          ];
+
+          const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+            SyncTrusteeCaseAppointments.createDeps(context),
+            events,
+          );
+
+          expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalled();
+          expect(scenarioDistribution.emptyDemographicsSkippedCount).toBe(0);
+        },
+      );
+
+      test.each([['00000'], ['99999']])(
+        'does not skip an event with profCode %s, blank name/address, but a populated email',
+        async (profCode) => {
+          const events: TrusteeAppointmentSyncEvent[] = [
+            {
+              ...makeEvent('case-001', ''),
+              dxtrTrustee: { fullName: '', legacy: { email: 'fake@example.com' } },
+              profCode,
+            },
+          ];
+
+          const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+            SyncTrusteeCaseAppointments.createDeps(context),
+            events,
+          );
+
+          expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalled();
+          expect(scenarioDistribution.emptyDemographicsSkippedCount).toBe(0);
+        },
+      );
+
+      test.each([['00000'], ['99999']])(
+        'does not skip an event with profCode %s and a genuine fullName but no separate firstName field',
+        async (profCode) => {
+          // Regression: isSentinelWithNoIdentity's no-name check must recognize a usable
+          // fullName the same way hasNoUsableDemographics does, even when DXTR supplies no
+          // separate firstName field — a firstName-only check would wrongly conclude "no name"
+          // for a record hasNoUsableDemographics itself already treated as named.
+          const events: TrusteeAppointmentSyncEvent[] = [
+            {
+              ...makeEvent('case-001', 'Jane A Example'),
+              dxtrTrustee: { fullName: 'Jane A Example' },
+              profCode,
+            },
+          ];
+
+          const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+            SyncTrusteeCaseAppointments.createDeps(context),
+            events,
+          );
+
+          expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalled();
+          expect(scenarioDistribution.emptyDemographicsSkippedCount).toBe(0);
+        },
+      );
+
+      test('a non-sentinel profCode still hits the pre-existing empty-demographics rule, even with no name/address', async () => {
+        const events: TrusteeAppointmentSyncEvent[] = [
+          {
+            ...makeEvent('case-001', ''),
+            dxtrTrustee: { fullName: '' },
+            profCode: '12345',
+          },
+        ];
+
+        const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          events,
+        );
+
+        // Unaffected by the sentinel rule — falls through to the existing empty-demographics
+        // rule, which still applies regardless of profCode.
+        expect(scenarioDistribution.emptyDemographicsSkippedCount).toBe(1);
+      });
+
+      test('does not treat a real trustee name containing "trustee" as bogus when profCode is not a sentinel', async () => {
+        const events: TrusteeAppointmentSyncEvent[] = [
+          {
+            ...makeEvent('case-001', 'Jane A Example'),
+            dxtrTrustee: {
+              fullName: 'Jane A Robert Trustee',
+              firstName: 'Jane',
+              lastName: 'Robert Trustee',
+            },
+            profCode: '12345',
+          },
+        ];
+
+        const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          events,
+        );
+
+        expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalled();
+        expect(scenarioDistribution.emptyDemographicsSkippedCount).toBe(0);
+      });
+
+      test.each([['00000'], ['99999']])(
+        // Exercises isBogusTrusteeName directly with a sentinel profCode, a name containing a
+        // bogus-name keyword, AND real contact info — the exact combination the sentinel-skip
+        // rule above must never treat as disqualifying.
+        'does not skip a genuinely-named trustee whose name contains "trustee" with profCode %s and real contact info',
+        async (profCode) => {
+          const events: TrusteeAppointmentSyncEvent[] = [
+            {
+              ...makeEvent('case-001', 'Robert Trustee'),
+              dxtrTrustee: {
+                fullName: 'Robert Trustee',
+                firstName: 'Robert',
+                lastName: 'Trustee',
+                legacy: {
+                  address1: '123 Fake St',
+                  phone: '555-555-5555',
+                  email: 'fake@example.com',
+                },
+              },
+              profCode,
+            },
+          ];
+
+          const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+            SyncTrusteeCaseAppointments.createDeps(context),
+            events,
+          );
+
+          expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalled();
+          expect(scenarioDistribution.emptyDemographicsSkippedCount).toBe(0);
+          expect(scenarioDistribution.sentinelBogusNameSkippedCount).toBe(0);
+        },
+      );
+    });
+
     describe('fingerprint hit/miss counters', () => {
       test('counts a TRUSTEE_VARIATION bucket hit as fingerprintHitCount', async () => {
         const event = makeEvent('case-001', 'John Doe');
@@ -1244,14 +1547,14 @@ describe('SyncTrusteeCaseAppointments', () => {
       expect(scenarioDistribution.imperfectMatchCount).toBe(1);
     });
 
-    test('should route a single non-perfect-match candidate to verification even at a very high score, since districtDivisionScore/chapterScore may come from different appointment records', async () => {
-      // districtDivisionScore/chapterScore are each computed independently across all of a
-      // trustee's appointments (see calculateDistrictDivisionScore/calculateChapterScore),
-      // so a perfect-looking totalScore here does not guarantee a single appointment record
-      // actually covers this case's court+division+chapter combination — isAppointmentMatch above
-      // (mocked false) is the only check that verifies that. There is no score-based auto-match
-      // path for a single non-perfect candidate; every one of them is a human-reviewed
-      // ImperfectMatch regardless of how high totalScore is.
+    test('should route a single non-perfect-match candidate to verification even at a very high score', async () => {
+      // calculateCandidateScore is mocked here to isolate this test to processAppointments's own
+      // decision logic: even given an arbitrary/perfect-looking totalScore, there is no
+      // score-based auto-match path for a single non-perfect candidate — isAppointmentMatch above
+      // (mocked false) is the only check that verifies a single appointment record actually
+      // covers this case's court+division+chapter combination. Every non-perfect single candidate
+      // is a human-reviewed ImperfectMatch regardless of how high totalScore is, independent of
+      // whether real scoring could ever actually produce this exact score shape.
       vi.spyOn(trusteeMatchHelpers, 'isAppointmentMatch').mockReturnValue(false);
       vi.spyOn(trusteeMatchHelpers, 'calculateCandidateScore').mockReturnValue({
         trusteeId: 'trustee-123',
@@ -3653,6 +3956,7 @@ describe('handleClassifiedMismatch', () => {
       retryableCount: 0,
       candidateLoadFailedCount: 0,
       emptyDemographicsSkippedCount: 0,
+      sentinelBogusNameSkippedCount: 0,
     };
   }
 
@@ -3785,11 +4089,11 @@ describe('handleClassifiedMismatch', () => {
   });
 
   test('throws instead of falling back to wall-clock time when appointedDate is missing, without writing a surrogate', async () => {
-    // CAMS-809: writeSurrogateAppointment previously fell back to `event.appointedDate ?? now`,
-    // which would mint a new, distinct surrogate row under the same fingerprint on every retry
-    // of the same malformed event (upsert()'s natural key includes assignedOn, so a
-    // wall-clock-derived assignedOn never matches a prior write). It must refuse the same way
-    // applyResolvedTrustee does, so the event surfaces via the DLQ instead of proceeding.
+    // Falling back to `event.appointedDate ?? now` here would mint a new, distinct surrogate row
+    // under the same fingerprint on every retry of the same malformed event (upsert()'s natural
+    // key includes assignedOn, so a wall-clock-derived assignedOn never matches a prior write).
+    // It must refuse the same way applyResolvedTrustee does, so the event surfaces via the DLQ
+    // instead of proceeding.
     const verificationRepo = buildVerificationRepo(false);
     const caseAppointmentsRepo = buildCaseAppointmentsRepo();
     const scenarioDistribution = buildScenarioDistribution();
