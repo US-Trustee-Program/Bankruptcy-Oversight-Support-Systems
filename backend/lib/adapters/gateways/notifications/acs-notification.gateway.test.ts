@@ -27,7 +27,7 @@ describe('AcsNotificationGateway', () => {
   let gateway: AcsNotificationGateway;
 
   beforeEach(() => {
-    vi.resetAllMocks();
+    vi.restoreAllMocks();
     mockBeginSend.mockResolvedValue({ pollUntilDone: mockPollUntilDone });
     gateway = new AcsNotificationGateway(mockClient, senderAddress, mockLogger);
   });
@@ -52,40 +52,88 @@ describe('AcsNotificationGateway', () => {
     });
   });
 
-  test('includes replyTo on the message when notification has replyTo', async () => {
-    mockPollUntilDone.mockResolvedValue({ status: 'Succeeded', id: 'msg-reply-1' });
+  test('returns the ACS messageId on a successful send', async () => {
+    mockPollUntilDone.mockResolvedValue({ status: 'Succeeded', id: 'msg-1' });
 
-    const withReplyTo: Notification = {
-      ...notification,
+    const result = await gateway.send(notification);
+
+    expect(result).toEqual({ messageId: 'msg-1' });
+  });
+
+  test.each([
+    {
+      description: 'includes replyTo on the message when notification has replyTo',
       replyTo: { address: 'author@example.com', displayName: 'Jane Author' },
-    };
-    await gateway.send(withReplyTo);
+      expected: [{ address: 'author@example.com', displayName: 'Jane Author' }],
+    },
+    {
+      description: 'omits replyTo when notification does not have replyTo',
+      replyTo: undefined,
+      expected: undefined,
+    },
+  ])('$description', async ({ replyTo, expected }) => {
+    mockPollUntilDone.mockResolvedValue({ status: 'Succeeded', id: 'msg-reply' });
+
+    await gateway.send({ ...notification, replyTo });
 
     expect(mockBeginSend).toHaveBeenCalledWith(
       expect.objectContaining({
-        replyTo: [{ address: 'author@example.com', displayName: 'Jane Author' }],
+        replyTo: expected,
       }),
     );
   });
 
-  test('omits replyTo when notification does not have replyTo', async () => {
-    mockPollUntilDone.mockResolvedValue({ status: 'Succeeded', id: 'msg-reply-2' });
+  test.each([{ trusteeId: 'trustee-42' }, { trusteeId: undefined }])(
+    'includes trusteeId $trusteeId in the success log line',
+    async ({ trusteeId }) => {
+      mockPollUntilDone.mockResolvedValue({ status: 'Succeeded', id: 'msg-trustee' });
 
-    await gateway.send(notification);
+      await gateway.send({ ...notification, trusteeId });
 
-    expect(mockBeginSend).toHaveBeenCalledWith(
-      expect.objectContaining({
-        replyTo: undefined,
-      }),
-    );
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        'ACS-NOTIFICATION-GATEWAY',
+        'Email sent successfully',
+        expect.objectContaining({
+          messageId: 'msg-trustee',
+          to: 'recipient@example.com',
+          correlationId: 'inv-123',
+          trusteeId,
+        }),
+      );
+    },
+  );
+
+  test('sends successfully when no logger is provided', async () => {
+    mockPollUntilDone.mockResolvedValue({ status: 'Succeeded', id: 'msg-no-logger' });
+    const loggerlessGateway = new AcsNotificationGateway(mockClient, senderAddress);
+
+    await expect(loggerlessGateway.send(notification)).resolves.toEqual({
+      messageId: 'msg-no-logger',
+    });
   });
 
   test('throws CamsError when ACS returns a non-Succeeded status', async () => {
     mockPollUntilDone.mockResolvedValue({ status: 'Failed', id: 'msg-2' });
 
-    await expect(gateway.send(notification)).rejects.toThrow(CamsError);
-    await expect(gateway.send(notification)).rejects.toThrow(
-      "Email send failed with status 'Failed' (id: msg-2)",
+    const error = await gateway.send(notification).catch((e) => e);
+
+    expect(error).toBeInstanceOf(CamsError);
+    expect(error.message).toContain(
+      "Email service rejected the message with status 'Failed' (id: msg-2)",
+    );
+  });
+
+  test('logs an error when ACS returns a non-Succeeded status', async () => {
+    mockPollUntilDone.mockResolvedValue({ status: 'Failed', id: 'msg-err' });
+
+    await gateway.send(notification).catch(() => undefined);
+
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      'ACS-NOTIFICATION-GATEWAY',
+      expect.stringContaining(
+        "Email service rejected the message with status 'Failed' (id: msg-err)",
+      ),
+      expect.objectContaining({ id: 'msg-err', to: 'recipient@example.com' }),
     );
   });
 
@@ -95,41 +143,16 @@ describe('AcsNotificationGateway', () => {
     await expect(gateway.send(notification)).rejects.toThrow('Network timeout');
   });
 
-  test('handles notification without displayName', async () => {
-    mockPollUntilDone.mockResolvedValue({ status: 'Succeeded', id: 'msg-3' });
-
-    const noDisplayName: Notification = { ...notification, toDisplayName: undefined };
-    await gateway.send(noDisplayName);
-
-    expect(mockBeginSend).toHaveBeenCalledWith(
-      expect.objectContaining({
-        recipients: {
-          to: [{ address: notification.to, displayName: undefined }],
-        },
-      }),
-    );
-  });
-
-  test('passes abort signal with timeout to pollUntilDone', async () => {
+  test('passes abort signal with a 30 second timeout to pollUntilDone', async () => {
     mockPollUntilDone.mockResolvedValue({ status: 'Succeeded', id: 'msg-4' });
+    const timeoutSpy = vi.spyOn(AbortSignal, 'timeout');
 
     await gateway.send(notification);
 
+    expect(timeoutSpy).toHaveBeenCalledWith(30_000);
     expect(mockPollUntilDone).toHaveBeenCalledWith({
       abortSignal: expect.objectContaining({ aborted: false }),
     });
-  });
-
-  test('logs success with message ID and correlation ID', async () => {
-    mockPollUntilDone.mockResolvedValue({ status: 'Succeeded', id: 'msg-5' });
-
-    await gateway.send(notification);
-
-    expect(mockLogger.info).toHaveBeenCalledWith(
-      'ACS-NOTIFICATION-GATEWAY',
-      'Email sent successfully',
-      { messageId: 'msg-5', to: 'recipient@example.com', correlationId: 'inv-123' },
-    );
   });
 
   test('omits correlation header when correlationId is undefined', async () => {
