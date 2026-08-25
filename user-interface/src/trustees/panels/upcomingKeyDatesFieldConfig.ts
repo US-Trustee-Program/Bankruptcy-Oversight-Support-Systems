@@ -168,12 +168,24 @@ export const UPCOMING_KEY_DATES_FIELD_CONFIG: Record<
     {
       kind: 'computed',
       key: 'tprReviewPeriod',
-      buildField: tprReviewPeriodField,
+      buildField: (data) => {
+        const value =
+          data?.tprReviewPeriodStart && data?.tprReviewPeriodEnd
+            ? isoRangeToMMDD(data.tprReviewPeriodStart, data.tprReviewPeriodEnd)
+            : NO_DATE;
+        return { label: 'TPR Review Period', value, testId: 'tpr-review-period-row' };
+      },
     },
     {
       kind: 'computed',
       key: 'tprDue',
-      buildField: tprDueField,
+      buildField: (data) => {
+        const value =
+          data?.tprDue && data?.tprDueYearType
+            ? `${isoToMMDD(data.tprDue)} ${data.tprDueYearType}`
+            : NO_DATE;
+        return { label: 'TPR Due', value, testId: 'tpr-due-row' };
+      },
     },
     {
       kind: 'computed',
