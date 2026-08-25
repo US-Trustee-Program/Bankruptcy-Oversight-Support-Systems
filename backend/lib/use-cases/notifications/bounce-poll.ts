@@ -36,7 +36,7 @@ export class BouncePollUseCase {
   constructor(
     context: ApplicationContext,
     reconstructionUseCase: BounceReconstructionUseCase = new BounceReconstructionUseCase(context),
-    bounceQueryGateway: EmailBounceQueryGateway = factory.getEmailBounceQueryGateway(),
+    bounceQueryGateway: EmailBounceQueryGateway = factory.getEmailBounceQueryGateway(context),
   ) {
     this.reconstructionUseCase = reconstructionUseCase;
     this.bounceQueryGateway = bounceQueryGateway;
@@ -81,7 +81,12 @@ export class BouncePollUseCase {
 
     for (const row of rows) {
       try {
-        await this.reconstructionUseCase.reconstructAndForward(context, row.messageId, adminEmail);
+        await this.reconstructionUseCase.reconstructAndForward(
+          context,
+          row.messageId,
+          adminEmail,
+          row.deliveryStatus,
+        );
         summary.reconstructed++;
         latestTimeGenerated = row.timeGenerated;
       } catch (error) {

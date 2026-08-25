@@ -18,11 +18,16 @@ const GOV_LOG_ANALYTICS_AUDIENCE = KnownMonitorLogsQueryAudience.AzureGovernment
 const BOUNCE_QUERY = `
 ACSEmailStatusUpdateOperational
 | where DeliveryStatus in ('Failed', 'Bounced', 'Quarantined', 'FilteredSpam', 'Suppressed')
-| project TimeGenerated, CorrelationId
+| project TimeGenerated, CorrelationId, DeliveryStatus
 | order by TimeGenerated asc
 `;
 
 export type LogsQueryClientFactory = () => LogsQueryClient;
+
+export interface QueryLogger {
+  info(module: string, message: string, data?: unknown): void;
+  error(module: string, message: string, data?: unknown): void;
+}
 
 /**
  * Fails closed if ANALYTICS_IDENTITY_CLIENT_ID is unset, rather than falling back to
@@ -47,9 +52,11 @@ function defaultClientFactory(): LogsQueryClient {
 
 export class AcsBounceQueryGateway implements EmailBounceQueryGateway {
   private readonly clientFactory: LogsQueryClientFactory;
+  private readonly logger?: QueryLogger;
 
-  constructor(clientFactory: LogsQueryClientFactory = defaultClientFactory) {
+  constructor(clientFactory: LogsQueryClientFactory = defaultClientFactory, logger?: QueryLogger) {
     this.clientFactory = clientFactory;
+    this.logger = logger;
   }
 
   async queryBounces(workspaceId: string, since: string): Promise<BounceLogRow[]> {
@@ -60,25 +67,42 @@ export class AcsBounceQueryGateway implements EmailBounceQueryGateway {
     });
 
     if (result.status !== LogsQueryResultStatus.Success) {
-      throw new ServerConfigError(MODULE_NAME, {
-        message: `Log Analytics query did not succeed (status: '${result.status}').`,
-      });
+      const message = `Log Analytics query did not succeed (status: '${result.status}').`;
+      this.logger?.error(MODULE_NAME, message, { workspaceId, since });
+      throw new ServerConfigError(MODULE_NAME, { message });
     }
 
     const table = result.tables[0];
-    if (!table) return [];
+    if (!table) {
+      this.logger?.info(MODULE_NAME, 'Bounce query returned no result table.', {
+        workspaceId,
+        since,
+      });
+      return [];
+    }
 
     const timeGeneratedIdx = table.columnDescriptors.findIndex((c) => c.name === 'TimeGenerated');
     const correlationIdIdx = table.columnDescriptors.findIndex((c) => c.name === 'CorrelationId');
+    const deliveryStatusIdx = table.columnDescriptors.findIndex((c) => c.name === 'DeliveryStatus');
 
-    return table.rows
+    const rows = table.rows
       .map((row) => {
         const rawTime = row[timeGeneratedIdx];
         const timeGenerated = (
           rawTime instanceof Date ? rawTime : new Date(String(rawTime))
         ).toISOString();
-        return { timeGenerated, messageId: String(row[correlationIdIdx]) };
+        return {
+          timeGenerated,
+          messageId: String(row[correlationIdIdx]),
+          deliveryStatus: String(row[deliveryStatusIdx]),
+        };
       })
       .filter((row) => row.timeGenerated > since);
+
+    this.logger?.info(MODULE_NAME, `Bounce query returned ${rows.length} row(s).`, {
+      workspaceId,
+      since,
+    });
+    return rows;
   }
 }

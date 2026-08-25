@@ -59,6 +59,10 @@ export class TrusteeChangeNotificationUseCase {
 
     const { mailingLists, skipped } = await this.resolveMailingLists(context, changeSet);
     if (mailingLists.length === 0) {
+      context.logger.info(
+        MODULE_NAME,
+        `Trustee change notification for trusteeId '${changeSet.trusteeId}' sent to 0 recipients; no mailing list resolved.`,
+      );
       return { attempted: 0, failed: skipped.length, failures: skipped };
     }
 
@@ -76,6 +80,10 @@ export class TrusteeChangeNotificationUseCase {
 
     const sendFailures = results.filter((r) => r.failure).map((r) => r.failure!);
     const failures = [...skipped, ...sendFailures];
+    context.logger.info(
+      MODULE_NAME,
+      `Trustee change notification for trusteeId '${changeSet.trusteeId}' complete: attempted ${results.length}, failed ${failures.length}.`,
+    );
     return {
       attempted: results.length,
       failed: failures.length,
