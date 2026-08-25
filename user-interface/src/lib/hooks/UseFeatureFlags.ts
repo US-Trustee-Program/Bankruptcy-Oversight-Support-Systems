@@ -9,6 +9,9 @@ export const CHAPTER_TWELVE_ENABLED = 'chapter-twelve-enabled';
 export const CONSOLIDATIONS_ENABLED = 'consolidations-enabled';
 export const DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES = 'display-chpt7-panel-upcoming-key-dates';
 export const DISPLAY_CHPT11_SUBV_PAST_KEY_DATES = 'display-chpt11-subv-past-key-dates';
+export const DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES =
+  'display-chpt12-13-case-by-case-upcoming-key-dates';
+export const DISPLAY_CHPT12_STANDING_KEY_DATES = 'display-chpt12-standing-key-dates';
 export const PHONETIC_SEARCH_ENABLED = 'phonetic-search-enabled';
 export const PRIVILEGED_IDENTITY_MANAGEMENT = 'privileged-identity-management';
 export const SHOW_DEBTOR_NAME_COLUMN = 'show-debtor-name-column';

@@ -57,7 +57,6 @@ describe('TrusteeMatchVerificationUseCase', () => {
 
   let mockFindById: ReturnType<typeof vi.fn>;
   let mockUpdate: ReturnType<typeof vi.fn>;
-  let mockCreateProfessionalId: ReturnType<typeof vi.fn>;
   let mockFindVariationByFingerprint: ReturnType<typeof vi.fn>;
   let mockCreateVariation: ReturnType<typeof vi.fn>;
   let mockQueueTrusteeVerificationRemap: Mock<
@@ -75,7 +74,6 @@ describe('TrusteeMatchVerificationUseCase', () => {
 
     mockFindById = vi.fn().mockResolvedValue(sampleVerification);
     mockUpdate = vi.fn().mockResolvedValue({ ...sampleVerification, status: 'approved' });
-    mockCreateProfessionalId = vi.fn().mockResolvedValue({});
     mockFindVariationByFingerprint = vi.fn().mockResolvedValue([]);
     mockCreateVariation = vi.fn().mockResolvedValue({});
     mockQueueTrusteeVerificationRemap = vi.fn().mockResolvedValue(undefined);
@@ -90,11 +88,6 @@ describe('TrusteeMatchVerificationUseCase', () => {
       Object.assign(new MockMongoRepository(), {
         findById: mockFindById,
         update: mockUpdate,
-      }),
-    );
-    vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue(
-      Object.assign(new MockMongoRepository(), {
-        createProfessionalId: mockCreateProfessionalId,
       }),
     );
     vi.spyOn(factory, 'getTrusteeVariationRepository').mockReturnValue(
@@ -459,27 +452,6 @@ describe('TrusteeMatchVerificationUseCase', () => {
       // The status write must not have happened -- a failed enqueue must not leave the
       // verification permanently 'approved' with no way to re-trigger the remap.
       expect(mockUpdate).not.toHaveBeenCalled();
-    });
-
-    test('creates a trustee-professional-ids mapping when the verification has acmsProfessionalId', async () => {
-      mockFindById.mockResolvedValue({
-        ...sampleVerification,
-        acmsProfessionalId: '081-00123',
-      });
-
-      await useCase.approveVerification(context, 'verification-1', 'trustee-new');
-
-      expect(mockCreateProfessionalId).toHaveBeenCalledWith(
-        'trustee-new',
-        '081-00123',
-        expect.objectContaining({ id: expect.any(String) }),
-      );
-    });
-
-    test('does not attempt a professional-ids mapping when the verification has no acmsProfessionalId', async () => {
-      await useCase.approveVerification(context, 'verification-1', 'trustee-new');
-
-      expect(mockCreateProfessionalId).not.toHaveBeenCalled();
     });
   });
 
