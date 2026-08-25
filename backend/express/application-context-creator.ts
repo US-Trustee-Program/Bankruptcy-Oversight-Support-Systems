@@ -75,7 +75,6 @@ async function getApplicationContext<B = unknown>(
     closables: [],
     releasables: [],
     extraOutputs: undefined,
-    notificationWarnings: [],
   } satisfies ApplicationContext<B>;
 }
 
