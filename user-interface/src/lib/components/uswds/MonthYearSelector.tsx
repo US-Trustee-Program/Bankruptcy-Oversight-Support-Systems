@@ -38,7 +38,8 @@ export default function MonthYearSelector(props: Readonly<MonthYearSelectorProps
     const { month: m, year: y } = parseValue(props.value);
     setMonth(m);
     setYear(y);
-  }, [props.value]);
+    props.onValidationChange?.(!!m !== !!y);
+  }, [props.value]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function emit(newMonth: string, newYear: string) {
     const hasMonth = !!newMonth;
