@@ -30,6 +30,27 @@ on:
         required: true
         default: bankruptcy-oversight-support-systems
         type: string
+      # Migrating a consumer onto the hub is staged per consumer, and step 2
+      # (delete that consumer's own Private Endpoint) must precede step 3
+      # (re-run this workflow) -- see "Migrating a consumer onto the hub" in
+      # docs/operations/deployment.md. Registering into every consumer zone at
+      # once, while those consumers still own their endpoints, is the
+      # two-zone-groups-fighting case that ordering exists to prevent. This
+      # input is what makes step 3 targetable at one consumer at a time.
+      #
+      # Stage main-only FIRST, then widen to both. The first array entry
+      # becomes the endpoint's primary DNS zone config and the rest are
+      # suffixed by index, so main-only -> both APPENDS, whereas
+      # branches-only -> both would reorder the entries instead.
+      consumerZones:
+        description: "Consumer DNS zones the endpoint registers into. Stage main-only first, then both."
+        required: true
+        default: both
+        type: choice
+        options:
+          - both
+          - main-only
+          - branches-only
 
 permissions: read-all
 
@@ -65,14 +86,30 @@ jobs:
 
       - name: Deploy SQL Private Link hub
         run: |
+          set -euo pipefail
+
+          # Kept in sync with sql-hub.bicep's consumerPrivateDnsZoneResourceGroups
+          # default, which is the 'both' case below.
+          case "${CONSUMER_ZONES}" in
+          both) zones='["rg-cams-network","rg-cams-network-dev"]' ;;
+          main-only) zones='["rg-cams-network"]' ;;
+          branches-only) zones='["rg-cams-network-dev"]' ;;
+          *)
+            echo "Unrecognized consumerZones: ${CONSUMER_ZONES}" >&2
+            exit 1
+            ;;
+          esac
+
+          args=(
+            --resource-group "${RESOURCE_GROUP}"
+            --parameters "consumerPrivateDnsZoneResourceGroups=${zones}"
+          )
           if [[ "${MODE}" == "what-if" ]]; then
-            ops/scripts/pipeline/azure-deploy-sql-hub-setup.sh \
-              --resource-group "${RESOURCE_GROUP}" \
-              --what-if
-          else
-            ops/scripts/pipeline/azure-deploy-sql-hub-setup.sh \
-              --resource-group "${RESOURCE_GROUP}"
+            args+=(--what-if)
           fi
+
+          ops/scripts/pipeline/azure-deploy-sql-hub-setup.sh "${args[@]}"
         env:
           MODE: ${{ inputs.mode }}
           RESOURCE_GROUP: ${{ inputs.resourceGroup }}
+          CONSUMER_ZONES: ${{ inputs.consumerZones }}
