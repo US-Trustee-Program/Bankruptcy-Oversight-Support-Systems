@@ -34,20 +34,22 @@ vi.mock('@/lib/hooks/UseCourts', () => ({
 }));
 
 vi.mock('./UpcomingKeyDates', () => ({
-  default: (props: { data: unknown; isLoading: boolean }) => (
+  default: (props: { data: unknown; isLoading: boolean; variant?: string }) => (
     <div
       data-testid="upcoming-key-dates-card"
       data-is-loading={String(props.isLoading)}
       data-has-data={String(props.data !== null)}
+      data-variant={String(props.variant)}
     />
   ),
 }));
 vi.mock('./PastKeyDates', () => ({
-  default: (props: { data: unknown; isLoading: boolean }) => (
+  default: (props: { data: unknown; isLoading: boolean; variant?: string }) => (
     <div
       data-testid="past-key-dates-card"
       data-is-loading={String(props.isLoading)}
       data-has-data={String(props.data !== null)}
+      data-variant={String(props.variant)}
     />
   ),
 }));
@@ -654,6 +656,10 @@ describe('AppointmentCard', () => {
       renderWithProps({ appointment: ch13StandingAppointment });
 
       expect(screen.getByTestId('upcoming-key-dates-card')).toBeInTheDocument();
+      expect(screen.getByTestId('upcoming-key-dates-card')).toHaveAttribute(
+        'data-variant',
+        'chapter13-standing',
+      );
     });
 
     test('does not render UpcomingKeyDates card for ch13 standing when flag is disabled', () => {
@@ -700,7 +706,15 @@ describe('AppointmentCard', () => {
       renderWithProps({ appointment: ch13StandingAppointment });
 
       expect(screen.getByTestId('upcoming-key-dates-card')).toBeInTheDocument();
+      expect(screen.getByTestId('upcoming-key-dates-card')).toHaveAttribute(
+        'data-variant',
+        'chapter13-standing',
+      );
       expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
+      expect(screen.getByTestId('past-key-dates-card')).toHaveAttribute(
+        'data-variant',
+        'chapter13-standing',
+      );
     });
   });
 
