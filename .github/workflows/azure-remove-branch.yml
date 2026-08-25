@@ -306,7 +306,7 @@ jobs:
           set -euo pipefail
           staleDaysThreshold="${STALE_DAYS_THRESHOLD}"
 
-          echo "${STALE_BRANCH_NOTICES}" | jq -c '.[]' | while IFS= read -r notice; do
+          while IFS= read -r notice; do
             branchName=$(jq -r '.branchName' <<<"${notice}")
             idleDays=$(jq -r '.idleDays' <<<"${notice}")
             committerLogin=$(jq -r '.committerLogin' <<<"${notice}")
@@ -329,10 +329,13 @@ jobs:
             message=$(printf '🧹 Branch `%s` has had no commits for %sd (stale threshold: %sd) — its Azure branch environment is being torn down tonight.%s If you'"'"'re still using this branch, push a commit to redeploy it; otherwise please delete the branch.' \
               "${branchName}" "${idleDays}" "${staleDaysThreshold}" "${who}")
 
+            # A transient failure notifying one branch owner shouldn't abort
+            # the loop and silently skip every remaining owner in the batch.
             curl -X POST -H 'Content-type: application/json' \
               --data "$(jq -n --arg text "${message}" '{text: $text}')" \
-              "${SLACK_WEBHOOK_URL}"
-          done
+              "${SLACK_WEBHOOK_URL}" \
+              || echo "::warning::Failed to send Slack notification for branch '${branchName}'."
+          done < <(jq -c '.[]' <<<"${STALE_BRANCH_NOTICES}")
 
   clean-up:
     runs-on: ubuntu-latest
