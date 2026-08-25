@@ -83,6 +83,110 @@ Note the following assumptions:
 - Prior to running the _main.bicep_ file, the _ustp-cams-kv-app-config-setup.bicep_ file must be run first with the **deployNetworkConfig** param set to false
 - After running the _main.bicep_ file, the _ustp-cams-kv-app-config-setup.bicep_ file must be run first with the **deployNetworkConfig** param set to **true**
 
+## SQL Private Link Hub
+
+A single shared Private Endpoint reaches the SQL server, and every consumer VNet
+(main and each branch, in any region) peers to the hub VNet that holds it. This
+exists because Azure requires a SQL `virtualNetworkRules` subnet to be in the
+**same region** as the server, which cross-region branch compute cannot satisfy;
+a Private Endpoint has no such restriction.
+
+One endpoint, not one per consumer, is the load-bearing part. A private DNS zone
+holds exactly one A record for the server's single canonical hostname, so
+per-consumer endpoints fight over it — and tearing one down deletes the record
+out from under everybody else.
+
+### One-time setup
+
+Run the **Deploy SQL Private Link Hub** workflow
+(`.github/workflows/deploy-sql-hub.yml`, `workflow_dispatch` only). Choose
+`what-if` first and read the plan; re-run with `deploy` to apply.
+
+It is deliberately **not** part of continuous deployment. Every environment's SQL
+resolution depends on this one endpoint, so redeploying it must be a deliberate
+act, never a side effect of a branch deploy or teardown.
+
+### Identity and permissions
+
+**No additional role assignments are required.** The workflow authenticates as
+`cams-infrastructure-deploy-main-oidc` through the existing
+`infrastructure-deploy-main` environment, and that identity already holds
+`Contributor` at **subscription** scope. That covers everything involved:
+creating the hub VNet, subnet, and Private Endpoint, and writing the A record
+into the private DNS zones in `rg-cams-network` and `rg-cams-network-dev`.
+
+A dedicated `sql-hub` identity was considered and rejected: it would need those
+same permissions granted from scratch, so it would add a principal without
+narrowing anything.
+
+Note that the hub writes into **consumer-owned** zones, which inverts "the hub
+owns its own lifecycle". That is the deliberate trade for a zero-downtime
+cutover. The alternative — a third zone of the same name in the hub RG — cannot
+be adopted without an outage, because Azure rejects linking one VNet to two zones
+sharing a name, so every consumer would have to unlink before it could relink and
+would resolve nothing in between.
+
+> [!IMPORTANT]
+> What this workflow **does** require is its own federated credential. The
+> repository's OIDC subject template is `repo + workflow + environment`
+> (see [GitHub Actions OIDC Least Privilege](../architecture/decision-records/GithubActionsOidcLeastPrivilege.md)),
+> so the subject names the workflow, not just the environment. A standalone
+> `workflow_dispatch` workflow reports its **own** name; only reusable workflows
+> invoked from Continuous Deployment report the caller's name. Reusing an
+> environment is therefore not sufficient on its own.
+
+The credential already exists (`gha-deploy-sql-hub` on
+`cams-infrastructure-deploy-main-oidc`). Any future standalone workflow needs its
+own, created like this:
+
+```bash
+az ad app federated-credential create --id <app-object-id> --parameters '{
+  "name": "gha-<workflow-slug>",
+  "issuer": "https://token.actions.githubusercontent.com",
+  "subject": "repo:US-Trustee-Program/Bankruptcy-Oversight-Support-Systems:workflow:<Workflow Name>:environment:<environment>",
+  "audiences": ["api://AzureADTokenExchange"]
+}'
+```
+
+### Migrating a consumer onto the hub
+
+Per consumer, in this order. **The order matters.**
+
+1. Confirm both peering sides report `Connected`, not `Initiated`.
+2. **Delete that consumer's own SQL Private Endpoint.**
+3. Re-run the hub workflow so the shared endpoint registers the A record.
+4. Verify resolution from inside the consumer's VNet before moving on.
+
+Step 2 must precede step 3. Deleting an endpoint deletes its zone-group records,
+so if the hub registered while the old endpoint still existed, two zone groups
+would write the same A record — recreating the last-delete-wins collision this
+design removes.
+
+That leaves a window between steps 2 and 3 with no record. It is covered by
+`resolutionPolicy: NxDomainRedirect` on the VNet links
+(`lib/network/vnet-links.bicep`), which makes Azure fall back to public
+resolution instead of returning NXDOMAIN. Confirmed available in Azure
+Government; requires api-version `2024-06-01` or higher.
+
+The policy only applies to links the template manages. Links skipped via
+`vnetLinkAlreadyExists` keep their old setting and need a one-time:
+
+```bash
+az network private-dns link vnet update \
+  -g <zone-rg> -z privatelink.database.usgovcloudapi.net \
+  -n <link-name> --resolution-policy NxDomainRedirect
+```
+
+### Branch address allocation
+
+Branch VNets peering to the hub must not overlap, so a branch claims a `/20` from
+a reserved `10.128.0.0/12` pool (`ops/scripts/pipeline/_branch-network-pool.sh`).
+Legacy branches created before this — anything still on `10.10.0.0/16` — are left
+alone: they keep working through their existing path and simply get no hub
+peering. Re-addressing one is opt-in via `--allowLegacyVnetReaddress true`, and is
+only safe when nothing is deployed into its subnets, since Azure rejects
+address-space changes on in-use subnets.
+
 ## CI/CD Pipeline Runtime Variables
 
 ?> Note required environment variables and secrets defined in build tool for pipeline execution in Flexion and **shared** with USTP.
