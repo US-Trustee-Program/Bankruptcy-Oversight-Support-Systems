@@ -128,4 +128,18 @@ describe('MonthYearSelector', () => {
     expect(monthSelect().value).toBe('11');
     expect(yearSelect().value).toBe('2024');
   });
+
+  test('clears error state when parent resets value to empty after partial clear', () => {
+    const onValidationChange = vi.fn();
+
+    const { rerender } = render(
+      <MonthYearSelector id="test" value="2023-08-01" onValidationChange={onValidationChange} />,
+    );
+
+    // Simulate parent setting value='' in response to onChange('') from a partial clear.
+    // Before the fix, useEffect bypassed onValidationChange, leaving stale hasError:true.
+    rerender(<MonthYearSelector id="test" value="" onValidationChange={onValidationChange} />);
+
+    expect(onValidationChange).toHaveBeenLastCalledWith(false);
+  });
 });
