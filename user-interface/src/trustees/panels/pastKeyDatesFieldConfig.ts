@@ -12,6 +12,7 @@ interface PastKeyDatesFieldConfigBase {
   displayLabel: string;
   /** Label shown on the Edit Past Key Dates form. Differs from displayLabel for pastTprSubmission. */
   formLabel: string;
+  hint?: string;
   testId: string;
   inputId: string;
   /** Renders the value on its own line below the label on the display card. */
@@ -60,6 +61,7 @@ export const PAST_KEY_DATES_FIELD_CONFIG: Record<PastKeyDatesVariant, PastKeyDat
       key: 'lastAuditFiscalYear',
       displayLabel: "Last Audit's Fiscal Year",
       formLabel: "Last Audit's Fiscal Year",
+      hint: 'The fiscal year of the TIR data audited',
       testId: 'past-last-audit-fiscal-year-row',
       inputId: 'last-audit-fiscal-year',
       kind: 'year',
