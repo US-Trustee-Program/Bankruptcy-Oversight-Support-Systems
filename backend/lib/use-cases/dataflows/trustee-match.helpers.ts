@@ -17,14 +17,19 @@ import { generateBigrams } from '../../adapters/utils/phonetic-helper';
 const MODULE_NAME = 'TRUSTEE-MATCH';
 
 /**
- * Minimum totalScore for a multi-candidate fuzzy-match winner to be considered.
+ * Minimum totalScore for a multi-candidate fuzzy-match winner to be considered. Set to 74 so a
+ * genuine last-name mismatch (nameScore=0, everything else perfect) - the "wrong person, right
+ * everything-else" scenario - lands exactly at the threshold and is correctly excluded, while a
+ * genuine name+appointment match with contact evidence actively wrong still clears it.
  */
-const FUZZY_MATCH_SCORE_THRESHOLD = 75;
+const FUZZY_MATCH_SCORE_THRESHOLD = 74;
 
 /**
- * Minimum point gap a multi-candidate winner must have over the runner-up.
+ * Minimum point gap a multi-candidate winner must have over the runner-up. Set to the smallest
+ * full single-dimension swing under the current WEIGHTS (address/phone/email each at 8%), so a
+ * genuine disagreement on any one of those dimensions alone is always enough to break a tie.
  */
-const FUZZY_MATCH_MIN_GAP = 5;
+const FUZZY_MATCH_MIN_GAP = 8;
 
 /**
  * Normalizes a name by trimming whitespace and collapsing multiple spaces.
@@ -712,11 +717,16 @@ export function calculateEmailScore(
 
 /**
  * Calculates the weighted total score from the individual score components.
- * Weighting: 5% address, 25% name, 5% phone, 5% email, 30% district/division,
- * 30% chapter. Phone and email are nullable ("not comparable" - data missing
- * on either side): when null, that dimension's weight is excluded from the
- * calculation entirely and redistributed proportionally among the remaining
- * applicable dimensions, rather than penalizing the candidate with a 0.
+ * Weighting: 8% address, 26% name, 8% phone, 8% email, 25% district/division, 25% chapter.
+ * District/division and chapter are drawn from active CMMAP appointments, so together they carry
+ * the majority (50%) as the strongest identity evidence; the remainder favors name (26%, the
+ * primary human-readable identifier) with address/phone/email as smaller but non-trivial
+ * corroborating signals - phone and email are high-entropy exact-match booleans, while address is
+ * fuzzy-scored and more prone to staleness (trustees relocate), so all three are weighted equally
+ * rather than favoring address's finer-grained scoring. Phone and email are nullable ("not
+ * comparable" - data missing on either side): when null, that dimension's weight is excluded from
+ * the calculation entirely and redistributed proportionally among the remaining applicable
+ * dimensions, rather than penalizing the candidate with a 0.
  * Shared by calculateCandidateScore and handleInactivePerfectMatch so the
  * weight distribution only needs to change in one place.
  */
@@ -729,12 +739,12 @@ export function calculateTotalScore(scores: {
   chapterScore: number;
 }): number {
   const WEIGHTS = {
-    addressScore: 0.05,
-    nameScore: 0.25,
-    phoneScore: 0.05,
-    emailScore: 0.05,
-    districtDivisionScore: 0.3,
-    chapterScore: 0.3,
+    addressScore: 0.08,
+    nameScore: 0.26,
+    phoneScore: 0.08,
+    emailScore: 0.08,
+    districtDivisionScore: 0.25,
+    chapterScore: 0.25,
   } as const;
 
   let weightedSum = 0;
