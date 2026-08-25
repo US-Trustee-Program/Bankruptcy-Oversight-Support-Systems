@@ -36,7 +36,7 @@ jobs:
           echo "REPO=$(echo "${GITHUB_REPOSITORY_NAME}" | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
 
       - name: Log in to Container Registry
-        uses: docker/login-action@ba754150c9dbbaa912ae0ac3cfba43f84195cef2 # v4.1.0
+        uses: docker/login-action@abd2ef45e78c5afb21d64d4ca52ee8550d9572c7 # v4.5.1
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -44,7 +44,7 @@ jobs:
 
       - name: Extract metadata
         id: meta
-        uses: docker/metadata-action@c3b064c6d7c32446d6bc214ea075f1caad2de35a # v6.0.0
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
           images: ${{ env.REGISTRY }}/${{ env.REPO }}/playwright-msedge
           tags: |
@@ -54,7 +54,7 @@ jobs:
 
       - name: Build and push Docker image
         id: build
-        uses: docker/build-push-action@83bfd93ab480705a7b99a2ed02765137f5ab55ba # v7.0.0
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: test/e2e
           file: test/e2e/Dockerfile.playwright-msedge
