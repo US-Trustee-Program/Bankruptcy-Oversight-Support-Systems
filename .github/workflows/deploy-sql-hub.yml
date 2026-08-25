@@ -30,27 +30,21 @@ on:
         required: true
         default: bankruptcy-oversight-support-systems
         type: string
-      # Migrating a consumer onto the hub is staged per consumer, and step 2
-      # (delete that consumer's own Private Endpoint) must precede step 3
-      # (re-run this workflow) -- see "Migrating a consumer onto the hub" in
-      # docs/operations/deployment.md. Registering into every consumer zone at
-      # once, while those consumers still own their endpoints, is the
-      # two-zone-groups-fighting case that ordering exists to prevent. This
-      # input is what makes step 3 targetable at one consumer at a time.
+      # Transient. `both` is the steady state; `main-only` exists so main can
+      # migrate onto the hub without also registering into the branch zone
+      # while branch endpoints still own that record. Delete this input once
+      # every consumer is on the hub.
       #
-      # Stage main-only FIRST, then widen to both. The first array entry
-      # becomes the endpoint's primary DNS zone config and the rest are
-      # suffixed by index, so main-only -> both APPENDS, whereas
-      # branches-only -> both would reorder the entries instead.
+      # main-only -> both appends rather than reorders: the first array entry
+      # becomes the endpoint's primary DNS zone config.
       consumerZones:
-        description: "Consumer DNS zones the endpoint registers into. Stage main-only first, then both."
+        description: "DNS zones the endpoint registers into. `both` unless mid-migration -- see deployment.md."
         required: true
         default: both
         type: choice
         options:
           - both
           - main-only
-          - branches-only
 
 permissions: read-all
 
@@ -88,12 +82,10 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Kept in sync with sql-hub.bicep's consumerPrivateDnsZoneResourceGroups
-          # default, which is the 'both' case below.
+          # 'both' must match sql-hub.bicep's consumerPrivateDnsZoneResourceGroups default.
           case "${CONSUMER_ZONES}" in
           both) zones='["rg-cams-network","rg-cams-network-dev"]' ;;
           main-only) zones='["rg-cams-network"]' ;;
-          branches-only) zones='["rg-cams-network-dev"]' ;;
           *)
             echo "Unrecognized consumerZones: ${CONSUMER_ZONES}" >&2
             exit 1
