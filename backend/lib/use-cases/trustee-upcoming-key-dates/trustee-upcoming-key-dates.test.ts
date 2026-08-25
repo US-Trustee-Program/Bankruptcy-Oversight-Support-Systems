@@ -227,7 +227,7 @@ describe('TrusteeUpcomingKeyDatesUseCase', () => {
       expect(upsertSpy).toHaveBeenCalledWith(expect.objectContaining({ [field]: value }));
     });
 
-    test.each([['lastAuditFiscalYear'], ['upcomingExamOrAuditYear']])(
+    test.each([['lastAuditFiscalYear'], ['upcomingExamOrAuditYear'], ['upcomingExamOrAuditType']])(
       'does not include %s in saved doc when null',
       async (field) => {
         vi.spyOn(MockMongoRepository.prototype, 'getByAppointmentId').mockResolvedValue(null);

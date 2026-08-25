@@ -624,6 +624,38 @@ describe('validateTrusteeUpcomingKeyDates', () => {
     expect(result.valid).toBeFalsy();
     expect(result.reasonMap?.idExpiration?.reasons?.[0]).toBe('Must be a valid date mm/dd/yyyy.');
   });
+
+  test('returns VALID when pastAudit is a valid full date', () => {
+    expect(validateTrusteeUpcomingKeyDates({ ...baseInput(), pastAudit: '2024-03-15' })).toEqual(
+      VALID,
+    );
+  });
+
+  test('returns error when pastAudit contains an invalid ISO date', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      pastAudit: '2024-13-01',
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.pastAudit?.reasons?.[0]).toBe('Must be a valid date mm/dd/yyyy.');
+  });
+
+  test('returns VALID when lastCompensationStudy is a valid full date', () => {
+    expect(
+      validateTrusteeUpcomingKeyDates({ ...baseInput(), lastCompensationStudy: '2024-06-01' }),
+    ).toEqual(VALID);
+  });
+
+  test('returns error when lastCompensationStudy contains an invalid ISO date', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      lastCompensationStudy: '2024-13-01',
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.lastCompensationStudy?.reasons?.[0]).toBe(
+      'Must be a valid date mm/dd/yyyy.',
+    );
+  });
 });
 
 describe('validateTprDuePair', () => {

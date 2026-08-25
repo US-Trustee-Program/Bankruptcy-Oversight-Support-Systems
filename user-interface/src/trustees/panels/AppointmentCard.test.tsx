@@ -674,7 +674,7 @@ describe('AppointmentCard', () => {
 
       renderWithProps({ appointment: ch13StandingAppointment });
 
-      expect(screen.queryByTestId('ch12-upcoming-key-dates-card')).not.toBeInTheDocument();
+      expect(screen.getAllByTestId('upcoming-key-dates-card')).toHaveLength(1);
     });
 
     test('does not render ch13 standing card for ch12 standing appointment', () => {
