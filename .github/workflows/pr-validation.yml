@@ -23,7 +23,7 @@ on:
 
 concurrency:
   group: ${{ github.ref }}-${{ github.workflow }}
-  cancel-in-progress: false  # Queue PRs, don't cancel
+  cancel-in-progress: false # Queue PRs, don't cancel
 
 permissions: read-all
 
@@ -45,7 +45,7 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
             echo "relevant=true" >> "$GITHUB_OUTPUT"

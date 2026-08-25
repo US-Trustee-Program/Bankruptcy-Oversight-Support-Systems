@@ -51,6 +51,14 @@ param sqlVnetLinkAlreadyExists bool = false
 
 @description('Set true when the deploying pipeline has confirmed the SQL private DNS zone itself exists in privateDnsZoneResourceGroup (azure-deploy.sh computes this via zone_exists_for). Gates ustpSqlDnsZoneLink below, because a vnet link is a child of the zone and linking into an absent zone fails the whole deployment with ParentResourceNotFound rather than degrading. Distinct from sqlVnetLinkAlreadyExists above: that one asks whether a LINK exists, this one asks whether the ZONE does. Defaults false so any caller that does not compute it -- notably the USTP ADO pipeline template, which cannot be changed without a multi-step change on government-furnished equipment -- gets the safe no-op instead of a failed deploy.')
 param sqlDnsZoneExists bool = false
+@description('Flag: creates the peering connecting main\'s own VNet (virtualNetworkName, in networkResourceGroupName) to the shared SQL Private Link hub VNet (see lib/network/sql-hub.bicep, Goal 1 of cams-vwsp3). Should only be true for the Main-Gov deploy -- same shape as createAlerts above, gated in reusable-deploy.yml on `ghaEnvironment == \'Main-Gov\'`, because hubVirtualNetworkResourceGroupName below is a FIXED resource group, not one derived from this branch\'s stackName; every branch flipping this on would mean every branch\'s stack independently declares a peering resource under the SAME fixed hub-facing name pattern, which is unnecessary (main\'s peering already gives every branch DNS/route visibility once branches migrate to resolve through the hub -- a later goal) and adds churn for no benefit. Defaults false so branch deploys never touch this.')
+param createMainHubPeering bool = false
+
+@description('Name of the shared SQL Private Link hub VNet (see lib/network/sql-hub.bicep). Fixed -- deployed once, directly, not derived from any stackName.')
+param hubVirtualNetworkName string = 'vnet-ustp-cams-sql-hub'
+
+@description('Resource group containing the hub VNet above -- the SQL server\'s own resource group (bankruptcy-oversight-support-systems), not networkResourceGroupName. Fixed for the same reason as hubVirtualNetworkName.')
+param hubVirtualNetworkResourceGroupName string = 'bankruptcy-oversight-support-systems'
 
 param privateEndpointSubnetName string = privateEndpointSubnetNameFor(stackName)
 
@@ -312,6 +320,50 @@ module ustpSqlDnsZoneLink './lib/network/vnet-links.bicep' = if (sqlDnsZoneExist
     virtualNetworkId: ustpVirtualNetwork.id
     privateDnsZoneName: sqlPrivateDnsZoneName
     vnetLinkAlreadyExists: sqlVnetLinkAlreadyExists
+  }
+}
+
+// Main-only VNet peering connecting main's own VNet to the shared SQL
+// Private Link hub (Goal 2 of cams-vwsp3). Purely additive network
+// connectivity -- it does not change how main currently reaches SQL
+// (sql-vnet-rule.bicep / the per-branch/main SQL Private Endpoint modules in
+// backend-api-deploy.bicep and dataflows-resource-deploy.bicep are untouched
+// and still what main actually uses); actually migrating main to route
+// through the hub's Private Endpoint instead is a later goal. This module
+// call declares ONLY main's side of the bidirectional peering (see
+// vnet-peering.bicep's header for why one module call is one side, not
+// both).
+//
+// Main owns BOTH sides of its own peering, declared as two separately-scoped
+// modules here. sql-hub.bicep used to create the hub side via a
+// spokeVirtualNetworks array onboarded by "append an entry and re-run", which
+// meant onboarding main redeployed the shared Private Endpoint every other
+// environment depends on. Each spoke owning its own peering keeps one
+// environment's deploy from touching anything another environment needs --
+// branches already work this way via azure-deploy-network.sh, which creates
+// both sides as its own targeted per-branch deployments.
+module mainHubPeering './lib/network/vnet-peering.bicep' = if (createMainHubPeering) {
+  name: '${stackName}-main-hub-peering-module'
+  scope: resourceGroup(networkResourceGroupName)
+  params: {
+    localVirtualNetworkName: virtualNetworkName
+    remoteVirtualNetworkId: resourceId(hubVirtualNetworkResourceGroupName, 'Microsoft.Network/virtualNetworks', hubVirtualNetworkName)
+    peeringName: 'peer-${virtualNetworkName}-to-${hubVirtualNetworkName}'
+  }
+}
+
+// The matching hub-side resource. A bidirectional peering is two independent
+// resources, one nested under each VNet in that VNet's own resource group, so
+// this is scoped to the hub RG rather than main's network RG. Without it main's
+// side sits in Initiated and never reaches Connected, so no traffic flows.
+// Requires the deploying identity to hold peering write on the hub RG.
+module mainHubPeeringHubSide './lib/network/vnet-peering.bicep' = if (createMainHubPeering) {
+  name: '${stackName}-hub-main-peering-module'
+  scope: resourceGroup(hubVirtualNetworkResourceGroupName)
+  params: {
+    localVirtualNetworkName: hubVirtualNetworkName
+    remoteVirtualNetworkId: ustpVirtualNetwork.id
+    peeringName: 'peer-${hubVirtualNetworkName}-to-${virtualNetworkName}'
   }
 }
 
