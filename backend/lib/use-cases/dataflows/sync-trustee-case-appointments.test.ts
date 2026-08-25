@@ -613,9 +613,9 @@ describe('SyncTrusteeCaseAppointments', () => {
       );
 
       test.each([['00000'], ['99999']])(
-        // Regression (CAMS-882 review): isBogusTrusteeName's lastName-then-fullName fallback
-        // must use normalizeName (not plain truthiness) — a whitespace-only lastName is truthy
-        // in JS and would otherwise suppress the fallback to fullName, hiding a genuine name.
+        // Regression: isBogusTrusteeName's lastName-then-fullName fallback must use
+        // normalizeName (not plain truthiness) — a whitespace-only lastName is truthy in JS and
+        // would otherwise suppress the fallback to fullName, hiding a genuine name.
         'falls back to fullName when lastName is whitespace-only, with profCode %s',
         async (profCode) => {
           const events: TrusteeAppointmentSyncEvent[] = [
@@ -672,10 +672,10 @@ describe('SyncTrusteeCaseAppointments', () => {
       );
 
       test.each([['00000'], ['99999']])(
-        // Regression (CAMS-882 review, BLOCKER): isBogusTrusteeName must never disqualify a
-        // record that also carries real contact info — otherwise a genuine trustee named e.g.
-        // "John Doe, Trustee" or a firm "ABC Chapter 13 Services" with a sentinel profCode and a
-        // real address/phone/email would be silently dropped before ever reaching matching.
+        // isBogusTrusteeName must never disqualify a record that also carries real contact
+        // info — otherwise a genuine trustee named e.g. "John Doe, Trustee" or a firm "ABC
+        // Chapter 13 Services" with a sentinel profCode and a real address/phone/email would be
+        // silently dropped before ever reaching matching.
         'does not skip an event with profCode %s and a bogus-looking name when contact fields are populated',
         async (profCode) => {
           const events: TrusteeAppointmentSyncEvent[] = [
@@ -862,10 +862,9 @@ describe('SyncTrusteeCaseAppointments', () => {
       });
 
       test.each([['00000'], ['99999']])(
-        // Regression (CAMS-882 review): the only prior test aimed at "trustee"-substring safety
-        // used a non-sentinel profCode, so isBogusTrusteeName never actually ran. This exercises
-        // it directly with a sentinel profCode, a name containing a bogus-name keyword, AND real
-        // contact info — the exact combination the BLOCKER fix above is meant to protect.
+        // Exercises isBogusTrusteeName directly with a sentinel profCode, a name containing a
+        // bogus-name keyword, AND real contact info — the exact combination the sentinel-skip
+        // rule above must never treat as disqualifying.
         'does not skip a genuinely-named trustee whose name contains "trustee" with profCode %s and real contact info',
         async (profCode) => {
           const events: TrusteeAppointmentSyncEvent[] = [
@@ -4090,11 +4089,11 @@ describe('handleClassifiedMismatch', () => {
   });
 
   test('throws instead of falling back to wall-clock time when appointedDate is missing, without writing a surrogate', async () => {
-    // CAMS-809: writeSurrogateAppointment previously fell back to `event.appointedDate ?? now`,
-    // which would mint a new, distinct surrogate row under the same fingerprint on every retry
-    // of the same malformed event (upsert()'s natural key includes assignedOn, so a
-    // wall-clock-derived assignedOn never matches a prior write). It must refuse the same way
-    // applyResolvedTrustee does, so the event surfaces via the DLQ instead of proceeding.
+    // Falling back to `event.appointedDate ?? now` here would mint a new, distinct surrogate row
+    // under the same fingerprint on every retry of the same malformed event (upsert()'s natural
+    // key includes assignedOn, so a wall-clock-derived assignedOn never matches a prior write).
+    // It must refuse the same way applyResolvedTrustee does, so the event surfaces via the DLQ
+    // instead of proceeding.
     const verificationRepo = buildVerificationRepo(false);
     const caseAppointmentsRepo = buildCaseAppointmentsRepo();
     const scenarioDistribution = buildScenarioDistribution();

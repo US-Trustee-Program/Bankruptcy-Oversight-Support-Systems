@@ -1,12 +1,12 @@
 /**
- * Integration test harness: trustee matching algorithm correctness (CAMS-809).
+ * Integration test harness: trustee matching algorithm correctness.
  *
  * Exercises `SyncTrusteeCaseAppointmentsUseCase` (backend/lib/use-cases/dataflows/
  * sync-trustee-case-appointments.ts) directly against a real DXTR SQL Server instance
  * (mimicked locally with SQL Edge) — same pattern as ../trustee-petition-match — with twelve
- * fixture cases (numbered 2-13; #1 (reserved-id-skip) was removed by CAMS-873's ACMS
- * professional ID matching removal, and case #2's original professional-id-fast-path outcome
- * was replaced by an equivalent auto-link path — see #2 below), each exercising one distinct
+ * fixture cases (numbered 2-13; #1 (reserved-id-skip) was removed once ACMS professional ID
+ * matching was retired, and case #2's original professional-id-fast-path outcome was replaced
+ * by an equivalent auto-link path — see #2 below), each exercising one distinct
  * outcome branch of the matching algorithm (trustee-match.helpers.ts + processAppointments's
  * decision tree):
  *
@@ -27,7 +27,7 @@
  *   13. fingerprint-no-false-collapse (Slice 5) - a genuinely different person sharing #2's
  *                                       ambiguous name does NOT false-collapse to #2's trustee
  *
- * Scenarios 12-13 exercise the CAMS-809 Slice 5 fingerprint/variant memoization mechanism
+ * Scenarios 12-13 exercise the fingerprint/variant memoization mechanism
  * (backend/lib/use-cases/dataflows/trustee-variant.helpers.ts, TRUSTEE_VARIATION) layered on
  * top of the same algorithm scenarios 2-11 cover. They run in a separate processAppointments()
  * call AFTER the main first pass, so scenario 2's TRUSTEE_VARIATION write (which only happens
@@ -139,8 +139,8 @@ const IS_LOCAL = INTEGRATION_ENV !== 'azure';
 // queried in this harness only by equality/findOne, which Mongo/Cosmos can satisfy without a
 // declared index — so standUpEphemeralCosmosDatabase (which materializes a database by creating
 // exactly one collection's index) is only called for this one. clean() also defensively deletes
-// any stale trustee-professional-ids rows left over from before CAMS-873 removed this harness's
-// seeding of that collection, though nothing here seeds it anymore.
+// any stale trustee-professional-ids rows left over from before this harness stopped seeding
+// that collection, though nothing here seeds it anymore.
 const INDEXED_COLLECTION = 'case-trustee-appointments';
 const INDEXED_COLLECTION_KEY = { caseId: 1 as const, assignedOn: 1 as const };
 
@@ -236,13 +236,13 @@ const STAGE_5_6_7_TRUSTEE_IDS = [
 const BAD_REC_DATE_CASE_ID = '083-26-88913';
 const BAD_REC_DATE_TX_DATE = '2026-01-14';
 
-// Stage 9 (CAMS-882): sentinel professional code skip rule. Like Stage 8, these round-trip
+// Stage 9: sentinel professional code skip rule. Like Stage 8, these round-trip
 // through DXTR directly (seed/01-seed-dxtr-data.sql fixtures 15a-15d, CS_CASEID 999999414-417)
 // rather than joining the 13-scenario Cosmos matching pipeline — excluded from ALL_CASE_IDS, no
-// Cosmos synced-case/trustee fixtures needed for the cases expected to be skipped before
-// matching ever runs. The one case expected to proceed to matching (15c) is asserted only via
-// matchTrusteeByName having been invoked, not via a full auto-link/verification outcome — a
-// dedicated synced-case/trustee fixture for that single case isn't worth the setup for what
+// Cosmos synced-case/trustee fixtures needed for the two cases expected to be skipped before
+// matching ever runs (15a, 15d). The two cases expected to proceed to matching (15b, 15c) are
+// each asserted only via a pending NO_TRUSTEE_MATCH verification doc, not via a full auto-link
+// outcome — dedicated trustee fixtures for those two cases aren't worth the setup for what
 // sync-trustee-case-appointments.test.ts's mocked unit tests already cover exhaustively; this
 // stage's job is proving the real REC SUBSTRING extraction and skip decision, not re-proving the
 // matching algorithm itself.
@@ -252,8 +252,8 @@ const SENTINEL_GENUINE_NAME_AND_ADDRESS_CASE_ID = '083-26-88916';
 const NON_SENTINEL_EMPTY_DEMOGRAPHICS_CASE_ID = '083-26-88917';
 // Like BAD_REC_DATE_CASE_ID, these DO have DXTR rows (so they're covered by the
 // 999999400-999999417 SQL DELETE range in clean() already) but aren't part of ALL_CASE_IDS —
-// tracked separately here purely so clean() also removes the one Cosmos SYNCED_CASE fixture
-// runSentinelProfCodeStage seeds for the non-skipped case.
+// tracked separately here purely so clean() also removes the two Cosmos SYNCED_CASE fixtures
+// runSentinelProfCodeStage seeds for the two non-skipped cases (15b, 15c).
 const STAGE_9_CASE_IDS = [
   SENTINEL_NO_NAME_NO_ADDRESS_CASE_ID,
   SENTINEL_BOGUS_NAME_WITH_CONTACT_CASE_ID,
@@ -1422,7 +1422,7 @@ async function runScenarios() {
   // ── Stage 8: bad REC date falls back to TX_DATE ───────────────────────────
   await runBadRecDateFallbackStage(deps);
 
-  // ── Stage 9: sentinel professional code skip rule (CAMS-882) ──────────────
+  // ── Stage 9: sentinel professional code skip rule ─────────────────────────
   await runSentinelProfCodeStage(deps);
 }
 
@@ -1855,7 +1855,7 @@ async function runDivergenceRepairStage(
 /**
  * Proves CasesDxtrGateway.getTrusteeAppointments (cases.dxtr.gateway.ts) falls back to
  * TX.TX_DATE when REC's fixed-width embedded appointment date is blank/unparseable, against a
- * real SQL Server AO_TX row rather than a mocked query result (see CAMS-809). A mocked-gateway
+ * real SQL Server AO_TX row rather than a mocked query result. A mocked-gateway
  * unit test can assert the TypeScript fallback logic runs, but only a real database round trip
  * proves the SQL actually compiles and returns the expected value shape — this is exactly how
  * an earlier version of this fallback (using FORMAT(TX.TX_DATE, 'yyyy-MM-dd')) was caught
@@ -1891,19 +1891,19 @@ async function runBadRecDateFallbackStage(
 }
 
 // ---------------------------------------------------------------------------
-// Stage 9 (CAMS-882) — sentinel professional code skip rule
+// Stage 9 — sentinel professional code skip rule
 // ---------------------------------------------------------------------------
 
 /**
- * Proves the sentinel professional code skip rule (CAMS-882) against a real DXTR round trip —
+ * Proves the sentinel professional code skip rule against a real DXTR round trip —
  * both that CasesDxtrGateway correctly extracts profCode from REC's fixed-width offset (17-21
  * for TX_TYPE='A'/TX_CODE='TR'), and that sync-trustee-case-appointments.ts's
  * isSentinelWithNoIdentity/isBogusTrusteeName correctly decide skip vs. proceed against real
  * query results rather than a hand-built mock event. Standalone: not part of the 13-scenario
  * matching pipeline (seed/01-seed-dxtr-data.sql fixtures 15a-15d, CS_CASEID 999999414-417,
- * excluded from ALL_CASE_IDS) — this stage seeds only the one Cosmos SYNCED_CASE fixture the one
- * non-skipped case (15c) needs to reach NO_TRUSTEE_MATCH, rather than joining the full pipeline's
- * shared fixture set and expectation counts.
+ * excluded from ALL_CASE_IDS) — this stage seeds only the two Cosmos SYNCED_CASE fixtures the
+ * two non-skipped cases (15b, 15c) need to reach NO_TRUSTEE_MATCH, rather than joining the full
+ * pipeline's shared fixture set and expectation counts.
  */
 async function runSentinelProfCodeStage(
   deps: ReturnType<typeof SyncTrusteeCaseAppointmentsUseCase.createDeps>,
@@ -1913,9 +1913,9 @@ async function runSentinelProfCodeStage(
   const now = new Date().toISOString();
   const systemUser = { id: 'SYSTEM', name: 'SYSTEM' };
   // 15b (bogus name, real contact) and 15c (genuine name and address) are both expected to
-  // reach matching under the fixed rule — a bogus-looking name must never override real contact
-  // info (CAMS-882 review fix) — so both need a SYNCED_CASE fixture. 15a and 15d have no usable
-  // demographics at all and are skipped before ever reaching the cases collection.
+  // reach matching — a bogus-looking name must never override real contact info — so both need
+  // a SYNCED_CASE fixture. 15a and 15d have no usable demographics at all and are skipped
+  // before ever reaching the cases collection.
   const casesReachingMatching = [
     { caseId: SENTINEL_BOGUS_NAME_WITH_CONTACT_CASE_ID, debtorName: 'Scenario Debtor Sentinel B' },
     { caseId: SENTINEL_GENUINE_NAME_AND_ADDRESS_CASE_ID, debtorName: 'Scenario Debtor Sentinel C' },

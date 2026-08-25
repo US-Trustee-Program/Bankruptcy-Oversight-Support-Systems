@@ -60,6 +60,9 @@ export function parseDxtrDate(yymmdd: string | undefined): string | undefined {
 const TX_TYPE_A_APT_DATE_OFFSET = 24; // TX_TYPE='A'/TX_CODE='TR' appointment date
 const TX_TYPE_A_PROF_CODE_OFFSET = 17; // TX_TYPE='A'/TX_CODE='TR' professional code
 const TX_TYPE_1_APT_DATE_OFFSET = 91; // TX_TYPE='1'/TX_CODE='1' (N1TRAD) appointment date
+// DXTR can supply an incorrect ACMS professional code, so this value must never be trusted to
+// auto-link a case appointment to a specific trustee — it's read only as a negative sentinel
+// signal (detecting known placeholder values), never for identity/matching decisions.
 const TX_TYPE_1_PROF_CODE_OFFSET = 86; // TX_TYPE='1'/TX_CODE='1' (N1TRUS) professional code
 
 const closedByCourtTxCode = 'CBC';
@@ -1431,7 +1434,7 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
         dxtrTrustee,
         // REC's fixed-width embedded date (positions vary by TX_TYPE/TX_CODE — see
         // TX_TYPE_A_APT_DATE_OFFSET/TX_TYPE_1_APT_DATE_OFFSET) is occasionally blank,
-        // '000000', or otherwise unparseable — a genuine DXTR data-quality gap (see CAMS-809).
+        // '000000', or otherwise unparseable — a genuine DXTR data-quality gap.
         // TX.TX_DATE is a datetime2 NOT NULL column on the very same transaction row (the
         // 'Trustee Appointed' transaction itself), so it can never be missing/malformed the way
         // a REC substring can. Falling back to it keeps the appointment date tied to a real,
@@ -1493,7 +1496,7 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
     return this.getMostRecentAppointmentDates(records);
   }
 
-  // REC's embedded date can be blank/'000000'/malformed (see CAMS-809); TX.TX_DATE is a
+  // REC's embedded date can be blank/'000000'/malformed; TX.TX_DATE is a
   // datetime2 NOT NULL column on the same 'Trustee Appointed' transaction row and can never be
   // missing, so it's used whenever REC's date fails to parse (same fallback as
   // mapTrusteeAppointmentEventRecords above).

@@ -5,14 +5,14 @@ Exercises `SyncTrusteeCaseAppointmentsUseCase`
 instance (mimicked locally with SQL Edge), covering every distinct outcome branch of the trustee
 matching algorithm (`backend/lib/use-cases/dataflows/trustee-match.helpers.ts` +
 `processAppointments`'s decision tree) with twelve fixture cases (numbered 2-13; #1
-`reserved-id-skip` was removed by CAMS-873's ACMS professional ID matching removal).
+`reserved-id-skip` was removed once ACMS professional ID matching was retired).
 
 ## Scope
 
-Scenarios 2-11 test the **existing (pre-Slice-5) matching algorithm** — CAMS-809's Slices 1-4
-scoring/matching pipeline. Scenarios 12-13 test the **CAMS-809 Slice 5 fingerprint/variant
-memoization mechanism** (`trustee-variant.helpers.ts`, `TRUSTEE_VARIATION`) layered on top of that
-same algorithm: a fingerprint hit resolves `trusteeId` directly (bypassing `matchTrusteeByName`
+Scenarios 2-11 test the **existing (pre-Slice-5) matching algorithm** — the Slice 1-4
+scoring/matching pipeline. Scenarios 12-13 test the **Slice 5 fingerprint/variant memoization
+mechanism** (`trustee-variant.helpers.ts`, `TRUSTEE_VARIATION`) layered on top of that same
+algorithm: a fingerprint hit resolves `trusteeId` directly (bypassing `matchTrusteeByName`
 entirely), and a miss falls through to the untouched algorithm from scenarios 2-11.
 
 ## What it tests
@@ -66,33 +66,35 @@ directly into Cosmos (no DXTR row involved):
 
 - **Stage 8 (bad REC date falls back to TX_DATE)** — `CasesDxtrGateway.getTrusteeAppointments`
   (`cases.dxtr.gateway.ts`) falls back to `TX.TX_DATE` when REC's fixed-width embedded appointment
-  date is blank/unparseable (CAMS-809). Seeds one `AO_TX` row (CS_CASEID `999999413`, case
-  `083-26-88913`) with a blank REC date and asserts the real DXTR query still returns the correct
-  `appointedDate`, sourced from `TX_DATE` via `CONVERT(VARCHAR(10), TX.TX_DATE, 120)` — proof this
-  SQL actually compiles and returns the expected value against a real SQL Server table, which a
-  mocked-gateway unit test cannot provide. This exact stage caught an earlier version of the fix
-  that used `FORMAT(TX.TX_DATE, 'yyyy-MM-dd')` instead, which fails against SQL Edge (and many SQL
-  Server instances) with "Common Language Runtime(CLR) is not enabled on this instance." — `FORMAT`
-  depends on the CLR; `CONVERT` does not. Unlike Stages 5-7, this DOES round-trip through DXTR (via
+  date is blank/unparseable. Seeds one `AO_TX` row (CS_CASEID `999999413`, case `083-26-88913`) with
+  a blank REC date and asserts the real DXTR query still returns the correct `appointedDate`,
+  sourced from `TX_DATE` via `CONVERT(VARCHAR(10), TX.TX_DATE, 120)` — proof this SQL actually
+  compiles and returns the expected value against a real SQL Server table, which a mocked-gateway
+  unit test cannot provide. This exact stage caught an earlier version of the fix that used
+  `FORMAT(TX.TX_DATE, 'yyyy-MM-dd')` instead, which fails against SQL Edge (and many SQL Server
+  instances) with "Common Language Runtime(CLR) is not enabled on this instance." — `FORMAT` depends
+  on the CLR; `CONVERT` does not. Unlike Stages 5-7, this DOES round-trip through DXTR (via
   `casesGateway.getTrusteeAppointments` directly, not `processAppointments`) but is otherwise
   standalone: excluded from the 12-scenario matching pipeline, no Cosmos writes.
 
-- **Stage 9 (sentinel professional code skip rule, CAMS-882)** — `sync-trustee-case-appointments.ts`
-  skips a DXTR trustee-appointment event when its embedded professional code (`AO_TX.REC` offset
-  17-21 for `TX_TYPE='A'`/`TX_CODE='TR'`, parsed via `TX_TYPE_A_PROF_CODE_OFFSET`) is a sentinel
-  value (`"00000"` = no trustee appointed, `"99999"` = professional ID unavailable) combined with
-  either no name/address at all, or a name matching a bogus/administrative keyword
-  (`isBogusTrusteeName`) even when contact fields are populated. Seeds four `AO_TX` rows (CS_CASEID
+- **Stage 9 (sentinel professional code skip rule)** — `sync-trustee-case-appointments.ts` skips a
+  DXTR trustee-appointment event when its embedded professional code (`AO_TX.REC` offset 17-21 for
+  `TX_TYPE='A'`/`TX_CODE='TR'`, parsed via `TX_TYPE_A_PROF_CODE_OFFSET`) is a sentinel value
+  (`"00000"` = no trustee appointed, `"99999"` = professional ID unavailable) AND the record has no
+  usable contact info at all (address/phone/email) — either because the name is blank too, or
+  because the name matches a bogus/administrative keyword (`isBogusTrusteeName`). A bogus-looking
+  name never overrides real contact info: a sentinel-coded record with a real address/phone/email
+  always reaches matching regardless of what its name looks like. Seeds four `AO_TX` rows (CS_CASEID
   `999999414`-`999999417`, cases `083-26-88914`-`88917`) covering: sentinel + no name/address
-  (skip), sentinel + bogus name with populated contact fields (skip), sentinel + genuine synthetic
-  name/address (NOT skipped — reaches matching, resolves to `NO_TRUSTEE_MATCH`), and a non-sentinel
-  code with no demographics (skipped only by the pre-existing empty-demographics rule). Like Stage
-  8, round-trips through DXTR directly (proving the real `SUBSTRING(TX.REC, 17, 5)` extraction) and
-  additionally through `processAppointments()` for the skip/no-skip decision — proof against real
-  query results and real `hasNoUsableDemographics`/`isSentinelWithNoIdentity` orchestration, which a
-  mocked-gateway unit test cannot provide. Seeds exactly one Cosmos `SYNCED_CASE` fixture (for the
-  one non-skipped case) directly in the stage itself rather than joining the shared 12-scenario
-  fixture set.
+  (skip), sentinel + bogus name WITH populated contact fields (NOT skipped — reaches matching,
+  resolves to `NO_TRUSTEE_MATCH`), sentinel + genuine synthetic name/address (NOT skipped — reaches
+  matching, resolves to `NO_TRUSTEE_MATCH`), and a non-sentinel code with no demographics (skipped
+  only by the pre-existing empty-demographics rule). Like Stage 8, round-trips through DXTR directly
+  (proving the real `SUBSTRING(TX.REC, 17, 5)` extraction) and additionally through
+  `processAppointments()` for the skip/no-skip decision — proof against real query results and real
+  `resolveSkipReason`/`isSentinelWithNoIdentity` orchestration, which a mocked-gateway unit test
+  cannot provide. Seeds two Cosmos `SYNCED_CASE` fixtures (one for each of the two cases that reach
+  matching) directly in the stage itself rather than joining the shared 12-scenario fixture set.
 
 Explicitly out of scope: fault-injecting real Cosmos throttling to test the transient
 soft-close-failure path (`TooManyRequestsError`/`GatewayTimeoutError` aborting before create). That

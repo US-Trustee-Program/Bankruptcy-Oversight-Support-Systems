@@ -1942,8 +1942,8 @@ describe('getTrusteePetitionEvents', () => {
 
   test.each([
     { label: 'aptDate', expectedFragment: 'SUBSTRING(TX.REC, 91, 6) AS aptDate' },
-    // CAMS-809: txDate backs appointedDate's fallback when REC's date is unparseable. CONVERT
-    // (not FORMAT) is required — FORMAT() depends on the CLR, which is disabled by default on
+    // txDate backs appointedDate's fallback when REC's date is unparseable. CONVERT (not
+    // FORMAT) is required — FORMAT() depends on the CLR, which is disabled by default on
     // SQL Edge/many SQL Server instances and fails with "Common Language Runtime(CLR) is not
     // enabled on this instance." (confirmed against a real SQL Edge container).
     { label: 'txDate', expectedFragment: 'CONVERT(VARCHAR(10), TX.TX_DATE, 120) AS txDate' },
@@ -2086,11 +2086,11 @@ describe('getTrusteePetitionEvents', () => {
     expect(result.events[0].profCode).toBe('00000');
   });
 
-  // CAMS-809: REC's fixed-width embedded date is occasionally blank/'000000'/malformed — a
-  // genuine DXTR data-quality gap. TX.TX_DATE is a datetime2 NOT NULL column on the same
-  // 'Trustee Appointed' transaction row and can never be missing, so appointedDate must fall
-  // back to it rather than leaving the event stuck with no appointedDate at all — but REC's date
-  // is still preferred when it parses, since it's the more precise, pre-existing source.
+  // REC's fixed-width embedded date is occasionally blank/'000000'/malformed — a genuine DXTR
+  // data-quality gap. TX.TX_DATE is a datetime2 NOT NULL column on the same 'Trustee Appointed'
+  // transaction row and can never be missing, so appointedDate must fall back to it rather than
+  // leaving the event stuck with no appointedDate at all — but REC's date is still preferred
+  // when it parses, since it's the more precise, pre-existing source.
   test.each([
     { aptDate: '000000', txDate: '2026-04-07', expected: '2026-04-07', label: 'falls back' },
     { aptDate: '260407', txDate: '2026-04-09', expected: '2026-04-07', label: 'prefers REC' },
@@ -2194,9 +2194,9 @@ describe('getAppointmentDatesByCaseIds', () => {
   });
 
   test('falls back to txDate when aptDate is sentinel 000000', async () => {
-    // CAMS-809: REC's embedded date can be blank/'000000'/malformed. TX.TX_DATE is a datetime2
-    // NOT NULL column on the same transaction row, so the backfill can still recover a date
-    // instead of leaving the appointment permanently missing appointedDate.
+    // REC's embedded date can be blank/'000000'/malformed. TX.TX_DATE is a datetime2 NOT NULL
+    // column on the same transaction row, so the backfill can still recover a date instead of
+    // leaving the appointment permanently missing appointedDate.
     querySpy.mockResolvedValue({
       success: true,
       results: {

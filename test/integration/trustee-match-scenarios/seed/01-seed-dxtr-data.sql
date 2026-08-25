@@ -1,6 +1,6 @@
 -- Fixture rows for the trustee-match-scenarios integration test. Idempotent: safe to re-run.
--- Twelve cases (numbered 2-13; #1 (reserved-id-skip) was removed by CAMS-873's ACMS
--- professional ID matching removal), each exercising one distinct outcome branch of the
+-- Twelve cases (numbered 2-13; #1 (reserved-id-skip) was removed once ACMS professional ID
+-- matching was retired), each exercising one distinct outcome branch of the
 -- trustee matching algorithm in sync-trustee-case-appointments.ts / trustee-match.helpers.ts.
 -- See scripts/trustee-match-scenarios-harness.ts for the matching Cosmos fixtures and full
 -- per-scenario commentary.
@@ -39,11 +39,11 @@ VALUES
   ('999999410', '0210', '26-88910', '083', '7'), -- 11. re-verification
   ('999999411', '0210', '26-88911', '083', '7'), -- 12. fingerprint-repeat (Slice 5)
   ('999999412', '0210', '26-88912', '083', '7'), -- 13. fingerprint-no-false-collapse (Slice 5)
-  ('999999413', '0210', '26-88913', '083', '7'), -- 14. bad-rec-date-falls-back-to-tx-date (CAMS-809)
-  ('999999414', '0210', '26-88914', '083', '7'), -- 15a. sentinel-00000-no-name-no-address (CAMS-882)
-  ('999999415', '0210', '26-88915', '083', '7'), -- 15b. sentinel-99999-bogus-name-with-contact (CAMS-882)
-  ('999999416', '0210', '26-88916', '083', '7'), -- 15c. sentinel-00000-genuine-name-and-address (CAMS-882)
-  ('999999417', '0210', '26-88917', '083', '7'); -- 15d. non-sentinel-profcode-empty-demographics (CAMS-882)
+  ('999999413', '0210', '26-88913', '083', '7'), -- 14. bad-rec-date-falls-back-to-tx-date
+  ('999999414', '0210', '26-88914', '083', '7'), -- 15a. sentinel-00000-no-name-no-address
+  ('999999415', '0210', '26-88915', '083', '7'), -- 15b. sentinel-99999-bogus-name-with-contact
+  ('999999416', '0210', '26-88916', '083', '7'), -- 15c. sentinel-00000-genuine-name-and-address
+  ('999999417', '0210', '26-88917', '083', '7'); -- 15d. non-sentinel-profcode-empty-demographics
 GO
 
 -- 2. perfect-match-ambiguous-name-resolved-by-scoring — resolves via fuzzy scoring against an
@@ -206,7 +206,7 @@ INSERT INTO dbo.AO_PY (
 );
 GO
 
--- 14. bad-rec-date-falls-back-to-tx-date (CAMS-809) — not part of the 13-scenario matching
+-- 14. bad-rec-date-falls-back-to-tx-date — not part of the 13-scenario matching
 --     pipeline (excluded from ALL_CASE_IDS); a standalone DXTR-gateway-only proof that
 --     CasesDxtrGateway falls back to TX.TX_DATE when REC's embedded appointment date is blank
 --     ('000000'), rather than leaving appointedDate undefined and routing the event to the DLQ.
@@ -221,8 +221,8 @@ INSERT INTO dbo.AO_PY (
 );
 GO
 
--- 15a-15d: sentinel professional code skip rule (CAMS-882) — standalone DXTR-gateway-only
--- proofs, not part of the 13-scenario matching pipeline (excluded from ALL_CASE_IDS). See
+-- 15a-15d: sentinel professional code skip rule — standalone DXTR-gateway-only proofs, not
+-- part of the 13-scenario matching pipeline (excluded from ALL_CASE_IDS). See
 -- runSentinelProfCodeStage in the harness script for the assertions.
 
 -- 15a. sentinel-00000-no-name-no-address: no usable demographics at all, profCode is the
@@ -242,8 +242,8 @@ GO
 -- 15b. sentinel-99999-bogus-name-with-contact: profCode is the professional-ID-unavailable
 --      sentinel, name is a bogus/administrative placeholder (matches the "assign" keyword), but
 --      contact fields ARE populated. Expect: NOT skipped — a bogus-looking name must never
---      override real contact info (CAMS-882 review fix), since that would silently drop a
---      genuine trustee whose name happens to contain a keyword like "assign" or "trustee".
+--      override real contact info, since that would silently drop a genuine trustee whose name
+--      happens to contain a keyword like "assign" or "trustee".
 INSERT INTO dbo.AO_PY (
   CS_CASEID, COURT_ID, PY_ROLE, PY_FIRST_NAME, PY_MIDDLE_NAME, PY_LAST_NAME, PY_GENERATION,
   PY_ADDRESS1, PY_ADDRESS2, PY_ADDRESS3, PY_CITY, PY_STATE, PY_ZIP, PY_COUNTRY,
@@ -293,11 +293,10 @@ VALUES ('999999413', '0210', 'A', 'TR', '2026-01-14T00:00:00', REPLICATE(' ', 23
 GO
 
 -- Appointment transactions: TX_TYPE='A', TX_CODE='TR'. REC packs aptDate (YYMMDD) at position
--- 24-29 and profCode at position 17-21 (5 chars) — CAMS-873 removed profCode's prior use as a
--- trusted auto-link identity signal, and CAMS-882 reintroduced the SUBSTRING read solely to
--- detect the "00000"/"99999" sentinel placeholders for the skip rule (see
--- runSentinelProfCodeStage). profCode is left blank throughout scenarios 2-13 below — only the
--- CAMS-882 fixtures (15a-15d, below) populate it.
+-- 24-29 and profCode at position 17-21 (5 chars). DXTR can supply an incorrect ACMS professional
+-- code, so profCode is read solely to detect the "00000"/"99999" sentinel placeholders for the
+-- skip rule (see runSentinelProfCodeStage), never as a trusted identity signal. profCode is left
+-- blank throughout scenarios 2-13 below — only the 15a-15d fixtures below populate it.
 
 -- 2. perfect-match-ambiguous-name-resolved-by-scoring.
 INSERT INTO dbo.AO_TX (CS_CASEID, COURT_ID, TX_TYPE, TX_CODE, TX_DATE, REC)
