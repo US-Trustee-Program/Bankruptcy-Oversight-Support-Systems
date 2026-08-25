@@ -1760,6 +1760,7 @@ describe('resolveNameCollisionByScoring', () => {
         firstName: 'John',
         lastName: 'Smith',
         legacy: {
+          address1: '123 Main St',
           cityStateZipCountry: 'New York, NY 10001',
           phone: '5555551234',
           email: 'shared@example.com',
