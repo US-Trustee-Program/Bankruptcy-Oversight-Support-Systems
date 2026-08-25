@@ -279,7 +279,8 @@ export default function TrusteeDetailScreen() {
       disabled: !(
         featureFlags[DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES] ||
         featureFlags[DISPLAY_CHPT11_SUBV_PAST_KEY_DATES] ||
-        featureFlags[DISPLAY_CHPT12_STANDING_KEY_DATES]
+        featureFlags[DISPLAY_CHPT12_STANDING_KEY_DATES] ||
+        featureFlags[DISPLAY_CHPT13_STANDING_KEY_DATES]
       ),
       subHeading: (location.state as { subHeading?: string } | null)?.subHeading ?? '',
       content: <PastKeyDatesForm />,
