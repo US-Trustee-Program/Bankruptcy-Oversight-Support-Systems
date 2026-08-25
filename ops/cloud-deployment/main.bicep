@@ -148,6 +148,10 @@ param maxObjectKeyCount string
 @description('Fallback email recipient for notifications when no Cosmos routing record matches')
 param defaultNotificationRecipient string = ''
 
+@description('Email address to notify when an ACS email delivery-failure alert fires. Leave empty to skip creating the alert.')
+@secure()
+param adminNotificationEmail string = ''
+
 @description('Used to set Content-Security-Policy for USTP.')
 @secure()
 param ustpIssueCollectorHash string = ''
@@ -161,9 +165,6 @@ param enabledDataflows string = ''
 
 @description('Rows fetched from ACMS per migrate-case-appointments continuation. Empty string uses the function app default.')
 param migrateCaseAppointmentsFetchSize string = ''
-
-@description('Custom domain FQDN for sending email. Leave empty to use Azure-managed subdomain.')
-param customDomain string = ''
 
 @description('Name of the blob container used for migration and operational artifacts.')
 param objectContainerName string = 'migration-files'
@@ -187,6 +188,16 @@ var dataflowsTags = {
   component: 'dataflows'
   'deployed-at': deployedAt
 }
+
+var emailTags = {
+  app: 'cams'
+  component: 'email'
+  'deployed-at': deployedAt
+}
+
+var acsBounceAlertRuleName = '${stackName}-acs-email-bounce-alert'
+var acsSendFailureAlertRuleName = '${stackName}-acs-send-failure-alert'
+var isStandaloneEnvironment = createAlerts || isUstpDeployment
 
 // GUARD (CAMS-760, GH #2749 bug shape): this module deploys into the SHARED
 // analyticsResourceGroupName, but main.bicep itself is wrapped in a per-branch
@@ -399,25 +410,70 @@ module ustpWebapp 'frontend-webapp-deploy.bicep' = {
     }
 }
 
-module acsEmail './lib/email/acs-email.bicep' = {
-  name: '${stackName}-acs-email-module'
-  params: {
-    stackName: stackName
-    kvAppConfigName: kvAppConfigName
-    kvAppConfigResourceGroupName: kvAppConfigResourceGroupName
-    customDomain: customDomain
-    tags: {
-      app: 'cams'
-      component: 'email'
-      'deployed-at': deployedAt
+module adminActionGroup './lib/monitoring-alerts/admin-notification-action-group.bicep' =
+  if (!empty(adminNotificationEmail) && deployAppInsights && !empty(analyticsWorkspaceId)) {
+    name: '${stackName}-admin-action-group-module'
+    scope: resourceGroup(analyticsResourceGroupName)
+    params: {
+      actionGroupName: '${stackName}-admin-notifications'
+      adminEmail: adminNotificationEmail
+      tags: emailTags
     }
   }
-}
+
+module acsBounceAlert './lib/monitoring-alerts/scheduled-query-alert-rule.bicep' =
+  if (isStandaloneEnvironment && !empty(adminNotificationEmail) && deployAppInsights && !empty(analyticsWorkspaceId)) {
+    name: '${stackName}-acs-bounce-alert-module'
+    scope: resourceGroup(analyticsResourceGroupName)
+    params: {
+      alertRuleName: acsBounceAlertRuleName
+      logQueryScopeResourceId: analyticsWorkspaceId
+      actionGroupId: adminActionGroup!.outputs.actionGroupId
+      query: '''
+        ACSEmailStatusUpdateOperational
+        | where DeliveryStatus in ('Failed', 'Bounced', 'Quarantined', 'FilteredSpam', 'Suppressed')
+        | project TimeGenerated, CorrelationId, RecipientId, DeliveryStatus
+      '''
+      timeAggregation: 'Count'
+      threshold: 0
+      operator: 'GreaterThan'
+      evaluationFrequencyMinutes: 15
+      // windowSize intentionally == evaluationFrequency (no overlap). Accepted low-severity
+      // tradeoff: a bounce landing near a window boundary could be missed if ACS resource-log
+      // ingestion delay exceeds Azure Monitor's ~4-min late-data grace period. Revisit by
+      // measuring actual ingestion_time() - TimeGenerated on this table before widening.
+      windowSizeMinutes: 15
+      severity: 2
+      alertDescription: 'One or more trustee-notification emails failed to deliver via ACS. Check the admin notification-routing page for a wrong recipient address, or search Log Analytics/application traces around the reported timestamp for the correlationId (logged as messageId in application traces) to find the trusteeId.'
+    }
+  }
+
+module acsSendFailureAlert './lib/monitoring-alerts/scheduled-query-alert-rule.bicep' =
+  if (!empty(adminNotificationEmail) && deployAppInsights && !empty(analyticsWorkspaceId)) {
+    name: '${stackName}-acs-send-failure-alert-module'
+    scope: resourceGroup(analyticsResourceGroupName)
+    params: {
+      alertRuleName: acsSendFailureAlertRuleName
+      logQueryScopeResourceId: analyticsWorkspaceId
+      actionGroupId: adminActionGroup!.outputs.actionGroupId
+      query: '''
+        AppTraces
+        | where Message has '[ERROR] [ACS-NOTIFICATION-GATEWAY]' or Message has '[ERROR] [TRUSTEE-CHANGE-NOTIFICATION]'
+        | project TimeGenerated, Message
+      '''
+      timeAggregation: 'Count'
+      threshold: 0
+      operator: 'GreaterThan'
+      evaluationFrequencyMinutes: 15
+      windowSizeMinutes: 15
+      severity: 2
+      alertDescription: 'The API could not reach ACS or ACS rejected a trustee-notification email at send time (as opposed to a later bounce), or no mailing list was configured for the change -- so no notification was even attempted. Search Log Analytics traces around the reported timestamp for ACS-NOTIFICATION-GATEWAY or TRUSTEE-CHANGE-NOTIFICATION to see the specific failure.'
+    }
+  }
 
 module ustpApiFunction 'backend-api-deploy.bicep' = {
     name: '${stackName}-function-module'
     scope: resourceGroup(appResourceGroup)
-    dependsOn: [acsEmail]
     params: {
       stackName: stackName
       deployAppInsights: deployAppInsights
@@ -509,6 +565,7 @@ module ustpDataflowsFunction 'dataflows-resource-deploy.bicep' = {
     enabledDataflows: enabledDataflows
     migrateCaseAppointmentsFetchSize: migrateCaseAppointmentsFetchSize
     objectContainerName: objectContainerName
+    adminNotificationEmail: adminNotificationEmail
     gitSha: gitSha
     tags: dataflowsTags
   }
