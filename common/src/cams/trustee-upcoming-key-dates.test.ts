@@ -20,6 +20,8 @@ import {
   validateMonthDayRange,
   validateTrusteeUpcomingKeyDates,
   validateTprDuePair,
+  DATE_FIELDS,
+  TEXT_FIELDS,
 } from './trustee-upcoming-key-dates';
 import { VALID } from './validation';
 
@@ -673,6 +675,34 @@ describe('validateTrusteeUpcomingKeyDates', () => {
     expect(result.reasonMap?.lastCompensationStudy?.reasons?.[0]).toBe(
       'Must be a valid date mm/dd/yyyy.',
     );
+  });
+
+  test('DATE_FIELDS contains the exact set of expected fields', () => {
+    expect(DATE_FIELDS).toEqual([
+      'pastBackgroundQuestion',
+      'pastFieldExam',
+      'pastAudit',
+      'pastTprSubmission',
+      'tprReviewPeriodStart',
+      'tprReviewPeriodEnd',
+      'tprDue',
+      'tirReviewPeriodStart',
+      'tirReviewPeriodEnd',
+      'tirSubmission',
+      'tirReview',
+      'tirSemiAnnualReviewPeriodStart',
+      'tirSemiAnnualReviewPeriodEnd',
+      'tirSemiAnnualSubmission',
+      'tirSemiAnnualReview',
+      'lastMonthlyReportReceived',
+      'leaseExpiration',
+      'idExpiration',
+      'lastCompensationStudy',
+    ]);
+  });
+
+  test('TEXT_FIELDS contains the exact set of expected fields', () => {
+    expect(TEXT_FIELDS).toEqual(['tprDueYearType', 'tirFrequency']);
   });
 });
 
