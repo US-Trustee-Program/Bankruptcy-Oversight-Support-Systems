@@ -590,13 +590,10 @@ describe('matchTrusteeByName', () => {
 describe('calculateAddressScore', () => {
   test.each([
     ['address lines, city, state, and zip all match exactly', '123 Main St', '123 Main St', 100],
-    // CAMS-880 regression: this is the exact false-positive scenario the fix targets. Before the
-    // fix, calculateAddressScore never read address1 at all, so two genuinely different offices
-    // sharing a city/zip scored a full 100. Address lines are now 50% of the score, so a complete
-    // mismatch there caps the total well below what locale-only agreement can reach on its own.
-    // addressLinesScore=0 (50%) + zipScore=100 (30%) + cityStateScore=100 (20%) = 50
+    // addressLinesScore=0 (50%) + zipScore=100 (30%) + cityStateScore=100 (20%) = 50 - a complete
+    // address-line mismatch caps the total well below what locale-only agreement can reach alone.
     [
-      'city/state/zip match but address lines are completely different (CAMS-880)',
+      'city/state/zip match but address lines are completely different',
       '123 Main St',
       '456 Oak Ave',
       50,
@@ -624,6 +621,90 @@ describe('calculateAddressScore', () => {
     };
 
     expect(calculateAddressScore(dxtrAddress, camsAddress)).toBe(expected);
+  });
+
+  // Regression coverage: bigram similarity alone cannot distinguish a single-digit house/suite
+  // number, since generateBigrams drops any token shorter than 2 characters. Without the
+  // numeric-token handling in calculateAddressScore's address-lines component, two different
+  // single-digit suite numbers in the same building would score a false 100 here. Multi-digit
+  // numbers already clear generateBigrams's length floor but are still diluted by the word
+  // bigrams around them, so a mismatch there must also score below a true match. Expected values
+  // are exact (not just "below 100") so this pins the fix's magnitude, not just its direction -
+  // a future change that weakens the numeric-token penalty should fail these.
+  test.each([
+    [
+      'a single-digit suite number mismatch in an otherwise-identical address',
+      '123 Main St Suite 4',
+      '123 Main St Suite 5',
+      84,
+    ],
+    ['a single-digit house number mismatch', '4 Main St', '5 Main St', 70],
+    [
+      'a multi-digit suite number mismatch, even though bigram overlap alone is high',
+      '100 Main Street Suite 100',
+      '100 Main Street Suite 200',
+      86,
+    ],
+    // Asymmetric case: a numeric token present on only one side scores a real partial penalty
+    // rather than being ignored (see calculateNumericTokenScore's doc comment) - this is the
+    // shape a missing suite number in DXTR or CAMS data actually produces.
+    [
+      'a numeric token present on only one side (missing suite number)',
+      '123 Main St Suite 4',
+      '123 Main St',
+      79,
+    ],
+  ])('should score exactly %i for %s', (_desc, dxtrAddress1, camsAddress1, expected) => {
+    const dxtrAddress: LegacyAddress = {
+      cityStateZipCountry: 'New York, NY 10001',
+      address1: dxtrAddress1,
+    };
+    const camsAddress: Address = {
+      city: 'New York',
+      state: 'NY',
+      zipCode: '10001',
+      address1: camsAddress1,
+      countryCode: 'US',
+    };
+
+    expect(calculateAddressScore(dxtrAddress, camsAddress)).toBe(expected);
+  });
+
+  test('should treat a number and its leading-zero-padded form as an exact numeric match', () => {
+    const dxtrAddress: LegacyAddress = {
+      cityStateZipCountry: 'New York, NY 10001',
+      address1: '123 Main St Suite 4',
+    };
+    const camsAddress: Address = {
+      city: 'New York',
+      state: 'NY',
+      zipCode: '10001',
+      address1: '123 Main St Suite 04',
+      countryCode: 'US',
+    };
+
+    expect(calculateAddressScore(dxtrAddress, camsAddress)).toBe(100);
+  });
+
+  // Neither side has a numeric token at all, so calculateNumericTokenScore returns null and
+  // calculateAddressScore must fall back to bigram similarity alone for the address-lines
+  // component - if that fallback were broken (e.g. a missing numeric score defaulted to 0
+  // instead of being excluded), this would score 50, not 100, since bigram similarity alone is
+  // already a perfect match once "St" expands to "Street".
+  test('should fall back to bigram-only scoring when neither address line has a numeric token', () => {
+    const dxtrAddress: LegacyAddress = {
+      cityStateZipCountry: 'New York, NY 10001',
+      address1: 'Main St',
+    };
+    const camsAddress: Address = {
+      city: 'New York',
+      state: 'NY',
+      zipCode: '10001',
+      address1: 'Main Street',
+      countryCode: 'US',
+    };
+
+    expect(calculateAddressScore(dxtrAddress, camsAddress)).toBe(100);
   });
 
   test('should score zip match + address line mismatch + city mismatch below a full match', () => {
