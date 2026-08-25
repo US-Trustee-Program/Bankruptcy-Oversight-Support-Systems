@@ -58,9 +58,7 @@ export function parseDxtrDate(yymmdd: string | undefined): string | undefined {
 // type (TX_TYPE/TX_CODE). Offsets below are 1-based SUBSTRING start positions,
 // each 5-6 bytes wide, per the ACMS/DXTR NBDB1.S record layout.
 const TX_TYPE_A_APT_DATE_OFFSET = 24; // TX_TYPE='A'/TX_CODE='TR' appointment date
-const TX_TYPE_A_PROF_CODE_OFFSET = 17; // TX_TYPE='A'/TX_CODE='TR' professional code
 const TX_TYPE_1_APT_DATE_OFFSET = 91; // TX_TYPE='1'/TX_CODE='1' (N1TRAD) appointment date
-const TX_TYPE_1_PROF_CODE_OFFSET = 86; // TX_TYPE='1'/TX_CODE='1' (N1TRUS) professional code
 
 const closedByCourtTxCode = 'CBC';
 const dismissedByCourtTxCode = 'CDC';
@@ -96,8 +94,6 @@ type TrusteeAppointmentEventRecord = {
   latestSyncDate: string;
   aptDate?: string;
   txDate: string;
-  groupDesignator?: string;
-  profCode?: string;
 };
 
 class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
@@ -1278,7 +1274,6 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
       "TX.TX_TYPE = 'A'",
       "TX.TX_CODE IN ('TR')",
       TX_TYPE_A_APT_DATE_OFFSET,
-      TX_TYPE_A_PROF_CODE_OFFSET,
     );
 
     const queryResult: QueryResults = await this.executeQuery(
@@ -1323,7 +1318,6 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
       "TX.TX_TYPE = '1'",
       "TX.TX_CODE IN ('1')",
       TX_TYPE_1_APT_DATE_OFFSET,
-      TX_TYPE_1_PROF_CODE_OFFSET,
     );
 
     const queryResult: QueryResults = await this.executeQuery(
@@ -1347,7 +1341,6 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
     txTypeCondition: string,
     txCodeCondition: string,
     aptDateOffset: number,
-    profCodeOffset: number,
   ): string {
     return `
       SELECT
@@ -1356,7 +1349,6 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
         TX.COURT_ID AS courtId,
         C.CS_CHAPTER AS chapter,
         CS_DIV.CS_DIV_ACMS AS courtDivisionCode,
-        CS_DIV.GRP_DES AS groupDesignator,
         P.PY_FIRST_NAME AS firstName,
         P.PY_MIDDLE_NAME AS middleName,
         P.PY_LAST_NAME AS lastName,
@@ -1373,8 +1365,7 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
         P.PY_FAX_PHONE AS fax,
         CONVERT(VARCHAR(23), TX.TX_DATE, 126) + 'Z' AS latestSyncDate,
         SUBSTRING(TX.REC, ${aptDateOffset}, 6) AS aptDate,
-        CONVERT(VARCHAR(10), TX.TX_DATE, 120) AS txDate,
-        SUBSTRING(TX.REC, ${profCodeOffset}, 5) AS profCode
+        CONVERT(VARCHAR(10), TX.TX_DATE, 120) AS txDate
       FROM AO_TX TX
       JOIN AO_CS C ON TX.CS_CASEID = C.CS_CASEID AND TX.COURT_ID = C.COURT_ID
       JOIN AO_CS_DIV AS CS_DIV ON C.CS_DIV = CS_DIV.CS_DIV
@@ -1425,17 +1416,11 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
         },
       };
 
-      const groupDesignator = record.groupDesignator?.trim();
-      const profCode = record.profCode?.trim();
-      const acmsProfessionalId =
-        groupDesignator && profCode ? `${groupDesignator}-${profCode}` : undefined;
-
       return {
         caseId: record.caseId,
         courtId: record.courtId,
         chapter: record.chapter,
         courtDivisionCode: record.courtDivisionCode,
-        acmsProfessionalId,
         dxtrTrustee,
         // REC's fixed-width embedded date (positions vary by TX_TYPE/TX_CODE — see
         // TX_TYPE_A_APT_DATE_OFFSET/TX_TYPE_1_APT_DATE_OFFSET) is occasionally blank,
