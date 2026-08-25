@@ -92,10 +92,10 @@ post-swap correction:
 
 ## Infrastructure as Code
 
-Bicep files to provision resources in the Azure cloud environment with support for both commercial
-and US gov regions located in the ops/cloud-deployment folder. The bicep files are broken down to
-deploy a subset of what is needed by USTP Case Management System (CAMS). Use the **main bicep**,
-_main.bicep_, to provision complete Azure resources.
+Bicep files are used to provision resources in the Azure cloud environment with support for both
+commercial and US gov regions and are located in the ops/cloud-deployment folder. The bicep files
+are broken down to deploy a subset of what is needed by USTP Case Management System (CAMS). Use the
+**main bicep**, _main.bicep_, to provision complete Azure resources.
 
 Note the following assumptions:
 
@@ -227,27 +227,29 @@ Flexion and **shared** with USTP.
 
 ### Azure
 
-| Name                         | Type (Secret/Variable) | Is Flexion Only? | Description                                                                                       |
-| ---------------------------- | ---------------------- | ---------------- | ------------------------------------------------------------------------------------------------- |
-| AZURE_SUBSCRIPTION           | Secret                 | ---              | Azure Subscription ID                                                                             |
-| AZURE_CREDENTIALS            | Secret                 | ---              | Credentials for Azure Cloud Environment                                                           |
-| AZURE_ENVIRONMENT            | Variable               | Yes              | Specify target Azure cloud environment.                                                           |
-| AZ_APP_RG                    | Secret                 | ---              | Resource group name for all application related infrastructure.                                   |
-| AZURE_RG                     | Secret                 | ---              | Resource group for miscellanous Azure resources                                                   |
-| AZ_PLAN_TYPE                 | Variable               | ---              | Determine plan type for Azure App Service plans.                                                  |
-| AZ_ACTION_GROUP_NAME         | Secret                 | ---              | Action Group Name for Azure Alerts                                                                |
-| AZ_PRIVATE_DNS_ZONE          | Variable               | ---              | Private DNS Zone name                                                                             |
-| AZ_PRIVATE_DNS_ZONE_RG       | Secrets                | ---              | Private DNS Zone Azure resource group name                                                        |
-| AZ_PRIVATE_DNS_ZONE_ID       | Secrets                | ---              | Private DNS Zone Azure Fully qualified ID                                                         |
-| AZ_NETWORK_RG                | Secrets                | ---              | Resource Group for networking components                                                          |
-| AZ_NETWORK_VNET_NAME         | Variables              | ---              | Virtual Network Name                                                                              |
-| AZ_SQL_SERVER_NAME           | Secret                 | ---              | ---                                                                                               |
-| AZ_SQL_IDENTITY_NAME         | Secret                 | ---              | Name of Azure managed identity with access to SQL Server database. Required if not using SQL Auth |
-| AZ_COSMOS_DATABASE_NAME      | Secret                 | ---              | ---                                                                                               |
-| AZ_COSMOS_MONGO_ACCOUNT_NAME | Secret                 | ---              | ---                                                                                               |
-| AZ_COSMOS_ID_NAME            | Secret                 | ---              | Name of Managed Identity accessing cosmos                                                         |
-| AZ_ANALYTICS_WORKSPACE_ID    | Secrets                | ---              | Azure resource id of Log Analytics.                                                               |
-| AZ_ACTION_GROUP_NAME         | Secrets                | Yes              | Action Group Name for alert rules                                                                 |
+| Name                           | Type (Secret/Variable) | Is Flexion Only? | Description                                                                                                                                     |
+| ------------------------------ | ---------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| AZURE_SUBSCRIPTION             | Secret                 | ---              | Azure Subscription ID                                                                                                                           |
+| AZURE_CREDENTIALS              | Secret                 | ---              | Credentials for Azure Cloud Environment                                                                                                         |
+| AZURE_ENVIRONMENT              | Variable               | Yes              | Specify target Azure cloud environment.                                                                                                         |
+| AZ_APP_RG                      | Secret                 | ---              | Resource group name for all application related infrastructure.                                                                                 |
+| AZURE_RG                       | Secret                 | ---              | Resource group for miscellaneous Azure resources                                                                                                |
+| AZ_PLAN_TYPE                   | Variable               | ---              | Determine plan type for Azure App Service plans.                                                                                                |
+| AZ_ACTION_GROUP_NAME           | Secret                 | ---              | Action Group Name for Azure Alerts                                                                                                              |
+| AZ_PRIVATE_DNS_ZONE            | Variable               | ---              | Private DNS Zone name                                                                                                                           |
+| AZ_PRIVATE_DNS_ZONE_RG         | Secret                 | ---              | Private DNS Zone Azure resource group name                                                                                                      |
+| AZ_PRIVATE_DNS_ZONE_ID         | Secret                 | ---              | Private DNS Zone Azure Fully qualified ID                                                                                                       |
+| AZ_NETWORK_RG                  | Secret                 | ---              | Resource Group for networking components                                                                                                        |
+| AZ_NETWORK_VNET_NAME           | Variable               | ---              | Virtual Network Name                                                                                                                            |
+| AZ_SQL_SERVER_NAME             | Secret                 | ---              | ---                                                                                                                                             |
+| AZ_SQL_IDENTITY_NAME           | Secret                 | ---              | Name of Azure managed identity with access to SQL Server database. Required if not using SQL Auth                                               |
+| AZ_COSMOS_DATABASE_NAME        | Secret                 | ---              | ---                                                                                                                                             |
+| AZ_COSMOS_MONGO_ACCOUNT_NAME   | Secret                 | ---              | ---                                                                                                                                             |
+| AZ_COSMOS_ID_NAME              | Secret                 | ---              | Name of Managed Identity accessing cosmos                                                                                                       |
+| AZ_ANALYTICS_WORKSPACE_ID      | Secret                 | ---              | Azure resource id of Log Analytics.                                                                                                             |
+| AZ_ACTION_GROUP_NAME           | Secret                 | Yes              | Action Group Name for alert rules                                                                                                               |
+| ADMIN-NOTIFICATION-EMAIL       | Secret                 | Yes              | Optional email for ACS delivery-failure alerts; leave empty to skip the alert. New Action Group receivers require manual passcode verification. |
+| DEFAULT-NOTIFICATION-RECIPIENT | Secret                 | Yes              | Optional fallback email recipient for notifications when no Cosmos routing record matches a case.                                               |
 
 ### Snyk
 

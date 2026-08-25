@@ -3,18 +3,19 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { NotificationRoutingController } from './notification-routing.controller';
 import { CamsRole } from '@common/cams/roles';
-import { NotificationRoutingRepository } from '../../use-cases/gateways.types';
+import {
+  DomainVerificationGateway,
+  NotificationRoutingRepository,
+} from '../../use-cases/gateways.types';
 import factory from '../../factory';
 import { NotificationRoutingRecord } from '@common/cams/notifications';
 import HttpStatusCodes from '@common/api/http-status-codes';
-
-vi.mock('../../factory');
-const mockFactory = factory as Mocked<typeof factory>;
 
 describe('NotificationRoutingController', () => {
   let context: ApplicationContext;
   let controller: NotificationRoutingController;
   let mockRepo: Mocked<NotificationRoutingRepository>;
+  let mockDomainVerificationGateway: Mocked<DomainVerificationGateway>;
 
   const mockRecord: NotificationRoutingRecord = {
     id: 'chapter-7-oversight',
@@ -25,6 +26,8 @@ describe('NotificationRoutingController', () => {
   };
 
   beforeEach(async () => {
+    vi.restoreAllMocks();
+
     mockRepo = {
       getAll: vi.fn(),
       updateRoutingRecord: vi.fn(),
@@ -33,15 +36,19 @@ describe('NotificationRoutingController', () => {
       release: vi.fn(),
     } as unknown as Mocked<NotificationRoutingRepository>;
 
-    mockFactory.getNotificationRoutingRepository = vi.fn().mockReturnValue(mockRepo);
+    vi.spyOn(factory, 'getNotificationRoutingRepository').mockReturnValue(mockRepo);
+
+    mockDomainVerificationGateway = {
+      verifyMailDomain: vi.fn().mockResolvedValue('valid'),
+    } as unknown as Mocked<DomainVerificationGateway>;
+
+    vi.spyOn(factory, 'getDomainVerificationGateway').mockReturnValue(
+      mockDomainVerificationGateway,
+    );
 
     context = await createMockApplicationContext();
     context.session.user.roles = [CamsRole.SuperUser];
     controller = new NotificationRoutingController(context);
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   describe('authorization', () => {
@@ -169,14 +176,50 @@ describe('NotificationRoutingController', () => {
       expect(result.statusCode).toBe(HttpStatusCodes.METHOD_NOT_ALLOWED);
     });
 
-    test('should throw BadRequestError when recipientAddresses is missing', async () => {
+    test.each([
+      { description: 'recipientAddresses is missing', body: {} },
+      {
+        description: 'recipientAddresses contains an invalid address',
+        body: { recipientAddresses: ['valid@example.com', 'not-an-email'] },
+      },
+      { description: 'body is null', body: null },
+      {
+        description: 'recipientAddresses is a non-array value',
+        body: { recipientAddresses: 'not-an-array' },
+      },
+      {
+        description: 'recipientAddresses contains non-string values',
+        body: { recipientAddresses: [1, null, {}] },
+      },
+      {
+        description: 'recipientAddresses mixes valid strings and non-strings',
+        body: { recipientAddresses: ['valid@example.com', 42] },
+      },
+    ])('should throw BadRequestError when $description', async ({ body }) => {
       context.request.method = 'PUT';
       context.request.params = { routingId: 'chapter-7-oversight' };
-      context.request.body = {};
+      context.request.body = body;
 
       await expect(controller.handleRequest(context)).rejects.toThrow(
         expect.objectContaining({ status: HttpStatusCodes.BAD_REQUEST }),
       );
+    });
+
+    test('should trim leading/trailing whitespace from addresses before validating and saving', async () => {
+      context.request.method = 'PUT';
+      context.request.params = { routingId: 'chapter-7-oversight' };
+      context.request.body = { recipientAddresses: ['  someone@usdoj.gov  '] };
+      mockRepo.updateRoutingRecord.mockResolvedValue({
+        ...mockRecord,
+        recipientAddresses: ['someone@usdoj.gov'],
+      });
+
+      const result = await controller.handleRequest(context);
+
+      expect(result.statusCode).toBe(HttpStatusCodes.OK);
+      expect(mockRepo.updateRoutingRecord).toHaveBeenCalledWith('chapter-7-oversight', {
+        recipientAddresses: ['someone@usdoj.gov'],
+      });
     });
 
     test('should allow clearing all recipients by passing an empty array', async () => {
@@ -192,55 +235,149 @@ describe('NotificationRoutingController', () => {
         recipientAddresses: [],
       });
     });
+  });
 
-    test('should throw BadRequestError when any address in recipientAddresses is invalid', async () => {
+  describe('handlePut domain validation', () => {
+    test('should throw BadRequestError when a domain is not found', async () => {
+      mockDomainVerificationGateway.verifyMailDomain.mockResolvedValue('not-found');
       context.request.method = 'PUT';
       context.request.params = { routingId: 'chapter-7-oversight' };
-      context.request.body = { recipientAddresses: ['valid@example.com', 'not-an-email'] };
+      context.request.body = { recipientAddresses: ['someone@UST.DOJ.GOV'] };
 
       await expect(controller.handleRequest(context)).rejects.toThrow(
-        expect.objectContaining({ status: HttpStatusCodes.BAD_REQUEST }),
+        expect.objectContaining({
+          status: HttpStatusCodes.BAD_REQUEST,
+          message: expect.stringContaining('ust.doj.gov'),
+        }),
+      );
+      expect(mockRepo.updateRoutingRecord).not.toHaveBeenCalled();
+    });
+
+    test('should reject on the not-found domain and never surface the indeterminate domain warning when a request mixes both', async () => {
+      mockDomainVerificationGateway.verifyMailDomain.mockImplementation(async (domain) =>
+        domain === 'ust.doj.gov' ? 'not-found' : 'indeterminate',
+      );
+      context.request.method = 'PUT';
+      context.request.params = { routingId: 'chapter-7-oversight' };
+      context.request.body = {
+        recipientAddresses: ['someone@UST.DOJ.GOV', 'someone@usdoj.gov'],
+      };
+
+      await expect(controller.handleRequest(context)).rejects.toThrow(
+        expect.objectContaining({
+          status: HttpStatusCodes.BAD_REQUEST,
+          message: expect.stringContaining('ust.doj.gov'),
+        }),
+      );
+      expect(mockRepo.updateRoutingRecord).not.toHaveBeenCalled();
+    });
+
+    test('should save when the domain resolves as valid', async () => {
+      mockDomainVerificationGateway.verifyMailDomain.mockResolvedValue('valid');
+      context.request.method = 'PUT';
+      context.request.params = { routingId: 'chapter-7-oversight' };
+      context.request.body = { recipientAddresses: ['someone@usdoj.gov'] };
+      mockRepo.updateRoutingRecord.mockResolvedValue({
+        ...mockRecord,
+        recipientAddresses: ['someone@usdoj.gov'],
+      });
+
+      const result = await controller.handleRequest(context);
+
+      expect(result.statusCode).toBe(HttpStatusCodes.OK);
+      expect(mockRepo.updateRoutingRecord).toHaveBeenCalledWith('chapter-7-oversight', {
+        recipientAddresses: ['someone@usdoj.gov'],
+      });
+    });
+
+    test('should save and return a warning when domain verification is indeterminate rather than confirming the domain is missing', async () => {
+      mockDomainVerificationGateway.verifyMailDomain.mockResolvedValue('indeterminate');
+      const warnSpy = vi.spyOn(context.logger, 'warn');
+      context.request.method = 'PUT';
+      context.request.params = { routingId: 'chapter-7-oversight' };
+      context.request.body = { recipientAddresses: ['someone@usdoj.gov'] };
+      mockRepo.updateRoutingRecord.mockResolvedValue({
+        ...mockRecord,
+        recipientAddresses: ['someone@usdoj.gov'],
+      });
+
+      const result = await controller.handleRequest(context);
+
+      expect(result.statusCode).toBe(HttpStatusCodes.OK);
+      expect(mockRepo.updateRoutingRecord).toHaveBeenCalledWith('chapter-7-oversight', {
+        recipientAddresses: ['someone@usdoj.gov'],
+      });
+      expect(result.body.warnings).toEqual([expect.stringContaining("'usdoj.gov'")]);
+      expect(warnSpy).toHaveBeenCalledWith(
+        'NOTIFICATION-ROUTING-CONTROLLER',
+        expect.stringContaining("'usdoj.gov'"),
       );
     });
 
-    test('should throw BadRequestError when body is null', async () => {
+    test('should not include a warnings field on the response when domain validation succeeds cleanly', async () => {
       context.request.method = 'PUT';
       context.request.params = { routingId: 'chapter-7-oversight' };
-      context.request.body = null;
+      context.request.body = { recipientAddresses: ['someone@usdoj.gov'] };
+      mockRepo.updateRoutingRecord.mockResolvedValue({
+        ...mockRecord,
+        recipientAddresses: ['someone@usdoj.gov'],
+      });
 
-      await expect(controller.handleRequest(context)).rejects.toThrow(
-        expect.objectContaining({ status: HttpStatusCodes.BAD_REQUEST }),
-      );
+      const result = await controller.handleRequest(context);
+
+      expect(result.statusCode).toBe(HttpStatusCodes.OK);
+      expect(result.body.warnings).toBeUndefined();
     });
 
-    test('should throw BadRequestError when recipientAddresses is a non-array value', async () => {
+    test('should only check each unique domain once across multiple recipient addresses', async () => {
       context.request.method = 'PUT';
       context.request.params = { routingId: 'chapter-7-oversight' };
-      context.request.body = { recipientAddresses: 'not-an-array' };
+      context.request.body = {
+        recipientAddresses: ['first@usdoj.gov', 'second@usdoj.gov'],
+      };
+      mockRepo.updateRoutingRecord.mockResolvedValue({
+        ...mockRecord,
+        recipientAddresses: ['first@usdoj.gov', 'second@usdoj.gov'],
+      });
 
-      await expect(controller.handleRequest(context)).rejects.toThrow(
-        expect.objectContaining({ status: HttpStatusCodes.BAD_REQUEST }),
-      );
+      const result = await controller.handleRequest(context);
+
+      expect(result.statusCode).toBe(HttpStatusCodes.OK);
+      expect(mockDomainVerificationGateway.verifyMailDomain).toHaveBeenCalledTimes(1);
+      expect(mockDomainVerificationGateway.verifyMailDomain).toHaveBeenCalledWith('usdoj.gov');
     });
 
-    test('should throw BadRequestError when recipientAddresses contains non-string values', async () => {
+    test('should verify multiple distinct domains concurrently', async () => {
       context.request.method = 'PUT';
       context.request.params = { routingId: 'chapter-7-oversight' };
-      context.request.body = { recipientAddresses: [1, null, {}] };
+      context.request.body = {
+        recipientAddresses: ['first@usdoj.gov', 'second@example.com'],
+      };
+      mockRepo.updateRoutingRecord.mockResolvedValue({
+        ...mockRecord,
+        recipientAddresses: ['first@usdoj.gov', 'second@example.com'],
+      });
 
-      await expect(controller.handleRequest(context)).rejects.toThrow(
-        expect.objectContaining({ status: HttpStatusCodes.BAD_REQUEST }),
-      );
+      const result = await controller.handleRequest(context);
+
+      expect(result.statusCode).toBe(HttpStatusCodes.OK);
+      expect(mockDomainVerificationGateway.verifyMailDomain).toHaveBeenCalledTimes(2);
+      expect(mockDomainVerificationGateway.verifyMailDomain).toHaveBeenCalledWith('usdoj.gov');
+      expect(mockDomainVerificationGateway.verifyMailDomain).toHaveBeenCalledWith('example.com');
     });
 
-    test('should throw BadRequestError when recipientAddresses mixes valid strings and non-strings', async () => {
+    test('should reject the request when recipientAddresses exceeds the maximum length', async () => {
       context.request.method = 'PUT';
       context.request.params = { routingId: 'chapter-7-oversight' };
-      context.request.body = { recipientAddresses: ['valid@example.com', 42] };
+      context.request.body = {
+        recipientAddresses: Array.from({ length: 51 }, (_, i) => `person${i}@usdoj.gov`),
+      };
 
       await expect(controller.handleRequest(context)).rejects.toThrow(
         expect.objectContaining({ status: HttpStatusCodes.BAD_REQUEST }),
       );
+      expect(mockDomainVerificationGateway.verifyMailDomain).not.toHaveBeenCalled();
+      expect(mockRepo.updateRoutingRecord).not.toHaveBeenCalled();
     });
   });
 });
