@@ -116,11 +116,11 @@ export type TrusteeAppointmentSyncEvent = {
    * Raw professional code parsed from AO_TX.REC's fixed-width layout (see
    * TX_TYPE_A_PROF_CODE_OFFSET/TX_TYPE_1_PROF_CODE_OFFSET in cases.dxtr.gateway.ts). Deliberately
    * kept separate from dxtrTrustee/DxtrTrusteeParty rather than nested inside it: DXTR can supply
-   * an incorrect ACMS professional code (see CAMS-873, which removed this same field's prior use
-   * as a trusted auto-link identity signal), so it must never be treated as a trusted demographic
-   * field the way dxtrTrustee's contents are. Used only as a negative signal — detecting the
-   * "00000"/"99999" sentinel placeholders — to decide whether an event is worth matching at all,
-   * never to pick which trustee it belongs to.
+   * an incorrect ACMS professional code, so it must never be treated as a trusted demographic
+   * field the way dxtrTrustee's contents are or used to auto-link an appointment to a specific
+   * trustee. Used only as a negative signal — detecting the "00000"/"99999" sentinel placeholders
+   * — to decide whether an event is worth matching at all, never to pick which trustee it belongs
+   * to.
    */
   profCode?: string;
 };

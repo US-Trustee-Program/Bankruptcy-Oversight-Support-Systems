@@ -67,8 +67,8 @@ GO
 -- gateway reads is packed at a different SUBSTRING offset depending on TX_TYPE/TX_CODE:
 --   TR appointment (TX_TYPE='A', TX_CODE='TR'): aptDate at REC[24..29]
 --   Petition       (TX_TYPE='1', TX_CODE='1'):  aptDate at REC[91..96]
--- CAMS-873 removed the gateway's profCode SUBSTRING read as a trusted auto-link identity
--- signal; CAMS-882 reinstated the same REC[17..21]/[86..90] read solely to detect the
+-- DXTR can supply an incorrect ACMS professional code, so profCode (REC[17..21]/[86..90]) must
+-- never be trusted as an auto-link identity signal — it's read solely to detect the
 -- "00000"/"99999" sentinel placeholders for the pre-match skip rule (never to pick a trustee).
 -- TX_ID is a BIGINT identity serving as the primary key.
 CREATE TABLE dbo.AO_TX (
