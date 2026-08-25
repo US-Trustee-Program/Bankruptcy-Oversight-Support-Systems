@@ -49,27 +49,31 @@ describe('UPCOMING_KEY_DATES_FIELD_CONFIG chapter13-standing variant', () => {
     }
   });
 
-  test('tprReviewPeriod computed shows No date added when data is null', () => {
-    const field = config[1];
-    expect(field.kind).toBe('computed');
-    if (field.kind === 'computed') {
-      const result = field.buildField(null);
-      expect(result.value).toBe('No date added');
-    }
-  });
+  test.each([
+    [
+      'tprReviewPeriod',
+      1,
+      'TPR Review Period',
+      { tprReviewPeriodStart: '1900-04-01', tprReviewPeriodEnd: '1900-03-31' },
+      '04/01 - 03/31',
+    ],
+    ['tprDue', 2, 'TPR Due', { tprDue: '1900-06-15', tprDueYearType: 'EVEN' }, '06/15 EVEN'],
+  ])(
+    '%s computed field has label "%s" and correct null/value output',
+    (_key, index, expectedLabel, dataOverride, expectedValue) => {
+      const field = config[index as number];
+      expect(field.kind).toBe('computed');
+      if (field.kind === 'computed') {
+        const nullResult = field.buildField(null);
+        expect(nullResult.label).toBe(expectedLabel);
+        expect(nullResult.value).toBe('No date added');
 
-  test('tprReviewPeriod computed shows formatted range when data has values', () => {
-    const field = config[1];
-    expect(field.kind).toBe('computed');
-    if (field.kind === 'computed') {
-      const result = field.buildField({
-        ...baseDoc,
-        tprReviewPeriodStart: '1900-04-01',
-        tprReviewPeriodEnd: '1900-03-31',
-      });
-      expect(result.value).toBe('04/01 - 03/31');
-    }
-  });
+        const valueResult = field.buildField({ ...baseDoc, ...(dataOverride as object) });
+        expect(valueResult.label).toBe(expectedLabel);
+        expect(valueResult.value).toBe(expectedValue);
+      }
+    },
+  );
 
   test('leaseExpiration computed shows No date added when data is null', () => {
     const field = config[3];
