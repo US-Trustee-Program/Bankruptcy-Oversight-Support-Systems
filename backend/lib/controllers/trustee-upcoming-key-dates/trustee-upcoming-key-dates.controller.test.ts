@@ -54,50 +54,11 @@ describe('TrusteeUpcomingKeyDatesController', () => {
     );
   });
 
-  test('GET succeeds when only display-chpt11-subv-past-key-dates flag is enabled', async () => {
+  test('GET succeeds when at least one key-dates flag is enabled', async () => {
     context.featureFlags['display-chpt7-panel-upcoming-key-dates'] = false;
     context.featureFlags['display-chpt11-subv-past-key-dates'] = true;
     context.featureFlags['display-chpt12-13-case-by-case-upcoming-key-dates'] = false;
     context.featureFlags['display-chpt12-standing-key-dates'] = false;
-    vi.spyOn(TrusteeUpcomingKeyDatesUseCase.prototype, 'getUpcomingKeyDates').mockResolvedValue(
-      null,
-    );
-    context.request = mockCamsHttpRequest({
-      method: 'GET',
-      params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
-    });
-
-    const controller = new TrusteeUpcomingKeyDatesController(context);
-    const response = await controller.handleRequest(context);
-
-    expect(response.statusCode).toBe(HttpStatusCodes.OK);
-  });
-
-  test('GET succeeds when only display-chpt12-13-case-by-case-upcoming-key-dates flag is enabled', async () => {
-    context.featureFlags['display-chpt7-panel-upcoming-key-dates'] = false;
-    context.featureFlags['display-chpt11-subv-past-key-dates'] = false;
-    context.featureFlags['display-chpt12-13-case-by-case-upcoming-key-dates'] = true;
-    context.featureFlags['display-chpt12-standing-key-dates'] = false;
-    vi.spyOn(TrusteeUpcomingKeyDatesUseCase.prototype, 'getUpcomingKeyDates').mockResolvedValue(
-      null,
-    );
-    context.request = mockCamsHttpRequest({
-      method: 'GET',
-      params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
-    });
-
-    const controller = new TrusteeUpcomingKeyDatesController(context);
-    const response = await controller.handleRequest(context);
-
-    expect(response.statusCode).toBe(HttpStatusCodes.OK);
-    expect(response.body).toEqual({ data: null });
-  });
-
-  test('GET succeeds when only display-chpt12-standing-key-dates flag is enabled', async () => {
-    context.featureFlags['display-chpt7-panel-upcoming-key-dates'] = false;
-    context.featureFlags['display-chpt11-subv-past-key-dates'] = false;
-    context.featureFlags['display-chpt12-13-case-by-case-upcoming-key-dates'] = false;
-    context.featureFlags['display-chpt12-standing-key-dates'] = true;
     vi.spyOn(TrusteeUpcomingKeyDatesUseCase.prototype, 'getUpcomingKeyDates').mockResolvedValue(
       null,
     );
@@ -115,9 +76,9 @@ describe('TrusteeUpcomingKeyDatesController', () => {
 
   test('GET returns 200 with document when found', async () => {
     const mockDoc = buildMockDocument();
-    vi.spyOn(TrusteeUpcomingKeyDatesUseCase.prototype, 'getUpcomingKeyDates').mockResolvedValue(
-      mockDoc,
-    );
+    const getSpy = vi
+      .spyOn(TrusteeUpcomingKeyDatesUseCase.prototype, 'getUpcomingKeyDates')
+      .mockResolvedValue(mockDoc);
 
     context.request = mockCamsHttpRequest({
       method: 'GET',
@@ -129,12 +90,13 @@ describe('TrusteeUpcomingKeyDatesController', () => {
 
     expect(response.statusCode).toBe(HttpStatusCodes.OK);
     expect(response.body).toEqual({ data: mockDoc });
+    expect(getSpy).toHaveBeenCalledWith('appointment-001');
   });
 
   test('GET returns 200 with null when no document exists', async () => {
-    vi.spyOn(TrusteeUpcomingKeyDatesUseCase.prototype, 'getUpcomingKeyDates').mockResolvedValue(
-      null,
-    );
+    const getSpy = vi
+      .spyOn(TrusteeUpcomingKeyDatesUseCase.prototype, 'getUpcomingKeyDates')
+      .mockResolvedValue(null);
 
     context.request = mockCamsHttpRequest({
       method: 'GET',
@@ -146,6 +108,7 @@ describe('TrusteeUpcomingKeyDatesController', () => {
 
     expect(response.statusCode).toBe(HttpStatusCodes.OK);
     expect(response.body).toEqual({ data: null });
+    expect(getSpy).toHaveBeenCalledWith('appointment-001');
   });
 
   test.each([
@@ -227,21 +190,27 @@ describe('TrusteeUpcomingKeyDatesController', () => {
     });
 
     test('PUT with valid ISO body returns 200', async () => {
-      vi.spyOn(
-        TrusteeUpcomingKeyDatesUseCase.prototype,
-        'upsertUpcomingKeyDates',
-      ).mockResolvedValue(undefined);
+      const putSpy = vi
+        .spyOn(TrusteeUpcomingKeyDatesUseCase.prototype, 'upsertUpcomingKeyDates')
+        .mockResolvedValue(undefined);
 
+      const body = buildValidInput();
       context.request = mockCamsHttpRequest({
         method: 'PUT',
         params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
-        body: buildValidInput(),
+        body,
       });
 
       const controller = new TrusteeUpcomingKeyDatesController(context);
       const response = await controller.handleRequest(context);
 
       expect(response.statusCode).toBe(HttpStatusCodes.OK);
+      expect(putSpy).toHaveBeenCalledWith(
+        'trustee-001',
+        'appointment-001',
+        body,
+        context.session.user,
+      );
     });
 
     test('PUT with display-format date returns 400', async () => {
@@ -258,7 +227,7 @@ describe('TrusteeUpcomingKeyDatesController', () => {
       });
     });
 
-    test('PUT with tprReviewPeriodStart set but tprReviewPeriodEnd null returns 400 (representative wiring check; exhaustive pair-rule permutations covered in trustee-upcoming-key-dates.test.ts)', async () => {
+    test('PUT with tprReviewPeriodStart set but tprReviewPeriodEnd null returns 400', async () => {
       context.request = mockCamsHttpRequest({
         method: 'PUT',
         params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },

@@ -137,6 +137,8 @@ set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=ops/scripts/pipeline/_network-stackname.sh
 source "$SCRIPT_DIR/../pipeline/_network-stackname.sh"
+# shellcheck source=ops/scripts/pipeline/_branch-network-pool.sh
+source "$SCRIPT_DIR/../pipeline/_branch-network-pool.sh"
 
 # Parse named parameters
 while [[ $# -gt 0 ]]; do
@@ -216,6 +218,13 @@ done
   stack_name=${stack_name:-${STACK_NAME:-}}
   private_dns_zone_rg=${private_dns_zone_rg:-${PRIVATE_DNS_ZONE_RESOURCE_GROUP:-}}
   private_dns_zone_subscription_id=${private_dns_zone_subscription_id:-${PRIVATE_DNS_ZONE_SUBSCRIPTION_ID:-}}
+  # cams-vwsp3 Goal 3 -- fixed hub identity, same constants
+  # _branch-network-pool.sh's create-side callers (azure-deploy-network.sh)
+  # reference directly. Not overridable via flag/env var -- there is
+  # exactly one hub, and no real caller has ever needed to point this
+  # script elsewhere (cams-vwsp3 Goal 3 review).
+  hub_rg="${BRANCH_NETWORK_HUB_RESOURCE_GROUP_DEFAULT}"
+  hub_vnet_name="${BRANCH_NETWORK_HUB_VNET_NAME_DEFAULT}"
   # Action applied to resources the deployment stack manages when it is deleted.
   # Slice 1 (per-branch RGs): deleteAll removes the resources AND the resource group
   # (matches the previous 'az group delete' behavior). Slice 2 (shared RGs) will pass
@@ -329,6 +338,43 @@ function delete_vnet_link_if_exists() {
         az resource delete --ids "${id}"
     else
         echo "No ${label} private DNS zone vnet link ${zoneName}-vnet-link-${stackName} found in ${rg}; nothing to delete"
+    fi
+}
+
+# cams-vwsp3 Goal 3. Deletes this branch's HUB-SIDE VNet peering (a child
+# resource of hubVnetName, in hubRg -- bankruptcy-oversight-support-systems,
+# NOT network_rg) if it exists. This is now load-bearing correctness, not
+# hygiene: azure-deploy-network.sh derives "which /20 pool slots are already
+# claimed" LIVE from the hub's actual peering list (see
+# _branch-network-pool.sh's branch_network_claimed_slot_indices) -- a leaked
+# hub-side peering after this branch is torn down would permanently and
+# incorrectly mark its slot as claimed forever, shrinking the usable pool.
+#
+# Unlike the branch-side peering (a child of the branch's OWN vnet, deleted
+# for free when that vnet is deleted by the network stack's own
+# --action-on-unmanage deleteResources delete below), the hub-side peering
+# is a child of the HUB's vnet and is never stack-managed by anything this
+# script deletes elsewhere -- it is only ever created directly (a plain,
+# targeted `az deployment group create` against hubRg, see
+# azure-deploy-network.sh), so nothing else here would ever remove it.
+#
+# `list` (not `show`), mirroring stack_exists()/az_vnet_exists_func()'s
+# reasoning: a genuinely absent peering is a normal empty result, not a CLI
+# error, so a transient failure (auth expiry, throttling) must not be
+# silently read as "already gone."
+function delete_hub_peering_if_exists() {
+    local hubRg=$1
+    local hubVnetName=$2
+    local branchVnetName=$3
+    local peeringName
+    peeringName=$(branch_network_hub_peering_name_for "${branchVnetName}" "${hubVnetName}")
+    local peeringId
+    peeringId=$(az network vnet peering list --resource-group "${hubRg}" --vnet-name "${hubVnetName}" --query "[?name=='${peeringName}'].id" -o tsv)
+    if [[ -n "${peeringId}" ]]; then
+        echo "Deleting hub-side VNet peering ${peeringName} in ${hubRg}"
+        az resource delete --ids "${peeringId}"
+    else
+        echo "No hub-side VNet peering ${peeringName} found in ${hubRg}; nothing to delete"
     fi
 }
 
@@ -589,6 +635,30 @@ elif [[ "${netExists}" == "true" ]]; then
     set +e
     (
         set -euo pipefail
+        # cams-vwsp3 Goal 3 -- see delete_hub_peering_if_exists's own
+        # comment above for why this hub-side peering cleanup is required
+        # and can't be swept up by anything else in this script.
+        # branchVnetName matches naming.bicep's virtualNetworkName(stackName)
+        # formula ('vnet-${stackName}'); can't import that bicep func from
+        # bash, so it's reconstructed here the same way pepName below
+        # reconstructs its own bicep-side naming convention by hand.
+        #
+        # Called UNCONDITIONALLY for both unmanage_action values (not just
+        # the shared-RG deleteResources path): the legacy deleteAll path
+        # (`az group delete`, below) was previously assumed safe to skip
+        # only because deleteAll is documented as targeting pre-Slice-2
+        # branches that never had a hub peering -- a safety property that
+        # lived only in --help text, not in this branching logic. Calling
+        # this here for both paths makes that safety property structural
+        # instead of relying on an out-of-band assumption about which
+        # branches can ever reach deleteAll: it is a cheap no-op (by its own
+        # design) whenever no hub-side peering exists, so it costs nothing
+        # on the deleteAll path and closes the gap if that assumption is
+        # ever wrong (e.g. a future manual deleteAll invocation against a
+        # Slice-2 branch that DID get a hub peering).
+        branchVnetName="vnet-${stack_name}"
+        delete_hub_peering_if_exists "${hub_rg}" "${hub_vnet_name}" "${branchVnetName}"
+
         if [[ "${unmanage_action}" != "deleteResources" ]]; then
             # Per-branch network RG: delete the whole RG. This removes the network
             # stack, the vnet/subnets, and any stack-unmanaged resources (the KV
