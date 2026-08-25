@@ -18,7 +18,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "Preview with what-if, or actually deploy"
+        description: 'Preview with what-if, or actually deploy'
         required: true
         default: what-if
         type: choice
@@ -26,7 +26,7 @@ on:
           - what-if
           - deploy
       resourceGroup:
-        description: "Resource group holding the SQL server and the hub"
+        description: 'Resource group holding the SQL server and the hub'
         required: true
         default: bankruptcy-oversight-support-systems
         type: string
