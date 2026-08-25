@@ -65,7 +65,6 @@ async function getApplicationContext<B = unknown>(
     releasables: [],
     extraOutputs: invocationContext.extraOutputs,
     registeredExtraOutputQueueNames: getRegisteredExtraOutputQueueNames(invocationContext),
-    notificationWarnings: [],
   } satisfies ApplicationContext<B>;
 }
 

@@ -170,10 +170,7 @@ function TrusteeContactForm(props: Readonly<TrusteeContactFormProps>) {
 
       const payload = mapPayload(currentFormData);
       try {
-        const response = await Api2.patchTrustee(props.trusteeId, payload);
-        if (response?.warnings?.length) {
-          globalAlert?.warning(response.warnings.join(' '));
-        }
+        await Api2.patchTrustee(props.trusteeId, payload);
         navigate.navigateTo(`/trustees/${props.trusteeId}`);
       } catch (e) {
         globalAlert?.error(`Failed to update trustee: ${(e as Error).message}`);

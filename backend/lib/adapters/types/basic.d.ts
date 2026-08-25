@@ -30,7 +30,6 @@ export interface ApplicationContext<B = unknown> {
    * check cannot be performed.
    */
   registeredExtraOutputQueueNames?: string[];
-  notificationWarnings: string[];
 }
 
 export interface ObjectKeyVal {
