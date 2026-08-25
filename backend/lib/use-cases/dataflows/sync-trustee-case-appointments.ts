@@ -76,6 +76,13 @@ type ScenarioDistribution = {
    * trustee's review queue.
    */
   emptyDemographicsSkippedCount: number;
+  /**
+   * event.profCode was a known sentinel value AND the record's name was itself a
+   * bogus/administrative placeholder (isBogusTrusteeName) with no usable contact info either.
+   * Distinct from emptyDemographicsSkippedCount: this path can fire even though dxtrTrustee HAS a
+   * populated name — the name is present but not a real identity.
+   */
+  sentinelBogusNameSkippedCount: number;
 };
 
 type MatchAuditEntry = {
@@ -842,8 +849,8 @@ function assertValidChapter(caseId: string, chapter: string): CaseChapter {
  * trustee-case-appointments.mongo.repository.ts), so assignedOn must be derived from the
  * event's stable appointedDate — never wall-clock time, which would differ on every retry of
  * the same event and mint a new, duplicate surrogate row under the same fingerprint each time
- * (CAMS-809: this previously fell back to `?? now`, exactly the bug applyResolvedTrustee's own
- * docblock above warns against). Refuses the same way applyResolvedTrustee does when
+ * (falling back to `?? now` here would be exactly the bug applyResolvedTrustee's own docblock
+ * above warns against). Refuses the same way applyResolvedTrustee does when
  * appointedDate is missing/unparseable, so the event surfaces via the DLQ instead of silently
  * proceeding. Two genuinely different pending mismatches on the same case each still get their
  * own surrogate row.
@@ -1283,18 +1290,47 @@ type EventOutcome =
   | { kind: 'dlq'; message: TrusteeAppointmentSyncError | TrusteeAppointmentSyncEvent }
   | { kind: 'none' };
 
+const DXTR_PROF_CODE_NO_TRUSTEE_APPOINTED = '00000';
+const DXTR_PROF_CODE_ID_UNAVAILABLE = '99999';
+
+// Substrings observed in real DXTR data standing in for "no trustee"/"placeholder" on
+// sentinel-coded records — e.g. "No Trustee", "TRUSTEE NOT APPOINTED", "Awaiting Trustee
+// Assignment", "Not Assigned - XX", "For Internal Use Only", "CHAPTER 11 - XX". Scoped strictly
+// to what's been evidenced; do not add speculative variants without direct evidence.
+const BOGUS_TRUSTEE_NAME_KEYWORDS = [
+  'trustee',
+  'assign',
+  'chapter',
+  'internal use',
+  'not appointed',
+];
+
 /**
- * True when dxtrTrustee carries no usable demographics at all — blank fullName (see
- * normalizeName) AND no legacy/contact fields (address, phone, email) either. Checked before
- * matchTrusteeByName in processOneEvent: absent demographics could describe any trustee, so an
- * event this sparse cannot be safely attributed to one and must never reach matching or
- * verification. See ScenarioDistribution.emptyDemographicsSkippedCount's doc comment.
+ * True when a sentinel-coded record's name is itself a bogus/administrative placeholder rather
+ * than a genuine trustee name (e.g. "No Trustee", "CHAPTER 11 - XX") — checked against lastName,
+ * falling back to fullName (both via normalizeName, so a whitespace-only lastName correctly falls
+ * back to fullName rather than being treated as present). Must ONLY be evaluated when the event's
+ * profCode is already a known sentinel value (see isSentinelWithNoIdentity below): a genuine
+ * trustee's name or firm name can plausibly contain one of these substrings (e.g. a name suffixed
+ * "(TR)" wouldn't match, but nothing rules out a real name containing "Trustee"), so this check
+ * alone must never be disqualifying — isSentinelWithNoIdentity also requires the absence of real
+ * contact info before treating a bogus-looking name as disqualifying.
  */
-function hasNoUsableDemographics(event: TrusteeAppointmentSyncEvent): boolean {
+function isBogusTrusteeName(event: TrusteeAppointmentSyncEvent): boolean {
   const { dxtrTrustee } = event;
-  const hasName = Boolean(normalizeName(dxtrTrustee.fullName ?? ''));
-  const legacy = dxtrTrustee.legacy;
-  const hasContact = Boolean(
+  const name = (
+    normalizeName(dxtrTrustee.lastName ?? '') || normalizeName(dxtrTrustee.fullName ?? '')
+  ).toLowerCase();
+  return BOGUS_TRUSTEE_NAME_KEYWORDS.some((keyword) => name.includes(keyword));
+}
+
+/**
+ * True when dxtrTrustee.legacy carries any usable contact info — address, phone, or email.
+ * Shared by resolveSkipReason and isSentinelWithNoIdentity so what counts as "usable contact"
+ * can't diverge between the two.
+ */
+function hasUsableContact(legacy: TrusteeAppointmentSyncEvent['dxtrTrustee']['legacy']): boolean {
+  return Boolean(
     legacy?.address1 ||
     legacy?.address2 ||
     legacy?.address3 ||
@@ -1302,25 +1338,96 @@ function hasNoUsableDemographics(event: TrusteeAppointmentSyncEvent): boolean {
     legacy?.phone ||
     legacy?.email,
   );
-  return !hasName && !hasContact;
+}
+
+/**
+ * Which pre-match short-circuit rule, if any, disqualifies this event from matching.
+ * 'empty-demographics' is a totally blank record; 'sentinel-bogus-name' is a sentinel-coded
+ * record whose populated name is itself a bogus/administrative placeholder. Kept distinct so
+ * callers can log/count each condition accurately instead of conflating "blank record" with
+ * "populated-but-fake name" under one message/counter.
+ */
+type SkipReason = 'empty-demographics' | 'sentinel-bogus-name' | null;
+
+/**
+ * Determines whether dxtrTrustee carries no usable demographics at all — blank fullName (see
+ * normalizeName) AND no legacy/contact fields (address, phone, email) either — or is a sentinel-
+ * coded record whose name is itself a bogus placeholder. Checked before matchTrusteeByName in
+ * processOneEvent: either condition means the event cannot be safely attributed to a trustee and
+ * must never reach matching or verification. See ScenarioDistribution's doc comments for each
+ * counter this feeds.
+ */
+function resolveSkipReason(event: TrusteeAppointmentSyncEvent): SkipReason {
+  const { dxtrTrustee } = event;
+  const hasName = Boolean(normalizeName(dxtrTrustee.fullName ?? ''));
+  const hasContact = hasUsableContact(dxtrTrustee.legacy);
+  if (!hasName && !hasContact) {
+    return 'empty-demographics';
+  }
+
+  if (
+    isSentinelWithNoIdentity(event, DXTR_PROF_CODE_NO_TRUSTEE_APPOINTED) ||
+    isSentinelWithNoIdentity(event, DXTR_PROF_CODE_ID_UNAVAILABLE)
+  ) {
+    return hasName ? 'sentinel-bogus-name' : 'empty-demographics';
+  }
+
+  return null;
+}
+
+/**
+ * True when event.profCode equals the given sentinel value (DXTR can supply an incorrect ACMS
+ * professional code, so it must never be trusted as an auto-link identity signal — profCode is
+ * used here only as this negative signal, never to pick which trustee an event belongs to) AND
+ * the record's name/contact don't establish a real
+ * identity: either nothing at all (no usable fullName per normalizeName — the same presence
+ * check resolveSkipReason itself uses, not just a blank firstName, which DXTR can leave
+ * unset even when fullName is populated — and no usable contact info per hasUsableContact), or a
+ * name that is itself a bogus/administrative placeholder (isBogusTrusteeName) AND no usable
+ * contact info either — a bogus-looking name alone must never disqualify a record that also
+ * carries a real address/phone/email, since that would silently drop a genuine trustee whose name
+ * happens to contain a keyword like "trustee" or "chapter" (e.g. "John Doe, Trustee").
+ */
+function isSentinelWithNoIdentity(
+  event: TrusteeAppointmentSyncEvent,
+  sentinelProfCode: string,
+): boolean {
+  if (event.profCode !== sentinelProfCode) {
+    return false;
+  }
+  const { dxtrTrustee } = event;
+  const hasNoContact = !hasUsableContact(dxtrTrustee.legacy);
+  const hasNoName = !normalizeName(dxtrTrustee.fullName ?? '');
+  return hasNoContact && (hasNoName || isBogusTrusteeName(event));
 }
 
 /**
  * Short-circuits processOneEvent before any repo call is made when dxtrTrustee has no usable
- * demographics at all. Returns null when it doesn't apply, so the caller proceeds normally.
+ * demographics, or is a sentinel-coded record with a bogus placeholder name. Returns null when
+ * neither applies, so the caller proceeds normally.
  */
 function resolvePreMatchShortCircuit(
   deps: SyncTrusteeCaseAppointmentsDeps,
   event: TrusteeAppointmentSyncEvent,
   scenarioDistribution: ScenarioDistribution,
 ): EventOutcome | null {
-  if (hasNoUsableDemographics(event)) {
+  const skipReason = resolveSkipReason(event);
+  if (skipReason === 'empty-demographics') {
     deps.context.logger.warn(
       MODULE_NAME,
       `Trustee appointment event for case ${event.caseId} has no usable demographics ` +
         `(blank name, no address/phone/email) — cannot be safely attributed to any trustee. Skipping.`,
     );
     scenarioDistribution.emptyDemographicsSkippedCount++;
+    return { kind: 'none' };
+  }
+  if (skipReason === 'sentinel-bogus-name') {
+    deps.context.logger.warn(
+      MODULE_NAME,
+      `Trustee appointment event for case ${event.caseId} has a sentinel professional code and ` +
+        `a bogus/administrative placeholder name — cannot be safely attributed to any trustee. Skipping.`,
+    );
+    scenarioDistribution.sentinelBogusNameSkippedCount++;
     return { kind: 'none' };
   }
 
@@ -1552,6 +1659,7 @@ async function processAppointments(
     retryableCount: 0,
     candidateLoadFailedCount: 0,
     emptyDemographicsSkippedCount: 0,
+    sentinelBogusNameSkippedCount: 0,
   };
 
   for (const event of events) {

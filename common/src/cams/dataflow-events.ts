@@ -112,6 +112,7 @@ export type TrusteeAppointmentSyncEvent = {
   retryCount?: number;
   chapter?: string;
   courtDivisionCode?: string;
+  profCode?: string;
 };
 
 /**
