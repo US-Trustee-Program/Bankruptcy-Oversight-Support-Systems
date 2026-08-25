@@ -918,8 +918,6 @@ describe('calculateChapterScore', () => {
     expect(score).toBe(100);
   });
 
-  // CAMS-880 regression coverage: chapter evidence must be scoped to appointments that also
-  // cover the case's court+division, not the trustee's full active-appointment history.
   test('should return 0 when the trustee has no appointment covering the case division, even if a different-division appointment matches the case chapter', () => {
     const appointments = [
       makeAppointment({ courtId: '081', divisionCode: '2', chapter: '7', status: 'active' }),
@@ -1004,8 +1002,7 @@ describe('calculateCandidateScore', () => {
     expect(score.addressScore).toBe(40); // City + state match (different zip)
     expect(score.nameScore).toBe(100); // First and last name match
     expect(score.districtDivisionScore).toBe(50); // Same court, different division
-    // CAMS-880: chapter evidence is scoped to appointments that also cover the case's division —
-    // the only appointment here (division '2') doesn't cover the case's division ('1'), so
+    // The only appointment here (division '2') doesn't cover the case's division ('1'), so
     // chapter cannot be credited even though its chapter value equals the case's chapter.
     expect(score.chapterScore).toBe(0);
     // phone/email null (no phone/email on either side) -> applicableWeight = 0.9
@@ -1056,12 +1053,9 @@ describe('calculateCandidateScore', () => {
     expect(score.totalScore).toBeCloseTo(33.3333, 4);
   });
 
-  test('should return totalScore 0 when court differs, even though the case chapter equals the trustee appointment chapter (CAMS-880)', () => {
-    // Regression test: a matching chapter value alone must NOT be creditable when no active
-    // appointment covers the case's court+division — chapter evidence is scoped to
-    // division-matching appointments (see calculateChapterScore's doc comment). Before CAMS-880,
-    // this scenario incorrectly scored chapterScore=100 based on the trustee's appointment
-    // chapter matching in isolation, regardless of court/division.
+  test('should return totalScore 0 when court differs, even though the case chapter equals the trustee appointment chapter', () => {
+    // A matching chapter value alone must NOT be creditable when no active appointment covers
+    // the case's court+division.
     const score = calculateCandidateScore(
       context,
       makeDxtrTrustee(), // No address, no firstName/lastName - nameScore is 0
@@ -1651,9 +1645,9 @@ describe('resolveNameCollisionByScoring', () => {
   test('does not resolve a single candidate at exactly the 75-point threshold (boundary: > not >=)', async () => {
     // address=100 (5%), name=0/genuine mismatch (25%), phone=100/email=100 (5%/5%),
     // district=100/chapter=100 (30%/30%) => weighted total = exactly 75. meetsThreshold requires
-    // totalScore > FUZZY_MATCH_SCORE_THRESHOLD (75), so this must NOT auto-resolve. (CAMS-880:
-    // district=100/chapter=100 must come from a single division+chapter-matching appointment,
-    // not two different ones — this fixture's one appointment covers both.)
+    // totalScore > FUZZY_MATCH_SCORE_THRESHOLD (75), so this must NOT auto-resolve. district=100
+    // and chapter=100 must come from a single division+chapter-matching appointment, not two
+    // different ones, so this fixture's one appointment covers both.
     const event = makeEvent({
       courtId: '081',
       courtDivisionCode: '1',
@@ -1955,12 +1949,10 @@ describe('resolveNameCollisionByScoring', () => {
   test('remains unresolved because chapterScore is scoped to the division-matching appointment', async () => {
     // Trustee holds two active appointments: one matches the case's division (different
     // chapter), the other matches the case's chapter (different division). Neither appointment
-    // alone matches court + division + chapter, so isAppointmentMatch is false for both. CAMS-880:
-    // calculateChapterScore now scopes chapter evidence to division-matching appointments only,
-    // so chapterScore is correctly 0 here (the division-matching appointment's chapter is 13, not
-    // the case's 7) — the combined score can no longer even superficially look strong. This test
-    // guards the outcome ('unresolved', human review) at the resolveNameCollisionByScoring level,
-    // on top of calculateChapterScore's own unit coverage of the same scenario.
+    // alone matches court + division + chapter, so isAppointmentMatch is false for both, and
+    // chapterScore is 0 since the division-matching appointment's chapter differs from the
+    // case's. Guards the outcome at the resolveNameCollisionByScoring level, on top of
+    // calculateChapterScore's own unit coverage of the same scenario.
     const event = makeEvent({
       courtId: '081',
       courtDivisionCode: '2',

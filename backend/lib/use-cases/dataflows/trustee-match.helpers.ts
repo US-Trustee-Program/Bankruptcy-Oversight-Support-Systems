@@ -307,11 +307,9 @@ export function findInactivePerfectMatch(
  * - Exact court + division match with active appointment: 100 points
  * - Same court, different division with active appointment: 50 points
  * - No matching court: 0 points
- * Only active appointments count.
- *
- * See calculateChapterScore's doc comment (CAMS-880) — chapter evidence is scoped to the same
- * division-matching appointments this function's 100 case identifies, so the two scores can no
- * longer be independently satisfied by two different appointment records.
+ * Only active appointments count. calculateChapterScore reuses this function's division match
+ * as the basis for its own scoping, so the two scores can never be satisfied by two different
+ * appointment records.
  */
 export function calculateDistrictDivisionScore(
   caseCourtId: string,
@@ -342,20 +340,12 @@ export function calculateDistrictDivisionScore(
  *   case's court + division: 100 points
  * - No match: 0 points
  * Normalizes chapters before comparison (e.g., "7" === "07").
- * Only active appointments count.
- *
- * CAMS-880: chapter evidence is deliberately scoped to the subset of active appointments that
- * cover the case's court + division (the same appointments a 100 calculateDistrictDivisionScore
- * comes from), NOT the trustee's full active-appointment history. Before this fix, a trustee
- * holding active appointments across multiple divisions/chapters (e.g. Division A/Chapter 7 and
- * Division B/Chapter 13) could score 100 on chapter for ANY case chapter they handle anywhere,
- * even a Division-A case whose chapter (13) only matches their unrelated Division-B appointment.
- * Combined with districtDivisionScore's independent 100, this let the two scores' evidence come
- * from two different appointment records, inflating totalScore for a trustee never actually
- * appointed to that division+chapter combination. Scoping chapter evidence to division-matching
- * appointments closes that gap: a case's chapter can only be credited against appointments that
- * already establish the division match, so chapterScore can never be 100 when
- * calculateDistrictDivisionScore is 50 or 0.
+ * Only active appointments count, and only appointments that also cover the case's court +
+ * division are eligible — a trustee holding active appointments across multiple
+ * divisions/chapters must never score 100 on chapter for a case whose chapter only matches an
+ * appointment in an unrelated division, since that appointment provides no evidence the trustee
+ * is appointed to this case's actual division+chapter combination. chapterScore can therefore
+ * never be 100 when calculateDistrictDivisionScore is 50 or 0.
  */
 export function calculateChapterScore(
   caseCourtId: string,
@@ -733,13 +723,9 @@ export async function resolveNameCollisionByScoring(
   const meetsThreshold = winner.totalScore > FUZZY_MATCH_SCORE_THRESHOLD;
   const hasSignificantGap =
     !runnerUp || winner.totalScore - runnerUp.totalScore >= FUZZY_MATCH_MIN_GAP;
-  // CAMS-880: calculateChapterScore now scopes chapter evidence to the same division-matching
-  // appointments districtDivisionScore's 100 comes from (see its doc comment), so the two scores
-  // can no longer independently agree via two different appointment records. Even so, this
-  // no-human-review auto-link gate is kept as defense-in-depth: isAppointmentMatch requires court
-  // + division + chapter to match on a SINGLE record, which is a strictly stronger guarantee than
-  // "the winner's totalScore cleared the threshold" alone — auto-linking should never rely solely
-  // on the additive score.
+  // isAppointmentMatch requires court + division + chapter to match on a SINGLE record, a
+  // strictly stronger guarantee than "the winner's totalScore cleared the threshold" alone —
+  // auto-linking should never rely solely on the additive score.
   const sameAppointmentMatch = isAppointmentMatch(
     winner.appointments ?? [],
     event.courtId,

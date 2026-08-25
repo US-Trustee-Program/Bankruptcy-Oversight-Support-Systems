@@ -1553,10 +1553,8 @@ describe('SyncTrusteeCaseAppointments', () => {
       // score-based auto-match path for a single non-perfect candidate — isAppointmentMatch above
       // (mocked false) is the only check that verifies a single appointment record actually
       // covers this case's court+division+chapter combination. Every non-perfect single candidate
-      // is a human-reviewed ImperfectMatch regardless of how high totalScore is. (CAMS-880 fixed
-      // calculateChapterScore itself so this exact score shape can no longer occur from real
-      // scoring — see trustee-match.helpers.test.ts — but this test's job is proving
-      // processAppointments doesn't trust totalScore alone, independent of that.)
+      // is a human-reviewed ImperfectMatch regardless of how high totalScore is, independent of
+      // whether real scoring could ever actually produce this exact score shape.
       vi.spyOn(trusteeMatchHelpers, 'isAppointmentMatch').mockReturnValue(false);
       vi.spyOn(trusteeMatchHelpers, 'calculateCandidateScore').mockReturnValue({
         trusteeId: 'trustee-123',

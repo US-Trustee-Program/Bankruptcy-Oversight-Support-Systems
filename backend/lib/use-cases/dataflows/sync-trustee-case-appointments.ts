@@ -1243,10 +1243,7 @@ async function applyMatchOutcome(
   // No no-review auto-match on totalScore alone: isAppointmentMatch above already ruled out any
   // record that satisfies court+division+chapter together, so a same-record requirement can
   // never hold here — every single-candidate non-perfect-match falls through to ImperfectMatch
-  // below for human review regardless of how high totalScore is. (CAMS-880: chapterScore is now
-  // scoped to division-matching appointments — see calculateChapterScore's doc comment — so the
-  // score itself no longer inflates via two different appointment records either, but the review
-  // decision here still doesn't lean on totalScore alone.)
+  // below for human review regardless of how high totalScore is.
   audit.matchOutcome = 'imperfect-match';
   audit.matchedTrusteeId = trusteeId;
   audit.scoringBreakdown = {
@@ -1657,9 +1654,7 @@ async function processOneEvent(
  *   exactly: PerfectMatchInactiveStatus — pending verification, surrogate appointment written.
  * - Neither: ImperfectMatch — pending verification with a real CandidateScore breakdown, however
  *   high totalScore is. isAppointmentMatch's single-record requirement is the ONLY gate for
- *   auto-linking; a high totalScore is never sufficient on its own (see calculateChapterScore's
- *   doc comment for why totalScore's district/chapter components must not be trusted as
- *   independent evidence — CAMS-880).
+ *   auto-linking; a high totalScore is never sufficient on its own.
  *
  * Pre-matching short-circuits (processOneEvent / resolveSyncedCase):
  * - No SYNCED_CASE document exists yet for this caseId: not-yet-synced, event queued for retry
@@ -1667,8 +1662,10 @@ async function processOneEvent(
  * - The case was moved to a different caseId (movedToCaseId set): skipped entirely, no match
  *   attempted.
  * - dxtrTrustee has no usable demographics at all (blank name and no other legacy/contact
- *   fields): emptyDemographicsSkippedCount, skipped before matching — see
- *   BOGUS_TRUSTEE_NAME_KEYWORDS/sentinel professional code handling above.
+ *   fields), OR profCode is a sentinel value AND the record's name/contact don't establish a
+ *   real identity (see resolveSkipReason/isSentinelWithNoIdentity): empty-demographics or
+ *   sentinel-bogus-name, skipped before matching (emptyDemographicsSkippedCount /
+ *   sentinelBogusNameSkippedCount).
  * - A fingerprint/TRUSTEE_VARIATION hit already resolved this exact DXTR record to a trusteeId on
  *   a prior pass: short-circuits straight to that trusteeId, bypassing matchTrusteeByName.
  * - A prior pass already wrote a pending or approved verification doc for this event
