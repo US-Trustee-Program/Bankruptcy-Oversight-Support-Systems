@@ -307,7 +307,9 @@ export function findInactivePerfectMatch(
  * - Exact court + division match with active appointment: 100 points
  * - Same court, different division with active appointment: 50 points
  * - No matching court: 0 points
- * Only active appointments count.
+ * Only active appointments count. calculateChapterScore reuses this function's division match
+ * as the basis for its own scoping, so the two scores can never be satisfied by two different
+ * appointment records.
  */
 export function calculateDistrictDivisionScore(
   caseCourtId: string,
@@ -334,24 +336,34 @@ export function calculateDistrictDivisionScore(
 /**
  * Calculates chapter match score for a trustee.
  * Scoring:
- * - Exact chapter match with active appointment: 100 points
+ * - Exact chapter match, but ONLY counted against an active appointment that also covers the
+ *   case's court + division: 100 points
  * - No match: 0 points
  * Normalizes chapters before comparison (e.g., "7" === "07").
- * Only active appointments count.
+ * Only active appointments count, and only appointments that also cover the case's court +
+ * division are eligible — a trustee holding active appointments across multiple
+ * divisions/chapters must never score 100 on chapter for a case whose chapter only matches an
+ * appointment in an unrelated division, since that appointment provides no evidence the trustee
+ * is appointed to this case's actual division+chapter combination. chapterScore can therefore
+ * never be 100 when calculateDistrictDivisionScore is 50 or 0.
  */
 export function calculateChapterScore(
+  caseCourtId: string,
+  caseDivisionCode: string,
   caseChapter: string,
   appointments: TrusteeAppointment[],
 ): number {
-  const activeAppointments = appointments.filter((a) => a.status === 'active');
-
-  if (activeAppointments.length === 0) return 0;
-
   const normalizedCaseChapter = normalizeChapter(caseChapter);
 
-  const chapterMatch = activeAppointments.some((a) => {
-    const normalizedAppointmentChapter = normalizeChapter(a.chapter);
-    return normalizedAppointmentChapter === normalizedCaseChapter;
+  const divisionMatchingAppointments = appointments.filter(
+    (a) =>
+      a.status === 'active' &&
+      a.courtId === caseCourtId &&
+      appointmentCoversDivision(a, caseDivisionCode),
+  );
+
+  const chapterMatch = divisionMatchingAppointments.some((a) => {
+    return normalizeChapter(a.chapter) === normalizedCaseChapter;
   });
 
   return chapterMatch ? 100 : 0;
@@ -580,7 +592,7 @@ export function calculateCandidateScore(
     courtDivisionCode,
     appointments,
   );
-  const chapterScore = calculateChapterScore(chapter, appointments);
+  const chapterScore = calculateChapterScore(courtId, courtDivisionCode, chapter, appointments);
 
   const totalScore = calculateTotalScore({
     addressScore,
@@ -711,15 +723,9 @@ export async function resolveNameCollisionByScoring(
   const meetsThreshold = winner.totalScore > FUZZY_MATCH_SCORE_THRESHOLD;
   const hasSignificantGap =
     !runnerUp || winner.totalScore - runnerUp.totalScore >= FUZZY_MATCH_MIN_GAP;
-  // districtDivisionScore/chapterScore are each computed independently via .some() across every
-  // one of the winner's active appointments (see calculateDistrictDivisionScore/
-  // calculateChapterScore's doc comments) — a trustee holding two active appointments, one
-  // matching the case's division and a different one matching its chapter, can reach a high
-  // combined totalScore for a division/chapter combination they were never actually appointed to.
-  // isAppointmentMatch already requires court + division + chapter to match on a SINGLE record
-  // for the perfect-match path; the no-human-review auto-link gate below must be at least as
-  // strict, so it reuses that same single-record check rather than trusting the additive score
-  // alone.
+  // isAppointmentMatch requires court + division + chapter to match on a SINGLE record, a
+  // strictly stronger guarantee than "the winner's totalScore cleared the threshold" alone —
+  // auto-linking should never rely solely on the additive score.
   const sameAppointmentMatch = isAppointmentMatch(
     winner.appointments ?? [],
     event.courtId,

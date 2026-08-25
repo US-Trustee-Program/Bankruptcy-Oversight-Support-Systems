@@ -35,8 +35,9 @@
  * read — sidestepping the DXTR query's TX_DATE DESC ordering entirely rather than relying on
  * intra-batch processing order.
  *
- * Three further stages, independent of the 12 DXTR-driven scenarios above, guard regressions
- * real Cosmos/Mongo can catch but a fully-mocked unit test cannot:
+ * Further stages, independent of the 12 DXTR-driven scenarios above, guard regressions real
+ * Cosmos/Mongo can catch but a fully-mocked unit test cannot (Stages 8-10 round-trip through
+ * real DXTR/Mongo reads instead of seeding Cosmos fixtures directly):
  *
  *   Stage 5 (sort/index) - getActiveByCaseId (trustee-case-appointments.mongo.repository.ts)
  *     sorts by assignedOn DESCENDING (with createdOn DESCENDING as a tiebreaker) and relies on
@@ -63,6 +64,23 @@
  *     existsInTrusteePartition check detects it and repairs trusteePartition via
  *     replaceOneInTrusteePartition — proof against a real trustee partition collection, which a
  *     mocked repository's recorded call args cannot provide.
+ *
+ *   Stage 8 (bad REC date fallback) - proves CasesDxtrGateway.getTrusteeAppointments falls back
+ *     to TX.TX_DATE when REC's fixed-width embedded appointment date is blank/unparseable,
+ *     against a real SQL Server row rather than a mocked query result.
+ *
+ *   Stage 9 (sentinel professional code skip rule) - proves the skip rule against a real DXTR
+ *     round trip: both that profCode is correctly extracted from REC's fixed-width offset, and
+ *     that isSentinelWithNoIdentity/isBogusTrusteeName correctly decide skip vs. proceed against
+ *     real query results rather than a hand-built mock event.
+ *
+ *   Stage 10 (district/chapter cross-appointment scoring) - seeds one trustee with two active
+ *     TrusteeAppointments in different divisions/chapters, then calls
+ *     resolveNameCollisionByScoring directly against real Mongo for a case whose division
+ *     matches only the FIRST appointment and whose chapter matches only the SECOND
+ *     (unrelated-division) appointment. Asserts chapterScore is 0 — calculateChapterScore scopes
+ *     chapter evidence to only the appointments that also cover the case's division, so a
+ *     trustee's chapter can never be credited from an appointment in an unrelated division.
  *
  * This is a one-shot script - NOT a Vitest test.
  *
@@ -120,6 +138,7 @@ import * as mssql from 'mssql';
 import ApplicationContextCreator from '../../../../backend/function-apps/azure/application-context-creator';
 import SyncTrusteeCaseAppointmentsUseCase from '../../../../backend/lib/use-cases/dataflows/sync-trustee-case-appointments';
 import { TrusteeCaseAppointmentsMongoRepository } from '../../../../backend/lib/adapters/gateways/mongo/trustee-case-appointments.mongo.repository';
+import { resolveNameCollisionByScoring } from '../../../../backend/lib/use-cases/dataflows/trustee-match.helpers';
 import { TrusteeAppointmentSyncEvent } from '../../../../common/src/cams/dataflow-events';
 import {
   standUpEphemeralCosmosDatabase,
@@ -260,6 +279,26 @@ const STAGE_9_CASE_IDS = [
   SENTINEL_GENUINE_NAME_AND_ADDRESS_CASE_ID,
   NON_SENTINEL_EMPTY_DEMOGRAPHICS_CASE_ID,
 ];
+
+// Stage 10: direct-Cosmos proof, no DXTR round trip needed — calculateChapterScore/
+// calculateDistrictDivisionScore/calculateCandidateScore consume TrusteeAppointment[] +
+// court/division/chapter values only. One trustee, two active appointments in DIFFERENT
+// divisions/chapters. A case in the FIRST appointment's division but the SECOND appointment's
+// chapter reproduces the scoring bug this stage guards against: chapter evidence must never be
+// credited from an appointment that doesn't also cover the case's division.
+const CROSS_APPOINTMENT_TRUSTEE = {
+  id: 'ms-trustee-cross-appointment',
+  name: 'CrossAppt M ScoringTrustee',
+};
+const CROSS_APPOINTMENT_DIV_A = '083';
+const CROSS_APPOINTMENT_CHAPTER_A = '7';
+const CROSS_APPOINTMENT_DIV_B = '084';
+const CROSS_APPOINTMENT_CHAPTER_B = '13';
+// The case under verification: division A (matches the trustee's first appointment) but
+// chapter 13 (matches only the trustee's second, unrelated-division appointment).
+const CROSS_APPOINTMENT_CASE_COURT_ID = COURT_ID;
+const CROSS_APPOINTMENT_CASE_DIVISION = CROSS_APPOINTMENT_DIV_A;
+const CROSS_APPOINTMENT_CASE_CHAPTER = CROSS_APPOINTMENT_CHAPTER_B;
 
 // ---------------------------------------------------------------------------
 // Environment loading
@@ -858,9 +897,15 @@ async function clean() {
 
   // Stage 5/6/7 fixtures are seeded directly into Cosmos (no DXTR row), so their case/trustee
   // ids are tracked separately from ALL_CASE_IDS/ALL_TRUSTEE_IDS — see the STAGE_5_6_7_*
-  // constants' own comment for why they aren't folded into those arrays.
+  // constants' own comment for why they aren't folded into those arrays. Stage 10 has no case
+  // fixture at all (resolveNameCollisionByScoring is called directly against a synthetic event,
+  // not a synced case/case-appointment doc), only a trustee id to tear down.
   const allCaseIds = [...ALL_CASE_IDS, ...STAGE_5_6_7_CASE_IDS, ...STAGE_9_CASE_IDS];
-  const allTrusteeIds = [...ALL_TRUSTEE_IDS, ...STAGE_5_6_7_TRUSTEE_IDS];
+  const allTrusteeIds = [
+    ...ALL_TRUSTEE_IDS,
+    ...STAGE_5_6_7_TRUSTEE_IDS,
+    CROSS_APPOINTMENT_TRUSTEE.id,
+  ];
 
   const { client, db } = await getMongoDb();
   try {
@@ -1424,6 +1469,9 @@ async function runScenarios() {
 
   // ── Stage 9: sentinel professional code skip rule ─────────────────────────
   await runSentinelProfCodeStage(deps);
+
+  // ── Stage 10: district/chapter cross-appointment scoring ─────────────────
+  await runCrossAppointmentScoringStage(context);
 }
 
 // ---------------------------------------------------------------------------
@@ -2055,6 +2103,148 @@ async function runSentinelProfCodeStage(
     }
   } finally {
     await verifyClient.close();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Stage 10 — district/chapter cross-appointment scoring
+// ---------------------------------------------------------------------------
+
+/**
+ * Proves calculateChapterScore (trustee-match.helpers.ts) scopes chapter evidence to only the
+ * active appointments that also cover the case's court+division, against a real Mongo read (no
+ * mocked repositories) — direct-Cosmos proof, no DXTR round trip needed since
+ * resolveNameCollisionByScoring/calculateCandidateScore consume TrusteeAppointment[] +
+ * court/division/chapter values only.
+ *
+ * Seeds one trustee with two active appointments in different divisions/chapters (division A/
+ * chapter 7, division B/chapter 13), then calls resolveNameCollisionByScoring directly for a case
+ * whose division matches ONLY the first appointment and whose chapter matches ONLY the second
+ * (unrelated-division) appointment. If chapter evidence weren't scoped to division-matching
+ * appointments, this exact fixture would score chapterScore=100 despite no single appointment
+ * covering the case's division+chapter combination. Asserts chapterScore=0 and
+ * districtDivisionScore=100 (the division score is unaffected — only chapter evidence needed
+ * scoping).
+ */
+async function runCrossAppointmentScoringStage(context: Awaited<ReturnType<typeof getAppContext>>) {
+  console.log(
+    '\nStage 10: district/chapter cross-appointment scoring — real Mongo read, no mocks\n',
+  );
+
+  const now = new Date().toISOString();
+  const systemUser = { id: 'SYSTEM', name: 'SYSTEM' };
+  const { client, db } = await getMongoDb();
+  try {
+    await db.collection('trustees').replaceOne(
+      { documentType: 'TRUSTEE', trusteeId: CROSS_APPOINTMENT_TRUSTEE.id },
+      {
+        documentType: 'TRUSTEE',
+        trusteeId: CROSS_APPOINTMENT_TRUSTEE.id,
+        name: CROSS_APPOINTMENT_TRUSTEE.name,
+        firstName: 'CrossAppt',
+        middleName: 'M',
+        lastName: 'ScoringTrustee',
+        public: {
+          address: {
+            address1: '10 Cross Appointment Rd',
+            city: 'Scenario City',
+            state: 'SC',
+            zipCode: '11111',
+            countryCode: 'US',
+          },
+        },
+        updatedOn: now,
+        updatedBy: systemUser,
+      },
+      { upsert: true },
+    );
+
+    const appointmentSpecs = [
+      {
+        id: 'appointment-cross-div-a',
+        divisionCode: CROSS_APPOINTMENT_DIV_A,
+        chapter: CROSS_APPOINTMENT_CHAPTER_A,
+      },
+      {
+        id: 'appointment-cross-div-b',
+        divisionCode: CROSS_APPOINTMENT_DIV_B,
+        chapter: CROSS_APPOINTMENT_CHAPTER_B,
+      },
+    ];
+    for (const spec of appointmentSpecs) {
+      await db.collection('trustee-appointments').replaceOne(
+        { documentType: 'TRUSTEE_APPOINTMENT', id: spec.id },
+        {
+          documentType: 'TRUSTEE_APPOINTMENT',
+          id: spec.id,
+          trusteeId: CROSS_APPOINTMENT_TRUSTEE.id,
+          chapter: spec.chapter,
+          appointmentType: 'panel',
+          courtId: COURT_ID,
+          divisionCode: spec.divisionCode,
+          appointedDate: '2020-01-01',
+          status: 'active',
+          effectiveDate: '2020-01-01',
+          updatedOn: now,
+          updatedBy: systemUser,
+          createdOn: now,
+          createdBy: systemUser,
+        },
+        { upsert: true },
+      );
+    }
+    pass(
+      `10. seeded trustee ${CROSS_APPOINTMENT_TRUSTEE.id} with active appointments in division ${CROSS_APPOINTMENT_DIV_A}/chapter ${CROSS_APPOINTMENT_CHAPTER_A} and division ${CROSS_APPOINTMENT_DIV_B}/chapter ${CROSS_APPOINTMENT_CHAPTER_B}`,
+    );
+  } finally {
+    await client.close();
+  }
+
+  const event: TrusteeAppointmentSyncEvent = {
+    caseId: 'cross-appointment-scoring-case',
+    courtId: CROSS_APPOINTMENT_CASE_COURT_ID,
+    courtDivisionCode: CROSS_APPOINTMENT_CASE_DIVISION,
+    chapter: CROSS_APPOINTMENT_CASE_CHAPTER,
+    dxtrTrustee: {
+      fullName: CROSS_APPOINTMENT_TRUSTEE.name,
+      firstName: 'CrossAppt',
+      lastName: 'ScoringTrustee',
+    },
+  };
+
+  const outcome = await resolveNameCollisionByScoring(context, event, [
+    CROSS_APPOINTMENT_TRUSTEE.id,
+  ]);
+
+  if (outcome.kind === 'no-match') {
+    fail('10. resolveNameCollisionByScoring returned no-match — expected a scored candidate');
+    return;
+  }
+
+  const candidate = outcome.candidateScores.find(
+    (c) => c.trusteeId === CROSS_APPOINTMENT_TRUSTEE.id,
+  );
+  if (!candidate) {
+    fail(
+      `10. no candidateScore found for ${CROSS_APPOINTMENT_TRUSTEE.id}: ${JSON.stringify(outcome.candidateScores)}`,
+    );
+    return;
+  }
+
+  if (candidate.districtDivisionScore === 100) {
+    pass('10. districtDivisionScore=100 (case division matches the first appointment)');
+  } else {
+    fail(`10. expected districtDivisionScore=100, got ${candidate.districtDivisionScore}`);
+  }
+
+  if (candidate.chapterScore === 0) {
+    pass(
+      "10. chapterScore=0 — chapter evidence correctly scoped to division-matching appointments only, not the trustee's full appointment history",
+    );
+  } else {
+    fail(
+      `10. REGRESSION: expected chapterScore=0, got ${candidate.chapterScore} — chapter is being credited from an appointment in an unrelated division`,
+    );
   }
 }
 

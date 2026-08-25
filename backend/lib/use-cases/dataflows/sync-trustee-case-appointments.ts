@@ -1240,16 +1240,10 @@ async function applyMatchOutcome(
     nameScore,
   );
 
-  // No no-review auto-match on totalScore alone: districtDivisionScore/chapterScore are each
-  // computed independently across all of the trustee's active appointments (see their doc
-  // comments), not from a single shared record — isAppointmentMatch above already ruled out any
+  // No no-review auto-match on totalScore alone: isAppointmentMatch above already ruled out any
   // record that satisfies court+division+chapter together, so a same-record requirement can
-  // never hold here. A trustee could otherwise clear a high score via two different
-  // appointments (one matching court+division, a different one matching chapter) despite never
-  // holding an appointment covering this case's actual combination. Every single-candidate
-  // non-perfect-match falls through to ImperfectMatch below for human review. (The equivalent gap
-  // for the MULTI-candidate fuzzy-scoring path is closed in resolveNameCollisionByScoring itself,
-  // via the same isAppointmentMatch check on the winning candidate.)
+  // never hold here — every single-candidate non-perfect-match falls through to ImperfectMatch
+  // below for human review regardless of how high totalScore is.
   audit.matchOutcome = 'imperfect-match';
   audit.matchedTrusteeId = trusteeId;
   audit.scoringBreakdown = {
@@ -1637,6 +1631,46 @@ async function processOneEvent(
  * resolution, match-outcome application, and the one transient-error catch boundary. This function
  * only aggregates each event's EventOutcome into the four result buckets below; scenarioDistribution
  * is updated by reference inside processOneEvent and its callees, so nothing here re-derives it.
+ *
+ * Ground truth for the outcome taxonomy this pipeline produces (see
+ * test/integration/trustee-match-scenarios for the integration harness that exercises each of
+ * these against a real DXTR/Cosmos round trip — that harness's header comment cross-references
+ * this list rather than restating the rules):
+ *
+ * Name resolution (matchTrusteeByName / resolveTrusteeIdByName / resolveByScoring):
+ * - Exactly one CAMS trustee matches the DXTR name (exact or fuzzy-normalized): resolved directly,
+ *   nameScore 100.
+ * - No CAMS trustee matches: NoTrusteeMatch — pending verification, no candidates.
+ * - More than one CAMS trustee matches (ambiguous): resolveNameCollisionByScoring scores every
+ *   candidate. A clear winner (totalScore > FUZZY_MATCH_SCORE_THRESHOLD, gap >=
+ *   FUZZY_MATCH_MIN_GAP, AND isAppointmentMatch true for that winner) resolves exactly like an
+ *   exact-name match. Otherwise: AmbiguousMatchUnresolved (no clear winner, e.g. a genuine tie) or
+ *   CandidateLoadFailed (every candidate's data failed to load).
+ *
+ * Match-outcome application (applyMatchOutcome), once a trusteeId is known:
+ * - isAppointmentMatch true (a SINGLE active appointment covers court+division+chapter together):
+ *   auto-linked — no human review, no verification doc written.
+ * - No active appointment matches, but an INACTIVE appointment matches court+division+chapter
+ *   exactly: PerfectMatchInactiveStatus — pending verification, surrogate appointment written.
+ * - Neither: ImperfectMatch — pending verification with a real CandidateScore breakdown, however
+ *   high totalScore is. isAppointmentMatch's single-record requirement is the ONLY gate for
+ *   auto-linking; a high totalScore is never sufficient on its own.
+ *
+ * Pre-matching short-circuits (processOneEvent / resolveSyncedCase):
+ * - No SYNCED_CASE document exists yet for this caseId: not-yet-synced, event queued for retry
+ *   on a later pass (does not count as a failure).
+ * - The case was moved to a different caseId (movedToCaseId set): skipped entirely, no match
+ *   attempted.
+ * - dxtrTrustee has no usable demographics at all (blank name and no other legacy/contact
+ *   fields), OR profCode is a sentinel value AND the record's name/contact don't establish a
+ *   real identity (see resolveSkipReason/isSentinelWithNoIdentity): empty-demographics or
+ *   sentinel-bogus-name, skipped before matching (emptyDemographicsSkippedCount /
+ *   sentinelBogusNameSkippedCount).
+ * - A fingerprint/TRUSTEE_VARIATION hit already resolved this exact DXTR record to a trusteeId on
+ *   a prior pass: short-circuits straight to that trusteeId, bypassing matchTrusteeByName.
+ * - A prior pass already wrote a pending or approved verification doc for this event
+ *   (handleVerificationBucketHit): re-verification — an approved verification is never
+ *   overwritten by a later pass; a pending one is refreshed.
  */
 async function processAppointments(
   deps: SyncTrusteeCaseAppointmentsDeps,
