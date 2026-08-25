@@ -136,6 +136,7 @@ function validateDateFields(): ValidatorFunction {
       'lastMonthlyReportReceived',
       'leaseExpiration',
       'idExpiration',
+      'lastCompensationStudy',
     ];
 
     fullDateFields.forEach((field) => {
