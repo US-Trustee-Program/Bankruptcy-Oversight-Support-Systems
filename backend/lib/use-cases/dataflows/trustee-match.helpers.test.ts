@@ -1152,13 +1152,13 @@ describe('calculateCandidateScore', () => {
     expect(score.districtDivisionScore).toBe(100);
     expect(score.chapterScore).toBe(100);
     // phone/email are null (fixture sets no phone/email on either side), so their weight
-    // is excluded and redistributed: applicableWeight = 0.05 + 0.25 + 0.3 + 0.3 = 0.9
-    // weightedSum = 100*0.05 + 100*0.25 + 100*0.3 + 100*0.3 = 5 + 25 + 30 + 30 = 90
-    // 90 / 0.9 = 100 (toBeCloseTo guards against floating-point division noise)
+    // is excluded and redistributed: applicableWeight = 0.08 + 0.26 + 0.25 + 0.25 = 0.84
+    // weightedSum = 100*0.08 + 100*0.26 + 100*0.25 + 100*0.25 = 8 + 26 + 25 + 25 = 84
+    // 84 / 0.84 = 100 (toBeCloseTo guards against floating-point division noise)
     expect(score.totalScore).toBeCloseTo(100, 10);
   });
 
-  test('should apply weighted scoring correctly (address 5% / name 25% / district 30% / chapter 30%, phone/email null)', () => {
+  test('should apply weighted scoring correctly (address 8% / name 26% / district 25% / chapter 25%, phone/email null)', () => {
     const score = calculateCandidateScore(
       context,
       { ...makeDxtrTrustee('New York, NY 10001'), firstName: 'John', lastName: 'Doe' },
@@ -1187,13 +1187,13 @@ describe('calculateCandidateScore', () => {
     // The only appointment here (division '2') doesn't cover the case's division ('1'), so
     // chapter cannot be credited even though its chapter value equals the case's chapter.
     expect(score.chapterScore).toBe(0);
-    // phone/email null (no phone/email on either side) -> applicableWeight = 0.9
-    // weightedSum = 70*0.05 + 100*0.25 + 50*0.3 + 0*0.3 = 3.5 + 25 + 15 + 0 = 43.5
-    // 43.5 / 0.9 = 48.3333
-    expect(score.totalScore).toBeCloseTo(48.3333, 4);
+    // phone/email null (no phone/email on either side) -> applicableWeight = 0.84
+    // weightedSum = 70*0.08 + 100*0.26 + 50*0.25 + 0*0.25 = 5.6 + 26 + 12.5 + 0 = 44.1
+    // 44.1 / 0.84 = 52.5
+    expect(score.totalScore).toBeCloseTo(52.5, 4);
   });
 
-  test('should return totalScore ~5.56 when only address matches (phone/email null)', () => {
+  test('should return totalScore ~9.52 when only address matches (phone/email null)', () => {
     const score = calculateCandidateScore(
       context,
       // address1 explicit (matches makeTrustee()'s default) so addressScore=100 below is
@@ -1210,13 +1210,13 @@ describe('calculateCandidateScore', () => {
     expect(score.nameScore).toBe(0);
     expect(score.districtDivisionScore).toBe(0);
     expect(score.chapterScore).toBe(0);
-    // phone/email null -> applicableWeight = 0.05 + 0.25 + 0.3 + 0.3 = 0.9
-    // weightedSum = 100*0.05 + 0*0.25 + 0*0.3 + 0*0.3 = 5
-    // 5 / 0.9 = 5.5556
-    expect(score.totalScore).toBeCloseTo(5.5556, 4);
+    // phone/email null -> applicableWeight = 0.08 + 0.26 + 0.25 + 0.25 = 0.84
+    // weightedSum = 100*0.08 + 0*0.26 + 0*0.25 + 0*0.25 = 8
+    // 8 / 0.84 = 9.5238
+    expect(score.totalScore).toBeCloseTo(9.5238, 4);
   });
 
-  test('should return totalScore ~33.33 when only district matches (phone/email null)', () => {
+  test('should return totalScore ~29.76 when only district matches (phone/email null)', () => {
     const score = calculateCandidateScore(
       context,
       makeDxtrTrustee(), // No address, no firstName/lastName - nameScore is 0
@@ -1231,10 +1231,10 @@ describe('calculateCandidateScore', () => {
     expect(score.nameScore).toBe(0);
     expect(score.districtDivisionScore).toBe(100);
     expect(score.chapterScore).toBe(0);
-    // phone/email null -> applicableWeight = 0.9
-    // weightedSum = 0*0.05 + 0*0.25 + 100*0.3 + 0*0.3 = 30
-    // 30 / 0.9 = 33.3333
-    expect(score.totalScore).toBeCloseTo(33.3333, 4);
+    // phone/email null -> applicableWeight = 0.84
+    // weightedSum = 0*0.08 + 0*0.26 + 100*0.25 + 0*0.25 = 25
+    // 25 / 0.84 = 29.7619
+    expect(score.totalScore).toBeCloseTo(29.7619, 4);
   });
 
   test('should return totalScore 0 when court differs, even though the case chapter equals the trustee appointment chapter', () => {
@@ -1254,8 +1254,8 @@ describe('calculateCandidateScore', () => {
     expect(score.nameScore).toBe(0);
     expect(score.districtDivisionScore).toBe(0);
     expect(score.chapterScore).toBe(0);
-    // phone/email null -> applicableWeight = 0.9
-    // weightedSum = 0*0.05 + 0*0.25 + 0*0.3 + 0*0.3 = 0
+    // phone/email null -> applicableWeight = 0.84
+    // weightedSum = 0*0.08 + 0*0.26 + 0*0.25 + 0*0.25 = 0
     expect(score.totalScore).toBeCloseTo(0, 10);
   });
 
@@ -1285,6 +1285,50 @@ describe('calculateCandidateScore', () => {
     // DXTR trustee has no legacy.phone/legacy.email, so both are not comparable.
     expect(score.phoneScore).toBeNull();
     expect(score.emailScore).toBeNull();
+  });
+
+  // Regression coverage for the sync-professionalIds dataflow: a fuzzy (partial, non-exact)
+  // addressScore must flow through calculateCandidateScore's weighting at its documented 8% share
+  // like any other sub-score, not just the exact-match/zero-match extremes exercised elsewhere.
+  test('should apply an exact 8% weight to a fuzzy (non-exact) address score', () => {
+    const score = calculateCandidateScore(
+      context,
+      {
+        ...makeDxtrTrustee('New York, NY 10001', '123 Main Streat'), // typo'd street suffix
+        firstName: 'John',
+        lastName: 'Doe',
+      },
+      '081',
+      '1',
+      '7',
+      makeTrustee({
+        public: {
+          address: {
+            address1: '123 Main Street',
+            city: 'New York',
+            state: 'NY',
+            zipCode: '10001',
+            countryCode: 'US',
+          },
+        },
+      }),
+      [makeAppointment({ chapter: '7', courtId: '081', divisionCode: '1', status: 'active' })],
+    );
+
+    // "123 main streat" vs "123 main street": bigram Jaccard = 8 shared / 12 union = 66.67%,
+    // blended 50/50 with the numeric-token score (both sides share "123" -> 100) per
+    // calculateAddressScore's addressLinesScore = 66.67*0.5 + 100*0.5 = 83.33. Rolled up with
+    // zipScore=100 (30%) and cityStateScore=100 (20%): round(83.33*0.5 + 100*0.3 + 100*0.2) = 92 -
+    // a genuine fuzzy value, not the 0/100 extremes calculateAddressScore's other call sites in
+    // this file exercise.
+    expect(score.addressScore).toBe(92);
+    expect(score.nameScore).toBe(100);
+    expect(score.districtDivisionScore).toBe(100);
+    expect(score.chapterScore).toBe(100);
+    // phone/email null -> applicableWeight = 0.08 + 0.26 + 0.25 + 0.25 = 0.84
+    // weightedSum = 92*0.08 + 100*0.26 + 100*0.25 + 100*0.25 = 7.36 + 26 + 25 + 25 = 83.36
+    // 83.36 / 0.84 = 99.2381
+    expect(score.totalScore).toBeCloseTo(99.2381, 4);
   });
 });
 
@@ -1588,7 +1632,7 @@ describe('calculateTotalScore', () => {
       districtDivisionScore: 100,
       chapterScore: 100,
     });
-    // Only phoneScore (weight 0.05) is excluded; all applicable scores are 100.
+    // Only phoneScore (weight 0.08) is excluded; all applicable scores are 100.
     expect(total).toBe(100);
   });
 
@@ -1613,10 +1657,10 @@ describe('calculateTotalScore', () => {
       districtDivisionScore: 100,
       chapterScore: 100,
     });
-    // applicableWeight = 0.05 (address) + 0.25 (name) + 0.05 (phone) + 0.3 (district) + 0.3 (chapter) = 0.95
-    // weightedSum = 100*0.05 + 100*0.25 + 0*0.05 + 100*0.3 + 100*0.3 = 5 + 25 + 0 + 30 + 30 = 90
-    // 90 / 0.95 = 94.7368...
-    expect(total).toBeCloseTo(94.7368, 4);
+    // applicableWeight = 0.08 (address) + 0.26 (name) + 0.08 (phone) + 0.25 (district) + 0.25 (chapter) = 0.92
+    // weightedSum = 100*0.08 + 100*0.26 + 0*0.08 + 100*0.25 + 100*0.25 = 8 + 26 + 0 + 25 + 25 = 84
+    // 84 / 0.92 = 91.3043...
+    expect(total).toBeCloseTo(91.3043, 4);
   });
 });
 
@@ -1750,7 +1794,7 @@ describe('resolveNameCollisionByScoring', () => {
     );
   });
 
-  test('should return trusteeId when clear winner found (>75% and 5+ gap)', async () => {
+  test('should return trusteeId when clear winner found (meets threshold and gap)', async () => {
     const event = makeEvent({
       dxtrTrustee: {
         fullName: 'John Doe',
@@ -1826,10 +1870,10 @@ describe('resolveNameCollisionByScoring', () => {
     expect(result.candidateScores).toHaveLength(2);
   });
 
-  test('does not resolve a single candidate at exactly the 75-point threshold (boundary: > not >=)', async () => {
-    // address=100 (5%), name=0/genuine mismatch (25%), phone=100/email=100 (5%/5%),
-    // district=100/chapter=100 (30%/30%) => weighted total = exactly 75. meetsThreshold requires
-    // totalScore > FUZZY_MATCH_SCORE_THRESHOLD (75), so this must NOT auto-resolve. district=100
+  test('does not resolve a single candidate at exactly the 74-point threshold (boundary: > not >=)', async () => {
+    // address=100 (8%), name=0/genuine mismatch (26%), phone=100/email=100 (8%/8%),
+    // district=100/chapter=100 (25%/25%) => weighted total = exactly 74. meetsThreshold requires
+    // totalScore > FUZZY_MATCH_SCORE_THRESHOLD (74), so this must NOT auto-resolve. district=100
     // and chapter=100 must come from a single division+chapter-matching appointment, not two
     // different ones, so this fixture's one appointment covers both.
     const event = makeEvent({
@@ -1882,15 +1926,14 @@ describe('resolveNameCollisionByScoring', () => {
 
     expect(result.kind).toBe('unresolved');
     if (result.kind !== 'unresolved') throw new Error('expected unresolved outcome');
-    expect(result.candidateScores[0].totalScore).toBe(75);
+    expect(result.candidateScores[0].totalScore).toBe(74);
   });
 
-  test('resolves when the winner/runner-up gap is exactly the 5-point minimum (boundary: >= not >)', async () => {
-    // Both candidates: address=0 (no dxtr cityStateZipCountry), name=100, phone=0 (mismatched,
-    // comparable), district=100, chapter=100 (same-appointment match on both) — differing only on
-    // email: winner matches (100) => total 90, runner-up mismatches (0) => total 85. Gap is
-    // exactly 5 == FUZZY_MATCH_MIN_GAP, which hasSignificantGap requires via >=, so this must
-    // resolve.
+  test('resolves when the winner/runner-up gap is exactly the 8-point minimum (boundary: >= not >)', async () => {
+    // Both candidates: address=100, name=100, phone=100, district=100, chapter=100 (same-appointment
+    // match on both) — differing only on email: winner matches (100) => total 100, runner-up
+    // mismatches (0) => total 92. Gap is exactly 8 == FUZZY_MATCH_MIN_GAP, which hasSignificantGap
+    // requires via >=, so this must resolve.
     const event = makeEvent({
       courtId: '081',
       courtDivisionCode: '1',
@@ -1899,15 +1942,26 @@ describe('resolveNameCollisionByScoring', () => {
         fullName: 'John Doe',
         firstName: 'John',
         lastName: 'Doe',
-        legacy: { phone: '5555550000', email: 'shared@example.com' },
+        legacy: {
+          address1: '123 Main St',
+          cityStateZipCountry: 'New York, NY 10001',
+          phone: '5555550000',
+          email: 'shared@example.com',
+        },
       },
     });
     const winner = makeTrustee({
       trusteeId: 'trustee-1',
       name: 'John Doe',
       public: {
-        address: undefined,
-        phone: { number: '5555559999' },
+        address: {
+          address1: '123 Main St',
+          city: 'New York',
+          state: 'NY',
+          zipCode: '10001',
+          countryCode: 'US',
+        },
+        phone: { number: '5555550000' },
         email: 'shared@example.com',
       },
     });
@@ -1915,8 +1969,14 @@ describe('resolveNameCollisionByScoring', () => {
       trusteeId: 'trustee-2',
       name: 'John Doe',
       public: {
-        address: undefined,
-        phone: { number: '5555559999' },
+        address: {
+          address1: '123 Main St',
+          city: 'New York',
+          state: 'NY',
+          zipCode: '10001',
+          countryCode: 'US',
+        },
+        phone: { number: '5555550000' },
         email: 'different@example.com',
       },
     });
@@ -1951,11 +2011,11 @@ describe('resolveNameCollisionByScoring', () => {
     expect(result.kind).toBe('resolved');
     if (result.kind !== 'resolved') throw new Error('expected resolved outcome');
     expect(result.trusteeId).toBe('trustee-1');
-    expect(result.candidateScores.find((c) => c.trusteeId === 'trustee-1')?.totalScore).toBe(90);
-    expect(result.candidateScores.find((c) => c.trusteeId === 'trustee-2')?.totalScore).toBe(85);
+    expect(result.candidateScores.find((c) => c.trusteeId === 'trustee-1')?.totalScore).toBe(100);
+    expect(result.candidateScores.find((c) => c.trusteeId === 'trustee-2')?.totalScore).toBe(92);
   });
 
-  test('should return an unresolved outcome when no candidate scores >75%', async () => {
+  test('should return an unresolved outcome when no candidate meets the threshold', async () => {
     const event = makeEvent();
     const candidate1 = makeTrustee({
       trusteeId: 'trustee-1',
@@ -2022,11 +2082,18 @@ describe('resolveNameCollisionByScoring', () => {
     });
   });
 
-  test('should return an unresolved outcome when top scores within 5 points', async () => {
-    const event = makeEvent();
+  test('should return an unresolved outcome when both candidates meet the threshold but the gap is too small', async () => {
+    const event = makeEvent({
+      dxtrTrustee: {
+        fullName: 'John Doe',
+        firstName: 'John',
+        lastName: 'Doe',
+        legacy: { cityStateZipCountry: 'New York, NY 10001', address1: '123 Main St' },
+      },
+    });
     const candidate1 = makeTrustee({
       trusteeId: 'trustee-1',
-      name: 'John Doe 1',
+      name: 'John Doe',
       public: {
         address: {
           address1: '123 Main St',
@@ -2037,12 +2104,16 @@ describe('resolveNameCollisionByScoring', () => {
         },
       },
     });
+    // addressLinesScore=0 (completely different line, 50%) + zipScore=100 (30%) +
+    // cityStateScore=100 (20%) = 50 - a partial addressScore, not the 0/100 extremes used
+    // elsewhere in this describe block, so the resulting 4-point gap is a genuine (not
+    // coincidental) consequence of address's fuzzy scoring.
     const candidate2 = makeTrustee({
       trusteeId: 'trustee-2',
-      name: 'John Doe 2',
+      name: 'John Doe',
       public: {
         address: {
-          address1: '123 Main St',
+          address1: '456 Oak Ave',
           city: 'New York',
           state: 'NY',
           zipCode: '10001',
@@ -2050,15 +2121,13 @@ describe('resolveNameCollisionByScoring', () => {
         },
       },
     });
-
-    // Both score 80 (perfect address + court match = 20 + 40 = 60, then chapter 50% match = 20, total 80)
     const appointments1 = [
       makeAppointment({
         id: 'appointment-trustee-1',
         trusteeId: 'trustee-1',
         chapter: '7',
         courtId: '081',
-        divisionCode: '2',
+        divisionCode: '1',
       }),
     ];
     const appointments2 = [
@@ -2067,7 +2136,7 @@ describe('resolveNameCollisionByScoring', () => {
         trusteeId: 'trustee-2',
         chapter: '7',
         courtId: '081',
-        divisionCode: '3',
+        divisionCode: '1',
       }),
     ];
 
@@ -2080,13 +2149,23 @@ describe('resolveNameCollisionByScoring', () => {
 
     const result = await resolveNameCollisionByScoring(context, event, ['trustee-1', 'trustee-2']);
 
-    expect(result).toEqual({
-      kind: 'unresolved',
-      candidateScores: expect.any(Array),
-    });
+    expect(result.kind).toBe('unresolved');
+    if (result.kind !== 'unresolved') throw new Error('expected unresolved outcome');
+    // name=100 (26%) + district=100 (25%) + chapter=100 (25%) tied on both, phone/email null
+    // -> applicableWeight = 0.84. candidate1: address=100 -> (100*.08+100*.26+100*.25+100*.25)/.84 = 100
+    // candidate2: address=50 -> (50*.08+100*.26+100*.25+100*.25)/.84 = 95.2381. Both clear the 74
+    // threshold, but the gap (4.76) is below FUZZY_MATCH_MIN_GAP (8), so this must stay unresolved.
+    expect(result.candidateScores.find((c) => c.trusteeId === 'trustee-1')?.totalScore).toBeCloseTo(
+      100,
+      4,
+    );
+    expect(result.candidateScores.find((c) => c.trusteeId === 'trustee-2')?.totalScore).toBeCloseTo(
+      95.2381,
+      4,
+    );
   });
 
-  test('should return winner when single candidate meets 75% threshold', async () => {
+  test('should return winner when single candidate meets threshold', async () => {
     const event = makeEvent({
       dxtrTrustee: {
         fullName: 'John Doe',
