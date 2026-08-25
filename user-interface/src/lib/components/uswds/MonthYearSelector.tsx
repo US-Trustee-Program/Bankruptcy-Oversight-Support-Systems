@@ -61,8 +61,8 @@ export default function MonthYearSelector(props: Readonly<MonthYearSelectorProps
   }
 
   return (
-    <div className="usa-form-group">
-      {label && <p className="usa-label">{label}</p>}
+    <fieldset className="usa-fieldset">
+      {label && <legend className="usa-legend">{label}</legend>}
       <div style={{ display: 'flex', gap: '1rem' }}>
         <div className="usa-form-group">
           <label className="usa-hint" htmlFor={`${id}-month`}>
@@ -105,6 +105,6 @@ export default function MonthYearSelector(props: Readonly<MonthYearSelectorProps
           </select>
         </div>
       </div>
-    </div>
+    </fieldset>
   );
 }
