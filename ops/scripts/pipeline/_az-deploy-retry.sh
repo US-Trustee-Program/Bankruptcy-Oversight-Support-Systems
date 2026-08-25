@@ -48,6 +48,16 @@
 #     with exponential backoff (15s, 30s) on AnotherOperationInProgress/
 #     DeploymentActive; any other failure (or exhausted attempts) returns
 #     the failing exit code immediately.
+#
+# The retry behavior is tunable via env vars, each defaulting to the values
+# above so existing callers are unaffected:
+#   AZ_DEPLOY_RETRY_PATTERN                 grep -E pattern of retryable
+#                                           conditions (default
+#                                           'AnotherOperationInProgress|DeploymentActive')
+#   AZ_DEPLOY_RETRY_MAX_ATTEMPTS            total attempts before giving up
+#                                           (default 3)
+#   AZ_DEPLOY_RETRY_INITIAL_DELAY_SECONDS  first backoff delay, doubled each
+#                                           retry (default 15)
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   echo "ERROR: This script must be sourced, not executed directly." >&2
@@ -55,14 +65,24 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
 fi
 
 az_deploy_with_retry_func() {
-    local maxAttempts=3
+    local retryPattern="${AZ_DEPLOY_RETRY_PATTERN:-AnotherOperationInProgress|DeploymentActive}"
+    local maxAttempts="${AZ_DEPLOY_RETRY_MAX_ATTEMPTS:-3}"
     local attempt=1
-    local delaySeconds=15
+    local delaySeconds="${AZ_DEPLOY_RETRY_INITIAL_DELAY_SECONDS:-15}"
     local output
     local rc
     local outputFile
     outputFile=$(mktemp)
-    trap 'rm -f "${outputFile}"' RETURN
+    # Deliberately NOT a `trap 'rm -f "${outputFile}"' RETURN`. Bash RETURN traps
+    # are global, not function-scoped: the trap set here survives this function's
+    # return and fires again when the CALLER returns, at which point outputFile is
+    # out of scope and `set -u` aborts the script with "outputFile: unbound
+    # variable". That stayed latent while every caller invoked this at top level or
+    # inside a pipeline (which confines it to a subshell); wrapping the call in a
+    # plain function, as azure-deploy-network.sh's deploy_network_stack_func does,
+    # activates it and kills the deploy immediately after a SUCCESSFUL stack create.
+    # Reproduced on bash 3.2 and 5.3. Cleaning up explicitly on each exit path is
+    # the boring, scope-correct alternative.
     while true; do
         set +e
         "$@" 2>&1 | tee "${outputFile}"
@@ -70,13 +90,15 @@ az_deploy_with_retry_func() {
         set -e
         output=$(<"${outputFile}")
         if [[ ${rc} -eq 0 ]]; then
+            rm -f "${outputFile}"
             return 0
         fi
-        if [[ ${attempt} -ge ${maxAttempts} ]] || ! grep -qi "AnotherOperationInProgress\|DeploymentActive" <<< "${output}"; then
+        if [[ ${attempt} -ge ${maxAttempts} ]] || ! grep -qiE "${retryPattern}" <<< "${output}"; then
             echo "ERROR: deployment failed after ${attempt} attempt(s)." >&2
+            rm -f "${outputFile}"
             return "${rc}"
         fi
-        echo "WARNING: deployment attempt ${attempt} failed with what looks like a concurrent operation in progress; retrying in ${delaySeconds}s." >&2
+        echo "WARNING: deployment attempt ${attempt} failed matching a known retryable condition; retrying in ${delaySeconds}s." >&2
         sleep "${delaySeconds}"
         attempt=$((attempt + 1))
         delaySeconds=$((delaySeconds * 2))

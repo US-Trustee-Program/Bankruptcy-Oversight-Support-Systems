@@ -1,0 +1,78 @@
+name: Deploy SQL Private Link Hub
+
+# One-time / rarely-run shared infrastructure, deliberately manual.
+#
+# This deploys hub CORE only: the hub VNet, its private-endpoint subnet, and the
+# ONE shared Private Endpoint against the SQL server. It creates no DNS zone --
+# the endpoint registers into the zones consumers already resolve through (see
+# ops/cloud-deployment/lib/network/sql-hub.bicep).
+#
+# It is NOT wired into continuous deployment on purpose. Every environment's SQL
+# resolution depends on that single endpoint, so redeploying it must be a
+# deliberate act, never a side effect of onboarding or tearing down a branch.
+# Spoke peerings are owned by each spoke's own deploy (branches via
+# azure-deploy-network.sh, main via main.bicep's createMainHubPeering), so
+# onboarding a spoke never re-runs this workflow.
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Preview with what-if, or actually deploy"
+        required: true
+        default: what-if
+        type: choice
+        options:
+          - what-if
+          - deploy
+      resourceGroup:
+        description: "Resource group holding the SQL server and the hub"
+        required: true
+        default: bankruptcy-oversight-support-systems
+        type: string
+
+permissions: read-all
+
+jobs:
+  deploy-sql-hub:
+    name: Deploy SQL Private Link Hub
+    runs-on: ubuntu-latest
+    # Reuses the existing infrastructure-deploy-main OIDC anchor rather than a
+    # dedicated one. That identity already holds Contributor at subscription
+    # scope, which covers everything this deploy needs -- creating the hub
+    # VNet/subnet/endpoint, and writing the A record into the existing private
+    # DNS zones in rg-cams-network and rg-cams-network-dev. A dedicated identity
+    # would need those same permissions granted from scratch, so it would add a
+    # principal without narrowing anything.
+    #
+    # The repo's OIDC subject template is repo+workflow+environment, so the
+    # federated credential backing this must name THIS workflow, not just the
+    # environment: it is a separate credential from the Continuous Deployment
+    # one on the same app registration.
+    environment: infrastructure-deploy-main
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3.0.0
+        with:
+          client-id: ${{ secrets.AZ_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZ_TENANT_ID }}
+          subscription-id: ${{ secrets.AZ_SUBSCRIPTION_ID }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
+
+      - name: Deploy SQL Private Link hub
+        run: |
+          if [[ "${MODE}" == "what-if" ]]; then
+            ops/scripts/pipeline/azure-deploy-sql-hub-setup.sh \
+              --resource-group "${RESOURCE_GROUP}" \
+              --what-if
+          else
+            ops/scripts/pipeline/azure-deploy-sql-hub-setup.sh \
+              --resource-group "${RESOURCE_GROUP}"
+          fi
+        env:
+          MODE: ${{ inputs.mode }}
+          RESOURCE_GROUP: ${{ inputs.resourceGroup }}
