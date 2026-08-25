@@ -1547,14 +1547,14 @@ describe('SyncTrusteeCaseAppointments', () => {
       expect(scenarioDistribution.imperfectMatchCount).toBe(1);
     });
 
-    test('should route a single non-perfect-match candidate to verification even at a very high score, since districtDivisionScore/chapterScore may come from different appointment records', async () => {
-      // districtDivisionScore/chapterScore are each computed independently across all of a
-      // trustee's appointments (see calculateDistrictDivisionScore/calculateChapterScore),
-      // so a perfect-looking totalScore here does not guarantee a single appointment record
-      // actually covers this case's court+division+chapter combination — isAppointmentMatch above
-      // (mocked false) is the only check that verifies that. There is no score-based auto-match
-      // path for a single non-perfect candidate; every one of them is a human-reviewed
-      // ImperfectMatch regardless of how high totalScore is.
+    test('should route a single non-perfect-match candidate to verification even at a very high score', async () => {
+      // calculateCandidateScore is mocked here to isolate this test to processAppointments's own
+      // decision logic: even given an arbitrary/perfect-looking totalScore, there is no
+      // score-based auto-match path for a single non-perfect candidate — isAppointmentMatch above
+      // (mocked false) is the only check that verifies a single appointment record actually
+      // covers this case's court+division+chapter combination. Every non-perfect single candidate
+      // is a human-reviewed ImperfectMatch regardless of how high totalScore is, independent of
+      // whether real scoring could ever actually produce this exact score shape.
       vi.spyOn(trusteeMatchHelpers, 'isAppointmentMatch').mockReturnValue(false);
       vi.spyOn(trusteeMatchHelpers, 'calculateCandidateScore').mockReturnValue({
         trusteeId: 'trustee-123',

@@ -875,35 +875,74 @@ describe('calculateChapterScore', () => {
     ['chapter matches after normalization', '7', '07'],
     ['chapter with subchapter matches', '11', '11-subchapter-v'],
   ])('should return 100 when %s', (_desc, appointmentChapter, queryChapter) => {
-    const appointments = [makeAppointment({ chapter: appointmentChapter, status: 'active' })];
-    const score = calculateChapterScore(queryChapter, appointments);
+    const appointments = [
+      makeAppointment({
+        courtId: '081',
+        divisionCode: '1',
+        chapter: appointmentChapter,
+        status: 'active',
+      }),
+    ];
+    const score = calculateChapterScore('081', '1', queryChapter, appointments);
     expect(score).toBe(100);
   });
 
   test('should return 0 when no matching chapter', () => {
-    const appointments = [makeAppointment({ chapter: '11', status: 'active' })];
-    const score = calculateChapterScore('7', appointments);
+    const appointments = [
+      makeAppointment({ courtId: '081', divisionCode: '1', chapter: '11', status: 'active' }),
+    ];
+    const score = calculateChapterScore('081', '1', '7', appointments);
     expect(score).toBe(0);
   });
 
   test('should return 0 when matching appointment is not active', () => {
-    const appointments = [makeAppointment({ chapter: '7', status: 'inactive' })];
-    const score = calculateChapterScore('7', appointments);
+    const appointments = [
+      makeAppointment({ courtId: '081', divisionCode: '1', chapter: '7', status: 'inactive' }),
+    ];
+    const score = calculateChapterScore('081', '1', '7', appointments);
     expect(score).toBe(0);
   });
 
   test('should return 0 when appointments array is empty', () => {
-    const score = calculateChapterScore('7', []);
+    const score = calculateChapterScore('081', '1', '7', []);
     expect(score).toBe(0);
   });
 
-  test('should return 100 when multiple appointments and one matches', () => {
+  test('should return 100 when multiple division-matching appointments and one matches chapter', () => {
     const appointments = [
-      makeAppointment({ chapter: '11', status: 'active' }),
-      makeAppointment({ chapter: '7', status: 'active' }),
-      makeAppointment({ chapter: '13', status: 'active' }),
+      makeAppointment({ courtId: '081', divisionCode: '1', chapter: '11', status: 'active' }),
+      makeAppointment({ courtId: '081', divisionCode: '1', chapter: '7', status: 'active' }),
+      makeAppointment({ courtId: '081', divisionCode: '1', chapter: '13', status: 'active' }),
     ];
-    const score = calculateChapterScore('7', appointments);
+    const score = calculateChapterScore('081', '1', '7', appointments);
+    expect(score).toBe(100);
+  });
+
+  test('should return 0 when the trustee has no appointment covering the case division, even if a different-division appointment matches the case chapter', () => {
+    const appointments = [
+      makeAppointment({ courtId: '081', divisionCode: '2', chapter: '7', status: 'active' }),
+    ];
+    const score = calculateChapterScore('081', '1', '7', appointments);
+    expect(score).toBe(0);
+  });
+
+  test('should return 0 when a division-matching appointment has a different chapter, even though an unrelated-division appointment matches the case chapter', () => {
+    const appointments = [
+      // Covers the case's division (081/1), but a different chapter (11).
+      makeAppointment({ courtId: '081', divisionCode: '1', chapter: '11', status: 'active' }),
+      // Matches the case's chapter (7), but an unrelated division (2) — must not count.
+      makeAppointment({ courtId: '081', divisionCode: '2', chapter: '7', status: 'active' }),
+    ];
+    const score = calculateChapterScore('081', '1', '7', appointments);
+    expect(score).toBe(0);
+  });
+
+  test('should return 100 when a division-matching appointment also matches chapter, even alongside an unrelated-division appointment', () => {
+    const appointments = [
+      makeAppointment({ courtId: '081', divisionCode: '1', chapter: '7', status: 'active' }),
+      makeAppointment({ courtId: '081', divisionCode: '2', chapter: '13', status: 'active' }),
+    ];
+    const score = calculateChapterScore('081', '1', '7', appointments);
     expect(score).toBe(100);
   });
 });
@@ -963,11 +1002,13 @@ describe('calculateCandidateScore', () => {
     expect(score.addressScore).toBe(40); // City + state match (different zip)
     expect(score.nameScore).toBe(100); // First and last name match
     expect(score.districtDivisionScore).toBe(50); // Same court, different division
-    expect(score.chapterScore).toBe(100); // Chapter matches
+    // The only appointment here (division '2') doesn't cover the case's division ('1'), so
+    // chapter cannot be credited even though its chapter value equals the case's chapter.
+    expect(score.chapterScore).toBe(0);
     // phone/email null (no phone/email on either side) -> applicableWeight = 0.9
-    // weightedSum = 40*0.05 + 100*0.25 + 50*0.3 + 100*0.3 = 2 + 25 + 15 + 30 = 72
-    // 72 / 0.9 = 80
-    expect(score.totalScore).toBeCloseTo(80, 10);
+    // weightedSum = 40*0.05 + 100*0.25 + 50*0.3 + 0*0.3 = 2 + 25 + 15 + 0 = 42
+    // 42 / 0.9 = 46.6667
+    expect(score.totalScore).toBeCloseTo(46.6667, 4);
   });
 
   test('should return totalScore ~5.56 when only address matches (phone/email null)', () => {
@@ -1012,7 +1053,9 @@ describe('calculateCandidateScore', () => {
     expect(score.totalScore).toBeCloseTo(33.3333, 4);
   });
 
-  test('should return totalScore ~33.33 when only chapter matches (phone/email null)', () => {
+  test('should return totalScore 0 when court differs, even though the case chapter equals the trustee appointment chapter', () => {
+    // A matching chapter value alone must NOT be creditable when no active appointment covers
+    // the case's court+division.
     const score = calculateCandidateScore(
       context,
       makeDxtrTrustee(), // No address, no firstName/lastName - nameScore is 0
@@ -1026,11 +1069,10 @@ describe('calculateCandidateScore', () => {
     expect(score.addressScore).toBe(0);
     expect(score.nameScore).toBe(0);
     expect(score.districtDivisionScore).toBe(0);
-    expect(score.chapterScore).toBe(100);
+    expect(score.chapterScore).toBe(0);
     // phone/email null -> applicableWeight = 0.9
-    // weightedSum = 0*0.05 + 0*0.25 + 0*0.3 + 100*0.3 = 30
-    // 30 / 0.9 = 33.3333
-    expect(score.totalScore).toBeCloseTo(33.3333, 4);
+    // weightedSum = 0*0.05 + 0*0.25 + 0*0.3 + 0*0.3 = 0
+    expect(score.totalScore).toBeCloseTo(0, 10);
   });
 
   test('should populate phoneScore/emailScore as null when DXTR has no phone/email', () => {
@@ -1601,27 +1643,39 @@ describe('resolveNameCollisionByScoring', () => {
   });
 
   test('does not resolve a single candidate at exactly the 75-point threshold (boundary: > not >=)', async () => {
-    // name=100 (25%), phone=100/email=0 (5%/5%), district=50/same-court-different-division
-    // (30%), chapter=100 (30%), address=0 (5%) => weighted total = exactly 75. meetsThreshold
-    // requires totalScore > FUZZY_MATCH_SCORE_THRESHOLD (75), so this must NOT auto-resolve.
+    // address=100 (5%), name=0/genuine mismatch (25%), phone=100/email=100 (5%/5%),
+    // district=100/chapter=100 (30%/30%) => weighted total = exactly 75. meetsThreshold requires
+    // totalScore > FUZZY_MATCH_SCORE_THRESHOLD (75), so this must NOT auto-resolve. district=100
+    // and chapter=100 must come from a single division+chapter-matching appointment, not two
+    // different ones, so this fixture's one appointment covers both.
     const event = makeEvent({
       courtId: '081',
       courtDivisionCode: '1',
       chapter: '7',
       dxtrTrustee: {
-        fullName: 'John Doe',
+        fullName: 'John Smith',
         firstName: 'John',
-        lastName: 'Doe',
-        legacy: { phone: '5555551234', email: 'dxtr@example.com' },
+        lastName: 'Smith',
+        legacy: {
+          cityStateZipCountry: 'New York, NY 10001',
+          phone: '5555551234',
+          email: 'shared@example.com',
+        },
       },
     });
     const candidate = makeTrustee({
       trusteeId: 'trustee-1',
-      name: 'John Doe',
+      name: 'John Doe', // genuine last-name mismatch vs. DXTR's "Smith" => nameScore 0
       public: {
-        address: undefined,
+        address: {
+          address1: '123 Main St',
+          city: 'New York',
+          state: 'NY',
+          zipCode: '10001',
+          countryCode: 'US',
+        },
         phone: { number: '5555551234' },
-        email: 'cams@example.com',
+        email: 'shared@example.com',
       },
     });
     const appointments = [
@@ -1630,7 +1684,7 @@ describe('resolveNameCollisionByScoring', () => {
         trusteeId: 'trustee-1',
         chapter: '7',
         courtId: '081',
-        divisionCode: '2', // same court, different division => districtDivisionScore 50
+        divisionCode: '1', // exact court+division+chapter match on this one record
       }),
     ];
 
@@ -1892,13 +1946,13 @@ describe('resolveNameCollisionByScoring', () => {
     expect(result.candidateScores).toHaveLength(1);
   });
 
-  test('does not auto-resolve when district/division and chapter scores each come from a different active appointment', async () => {
+  test('remains unresolved because chapterScore is scoped to the division-matching appointment', async () => {
     // Trustee holds two active appointments: one matches the case's division (different
     // chapter), the other matches the case's chapter (different division). Neither appointment
-    // alone matches court + division + chapter, so isAppointmentMatch is false for both — but
-    // districtDivisionScore and chapterScore are each computed independently via .some() across
-    // all appointments, so the combined score can still clear the auto-match threshold. This
-    // must fall through to 'unresolved' (human review) rather than auto-linking.
+    // alone matches court + division + chapter, so isAppointmentMatch is false for both, and
+    // chapterScore is 0 since the division-matching appointment's chapter differs from the
+    // case's. Guards the outcome at the resolveNameCollisionByScoring level, on top of
+    // calculateChapterScore's own unit coverage of the same scenario.
     const event = makeEvent({
       courtId: '081',
       courtDivisionCode: '2',
