@@ -70,16 +70,12 @@ describe('PastKeyDates', () => {
   test('renders "No date added" for all fields when data is null', () => {
     renderComponent();
 
-    expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
-
     const noDateElements = screen.getAllByText('No date added');
     expect(noDateElements.length).toBe(5);
   });
 
   test('renders all field labels', () => {
     renderComponent();
-
-    expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
 
     expect(screen.getByText('Last Update to Background Questionnaire:')).toBeInTheDocument();
     expect(screen.getByText('Field Exam Report Date:')).toBeInTheDocument();
@@ -90,8 +86,6 @@ describe('PastKeyDates', () => {
 
   test('renders correctly formatted values when populated document is provided', () => {
     renderComponent({ data: populatedDocument });
-
-    expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
 
     expect(screen.getByTestId('past-background-question-row')).toHaveTextContent('05/10/2022');
     expect(screen.getByTestId('past-field-exam-row')).toHaveTextContent('02/21/2024');
@@ -136,8 +130,6 @@ describe('PastKeyDates', () => {
   test('Edit button is visible for TrusteeAdmin users', () => {
     renderComponent();
 
-    expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
-
     expect(screen.getByRole('button', { name: /edit past key dates/i })).toBeInTheDocument();
   });
 
@@ -145,8 +137,6 @@ describe('PastKeyDates', () => {
     TestingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
 
     renderComponent();
-
-    expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
 
     expect(screen.queryByRole('button', { name: /edit past key dates/i })).not.toBeInTheDocument();
   });
@@ -248,25 +238,78 @@ describe('PastKeyDates', () => {
       );
     });
 
-    test('Edit button is visible for TrusteeAdmin users', () => {
-      renderComponent(subVProps);
-
-      expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
-
-      expect(screen.getByRole('button', { name: /edit past key dates/i })).toBeInTheDocument();
-    });
-
-    test('Edit button is not visible for non-TrusteeAdmin users (read-only card)', () => {
+    test('row still renders when user cannot manage', () => {
       TestingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
 
       renderComponent(subVProps);
 
-      expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
-
-      expect(
-        screen.queryByRole('button', { name: /edit past key dates/i }),
-      ).not.toBeInTheDocument();
       expect(screen.getByTestId('past-last-monthly-report-received-row')).toBeInTheDocument();
+    });
+  });
+
+  describe('chapter12-standing variant', () => {
+    const ch12StandingProps: PastKeyDatesProps = {
+      variant: 'chapter12-standing',
+      trusteeId: 'trustee-ch12-001',
+      appointmentId: 'appointment-ch12-001',
+      appointmentHeading: 'Southern District of New York (Manhattan) - Chapter 12 Standing',
+      data: null,
+      isLoading: false,
+    };
+
+    const ch12StandingDoc: TrusteeUpcomingKeyDates = {
+      ...populatedDocument,
+      trusteeId: 'trustee-ch12-001',
+      appointmentId: 'appointment-ch12-001',
+      pastBackgroundQuestion: '2023-03-15',
+      pastAudit: '2024-08-20',
+      lastAuditFiscalYear: 2023,
+    };
+
+    test('renders the 3 chapter12-standing fields and not the ch7-only fields', () => {
+      renderComponent(ch12StandingProps);
+
+      expect(screen.getByTestId('past-background-question-row')).toBeInTheDocument();
+      expect(screen.getByTestId('past-audit-row')).toBeInTheDocument();
+      expect(screen.getByTestId('past-last-audit-fiscal-year-row')).toBeInTheDocument();
+
+      expect(screen.queryByTestId('past-field-exam-row')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('past-tpr-submission-row')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('past-last-monthly-report-received-row')).not.toBeInTheDocument();
+    });
+
+    test('renders "No date added" for computed fields when data is null', () => {
+      renderComponent(ch12StandingProps);
+
+      expect(screen.getByTestId('past-background-question-row')).toHaveTextContent('No date added');
+      expect(screen.getByTestId('past-audit-row')).toHaveTextContent('No date added');
+      expect(screen.getByTestId('past-last-audit-fiscal-year-row')).toHaveTextContent(
+        'No date added',
+      );
+    });
+
+    test('renders formatted values when data is populated', () => {
+      renderComponent({ ...ch12StandingProps, data: ch12StandingDoc });
+
+      expect(screen.getByTestId('past-background-question-row')).toHaveTextContent('03/15/2023');
+      expect(screen.getByTestId('past-audit-row')).toHaveTextContent('08/20/2024');
+      expect(screen.getByTestId('past-last-audit-fiscal-year-row')).toHaveTextContent('2023');
+    });
+
+    test('Edit button navigates with chapter12-standing variant', () => {
+      renderComponent(ch12StandingProps);
+
+      screen.getByRole('button', { name: /edit past key dates/i }).click();
+
+      expect(mockNavigate).toHaveBeenCalledWith(
+        `/trustees/${ch12StandingProps.trusteeId}/appointments/${ch12StandingProps.appointmentId}/past-key-dates/edit`,
+        {
+          state: {
+            subHeading: ch12StandingProps.appointmentHeading,
+            variant: 'chapter12-standing',
+          },
+        },
+      );
     });
   });
 });

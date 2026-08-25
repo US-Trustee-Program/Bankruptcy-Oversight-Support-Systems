@@ -23,9 +23,12 @@ import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
 import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
 import { Stop } from '@/lib/components/Stop';
-
-export type UpcomingKeyDatesVariant =
-  'chapter7-panel' | 'ch12-13-case-by-case' | 'chapter12-standing';
+import { UpcomingKeyDatesVariant } from '@/trustees/panels/upcomingKeyDatesFieldConfig';
+import {
+  UPCOMING_KEY_DATES_FORM_CONFIG,
+  DatePickerFieldDescriptor,
+  UpcomingFormFieldDescriptor,
+} from './upcomingKeyDatesFormFieldConfig';
 
 type TirFrequency = 'ANNUAL' | 'SEMI_ANNUAL' | '';
 
@@ -497,269 +500,220 @@ export default function UpcomingKeyDatesForm() {
     );
   }
 
+  const config = UPCOMING_KEY_DATES_FORM_CONFIG[variant];
+  const datePickerIds = config
+    .filter((d): d is DatePickerFieldDescriptor => typeof d !== 'string')
+    .map((d) => d.id);
+
   const isSaveDisabled =
     isSaving ||
     (!validationState.tprReviewPeriod && !tprReviewPeriodFocused) ||
     !!errors.tprDue ||
     !!errors.tprDueYearType ||
-    !!tprDueBlurError;
+    !!tprDueBlurError ||
+    (datePickerIds.length > 0 && hasErrorAmong(datePickerIds));
 
-  if (variant === 'chapter12-standing') {
-    return (
-      <div className="edit-upcoming-key-dates" data-testid="edit-upcoming-key-dates">
-        <h3>Edit Upcoming Key Dates</h3>
-        <div
-          onFocus={() => setTprReviewPeriodFocused(true)}
-          onBlur={(e) => {
-            if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-              setTprReviewPeriodFocused(false);
-            }
-          }}
-        >
-          <MonthDayRangeSelector
-            id="tpr-review-period"
-            label="Trustee Performance Review (TPR) Period"
-            startValue={form.tprReviewPeriodStart}
-            endValue={form.tprReviewPeriodEnd}
-            onStartChange={handleMonthDayChange('tprReviewPeriodStart')}
-            onEndChange={handleMonthDayChange('tprReviewPeriodEnd')}
-            onValidationChange={(isValid) =>
-              setValidationState((prev) => ({ ...prev, tprReviewPeriod: isValid }))
-            }
-            externalError={errors.tprReviewPeriodStart || errors.tprReviewPeriodEnd}
-            submitted={submitted}
-          />
-        </div>
-        <div className="tpr-due-group">
-          <div className="tpr-due-group__header">
-            <label className="usa-label" htmlFor="tpr-due-month">
-              Trustee Performance Review (TPR) Due
-            </label>
-          </div>
-          <div
-            className="tpr-due-group__row"
-            onFocus={handleTprDueRowFocus}
-            onBlur={handleTprDueRowBlur}
-          >
-            <MonthDaySelector
-              id="tpr-due"
-              value={form.tprDue}
-              onChange={handleMonthDayChange('tprDue')}
-              hasError={!!errors.tprDue || (!tprDueDateComplete && !!tprDueBlurError)}
-            />
-            <div className="usa-form-group year-type-selector">
-              <label htmlFor="tpr-due-year-type" className="usa-hint">
-                Year Type
-              </label>
-              <select
-                className={`usa-select${errors.tprDueYearType || tprDueYearTypeBlurError ? ' usa-input--error' : ''}`}
-                id="tpr-due-year-type"
-                data-testid="tpr-due-year-type"
-                value={form.tprDueYearType}
-                onChange={handleYearTypeChange}
-                aria-invalid={errors.tprDueYearType ? 'true' : undefined}
-              >
-                <option value="">- Select -</option>
-                <option value="EVEN">EVEN</option>
-                <option value="ODD">ODD</option>
-              </select>
+  function renderField(descriptor: UpcomingFormFieldDescriptor) {
+    const kind = typeof descriptor === 'string' ? descriptor : descriptor.kind;
+    switch (kind) {
+      case 'exam-audit-group':
+        return (
+          <div key="exam-audit-group" className="exam-audit-group">
+            <p className="usa-label">Field Exam or Audit</p>
+            <div className="exam-audit-group__row">
+              <div className="usa-form-group">
+                <label className="usa-hint" htmlFor="upcoming-exam-audit-year">
+                  Year
+                </label>
+                <select
+                  className="usa-select"
+                  id="upcoming-exam-audit-year"
+                  data-testid="upcoming-exam-audit-year"
+                  value={form.upcomingExamOrAuditYear}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setForm((prev) => ({
+                      ...prev,
+                      upcomingExamOrAuditYear: val ? Number(val) : '',
+                    }));
+                  }}
+                >
+                  <option value="">- Select -</option>
+                  {YEAR_OPTIONS.map((y) => (
+                    <option key={y} value={y}>
+                      {y}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="usa-form-group">
+                <label className="usa-hint" htmlFor="upcoming-exam-audit-type">
+                  Type
+                </label>
+                <select
+                  className="usa-select"
+                  id="upcoming-exam-audit-type"
+                  data-testid="upcoming-exam-audit-type"
+                  value={form.upcomingExamOrAuditType}
+                  onChange={(e) => {
+                    setForm((prev) => ({
+                      ...prev,
+                      upcomingExamOrAuditType: e.target.value as 'Field Exam' | 'Audit' | '',
+                    }));
+                  }}
+                >
+                  <option value="">- Select -</option>
+                  <option value="Field Exam">Field Exam</option>
+                  <option value="Audit">Audit</option>
+                </select>
+              </div>
             </div>
           </div>
-          {(tprDueBlurError || errors.tprDue || errors.tprDueYearType) && (
-            <span className="usa-error-message" data-testid="tpr-due-error">
-              {tprDueBlurError || errors.tprDue || errors.tprDueYearType}
-            </span>
-          )}
-        </div>
-        <DatePicker
-          id="lease-expiration"
-          label="Lease Expiration"
-          value={form.leaseExpiration}
-          disableMax
-          onChange={(e) => setForm((prev) => ({ ...prev, leaseExpiration: e.target.value }))}
-          onValidationChange={(hasError) => registerFieldError('lease-expiration', hasError)}
-        />
-        <DatePicker
-          id="id-expiration"
-          label="ID Expiration"
-          value={form.idExpiration}
-          disableMax
-          onChange={(e) => setForm((prev) => ({ ...prev, idExpiration: e.target.value }))}
-          onValidationChange={(hasError) => registerFieldError('id-expiration', hasError)}
-        />
-        <div className="usa-button-group">
-          <Button
-            id="save-upcoming-key-dates"
-            onClick={handleSave}
-            disabled={isSaveDisabled || hasErrorAmong(['lease-expiration', 'id-expiration'])}
+        );
+
+      case 'tpr-review-period':
+        return (
+          <div
+            key="tpr-review-period"
+            onFocus={() => setTprReviewPeriodFocused(true)}
+            onBlur={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                setTprReviewPeriodFocused(false);
+              }
+            }}
           >
-            {isSaving ? 'Saving...' : 'Save'}
-          </Button>
-          <Button
-            id="cancel-upcoming-key-dates"
-            uswdsStyle={UswdsButtonStyle.Unstyled}
-            onClick={handleCancel}
-          >
-            Cancel
-          </Button>
-        </div>
-      </div>
-    );
+            <MonthDayRangeSelector
+              id="tpr-review-period"
+              label="Trustee Performance Review (TPR) Period"
+              startValue={form.tprReviewPeriodStart}
+              endValue={form.tprReviewPeriodEnd}
+              onStartChange={handleMonthDayChange('tprReviewPeriodStart')}
+              onEndChange={handleMonthDayChange('tprReviewPeriodEnd')}
+              onValidationChange={(isValid) =>
+                setValidationState((prev) => ({ ...prev, tprReviewPeriod: isValid }))
+              }
+              externalError={errors.tprReviewPeriodStart || errors.tprReviewPeriodEnd}
+              submitted={submitted}
+            />
+          </div>
+        );
+
+      case 'tpr-due':
+        return (
+          <div key="tpr-due" className="tpr-due-group">
+            <div className="tpr-due-group__header">
+              <label className="usa-label" htmlFor="tpr-due-month">
+                Trustee Performance Review (TPR) Due
+              </label>
+            </div>
+            <div
+              className="tpr-due-group__row"
+              onFocus={handleTprDueRowFocus}
+              onBlur={handleTprDueRowBlur}
+            >
+              <MonthDaySelector
+                id="tpr-due"
+                value={form.tprDue}
+                onChange={handleMonthDayChange('tprDue')}
+                hasError={!!errors.tprDue || (!tprDueDateComplete && !!tprDueBlurError)}
+              />
+              <div className="usa-form-group year-type-selector">
+                <label htmlFor="tpr-due-year-type" className="usa-hint">
+                  Year Type
+                </label>
+                <select
+                  className={`usa-select${errors.tprDueYearType || tprDueYearTypeBlurError ? ' usa-input--error' : ''}`}
+                  id="tpr-due-year-type"
+                  data-testid="tpr-due-year-type"
+                  value={form.tprDueYearType}
+                  onChange={handleYearTypeChange}
+                  aria-invalid={errors.tprDueYearType ? 'true' : undefined}
+                >
+                  <option value="">- Select -</option>
+                  <option value="EVEN">EVEN</option>
+                  <option value="ODD">ODD</option>
+                </select>
+              </div>
+            </div>
+            {(tprDueBlurError || errors.tprDue || errors.tprDueYearType) && (
+              <span className="usa-error-message" data-testid="tpr-due-error">
+                {tprDueBlurError || errors.tprDue || errors.tprDueYearType}
+              </span>
+            )}
+          </div>
+        );
+
+      case 'tir-period':
+        return (
+          <div key="tir-period" className="tir-period-group">
+            <p className="usa-label">Trustee Interim Report (TIR) Period</p>
+            <div className="tir-period-group__row">
+              <div className="usa-form-group">
+                <label className="usa-hint" htmlFor="tir-frequency">
+                  Frequency
+                </label>
+                <select
+                  className="usa-select"
+                  id="tir-frequency"
+                  data-testid="tir-frequency"
+                  value={form.tirFrequency}
+                  onChange={handleFrequencyChange}
+                >
+                  <option value="">- Select -</option>
+                  <option value="ANNUAL">Annual</option>
+                  <option value="SEMI_ANNUAL">Semi-Annual</option>
+                </select>
+              </div>
+              <div className="usa-form-group">
+                <label className="usa-hint" htmlFor="tir-period">
+                  Period
+                </label>
+                <select
+                  className="usa-select"
+                  id="tir-period"
+                  data-testid="tir-period"
+                  value={form.tirPeriodKey}
+                  onChange={handlePeriodChange}
+                  disabled={!form.tirFrequency}
+                >
+                  <option value="">- Select -</option>
+                  {periodOptions.map((o) => (
+                    <option key={o.key} value={o.key}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'date-picker': {
+        const f = descriptor as DatePickerFieldDescriptor;
+        return (
+          <DatePicker
+            key={f.id}
+            id={f.id}
+            label={f.label}
+            value={form[f.formKey]}
+            disableMax
+            onChange={(e) =>
+              setForm((prev) => ({ ...prev, [f.formKey]: e.target.value }) as FormState)
+            }
+            onValidationChange={(hasError) => registerFieldError(f.id, hasError)}
+          />
+        );
+      }
+
+      default:
+        return null;
+    }
   }
 
   return (
     <div className="edit-upcoming-key-dates" data-testid="edit-upcoming-key-dates">
       <h3>Edit Upcoming Key Dates</h3>
-      {variant === 'chapter7-panel' && (
-        <div className="exam-audit-group">
-          <p className="usa-label">Field Exam or Audit</p>
-          <div className="exam-audit-group__row">
-            <div className="usa-form-group">
-              <label className="usa-hint" htmlFor="upcoming-exam-audit-year">
-                Year
-              </label>
-              <select
-                className="usa-select"
-                id="upcoming-exam-audit-year"
-                data-testid="upcoming-exam-audit-year"
-                value={form.upcomingExamOrAuditYear}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setForm((prev) => ({
-                    ...prev,
-                    upcomingExamOrAuditYear: val ? Number(val) : '',
-                  }));
-                }}
-              >
-                <option value="">- Select -</option>
-                {YEAR_OPTIONS.map((y) => (
-                  <option key={y} value={y}>
-                    {y}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="usa-form-group">
-              <label className="usa-hint" htmlFor="upcoming-exam-audit-type">
-                Type
-              </label>
-              <select
-                className="usa-select"
-                id="upcoming-exam-audit-type"
-                data-testid="upcoming-exam-audit-type"
-                value={form.upcomingExamOrAuditType}
-                onChange={(e) => {
-                  setForm((prev) => ({
-                    ...prev,
-                    upcomingExamOrAuditType: e.target.value as 'Field Exam' | 'Audit' | '',
-                  }));
-                }}
-              >
-                <option value="">- Select -</option>
-                <option value="Field Exam">Field Exam</option>
-                <option value="Audit">Audit</option>
-              </select>
-            </div>
-          </div>
-        </div>
-      )}
-      <MonthDayRangeSelector
-        id="tpr-review-period"
-        label="Trustee Performance Review (TPR) Period"
-        startValue={form.tprReviewPeriodStart}
-        endValue={form.tprReviewPeriodEnd}
-        onStartChange={handleMonthDayChange('tprReviewPeriodStart')}
-        onEndChange={handleMonthDayChange('tprReviewPeriodEnd')}
-        onValidationChange={(isValid) =>
-          setValidationState((prev) => ({ ...prev, tprReviewPeriod: isValid }))
-        }
-        externalError={errors.tprReviewPeriodStart || errors.tprReviewPeriodEnd}
-        submitted={submitted}
-      />
-      <div className="tpr-due-group">
-        <div className="tpr-due-group__header">
-          <label className="usa-label" htmlFor="tpr-due-month">
-            Trustee Performance Review (TPR) Due
-          </label>
-        </div>
-        <div
-          className="tpr-due-group__row"
-          onFocus={handleTprDueRowFocus}
-          onBlur={handleTprDueRowBlur}
-        >
-          <MonthDaySelector
-            id="tpr-due"
-            value={form.tprDue}
-            onChange={handleMonthDayChange('tprDue')}
-            hasError={!!errors.tprDue || (!tprDueDateComplete && !!tprDueBlurError)}
-          />
-          <div className="usa-form-group year-type-selector">
-            <label htmlFor="tpr-due-year-type" className="usa-hint">
-              Year Type
-            </label>
-            <select
-              className={`usa-select${errors.tprDueYearType || tprDueYearTypeBlurError ? ' usa-input--error' : ''}`}
-              id="tpr-due-year-type"
-              data-testid="tpr-due-year-type"
-              value={form.tprDueYearType}
-              onChange={handleYearTypeChange}
-              aria-invalid={errors.tprDueYearType ? 'true' : undefined}
-            >
-              <option value="">- Select -</option>
-              <option value="EVEN">EVEN</option>
-              <option value="ODD">ODD</option>
-            </select>
-          </div>
-        </div>
-        {(tprDueBlurError || errors.tprDue || errors.tprDueYearType) && (
-          <span className="usa-error-message" data-testid="tpr-due-error">
-            {tprDueBlurError || errors.tprDue || errors.tprDueYearType}
-          </span>
-        )}
-      </div>
-      {variant === 'chapter7-panel' && (
-        <div className="tir-period-group">
-          <p className="usa-label">Trustee Interim Report (TIR) Period</p>
-          <div className="tir-period-group__row">
-            <div className="usa-form-group">
-              <label className="usa-hint" htmlFor="tir-frequency">
-                Frequency
-              </label>
-              <select
-                className="usa-select"
-                id="tir-frequency"
-                data-testid="tir-frequency"
-                value={form.tirFrequency}
-                onChange={handleFrequencyChange}
-              >
-                <option value="">- Select -</option>
-                <option value="ANNUAL">Annual</option>
-                <option value="SEMI_ANNUAL">Semi-Annual</option>
-              </select>
-            </div>
-            <div className="usa-form-group">
-              <label className="usa-hint" htmlFor="tir-period">
-                Period
-              </label>
-              <select
-                className="usa-select"
-                id="tir-period"
-                data-testid="tir-period"
-                value={form.tirPeriodKey}
-                onChange={handlePeriodChange}
-                disabled={!form.tirFrequency}
-              >
-                <option value="">- Select -</option>
-                {periodOptions.map((o) => (
-                  <option key={o.key} value={o.key}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </div>
-      )}
+      {config.map(renderField)}
       <div className="usa-button-group">
         <Button id="save-upcoming-key-dates" onClick={handleSave} disabled={isSaveDisabled}>
           {isSaving ? 'Saving...' : 'Save'}
