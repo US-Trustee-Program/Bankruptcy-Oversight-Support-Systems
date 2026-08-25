@@ -76,10 +76,6 @@ describe('TrusteeChangeNotificationUseCase', () => {
     useCase = new TrusteeChangeNotificationUseCase(context);
   });
 
-  afterEach(() => {
-    delete process.env.DEFAULT_NOTIFICATION_RECIPIENT;
-  });
-
   test('returns without dispatching when the change set is empty', async () => {
     seedRouting([CHAPTER_OVERSIGHT_RECIPIENT]);
 
@@ -99,6 +95,76 @@ describe('TrusteeChangeNotificationUseCase', () => {
     expect(recorded[0].toDisplayName).toBe(CHAPTER_OVERSIGHT_RECIPIENT.displayName);
     expect(recorded[0].subject).toBe('Trustee Information Changed: Henry Green');
     expect(recorded[0].correlationId).toBe(context.invocationId);
+    expect(recorded[0].trusteeId).toBe('trustee-1');
+  });
+
+  test('logs a completion line tying the run back to the trusteeId', async () => {
+    seedRouting([CHAPTER_OVERSIGHT_RECIPIENT]);
+    const infoSpy = vi.spyOn(context.logger, 'info');
+
+    await useCase.notify(context, buildChangeSet([buildField()]));
+
+    expect(infoSpy).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.stringContaining("trusteeId 'trustee-1'"),
+    );
+  });
+
+  test('archives the sent email keyed by the ACS messageId', async () => {
+    seedRouting([CHAPTER_OVERSIGHT_RECIPIENT]);
+    const archiveSpy = vi
+      .spyOn(MockMongoRepository.prototype, 'archiveSentEmail')
+      .mockResolvedValue(undefined);
+
+    const changeSet = buildChangeSet([buildField()]);
+    await useCase.notify(context, changeSet);
+
+    const recorded = mockGateway.getRecorded();
+    expect(archiveSpy).toHaveBeenCalledTimes(1);
+    expect(archiveSpy).toHaveBeenCalledWith({
+      messageId: 'mock-message-id-1',
+      recipientAddress: CHAPTER_OVERSIGHT_RECIPIENT.recipientAddresses[0],
+      changeSet,
+    });
+    expect(recorded).toHaveLength(1);
+  });
+
+  test('archives each address separately when a routing record has multiple recipients', async () => {
+    seedRouting([
+      {
+        ...CHAPTER_OVERSIGHT_RECIPIENT,
+        recipientAddresses: ['primary@example.test', 'backup@example.test'],
+      },
+    ]);
+    const archiveSpy = vi
+      .spyOn(MockMongoRepository.prototype, 'archiveSentEmail')
+      .mockResolvedValue(undefined);
+
+    await useCase.notify(context, buildChangeSet([buildField()]));
+
+    expect(archiveSpy).toHaveBeenCalledTimes(2);
+    const archivedAddresses = archiveSpy.mock.calls.map((call) => call[0].recipientAddress).sort();
+    expect(archivedAddresses).toEqual(['backup@example.test', 'primary@example.test']);
+  });
+
+  test('still sends and reports success when archiving the sent email fails', async () => {
+    seedRouting([CHAPTER_OVERSIGHT_RECIPIENT]);
+    vi.spyOn(MockMongoRepository.prototype, 'archiveSentEmail').mockRejectedValue(
+      new Error('archive write failed'),
+    );
+    const errorSpy = vi.spyOn(context.logger, 'error');
+
+    const summary = await useCase.notify(context, buildChangeSet([buildField()]));
+
+    expect(mockGateway.getRecorded()).toHaveLength(1);
+    expect(summary).toEqual({ attempted: 1, failed: 0, failures: [] });
+    expect(
+      errorSpy.mock.calls.some(
+        (call) =>
+          typeof call[1] === 'string' &&
+          call[1].includes('Failed to archive sent trustee change notification'),
+      ),
+    ).toBe(true);
   });
 
   test('dispatches to all addresses when a routing record has multiple recipients', async () => {
@@ -181,15 +247,57 @@ describe('TrusteeChangeNotificationUseCase', () => {
     expect(mockGateway.getRecorded()).toHaveLength(1);
   });
 
+  test('dedupes only the overlapping address, keeping the unique one from a partially-overlapping recipient', async () => {
+    seedRouting([
+      CHAPTER_OVERSIGHT_RECIPIENT,
+      {
+        ...ZOOM_341_RECIPIENT,
+        recipientAddresses: [
+          CHAPTER_OVERSIGHT_RECIPIENT.recipientAddresses[0],
+          'unique@example.test',
+        ],
+      },
+    ]);
+
+    await useCase.notify(
+      context,
+      buildChangeSet([
+        buildField({ category: 'profile', section: 'appointment' }),
+        buildField({
+          label: 'Zoom Info',
+          category: 'zoom-341',
+          section: 'meeting',
+          comparisons: [{ before: 'old', after: 'new' }],
+        }),
+      ]),
+    );
+
+    const addresses = mockGateway.getRecorded().map((n) => n.to);
+    expect(addresses).toEqual([
+      CHAPTER_OVERSIGHT_RECIPIENT.recipientAddresses[0],
+      'unique@example.test',
+    ]);
+  });
+
   test('drops the dispatch with an error log when no record or env var fallback exists', async () => {
     seedRouting([]);
     const errorSpy = vi.spyOn(context.logger, 'error');
 
-    await useCase.notify(context, buildChangeSet([buildField()]));
+    const summary = await useCase.notify(context, buildChangeSet([buildField()]));
 
     expect(mockGateway.getRecorded()).toEqual([]);
     expect(errorSpy).toHaveBeenCalled();
-    expect(errorSpy.mock.calls[0][1]).toContain('No routing record for key');
+    expect(errorSpy.mock.calls[0][1]).toContain('No mailing list is configured');
+    expect(summary).toEqual({
+      attempted: 0,
+      failed: 1,
+      failures: [
+        {
+          reason: 'skipped',
+          message: expect.stringContaining('No mailing list is configured'),
+        },
+      ],
+    });
   });
 
   test('routes a SubV profile change to the SubV recipient', async () => {
@@ -290,8 +398,22 @@ describe('TrusteeChangeNotificationUseCase', () => {
     expect(recorded[0].replyTo).toBeUndefined();
   });
 
-  test('correlationId on each notification matches the context invocationId', async () => {
-    seedRouting([CHAPTER_OVERSIGHT_RECIPIENT, ZOOM_341_RECIPIENT]);
+  test('continues sending to addresses after a failed send, both within and across recipients', async () => {
+    seedRouting([
+      {
+        ...CHAPTER_OVERSIGHT_RECIPIENT,
+        recipientAddresses: ['primary@example.test', 'backup@example.test'],
+      },
+      ZOOM_341_RECIPIENT,
+    ]);
+    const originalSend = mockGateway.send.bind(mockGateway);
+    const sendSpy = vi.spyOn(mockGateway, 'send').mockImplementation(async (notification) => {
+      if (notification.to === 'primary@example.test') {
+        throw new Error('ACS rejected this address');
+      }
+      return originalSend(notification);
+    });
+    const errorSpy = vi.spyOn(context.logger, 'error');
 
     await useCase.notify(
       context,
@@ -306,10 +428,132 @@ describe('TrusteeChangeNotificationUseCase', () => {
       ]),
     );
 
+    // 'primary@example.test' is the FIRST address attempted (first recipient, first address).
+    // Both the second address of that same recipient and the entirely separate zoom-341
+    // recipient are attempted afterward, so this proves the failure doesn't abort either
+    // the inner (same-recipient) or outer (cross-recipient) loop.
     const recorded = mockGateway.getRecorded();
-    expect(recorded).toHaveLength(2);
-    for (const n of recorded) {
-      expect(n.correlationId).toBe(context.invocationId);
-    }
+    const addresses = recorded.map((n) => n.to).sort();
+    expect(addresses).toEqual(
+      ['backup@example.test', ZOOM_341_RECIPIENT.recipientAddresses[0]].sort(),
+    );
+    expect(
+      errorSpy.mock.calls.some(
+        (call) =>
+          typeof call[1] === 'string' &&
+          call[1].includes('primary@example.test') &&
+          call[1].includes('chapter:7'),
+      ),
+    ).toBe(true);
+    sendSpy.mockRestore();
+  });
+
+  test('returns a summary of attempted and failed sends', async () => {
+    seedRouting([
+      {
+        ...CHAPTER_OVERSIGHT_RECIPIENT,
+        recipientAddresses: ['primary@example.test', 'backup@example.test'],
+      },
+    ]);
+    const originalSend = mockGateway.send.bind(mockGateway);
+    const sendSpy = vi.spyOn(mockGateway, 'send').mockImplementation(async (notification) => {
+      if (notification.to === 'primary@example.test') {
+        throw new Error('ACS rejected this address');
+      }
+      return originalSend(notification);
+    });
+
+    const summary = await useCase.notify(context, buildChangeSet([buildField()]));
+
+    expect(summary).toEqual({
+      attempted: 2,
+      failed: 1,
+      failures: [
+        {
+          address: 'primary@example.test',
+          reason: 'send',
+          message:
+            'Failed to notify primary@example.test (covers: chapter:7): ACS rejected this address',
+        },
+      ],
+    });
+    sendSpy.mockRestore();
+  });
+
+  test('continues sending to all remaining addresses when multiple sends fail simultaneously across different mailing lists', async () => {
+    seedRouting([
+      {
+        ...CHAPTER_OVERSIGHT_RECIPIENT,
+        recipientAddresses: ['ch7-first@example.test', 'ch7-last@example.test'],
+      },
+      {
+        ...ZOOM_341_RECIPIENT,
+        recipientAddresses: ['zoom-first@example.test', 'zoom-last@example.test'],
+      },
+    ]);
+    const originalSend = mockGateway.send.bind(mockGateway);
+    const failingAddresses = new Set(['ch7-first@example.test', 'zoom-last@example.test']);
+    const sendSpy = vi.spyOn(mockGateway, 'send').mockImplementation(async (notification) => {
+      if (failingAddresses.has(notification.to)) {
+        throw new Error(`ACS rejected ${notification.to}`);
+      }
+      return originalSend(notification);
+    });
+    const errorSpy = vi.spyOn(context.logger, 'error');
+
+    const summary = await useCase.notify(
+      context,
+      buildChangeSet([
+        buildField({ category: 'profile', section: 'appointment' }),
+        buildField({
+          label: 'Zoom Info',
+          category: 'zoom-341',
+          section: 'meeting',
+          comparisons: [{ before: 'old', after: 'new' }],
+        }),
+      ]),
+    );
+
+    const addresses = mockGateway
+      .getRecorded()
+      .map((n) => n.to)
+      .sort();
+    expect(addresses).toEqual(['ch7-last@example.test', 'zoom-first@example.test'].sort());
+    expect(summary).toEqual({
+      attempted: 4,
+      failed: 2,
+      failures: [
+        {
+          address: 'ch7-first@example.test',
+          reason: 'send',
+          message:
+            'Failed to notify ch7-first@example.test (covers: chapter:7): ACS rejected ch7-first@example.test',
+        },
+        {
+          address: 'zoom-last@example.test',
+          reason: 'send',
+          message:
+            'Failed to notify zoom-last@example.test (covers: category:zoom-341): ACS rejected zoom-last@example.test',
+        },
+      ],
+    });
+
+    const ch7FirstErrorCall = errorSpy.mock.calls.find(
+      (call) => typeof call[1] === 'string' && call[1].includes('ch7-first@example.test'),
+    );
+    expect(ch7FirstErrorCall?.[1]).toContain('chapter:7');
+    expect(ch7FirstErrorCall?.[2]).toEqual(
+      expect.objectContaining({ message: expect.stringContaining('ch7-first@example.test') }),
+    );
+
+    const zoomLastErrorCall = errorSpy.mock.calls.find(
+      (call) => typeof call[1] === 'string' && call[1].includes('zoom-last@example.test'),
+    );
+    expect(zoomLastErrorCall?.[1]).toContain('category:zoom-341');
+    expect(zoomLastErrorCall?.[2]).toEqual(
+      expect.objectContaining({ message: expect.stringContaining('zoom-last@example.test') }),
+    );
+
+    sendSpy.mockRestore();
   });
 });

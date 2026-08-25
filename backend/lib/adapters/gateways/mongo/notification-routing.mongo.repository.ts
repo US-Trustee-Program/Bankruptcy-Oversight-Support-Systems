@@ -69,7 +69,15 @@ export class NotificationRoutingMongoRepository
   }
 
   public async findRecipientByRoutingKey(key: string): Promise<NotificationRecipient | null> {
-    const query = this.doc('covers').contains([key]);
+    // Scoped to the known definition ids so a document outside the
+    // UI-managed set (e.g. a legacy/orphaned record with a broader `covers`
+    // array) can never silently win this match instead of the one an admin
+    // can actually see and edit on the Notification Routing screen.
+    const knownIds = NOTIFICATION_ROUTING_DEFINITIONS.map((definition) => definition.id);
+    const query = QueryBuilder.and(
+      this.doc('covers').contains([key]),
+      this.doc('id').contains(knownIds),
+    );
     try {
       const result = await this.getAdapter<NotificationRoutingDoc>().findOne(query);
       return {

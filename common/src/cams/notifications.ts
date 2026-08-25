@@ -85,6 +85,8 @@ export type Notification = {
   correlationId: string;
   /** Optional reply-to address (e.g. the user who made the change). */
   replyTo?: { address: string; displayName?: string };
+  /** Optional trustee id, logged alongside the ACS messageId so a bounce alert can be traced back to a trustee. */
+  trusteeId?: string;
 };
 
 export type TrusteeChangeComparison = {

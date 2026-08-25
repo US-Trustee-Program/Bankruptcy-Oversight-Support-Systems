@@ -51,6 +51,22 @@ param networkLocation string = location
 
 param isUstpDeployment bool = false
 
+@description('Matches main.bicep\'s createAlerts (ghaEnvironment == Main-Gov, i.e. Flexion staging). Together with isUstpDeployment, distinguishes the two standalone environments (staging, USTP prod) -- each keeps its own dedicated ACS resource via main.bicep -- from the dev tier (Flexion dev + every ephemeral PR branch), which shares one ACS resource created here.')
+param createAlerts bool = false
+
+@description('Resource group containing the shared Log Analytics workspace for alerts/bounce-poll. Required to create the dev-tier shared ACS alerting/bounce-poll resources.')
+param analyticsResourceGroupName string = ''
+
+@description('For staging/USTP prod only: resource ID of that environment\'s own existing Log Analytics workspace, used to source its ANALYTICS-WORKSPACE-CUSTOMER-ID-SHARED secret value. Unused for the dev tier, which creates its own shared workspace here.')
+param analyticsWorkspaceId string = ''
+
+@description('Email address to notify for dev-tier ACS bounce alerts. Leave empty to skip creating the dev-tier alert.')
+@secure()
+param adminNotificationEmail string = ''
+
+@description('Custom domain FQDN for sending email. Leave empty to use Azure-managed subdomain.')
+param customDomain string = ''
+
 @description('Flag: determines the setup of DNS Zone, Link virtual networks to zone.')
 param deployDns bool = true
 
@@ -77,6 +93,8 @@ param privateDnsZoneSubscriptionId string = subscription().subscriptionId
 
 @description('Set true when the deploying pipeline has already confirmed a vnet link into the KV private DNS zone exists (see vnet-links.bicep) -- avoids a Conflict from trying to create a second, differently-named link.')
 param vnetLinkAlreadyExists bool = false
+
+param enableResourceLocks bool = false
 
 // Not a param: nothing overrides it (the deploy script hardcodes the same
 // literal locally rather than passing it through -- see
@@ -243,4 +261,145 @@ module sqlManagedIdentity './lib/identity/managed-identity.bicep' = if (createSq
     location: location
     tags: tags
   }
+}
+
+var isStandaloneEnvironment = createAlerts || isUstpDeployment
+var isDevTier = !isStandaloneEnvironment
+var sharedBounceWorkspaceName = 'law-cams-branches'
+
+var acsCommunicationServiceName = isDevTier ? 'comms-cams-dev-shared' : '${stackName}-comms'
+var acsEmailServiceName = isDevTier ? 'email-cams-dev-shared' : '${stackName}-email'
+var acsConnectionStringSecretName = 'ACS-EMAIL-CONNECTION-STRING' // pragma: allowlist secret
+var acsSenderAddressSecretName = 'ACS-EMAIL-SENDER-ADDRESS' // pragma: allowlist secret
+
+module sharedBounceWorkspace 'lib/analytics/log-analytics-workspace.bicep' = if (isDevTier && !empty(analyticsResourceGroupName)) {
+  name: '${stackName}-bounce-workspace-module'
+  scope: resourceGroup(analyticsResourceGroupName)
+  params: {
+    workspaceName: sharedBounceWorkspaceName
+    location: location
+    tags: tags
+  }
+}
+
+var acsAnalyticsWorkspaceId = isDevTier
+  ? (!empty(analyticsResourceGroupName) ? sharedBounceWorkspace.outputs.id : '')
+  : analyticsWorkspaceId
+
+module acsEmail './lib/email/acs-email.bicep' = {
+  name: '${stackName}-acs-email-module'
+  params: {
+    stackName: stackName
+    communicationServiceName: acsCommunicationServiceName
+    emailServiceName: acsEmailServiceName
+    connectionStringSecretName: acsConnectionStringSecretName
+    senderAddressSecretName: acsSenderAddressSecretName
+    kvAppConfigName: kvAppConfigName
+    kvAppConfigResourceGroupName: kvAppConfigResourceGroupName
+    tags: tags
+    customDomain: customDomain
+    analyticsWorkspaceId: acsAnalyticsWorkspaceId
+  }
+  dependsOn: [
+    kvSetup
+  ]
+}
+
+module acsEmailLock './lib/email/acs-communication-service-lock.bicep' = if (enableResourceLocks) {
+  name: '${stackName}-acs-email-lock-module'
+  params: {
+    communicationServiceName: acsCommunicationServiceName
+    lockName: 'CanNotDelete-${acsCommunicationServiceName}'
+    lockNotes: 'Protects the ACS Communication Service from accidental or automated deletion (GH #2749 bug shape).'
+  }
+  dependsOn: [
+    acsEmail
+  ]
+}
+
+module sharedBounceWorkspaceLock './lib/analytics/log-analytics-workspace-lock.bicep' = if (isDevTier && enableResourceLocks && !empty(analyticsResourceGroupName)) {
+  name: '${stackName}-bounce-workspace-lock-module'
+  scope: resourceGroup(analyticsResourceGroupName)
+  params: {
+    workspaceName: sharedBounceWorkspaceName
+    lockName: 'CanNotDelete-law-cams-branches'
+    lockNotes: 'Protects the shared dev-tier bounce-poll Log Analytics workspace from accidental or automated deletion (GH #2749 bug shape).'
+  }
+  dependsOn: [
+    sharedBounceWorkspace
+  ]
+}
+
+module sharedAdminActionGroup './lib/monitoring-alerts/admin-notification-action-group.bicep' =
+  if (isDevTier && !empty(adminNotificationEmail) && !empty(analyticsResourceGroupName)) {
+    name: '${stackName}-admin-action-group-shared-module'
+    scope: resourceGroup(analyticsResourceGroupName)
+    params: {
+      actionGroupName: 'cams-dev-shared-admin-notifications'
+      adminEmail: adminNotificationEmail
+      tags: tags
+    }
+  }
+
+module sharedAcsBounceAlert './lib/monitoring-alerts/scheduled-query-alert-rule.bicep' =
+  if (isDevTier && !empty(adminNotificationEmail) && !empty(analyticsResourceGroupName)) {
+    name: '${stackName}-acs-bounce-alert-shared-module'
+    scope: resourceGroup(analyticsResourceGroupName)
+    params: {
+      alertRuleName: 'cams-dev-shared-acs-email-bounce-alert'
+      logQueryScopeResourceId: sharedBounceWorkspace.outputs.id
+      actionGroupId: sharedAdminActionGroup!.outputs.actionGroupId
+      query: '''
+        ACSEmailStatusUpdateOperational
+        | where DeliveryStatus in ('Failed', 'Bounced', 'Quarantined', 'FilteredSpam', 'Suppressed')
+        | project TimeGenerated, CorrelationId, RecipientId, DeliveryStatus
+      '''
+      timeAggregation: 'Count'
+      threshold: 0
+      operator: 'GreaterThan'
+      evaluationFrequencyMinutes: 15
+      windowSizeMinutes: 15
+      severity: 2
+      alertDescription: 'One or more trustee-notification emails failed to deliver via the shared dev-tier ACS resource. Search Log Analytics/application traces around the reported timestamp for the correlationId (logged as messageId in application traces) to find which branch and trustee this affects.'
+    }
+  }
+
+module sharedAnalyticsReaderRoleAssignment './lib/analytics/log-analytics-reader-role-assignment.bicep' =
+  if (isDevTier && !empty(analyticsResourceGroupName)) {
+    name: '${stackName}-analytics-reader-shared-module'
+    scope: resourceGroup(analyticsResourceGroupName)
+    params: {
+      workspaceName: sharedBounceWorkspaceName
+      principalId: kvSetup.outputs.principalId
+    }
+    dependsOn: [
+      sharedBounceWorkspace
+    ]
+  }
+
+resource existingAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10-01' existing =
+  if (!isDevTier && !empty(analyticsWorkspaceId) && !empty(analyticsResourceGroupName)) {
+    name: last(split(analyticsWorkspaceId, '/'))
+    scope: resourceGroup(analyticsResourceGroupName)
+  }
+
+var sharedAnalyticsWorkspaceCustomerId = isDevTier
+  ? (!empty(analyticsResourceGroupName) ? sharedBounceWorkspace.outputs.customerId : '')
+  : (existingAnalyticsWorkspace.?properties.?customerId ?? '')
+
+var canWriteSharedAnalyticsCustomerId = isDevTier
+  ? !empty(analyticsResourceGroupName)
+  : (!empty(analyticsWorkspaceId) && !empty(analyticsResourceGroupName))
+
+module sharedAnalyticsCustomerIdSecret './lib/keyvault/keyvault-secret.bicep' = if (canWriteSharedAnalyticsCustomerId) {
+  name: '${stackName}-analytics-customer-id-shared-secret'
+  scope: resourceGroup(kvAppConfigResourceGroupName)
+  params: {
+    keyVaultName: kvAppConfigName
+    secretName: 'ANALYTICS-WORKSPACE-CUSTOMER-ID-SHARED' // pragma: allowlist secret
+    secretValue: sharedAnalyticsWorkspaceCustomerId
+  }
+  dependsOn: [
+    kvSetup
+  ]
 }
