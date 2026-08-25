@@ -476,6 +476,24 @@ describe('validateTrusteeUpcomingKeyDates', () => {
     expect(result.reasonMap?.tprDue?.reasons?.[0]).toBe('Must be a valid date mm/dd.');
   });
 
+  test.each([
+    ['tprReviewPeriodStart'],
+    ['tprReviewPeriodEnd'],
+    ['tirReviewPeriodStart'],
+    ['tirReviewPeriodEnd'],
+    ['tirSubmission'],
+    ['tirReview'],
+    ['tirSemiAnnualReviewPeriodStart'],
+    ['tirSemiAnnualReviewPeriodEnd'],
+  ])('returns error when %s contains an invalid ISO date', (field) => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      [field]: '1900-02-30',
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.[field]?.reasons?.[0]).toBe('Must be a valid date mm/dd.');
+  });
+
   test('returns error when a full date field contains an invalid ISO date', () => {
     const result = validateTrusteeUpcomingKeyDates({
       ...baseInput(),
