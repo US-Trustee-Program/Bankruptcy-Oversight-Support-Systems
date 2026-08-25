@@ -2,6 +2,7 @@ import { vi } from 'vitest';
 import { ApplicationContext } from '../../types/basic';
 import { NotificationRoutingMongoRepository } from './notification-routing.mongo.repository';
 import {
+  NOTIFICATION_ROUTING_DEFINITIONS,
   NotificationRoutingRecord,
   NotificationRoutingUpdateInput,
 } from '@common/cams/notifications';
@@ -91,9 +92,19 @@ describe('NotificationRoutingMongoRepository', () => {
       expect(mockFindOne).toHaveBeenCalledTimes(1);
       const query = mockFindOne.mock.calls[0][0];
       expect(query).toEqual({
-        condition: 'CONTAINS',
-        leftOperand: { name: 'covers' },
-        rightOperand: ['chapter:7'],
+        conjunction: 'AND',
+        values: [
+          {
+            condition: 'CONTAINS',
+            leftOperand: { name: 'covers' },
+            rightOperand: ['chapter:7'],
+          },
+          {
+            condition: 'CONTAINS',
+            leftOperand: { name: 'id' },
+            rightOperand: NOTIFICATION_ROUTING_DEFINITIONS.map((d) => d.id),
+          },
+        ],
       });
     });
 

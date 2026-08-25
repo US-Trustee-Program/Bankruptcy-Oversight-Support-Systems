@@ -375,6 +375,7 @@ export class TrusteeAppointmentsUseCase {
       courts: CourtDivisionDetails[];
     },
   ): Promise<void> {
+    const trace = context.observability.startTrace(context.invocationId);
     try {
       const trusteeName =
         params.trusteeName ?? (await this.trusteesRepository.read(params.trusteeId)).name;
@@ -406,7 +407,15 @@ export class TrusteeAppointmentsUseCase {
           changeSet.profileLink = `${frontendUrl}/trustees/${params.trusteeId}`;
         }
         const notificationUseCase = new TrusteeChangeNotificationUseCase(context);
-        await notificationUseCase.notify(context, changeSet);
+        const summary = await notificationUseCase.notify(context, changeSet);
+        context.observability.completeTrace(trace, 'Trustee Change Notification', {
+          success: summary.failed === 0,
+          properties: {
+            attempted: String(summary.attempted),
+            failed: String(summary.failed),
+          },
+          measurements: {},
+        });
       }
     } catch (error) {
       context.logger.error(MODULE_NAME, 'Failed to dispatch appointment notification.', error);

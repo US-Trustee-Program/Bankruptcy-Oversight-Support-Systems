@@ -61,7 +61,7 @@ import {
 import { TrusteeChangeNotificationUseCase } from '../notifications/trustee-change-notification';
 import DateHelper from '@common/date-helper';
 
-export const MODULE_NAME = 'TRUSTEES-USE-CASE';
+const MODULE_NAME = 'TRUSTEES-USE-CASE';
 
 const SYSTEM_USER: CamsUserReference = {
   id: 'SYSTEM',
@@ -419,9 +419,7 @@ export class TrusteesUseCase {
         !options?.suppressNotifications &&
         changeSet.fields.length > 0
       ) {
-        this.dispatchChangeNotification(context, changeSet, trusteeId).catch((e) =>
-          context.logger.error(MODULE_NAME, 'Unexpected error dispatching change notification', e),
-        );
+        await this.dispatchChangeNotification(context, changeSet, trusteeId);
       }
 
       return updatedTrustee;
@@ -642,6 +640,7 @@ export class TrusteesUseCase {
     changeSet: TrusteeChangeSet,
     trusteeId: string,
   ): Promise<void> {
+    const trace = context.observability.startTrace(context.invocationId);
     try {
       changeSet.chapters = await this.resolveChapters(trusteeId);
       changeSet.author = {
@@ -654,14 +653,21 @@ export class TrusteesUseCase {
         changeSet.profileLink = `${frontendUrl}/trustees/${trusteeId}`;
       }
       const notificationUseCase = new TrusteeChangeNotificationUseCase(context);
-      await notificationUseCase.notify(context, changeSet);
+      const summary = await notificationUseCase.notify(context, changeSet);
+      context.observability.completeTrace(trace, 'Trustee Change Notification', {
+        success: summary.failed === 0,
+        properties: {
+          attempted: String(summary.attempted),
+          failed: String(summary.failed),
+        },
+        measurements: {},
+      });
     } catch (originalError) {
       context.logger.error(
         MODULE_NAME,
         'Failed to dispatch trustee change notification.',
         originalError,
       );
-      const trace = context.observability.startTrace(context.invocationId);
       context.observability.completeTrace(trace, 'Trustee Change Notification', {
         success: false,
         properties: {},
