@@ -86,4 +86,52 @@ describe('BounceReconstructionUseCase', () => {
 
     expect(mockGateway.getRecorded()).toEqual([]);
   });
+
+  test('logs a success line with the messageId and original recipient after forwarding', async () => {
+    const archived: EmailNotificationArchiveRecord = {
+      messageId: 'msg-1',
+      recipientAddress: 'ch-oversight@example.test',
+      changeSet: buildChangeSet(),
+    };
+    vi.spyOn(MockMongoRepository.prototype, 'readArchivedEmail').mockResolvedValue(archived);
+    const infoSpy = vi.spyOn(context.logger, 'info');
+
+    await useCase.reconstructAndForward(context, 'msg-1', 'admin@example.test', 'Bounced');
+
+    expect(infoSpy).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.stringMatching(/msg-1.*ch-oversight@example\.test/),
+    );
+  });
+
+  test('logs a warning when the delivery status indicates the recipient is suppressed', async () => {
+    const archived: EmailNotificationArchiveRecord = {
+      messageId: 'msg-1',
+      recipientAddress: 'ch-oversight@example.test',
+      changeSet: buildChangeSet(),
+    };
+    vi.spyOn(MockMongoRepository.prototype, 'readArchivedEmail').mockResolvedValue(archived);
+    const warnSpy = vi.spyOn(context.logger, 'warn');
+
+    await useCase.reconstructAndForward(context, 'msg-1', 'admin@example.test', 'Suppressed');
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.stringContaining("'ch-oversight@example.test' is on ACS's suppression list"),
+    );
+  });
+
+  test('does not log a suppression warning for an ordinary bounce', async () => {
+    const archived: EmailNotificationArchiveRecord = {
+      messageId: 'msg-1',
+      recipientAddress: 'ch-oversight@example.test',
+      changeSet: buildChangeSet(),
+    };
+    vi.spyOn(MockMongoRepository.prototype, 'readArchivedEmail').mockResolvedValue(archived);
+    const warnSpy = vi.spyOn(context.logger, 'warn');
+
+    await useCase.reconstructAndForward(context, 'msg-1', 'admin@example.test', 'Bounced');
+
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
 });

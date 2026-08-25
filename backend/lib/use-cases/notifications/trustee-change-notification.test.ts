@@ -98,6 +98,18 @@ describe('TrusteeChangeNotificationUseCase', () => {
     expect(recorded[0].trusteeId).toBe('trustee-1');
   });
 
+  test('logs a completion line tying the run back to the trusteeId', async () => {
+    seedRouting([CHAPTER_OVERSIGHT_RECIPIENT]);
+    const infoSpy = vi.spyOn(context.logger, 'info');
+
+    await useCase.notify(context, buildChangeSet([buildField()]));
+
+    expect(infoSpy).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.stringContaining("trusteeId 'trustee-1'"),
+    );
+  });
+
   test('archives the sent email keyed by the ACS messageId', async () => {
     seedRouting([CHAPTER_OVERSIGHT_RECIPIENT]);
     const archiveSpy = vi

@@ -468,6 +468,8 @@ export type BounceLogRow = {
   timeGenerated: string;
   /** ACS's CorrelationId column -- populated with the messageId returned by the original send. */
   messageId: string;
+  /** ACS's DeliveryStatus column, e.g. 'Bounced', 'Failed', 'Suppressed'. */
+  deliveryStatus: string;
 };
 
 export interface EmailBounceQueryGateway {

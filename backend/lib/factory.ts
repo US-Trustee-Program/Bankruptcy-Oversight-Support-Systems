@@ -572,9 +572,9 @@ const getDomainVerificationGateway = (): DomainVerificationGateway => {
   return domainVerificationGateway;
 };
 
-const getEmailBounceQueryGateway = (): EmailBounceQueryGateway => {
+const getEmailBounceQueryGateway = (context: ApplicationContext): EmailBounceQueryGateway => {
   if (!emailBounceQueryGateway) {
-    emailBounceQueryGateway = new AcsBounceQueryGateway();
+    emailBounceQueryGateway = new AcsBounceQueryGateway(undefined, context.logger);
   }
   return emailBounceQueryGateway;
 };

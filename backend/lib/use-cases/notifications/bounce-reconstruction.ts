@@ -24,12 +24,20 @@ export class BounceReconstructionUseCase {
     context: ApplicationContext,
     messageId: string,
     adminEmail: string,
+    deliveryStatus?: string,
   ): Promise<void> {
     const archived = await this.archiveRepository.readArchivedEmail(messageId);
     if (!archived) {
       throw new NotFoundError(MODULE_NAME, {
         message: `No archived email found for messageId '${messageId}'. It may have already expired (TTL) or never existed.`,
       });
+    }
+
+    if (deliveryStatus === 'Suppressed') {
+      context.logger.warn(
+        MODULE_NAME,
+        `Recipient '${archived.recipientAddress}' is on ACS's suppression list (messageId: '${messageId}'); ACS will silently decline to send further notifications to this address until it's removed from the list.`,
+      );
     }
 
     const compiled = compileTrusteeChangeTemplate(archived.changeSet);
@@ -42,6 +50,11 @@ export class BounceReconstructionUseCase {
     };
 
     await this.notificationGateway.send(notification);
+
+    context.logger.info(
+      MODULE_NAME,
+      `Forwarded bounced trustee change notification to admin (messageId: '${messageId}', originalRecipient: '${archived.recipientAddress}', deliveryStatus: '${deliveryStatus ?? 'unknown'}').`,
+    );
   }
 }
 

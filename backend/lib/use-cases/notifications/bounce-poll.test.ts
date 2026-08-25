@@ -80,8 +80,8 @@ describe('BouncePollUseCase', () => {
       .mockResolvedValue(expect.anything());
     const reconstructionUseCase = buildReconstructionUseCase();
     const rows: BounceLogRow[] = [
-      { timeGenerated: '2026-01-05T00:00:00.000Z', messageId: 'msg-1' },
-      { timeGenerated: '2026-01-06T00:00:00.000Z', messageId: 'msg-2' },
+      { timeGenerated: '2026-01-05T00:00:00.000Z', messageId: 'msg-1', deliveryStatus: 'Bounced' },
+      { timeGenerated: '2026-01-06T00:00:00.000Z', messageId: 'msg-2', deliveryStatus: 'Bounced' },
     ];
     const useCase = new BouncePollUseCase(context, reconstructionUseCase, buildGateway(rows));
 
@@ -92,11 +92,13 @@ describe('BouncePollUseCase', () => {
       context,
       'msg-1',
       'admin@example.test',
+      'Bounced',
     );
     expect(reconstructionUseCase.reconstructAndForward).toHaveBeenCalledWith(
       context,
       'msg-2',
       'admin@example.test',
+      'Bounced',
     );
     expect(upsertSpy).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -119,9 +121,17 @@ describe('BouncePollUseCase', () => {
       .mockRejectedValueOnce(new Error('transient ACS send failure'))
       .mockResolvedValueOnce(undefined);
     const rows: BounceLogRow[] = [
-      { timeGenerated: '2026-01-05T00:00:00.000Z', messageId: 'msg-ok' },
-      { timeGenerated: '2026-01-06T00:00:00.000Z', messageId: 'msg-transient-failure' },
-      { timeGenerated: '2026-01-07T00:00:00.000Z', messageId: 'msg-never-attempted' },
+      { timeGenerated: '2026-01-05T00:00:00.000Z', messageId: 'msg-ok', deliveryStatus: 'Bounced' },
+      {
+        timeGenerated: '2026-01-06T00:00:00.000Z',
+        messageId: 'msg-transient-failure',
+        deliveryStatus: 'Bounced',
+      },
+      {
+        timeGenerated: '2026-01-07T00:00:00.000Z',
+        messageId: 'msg-never-attempted',
+        deliveryStatus: 'Bounced',
+      },
     ];
     const errorSpy = vi.spyOn(context.logger, 'error');
     const useCase = new BouncePollUseCase(context, reconstructionUseCase, buildGateway(rows));
@@ -134,6 +144,7 @@ describe('BouncePollUseCase', () => {
       context,
       'msg-never-attempted',
       'admin@example.test',
+      'Bounced',
     );
     expect(upsertSpy).toHaveBeenCalledWith(
       expect.objectContaining({ lastProcessedTimeGenerated: '2026-01-05T00:00:00.000Z' }),
@@ -159,8 +170,12 @@ describe('BouncePollUseCase', () => {
       )
       .mockResolvedValueOnce(undefined);
     const rows: BounceLogRow[] = [
-      { timeGenerated: '2026-01-05T00:00:00.000Z', messageId: 'msg-expired' },
-      { timeGenerated: '2026-01-06T00:00:00.000Z', messageId: 'msg-ok' },
+      {
+        timeGenerated: '2026-01-05T00:00:00.000Z',
+        messageId: 'msg-expired',
+        deliveryStatus: 'Bounced',
+      },
+      { timeGenerated: '2026-01-06T00:00:00.000Z', messageId: 'msg-ok', deliveryStatus: 'Bounced' },
     ];
     const useCase = new BouncePollUseCase(context, reconstructionUseCase, buildGateway(rows));
 
