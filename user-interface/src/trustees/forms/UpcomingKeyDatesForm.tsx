@@ -114,6 +114,7 @@ type FormState = {
   lastMonthlyReportReceived: string;
   leaseExpiration: string;
   idExpiration: string;
+  lastCompensationStudy: string;
 };
 
 const EMPTY_FORM: FormState = {
@@ -137,6 +138,7 @@ const EMPTY_FORM: FormState = {
   lastMonthlyReportReceived: '',
   leaseExpiration: '',
   idExpiration: '',
+  lastCompensationStudy: '',
 };
 
 const currentYear = new Date().getFullYear();
@@ -178,6 +180,7 @@ function buildFormStateFromData(data: TrusteeUpcomingKeyDates): FormState {
     lastMonthlyReportReceived: data.lastMonthlyReportReceived ?? '',
     leaseExpiration: data.leaseExpiration ?? '',
     idExpiration: data.idExpiration ?? '',
+    lastCompensationStudy: data.lastCompensationStudy ?? '',
   };
 }
 
@@ -435,7 +438,7 @@ export default function UpcomingKeyDatesForm() {
       lastMonthlyReportReceived: form.lastMonthlyReportReceived || null,
       leaseExpiration: form.leaseExpiration || null,
       idExpiration: form.idExpiration || null,
-      lastCompensationStudy: null,
+      lastCompensationStudy: form.lastCompensationStudy || null,
     };
 
     const result = validateTrusteeUpcomingKeyDates(isoInput);
