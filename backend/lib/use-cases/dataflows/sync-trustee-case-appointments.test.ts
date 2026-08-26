@@ -1355,8 +1355,21 @@ describe('SyncTrusteeCaseAppointments', () => {
         trusteeId: 't-1',
         candidateScores: scoredCandidates,
       });
-      // The winner is resolved by name, but has no active appointment covering this case's
-      // court/division/chapter, so it falls through to ImperfectMatch instead of auto-linking.
+      // The winner is resolved by name, but only has an active appointment in the same court on
+      // a DIFFERENT division ('082', not the event's '081') - applyMatchOutcome recomputes its
+      // own candidateScore from this real appointment (not the mocked scoredCandidates above), so
+      // isAppointmentMatch correctly reports false (no auto-link) while districtDivisionScore
+      // still comes out 50 (same-court partial credit), keeping this an ImperfectMatch with real
+      // supporting evidence rather than being reclassified to NoTrusteeMatch.
+      mockAppointmentsRepo.getTrusteeAppointments = vi.fn().mockResolvedValue([
+        {
+          trusteeId: 't-1',
+          status: 'active',
+          courtId: '081',
+          divisionCode: '082',
+          chapter: '7',
+        },
+      ]);
       vi.spyOn(trusteeMatchHelpers, 'isAppointmentMatch').mockReturnValue(false);
 
       const { successCount, dlqMessages, scenarioDistribution } =
@@ -1545,6 +1558,44 @@ describe('SyncTrusteeCaseAppointments', () => {
       expect(dlqMessages).toHaveLength(0);
       expect(mockVerificationRepo.upsertVerification).toHaveBeenCalled();
       expect(scenarioDistribution.imperfectMatchCount).toBe(1);
+    });
+
+    test('should reclassify a uniquely-name-matched candidate with no court appointment as NO_TRUSTEE_MATCH, not IMPERFECT_MATCH', async () => {
+      // A name that happens to be unique nationwide (matchTrusteeByName's tier 1/2 single-match
+      // resolution never filters by courtId) can resolve to a trustee with zero appointments in
+      // this case's court - a same-name coincidence, not real matching evidence. Surfacing that as
+      // an ImperfectMatch candidate would present it to a human reviewer as "the" suggested match
+      // even though nothing geographically connects it to the case, so it is reclassified to
+      // NoTrusteeMatch (no candidates) instead - the same outcome as if the name search had found
+      // nothing at all.
+      vi.spyOn(trusteeMatchHelpers, 'isAppointmentMatch').mockReturnValue(false);
+      vi.spyOn(trusteeMatchHelpers, 'calculateCandidateScore').mockReturnValue({
+        trusteeId: 'trustee-123',
+        trusteeName: 'John Doe',
+        totalScore: 28,
+        addressScore: 1,
+        nameScore: 100,
+        phoneScore: 0,
+        emailScore: null,
+        districtDivisionScore: 0,
+        chapterScore: 0,
+      });
+
+      const events = [makeEvent('case-001', 'John Doe')];
+
+      const { successCount, dlqMessages, scenarioDistribution } =
+        await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          events,
+        );
+
+      expect(successCount).toBe(0);
+      expect(dlqMessages).toHaveLength(0);
+      expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
+        expect.objectContaining({ mismatchReason: 'NO_TRUSTEE_MATCH', matchCandidates: [] }),
+      );
+      expect(scenarioDistribution.imperfectMatchCount).toBe(0);
+      expect(scenarioDistribution.noMatchCount).toBe(1);
     });
 
     test('should route a single non-perfect-match candidate to verification even at a very high score', async () => {

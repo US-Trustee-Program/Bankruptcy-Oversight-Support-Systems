@@ -39,6 +39,7 @@ import {
   calculateTotalScore,
   parseCityStateZip,
   normalizeName,
+  hasDistrictDivisionMatch,
 } from './trustee-match.helpers';
 import { buildVariant, computeFingerprint } from './trustee-variant.helpers';
 import { TRUSTEE_VARIATION_DOCUMENT_TYPE } from '@common/cams/trustee-variation';
@@ -1244,6 +1245,27 @@ async function applyMatchOutcome(
   // record that satisfies court+division+chapter together, so a same-record requirement can
   // never hold here — every single-candidate non-perfect-match falls through to ImperfectMatch
   // below for human review regardless of how high totalScore is.
+  //
+  // !hasDistrictDivisionMatch means trusteeId doesn't hold a single active appointment in this
+  // case's court at all - matchTrusteeByName's tier 1/2 single-match resolution (unlike tier 3's
+  // findLastNameTokenMatches or the multi-candidate resolveNameCollisionByScoring path) never
+  // filters by courtId, so a name that happens to be unique nationwide can resolve here purely by
+  // coincidence (e.g. two different trustees named "Adam M. Goodman" in different states). Writing
+  // that as an ImperfectMatch candidate presents it to a human reviewer as "the" suggested match
+  // even though there is zero geographic evidence connecting this trustee to the case - reclassify
+  // as NoTrusteeMatch (no candidates) instead, the same as if the name search itself had found
+  // nothing. A same-court-different-division match (districtDivisionScore 50) still has real
+  // supporting evidence and remains an ImperfectMatch.
+  if (!hasDistrictDivisionMatch(candidateScore.districtDivisionScore)) {
+    await handleClassifiedMismatch(
+      ctx,
+      syncedCase,
+      TrusteeAppointmentSyncErrorCode.NoTrusteeMatch,
+      [],
+    );
+    return { outcome: 'handled' };
+  }
+
   audit.matchOutcome = 'imperfect-match';
   audit.matchedTrusteeId = trusteeId;
   audit.scoringBreakdown = {
