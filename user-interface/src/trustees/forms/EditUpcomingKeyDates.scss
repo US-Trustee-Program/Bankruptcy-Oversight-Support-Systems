@@ -6,6 +6,10 @@ $input-max-width: 20.75rem;
     margin-top: 1rem;
   }
 
+  .date-picker {
+    margin-top: 1.5rem;
+  }
+
   .month-day-selector {
     max-width: calc($input-max-width / 2 - 16px);
   }
