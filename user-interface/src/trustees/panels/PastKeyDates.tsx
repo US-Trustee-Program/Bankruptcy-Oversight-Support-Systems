@@ -1,5 +1,9 @@
 import { useNavigate } from 'react-router-dom';
-import { TrusteeUpcomingKeyDates, isoToMMDDYYYY } from '@common/cams/trustee-upcoming-key-dates';
+import {
+  TrusteeUpcomingKeyDates,
+  isoToMMDDYYYY,
+  isoToMMYYYY,
+} from '@common/cams/trustee-upcoming-key-dates';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
@@ -19,6 +23,10 @@ const NO_DATE = 'No date added';
 
 function formatDateOrDefault(isoDate: string | undefined): string {
   return isoDate ? isoToMMDDYYYY(isoDate) : NO_DATE;
+}
+
+function formatMonthYearOrDefault(isoDate: string | undefined): string {
+  return isoDate ? isoToMMYYYY(isoDate) : NO_DATE;
 }
 
 export default function PastKeyDates(props: Readonly<PastKeyDatesProps>) {
@@ -41,7 +49,9 @@ export default function PastKeyDates(props: Readonly<PastKeyDatesProps>) {
     const value =
       field.kind === 'year'
         ? (data?.lastAuditFiscalYear?.toString() ?? NO_DATE)
-        : formatDateOrDefault(data?.[field.key]);
+        : field.kind === 'month-year'
+          ? formatMonthYearOrDefault(data?.[field.key])
+          : formatDateOrDefault(data?.[field.key]);
     return { label: field.displayLabel, value, testId: field.testId, stacked: field.stacked };
   });
 

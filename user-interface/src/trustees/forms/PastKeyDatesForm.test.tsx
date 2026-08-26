@@ -279,6 +279,7 @@ describe('PastKeyDatesForm', () => {
         tirFrequency: 'SEMI_ANNUAL',
         leaseExpiration: '2027-06-30',
         idExpiration: '2028-01-15',
+        lastCompensationStudy: null,
       }),
     );
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');
@@ -713,6 +714,157 @@ describe('PastKeyDatesForm', () => {
       await waitFor(() => {
         expect(screen.getByText('Last Monthly Report Received')).toBeInTheDocument();
       });
+    });
+  });
+
+  describe('when appointment is Chapter 13 Standing', () => {
+    const ch13StandingAppointment: TrusteeAppointment = {
+      ...chapter7Appointment,
+      chapter: '13',
+      appointmentType: 'standing',
+    };
+
+    beforeEach(() => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({
+        data: [ch13StandingAppointment],
+      });
+    });
+
+    test('renders 2 date inputs and a MonthYear selector for last compensation study', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-past-key-dates')).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('past-background-question')).toBeInTheDocument();
+      expect(screen.getByTestId('past-audit')).toBeInTheDocument();
+      expect(screen.getByTestId('last-compensation-study-month')).toBeInTheDocument();
+      expect(screen.getByTestId('last-compensation-study-year')).toBeInTheDocument();
+      expect(screen.queryByTestId('past-field-exam')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('past-tpr-submission')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('last-audit-fiscal-year')).not.toBeInTheDocument();
+    });
+
+    test('renders correct field labels for Chapter 13 Standing', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByText('Last Update to Background Questionnaire')).toBeInTheDocument();
+      });
+
+      expect(screen.getByText('Audit Report Date')).toBeInTheDocument();
+      expect(screen.getByText('Last Compensation Study')).toBeInTheDocument();
+    });
+
+    test('Save is disabled when MonthYearSelector has partial entry', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-past-key-dates')).toBeInTheDocument();
+      });
+
+      const saveButton = screen.getByTestId('button-save-past-key-dates');
+      expect(saveButton).toBeEnabled();
+
+      await userEvent.selectOptions(screen.getByTestId('last-compensation-study-month'), '05');
+
+      await waitFor(() => {
+        expect(saveButton).toBeDisabled();
+      });
+    });
+
+    test('Save is enabled when all fields are empty (no errors)', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-past-key-dates')).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('button-save-past-key-dates')).toBeEnabled();
+    });
+
+    test('pre-populates lastCompensationStudy from API response', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({
+        data: { ...populatedDocument, lastCompensationStudy: '2023-08-01' },
+      });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('last-compensation-study-month')).toHaveValue('08');
+      });
+
+      expect(screen.getByTestId('last-compensation-study-year')).toHaveValue('2023');
+    });
+
+    test('save includes lastCompensationStudy in PUT payload', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+      const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-past-key-dates')).toBeInTheDocument();
+      });
+
+      const currentYear = new Date().getFullYear();
+
+      await userEvent.selectOptions(screen.getByTestId('last-compensation-study-month'), '06');
+      await userEvent.selectOptions(
+        screen.getByTestId('last-compensation-study-year'),
+        String(currentYear),
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('button-save-past-key-dates')).toBeEnabled();
+      });
+
+      await userEvent.click(screen.getByTestId('button-save-past-key-dates'));
+
+      await waitFor(() =>
+        expect(putSpy).toHaveBeenCalledWith(
+          'trustee-001',
+          'appointment-001',
+          expect.objectContaining({
+            lastCompensationStudy: `${currentYear}-06-01`,
+          }),
+        ),
+      );
+    });
+
+    test('save preserves non-chapter13 fields from original doc', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+      const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('past-background-question')).toBeInTheDocument();
+      });
+
+      await userEvent.click(screen.getByTestId('button-save-past-key-dates'));
+
+      await waitFor(() =>
+        expect(putSpy).toHaveBeenCalledWith(
+          'trustee-001',
+          'appointment-001',
+          expect.objectContaining({
+            // fields not shown by this variant must be preserved from the original doc
+            pastFieldExam: populatedDocument.pastFieldExam,
+            pastTprSubmission: populatedDocument.pastTprSubmission,
+            lastAuditFiscalYear: populatedDocument.lastAuditFiscalYear,
+          }),
+        ),
+      );
     });
   });
 });

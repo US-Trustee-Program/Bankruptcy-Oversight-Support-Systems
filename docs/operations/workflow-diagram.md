@@ -1,6 +1,7 @@
 # GitHub Actions Workflow Analysis
 
 ## Summary
+
 - **Total Workflows**: 32
 - **Main Workflows**: 15
 - **Reusable Workflows**: 17
@@ -10,6 +11,7 @@
 The diagrams use color coding to distinguish different types of workflow components:
 
 **Triggers** - Event triggers that start workflows:
+
 ```mermaid
 flowchart LR
     trigger_example(["trigger (push, schedule, etc.)"])
@@ -18,6 +20,7 @@ flowchart LR
 ```
 
 **Main Workflows** - Primary workflow files that can be triggered directly:
+
 ```mermaid
 flowchart LR
     main_workflow_example["Main Workflow"]
@@ -26,6 +29,7 @@ flowchart LR
 ```
 
 **Reusable Workflows** - Workflow files that are called by other workflows:
+
 ```mermaid
 flowchart LR
     reusable_workflow_example["Reusable Workflow"]
@@ -34,6 +38,7 @@ flowchart LR
 ```
 
 **Jobs** - Individual jobs within workflows showing internal dependencies:
+
 ```mermaid
 flowchart LR
     job_example["job-name"]
@@ -41,12 +46,12 @@ flowchart LR
     class job_example job
 ```
 
-
 ## Workflow Flow Diagrams by Trigger
 
 ### Delete Triggered Workflows
 
 Workflows triggered by `delete`:
+
 - **Clean up Flexion Azure Resources** (`azure-remove-branch.yml`)
 
 ```mermaid
@@ -77,6 +82,7 @@ flowchart LR
 ### Pull_request Triggered Workflows
 
 Workflows triggered by `pull_request`:
+
 - **Pull Request E2E Validation** (`pr-validation.yml`)
 
 ```mermaid
@@ -101,6 +107,7 @@ flowchart LR
 ### Push Triggered Workflows
 
 Workflows triggered by `push`:
+
 - **Build Playwright msedge Image** (`build-playwright-msedge-image.yml`)
 - **Deploy GitHub Pages** (`deploy-pages.yml`)
 - **Continuous Deployment** (`continuous-deployment.yml`)
@@ -332,7 +339,8 @@ flowchart LR
 
 ##### Continuous Deployment - Job Dependencies
 
-This diagram shows the explicit and implicit dependencies between jobs in the continuous deployment workflow:
+This diagram shows the explicit and implicit dependencies between jobs in the continuous deployment
+workflow:
 
 ```mermaid
 flowchart LR
@@ -461,6 +469,7 @@ flowchart LR
 ### Schedule Triggered Workflows
 
 Workflows triggered by `schedule`:
+
 - **Build Playwright msedge Image** (`build-playwright-msedge-image.yml`)
 - **Clean up Flexion Azure Resources** (`azure-remove-branch.yml`)
 - **Prune E2E Image Cache** (`prune-e2e-image-cache.yml`)
@@ -547,7 +556,8 @@ flowchart LR
 
 ### Workflow_dispatch Triggered Workflows
 
-The `workflow_dispatch` trigger allows manual execution of workflows. Each workflow is shown individually below:
+The `workflow_dispatch` trigger allows manual execution of workflows. Each workflow is shown
+individually below:
 
 #### Clean up Flexion Azure Resources
 
@@ -863,7 +873,8 @@ flowchart LR
 
 ##### Continuous Deployment - Job Dependencies
 
-This diagram shows the explicit and implicit dependencies between jobs in the continuous deployment workflow:
+This diagram shows the explicit and implicit dependencies between jobs in the continuous deployment
+workflow:
 
 ```mermaid
 flowchart LR
@@ -1232,6 +1243,7 @@ flowchart LR
 ### Workflow_run Triggered Workflows
 
 Workflows triggered by `workflow_run`:
+
 - **slack-notification** (`slack-notification.yml`)
 
 ```mermaid
@@ -1348,6 +1360,7 @@ flowchart LR
 ## Workflow Details
 
 ### Main Workflows
+
 - **Deploy SQL Private Link Hub** (`deploy-sql-hub.yml`)
   - Triggers: workflow_dispatch
   - Jobs: 1
@@ -1395,6 +1408,7 @@ flowchart LR
   - Jobs: 1
 
 ### Reusable Workflows
+
 - **Provision and Configure Cloud Resources** (`sub-deploy.yml`)
   - Jobs: 4
 - **Security** (`sub-security-scan.yml`)

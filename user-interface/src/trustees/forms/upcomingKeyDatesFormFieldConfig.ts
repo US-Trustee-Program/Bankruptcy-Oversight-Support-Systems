@@ -33,4 +33,20 @@ export const UPCOMING_KEY_DATES_FORM_CONFIG: Record<
       formKey: 'idExpiration',
     },
   ],
+  'chapter13-standing': [
+    'tpr-review-period',
+    'tpr-due',
+    {
+      kind: 'date-picker',
+      id: 'lease-expiration',
+      label: 'Lease Expiration',
+      formKey: 'leaseExpiration',
+    },
+    {
+      kind: 'date-picker',
+      id: 'id-expiration',
+      label: 'ID Expiration',
+      formKey: 'idExpiration',
+    },
+  ],
 };

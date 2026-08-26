@@ -20,6 +20,8 @@ import {
   validateMonthDayRange,
   validateTrusteeUpcomingKeyDates,
   validateTprDuePair,
+  DATE_FIELDS,
+  TEXT_FIELDS,
 } from './trustee-upcoming-key-dates';
 import { VALID } from './validation';
 
@@ -370,6 +372,7 @@ describe('validateTrusteeUpcomingKeyDates', () => {
       lastMonthlyReportReceived: null,
       leaseExpiration: null,
       idExpiration: null,
+      lastCompensationStudy: null,
     };
   }
 
@@ -473,6 +476,24 @@ describe('validateTrusteeUpcomingKeyDates', () => {
     });
     expect(result.valid).toBeFalsy();
     expect(result.reasonMap?.tprDue?.reasons?.[0]).toBe('Must be a valid date mm/dd.');
+  });
+
+  test.each([
+    ['tprReviewPeriodStart'],
+    ['tprReviewPeriodEnd'],
+    ['tirReviewPeriodStart'],
+    ['tirReviewPeriodEnd'],
+    ['tirSubmission'],
+    ['tirReview'],
+    ['tirSemiAnnualReviewPeriodStart'],
+    ['tirSemiAnnualReviewPeriodEnd'],
+  ])('returns error when %s contains an invalid ISO date', (field) => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      [field]: '1900-02-30',
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.[field]?.reasons?.[0]).toBe('Must be a valid date mm/dd.');
   });
 
   test('returns error when a full date field contains an invalid ISO date', () => {
@@ -622,6 +643,66 @@ describe('validateTrusteeUpcomingKeyDates', () => {
     });
     expect(result.valid).toBeFalsy();
     expect(result.reasonMap?.idExpiration?.reasons?.[0]).toBe('Must be a valid date mm/dd/yyyy.');
+  });
+
+  test('returns VALID when pastAudit is a valid full date', () => {
+    expect(validateTrusteeUpcomingKeyDates({ ...baseInput(), pastAudit: '2024-03-15' })).toEqual(
+      VALID,
+    );
+  });
+
+  test('returns error when pastAudit contains an invalid ISO date', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      pastAudit: '2024-13-01',
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.pastAudit?.reasons?.[0]).toBe('Must be a valid date mm/dd/yyyy.');
+  });
+
+  test('returns VALID when lastCompensationStudy is a valid full date', () => {
+    expect(
+      validateTrusteeUpcomingKeyDates({ ...baseInput(), lastCompensationStudy: '2024-06-01' }),
+    ).toEqual(VALID);
+  });
+
+  test('returns error when lastCompensationStudy contains an invalid ISO date', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      lastCompensationStudy: '2024-13-01',
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.lastCompensationStudy?.reasons?.[0]).toBe(
+      'Must be a valid date mm/dd/yyyy.',
+    );
+  });
+
+  test('DATE_FIELDS contains the exact set of expected fields', () => {
+    expect(DATE_FIELDS).toEqual([
+      'pastBackgroundQuestion',
+      'pastFieldExam',
+      'pastAudit',
+      'pastTprSubmission',
+      'tprReviewPeriodStart',
+      'tprReviewPeriodEnd',
+      'tprDue',
+      'tirReviewPeriodStart',
+      'tirReviewPeriodEnd',
+      'tirSubmission',
+      'tirReview',
+      'tirSemiAnnualReviewPeriodStart',
+      'tirSemiAnnualReviewPeriodEnd',
+      'tirSemiAnnualSubmission',
+      'tirSemiAnnualReview',
+      'lastMonthlyReportReceived',
+      'leaseExpiration',
+      'idExpiration',
+      'lastCompensationStudy',
+    ]);
+  });
+
+  test('TEXT_FIELDS contains the exact set of expected fields', () => {
+    expect(TEXT_FIELDS).toEqual(['tprDueYearType', 'tirFrequency']);
   });
 });
 

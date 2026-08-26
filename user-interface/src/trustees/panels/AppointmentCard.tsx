@@ -15,11 +15,12 @@ import useFeatureFlags, {
   DISPLAY_CHPT11_SUBV_PAST_KEY_DATES,
   DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES,
   DISPLAY_CHPT12_STANDING_KEY_DATES,
+  DISPLAY_CHPT13_STANDING_KEY_DATES,
 } from '@/lib/hooks/UseFeatureFlags';
 import useCourts from '@/lib/hooks/UseCourts';
 import { buildDivisionsDisplay } from '@/lib/utils/court-utils';
 import Api2 from '@/lib/models/api2';
-import { isChapter12Standing } from '@common/cams/trustee-appointments';
+import { isChapter12Standing, isChapter13Standing } from '@common/cams/trustee-appointments';
 
 export interface AppointmentCardProps {
   appointment: TrusteeAppointment;
@@ -51,6 +52,7 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
   const displayChpt1213CaseByCaseUpcomingKeyDates =
     featureFlags[DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES] === true;
   const displayChpt12StandingKeyDates = featureFlags[DISPLAY_CHPT12_STANDING_KEY_DATES] === true;
+  const displayChpt13StandingKeyDates = featureFlags[DISPLAY_CHPT13_STANDING_KEY_DATES] === true;
   const { chapter, appointmentType } = props.appointment;
   const formattedChapter = formatChapterType(chapter);
   const formattedAppointmentType = formatAppointmentType(appointmentType);
@@ -100,21 +102,26 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
   const isCh1213CaseByCase =
     (props.appointment.chapter === '12' || props.appointment.chapter === '13') &&
     props.appointment.appointmentType === 'case-by-case';
-  const isStandingChapter12 = isChapter12Standing(
+  const isChapter12StandingAppointment = isChapter12Standing(
     props.appointment.chapter,
     props.appointment.appointmentType,
   );
+  const isChapter13StandingAppointment = isChapter13Standing(chapter, appointmentType);
 
   const showsChpt7KeyDatesCards = displayChpt7PanelUpcomingKeyDates && isPanelChapter7 && canManage;
   const showsSubVPastKeyDatesCard = displayChpt11SubVPastKeyDates && isSubVPool;
   const showsCh1213UpcomingKeyDatesCard =
     displayChpt1213CaseByCaseUpcomingKeyDates && isCh1213CaseByCase;
-  const showsChpt12StandingKeyDatesCards = displayChpt12StandingKeyDates && isStandingChapter12;
+  const showsChpt12StandingKeyDatesCards =
+    displayChpt12StandingKeyDates && isChapter12StandingAppointment;
+  const showsChpt13StandingUpcomingKeyDates =
+    displayChpt13StandingKeyDates && isChapter13StandingAppointment;
   const shouldFetchKeyDates =
     showsChpt7KeyDatesCards ||
     showsSubVPastKeyDatesCard ||
     showsCh1213UpcomingKeyDatesCard ||
-    showsChpt12StandingKeyDatesCards;
+    showsChpt12StandingKeyDatesCards ||
+    showsChpt13StandingUpcomingKeyDates;
 
   const [keyDatesData, setKeyDatesData] = useState<TrusteeUpcomingKeyDates | null>(null);
   const [isKeyDatesLoading, setIsKeyDatesLoading] = useState(shouldFetchKeyDates);
@@ -208,6 +215,26 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
             />
             <PastKeyDates
               variant="chapter12-standing"
+              trusteeId={props.appointment.trusteeId}
+              appointmentId={props.appointment.id}
+              appointmentHeading={appointmentHeading}
+              data={keyDatesData}
+              isLoading={isKeyDatesLoading}
+            />
+          </>
+        )}
+        {showsChpt13StandingUpcomingKeyDates && (
+          <>
+            <UpcomingKeyDates
+              variant="chapter13-standing"
+              trusteeId={props.appointment.trusteeId}
+              appointmentId={props.appointment.id}
+              appointmentHeading={appointmentHeading}
+              data={keyDatesData}
+              isLoading={isKeyDatesLoading}
+            />
+            <PastKeyDates
+              variant="chapter13-standing"
               trusteeId={props.appointment.trusteeId}
               appointmentId={props.appointment.id}
               appointmentHeading={appointmentHeading}
