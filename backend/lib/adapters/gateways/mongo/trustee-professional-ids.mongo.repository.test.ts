@@ -246,6 +246,69 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
         `Failed to create errored professional ID record for ACMS ID ${acmsProfessionalId}.`,
       );
     });
+
+    test('should return the existing document and warn when a retry replays an already-written record', async () => {
+      // handlePage retries an entire page from its original bookmark on a transient error, so a
+      // record whose errored professional ID was already written earlier in the same invocation
+      // gets reprocessed and hits the (camsTrusteeId, acmsProfessionalId, documentType) unique
+      // index a second time — not a race between two different callers.
+      const duplicateKeyError = new Error(
+        'E11000 duplicate key error collection: trustee-professional-ids index: camsTrusteeId_1_acmsProfessionalId_1_documentType_1',
+      );
+      const existingDocument: TrusteeProfessionalIdDocument = {
+        ...sampleProfessionalId,
+        id: 'errored-prof-id',
+        camsTrusteeId: fingerprint,
+        acmsProfessionalId,
+        variant,
+        error: { disposition: 'no-match' },
+      };
+      vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockRejectedValue(duplicateKeyError);
+      const findSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockResolvedValue([existingDocument]);
+      const warnSpy = vi.spyOn(context.logger, 'warn');
+
+      const result = await repository.createErroredProfessionalId(
+        fingerprint,
+        acmsProfessionalId,
+        variant,
+        { disposition: 'no-match' },
+        mockUser,
+      );
+
+      expect(result).toEqual(existingDocument);
+      expect(findSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          values: expect.arrayContaining([
+            expect.objectContaining({ rightOperand: fingerprint }),
+            expect.objectContaining({ rightOperand: acmsProfessionalId }),
+          ]),
+        }),
+      );
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.stringContaining(acmsProfessionalId),
+      );
+    });
+
+    test('should still throw when a duplicate-key error is caught but no matching document is found', async () => {
+      const duplicateKeyError = new Error('E11000 duplicate key error');
+      vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockRejectedValue(duplicateKeyError);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+
+      await expect(
+        repository.createErroredProfessionalId(
+          fingerprint,
+          acmsProfessionalId,
+          variant,
+          { disposition: 'no-match' },
+          mockUser,
+        ),
+      ).rejects.toThrow(
+        `Failed to create errored professional ID record for ACMS ID ${acmsProfessionalId}.`,
+      );
+    });
   });
 
   describe('findByCamsTrusteeId', () => {
