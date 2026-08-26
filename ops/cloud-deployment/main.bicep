@@ -131,6 +131,7 @@ param analyticsWorkspaceId string = ''
 param analyticsResourceGroupName string
 
 @description('Subscription ID that contains the analytics resource group. Defaults to the deploying subscription.')
+@minLength(36)
 param analyticsSubscriptionId string = subscription().subscriptionId
 
 @description('Url for our Okta Provider')

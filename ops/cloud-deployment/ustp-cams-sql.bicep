@@ -31,7 +31,7 @@ module sqlSpaceAlert './lib/monitoring-alerts/metrics-alert-rule.bicep' = {
   name: '${databaseName}-low-space-alert-module'
   params: {
     alertName: '${databaseName}-low-space-alert'
-    appId: '/subscriptions/729f9083-9edf-4269-919f-3f05f7a0ab20/resourceGroups/${resourceGroup().name}/providers/Microsoft.Sql/servers/${databasePrefix}/databases/${databaseName}'
+    appId: '/subscriptions/${subscription().subscriptionId}/resourceGroups/${resourceGroup().name}/providers/Microsoft.Sql/servers/${databasePrefix}/databases/${databaseName}'
     timeAggregation: 'Maximum'
     operator: 'GreaterThan'
     severity: 1

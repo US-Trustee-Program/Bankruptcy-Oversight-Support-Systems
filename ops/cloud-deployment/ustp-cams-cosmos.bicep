@@ -34,6 +34,7 @@ param actionGroupName string = 'EmailDevelopmentTeam'
 param actionGroupResourceGroupName string
 
 @description('Subscription ID that contains the action group resource group. Defaults to the deploying subscription.')
+@minLength(36)
 param actionGroupSubscriptionId string = subscription().subscriptionId
 
 @description('boolean to determine creation and configuration of Alerts')
