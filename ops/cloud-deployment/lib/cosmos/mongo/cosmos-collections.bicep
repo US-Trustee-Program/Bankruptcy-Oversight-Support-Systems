@@ -703,7 +703,6 @@ resource trusteeProfessionalIdsCollection 'Microsoft.DocumentDB/databaseAccounts
           key: {
             keys: [
               'acmsProfessionalId'
-              'documentType'
             ]
           }
         }
