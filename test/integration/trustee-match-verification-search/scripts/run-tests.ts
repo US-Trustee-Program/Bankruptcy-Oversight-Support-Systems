@@ -406,6 +406,30 @@ async function run() {
         pass('fixtures with taskDate correctly excluded');
       }
     }
+
+    // -------------------------------------------------------------------------
+    // Test 4 (CAMS-886): update() persists affectedCaseIds and findById() reads
+    // it back unchanged — proves the real driver's replaceOne-merge round-trips
+    // the snapshot field a unit test (mocked repository) cannot observe.
+    // -------------------------------------------------------------------------
+    console.log('\nTest 4: update() persists affectedCaseIds; findById() reads it back');
+    {
+      const snapshot = ['081-24-11111', '081-24-22222'];
+      await repository.update(ID_APPROVED_EARLY, {
+        status: 'approved',
+        affectedCaseIds: snapshot,
+      });
+      const reloaded = await repository.findById(ID_APPROVED_EARLY);
+
+      if (JSON.stringify(reloaded.affectedCaseIds) === JSON.stringify(snapshot)) {
+        pass(`affectedCaseIds round-tripped through update()/findById(): ${snapshot.join(', ')}`);
+      } else {
+        fail(
+          `affectedCaseIds did not round-trip: expected ${JSON.stringify(snapshot)}, ` +
+            `got ${JSON.stringify(reloaded.affectedCaseIds)}`,
+        );
+      }
+    }
   } finally {
     await repository.closeClient();
   }

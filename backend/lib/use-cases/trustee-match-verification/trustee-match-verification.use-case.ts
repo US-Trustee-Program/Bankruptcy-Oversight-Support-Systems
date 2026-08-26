@@ -268,7 +268,14 @@ export class TrusteeMatchVerificationUseCase {
         );
       }
 
-      // 3. Enqueue the async batch remap BEFORE flipping status — every surrogate
+      // 3. Snapshot affected case IDs while surrogates are still live — the remap job
+      // enqueued next deletes them, and this is the only remaining chance to read them.
+      const affectedCaseIdsByFingerprint = await this.getAffectedCaseIdsByFingerprint(context, [
+        verification.fingerprint,
+      ]);
+      const affectedCaseIds = affectedCaseIdsByFingerprint.get(verification.fingerprint) ?? [];
+
+      // 4. Enqueue the async batch remap BEFORE flipping status — every surrogate
       // CaseAppointment sharing this fingerprint (not just verification.caseId) gets
       // remapped to resolvedTrusteeId by the queue-triggered trustee-verification-remap
       // handler. Enqueue-then-approve (not approve-then-enqueue) is deliberate: if this
@@ -288,11 +295,12 @@ export class TrusteeMatchVerificationUseCase {
       };
       await apiToDataflows.queueTrusteeVerificationRemap(remapMessage);
 
-      // 4. Mark verification as approved
+      // 5. Mark verification as approved, atomically with the affectedCaseIds snapshot
       await repo.update(id, {
         status: 'approved',
         resolvedTrusteeId,
         resolvedTrusteeName,
+        affectedCaseIds,
         updatedBy: userRef,
         updatedOn: now,
       });
@@ -346,10 +354,15 @@ export class TrusteeMatchVerificationUseCase {
       const appointmentsRepo = factory.getTrusteeAppointmentsRepository(context);
 
       const verification = await repo.findById(id);
-      const affectedCaseIdsByFingerprint = await this.getAffectedCaseIdsByFingerprint(context, [
-        verification.fingerprint,
-      ]);
-      const affectedCaseIds = affectedCaseIdsByFingerprint.get(verification.fingerprint) ?? [];
+      let affectedCaseIds: string[];
+      if (verification.status === 'pending') {
+        const affectedCaseIdsByFingerprint = await this.getAffectedCaseIdsByFingerprint(context, [
+          verification.fingerprint,
+        ]);
+        affectedCaseIds = affectedCaseIdsByFingerprint.get(verification.fingerprint) ?? [];
+      } else {
+        affectedCaseIds = verification.affectedCaseIds ?? [];
+      }
 
       const enrichedCandidates = await Promise.all(
         verification.matchCandidates.map(async (candidate) => {

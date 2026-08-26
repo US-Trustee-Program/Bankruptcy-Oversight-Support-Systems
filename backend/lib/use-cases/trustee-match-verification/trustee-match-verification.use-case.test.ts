@@ -453,6 +453,53 @@ describe('TrusteeMatchVerificationUseCase', () => {
       // verification permanently 'approved' with no way to re-trigger the remap.
       expect(mockUpdate).not.toHaveBeenCalled();
     });
+
+    test('snapshots affectedCaseIds onto the same update call that sets status approved', async () => {
+      mockGetSurrogatesByFingerprints.mockResolvedValue([
+        { caseId: 'case-001', trusteeId: 'fp-abc123', isSurrogate: true },
+        { caseId: 'case-002', trusteeId: 'fp-abc123', isSurrogate: true },
+      ]);
+
+      await useCase.approveVerification(context, 'verification-1', 'trustee-new', 'New Trustee');
+
+      expect(mockGetSurrogatesByFingerprints).toHaveBeenCalledWith(['fp-abc123']);
+      expect(mockUpdate).toHaveBeenCalledWith(
+        'verification-1',
+        expect.objectContaining({
+          status: 'approved',
+          affectedCaseIds: ['case-001', 'case-002'],
+        }),
+      );
+    });
+
+    test('snapshots an empty affectedCaseIds array when no surrogates remain', async () => {
+      mockGetSurrogatesByFingerprints.mockResolvedValue([]);
+
+      await useCase.approveVerification(context, 'verification-1', 'trustee-new');
+
+      expect(mockUpdate).toHaveBeenCalledWith(
+        'verification-1',
+        expect.objectContaining({ affectedCaseIds: [] }),
+      );
+    });
+
+    // Ordering matters here, not just outcome: the remap job asynchronously deletes the
+    // surrogate rows this snapshot depends on, so deriving after enqueue could race a fast
+    // remap and silently persist an empty list.
+    test('derives affectedCaseIds before enqueueing the remap message, while surrogates are still live', async () => {
+      const callOrder: string[] = [];
+      mockGetSurrogatesByFingerprints.mockImplementation(async () => {
+        callOrder.push('getSurrogatesByFingerprints');
+        return [];
+      });
+      mockQueueTrusteeVerificationRemap.mockImplementation(async () => {
+        callOrder.push('queueTrusteeVerificationRemap');
+      });
+
+      await useCase.approveVerification(context, 'verification-1', 'trustee-new');
+
+      expect(callOrder).toEqual(['getSurrogatesByFingerprints', 'queueTrusteeVerificationRemap']);
+    });
   });
 
   describe('getEnrichedVerification', () => {
@@ -575,6 +622,33 @@ describe('TrusteeMatchVerificationUseCase', () => {
 
     test('returns an empty affectedCaseIds when no surrogate cases remain (resolution already in progress or complete)', async () => {
       mockGetSurrogatesByFingerprints.mockResolvedValue([]);
+
+      const result = await useCase.getEnrichedVerification(context, 'verification-1');
+
+      expect(result.affectedCaseIds).toEqual([]);
+    });
+
+    test('reads affectedCaseIds from the persisted snapshot for an approved verification, without querying surrogates', async () => {
+      mockFindById.mockResolvedValue({
+        ...sampleVerification,
+        status: 'approved',
+        resolvedTrusteeId: 'trustee-a',
+        affectedCaseIds: ['case-001', 'case-002'],
+      });
+
+      const result = await useCase.getEnrichedVerification(context, 'verification-1');
+
+      expect(result.affectedCaseIds).toEqual(['case-001', 'case-002']);
+      expect(mockGetSurrogatesByFingerprints).not.toHaveBeenCalled();
+    });
+
+    test('falls back to an empty affectedCaseIds for an approved verification with no persisted snapshot', async () => {
+      mockFindById.mockResolvedValue({
+        ...sampleVerification,
+        status: 'approved',
+        resolvedTrusteeId: 'trustee-a',
+        affectedCaseIds: undefined,
+      });
 
       const result = await useCase.getEnrichedVerification(context, 'verification-1');
 
