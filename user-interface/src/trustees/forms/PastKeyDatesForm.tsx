@@ -15,7 +15,7 @@ import {
 const CURRENT_YEAR = new Date().getFullYear();
 const FISCAL_YEAR_OPTIONS = Array.from({ length: 21 }, (_, i) => CURRENT_YEAR - i);
 import Api2 from '@/lib/models/api2';
-import { isChapter12Standing } from '@common/cams/trustee-appointments';
+import { isChapter12Standing, isChapter13Standing } from '@common/cams/trustee-appointments';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
@@ -102,7 +102,7 @@ function buildUpcomingKeyDatesInput(
 
 function deriveVariant(chapter: string, appointmentType: string): PastKeyDatesVariant {
   if (chapter === '11-subchapter-v' && appointmentType === 'pool') return 'subv-pool';
-  if (chapter === '13' && appointmentType === 'standing') return 'chapter13-standing';
+  if (isChapter13Standing(chapter, appointmentType)) return 'chapter13-standing';
   if (isChapter12Standing(chapter, appointmentType)) return 'chapter12-standing';
   return 'chapter7-panel';
 }
