@@ -531,6 +531,18 @@ export function calculateDistrictDivisionScore(
 }
 
 /**
+ * True when a trustee holds at least one active appointment in the case's court — anything above
+ * the 0-point floor of calculateDistrictDivisionScore, named here so a caller deciding whether to
+ * trust a districtDivisionScore-based candidate reads as an intent-revealing check rather than a
+ * bare `> 0` magic-number comparison at the call site. Distinguishes a 50 (same court, wrong
+ * division) or 100 (exact match) - both real supporting evidence - from 0 ("no evidence this
+ * trustee is appointed anywhere near this case").
+ */
+export function hasDistrictDivisionMatch(districtDivisionScore: number): boolean {
+  return districtDivisionScore > 0;
+}
+
+/**
  * Calculates chapter match score for a trustee.
  * Scoring:
  * - Exact chapter match, but ONLY counted against an active appointment that also covers the

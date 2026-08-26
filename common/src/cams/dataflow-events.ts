@@ -113,6 +113,14 @@ export type TrusteeAppointmentSyncEvent = {
   chapter?: string;
   courtDivisionCode?: string;
   profCode?: string;
+  /**
+   * Raw DXTR group designator (AO_CS.GRP_DES) for this record - one half of ACMS's compound
+   * professional key (GROUP_DESIGNATOR + PROF_CODE, see /cams-gateways). A native DXTR/ACMS fact,
+   * not yet the CAMS-formatted acmsProfessionalId string - that construction (and its
+   * sentinel-suppression rule) belongs to the use-case layer that consumes this event, not the
+   * gateway that surfaces the raw fields.
+   */
+  groupDesignator?: string;
 };
 
 /**
