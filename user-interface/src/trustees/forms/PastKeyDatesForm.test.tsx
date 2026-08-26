@@ -840,5 +840,31 @@ describe('PastKeyDatesForm', () => {
         ),
       );
     });
+
+    test('save preserves non-chapter13 fields from original doc', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+      const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('past-background-question')).toBeInTheDocument();
+      });
+
+      await userEvent.click(screen.getByTestId('button-save-past-key-dates'));
+
+      await waitFor(() =>
+        expect(putSpy).toHaveBeenCalledWith(
+          'trustee-001',
+          'appointment-001',
+          expect.objectContaining({
+            // fields not shown by this variant must be preserved from the original doc
+            pastFieldExam: populatedDocument.pastFieldExam,
+            pastTprSubmission: populatedDocument.pastTprSubmission,
+            lastAuditFiscalYear: populatedDocument.lastAuditFiscalYear,
+          }),
+        ),
+      );
+    });
   });
 });
