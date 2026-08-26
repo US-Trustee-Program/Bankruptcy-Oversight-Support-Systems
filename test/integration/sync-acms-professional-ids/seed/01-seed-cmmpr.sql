@@ -14,6 +14,11 @@
 --                      has NO active CMMAP appointment -> silently skipped
 --   UST_PROF_CODE 70:  (GROUP_DESIGNATOR='UT') second group, name match again,
 --                      proves handleStart queues one page message per group
+--   UST_PROF_CODE 71:  fingerprint match, leading-zero zip — PROF_ZIP 65110000 (New Haven, CT;
+--                      the real 065110000 value with its leading zero already dropped by
+--                      NUMERIC(9,0) storage) proves formatAcmsZip zero-pads to 9 digits before
+--                      splitting 5+4 ("06511-0000"), not just re-dashing a value assumed to
+--                      already be 9 digits wide
 --
 -- Run against ACMS_INT database after seed-schema has been applied.
 
@@ -74,6 +79,17 @@ VALUES
    '900 Beehive Blvd', '', 'Salt Lake City', 'UT', 841110000, 0, 8015550500);
 GO
 
+-- Record 5b: fingerprint match, leading-zero zip (NY-00071). PROF_ZIP 65110000 is the real
+-- 065110000 (New Haven, CT) with its leading zero already dropped by NUMERIC(9,0) storage —
+-- proves buildAcmsVariant's formatAcmsZip zero-pads to 9 digits before splitting 5+4.
+INSERT INTO dbo.CMMPR
+  (GROUP_DESIGNATOR, UST_PROF_CODE, DELETE_CODE, PROF_TYPE, PROF_LAST_NAME, PROF_FIRST_NAME, PROF_MI,
+   PROF_ADDRESS1, PROF_ADDRESS2, PROF_CITY, PROF_STATE, PROF_ZIP, PROF_FAX_NBR, PROF_COMMERCIAL_PHONE_NBR)
+VALUES
+  ('NY', 71, ' ', 'TR', 'Leadingzero', 'Lena', 'L',
+   '400 Elm St', '', 'New Haven', 'CT', 65110000, 0, 2035550800);
+GO
+
 -- Record 6: soft-deleted — must NOT be paged (DELETE_CODE='D')
 INSERT INTO dbo.CMMPR
   (GROUP_DESIGNATOR, UST_PROF_CODE, DELETE_CODE, PROF_TYPE, PROF_LAST_NAME, PROF_FIRST_NAME, PROF_MI,
@@ -92,7 +108,7 @@ VALUES
    '1000 Legal Way', '', 'Syracuse', 'NY', 132020000, 0, 3155550700);
 GO
 
-PRINT 'CMMPR seeded: 7 rows (5 TR/active + 1 deleted + 1 non-TR filtered)';
+PRINT 'CMMPR seeded: 8 rows (6 TR/active + 1 deleted + 1 non-TR filtered)';
 GO
 
 -- ── CMMDB rows (one per case referenced by CMMAP below) ─────────────────────

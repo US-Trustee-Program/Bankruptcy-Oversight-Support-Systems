@@ -729,7 +729,7 @@ describe('ACMS gateway tests', () => {
           address2: '',
           city: 'Albany',
           state: 'NY',
-          zip: '12207',
+          zip: 122070000,
           phone: '5185550100',
           fax: '',
         },
@@ -774,7 +774,6 @@ describe('ACMS gateway tests', () => {
     });
 
     test.each([
-      ['PROF_ZIP', 'zip'],
       ['PROF_COMMERCIAL_PHONE_NBR', 'phone'],
       ['PROF_FAX_NBR', 'fax'],
     ])(
@@ -796,6 +795,24 @@ describe('ACMS gateway tests', () => {
         );
       },
     );
+
+    test('should select PROF_ZIP as its raw numeric value, not cast to VARCHAR', async () => {
+      const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: [] },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      await gateway.getTrusteeProfessionalRecordsPage(context, 'NY', 0, 500);
+
+      const query = spy.mock.calls[0][1] as string;
+      // Zero-padding/dash-insertion happens downstream in formatAcmsZip (TypeScript), not SQL —
+      // a CAST here would silently drop PROF_ZIP's leading zeros before that formatting ever runs.
+      expect(query).not.toMatch(/CAST\(ACMS\.PROF_ZIP/);
+      expect(query).toContain('ACMS.PROF_ZIP AS zip');
+    });
 
     test.each([
       ['PROF_FIRST_NAME', 'firstName'],

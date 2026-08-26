@@ -100,6 +100,28 @@ export type DxtrTrusteeParty = {
 };
 
 /**
+ * Trustee professional data from ACMS's CMMPR (Professional Master File) table — ACMS's
+ * equivalent of DXTR's AO_PY party table, but its own distinct source system and table, hence a
+ * separate type rather than reusing DxtrTrusteeParty. Same canonical shape as DxtrTrusteeParty
+ * (both are mapped into it before reaching the shared trustee-match.helpers.ts scoring
+ * functions) so each source's type can evolve independently if its upstream schema ever
+ * diverges. Used during the ACMS professional-id sync to match against CAMS trustees.
+ */
+export type AcmsTrusteeProfessional = {
+  firstName?: string;
+  middleName?: string;
+  lastName?: string;
+  generation?: string;
+  fullName: string;
+  legacy?: LegacyAddress & {
+    phone?: string;
+    fax?: string;
+    email?: string;
+    parsedCityStateZip?: { city: string; state: string; zipCode: string } | null;
+  };
+};
+
+/**
  * Event triggered when a trustee appointment is detected in DXTR.
  * Processed by sync-trustee-case-appointments dataflow to match and link trustees to cases.
  */

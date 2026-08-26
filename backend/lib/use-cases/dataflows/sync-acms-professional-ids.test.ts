@@ -293,6 +293,102 @@ describe('SyncAcmsProfessionalIds', () => {
       expect(matchSpy).toHaveBeenCalledWith(deps.context, expect.anything(), undefined);
     });
 
+    test('should pass firstName/middleName through unchanged when PROF_MI already holds a middle initial', async () => {
+      const matchSpy = vi
+        .spyOn(trusteeMatchHelpers, 'matchTrusteeByName')
+        .mockResolvedValue({ kind: 'no-match' });
+
+      await SyncAcmsProfessionalIds.processNameMatch(deps, {
+        ...record,
+        firstName: 'John',
+        middleInitial: 'Q',
+      });
+
+      expect(matchSpy).toHaveBeenCalledWith(
+        deps.context,
+        expect.objectContaining({ firstName: 'John', middleName: 'Q' }),
+        undefined,
+      );
+    });
+
+    test('should split a compound PROF_FIRST_NAME into firstName + middleName when PROF_MI is empty', async () => {
+      // CMMPR sometimes carries a middle name inside PROF_FIRST_NAME instead of using PROF_MI
+      // (e.g. real staging data: firstName="CAROLINE RENEE", middleInitial="") — without
+      // splitting, calculateNameScore's exact-match-or-initial firstName comparison can never
+      // match a CAMS trustee with firstName="Caroline".
+      const matchSpy = vi
+        .spyOn(trusteeMatchHelpers, 'matchTrusteeByName')
+        .mockResolvedValue({ kind: 'no-match' });
+
+      await SyncAcmsProfessionalIds.processNameMatch(deps, {
+        ...record,
+        firstName: 'CAROLINE RENEE',
+        middleInitial: '',
+        lastName: 'DJANG',
+      });
+
+      expect(matchSpy).toHaveBeenCalledWith(
+        deps.context,
+        expect.objectContaining({ firstName: 'CAROLINE', middleName: 'RENEE' }),
+        undefined,
+      );
+    });
+
+    test('should join every space-separated token after the first into middleName for a 3+ word compound firstName', async () => {
+      const matchSpy = vi
+        .spyOn(trusteeMatchHelpers, 'matchTrusteeByName')
+        .mockResolvedValue({ kind: 'no-match' });
+
+      await SyncAcmsProfessionalIds.processNameMatch(deps, {
+        ...record,
+        firstName: 'MARY JO ANNE',
+        middleInitial: '',
+      });
+
+      expect(matchSpy).toHaveBeenCalledWith(
+        deps.context,
+        expect.objectContaining({ firstName: 'MARY', middleName: 'JO ANNE' }),
+        undefined,
+      );
+    });
+
+    test('should not split a single-token firstName even when PROF_MI is empty', async () => {
+      const matchSpy = vi
+        .spyOn(trusteeMatchHelpers, 'matchTrusteeByName')
+        .mockResolvedValue({ kind: 'no-match' });
+
+      await SyncAcmsProfessionalIds.processNameMatch(deps, {
+        ...record,
+        firstName: 'John',
+        middleInitial: '',
+      });
+
+      expect(matchSpy).toHaveBeenCalledWith(
+        deps.context,
+        expect.objectContaining({ firstName: 'John', middleName: '' }),
+        undefined,
+      );
+    });
+
+    test('should build fullName from the raw, unsplit fields regardless of the firstName/middleName split', async () => {
+      const matchSpy = vi
+        .spyOn(trusteeMatchHelpers, 'matchTrusteeByName')
+        .mockResolvedValue({ kind: 'no-match' });
+
+      await SyncAcmsProfessionalIds.processNameMatch(deps, {
+        ...record,
+        firstName: 'CAROLINE RENEE',
+        middleInitial: '',
+        lastName: 'DJANG',
+      });
+
+      expect(matchSpy).toHaveBeenCalledWith(
+        deps.context,
+        expect.objectContaining({ fullName: 'CAROLINE RENEE DJANG' }),
+        undefined,
+      );
+    });
+
     test('should return no-match when matchTrusteeByName finds no candidates', async () => {
       vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({ kind: 'no-match' });
 

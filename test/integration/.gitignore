@@ -12,3 +12,8 @@ trustee-match-normalization/fixtures/
 # trustee-variation-audit: fixtures/ holds a real trustee-variation collection export and a real
 # trustees export (both trustee PII). Never committed — local-only, re-created per audit session.
 trustee-variation-audit/fixtures/
+
+# sync-acms-professional-ids-audit: fixtures/ holds a real trustee-professional-ids collection
+# export and a real trustees export (both trustee PII). Never committed — local-only, re-created
+# per audit session.
+sync-acms-professional-ids-audit/fixtures/
