@@ -114,6 +114,10 @@ if [[ ${environment} == 'Main-Gov' ]]; then
     createAlerts=true
 fi
 
+if [[ "${createAlerts}" == "true" && -z "${actionGroupSubscriptionId}" ]]; then
+    echo "Error: --actionGroupSubscriptionId is required when createAlerts is true (Main-Gov environment). Pass the subscription ID that contains the action group resource group."
+    exit 12
+fi
 
 e2eDatabaseName="${database}-e2e"
 if [[ ${environment} != 'Main-Gov' ]]; then

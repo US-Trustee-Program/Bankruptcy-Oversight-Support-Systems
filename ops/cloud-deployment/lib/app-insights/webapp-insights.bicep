@@ -11,6 +11,7 @@ param actionGroupName string
 param actionGroupResourceGroupName string
 
 @description('Subscription ID that contains the action group resource group. Defaults to the deploying subscription.')
+@minLength(36)
 param actionGroupSubscriptionId string = subscription().subscriptionId
 
 param tags object = {}
