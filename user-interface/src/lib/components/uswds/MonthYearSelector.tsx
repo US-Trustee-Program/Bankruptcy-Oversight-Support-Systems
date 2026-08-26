@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import './MonthYearSelector.scss';
+import { useEffect, useRef, useState } from 'react';
 
 type MonthYearSelectorProps = {
   id: string;
@@ -38,14 +39,22 @@ export default function MonthYearSelector(props: Readonly<MonthYearSelectorProps
     const { month: m, year: y } = parseValue(props.value);
     setMonth(m);
     setYear(y);
-    props.onValidationChange?.(!!m !== !!y);
+    const isIncomplete = !!m !== !!y;
+    hasErrorRef.current = isIncomplete;
+    setErrorMessage(isIncomplete ? 'Both month and year are required.' : '');
+    props.onValidationChange?.(isIncomplete);
   }, [props.value]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const [errorMessage, setErrorMessage] = useState('');
+  const [isFocused, setIsFocused] = useState(false);
+  const hasErrorRef = useRef(false);
 
   function emit(newMonth: string, newYear: string) {
     const hasMonth = !!newMonth;
     const hasYear = !!newYear;
     const isIncomplete = hasMonth !== hasYear;
-    props.onValidationChange?.(isIncomplete);
+    hasErrorRef.current = isIncomplete;
+    setErrorMessage(isIncomplete ? 'Both month and year are required.' : '');
     props.onChange?.(hasMonth && hasYear ? `${newYear}-${newMonth}-01` : '');
   }
 
@@ -61,8 +70,24 @@ export default function MonthYearSelector(props: Readonly<MonthYearSelectorProps
     emit(month, newYear);
   }
 
+  function handleFocus() {
+    setIsFocused(true);
+    props.onValidationChange?.(false);
+  }
+
+  function handleBlur(e: React.FocusEvent<HTMLFieldSetElement>) {
+    if (!e.currentTarget.contains(e.relatedTarget)) {
+      setIsFocused(false);
+      props.onValidationChange?.(hasErrorRef.current);
+    }
+  }
+
   return (
-    <fieldset className="usa-fieldset">
+    <fieldset
+      className="usa-fieldset month-year-selector"
+      onFocus={handleFocus}
+      onBlur={handleBlur}
+    >
       {label && <legend className="usa-legend">{label}</legend>}
       <div style={{ display: 'flex', gap: '1rem' }}>
         <div className="usa-form-group">
@@ -106,6 +131,11 @@ export default function MonthYearSelector(props: Readonly<MonthYearSelectorProps
           </select>
         </div>
       </div>
+      {!isFocused && errorMessage && (
+        <div className="date-error usa-input__error-message" aria-live="polite">
+          {errorMessage}
+        </div>
+      )}
     </fieldset>
   );
 }
