@@ -53,13 +53,17 @@ jobs:
 
       - name: Authenticate with Snyk
         if: ${{ ! inputs.skip }}
-        run: snyk auth --auth-type=oauth --client-secret="$SNYK_OAUTH_CLIENT_SECRET" --client-id="$SNYK_OAUTH_CLIENT_ID"
+        run:
+          snyk auth --auth-type=oauth --client-secret="$SNYK_OAUTH_CLIENT_SECRET"
+          --client-id="$SNYK_OAUTH_CLIENT_ID"
         env:
           SNYK_API: https://api.snykgov.io
 
       - name: Run Snyk SCA scan
         if: ${{ ! inputs.skip }}
-        run: snyk test --all-projects --exclude=function-apps,integration --severity-threshold=medium --policy-path=. --sarif-file-output=snyk-sca.sarif
+        run:
+          snyk test --all-projects --exclude=function-apps,integration --severity-threshold=medium
+          --policy-path=. --sarif-file-output=snyk-sca.sarif
         env:
           SNYK_API: https://api.snykgov.io
 
@@ -136,7 +140,9 @@ jobs:
 
       - name: Authenticate with Snyk
         if: ${{ ! inputs.skip }}
-        run: snyk auth --auth-type=oauth --client-secret="$SNYK_OAUTH_CLIENT_SECRET" --client-id="$SNYK_OAUTH_CLIENT_ID"
+        run:
+          snyk auth --auth-type=oauth --client-secret="$SNYK_OAUTH_CLIENT_SECRET"
+          --client-id="$SNYK_OAUTH_CLIENT_ID"
         env:
           SNYK_API: https://api.snykgov.io
 

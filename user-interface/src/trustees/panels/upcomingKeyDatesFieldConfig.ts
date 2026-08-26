@@ -1,13 +1,13 @@
 import {
   TrusteeUpcomingKeyDates,
   isoToMMDD,
-  isoRangeToMMDD,
   isoToMMDDYYYY,
+  isoRangeToMMDD,
   calculateAuditReqBy,
 } from '@common/cams/trustee-upcoming-key-dates';
 
 export type UpcomingKeyDatesVariant =
-  'chapter7-panel' | 'ch12-13-case-by-case' | 'chapter12-standing';
+  'chapter7-panel' | 'ch12-13-case-by-case' | 'chapter12-standing' | 'chapter13-standing';
 
 const NO_DATE = 'No date added';
 
@@ -47,6 +47,16 @@ function tprDueField(data: TrusteeUpcomingKeyDates | null): UpcomingKeyDatesDisp
       ? `${isoToMMDD(data.tprDue)} ${data.tprDueYearType}`
       : NO_DATE;
   return { label: 'Trustee Performance Review Due', value, testId: 'tpr-due-row' };
+}
+
+function leaseExpirationField(data: TrusteeUpcomingKeyDates | null): UpcomingKeyDatesDisplayField {
+  const value = data?.leaseExpiration ? isoToMMDDYYYY(data.leaseExpiration) : NO_DATE;
+  return { label: 'Lease Expiration', value, testId: 'lease-expiration-row' };
+}
+
+function idExpirationField(data: TrusteeUpcomingKeyDates | null): UpcomingKeyDatesDisplayField {
+  const value = data?.idExpiration ? isoToMMDDYYYY(data.idExpiration) : NO_DATE;
+  return { label: 'ID Expiration', value, testId: 'id-expiration-row' };
 }
 
 export const UPCOMING_KEY_DATES_FIELD_CONFIG: Record<
@@ -187,10 +197,7 @@ export const UPCOMING_KEY_DATES_FIELD_CONFIG: Record<
     {
       kind: 'computed',
       key: 'leaseExpiration',
-      buildField: (data) => {
-        const value = data?.leaseExpiration ? isoToMMDDYYYY(data.leaseExpiration) : NO_DATE;
-        return { label: 'Lease Expiration', value, testId: 'lease-expiration-row' };
-      },
+      buildField: leaseExpirationField,
     },
     {
       kind: 'constant',
@@ -209,10 +216,62 @@ export const UPCOMING_KEY_DATES_FIELD_CONFIG: Record<
     {
       kind: 'computed',
       key: 'idExpiration',
+      buildField: idExpirationField,
+    },
+  ],
+  'chapter13-standing': [
+    {
+      kind: 'constant',
+      key: 'annualAuditReviewPeriod',
+      displayLabel: 'Annual Audit Review Period',
+      value: '10/01 - 09/30',
+      testId: 'annual-audit-review-period-row',
+    },
+    {
+      kind: 'computed',
+      key: 'tprReviewPeriod',
       buildField: (data) => {
-        const value = data?.idExpiration ? isoToMMDDYYYY(data.idExpiration) : NO_DATE;
-        return { label: 'ID Expiration', value, testId: 'id-expiration-row' };
+        const value =
+          data?.tprReviewPeriodStart && data?.tprReviewPeriodEnd
+            ? isoRangeToMMDD(data.tprReviewPeriodStart, data.tprReviewPeriodEnd)
+            : NO_DATE;
+        return { label: 'TPR Review Period', value, testId: 'tpr-review-period-row' };
       },
+    },
+    {
+      kind: 'computed',
+      key: 'tprDue',
+      buildField: (data) => {
+        const value =
+          data?.tprDue && data?.tprDueYearType
+            ? `${isoToMMDD(data.tprDue)} ${data.tprDueYearType}`
+            : NO_DATE;
+        return { label: 'TPR Due', value, testId: 'tpr-due-row' };
+      },
+    },
+    {
+      kind: 'computed',
+      key: 'leaseExpiration',
+      buildField: leaseExpirationField,
+    },
+    {
+      kind: 'constant',
+      key: 'budgetSubmissionDue',
+      displayLabel: 'Budget Submission Due',
+      value: '07/01',
+      testId: 'budget-submission-due-row',
+    },
+    {
+      kind: 'constant',
+      key: 'budgetReviewToOO',
+      displayLabel: 'Budget Review to OO',
+      value: '08/15',
+      testId: 'budget-review-to-oo-row',
+    },
+    {
+      kind: 'computed',
+      key: 'idExpiration',
+      buildField: idExpirationField,
     },
   ],
 };

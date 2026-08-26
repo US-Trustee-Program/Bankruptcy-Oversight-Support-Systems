@@ -914,4 +914,184 @@ describe('UpcomingKeyDatesForm', () => {
       });
     });
   });
+
+  describe('chapter13-standing variant', () => {
+    const ch13Appointment: TrusteeAppointment = {
+      id: 'appointment-001',
+      trusteeId: 'trustee-001',
+      chapter: '13',
+      appointmentType: 'standing',
+      courtId: '0208',
+      courtName: 'Southern District of New York',
+      appointedDate: '2021-03-15',
+      status: 'active',
+      effectiveDate: '2021-03-15',
+      updatedOn: '2026-01-01T00:00:00.000Z',
+      updatedBy: SYSTEM_USER_REFERENCE,
+    };
+
+    const ch13Document: TrusteeUpcomingKeyDates = {
+      id: 'doc-ch13-001',
+      documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
+      trusteeId: 'trustee-001',
+      appointmentId: 'appointment-001',
+      createdBy: SYSTEM_USER_REFERENCE,
+      createdOn: '2026-01-01T00:00:00.000Z',
+      updatedBy: SYSTEM_USER_REFERENCE,
+      updatedOn: '2026-01-01T00:00:00.000Z',
+      tprReviewPeriodStart: '1900-01-01',
+      tprReviewPeriodEnd: '1900-12-31',
+      tprDue: '1900-03-15',
+      tprDueYearType: 'ODD',
+      leaseExpiration: '2027-06-30',
+      idExpiration: '2028-01-15',
+      lastCompensationStudy: '2024-06-01',
+    };
+
+    test('deriveVariant returns chapter13-standing for chapter 13 standing appointment', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch13Appointment] });
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+      });
+
+      expect(screen.getByLabelText(/Lease Expiration/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/ID Expiration/i)).toBeInTheDocument();
+    });
+
+    test('form renders TPR fields for chapter 13 standing appointment', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch13Appointment] });
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByText(/Trustee Performance Review \(TPR\) Period/i)).toBeInTheDocument();
+      });
+
+      expect(screen.getByText(/Trustee Performance Review \(TPR\) Due/i)).toBeInTheDocument();
+    });
+
+    test('pre-populates leaseExpiration and idExpiration from existing key dates', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch13Appointment] });
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: ch13Document });
+
+      renderComponent();
+
+      await waitFor(() => {
+        const leaseInput = screen.getByLabelText(/Lease Expiration/i) as HTMLInputElement;
+        expect(leaseInput.value).toBe('2027-06-30');
+      });
+      const idInput = screen.getByLabelText(/ID Expiration/i) as HTMLInputElement;
+      expect(idInput.value).toBe('2028-01-15');
+    });
+
+    test('on save, includes leaseExpiration and idExpiration in PUT payload', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch13Appointment] });
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: ch13Document });
+      const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/Lease Expiration/i)).toBeInTheDocument();
+      });
+
+      await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+      await waitFor(() =>
+        expect(putSpy).toHaveBeenCalledWith(
+          'trustee-001',
+          'appointment-001',
+          expect.objectContaining({
+            leaseExpiration: '2027-06-30',
+            idExpiration: '2028-01-15',
+          }),
+        ),
+      );
+    });
+
+    test('preserves lastCompensationStudy in PUT payload when no UI control modifies it', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch13Appointment] });
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: ch13Document });
+      const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/Lease Expiration/i)).toBeInTheDocument();
+      });
+
+      await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+      await waitFor(() =>
+        expect(putSpy).toHaveBeenCalledWith(
+          'trustee-001',
+          'appointment-001',
+          expect.objectContaining({ lastCompensationStudy: '2024-06-01' }),
+        ),
+      );
+    });
+
+    test('shows error alert when getUpcomingKeyDates rejects', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch13Appointment] });
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockRejectedValue(new Error('Network error'));
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(mockGlobalAlertRef.current.error).toHaveBeenCalledWith(
+          expect.stringMatching(/Failed to load upcoming key dates/),
+        );
+      });
+    });
+
+    test('Save button is enabled by default when no date picker errors exist', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch13Appointment] });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/Lease Expiration/i)).toBeInTheDocument();
+      });
+
+      expect(screen.getByRole('button', { name: /save/i })).not.toBeDisabled();
+    });
+
+    test('Save button is disabled when lease expiration has an invalid date', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch13Appointment] });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/Lease Expiration/i)).toBeInTheDocument();
+      });
+
+      const leaseInput = screen.getByLabelText(/Lease Expiration/i) as HTMLInputElement;
+      fireEvent.change(leaseInput, { target: { value: '1900-01-01' } });
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /save/i })).toBeDisabled();
+      });
+    });
+
+    test('Save button remains enabled when lease and ID expiration are future dates', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch13Appointment] });
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: ch13Document });
+
+      renderComponent();
+
+      await waitFor(() => {
+        const leaseInput = screen.getByLabelText(/Lease Expiration/i) as HTMLInputElement;
+        expect(leaseInput.value).toBe('2027-06-30');
+      });
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /save/i })).not.toBeDisabled();
+      });
+    });
+  });
 });

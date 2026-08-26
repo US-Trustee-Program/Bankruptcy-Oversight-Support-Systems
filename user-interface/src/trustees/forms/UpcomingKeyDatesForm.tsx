@@ -10,7 +10,11 @@ import {
   calculateTirReview,
   isoToSentinel,
 } from '@common/cams/trustee-upcoming-key-dates';
-import { TrusteeAppointment, isChapter12Standing } from '@common/cams/trustee-appointments';
+import {
+  TrusteeAppointment,
+  isChapter12Standing,
+  isChapter13Standing,
+} from '@common/cams/trustee-appointments';
 import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
@@ -114,6 +118,7 @@ type FormState = {
   lastMonthlyReportReceived: string;
   leaseExpiration: string;
   idExpiration: string;
+  lastCompensationStudy: string;
 };
 
 const EMPTY_FORM: FormState = {
@@ -137,6 +142,7 @@ const EMPTY_FORM: FormState = {
   lastMonthlyReportReceived: '',
   leaseExpiration: '',
   idExpiration: '',
+  lastCompensationStudy: '',
 };
 
 const currentYear = new Date().getFullYear();
@@ -146,11 +152,11 @@ function deriveVariant(chapter: string, appointmentType: string): UpcomingKeyDat
   if ((chapter === '12' || chapter === '13') && appointmentType === 'case-by-case') {
     return 'ch12-13-case-by-case';
   }
-  if (
-    isChapter12Standing(chapter, appointmentType) ||
-    (chapter === '13' && appointmentType === 'standing')
-  ) {
+  if (isChapter12Standing(chapter, appointmentType)) {
     return 'chapter12-standing';
+  }
+  if (isChapter13Standing(chapter, appointmentType)) {
+    return 'chapter13-standing';
   }
   return 'chapter7-panel';
 }
@@ -178,6 +184,7 @@ function buildFormStateFromData(data: TrusteeUpcomingKeyDates): FormState {
     lastMonthlyReportReceived: data.lastMonthlyReportReceived ?? '',
     leaseExpiration: data.leaseExpiration ?? '',
     idExpiration: data.idExpiration ?? '',
+    lastCompensationStudy: data.lastCompensationStudy ?? '',
   };
 }
 
@@ -435,6 +442,7 @@ export default function UpcomingKeyDatesForm() {
       lastMonthlyReportReceived: form.lastMonthlyReportReceived || null,
       leaseExpiration: form.leaseExpiration || null,
       idExpiration: form.idExpiration || null,
+      lastCompensationStudy: form.lastCompensationStudy || null,
     };
 
     const result = validateTrusteeUpcomingKeyDates(isoInput);
