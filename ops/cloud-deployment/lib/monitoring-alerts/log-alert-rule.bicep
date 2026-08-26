@@ -12,6 +12,7 @@ param actionGroupResourceGroupName string
 
 @description('Subscription ID that contains the action group resource group. Defaults to the deploying subscription.')
 param actionGroupSubscriptionId string = subscription().subscriptionId
+
 @allowed([
   'Microsoft.Web/sites'
   'Microsoft.Sql/servers/databases'
