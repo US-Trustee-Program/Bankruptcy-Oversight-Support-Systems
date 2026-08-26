@@ -74,24 +74,27 @@ describe('MonthYearSelector', () => {
     expect(onValidationChange).toHaveBeenLastCalledWith(false);
   });
 
-  test('selecting only month calls onValidationChange(true)', async () => {
+  test('selecting only month and blurring calls onValidationChange(true)', async () => {
     const user = userEvent.setup();
     const onValidationChange = vi.fn();
 
     render(<MonthYearSelector id="test" onValidationChange={onValidationChange} />);
 
     await user.selectOptions(monthSelect(), '03');
+    await user.tab(); // year select
+    await user.tab(); // outside fieldset
 
     expect(onValidationChange).toHaveBeenLastCalledWith(true);
   });
 
-  test('selecting only year calls onValidationChange(true)', async () => {
+  test('selecting only year and blurring calls onValidationChange(true)', async () => {
     const user = userEvent.setup();
     const onValidationChange = vi.fn();
 
     render(<MonthYearSelector id="test" onValidationChange={onValidationChange} />);
 
     await user.selectOptions(yearSelect(), String(CURRENT_YEAR));
+    await user.tab(); // outside fieldset
 
     expect(onValidationChange).toHaveBeenLastCalledWith(true);
   });
@@ -127,6 +130,29 @@ describe('MonthYearSelector', () => {
 
     expect(monthSelect().value).toBe('11');
     expect(yearSelect().value).toBe('2024');
+  });
+
+  test('shows error message after blur when only month is selected', async () => {
+    const user = userEvent.setup();
+
+    render(<MonthYearSelector id="test" />);
+
+    await user.selectOptions(monthSelect(), '03');
+    await user.tab(); // moves to year select (still inside fieldset)
+    await user.tab(); // moves outside fieldset
+
+    expect(screen.getByText('Both month and year are required.')).toBeInTheDocument();
+  });
+
+  test('clears error message when both selects are filled', async () => {
+    const user = userEvent.setup();
+
+    render(<MonthYearSelector id="test" />);
+
+    await user.selectOptions(monthSelect(), '03');
+    await user.selectOptions(yearSelect(), String(CURRENT_YEAR));
+
+    expect(screen.queryByText('Both month and year are required.')).not.toBeInTheDocument();
   });
 
   test('clears error state when parent resets value to empty after partial clear', () => {
