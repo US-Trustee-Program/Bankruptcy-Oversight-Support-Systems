@@ -28,6 +28,12 @@ function parseValue(value?: string): { month: string; year: string } {
   return { month: '', year: '' };
 }
 
+const INCOMPLETE_MONTH_YEAR_MESSAGE = 'Both month and year are required.';
+
+function isIncompleteMonthYear(month: string, year: string): boolean {
+  return !!month !== !!year;
+}
+
 export default function MonthYearSelector(props: Readonly<MonthYearSelectorProps>) {
   const { id, label, disabled } = props;
 
@@ -39,23 +45,29 @@ export default function MonthYearSelector(props: Readonly<MonthYearSelectorProps
     const { month: m, year: y } = parseValue(props.value);
     setMonth(m);
     setYear(y);
-    const isIncomplete = !!m !== !!y;
+    const isIncomplete = isIncompleteMonthYear(m, y);
     hasErrorRef.current = isIncomplete;
-    setErrorMessage(isIncomplete ? 'Both month and year are required.' : '');
-    props.onValidationChange?.(isIncomplete);
+    // Only validate immediately if the user has already blurred out of the fieldset once.
+    // Otherwise a parent supplying an already-incomplete value (e.g. legacy/malformed data
+    // on initial load) would show the error and disable Save before any interaction —
+    // defeating the deferred-until-blur design this component is built around. Clearing an
+    // error is always safe to do immediately.
+    if (hasInteractedRef.current || !isIncomplete) {
+      setErrorMessage(isIncomplete ? INCOMPLETE_MONTH_YEAR_MESSAGE : '');
+      props.onValidationChange?.(isIncomplete);
+    }
   }, [props.value]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [errorMessage, setErrorMessage] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const hasErrorRef = useRef(false);
+  const hasInteractedRef = useRef(false);
 
   function emit(newMonth: string, newYear: string) {
-    const hasMonth = !!newMonth;
-    const hasYear = !!newYear;
-    const isIncomplete = hasMonth !== hasYear;
+    const isIncomplete = isIncompleteMonthYear(newMonth, newYear);
     hasErrorRef.current = isIncomplete;
-    setErrorMessage(isIncomplete ? 'Both month and year are required.' : '');
-    props.onChange?.(hasMonth && hasYear ? `${newYear}-${newMonth}-01` : '');
+    setErrorMessage(isIncomplete ? INCOMPLETE_MONTH_YEAR_MESSAGE : '');
+    props.onChange?.(newMonth && newYear ? `${newYear}-${newMonth}-01` : '');
   }
 
   function handleMonthChange(ev: React.ChangeEvent<HTMLSelectElement>) {
@@ -77,6 +89,7 @@ export default function MonthYearSelector(props: Readonly<MonthYearSelectorProps
 
   function handleBlur(e: React.FocusEvent<HTMLFieldSetElement>) {
     if (!e.currentTarget.contains(e.relatedTarget)) {
+      hasInteractedRef.current = true;
       setIsFocused(false);
       props.onValidationChange?.(hasErrorRef.current);
     }
