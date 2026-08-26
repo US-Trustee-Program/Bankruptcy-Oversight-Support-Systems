@@ -28,6 +28,10 @@ export function isChapter12Standing(chapter: string, appointmentType: string): b
   return chapter === '12' && appointmentType === 'standing';
 }
 
+export function isChapter13Standing(chapter: string, appointmentType: string): boolean {
+  return chapter === '13' && appointmentType === 'standing';
+}
+
 export function formatAppointmentStatus(status: AppointmentStatus): string {
   const statusLabels: Record<AppointmentStatus, string> = {
     active: 'Active',

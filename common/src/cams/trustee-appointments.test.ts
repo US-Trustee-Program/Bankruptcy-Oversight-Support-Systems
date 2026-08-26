@@ -6,6 +6,8 @@ import {
   TrusteeAppointmentInput,
   CaseTrusteeAppointmentHistory,
   CaseAppointment,
+  isChapter12Standing,
+  isChapter13Standing,
 } from './trustee-appointments';
 import { AppointmentChapterType, AppointmentType, AppointmentStatus } from './trustees';
 import { validateObject } from './validation';
@@ -505,6 +507,36 @@ describe('trustee-appointments', () => {
       };
 
       expect(history.history).toEqual([]);
+    });
+  });
+
+  describe('isChapter12Standing', () => {
+    test('returns true for chapter 12 standing', () => {
+      expect(isChapter12Standing('12', 'standing')).toBe(true);
+    });
+
+    test.each([
+      ['12', 'case-by-case'],
+      ['13', 'standing'],
+      ['7', 'panel'],
+      ['12', ''],
+    ])('returns false for chapter %s / %s', (chapter, type) => {
+      expect(isChapter12Standing(chapter, type)).toBe(false);
+    });
+  });
+
+  describe('isChapter13Standing', () => {
+    test('returns true for chapter 13 standing', () => {
+      expect(isChapter13Standing('13', 'standing')).toBe(true);
+    });
+
+    test.each([
+      ['13', 'case-by-case'],
+      ['12', 'standing'],
+      ['7', 'panel'],
+      ['13', ''],
+    ])('returns false for chapter %s / %s', (chapter, type) => {
+      expect(isChapter13Standing(chapter, type)).toBe(false);
     });
   });
 });

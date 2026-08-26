@@ -10,7 +10,11 @@ import {
   calculateTirReview,
   isoToSentinel,
 } from '@common/cams/trustee-upcoming-key-dates';
-import { TrusteeAppointment, isChapter12Standing } from '@common/cams/trustee-appointments';
+import {
+  TrusteeAppointment,
+  isChapter12Standing,
+  isChapter13Standing,
+} from '@common/cams/trustee-appointments';
 import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
@@ -151,7 +155,7 @@ function deriveVariant(chapter: string, appointmentType: string): UpcomingKeyDat
   if (isChapter12Standing(chapter, appointmentType)) {
     return 'chapter12-standing';
   }
-  if (chapter === '13' && appointmentType === 'standing') {
+  if (isChapter13Standing(chapter, appointmentType)) {
     return 'chapter13-standing';
   }
   return 'chapter7-panel';
