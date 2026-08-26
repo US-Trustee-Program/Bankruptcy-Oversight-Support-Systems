@@ -507,18 +507,19 @@ describe('DatePicker additional coverage tests', () => {
     );
 
     const inputEl = screen.getByTestId('test-reset-error');
-    const errorEl = document.getElementById('test-reset-error-error');
 
     fireEvent.change(inputEl, { target: { value: '2025-12-31' } });
 
     await waitFor(() => {
-      expect(errorEl?.textContent).toContain('Must be on or before');
+      expect(document.getElementById('test-reset-error-error')?.textContent).toContain(
+        'Must be on or before',
+      );
     });
 
     act(() => ref.current?.resetValue());
 
     await waitFor(() => {
-      expect(errorEl?.textContent).toBe('');
+      expect(document.getElementById('test-reset-error-error')).toBeNull();
       expect(inputEl).toHaveValue('2024-06-15');
     });
   });
