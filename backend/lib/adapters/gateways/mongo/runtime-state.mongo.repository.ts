@@ -91,6 +91,24 @@ export class RuntimeStateMongoRepository<T extends RuntimeState>
     }
   }
 
+  async setField(
+    documentType: RuntimeStateDocumentType,
+    path: string,
+    value: unknown,
+  ): Promise<void> {
+    try {
+      const adapter = this.getAdapter<T>();
+      const query = doc('documentType').equals(documentType);
+      await adapter.findOneAndUpdate(
+        query,
+        { $set: { [path]: value }, $setOnInsert: { documentType } },
+        { upsert: true },
+      );
+    } catch (e) {
+      throw getCamsError(e, MODULE_NAME);
+    }
+  }
+
   async atomicIncrement(
     documentType: RuntimeStateDocumentType,
     field: keyof T & string,

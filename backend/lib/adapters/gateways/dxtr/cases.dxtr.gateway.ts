@@ -13,7 +13,7 @@ import { AbstractMssqlClient } from '../abstract-mssql-client';
 import { DbTableFieldSpec, QueryResults } from '../../types/database';
 import { handleQueryResult } from '../gateway-helper';
 import { decomposeCaseId, parseTransactionDate } from './dxtr.gateway.helper';
-import { removeExtraSpaces } from '../../utils/string-helper';
+import { formatCityStateZipCountry, removeExtraSpaces } from '../../utils/string-helper';
 import { getDebtorTypeLabel } from '../debtor-type-gateway';
 import { getPetitionInfo } from '../petition-gateway';
 import { NotFoundError } from '../../../common-errors/not-found-error';
@@ -1407,8 +1407,11 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
           .join(' '),
       );
 
-      const cityStateZipCountry = removeExtraSpaces(
-        [record.city, record.state, record.zip, record.country].filter(Boolean).join(', '),
+      const cityStateZipCountry = formatCityStateZipCountry(
+        record.city,
+        record.state,
+        record.zip,
+        record.country,
       );
 
       const dxtrTrustee: DxtrTrusteeParty = {
