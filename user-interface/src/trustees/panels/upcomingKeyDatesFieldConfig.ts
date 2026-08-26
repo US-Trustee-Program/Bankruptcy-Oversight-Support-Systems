@@ -49,6 +49,16 @@ function tprDueField(data: TrusteeUpcomingKeyDates | null): UpcomingKeyDatesDisp
   return { label: 'Trustee Performance Review Due', value, testId: 'tpr-due-row' };
 }
 
+function leaseExpirationField(data: TrusteeUpcomingKeyDates | null): UpcomingKeyDatesDisplayField {
+  const value = data?.leaseExpiration ? isoToMMDDYYYY(data.leaseExpiration) : NO_DATE;
+  return { label: 'Lease Expiration', value, testId: 'lease-expiration-row' };
+}
+
+function idExpirationField(data: TrusteeUpcomingKeyDates | null): UpcomingKeyDatesDisplayField {
+  const value = data?.idExpiration ? isoToMMDDYYYY(data.idExpiration) : NO_DATE;
+  return { label: 'ID Expiration', value, testId: 'id-expiration-row' };
+}
+
 export const UPCOMING_KEY_DATES_FIELD_CONFIG: Record<
   UpcomingKeyDatesVariant,
   UpcomingKeyDatesFieldConfig[]
@@ -187,10 +197,7 @@ export const UPCOMING_KEY_DATES_FIELD_CONFIG: Record<
     {
       kind: 'computed',
       key: 'leaseExpiration',
-      buildField: (data) => {
-        const value = data?.leaseExpiration ? isoToMMDDYYYY(data.leaseExpiration) : NO_DATE;
-        return { label: 'Lease Expiration', value, testId: 'lease-expiration-row' };
-      },
+      buildField: leaseExpirationField,
     },
     {
       kind: 'constant',
@@ -209,10 +216,7 @@ export const UPCOMING_KEY_DATES_FIELD_CONFIG: Record<
     {
       kind: 'computed',
       key: 'idExpiration',
-      buildField: (data) => {
-        const value = data?.idExpiration ? isoToMMDDYYYY(data.idExpiration) : NO_DATE;
-        return { label: 'ID Expiration', value, testId: 'id-expiration-row' };
-      },
+      buildField: idExpirationField,
     },
   ],
   'chapter13-standing': [
@@ -248,11 +252,7 @@ export const UPCOMING_KEY_DATES_FIELD_CONFIG: Record<
     {
       kind: 'computed',
       key: 'leaseExpiration',
-      buildField: (data) => ({
-        label: 'Lease Expiration',
-        value: data?.leaseExpiration ? isoToMMDDYYYY(data.leaseExpiration) : NO_DATE,
-        testId: 'lease-expiration-row',
-      }),
+      buildField: leaseExpirationField,
     },
     {
       kind: 'constant',
@@ -271,11 +271,7 @@ export const UPCOMING_KEY_DATES_FIELD_CONFIG: Record<
     {
       kind: 'computed',
       key: 'idExpiration',
-      buildField: (data) => ({
-        label: 'ID Expiration',
-        value: data?.idExpiration ? isoToMMDDYYYY(data.idExpiration) : NO_DATE,
-        testId: 'id-expiration-row',
-      }),
+      buildField: idExpirationField,
     },
   ],
 };
