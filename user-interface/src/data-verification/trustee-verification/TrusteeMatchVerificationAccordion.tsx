@@ -13,7 +13,7 @@ import { CourtDivisionDetails } from '@common/cams/courts';
 import { formatDate } from '@/lib/utils/datetime';
 import { formatAppointmentStatus } from '@common/cams/trustee-appointments';
 import { formatChapterType } from '@common/cams/trustees';
-import { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import Alert, { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { TrusteeAppointmentSyncErrorCode } from '@common/cams/dataflow-events';
 import { getCaseNumber, getCaseIdParts } from '@common/cams/cases';
 import Api2 from '@/lib/models/api2';
@@ -276,7 +276,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   const confirmationModalRef = useRef<TrusteeMatchConfirmationModalImperative>(null);
   const searchModalRef = useRef<TrusteeSearchModalImperative>(null);
 
-  async function handleExpand(_id: string) {
+  async function fetchDetail() {
     if (enrichedOrder || detailLoadError || isLoadingDetail) return;
     setIsLoadingDetail(true);
     try {
@@ -289,6 +289,20 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
       setIsLoadingDetail(false);
     }
   }
+
+  async function handleExpand(_id: string) {
+    await fetchDetail();
+  }
+
+  // Resolved (approved) tasks show case numbers unconditionally, so their detail must be
+  // fetched eagerly rather than waiting on a manual accordion expand — otherwise a page
+  // refresh leaves the case list blank until the user re-expands.
+  useEffect(() => {
+    if (order.status === 'approved') {
+      fetchDetail();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [order.id, order.status]);
 
   const { divisionCode } = getCaseIdParts(order.caseId);
   const courtDetails = courts.find((c) => c.courtDivisionCode === divisionCode);
@@ -474,7 +488,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   const caseLink =
     affectedCaseCount > 1 ? (
       <span data-testid="affected-cases">
-        <strong>{affectedCaseCount} cases</strong>
+        {affectedCaseCount} cases{enrichedOrder ? ':' : ''}
         {enrichedOrder && (
           <span className="affected-cases-list">
             {sortedAffectedCaseIds.map((caseId) => (
@@ -704,23 +718,25 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
           )}
           {viewMode !== 'resolved' && (
             <>
-              {isInactiveStatus ? (
-                <p className="problem-statement">
-                  <span>
-                    Trustee is inactive in CAMS but was appointed to{' '}
-                    {affectedCaseCount > 1 ? '' : 'case: '}
-                  </span>
-                  {caseLink}
-                </p>
-              ) : (
-                <p className="problem-statement">
-                  <span>
-                    Trustee sent from the court does not match a CAMS Trustee for{' '}
-                    {affectedCaseCount > 1 ? '' : 'case: '}
-                  </span>
-                  {caseLink}
-                </p>
-              )}
+              <Alert type={UswdsAlertStyle.Warning} inline show role="status">
+                {isInactiveStatus ? (
+                  <p className="problem-statement">
+                    <span>
+                      Trustee is inactive in CAMS but was appointed to{' '}
+                      {affectedCaseCount > 1 ? '' : 'case: '}
+                    </span>
+                    {caseLink}
+                  </p>
+                ) : (
+                  <p className="problem-statement">
+                    <span>
+                      Trustee sent from the court does not match a CAMS Trustee for{' '}
+                      {affectedCaseCount > 1 ? '' : 'case: '}
+                    </span>
+                    {caseLink}
+                  </p>
+                )}
+              </Alert>
 
               <h3>Trustee Information Sent By Court</h3>
               <div className="trustee-data-grid trustee-info-grid" data-testid="dxtr-trustee-info">
@@ -771,6 +787,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
         ref={confirmationModalRef}
         id={order.id}
         onConfirm={handleApprove}
+        isProcessing={isProcessing}
       />
       <TrusteeSearchModal
         ref={searchModalRef}
@@ -778,6 +795,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
         dxtrTrusteeName={order.dxtrTrustee.fullName}
         courtId={courtDetails?.courtId ?? order.courtId}
         onConfirm={handleManualMatch}
+        isProcessing={isProcessing}
       />
     </>
   );

@@ -6,11 +6,13 @@ import { NewTabLink } from '@/lib/components/cams/NewTabLink/NewTabLink';
 import { CandidateScore } from '@common/cams/dataflow-events';
 import { formatAppointmentStatus } from '@common/cams/trustee-appointments';
 import { formatChapterType } from '@common/cams/trustees';
+import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 
 interface TrusteeMatchConfirmationModalProps {
   id: string;
   onConfirm: (candidate: CandidateScore) => void;
   onCancel?: () => void;
+  isProcessing?: boolean;
 }
 
 export type TrusteeMatchConfirmationModalImperative = {
@@ -22,7 +24,7 @@ function TrusteeMatchConfirmationModal_(
   props: TrusteeMatchConfirmationModalProps,
   ref: React.Ref<TrusteeMatchConfirmationModalImperative>,
 ) {
-  const { id, onConfirm, onCancel } = props;
+  const { id, onConfirm, onCancel, isProcessing } = props;
   const modalRef = useRef<ModalRefType>(null);
   const [candidate, setCandidate] = useState<CandidateScore | null>(null);
 
@@ -42,6 +44,7 @@ function TrusteeMatchConfirmationModal_(
     modalRef,
     submitButton: {
       label: 'Confirm Appointment',
+      disabled: isProcessing,
       onClick: () => {
         if (candidate) {
           onConfirm(candidate);
@@ -104,6 +107,7 @@ function TrusteeMatchConfirmationModal_(
                 </div>
               ))}
             </div>
+            {isProcessing && <LoadingSpinner caption="Confirming appointment..." />}
           </>
         ) : null
       }

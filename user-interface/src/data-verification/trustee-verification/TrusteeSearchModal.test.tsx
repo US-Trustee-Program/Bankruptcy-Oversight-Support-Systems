@@ -237,7 +237,7 @@ describe('TrusteeSearchModal', () => {
     expect(searchSpy).not.toHaveBeenCalled();
   });
 
-  test('shows "similar name" label for phonetic matches in dropdown', async () => {
+  test('shows only the trustee name for phonetic matches in dropdown, without a "similar name" label', async () => {
     vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: sampleResults });
 
     renderWithProps();
@@ -248,10 +248,9 @@ describe('TrusteeSearchModal', () => {
     await waitFor(() => {
       const listItems = document.querySelectorAll(`#${comboBoxId}-item-list li`);
       expect(listItems.length).toBe(2);
-      // First result is exact match - no badge
       expect(listItems[0].textContent).toBe('John Smith');
-      // Second result is phonetic match - has badge
-      expect(listItems[1].textContent).toBe('Jane Smithson (similar name)');
+      // Second result is a phonetic match — no "(similar name)" suffix
+      expect(listItems[1].textContent).toBe('Jane Smithson');
     });
   });
 
@@ -450,6 +449,73 @@ describe('TrusteeSearchModal', () => {
         `button-trustee-search-modal-${modalId}-submit-button`,
       );
       expect(submitButton).toBeDisabled();
+    });
+  });
+
+  test('clears previously selected trustee when the modal is canceled and reopened', async () => {
+    vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: sampleResults });
+
+    renderWithProps();
+    act(() => modalRef.current?.show());
+
+    await expandComboBoxAndType('smith');
+    await waitFor(() => {
+      expect(screen.getByTestId(`${comboBoxId}-option-item-0`)).toBeVisible();
+    });
+    await userEvent.click(screen.getByTestId(`${comboBoxId}-option-item-0`));
+
+    await waitFor(() => {
+      expect(screen.getByText('123 Main St')).toBeInTheDocument();
+    });
+
+    const cancelButton = screen.getByTestId(`button-trustee-search-modal-${modalId}-cancel-button`);
+    await waitFor(() => expect(cancelButton).toBeEnabled());
+    await userEvent.click(cancelButton);
+
+    act(() => modalRef.current?.show());
+
+    await waitFor(() => {
+      const input = document.querySelector(`#${comboBoxId}-combo-box-input`) as HTMLInputElement;
+      expect(input?.value).toBe('');
+      expect(screen.queryByText('123 Main St')).not.toBeInTheDocument();
+      const submitButton = screen.getByTestId(
+        `button-trustee-search-modal-${modalId}-submit-button`,
+      );
+      expect(submitButton).toBeDisabled();
+    });
+  });
+
+  test('shows a loading spinner and disables Confirm when isProcessing is true', async () => {
+    vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: sampleResults });
+
+    render(
+      <BrowserRouter>
+        <TrusteeSearchModal
+          ref={modalRef}
+          id={modalId}
+          dxtrTrusteeName="DOE, JOHN"
+          onConfirm={vi.fn()}
+          isProcessing={true}
+        />
+      </BrowserRouter>,
+    );
+    act(() => modalRef.current?.show());
+
+    await waitFor(() => {
+      expect(screen.getByText('Confirming appointment...')).toBeInTheDocument();
+      const submitButton = screen.getByTestId(
+        `button-trustee-search-modal-${modalId}-submit-button`,
+      );
+      expect(submitButton).toBeDisabled();
+    });
+  });
+
+  test('does not show a loading spinner when isProcessing is omitted', async () => {
+    renderWithProps();
+    act(() => modalRef.current?.show());
+
+    await waitFor(() => {
+      expect(screen.queryByText('Confirming appointment...')).not.toBeInTheDocument();
     });
   });
 });

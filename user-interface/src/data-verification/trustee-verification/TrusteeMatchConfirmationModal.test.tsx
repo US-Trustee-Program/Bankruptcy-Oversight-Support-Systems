@@ -173,6 +173,39 @@ describe('TrusteeMatchConfirmationModal', () => {
     expect(onConfirm).not.toHaveBeenCalled();
   });
 
+  test('shows a loading spinner and disables Confirm when isProcessing is true', async () => {
+    const onConfirm = vi.fn();
+    render(
+      <BrowserRouter>
+        <TrusteeMatchConfirmationModal
+          ref={modalRef}
+          id={modalId}
+          onConfirm={onConfirm}
+          isProcessing={true}
+        />
+      </BrowserRouter>,
+    );
+    act(() => modalRef.current?.show(sampleCandidate));
+
+    await waitFor(() => {
+      expect(screen.getByText('Confirming appointment...')).toBeInTheDocument();
+      const submitButton = screen.getByTestId(
+        `button-trustee-confirmation-modal-${modalId}-submit-button`,
+      );
+      expect(submitButton).toBeDisabled();
+    });
+  });
+
+  test('does not show a loading spinner when isProcessing is omitted', async () => {
+    renderWithProps();
+    act(() => modalRef.current?.show(sampleCandidate));
+
+    await waitFor(() => {
+      expect(screen.getByText('Jane Smith')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('Confirming appointment...')).not.toBeInTheDocument();
+  });
+
   test('hides modal when Cancel is clicked and no onCancel prop is provided', async () => {
     const onConfirm = vi.fn();
     render(

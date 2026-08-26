@@ -240,6 +240,95 @@ describe('TrusteeMatchVerificationAccordion', () => {
     expect(screen.queryByTestId('approve-candidate-trustee-1')).not.toBeInTheDocument();
   });
 
+  describe('mismatch info prominence', () => {
+    test('renders the problem statement inside a warning-styled alert for an unresolved task', () => {
+      renderWithProps();
+
+      const problemStatement = screen
+        .getByTestId(`accordion-content-${sampleOrder.id}`)
+        .querySelector('.problem-statement');
+      expect(problemStatement?.closest('.usa-alert--warning')).toBeInTheDocument();
+    });
+
+    test('preserves the dxtr-trustee-info test ID and does not wrap the resolved statement in an alert', () => {
+      renderWithProps();
+      expect(screen.getByTestId('dxtr-trustee-info')).toBeInTheDocument();
+
+      renderWithProps({
+        order: {
+          ...sampleOrderWithCandidates,
+          status: 'approved',
+          resolvedTrusteeId: 'trustee-1',
+          resolvedTrusteeName: 'Jane Smith',
+        },
+      });
+      const resolved = screen.getAllByTestId('resolved-statement')[0];
+      expect(resolved.closest('.usa-alert--warning')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('eager detail fetch for resolved orders', () => {
+    test('shows case numbers for a resolved order without manually expanding the accordion', async () => {
+      const resolvedOrder: TrusteeMatchVerificationListItem = {
+        ...sampleOrderWithCandidates,
+        status: 'approved',
+        resolvedTrusteeId: 'trustee-1',
+        resolvedTrusteeName: 'Jane Smith',
+        affectedCaseCount: 2,
+      };
+      const resolvedDetail: EnrichedTrusteeMatchVerification = {
+        ...sampleOrderWithCandidatesDetail,
+        status: 'approved',
+        affectedCaseIds: ['081-22-11111', '081-22-22222'],
+      };
+      vi.spyOn(Api2, 'getTrusteeMatchVerificationDetail').mockResolvedValue({
+        data: resolvedDetail,
+      } as never);
+
+      renderWithProps({ order: resolvedOrder });
+
+      await waitFor(() => {
+        expect(screen.getByRole('link', { name: /22-11111/, hidden: true })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: /22-22222/, hidden: true })).toBeInTheDocument();
+      });
+    });
+
+    test('shows the accurate case(s) for a resolved order once the eager fetch resolves affectedCaseCount 0', async () => {
+      const resolvedOrder: TrusteeMatchVerificationListItem = {
+        ...sampleOrderWithCandidates,
+        status: 'approved',
+        resolvedTrusteeId: 'trustee-1',
+        resolvedTrusteeName: 'Jane Smith',
+        affectedCaseCount: 0,
+      };
+      const resolvedDetail: EnrichedTrusteeMatchVerification = {
+        ...sampleOrderWithCandidatesDetail,
+        status: 'approved',
+        affectedCaseIds: ['081-22-11111', '081-22-22222'],
+      };
+      vi.spyOn(Api2, 'getTrusteeMatchVerificationDetail').mockResolvedValue({
+        data: resolvedDetail,
+      } as never);
+
+      renderWithProps({ order: resolvedOrder });
+
+      await waitFor(() => {
+        const resolved = screen.getByTestId('resolved-statement');
+        expect(resolved.textContent).toContain('2 cases');
+      });
+    });
+
+    test('does not fetch detail on mount for a non-resolved order', async () => {
+      const detailSpy = vi.spyOn(Api2, 'getTrusteeMatchVerificationDetail');
+
+      renderWithProps({ order: sampleOrderWithCandidates });
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(detailSpy).not.toHaveBeenCalled();
+    });
+  });
+
   test('clicking Match Trustee calls patchTrusteeVerificationOrderApproval with correct args', async () => {
     vi.spyOn(Api2, 'patchTrusteeVerificationOrderApproval').mockResolvedValue(undefined);
     renderWithProps({ order: sampleOrderWithCandidates });
@@ -1664,6 +1753,36 @@ describe('TrusteeMatchVerificationAccordion', () => {
       expect(content.textContent).not.toContain('cases');
       const link = screen.getByRole('link', { name: /22-11111/, hidden: true });
       expect(link).toHaveAttribute('href', `/case-detail/${sampleOrder.caseId}`);
+    });
+
+    test('does not render the case count in bold', async () => {
+      const multiCaseOrder: TrusteeMatchVerificationListItem = {
+        ...sampleOrder,
+        affectedCaseCount: 3,
+      };
+      renderWithProps({ order: multiCaseOrder });
+
+      const affectedCases = screen.getByTestId('affected-cases');
+      expect(affectedCases.querySelector('strong')).not.toBeInTheDocument();
+    });
+
+    test('appends a colon after the case count once the case list is expanded', async () => {
+      const multiCaseOrder: TrusteeMatchVerificationListItem = {
+        ...sampleOrder,
+        affectedCaseCount: 3,
+      };
+      const multiCaseDetail: EnrichedTrusteeMatchVerification = {
+        ...sampleOrderDetail,
+        affectedCaseIds: ['081-22-11111', '081-22-22222', '081-22-33333'],
+      };
+      renderWithProps({ order: multiCaseOrder });
+
+      // Collapsed: no colon since no list follows the count.
+      expect(screen.getByTestId('affected-cases').textContent).toBe('3 cases');
+
+      await mockDetailAndExpand(multiCaseDetail);
+
+      expect(screen.getByTestId('affected-cases').textContent).toMatch(/^3 cases:/);
     });
 
     test('approval success message reflects all affected cases, not just the originating one', async () => {
