@@ -250,6 +250,22 @@ describe('PastKeyDates', () => {
         screen.queryByRole('button', { name: /edit past key dates/i }),
       ).not.toBeInTheDocument();
     });
+
+    test('Edit button navigates with chapter13-standing variant', () => {
+      renderComponent(ch13Props);
+
+      screen.getByRole('button', { name: /edit past key dates/i }).click();
+
+      expect(mockNavigate).toHaveBeenCalledWith(
+        `/trustees/${ch13Props.trusteeId}/appointments/${ch13Props.appointmentId}/past-key-dates/edit`,
+        {
+          state: {
+            subHeading: ch13Props.appointmentHeading,
+            variant: 'chapter13-standing',
+          },
+        },
+      );
+    });
   });
 
   describe('subv-pool variant', () => {
@@ -312,6 +328,22 @@ describe('PastKeyDates', () => {
       renderComponent(subVProps);
 
       expect(screen.getByTestId('past-last-monthly-report-received-row')).toBeInTheDocument();
+    });
+
+    test('Edit button navigates with subv-pool variant', () => {
+      renderComponent(subVProps);
+
+      screen.getByRole('button', { name: /edit past key dates/i }).click();
+
+      expect(mockNavigate).toHaveBeenCalledWith(
+        `/trustees/${subVProps.trusteeId}/appointments/${subVProps.appointmentId}/past-key-dates/edit`,
+        {
+          state: {
+            subHeading: subVProps.appointmentHeading,
+            variant: 'subv-pool',
+          },
+        },
+      );
     });
   });
 
