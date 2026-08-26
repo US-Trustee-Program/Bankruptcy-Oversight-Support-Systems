@@ -1258,6 +1258,95 @@ describe('SyncTrusteeCaseAppointments', () => {
       expect(scenarioDistribution.noMatchCount).toBe(1);
     });
 
+    test('should construct acmsProfessionalId from groupDesignator + profCode on the persisted verification doc', async () => {
+      // acmsProfessionalId is a CAMS construct, not a native DXTR/ACMS field - the gateway only
+      // crosses raw groupDesignator + profCode facts; this format ("{group}-{profCode}") is built
+      // here in the use-case layer. It's never used to pick or auto-link a trustee (see
+      // isSentinelWithNoIdentity's doc comment, which keys off the underlying raw profCode) -
+      // it's persisted purely so a reviewer can distinguish a genuine unmatched trustee from a
+      // sentinel-coded ("00000"/"99999") placeholder without cross-referencing DXTR directly.
+      (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        kind: 'no-match',
+      });
+
+      await SyncTrusteeCaseAppointments.processAppointments(
+        SyncTrusteeCaseAppointments.createDeps(context),
+        [
+          {
+            ...makeEvent('case-001', 'Nobody Real'),
+            profCode: '12345',
+            groupDesignator: 'NY',
+            dxtrTrustee: {
+              fullName: 'Nobody Real',
+              firstName: 'Nobody',
+              lastName: 'Real',
+              legacy: { address1: '1 Real St', cityStateZipCountry: 'Realtown ZZ 00000' },
+            },
+          },
+        ],
+      );
+
+      expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
+        expect.objectContaining({ acmsProfessionalId: 'NY-12345' }),
+      );
+    });
+
+    test('should omit acmsProfessionalId from the persisted verification doc when profCode is a sentinel value', async () => {
+      // A formatted sentinel ID (e.g. "NY-99999") would read to a reviewer as a real professional
+      // ID rather than the "ID unavailable" placeholder it actually is - suppress it entirely
+      // rather than persist misleading diagnostic data.
+      (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        kind: 'no-match',
+      });
+
+      await SyncTrusteeCaseAppointments.processAppointments(
+        SyncTrusteeCaseAppointments.createDeps(context),
+        [
+          {
+            ...makeEvent('case-001', 'Nobody Real'),
+            profCode: '99999',
+            groupDesignator: 'NY',
+            dxtrTrustee: {
+              fullName: 'Nobody Real',
+              firstName: 'Nobody',
+              lastName: 'Real',
+              legacy: { address1: '1 Real St', cityStateZipCountry: 'Realtown ZZ 00000' },
+            },
+          },
+        ],
+      );
+
+      expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
+        expect.objectContaining({ acmsProfessionalId: undefined }),
+      );
+    });
+
+    test('should omit acmsProfessionalId from the persisted verification doc when groupDesignator is missing', async () => {
+      (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        kind: 'no-match',
+      });
+
+      await SyncTrusteeCaseAppointments.processAppointments(
+        SyncTrusteeCaseAppointments.createDeps(context),
+        [
+          {
+            ...makeEvent('case-001', 'Nobody Real'),
+            profCode: '12345',
+            dxtrTrustee: {
+              fullName: 'Nobody Real',
+              firstName: 'Nobody',
+              lastName: 'Real',
+              legacy: { address1: '1 Real St', cityStateZipCountry: 'Realtown ZZ 00000' },
+            },
+          },
+        ],
+      );
+
+      expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
+        expect.objectContaining({ acmsProfessionalId: undefined }),
+      );
+    });
+
     test('should auto-link a fuzzy-scoring clear winner whose appointment matches court/division/chapter', async () => {
       (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
         makeAmbiguousNameMatch(),
