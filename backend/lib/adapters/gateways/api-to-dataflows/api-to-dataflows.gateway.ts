@@ -15,14 +15,11 @@ import {
 import { ApiToDataflowsGateway } from '../../../use-cases/gateways.types';
 import { StorageQueueHumbleObject } from '../../../humble-objects/storage-queue-humble';
 
-const MODULE_NAME = 'API-TO-DATAFLOWS-GATEWAY';
-
 export class ApiToDataflowsGatewayImpl implements ApiToDataflowsGateway {
-  private readonly context: ApplicationContext;
-
-  constructor(context: ApplicationContext) {
-    this.context = context;
-  }
+  // Unused internally now that enqueue() throws instead of logging via context.logger, but
+  // kept as a constructor parameter to match factory.getApiToDataflowsGateway's call
+  // signature and the constructor-injection convention every other gateway follows.
+  constructor(private readonly context: ApplicationContext) {}
 
   async queueCaseAssignmentEvent(event: CaseAssignmentDownstreamEvent): Promise<void> {
     await this.enqueue(CASE_ASSIGNMENT_EVENT_QUEUE, event);
@@ -42,16 +39,9 @@ export class ApiToDataflowsGatewayImpl implements ApiToDataflowsGateway {
   }
 
   private async enqueue(queue: StorageQueueOutput, message: unknown): Promise<void> {
-    // Absent in BDD (plain Express, no Azure Functions host) and E2E (local.settings.backend.json
-    // only configures AzureWebJobsStorage, not this Dataflows-specific connection string) --
-    // no-op rather than throw, since neither environment provisions a queue to send to.
     const connectionString = process.env.AzureWebJobsDataflowsStorage;
     if (!connectionString) {
-      this.context.logger.warn(
-        MODULE_NAME,
-        `Cannot enqueue to ${queue.queueName}: AzureWebJobsDataflowsStorage is not configured.`,
-      );
-      return;
+      throw new Error('Missing required environment variable: AzureWebJobsDataflowsStorage');
     }
 
     const client = StorageQueueHumbleObject.fromConnectionString(connectionString, queue.queueName);

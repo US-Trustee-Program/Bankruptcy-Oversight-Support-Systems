@@ -66,16 +66,12 @@ describe('ApiToDataflowsGatewayImpl', () => {
   });
 
   describe('when AzureWebJobsDataflowsStorage is not configured', () => {
-    test('no-ops and logs a warning instead of sending (e.g. BDD/E2E contexts)', async () => {
+    test('throws instead of silently no-opping (e.g. misconfiguration or a partial deploy)', async () => {
       delete process.env.AzureWebJobsDataflowsStorage;
-      const warnSpy = vi.spyOn(mockContext.logger, 'warn');
       const gateway = new ApiToDataflowsGatewayImpl(mockContext);
 
-      await gateway.queueCaseReload('081-12-34567');
-
-      expect(warnSpy).toHaveBeenCalledWith(
-        'API-TO-DATAFLOWS-GATEWAY',
-        expect.stringContaining(SYNC_CASES_PAGE_QUEUE.queueName),
+      await expect(gateway.queueCaseReload('081-12-34567')).rejects.toThrow(
+        'Missing required environment variable: AzureWebJobsDataflowsStorage',
       );
       expect(fromConnectionStringSpy).not.toHaveBeenCalled();
       expect(mockSendMessage).not.toHaveBeenCalled();
