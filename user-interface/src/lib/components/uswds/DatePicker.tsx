@@ -347,9 +347,11 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
           Currently selected: {formatDateForAnnouncement(dateValue)}
         </span>
       )}
-      <div id={`${id}-error`} className="date-error usa-input__error-message" aria-live="polite">
-        {displayErrorMessage}
-      </div>
+      {displayErrorMessage && (
+        <div id={`${id}-error`} className="date-error usa-input__error-message" aria-live="polite">
+          {displayErrorMessage}
+        </div>
+      )}
     </div>
   );
 }
