@@ -102,6 +102,9 @@ param actionGroupName string = ''
 
 param actionGroupResourceGroupName string = ''
 
+@description('Subscription ID that contains the action group resource group. Defaults to the deploying subscription.')
+param actionGroupSubscriptionId string = subscription().subscriptionId
+
 @description('boolean to determine creation and configuration of Alerts')
 param createAlerts bool = false
 
@@ -448,6 +451,7 @@ module dataflowsFunctionAppInsights 'lib/app-insights/function-app-insights.bice
   params: {
     actionGroupName: actionGroupName
     actionGroupResourceGroupName: actionGroupResourceGroupName
+    actionGroupSubscriptionId: actionGroupSubscriptionId
     analyticsWorkspaceId: analyticsWorkspaceId
     createAlerts: createAlerts
     createApplicationInsights: createApplicationInsights

@@ -10,6 +10,9 @@ param actionGroupName string
 @description('Action Group Resource Group Name for alerts')
 param actionGroupResourceGroupName string
 
+@description('Subscription ID that contains the action group resource group. Defaults to the deploying subscription.')
+param actionGroupSubscriptionId string = subscription().subscriptionId
+
 @allowed([
   'Total'
   'Maximum'
@@ -61,7 +64,7 @@ param windowSize string = 'PT30M' //Default to 30M for most Alerts,  Service Ava
 
 resource actionGroup 'microsoft.insights/actionGroups@2023-01-01' existing = {
   name: actionGroupName
-  scope: resourceGroup(actionGroupResourceGroupName)
+  scope: resourceGroup(actionGroupSubscriptionId, actionGroupResourceGroupName)
 
 }
 resource alertRule 'microsoft.insights/metricAlerts@2018-03-01' = {

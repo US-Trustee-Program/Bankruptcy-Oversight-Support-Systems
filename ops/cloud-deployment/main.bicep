@@ -130,6 +130,9 @@ param analyticsWorkspaceId string = ''
 
 param analyticsResourceGroupName string
 
+@description('Subscription ID that contains the analytics resource group. Defaults to the deploying subscription.')
+param analyticsSubscriptionId string = subscription().subscriptionId
+
 @description('Url for our Okta Provider')
 param oktaUrl string = ''
 
@@ -213,7 +216,7 @@ var isStandaloneEnvironment = createAlerts || isUstpDeployment
 module actionGroup './lib/monitoring-alerts/alert-action-group.bicep' =
   if (createAlerts) {
     name: '${actionGroupName}-action-group-module'
-    scope: resourceGroup(analyticsResourceGroupName)
+    scope: resourceGroup(analyticsSubscriptionId, analyticsResourceGroupName)
     params: {
       actionGroupName: actionGroupName
     }
@@ -393,6 +396,7 @@ module ustpWebapp 'frontend-webapp-deploy.bicep' = {
       createAlerts: createAlerts
       actionGroupName: actionGroupName
       actionGroupResourceGroupName: analyticsResourceGroupName
+      actionGroupSubscriptionId: analyticsSubscriptionId
       targetApiServerHost: '${apiFunctionName}.azurewebsites.us ${apiFunctionName}-${slotName}.azurewebsites.us' //adding both production and slot hostname to CSP
       ustpIssueCollectorHash: ustpIssueCollectorHash
       webappSubnetId: webappSubnetExisting.id
@@ -413,7 +417,7 @@ module ustpWebapp 'frontend-webapp-deploy.bicep' = {
 module adminActionGroup './lib/monitoring-alerts/admin-notification-action-group.bicep' =
   if (!empty(adminNotificationEmail) && deployAppInsights && !empty(analyticsWorkspaceId)) {
     name: '${stackName}-admin-action-group-module'
-    scope: resourceGroup(analyticsResourceGroupName)
+    scope: resourceGroup(analyticsSubscriptionId, analyticsResourceGroupName)
     params: {
       actionGroupName: '${stackName}-admin-notifications'
       adminEmail: adminNotificationEmail
@@ -424,7 +428,7 @@ module adminActionGroup './lib/monitoring-alerts/admin-notification-action-group
 module acsBounceAlert './lib/monitoring-alerts/scheduled-query-alert-rule.bicep' =
   if (isStandaloneEnvironment && !empty(adminNotificationEmail) && deployAppInsights && !empty(analyticsWorkspaceId)) {
     name: '${stackName}-acs-bounce-alert-module'
-    scope: resourceGroup(analyticsResourceGroupName)
+    scope: resourceGroup(analyticsSubscriptionId, analyticsResourceGroupName)
     params: {
       alertRuleName: acsBounceAlertRuleName
       logQueryScopeResourceId: analyticsWorkspaceId
@@ -451,7 +455,7 @@ module acsBounceAlert './lib/monitoring-alerts/scheduled-query-alert-rule.bicep'
 module acsSendFailureAlert './lib/monitoring-alerts/scheduled-query-alert-rule.bicep' =
   if (!empty(adminNotificationEmail) && deployAppInsights && !empty(analyticsWorkspaceId)) {
     name: '${stackName}-acs-send-failure-alert-module'
-    scope: resourceGroup(analyticsResourceGroupName)
+    scope: resourceGroup(analyticsSubscriptionId, analyticsResourceGroupName)
     params: {
       alertRuleName: acsSendFailureAlertRuleName
       logQueryScopeResourceId: analyticsWorkspaceId
@@ -498,6 +502,7 @@ module ustpApiFunction 'backend-api-deploy.bicep' = {
       privateEndpointSubnetId: privateEndpointSubnetExisting.id
       actionGroupName: actionGroupName
       actionGroupResourceGroupName: analyticsResourceGroupName
+      actionGroupSubscriptionId: analyticsSubscriptionId
       createAlerts: createAlerts
       privateDnsZoneName: privateDnsZoneName
       privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
@@ -548,6 +553,7 @@ module ustpDataflowsFunction 'dataflows-resource-deploy.bicep' = {
     privateEndpointSubnetId: privateEndpointSubnetExisting.id
     actionGroupName: actionGroupName
     actionGroupResourceGroupName: analyticsResourceGroupName
+    actionGroupSubscriptionId: analyticsSubscriptionId
     createAlerts: createAlerts
     privateDnsZoneName: privateDnsZoneName
     privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
