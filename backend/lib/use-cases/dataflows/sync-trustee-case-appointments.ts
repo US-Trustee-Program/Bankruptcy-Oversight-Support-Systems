@@ -621,6 +621,7 @@ async function upsertMatchVerification(
   if (existing && existing.status !== 'pending') {
     return true; // Already resolved — signals a re-verification for match accuracy tracking
   }
+  const acmsProfessionalId = resolveAcmsProfessionalIdForVerification(event);
   if (existing) {
     await verificationRepo.upsertVerification({
       ...existing,
@@ -628,6 +629,7 @@ async function upsertMatchVerification(
       matchCandidates,
       inactiveAppointmentStatus,
       appointedDate: event.appointedDate,
+      acmsProfessionalId,
       updatedOn: new Date().toISOString(),
       updatedBy: SYSTEM_USER_REFERENCE,
     });
@@ -642,6 +644,7 @@ async function upsertMatchVerification(
         matchCandidates,
         inactiveAppointmentStatus,
         appointedDate: event.appointedDate,
+        acmsProfessionalId,
         taskType: 'trustee-match',
         status: 'pending',
         taskDate: new Date().toISOString(),
@@ -1308,6 +1311,35 @@ type EventOutcome =
 
 const DXTR_PROF_CODE_NO_TRUSTEE_APPOINTED = '00000';
 const DXTR_PROF_CODE_ID_UNAVAILABLE = '99999';
+
+/**
+ * Constructs the acmsProfessionalId to persist on a TrusteeMatchVerification doc, formatted
+ * "{GROUP_DESIGNATOR}-{PROF_CODE}" (e.g. "NY-00123") per the CAMS<->ACMS professional-ID mapping
+ * convention (see /cams-gateways: GROUP_DESIGNATOR + PROF_CODE form ACMS's compound professional
+ * key, never PROF_CODE alone). This is a CAMS-specific construct, not a native DXTR/ACMS field —
+ * event.groupDesignator and event.profCode are raw legacy facts crossed from the gateway; the
+ * formatting decision (and the sentinel-suppression rule below) belongs here in the use-case
+ * layer, not the gateway.
+ * Returns undefined when either half is missing/blank (a partial ID would be actively misleading,
+ * not just incomplete), or when profCode is a known sentinel value — a formatted sentinel ID
+ * (e.g. "NY-00000") would read to a reviewer as a real professional ID rather than the "no
+ * trustee appointed"/"ID unavailable" placeholder it actually is — better to omit it than
+ * mislead.
+ */
+function resolveAcmsProfessionalIdForVerification(
+  event: TrusteeAppointmentSyncEvent,
+): string | undefined {
+  const isSentinel =
+    event.profCode === DXTR_PROF_CODE_NO_TRUSTEE_APPOINTED ||
+    event.profCode === DXTR_PROF_CODE_ID_UNAVAILABLE;
+  if (isSentinel) return undefined;
+
+  const groupDesignator = event.groupDesignator?.trim();
+  const profCode = event.profCode?.trim();
+  if (!groupDesignator || !profCode) return undefined;
+
+  return `${groupDesignator}-${profCode}`;
+}
 
 // Substrings observed in real DXTR data standing in for "no trustee"/"placeholder" on
 // sentinel-coded records — e.g. "No Trustee", "TRUSTEE NOT APPOINTED", "Awaiting Trustee
