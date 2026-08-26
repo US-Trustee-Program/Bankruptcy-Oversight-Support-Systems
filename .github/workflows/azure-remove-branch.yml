@@ -71,6 +71,8 @@ jobs:
       executeCleanup: ${{ steps.check.outputs.executeCleanup }}
       targetBranchHashIds: ${{ steps.check.outputs.targetBranchHashIds }}
       stackName: ${{ steps.check.outputs.stackName }}
+      staleBranchNotices: ${{ steps.check.outputs.staleBranchNotices }}
+      staleDaysThreshold: ${{ steps.check.outputs.staleDaysThreshold }}
     steps:
       - uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3.0.0
         with:
@@ -292,16 +294,32 @@ jobs:
           echo "Stack Name (base): $stackName"
           echo "stackName=$stackName" >> $GITHUB_OUTPUT
 
+  # A separate job, rather than a step in `check`: GitHub Actions registers
+  # every secret referenced anywhere in a job as a masked value for the
+  # WHOLE job as soon as it starts, not just the step that reads it. When
+  # SLACK_WEBHOOK_URL/SLACK_USER_MAPPING lived in a step here, that made
+  # `check`'s targetBranchHashIds output collide with GitHub's "may contain
+  # secret" output redaction and get silently dropped — which then failed
+  # `clean-up`'s `fromJSON(needs.check.outputs.targetBranchHashIds)` matrix
+  # evaluation with "empty input" every time there was actually something to
+  # clean up. Keeping the Slack secrets out of `check` entirely avoids that.
+  notify:
+    runs-on: ubuntu-latest
+    needs: [check]
+    if: needs.check.outputs.staleBranchNotices != '[]'
+    environment: 'remove-branch'
+    permissions:
+      contents: read
+    steps:
       - name: Notify stale branch owners
-        if: steps.check.outputs.staleBranchNotices != '[]'
         # Best-effort: a Slack outage shouldn't block the actual teardown
-        # below, so this step's failure doesn't fail the job.
+        # in `clean-up`, so this step's failure doesn't fail the job.
         continue-on-error: true
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           SLACK_USER_MAPPING: ${{ secrets.SLACK_USER_MAPPING }}
-          STALE_BRANCH_NOTICES: ${{ steps.check.outputs.staleBranchNotices }}
-          STALE_DAYS_THRESHOLD: ${{ steps.check.outputs.staleDaysThreshold }}
+          STALE_BRANCH_NOTICES: ${{ needs.check.outputs.staleBranchNotices }}
+          STALE_DAYS_THRESHOLD: ${{ needs.check.outputs.staleDaysThreshold }}
         run: |
           set -euo pipefail
           staleDaysThreshold="${STALE_DAYS_THRESHOLD}"
