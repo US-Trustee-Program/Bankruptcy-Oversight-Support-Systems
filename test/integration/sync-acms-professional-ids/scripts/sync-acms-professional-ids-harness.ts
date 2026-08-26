@@ -42,6 +42,8 @@
  *   seed-cosmos  Seed TRUSTEE_VARIATION and CAMS trustee fixtures into MongoDB
  *   run          Full test: clean → seed → enqueue start → wait → assert all scenarios
  *   run-purge    Verify { purge: true } wipes trustee-professional-ids and reloads
+ *   run-retry-idempotency  Prove a retry replaying an errored record returns the existing
+ *                document instead of throwing E11000 and dead-lettering
  *   clean        Remove test documents from MongoDB and clear queues
  *   help         Show this help
  */
@@ -896,6 +898,109 @@ async function runPurge() {
 }
 
 // ---------------------------------------------------------------------------
+// run-retry-idempotency  (proves a retry replaying an already-written errored
+// record doesn't throw a duplicate-key error and dead-letter the page)
+// ---------------------------------------------------------------------------
+
+/**
+ * Builds the same non-HTTP ApplicationContext handlePage/handleStart construct in production
+ * (getApplicationContext, no session/request — dataflow invocations have neither), pointed at
+ * this harness's real local MongoDB container via loadEnv()'s MONGO_CONNECTION_STRING /
+ * COSMOS_DATABASE_NAME overrides. Deliberately NOT createMockApplicationContext (backend/lib/
+ * testing/testing-utilities.ts): that helper forces DATABASE_MOCK=true, which would exercise the
+ * mocked in-memory adapter instead of the real container this test needs to hit a genuine
+ * (camsTrusteeId, acmsProfessionalId, documentType) unique-index violation.
+ */
+async function buildRealApplicationContext() {
+  const { InvocationContext } = await import('@azure/functions');
+  const ContextCreator = (
+    await import('../../../../backend/function-apps/azure/application-context-creator')
+  ).default;
+  return ContextCreator.getApplicationContext({
+    invocationContext: new InvocationContext(),
+  });
+}
+
+async function runRetryIdempotency() {
+  console.log(
+    '\nProving createErroredProfessionalId is idempotent against a real Mongo unique-index violation...\n',
+  );
+
+  const context = await buildRealApplicationContext();
+  const factory = (await import('../../../../backend/lib/factory')).default;
+  const repo = factory.getTrusteeProfessionalIdsRepository(context);
+
+  const fingerprint = `retry-idempotency-fingerprint-${Date.now()}`;
+  const acmsProfessionalId = 'NY-RETRY-TEST';
+  const variant = '{"firstName":"Retry","lastName":"Test"}';
+  const error = { disposition: 'no-match' as const };
+  const user = { id: 'HARNESS', name: 'HARNESS' };
+
+  // This harness's plain MongoDB container has no indexes applied (unlike real Cosmos, whose
+  // unique index comes from cosmos-collections.bicep) — create the same
+  // (camsTrusteeId, acmsProfessionalId, documentType) unique index here so the second write
+  // below hits a genuine violation instead of silently succeeding.
+  {
+    const { client, db } = await getMongoDb();
+    try {
+      await db
+        .collection('trustee-professional-ids')
+        .createIndex(
+          { camsTrusteeId: 1, acmsProfessionalId: 1, documentType: 1 },
+          { unique: true },
+        );
+    } finally {
+      await client.close();
+    }
+  }
+
+  try {
+    // First call: the original (successful) write handlePage made before hitting a transient
+    // error later in the same page.
+    const first = await repo.createErroredProfessionalId(
+      fingerprint,
+      acmsProfessionalId,
+      variant,
+      error,
+      user,
+    );
+    pass(`First write succeeded: ${first.id}`);
+
+    // Second call with IDENTICAL inputs: simulates handlePage's retry-from-original-bookmark
+    // reprocessing this same record after a transient error elsewhere in the page. Before the
+    // fix, this threw E11000 (not classified as rate-limited, so handlePage rethrew and the
+    // message redelivered until it dead-lettered). After the fix, it must return the existing
+    // document instead of throwing.
+    const second = await repo.createErroredProfessionalId(
+      fingerprint,
+      acmsProfessionalId,
+      variant,
+      error,
+      user,
+    );
+
+    if (second.id === first.id) {
+      pass(`Retry returned the existing document (${second.id}) instead of throwing E11000`);
+    } else {
+      fail(
+        `Retry created a NEW document (${second.id}) instead of returning the existing one (${first.id})`,
+      );
+    }
+  } catch (err) {
+    fail(
+      `Retry threw instead of returning the existing document — this is the reported deadlock: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  } finally {
+    const { client, db } = await getMongoDb();
+    try {
+      await db.collection('trustee-professional-ids').deleteMany({ acmsProfessionalId });
+    } finally {
+      await client.close();
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // main
 // ---------------------------------------------------------------------------
 
@@ -924,6 +1029,9 @@ async function main() {
       break;
     case 'run-purge':
       await runPurge();
+      break;
+    case 'run-retry-idempotency':
+      await runRetryIdempotency();
       break;
     case 'clean':
       await clean();
@@ -960,6 +1068,9 @@ async function main() {
       console.log('  seed-cosmos Seed TRUSTEE_VARIATION + trustee profiles into MongoDB');
       console.log('  run         Full test: clean → seed → enqueue → wait → assert');
       console.log('  run-purge   Verify { purge: true } wipes and reloads from scratch');
+      console.log(
+        '  run-retry-idempotency  Prove a replayed retry returns the existing errored record',
+      );
       console.log('  clean       Remove test documents and clear queues');
       console.log('  help        Show this help');
       break;

@@ -101,6 +101,18 @@ cd test/integration/sync-acms-professional-ids/scripts
 | Runs the happy path first, then re-enqueues `{ purge: true }` | A `purge` StartMessage flag is honored on a subsequent run, not just the first                                            |
 | The same 4 professional-id links reappear after the purge     | `deleteAll` wipes `trustee-professional-ids` entirely, then the full CMMPR set reloads from scratch (not stale survivors) |
 
+### `run-retry-idempotency`
+
+Calls the real `TrusteeProfessionalIdsMongoRepository.createErroredProfessionalId` directly
+(bypassing the queue/function app) against this container's MongoDB, after creating the same
+`(camsTrusteeId, acmsProfessionalId, documentType)` unique index real Cosmos enforces via
+`cosmos-collections.bicep` (this container's plain MongoDB has no indexes applied otherwise).
+
+| Assertion                                                                                            | What it verifies                                                                                                                                                                                                                                                                         |
+| ---------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| First write succeeds                                                                                 | The original write `handlePage` makes before hitting a later transient error in the same page                                                                                                                                                                                            |
+| A second call with identical inputs returns the existing document, not a new one, and does not throw | `handlePage` retries an entire page from its original bookmark on a transient error, replaying already-processed records — this is the exact E11000 scenario that used to rethrow and dead-letter the message; a run against the reverted fix reproduces the real error message verbatim |
+
 ---
 
 ## 5. Cleanup instructions
@@ -145,6 +157,8 @@ seed-sql     [local] Seed fixture rows (idempotent — drop/recreate)
 seed-cosmos  Seed TRUSTEE_VARIATION + trustee profiles into MongoDB (upsert)
 run          Full test: clean → seed → enqueue {} → wait → assert
 run-purge    Verify { purge: true } wipes trustee-professional-ids and reloads from scratch
+run-retry-idempotency  Prove a replayed retry returns the existing errored record instead of
+             throwing E11000
 clean        Remove test documents from MongoDB and clear queues
 help         Show usage
 ```
