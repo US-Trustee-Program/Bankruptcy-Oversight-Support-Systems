@@ -244,7 +244,7 @@ export default function PastKeyDatesForm() {
             key={field.inputId}
             id={field.inputId}
             label={field.formLabel}
-            value={form[field.key as PastDateFieldKey]}
+            value={form[field.key]}
             onChange={(val) => setForm((prev) => ({ ...prev, [field.key]: val }))}
             onValidationChange={(hasError) => registerFieldError(field.inputId, hasError)}
           />
