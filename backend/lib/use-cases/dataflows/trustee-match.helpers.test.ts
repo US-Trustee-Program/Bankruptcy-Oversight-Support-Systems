@@ -5,6 +5,7 @@ import {
   matchTrusteeByName,
   calculateAddressScore,
   calculateDistrictDivisionScore,
+  hasDistrictDivisionMatch,
   calculateChapterScore,
   normalizeChapter,
   calculateCandidateScore,
@@ -1040,6 +1041,20 @@ describe('calculateDistrictDivisionScore', () => {
     ];
     const score = calculateDistrictDivisionScore('081', '237', appointments);
     expect(score).toBe(50);
+  });
+});
+
+describe('hasDistrictDivisionMatch', () => {
+  test('should return false for a districtDivisionScore of 0', () => {
+    expect(hasDistrictDivisionMatch(0)).toBe(false);
+  });
+
+  test('should return true for a districtDivisionScore of 50 (same court, different division)', () => {
+    expect(hasDistrictDivisionMatch(50)).toBe(true);
+  });
+
+  test('should return true for a districtDivisionScore of 100 (exact match)', () => {
+    expect(hasDistrictDivisionMatch(100)).toBe(true);
   });
 });
 

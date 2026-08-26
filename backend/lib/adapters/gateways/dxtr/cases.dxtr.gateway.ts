@@ -82,6 +82,7 @@ type TrusteeAppointmentEventRecord = {
   courtId: string;
   chapter?: string;
   courtDivisionCode?: string;
+  groupDesignator?: string;
   firstName?: string;
   middleName?: string;
   lastName?: string;
@@ -1358,6 +1359,7 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
         TX.COURT_ID AS courtId,
         C.CS_CHAPTER AS chapter,
         CS_DIV.CS_DIV_ACMS AS courtDivisionCode,
+        C.GRP_DES AS groupDesignator,
         P.PY_FIRST_NAME AS firstName,
         P.PY_MIDDLE_NAME AS middleName,
         P.PY_LAST_NAME AS lastName,
@@ -1443,6 +1445,7 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
         // pre-existing source.
         appointedDate: parseDxtrDate(record.aptDate) ?? record.txDate,
         profCode: record.profCode?.trim(),
+        groupDesignator: record.groupDesignator?.trim(),
       };
     });
 

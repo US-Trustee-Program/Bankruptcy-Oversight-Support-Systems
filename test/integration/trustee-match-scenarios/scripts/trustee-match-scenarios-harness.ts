@@ -1045,8 +1045,13 @@ async function runScenarios() {
     // sync-trustee-case-appointments.ts)
     ['autoMatchCount', dist.autoMatchCount, 3],
     ['perfectMatchInactiveCount', dist.perfectMatchInactiveCount, 1],
-    ['imperfectMatchCount', dist.imperfectMatchCount, 1],
-    ['noMatchCount', dist.noMatchCount, 1],
+    // Scenario 5 (imperfect-match) now reclassifies to NO_TRUSTEE_MATCH: a uniquely-name-matched
+    // trustee with zero appointment evidence in this case's court/division is no different from a
+    // name search that found nothing - see applyMatchOutcome's hasDistrictDivisionMatch gate
+    // in sync-trustee-case-appointments.ts. imperfectMatchCount is now 0 for this fixture set;
+    // noMatchCount absorbs both scenario 5 and scenario 6 (no-match).
+    ['imperfectMatchCount', dist.imperfectMatchCount, 0],
+    ['noMatchCount', dist.noMatchCount, 2],
     ['multipleMatchCount', dist.multipleMatchCount, 1],
   ];
   for (const [label, actual, expected] of expectations) {
@@ -1143,21 +1148,22 @@ async function runScenarios() {
       );
     }
 
-    // 5. imperfect-match: verification pending, IMPERFECT_MATCH, districtDivision/chapter=0.
+    // 5. imperfect-match: resolves uniquely by name, but the trustee has zero appointments
+    // anywhere - districtDivisionScore is trivially 0, same as a trustee whose real appointments
+    // just don't cover this case's court/division. Neither shape offers any evidence connecting
+    // this trustee to this case's court/division, so applyMatchOutcome reclassifies both as
+    // NO_TRUSTEE_MATCH (no candidates) rather than surfacing a same-name coincidence as a
+    // suggested match. See sync-trustee-case-appointments.ts's hasDistrictDivisionMatch gate.
     const verification5 = await db
       .collection('trustee-match-verification')
       .findOne({ caseId: CASES.imperfectMatch.caseId });
-    const candidate5 = verification5?.matchCandidates?.[0];
     if (
       verification5?.status === 'pending' &&
-      verification5?.mismatchReason === 'IMPERFECT_MATCH' &&
-      candidate5?.districtDivisionScore === 0 &&
-      candidate5?.chapterScore === 0 &&
-      candidate5?.addressScore === 0 &&
-      candidate5?.nameScore === 100
+      verification5?.mismatchReason === 'NO_TRUSTEE_MATCH' &&
+      (verification5?.matchCandidates?.length ?? -1) === 0
     ) {
       pass(
-        '5. imperfect-match: pending verification with expected score breakdown (name=100, address/district/chapter=0)',
+        '5. imperfect-match: pending verification reclassified to NO_TRUSTEE_MATCH, no candidates',
       );
     } else {
       fail(`5. imperfect-match: unexpected verification: ${JSON.stringify(verification5)}`);
@@ -1388,17 +1394,19 @@ async function runScenarios() {
     return;
   }
 
-  // First resolution: zero appointments -> imperfect match, verification created pending.
+  // First resolution: zero appointments -> districtDivisionScore 0 -> reclassified to
+  // NO_TRUSTEE_MATCH, verification created pending (see the imperfect-match scenario 5 comment
+  // above for why zero-appointment evidence is treated the same as no name match at all).
   const firstResolution = await SyncTrusteeCaseAppointmentsUseCase.processAppointments(deps, [
     reVerifyEvent,
   ]);
-  if (firstResolution.scenarioDistribution.imperfectMatchCount === 1) {
+  if (firstResolution.scenarioDistribution.noMatchCount === 1) {
     pass(
-      '11. re-verification: first pass resolves as imperfect-match (pending verification created)',
+      '11. re-verification: first pass resolves as NO_TRUSTEE_MATCH (pending verification created)',
     );
   } else {
     fail(
-      `11. re-verification: expected first-pass imperfectMatchCount 1, got ${firstResolution.scenarioDistribution.imperfectMatchCount}`,
+      `11. re-verification: expected first-pass noMatchCount 1, got ${firstResolution.scenarioDistribution.noMatchCount}`,
     );
   }
 

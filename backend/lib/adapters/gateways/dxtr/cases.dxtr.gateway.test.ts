@@ -1808,6 +1808,53 @@ describe('getTrusteeAppointments', () => {
     expect(result.events[0].courtDivisionCode).toBe('081');
   });
 
+  test('maps groupDesignator into the result alongside profCode', async () => {
+    // groupDesignator (AO_CS.GRP_DES) is a raw DXTR/ACMS fact crossed as-is - it is NOT combined
+    // into a formatted acmsProfessionalId here. That CAMS-specific construction (and its
+    // sentinel-suppression rule) belongs to the use-case layer that consumes this event, not this
+    // gateway - see resolveAcmsProfessionalIdForVerification in sync-trustee-case-appointments.ts.
+    querySpy.mockResolvedValue({
+      success: true,
+      results: {
+        recordset: [
+          {
+            caseId: '081-24-12345',
+            courtId: '081',
+            chapter: '7',
+            courtDivisionCode: '081',
+            groupDesignator: ' NY ',
+            firstName: 'Jane',
+            middleName: '',
+            lastName: 'Doe',
+            generation: '',
+            address1: '',
+            address2: '',
+            address3: '',
+            city: '',
+            state: '',
+            zip: '',
+            country: '',
+            email: '',
+            phone: '',
+            fax: '',
+            latestSyncDate: '2026-04-07T00:00:00.000Z',
+            aptDate: '260407',
+            profCode: '00123',
+          },
+        ],
+      },
+      message: '',
+    } as QueryResults);
+
+    const result = await gateway.getTrusteeAppointments(
+      applicationContext,
+      '2026-01-01T00:00:00.000Z',
+    );
+
+    expect(result.events[0].groupDesignator).toBe('NY');
+    expect(result.events[0].profCode).toBe('00123');
+  });
+
   test('reads aptDate from the type-A (TR) REC offset 24-30', async () => {
     querySpy.mockResolvedValue({
       success: true,
