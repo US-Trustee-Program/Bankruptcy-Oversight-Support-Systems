@@ -9,6 +9,9 @@ param actionGroupName string
 
 @description('Action Group Resource Group Name for alerts')
 param actionGroupResourceGroupName string
+
+@description('Subscription ID that contains the action group resource group. Defaults to the deploying subscription.')
+param actionGroupSubscriptionId string = subscription().subscriptionId
 @allowed([
   'Microsoft.Web/sites'
   'Microsoft.Sql/servers/databases'
@@ -19,7 +22,7 @@ param targetResourceType string
 
 resource actionGroup 'microsoft.insights/actionGroups@2023-01-01' existing = {
   name: actionGroupName
-  scope: resourceGroup(actionGroupResourceGroupName)
+  scope: resourceGroup(actionGroupSubscriptionId, actionGroupResourceGroupName)
 
 }
 
