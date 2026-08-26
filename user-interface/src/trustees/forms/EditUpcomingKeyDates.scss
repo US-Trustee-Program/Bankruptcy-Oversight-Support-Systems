@@ -6,6 +6,9 @@ $input-max-width: 20.75rem;
     margin-top: 1rem;
   }
 
+  // .usa-form-group above zeroes margin-top elsewhere; date-picker/month-year-selector
+  // need the full 1.5rem gap, so override explicitly here (relies on cascade order —
+  // keep this block after the .usa-form-group rule above).
   .date-picker,
   .month-year-selector {
     margin-top: 1.5rem;

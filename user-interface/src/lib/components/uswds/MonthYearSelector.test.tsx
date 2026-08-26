@@ -155,6 +155,37 @@ describe('MonthYearSelector', () => {
     expect(screen.queryByText('Both month and year are required.')).not.toBeInTheDocument();
   });
 
+  test('does not show error message while focus remains inside the fieldset', async () => {
+    const user = userEvent.setup();
+
+    render(<MonthYearSelector id="test" />);
+
+    await user.selectOptions(monthSelect(), '03');
+    await user.tab(); // moves to year select — still inside fieldset
+
+    expect(screen.queryByText('Both month and year are required.')).not.toBeInTheDocument();
+  });
+
+  test('disables both selects when disabled prop is true', () => {
+    render(<MonthYearSelector id="test" disabled />);
+
+    expect(monthSelect()).toBeDisabled();
+    expect(yearSelect()).toBeDisabled();
+  });
+
+  test('does not show error or disable Save when mounted with an incomplete value until the user interacts', () => {
+    const onValidationChange = vi.fn();
+
+    // Malformed 3-part value with an empty month segment — simulates legacy/malformed
+    // data reaching the form on initial load, without any user interaction.
+    render(
+      <MonthYearSelector id="test" value="2024--01" onValidationChange={onValidationChange} />,
+    );
+
+    expect(screen.queryByText('Both month and year are required.')).not.toBeInTheDocument();
+    expect(onValidationChange).not.toHaveBeenCalledWith(true);
+  });
+
   test('clears error state when parent resets value to empty after partial clear', () => {
     const onValidationChange = vi.fn();
 
