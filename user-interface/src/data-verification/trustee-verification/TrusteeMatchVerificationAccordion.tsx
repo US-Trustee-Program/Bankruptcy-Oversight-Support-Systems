@@ -453,10 +453,9 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     return order.resolvedTrusteeName ?? matchedCandidateName ?? order.resolvedTrusteeId ?? '';
   }
 
-  // Before expansion only the count is known (order.affectedCaseCount); the full case list
-  // (enrichedOrder.affectedCaseIds) is fetched on expand. affectedCaseCount of 0 means every
-  // affected case has already been remapped off its surrogate row (resolution in progress or
-  // complete) — fall back to the originating case rather than showing "0 cases".
+  // order.affectedCaseCount (list view) derives live from surrogate rows and can read 0 for
+  // an approved verification once those rows are remapped away, unlike enrichedOrder's
+  // snapshotted case list. Fall back to the originating case rather than showing "0 cases".
   const affectedCaseIds = enrichedOrder?.affectedCaseIds ?? [order.caseId];
   const affectedCaseCount = enrichedOrder
     ? enrichedOrder.affectedCaseIds.length

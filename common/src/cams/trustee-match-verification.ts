@@ -54,10 +54,9 @@ export type TrusteeMatchVerification = Auditable & {
   /** sha256(variant) — the bucket key used to find this document. See variant below. */
   fingerprint: string;
   /**
-   * Snapshot of case IDs affected by this fingerprint, taken at approval time before the
-   * async trustee-verification-remap job deletes the surrogate CaseAppointment rows that
-   * would otherwise be the only source of this information. Absent while status is 'pending'
-   * (surrogates are still live and queried directly instead).
+   * Snapshot of case IDs affected by this fingerprint, written only by approveVerification,
+   * before the async trustee-verification-remap job deletes the surrogate CaseAppointment
+   * rows that are otherwise the only source of this information.
    */
   affectedCaseIds?: string[];
   /**

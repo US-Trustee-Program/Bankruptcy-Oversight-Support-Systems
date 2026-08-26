@@ -361,6 +361,7 @@ export class TrusteeMatchVerificationUseCase {
         ]);
         affectedCaseIds = affectedCaseIdsByFingerprint.get(verification.fingerprint) ?? [];
       } else {
+        // Rejected verifications have no snapshot (only approveVerification writes one).
         affectedCaseIds = verification.affectedCaseIds ?? [];
       }
 
