@@ -82,23 +82,24 @@ cd test/integration/sync-acms-professional-ids/scripts
 
 ### `run` (happy path)
 
-| Assertion                                                                                           | What it verifies                                                                                               |
-| --------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `NY-00063` linked to `INTEGRATION-TRUSTEE-FINGERPRINT`                                              | Demographic-fingerprint matching auto-links a CMMPR record to its CAMS trustee via `TRUSTEE_VARIATION`         |
-| `NY-00064` linked to `INTEGRATION-TRUSTEE-NAME`                                                     | A fingerprint miss falls through to fuzzy name matching and auto-links                                         |
-| `NY-00065` has an errored `trustee-professional-ids` record with `error.disposition === 'no-match'` | No match + an active CMMAP appointment → an errored record (keyed by fingerprint) is written for later healing |
-| `NY-00065`'s errored record has a non-empty `variant`                                               | The raw demographic variant is persisted on the record, not re-queried later                                   |
-| `NY-00066` has no record at all                                                                     | No match + zero active appointments → silently skipped (no review noise)                                       |
-| `UT-00070` linked to `INTEGRATION-TRUSTEE-UT`                                                       | A second `GROUP_DESIGNATOR` is paged and processed independently of `NY`                                       |
-| `NY-00067` (deleted) and `NY-00068` (non-trustee) are never synced                                  | `DELETE_CODE='D'` and non-`'TR'` `PROF_TYPE` rows are filtered by the ACMS gateway query                       |
-| `runtime-state` bookmark reaches `NY >= 66` and `UT >= 70`                                          | Per-group cursor tracking advances correctly across the full CMMPR fixture set                                 |
+| Assertion                                                                                           | What it verifies                                                                                                                                                                |
+| --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NY-00063` linked to `INTEGRATION-TRUSTEE-FINGERPRINT`                                              | Demographic-fingerprint matching auto-links a CMMPR record to its CAMS trustee via `TRUSTEE_VARIATION`                                                                          |
+| `NY-00064` linked to `INTEGRATION-TRUSTEE-NAME`                                                     | A fingerprint miss falls through to fuzzy name matching and auto-links                                                                                                          |
+| `NY-00065` has an errored `trustee-professional-ids` record with `error.disposition === 'no-match'` | No match + an active CMMAP appointment → an errored record (keyed by fingerprint) is written for later healing                                                                  |
+| `NY-00065`'s errored record has a non-empty `variant`                                               | The raw demographic variant is persisted on the record, not re-queried later                                                                                                    |
+| `NY-00066` has no record at all                                                                     | No match + zero active appointments → silently skipped (no review noise)                                                                                                        |
+| `UT-00070` linked to `INTEGRATION-TRUSTEE-UT`                                                       | A second `GROUP_DESIGNATOR` is paged and processed independently of `NY`                                                                                                        |
+| `NY-00071` linked to `INTEGRATION-TRUSTEE-LEADINGZERO`                                              | A PROF_ZIP value that lost its leading zero in NUMERIC(9,0) storage still fingerprint-matches, proving `formatAcmsZip` zero-pads to 9 digits before splitting into `NNNNN-NNNN` |
+| `NY-00067` (deleted) and `NY-00068` (non-trustee) are never synced                                  | `DELETE_CODE='D'` and non-`'TR'` `PROF_TYPE` rows are filtered by the ACMS gateway query                                                                                        |
+| `runtime-state` bookmark reaches `NY >= 71` and `UT >= 70`                                          | Per-group cursor tracking advances correctly across the full CMMPR fixture set                                                                                                  |
 
 ### `run-purge`
 
 | Assertion                                                     | What it verifies                                                                                                          |
 | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | Runs the happy path first, then re-enqueues `{ purge: true }` | A `purge` StartMessage flag is honored on a subsequent run, not just the first                                            |
-| The same 3 professional-id links reappear after the purge     | `deleteAll` wipes `trustee-professional-ids` entirely, then the full CMMPR set reloads from scratch (not stale survivors) |
+| The same 4 professional-id links reappear after the purge     | `deleteAll` wipes `trustee-professional-ids` entirely, then the full CMMPR set reloads from scratch (not stale survivors) |
 
 ---
 

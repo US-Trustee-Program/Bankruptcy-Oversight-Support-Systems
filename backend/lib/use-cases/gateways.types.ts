@@ -307,7 +307,8 @@ export type AcmsTrusteeProfessionalDetailRecord = {
   address2?: string;
   city?: string;
   state?: string;
-  zip?: string;
+  /** Raw NUMERIC(9,0) PROF_ZIP value — see formatAcmsZip for the zero-padded/hyphenated shape. */
+  zip?: number;
   phone?: string;
   fax?: string;
   /**

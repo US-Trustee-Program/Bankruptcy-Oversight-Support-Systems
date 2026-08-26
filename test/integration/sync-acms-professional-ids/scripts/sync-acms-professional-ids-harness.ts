@@ -124,12 +124,14 @@ const DLQ_QUEUE = 'sync-acms-professional-ids-dlq';
 const FINGERPRINT_TRUSTEE_ID = 'INTEGRATION-TRUSTEE-FINGERPRINT';
 const NAME_TRUSTEE_ID = 'INTEGRATION-TRUSTEE-NAME';
 const UT_TRUSTEE_ID = 'INTEGRATION-TRUSTEE-UT';
+const LEADING_ZERO_TRUSTEE_ID = 'INTEGRATION-TRUSTEE-LEADINGZERO';
 
 const FINGERPRINT_ACMS_ID = 'NY-00063';
 const NAME_MATCH_ACMS_ID = 'NY-00064';
 const ACTIVE_NO_MATCH_ACMS_ID = 'NY-00065';
 const INACTIVE_NO_MATCH_ACMS_ID = 'NY-00066';
 const UT_ACMS_ID = 'UT-00070';
+const LEADING_ZERO_ACMS_ID = 'NY-00071';
 
 // ---------------------------------------------------------------------------
 // Pass / fail / info helpers (matches canonical harness pattern)
@@ -471,7 +473,9 @@ async function seedCosmos() {
     );
 
     // The fingerprint variant — built to match buildAcmsVariant's shape for
-    // UST_PROF_CODE 63's demographics in seed/01-seed-cmmpr.sql exactly.
+    // UST_PROF_CODE 63's demographics in seed/01-seed-cmmpr.sql exactly. PROF_ZIP is seeded there
+    // as the raw numeric 627010000; buildAcmsVariant formats it via formatAcmsZip into
+    // "62701-0000" (zero-padded to 9 digits, split 5+4), not the bare digit run.
     const fingerprintVariant = JSON.stringify({
       firstName: 'Iris',
       middleName: 'F',
@@ -480,7 +484,7 @@ async function seedCosmos() {
       address1: '500 Match Ln',
       address2: '',
       address3: '',
-      cityStateZipCountry: 'Springfield IL 627010000',
+      cityStateZipCountry: 'Springfield IL 62701-0000',
       phone: '2175550100',
       fax: '',
       email: '',
@@ -544,6 +548,67 @@ async function seedCosmos() {
       { upsert: true },
     );
     pass(`Seeded trustee profile for ${UT_TRUSTEE_ID} (cross-group name-match target)`);
+
+    // Trustee for the leading-zero-zip fingerprint-match scenario (UST_PROF_CODE 71).
+    await db.collection('trustees').updateOne(
+      { documentType: 'TRUSTEE', trusteeId: LEADING_ZERO_TRUSTEE_ID },
+      {
+        $set: {
+          documentType: 'TRUSTEE',
+          trusteeId: LEADING_ZERO_TRUSTEE_ID,
+          name: 'Lena L Leadingzero',
+          status: 'active',
+          public: {},
+          updatedOn: now,
+        },
+        $setOnInsert: { createdOn: now },
+      },
+      { upsert: true },
+    );
+
+    // The leading-zero-zip fingerprint variant — built to match buildAcmsVariant's shape for
+    // UST_PROF_CODE 71's demographics in seed/01-seed-cmmpr.sql exactly. PROF_ZIP is seeded there
+    // as the raw numeric 65110000 (New Haven, CT's real 065110000 with NUMERIC(9,0) storage
+    // already having dropped the leading zero); formatAcmsZip zero-pads back to 9 digits before
+    // splitting 5+4, producing "06511-0000", not "65110-000" or any other misaligned split.
+    const leadingZeroVariant = JSON.stringify({
+      firstName: 'Lena',
+      middleName: 'L',
+      lastName: 'Leadingzero',
+      generation: '',
+      address1: '400 Elm St',
+      address2: '',
+      address3: '',
+      cityStateZipCountry: 'New Haven CT 06511-0000',
+      phone: '2035550800',
+      fax: '',
+      email: '',
+    });
+    const leadingZeroFingerprint = crypto
+      .createHash('sha256')
+      .update(leadingZeroVariant)
+      .digest('hex');
+
+    await db.collection('trustee-variation').updateOne(
+      {
+        documentType: 'TRUSTEE_VARIATION',
+        fingerprint: leadingZeroFingerprint,
+        variant: leadingZeroVariant,
+      },
+      {
+        $set: {
+          documentType: 'TRUSTEE_VARIATION',
+          fingerprint: leadingZeroFingerprint,
+          variant: leadingZeroVariant,
+          trusteeId: LEADING_ZERO_TRUSTEE_ID,
+          updatedOn: now,
+          updatedBy: { id: 'HARNESS', name: 'HARNESS' },
+        },
+        $setOnInsert: { createdOn: now, createdBy: { id: 'HARNESS', name: 'HARNESS' } },
+      },
+      { upsert: true },
+    );
+    pass(`Seeded TRUSTEE_VARIATION for ${LEADING_ZERO_TRUSTEE_ID}`);
   } finally {
     await client.close();
   }
@@ -566,6 +631,7 @@ async function clean() {
           ACTIVE_NO_MATCH_ACMS_ID,
           INACTIVE_NO_MATCH_ACMS_ID,
           UT_ACMS_ID,
+          LEADING_ZERO_ACMS_ID,
         ],
       },
     });
@@ -573,11 +639,13 @@ async function clean() {
 
     const r3 = await db
       .collection('trustee-variation')
-      .deleteMany({ trusteeId: FINGERPRINT_TRUSTEE_ID });
+      .deleteMany({ trusteeId: { $in: [FINGERPRINT_TRUSTEE_ID, LEADING_ZERO_TRUSTEE_ID] } });
     pass(`Deleted ${r3.deletedCount} trustee-variation doc(s)`);
 
     const r4 = await db.collection('trustees').deleteMany({
-      trusteeId: { $in: [FINGERPRINT_TRUSTEE_ID, NAME_TRUSTEE_ID, UT_TRUSTEE_ID] },
+      trusteeId: {
+        $in: [FINGERPRINT_TRUSTEE_ID, NAME_TRUSTEE_ID, UT_TRUSTEE_ID, LEADING_ZERO_TRUSTEE_ID],
+      },
     });
     pass(`Deleted ${r4.deletedCount} trustee profile doc(s)`);
 
@@ -610,6 +678,22 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
   } else {
     fail(
       `Fingerprint match: expected ${FINGERPRINT_ACMS_ID} linked to ${FINGERPRINT_TRUSTEE_ID}, got ${JSON.stringify(fingerprintLink)}`,
+    );
+  }
+
+  // Scenario 1b: a leading-zero PROF_ZIP (New Haven, CT) still fingerprint-matches —
+  // formatAcmsZip's zero-padding must produce the exact same variant/fingerprint the harness
+  // computed for LEADING_ZERO_TRUSTEE_ID, not a shifted/misaligned zip split.
+  const leadingZeroLink = await db
+    .collection('trustee-professional-ids')
+    .findOne({ acmsProfessionalId: LEADING_ZERO_ACMS_ID });
+  if (leadingZeroLink?.camsTrusteeId === LEADING_ZERO_TRUSTEE_ID) {
+    pass(
+      `Fingerprint match (leading-zero zip): ${LEADING_ZERO_ACMS_ID} linked to ${LEADING_ZERO_TRUSTEE_ID}`,
+    );
+  } else {
+    fail(
+      `Fingerprint match (leading-zero zip): expected ${LEADING_ZERO_ACMS_ID} linked to ${LEADING_ZERO_TRUSTEE_ID}, got ${JSON.stringify(leadingZeroLink)}`,
     );
   }
 
@@ -695,7 +779,7 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
     .collection('runtime-state')
     .findOne({ documentType: 'ACMS_PROFESSIONAL_ID_SYNC_STATE' });
   const byGroup = stateDoc?.lastUstProfCodeByGroup ?? {};
-  if (byGroup.NY >= 66 && byGroup.UT >= 70) {
+  if (byGroup.NY >= 71 && byGroup.UT >= 70) {
     pass(`Sync bookmark advanced correctly: ${JSON.stringify(byGroup)}`);
   } else {
     fail(`Sync bookmark did not advance as expected: ${JSON.stringify(byGroup)}`);
@@ -731,19 +815,21 @@ async function run() {
   console.log('Step 4: Wait for function app to process (up to 30s)');
   const { client, db } = await getMongoDb();
   try {
-    // 3 professional-id links expected (fingerprint, name, cross-group UT)
+    // 4 professional-id links expected (fingerprint, name, cross-group UT, leading-zero-zip fingerprint)
     const satisfied = await pollUntil(async () => {
       const count = await db.collection('trustee-professional-ids').countDocuments({
-        acmsProfessionalId: { $in: [FINGERPRINT_ACMS_ID, NAME_MATCH_ACMS_ID, UT_ACMS_ID] },
+        acmsProfessionalId: {
+          $in: [FINGERPRINT_ACMS_ID, NAME_MATCH_ACMS_ID, UT_ACMS_ID, LEADING_ZERO_ACMS_ID],
+        },
       });
-      return count >= 3;
+      return count >= 4;
     });
 
     if (!satisfied) {
-      fail('Timed out waiting for 3 professional-id links — is the function app running?');
+      fail('Timed out waiting for 4 professional-id links — is the function app running?');
       return;
     }
-    pass('Detected 3 professional-id links in MongoDB');
+    pass('Detected 4 professional-id links in MongoDB');
 
     // Errored professional-id record for the active-no-match scenario arrives
     // after the active-appointment gate check completes.
@@ -788,13 +874,15 @@ async function runPurge() {
   console.log('Step 2: Wait for the purge + full reload to complete (up to 30s)');
   const { client, db } = await getMongoDb();
   try {
-    // After a purge, the same 3 links must exist again (freshly reloaded, not
+    // After a purge, the same 4 links must exist again (freshly reloaded, not
     // stale survivors — deleteAll wipes trustee-professional-ids entirely).
     const satisfied = await pollUntil(async () => {
       const count = await db.collection('trustee-professional-ids').countDocuments({
-        acmsProfessionalId: { $in: [FINGERPRINT_ACMS_ID, NAME_MATCH_ACMS_ID, UT_ACMS_ID] },
+        acmsProfessionalId: {
+          $in: [FINGERPRINT_ACMS_ID, NAME_MATCH_ACMS_ID, UT_ACMS_ID, LEADING_ZERO_ACMS_ID],
+        },
       });
-      return count >= 3;
+      return count >= 4;
     });
 
     if (!satisfied) {

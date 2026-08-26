@@ -353,7 +353,7 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
         RTRIM(ACMS.PROF_ADDRESS2) AS address2,
         RTRIM(ACMS.PROF_CITY) AS city,
         RTRIM(ACMS.PROF_STATE) AS state,
-        CAST(ACMS.PROF_ZIP AS VARCHAR(9)) AS zip,
+        ACMS.PROF_ZIP AS zip,
         CAST(ACMS.PROF_COMMERCIAL_PHONE_NBR AS VARCHAR(10)) AS phone,
         CAST(ACMS.PROF_FAX_NBR AS VARCHAR(10)) AS fax,
         ACMS.UST_PROF_CODE AS ustProfCode

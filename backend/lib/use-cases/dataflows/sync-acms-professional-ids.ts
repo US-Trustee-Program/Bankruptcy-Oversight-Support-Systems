@@ -11,8 +11,7 @@ import { ACMS_SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { matchTrusteeByName } from './trustee-match.helpers';
 import { buildAcmsVariant } from './acms-trustee-variant.helpers';
 import { computeFingerprint } from './trustee-variant.helpers';
-import { CandidateScore } from '@common/cams/dataflow-events';
-import { DxtrTrusteeParty } from '@common/cams/dataflow-events';
+import { AcmsTrusteeProfessional, CandidateScore } from '@common/cams/dataflow-events';
 import { TrusteeProfessionalIdError } from '@common/cams/trustee-professional-ids';
 
 const ACMS_PROFESSIONAL_ID_SYNC_STATE = 'ACMS_PROFESSIONAL_ID_SYNC_STATE' as const;
@@ -176,13 +175,37 @@ async function processFingerprintMatch(
   return { kind: 'auto-linked', trusteeId: match.trusteeId };
 }
 
-function toDxtrTrusteePartyShape(record: AcmsTrusteeProfessionalDetailRecord): DxtrTrusteeParty {
+/**
+ * Splits a compound PROF_FIRST_NAME (e.g. "CAROLINE RENEE") into its first token and the
+ * remainder, but ONLY when PROF_MI is empty — CMMPR sometimes carries a middle name inside
+ * PROF_FIRST_NAME instead of using PROF_MI, and calculateNameScore's exact-match-or-initial
+ * firstName comparison has no tolerance for an unsplit compound value, so this normalizes it to
+ * the same firstName/middleName split DXTR already produces before it ever reaches the shared
+ * matcher. Left untouched whenever PROF_MI is already populated, since a compound firstName
+ * alongside a real middle initial is a different (and much rarer) shape not addressed here.
+ */
+function splitCompoundFirstName(
+  firstName: string | undefined,
+  middleInitial: string | undefined,
+): { firstName: string | undefined; middleName: string | undefined } {
+  if (middleInitial || !firstName) return { firstName, middleName: middleInitial };
+
+  const tokens = firstName.trim().split(/\s+/);
+  if (tokens.length < 2) return { firstName, middleName: middleInitial };
+
+  return { firstName: tokens[0], middleName: tokens.slice(1).join(' ') };
+}
+
+function toAcmsTrusteeProfessional(
+  record: AcmsTrusteeProfessionalDetailRecord,
+): AcmsTrusteeProfessional {
+  const { firstName, middleName } = splitCompoundFirstName(record.firstName, record.middleInitial);
   const fullName = [record.firstName, record.middleInitial, record.lastName]
     .filter(Boolean)
     .join(' ');
   return {
-    firstName: record.firstName,
-    middleName: record.middleInitial,
+    firstName,
+    middleName,
     lastName: record.lastName,
     fullName,
   };
@@ -204,8 +227,8 @@ async function processNameMatch(
   deps: SyncAcmsProfessionalIdsDeps,
   record: AcmsTrusteeProfessionalDetailRecord,
 ): Promise<NameMatchResult> {
-  const dxtrTrusteeShape = toDxtrTrusteePartyShape(record);
-  const result = await matchTrusteeByName(deps.context, dxtrTrusteeShape, undefined);
+  const acmsTrusteeProfessional = toAcmsTrusteeProfessional(record);
+  const result = await matchTrusteeByName(deps.context, acmsTrusteeProfessional, undefined);
 
   if (result.kind === 'no-match') {
     return { kind: 'no-match' };
