@@ -21,6 +21,7 @@ source "$SCRIPT_DIR/_az-deploy-retry.sh"
 analyticsWorkspaceId=
 actionGroupResourceGroup=
 actionGroupName=
+actionGroupSubscriptionId=
 branchHashId=''
 allowedIps='[]'
 
@@ -76,6 +77,10 @@ while [[ $# -gt 0 ]]; do
         shift 2
         ;;
 
+    --actionGroupSubscriptionId)
+        actionGroupSubscriptionId="${2}"
+        shift ;;
+
     --analyticsWorkspaceId)
         analyticsWorkspaceId="${2}"
         shift 2
@@ -126,7 +131,7 @@ export AZ_DEPLOY_RETRY_INITIAL_DELAY_SECONDS=60
 
 # shellcheck disable=SC2086 # REASON: Qoutes render the CreateAlerts property unusable
 az_deploy_with_retry_func az deployment group create -g "${resourceGroup}" -f ./ops/cloud-deployment/ustp-cams-cosmos.bicep \
-    -p resourceGroupName="${resourceGroup}" accountName="${account}" databaseName="${database}" allowedNetworks="${allowedNetworks}" allowedIps="${allowedIps}" analyticsWorkspaceId="${analyticsWorkspaceId}" allowAllNetworks="${allowAllNetworks}" keyVaultName="${keyVaultName}" kvResourceGroup="${kvResourceGroup}" createAlerts=${createAlerts} actionGroupResourceGroupName="${actionGroupResourceGroup}" actionGroupName="${actionGroupName}" e2eDatabaseName="${e2eDatabaseName}" deployE2eDatabase=true
+    -p resourceGroupName="${resourceGroup}" accountName="${account}" databaseName="${database}" allowedNetworks="${allowedNetworks}" allowedIps="${allowedIps}" analyticsWorkspaceId="${analyticsWorkspaceId}" allowAllNetworks="${allowAllNetworks}" keyVaultName="${keyVaultName}" kvResourceGroup="${kvResourceGroup}" createAlerts=${createAlerts} actionGroupResourceGroupName="${actionGroupResourceGroup}" actionGroupName="${actionGroupName}" actionGroupSubscriptionId="${actionGroupSubscriptionId}" e2eDatabaseName="${e2eDatabaseName}" deployE2eDatabase=true
 
 # TEMPORARY GUARD (cams-ez2y): the CI runner's managed identity currently lacks
 # Microsoft.KeyVault/vaults/secrets/getSecret/action RBAC on the
