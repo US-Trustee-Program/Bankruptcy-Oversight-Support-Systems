@@ -22,9 +22,9 @@ describe('UPCOMING_KEY_DATES_FIELD_CONFIG chapter13-standing variant', () => {
   });
 
   test('first field is Annual Audit Review Period constant 10/01 - 09/30', () => {
-    const field = config[0];
-    expect(field.kind).toBe('constant');
-    if (field.kind === 'constant') {
+    const field = config.find((f) => f.key === 'annualAuditReviewPeriod');
+    expect(field?.kind).toBe('constant');
+    if (field?.kind === 'constant') {
       expect(field.displayLabel).toBe('Annual Audit Review Period');
       expect(field.value).toBe('10/01 - 09/30');
       expect(field.testId).toBe('annual-audit-review-period-row');
@@ -32,18 +32,18 @@ describe('UPCOMING_KEY_DATES_FIELD_CONFIG chapter13-standing variant', () => {
   });
 
   test('Budget Submission Due constant is 07/01', () => {
-    const field = config[4];
-    expect(field.kind).toBe('constant');
-    if (field.kind === 'constant') {
+    const field = config.find((f) => f.key === 'budgetSubmissionDue');
+    expect(field?.kind).toBe('constant');
+    if (field?.kind === 'constant') {
       expect(field.displayLabel).toBe('Budget Submission Due');
       expect(field.value).toBe('07/01');
     }
   });
 
   test('Budget Review to OO constant is 08/15', () => {
-    const field = config[5];
-    expect(field.kind).toBe('constant');
-    if (field.kind === 'constant') {
+    const field = config.find((f) => f.key === 'budgetReviewToOO');
+    expect(field?.kind).toBe('constant');
+    if (field?.kind === 'constant') {
       expect(field.displayLabel).toBe('Budget Review to OO');
       expect(field.value).toBe('08/15');
     }
@@ -52,18 +52,17 @@ describe('UPCOMING_KEY_DATES_FIELD_CONFIG chapter13-standing variant', () => {
   test.each([
     [
       'tprReviewPeriod',
-      1,
       'TPR Review Period',
       { tprReviewPeriodStart: '1900-04-01', tprReviewPeriodEnd: '1900-03-31' },
       '04/01 - 03/31',
     ],
-    ['tprDue', 2, 'TPR Due', { tprDue: '1900-06-15', tprDueYearType: 'EVEN' }, '06/15 EVEN'],
+    ['tprDue', 'TPR Due', { tprDue: '1900-06-15', tprDueYearType: 'EVEN' }, '06/15 EVEN'],
   ])(
     '%s computed field has label "%s" and correct null/value output',
-    (_key, index, expectedLabel, dataOverride, expectedValue) => {
-      const field = config[index as number];
-      expect(field.kind).toBe('computed');
-      if (field.kind === 'computed') {
+    (key, expectedLabel, dataOverride, expectedValue) => {
+      const field = config.find((f) => f.key === key);
+      expect(field?.kind).toBe('computed');
+      if (field?.kind === 'computed') {
         const nullResult = field.buildField(null);
         expect(nullResult.label).toBe(expectedLabel);
         expect(nullResult.value).toBe('No date added');
@@ -76,9 +75,9 @@ describe('UPCOMING_KEY_DATES_FIELD_CONFIG chapter13-standing variant', () => {
   );
 
   test('leaseExpiration computed shows No date added when data is null', () => {
-    const field = config[3];
-    expect(field.kind).toBe('computed');
-    if (field.kind === 'computed') {
+    const field = config.find((f) => f.key === 'leaseExpiration');
+    expect(field?.kind).toBe('computed');
+    if (field?.kind === 'computed') {
       const result = field.buildField(null);
       expect(result.label).toBe('Lease Expiration');
       expect(result.value).toBe('No date added');
@@ -86,18 +85,18 @@ describe('UPCOMING_KEY_DATES_FIELD_CONFIG chapter13-standing variant', () => {
   });
 
   test('leaseExpiration computed shows MM/DD/YYYY when data is set', () => {
-    const field = config[3];
-    expect(field.kind).toBe('computed');
-    if (field.kind === 'computed') {
+    const field = config.find((f) => f.key === 'leaseExpiration');
+    expect(field?.kind).toBe('computed');
+    if (field?.kind === 'computed') {
       const result = field.buildField({ ...baseDoc, leaseExpiration: '2027-06-30' });
       expect(result.value).toBe('06/30/2027');
     }
   });
 
   test('idExpiration computed shows No date added when data is null', () => {
-    const field = config[6];
-    expect(field.kind).toBe('computed');
-    if (field.kind === 'computed') {
+    const field = config.find((f) => f.key === 'idExpiration');
+    expect(field?.kind).toBe('computed');
+    if (field?.kind === 'computed') {
       const result = field.buildField(null);
       expect(result.label).toBe('ID Expiration');
       expect(result.value).toBe('No date added');
@@ -105,9 +104,9 @@ describe('UPCOMING_KEY_DATES_FIELD_CONFIG chapter13-standing variant', () => {
   });
 
   test('idExpiration computed shows MM/DD/YYYY when data is set', () => {
-    const field = config[6];
-    expect(field.kind).toBe('computed');
-    if (field.kind === 'computed') {
+    const field = config.find((f) => f.key === 'idExpiration');
+    expect(field?.kind).toBe('computed');
+    if (field?.kind === 'computed') {
       const result = field.buildField({ ...baseDoc, idExpiration: '2028-12-31' });
       expect(result.value).toBe('12/31/2028');
     }
