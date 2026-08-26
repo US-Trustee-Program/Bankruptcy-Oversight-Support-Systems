@@ -278,14 +278,13 @@ export class TrusteeMatchVerificationUseCase {
       // 4. Enqueue the async batch remap BEFORE flipping status — every surrogate
       // CaseAppointment sharing this fingerprint (not just verification.caseId) gets
       // remapped to resolvedTrusteeId by the queue-triggered trustee-verification-remap
-      // handler. Enqueue-then-approve (not approve-then-enqueue) is deliberate: if this
-      // throws, the verification stays 'pending' and is retryable through this same
-      // endpoint, rather than permanently 'approved' with no way to re-trigger the remap
-      // (the pending-status guard above would otherwise block a retry forever, the same
-      // silent-drop failure mode this PR fixes for extraOutputs elsewhere). A retried
-      // approve that re-enqueues is safe: handleRemap is itself idempotent, so re-running
-      // it against a fingerprint that was already fully remapped on a prior attempt just
-      // finds no surrogates left and no-ops.
+      // handler. queueTrusteeVerificationRemap sends synchronously via the Storage Queue
+      // SDK and throws on failure, so if this throws, nothing was sent and the verification
+      // stays 'pending' and retryable through this same endpoint (the pending-status guard
+      // above would otherwise block a retry forever). A retried approve that re-enqueues is
+      // safe: handleRemap is itself idempotent, so re-running it against a fingerprint that
+      // was already fully remapped on a prior attempt just finds no surrogates left and
+      // no-ops.
       const apiToDataflows = factory.getApiToDataflowsGateway(context);
       const remapMessage: TrusteeVerificationRemapMessage = {
         fingerprint: verification.fingerprint,
