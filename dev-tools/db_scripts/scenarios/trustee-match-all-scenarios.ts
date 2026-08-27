@@ -29,6 +29,15 @@
  *     - Inactive trustee + removed appointment
  *     - Inactive trustee + deceased appointment
  *
+ *   - Multi-case scenarios. affectedCaseCount/affectedCaseIds are never stored on the
+ *     verification document - they're derived live by querying trustee-case-appointments for
+ *     surrogate CASE_APPOINTMENT rows sharing the mismatch's fingerprint (see
+ *     getAffectedCaseIdsByFingerprint in trustee-match-verification.use-case.ts):
+ *     5. Pending, 3 affected cases, one match candidate.
+ *     6. Already approved, with NO surviving surrogate rows - simulates the state after
+ *        trustee-verification-remap.ts has deleted every surrogate for a resolved fingerprint,
+ *        leaving no durable record of which cases it affected.
+ *
  * NOTE: Uses existing DXTR cases - no DXTR seeding required.
  */
 
@@ -49,6 +58,12 @@ const CASE_TERMINATED = '091-99-00874'; // Ch 11 (reuse)
 const CASE_RESIGNED = '091-99-92748'; // Ch 12 (reuse)
 const CASE_REMOVED = '091-99-87899'; // Ch 11 (reuse)
 const CASE_DECEASED = '091-99-00874'; // Ch 11 (reuse)
+
+// Multi-case scenarios (3 distinct cases, previously-unused in this file)
+const CASE_MULTI_A = '091-99-86706';
+const CASE_MULTI_B = '091-99-99943';
+const CASE_MULTI_C = '091-99-98483';
+const CASE_RESOLVED_NO_SURROGATES = '091-99-97816';
 
 // DXTR trustee identities shared between `fingerprint` (via computeFingerprint) and
 // `dxtrTrustee` below, so the two can never drift out of sync with each other.
@@ -100,8 +115,38 @@ const DXTR_INACTIVE_TRUSTEE_DECEASED_APPT = {
   lastName: 'Inactivematch',
   fullName: 'Morgan E Inactivematch',
 };
+const DXTR_MULTI_CASE = {
+  firstName: 'Casey',
+  lastName: 'Multicasematch',
+  fullName: 'Casey Multicasematch',
+};
+const DXTR_RESOLVED_NO_SURROGATES = {
+  firstName: 'Riley',
+  lastName: 'Resolvedmatch',
+  fullName: 'Riley Resolvedmatch',
+};
 
 export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
+  // Surrogates shared by the multi-case pending mismatch below. Computed up front (rather than
+  // inline in the array) so the fingerprint on the surrogates and the verification document
+  // can never drift apart.
+  const multiCaseFingerprint = computeFingerprint(DXTR_MULTI_CASE);
+  const multiCaseSurrogates = [CASE_MULTI_A, CASE_MULTI_B, CASE_MULTI_C].map((caseId) => ({
+    id: `seed-surrogate-multicase-${caseId}`,
+    documentType: 'CASE_APPOINTMENT',
+    caseId,
+    trusteeId: multiCaseFingerprint,
+    assignedOn: '2018-01-01T00:00:00.000Z',
+    appointedDate: '2018-01-01',
+    isSurrogate: true,
+    chapter: '11',
+    courtDivisionCode: '091',
+    createdOn: '2025-03-01T00:00:00.000Z',
+    createdBy: SEEDER,
+    updatedOn: '2025-03-01T00:00:00.000Z',
+    updatedBy: SEEDER,
+  }));
+
   return [
     // ── Cosmos: Trustees for match scenarios ─────────────────────────────────
 
@@ -221,6 +266,26 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           zipCode: '10006',
           phone: '212-555-6000',
           email: 'morgan.inactivematch@example.com',
+        }),
+      ],
+    },
+
+    // Active trustee, candidate for the multi-case mismatch scenario
+    {
+      db: 'cams',
+      collectionOrTable: 'trustees',
+      data: [
+        createTrusteeBase({
+          id: 'seed-trustee-match-multicase',
+          firstName: 'Cassidy',
+          lastName: 'Multicasematch',
+          status: 'active',
+          address1: '700 Match Ln',
+          city: 'New York',
+          state: 'NY',
+          zipCode: '10007',
+          phone: '212-555-7000',
+          email: 'cassidy.multicasematch@example.com',
         }),
       ],
     },
@@ -474,6 +539,11 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           status: 'pending',
           taskDate: '2016-04-11T00:00:00.000Z',
           mismatchReason: 'AMBIGUOUS_MATCH_UNRESOLVED',
+          fingerprint: computeFingerprint({
+            firstName: 'S',
+            lastName: 'Lowconfidence',
+            fullName: 'S Lowconfidence',
+          }),
           dxtrTrustee: {
             firstName: 'S',
             lastName: 'Lowconfidence',
@@ -835,6 +905,86 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           ],
           inactiveAppointmentStatus: 'deceased',
           updatedOn: '2025-03-01T00:00:00.000Z',
+          updatedBy: SEEDER,
+        },
+      ],
+    },
+
+    // Pending multi-case mismatch: 3 surrogate CASE_APPOINTMENTs sharing one fingerprint,
+    // dual-written to both partitions (see TrusteeCaseAppointmentsMongoRepository's
+    // casePartition/trusteePartition) so getSurrogatesByFingerprints can find them.
+    {
+      db: 'cams',
+      collectionOrTable: 'case-trustee-appointments',
+      data: multiCaseSurrogates,
+    },
+    {
+      db: 'cams',
+      collectionOrTable: 'trustee-case-appointments',
+      data: multiCaseSurrogates,
+    },
+    {
+      db: 'cams',
+      collectionOrTable: 'trustee-match-verification',
+      data: [
+        {
+          id: `seed-match-multicase-${CASE_MULTI_A}`,
+          documentType: 'TRUSTEE_MATCH_VERIFICATION',
+          taskType: 'trustee-match',
+          caseId: CASE_MULTI_A,
+          courtId: '0208',
+          status: 'pending',
+          taskDate: '2018-01-01T00:00:00.000Z',
+          mismatchReason: 'IMPERFECT_MATCH',
+          fingerprint: multiCaseFingerprint,
+          dxtrTrustee: DXTR_MULTI_CASE,
+          matchCandidates: [
+            {
+              trusteeId: 'seed-trustee-match-multicase',
+              trusteeName: 'Cassidy Multicasematch',
+              totalScore: 70,
+              addressScore: 70,
+              districtDivisionScore: 100,
+              chapterScore: 100,
+              address: {
+                address1: '700 Match Ln',
+                city: 'New York',
+                state: 'NY',
+                zipCode: '10007',
+                countryCode: 'US',
+              },
+              phone: { number: '212-555-7000' },
+              email: 'cassidy.multicasematch@example.com',
+            },
+          ],
+          updatedOn: '2025-03-01T00:00:00.000Z',
+          updatedBy: SEEDER,
+        },
+      ],
+    },
+
+    // Already-approved mismatch, no surviving surrogates: simulates the state after
+    // trustee-verification-remap.ts has deleted every surrogate for this fingerprint, so
+    // getAffectedCaseIdsByFingerprint returns an empty array.
+    {
+      db: 'cams',
+      collectionOrTable: 'trustee-match-verification',
+      data: [
+        {
+          id: `seed-match-resolved-no-surrogates-${CASE_RESOLVED_NO_SURROGATES}`,
+          documentType: 'TRUSTEE_MATCH_VERIFICATION',
+          taskType: 'trustee-match',
+          caseId: CASE_RESOLVED_NO_SURROGATES,
+          courtId: '0208',
+          status: 'approved',
+          taskDate: '2018-06-01T00:00:00.000Z',
+          mismatchReason: 'IMPERFECT_MATCH',
+          fingerprint: computeFingerprint(DXTR_RESOLVED_NO_SURROGATES),
+          dxtrTrustee: DXTR_RESOLVED_NO_SURROGATES,
+          matchCandidates: [],
+          resolvedTrusteeId: 'seed-trustee-match-highconf',
+          resolvedTrusteeName: 'Alex Highconfidence',
+          updatedOn: '2025-06-01T00:00:00.000Z',
           updatedBy: SEEDER,
         },
       ],
