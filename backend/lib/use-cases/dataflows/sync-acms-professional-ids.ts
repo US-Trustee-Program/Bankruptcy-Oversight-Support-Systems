@@ -256,9 +256,7 @@ async function resolveCandidatesByCorroboration(
 
 /**
  * Falls through from a fingerprint miss to CAMS's existing name-matching logic
- * (matchTrusteeByName), reused as-is with the same thresholds as the DXTR sync. Called with no
- * courtId — an ACMS professional record has no associated case/court — which only narrows
- * matchTrusteeByName's last-name-token fallback path, it does not error.
+ * (matchTrusteeByName), reused as-is with the same thresholds as the DXTR sync.
  *
  * Unlike sync-trustee-case-appointments.ts, an ambiguous match here is NOT further resolved via
  * resolveNameCollisionByScoring: that function hard-requires a case-appointment event

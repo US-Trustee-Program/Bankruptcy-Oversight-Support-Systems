@@ -961,69 +961,52 @@ export async function resolveNameCollisionByScoring(
 }
 
 /**
- * Minimum nameScore (see calculateNameScore) for a candidate to even be considered by
- * resolveByContactCorroboration - below this, a name difference is too weak a starting point for
+ * Minimum nameScore (see calculateNameScore) for a candidate to be considered by
+ * resolveByContactCorroboration. Below this, a name difference is too weak a starting point for
  * contact-field corroboration to rescue, regardless of how well address/phone/email line up.
- * Matches the threshold backtested in test/integration/sync-acms-professional-ids-audit/scripts/
- * auto-link-threshold-backtest.ts against a real trustee-professional-ids export: 860 of 2229
- * ACMS no-match/ambiguous records would auto-link under this rule, hand-verified as genuine
- * matches.
+ * Tuned via test/integration/sync-acms-professional-ids-audit/scripts/auto-link-threshold-backtest.ts.
  */
 const CONTACT_CORROBORATION_NAME_THRESHOLD = 85;
 
 /**
  * Minimum addressScore for address alone to count as strong corroboration under
  * resolveByContactCorroboration. Phone/email use their own scale's maximum (100, an exact
- * normalized-digit or case-insensitive match) rather than a lower threshold, since both are
- * short, structured values where a partial match is not meaningfully distinguishable from
- * coincidence the way a fuzzy address bigram score is.
+ * normalized-digit or case-insensitive match) instead, since both are short, structured values
+ * where a partial match isn't meaningfully distinguishable from coincidence the way a fuzzy
+ * address bigram score is.
  */
 const CONTACT_CORROBORATION_ADDRESS_THRESHOLD = 80;
 
 /**
- * Minimum addressScore for a PARSEABLE ACMS address to be treated as merely a weak positive
- * signal (allowed through isNoContradictionMatch's fallback) rather than a genuine disagreement
- * (blocked). Backtested against a real trustee-professional-ids export: a parseable-address
- * record scoring below this floor (e.g. ACMS says Charleston SC, CAMS says New York NY -
- * addressScore=0) reflects two genuinely different addresses, not a near-miss - contrast a record
- * like THOMAS HOOPER's, where both sides list the exact same building/suite/city/zip and
- * addressScore=78 purely from a street-line formatting difference ("55 E. Monroe St., Suite 3850"
- * vs "55 E. Monroe, Suite 3850"). Set low enough to exclude clear disagreements while still
- * letting near-misses like Hooper's (which just barely missed
- * CONTACT_CORROBORATION_ADDRESS_THRESHOLD's 80) through.
+ * Minimum addressScore for a parseable ACMS address to be treated as a weak positive signal
+ * (allowed through isNoContradictionMatch's fallback) rather than a genuine disagreement
+ * (blocked). Tuned via the same backtest as CONTACT_CORROBORATION_NAME_THRESHOLD.
  */
 const NO_CONTRADICTION_ADDRESS_FLOOR = 30;
 
 /**
- * Resolves a name-match candidate list purely on name + address/phone/email corroboration, with
- * NO case-appointment-shaped evidence (no district/division, no chapter, no isAppointmentMatch
- * gate) - unlike resolveNameCollisionByScoring, this never touches
- * TrusteeAppointmentSyncEvent/getTrusteeAppointments, so it works for a source record that has no
- * case/court context at all (an ACMS professional record - see sync-acms-professional-ids.ts's
- * processNameMatch). Shared rather than ACMS-only: DXTR callers with real case-appointment
- * context should keep preferring resolveNameCollisionByScoring's stronger, appointment-gated
- * resolution first - this function is a corroboration path for when that evidence is unavailable
- * or has already come back unresolved, not a replacement for it.
+ * Resolves a name-match candidate list on name + address/phone/email corroboration alone, with no
+ * case-appointment-shaped evidence (no district/division, no chapter, no isAppointmentMatch gate)
+ * - unlike resolveNameCollisionByScoring, this never touches
+ * TrusteeAppointmentSyncEvent/getTrusteeAppointments, so it works for a source record with no
+ * case/court context (an ACMS professional record - see sync-acms-professional-ids.ts's
+ * processNameMatch). Shared rather than ACMS-only, as a corroboration path for when
+ * resolveNameCollisionByScoring's stronger appointment-gated evidence is unavailable or already
+ * unresolved - not a replacement for it.
  *
  * Winner criteria (see CONTACT_CORROBORATION_NAME_THRESHOLD/CONTACT_CORROBORATION_ADDRESS_THRESHOLD):
- *  - EXACTLY ONE candidate clears nameScore >= 85. Two or more candidates clearing the name bar is
- *    always 'unresolved' here, even if one has much stronger contact corroboration than the
- *    other - picking a winner among multiple plausible same-name candidates needs its own
- *    duplicate-vs-genuine-ambiguity handling (see resolveDuplicateNameCandidates), not this
- *    function.
- *  - That single candidate's addressScore >= 80, OR phoneScore === 100, OR emailScore === 100 -
- *    any one strong signal is enough (an OR, not requiring all three), since a stale/moved office
- *    address is common in this population but doesn't contradict an otherwise-exact name+phone
- *    match. A candidate whose only qualifying field is null/incomparable does NOT corroborate -
- *    absence of contradicting evidence is not the same as corroborating evidence.
+ *  - Exactly one candidate clears nameScore >= 85. Two or more candidates clearing the name bar is
+ *    always 'unresolved' here; picking among multiple plausible same-name candidates is
+ *    resolveDuplicateNameCandidates' job.
+ *  - That candidate's addressScore >= 80, OR phoneScore === 100, OR emailScore === 100 - any one
+ *    strong signal is enough, since a stale/moved office address is common in this population but
+ *    doesn't contradict an otherwise-exact name+phone match. A candidate whose only qualifying
+ *    field is null/incomparable does not corroborate.
  *
- * Does not fetch appointments (candidateScores' appointments field is left undefined) and always
- * passes districtDivisionScore/chapterScore as 0 into calculateCandidateScore purely to satisfy
- * its parameter shape for logging - callers must NOT read totalScore off the returned
- * CandidateScore as if it were a real six-dimension score; it is a name/address/phone/email score
- * diluted by two irrelevant zeroed dimensions and is only present for uniform shape with
- * resolveNameCollisionByScoring's ScoringOutcome. Prefer reading nameScore/addressScore/
- * phoneScore/emailScore directly off the winning CandidateScore instead.
+ * Does not fetch appointments and always passes districtDivisionScore/chapterScore as 0 into
+ * calculateCandidateScore to satisfy its parameter shape for logging - callers must not read
+ * totalScore off the returned CandidateScore as a real six-dimension score; read
+ * nameScore/addressScore/phoneScore/emailScore directly off the winning CandidateScore instead.
  */
 export async function resolveByContactCorroboration(
   context: ApplicationContext,
@@ -1037,11 +1020,8 @@ export async function resolveByContactCorroboration(
       const trustee = await trusteesRepo.read(trusteeId);
       return { trusteeId, trustee, error: null };
     } catch (error) {
-      // Same rationale as resolveNameCollisionByScoring's identical guard: a transient
-      // infrastructure error is not evidence this candidate is unscorable, so it must abort this
-      // whole resolution attempt (by rethrowing) rather than silently proceeding with a smaller
-      // candidate set that could misclassify a transient failure as a permanent no-match/
-      // unresolved outcome.
+      // A transient infrastructure error is not evidence this candidate is unscorable — abort
+      // the whole resolution attempt rather than silently proceeding with a smaller candidate set.
       if (isTooManyRequestsError(error) || isGatewayTimeoutError(error)) {
         throw error;
       }
@@ -1123,70 +1103,43 @@ export async function resolveByContactCorroboration(
 }
 
 /**
- * Narrow fallback for a single name-qualifying candidate that clears NEITHER
+ * Narrow fallback for a single name-qualifying candidate that clears neither
  * CONTACT_CORROBORATION_ADDRESS_THRESHOLD nor an exact phone/email match, but where the
- * corroboration bar was never really failable in the first place: sourceTrustee (the ACMS/DXTR
- * record) recorded NO comparable phone or email at all (both null - see calculatePhoneScore/
- * calculateEmailScore's null-when-incomparable semantics), AND either recorded no comparable
- * address either, or its address score, while below CONTACT_CORROBORATION_ADDRESS_THRESHOLD, does
- * not represent a genuine disagreement (see below). Requires nameScore === 100 specifically (the
- * strict exact/near-exact tier - not the 85-99 initial-vs-full-relationship tier), a materially
- * higher bar than resolveByContactCorroboration's main path, since this fallback has no
- * corroborating signal at all to lean on besides the name itself.
+ * corroboration bar was never really failable: sourceTrustee (the ACMS/DXTR record) recorded no
+ * comparable phone or email at all, and either recorded no comparable address either, or its
+ * address score, while below CONTACT_CORROBORATION_ADDRESS_THRESHOLD, does not represent a
+ * genuine disagreement — a PARSEABLE ACMS address (see parseCityStateZip) scoring below
+ * NO_CONTRADICTION_ADDRESS_FLOOR means both sides had a real address to compare and it disagreed,
+ * which is not relaxed here. Requires nameScore === 100 specifically, a materially higher bar than
+ * resolveByContactCorroboration's main path, since this fallback has no corroborating signal at
+ * all to lean on besides the name itself.
  *
- * Backtested against a real trustee-professional-ids export: of the
- * 379 ACMS records where a single candidate cleared the name threshold but not the main
- * corroboration bar, 313 (91%) had an ACTIVELY CONTRADICTING phone number (both sides had a real,
- * comparable 10+-digit number that genuinely disagreed - e.g. different area codes entirely) -
- * this fallback correctly does NOT relax those, since a contradicting phone is real evidence
- * against the match even though it never scores >CONTACT_CORROBORATION_ADDRESS_THRESHOLD. A
- * further 132 records had a FULLY BLANK ACMS demographic (no address, no phone, no email
- * recorded at all beyond the name) - also correctly excluded, since "nothing was ever recorded to
- * corroborate OR contradict with" is a weaker basis for auto-linking than "some data exists and
- * doesn't disagree." Only 31 records (8% of the original 379) cleared both exclusions - 29 of
- * those were nameScore===100, addressScore ranging 0-78 with no real disagreement (either
- * genuinely unparseable/blank ACMS address, or a parseable-but-imperfect match like "55 E. Monroe
- * St., Suite 3850" vs. CAMS's "55 E. Monroe, Suite 3850" scoring 78 rather than 80 purely from
- * formatting). Hand-verified a sample of these against raw fixture data - all held up as genuine
- * matches (e.g. THOMAS HOOPER -> Thomas H. Hooper, CRAIG M GENO -> Craig Geno, RONALD P LANGELLA
- * INACTIVE -> Ronald P. Langella - the last carrying an explicit "INACTIVE" marker in its ACMS
- * name yet still the correct, currently-active CAMS trustee).
- *
- * A "genuine disagreement" on address specifically means: ACMS recorded a PARSEABLE
- * cityStateZipCountry (city/state/zip all present in a recognizable form - see
- * parseCityStateZip) AND addressScore is low DESPITE that - e.g. ACMS says Charleston SC, CAMS
- * says New York NY, both parseable, genuinely different places. That case must NOT be relaxed by
- * this fallback even though phone/email are absent, since the address dimension was actually
- * compared and disagreed. A low addressScore from an UNPARSEABLE or entirely blank ACMS address
- * carries no such signal either way.
+ * Backtested against a real trustee-professional-ids export: 91% of candidates that clear the
+ * name threshold but not the main corroboration bar have an actively contradicting phone number
+ * and are correctly excluded here; the rest that clear both exclusions hand-verified as genuine
+ * matches (e.g. an ACMS name carrying a stray "INACTIVE" marker that still resolves to the
+ * correct, currently-active CAMS trustee).
  */
 function isNoContradictionMatch(sourceTrustee: DxtrTrusteeParty, winner: CandidateScore): boolean {
-  if (winner.nameScore !== 100) return false;
-  if (winner.phoneScore !== null || winner.emailScore !== null) return false;
+  const isExactNameMatch = winner.nameScore === 100;
+  const hasNoComparablePhoneOrEmail = winner.phoneScore === null && winner.emailScore === null;
 
   const acmsAddress1 = sourceTrustee.legacy?.address1?.trim();
   const acmsCityStateZip = sourceTrustee.legacy?.cityStateZipCountry?.trim();
-  const acmsDemographicBlank =
+  const hasBlankAcmsDemographic =
     !acmsAddress1 &&
     !acmsCityStateZip &&
     !sourceTrustee.legacy?.phone &&
     !sourceTrustee.legacy?.email;
-  if (acmsDemographicBlank) return false;
 
-  const acmsAddressParseable =
-    parseCityStateZip(sourceTrustee.legacy?.cityStateZipCountry) !== null;
-  if (acmsAddressParseable && winner.addressScore < NO_CONTRADICTION_ADDRESS_FLOOR) {
-    // Both sides had a real, parseable address to compare and it disagreed badly (below the
-    // floor) - a genuine disagreement, not a near-miss from formatting. Do not relax; the
-    // caller's normal 'unresolved' outcome stands. A parseable address scoring BETWEEN the floor
-    // and CONTACT_CORROBORATION_ADDRESS_THRESHOLD (e.g. 78, same suite/city/zip but a street-line
-    // formatting difference - see THOMAS HOOPER in this function's doc comment) is intentionally
-    // allowed through: it already cleared the main corroboration path's near-miss, it just fell
-    // short of the >=80 bar by a small margin, which is a weak positive signal, not a
-    // disagreement.
-    return false;
-  }
+  const hasParseableAcmsAddress = parseCityStateZip(acmsCityStateZip) !== null;
+  const hasContradictingAddress =
+    hasParseableAcmsAddress && winner.addressScore < NO_CONTRADICTION_ADDRESS_FLOOR;
 
+  if (!isExactNameMatch) return false;
+  if (!hasNoComparablePhoneOrEmail) return false;
+  if (hasBlankAcmsDemographic) return false;
+  if (hasContradictingAddress) return false;
   return true;
 }
 
