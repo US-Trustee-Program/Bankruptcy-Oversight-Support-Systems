@@ -42,6 +42,27 @@ was unusable for this whole population. Worth a fix at the gateway/query layer (
 formatting from `PROF_ZIP`) before revisiting whether the address-corroboration gate itself needs
 adjustment.
 
+## Known finding: the `no-name-candidate` bucket (2026-08-26 export)
+
+Following the zip-formatting fix above, a full investigation of the 2229-record error population
+from a 2026-08-26 export (see `cams-t0k3o` through `cams-eenua`) found 935 records where
+`calculateNameScore` never clears the auto-link threshold against *any* trustee in the export at
+all — the largest single outcome bucket. This is not a matcher gap:
+
+- **20 records (0.9%) are literal ACMS sentinel/placeholder rows** — `PROF_LAST_NAME` values like
+  `"NO TRUSTEE"`, `"NO TRUSTEE ASSIGNED"`, `"CASE STRICKEN: NO TRUSTEE"` — always with
+  `PROF_FIRST_NAME` empty. These were never real professionals and were never going to match
+  anything. Fixed at the source: `acms.gateway.ts`'s `getTrusteeProfessionalRecordsPage` query now
+  excludes `PROF_LAST_NAME LIKE '%NO TRUSTEE%'` alongside its existing `DELETE_CODE`/`PROF_TYPE`
+  filters, so these rows never reach the matcher or generate an error record at all (see
+  `cams-7y6ag`).
+- **The remaining 915 records (97.9%) are genuinely-named ACMS professionals with no CAMS
+  counterpart.** The trustees export used throughout this investigation is 100% `status: active` —
+  a real but inactive/historical ACMS professional has no active-trustee row to match against *by
+  design*, not because the matcher failed to find one. This is expected and not something to fix
+  in the matching algorithm; if this population needs addressing, it would be a separate
+  active/inactive-trustee-data question, not a `sync-acms-professional-ids` change.
+
 ## Why `fixtures/` is never committed
 
 `fixtures/` contains real trustee PII (names, addresses, phone numbers, emails, ACMS professional
