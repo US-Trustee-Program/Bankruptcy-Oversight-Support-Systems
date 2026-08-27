@@ -1358,31 +1358,20 @@ function isBogusTrusteeName(event: TrusteeAppointmentSyncEvent): boolean {
 /**
  * True when the record's name is a bogus/administrative placeholder (isBogusTrusteeName) with no
  * separate firstName field and a non-sentinel profCode, or the case is chapter 11 (regardless of
- * firstName/profCode/contact info).
- *
- * A sentinel profCode is excluded from the !firstName branch: that combination is
- * isSentinelWithNoIdentity's responsibility, which additionally requires no usable contact info
- * before disqualifying. Administrative/court-office placeholders (e.g. "US Trustee 11",
- * "CHAPTER 11 - LV") commonly carry the court's own real address/phone/email and a non-sentinel
- * profCode, so this function is what catches them instead.
- *
- * Chapter 11 cases don't typically have a trustee appointed at filing, so a bogus-looking name is
- * corroborated by the chapter itself regardless of firstName.
+ * firstName/profCode/contact info — see isSentinelWithNoIdentity for the sentinel-profCode case).
  */
 function isUnattributableBogusName(event: TrusteeAppointmentSyncEvent): boolean {
-  if (!isBogusTrusteeName(event)) {
-    return false;
-  }
-  if (event.chapter === '11') {
-    return true;
-  }
+  const hasBogusName = isBogusTrusteeName(event);
+  const hasFirstName = Boolean(normalizeName(event.dxtrTrustee.firstName ?? ''));
+  const isChapter11 = event.chapter === '11';
   const isSentinelProfCode =
     event.profCode === DXTR_PROF_CODE_NO_TRUSTEE_APPOINTED ||
     event.profCode === DXTR_PROF_CODE_ID_UNAVAILABLE;
-  if (isSentinelProfCode) {
-    return false;
-  }
-  return !normalizeName(event.dxtrTrustee.firstName ?? '');
+
+  if (!hasBogusName) return false;
+  if (isChapter11) return true;
+  if (isSentinelProfCode) return false;
+  return !hasFirstName;
 }
 
 /**
