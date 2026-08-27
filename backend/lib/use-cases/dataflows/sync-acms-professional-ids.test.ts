@@ -283,14 +283,14 @@ describe('SyncAcmsProfessionalIds', () => {
       deps = SyncAcmsProfessionalIds.createDeps(context);
     });
 
-    test('should call matchTrusteeByName without a courtId (ACMS records have no case/court)', async () => {
+    test('should call matchTrusteeByName with the built DXTR-shaped trustee party', async () => {
       const matchSpy = vi
         .spyOn(trusteeMatchHelpers, 'matchTrusteeByName')
         .mockResolvedValue({ kind: 'no-match' });
 
       await SyncAcmsProfessionalIds.processNameMatch(deps, record);
 
-      expect(matchSpy).toHaveBeenCalledWith(deps.context, expect.anything(), undefined);
+      expect(matchSpy).toHaveBeenCalledWith(deps.context, expect.anything());
     });
 
     test('should pass firstName/middleName through unchanged when PROF_MI already holds a middle initial', async () => {
@@ -307,7 +307,6 @@ describe('SyncAcmsProfessionalIds', () => {
       expect(matchSpy).toHaveBeenCalledWith(
         deps.context,
         expect.objectContaining({ firstName: 'John', middleName: 'Q' }),
-        undefined,
       );
     });
 
@@ -330,7 +329,6 @@ describe('SyncAcmsProfessionalIds', () => {
       expect(matchSpy).toHaveBeenCalledWith(
         deps.context,
         expect.objectContaining({ firstName: 'CAROLINE', middleName: 'RENEE' }),
-        undefined,
       );
     });
 
@@ -348,7 +346,6 @@ describe('SyncAcmsProfessionalIds', () => {
       expect(matchSpy).toHaveBeenCalledWith(
         deps.context,
         expect.objectContaining({ firstName: 'MARY', middleName: 'JO ANNE' }),
-        undefined,
       );
     });
 
@@ -366,7 +363,6 @@ describe('SyncAcmsProfessionalIds', () => {
       expect(matchSpy).toHaveBeenCalledWith(
         deps.context,
         expect.objectContaining({ firstName: 'John', middleName: '' }),
-        undefined,
       );
     });
 
@@ -385,7 +381,6 @@ describe('SyncAcmsProfessionalIds', () => {
       expect(matchSpy).toHaveBeenCalledWith(
         deps.context,
         expect.objectContaining({ fullName: 'CAROLINE RENEE DJANG' }),
-        undefined,
       );
     });
 

@@ -509,11 +509,11 @@ describe('SyncTrusteeCaseAppointments', () => {
         events,
       );
 
-      expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalledWith(
-        context,
-        { fullName: 'John Doe', firstName: 'John', lastName: 'Doe' },
-        '081',
-      );
+      expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalledWith(context, {
+        fullName: 'John Doe',
+        firstName: 'John',
+        lastName: 'Doe',
+      });
     });
 
     describe('empty demographics', () => {
@@ -573,11 +573,10 @@ describe('SyncTrusteeCaseAppointments', () => {
           events,
         );
 
-        expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalledWith(
-          context,
-          { fullName: '', legacy: { address1: '123 Main St' } },
-          '081',
-        );
+        expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalledWith(context, {
+          fullName: '',
+          legacy: { address1: '123 Main St' },
+        });
         expect(scenarioDistribution.emptyDemographicsSkippedCount).toBe(0);
       });
 
@@ -1649,14 +1648,7 @@ describe('SyncTrusteeCaseAppointments', () => {
       expect(scenarioDistribution.imperfectMatchCount).toBe(1);
     });
 
-    test('should reclassify a uniquely-name-matched candidate with no court appointment as NO_TRUSTEE_MATCH, not IMPERFECT_MATCH', async () => {
-      // A name that happens to be unique nationwide (matchTrusteeByName's tier 1/2 single-match
-      // resolution never filters by courtId) can resolve to a trustee with zero appointments in
-      // this case's court - a same-name coincidence, not real matching evidence. Surfacing that as
-      // an ImperfectMatch candidate would present it to a human reviewer as "the" suggested match
-      // even though nothing geographically connects it to the case, so it is reclassified to
-      // NoTrusteeMatch (no candidates) instead - the same outcome as if the name search had found
-      // nothing at all.
+    test('should surface a uniquely-name-matched candidate with no court appointment as IMPERFECT_MATCH, not NO_TRUSTEE_MATCH', async () => {
       vi.spyOn(trusteeMatchHelpers, 'isAppointmentMatch').mockReturnValue(false);
       vi.spyOn(trusteeMatchHelpers, 'calculateCandidateScore').mockReturnValue({
         trusteeId: 'trustee-123',
@@ -1681,10 +1673,13 @@ describe('SyncTrusteeCaseAppointments', () => {
       expect(successCount).toBe(0);
       expect(dlqMessages).toHaveLength(0);
       expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
-        expect.objectContaining({ mismatchReason: 'NO_TRUSTEE_MATCH', matchCandidates: [] }),
+        expect.objectContaining({
+          mismatchReason: 'IMPERFECT_MATCH',
+          matchCandidates: [expect.objectContaining({ trusteeId: 'trustee-123' })],
+        }),
       );
-      expect(scenarioDistribution.imperfectMatchCount).toBe(0);
-      expect(scenarioDistribution.noMatchCount).toBe(1);
+      expect(scenarioDistribution.imperfectMatchCount).toBe(1);
+      expect(scenarioDistribution.noMatchCount).toBe(0);
     });
 
     test('should route a single non-perfect-match candidate to verification even at a very high score', async () => {
