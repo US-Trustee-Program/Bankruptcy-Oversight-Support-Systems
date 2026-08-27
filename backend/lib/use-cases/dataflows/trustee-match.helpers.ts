@@ -1704,3 +1704,148 @@ export async function findTokenIntersectionCandidates(
 
   return candidates;
 }
+
+/**
+ * Tokens shorter than this are excluded from the FUZZY side of findAnchoredLevenshteinCandidates
+ * - a 1-2 character token has too many trustees within ANCHORED_LEVENSHTEIN_MAX_EDIT_DISTANCE to
+ * be a useful signal (nearly any short token is within edit distance 2 of nearly any other short
+ * token). The ANCHOR side has no length floor, since it must match exactly.
+ */
+const ANCHORED_LEVENSHTEIN_MIN_FUZZ_TOKEN_LENGTH = 3;
+
+/** Maximum edit distance for the fuzzy side of findAnchoredLevenshteinCandidates. */
+const ANCHORED_LEVENSHTEIN_MAX_EDIT_DISTANCE = 2;
+
+/**
+ * Standard Levenshtein (single-character insert/delete/substitute) edit distance between two
+ * strings. Used only by findAnchoredLevenshteinCandidates - not exposed as a general string
+ * utility since no other caller needs it.
+ */
+function levenshteinDistance(a: string, b: string): number {
+  const m = a.length;
+  const n = b.length;
+  if (m === 0) return n;
+  if (n === 0) return m;
+
+  const previousRow = new Array(n + 1);
+  const currentRow = new Array(n + 1);
+  for (let j = 0; j <= n; j++) previousRow[j] = j;
+
+  for (let i = 1; i <= m; i++) {
+    currentRow[0] = i;
+    for (let j = 1; j <= n; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      currentRow[j] = Math.min(
+        previousRow[j] + 1, // deletion
+        currentRow[j - 1] + 1, // insertion
+        previousRow[j - 1] + cost, // substitution
+      );
+    }
+    for (let j = 0; j <= n; j++) previousRow[j] = currentRow[j];
+  }
+
+  return previousRow[n];
+}
+
+/**
+ * Last-resort candidate-discovery tier for a genuine SPELLING error (typo, transposition, OCR-
+ * style character error) in the first or last name - a different failure shape than
+ * findTokenIntersectionCandidates' target (name-part REORDERING). calculateNameScore's
+ * firstLastNameToken-exact-match-required lastName gate, and matchTrusteeByName's own tiers, all
+ * fail outright on e.g. "STEPHAN DARR" vs CAMS "Stephen Darr", or "KATHYLN SELLECK" vs CAMS
+ * "Kathlyn Selleck" - a single transposed/substituted character anywhere in either name part.
+ *
+ * Approach: ANCHOR one name part with an EXACT match, then allow the OTHER part to be a close
+ * (edit distance <= 2) match rather than requiring exact equality. Tried in both directions,
+ * unioned: (a) lastName exact -> firstName fuzzy, (b) firstName exact -> lastName fuzzy. This is
+ * NOT the earlier-abandoned unanchored Levenshtein approach (see cams-t0k3o's investigation notes
+ * - fuzzing lastName alone against the ENTIRE trustee population found 1637 noisy candidates
+ * collapsing to only 4 legitimate matches after requiring strong corroboration): anchoring one
+ * side exactly first narrows the candidate pool before ever computing an edit distance, the same
+ * way findTokenIntersectionCandidates' precision comes from requiring both tokens to already
+ * narrow the pool rather than fuzzing on a single, unanchored dimension.
+ *
+ * Candidate sourcing: queries searchTrusteesByName once per direction using the ANCHOR token
+ * (narrows to trustees whose composed name contains that substring at all - cheap, single query),
+ * then filters IN-MEMORY over that already-small result set for an exact match on the specific
+ * anchor field (firstName or lastName) and a Levenshtein-close match on the other. This avoids
+ * fuzzing against the full trustees collection.
+ *
+ * Backtested (2026-08-27, see cams-eenua) against a real 2026-08-26 trustee-professional-ids
+ * export: WITHOUT corroboration, roughly a third of exactly-one-candidate hits are plausible false
+ * positives on common first/last names (e.g. a common first name paired with a merely
+ * shape-similar surname). Corroboration-gated (same OR-rule resolveByContactCorroboration already
+ * applies: addressScore>=80 OR phoneScore==100 OR emailScore==100), 32 of 96 exactly-one-candidate
+ * hits clear it, and ALL 32 hand-checked as genuine matches with zero false positives observed.
+ * Marginal over findTokenIntersectionCandidates alone: 18 additional corroborated records this
+ * tier catches that token-intersection's exact-substring requirement cannot (spelling-error shape,
+ * not reordering shape) - a real but modest yield, hence the strict corroboration-gated caller
+ * contract below.
+ *
+ * Returns RAW, UNSCORED candidates - same contract as findTokenIntersectionCandidates. The caller
+ * is responsible for routing a single candidate through resolveByContactCorroboration and 2+
+ * candidates through resolveDuplicateNameCandidates before ever auto-linking - Brian's explicit
+ * direction: "this is not for auto-matching alone, it is simply to find candidates for further
+ * vetting." An anchored-fuzzy hit on a common name (e.g. "Robert", "William") is NOT reliable
+ * evidence alone; corroboration is what separates the 32 genuine matches from the roughly one-third
+ * false-positive rate observed in the uncorroborated set.
+ *
+ * COST WARNING - issues up to 2 searchTrusteesByName queries (one per anchor direction), on top of
+ * whatever matchTrusteeByName/findTokenIntersectionCandidates already tried. Callers MUST treat
+ * this as an explicit last resort, invoked only after BOTH of those have already found nothing -
+ * never call this speculatively or in parallel with cheaper tiers. Same ordering requirement as
+ * findTokenIntersectionCandidates (see cams-e75yv/cams-eenua).
+ */
+export async function findAnchoredLevenshteinCandidates(
+  context: ApplicationContext,
+  sourceTrustee: DxtrTrusteeParty,
+): Promise<Trustee[]> {
+  const acmsFirst = firstLastNameToken(sourceTrustee.firstName);
+  const acmsLast = firstLastNameToken(sourceTrustee.lastName);
+  if (!acmsFirst || !acmsLast) return [];
+
+  const trusteesRepo = factory.getTrusteesRepository(context);
+  const candidatesById = new Map<string, Trustee>();
+
+  const tryDirection = async (
+    anchorToken: string,
+    fuzzToken: string,
+    anchorField: 'firstName' | 'lastName',
+    fuzzField: 'firstName' | 'lastName',
+  ): Promise<void> => {
+    if (fuzzToken.length < ANCHORED_LEVENSHTEIN_MIN_FUZZ_TOKEN_LENGTH) return;
+
+    const searchResults = await trusteesRepo.searchTrusteesByName(anchorToken);
+    for (const trustee of searchResults) {
+      const anchorValue = firstLastNameToken(
+        anchorField === 'firstName' ? trustee.firstName : trustee.lastName,
+      );
+      if (anchorValue !== anchorToken) continue;
+
+      const fuzzValue = firstLastNameToken(
+        fuzzField === 'firstName' ? trustee.firstName : trustee.lastName,
+      );
+      if (!fuzzValue || fuzzValue === fuzzToken) continue; // exact match already covered elsewhere
+
+      if (levenshteinDistance(fuzzToken, fuzzValue) <= ANCHORED_LEVENSHTEIN_MAX_EDIT_DISTANCE) {
+        candidatesById.set(trustee.trusteeId, trustee);
+      }
+    }
+  };
+
+  await tryDirection(acmsLast, acmsFirst, 'lastName', 'firstName');
+  await tryDirection(acmsFirst, acmsLast, 'firstName', 'lastName');
+
+  const candidates = [...candidatesById.values()];
+
+  if (candidates.length > 0) {
+    const candidateList = candidates.map((t) => `${t.trusteeId} ("${t.name}")`).join(', ');
+    context.logger.info(
+      MODULE_NAME,
+      `Anchored-Levenshtein search found ${candidates.length} candidate(s) for ` +
+        `"${sourceTrustee.fullName}": ${candidateList}.`,
+    );
+  }
+
+  return candidates;
+}

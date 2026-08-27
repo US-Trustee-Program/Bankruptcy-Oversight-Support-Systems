@@ -13,6 +13,7 @@ import {
   resolveByContactCorroboration,
   resolveDuplicateNameCandidates,
   findTokenIntersectionCandidates,
+  findAnchoredLevenshteinCandidates,
 } from './trustee-match.helpers';
 import { buildAcmsVariant } from './acms-trustee-variant.helpers';
 import { computeFingerprint } from './trustee-variant.helpers';
@@ -271,14 +272,16 @@ async function resolveCandidatesByCorroboration(
  *     2026-08-26 trustee-professional-ids export) that sized this: 860 of 2229 no-match/ambiguous
  *     records would auto-link under resolveByContactCorroboration's rule, hand-verified as genuine
  *     matches; cams-g3xx2 for the duplicate-candidate backtest.
- *   - 'no-match': findTokenIntersectionCandidates is tried as a LAST-RESORT candidate-discovery
- *     step (see its doc comment for why matchTrusteeByName's own tiers structurally cannot find
- *     these - name-part reordering, not just abbreviation) before also routing through
- *     resolveCandidatesByCorroboration. Deliberately gated behind matchTrusteeByName already
- *     returning 'no-match' — this tier issues one extra query per name token and must never run
- *     speculatively alongside the cheaper tiers. See cams-e75yv for the backtest (using a
- *     substring proxy, not yet re-validated against the real searchTrusteesByNameScored search
- *     this tier actually calls) and the ordering requirement.
+ *   - 'no-match': two LAST-RESORT candidate-discovery steps are tried in sequence, each only after
+ *     the previous one found nothing, before also routing through resolveCandidatesByCorroboration:
+ *     1. findTokenIntersectionCandidates (see cams-e75yv) - name-part REORDERING (e.g. going by a
+ *        middle name, a lastName with an internal space).
+ *     2. findAnchoredLevenshteinCandidates (see cams-eenua) - genuine SPELLING errors (a typo or
+ *        transposition in either name part) - a different failure shape token-intersection's
+ *        exact-substring requirement cannot catch.
+ *     Both are deliberately gated behind matchTrusteeByName (and each other) already returning
+ *     nothing — each issues its own extra query per attempt and must never run speculatively
+ *     alongside the cheaper tiers.
  */
 async function processNameMatch(
   deps: SyncAcmsProfessionalIdsDeps,
@@ -305,14 +308,28 @@ async function processNameMatch(
       deps.context,
       acmsTrusteeProfessional,
     );
-    const resolvedTrusteeId = await resolveCandidatesByCorroboration(
+    const tokenIntersectionResolvedTrusteeId = await resolveCandidatesByCorroboration(
       deps.context,
       acmsTrusteeProfessional,
       tokenIntersectionCandidates.map((t) => t.trusteeId),
     );
-    if (resolvedTrusteeId) {
-      return { kind: 'auto-linked', trusteeId: resolvedTrusteeId };
+    if (tokenIntersectionResolvedTrusteeId) {
+      return { kind: 'auto-linked', trusteeId: tokenIntersectionResolvedTrusteeId };
     }
+
+    const anchoredLevenshteinCandidates = await findAnchoredLevenshteinCandidates(
+      deps.context,
+      acmsTrusteeProfessional,
+    );
+    const anchoredLevenshteinResolvedTrusteeId = await resolveCandidatesByCorroboration(
+      deps.context,
+      acmsTrusteeProfessional,
+      anchoredLevenshteinCandidates.map((t) => t.trusteeId),
+    );
+    if (anchoredLevenshteinResolvedTrusteeId) {
+      return { kind: 'auto-linked', trusteeId: anchoredLevenshteinResolvedTrusteeId };
+    }
+
     return { kind: 'no-match' };
   }
 
