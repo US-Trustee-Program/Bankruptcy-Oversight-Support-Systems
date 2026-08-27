@@ -14,6 +14,7 @@ import {
   calculateTotalScore,
   resolveNameCollisionByScoring,
   resolveByContactCorroboration,
+  resolveDuplicateNameCandidates,
   isAppointmentMatch,
   findInactivePerfectMatch,
   stripParentheticalAnnotations,
@@ -2642,6 +2643,198 @@ describe('resolveByContactCorroboration', () => {
     const result = await resolveByContactCorroboration(context, sourceTrustee, ['trustee-1']);
 
     expect(result.kind).toBe('resolved');
+  });
+});
+
+describe('resolveDuplicateNameCandidates', () => {
+  let context: ApplicationContext;
+  let mockTrusteesRepo: Partial<TrusteesRepository>;
+
+  beforeEach(async () => {
+    vi.restoreAllMocks();
+    context = await createMockApplicationContext();
+
+    mockTrusteesRepo = {
+      read: vi.fn(),
+      release: vi.fn(),
+    };
+
+    vi.spyOn(factory, 'getTrusteesRepository').mockReturnValue(
+      mockTrusteesRepo as TrusteesRepository,
+    );
+  });
+
+  const sourceTrustee: DxtrTrusteeParty = {
+    fullName: 'Roy Cohen',
+    firstName: 'Roy',
+    lastName: 'Cohen',
+    legacy: {
+      address1: '9 Trumbull Street',
+      cityStateZipCountry: 'New Haven, CT 06511',
+    },
+  };
+
+  test('resolves to the richer-data candidate when two candidates share the same normalized trusteeName and the addressScore gap is large', async () => {
+    const richerCandidate = makeTrustee({
+      trusteeId: 'trustee-1',
+      firstName: 'Roy',
+      lastName: 'Cohen',
+      name: 'Roy J. Cohen',
+      public: {
+        address: {
+          address1: '9 Trumbull Street',
+          city: 'New Haven',
+          state: 'CT',
+          zipCode: '06511',
+          countryCode: 'US',
+        },
+      },
+    });
+    const staleCandidate = makeTrustee({
+      trusteeId: 'trustee-2',
+      firstName: 'Roy',
+      lastName: 'Cohen',
+      name: 'Roy J. Cohen', // same normalized name as trustee-1 - a likely CAMS duplicate
+      public: {
+        address: {
+          address1: 'Some Other Street',
+          city: 'Elsewhere',
+          state: 'CT',
+          zipCode: '00000',
+          countryCode: 'US',
+        },
+      },
+    });
+    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce(richerCandidate)
+      .mockResolvedValueOnce(staleCandidate);
+
+    const result = await resolveDuplicateNameCandidates(context, sourceTrustee, [
+      'trustee-1',
+      'trustee-2',
+    ]);
+
+    expect(result.kind).toBe('resolved-duplicate');
+    if (result.kind !== 'resolved-duplicate')
+      throw new Error('expected resolved-duplicate outcome');
+    expect(result.trusteeId).toBe('trustee-1');
+  });
+
+  test('stays unresolved when two same-name candidates have too small an addressScore gap to trust', async () => {
+    const candidateA = makeTrustee({
+      trusteeId: 'trustee-1',
+      firstName: 'Roy',
+      lastName: 'Cohen',
+      name: 'Roy J. Cohen',
+      public: {
+        address: {
+          address1: 'Some Other Street A',
+          city: 'Elsewhere',
+          state: 'CT',
+          zipCode: '00000',
+          countryCode: 'US',
+        },
+      },
+    });
+    const candidateB = makeTrustee({
+      trusteeId: 'trustee-2',
+      firstName: 'Roy',
+      lastName: 'Cohen',
+      name: 'Roy J. Cohen',
+      public: {
+        address: {
+          address1: 'Some Other Street B',
+          city: 'Elsewhere',
+          state: 'CT',
+          zipCode: '00000',
+          countryCode: 'US',
+        },
+      },
+    });
+    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce(candidateA)
+      .mockResolvedValueOnce(candidateB);
+
+    const result = await resolveDuplicateNameCandidates(context, sourceTrustee, [
+      'trustee-1',
+      'trustee-2',
+    ]);
+
+    expect(result.kind).toBe('unresolved');
+  });
+
+  test('stays unresolved when the candidates have genuinely different names, regardless of addressScore gap', async () => {
+    const candidateA = makeTrustee({
+      trusteeId: 'trustee-1',
+      firstName: 'David',
+      lastName: 'Miller',
+      middleName: 'L.',
+      name: 'David L. Miller',
+      public: {
+        address: {
+          address1: '9 Trumbull Street',
+          city: 'New Haven',
+          state: 'CT',
+          zipCode: '06511',
+          countryCode: 'US',
+        },
+      },
+    });
+    const candidateB = makeTrustee({
+      trusteeId: 'trustee-2',
+      firstName: 'David',
+      lastName: 'Miller',
+      middleName: 'P.',
+      name: 'David P. Miller', // genuinely different name from candidateA - not a duplicate
+      public: {
+        address: {
+          address1: 'Some Other Street',
+          city: 'Elsewhere',
+          state: 'CT',
+          zipCode: '00000',
+          countryCode: 'US',
+        },
+      },
+    });
+    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce(candidateA)
+      .mockResolvedValueOnce(candidateB);
+
+    const davidMillerSource: DxtrTrusteeParty = {
+      fullName: 'David Miller',
+      firstName: 'David',
+      lastName: 'Miller',
+      legacy: {
+        address1: '9 Trumbull Street',
+        cityStateZipCountry: 'New Haven, CT 06511',
+      },
+    };
+
+    const result = await resolveDuplicateNameCandidates(context, davidMillerSource, [
+      'trustee-1',
+      'trustee-2',
+    ]);
+
+    expect(result.kind).toBe('unresolved');
+  });
+
+  test('returns no-match when every candidate fails to load', async () => {
+    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new Error('trustee not found'),
+    );
+
+    const result = await resolveDuplicateNameCandidates(context, sourceTrustee, ['trustee-1']);
+
+    expect(result.kind).toBe('no-match');
+  });
+
+  test('propagates a transient infrastructure error rather than treating it as unscorable', async () => {
+    const transientError = new TooManyRequestsError('COSMOS_DB');
+    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>).mockRejectedValue(transientError);
+
+    await expect(
+      resolveDuplicateNameCandidates(context, sourceTrustee, ['trustee-1']),
+    ).rejects.toBe(transientError);
   });
 });
 

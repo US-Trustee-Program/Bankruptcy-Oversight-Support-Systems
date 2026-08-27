@@ -392,13 +392,17 @@ describe('SyncAcmsProfessionalIds', () => {
       expect(result).toEqual({ kind: 'no-match' });
     });
 
-    test('should return ambiguous with the unscored candidates when matchTrusteeByName finds a collision and contact corroboration does not resolve it', async () => {
+    test('should return ambiguous with the unscored candidates when neither contact corroboration nor duplicate-name resolution resolve it', async () => {
       const matchCandidates = [{ trusteeId: 't1', trusteeName: 'John Smith' }] as never;
       vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({
         kind: 'ambiguous',
         matchCandidates,
       });
       vi.spyOn(trusteeMatchHelpers, 'resolveByContactCorroboration').mockResolvedValue({
+        kind: 'unresolved',
+        candidateScores: matchCandidates,
+      });
+      vi.spyOn(trusteeMatchHelpers, 'resolveDuplicateNameCandidates').mockResolvedValue({
         kind: 'unresolved',
         candidateScores: matchCandidates,
       });
@@ -420,6 +424,10 @@ describe('SyncAcmsProfessionalIds', () => {
       const corroborationSpy = vi
         .spyOn(trusteeMatchHelpers, 'resolveByContactCorroboration')
         .mockResolvedValue({ kind: 'unresolved', candidateScores: matchCandidates });
+      vi.spyOn(trusteeMatchHelpers, 'resolveDuplicateNameCandidates').mockResolvedValue({
+        kind: 'unresolved',
+        candidateScores: matchCandidates,
+      });
 
       await SyncAcmsProfessionalIds.processNameMatch(deps, record);
 
@@ -434,6 +442,54 @@ describe('SyncAcmsProfessionalIds', () => {
       });
       vi.spyOn(trusteeMatchHelpers, 'resolveByContactCorroboration').mockResolvedValue({
         kind: 'resolved',
+        trusteeId: 't1',
+        candidateScores: matchCandidates,
+      });
+      const duplicateSpy = vi.spyOn(trusteeMatchHelpers, 'resolveDuplicateNameCandidates');
+
+      const result = await SyncAcmsProfessionalIds.processNameMatch(deps, record);
+
+      expect(result).toEqual({ kind: 'auto-linked', trusteeId: 't1' });
+      expect(duplicateSpy).not.toHaveBeenCalled();
+    });
+
+    test('should call resolveDuplicateNameCandidates when contact corroboration does not resolve an ambiguous match', async () => {
+      const matchCandidates = [
+        { trusteeId: 't1', trusteeName: 'Roy J. Cohen' },
+        { trusteeId: 't2', trusteeName: 'R. Cohen' },
+      ] as never;
+      vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({
+        kind: 'ambiguous',
+        matchCandidates,
+      });
+      vi.spyOn(trusteeMatchHelpers, 'resolveByContactCorroboration').mockResolvedValue({
+        kind: 'unresolved',
+        candidateScores: matchCandidates,
+      });
+      const duplicateSpy = vi
+        .spyOn(trusteeMatchHelpers, 'resolveDuplicateNameCandidates')
+        .mockResolvedValue({ kind: 'unresolved', candidateScores: matchCandidates });
+
+      await SyncAcmsProfessionalIds.processNameMatch(deps, record);
+
+      expect(duplicateSpy).toHaveBeenCalledWith(deps.context, expect.anything(), ['t1', 't2']);
+    });
+
+    test('should return auto-linked when resolveDuplicateNameCandidates resolves a likely duplicate', async () => {
+      const matchCandidates = [
+        { trusteeId: 't1', trusteeName: 'Roy J. Cohen' },
+        { trusteeId: 't2', trusteeName: 'R. Cohen' },
+      ] as never;
+      vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({
+        kind: 'ambiguous',
+        matchCandidates,
+      });
+      vi.spyOn(trusteeMatchHelpers, 'resolveByContactCorroboration').mockResolvedValue({
+        kind: 'unresolved',
+        candidateScores: matchCandidates,
+      });
+      vi.spyOn(trusteeMatchHelpers, 'resolveDuplicateNameCandidates').mockResolvedValue({
+        kind: 'resolved-duplicate',
         trusteeId: 't1',
         candidateScores: matchCandidates,
       });
