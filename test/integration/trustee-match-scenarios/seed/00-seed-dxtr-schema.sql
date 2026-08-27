@@ -29,13 +29,17 @@ CREATE TABLE dbo.AO_CS_DIV (
 );
 GO
 
--- Case master. Compound key (CS_CASEID, COURT_ID) — CS_CASEID alone is NOT unique.
+-- Case master. Compound key (CS_CASEID, COURT_ID) — CS_CASEID alone is NOT unique. GRP_DES here
+-- is the case's own group designator (read directly by the trustee-appointment-events query as
+-- groupDesignator) — a distinct column from AO_CS_DIV.GRP_DES, which keys the division's group
+-- membership, not the case's.
 CREATE TABLE dbo.AO_CS (
   CS_CASEID   VARCHAR(9)   NOT NULL,
   COURT_ID    VARCHAR(4)   NOT NULL,
   CASE_ID     VARCHAR(10)  NULL, -- public court case number, e.g. "26-99999"
   CS_DIV      VARCHAR(3)   NOT NULL,
   CS_CHAPTER  VARCHAR(3)   NULL,
+  GRP_DES     VARCHAR(2)   NULL,
   PRIMARY KEY (CS_CASEID, COURT_ID)
 );
 GO

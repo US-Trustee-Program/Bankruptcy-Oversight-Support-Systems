@@ -228,7 +228,7 @@ async function processNameMatch(
   record: AcmsTrusteeProfessionalDetailRecord,
 ): Promise<NameMatchResult> {
   const acmsTrusteeProfessional = toAcmsTrusteeProfessional(record);
-  const result = await matchTrusteeByName(deps.context, acmsTrusteeProfessional, undefined);
+  const result = await matchTrusteeByName(deps.context, acmsTrusteeProfessional);
 
   if (result.kind === 'no-match') {
     return { kind: 'no-match' };

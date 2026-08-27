@@ -39,7 +39,6 @@ import {
   calculateTotalScore,
   parseCityStateZip,
   normalizeName,
-  hasDistrictDivisionMatch,
 } from './trustee-match.helpers';
 import { buildVariant, computeFingerprint } from './trustee-variant.helpers';
 import { TRUSTEE_VARIATION_DOCUMENT_TYPE } from '@common/cams/trustee-variation';
@@ -1059,7 +1058,7 @@ async function resolveTrusteeIdByName(
   syncedCase: SyncedCase,
 ): Promise<NameResolution> {
   const { deps, event } = ctx;
-  const nameMatch = await matchTrusteeByName(deps.context, event.dxtrTrustee, event.courtId);
+  const nameMatch = await matchTrusteeByName(deps.context, event.dxtrTrustee);
 
   switch (nameMatch.kind) {
     case 'resolved':
@@ -1247,28 +1246,10 @@ async function applyMatchOutcome(
   // No no-review auto-match on totalScore alone: isAppointmentMatch above already ruled out any
   // record that satisfies court+division+chapter together, so a same-record requirement can
   // never hold here — every single-candidate non-perfect-match falls through to ImperfectMatch
-  // below for human review regardless of how high totalScore is.
-  //
-  // !hasDistrictDivisionMatch means trusteeId doesn't hold a single active appointment in this
-  // case's court at all - matchTrusteeByName's tier 1/2 single-match resolution (unlike tier 3's
-  // findLastNameTokenMatches or the multi-candidate resolveNameCollisionByScoring path) never
-  // filters by courtId, so a name that happens to be unique nationwide can resolve here purely by
-  // coincidence (e.g. two different trustees named "Adam M. Goodman" in different states). Writing
-  // that as an ImperfectMatch candidate presents it to a human reviewer as "the" suggested match
-  // even though there is zero geographic evidence connecting this trustee to the case - reclassify
-  // as NoTrusteeMatch (no candidates) instead, the same as if the name search itself had found
-  // nothing. A same-court-different-division match (districtDivisionScore 50) still has real
-  // supporting evidence and remains an ImperfectMatch.
-  if (!hasDistrictDivisionMatch(candidateScore.districtDivisionScore)) {
-    await handleClassifiedMismatch(
-      ctx,
-      syncedCase,
-      TrusteeAppointmentSyncErrorCode.NoTrusteeMatch,
-      [],
-    );
-    return { outcome: 'handled' };
-  }
-
+  // below for human review regardless of how high totalScore is, and regardless of whether
+  // trusteeId holds any active appointment in this case's court at all - a name match with no
+  // district evidence is still shown to the reviewer as a candidate (see calculateCandidateScore's
+  // districtDivisionScore, 0/50/100) rather than being suppressed before it reaches them.
   audit.matchOutcome = 'imperfect-match';
   audit.matchedTrusteeId = trusteeId;
   audit.scoringBreakdown = {

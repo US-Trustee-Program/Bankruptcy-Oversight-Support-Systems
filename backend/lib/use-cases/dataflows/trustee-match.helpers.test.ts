@@ -5,7 +5,6 @@ import {
   matchTrusteeByName,
   calculateAddressScore,
   calculateDistrictDivisionScore,
-  hasDistrictDivisionMatch,
   calculateChapterScore,
   normalizeChapter,
   calculateCandidateScore,
@@ -456,14 +455,16 @@ describe('matchTrusteeByName', () => {
   });
 
   // First-token-lastName search tier: neither composed-name tier above found a match, so this
-  // tier searches CAMS by just the first token of DXTR's lastName (see firstLastNameToken) and
-  // narrows results to trustees with an active appointment in the event's court - the same
-  // courtId filter TrusteeSearchUseCase applies for the UI's manual search feature. Weaker
-  // evidence than a full string match, so it always surfaces as 'ambiguous' even for a single
-  // candidate, routing through resolveNameCollisionByScoring's scoring/appointment-match gate
-  // rather than auto-resolving.
+  // tier searches CAMS by just the first token of DXTR's lastName (see firstLastNameToken).
+  // Deliberately does NOT narrow to trustees with an active appointment in the event's court -
+  // district/division evidence is left to resolveNameCollisionByScoring's scoring (see
+  // calculateDistrictDivisionScore), not gated on here, so a name match with no court appointment
+  // at all still surfaces as a candidate for human review rather than being silently dropped.
+  // Weaker evidence than a full string match, so it always surfaces as 'ambiguous' even for a
+  // single candidate, routing through resolveNameCollisionByScoring's scoring/appointment-match
+  // gate rather than auto-resolving.
   describe('first-token-lastName search tier', () => {
-    test('should surface a single candidate as ambiguous when found by first-token lastName search with a matching court appointment', async () => {
+    test('should surface a single candidate as ambiguous when found by first-token lastName search', async () => {
       const trustee = MockData.getTrustee({
         firstName: 'Richard',
         lastName: 'Marshack',
@@ -473,9 +474,6 @@ describe('matchTrusteeByName', () => {
       vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored')
         .mockResolvedValueOnce([]) // full-name search (tiers 1-2)
         .mockResolvedValueOnce([trustee]); // first-token lastName search
-      vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([
-        { trusteeId: trustee.trusteeId, courtId: '081' },
-      ]);
 
       const result = await matchTrusteeByName(
         context,
@@ -484,7 +482,6 @@ describe('matchTrusteeByName', () => {
           middleName: 'A',
           lastName: 'Marshack (TR)',
         }),
-        '081',
       );
 
       expect(result).toEqual({
@@ -503,13 +500,12 @@ describe('matchTrusteeByName', () => {
       await matchTrusteeByName(
         context,
         dxtrNamed('Kc Cohen Trustee', { firstName: 'Kc', lastName: 'Cohen Trustee' }),
-        '081',
       );
 
       expect(scoredSpy).toHaveBeenNthCalledWith(2, 'cohen');
     });
 
-    test('should exclude a candidate with no active appointment in the event court', async () => {
+    test('should surface a candidate with no active appointment in the event court, not exclude it', async () => {
       const trustee = MockData.getTrustee({
         firstName: 'Richard',
         lastName: 'Marshack',
@@ -519,35 +515,29 @@ describe('matchTrusteeByName', () => {
       vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored')
         .mockResolvedValueOnce([])
         .mockResolvedValueOnce([trustee]);
-      vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([
-        { trusteeId: trustee.trusteeId, courtId: '999' },
-      ]);
 
       const result = await matchTrusteeByName(
         context,
         dxtrNamed('Richard Marshack (TR)', { firstName: 'Richard', lastName: 'Marshack (TR)' }),
-        '081',
       );
 
-      expect(result).toEqual({ kind: 'no-match' });
+      expect(result).toEqual({
+        kind: 'ambiguous',
+        matchCandidates: [expect.objectContaining({ trusteeId: trustee.trusteeId })],
+      });
     });
 
-    test('should surface every candidate sharing the lastName token and a matching court appointment', async () => {
+    test('should surface every candidate sharing the lastName token', async () => {
       const trustee1 = MockData.getTrustee({ lastName: 'Cohen', name: 'Aaron Cohen' });
       const trustee2 = MockData.getTrustee({ lastName: 'Cohen', name: 'Merrill Cohen' });
       vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([]);
       vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored')
         .mockResolvedValueOnce([])
         .mockResolvedValueOnce([trustee1, trustee2]);
-      vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([
-        { trusteeId: trustee1.trusteeId, courtId: '081' },
-        { trusteeId: trustee2.trusteeId, courtId: '081' },
-      ]);
 
       const result = await matchTrusteeByName(
         context,
         dxtrNamed('Kc Cohen Trustee', { firstName: 'Kc', lastName: 'Cohen Trustee' }),
-        '081',
       );
 
       expect(result).toEqual({
@@ -565,24 +555,9 @@ describe('matchTrusteeByName', () => {
         .spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored')
         .mockResolvedValueOnce([]);
 
-      const result = await matchTrusteeByName(context, dxtrNamed('John Quincy Doe'), '081');
+      const result = await matchTrusteeByName(context, dxtrNamed('John Quincy Doe'));
 
       expect(scoredSpy).toHaveBeenCalledTimes(1); // only the tier-2 full-name search, no second call
-      expect(result).toEqual({ kind: 'no-match' });
-    });
-
-    test('should not apply this tier when no courtId is provided', async () => {
-      vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([]);
-      const scoredSpy = vi
-        .spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored')
-        .mockResolvedValueOnce([]); // tier-2 full-name search finds nothing
-
-      const result = await matchTrusteeByName(
-        context,
-        dxtrNamed('Kc Cohen Trustee', { firstName: 'Kc', lastName: 'Cohen Trustee' }),
-      );
-
-      expect(scoredSpy).toHaveBeenCalledTimes(1); // only the tier-2 full-name search
       expect(result).toEqual({ kind: 'no-match' });
     });
   });
@@ -1041,20 +1016,6 @@ describe('calculateDistrictDivisionScore', () => {
     ];
     const score = calculateDistrictDivisionScore('081', '237', appointments);
     expect(score).toBe(50);
-  });
-});
-
-describe('hasDistrictDivisionMatch', () => {
-  test('should return false for a districtDivisionScore of 0', () => {
-    expect(hasDistrictDivisionMatch(0)).toBe(false);
-  });
-
-  test('should return true for a districtDivisionScore of 50 (same court, different division)', () => {
-    expect(hasDistrictDivisionMatch(50)).toBe(true);
-  });
-
-  test('should return true for a districtDivisionScore of 100 (exact match)', () => {
-    expect(hasDistrictDivisionMatch(100)).toBe(true);
   });
 });
 
