@@ -681,6 +681,10 @@ export interface TrusteeCaseAppointmentsRepository extends Releasable {
     lastId: string | null,
     limit: number,
   ): Promise<Array<CaseAppointment & { _id: string }>>;
+  findClosedAppointments(
+    lastId: string | null,
+    limit: number,
+  ): Promise<Array<CaseAppointment & { _id: string }>>;
   getAllCaseAppointments(
     lastId: string | null,
     limit: number,

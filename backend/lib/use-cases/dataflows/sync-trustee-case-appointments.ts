@@ -1558,9 +1558,9 @@ function resolvePreMatchShortCircuit(
 /**
  * Handles the 'sentinel-bogus-name' skip reason: the event cannot be safely attributed to any
  * trustee, but unlike 'empty-demographics' it still requires closing any real active appointment
- * on the case, so the "Past Trustees" history doesn't leave a stale trustee open indefinitely
- * (see CAMS-888). Uses the same close primitive (closeExistingAppointment) as the replace flow,
- * but deliberately never creates a new appointment — there is no real trustee to assign.
+ * on the case, so the "Past Trustees" history doesn't leave a stale trustee open indefinitely.
+ * Uses the same close primitive (closeExistingAppointment) as the replace flow, but deliberately
+ * never creates a new appointment — there is no real trustee to assign.
  *
  * Returns null when resolveSkipReason(event) is not 'sentinel-bogus-name', so the caller proceeds
  * normally. Must run after syncedCase is resolved (closeExistingAppointment needs it) and inside
