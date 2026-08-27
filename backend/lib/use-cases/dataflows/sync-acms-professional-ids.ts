@@ -8,7 +8,11 @@ import {
 } from '../gateways.types';
 import { TrusteeVariation } from '@common/cams/trustee-variation';
 import { ACMS_SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
-import { matchTrusteeByName, resolveByContactCorroboration } from './trustee-match.helpers';
+import {
+  matchTrusteeByName,
+  resolveByContactCorroboration,
+  resolveDuplicateNameCandidates,
+} from './trustee-match.helpers';
 import { buildAcmsVariant } from './acms-trustee-variant.helpers';
 import { computeFingerprint } from './trustee-variant.helpers';
 import { AcmsTrusteeProfessional, CandidateScore } from '@common/cams/dataflow-events';
@@ -221,12 +225,17 @@ function toAcmsTrusteeProfessional(
  * resolveNameCollisionByScoring: that function hard-requires a case-appointment event
  * (caseId/courtId/courtDivisionCode/chapter) to score candidates against active appointments,
  * none of which exist for a standalone ACMS professional record. Instead, an ambiguous match is
- * given one more chance via resolveByContactCorroboration — the same shared corroboration primitive
- * DXTR can also use, but without any appointment/district/chapter evidence — before falling back
- * to reporting ambiguous for human/automated review. See cams-t0k3o for the backtest (against a
- * real 2026-08-26 trustee-professional-ids export) that sized this: 860 of 2229 no-match/ambiguous
- * records would auto-link under resolveByContactCorroboration's rule, hand-verified as genuine
- * matches.
+ * given two more chances — both shared corroboration primitives DXTR can also use, neither
+ * requiring appointment/district/chapter evidence — before falling back to reporting ambiguous
+ * for human/automated review:
+ *   1. resolveByContactCorroboration: exactly one candidate clears a high nameScore bar,
+ *      corroborated by address/phone/email. See cams-t0k3o for the backtest (against a real
+ *      2026-08-26 trustee-professional-ids export) that sized this: 860 of 2229 no-match/ambiguous
+ *      records would auto-link under this rule, hand-verified as genuine matches.
+ *   2. resolveDuplicateNameCandidates: tried only when (1) leaves MULTIPLE candidates clearing the
+ *      name bar — checks whether they're likely the same real person recorded twice in the
+ *      trustees collection (a CAMS data-quality problem) rather than a genuine ambiguity between
+ *      different people. See cams-g3xx2 for the backtest that sized and scoped this.
  */
 async function processNameMatch(
   deps: SyncAcmsProfessionalIdsDeps,
@@ -248,6 +257,16 @@ async function processNameMatch(
     if (corroboration.kind === 'resolved') {
       return { kind: 'auto-linked', trusteeId: corroboration.trusteeId };
     }
+
+    const duplicateResolution = await resolveDuplicateNameCandidates(
+      deps.context,
+      acmsTrusteeProfessional,
+      candidateTrusteeIds,
+    );
+    if (duplicateResolution.kind === 'resolved-duplicate') {
+      return { kind: 'auto-linked', trusteeId: duplicateResolution.trusteeId };
+    }
+
     return { kind: 'ambiguous', matchCandidates: result.matchCandidates };
   }
   return { kind: 'auto-linked', trusteeId: result.trusteeId };

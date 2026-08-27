@@ -1099,6 +1099,178 @@ export async function resolveByContactCorroboration(
 }
 
 /**
+ * Minimum addressScore gap (best candidate in a same-name group minus the second-best of that
+ * same group) for resolveDuplicateNameCandidates to trust a same-trusteeName tiebreak. Backtested
+ * against a real 2026-08-26 trustee-professional-ids export (see cams-g3xx2): among the 55 ACMS
+ * records where matchTrusteeByName found more than one name-qualifying candidate, every candidate
+ * PAIR sharing the same normalized trusteeName had an addressScore gap of 60+ against the ACMS
+ * source record (e.g. ROY COHEN: addr=100 vs addr=0; RONALD E STADTMUELLER: addr=100 vs addr=3;
+ * the five BRAD/BRAD W ODELL ACMS records all resolving to the same underlying duplicate pair at
+ * addr=100 vs addr=0), while pairs with GENUINELY different trusteeNames clustered at gap 0-19 -
+ * a same-name-group gap of 60+ is a much stronger signal of "two records for the same person, one
+ * with better/current data" than of "two different people who happen to score similarly." Set
+ * well above FUZZY_MATCH_MIN_GAP (8, tuned for a single-dimension swing between two DIFFERENT
+ * people) since this tiebreak is deciding WHICH of two likely-duplicate records to trust, not
+ * disambiguating between two different real people.
+ */
+const DUPLICATE_NAME_ADDRESS_GAP_THRESHOLD = 60;
+
+/**
+ * Outcome of resolveDuplicateNameCandidates - distinct from ScoringOutcome (not reused: DXTR's
+ * sync-trustee-case-appointments.ts has an exhaustive switch over ScoringOutcome.kind that must
+ * not need a new case just because this ACMS-shaped helper gained one; see cams-g3xx2):
+ *  - 'resolved-duplicate': two or more candidates share the same normalized trusteeName (very
+ *    likely the SAME real person recorded twice in the trustees collection - a CAMS data-quality
+ *    problem, not a name-matching ambiguity) AND the addressScore gap between the best and
+ *    second-best of that name-sharing group (both scored against sourceTrustee) clears
+ *    DUPLICATE_NAME_ADDRESS_GAP_THRESHOLD. Callers should log/report this as a likely
+ *    trustees-collection duplicate (see cams-hbsla) in addition to using trusteeId - this is a
+ *    workaround for the duplicate, not a fix for it.
+ *  - 'unresolved': candidates were scored but nothing qualifies as a safe duplicate tiebreak -
+ *    covers BOTH "no two candidates share a name" (genuine ambiguity between different people,
+ *    needs its own resolution - see cams-g3xx2's open scope, deliberately NOT attempted here) and
+ *    "some share a name but the gap is too small to trust" cases.
+ *  - 'no-match': every candidate failed to load, so nothing could be scored.
+ */
+export type DuplicateResolutionOutcome =
+  | { kind: 'resolved-duplicate'; trusteeId: string; candidateScores: CandidateScore[] }
+  | { kind: 'unresolved'; candidateScores: CandidateScore[] }
+  | { kind: 'no-match' };
+
+/**
+ * Resolves a multi-candidate name match (matchTrusteeByName's 'ambiguous' result, or
+ * resolveByContactCorroboration's 'unresolved' with 2+ name-qualifying candidates) by checking
+ * SPECIFICALLY for the same-real-person-recorded-twice shape: two or more candidates whose
+ * trusteeName is identical once normalized (case/whitespace-insensitive), where one scores much
+ * better against sourceTrustee's address than the other. This is deliberately narrower than a
+ * general fuzzy-match tiebreak - genuinely different candidates (different names, e.g. "David L.
+ * Miller" vs "David P. Miller") are NEVER resolved here, only reported as still-unresolved,
+ * because a backtest against real data found gap-based tiebreaking unsafe for that population:
+ * the SAME ACMS name ("David Miller") appeared on two separate source records that resolved to
+ * opposite winners against inconsistent-looking scores, suggesting these may genuinely be two
+ * different people rather than one algorithm-detectable pattern - see cams-g3xx2 for the full
+ * analysis. Resolving genuinely-different-name candidates safely is explicitly OUT OF SCOPE here
+ * and needs its own follow-up validation before any threshold is trusted for that case.
+ *
+ * Like resolveByContactCorroboration, this has no case-appointment-shaped evidence and is shared
+ * (not ACMS-only) - DXTR's resolveNameCollisionByScoring hits the identical raw candidate pool
+ * from matchTrusteeByName's ambiguous path and can just as easily be looking at a CAMS-side
+ * duplicate as an ACMS-sourced ambiguity.
+ */
+export async function resolveDuplicateNameCandidates(
+  context: ApplicationContext,
+  sourceTrustee: DxtrTrusteeParty,
+  candidateTrusteeIds: string[],
+): Promise<DuplicateResolutionOutcome> {
+  const trusteesRepo = factory.getTrusteesRepository(context);
+
+  const candidateDataPromises = candidateTrusteeIds.map(async (trusteeId) => {
+    try {
+      const trustee = await trusteesRepo.read(trusteeId);
+      return { trusteeId, trustee, error: null };
+    } catch (error) {
+      // Same rationale as resolveByContactCorroboration/resolveNameCollisionByScoring's identical
+      // guard: a transient infrastructure error is not evidence this candidate is unscorable, so
+      // it must abort this whole resolution attempt rather than silently proceeding with a
+      // smaller candidate set.
+      if (isTooManyRequestsError(error) || isGatewayTimeoutError(error)) {
+        throw error;
+      }
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      return { trusteeId, trustee: null, error: errorMessage };
+    }
+  });
+
+  const candidateData = await Promise.all(candidateDataPromises);
+
+  const scoredCandidates: { trustee: Trustee; score: CandidateScore }[] = [];
+  for (const { trusteeId, trustee, error } of candidateData) {
+    if (error) {
+      context.logger.warn(MODULE_NAME, `Skipping candidate ${trusteeId}: ${error}`);
+      continue;
+    }
+    // Reuses calculateCandidateScore purely for its addressScore computation against the real
+    // sourceTrustee - same '', '', '', [] no-case-appointment-context pattern as
+    // resolveByContactCorroboration; totalScore/nameScore (scored against sourceTrustee, not
+    // against the OTHER candidate) are not meaningful for the same-person grouping below and
+    // unused there - see asComparableParty for the candidate-vs-candidate comparison instead.
+    const score = calculateCandidateScore(context, sourceTrustee, '', '', '', trustee, []);
+    scoredCandidates.push({ trustee, score });
+  }
+
+  if (scoredCandidates.length === 0) {
+    context.logger.warn(
+      MODULE_NAME,
+      'Duplicate-name resolution failed: no valid candidates could be scored',
+    );
+    return { kind: 'no-match' };
+  }
+
+  const candidateScores = scoredCandidates.map((c) => c.score);
+
+  // Groups candidates that plausibly refer to the SAME real person by reusing calculateNameScore
+  // pairwise (candidate vs. candidate, not candidate vs. sourceTrustee) - NOT
+  // normalizeNameForMatching's raw string-equality check, which only bridges punctuation/suffix
+  // noise and would never recognize "Roy J. Cohen" and "R. Cohen" as the same person despite that
+  // being the flagship duplicate example this function exists to catch (see cams-g3xx2). Reuses
+  // calculateNameScore's existing firstLastNameToken-exact-match-required, initial-vs-full-
+  // tolerant logic rather than inventing a second, separately-tuned name-similarity comparison.
+  const asComparableParty = (trustee: Trustee): DxtrTrusteeParty => ({
+    fullName: trustee.name,
+    firstName: trustee.firstName,
+    middleName: trustee.middleName,
+    lastName: trustee.lastName,
+  });
+
+  const groups: { trustee: Trustee; score: CandidateScore }[][] = [];
+  for (const candidate of scoredCandidates) {
+    const existingGroup = groups.find((group) =>
+      group.some(
+        (member) =>
+          calculateNameScore(asComparableParty(candidate.trustee), member.trustee) >=
+          CONTACT_CORROBORATION_NAME_THRESHOLD,
+      ),
+    );
+    if (existingGroup) {
+      existingGroup.push(candidate);
+    } else {
+      groups.push([candidate]);
+    }
+  }
+
+  for (const group of groups) {
+    if (group.length < 2) continue;
+
+    const sorted = [...group].sort((a, b) => b.score.addressScore - a.score.addressScore);
+    const winner = sorted[0].score;
+    const runnerUp = sorted[1].score;
+    const gap = winner.addressScore - runnerUp.addressScore;
+
+    if (gap >= DUPLICATE_NAME_ADDRESS_GAP_THRESHOLD) {
+      context.logger.warn(
+        MODULE_NAME,
+        `Duplicate-name resolution: ${group.length} candidates plausibly refer to the same person ` +
+          `("${winner.trusteeName}") - resolving to ${winner.trusteeId} (addressScore=${winner.addressScore}) ` +
+          `over ${group
+            .map((c) => c.score)
+            .filter((c) => c.trusteeId !== winner.trusteeId)
+            .map((c) => `${c.trusteeId} (addressScore=${c.addressScore})`)
+            .join(', ')} - this is LIKELY a trustees-collection duplicate, not a genuine name ` +
+          `collision. Worth a data-quality follow-up (see cams-hbsla), not just a match decision.`,
+      );
+      return { kind: 'resolved-duplicate', trusteeId: winner.trusteeId, candidateScores };
+    }
+  }
+
+  context.logger.warn(
+    MODULE_NAME,
+    `Duplicate-name resolution failed: no same-name candidate group clears the ` +
+      `${DUPLICATE_NAME_ADDRESS_GAP_THRESHOLD}-point addressScore gap - refusing to guess`,
+  );
+  return { kind: 'unresolved', candidateScores };
+}
+
+/**
  * How a 'resolved' NameMatchResult reached its answer - the qualitative counterpart to
  * nameScore's quantified confidence:
  *  - 'exact': findTrusteesByName's anchored, whitespace-only-normalized regex matched exactly
