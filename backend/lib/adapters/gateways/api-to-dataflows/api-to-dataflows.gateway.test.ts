@@ -99,6 +99,22 @@ describe('ApiToDataflowsGatewayImpl', () => {
       );
       expect(mockSendMessage).toHaveBeenCalledWith(JSON.stringify(event));
     });
+
+    test('propagates a send failure instead of silently dropping the message', async () => {
+      mockSendMessage.mockRejectedValueOnce(new Error('queue unavailable'));
+      const gateway = new ApiToDataflowsGatewayImpl(mockContext);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const eventData: any = {
+        caseId: '081-12-34567',
+        userId: 'user123',
+        name: 'Test User',
+        role: 'TrialAttorney',
+        assignedOn: '2024-01-01',
+      };
+      const event: CaseAssignmentDownstreamEvent = { ...eventData, acmsProfessionalId: null };
+
+      await expect(gateway.queueCaseAssignmentEvent(event)).rejects.toThrow('queue unavailable');
+    });
   });
 
   describe('queueTrusteeAppointmentEvent', () => {
@@ -120,6 +136,23 @@ describe('ApiToDataflowsGatewayImpl', () => {
         TRUSTEE_APPOINTMENT_EVENT_QUEUE.queueName,
       );
       expect(mockSendMessage).toHaveBeenCalledWith(JSON.stringify(event));
+    });
+
+    test('propagates a send failure instead of silently dropping the message', async () => {
+      mockSendMessage.mockRejectedValueOnce(new Error('queue unavailable'));
+      const gateway = new ApiToDataflowsGatewayImpl(mockContext);
+      const event: TrusteeAppointmentDownstreamEvent = {
+        caseId: '081-12-34567',
+        trusteeId: 'trustee-123',
+        acmsProfessionalId: 'NY-00063',
+        assignedOn: '2024-01-01T00:00:00.000Z',
+        appointedDate: '2024-01-01',
+        chapter: '7',
+      };
+
+      await expect(gateway.queueTrusteeAppointmentEvent(event)).rejects.toThrow(
+        'queue unavailable',
+      );
     });
   });
 

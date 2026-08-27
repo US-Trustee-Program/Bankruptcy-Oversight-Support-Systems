@@ -275,26 +275,10 @@ export class TrusteeMatchVerificationUseCase {
       ]);
       const affectedCaseIds = affectedCaseIdsByFingerprint.get(verification.fingerprint) ?? [];
 
-      // 4. Enqueue the async batch remap BEFORE flipping status — every surrogate
-      // CaseAppointment sharing this fingerprint (not just verification.caseId) gets
-      // remapped to resolvedTrusteeId by the queue-triggered trustee-verification-remap
-      // handler. queueTrusteeVerificationRemap sends synchronously via the Storage Queue
-      // SDK and throws on failure, so if this throws, nothing was sent and the verification
-      // stays 'pending' and retryable through this same endpoint (the pending-status guard
-      // above would otherwise block a retry forever). A retried approve that re-enqueues is
-      // safe: handleRemap is itself idempotent, so re-running it against a fingerprint that
-      // was already fully remapped on a prior attempt just finds no surrogates left and
-      // no-ops.
-      const apiToDataflows = factory.getApiToDataflowsGateway(context);
-      const remapMessage: TrusteeVerificationRemapMessage = {
-        fingerprint: verification.fingerprint,
-        resolvedTrusteeId,
-        resolvedTrusteeName,
-        verificationId: id,
-      };
-      await apiToDataflows.queueTrusteeVerificationRemap(remapMessage);
-
-      // 5. Mark verification as approved, atomically with the affectedCaseIds snapshot
+      // 4. Persist the approval and its affectedCaseIds snapshot BEFORE enqueueing the
+      // remap. The snapshot is the durable record we most need to protect: if this write
+      // throws, the verification stays 'pending' and retryable, and no remap message has
+      // gone out yet, so nothing downstream has acted on stale data.
       await repo.update(id, {
         status: 'approved',
         resolvedTrusteeId,
@@ -303,6 +287,24 @@ export class TrusteeMatchVerificationUseCase {
         updatedBy: userRef,
         updatedOn: now,
       });
+
+      // 5. Enqueue the async batch remap now that the approval is durably recorded. Every
+      // surrogate CaseAppointment sharing this fingerprint (not just verification.caseId)
+      // gets remapped to resolvedTrusteeId by the queue-triggered trustee-verification-remap
+      // handler. handleRemap is idempotent, so a redelivered or duplicate message just finds
+      // no surrogates left and no-ops. If this enqueue throws, the approval above already
+      // succeeded and will not be retried through this endpoint (status is no longer
+      // 'pending') — the error is rethrown as-is so it surfaces loudly rather than being
+      // swallowed, since surrogates for this fingerprint will remain unmapped until the
+      // remap is retriggered by other means.
+      const apiToDataflows = factory.getApiToDataflowsGateway(context);
+      const remapMessage: TrusteeVerificationRemapMessage = {
+        fingerprint: verification.fingerprint,
+        resolvedTrusteeId,
+        resolvedTrusteeName,
+        verificationId: id,
+      };
+      await apiToDataflows.queueTrusteeVerificationRemap(remapMessage);
 
       context.observability.completeTrace(
         trace,
@@ -354,14 +356,16 @@ export class TrusteeMatchVerificationUseCase {
 
       const verification = await repo.findById(id);
       let affectedCaseIds: string[];
-      if (verification.status === 'pending') {
+      if (verification.status === 'approved') {
+        // Only approveVerification writes a snapshot, so read it for approved verifications.
+        affectedCaseIds = verification.affectedCaseIds ?? [];
+      } else {
+        // Pending and rejected verifications have no snapshot — rejection never touches
+        // surrogates, and pending hasn't been resolved yet — so derive live in both cases.
         const affectedCaseIdsByFingerprint = await this.getAffectedCaseIdsByFingerprint(context, [
           verification.fingerprint,
         ]);
         affectedCaseIds = affectedCaseIdsByFingerprint.get(verification.fingerprint) ?? [];
-      } else {
-        // Rejected verifications have no snapshot (only approveVerification writes one).
-        affectedCaseIds = verification.affectedCaseIds ?? [];
       }
 
       const enrichedCandidates = await Promise.all(
