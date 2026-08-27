@@ -1,70 +1,46 @@
 /*
   Title:        sql-hub.bicep
-  Description:  Goal 1 of the SQL Private Link hub-and-spoke rework
-                (cams-vwsp3). Stands up the hub side ONLY: one hub VNet +
-                subnet, one Private Endpoint against sql-ustp-cams, and one
-                hub-owned Private DNS Zone -- all in the SQL server's own
-                resource group (bankruptcy-oversight-support-systems), not
-                in any of CAMS's app/network resource groups.
+  Description:  Hub side only: one VNet + subnet and ONE Private Endpoint
+                against sql-ustp-cams, in the SQL server's own resource
+                group. Creates no DNS zone -- the endpoint registers into
+                the zones consumers already resolve through.
 
-  Why a hub, not another per-consumer PE: today main and every branch each
-  mint their OWN Private Endpoint against sql-ustp-cams, all registering
-  into a shared zone that holds only ONE A record for the server's single
-  canonical hostname at a time -- so a second consumer's PE registering
-  silently overwrites the first's, breaking whichever consumer isn't
-  "currently registered" (confirmed live bug). Collapsing to exactly ONE
-  Private Endpoint here removes the multi-registrant race entirely: every
-  consumer will (in a later goal) reach this same PE via VNet peering
-  instead of creating its own.
+  Why one hub endpoint rather than one per consumer: the zone holds a single
+  A record for the server's one canonical hostname, so each consumer's
+  endpoint overwrites the last, and tearing one down deletes the record
+  everyone else is using.
 
-  This is intentionally NOT wired into main.bicep's networkResourceGroupName/
-  privateDnsZoneResourceGroup params (rg-cams-network / rg-cams-network-dev):
-  this hub's zone/PE live in bankruptcy-oversight-support-systems, a
-  genuinely different resource group with a different lifecycle -- deployed
-  once, directly, not per-branch. Peering main/branches to this hub and
-  migrating them off their existing PEs/zones are explicitly later goals;
-  this file only stands up the hub itself.
+  Several resource groups hold a zone of this same name. Any ad-hoc `az`
+  command against that zone name must RG-qualify with `-g`.
 
-  Deploy standalone via a plain `az deployment group create` against
-  bankruptcy-oversight-support-systems (see
-  ops/scripts/pipeline/azure-deploy-sql-hub-setup.sh) -- no Deployment Stack,
-  since this resource group is not otherwise stack-managed.
-
-  Migration-window caveat: until consumers are migrated off the existing
-  rg-cams-network/rg-cams-network-dev zones (see below), three RG-scoped
-  instances of the identically-named privatelink.database.usgovcloudapi.net
-  zone coexist in this subscription. Any ad-hoc `az` command touching this
-  zone name during that window MUST RG-qualify (`-g`) to avoid operating on
-  the wrong instance.
-
-  Spoke peerings are NOT declared here -- see the note above the outputs for
-  why each spoke owns its own, as a separate targeted deployment.
+  Deployed by ops/scripts/pipeline/azure-deploy-sql-hub-setup.sh. Not a
+  Deployment Stack: this resource group is not otherwise stack-managed.
 */
 
 param location string = resourceGroup().location
 
-@description('Name for the new hub VNet, created in the SQL server\'s own resource group (bankruptcy-oversight-support-systems) -- deliberately NOT in rg-cams-network/rg-cams-network-dev, since the SQL server is the architectural center this VNet exists to serve, not a consumer\'s network.')
+@description('Name for the hub VNet.')
 param hubVirtualNetworkName string = 'vnet-ustp-cams-sql-hub'
 
-@description('Address space for the hub VNet. Every existing VNet in this subscription (vnet-ustp-cams, all vnet-ustp-cams-dev* branch VNets) uses 10.10.0.0/16, so this hub picks an address space outside that block to avoid overlap -- required because VNet peering (the next goal) rejects overlapping ranges. Only one subnet is ever needed here (one PE), so a /24 is already generous headroom, not a sizing decision that needs revisiting later.')
+@description('Address space for the hub VNet. Must not overlap any spoke: peering rejects overlapping ranges. Main and legacy branches use 10.10.0.0/16, branch slots come from 10.128.0.0/12.')
 param hubVnetAddressPrefix array = ['10.20.0.0/24']
 
 @description('Name for the single subnet hosting the hub SQL Private Endpoint.')
 param hubPrivateEndpointSubnetName string = 'snet-sql-hub-private-endpoint'
 
-@description('Address prefix for the hub\'s private-endpoint subnet. A /27 (32 addresses) comfortably covers the one Private Endpoint this subnet will ever host, carved out of the /24 VNet range above.')
+@description('Address prefix for the hub\'s private-endpoint subnet.')
 param hubPrivateEndpointSubnetAddressPrefix string = '10.20.0.0/27'
 
 @description('Name of the SQL server the hub Private Endpoint targets.')
 param sqlServerName string = 'sql-ustp-cams'
 
-@description('Resource group containing the SQL server -- also where this entire hub (VNet, subnet, PE, DNS zone) is deployed, since the SQL server is this hub\'s architectural center.')
+@description('Resource group containing the SQL server. The hub deploys here too.')
 param sqlServerResourceGroupName string = resourceGroup().name
 
 @description('Fixed Azure Government private-link DNS zone name for Azure SQL.')
 param sqlPrivateDnsZoneName string = 'privatelink.database.usgovcloudapi.net'
 
-@description('Resource groups holding the EXISTING privatelink.database.usgovcloudapi.net zones that consumers already resolve through -- main\'s (rg-cams-network) and the branches\' (rg-cams-network-dev). The hub Private Endpoint registers its A record into every one of them, rather than into a new hub-owned zone. See the header for why. Order matters only in that entries should be appended, never reordered: the first becomes the endpoint\'s primary DNS zone config and the rest are suffixed by index.')
+@description('Resource groups whose existing privatelink.database.usgovcloudapi.net zone the endpoint registers its A record into. Append, never reorder: the first entry becomes the primary DNS zone config and the rest are suffixed by index.')
 param consumerPrivateDnsZoneResourceGroups array = [
   'rg-cams-network'
   'rg-cams-network-dev'
@@ -75,12 +51,8 @@ param tags object = {
   component: 'network'
 }
 
-// Fixed identity used purely for labeling/naming the Private Endpoint
-// (subnet-private-endpoint.bicep's pep-<stackName> / pep-connection-<stackName>
-// convention) and the DNS zone config entry name. Not a Deployment Stack name --
-// this hub is deployed as a plain resource-group deployment. A var, not a param,
-// since this hub has exactly one identity and is never deployed with an
-// overridden name.
+// Names the Private Endpoint and its DNS zone config entry. Not a Deployment
+// Stack name -- this hub is a plain resource-group deployment.
 var hubStackName = 'ustp-cams-sql-hub'
 
 module hubVnet './vnet.bicep' = {
@@ -104,20 +76,11 @@ module hubPrivateEndpointSubnet './subnet.bicep' = {
   ]
 }
 
-// This hub deliberately creates NO DNS zone of its own. It registers into the
-// zones consumers are ALREADY linked to, computed below from
-// consumerPrivateDnsZoneResourceGroups.
-//
-// An earlier revision minted a third object named
-// privatelink.database.usgovcloudapi.net in this RG, alongside the existing ones
-// in rg-cams-network and rg-cams-network-dev, and left migrating consumers onto
-// it as a later goal. That migration is not possible without an outage: Azure
-// rejects linking one VNet to two zones sharing a name (confirmed live), so each
-// consumer would have to UNLINK from its current zone before it could link to
-// this one, and between those two operations it resolves nothing. Registering
-// into the existing zones instead makes adoption a single in-place A-record
-// update per zone, with rollback the same shape, and removes the three-
-// identically-named-zones hazard entirely.
+// Registers into the zones consumers are ALREADY linked to rather than a
+// hub-owned one. Azure rejects linking one VNet to two zones sharing a name, so
+// a hub-owned zone could only be adopted by unlinking first -- and a consumer
+// resolves nothing in between. Registering into the existing zones makes
+// adoption a single in-place A-record update per zone.
 var consumerPrivateDnsZoneIds = [
   for rg in consumerPrivateDnsZoneResourceGroups: resourceId(
     subscription().subscriptionId,
@@ -145,22 +108,8 @@ module hubSqlPrivateEndpoint './subnet-private-endpoint.bicep' = {
   }
 }
 
-// This template is hub-CORE only: VNet, subnet, and the one shared Private
-// Endpoint. It deliberately declares NO spoke peerings.
-//
-// An earlier revision carried a spokeVirtualNetworks array whose documented
-// onboarding mechanism was "append an entry and re-run this deployment". That
-// made onboarding or removing any single spoke redeploy the Private Endpoint
-// every other environment's SQL resolution depends on, and made a reordered or
-// dropped array entry able to silently un-peer an unrelated environment -- the
-// file's own comment conceded entries "should only ever be appended, never
-// reordered or removed", which is a landmine rather than a contract.
-//
-// Each spoke now owns its own peering, created as its own targeted, per-spoke
-// deployment: branches via azure-deploy-network.sh (both sides, each with its
-// own --name), main via main.bicep's createMainHubPeering-gated modules. So a
-// spoke's lifecycle can never touch this shared endpoint, which is what the
-// environment-isolation invariant on cams-vwsp3 requires.
+// No spoke peerings are declared here: each spoke creates its own, so a spoke's
+// lifecycle can never redeploy the endpoint every environment depends on.
 
 output hubVirtualNetworkId string = resourceId('Microsoft.Network/virtualNetworks', hubVirtualNetworkName)
 output hubPrivateEndpointSubnetId string = hubPrivateEndpointSubnet.outputs.subnetId

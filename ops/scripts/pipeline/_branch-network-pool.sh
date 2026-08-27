@@ -1,37 +1,23 @@
 #!/usr/bin/env bash
 # Title:        _branch-network-pool.sh
-# Description:  Shared helper for Goal 3 of the SQL Private Link hub-and-spoke
-#               rework (cams-vwsp3): the reserved address pool used for
-#               dynamic per-branch VNet allocation, and the pure address-math
-#               needed to carve/find/name slots within it. Source this file
-#               from consuming scripts; do not execute it directly.
+# Description:  The reserved address pool used for dynamic per-branch VNet
+#               allocation, and the address math to carve/find/name slots
+#               within it. Source this file; do not execute it directly.
 #
-# Why a pool, not a ledger: every branch VNet today deploys with the SAME
-# unvaried default (10.10.0.0/16, see network.bicep's vnetAddressPrefix),
-# which is fine while branches never peer with each other or the hub, but
-# becomes a hard blocker once branches need to peer to the shared SQL
-# Private Link hub (vnet-ustp-cams-sql-hub) -- Azure rejects a new peering
-# whenever the remote VNet's address space overlaps ANY VNet already peered
-# to the same local VNet (transitive across all of that VNet's existing
-# peerings; confirmed live). Rather than persisting a slot ledger (a KV
-# secret, a Cosmos doc, etc. -- another moving part to keep consistent with
-# reality), this design derives "what's claimed" LIVE from the hub's own
-# peering list (see branch_network_claimed_slot_indices below) each time a
-# branch needs to allocate, and leans on Azure's own overlap rejection as the
-# authoritative collision detector for the couldn't-avoid-it race between two
-# branches claiming concurrently (see azure-deploy-network.sh's retry loop).
+# Every branch VNet needs a distinct address space because Azure rejects a new
+# peering whenever the remote VNet overlaps ANY VNet already peered to the same
+# local VNet -- transitively, across all of that VNet's existing peerings. Since
+# every branch peers to the same hub, branches collide with each other.
 #
-# Pool sizing: 10.128.0.0/12 (10.128.0.0 - 10.143.255.255) -- deliberately
-# far from both main's static 10.10.0.0/16 (network.bicep's default) and the
-# hub's own 10.20.0.0/24 (sql-hub.bicep's hubVnetAddressPrefix), so a
-# dynamically-picked branch slot can never collide with either of those just
-# by construction; the live collision check above only ever has to worry
-# about OTHER branches' slots. Divided into /20 slots (4096 addresses each --
-# generous relative to the ~64 addresses a branch's four /28 subnets actually
-# need today, matching the user's explicit preference for headroom over
-# tightness): a /12 -> /20 split is 20-12=8 variable bits, i.e. 256 possible
-# concurrent branch allocations. That is far more headroom than realistic
-# concurrent-branch counts will ever need, without being wastefully huge.
+# There is no persisted ledger. "What's claimed" is derived LIVE from the hub's
+# own peering list (branch_network_claimed_slot_indices), and Azure's overlap
+# rejection is the authoritative collision detector for the unavoidable race
+# between two branches claiming at once (see azure-deploy-network.sh's retry
+# loop).
+#
+# The pool is 10.128.0.0/12, clear of main's 10.10.0.0/16 and the hub's
+# 10.20.0.0/24 so a branch slot cannot collide with either by construction.
+# Split into /20 slots = 256 concurrent allocations.
 #
 # Exports:
 #   BRANCH_NETWORK_HUB_VNET_NAME_DEFAULT / BRANCH_NETWORK_HUB_RESOURCE_GROUP_DEFAULT
@@ -55,11 +41,9 @@
 #        nothing on stdout if the pool is exhausted.
 #   branch_network_hub_peering_name_for BRANCH_VNET_NAME [HUB_VNET_NAME]
 #   branch_network_branch_peering_name_for BRANCH_VNET_NAME [HUB_VNET_NAME]
-#     -> the deterministic peering names for each side -- single source of
-#        truth shared between azure-deploy-network.sh (creates them) and
-#        az-delete-branch-resources.sh (deletes the hub-side one on
-#        teardown), same reasoning as _network-stackname.sh's
-#        network_stack_name_for.
+#     -> deterministic peering names, shared between azure-deploy-network.sh
+#        (creates them) and az-delete-branch-resources.sh (deletes the
+#        hub-side one on teardown).
 #   branch_network_is_overlap_error TEXT
 #     -> true (exit 0) if TEXT looks like Azure's VNet-peering address-space
 #        overlap rejection.
@@ -134,17 +118,12 @@ branch_network_slot_index_for_cidr() {
 # remote VNet, not a separate `az network vnet show` per peering. This is the
 # live, no-ledger "what's in use" signal the whole design relies on.
 #
-# Communicates the result via the global branch_network_claimed_indices rather
-# than stdout, and MUST be called as a plain statement. That is deliberate, for
-# the same reason _vnet-link-check.sh's helpers do it: an earlier version
-# returned the indices on stdout and was consumed as
-# `claimed=" $(branch_network_claimed_slot_indices ... | tr '\n' ' ') "`. Being
-# inside a pipeline inside a command substitution exempts it from errexit AND
-# discards its exit status, so a failed `az` call -- expired token, throttling,
-# hub VNet not yet created -- produced an EMPTY prefix list that read as "no
-# slots claimed." Every branch deploying during that window would then be handed
-# slot 0. `return 1` and `exit 1` are both swallowed the same way there, so
-# failing loud is only possible off the stdout path.
+# Result comes back via the global branch_network_claimed_indices, and this MUST
+# be called as a plain statement -- never inside $( ). A pipeline inside a
+# command substitution is exempt from errexit AND discards exit status, so a
+# failed `az` call would produce an empty list that reads as "no slots claimed"
+# and hand every concurrent branch slot 0. Both `return 1` and `exit 1` are
+# swallowed there, so failing loud is only possible off the stdout path.
 #
 # A single peering whose remote address space can't be parsed is still skipped
 # silently: that under-reports one slot, and Azure's own peering overlap
@@ -160,14 +139,9 @@ branch_network_claimed_slot_indices() {
   errFile=$(mktemp)
   # stderr captured separately, never merged with 2>&1 -- a CLI upgrade nag or
   # deprecation notice spliced into stdout would be parsed as an address prefix.
-  # Disconnected peerings are excluded: that state means the remote VNet (or its
-  # side of the peering) is gone, so the slot it names is genuinely free. Without
-  # this, every torn-down branch permanently consumes a slot -- observed live on
-  # the first real run, where branch ef1bab was removed but
-  # peer-vnet-ustp-cams-sql-hub-to-vnet-ustp-cams-dev-ef1bab survived as
-  # Disconnected, still reporting remoteAddressSpace 10.128.0.0/20 and holding
-  # slot 0. Teardown is supposed to delete it, but relying on teardown having run
-  # is exactly the assumption that leaks; keying on the state Azure itself
+  # Disconnected peerings are excluded: the remote VNet is gone, so the slot it
+  # names is free. Teardown is supposed to delete the peering, but relying on
+  # that having run is what leaks slots -- keying on the state Azure itself
   # reports makes the pool self-healing.
   #
   # Initiated is deliberately still counted as claimed. It means one side exists
