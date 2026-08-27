@@ -41,6 +41,8 @@ export type TrusteeMatchVerification = Auditable & {
   status: OrderStatus;
   resolvedTrusteeId?: string;
   resolvedTrusteeName?: string;
+  /** Case IDs snapshotted at approval, since live derivation returns nothing once remap runs. */
+  resolvedCaseIds?: string[];
   courtName?: string;
   taskType: 'trustee-match';
   reason?: string;

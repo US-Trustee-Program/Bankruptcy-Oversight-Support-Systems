@@ -299,6 +299,21 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
       );
     });
 
+    test('projection includes resolvedCaseIds', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([sampleVerification]);
+
+      await repository.search({ status: ['pending'] });
+
+      expect(MongoCollectionAdapter.prototype.find).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        undefined,
+        expect.objectContaining({
+          fields: expect.arrayContaining(['resolvedCaseIds']),
+        }),
+      );
+    });
+
     test('should wrap errors', async () => {
       vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(
         new Error('Database failure'),

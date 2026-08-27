@@ -277,6 +277,42 @@ describe('TrusteeMatchVerificationUseCase', () => {
       expect(result[0].affectedCaseCount).toBe(0);
     });
 
+    test('computes affectedCaseCount from resolvedCaseIds when present, without querying live surrogates', async () => {
+      mockSearch.mockResolvedValue([
+        {
+          ...sampleVerification,
+          status: 'approved',
+          resolvedCaseIds: ['case-a', 'case-b', 'case-c'],
+        },
+      ]);
+
+      const result = await useCase.getVerifications(context, {});
+
+      expect(result[0].affectedCaseCount).toBe(3);
+      expect(mockGetSurrogatesByFingerprints).not.toHaveBeenCalled();
+    });
+
+    test('only queries live surrogates for rows without a resolvedCaseIds snapshot, in a mixed page', async () => {
+      mockSearch.mockResolvedValue([
+        { ...sampleVerification, status: 'approved', resolvedCaseIds: ['case-a'] },
+        {
+          ...sampleVerification,
+          id: 'verification-2',
+          fingerprint: 'fp-xyz789',
+          status: 'pending',
+        },
+      ]);
+      mockGetSurrogatesByFingerprints.mockResolvedValue([
+        { caseId: 'case-live-1', trusteeId: 'fp-xyz789', isSurrogate: true },
+      ]);
+
+      const result = await useCase.getVerifications(context, {});
+
+      expect(mockGetSurrogatesByFingerprints).toHaveBeenCalledWith(['fp-xyz789']);
+      expect(result[0].affectedCaseCount).toBe(1);
+      expect(result[1].affectedCaseCount).toBe(1);
+    });
+
     test('batches all fingerprints in a page into a single query instead of one per row', async () => {
       mockSearch.mockResolvedValue([
         sampleVerification,
@@ -326,6 +362,34 @@ describe('TrusteeMatchVerificationUseCase', () => {
         resolvedTrusteeName: 'New Trustee',
         verificationId: 'verification-1',
       });
+    });
+
+    test('snapshots the current surrogate case list into resolvedCaseIds before the remap can delete them', async () => {
+      mockGetSurrogatesByFingerprints.mockResolvedValue([
+        { caseId: 'case-001', trusteeId: 'fp-abc123', isSurrogate: true },
+        { caseId: 'case-002', trusteeId: 'fp-abc123', isSurrogate: true },
+      ]);
+
+      await useCase.approveVerification(context, 'verification-1', 'trustee-new', 'New Trustee');
+
+      expect(mockGetSurrogatesByFingerprints).toHaveBeenCalledWith(['fp-abc123']);
+      expect(mockUpdate).toHaveBeenCalledWith(
+        'verification-1',
+        expect.objectContaining({
+          resolvedCaseIds: ['case-001', 'case-002'],
+        }),
+      );
+    });
+
+    test('snapshots an empty resolvedCaseIds when no surrogate cases remain', async () => {
+      mockGetSurrogatesByFingerprints.mockResolvedValue([]);
+
+      await useCase.approveVerification(context, 'verification-1', 'trustee-new', 'New Trustee');
+
+      expect(mockUpdate).toHaveBeenCalledWith(
+        'verification-1',
+        expect.objectContaining({ resolvedCaseIds: [] }),
+      );
     });
 
     test('does not create a TRUSTEE_VARIATION when the bucket already has this exact variant', async () => {
@@ -579,6 +643,37 @@ describe('TrusteeMatchVerificationUseCase', () => {
       const result = await useCase.getEnrichedVerification(context, 'verification-1');
 
       expect(result.affectedCaseIds).toEqual([]);
+    });
+
+    test('prefers the resolvedCaseIds snapshot over live surrogate derivation when present', async () => {
+      mockFindById.mockResolvedValue({
+        ...sampleVerification,
+        status: 'approved',
+        resolvedTrusteeId: 'trustee-a',
+        resolvedCaseIds: ['case-snapshot-1', 'case-snapshot-2'],
+      });
+      // Live surrogates already gone (remap completed) -- must NOT be used when a snapshot exists.
+      mockGetSurrogatesByFingerprints.mockResolvedValue([]);
+
+      const result = await useCase.getEnrichedVerification(context, 'verification-1');
+
+      expect(result.affectedCaseIds).toEqual(['case-snapshot-1', 'case-snapshot-2']);
+      expect(mockGetSurrogatesByFingerprints).not.toHaveBeenCalled();
+    });
+
+    test('falls back to live surrogate derivation when resolvedCaseIds is not present', async () => {
+      mockFindById.mockResolvedValue({
+        ...sampleVerification,
+        status: 'pending',
+        resolvedCaseIds: undefined,
+      });
+      mockGetSurrogatesByFingerprints.mockResolvedValue([
+        { caseId: 'case-live-1', trusteeId: 'fp-abc123', isSurrogate: true },
+      ]);
+
+      const result = await useCase.getEnrichedVerification(context, 'verification-1');
+
+      expect(result.affectedCaseIds).toEqual(['case-live-1']);
     });
 
     test('logs a warning when affected case count exceeds the sanity cap', async () => {

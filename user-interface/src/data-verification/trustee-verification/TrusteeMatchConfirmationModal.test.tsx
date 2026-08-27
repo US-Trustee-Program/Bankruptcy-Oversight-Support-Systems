@@ -196,6 +196,27 @@ describe('TrusteeMatchConfirmationModal', () => {
     });
   });
 
+  test('disables Cancel when isProcessing is true', async () => {
+    render(
+      <BrowserRouter>
+        <TrusteeMatchConfirmationModal
+          ref={modalRef}
+          id={modalId}
+          onConfirm={vi.fn()}
+          isProcessing={true}
+        />
+      </BrowserRouter>,
+    );
+    act(() => modalRef.current?.show(sampleCandidate));
+
+    await waitFor(() => {
+      const cancelButton = screen.getByTestId(
+        `button-trustee-confirmation-modal-${modalId}-cancel-button`,
+      );
+      expect(cancelButton).toBeDisabled();
+    });
+  });
+
   test('does not show a loading spinner when isProcessing is omitted', async () => {
     renderWithProps();
     act(() => modalRef.current?.show(sampleCandidate));

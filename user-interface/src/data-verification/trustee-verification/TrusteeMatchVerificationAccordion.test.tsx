@@ -1723,6 +1723,14 @@ describe('TrusteeMatchVerificationAccordion', () => {
       expect(link).toHaveAttribute('href', `/case-detail/${sampleOrder.caseId}`);
     });
 
+    test('falls back to the originating case link after expansion when the fetched detail has zero affected cases', async () => {
+      renderWithProps();
+      await mockDetailAndExpand({ ...sampleOrderDetail, affectedCaseIds: [] });
+
+      const link = screen.getByRole('link', { name: /22-11111/, hidden: true });
+      expect(link).toHaveAttribute('href', `/case-detail/${sampleOrder.caseId}`);
+    });
+
     test('shows "N cases" count before expansion when a verification affects multiple cases', () => {
       const multiCaseOrder: TrusteeMatchVerificationListItem = {
         ...sampleOrder,

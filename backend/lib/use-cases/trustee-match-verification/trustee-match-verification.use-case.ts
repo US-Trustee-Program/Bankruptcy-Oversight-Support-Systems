@@ -49,9 +49,12 @@ export class TrusteeMatchVerificationUseCase {
       const results = await repo.search({ status });
 
       const courts = await new CourtsUseCase().getCourts(context);
+      const resultsWithoutSnapshot = results.filter(
+        (verification) => !verification.resolvedCaseIds,
+      );
       const affectedCaseIdsByFingerprint = await this.getAffectedCaseIdsByFingerprint(
         context,
-        results.map((verification) => verification.fingerprint),
+        resultsWithoutSnapshot.map((v) => v.fingerprint),
       );
       return results.map((verification) => {
         const { matchCandidates, ...rest } = verification;
@@ -60,8 +63,11 @@ export class TrusteeMatchVerificationUseCase {
           courtName: this.resolveCourtName(verification, courts) ?? verification.courtName,
           candidateCount: matchCandidates.length,
           preselectedCandidate: this.resolvePreselectedCandidate(verification),
-          affectedCaseCount: (affectedCaseIdsByFingerprint.get(verification.fingerprint) ?? [])
-            .length,
+          affectedCaseCount: (
+            verification.resolvedCaseIds ??
+            affectedCaseIdsByFingerprint.get(verification.fingerprint) ??
+            []
+          ).length,
         };
       });
     } catch (originalError) {
@@ -83,6 +89,8 @@ export class TrusteeMatchVerificationUseCase {
     context: ApplicationContext,
     fingerprints: string[],
   ): Promise<Map<string, string[]>> {
+    if (fingerprints.length === 0) return new Map();
+
     const appointmentsRepo = factory.getTrusteeCaseAppointmentsRepository(context);
     const uniqueFingerprints = [...new Set(fingerprints)];
     const surrogates = await appointmentsRepo.getSurrogatesByFingerprints(uniqueFingerprints);
@@ -288,11 +296,18 @@ export class TrusteeMatchVerificationUseCase {
       };
       await apiToDataflows.queueTrusteeVerificationRemap(remapMessage);
 
-      // 4. Mark verification as approved
+      // 4. Must snapshot before the queued remap deletes these surrogates.
+      const affectedCaseIdsByFingerprint = await this.getAffectedCaseIdsByFingerprint(context, [
+        verification.fingerprint,
+      ]);
+      const resolvedCaseIds = affectedCaseIdsByFingerprint.get(verification.fingerprint) ?? [];
+
+      // 5. Mark verification as approved
       await repo.update(id, {
         status: 'approved',
         resolvedTrusteeId,
         resolvedTrusteeName,
+        resolvedCaseIds,
         updatedBy: userRef,
         updatedOn: now,
       });
@@ -346,10 +361,15 @@ export class TrusteeMatchVerificationUseCase {
       const appointmentsRepo = factory.getTrusteeAppointmentsRepository(context);
 
       const verification = await repo.findById(id);
-      const affectedCaseIdsByFingerprint = await this.getAffectedCaseIdsByFingerprint(context, [
-        verification.fingerprint,
-      ]);
-      const affectedCaseIds = affectedCaseIdsByFingerprint.get(verification.fingerprint) ?? [];
+      let affectedCaseIds: string[];
+      if (verification.resolvedCaseIds) {
+        affectedCaseIds = verification.resolvedCaseIds;
+      } else {
+        const affectedCaseIdsByFingerprint = await this.getAffectedCaseIdsByFingerprint(context, [
+          verification.fingerprint,
+        ]);
+        affectedCaseIds = affectedCaseIdsByFingerprint.get(verification.fingerprint) ?? [];
+      }
 
       const enrichedCandidates = await Promise.all(
         verification.matchCandidates.map(async (candidate) => {

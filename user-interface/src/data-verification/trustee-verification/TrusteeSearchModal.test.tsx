@@ -510,6 +510,28 @@ describe('TrusteeSearchModal', () => {
     });
   });
 
+  test('disables Cancel when isProcessing is true', async () => {
+    render(
+      <BrowserRouter>
+        <TrusteeSearchModal
+          ref={modalRef}
+          id={modalId}
+          dxtrTrusteeName="DOE, JOHN"
+          onConfirm={vi.fn()}
+          isProcessing={true}
+        />
+      </BrowserRouter>,
+    );
+    act(() => modalRef.current?.show());
+
+    await waitFor(() => {
+      const cancelButton = screen.getByTestId(
+        `button-trustee-search-modal-${modalId}-cancel-button`,
+      );
+      expect(cancelButton).toBeDisabled();
+    });
+  });
+
   test('does not show a loading spinner when isProcessing is omitted', async () => {
     renderWithProps();
     act(() => modalRef.current?.show());
