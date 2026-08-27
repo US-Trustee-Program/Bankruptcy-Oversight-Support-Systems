@@ -220,12 +220,11 @@ function toAcmsTrusteeProfessional(
 /**
  * Attempts to resolve a raw candidate trusteeId list via the two shared, non-appointment-gated
  * corroboration primitives, in order: resolveByContactCorroboration first (exactly one candidate
- * clears the name bar, corroborated by address/phone/email or the no-contradiction fallback - see
- * cams-t0k3o/cams-yv1p3), then resolveDuplicateNameCandidates only if that leaves MULTIPLE
- * candidates (checks whether they're likely the same real person recorded twice in the trustees
- * collection - see cams-g3xx2). Extracted so both matchTrusteeByName's 'ambiguous' result and
- * findTokenIntersectionCandidates' raw candidate list can share the exact same resolution
- * sequence rather than duplicating it.
+ * clears the name bar, corroborated by address/phone/email or the no-contradiction fallback), then
+ * resolveDuplicateNameCandidates only if that leaves MULTIPLE candidates (checks whether they're
+ * likely the same real person recorded twice in the trustees collection). Extracted so both
+ * matchTrusteeByName's 'ambiguous' result and findTokenIntersectionCandidates' raw candidate list
+ * can share the exact same resolution sequence rather than duplicating it.
  */
 async function resolveCandidatesByCorroboration(
   context: SyncAcmsProfessionalIdsDeps['context'],
@@ -257,9 +256,11 @@ async function resolveCandidatesByCorroboration(
 
 /**
  * Falls through from a fingerprint miss to CAMS's existing name-matching logic
- * (matchTrusteeByName), reused as-is with the same thresholds as the DXTR sync. Called with no
- * courtId — an ACMS professional record has no associated case/court — which only narrows
- * matchTrusteeByName's last-name-token fallback path, it does not error.
+ * (matchTrusteeByName), reused as-is with the same thresholds as the DXTR sync. matchTrusteeByName
+ * takes no case/court context - an ACMS professional record has none to provide - and its
+ * last-name-token fallback tier applies identically here as for any other caller: it scores
+ * district/division evidence rather than gating candidates on it, so a name match with no
+ * case/court context still surfaces as a candidate for the corroboration paths below to evaluate.
  *
  * Unlike sync-trustee-case-appointments.ts, an ambiguous match here is NOT further resolved via
  * resolveNameCollisionByScoring: that function hard-requires a case-appointment event
@@ -268,17 +269,14 @@ async function resolveCandidatesByCorroboration(
  * 'no-match' outcomes are given more chances via shared, non-appointment-gated primitives before
  * falling back to their default disposition for human/automated review:
  *   - 'ambiguous': routed through resolveCandidatesByCorroboration directly against
- *     matchTrusteeByName's own raw candidates. See cams-t0k3o for the backtest (against a real
- *     2026-08-26 trustee-professional-ids export) that sized this: 860 of 2229 no-match/ambiguous
- *     records would auto-link under resolveByContactCorroboration's rule, hand-verified as genuine
- *     matches; cams-g3xx2 for the duplicate-candidate backtest.
+ *     matchTrusteeByName's own raw candidates.
  *   - 'no-match': two LAST-RESORT candidate-discovery steps are tried in sequence, each only after
  *     the previous one found nothing, before also routing through resolveCandidatesByCorroboration:
- *     1. findTokenIntersectionCandidates (see cams-e75yv) - name-part REORDERING (e.g. going by a
- *        middle name, a lastName with an internal space).
- *     2. findAnchoredLevenshteinCandidates (see cams-eenua) - genuine SPELLING errors (a typo or
- *        transposition in either name part) - a different failure shape token-intersection's
- *        exact-substring requirement cannot catch.
+ *     1. findTokenIntersectionCandidates - name-part REORDERING (e.g. going by a middle name, a
+ *        lastName with an internal space).
+ *     2. findAnchoredLevenshteinCandidates - genuine SPELLING errors (a typo or transposition in
+ *        either name part) - a different failure shape token-intersection's exact-substring
+ *        requirement cannot catch.
  *     Both are deliberately gated behind matchTrusteeByName (and each other) already returning
  *     nothing — each issues its own extra query per attempt and must never run speculatively
  *     alongside the cheaper tiers.

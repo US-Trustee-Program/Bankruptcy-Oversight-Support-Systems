@@ -965,9 +965,9 @@ export async function resolveNameCollisionByScoring(
  * resolveByContactCorroboration - below this, a name difference is too weak a starting point for
  * contact-field corroboration to rescue, regardless of how well address/phone/email line up.
  * Matches the threshold backtested in test/integration/sync-acms-professional-ids-audit/scripts/
- * auto-link-threshold-backtest.ts against a real 2026-08-26 trustee-professional-ids export
- * (see cams-t0k3o): 860 of 2229 ACMS no-match/ambiguous records would auto-link under this rule,
- * hand-verified as genuine matches.
+ * auto-link-threshold-backtest.ts against a real trustee-professional-ids export: 860 of 2229
+ * ACMS no-match/ambiguous records would auto-link under this rule, hand-verified as genuine
+ * matches.
  */
 const CONTACT_CORROBORATION_NAME_THRESHOLD = 85;
 
@@ -983,13 +983,13 @@ const CONTACT_CORROBORATION_ADDRESS_THRESHOLD = 80;
 /**
  * Minimum addressScore for a PARSEABLE ACMS address to be treated as merely a weak positive
  * signal (allowed through isNoContradictionMatch's fallback) rather than a genuine disagreement
- * (blocked). Backtested against a real 2026-08-26 trustee-professional-ids export (see
- * cams-yv1p3): a parseable-address record scoring below this floor (e.g. ACMS says Charleston SC,
- * CAMS says New York NY - addressScore=0) reflects two genuinely different addresses, not a
- * near-miss - contrast a record like THOMAS HOOPER's, where both sides list the exact same
- * building/suite/city/zip and addressScore=78 purely from a street-line formatting difference
- * ("55 E. Monroe St., Suite 3850" vs "55 E. Monroe, Suite 3850"). Set low enough to exclude clear
- * disagreements while still letting near-misses like Hooper's (which just barely missed
+ * (blocked). Backtested against a real trustee-professional-ids export: a parseable-address
+ * record scoring below this floor (e.g. ACMS says Charleston SC, CAMS says New York NY -
+ * addressScore=0) reflects two genuinely different addresses, not a near-miss - contrast a record
+ * like THOMAS HOOPER's, where both sides list the exact same building/suite/city/zip and
+ * addressScore=78 purely from a street-line formatting difference ("55 E. Monroe St., Suite 3850"
+ * vs "55 E. Monroe, Suite 3850"). Set low enough to exclude clear disagreements while still
+ * letting near-misses like Hooper's (which just barely missed
  * CONTACT_CORROBORATION_ADDRESS_THRESHOLD's 80) through.
  */
 const NO_CONTRADICTION_ADDRESS_FLOOR = 30;
@@ -1009,7 +1009,8 @@ const NO_CONTRADICTION_ADDRESS_FLOOR = 30;
  *  - EXACTLY ONE candidate clears nameScore >= 85. Two or more candidates clearing the name bar is
  *    always 'unresolved' here, even if one has much stronger contact corroboration than the
  *    other - picking a winner among multiple plausible same-name candidates needs its own
- *    duplicate-vs-genuine-ambiguity handling (see cams-g3xx2), not this function.
+ *    duplicate-vs-genuine-ambiguity handling (see resolveDuplicateNameCandidates), not this
+ *    function.
  *  - That single candidate's addressScore >= 80, OR phoneScore === 100, OR emailScore === 100 -
  *    any one strong signal is enough (an OR, not requiring all three), since a stale/moved office
  *    address is common in this population but doesn't contradict an otherwise-exact name+phone
@@ -1133,7 +1134,7 @@ export async function resolveByContactCorroboration(
  * higher bar than resolveByContactCorroboration's main path, since this fallback has no
  * corroborating signal at all to lean on besides the name itself.
  *
- * Backtested against a real 2026-08-26 trustee-professional-ids export (see cams-yv1p3): of the
+ * Backtested against a real trustee-professional-ids export: of the
  * 379 ACMS records where a single candidate cleared the name threshold but not the main
  * corroboration bar, 313 (91%) had an ACTIVELY CONTRADICTING phone number (both sides had a real,
  * comparable 10+-digit number that genuinely disagreed - e.g. different area codes entirely) -
@@ -1192,7 +1193,7 @@ function isNoContradictionMatch(sourceTrustee: DxtrTrusteeParty, winner: Candida
 /**
  * Minimum addressScore gap (best candidate in a same-name group minus the second-best of that
  * same group) for resolveDuplicateNameCandidates to trust a same-trusteeName tiebreak. Backtested
- * against a real 2026-08-26 trustee-professional-ids export (see cams-g3xx2): among the 55 ACMS
+ * against a real trustee-professional-ids export: among the 55 ACMS
  * records where matchTrusteeByName found more than one name-qualifying candidate, every candidate
  * PAIR sharing the same normalized trusteeName had an addressScore gap of 60+ against the ACMS
  * source record (e.g. ROY COHEN: addr=100 vs addr=0; RONALD E STADTMUELLER: addr=100 vs addr=3;
@@ -1209,18 +1210,18 @@ const DUPLICATE_NAME_ADDRESS_GAP_THRESHOLD = 60;
 /**
  * Outcome of resolveDuplicateNameCandidates - distinct from ScoringOutcome (not reused: DXTR's
  * sync-trustee-case-appointments.ts has an exhaustive switch over ScoringOutcome.kind that must
- * not need a new case just because this ACMS-shaped helper gained one; see cams-g3xx2):
+ * not need a new case just because this ACMS-shaped helper gained one):
  *  - 'resolved-duplicate': two or more candidates share the same normalized trusteeName (very
  *    likely the SAME real person recorded twice in the trustees collection - a CAMS data-quality
  *    problem, not a name-matching ambiguity) AND the addressScore gap between the best and
  *    second-best of that name-sharing group (both scored against sourceTrustee) clears
  *    DUPLICATE_NAME_ADDRESS_GAP_THRESHOLD. Callers should log/report this as a likely
- *    trustees-collection duplicate (see cams-hbsla) in addition to using trusteeId - this is a
- *    workaround for the duplicate, not a fix for it.
+ *    trustees-collection duplicate in addition to using trusteeId - this is a workaround for the
+ *    duplicate, not a fix for it.
  *  - 'unresolved': candidates were scored but nothing qualifies as a safe duplicate tiebreak -
  *    covers BOTH "no two candidates share a name" (genuine ambiguity between different people,
- *    needs its own resolution - see cams-g3xx2's open scope, deliberately NOT attempted here) and
- *    "some share a name but the gap is too small to trust" cases.
+ *    needs its own resolution, deliberately NOT attempted here) and "some share a name but the
+ *    gap is too small to trust" cases.
  *  - 'no-match': every candidate failed to load, so nothing could be scored.
  */
 export type DuplicateResolutionOutcome =
@@ -1239,9 +1240,9 @@ export type DuplicateResolutionOutcome =
  * because a backtest against real data found gap-based tiebreaking unsafe for that population:
  * the SAME ACMS name ("David Miller") appeared on two separate source records that resolved to
  * opposite winners against inconsistent-looking scores, suggesting these may genuinely be two
- * different people rather than one algorithm-detectable pattern - see cams-g3xx2 for the full
- * analysis. Resolving genuinely-different-name candidates safely is explicitly OUT OF SCOPE here
- * and needs its own follow-up validation before any threshold is trusted for that case.
+ * different people rather than one algorithm-detectable pattern. Resolving genuinely-different-name
+ * candidates safely is explicitly OUT OF SCOPE here and needs its own follow-up validation before
+ * any threshold is trusted for that case.
  *
  * Like resolveByContactCorroboration, this has no case-appointment-shaped evidence and is shared
  * (not ACMS-only) - DXTR's resolveNameCollisionByScoring hits the identical raw candidate pool
@@ -1303,7 +1304,7 @@ export async function resolveDuplicateNameCandidates(
   // pairwise (candidate vs. candidate, not candidate vs. sourceTrustee) - NOT
   // normalizeNameForMatching's raw string-equality check, which only bridges punctuation/suffix
   // noise and would never recognize "Roy J. Cohen" and "R. Cohen" as the same person despite that
-  // being the flagship duplicate example this function exists to catch (see cams-g3xx2). Reuses
+  // being the flagship duplicate example this function exists to catch. Reuses
   // calculateNameScore's existing firstLastNameToken-exact-match-required, initial-vs-full-
   // tolerant logic rather than inventing a second, separately-tuned name-similarity comparison.
   const asComparableParty = (trustee: Trustee): DxtrTrusteeParty => ({
@@ -1347,7 +1348,7 @@ export async function resolveDuplicateNameCandidates(
             .filter((c) => c.trusteeId !== winner.trusteeId)
             .map((c) => `${c.trusteeId} (addressScore=${c.addressScore})`)
             .join(', ')} - this is LIKELY a trustees-collection duplicate, not a genuine name ` +
-          `collision. Worth a data-quality follow-up (see cams-hbsla), not just a match decision.`,
+          `collision. Worth a data-quality follow-up, not just a match decision.`,
       );
       return { kind: 'resolved-duplicate', trusteeId: winner.trusteeId, candidateScores };
     }
@@ -1596,8 +1597,8 @@ export function tokenizeNameForIntersection(fullName: string): string[] {
  *
  * WHY searchTrusteesByName AND NOT searchTrusteesByNameScored: an earlier attempt used
  * searchTrusteesByNameScored, reasoning that its phonetic index was the "real" search matchTrusteeByName's
- * own fuzzy tier already uses. Backtested (2026-08-27, see cams-e75yv) against a real 2026-08-26
- * trustee-professional-ids export using the ACTUAL phoneticTokens containment logic (precomputed
+ * own fuzzy tier already uses. Backtested against a real trustee-professional-ids
+ * export using the ACTUAL phoneticTokens containment logic (precomputed
  * per trustee, faithfully reproduced offline) - this was FAR too broad to narrow anything: most
  * records intersected to hundreds or thousands of candidates (phonetic/bigram tokens like "S530"
  * or "th" collide across huge numbers of unrelated names), and the rare exactly-one-candidate
@@ -1617,7 +1618,7 @@ export function tokenizeNameForIntersection(fullName: string): string[] {
  * meaningfully more expensive than any single-query tier in matchTrusteeByName. Callers MUST
  * treat this as an explicit last resort, invoked only after matchTrusteeByName itself has
  * returned 'no-match' (i.e. every cheaper tier already found nothing) - never call this
- * speculatively or in parallel with cheaper tiers. See cams-e75yv's ordering requirement.
+ * speculatively or in parallel with cheaper tiers.
  */
 export async function findTokenIntersectionCandidates(
   context: ApplicationContext,
@@ -1715,9 +1716,9 @@ function levenshteinDistance(a: string, b: string): number {
  * Approach: ANCHOR one name part with an EXACT match, then allow the OTHER part to be a close
  * (edit distance <= 2) match rather than requiring exact equality. Tried in both directions,
  * unioned: (a) lastName exact -> firstName fuzzy, (b) firstName exact -> lastName fuzzy. This is
- * NOT the earlier-abandoned unanchored Levenshtein approach (see cams-t0k3o's investigation notes
- * - fuzzing lastName alone against the ENTIRE trustee population found 1637 noisy candidates
- * collapsing to only 4 legitimate matches after requiring strong corroboration): anchoring one
+ * NOT an unanchored Levenshtein approach (fuzzing lastName alone against the ENTIRE trustee
+ * population was found to produce 1637 noisy candidates collapsing to only 4 legitimate matches
+ * after requiring strong corroboration - too noisy to use): anchoring one
  * side exactly first narrows the candidate pool before ever computing an edit distance, the same
  * way findTokenIntersectionCandidates' precision comes from requiring both tokens to already
  * narrow the pool rather than fuzzing on a single, unanchored dimension.
@@ -1728,8 +1729,8 @@ function levenshteinDistance(a: string, b: string): number {
  * anchor field (firstName or lastName) and a Levenshtein-close match on the other. This avoids
  * fuzzing against the full trustees collection.
  *
- * Backtested (2026-08-27, see cams-eenua) against a real 2026-08-26 trustee-professional-ids
- * export: WITHOUT corroboration, roughly a third of exactly-one-candidate hits are plausible false
+ * Backtested against a real trustee-professional-ids export: WITHOUT corroboration, roughly a
+ * third of exactly-one-candidate hits are plausible false
  * positives on common first/last names (e.g. a common first name paired with a merely
  * shape-similar surname). Corroboration-gated (same OR-rule resolveByContactCorroboration already
  * applies: addressScore>=80 OR phoneScore==100 OR emailScore==100), 32 of 96 exactly-one-candidate
@@ -1741,17 +1742,17 @@ function levenshteinDistance(a: string, b: string): number {
  *
  * Returns RAW, UNSCORED candidates - same contract as findTokenIntersectionCandidates. The caller
  * is responsible for routing a single candidate through resolveByContactCorroboration and 2+
- * candidates through resolveDuplicateNameCandidates before ever auto-linking - Brian's explicit
- * direction: "this is not for auto-matching alone, it is simply to find candidates for further
- * vetting." An anchored-fuzzy hit on a common name (e.g. "Robert", "William") is NOT reliable
- * evidence alone; corroboration is what separates the 32 genuine matches from the roughly one-third
- * false-positive rate observed in the uncorroborated set.
+ * candidates through resolveDuplicateNameCandidates before ever auto-linking - this is a
+ * candidate-FINDING mechanism, not a match confidence score on its own. An anchored-fuzzy hit on a
+ * common name (e.g. "Robert", "William") is NOT reliable evidence alone; corroboration is what
+ * separates the 32 genuine matches from the roughly one-third false-positive rate observed in the
+ * uncorroborated set.
  *
  * COST WARNING - issues up to 2 searchTrusteesByName queries (one per anchor direction), on top of
  * whatever matchTrusteeByName/findTokenIntersectionCandidates already tried. Callers MUST treat
  * this as an explicit last resort, invoked only after BOTH of those have already found nothing -
  * never call this speculatively or in parallel with cheaper tiers. Same ordering requirement as
- * findTokenIntersectionCandidates (see cams-e75yv/cams-eenua).
+ * findTokenIntersectionCandidates.
  */
 export async function findAnchoredLevenshteinCandidates(
   context: ApplicationContext,
