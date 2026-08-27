@@ -816,6 +816,44 @@ describe('SyncAcmsProfessionalIds', () => {
       expect(outcome).toEqual({ kind: 'auto-linked', via: 'fingerprint' });
     });
 
+    test('should write a conflict errored record, bypassing the active-appointment gate, when a fingerprint hit resolves to a trustee already linked to this ACMS ID', async () => {
+      const matchingVariant: TrusteeVariation = {
+        id: 'v1',
+        documentType: 'TRUSTEE_VARIATION',
+        fingerprint: 'irrelevant',
+        variant: buildAcmsVariant(record),
+        trusteeId: 'trustee-1',
+        createdOn: '2025-01-01T00:00:00.000Z',
+        createdBy: { id: 'SYSTEM', name: 'SYSTEM' },
+        updatedOn: '2025-01-01T00:00:00.000Z',
+        updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
+      };
+      vi.spyOn(deps.variationRepo, 'findByFingerprint').mockResolvedValue([matchingVariant]);
+      vi.spyOn(deps.professionalIdsRepo, 'findByAcmsProfessionalId').mockResolvedValue([
+        linkedProfessionalId({ camsTrusteeId: 'trustee-existing' }),
+      ]);
+      const nameMatchSpy = vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName');
+      const gateSpy = vi.spyOn(deps.acmsGateway, 'getActiveAppointmentsForProfessional');
+      const createSpy = vi.spyOn(deps.professionalIdsRepo, 'createProfessionalId');
+      const createErroredSpy = vi
+        .spyOn(deps.professionalIdsRepo, 'createErroredProfessionalId')
+        .mockResolvedValue(linkedProfessionalId());
+
+      const outcome = await SyncAcmsProfessionalIds.processOneRecord(deps, record);
+
+      expect(nameMatchSpy).not.toHaveBeenCalled();
+      expect(gateSpy).not.toHaveBeenCalled();
+      expect(createSpy).not.toHaveBeenCalled();
+      expect(createErroredSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        'NY-00063',
+        expect.any(String),
+        { disposition: 'conflict', trustees: ['trustee-existing', 'trustee-1'] },
+        expect.objectContaining({ id: 'ACMS' }),
+      );
+      expect(outcome).toEqual({ kind: 'conflict', via: 'fingerprint' });
+    });
+
     test('should fall through to name matching on a fingerprint miss', async () => {
       vi.spyOn(deps.variationRepo, 'findByFingerprint').mockResolvedValue([]);
       const nameMatchSpy = vi
