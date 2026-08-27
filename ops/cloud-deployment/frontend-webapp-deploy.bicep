@@ -85,6 +85,10 @@ param actionGroupName string = ''
 
 param actionGroupResourceGroupName string = ''
 
+@description('Subscription ID that contains the action group resource group. Defaults to the deploying subscription.')
+@minLength(36)
+param actionGroupSubscriptionId string = subscription().subscriptionId
+
 @description('boolean to determine creation and configuration of Alerts')
 param createAlerts bool = false
 
@@ -182,6 +186,7 @@ module webappInsights 'lib/app-insights/webapp-insights.bicep' = {
   params: {
     actionGroupName: actionGroupName
     actionGroupResourceGroupName: actionGroupResourceGroupName
+    actionGroupSubscriptionId: actionGroupSubscriptionId
     analyticsWorkspaceId: analyticsWorkspaceId
     createAlerts: createAlerts
     createApplicationInsights: createApplicationInsights
