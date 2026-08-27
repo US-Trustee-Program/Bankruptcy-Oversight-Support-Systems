@@ -8,7 +8,7 @@ import {
 } from '../gateways.types';
 import { TrusteeVariation } from '@common/cams/trustee-variation';
 import { ACMS_SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
-import { matchTrusteeByName } from './trustee-match.helpers';
+import { matchTrusteeByName, resolveByContactCorroboration } from './trustee-match.helpers';
 import { buildAcmsVariant } from './acms-trustee-variant.helpers';
 import { computeFingerprint } from './trustee-variant.helpers';
 import { AcmsTrusteeProfessional, CandidateScore } from '@common/cams/dataflow-events';
@@ -220,8 +220,13 @@ function toAcmsTrusteeProfessional(
  * Unlike sync-trustee-case-appointments.ts, an ambiguous match here is NOT further resolved via
  * resolveNameCollisionByScoring: that function hard-requires a case-appointment event
  * (caseId/courtId/courtDivisionCode/chapter) to score candidates against active appointments,
- * none of which exist for a standalone ACMS professional record. An ambiguous match is reported
- * directly for human/automated review instead.
+ * none of which exist for a standalone ACMS professional record. Instead, an ambiguous match is
+ * given one more chance via resolveByContactCorroboration — the same shared corroboration primitive
+ * DXTR can also use, but without any appointment/district/chapter evidence — before falling back
+ * to reporting ambiguous for human/automated review. See cams-t0k3o for the backtest (against a
+ * real 2026-08-26 trustee-professional-ids export) that sized this: 860 of 2229 no-match/ambiguous
+ * records would auto-link under resolveByContactCorroboration's rule, hand-verified as genuine
+ * matches.
  */
 async function processNameMatch(
   deps: SyncAcmsProfessionalIdsDeps,
@@ -234,6 +239,15 @@ async function processNameMatch(
     return { kind: 'no-match' };
   }
   if (result.kind === 'ambiguous') {
+    const candidateTrusteeIds = result.matchCandidates.map((c) => c.trusteeId);
+    const corroboration = await resolveByContactCorroboration(
+      deps.context,
+      acmsTrusteeProfessional,
+      candidateTrusteeIds,
+    );
+    if (corroboration.kind === 'resolved') {
+      return { kind: 'auto-linked', trusteeId: corroboration.trusteeId };
+    }
     return { kind: 'ambiguous', matchCandidates: result.matchCandidates };
   }
   return { kind: 'auto-linked', trusteeId: result.trusteeId };
