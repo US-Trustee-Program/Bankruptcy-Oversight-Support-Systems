@@ -57,6 +57,15 @@ function loadEnv() {
     process.exit(1);
   }
   dotenv.config({ path: localEnvPath, override: true });
+
+  const accountKey = process.env.AZURITE_ACCOUNT_KEY;
+  if (!accountKey) {
+    console.error(`Missing AZURITE_ACCOUNT_KEY in ${localEnvPath}`);
+    process.exit(1);
+  }
+  process.env.AzureWebJobsDataflowsStorage =
+    `DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;` +
+    `AccountKey=${accountKey};QueueEndpoint=http://127.0.0.1:10001/devstoreaccount1;`;
 }
 
 const ALL_QUEUE_NAMES = [
@@ -243,11 +252,13 @@ async function run() {
     // -------------------------------------------------------------------------
     console.log('\nTest 5: a send failure propagates instead of silently dropping the message');
     {
-      const originalConnectionString = process.env.AzureWebJobsDataflowsStorage;
-      // Well-known Azurite default account key — not a secret, publicly documented.
-      // Points at an unused port so the send genuinely fails to connect.
-      process.env.AzureWebJobsDataflowsStorage =
-        'DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;QueueEndpoint=http://127.0.0.1:19999/devstoreaccount1;'; // pragma: allowlist secret
+      const originalConnectionString = getConnectionString();
+      // Reuse the already-configured connection string but point it at an unused port,
+      // so the send genuinely fails to connect without hardcoding the account key again.
+      process.env.AzureWebJobsDataflowsStorage = originalConnectionString.replace(
+        /QueueEndpoint=http:\/\/127\.0\.0\.1:\d+/,
+        'QueueEndpoint=http://127.0.0.1:19999',
+      );
       const brokenGateway = new ApiToDataflowsGatewayImpl(context);
       try {
         await brokenGateway.queueCaseReload('081-24-44444');
