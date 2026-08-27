@@ -774,6 +774,8 @@ describe('PastKeyDatesForm', () => {
       expect(saveButton).toBeEnabled();
 
       await userEvent.selectOptions(screen.getByTestId('last-compensation-study-month'), '05');
+      await userEvent.tab(); // year select
+      await userEvent.tab(); // outside fieldset
 
       await waitFor(() => {
         expect(saveButton).toBeDisabled();
