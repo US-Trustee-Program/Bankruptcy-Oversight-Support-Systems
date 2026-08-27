@@ -2557,7 +2557,10 @@ describe('resolveByContactCorroboration', () => {
     expect(result.trusteeId).toBe('trustee-1');
   });
 
-  test('stays unresolved when the sole name-qualifying candidate has no strong corroboration', async () => {
+  test('stays unresolved when the sole name-qualifying candidate has no strong corroboration and its address is a genuine disagreement (not an absence)', async () => {
+    // sourceTrustee has a real, parseable cityStateZipCountry ("New Haven, CT 06511") - the
+    // candidate's address is in a different city/state entirely, so this is a genuine address
+    // disagreement, not an absence of data - the no-contradiction fallback must NOT rescue it.
     const candidate = makeTrustee({
       trusteeId: 'trustee-1',
       firstName: 'Richard',
@@ -2576,6 +2579,105 @@ describe('resolveByContactCorroboration', () => {
     (mockTrusteesRepo.read as ReturnType<typeof vi.fn>).mockResolvedValue(candidate);
 
     const result = await resolveByContactCorroboration(context, sourceTrustee, ['trustee-1']);
+
+    expect(result.kind).toBe('unresolved');
+  });
+
+  test('resolves via the no-contradiction fallback when the sole nameScore===100 candidate has no comparable phone/email and the ACMS address is unparseable (not a disagreement)', async () => {
+    const unparseableAddressSource: DxtrTrusteeParty = {
+      fullName: 'Richard Belford',
+      firstName: 'Richard',
+      lastName: 'Belford',
+      legacy: {
+        // No cityStateZipCountry at all - parseCityStateZip returns null (unparseable/absent),
+        // not a genuine disagreement - but address1 is present so this is NOT a blank demographic.
+        address1: '9 Trumbull Street',
+      },
+    };
+    const candidate = makeTrustee({
+      trusteeId: 'trustee-1',
+      firstName: 'Richard',
+      lastName: 'Belford',
+      name: 'Richard L. Belford',
+      public: {
+        address: {
+          address1: '9 Trumbull Street',
+          city: 'New Haven',
+          state: 'CT',
+          zipCode: '06511',
+          countryCode: 'US',
+        },
+      },
+    });
+    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>).mockResolvedValue(candidate);
+
+    const result = await resolveByContactCorroboration(context, unparseableAddressSource, [
+      'trustee-1',
+    ]);
+
+    expect(result.kind).toBe('resolved');
+    if (result.kind !== 'resolved') throw new Error('expected resolved outcome');
+    expect(result.trusteeId).toBe('trustee-1');
+  });
+
+  test('does NOT resolve via the no-contradiction fallback when the ACMS demographic is fully blank (no address, phone, or email at all)', async () => {
+    const blankDemographicSource: DxtrTrusteeParty = {
+      fullName: 'Richard Belford',
+      firstName: 'Richard',
+      lastName: 'Belford',
+      // legacy omitted entirely - no address, phone, or email recorded in ACMS whatsoever.
+    };
+    const candidate = makeTrustee({
+      trusteeId: 'trustee-1',
+      firstName: 'Richard',
+      lastName: 'Belford',
+      name: 'Richard L. Belford',
+      public: {
+        address: {
+          address1: '9 Trumbull Street',
+          city: 'New Haven',
+          state: 'CT',
+          zipCode: '06511',
+          countryCode: 'US',
+        },
+      },
+    });
+    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>).mockResolvedValue(candidate);
+
+    const result = await resolveByContactCorroboration(context, blankDemographicSource, [
+      'trustee-1',
+    ]);
+
+    expect(result.kind).toBe('unresolved');
+  });
+
+  test('does NOT resolve via the no-contradiction fallback when nameScore is 85 (fuzzy tier), not 100', async () => {
+    const initialOnlySource: DxtrTrusteeParty = {
+      fullName: 'R. Belford',
+      firstName: 'R', // initial-only, not exact - scoreFirstNamePart caps this at 85, not 100
+      lastName: 'Belford',
+      legacy: {
+        address1: '9 Trumbull Street',
+      },
+    };
+    const candidate = makeTrustee({
+      trusteeId: 'trustee-1',
+      firstName: 'Richard',
+      lastName: 'Belford',
+      name: 'Richard L. Belford',
+      public: {
+        address: {
+          address1: '9 Trumbull Street',
+          city: 'New Haven',
+          state: 'CT',
+          zipCode: '06511',
+          countryCode: 'US',
+        },
+      },
+    });
+    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>).mockResolvedValue(candidate);
+
+    const result = await resolveByContactCorroboration(context, initialOnlySource, ['trustee-1']);
 
     expect(result.kind).toBe('unresolved');
   });
