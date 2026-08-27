@@ -252,10 +252,10 @@ export async function createNewAppointment(
 /**
  * One day before referenceDate (itself a stable, DXTR-sourced date — see applyResolvedTrustee's
  * assignedOn docblock), so a soft-closed appointment's unassignedOn never overlaps the event that
- * caused the close. referenceDate is always a plain YYYY-MM-DD string (DXTR's appointedDate is
- * parsed from a fixed-width YYMMDD source field with no time component — see parseDxtrDate in
- * cases.dxtr.gateway.ts), so calendar-day subtraction is correct and unambiguous; unlike the old
- * `new Date().toISOString()` wall-clock stamp, this is deterministic across retries.
+ * caused the close and stays deterministic across retries. referenceDate is always a plain
+ * YYYY-MM-DD string (DXTR's appointedDate is parsed from a fixed-width YYMMDD source field with no
+ * time component — see parseDxtrDate in cases.dxtr.gateway.ts), so calendar-day subtraction is
+ * correct and unambiguous.
  */
 function deriveUnassignedOn(referenceDate: string): string {
   return DateHelper.subtractDays(referenceDate, 1);
@@ -1528,9 +1528,9 @@ function resolvePreMatchShortCircuit(
 /**
  * Handles the 'sentinel-bogus-name' skip reason: the event cannot be safely attributed to any
  * trustee, but unlike 'empty-demographics' it still requires closing any real active appointment
- * on the case, so the "Past Trustees" history doesn't leave a stale trustee open indefinitely
- * (see CAMS-888). Uses the same close primitive (closeExistingAppointment) as the replace flow,
- * but deliberately never creates a new appointment — there is no real trustee to assign.
+ * on the case, so the "Past Trustees" history doesn't leave a stale trustee open indefinitely.
+ * Uses the same close primitive (closeExistingAppointment) as the replace flow, but deliberately
+ * never creates a new appointment — there is no real trustee to assign.
  *
  * Returns null when resolveSkipReason(event) is not 'sentinel-bogus-name', so the caller proceeds
  * normally. Must run after syncedCase is resolved (closeExistingAppointment needs it) and inside

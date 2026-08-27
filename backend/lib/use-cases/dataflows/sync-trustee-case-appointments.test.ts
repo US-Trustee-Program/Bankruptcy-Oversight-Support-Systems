@@ -927,7 +927,7 @@ describe('SyncTrusteeCaseAppointments', () => {
           );
 
           // makeEvent's appointedDate is '2024-01-15' — unassignedOn is one day before it, never
-          // wall-clock time, mirroring the primary CAMS-888 fix.
+          // wall-clock time.
           expect(mockTrusteeCaseAppointmentsRepo.updateCaseAppointment).toHaveBeenCalledWith(
             expect.objectContaining({
               id: 'ca-old',
@@ -1151,8 +1151,8 @@ describe('SyncTrusteeCaseAppointments', () => {
       ).mockResolvedValue(existingAppointment);
 
       // makeEvent's appointedDate is '2024-01-15' — well after existingAppointment's assignedOn,
-      // simulating the sync-lag scenario from CAMS-888: the job runs long after the DXTR-reported
-      // appointment date, but unassignedOn must be derived from that date, not wall-clock time.
+      // simulating sync lag: the job runs long after the DXTR-reported appointment date, but
+      // unassignedOn must be derived from that date, not wall-clock time.
       const events = [makeEvent('case-001', 'John Doe')];
 
       await SyncTrusteeCaseAppointments.processAppointments(

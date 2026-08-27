@@ -552,6 +552,33 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
     });
   }
 
+  /**
+   * Returns real, soft-closed appointments (unassignedOn is populated) — excludes placeholder rows
+   * (surrogate fingerprint markers and ACMS SENTINEL_TRUSTEE_ID rows), the same exclusion
+   * getActiveByCaseId applies. Cursor-paginated on _id for resumability across pages of a single
+   * run, same shape as findActiveMissingAppointedDate/getAllCaseAppointments.
+   */
+  async findClosedAppointments(
+    lastId: string | null,
+    limit: number,
+  ): Promise<Array<CaseAppointment & { _id: string }>> {
+    type CaseAppointmentQueryable = CaseAppointmentDocument & { _id: string };
+    const doc = using<CaseAppointmentQueryable>();
+    const conditions = [
+      doc('documentType').equals('CASE_APPOINTMENT'),
+      doc('unassignedOn').exists(),
+      doc('trusteeId').notEqual(SENTINEL_TRUSTEE_ID),
+      doc('isSurrogate').notEqual(true),
+    ];
+    if (lastId) conditions.push(doc('_id').greaterThan(lastId));
+    const query = and(...conditions);
+    return this.findByCursor<CaseAppointmentQueryable>(query, {
+      limit,
+      sortField: '_id',
+      sortDirection: 'ASCENDING',
+    });
+  }
+
   async updateCaseFields(caseId: string, fields: CaseDenormalizedFields): Promise<void> {
     assertValidChapter(fields.chapter);
 
