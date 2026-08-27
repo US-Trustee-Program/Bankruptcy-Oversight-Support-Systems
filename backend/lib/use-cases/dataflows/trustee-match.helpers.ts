@@ -1521,3 +1521,143 @@ export async function matchTrusteeByName(
   context.logger.warn(MODULE_NAME, `No CAMS trustee found matching name "${normalized}".`);
   return { kind: 'no-match' };
 }
+
+/**
+ * Tokens shorter than this are dropped before intersecting. Set to 2 (not 1) purely to exclude
+ * empty/whitespace-only fragments after tokenizing - unlike a phonetic/bigram search, exact-word
+ * containment (searchTrusteesByName's case-insensitive substring regex against trustee.name) does
+ * NOT have a "single initial matches almost everything" problem, so there is no need for a higher
+ * floor the way an earlier phonetic-search attempt required (see findTokenIntersectionCandidates'
+ * doc comment for why that attempt was abandoned) - a short token like "mc" or "jo" still only
+ * matches trustees whose NAME TEXT literally contains that substring.
+ */
+const TOKEN_INTERSECTION_MIN_TOKEN_LENGTH = 2;
+
+/**
+ * Common suffixes/role markers that shouldn't count as a discriminating name token for
+ * findTokenIntersectionCandidates - same list backtested in
+ * test/integration/sync-acms-professional-ids-audit/scripts/token-intersection-exact-word-backtest.ts.
+ */
+const TOKEN_INTERSECTION_STOPWORDS = new Set([
+  'jr',
+  'sr',
+  'ii',
+  'iii',
+  'iv',
+  'tr',
+  'trustee',
+  'inc',
+  'esq',
+  'not',
+  'use',
+  'do',
+]);
+
+/**
+ * Splits a fullName into lowercase, deduplicated, punctuation-stripped tokens with role-suffix
+ * stopwords and short (<2 char) tokens removed - see findTokenIntersectionCandidates's doc
+ * comment for why. Exported for reuse by the token-intersection backtest script and its unit
+ * tests; not intended as a general-purpose name utility outside that context.
+ */
+export function tokenizeNameForIntersection(fullName: string): string[] {
+  const raw = fullName
+    .toLowerCase()
+    .replace(/[.,()/*]/g, ' ')
+    .replace(/[-']/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean);
+  return [...new Set(raw)].filter(
+    (t) => t.length >= TOKEN_INTERSECTION_MIN_TOKEN_LENGTH && !TOKEN_INTERSECTION_STOPWORDS.has(t),
+  );
+}
+
+/**
+ * Last-resort candidate-discovery tier for a name matchTrusteeByName's own tiers structurally
+ * cannot find: a name where the parts have been REORDERED (not just abbreviated) relative to how
+ * CAMS stores firstName/middleName/lastName - e.g. a lastName with an internal space that changes
+ * its token count ("MC LANE" vs "McLane"), a person who goes by their middle name with the ACMS
+ * source recording it in a different field position ("GEORGE L REDER" vs CAMS
+ * firstName=L./middleName=George), or a first name dropped entirely in favor of a middle name
+ * with no initial preserved ("C. EUGENE CHAMBERLAIN" vs CAMS firstName=Eugene). calculateNameScore
+ * requires firstLastNameToken(dxtrLastName) === firstLastNameToken(camsLastName) as a hard gate
+ * and compares first/middle POSITIONALLY - all three shapes above score 0 under that comparison
+ * regardless of how strong any other evidence is, and matchTrusteeByName's own tiers (exact
+ * string match, normalized string match, single first-lastName-token search) never surface a
+ * candidate for them either, so there is nothing for resolveByContactCorroboration/
+ * resolveDuplicateNameCandidates to even score.
+ *
+ * Approach: tokenize fullName into individually-meaningful tokens (see
+ * tokenizeNameForIntersection), search trustees by EACH token independently via
+ * searchTrusteesByName (case-insensitive substring containment against trustee.name - NOT
+ * searchTrusteesByNameScored's phonetic/bigram index), and INTERSECT the resulting trusteeId
+ * sets. A trustee appearing in the intersection of every token is a much stronger,
+ * order-independent candidate than anything a single-token or full-string search can produce,
+ * since it does not care which field position a given name part landed in on either side.
+ *
+ * WHY searchTrusteesByName AND NOT searchTrusteesByNameScored: an earlier attempt used
+ * searchTrusteesByNameScored, reasoning that its phonetic index was the "real" search matchTrusteeByName's
+ * own fuzzy tier already uses. Backtested (2026-08-27, see cams-e75yv) against a real 2026-08-26
+ * trustee-professional-ids export using the ACTUAL phoneticTokens containment logic (precomputed
+ * per trustee, faithfully reproduced offline) - this was FAR too broad to narrow anything: most
+ * records intersected to hundreds or thousands of candidates (phonetic/bigram tokens like "S530"
+ * or "th" collide across huge numbers of unrelated names), and the rare exactly-one-candidate
+ * hits that did occur were false positives (e.g. "CAROL LYNN FOX" intersecting to "Brian Foltyn").
+ * Switching to searchTrusteesByName's plain substring containment and lowering the token-length
+ * floor to 2 reproduced the ORIGINAL substring-proxy experiment's results almost exactly: 140 of
+ * 869 eligible no-name-candidate records collapsed to exactly one intersection candidate, all
+ * hand-plausible on inspection (e.g. "W. WHEELER BRYAN" -> "William Wheeler Bryan", "GEORGE L
+ * REDER" -> "L. George Reder"), with zero records producing an unmanageably large intersection.
+ *
+ * Returns RAW, UNSCORED candidates - same contract as findLastNameTokenMatches. The caller is
+ * responsible for routing a single candidate through resolveByContactCorroboration and 2+
+ * candidates through resolveDuplicateNameCandidates before ever auto-linking; a unique
+ * intersection result is a candidate-FINDING signal, not a match confidence score on its own.
+ *
+ * COST WARNING - this issues one searchTrusteesByName query per token (2+ real queries),
+ * meaningfully more expensive than any single-query tier in matchTrusteeByName. Callers MUST
+ * treat this as an explicit last resort, invoked only after matchTrusteeByName itself has
+ * returned 'no-match' (i.e. every cheaper tier already found nothing) - never call this
+ * speculatively or in parallel with cheaper tiers. See cams-e75yv's ordering requirement.
+ */
+export async function findTokenIntersectionCandidates(
+  context: ApplicationContext,
+  sourceTrustee: DxtrTrusteeParty,
+): Promise<Trustee[]> {
+  const tokens = tokenizeNameForIntersection(sourceTrustee.fullName);
+  if (tokens.length < 2) {
+    // Need at least 2 independent tokens for an intersection to narrow anything - a single-token
+    // name (e.g. a company name with no discernible person-name shape) can't be searched this way.
+    return [];
+  }
+
+  const trusteesRepo = factory.getTrusteesRepository(context);
+
+  let candidateSet: Map<string, Trustee> | null = null;
+  for (const token of tokens) {
+    const matches = await trusteesRepo.searchTrusteesByName(token);
+    const matchesById = new Map(matches.map((t) => [t.trusteeId, t]));
+
+    if (candidateSet === null) {
+      candidateSet = matchesById;
+    } else {
+      for (const trusteeId of candidateSet.keys()) {
+        if (!matchesById.has(trusteeId)) candidateSet.delete(trusteeId);
+      }
+    }
+
+    if (candidateSet.size === 0) break; // no point querying further tokens once empty
+  }
+
+  const candidates = candidateSet ? [...candidateSet.values()] : [];
+
+  if (candidates.length > 0) {
+    const candidateList = candidates.map((t) => `${t.trusteeId} ("${t.name}")`).join(', ');
+    context.logger.info(
+      MODULE_NAME,
+      `Token-intersection search found ${candidates.length} candidate(s) for ` +
+        `"${sourceTrustee.fullName}" (tokens=[${tokens.join(', ')}]): ${candidateList}.`,
+    );
+  }
+
+  return candidates;
+}
