@@ -4285,6 +4285,29 @@ describe('closeExistingAppointment', () => {
     expect(result).toEqual({ closed: true, softCloseError: null, unassignedOn: '2024-06-14' });
   });
 
+  test('correctly rolls back across a year boundary when referenceDate is January 1st', async () => {
+    // Every other unassignedOn-derivation test in this file uses a safe mid-month referenceDate —
+    // this guards month/year rollover specifically, since deriveUnassignedOn's correctness (not
+    // just wall-clock time) is this change's central claim.
+    const context = await createMockApplicationContext();
+    const appointmentsRepo = buildAppointmentsRepo();
+
+    const result = await closeExistingAppointment(
+      context,
+      event,
+      existingAppointment,
+      '2024-01-01',
+      appointmentsRepo,
+      syncedCase,
+    );
+
+    expect(appointmentsRepo.updateCaseAppointment).toHaveBeenCalledWith({
+      ...existingAppointment,
+      unassignedOn: '2023-12-31',
+    });
+    expect(result.unassignedOn).toBe('2023-12-31');
+  });
+
   test('never creates a replacement appointment, even on a permanent close failure', async () => {
     const context = await createMockApplicationContext();
     const appointmentsRepo = buildAppointmentsRepo({

@@ -126,6 +126,10 @@ describe('date helper tests', () => {
       // 2026-11-01 here instead of 2026-11-02, since setDate/getDate operate in local time
       // while toISOString reformats in UTC — the day after DST ends silently loses a day.
       ['across the US DST-end transition', '2026-11-01', 1, '2026-11-02'],
+      // Spring-forward guard alongside the fall-back case above — the bug class (local-time
+      // mutation vs. UTC reformatting) is direction-agnostic, so both DST transitions need
+      // their own regression case rather than assuming one implies the other.
+      ['across the US DST-start transition', '2026-03-08', 1, '2026-03-09'],
     ] as const;
 
     test.each(cases)('addDays: %s', (_description, input, days, expected) => {
