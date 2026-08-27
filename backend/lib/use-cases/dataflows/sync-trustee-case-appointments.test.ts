@@ -1045,6 +1045,69 @@ describe('SyncTrusteeCaseAppointments', () => {
         expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalled();
         expect(scenarioDistribution.bogusAdminNameSkippedCount).toBe(0);
       });
+
+      // The chapter-11 branch is intentionally unconditional on profCode and contact info,
+      // unlike isSentinelWithNoIdentity's sentinel-profCode rule, which always requires no usable
+      // contact info before disqualifying a bogus-looking name. A chapter-11 filing with a
+      // sentinel profCode and the court's own real address/phone (e.g. "CHAPTER 11 - LV") is still
+      // skipped here: the chapter itself is independently strong evidence no trustee is appointed
+      // yet, and a court's contact info doesn't establish personhood any more than a firstName
+      // does for these institutional labels. Pinned down explicitly so a future refactor can't
+      // accidentally "fix" this into consistency with isSentinelWithNoIdentity and silently start
+      // routing chapter-11 admin-office noise back into the human review queue.
+      test('skips a bogus-looking name on a chapter 11 case with a sentinel profCode and real contact info', async () => {
+        const events: TrusteeAppointmentSyncEvent[] = [
+          {
+            ...makeEvent('case-001', 'CHAPTER 11 - LV'),
+            dxtrTrustee: {
+              fullName: 'CHAPTER 11 - LV',
+              lastName: 'CHAPTER 11 - LV',
+              legacy: {
+                address1: '300 LAS VEGAS BLVD., SO. #4300',
+                cityStateZipCountry: 'LAS VEGAS NV 89101',
+                phone: '(702) 388-6600',
+                email: 'USTPRegion17.lv.ecf@usdoj.gov',
+              },
+            },
+            profCode: '00000',
+            chapter: '11',
+          },
+        ];
+
+        const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          events,
+        );
+
+        expect(trusteeMatchHelpers.matchTrusteeByName).not.toHaveBeenCalled();
+        expect(scenarioDistribution.bogusAdminNameSkippedCount).toBe(1);
+      });
+
+      // resolveSkipReason checks isSentinelWithNoIdentity before isBogusAdminName, so when BOTH
+      // rules would independently disqualify the same event (sentinel profCode, bogus name, no
+      // contact info, chapter 11), the sentinel-profCode rule wins and increments
+      // sentinelBogusNameSkippedCount, not bogusAdminNameSkippedCount. Pinned down so this
+      // precedence — which determines which counter/telemetry path fires — doesn't silently shift
+      // if the checks in resolveSkipReason are ever reordered.
+      test('attributes a chapter 11, sentinel-profCode, no-contact bogus name to the sentinel rule, not bogusAdminNameSkippedCount', async () => {
+        const events: TrusteeAppointmentSyncEvent[] = [
+          {
+            ...makeEvent('case-001', 'CHAPTER 11 - LV'),
+            dxtrTrustee: { fullName: 'CHAPTER 11 - LV', lastName: 'CHAPTER 11 - LV' },
+            profCode: '00000',
+            chapter: '11',
+          },
+        ];
+
+        const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          events,
+        );
+
+        expect(trusteeMatchHelpers.matchTrusteeByName).not.toHaveBeenCalled();
+        expect(scenarioDistribution.sentinelBogusNameSkippedCount).toBe(1);
+        expect(scenarioDistribution.bogusAdminNameSkippedCount).toBe(0);
+      });
     });
 
     describe('bogus-looking name with no contact info, but a populated firstName token', () => {
