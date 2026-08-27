@@ -74,24 +74,27 @@ describe('MonthYearSelector', () => {
     expect(onValidationChange).toHaveBeenLastCalledWith(false);
   });
 
-  test('selecting only month calls onValidationChange(true)', async () => {
+  test('selecting only month and blurring calls onValidationChange(true)', async () => {
     const user = userEvent.setup();
     const onValidationChange = vi.fn();
 
     render(<MonthYearSelector id="test" onValidationChange={onValidationChange} />);
 
     await user.selectOptions(monthSelect(), '03');
+    await user.tab(); // year select
+    await user.tab(); // outside fieldset
 
     expect(onValidationChange).toHaveBeenLastCalledWith(true);
   });
 
-  test('selecting only year calls onValidationChange(true)', async () => {
+  test('selecting only year and blurring calls onValidationChange(true)', async () => {
     const user = userEvent.setup();
     const onValidationChange = vi.fn();
 
     render(<MonthYearSelector id="test" onValidationChange={onValidationChange} />);
 
     await user.selectOptions(yearSelect(), String(CURRENT_YEAR));
+    await user.tab(); // outside fieldset
 
     expect(onValidationChange).toHaveBeenLastCalledWith(true);
   });
@@ -127,6 +130,60 @@ describe('MonthYearSelector', () => {
 
     expect(monthSelect().value).toBe('11');
     expect(yearSelect().value).toBe('2024');
+  });
+
+  test('shows error message after blur when only month is selected', async () => {
+    const user = userEvent.setup();
+
+    render(<MonthYearSelector id="test" />);
+
+    await user.selectOptions(monthSelect(), '03');
+    await user.tab(); // moves to year select (still inside fieldset)
+    await user.tab(); // moves outside fieldset
+
+    expect(screen.getByText('Both month and year are required.')).toBeInTheDocument();
+  });
+
+  test('clears error message when both selects are filled', async () => {
+    const user = userEvent.setup();
+
+    render(<MonthYearSelector id="test" />);
+
+    await user.selectOptions(monthSelect(), '03');
+    await user.selectOptions(yearSelect(), String(CURRENT_YEAR));
+
+    expect(screen.queryByText('Both month and year are required.')).not.toBeInTheDocument();
+  });
+
+  test('does not show error message while focus remains inside the fieldset', async () => {
+    const user = userEvent.setup();
+
+    render(<MonthYearSelector id="test" />);
+
+    await user.selectOptions(monthSelect(), '03');
+    await user.tab(); // moves to year select — still inside fieldset
+
+    expect(screen.queryByText('Both month and year are required.')).not.toBeInTheDocument();
+  });
+
+  test('disables both selects when disabled prop is true', () => {
+    render(<MonthYearSelector id="test" disabled />);
+
+    expect(monthSelect()).toBeDisabled();
+    expect(yearSelect()).toBeDisabled();
+  });
+
+  test('does not show error or disable Save when mounted with an incomplete value until the user interacts', () => {
+    const onValidationChange = vi.fn();
+
+    // Malformed 3-part value with an empty month segment — simulates legacy/malformed
+    // data reaching the form on initial load, without any user interaction.
+    render(
+      <MonthYearSelector id="test" value="2024--01" onValidationChange={onValidationChange} />,
+    );
+
+    expect(screen.queryByText('Both month and year are required.')).not.toBeInTheDocument();
+    expect(onValidationChange).not.toHaveBeenCalledWith(true);
   });
 
   test('clears error state when parent resets value to empty after partial clear', () => {
