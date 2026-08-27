@@ -241,13 +241,13 @@ describe('TrusteeMatchVerificationAccordion', () => {
   });
 
   describe('mismatch info prominence', () => {
-    test('renders the problem statement inside a warning-styled alert for an unresolved task', () => {
+    test('does not wrap the problem statement in an alert for an unresolved task', () => {
       renderWithProps();
 
       const problemStatement = screen
         .getByTestId(`accordion-content-${sampleOrder.id}`)
         .querySelector('.problem-statement');
-      expect(problemStatement?.closest('.usa-alert--warning')).toBeInTheDocument();
+      expect(problemStatement?.closest('.usa-alert--warning')).not.toBeInTheDocument();
     });
 
     test('preserves the dxtr-trustee-info test ID and does not wrap the resolved statement in an alert', () => {
@@ -346,6 +346,38 @@ describe('TrusteeMatchVerificationAccordion', () => {
         'trustee-1',
         'Jane Smith',
       );
+    });
+  });
+
+  test('keeps the confirmation modal open with a spinner while approval is in flight', async () => {
+    let resolveApproval: () => void = () => {};
+    vi.spyOn(Api2, 'patchTrusteeVerificationOrderApproval').mockImplementation(
+      () => new Promise<void>((resolve) => (resolveApproval = () => resolve())),
+    );
+    renderWithProps({ order: sampleOrderWithCandidates });
+    await mockDetailAndExpand(sampleOrderWithCandidatesDetail);
+
+    fireEvent.click(screen.getByTestId('approve-candidate-trustee-1'));
+    const modalSubmit = document.getElementById(
+      `trustee-confirmation-modal-${sampleOrderWithCandidates.id}-submit-button`,
+    );
+    fireEvent.click(modalSubmit!);
+
+    const wrapper = document.getElementById(
+      `trustee-confirmation-modal-${sampleOrderWithCandidates.id}-wrapper`,
+    );
+    await waitFor(() => {
+      expect(wrapper).toHaveClass('is-visible');
+      expect(
+        within(wrapper as HTMLElement).getByText('Confirming appointment...'),
+      ).toBeInTheDocument();
+      expect(modalSubmit).toBeDisabled();
+    });
+
+    resolveApproval();
+
+    await waitFor(() => {
+      expect(wrapper).toHaveClass('is-hidden');
     });
   });
 

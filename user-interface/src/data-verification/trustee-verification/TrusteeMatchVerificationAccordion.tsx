@@ -13,7 +13,7 @@ import { CourtDivisionDetails } from '@common/cams/courts';
 import { formatDate } from '@/lib/utils/datetime';
 import { formatAppointmentStatus } from '@common/cams/trustee-appointments';
 import { formatChapterType } from '@common/cams/trustees';
-import Alert, { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { TrusteeAppointmentSyncErrorCode } from '@common/cams/dataflow-events';
 import { getCaseNumber, getCaseIdParts } from '@common/cams/cases';
 import Api2 from '@/lib/models/api2';
@@ -718,25 +718,23 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
           )}
           {viewMode !== 'resolved' && (
             <>
-              <Alert type={UswdsAlertStyle.Warning} inline show role="status">
-                {isInactiveStatus ? (
-                  <p className="problem-statement">
-                    <span>
-                      Trustee is inactive in CAMS but was appointed to{' '}
-                      {affectedCaseCount > 1 ? '' : 'case: '}
-                    </span>
-                    {caseLink}
-                  </p>
-                ) : (
-                  <p className="problem-statement">
-                    <span>
-                      Trustee sent from the court does not match a CAMS Trustee for{' '}
-                      {affectedCaseCount > 1 ? '' : 'case: '}
-                    </span>
-                    {caseLink}
-                  </p>
-                )}
-              </Alert>
+              {isInactiveStatus ? (
+                <p className="problem-statement">
+                  <span>
+                    Trustee is inactive in CAMS but was appointed to{' '}
+                    {affectedCaseCount > 1 ? '' : 'case: '}
+                  </span>
+                  {caseLink}
+                </p>
+              ) : (
+                <p className="problem-statement">
+                  <span>
+                    Trustee sent from the court does not match a CAMS Trustee for{' '}
+                    {affectedCaseCount > 1 ? '' : 'case: '}
+                  </span>
+                  {caseLink}
+                </p>
+              )}
 
               <h3>Trustee Information Sent By Court</h3>
               <div className="trustee-data-grid trustee-info-grid" data-testid="dxtr-trustee-info">

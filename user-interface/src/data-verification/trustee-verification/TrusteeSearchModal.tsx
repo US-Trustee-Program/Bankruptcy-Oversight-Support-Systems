@@ -150,10 +150,15 @@ function TrusteeSearchModal_(
     submitButton: {
       label: 'Confirm Appointment',
       disabled: !selectedTrustee || isProcessing,
+      // Modal's own submitBtnClick closes on click by default — onConfirm triggers an async
+      // request, and the parent hides this modal itself once that request settles (see
+      // handleManualMatch's finally in TrusteeMatchVerificationAccordion). Without closeOnClick:
+      // false, Modal closes this synchronously on click regardless, before isProcessing could
+      // ever render, suppressing the loading spinner entirely.
+      closeOnClick: false,
       onClick: () => {
         if (selectedTrustee) {
           onConfirm(selectedTrustee);
-          hide();
         }
       },
     },
@@ -210,9 +215,9 @@ function TrusteeSearchModal_(
               ))}
             </div>
           )}
-          {isProcessing && <LoadingSpinner caption="Confirming appointment..." />}
         </>
       }
+      footerContent={isProcessing && <LoadingSpinner caption="Confirming appointment..." />}
       actionButtonGroup={actionButtonGroup}
     />
   );
