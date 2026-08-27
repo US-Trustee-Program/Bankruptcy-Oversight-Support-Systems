@@ -961,6 +961,144 @@ export async function resolveNameCollisionByScoring(
 }
 
 /**
+ * Minimum nameScore (see calculateNameScore) for a candidate to even be considered by
+ * resolveByContactCorroboration - below this, a name difference is too weak a starting point for
+ * contact-field corroboration to rescue, regardless of how well address/phone/email line up.
+ * Matches the threshold backtested in test/integration/sync-acms-professional-ids-audit/scripts/
+ * auto-link-threshold-backtest.ts against a real 2026-08-26 trustee-professional-ids export
+ * (see cams-t0k3o): 860 of 2229 ACMS no-match/ambiguous records would auto-link under this rule,
+ * hand-verified as genuine matches.
+ */
+const CONTACT_CORROBORATION_NAME_THRESHOLD = 85;
+
+/**
+ * Minimum addressScore for address alone to count as strong corroboration under
+ * resolveByContactCorroboration. Phone/email use their own scale's maximum (100, an exact
+ * normalized-digit or case-insensitive match) rather than a lower threshold, since both are
+ * short, structured values where a partial match is not meaningfully distinguishable from
+ * coincidence the way a fuzzy address bigram score is.
+ */
+const CONTACT_CORROBORATION_ADDRESS_THRESHOLD = 80;
+
+/**
+ * Resolves a name-match candidate list purely on name + address/phone/email corroboration, with
+ * NO case-appointment-shaped evidence (no district/division, no chapter, no isAppointmentMatch
+ * gate) - unlike resolveNameCollisionByScoring, this never touches
+ * TrusteeAppointmentSyncEvent/getTrusteeAppointments, so it works for a source record that has no
+ * case/court context at all (an ACMS professional record - see sync-acms-professional-ids.ts's
+ * processNameMatch). Shared rather than ACMS-only: DXTR callers with real case-appointment
+ * context should keep preferring resolveNameCollisionByScoring's stronger, appointment-gated
+ * resolution first - this function is a corroboration path for when that evidence is unavailable
+ * or has already come back unresolved, not a replacement for it.
+ *
+ * Winner criteria (see CONTACT_CORROBORATION_NAME_THRESHOLD/CONTACT_CORROBORATION_ADDRESS_THRESHOLD):
+ *  - EXACTLY ONE candidate clears nameScore >= 85. Two or more candidates clearing the name bar is
+ *    always 'unresolved' here, even if one has much stronger contact corroboration than the
+ *    other - picking a winner among multiple plausible same-name candidates needs its own
+ *    duplicate-vs-genuine-ambiguity handling (see cams-g3xx2), not this function.
+ *  - That single candidate's addressScore >= 80, OR phoneScore === 100, OR emailScore === 100 -
+ *    any one strong signal is enough (an OR, not requiring all three), since a stale/moved office
+ *    address is common in this population but doesn't contradict an otherwise-exact name+phone
+ *    match. A candidate whose only qualifying field is null/incomparable does NOT corroborate -
+ *    absence of contradicting evidence is not the same as corroborating evidence.
+ *
+ * Does not fetch appointments (candidateScores' appointments field is left undefined) and always
+ * passes districtDivisionScore/chapterScore as 0 into calculateCandidateScore purely to satisfy
+ * its parameter shape for logging - callers must NOT read totalScore off the returned
+ * CandidateScore as if it were a real six-dimension score; it is a name/address/phone/email score
+ * diluted by two irrelevant zeroed dimensions and is only present for uniform shape with
+ * resolveNameCollisionByScoring's ScoringOutcome. Prefer reading nameScore/addressScore/
+ * phoneScore/emailScore directly off the winning CandidateScore instead.
+ */
+export async function resolveByContactCorroboration(
+  context: ApplicationContext,
+  sourceTrustee: DxtrTrusteeParty,
+  candidateTrusteeIds: string[],
+): Promise<ScoringOutcome> {
+  const trusteesRepo = factory.getTrusteesRepository(context);
+
+  const candidateDataPromises = candidateTrusteeIds.map(async (trusteeId) => {
+    try {
+      const trustee = await trusteesRepo.read(trusteeId);
+      return { trusteeId, trustee, error: null };
+    } catch (error) {
+      // Same rationale as resolveNameCollisionByScoring's identical guard: a transient
+      // infrastructure error is not evidence this candidate is unscorable, so it must abort this
+      // whole resolution attempt (by rethrowing) rather than silently proceeding with a smaller
+      // candidate set that could misclassify a transient failure as a permanent no-match/
+      // unresolved outcome.
+      if (isTooManyRequestsError(error) || isGatewayTimeoutError(error)) {
+        throw error;
+      }
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      return { trusteeId, trustee: null, error: errorMessage };
+    }
+  });
+
+  const candidateData = await Promise.all(candidateDataPromises);
+
+  const candidateScores: CandidateScore[] = [];
+  for (const { trusteeId, trustee, error } of candidateData) {
+    if (error) {
+      context.logger.warn(MODULE_NAME, `Skipping candidate ${trusteeId}: ${error}`);
+      continue;
+    }
+
+    const score = calculateCandidateScore(context, sourceTrustee, '', '', '', trustee, []);
+    candidateScores.push(score);
+  }
+
+  if (candidateScores.length === 0) {
+    context.logger.warn(
+      MODULE_NAME,
+      'Contact corroboration failed: no valid candidates could be scored',
+    );
+    return { kind: 'no-match' };
+  }
+
+  const qualifying = candidateScores.filter(
+    (score) => score.nameScore >= CONTACT_CORROBORATION_NAME_THRESHOLD,
+  );
+
+  if (qualifying.length !== 1) {
+    if (qualifying.length > 1) {
+      const candidateList = qualifying
+        .map((score) => `${score.trusteeId} (name=${score.nameScore})`)
+        .join(', ');
+      context.logger.warn(
+        MODULE_NAME,
+        `Contact corroboration failed: ${qualifying.length} candidates clear the name threshold ` +
+          `[${candidateList}] - refusing to guess`,
+      );
+    }
+    return { kind: 'unresolved', candidateScores };
+  }
+
+  const winner = qualifying[0];
+  const corroborated =
+    winner.addressScore >= CONTACT_CORROBORATION_ADDRESS_THRESHOLD ||
+    winner.phoneScore === 100 ||
+    winner.emailScore === 100;
+
+  if (!corroborated) {
+    context.logger.warn(
+      MODULE_NAME,
+      `Contact corroboration failed: sole name-qualifying candidate ${winner.trusteeId} lacks ` +
+        `strong address/phone/email corroboration [address=${winner.addressScore} ` +
+        `phone=${winner.phoneScore} email=${winner.emailScore}]`,
+    );
+    return { kind: 'unresolved', candidateScores };
+  }
+
+  context.logger.info(
+    MODULE_NAME,
+    `Contact corroboration resolved to ${winner.trusteeId} ` +
+      `[name=${winner.nameScore} address=${winner.addressScore} phone=${winner.phoneScore} email=${winner.emailScore}]`,
+  );
+  return { kind: 'resolved', trusteeId: winner.trusteeId, candidateScores };
+}
+
+/**
  * How a 'resolved' NameMatchResult reached its answer - the qualitative counterpart to
  * nameScore's quantified confidence:
  *  - 'exact': findTrusteesByName's anchored, whitespace-only-normalized regex matched exactly
