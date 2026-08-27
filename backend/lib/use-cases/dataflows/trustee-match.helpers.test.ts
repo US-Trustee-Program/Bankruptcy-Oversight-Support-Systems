@@ -15,6 +15,8 @@ import {
   resolveNameCollisionByScoring,
   resolveByContactCorroboration,
   resolveDuplicateNameCandidates,
+  tokenizeNameForIntersection,
+  findTokenIntersectionCandidates,
   isAppointmentMatch,
   findInactivePerfectMatch,
   stripParentheticalAnnotations,
@@ -553,6 +555,140 @@ describe('matchTrusteeByName', () => {
       expect(scoredSpy).toHaveBeenCalledTimes(1); // only the tier-2 full-name search, no second call
       expect(result).toEqual({ kind: 'no-match' });
     });
+  });
+});
+
+describe('tokenizeNameForIntersection', () => {
+  test('lowercases, strips punctuation, and dedupes tokens', () => {
+    expect(tokenizeNameForIntersection('W. Wheeler Bryan')).toEqual(['wheeler', 'bryan']);
+  });
+
+  test('drops single-character tokens', () => {
+    expect(tokenizeNameForIntersection('C. Eugene Chamberlain')).toEqual(['eugene', 'chamberlain']);
+  });
+
+  test('keeps 2-character tokens (e.g. a "Mc" name-particle)', () => {
+    expect(tokenizeNameForIntersection('Melissa Mc Cue')).toEqual(['melissa', 'mc', 'cue']);
+  });
+
+  test('drops role-suffix stopwords', () => {
+    expect(tokenizeNameForIntersection('Frank Pola, Jr.')).toEqual(['frank', 'pola']);
+  });
+
+  test('drops "do not use" style ACMS annotations', () => {
+    expect(tokenizeNameForIntersection('Michael B Joseph - Do Not Use')).toEqual([
+      'michael',
+      'joseph',
+    ]);
+  });
+
+  test('handles a lastName with an internal space (the McLane case)', () => {
+    expect(tokenizeNameForIntersection('Frank O Mc Lane')).toEqual(['frank', 'mc', 'lane']);
+  });
+});
+
+describe('findTokenIntersectionCandidates', () => {
+  let context: ApplicationContext;
+
+  beforeEach(async () => {
+    vi.restoreAllMocks();
+    context = await createMockApplicationContext();
+  });
+
+  test('returns the single trustee present in every token search result', async () => {
+    const bryan = makeTrustee({ trusteeId: 'trustee-1', name: 'William Wheeler Bryan' });
+    const otherWheeler = makeTrustee({ trusteeId: 'trustee-2', name: 'Wheeler Someone Else' });
+    const otherBryan = makeTrustee({ trusteeId: 'trustee-3', name: 'Someone Else Bryan' });
+
+    const searchSpy = vi
+      .spyOn(MockMongoRepository.prototype, 'searchTrusteesByName')
+      .mockImplementation(async (token: string) => {
+        if (token === 'wheeler') return [bryan, otherWheeler];
+        if (token === 'bryan') return [bryan, otherBryan];
+        return [];
+      });
+
+    const result = await findTokenIntersectionCandidates(context, {
+      fullName: 'W. Wheeler Bryan',
+    });
+
+    expect(result).toEqual([bryan]);
+    expect(searchSpy).toHaveBeenCalledWith('wheeler');
+    expect(searchSpy).toHaveBeenCalledWith('bryan');
+  });
+
+  test('returns an empty array when fewer than 2 usable tokens exist', async () => {
+    const searchSpy = vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName');
+
+    const result = await findTokenIntersectionCandidates(context, { fullName: 'Jo' });
+
+    expect(result).toEqual([]);
+    expect(searchSpy).not.toHaveBeenCalled();
+  });
+
+  test('returns an empty array when the intersection is empty', async () => {
+    vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName').mockImplementation(
+      async (token: string) => {
+        if (token === 'wheeler') return [makeTrustee({ trusteeId: 'trustee-1' })];
+        if (token === 'bryan') return [makeTrustee({ trusteeId: 'trustee-2' })];
+        return [];
+      },
+    );
+
+    const result = await findTokenIntersectionCandidates(context, {
+      fullName: 'W. Wheeler Bryan',
+    });
+
+    expect(result).toEqual([]);
+  });
+
+  test('short-circuits remaining token searches once the intersection is already empty', async () => {
+    const searchSpy = vi
+      .spyOn(MockMongoRepository.prototype, 'searchTrusteesByName')
+      .mockImplementation(async (token: string) => {
+        if (token === 'first') return [makeTrustee({ trusteeId: 'trustee-1' })];
+        return []; // 'second' would never match trustee-1
+      });
+
+    await findTokenIntersectionCandidates(context, { fullName: 'First Second' });
+
+    expect(searchSpy).toHaveBeenCalledTimes(2); // still queries both, but stops narrowing early
+  });
+
+  test('returns multiple candidates when more than one trustee appears in every token result', async () => {
+    const cox1 = makeTrustee({ trusteeId: 'trustee-1', name: 'Arthur Clay Cox' });
+    const cox2 = makeTrustee({ trusteeId: 'trustee-2', name: 'A. Clay Cox' });
+
+    vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName').mockImplementation(
+      async (token: string) => {
+        if (token === 'clay') return [cox1, cox2];
+        if (token === 'cox') return [cox1, cox2];
+        return [];
+      },
+    );
+
+    const result = await findTokenIntersectionCandidates(context, { fullName: 'Clay A Cox' });
+
+    expect(result).toHaveLength(2);
+    expect(result.map((t) => t.trusteeId).sort()).toEqual(['trustee-1', 'trustee-2']);
+  });
+
+  test('includes a 2-character token (below the old 3-char floor) in the search', async () => {
+    const mcCue = makeTrustee({ trusteeId: 'trustee-1', name: 'Melissa McCue' });
+
+    const searchSpy = vi
+      .spyOn(MockMongoRepository.prototype, 'searchTrusteesByName')
+      .mockImplementation(async (token: string) => {
+        if (token === 'melissa') return [mcCue];
+        if (token === 'mc') return [mcCue];
+        if (token === 'cue') return [mcCue];
+        return [];
+      });
+
+    const result = await findTokenIntersectionCandidates(context, { fullName: 'Melissa Mc Cue' });
+
+    expect(result).toEqual([mcCue]);
+    expect(searchSpy).toHaveBeenCalledWith('mc');
   });
 });
 
