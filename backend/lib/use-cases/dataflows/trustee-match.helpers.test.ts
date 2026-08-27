@@ -13,6 +13,7 @@ import {
   calculateEmailScore,
   calculateTotalScore,
   resolveNameCollisionByScoring,
+  resolveByContactCorroboration,
   isAppointmentMatch,
   findInactivePerfectMatch,
   stripParentheticalAnnotations,
@@ -2394,6 +2395,253 @@ describe('resolveNameCollisionByScoring', () => {
     if (result.kind !== 'resolved') throw new Error('expected resolved outcome');
     expect(result.trusteeId).toBe('trustee-2');
     expect(result.candidateScores).toHaveLength(1);
+  });
+});
+
+describe('resolveByContactCorroboration', () => {
+  let context: ApplicationContext;
+  let mockTrusteesRepo: Partial<TrusteesRepository>;
+
+  beforeEach(async () => {
+    vi.restoreAllMocks();
+    context = await createMockApplicationContext();
+
+    mockTrusteesRepo = {
+      read: vi.fn(),
+      release: vi.fn(),
+    };
+
+    vi.spyOn(factory, 'getTrusteesRepository').mockReturnValue(
+      mockTrusteesRepo as TrusteesRepository,
+    );
+  });
+
+  const sourceTrustee: DxtrTrusteeParty = {
+    fullName: 'Richard Belford',
+    firstName: 'Richard',
+    lastName: 'Belford',
+    legacy: {
+      address1: '9 Trumbull Street',
+      cityStateZipCountry: 'New Haven, CT 06511',
+      phone: '2038650867',
+    },
+  };
+
+  test('resolves when the sole name-qualifying candidate has a strong address match', async () => {
+    const candidate = makeTrustee({
+      trusteeId: 'trustee-1',
+      firstName: 'Richard',
+      lastName: 'Belford',
+      name: 'Richard L. Belford',
+      public: {
+        address: {
+          address1: '9 Trumbull Street',
+          city: 'New Haven',
+          state: 'CT',
+          zipCode: '06511',
+          countryCode: 'US',
+        },
+      },
+    });
+    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>).mockResolvedValue(candidate);
+
+    const result = await resolveByContactCorroboration(context, sourceTrustee, ['trustee-1']);
+
+    expect(result.kind).toBe('resolved');
+    if (result.kind !== 'resolved') throw new Error('expected resolved outcome');
+    expect(result.trusteeId).toBe('trustee-1');
+  });
+
+  test('resolves when the sole name-qualifying candidate has an exact phone match despite a weak address', async () => {
+    const candidate = makeTrustee({
+      trusteeId: 'trustee-1',
+      firstName: 'Richard',
+      lastName: 'Belford',
+      name: 'Richard L. Belford',
+      public: {
+        address: {
+          address1: 'Some Other Street',
+          city: 'Elsewhere',
+          state: 'CT',
+          zipCode: '00000',
+          countryCode: 'US',
+        },
+        phone: { number: '203-865-0867' },
+      },
+    });
+    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>).mockResolvedValue(candidate);
+
+    const result = await resolveByContactCorroboration(context, sourceTrustee, ['trustee-1']);
+
+    expect(result.kind).toBe('resolved');
+    if (result.kind !== 'resolved') throw new Error('expected resolved outcome');
+    expect(result.trusteeId).toBe('trustee-1');
+  });
+
+  test('resolves when the sole name-qualifying candidate has an exact email match despite a weak address', async () => {
+    const withEmailSource: DxtrTrusteeParty = {
+      ...sourceTrustee,
+      legacy: { ...sourceTrustee.legacy, email: 'rbelford@example.com' },
+    };
+    const candidate = makeTrustee({
+      trusteeId: 'trustee-1',
+      firstName: 'Richard',
+      lastName: 'Belford',
+      name: 'Richard L. Belford',
+      public: {
+        address: {
+          address1: 'Some Other Street',
+          city: 'Elsewhere',
+          state: 'CT',
+          zipCode: '00000',
+          countryCode: 'US',
+        },
+        email: 'rbelford@example.com',
+      },
+    });
+    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>).mockResolvedValue(candidate);
+
+    const result = await resolveByContactCorroboration(context, withEmailSource, ['trustee-1']);
+
+    expect(result.kind).toBe('resolved');
+    if (result.kind !== 'resolved') throw new Error('expected resolved outcome');
+    expect(result.trusteeId).toBe('trustee-1');
+  });
+
+  test('stays unresolved when the sole name-qualifying candidate has no strong corroboration', async () => {
+    const candidate = makeTrustee({
+      trusteeId: 'trustee-1',
+      firstName: 'Richard',
+      lastName: 'Belford',
+      name: 'Richard L. Belford',
+      public: {
+        address: {
+          address1: 'Some Other Street',
+          city: 'Elsewhere',
+          state: 'CT',
+          zipCode: '00000',
+          countryCode: 'US',
+        },
+      },
+    });
+    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>).mockResolvedValue(candidate);
+
+    const result = await resolveByContactCorroboration(context, sourceTrustee, ['trustee-1']);
+
+    expect(result.kind).toBe('unresolved');
+  });
+
+  test('stays unresolved when no candidate clears the name threshold', async () => {
+    const candidate = makeTrustee({
+      trusteeId: 'trustee-1',
+      firstName: 'Totally',
+      lastName: 'Different',
+      name: 'Totally Different Person',
+      public: {
+        address: {
+          address1: '9 Trumbull Street',
+          city: 'New Haven',
+          state: 'CT',
+          zipCode: '06511',
+          countryCode: 'US',
+        },
+      },
+    });
+    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>).mockResolvedValue(candidate);
+
+    const result = await resolveByContactCorroboration(context, sourceTrustee, ['trustee-1']);
+
+    expect(result.kind).toBe('unresolved');
+  });
+
+  test('stays unresolved when more than one candidate clears the name threshold, even with strong corroboration', async () => {
+    const strongCandidate = makeTrustee({
+      trusteeId: 'trustee-1',
+      firstName: 'Richard',
+      lastName: 'Belford',
+      name: 'Richard L. Belford',
+      public: {
+        address: {
+          address1: '9 Trumbull Street',
+          city: 'New Haven',
+          state: 'CT',
+          zipCode: '06511',
+          countryCode: 'US',
+        },
+      },
+    });
+    const otherQualifyingCandidate = makeTrustee({
+      trusteeId: 'trustee-2',
+      firstName: 'Richard',
+      lastName: 'Belford',
+      name: 'Richard Belford',
+      public: {
+        address: {
+          address1: 'Some Other Street',
+          city: 'Elsewhere',
+          state: 'CT',
+          zipCode: '00000',
+          countryCode: 'US',
+        },
+      },
+    });
+    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce(strongCandidate)
+      .mockResolvedValueOnce(otherQualifyingCandidate);
+
+    const result = await resolveByContactCorroboration(context, sourceTrustee, [
+      'trustee-1',
+      'trustee-2',
+    ]);
+
+    expect(result.kind).toBe('unresolved');
+    if (result.kind !== 'unresolved') throw new Error('expected unresolved outcome');
+    expect(result.candidateScores).toHaveLength(2);
+  });
+
+  test('returns no-match when every candidate fails to load', async () => {
+    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new Error('trustee not found'),
+    );
+
+    const result = await resolveByContactCorroboration(context, sourceTrustee, ['trustee-1']);
+
+    expect(result.kind).toBe('no-match');
+  });
+
+  test('propagates a transient infrastructure error rather than treating it as unscorable', async () => {
+    const transientError = new TooManyRequestsError('COSMOS_DB');
+    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>).mockRejectedValue(transientError);
+
+    await expect(resolveByContactCorroboration(context, sourceTrustee, ['trustee-1'])).rejects.toBe(
+      transientError,
+    );
+  });
+
+  test('does not require appointment/district/chapter evidence - candidates score purely on name/address/phone/email', async () => {
+    // No getTrusteeAppointmentsRepository mock is set up at all in this describe block's
+    // beforeEach - if resolveByContactCorroboration ever started calling it, this test would
+    // throw on an unmocked factory call rather than silently passing.
+    const candidate = makeTrustee({
+      trusteeId: 'trustee-1',
+      firstName: 'Richard',
+      lastName: 'Belford',
+      name: 'Richard L. Belford',
+      public: {
+        address: {
+          address1: '9 Trumbull Street',
+          city: 'New Haven',
+          state: 'CT',
+          zipCode: '06511',
+          countryCode: 'US',
+        },
+      },
+    });
+    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>).mockResolvedValue(candidate);
+
+    const result = await resolveByContactCorroboration(context, sourceTrustee, ['trustee-1']);
+
+    expect(result.kind).toBe('resolved');
   });
 });
 
