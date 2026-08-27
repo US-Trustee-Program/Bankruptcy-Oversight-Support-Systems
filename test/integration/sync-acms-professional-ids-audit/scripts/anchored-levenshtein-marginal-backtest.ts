@@ -1,7 +1,7 @@
 /**
  * Follow-up to anchored-levenshtein-backtest.ts: measures the MARGINAL contribution of the
  * anchored-Levenshtein approach over the already-shipped findTokenIntersectionCandidates
- * (exact-word substring intersection - see cams-e75yv). For each no-name-candidate record,
+ * (exact-word substring intersection). For each no-name-candidate record,
  * computes BOTH candidate sets and reports how many corroborated, exactly-one-candidate hits
  * come from anchored-Levenshtein alone (token-intersection found nothing or something different).
  *

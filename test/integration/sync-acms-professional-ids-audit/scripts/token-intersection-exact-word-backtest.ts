@@ -1,5 +1,5 @@
 /**
- * Backtest for cams-e75yv, second attempt: re-runs token-intersection using EXACT-WORD
+ * Second attempt: re-runs token-intersection using EXACT-WORD
  * substring containment against trustee.name (the same case-insensitive regex approach
  * TrusteesMongoRepository.searchTrusteesByName already uses - trustees.mongo.repository.ts:269)
  * instead of searchTrusteesByNameScored's phonetic/bigram pre-filter, which the first real-search

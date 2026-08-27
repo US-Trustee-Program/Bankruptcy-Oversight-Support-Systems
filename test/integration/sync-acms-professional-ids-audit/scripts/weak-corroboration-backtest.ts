@@ -1,13 +1,13 @@
 /**
- * Backtest for cams-yv1p3: for the "name-only-insufficient-corroboration" bucket (exactly one
+ * Backtest for the "name-only-insufficient-corroboration" bucket (exactly one
  * candidate clears nameScore>=85, but none of addressScore>=80/phoneScore==100/emailScore==100
- * clears cams-t0k3o's OR-rule), splits the 379 records by whether phoneScore/emailScore are
+ * clears the OR-rule), splits the 379 records by whether phoneScore/emailScore are
  * ABSENT (null - no data to compare) vs. actively CONTRADICTING (0 - both sides had comparable
  * data and it genuinely disagreed). addressScore is never null (see calculateAddressScore's doc
  * comment - it always returns a number, 0 when parseCityStateZip fails or truly dissimilar), so
  * this backtest treats a LOW addressScore as informational only, not as a contradiction signal on
- * its own - cams-t0k3o's investigation already hand-verified that low address scores in this
- * name=100 population are usually stale/moved offices, not different people.
+ * its own - low address scores in this name=100 population were hand-verified as usually
+ * stale/moved offices, not different people.
  *
  * The open question this answers: is it safe to auto-link a single unambiguous name-qualifying
  * candidate when address/phone/email are merely ABSENT (no data to corroborate OR contradict),

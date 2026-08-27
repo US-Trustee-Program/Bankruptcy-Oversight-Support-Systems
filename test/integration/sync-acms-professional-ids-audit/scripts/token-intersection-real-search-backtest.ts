@@ -1,5 +1,5 @@
 /**
- * Backtest for cams-e75yv: re-runs the token-intersection idea using the REAL phoneticTokens
+ * Re-runs the token-intersection idea using the REAL phoneticTokens
  * containment logic searchTrusteesByNameScored's Mongo aggregation relies on
  * (trustees.mongo.repository.ts:301 - doc('phoneticTokens').contains(allTokens) pre-filter,
  * combinePhoneticTokens/generateStructuredQueryTokens from phonetic-helper.ts) - NOT the plain

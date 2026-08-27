@@ -1612,53 +1612,35 @@ function levenshteinDistance(a: string, b: string): number {
 }
 
 /**
- * Last-resort candidate-discovery tier for a genuine SPELLING error (typo, transposition, OCR-
+ * Last-resort candidate-discovery tier for a genuine spelling error (typo, transposition, OCR-
  * style character error) in the first or last name - a different failure shape than
- * findTokenIntersectionCandidates' target (name-part REORDERING). calculateNameScore's
+ * findTokenIntersectionCandidates' target (name-part reordering). calculateNameScore's
  * firstLastNameToken-exact-match-required lastName gate, and matchTrusteeByName's own tiers, all
  * fail outright on e.g. "STEPHAN DARR" vs CAMS "Stephen Darr", or "KATHYLN SELLECK" vs CAMS
  * "Kathlyn Selleck" - a single transposed/substituted character anywhere in either name part.
  *
- * Approach: ANCHOR one name part with an EXACT match, then allow the OTHER part to be a close
+ * Approach: anchor one name part with an exact match, then allow the other part to be a close
  * (edit distance <= 2) match rather than requiring exact equality. Tried in both directions,
- * unioned: (a) lastName exact -> firstName fuzzy, (b) firstName exact -> lastName fuzzy. This is
- * NOT an unanchored Levenshtein approach (fuzzing lastName alone against the ENTIRE trustee
- * population was found to produce 1637 noisy candidates collapsing to only 4 legitimate matches
- * after requiring strong corroboration - too noisy to use): anchoring one
- * side exactly first narrows the candidate pool before ever computing an edit distance, the same
- * way findTokenIntersectionCandidates' precision comes from requiring both tokens to already
- * narrow the pool rather than fuzzing on a single, unanchored dimension.
+ * unioned: (a) lastName exact -> firstName fuzzy, (b) firstName exact -> lastName fuzzy. Anchoring
+ * one side exactly first narrows the candidate pool before computing an edit distance - fuzzing
+ * lastName alone against the entire trustee population produced far too many noisy candidates in
+ * backtesting.
  *
- * Candidate sourcing: queries searchTrusteesByName once per direction using the ANCHOR token
- * (narrows to trustees whose composed name contains that substring at all - cheap, single query),
- * then filters IN-MEMORY over that already-small result set for an exact match on the specific
- * anchor field (firstName or lastName) and a Levenshtein-close match on the other. This avoids
- * fuzzing against the full trustees collection.
+ * Candidate sourcing: queries searchTrusteesByName once per direction using the anchor token
+ * (narrows to trustees whose composed name contains that substring - cheap, single query), then
+ * filters in-memory over that already-small result set for an exact match on the anchor field and
+ * a Levenshtein-close match on the other. This avoids fuzzing against the full trustees collection.
  *
- * Backtested against a real trustee-professional-ids export: WITHOUT corroboration, roughly a
- * third of exactly-one-candidate hits are plausible false
- * positives on common first/last names (e.g. a common first name paired with a merely
- * shape-similar surname). Corroboration-gated (same OR-rule resolveByContactCorroboration already
- * applies: addressScore>=80 OR phoneScore==100 OR emailScore==100), 32 of 96 exactly-one-candidate
- * hits clear it, and ALL 32 hand-checked as genuine matches with zero false positives observed.
- * Marginal over findTokenIntersectionCandidates alone: 18 additional corroborated records this
- * tier catches that token-intersection's exact-substring requirement cannot (spelling-error shape,
- * not reordering shape) - a real but modest yield, hence the strict corroboration-gated caller
- * contract below.
- *
- * Returns RAW, UNSCORED candidates - same contract as findTokenIntersectionCandidates. The caller
+ * Returns raw, unscored candidates - same contract as findTokenIntersectionCandidates. The caller
  * is responsible for routing a single candidate through resolveByContactCorroboration and 2+
- * candidates through resolveDuplicateNameCandidates before ever auto-linking - this is a
- * candidate-FINDING mechanism, not a match confidence score on its own. An anchored-fuzzy hit on a
- * common name (e.g. "Robert", "William") is NOT reliable evidence alone; corroboration is what
- * separates the 32 genuine matches from the roughly one-third false-positive rate observed in the
- * uncorroborated set.
+ * candidates through resolveDuplicateNameCandidates before ever auto-linking - an anchored-fuzzy
+ * hit on a common name is not reliable evidence alone; corroboration is load-bearing here (see
+ * tuning backtest at test/integration/sync-acms-professional-ids-audit/scripts/anchored-levenshtein-backtest.ts).
  *
- * COST WARNING - issues up to 2 searchTrusteesByName queries (one per anchor direction), on top of
- * whatever matchTrusteeByName/findTokenIntersectionCandidates already tried. Callers MUST treat
- * this as an explicit last resort, invoked only after BOTH of those have already found nothing -
- * never call this speculatively or in parallel with cheaper tiers. Same ordering requirement as
- * findTokenIntersectionCandidates.
+ * Cost warning: issues up to 2 searchTrusteesByName queries (one per anchor direction), on top of
+ * whatever matchTrusteeByName/findTokenIntersectionCandidates already tried. Callers must treat
+ * this as an explicit last resort, invoked only after both of those have already found nothing -
+ * never call this speculatively or in parallel with cheaper tiers.
  */
 export async function findAnchoredLevenshteinCandidates(
   context: ApplicationContext,

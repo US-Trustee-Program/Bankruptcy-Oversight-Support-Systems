@@ -45,7 +45,7 @@ adjustment.
 ## Known finding: the `no-name-candidate` bucket (2026-08-26 export)
 
 Following the zip-formatting fix above, a full investigation of the 2229-record error population
-from a 2026-08-26 export (see `cams-t0k3o` through `cams-eenua`) found 935 records where
+from a 2026-08-26 export found 935 records where
 `calculateNameScore` never clears the auto-link threshold against *any* trustee in the export at
 all — the largest single outcome bucket. This is not a matcher gap:
 
@@ -54,8 +54,7 @@ all — the largest single outcome bucket. This is not a matcher gap:
   `PROF_FIRST_NAME` empty. These were never real professionals and were never going to match
   anything. Fixed at the source: `acms.gateway.ts`'s `getTrusteeProfessionalRecordsPage` query now
   excludes `PROF_LAST_NAME LIKE '%NO TRUSTEE%'` alongside its existing `DELETE_CODE`/`PROF_TYPE`
-  filters, so these rows never reach the matcher or generate an error record at all (see
-  `cams-7y6ag`).
+  filters, so these rows never reach the matcher or generate an error record at all.
 - **The remaining 915 records (97.9%) are genuinely-named ACMS professionals with no CAMS
   counterpart.** The trustees export used throughout this investigation is 100% `status: active` —
   a real but inactive/historical ACMS professional has no active-trustee row to match against *by

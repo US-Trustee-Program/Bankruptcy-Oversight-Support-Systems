@@ -1,7 +1,7 @@
 /**
  * Experiment: for each ACMS no-name-candidate record NOT already caught by
- * findTokenIntersectionCandidates (the shipped exact-word-containment intersection - see
- * cams-e75yv), try an anchored Levenshtein approach instead: anchor ONE name part with an exact
+ * findTokenIntersectionCandidates (the shipped exact-word-containment intersection), try an
+ * anchored Levenshtein approach instead: anchor ONE name part with an exact
  * match, then allow the OTHER part to be a close (edit-distance <=1 or <=2) match rather than
  * requiring exact containment. Two directions, unioned:
  *   A) lastName exact match -> firstName fuzzy (catches a firstName typo/OCR error on an

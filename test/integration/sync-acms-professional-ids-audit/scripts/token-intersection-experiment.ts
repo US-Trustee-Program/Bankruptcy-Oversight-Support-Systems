@@ -109,7 +109,7 @@ function run() {
 
   // Pre-verify: confirm these are genuinely 'no-name-candidate' under the existing rule
   // (nameScore never clears 85 against anything) before trying the token-intersection idea on
-  // them - otherwise we'd be re-discovering records cams-t0k3o's rule already catches.
+  // them - otherwise we'd be re-discovering records the existing rule already catches.
   const noNameCandidateRecords: { record: TrusteeProfessionalId; acmsTrustee: DxtrTrusteeParty }[] =
     [];
   for (const record of errored) {
@@ -127,7 +127,7 @@ function run() {
 
   console.log(`no-name-candidate population: ${noNameCandidateRecords.length}\n`);
 
-  // Exclude the known "NO TRUSTEE"-style placeholders (see cams-7y6ag) - they were never going
+  // Exclude the known "NO TRUSTEE"-style placeholders - they were never going
   // to match anything, and would just add noise to this experiment's counts.
   const placeholderPattern = /\bno trustee\b/i;
   const real = noNameCandidateRecords.filter(
