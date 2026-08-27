@@ -774,8 +774,6 @@ describe('ACMS gateway tests', () => {
     });
 
     test('should exclude "NO TRUSTEE"-pattern placeholder records', async () => {
-      // Sentinel/placeholder rows (e.g. "NO TRUSTEE", "NO TRUSTEE ASSIGNED", "CASE STRICKEN: NO
-      // TRUSTEE") were never real professionals - see cams-7y6ag.
       const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
         success: true,
         results: { recordset: [] },
