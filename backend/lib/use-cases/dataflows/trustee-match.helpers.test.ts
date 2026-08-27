@@ -18,6 +18,7 @@ import {
   resolveDuplicateNameCandidates,
   tokenizeNameForIntersection,
   findTokenIntersectionCandidates,
+  findAnchoredLevenshteinCandidates,
   isAppointmentMatch,
   findInactivePerfectMatch,
   stripParentheticalAnnotations,
@@ -723,6 +724,203 @@ describe('findTokenIntersectionCandidates', () => {
 
     expect(result).toEqual([mcCue]);
     expect(searchSpy).toHaveBeenCalledWith('mc');
+  });
+});
+
+describe('findAnchoredLevenshteinCandidates', () => {
+  let context: ApplicationContext;
+
+  beforeEach(async () => {
+    vi.restoreAllMocks();
+    context = await createMockApplicationContext();
+  });
+
+  test('finds a candidate via lastName-anchor with a firstName typo (edit distance 1)', async () => {
+    const darr = makeTrustee({
+      trusteeId: 'trustee-1',
+      firstName: 'Stephen',
+      lastName: 'Darr',
+      name: 'Stephen Darr',
+    });
+
+    const searchSpy = vi
+      .spyOn(MockMongoRepository.prototype, 'searchTrusteesByName')
+      .mockImplementation(async (token: string) => {
+        if (token === 'darr') return [darr];
+        return [];
+      });
+
+    const result = await findAnchoredLevenshteinCandidates(context, {
+      fullName: 'Stephan Darr',
+      firstName: 'Stephan',
+      lastName: 'Darr',
+    });
+
+    expect(result).toEqual([darr]);
+    expect(searchSpy).toHaveBeenCalledWith('darr');
+  });
+
+  test('finds a candidate via firstName-anchor with a lastName typo (edit distance 1)', async () => {
+    const gibson = makeTrustee({
+      trusteeId: 'trustee-1',
+      firstName: 'Ronald',
+      lastName: 'Gibson',
+      name: 'Ronald M. Gibson',
+    });
+
+    vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName').mockImplementation(
+      async (token: string) => {
+        if (token === 'ronald') return [gibson];
+        return [];
+      },
+    );
+
+    const result = await findAnchoredLevenshteinCandidates(context, {
+      fullName: 'Ronald Gipson',
+      firstName: 'Ronald',
+      lastName: 'Gipson',
+    });
+
+    expect(result).toEqual([gibson]);
+  });
+
+  test('does not match a candidate beyond the max edit distance', async () => {
+    const faraway = makeTrustee({
+      trusteeId: 'trustee-1',
+      firstName: 'Robert',
+      lastName: 'Completely',
+      name: 'Robert Completely',
+    });
+
+    vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName').mockImplementation(
+      async (token: string) => {
+        if (token === 'robert') return [faraway];
+        return [];
+      },
+    );
+
+    const result = await findAnchoredLevenshteinCandidates(context, {
+      fullName: 'Robert Different',
+      firstName: 'Robert',
+      lastName: 'Different',
+    });
+
+    expect(result).toEqual([]);
+  });
+
+  test('excludes an exact match on the fuzzy field (already handled by cheaper tiers)', async () => {
+    const exact = makeTrustee({
+      trusteeId: 'trustee-1',
+      firstName: 'Robert',
+      lastName: 'Baker',
+      name: 'Robert E. Baker',
+    });
+
+    vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName').mockImplementation(
+      async (token: string) => {
+        if (token === 'robert') return [exact];
+        return [];
+      },
+    );
+
+    const result = await findAnchoredLevenshteinCandidates(context, {
+      fullName: 'Robert Baker',
+      firstName: 'Robert',
+      lastName: 'Baker',
+    });
+
+    expect(result).toEqual([]);
+  });
+
+  test('excludes the fuzzy field from matching when its token is shorter than the minimum length', async () => {
+    const short = makeTrustee({
+      trusteeId: 'trustee-1',
+      firstName: 'Al',
+      lastName: 'Darr',
+      name: 'Al Darr',
+    });
+
+    vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName').mockImplementation(
+      async (token: string) => {
+        if (token === 'darr') return [short];
+        return [];
+      },
+    );
+
+    // "Al" (2 chars) is below the fuzzy-side length floor - should never be tried as a fuzz target
+    // even though it's within edit distance 2 of many things.
+    const result = await findAnchoredLevenshteinCandidates(context, {
+      fullName: 'Ed Darr',
+      firstName: 'Ed',
+      lastName: 'Darr',
+    });
+
+    expect(result).toEqual([]);
+  });
+
+  test('unions candidates found via both anchor directions', async () => {
+    const viaLastAnchor = makeTrustee({
+      trusteeId: 'trustee-1',
+      firstName: 'Stephen',
+      lastName: 'Darr',
+      name: 'Stephen Darr',
+    });
+    const viaFirstAnchor = makeTrustee({
+      trusteeId: 'trustee-2',
+      firstName: 'Stephan',
+      lastName: 'Dorr',
+      name: 'Stephan Dorr',
+    });
+
+    vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName').mockImplementation(
+      async (token: string) => {
+        if (token === 'darr') return [viaLastAnchor];
+        if (token === 'stephan') return [viaFirstAnchor];
+        return [];
+      },
+    );
+
+    const result = await findAnchoredLevenshteinCandidates(context, {
+      fullName: 'Stephan Darr',
+      firstName: 'Stephan',
+      lastName: 'Darr',
+    });
+
+    expect(result.map((t) => t.trusteeId).sort()).toEqual(['trustee-1', 'trustee-2']);
+  });
+
+  test('returns an empty array when firstName or lastName is missing', async () => {
+    const searchSpy = vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName');
+
+    const result = await findAnchoredLevenshteinCandidates(context, { fullName: 'Solo' });
+
+    expect(result).toEqual([]);
+    expect(searchSpy).not.toHaveBeenCalled();
+  });
+
+  test('deduplicates a candidate found via both directions', async () => {
+    const both = makeTrustee({
+      trusteeId: 'trustee-1',
+      firstName: 'Stephen',
+      lastName: 'Darr',
+      name: 'Stephen Darr',
+    });
+
+    vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName').mockImplementation(
+      async (token: string) => {
+        if (token === 'darr') return [both];
+        if (token === 'stephan') return [both];
+        return [];
+      },
+    );
+
+    const result = await findAnchoredLevenshteinCandidates(context, {
+      fullName: 'Stephan Darr',
+      firstName: 'Stephan',
+      lastName: 'Darr',
+    });
+
+    expect(result).toEqual([both]);
   });
 });
 
