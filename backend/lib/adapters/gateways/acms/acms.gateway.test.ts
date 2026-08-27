@@ -773,6 +773,23 @@ describe('ACMS gateway tests', () => {
       expect(query).toContain("DELETE_CODE != 'D'");
     });
 
+    test('should exclude "NO TRUSTEE"-pattern placeholder records', async () => {
+      // Sentinel/placeholder rows (e.g. "NO TRUSTEE", "NO TRUSTEE ASSIGNED", "CASE STRICKEN: NO
+      // TRUSTEE") were never real professionals - see cams-7y6ag.
+      const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: [] },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      await gateway.getTrusteeProfessionalRecordsPage(context, 'NY', 0, 500);
+
+      const query = spy.mock.calls[0][1] as string;
+      expect(query).toContain("PROF_LAST_NAME NOT LIKE '%NO TRUSTEE%'");
+    });
+
     test.each([
       ['PROF_COMMERCIAL_PHONE_NBR', 'phone'],
       ['PROF_FAX_NBR', 'fax'],
