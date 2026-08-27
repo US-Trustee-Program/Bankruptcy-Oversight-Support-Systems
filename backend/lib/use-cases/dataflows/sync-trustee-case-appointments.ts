@@ -48,6 +48,7 @@ import { CaseAppointment, TrusteeAppointment } from '@common/cams/trustee-appoin
 import { CaseChapter, SyncedCase, VALID_CASE_CHAPTERS } from '@common/cams/cases';
 import { BadRequestError } from '../../common-errors/bad-request';
 import { randomUUID } from 'node:crypto';
+import DateHelper from '@common/date-helper';
 
 const MODULE_NAME = 'SYNC-TRUSTEE-CASE-APPOINTMENTS-USE-CASE';
 
@@ -184,12 +185,16 @@ export async function resolveGroupMatchedProfessionalId(
 
 /**
  * Throws softCloseError when it is transient (Cosmos RU throttling or a read/write timeout),
- * logging a warning first. Aborts BEFORE the new appointment is created so the caller's event
- * propagates to the per-event catch in processAppointments, which already routes
+ * logging a warning first. Aborts BEFORE any replacement appointment is created so the caller's
+ * event propagates to the per-event catch in processAppointments, which already routes
  * isTooManyRequestsError/isGatewayTimeoutError to retryableEvents. Nothing has been written for
- * this event, so nothing is corrupt; a later retry re-reads state and does close-then-create
- * cleanly. Returns (does not throw) when softCloseError is a permanent failure — the caller is
- * responsible for logging and proceeding with the create in that case.
+ * this event, so nothing is corrupt; a later retry re-reads state and closes (and, for the
+ * replace flow, creates) cleanly. Returns (does not throw) when softCloseError is a permanent
+ * failure — the caller is responsible for logging and for any follow-up (creating a replacement,
+ * for the replace flow; nothing further, for the close-only flow).
+ *
+ * trusteeId is null when called from the close-only path (bogus/placeholder trustee — there is no
+ * replacement trustee to log); the replace flow always passes the real incoming trusteeId.
  *
  * Exported for testing only — no production importer outside this module.
  */
@@ -197,7 +202,7 @@ export function throwIfTransientSoftCloseFailure(
   context: ApplicationContext,
   event: TrusteeAppointmentSyncEvent,
   existingAppointment: { trusteeId: string; assignedOn: string },
-  trusteeId: string,
+  trusteeId: string | null,
   softCloseError: CamsError,
 ): void {
   if (!isTransientInfraError(softCloseError)) {
@@ -245,17 +250,93 @@ export async function createNewAppointment(
 }
 
 /**
+ * One day before referenceDate (itself a stable, DXTR-sourced date — see applyResolvedTrustee's
+ * assignedOn docblock), so a soft-closed appointment's unassignedOn never overlaps the event that
+ * caused the close. referenceDate is always a plain YYYY-MM-DD string (DXTR's appointedDate is
+ * parsed from a fixed-width YYMMDD source field with no time component — see parseDxtrDate in
+ * cases.dxtr.gateway.ts), so calendar-day subtraction is correct and unambiguous; unlike the old
+ * `new Date().toISOString()` wall-clock stamp, this is deterministic across retries.
+ */
+function deriveUnassignedOn(referenceDate: string): string {
+  return DateHelper.subtractDays(referenceDate, 1);
+}
+
+/**
+ * Closes existingAppointment in Cosmos (unassignedOn = one day before referenceDate) and, on
+ * success, notifies downstream of the closed appointment when the feature flag is enabled.
+ * Downstream notification is gated on soft-close success — firing a close event for a close that
+ * never actually happened in Cosmos would misinform downstream, and skips
+ * resolveGroupMatchedProfessionalId's gateway reads on a path that's already failing.
+ *
+ * Pure close primitive shared by softCloseExistingAppointment (replace flow, which additionally
+ * creates a new appointment) and the bogus-trustee close-only path in processOneEvent (which must
+ * NOT create a replacement) — kept free of any create-on-failure or new-appointment logic so both
+ * callers can rely on it doing exactly one thing.
+ *
+ * Exported for testing only — no production importer outside this module.
+ */
+export async function closeExistingAppointment(
+  context: ApplicationContext,
+  event: TrusteeAppointmentSyncEvent,
+  existingAppointment: CaseAppointment,
+  referenceDate: string,
+  appointmentsRepo: TrusteeCaseAppointmentsRepository,
+  syncedCase: SyncedCase,
+): Promise<{ closed: boolean; softCloseError: CamsError | null; unassignedOn: string }> {
+  const unassignedOn = deriveUnassignedOn(referenceDate);
+  let softCloseError: CamsError | null = null;
+  try {
+    await appointmentsRepo.updateCaseAppointment({ ...existingAppointment, unassignedOn });
+  } catch (error) {
+    softCloseError = getCamsError(error, MODULE_NAME);
+  }
+
+  if (!softCloseError) {
+    context.logger.info(
+      MODULE_NAME,
+      `Soft-closed case appointment for case ${event.caseId}, old trustee ${existingAppointment.trusteeId}`,
+    );
+
+    if (context.featureFlags['downstream-trustee-appointments-enabled']) {
+      const oldAcmsProfessionalId = await resolveGroupMatchedProfessionalId(
+        context,
+        existingAppointment.trusteeId,
+        syncedCase.courtDivisionCode,
+      );
+      const closeEvent: TrusteeAppointmentDownstreamEvent = {
+        caseId: event.caseId,
+        trusteeId: existingAppointment.trusteeId,
+        acmsProfessionalId: oldAcmsProfessionalId,
+        assignedOn: existingAppointment.assignedOn,
+        appointedDate: existingAppointment.appointedDate,
+        chapter: syncedCase.chapter,
+        unassignedOn,
+      };
+      const apiToDataflows = factory.getApiToDataflowsGateway(context);
+      try {
+        await apiToDataflows.queueTrusteeAppointmentEvent(closeEvent);
+      } catch (queueError) {
+        context.logger.error(
+          MODULE_NAME,
+          `Failed to queue close event for case ${event.caseId}, trustee ${existingAppointment.trusteeId} — appointment updated in Cosmos but downstream not notified`,
+          queueError,
+        );
+      }
+    }
+  }
+
+  return { closed: !softCloseError, softCloseError, unassignedOn };
+}
+
+/**
  * Soft-closes the case's existing active appointment (a different trustee than the one being
  * newly assigned) and creates the new appointment, handling the soft-close outcome:
  *  - Transient soft-close failure (Cosmos RU throttling, a read/write timeout) throws, aborting
  *    BEFORE the new appointment is created, so the caller's event is retried from a clean state.
  *  - Permanent soft-close failure still creates the new appointment (manual replay required for
  *    the stale old appointment) and reports it via the returned dlqFailure.
- *  - On success, notifies downstream of the closed appointment (when the feature flag is
- *    enabled) and reports closed:true.
- * Downstream notification is gated on soft-close success — firing a close event for a soft-close
- * that never actually happened in Cosmos would misinform downstream, and skips
- * resolveGroupMatchedProfessionalId's gateway reads on a path that's already failing.
+ *  - On success, reports closed:true (closeExistingAppointment already handled the downstream
+ *    notification).
  *
  * Exported for testing only — no production importer outside this module.
  */
@@ -268,13 +349,14 @@ export async function softCloseExistingAppointment(
   appointmentsRepo: TrusteeCaseAppointmentsRepository,
   syncedCase: SyncedCase,
 ): Promise<{ closed: boolean; dlqFailure: TrusteeAppointmentSyncError | null }> {
-  const now = new Date().toISOString();
-  let softCloseError: CamsError | null = null;
-  try {
-    await appointmentsRepo.updateCaseAppointment({ ...existingAppointment, unassignedOn: now });
-  } catch (error) {
-    softCloseError = getCamsError(error, MODULE_NAME);
-  }
+  const { closed, softCloseError } = await closeExistingAppointment(
+    context,
+    event,
+    existingAppointment,
+    assignedOn,
+    appointmentsRepo,
+    syncedCase,
+  );
 
   if (softCloseError) {
     // Aborts BEFORE creating the new appointment when the failure is transient (Cosmos RU
@@ -303,41 +385,7 @@ export async function softCloseExistingAppointment(
         error: softCloseError.message,
       },
     );
-  } else {
-    context.logger.info(
-      MODULE_NAME,
-      `Soft-closed case appointment for case ${event.caseId}, old trustee ${existingAppointment.trusteeId}`,
-    );
-  }
 
-  if (!softCloseError && context.featureFlags['downstream-trustee-appointments-enabled']) {
-    const oldAcmsProfessionalId = await resolveGroupMatchedProfessionalId(
-      context,
-      existingAppointment.trusteeId,
-      syncedCase.courtDivisionCode,
-    );
-    const closeEvent: TrusteeAppointmentDownstreamEvent = {
-      caseId: event.caseId,
-      trusteeId: existingAppointment.trusteeId,
-      acmsProfessionalId: oldAcmsProfessionalId,
-      assignedOn: existingAppointment.assignedOn,
-      appointedDate: existingAppointment.appointedDate,
-      chapter: syncedCase.chapter,
-      unassignedOn: now,
-    };
-    const apiToDataflows = factory.getApiToDataflowsGateway(context);
-    try {
-      await apiToDataflows.queueTrusteeAppointmentEvent(closeEvent);
-    } catch (queueError) {
-      context.logger.error(
-        MODULE_NAME,
-        `Failed to queue close event for case ${event.caseId}, trustee ${existingAppointment.trusteeId} — appointment updated in Cosmos but downstream not notified`,
-        queueError,
-      );
-    }
-  }
-
-  if (softCloseError) {
     const dlqFailure: TrusteeAppointmentSyncError = {
       ...event,
       mismatchReason: SoftCloseWriteFailed,
@@ -347,7 +395,7 @@ export async function softCloseExistingAppointment(
     return { closed: false, dlqFailure };
   }
 
-  return { closed: true, dlqFailure: null };
+  return { closed, dlqFailure: null };
 }
 
 /**
@@ -1451,8 +1499,12 @@ function isSentinelWithNoIdentity(
 
 /**
  * Short-circuits processOneEvent before any repo call is made when dxtrTrustee has no usable
- * demographics, or is a sentinel-coded record with a bogus placeholder name. Returns null when
- * neither applies, so the caller proceeds normally.
+ * demographics at all. Returns null when that doesn't apply, so the caller proceeds normally.
+ *
+ * A sentinel-coded record with a bogus placeholder name ('sentinel-bogus-name') is deliberately
+ * NOT handled here, even though resolveSkipReason can return it — that case still needs to close
+ * any real active appointment on the case (see the close-only handling in processOneEvent), which
+ * requires a SyncedCase and I/O this pre-match, no-repo-call short-circuit doesn't have access to.
  */
 function resolvePreMatchShortCircuit(
   deps: SyncTrusteeCaseAppointmentsDeps,
@@ -1469,17 +1521,94 @@ function resolvePreMatchShortCircuit(
     scenarioDistribution.emptyDemographicsSkippedCount++;
     return { kind: 'none' };
   }
-  if (skipReason === 'sentinel-bogus-name') {
-    deps.context.logger.warn(
-      MODULE_NAME,
-      `Trustee appointment event for case ${event.caseId} has a sentinel professional code and ` +
-        `a bogus/administrative placeholder name — cannot be safely attributed to any trustee. Skipping.`,
-    );
+
+  return null;
+}
+
+/**
+ * Handles the 'sentinel-bogus-name' skip reason: the event cannot be safely attributed to any
+ * trustee, but unlike 'empty-demographics' it still requires closing any real active appointment
+ * on the case, so the "Past Trustees" history doesn't leave a stale trustee open indefinitely
+ * (see CAMS-888). Uses the same close primitive (closeExistingAppointment) as the replace flow,
+ * but deliberately never creates a new appointment — there is no real trustee to assign.
+ *
+ * Returns null when resolveSkipReason(event) is not 'sentinel-bogus-name', so the caller proceeds
+ * normally. Must run after syncedCase is resolved (closeExistingAppointment needs it) and inside
+ * processOneEvent's try block (a transient close failure must route to 'retryable', not escape and
+ * abort the whole batch).
+ */
+async function handleBogusTrusteeCloseOnly(
+  deps: SyncTrusteeCaseAppointmentsDeps,
+  event: TrusteeAppointmentSyncEvent,
+  syncedCase: SyncedCase,
+  scenarioDistribution: ScenarioDistribution,
+): Promise<EventOutcome | null> {
+  if (resolveSkipReason(event) !== 'sentinel-bogus-name') {
+    return null;
+  }
+
+  const { context } = deps;
+  context.logger.warn(
+    MODULE_NAME,
+    `Trustee appointment event for case ${event.caseId} has a sentinel professional code and ` +
+      `a bogus/administrative placeholder name — cannot be safely attributed to any trustee. ` +
+      `Closing any existing active appointment; not creating a replacement.`,
+  );
+
+  const existingAppointment = await deps.caseAppointmentsRepo.getActiveByCaseId(event.caseId);
+  if (!existingAppointment) {
     scenarioDistribution.sentinelBogusNameSkippedCount++;
     return { kind: 'none' };
   }
 
-  return null;
+  if (!event.appointedDate) {
+    context.logger.error(
+      MODULE_NAME,
+      `TRUSTEE APPOINTMENT DATA INTEGRITY ERROR: case ${event.caseId} — event.appointedDate is ` +
+        `missing/unparseable. Refusing to fall back to wall-clock time for unassignedOn. This ` +
+        `event's existing appointment cannot be safely closed until its source DXTR appointment ` +
+        `date is corrected.`,
+    );
+    // Not counted in sentinelBogusNameSkippedCount — this event is going to the DLQ (via
+    // processOneEvent's catch), not being cleanly skipped, so it shouldn't inflate that counter.
+    throw new CamsError(MODULE_NAME, {
+      message: `Case ${event.caseId}: missing/unparseable appointedDate, cannot safely close existing appointment.`,
+    });
+  }
+
+  const { closed, softCloseError } = await closeExistingAppointment(
+    context,
+    event,
+    existingAppointment,
+    event.appointedDate,
+    deps.caseAppointmentsRepo,
+    syncedCase,
+  );
+
+  if (!closed && softCloseError) {
+    // Mirrors softCloseExistingAppointment's transient-vs-permanent split: a transient failure
+    // must abort and retry rather than silently leaving the bogus event "handled" while the old
+    // appointment is still open. Not counted in sentinelBogusNameSkippedCount — this event is
+    // being retried (throwIfTransientSoftCloseFailure throws), not cleanly skipped.
+    throwIfTransientSoftCloseFailure(context, event, existingAppointment, null, softCloseError);
+
+    // A permanent failure has no createNewAppointment fallback to run here (there is nothing to
+    // create), so it's logged loudly for manual replay. The event is still reported as handled —
+    // the alternative (DLQ) would misrepresent this as a genuine match failure when it is a
+    // placeholder-trustee skip that partially succeeded — so it IS counted below.
+    context.logger.error(
+      MODULE_NAME,
+      `Close-only soft-close failed for case ${event.caseId} — old trustee ${existingAppointment.trusteeId} appointment not closed. Manual replay required.`,
+      {
+        caseId: event.caseId,
+        oldTrusteeId: existingAppointment.trusteeId,
+        error: softCloseError.message,
+      },
+    );
+  }
+
+  scenarioDistribution.sentinelBogusNameSkippedCount++;
+  return { kind: 'none' };
 }
 
 /**
@@ -1601,6 +1730,14 @@ async function processOneEvent(
     const caseResolution = await resolveSyncedCase(deps, event);
     if (caseResolution.outcome === 'terminal') return caseResolution.result;
     const syncedCase = caseResolution.syncedCase;
+
+    const bogusTrusteeOutcome = await handleBogusTrusteeCloseOnly(
+      deps,
+      event,
+      syncedCase,
+      scenarioDistribution,
+    );
+    if (bogusTrusteeOutcome) return bogusTrusteeOutcome;
 
     const ctx: MatchContext = { deps, event, fingerprint, variant, audit, scenarioDistribution };
     if (await handleVerificationBucketHit(ctx, syncedCase, variationTrusteeId)) {
