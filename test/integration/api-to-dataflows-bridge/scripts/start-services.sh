@@ -7,13 +7,15 @@
 
 set -e
 
-podman rm -f cams-api-to-dataflows-bridge-azurite 2>/dev/null || true
+CONTAINER_NAME=cams-api-to-dataflows-bridge-azurite
+
+podman rm -f "$CONTAINER_NAME" 2>/dev/null || true
 
 echo "Starting Azurite..."
 podman run -d \
-  --name cams-api-to-dataflows-bridge-azurite \
+  --name "$CONTAINER_NAME" \
   -p 10001:10001 \
-  mcr.microsoft.com/azure-storage/azurite:latest \
+  mcr.microsoft.com/azure-storage/azurite:3.21.0 \
   azurite-queue --queueHost 0.0.0.0 --skipApiVersionCheck
 
 echo "Waiting for Azurite..."
@@ -22,7 +24,11 @@ for i in $(seq 1 30); do
     echo "  Azurite ready"
     break
   fi
-  [ "$i" -eq 30 ] && echo "ERROR: Azurite failed to start" && exit 1
+  if [ "$i" -eq 30 ]; then
+    echo "ERROR: Azurite failed to start"
+    podman rm -f "$CONTAINER_NAME" 2>/dev/null || true
+    exit 1
+  fi
   sleep 1
 done
 
@@ -30,5 +36,6 @@ echo ""
 echo "Services ready."
 echo "  Azurite queue → localhost:10001"
 echo ""
-echo "Copy .env.template to .env.local, then run the harness from test/integration/."
+echo "From api-to-dataflows-bridge/ (one level up): cp scripts/.env.template .env.local"
+echo "Then run the harness from test/integration/."
 echo "Run stop-services.sh to tear down."

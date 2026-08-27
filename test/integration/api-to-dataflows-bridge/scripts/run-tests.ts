@@ -15,7 +15,8 @@
  *
  * Local workflow:
  *   1. cd api-to-dataflows-bridge/scripts && ./start-services.sh
- *   2. Copy .env.template to .env.local
+ *   2. From api-to-dataflows-bridge/ (the harness root, one level above scripts/):
+ *        cp scripts/.env.template .env.local
  *   3. npm run api-to-dataflows-bridge:local -- run
  *   4. npm run api-to-dataflows-bridge:local -- clean
  *   5. cd api-to-dataflows-bridge/scripts && ./stop-services.sh
@@ -137,6 +138,9 @@ async function receiveAndDecode(queueName: string): Promise<unknown> {
     throw new Error(`No message received from queue ${queueName}`);
   }
   const [message] = response.receivedMessageItems;
+  // Delete immediately after reading so a rerun of `run` without an intervening `clean`
+  // can't decode this same leftover message again and mask a real send failure.
+  await client.deleteMessage(message.messageId, message.popReceipt);
   const decoded = Buffer.from(message.messageText, 'base64').toString('utf-8');
   return JSON.parse(decoded);
 }
@@ -144,8 +148,12 @@ async function receiveAndDecode(queueName: string): Promise<unknown> {
 async function run() {
   console.log('\nRunning api-to-dataflows-bridge assertions...\n');
 
+  // Always start from empty queues so a leftover message from a prior run (or a prior
+  // failed run) can't be mistaken for this run's own message.
+  await clean();
+
   const context = await getAppContext();
-  const gateway = new ApiToDataflowsGatewayImpl(context);
+  const gateway = new ApiToDataflowsGatewayImpl();
 
   try {
     // -------------------------------------------------------------------------
@@ -259,7 +267,7 @@ async function run() {
         /QueueEndpoint=http:\/\/127\.0\.0\.1:\d+/,
         'QueueEndpoint=http://127.0.0.1:19999',
       );
-      const brokenGateway = new ApiToDataflowsGatewayImpl(context);
+      const brokenGateway = new ApiToDataflowsGatewayImpl();
       try {
         await brokenGateway.queueCaseReload('081-24-44444');
         fail('expected queueCaseReload to throw when the queue endpoint is unreachable');

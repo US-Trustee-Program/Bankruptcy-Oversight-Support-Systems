@@ -1,4 +1,3 @@
-import { ApplicationContext } from '../../types/basic';
 import { StorageQueueOutput } from '@azure/functions';
 import {
   CASE_ASSIGNMENT_EVENT_QUEUE,
@@ -15,12 +14,31 @@ import {
 import { ApiToDataflowsGateway } from '../../../use-cases/gateways.types';
 import { StorageQueueHumbleObject } from '../../../humble-objects/storage-queue-humble';
 
-export class ApiToDataflowsGatewayImpl implements ApiToDataflowsGateway {
-  // Unused internally now that enqueue() throws instead of logging via context.logger, but
-  // kept as a constructor parameter to match factory.getApiToDataflowsGateway's call
-  // signature and the constructor-injection convention every other gateway follows.
-  constructor(private readonly context: ApplicationContext) {}
+// Memoized per queue name so StorageQueueHumbleObject's queueEnsured flag actually skips the
+// redundant createIfNotExists round trip after the first send, matching the module-level
+// singleton pattern in azure-blob-object-storage.gateway.ts. Keyed by connection string as
+// well so a changed AzureWebJobsDataflowsStorage value (e.g. between test runs) doesn't reuse
+// a client pointed at a stale endpoint.
+const queueClients = new Map<string, StorageQueueHumbleObject>();
 
+function getQueueClient(connectionString: string, queueName: string): StorageQueueHumbleObject {
+  const key = `${connectionString}::${queueName}`;
+  let client = queueClients.get(key);
+  if (!client) {
+    client = StorageQueueHumbleObject.fromConnectionString(connectionString, queueName);
+    queueClients.set(key, client);
+  }
+  return client;
+}
+
+// Test-only escape hatch: clears the module-level client cache so each test can install a
+// fresh StorageQueueHumbleObject.fromConnectionString spy without a prior test's cached
+// client (and its mock) being reused.
+export function __clearQueueClientCacheForTests(): void {
+  queueClients.clear();
+}
+
+export class ApiToDataflowsGatewayImpl implements ApiToDataflowsGateway {
   async queueCaseAssignmentEvent(event: CaseAssignmentDownstreamEvent): Promise<void> {
     await this.enqueue(CASE_ASSIGNMENT_EVENT_QUEUE, event);
   }
@@ -44,7 +62,7 @@ export class ApiToDataflowsGatewayImpl implements ApiToDataflowsGateway {
       throw new Error('Missing required environment variable: AzureWebJobsDataflowsStorage');
     }
 
-    const client = StorageQueueHumbleObject.fromConnectionString(connectionString, queue.queueName);
+    const client = getQueueClient(connectionString, queue.queueName);
     await client.sendMessage(JSON.stringify(message));
   }
 }

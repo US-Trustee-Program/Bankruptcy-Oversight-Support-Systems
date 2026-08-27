@@ -95,6 +95,10 @@ const ID_APPROVED_EARLY = 'integration-tmv-search-approved-early';
 const ID_PENDING_LATE = 'integration-tmv-search-pending-late';
 const ID_REJECTED_NO_TASKDATE = 'integration-tmv-search-rejected-no-taskdate';
 const ID_REJECTED_LATEST = 'integration-tmv-search-rejected-latest';
+// Dedicated to the update()/findById() round-trip test (Test 4), which mutates its document
+// in place. Kept separate from the search/sort fixtures above so that mutation can never
+// affect — or be affected by — test ordering among the read-only search assertions.
+const ID_UPDATE_ROUNDTRIP = 'integration-tmv-search-update-roundtrip';
 
 const SYSTEM_USER = { id: 'integration-test', name: 'Integration Test Harness' };
 
@@ -200,6 +204,11 @@ function buildFixtures(): TrusteeMatchVerification[] {
       status: 'rejected',
       taskDate: '2024-04-01T00:00:00.000Z',
     }),
+    makeVerification({
+      id: ID_UPDATE_ROUNDTRIP,
+      status: 'pending',
+      taskDate: '2024-01-15T00:00:00.000Z',
+    }),
   ];
 }
 
@@ -289,6 +298,7 @@ async function clean() {
       ID_PENDING_LATE,
       ID_REJECTED_NO_TASKDATE,
       ID_REJECTED_LATEST,
+      ID_UPDATE_ROUNDTRIP,
     ];
     const result = await collection.deleteMany({ id: { $in: ids } });
     console.log(`  Deleted ${result.deletedCount} documents`);
@@ -415,11 +425,11 @@ async function run() {
     console.log('\nTest 4: update() persists affectedCaseIds; findById() reads it back');
     {
       const snapshot = ['081-24-11111', '081-24-22222'];
-      await repository.update(ID_APPROVED_EARLY, {
+      await repository.update(ID_UPDATE_ROUNDTRIP, {
         status: 'approved',
         affectedCaseIds: snapshot,
       });
-      const reloaded = await repository.findById(ID_APPROVED_EARLY);
+      const reloaded = await repository.findById(ID_UPDATE_ROUNDTRIP);
 
       if (JSON.stringify(reloaded.affectedCaseIds) === JSON.stringify(snapshot)) {
         pass(`affectedCaseIds round-tripped through update()/findById(): ${snapshot.join(', ')}`);

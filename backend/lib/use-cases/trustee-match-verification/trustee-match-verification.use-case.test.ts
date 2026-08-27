@@ -701,6 +701,21 @@ describe('TrusteeMatchVerificationUseCase', () => {
         expect.stringContaining('fp-abc123'),
       );
     });
+
+    test('does not log a warning when affected case count is exactly at the sanity cap', async () => {
+      const exactlyCapCases = Array.from({ length: 50 }, (_, i) => ({
+        caseId: `case-${i}`,
+        trusteeId: 'fp-abc123',
+        isSurrogate: true,
+      }));
+      mockGetSurrogatesByFingerprints.mockResolvedValue(exactlyCapCases);
+      const warnSpy = vi.spyOn(context.logger, 'warn');
+
+      const result = await useCase.getEnrichedVerification(context, 'verification-1');
+
+      expect(result.affectedCaseIds).toHaveLength(50);
+      expect(warnSpy).not.toHaveBeenCalled();
+    });
   });
 
   describe('rejectVerification', () => {
