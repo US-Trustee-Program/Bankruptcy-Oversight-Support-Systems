@@ -1145,36 +1145,26 @@ function isNoContradictionMatch(sourceTrustee: DxtrTrusteeParty, winner: Candida
 
 /**
  * Minimum addressScore gap (best candidate in a same-name group minus the second-best of that
- * same group) for resolveDuplicateNameCandidates to trust a same-trusteeName tiebreak. Backtested
- * against a real trustee-professional-ids export: among the 55 ACMS
- * records where matchTrusteeByName found more than one name-qualifying candidate, every candidate
- * PAIR sharing the same normalized trusteeName had an addressScore gap of 60+ against the ACMS
- * source record (e.g. ROY COHEN: addr=100 vs addr=0; RONALD E STADTMUELLER: addr=100 vs addr=3;
- * the five BRAD/BRAD W ODELL ACMS records all resolving to the same underlying duplicate pair at
- * addr=100 vs addr=0), while pairs with GENUINELY different trusteeNames clustered at gap 0-19 -
- * a same-name-group gap of 60+ is a much stronger signal of "two records for the same person, one
- * with better/current data" than of "two different people who happen to score similarly." Set
- * well above FUZZY_MATCH_MIN_GAP (8, tuned for a single-dimension swing between two DIFFERENT
- * people) since this tiebreak is deciding WHICH of two likely-duplicate records to trust, not
- * disambiguating between two different real people.
+ * group) for resolveDuplicateNameCandidates to trust a same-trusteeName tiebreak. Set well above
+ * FUZZY_MATCH_MIN_GAP (8, tuned for a single-dimension swing between two different people) since
+ * this tiebreak decides which of two likely-duplicate records to trust, not disambiguating
+ * between two different real people. Tuned via a backtest against a real trustee-professional-ids
+ * export.
  */
 const DUPLICATE_NAME_ADDRESS_GAP_THRESHOLD = 60;
 
 /**
- * Outcome of resolveDuplicateNameCandidates - distinct from ScoringOutcome (not reused: DXTR's
- * sync-trustee-case-appointments.ts has an exhaustive switch over ScoringOutcome.kind that must
- * not need a new case just because this ACMS-shaped helper gained one):
- *  - 'resolved-duplicate': two or more candidates share the same normalized trusteeName (very
- *    likely the SAME real person recorded twice in the trustees collection - a CAMS data-quality
- *    problem, not a name-matching ambiguity) AND the addressScore gap between the best and
+ * Outcome of resolveDuplicateNameCandidates - distinct from ScoringOutcome since DXTR's
+ * sync-trustee-case-appointments.ts has an exhaustive switch over ScoringOutcome.kind:
+ *  - 'resolved-duplicate': two or more candidates share the same normalized trusteeName (likely
+ *    the same real person recorded twice in the trustees collection - a CAMS data-quality
+ *    problem, not a name-matching ambiguity) and the addressScore gap between the best and
  *    second-best of that name-sharing group (both scored against sourceTrustee) clears
  *    DUPLICATE_NAME_ADDRESS_GAP_THRESHOLD. Callers should log/report this as a likely
- *    trustees-collection duplicate in addition to using trusteeId - this is a workaround for the
- *    duplicate, not a fix for it.
+ *    trustees-collection duplicate in addition to using trusteeId.
  *  - 'unresolved': candidates were scored but nothing qualifies as a safe duplicate tiebreak -
- *    covers BOTH "no two candidates share a name" (genuine ambiguity between different people,
- *    needs its own resolution, deliberately NOT attempted here) and "some share a name but the
- *    gap is too small to trust" cases.
+ *    covers both "no two candidates share a name" and "some share a name but the gap is too
+ *    small to trust".
  *  - 'no-match': every candidate failed to load, so nothing could be scored.
  */
 export type DuplicateResolutionOutcome =
@@ -1185,17 +1175,11 @@ export type DuplicateResolutionOutcome =
 /**
  * Resolves a multi-candidate name match (matchTrusteeByName's 'ambiguous' result, or
  * resolveByContactCorroboration's 'unresolved' with 2+ name-qualifying candidates) by checking
- * SPECIFICALLY for the same-real-person-recorded-twice shape: two or more candidates whose
+ * specifically for the same-real-person-recorded-twice shape: two or more candidates whose
  * trusteeName is identical once normalized (case/whitespace-insensitive), where one scores much
- * better against sourceTrustee's address than the other. This is deliberately narrower than a
- * general fuzzy-match tiebreak - genuinely different candidates (different names, e.g. "David L.
- * Miller" vs "David P. Miller") are NEVER resolved here, only reported as still-unresolved,
- * because a backtest against real data found gap-based tiebreaking unsafe for that population:
- * the SAME ACMS name ("David Miller") appeared on two separate source records that resolved to
- * opposite winners against inconsistent-looking scores, suggesting these may genuinely be two
- * different people rather than one algorithm-detectable pattern. Resolving genuinely-different-name
- * candidates safely is explicitly OUT OF SCOPE here and needs its own follow-up validation before
- * any threshold is trusted for that case.
+ * better against sourceTrustee's address than the other. Genuinely different candidates (e.g.
+ * "David L. Miller" vs "David P. Miller") are never resolved here, only reported as unresolved -
+ * gap-based tiebreaking between distinct real people is out of scope for this function.
  *
  * Like resolveByContactCorroboration, this has no case-appointment-shaped evidence and is shared
  * (not ACMS-only) - DXTR's resolveNameCollisionByScoring hits the identical raw candidate pool
@@ -1214,10 +1198,8 @@ export async function resolveDuplicateNameCandidates(
       const trustee = await trusteesRepo.read(trusteeId);
       return { trusteeId, trustee, error: null };
     } catch (error) {
-      // Same rationale as resolveByContactCorroboration/resolveNameCollisionByScoring's identical
-      // guard: a transient infrastructure error is not evidence this candidate is unscorable, so
-      // it must abort this whole resolution attempt rather than silently proceeding with a
-      // smaller candidate set.
+      // A transient infrastructure error is not evidence this candidate is unscorable — abort
+      // the whole resolution attempt rather than silently proceeding with a smaller candidate set.
       if (isTooManyRequestsError(error) || isGatewayTimeoutError(error)) {
         throw error;
       }
@@ -1234,11 +1216,8 @@ export async function resolveDuplicateNameCandidates(
       context.logger.warn(MODULE_NAME, `Skipping candidate ${trusteeId}: ${error}`);
       continue;
     }
-    // Reuses calculateCandidateScore purely for its addressScore computation against the real
-    // sourceTrustee - same '', '', '', [] no-case-appointment-context pattern as
-    // resolveByContactCorroboration; totalScore/nameScore (scored against sourceTrustee, not
-    // against the OTHER candidate) are not meaningful for the same-person grouping below and
-    // unused there - see asComparableParty for the candidate-vs-candidate comparison instead.
+    // addressScore against sourceTrustee only; totalScore/nameScore are not meaningful for the
+    // same-person grouping below (see asComparableParty for the candidate-vs-candidate comparison).
     const score = calculateCandidateScore(context, sourceTrustee, '', '', '', trustee, []);
     scoredCandidates.push({ trustee, score });
   }
@@ -1253,13 +1232,10 @@ export async function resolveDuplicateNameCandidates(
 
   const candidateScores = scoredCandidates.map((c) => c.score);
 
-  // Groups candidates that plausibly refer to the SAME real person by reusing calculateNameScore
-  // pairwise (candidate vs. candidate, not candidate vs. sourceTrustee) - NOT
-  // normalizeNameForMatching's raw string-equality check, which only bridges punctuation/suffix
-  // noise and would never recognize "Roy J. Cohen" and "R. Cohen" as the same person despite that
-  // being the flagship duplicate example this function exists to catch. Reuses
-  // calculateNameScore's existing firstLastNameToken-exact-match-required, initial-vs-full-
-  // tolerant logic rather than inventing a second, separately-tuned name-similarity comparison.
+  // Groups candidates that plausibly refer to the same real person by reusing calculateNameScore
+  // pairwise (candidate vs. candidate, not candidate vs. sourceTrustee) - not
+  // normalizeNameForMatching's raw string-equality check, which would never recognize "Roy J.
+  // Cohen" and "R. Cohen" as the same person.
   const asComparableParty = (trustee: Trustee): DxtrTrusteeParty => ({
     fullName: trustee.name,
     firstName: trustee.firstName,
@@ -1479,17 +1455,15 @@ export async function matchTrusteeByName(
 /**
  * Tokens shorter than this are dropped before intersecting. Set to 2 (not 1) purely to exclude
  * empty/whitespace-only fragments after tokenizing - unlike a phonetic/bigram search, exact-word
- * containment (searchTrusteesByName's case-insensitive substring regex against trustee.name) does
- * NOT have a "single initial matches almost everything" problem, so there is no need for a higher
- * floor the way an earlier phonetic-search attempt required (see findTokenIntersectionCandidates'
- * doc comment for why that attempt was abandoned) - a short token like "mc" or "jo" still only
- * matches trustees whose NAME TEXT literally contains that substring.
+ * containment (searchTrusteesByName's case-insensitive substring regex against trustee.name)
+ * doesn't have a "single initial matches almost everything" problem, so a short token like "mc"
+ * or "jo" still only matches trustees whose name text literally contains that substring.
  */
 const TOKEN_INTERSECTION_MIN_TOKEN_LENGTH = 2;
 
 /**
  * Common suffixes/role markers that shouldn't count as a discriminating name token for
- * findTokenIntersectionCandidates - same list backtested in
+ * findTokenIntersectionCandidates. Tuned via
  * test/integration/sync-acms-professional-ids-audit/scripts/token-intersection-exact-word-backtest.ts.
  */
 const TOKEN_INTERSECTION_STOPWORDS = new Set([
@@ -1509,9 +1483,8 @@ const TOKEN_INTERSECTION_STOPWORDS = new Set([
 
 /**
  * Splits a fullName into lowercase, deduplicated, punctuation-stripped tokens with role-suffix
- * stopwords and short (<2 char) tokens removed - see findTokenIntersectionCandidates's doc
- * comment for why. Exported for reuse by the token-intersection backtest script and its unit
- * tests; not intended as a general-purpose name utility outside that context.
+ * stopwords and short (<2 char) tokens removed. Exported for reuse by the token-intersection
+ * backtest script and its unit tests; not intended as a general-purpose name utility.
  */
 export function tokenizeNameForIntersection(fullName: string): string[] {
   const raw = fullName
@@ -1526,52 +1499,32 @@ export function tokenizeNameForIntersection(fullName: string): string[] {
 }
 
 /**
- * Last-resort candidate-discovery tier for a name matchTrusteeByName's own tiers structurally
- * cannot find: a name where the parts have been REORDERED (not just abbreviated) relative to how
- * CAMS stores firstName/middleName/lastName - e.g. a lastName with an internal space that changes
- * its token count ("MC LANE" vs "McLane"), a person who goes by their middle name with the ACMS
- * source recording it in a different field position ("GEORGE L REDER" vs CAMS
- * firstName=L./middleName=George), or a first name dropped entirely in favor of a middle name
- * with no initial preserved ("C. EUGENE CHAMBERLAIN" vs CAMS firstName=Eugene). calculateNameScore
- * requires firstLastNameToken(dxtrLastName) === firstLastNameToken(camsLastName) as a hard gate
- * and compares first/middle POSITIONALLY - all three shapes above score 0 under that comparison
- * regardless of how strong any other evidence is, and matchTrusteeByName's own tiers (exact
- * string match, normalized string match, single first-lastName-token search) never surface a
- * candidate for them either, so there is nothing for resolveByContactCorroboration/
- * resolveDuplicateNameCandidates to even score.
+ * Last-resort candidate-discovery tier for a name whose parts have been reordered (not just
+ * abbreviated) relative to how CAMS stores firstName/middleName/lastName - e.g. a lastName with
+ * an internal space that changes its token count ("MC LANE" vs "McLane"), a person who goes by
+ * their middle name recorded in a different field position ("GEORGE L REDER" vs CAMS
+ * firstName=L./middleName=George), or a first name dropped in favor of a middle name with no
+ * initial preserved ("C. EUGENE CHAMBERLAIN" vs CAMS firstName=Eugene). calculateNameScore
+ * requires firstLastNameToken(dxtrLastName) === firstLastNameToken(camsLastName) and compares
+ * first/middle positionally, so all three shapes score 0 there regardless of other evidence, and
+ * matchTrusteeByName's own tiers never surface a candidate for them either.
  *
  * Approach: tokenize fullName into individually-meaningful tokens (see
- * tokenizeNameForIntersection), search trustees by EACH token independently via
- * searchTrusteesByName (case-insensitive substring containment against trustee.name - NOT
- * searchTrusteesByNameScored's phonetic/bigram index), and INTERSECT the resulting trusteeId
- * sets. A trustee appearing in the intersection of every token is a much stronger,
- * order-independent candidate than anything a single-token or full-string search can produce,
- * since it does not care which field position a given name part landed in on either side.
+ * tokenizeNameForIntersection), search trustees by each token independently via
+ * searchTrusteesByName (case-insensitive substring containment against trustee.name, not
+ * searchTrusteesByNameScored's phonetic/bigram index - the phonetic index collides too broadly to
+ * narrow anything useful here), and intersect the resulting trusteeId sets. A trustee appearing
+ * in the intersection of every token is a stronger, order-independent candidate than anything a
+ * single-token or full-string search can produce.
  *
- * WHY searchTrusteesByName AND NOT searchTrusteesByNameScored: an earlier attempt used
- * searchTrusteesByNameScored, reasoning that its phonetic index was the "real" search matchTrusteeByName's
- * own fuzzy tier already uses. Backtested against a real trustee-professional-ids
- * export using the ACTUAL phoneticTokens containment logic (precomputed
- * per trustee, faithfully reproduced offline) - this was FAR too broad to narrow anything: most
- * records intersected to hundreds or thousands of candidates (phonetic/bigram tokens like "S530"
- * or "th" collide across huge numbers of unrelated names), and the rare exactly-one-candidate
- * hits that did occur were false positives (e.g. "CAROL LYNN FOX" intersecting to "Brian Foltyn").
- * Switching to searchTrusteesByName's plain substring containment and lowering the token-length
- * floor to 2 reproduced the ORIGINAL substring-proxy experiment's results almost exactly: 140 of
- * 869 eligible no-name-candidate records collapsed to exactly one intersection candidate, all
- * hand-plausible on inspection (e.g. "W. WHEELER BRYAN" -> "William Wheeler Bryan", "GEORGE L
- * REDER" -> "L. George Reder"), with zero records producing an unmanageably large intersection.
- *
- * Returns RAW, UNSCORED candidates - same contract as findLastNameTokenMatches. The caller is
+ * Returns raw, unscored candidates - same contract as findLastNameTokenMatches. The caller is
  * responsible for routing a single candidate through resolveByContactCorroboration and 2+
- * candidates through resolveDuplicateNameCandidates before ever auto-linking; a unique
- * intersection result is a candidate-FINDING signal, not a match confidence score on its own.
+ * candidates through resolveDuplicateNameCandidates before ever auto-linking.
  *
- * COST WARNING - this issues one searchTrusteesByName query per token (2+ real queries),
- * meaningfully more expensive than any single-query tier in matchTrusteeByName. Callers MUST
- * treat this as an explicit last resort, invoked only after matchTrusteeByName itself has
- * returned 'no-match' (i.e. every cheaper tier already found nothing) - never call this
- * speculatively or in parallel with cheaper tiers.
+ * Cost warning: issues one searchTrusteesByName query per token (2+ real queries), meaningfully
+ * more expensive than any single-query tier in matchTrusteeByName. Callers must treat this as an
+ * explicit last resort, invoked only after matchTrusteeByName has returned 'no-match' - never call
+ * this speculatively or in parallel with cheaper tiers.
  */
 export async function findTokenIntersectionCandidates(
   context: ApplicationContext,
