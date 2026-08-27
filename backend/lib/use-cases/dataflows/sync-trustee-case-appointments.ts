@@ -84,15 +84,13 @@ type ScenarioDistribution = {
    */
   sentinelBogusNameSkippedCount: number;
   /**
-   * The record's name is a bogus/administrative placeholder (isBogusTrusteeName) AND it has no
-   * separate firstName field — regardless of profCode or contact info. Distinct from
-   * sentinelBogusNameSkippedCount: this path catches administrative/court-office records (e.g.
-   * "US Trustee 11", "CHAPTER 11 - LV") that carry a real address/phone/email (a court's own
-   * contact info) and a non-sentinel profCode, so neither the sentinel-profCode rule nor the
-   * empty-demographics rule catches them — they would otherwise reach matching, fail, and land in
-   * the human review queue as indistinguishable NO_TRUSTEE_MATCH noise.
+   * The record's name is a bogus/administrative placeholder (isBogusTrusteeName) with no separate
+   * firstName field, regardless of profCode or contact info (see isUnattributableBogusName).
+   * Distinct from sentinelBogusNameSkippedCount: this path catches administrative/court-office
+   * records (e.g. "US Trustee 11", "CHAPTER 11 - LV") that carry the court's own real
+   * address/phone/email and a non-sentinel profCode.
    */
-  bogusAdminNameSkippedCount: number;
+  unattributableBogusNameSkippedCount: number;
 };
 
 type MatchAuditEntry = {
@@ -1345,15 +1343,12 @@ const BOGUS_TRUSTEE_NAME_KEYWORDS = [
 ];
 
 /**
- * True when a sentinel-coded record's name is itself a bogus/administrative placeholder rather
- * than a genuine trustee name (e.g. "No Trustee", "CHAPTER 11 - XX") — checked against lastName,
- * falling back to fullName (both via normalizeName, so a whitespace-only lastName correctly falls
- * back to fullName rather than being treated as present). Must ONLY be evaluated when the event's
- * profCode is already a known sentinel value (see isSentinelWithNoIdentity below): a genuine
- * trustee's name or firm name can plausibly contain one of these substrings (e.g. a name suffixed
- * "(TR)" wouldn't match, but nothing rules out a real name containing "Trustee"), so this check
- * alone must never be disqualifying — isSentinelWithNoIdentity also requires the absence of real
- * contact info before treating a bogus-looking name as disqualifying.
+ * True when a record's name is itself a bogus/administrative placeholder rather than a genuine
+ * trustee name (e.g. "No Trustee", "CHAPTER 11 - XX") — checked against lastName, falling back to
+ * fullName (both via normalizeName, so a whitespace-only lastName correctly falls back to fullName
+ * rather than being treated as present). A genuine trustee's name or firm name can plausibly
+ * contain one of these substrings, so this check alone is never disqualifying on its own; callers
+ * (isSentinelWithNoIdentity, isUnattributableBogusName) combine it with other evidence.
  */
 function isBogusTrusteeName(event: TrusteeAppointmentSyncEvent): boolean {
   const { dxtrTrustee } = event;
@@ -1364,41 +1359,20 @@ function isBogusTrusteeName(event: TrusteeAppointmentSyncEvent): boolean {
 }
 
 /**
- * True when the record's name is a bogus/administrative placeholder (isBogusTrusteeName) AND
- * either it has no separate firstName field (and profCode isn't already a sentinel value — see
- * below), or the case is chapter 11.
+ * True when the record's name is a bogus/administrative placeholder (isBogusTrusteeName) with no
+ * separate firstName field and a non-sentinel profCode, or the case is chapter 11 (regardless of
+ * firstName/profCode/contact info).
  *
- * The chapter-11 branch is NOT gated on profCode or contact info — administrative/court-office
- * placeholders (e.g. "US Trustee 11", "CHAPTER 11 - LV") legitimately carry a real address/phone/
- * email (the court's own contact info) and can arrive with a non-sentinel profCode, so neither the
- * empty-demographics rule nor the sentinel-profCode rule catches them. Chapter 11 cases don't
- * typically have a trustee appointed at filing (one may be appointed later as the case proceeds),
- * so a bogus-looking name on a chapter 11 event is corroborated by the chapter itself — a keyword
- * match alone is enough here even when firstName is populated, since the appointment being
- * premature/placeholder is independently plausible.
+ * A sentinel profCode is excluded from the !firstName branch: that combination is
+ * isSentinelWithNoIdentity's responsibility, which additionally requires no usable contact info
+ * before disqualifying. Administrative/court-office placeholders (e.g. "US Trustee 11",
+ * "CHAPTER 11 - LV") commonly carry the court's own real address/phone/email and a non-sentinel
+ * profCode, so this function is what catches them instead.
  *
- * The !firstName branch excludes a sentinel profCode: that combination (bogus name, no firstName,
- * sentinel profCode) is already owned by isSentinelWithNoIdentity's own contact-gated logic, which
- * additionally requires no usable contact info before disqualifying — evaluating it again here,
- * unconditionally, would silently drop a record isSentinelWithNoIdentity is specifically designed
- * to protect (e.g. "John Doe, Trustee" with a sentinel profCode and a real address/phone/email).
- * For a non-sentinel profCode, a genuine person's DXTR record always has a populated firstName; an
- * administrative label crammed entirely into lastName/fullName does not — so requiring !firstName
- * alongside the keyword match preserves the same safety property isSentinelWithNoIdentity's
- * contact-info requirement provides: a real trustee whose name happens to contain a keyword like
- * "trustee" or "chapter" (e.g. "Robert Trustee", firstName: "Robert") is never disqualified.
- *
- * Deliberately does NOT also disqualify on "no usable contact info" regardless of firstName: DXTR's
- * naive whitespace split can populate firstName from a placeholder string that isn't actually a
- * person's name (e.g. "No Trustee" splits into firstName "No"), but that same shape is
- * indistinguishable from a legitimate contact-free record whose real name happens to contain a
- * keyword (e.g. "Ghost Trustee", "Known Trustee" — both used as ordinary NO_TRUSTEE_MATCH
- * name-matching fixtures elsewhere in this suite, ordinary real names for testing purposes, not
- * administrative placeholders). Telling "No" apart from "Ghost" as a first-name token requires a
- * real name dictionary, which is out of scope here — an over-eager rule would silently drop
- * genuine no-match events instead of routing them to human review.
+ * Chapter 11 cases don't typically have a trustee appointed at filing, so a bogus-looking name is
+ * corroborated by the chapter itself regardless of firstName.
  */
-function isBogusAdminName(event: TrusteeAppointmentSyncEvent): boolean {
+function isUnattributableBogusName(event: TrusteeAppointmentSyncEvent): boolean {
   if (!isBogusTrusteeName(event)) {
     return false;
   }
@@ -1433,21 +1407,18 @@ function hasUsableContact(legacy: TrusteeAppointmentSyncEvent['dxtrTrustee']['le
 /**
  * Which pre-match short-circuit rule, if any, disqualifies this event from matching.
  * 'empty-demographics' is a totally blank record; 'sentinel-bogus-name' is a sentinel-coded
- * record whose populated name is itself a bogus/administrative placeholder; 'bogus-admin-name' is
- * a non-sentinel record whose name is an administrative placeholder with no firstName (see
- * isBogusAdminName). Kept distinct so callers can log/count each condition accurately instead of
- * conflating "blank record" with "populated-but-fake name" under one message/counter.
+ * record whose populated name is itself a bogus/administrative placeholder; 'unattributable-bogus-name'
+ * is a non-sentinel record whose name is an administrative placeholder with no firstName (see
+ * isUnattributableBogusName).
  */
-type SkipReason = 'empty-demographics' | 'sentinel-bogus-name' | 'bogus-admin-name' | null;
+type SkipReason = 'empty-demographics' | 'sentinel-bogus-name' | 'unattributable-bogus-name' | null;
 
 /**
- * Determines whether dxtrTrustee carries no usable demographics at all — blank fullName (see
- * normalizeName) AND no legacy/contact fields (address, phone, email) either — or is a sentinel-
- * coded record whose name is itself a bogus placeholder, or is a bogus administrative-office name
- * with no firstName regardless of profCode/contact (see isBogusAdminName). Checked before
- * matchTrusteeByName in processOneEvent: any condition means the event cannot be safely attributed
- * to a trustee and must never reach matching or verification. See ScenarioDistribution's doc
- * comments for each counter this feeds.
+ * Determines whether dxtrTrustee carries no usable demographics at all, is a sentinel-coded
+ * record whose name is itself a bogus placeholder, or is a bogus administrative-office name with
+ * no firstName (see isUnattributableBogusName). Checked before matchTrusteeByName in
+ * processOneEvent: any condition means the event cannot be safely attributed to a trustee and
+ * must never reach matching or verification.
  */
 function resolveSkipReason(event: TrusteeAppointmentSyncEvent): SkipReason {
   const { dxtrTrustee } = event;
@@ -1464,25 +1435,18 @@ function resolveSkipReason(event: TrusteeAppointmentSyncEvent): SkipReason {
     return hasName ? 'sentinel-bogus-name' : 'empty-demographics';
   }
 
-  if (isBogusAdminName(event)) {
-    return 'bogus-admin-name';
+  if (isUnattributableBogusName(event)) {
+    return 'unattributable-bogus-name';
   }
 
   return null;
 }
 
 /**
- * True when event.profCode equals the given sentinel value (DXTR can supply an incorrect ACMS
- * professional code, so it must never be trusted as an auto-link identity signal — profCode is
- * used here only as this negative signal, never to pick which trustee an event belongs to) AND
- * the record's name/contact don't establish a real
- * identity: either nothing at all (no usable fullName per normalizeName — the same presence
- * check resolveSkipReason itself uses, not just a blank firstName, which DXTR can leave
- * unset even when fullName is populated — and no usable contact info per hasUsableContact), or a
- * name that is itself a bogus/administrative placeholder (isBogusTrusteeName) AND no usable
- * contact info either — a bogus-looking name alone must never disqualify a record that also
- * carries a real address/phone/email, since that would silently drop a genuine trustee whose name
- * happens to contain a keyword like "trustee" or "chapter" (e.g. "John Doe, Trustee").
+ * True when event.profCode equals the given sentinel value AND the record's name/contact don't
+ * establish a real identity: no usable fullName and no usable contact info, or a bogus/
+ * administrative-placeholder name (isBogusTrusteeName) with no usable contact info. A bogus-looking
+ * name alone does not disqualify a record that also carries a real address/phone/email.
  */
 function isSentinelWithNoIdentity(
   event: TrusteeAppointmentSyncEvent,
@@ -1526,13 +1490,13 @@ function resolvePreMatchShortCircuit(
     scenarioDistribution.sentinelBogusNameSkippedCount++;
     return { kind: 'none' };
   }
-  if (skipReason === 'bogus-admin-name') {
+  if (skipReason === 'unattributable-bogus-name') {
     deps.context.logger.warn(
       MODULE_NAME,
       `Trustee appointment event for case ${event.caseId} has a bogus/administrative ` +
         `placeholder name with no firstName — cannot be safely attributed to any trustee. Skipping.`,
     );
-    scenarioDistribution.bogusAdminNameSkippedCount++;
+    scenarioDistribution.unattributableBogusNameSkippedCount++;
     return { kind: 'none' };
   }
 
@@ -1805,7 +1769,7 @@ async function processAppointments(
     candidateLoadFailedCount: 0,
     emptyDemographicsSkippedCount: 0,
     sentinelBogusNameSkippedCount: 0,
-    bogusAdminNameSkippedCount: 0,
+    unattributableBogusNameSkippedCount: 0,
   };
 
   for (const event of events) {

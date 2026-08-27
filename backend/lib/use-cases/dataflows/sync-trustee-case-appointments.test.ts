@@ -940,7 +940,7 @@ describe('SyncTrusteeCaseAppointments', () => {
 
           expect(trusteeMatchHelpers.matchTrusteeByName).not.toHaveBeenCalled();
           expect(mockVerificationRepo.upsertVerification).not.toHaveBeenCalled();
-          expect(scenarioDistribution.bogusAdminNameSkippedCount).toBe(1);
+          expect(scenarioDistribution.unattributableBogusNameSkippedCount).toBe(1);
         },
       );
 
@@ -969,7 +969,7 @@ describe('SyncTrusteeCaseAppointments', () => {
         );
 
         expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalled();
-        expect(scenarioDistribution.bogusAdminNameSkippedCount).toBe(0);
+        expect(scenarioDistribution.unattributableBogusNameSkippedCount).toBe(0);
       });
 
       test('does not skip a bogus-looking name that also has a firstName', async () => {
@@ -991,7 +991,7 @@ describe('SyncTrusteeCaseAppointments', () => {
         );
 
         expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalled();
-        expect(scenarioDistribution.bogusAdminNameSkippedCount).toBe(0);
+        expect(scenarioDistribution.unattributableBogusNameSkippedCount).toBe(0);
       });
     });
 
@@ -999,7 +999,7 @@ describe('SyncTrusteeCaseAppointments', () => {
       // Chapter 11 cases don't typically have a trustee appointed at filing (one may be
       // appointed later as the case proceeds), so a bogus/administrative-looking name on a
       // chapter 11 event is corroborated by the chapter itself — the firstName requirement is
-      // relaxed here, unlike the general bogus-admin-name rule above.
+      // relaxed here, unlike the general unattributable-bogus-name rule above.
       test('skips a bogus-looking name with a firstName when chapter is 11', async () => {
         const events: TrusteeAppointmentSyncEvent[] = [
           {
@@ -1020,7 +1020,7 @@ describe('SyncTrusteeCaseAppointments', () => {
         );
 
         expect(trusteeMatchHelpers.matchTrusteeByName).not.toHaveBeenCalled();
-        expect(scenarioDistribution.bogusAdminNameSkippedCount).toBe(1);
+        expect(scenarioDistribution.unattributableBogusNameSkippedCount).toBe(1);
       });
 
       test('does not skip a genuine chapter 11 trustee whose name has no bogus keyword', async () => {
@@ -1043,18 +1043,11 @@ describe('SyncTrusteeCaseAppointments', () => {
         );
 
         expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalled();
-        expect(scenarioDistribution.bogusAdminNameSkippedCount).toBe(0);
+        expect(scenarioDistribution.unattributableBogusNameSkippedCount).toBe(0);
       });
 
-      // The chapter-11 branch is intentionally unconditional on profCode and contact info,
-      // unlike isSentinelWithNoIdentity's sentinel-profCode rule, which always requires no usable
-      // contact info before disqualifying a bogus-looking name. A chapter-11 filing with a
-      // sentinel profCode and the court's own real address/phone (e.g. "CHAPTER 11 - LV") is still
-      // skipped here: the chapter itself is independently strong evidence no trustee is appointed
-      // yet, and a court's contact info doesn't establish personhood any more than a firstName
-      // does for these institutional labels. Pinned down explicitly so a future refactor can't
-      // accidentally "fix" this into consistency with isSentinelWithNoIdentity and silently start
-      // routing chapter-11 admin-office noise back into the human review queue.
+      // The chapter-11 branch is unconditional on profCode and contact info, unlike
+      // isSentinelWithNoIdentity's sentinel-profCode rule.
       test('skips a bogus-looking name on a chapter 11 case with a sentinel profCode and real contact info', async () => {
         const events: TrusteeAppointmentSyncEvent[] = [
           {
@@ -1080,16 +1073,13 @@ describe('SyncTrusteeCaseAppointments', () => {
         );
 
         expect(trusteeMatchHelpers.matchTrusteeByName).not.toHaveBeenCalled();
-        expect(scenarioDistribution.bogusAdminNameSkippedCount).toBe(1);
+        expect(scenarioDistribution.unattributableBogusNameSkippedCount).toBe(1);
       });
 
-      // resolveSkipReason checks isSentinelWithNoIdentity before isBogusAdminName, so when BOTH
-      // rules would independently disqualify the same event (sentinel profCode, bogus name, no
-      // contact info, chapter 11), the sentinel-profCode rule wins and increments
-      // sentinelBogusNameSkippedCount, not bogusAdminNameSkippedCount. Pinned down so this
-      // precedence — which determines which counter/telemetry path fires — doesn't silently shift
-      // if the checks in resolveSkipReason are ever reordered.
-      test('attributes a chapter 11, sentinel-profCode, no-contact bogus name to the sentinel rule, not bogusAdminNameSkippedCount', async () => {
+      // resolveSkipReason checks isSentinelWithNoIdentity before isUnattributableBogusName, so a
+      // sentinel profCode wins ties and increments sentinelBogusNameSkippedCount, not
+      // unattributableBogusNameSkippedCount.
+      test('attributes a chapter 11, sentinel-profCode, no-contact bogus name to the sentinel rule, not unattributableBogusNameSkippedCount', async () => {
         const events: TrusteeAppointmentSyncEvent[] = [
           {
             ...makeEvent('case-001', 'CHAPTER 11 - LV'),
@@ -1106,7 +1096,7 @@ describe('SyncTrusteeCaseAppointments', () => {
 
         expect(trusteeMatchHelpers.matchTrusteeByName).not.toHaveBeenCalled();
         expect(scenarioDistribution.sentinelBogusNameSkippedCount).toBe(1);
-        expect(scenarioDistribution.bogusAdminNameSkippedCount).toBe(0);
+        expect(scenarioDistribution.unattributableBogusNameSkippedCount).toBe(0);
       });
     });
 
@@ -1138,7 +1128,7 @@ describe('SyncTrusteeCaseAppointments', () => {
         );
 
         expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalled();
-        expect(scenarioDistribution.bogusAdminNameSkippedCount).toBe(0);
+        expect(scenarioDistribution.unattributableBogusNameSkippedCount).toBe(0);
       });
     });
 
@@ -4344,7 +4334,7 @@ describe('handleClassifiedMismatch', () => {
       candidateLoadFailedCount: 0,
       emptyDemographicsSkippedCount: 0,
       sentinelBogusNameSkippedCount: 0,
-      bogusAdminNameSkippedCount: 0,
+      unattributableBogusNameSkippedCount: 0,
     };
   }
 
