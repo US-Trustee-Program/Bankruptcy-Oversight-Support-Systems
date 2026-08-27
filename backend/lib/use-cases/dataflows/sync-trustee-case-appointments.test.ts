@@ -895,6 +895,243 @@ describe('SyncTrusteeCaseAppointments', () => {
       );
     });
 
+    describe('bogus administrative name with no firstName', () => {
+      // Real DXTR noise observed in production: administrative/court-office placeholders with a
+      // non-sentinel profCode AND real contact info (a court or USTP-office address/phone/email),
+      // so neither the empty-demographics rule nor the sentinel-profCode bogus-name rule catches
+      // them. Every observed instance has no separate firstName field — the entire label lives in
+      // lastName/fullName — unlike a genuine trustee record, which always has one.
+      test.each([
+        ['For Internal Use Only', { email: 'bnc@mdb.uscourts.gov' }],
+        [
+          'US Trustee 11',
+          {
+            address1: '515 Rusk Ave',
+            cityStateZipCountry: 'Houston TX 77002 USA',
+            phone: '713-718-4650',
+            email: 'USTPRegion07.HU.ECF@USDOJ.GOV',
+          },
+        ],
+        ['Awaiting Trustee Assignment', { cityStateZipCountry: 'NJ' }],
+        [
+          'CHAPTER 11 - LV',
+          {
+            address1: '300 LAS VEGAS BLVD., SO. #4300',
+            cityStateZipCountry: 'LAS VEGAS NV 89101',
+            phone: '(702) 388-6600',
+            email: 'USTPRegion17.lv.ecf@usdoj.gov',
+          },
+        ],
+      ])(
+        'skips bogus admin name %s with a non-sentinel profCode and real contact info',
+        async (bogusName, legacy) => {
+          const events: TrusteeAppointmentSyncEvent[] = [
+            {
+              ...makeEvent('case-001', bogusName),
+              dxtrTrustee: { fullName: bogusName, lastName: bogusName, legacy },
+              profCode: '12345',
+            },
+          ];
+
+          const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+            SyncTrusteeCaseAppointments.createDeps(context),
+            events,
+          );
+
+          expect(trusteeMatchHelpers.matchTrusteeByName).not.toHaveBeenCalled();
+          expect(mockVerificationRepo.upsertVerification).not.toHaveBeenCalled();
+          expect(scenarioDistribution.unattributableBogusNameSkippedCount).toBe(1);
+        },
+      );
+
+      test('does not skip a genuine trustee whose name contains a bogus keyword but has a firstName', async () => {
+        const events: TrusteeAppointmentSyncEvent[] = [
+          {
+            ...makeEvent('case-001', 'Robert E Eggmann III'),
+            dxtrTrustee: {
+              fullName: 'Robert E Eggmann III',
+              firstName: 'Robert',
+              lastName: 'Eggmann',
+              legacy: {
+                address1: 'PO Box 168',
+                cityStateZipCountry: 'Columbia IL 62236 USA',
+                phone: '618-222-1900',
+                email: 'reetrustee@carmodymacdonald.com',
+              },
+            },
+            profCode: '12345',
+          },
+        ];
+
+        const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          events,
+        );
+
+        expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalled();
+        expect(scenarioDistribution.unattributableBogusNameSkippedCount).toBe(0);
+      });
+
+      test('does not skip a bogus-looking name that also has a firstName', async () => {
+        const events: TrusteeAppointmentSyncEvent[] = [
+          {
+            ...makeEvent('case-001', 'Robert Trustee'),
+            dxtrTrustee: {
+              fullName: 'Robert Trustee',
+              firstName: 'Robert',
+              lastName: 'Trustee',
+            },
+            profCode: '12345',
+          },
+        ];
+
+        const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          events,
+        );
+
+        expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalled();
+        expect(scenarioDistribution.unattributableBogusNameSkippedCount).toBe(0);
+      });
+    });
+
+    describe('bogus administrative name on a chapter 11 case', () => {
+      // Chapter 11 cases don't typically have a trustee appointed at filing (one may be
+      // appointed later as the case proceeds), so a bogus/administrative-looking name on a
+      // chapter 11 event is corroborated by the chapter itself — the firstName requirement is
+      // relaxed here, unlike the general unattributable-bogus-name rule above.
+      test('skips a bogus-looking name with a firstName when chapter is 11', async () => {
+        const events: TrusteeAppointmentSyncEvent[] = [
+          {
+            ...makeEvent('case-001', 'Robert Trustee'),
+            dxtrTrustee: {
+              fullName: 'Robert Trustee',
+              firstName: 'Robert',
+              lastName: 'Trustee',
+            },
+            profCode: '12345',
+            chapter: '11',
+          },
+        ];
+
+        const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          events,
+        );
+
+        expect(trusteeMatchHelpers.matchTrusteeByName).not.toHaveBeenCalled();
+        expect(scenarioDistribution.unattributableBogusNameSkippedCount).toBe(1);
+      });
+
+      test('does not skip a genuine chapter 11 trustee whose name has no bogus keyword', async () => {
+        const events: TrusteeAppointmentSyncEvent[] = [
+          {
+            ...makeEvent('case-001', 'Jane A Example'),
+            dxtrTrustee: {
+              fullName: 'Jane A Example',
+              firstName: 'Jane',
+              lastName: 'Example',
+            },
+            profCode: '12345',
+            chapter: '11',
+          },
+        ];
+
+        const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          events,
+        );
+
+        expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalled();
+        expect(scenarioDistribution.unattributableBogusNameSkippedCount).toBe(0);
+      });
+
+      // The chapter-11 branch is unconditional on profCode and contact info, unlike
+      // isSentinelWithNoIdentity's sentinel-profCode rule.
+      test('skips a bogus-looking name on a chapter 11 case with a sentinel profCode and real contact info', async () => {
+        const events: TrusteeAppointmentSyncEvent[] = [
+          {
+            ...makeEvent('case-001', 'CHAPTER 11 - LV'),
+            dxtrTrustee: {
+              fullName: 'CHAPTER 11 - LV',
+              lastName: 'CHAPTER 11 - LV',
+              legacy: {
+                address1: '300 LAS VEGAS BLVD., SO. #4300',
+                cityStateZipCountry: 'LAS VEGAS NV 89101',
+                phone: '(702) 388-6600',
+                email: 'USTPRegion17.lv.ecf@usdoj.gov',
+              },
+            },
+            profCode: '00000',
+            chapter: '11',
+          },
+        ];
+
+        const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          events,
+        );
+
+        expect(trusteeMatchHelpers.matchTrusteeByName).not.toHaveBeenCalled();
+        expect(scenarioDistribution.unattributableBogusNameSkippedCount).toBe(1);
+      });
+
+      // resolveSkipReason checks isSentinelWithNoIdentity before isUnattributableBogusName, so a
+      // sentinel profCode wins ties and increments sentinelBogusNameSkippedCount, not
+      // unattributableBogusNameSkippedCount.
+      test('attributes a chapter 11, sentinel-profCode, no-contact bogus name to the sentinel rule, not unattributableBogusNameSkippedCount', async () => {
+        const events: TrusteeAppointmentSyncEvent[] = [
+          {
+            ...makeEvent('case-001', 'CHAPTER 11 - LV'),
+            dxtrTrustee: { fullName: 'CHAPTER 11 - LV', lastName: 'CHAPTER 11 - LV' },
+            profCode: '00000',
+            chapter: '11',
+          },
+        ];
+
+        const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          events,
+        );
+
+        expect(trusteeMatchHelpers.matchTrusteeByName).not.toHaveBeenCalled();
+        expect(scenarioDistribution.sentinelBogusNameSkippedCount).toBe(1);
+        expect(scenarioDistribution.unattributableBogusNameSkippedCount).toBe(0);
+      });
+    });
+
+    describe('bogus-looking name with no contact info, but a populated firstName token', () => {
+      // "No Trustee" is real DXTR noise (see production backtest), but DXTR's naive whitespace
+      // split parses "No" out as a firstName token — indistinguishable in shape from "Ghost
+      // Trustee"/"Known Trustee", which are ordinary NO_TRUSTEE_MATCH name-matching fixtures used
+      // elsewhere in this suite (real names, for testing purposes, not administrative
+      // placeholders). Telling "No" apart from "Ghost" as a first-name token would require a real
+      // name dictionary, out of scope here — deliberately proceeds to matching rather than risk
+      // silently dropping a genuine no-match event that happens to share this shape.
+      test('proceeds to matching for a bogus-keyword name with a firstName and no contact info', async () => {
+        const events: TrusteeAppointmentSyncEvent[] = [
+          {
+            ...makeEvent('case-001', 'No Trustee'),
+            dxtrTrustee: {
+              fullName: 'No Trustee',
+              firstName: 'No',
+              lastName: 'Trustee',
+              legacy: {},
+            },
+            profCode: '12345',
+          },
+        ];
+
+        const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          events,
+        );
+
+        expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalled();
+        expect(scenarioDistribution.unattributableBogusNameSkippedCount).toBe(0);
+      });
+    });
+
     describe('fingerprint hit/miss counters', () => {
       test('counts a TRUSTEE_VARIATION bucket hit as fingerprintHitCount', async () => {
         const event = makeEvent('case-001', 'John Doe');
@@ -4092,6 +4329,7 @@ describe('handleClassifiedMismatch', () => {
       candidateLoadFailedCount: 0,
       emptyDemographicsSkippedCount: 0,
       sentinelBogusNameSkippedCount: 0,
+      unattributableBogusNameSkippedCount: 0,
     };
   }
 
