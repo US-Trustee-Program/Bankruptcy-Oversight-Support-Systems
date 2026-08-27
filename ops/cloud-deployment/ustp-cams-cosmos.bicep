@@ -33,6 +33,10 @@ param actionGroupName string = 'EmailDevelopmentTeam'
 @description('Action Group Resource Group Name for alerts')
 param actionGroupResourceGroupName string
 
+@description('Subscription ID that contains the action group resource group. Defaults to the deploying subscription.')
+@minLength(36)
+param actionGroupSubscriptionId string = subscription().subscriptionId
+
 @description('boolean to determine creation and configuration of Alerts')
 param createAlerts bool = true
 
@@ -116,6 +120,7 @@ module cosmosAvailabilityAlert './lib/monitoring-alerts/metrics-alert-rule.bicep
     windowSize: 'PT1H'
     actionGroupName: actionGroupName
     actionGroupResourceGroupName: actionGroupResourceGroupName
+    actionGroupSubscriptionId: actionGroupSubscriptionId
   }
   dependsOn:[
     e2eDatabase
