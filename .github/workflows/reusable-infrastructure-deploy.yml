@@ -195,7 +195,8 @@ jobs:
             --actionGroupName "${AZ_ACTION_GROUP_NAME}" \
             --keyVaultName ${{ env.AZ_KV_APP_CONFIG_NAME }} \
             --kvResourceGroup ${{ env.AZ_KV_APP_CONFIG_RG_NAME }} \
-            --branchHashId "${ENVIRONMENT_HASH}"
+            --branchHashId "${ENVIRONMENT_HASH}" \
+            --actionGroupSubscriptionId "${{ secrets.AZ_SUBSCRIPTION_ID }}"
 
       - name: Deploy E2E SQL Database
         id: azure-e2e-sql-deploy
