@@ -454,15 +454,6 @@ describe('matchTrusteeByName', () => {
     });
   });
 
-  // First-token-lastName search tier: neither composed-name tier above found a match, so this
-  // tier searches CAMS by just the first token of DXTR's lastName (see firstLastNameToken).
-  // Deliberately does NOT narrow to trustees with an active appointment in the event's court -
-  // district/division evidence is left to resolveNameCollisionByScoring's scoring (see
-  // calculateDistrictDivisionScore), not gated on here, so a name match with no court appointment
-  // at all still surfaces as a candidate for human review rather than being silently dropped.
-  // Weaker evidence than a full string match, so it always surfaces as 'ambiguous' even for a
-  // single candidate, routing through resolveNameCollisionByScoring's scoring/appointment-match
-  // gate rather than auto-resolving.
   describe('first-token-lastName search tier', () => {
     test('should surface a single candidate as ambiguous when found by first-token lastName search', async () => {
       const trustee = MockData.getTrustee({

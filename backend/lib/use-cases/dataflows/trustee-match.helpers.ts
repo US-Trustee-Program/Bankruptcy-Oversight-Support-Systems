@@ -1020,21 +1020,11 @@ function toUnscoredCandidates(trustees: Trustee[]): CandidateScore[] {
 
 /**
  * Searches CAMS trustees by just the first token of the DXTR trustee's lastName (see
- * firstLastNameToken's doc comment for why a first-token-only query sidesteps needing to know the
- * shape of whatever trailing noise DXTR's lastName carries). Deliberately does NOT narrow results
- * to trustees with an active appointment in the event's court - a genuine match can be a trustee
- * who relocated or was newly appointed and whose CAMS appointment data lags DXTR, and excluding
- * them here means a human reviewer never even sees the name match as a candidate. District/division
- * evidence is instead left entirely to the caller's resolveNameCollisionByScoring, which already
- * scores it (0/50/100, see calculateDistrictDivisionScore) rather than gating on it - a name match
- * with no district evidence still surfaces as a candidate, just ranked lower.
- * Deliberately returns raw, unscored candidates rather than filtering by firstName/middleName here
- * - a first-token lastName search alone is broad (a common surname can return dozens of same-
- * surname trustees), so this tier leans entirely on the caller routing the result through
- * resolveNameCollisionByScoring's existing address/phone/email/district/chapter/name scoring and
- * appointment-match gate to do the actual discrimination, exactly as it already does for a raw
- * multi-candidate name collision - duplicating any of that judgment here would risk disagreeing
- * with the scorer that actually decides the outcome.
+ * firstLastNameToken). Does not narrow results by court appointment - district/division evidence
+ * is left to the caller's resolveNameCollisionByScoring, which scores it (0/50/100, see
+ * calculateDistrictDivisionScore) rather than gating candidate discovery on it.
+ * Returns raw, unscored candidates; the caller's resolveNameCollisionByScoring performs the
+ * address/phone/email/district/chapter/name scoring and appointment-match discrimination.
  * Requires a lastName on the DXTR side - there's nothing to search by without one.
  */
 async function findLastNameTokenMatches(
@@ -1110,13 +1100,10 @@ export async function matchTrusteeByName(
     };
   }
 
-  // Third-pass fallback: neither the composed-name comparison nor its stricter variant found a
-  // match - search by just the first token of DXTR's lastName instead (see
-  // findLastNameTokenMatches's doc comment). This tier is NOT resolved directly here even for a
-  // single candidate - a first-token lastName search alone is much weaker evidence than a full
-  // string match, so it is surfaced as 'ambiguous' to route through resolveNameCollisionByScoring's
-  // existing address/phone/email/district/chapter/name scoring and appointment-match gate, rather
-  // than trusting a single candidate's weaker signal outright.
+  // Third-pass fallback: search by just the first token of DXTR's lastName (see
+  // findLastNameTokenMatches). Always surfaced as 'ambiguous', even for a single candidate, so it
+  // routes through resolveNameCollisionByScoring's scoring and appointment-match gate rather than
+  // being trusted outright.
   const lastNameTokenMatches = await findLastNameTokenMatches(context, dxtrTrustee);
 
   if (lastNameTokenMatches.length > 0) {

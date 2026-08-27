@@ -1649,11 +1649,6 @@ describe('SyncTrusteeCaseAppointments', () => {
     });
 
     test('should surface a uniquely-name-matched candidate with no court appointment as IMPERFECT_MATCH, not NO_TRUSTEE_MATCH', async () => {
-      // A name that happens to be unique nationwide (matchTrusteeByName's tier 1/2 single-match
-      // resolution never filters by courtId) can resolve to a trustee with zero appointments in
-      // this case's court. That candidate is still shown to a human reviewer as an ImperfectMatch
-      // - district/division evidence is scored (see districtDivisionScore, 0/50/100), not gated
-      // on, so a name match with no geographic evidence at all is surfaced rather than suppressed.
       vi.spyOn(trusteeMatchHelpers, 'isAppointmentMatch').mockReturnValue(false);
       vi.spyOn(trusteeMatchHelpers, 'calculateCandidateScore').mockReturnValue({
         trusteeId: 'trustee-123',

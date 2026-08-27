@@ -1243,13 +1243,10 @@ async function applyMatchOutcome(
     nameScore,
   );
 
-  // No no-review auto-match on totalScore alone: isAppointmentMatch above already ruled out any
-  // record that satisfies court+division+chapter together, so a same-record requirement can
-  // never hold here — every single-candidate non-perfect-match falls through to ImperfectMatch
-  // below for human review regardless of how high totalScore is, and regardless of whether
-  // trusteeId holds any active appointment in this case's court at all - a name match with no
-  // district evidence is still shown to the reviewer as a candidate (see calculateCandidateScore's
-  // districtDivisionScore, 0/50/100) rather than being suppressed before it reaches them.
+  // Every single-candidate non-perfect-match falls through to ImperfectMatch for human review,
+  // regardless of totalScore and regardless of whether trusteeId holds any active appointment in
+  // this case's court - district/division evidence is a scoring signal (see calculateCandidateScore's
+  // districtDivisionScore, 0/50/100), not a gate on whether the candidate reaches the reviewer.
   audit.matchOutcome = 'imperfect-match';
   audit.matchedTrusteeId = trusteeId;
   audit.scoringBreakdown = {
