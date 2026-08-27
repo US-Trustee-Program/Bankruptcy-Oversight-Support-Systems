@@ -981,6 +981,20 @@ const CONTACT_CORROBORATION_NAME_THRESHOLD = 85;
 const CONTACT_CORROBORATION_ADDRESS_THRESHOLD = 80;
 
 /**
+ * Minimum addressScore for a PARSEABLE ACMS address to be treated as merely a weak positive
+ * signal (allowed through isNoContradictionMatch's fallback) rather than a genuine disagreement
+ * (blocked). Backtested against a real 2026-08-26 trustee-professional-ids export (see
+ * cams-yv1p3): a parseable-address record scoring below this floor (e.g. ACMS says Charleston SC,
+ * CAMS says New York NY - addressScore=0) reflects two genuinely different addresses, not a
+ * near-miss - contrast a record like THOMAS HOOPER's, where both sides list the exact same
+ * building/suite/city/zip and addressScore=78 purely from a street-line formatting difference
+ * ("55 E. Monroe St., Suite 3850" vs "55 E. Monroe, Suite 3850"). Set low enough to exclude clear
+ * disagreements while still letting near-misses like Hooper's (which just barely missed
+ * CONTACT_CORROBORATION_ADDRESS_THRESHOLD's 80) through.
+ */
+const NO_CONTRADICTION_ADDRESS_FLOOR = 30;
+
+/**
  * Resolves a name-match candidate list purely on name + address/phone/email corroboration, with
  * NO case-appointment-shaped evidence (no district/division, no chapter, no isAppointmentMatch
  * gate) - unlike resolveNameCollisionByScoring, this never touches
@@ -1080,22 +1094,99 @@ export async function resolveByContactCorroboration(
     winner.phoneScore === 100 ||
     winner.emailScore === 100;
 
-  if (!corroborated) {
-    context.logger.warn(
+  if (corroborated) {
+    context.logger.info(
       MODULE_NAME,
-      `Contact corroboration failed: sole name-qualifying candidate ${winner.trusteeId} lacks ` +
-        `strong address/phone/email corroboration [address=${winner.addressScore} ` +
-        `phone=${winner.phoneScore} email=${winner.emailScore}]`,
+      `Contact corroboration resolved to ${winner.trusteeId} ` +
+        `[name=${winner.nameScore} address=${winner.addressScore} phone=${winner.phoneScore} email=${winner.emailScore}]`,
     );
-    return { kind: 'unresolved', candidateScores };
+    return { kind: 'resolved', trusteeId: winner.trusteeId, candidateScores };
   }
 
-  context.logger.info(
+  if (isNoContradictionMatch(sourceTrustee, winner)) {
+    context.logger.info(
+      MODULE_NAME,
+      `Contact corroboration resolved to ${winner.trusteeId} via no-contradiction fallback ` +
+        `[name=${winner.nameScore} address=${winner.addressScore} phone=${winner.phoneScore} email=${winner.emailScore}]`,
+    );
+    return { kind: 'resolved', trusteeId: winner.trusteeId, candidateScores };
+  }
+
+  context.logger.warn(
     MODULE_NAME,
-    `Contact corroboration resolved to ${winner.trusteeId} ` +
-      `[name=${winner.nameScore} address=${winner.addressScore} phone=${winner.phoneScore} email=${winner.emailScore}]`,
+    `Contact corroboration failed: sole name-qualifying candidate ${winner.trusteeId} lacks ` +
+      `strong address/phone/email corroboration [address=${winner.addressScore} ` +
+      `phone=${winner.phoneScore} email=${winner.emailScore}]`,
   );
-  return { kind: 'resolved', trusteeId: winner.trusteeId, candidateScores };
+  return { kind: 'unresolved', candidateScores };
+}
+
+/**
+ * Narrow fallback for a single name-qualifying candidate that clears NEITHER
+ * CONTACT_CORROBORATION_ADDRESS_THRESHOLD nor an exact phone/email match, but where the
+ * corroboration bar was never really failable in the first place: sourceTrustee (the ACMS/DXTR
+ * record) recorded NO comparable phone or email at all (both null - see calculatePhoneScore/
+ * calculateEmailScore's null-when-incomparable semantics), AND either recorded no comparable
+ * address either, or its address score, while below CONTACT_CORROBORATION_ADDRESS_THRESHOLD, does
+ * not represent a genuine disagreement (see below). Requires nameScore === 100 specifically (the
+ * strict exact/near-exact tier - not the 85-99 initial-vs-full-relationship tier), a materially
+ * higher bar than resolveByContactCorroboration's main path, since this fallback has no
+ * corroborating signal at all to lean on besides the name itself.
+ *
+ * Backtested against a real 2026-08-26 trustee-professional-ids export (see cams-yv1p3): of the
+ * 379 ACMS records where a single candidate cleared the name threshold but not the main
+ * corroboration bar, 313 (91%) had an ACTIVELY CONTRADICTING phone number (both sides had a real,
+ * comparable 10+-digit number that genuinely disagreed - e.g. different area codes entirely) -
+ * this fallback correctly does NOT relax those, since a contradicting phone is real evidence
+ * against the match even though it never scores >CONTACT_CORROBORATION_ADDRESS_THRESHOLD. A
+ * further 132 records had a FULLY BLANK ACMS demographic (no address, no phone, no email
+ * recorded at all beyond the name) - also correctly excluded, since "nothing was ever recorded to
+ * corroborate OR contradict with" is a weaker basis for auto-linking than "some data exists and
+ * doesn't disagree." Only 31 records (8% of the original 379) cleared both exclusions - 29 of
+ * those were nameScore===100, addressScore ranging 0-78 with no real disagreement (either
+ * genuinely unparseable/blank ACMS address, or a parseable-but-imperfect match like "55 E. Monroe
+ * St., Suite 3850" vs. CAMS's "55 E. Monroe, Suite 3850" scoring 78 rather than 80 purely from
+ * formatting). Hand-verified a sample of these against raw fixture data - all held up as genuine
+ * matches (e.g. THOMAS HOOPER -> Thomas H. Hooper, CRAIG M GENO -> Craig Geno, RONALD P LANGELLA
+ * INACTIVE -> Ronald P. Langella - the last carrying an explicit "INACTIVE" marker in its ACMS
+ * name yet still the correct, currently-active CAMS trustee).
+ *
+ * A "genuine disagreement" on address specifically means: ACMS recorded a PARSEABLE
+ * cityStateZipCountry (city/state/zip all present in a recognizable form - see
+ * parseCityStateZip) AND addressScore is low DESPITE that - e.g. ACMS says Charleston SC, CAMS
+ * says New York NY, both parseable, genuinely different places. That case must NOT be relaxed by
+ * this fallback even though phone/email are absent, since the address dimension was actually
+ * compared and disagreed. A low addressScore from an UNPARSEABLE or entirely blank ACMS address
+ * carries no such signal either way.
+ */
+function isNoContradictionMatch(sourceTrustee: DxtrTrusteeParty, winner: CandidateScore): boolean {
+  if (winner.nameScore !== 100) return false;
+  if (winner.phoneScore !== null || winner.emailScore !== null) return false;
+
+  const acmsAddress1 = sourceTrustee.legacy?.address1?.trim();
+  const acmsCityStateZip = sourceTrustee.legacy?.cityStateZipCountry?.trim();
+  const acmsDemographicBlank =
+    !acmsAddress1 &&
+    !acmsCityStateZip &&
+    !sourceTrustee.legacy?.phone &&
+    !sourceTrustee.legacy?.email;
+  if (acmsDemographicBlank) return false;
+
+  const acmsAddressParseable =
+    parseCityStateZip(sourceTrustee.legacy?.cityStateZipCountry) !== null;
+  if (acmsAddressParseable && winner.addressScore < NO_CONTRADICTION_ADDRESS_FLOOR) {
+    // Both sides had a real, parseable address to compare and it disagreed badly (below the
+    // floor) - a genuine disagreement, not a near-miss from formatting. Do not relax; the
+    // caller's normal 'unresolved' outcome stands. A parseable address scoring BETWEEN the floor
+    // and CONTACT_CORROBORATION_ADDRESS_THRESHOLD (e.g. 78, same suite/city/zip but a street-line
+    // formatting difference - see THOMAS HOOPER in this function's doc comment) is intentionally
+    // allowed through: it already cleared the main corroboration path's near-miss, it just fell
+    // short of the >=80 bar by a small margin, which is a weak positive signal, not a
+    // disagreement.
+    return false;
+  }
+
+  return true;
 }
 
 /**
