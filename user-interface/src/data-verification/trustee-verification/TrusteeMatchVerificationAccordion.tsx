@@ -1,5 +1,5 @@
 import './TrusteeMatchVerificationAccordion.scss';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { PaginationButton } from '@/lib/components/uswds/PaginationButton';
 import { Accordion } from '@/lib/components/uswds/Accordion';
 import { NewTabLink } from '@/lib/components/cams/NewTabLink/NewTabLink';
@@ -386,7 +386,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   const { order, hidden, statusType, taskType, fieldHeaders, courts = [], onOrderUpdate } = props;
   const [isProcessing, setIsProcessing] = useState(false);
   const [otherMatchesPage, setOtherMatchesPage] = useState(1);
-  const [enrichedOrder, setEnrichedOrder] = useState<EnrichedTrusteeMatchVerification | null>(null);
+  const [detail, setDetail] = useState<EnrichedTrusteeMatchVerification | null>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [detailLoadError, setDetailLoadError] = useState(false);
   const OTHER_MATCHES_PAGE_SIZE = 5;
@@ -394,13 +394,20 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   const confirmationModalRef = useRef<TrusteeMatchConfirmationModalImperative>(null);
   const searchModalRef = useRef<TrusteeSearchModalImperative>(null);
 
+  // Enriched separately from the fetch, keyed off the live `courts` prop, so a courts load
+  // that resolves after this detail was fetched still fills in court name/division instead of
+  // being permanently baked out.
+  const enrichedOrder = useMemo(
+    () => (detail ? enrichWithCourtNames(detail, courts) : null),
+    [detail, courts],
+  );
+
   async function fetchDetail() {
-    if (enrichedOrder || detailLoadError || isLoadingDetail) return;
+    if (detail || detailLoadError || isLoadingDetail) return;
     setIsLoadingDetail(true);
     try {
       const response = await Api2.getTrusteeMatchVerificationDetail(order.id);
-      const detail = (response as ResponseBody<EnrichedTrusteeMatchVerification>).data;
-      setEnrichedOrder(enrichWithCourtNames(detail, courts));
+      setDetail((response as ResponseBody<EnrichedTrusteeMatchVerification>).data);
     } catch {
       setDetailLoadError(true);
     } finally {

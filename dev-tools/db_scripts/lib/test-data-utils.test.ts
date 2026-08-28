@@ -1267,14 +1267,27 @@ describe('validators', () => {
     test('throws if phoneScore is null instead of a number', () => {
       const candidate = { ...validCandidate, phoneScore: null };
       expect(() => validators.assertCandidateScoreValid(candidate, false, 'Test')).toThrow(
-        'Test: candidate "Jane Smith" phoneScore/emailScore must be numbers (0, not null)',
+        'Test: candidate "Jane Smith" missing phoneScore',
       );
     });
 
     test('throws if emailScore is null instead of a number', () => {
       const candidate = { ...validCandidate, emailScore: null };
       expect(() => validators.assertCandidateScoreValid(candidate, false, 'Test')).toThrow(
-        'Test: candidate "Jane Smith" phoneScore/emailScore must be numbers (0, not null)',
+        'Test: candidate "Jane Smith" missing emailScore',
+      );
+    });
+
+    test.each([
+      'totalScore',
+      'addressScore',
+      'nameScore',
+      'districtDivisionScore',
+      'chapterScore',
+    ] as const)('throws if %s is null instead of a number', (field) => {
+      const candidate = { ...validCandidate, [field]: null };
+      expect(() => validators.assertCandidateScoreValid(candidate, false, 'Test')).toThrow(
+        `Test: candidate "Jane Smith" missing ${field}`,
       );
     });
   });

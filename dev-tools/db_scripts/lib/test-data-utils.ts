@@ -695,7 +695,7 @@ export const validators = {
     ];
 
     for (const field of requiredFields) {
-      if (candidate[field] === undefined) {
+      if (typeof candidate[field] !== 'number') {
         throw new Error(`${context}: candidate "${name}" missing ${field}`);
       }
     }
@@ -707,12 +707,6 @@ export const validators = {
     if (!hasDxtrAddress && candidate.addressScore !== 0) {
       throw new Error(
         `${context}: candidate "${name}" has addressScore ${candidate.addressScore} but dxtrTrustee has no legacy address to compare - should be 0`,
-      );
-    }
-
-    if (typeof candidate.phoneScore !== 'number' || typeof candidate.emailScore !== 'number') {
-      throw new Error(
-        `${context}: candidate "${name}" phoneScore/emailScore must be numbers (0, not null) - missing contact info is still expected to render a mismatch icon per product decision`,
       );
     }
   },
