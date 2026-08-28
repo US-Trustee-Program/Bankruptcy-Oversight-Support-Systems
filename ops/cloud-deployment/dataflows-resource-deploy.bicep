@@ -137,8 +137,6 @@ param privateDnsZoneSubscriptionId string = subscription().subscriptionId
 @description('When true, this app reaches SQL through the shared Private Link hub and no sql-vnet-rule.bicep VNet rule is created for it. Required for cross-region consumers: Azure enforces same-region between a SQL server and any subnet in a virtualNetworkRules resource, which cross-region compute cannot satisfy. The hub Private Endpoint has no such restriction.')
 param useSqlPrivateLink bool = false
 
-@description('Fixed Azure Government private-link DNS zone name for Azure SQL. Only consumed when useSqlPrivateLink is true.')
-param sqlPrivateDnsZoneName string = 'privatelink.database.usgovcloudapi.net'
 
 param gitSha string
 
@@ -780,9 +778,8 @@ module dataflowsSlotPrivateEndpoint './lib/network/subnet-private-endpoint.bicep
   ]
 }
 
-// useSqlPrivateLink and !useSqlPrivateLink make these mutually exclusive --
-// see the equivalent block in backend-api-deploy.bicep for the full
-// same-region-restriction rationale.
+// Same-region consumers only -- see the equivalent block in
+// backend-api-deploy.bicep for the rationale.
 var createSqlServerVnetRule = !useSqlPrivateLink && !empty(sqlServerResourceGroupName) && !empty(sqlServerName) && !isUstpDeployment
 
 module setDataflowFunctionSqlServerVnetRule './lib/network/sql-vnet-rule.bicep' = if (createSqlServerVnetRule) {
@@ -794,13 +791,6 @@ module setDataflowFunctionSqlServerVnetRule './lib/network/sql-vnet-rule.bicep' 
     subnetId: dataflowsFunctionSubnetId
   }
 }
-
-// The SQL server is never declared `existing` in this codebase -- see the
-// comment above sqlIdentityName below for why constructed resource IDs are
-// preferred here for scope resolution. Assumes the SQL server lives in the
-// deploying subscription (no dedicated sqlServerSubscriptionId param exists
-// anywhere else in this codebase either).
-var sqlServerResourceId = resourceId(sqlServerResourceGroupName, 'Microsoft.Sql/servers', sqlServerName)
 
 
 // The identity itself is created once, in app-shared-setup.bicep (CAMS-760,

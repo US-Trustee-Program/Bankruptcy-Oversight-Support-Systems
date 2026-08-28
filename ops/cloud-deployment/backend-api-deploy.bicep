@@ -111,8 +111,6 @@ param privateDnsZoneResourceGroup string = virtualNetworkResourceGroupName
 @description('When true, this app reaches SQL through the shared Private Link hub and no sql-vnet-rule.bicep VNet rule is created for it. Required for cross-region consumers: Azure enforces same-region between a SQL server and any subnet in a virtualNetworkRules resource, which cross-region compute cannot satisfy. The hub Private Endpoint has no such restriction.')
 param useSqlPrivateLink bool = false
 
-@description('Fixed Azure Government private-link DNS zone name for Azure SQL. Only consumed when useSqlPrivateLink is true.')
-param sqlPrivateDnsZoneName string = 'privatelink.database.usgovcloudapi.net'
 
 @description('DNS Zone Subscription ID. USTP uses a different subscription for prod deployment.')
 param privateDnsZoneSubscriptionId string = subscription().subscriptionId
@@ -502,15 +500,11 @@ module apiSlotPrivateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
 }
 
 
-// useSqlPrivateLink and !useSqlPrivateLink make these mutually exclusive:
-// exactly one of the VNet rule or the Private Endpoint is ever deployed for a
-// given function app's SQL connectivity, never both. The VNet rule remains
-// the default (useSqlPrivateLink defaults to false) since Azure enforces
+// A VNet rule is created only for same-region consumers. Azure enforces
 // same-region between a SQL server and any subnet referenced by a
-// virtualNetworkRules resource -- fine for main and same-region branches,
-// but it fails for a cross-region branch whose subnets follow compute region
-// (AZ-FUNCTIONS-LOCATION). A Private Endpoint has no such restriction, so
-// cross-region branches opt into it instead.
+// virtualNetworkRules resource, which a cross-region branch (subnets follow
+// AZ-FUNCTIONS-LOCATION) cannot satisfy -- those set useSqlPrivateLink and
+// reach SQL through the shared hub instead, with no rule of their own.
 var createSqlServerVnetRule = !useSqlPrivateLink && !empty(sqlServerResourceGroupName) && !empty(sqlServerName) && !isUstpDeployment
 
 module setApiFunctionSqlServerVnetRule './lib/network/sql-vnet-rule.bicep' = if (createSqlServerVnetRule) {
@@ -522,13 +516,6 @@ module setApiFunctionSqlServerVnetRule './lib/network/sql-vnet-rule.bicep' = if 
     subnetId: apiFunctionSubnetId
   }
 }
-
-// The SQL server is never declared `existing` in this codebase -- see the
-// comment above sqlIdentityName below for why constructed resource IDs are
-// preferred here for scope resolution. Assumes the SQL server lives in the
-// deploying subscription (no dedicated sqlServerSubscriptionId param exists
-// anywhere else in this codebase either).
-var sqlServerResourceId = resourceId(sqlServerResourceGroupName, 'Microsoft.Sql/servers', sqlServerName)
 
 
 // The identity itself is created once, in app-shared-setup.bicep (CAMS-760,
