@@ -59,6 +59,7 @@ async function getPageNeedingBackfill(
 }
 
 type BackfillResult = {
+  _id: string;
   caseId: string;
   success: boolean;
   error?: string;
@@ -134,13 +135,13 @@ async function correctUnassignedOn(
             MODULE_NAME,
             `No superseding appointment found for case ${appointment.caseId} — nothing to correct against. Skipping.`,
           );
-          results.push({ caseId: appointment.caseId, success: true });
+          results.push({ _id: appointment._id, caseId: appointment.caseId, success: true });
           continue;
         }
 
         const correctUnassignedOnValue = DateHelper.subtractDays(superseding.assignedOn, 1);
         if (appointment.unassignedOn === correctUnassignedOnValue) {
-          results.push({ caseId: appointment.caseId, success: true });
+          results.push({ _id: appointment._id, caseId: appointment.caseId, success: true });
           continue;
         }
 
@@ -148,9 +149,10 @@ async function correctUnassignedOn(
           ...appointment,
           unassignedOn: correctUnassignedOnValue,
         });
-        results.push({ caseId: appointment.caseId, success: true });
+        results.push({ _id: appointment._id, caseId: appointment.caseId, success: true });
       } catch (originalError) {
         results.push({
+          _id: appointment._id,
           caseId: appointment.caseId,
           success: false,
           error: originalError instanceof Error ? originalError.message : String(originalError),

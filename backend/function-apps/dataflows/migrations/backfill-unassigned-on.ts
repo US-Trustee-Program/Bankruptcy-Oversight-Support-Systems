@@ -108,7 +108,7 @@ async function handlePage(cursor: CursorMessage, invocationContext: InvocationCo
   if (failedResults.length > 0) {
     logger.warn(MODULE_NAME, `${failedResults.length} appointments failed to backfill.`);
     const failedEvents: BackfillRetryMessage[] = failedResults.map((r) => {
-      const original = appointments.find((a) => a.caseId === r.caseId)!;
+      const original = appointments.find((a) => a._id === r._id)!;
       return { ...original, lastErrorMessage: r.error ?? 'Unknown error' };
     });
     invocationContext.extraOutputs.set(DLQ, failedEvents);
