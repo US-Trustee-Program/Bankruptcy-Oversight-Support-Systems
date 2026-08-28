@@ -480,11 +480,26 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           fingerprint: computeFingerprint(DXTR_MULTIPLE_MATCH),
           dxtrTrustee: DXTR_MULTIPLE_MATCH,
           matchCandidates: [
+            // Real values (computed via trustee-match.helpers.ts's calculateNameScore/
+            // calculateAddressScore/calculatePhoneScore/calculateEmailScore/calculateTotalScore
+            // against this fixture's actual DXTR/candidate data, then hand-transcribed here -
+            // see slice notes). DXTR provided only "T Multimatch" - no legacy address/phone/
+            // email at all, and "T" is an initial-vs-full partial match against either
+            // candidate's first name (85, identical for both - a genuine tie, which is exactly
+            // why this scenario is ambiguous). addressScore is a real mismatch (0), not "not
+            // comparable" - address never has a null/not-comparable state, unlike phone/email.
+            // phoneScore/emailScore are hardcoded to 0 rather than the real function's null
+            // (not-comparable) result - deliberately, to keep the mismatch icon visible for
+            // missing contact info per product decision, not because the real algorithm would
+            // penalize it this way.
             {
               trusteeId: 'seed-trustee-match-multi-a',
               trusteeName: 'Taylor Multimatch',
-              totalScore: 90,
-              addressScore: 90,
+              totalScore: 72,
+              addressScore: 0,
+              nameScore: 85,
+              phoneScore: 0,
+              emailScore: 0,
               districtDivisionScore: 100,
               chapterScore: 100,
               address: {
@@ -500,8 +515,11 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
             {
               trusteeId: 'seed-trustee-match-multi-b',
               trusteeName: 'Tyler Multimatch',
-              totalScore: 90,
-              addressScore: 90,
+              totalScore: 72,
+              addressScore: 0,
+              nameScore: 85,
+              phoneScore: 0,
+              emailScore: 0,
               districtDivisionScore: 100,
               chapterScore: 100,
               address: {
@@ -550,11 +568,17 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
             fullName: 'S Lowconfidence',
           },
           matchCandidates: [
+            // Real values (see multiple's comment above for methodology). "S" is an
+            // initial-vs-full partial match against "Sam" (nameScore 85); no DXTR legacy data
+            // at all, so addressScore is a real 0 (not 100 as previously hardcoded).
             {
               trusteeId: 'seed-trustee-match-lowconf',
               trusteeName: 'Sam Lowconfidence',
-              totalScore: 70,
-              addressScore: 100,
+              totalScore: 72,
+              addressScore: 0,
+              nameScore: 85,
+              phoneScore: 0,
+              emailScore: 0,
               districtDivisionScore: 100,
               chapterScore: 100,
               address: {
@@ -591,11 +615,17 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           fingerprint: computeFingerprint(DXTR_IMPERFECT_MATCH),
           dxtrTrustee: DXTR_IMPERFECT_MATCH,
           matchCandidates: [
+            // Real values (see multiple's comment above for methodology). "J" is an
+            // initial-vs-full partial match against "Jordan" (nameScore 85); no DXTR legacy
+            // data at all, so addressScore is a real 0 (not 70 as previously hardcoded).
             {
               trusteeId: 'seed-trustee-match-imperfect',
               trusteeName: 'Jordan Imperfectmatch',
-              totalScore: 65,
-              addressScore: 70,
+              totalScore: 67,
+              addressScore: 0,
+              nameScore: 85,
+              phoneScore: 0,
+              emailScore: 0,
               districtDivisionScore: 80,
               chapterScore: 100,
               address: {
@@ -632,11 +662,18 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           fingerprint: computeFingerprint(DXTR_HIGH_CONFIDENCE),
           dxtrTrustee: DXTR_HIGH_CONFIDENCE,
           matchCandidates: [
+            // Real values (see multiple's comment above for methodology). "Alex Highconfidence"
+            // (no middle name either side) is a genuine, complete name match (nameScore 100) -
+            // the only such case among these fixtures. No DXTR legacy data at all, so
+            // addressScore is a real 0 (not 95 as previously hardcoded).
             {
               trusteeId: 'seed-trustee-match-highconf',
               trusteeName: 'Alex Highconfidence',
-              totalScore: 95,
-              addressScore: 95,
+              totalScore: 76,
+              addressScore: 0,
+              nameScore: 100,
+              phoneScore: 0,
+              emailScore: 0,
               districtDivisionScore: 100,
               chapterScore: 100,
               address: {
@@ -678,8 +715,17 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
             {
               trusteeId: 'seed-trustee-match-inactive',
               trusteeName: 'Morgan Inactivematch',
-              totalScore: 100,
-              addressScore: 100,
+              // Real values (see multiple's comment above for methodology). A one-sided middle
+              // name/initial (DXTR has one, CAMS doesn't) is neutral per calculateNameScore's
+              // real scoreMiddleNamePart logic, not a penalty - so this is a genuine, complete
+              // name match (nameScore 100) despite the middle-initial variation across these six
+              // fixtures. No DXTR legacy data at all, so addressScore is a real 0 (not 100 as
+              // previously hardcoded).
+              totalScore: 76,
+              addressScore: 0,
+              nameScore: 100,
+              phoneScore: 0,
+              emailScore: 0,
               districtDivisionScore: 100,
               chapterScore: 100,
               address: {
@@ -720,8 +766,17 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
             {
               trusteeId: 'seed-trustee-match-highconf',
               trusteeName: 'Alex Highconfidence',
-              totalScore: 100,
-              addressScore: 100,
+              // Real values (see multiple's comment above for methodology). A one-sided middle
+              // name/initial (DXTR has one, CAMS doesn't) is neutral per calculateNameScore's
+              // real scoreMiddleNamePart logic, not a penalty - so this is a genuine, complete
+              // name match (nameScore 100) despite the middle-initial variation across these six
+              // fixtures. No DXTR legacy data at all, so addressScore is a real 0 (not 100 as
+              // previously hardcoded).
+              totalScore: 76,
+              addressScore: 0,
+              nameScore: 100,
+              phoneScore: 0,
+              emailScore: 0,
               districtDivisionScore: 100,
               chapterScore: 100,
               address: {
@@ -762,8 +817,17 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
             {
               trusteeId: 'seed-trustee-match-inactive',
               trusteeName: 'Morgan Inactivematch',
-              totalScore: 100,
-              addressScore: 100,
+              // Real values (see multiple's comment above for methodology). A one-sided middle
+              // name/initial (DXTR has one, CAMS doesn't) is neutral per calculateNameScore's
+              // real scoreMiddleNamePart logic, not a penalty - so this is a genuine, complete
+              // name match (nameScore 100) despite the middle-initial variation across these six
+              // fixtures. No DXTR legacy data at all, so addressScore is a real 0 (not 100 as
+              // previously hardcoded).
+              totalScore: 76,
+              addressScore: 0,
+              nameScore: 100,
+              phoneScore: 0,
+              emailScore: 0,
               districtDivisionScore: 100,
               chapterScore: 100,
               address: {
@@ -804,8 +868,17 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
             {
               trusteeId: 'seed-trustee-match-inactive',
               trusteeName: 'Morgan Inactivematch',
-              totalScore: 100,
-              addressScore: 100,
+              // Real values (see multiple's comment above for methodology). A one-sided middle
+              // name/initial (DXTR has one, CAMS doesn't) is neutral per calculateNameScore's
+              // real scoreMiddleNamePart logic, not a penalty - so this is a genuine, complete
+              // name match (nameScore 100) despite the middle-initial variation across these six
+              // fixtures. No DXTR legacy data at all, so addressScore is a real 0 (not 100 as
+              // previously hardcoded).
+              totalScore: 76,
+              addressScore: 0,
+              nameScore: 100,
+              phoneScore: 0,
+              emailScore: 0,
               districtDivisionScore: 100,
               chapterScore: 100,
               address: {
@@ -846,8 +919,17 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
             {
               trusteeId: 'seed-trustee-match-inactive',
               trusteeName: 'Morgan Inactivematch',
-              totalScore: 100,
-              addressScore: 100,
+              // Real values (see multiple's comment above for methodology). A one-sided middle
+              // name/initial (DXTR has one, CAMS doesn't) is neutral per calculateNameScore's
+              // real scoreMiddleNamePart logic, not a penalty - so this is a genuine, complete
+              // name match (nameScore 100) despite the middle-initial variation across these six
+              // fixtures. No DXTR legacy data at all, so addressScore is a real 0 (not 100 as
+              // previously hardcoded).
+              totalScore: 76,
+              addressScore: 0,
+              nameScore: 100,
+              phoneScore: 0,
+              emailScore: 0,
               districtDivisionScore: 100,
               chapterScore: 100,
               address: {
@@ -888,8 +970,17 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
             {
               trusteeId: 'seed-trustee-match-inactive',
               trusteeName: 'Morgan Inactivematch',
-              totalScore: 100,
-              addressScore: 100,
+              // Real values (see multiple's comment above for methodology). A one-sided middle
+              // name/initial (DXTR has one, CAMS doesn't) is neutral per calculateNameScore's
+              // real scoreMiddleNamePart logic, not a penalty - so this is a genuine, complete
+              // name match (nameScore 100) despite the middle-initial variation across these six
+              // fixtures. No DXTR legacy data at all, so addressScore is a real 0 (not 100 as
+              // previously hardcoded).
+              totalScore: 76,
+              addressScore: 0,
+              nameScore: 100,
+              phoneScore: 0,
+              emailScore: 0,
               districtDivisionScore: 100,
               chapterScore: 100,
               address: {
@@ -939,11 +1030,18 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           fingerprint: multiCaseFingerprint,
           dxtrTrustee: DXTR_MULTI_CASE,
           matchCandidates: [
+            // Real values (see multiple's comment above for methodology). "Casey" vs "Cassidy"
+            // is a genuine first-name mismatch (not an initial-vs-full relationship), so
+            // nameScore is a real 0 - not the 70 previously hardcoded for addressScore (which is
+            // also 0: no DXTR legacy data at all).
             {
               trusteeId: 'seed-trustee-match-multicase',
               trusteeName: 'Cassidy Multicasematch',
-              totalScore: 70,
-              addressScore: 70,
+              totalScore: 50,
+              addressScore: 0,
+              nameScore: 0,
+              phoneScore: 0,
+              emailScore: 0,
               districtDivisionScore: 100,
               chapterScore: 100,
               address: {

@@ -267,6 +267,150 @@ describe('TrusteeMatchVerificationAccordion', () => {
     });
   });
 
+  describe('CAMS Strongest Match mismatch icons', () => {
+    // candidateJaneSmith: nameScore 90 (mismatch), addressScore 90 (mismatch), phoneScore null
+    // (not comparable, no icon), emailScore null (not comparable, no icon), districtDivisionScore
+    // 100 (match), chapterScore 95 (mismatch) - so Trustee Appointment shows a mismatch icon too.
+    test('shows mismatch icons for mismatching fields, none for null or full-match fields', async () => {
+      renderWithProps({ order: sampleOrderWithCandidates });
+      await mockDetailAndExpand(sampleOrderWithCandidatesDetail);
+
+      const candidateInfo = screen.getByTestId('candidate-info');
+      expect(candidateInfo.textContent).toContain('Name does not match');
+      expect(candidateInfo.textContent).toContain('Address does not match');
+      expect(candidateInfo.textContent).toContain('Trustee Appointment does not match');
+      expect(candidateInfo.textContent).not.toContain('Phone does not match');
+      expect(candidateInfo.textContent).not.toContain('Email does not match');
+    });
+
+    test('does not show a mismatch icon for a field that scores a full 100 match', async () => {
+      renderWithProps({ order: sampleOrderWithCandidates });
+      await mockDetailAndExpand({
+        ...sampleOrderWithCandidatesDetail,
+        matchCandidates: [{ ...candidateJaneSmith, nameScore: 100 }],
+      });
+
+      const candidateInfo = screen.getByTestId('candidate-info');
+      expect(candidateInfo.textContent).not.toContain('Name does not match');
+    });
+
+    test('shows a Trustee Appointment mismatch icon when only district/division score mismatches', async () => {
+      renderWithProps({ order: sampleOrderWithCandidates });
+      await mockDetailAndExpand({
+        ...sampleOrderWithCandidatesDetail,
+        matchCandidates: [{ ...candidateJaneSmith, districtDivisionScore: 50, chapterScore: 100 }],
+      });
+
+      const candidateInfo = screen.getByTestId('candidate-info');
+      expect(candidateInfo.textContent).toContain('Trustee Appointment does not match');
+    });
+
+    test('shows a mismatch icon for a phone score that is neither null nor a full match', async () => {
+      renderWithProps({ order: sampleOrderWithCandidates });
+      await mockDetailAndExpand({
+        ...sampleOrderWithCandidatesDetail,
+        matchCandidates: [
+          {
+            ...candidateJaneSmith,
+            nameScore: 100,
+            addressScore: 100,
+            districtDivisionScore: 100,
+            chapterScore: 100,
+            phoneScore: 50,
+          },
+        ],
+      });
+
+      const candidateInfo = screen.getByTestId('candidate-info');
+      expect(candidateInfo.textContent).toContain('Phone does not match');
+      expect(candidateInfo.textContent).not.toContain('Name does not match');
+      expect(candidateInfo.textContent).not.toContain('Trustee Appointment does not match');
+    });
+
+    test('does not show mismatch icons in the Other Potential Matches header', async () => {
+      const secondCandidate: CandidateScore = {
+        ...candidateJaneSmith,
+        trusteeId: 'trustee-2',
+        trusteeName: 'John Roe',
+        totalScore: 80,
+      };
+      const twoCandidateOrder: TrusteeMatchVerificationListItem = {
+        ...sampleOrder,
+        mismatchReason: 'AMBIGUOUS_MATCH_UNRESOLVED',
+        preselectedCandidate: null,
+        candidateCount: 2,
+      };
+      const twoCandidateDetail: EnrichedTrusteeMatchVerification = {
+        ...sampleOrderDetail,
+        mismatchReason: 'AMBIGUOUS_MATCH_UNRESOLVED',
+        matchCandidates: [candidateJaneSmith, secondCandidate],
+      };
+      renderWithProps({ order: twoCandidateOrder });
+      await mockDetailAndExpand(twoCandidateDetail);
+
+      const content = screen.getByTestId(`accordion-content-${sampleOrder.id}`);
+      // "Name does not match" would only appear from a column-header mismatch icon - the
+      // strongest match's own header renders it once; it must not repeat for the "Other
+      // Potential Matches" table's header.
+      const occurrences = content.textContent?.split('Name does not match').length ?? 0;
+      expect(occurrences - 1).toBe(1);
+    });
+  });
+
+  describe('dynamic mismatch sentence', () => {
+    test('keeps the generic wording before candidate details load', () => {
+      renderWithProps({ order: sampleOrderWithCandidates });
+
+      const content = screen.getByTestId(`accordion-content-${sampleOrderWithCandidates.id}`);
+      expect(content.textContent).toContain(
+        'Trustee sent from the court does not match a CAMS Trustee for case:',
+      );
+    });
+
+    test('lists the specific mismatching fields once candidate details load', async () => {
+      renderWithProps({ order: sampleOrderWithCandidates });
+      await mockDetailAndExpand(sampleOrderWithCandidatesDetail);
+
+      const content = screen.getByTestId(`accordion-content-${sampleOrderWithCandidates.id}`);
+      expect(content.textContent).toContain(
+        'Trustee name, address, and appointment sent from the court does not match a CAMS Trustee for case:',
+      );
+    });
+
+    test('lists exactly two mismatching fields joined with "and", no comma', async () => {
+      renderWithProps({ order: sampleOrderWithCandidates });
+      await mockDetailAndExpand({
+        ...sampleOrderWithCandidatesDetail,
+        matchCandidates: [{ ...candidateJaneSmith, districtDivisionScore: 100, chapterScore: 100 }],
+      });
+
+      const content = screen.getByTestId(`accordion-content-${sampleOrderWithCandidates.id}`);
+      expect(content.textContent).toContain(
+        'Trustee name and address sent from the court does not match a CAMS Trustee for case:',
+      );
+    });
+
+    test('lists a single mismatching field without a conjunction', async () => {
+      renderWithProps({ order: sampleOrderWithCandidates });
+      await mockDetailAndExpand({
+        ...sampleOrderWithCandidatesDetail,
+        matchCandidates: [
+          {
+            ...candidateJaneSmith,
+            addressScore: 100,
+            districtDivisionScore: 100,
+            chapterScore: 100,
+          },
+        ],
+      });
+
+      const content = screen.getByTestId(`accordion-content-${sampleOrderWithCandidates.id}`);
+      expect(content.textContent).toContain(
+        'Trustee name sent from the court does not match a CAMS Trustee for case:',
+      );
+    });
+  });
+
   describe('eager detail fetch for resolved orders', () => {
     test('shows case numbers for a resolved order without manually expanding the accordion', async () => {
       const resolvedOrder: TrusteeMatchVerificationListItem = {
@@ -1321,7 +1465,30 @@ describe('TrusteeMatchVerificationAccordion', () => {
       );
     });
 
-    test('should still render original "does not match" problem statement for an unresolved multiple-match', async () => {
+    test('shows a Trustee Appointment mismatch icon for inactive-status tasks even when scores are a perfect match', async () => {
+      renderWithProps({ order: inactiveOrder });
+      await mockDetailAndExpand(inactiveDetail);
+
+      const candidateInfo = screen.getByTestId('candidate-info');
+      expect(candidateInfo.textContent).toContain('Trustee Appointment does not match');
+    });
+
+    test('lists other mismatching fields alongside the inactive statement, excluding appointment', async () => {
+      renderWithProps({ order: inactiveOrder });
+      await mockDetailAndExpand({
+        ...inactiveDetail,
+        matchCandidates: [{ ...inactiveCandidates[0], nameScore: 90, emailScore: 80 }],
+      });
+
+      const problemStatement = screen
+        .getByTestId(`accordion-content-${inactiveOrder.id}`)
+        .querySelector('.problem-statement');
+      expect(problemStatement?.textContent).toContain(
+        'Trustee is inactive in CAMS and name and email sent from the court does not match a CAMS Trustee for case:',
+      );
+    });
+
+    test('renders the mismatch problem statement (not inactive) for an unresolved multiple-match', async () => {
       const unresolvedOrder: TrusteeMatchVerificationListItem = {
         ...sampleOrderWithCandidates,
         mismatchReason: 'AMBIGUOUS_MATCH_UNRESOLVED',
@@ -1334,10 +1501,9 @@ describe('TrusteeMatchVerificationAccordion', () => {
       await mockDetailAndExpand(unresolvedDetail);
 
       const content = screen.getByTestId(`accordion-content-${sampleOrder.id}`);
-      expect(content.textContent).toContain(
-        'Trustee sent from the court does not match a CAMS Trustee',
-      );
+      expect(content.textContent).toContain('sent from the court does not match a CAMS Trustee');
       expect(content.textContent).not.toContain('inactive');
+      // Guards against reintroducing pre-#2821 copy for this mismatch reason.
       expect(content.textContent).not.toContain('CAMS found a possible match');
     });
 

@@ -64,6 +64,26 @@
     margin: 0.5rem 0 1rem;
   }
 
+  // Column-header mismatch icons for the CAMS Strongest Match table only (see ColumnHeader/
+  // MismatchIcon in TrusteeMatchVerificationAccordion.tsx). Color alone never carries the
+  // meaning - each icon also has a visually-hidden (usa-sr-only) text label.
+  .column-header-with-mismatch {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .mismatch-icon {
+    display: inline-flex;
+    align-items: center;
+
+    .mismatch-icon-symbol {
+      width: 1.1rem;
+      height: 1.1rem;
+      fill: colors.$error-text;
+    }
+  }
+
   .match-trustee-link {
     display: inline-flex;
     align-items: center;
