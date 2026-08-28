@@ -60,6 +60,9 @@ param analyticsResourceGroupName string = ''
 @description('For staging/USTP prod only: resource ID of that environment\'s own existing Log Analytics workspace, used to source its ANALYTICS-WORKSPACE-CUSTOMER-ID-SHARED secret value. Unused for the dev tier, which creates its own shared workspace here.')
 param analyticsWorkspaceId string = ''
 
+@description('Subscription ID of the Log Analytics workspace named by analyticsWorkspaceId, for the staging/USTP-prod (non-dev-tier) path where that workspace may live in a different subscription than this deployment. Defaults to the current subscription, so same-subscription environments (incl. Flexion) are unaffected. Mirrors main.bicep\'s analyticsSubscriptionId for the same workspace.')
+param analyticsSubscriptionId string = subscription().subscriptionId
+
 @description('Email address to notify for dev-tier ACS bounce alerts. Leave empty to skip creating the dev-tier alert.')
 @secure()
 param adminNotificationEmail string = ''
@@ -114,22 +117,12 @@ var webappPrivateDnsZoneName = 'privatelink.azurewebsites.us'
 // stack teardown the same way the webapp zone's link already does -- no
 // defense-in-depth delete call needed here. Only the zone itself (this var,
 // consumed below by the sqlDnsZone module) must stay in lockstep with the
-// bash literal in azure-deploy-app-shared-setup.sh, which uses it to decide
-// whether to bootstrap-create all three shared zones (kv/webapp/sql).
+// bash literal in azure-deploy-app-shared-setup.sh.
 //
 // This is the fixed Azure Government private-link DNS zone name for Azure
 // SQL (Microsoft.Sql/servers, subresource sqlServer) -- see
 // https://learn.microsoft.com/en-us/azure/private-link/private-endpoint-dns
 // for the public-vs-Gov cloud zone-name mapping.
-//
-// IMPORTANT: the sqlDnsZone module below is created/looked-up UNCONDITIONALLY
-// for every branch and main, exactly like webappDnsZone -- it is NOT gated on
-// useSqlPrivateLink. Only the per-branch vnet link (ustpSqlDnsZoneLink in
-// main.bicep) and the PE (backend-api-deploy.bicep/
-// dataflows-resource-deploy.bicep's useSqlPrivateLink param) are conditional.
-// That means this zone must exist in the target RG (or deployDns=true must
-// create it) for EVERY deployment of this template, including same-region
-// branches and main that never use the SQL Private Endpoint path.
 var sqlPrivateDnsZoneName = 'privatelink.database.usgovcloudapi.net'
 
 @description('Resource group containing the app-config Key Vault')
@@ -178,9 +171,13 @@ resource privateEndpointSubnetExisting 'Microsoft.Network/virtualNetworks/subnet
 // per-branch-uniquely-named resource (webappPrivateDnsZoneName-vnet-link-${stackName})
 // and is instead created inside main.bicep, where it becomes stack-managed
 // and self-cleans on branch teardown (see main.bicep's ustpWebappDnsZoneLink
-// module for the rationale). createVnetLink: false suppresses the link here;
-// deployDns still governs whether the zone itself is created vs. looked up.
-module webappDnsZone './lib/network/private-dns-zones.bicep' = {
+// module for the rationale). This module is gated on deployDns: when false the
+// module is skipped (create-only, no existing-lookup); the zone must already
+// exist (created by prior main.bicep deploy, or bootstrapped for fresh Flexion
+// branch RG by azure-deploy-app-shared-setup.sh). When true the zone is
+// created if missing. USTP (deployDns=false) never creates this zone -- USTP
+// owns its webapp zone out-of-band.
+module webappDnsZone './lib/network/private-dns-zones.bicep' = if (deployDns) {
   name: '${stackName}-webapp-dns-zone-module'
   scope: resourceGroup(privateDnsZoneSubscriptionId, privateDnsZoneResourceGroup)
   params: {
@@ -195,18 +192,14 @@ module webappDnsZone './lib/network/private-dns-zones.bicep' = {
 // SQL Private Link DNS zone, mirroring webappDnsZone above exactly: only the
 // ZONE is created here (create-if-missing, shared across main and every
 // branch); the per-branch vnet-link lives in main.bicep (ustpSqlDnsZoneLink)
-// so it is stack-managed and self-cleans on branch teardown. Azure Private
-// Endpoints (unlike VNet Service Endpoints/sql-vnet-rule.bicep) have no
-// same-region requirement between the SQL server and the linked subnet, so
-// this zone + its per-branch PE (created per-function-app, see
-// backend-api-deploy.bicep/dataflows-resource-deploy.bicep) is the mechanism
-// cross-region branches use for SQL connectivity instead of the VNet rule.
-// This module call is unconditional (every branch/main runs it, same as
-// webappDnsZone above) -- azure-deploy-app-shared-setup.sh's zone-bootstrap
-// check must know about sqlPrivateDnsZoneName too, or a branch whose RG
-// already has the kv/webapp zones but not this new one will pass
-// deployDns=false and fail resolving this zone as `existing`.
-module sqlDnsZone './lib/network/private-dns-zones.bicep' = {
+// so it is stack-managed and self-cleans on branch teardown. This module is
+// gated on deployDns (create-only, no existing-lookup). When deployDns=false
+// the module is skipped; the zone must already exist (created by prior
+// Flexion main deploy, or bootstrapped for fresh branch RG). When true the
+// zone is created if missing. USTP (deployDns=false) never creates this zone
+// -- USTP does not own SQL Server and uses ordinary SQL auth (not private
+// link). SQL private link is Flexion-only.
+module sqlDnsZone './lib/network/private-dns-zones.bicep' = if (deployDns) {
   name: '${stackName}-sql-dns-zone-module'
   scope: resourceGroup(privateDnsZoneSubscriptionId, privateDnsZoneResourceGroup)
   params: {
@@ -380,7 +373,7 @@ module sharedAnalyticsReaderRoleAssignment './lib/analytics/log-analytics-reader
 resource existingAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10-01' existing =
   if (!isDevTier && !empty(analyticsWorkspaceId) && !empty(analyticsResourceGroupName)) {
     name: last(split(analyticsWorkspaceId, '/'))
-    scope: resourceGroup(analyticsResourceGroupName)
+    scope: resourceGroup(analyticsSubscriptionId, analyticsResourceGroupName)
   }
 
 var sharedAnalyticsWorkspaceCustomerId = isDevTier
