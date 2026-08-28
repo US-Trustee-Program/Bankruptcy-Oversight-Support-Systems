@@ -1243,9 +1243,7 @@ async function applyMatchOutcome(
   const candidateScore = calculateCandidateScore(
     context,
     event.dxtrTrustee,
-    event.courtId,
-    event.courtDivisionCode,
-    event.chapter,
+    { courtId: event.courtId, courtDivisionCode: event.courtDivisionCode, chapter: event.chapter },
     trustee,
     trusteeAppointments,
     nameScore,

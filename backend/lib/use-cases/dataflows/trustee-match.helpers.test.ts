@@ -1432,20 +1432,21 @@ describe('calculateCandidateScore', () => {
   });
 
   test('should return totalScore 100 when all scores are 100', () => {
+    // address1 explicit (matches makeTrustee()'s default) so addressScore=100 is visibly
+    // intentional here, not a coincidence of two fixtures' defaults happening to agree.
+    const dxtrTrustee = {
+      ...makeDxtrTrustee('New York, NY 10001', '123 Main St'),
+      firstName: 'John',
+      lastName: 'Doe',
+    };
+    const camsTrustee = makeTrustee();
     const score = calculateCandidateScore(
       context,
-      // address1 explicit (matches makeTrustee()'s default) so addressScore=100 is visibly
-      // intentional here, not a coincidence of two fixtures' defaults happening to agree.
-      {
-        ...makeDxtrTrustee('New York, NY 10001', '123 Main St'),
-        firstName: 'John',
-        lastName: 'Doe',
-      },
-      '081',
-      '1',
-      '7',
-      makeTrustee(),
+      dxtrTrustee,
+      { courtId: '081', courtDivisionCode: '1', chapter: '7' },
+      camsTrustee,
       [makeAppointment({ chapter: '7', courtId: '081', divisionCode: '1', status: 'active' })],
+      calculateNameScore(dxtrTrustee, camsTrustee),
     );
 
     expect(score.trusteeId).toBe('trustee-1');
@@ -1462,24 +1463,29 @@ describe('calculateCandidateScore', () => {
   });
 
   test('should apply weighted scoring correctly (address 8% / name 26% / district 25% / chapter 25%, phone/email null)', () => {
+    const dxtrTrustee = {
+      ...makeDxtrTrustee('New York, NY 10001'),
+      firstName: 'John',
+      lastName: 'Doe',
+    };
+    const camsTrustee = makeTrustee({
+      public: {
+        address: {
+          address1: '123 Main St',
+          city: 'New York',
+          state: 'NY',
+          zipCode: '10002',
+          countryCode: 'US',
+        },
+      },
+    });
     const score = calculateCandidateScore(
       context,
-      { ...makeDxtrTrustee('New York, NY 10001'), firstName: 'John', lastName: 'Doe' },
-      '081',
-      '1',
-      '7',
-      makeTrustee({
-        public: {
-          address: {
-            address1: '123 Main St',
-            city: 'New York',
-            state: 'NY',
-            zipCode: '10002',
-            countryCode: 'US',
-          },
-        },
-      }),
+      dxtrTrustee,
+      { courtId: '081', courtDivisionCode: '1', chapter: '7' },
+      camsTrustee,
       [makeAppointment({ chapter: '7', courtId: '081', divisionCode: '2', status: 'active' })],
+      calculateNameScore(dxtrTrustee, camsTrustee),
     );
 
     // addressLinesScore=100 (identical address1, 50%) + zipScore=0 (mismatch, 30%) +
@@ -1497,16 +1503,17 @@ describe('calculateCandidateScore', () => {
   });
 
   test('should return totalScore ~9.52 when only address matches (phone/email null)', () => {
+    // address1 explicit (matches makeTrustee()'s default) so addressScore=100 below is
+    // visibly intentional, not a coincidence of two fixtures' defaults happening to agree.
+    const dxtrTrustee = makeDxtrTrustee('New York, NY 10001', '123 Main St'); // No firstName/lastName - nameScore is 0
+    const camsTrustee = makeTrustee();
     const score = calculateCandidateScore(
       context,
-      // address1 explicit (matches makeTrustee()'s default) so addressScore=100 below is
-      // visibly intentional, not a coincidence of two fixtures' defaults happening to agree.
-      makeDxtrTrustee('New York, NY 10001', '123 Main St'), // No firstName/lastName - nameScore is 0
-      '082',
-      '1',
-      '11',
-      makeTrustee(),
+      dxtrTrustee,
+      { courtId: '082', courtDivisionCode: '1', chapter: '11' },
+      camsTrustee,
       [makeAppointment({ chapter: '7', courtId: '081', divisionCode: '1', status: 'active' })],
+      calculateNameScore(dxtrTrustee, camsTrustee),
     );
 
     expect(score.addressScore).toBe(100);
@@ -1520,14 +1527,15 @@ describe('calculateCandidateScore', () => {
   });
 
   test('should return totalScore ~29.76 when only district matches (phone/email null)', () => {
+    const dxtrTrustee = makeDxtrTrustee(); // No address, no firstName/lastName - nameScore is 0
+    const camsTrustee = makeTrustee();
     const score = calculateCandidateScore(
       context,
-      makeDxtrTrustee(), // No address, no firstName/lastName - nameScore is 0
-      '081',
-      '1',
-      '11',
-      makeTrustee(),
+      dxtrTrustee,
+      { courtId: '081', courtDivisionCode: '1', chapter: '11' },
+      camsTrustee,
       [makeAppointment({ chapter: '7', courtId: '081', divisionCode: '1', status: 'active' })],
+      calculateNameScore(dxtrTrustee, camsTrustee),
     );
 
     expect(score.addressScore).toBe(0);
@@ -1543,14 +1551,15 @@ describe('calculateCandidateScore', () => {
   test('should return totalScore 0 when court differs, even though the case chapter equals the trustee appointment chapter', () => {
     // A matching chapter value alone must NOT be creditable when no active appointment covers
     // the case's court+division.
+    const dxtrTrustee = makeDxtrTrustee(); // No address, no firstName/lastName - nameScore is 0
+    const camsTrustee = makeTrustee();
     const score = calculateCandidateScore(
       context,
-      makeDxtrTrustee(), // No address, no firstName/lastName - nameScore is 0
-      '082',
-      '1',
-      '7',
-      makeTrustee(),
+      dxtrTrustee,
+      { courtId: '082', courtDivisionCode: '1', chapter: '7' },
+      camsTrustee,
       [makeAppointment({ chapter: '7', courtId: '081', divisionCode: '1', status: 'active' })],
+      calculateNameScore(dxtrTrustee, camsTrustee),
     );
 
     expect(score.addressScore).toBe(0);
@@ -1563,26 +1572,31 @@ describe('calculateCandidateScore', () => {
   });
 
   test('should populate phoneScore/emailScore as null when DXTR has no phone/email', () => {
+    const dxtrTrustee = {
+      ...makeDxtrTrustee('New York, NY 10001'),
+      firstName: 'John',
+      lastName: 'Doe',
+    };
+    const camsTrustee = makeTrustee({
+      public: {
+        address: {
+          address1: '123 Main St',
+          city: 'New York',
+          state: 'NY',
+          zipCode: '10001',
+          countryCode: 'US',
+        },
+        phone: { number: '662-286-9796' },
+        email: 'john.doe@example.com',
+      },
+    });
     const score = calculateCandidateScore(
       context,
-      { ...makeDxtrTrustee('New York, NY 10001'), firstName: 'John', lastName: 'Doe' },
-      '081',
-      '1',
-      '7',
-      makeTrustee({
-        public: {
-          address: {
-            address1: '123 Main St',
-            city: 'New York',
-            state: 'NY',
-            zipCode: '10001',
-            countryCode: 'US',
-          },
-          phone: { number: '662-286-9796' },
-          email: 'john.doe@example.com',
-        },
-      }),
+      dxtrTrustee,
+      { courtId: '081', courtDivisionCode: '1', chapter: '7' },
+      camsTrustee,
       [makeAppointment({ chapter: '7', courtId: '081', divisionCode: '1', status: 'active' })],
+      calculateNameScore(dxtrTrustee, camsTrustee),
     );
 
     // DXTR trustee has no legacy.phone/legacy.email, so both are not comparable.
@@ -1594,28 +1608,29 @@ describe('calculateCandidateScore', () => {
   // addressScore must flow through calculateCandidateScore's weighting at its documented 8% share
   // like any other sub-score, not just the exact-match/zero-match extremes exercised elsewhere.
   test('should apply an exact 8% weight to a fuzzy (non-exact) address score', () => {
+    const dxtrTrustee = {
+      ...makeDxtrTrustee('New York, NY 10001', '123 Main Streat'), // typo'd street suffix
+      firstName: 'John',
+      lastName: 'Doe',
+    };
+    const camsTrustee = makeTrustee({
+      public: {
+        address: {
+          address1: '123 Main Street',
+          city: 'New York',
+          state: 'NY',
+          zipCode: '10001',
+          countryCode: 'US',
+        },
+      },
+    });
     const score = calculateCandidateScore(
       context,
-      {
-        ...makeDxtrTrustee('New York, NY 10001', '123 Main Streat'), // typo'd street suffix
-        firstName: 'John',
-        lastName: 'Doe',
-      },
-      '081',
-      '1',
-      '7',
-      makeTrustee({
-        public: {
-          address: {
-            address1: '123 Main Street',
-            city: 'New York',
-            state: 'NY',
-            zipCode: '10001',
-            countryCode: 'US',
-          },
-        },
-      }),
+      dxtrTrustee,
+      { courtId: '081', courtDivisionCode: '1', chapter: '7' },
+      camsTrustee,
       [makeAppointment({ chapter: '7', courtId: '081', divisionCode: '1', status: 'active' })],
+      calculateNameScore(dxtrTrustee, camsTrustee),
     );
 
     // "123 main streat" vs "123 main street": bigram Jaccard = 8 shared / 12 union = 66.67%,
