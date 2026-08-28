@@ -50,14 +50,6 @@ export async function createMockApplicationContext<B = unknown>(
     request: createMockRequest(args.request),
   });
   context.session = await createMockApplicationContextSession();
-  // The shared mock invocationContext is a bare `new InvocationContext()`, which defaults
-  // options.extraOutputs to [] -- not undefined -- so ApiToDataflowsGatewayImpl.enqueue's
-  // registration check would otherwise reject every queue write in every test using this mock,
-  // since no test-specific handler registration is actually being simulated here. Reset to
-  // undefined (matching the "check cannot be performed" case) so existing tests are unaffected;
-  // a test that specifically wants to exercise the registration-check throw path can set
-  // context.registeredExtraOutputQueueNames explicitly.
-  context.registeredExtraOutputQueueNames = undefined;
   return context;
 }
 

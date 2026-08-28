@@ -453,10 +453,9 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     return order.resolvedTrusteeName ?? matchedCandidateName ?? order.resolvedTrusteeId ?? '';
   }
 
-  // Before expansion only the count is known (order.affectedCaseCount); the full case list
-  // (enrichedOrder.affectedCaseIds) is fetched on expand. affectedCaseCount of 0 means every
-  // affected case has already been remapped off its surrogate row (resolution in progress or
-  // complete) — fall back to the originating case rather than showing "0 cases".
+  // order.affectedCaseCount (list view) derives live from surrogate rows and can read 0 for
+  // an approved verification once those rows are remapped away, unlike enrichedOrder's
+  // snapshotted case list. Fall back to the originating case rather than showing "0 cases".
   const affectedCaseIds = enrichedOrder?.affectedCaseIds ?? [order.caseId];
   const affectedCaseCount = enrichedOrder
     ? enrichedOrder.affectedCaseIds.length
@@ -471,23 +470,26 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
 
   const sortedAffectedCaseIds = [...affectedCaseIds].sort();
 
-  const caseLink =
-    affectedCaseCount > 1 ? (
-      <span data-testid="affected-cases">
-        <strong>{affectedCaseCount} cases</strong>
-        {enrichedOrder && (
-          <span className="affected-cases-list">
-            {sortedAffectedCaseIds.map((caseId) => (
-              <span key={caseId} className="affected-case-item">
-                <NewTabLink to={`/case-detail/${caseId}`} label={getCaseNumber(caseId)} />
-              </span>
-            ))}
-          </span>
-        )}
-      </span>
-    ) : (
-      singleCaseLink
-    );
+  // While the snapshotted count is loading, avoid flashing the (potentially stale or "0
+  // cases") live-derived list-view count before it's replaced by enrichedOrder's count.
+  const caseLink = isLoadingDetail ? (
+    <span data-testid="affected-cases-loading">Loading&hellip;</span>
+  ) : affectedCaseCount > 1 ? (
+    <span data-testid="affected-cases">
+      <strong>{affectedCaseCount} cases</strong>
+      {enrichedOrder && (
+        <span className="affected-cases-list">
+          {sortedAffectedCaseIds.map((caseId) => (
+            <span key={caseId} className="affected-case-item">
+              <NewTabLink to={`/case-detail/${caseId}`} label={getCaseNumber(caseId)} />
+            </span>
+          ))}
+        </span>
+      )}
+    </span>
+  ) : (
+    singleCaseLink
+  );
 
   function renderDetailSection() {
     if (isLoadingDetail) {
@@ -697,7 +699,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
             <p className="resolved-statement" data-testid="resolved-statement">
               <span>
                 Trustee {getResolvedTrusteeDisplayName()} was appointed to{' '}
-                {affectedCaseCount > 1 ? '' : 'case: '}
+                {isLoadingDetail ? '' : affectedCaseCount > 1 ? '' : 'case: '}
               </span>
               {caseLink}
             </p>
@@ -708,7 +710,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
                 <p className="problem-statement">
                   <span>
                     Trustee is inactive in CAMS but was appointed to{' '}
-                    {affectedCaseCount > 1 ? '' : 'case: '}
+                    {isLoadingDetail ? '' : affectedCaseCount > 1 ? '' : 'case: '}
                   </span>
                   {caseLink}
                 </p>
@@ -716,7 +718,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
                 <p className="problem-statement">
                   <span>
                     Trustee sent from the court does not match a CAMS Trustee for{' '}
-                    {affectedCaseCount > 1 ? '' : 'case: '}
+                    {isLoadingDetail ? '' : affectedCaseCount > 1 ? '' : 'case: '}
                   </span>
                   {caseLink}
                 </p>

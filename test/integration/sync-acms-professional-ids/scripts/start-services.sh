@@ -76,7 +76,7 @@ echo "Starting Azurite..."
 podman run -d \
   --pod "${POD_NAME}" \
   --name cams-azurite-sync-acms-professional-ids \
-  mcr.microsoft.com/azure-storage/azurite:latest \
+  mcr.microsoft.com/azure-storage/azurite:3.21.0 \
   azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0 --location /data --skipApiVersionCheck
 
 echo "Waiting for SQL Edge..."

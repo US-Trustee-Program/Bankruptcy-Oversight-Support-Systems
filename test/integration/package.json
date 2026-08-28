@@ -3,9 +3,12 @@
   "version": "1.0.0",
   "private": true,
   "dependencies": {
-    "@azure/storage-blob": "12.33.0"
+    "@azure/storage-blob": "12.33.0",
+    "@azure/storage-queue": "12.31.0"
   },
   "scripts": {
+    "api-to-dataflows-bridge": "npx tsx --tsconfig ../../backend/tsconfig.json api-to-dataflows-bridge/scripts/run-tests.ts",
+    "api-to-dataflows-bridge:local": "npx tsx --tsconfig ../../backend/tsconfig.json api-to-dataflows-bridge/scripts/run-tests.ts",
     "acms-cams-transition": "npx tsx --tsconfig ../../backend/tsconfig.json acms-cams-transition/scripts/test-trustee-appointment-downstream.ts",
     "acms-cams-transition:local": "INTEGRATION_ENV=local npx tsx --tsconfig ../../backend/tsconfig.json acms-cams-transition/scripts/test-trustee-appointment-downstream.ts",
     "acms-cams-transition:azure": "INTEGRATION_ENV=azure npx tsx --tsconfig ../../backend/tsconfig.json acms-cams-transition/scripts/test-trustee-appointment-downstream.ts",
