@@ -188,6 +188,143 @@ az network private-dns link vnet update \
   -n <link-name> --resolution-policy NxDomainRedirect
 ```
 
+### Cutover runbook
+
+Four stages, in order. Stages 2 and 3 each depend on a code change that must be merged first, so
+this is not a single sitting.
+
+Before starting any stage, establish where you are:
+
+```bash
+for RG in bankruptcy-oversight-support-systems rg-cams-network rg-cams-network-dev; do
+  echo -n "$RG -> "
+  az network private-dns record-set a show -g "$RG" \
+    -z privatelink.database.usgovcloudapi.net -n sql-ustp-cams \
+    --query 'aRecords[].ipv4Address' -o tsv 2>/dev/null || echo ABSENT
+done
+
+az network vnet peering list -g bankruptcy-oversight-support-systems \
+  --vnet-name vnet-ustp-cams-sql-hub \
+  --query '[].{name:name,state:peeringState}' -o table
+
+az network private-endpoint list -g rg-cams-network \
+  --query "[?contains(name,'sql')].name" -o tsv
+```
+
+A consumer is migrated when its zone's A record points at the hub (`10.20.0.4`) and it no longer
+owns a SQL Private Endpoint.
+
+Health is the signal that matters at every checkpoint. `status` is `ERROR` and the endpoint returns
+HTTP 500 whenever `sqlDbReadStatus` is false:
+
+```bash
+curl -s https://ustp-cams-node-api.azurewebsites.us/api/healthcheck | jq '.data.database'
+```
+
+#### Stage 1 — migrate main
+
+Main is the first real consumer. It is also the one still depending on `pep-ustp-cams-main-sql`, an
+endpoint created by hand during the original incident and described nowhere in this repository —
+retiring it is the point of this stage.
+
+1. **Confirm the peering is `Connected`.** `main.bicep` creates it when `createMainHubPeering` is
+   true, which `reusable-deploy.yml` gates on `Main-Gov`, so a main deploy has already done this.
+
+   ```bash
+   az network vnet peering list -g rg-cams-network --vnet-name vnet-ustp-cams \
+     --query "[?contains(name,'sql-hub')].{name:name,state:peeringState}" -o table
+   ```
+
+2. **Preview.** Run **Deploy SQL Private Link Hub** with `mode=what-if`,
+   `consumerZones=main-only`. Expect the endpoint's DNS zone config to repoint from the hub's own
+   resource group to `rg-cams-network`, and nothing else of substance.
+
+   > [!NOTE] `what-if` reports `- properties.virtualNetworkPeerings` on the hub VNet. That is a
+   > false positive — verified against throwaway resources, peerings survive an ARM PUT that omits
+   > them, including one carrying a real property change. Do not act on it.
+
+3. **Capture the endpoint before deleting it.** It exists in no template, so this output is the
+   only rollback material there is.
+
+   ```bash
+   az network private-endpoint show -g rg-cams-network -n pep-ustp-cams-main-sql \
+     > /tmp/pep-ustp-cams-main-sql.json
+   az network private-endpoint dns-zone-group list -g rg-cams-network \
+     --endpoint-name pep-ustp-cams-main-sql >> /tmp/pep-ustp-cams-main-sql.json
+   ```
+
+4. **Delete it.** The record disappears with it — that is expected and is what step 5 restores.
+
+   ```bash
+   az network private-endpoint delete -g rg-cams-network -n pep-ustp-cams-main-sql
+   ```
+
+5. **Register the hub.** Re-run the workflow with `mode=deploy`, `consumerZones=main-only`.
+
+6. **Verify.** `rg-cams-network` should now resolve to `10.20.0.4`, and the healthcheck should
+   report `sqlDbReadStatus: true`. Function apps cache DNS, so allow a few minutes or restart them.
+
+Between steps 4 and 5 main has no private record and falls back to public resolution via
+`NxDomainRedirect`. Main's SQL VNet rule is still in place as a second fallback until stage 3.
+
+**Rollback.** Re-run the workflow with `consumerZones=both` to restore prior registration
+behaviour, and recreate the endpoint from the captured JSON. The fallback means a failed cutover
+degrades rather than disconnects, so prefer diagnosing forward over rolling back — a partial
+rollback that leaves two endpoints registering into one zone recreates the collision.
+
+#### Stage 2 — migrate branches
+
+> [!IMPORTANT] Requires the change that lets a consumer reach SQL through the hub without creating
+> its own endpoint. Until then, `useSqlPrivateLink` selects between a per-consumer Private Endpoint
+> and a same-region-only VNet rule, and neither is the hub. Do not attempt this stage before that
+> ships.
+
+1. Confirm each live branch has a `Connected` hub peering.
+2. Delete every branch SQL Private Endpoint. Each branch has two, one per function app:
+
+   ```bash
+   az network private-endpoint list -g rg-cams-network-dev \
+     --query "[?ends_with(name,'-sql')].name" -o tsv
+   ```
+
+3. Re-run the workflow with `consumerZones=both`.
+4. Verify each branch's healthcheck at
+   `https://<env>-node-api.azurewebsites.us/api/healthcheck`.
+
+#### Stage 3 — decommission
+
+Only once main and all branches are verified on the hub, and have been for long enough to trust it.
+This removes the fallback paths, so it is the least reversible stage.
+
+1. Retire `sql-vnet-rule.bicep` / `createSqlServerVnetRule` (code change).
+2. Delete the remaining SQL VNet rules, including those belonging to environments that no longer
+   exist:
+
+   ```bash
+   az sql server vnet-rule list -g bankruptcy-oversight-support-systems -s sql-ustp-cams -o table
+
+   RULE='<name-from-the-list-above>'
+   az sql server vnet-rule delete -g bankruptcy-oversight-support-systems -s sql-ustp-cams -n "$RULE"
+   ```
+
+3. Remove the `consumerZones` input from the workflow — `both` is the steady state and the input
+   only exists to stage this migration.
+
+#### Stage 4 — cleanup
+
+Housekeeping; no consumer depends on any of it.
+
+- The orphaned `privatelink.database.usgovcloudapi.net` zone in
+  `bankruptcy-oversight-support-systems`, left from an earlier hub design. Confirm it has zero VNet
+  links before deleting.
+- Legacy per-branch network resource groups (`rg-cams-network-dev-*`) whose environments are gone.
+- Orphaned `CAMS_E2E-*` SQL databases and `cams-e2e-*` Cosmos databases.
+
+```bash
+az network private-dns link vnet list -g bankruptcy-oversight-support-systems \
+  -z privatelink.database.usgovcloudapi.net --query 'length(@)' -o tsv
+```
+
 ### Branch address allocation
 
 Branch VNets peering to the hub must not overlap, so a branch claims a `/20` from a reserved
