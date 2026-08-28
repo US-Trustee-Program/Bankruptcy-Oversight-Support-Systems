@@ -1028,6 +1028,74 @@ describe('validators', () => {
       const errors = validators.validateAllSeedOperations(ops);
       expect(errors).toEqual([]);
     });
+
+    test('passes for a TRUSTEE_MATCH_VERIFICATION doc with an internally-consistent candidate', () => {
+      const ops = [
+        {
+          db: 'cams',
+          collectionOrTable: 'trustee-match-verification',
+          data: [
+            {
+              id: 'match-good',
+              documentType: 'TRUSTEE_MATCH_VERIFICATION',
+              dxtrTrustee: {},
+              matchCandidates: [
+                {
+                  trusteeId: 'trustee-001',
+                  trusteeName: 'Jane Smith',
+                  totalScore: 76,
+                  addressScore: 0,
+                  nameScore: 100,
+                  phoneScore: 0,
+                  emailScore: 0,
+                  districtDivisionScore: 100,
+                  chapterScore: 100,
+                },
+              ],
+            },
+          ],
+        },
+      ];
+
+      const errors = validators.validateAllSeedOperations(ops);
+      expect(errors).toEqual([]);
+    });
+
+    test('catches a TRUSTEE_MATCH_VERIFICATION candidate whose totalScore does not match its component scores', () => {
+      const ops = [
+        {
+          db: 'cams',
+          collectionOrTable: 'trustee-match-verification',
+          data: [
+            {
+              id: 'match-bad',
+              documentType: 'TRUSTEE_MATCH_VERIFICATION',
+              dxtrTrustee: {},
+              matchCandidates: [
+                {
+                  trusteeId: 'trustee-001',
+                  trusteeName: 'Jane Smith',
+                  totalScore: 50,
+                  addressScore: 0,
+                  nameScore: 100,
+                  phoneScore: 0,
+                  emailScore: 0,
+                  districtDivisionScore: 100,
+                  chapterScore: 100,
+                },
+              ],
+            },
+          ],
+        },
+      ];
+
+      const errors = validators.validateAllSeedOperations(ops);
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toContain('match-bad');
+      expect(errors[0]).toContain('Jane Smith');
+      expect(errors[0]).toContain('totalScore 50');
+      expect(errors[0]).toContain('weighted sum of its component scores is 76.00');
+    });
   });
 
   describe('assertTrusteeAppointmentValid', () => {
@@ -1199,8 +1267,16 @@ describe('validators', () => {
     });
 
     test('passes for a valid candidate with a real, non-zero addressScore backed by a DXTR address', () => {
-      const candidate = { ...validCandidate, addressScore: 70 };
+      // addressScore 70 shifts the weighted sum from validCandidate's base 76 to 81.6.
+      const candidate = { ...validCandidate, addressScore: 70, totalScore: 81.6 };
       expect(() => validators.assertCandidateScoreValid(candidate, true, 'Test')).not.toThrow();
+    });
+
+    test('throws if totalScore does not match the weighted sum of its component scores', () => {
+      const candidate = { ...validCandidate, totalScore: 50 };
+      expect(() => validators.assertCandidateScoreValid(candidate, false, 'Test')).toThrow(
+        'Test: candidate "Jane Smith" has totalScore 50 but the weighted sum of its component scores is 76.00',
+      );
     });
 
     test('allows null/undefined candidate', () => {

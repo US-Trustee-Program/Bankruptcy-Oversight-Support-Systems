@@ -4,6 +4,10 @@
 
 import { faker } from '@faker-js/faker';
 import { generateSearchTokens } from './phonetic-tokens.js';
+// Imported (not duplicated) so this validator's expected totalScore can never drift from
+// production - calculateTotalScore lives in common specifically so both backend and dev-tools
+// can share the exact same implementation (see CAMS-871 Slice 2 Task 3).
+import { calculateTotalScore } from '@common/cams/dataflow-events.js';
 
 /**
  * Type alias for Debtor matching common/src/cams/parties.ts -> Debtor
@@ -486,6 +490,10 @@ type SeedOperationLike = {
   >;
 };
 
+// Real fixtures sometimes hand-transcribe a rounded integer where calculateTotalScore itself
+// returns an unrounded float.
+const TOTAL_SCORE_EPSILON = 0.01;
+
 /**
  * Validation helpers to ensure test data meets quality standards.
  * Use these in tests, runtime validation, and debugging.
@@ -707,6 +715,23 @@ export const validators = {
     if (!hasDxtrAddress && candidate.addressScore !== 0) {
       throw new Error(
         `${context}: candidate "${name}" has addressScore ${candidate.addressScore} but dxtrTrustee has no legacy address to compare - should be 0`,
+      );
+    }
+
+    // Guards against a 4th recurrence of the exact bug class this validator exists to catch
+    // (see CAMS-871 Slice 2 Task 3) - a totalScore hand-transcribed independently of its own
+    // component scores, rather than actually computed from them.
+    const expectedTotalScore = calculateTotalScore({
+      addressScore: candidate.addressScore!,
+      nameScore: candidate.nameScore!,
+      phoneScore: candidate.phoneScore!,
+      emailScore: candidate.emailScore!,
+      districtDivisionScore: candidate.districtDivisionScore!,
+      chapterScore: candidate.chapterScore!,
+    });
+    if (Math.abs(candidate.totalScore! - expectedTotalScore) > TOTAL_SCORE_EPSILON) {
+      throw new Error(
+        `${context}: candidate "${name}" has totalScore ${candidate.totalScore} but the weighted sum of its component scores is ${expectedTotalScore.toFixed(2)}`,
       );
     }
   },

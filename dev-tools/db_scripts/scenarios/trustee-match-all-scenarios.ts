@@ -504,7 +504,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
             {
               trusteeId: 'seed-trustee-match-multi-a',
               trusteeName: 'Taylor Multimatch',
-              totalScore: 72,
+              totalScore: 72.1,
               addressScore: 0,
               nameScore: 85,
               phoneScore: 0,
@@ -524,7 +524,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
             {
               trusteeId: 'seed-trustee-match-multi-b',
               trusteeName: 'Tyler Multimatch',
-              totalScore: 72,
+              totalScore: 72.1,
               addressScore: 0,
               nameScore: 85,
               phoneScore: 0,
@@ -583,7 +583,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
             {
               trusteeId: 'seed-trustee-match-lowconf',
               trusteeName: 'Sam Lowconfidence',
-              totalScore: 72,
+              totalScore: 72.1,
               addressScore: 0,
               nameScore: 85,
               phoneScore: 0,
@@ -630,7 +630,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
             {
               trusteeId: 'seed-trustee-match-imperfect',
               trusteeName: 'Jordan Imperfectmatch',
-              totalScore: 67,
+              totalScore: 67.1,
               addressScore: 0,
               nameScore: 85,
               phoneScore: 0,
