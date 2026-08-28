@@ -25,25 +25,25 @@ VALUES
   ('083', 'MS', '0210', '083');
 GO
 
-INSERT INTO dbo.AO_CS (CS_CASEID, COURT_ID, CASE_ID, CS_DIV, CS_CHAPTER)
+INSERT INTO dbo.AO_CS (CS_CASEID, COURT_ID, CASE_ID, CS_DIV, CS_CHAPTER, GRP_DES)
 VALUES
-  ('999999401', '0210', '26-88901', '083', '7'), -- 2. perfect-match-ambiguous-name-resolved-by-scoring
-  ('999999402', '0210', '26-88902', '083', '7'), -- 3. perfect-match-by-name
-  ('999999403', '0210', '26-88903', '083', '7'), -- 4. perfect-match-inactive-status
-  ('999999404', '0210', '26-88904', '083', '7'), -- 5. imperfect-match
-  ('999999405', '0210', '26-88905', '083', '7'), -- 6. no-match
-  ('999999406', '0210', '26-88906', '083', '7'), -- 7. multiple-match-high-confidence
-  ('999999407', '0210', '26-88907', '083', '7'), -- 8. multiple-match-no-winner
-  ('999999408', '0210', '26-88908', '083', '7'), -- 9. case-not-yet-synced
-  ('999999409', '0210', '26-88909', '083', '7'), -- 10. case-moved
-  ('999999410', '0210', '26-88910', '083', '7'), -- 11. re-verification
-  ('999999411', '0210', '26-88911', '083', '7'), -- 12. fingerprint-repeat (Slice 5)
-  ('999999412', '0210', '26-88912', '083', '7'), -- 13. fingerprint-no-false-collapse (Slice 5)
-  ('999999413', '0210', '26-88913', '083', '7'), -- 14. bad-rec-date-falls-back-to-tx-date
-  ('999999414', '0210', '26-88914', '083', '7'), -- 15a. sentinel-00000-no-name-no-address
-  ('999999415', '0210', '26-88915', '083', '7'), -- 15b. sentinel-99999-bogus-name-with-contact
-  ('999999416', '0210', '26-88916', '083', '7'), -- 15c. sentinel-00000-genuine-name-and-address
-  ('999999417', '0210', '26-88917', '083', '7'); -- 15d. non-sentinel-profcode-empty-demographics
+  ('999999401', '0210', '26-88901', '083', '7', 'MS'), -- 2. perfect-match-ambiguous-name-resolved-by-scoring
+  ('999999402', '0210', '26-88902', '083', '7', 'MS'), -- 3. perfect-match-by-name
+  ('999999403', '0210', '26-88903', '083', '7', 'MS'), -- 4. perfect-match-inactive-status
+  ('999999404', '0210', '26-88904', '083', '7', 'MS'), -- 5. imperfect-match
+  ('999999405', '0210', '26-88905', '083', '7', 'MS'), -- 6. no-match
+  ('999999406', '0210', '26-88906', '083', '7', 'MS'), -- 7. multiple-match-high-confidence
+  ('999999407', '0210', '26-88907', '083', '7', 'MS'), -- 8. multiple-match-no-winner
+  ('999999408', '0210', '26-88908', '083', '7', 'MS'), -- 9. case-not-yet-synced
+  ('999999409', '0210', '26-88909', '083', '7', 'MS'), -- 10. case-moved
+  ('999999410', '0210', '26-88910', '083', '7', 'MS'), -- 11. re-verification
+  ('999999411', '0210', '26-88911', '083', '7', 'MS'), -- 12. fingerprint-repeat (Slice 5)
+  ('999999412', '0210', '26-88912', '083', '7', 'MS'), -- 13. fingerprint-no-false-collapse (Slice 5)
+  ('999999413', '0210', '26-88913', '083', '7', 'MS'), -- 14. bad-rec-date-falls-back-to-tx-date
+  ('999999414', '0210', '26-88914', '083', '7', 'MS'), -- 15a. sentinel-00000-no-name-no-address
+  ('999999415', '0210', '26-88915', '083', '7', 'MS'), -- 15b. sentinel-99999-bogus-name-with-contact
+  ('999999416', '0210', '26-88916', '083', '7', 'MS'), -- 15c. sentinel-00000-genuine-name-and-address
+  ('999999417', '0210', '26-88917', '083', '7', 'MS'); -- 15d. non-sentinel-profcode-empty-demographics
 GO
 
 -- 2. perfect-match-ambiguous-name-resolved-by-scoring — resolves via fuzzy scoring against an

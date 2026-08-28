@@ -536,18 +536,6 @@ export function calculateDistrictDivisionScore(
 }
 
 /**
- * True when a trustee holds at least one active appointment in the case's court — anything above
- * the 0-point floor of calculateDistrictDivisionScore, named here so a caller deciding whether to
- * trust a districtDivisionScore-based candidate reads as an intent-revealing check rather than a
- * bare `> 0` magic-number comparison at the call site. Distinguishes a 50 (same court, wrong
- * division) or 100 (exact match) - both real supporting evidence - from 0 ("no evidence this
- * trustee is appointed anywhere near this case").
- */
-export function hasDistrictDivisionMatch(districtDivisionScore: number): boolean {
-  return districtDivisionScore > 0;
-}
-
-/**
  * Calculates chapter match score for a trustee.
  * Scoring:
  * - Exact chapter match, but ONLY counted against an active appointment that also covers the
@@ -1032,48 +1020,22 @@ function toUnscoredCandidates(trustees: Trustee[]): CandidateScore[] {
 
 /**
  * Searches CAMS trustees by just the first token of the DXTR trustee's lastName (see
- * firstLastNameToken's doc comment for why a first-token-only query sidesteps needing to know the
- * shape of whatever trailing noise DXTR's lastName carries), then narrows the results to those
- * with at least one active appointment in the event's court - the same courtId filter
- * TrusteeSearchUseCase applies for the UI's manual trustee-search feature, so this tier surfaces
- * the same candidate set a human reviewer would see searching by hand.
- * Deliberately returns raw, unscored candidates rather than filtering by firstName/middleName here
- * - a first-token lastName search alone is broad (a common surname can return dozens of same-
- * surname trustees), so this tier leans entirely on the caller routing the result through
- * resolveNameCollisionByScoring's existing address/phone/email/district/chapter/name scoring and
- * appointment-match gate to do the actual discrimination, exactly as it already does for a raw
- * multi-candidate name collision - duplicating any of that judgment here would risk disagreeing
- * with the scorer that actually decides the outcome.
- * Requires a lastName on the DXTR side and a courtId - there's nothing to search or filter by
- * without them.
+ * firstLastNameToken). Does not narrow results by court appointment - district/division evidence
+ * is left to the caller's resolveNameCollisionByScoring, which scores it (0/50/100, see
+ * calculateDistrictDivisionScore) rather than gating candidate discovery on it.
+ * Returns raw, unscored candidates; the caller's resolveNameCollisionByScoring performs the
+ * address/phone/email/district/chapter/name scoring and appointment-match discrimination.
+ * Requires a lastName on the DXTR side - there's nothing to search by without one.
  */
 async function findLastNameTokenMatches(
   context: ApplicationContext,
   dxtrTrustee: DxtrTrusteeParty,
-  courtId: string | undefined,
 ): Promise<Trustee[]> {
   const token = firstLastNameToken(dxtrTrustee.lastName);
-  if (!token || !courtId) return [];
+  if (!token) return [];
 
   const trusteesRepo = factory.getTrusteesRepository(context);
-  const appointmentsRepo = factory.getTrusteeAppointmentsRepository(context);
-
-  const candidates = await trusteesRepo.searchTrusteesByNameScored(token);
-  if (candidates.length === 0) return [];
-
-  const trusteeIds = candidates.map((c) => c.trusteeId);
-  const appointments = await appointmentsRepo.getAppointmentsByTrusteeIds(trusteeIds);
-
-  const appointmentsByTrustee = new Map<string, TrusteeAppointment[]>();
-  for (const appt of appointments) {
-    const list = appointmentsByTrustee.get(appt.trusteeId) ?? [];
-    list.push(appt);
-    appointmentsByTrustee.set(appt.trusteeId, list);
-  }
-
-  return candidates.filter((candidate) =>
-    (appointmentsByTrustee.get(candidate.trusteeId) ?? []).some((appt) => appt.courtId === courtId),
-  );
+  return trusteesRepo.searchTrusteesByNameScored(token);
 }
 
 /**
@@ -1090,7 +1052,6 @@ async function findLastNameTokenMatches(
 export async function matchTrusteeByName(
   context: ApplicationContext,
   dxtrTrustee: DxtrTrusteeParty,
-  courtId?: string,
 ): Promise<NameMatchResult> {
   const trusteeName = dxtrTrustee.fullName;
   const normalized = normalizeName(trusteeName);
@@ -1139,15 +1100,11 @@ export async function matchTrusteeByName(
     };
   }
 
-  // Third-pass fallback: neither the composed-name comparison nor its stricter variant found a
-  // match - search by just the first token of DXTR's lastName instead (see
-  // findLastNameTokenMatches's doc comment), narrowed to trustees with an active appointment in
-  // this event's court. This tier is NOT resolved directly here even for a single candidate - a
-  // first-token lastName search alone is much weaker evidence than a full string match, so it is
-  // surfaced as 'ambiguous' to route through resolveNameCollisionByScoring's existing
-  // address/phone/email/district/chapter/name scoring and appointment-match gate, rather than
-  // trusting a single candidate's weaker signal outright.
-  const lastNameTokenMatches = await findLastNameTokenMatches(context, dxtrTrustee, courtId);
+  // Third-pass fallback: search by just the first token of DXTR's lastName (see
+  // findLastNameTokenMatches). Always surfaced as 'ambiguous', even for a single candidate, so it
+  // routes through resolveNameCollisionByScoring's scoring and appointment-match gate rather than
+  // being trusted outright.
+  const lastNameTokenMatches = await findLastNameTokenMatches(context, dxtrTrustee);
 
   if (lastNameTokenMatches.length > 0) {
     const candidates = lastNameTokenMatches
