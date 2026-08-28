@@ -709,7 +709,6 @@ export function calculateTotalScore(scores: {
  * The case-identifying fields calculateCandidateScore needs to score district/division and
  * chapter alignment. Grouped into one object since all three are always sourced and passed
  * together (a case's court, division, and chapter are inseparable facts about the same case).
- * Use NO_CASE_CONTEXT when scoring on name/address/phone/email alone, with no case in play.
  */
 export type CaseMatchContext = {
   courtId: string;
@@ -718,17 +717,61 @@ export type CaseMatchContext = {
 };
 
 /**
- * Sentinel CaseMatchContext for callers with no case-appointment-shaped evidence at all (see
- * resolveByContactCorroboration and resolveDuplicateNameCandidates) - an empty courtId/chapter
- * makes calculateDistrictDivisionScore and calculateChapterScore both resolve to 0, which those
- * callers already ignore in favor of reading nameScore/addressScore/phoneScore/emailScore
- * directly off the result.
+ * Scores the four dimensions available with no case-appointment-shaped evidence at all: name,
+ * address, phone, email. Used by resolveByContactCorroboration and resolveDuplicateNameCandidates,
+ * neither of which has a case (courtId/courtDivisionCode/chapter) or appointments to score against
+ * - see calculateCandidateScore for the full six-dimension score once a case is in play.
+ *
+ * totalScore is a genuine weighted total over these four dimensions alone (see calculateTotalScore
+ * for the weights, redistributed since districtDivisionScore/chapterScore are never supplied) -
+ * not a placeholder. districtDivisionScore/chapterScore are 0 and appointments is empty only
+ * because CandidateScore's shape requires all six fields; callers of this function must not read
+ * those two fields as real signal.
  */
-const NO_CASE_CONTEXT: CaseMatchContext = {
-  courtId: '',
-  courtDivisionCode: '',
-  chapter: '',
-};
+function scoreOnContactFieldsOnly(
+  context: ApplicationContext,
+  sourceTrustee: DxtrTrusteeParty,
+  camsTrustee: Trustee,
+  nameScore: number,
+): CandidateScore {
+  const addressScore = calculateAddressScore(sourceTrustee.legacy, camsTrustee.public.address);
+  const phoneScore = calculatePhoneScore(sourceTrustee.legacy?.phone, camsTrustee.public.phone);
+  const emailScore = calculateEmailScore(sourceTrustee.legacy?.email, camsTrustee.public.email);
+
+  const totalScore = calculateTotalScore({
+    addressScore,
+    nameScore,
+    phoneScore,
+    emailScore,
+    districtDivisionScore: 0,
+    chapterScore: 0,
+  });
+
+  const candidateScore: CandidateScore = {
+    trusteeId: camsTrustee.trusteeId,
+    trusteeName: camsTrustee.name,
+    totalScore,
+    addressScore,
+    nameScore,
+    phoneScore,
+    emailScore,
+    districtDivisionScore: 0,
+    chapterScore: 0,
+    address: camsTrustee.public.address,
+    phone: camsTrustee.public.phone,
+    email: camsTrustee.public.email,
+    appointments: [],
+  };
+
+  context.logger.info(
+    MODULE_NAME,
+    `Scoring candidate ${camsTrustee.trusteeId} on contact fields only: ` +
+      `address=${addressScore}, name=${nameScore}, phone=${phoneScore}, email=${emailScore}, ` +
+      `total=${totalScore}`,
+  );
+
+  return candidateScore;
+}
 
 /**
  * Calculates a comprehensive candidate score for a trustee, orchestrating address, phone, email,
@@ -812,6 +855,58 @@ export type ScoringOutcome =
   | { kind: 'unresolved'; candidateScores: CandidateScore[] };
 
 /**
+ * Fetches each candidate trustee (and whatever extra per-candidate data `fetchExtra` loads
+ * alongside it, e.g. appointments) in parallel, shared by resolveNameCollisionByScoring,
+ * resolveByContactCorroboration, and resolveDuplicateNameCandidates - all three need the same
+ * "load a candidate, and if it fails for a non-transient reason carry the failure forward instead
+ * of throwing" shape. A transient infrastructure error (Cosmos RU throttling, a read/write
+ * timeout) is not evidence a candidate is unscorable — it means the caller doesn't yet know, so it
+ * rethrows to abort the whole resolution attempt rather than silently continuing with a smaller
+ * candidate set that could misclassify a transient failure as a permanent outcome. Reimplements
+ * sync-trustee-case-appointments.ts's isTransientInfraError check rather than importing it, since
+ * that module imports this one — importing back would be circular.
+ */
+async function fetchCandidateTrustees<TExtra>(
+  context: ApplicationContext,
+  candidateTrusteeIds: string[],
+  fetchExtra: (trusteeId: string) => Promise<TExtra>,
+): Promise<{ trusteeId: string; trustee: Trustee; extra: TExtra; error: null }[]> {
+  const trusteesRepo = factory.getTrusteesRepository(context);
+
+  const candidateData = await Promise.all(
+    candidateTrusteeIds.map(async (trusteeId) => {
+      try {
+        const [trustee, extra] = await Promise.all([
+          trusteesRepo.read(trusteeId),
+          fetchExtra(trusteeId),
+        ]);
+        return { trusteeId, trustee, extra, error: null };
+      } catch (error) {
+        if (isTooManyRequestsError(error) || isGatewayTimeoutError(error)) {
+          throw error;
+        }
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return { trusteeId, trustee: null, extra: null, error: errorMessage };
+      }
+    }),
+  );
+
+  const loaded: { trusteeId: string; trustee: Trustee; extra: TExtra; error: null }[] = [];
+  for (const candidate of candidateData) {
+    if (candidate.error) {
+      context.logger.warn(
+        MODULE_NAME,
+        `Skipping candidate ${candidate.trusteeId}: ${candidate.error}`,
+      );
+      continue;
+    }
+    loaded.push(candidate as { trusteeId: string; trustee: Trustee; extra: TExtra; error: null });
+  }
+
+  return loaded;
+}
+
+/**
  * Resolves a name collision (matchTrusteeByName found more than one raw candidate) by scoring
  * each candidate on address, district/division, and chapter alignment.
  * Winner criteria: score >75% AND 5+ points ahead of next candidate.
@@ -825,43 +920,13 @@ export async function resolveNameCollisionByScoring(
   event: TrusteeAppointmentSyncEvent,
   candidateTrusteeIds: string[],
 ): Promise<ScoringOutcome> {
-  // Score all candidates - fetch data in parallel to avoid N+1 queries
-  const trusteesRepo = factory.getTrusteesRepository(context);
   const appointmentsRepo = factory.getTrusteeAppointmentsRepository(context);
+  const candidates = await fetchCandidateTrustees(context, candidateTrusteeIds, (trusteeId) =>
+    appointmentsRepo.getTrusteeAppointments(trusteeId),
+  );
 
-  const candidateDataPromises = candidateTrusteeIds.map(async (trusteeId) => {
-    try {
-      const [trustee, appointments] = await Promise.all([
-        trusteesRepo.read(trusteeId),
-        appointmentsRepo.getTrusteeAppointments(trusteeId),
-      ]);
-      return { trusteeId, trustee, appointments, error: null };
-    } catch (error) {
-      // A transient infrastructure error (Cosmos RU throttling, a read/write timeout) is not
-      // evidence this candidate is unscorable — rethrow to abort the whole fuzzy-match attempt
-      // rather than silently continuing with a smaller candidate set that could misclassify a
-      // transient failure as a permanent NO_TRUSTEE_MATCH/AMBIGUOUS_MATCH_UNRESOLVED. The caller
-      // (sync-trustee-case-appointments.ts) routes this to retryableEvents. Reimplements that
-      // module's isTransientInfraError check rather than importing it, since it imports this
-      // module — importing back would be circular.
-      if (isTooManyRequestsError(error) || isGatewayTimeoutError(error)) {
-        throw error;
-      }
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      return { trusteeId, trustee: null, appointments: null, error: errorMessage };
-    }
-  });
-
-  const candidateData = await Promise.all(candidateDataPromises);
-
-  const candidateScores: CandidateScore[] = [];
-  for (const { trusteeId, trustee, appointments, error } of candidateData) {
-    if (error) {
-      context.logger.warn(MODULE_NAME, `Skipping candidate ${trusteeId}: ${error}`);
-      continue;
-    }
-
-    const score = calculateCandidateScore(
+  const candidateScores: CandidateScore[] = candidates.map(({ trustee, extra: appointments }) =>
+    calculateCandidateScore(
       context,
       event.dxtrTrustee,
       {
@@ -872,10 +937,8 @@ export async function resolveNameCollisionByScoring(
       trustee,
       appointments,
       calculateNameScore(event.dxtrTrustee, trustee),
-    );
-
-    candidateScores.push(score);
-  }
+    ),
+  );
 
   // Guard against empty results (all candidates failed to load)
   if (candidateScores.length === 0) {
@@ -966,52 +1029,29 @@ const NO_CONTRADICTION_ADDRESS_FLOOR = 30;
  *    doesn't contradict an otherwise-exact name+phone match. A candidate whose only qualifying
  *    field is null/incomparable does not corroborate.
  *
- * Does not fetch appointments and always passes districtDivisionScore/chapterScore as 0 into
- * calculateCandidateScore to satisfy its parameter shape for logging - callers must read
- * nameScore/addressScore/phoneScore/emailScore directly off the winning CandidateScore, not
- * totalScore, since it is not a real six-dimension score here.
+ * Scores candidates via scoreOnContactFieldsOnly (name/address/phone/email only, no appointments
+ * to fetch) rather than calculateCandidateScore, since there's no case here to score
+ * district/division/chapter against.
  */
 export async function resolveByContactCorroboration(
   context: ApplicationContext,
   sourceTrustee: DxtrTrusteeParty,
   candidateTrusteeIds: string[],
 ): Promise<ScoringOutcome> {
-  const trusteesRepo = factory.getTrusteesRepository(context);
+  const candidates = await fetchCandidateTrustees(
+    context,
+    candidateTrusteeIds,
+    async () => undefined,
+  );
 
-  const candidateDataPromises = candidateTrusteeIds.map(async (trusteeId) => {
-    try {
-      const trustee = await trusteesRepo.read(trusteeId);
-      return { trusteeId, trustee, error: null };
-    } catch (error) {
-      // A transient infrastructure error is not evidence this candidate is unscorable — abort
-      // the whole resolution attempt rather than silently proceeding with a smaller candidate set.
-      if (isTooManyRequestsError(error) || isGatewayTimeoutError(error)) {
-        throw error;
-      }
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      return { trusteeId, trustee: null, error: errorMessage };
-    }
-  });
-
-  const candidateData = await Promise.all(candidateDataPromises);
-
-  const candidateScores: CandidateScore[] = [];
-  for (const { trusteeId, trustee, error } of candidateData) {
-    if (error) {
-      context.logger.warn(MODULE_NAME, `Skipping candidate ${trusteeId}: ${error}`);
-      continue;
-    }
-
-    const score = calculateCandidateScore(
+  const candidateScores: CandidateScore[] = candidates.map(({ trustee }) =>
+    scoreOnContactFieldsOnly(
       context,
       sourceTrustee,
-      NO_CASE_CONTEXT,
       trustee,
-      [],
       calculateNameScore(sourceTrustee, trustee),
-    );
-    candidateScores.push(score);
-  }
+    ),
+  );
 
   if (candidateScores.length === 0) {
     context.logger.warn(
@@ -1155,43 +1195,25 @@ export async function resolveDuplicateNameCandidates(
   sourceTrustee: DxtrTrusteeParty,
   candidateTrusteeIds: string[],
 ): Promise<DuplicateResolutionOutcome> {
-  const trusteesRepo = factory.getTrusteesRepository(context);
+  const candidates = await fetchCandidateTrustees(
+    context,
+    candidateTrusteeIds,
+    async () => undefined,
+  );
 
-  const candidateDataPromises = candidateTrusteeIds.map(async (trusteeId) => {
-    try {
-      const trustee = await trusteesRepo.read(trusteeId);
-      return { trusteeId, trustee, error: null };
-    } catch (error) {
-      // A transient infrastructure error is not evidence this candidate is unscorable — abort
-      // the whole resolution attempt rather than silently proceeding with a smaller candidate set.
-      if (isTooManyRequestsError(error) || isGatewayTimeoutError(error)) {
-        throw error;
-      }
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      return { trusteeId, trustee: null, error: errorMessage };
-    }
-  });
-
-  const candidateData = await Promise.all(candidateDataPromises);
-
-  const scoredCandidates: { trustee: Trustee; score: CandidateScore }[] = [];
-  for (const { trusteeId, trustee, error } of candidateData) {
-    if (error) {
-      context.logger.warn(MODULE_NAME, `Skipping candidate ${trusteeId}: ${error}`);
-      continue;
-    }
-    // addressScore against sourceTrustee only; totalScore/nameScore are not meaningful for the
-    // same-person grouping below (see asComparableParty for the candidate-vs-candidate comparison).
-    const score = calculateCandidateScore(
-      context,
-      sourceTrustee,
-      NO_CASE_CONTEXT,
+  // addressScore against sourceTrustee only; totalScore/nameScore are not meaningful for the
+  // same-person grouping below (see asComparableParty for the candidate-vs-candidate comparison).
+  const scoredCandidates: { trustee: Trustee; score: CandidateScore }[] = candidates.map(
+    ({ trustee }) => ({
       trustee,
-      [],
-      calculateNameScore(sourceTrustee, trustee),
-    );
-    scoredCandidates.push({ trustee, score });
-  }
+      score: scoreOnContactFieldsOnly(
+        context,
+        sourceTrustee,
+        trustee,
+        calculateNameScore(sourceTrustee, trustee),
+      ),
+    }),
+  );
 
   if (scoredCandidates.length === 0) {
     context.logger.warn(

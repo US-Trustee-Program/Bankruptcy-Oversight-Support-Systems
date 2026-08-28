@@ -1670,10 +1670,18 @@ async function runIdempotencyStage(
   // Constructed directly rather than read from DXTR — TrusteeAppointmentSyncEvent needs no DXTR
   // round trip to build, and this stage's whole point (same event, reprocessed) is clearer when
   // the identical object reference is passed to processAppointments both times.
+  // firstName/lastName set (matching the seeded trustee fixture above) so this fullName-only
+  // shape doesn't trip isUnattributableBogusName's keyword filter — "Idempotency P Trustee"
+  // contains the bogus-name keyword "trustee", and without a firstName that filter would skip
+  // this event before it ever reaches matching.
   const event: TrusteeAppointmentSyncEvent = {
     caseId: IDEMPOTENCY_CASE_ID,
     courtId: COURT_ID,
-    dxtrTrustee: { fullName: IDEMPOTENCY_TRUSTEE.name },
+    dxtrTrustee: {
+      fullName: IDEMPOTENCY_TRUSTEE.name,
+      firstName: 'Idempotency',
+      lastName: 'Trustee',
+    },
     appointedDate: IDEMPOTENCY_APPOINTED_DATE,
     chapter: CHAPTER,
     courtDivisionCode: DIV,
