@@ -78,6 +78,7 @@
   ],
   "ignoreDependencies": [
     "@azure/storage-blob",
+    "@azure/storage-queue",
     "@azure/cosmos",
     "@azure/identity",
     "@azure/keyvault-secrets",
