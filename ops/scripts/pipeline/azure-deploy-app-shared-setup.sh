@@ -168,11 +168,13 @@ webappPrivateDnsZoneName='privatelink.azurewebsites.us'
 # Also hardcoded (as sqlPrivateDnsZoneName) in app-shared-setup.bicep, where
 # it's a fixed var, not a param -- can't share the literal across bash/bicep,
 # keep both in lockstep by hand. app-shared-setup.bicep's sqlDnsZone module
-# call is unconditional (not gated on useSqlPrivateLink), so every deploy of
-# this shared-setup template -- including branches that never opt into SQL
-# Private Link -- resolves this zone as `existing` when deployDns=false. If
-# this zone doesn't exist yet in the target RG, that lookup fails the
-# deployment outright, so it must be checked here alongside kv/webapp.
+# call is now gated on deployDns (create-only, no existing-lookup). When
+# deployDns=false the module is skipped, so the zone must already exist
+# (created by prior deploy, or bootstrapped by this script flipping deployDns
+# to true). This check is needed to bootstrap fresh Flexion branch RGs; it is
+# skipped for USTP since USTP does not use SQL private link. Unlike the webapp
+# zone, USTP has NO SQL private DNS zone — not created here, and not owned
+# out-of-band elsewhere.
 sqlPrivateDnsZoneName='privatelink.database.usgovcloudapi.net'
 private_dns_zone_rg="${network_rg}"
 private_dns_zone_subscription_id=""
@@ -196,7 +198,15 @@ done
 # caller passed false: main already passes true unconditionally, and
 # checking here too would just be a redundant (though harmless -- zone
 # creation is an idempotent PUT) no-op.
-if [[ "${deploy_dns}" != "true" ]]; then
+#
+# USTP gets a special case: skip the entire bootstrap self-heal block (all
+# three zone checks) because USTP owns its kv and webapp zones out-of-band and
+# must never auto-create the SQL zone (USTP uses ordinary SQL auth, no private
+# link). This is a deliberate design choice (create no zones on USTP unless
+# explicitly passed --deployDns true), not an oversight — USTP stand-ups that
+# genuinely lack a zone would pass --deployDns true explicitly rather than
+# rely on this self-heal.
+if [[ "${deploy_dns}" != "true" && "${is_ustp_deployment}" != "true" ]]; then
     zone_exists_for "${private_dns_zone_rg}" "${kvPrivateDnsZoneName}" "${private_dns_zone_subscription_id}"
     kvZoneExists="${zone_check_result}"
     zone_exists_for "${private_dns_zone_rg}" "${webappPrivateDnsZoneName}" "${private_dns_zone_subscription_id}"
