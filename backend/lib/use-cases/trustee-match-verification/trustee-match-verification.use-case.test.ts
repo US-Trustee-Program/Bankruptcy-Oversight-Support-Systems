@@ -257,7 +257,7 @@ describe('TrusteeMatchVerificationUseCase', () => {
       expect(result[0].candidateCount).toBe(0);
     });
 
-    test('computes affectedCaseCount from surrogate rows sharing the fingerprint', async () => {
+    test('computes affectedCaseCount/affectedCaseIds from surrogate rows sharing the fingerprint', async () => {
       mockGetSurrogatesByFingerprints.mockResolvedValue([
         { caseId: 'case-001', trusteeId: 'fp-abc123', isSurrogate: true },
         { caseId: 'case-002', trusteeId: 'fp-abc123', isSurrogate: true },
@@ -267,17 +267,19 @@ describe('TrusteeMatchVerificationUseCase', () => {
 
       expect(mockGetSurrogatesByFingerprints).toHaveBeenCalledWith(['fp-abc123']);
       expect(result[0].affectedCaseCount).toBe(2);
+      expect(result[0].affectedCaseIds).toEqual(['case-001', 'case-002']);
     });
 
-    test('returns affectedCaseCount of 0 when no surrogate cases remain', async () => {
+    test('returns affectedCaseCount of 0 and an empty affectedCaseIds when no surrogate cases remain', async () => {
       mockGetSurrogatesByFingerprints.mockResolvedValue([]);
 
       const result = await useCase.getVerifications(context, {});
 
       expect(result[0].affectedCaseCount).toBe(0);
+      expect(result[0].affectedCaseIds).toEqual([]);
     });
 
-    test('computes affectedCaseCount from resolvedCaseIds when present, without querying live surrogates', async () => {
+    test('computes affectedCaseCount/affectedCaseIds from resolvedCaseIds when present, without querying live surrogates', async () => {
       mockSearch.mockResolvedValue([
         {
           ...sampleVerification,
@@ -289,6 +291,7 @@ describe('TrusteeMatchVerificationUseCase', () => {
       const result = await useCase.getVerifications(context, {});
 
       expect(result[0].affectedCaseCount).toBe(3);
+      expect(result[0].affectedCaseIds).toEqual(['case-a', 'case-b', 'case-c']);
       expect(mockGetSurrogatesByFingerprints).not.toHaveBeenCalled();
     });
 

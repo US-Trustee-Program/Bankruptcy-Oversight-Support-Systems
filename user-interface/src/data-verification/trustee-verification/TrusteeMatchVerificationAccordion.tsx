@@ -415,19 +415,13 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     }
   }
 
+  // Resolved (approved) tasks render their case list and trustee name straight from the list
+  // response (order.affectedCaseIds/resolvedTrusteeName) - no detail fetch needed, so skip it
+  // even on manual expand rather than issuing a network call with no display benefit.
   async function handleExpand(_id: string) {
+    if (order.status === 'approved') return;
     await fetchDetail();
   }
-
-  // Resolved (approved) tasks show case numbers unconditionally, so their detail must be
-  // fetched eagerly rather than waiting on a manual accordion expand — otherwise a page
-  // refresh leaves the case list blank until the user re-expands.
-  useEffect(() => {
-    if (order.status === 'approved') {
-      fetchDetail();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [order.id, order.status]);
 
   const { divisionCode } = getCaseIdParts(order.caseId);
   const courtDetails = courts.find((c) => c.courtDivisionCode === divisionCode);
@@ -586,18 +580,27 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   }
 
   function getResolvedTrusteeDisplayName(): string {
-    const matchedCandidateName = enrichedOrder?.matchCandidates.find(
-      (c) => c.trusteeId === order.resolvedTrusteeId,
-    )?.trusteeName;
-    return order.resolvedTrusteeName ?? matchedCandidateName ?? order.resolvedTrusteeId ?? '';
+    return order.resolvedTrusteeName ?? order.resolvedTrusteeId ?? '';
   }
 
-  const affectedCaseIds = enrichedOrder?.affectedCaseIds?.length
-    ? enrichedOrder.affectedCaseIds
-    : [order.caseId];
-  const affectedCaseCount = enrichedOrder
-    ? enrichedOrder.affectedCaseIds.length
-    : order.affectedCaseCount;
+  // The resolved view sources affectedCaseIds straight from the list response (already the
+  // complete, snapshotted/derived array - see getVerifications), so it never needs enrichedOrder.
+  // Other view modes keep the existing lazy pre-expand/post-expand fallback unchanged.
+  const affectedCaseIds =
+    viewMode === 'resolved'
+      ? order.affectedCaseIds.length
+        ? order.affectedCaseIds
+        : [order.caseId]
+      : enrichedOrder?.affectedCaseIds?.length
+        ? enrichedOrder.affectedCaseIds
+        : [order.caseId];
+  const affectedCaseCount =
+    viewMode === 'resolved'
+      ? order.affectedCaseCount
+      : enrichedOrder
+        ? enrichedOrder.affectedCaseIds.length
+        : order.affectedCaseCount;
+  const hasFullCaseList = viewMode === 'resolved' || !!enrichedOrder;
 
   const singleCaseLink = (
     <NewTabLink
@@ -611,8 +614,8 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   const caseLink =
     affectedCaseCount > 1 ? (
       <span data-testid="affected-cases">
-        {affectedCaseCount} cases{enrichedOrder ? ':' : ''}
-        {enrichedOrder && (
+        {affectedCaseCount} cases{hasFullCaseList ? ':' : ''}
+        {hasFullCaseList && (
           <span className="affected-cases-list">
             {sortedAffectedCaseIds.map((caseId) => (
               <span key={caseId} className="affected-case-item">

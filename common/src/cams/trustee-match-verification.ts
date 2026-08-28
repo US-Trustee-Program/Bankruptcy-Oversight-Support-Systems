@@ -97,6 +97,7 @@ export type TrusteeMatchVerificationListItem = Pick<
   preselectedCandidate: TrusteeCandidate | null;
   candidateCount: number;
   affectedCaseCount: number;
+  affectedCaseIds: string[];
 };
 
 export type EnrichedTrusteeMatchVerification = TrusteeMatchVerification & {

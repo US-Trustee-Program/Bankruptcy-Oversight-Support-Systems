@@ -29,6 +29,7 @@ const sampleOrder: TrusteeMatchVerificationListItem = {
   preselectedCandidate: null,
   candidateCount: 0,
   affectedCaseCount: 1,
+  affectedCaseIds: ['081-22-11111'],
   taskDate: '2026-01-15T10:00:00.000Z',
 };
 
@@ -411,55 +412,42 @@ describe('TrusteeMatchVerificationAccordion', () => {
     });
   });
 
-  describe('eager detail fetch for resolved orders', () => {
-    test('shows case numbers for a resolved order without manually expanding the accordion', async () => {
+  describe('resolved-order case list sourced from the list response', () => {
+    test('shows case numbers for a resolved order without fetching detail', async () => {
+      const detailSpy = vi.spyOn(Api2, 'getTrusteeMatchVerificationDetail');
       const resolvedOrder: TrusteeMatchVerificationListItem = {
         ...sampleOrderWithCandidates,
         status: 'approved',
         resolvedTrusteeId: 'trustee-1',
         resolvedTrusteeName: 'Jane Smith',
         affectedCaseCount: 2,
-      };
-      const resolvedDetail: EnrichedTrusteeMatchVerification = {
-        ...sampleOrderWithCandidatesDetail,
-        status: 'approved',
         affectedCaseIds: ['081-22-11111', '081-22-22222'],
       };
-      vi.spyOn(Api2, 'getTrusteeMatchVerificationDetail').mockResolvedValue({
-        data: resolvedDetail,
-      } as never);
 
       renderWithProps({ order: resolvedOrder });
 
-      await waitFor(() => {
-        expect(screen.getByRole('link', { name: /22-11111/, hidden: true })).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: /22-22222/, hidden: true })).toBeInTheDocument();
-      });
+      expect(screen.getByRole('link', { name: /22-11111/, hidden: true })).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: /22-22222/, hidden: true })).toBeInTheDocument();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(detailSpy).not.toHaveBeenCalled();
     });
 
-    test('shows the accurate case(s) for a resolved order once the eager fetch resolves affectedCaseCount 0', async () => {
+    test('falls back to the originating case for a resolved order with no snapshot and no surviving surrogates', () => {
       const resolvedOrder: TrusteeMatchVerificationListItem = {
         ...sampleOrderWithCandidates,
         status: 'approved',
         resolvedTrusteeId: 'trustee-1',
         resolvedTrusteeName: 'Jane Smith',
         affectedCaseCount: 0,
+        affectedCaseIds: [],
       };
-      const resolvedDetail: EnrichedTrusteeMatchVerification = {
-        ...sampleOrderWithCandidatesDetail,
-        status: 'approved',
-        affectedCaseIds: ['081-22-11111', '081-22-22222'],
-      };
-      vi.spyOn(Api2, 'getTrusteeMatchVerificationDetail').mockResolvedValue({
-        data: resolvedDetail,
-      } as never);
 
       renderWithProps({ order: resolvedOrder });
 
-      await waitFor(() => {
-        const resolved = screen.getByTestId('resolved-statement');
-        expect(resolved.textContent).toContain('2 cases');
-      });
+      const resolved = screen.getByTestId('resolved-statement');
+      expect(resolved.textContent).toContain('case:');
+      const link = screen.getByRole('link', { name: /22-11111/, hidden: true });
+      expect(link).toHaveAttribute('href', `/case-detail/${resolvedOrder.caseId}`);
     });
 
     test('does not fetch detail on mount for a non-resolved order', async () => {
@@ -469,6 +457,24 @@ describe('TrusteeMatchVerificationAccordion', () => {
 
       await new Promise((resolve) => setTimeout(resolve, 0));
 
+      expect(detailSpy).not.toHaveBeenCalled();
+    });
+
+    test('does not fetch detail when a resolved order is manually expanded', async () => {
+      const detailSpy = vi.spyOn(Api2, 'getTrusteeMatchVerificationDetail');
+      const resolvedOrder: TrusteeMatchVerificationListItem = {
+        ...sampleOrderWithCandidates,
+        status: 'approved',
+        resolvedTrusteeId: 'trustee-1',
+        resolvedTrusteeName: 'Jane Smith',
+        affectedCaseCount: 2,
+        affectedCaseIds: ['081-22-11111', '081-22-22222'],
+      };
+
+      renderWithProps({ order: resolvedOrder });
+      fireEvent.click(screen.getByTestId(`accordion-button-order-list-${resolvedOrder.id}`));
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
       expect(detailSpy).not.toHaveBeenCalled();
     });
   });
@@ -1901,6 +1907,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
       const multiCaseOrder: TrusteeMatchVerificationListItem = {
         ...sampleOrder,
         affectedCaseCount: 3,
+        affectedCaseIds: ['081-22-11111', '081-22-22222', '081-22-33333'],
       };
       renderWithProps({ order: multiCaseOrder });
 
@@ -1916,6 +1923,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
       const multiCaseOrder: TrusteeMatchVerificationListItem = {
         ...sampleOrder,
         affectedCaseCount: 3,
+        affectedCaseIds: ['081-22-11111', '081-22-22222', '081-22-33333'],
       };
       const multiCaseDetail: EnrichedTrusteeMatchVerification = {
         ...sampleOrderDetail,
@@ -1935,6 +1943,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
       const multiCaseOrder: TrusteeMatchVerificationListItem = {
         ...sampleOrder,
         affectedCaseCount: 3,
+        affectedCaseIds: ['081-22-33333', '081-22-11111', '081-22-22222'],
       };
       const multiCaseDetail: EnrichedTrusteeMatchVerification = {
         ...sampleOrderDetail,
@@ -1952,6 +1961,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
       const zeroCaseOrder: TrusteeMatchVerificationListItem = {
         ...sampleOrder,
         affectedCaseCount: 0,
+        affectedCaseIds: [],
       };
       renderWithProps({ order: zeroCaseOrder });
 
@@ -1965,6 +1975,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
       const multiCaseOrder: TrusteeMatchVerificationListItem = {
         ...sampleOrder,
         affectedCaseCount: 3,
+        affectedCaseIds: ['081-22-11111', '081-22-22222', '081-22-33333'],
       };
       renderWithProps({ order: multiCaseOrder });
 
@@ -1976,6 +1987,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
       const multiCaseOrder: TrusteeMatchVerificationListItem = {
         ...sampleOrder,
         affectedCaseCount: 3,
+        affectedCaseIds: ['081-22-11111', '081-22-22222', '081-22-33333'],
       };
       const multiCaseDetail: EnrichedTrusteeMatchVerification = {
         ...sampleOrderDetail,
@@ -1997,6 +2009,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
       const multiCaseOrder: TrusteeMatchVerificationListItem = {
         ...sampleOrderWithCandidates,
         affectedCaseCount: 2,
+        affectedCaseIds: ['081-22-11111', '081-22-22222'],
       };
       const multiCaseDetail: EnrichedTrusteeMatchVerification = {
         ...sampleOrderWithCandidatesDetail,

@@ -58,16 +58,17 @@ export class TrusteeMatchVerificationUseCase {
       );
       return results.map((verification) => {
         const { matchCandidates, ...rest } = verification;
+        const affectedCaseIds =
+          verification.resolvedCaseIds ??
+          affectedCaseIdsByFingerprint.get(verification.fingerprint) ??
+          [];
         return {
           ...rest,
           courtName: this.resolveCourtName(verification, courts) ?? verification.courtName,
           candidateCount: matchCandidates.length,
           preselectedCandidate: this.resolvePreselectedCandidate(verification),
-          affectedCaseCount: (
-            verification.resolvedCaseIds ??
-            affectedCaseIdsByFingerprint.get(verification.fingerprint) ??
-            []
-          ).length,
+          affectedCaseIds,
+          affectedCaseCount: affectedCaseIds.length,
         };
       });
     } catch (originalError) {

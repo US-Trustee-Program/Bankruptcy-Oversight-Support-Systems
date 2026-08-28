@@ -62,4 +62,27 @@ describe('trustee-match-all-scenarios (CAMS-871 multi-case additions)', () => {
       expect(forThisFingerprint).toHaveLength(0);
     }
   });
+
+  test('already-approved multi-case mismatch has a populated resolvedCaseIds snapshot and no surviving surrogate rows', async () => {
+    const ops = await generate(context());
+    const verification = findVerification(ops, 'seed-match-resolved-with-snapshot-091-99-86706');
+
+    expect(verification).toBeDefined();
+    expect(verification?.status).toBe('approved');
+    expect(verification?.resolvedTrusteeId).toBeTruthy();
+    expect(verification?.resolvedTrusteeName).toBeTruthy();
+    expect([...((verification?.resolvedCaseIds as string[] | undefined) ?? [])].sort()).toEqual([
+      '091-99-86706',
+      '091-99-98483',
+      '091-99-99943',
+    ]);
+
+    for (const table of ['case-trustee-appointments', 'trustee-case-appointments']) {
+      const surrogates = surrogatesFor(ops, table);
+      const forThisFingerprint = surrogates.filter(
+        (s) => s.trusteeId === verification?.fingerprint,
+      );
+      expect(forThisFingerprint).toHaveLength(0);
+    }
+  });
 });

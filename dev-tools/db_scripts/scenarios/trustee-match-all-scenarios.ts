@@ -29,14 +29,18 @@
  *     - Inactive trustee + removed appointment
  *     - Inactive trustee + deceased appointment
  *
- *   - Multi-case scenarios. affectedCaseCount/affectedCaseIds are never stored on the
- *     verification document - they're derived live by querying trustee-case-appointments for
- *     surrogate CASE_APPOINTMENT rows sharing the mismatch's fingerprint (see
- *     getAffectedCaseIdsByFingerprint in trustee-match-verification.use-case.ts):
+ *   - Multi-case scenarios. For a pending mismatch, affectedCaseCount/affectedCaseIds are
+ *     derived live by querying trustee-case-appointments for surrogate CASE_APPOINTMENT rows
+ *     sharing the mismatch's fingerprint (see getAffectedCaseIdsByFingerprint in
+ *     trustee-match-verification.use-case.ts); once approved, they come from the resolvedCaseIds
+ *     snapshot taken at approval time instead, since the remap deletes the surrogates:
  *     5. Pending, 3 affected cases, one match candidate.
- *     6. Already approved, with NO surviving surrogate rows - simulates the state after
- *        trustee-verification-remap.ts has deleted every surrogate for a resolved fingerprint,
- *        leaving no durable record of which cases it affected.
+ *     6. Already approved, with NO resolvedCaseIds snapshot and NO surviving surrogate rows -
+ *        simulates the state after trustee-verification-remap.ts has deleted every surrogate for
+ *        a resolved fingerprint approved before the resolvedCaseIds snapshot existed, leaving no
+ *        durable record of which cases it affected.
+ *     7. Already approved, WITH a populated resolvedCaseIds snapshot (3 cases) - the normal
+ *        post-fix state for an approved multi-case mismatch.
  *
  * NOTE: Uses existing DXTR cases - no DXTR seeding required.
  */
@@ -124,6 +128,11 @@ const DXTR_RESOLVED_NO_SURROGATES = {
   firstName: 'Riley',
   lastName: 'Resolvedmatch',
   fullName: 'Riley Resolvedmatch',
+};
+const DXTR_RESOLVED_WITH_SNAPSHOT = {
+  firstName: 'Drew',
+  lastName: 'Snapshotmatch',
+  fullName: 'Drew Snapshotmatch',
 };
 
 export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
@@ -1087,6 +1096,36 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           matchCandidates: [],
           resolvedTrusteeId: 'seed-trustee-match-highconf',
           resolvedTrusteeName: 'Alex Highconfidence',
+          updatedOn: '2025-06-01T00:00:00.000Z',
+          updatedBy: SEEDER,
+        },
+      ],
+    },
+
+    // Already-approved multi-case mismatch WITH a populated resolvedCaseIds snapshot: the
+    // normal post-fix state (see the doc comment on TrusteeMatchVerification.resolvedCaseIds in
+    // common/src/cams/trustee-match-verification.ts). No surrogate rows are seeded for this
+    // fingerprint - approval's remap would have deleted them, so the snapshot (not a live
+    // surrogate query) is the only source for this document's affected cases.
+    {
+      db: 'cams',
+      collectionOrTable: 'trustee-match-verification',
+      data: [
+        {
+          id: `seed-match-resolved-with-snapshot-${CASE_MULTI_A}`,
+          documentType: 'TRUSTEE_MATCH_VERIFICATION',
+          taskType: 'trustee-match',
+          caseId: CASE_MULTI_A,
+          courtId: '0208',
+          status: 'approved',
+          taskDate: '2018-06-01T00:00:00.000Z',
+          mismatchReason: 'IMPERFECT_MATCH',
+          fingerprint: computeFingerprint(DXTR_RESOLVED_WITH_SNAPSHOT),
+          dxtrTrustee: DXTR_RESOLVED_WITH_SNAPSHOT,
+          matchCandidates: [],
+          resolvedTrusteeId: 'seed-trustee-match-highconf',
+          resolvedTrusteeName: 'Alex Highconfidence',
+          resolvedCaseIds: [CASE_MULTI_A, CASE_MULTI_B, CASE_MULTI_C],
           updatedOn: '2025-06-01T00:00:00.000Z',
           updatedBy: SEEDER,
         },
