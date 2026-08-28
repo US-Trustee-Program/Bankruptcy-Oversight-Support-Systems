@@ -287,6 +287,8 @@ describe('SyncAcmsProfessionalIds', () => {
       const matchSpy = vi
         .spyOn(trusteeMatchHelpers, 'matchTrusteeByName')
         .mockResolvedValue({ kind: 'no-match' });
+      vi.spyOn(trusteeMatchHelpers, 'findTokenIntersectionCandidates').mockResolvedValue([]);
+      vi.spyOn(trusteeMatchHelpers, 'findAnchoredLevenshteinCandidates').mockResolvedValue([]);
 
       await SyncAcmsProfessionalIds.processNameMatch(deps, record);
 
@@ -297,6 +299,8 @@ describe('SyncAcmsProfessionalIds', () => {
       const matchSpy = vi
         .spyOn(trusteeMatchHelpers, 'matchTrusteeByName')
         .mockResolvedValue({ kind: 'no-match' });
+      vi.spyOn(trusteeMatchHelpers, 'findTokenIntersectionCandidates').mockResolvedValue([]);
+      vi.spyOn(trusteeMatchHelpers, 'findAnchoredLevenshteinCandidates').mockResolvedValue([]);
 
       await SyncAcmsProfessionalIds.processNameMatch(deps, {
         ...record,
@@ -318,6 +322,8 @@ describe('SyncAcmsProfessionalIds', () => {
       const matchSpy = vi
         .spyOn(trusteeMatchHelpers, 'matchTrusteeByName')
         .mockResolvedValue({ kind: 'no-match' });
+      vi.spyOn(trusteeMatchHelpers, 'findTokenIntersectionCandidates').mockResolvedValue([]);
+      vi.spyOn(trusteeMatchHelpers, 'findAnchoredLevenshteinCandidates').mockResolvedValue([]);
 
       await SyncAcmsProfessionalIds.processNameMatch(deps, {
         ...record,
@@ -336,6 +342,8 @@ describe('SyncAcmsProfessionalIds', () => {
       const matchSpy = vi
         .spyOn(trusteeMatchHelpers, 'matchTrusteeByName')
         .mockResolvedValue({ kind: 'no-match' });
+      vi.spyOn(trusteeMatchHelpers, 'findTokenIntersectionCandidates').mockResolvedValue([]);
+      vi.spyOn(trusteeMatchHelpers, 'findAnchoredLevenshteinCandidates').mockResolvedValue([]);
 
       await SyncAcmsProfessionalIds.processNameMatch(deps, {
         ...record,
@@ -353,6 +361,8 @@ describe('SyncAcmsProfessionalIds', () => {
       const matchSpy = vi
         .spyOn(trusteeMatchHelpers, 'matchTrusteeByName')
         .mockResolvedValue({ kind: 'no-match' });
+      vi.spyOn(trusteeMatchHelpers, 'findTokenIntersectionCandidates').mockResolvedValue([]);
+      vi.spyOn(trusteeMatchHelpers, 'findAnchoredLevenshteinCandidates').mockResolvedValue([]);
 
       await SyncAcmsProfessionalIds.processNameMatch(deps, {
         ...record,
@@ -370,6 +380,8 @@ describe('SyncAcmsProfessionalIds', () => {
       const matchSpy = vi
         .spyOn(trusteeMatchHelpers, 'matchTrusteeByName')
         .mockResolvedValue({ kind: 'no-match' });
+      vi.spyOn(trusteeMatchHelpers, 'findTokenIntersectionCandidates').mockResolvedValue([]);
+      vi.spyOn(trusteeMatchHelpers, 'findAnchoredLevenshteinCandidates').mockResolvedValue([]);
 
       await SyncAcmsProfessionalIds.processNameMatch(deps, {
         ...record,
@@ -384,24 +396,340 @@ describe('SyncAcmsProfessionalIds', () => {
       );
     });
 
-    test('should return no-match when matchTrusteeByName finds no candidates', async () => {
+    test('should return no-match when matchTrusteeByName finds no candidates and token intersection also finds nothing', async () => {
       vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({ kind: 'no-match' });
+      vi.spyOn(trusteeMatchHelpers, 'findTokenIntersectionCandidates').mockResolvedValue([]);
+      vi.spyOn(trusteeMatchHelpers, 'findAnchoredLevenshteinCandidates').mockResolvedValue([]);
 
       const result = await SyncAcmsProfessionalIds.processNameMatch(deps, record);
 
       expect(result).toEqual({ kind: 'no-match' });
     });
 
-    test('should return ambiguous with the unscored candidates when matchTrusteeByName finds a collision', async () => {
+    test('should call findTokenIntersectionCandidates only when matchTrusteeByName returns no-match', async () => {
+      vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({ kind: 'no-match' });
+      const tokenIntersectionSpy = vi
+        .spyOn(trusteeMatchHelpers, 'findTokenIntersectionCandidates')
+        .mockResolvedValue([]);
+      vi.spyOn(trusteeMatchHelpers, 'findAnchoredLevenshteinCandidates').mockResolvedValue([]);
+
+      await SyncAcmsProfessionalIds.processNameMatch(deps, record);
+
+      expect(tokenIntersectionSpy).toHaveBeenCalledWith(deps.context, expect.anything());
+    });
+
+    test('should NOT call findTokenIntersectionCandidates when matchTrusteeByName resolves or is ambiguous', async () => {
+      const tokenIntersectionSpy = vi.spyOn(trusteeMatchHelpers, 'findTokenIntersectionCandidates');
+
+      vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({
+        kind: 'resolved',
+        trusteeId: 'trustee-1',
+        nameScore: 100,
+        nameMatchQuality: 'exact',
+      });
+      await SyncAcmsProfessionalIds.processNameMatch(deps, record);
+      expect(tokenIntersectionSpy).not.toHaveBeenCalled();
+
       const matchCandidates = [{ trusteeId: 't1', trusteeName: 'John Smith' }] as never;
       vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({
         kind: 'ambiguous',
         matchCandidates,
       });
+      vi.spyOn(trusteeMatchHelpers, 'resolveByContactCorroboration').mockResolvedValue({
+        kind: 'unresolved',
+        candidateScores: matchCandidates,
+      });
+      vi.spyOn(trusteeMatchHelpers, 'resolveDuplicateNameCandidates').mockResolvedValue({
+        kind: 'unresolved',
+        candidateScores: matchCandidates,
+      });
+      await SyncAcmsProfessionalIds.processNameMatch(deps, record);
+      expect(tokenIntersectionSpy).not.toHaveBeenCalled();
+    });
+
+    test('should return auto-linked when token intersection finds a single candidate resolved by contact corroboration', async () => {
+      vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({ kind: 'no-match' });
+      vi.spyOn(trusteeMatchHelpers, 'findTokenIntersectionCandidates').mockResolvedValue([
+        { trusteeId: 't1', name: 'William Wheeler Bryan' } as never,
+      ]);
+      vi.spyOn(trusteeMatchHelpers, 'resolveByContactCorroboration').mockResolvedValue({
+        kind: 'resolved',
+        trusteeId: 't1',
+        candidateScores: [],
+      });
+
+      const result = await SyncAcmsProfessionalIds.processNameMatch(deps, record);
+
+      expect(result).toEqual({ kind: 'auto-linked', trusteeId: 't1' });
+    });
+
+    test('should call resolveByContactCorroboration with the token-intersection candidate trusteeIds', async () => {
+      vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({ kind: 'no-match' });
+      vi.spyOn(trusteeMatchHelpers, 'findTokenIntersectionCandidates').mockResolvedValue([
+        { trusteeId: 't1', name: 'William Wheeler Bryan' } as never,
+      ]);
+      const corroborationSpy = vi
+        .spyOn(trusteeMatchHelpers, 'resolveByContactCorroboration')
+        .mockResolvedValue({ kind: 'unresolved', candidateScores: [] });
+      vi.spyOn(trusteeMatchHelpers, 'resolveDuplicateNameCandidates').mockResolvedValue({
+        kind: 'unresolved',
+        candidateScores: [],
+      });
+      vi.spyOn(trusteeMatchHelpers, 'findAnchoredLevenshteinCandidates').mockResolvedValue([]);
+
+      await SyncAcmsProfessionalIds.processNameMatch(deps, record);
+
+      expect(corroborationSpy).toHaveBeenCalledWith(deps.context, expect.anything(), ['t1']);
+    });
+
+    test('should return auto-linked when token intersection finds multiple candidates resolved as a likely duplicate', async () => {
+      vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({ kind: 'no-match' });
+      vi.spyOn(trusteeMatchHelpers, 'findTokenIntersectionCandidates').mockResolvedValue([
+        { trusteeId: 't1', name: 'Arthur Clay Cox' } as never,
+        { trusteeId: 't2', name: 'A. Clay Cox' } as never,
+      ]);
+      vi.spyOn(trusteeMatchHelpers, 'resolveByContactCorroboration').mockResolvedValue({
+        kind: 'unresolved',
+        candidateScores: [],
+      });
+      vi.spyOn(trusteeMatchHelpers, 'resolveDuplicateNameCandidates').mockResolvedValue({
+        kind: 'resolved-duplicate',
+        trusteeId: 't1',
+        candidateScores: [],
+      });
+
+      const result = await SyncAcmsProfessionalIds.processNameMatch(deps, record);
+
+      expect(result).toEqual({ kind: 'auto-linked', trusteeId: 't1' });
+    });
+
+    test('should return no-match when token intersection finds candidates but neither resolver resolves them, and anchored-Levenshtein also finds nothing', async () => {
+      vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({ kind: 'no-match' });
+      vi.spyOn(trusteeMatchHelpers, 'findTokenIntersectionCandidates').mockResolvedValue([
+        { trusteeId: 't1', name: 'Richard A. Davis' } as never,
+        { trusteeId: 't2', name: 'Richard S. Davis' } as never,
+      ]);
+      vi.spyOn(trusteeMatchHelpers, 'resolveByContactCorroboration').mockResolvedValue({
+        kind: 'unresolved',
+        candidateScores: [],
+      });
+      vi.spyOn(trusteeMatchHelpers, 'resolveDuplicateNameCandidates').mockResolvedValue({
+        kind: 'unresolved',
+        candidateScores: [],
+      });
+      vi.spyOn(trusteeMatchHelpers, 'findAnchoredLevenshteinCandidates').mockResolvedValue([]);
+
+      const result = await SyncAcmsProfessionalIds.processNameMatch(deps, record);
+
+      expect(result).toEqual({ kind: 'no-match' });
+    });
+
+    test('should NOT call the corroboration resolvers when token intersection finds no candidates', async () => {
+      vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({ kind: 'no-match' });
+      vi.spyOn(trusteeMatchHelpers, 'findTokenIntersectionCandidates').mockResolvedValue([]);
+      vi.spyOn(trusteeMatchHelpers, 'findAnchoredLevenshteinCandidates').mockResolvedValue([]);
+      const corroborationSpy = vi.spyOn(trusteeMatchHelpers, 'resolveByContactCorroboration');
+      const duplicateSpy = vi.spyOn(trusteeMatchHelpers, 'resolveDuplicateNameCandidates');
+
+      await SyncAcmsProfessionalIds.processNameMatch(deps, record);
+
+      expect(corroborationSpy).not.toHaveBeenCalled();
+      expect(duplicateSpy).not.toHaveBeenCalled();
+    });
+
+    test('should NOT call findAnchoredLevenshteinCandidates when token intersection already resolves', async () => {
+      vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({ kind: 'no-match' });
+      vi.spyOn(trusteeMatchHelpers, 'findTokenIntersectionCandidates').mockResolvedValue([
+        { trusteeId: 't1', name: 'William Wheeler Bryan' } as never,
+      ]);
+      vi.spyOn(trusteeMatchHelpers, 'resolveByContactCorroboration').mockResolvedValue({
+        kind: 'resolved',
+        trusteeId: 't1',
+        candidateScores: [],
+      });
+      const anchoredLevenshteinSpy = vi.spyOn(
+        trusteeMatchHelpers,
+        'findAnchoredLevenshteinCandidates',
+      );
+
+      await SyncAcmsProfessionalIds.processNameMatch(deps, record);
+
+      expect(anchoredLevenshteinSpy).not.toHaveBeenCalled();
+    });
+
+    test('should call findAnchoredLevenshteinCandidates when token intersection finds nothing resolvable', async () => {
+      vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({ kind: 'no-match' });
+      vi.spyOn(trusteeMatchHelpers, 'findTokenIntersectionCandidates').mockResolvedValue([]);
+      const anchoredLevenshteinSpy = vi
+        .spyOn(trusteeMatchHelpers, 'findAnchoredLevenshteinCandidates')
+        .mockResolvedValue([]);
+
+      await SyncAcmsProfessionalIds.processNameMatch(deps, record);
+
+      expect(anchoredLevenshteinSpy).toHaveBeenCalledWith(deps.context, expect.anything());
+    });
+
+    test('should return auto-linked when anchored-Levenshtein finds a single candidate resolved by contact corroboration', async () => {
+      vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({ kind: 'no-match' });
+      vi.spyOn(trusteeMatchHelpers, 'findTokenIntersectionCandidates').mockResolvedValue([]);
+      vi.spyOn(trusteeMatchHelpers, 'findAnchoredLevenshteinCandidates').mockResolvedValue([
+        { trusteeId: 't1', name: 'Kathlyn Selleck' } as never,
+      ]);
+      vi.spyOn(trusteeMatchHelpers, 'resolveByContactCorroboration').mockResolvedValue({
+        kind: 'resolved',
+        trusteeId: 't1',
+        candidateScores: [],
+      });
+
+      const result = await SyncAcmsProfessionalIds.processNameMatch(deps, record);
+
+      expect(result).toEqual({ kind: 'auto-linked', trusteeId: 't1' });
+    });
+
+    test('should call resolveByContactCorroboration with the anchored-Levenshtein candidate trusteeIds', async () => {
+      vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({ kind: 'no-match' });
+      vi.spyOn(trusteeMatchHelpers, 'findTokenIntersectionCandidates').mockResolvedValue([]);
+      vi.spyOn(trusteeMatchHelpers, 'findAnchoredLevenshteinCandidates').mockResolvedValue([
+        { trusteeId: 't1', name: 'Kathlyn Selleck' } as never,
+      ]);
+      const corroborationSpy = vi
+        .spyOn(trusteeMatchHelpers, 'resolveByContactCorroboration')
+        .mockResolvedValue({ kind: 'unresolved', candidateScores: [] });
+      vi.spyOn(trusteeMatchHelpers, 'resolveDuplicateNameCandidates').mockResolvedValue({
+        kind: 'unresolved',
+        candidateScores: [],
+      });
+
+      await SyncAcmsProfessionalIds.processNameMatch(deps, record);
+
+      expect(corroborationSpy).toHaveBeenCalledWith(deps.context, expect.anything(), ['t1']);
+    });
+
+    test('should return no-match when anchored-Levenshtein finds a candidate but corroboration does not resolve it', async () => {
+      vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({ kind: 'no-match' });
+      vi.spyOn(trusteeMatchHelpers, 'findTokenIntersectionCandidates').mockResolvedValue([]);
+      vi.spyOn(trusteeMatchHelpers, 'findAnchoredLevenshteinCandidates').mockResolvedValue([
+        { trusteeId: 't1', name: 'Stephen E. Leach' } as never,
+      ]);
+      vi.spyOn(trusteeMatchHelpers, 'resolveByContactCorroboration').mockResolvedValue({
+        kind: 'unresolved',
+        candidateScores: [],
+      });
+      vi.spyOn(trusteeMatchHelpers, 'resolveDuplicateNameCandidates').mockResolvedValue({
+        kind: 'unresolved',
+        candidateScores: [],
+      });
+
+      const result = await SyncAcmsProfessionalIds.processNameMatch(deps, record);
+
+      expect(result).toEqual({ kind: 'no-match' });
+    });
+
+    test('should return ambiguous with the unscored candidates when neither contact corroboration nor duplicate-name resolution resolve it', async () => {
+      const matchCandidates = [{ trusteeId: 't1', trusteeName: 'John Smith' }] as never;
+      vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({
+        kind: 'ambiguous',
+        matchCandidates,
+      });
+      vi.spyOn(trusteeMatchHelpers, 'resolveByContactCorroboration').mockResolvedValue({
+        kind: 'unresolved',
+        candidateScores: matchCandidates,
+      });
+      vi.spyOn(trusteeMatchHelpers, 'resolveDuplicateNameCandidates').mockResolvedValue({
+        kind: 'unresolved',
+        candidateScores: matchCandidates,
+      });
 
       const result = await SyncAcmsProfessionalIds.processNameMatch(deps, record);
 
       expect(result).toEqual({ kind: 'ambiguous', matchCandidates });
+    });
+
+    test('should call resolveByContactCorroboration with the ambiguous candidate trusteeIds', async () => {
+      const matchCandidates = [
+        { trusteeId: 't1', trusteeName: 'John Smith' },
+        { trusteeId: 't2', trusteeName: 'Jon Smith' },
+      ] as never;
+      vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({
+        kind: 'ambiguous',
+        matchCandidates,
+      });
+      const corroborationSpy = vi
+        .spyOn(trusteeMatchHelpers, 'resolveByContactCorroboration')
+        .mockResolvedValue({ kind: 'unresolved', candidateScores: matchCandidates });
+      vi.spyOn(trusteeMatchHelpers, 'resolveDuplicateNameCandidates').mockResolvedValue({
+        kind: 'unresolved',
+        candidateScores: matchCandidates,
+      });
+
+      await SyncAcmsProfessionalIds.processNameMatch(deps, record);
+
+      expect(corroborationSpy).toHaveBeenCalledWith(deps.context, expect.anything(), ['t1', 't2']);
+    });
+
+    test('should return auto-linked when contact corroboration resolves an ambiguous match', async () => {
+      const matchCandidates = [{ trusteeId: 't1', trusteeName: 'John Smith' }] as never;
+      vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({
+        kind: 'ambiguous',
+        matchCandidates,
+      });
+      vi.spyOn(trusteeMatchHelpers, 'resolveByContactCorroboration').mockResolvedValue({
+        kind: 'resolved',
+        trusteeId: 't1',
+        candidateScores: matchCandidates,
+      });
+      const duplicateSpy = vi.spyOn(trusteeMatchHelpers, 'resolveDuplicateNameCandidates');
+
+      const result = await SyncAcmsProfessionalIds.processNameMatch(deps, record);
+
+      expect(result).toEqual({ kind: 'auto-linked', trusteeId: 't1' });
+      expect(duplicateSpy).not.toHaveBeenCalled();
+    });
+
+    test('should call resolveDuplicateNameCandidates when contact corroboration does not resolve an ambiguous match', async () => {
+      const matchCandidates = [
+        { trusteeId: 't1', trusteeName: 'Roy J. Cohen' },
+        { trusteeId: 't2', trusteeName: 'R. Cohen' },
+      ] as never;
+      vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({
+        kind: 'ambiguous',
+        matchCandidates,
+      });
+      vi.spyOn(trusteeMatchHelpers, 'resolveByContactCorroboration').mockResolvedValue({
+        kind: 'unresolved',
+        candidateScores: matchCandidates,
+      });
+      const duplicateSpy = vi
+        .spyOn(trusteeMatchHelpers, 'resolveDuplicateNameCandidates')
+        .mockResolvedValue({ kind: 'unresolved', candidateScores: matchCandidates });
+
+      await SyncAcmsProfessionalIds.processNameMatch(deps, record);
+
+      expect(duplicateSpy).toHaveBeenCalledWith(deps.context, expect.anything(), ['t1', 't2']);
+    });
+
+    test('should return auto-linked when resolveDuplicateNameCandidates resolves a likely duplicate', async () => {
+      const matchCandidates = [
+        { trusteeId: 't1', trusteeName: 'Roy J. Cohen' },
+        { trusteeId: 't2', trusteeName: 'R. Cohen' },
+      ] as never;
+      vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({
+        kind: 'ambiguous',
+        matchCandidates,
+      });
+      vi.spyOn(trusteeMatchHelpers, 'resolveByContactCorroboration').mockResolvedValue({
+        kind: 'unresolved',
+        candidateScores: matchCandidates,
+      });
+      vi.spyOn(trusteeMatchHelpers, 'resolveDuplicateNameCandidates').mockResolvedValue({
+        kind: 'resolved-duplicate',
+        trusteeId: 't1',
+        candidateScores: matchCandidates,
+      });
+
+      const result = await SyncAcmsProfessionalIds.processNameMatch(deps, record);
+
+      expect(result).toEqual({ kind: 'auto-linked', trusteeId: 't1' });
     });
 
     test('should return auto-linked on a resolved name match', async () => {
@@ -488,11 +816,51 @@ describe('SyncAcmsProfessionalIds', () => {
       expect(outcome).toEqual({ kind: 'auto-linked', via: 'fingerprint' });
     });
 
+    test('should write a conflict errored record, bypassing the active-appointment gate, when a fingerprint hit resolves to a trustee already linked to this ACMS ID', async () => {
+      const matchingVariant: TrusteeVariation = {
+        id: 'v1',
+        documentType: 'TRUSTEE_VARIATION',
+        fingerprint: 'irrelevant',
+        variant: buildAcmsVariant(record),
+        trusteeId: 'trustee-1',
+        createdOn: '2025-01-01T00:00:00.000Z',
+        createdBy: { id: 'SYSTEM', name: 'SYSTEM' },
+        updatedOn: '2025-01-01T00:00:00.000Z',
+        updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
+      };
+      vi.spyOn(deps.variationRepo, 'findByFingerprint').mockResolvedValue([matchingVariant]);
+      vi.spyOn(deps.professionalIdsRepo, 'findByAcmsProfessionalId').mockResolvedValue([
+        linkedProfessionalId({ camsTrusteeId: 'trustee-existing' }),
+      ]);
+      const nameMatchSpy = vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName');
+      const gateSpy = vi.spyOn(deps.acmsGateway, 'getActiveAppointmentsForProfessional');
+      const createSpy = vi.spyOn(deps.professionalIdsRepo, 'createProfessionalId');
+      const createErroredSpy = vi
+        .spyOn(deps.professionalIdsRepo, 'createErroredProfessionalId')
+        .mockResolvedValue(linkedProfessionalId());
+
+      const outcome = await SyncAcmsProfessionalIds.processOneRecord(deps, record);
+
+      expect(nameMatchSpy).not.toHaveBeenCalled();
+      expect(gateSpy).not.toHaveBeenCalled();
+      expect(createSpy).not.toHaveBeenCalled();
+      expect(createErroredSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        'NY-00063',
+        expect.any(String),
+        { disposition: 'conflict', trustees: ['trustee-existing', 'trustee-1'] },
+        expect.objectContaining({ id: 'ACMS' }),
+      );
+      expect(outcome).toEqual({ kind: 'conflict', via: 'fingerprint' });
+    });
+
     test('should fall through to name matching on a fingerprint miss', async () => {
       vi.spyOn(deps.variationRepo, 'findByFingerprint').mockResolvedValue([]);
       const nameMatchSpy = vi
         .spyOn(trusteeMatchHelpers, 'matchTrusteeByName')
         .mockResolvedValue({ kind: 'no-match' });
+      vi.spyOn(trusteeMatchHelpers, 'findTokenIntersectionCandidates').mockResolvedValue([]);
+      vi.spyOn(trusteeMatchHelpers, 'findAnchoredLevenshteinCandidates').mockResolvedValue([]);
       vi.spyOn(deps.acmsGateway, 'getActiveAppointmentsForProfessional').mockResolvedValue([]);
 
       await SyncAcmsProfessionalIds.processOneRecord(deps, record);
@@ -503,6 +871,8 @@ describe('SyncAcmsProfessionalIds', () => {
     test('should apply the active-appointment gate and skip writing when both fingerprint and name matching fail with zero active appointments', async () => {
       vi.spyOn(deps.variationRepo, 'findByFingerprint').mockResolvedValue([]);
       vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({ kind: 'no-match' });
+      vi.spyOn(trusteeMatchHelpers, 'findTokenIntersectionCandidates').mockResolvedValue([]);
+      vi.spyOn(trusteeMatchHelpers, 'findAnchoredLevenshteinCandidates').mockResolvedValue([]);
       const gateSpy = vi
         .spyOn(deps.acmsGateway, 'getActiveAppointmentsForProfessional')
         .mockResolvedValue([]);
@@ -519,6 +889,8 @@ describe('SyncAcmsProfessionalIds', () => {
       const activeAppointments: AcmsActiveAppointment[] = [{ division: '081', chapter: '7' }];
       vi.spyOn(deps.variationRepo, 'findByFingerprint').mockResolvedValue([]);
       vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({ kind: 'no-match' });
+      vi.spyOn(trusteeMatchHelpers, 'findTokenIntersectionCandidates').mockResolvedValue([]);
+      vi.spyOn(trusteeMatchHelpers, 'findAnchoredLevenshteinCandidates').mockResolvedValue([]);
       vi.spyOn(deps.acmsGateway, 'getActiveAppointmentsForProfessional').mockResolvedValue(
         activeAppointments,
       );
