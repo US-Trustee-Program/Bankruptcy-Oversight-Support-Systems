@@ -12,6 +12,18 @@ $input-max-width: 20.75rem;
     margin-top: 1.5rem;
   }
 
+  // The gap from the heading to the first field is smaller (16px) than the
+  // 24px gap between subsequent fields. These selectors target whichever
+  // field kind happens to render first across the chapter variants.
+  h3 + .usa-form-group,
+  h3 + .exam-audit-group {
+    margin-top: 1rem;
+  }
+
+  h3 + div .review-period-header {
+    margin-top: 1rem;
+  }
+
   .month-day-selector {
     max-width: calc($input-max-width / 2 - 16px);
   }
