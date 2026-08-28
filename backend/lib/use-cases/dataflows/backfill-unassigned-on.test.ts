@@ -1,0 +1,430 @@
+import { describe, test, expect, vi, beforeAll, afterEach } from 'vitest';
+import { ApplicationContext } from '../../adapters/types/basic';
+import { createMockApplicationContext } from '../../testing/testing-utilities';
+import BackfillUnassignedOnUseCase from './backfill-unassigned-on';
+import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
+import { CaseAppointment } from '@common/cams/trustee-appointments';
+
+function makeCaseAppointment(override: Partial<CaseAppointment> = {}): CaseAppointment {
+  return {
+    id: 'appt-id-1',
+    caseId: '081-25-12345',
+    trusteeId: 'trustee-001',
+    assignedOn: '2025-01-01',
+    unassignedOn: '2025-06-15',
+    createdOn: '2025-01-01T00:00:00.000Z',
+    createdBy: { id: 'user-1', name: 'Test User' },
+    updatedOn: '2025-01-01T00:00:00.000Z',
+    updatedBy: { id: 'user-1', name: 'Test User' },
+    ...override,
+  };
+}
+
+describe('BackfillUnassignedOnUseCase', () => {
+  let context: ApplicationContext;
+
+  beforeAll(async () => {
+    context = await createMockApplicationContext();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  describe('getPageNeedingBackfill', () => {
+    test('should return a page of closed appointments needing backfill', async () => {
+      const mockAppointment = { ...makeCaseAppointment(), _id: 'appt-id-1' };
+
+      vi.spyOn(MockMongoRepository.prototype, 'findClosedAppointments').mockResolvedValue([
+        mockAppointment,
+      ]);
+
+      const result = await BackfillUnassignedOnUseCase.getPageNeedingBackfill(context, null, 100);
+
+      expect(result.error).toBeUndefined();
+      expect(result.data).toBeDefined();
+      expect(result.data?.appointments.length).toBe(1);
+      expect(result.data?.appointments[0]._id).toBe('appt-id-1');
+      expect(result.data?.hasMore).toBe(false);
+      expect(result.data?.lastId).toBe('appt-id-1');
+    });
+
+    test('should detect hasMore when results exceed limit', async () => {
+      const appt1 = { ...makeCaseAppointment(), _id: 'appt-id-1' };
+      const appt2 = { ...makeCaseAppointment(), _id: 'appt-id-2' };
+
+      vi.spyOn(MockMongoRepository.prototype, 'findClosedAppointments').mockResolvedValue([
+        appt1,
+        appt2,
+      ]);
+
+      const result = await BackfillUnassignedOnUseCase.getPageNeedingBackfill(context, null, 1);
+
+      expect(result.data?.appointments.length).toBe(1);
+      expect(result.data?.hasMore).toBe(true);
+      expect(result.data?.lastId).toBe('appt-id-1');
+    });
+
+    test('should return empty result when no closed appointments found', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findClosedAppointments').mockResolvedValue([]);
+
+      const result = await BackfillUnassignedOnUseCase.getPageNeedingBackfill(
+        context,
+        'some-cursor',
+        100,
+      );
+
+      expect(result.error).toBeUndefined();
+      expect(result.data?.appointments.length).toBe(0);
+      expect(result.data?.hasMore).toBe(false);
+      expect(result.data?.lastId).toBeNull();
+    });
+
+    test('should return error when repo call fails', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findClosedAppointments').mockRejectedValue(
+        new Error('Database error'),
+      );
+
+      const result = await BackfillUnassignedOnUseCase.getPageNeedingBackfill(context, null, 100);
+
+      expect(result.error).toBeDefined();
+      expect(result.data).toBeUndefined();
+    });
+  });
+
+  describe('findSupersedingAppointment', () => {
+    test('returns the appointment whose assignedOn is the earliest one strictly after the closed appointment', () => {
+      const closed = makeCaseAppointment({
+        id: 'old',
+        trusteeId: 'trustee-A',
+        assignedOn: '2025-01-01',
+      });
+      const superseding = makeCaseAppointment({
+        id: 'new',
+        trusteeId: 'trustee-B',
+        assignedOn: '2025-01-15',
+      });
+      const laterStill = makeCaseAppointment({
+        id: 'newer',
+        trusteeId: 'trustee-C',
+        assignedOn: '2025-02-01',
+      });
+
+      const result = BackfillUnassignedOnUseCase.findSupersedingAppointment(closed, [
+        closed,
+        laterStill,
+        superseding,
+      ]);
+
+      expect(result?.id).toBe('new');
+    });
+
+    test('returns null when no appointment on the case comes after the closed one', () => {
+      const closed = makeCaseAppointment({ id: 'old', assignedOn: '2025-06-01' });
+      const earlier = makeCaseAppointment({ id: 'earlier', assignedOn: '2025-01-01' });
+
+      const result = BackfillUnassignedOnUseCase.findSupersedingAppointment(closed, [
+        closed,
+        earlier,
+      ]);
+
+      expect(result).toBeNull();
+    });
+
+    test('excludes surrogate rows from candidate search', () => {
+      const closed = makeCaseAppointment({ id: 'old', assignedOn: '2025-01-01' });
+      const surrogate = makeCaseAppointment({
+        id: 'surrogate',
+        assignedOn: '2025-01-10',
+        isSurrogate: true,
+      });
+      const real = makeCaseAppointment({
+        id: 'real',
+        trusteeId: 'trustee-B',
+        assignedOn: '2025-01-20',
+      });
+
+      const result = BackfillUnassignedOnUseCase.findSupersedingAppointment(closed, [
+        closed,
+        surrogate,
+        real,
+      ]);
+
+      expect(result?.id).toBe('real');
+    });
+
+    test('excludes sentinel-trustee rows from candidate search', () => {
+      const closed = makeCaseAppointment({ id: 'old', assignedOn: '2025-01-01' });
+      const sentinel = makeCaseAppointment({
+        id: 'sentinel',
+        trusteeId: '00000000-0000-0000-0000-000000000000',
+        assignedOn: '2025-01-10',
+      });
+      const real = makeCaseAppointment({
+        id: 'real',
+        trusteeId: 'trustee-B',
+        assignedOn: '2025-01-20',
+      });
+
+      const result = BackfillUnassignedOnUseCase.findSupersedingAppointment(closed, [
+        closed,
+        sentinel,
+        real,
+      ]);
+
+      expect(result?.id).toBe('real');
+    });
+
+    test('excludes reassignment to the same trustee from candidate search', () => {
+      const closed = makeCaseAppointment({
+        id: 'old',
+        trusteeId: 'trustee-A',
+        assignedOn: '2025-01-01',
+      });
+      const sameTrustee = makeCaseAppointment({
+        id: 'same-trustee',
+        trusteeId: 'trustee-A',
+        assignedOn: '2025-01-10',
+      });
+      const differentTrustee = makeCaseAppointment({
+        id: 'different-trustee',
+        trusteeId: 'trustee-B',
+        assignedOn: '2025-01-20',
+      });
+
+      const result = BackfillUnassignedOnUseCase.findSupersedingAppointment(closed, [
+        closed,
+        sameTrustee,
+        differentTrustee,
+      ]);
+
+      expect(result?.id).toBe('different-trustee');
+    });
+  });
+
+  describe('correctUnassignedOn', () => {
+    test('corrects unassignedOn to one day before the superseding appointment assignedOn', async () => {
+      const closed = { ...makeCaseAppointment(), _id: 'appt-id-1' };
+      const superseding = makeCaseAppointment({
+        id: 'appt-id-2',
+        trusteeId: 'trustee-002',
+        assignedOn: '2025-06-20',
+      });
+
+      vi.spyOn(MockMongoRepository.prototype, 'getByCaseId').mockResolvedValue([
+        closed,
+        superseding,
+      ]);
+      const updateSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'updateCaseAppointment')
+        .mockResolvedValue({ ...closed, unassignedOn: '2025-06-19' });
+
+      const result = await BackfillUnassignedOnUseCase.correctUnassignedOn(context, [closed]);
+
+      expect(result.error).toBeUndefined();
+      expect(result.data?.[0].success).toBe(true);
+      expect(updateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ unassignedOn: '2025-06-19' }),
+      );
+    });
+
+    test('is a no-op when unassignedOn is already correct', async () => {
+      const superseding = makeCaseAppointment({
+        id: 'appt-id-2',
+        trusteeId: 'trustee-002',
+        assignedOn: '2025-06-20',
+      });
+      const closed = {
+        ...makeCaseAppointment({ unassignedOn: '2025-06-19' }),
+        _id: 'appt-id-1',
+      };
+
+      vi.spyOn(MockMongoRepository.prototype, 'getByCaseId').mockResolvedValue([
+        closed,
+        superseding,
+      ]);
+      const updateSpy = vi.spyOn(MockMongoRepository.prototype, 'updateCaseAppointment');
+
+      const result = await BackfillUnassignedOnUseCase.correctUnassignedOn(context, [closed]);
+
+      expect(result.data?.[0].success).toBe(true);
+      expect(updateSpy).not.toHaveBeenCalled();
+    });
+
+    test('skips when no superseding appointment exists', async () => {
+      const closed = { ...makeCaseAppointment(), _id: 'appt-id-1' };
+
+      vi.spyOn(MockMongoRepository.prototype, 'getByCaseId').mockResolvedValue([closed]);
+      const updateSpy = vi.spyOn(MockMongoRepository.prototype, 'updateCaseAppointment');
+
+      const result = await BackfillUnassignedOnUseCase.correctUnassignedOn(context, [closed]);
+
+      expect(result.data?.[0].success).toBe(true);
+      expect(updateSpy).not.toHaveBeenCalled();
+    });
+
+    test('records failure when updateCaseAppointment throws', async () => {
+      const closed = { ...makeCaseAppointment(), _id: 'appt-id-1' };
+      const superseding = makeCaseAppointment({
+        id: 'appt-id-2',
+        trusteeId: 'trustee-002',
+        assignedOn: '2025-06-20',
+      });
+
+      vi.spyOn(MockMongoRepository.prototype, 'getByCaseId').mockResolvedValue([
+        closed,
+        superseding,
+      ]);
+      vi.spyOn(MockMongoRepository.prototype, 'updateCaseAppointment').mockRejectedValue(
+        new Error('Write failed'),
+      );
+
+      const result = await BackfillUnassignedOnUseCase.correctUnassignedOn(context, [closed]);
+
+      expect(result.data?.[0].success).toBe(false);
+      expect(result.data?.[0].error).toBe('Write failed');
+    });
+
+    test('returns error when the batch-level read throws', async () => {
+      const closed = { ...makeCaseAppointment(), _id: 'appt-id-1' };
+
+      vi.spyOn(MockMongoRepository.prototype, 'getByCaseId').mockRejectedValue(
+        new Error('Connection lost'),
+      );
+
+      const result = await BackfillUnassignedOnUseCase.correctUnassignedOn(context, [closed]);
+
+      // A per-record getByCaseId failure is caught per-record (recorded as a failed result),
+      // not surfaced as a batch-level error — mirrors backfillAppointmentDates' per-item handling.
+      expect(result.error).toBeUndefined();
+      expect(result.data?.[0].success).toBe(false);
+      expect(result.data?.[0].error).toBe('Connection lost');
+    });
+  });
+
+  describe('processBackfillPage', () => {
+    const makeAppointment = (id: string, override: Partial<CaseAppointment> = {}) => ({
+      ...makeCaseAppointment({ caseId: `081-25-${id}`, ...override }),
+      _id: id,
+    });
+
+    test('should return empty when no closed appointments need backfill', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findClosedAppointments').mockResolvedValue([]);
+
+      const result = await BackfillUnassignedOnUseCase.processBackfillPage(context, null, 100);
+
+      expect(result.status).toBe('empty');
+    });
+
+    test('should return ok with nextCursor when hasMore', async () => {
+      const superseding1 = makeCaseAppointment({
+        id: 'sup-aaaa',
+        trusteeId: 'trustee-002',
+        assignedOn: '2025-06-20',
+      });
+      const appt1 = makeAppointment('aaaa');
+      const superseding2 = makeCaseAppointment({
+        id: 'sup-bbbb',
+        trusteeId: 'trustee-002',
+        assignedOn: '2025-07-20',
+      });
+      const appt2 = makeAppointment('bbbb');
+
+      vi.spyOn(MockMongoRepository.prototype, 'findClosedAppointments').mockResolvedValue([
+        appt1,
+        appt2,
+      ]);
+      vi.spyOn(MockMongoRepository.prototype, 'getByCaseId').mockImplementation(
+        async (caseId: string) => {
+          if (caseId === appt1.caseId) return [appt1, superseding1];
+          if (caseId === appt2.caseId) return [appt2, superseding2];
+          return [];
+        },
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'updateCaseAppointment').mockImplementation(
+        async (appointment) => appointment as CaseAppointment,
+      );
+
+      const result = await BackfillUnassignedOnUseCase.processBackfillPage(context, null, 1);
+
+      expect(result.status).toBe('ok');
+      if (result.status !== 'ok') return;
+      expect(result.nextCursor).toEqual({ lastId: 'aaaa' });
+      expect(result.successCount).toBe(1);
+    });
+
+    test('should return ok with null nextCursor on last page', async () => {
+      const superseding = makeCaseAppointment({
+        id: 'sup-cccc',
+        trusteeId: 'trustee-002',
+        assignedOn: '2025-06-20',
+      });
+      const appt = makeAppointment('cccc');
+
+      vi.spyOn(MockMongoRepository.prototype, 'findClosedAppointments').mockResolvedValue([appt]);
+      vi.spyOn(MockMongoRepository.prototype, 'getByCaseId').mockResolvedValue([appt, superseding]);
+      vi.spyOn(MockMongoRepository.prototype, 'updateCaseAppointment').mockImplementation(
+        async (appointment) => appointment as CaseAppointment,
+      );
+
+      const result = await BackfillUnassignedOnUseCase.processBackfillPage(context, null, 100);
+
+      expect(result.status).toBe('ok');
+      if (result.status !== 'ok') return;
+      expect(result.nextCursor).toBeNull();
+    });
+
+    test('should return error when the page read fails', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findClosedAppointments').mockRejectedValue(
+        new Error('DB error'),
+      );
+
+      const result = await BackfillUnassignedOnUseCase.processBackfillPage(context, null, 100);
+
+      expect(result.status).toBe('error');
+    });
+
+    test('should return ok with failedResults when some appointments fail to update', async () => {
+      const superseding = makeCaseAppointment({
+        id: 'sup-dddd',
+        trusteeId: 'trustee-002',
+        assignedOn: '2025-06-20',
+      });
+      const appt = makeAppointment('dddd');
+
+      vi.spyOn(MockMongoRepository.prototype, 'findClosedAppointments').mockResolvedValue([appt]);
+      vi.spyOn(MockMongoRepository.prototype, 'getByCaseId').mockResolvedValue([appt, superseding]);
+      vi.spyOn(MockMongoRepository.prototype, 'updateCaseAppointment').mockRejectedValue(
+        new Error('Write failed'),
+      );
+
+      const result = await BackfillUnassignedOnUseCase.processBackfillPage(context, null, 100);
+
+      expect(result.status).toBe('ok');
+      if (result.status !== 'ok') return;
+      expect(result.failedResults).toHaveLength(1);
+      expect(result.failedResults[0].caseId).toBe(appt.caseId);
+      expect(result.successCount).toBe(0);
+    });
+
+    test('re-running against already-corrected data is a no-op (idempotency)', async () => {
+      const superseding = makeCaseAppointment({
+        id: 'sup-eeee',
+        trusteeId: 'trustee-002',
+        assignedOn: '2025-06-20',
+      });
+      const appt = makeAppointment('eeee', { unassignedOn: '2025-06-19' });
+
+      vi.spyOn(MockMongoRepository.prototype, 'findClosedAppointments').mockResolvedValue([appt]);
+      vi.spyOn(MockMongoRepository.prototype, 'getByCaseId').mockResolvedValue([appt, superseding]);
+      const updateSpy = vi.spyOn(MockMongoRepository.prototype, 'updateCaseAppointment');
+
+      const result = await BackfillUnassignedOnUseCase.processBackfillPage(context, null, 100);
+
+      expect(result.status).toBe('ok');
+      if (result.status !== 'ok') return;
+      expect(result.successCount).toBe(1);
+      expect(updateSpy).not.toHaveBeenCalled();
+    });
+  });
+});

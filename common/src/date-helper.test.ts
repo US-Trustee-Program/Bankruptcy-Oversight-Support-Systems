@@ -122,13 +122,7 @@ describe('date helper tests', () => {
       ['into a leap day', '2024-02-28', 1, '2024-02-29'],
       ['past a leap day', '2024-02-29', 1, '2024-03-01'],
       ['past a non-leap Feb', '2023-02-28', 1, '2023-03-01'],
-      // Guards the verified DST bug: a mixed UTC-parse/local-mutate implementation returns
-      // 2026-11-01 here instead of 2026-11-02, since setDate/getDate operate in local time
-      // while toISOString reformats in UTC — the day after DST ends silently loses a day.
       ['across the US DST-end transition', '2026-11-01', 1, '2026-11-02'],
-      // Spring-forward guard alongside the fall-back case above — the bug class (local-time
-      // mutation vs. UTC reformatting) is direction-agnostic, so both DST transitions need
-      // their own regression case rather than assuming one implies the other.
       ['across the US DST-start transition', '2026-03-08', 1, '2026-03-09'],
     ] as const;
 

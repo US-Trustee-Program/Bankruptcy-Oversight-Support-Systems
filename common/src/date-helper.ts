@@ -55,13 +55,11 @@ function formatDate(isoDate: string): string {
   return `${month}/${day}/${year}`;
 }
 
-// UTC end-to-end (Date.UTC + setUTCDate + toISOString) so results are correct across the DST
-// transition — a mixed UTC-parse/local-mutate implementation silently returns the wrong date
-// the day after DST ends (e.g. subtracting 1 day from 2026-11-02 yields 2026-10-31, not
-// 2026-11-01), since setDate/getDate operate in local time while toISOString reformats in UTC.
-// Accepts a leading YYYY-MM-DD with an optional time/offset suffix (isValidDateString's own
-// prefix-only match already permits this), truncating the suffix the same way getIsoDate does,
-// so a full ISO timestamp behaves as if only its date portion were given.
+/**
+ * Adds `days` calendar days to `isoDate`, computed in UTC end-to-end so the result is correct
+ * across DST transitions. Accepts a leading `YYYY-MM-DD` with an optional time/offset suffix,
+ * which is truncated before arithmetic.
+ */
 function addDays(isoDate: string, days: number): string {
   if (!isValidDateString(isoDate)) {
     return isoDate;
