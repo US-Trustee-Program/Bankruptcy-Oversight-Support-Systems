@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import {
   TrusteeMatchVerificationAccordion,
@@ -572,6 +572,33 @@ describe('TrusteeMatchVerificationAccordion', () => {
     });
   });
 
+  test('ignores a second rapid approval submit while the first is still in flight', async () => {
+    let resolveApproval: () => void = () => {};
+    const approvalSpy = vi
+      .spyOn(Api2, 'patchTrusteeVerificationOrderApproval')
+      .mockImplementation(() => new Promise<void>((resolve) => (resolveApproval = resolve)));
+    renderWithProps({ order: sampleOrderWithCandidates });
+    await mockDetailAndExpand(sampleOrderWithCandidatesDetail);
+
+    fireEvent.click(screen.getByTestId('approve-candidate-trustee-1'));
+    const modalSubmit = document.getElementById(
+      `trustee-confirmation-modal-${sampleOrderWithCandidates.id}-submit-button`,
+    );
+    // Both dispatches inside one act() call so React doesn't get a chance to commit the first
+    // click's isProcessing update (and thus disable the button) before the second fires -
+    // simulating a rapid repeat invocation reaching the handler before React commits. The
+    // no-unnecessary-act rule doesn't account for this: nesting changes batching timing here.
+    // eslint-disable-next-line testing-library/no-unnecessary-act
+    act(() => {
+      fireEvent.click(modalSubmit!);
+      fireEvent.click(modalSubmit!);
+    });
+
+    expect(approvalSpy).toHaveBeenCalledTimes(1);
+    resolveApproval();
+    await waitFor(() => expect(approvalSpy).toHaveBeenCalledTimes(1));
+  });
+
   test('calls onOrderUpdate with success alert and updated order on approve success', async () => {
     vi.spyOn(Api2, 'patchTrusteeVerificationOrderApproval').mockResolvedValue(undefined);
     const onOrderUpdate = vi.fn();
@@ -1064,6 +1091,54 @@ describe('TrusteeMatchVerificationAccordion', () => {
       });
     });
 
+    test('ignores a second rapid manual-match submit while the first is still in flight', async () => {
+      let resolveApproval: () => void = () => {};
+      const approvalSpy = vi
+        .spyOn(Api2, 'patchTrusteeVerificationOrderApproval')
+        .mockImplementation(() => new Promise<void>((resolve) => (resolveApproval = resolve)));
+      setupSearchMocks();
+      renderWithProps();
+
+      const searchButton = screen.getByRole('button', {
+        name: /Search for a trustee/,
+        hidden: true,
+      });
+      fireEvent.click(searchButton);
+      await waitFor(() => {
+        const wrapper = document.getElementById(`trustee-search-modal-${sampleOrder.id}-wrapper`);
+        expect(wrapper).toHaveClass('is-visible');
+      });
+
+      const comboBoxId = `trustee-search-combobox-${sampleOrder.id}`;
+      fireEvent.click(document.getElementById(`${comboBoxId}-expand`)!);
+      fireEvent.change(
+        document.getElementById(`${comboBoxId}-combo-box-input`) as HTMLInputElement,
+        { target: { value: 'manual' } },
+      );
+      await waitFor(() => {
+        expect(screen.getByTestId(`${comboBoxId}-option-item-0`)).toBeVisible();
+      });
+      fireEvent.click(screen.getByTestId(`${comboBoxId}-option-item-0`));
+
+      const submitButton = screen.getByTestId(
+        `button-trustee-search-modal-${sampleOrder.id}-submit-button`,
+      );
+      await waitFor(() => expect(submitButton).toBeEnabled());
+      // Both dispatches inside one act() call so React doesn't get a chance to commit the first
+      // click's isProcessing update (and thus disable the button) before the second fires -
+      // simulating a rapid repeat invocation reaching the handler before React commits. The
+      // no-unnecessary-act rule doesn't account for this: nesting changes batching timing here.
+      // eslint-disable-next-line testing-library/no-unnecessary-act
+      act(() => {
+        fireEvent.click(submitButton);
+        fireEvent.click(submitButton);
+      });
+
+      expect(approvalSpy).toHaveBeenCalledTimes(1);
+      resolveApproval();
+      await waitFor(() => expect(approvalSpy).toHaveBeenCalledTimes(1));
+    });
+
     // Integration test: exercises full search-to-approval error flow
     test('manual search approval failure calls onOrderUpdate with error', async () => {
       vi.spyOn(Api2, 'patchTrusteeVerificationOrderApproval').mockRejectedValue(
@@ -1197,6 +1272,33 @@ describe('TrusteeMatchVerificationAccordion', () => {
           expect.objectContaining({ status: 'rejected', reason: 'Wrong person' }),
         );
       });
+    });
+
+    test('ignores a second rapid submit while the first rejection is still in flight', async () => {
+      let resolveRejection: () => void = () => {};
+      const rejectSpy = vi
+        .spyOn(Api2, 'patchTrusteeVerificationOrderRejection')
+        .mockImplementation(() => new Promise<void>((resolve) => (resolveRejection = resolve)));
+      renderWithProps({ order: sampleOrderWithCandidates });
+
+      const textarea = screen.getByTestId(`rejection-reason-input-${sampleOrderWithCandidates.id}`);
+      fireEvent.change(textarea, { target: { value: 'Wrong person' } });
+      const submitButton = document.getElementById(
+        `trustee-rejection-modal-${sampleOrderWithCandidates.id}-submit-button`,
+      );
+      // Both dispatches inside one act() call so React doesn't get a chance to commit the
+      // first click's state updates (and thus disable the button) before the second fires -
+      // simulating a rapid repeat invocation reaching the handler before React commits. The
+      // no-unnecessary-act rule doesn't account for this: nesting changes batching timing here.
+      // eslint-disable-next-line testing-library/no-unnecessary-act
+      act(() => {
+        fireEvent.click(submitButton!);
+        fireEvent.click(submitButton!);
+      });
+
+      expect(rejectSpy).toHaveBeenCalledTimes(1);
+      resolveRejection();
+      await waitFor(() => expect(rejectSpy).toHaveBeenCalledTimes(1));
     });
 
     test('calls onOrderUpdate with error alert on reject failure', async () => {

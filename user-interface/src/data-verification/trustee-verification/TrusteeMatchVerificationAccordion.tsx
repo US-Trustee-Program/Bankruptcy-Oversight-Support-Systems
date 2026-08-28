@@ -393,6 +393,11 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   const rejectionModalRef = useRef<TrusteeMatchRejectionModalImperative>(null);
   const confirmationModalRef = useRef<TrusteeMatchConfirmationModalImperative>(null);
   const searchModalRef = useRef<TrusteeSearchModalImperative>(null);
+  // isProcessing (state) drives the disabled/spinner UI but only takes effect once React commits
+  // a re-render - it can't stop a second invocation that reaches a handler before that commit
+  // (e.g. a rapid repeat event, or two calls in the same tick). This ref is mutated synchronously
+  // so it blocks re-entrancy immediately, regardless of render timing.
+  const isSubmittingRef = useRef(false);
 
   // Enriched separately from the fetch, keyed off the live `courts` prop, so a courts load
   // that resolves after this detail was fetched still fills in court name/division instead of
@@ -523,6 +528,8 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   }
 
   async function handleApprove(candidate: CandidateScore) {
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
     setIsProcessing(true);
     try {
       await approveTrustee({ trusteeId: candidate.trusteeId, trusteeName: candidate.trusteeName });
@@ -534,10 +541,13 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     } finally {
       confirmationModalRef.current?.hide();
       setIsProcessing(false);
+      isSubmittingRef.current = false;
     }
   }
 
   async function handleReject(reason: string) {
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
     setIsProcessing(true);
     try {
       await Api2.patchTrusteeVerificationOrderRejection(order.id, reason);
@@ -553,6 +563,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     } finally {
       rejectionModalRef.current?.hide();
       setIsProcessing(false);
+      isSubmittingRef.current = false;
     }
   }
 
@@ -565,6 +576,8 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   }
 
   async function handleManualMatch(result: TrusteeSearchResult) {
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
     setIsProcessing(true);
     try {
       await approveTrustee({ trusteeId: result.trusteeId, trusteeName: result.name });
@@ -576,6 +589,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     } finally {
       searchModalRef.current?.hide();
       setIsProcessing(false);
+      isSubmittingRef.current = false;
     }
   }
 
