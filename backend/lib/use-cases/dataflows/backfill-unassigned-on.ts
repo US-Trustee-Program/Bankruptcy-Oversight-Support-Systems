@@ -5,6 +5,7 @@ import factory from '../../factory';
 import { MaybeData } from './queue-types';
 import { CaseAppointment } from '@common/cams/trustee-appointments';
 import DateHelper from '@common/date-helper';
+import { SENTINEL_TRUSTEE_ID } from './migrate-case-appointments-constants';
 
 const MODULE_NAME = 'BACKFILL-UNASSIGNED-ON-USE-CASE';
 
@@ -78,11 +79,12 @@ type ProcessBackfillPageResult =
 /**
  * The appointment on the same case whose assignedOn is the earliest one strictly after closed's
  * own assignedOn — mirrors how applyResolvedTrustee (sync-trustee-case-appointments.ts) reasons
- * about appointment ordering. Excludes surrogate/sentinel rows, the same exclusion
- * getActiveByCaseId applies, so a placeholder marker is never mistaken for a real superseding
- * appointment. Returns null when no such appointment exists (e.g. closed is the currently-active
- * one, or a close-only terminal state with nothing after it) — there is nothing to correct against
- * in that case.
+ * about appointment ordering. Excludes fingerprint-based surrogate rows (isSurrogate: true), the
+ * placeholder mechanism the current sync dataflow uses, and legacy SENTINEL_TRUSTEE_ID rows left
+ * over from the older migrate-case-appointments dataflow (not yet healed across all cases), so
+ * neither kind of placeholder is mistaken for a real superseding appointment. Returns null when no
+ * such appointment exists (e.g. closed is the currently-active one, or a close-only terminal state
+ * with nothing after it) — there is nothing to correct against in that case.
  */
 function findSupersedingAppointment(
   closed: CaseAppointment,
@@ -92,6 +94,8 @@ function findSupersedingAppointment(
     (a) =>
       a.id !== closed.id &&
       !a.isSurrogate &&
+      // TODO: drop once legacy SENTINEL_TRUSTEE_ID rows are healed off all cases.
+      a.trusteeId !== SENTINEL_TRUSTEE_ID &&
       a.trusteeId !== closed.trusteeId &&
       a.assignedOn > closed.assignedOn,
   );
