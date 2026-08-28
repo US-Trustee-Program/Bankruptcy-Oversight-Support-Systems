@@ -658,7 +658,11 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           courtId: '0208',
           status: 'pending',
           taskDate: '2010-05-12T00:00:00.000Z',
-          mismatchReason: 'AMBIGUOUS_MATCH_RESOLVED',
+          // 'AMBIGUOUS_MATCH_RESOLVED' was not a valid TrusteeAppointmentSyncErrorCode value -
+          // this candidate's own seeded appointment (seed-appointment-active-trustee-inactive-
+          // appt) has status 'inactive', the same underlying record "5b" (seed-match-inactive-
+          // appt) uses, so this is genuinely a PERFECT_MATCH_INACTIVE_STATUS case.
+          mismatchReason: 'PERFECT_MATCH_INACTIVE_STATUS',
           fingerprint: computeFingerprint(DXTR_HIGH_CONFIDENCE),
           dxtrTrustee: DXTR_HIGH_CONFIDENCE,
           matchCandidates: [
@@ -687,6 +691,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
               email: 'alex.highconfidence@example.com',
             },
           ],
+          inactiveAppointmentStatus: 'inactive',
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
         },
