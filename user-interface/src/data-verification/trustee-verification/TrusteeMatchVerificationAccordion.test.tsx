@@ -213,6 +213,47 @@ describe('TrusteeMatchVerificationAccordion', () => {
     ).not.toBeInTheDocument();
   });
 
+  test('backfills court name/division from the courts prop when an appointment is missing them', async () => {
+    renderWithProps({
+      order: sampleOrderWithCandidates,
+      courts: [
+        {
+          courtId: '0881',
+          courtName: 'Southern District of New York',
+          officeName: '',
+          officeCode: '',
+          courtDivisionCode: '081',
+          courtDivisionName: 'Manhattan',
+          groupDesignator: '',
+          regionId: '',
+          regionName: '',
+        },
+      ],
+    });
+    await mockDetailAndExpand({
+      ...sampleOrderWithCandidatesDetail,
+      matchCandidates: [
+        {
+          ...candidateJaneSmith,
+          appointments: [
+            MockData.getTrusteeAppointment({
+              courtId: '0881',
+              divisionCode: '081',
+              chapter: '7',
+              status: 'active',
+              courtName: undefined,
+              courtDivisionName: undefined,
+            }),
+          ],
+        },
+      ],
+    });
+
+    const candidateInfo = screen.getByTestId('candidate-info');
+    expect(candidateInfo.textContent).toContain('Southern District of New York');
+    expect(candidateInfo.textContent).toContain('Manhattan');
+  });
+
   test('should NOT render candidate-info section for approved order', () => {
     renderWithProps({ order: { ...sampleOrderWithCandidates, status: 'approved' } });
 
