@@ -152,6 +152,54 @@ describe('BackfillUnassignedOnUseCase', () => {
 
       expect(result?.id).toBe('real');
     });
+
+    test('excludes sentinel-trustee rows from candidate search', () => {
+      const closed = makeCaseAppointment({ id: 'old', assignedOn: '2025-01-01' });
+      const sentinel = makeCaseAppointment({
+        id: 'sentinel',
+        trusteeId: '00000000-0000-0000-0000-000000000000',
+        assignedOn: '2025-01-10',
+      });
+      const real = makeCaseAppointment({
+        id: 'real',
+        trusteeId: 'trustee-B',
+        assignedOn: '2025-01-20',
+      });
+
+      const result = BackfillUnassignedOnUseCase.findSupersedingAppointment(closed, [
+        closed,
+        sentinel,
+        real,
+      ]);
+
+      expect(result?.id).toBe('real');
+    });
+
+    test('excludes reassignment to the same trustee from candidate search', () => {
+      const closed = makeCaseAppointment({
+        id: 'old',
+        trusteeId: 'trustee-A',
+        assignedOn: '2025-01-01',
+      });
+      const sameTrustee = makeCaseAppointment({
+        id: 'same-trustee',
+        trusteeId: 'trustee-A',
+        assignedOn: '2025-01-10',
+      });
+      const differentTrustee = makeCaseAppointment({
+        id: 'different-trustee',
+        trusteeId: 'trustee-B',
+        assignedOn: '2025-01-20',
+      });
+
+      const result = BackfillUnassignedOnUseCase.findSupersedingAppointment(closed, [
+        closed,
+        sameTrustee,
+        differentTrustee,
+      ]);
+
+      expect(result?.id).toBe('different-trustee');
+    });
   });
 
   describe('correctUnassignedOn', () => {

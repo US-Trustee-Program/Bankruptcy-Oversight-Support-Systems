@@ -828,17 +828,30 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
 
       await repo.findClosedAppointments(null, 100);
 
-      expect(findSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          values: expect.arrayContaining([
-            expect.objectContaining({ condition: 'EXISTS' }),
-            expect.objectContaining({ condition: 'NOT_EQUALS', rightOperand: SENTINEL_TRUSTEE_ID }),
-            expect.objectContaining({ condition: 'NOT_EQUALS', rightOperand: true }),
-          ]),
-        }),
-        expect.any(Object),
-        100,
+      const query = findSpy.mock.calls[0][0];
+      const queryValues = (query as Record<string, unknown>).values as Record<string, unknown>[];
+
+      const unassignedOnCondition = queryValues.find(
+        (v) => (v.leftOperand as { name: string })?.name === 'unassignedOn',
       );
+      expect(unassignedOnCondition).toEqual(
+        expect.objectContaining({ condition: 'EXISTS', rightOperand: true }),
+      );
+
+      const trusteeIdCondition = queryValues.find(
+        (v) => (v.leftOperand as { name: string })?.name === 'trusteeId',
+      );
+      expect(trusteeIdCondition).toEqual(
+        expect.objectContaining({ condition: 'NOT_EQUALS', rightOperand: SENTINEL_TRUSTEE_ID }),
+      );
+
+      const isSurrogateCondition = queryValues.find(
+        (v) => (v.leftOperand as { name: string })?.name === 'isSurrogate',
+      );
+      expect(isSurrogateCondition).toEqual(
+        expect.objectContaining({ condition: 'NOT_EQUALS', rightOperand: true }),
+      );
+
       repo.release();
     });
 
