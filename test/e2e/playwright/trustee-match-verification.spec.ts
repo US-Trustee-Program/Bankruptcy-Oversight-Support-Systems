@@ -125,7 +125,9 @@ test.describe('Trustee Match Verification', () => {
 
     const content = page.getByTestId(`accordion-content-order-list-${inactiveItem!.id}`);
     await expect(content).toBeVisible(timeoutOption);
-    await expect(content).toContainText('inactive in CAMS but was appointed to case');
+    // The tail of this sentence is dynamic (lists whichever fields mismatch once candidate
+    // detail loads), so only assert the always-present, inactive-specific prefix.
+    await expect(content).toContainText('Trustee is inactive in CAMS');
   });
 
   test('should show inactive trustee task type label for inactive match verification', async ({

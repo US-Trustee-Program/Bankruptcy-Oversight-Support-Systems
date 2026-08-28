@@ -2162,7 +2162,10 @@
             "trusteeId": "e2e-trustee-candidate-1",
             "trusteeName": "E2E Trustee 1",
             "totalScore": 80,
-            "addressScore": 75,
+            "addressScore": 0,
+            "nameScore": 0,
+            "phoneScore": 0,
+            "emailScore": 0,
             "districtDivisionScore": 90,
             "chapterScore": 80
           }
@@ -2189,7 +2192,7 @@
         "caseId": "081-91-06221",
         "courtId": "0208",
         "status": "pending",
-        "mismatchReason": "AMBIGUOUS_MATCH_RESOLVED",
+        "mismatchReason": "IMPERFECT_MATCH",
         "dxtrTrustee": {
           "fullName": "E2E Dxtr Trustee 2"
         },
@@ -2198,7 +2201,10 @@
             "trusteeId": "e2e-trustee-candidate-2",
             "trusteeName": "E2E Trustee 2",
             "totalScore": 70,
-            "addressScore": 75,
+            "addressScore": 0,
+            "nameScore": 0,
+            "phoneScore": 0,
+            "emailScore": 0,
             "districtDivisionScore": 90,
             "chapterScore": 80
           }
@@ -2261,7 +2267,10 @@
             "trusteeId": "e2e-trustee-candidate-approved",
             "trusteeName": "E2E Trustee Approved",
             "totalScore": 95,
-            "addressScore": 90,
+            "addressScore": 0,
+            "nameScore": 0,
+            "phoneScore": 0,
+            "emailScore": 0,
             "districtDivisionScore": 100,
             "chapterScore": 95
           }
@@ -2289,7 +2298,7 @@
         "caseId": "081-65-67641",
         "courtId": "0208",
         "status": "rejected",
-        "mismatchReason": "AMBIGUOUS_MATCH_RESOLVED",
+        "mismatchReason": "IMPERFECT_MATCH",
         "dxtrTrustee": {
           "fullName": "E2E Dxtr Trustee Rejected"
         },
@@ -2298,7 +2307,10 @@
             "trusteeId": "e2e-trustee-candidate-rejected",
             "trusteeName": "E2E Trustee Rejected",
             "totalScore": 70,
-            "addressScore": 65,
+            "addressScore": 0,
+            "nameScore": 0,
+            "phoneScore": 0,
+            "emailScore": 0,
             "districtDivisionScore": 80,
             "chapterScore": 70
           }
@@ -2336,7 +2348,10 @@
             "trusteeId": "e2e-trustee-candidate-inactive",
             "trusteeName": "E2E Trustee Inactive",
             "totalScore": 98,
-            "addressScore": 95,
+            "addressScore": 0,
+            "nameScore": 0,
+            "phoneScore": 0,
+            "emailScore": 0,
             "districtDivisionScore": 100,
             "chapterScore": 98
           }
