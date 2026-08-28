@@ -3,13 +3,11 @@ $input-max-width: 20.75rem;
 .edit-upcoming-key-dates {
   .usa-form-group {
     max-width: $input-max-width;
-    margin-top: 1rem;
+    margin-top: 1.5rem;
   }
 
-  // .usa-form-group above zeroes margin-top elsewhere; date-picker/month-year-selector
-  // need the full 1.5rem gap, so override explicitly here (relies on cascade order —
-  // keep this block after the .usa-form-group rule above).
-  .date-picker,
+  // .month-year-selector is a fieldset, not a .usa-form-group, so it needs its own
+  // top margin to match the standard field gap.
   .month-year-selector {
     margin-top: 1.5rem;
   }
@@ -100,10 +98,11 @@ $input-max-width: 20.75rem;
 
   .exam-audit-group {
     max-width: $input-max-width;
+    margin-top: 1.5rem;
 
     > .usa-label {
       margin-bottom: 0;
-      margin-top: 1rem;
+      margin-top: 0;
     }
 
     &__row {
