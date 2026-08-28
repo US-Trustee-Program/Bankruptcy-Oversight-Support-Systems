@@ -40,7 +40,7 @@ param privateDnsZoneSubscriptionId string = subscription().subscriptionId
 @description('Set true when the deploying pipeline has already confirmed a vnet link into the webapp private DNS zone exists (see vnet-links.bicep) -- avoids a Conflict from trying to create a second, differently-named link. Mirrors the param of the same shape that used to live on app-shared-setup.bicep before the webapp zone\'s vnet link moved here.')
 param webappVnetLinkAlreadyExists bool = false
 
-@description('When true, the API and dataflows function apps reach the SQL server via a Private Endpoint (privatelink.database.usgovcloudapi.net) instead of the sql-vnet-rule.bicep VNet rule. Required for cross-region branches (AZ-FUNCTIONS-LOCATION set) because Azure enforces same-region between a SQL server and any subnet referenced by a virtualNetworkRules resource, but a Private Endpoint has no such restriction. Defaults to false, preserving today\'s VNet-rule behavior for main and same-region branches unchanged.')
+@description('When true, the API and dataflows function apps reach SQL through the shared Private Link hub and no sql-vnet-rule.bicep VNet rule is created for them. Required for cross-region branches (AZ-FUNCTIONS-LOCATION set), because Azure enforces same-region between a SQL server and any subnet referenced by a virtualNetworkRules resource. Neither creates a Private Endpoint of its own -- the hub holds the only one.')
 param useSqlPrivateLink bool = false
 
 @description('Fixed Azure Government private-link DNS zone name for Azure SQL -- see app-shared-setup.bicep (sqlDnsZone module) for why this is a separate zone from the webapp/api/dataflows one and where it is created.')
@@ -291,10 +291,7 @@ module ustpWebappDnsZoneLink './lib/network/vnet-links.bicep' = {
 // for the SQL Private Link zone (see app-shared-setup.bicep's sqlDnsZone
 // module for where the zone itself is created).
 //
-// UNCONDITIONAL, unlike the SQL Private Endpoint modules below (in
-// backend-api-deploy.bicep / dataflows-resource-deploy.bicep), which stay
-// gated on `useSqlPrivateLink`. This looks asymmetric right next to that
-// condition, but it is deliberate, not an oversight: the SQL server
+// UNCONDITIONAL, and deliberately so: the SQL server
 // (sql-ustp-cams) is shared across main and every branch. The moment ANY
 // consumer's Private Endpoint against that server is approved, Azure
 // CNAME-redirects the server's public FQDN to its privatelink subdomain --
@@ -487,8 +484,7 @@ module ustpApiFunction 'backend-api-deploy.bicep' = {
       privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
       privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
       useSqlPrivateLink: useSqlPrivateLink
-      sqlPrivateDnsZoneName: sqlPrivateDnsZoneName
-      loginProviderConfig: loginProviderConfig
+        loginProviderConfig: loginProviderConfig
       loginProvider: loginProvider
       cosmosDatabaseName: cosmosDatabaseName
       e2eDatabaseName: e2eDatabaseName
@@ -538,7 +534,6 @@ module ustpDataflowsFunction 'dataflows-resource-deploy.bicep' = {
     privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
     privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
     useSqlPrivateLink: useSqlPrivateLink
-    sqlPrivateDnsZoneName: sqlPrivateDnsZoneName
     loginProviderConfig: loginProviderConfig
     loginProvider: loginProvider
     cosmosDatabaseName: cosmosDatabaseName
