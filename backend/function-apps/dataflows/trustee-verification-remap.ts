@@ -5,7 +5,6 @@ import { buildFunctionName } from './dataflows-common';
 import {
   TRUSTEE_MATCH_VERIFICATION_REMAP_QUEUE,
   TRUSTEE_MATCH_VERIFICATION_REMAP_DLQ,
-  TRUSTEE_APPOINTMENT_EVENT_QUEUE,
 } from '../../lib/storage-queues';
 import { completeDataflowTrace } from '../../lib/use-cases/dataflows/dataflow-telemetry';
 import { handleRateLimitRetry } from './dataflows-rate-limit';
@@ -159,10 +158,7 @@ function setup() {
   app.storageQueue(HANDLE_REMAP, {
     connection: REMAP.connection,
     queueName: REMAP.queueName,
-    // TRUSTEE_APPOINTMENT_EVENT_QUEUE must be declared here (not just DLQ) — Azure Functions
-    // only delivers extraOutputs.set() calls for outputs this specific function registered;
-    // TrusteeVerificationRemapUseCase's downstream-event queueing would otherwise silently no-op.
-    extraOutputs: [DLQ, TRUSTEE_APPOINTMENT_EVENT_QUEUE],
+    extraOutputs: [DLQ],
     handler: handleRemap,
   });
 }

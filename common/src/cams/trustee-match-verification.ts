@@ -54,6 +54,12 @@ export type TrusteeMatchVerification = Auditable & {
   /** sha256(variant) — the bucket key used to find this document. See variant below. */
   fingerprint: string;
   /**
+   * Snapshot of case IDs affected by this fingerprint, written only by approveVerification,
+   * before the async trustee-verification-remap job deletes the surrogate CaseAppointment
+   * rows that are otherwise the only source of this information.
+   */
+  affectedCaseIds?: string[];
+  /**
    * The canonicalized (not raw) demographic variant string this document was created from —
    * buildVariant trims, collapses internal whitespace, and lowercases every field (see design
    * Decision 2). Any change to buildVariant/normalizeField silently invalidates every stored
