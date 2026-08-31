@@ -22,7 +22,7 @@ echo "Starting Azurite..."
 podman run -d \
   --name cams-import-zoom-csv-azurite \
   -p 10000:10000 \
-  mcr.microsoft.com/azure-storage/azurite:latest \
+  mcr.microsoft.com/azure-storage/azurite:3.21.0 \
   azurite-blob --blobHost 0.0.0.0 --skipApiVersionCheck
 
 echo "Waiting for MongoDB..."

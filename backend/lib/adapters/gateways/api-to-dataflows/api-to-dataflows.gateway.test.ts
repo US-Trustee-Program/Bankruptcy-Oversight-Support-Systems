@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
-import { ApiToDataflowsGatewayImpl } from './api-to-dataflows.gateway';
-import { createMockApplicationContext } from '../../../testing/testing-utilities';
-import { ApplicationContext } from '../../types/basic';
-import { InvocationContextExtraOutputs } from '@azure/functions';
+import {
+  ApiToDataflowsGatewayImpl,
+  __clearQueueClientCacheForTests,
+} from './api-to-dataflows.gateway';
+import { StorageQueueHumbleObject } from '../../../humble-objects/storage-queue-humble';
 import {
   CASE_ASSIGNMENT_EVENT_QUEUE,
   SYNC_CASES_PAGE_QUEUE,
@@ -16,102 +17,74 @@ import {
 } from '@common/cams/dataflow-events';
 
 describe('ApiToDataflowsGatewayImpl', () => {
-  let mockContext: ApplicationContext;
-  let mockExtraOutputs: InvocationContextExtraOutputs;
-  let setSpy: ReturnType<typeof vi.fn>;
+  let mockSendMessage: ReturnType<typeof vi.fn>;
+  let fromConnectionStringSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(async () => {
     vi.restoreAllMocks();
-    mockContext = await createMockApplicationContext();
+    // The gateway memoizes StorageQueueHumbleObject instances at module scope (keyed by
+    // connection string + queue name) so queueEnsured persists across sends in production.
+    // Clear that cache per test so each test's spy on fromConnectionString is consulted
+    // fresh, instead of a prior test's cached client (and its mock) being reused.
+    __clearQueueClientCacheForTests();
+    process.env.AzureWebJobsDataflowsStorage = 'UseDevelopmentStorage=true';
 
-    setSpy = vi.fn();
-    mockExtraOutputs = {
-      set: setSpy,
-    } as unknown as InvocationContextExtraOutputs;
-
-    mockContext.extraOutputs = mockExtraOutputs;
+    mockSendMessage = vi.fn().mockResolvedValue(undefined);
+    fromConnectionStringSpy = vi
+      .spyOn(StorageQueueHumbleObject, 'fromConnectionString')
+      .mockReturnValue({ sendMessage: mockSendMessage } as unknown as StorageQueueHumbleObject);
   });
 
   describe('queueCaseReload', () => {
-    test('should wrap single case reload event in an array when queuing to page queue', async () => {
-      const gateway = new ApiToDataflowsGatewayImpl(mockContext);
+    test('sends the case-reload event wrapped in an array to the page queue', async () => {
+      const gateway = new ApiToDataflowsGatewayImpl();
       const caseId = '081-12-34567';
 
       await gateway.queueCaseReload(caseId);
 
-      // Verify that extraOutputs.set receives the message wrapped in an array
-      // The enqueue method wraps all messages: output.set(queue, [message])
-      // Azure Functions unwraps one level, so [message] becomes message in the queue
-      expect(setSpy).toHaveBeenCalledWith(SYNC_CASES_PAGE_QUEUE, [
-        [{ caseId, type: 'CASE_CHANGED' }],
-      ]);
+      expect(fromConnectionStringSpy).toHaveBeenCalledWith(
+        'UseDevelopmentStorage=true',
+        SYNC_CASES_PAGE_QUEUE.queueName,
+      );
+      expect(mockSendMessage).toHaveBeenCalledWith(
+        JSON.stringify([{ caseId, type: 'CASE_CHANGED' }]),
+      );
     });
 
-    test('should handle multiple case reloads independently', async () => {
-      const gateway = new ApiToDataflowsGatewayImpl(mockContext);
-      const caseId1 = '081-12-34567';
-      const caseId2 = '087-99-79400';
-
-      await gateway.queueCaseReload(caseId1);
-      await gateway.queueCaseReload(caseId2);
-
-      expect(setSpy).toHaveBeenCalledTimes(2);
-      expect(setSpy).toHaveBeenNthCalledWith(1, SYNC_CASES_PAGE_QUEUE, [
-        [{ caseId: caseId1, type: 'CASE_CHANGED' }],
-      ]);
-      expect(setSpy).toHaveBeenNthCalledWith(2, SYNC_CASES_PAGE_QUEUE, [
-        [{ caseId: caseId2, type: 'CASE_CHANGED' }],
-      ]);
-    });
-
-    test('should log warning when extraOutputs is unavailable', async () => {
-      mockContext.extraOutputs = undefined;
-      const warnSpy = vi.spyOn(mockContext.logger, 'warn');
-      const gateway = new ApiToDataflowsGatewayImpl(mockContext);
+    test('sends each case reload independently', async () => {
+      const gateway = new ApiToDataflowsGatewayImpl();
 
       await gateway.queueCaseReload('081-12-34567');
+      await gateway.queueCaseReload('087-99-79400');
 
-      expect(warnSpy).toHaveBeenCalledWith(
-        'API-TO-DATAFLOWS-GATEWAY',
-        expect.stringContaining('Cannot enqueue to sync-cases-page'),
+      expect(mockSendMessage).toHaveBeenCalledTimes(2);
+      expect(mockSendMessage).toHaveBeenNthCalledWith(
+        1,
+        JSON.stringify([{ caseId: '081-12-34567', type: 'CASE_CHANGED' }]),
       );
-      expect(setSpy).not.toHaveBeenCalled();
+      expect(mockSendMessage).toHaveBeenNthCalledWith(
+        2,
+        JSON.stringify([{ caseId: '087-99-79400', type: 'CASE_CHANGED' }]),
+      );
     });
   });
 
-  describe('extraOutputs registration validation', () => {
-    test("throws when the target queue is not in the invoking function's registered extraOutputs", async () => {
-      mockContext.registeredExtraOutputQueueNames = ['some-other-queue'];
-      const gateway = new ApiToDataflowsGatewayImpl(mockContext);
+  describe('when AzureWebJobsDataflowsStorage is not configured', () => {
+    test('throws instead of silently no-opping (e.g. misconfiguration or a partial deploy)', async () => {
+      delete process.env.AzureWebJobsDataflowsStorage;
+      const gateway = new ApiToDataflowsGatewayImpl();
 
       await expect(gateway.queueCaseReload('081-12-34567')).rejects.toThrow(
-        /does not declare it in extraOutputs/,
+        'Missing required environment variable: AzureWebJobsDataflowsStorage',
       );
-      expect(setSpy).not.toHaveBeenCalled();
-    });
-
-    test("does not throw when the target queue is in the invoking function's registered extraOutputs", async () => {
-      mockContext.registeredExtraOutputQueueNames = [SYNC_CASES_PAGE_QUEUE.queueName];
-      const gateway = new ApiToDataflowsGatewayImpl(mockContext);
-
-      await gateway.queueCaseReload('081-12-34567');
-
-      expect(setSpy).toHaveBeenCalled();
-    });
-
-    test('does not check registration when registeredExtraOutputQueueNames is undefined (e.g. Express/BDD contexts)', async () => {
-      mockContext.registeredExtraOutputQueueNames = undefined;
-      const gateway = new ApiToDataflowsGatewayImpl(mockContext);
-
-      await gateway.queueCaseReload('081-12-34567');
-
-      expect(setSpy).toHaveBeenCalled();
+      expect(fromConnectionStringSpy).not.toHaveBeenCalled();
+      expect(mockSendMessage).not.toHaveBeenCalled();
     });
   });
 
   describe('queueCaseAssignmentEvent', () => {
-    test('should queue case assignment event wrapped for Azure Functions', async () => {
-      const gateway = new ApiToDataflowsGatewayImpl(mockContext);
+    test('sends the case assignment event as-is to the case-assignment queue', async () => {
+      const gateway = new ApiToDataflowsGatewayImpl();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const eventData: any = {
         caseId: '081-12-34567',
@@ -124,15 +97,17 @@ describe('ApiToDataflowsGatewayImpl', () => {
 
       await gateway.queueCaseAssignmentEvent(event);
 
-      // The enqueue method wraps the event: output.set(queue, [event])
-      // Azure Functions unwraps one level, so the queue receives the event as-is
-      expect(setSpy).toHaveBeenCalledWith(CASE_ASSIGNMENT_EVENT_QUEUE, [event]);
+      expect(fromConnectionStringSpy).toHaveBeenCalledWith(
+        'UseDevelopmentStorage=true',
+        CASE_ASSIGNMENT_EVENT_QUEUE.queueName,
+      );
+      expect(mockSendMessage).toHaveBeenCalledWith(JSON.stringify(event));
     });
   });
 
   describe('queueTrusteeAppointmentEvent', () => {
-    test('should queue trustee appointment event wrapped for Azure Functions', async () => {
-      const gateway = new ApiToDataflowsGatewayImpl(mockContext);
+    test('sends the trustee appointment event as-is to the trustee-appointment-event queue', async () => {
+      const gateway = new ApiToDataflowsGatewayImpl();
       const event: TrusteeAppointmentDownstreamEvent = {
         caseId: '081-12-34567',
         trusteeId: 'trustee-123',
@@ -144,13 +119,17 @@ describe('ApiToDataflowsGatewayImpl', () => {
 
       await gateway.queueTrusteeAppointmentEvent(event);
 
-      expect(setSpy).toHaveBeenCalledWith(TRUSTEE_APPOINTMENT_EVENT_QUEUE, [event]);
+      expect(fromConnectionStringSpy).toHaveBeenCalledWith(
+        'UseDevelopmentStorage=true',
+        TRUSTEE_APPOINTMENT_EVENT_QUEUE.queueName,
+      );
+      expect(mockSendMessage).toHaveBeenCalledWith(JSON.stringify(event));
     });
   });
 
   describe('queueTrusteeVerificationRemap', () => {
-    test('should queue trustee verification remap message wrapped for Azure Functions', async () => {
-      const gateway = new ApiToDataflowsGatewayImpl(mockContext);
+    test('sends the remap message as-is to the trustee-match-verification-remap queue', async () => {
+      const gateway = new ApiToDataflowsGatewayImpl();
       const message: TrusteeVerificationRemapMessage = {
         fingerprint: 'fp-abc123',
         resolvedTrusteeId: 'trustee-123',
@@ -160,7 +139,63 @@ describe('ApiToDataflowsGatewayImpl', () => {
 
       await gateway.queueTrusteeVerificationRemap(message);
 
-      expect(setSpy).toHaveBeenCalledWith(TRUSTEE_MATCH_VERIFICATION_REMAP_QUEUE, [message]);
+      expect(fromConnectionStringSpy).toHaveBeenCalledWith(
+        'UseDevelopmentStorage=true',
+        TRUSTEE_MATCH_VERIFICATION_REMAP_QUEUE.queueName,
+      );
+      expect(mockSendMessage).toHaveBeenCalledWith(JSON.stringify(message));
     });
+  });
+
+  // Shared behavior across all four queue methods: each delegates to the private enqueue(),
+  // so a send failure must propagate the same way regardless of which public method was called.
+  describe('when the underlying send fails', () => {
+    test.each([
+      [
+        'queueCaseAssignmentEvent',
+        (gateway: ApiToDataflowsGatewayImpl) =>
+          gateway.queueCaseAssignmentEvent({
+            caseId: '081-12-34567',
+            userId: 'user123',
+            name: 'Test User',
+            role: 'TrialAttorney',
+            assignedOn: '2024-01-01',
+            acmsProfessionalId: null,
+          } as CaseAssignmentDownstreamEvent),
+      ],
+      [
+        'queueTrusteeAppointmentEvent',
+        (gateway: ApiToDataflowsGatewayImpl) =>
+          gateway.queueTrusteeAppointmentEvent({
+            caseId: '081-12-34567',
+            trusteeId: 'trustee-123',
+            acmsProfessionalId: 'NY-00063',
+            assignedOn: '2024-01-01T00:00:00.000Z',
+            appointedDate: '2024-01-01',
+            chapter: '7',
+          } as TrusteeAppointmentDownstreamEvent),
+      ],
+      [
+        'queueTrusteeVerificationRemap',
+        (gateway: ApiToDataflowsGatewayImpl) =>
+          gateway.queueTrusteeVerificationRemap({
+            fingerprint: 'fp-abc123',
+            resolvedTrusteeId: 'trustee-123',
+            verificationId: 'verification-1',
+          }),
+      ],
+      [
+        'queueCaseReload',
+        (gateway: ApiToDataflowsGatewayImpl) => gateway.queueCaseReload('081-12-34567'),
+      ],
+    ])(
+      '%s propagates a send failure instead of silently dropping the message',
+      async (_name, invoke) => {
+        mockSendMessage.mockRejectedValueOnce(new Error('queue unavailable'));
+        const gateway = new ApiToDataflowsGatewayImpl();
+
+        await expect(invoke(gateway)).rejects.toThrow('queue unavailable');
+      },
+    );
   });
 });

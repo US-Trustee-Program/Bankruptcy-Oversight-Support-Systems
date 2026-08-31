@@ -21,7 +21,7 @@ export type TrusteeMatchVerification = Auditable & {
    * membership is answered by querying trustee-case-appointments for trusteeId =
    * <fingerprint> (the surrogate rows written while the mismatch is pending) — never from
    * caseId. Once approved, the surrogate rows are gone (remap deletes them), so case
-   * membership comes from the resolvedCaseIds snapshot below instead.
+   * membership comes from the affectedCaseIds snapshot below instead.
    */
   caseId: string;
   courtId: string;
@@ -43,8 +43,6 @@ export type TrusteeMatchVerification = Auditable & {
   status: OrderStatus;
   resolvedTrusteeId?: string;
   resolvedTrusteeName?: string;
-  /** Case IDs snapshotted at approval, since live derivation returns nothing once remap runs. */
-  resolvedCaseIds?: string[];
   courtName?: string;
   taskType: 'trustee-match';
   reason?: string;
@@ -57,6 +55,12 @@ export type TrusteeMatchVerification = Auditable & {
   appointedDate?: string;
   /** sha256(variant) — the bucket key used to find this document. See variant below. */
   fingerprint: string;
+  /**
+   * Snapshot of case IDs affected by this fingerprint, written only by approveVerification,
+   * before the async trustee-verification-remap job deletes the surrogate CaseAppointment
+   * rows that are otherwise the only source of this information.
+   */
+  affectedCaseIds?: string[];
   /**
    * The canonicalized (not raw) demographic variant string this document was created from —
    * buildVariant trims, collapses internal whitespace, and lowercases every field (see design

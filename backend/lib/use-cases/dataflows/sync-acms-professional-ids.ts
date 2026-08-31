@@ -8,7 +8,13 @@ import {
 } from '../gateways.types';
 import { TrusteeVariation } from '@common/cams/trustee-variation';
 import { ACMS_SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
-import { matchTrusteeByName } from './trustee-match.helpers';
+import {
+  matchTrusteeByName,
+  resolveByContactCorroboration,
+  resolveDuplicateNameCandidates,
+  findTokenIntersectionCandidates,
+  findAnchoredLevenshteinCandidates,
+} from './trustee-match.helpers';
 import { buildAcmsVariant } from './acms-trustee-variant.helpers';
 import { computeFingerprint } from './trustee-variant.helpers';
 import { AcmsTrusteeProfessional, CandidateScore } from '@common/cams/dataflow-events';
@@ -212,16 +218,64 @@ function toAcmsTrusteeProfessional(
 }
 
 /**
+ * Attempts to resolve a raw candidate trusteeId list via the two shared, non-appointment-gated
+ * corroboration primitives, in order: resolveByContactCorroboration first (exactly one candidate
+ * clears the name bar, corroborated by address/phone/email or the no-contradiction fallback), then
+ * resolveDuplicateNameCandidates only if that leaves MULTIPLE candidates (checks whether they're
+ * likely the same real person recorded twice in the trustees collection). Extracted so both
+ * matchTrusteeByName's 'ambiguous' result and findTokenIntersectionCandidates' raw candidate list
+ * can share the exact same resolution sequence rather than duplicating it.
+ */
+async function resolveCandidatesByCorroboration(
+  context: SyncAcmsProfessionalIdsDeps['context'],
+  acmsTrusteeProfessional: AcmsTrusteeProfessional,
+  candidateTrusteeIds: string[],
+): Promise<string | null> {
+  if (candidateTrusteeIds.length === 0) return null;
+
+  const corroboration = await resolveByContactCorroboration(
+    context,
+    acmsTrusteeProfessional,
+    candidateTrusteeIds,
+  );
+  if (corroboration.kind === 'resolved') {
+    return corroboration.trusteeId;
+  }
+
+  const duplicateResolution = await resolveDuplicateNameCandidates(
+    context,
+    acmsTrusteeProfessional,
+    candidateTrusteeIds,
+  );
+  if (duplicateResolution.kind === 'resolved-duplicate') {
+    return duplicateResolution.trusteeId;
+  }
+
+  return null;
+}
+
+/**
  * Falls through from a fingerprint miss to CAMS's existing name-matching logic
- * (matchTrusteeByName), reused as-is with the same thresholds as the DXTR sync. Called with no
- * courtId — an ACMS professional record has no associated case/court — which only narrows
- * matchTrusteeByName's last-name-token fallback path, it does not error.
+ * (matchTrusteeByName), reused as-is with the same thresholds as the DXTR sync.
  *
  * Unlike sync-trustee-case-appointments.ts, an ambiguous match here is NOT further resolved via
  * resolveNameCollisionByScoring: that function hard-requires a case-appointment event
  * (caseId/courtId/courtDivisionCode/chapter) to score candidates against active appointments,
- * none of which exist for a standalone ACMS professional record. An ambiguous match is reported
- * directly for human/automated review instead.
+ * none of which exist for a standalone ACMS professional record. Instead, both the 'ambiguous' and
+ * 'no-match' outcomes are given more chances via shared, non-appointment-gated primitives before
+ * falling back to their default disposition for human/automated review:
+ *   - 'ambiguous': routed through resolveCandidatesByCorroboration directly against
+ *     matchTrusteeByName's own raw candidates.
+ *   - 'no-match': two LAST-RESORT candidate-discovery steps are tried in sequence, each only after
+ *     the previous one found nothing, before also routing through resolveCandidatesByCorroboration:
+ *     1. findTokenIntersectionCandidates - name-part REORDERING (e.g. going by a middle name, a
+ *        lastName with an internal space).
+ *     2. findAnchoredLevenshteinCandidates - genuine SPELLING errors (a typo or transposition in
+ *        either name part) - a different failure shape token-intersection's exact-substring
+ *        requirement cannot catch.
+ *     Both are deliberately gated behind matchTrusteeByName (and each other) already returning
+ *     nothing — each issues its own extra query per attempt and must never run speculatively
+ *     alongside the cheaper tiers.
  */
 async function processNameMatch(
   deps: SyncAcmsProfessionalIdsDeps,
@@ -230,12 +284,49 @@ async function processNameMatch(
   const acmsTrusteeProfessional = toAcmsTrusteeProfessional(record);
   const result = await matchTrusteeByName(deps.context, acmsTrusteeProfessional);
 
-  if (result.kind === 'no-match') {
-    return { kind: 'no-match' };
-  }
   if (result.kind === 'ambiguous') {
+    const candidateTrusteeIds = result.matchCandidates.map((c) => c.trusteeId);
+    const resolvedTrusteeId = await resolveCandidatesByCorroboration(
+      deps.context,
+      acmsTrusteeProfessional,
+      candidateTrusteeIds,
+    );
+    if (resolvedTrusteeId) {
+      return { kind: 'auto-linked', trusteeId: resolvedTrusteeId };
+    }
     return { kind: 'ambiguous', matchCandidates: result.matchCandidates };
   }
+
+  if (result.kind === 'no-match') {
+    const tokenIntersectionCandidates = await findTokenIntersectionCandidates(
+      deps.context,
+      acmsTrusteeProfessional,
+    );
+    const tokenIntersectionResolvedTrusteeId = await resolveCandidatesByCorroboration(
+      deps.context,
+      acmsTrusteeProfessional,
+      tokenIntersectionCandidates.map((t) => t.trusteeId),
+    );
+    if (tokenIntersectionResolvedTrusteeId) {
+      return { kind: 'auto-linked', trusteeId: tokenIntersectionResolvedTrusteeId };
+    }
+
+    const anchoredLevenshteinCandidates = await findAnchoredLevenshteinCandidates(
+      deps.context,
+      acmsTrusteeProfessional,
+    );
+    const anchoredLevenshteinResolvedTrusteeId = await resolveCandidatesByCorroboration(
+      deps.context,
+      acmsTrusteeProfessional,
+      anchoredLevenshteinCandidates.map((t) => t.trusteeId),
+    );
+    if (anchoredLevenshteinResolvedTrusteeId) {
+      return { kind: 'auto-linked', trusteeId: anchoredLevenshteinResolvedTrusteeId };
+    }
+
+    return { kind: 'no-match' };
+  }
+
   return { kind: 'auto-linked', trusteeId: result.trusteeId };
 }
 

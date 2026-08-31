@@ -625,23 +625,26 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
 
   const sortedAffectedCaseIds = [...affectedCaseIds].sort();
 
-  const caseLink =
-    affectedCaseCount > 1 ? (
-      <span data-testid="affected-cases">
-        {affectedCaseCount} cases{hasFullCaseList ? ':' : ''}
-        {hasFullCaseList && (
-          <span className="affected-cases-list">
-            {sortedAffectedCaseIds.map((caseId) => (
-              <span key={caseId} className="affected-case-item">
-                <NewTabLink to={`/case-detail/${caseId}`} label={getCaseNumber(caseId)} />
-              </span>
-            ))}
-          </span>
-        )}
-      </span>
-    ) : (
-      singleCaseLink
-    );
+  // While the snapshotted count is loading, avoid flashing the (potentially stale or "0
+  // cases") live-derived list-view count before it's replaced by enrichedOrder's count.
+  const caseLink = isLoadingDetail ? (
+    <span data-testid="affected-cases-loading">Loading&hellip;</span>
+  ) : affectedCaseCount > 1 ? (
+    <span data-testid="affected-cases">
+      {affectedCaseCount} cases{hasFullCaseList ? ':' : ''}
+      {hasFullCaseList && (
+        <span className="affected-cases-list">
+          {sortedAffectedCaseIds.map((caseId) => (
+            <span key={caseId} className="affected-case-item">
+              <NewTabLink to={`/case-detail/${caseId}`} label={getCaseNumber(caseId)} />
+            </span>
+          ))}
+        </span>
+      )}
+    </span>
+  ) : (
+    singleCaseLink
+  );
 
   // The problem-statement's leading sentence names the specific mismatching fields once
   // candidate detail has loaded; pre-expand it falls back to today's generic wording.
@@ -881,7 +884,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
             <p className="resolved-statement" data-testid="resolved-statement">
               <span>
                 Trustee {getResolvedTrusteeDisplayName()} was appointed to{' '}
-                {affectedCaseCount > 1 ? '' : 'case: '}
+                {isLoadingDetail ? '' : affectedCaseCount > 1 ? '' : 'case: '}
               </span>
               {caseLink}
             </p>
@@ -894,7 +897,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
                     <span>
                       Trustee is inactive in CAMS and {inactiveMismatchedFieldsPrefix}sent from the
                       court does not match a CAMS Trustee for{' '}
-                      {affectedCaseCount > 1 ? '' : 'case: '}
+                      {isLoadingDetail ? '' : affectedCaseCount > 1 ? '' : 'case: '}
                     </span>
                     {caseLink}
                   </p>
@@ -902,7 +905,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
                   <p className="problem-statement">
                     <span>
                       Trustee is inactive in CAMS but was appointed to{' '}
-                      {affectedCaseCount > 1 ? '' : 'case: '}
+                      {isLoadingDetail ? '' : affectedCaseCount > 1 ? '' : 'case: '}
                     </span>
                     {caseLink}
                   </p>
@@ -911,7 +914,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
                 <p className="problem-statement">
                   <span>
                     Trustee {mismatchedFieldsPrefix}sent from the court does not match a CAMS
-                    Trustee for {affectedCaseCount > 1 ? '' : 'case: '}
+                    Trustee for {isLoadingDetail ? '' : affectedCaseCount > 1 ? '' : 'case: '}
                   </span>
                   {caseLink}
                 </p>

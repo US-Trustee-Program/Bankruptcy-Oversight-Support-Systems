@@ -635,8 +635,8 @@ const getTrusteeMatchVerificationRepository = (
   return repo;
 };
 
-const getApiToDataflowsGateway = (context: ApplicationContext): ApiToDataflowsGateway => {
-  return new ApiToDataflowsGatewayImpl(context);
+const getApiToDataflowsGateway = (_context: ApplicationContext): ApiToDataflowsGateway => {
+  return new ApiToDataflowsGatewayImpl();
 };
 
 /**

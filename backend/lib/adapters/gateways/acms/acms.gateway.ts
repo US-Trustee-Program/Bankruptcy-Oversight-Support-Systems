@@ -343,6 +343,10 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
 
     // Keyset-paginated by UST_PROF_CODE, scoped to a single GROUP_DESIGNATOR — the
     // code is only monotonically increasing within a group, never globally.
+    //
+    // PROF_LAST_NAME NOT LIKE '%NO TRUSTEE%' excludes ACMS sentinel/placeholder rows that are not
+    // real professionals (e.g. "NO TRUSTEE", "NO TRUSTEE ASSIGNED", "CASE STRICKEN: NO TRUSTEE"),
+    // always carried in PROF_LAST_NAME with PROF_FIRST_NAME empty.
     const query = `
       SELECT
         CONCAT(ACMS.GROUP_DESIGNATOR, '-', RIGHT(CONCAT('0000', ACMS.UST_PROF_CODE), 5)) AS acmsProfessionalId,
@@ -360,6 +364,7 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
       FROM [dbo].[CMMPR] AS ACMS
       WHERE ACMS.PROF_TYPE = 'TR'
         AND ACMS.DELETE_CODE != 'D'
+        AND ACMS.PROF_LAST_NAME NOT LIKE '%NO TRUSTEE%'
         AND ACMS.GROUP_DESIGNATOR = @groupDesignator
         AND ACMS.UST_PROF_CODE > @lastUstProfCode
       ORDER BY ACMS.UST_PROF_CODE

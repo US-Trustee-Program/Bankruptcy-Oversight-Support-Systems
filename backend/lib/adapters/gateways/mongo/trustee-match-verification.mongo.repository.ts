@@ -164,7 +164,7 @@ export class TrusteeMatchVerificationMongoRepository
         'status',
         'resolvedTrusteeId',
         'resolvedTrusteeName',
-        'resolvedCaseIds',
+        'affectedCaseIds',
         'taskType',
         'taskDate',
         'reason',

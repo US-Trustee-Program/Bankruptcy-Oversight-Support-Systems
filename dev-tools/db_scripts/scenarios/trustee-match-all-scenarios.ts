@@ -32,14 +32,14 @@
  *   - Multi-case scenarios. For a pending mismatch, affectedCaseCount/affectedCaseIds are
  *     derived live by querying trustee-case-appointments for surrogate CASE_APPOINTMENT rows
  *     sharing the mismatch's fingerprint (see getAffectedCaseIdsByFingerprint in
- *     trustee-match-verification.use-case.ts); once approved, they come from the resolvedCaseIds
+ *     trustee-match-verification.use-case.ts); once approved, they come from the affectedCaseIds
  *     snapshot taken at approval time instead, since the remap deletes the surrogates:
  *     5. Pending, 3 affected cases, one match candidate.
- *     6. Already approved, with NO resolvedCaseIds snapshot and NO surviving surrogate rows -
+ *     6. Already approved, with NO affectedCaseIds snapshot and NO surviving surrogate rows -
  *        simulates the state after trustee-verification-remap.ts has deleted every surrogate for
- *        a resolved fingerprint approved before the resolvedCaseIds snapshot existed, leaving no
+ *        a resolved fingerprint approved before the affectedCaseIds snapshot existed, leaving no
  *        durable record of which cases it affected.
- *     7. Already approved, WITH a populated resolvedCaseIds snapshot (3 cases) - the normal
+ *     7. Already approved, WITH a populated affectedCaseIds snapshot (3 cases) - the normal
  *        post-fix state for an approved multi-case mismatch.
  *
  * NOTE: Uses existing DXTR cases - no DXTR seeding required.
@@ -1102,8 +1102,8 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       ],
     },
 
-    // Already-approved multi-case mismatch WITH a populated resolvedCaseIds snapshot: the
-    // normal post-fix state (see the doc comment on TrusteeMatchVerification.resolvedCaseIds in
+    // Already-approved multi-case mismatch WITH a populated affectedCaseIds snapshot: the
+    // normal post-fix state (see the doc comment on TrusteeMatchVerification.affectedCaseIds in
     // common/src/cams/trustee-match-verification.ts). No surrogate rows are seeded for this
     // fingerprint - approval's remap would have deleted them, so the snapshot (not a live
     // surrogate query) is the only source for this document's affected cases.
@@ -1125,7 +1125,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           matchCandidates: [],
           resolvedTrusteeId: 'seed-trustee-match-highconf',
           resolvedTrusteeName: 'Alex Highconfidence',
-          resolvedCaseIds: [CASE_MULTI_A, CASE_MULTI_B, CASE_MULTI_C],
+          affectedCaseIds: [CASE_MULTI_A, CASE_MULTI_B, CASE_MULTI_C],
           updatedOn: '2025-06-01T00:00:00.000Z',
           updatedBy: SEEDER,
         },

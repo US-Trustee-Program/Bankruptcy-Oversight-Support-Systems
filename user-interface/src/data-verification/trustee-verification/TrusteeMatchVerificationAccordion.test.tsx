@@ -2100,6 +2100,41 @@ describe('TrusteeMatchVerificationAccordion', () => {
       expect(links.map((link) => link.textContent)).toEqual(['22-11111', '22-22222', '22-33333']);
     });
 
+    test('shows a loading indicator instead of the live count while detail is being fetched, avoiding a count flip', async () => {
+      const multiCaseOrder: TrusteeMatchVerificationListItem = {
+        ...sampleOrder,
+        affectedCaseCount: 1,
+      };
+      const multiCaseDetail: EnrichedTrusteeMatchVerification = {
+        ...sampleOrderDetail,
+        affectedCaseIds: ['081-22-11111', '081-22-22222', '081-22-33333'],
+      };
+      let resolveDetail: (value: { data: EnrichedTrusteeMatchVerification }) => void;
+      const detailPromise = new Promise<{ data: EnrichedTrusteeMatchVerification }>((resolve) => {
+        resolveDetail = resolve;
+      });
+      vi.spyOn(Api2, 'getTrusteeMatchVerificationDetail').mockReturnValue(detailPromise as never);
+      renderWithProps({ order: multiCaseOrder });
+
+      fireEvent.click(screen.getByTestId(`accordion-button-order-list-${multiCaseOrder.id}`));
+
+      const content = screen.getByTestId(`accordion-content-${multiCaseOrder.id}`);
+      await waitFor(() => {
+        expect(content.textContent).toContain('Loading');
+      });
+      // The stale live count (1 case) must not flash while the real snapshot is in flight.
+      expect(content.textContent).not.toContain('3 cases');
+      expect(
+        screen.queryByRole('link', { name: /22-11111/, hidden: true }),
+      ).not.toBeInTheDocument();
+
+      resolveDetail!({ data: multiCaseDetail });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('affected-cases').textContent).toContain('3 cases');
+      });
+    });
+
     test('falls back to the originating case when affectedCaseCount is 0 (resolution already in progress)', () => {
       const zeroCaseOrder: TrusteeMatchVerificationListItem = {
         ...sampleOrder,

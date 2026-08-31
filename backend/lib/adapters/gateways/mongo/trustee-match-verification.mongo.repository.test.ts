@@ -325,7 +325,7 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
       );
     });
 
-    test('projection includes resolvedCaseIds', async () => {
+    test('projection includes affectedCaseIds', async () => {
       vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([sampleVerification]);
 
       await repository.search({ status: ['pending'] });
@@ -335,7 +335,7 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
         expect.anything(),
         undefined,
         expect.objectContaining({
-          fields: expect.arrayContaining(['resolvedCaseIds']),
+          fields: expect.arrayContaining(['affectedCaseIds']),
         }),
       );
     });
