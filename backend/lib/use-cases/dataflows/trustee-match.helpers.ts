@@ -4,6 +4,7 @@ import {
   CandidateScore,
   TrusteeAppointmentSyncEvent,
   UNSCORED,
+  calculateTotalScore,
 } from '@common/cams/dataflow-events';
 import factory from '../../factory';
 import { LegacyAddress } from '@common/cams/parties';
@@ -662,48 +663,10 @@ export function calculateEmailScore(
   return dxtrNormalized === camsNormalized ? 100 : 0;
 }
 
-/**
- * Calculates the weighted total score from the individual score components.
- * Weighting: 8% address, 26% name, 8% phone, 8% email, 25% district/division, 25% chapter.
- * District/division and chapter (drawn from active CMMAP appointments) together carry the
- * majority (50%) as the strongest identity evidence; name (26%) is next as the primary
- * human-readable identifier; address/phone/email are weighted equally as smaller corroborating
- * signals despite phone/email being exact-match booleans and address being fuzzy-scored, since
- * address is more prone to staleness (trustees relocate). Phone and email are nullable ("not
- * comparable"): when null, that dimension's weight is excluded and redistributed proportionally
- * among the remaining dimensions, rather than penalizing the candidate with a 0.
- * Shared by calculateCandidateScore and handleInactivePerfectMatch so the weight distribution
- * only needs to change in one place.
- */
-export function calculateTotalScore(scores: {
-  addressScore: number;
-  nameScore: number;
-  phoneScore: number | null;
-  emailScore: number | null;
-  districtDivisionScore: number;
-  chapterScore: number;
-}): number {
-  const WEIGHTS = {
-    addressScore: 0.08,
-    nameScore: 0.26,
-    phoneScore: 0.08,
-    emailScore: 0.08,
-    districtDivisionScore: 0.25,
-    chapterScore: 0.25,
-  } as const;
-
-  let weightedSum = 0;
-  let applicableWeight = 0;
-
-  for (const key of Object.keys(WEIGHTS) as (keyof typeof WEIGHTS)[]) {
-    const score = scores[key];
-    if (score === null) continue;
-    weightedSum += score * WEIGHTS[key];
-    applicableWeight += WEIGHTS[key];
-  }
-
-  return applicableWeight === 0 ? 0 : weightedSum / applicableWeight;
-}
+// Moved to common/src/cams/dataflow-events.ts so dev-tools' seed-data validator can import the
+// exact same function instead of duplicating its weights (see CAMS-871 Slice 2 Task 3).
+// Re-exported here so existing consumers of this module don't need to change their import path.
+export { calculateTotalScore };
 
 /**
  * The case-identifying fields calculateCandidateScore needs to score district/division and

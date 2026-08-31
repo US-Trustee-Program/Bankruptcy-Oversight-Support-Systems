@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import {
   TrusteeMatchVerificationAccordion,
@@ -29,6 +29,7 @@ const sampleOrder: TrusteeMatchVerificationListItem = {
   preselectedCandidate: null,
   candidateCount: 0,
   affectedCaseCount: 1,
+  affectedCaseIds: ['081-22-11111'],
   taskDate: '2026-01-15T10:00:00.000Z',
 };
 
@@ -212,6 +213,47 @@ describe('TrusteeMatchVerificationAccordion', () => {
     ).not.toBeInTheDocument();
   });
 
+  test('backfills court name/division from the courts prop when an appointment is missing them', async () => {
+    renderWithProps({
+      order: sampleOrderWithCandidates,
+      courts: [
+        {
+          courtId: '0881',
+          courtName: 'Southern District of New York',
+          officeName: '',
+          officeCode: '',
+          courtDivisionCode: '081',
+          courtDivisionName: 'Manhattan',
+          groupDesignator: '',
+          regionId: '',
+          regionName: '',
+        },
+      ],
+    });
+    await mockDetailAndExpand({
+      ...sampleOrderWithCandidatesDetail,
+      matchCandidates: [
+        {
+          ...candidateJaneSmith,
+          appointments: [
+            MockData.getTrusteeAppointment({
+              courtId: '0881',
+              divisionCode: '081',
+              chapter: '7',
+              status: 'active',
+              courtName: undefined,
+              courtDivisionName: undefined,
+            }),
+          ],
+        },
+      ],
+    });
+
+    const candidateInfo = screen.getByTestId('candidate-info');
+    expect(candidateInfo.textContent).toContain('Southern District of New York');
+    expect(candidateInfo.textContent).toContain('Manhattan');
+  });
+
   test('should NOT render candidate-info section for approved order', () => {
     renderWithProps({ order: { ...sampleOrderWithCandidates, status: 'approved' } });
 
@@ -240,6 +282,244 @@ describe('TrusteeMatchVerificationAccordion', () => {
     expect(screen.queryByTestId('approve-candidate-trustee-1')).not.toBeInTheDocument();
   });
 
+  describe('mismatch info prominence', () => {
+    test('does not wrap the problem statement in an alert for an unresolved task', () => {
+      renderWithProps();
+
+      const problemStatement = screen
+        .getByTestId(`accordion-content-${sampleOrder.id}`)
+        .querySelector('.problem-statement');
+      expect(problemStatement?.closest('.usa-alert--warning')).not.toBeInTheDocument();
+    });
+
+    test('preserves the dxtr-trustee-info test ID and does not wrap the resolved statement in an alert', () => {
+      renderWithProps();
+      expect(screen.getByTestId('dxtr-trustee-info')).toBeInTheDocument();
+
+      renderWithProps({
+        order: {
+          ...sampleOrderWithCandidates,
+          status: 'approved',
+          resolvedTrusteeId: 'trustee-1',
+          resolvedTrusteeName: 'Jane Smith',
+        },
+      });
+      const resolved = screen.getAllByTestId('resolved-statement')[0];
+      expect(resolved.closest('.usa-alert--warning')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('CAMS Strongest Match mismatch icons', () => {
+    // candidateJaneSmith: nameScore 90 (mismatch), addressScore 90 (mismatch), phoneScore null
+    // (not comparable, no icon), emailScore null (not comparable, no icon), districtDivisionScore
+    // 100 (match), chapterScore 95 (mismatch) - so Trustee Appointment shows a mismatch icon too.
+    test('shows mismatch icons for mismatching fields, none for null or full-match fields', async () => {
+      renderWithProps({ order: sampleOrderWithCandidates });
+      await mockDetailAndExpand(sampleOrderWithCandidatesDetail);
+
+      const candidateInfo = screen.getByTestId('candidate-info');
+      expect(candidateInfo.textContent).toContain('Name does not match');
+      expect(candidateInfo.textContent).toContain('Address does not match');
+      expect(candidateInfo.textContent).toContain('Trustee Appointment does not match');
+      expect(candidateInfo.textContent).not.toContain('Phone does not match');
+      expect(candidateInfo.textContent).not.toContain('Email does not match');
+    });
+
+    test('does not show a mismatch icon for a field that scores a full 100 match', async () => {
+      renderWithProps({ order: sampleOrderWithCandidates });
+      await mockDetailAndExpand({
+        ...sampleOrderWithCandidatesDetail,
+        matchCandidates: [{ ...candidateJaneSmith, nameScore: 100 }],
+      });
+
+      const candidateInfo = screen.getByTestId('candidate-info');
+      expect(candidateInfo.textContent).not.toContain('Name does not match');
+    });
+
+    test('shows a Trustee Appointment mismatch icon when only district/division score mismatches', async () => {
+      renderWithProps({ order: sampleOrderWithCandidates });
+      await mockDetailAndExpand({
+        ...sampleOrderWithCandidatesDetail,
+        matchCandidates: [{ ...candidateJaneSmith, districtDivisionScore: 50, chapterScore: 100 }],
+      });
+
+      const candidateInfo = screen.getByTestId('candidate-info');
+      expect(candidateInfo.textContent).toContain('Trustee Appointment does not match');
+    });
+
+    test('shows a mismatch icon for a phone score that is neither null nor a full match', async () => {
+      renderWithProps({ order: sampleOrderWithCandidates });
+      await mockDetailAndExpand({
+        ...sampleOrderWithCandidatesDetail,
+        matchCandidates: [
+          {
+            ...candidateJaneSmith,
+            nameScore: 100,
+            addressScore: 100,
+            districtDivisionScore: 100,
+            chapterScore: 100,
+            phoneScore: 50,
+          },
+        ],
+      });
+
+      const candidateInfo = screen.getByTestId('candidate-info');
+      expect(candidateInfo.textContent).toContain('Phone does not match');
+      expect(candidateInfo.textContent).not.toContain('Name does not match');
+      expect(candidateInfo.textContent).not.toContain('Trustee Appointment does not match');
+    });
+
+    test('does not show mismatch icons in the Other Potential Matches header', async () => {
+      const secondCandidate: CandidateScore = {
+        ...candidateJaneSmith,
+        trusteeId: 'trustee-2',
+        trusteeName: 'John Roe',
+        totalScore: 80,
+      };
+      const twoCandidateOrder: TrusteeMatchVerificationListItem = {
+        ...sampleOrder,
+        mismatchReason: 'AMBIGUOUS_MATCH_UNRESOLVED',
+        preselectedCandidate: null,
+        candidateCount: 2,
+      };
+      const twoCandidateDetail: EnrichedTrusteeMatchVerification = {
+        ...sampleOrderDetail,
+        mismatchReason: 'AMBIGUOUS_MATCH_UNRESOLVED',
+        matchCandidates: [candidateJaneSmith, secondCandidate],
+      };
+      renderWithProps({ order: twoCandidateOrder });
+      await mockDetailAndExpand(twoCandidateDetail);
+
+      const content = screen.getByTestId(`accordion-content-${sampleOrder.id}`);
+      // "Name does not match" would only appear from a column-header mismatch icon - the
+      // strongest match's own header renders it once; it must not repeat for the "Other
+      // Potential Matches" table's header.
+      const occurrences = content.textContent?.split('Name does not match').length ?? 0;
+      expect(occurrences - 1).toBe(1);
+    });
+  });
+
+  describe('dynamic mismatch sentence', () => {
+    test('keeps the generic wording before candidate details load', () => {
+      renderWithProps({ order: sampleOrderWithCandidates });
+
+      const content = screen.getByTestId(`accordion-content-${sampleOrderWithCandidates.id}`);
+      expect(content.textContent).toContain(
+        'Trustee sent from the court does not match a CAMS Trustee for case:',
+      );
+    });
+
+    test('lists the specific mismatching fields once candidate details load', async () => {
+      renderWithProps({ order: sampleOrderWithCandidates });
+      await mockDetailAndExpand(sampleOrderWithCandidatesDetail);
+
+      const content = screen.getByTestId(`accordion-content-${sampleOrderWithCandidates.id}`);
+      expect(content.textContent).toContain(
+        'Trustee name, address, and appointment sent from the court does not match a CAMS Trustee for case:',
+      );
+    });
+
+    test('lists exactly two mismatching fields joined with "and", no comma', async () => {
+      renderWithProps({ order: sampleOrderWithCandidates });
+      await mockDetailAndExpand({
+        ...sampleOrderWithCandidatesDetail,
+        matchCandidates: [{ ...candidateJaneSmith, districtDivisionScore: 100, chapterScore: 100 }],
+      });
+
+      const content = screen.getByTestId(`accordion-content-${sampleOrderWithCandidates.id}`);
+      expect(content.textContent).toContain(
+        'Trustee name and address sent from the court does not match a CAMS Trustee for case:',
+      );
+    });
+
+    test('lists a single mismatching field without a conjunction', async () => {
+      renderWithProps({ order: sampleOrderWithCandidates });
+      await mockDetailAndExpand({
+        ...sampleOrderWithCandidatesDetail,
+        matchCandidates: [
+          {
+            ...candidateJaneSmith,
+            addressScore: 100,
+            districtDivisionScore: 100,
+            chapterScore: 100,
+          },
+        ],
+      });
+
+      const content = screen.getByTestId(`accordion-content-${sampleOrderWithCandidates.id}`);
+      expect(content.textContent).toContain(
+        'Trustee name sent from the court does not match a CAMS Trustee for case:',
+      );
+    });
+  });
+
+  describe('resolved-order case list sourced from the list response', () => {
+    test('shows case numbers for a resolved order without fetching detail', async () => {
+      const detailSpy = vi.spyOn(Api2, 'getTrusteeMatchVerificationDetail');
+      const resolvedOrder: TrusteeMatchVerificationListItem = {
+        ...sampleOrderWithCandidates,
+        status: 'approved',
+        resolvedTrusteeId: 'trustee-1',
+        resolvedTrusteeName: 'Jane Smith',
+        affectedCaseCount: 2,
+        affectedCaseIds: ['081-22-11111', '081-22-22222'],
+      };
+
+      renderWithProps({ order: resolvedOrder });
+
+      expect(screen.getByRole('link', { name: /22-11111/, hidden: true })).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: /22-22222/, hidden: true })).toBeInTheDocument();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(detailSpy).not.toHaveBeenCalled();
+    });
+
+    test('falls back to the originating case for a resolved order with no snapshot and no surviving surrogates', () => {
+      const resolvedOrder: TrusteeMatchVerificationListItem = {
+        ...sampleOrderWithCandidates,
+        status: 'approved',
+        resolvedTrusteeId: 'trustee-1',
+        resolvedTrusteeName: 'Jane Smith',
+        affectedCaseCount: 0,
+        affectedCaseIds: [],
+      };
+
+      renderWithProps({ order: resolvedOrder });
+
+      const resolved = screen.getByTestId('resolved-statement');
+      expect(resolved.textContent).toContain('case:');
+      const link = screen.getByRole('link', { name: /22-11111/, hidden: true });
+      expect(link).toHaveAttribute('href', `/case-detail/${resolvedOrder.caseId}`);
+    });
+
+    test('does not fetch detail on mount for a non-resolved order', async () => {
+      const detailSpy = vi.spyOn(Api2, 'getTrusteeMatchVerificationDetail');
+
+      renderWithProps({ order: sampleOrderWithCandidates });
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(detailSpy).not.toHaveBeenCalled();
+    });
+
+    test('does not fetch detail when a resolved order is manually expanded', async () => {
+      const detailSpy = vi.spyOn(Api2, 'getTrusteeMatchVerificationDetail');
+      const resolvedOrder: TrusteeMatchVerificationListItem = {
+        ...sampleOrderWithCandidates,
+        status: 'approved',
+        resolvedTrusteeId: 'trustee-1',
+        resolvedTrusteeName: 'Jane Smith',
+        affectedCaseCount: 2,
+        affectedCaseIds: ['081-22-11111', '081-22-22222'],
+      };
+
+      renderWithProps({ order: resolvedOrder });
+      fireEvent.click(screen.getByTestId(`accordion-button-order-list-${resolvedOrder.id}`));
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(detailSpy).not.toHaveBeenCalled();
+    });
+  });
+
   test('clicking Match Trustee calls patchTrusteeVerificationOrderApproval with correct args', async () => {
     vi.spyOn(Api2, 'patchTrusteeVerificationOrderApproval').mockResolvedValue(undefined);
     renderWithProps({ order: sampleOrderWithCandidates });
@@ -258,6 +538,65 @@ describe('TrusteeMatchVerificationAccordion', () => {
         'Jane Smith',
       );
     });
+  });
+
+  test('keeps the confirmation modal open with a spinner while approval is in flight', async () => {
+    let resolveApproval: () => void = () => {};
+    vi.spyOn(Api2, 'patchTrusteeVerificationOrderApproval').mockImplementation(
+      () => new Promise<void>((resolve) => (resolveApproval = () => resolve())),
+    );
+    renderWithProps({ order: sampleOrderWithCandidates });
+    await mockDetailAndExpand(sampleOrderWithCandidatesDetail);
+
+    fireEvent.click(screen.getByTestId('approve-candidate-trustee-1'));
+    const modalSubmit = document.getElementById(
+      `trustee-confirmation-modal-${sampleOrderWithCandidates.id}-submit-button`,
+    );
+    fireEvent.click(modalSubmit!);
+
+    const wrapper = document.getElementById(
+      `trustee-confirmation-modal-${sampleOrderWithCandidates.id}-wrapper`,
+    );
+    await waitFor(() => {
+      expect(wrapper).toHaveClass('is-visible');
+      expect(
+        within(wrapper as HTMLElement).getByText('Confirming appointment...'),
+      ).toBeInTheDocument();
+      expect(modalSubmit).toBeDisabled();
+    });
+
+    resolveApproval();
+
+    await waitFor(() => {
+      expect(wrapper).toHaveClass('is-hidden');
+    });
+  });
+
+  test('ignores a second rapid approval submit while the first is still in flight', async () => {
+    let resolveApproval: () => void = () => {};
+    const approvalSpy = vi
+      .spyOn(Api2, 'patchTrusteeVerificationOrderApproval')
+      .mockImplementation(() => new Promise<void>((resolve) => (resolveApproval = resolve)));
+    renderWithProps({ order: sampleOrderWithCandidates });
+    await mockDetailAndExpand(sampleOrderWithCandidatesDetail);
+
+    fireEvent.click(screen.getByTestId('approve-candidate-trustee-1'));
+    const modalSubmit = document.getElementById(
+      `trustee-confirmation-modal-${sampleOrderWithCandidates.id}-submit-button`,
+    );
+    // Both dispatches inside one act() call so React doesn't get a chance to commit the first
+    // click's isProcessing update (and thus disable the button) before the second fires -
+    // simulating a rapid repeat invocation reaching the handler before React commits. The
+    // no-unnecessary-act rule doesn't account for this: nesting changes batching timing here.
+    // eslint-disable-next-line testing-library/no-unnecessary-act
+    act(() => {
+      fireEvent.click(modalSubmit!);
+      fireEvent.click(modalSubmit!);
+    });
+
+    expect(approvalSpy).toHaveBeenCalledTimes(1);
+    resolveApproval();
+    await waitFor(() => expect(approvalSpy).toHaveBeenCalledTimes(1));
   });
 
   test('calls onOrderUpdate with success alert and updated order on approve success', async () => {
@@ -752,6 +1091,54 @@ describe('TrusteeMatchVerificationAccordion', () => {
       });
     });
 
+    test('ignores a second rapid manual-match submit while the first is still in flight', async () => {
+      let resolveApproval: () => void = () => {};
+      const approvalSpy = vi
+        .spyOn(Api2, 'patchTrusteeVerificationOrderApproval')
+        .mockImplementation(() => new Promise<void>((resolve) => (resolveApproval = resolve)));
+      setupSearchMocks();
+      renderWithProps();
+
+      const searchButton = screen.getByRole('button', {
+        name: /Search for a trustee/,
+        hidden: true,
+      });
+      fireEvent.click(searchButton);
+      await waitFor(() => {
+        const wrapper = document.getElementById(`trustee-search-modal-${sampleOrder.id}-wrapper`);
+        expect(wrapper).toHaveClass('is-visible');
+      });
+
+      const comboBoxId = `trustee-search-combobox-${sampleOrder.id}`;
+      fireEvent.click(document.getElementById(`${comboBoxId}-expand`)!);
+      fireEvent.change(
+        document.getElementById(`${comboBoxId}-combo-box-input`) as HTMLInputElement,
+        { target: { value: 'manual' } },
+      );
+      await waitFor(() => {
+        expect(screen.getByTestId(`${comboBoxId}-option-item-0`)).toBeVisible();
+      });
+      fireEvent.click(screen.getByTestId(`${comboBoxId}-option-item-0`));
+
+      const submitButton = screen.getByTestId(
+        `button-trustee-search-modal-${sampleOrder.id}-submit-button`,
+      );
+      await waitFor(() => expect(submitButton).toBeEnabled());
+      // Both dispatches inside one act() call so React doesn't get a chance to commit the first
+      // click's isProcessing update (and thus disable the button) before the second fires -
+      // simulating a rapid repeat invocation reaching the handler before React commits. The
+      // no-unnecessary-act rule doesn't account for this: nesting changes batching timing here.
+      // eslint-disable-next-line testing-library/no-unnecessary-act
+      act(() => {
+        fireEvent.click(submitButton);
+        fireEvent.click(submitButton);
+      });
+
+      expect(approvalSpy).toHaveBeenCalledTimes(1);
+      resolveApproval();
+      await waitFor(() => expect(approvalSpy).toHaveBeenCalledTimes(1));
+    });
+
     // Integration test: exercises full search-to-approval error flow
     test('manual search approval failure calls onOrderUpdate with error', async () => {
       vi.spyOn(Api2, 'patchTrusteeVerificationOrderApproval').mockRejectedValue(
@@ -885,6 +1272,33 @@ describe('TrusteeMatchVerificationAccordion', () => {
           expect.objectContaining({ status: 'rejected', reason: 'Wrong person' }),
         );
       });
+    });
+
+    test('ignores a second rapid submit while the first rejection is still in flight', async () => {
+      let resolveRejection: () => void = () => {};
+      const rejectSpy = vi
+        .spyOn(Api2, 'patchTrusteeVerificationOrderRejection')
+        .mockImplementation(() => new Promise<void>((resolve) => (resolveRejection = resolve)));
+      renderWithProps({ order: sampleOrderWithCandidates });
+
+      const textarea = screen.getByTestId(`rejection-reason-input-${sampleOrderWithCandidates.id}`);
+      fireEvent.change(textarea, { target: { value: 'Wrong person' } });
+      const submitButton = document.getElementById(
+        `trustee-rejection-modal-${sampleOrderWithCandidates.id}-submit-button`,
+      );
+      // Both dispatches inside one act() call so React doesn't get a chance to commit the
+      // first click's state updates (and thus disable the button) before the second fires -
+      // simulating a rapid repeat invocation reaching the handler before React commits. The
+      // no-unnecessary-act rule doesn't account for this: nesting changes batching timing here.
+      // eslint-disable-next-line testing-library/no-unnecessary-act
+      act(() => {
+        fireEvent.click(submitButton!);
+        fireEvent.click(submitButton!);
+      });
+
+      expect(rejectSpy).toHaveBeenCalledTimes(1);
+      resolveRejection();
+      await waitFor(() => expect(rejectSpy).toHaveBeenCalledTimes(1));
     });
 
     test('calls onOrderUpdate with error alert on reject failure', async () => {
@@ -1200,7 +1614,30 @@ describe('TrusteeMatchVerificationAccordion', () => {
       );
     });
 
-    test('should still render original "does not match" problem statement for an unresolved multiple-match', async () => {
+    test('shows a Trustee Appointment mismatch icon for inactive-status tasks even when scores are a perfect match', async () => {
+      renderWithProps({ order: inactiveOrder });
+      await mockDetailAndExpand(inactiveDetail);
+
+      const candidateInfo = screen.getByTestId('candidate-info');
+      expect(candidateInfo.textContent).toContain('Trustee Appointment does not match');
+    });
+
+    test('lists other mismatching fields alongside the inactive statement, excluding appointment', async () => {
+      renderWithProps({ order: inactiveOrder });
+      await mockDetailAndExpand({
+        ...inactiveDetail,
+        matchCandidates: [{ ...inactiveCandidates[0], nameScore: 90, emailScore: 80 }],
+      });
+
+      const problemStatement = screen
+        .getByTestId(`accordion-content-${inactiveOrder.id}`)
+        .querySelector('.problem-statement');
+      expect(problemStatement?.textContent).toContain(
+        'Trustee is inactive in CAMS and name and email sent from the court does not match a CAMS Trustee for case:',
+      );
+    });
+
+    test('renders the mismatch problem statement (not inactive) for an unresolved multiple-match', async () => {
       const unresolvedOrder: TrusteeMatchVerificationListItem = {
         ...sampleOrderWithCandidates,
         mismatchReason: 'AMBIGUOUS_MATCH_UNRESOLVED',
@@ -1213,10 +1650,9 @@ describe('TrusteeMatchVerificationAccordion', () => {
       await mockDetailAndExpand(unresolvedDetail);
 
       const content = screen.getByTestId(`accordion-content-${sampleOrder.id}`);
-      expect(content.textContent).toContain(
-        'Trustee sent from the court does not match a CAMS Trustee',
-      );
+      expect(content.textContent).toContain('sent from the court does not match a CAMS Trustee');
       expect(content.textContent).not.toContain('inactive');
+      // Guards against reintroducing pre-#2821 copy for this mismatch reason.
       expect(content.textContent).not.toContain('CAMS found a possible match');
     });
 
@@ -1602,10 +2038,19 @@ describe('TrusteeMatchVerificationAccordion', () => {
       expect(link).toHaveAttribute('href', `/case-detail/${sampleOrder.caseId}`);
     });
 
+    test('falls back to the originating case link after expansion when the fetched detail has zero affected cases', async () => {
+      renderWithProps();
+      await mockDetailAndExpand({ ...sampleOrderDetail, affectedCaseIds: [] });
+
+      const link = screen.getByRole('link', { name: /22-11111/, hidden: true });
+      expect(link).toHaveAttribute('href', `/case-detail/${sampleOrder.caseId}`);
+    });
+
     test('shows "N cases" count before expansion when a verification affects multiple cases', () => {
       const multiCaseOrder: TrusteeMatchVerificationListItem = {
         ...sampleOrder,
         affectedCaseCount: 3,
+        affectedCaseIds: ['081-22-11111', '081-22-22222', '081-22-33333'],
       };
       renderWithProps({ order: multiCaseOrder });
 
@@ -1621,6 +2066,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
       const multiCaseOrder: TrusteeMatchVerificationListItem = {
         ...sampleOrder,
         affectedCaseCount: 3,
+        affectedCaseIds: ['081-22-11111', '081-22-22222', '081-22-33333'],
       };
       const multiCaseDetail: EnrichedTrusteeMatchVerification = {
         ...sampleOrderDetail,
@@ -1640,6 +2086,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
       const multiCaseOrder: TrusteeMatchVerificationListItem = {
         ...sampleOrder,
         affectedCaseCount: 3,
+        affectedCaseIds: ['081-22-33333', '081-22-11111', '081-22-22222'],
       };
       const multiCaseDetail: EnrichedTrusteeMatchVerification = {
         ...sampleOrderDetail,
@@ -1692,6 +2139,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
       const zeroCaseOrder: TrusteeMatchVerificationListItem = {
         ...sampleOrder,
         affectedCaseCount: 0,
+        affectedCaseIds: [],
       };
       renderWithProps({ order: zeroCaseOrder });
 
@@ -1701,12 +2149,45 @@ describe('TrusteeMatchVerificationAccordion', () => {
       expect(link).toHaveAttribute('href', `/case-detail/${sampleOrder.caseId}`);
     });
 
+    test('does not render the case count in bold', async () => {
+      const multiCaseOrder: TrusteeMatchVerificationListItem = {
+        ...sampleOrder,
+        affectedCaseCount: 3,
+        affectedCaseIds: ['081-22-11111', '081-22-22222', '081-22-33333'],
+      };
+      renderWithProps({ order: multiCaseOrder });
+
+      const affectedCases = screen.getByTestId('affected-cases');
+      expect(affectedCases.querySelector('strong')).not.toBeInTheDocument();
+    });
+
+    test('appends a colon after the case count once the case list is expanded', async () => {
+      const multiCaseOrder: TrusteeMatchVerificationListItem = {
+        ...sampleOrder,
+        affectedCaseCount: 3,
+        affectedCaseIds: ['081-22-11111', '081-22-22222', '081-22-33333'],
+      };
+      const multiCaseDetail: EnrichedTrusteeMatchVerification = {
+        ...sampleOrderDetail,
+        affectedCaseIds: ['081-22-11111', '081-22-22222', '081-22-33333'],
+      };
+      renderWithProps({ order: multiCaseOrder });
+
+      // Collapsed: no colon since no list follows the count.
+      expect(screen.getByTestId('affected-cases').textContent).toBe('3 cases');
+
+      await mockDetailAndExpand(multiCaseDetail);
+
+      expect(screen.getByTestId('affected-cases').textContent).toMatch(/^3 cases:/);
+    });
+
     test('approval success message reflects all affected cases, not just the originating one', async () => {
       vi.spyOn(Api2, 'patchTrusteeVerificationOrderApproval').mockResolvedValue(undefined);
       const onOrderUpdate = vi.fn();
       const multiCaseOrder: TrusteeMatchVerificationListItem = {
         ...sampleOrderWithCandidates,
         affectedCaseCount: 2,
+        affectedCaseIds: ['081-22-11111', '081-22-22222'],
       };
       const multiCaseDetail: EnrichedTrusteeMatchVerification = {
         ...sampleOrderWithCandidatesDetail,

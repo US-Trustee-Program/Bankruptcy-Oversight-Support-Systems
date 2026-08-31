@@ -125,7 +125,33 @@ test.describe('Trustee Match Verification', () => {
 
     const content = page.getByTestId(`accordion-content-order-list-${inactiveItem!.id}`);
     await expect(content).toBeVisible(timeoutOption);
-    await expect(content).toContainText('inactive in CAMS but was appointed to case');
+    // The tail of this sentence is dynamic (lists whichever fields mismatch once candidate
+    // detail loads), so only assert the always-present, inactive-specific prefix.
+    await expect(content).toContainText('Trustee is inactive in CAMS');
+  });
+
+  test("should compose the leading sentence from the candidate's real mismatched fields", async ({
+    page,
+  }) => {
+    // e2e-trustee-match-verification-inactive's seeded candidate has no real DXTR name/address/
+    // phone/email data to match against (see mongo-fixture.json), so every one of those fields
+    // is a genuine mismatch - this pins the exact composed sentence against that known data,
+    // guarding against the CandidateScore-data-quality bug this fixture once had (unbacked
+    // addressScore, missing nameScore/phoneScore/emailScore) silently regressing.
+    const inactiveItem = verificationItems.find(
+      (v) =>
+        v.taskType === 'trustee-match' &&
+        v.mismatchReason === TrusteeAppointmentSyncErrorCode.PerfectMatchInactiveStatus,
+    );
+    expect(inactiveItem).not.toBeFalsy();
+
+    await page.getByTestId(`accordion-button-order-list-${inactiveItem!.id}`).click();
+
+    const content = page.getByTestId(`accordion-content-order-list-${inactiveItem!.id}`);
+    await expect(content).toBeVisible(timeoutOption);
+    await expect(content).toContainText(
+      'Trustee is inactive in CAMS and name, address, phone, and email sent from the court does not match a CAMS Trustee for case:',
+    );
   });
 
   test('should show inactive trustee task type label for inactive match verification', async ({

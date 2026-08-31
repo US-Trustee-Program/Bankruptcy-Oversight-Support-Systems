@@ -831,6 +831,7 @@ const trusteeMatchVerificationOrders: TrusteeMatchVerificationListItem[] = [
     },
     candidateCount: 1,
     affectedCaseCount: 1,
+    affectedCaseIds: ['081-22-11111'],
     taskDate: '2026-01-15T10:00:00.000Z',
   },
 ];

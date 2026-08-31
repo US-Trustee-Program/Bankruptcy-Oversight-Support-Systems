@@ -228,6 +228,52 @@ export type CandidateScore = {
 };
 
 /**
+ * Calculates the weighted total score from the individual score components.
+ * Weighting: 8% address, 26% name, 8% phone, 8% email, 25% district/division, 25% chapter.
+ * District/division and chapter are drawn from active CMMAP appointments, so together they carry
+ * the majority (50%) as the strongest identity evidence; the remainder favors name (26%, the
+ * primary human-readable identifier) with address/phone/email as smaller but non-trivial
+ * corroborating signals - phone and email are high-entropy exact-match booleans, while address is
+ * fuzzy-scored and more prone to staleness (trustees relocate), so all three are weighted equally
+ * rather than favoring address's finer-grained scoring. Phone and email are nullable ("not
+ * comparable" - data missing on either side): when null, that dimension's weight is excluded from
+ * the calculation entirely and redistributed proportionally among the remaining applicable
+ * dimensions, rather than penalizing the candidate with a 0.
+ * Lives here (not in backend) so dev-tools' seed-data validator can call the exact same
+ * function backend uses, rather than duplicating its weights and risking drift (see CAMS-871
+ * Slice 2 Task 3).
+ */
+export function calculateTotalScore(scores: {
+  addressScore: number;
+  nameScore: number;
+  phoneScore: number | null;
+  emailScore: number | null;
+  districtDivisionScore: number;
+  chapterScore: number;
+}): number {
+  const WEIGHTS = {
+    addressScore: 0.08,
+    nameScore: 0.26,
+    phoneScore: 0.08,
+    emailScore: 0.08,
+    districtDivisionScore: 0.25,
+    chapterScore: 0.25,
+  } as const;
+
+  let weightedSum = 0;
+  let applicableWeight = 0;
+
+  for (const key of Object.keys(WEIGHTS) as (keyof typeof WEIGHTS)[]) {
+    const score = scores[key];
+    if (score === null) continue;
+    weightedSum += score * WEIGHTS[key];
+    applicableWeight += WEIGHTS[key];
+  }
+
+  return applicableWeight === 0 ? 0 : weightedSum / applicableWeight;
+}
+
+/**
  * Sent to the DLQ when a trustee appointment cannot be processed due to a known, permanent error.
  * Extends the original event to preserve full context for future recovery processing.
  * mismatchReason additionally accepts SoftCloseWriteFailed (a post-resolution write-failure,

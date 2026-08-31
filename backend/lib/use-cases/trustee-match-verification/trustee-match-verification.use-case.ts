@@ -49,19 +49,26 @@ export class TrusteeMatchVerificationUseCase {
       const results = await repo.search({ status });
 
       const courts = await new CourtsUseCase().getCourts(context);
+      const resultsWithoutSnapshot = results.filter(
+        (verification) => !verification.affectedCaseIds,
+      );
       const affectedCaseIdsByFingerprint = await this.getAffectedCaseIdsByFingerprint(
         context,
-        results.map((verification) => verification.fingerprint),
+        resultsWithoutSnapshot.map((v) => v.fingerprint),
       );
       return results.map((verification) => {
         const { matchCandidates, ...rest } = verification;
+        const affectedCaseIds =
+          verification.affectedCaseIds ??
+          affectedCaseIdsByFingerprint.get(verification.fingerprint) ??
+          [];
         return {
           ...rest,
           courtName: this.resolveCourtName(verification, courts) ?? verification.courtName,
           candidateCount: matchCandidates.length,
           preselectedCandidate: this.resolvePreselectedCandidate(verification),
-          affectedCaseCount: (affectedCaseIdsByFingerprint.get(verification.fingerprint) ?? [])
-            .length,
+          affectedCaseIds,
+          affectedCaseCount: affectedCaseIds.length,
         };
       });
     } catch (originalError) {
@@ -83,6 +90,8 @@ export class TrusteeMatchVerificationUseCase {
     context: ApplicationContext,
     fingerprints: string[],
   ): Promise<Map<string, string[]>> {
+    if (fingerprints.length === 0) return new Map();
+
     const appointmentsRepo = factory.getTrusteeCaseAppointmentsRepository(context);
     const uniqueFingerprints = [...new Set(fingerprints)];
     const surrogates = await appointmentsRepo.getSurrogatesByFingerprints(uniqueFingerprints);

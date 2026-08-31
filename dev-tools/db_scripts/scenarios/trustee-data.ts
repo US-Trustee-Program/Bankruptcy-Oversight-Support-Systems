@@ -190,12 +190,24 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
             lastName: 'Seedtrustee',
             fullName: 'Samuel Seedtrustee',
           },
+          // Real values (computed via trustee-match.helpers.ts's calculateNameScore/
+          // calculateAddressScore/calculatePhoneScore/calculateEmailScore/calculateTotalScore
+          // against this fixture's actual DXTR/candidate data, then hand-transcribed here).
+          // "Samuel" vs "Sam" is a nickname relationship, not the literal initial-vs-full pattern
+          // the scorer recognizes, so nameScore is a real 0. No DXTR legacy address/phone/email
+          // at all, so addressScore is a real 0 (not 100 as previously hardcoded); phoneScore/
+          // emailScore are hardcoded to 0 rather than the real function's null (not-comparable)
+          // result, to keep the mismatch icon visible for missing contact info per product
+          // decision.
           matchCandidates: [
             {
               trusteeId: ACTIVE_TRUSTEE_ID,
               trusteeName: 'Sam Seedtrustee',
-              totalScore: 85,
-              addressScore: 100,
+              totalScore: 50,
+              addressScore: 0,
+              nameScore: 0,
+              phoneScore: 0,
+              emailScore: 0,
               districtDivisionScore: 100,
               chapterScore: 100,
               address: {

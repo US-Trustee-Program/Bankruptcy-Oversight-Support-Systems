@@ -26,6 +26,7 @@ const baseVerification: TrusteeMatchVerificationListItem = {
   preselectedCandidate: null,
   candidateCount: 0,
   affectedCaseCount: 1,
+  affectedCaseIds: ['00-00000'],
   status: 'pending',
   taskType: 'trustee-match',
   taskDate: new Date('2025-03-15T00:00:00.000Z'),

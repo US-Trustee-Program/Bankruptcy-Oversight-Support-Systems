@@ -17,9 +17,11 @@ export type TrusteeMatchVerification = Auditable & {
    * (informational/display continuity only) — NOT the source of truth for which cases this
    * mismatch affects. The write path never updates caseId on an existing document, so this
    * is the originating case, not the most recent one. This document is keyed by
-   * fingerprint/variant, so one document can represent many cases; case membership is
-   * answered by querying trustee-case-appointments for trusteeId = <fingerprint> (the
-   * surrogate rows written while the mismatch is pending), never by anything stored here.
+   * fingerprint/variant, so one document can represent many cases; while pending, case
+   * membership is answered by querying trustee-case-appointments for trusteeId =
+   * <fingerprint> (the surrogate rows written while the mismatch is pending) — never from
+   * caseId. Once approved, the surrogate rows are gone (remap deletes them), so case
+   * membership comes from the affectedCaseIds snapshot below instead.
    */
   caseId: string;
   courtId: string;
@@ -99,6 +101,7 @@ export type TrusteeMatchVerificationListItem = Pick<
   preselectedCandidate: TrusteeCandidate | null;
   candidateCount: number;
   affectedCaseCount: number;
+  affectedCaseIds: string[];
 };
 
 export type EnrichedTrusteeMatchVerification = TrusteeMatchVerification & {
