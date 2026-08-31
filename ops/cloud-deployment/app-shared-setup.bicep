@@ -376,6 +376,22 @@ resource existingAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@20
     scope: resourceGroup(analyticsSubscriptionId, analyticsResourceGroupName)
   }
 
+// Grants the same app-config managed identity used by the dev-tier bounce
+// poller (backend/lib/adapters/gateways/monitor/acs-bounce-query.gateway.ts)
+// read access to staging/USTP prod's own existing analytics workspace. Before
+// this, only the dev-tier path (sharedAnalyticsReaderRoleAssignment above)
+// ever wired this role -- staging and USTP prod's bounce poll always hit a
+// 403 InsufficientAccessError until someone granted it by hand.
+module standaloneAnalyticsReaderRoleAssignment './lib/analytics/log-analytics-reader-role-assignment.bicep' =
+  if (!isDevTier && !empty(analyticsWorkspaceId) && !empty(analyticsResourceGroupName)) {
+    name: '${stackName}-analytics-reader-module'
+    scope: resourceGroup(analyticsResourceGroupName)
+    params: {
+      workspaceName: last(split(analyticsWorkspaceId, '/'))
+      principalId: kvSetup.outputs.principalId
+    }
+  }
+
 var sharedAnalyticsWorkspaceCustomerId = isDevTier
   ? (!empty(analyticsResourceGroupName) ? sharedBounceWorkspace.outputs.customerId : '')
   : (existingAnalyticsWorkspace.?properties.?customerId ?? '')
