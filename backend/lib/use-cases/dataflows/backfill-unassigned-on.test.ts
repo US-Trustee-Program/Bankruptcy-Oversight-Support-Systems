@@ -135,6 +135,10 @@ describe('BackfillUnassignedOnUseCase', () => {
       const closed = makeCaseAppointment({ id: 'old', assignedOn: '2025-01-01' });
       const surrogate = makeCaseAppointment({
         id: 'surrogate',
+        // Real surrogate rows carry a fingerprint-hash trusteeId (writeSurrogateAppointment),
+        // distinct from closed's here so this candidate is excluded by isSurrogate, not by the
+        // unrelated same-trustee filter (which would pass this test even with isSurrogate removed).
+        trusteeId: 'fingerprint-abc123',
         assignedOn: '2025-01-10',
         isSurrogate: true,
       });
