@@ -138,6 +138,7 @@ var functionAppSecrets = [
   'ACS-EMAIL-CONNECTION-STRING'
   'ACS-EMAIL-SENDER-ADDRESS'
   'ANALYTICS-WORKSPACE-CUSTOMER-ID-SHARED'
+  'ADMIN-NOTIFICATION-EMAIL'
 ]
 
 module appConfigIdentity './lib/identity/managed-identity.bicep' = {

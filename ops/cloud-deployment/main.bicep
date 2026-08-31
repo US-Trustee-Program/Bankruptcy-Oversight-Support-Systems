@@ -545,7 +545,6 @@ module ustpDataflowsFunction 'dataflows-resource-deploy.bicep' = {
     enabledDataflows: enabledDataflows
     migrateCaseAppointmentsFetchSize: migrateCaseAppointmentsFetchSize
     objectContainerName: objectContainerName
-    adminNotificationEmail: adminNotificationEmail
     gitSha: gitSha
     tags: dataflowsTags
   }

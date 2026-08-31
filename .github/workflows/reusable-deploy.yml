@@ -73,6 +73,35 @@ jobs:
           AZ_LOCATION: ${{ secrets.AZ_LOCATION }} # pragma: allowlist secret
         run: |
           set -euo pipefail
+
+          # Distinguishes "secret genuinely doesn't exist yet" (a legitimate,
+          # optional-not-configured state for ADMIN-NOTIFICATION-EMAIL and
+          # DEFAULT-NOTIFICATION-RECIPIENT below) from any other read failure
+          # (auth, throttling, KV firewall, transient network error). The
+          # latter must fail the deploy loudly instead of silently freezing
+          # the resulting app setting blank until some future deploy happens
+          # to re-read it correctly.
+          read_optional_secret() {
+            local vault="$1" name="$2" val err_file rc
+            err_file=$(mktemp)
+            if val=$(az keyvault secret show --vault-name "$vault" --name "$name" --query value -o tsv 2>"$err_file"); then
+              rc=0
+            else
+              rc=$?
+            fi
+            if [[ $rc -ne 0 ]]; then
+              if grep -q "SecretNotFound" "$err_file"; then
+                val=""
+              else
+                cat "$err_file" >&2
+                rm -f "$err_file"
+                return "$rc"
+              fi
+            fi
+            rm -f "$err_file"
+            printf '%s' "$val"
+          }
+
           if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
             KV="kv-ustp-cams"
           else
@@ -166,10 +195,10 @@ jobs:
           _val=$(az keyvault secret show --vault-name "$KV" --name MIGRATE-CASE-APPOINTMENTS-FETCH-SIZE --query value -o tsv)
           echo "::add-mask::${_val}"
           echo "MIGRATE_CASE_APPOINTMENTS_FETCH_SIZE=${_val}" >> "$GITHUB_ENV"
-          _val=$(az keyvault secret show --vault-name "$KV" --name ADMIN-NOTIFICATION-EMAIL --query value -o tsv 2>/dev/null || true)
+          _val=$(read_optional_secret "$KV" ADMIN-NOTIFICATION-EMAIL)
           if [[ -n "${_val}" ]]; then echo "::add-mask::${_val}"; fi
           echo "ADMIN_NOTIFICATION_EMAIL=${_val}" >> "$GITHUB_ENV"
-          _val=$(az keyvault secret show --vault-name "$KV" --name DEFAULT-NOTIFICATION-RECIPIENT --query value -o tsv 2>/dev/null || true)
+          _val=$(read_optional_secret "$KV" DEFAULT-NOTIFICATION-RECIPIENT)
           if [[ -n "${_val}" ]]; then echo "::add-mask::${_val}"; fi
           echo "DEFAULT_NOTIFICATION_RECIPIENT=${_val}" >> "$GITHUB_ENV"
 

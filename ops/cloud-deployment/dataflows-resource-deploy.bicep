@@ -95,9 +95,6 @@ param deployAppInsights bool = false
 @description('Log Analytics Workspace ID associated with Application Insights')
 param analyticsWorkspaceId string = ''
 
-@description('Email address the bounce-poll dataflow forwards reconstructed notification content to. Leave empty to leave that dataflow unable to run (it fails closed).')
-param adminNotificationEmail string = ''
-
 param actionGroupName string = ''
 
 param actionGroupResourceGroupName string = ''
@@ -676,7 +673,7 @@ var dataflowsSlotBaseAppSettingsObject = union(
     ACMS_TIMEOUT_RETRY_LIMIT: acmsTimeoutRetryLimit
     ACMS_TIMEOUT_VISIBILITY_DELAY_SECONDS: acmsTimeoutVisibilityDelaySeconds
     ANALYTICS_WORKSPACE_CUSTOMER_ID: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ANALYTICS-WORKSPACE-CUSTOMER-ID-SHARED)'
-    ADMIN_NOTIFICATION_EMAIL: adminNotificationEmail
+    ADMIN_NOTIFICATION_EMAIL: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ADMIN-NOTIFICATION-EMAIL)'
     ANALYTICS_IDENTITY_CLIENT_ID: appConfigIdentity.properties.clientId
     ACS_EMAIL_CONNECTION_STRING: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACS-EMAIL-CONNECTION-STRING)'
     ACS_EMAIL_SENDER_ADDRESS: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACS-EMAIL-SENDER-ADDRESS)'
