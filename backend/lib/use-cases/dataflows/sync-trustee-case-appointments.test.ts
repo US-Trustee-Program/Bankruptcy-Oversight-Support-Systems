@@ -4188,6 +4188,27 @@ describe('throwIfTransientSoftCloseFailure', () => {
       ),
     ).not.toThrow();
   });
+
+  test('logs a null newTrusteeId when called from the close-only path', async () => {
+    // handleBogusTrusteeCloseOnly passes null — there is no replacement trustee to log.
+    const context = await createMockApplicationContext();
+    const warnSpy = vi.spyOn(context.logger, 'warn');
+    const softCloseError = new TooManyRequestsError('COSMOS');
+
+    expect(() =>
+      throwIfTransientSoftCloseFailure(context, event, existingAppointment, null, softCloseError),
+    ).toThrow(softCloseError);
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      'SYNC-TRUSTEE-CASE-APPOINTMENTS-USE-CASE',
+      expect.stringContaining('Transient soft-close failure'),
+      expect.objectContaining({
+        caseId: 'case-001',
+        oldTrusteeId: 'old-trustee-456',
+        newTrusteeId: null,
+      }),
+    );
+  });
 });
 
 describe('createNewAppointment', () => {
@@ -4792,7 +4813,7 @@ describe('handleClassifiedMismatch', () => {
 
     await expect(
       handleClassifiedMismatch(ctx, syncedCase, TrusteeAppointmentSyncErrorCode.NoTrusteeMatch, []),
-    ).rejects.toThrow(/missing\/unparseable appointedDate/);
+    ).rejects.toThrow(/missing\/unparseable/);
 
     expect(caseAppointmentsRepo.upsert).not.toHaveBeenCalled();
     expect(ctx.deps.context.logger.error).toHaveBeenCalledWith(

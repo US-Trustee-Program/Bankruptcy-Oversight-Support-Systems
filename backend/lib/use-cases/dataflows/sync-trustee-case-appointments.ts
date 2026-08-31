@@ -303,7 +303,7 @@ export async function closeExistingAppointment(
   appointmentsRepo: TrusteeCaseAppointmentsRepository,
   syncedCase: SyncedCase,
 ): Promise<{ closed: boolean; softCloseError: CamsError | null; unassignedOn: string }> {
-  const unassignedOn = deriveUnassignedOn(referenceDate);
+  const unassignedOn = deriveUnassignedOn(referenceDate, existingAppointment.assignedOn);
   let softCloseError: CamsError | null = null;
   try {
     await appointmentsRepo.updateCaseAppointment({ ...existingAppointment, unassignedOn });
@@ -419,6 +419,36 @@ export async function softCloseExistingAppointment(
 }
 
 /**
+ * Throws a CamsError when event.appointedDate is missing/unparseable, logging a TRUSTEE
+ * APPOINTMENT DATA INTEGRITY ERROR first. Shared by the three call sites that each derive a
+ * date field (assignedOn, a surrogate's assignedOn, unassignedOn) from event.appointedDate and
+ * must refuse to fall back to wall-clock time — a wall-clock fallback would differ on every
+ * retry/replay of the same event and break upsert()'s natural-key idempotency (or, for the
+ * close-only path, corrupt appointment history). subjectDescription names what couldn't be
+ * derived (e.g. "trustee tr-1 — event.appointedDate", "fingerprint fp-1 — event.appointedDate")
+ * for both the log line and the thrown error's message.
+ */
+function assertAppointedDate(
+  context: ApplicationContext,
+  event: TrusteeAppointmentSyncEvent,
+  subjectDescription: string,
+  reasonDescription: string,
+): asserts event is TrusteeAppointmentSyncEvent & { appointedDate: string } {
+  if (event.appointedDate) {
+    return;
+  }
+  context.logger.error(
+    MODULE_NAME,
+    `TRUSTEE APPOINTMENT DATA INTEGRITY ERROR: case ${event.caseId}, ${subjectDescription} is ` +
+      `missing/unparseable. Refusing to fall back to wall-clock time for ${reasonDescription}. ` +
+      `This event cannot be safely processed until its source DXTR appointment date is corrected.`,
+  );
+  throw new CamsError(MODULE_NAME, {
+    message: `Case ${event.caseId}, ${subjectDescription}: missing/unparseable, cannot safely derive ${reasonDescription}.`,
+  });
+}
+
+/**
  * Applies the resolved trustee to the case and manages appointment history.
  * Shared logic for both normal matching and fuzzy matching success paths.
  *
@@ -441,19 +471,7 @@ async function applyResolvedTrustee(
   syncedCase: SyncedCase,
   appointmentsRepo: TrusteeCaseAppointmentsRepository,
 ): Promise<TrusteeAppointmentSyncError | null> {
-  if (!event.appointedDate) {
-    context.logger.error(
-      MODULE_NAME,
-      `TRUSTEE APPOINTMENT DATA INTEGRITY ERROR: case ${event.caseId}, trustee ${trusteeId} — ` +
-        `event.appointedDate is missing/unparseable. Refusing to fall back to wall-clock time ` +
-        `for assignedOn, since that would break upsert()'s natural-key idempotency across ` +
-        `retries and could create a duplicate active appointment. This event cannot be safely ` +
-        `processed until its source DXTR appointment date is corrected.`,
-    );
-    throw new CamsError(MODULE_NAME, {
-      message: `Case ${event.caseId}, trustee ${trusteeId}: missing/unparseable appointedDate, cannot safely derive assignedOn.`,
-    });
-  }
+  assertAppointedDate(context, event, `trustee ${trusteeId} — event.appointedDate`, 'assignedOn');
   const assignedOn = event.appointedDate;
 
   const existingAppointment = await appointmentsRepo.getActiveByCaseId(event.caseId);
@@ -934,20 +952,12 @@ async function writeSurrogateAppointment(
   variant: string,
   syncedCase: SyncedCase,
 ): Promise<void> {
-  if (!event.appointedDate) {
-    deps.context.logger.error(
-      MODULE_NAME,
-      `TRUSTEE APPOINTMENT DATA INTEGRITY ERROR: case ${event.caseId}, fingerprint ${fingerprint} — ` +
-        `event.appointedDate is missing/unparseable. Refusing to fall back to wall-clock time ` +
-        `for the surrogate's assignedOn, since that would break upsert()'s natural-key ` +
-        `idempotency across retries and mint a duplicate surrogate row every time this event is ` +
-        `reprocessed. This event cannot be safely processed until its source DXTR appointment ` +
-        `date is corrected.`,
-    );
-    throw new CamsError(MODULE_NAME, {
-      message: `Case ${event.caseId}, fingerprint ${fingerprint}: missing/unparseable appointedDate, cannot safely derive surrogate assignedOn.`,
-    });
-  }
+  assertAppointedDate(
+    deps.context,
+    event,
+    `fingerprint ${fingerprint} — event.appointedDate`,
+    "the surrogate's assignedOn",
+  );
 
   const existingAppointments = await deps.caseAppointmentsRepo.getByCaseId(event.caseId);
   const alreadySurrogateForThisFingerprint = existingAppointments.some(
@@ -1508,7 +1518,9 @@ function isSentinelWithNoIdentity(
 
 /**
  * Short-circuits processOneEvent before any repo call is made when dxtrTrustee has no usable
- * demographics at all. Returns null when that doesn't apply, so the caller proceeds normally.
+ * demographics at all ('empty-demographics'), or is a non-sentinel record whose name is an
+ * administrative placeholder with no firstName ('unattributable-bogus-name'). Returns null when
+ * neither applies, so the caller proceeds normally.
  *
  * A sentinel-coded record with a bogus placeholder name ('sentinel-bogus-name') is deliberately
  * NOT handled here, even though resolveSkipReason can return it — that case still needs to close
@@ -1528,6 +1540,15 @@ function resolvePreMatchShortCircuit(
         `(blank name, no address/phone/email) — cannot be safely attributed to any trustee. Skipping.`,
     );
     scenarioDistribution.emptyDemographicsSkippedCount++;
+    return { kind: 'none' };
+  }
+  if (skipReason === 'unattributable-bogus-name') {
+    deps.context.logger.warn(
+      MODULE_NAME,
+      `Trustee appointment event for case ${event.caseId} has a bogus/administrative ` +
+        `placeholder name with no firstName — cannot be safely attributed to any trustee. Skipping.`,
+    );
+    scenarioDistribution.unattributableBogusNameSkippedCount++;
     return { kind: 'none' };
   }
 
@@ -1569,30 +1590,11 @@ async function handleBogusTrusteeCloseOnly(
     scenarioDistribution.sentinelBogusNameSkippedCount++;
     return { kind: 'none' };
   }
-  if (skipReason === 'unattributable-bogus-name') {
-    deps.context.logger.warn(
-      MODULE_NAME,
-      `Trustee appointment event for case ${event.caseId} has a bogus/administrative ` +
-        `placeholder name with no firstName — cannot be safely attributed to any trustee. Skipping.`,
-    );
-    scenarioDistribution.unattributableBogusNameSkippedCount++;
-    return { kind: 'none' };
-  }
 
-  if (!event.appointedDate) {
-    context.logger.error(
-      MODULE_NAME,
-      `TRUSTEE APPOINTMENT DATA INTEGRITY ERROR: case ${event.caseId} — event.appointedDate is ` +
-        `missing/unparseable. Refusing to fall back to wall-clock time for unassignedOn. This ` +
-        `event's existing appointment cannot be safely closed until its source DXTR appointment ` +
-        `date is corrected.`,
-    );
-    // Not counted in sentinelBogusNameSkippedCount — this event is going to the DLQ (via
-    // processOneEvent's catch), not being cleanly skipped, so it shouldn't inflate that counter.
-    throw new CamsError(MODULE_NAME, {
-      message: `Case ${event.caseId}: missing/unparseable appointedDate, cannot safely close existing appointment.`,
-    });
-  }
+  // Not counted in sentinelBogusNameSkippedCount on failure — this event is going to the DLQ
+  // (via processOneEvent's catch), not being cleanly skipped, so it shouldn't inflate that
+  // counter.
+  assertAppointedDate(context, event, 'event.appointedDate', 'unassignedOn');
 
   const { closed, softCloseError } = await closeExistingAppointment(
     context,
