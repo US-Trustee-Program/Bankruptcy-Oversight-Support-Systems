@@ -142,6 +142,7 @@ jobs:
           # Optional -- absent in environments that haven't opted into S1, in which
           # case the bicep template's own EP1 default applies.
           _val=$(az keyvault secret show --vault-name "$KV" --name AZ-FUNCTIONS-PLAN-TYPE --query value -o tsv 2>/dev/null || true)
+          if [[ -n "${_val}" ]]; then echo "::add-mask::${_val}"; fi
           if [[ -z "${_val}" ]]; then
             _val="EP1"
           fi
@@ -150,6 +151,7 @@ jobs:
           # region for the App Service Plans/Function Apps/VNet, in which case they
           # deploy into the same region as everything else (AZ_LOCATION).
           _val=$(az keyvault secret show --vault-name "$KV" --name AZ-FUNCTIONS-LOCATION --query value -o tsv 2>/dev/null || true)
+          if [[ -n "${_val}" ]]; then echo "::add-mask::${_val}"; fi
           if [[ -z "${_val}" ]]; then
             _val="${AZ_LOCATION}"
           fi

@@ -41,9 +41,15 @@ jobs:
       - name: Fetch secrets from Key Vault
         if: ${{ ! inputs.skip }}
         run: |
-          echo "AZ_SECURITY_SCAN_STORAGE_NAME=$(az keyvault secret show --vault-name kv-ustp-cams --name AZ-SECURITY-SCAN-STORAGE-NAME --query value -o tsv)" >> "$GITHUB_ENV"
-          echo "SNYK_OAUTH_CLIENT_ID=$(az keyvault secret show --vault-name kv-ustp-cams --name SNYK-OAUTH-CLIENT-ID --query value -o tsv)" >> "$GITHUB_ENV"
-          echo "SNYK_OAUTH_CLIENT_SECRET=$(az keyvault secret show --vault-name kv-ustp-cams --name SNYK-OAUTH-CLIENT-SECRET --query value -o tsv)" >> "$GITHUB_ENV"
+          _val=$(az keyvault secret show --vault-name kv-ustp-cams --name AZ-SECURITY-SCAN-STORAGE-NAME --query value -o tsv)
+          echo "::add-mask::${_val}"
+          echo "AZ_SECURITY_SCAN_STORAGE_NAME=${_val}" >> "$GITHUB_ENV"
+          _val=$(az keyvault secret show --vault-name kv-ustp-cams --name SNYK-OAUTH-CLIENT-ID --query value -o tsv)
+          echo "::add-mask::${_val}"
+          echo "SNYK_OAUTH_CLIENT_ID=${_val}" >> "$GITHUB_ENV"
+          _val=$(az keyvault secret show --vault-name kv-ustp-cams --name SNYK-OAUTH-CLIENT-SECRET --query value -o tsv)
+          echo "::add-mask::${_val}"
+          echo "SNYK_OAUTH_CLIENT_SECRET=${_val}" >> "$GITHUB_ENV"
 
       - name: Setup Snyk CLI
         if: ${{ ! inputs.skip }}
@@ -128,9 +134,15 @@ jobs:
       - name: Fetch secrets from Key Vault
         if: ${{ ! inputs.skip }}
         run: |
-          echo "AZ_SECURITY_SCAN_STORAGE_NAME=$(az keyvault secret show --vault-name kv-ustp-cams --name AZ-SECURITY-SCAN-STORAGE-NAME --query value -o tsv)" >> "$GITHUB_ENV"
-          echo "SNYK_OAUTH_CLIENT_ID=$(az keyvault secret show --vault-name kv-ustp-cams --name SNYK-OAUTH-CLIENT-ID --query value -o tsv)" >> "$GITHUB_ENV"
-          echo "SNYK_OAUTH_CLIENT_SECRET=$(az keyvault secret show --vault-name kv-ustp-cams --name SNYK-OAUTH-CLIENT-SECRET --query value -o tsv)" >> "$GITHUB_ENV"
+          _val=$(az keyvault secret show --vault-name kv-ustp-cams --name AZ-SECURITY-SCAN-STORAGE-NAME --query value -o tsv)
+          echo "::add-mask::${_val}"
+          echo "AZ_SECURITY_SCAN_STORAGE_NAME=${_val}" >> "$GITHUB_ENV"
+          _val=$(az keyvault secret show --vault-name kv-ustp-cams --name SNYK-OAUTH-CLIENT-ID --query value -o tsv)
+          echo "::add-mask::${_val}"
+          echo "SNYK_OAUTH_CLIENT_ID=${_val}" >> "$GITHUB_ENV"
+          _val=$(az keyvault secret show --vault-name kv-ustp-cams --name SNYK-OAUTH-CLIENT-SECRET --query value -o tsv)
+          echo "::add-mask::${_val}"
+          echo "SNYK_OAUTH_CLIENT_SECRET=${_val}" >> "$GITHUB_ENV"
 
       - name: Setup Snyk CLI
         if: ${{ ! inputs.skip }}
