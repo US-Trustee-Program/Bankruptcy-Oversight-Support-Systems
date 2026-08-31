@@ -41,15 +41,12 @@ jobs:
       - name: Fetch secrets from Key Vault
         if: ${{ ! inputs.skip }}
         run: |
-          _val=$(az keyvault secret show --vault-name kv-ustp-cams --name AZ-SECURITY-SCAN-STORAGE-NAME --query value -o tsv)
-          echo "::add-mask::${_val}"
-          echo "AZ_SECURITY_SCAN_STORAGE_NAME=${_val}" >> "$GITHUB_ENV"
-          _val=$(az keyvault secret show --vault-name kv-ustp-cams --name SNYK-OAUTH-CLIENT-ID --query value -o tsv)
-          echo "::add-mask::${_val}"
-          echo "SNYK_OAUTH_CLIENT_ID=${_val}" >> "$GITHUB_ENV"
-          _val=$(az keyvault secret show --vault-name kv-ustp-cams --name SNYK-OAUTH-CLIENT-SECRET --query value -o tsv)
-          echo "::add-mask::${_val}"
-          echo "SNYK_OAUTH_CLIENT_SECRET=${_val}" >> "$GITHUB_ENV"
+          set -euo pipefail
+          # shellcheck source=ops/scripts/pipeline/_kv-to-env.sh
+          source ops/scripts/pipeline/_kv-to-env.sh
+          kv_to_env AZ_SECURITY_SCAN_STORAGE_NAME kv-ustp-cams AZ-SECURITY-SCAN-STORAGE-NAME
+          kv_to_env SNYK_OAUTH_CLIENT_ID kv-ustp-cams SNYK-OAUTH-CLIENT-ID
+          kv_to_env SNYK_OAUTH_CLIENT_SECRET kv-ustp-cams SNYK-OAUTH-CLIENT-SECRET
 
       - name: Setup Snyk CLI
         if: ${{ ! inputs.skip }}
@@ -134,15 +131,12 @@ jobs:
       - name: Fetch secrets from Key Vault
         if: ${{ ! inputs.skip }}
         run: |
-          _val=$(az keyvault secret show --vault-name kv-ustp-cams --name AZ-SECURITY-SCAN-STORAGE-NAME --query value -o tsv)
-          echo "::add-mask::${_val}"
-          echo "AZ_SECURITY_SCAN_STORAGE_NAME=${_val}" >> "$GITHUB_ENV"
-          _val=$(az keyvault secret show --vault-name kv-ustp-cams --name SNYK-OAUTH-CLIENT-ID --query value -o tsv)
-          echo "::add-mask::${_val}"
-          echo "SNYK_OAUTH_CLIENT_ID=${_val}" >> "$GITHUB_ENV"
-          _val=$(az keyvault secret show --vault-name kv-ustp-cams --name SNYK-OAUTH-CLIENT-SECRET --query value -o tsv)
-          echo "::add-mask::${_val}"
-          echo "SNYK_OAUTH_CLIENT_SECRET=${_val}" >> "$GITHUB_ENV"
+          set -euo pipefail
+          # shellcheck source=ops/scripts/pipeline/_kv-to-env.sh
+          source ops/scripts/pipeline/_kv-to-env.sh
+          kv_to_env AZ_SECURITY_SCAN_STORAGE_NAME kv-ustp-cams AZ-SECURITY-SCAN-STORAGE-NAME
+          kv_to_env SNYK_OAUTH_CLIENT_ID kv-ustp-cams SNYK-OAUTH-CLIENT-ID
+          kv_to_env SNYK_OAUTH_CLIENT_SECRET kv-ustp-cams SNYK-OAUTH-CLIENT-SECRET
 
       - name: Setup Snyk CLI
         if: ${{ ! inputs.skip }}
