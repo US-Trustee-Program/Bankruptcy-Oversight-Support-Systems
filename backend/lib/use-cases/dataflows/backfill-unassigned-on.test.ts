@@ -175,7 +175,7 @@ describe('BackfillUnassignedOnUseCase', () => {
       expect(result?.id).toBe('real');
     });
 
-    test('excludes reassignment to the same trustee from candidate search', () => {
+    test('prefers a different-trustee candidate over an earlier same-trustee reassignment', () => {
       const closed = makeCaseAppointment({
         id: 'old',
         trusteeId: 'trustee-A',
@@ -199,6 +199,42 @@ describe('BackfillUnassignedOnUseCase', () => {
       ]);
 
       expect(result?.id).toBe('different-trustee');
+    });
+
+    test('falls back to a later same-trustee reassignment when no different-trustee candidate exists', () => {
+      // Trustee A closes, is reassigned to the same case, and no one else ever takes over. This
+      // backfill only overwrites an already-known-wrong unassignedOn (see CAMS-888), so deriving
+      // from the same-trustee reassignment's assignedOn is strictly safer than leaving the old
+      // wall-clock-derived value in place, even though it isn't a real handoff to a new trustee.
+      const closed = makeCaseAppointment({
+        id: 'old',
+        trusteeId: 'trustee-A',
+        assignedOn: '2025-01-01',
+      });
+      const sameTrustee = makeCaseAppointment({
+        id: 'same-trustee',
+        trusteeId: 'trustee-A',
+        assignedOn: '2025-08-01',
+      });
+
+      const result = BackfillUnassignedOnUseCase.findSupersedingAppointment(closed, [
+        closed,
+        sameTrustee,
+      ]);
+
+      expect(result?.id).toBe('same-trustee');
+    });
+
+    test('returns null when no later appointment of any kind exists', () => {
+      const closed = makeCaseAppointment({
+        id: 'old',
+        trusteeId: 'trustee-A',
+        assignedOn: '2025-01-01',
+      });
+
+      const result = BackfillUnassignedOnUseCase.findSupersedingAppointment(closed, [closed]);
+
+      expect(result).toBeNull();
     });
   });
 

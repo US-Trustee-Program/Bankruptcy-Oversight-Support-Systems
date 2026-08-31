@@ -77,35 +77,49 @@ type ProcessBackfillPageResult =
       nextCursor: { lastId: string | null } | null;
     };
 
+function earliestBy(appointments: CaseAppointment[]): CaseAppointment | null {
+  if (appointments.length === 0) {
+    return null;
+  }
+  return appointments.reduce((earliest, candidate) =>
+    candidate.assignedOn < earliest.assignedOn ? candidate : earliest,
+  );
+}
+
 /**
  * The appointment on the same case whose assignedOn is the earliest one strictly after closed's
  * own assignedOn — mirrors how applyResolvedTrustee (sync-trustee-case-appointments.ts) reasons
  * about appointment ordering. Excludes fingerprint-based surrogate rows (isSurrogate: true), the
  * placeholder mechanism the current sync dataflow uses, and legacy SENTINEL_TRUSTEE_ID rows left
  * over from the older migrate-case-appointments dataflow (not yet healed across all cases), so
- * neither kind of placeholder is mistaken for a real superseding appointment. Returns null when no
- * such appointment exists (e.g. closed is the currently-active one, or a close-only terminal state
- * with nothing after it) — there is nothing to correct against in that case.
+ * neither kind of placeholder is mistaken for a real superseding appointment.
+ *
+ * Prefers the earliest later appointment belonging to a *different* trustee — the real handoff.
+ * Falls back to the earliest later same-trustee appointment (e.g. trustee A leaves and is
+ * reassigned to the same case before anyone else ever takes over) only when no different-trustee
+ * candidate exists at all: this backfill only overwrites an already-set (and, per CAMS-888,
+ * already-known-wrong) unassignedOn, so using a same-trustee re-assignment date here is strictly
+ * safer than leaving the old wall-clock-derived value in place, even though it isn't a real
+ * handoff to a new trustee. Returns null only when no later appointment of any kind exists (closed
+ * is the currently-active one, or a genuine close-only terminal state) — there is nothing to
+ * correct against in that case.
  */
 function findSupersedingAppointment(
   closed: CaseAppointment,
   caseHistory: CaseAppointment[],
 ): CaseAppointment | null {
-  const candidates = caseHistory.filter(
+  const laterRealAppointments = caseHistory.filter(
     (a) =>
       a.id !== closed.id &&
       !a.isSurrogate &&
       // TODO: drop once legacy SENTINEL_TRUSTEE_ID rows are healed off all cases.
       a.trusteeId !== SENTINEL_TRUSTEE_ID &&
-      a.trusteeId !== closed.trusteeId &&
       a.assignedOn > closed.assignedOn,
   );
-  if (candidates.length === 0) {
-    return null;
-  }
-  return candidates.reduce((earliest, candidate) =>
-    candidate.assignedOn < earliest.assignedOn ? candidate : earliest,
+  const differentTrusteeAppointments = laterRealAppointments.filter(
+    (a) => a.trusteeId !== closed.trusteeId,
   );
+  return earliestBy(differentTrusteeAppointments) ?? earliestBy(laterRealAppointments);
 }
 
 /**
