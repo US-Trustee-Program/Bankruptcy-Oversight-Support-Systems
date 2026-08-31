@@ -1,4 +1,5 @@
-import { vi, describe, test, expect } from 'vitest';
+/// <reference types="node" />
+import { vi, describe, test, expect, beforeAll, afterAll } from 'vitest';
 import DateHelper from './date-helper';
 
 const {
@@ -115,6 +116,19 @@ describe('date helper tests', () => {
   });
 
   describe('addDays / subtractDays', () => {
+    // CI (ubuntu-latest) runs with no TZ set, i.e. UTC — under UTC there's no DST offset, so
+    // local-time methods (setDate/getDate) and UTC methods produce identical results and a
+    // regression back to local-time mutation would pass every DST case below silently. Pin a
+    // DST-observing zone so this suite actually exercises the local-vs-UTC divergence it guards
+    // against. Node reads process.env.TZ lazily, so this works without a subprocess.
+    const originalTZ = process.env.TZ;
+    beforeAll(() => {
+      process.env.TZ = 'America/New_York';
+    });
+    afterAll(() => {
+      process.env.TZ = originalTZ;
+    });
+
     const cases = [
       ['a normal day', '2026-08-27', 1, '2026-08-28'],
       ['a month boundary', '2026-01-31', 1, '2026-02-01'],
@@ -138,10 +152,6 @@ describe('date helper tests', () => {
 
     test.each(cases)('subtractDays: %s (reversed)', (_description, expected, days, input) => {
       expect(subtractDays(input, days)).toBe(expected);
-    });
-
-    test('subtractDays across the DST-end transition', () => {
-      expect(subtractDays('2026-11-02', 1)).toBe('2026-11-01');
     });
 
     test('truncates a full ISO timestamp to its date portion before subtracting', () => {

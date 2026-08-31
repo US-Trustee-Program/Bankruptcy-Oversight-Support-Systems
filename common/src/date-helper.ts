@@ -23,7 +23,7 @@ function sortDatesReverse(dateA: Date | string, dateB: Date | string): number {
 
 function isValidDateString(dateString: string | null | undefined) {
   if (!dateString) return false;
-  const evaluation = dateString.match(/[\d]{4}-[\d]{2}-[\d]{2}/);
+  const evaluation = dateString.match(/^[\d]{4}-[\d]{2}-[\d]{2}/);
   return !!evaluation && evaluation.length === 1;
 }
 
@@ -60,8 +60,8 @@ function formatDate(isoDate: string): string {
 // the day after DST ends (e.g. subtracting 1 day from 2026-11-02 yields 2026-10-31, not
 // 2026-11-01), since setDate/getDate operate in local time while toISOString reformats in UTC.
 // Accepts a leading YYYY-MM-DD with an optional time/offset suffix (isValidDateString's own
-// prefix-only match already permits this), truncating the suffix the same way getIsoDate does,
-// so a full ISO timestamp behaves as if only its date portion were given.
+// anchored prefix match already permits this), truncating the suffix the same way getIsoDate
+// does, so a full ISO timestamp behaves as if only its date portion were given.
 function addDays(isoDate: string, days: number): string {
   if (!isValidDateString(isoDate)) {
     return isoDate;
