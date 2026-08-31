@@ -49,7 +49,8 @@
     "test:watch:backend": "npm run test:watch --workspace=backend",
     "test:watch:common": "npm run test:watch --workspace=common",
     "test:watch:user-interface": "npm run test:watch --workspace=user-interface",
-    "typecheck": "npm run typecheck --workspaces --if-present"
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "verify:bundle-deps": "node backend/verify-bundle-externals.mjs"
   },
   "devDependencies": {
     "@azure/storage-blob": "12.33.0",
