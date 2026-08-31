@@ -25,7 +25,9 @@
 # 0   No error
 # 1   Script interrupted
 # 2   Unknown flag or switch passed as parameter to script
-# 10+ Validation check errors
+# 10  --resource-group not supplied
+# 11  A named consumer zone resource group has no SQL private DNS zone
+# 12  --consumer-zone-resource-groups not supplied
 
 set -euo pipefail
 
@@ -67,7 +69,7 @@ while [[ $# -gt 0 ]]; do
         extra_parameters="${2}"
         shift 2
         ;;
-    # Space-separated resource group names, e.g.
+    # REQUIRED. Space-separated resource group names, e.g.
     #   --consumer-zone-resource-groups "rg-cams-network rg-cams-network-dev"
     # Each must already hold a zone named $SQL_PRIVATE_DNS_ZONE_NAME; the
     # precheck below fails loud if one doesn't. Taken as a plain list rather
@@ -90,40 +92,52 @@ if [[ -z "${resource_group}" ]]; then
     exit 10
 fi
 
+# REQUIRED, not optional-with-a-fallback. sql-hub.bicep carries its own
+# default consumer-zone list, so omitting this flag would still deploy -- but
+# against a list this script never saw and therefore could not precheck,
+# reintroducing exactly the half-applied failure the precheck below exists to
+# prevent. Making the caller state the zones keeps the checked list and the
+# deployed list the same list by construction.
+if [[ -z "${consumer_zone_rgs}" ]]; then
+    echo "Error: --consumer-zone-resource-groups is required" >&2
+    echo "       e.g. --consumer-zone-resource-groups \"rg-cams-network rg-cams-network-dev\"" >&2
+    echo "       Passing it explicitly is what lets this script verify every zone" >&2
+    echo "       exists before it touches the shared endpoint." >&2
+    exit 12
+fi
+
 # Every consumer zone must already exist. An A record is a CHILD of its zone,
 # so a missing one fails the deployment with ParentResourceNotFound -- after
 # it has already updated the shared endpoint. Checking first turns a
 # half-applied deploy into a clean refusal. Mirrors the identical precheck
 # azure-deploy.sh runs before its vnet links, and reuses the same helper so
 # the two cannot drift.
-if [[ -n "${consumer_zone_rgs}" ]]; then
-    missing_zone_rgs=''
-    for zone_rg in ${consumer_zone_rgs}; do
-        zone_exists_for "${zone_rg}" "${SQL_PRIVATE_DNS_ZONE_NAME}"
-        if [[ "${zone_check_result}" != "true" ]]; then
-            missing_zone_rgs="${missing_zone_rgs} ${zone_rg}"
-        fi
-    done
-    if [[ -n "${missing_zone_rgs}" ]]; then
-        echo "Error: no ${SQL_PRIVATE_DNS_ZONE_NAME} zone in:${missing_zone_rgs}" >&2
-        echo "       Each --consumer-zone-resource-groups entry must already hold that zone." >&2
-        echo "       The hub never creates it -- the zone belongs to the consumer." >&2
-        exit 11
+missing_zone_rgs=''
+for zone_rg in ${consumer_zone_rgs}; do
+    zone_exists_for "${zone_rg}" "${SQL_PRIVATE_DNS_ZONE_NAME}"
+    if [[ "${zone_check_result}" != "true" ]]; then
+        missing_zone_rgs="${missing_zone_rgs} ${zone_rg}"
     fi
-
-    # Build the bicep array here so the bracket quoting exists in one place.
-    # The double quotes are LITERAL on purpose: `az ... --parameter key=value`
-    # parses value as JSON, so the array elements must arrive still quoted.
-    # Safe to word-split downstream because a resource group name cannot
-    # contain whitespace, so the assembled `[...]` is always a single word.
-    consumer_zone_json=''
-    for zone_rg in ${consumer_zone_rgs}; do
-        # shellcheck disable=SC2089 # REASON: literal quotes are required -- az parses this value as JSON
-        consumer_zone_json="${consumer_zone_json:+${consumer_zone_json},}\"${zone_rg}\""
-    done
-    # shellcheck disable=SC2089 # REASON: see above
-    extra_parameters="${extra_parameters} consumerPrivateDnsZoneResourceGroups=[${consumer_zone_json}]"
+done
+if [[ -n "${missing_zone_rgs}" ]]; then
+    echo "Error: no ${SQL_PRIVATE_DNS_ZONE_NAME} zone in:${missing_zone_rgs}" >&2
+    echo "       Each --consumer-zone-resource-groups entry must already hold that zone." >&2
+    echo "       The hub never creates it -- the zone belongs to the consumer." >&2
+    exit 11
 fi
+
+# Build the bicep array here so the bracket quoting exists in one place.
+# The double quotes are LITERAL on purpose: `az ... --parameter key=value`
+# parses value as JSON, so the array elements must arrive still quoted.
+# Safe to word-split downstream because a resource group name cannot
+# contain whitespace, so the assembled `[...]` is always a single word.
+consumer_zone_json=''
+for zone_rg in ${consumer_zone_rgs}; do
+    # shellcheck disable=SC2089 # REASON: literal quotes are required -- az parses this value as JSON
+    consumer_zone_json="${consumer_zone_json:+${consumer_zone_json},}\"${zone_rg}\""
+done
+# shellcheck disable=SC2089 # REASON: see above
+extra_parameters="${extra_parameters} consumerPrivateDnsZoneResourceGroups=[${consumer_zone_json}]"
 
 # Migration-era check. The endpoint used to register through a
 # privateDnsZoneGroup named 'default'; sql-hub.bicep no longer declares one,
