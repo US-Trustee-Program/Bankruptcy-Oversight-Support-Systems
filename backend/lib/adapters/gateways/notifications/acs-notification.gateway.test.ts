@@ -1,5 +1,9 @@
 import { vi } from 'vitest';
-import { AcsNotificationGateway, NotificationLogger } from './acs-notification.gateway';
+import {
+  AcsNotificationGateway,
+  isConnectionFailure,
+  NotificationLogger,
+} from './acs-notification.gateway';
 import { Notification } from '@common/cams/notifications';
 import { EmailClient } from '@azure/communication-email';
 import { CamsError } from '../../../common-errors/cams-error';
@@ -70,6 +74,12 @@ describe('AcsNotificationGateway', () => {
       description: 'omits replyTo when notification does not have replyTo',
       replyTo: undefined,
       expected: undefined,
+    },
+    {
+      description:
+        'includes replyTo with address only when notification replyTo has no displayName',
+      replyTo: { address: 'author@example.com' },
+      expected: [{ address: 'author@example.com', displayName: undefined }],
     },
   ])('$description', async ({ replyTo, expected }) => {
     mockPollUntilDone.mockResolvedValue({ status: 'Succeeded', id: 'msg-reply' });
@@ -149,10 +159,61 @@ describe('AcsNotificationGateway', () => {
     );
   });
 
-  test('propagates errors from the ACS client', async () => {
+  test('wraps beginSend errors in a CamsError', async () => {
     mockBeginSend.mockRejectedValue(new Error('Network timeout'));
 
-    await expect(gateway.send(notification)).rejects.toThrow('Network timeout');
+    const error = await gateway.send(notification).catch((e) => e);
+
+    expect(error).toBeInstanceOf(CamsError);
+    expect(error.message).toBe('Failed to send email: Network timeout');
+    expect(error.data).toEqual({ reason: 'send' });
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      'ACS-NOTIFICATION-GATEWAY',
+      'Failed to send email: Network timeout',
+      expect.objectContaining({ to: notification.to }),
+    );
+  });
+
+  test('wraps pollUntilDone errors in a CamsError', async () => {
+    mockPollUntilDone.mockRejectedValue(new Error('Timed out'));
+
+    const error = await gateway.send(notification).catch((e) => e);
+
+    expect(error).toBeInstanceOf(CamsError);
+    expect(error.message).toBe('Failed to send email: Timed out');
+    expect(error.data).toEqual({ reason: 'send' });
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      'ACS-NOTIFICATION-GATEWAY',
+      'Failed to send email: Timed out',
+      expect.objectContaining({ to: notification.to }),
+    );
+  });
+
+  test('falls back to a generic message when a non-Error value is thrown', async () => {
+    mockBeginSend.mockRejectedValue('a rejected string, not an Error');
+
+    const error = await gateway.send(notification).catch((e) => e);
+
+    expect(error).toBeInstanceOf(CamsError);
+    expect(error.message).toBe('Failed to send email: unknown error');
+  });
+
+  test('reports a connection failure with a distinct message and reason', async () => {
+    const connectionError = Object.assign(new Error('connect ECONNREFUSED'), {
+      code: 'ECONNREFUSED',
+    });
+    mockBeginSend.mockRejectedValue(connectionError);
+
+    const error = await gateway.send(notification).catch((e) => e);
+
+    expect(error).toBeInstanceOf(CamsError);
+    expect(error.message).toBe('Unable to connect to the email service');
+    expect(error.data).toEqual({ reason: 'connection' });
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      'ACS-NOTIFICATION-GATEWAY',
+      'Unable to connect to the email service',
+      expect.objectContaining({ errorCode: 'ECONNREFUSED' }),
+    );
   });
 
   test('passes abort signal with a 30 second timeout to pollUntilDone', async () => {
@@ -179,4 +240,36 @@ describe('AcsNotificationGateway', () => {
       }),
     );
   });
+});
+
+describe('isConnectionFailure', () => {
+  test.each([
+    { description: 'a network error code', error: { code: 'ECONNREFUSED' } },
+    {
+      description: 'a network error code nested under cause',
+      error: { cause: { code: 'ETIMEDOUT' } },
+    },
+    { description: 'AbortError by name', error: { name: 'AbortError' } },
+    { description: 'FetchError by name', error: { name: 'FetchError' } },
+  ])('returns true for $description', ({ error }) => {
+    expect(isConnectionFailure(error)).toBe(true);
+  });
+
+  test('returns false when statusCode is present, even if the code would otherwise match', () => {
+    expect(isConnectionFailure({ code: 'ECONNREFUSED', statusCode: 500 })).toBe(false);
+  });
+
+  test.each([
+    { description: 'a non-network error code', error: { code: 'SOME_OTHER_CODE' } },
+    { description: 'a plain Error with an unrelated name', error: new Error('boom') },
+  ])('returns false for $description', ({ error }) => {
+    expect(isConnectionFailure(error)).toBe(false);
+  });
+
+  test.each([{ value: null }, { value: undefined }, { value: 'a string' }, { value: 42 }])(
+    'returns false for non-object input $value',
+    ({ value }) => {
+      expect(isConnectionFailure(value)).toBe(false);
+    },
+  );
 });
