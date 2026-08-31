@@ -88,20 +88,16 @@ jobs:
           ENVIRONMENT: ${{ inputs.environment }}
         run: |
           set -euo pipefail
+          # shellcheck source=ops/scripts/pipeline/_kv-to-env.sh
+          source ops/scripts/pipeline/_kv-to-env.sh
           if [[ "${ENVIRONMENT}" == "Main-Gov" ]]; then
             KV="kv-ustp-cams"
           else
             KV="kv-ustp-cams-dev"
           fi
-          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-NETWORK-VNET-NAME --query value -o tsv)
-          echo "::add-mask::${_val}"
-          echo "AZ_NETWORK_VNET_NAME=${_val}" >> "$GITHUB_ENV"
-          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-APP-RG --query value -o tsv)
-          echo "::add-mask::${_val}"
-          echo "AZ_APP_RG_BASE=${_val}" >> "$GITHUB_ENV"
-          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-NETWORK-RG --query value -o tsv)
-          echo "::add-mask::${_val}"
-          echo "AZ_NETWORK_RG_BASE=${_val}" >> "$GITHUB_ENV"
+          kv_to_env AZ_NETWORK_VNET_NAME "$KV" AZ-NETWORK-VNET-NAME
+          kv_to_env AZ_APP_RG_BASE "$KV" AZ-APP-RG
+          kv_to_env AZ_NETWORK_RG_BASE "$KV" AZ-NETWORK-RG
       - name: Print build info
         id: build-info
         run: |
