@@ -385,7 +385,7 @@ resource existingAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@20
 module standaloneAnalyticsReaderRoleAssignment './lib/analytics/log-analytics-reader-role-assignment.bicep' =
   if (!isDevTier && !empty(analyticsWorkspaceId) && !empty(analyticsResourceGroupName)) {
     name: '${stackName}-analytics-reader-module'
-    scope: resourceGroup(analyticsResourceGroupName)
+    scope: resourceGroup(analyticsSubscriptionId, analyticsResourceGroupName)
     params: {
       workspaceName: last(split(analyticsWorkspaceId, '/'))
       principalId: kvSetup.outputs.principalId
