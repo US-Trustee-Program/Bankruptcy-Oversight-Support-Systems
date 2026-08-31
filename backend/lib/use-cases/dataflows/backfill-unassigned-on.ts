@@ -77,13 +77,41 @@ type ProcessBackfillPageResult =
       nextCursor: { lastId: string | null } | null;
     };
 
-function earliestBy(appointments: CaseAppointment[]): CaseAppointment | null {
+/**
+ * The earliest appointment by assignedOn. Logs a warning (does not throw) on an assignedOn tie
+ * between two candidates — mirrors getActiveByCaseId's AMBIGUOUS ACTIVE APPOINTMENT warning for
+ * the same shape of ambiguity — since this migration runs against potentially years of dirty
+ * historical data where a tie is a real data-quality signal worth surfacing for review, not a
+ * reason to abort the correction (an arbitrary-but-logged choice is still strictly better than
+ * leaving the old wall-clock-derived unassignedOn in place).
+ */
+function earliestBy(
+  context: ApplicationContext,
+  appointments: CaseAppointment[],
+): CaseAppointment | null {
   if (appointments.length === 0) {
     return null;
   }
-  return appointments.reduce((earliest, candidate) =>
-    candidate.assignedOn < earliest.assignedOn ? candidate : earliest,
+  const earliest = appointments.reduce((current, candidate) =>
+    candidate.assignedOn < current.assignedOn ? candidate : current,
   );
+  const tied = appointments.filter((a) => a.assignedOn === earliest.assignedOn);
+  if (tied.length > 1) {
+    context.logger.warn(
+      MODULE_NAME,
+      `AMBIGUOUS SUPERSEDING APPOINTMENT: case ${earliest.caseId} has multiple candidate ` +
+        `superseding appointments with the same assignedOn (${earliest.assignedOn}). Using ` +
+        `trusteeId ${earliest.trusteeId} (appointment id ${earliest.id}) arbitrarily — this ` +
+        `choice is NOT guaranteed stable across runs. Investigate and resolve the duplicate ` +
+        `appointment for this case.`,
+      {
+        caseId: earliest.caseId,
+        assignedOn: earliest.assignedOn,
+        candidateIds: tied.map((a) => a.id),
+      },
+    );
+  }
+  return earliest;
 }
 
 /**
@@ -105,6 +133,7 @@ function earliestBy(appointments: CaseAppointment[]): CaseAppointment | null {
  * correct against in that case.
  */
 function findSupersedingAppointment(
+  context: ApplicationContext,
   closed: CaseAppointment,
   caseHistory: CaseAppointment[],
 ): CaseAppointment | null {
@@ -119,7 +148,9 @@ function findSupersedingAppointment(
   const differentTrusteeAppointments = laterRealAppointments.filter(
     (a) => a.trusteeId !== closed.trusteeId,
   );
-  return earliestBy(differentTrusteeAppointments) ?? earliestBy(laterRealAppointments);
+  return (
+    earliestBy(context, differentTrusteeAppointments) ?? earliestBy(context, laterRealAppointments)
+  );
 }
 
 /**
@@ -142,7 +173,7 @@ async function correctUnassignedOn(
     for (const appointment of appointments) {
       try {
         const caseHistory = await appointmentsRepo.getByCaseId(appointment.caseId);
-        const superseding = findSupersedingAppointment(appointment, caseHistory);
+        const superseding = findSupersedingAppointment(context, appointment, caseHistory);
 
         if (!superseding) {
           context.logger.debug(
@@ -151,6 +182,17 @@ async function correctUnassignedOn(
           );
           results.push({ _id: appointment._id, caseId: appointment.caseId, success: true });
           continue;
+        }
+
+        // DateHelper.subtractDays silently returns its input unchanged on an invalid date string
+        // rather than throwing — since this migration explicitly targets historically-dirty data,
+        // an unvalidated malformed assignedOn here would get written straight into unassignedOn
+        // via updateCaseAppointment below. Throw loudly instead, matching the convention
+        // applyResolvedTrustee/writeSurrogateAppointment use for a missing/unparseable date.
+        if (!DateHelper.isValidDateString(superseding.assignedOn)) {
+          throw new CamsError(MODULE_NAME, {
+            message: `Case ${appointment.caseId}: superseding appointment ${superseding.id} has an invalid assignedOn (${superseding.assignedOn}), cannot safely derive unassignedOn.`,
+          });
         }
 
         const correctUnassignedOnValue = DateHelper.subtractDays(superseding.assignedOn, 1);
