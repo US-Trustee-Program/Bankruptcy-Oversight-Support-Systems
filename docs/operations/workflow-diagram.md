@@ -1,9 +1,9 @@
 # GitHub Actions Workflow Analysis
 
 ## Summary
-- **Total Workflows**: 32
+- **Total Workflows**: 33
 - **Main Workflows**: 15
-- **Reusable Workflows**: 17
+- **Reusable Workflows**: 18
 
 ## Legend
 
@@ -137,6 +137,9 @@ flowchart LR
     continuous_deployment_yml_typecheck["typecheck"]
     reusable_typecheck_yml["reusable-typecheck.yml"]
     reusable_typecheck_yml_typecheck["TypeScript"]
+    continuous_deployment_yml_verify_bundle_deps["verify-bundle-deps"]
+    reusable_verify_bundle_deps_yml["reusable-verify-bundle-deps.yml"]
+    reusable_verify_bundle_deps_yml_verify_bundle_deps["Bundle Dependencies"]
     continuous_deployment_yml_security_scan["Security"]
     sub_security_scan_yml["sub-security-scan.yml"]
     sub_security_scan_yml_sca_scan["SCA Scan"]
@@ -209,6 +212,9 @@ flowchart LR
     continuous_deployment_yml --> continuous_deployment_yml_typecheck
     reusable_typecheck_yml --> reusable_typecheck_yml_typecheck
     continuous_deployment_yml_typecheck --> reusable_typecheck_yml
+    continuous_deployment_yml --> continuous_deployment_yml_verify_bundle_deps
+    reusable_verify_bundle_deps_yml --> reusable_verify_bundle_deps_yml_verify_bundle_deps
+    continuous_deployment_yml_verify_bundle_deps --> reusable_verify_bundle_deps_yml
     continuous_deployment_yml --> continuous_deployment_yml_security_scan
     sub_security_scan_yml --> sub_security_scan_yml_sca_scan
     sub_security_scan_yml --> sub_security_scan_yml_sast_scan
@@ -288,6 +294,9 @@ flowchart LR
     class continuous_deployment_yml_typecheck job
     class reusable_typecheck_yml reusable
     class reusable_typecheck_yml_typecheck job
+    class continuous_deployment_yml_verify_bundle_deps job
+    class reusable_verify_bundle_deps_yml reusable
+    class reusable_verify_bundle_deps_yml_verify_bundle_deps job
     class continuous_deployment_yml_security_scan job
     class sub_security_scan_yml reusable
     class sub_security_scan_yml_sca_scan job
@@ -373,6 +382,7 @@ flowchart LR
         knip["knip"]
         lint["lint"]
         typecheck["typecheck"]
+        verify_bundle_deps["verify-bundle-deps"]
         subgraph security_scan_subgraph["Security"]
             security_scan_vars["AZ_SECURITY_SCAN_CLIENT_ID<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID"]
         end
@@ -440,6 +450,7 @@ flowchart LR
     unit_test_backend ==>|"needs"| deploy_subgraph
     unit_test_common ==>|"needs"| deploy_subgraph
     unit_test_frontend ==>|"needs"| deploy_subgraph
+    verify_bundle_deps ==>|"needs"| deploy_subgraph
 
     classDef external fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000000
     classDef job fill:#f1f8e9,stroke:#33691e,stroke-width:1px,color:#000000
@@ -459,6 +470,7 @@ flowchart LR
     class unit_test_backend job
     class unit_test_common job
     class unit_test_frontend job
+    class verify_bundle_deps job
 ```
 
 ### Schedule Triggered Workflows
@@ -684,6 +696,9 @@ flowchart LR
     continuous_deployment_yml_typecheck["typecheck"]
     reusable_typecheck_yml["reusable-typecheck.yml"]
     reusable_typecheck_yml_typecheck["TypeScript"]
+    continuous_deployment_yml_verify_bundle_deps["verify-bundle-deps"]
+    reusable_verify_bundle_deps_yml["reusable-verify-bundle-deps.yml"]
+    reusable_verify_bundle_deps_yml_verify_bundle_deps["Bundle Dependencies"]
     continuous_deployment_yml_security_scan["Security"]
     sub_security_scan_yml["sub-security-scan.yml"]
     sub_security_scan_yml_sca_scan["SCA Scan"]
@@ -751,6 +766,9 @@ flowchart LR
     continuous_deployment_yml --> continuous_deployment_yml_typecheck
     reusable_typecheck_yml --> reusable_typecheck_yml_typecheck
     continuous_deployment_yml_typecheck --> reusable_typecheck_yml
+    continuous_deployment_yml --> continuous_deployment_yml_verify_bundle_deps
+    reusable_verify_bundle_deps_yml --> reusable_verify_bundle_deps_yml_verify_bundle_deps
+    continuous_deployment_yml_verify_bundle_deps --> reusable_verify_bundle_deps_yml
     continuous_deployment_yml --> continuous_deployment_yml_security_scan
     sub_security_scan_yml --> sub_security_scan_yml_sca_scan
     sub_security_scan_yml --> sub_security_scan_yml_sast_scan
@@ -825,6 +843,9 @@ flowchart LR
     class continuous_deployment_yml_typecheck job
     class reusable_typecheck_yml reusable
     class reusable_typecheck_yml_typecheck job
+    class continuous_deployment_yml_verify_bundle_deps job
+    class reusable_verify_bundle_deps_yml reusable
+    class reusable_verify_bundle_deps_yml_verify_bundle_deps job
     class continuous_deployment_yml_security_scan job
     class sub_security_scan_yml reusable
     class sub_security_scan_yml_sca_scan job
@@ -910,6 +931,7 @@ flowchart LR
         knip["knip"]
         lint["lint"]
         typecheck["typecheck"]
+        verify_bundle_deps["verify-bundle-deps"]
         subgraph security_scan_subgraph["Security"]
             security_scan_vars["AZ_SECURITY_SCAN_CLIENT_ID<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID"]
         end
@@ -977,6 +999,7 @@ flowchart LR
     unit_test_backend ==>|"needs"| deploy_subgraph
     unit_test_common ==>|"needs"| deploy_subgraph
     unit_test_frontend ==>|"needs"| deploy_subgraph
+    verify_bundle_deps ==>|"needs"| deploy_subgraph
 
     classDef external fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000000
     classDef job fill:#f1f8e9,stroke:#33691e,stroke-width:1px,color:#000000
@@ -996,6 +1019,7 @@ flowchart LR
     class unit_test_backend job
     class unit_test_common job
     class unit_test_frontend job
+    class verify_bundle_deps job
 ```
 
 #### Stand Alone DAST Scan
@@ -1389,7 +1413,7 @@ flowchart LR
   - Jobs: 1
 - **Continuous Deployment** (`continuous-deployment.yml`)
   - Triggers: push, workflow_dispatch
-  - Jobs: 11
+  - Jobs: 12
 - **Build Custom Azure CLI Runner Image** (`build-azure-cli-image.yml`)
   - Triggers: schedule, workflow_dispatch
   - Jobs: 1
@@ -1406,6 +1430,8 @@ flowchart LR
 ### Reusable Workflows
 - **Provision and Configure Cloud Resources** (`sub-deploy.yml`)
   - Jobs: 4
+- **Verify Bundle Dependencies** (`reusable-verify-bundle-deps.yml`)
+  - Jobs: 1
 - **Security** (`sub-security-scan.yml`)
   - Jobs: 2
 - **Knip Unused Code Check** (`reusable-knip.yml`)

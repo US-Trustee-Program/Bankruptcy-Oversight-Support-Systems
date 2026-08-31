@@ -97,6 +97,13 @@ jobs:
     with:
       skip: ${{ (! startsWith(github.ref, 'refs/heads/main')) && inputs.deployBranch == 'true' && inputs.fastDeploy == 'true' }}
 
+  verify-bundle-deps:
+    uses: ./.github/workflows/reusable-verify-bundle-deps.yml
+    permissions:
+      contents: read
+    with:
+      skip: ${{ (! startsWith(github.ref, 'refs/heads/main')) && inputs.deployBranch == 'true' && inputs.fastDeploy == 'true' }}
+
   security-scan:
     name: Security
     uses: ./.github/workflows/sub-security-scan.yml
@@ -162,6 +169,7 @@ jobs:
         knip,
         lint,
         typecheck,
+        verify-bundle-deps,
       ]
     if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true'))
     with:
