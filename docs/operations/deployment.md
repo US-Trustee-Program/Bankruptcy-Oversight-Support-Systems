@@ -116,6 +116,57 @@ One endpoint, not one per consumer, is the load-bearing part. A private DNS zone
 record for the server's single canonical hostname, so per-consumer endpoints fight over it — and
 tearing one down deletes the record out from under everybody else.
 
+### How the A records get written
+
+The endpoint registers **nothing** itself. `sql-hub.bicep` declares one explicit A record per
+consumer zone, and pins the endpoint to a static private IP so those records have a knowable address
+to point at.
+
+It does not use a `privateDnsZoneGroup`, because a zone group keys its registration by zone **name**,
+not by zone resource id. Pointed at two zones that share a name it writes exactly **one** record,
+into a zone it picks arbitrarily — verified on throwaway resources, where the same two-config group
+landed the record in the first zone when the configs were added one at a time and in the second when
+they were sent in a single PUT. In production it picked `rg-cams-network-dev`, leaving
+`rg-cams-network` — the zone main is actually linked to — holding nothing but an SOA record, so main
+silently resolved through the public path for as long as that lasted.
+
+> [!WARNING]
+> The endpoint's pinned IP is **write-once**. Azure refuses to move a deployed endpoint's static
+> address by any route: changing it directly fails with
+> `PrivateEndpointWithStaticIpConfigurationsCannotChangeIpAddress`, and reverting to dynamic first
+> (which succeeds, keeping the same address) then re-pinning fails with
+> `PrivateEndpointStaticIpMustMatchDynamicIpMapping`. The only way to change it is to delete and
+> recreate the endpoint every environment depends on. The address is derived from the subnet prefix
+> (`cidrHost(prefix, 3)` — Azure reserves the first four addresses of every subnet), so re-addressing
+> the subnet will fail loudly rather than silently orphan the A records.
+
+### Removing the legacy zone group (one-time, order matters)
+
+The endpoint still carries a `privateDnsZoneGroup` named `default` from the original design.
+`sql-hub.bicep` no longer declares it, and ARM incremental mode never deletes an undeclared child, so
+it survives every deploy until removed by hand. The deploy script detects it and prints these steps.
+
+1. **Deploy.** Safe with the group present — it does not re-assert over the explicit A records
+   (checked immediately after a deploy and again 45s later).
+2. **Delete the group.**
+
+   ```bash
+   az network private-endpoint dns-zone-group delete \
+     -g bankruptcy-oversight-support-systems \
+     --endpoint-name pep-ustp-cams-sql-hub -n default
+   ```
+
+3. **Deploy again. This step is mandatory.**
+
+Step 2 deletes the A record that zone group owns **even though step 1 rewrote it** — cleanup is
+governed by the group's own server-side `recordSets` list, not by the record's `creator` metadata,
+so stripping that metadata does not protect it. Confirmed on throwaway resources. In production the
+group owns the record in `rg-cams-network-dev`, the **branch** zone.
+
+Skipping step 3 does not produce an obvious outage, which is exactly why it is dangerous:
+`NxDomainRedirect` on the vnet links makes a missing record fall back to public resolution. Branch
+environments would quietly stop using the private endpoint — the original bug, reintroduced.
+
 ### One-time setup
 
 Run the **Deploy SQL Private Link Hub** workflow (`.github/workflows/deploy-sql-hub.yml`,
@@ -141,6 +192,18 @@ lifecycle". That is the deliberate trade for a zero-downtime cutover. The altern
 of the same name in the hub RG — cannot be adopted without an outage, because Azure rejects linking
 one VNet to two zones sharing a name, so every consumer would have to unlink before it could relink
 and would resolve nothing in between.
+
+> [!CAUTION]
+> That rejected third zone **physically exists** in `bankruptcy-oversight-support-systems`, left over
+> from when the option was evaluated. It has no vnet links and no A record, and nothing writes to it.
+> Linking anything to it would break SQL resolution for that VNet, and because Azure enforces
+> one-link-per-vnet-per-zone-**name** it would also block linking to the correct zone. Leave it
+> alone; deleting it outright is the cleanest fix if someone wants to remove the trap.
+> `_vnet-link-check.sh` already fails loud if a vnet is ever found linked into a stray same-named
+> zone, so an accidental link surfaces as a deploy error rather than silent misresolution.
+
+Any ad-hoc `az` command against this zone name must therefore RG-qualify with `-g` — there are three
+zones with this name in the subscription, and the CLI will not disambiguate for you.
 
 > [!IMPORTANT] What this workflow **does** require is its own federated credential. The repository's
 > OIDC subject template is `repo + workflow + environment` (see

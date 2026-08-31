@@ -21,14 +21,16 @@ on:
         default: bankruptcy-oversight-support-systems
         type: string
       # Transient. `both` is the steady state; `main-only` exists so main can
-      # migrate onto the hub without also registering into the branch zone
-      # while branch endpoints still own that record. Delete this input once
-      # every consumer is on the hub.
+      # migrate onto the hub without also writing into the branch zone while
+      # branch endpoints still own that record. Delete this input once every
+      # consumer is on the hub.
       #
-      # main-only -> both appends rather than reorders: the first array entry
-      # becomes the endpoint's primary DNS zone config.
+      # One explicit A record is declared per zone listed, so order carries no
+      # meaning and main-only -> both is a plain addition. (It did matter when
+      # the endpoint registered through a privateDnsZoneGroup, where the first
+      # entry became the primary config.)
       consumerZones:
-        description: "DNS zones the endpoint registers into. `both` unless mid-migration -- see deployment.md."
+        description: "DNS zones that get an A record for the hub endpoint. `both` unless mid-migration -- see deployment.md."
         required: true
         default: both
         type: choice
@@ -63,10 +65,12 @@ jobs:
         run: |
           set -euo pipefail
 
-          # 'both' must match sql-hub.bicep's consumerPrivateDnsZoneResourceGroups default.
+          # 'both' must match sql-hub.bicep's consumerPrivateDnsZoneResourceGroups
+          # default. Space-separated: the script owns the JSON/bracket quoting
+          # and prechecks that each zone actually exists before deploying.
           case "${CONSUMER_ZONES}" in
-          both) zones='["rg-cams-network","rg-cams-network-dev"]' ;;
-          main-only) zones='["rg-cams-network"]' ;;
+          both) zones='rg-cams-network rg-cams-network-dev' ;;
+          main-only) zones='rg-cams-network' ;;
           *)
             echo "Unrecognized consumerZones: ${CONSUMER_ZONES}" >&2
             exit 1
@@ -75,7 +79,7 @@ jobs:
 
           args=(
             --resource-group "${RESOURCE_GROUP}"
-            --parameters "consumerPrivateDnsZoneResourceGroups=${zones}"
+            --consumer-zone-resource-groups "${zones}"
           )
           if [[ "${MODE}" == "what-if" ]]; then
             args+=(--what-if)
