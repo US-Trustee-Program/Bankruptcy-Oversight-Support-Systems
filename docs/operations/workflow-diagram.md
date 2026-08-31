@@ -86,9 +86,11 @@ Workflows triggered by `pull_request`:
 flowchart LR
     trigger_pull_request(["pull_request"])
     pr_validation_yml["Pull Request E2E Validation"]
+    pr_validation_yml_validate_bundle_dependencies["Validate Bundle Dependencies"]
     pr_validation_yml_run_e2e_tests["run-e2e-tests"]
 
     trigger_pull_request --> pr_validation_yml
+    pr_validation_yml --> pr_validation_yml_validate_bundle_dependencies
     pr_validation_yml --> pr_validation_yml_run_e2e_tests
 
     classDef reusable fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000000
@@ -98,6 +100,7 @@ flowchart LR
 
     class trigger_pull_request trigger
     class pr_validation_yml mainWorkflow
+    class pr_validation_yml_validate_bundle_dependencies job
     class pr_validation_yml_run_e2e_tests job
 ```
 
@@ -1154,9 +1157,11 @@ Manual execution of `pr-validation.yml`
 flowchart LR
     trigger_workflow_dispatch(["workflow_dispatch"])
     pr_validation_yml["Pull Request E2E Validation"]
+    pr_validation_yml_validate_bundle_dependencies["Validate Bundle Dependencies"]
     pr_validation_yml_run_e2e_tests["run-e2e-tests"]
 
     trigger_workflow_dispatch --> pr_validation_yml
+    pr_validation_yml --> pr_validation_yml_validate_bundle_dependencies
     pr_validation_yml --> pr_validation_yml_run_e2e_tests
 
     classDef reusable fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000000
@@ -1166,6 +1171,7 @@ flowchart LR
 
     class trigger_workflow_dispatch trigger
     class pr_validation_yml mainWorkflow
+    class pr_validation_yml_validate_bundle_dependencies job
     class pr_validation_yml_run_e2e_tests job
 ```
 
@@ -1383,7 +1389,7 @@ flowchart LR
   - Jobs: 1
 - **Pull Request E2E Validation** (`pr-validation.yml`)
   - Triggers: pull_request, workflow_dispatch
-  - Jobs: 1
+  - Jobs: 2
 - **Constrained Test Report** (`constrained-test-report.yml`)
   - Triggers: schedule, workflow_dispatch
   - Jobs: 1
