@@ -10,7 +10,7 @@ describe('Defer Release', () => {
     const accumulator: DeferReleaseAccumulator = {
       releasables: [],
     };
-    const success = deferRelease(accumulator, closable);
+    const success = deferRelease(closable, accumulator);
 
     expect(success).toBeTruthy();
     expect(accumulator.releasables.length).toEqual(1);
