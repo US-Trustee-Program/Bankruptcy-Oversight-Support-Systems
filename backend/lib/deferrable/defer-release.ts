@@ -12,7 +12,7 @@ function isDeferReleaseAccumulator(obj: unknown): obj is DeferReleaseAccumulator
   return typeof obj === 'object' && 'releasables' in obj;
 }
 
-export function deferRelease(accumulator: unknown, releasable: unknown): boolean {
+export function deferRelease(releasable: unknown, accumulator: unknown): boolean {
   if (isDeferReleaseAccumulator(accumulator)) {
     if (isReleasable(releasable)) {
       const priorLength = accumulator.releasables.length;

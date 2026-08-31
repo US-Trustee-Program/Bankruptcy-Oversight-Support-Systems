@@ -1,7 +1,9 @@
-import { vi, describe, test, expect } from 'vitest';
+/// <reference types="node" />
+import { vi, describe, test, expect, beforeAll, afterAll } from 'vitest';
 import DateHelper from './date-helper';
 
 const {
+  addDays,
   formatDate,
   getCurrentIsoTimestamp,
   getIsoTimestamp,
@@ -10,6 +12,7 @@ const {
   nowInSeconds,
   sortDates,
   sortDatesReverse,
+  subtractDays,
 } = DateHelper;
 
 describe('date helper tests', () => {
@@ -109,6 +112,51 @@ describe('date helper tests', () => {
       expect(formatDate('01/15/2024')).toBe('01/15/2024');
       expect(formatDate('2024-1-1')).toBe('2024-1-1');
       expect(formatDate('not-a-date')).toBe('not-a-date');
+    });
+  });
+
+  describe('addDays / subtractDays', () => {
+    // CI (ubuntu-latest) runs with no TZ set, i.e. UTC — under UTC there's no DST offset, so
+    // local-time methods (setDate/getDate) and UTC methods produce identical results and a
+    // regression back to local-time mutation would pass every DST case below silently. Pin a
+    // DST-observing zone so this suite actually exercises the local-vs-UTC divergence it guards
+    // against. Node reads process.env.TZ lazily, so this works without a subprocess.
+    const originalTZ = process.env.TZ;
+    beforeAll(() => {
+      process.env.TZ = 'America/New_York';
+    });
+    afterAll(() => {
+      process.env.TZ = originalTZ;
+    });
+
+    const cases = [
+      ['a normal day', '2026-08-27', 1, '2026-08-28'],
+      ['a month boundary', '2026-01-31', 1, '2026-02-01'],
+      ['a year boundary', '2026-12-31', 1, '2027-01-01'],
+      ['into a leap day', '2024-02-28', 1, '2024-02-29'],
+      ['past a leap day', '2024-02-29', 1, '2024-03-01'],
+      ['past a non-leap Feb', '2023-02-28', 1, '2023-03-01'],
+      ['across the US DST-end transition', '2026-11-01', 1, '2026-11-02'],
+      ['across the US DST-start transition', '2026-03-08', 1, '2026-03-09'],
+    ] as const;
+
+    test.each(cases)('addDays: %s', (_description, input, days, expected) => {
+      expect(addDays(input, days)).toBe(expected);
+    });
+
+    test.each(cases)('subtractDays: %s (reversed)', (_description, expected, days, input) => {
+      expect(subtractDays(input, days)).toBe(expected);
+    });
+
+    test('truncates a full ISO timestamp to its date portion before subtracting', () => {
+      expect(subtractDays('2023-01-02T00:00:00.000Z', 1)).toBe('2023-01-01');
+      expect(subtractDays('2024-01-01T00:00:00Z', 1)).toBe('2023-12-31');
+    });
+
+    test('returns input as-is for invalid date strings', () => {
+      expect(addDays('bogus', 1)).toBe('bogus');
+      expect(addDays('', 1)).toBe('');
+      expect(subtractDays('not-a-date', 1)).toBe('not-a-date');
     });
   });
 });

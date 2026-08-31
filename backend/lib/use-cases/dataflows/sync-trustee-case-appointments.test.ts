@@ -5,6 +5,7 @@ import SyncTrusteeCaseAppointments, {
   assertSyncedCase,
   throwIfTransientSoftCloseFailure,
   createNewAppointment,
+  closeExistingAppointment,
   softCloseExistingAppointment,
   isTransientInfraError,
   handleClassifiedMismatch,
@@ -893,6 +894,155 @@ describe('SyncTrusteeCaseAppointments', () => {
           expect(scenarioDistribution.sentinelBogusNameSkippedCount).toBe(0);
         },
       );
+
+      describe('close-only for bogus/placeholder trustees', () => {
+        const existingAppointment: CaseAppointment = {
+          id: 'ca-old',
+          caseId: 'case-001',
+          trusteeId: 'old-trustee',
+          assignedOn: '2024-01-01',
+          createdOn: '2024-01-01T00:00:00Z',
+          createdBy: { id: 'system', name: 'System' },
+          updatedOn: '2024-01-01T00:00:00Z',
+          updatedBy: { id: 'system', name: 'System' },
+        };
+
+        test('closes the existing active appointment without creating a replacement when the event has a bogus placeholder name', async () => {
+          (
+            mockTrusteeCaseAppointmentsRepo.getActiveByCaseId as ReturnType<typeof vi.fn>
+          ).mockResolvedValue(existingAppointment);
+
+          const events: TrusteeAppointmentSyncEvent[] = [
+            {
+              ...makeEvent('case-001', ''),
+              dxtrTrustee: { fullName: 'No Trustee', lastName: 'No Trustee' },
+              profCode: '00000',
+            },
+          ];
+
+          const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+            SyncTrusteeCaseAppointments.createDeps(context),
+            events,
+          );
+
+          // makeEvent's appointedDate is '2024-01-15' — unassignedOn is one day before it, never
+          // wall-clock time.
+          expect(mockTrusteeCaseAppointmentsRepo.updateCaseAppointment).toHaveBeenCalledWith(
+            expect.objectContaining({
+              id: 'ca-old',
+              trusteeId: 'old-trustee',
+              unassignedOn: '2024-01-14',
+            }),
+          );
+          expect(mockTrusteeCaseAppointmentsRepo.upsert).not.toHaveBeenCalled();
+          expect(scenarioDistribution.sentinelBogusNameSkippedCount).toBe(1);
+        });
+
+        test('does nothing further when there is no existing active appointment to close', async () => {
+          // getActiveByCaseId defaults to null in beforeEach — nothing to close.
+          const events: TrusteeAppointmentSyncEvent[] = [
+            {
+              ...makeEvent('case-001', ''),
+              dxtrTrustee: { fullName: 'No Trustee', lastName: 'No Trustee' },
+              profCode: '00000',
+            },
+          ];
+
+          const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+            SyncTrusteeCaseAppointments.createDeps(context),
+            events,
+          );
+
+          expect(mockTrusteeCaseAppointmentsRepo.updateCaseAppointment).not.toHaveBeenCalled();
+          expect(mockTrusteeCaseAppointmentsRepo.upsert).not.toHaveBeenCalled();
+          expect(scenarioDistribution.sentinelBogusNameSkippedCount).toBe(1);
+        });
+
+        test('routes to retryableEvents and creates nothing on a transient close failure', async () => {
+          (
+            mockTrusteeCaseAppointmentsRepo.getActiveByCaseId as ReturnType<typeof vi.fn>
+          ).mockResolvedValue(existingAppointment);
+          (
+            mockTrusteeCaseAppointmentsRepo.updateCaseAppointment as ReturnType<typeof vi.fn>
+          ).mockRejectedValue(new TooManyRequestsError('COSMOS'));
+
+          const events: TrusteeAppointmentSyncEvent[] = [
+            {
+              ...makeEvent('case-001', ''),
+              dxtrTrustee: { fullName: 'No Trustee', lastName: 'No Trustee' },
+              profCode: '00000',
+            },
+          ];
+
+          const { retryableEvents, dlqMessages, scenarioDistribution } =
+            await SyncTrusteeCaseAppointments.processAppointments(
+              SyncTrusteeCaseAppointments.createDeps(context),
+              events,
+            );
+
+          expect(retryableEvents).toHaveLength(1);
+          expect(dlqMessages).toHaveLength(0);
+          expect(mockTrusteeCaseAppointmentsRepo.upsert).not.toHaveBeenCalled();
+          // The event never reached a terminal skip outcome — it's being retried, not counted.
+          expect(scenarioDistribution.sentinelBogusNameSkippedCount).toBe(0);
+        });
+
+        test('logs the failure and reports the event as handled on a permanent close failure', async () => {
+          (
+            mockTrusteeCaseAppointmentsRepo.getActiveByCaseId as ReturnType<typeof vi.fn>
+          ).mockResolvedValue(existingAppointment);
+          (
+            mockTrusteeCaseAppointmentsRepo.updateCaseAppointment as ReturnType<typeof vi.fn>
+          ).mockRejectedValue(new Error('Cosmos write failed'));
+
+          const events: TrusteeAppointmentSyncEvent[] = [
+            {
+              ...makeEvent('case-001', ''),
+              dxtrTrustee: { fullName: 'No Trustee', lastName: 'No Trustee' },
+              profCode: '00000',
+            },
+          ];
+
+          const { retryableEvents, dlqMessages, scenarioDistribution } =
+            await SyncTrusteeCaseAppointments.processAppointments(
+              SyncTrusteeCaseAppointments.createDeps(context),
+              events,
+            );
+
+          expect(retryableEvents).toHaveLength(0);
+          expect(dlqMessages).toHaveLength(0);
+          expect(mockTrusteeCaseAppointmentsRepo.upsert).not.toHaveBeenCalled();
+          expect(scenarioDistribution.sentinelBogusNameSkippedCount).toBe(1);
+        });
+
+        test('routes to dlqMessages and closes nothing when appointedDate is missing', async () => {
+          (
+            mockTrusteeCaseAppointmentsRepo.getActiveByCaseId as ReturnType<typeof vi.fn>
+          ).mockResolvedValue(existingAppointment);
+
+          const events: TrusteeAppointmentSyncEvent[] = [
+            {
+              ...makeEvent('case-001', ''),
+              dxtrTrustee: { fullName: 'No Trustee', lastName: 'No Trustee' },
+              profCode: '00000',
+              appointedDate: undefined,
+            },
+          ];
+
+          const { retryableEvents, dlqMessages, scenarioDistribution } =
+            await SyncTrusteeCaseAppointments.processAppointments(
+              SyncTrusteeCaseAppointments.createDeps(context),
+              events,
+            );
+
+          expect(retryableEvents).toHaveLength(0);
+          expect(dlqMessages).toHaveLength(1);
+          expect(mockTrusteeCaseAppointmentsRepo.updateCaseAppointment).not.toHaveBeenCalled();
+          expect(mockTrusteeCaseAppointmentsRepo.upsert).not.toHaveBeenCalled();
+          // Never reached a terminal skip outcome — it's a data-integrity DLQ, not counted.
+          expect(scenarioDistribution.sentinelBogusNameSkippedCount).toBe(0);
+        });
+      });
     });
 
     describe('bogus administrative name with no firstName', () => {
@@ -1221,7 +1371,7 @@ describe('SyncTrusteeCaseAppointments', () => {
       expect(mockTrusteeCaseAppointmentsRepo.upsert).not.toHaveBeenCalled();
     });
 
-    test('should soft-close old and create new when trustee changes', async () => {
+    test('should soft-close old and create new when trustee changes, aligning unassignedOn to one day before the new assignedOn', async () => {
       const existingAppointment: CaseAppointment = {
         id: 'ca-old',
         caseId: 'case-001',
@@ -1236,6 +1386,9 @@ describe('SyncTrusteeCaseAppointments', () => {
         mockTrusteeCaseAppointmentsRepo.getActiveByCaseId as ReturnType<typeof vi.fn>
       ).mockResolvedValue(existingAppointment);
 
+      // makeEvent's appointedDate is '2024-01-15' — well after existingAppointment's assignedOn,
+      // simulating sync lag: the job runs long after the DXTR-reported appointment date, but
+      // unassignedOn must be derived from that date, not wall-clock time.
       const events = [makeEvent('case-001', 'John Doe')];
 
       await SyncTrusteeCaseAppointments.processAppointments(
@@ -1243,12 +1396,13 @@ describe('SyncTrusteeCaseAppointments', () => {
         events,
       );
 
-      // Should soft-close old appointment
+      // Should soft-close old appointment with unassignedOn one day before the new assignedOn —
+      // never wall-clock time — so the "Past Trustees" history reads as continuous, non-overlapping.
       expect(mockTrusteeCaseAppointmentsRepo.updateCaseAppointment).toHaveBeenCalledWith(
         expect.objectContaining({
           id: 'ca-old',
           trusteeId: 'old-trustee',
-          unassignedOn: expect.any(String),
+          unassignedOn: '2024-01-14',
         }),
       );
 
@@ -1257,7 +1411,7 @@ describe('SyncTrusteeCaseAppointments', () => {
         expect.objectContaining({
           caseId: 'case-001',
           trusteeId: 'trustee-123',
-          assignedOn: expect.any(String),
+          assignedOn: '2024-01-15',
         }),
       );
     });
@@ -4034,6 +4188,27 @@ describe('throwIfTransientSoftCloseFailure', () => {
       ),
     ).not.toThrow();
   });
+
+  test('logs a null newTrusteeId when called from the close-only path', async () => {
+    // handleBogusTrusteeCloseOnly passes null — there is no replacement trustee to log.
+    const context = await createMockApplicationContext();
+    const warnSpy = vi.spyOn(context.logger, 'warn');
+    const softCloseError = new TooManyRequestsError('COSMOS');
+
+    expect(() =>
+      throwIfTransientSoftCloseFailure(context, event, existingAppointment, null, softCloseError),
+    ).toThrow(softCloseError);
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      'SYNC-TRUSTEE-CASE-APPOINTMENTS-USE-CASE',
+      expect.stringContaining('Transient soft-close failure'),
+      expect.objectContaining({
+        caseId: 'case-001',
+        oldTrusteeId: 'old-trustee-456',
+        newTrusteeId: null,
+      }),
+    );
+  });
 });
 
 describe('createNewAppointment', () => {
@@ -4072,34 +4247,185 @@ describe('createNewAppointment', () => {
   });
 });
 
-describe('softCloseExistingAppointment', () => {
-  const event: TrusteeAppointmentSyncEvent = {
-    caseId: 'case-001',
-    courtId: '081',
-    courtDivisionCode: '081',
-    chapter: '7',
-    dxtrTrustee: { fullName: 'Jane Doe' },
-  };
-  const syncedCase = {
-    caseId: 'case-001',
-    courtId: '081',
-    courtDivisionCode: '081',
-    chapter: '7',
-    dateFiled: '2026-01-07',
-  } as unknown as SyncedCase;
-  const existingAppointment = {
-    caseId: 'case-001',
-    trusteeId: 'old-trustee-456',
-    assignedOn: '2023-01-01T00:00:00.000Z',
-  } as unknown as CaseAppointment;
+// Shared by closeExistingAppointment and softCloseExistingAppointment below — both exercise the
+// same close mechanics (see closeExistingAppointment's docblock for how the two differ).
+const closeFixtureEvent: TrusteeAppointmentSyncEvent = {
+  caseId: 'case-001',
+  courtId: '081',
+  courtDivisionCode: '081',
+  chapter: '7',
+  dxtrTrustee: { fullName: 'Jane Doe' },
+};
+const closeFixtureSyncedCase = {
+  caseId: 'case-001',
+  courtId: '081',
+  courtDivisionCode: '081',
+  chapter: '7',
+  dateFiled: '2026-01-07',
+} as unknown as SyncedCase;
+const closeFixtureExistingAppointment = {
+  caseId: 'case-001',
+  trusteeId: 'old-trustee-456',
+  assignedOn: '2023-01-01T00:00:00.000Z',
+} as unknown as CaseAppointment;
 
-  function buildAppointmentsRepo(overrides: Partial<TrusteeCaseAppointmentsRepository> = {}) {
-    return {
-      updateCaseAppointment: vi.fn().mockResolvedValue({}),
-      upsert: vi.fn().mockResolvedValue({}),
-      ...overrides,
-    } as unknown as TrusteeCaseAppointmentsRepository;
-  }
+function buildCloseFixtureAppointmentsRepo(
+  overrides: Partial<TrusteeCaseAppointmentsRepository> = {},
+) {
+  return {
+    updateCaseAppointment: vi.fn().mockResolvedValue({}),
+    upsert: vi.fn().mockResolvedValue({}),
+    ...overrides,
+  } as unknown as TrusteeCaseAppointmentsRepository;
+}
+
+describe('closeExistingAppointment', () => {
+  const event = closeFixtureEvent;
+  const syncedCase = closeFixtureSyncedCase;
+  const existingAppointment = closeFixtureExistingAppointment;
+  const buildAppointmentsRepo = buildCloseFixtureAppointmentsRepo;
+
+  test('closes with unassignedOn one day before referenceDate and reports closed:true', async () => {
+    const context = await createMockApplicationContext();
+    const appointmentsRepo = buildAppointmentsRepo();
+
+    const result = await closeExistingAppointment(
+      context,
+      event,
+      existingAppointment,
+      '2024-06-15',
+      appointmentsRepo,
+      syncedCase,
+    );
+
+    expect(appointmentsRepo.updateCaseAppointment).toHaveBeenCalledWith({
+      ...existingAppointment,
+      unassignedOn: '2024-06-14',
+    });
+    expect(appointmentsRepo.upsert).not.toHaveBeenCalled();
+    expect(result).toEqual({ closed: true, softCloseError: null, unassignedOn: '2024-06-14' });
+  });
+
+  test('correctly rolls back across a year boundary when referenceDate is January 1st', async () => {
+    // Every other unassignedOn-derivation test in this file uses a safe mid-month referenceDate —
+    // this guards month/year rollover specifically, since deriveUnassignedOn's correctness (not
+    // just wall-clock time) is this change's central claim.
+    const context = await createMockApplicationContext();
+    const appointmentsRepo = buildAppointmentsRepo();
+
+    const result = await closeExistingAppointment(
+      context,
+      event,
+      existingAppointment,
+      '2024-01-01',
+      appointmentsRepo,
+      syncedCase,
+    );
+
+    expect(appointmentsRepo.updateCaseAppointment).toHaveBeenCalledWith({
+      ...existingAppointment,
+      unassignedOn: '2023-12-31',
+    });
+    expect(result.unassignedOn).toBe('2023-12-31');
+  });
+
+  test('clamps unassignedOn to existingAssignedOn when referenceDate precedes it (out-of-order delivery)', async () => {
+    // existingAppointment.assignedOn is '2023-01-01...'. A referenceDate strictly before that
+    // (DLQ redelivery, backfill, or retry delivering an older event after a newer one) would
+    // otherwise compute unassignedOn < assignedOn — a row marked closed before it was ever
+    // opened. Clamping to existingAssignedOn caps the damage at a zero-duration appointment
+    // instead of a negative-duration one.
+    const context = await createMockApplicationContext();
+    const appointmentsRepo = buildAppointmentsRepo();
+
+    const result = await closeExistingAppointment(
+      context,
+      event,
+      existingAppointment,
+      '2022-06-15',
+      appointmentsRepo,
+      syncedCase,
+    );
+
+    expect(appointmentsRepo.updateCaseAppointment).toHaveBeenCalledWith({
+      ...existingAppointment,
+      unassignedOn: '2023-01-01',
+    });
+    expect(result.unassignedOn).toBe('2023-01-01');
+  });
+
+  test('never creates a replacement appointment, even on a permanent close failure', async () => {
+    const context = await createMockApplicationContext();
+    const appointmentsRepo = buildAppointmentsRepo({
+      updateCaseAppointment: vi.fn().mockRejectedValue(new Error('permanent failure')),
+    });
+
+    const result = await closeExistingAppointment(
+      context,
+      event,
+      existingAppointment,
+      '2024-06-15',
+      appointmentsRepo,
+      syncedCase,
+    );
+
+    expect(appointmentsRepo.upsert).not.toHaveBeenCalled();
+    expect(result.closed).toBe(false);
+    expect(result.softCloseError).toBeInstanceOf(Error);
+  });
+
+  test('propagates a transient close failure without creating anything', async () => {
+    const context = await createMockApplicationContext();
+    const appointmentsRepo = buildAppointmentsRepo({
+      updateCaseAppointment: vi.fn().mockRejectedValue(new TooManyRequestsError('COSMOS')),
+    });
+
+    const result = await closeExistingAppointment(
+      context,
+      event,
+      existingAppointment,
+      '2024-06-15',
+      appointmentsRepo,
+      syncedCase,
+    );
+
+    // closeExistingAppointment reports the error rather than throwing — throwing on transient
+    // errors is throwIfTransientSoftCloseFailure's job, invoked by each of this primitive's two
+    // callers so they can each decide what "abort" means for their own flow.
+    expect(result.closed).toBe(false);
+    expect(result.softCloseError).toBeInstanceOf(TooManyRequestsError);
+    expect(appointmentsRepo.upsert).not.toHaveBeenCalled();
+  });
+
+  test('does not notify downstream when the close failed', async () => {
+    const context = await createMockApplicationContext();
+    context.featureFlags['downstream-trustee-appointments-enabled'] = true;
+    const queueTrusteeAppointmentEvent = vi.fn().mockResolvedValue(undefined);
+    vi.spyOn(factory, 'getApiToDataflowsGateway').mockReturnValue({
+      queueTrusteeAppointmentEvent,
+    } as unknown as ApiToDataflowsGateway);
+    const appointmentsRepo = buildAppointmentsRepo({
+      updateCaseAppointment: vi.fn().mockRejectedValue(new Error('permanent failure')),
+    });
+
+    await closeExistingAppointment(
+      context,
+      event,
+      existingAppointment,
+      '2024-06-15',
+      appointmentsRepo,
+      syncedCase,
+    );
+
+    expect(queueTrusteeAppointmentEvent).not.toHaveBeenCalled();
+  });
+});
+
+describe('softCloseExistingAppointment', () => {
+  const event = closeFixtureEvent;
+  const syncedCase = closeFixtureSyncedCase;
+  const existingAppointment = closeFixtureExistingAppointment;
+  const buildAppointmentsRepo = buildCloseFixtureAppointmentsRepo;
 
   test('soft-closes the old appointment and reports closed:true without creating the new one', async () => {
     const context = await createMockApplicationContext();
@@ -4117,7 +4443,8 @@ describe('softCloseExistingAppointment', () => {
 
     expect(appointmentsRepo.updateCaseAppointment).toHaveBeenCalledWith({
       ...existingAppointment,
-      unassignedOn: expect.any(String),
+      // One day before the incoming assignedOn ('2023-01-02...') — never wall-clock time.
+      unassignedOn: '2023-01-01',
     });
     // The new appointment is created by the caller (applyResolvedTrustee) once closed:true is
     // reported, not by this helper — mirrors the pre-extraction control flow exactly.
@@ -4236,7 +4563,8 @@ describe('softCloseExistingAppointment', () => {
       expect.objectContaining({
         caseId: 'case-001',
         trusteeId: 'old-trustee-456',
-        unassignedOn: expect.any(String),
+        // Mirrors the persisted unassignedOn — downstream and Cosmos must agree.
+        unassignedOn: '2023-01-01',
       }),
     );
   });
@@ -4485,7 +4813,7 @@ describe('handleClassifiedMismatch', () => {
 
     await expect(
       handleClassifiedMismatch(ctx, syncedCase, TrusteeAppointmentSyncErrorCode.NoTrusteeMatch, []),
-    ).rejects.toThrow(/missing\/unparseable appointedDate/);
+    ).rejects.toThrow(/missing\/unparseable/);
 
     expect(caseAppointmentsRepo.upsert).not.toHaveBeenCalled();
     expect(ctx.deps.context.logger.error).toHaveBeenCalledWith(

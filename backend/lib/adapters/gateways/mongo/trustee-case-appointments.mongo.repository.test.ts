@@ -14,6 +14,7 @@ import {
 } from '@common/cams/trustee-appointments';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { TrusteeCasesSearchPredicate } from '@common/api/search';
+import { SENTINEL_TRUSTEE_ID } from '../../../use-cases/dataflows/migrate-case-appointments-constants';
 
 describe('TrusteeCaseAppointmentsMongoRepository', () => {
   const CASE_ID = '081-24-12345';
@@ -800,6 +801,78 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       const result = await repo.findActiveMissingAppointedDate(null, 100);
 
       expect(result).toHaveLength(1);
+      repo.release();
+    });
+  });
+
+  describe('findClosedAppointments', () => {
+    test('should return closed appointments when lastId is null', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([
+        { ...baseAppointment, _id: 'mongo-1', unassignedOn: '2025-06-15' },
+      ]);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const result = await repo.findClosedAppointments(null, 100);
+
+      expect(result).toHaveLength(1);
+      repo.release();
+    });
+
+    test('should query for unassignedOn existing, excluding surrogate and sentinel rows', async () => {
+      const findSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockResolvedValue([{ ...baseAppointment, _id: 'mongo-1', unassignedOn: '2025-06-15' }]);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await repo.findClosedAppointments(null, 100);
+
+      const query = findSpy.mock.calls[0][0];
+      const queryValues = (query as Record<string, unknown>).values as Record<string, unknown>[];
+
+      const unassignedOnCondition = queryValues.find(
+        (v) => (v.leftOperand as { name: string })?.name === 'unassignedOn',
+      );
+      expect(unassignedOnCondition).toEqual(
+        expect.objectContaining({ condition: 'EXISTS', rightOperand: true }),
+      );
+
+      const trusteeIdCondition = queryValues.find(
+        (v) => (v.leftOperand as { name: string })?.name === 'trusteeId',
+      );
+      expect(trusteeIdCondition).toEqual(
+        expect.objectContaining({ condition: 'NOT_EQUALS', rightOperand: SENTINEL_TRUSTEE_ID }),
+      );
+
+      const isSurrogateCondition = queryValues.find(
+        (v) => (v.leftOperand as { name: string })?.name === 'isSurrogate',
+      );
+      expect(isSurrogateCondition).toEqual(
+        expect.objectContaining({ condition: 'NOT_EQUALS', rightOperand: true }),
+      );
+
+      repo.release();
+    });
+
+    test('should filter by _id > lastId when provided', async () => {
+      const findSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockResolvedValue([{ ...baseAppointment, _id: 'mongo-2', unassignedOn: '2025-06-15' }]);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await repo.findClosedAppointments('mongo-1', 50);
+
+      expect(findSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          values: expect.arrayContaining([
+            expect.objectContaining({ condition: 'GREATER_THAN', rightOperand: 'mongo-1' }),
+          ]),
+        }),
+        expect.any(Object),
+        50,
+      );
       repo.release();
     });
   });
