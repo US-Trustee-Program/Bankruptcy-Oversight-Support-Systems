@@ -4308,6 +4308,31 @@ describe('closeExistingAppointment', () => {
     expect(result.unassignedOn).toBe('2023-12-31');
   });
 
+  test('clamps unassignedOn to existingAssignedOn when referenceDate precedes it (out-of-order delivery)', async () => {
+    // existingAppointment.assignedOn is '2023-01-01...'. A referenceDate strictly before that
+    // (DLQ redelivery, backfill, or retry delivering an older event after a newer one) would
+    // otherwise compute unassignedOn < assignedOn — a row marked closed before it was ever
+    // opened. Clamping to existingAssignedOn caps the damage at a zero-duration appointment
+    // instead of a negative-duration one.
+    const context = await createMockApplicationContext();
+    const appointmentsRepo = buildAppointmentsRepo();
+
+    const result = await closeExistingAppointment(
+      context,
+      event,
+      existingAppointment,
+      '2022-06-15',
+      appointmentsRepo,
+      syncedCase,
+    );
+
+    expect(appointmentsRepo.updateCaseAppointment).toHaveBeenCalledWith({
+      ...existingAppointment,
+      unassignedOn: '2023-01-01',
+    });
+    expect(result.unassignedOn).toBe('2023-01-01');
+  });
+
   test('never creates a replacement appointment, even on a permanent close failure', async () => {
     const context = await createMockApplicationContext();
     const appointmentsRepo = buildAppointmentsRepo({

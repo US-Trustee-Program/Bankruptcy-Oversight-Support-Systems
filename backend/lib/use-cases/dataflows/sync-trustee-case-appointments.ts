@@ -263,17 +263,30 @@ export async function createNewAppointment(
  * parsed from a fixed-width YYMMDD source field with no time component — see parseDxtrDate in
  * cases.dxtr.gateway.ts), so calendar-day subtraction is correct and unambiguous; unlike the old
  * `new Date().toISOString()` wall-clock stamp, this is deterministic across retries.
+ *
+ * Clamped to existingAssignedOn: out-of-order event delivery (DLQ redelivery, backfill, retry) can
+ * hand us a referenceDate at or before the existing appointment's own assignedOn, which would
+ * otherwise back-date unassignedOn to before (or at) the appointment's open date — a row marked
+ * closed before it was ever opened. Clamping never overlaps the event that caused the close in the
+ * normal, in-order case, and degrades to a zero-duration appointment (rather than a negative one)
+ * in the out-of-order case.
  */
-function deriveUnassignedOn(referenceDate: string): string {
-  return DateHelper.subtractDays(referenceDate, 1);
+function deriveUnassignedOn(referenceDate: string, existingAssignedOn: string): string {
+  const candidate = DateHelper.subtractDays(referenceDate, 1);
+  // existingAssignedOn may carry a full ISO timestamp (see CaseAppointment.assignedOn); truncate
+  // to a plain date the same way DateHelper.subtractDays does internally, so the comparison below
+  // isn't a false positive from comparing a 10-char date string against a longer timestamp string.
+  const existingAssignedOnDate = existingAssignedOn.slice(0, 10);
+  return candidate < existingAssignedOnDate ? existingAssignedOnDate : candidate;
 }
 
 /**
- * Closes existingAppointment in Cosmos (unassignedOn = one day before referenceDate) and, on
- * success, notifies downstream of the closed appointment when the feature flag is enabled.
- * Downstream notification is gated on soft-close success — firing a close event for a close that
- * never actually happened in Cosmos would misinform downstream, and skips
- * resolveGroupMatchedProfessionalId's gateway reads on a path that's already failing.
+ * Closes existingAppointment in Cosmos (unassignedOn = one day before referenceDate, clamped to
+ * never precede existingAppointment.assignedOn — see deriveUnassignedOn) and, on success, notifies
+ * downstream of the closed appointment when the feature flag is enabled. Downstream notification is
+ * gated on soft-close success — firing a close event for a close that never actually happened in
+ * Cosmos would misinform downstream, and skips resolveGroupMatchedProfessionalId's gateway reads on
+ * a path that's already failing.
  *
  * Pure close primitive shared by softCloseExistingAppointment (replace flow, which additionally
  * creates a new appointment) and the bogus-trustee close-only path in processOneEvent (which must
