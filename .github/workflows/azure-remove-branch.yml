@@ -39,6 +39,8 @@ jobs:
           GHA_ENVIRONMENT: 'Develop'
         run: |
           set -euo pipefail
+          # shellcheck source=ops/scripts/pipeline/_kv-to-env.sh
+          source ops/scripts/pipeline/_kv-to-env.sh
           if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
             KV="kv-ustp-cams"
           else
@@ -49,10 +51,8 @@ jobs:
           # Deployment Stacks in the shared app/network RGs instead (both still
           # carry the same isBranchDeployment/branchName/branchHashId tags from
           # Slice 1).
-          networkRgBase=$(az keyvault secret show --vault-name "$KV" --name AZ-NETWORK-RG --query value -o tsv)
-          echo "::add-mask::${networkRgBase}"
-          appRgBase=$(az keyvault secret show --vault-name "$KV" --name AZ-APP-RG --query value -o tsv)
-          echo "::add-mask::${appRgBase}"
+          kv_get networkRgBase "$KV" AZ-NETWORK-RG
+          kv_get appRgBase "$KV" AZ-APP-RG
           echo "List Azure network deployment stacks tagged as branch deployment resources"
           az stack group list -g "${networkRgBase}" --query "[?tags.isBranchDeployment == 'true'].{ Name:name Branch:tags.branchName HashId:tags.branchHashId }" -o table
           echo "List Azure app deployment stacks tagged as branch deployment resources"
@@ -111,6 +111,8 @@ jobs:
           STALE_BRANCH_DAYS: ${{ vars.STALE_BRANCH_DAYS }}
         run: |
           set -euo pipefail
+          # shellcheck source=ops/scripts/pipeline/_kv-to-env.sh
+          source ops/scripts/pipeline/_kv-to-env.sh
 
           if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
             KV="kv-ustp-cams"
@@ -129,10 +131,8 @@ jobs:
           # "ustp-cams-dev-<hash>-network"), so the defensive name/tag
           # consistency check matches on that suffix instead of the old
           # "<rg-base>-<hash>" resource-group-name suffix.
-          networkRgBase=$(az keyvault secret show --vault-name "$KV" --name AZ-NETWORK-RG --query value -o tsv)
-          echo "::add-mask::${networkRgBase}"
-          appRgBase=$(az keyvault secret show --vault-name "$KV" --name AZ-APP-RG --query value -o tsv)
-          echo "::add-mask::${appRgBase}"
+          kv_get networkRgBase "$KV" AZ-NETWORK-RG
+          kv_get appRgBase "$KV" AZ-APP-RG
 
           if [[ "${GITHUB_EVENT_NAME}" == "schedule" ]]; then
             localHour=$(TZ=America/Los_Angeles date +%H)
@@ -391,34 +391,24 @@ jobs:
           GHA_ENVIRONMENT: 'Develop'
         run: |
           set -euo pipefail
+          # shellcheck source=ops/scripts/pipeline/_kv-to-env.sh
+          source ops/scripts/pipeline/_kv-to-env.sh
           if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
             KV="kv-ustp-cams"
           else
             KV="kv-ustp-cams-dev"
           fi
-          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-COSMOS-MONGO-ACCOUNT-NAME --query value -o tsv)
-          echo "::add-mask::${_val}"
-          echo "AZ_COSMOS_MONGO_ACCOUNT_NAME=${_val}" >> "$GITHUB_ENV"
+          kv_to_env AZ_COSMOS_MONGO_ACCOUNT_NAME "$KV" AZ-COSMOS-MONGO-ACCOUNT-NAME
 
-          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-APP-RG --query value -o tsv)
-          echo "::add-mask::${_val}"
-          echo "AZ_APP_RG_BASE=${_val}" >> "$GITHUB_ENV"
+          kv_to_env AZ_APP_RG_BASE "$KV" AZ-APP-RG
 
-          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-NETWORK-RG --query value -o tsv)
-          echo "::add-mask::${_val}"
-          echo "AZ_NETWORK_RG_BASE=${_val}" >> "$GITHUB_ENV"
+          kv_to_env AZ_NETWORK_RG_BASE "$KV" AZ-NETWORK-RG
 
-          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-KV-APP-CONFIG-RG-NAME --query value -o tsv)
-          echo "::add-mask::${_val}"
-          echo "AZ_KV_APP_CONFIG_RG_NAME=${_val}" >> "$GITHUB_ENV"
+          kv_to_env AZ_KV_APP_CONFIG_RG_NAME "$KV" AZ-KV-APP-CONFIG-RG-NAME
 
-          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-ANALYTICS-RG --query value -o tsv)
-          echo "::add-mask::${_val}"
-          echo "AZ_ANALYTICS_RG=${_val}" >> "$GITHUB_ENV"
+          kv_to_env AZ_ANALYTICS_RG "$KV" AZ-ANALYTICS-RG
 
-          _val=$(az keyvault secret show --vault-name "$KV" --name AZURE-RG --query value -o tsv)
-          echo "::add-mask::${_val}"
-          echo "AZURE_RG=${_val}" >> "$GITHUB_ENV"
+          kv_to_env AZURE_RG "$KV" AZURE-RG
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Delete Branch Resources
         uses: azure/cli@9eb25b8360668fb0ecbafa808d40e2197b2f5f52 # v3.0.0
