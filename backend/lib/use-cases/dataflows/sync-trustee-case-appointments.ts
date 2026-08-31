@@ -1697,6 +1697,21 @@ async function resolveSyncedCase(
 }
 
 /**
+ * Parses event.dxtrTrustee.legacy.cityStateZipCountry (when both the legacy record and the field
+ * itself are present) and attaches the result as parsedCityStateZip, mutating event in place.
+ * Pulled out of processOneEvent as a single-purpose step alongside that function's other
+ * whole-procedure extractions, removing this branch's nesting/branching cost from the measured
+ * function.
+ */
+function parseAndAttachCityStateZip(event: TrusteeAppointmentSyncEvent): void {
+  const cityStateZipCountry = event.dxtrTrustee.legacy?.cityStateZipCountry;
+  if (!event.dxtrTrustee.legacy || !cityStateZipCountry) {
+    return;
+  }
+  event.dxtrTrustee.legacy.parsedCityStateZip = parseCityStateZip(cityStateZipCountry);
+}
+
+/**
  * Processes a single trustee appointment event end to end: fingerprint lookup, case-sync/
  * moved-case resolution (resolveSyncedCase), verification-bucket-hit short-circuit
  * (handleVerificationBucketHit),
@@ -1722,10 +1737,7 @@ async function processOneEvent(
   const preMatchOutcome = resolvePreMatchShortCircuit(deps, event, scenarioDistribution);
   if (preMatchOutcome) return preMatchOutcome;
 
-  const cityStateZipCountry = event.dxtrTrustee.legacy?.cityStateZipCountry;
-  if (event.dxtrTrustee.legacy && cityStateZipCountry) {
-    event.dxtrTrustee.legacy.parsedCityStateZip = parseCityStateZip(cityStateZipCountry);
-  }
+  parseAndAttachCityStateZip(event);
 
   const variant = buildVariant(event.dxtrTrustee);
   const fingerprint = computeFingerprint(variant);
