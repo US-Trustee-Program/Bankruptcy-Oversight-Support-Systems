@@ -35,6 +35,18 @@ type AddressSendResult = {
   failure?: NotificationFailure;
 };
 
+function getSendFailureDetails(error: unknown): {
+  reason: NotificationFailureReason;
+  messageId?: string;
+} {
+  if (!isCamsError(error)) return { reason: 'send' };
+  const data = error.data as { reason?: NotificationFailureReason; messageId?: string };
+  return {
+    reason: data?.reason === 'connection' ? 'connection' : 'send',
+    messageId: data?.messageId,
+  };
+}
+
 export class TrusteeChangeNotificationUseCase {
   private readonly routingRepository: NotificationRoutingRepository;
   private readonly notificationGateway: NotificationGateway;
@@ -115,11 +127,10 @@ export class TrusteeChangeNotificationUseCase {
         await this.archiveSentEmail(context, result.messageId, address, changeSet);
         results.push({ address });
       } catch (error) {
-        const reason: NotificationFailureReason =
-          isCamsError(error) &&
-          (error.data as { reason?: NotificationFailureReason })?.reason === 'connection'
-            ? 'connection'
-            : 'send';
+        const { reason, messageId } = getSendFailureDetails(error);
+        if (messageId) {
+          await this.archiveSentEmail(context, messageId, address, changeSet);
+        }
         const detail = error instanceof Error ? error.message : 'unknown error';
         const message = `Failed to notify ${address} (covers: ${mailingList.covers.join(', ')}): ${detail}`;
         context.logger.error(MODULE_NAME, message, error);
@@ -130,10 +141,12 @@ export class TrusteeChangeNotificationUseCase {
   }
 
   /**
-   * Best-effort archive of the sent changeSet, keyed by the provider's messageId, so a
-   * later bounce can be reconstructed and forwarded. Archive failures are logged, not
-   * thrown -- the notification already sent successfully, and that outcome must stand
-   * regardless of whether the archive write succeeds.
+   * Best-effort archive of an attempted changeSet email, keyed by ACS's messageId, so a
+   * later bounce or synchronous rejection (e.g. Suppressed) can be reconstructed and
+   * forwarded. Called whenever ACS assigns a messageId, whether the send succeeded or was
+   * synchronously rejected, since ACS can report a delivery failure for either. Archive
+   * failures are logged, not thrown -- the underlying send outcome (success or failure)
+   * must stand regardless of whether the archive write succeeds.
    */
   private async archiveSentEmail(
     context: ApplicationContext,

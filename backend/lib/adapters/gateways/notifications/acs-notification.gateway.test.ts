@@ -143,6 +143,7 @@ describe('AcsNotificationGateway', () => {
     expect(error.message).toContain(
       "Email service rejected the message with status 'Failed' (id: msg-2)",
     );
+    expect(error.data).toEqual({ reason: 'send', messageId: 'msg-2' });
   });
 
   test('logs an error when ACS returns a non-Succeeded status', async () => {
