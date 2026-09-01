@@ -3,7 +3,6 @@ import { DbTableFieldSpec, IDbConfig, QueryResults } from '../types/database';
 import { deferClose } from '../../deferrable/defer-close';
 import { ApplicationContext } from '../types/basic';
 import { getCamsError } from '../../common-errors/error-utilities';
-import { GatewayTimeoutError } from '../../common-errors/gateway-timeout';
 
 export abstract class AbstractMssqlClient {
   private static readonly connectionPools: Map<string, ConnectionPool> = new Map();
@@ -48,7 +47,7 @@ export abstract class AbstractMssqlClient {
       const label = options?.operationName ?? unknownError.message;
       const detail = { ...options?.logContext, error: unknownError };
       context.logger.error(this.moduleName, label, detail);
-      throw this.toCamsError(error, unknownError);
+      throw getCamsError(unknownError, this.moduleName);
     }
   }
 
@@ -125,23 +124,8 @@ export abstract class AbstractMssqlClient {
         context.logger.error(this.moduleName, unknownError.message, { error, query, input });
       }
 
-      throw this.toCamsError(error, unknownError);
+      throw getCamsError(unknownError, this.moduleName);
     }
-  }
-
-  /**
-   * A request/connection timeout (ETIMEOUT) is a transient infrastructure condition, not a
-   * data/query bug — surface it as GatewayTimeoutError so callers' rate-limit/timeout retry
-   * logic (e.g. handleRateLimitRetry) can requeue with backoff instead of poisoning the
-   * message. Without this, getCamsError would wrap it as an unrecognized UnknownError. Shared
-   * by executeQuery and withTransaction so an ETIMEOUT raised at any point in either path
-   * (connect, transaction begin/commit, the request itself) gets the same classification.
-   */
-  private toCamsError(error: unknown, unknownError: Error): Error {
-    if (isMssqlTimeoutError(error)) {
-      return new GatewayTimeoutError(this.moduleName, { message: unknownError.message });
-    }
-    return getCamsError(unknownError, this.moduleName);
   }
 }
 
@@ -151,10 +135,6 @@ function isMssqlError(e: unknown): e is MSSQLError {
 
 function isConnectionError(e: unknown): e is ConnectionError {
   return e instanceof ConnectionError;
-}
-
-function isMssqlTimeoutError(e: unknown): e is MSSQLError & { code: 'ETIMEOUT' } {
-  return isMssqlError(e) && e.code === 'ETIMEOUT';
 }
 
 type AggregateError = Error & {
