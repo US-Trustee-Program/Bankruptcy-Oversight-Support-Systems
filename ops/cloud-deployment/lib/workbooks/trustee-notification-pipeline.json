@@ -124,6 +124,38 @@
         }
       },
       "name": "sent-bounce-rate-table"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "## Suppression/Bounce Detail Table\n\nOne row per bounced/suppressed email in the selected time range, joined to its original send-time log line to resolve recipient and trustee identity -- so you don't need direct access to the (TTL'd, 7-day) archive collection to identify who was affected. Rows with no matching send-time trace (e.g. the trace has aged out of retention) are still shown, with Recipient/Trustee marked `Unavailable` rather than being hidden."
+      },
+      "name": "bounce-detail-header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let sendTraces = app('{{API_APP_INSIGHTS_ID}}').traces\n| where timestamp between ({TimeRange:start} .. {TimeRange:end})\n| where message has \"Email sent successfully\" or message has \"Email service rejected the message with status\"\n| extend jsonStart = indexof(message, \"{\")\n| extend data = iif(jsonStart >= 0, parse_json(substring(message, jsonStart)), dynamic(null))\n| extend messageId = tostring(coalesce(data.messageId, data.id)),\n         recipient = tostring(data.to),\n         trusteeId = tostring(data.trusteeId),\n         invocationId = tostring(data.correlationId)\n| where isnotempty(messageId) and isnotempty(trusteeId)\n| summarize arg_max(timestamp, recipient, trusteeId, invocationId) by messageId;\nlet bounceRows = workspace('{{ANALYTICS_WORKSPACE_ID}}').ACSEmailStatusUpdateOperational\n| where TimeGenerated between ({TimeRange:start} .. {TimeRange:end})\n| where DeliveryStatus in ('Failed', 'Bounced', 'Quarantined', 'FilteredSpam', 'Suppressed');\nbounceRows\n| join kind=leftouter (sendTraces) on $left.CorrelationId == $right.messageId\n| extend Recipient = iif(isnull(recipient), \"Unavailable\", recipient),\n         Trustee = iif(isnull(trusteeId), \"Unavailable\", trusteeId)\n| project TimeGenerated, DeliveryStatus, CorrelationId, Recipient, Trustee, SentAt = timestamp, InvocationId = invocationId\n| order by TimeGenerated desc",
+        "size": 0,
+        "title": "Bounce & Suppression Detail",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "visualization": "table",
+        "crossComponentResources": ["{{API_APP_INSIGHTS_ID}}", "{{ANALYTICS_WORKSPACE_ID}}"],
+        "gridSettings": {
+          "labelSettings": [
+            { "columnId": "TimeGenerated", "label": "Bounce Detected" },
+            { "columnId": "DeliveryStatus", "label": "Status" },
+            { "columnId": "CorrelationId", "label": "Message ID" },
+            { "columnId": "Recipient", "label": "Recipient" },
+            { "columnId": "Trustee", "label": "Trustee" },
+            { "columnId": "SentAt", "label": "Sent At" },
+            { "columnId": "InvocationId", "label": "Invocation ID" }
+          ]
+        }
+      },
+      "name": "bounce-detail-table"
     }
   ],
   "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json",
