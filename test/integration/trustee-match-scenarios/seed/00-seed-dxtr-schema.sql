@@ -29,13 +29,17 @@ CREATE TABLE dbo.AO_CS_DIV (
 );
 GO
 
--- Case master. Compound key (CS_CASEID, COURT_ID) — CS_CASEID alone is NOT unique.
+-- Case master. Compound key (CS_CASEID, COURT_ID) — CS_CASEID alone is NOT unique. GRP_DES here
+-- is the case's own group designator (read directly by the trustee-appointment-events query as
+-- groupDesignator) — a distinct column from AO_CS_DIV.GRP_DES, which keys the division's group
+-- membership, not the case's.
 CREATE TABLE dbo.AO_CS (
   CS_CASEID   VARCHAR(9)   NOT NULL,
   COURT_ID    VARCHAR(4)   NOT NULL,
   CASE_ID     VARCHAR(10)  NULL, -- public court case number, e.g. "26-99999"
   CS_DIV      VARCHAR(3)   NOT NULL,
   CS_CHAPTER  VARCHAR(3)   NULL,
+  GRP_DES     VARCHAR(2)   NULL,
   PRIMARY KEY (CS_CASEID, COURT_ID)
 );
 GO
@@ -63,11 +67,13 @@ CREATE TABLE dbo.AO_PY (
 );
 GO
 
--- Transaction records. REC is a fixed-width (237 char) legacy record; the aptDate and
--- profCode fields the gateway reads are packed at different SUBSTRING offsets depending
--- on TX_TYPE/TX_CODE:
---   TR appointment (TX_TYPE='A', TX_CODE='TR'): profCode at REC[17..21], aptDate at REC[24..29]
---   Petition       (TX_TYPE='1', TX_CODE='1'):  profCode at REC[86..90], aptDate at REC[91..96]
+-- Transaction records. REC is a fixed-width (237 char) legacy record; the aptDate field the
+-- gateway reads is packed at a different SUBSTRING offset depending on TX_TYPE/TX_CODE:
+--   TR appointment (TX_TYPE='A', TX_CODE='TR'): aptDate at REC[24..29]
+--   Petition       (TX_TYPE='1', TX_CODE='1'):  aptDate at REC[91..96]
+-- DXTR can supply an incorrect ACMS professional code, so profCode (REC[17..21]/[86..90]) must
+-- never be trusted as an auto-link identity signal — it's read solely to detect the
+-- "00000"/"99999" sentinel placeholders for the pre-match skip rule (never to pick a trustee).
 -- TX_ID is a BIGINT identity serving as the primary key.
 CREATE TABLE dbo.AO_TX (
   TX_ID     BIGINT IDENTITY(1,1) NOT NULL PRIMARY KEY,

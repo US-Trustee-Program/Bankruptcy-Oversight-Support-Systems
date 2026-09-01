@@ -13,7 +13,7 @@ import { AbstractMssqlClient } from '../abstract-mssql-client';
 import { DbTableFieldSpec, QueryResults } from '../../types/database';
 import { handleQueryResult } from '../gateway-helper';
 import { decomposeCaseId, parseTransactionDate } from './dxtr.gateway.helper';
-import { removeExtraSpaces } from '../../utils/string-helper';
+import { formatCityStateZipCountry, removeExtraSpaces } from '../../utils/string-helper';
 import { getDebtorTypeLabel } from '../debtor-type-gateway';
 import { getPetitionInfo } from '../petition-gateway';
 import { NotFoundError } from '../../../common-errors/not-found-error';
@@ -60,6 +60,9 @@ export function parseDxtrDate(yymmdd: string | undefined): string | undefined {
 const TX_TYPE_A_APT_DATE_OFFSET = 24; // TX_TYPE='A'/TX_CODE='TR' appointment date
 const TX_TYPE_A_PROF_CODE_OFFSET = 17; // TX_TYPE='A'/TX_CODE='TR' professional code
 const TX_TYPE_1_APT_DATE_OFFSET = 91; // TX_TYPE='1'/TX_CODE='1' (N1TRAD) appointment date
+// DXTR can supply an incorrect ACMS professional code, so this value must never be trusted to
+// auto-link a case appointment to a specific trustee — it's read only as a negative sentinel
+// signal (detecting known placeholder values), never for identity/matching decisions.
 const TX_TYPE_1_PROF_CODE_OFFSET = 86; // TX_TYPE='1'/TX_CODE='1' (N1TRUS) professional code
 
 const closedByCourtTxCode = 'CBC';
@@ -79,6 +82,7 @@ type TrusteeAppointmentEventRecord = {
   courtId: string;
   chapter?: string;
   courtDivisionCode?: string;
+  groupDesignator?: string;
   firstName?: string;
   middleName?: string;
   lastName?: string;
@@ -96,7 +100,6 @@ type TrusteeAppointmentEventRecord = {
   latestSyncDate: string;
   aptDate?: string;
   txDate: string;
-  groupDesignator?: string;
   profCode?: string;
 };
 
@@ -1356,7 +1359,7 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
         TX.COURT_ID AS courtId,
         C.CS_CHAPTER AS chapter,
         CS_DIV.CS_DIV_ACMS AS courtDivisionCode,
-        CS_DIV.GRP_DES AS groupDesignator,
+        C.GRP_DES AS groupDesignator,
         P.PY_FIRST_NAME AS firstName,
         P.PY_MIDDLE_NAME AS middleName,
         P.PY_LAST_NAME AS lastName,
@@ -1404,8 +1407,11 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
           .join(' '),
       );
 
-      const cityStateZipCountry = removeExtraSpaces(
-        [record.city, record.state, record.zip, record.country].filter(Boolean).join(', '),
+      const cityStateZipCountry = formatCityStateZipCountry(
+        record.city,
+        record.state,
+        record.zip,
+        record.country,
       );
 
       const dxtrTrustee: DxtrTrusteeParty = {
@@ -1425,21 +1431,15 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
         },
       };
 
-      const groupDesignator = record.groupDesignator?.trim();
-      const profCode = record.profCode?.trim();
-      const acmsProfessionalId =
-        groupDesignator && profCode ? `${groupDesignator}-${profCode}` : undefined;
-
       return {
         caseId: record.caseId,
         courtId: record.courtId,
         chapter: record.chapter,
         courtDivisionCode: record.courtDivisionCode,
-        acmsProfessionalId,
         dxtrTrustee,
         // REC's fixed-width embedded date (positions vary by TX_TYPE/TX_CODE — see
         // TX_TYPE_A_APT_DATE_OFFSET/TX_TYPE_1_APT_DATE_OFFSET) is occasionally blank,
-        // '000000', or otherwise unparseable — a genuine DXTR data-quality gap (see CAMS-809).
+        // '000000', or otherwise unparseable — a genuine DXTR data-quality gap.
         // TX.TX_DATE is a datetime2 NOT NULL column on the very same transaction row (the
         // 'Trustee Appointed' transaction itself), so it can never be missing/malformed the way
         // a REC substring can. Falling back to it keeps the appointment date tied to a real,
@@ -1447,6 +1447,8 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
         // while still preferring REC's date when it parses since that's the more precise,
         // pre-existing source.
         appointedDate: parseDxtrDate(record.aptDate) ?? record.txDate,
+        profCode: record.profCode?.trim(),
+        groupDesignator: record.groupDesignator?.trim(),
       };
     });
 
@@ -1500,7 +1502,7 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
     return this.getMostRecentAppointmentDates(records);
   }
 
-  // REC's embedded date can be blank/'000000'/malformed (see CAMS-809); TX.TX_DATE is a
+  // REC's embedded date can be blank/'000000'/malformed; TX.TX_DATE is a
   // datetime2 NOT NULL column on the same 'Trustee Appointed' transaction row and can never be
   // missing, so it's used whenever REC's date fails to parse (same fallback as
   // mapTrusteeAppointmentEventRecords above).

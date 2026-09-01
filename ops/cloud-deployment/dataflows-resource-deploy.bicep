@@ -99,6 +99,10 @@ param actionGroupName string = ''
 
 param actionGroupResourceGroupName string = ''
 
+@description('Subscription ID that contains the action group resource group. Defaults to the deploying subscription.')
+@minLength(36)
+param actionGroupSubscriptionId string = subscription().subscriptionId
+
 @description('boolean to determine creation and configuration of Alerts')
 param createAlerts bool = false
 
@@ -127,11 +131,9 @@ param privateDnsZoneResourceGroup string = virtualNetworkResourceGroupName
 @description('DNS Zone Subscription ID. USTP uses a different subscription for prod deployment.')
 param privateDnsZoneSubscriptionId string = subscription().subscriptionId
 
-@description('When true, reach the SQL server via a Private Endpoint instead of the sql-vnet-rule.bicep VNet rule -- see the createSqlServerVnetRule/createSqlPrivateEndpoint vars below for the mutual-exclusivity rationale.')
+@description('When true, this app reaches SQL through the shared Private Link hub and no sql-vnet-rule.bicep VNet rule is created for it. Required for cross-region consumers: Azure enforces same-region between a SQL server and any subnet in a virtualNetworkRules resource, which cross-region compute cannot satisfy. The hub Private Endpoint has no such restriction.')
 param useSqlPrivateLink bool = false
 
-@description('Fixed Azure Government private-link DNS zone name for Azure SQL. Only consumed when useSqlPrivateLink is true.')
-param sqlPrivateDnsZoneName string = 'privatelink.database.usgovcloudapi.net'
 
 param gitSha string
 
@@ -227,20 +229,18 @@ module dataflowsObjectContainer './lib/storage/storage-blob-container.bicep' = {
 }
 
 //Function App Resources
-// Attach the SQL managed identity whenever this function app connects to
-// SQL at all, regardless of which of the two mutually-exclusive mechanisms
-// (VNet rule vs. Private Endpoint) is used for the network path -- the
-// identity is needed for authentication either way. Gating this on
-// createSqlServerVnetRule alone (its original condition, before the
-// Private Endpoint alternative existed) silently dropped the identity for
-// any function app using useSqlPrivateLink, since createSqlServerVnetRule
-// is false in that case -- causing ManagedIdentityCredential SQL auth
-// failures with no compile-time signal.
+// Attached whenever this app talks to SQL at all. The identity authenticates;
+// it is independent of how the network path is reached, so it must NOT be gated
+// on the VNet rule -- doing that silently drops the identity for consumers that
+// reach SQL through the hub, and ManagedIdentityCredential then fails at runtime
+// with no compile-time signal.
+var attachSqlIdentity = !empty(sqlServerResourceGroupName) && !empty(sqlServerName) && !isUstpDeployment
+
 var userAssignedIdentities = union(
   {
     '${appConfigIdentity.id}': {}
   },
-  (createSqlServerVnetRule || createSqlPrivateEndpoint) ? { '${sqlIdentityResourceId}': {} } : {}
+  attachSqlIdentity ? { '${sqlIdentityResourceId}': {} } : {}
 )
 
 resource dataflowsFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
@@ -445,6 +445,7 @@ module dataflowsFunctionAppInsights 'lib/app-insights/function-app-insights.bice
   params: {
     actionGroupName: actionGroupName
     actionGroupResourceGroupName: actionGroupResourceGroupName
+    actionGroupSubscriptionId: actionGroupSubscriptionId
     analyticsWorkspaceId: analyticsWorkspaceId
     createAlerts: createAlerts
     createApplicationInsights: createApplicationInsights
@@ -671,6 +672,11 @@ var dataflowsSlotBaseAppSettingsObject = union(
     ACMS_REQUEST_TIMEOUT_MS: acmsRequestTimeoutMs
     ACMS_TIMEOUT_RETRY_LIMIT: acmsTimeoutRetryLimit
     ACMS_TIMEOUT_VISIBILITY_DELAY_SECONDS: acmsTimeoutVisibilityDelaySeconds
+    ANALYTICS_WORKSPACE_CUSTOMER_ID: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ANALYTICS-WORKSPACE-CUSTOMER-ID-SHARED)'
+    ADMIN_NOTIFICATION_EMAIL: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ADMIN-NOTIFICATION-EMAIL)'
+    ANALYTICS_IDENTITY_CLIENT_ID: appConfigIdentity.properties.clientId
+    ACS_EMAIL_CONNECTION_STRING: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACS-EMAIL-CONNECTION-STRING)'
+    ACS_EMAIL_SENDER_ADDRESS: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACS-EMAIL-SENDER-ADDRESS)'
   },
   isUstpDeployment
     ? {
@@ -769,9 +775,8 @@ module dataflowsSlotPrivateEndpoint './lib/network/subnet-private-endpoint.bicep
   ]
 }
 
-// useSqlPrivateLink and !useSqlPrivateLink make these mutually exclusive --
-// see the equivalent block in backend-api-deploy.bicep for the full
-// same-region-restriction rationale.
+// Same-region consumers only -- see the equivalent block in
+// backend-api-deploy.bicep for the rationale.
 var createSqlServerVnetRule = !useSqlPrivateLink && !empty(sqlServerResourceGroupName) && !empty(sqlServerName) && !isUstpDeployment
 
 module setDataflowFunctionSqlServerVnetRule './lib/network/sql-vnet-rule.bicep' = if (createSqlServerVnetRule) {
@@ -784,36 +789,6 @@ module setDataflowFunctionSqlServerVnetRule './lib/network/sql-vnet-rule.bicep' 
   }
 }
 
-var createSqlPrivateEndpoint = useSqlPrivateLink && !empty(sqlServerResourceGroupName) && !empty(sqlServerName) && !isUstpDeployment
-
-// The SQL server is never declared `existing` in this codebase -- see the
-// comment above sqlIdentityName below for why constructed resource IDs are
-// preferred here for scope resolution. Assumes the SQL server lives in the
-// deploying subscription (no dedicated sqlServerSubscriptionId param exists
-// anywhere else in this codebase either).
-var sqlServerResourceId = resourceId(sqlServerResourceGroupName, 'Microsoft.Sql/servers', sqlServerName)
-
-module dataflowsSqlPrivateEndpoint './lib/network/subnet-private-endpoint.bicep' = if (createSqlPrivateEndpoint) {
-  name: '${dataflowsFunctionName}-sql-pep-module'
-  scope: resourceGroup(virtualNetworkResourceGroupName)
-  params: {
-    privateLinkGroup: 'sqlServer'
-    stackName: '${dataflowsFunctionName}-sql'
-    // Overrides subnet-private-endpoint.bicep's default
-    // 'privatelink_azurewebsites_${stackName}' config-entry name, which would
-    // otherwise mislabel this SQL DNS zone config as "azurewebsites". This is
-    // a brand-new resource on first deploy, so there is no existing config
-    // entry to rename/replace.
-    dnsZoneConfigName: 'privatelink_database_${dataflowsFunctionName}-sql'
-    location: location
-    privateLinkServiceId: sqlServerResourceId
-    privateEndpointSubnetId: privateEndpointSubnetId
-    privateDnsZoneName: sqlPrivateDnsZoneName
-    privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
-    privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
-    tags: tags
-  }
-}
 
 // The identity itself is created once, in app-shared-setup.bicep (CAMS-760,
 // Option E / Slice 2) — its name is a fixed value shared by main and every

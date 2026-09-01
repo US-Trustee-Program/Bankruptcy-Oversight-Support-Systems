@@ -10,6 +10,10 @@ param actionGroupName string
 
 param actionGroupResourceGroupName string
 
+@description('Subscription ID that contains the action group resource group. Defaults to the deploying subscription.')
+@minLength(36)
+param actionGroupSubscriptionId string = subscription().subscriptionId
+
 param tags object = {}
 
 resource webapp 'Microsoft.Web/sites@2023-12-01' existing = {
@@ -53,6 +57,7 @@ module healthAlertRule '../monitoring-alerts/metrics-alert-rule.bicep' = if (cre
     threshold: 100
     actionGroupName: actionGroupName
     actionGroupResourceGroupName: actionGroupResourceGroupName
+    actionGroupSubscriptionId: actionGroupSubscriptionId
   }
 }
 
@@ -69,6 +74,7 @@ module httpAlertRule '../monitoring-alerts/metrics-alert-rule.bicep' = if (creat
     threshold: 1
     actionGroupName: actionGroupName
     actionGroupResourceGroupName: actionGroupResourceGroupName
+    actionGroupSubscriptionId: actionGroupSubscriptionId
   }
 }
 

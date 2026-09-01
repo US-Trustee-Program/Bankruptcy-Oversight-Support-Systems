@@ -47,6 +47,7 @@ import { CaseAppointment, TrusteeAppointment } from '@common/cams/trustee-appoin
 import { CaseChapter, SyncedCase, VALID_CASE_CHAPTERS } from '@common/cams/cases';
 import { BadRequestError } from '../../common-errors/bad-request';
 import { randomUUID } from 'node:crypto';
+import DateHelper from '@common/date-helper';
 
 const MODULE_NAME = 'SYNC-TRUSTEE-CASE-APPOINTMENTS-USE-CASE';
 
@@ -57,7 +58,6 @@ type ScenarioDistribution = {
   multipleMatchCount: number;
   perfectMatchInactiveCount: number;
   reVerificationCount: number;
-  reservedIdSkippedCount: number;
   verificationBucketHitCount: number;
   fingerprintHitCount: number;
   fingerprintMissCount: number;
@@ -77,6 +77,21 @@ type ScenarioDistribution = {
    * trustee's review queue.
    */
   emptyDemographicsSkippedCount: number;
+  /**
+   * event.profCode was a known sentinel value AND the record's name was itself a
+   * bogus/administrative placeholder (isBogusTrusteeName) with no usable contact info either.
+   * Distinct from emptyDemographicsSkippedCount: this path can fire even though dxtrTrustee HAS a
+   * populated name — the name is present but not a real identity.
+   */
+  sentinelBogusNameSkippedCount: number;
+  /**
+   * The record's name is a bogus/administrative placeholder (isBogusTrusteeName) with no separate
+   * firstName field, regardless of profCode or contact info (see isUnattributableBogusName).
+   * Distinct from sentinelBogusNameSkippedCount: this path catches administrative/court-office
+   * records (e.g. "US Trustee 11", "CHAPTER 11 - LV") that carry the court's own real
+   * address/phone/email and a non-sentinel profCode.
+   */
+  unattributableBogusNameSkippedCount: number;
 };
 
 type MatchAuditEntry = {
@@ -142,13 +157,6 @@ export function isTransientInfraError(error: unknown): boolean {
 const SENTINEL_PROFESSIONAL_ID = 'XX-99999';
 
 /**
- * ACMS-emitted acmsProfessionalId values that are placeholder/reserved and never correspond
- * to a real trustee. Events carrying one of these values must never be routed to trustee
- * matching or verification — there is no possible corrective action a reviewer could take.
- */
-const RESERVED_PROFESSIONAL_IDS = ['XX-00000', 'XX-98000', 'XX-99999'];
-
-/**
  * Resolves the ACMS professional ID for a trustee that matches the case's group designator.
  * A trustee may have multiple professional IDs across different ACMS groups; we must select
  * the one whose GROUP_DESIGNATOR prefix matches the group owning the case's court division.
@@ -184,12 +192,16 @@ export async function resolveGroupMatchedProfessionalId(
 
 /**
  * Throws softCloseError when it is transient (Cosmos RU throttling or a read/write timeout),
- * logging a warning first. Aborts BEFORE the new appointment is created so the caller's event
- * propagates to the per-event catch in processAppointments, which already routes
+ * logging a warning first. Aborts BEFORE any replacement appointment is created so the caller's
+ * event propagates to the per-event catch in processAppointments, which already routes
  * isTooManyRequestsError/isGatewayTimeoutError to retryableEvents. Nothing has been written for
- * this event, so nothing is corrupt; a later retry re-reads state and does close-then-create
- * cleanly. Returns (does not throw) when softCloseError is a permanent failure — the caller is
- * responsible for logging and proceeding with the create in that case.
+ * this event, so nothing is corrupt; a later retry re-reads state and closes (and, for the
+ * replace flow, creates) cleanly. Returns (does not throw) when softCloseError is a permanent
+ * failure — the caller is responsible for logging and for any follow-up (creating a replacement,
+ * for the replace flow; nothing further, for the close-only flow).
+ *
+ * trusteeId is null when called from the close-only path (bogus/placeholder trustee — there is no
+ * replacement trustee to log); the replace flow always passes the real incoming trusteeId.
  *
  * Exported for testing only — no production importer outside this module.
  */
@@ -197,7 +209,7 @@ export function throwIfTransientSoftCloseFailure(
   context: ApplicationContext,
   event: TrusteeAppointmentSyncEvent,
   existingAppointment: { trusteeId: string; assignedOn: string },
-  trusteeId: string,
+  trusteeId: string | null,
   softCloseError: CamsError,
 ): void {
   if (!isTransientInfraError(softCloseError)) {
@@ -245,17 +257,106 @@ export async function createNewAppointment(
 }
 
 /**
+ * One day before referenceDate (itself a stable, DXTR-sourced date — see applyResolvedTrustee's
+ * assignedOn docblock), so a soft-closed appointment's unassignedOn never overlaps the event that
+ * caused the close. referenceDate is always a plain YYYY-MM-DD string (DXTR's appointedDate is
+ * parsed from a fixed-width YYMMDD source field with no time component — see parseDxtrDate in
+ * cases.dxtr.gateway.ts), so calendar-day subtraction is correct and unambiguous; unlike the old
+ * `new Date().toISOString()` wall-clock stamp, this is deterministic across retries.
+ *
+ * Clamped to existingAssignedOn: out-of-order event delivery (DLQ redelivery, backfill, retry) can
+ * hand us a referenceDate at or before the existing appointment's own assignedOn, which would
+ * otherwise back-date unassignedOn to before (or at) the appointment's open date — a row marked
+ * closed before it was ever opened. Clamping never overlaps the event that caused the close in the
+ * normal, in-order case, and degrades to a zero-duration appointment (rather than a negative one)
+ * in the out-of-order case.
+ */
+function deriveUnassignedOn(referenceDate: string, existingAssignedOn: string): string {
+  const candidate = DateHelper.subtractDays(referenceDate, 1);
+  // existingAssignedOn may carry a full ISO timestamp (see CaseAppointment.assignedOn); truncate
+  // to a plain date the same way DateHelper.subtractDays does internally, so the comparison below
+  // isn't a false positive from comparing a 10-char date string against a longer timestamp string.
+  const existingAssignedOnDate = existingAssignedOn.slice(0, 10);
+  return candidate < existingAssignedOnDate ? existingAssignedOnDate : candidate;
+}
+
+/**
+ * Closes existingAppointment in Cosmos (unassignedOn = one day before referenceDate, clamped to
+ * never precede existingAppointment.assignedOn — see deriveUnassignedOn) and, on success, notifies
+ * downstream of the closed appointment when the feature flag is enabled. Downstream notification is
+ * gated on soft-close success — firing a close event for a close that never actually happened in
+ * Cosmos would misinform downstream, and skips resolveGroupMatchedProfessionalId's gateway reads on
+ * a path that's already failing.
+ *
+ * Pure close primitive shared by softCloseExistingAppointment (replace flow, which additionally
+ * creates a new appointment) and the bogus-trustee close-only path in processOneEvent (which must
+ * NOT create a replacement) — kept free of any create-on-failure or new-appointment logic so both
+ * callers can rely on it doing exactly one thing.
+ *
+ * Exported for testing only — no production importer outside this module.
+ */
+export async function closeExistingAppointment(
+  context: ApplicationContext,
+  event: TrusteeAppointmentSyncEvent,
+  existingAppointment: CaseAppointment,
+  referenceDate: string,
+  appointmentsRepo: TrusteeCaseAppointmentsRepository,
+  syncedCase: SyncedCase,
+): Promise<{ closed: boolean; softCloseError: CamsError | null; unassignedOn: string }> {
+  const unassignedOn = deriveUnassignedOn(referenceDate, existingAppointment.assignedOn);
+  let softCloseError: CamsError | null = null;
+  try {
+    await appointmentsRepo.updateCaseAppointment({ ...existingAppointment, unassignedOn });
+  } catch (error) {
+    softCloseError = getCamsError(error, MODULE_NAME);
+  }
+
+  if (!softCloseError) {
+    context.logger.info(
+      MODULE_NAME,
+      `Soft-closed case appointment for case ${event.caseId}, old trustee ${existingAppointment.trusteeId}`,
+    );
+
+    if (context.featureFlags['downstream-trustee-appointments-enabled']) {
+      const oldAcmsProfessionalId = await resolveGroupMatchedProfessionalId(
+        context,
+        existingAppointment.trusteeId,
+        syncedCase.courtDivisionCode,
+      );
+      const closeEvent: TrusteeAppointmentDownstreamEvent = {
+        caseId: event.caseId,
+        trusteeId: existingAppointment.trusteeId,
+        acmsProfessionalId: oldAcmsProfessionalId,
+        assignedOn: existingAppointment.assignedOn,
+        appointedDate: existingAppointment.appointedDate,
+        chapter: syncedCase.chapter,
+        unassignedOn,
+      };
+      const apiToDataflows = factory.getApiToDataflowsGateway(context);
+      try {
+        await apiToDataflows.queueTrusteeAppointmentEvent(closeEvent);
+      } catch (queueError) {
+        context.logger.error(
+          MODULE_NAME,
+          `Failed to queue close event for case ${event.caseId}, trustee ${existingAppointment.trusteeId} — appointment updated in Cosmos but downstream not notified`,
+          queueError,
+        );
+      }
+    }
+  }
+
+  return { closed: !softCloseError, softCloseError, unassignedOn };
+}
+
+/**
  * Soft-closes the case's existing active appointment (a different trustee than the one being
  * newly assigned) and creates the new appointment, handling the soft-close outcome:
  *  - Transient soft-close failure (Cosmos RU throttling, a read/write timeout) throws, aborting
  *    BEFORE the new appointment is created, so the caller's event is retried from a clean state.
  *  - Permanent soft-close failure still creates the new appointment (manual replay required for
  *    the stale old appointment) and reports it via the returned dlqFailure.
- *  - On success, notifies downstream of the closed appointment (when the feature flag is
- *    enabled) and reports closed:true.
- * Downstream notification is gated on soft-close success — firing a close event for a soft-close
- * that never actually happened in Cosmos would misinform downstream, and skips
- * resolveGroupMatchedProfessionalId's gateway reads on a path that's already failing.
+ *  - On success, reports closed:true (closeExistingAppointment already handled the downstream
+ *    notification).
  *
  * Exported for testing only — no production importer outside this module.
  */
@@ -268,13 +369,14 @@ export async function softCloseExistingAppointment(
   appointmentsRepo: TrusteeCaseAppointmentsRepository,
   syncedCase: SyncedCase,
 ): Promise<{ closed: boolean; dlqFailure: TrusteeAppointmentSyncError | null }> {
-  const now = new Date().toISOString();
-  let softCloseError: CamsError | null = null;
-  try {
-    await appointmentsRepo.updateCaseAppointment({ ...existingAppointment, unassignedOn: now });
-  } catch (error) {
-    softCloseError = getCamsError(error, MODULE_NAME);
-  }
+  const { closed, softCloseError } = await closeExistingAppointment(
+    context,
+    event,
+    existingAppointment,
+    assignedOn,
+    appointmentsRepo,
+    syncedCase,
+  );
 
   if (softCloseError) {
     // Aborts BEFORE creating the new appointment when the failure is transient (Cosmos RU
@@ -303,41 +405,7 @@ export async function softCloseExistingAppointment(
         error: softCloseError.message,
       },
     );
-  } else {
-    context.logger.info(
-      MODULE_NAME,
-      `Soft-closed case appointment for case ${event.caseId}, old trustee ${existingAppointment.trusteeId}`,
-    );
-  }
 
-  if (!softCloseError && context.featureFlags['downstream-trustee-appointments-enabled']) {
-    const oldAcmsProfessionalId = await resolveGroupMatchedProfessionalId(
-      context,
-      existingAppointment.trusteeId,
-      syncedCase.courtDivisionCode,
-    );
-    const closeEvent: TrusteeAppointmentDownstreamEvent = {
-      caseId: event.caseId,
-      trusteeId: existingAppointment.trusteeId,
-      acmsProfessionalId: oldAcmsProfessionalId,
-      assignedOn: existingAppointment.assignedOn,
-      appointedDate: existingAppointment.appointedDate,
-      chapter: syncedCase.chapter,
-      unassignedOn: now,
-    };
-    const apiToDataflows = factory.getApiToDataflowsGateway(context);
-    try {
-      await apiToDataflows.queueTrusteeAppointmentEvent(closeEvent);
-    } catch (queueError) {
-      context.logger.error(
-        MODULE_NAME,
-        `Failed to queue close event for case ${event.caseId}, trustee ${existingAppointment.trusteeId} — appointment updated in Cosmos but downstream not notified`,
-        queueError,
-      );
-    }
-  }
-
-  if (softCloseError) {
     const dlqFailure: TrusteeAppointmentSyncError = {
       ...event,
       mismatchReason: SoftCloseWriteFailed,
@@ -347,7 +415,37 @@ export async function softCloseExistingAppointment(
     return { closed: false, dlqFailure };
   }
 
-  return { closed: true, dlqFailure: null };
+  return { closed, dlqFailure: null };
+}
+
+/**
+ * Throws a CamsError when event.appointedDate is missing/unparseable, logging a TRUSTEE
+ * APPOINTMENT DATA INTEGRITY ERROR first. Shared by the three call sites that each derive a
+ * date field (assignedOn, a surrogate's assignedOn, unassignedOn) from event.appointedDate and
+ * must refuse to fall back to wall-clock time — a wall-clock fallback would differ on every
+ * retry/replay of the same event and break upsert()'s natural-key idempotency (or, for the
+ * close-only path, corrupt appointment history). subjectDescription names what couldn't be
+ * derived (e.g. "trustee tr-1 — event.appointedDate", "fingerprint fp-1 — event.appointedDate")
+ * for both the log line and the thrown error's message.
+ */
+function assertAppointedDate(
+  context: ApplicationContext,
+  event: TrusteeAppointmentSyncEvent,
+  subjectDescription: string,
+  reasonDescription: string,
+): asserts event is TrusteeAppointmentSyncEvent & { appointedDate: string } {
+  if (event.appointedDate) {
+    return;
+  }
+  context.logger.error(
+    MODULE_NAME,
+    `TRUSTEE APPOINTMENT DATA INTEGRITY ERROR: case ${event.caseId}, ${subjectDescription} is ` +
+      `missing/unparseable. Refusing to fall back to wall-clock time for ${reasonDescription}. ` +
+      `This event cannot be safely processed until its source DXTR appointment date is corrected.`,
+  );
+  throw new CamsError(MODULE_NAME, {
+    message: `Case ${event.caseId}, ${subjectDescription}: missing/unparseable, cannot safely derive ${reasonDescription}.`,
+  });
 }
 
 /**
@@ -373,19 +471,7 @@ async function applyResolvedTrustee(
   syncedCase: SyncedCase,
   appointmentsRepo: TrusteeCaseAppointmentsRepository,
 ): Promise<TrusteeAppointmentSyncError | null> {
-  if (!event.appointedDate) {
-    context.logger.error(
-      MODULE_NAME,
-      `TRUSTEE APPOINTMENT DATA INTEGRITY ERROR: case ${event.caseId}, trustee ${trusteeId} — ` +
-        `event.appointedDate is missing/unparseable. Refusing to fall back to wall-clock time ` +
-        `for assignedOn, since that would break upsert()'s natural-key idempotency across ` +
-        `retries and could create a duplicate active appointment. This event cannot be safely ` +
-        `processed until its source DXTR appointment date is corrected.`,
-    );
-    throw new CamsError(MODULE_NAME, {
-      message: `Case ${event.caseId}, trustee ${trusteeId}: missing/unparseable appointedDate, cannot safely derive assignedOn.`,
-    });
-  }
+  assertAppointedDate(context, event, `trustee ${trusteeId} — event.appointedDate`, 'assignedOn');
   const assignedOn = event.appointedDate;
 
   const existingAppointment = await appointmentsRepo.getActiveByCaseId(event.caseId);
@@ -621,14 +707,15 @@ async function upsertMatchVerification(
   if (existing && existing.status !== 'pending') {
     return true; // Already resolved — signals a re-verification for match accuracy tracking
   }
+  const acmsProfessionalId = resolveAcmsProfessionalIdForVerification(event);
   if (existing) {
     await verificationRepo.upsertVerification({
       ...existing,
       mismatchReason,
       matchCandidates,
       inactiveAppointmentStatus,
-      acmsProfessionalId: event.acmsProfessionalId,
       appointedDate: event.appointedDate,
+      acmsProfessionalId,
       updatedOn: new Date().toISOString(),
       updatedBy: SYSTEM_USER_REFERENCE,
     });
@@ -642,8 +729,8 @@ async function upsertMatchVerification(
         mismatchReason,
         matchCandidates,
         inactiveAppointmentStatus,
-        acmsProfessionalId: event.acmsProfessionalId,
         appointedDate: event.appointedDate,
+        acmsProfessionalId,
         taskType: 'trustee-match',
         status: 'pending',
         taskDate: new Date().toISOString(),
@@ -715,8 +802,8 @@ async function handleInactivePerfectMatch(
   const { deps, event, fingerprint, variant, audit, scenarioDistribution } = ctx;
   const trustee = await deps.trusteesRepo.read(trusteeId);
   const addressScore = calculateAddressScore(event.dxtrTrustee.legacy, trustee.public.address);
-  // nameScore is already known (the trusteeId came from a fingerprint hit, professional-id
-  // match, or matchTrusteeByName's exact/fuzzy tiers) - see calculateCandidateScore's
+  // nameScore is already known (the trusteeId came from a fingerprint hit or
+  // matchTrusteeByName's exact/fuzzy tiers) - see calculateCandidateScore's
   // nameScoreOverride doc comment for why re-deriving it here via calculateNameScore's discrete
   // firstName/lastName comparison would risk contradicting an already-correct match.
   const phoneScore = calculatePhoneScore(event.dxtrTrustee.legacy?.phone, trustee.public.phone);
@@ -786,7 +873,6 @@ function createDeps(context: ApplicationContext) {
     verificationRepo: factory.getTrusteeMatchVerificationRepository(context),
     runtimeStateRepo: factory.getTrusteeAppointmentsSyncStateRepo(context),
     petitionSyncStateRepo: factory.getTrusteePetitionSyncStateRepo(context),
-    professionalIdsRepo: factory.getTrusteeProfessionalIdsRepository(context),
     variationRepo: factory.getTrusteeVariationRepository(context),
   };
 }
@@ -853,8 +939,8 @@ function assertValidChapter(caseId: string, chapter: string): CaseChapter {
  * trustee-case-appointments.mongo.repository.ts), so assignedOn must be derived from the
  * event's stable appointedDate — never wall-clock time, which would differ on every retry of
  * the same event and mint a new, duplicate surrogate row under the same fingerprint each time
- * (CAMS-809: this previously fell back to `?? now`, exactly the bug applyResolvedTrustee's own
- * docblock above warns against). Refuses the same way applyResolvedTrustee does when
+ * (falling back to `?? now` here would be exactly the bug applyResolvedTrustee's own docblock
+ * above warns against). Refuses the same way applyResolvedTrustee does when
  * appointedDate is missing/unparseable, so the event surfaces via the DLQ instead of silently
  * proceeding. Two genuinely different pending mismatches on the same case each still get their
  * own surrogate row.
@@ -866,20 +952,12 @@ async function writeSurrogateAppointment(
   variant: string,
   syncedCase: SyncedCase,
 ): Promise<void> {
-  if (!event.appointedDate) {
-    deps.context.logger.error(
-      MODULE_NAME,
-      `TRUSTEE APPOINTMENT DATA INTEGRITY ERROR: case ${event.caseId}, fingerprint ${fingerprint} — ` +
-        `event.appointedDate is missing/unparseable. Refusing to fall back to wall-clock time ` +
-        `for the surrogate's assignedOn, since that would break upsert()'s natural-key ` +
-        `idempotency across retries and mint a duplicate surrogate row every time this event is ` +
-        `reprocessed. This event cannot be safely processed until its source DXTR appointment ` +
-        `date is corrected.`,
-    );
-    throw new CamsError(MODULE_NAME, {
-      message: `Case ${event.caseId}, fingerprint ${fingerprint}: missing/unparseable appointedDate, cannot safely derive surrogate assignedOn.`,
-    });
-  }
+  assertAppointedDate(
+    deps.context,
+    event,
+    `fingerprint ${fingerprint} — event.appointedDate`,
+    "the surrogate's assignedOn",
+  );
 
   const existingAppointments = await deps.caseAppointmentsRepo.getByCaseId(event.caseId);
   const alreadySurrogateForThisFingerprint = existingAppointments.some(
@@ -901,22 +979,6 @@ async function writeSurrogateAppointment(
     chapter: assertValidChapter(event.caseId, syncedCase.chapter),
     courtDivisionCode: syncedCase.courtDivisionCode,
   });
-}
-
-/**
- * Resolves a trusteeId directly from event.acmsProfessionalId when it maps to exactly
- * one CAMS trustee, sidestepping fuzzy name matching entirely. Returns null on zero or
- * multiple matches (ambiguous), or when the event carries no acmsProfessionalId, so the
- * caller can fall back to matchTrusteeByName.
- */
-async function matchTrusteeByProfessionalId(
-  deps: SyncTrusteeCaseAppointmentsDeps,
-  acmsProfessionalId: string | undefined,
-): Promise<string | null> {
-  if (!acmsProfessionalId) return null;
-
-  const matches = await deps.professionalIdsRepo.findByAcmsProfessionalId(acmsProfessionalId);
-  return matches.length === 1 ? matches[0].camsTrusteeId : null;
 }
 
 async function resolveSyncState<D extends RuntimeStateDocumentType>(
@@ -1057,7 +1119,7 @@ type MatchOutcomeResolution =
   | { outcome: 'handled' };
 
 /**
- * Resolves a trusteeId by name when no professional-id/fingerprint pre-match exists. Extracted
+ * Resolves a trusteeId by name when no fingerprint pre-match exists. Extracted
  * from processAppointments' main loop (cams-joiwy follow-on) — replaces what was previously two
  * nested switch statements inline in that function with a single call site there, since sonarjs's
  * cognitive-complexity rule counts the switch/case/nesting-depth cost at the point a branching
@@ -1075,7 +1137,7 @@ async function resolveTrusteeIdByName(
   syncedCase: SyncedCase,
 ): Promise<NameResolution> {
   const { deps, event } = ctx;
-  const nameMatch = await matchTrusteeByName(deps.context, event.dxtrTrustee, event.courtId);
+  const nameMatch = await matchTrusteeByName(deps.context, event.dxtrTrustee);
 
   switch (nameMatch.kind) {
     case 'resolved':
@@ -1252,24 +1314,16 @@ async function applyMatchOutcome(
   const candidateScore = calculateCandidateScore(
     context,
     event.dxtrTrustee,
-    event.courtId,
-    event.courtDivisionCode,
-    event.chapter,
+    { courtId: event.courtId, courtDivisionCode: event.courtDivisionCode, chapter: event.chapter },
     trustee,
     trusteeAppointments,
     nameScore,
   );
 
-  // No no-review auto-match on totalScore alone: districtDivisionScore/chapterScore are each
-  // computed independently across all of the trustee's active appointments (see their doc
-  // comments), not from a single shared record — isAppointmentMatch above already ruled out any
-  // record that satisfies court+division+chapter together, so a same-record requirement can
-  // never hold here. A trustee could otherwise clear a high score via two different
-  // appointments (one matching court+division, a different one matching chapter) despite never
-  // holding an appointment covering this case's actual combination. Every single-candidate
-  // non-perfect-match falls through to ImperfectMatch below for human review. (The equivalent gap
-  // for the MULTI-candidate fuzzy-scoring path is closed in resolveNameCollisionByScoring itself,
-  // via the same isAppointmentMatch check on the winning candidate.)
+  // Every single-candidate non-perfect-match falls through to ImperfectMatch for human review,
+  // regardless of totalScore and regardless of whether trusteeId holds any active appointment in
+  // this case's court - district/division evidence is a scoring signal (see calculateCandidateScore's
+  // districtDivisionScore, 0/50/100), not a gate on whether the candidate reaches the reviewer.
   audit.matchOutcome = 'imperfect-match';
   audit.matchedTrusteeId = trusteeId;
   audit.scoringBreakdown = {
@@ -1285,7 +1339,7 @@ async function applyMatchOutcome(
 
 /**
  * Outcome of processOneEvent, reported back to processAppointments' thin aggregation loop:
- *  - 'success': count toward successCount (reserved-id skip or an auto-linked match). May also
+ *  - 'success': count toward successCount (an auto-linked match). May also
  *    carry a non-null dlqFailure — an auto-linked match whose soft-close permanently failed still
  *    reports 'success' (the name/scoring resolution itself succeeded), but processAppointments
  *    must also route dlqFailure to dlqMessages, in the same aggregation loop as every other DLQ
@@ -1310,29 +1364,92 @@ type EventOutcome =
   | { kind: 'dlq'; message: TrusteeAppointmentSyncError | TrusteeAppointmentSyncEvent }
   | { kind: 'none' };
 
+const DXTR_PROF_CODE_NO_TRUSTEE_APPOINTED = '00000';
+const DXTR_PROF_CODE_ID_UNAVAILABLE = '99999';
+
 /**
- * True when acmsProfessionalId is one of the reserved placeholder values that never correspond to
- * a real trustee — checked before anything else in processOneEvent, so no fingerprint/case-sync
- * work is done for an event that can never be matched or verified.
+ * Constructs the acmsProfessionalId to persist on a TrusteeMatchVerification doc, formatted
+ * "{GROUP_DESIGNATOR}-{PROF_CODE}" (e.g. "NY-00123") per the CAMS<->ACMS professional-ID mapping
+ * convention (see /cams-gateways: GROUP_DESIGNATOR + PROF_CODE form ACMS's compound professional
+ * key, never PROF_CODE alone). This is a CAMS-specific construct, not a native DXTR/ACMS field —
+ * event.groupDesignator and event.profCode are raw legacy facts crossed from the gateway; the
+ * formatting decision (and the sentinel-suppression rule below) belongs here in the use-case
+ * layer, not the gateway.
+ * Returns undefined when either half is missing/blank (a partial ID would be actively misleading,
+ * not just incomplete), or when profCode is a known sentinel value — a formatted sentinel ID
+ * (e.g. "NY-00000") would read to a reviewer as a real professional ID rather than the "no
+ * trustee appointed"/"ID unavailable" placeholder it actually is — better to omit it than
+ * mislead.
  */
-function isReservedProfessionalIdEvent(event: TrusteeAppointmentSyncEvent): boolean {
-  return Boolean(
-    event.acmsProfessionalId && RESERVED_PROFESSIONAL_IDS.includes(event.acmsProfessionalId),
-  );
+function resolveAcmsProfessionalIdForVerification(
+  event: TrusteeAppointmentSyncEvent,
+): string | undefined {
+  const isSentinel =
+    event.profCode === DXTR_PROF_CODE_NO_TRUSTEE_APPOINTED ||
+    event.profCode === DXTR_PROF_CODE_ID_UNAVAILABLE;
+  if (isSentinel) return undefined;
+
+  const groupDesignator = event.groupDesignator?.trim();
+  const profCode = event.profCode?.trim();
+  if (!groupDesignator || !profCode) return undefined;
+
+  return `${groupDesignator}-${profCode}`;
+}
+
+// Substrings observed in real DXTR data standing in for "no trustee"/"placeholder" on
+// sentinel-coded records — e.g. "No Trustee", "TRUSTEE NOT APPOINTED", "Awaiting Trustee
+// Assignment", "Not Assigned - XX", "For Internal Use Only", "CHAPTER 11 - XX". Scoped strictly
+// to what's been evidenced; do not add speculative variants without direct evidence.
+const BOGUS_TRUSTEE_NAME_KEYWORDS = [
+  'trustee',
+  'assign',
+  'chapter',
+  'internal use',
+  'not appointed',
+];
+
+/**
+ * True when a record's name is itself a bogus/administrative placeholder rather than a genuine
+ * trustee name (e.g. "No Trustee", "CHAPTER 11 - XX") — checked against lastName, falling back to
+ * fullName (both via normalizeName, so a whitespace-only lastName correctly falls back to fullName
+ * rather than being treated as present). A genuine trustee's name or firm name can plausibly
+ * contain one of these substrings, so this check alone is never disqualifying on its own; callers
+ * (isSentinelWithNoIdentity, isUnattributableBogusName) combine it with other evidence.
+ */
+function isBogusTrusteeName(event: TrusteeAppointmentSyncEvent): boolean {
+  const { dxtrTrustee } = event;
+  const name = (
+    normalizeName(dxtrTrustee.lastName ?? '') || normalizeName(dxtrTrustee.fullName ?? '')
+  ).toLowerCase();
+  return BOGUS_TRUSTEE_NAME_KEYWORDS.some((keyword) => name.includes(keyword));
 }
 
 /**
- * True when dxtrTrustee carries no usable demographics at all — blank fullName (see
- * normalizeName) AND no legacy/contact fields (address, phone, email) either. Checked before
- * matchTrusteeByName in processOneEvent: absent demographics could describe any trustee, so an
- * event this sparse cannot be safely attributed to one and must never reach matching or
- * verification. See ScenarioDistribution.emptyDemographicsSkippedCount's doc comment.
+ * True when the record's name is a bogus/administrative placeholder (isBogusTrusteeName) with no
+ * separate firstName field and a non-sentinel profCode, or the case is chapter 11 (regardless of
+ * firstName/profCode/contact info — see isSentinelWithNoIdentity for the sentinel-profCode case).
  */
-function hasNoUsableDemographics(event: TrusteeAppointmentSyncEvent): boolean {
-  const { dxtrTrustee } = event;
-  const hasName = Boolean(normalizeName(dxtrTrustee.fullName ?? ''));
-  const legacy = dxtrTrustee.legacy;
-  const hasContact = Boolean(
+function isUnattributableBogusName(event: TrusteeAppointmentSyncEvent): boolean {
+  const hasBogusName = isBogusTrusteeName(event);
+  const hasFirstName = Boolean(normalizeName(event.dxtrTrustee.firstName ?? ''));
+  const isChapter11 = event.chapter === '11';
+  const isSentinelProfCode =
+    event.profCode === DXTR_PROF_CODE_NO_TRUSTEE_APPOINTED ||
+    event.profCode === DXTR_PROF_CODE_ID_UNAVAILABLE;
+
+  if (!hasBogusName) return false;
+  if (isChapter11) return true;
+  if (isSentinelProfCode) return false;
+  return !hasFirstName;
+}
+
+/**
+ * True when dxtrTrustee.legacy carries any usable contact info — address, phone, or email.
+ * Shared by resolveSkipReason and isSentinelWithNoIdentity so what counts as "usable contact"
+ * can't diverge between the two.
+ */
+function hasUsableContact(legacy: TrusteeAppointmentSyncEvent['dxtrTrustee']['legacy']): boolean {
+  return Boolean(
     legacy?.address1 ||
     legacy?.address2 ||
     legacy?.address3 ||
@@ -1340,32 +1457,83 @@ function hasNoUsableDemographics(event: TrusteeAppointmentSyncEvent): boolean {
     legacy?.phone ||
     legacy?.email,
   );
-  return !hasName && !hasContact;
 }
 
 /**
- * Combines the two checks that can short-circuit processOneEvent before any repo call is made —
- * a reserved acmsProfessionalId, or a dxtrTrustee with no usable demographics at all — into one
- * decision procedure, per this file's whole-procedure-extraction convention (see
- * resolveTrusteeIdByName's doc comment): collapsing both into a single guard in the caller, rather
- * than two separate ifs, is what keeps processOneEvent's own measured complexity from growing as
- * pre-match conditions are added. Returns null when neither applies, so the caller proceeds
- * normally.
+ * Which pre-match short-circuit rule, if any, disqualifies this event from matching.
+ * 'empty-demographics' is a totally blank record; 'sentinel-bogus-name' is a sentinel-coded
+ * record whose populated name is itself a bogus/administrative placeholder; 'unattributable-bogus-name'
+ * is a non-sentinel record whose name is an administrative placeholder with no firstName (see
+ * isUnattributableBogusName).
+ */
+type SkipReason = 'empty-demographics' | 'sentinel-bogus-name' | 'unattributable-bogus-name' | null;
+
+/**
+ * Determines whether dxtrTrustee carries no usable demographics at all, is a sentinel-coded
+ * record whose name is itself a bogus placeholder, or is a bogus administrative-office name with
+ * no firstName (see isUnattributableBogusName). Checked before matchTrusteeByName in
+ * processOneEvent: any condition means the event cannot be safely attributed to a trustee and
+ * must never reach matching or verification.
+ */
+function resolveSkipReason(event: TrusteeAppointmentSyncEvent): SkipReason {
+  const { dxtrTrustee } = event;
+  const hasName = Boolean(normalizeName(dxtrTrustee.fullName ?? ''));
+  const hasContact = hasUsableContact(dxtrTrustee.legacy);
+  if (!hasName && !hasContact) {
+    return 'empty-demographics';
+  }
+
+  if (
+    isSentinelWithNoIdentity(event, DXTR_PROF_CODE_NO_TRUSTEE_APPOINTED) ||
+    isSentinelWithNoIdentity(event, DXTR_PROF_CODE_ID_UNAVAILABLE)
+  ) {
+    return hasName ? 'sentinel-bogus-name' : 'empty-demographics';
+  }
+
+  if (isUnattributableBogusName(event)) {
+    return 'unattributable-bogus-name';
+  }
+
+  return null;
+}
+
+/**
+ * True when event.profCode equals the given sentinel value AND the record's name/contact don't
+ * establish a real identity: no usable fullName and no usable contact info, or a bogus/
+ * administrative-placeholder name (isBogusTrusteeName) with no usable contact info. A bogus-looking
+ * name alone does not disqualify a record that also carries a real address/phone/email.
+ */
+function isSentinelWithNoIdentity(
+  event: TrusteeAppointmentSyncEvent,
+  sentinelProfCode: string,
+): boolean {
+  if (event.profCode !== sentinelProfCode) {
+    return false;
+  }
+  const { dxtrTrustee } = event;
+  const hasNoContact = !hasUsableContact(dxtrTrustee.legacy);
+  const hasNoName = !normalizeName(dxtrTrustee.fullName ?? '');
+  return hasNoContact && (hasNoName || isBogusTrusteeName(event));
+}
+
+/**
+ * Short-circuits processOneEvent before any repo call is made when dxtrTrustee has no usable
+ * demographics at all ('empty-demographics'), or is a non-sentinel record whose name is an
+ * administrative placeholder with no firstName ('unattributable-bogus-name'). Returns null when
+ * neither applies, so the caller proceeds normally.
+ *
+ * A sentinel-coded record with a bogus placeholder name ('sentinel-bogus-name') is deliberately
+ * NOT handled here, even though resolveSkipReason can return it — that case still needs to close
+ * any real active appointment on the case (see the close-only handling in processOneEvent), which
+ * requires a SyncedCase and I/O this pre-match, no-repo-call short-circuit doesn't have access to.
  */
 function resolvePreMatchShortCircuit(
   deps: SyncTrusteeCaseAppointmentsDeps,
   event: TrusteeAppointmentSyncEvent,
   scenarioDistribution: ScenarioDistribution,
 ): EventOutcome | null {
-  if (isReservedProfessionalIdEvent(event)) {
-    // Reserved values never correspond to a real trustee, so there is nothing to match
-    // or verify. The event is still fully and correctly handled — it simply requires no
-    // document write — so it counts toward successCount like any other handled event.
-    scenarioDistribution.reservedIdSkippedCount++;
-    return { kind: 'success', dlqFailure: null };
-  }
-
-  if (hasNoUsableDemographics(event)) {
+  const skipReason = resolveSkipReason(event);
+  if (skipReason === 'empty-demographics') {
     deps.context.logger.warn(
       MODULE_NAME,
       `Trustee appointment event for case ${event.caseId} has no usable demographics ` +
@@ -1374,8 +1542,93 @@ function resolvePreMatchShortCircuit(
     scenarioDistribution.emptyDemographicsSkippedCount++;
     return { kind: 'none' };
   }
+  if (skipReason === 'unattributable-bogus-name') {
+    deps.context.logger.warn(
+      MODULE_NAME,
+      `Trustee appointment event for case ${event.caseId} has a bogus/administrative ` +
+        `placeholder name with no firstName — cannot be safely attributed to any trustee. Skipping.`,
+    );
+    scenarioDistribution.unattributableBogusNameSkippedCount++;
+    return { kind: 'none' };
+  }
 
   return null;
+}
+
+/**
+ * Handles the 'sentinel-bogus-name' skip reason: the event cannot be safely attributed to any
+ * trustee, but unlike 'empty-demographics' it still requires closing any real active appointment
+ * on the case, so the "Past Trustees" history doesn't leave a stale trustee open indefinitely.
+ * Uses the same close primitive (closeExistingAppointment) as the replace flow, but deliberately
+ * never creates a new appointment — there is no real trustee to assign.
+ *
+ * Returns null when resolveSkipReason(event) is not 'sentinel-bogus-name', so the caller proceeds
+ * normally. Must run after syncedCase is resolved (closeExistingAppointment needs it) and inside
+ * processOneEvent's try block (a transient close failure must route to 'retryable', not escape and
+ * abort the whole batch).
+ */
+async function handleBogusTrusteeCloseOnly(
+  deps: SyncTrusteeCaseAppointmentsDeps,
+  event: TrusteeAppointmentSyncEvent,
+  syncedCase: SyncedCase,
+  scenarioDistribution: ScenarioDistribution,
+): Promise<EventOutcome | null> {
+  if (resolveSkipReason(event) !== 'sentinel-bogus-name') {
+    return null;
+  }
+
+  const { context } = deps;
+  context.logger.warn(
+    MODULE_NAME,
+    `Trustee appointment event for case ${event.caseId} has a sentinel professional code and ` +
+      `a bogus/administrative placeholder name — cannot be safely attributed to any trustee. ` +
+      `Closing any existing active appointment; not creating a replacement.`,
+  );
+
+  const existingAppointment = await deps.caseAppointmentsRepo.getActiveByCaseId(event.caseId);
+  if (!existingAppointment) {
+    scenarioDistribution.sentinelBogusNameSkippedCount++;
+    return { kind: 'none' };
+  }
+
+  // Not counted in sentinelBogusNameSkippedCount on failure — this event is going to the DLQ
+  // (via processOneEvent's catch), not being cleanly skipped, so it shouldn't inflate that
+  // counter.
+  assertAppointedDate(context, event, 'event.appointedDate', 'unassignedOn');
+
+  const { closed, softCloseError } = await closeExistingAppointment(
+    context,
+    event,
+    existingAppointment,
+    event.appointedDate,
+    deps.caseAppointmentsRepo,
+    syncedCase,
+  );
+
+  if (!closed && softCloseError) {
+    // Mirrors softCloseExistingAppointment's transient-vs-permanent split: a transient failure
+    // must abort and retry rather than silently leaving the bogus event "handled" while the old
+    // appointment is still open. Not counted in sentinelBogusNameSkippedCount — this event is
+    // being retried (throwIfTransientSoftCloseFailure throws), not cleanly skipped.
+    throwIfTransientSoftCloseFailure(context, event, existingAppointment, null, softCloseError);
+
+    // A permanent failure has no createNewAppointment fallback to run here (there is nothing to
+    // create), so it's logged loudly for manual replay. The event is still reported as handled —
+    // the alternative (DLQ) would misrepresent this as a genuine match failure when it is a
+    // placeholder-trustee skip that partially succeeded — so it IS counted below.
+    context.logger.error(
+      MODULE_NAME,
+      `Close-only soft-close failed for case ${event.caseId} — old trustee ${existingAppointment.trusteeId} appointment not closed. Manual replay required.`,
+      {
+        caseId: event.caseId,
+        oldTrusteeId: existingAppointment.trusteeId,
+        error: softCloseError.message,
+      },
+    );
+  }
+
+  scenarioDistribution.sentinelBogusNameSkippedCount++;
+  return { kind: 'none' };
 }
 
 /**
@@ -1444,9 +1697,24 @@ async function resolveSyncedCase(
 }
 
 /**
- * Processes a single trustee appointment event end to end: reserved-id short-circuit
- * (isReservedProfessionalIdEvent), fingerprint lookup, case-sync/moved-case resolution
- * (resolveSyncedCase), verification-bucket-hit short-circuit (handleVerificationBucketHit),
+ * Parses event.dxtrTrustee.legacy.cityStateZipCountry (when both the legacy record and the field
+ * itself are present) and attaches the result as parsedCityStateZip, mutating event in place.
+ * Pulled out of processOneEvent as a single-purpose step alongside that function's other
+ * whole-procedure extractions, removing this branch's nesting/branching cost from the measured
+ * function.
+ */
+function parseAndAttachCityStateZip(event: TrusteeAppointmentSyncEvent): void {
+  const cityStateZipCountry = event.dxtrTrustee.legacy?.cityStateZipCountry;
+  if (!event.dxtrTrustee.legacy || !cityStateZipCountry) {
+    return;
+  }
+  event.dxtrTrustee.legacy.parsedCityStateZip = parseCityStateZip(cityStateZipCountry);
+}
+
+/**
+ * Processes a single trustee appointment event end to end: fingerprint lookup, case-sync/
+ * moved-case resolution (resolveSyncedCase), verification-bucket-hit short-circuit
+ * (handleVerificationBucketHit),
  * trustee resolution (resolveTrusteeIdByName/resolveByScoring), and match-outcome application
  * (applyMatchOutcome). Extracted from processAppointments' main loop for the same reason as every
  * helper above — whole-procedure extraction removes a decision's branching and nesting cost from
@@ -1469,10 +1737,7 @@ async function processOneEvent(
   const preMatchOutcome = resolvePreMatchShortCircuit(deps, event, scenarioDistribution);
   if (preMatchOutcome) return preMatchOutcome;
 
-  const cityStateZipCountry = event.dxtrTrustee.legacy?.cityStateZipCountry;
-  if (event.dxtrTrustee.legacy && cityStateZipCountry) {
-    event.dxtrTrustee.legacy.parsedCityStateZip = parseCityStateZip(cityStateZipCountry);
-  }
+  parseAndAttachCityStateZip(event);
 
   const variant = buildVariant(event.dxtrTrustee);
   const fingerprint = computeFingerprint(variant);
@@ -1498,22 +1763,27 @@ async function processOneEvent(
     if (caseResolution.outcome === 'terminal') return caseResolution.result;
     const syncedCase = caseResolution.syncedCase;
 
+    const bogusTrusteeOutcome = await handleBogusTrusteeCloseOnly(
+      deps,
+      event,
+      syncedCase,
+      scenarioDistribution,
+    );
+    if (bogusTrusteeOutcome) return bogusTrusteeOutcome;
+
     const ctx: MatchContext = { deps, event, fingerprint, variant, audit, scenarioDistribution };
     if (await handleVerificationBucketHit(ctx, syncedCase, variationTrusteeId)) {
       return { kind: 'none' };
     }
 
-    const preResolvedTrusteeId =
-      variationTrusteeId ?? (await matchTrusteeByProfessionalId(deps, event.acmsProfessionalId));
-
     let trusteeId: string;
     let nameScore: number;
-    if (preResolvedTrusteeId) {
-      // Neither a fingerprint hit nor a professional-id match involved any name comparison at
-      // all - there is no name-based uncertainty to represent, so 100 is accurate here, not a
-      // fudge (same reasoning as matchTrusteeByName's 'resolved' tiers - see NameMatchResult's
-      // doc comment in trustee-match.helpers.ts).
-      trusteeId = preResolvedTrusteeId;
+    if (variationTrusteeId) {
+      // A fingerprint hit involved no name comparison at all - there is no name-based
+      // uncertainty to represent, so 100 is accurate here, not a fudge (same reasoning as
+      // matchTrusteeByName's 'resolved' tiers - see NameMatchResult's doc comment in
+      // trustee-match.helpers.ts).
+      trusteeId = variationTrusteeId;
       nameScore = 100;
     } else {
       const resolution = await resolveTrusteeIdByName(ctx, syncedCase);
@@ -1580,10 +1850,50 @@ async function processOneEvent(
  * 3. Auto-linking only perfect matches; persisting all others to trustee-match-verification collection
  *
  * A thin loop over processOneEvent above, which owns the entire per-event pipeline (previously
- * inline here) — reserved-id/fingerprint/case-sync/verification-bucket checks, name/scoring
+ * inline here) — fingerprint/case-sync/verification-bucket checks, name/scoring
  * resolution, match-outcome application, and the one transient-error catch boundary. This function
  * only aggregates each event's EventOutcome into the four result buckets below; scenarioDistribution
  * is updated by reference inside processOneEvent and its callees, so nothing here re-derives it.
+ *
+ * Ground truth for the outcome taxonomy this pipeline produces (see
+ * test/integration/trustee-match-scenarios for the integration harness that exercises each of
+ * these against a real DXTR/Cosmos round trip — that harness's header comment cross-references
+ * this list rather than restating the rules):
+ *
+ * Name resolution (matchTrusteeByName / resolveTrusteeIdByName / resolveByScoring):
+ * - Exactly one CAMS trustee matches the DXTR name (exact or fuzzy-normalized): resolved directly,
+ *   nameScore 100.
+ * - No CAMS trustee matches: NoTrusteeMatch — pending verification, no candidates.
+ * - More than one CAMS trustee matches (ambiguous): resolveNameCollisionByScoring scores every
+ *   candidate. A clear winner (totalScore > FUZZY_MATCH_SCORE_THRESHOLD, gap >=
+ *   FUZZY_MATCH_MIN_GAP, AND isAppointmentMatch true for that winner) resolves exactly like an
+ *   exact-name match. Otherwise: AmbiguousMatchUnresolved (no clear winner, e.g. a genuine tie) or
+ *   CandidateLoadFailed (every candidate's data failed to load).
+ *
+ * Match-outcome application (applyMatchOutcome), once a trusteeId is known:
+ * - isAppointmentMatch true (a SINGLE active appointment covers court+division+chapter together):
+ *   auto-linked — no human review, no verification doc written.
+ * - No active appointment matches, but an INACTIVE appointment matches court+division+chapter
+ *   exactly: PerfectMatchInactiveStatus — pending verification, surrogate appointment written.
+ * - Neither: ImperfectMatch — pending verification with a real CandidateScore breakdown, however
+ *   high totalScore is. isAppointmentMatch's single-record requirement is the ONLY gate for
+ *   auto-linking; a high totalScore is never sufficient on its own.
+ *
+ * Pre-matching short-circuits (processOneEvent / resolveSyncedCase):
+ * - No SYNCED_CASE document exists yet for this caseId: not-yet-synced, event queued for retry
+ *   on a later pass (does not count as a failure).
+ * - The case was moved to a different caseId (movedToCaseId set): skipped entirely, no match
+ *   attempted.
+ * - dxtrTrustee has no usable demographics at all (blank name and no other legacy/contact
+ *   fields), OR profCode is a sentinel value AND the record's name/contact don't establish a
+ *   real identity (see resolveSkipReason/isSentinelWithNoIdentity): empty-demographics or
+ *   sentinel-bogus-name, skipped before matching (emptyDemographicsSkippedCount /
+ *   sentinelBogusNameSkippedCount).
+ * - A fingerprint/TRUSTEE_VARIATION hit already resolved this exact DXTR record to a trusteeId on
+ *   a prior pass: short-circuits straight to that trusteeId, bypassing matchTrusteeByName.
+ * - A prior pass already wrote a pending or approved verification doc for this event
+ *   (handleVerificationBucketHit): re-verification — an approved verification is never
+ *   overwritten by a later pass; a pending one is refreshed.
  */
 async function processAppointments(
   deps: SyncTrusteeCaseAppointmentsDeps,
@@ -1600,13 +1910,14 @@ async function processAppointments(
     multipleMatchCount: 0,
     perfectMatchInactiveCount: 0,
     reVerificationCount: 0,
-    reservedIdSkippedCount: 0,
     verificationBucketHitCount: 0,
     fingerprintHitCount: 0,
     fingerprintMissCount: 0,
     retryableCount: 0,
     candidateLoadFailedCount: 0,
     emptyDemographicsSkippedCount: 0,
+    sentinelBogusNameSkippedCount: 0,
+    unattributableBogusNameSkippedCount: 0,
   };
 
   for (const event of events) {

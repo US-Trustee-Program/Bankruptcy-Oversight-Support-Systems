@@ -6,9 +6,11 @@ import {
 } from '../../../use-cases/dataflows/migrate-consolidations';
 import {
   AcmsGateway,
+  AcmsActiveAppointment,
   AcmsCaseAppointmentRecord,
   AcmsCaseAppointmentRawRecord,
   AcmsTrusteeProfessionalRecord,
+  AcmsTrusteeProfessionalDetailRecord,
 } from '../../../use-cases/gateways.types';
 import { ApplicationContext } from '../../types/basic';
 import { AbstractMssqlClient } from '../abstract-mssql-client';
@@ -322,6 +324,97 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
         ACMS_REQUEST_TIMEOUT_MS,
       );
       return (results as mssql.IResult<AcmsTrusteeProfessionalRecord>).recordset;
+    } catch (originalError) {
+      throwCamsError(originalError);
+    }
+  }
+
+  async getTrusteeProfessionalRecordsPage(
+    context: ApplicationContext,
+    groupDesignator: string,
+    lastUstProfCode: number,
+    pageSize: number,
+  ): Promise<AcmsTrusteeProfessionalDetailRecord[]> {
+    const input: DbTableFieldSpec[] = [
+      { name: 'groupDesignator', type: mssql.Char, value: groupDesignator },
+      { name: 'lastUstProfCode', type: mssql.Numeric, value: lastUstProfCode },
+      { name: 'pageSize', type: mssql.Int, value: pageSize },
+    ];
+
+    // Keyset-paginated by UST_PROF_CODE, scoped to a single GROUP_DESIGNATOR — the
+    // code is only monotonically increasing within a group, never globally.
+    //
+    // PROF_LAST_NAME NOT LIKE '%NO TRUSTEE%' excludes ACMS sentinel/placeholder rows that are not
+    // real professionals (e.g. "NO TRUSTEE", "NO TRUSTEE ASSIGNED", "CASE STRICKEN: NO TRUSTEE"),
+    // always carried in PROF_LAST_NAME with PROF_FIRST_NAME empty.
+    const query = `
+      SELECT
+        CONCAT(ACMS.GROUP_DESIGNATOR, '-', RIGHT(CONCAT('0000', ACMS.UST_PROF_CODE), 5)) AS acmsProfessionalId,
+        RTRIM(ACMS.PROF_FIRST_NAME) AS firstName,
+        RTRIM(ACMS.PROF_LAST_NAME) AS lastName,
+        RTRIM(ACMS.PROF_MI) AS middleInitial,
+        RTRIM(ACMS.PROF_ADDRESS1) AS address1,
+        RTRIM(ACMS.PROF_ADDRESS2) AS address2,
+        RTRIM(ACMS.PROF_CITY) AS city,
+        RTRIM(ACMS.PROF_STATE) AS state,
+        ACMS.PROF_ZIP AS zip,
+        CAST(ACMS.PROF_COMMERCIAL_PHONE_NBR AS VARCHAR(10)) AS phone,
+        CAST(ACMS.PROF_FAX_NBR AS VARCHAR(10)) AS fax,
+        ACMS.UST_PROF_CODE AS ustProfCode
+      FROM [dbo].[CMMPR] AS ACMS
+      WHERE ACMS.PROF_TYPE = 'TR'
+        AND ACMS.DELETE_CODE != 'D'
+        AND ACMS.PROF_LAST_NAME NOT LIKE '%NO TRUSTEE%'
+        AND ACMS.GROUP_DESIGNATOR = @groupDesignator
+        AND ACMS.UST_PROF_CODE > @lastUstProfCode
+      ORDER BY ACMS.UST_PROF_CODE
+      OFFSET 0 ROWS FETCH NEXT @pageSize ROWS ONLY`;
+
+    try {
+      const { results } = await this.executeQuery<AcmsTrusteeProfessionalDetailRecord>(
+        context,
+        query,
+        input,
+        ACMS_REQUEST_TIMEOUT_MS,
+      );
+      return (results as mssql.IResult<AcmsTrusteeProfessionalDetailRecord>).recordset;
+    } catch (originalError) {
+      throwCamsError(originalError);
+    }
+  }
+
+  async getActiveAppointmentsForProfessional(
+    context: ApplicationContext,
+    groupDesignator: string,
+    ustProfCode: number,
+  ): Promise<AcmsActiveAppointment[]> {
+    const input: DbTableFieldSpec[] = [
+      { name: 'groupDesignator', type: mssql.Char, value: groupDesignator },
+      { name: 'ustProfCode', type: mssql.Numeric, value: ustProfCode },
+    ];
+
+    // "Active" means undisposed — DISP_DATE of 0 or NULL, same convention as
+    // getCmmapAppointmentsRaw. Deduplicated to distinct division+chapter pairs
+    // since a professional can hold multiple active appointments in the same
+    // division/chapter across different cases.
+    const query = `
+      SELECT DISTINCT
+        m.CASE_DIV AS division,
+        c.CURR_CASE_CHAPT AS chapter
+      FROM [dbo].[CMMAP] m
+      INNER JOIN [dbo].[CMMDB] c
+        ON m.CASE_DIV = c.CASE_DIV
+        AND m.CASE_YEAR = c.CASE_YEAR
+        AND m.CASE_NUMBER = c.CASE_NUMBER
+      WHERE m.GROUP_DESIGNATOR = @groupDesignator
+        AND m.PROF_CODE = @ustProfCode
+        AND m.DELETE_CODE != 'D'
+        AND c.DELETE_CODE != 'D'
+        AND (m.DISP_DATE IS NULL OR m.DISP_DATE = 0)`;
+
+    try {
+      const { results } = await this.executeQuery<AcmsActiveAppointment>(context, query, input);
+      return (results as mssql.IResult<AcmsActiveAppointment>).recordset;
     } catch (originalError) {
       throwCamsError(originalError);
     }

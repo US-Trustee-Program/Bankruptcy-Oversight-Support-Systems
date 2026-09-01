@@ -831,6 +831,7 @@ const trusteeMatchVerificationOrders: TrusteeMatchVerificationListItem[] = [
     },
     candidateCount: 1,
     affectedCaseCount: 1,
+    affectedCaseIds: ['081-22-11111'],
     taskDate: '2026-01-15T10:00:00.000Z',
   },
 ];
@@ -3183,7 +3184,10 @@ async function getNotificationRouting() {
   };
 }
 
-async function updateNotificationRouting(routingId: string, data: NotificationRoutingUpdateInput) {
+async function updateNotificationRouting(
+  routingId: string,
+  data: NotificationRoutingUpdateInput,
+): Promise<ResponseBody<NotificationRoutingRecord>> {
   const def = NOTIFICATION_ROUTING_DEFINITIONS.find((d) => d.id === routingId);
   return {
     data: {

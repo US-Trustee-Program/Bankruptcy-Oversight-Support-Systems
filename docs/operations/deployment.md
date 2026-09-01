@@ -4,60 +4,73 @@
 
 CAMS is deployed to two distinct environment types with different requirements:
 
-- **Flexion Environments**: Development and testing environments managed by Flexion, deployed via GitHub Actions workflows
-- **USTP Environments**: Production and staging environments managed by USTP, deployed via Azure DevOps pipelines
+- **Flexion Environments**: Development and testing environments managed by Flexion, deployed via
+  GitHub Actions workflows
+- **USTP Environments**: Production and staging environments managed by USTP, deployed via Azure
+  DevOps pipelines
 
 ### Deployment Pipelines
 
-| Environment | Tool | Location |
-|------------|------|----------|
-| Flexion | GitHub Actions | `.github/workflows/` in CAMS repo |
-| USTP | Azure DevOps | `ADO-Mirror` repository |
+| Environment | Tool           | Location                          |
+| ----------- | -------------- | --------------------------------- |
+| Flexion     | GitHub Actions | `.github/workflows/` in CAMS repo |
+| USTP        | Azure DevOps   | `ADO-Mirror` repository           |
 
-Both pipelines use the same Infrastructure as Code (Bicep templates) and shell scripts to ensure deployed environments are as similar as possible, with differences limited to security and access policies.
+Both pipelines use the same Infrastructure as Code (Bicep templates) and shell scripts to ensure
+deployed environments are as similar as possible, with differences limited to security and access
+policies.
 
 ### Network Security and Firewall Rules
 
 The most significant difference between environments is network access control:
 
-| Resource | Slot | USTP | Flexion |
-|----------|------|------|---------|
-| Webapp | Production | Deny-by-default + explicit allow rules | Publicly accessible (Allow all) |
-| Webapp | Staging | Deny-by-default + explicit allow rules | Deny-by-default |
-| API Function App | Production | Deny-by-default + explicit allow rules | Publicly accessible (Allow all) |
-| API Function App | Staging | Deny-by-default + explicit allow rules | Deny-by-default |
+| Resource               | Slot       | USTP                                   | Flexion                                |
+| ---------------------- | ---------- | -------------------------------------- | -------------------------------------- |
+| Webapp                 | Production | Deny-by-default + explicit allow rules | Publicly accessible (Allow all)        |
+| Webapp                 | Staging    | Deny-by-default + explicit allow rules | Deny-by-default                        |
+| API Function App       | Production | Deny-by-default + explicit allow rules | Publicly accessible (Allow all)        |
+| API Function App       | Staging    | Deny-by-default + explicit allow rules | Deny-by-default                        |
 | Dataflows Function App | Production | Deny-by-default + explicit allow rules | Deny-by-default + explicit allow rules |
-| Dataflows Function App | Staging | Deny-by-default + explicit allow rules | Deny-by-default |
+| Dataflows Function App | Staging    | Deny-by-default + explicit allow rules | Deny-by-default                        |
 
 **Key Principles:**
+
 - **USTP**: All resources are deny-by-default with explicit allow rules for authorized access only
-- **Flexion**: Production webapp and API function are publicly accessible to facilitate testing and demos
+- **Flexion**: Production webapp and API function are publicly accessible to facilitate testing and
+  demos
 - **Dataflows**: Always deny-by-default in both environments (internal-only service)
 
 ### The `isUstpDeployment` Flag
 
-The `isUstpDeployment` parameter/flag is used throughout the deployment tooling to toggle environment-specific behavior:
+The `isUstpDeployment` parameter/flag is used throughout the deployment tooling to toggle
+environment-specific behavior:
 
 **Bicep Templates** (`ops/cloud-deployment/*.bicep`):
+
 - `isUstpDeployment` parameter determines firewall rules in Infrastructure as Code
 - Example: `action: isUstpDeployment ? 'Deny' : 'Allow'`
 
 **Shell Scripts** (`ops/scripts/pipeline/*.sh`):
+
 - Scripts accept `--isUstpDeployment` flag to handle environment-specific logic
 - Used in: `endpoint-test.sh`, `dev-add-allowed-ip.sh`, `dev-rm-allowed-ip.sh`
 - Example: ADO pipelines pass `--isUstpDeployment`, GHA workflows do not
 
-**Important**: When adding scripts that modify firewall rules, always check if behavior should differ between USTP and Flexion environments.
+**Important**: When adding scripts that modify firewall rules, always check if behavior should
+differ between USTP and Flexion environments.
 
 ### Post-Swap Firewall Handling
 
-Azure slot swaps exchange all slot settings, including firewall configurations. This requires post-swap correction:
+Azure slot swaps exchange all slot settings, including firewall configurations. This requires
+post-swap correction:
 
 **What happens during swap:**
+
 1. Staging slot code (with Deny firewall) → Production slot
 2. Production slot code (with Allow firewall for Flexion) → Staging slot
 
 **Post-swap corrections** (GHA `enable-access` job in `sub-deploy-code-slot.yml`):
+
 - **Webapp production**: Add AllowAll rule (Flexion only)
 - **API production**: Add AllowAll rule (Flexion only)
 - **Dataflows production**: Keep deny-by-default (both environments)
@@ -65,27 +78,192 @@ Azure slot swaps exchange all slot settings, including firewall configurations. 
 
 ### Common Gotchas
 
-1. **Dataflows is different**: Dataflows function app is always deny-by-default, even in Flexion production. Don't include it in scripts that add public Allow rules.
+1. **Dataflows is different**: Dataflows function app is always deny-by-default, even in Flexion
+   production. Don't include it in scripts that add public Allow rules.
 
-2. **Production ≠ Publicly accessible**: In USTP, production slots are deny-by-default. The term "production" refers to the main slot, not accessibility.
+2. **Production ≠ Publicly accessible**: In USTP, production slots are deny-by-default. The term
+   "production" refers to the main slot, not accessibility.
 
-3. **Scripts need environment awareness**: When writing scripts that modify access restrictions, use the `--isUstpDeployment` flag if behavior differs between environments.
+3. **Scripts need environment awareness**: When writing scripts that modify access restrictions, use
+   the `--isUstpDeployment` flag if behavior differs between environments.
 
-4. **Test both pipeline types**: Changes to deployment scripts should be validated in both GHA (Flexion) and ADO (USTP) pipelines.
+4. **Test both pipeline types**: Changes to deployment scripts should be validated in both GHA
+   (Flexion) and ADO (USTP) pipelines.
 
 ## Infrastructure as Code
 
-Bicep files to provision resources in the Azure cloud environment with support for both commercial and US gov regions located in the ops/cloud-deployment folder. The bicep files are broken down to deploy a subset of what is needed by USTP Case Management System (CAMS). Use the **main bicep**, _main.bicep_, to provision complete Azure resources.
+Bicep files are used to provision resources in the Azure cloud environment with support for both
+commercial and US gov regions and are located in the ops/cloud-deployment folder. The bicep files
+are broken down to deploy a subset of what is needed by USTP Case Management System (CAMS). Use the
+**main bicep**, _main.bicep_, to provision complete Azure resources.
 
 Note the following assumptions:
 
 - Account used to execute bicep code has the necessary permission to provision all resources.
-- Prior to running the _main.bicep_ file, the _ustp-cams-kv-app-config-setup.bicep_ file must be run first with the **deployNetworkConfig** param set to false
-- After running the _main.bicep_ file, the _ustp-cams-kv-app-config-setup.bicep_ file must be run first with the **deployNetworkConfig** param set to **true**
+- Prior to running the _main.bicep_ file, the _ustp-cams-kv-app-config-setup.bicep_ file must be run
+  first with the **deployNetworkConfig** param set to false
+- After running the _main.bicep_ file, the _ustp-cams-kv-app-config-setup.bicep_ file must be run
+  first with the **deployNetworkConfig** param set to **true**
+
+## SQL Private Link Hub
+
+A single shared Private Endpoint reaches the SQL server, and every consumer VNet (main and each
+branch, in any region) peers to the hub VNet that holds it. This exists because Azure requires a SQL
+`virtualNetworkRules` subnet to be in the **same region** as the server, which cross-region branch
+compute cannot satisfy; a Private Endpoint has no such restriction.
+
+One endpoint, not one per consumer, is the load-bearing part. A private DNS zone holds exactly one A
+record for the server's single canonical hostname, so per-consumer endpoints fight over it — and
+tearing one down deletes the record out from under everybody else.
+
+### How the A records get written
+
+The endpoint registers **nothing** itself. `sql-hub.bicep` declares one explicit A record per
+consumer zone, and pins the endpoint to a static private IP so those records have a knowable address
+to point at.
+
+It does not use a `privateDnsZoneGroup`, because a zone group keys its registration by zone **name**,
+not by zone resource id. Pointed at two zones that share a name it writes exactly **one** record,
+into a zone it picks arbitrarily — verified on throwaway resources, where the same two-config group
+landed the record in the first zone when the configs were added one at a time and in the second when
+they were sent in a single PUT. In production it picked `rg-cams-network-dev`, leaving
+`rg-cams-network` — the zone main is actually linked to — holding nothing but an SOA record, so main
+silently resolved through the public path for as long as that lasted.
+
+> [!WARNING]
+> The endpoint's pinned IP is **write-once**. Azure refuses to move a deployed endpoint's static
+> address by any route: changing it directly fails with
+> `PrivateEndpointWithStaticIpConfigurationsCannotChangeIpAddress`, and reverting to dynamic first
+> (which succeeds, keeping the same address) then re-pinning fails with
+> `PrivateEndpointStaticIpMustMatchDynamicIpMapping`. The only way to change it is to delete and
+> recreate the endpoint every environment depends on. The address is derived from the subnet prefix
+> (`cidrHost(prefix, 3)` — Azure reserves the first four addresses of every subnet), so re-addressing
+> the subnet will fail loudly rather than silently orphan the A records.
+
+### Removing the legacy zone group (one-time, order matters)
+
+The endpoint still carries a `privateDnsZoneGroup` named `default` from the original design.
+`sql-hub.bicep` no longer declares it, and ARM incremental mode never deletes an undeclared child, so
+it survives every deploy until removed by hand. The deploy script detects it and prints these steps.
+
+1. **Deploy.** Safe with the group present — it does not re-assert over the explicit A records
+   (checked immediately after a deploy and again 45s later).
+2. **Delete the group.**
+
+   ```bash
+   az network private-endpoint dns-zone-group delete \
+     -g bankruptcy-oversight-support-systems \
+     --endpoint-name pep-ustp-cams-sql-hub -n default
+   ```
+
+3. **Deploy again. This step is mandatory.**
+
+Step 2 deletes the A record that zone group owns **even though step 1 rewrote it** — cleanup is
+governed by the group's own server-side `recordSets` list, not by the record's `creator` metadata,
+so stripping that metadata does not protect it. Confirmed on throwaway resources. In production the
+group owns the record in `rg-cams-network-dev`, the **branch** zone.
+
+Skipping step 3 does not produce an obvious outage, which is exactly why it is dangerous:
+`NxDomainRedirect` on the vnet links makes a missing record fall back to public resolution. Branch
+environments would quietly stop using the private endpoint — the original bug, reintroduced.
+
+### One-time setup
+
+Run the **Deploy SQL Private Link Hub** workflow (`.github/workflows/deploy-sql-hub.yml`,
+`workflow_dispatch` only). Choose `what-if` first and read the plan; re-run with `deploy` to apply.
+
+It is deliberately **not** part of continuous deployment. Every environment's SQL resolution depends
+on this one endpoint, so redeploying it must be a deliberate act, never a side effect of a branch
+deploy or teardown.
+
+### Identity and permissions
+
+**No additional role assignments are required.** The workflow authenticates as
+`cams-infrastructure-deploy-main-oidc` through the existing `infrastructure-deploy-main`
+environment, and that identity already holds `Contributor` at **subscription** scope. That covers
+everything involved: creating the hub VNet, subnet, and Private Endpoint, and writing the A record
+into the private DNS zones in `rg-cams-network` and `rg-cams-network-dev`.
+
+A dedicated `sql-hub` identity was considered and rejected: it would need those same permissions
+granted from scratch, so it would add a principal without narrowing anything.
+
+Note that the hub writes into **consumer-owned** zones, which inverts "the hub owns its own
+lifecycle". That is the deliberate trade for a zero-downtime cutover. The alternative — a third zone
+of the same name in the hub RG — cannot be adopted without an outage, because Azure rejects linking
+one VNet to two zones sharing a name, so every consumer would have to unlink before it could relink
+and would resolve nothing in between.
+
+> [!CAUTION]
+> That rejected third zone **physically exists** in `bankruptcy-oversight-support-systems`, left over
+> from when the option was evaluated. It has no vnet links and no A record, and nothing writes to it.
+> Linking anything to it would break SQL resolution for that VNet, and because Azure enforces
+> one-link-per-vnet-per-zone-**name** it would also block linking to the correct zone. Leave it
+> alone; deleting it outright is the cleanest fix if someone wants to remove the trap.
+> `_vnet-link-check.sh` already fails loud if a vnet is ever found linked into a stray same-named
+> zone, so an accidental link surfaces as a deploy error rather than silent misresolution.
+
+Any ad-hoc `az` command against this zone name must therefore RG-qualify with `-g` — there are three
+zones with this name in the subscription, and the CLI will not disambiguate for you.
+
+> [!IMPORTANT] What this workflow **does** require is its own federated credential. The repository's
+> OIDC subject template is `repo + workflow + environment` (see
+> [GitHub Actions OIDC Least Privilege](../architecture/decision-records/GithubActionsOidcLeastPrivilege.md)),
+> so the subject names the workflow, not just the environment. A standalone `workflow_dispatch`
+> workflow reports its **own** name; only reusable workflows invoked from Continuous Deployment
+> report the caller's name. Reusing an environment is therefore not sufficient on its own.
+
+The credential already exists (`gha-deploy-sql-hub` on `cams-infrastructure-deploy-main-oidc`). Any
+future standalone workflow needs its own, created like this:
+
+```bash
+az ad app federated-credential create --id <app-object-id> --parameters '{
+  "name": "gha-<workflow-slug>",
+  "issuer": "https://token.actions.githubusercontent.com",
+  "subject": "repo:US-Trustee-Program/Bankruptcy-Oversight-Support-Systems:workflow:<Workflow Name>:environment:<environment>",
+  "audiences": ["api://AzureADTokenExchange"]
+}'
+```
+
+### Migrating a consumer onto the hub
+
+Per consumer, in this order. **The order matters.**
+
+1. Confirm both peering sides report `Connected`, not `Initiated`.
+2. **Delete that consumer's own SQL Private Endpoint.**
+3. Re-run the hub workflow so the shared endpoint registers the A record.
+4. Verify resolution from inside the consumer's VNet before moving on.
+
+Step 2 must precede step 3. Deleting an endpoint deletes its zone-group records, so if the hub
+registered while the old endpoint still existed, two zone groups would write the same A record —
+recreating the last-delete-wins collision this design removes.
+
+That leaves a window between steps 2 and 3 with no record. It is covered by
+`resolutionPolicy: NxDomainRedirect` on the VNet links (`lib/network/vnet-links.bicep`), which makes
+Azure fall back to public resolution instead of returning NXDOMAIN. Confirmed available in Azure
+Government; requires api-version `2024-06-01` or higher.
+
+The policy only applies to links the template manages. Links skipped via `vnetLinkAlreadyExists`
+keep their old setting and need a one-time:
+
+```bash
+az network private-dns link vnet update \
+  -g <zone-rg> -z privatelink.database.usgovcloudapi.net \
+  -n <link-name> --resolution-policy NxDomainRedirect
+```
+
+### Branch address allocation
+
+Branch VNets peering to the hub must not overlap, so a branch claims a `/20` from a reserved
+`10.128.0.0/12` pool (`ops/scripts/pipeline/_branch-network-pool.sh`). Legacy branches created
+before this — anything still on `10.10.0.0/16` — are left alone: they keep working through their
+existing path and simply get no hub peering. Re-addressing one is opt-in via
+`--allowLegacyVnetReaddress true`, and is only safe when nothing is deployed into its subnets, since
+Azure rejects address-space changes on in-use subnets.
 
 ## CI/CD Pipeline Runtime Variables
 
-?> Note required environment variables and secrets defined in build tool for pipeline execution in Flexion and **shared** with USTP.
+?> Note required environment variables and secrets defined in build tool for pipeline execution in
+Flexion and **shared** with USTP.
 
 ### Common
 
@@ -112,36 +290,38 @@ Note the following assumptions:
 
 ### Azure
 
-| Name                         | Type (Secret/Variable) | Is Flexion Only? | Description                                                                                       |
-| ---------------------------- | ---------------------- | ---------------- | ------------------------------------------------------------------------------------------------- |
-| AZURE_SUBSCRIPTION           | Secret                 | ---              | Azure Subscription ID                                                                             |
-| AZURE_CREDENTIALS            | Secret                 | ---              | Credentials for Azure Cloud Environment                                                           |
-| AZURE_ENVIRONMENT            | Variable               | Yes              | Specify target Azure cloud environment.                                                           |
-| AZ_APP_RG                    | Secret                 | ---              | Resource group name for all application related infrastructure.                                   |
-| AZURE_RG                     | Secret                 | ---              | Resource group for miscellanous Azure resources                                                   |
-| AZ_PLAN_TYPE                 | Variable               | ---              | Determine plan type for Azure App Service plans.                                                  |
-| AZ_ACTION_GROUP_NAME         | Secret                 | ---              | Action Group Name for Azure Alerts                                                                |
-| AZ_PRIVATE_DNS_ZONE          | Variable               | ---              | Private DNS Zone name                                                                             |
-| AZ_PRIVATE_DNS_ZONE_RG       | Secrets                | ---              | Private DNS Zone Azure resource group name                                                        |
-| AZ_PRIVATE_DNS_ZONE_ID       | Secrets                | ---              | Private DNS Zone Azure Fully qualified ID                                                         |
-| AZ_NETWORK_RG                | Secrets                | ---              | Resource Group for networking components                                                          |
-| AZ_NETWORK_VNET_NAME         | Variables              | ---              | Virtual Network Name                                                                              |
-| AZ_SQL_SERVER_NAME           | Secret                 | ---              | ---                                                                                               |
-| AZ_SQL_IDENTITY_NAME         | Secret                 | ---              | Name of Azure managed identity with access to SQL Server database. Required if not using SQL Auth |
-| AZ_COSMOS_DATABASE_NAME      | Secret                 | ---              | ---                                                                                               |
-| AZ_COSMOS_MONGO_ACCOUNT_NAME | Secret                 | ---              | ---                                                                                               |
-| AZ_COSMOS_ID_NAME            | Secret                 | ---              | Name of Managed Identity accessing cosmos                                                         |
-| AZ_ANALYTICS_WORKSPACE_ID    | Secrets                | ---              | Azure resource id of Log Analytics.                                                               |
-| AZ_ACTION_GROUP_NAME         | Secrets                | Yes              | Action Group Name for alert rules                                                                 |
+| Name                           | Type (Secret/Variable) | Is Flexion Only? | Description                                                                                                                                     |
+| ------------------------------ | ---------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| AZURE_SUBSCRIPTION             | Secret                 | ---              | Azure Subscription ID                                                                                                                           |
+| AZURE_CREDENTIALS              | Secret                 | ---              | Credentials for Azure Cloud Environment                                                                                                         |
+| AZURE_ENVIRONMENT              | Variable               | Yes              | Specify target Azure cloud environment.                                                                                                         |
+| AZ_APP_RG                      | Secret                 | ---              | Resource group name for all application related infrastructure.                                                                                 |
+| AZURE_RG                       | Secret                 | ---              | Resource group for miscellaneous Azure resources                                                                                                |
+| AZ_PLAN_TYPE                   | Variable               | ---              | Determine plan type for Azure App Service plans.                                                                                                |
+| AZ_ACTION_GROUP_NAME           | Secret                 | ---              | Action Group Name for Azure Alerts                                                                                                              |
+| AZ_PRIVATE_DNS_ZONE            | Variable               | ---              | Private DNS Zone name                                                                                                                           |
+| AZ_PRIVATE_DNS_ZONE_RG         | Secret                 | ---              | Private DNS Zone Azure resource group name                                                                                                      |
+| AZ_PRIVATE_DNS_ZONE_ID         | Secret                 | ---              | Private DNS Zone Azure Fully qualified ID                                                                                                       |
+| AZ_NETWORK_RG                  | Secret                 | ---              | Resource Group for networking components                                                                                                        |
+| AZ_NETWORK_VNET_NAME           | Variable               | ---              | Virtual Network Name                                                                                                                            |
+| AZ_SQL_SERVER_NAME             | Secret                 | ---              | ---                                                                                                                                             |
+| AZ_SQL_IDENTITY_NAME           | Secret                 | ---              | Name of Azure managed identity with access to SQL Server database. Required if not using SQL Auth                                               |
+| AZ_COSMOS_DATABASE_NAME        | Secret                 | ---              | ---                                                                                                                                             |
+| AZ_COSMOS_MONGO_ACCOUNT_NAME   | Secret                 | ---              | ---                                                                                                                                             |
+| AZ_COSMOS_ID_NAME              | Secret                 | ---              | Name of Managed Identity accessing cosmos                                                                                                       |
+| AZ_ANALYTICS_WORKSPACE_ID      | Secret                 | ---              | Azure resource id of Log Analytics.                                                                                                             |
+| AZ_ACTION_GROUP_NAME           | Secret                 | Yes              | Action Group Name for alert rules                                                                                                               |
+| ADMIN-NOTIFICATION-EMAIL       | Key Vault Secret       | Yes              | Required. Email notified when an ACS email delivery-failure alert fires.                          |
+| DEFAULT-NOTIFICATION-RECIPIENT | Secret                 | Yes              | Optional fallback email recipient for notifications when no Cosmos routing record matches a case.                                               |
 
 ### Snyk
 
-| Name                           | Type (Secret/Variable) | Is Flexion Only? | Description                                                      |
-| ------------------------------ | ---------------------- | ---------------- | ---------------------------------------------------------------- |
-| SNYK_OAUTH_CLIENT_ID           | Secrets                | ---              | OAuth client ID for Snyk government instance                     |
-| SNYK_OAUTH_CLIENT_SECRET       | Secrets                | ---              | OAuth client secret for Snyk government instance                 |
-| AZ_SECURITY_SCAN_RG            | Secrets                | ---              | Resource group for the security scan storage account             |
-| AZ_SECURITY_SCAN_STORAGE_NAME  | Secrets                | ---              | Storage account name for security scan results (deployed by IaC) |
+| Name                          | Type (Secret/Variable) | Is Flexion Only? | Description                                                      |
+| ----------------------------- | ---------------------- | ---------------- | ---------------------------------------------------------------- |
+| SNYK_OAUTH_CLIENT_ID          | Secrets                | ---              | OAuth client ID for Snyk government instance                     |
+| SNYK_OAUTH_CLIENT_SECRET      | Secrets                | ---              | OAuth client secret for Snyk government instance                 |
+| AZ_SECURITY_SCAN_RG           | Secrets                | ---              | Resource group for the security scan storage account             |
+| AZ_SECURITY_SCAN_STORAGE_NAME | Secrets                | ---              | Storage account name for security scan results (deployed by IaC) |
 
 ### LaunchDarkly
 
@@ -151,17 +331,17 @@ Note the following assumptions:
 
 ### API Function App
 
-| Name                       | Type (Secret/Variable) | Is Flexion Only? | Description                                            |
-| -------------------------- | ---------------------- | ---------------- | ------------------------------------------------------ |
-| STARTING_MONTH             | Variable               | ---              | Used by application for filtering cases by date range. |
-| USTP_ISSUE_COLLECTOR_HASH  | Secrets                | ---              | USTP Only parameter used for CSP policy.               |
-| SLOT_NAME                  | Variable               | ---              | Deployment slot name for slot deployments              |
+| Name                      | Type (Secret/Variable) | Is Flexion Only? | Description                                            |
+| ------------------------- | ---------------------- | ---------------- | ------------------------------------------------------ |
+| STARTING_MONTH            | Variable               | ---              | Used by application for filtering cases by date range. |
+| USTP_ISSUE_COLLECTOR_HASH | Secrets                | ---              | USTP Only parameter used for CSP policy.               |
+| SLOT_NAME                 | Variable               | ---              | Deployment slot name for slot deployments              |
 
 ### Dataflows Function App
 
-| Name                       | Type (Secret/Variable) | Is Flexion Only? | Description                                            |
-| -------------------------- | ---------------------- | ---------------- | ------------------------------------------------------ |
-| CAMS_ENABLED_DATAFLOWS     | Variable               | ---              | Sets up which dataflows are active on deployment. Comma-separated list of MODULE_NAME values. See [running.md](../running.md) for available dataflows. |
+| Name                   | Type (Secret/Variable) | Is Flexion Only? | Description                                                                                                                                            |
+| ---------------------- | ---------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| CAMS_ENABLED_DATAFLOWS | Variable               | ---              | Sets up which dataflows are active on deployment. Comma-separated list of MODULE_NAME values. See [running.md](../running.md) for available dataflows. |
 
 ### Key Vault
 

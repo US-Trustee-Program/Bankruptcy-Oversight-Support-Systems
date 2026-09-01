@@ -60,18 +60,18 @@ jobs:
           GHA_ENVIRONMENT: ${{ inputs.ghaEnvironment }}
         run: |
           set -euo pipefail
+          # shellcheck source=ops/scripts/pipeline/_kv-to-env.sh
+          source ops/scripts/pipeline/_kv-to-env.sh
           if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
             KV="kv-ustp-cams"
           else
             KV="kv-ustp-cams-dev"
           fi
-          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-APP-RG --query value -o tsv)
-          echo "::add-mask::${_val}"
           # CAMS-760, Option E / Slice 2: branches deploy into the SAME stable
           # app RG main uses, distinguished by per-branch-unique resource
           # names, rather than a per-branch hash-suffixed RG (matches
           # reusable-deploy.yml's derivation — keep both in lockstep).
-          echo "AZ_APP_RG=${_val}" >> "$GITHUB_ENV"
+          kv_to_env AZ_APP_RG "$KV" AZ-APP-RG
 
       - name: Deploy to Azure WebApp
         id: deploy-webapp-step
@@ -108,18 +108,18 @@ jobs:
           GHA_ENVIRONMENT: ${{ inputs.ghaEnvironment }}
         run: |
           set -euo pipefail
+          # shellcheck source=ops/scripts/pipeline/_kv-to-env.sh
+          source ops/scripts/pipeline/_kv-to-env.sh
           if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
             KV="kv-ustp-cams"
           else
             KV="kv-ustp-cams-dev"
           fi
-          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-APP-RG --query value -o tsv)
-          echo "::add-mask::${_val}"
           # CAMS-760, Option E / Slice 2: branches deploy into the SAME stable
           # app RG main uses, distinguished by per-branch-unique resource
           # names, rather than a per-branch hash-suffixed RG (matches
           # reusable-deploy.yml's derivation — keep both in lockstep).
-          echo "AZ_APP_RG=${_val}" >> "$GITHUB_ENV"
+          kv_to_env AZ_APP_RG "$KV" AZ-APP-RG
 
       - name: Deploy Azure Functions API
         id: deploy-backend-api-step
@@ -157,18 +157,18 @@ jobs:
           GHA_ENVIRONMENT: ${{ inputs.ghaEnvironment }}
         run: |
           set -euo pipefail
+          # shellcheck source=ops/scripts/pipeline/_kv-to-env.sh
+          source ops/scripts/pipeline/_kv-to-env.sh
           if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
             KV="kv-ustp-cams"
           else
             KV="kv-ustp-cams-dev"
           fi
-          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-APP-RG --query value -o tsv)
-          echo "::add-mask::${_val}"
           # CAMS-760, Option E / Slice 2: branches deploy into the SAME stable
           # app RG main uses, distinguished by per-branch-unique resource
           # names, rather than a per-branch hash-suffixed RG (matches
           # reusable-deploy.yml's derivation — keep both in lockstep).
-          echo "AZ_APP_RG=${_val}" >> "$GITHUB_ENV"
+          kv_to_env AZ_APP_RG "$KV" AZ-APP-RG
 
       - name: Deploy Data Flows Azure Function App
         id: deploy-dataflows-app-step
@@ -209,6 +209,8 @@ jobs:
       webappName: ${{ inputs.webappName }}
       apiFunctionName: ${{ inputs.apiFunctionName }}
     steps:
+      - uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a # main
+
       - uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3.0.0
         with:
           client-id: ${{ secrets.AZ_CLIENT_ID }}
@@ -221,18 +223,18 @@ jobs:
           GHA_ENVIRONMENT: ${{ inputs.ghaEnvironment }}
         run: |
           set -euo pipefail
+          # shellcheck source=ops/scripts/pipeline/_kv-to-env.sh
+          source ops/scripts/pipeline/_kv-to-env.sh
           if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
             KV="kv-ustp-cams"
           else
             KV="kv-ustp-cams-dev"
           fi
-          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-APP-RG --query value -o tsv)
-          echo "::add-mask::${_val}"
           # CAMS-760, Option E / Slice 2: branches deploy into the SAME stable
           # app RG main uses, distinguished by per-branch-unique resource
           # names, rather than a per-branch hash-suffixed RG (matches
           # reusable-deploy.yml's derivation — keep both in lockstep).
-          echo "AZ_APP_RG=${_val}" >> "$GITHUB_ENV"
+          kv_to_env AZ_APP_RG "$KV" AZ-APP-RG
 
       - name: Enable production slot access
         run: |

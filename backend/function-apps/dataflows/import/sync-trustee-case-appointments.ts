@@ -6,10 +6,7 @@ import SyncTrusteeCaseAppointmentsUseCase from '../../../lib/use-cases/dataflows
 import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
 import { TrusteeAppointmentSyncEvent } from '@common/cams/dataflow-events';
 import { TrusteeAppointmentsSyncState } from '../../../lib/use-cases/gateways.types';
-import {
-  STORAGE_QUEUE_CONNECTION,
-  TRUSTEE_APPOINTMENT_EVENT_QUEUE,
-} from '../../../lib/storage-queues';
+import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import factory from '../../../lib/factory';
 import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 import {
@@ -341,7 +338,6 @@ async function handlePage(message: PageMessage, invocationContext: InvocationCon
           multipleMatchCount: String(scenarioDistribution.multipleMatchCount),
           perfectMatchInactiveCount: String(scenarioDistribution.perfectMatchInactiveCount),
           reVerificationCount: String(scenarioDistribution.reVerificationCount),
-          reservedIdSkippedCount: String(scenarioDistribution.reservedIdSkippedCount),
           verificationBucketHitCount: String(scenarioDistribution.verificationBucketHitCount),
           fingerprintHitCount: String(scenarioDistribution.fingerprintHitCount),
           fingerprintMissCount: String(scenarioDistribution.fingerprintMissCount),
@@ -355,10 +351,6 @@ async function handlePage(message: PageMessage, invocationContext: InvocationCon
             value: scenarioDistribution.perfectMatchInactiveCount,
           },
           { name: 'TrusteeReVerificationCount', value: scenarioDistribution.reVerificationCount },
-          {
-            name: 'TrusteeReservedIdSkippedCount',
-            value: scenarioDistribution.reservedIdSkippedCount,
-          },
           {
             name: 'TrusteeVerificationBucketHitCount',
             value: scenarioDistribution.verificationBucketHitCount,
@@ -452,11 +444,7 @@ function setup() {
   app.storageQueue(HANDLE_PAGE, {
     connection: PAGE.connection,
     queueName: PAGE.queueName,
-    // TRUSTEE_APPOINTMENT_EVENT_QUEUE must be declared here (not just DLQ) -- Azure Functions
-    // only delivers extraOutputs.set() calls for outputs this specific function registered;
-    // applyResolvedTrustee's downstream-event queueing would otherwise silently no-op. Mirrors
-    // the same fix applied in trustee-verification-remap.ts.
-    extraOutputs: [DLQ, TRUSTEE_APPOINTMENT_EVENT_QUEUE],
+    extraOutputs: [DLQ],
     handler: handlePage,
   });
 

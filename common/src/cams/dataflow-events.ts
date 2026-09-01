@@ -100,6 +100,28 @@ export type DxtrTrusteeParty = {
 };
 
 /**
+ * Trustee professional data from ACMS's CMMPR (Professional Master File) table — ACMS's
+ * equivalent of DXTR's AO_PY party table, but its own distinct source system and table, hence a
+ * separate type rather than reusing DxtrTrusteeParty. Same canonical shape as DxtrTrusteeParty
+ * (both are mapped into it before reaching the shared trustee-match.helpers.ts scoring
+ * functions) so each source's type can evolve independently if its upstream schema ever
+ * diverges. Used during the ACMS professional-id sync to match against CAMS trustees.
+ */
+export type AcmsTrusteeProfessional = {
+  firstName?: string;
+  middleName?: string;
+  lastName?: string;
+  generation?: string;
+  fullName: string;
+  legacy?: LegacyAddress & {
+    phone?: string;
+    fax?: string;
+    email?: string;
+    parsedCityStateZip?: { city: string; state: string; zipCode: string } | null;
+  };
+};
+
+/**
  * Event triggered when a trustee appointment is detected in DXTR.
  * Processed by sync-trustee-case-appointments dataflow to match and link trustees to cases.
  */
@@ -112,12 +134,15 @@ export type TrusteeAppointmentSyncEvent = {
   retryCount?: number;
   chapter?: string;
   courtDivisionCode?: string;
+  profCode?: string;
   /**
-   * Compound ACMS key ("{GROUP_DESIGNATOR}-{PROF_CODE}") extracted from the DXTR
-   * transaction record (TX.REC) at the time the event was sourced. Undefined when
-   * either component is missing from the source row.
+   * Raw DXTR group designator (AO_CS.GRP_DES) for this record - one half of ACMS's compound
+   * professional key (GROUP_DESIGNATOR + PROF_CODE, see /cams-gateways). A native DXTR/ACMS fact,
+   * not yet the CAMS-formatted acmsProfessionalId string - that construction (and its
+   * sentinel-suppression rule) belongs to the use-case layer that consumes this event, not the
+   * gateway that surfaces the raw fields.
    */
-  acmsProfessionalId?: string;
+  groupDesignator?: string;
 };
 
 /**
@@ -201,6 +226,52 @@ export type CandidateScore = {
   email?: string;
   appointments?: TrusteeAppointment[];
 };
+
+/**
+ * Calculates the weighted total score from the individual score components.
+ * Weighting: 8% address, 26% name, 8% phone, 8% email, 25% district/division, 25% chapter.
+ * District/division and chapter are drawn from active CMMAP appointments, so together they carry
+ * the majority (50%) as the strongest identity evidence; the remainder favors name (26%, the
+ * primary human-readable identifier) with address/phone/email as smaller but non-trivial
+ * corroborating signals - phone and email are high-entropy exact-match booleans, while address is
+ * fuzzy-scored and more prone to staleness (trustees relocate), so all three are weighted equally
+ * rather than favoring address's finer-grained scoring. Phone and email are nullable ("not
+ * comparable" - data missing on either side): when null, that dimension's weight is excluded from
+ * the calculation entirely and redistributed proportionally among the remaining applicable
+ * dimensions, rather than penalizing the candidate with a 0.
+ * Lives here (not in backend) so dev-tools' seed-data validator can call the exact same
+ * function backend uses, rather than duplicating its weights and risking drift (see CAMS-871
+ * Slice 2 Task 3).
+ */
+export function calculateTotalScore(scores: {
+  addressScore: number;
+  nameScore: number;
+  phoneScore: number | null;
+  emailScore: number | null;
+  districtDivisionScore: number;
+  chapterScore: number;
+}): number {
+  const WEIGHTS = {
+    addressScore: 0.08,
+    nameScore: 0.26,
+    phoneScore: 0.08,
+    emailScore: 0.08,
+    districtDivisionScore: 0.25,
+    chapterScore: 0.25,
+  } as const;
+
+  let weightedSum = 0;
+  let applicableWeight = 0;
+
+  for (const key of Object.keys(WEIGHTS) as (keyof typeof WEIGHTS)[]) {
+    const score = scores[key];
+    if (score === null) continue;
+    weightedSum += score * WEIGHTS[key];
+    applicableWeight += WEIGHTS[key];
+  }
+
+  return applicableWeight === 0 ? 0 : weightedSum / applicableWeight;
+}
 
 /**
  * Sent to the DLQ when a trustee appointment cannot be processed due to a known, permanent error.

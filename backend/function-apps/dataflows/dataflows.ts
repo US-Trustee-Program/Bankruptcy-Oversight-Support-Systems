@@ -25,8 +25,10 @@ import SyncDeletedCases from './import/sync-deleted-cases';
 import SyncOrders from './import/sync-orders';
 import SyncOfficeStaff from './import/sync-office-staff';
 import SyncTrusteeCaseAppointments from './import/sync-trustee-case-appointments';
+import SyncAcmsProfessionalIds from './import/sync-acms-professional-ids';
 import SyncTrusteeNotesMetrics from './metrics/sync-trustee-notes-metrics';
 import SyncTrusteeDueDateMetrics from './metrics/sync-trustee-due-date-metrics';
+import PollNotificationBounces from './metrics/poll-notification-bounces';
 import StaffAssignmentDownstream from './downstream/staff-assignment-downstream';
 import TrusteeAppointmentDownstream from './downstream/trustee-appointment-downstream';
 import TrusteeVerificationRemap from './trustee-verification-remap';
@@ -35,6 +37,7 @@ import BackfillTrusteeAppointmentsDownstreamDataflow from './migrations/backfill
 import BackfillTransferOrderTaskDate from './migrations/backfill-transfer-order-task-date';
 import BackfillConsolidationOrderTaskDate from './migrations/backfill-consolidation-order-task-date';
 import BackfillTrusteeVerificationTaskDate from './migrations/backfill-trustee-verification-task-date';
+import BackfillUnassignedOn from './migrations/backfill-unassigned-on';
 
 const MODULE_NAME = 'DATAFLOWS-SETUP';
 
@@ -124,6 +127,7 @@ dataflows.register(
   SyncOfficeStaff,
   SyncOrders,
   SyncTrusteeCaseAppointments,
+  SyncAcmsProfessionalIds,
   SyncTrusteeNotesMetrics,
   SyncTrusteeDueDateMetrics,
   StaffAssignmentDownstream,
@@ -134,6 +138,8 @@ dataflows.register(
   BackfillTransferOrderTaskDate,
   BackfillConsolidationOrderTaskDate,
   BackfillTrusteeVerificationTaskDate,
+  BackfillUnassignedOn,
+  PollNotificationBounces,
 );
 
 const registeredDataflows = dataflows.list().join(', ').replaceAll('-', '_');
@@ -143,11 +149,13 @@ const DEFAULT_DATAFLOWS = listDataflowNames(
   AcmsDailySync,
   CaseAssignmentEvent,
   CaseClosedEvent,
+  PollNotificationBounces,
   SyncCases,
   SyncDeletedCases,
   SyncOfficeStaff,
   SyncOrders,
   SyncTrusteeCaseAppointments,
+  SyncAcmsProfessionalIds,
   SyncTrusteeDueDateMetrics,
   SyncTrusteeNotesMetrics,
   TrusteeVerificationRemap,

@@ -1808,6 +1808,53 @@ describe('getTrusteeAppointments', () => {
     expect(result.events[0].courtDivisionCode).toBe('081');
   });
 
+  test('maps groupDesignator into the result alongside profCode', async () => {
+    // groupDesignator (AO_CS.GRP_DES) is a raw DXTR/ACMS fact crossed as-is - it is NOT combined
+    // into a formatted acmsProfessionalId here. That CAMS-specific construction (and its
+    // sentinel-suppression rule) belongs to the use-case layer that consumes this event, not this
+    // gateway - see resolveAcmsProfessionalIdForVerification in sync-trustee-case-appointments.ts.
+    querySpy.mockResolvedValue({
+      success: true,
+      results: {
+        recordset: [
+          {
+            caseId: '081-24-12345',
+            courtId: '081',
+            chapter: '7',
+            courtDivisionCode: '081',
+            groupDesignator: ' NY ',
+            firstName: 'Jane',
+            middleName: '',
+            lastName: 'Doe',
+            generation: '',
+            address1: '',
+            address2: '',
+            address3: '',
+            city: '',
+            state: '',
+            zip: '',
+            country: '',
+            email: '',
+            phone: '',
+            fax: '',
+            latestSyncDate: '2026-04-07T00:00:00.000Z',
+            aptDate: '260407',
+            profCode: '00123',
+          },
+        ],
+      },
+      message: '',
+    } as QueryResults);
+
+    const result = await gateway.getTrusteeAppointments(
+      applicationContext,
+      '2026-01-01T00:00:00.000Z',
+    );
+
+    expect(result.events[0].groupDesignator).toBe('NY');
+    expect(result.events[0].profCode).toBe('00123');
+  });
+
   test('reads aptDate from the type-A (TR) REC offset 24-30', async () => {
     querySpy.mockResolvedValue({
       success: true,
@@ -1822,6 +1869,23 @@ describe('getTrusteeAppointments', () => {
       expect.stringContaining('SUBSTRING(TX.REC, 24, 6) AS aptDate'),
       expect.anything(),
       expect.anything(),
+    );
+  });
+
+  test('overrides the pool default requestTimeout with the trustee appointments timeout', async () => {
+    querySpy.mockResolvedValue({
+      success: true,
+      results: { recordset: [] },
+      message: '',
+    } as QueryResults);
+
+    await gateway.getTrusteeAppointments(applicationContext, '2018-01-01T00:00:00.000Z');
+
+    expect(querySpy).toHaveBeenCalledWith(
+      applicationContext,
+      expect.any(String),
+      expect.any(Array),
+      600000,
     );
   });
 
@@ -1842,7 +1906,11 @@ describe('getTrusteeAppointments', () => {
     );
   });
 
-  test('derives acmsProfessionalId from groupDesignator and profCode', async () => {
+  test.each([
+    { raw: '00000', expected: '00000', label: 'a clean sentinel value' },
+    { raw: '99999', expected: '99999', label: 'the other sentinel value' },
+    { raw: '  00000  ', expected: '00000', label: 'a whitespace-padded sentinel value' },
+  ])('carries profCode onto the mapped TrusteeAppointmentSyncEvent ($label)', async (testCase) => {
     querySpy.mockResolvedValue({
       success: true,
       results: {
@@ -1852,8 +1920,6 @@ describe('getTrusteeAppointments', () => {
             courtId: '081',
             chapter: '7',
             courtDivisionCode: '081',
-            groupDesignator: '081',
-            profCode: '00123',
             firstName: 'Jane',
             middleName: '',
             lastName: 'Doe',
@@ -1870,6 +1936,7 @@ describe('getTrusteeAppointments', () => {
             fax: '',
             latestSyncDate: '2026-04-07T00:00:00.000Z',
             aptDate: '260407',
+            profCode: testCase.raw,
           },
         ],
       },
@@ -1881,66 +1948,7 @@ describe('getTrusteeAppointments', () => {
       '2026-01-01T00:00:00.000Z',
     );
 
-    expect(result.events[0].acmsProfessionalId).toBe('081-00123');
-  });
-
-  test('leaves acmsProfessionalId undefined when groupDesignator or profCode is missing', async () => {
-    querySpy.mockResolvedValue({
-      success: true,
-      results: {
-        recordset: [
-          {
-            caseId: '081-24-12345',
-            courtId: '081',
-            chapter: '7',
-            courtDivisionCode: '081',
-            groupDesignator: '081',
-            profCode: '',
-            firstName: 'Jane',
-            middleName: '',
-            lastName: 'Doe',
-            generation: '',
-            address1: '',
-            address2: '',
-            address3: '',
-            city: '',
-            state: '',
-            zip: '',
-            country: '',
-            email: '',
-            phone: '',
-            fax: '',
-            latestSyncDate: '2026-04-07T00:00:00.000Z',
-            aptDate: '260407',
-          },
-        ],
-      },
-      message: '',
-    } as QueryResults);
-
-    const result = await gateway.getTrusteeAppointments(
-      applicationContext,
-      '2026-01-01T00:00:00.000Z',
-    );
-
-    expect(result.events[0].acmsProfessionalId).toBeUndefined();
-  });
-
-  test('overrides the pool default requestTimeout with the trustee appointments timeout', async () => {
-    querySpy.mockResolvedValue({
-      success: true,
-      results: { recordset: [] },
-      message: '',
-    } as QueryResults);
-
-    await gateway.getTrusteeAppointments(applicationContext, '2018-01-01T00:00:00.000Z');
-
-    expect(querySpy).toHaveBeenCalledWith(
-      applicationContext,
-      expect.any(String),
-      expect.any(Array),
-      600000,
-    );
+    expect(result.events[0].profCode).toBe(testCase.expected);
   });
 });
 
@@ -1981,9 +1989,8 @@ describe('getTrusteePetitionEvents', () => {
 
   test.each([
     { label: 'aptDate', expectedFragment: 'SUBSTRING(TX.REC, 91, 6) AS aptDate' },
-    { label: 'profCode', expectedFragment: 'SUBSTRING(TX.REC, 86, 5) AS profCode' },
-    // CAMS-809: txDate backs appointedDate's fallback when REC's date is unparseable. CONVERT
-    // (not FORMAT) is required — FORMAT() depends on the CLR, which is disabled by default on
+    // txDate backs appointedDate's fallback when REC's date is unparseable. CONVERT (not
+    // FORMAT) is required — FORMAT() depends on the CLR, which is disabled by default on
     // SQL Edge/many SQL Server instances and fails with "Common Language Runtime(CLR) is not
     // enabled on this instance." (confirmed against a real SQL Edge container).
     { label: 'txDate', expectedFragment: 'CONVERT(VARCHAR(10), TX.TX_DATE, 120) AS txDate' },
@@ -2068,11 +2075,69 @@ describe('getTrusteePetitionEvents', () => {
     expect(result.events).toEqual([]);
   });
 
-  // CAMS-809: REC's fixed-width embedded date is occasionally blank/'000000'/malformed — a
-  // genuine DXTR data-quality gap. TX.TX_DATE is a datetime2 NOT NULL column on the same
-  // 'Trustee Appointed' transaction row and can never be missing, so appointedDate must fall
-  // back to it rather than leaving the event stuck with no appointedDate at all — but REC's date
-  // is still preferred when it parses, since it's the more precise, pre-existing source.
+  test('reads profCode from the type-1 (N1TRUS) REC offset 86-90', async () => {
+    querySpy.mockResolvedValue({
+      success: true,
+      results: { recordset: [] },
+      message: '',
+    } as QueryResults);
+
+    await gateway.getTrusteePetitionEvents(applicationContext, '2026-01-01T00:00:00.000Z');
+
+    expect(querySpy).toHaveBeenCalledWith(
+      applicationContext,
+      expect.stringContaining('SUBSTRING(TX.REC, 86, 5) AS profCode'),
+      expect.anything(),
+      expect.anything(),
+    );
+  });
+
+  test('carries profCode onto the mapped TrusteeAppointmentSyncEvent', async () => {
+    querySpy.mockResolvedValue({
+      success: true,
+      results: {
+        recordset: [
+          {
+            caseId: '081-24-12345',
+            courtId: '081',
+            chapter: '7',
+            courtDivisionCode: '081',
+            firstName: 'Jane',
+            middleName: '',
+            lastName: 'Doe',
+            generation: '',
+            address1: '',
+            address2: '',
+            address3: '',
+            city: '',
+            state: '',
+            zip: '',
+            country: '',
+            email: '',
+            phone: '',
+            fax: '',
+            latestSyncDate: '2026-04-07T00:00:00.000Z',
+            aptDate: '260407',
+            profCode: '00000',
+          },
+        ],
+      },
+      message: '',
+    } as QueryResults);
+
+    const result = await gateway.getTrusteePetitionEvents(
+      applicationContext,
+      '2026-01-01T00:00:00.000Z',
+    );
+
+    expect(result.events[0].profCode).toBe('00000');
+  });
+
+  // REC's fixed-width embedded date is occasionally blank/'000000'/malformed — a genuine DXTR
+  // data-quality gap. TX.TX_DATE is a datetime2 NOT NULL column on the same 'Trustee Appointed'
+  // transaction row and can never be missing, so appointedDate must fall back to it rather than
+  // leaving the event stuck with no appointedDate at all — but REC's date is still preferred
+  // when it parses, since it's the more precise, pre-existing source.
   test.each([
     { aptDate: '000000', txDate: '2026-04-07', expected: '2026-04-07', label: 'falls back' },
     { aptDate: '260407', txDate: '2026-04-09', expected: '2026-04-07', label: 'prefers REC' },
@@ -2176,9 +2241,9 @@ describe('getAppointmentDatesByCaseIds', () => {
   });
 
   test('falls back to txDate when aptDate is sentinel 000000', async () => {
-    // CAMS-809: REC's embedded date can be blank/'000000'/malformed. TX.TX_DATE is a datetime2
-    // NOT NULL column on the same transaction row, so the backfill can still recover a date
-    // instead of leaving the appointment permanently missing appointedDate.
+    // REC's embedded date can be blank/'000000'/malformed. TX.TX_DATE is a datetime2 NOT NULL
+    // column on the same transaction row, so the backfill can still recover a date instead of
+    // leaving the appointment permanently missing appointedDate.
     querySpy.mockResolvedValue({
       success: true,
       results: {

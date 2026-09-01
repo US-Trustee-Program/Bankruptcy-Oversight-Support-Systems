@@ -16,6 +16,9 @@ param actionGroupName string
 @description('Action Group Resource Group Name for alerts')
 param actionGroupResourceGroupName string
 
+@description('Subscription ID that contains the action group resource group. Defaults to the deploying subscription.')
+param actionGroupSubscriptionId string = subscription().subscriptionId
+
 module sqlServerDiagnosticSettings './lib/app-insights/diagnostics-settings-sql.bicep' = if (createSqlServerDiagnosticSetting && !empty(analyticsWorkspaceId)) {
   name: '${databaseName}-sql-diagnostics-settings-module'
   params: {
@@ -28,7 +31,7 @@ module sqlSpaceAlert './lib/monitoring-alerts/metrics-alert-rule.bicep' = {
   name: '${databaseName}-low-space-alert-module'
   params: {
     alertName: '${databaseName}-low-space-alert'
-    appId: '/subscriptions/729f9083-9edf-4269-919f-3f05f7a0ab20/resourceGroups/${resourceGroup().name}/providers/Microsoft.Sql/servers/${databasePrefix}/databases/${databaseName}'
+    appId: '/subscriptions/${subscription().subscriptionId}/resourceGroups/${resourceGroup().name}/providers/Microsoft.Sql/servers/${databasePrefix}/databases/${databaseName}'
     timeAggregation: 'Maximum'
     operator: 'GreaterThan'
     severity: 1
@@ -37,5 +40,6 @@ module sqlSpaceAlert './lib/monitoring-alerts/metrics-alert-rule.bicep' = {
     targetResourceType: 'Microsoft.Sql/servers/databases'
     actionGroupName: actionGroupName
     actionGroupResourceGroupName: actionGroupResourceGroupName
+    actionGroupSubscriptionId: actionGroupSubscriptionId
   }
 }

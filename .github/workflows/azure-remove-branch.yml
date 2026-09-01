@@ -29,6 +29,7 @@ jobs:
           tenant-id: ${{ secrets.AZ_TENANT_ID }}
           subscription-id: ${{ secrets.AZ_SUBSCRIPTION_ID }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: List existing tagged Azure branch resources
         env:
           # This workflow only ever tears down branch/dev deployments (never
@@ -39,6 +40,8 @@ jobs:
           GHA_ENVIRONMENT: 'Develop'
         run: |
           set -euo pipefail
+          # shellcheck source=ops/scripts/pipeline/_kv-to-env.sh
+          source ops/scripts/pipeline/_kv-to-env.sh
           if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
             KV="kv-ustp-cams"
           else
@@ -49,10 +52,8 @@ jobs:
           # Deployment Stacks in the shared app/network RGs instead (both still
           # carry the same isBranchDeployment/branchName/branchHashId tags from
           # Slice 1).
-          networkRgBase=$(az keyvault secret show --vault-name "$KV" --name AZ-NETWORK-RG --query value -o tsv)
-          echo "::add-mask::${networkRgBase}"
-          appRgBase=$(az keyvault secret show --vault-name "$KV" --name AZ-APP-RG --query value -o tsv)
-          echo "::add-mask::${appRgBase}"
+          kv_get networkRgBase "$KV" AZ-NETWORK-RG
+          kv_get appRgBase "$KV" AZ-APP-RG
           echo "List Azure network deployment stacks tagged as branch deployment resources"
           az stack group list -g "${networkRgBase}" --query "[?tags.isBranchDeployment == 'true'].{ Name:name Branch:tags.branchName HashId:tags.branchHashId }" -o table
           echo "List Azure app deployment stacks tagged as branch deployment resources"
@@ -71,6 +72,8 @@ jobs:
       executeCleanup: ${{ steps.check.outputs.executeCleanup }}
       targetBranchHashIds: ${{ steps.check.outputs.targetBranchHashIds }}
       stackName: ${{ steps.check.outputs.stackName }}
+      staleBranchNotices: ${{ steps.check.outputs.staleBranchNotices }}
+      staleDaysThreshold: ${{ steps.check.outputs.staleDaysThreshold }}
     steps:
       - uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3.0.0
         with:
@@ -105,8 +108,12 @@ jobs:
           # pattern used elsewhere in this file and repo (Sourcery review,
           # PR #2773).
           GHA_ENVIRONMENT: 'Develop'
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          STALE_BRANCH_DAYS: ${{ vars.STALE_BRANCH_DAYS }}
         run: |
           set -euo pipefail
+          # shellcheck source=ops/scripts/pipeline/_kv-to-env.sh
+          source ops/scripts/pipeline/_kv-to-env.sh
 
           if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
             KV="kv-ustp-cams"
@@ -125,10 +132,8 @@ jobs:
           # "ustp-cams-dev-<hash>-network"), so the defensive name/tag
           # consistency check matches on that suffix instead of the old
           # "<rg-base>-<hash>" resource-group-name suffix.
-          networkRgBase=$(az keyvault secret show --vault-name "$KV" --name AZ-NETWORK-RG --query value -o tsv)
-          echo "::add-mask::${networkRgBase}"
-          appRgBase=$(az keyvault secret show --vault-name "$KV" --name AZ-APP-RG --query value -o tsv)
-          echo "::add-mask::${appRgBase}"
+          kv_get networkRgBase "$KV" AZ-NETWORK-RG
+          kv_get appRgBase "$KV" AZ-APP-RG
 
           if [[ "${GITHUB_EVENT_NAME}" == "schedule" ]]; then
             localHour=$(TZ=America/Los_Angeles date +%H)
@@ -136,12 +141,13 @@ jobs:
               echo "Skipping scheduled cleanup because Pacific local hour is ${localHour}, not 21."
               echo "executeCleanup=false" >> "$GITHUB_OUTPUT"
               echo 'targetBranchHashIds=[]' >> "$GITHUB_OUTPUT"
+              echo 'staleBranchNotices=[]' >> "$GITHUB_OUTPUT"
               exit 0
             fi
 
             networkStacks=$(az stack group list -g "${networkRgBase}" --query "[?tags.isBranchDeployment == 'true' && tags.branchHashId != null].{name:name, branchName:tags.branchName, branchHashId:tags.branchHashId}" -o json)
             appStacks=$(az stack group list -g "${appRgBase}" --query "[?tags.isBranchDeployment == 'true' && tags.branchHashId != null].{name:name, branchName:tags.branchName, branchHashId:tags.branchHashId}" -o json)
-            targets=$(jq -c -n --argjson net "${networkStacks}" --argjson app "${appStacks}" '
+            candidates=$(jq -c -n --argjson net "${networkStacks}" --argjson app "${appStacks}" '
               ($net + $app)
               | [
                   .[]
@@ -149,18 +155,103 @@ jobs:
                   | select((.branchName // "") as $branch | $branch != "main" and $branch != "refs/heads/main")
                   | .branchHashId as $branchHashId
                   | select(.name | test("-" + $branchHashId + "-(network|app)$"))
-                  | .branchHashId
+                  | {branchName, branchHashId}
                 ]
-              | unique
+              | unique_by(.branchHashId)
             ')
+
+            # Only tear down envs whose branch is gone (orphaned, no staleness
+            # check needed) or whose branch has had no commits for
+            # STALE_BRANCH_DAYS — everything else is left running even though
+            # this is a nightly sweep. A branch that still exists is never
+            # deleted, only its Azure env is; owners are asked via Slack to
+            # remove the branch themselves once it's flagged stale.
+            staleDaysThreshold="${STALE_BRANCH_DAYS:-5}"
+            if [[ ! "${staleDaysThreshold}" =~ ^[0-9]+$ ]]; then
+              echo "::warning::STALE_BRANCH_DAYS ('${staleDaysThreshold}') is not a valid non-negative integer; falling back to the default of 5."
+              staleDaysThreshold=5
+            fi
+            echo "staleDaysThreshold=${staleDaysThreshold}" >> "$GITHUB_OUTPUT"
+            nowEpoch=$(date -u +%s)
+            targets='[]'
+            notices='[]'
+
+            while IFS= read -r candidate; do
+              branchName=$(jq -r '.branchName' <<<"${candidate}")
+              branchHashId=$(jq -r '.branchHashId' <<<"${candidate}")
+
+              # Branch names can contain slashes (e.g. "codex/foo"), which the
+              # GitHub API requires percent-encoded in this path segment or
+              # it 404s on an otherwise-existing branch.
+              encodedBranchName=$(jq -rn --arg b "${branchName}" '$b | @uri')
+
+              # A confirmed 404 here means the branch was deleted without the
+              # `delete` event trigger catching it, e.g. this workflow was
+              # disabled at the time — orphaned, safe to clean up. Any other
+              # failure (rate limit, 5xx, transient network error) is
+              # inconclusive, so it's treated as "leave it running" rather
+              # than "assume gone" — deleting an active branch's env on a
+              # flaky API call would be worse than skipping it for a night.
+              # Disable errexit only around the call so failures don't abort
+              # the script before they can be inspected.
+              set +e
+              branchApiOutput=$(gh api "repos/${GITHUB_REPOSITORY}/branches/${encodedBranchName}" 2>&1)
+              branchLookupExitCode=$?
+              set -e
+
+              if [[ "${branchLookupExitCode}" -ne 0 ]]; then
+                if grep -q "HTTP 404" <<<"${branchApiOutput}"; then
+                  echo "Branch '${branchName}' no longer exists; env ${branchHashId} is orphaned and will be cleaned up."
+                  targets=$(jq -c --arg h "${branchHashId}" '. + [$h]' <<<"${targets}")
+                else
+                  echo "::warning::Could not verify branch '${branchName}' ($(head -c 200 <<<"${branchApiOutput}")); leaving env ${branchHashId} in place rather than risk deleting it in error."
+                fi
+                continue
+              fi
+
+              branchInfo="${branchApiOutput}"
+
+              # A single candidate with an unparseable commit date shouldn't
+              # abort the whole sweep and leave every other candidate
+              # unprocessed for the night — skip just this one instead.
+              commitDate=$(jq -r '.commit.commit.committer.date' <<<"${branchInfo}")
+              set +e
+              commitEpoch=$(date -u -d "${commitDate}" +%s 2>/dev/null)
+              dateParseExitCode=$?
+              set -e
+
+              if [[ "${dateParseExitCode}" -ne 0 || -z "${commitEpoch}" ]]; then
+                echo "::warning::Could not parse last-commit date '${commitDate}' for branch '${branchName}'; leaving env ${branchHashId} in place rather than risk deleting it in error."
+                continue
+              fi
+
+              idleDays=$(( (nowEpoch - commitEpoch) / 86400 ))
+
+              if [[ "${idleDays}" -lt "${staleDaysThreshold}" ]]; then
+                echo "Branch '${branchName}' last active ${idleDays}d ago (< ${staleDaysThreshold}d threshold); leaving env ${branchHashId} in place."
+                continue
+              fi
+
+              echo "Branch '${branchName}' idle for ${idleDays}d (>= ${staleDaysThreshold}d threshold); tearing down env ${branchHashId} and notifying the branch owner."
+              targets=$(jq -c --arg h "${branchHashId}" '. + [$h]' <<<"${targets}")
+              notice=$(jq -c -n \
+                --arg branchName "${branchName}" \
+                --argjson idleDays "${idleDays}" \
+                --arg committerLogin "$(jq -r '.commit.committer.login // ""' <<<"${branchInfo}")" \
+                --arg committerEmail "$(jq -r '.commit.commit.committer.email // ""' <<<"${branchInfo}")" \
+                '{branchName: $branchName, idleDays: $idleDays, committerLogin: $committerLogin, committerEmail: $committerEmail}')
+              notices=$(jq -c --argjson n "${notice}" '. + [$n]' <<<"${notices}")
+            done < <(jq -c '.[]' <<<"${candidates}")
+
             echo "targetBranchHashIds=${targets}" >> "$GITHUB_OUTPUT"
+            echo "staleBranchNotices=${notices}" >> "$GITHUB_OUTPUT"
 
             targetCount=$(echo "${targets}" | jq length)
             if [[ "${targetCount}" -gt 0 ]]; then
-              echo "Found ${targetCount} existing Azure branch resource set(s) to clean up."
+              echo "Found ${targetCount} stale or orphaned Azure branch resource set(s) to clean up."
               echo "executeCleanup=true" >> "$GITHUB_OUTPUT"
             else
-              echo "No existing Azure branch resources found to clean up."
+              echo "No stale or orphaned Azure branch resources found to clean up."
               echo "executeCleanup=false" >> "$GITHUB_OUTPUT"
             fi
           else
@@ -169,6 +260,7 @@ jobs:
               echo "Target branch hash '${target}' is not a valid six-character hex hash."
               echo "executeCleanup=false" >> "$GITHUB_OUTPUT"
               echo 'targetBranchHashIds=[]' >> "$GITHUB_OUTPUT"
+              echo 'staleBranchNotices=[]' >> "$GITHUB_OUTPUT"
               exit 0
             fi
 
@@ -186,6 +278,7 @@ jobs:
                 ]
               | length
             ')
+            echo 'staleBranchNotices=[]' >> "$GITHUB_OUTPUT"
             if [[ $count -gt 0 ]]; then
               echo 'Expected Azure branch resources found.'
               echo "targetBranchHashIds=[\"${target}\"]" >> "$GITHUB_OUTPUT"
@@ -201,6 +294,67 @@ jobs:
           stackName=$(ops/scripts/pipeline/generate-stackname.sh Develop "${APP_NAME}" "${DEV_SUFFIX}" "")
           echo "Stack Name (base): $stackName"
           echo "stackName=$stackName" >> $GITHUB_OUTPUT
+
+  # A separate job, rather than a step in `check`: GitHub Actions registers
+  # every secret referenced anywhere in a job as a masked value for the
+  # WHOLE job as soon as it starts, not just the step that reads it. When
+  # SLACK_WEBHOOK_URL/SLACK_USER_MAPPING lived in a step here, that made
+  # `check`'s targetBranchHashIds output collide with GitHub's "may contain
+  # secret" output redaction and get silently dropped — which then failed
+  # `clean-up`'s `fromJSON(needs.check.outputs.targetBranchHashIds)` matrix
+  # evaluation with "empty input" every time there was actually something to
+  # clean up. Keeping the Slack secrets out of `check` entirely avoids that.
+  notify:
+    runs-on: ubuntu-latest
+    needs: [check]
+    if: needs.check.outputs.staleBranchNotices != '[]'
+    environment: 'remove-branch'
+    permissions:
+      contents: read
+    steps:
+      - name: Notify stale branch owners
+        # Best-effort: a Slack outage shouldn't block the actual teardown
+        # in `clean-up`, so this step's failure doesn't fail the job.
+        continue-on-error: true
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_USER_MAPPING: ${{ secrets.SLACK_USER_MAPPING }}
+          STALE_BRANCH_NOTICES: ${{ needs.check.outputs.staleBranchNotices }}
+          STALE_DAYS_THRESHOLD: ${{ needs.check.outputs.staleDaysThreshold }}
+        run: |
+          set -euo pipefail
+          staleDaysThreshold="${STALE_DAYS_THRESHOLD}"
+
+          while IFS= read -r notice; do
+            branchName=$(jq -r '.branchName' <<<"${notice}")
+            idleDays=$(jq -r '.idleDays' <<<"${notice}")
+            committerLogin=$(jq -r '.committerLogin' <<<"${notice}")
+            committerEmail=$(jq -r '.committerEmail' <<<"${notice}")
+
+            # Match on committerLogin only: it's GitHub's verified linked-account
+            # identity, whereas committerEmail comes from raw git commit metadata
+            # that anyone with push access can set to an arbitrary string
+            # (git config user.email). committerEmail is still used below as a
+            # display fallback, just not as a lookup key.
+            slackId=$(echo "${SLACK_USER_MAPPING}" | jq -r --arg username "${committerLogin}" \
+              '.[] | select(.github == $username) | .slack // empty' | head -1)
+
+            if [[ -n "${slackId}" ]]; then
+              who=" <@${slackId}>"
+            else
+              who=" (${committerLogin:-${committerEmail:-unknown committer}})"
+            fi
+
+            message=$(printf '🧹 Branch `%s` has had no commits for %sd (stale threshold: %sd) — its Azure branch environment is being torn down tonight.%s If you'"'"'re still using this branch, push a commit to redeploy it; otherwise please delete the branch.' \
+              "${branchName}" "${idleDays}" "${staleDaysThreshold}" "${who}")
+
+            # A transient failure notifying one branch owner shouldn't abort
+            # the loop and silently skip every remaining owner in the batch.
+            curl -X POST -H 'Content-type: application/json' \
+              --data "$(jq -n --arg text "${message}" '{text: $text}')" \
+              "${SLACK_WEBHOOK_URL}" \
+              || echo "::warning::Failed to send Slack notification for branch '${branchName}'."
+          done < <(jq -c '.[]' <<<"${STALE_BRANCH_NOTICES}")
 
   clean-up:
     runs-on: ubuntu-latest
@@ -233,40 +387,30 @@ jobs:
           tenant-id: ${{ secrets.AZ_TENANT_ID }}
           subscription-id: ${{ secrets.AZ_SUBSCRIPTION_ID }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Fetch config from Key Vault
         env:
           GHA_ENVIRONMENT: 'Develop'
         run: |
           set -euo pipefail
+          # shellcheck source=ops/scripts/pipeline/_kv-to-env.sh
+          source ops/scripts/pipeline/_kv-to-env.sh
           if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
             KV="kv-ustp-cams"
           else
             KV="kv-ustp-cams-dev"
           fi
-          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-COSMOS-MONGO-ACCOUNT-NAME --query value -o tsv)
-          echo "::add-mask::${_val}"
-          echo "AZ_COSMOS_MONGO_ACCOUNT_NAME=${_val}" >> "$GITHUB_ENV"
+          kv_to_env AZ_COSMOS_MONGO_ACCOUNT_NAME "$KV" AZ-COSMOS-MONGO-ACCOUNT-NAME
 
-          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-APP-RG --query value -o tsv)
-          echo "::add-mask::${_val}"
-          echo "AZ_APP_RG_BASE=${_val}" >> "$GITHUB_ENV"
+          kv_to_env AZ_APP_RG_BASE "$KV" AZ-APP-RG
 
-          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-NETWORK-RG --query value -o tsv)
-          echo "::add-mask::${_val}"
-          echo "AZ_NETWORK_RG_BASE=${_val}" >> "$GITHUB_ENV"
+          kv_to_env AZ_NETWORK_RG_BASE "$KV" AZ-NETWORK-RG
 
-          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-KV-APP-CONFIG-RG-NAME --query value -o tsv)
-          echo "::add-mask::${_val}"
-          echo "AZ_KV_APP_CONFIG_RG_NAME=${_val}" >> "$GITHUB_ENV"
+          kv_to_env AZ_KV_APP_CONFIG_RG_NAME "$KV" AZ-KV-APP-CONFIG-RG-NAME
 
-          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-ANALYTICS-RG --query value -o tsv)
-          echo "::add-mask::${_val}"
-          echo "AZ_ANALYTICS_RG=${_val}" >> "$GITHUB_ENV"
+          kv_to_env AZ_ANALYTICS_RG "$KV" AZ-ANALYTICS-RG
 
-          _val=$(az keyvault secret show --vault-name "$KV" --name AZURE-RG --query value -o tsv)
-          echo "::add-mask::${_val}"
-          echo "AZURE_RG=${_val}" >> "$GITHUB_ENV"
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+          kv_to_env AZURE_RG "$KV" AZURE-RG
       - name: Delete Branch Resources
         uses: azure/cli@9eb25b8360668fb0ecbafa808d40e2197b2f5f52 # v3.0.0
         id: deleteBranchResources

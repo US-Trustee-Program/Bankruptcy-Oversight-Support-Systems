@@ -22,6 +22,8 @@ interface ModalProps {
   heading: React.ReactNode;
   headingTooltip?: string;
   content: React.ReactNode;
+  /** Rendered inside the footer, after the submit/cancel buttons (e.g. a processing spinner). */
+  footerContent?: React.ReactNode;
   forceAction?: boolean;
   actionButtonGroup: SubmitCancelBtnProps;
   onOpen?: () => void;
@@ -285,6 +287,7 @@ function Modal_(props: ModalProps, ref: React.Ref<ModalRefType>) {
                       : undefined
                   }
                 ></SubmitCancelButtonGroup>
+                {props.footerContent}
               </div>
             </div>
             {props.forceAction || (

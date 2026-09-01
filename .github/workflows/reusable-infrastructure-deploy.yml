@@ -59,17 +59,15 @@ jobs:
           GHA_ENVIRONMENT: ${{ inputs.ghaEnvironment }}
         run: |
           set -euo pipefail
+          # shellcheck source=ops/scripts/pipeline/_kv-to-env.sh
+          source ops/scripts/pipeline/_kv-to-env.sh
           if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
             KV="kv-ustp-cams"
           else
             KV="kv-ustp-cams-dev"
           fi
-          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-ANALYTICS-WORKSPACE-NAME --query value -o tsv)
-          echo "::add-mask::${_val}"
-          echo "AZ_ANALYTICS_WORKSPACE_NAME=${_val}" >> "$GITHUB_ENV"
-          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-ANALYTICS-RG --query value -o tsv)
-          echo "::add-mask::${_val}"
-          echo "AZ_ANALYTICS_RG=${_val}" >> "$GITHUB_ENV"
+          kv_to_env AZ_ANALYTICS_WORKSPACE_NAME "$KV" AZ-ANALYTICS-WORKSPACE-NAME
+          kv_to_env AZ_ANALYTICS_RG "$KV" AZ-ANALYTICS-RG
 
       - name: Deploy Log Analytics Workspace
         id: azure-analytics-deploy
@@ -106,45 +104,27 @@ jobs:
           STACK_NAME: ${{ inputs.stackName }}
         run: |
           set -euo pipefail
+          # shellcheck source=ops/scripts/pipeline/_kv-to-env.sh
+          source ops/scripts/pipeline/_kv-to-env.sh
           if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
             KV="kv-ustp-cams"
           else
             KV="kv-ustp-cams-dev"
           fi
-          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-NETWORK-RG --query value -o tsv)
-          echo "::add-mask::${_val}"
           # CAMS-760, Option E / Slice 2: branches deploy into the SAME stable
           # network RG main uses, distinguished by per-branch-unique resource
           # names, rather than a per-branch hash-suffixed RG (matches
           # reusable-deploy.yml's derivation — keep both in lockstep).
-          AZ_NETWORK_RG="${_val}"
-          echo "AZ_NETWORK_RG=${AZ_NETWORK_RG}" >> "$GITHUB_ENV"
-          _val=$(az keyvault secret show --vault-name "$KV" --name AZURE-RG --query value -o tsv)
-          echo "::add-mask::${_val}"
-          echo "AZURE_RG=${_val}" >> "$GITHUB_ENV"
-          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-ANALYTICS-RG --query value -o tsv)
-          echo "::add-mask::${_val}"
-          echo "AZ_ANALYTICS_RG=${_val}" >> "$GITHUB_ENV"
-          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-COSMOS-DATABASE-NAME --query value -o tsv)
-          echo "::add-mask::${_val}"
-          echo "AZ_COSMOS_DATABASE_NAME=${_val}" >> "$GITHUB_ENV"
-          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-COSMOS-MONGO-ACCOUNT-NAME --query value -o tsv)
-          echo "::add-mask::${_val}"
-          echo "AZ_COSMOS_MONGO_ACCOUNT_NAME=${_val}" >> "$GITHUB_ENV"
-          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-ANALYTICS-WORKSPACE-ID --query value -o tsv)
-          echo "::add-mask::${_val}"
-          echo "AZ_ANALYTICS_WORKSPACE_ID=${_val}" >> "$GITHUB_ENV"
-          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-KV-APP-CONFIG-MANAGED-ID --query value -o tsv)
-          echo "::add-mask::${_val}"
-          echo "AZ_KV_APP_CONFIG_MANAGED_ID=${_val}" >> "$GITHUB_ENV"
-          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-KV-APP-CONFIG-NAME --query value -o tsv)
-          echo "::add-mask::${_val}"
-          echo "AZ_KV_APP_CONFIG_NAME=${_val}" >> "$GITHUB_ENV"
-          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-KV-APP-CONFIG-RG-NAME --query value -o tsv)
-          echo "::add-mask::${_val}"
-          echo "AZ_KV_APP_CONFIG_RG_NAME=${_val}" >> "$GITHUB_ENV"
-          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-NETWORK-VNET-NAME --query value -o tsv)
-          echo "::add-mask::${_val}"
+          kv_to_env AZ_NETWORK_RG "$KV" AZ-NETWORK-RG
+          kv_to_env AZURE_RG "$KV" AZURE-RG
+          kv_to_env AZ_ANALYTICS_RG "$KV" AZ-ANALYTICS-RG
+          kv_to_env AZ_COSMOS_DATABASE_NAME "$KV" AZ-COSMOS-DATABASE-NAME
+          kv_to_env AZ_COSMOS_MONGO_ACCOUNT_NAME "$KV" AZ-COSMOS-MONGO-ACCOUNT-NAME
+          kv_to_env AZ_ANALYTICS_WORKSPACE_ID "$KV" AZ-ANALYTICS-WORKSPACE-ID
+          kv_to_env AZ_KV_APP_CONFIG_MANAGED_ID "$KV" AZ-KV-APP-CONFIG-MANAGED-ID
+          kv_to_env AZ_KV_APP_CONFIG_NAME "$KV" AZ-KV-APP-CONFIG-NAME
+          kv_to_env AZ_KV_APP_CONFIG_RG_NAME "$KV" AZ-KV-APP-CONFIG-RG-NAME
+          kv_get AZ_NETWORK_VNET_NAME_KV "$KV" AZ-NETWORK-VNET-NAME
           # CAMS-760, Option E / Slice 2: each branch owns its own uniquely-named
           # VNet (vnet-<stackName>) in the now-shared network RG, not the fixed
           # KV-sourced name -- matches reusable-deploy.yml's identical
@@ -154,11 +134,11 @@ jobs:
           # branches were never guaranteed to differ before Slice 2, and
           # differ unconditionally now.
           if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
-            AZ_NETWORK_VNET_NAME="${_val}"
+            AZ_NETWORK_VNET_NAME="${AZ_NETWORK_VNET_NAME_KV}"
           else
             AZ_NETWORK_VNET_NAME="vnet-${STACK_NAME}"
           fi
-          echo "AZ_NETWORK_VNET_NAME=${AZ_NETWORK_VNET_NAME}" >> "$GITHUB_ENV"
+          kv_mask_and_write AZ_NETWORK_VNET_NAME "${AZ_NETWORK_VNET_NAME}"
 
       - name: Generate E2E name
         id: generateE2eName
@@ -195,7 +175,8 @@ jobs:
             --actionGroupName "${AZ_ACTION_GROUP_NAME}" \
             --keyVaultName ${{ env.AZ_KV_APP_CONFIG_NAME }} \
             --kvResourceGroup ${{ env.AZ_KV_APP_CONFIG_RG_NAME }} \
-            --branchHashId "${ENVIRONMENT_HASH}"
+            --branchHashId "${ENVIRONMENT_HASH}" \
+            --actionGroupSubscriptionId "${{ secrets.AZ_SUBSCRIPTION_ID }}"
 
       - name: Deploy E2E SQL Database
         id: azure-e2e-sql-deploy

@@ -5,6 +5,7 @@ import SyncTrusteeCaseAppointments, {
   assertSyncedCase,
   throwIfTransientSoftCloseFailure,
   createNewAppointment,
+  closeExistingAppointment,
   softCloseExistingAppointment,
   isTransientInfraError,
   handleClassifiedMismatch,
@@ -174,7 +175,6 @@ describe('SyncTrusteeCaseAppointments', () => {
       );
       vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue({
         findByCamsTrusteeId: vi.fn().mockResolvedValue([]),
-        findByAcmsProfessionalId: vi.fn().mockResolvedValue([]),
         release: vi.fn(),
       } as unknown as TrusteeProfessionalIdsRepository);
       vi.spyOn(factory, 'getOfficesGateway').mockReturnValue({
@@ -502,83 +502,7 @@ describe('SyncTrusteeCaseAppointments', () => {
       );
     });
 
-    test('resolves trusteeId via professional-ID lookup when event.acmsProfessionalId has exactly one match, skipping name matching', async () => {
-      const professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
-      (professionalIdsRepo.findByAcmsProfessionalId as ReturnType<typeof vi.fn>).mockResolvedValue([
-        { camsTrusteeId: 'trustee-999', acmsProfessionalId: '081-00123' },
-      ]);
-
-      const events: TrusteeAppointmentSyncEvent[] = [
-        { ...makeEvent('case-001', 'John Doe'), acmsProfessionalId: '081-00123' },
-      ];
-
-      await SyncTrusteeCaseAppointments.processAppointments(
-        SyncTrusteeCaseAppointments.createDeps(context),
-        events,
-      );
-
-      expect(professionalIdsRepo.findByAcmsProfessionalId).toHaveBeenCalledWith('081-00123');
-      expect(trusteeMatchHelpers.matchTrusteeByName).not.toHaveBeenCalled();
-      expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
-        expect.objectContaining({ caseId: 'case-001', trusteeId: 'trustee-999' }),
-      );
-    });
-
-    test('falls back to name matching when the professional-ID lookup has no match', async () => {
-      const professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
-      (professionalIdsRepo.findByAcmsProfessionalId as ReturnType<typeof vi.fn>).mockResolvedValue(
-        [],
-      );
-
-      const events: TrusteeAppointmentSyncEvent[] = [
-        { ...makeEvent('case-001', 'John Doe'), acmsProfessionalId: '081-00123' },
-      ];
-
-      await SyncTrusteeCaseAppointments.processAppointments(
-        SyncTrusteeCaseAppointments.createDeps(context),
-        events,
-      );
-
-      expect(professionalIdsRepo.findByAcmsProfessionalId).toHaveBeenCalledWith('081-00123');
-      expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalledWith(
-        context,
-        { fullName: 'John Doe', firstName: 'John', lastName: 'Doe' },
-        '081',
-      );
-      expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
-        expect.objectContaining({ caseId: 'case-001', trusteeId: 'trustee-123' }),
-      );
-    });
-
-    test('falls back to name matching when the professional-ID lookup is ambiguous (multiple matches)', async () => {
-      const professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
-      (professionalIdsRepo.findByAcmsProfessionalId as ReturnType<typeof vi.fn>).mockResolvedValue([
-        { camsTrusteeId: 'trustee-999', acmsProfessionalId: '081-00123' },
-        { camsTrusteeId: 'trustee-888', acmsProfessionalId: '081-00123' },
-      ]);
-
-      const events: TrusteeAppointmentSyncEvent[] = [
-        { ...makeEvent('case-001', 'John Doe'), acmsProfessionalId: '081-00123' },
-      ];
-
-      await SyncTrusteeCaseAppointments.processAppointments(
-        SyncTrusteeCaseAppointments.createDeps(context),
-        events,
-      );
-
-      expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalledWith(
-        context,
-        { fullName: 'John Doe', firstName: 'John', lastName: 'Doe' },
-        '081',
-      );
-      expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
-        expect.objectContaining({ caseId: 'case-001', trusteeId: 'trustee-123' }),
-      );
-    });
-
-    test('skips the professional-ID lookup entirely when the event has no acmsProfessionalId', async () => {
-      const professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
-
+    test('falls back to name matching when there is no professional ID', async () => {
       const events = [makeEvent('case-001', 'John Doe')];
 
       await SyncTrusteeCaseAppointments.processAppointments(
@@ -586,82 +510,10 @@ describe('SyncTrusteeCaseAppointments', () => {
         events,
       );
 
-      expect(professionalIdsRepo.findByAcmsProfessionalId).not.toHaveBeenCalled();
-      expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalledWith(
-        context,
-        { fullName: 'John Doe', firstName: 'John', lastName: 'Doe' },
-        '081',
-      );
-    });
-
-    describe('reserved acmsProfessionalId values', () => {
-      test.each(['XX-00000', 'XX-98000', 'XX-99999'])(
-        'skips matching and verification entirely for reserved acmsProfessionalId %s, counting it as success',
-        async (reservedId) => {
-          const professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
-
-          const events: TrusteeAppointmentSyncEvent[] = [
-            { ...makeEvent('case-001', 'John Doe'), acmsProfessionalId: reservedId },
-          ];
-
-          const { successCount, dlqMessages, notYetSyncedEvents, scenarioDistribution } =
-            await SyncTrusteeCaseAppointments.processAppointments(
-              SyncTrusteeCaseAppointments.createDeps(context),
-              events,
-            );
-
-          expect(professionalIdsRepo.findByAcmsProfessionalId).not.toHaveBeenCalled();
-          expect(trusteeMatchHelpers.matchTrusteeByName).not.toHaveBeenCalled();
-          expect(mockVerificationRepo.getVerification).not.toHaveBeenCalled();
-          expect(mockVerificationRepo.upsertVerification).not.toHaveBeenCalled();
-          expect(mockCasesRepo.getCaseOrMovedCase).not.toHaveBeenCalled();
-          expect(mockTrusteeCaseAppointmentsRepo.upsert).not.toHaveBeenCalled();
-
-          expect(successCount).toBe(1);
-          expect(dlqMessages).toHaveLength(0);
-          expect(notYetSyncedEvents).toHaveLength(0);
-          expect(scenarioDistribution.reservedIdSkippedCount).toBe(1);
-        },
-      );
-
-      test('continues normal matching for a real (non-reserved) acmsProfessionalId', async () => {
-        const professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
-        (
-          professionalIdsRepo.findByAcmsProfessionalId as ReturnType<typeof vi.fn>
-        ).mockResolvedValue([{ camsTrusteeId: 'trustee-999', acmsProfessionalId: '081-00123' }]);
-
-        const events: TrusteeAppointmentSyncEvent[] = [
-          { ...makeEvent('case-001', 'John Doe'), acmsProfessionalId: '081-00123' },
-        ];
-
-        const { successCount, scenarioDistribution } =
-          await SyncTrusteeCaseAppointments.processAppointments(
-            SyncTrusteeCaseAppointments.createDeps(context),
-            events,
-          );
-
-        expect(professionalIdsRepo.findByAcmsProfessionalId).toHaveBeenCalledWith('081-00123');
-        expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
-          expect.objectContaining({ caseId: 'case-001', trusteeId: 'trustee-999' }),
-        );
-        expect(successCount).toBe(1);
-        expect(scenarioDistribution.reservedIdSkippedCount).toBe(0);
-      });
-
-      test('falls through to name matching when acmsProfessionalId is undefined', async () => {
-        const events = [makeEvent('case-001', 'John Doe')];
-
-        const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
-          SyncTrusteeCaseAppointments.createDeps(context),
-          events,
-        );
-
-        expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalledWith(
-          context,
-          { fullName: 'John Doe', firstName: 'John', lastName: 'Doe' },
-          '081',
-        );
-        expect(scenarioDistribution.reservedIdSkippedCount).toBe(0);
+      expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalledWith(context, {
+        fullName: 'John Doe',
+        firstName: 'John',
+        lastName: 'Doe',
       });
     });
 
@@ -722,11 +574,10 @@ describe('SyncTrusteeCaseAppointments', () => {
           events,
         );
 
-        expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalledWith(
-          context,
-          { fullName: '', legacy: { address1: '123 Main St' } },
-          '081',
-        );
+        expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalledWith(context, {
+          fullName: '',
+          legacy: { address1: '123 Main St' },
+        });
         expect(scenarioDistribution.emptyDemographicsSkippedCount).toBe(0);
       });
 
@@ -739,6 +590,695 @@ describe('SyncTrusteeCaseAppointments', () => {
         );
 
         expect(scenarioDistribution.emptyDemographicsSkippedCount).toBe(0);
+      });
+    });
+
+    describe('sentinel professional code', () => {
+      test.each([['00000'], ['99999']])(
+        'skips an event with profCode %s and no name/address at all',
+        async (profCode) => {
+          const events: TrusteeAppointmentSyncEvent[] = [
+            { ...makeEvent('case-001', ''), dxtrTrustee: { fullName: '' }, profCode },
+          ];
+
+          const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+            SyncTrusteeCaseAppointments.createDeps(context),
+            events,
+          );
+
+          expect(trusteeMatchHelpers.matchTrusteeByName).not.toHaveBeenCalled();
+          expect(mockVerificationRepo.upsertVerification).not.toHaveBeenCalled();
+          expect(scenarioDistribution.emptyDemographicsSkippedCount).toBe(1);
+        },
+      );
+
+      test.each([['00000'], ['99999']])(
+        // Regression: isBogusTrusteeName's lastName-then-fullName fallback must use
+        // normalizeName (not plain truthiness) — a whitespace-only lastName is truthy in JS and
+        // would otherwise suppress the fallback to fullName, hiding a genuine name.
+        'falls back to fullName when lastName is whitespace-only, with profCode %s',
+        async (profCode) => {
+          const events: TrusteeAppointmentSyncEvent[] = [
+            {
+              ...makeEvent('case-001', 'Jane Trustee Services'),
+              dxtrTrustee: {
+                fullName: 'Jane Trustee Services',
+                lastName: '   ',
+              },
+              profCode,
+            },
+          ];
+
+          const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+            SyncTrusteeCaseAppointments.createDeps(context),
+            events,
+          );
+
+          // lastName is blank, so isBogusTrusteeName falls back to fullName — which contains
+          // "trustee" — and no contact info is present, so this is correctly skipped.
+          expect(trusteeMatchHelpers.matchTrusteeByName).not.toHaveBeenCalled();
+          expect(scenarioDistribution.sentinelBogusNameSkippedCount).toBe(1);
+        },
+      );
+
+      test.each([
+        ['00000', 'No Trustee'],
+        ['99999', 'No Trustee'],
+        ['00000', 'TRUSTEE NOT APPOINTED'],
+        ['00000', 'Awaiting Trustee Assignment'],
+        ['00000', 'Not Assigned - XX'],
+        ['00000', 'For Internal Use Only'],
+        ['00000', 'CHAPTER 11 - XX'],
+      ])(
+        'skips an event with profCode %s and bogus name %s when no contact fields are populated',
+        async (profCode, bogusName) => {
+          const events: TrusteeAppointmentSyncEvent[] = [
+            {
+              ...makeEvent('case-001', ''),
+              dxtrTrustee: { fullName: bogusName, lastName: bogusName },
+              profCode,
+            },
+          ];
+
+          const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+            SyncTrusteeCaseAppointments.createDeps(context),
+            events,
+          );
+
+          expect(trusteeMatchHelpers.matchTrusteeByName).not.toHaveBeenCalled();
+          expect(mockVerificationRepo.upsertVerification).not.toHaveBeenCalled();
+          expect(scenarioDistribution.sentinelBogusNameSkippedCount).toBe(1);
+        },
+      );
+
+      test.each([['00000'], ['99999']])(
+        // isBogusTrusteeName must never disqualify a record that also carries real contact
+        // info — otherwise a genuine trustee named e.g. "John Doe, Trustee" or a firm "ABC
+        // Chapter 13 Services" with a sentinel profCode and a real address/phone/email would be
+        // silently dropped before ever reaching matching.
+        'does not skip an event with profCode %s and a bogus-looking name when contact fields are populated',
+        async (profCode) => {
+          const events: TrusteeAppointmentSyncEvent[] = [
+            {
+              ...makeEvent('case-001', ''),
+              dxtrTrustee: {
+                fullName: 'John Doe, Trustee',
+                lastName: 'Doe, Trustee',
+                legacy: {
+                  address1: '123 Fake St',
+                  phone: '555-555-5555',
+                  email: 'fake@example.com',
+                },
+              },
+              profCode,
+            },
+          ];
+
+          const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+            SyncTrusteeCaseAppointments.createDeps(context),
+            events,
+          );
+
+          expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalled();
+          expect(scenarioDistribution.emptyDemographicsSkippedCount).toBe(0);
+          expect(scenarioDistribution.sentinelBogusNameSkippedCount).toBe(0);
+        },
+      );
+
+      test.each([['00000'], ['99999']])(
+        'does not skip an event with profCode %s and a genuine name but no contact fields',
+        async (profCode) => {
+          const events: TrusteeAppointmentSyncEvent[] = [
+            { ...makeEvent('case-001', 'Jane A Example'), profCode },
+          ];
+
+          const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+            SyncTrusteeCaseAppointments.createDeps(context),
+            events,
+          );
+
+          expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalled();
+          expect(scenarioDistribution.emptyDemographicsSkippedCount).toBe(0);
+        },
+      );
+
+      test.each([['00000'], ['99999']])(
+        'does not skip an event with profCode %s and a genuine name and address',
+        async (profCode) => {
+          const events: TrusteeAppointmentSyncEvent[] = [
+            {
+              ...makeEvent('case-001', 'Jane A Example'),
+              dxtrTrustee: {
+                fullName: 'Jane A Example',
+                firstName: 'Jane',
+                lastName: 'Example',
+                legacy: { address1: '123 Fake St' },
+              },
+              profCode,
+            },
+          ];
+
+          const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+            SyncTrusteeCaseAppointments.createDeps(context),
+            events,
+          );
+
+          expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalled();
+          expect(scenarioDistribution.emptyDemographicsSkippedCount).toBe(0);
+        },
+      );
+
+      test.each([['00000'], ['99999']])(
+        // Regression (mattstankey review): isSentinelWithNoIdentity's contact check must
+        // recognize phone/email the same way hasNoUsableDemographics's hasContact does — an
+        // address-only check would wrongly conclude "no contact" for a record with only a
+        // phone or email, which is exactly the kind of legitimate contact signal the outer
+        // check already treats as usable.
+        'does not skip an event with profCode %s, blank name/address, but a populated phone',
+        async (profCode) => {
+          const events: TrusteeAppointmentSyncEvent[] = [
+            {
+              ...makeEvent('case-001', ''),
+              dxtrTrustee: { fullName: '', legacy: { phone: '555-555-5555' } },
+              profCode,
+            },
+          ];
+
+          const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+            SyncTrusteeCaseAppointments.createDeps(context),
+            events,
+          );
+
+          expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalled();
+          expect(scenarioDistribution.emptyDemographicsSkippedCount).toBe(0);
+        },
+      );
+
+      test.each([['00000'], ['99999']])(
+        'does not skip an event with profCode %s, blank name/address, but a populated email',
+        async (profCode) => {
+          const events: TrusteeAppointmentSyncEvent[] = [
+            {
+              ...makeEvent('case-001', ''),
+              dxtrTrustee: { fullName: '', legacy: { email: 'fake@example.com' } },
+              profCode,
+            },
+          ];
+
+          const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+            SyncTrusteeCaseAppointments.createDeps(context),
+            events,
+          );
+
+          expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalled();
+          expect(scenarioDistribution.emptyDemographicsSkippedCount).toBe(0);
+        },
+      );
+
+      test.each([['00000'], ['99999']])(
+        'does not skip an event with profCode %s and a genuine fullName but no separate firstName field',
+        async (profCode) => {
+          // Regression: isSentinelWithNoIdentity's no-name check must recognize a usable
+          // fullName the same way hasNoUsableDemographics does, even when DXTR supplies no
+          // separate firstName field — a firstName-only check would wrongly conclude "no name"
+          // for a record hasNoUsableDemographics itself already treated as named.
+          const events: TrusteeAppointmentSyncEvent[] = [
+            {
+              ...makeEvent('case-001', 'Jane A Example'),
+              dxtrTrustee: { fullName: 'Jane A Example' },
+              profCode,
+            },
+          ];
+
+          const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+            SyncTrusteeCaseAppointments.createDeps(context),
+            events,
+          );
+
+          expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalled();
+          expect(scenarioDistribution.emptyDemographicsSkippedCount).toBe(0);
+        },
+      );
+
+      test('a non-sentinel profCode still hits the pre-existing empty-demographics rule, even with no name/address', async () => {
+        const events: TrusteeAppointmentSyncEvent[] = [
+          {
+            ...makeEvent('case-001', ''),
+            dxtrTrustee: { fullName: '' },
+            profCode: '12345',
+          },
+        ];
+
+        const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          events,
+        );
+
+        // Unaffected by the sentinel rule — falls through to the existing empty-demographics
+        // rule, which still applies regardless of profCode.
+        expect(scenarioDistribution.emptyDemographicsSkippedCount).toBe(1);
+      });
+
+      test('does not treat a real trustee name containing "trustee" as bogus when profCode is not a sentinel', async () => {
+        const events: TrusteeAppointmentSyncEvent[] = [
+          {
+            ...makeEvent('case-001', 'Jane A Example'),
+            dxtrTrustee: {
+              fullName: 'Jane A Robert Trustee',
+              firstName: 'Jane',
+              lastName: 'Robert Trustee',
+            },
+            profCode: '12345',
+          },
+        ];
+
+        const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          events,
+        );
+
+        expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalled();
+        expect(scenarioDistribution.emptyDemographicsSkippedCount).toBe(0);
+      });
+
+      test.each([['00000'], ['99999']])(
+        // Exercises isBogusTrusteeName directly with a sentinel profCode, a name containing a
+        // bogus-name keyword, AND real contact info — the exact combination the sentinel-skip
+        // rule above must never treat as disqualifying.
+        'does not skip a genuinely-named trustee whose name contains "trustee" with profCode %s and real contact info',
+        async (profCode) => {
+          const events: TrusteeAppointmentSyncEvent[] = [
+            {
+              ...makeEvent('case-001', 'Robert Trustee'),
+              dxtrTrustee: {
+                fullName: 'Robert Trustee',
+                firstName: 'Robert',
+                lastName: 'Trustee',
+                legacy: {
+                  address1: '123 Fake St',
+                  phone: '555-555-5555',
+                  email: 'fake@example.com',
+                },
+              },
+              profCode,
+            },
+          ];
+
+          const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+            SyncTrusteeCaseAppointments.createDeps(context),
+            events,
+          );
+
+          expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalled();
+          expect(scenarioDistribution.emptyDemographicsSkippedCount).toBe(0);
+          expect(scenarioDistribution.sentinelBogusNameSkippedCount).toBe(0);
+        },
+      );
+
+      describe('close-only for bogus/placeholder trustees', () => {
+        const existingAppointment: CaseAppointment = {
+          id: 'ca-old',
+          caseId: 'case-001',
+          trusteeId: 'old-trustee',
+          assignedOn: '2024-01-01',
+          createdOn: '2024-01-01T00:00:00Z',
+          createdBy: { id: 'system', name: 'System' },
+          updatedOn: '2024-01-01T00:00:00Z',
+          updatedBy: { id: 'system', name: 'System' },
+        };
+
+        test('closes the existing active appointment without creating a replacement when the event has a bogus placeholder name', async () => {
+          (
+            mockTrusteeCaseAppointmentsRepo.getActiveByCaseId as ReturnType<typeof vi.fn>
+          ).mockResolvedValue(existingAppointment);
+
+          const events: TrusteeAppointmentSyncEvent[] = [
+            {
+              ...makeEvent('case-001', ''),
+              dxtrTrustee: { fullName: 'No Trustee', lastName: 'No Trustee' },
+              profCode: '00000',
+            },
+          ];
+
+          const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+            SyncTrusteeCaseAppointments.createDeps(context),
+            events,
+          );
+
+          // makeEvent's appointedDate is '2024-01-15' — unassignedOn is one day before it, never
+          // wall-clock time.
+          expect(mockTrusteeCaseAppointmentsRepo.updateCaseAppointment).toHaveBeenCalledWith(
+            expect.objectContaining({
+              id: 'ca-old',
+              trusteeId: 'old-trustee',
+              unassignedOn: '2024-01-14',
+            }),
+          );
+          expect(mockTrusteeCaseAppointmentsRepo.upsert).not.toHaveBeenCalled();
+          expect(scenarioDistribution.sentinelBogusNameSkippedCount).toBe(1);
+        });
+
+        test('does nothing further when there is no existing active appointment to close', async () => {
+          // getActiveByCaseId defaults to null in beforeEach — nothing to close.
+          const events: TrusteeAppointmentSyncEvent[] = [
+            {
+              ...makeEvent('case-001', ''),
+              dxtrTrustee: { fullName: 'No Trustee', lastName: 'No Trustee' },
+              profCode: '00000',
+            },
+          ];
+
+          const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+            SyncTrusteeCaseAppointments.createDeps(context),
+            events,
+          );
+
+          expect(mockTrusteeCaseAppointmentsRepo.updateCaseAppointment).not.toHaveBeenCalled();
+          expect(mockTrusteeCaseAppointmentsRepo.upsert).not.toHaveBeenCalled();
+          expect(scenarioDistribution.sentinelBogusNameSkippedCount).toBe(1);
+        });
+
+        test('routes to retryableEvents and creates nothing on a transient close failure', async () => {
+          (
+            mockTrusteeCaseAppointmentsRepo.getActiveByCaseId as ReturnType<typeof vi.fn>
+          ).mockResolvedValue(existingAppointment);
+          (
+            mockTrusteeCaseAppointmentsRepo.updateCaseAppointment as ReturnType<typeof vi.fn>
+          ).mockRejectedValue(new TooManyRequestsError('COSMOS'));
+
+          const events: TrusteeAppointmentSyncEvent[] = [
+            {
+              ...makeEvent('case-001', ''),
+              dxtrTrustee: { fullName: 'No Trustee', lastName: 'No Trustee' },
+              profCode: '00000',
+            },
+          ];
+
+          const { retryableEvents, dlqMessages, scenarioDistribution } =
+            await SyncTrusteeCaseAppointments.processAppointments(
+              SyncTrusteeCaseAppointments.createDeps(context),
+              events,
+            );
+
+          expect(retryableEvents).toHaveLength(1);
+          expect(dlqMessages).toHaveLength(0);
+          expect(mockTrusteeCaseAppointmentsRepo.upsert).not.toHaveBeenCalled();
+          // The event never reached a terminal skip outcome — it's being retried, not counted.
+          expect(scenarioDistribution.sentinelBogusNameSkippedCount).toBe(0);
+        });
+
+        test('logs the failure and reports the event as handled on a permanent close failure', async () => {
+          (
+            mockTrusteeCaseAppointmentsRepo.getActiveByCaseId as ReturnType<typeof vi.fn>
+          ).mockResolvedValue(existingAppointment);
+          (
+            mockTrusteeCaseAppointmentsRepo.updateCaseAppointment as ReturnType<typeof vi.fn>
+          ).mockRejectedValue(new Error('Cosmos write failed'));
+
+          const events: TrusteeAppointmentSyncEvent[] = [
+            {
+              ...makeEvent('case-001', ''),
+              dxtrTrustee: { fullName: 'No Trustee', lastName: 'No Trustee' },
+              profCode: '00000',
+            },
+          ];
+
+          const { retryableEvents, dlqMessages, scenarioDistribution } =
+            await SyncTrusteeCaseAppointments.processAppointments(
+              SyncTrusteeCaseAppointments.createDeps(context),
+              events,
+            );
+
+          expect(retryableEvents).toHaveLength(0);
+          expect(dlqMessages).toHaveLength(0);
+          expect(mockTrusteeCaseAppointmentsRepo.upsert).not.toHaveBeenCalled();
+          expect(scenarioDistribution.sentinelBogusNameSkippedCount).toBe(1);
+        });
+
+        test('routes to dlqMessages and closes nothing when appointedDate is missing', async () => {
+          (
+            mockTrusteeCaseAppointmentsRepo.getActiveByCaseId as ReturnType<typeof vi.fn>
+          ).mockResolvedValue(existingAppointment);
+
+          const events: TrusteeAppointmentSyncEvent[] = [
+            {
+              ...makeEvent('case-001', ''),
+              dxtrTrustee: { fullName: 'No Trustee', lastName: 'No Trustee' },
+              profCode: '00000',
+              appointedDate: undefined,
+            },
+          ];
+
+          const { retryableEvents, dlqMessages, scenarioDistribution } =
+            await SyncTrusteeCaseAppointments.processAppointments(
+              SyncTrusteeCaseAppointments.createDeps(context),
+              events,
+            );
+
+          expect(retryableEvents).toHaveLength(0);
+          expect(dlqMessages).toHaveLength(1);
+          expect(mockTrusteeCaseAppointmentsRepo.updateCaseAppointment).not.toHaveBeenCalled();
+          expect(mockTrusteeCaseAppointmentsRepo.upsert).not.toHaveBeenCalled();
+          // Never reached a terminal skip outcome — it's a data-integrity DLQ, not counted.
+          expect(scenarioDistribution.sentinelBogusNameSkippedCount).toBe(0);
+        });
+      });
+    });
+
+    describe('bogus administrative name with no firstName', () => {
+      // Real DXTR noise observed in production: administrative/court-office placeholders with a
+      // non-sentinel profCode AND real contact info (a court or USTP-office address/phone/email),
+      // so neither the empty-demographics rule nor the sentinel-profCode bogus-name rule catches
+      // them. Every observed instance has no separate firstName field — the entire label lives in
+      // lastName/fullName — unlike a genuine trustee record, which always has one.
+      test.each([
+        ['For Internal Use Only', { email: 'bnc@mdb.uscourts.gov' }],
+        [
+          'US Trustee 11',
+          {
+            address1: '515 Rusk Ave',
+            cityStateZipCountry: 'Houston TX 77002 USA',
+            phone: '713-718-4650',
+            email: 'USTPRegion07.HU.ECF@USDOJ.GOV',
+          },
+        ],
+        ['Awaiting Trustee Assignment', { cityStateZipCountry: 'NJ' }],
+        [
+          'CHAPTER 11 - LV',
+          {
+            address1: '300 LAS VEGAS BLVD., SO. #4300',
+            cityStateZipCountry: 'LAS VEGAS NV 89101',
+            phone: '(702) 388-6600',
+            email: 'USTPRegion17.lv.ecf@usdoj.gov',
+          },
+        ],
+      ])(
+        'skips bogus admin name %s with a non-sentinel profCode and real contact info',
+        async (bogusName, legacy) => {
+          const events: TrusteeAppointmentSyncEvent[] = [
+            {
+              ...makeEvent('case-001', bogusName),
+              dxtrTrustee: { fullName: bogusName, lastName: bogusName, legacy },
+              profCode: '12345',
+            },
+          ];
+
+          const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+            SyncTrusteeCaseAppointments.createDeps(context),
+            events,
+          );
+
+          expect(trusteeMatchHelpers.matchTrusteeByName).not.toHaveBeenCalled();
+          expect(mockVerificationRepo.upsertVerification).not.toHaveBeenCalled();
+          expect(scenarioDistribution.unattributableBogusNameSkippedCount).toBe(1);
+        },
+      );
+
+      test('does not skip a genuine trustee whose name contains a bogus keyword but has a firstName', async () => {
+        const events: TrusteeAppointmentSyncEvent[] = [
+          {
+            ...makeEvent('case-001', 'Robert E Eggmann III'),
+            dxtrTrustee: {
+              fullName: 'Robert E Eggmann III',
+              firstName: 'Robert',
+              lastName: 'Eggmann',
+              legacy: {
+                address1: 'PO Box 168',
+                cityStateZipCountry: 'Columbia IL 62236 USA',
+                phone: '618-222-1900',
+                email: 'reetrustee@carmodymacdonald.com',
+              },
+            },
+            profCode: '12345',
+          },
+        ];
+
+        const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          events,
+        );
+
+        expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalled();
+        expect(scenarioDistribution.unattributableBogusNameSkippedCount).toBe(0);
+      });
+
+      test('does not skip a bogus-looking name that also has a firstName', async () => {
+        const events: TrusteeAppointmentSyncEvent[] = [
+          {
+            ...makeEvent('case-001', 'Robert Trustee'),
+            dxtrTrustee: {
+              fullName: 'Robert Trustee',
+              firstName: 'Robert',
+              lastName: 'Trustee',
+            },
+            profCode: '12345',
+          },
+        ];
+
+        const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          events,
+        );
+
+        expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalled();
+        expect(scenarioDistribution.unattributableBogusNameSkippedCount).toBe(0);
+      });
+    });
+
+    describe('bogus administrative name on a chapter 11 case', () => {
+      // Chapter 11 cases don't typically have a trustee appointed at filing (one may be
+      // appointed later as the case proceeds), so a bogus/administrative-looking name on a
+      // chapter 11 event is corroborated by the chapter itself — the firstName requirement is
+      // relaxed here, unlike the general unattributable-bogus-name rule above.
+      test('skips a bogus-looking name with a firstName when chapter is 11', async () => {
+        const events: TrusteeAppointmentSyncEvent[] = [
+          {
+            ...makeEvent('case-001', 'Robert Trustee'),
+            dxtrTrustee: {
+              fullName: 'Robert Trustee',
+              firstName: 'Robert',
+              lastName: 'Trustee',
+            },
+            profCode: '12345',
+            chapter: '11',
+          },
+        ];
+
+        const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          events,
+        );
+
+        expect(trusteeMatchHelpers.matchTrusteeByName).not.toHaveBeenCalled();
+        expect(scenarioDistribution.unattributableBogusNameSkippedCount).toBe(1);
+      });
+
+      test('does not skip a genuine chapter 11 trustee whose name has no bogus keyword', async () => {
+        const events: TrusteeAppointmentSyncEvent[] = [
+          {
+            ...makeEvent('case-001', 'Jane A Example'),
+            dxtrTrustee: {
+              fullName: 'Jane A Example',
+              firstName: 'Jane',
+              lastName: 'Example',
+            },
+            profCode: '12345',
+            chapter: '11',
+          },
+        ];
+
+        const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          events,
+        );
+
+        expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalled();
+        expect(scenarioDistribution.unattributableBogusNameSkippedCount).toBe(0);
+      });
+
+      // The chapter-11 branch is unconditional on profCode and contact info, unlike
+      // isSentinelWithNoIdentity's sentinel-profCode rule.
+      test('skips a bogus-looking name on a chapter 11 case with a sentinel profCode and real contact info', async () => {
+        const events: TrusteeAppointmentSyncEvent[] = [
+          {
+            ...makeEvent('case-001', 'CHAPTER 11 - LV'),
+            dxtrTrustee: {
+              fullName: 'CHAPTER 11 - LV',
+              lastName: 'CHAPTER 11 - LV',
+              legacy: {
+                address1: '300 LAS VEGAS BLVD., SO. #4300',
+                cityStateZipCountry: 'LAS VEGAS NV 89101',
+                phone: '(702) 388-6600',
+                email: 'USTPRegion17.lv.ecf@usdoj.gov',
+              },
+            },
+            profCode: '00000',
+            chapter: '11',
+          },
+        ];
+
+        const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          events,
+        );
+
+        expect(trusteeMatchHelpers.matchTrusteeByName).not.toHaveBeenCalled();
+        expect(scenarioDistribution.unattributableBogusNameSkippedCount).toBe(1);
+      });
+
+      // resolveSkipReason checks isSentinelWithNoIdentity before isUnattributableBogusName, so a
+      // sentinel profCode wins ties and increments sentinelBogusNameSkippedCount, not
+      // unattributableBogusNameSkippedCount.
+      test('attributes a chapter 11, sentinel-profCode, no-contact bogus name to the sentinel rule, not unattributableBogusNameSkippedCount', async () => {
+        const events: TrusteeAppointmentSyncEvent[] = [
+          {
+            ...makeEvent('case-001', 'CHAPTER 11 - LV'),
+            dxtrTrustee: { fullName: 'CHAPTER 11 - LV', lastName: 'CHAPTER 11 - LV' },
+            profCode: '00000',
+            chapter: '11',
+          },
+        ];
+
+        const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          events,
+        );
+
+        expect(trusteeMatchHelpers.matchTrusteeByName).not.toHaveBeenCalled();
+        expect(scenarioDistribution.sentinelBogusNameSkippedCount).toBe(1);
+        expect(scenarioDistribution.unattributableBogusNameSkippedCount).toBe(0);
+      });
+    });
+
+    describe('bogus-looking name with no contact info, but a populated firstName token', () => {
+      // "No Trustee" is real DXTR noise (see production backtest), but DXTR's naive whitespace
+      // split parses "No" out as a firstName token — indistinguishable in shape from "Ghost
+      // Trustee"/"Known Trustee", which are ordinary NO_TRUSTEE_MATCH name-matching fixtures used
+      // elsewhere in this suite (real names, for testing purposes, not administrative
+      // placeholders). Telling "No" apart from "Ghost" as a first-name token would require a real
+      // name dictionary, out of scope here — deliberately proceeds to matching rather than risk
+      // silently dropping a genuine no-match event that happens to share this shape.
+      test('proceeds to matching for a bogus-keyword name with a firstName and no contact info', async () => {
+        const events: TrusteeAppointmentSyncEvent[] = [
+          {
+            ...makeEvent('case-001', 'No Trustee'),
+            dxtrTrustee: {
+              fullName: 'No Trustee',
+              firstName: 'No',
+              lastName: 'Trustee',
+              legacy: {},
+            },
+            profCode: '12345',
+          },
+        ];
+
+        const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          events,
+        );
+
+        expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalled();
+        expect(scenarioDistribution.unattributableBogusNameSkippedCount).toBe(0);
       });
     });
 
@@ -758,6 +1298,10 @@ describe('SyncTrusteeCaseAppointments', () => {
 
         expect(scenarioDistribution.fingerprintHitCount).toBe(1);
         expect(scenarioDistribution.fingerprintMissCount).toBe(0);
+        expect(trusteeMatchHelpers.matchTrusteeByName).not.toHaveBeenCalled();
+        expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
+          expect.objectContaining({ caseId: 'case-001', trusteeId: 'trustee-123' }),
+        );
       });
 
       test('counts a TRUSTEE_VARIATION bucket miss as fingerprintMissCount', async () => {
@@ -772,27 +1316,9 @@ describe('SyncTrusteeCaseAppointments', () => {
         expect(scenarioDistribution.fingerprintMissCount).toBe(1);
       });
 
-      test('does not increment either fingerprint counter for reserved-id-skipped events', async () => {
-        const events: TrusteeAppointmentSyncEvent[] = [
-          { ...makeEvent('case-001', 'John Doe'), acmsProfessionalId: 'XX-99999' },
-        ];
-
-        const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
-          SyncTrusteeCaseAppointments.createDeps(context),
-          events,
-        );
-
-        expect(scenarioDistribution.fingerprintHitCount).toBe(0);
-        expect(scenarioDistribution.fingerprintMissCount).toBe(0);
-      });
-
       test('tallies fingerprintHitCount/fingerprintMissCount correctly across a mixed batch', async () => {
         const hitEvent = makeEvent('case-001', 'Known Trustee');
         const missEvent = makeEvent('case-002', 'Unknown Trustee');
-        const skippedEvent: TrusteeAppointmentSyncEvent = {
-          ...makeEvent('case-003', 'Reserved'),
-          acmsProfessionalId: 'XX-00000',
-        };
         const hitVariant = buildVariant(hitEvent.dxtrTrustee);
         const hitFingerprint = computeFingerprint(hitVariant);
         (mockVariationRepo.findByFingerprint as ReturnType<typeof vi.fn>).mockImplementation(
@@ -811,12 +1337,11 @@ describe('SyncTrusteeCaseAppointments', () => {
 
         const { scenarioDistribution } = await SyncTrusteeCaseAppointments.processAppointments(
           SyncTrusteeCaseAppointments.createDeps(context),
-          [hitEvent, missEvent, skippedEvent],
+          [hitEvent, missEvent],
         );
 
         expect(scenarioDistribution.fingerprintHitCount).toBe(1);
         expect(scenarioDistribution.fingerprintMissCount).toBe(1);
-        expect(scenarioDistribution.reservedIdSkippedCount).toBe(1);
       });
     });
 
@@ -846,7 +1371,7 @@ describe('SyncTrusteeCaseAppointments', () => {
       expect(mockTrusteeCaseAppointmentsRepo.upsert).not.toHaveBeenCalled();
     });
 
-    test('should soft-close old and create new when trustee changes', async () => {
+    test('should soft-close old and create new when trustee changes, aligning unassignedOn to one day before the new assignedOn', async () => {
       const existingAppointment: CaseAppointment = {
         id: 'ca-old',
         caseId: 'case-001',
@@ -861,6 +1386,9 @@ describe('SyncTrusteeCaseAppointments', () => {
         mockTrusteeCaseAppointmentsRepo.getActiveByCaseId as ReturnType<typeof vi.fn>
       ).mockResolvedValue(existingAppointment);
 
+      // makeEvent's appointedDate is '2024-01-15' — well after existingAppointment's assignedOn,
+      // simulating sync lag: the job runs long after the DXTR-reported appointment date, but
+      // unassignedOn must be derived from that date, not wall-clock time.
       const events = [makeEvent('case-001', 'John Doe')];
 
       await SyncTrusteeCaseAppointments.processAppointments(
@@ -868,12 +1396,13 @@ describe('SyncTrusteeCaseAppointments', () => {
         events,
       );
 
-      // Should soft-close old appointment
+      // Should soft-close old appointment with unassignedOn one day before the new assignedOn —
+      // never wall-clock time — so the "Past Trustees" history reads as continuous, non-overlapping.
       expect(mockTrusteeCaseAppointmentsRepo.updateCaseAppointment).toHaveBeenCalledWith(
         expect.objectContaining({
           id: 'ca-old',
           trusteeId: 'old-trustee',
-          unassignedOn: expect.any(String),
+          unassignedOn: '2024-01-14',
         }),
       );
 
@@ -882,7 +1411,7 @@ describe('SyncTrusteeCaseAppointments', () => {
         expect.objectContaining({
           caseId: 'case-001',
           trusteeId: 'trustee-123',
-          assignedOn: expect.any(String),
+          assignedOn: '2024-01-15',
         }),
       );
     });
@@ -1119,6 +1648,95 @@ describe('SyncTrusteeCaseAppointments', () => {
       expect(scenarioDistribution.noMatchCount).toBe(1);
     });
 
+    test('should construct acmsProfessionalId from groupDesignator + profCode on the persisted verification doc', async () => {
+      // acmsProfessionalId is a CAMS construct, not a native DXTR/ACMS field - the gateway only
+      // crosses raw groupDesignator + profCode facts; this format ("{group}-{profCode}") is built
+      // here in the use-case layer. It's never used to pick or auto-link a trustee (see
+      // isSentinelWithNoIdentity's doc comment, which keys off the underlying raw profCode) -
+      // it's persisted purely so a reviewer can distinguish a genuine unmatched trustee from a
+      // sentinel-coded ("00000"/"99999") placeholder without cross-referencing DXTR directly.
+      (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        kind: 'no-match',
+      });
+
+      await SyncTrusteeCaseAppointments.processAppointments(
+        SyncTrusteeCaseAppointments.createDeps(context),
+        [
+          {
+            ...makeEvent('case-001', 'Nobody Real'),
+            profCode: '12345',
+            groupDesignator: 'NY',
+            dxtrTrustee: {
+              fullName: 'Nobody Real',
+              firstName: 'Nobody',
+              lastName: 'Real',
+              legacy: { address1: '1 Real St', cityStateZipCountry: 'Realtown ZZ 00000' },
+            },
+          },
+        ],
+      );
+
+      expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
+        expect.objectContaining({ acmsProfessionalId: 'NY-12345' }),
+      );
+    });
+
+    test('should omit acmsProfessionalId from the persisted verification doc when profCode is a sentinel value', async () => {
+      // A formatted sentinel ID (e.g. "NY-99999") would read to a reviewer as a real professional
+      // ID rather than the "ID unavailable" placeholder it actually is - suppress it entirely
+      // rather than persist misleading diagnostic data.
+      (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        kind: 'no-match',
+      });
+
+      await SyncTrusteeCaseAppointments.processAppointments(
+        SyncTrusteeCaseAppointments.createDeps(context),
+        [
+          {
+            ...makeEvent('case-001', 'Nobody Real'),
+            profCode: '99999',
+            groupDesignator: 'NY',
+            dxtrTrustee: {
+              fullName: 'Nobody Real',
+              firstName: 'Nobody',
+              lastName: 'Real',
+              legacy: { address1: '1 Real St', cityStateZipCountry: 'Realtown ZZ 00000' },
+            },
+          },
+        ],
+      );
+
+      expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
+        expect.objectContaining({ acmsProfessionalId: undefined }),
+      );
+    });
+
+    test('should omit acmsProfessionalId from the persisted verification doc when groupDesignator is missing', async () => {
+      (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        kind: 'no-match',
+      });
+
+      await SyncTrusteeCaseAppointments.processAppointments(
+        SyncTrusteeCaseAppointments.createDeps(context),
+        [
+          {
+            ...makeEvent('case-001', 'Nobody Real'),
+            profCode: '12345',
+            dxtrTrustee: {
+              fullName: 'Nobody Real',
+              firstName: 'Nobody',
+              lastName: 'Real',
+              legacy: { address1: '1 Real St', cityStateZipCountry: 'Realtown ZZ 00000' },
+            },
+          },
+        ],
+      );
+
+      expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
+        expect.objectContaining({ acmsProfessionalId: undefined }),
+      );
+    });
+
     test('should auto-link a fuzzy-scoring clear winner whose appointment matches court/division/chapter', async () => {
       (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
         makeAmbiguousNameMatch(),
@@ -1216,8 +1834,21 @@ describe('SyncTrusteeCaseAppointments', () => {
         trusteeId: 't-1',
         candidateScores: scoredCandidates,
       });
-      // The winner is resolved by name, but has no active appointment covering this case's
-      // court/division/chapter, so it falls through to ImperfectMatch instead of auto-linking.
+      // The winner is resolved by name, but only has an active appointment in the same court on
+      // a DIFFERENT division ('082', not the event's '081') - applyMatchOutcome recomputes its
+      // own candidateScore from this real appointment (not the mocked scoredCandidates above), so
+      // isAppointmentMatch correctly reports false (no auto-link) while districtDivisionScore
+      // still comes out 50 (same-court partial credit), keeping this an ImperfectMatch with real
+      // supporting evidence rather than being reclassified to NoTrusteeMatch.
+      mockAppointmentsRepo.getTrusteeAppointments = vi.fn().mockResolvedValue([
+        {
+          trusteeId: 't-1',
+          status: 'active',
+          courtId: '081',
+          divisionCode: '082',
+          chapter: '7',
+        },
+      ]);
       vi.spyOn(trusteeMatchHelpers, 'isAppointmentMatch').mockReturnValue(false);
 
       const { successCount, dlqMessages, scenarioDistribution } =
@@ -1408,14 +2039,48 @@ describe('SyncTrusteeCaseAppointments', () => {
       expect(scenarioDistribution.imperfectMatchCount).toBe(1);
     });
 
-    test('should route a single non-perfect-match candidate to verification even at a very high score, since districtDivisionScore/chapterScore may come from different appointment records', async () => {
-      // districtDivisionScore/chapterScore are each computed independently across all of a
-      // trustee's appointments (see calculateDistrictDivisionScore/calculateChapterScore),
-      // so a perfect-looking totalScore here does not guarantee a single appointment record
-      // actually covers this case's court+division+chapter combination — isAppointmentMatch above
-      // (mocked false) is the only check that verifies that. There is no score-based auto-match
-      // path for a single non-perfect candidate; every one of them is a human-reviewed
-      // ImperfectMatch regardless of how high totalScore is.
+    test('should surface a uniquely-name-matched candidate with no court appointment as IMPERFECT_MATCH, not NO_TRUSTEE_MATCH', async () => {
+      vi.spyOn(trusteeMatchHelpers, 'isAppointmentMatch').mockReturnValue(false);
+      vi.spyOn(trusteeMatchHelpers, 'calculateCandidateScore').mockReturnValue({
+        trusteeId: 'trustee-123',
+        trusteeName: 'John Doe',
+        totalScore: 28,
+        addressScore: 1,
+        nameScore: 100,
+        phoneScore: 0,
+        emailScore: null,
+        districtDivisionScore: 0,
+        chapterScore: 0,
+      });
+
+      const events = [makeEvent('case-001', 'John Doe')];
+
+      const { successCount, dlqMessages, scenarioDistribution } =
+        await SyncTrusteeCaseAppointments.processAppointments(
+          SyncTrusteeCaseAppointments.createDeps(context),
+          events,
+        );
+
+      expect(successCount).toBe(0);
+      expect(dlqMessages).toHaveLength(0);
+      expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          mismatchReason: 'IMPERFECT_MATCH',
+          matchCandidates: [expect.objectContaining({ trusteeId: 'trustee-123' })],
+        }),
+      );
+      expect(scenarioDistribution.imperfectMatchCount).toBe(1);
+      expect(scenarioDistribution.noMatchCount).toBe(0);
+    });
+
+    test('should route a single non-perfect-match candidate to verification even at a very high score', async () => {
+      // calculateCandidateScore is mocked here to isolate this test to processAppointments's own
+      // decision logic: even given an arbitrary/perfect-looking totalScore, there is no
+      // score-based auto-match path for a single non-perfect candidate — isAppointmentMatch above
+      // (mocked false) is the only check that verifies a single appointment record actually
+      // covers this case's court+division+chapter combination. Every non-perfect single candidate
+      // is a human-reviewed ImperfectMatch regardless of how high totalScore is, independent of
+      // whether real scoring could ever actually produce this exact score shape.
       vi.spyOn(trusteeMatchHelpers, 'isAppointmentMatch').mockReturnValue(false);
       vi.spyOn(trusteeMatchHelpers, 'calculateCandidateScore').mockReturnValue({
         trusteeId: 'trustee-123',
@@ -1682,7 +2347,7 @@ describe('SyncTrusteeCaseAppointments', () => {
         );
       });
 
-      test('carries acmsProfessionalId and appointedDate from the event onto a new verification doc', async () => {
+      test('carries appointedDate from the event onto a new verification doc', async () => {
         vi.spyOn(trusteeMatchHelpers, 'isAppointmentMatch').mockReturnValue(false);
         vi.spyOn(trusteeMatchHelpers, 'calculateCandidateScore').mockReturnValue({
           trusteeId: 'trustee-123',
@@ -1701,7 +2366,6 @@ describe('SyncTrusteeCaseAppointments', () => {
           [
             {
               ...makeEvent('case-001', 'John Doe'),
-              acmsProfessionalId: '081-00123',
               appointedDate: '2025-06-01',
             },
           ],
@@ -1710,7 +2374,6 @@ describe('SyncTrusteeCaseAppointments', () => {
         expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
           expect.objectContaining({
             caseId: 'case-001',
-            acmsProfessionalId: '081-00123',
             appointedDate: '2025-06-01',
           }),
         );
@@ -3525,6 +4188,27 @@ describe('throwIfTransientSoftCloseFailure', () => {
       ),
     ).not.toThrow();
   });
+
+  test('logs a null newTrusteeId when called from the close-only path', async () => {
+    // handleBogusTrusteeCloseOnly passes null — there is no replacement trustee to log.
+    const context = await createMockApplicationContext();
+    const warnSpy = vi.spyOn(context.logger, 'warn');
+    const softCloseError = new TooManyRequestsError('COSMOS');
+
+    expect(() =>
+      throwIfTransientSoftCloseFailure(context, event, existingAppointment, null, softCloseError),
+    ).toThrow(softCloseError);
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      'SYNC-TRUSTEE-CASE-APPOINTMENTS-USE-CASE',
+      expect.stringContaining('Transient soft-close failure'),
+      expect.objectContaining({
+        caseId: 'case-001',
+        oldTrusteeId: 'old-trustee-456',
+        newTrusteeId: null,
+      }),
+    );
+  });
 });
 
 describe('createNewAppointment', () => {
@@ -3563,34 +4247,185 @@ describe('createNewAppointment', () => {
   });
 });
 
-describe('softCloseExistingAppointment', () => {
-  const event: TrusteeAppointmentSyncEvent = {
-    caseId: 'case-001',
-    courtId: '081',
-    courtDivisionCode: '081',
-    chapter: '7',
-    dxtrTrustee: { fullName: 'Jane Doe' },
-  };
-  const syncedCase = {
-    caseId: 'case-001',
-    courtId: '081',
-    courtDivisionCode: '081',
-    chapter: '7',
-    dateFiled: '2026-01-07',
-  } as unknown as SyncedCase;
-  const existingAppointment = {
-    caseId: 'case-001',
-    trusteeId: 'old-trustee-456',
-    assignedOn: '2023-01-01T00:00:00.000Z',
-  } as unknown as CaseAppointment;
+// Shared by closeExistingAppointment and softCloseExistingAppointment below — both exercise the
+// same close mechanics (see closeExistingAppointment's docblock for how the two differ).
+const closeFixtureEvent: TrusteeAppointmentSyncEvent = {
+  caseId: 'case-001',
+  courtId: '081',
+  courtDivisionCode: '081',
+  chapter: '7',
+  dxtrTrustee: { fullName: 'Jane Doe' },
+};
+const closeFixtureSyncedCase = {
+  caseId: 'case-001',
+  courtId: '081',
+  courtDivisionCode: '081',
+  chapter: '7',
+  dateFiled: '2026-01-07',
+} as unknown as SyncedCase;
+const closeFixtureExistingAppointment = {
+  caseId: 'case-001',
+  trusteeId: 'old-trustee-456',
+  assignedOn: '2023-01-01T00:00:00.000Z',
+} as unknown as CaseAppointment;
 
-  function buildAppointmentsRepo(overrides: Partial<TrusteeCaseAppointmentsRepository> = {}) {
-    return {
-      updateCaseAppointment: vi.fn().mockResolvedValue({}),
-      upsert: vi.fn().mockResolvedValue({}),
-      ...overrides,
-    } as unknown as TrusteeCaseAppointmentsRepository;
-  }
+function buildCloseFixtureAppointmentsRepo(
+  overrides: Partial<TrusteeCaseAppointmentsRepository> = {},
+) {
+  return {
+    updateCaseAppointment: vi.fn().mockResolvedValue({}),
+    upsert: vi.fn().mockResolvedValue({}),
+    ...overrides,
+  } as unknown as TrusteeCaseAppointmentsRepository;
+}
+
+describe('closeExistingAppointment', () => {
+  const event = closeFixtureEvent;
+  const syncedCase = closeFixtureSyncedCase;
+  const existingAppointment = closeFixtureExistingAppointment;
+  const buildAppointmentsRepo = buildCloseFixtureAppointmentsRepo;
+
+  test('closes with unassignedOn one day before referenceDate and reports closed:true', async () => {
+    const context = await createMockApplicationContext();
+    const appointmentsRepo = buildAppointmentsRepo();
+
+    const result = await closeExistingAppointment(
+      context,
+      event,
+      existingAppointment,
+      '2024-06-15',
+      appointmentsRepo,
+      syncedCase,
+    );
+
+    expect(appointmentsRepo.updateCaseAppointment).toHaveBeenCalledWith({
+      ...existingAppointment,
+      unassignedOn: '2024-06-14',
+    });
+    expect(appointmentsRepo.upsert).not.toHaveBeenCalled();
+    expect(result).toEqual({ closed: true, softCloseError: null, unassignedOn: '2024-06-14' });
+  });
+
+  test('correctly rolls back across a year boundary when referenceDate is January 1st', async () => {
+    // Every other unassignedOn-derivation test in this file uses a safe mid-month referenceDate —
+    // this guards month/year rollover specifically, since deriveUnassignedOn's correctness (not
+    // just wall-clock time) is this change's central claim.
+    const context = await createMockApplicationContext();
+    const appointmentsRepo = buildAppointmentsRepo();
+
+    const result = await closeExistingAppointment(
+      context,
+      event,
+      existingAppointment,
+      '2024-01-01',
+      appointmentsRepo,
+      syncedCase,
+    );
+
+    expect(appointmentsRepo.updateCaseAppointment).toHaveBeenCalledWith({
+      ...existingAppointment,
+      unassignedOn: '2023-12-31',
+    });
+    expect(result.unassignedOn).toBe('2023-12-31');
+  });
+
+  test('clamps unassignedOn to existingAssignedOn when referenceDate precedes it (out-of-order delivery)', async () => {
+    // existingAppointment.assignedOn is '2023-01-01...'. A referenceDate strictly before that
+    // (DLQ redelivery, backfill, or retry delivering an older event after a newer one) would
+    // otherwise compute unassignedOn < assignedOn — a row marked closed before it was ever
+    // opened. Clamping to existingAssignedOn caps the damage at a zero-duration appointment
+    // instead of a negative-duration one.
+    const context = await createMockApplicationContext();
+    const appointmentsRepo = buildAppointmentsRepo();
+
+    const result = await closeExistingAppointment(
+      context,
+      event,
+      existingAppointment,
+      '2022-06-15',
+      appointmentsRepo,
+      syncedCase,
+    );
+
+    expect(appointmentsRepo.updateCaseAppointment).toHaveBeenCalledWith({
+      ...existingAppointment,
+      unassignedOn: '2023-01-01',
+    });
+    expect(result.unassignedOn).toBe('2023-01-01');
+  });
+
+  test('never creates a replacement appointment, even on a permanent close failure', async () => {
+    const context = await createMockApplicationContext();
+    const appointmentsRepo = buildAppointmentsRepo({
+      updateCaseAppointment: vi.fn().mockRejectedValue(new Error('permanent failure')),
+    });
+
+    const result = await closeExistingAppointment(
+      context,
+      event,
+      existingAppointment,
+      '2024-06-15',
+      appointmentsRepo,
+      syncedCase,
+    );
+
+    expect(appointmentsRepo.upsert).not.toHaveBeenCalled();
+    expect(result.closed).toBe(false);
+    expect(result.softCloseError).toBeInstanceOf(Error);
+  });
+
+  test('propagates a transient close failure without creating anything', async () => {
+    const context = await createMockApplicationContext();
+    const appointmentsRepo = buildAppointmentsRepo({
+      updateCaseAppointment: vi.fn().mockRejectedValue(new TooManyRequestsError('COSMOS')),
+    });
+
+    const result = await closeExistingAppointment(
+      context,
+      event,
+      existingAppointment,
+      '2024-06-15',
+      appointmentsRepo,
+      syncedCase,
+    );
+
+    // closeExistingAppointment reports the error rather than throwing — throwing on transient
+    // errors is throwIfTransientSoftCloseFailure's job, invoked by each of this primitive's two
+    // callers so they can each decide what "abort" means for their own flow.
+    expect(result.closed).toBe(false);
+    expect(result.softCloseError).toBeInstanceOf(TooManyRequestsError);
+    expect(appointmentsRepo.upsert).not.toHaveBeenCalled();
+  });
+
+  test('does not notify downstream when the close failed', async () => {
+    const context = await createMockApplicationContext();
+    context.featureFlags['downstream-trustee-appointments-enabled'] = true;
+    const queueTrusteeAppointmentEvent = vi.fn().mockResolvedValue(undefined);
+    vi.spyOn(factory, 'getApiToDataflowsGateway').mockReturnValue({
+      queueTrusteeAppointmentEvent,
+    } as unknown as ApiToDataflowsGateway);
+    const appointmentsRepo = buildAppointmentsRepo({
+      updateCaseAppointment: vi.fn().mockRejectedValue(new Error('permanent failure')),
+    });
+
+    await closeExistingAppointment(
+      context,
+      event,
+      existingAppointment,
+      '2024-06-15',
+      appointmentsRepo,
+      syncedCase,
+    );
+
+    expect(queueTrusteeAppointmentEvent).not.toHaveBeenCalled();
+  });
+});
+
+describe('softCloseExistingAppointment', () => {
+  const event = closeFixtureEvent;
+  const syncedCase = closeFixtureSyncedCase;
+  const existingAppointment = closeFixtureExistingAppointment;
+  const buildAppointmentsRepo = buildCloseFixtureAppointmentsRepo;
 
   test('soft-closes the old appointment and reports closed:true without creating the new one', async () => {
     const context = await createMockApplicationContext();
@@ -3608,7 +4443,8 @@ describe('softCloseExistingAppointment', () => {
 
     expect(appointmentsRepo.updateCaseAppointment).toHaveBeenCalledWith({
       ...existingAppointment,
-      unassignedOn: expect.any(String),
+      // One day before the incoming assignedOn ('2023-01-02...') — never wall-clock time.
+      unassignedOn: '2023-01-01',
     });
     // The new appointment is created by the caller (applyResolvedTrustee) once closed:true is
     // reported, not by this helper — mirrors the pre-extraction control flow exactly.
@@ -3727,7 +4563,8 @@ describe('softCloseExistingAppointment', () => {
       expect.objectContaining({
         caseId: 'case-001',
         trusteeId: 'old-trustee-456',
-        unassignedOn: expect.any(String),
+        // Mirrors the persisted unassignedOn — downstream and Cosmos must agree.
+        unassignedOn: '2023-01-01',
       }),
     );
   });
@@ -3813,13 +4650,14 @@ describe('handleClassifiedMismatch', () => {
       multipleMatchCount: 0,
       perfectMatchInactiveCount: 0,
       reVerificationCount: 0,
-      reservedIdSkippedCount: 0,
       verificationBucketHitCount: 0,
       fingerprintHitCount: 0,
       fingerprintMissCount: 0,
       retryableCount: 0,
       candidateLoadFailedCount: 0,
       emptyDemographicsSkippedCount: 0,
+      sentinelBogusNameSkippedCount: 0,
+      unattributableBogusNameSkippedCount: 0,
     };
   }
 
@@ -3952,11 +4790,11 @@ describe('handleClassifiedMismatch', () => {
   });
 
   test('throws instead of falling back to wall-clock time when appointedDate is missing, without writing a surrogate', async () => {
-    // CAMS-809: writeSurrogateAppointment previously fell back to `event.appointedDate ?? now`,
-    // which would mint a new, distinct surrogate row under the same fingerprint on every retry
-    // of the same malformed event (upsert()'s natural key includes assignedOn, so a
-    // wall-clock-derived assignedOn never matches a prior write). It must refuse the same way
-    // applyResolvedTrustee does, so the event surfaces via the DLQ instead of proceeding.
+    // Falling back to `event.appointedDate ?? now` here would mint a new, distinct surrogate row
+    // under the same fingerprint on every retry of the same malformed event (upsert()'s natural
+    // key includes assignedOn, so a wall-clock-derived assignedOn never matches a prior write).
+    // It must refuse the same way applyResolvedTrustee does, so the event surfaces via the DLQ
+    // instead of proceeding.
     const verificationRepo = buildVerificationRepo(false);
     const caseAppointmentsRepo = buildCaseAppointmentsRepo();
     const scenarioDistribution = buildScenarioDistribution();
@@ -3975,7 +4813,7 @@ describe('handleClassifiedMismatch', () => {
 
     await expect(
       handleClassifiedMismatch(ctx, syncedCase, TrusteeAppointmentSyncErrorCode.NoTrusteeMatch, []),
-    ).rejects.toThrow(/missing\/unparseable appointedDate/);
+    ).rejects.toThrow(/missing\/unparseable/);
 
     expect(caseAppointmentsRepo.upsert).not.toHaveBeenCalled();
     expect(ctx.deps.context.logger.error).toHaveBeenCalledWith(

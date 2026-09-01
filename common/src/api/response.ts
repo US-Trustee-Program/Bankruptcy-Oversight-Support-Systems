@@ -9,4 +9,5 @@ export type ResponseBody<T = unknown> = {
   meta?: ResponseMetaData;
   pagination?: Pagination;
   data: T;
+  warnings?: string[];
 };

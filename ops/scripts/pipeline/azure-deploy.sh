@@ -22,12 +22,15 @@ deployment_parameters=''
 is_ustp_deployment=false
 inputParams=()
 
-requiredUSTPParams=("--enabledDataflows" "--mssqlRequestTimeout" "--migrateCaseAppointmentsFetchSize" "--isUstpDeployment" "--resource-group" "--file" "--stackName" "--slotName" "--gitSha" "--networkResourceGroupName" "--virtualNetworkName" "--idKeyvaultAppConfiguration" "--kvAppConfigName" "--cosmosDatabaseName" "--ustpIssueCollectorHash" "--createAlerts" "--deployAppInsights" "--apiFunctionPlanName" "--dataflowsFunctionPlanName" "--webappPlanType" "--functionsPlanType" "--loginProvider" "--loginProviderConfig" "--sqlServerName" "--sqlServerResourceGroupName" "--oktaUrl" "--location" "--webappSubnetName" "--apiFunctionSubnetName" "--privateEndpointSubnetName" "--dataflowsSubnetName" "--privateDnsZoneName" "--privateDnsZoneResourceGroup" "--privateDnsZoneSubscriptionId" "--analyticsResourceGroupName" "--kvAppConfigResourceGroupName" "--deployDns")
+# NOTE: adding a parameter here obligates the USTP ADO pipeline template to pass it, which is a
+# multi-step change on government-furnished equipment. Parameters with a safe main.bicep default
+# that USTP does not vary (e.g. --functionsPlanType) belong in allParams only, not here.
+requiredUSTPParams=("--enabledDataflows" "--mssqlRequestTimeout" "--migrateCaseAppointmentsFetchSize" "--isUstpDeployment" "--resource-group" "--file" "--stackName" "--slotName" "--gitSha" "--networkResourceGroupName" "--virtualNetworkName" "--idKeyvaultAppConfiguration" "--kvAppConfigName" "--cosmosDatabaseName" "--ustpIssueCollectorHash" "--createAlerts" "--deployAppInsights" "--apiFunctionPlanName" "--dataflowsFunctionPlanName" "--webappPlanType" "--loginProvider" "--loginProviderConfig" "--sqlServerName" "--sqlServerResourceGroupName" "--oktaUrl" "--location" "--webappSubnetName" "--apiFunctionSubnetName" "--privateEndpointSubnetName" "--dataflowsSubnetName" "--privateDnsZoneName" "--privateDnsZoneResourceGroup" "--privateDnsZoneSubscriptionId" "--analyticsResourceGroupName" "--analyticsSubscriptionId" "--kvAppConfigResourceGroupName" "--deployDns")
 
-requiredFlexionParams=("--enabledDataflows" "--mssqlRequestTimeout" "--migrateCaseAppointmentsFetchSize" "--resource-group" "--file" "--stackName" "--slotName" "--gitSha" "--networkResourceGroupName" "--kvAppConfigName" "--kvAppConfigResourceGroupName" "--virtualNetworkName" "--analyticsResourceGroupName" "--idKeyvaultAppConfiguration" "--cosmosDatabaseName" "--ustpIssueCollectorHash" "--createAlerts" "--deployAppInsights" "--loginProvider" "--loginProviderConfig" "--sqlServerName" "--sqlServerResourceGroupName" "--sqlServerIdentityName" "--actionGroupName" "--oktaUrl" "--e2eDatabaseName" "--e2eSqlDatabaseName")
+requiredFlexionParams=("--enabledDataflows" "--mssqlRequestTimeout" "--migrateCaseAppointmentsFetchSize" "--resource-group" "--file" "--stackName" "--slotName" "--gitSha" "--networkResourceGroupName" "--kvAppConfigName" "--kvAppConfigResourceGroupName" "--virtualNetworkName" "--analyticsResourceGroupName" "--idKeyvaultAppConfiguration" "--cosmosDatabaseName" "--ustpIssueCollectorHash" "--createAlerts" "--createMainHubPeering" "--deployAppInsights" "--loginProvider" "--loginProviderConfig" "--sqlServerName" "--sqlServerResourceGroupName" "--sqlServerIdentityName" "--actionGroupName" "--oktaUrl" "--e2eDatabaseName" "--e2eSqlDatabaseName")
 
 # shellcheck disable=SC2034 # REASON: to have a reference for all possible parameters
-allParams=("--enabledDataflows" "--mssqlRequestTimeout" "--migrateCaseAppointmentsFetchSize" "--isUstpDeployment" "--resource-group" "--file" "--stackName" "--slotName" "--gitSha" "--networkResourceGroupName" "--virtualNetworkName" "--analyticsWorkspaceId" "--idKeyvaultAppConfiguration" "--kvAppConfigName" "--cosmosDatabaseName" "--deployVnet" "--ustpIssueCollectorHash" "--createAlerts" "--deployAppInsights" "--apiFunctionPlanName" "--dataflowsFunctionPlanName" "--webappPlanType" "--functionsPlanType" "--loginProvider" "--loginProviderConfig" "--sqlServerName" "--sqlServerResourceGroupName" "--sqlServerIdentityResourceGroupName" "--sqlServerIdentityName" "--sqlServerIdentitySubscriptionId" "--actionGroupName" "--oktaUrl" "--location" "--webappSubnetName" "--apiFunctionSubnetName" "--privateEndpointSubnetName" "--webappSubnetAddressPrefix" "--apiFunctionSubnetAddressPrefix" "--dataflowsSubnetName" "--dataflowsSubnetAddressPrefix" "--vnetAddressPrefix" "--linkVnetIds" "--privateDnsZoneName" "--privateDnsZoneResourceGroup" "--privateDnsZoneSubscriptionId" "--analyticsResourceGroupName" "--kvAppConfigResourceGroupName" "--deployDns" "--e2eDatabaseName" "--e2eSqlDatabaseName" "--customDomain" "--useSqlPrivateLink")
+allParams=("--enabledDataflows" "--mssqlRequestTimeout" "--migrateCaseAppointmentsFetchSize" "--isUstpDeployment" "--resource-group" "--file" "--stackName" "--slotName" "--gitSha" "--networkResourceGroupName" "--virtualNetworkName" "--analyticsWorkspaceId" "--idKeyvaultAppConfiguration" "--kvAppConfigName" "--cosmosDatabaseName" "--deployVnet" "--ustpIssueCollectorHash" "--createAlerts" "--createMainHubPeering" "--deployAppInsights" "--apiFunctionPlanName" "--dataflowsFunctionPlanName" "--webappPlanType" "--functionsPlanType" "--loginProvider" "--loginProviderConfig" "--sqlServerName" "--sqlServerResourceGroupName" "--sqlServerIdentityResourceGroupName" "--sqlServerIdentityName" "--sqlServerIdentitySubscriptionId" "--actionGroupName" "--adminNotificationEmail" "--defaultNotificationRecipient" "--oktaUrl" "--location" "--webappSubnetName" "--apiFunctionSubnetName" "--privateEndpointSubnetName" "--webappSubnetAddressPrefix" "--apiFunctionSubnetAddressPrefix" "--dataflowsSubnetName" "--dataflowsSubnetAddressPrefix" "--vnetAddressPrefix" "--linkVnetIds" "--privateDnsZoneName" "--privateDnsZoneResourceGroup" "--privateDnsZoneSubscriptionId" "--analyticsResourceGroupName" "--analyticsSubscriptionId" "--kvAppConfigResourceGroupName" "--deployDns" "--e2eDatabaseName" "--e2eSqlDatabaseName" "--customDomain" "--useSqlPrivateLink")
 
 
 function validateParameters() {
@@ -319,6 +322,12 @@ while [[ $# -gt 0 ]]; do
         deployment_parameters="${deployment_parameters} ${analytics_rg_param}"
         shift 2
         ;;
+    --analyticsSubscriptionId)
+        inputParams+=("${1}")
+        analytics_subscription_id_param="analyticsSubscriptionId=${2}"
+        deployment_parameters="${deployment_parameters} ${analytics_subscription_id_param}"
+        shift 2
+        ;;
     --idKeyvaultAppConfiguration)
         inputParams+=("${1}")
         keyvault_app_config_id_param="idKeyvaultAppConfiguration=${2}"
@@ -393,10 +402,28 @@ while [[ $# -gt 0 ]]; do
         deployment_parameters="${deployment_parameters} ${create_alerts_param}"
         shift 2
         ;;
+    --createMainHubPeering)
+        inputParams+=("${1}")
+        create_main_hub_peering_param="createMainHubPeering=${2}"
+        deployment_parameters="${deployment_parameters} ${create_main_hub_peering_param}"
+        shift 2
+        ;;
     --actionGroupName)
         inputParams+=("${1}")
         action_group_name_param="actionGroupName=${2}"
         deployment_parameters="${deployment_parameters} ${action_group_name_param}"
+        shift 2
+        ;;
+    --adminNotificationEmail)
+        inputParams+=("${1}")
+        admin_notification_email_param="adminNotificationEmail=${2}"
+        deployment_parameters="${deployment_parameters} ${admin_notification_email_param}"
+        shift 2
+        ;;
+    --defaultNotificationRecipient)
+        inputParams+=("${1}")
+        default_notification_recipient_param="defaultNotificationRecipient=${2}"
+        deployment_parameters="${deployment_parameters} ${default_notification_recipient_param}"
         shift 2
         ;;
     --deployAppInsights)
@@ -566,6 +593,30 @@ deployment_parameters="${deployment_parameters} webappVnetLinkAlreadyExists=${ch
 sqlPrivateDnsZoneName='privatelink.database.usgovcloudapi.net'
 check_vnet_link_or_warn "${webappPrivateDnsZoneRg}" "${sqlPrivateDnsZoneName}" "SQL"
 deployment_parameters="${deployment_parameters} sqlVnetLinkAlreadyExists=${check_vnet_link_result}"
+
+# A vnet link is a CHILD of the zone, so linking into a zone that doesn't
+# exist fails the whole deployment with ParentResourceNotFound -- it is not
+# tolerated the way a missing link is. On Flexion the zone is bootstrapped by
+# app-shared-setup.bicep before this script runs, so it is always present. The
+# USTP ADO pipeline never runs app-shared-setup.bicep and passes
+# --deployDns false, so nothing has ever created this zone there, and USTP
+# staging's main.bicep deploy fails outright (confirmed live 2026-08-21).
+#
+# Gate the link on the zone actually existing rather than on which pipeline is
+# deploying: this is the real precondition, it self-heals the moment USTP does
+# bootstrap the zone, and it protects Flexion from the identical failure in a
+# freshly-provisioned shared network RG. zone_exists_for tolerates
+# ResourceNotFound but still fails loud on a genuine az error, so a throttle or
+# auth blip can't be silently misread as "no zone" (see _vnet-link-check.sh).
+#
+# Computed here rather than accepted as a CLI flag, exactly like
+# sqlVnetLinkAlreadyExists above -- so this needs no entry in allParams and,
+# critically, no change to the USTP ADO pipeline template.
+zone_exists_for "${webappPrivateDnsZoneRg}" "${sqlPrivateDnsZoneName}" "${private_dns_zone_sub_id:-}"
+if [[ "${zone_check_result}" != "true" ]]; then
+    echo "SQL private DNS zone ${sqlPrivateDnsZoneName} not found in ${webappPrivateDnsZoneRg}; skipping its vnet link (nothing in this environment uses the SQL Private Endpoint path)."
+fi
+deployment_parameters="${deployment_parameters} sqlDnsZoneExists=${zone_check_result}"
 
 # The virtual network is deployed separately by azure-deploy-network.sh before this
 # script runs (CAMS-760, Option E); vnet existence / deployVnet handling lives there.

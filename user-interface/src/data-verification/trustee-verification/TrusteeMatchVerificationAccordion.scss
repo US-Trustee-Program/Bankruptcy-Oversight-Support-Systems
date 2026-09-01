@@ -64,39 +64,23 @@
     margin: 0.5rem 0 1rem;
   }
 
-  // Column-header match-quality icons for the CAMS Strongest Match table only (see
-  // ColumnHeaderWithScore/ScoreIcon/scoreToIconName in TrusteeMatchVerificationAccordion.tsx).
-  // Color alone never carries the meaning - each icon also has a visually-hidden (usa-sr-only)
-  // text label.
-  .column-header-with-score {
+  // Column-header mismatch icons for the CAMS Strongest Match table only (see ColumnHeader/
+  // MismatchIcon in TrusteeMatchVerificationAccordion.tsx). Color alone never carries the
+  // meaning - each icon also has a visually-hidden (usa-sr-only) text label.
+  .column-header-with-mismatch {
     display: inline-flex;
     align-items: center;
     gap: 0.25rem;
   }
 
-  .score-icon {
+  .mismatch-icon {
     display: inline-flex;
     align-items: center;
 
-    .usa-icon {
+    .mismatch-icon-symbol {
       width: 1.1rem;
       height: 1.1rem;
-    }
-
-    .score-icon-match {
-      fill: colors.$success-text;
-    }
-
-    .score-icon-no-match {
       fill: colors.$error-text;
-    }
-
-    .score-icon-partial {
-      fill: colors.$gold;
-    }
-
-    .score-icon-neutral {
-      fill: colors.$gray-cool-50;
     }
   }
 

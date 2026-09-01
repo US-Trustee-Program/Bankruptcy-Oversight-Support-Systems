@@ -12,10 +12,16 @@
 # 10+ Validation check errors
 set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# shellcheck source=ops/scripts/pipeline/_az-deploy-retry.sh
+source "$SCRIPT_DIR/_az-deploy-retry.sh"
+
 # defaults for optional parameters
 analyticsWorkspaceId=
 actionGroupResourceGroup=
 actionGroupName=
+actionGroupSubscriptionId=
 branchHashId=''
 allowedIps='[]'
 
@@ -71,6 +77,10 @@ while [[ $# -gt 0 ]]; do
         shift 2
         ;;
 
+    --actionGroupSubscriptionId)
+        actionGroupSubscriptionId="${2}"
+        shift 2 ;;
+
     --analyticsWorkspaceId)
         analyticsWorkspaceId="${2}"
         shift 2
@@ -104,6 +114,10 @@ if [[ ${environment} == 'Main-Gov' ]]; then
     createAlerts=true
 fi
 
+if [[ "${createAlerts}" == "true" && -z "${actionGroupSubscriptionId}" ]]; then
+    echo "Error: --actionGroupSubscriptionId is required when createAlerts is true (Main-Gov environment). Pass the subscription ID that contains the action group resource group."
+    exit 12
+fi
 
 e2eDatabaseName="${database}-e2e"
 if [[ ${environment} != 'Main-Gov' ]]; then
@@ -111,13 +125,17 @@ if [[ ${environment} != 'Main-Gov' ]]; then
 fi
 
 
-# shellcheck disable=SC2086 # REASON: Qoutes render the CreateAlertsproperty unusable
-az deployment group create -w -g "${resourceGroup}" -f ./ops/cloud-deployment/ustp-cams-cosmos.bicep \
-    -p resourceGroupName="${resourceGroup}" accountName="${account}" databaseName="${database}" allowedNetworks="${allowedNetworks}" allowedIps="${allowedIps}" analyticsWorkspaceId="${analyticsWorkspaceId}" allowAllNetworks="${allowAllNetworks}" keyVaultName="${keyVaultName}" kvResourceGroup="${kvResourceGroup}" createAlerts=${createAlerts} actionGroupResourceGroupName="${actionGroupResourceGroup}" actionGroupName="${actionGroupName}" e2eDatabaseName="${e2eDatabaseName}" deployE2eDatabase=true
+# Cosmos DB control-plane throttles concurrent collection creates on first-time
+# deploy (429/code 16500, "high rate of metadata requests" — see cams-atwy).
+# RU allocations reset on a ~1-minute window, so back off in a range that lets
+# that window pass rather than the shorter RG-lock-contention default.
+export AZ_DEPLOY_RETRY_PATTERN='\b16500\b|TooManyRequests|high rate of metadata requests'
+export AZ_DEPLOY_RETRY_MAX_ATTEMPTS=3
+export AZ_DEPLOY_RETRY_INITIAL_DELAY_SECONDS=60
 
 # shellcheck disable=SC2086 # REASON: Qoutes render the CreateAlerts property unusable
-az deployment group create -g "${resourceGroup}" -f ./ops/cloud-deployment/ustp-cams-cosmos.bicep \
-    -p resourceGroupName="${resourceGroup}" accountName="${account}" databaseName="${database}" allowedNetworks="${allowedNetworks}" allowedIps="${allowedIps}" analyticsWorkspaceId="${analyticsWorkspaceId}" allowAllNetworks="${allowAllNetworks}" keyVaultName="${keyVaultName}" kvResourceGroup="${kvResourceGroup}" createAlerts=${createAlerts} actionGroupResourceGroupName="${actionGroupResourceGroup}" actionGroupName="${actionGroupName}" e2eDatabaseName="${e2eDatabaseName}" deployE2eDatabase=true
+az_deploy_with_retry_func az deployment group create -g "${resourceGroup}" -f ./ops/cloud-deployment/ustp-cams-cosmos.bicep \
+    -p resourceGroupName="${resourceGroup}" accountName="${account}" databaseName="${database}" allowedNetworks="${allowedNetworks}" allowedIps="${allowedIps}" analyticsWorkspaceId="${analyticsWorkspaceId}" allowAllNetworks="${allowAllNetworks}" keyVaultName="${keyVaultName}" kvResourceGroup="${kvResourceGroup}" createAlerts=${createAlerts} actionGroupResourceGroupName="${actionGroupResourceGroup}" actionGroupName="${actionGroupName}" ${actionGroupSubscriptionId:+actionGroupSubscriptionId="${actionGroupSubscriptionId}"} e2eDatabaseName="${e2eDatabaseName}" deployE2eDatabase=true
 
 # TEMPORARY GUARD (cams-ez2y): the CI runner's managed identity currently lacks
 # Microsoft.KeyVault/vaults/secrets/getSecret/action RBAC on the

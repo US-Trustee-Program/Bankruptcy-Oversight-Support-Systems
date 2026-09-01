@@ -1,7 +1,8 @@
 import './EditUpcomingKeyDates.scss';
 import { useEffect, useState, type FocusEvent } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
+  TrusteeUpcomingKeyDates,
   TrusteeUpcomingKeyDatesInput,
   validateTrusteeUpcomingKeyDates,
   validateTprDuePair,
@@ -9,12 +10,29 @@ import {
   calculateTirReview,
   isoToSentinel,
 } from '@common/cams/trustee-upcoming-key-dates';
+import {
+  TrusteeAppointment,
+  isChapter12Standing,
+  isChapter13Standing,
+} from '@common/cams/trustee-appointments';
 import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import MonthDayRangeSelector from '@/lib/components/uswds/MonthDayRangeSelector';
 import MonthDaySelector from '@/lib/components/uswds/MonthDaySelector';
+import DatePicker from '@/lib/components/uswds/DatePicker';
+import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
+import LocalStorage from '@/lib/utils/local-storage';
+import { CamsRole } from '@common/cams/roles';
+import { Stop } from '@/lib/components/Stop';
+import { UpcomingKeyDatesVariant } from '@/trustees/panels/upcomingKeyDatesFieldConfig';
+import {
+  UPCOMING_KEY_DATES_FORM_CONFIG,
+  DatePickerFieldDescriptor,
+  UpcomingFormFieldDescriptor,
+} from './upcomingKeyDatesFormFieldConfig';
 
 type TirFrequency = 'ANNUAL' | 'SEMI_ANNUAL' | '';
 
@@ -98,6 +116,9 @@ type FormState = {
   tirSemiAnnualReviewPeriodEnd: string;
   lastAuditFiscalYear: number | null;
   lastMonthlyReportReceived: string;
+  leaseExpiration: string;
+  idExpiration: string;
+  lastCompensationStudy: string;
 };
 
 const EMPTY_FORM: FormState = {
@@ -119,10 +140,103 @@ const EMPTY_FORM: FormState = {
   tirSemiAnnualReviewPeriodEnd: '',
   lastAuditFiscalYear: null,
   lastMonthlyReportReceived: '',
+  leaseExpiration: '',
+  idExpiration: '',
+  lastCompensationStudy: '',
 };
 
 const currentYear = new Date().getFullYear();
 const YEAR_OPTIONS = Array.from({ length: 11 }, (_, i) => currentYear + i);
+
+function deriveVariant(chapter: string, appointmentType: string): UpcomingKeyDatesVariant {
+  if ((chapter === '12' || chapter === '13') && appointmentType === 'case-by-case') {
+    return 'ch12-13-case-by-case';
+  }
+  if (isChapter12Standing(chapter, appointmentType)) {
+    return 'chapter12-standing';
+  }
+  if (isChapter13Standing(chapter, appointmentType)) {
+    return 'chapter13-standing';
+  }
+  return 'chapter7-panel';
+}
+
+function buildFormStateFromData(data: TrusteeUpcomingKeyDates): FormState {
+  const tirFrequency: TirFrequency = data.tirFrequency ?? '';
+  return {
+    pastBackgroundQuestion: data.pastBackgroundQuestion ?? '',
+    pastFieldExam: data.pastFieldExam ?? '',
+    pastAudit: data.pastAudit ?? '',
+    pastTprSubmission: data.pastTprSubmission ?? '',
+    tprReviewPeriodStart: data.tprReviewPeriodStart ?? '',
+    tprReviewPeriodEnd: data.tprReviewPeriodEnd ?? '',
+    tprDue: data.tprDue ?? '',
+    tprDueYearType: data.tprDueYearType ?? '',
+    upcomingExamOrAuditYear: data.upcomingExamOrAuditYear ?? '',
+    upcomingExamOrAuditType: data.upcomingExamOrAuditType ?? '',
+    tirFrequency,
+    tirPeriodKey: findPeriodKey(data.tirReviewPeriodStart, data.tirReviewPeriodEnd, tirFrequency),
+    tirReviewPeriodStart: data.tirReviewPeriodStart ?? '',
+    tirReviewPeriodEnd: data.tirReviewPeriodEnd ?? '',
+    tirSemiAnnualReviewPeriodStart: data.tirSemiAnnualReviewPeriodStart ?? '',
+    tirSemiAnnualReviewPeriodEnd: data.tirSemiAnnualReviewPeriodEnd ?? '',
+    lastAuditFiscalYear: data.lastAuditFiscalYear ?? null,
+    lastMonthlyReportReceived: data.lastMonthlyReportReceived ?? '',
+    leaseExpiration: data.leaseExpiration ?? '',
+    idExpiration: data.idExpiration ?? '',
+    lastCompensationStudy: data.lastCompensationStudy ?? '',
+  };
+}
+
+type FormLoadResult = {
+  variant: UpcomingKeyDatesVariant;
+  loadError: boolean;
+  variantAlert: string | null;
+  formState: FormState | null;
+  keyDatesAlert: string | null;
+};
+
+function resolveFormLoadResult(
+  variantFromState: UpcomingKeyDatesVariant | undefined,
+  appointmentId: string,
+  appointmentsResult: PromiseSettledResult<{ data: TrusteeAppointment[] } | null>,
+  keyDatesResult: PromiseSettledResult<{ data: TrusteeUpcomingKeyDates | null }>,
+): FormLoadResult {
+  let variant: UpcomingKeyDatesVariant = variantFromState ?? 'chapter7-panel';
+  let loadError = false;
+  let variantAlert: string | null = null;
+
+  if (!variantFromState) {
+    if (appointmentsResult.status === 'fulfilled') {
+      const appointment = (appointmentsResult.value?.data ?? []).find(
+        (a) => a.id === appointmentId,
+      );
+      if (appointment) {
+        variant = deriveVariant(appointment.chapter, appointment.appointmentType);
+      } else {
+        variantAlert = 'Could not determine appointment type; showing default fields.';
+      }
+    } else {
+      loadError = true;
+    }
+  }
+
+  let formState: FormState | null = null;
+  let keyDatesAlert: string | null = null;
+  if (keyDatesResult.status === 'fulfilled') {
+    const data =
+      !variantFromState && appointmentsResult.status === 'rejected'
+        ? null
+        : keyDatesResult.value.data;
+    if (data) {
+      formState = buildFormStateFromData(data);
+    }
+  } else {
+    keyDatesAlert = `Failed to load upcoming key dates: ${(keyDatesResult.reason as Error).message}`;
+  }
+
+  return { variant, loadError, variantAlert, formState, keyDatesAlert };
+}
 
 export default function UpcomingKeyDatesForm() {
   const { trusteeId, appointmentId } = useParams<{
@@ -130,9 +244,16 @@ export default function UpcomingKeyDatesForm() {
     appointmentId: string;
   }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const globalAlert = useGlobalAlert();
+  const canManage = !!LocalStorage.getSession()?.user?.roles?.includes(CamsRole.TrusteeAdmin);
 
+  const variantFromState = (location.state as { variant?: UpcomingKeyDatesVariant } | null)
+    ?.variant;
+
+  const [variant, setVariant] = useState<UpcomingKeyDatesVariant | undefined>(variantFromState);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
@@ -142,7 +263,9 @@ export default function UpcomingKeyDatesForm() {
     tprDue: '',
     tprDueYearType: '',
   });
+  const { registerFieldError, hasErrorAmong } = useDateFieldErrors();
   const [validationState, setValidationState] = useState({ tprReviewPeriod: true });
+  const [tprReviewPeriodFocused, setTprReviewPeriodFocused] = useState(false);
   const [tprDueRowFocused, setTprDueRowFocused] = useState(false);
   const [tprDueRowHasInteracted, setTprDueRowHasInteracted] = useState(false);
 
@@ -170,41 +293,40 @@ export default function UpcomingKeyDatesForm() {
     !tprDueRowFocused && tprDueRowHasInteracted && tprDueDateComplete && !form.tprDueYearType;
 
   useEffect(() => {
-    Api2.getUpcomingKeyDates(trusteeId!, appointmentId!)
-      .then((response) => {
-        const data = response.data;
-        if (data) {
-          const freq: TirFrequency = data.tirFrequency ?? '';
-          const periodKey = findPeriodKey(data.tirReviewPeriodStart, data.tirReviewPeriodEnd, freq);
-          setForm({
-            pastBackgroundQuestion: data.pastBackgroundQuestion ?? '',
-            pastFieldExam: data.pastFieldExam ?? '',
-            pastAudit: data.pastAudit ?? '',
-            pastTprSubmission: data.pastTprSubmission ?? '',
-            tprReviewPeriodStart: data.tprReviewPeriodStart ?? '',
-            tprReviewPeriodEnd: data.tprReviewPeriodEnd ?? '',
-            tprDue: data.tprDue ?? '',
-            tprDueYearType: data.tprDueYearType ?? '',
-            upcomingExamOrAuditYear: data.upcomingExamOrAuditYear ?? '',
-            upcomingExamOrAuditType: data.upcomingExamOrAuditType ?? '',
-            tirFrequency: freq,
-            tirPeriodKey: periodKey,
-            tirReviewPeriodStart: data.tirReviewPeriodStart ?? '',
-            tirReviewPeriodEnd: data.tirReviewPeriodEnd ?? '',
-            tirSemiAnnualReviewPeriodStart: data.tirSemiAnnualReviewPeriodStart ?? '',
-            tirSemiAnnualReviewPeriodEnd: data.tirSemiAnnualReviewPeriodEnd ?? '',
-            lastAuditFiscalYear: data.lastAuditFiscalYear ?? null,
-            lastMonthlyReportReceived: data.lastMonthlyReportReceived ?? '',
-          });
-        }
-      })
-      .catch((err) => {
-        globalAlert?.error(`Failed to load upcoming key dates: ${(err as Error).message}`);
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
-  }, [trusteeId, appointmentId]);
+    const appointmentsPromise = variantFromState
+      ? Promise.resolve(null)
+      : Api2.getTrusteeAppointments(trusteeId!);
+
+    Promise.allSettled([
+      appointmentsPromise,
+      Api2.getUpcomingKeyDates(trusteeId!, appointmentId!),
+    ]).then(([appointmentsResult, keyDatesResult]) => {
+      const result = resolveFormLoadResult(
+        variantFromState,
+        appointmentId!,
+        appointmentsResult,
+        keyDatesResult,
+      );
+
+      if (!variantFromState) {
+        setVariant(result.variant);
+      }
+      if (result.loadError) {
+        setLoadError(true);
+      }
+      if (result.variantAlert) {
+        globalAlert?.error(result.variantAlert);
+      }
+      if (result.formState) {
+        setForm(result.formState);
+      }
+      if (result.keyDatesAlert) {
+        globalAlert?.error(result.keyDatesAlert);
+      }
+
+      setIsLoading(false);
+    });
+  }, [trusteeId, appointmentId, variantFromState, globalAlert]);
 
   function handleMonthDayChange(field: keyof FormState) {
     return (value: string) => {
@@ -318,6 +440,9 @@ export default function UpcomingKeyDatesForm() {
       tirSemiAnnualReview,
       lastAuditFiscalYear: form.lastAuditFiscalYear,
       lastMonthlyReportReceived: form.lastMonthlyReportReceived || null,
+      leaseExpiration: form.leaseExpiration || null,
+      idExpiration: form.idExpiration || null,
+      lastCompensationStudy: form.lastCompensationStudy || null,
     };
 
     const result = validateTrusteeUpcomingKeyDates(isoInput);
@@ -354,161 +479,251 @@ export default function UpcomingKeyDatesForm() {
         ? SEMI_ANNUAL_OPTIONS
         : [];
 
-  if (isLoading) {
+  if (isLoading || !variant) {
     return <LoadingSpinner id="edit-upcoming-key-dates-loading" />;
+  }
+
+  if (!canManage) {
+    return (
+      <Stop
+        id="forbidden-alert"
+        title="Forbidden"
+        message="You do not have permission to manage Trustee Upcoming Key Dates"
+        asError
+      />
+    );
+  }
+
+  if (loadError) {
+    return (
+      <Alert
+        id="upcoming-key-dates-load-error"
+        type={UswdsAlertStyle.Error}
+        title="Something went wrong"
+        show
+        inline
+      >
+        Please refresh and try again.
+      </Alert>
+    );
+  }
+
+  const config = UPCOMING_KEY_DATES_FORM_CONFIG[variant];
+  const datePickerIds = config
+    .filter((d): d is DatePickerFieldDescriptor => typeof d !== 'string')
+    .map((d) => d.id);
+
+  const isSaveDisabled =
+    isSaving ||
+    (!validationState.tprReviewPeriod && !tprReviewPeriodFocused) ||
+    !!errors.tprDue ||
+    !!errors.tprDueYearType ||
+    !!tprDueBlurError ||
+    (datePickerIds.length > 0 && hasErrorAmong(datePickerIds));
+
+  function renderField(descriptor: UpcomingFormFieldDescriptor) {
+    const kind = typeof descriptor === 'string' ? descriptor : descriptor.kind;
+    switch (kind) {
+      case 'exam-audit-group':
+        return (
+          <div key="exam-audit-group" className="exam-audit-group">
+            <p className="usa-label">Field Exam or Audit</p>
+            <div className="exam-audit-group__row">
+              <div className="usa-form-group">
+                <label className="usa-hint" htmlFor="upcoming-exam-audit-year">
+                  Year
+                </label>
+                <select
+                  className="usa-select"
+                  id="upcoming-exam-audit-year"
+                  data-testid="upcoming-exam-audit-year"
+                  value={form.upcomingExamOrAuditYear}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setForm((prev) => ({
+                      ...prev,
+                      upcomingExamOrAuditYear: val ? Number(val) : '',
+                    }));
+                  }}
+                >
+                  <option value="">- Select -</option>
+                  {YEAR_OPTIONS.map((y) => (
+                    <option key={y} value={y}>
+                      {y}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="usa-form-group">
+                <label className="usa-hint" htmlFor="upcoming-exam-audit-type">
+                  Type
+                </label>
+                <select
+                  className="usa-select"
+                  id="upcoming-exam-audit-type"
+                  data-testid="upcoming-exam-audit-type"
+                  value={form.upcomingExamOrAuditType}
+                  onChange={(e) => {
+                    setForm((prev) => ({
+                      ...prev,
+                      upcomingExamOrAuditType: e.target.value as 'Field Exam' | 'Audit' | '',
+                    }));
+                  }}
+                >
+                  <option value="">- Select -</option>
+                  <option value="Field Exam">Field Exam</option>
+                  <option value="Audit">Audit</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'tpr-review-period':
+        return (
+          <div
+            key="tpr-review-period"
+            onFocus={() => setTprReviewPeriodFocused(true)}
+            onBlur={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                setTprReviewPeriodFocused(false);
+              }
+            }}
+          >
+            <MonthDayRangeSelector
+              id="tpr-review-period"
+              label="Trustee Performance Review (TPR) Period"
+              startValue={form.tprReviewPeriodStart}
+              endValue={form.tprReviewPeriodEnd}
+              onStartChange={handleMonthDayChange('tprReviewPeriodStart')}
+              onEndChange={handleMonthDayChange('tprReviewPeriodEnd')}
+              onValidationChange={(isValid) =>
+                setValidationState((prev) => ({ ...prev, tprReviewPeriod: isValid }))
+              }
+              externalError={errors.tprReviewPeriodStart || errors.tprReviewPeriodEnd}
+              submitted={submitted}
+            />
+          </div>
+        );
+
+      case 'tpr-due':
+        return (
+          <div key="tpr-due" className="tpr-due-group">
+            <div className="tpr-due-group__header">
+              <label className="usa-label" htmlFor="tpr-due-month">
+                Trustee Performance Review (TPR) Due
+              </label>
+            </div>
+            <div
+              className="tpr-due-group__row"
+              onFocus={handleTprDueRowFocus}
+              onBlur={handleTprDueRowBlur}
+            >
+              <MonthDaySelector
+                id="tpr-due"
+                value={form.tprDue}
+                onChange={handleMonthDayChange('tprDue')}
+                hasError={!!errors.tprDue || (!tprDueDateComplete && !!tprDueBlurError)}
+              />
+              <div className="usa-form-group year-type-selector">
+                <label htmlFor="tpr-due-year-type" className="usa-hint">
+                  Year Type
+                </label>
+                <select
+                  className={`usa-select${errors.tprDueYearType || tprDueYearTypeBlurError ? ' usa-input--error' : ''}`}
+                  id="tpr-due-year-type"
+                  data-testid="tpr-due-year-type"
+                  value={form.tprDueYearType}
+                  onChange={handleYearTypeChange}
+                  aria-invalid={errors.tprDueYearType ? 'true' : undefined}
+                >
+                  <option value="">- Select -</option>
+                  <option value="EVEN">EVEN</option>
+                  <option value="ODD">ODD</option>
+                </select>
+              </div>
+            </div>
+            {(tprDueBlurError || errors.tprDue || errors.tprDueYearType) && (
+              <span className="usa-error-message" data-testid="tpr-due-error">
+                {tprDueBlurError || errors.tprDue || errors.tprDueYearType}
+              </span>
+            )}
+          </div>
+        );
+
+      case 'tir-period':
+        return (
+          <div key="tir-period" className="tir-period-group">
+            <p className="usa-label">Trustee Interim Report (TIR) Period</p>
+            <div className="tir-period-group__row">
+              <div className="usa-form-group">
+                <label className="usa-hint" htmlFor="tir-frequency">
+                  Frequency
+                </label>
+                <select
+                  className="usa-select"
+                  id="tir-frequency"
+                  data-testid="tir-frequency"
+                  value={form.tirFrequency}
+                  onChange={handleFrequencyChange}
+                >
+                  <option value="">- Select -</option>
+                  <option value="ANNUAL">Annual</option>
+                  <option value="SEMI_ANNUAL">Semi-Annual</option>
+                </select>
+              </div>
+              <div className="usa-form-group">
+                <label className="usa-hint" htmlFor="tir-period">
+                  Period
+                </label>
+                <select
+                  className="usa-select"
+                  id="tir-period"
+                  data-testid="tir-period"
+                  value={form.tirPeriodKey}
+                  onChange={handlePeriodChange}
+                  disabled={!form.tirFrequency}
+                >
+                  <option value="">- Select -</option>
+                  {periodOptions.map((o) => (
+                    <option key={o.key} value={o.key}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'date-picker': {
+        const f = descriptor as DatePickerFieldDescriptor;
+        return (
+          <DatePicker
+            key={f.id}
+            id={f.id}
+            label={f.label}
+            value={form[f.formKey]}
+            disableMax
+            onChange={(e) =>
+              setForm((prev) => ({ ...prev, [f.formKey]: e.target.value }) as FormState)
+            }
+            onValidationChange={(hasError) => registerFieldError(f.id, hasError)}
+          />
+        );
+      }
+
+      default:
+        return null;
+    }
   }
 
   return (
     <div className="edit-upcoming-key-dates" data-testid="edit-upcoming-key-dates">
       <h3>Edit Upcoming Key Dates</h3>
-      <div className="exam-audit-group">
-        <p className="usa-label">Field Exam or Audit</p>
-        <div className="exam-audit-group__row">
-          <div className="usa-form-group">
-            <label className="usa-hint" htmlFor="upcoming-exam-audit-year">
-              Year
-            </label>
-            <select
-              className="usa-select"
-              id="upcoming-exam-audit-year"
-              data-testid="upcoming-exam-audit-year"
-              value={form.upcomingExamOrAuditYear}
-              onChange={(e) => {
-                const val = e.target.value;
-                setForm((prev) => ({
-                  ...prev,
-                  upcomingExamOrAuditYear: val ? Number(val) : '',
-                }));
-              }}
-            >
-              <option value="">- Select -</option>
-              {YEAR_OPTIONS.map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="usa-form-group">
-            <label className="usa-hint" htmlFor="upcoming-exam-audit-type">
-              Type
-            </label>
-            <select
-              className="usa-select"
-              id="upcoming-exam-audit-type"
-              data-testid="upcoming-exam-audit-type"
-              value={form.upcomingExamOrAuditType}
-              onChange={(e) => {
-                setForm((prev) => ({
-                  ...prev,
-                  upcomingExamOrAuditType: e.target.value as 'Field Exam' | 'Audit' | '',
-                }));
-              }}
-            >
-              <option value="">- Select -</option>
-              <option value="Field Exam">Field Exam</option>
-              <option value="Audit">Audit</option>
-            </select>
-          </div>
-        </div>
-      </div>
-      <MonthDayRangeSelector
-        id="tpr-review-period"
-        label="Trustee Performance Review (TPR) Period"
-        startValue={form.tprReviewPeriodStart}
-        endValue={form.tprReviewPeriodEnd}
-        onStartChange={handleMonthDayChange('tprReviewPeriodStart')}
-        onEndChange={handleMonthDayChange('tprReviewPeriodEnd')}
-        onValidationChange={(isValid) =>
-          setValidationState((prev) => ({ ...prev, tprReviewPeriod: isValid }))
-        }
-        externalError={errors.tprReviewPeriodStart || errors.tprReviewPeriodEnd}
-        submitted={submitted}
-      />
-      <div className="tpr-due-group">
-        <div className="tpr-due-group__header">
-          <label className="usa-label" htmlFor="tpr-due-month">
-            Trustee Performance Review (TPR) Due
-          </label>
-        </div>
-        <div
-          className="tpr-due-group__row"
-          onFocus={handleTprDueRowFocus}
-          onBlur={handleTprDueRowBlur}
-        >
-          <MonthDaySelector
-            id="tpr-due"
-            value={form.tprDue}
-            onChange={handleMonthDayChange('tprDue')}
-            hasError={!!errors.tprDue || (!tprDueDateComplete && !!tprDueBlurError)}
-          />
-          <div className="usa-form-group year-type-selector">
-            <label htmlFor="tpr-due-year-type" className="usa-hint">
-              Year Type
-            </label>
-            <select
-              className={`usa-select${errors.tprDueYearType || tprDueYearTypeBlurError ? ' usa-input--error' : ''}`}
-              id="tpr-due-year-type"
-              data-testid="tpr-due-year-type"
-              value={form.tprDueYearType}
-              onChange={handleYearTypeChange}
-              aria-invalid={errors.tprDueYearType ? 'true' : undefined}
-            >
-              <option value="">- Select -</option>
-              <option value="EVEN">EVEN</option>
-              <option value="ODD">ODD</option>
-            </select>
-          </div>
-        </div>
-        {(tprDueBlurError || errors.tprDue || errors.tprDueYearType) && (
-          <span className="usa-error-message" data-testid="tpr-due-error">
-            {tprDueBlurError || errors.tprDue || errors.tprDueYearType}
-          </span>
-        )}
-      </div>
-      <div className="tir-period-group">
-        <p className="usa-label">Trustee Interim Report (TIR) Period</p>
-        <div className="tir-period-group__row">
-          <div className="usa-form-group">
-            <label className="usa-hint" htmlFor="tir-frequency">
-              Frequency
-            </label>
-            <select
-              className="usa-select"
-              id="tir-frequency"
-              data-testid="tir-frequency"
-              value={form.tirFrequency}
-              onChange={handleFrequencyChange}
-            >
-              <option value="">- Select -</option>
-              <option value="ANNUAL">Annual</option>
-              <option value="SEMI_ANNUAL">Semi-Annual</option>
-            </select>
-          </div>
-          <div className="usa-form-group">
-            <label className="usa-hint" htmlFor="tir-period">
-              Period
-            </label>
-            <select
-              className="usa-select"
-              id="tir-period"
-              data-testid="tir-period"
-              value={form.tirPeriodKey}
-              onChange={handlePeriodChange}
-              disabled={!form.tirFrequency}
-            >
-              <option value="">- Select -</option>
-              {periodOptions.map((o) => (
-                <option key={o.key} value={o.key}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
+      {config.map(renderField)}
       <div className="usa-button-group">
-        <Button id="save-upcoming-key-dates" onClick={handleSave} disabled={isSaving}>
+        <Button id="save-upcoming-key-dates" onClick={handleSave} disabled={isSaveDisabled}>
           {isSaving ? 'Saving...' : 'Save'}
         </Button>
         <Button

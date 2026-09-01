@@ -1,0 +1,92 @@
+name: Deploy SQL Private Link Hub
+
+# Deploys hub core only -- see ops/cloud-deployment/lib/network/sql-hub.bicep.
+# Manual by design: every environment's SQL resolution depends on that one
+# endpoint, so redeploying it must never be a side effect of a branch deploy.
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Preview with what-if, or actually deploy'
+        required: true
+        default: what-if
+        type: choice
+        options:
+          - what-if
+          - deploy
+      resourceGroup:
+        description: 'Resource group holding the SQL server and the hub'
+        required: true
+        default: bankruptcy-oversight-support-systems
+        type: string
+      # Transient. `both` is the steady state; `main-only` exists so main can
+      # migrate onto the hub without also writing into the branch zone while
+      # branch endpoints still own that record. Delete this input once every
+      # consumer is on the hub.
+      #
+      # One explicit A record is declared per zone listed, so order carries no
+      # meaning and main-only -> both is a plain addition. (It did matter when
+      # the endpoint registered through a privateDnsZoneGroup, where the first
+      # entry became the primary config.)
+      consumerZones:
+        description: "DNS zones that get an A record for the hub endpoint. `both` unless mid-migration -- see deployment.md."
+        required: true
+        default: both
+        type: choice
+        options:
+          - both
+          - main-only
+
+permissions: read-all
+
+jobs:
+  deploy-sql-hub:
+    name: Deploy SQL Private Link Hub
+    runs-on: ubuntu-latest
+    # Needs its own federated credential naming THIS workflow: the OIDC subject
+    # template is repo+workflow+environment, so sharing the environment with
+    # Continuous Deployment is not enough. See docs/operations/deployment.md.
+    environment: infrastructure-deploy-main
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3.0.0
+        with:
+          client-id: ${{ secrets.AZ_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZ_TENANT_ID }}
+          subscription-id: ${{ secrets.AZ_SUBSCRIPTION_ID }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
+
+      - name: Deploy SQL Private Link hub
+        run: |
+          set -euo pipefail
+
+          # 'both' must match sql-hub.bicep's consumerPrivateDnsZoneResourceGroups
+          # default. Space-separated: the script owns the JSON/bracket quoting
+          # and prechecks that each zone actually exists before deploying.
+          case "${CONSUMER_ZONES}" in
+          both) zones='rg-cams-network rg-cams-network-dev' ;;
+          main-only) zones='rg-cams-network' ;;
+          *)
+            echo "Unrecognized consumerZones: ${CONSUMER_ZONES}" >&2
+            exit 1
+            ;;
+          esac
+
+          args=(
+            --resource-group "${RESOURCE_GROUP}"
+            --consumer-zone-resource-groups "${zones}"
+          )
+          if [[ "${MODE}" == "what-if" ]]; then
+            args+=(--what-if)
+          fi
+
+          ops/scripts/pipeline/azure-deploy-sql-hub-setup.sh "${args[@]}"
+        env:
+          MODE: ${{ inputs.mode }}
+          RESOURCE_GROUP: ${{ inputs.resourceGroup }}
+          CONSUMER_ZONES: ${{ inputs.consumerZones }}

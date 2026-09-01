@@ -10,6 +10,10 @@
  *   Cosmos:  id starts with "seed-" or matches /^\d{3}-\d{2}-9\d{4}$/  (seed-range caseId)
  *   DXTR:    CS_CASEID starts with "SEED"  (seed-range csCaseId)
  *
+ * Also removes documents the application itself writes as a side effect of interacting with
+ * seed data, which get real app-generated ids the id-prefix rule above can't match (see the
+ * TRUSTEE_VARIATION_COLLECTION and TRUSTEE_MATCH_POLLUTED_COLLECTIONS comments below).
+ *
  * Usage:
  *   tsx --env-file=../backend/.env unseed.ts
  */
@@ -40,6 +44,18 @@ const COSMOS_COLLECTIONS: { db: string; name: string }[] = [
   { db: 'cams', name: 'bankruptcy-software' },
 ];
 
+// No scenario file ever seeds this collection (verified) — every document in it in a dev
+// environment was written by the application as a side effect of resolving a trustee mismatch.
+const TRUSTEE_VARIATION_COLLECTION = { db: 'cams', name: 'trustee-variation' };
+
+// Collections legitimately seeded by many scenario files, so they can't be wiped
+// unconditionally — but a real (non-seed) trustee would never carry the
+// seed-trustee-match- prefix, unique to trustee-match-all-scenarios.ts's own candidates.
+const TRUSTEE_MATCH_POLLUTED_COLLECTIONS = new Set([
+  'case-trustee-appointments',
+  'trustee-case-appointments',
+]);
+
 async function unseedCosmos(): Promise<void> {
   const connectionString = process.env.MONGO_CONNECTION_STRING;
   if (!connectionString) throw new Error(`[${MODULE_NAME}] MONGO_CONNECTION_STRING not set`);
@@ -49,14 +65,29 @@ async function unseedCosmos(): Promise<void> {
   try {
     await client.connect();
 
+    const variationResult = await client
+      .db(TRUSTEE_VARIATION_COLLECTION.db)
+      .collection(TRUSTEE_VARIATION_COLLECTION.name)
+      .deleteMany({});
+    if (variationResult.deletedCount > 0) {
+      console.log(
+        `[${MODULE_NAME}] Deleted ${variationResult.deletedCount} doc(s) from ${TRUSTEE_VARIATION_COLLECTION.name}`,
+      );
+    }
+
     for (const { db: dbName, name: collectionName } of COSMOS_COLLECTIONS) {
       const db = client.db(dbName);
       const collection = db.collection(collectionName);
 
       // Delete anything whose id starts with "seed-" OR matches the seed case ID pattern
-      const result = await collection.deleteMany({
-        $or: [{ id: { $regex: '^seed-' } }, { id: { $regex: '^\\d{3}-\\d{2}-9\\d{4}$' } }],
-      });
+      const conditions: object[] = [
+        { id: { $regex: '^seed-' } },
+        { id: { $regex: '^\\d{3}-\\d{2}-9\\d{4}$' } },
+      ];
+      if (TRUSTEE_MATCH_POLLUTED_COLLECTIONS.has(collectionName)) {
+        conditions.push({ trusteeId: { $regex: '^seed-trustee-match-' } });
+      }
+      const result = await collection.deleteMany({ $or: conditions });
 
       if (result.deletedCount > 0) {
         console.log(

@@ -238,6 +238,32 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
       );
     });
 
+    test('strips id and documentType from the update payload rather than persisting the caller-supplied values', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(sampleVerification);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockResolvedValue({
+        id: 'verification-1',
+        modifiedCount: 1,
+        upsertedCount: 0,
+      });
+
+      const result = await repository.update('verification-1', {
+        id: 'malicious-id',
+        documentType: 'OTHER',
+        status: 'approved',
+      } as unknown as Partial<TrusteeMatchVerification>);
+
+      expect(result.id).toBe(sampleVerification.id);
+      expect(result.documentType).toBe(sampleVerification.documentType);
+      expect(MongoCollectionAdapter.prototype.replaceOne).toHaveBeenCalledWith(
+        expect.objectContaining({ conjunction: 'AND' }),
+        expect.objectContaining({
+          id: sampleVerification.id,
+          documentType: sampleVerification.documentType,
+          status: 'approved',
+        }),
+      );
+    });
+
     test('should re-throw NotFoundError when document does not exist', async () => {
       vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockRejectedValue(
         new NotFoundError('MONGO', { message: 'Not found' }),
@@ -299,6 +325,21 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
       );
     });
 
+    test('projection includes affectedCaseIds', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([sampleVerification]);
+
+      await repository.search({ status: ['pending'] });
+
+      expect(MongoCollectionAdapter.prototype.find).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        undefined,
+        expect.objectContaining({
+          fields: expect.arrayContaining(['affectedCaseIds']),
+        }),
+      );
+    });
+
     test('should wrap errors', async () => {
       vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(
         new Error('Database failure'),
@@ -307,6 +348,29 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
       await expect(repository.search({ status: ['pending'] })).rejects.toThrow(
         'Failed to find trustee match verification records.',
       );
+    });
+
+    test('omits the status filter when predicate.status is empty', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([sampleVerification]);
+
+      await repository.search({ status: [] });
+
+      const conditions = (MongoCollectionAdapter.prototype.find as ReturnType<typeof vi.spyOn>).mock
+        .calls[0][0].values;
+      expect(conditions).toHaveLength(1);
+      expect(conditions[0]).toEqual(
+        expect.objectContaining({ leftOperand: { name: 'documentType' } }),
+      );
+    });
+
+    test('omits the status filter when no predicate is provided', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([sampleVerification]);
+
+      await repository.search({});
+
+      const conditions = (MongoCollectionAdapter.prototype.find as ReturnType<typeof vi.spyOn>).mock
+        .calls[0][0].values;
+      expect(conditions).toHaveLength(1);
     });
   });
 
@@ -382,6 +446,30 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
       vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockRejectedValue(
         new Error('Write failed'),
       );
+
+      await expect(repository.upsertVerification(sampleVerification)).rejects.toThrow(
+        'Failed to upsert trustee match verification for fingerprint fp-abc123.',
+      );
+    });
+
+    test('resolves as a no-op for a message containing only the E11000 code, no "duplicate key" text', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockRejectedValue(
+        new Error('E11000 collection: cams.trustee-match-verification'),
+      );
+
+      await expect(repository.upsertVerification(sampleVerification)).resolves.toBeUndefined();
+    });
+
+    test('resolves as a no-op for a message containing only "duplicate key" text, no E11000 code', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockRejectedValue(
+        new Error('duplicate key error collection: cams.trustee-match-verification'),
+      );
+
+      await expect(repository.upsertVerification(sampleVerification)).resolves.toBeUndefined();
+    });
+
+    test('wraps a non-Error rejection value rather than treating it as a duplicate-key error', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockRejectedValue('write failed');
 
       await expect(repository.upsertVerification(sampleVerification)).rejects.toThrow(
         'Failed to upsert trustee match verification for fingerprint fp-abc123.',

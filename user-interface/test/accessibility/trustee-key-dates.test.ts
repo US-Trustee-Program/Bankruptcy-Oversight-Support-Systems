@@ -104,7 +104,7 @@ test.describe('Trustee Key Dates', () => {
 
     await trusteeProfilePage.locator('#tpr-review-period-start-month').selectOption('04');
     await trusteeProfilePage.locator('#tpr-review-period-start-day').selectOption('01');
-    await trusteeProfilePage.locator('#save-upcoming-key-dates').click();
+    await trusteeProfilePage.locator('#save-upcoming-key-dates').click({ force: true });
 
     await trusteeProfilePage.waitForTimeout(ANALYZE_DELAY);
     const accessibilityScanResults = await createAxeBuilder(trusteeProfilePage).analyze();

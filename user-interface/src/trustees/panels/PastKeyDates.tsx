@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { TrusteeUpcomingKeyDates, isoToMMDDYYYY } from '@common/cams/trustee-upcoming-key-dates';
-import Api2 from '@/lib/models/api2';
+import {
+  TrusteeUpcomingKeyDates,
+  isoToMMDDYYYY,
+  isoToMMYYYY,
+} from '@common/cams/trustee-upcoming-key-dates';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
@@ -13,6 +15,8 @@ export interface PastKeyDatesProps {
   trusteeId: string;
   appointmentId: string;
   appointmentHeading?: string;
+  data: TrusteeUpcomingKeyDates | null;
+  isLoading: boolean;
 }
 
 const NO_DATE = 'No date added';
@@ -21,28 +25,15 @@ function formatDateOrDefault(isoDate: string | undefined): string {
   return isoDate ? isoToMMDDYYYY(isoDate) : NO_DATE;
 }
 
+function formatMonthYearOrDefault(isoDate: string | undefined): string {
+  return isoDate ? isoToMMYYYY(isoDate) : NO_DATE;
+}
+
 export default function PastKeyDates(props: Readonly<PastKeyDatesProps>) {
-  const { variant, trusteeId, appointmentId, appointmentHeading } = props;
+  const { variant, trusteeId, appointmentId, appointmentHeading, data, isLoading } = props;
   const navigate = useNavigate();
   const session = LocalStorage.getSession();
   const canManage = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
-
-  const [isLoading, setIsLoading] = useState(true);
-  const [data, setData] = useState<TrusteeUpcomingKeyDates | null>(null);
-
-  useEffect(() => {
-    Api2.getUpcomingKeyDates(trusteeId, appointmentId)
-      .then((response) => {
-        setData(response.data);
-      })
-      .catch((error) => {
-        console.error('Could not load past key dates', error);
-        setData(null);
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
-  }, [trusteeId, appointmentId]);
 
   function openEdit() {
     navigate(`/trustees/${trusteeId}/appointments/${appointmentId}/past-key-dates/edit`, {
@@ -58,7 +49,9 @@ export default function PastKeyDates(props: Readonly<PastKeyDatesProps>) {
     const value =
       field.kind === 'year'
         ? (data?.lastAuditFiscalYear?.toString() ?? NO_DATE)
-        : formatDateOrDefault(data?.[field.key]);
+        : field.kind === 'month-year'
+          ? formatMonthYearOrDefault(data?.[field.key])
+          : formatDateOrDefault(data?.[field.key]);
     return { label: field.displayLabel, value, testId: field.testId, stacked: field.stacked };
   });
 

@@ -4,6 +4,10 @@
 
 import { faker } from '@faker-js/faker';
 import { generateSearchTokens } from './phonetic-tokens.js';
+// Imported (not duplicated) so this validator's expected totalScore can never drift from
+// production - calculateTotalScore lives in common specifically so both backend and dev-tools
+// can share the exact same implementation (see CAMS-871 Slice 2 Task 3).
+import { calculateTotalScore } from '@common/cams/dataflow-events.js';
 
 /**
  * Type alias for Debtor matching common/src/cams/parties.ts -> Debtor
@@ -456,11 +460,39 @@ type TrusteeAppointmentLike = {
   status?: string;
 };
 
+type CandidateScoreLike = {
+  trusteeId?: string;
+  trusteeName?: string;
+  totalScore?: number;
+  addressScore?: number;
+  nameScore?: number;
+  phoneScore?: number | null;
+  emailScore?: number | null;
+  districtDivisionScore?: number;
+  chapterScore?: number;
+};
+
+type TrusteeMatchVerificationLike = {
+  id?: string;
+  documentType?: string;
+  dxtrTrustee?: { legacy?: { cityStateZipCountry?: string } };
+  matchCandidates?: CandidateScoreLike[];
+};
+
 type SeedOperationLike = {
   db?: string;
   collectionOrTable?: string;
-  data?: Array<CaseLike | TrusteeAppointmentLike | { trusteeId?: string; id?: string }>;
+  data?: Array<
+    | CaseLike
+    | TrusteeAppointmentLike
+    | TrusteeMatchVerificationLike
+    | { trusteeId?: string; id?: string }
+  >;
 };
+
+// Real fixtures sometimes hand-transcribe a rounded integer where calculateTotalScore itself
+// returns an unrounded float.
+const TOTAL_SCORE_EPSILON = 0.01;
 
 /**
  * Validation helpers to ensure test data meets quality standards.
@@ -643,6 +675,68 @@ export const validators = {
   },
 
   /**
+   * Validates that a matchCandidates[] entry on a TRUSTEE_MATCH_VERIFICATION document has real,
+   * internally-consistent CandidateScore fields rather than hardcoded numbers unbacked by the
+   * fixture's own DXTR/CAMS data (see CAMS-871 - this is exactly the bug class that made several
+   * seed fixtures render misleading "no mismatch" icons in the Data Verification UI).
+   * @param candidate - The CandidateScore-shaped object to validate
+   * @param hasDxtrAddress - Whether the document's dxtrTrustee has a legacy.cityStateZipCountry
+   * @param context - Context string for error messages
+   * @throws Error if validation fails with specific issue description
+   */
+  assertCandidateScoreValid(
+    candidate: CandidateScoreLike | null | undefined,
+    hasDxtrAddress: boolean,
+    context: string,
+  ): void {
+    if (!candidate) return;
+
+    const name = candidate.trusteeName || candidate.trusteeId || 'unknown';
+    const requiredFields: (keyof CandidateScoreLike)[] = [
+      'totalScore',
+      'addressScore',
+      'nameScore',
+      'phoneScore',
+      'emailScore',
+      'districtDivisionScore',
+      'chapterScore',
+    ];
+
+    for (const field of requiredFields) {
+      if (typeof candidate[field] !== 'number') {
+        throw new Error(`${context}: candidate "${name}" missing ${field}`);
+      }
+    }
+
+    // addressScore never has a "not comparable" state (unlike phoneScore/emailScore) - the real
+    // calculateAddressScore always returns a number, 0 when there's no DXTR address to compare.
+    // A candidate scoring a real address match with no DXTR address at all to back it up is
+    // exactly the bug this check exists to catch.
+    if (!hasDxtrAddress && candidate.addressScore !== 0) {
+      throw new Error(
+        `${context}: candidate "${name}" has addressScore ${candidate.addressScore} but dxtrTrustee has no legacy address to compare - should be 0`,
+      );
+    }
+
+    // Guards against a 4th recurrence of the exact bug class this validator exists to catch
+    // (see CAMS-871 Slice 2 Task 3) - a totalScore hand-transcribed independently of its own
+    // component scores, rather than actually computed from them.
+    const expectedTotalScore = calculateTotalScore({
+      addressScore: candidate.addressScore!,
+      nameScore: candidate.nameScore!,
+      phoneScore: candidate.phoneScore!,
+      emailScore: candidate.emailScore!,
+      districtDivisionScore: candidate.districtDivisionScore!,
+      chapterScore: candidate.chapterScore!,
+    });
+    if (Math.abs(candidate.totalScore! - expectedTotalScore) > TOTAL_SCORE_EPSILON) {
+      throw new Error(
+        `${context}: candidate "${name}" has totalScore ${candidate.totalScore} but the weighted sum of its component scores is ${expectedTotalScore.toFixed(2)}`,
+      );
+    }
+  },
+
+  /**
    * Validates all seed operations for data quality issues
    * @param ops - Array of seed operations to validate
    * @returns Array of error messages (empty if all valid)
@@ -807,6 +901,30 @@ export const validators = {
             validators.assertTrusteeAppointmentValid(apptDoc, `TrusteeAppointment ${apptId}`);
           } catch (e) {
             errors.push((e as Error).message);
+          }
+        }
+      }
+
+      // Validate trustee-match-verification collection (matchCandidates' CandidateScore fields)
+      if (op.collectionOrTable === 'trustee-match-verification') {
+        for (const doc of op.data) {
+          const verificationDoc = doc as TrusteeMatchVerificationLike;
+
+          if (verificationDoc.documentType !== 'TRUSTEE_MATCH_VERIFICATION') continue;
+
+          const docId = verificationDoc.id || 'unknown';
+          const hasDxtrAddress = !!verificationDoc.dxtrTrustee?.legacy?.cityStateZipCountry;
+
+          for (const candidate of verificationDoc.matchCandidates ?? []) {
+            try {
+              validators.assertCandidateScoreValid(
+                candidate,
+                hasDxtrAddress,
+                `TrusteeMatchVerification ${docId}`,
+              );
+            } catch (e) {
+              errors.push((e as Error).message);
+            }
           }
         }
       }

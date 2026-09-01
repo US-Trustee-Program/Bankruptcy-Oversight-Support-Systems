@@ -1,14 +1,18 @@
 /**
- * Integration test harness: trustee matching algorithm correctness (CAMS-809).
+ * Integration test harness: trustee matching algorithm correctness.
  *
  * Exercises `SyncTrusteeCaseAppointmentsUseCase` (backend/lib/use-cases/dataflows/
  * sync-trustee-case-appointments.ts) directly against a real DXTR SQL Server instance
- * (mimicked locally with SQL Edge) — same pattern as ../trustee-petition-match — with thirteen
- * fixture cases, each exercising one distinct outcome branch of the matching algorithm
- * (trustee-match.helpers.ts + processAppointments's decision tree):
+ * (mimicked locally with SQL Edge) — same pattern as ../trustee-petition-match — with twelve
+ * fixture cases (numbered 2-13; #1 (reserved-id-skip) was removed once ACMS professional ID
+ * matching was retired, and case #2's original professional-id-fast-path outcome was replaced
+ * by an equivalent auto-link path — see #2 below), each exercising one distinct
+ * outcome branch of the matching algorithm (trustee-match.helpers.ts + processAppointments's
+ * decision tree):
  *
- *   1.  reserved-id-skip             - reserved acmsProfessionalId, no matching attempted
- *   2.  perfect-match-professional-id - professional-id fast path, active appointment match
+ *   2.  perfect-match-ambiguous-name-resolved-by-scoring - two CAMS trustees share this DXTR
+ *                                       party's exact name; fuzzy scoring picks the clear winner
+ *                                       on demographics, same as any other resolved trusteeId
  *   3.  perfect-match-by-name         - name fast path, active appointment match
  *   4.  perfect-match-inactive-status - resolves uniquely, but matching appointment is inactive
  *   5.  imperfect-match               - resolves uniquely, zero appointments at all
@@ -23,16 +27,17 @@
  *   13. fingerprint-no-false-collapse (Slice 5) - a genuinely different person sharing #2's
  *                                       ambiguous name does NOT false-collapse to #2's trustee
  *
- * Scenarios 12-13 exercise the CAMS-809 Slice 5 fingerprint/variant memoization mechanism
+ * Scenarios 12-13 exercise the fingerprint/variant memoization mechanism
  * (backend/lib/use-cases/dataflows/trustee-variant.helpers.ts, TRUSTEE_VARIATION) layered on
- * top of the same algorithm scenarios 1-11 cover. They run in a separate processAppointments()
+ * top of the same algorithm scenarios 2-11 cover. They run in a separate processAppointments()
  * call AFTER the main first pass, so scenario 2's TRUSTEE_VARIATION write (which only happens
  * once scenario 2 itself resolves) is guaranteed to exist before scenario 12/13's events are
  * read — sidestepping the DXTR query's TX_DATE DESC ordering entirely rather than relying on
  * intra-batch processing order.
  *
- * Three further stages, independent of the 13 DXTR-driven scenarios above, guard regressions
- * real Cosmos/Mongo can catch but a fully-mocked unit test cannot:
+ * Further stages, independent of the 12 DXTR-driven scenarios above, guard regressions real
+ * Cosmos/Mongo can catch but a fully-mocked unit test cannot (Stages 8-10 round-trip through
+ * real DXTR/Mongo reads instead of seeding Cosmos fixtures directly):
  *
  *   Stage 5 (sort/index) - getActiveByCaseId (trustee-case-appointments.mongo.repository.ts)
  *     sorts by assignedOn DESCENDING (with createdOn DESCENDING as a tiebreaker) and relies on
@@ -59,6 +64,23 @@
  *     existsInTrusteePartition check detects it and repairs trusteePartition via
  *     replaceOneInTrusteePartition — proof against a real trustee partition collection, which a
  *     mocked repository's recorded call args cannot provide.
+ *
+ *   Stage 8 (bad REC date fallback) - proves CasesDxtrGateway.getTrusteeAppointments falls back
+ *     to TX.TX_DATE when REC's fixed-width embedded appointment date is blank/unparseable,
+ *     against a real SQL Server row rather than a mocked query result.
+ *
+ *   Stage 9 (sentinel professional code skip rule) - proves the skip rule against a real DXTR
+ *     round trip: both that profCode is correctly extracted from REC's fixed-width offset, and
+ *     that isSentinelWithNoIdentity/isBogusTrusteeName correctly decide skip vs. proceed against
+ *     real query results rather than a hand-built mock event.
+ *
+ *   Stage 10 (district/chapter cross-appointment scoring) - seeds one trustee with two active
+ *     TrusteeAppointments in different divisions/chapters, then calls
+ *     resolveNameCollisionByScoring directly against real Mongo for a case whose division
+ *     matches only the FIRST appointment and whose chapter matches only the SECOND
+ *     (unrelated-division) appointment. Asserts chapterScore is 0 — calculateChapterScore scopes
+ *     chapter evidence to only the appointments that also cover the case's division, so a
+ *     trustee's chapter can never be credited from an appointment in an unrelated division.
  *
  * This is a one-shot script - NOT a Vitest test.
  *
@@ -100,7 +122,7 @@
  *   check-env     Verify required environment variables are set
  *   seed-schema   [local] Create DXTR_INT database + apply AO_* DDL
  *   seed-sql      Drop/recreate DXTR fixture rows (idempotent)
- *   seed-cosmos   Seed synced cases, trustees, appointments, professional ids
+ *   seed-cosmos   Seed synced cases, trustees, appointments
  *   run           Full test: clean → seed → read DXTR → process (multiple passes) → assert
  *   clean         Remove test documents/rows from both databases
  *   help          Show this help
@@ -116,6 +138,7 @@ import * as mssql from 'mssql';
 import ApplicationContextCreator from '../../../../backend/function-apps/azure/application-context-creator';
 import SyncTrusteeCaseAppointmentsUseCase from '../../../../backend/lib/use-cases/dataflows/sync-trustee-case-appointments';
 import { TrusteeCaseAppointmentsMongoRepository } from '../../../../backend/lib/adapters/gateways/mongo/trustee-case-appointments.mongo.repository';
+import { resolveNameCollisionByScoring } from '../../../../backend/lib/use-cases/dataflows/trustee-match.helpers';
 import { TrusteeAppointmentSyncEvent } from '../../../../common/src/cams/dataflow-events';
 import {
   standUpEphemeralCosmosDatabase,
@@ -130,11 +153,13 @@ const IS_LOCAL = INTEGRATION_ENV !== 'azure';
 
 // The one collection this harness needs an index pre-created on before seeding — see Stage 5
 // below and cosmos-collections.bicep's case-trustee-appointments compound index comment. Every
-// other collection this harness seeds (cases, trustees, trustee-professional-ids,
-// trustee-appointments, trustee-case-appointments, trustee-match-verification, trustee-variation,
-// runtime-state) is queried in this harness only by equality/findOne, which Mongo/Cosmos can
-// satisfy without a declared index — so standUpEphemeralCosmosDatabase (which materializes a
-// database by creating exactly one collection's index) is only called for this one.
+// other collection this harness seeds (cases, trustees, trustee-appointments,
+// trustee-case-appointments, trustee-match-verification, trustee-variation, runtime-state) is
+// queried in this harness only by equality/findOne, which Mongo/Cosmos can satisfy without a
+// declared index — so standUpEphemeralCosmosDatabase (which materializes a database by creating
+// exactly one collection's index) is only called for this one. clean() also defensively deletes
+// any stale trustee-professional-ids rows left over from before this harness stopped seeding
+// that collection, though nothing here seeds it anymore.
 const INDEXED_COLLECTION = 'case-trustee-appointments';
 const INDEXED_COLLECTION_KEY = { caseId: 1 as const, assignedOn: 1 as const };
 
@@ -147,12 +172,11 @@ let ephemeralDatabaseName: string | null = null;
 // ---------------------------------------------------------------------------
 
 const COURT_ID = '0210';
-const DIV = '083'; // all scenarios except reserved-id-skip
+const DIV = '083';
 const CHAPTER = '7';
 
 const CASES = {
-  reservedIdSkip: { caseId: '084-26-88900' },
-  perfectMatchProfessionalId: { caseId: '083-26-88901' },
+  perfectMatchAmbiguousName: { caseId: '083-26-88901' },
   perfectMatchByName: { caseId: '083-26-88902' },
   perfectMatchInactiveStatus: { caseId: '083-26-88903' },
   imperfectMatch: { caseId: '083-26-88904' },
@@ -169,9 +193,10 @@ const ALL_CASE_IDS = Object.values(CASES).map((c) => c.caseId);
 
 const TRUSTEES = {
   perfectPid: { id: 'ms-trustee-perfect-pid', name: 'Perfect M ProfessionalId' },
-  // Shares perfectPid's exact name — used only by scenarios 12/13. Harmless to scenario 2
-  // itself, since scenario 2 resolves via the professional-id fast path, never via
-  // matchTrusteeByName, so the ambiguity is never in play for scenario 2's own outcome.
+  // Shares perfectPid's exact name — this is what makes scenario 2 itself an ambiguous-name
+  // collision resolved by resolveNameCollisionByScoring (perfectPid wins on demographics), and
+  // is also used by scenarios 12/13 to exercise the fingerprint bucket against that same
+  // ambiguity.
   perfectPidDecoy: { id: 'ms-trustee-perfect-pid-decoy', name: 'Perfect M ProfessionalId' },
   perfectName: { id: 'ms-trustee-perfect-name', name: 'Perfect N ByName' },
   inactiveStatus: { id: 'ms-trustee-inactive-status', name: 'Inactive S StatusTrustee' },
@@ -185,14 +210,6 @@ const TRUSTEES = {
   reVerification: { id: 'ms-trustee-reverify', name: 'Reverify M Trustee' },
 } as const;
 const ALL_TRUSTEE_IDS = Object.values(TRUSTEES).map((t) => t.id);
-
-const RESERVED_PROFESSIONAL_ID = 'XX-99999';
-const PID_PERFECT = 'MS-00001';
-const PID_INACTIVE = 'MS-00002';
-const PID_IMPERFECT = 'MS-00003';
-const PID_NOT_YET_SYNCED = 'MS-00004';
-const PID_CASE_MOVED = 'MS-00005';
-const PID_REVERIFICATION = 'MS-00006';
 
 // ---------------------------------------------------------------------------
 // Stage 5/6 fixtures — direct Cosmos proofs, no DXTR round trip. Distinct caseIds from the
@@ -212,7 +229,6 @@ const SORT_INDEX_ASSIGNED_ON_NEWER = '2024-06-01T00:00:00.000Z';
 // natural key holds across reprocessing.
 const IDEMPOTENCY_CASE_ID = '083-26-88921';
 const IDEMPOTENCY_TRUSTEE = { id: 'ms-trustee-idempotency', name: 'Idempotency P Trustee' };
-const IDEMPOTENCY_PID = 'MS-00007';
 const IDEMPOTENCY_APPOINTED_DATE = '2026-01-14';
 
 // Stage 7: one case seeded with a genuinely diverged dual-write — active in casePartition,
@@ -221,7 +237,6 @@ const IDEMPOTENCY_APPOINTED_DATE = '2026-01-14';
 // mocked-repository unit test cannot exercise.
 const DIVERGENCE_CASE_ID = '083-26-88922';
 const DIVERGENCE_TRUSTEE = { id: 'ms-trustee-divergence', name: 'Divergence P Trustee' };
-const DIVERGENCE_PID = 'MS-00008';
 const DIVERGENCE_ASSIGNED_ON = '2026-01-20';
 
 const STAGE_5_6_7_CASE_IDS = [SORT_INDEX_CASE_ID, IDEMPOTENCY_CASE_ID, DIVERGENCE_CASE_ID];
@@ -234,11 +249,56 @@ const STAGE_5_6_7_TRUSTEE_IDS = [
 
 // Stage 8: unlike Stages 5-7, this DOES round-trip through DXTR (seed/01-seed-dxtr-data.sql
 // scenario 14, CS_CASEID 999999413) — it exists specifically to prove the real SQL fallback,
-// which Stages 5-7 have no need to exercise. Excluded from ALL_CASE_IDS/the 13-scenario
+// which Stages 5-7 have no need to exercise. Excluded from ALL_CASE_IDS/the 12-scenario
 // matching pipeline (no Cosmos synced-case fixture, no trustee, never passed to
 // processAppointments) since it's read directly via casesGateway.getTrusteeAppointments.
 const BAD_REC_DATE_CASE_ID = '083-26-88913';
 const BAD_REC_DATE_TX_DATE = '2026-01-14';
+
+// Stage 9: sentinel professional code skip rule. Like Stage 8, these round-trip
+// through DXTR directly (seed/01-seed-dxtr-data.sql fixtures 15a-15d, CS_CASEID 999999414-417)
+// rather than joining the 13-scenario Cosmos matching pipeline — excluded from ALL_CASE_IDS, no
+// Cosmos synced-case/trustee fixtures needed for the two cases expected to be skipped before
+// matching ever runs (15a, 15d). The two cases expected to proceed to matching (15b, 15c) are
+// each asserted only via a pending NO_TRUSTEE_MATCH verification doc, not via a full auto-link
+// outcome — dedicated trustee fixtures for those two cases aren't worth the setup for what
+// sync-trustee-case-appointments.test.ts's mocked unit tests already cover exhaustively; this
+// stage's job is proving the real REC SUBSTRING extraction and skip decision, not re-proving the
+// matching algorithm itself.
+const SENTINEL_NO_NAME_NO_ADDRESS_CASE_ID = '083-26-88914';
+const SENTINEL_BOGUS_NAME_WITH_CONTACT_CASE_ID = '083-26-88915';
+const SENTINEL_GENUINE_NAME_AND_ADDRESS_CASE_ID = '083-26-88916';
+const NON_SENTINEL_EMPTY_DEMOGRAPHICS_CASE_ID = '083-26-88917';
+// Like BAD_REC_DATE_CASE_ID, these DO have DXTR rows (so they're covered by the
+// 999999400-999999417 SQL DELETE range in clean() already) but aren't part of ALL_CASE_IDS —
+// tracked separately here purely so clean() also removes the two Cosmos SYNCED_CASE fixtures
+// runSentinelProfCodeStage seeds for the two non-skipped cases (15b, 15c).
+const STAGE_9_CASE_IDS = [
+  SENTINEL_NO_NAME_NO_ADDRESS_CASE_ID,
+  SENTINEL_BOGUS_NAME_WITH_CONTACT_CASE_ID,
+  SENTINEL_GENUINE_NAME_AND_ADDRESS_CASE_ID,
+  NON_SENTINEL_EMPTY_DEMOGRAPHICS_CASE_ID,
+];
+
+// Stage 10: direct-Cosmos proof, no DXTR round trip needed — calculateChapterScore/
+// calculateDistrictDivisionScore/calculateCandidateScore consume TrusteeAppointment[] +
+// court/division/chapter values only. One trustee, two active appointments in DIFFERENT
+// divisions/chapters. A case in the FIRST appointment's division but the SECOND appointment's
+// chapter reproduces the scoring bug this stage guards against: chapter evidence must never be
+// credited from an appointment that doesn't also cover the case's division.
+const CROSS_APPOINTMENT_TRUSTEE = {
+  id: 'ms-trustee-cross-appointment',
+  name: 'CrossAppt M ScoringTrustee',
+};
+const CROSS_APPOINTMENT_DIV_A = '083';
+const CROSS_APPOINTMENT_CHAPTER_A = '7';
+const CROSS_APPOINTMENT_DIV_B = '084';
+const CROSS_APPOINTMENT_CHAPTER_B = '13';
+// The case under verification: division A (matches the trustee's first appointment) but
+// chapter 13 (matches only the trustee's second, unrelated-division appointment).
+const CROSS_APPOINTMENT_CASE_COURT_ID = COURT_ID;
+const CROSS_APPOINTMENT_CASE_DIVISION = CROSS_APPOINTMENT_DIV_A;
+const CROSS_APPOINTMENT_CASE_CHAPTER = CROSS_APPOINTMENT_CHAPTER_B;
 
 // ---------------------------------------------------------------------------
 // Environment loading
@@ -483,7 +543,9 @@ async function seedSql() {
   try {
     const seedDir = path.join(HARNESS_DIR, 'seed');
     await executeSqlFile(pool, path.join(seedDir, '01-seed-dxtr-data.sql'));
-    pass('01-seed-dxtr-data.sql seeded (13 scenario cases + Stage 8 bad-REC-date case)');
+    pass(
+      '01-seed-dxtr-data.sql seeded (12 scenario cases + Stage 8 bad-REC-date case + Stage 9 sentinel-profCode cases)',
+    );
   } finally {
     await pool.close();
   }
@@ -494,9 +556,7 @@ async function seedSql() {
 // ---------------------------------------------------------------------------
 
 async function seedCosmos() {
-  console.log(
-    '\nSeeding synced cases, trustees, appointments, and professional ids into Cosmos...\n',
-  );
+  console.log('\nSeeding synced cases, trustees, and appointments into Cosmos...\n');
 
   const now = new Date().toISOString();
   const systemUser = { id: 'SYSTEM', name: 'SYSTEM' };
@@ -706,30 +766,6 @@ async function seedCosmos() {
     }
     pass(`Upserted ${trusteeDocs.length} trustees`);
 
-    // Professional id mappings
-    const professionalIds: Array<[string, string]> = [
-      [PID_PERFECT, TRUSTEES.perfectPid.id],
-      [PID_INACTIVE, TRUSTEES.inactiveStatus.id],
-      [PID_IMPERFECT, TRUSTEES.imperfect.id],
-      [PID_NOT_YET_SYNCED, TRUSTEES.notYetSynced.id],
-      [PID_CASE_MOVED, TRUSTEES.caseMoved.id],
-      [PID_REVERIFICATION, TRUSTEES.reVerification.id],
-    ];
-    for (const [acmsProfessionalId, camsTrusteeId] of professionalIds) {
-      await db.collection('trustee-professional-ids').replaceOne(
-        { acmsProfessionalId, camsTrusteeId },
-        {
-          documentType: 'TRUSTEE_PROFESSIONAL_ID',
-          camsTrusteeId,
-          acmsProfessionalId,
-          updatedOn: now,
-          updatedBy: systemUser,
-        },
-        { upsert: true },
-      );
-    }
-    pass(`Upserted ${professionalIds.length} TrusteeProfessionalId mappings`);
-
     // Appointments
     type AppointmentSpec = {
       trusteeId: string;
@@ -849,21 +885,27 @@ async function clean() {
   const pool = await getDxtrSqlPool(dxtrDatabase);
   try {
     await pool.request().query(`
-      DELETE FROM dbo.AO_TX WHERE CS_CASEID BETWEEN '999999400' AND '999999413' AND COURT_ID = '${COURT_ID}';
-      DELETE FROM dbo.AO_PY WHERE CS_CASEID BETWEEN '999999400' AND '999999413' AND COURT_ID = '${COURT_ID}';
-      DELETE FROM dbo.AO_CS WHERE CS_CASEID BETWEEN '999999400' AND '999999413' AND COURT_ID = '${COURT_ID}';
+      DELETE FROM dbo.AO_TX WHERE CS_CASEID BETWEEN '999999400' AND '999999417' AND COURT_ID = '${COURT_ID}';
+      DELETE FROM dbo.AO_PY WHERE CS_CASEID BETWEEN '999999400' AND '999999417' AND COURT_ID = '${COURT_ID}';
+      DELETE FROM dbo.AO_CS WHERE CS_CASEID BETWEEN '999999400' AND '999999417' AND COURT_ID = '${COURT_ID}';
       DELETE FROM dbo.AO_CS_DIV WHERE (CS_DIV = '083' AND GRP_DES = 'MS') OR (CS_DIV = '084' AND GRP_DES = 'XX');
     `);
-    pass('Deleted DXTR fixture rows for cases 999999400-999999413');
+    pass('Deleted DXTR fixture rows for cases 999999400-999999417');
   } finally {
     await pool.close();
   }
 
   // Stage 5/6/7 fixtures are seeded directly into Cosmos (no DXTR row), so their case/trustee
   // ids are tracked separately from ALL_CASE_IDS/ALL_TRUSTEE_IDS — see the STAGE_5_6_7_*
-  // constants' own comment for why they aren't folded into those arrays.
-  const allCaseIds = [...ALL_CASE_IDS, ...STAGE_5_6_7_CASE_IDS];
-  const allTrusteeIds = [...ALL_TRUSTEE_IDS, ...STAGE_5_6_7_TRUSTEE_IDS];
+  // constants' own comment for why they aren't folded into those arrays. Stage 10 has no case
+  // fixture at all (resolveNameCollisionByScoring is called directly against a synthetic event,
+  // not a synced case/case-appointment doc), only a trustee id to tear down.
+  const allCaseIds = [...ALL_CASE_IDS, ...STAGE_5_6_7_CASE_IDS, ...STAGE_9_CASE_IDS];
+  const allTrusteeIds = [
+    ...ALL_TRUSTEE_IDS,
+    ...STAGE_5_6_7_TRUSTEE_IDS,
+    CROSS_APPOINTMENT_TRUSTEE.id,
+  ];
 
   const { client, db } = await getMongoDb();
   try {
@@ -949,9 +991,7 @@ async function runScenarios() {
   await seedSql();
   console.log('');
 
-  console.log(
-    'Step 2: Seed Cosmos fixtures (synced cases, trustees, appointments, professional ids)',
-  );
+  console.log('Step 2: Seed Cosmos fixtures (synced cases, trustees, appointments)');
   await seedCosmos();
   console.log('');
 
@@ -999,12 +1039,16 @@ async function runScenarios() {
 
   const dist = result.scenarioDistribution;
   const expectations: [string, number, number][] = [
-    ['reservedIdSkippedCount', dist.reservedIdSkippedCount, 1],
-    // perfect-match-professional-id + perfect-match-by-name + multiple-match-high-confidence
-    // (a clear fuzzy-scoring winner auto-links exactly like an exact-name match — see
-    // resolveByScoring's 'resolved' case in sync-trustee-case-appointments.ts)
+    // perfect-match-ambiguous-name-resolved-by-scoring + perfect-match-by-name +
+    // multiple-match-high-confidence (a clear fuzzy-scoring winner auto-links exactly like an
+    // exact-name match — see resolveByScoring's 'resolved' case in
+    // sync-trustee-case-appointments.ts)
     ['autoMatchCount', dist.autoMatchCount, 3],
     ['perfectMatchInactiveCount', dist.perfectMatchInactiveCount, 1],
+    // Scenario 5 (imperfect-match): a uniquely-name-matched trustee with zero appointment
+    // evidence in this case's court/division still surfaces as IMPERFECT_MATCH with one
+    // candidate - district/division evidence is scored, not gated on. noMatchCount is just
+    // scenario 6 (genuine no-match).
     ['imperfectMatchCount', dist.imperfectMatchCount, 1],
     ['noMatchCount', dist.noMatchCount, 1],
     ['multipleMatchCount', dist.multipleMatchCount, 1],
@@ -1041,44 +1085,35 @@ async function runScenarios() {
 
   const { client, db } = await getMongoDb();
   try {
-    // 1. reserved-id-skip: no verification, no appointment.
-    const reservedVerification = await db
-      .collection('trustee-match-verification')
-      .findOne({ caseId: CASES.reservedIdSkip.caseId });
-    if (!reservedVerification) {
-      pass('1. reserved-id-skip: no trustee-match-verification created');
-    } else {
-      fail(
-        `1. reserved-id-skip: expected no verification, got: ${JSON.stringify(reservedVerification)}`,
-      );
-    }
-    if (eventFor(CASES.reservedIdSkip.caseId)?.acmsProfessionalId === RESERVED_PROFESSIONAL_ID) {
-      pass(`1. reserved-id-skip: event carries reserved id ${RESERVED_PROFESSIONAL_ID}`);
-    } else {
-      fail(`1. reserved-id-skip: expected acmsProfessionalId ${RESERVED_PROFESSIONAL_ID}`);
-    }
-
-    // 2. perfect-match-professional-id: auto-linked, no verification doc written (auto-matched
-    // cases were never reviewed by a human, so nothing belongs in the human-review queue).
+    // 2. perfect-match-ambiguous-name-resolved-by-scoring: perfectPid and perfectPidDecoy share
+    // this DXTR party's exact name, so matchTrusteeByName reports an ambiguous collision;
+    // resolveNameCollisionByScoring picks perfectPid as the clear winner on demographics
+    // (address/phone/email match perfectPid, not the decoy) and auto-links exactly like any
+    // other resolved trusteeId — no verification doc written (auto-matched cases were never
+    // reviewed by a human, so nothing belongs in the human-review queue).
     const appt2 = await db.collection('case-trustee-appointments').findOne({
       documentType: 'CASE_APPOINTMENT',
-      caseId: CASES.perfectMatchProfessionalId.caseId,
+      caseId: CASES.perfectMatchAmbiguousName.caseId,
     });
     if (appt2?.trusteeId === TRUSTEES.perfectPid.id) {
-      pass('2. perfect-match-professional-id: case appointment linked to expected trustee');
+      pass(
+        '2. perfect-match-ambiguous-name-resolved-by-scoring: case appointment linked to expected trustee',
+      );
     } else {
       fail(
-        `2. perfect-match-professional-id: expected trusteeId ${TRUSTEES.perfectPid.id}, got: ${JSON.stringify(appt2)}`,
+        `2. perfect-match-ambiguous-name-resolved-by-scoring: expected trusteeId ${TRUSTEES.perfectPid.id}, got: ${JSON.stringify(appt2)}`,
       );
     }
     const verification2 = await db
       .collection('trustee-match-verification')
-      .findOne({ caseId: CASES.perfectMatchProfessionalId.caseId });
+      .findOne({ caseId: CASES.perfectMatchAmbiguousName.caseId });
     if (verification2 === null) {
-      pass('2. perfect-match-professional-id: no verification doc written for auto-matched case');
+      pass(
+        '2. perfect-match-ambiguous-name-resolved-by-scoring: no verification doc written for auto-matched case',
+      );
     } else {
       fail(
-        `2. perfect-match-professional-id: expected no verification doc, got: ${JSON.stringify(verification2)}`,
+        `2. perfect-match-ambiguous-name-resolved-by-scoring: expected no verification doc, got: ${JSON.stringify(verification2)}`,
       );
     }
 
@@ -1112,22 +1147,19 @@ async function runScenarios() {
       );
     }
 
-    // 5. imperfect-match: verification pending, IMPERFECT_MATCH, districtDivision/chapter=0.
+    // 5. imperfect-match: resolves uniquely by name, but the trustee has zero appointments
+    // anywhere - districtDivisionScore is trivially 0. District/division evidence is scored
+    // (0/50/100), not gated on, so this still surfaces as an IMPERFECT_MATCH candidate for human
+    // review rather than being suppressed as NO_TRUSTEE_MATCH.
     const verification5 = await db
       .collection('trustee-match-verification')
       .findOne({ caseId: CASES.imperfectMatch.caseId });
-    const candidate5 = verification5?.matchCandidates?.[0];
     if (
       verification5?.status === 'pending' &&
       verification5?.mismatchReason === 'IMPERFECT_MATCH' &&
-      candidate5?.districtDivisionScore === 0 &&
-      candidate5?.chapterScore === 0 &&
-      candidate5?.addressScore === 0 &&
-      candidate5?.nameScore === 100
+      (verification5?.matchCandidates?.length ?? 0) === 1
     ) {
-      pass(
-        '5. imperfect-match: pending verification with expected score breakdown (name=100, address/district/chapter=0)',
-      );
+      pass('5. imperfect-match: pending verification with IMPERFECT_MATCH, one candidate');
     } else {
       fail(`5. imperfect-match: unexpected verification: ${JSON.stringify(verification5)}`);
     }
@@ -1255,22 +1287,32 @@ async function runScenarios() {
     fingerprintEvent13,
   ]);
 
-  if (fingerprintResult.scenarioDistribution.autoMatchCount === 1) {
-    pass('12. fingerprint-repeat: autoMatchCount === 1 (fingerprint hit, no name-matching needed)');
+  // Both events auto-link in this single processAppointments call — event 12 via the
+  // TRUSTEE_VARIATION fingerprint hit (no name-matching needed), event 13 via a fingerprint miss
+  // that falls through to fuzzy scoring and finds a clear winner. Both outcomes are counted via
+  // the same autoMatchCount counter (see applyMatchOutcome/autoLinkTrustee), so the combined
+  // total is 2, not 1 — checking fingerprintHitCount/fingerprintMissCount below is what actually
+  // distinguishes event 12's fingerprint-hit path from event 13's fingerprint-miss path.
+  if (fingerprintResult.scenarioDistribution.autoMatchCount === 2) {
+    pass('12/13: autoMatchCount === 2 (event 12 via fingerprint hit, event 13 via fuzzy scoring)');
   } else {
     fail(
-      `12. fingerprint-repeat: expected autoMatchCount 1, got ${fingerprintResult.scenarioDistribution.autoMatchCount}`,
+      `12/13: expected autoMatchCount 2, got ${fingerprintResult.scenarioDistribution.autoMatchCount}`,
     );
   }
-  // A clear fuzzy-scoring winner now auto-links (counted via autoMatchCount, same as scenario 12's
-  // fingerprint hit), so this event contributes to the same counter rather than a separate one.
-  if (fingerprintResult.scenarioDistribution.autoMatchCount === 2) {
+  if (
+    fingerprintResult.scenarioDistribution.fingerprintHitCount === 1 &&
+    fingerprintResult.scenarioDistribution.fingerprintMissCount === 1
+  ) {
     pass(
-      '13. fingerprint-no-false-collapse: autoMatchCount === 2 (fell through to fuzzy matching, then auto-linked)',
+      '12. fingerprint-repeat: fingerprintHitCount === 1 (no name-matching needed); ' +
+        '13. fingerprint-no-false-collapse: fingerprintMissCount === 1 (fell through to fuzzy matching)',
     );
   } else {
     fail(
-      `13. fingerprint-no-false-collapse: expected autoMatchCount 2, got ${fingerprintResult.scenarioDistribution.autoMatchCount}`,
+      `12/13: expected fingerprintHitCount 1 / fingerprintMissCount 1, got ` +
+        `${fingerprintResult.scenarioDistribution.fingerprintHitCount} / ` +
+        `${fingerprintResult.scenarioDistribution.fingerprintMissCount}`,
     );
   }
 
@@ -1347,13 +1389,15 @@ async function runScenarios() {
     return;
   }
 
-  // First resolution: zero appointments -> imperfect match, verification created pending.
+  // First resolution: zero appointments -> districtDivisionScore 0 -> still surfaces as
+  // IMPERFECT_MATCH with one candidate, pending verification created (see the imperfect-match
+  // scenario 5 comment above).
   const firstResolution = await SyncTrusteeCaseAppointmentsUseCase.processAppointments(deps, [
     reVerifyEvent,
   ]);
   if (firstResolution.scenarioDistribution.imperfectMatchCount === 1) {
     pass(
-      '11. re-verification: first pass resolves as imperfect-match (pending verification created)',
+      '11. re-verification: first pass resolves as IMPERFECT_MATCH (pending verification created)',
     );
   } else {
     fail(
@@ -1425,6 +1469,12 @@ async function runScenarios() {
 
   // ── Stage 8: bad REC date falls back to TX_DATE ───────────────────────────
   await runBadRecDateFallbackStage(deps);
+
+  // ── Stage 9: sentinel professional code skip rule ─────────────────────────
+  await runSentinelProfCodeStage(deps);
+
+  // ── Stage 10: district/chapter cross-appointment scoring ─────────────────
+  await runCrossAppointmentScoringStage(context);
 }
 
 // ---------------------------------------------------------------------------
@@ -1593,18 +1643,6 @@ async function runIdempotencyStage(
       { upsert: true },
     );
 
-    await db.collection('trustee-professional-ids').replaceOne(
-      { acmsProfessionalId: IDEMPOTENCY_PID, camsTrusteeId: IDEMPOTENCY_TRUSTEE.id },
-      {
-        documentType: 'TRUSTEE_PROFESSIONAL_ID',
-        camsTrusteeId: IDEMPOTENCY_TRUSTEE.id,
-        acmsProfessionalId: IDEMPOTENCY_PID,
-        updatedOn: now,
-        updatedBy: systemUser,
-      },
-      { upsert: true },
-    );
-
     await db.collection('trustee-appointments').replaceOne(
       { documentType: 'TRUSTEE_APPOINTMENT', trusteeId: IDEMPOTENCY_TRUSTEE.id, courtId: COURT_ID },
       {
@@ -1624,7 +1662,7 @@ async function runIdempotencyStage(
       },
       { upsert: true },
     );
-    pass('6. seeded synced case, trustee, professional id, and active appointment');
+    pass('6. seeded synced case, trustee, and active appointment');
   } finally {
     await client.close();
   }
@@ -1632,20 +1670,27 @@ async function runIdempotencyStage(
   // Constructed directly rather than read from DXTR — TrusteeAppointmentSyncEvent needs no DXTR
   // round trip to build, and this stage's whole point (same event, reprocessed) is clearer when
   // the identical object reference is passed to processAppointments both times.
+  // firstName/lastName set (matching the seeded trustee fixture above) so this fullName-only
+  // shape doesn't trip isUnattributableBogusName's keyword filter — "Idempotency P Trustee"
+  // contains the bogus-name keyword "trustee", and without a firstName that filter would skip
+  // this event before it ever reaches matching.
   const event: TrusteeAppointmentSyncEvent = {
     caseId: IDEMPOTENCY_CASE_ID,
     courtId: COURT_ID,
-    dxtrTrustee: { fullName: IDEMPOTENCY_TRUSTEE.name },
+    dxtrTrustee: {
+      fullName: IDEMPOTENCY_TRUSTEE.name,
+      firstName: 'Idempotency',
+      lastName: 'Trustee',
+    },
     appointedDate: IDEMPOTENCY_APPOINTED_DATE,
     chapter: CHAPTER,
     courtDivisionCode: DIV,
-    acmsProfessionalId: IDEMPOTENCY_PID,
   };
 
   const firstPass = await SyncTrusteeCaseAppointmentsUseCase.processAppointments(deps, [event]);
   const secondPass = await SyncTrusteeCaseAppointmentsUseCase.processAppointments(deps, [event]);
   if (firstPass.scenarioDistribution.autoMatchCount === 1) {
-    pass('6. first pass auto-matches (professional-id fast path)');
+    pass('6. first pass auto-matches (name match, unique fixture name)');
   } else {
     fail(
       `6. first pass: expected autoMatchCount 1, got ${firstPass.scenarioDistribution.autoMatchCount}`,
@@ -1755,18 +1800,6 @@ async function runDivergenceRepairStage(
       { upsert: true },
     );
 
-    await db.collection('trustee-professional-ids').replaceOne(
-      { acmsProfessionalId: DIVERGENCE_PID, camsTrusteeId: DIVERGENCE_TRUSTEE.id },
-      {
-        documentType: 'TRUSTEE_PROFESSIONAL_ID',
-        camsTrusteeId: DIVERGENCE_TRUSTEE.id,
-        acmsProfessionalId: DIVERGENCE_PID,
-        updatedOn: now,
-        updatedBy: systemUser,
-      },
-      { upsert: true },
-    );
-
     await db.collection('trustee-appointments').replaceOne(
       { documentType: 'TRUSTEE_APPOINTMENT', trusteeId: DIVERGENCE_TRUSTEE.id, courtId: COURT_ID },
       {
@@ -1839,7 +1872,6 @@ async function runDivergenceRepairStage(
     appointedDate: DIVERGENCE_ASSIGNED_ON,
     chapter: CHAPTER,
     courtDivisionCode: DIV,
-    acmsProfessionalId: DIVERGENCE_PID,
   };
 
   const result = await SyncTrusteeCaseAppointmentsUseCase.processAppointments(deps, [event]);
@@ -1882,13 +1914,13 @@ async function runDivergenceRepairStage(
 /**
  * Proves CasesDxtrGateway.getTrusteeAppointments (cases.dxtr.gateway.ts) falls back to
  * TX.TX_DATE when REC's fixed-width embedded appointment date is blank/unparseable, against a
- * real SQL Server AO_TX row rather than a mocked query result (see CAMS-809). A mocked-gateway
+ * real SQL Server AO_TX row rather than a mocked query result. A mocked-gateway
  * unit test can assert the TypeScript fallback logic runs, but only a real database round trip
  * proves the SQL actually compiles and returns the expected value shape — this is exactly how
  * an earlier version of this fallback (using FORMAT(TX.TX_DATE, 'yyyy-MM-dd')) was caught
  * failing against a real SQL Edge container with "Common Language Runtime(CLR) is not enabled
  * on this instance." and replaced with CONVERT(VARCHAR(10), TX.TX_DATE, 120), which has no CLR
- * dependency. Standalone: not part of the 13-scenario matching pipeline, no Cosmos writes.
+ * dependency. Standalone: not part of the 12-scenario matching pipeline, no Cosmos writes.
  */
 async function runBadRecDateFallbackStage(
   deps: ReturnType<typeof SyncTrusteeCaseAppointmentsUseCase.createDeps>,
@@ -1913,6 +1945,316 @@ async function runBadRecDateFallbackStage(
   } else {
     fail(
       `8. expected appointedDate ${BAD_REC_DATE_TX_DATE} (TX_DATE fallback), got ${event.appointedDate}`,
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Stage 9 — sentinel professional code skip rule
+// ---------------------------------------------------------------------------
+
+/**
+ * Proves the sentinel professional code skip rule against a real DXTR round trip —
+ * both that CasesDxtrGateway correctly extracts profCode from REC's fixed-width offset (17-21
+ * for TX_TYPE='A'/TX_CODE='TR'), and that sync-trustee-case-appointments.ts's
+ * isSentinelWithNoIdentity/isBogusTrusteeName correctly decide skip vs. proceed against real
+ * query results rather than a hand-built mock event. Standalone: not part of the 13-scenario
+ * matching pipeline (seed/01-seed-dxtr-data.sql fixtures 15a-15d, CS_CASEID 999999414-417,
+ * excluded from ALL_CASE_IDS) — this stage seeds only the two Cosmos SYNCED_CASE fixtures the
+ * two non-skipped cases (15b, 15c) need to reach NO_TRUSTEE_MATCH, rather than joining the full
+ * pipeline's shared fixture set and expectation counts.
+ */
+async function runSentinelProfCodeStage(
+  deps: ReturnType<typeof SyncTrusteeCaseAppointmentsUseCase.createDeps>,
+) {
+  console.log('\nStage 9: sentinel professional code skip rule — real DXTR round trip, no mocks\n');
+
+  const now = new Date().toISOString();
+  const systemUser = { id: 'SYSTEM', name: 'SYSTEM' };
+  // 15b (bogus name, real contact) and 15c (genuine name and address) are both expected to
+  // reach matching — a bogus-looking name must never override real contact info — so both need
+  // a SYNCED_CASE fixture. 15a and 15d have no usable demographics at all and are skipped
+  // before ever reaching the cases collection.
+  const casesReachingMatching = [
+    { caseId: SENTINEL_BOGUS_NAME_WITH_CONTACT_CASE_ID, debtorName: 'Scenario Debtor Sentinel B' },
+    { caseId: SENTINEL_GENUINE_NAME_AND_ADDRESS_CASE_ID, debtorName: 'Scenario Debtor Sentinel C' },
+  ];
+  const { client, db } = await getMongoDb();
+  try {
+    for (const { caseId, debtorName } of casesReachingMatching) {
+      await db.collection('cases').replaceOne(
+        { documentType: 'SYNCED_CASE', caseId },
+        {
+          documentType: 'SYNCED_CASE',
+          caseId,
+          dxtrId: caseId,
+          courtId: COURT_ID,
+          courtName: 'Integration Test Court',
+          courtDivisionCode: DIV,
+          courtDivisionName: 'Matching Scenarios Division',
+          officeCode: '1',
+          officeName: 'Matching Scenarios Division',
+          groupDesignator: 'MS',
+          regionId: '02',
+          regionName: 'Region 2',
+          chapter: CHAPTER,
+          caseTitle: debtorName,
+          dateFiled: '2026-01-01',
+          debtor: { name: debtorName },
+          updatedOn: now,
+          updatedBy: systemUser,
+        },
+        { upsert: true },
+      );
+    }
+  } finally {
+    await client.close();
+  }
+
+  const stageCaseIds = [
+    SENTINEL_NO_NAME_NO_ADDRESS_CASE_ID,
+    SENTINEL_BOGUS_NAME_WITH_CONTACT_CASE_ID,
+    SENTINEL_GENUINE_NAME_AND_ADDRESS_CASE_ID,
+    NON_SENTINEL_EMPTY_DEMOGRAPHICS_CASE_ID,
+  ];
+
+  const { events } = await deps.casesGateway.getTrusteeAppointments(
+    deps.context,
+    '2026-01-01T00:00:00.000Z',
+  );
+  const stageEvents = events.filter((e) => stageCaseIds.includes(e.caseId));
+
+  if (stageEvents.length === stageCaseIds.length) {
+    pass(`9. getTrusteeAppointments returned all ${stageCaseIds.length} Stage 9 events`);
+  } else {
+    fail(`9. expected ${stageCaseIds.length} Stage 9 events, got ${stageEvents.length}`);
+    return;
+  }
+
+  const profCodeByCase = new Map(stageEvents.map((e) => [e.caseId, e.profCode]));
+  const expectedProfCodes: [string, string][] = [
+    [SENTINEL_NO_NAME_NO_ADDRESS_CASE_ID, '00000'],
+    [SENTINEL_BOGUS_NAME_WITH_CONTACT_CASE_ID, '99999'],
+    [SENTINEL_GENUINE_NAME_AND_ADDRESS_CASE_ID, '00000'],
+    [NON_SENTINEL_EMPTY_DEMOGRAPHICS_CASE_ID, '12345'],
+  ];
+  for (const [caseId, expected] of expectedProfCodes) {
+    if (profCodeByCase.get(caseId) === expected) {
+      pass(`9. ${caseId} profCode correctly extracted from REC offset 17-21 as "${expected}"`);
+    } else {
+      fail(`9. ${caseId}: expected profCode "${expected}", got "${profCodeByCase.get(caseId)}"`);
+    }
+  }
+
+  const result = await SyncTrusteeCaseAppointmentsUseCase.processAppointments(deps, stageEvents);
+
+  // 15a and 15d are both expected to be skipped before matching — neither has any usable
+  // demographics at all — via the pre-existing empty-demographics rule (15a's sentinel profCode
+  // is irrelevant here since the record has nothing to found an identity on either way; 15d's
+  // non-sentinel profCode never even reaches the sentinel-specific logic). Asserted individually
+  // below (not just via the aggregate counter) so a mix-up between which case skipped can't hide
+  // behind a correct total.
+  if (result.scenarioDistribution.emptyDemographicsSkippedCount === 2) {
+    pass('9. emptyDemographicsSkippedCount is 2 (15a, 15d)');
+  } else {
+    fail(
+      `9. expected emptyDemographicsSkippedCount 2, got ${result.scenarioDistribution.emptyDemographicsSkippedCount}`,
+    );
+  }
+  if (result.scenarioDistribution.sentinelBogusNameSkippedCount === 0) {
+    pass('9. sentinelBogusNameSkippedCount is 0 — 15b was NOT skipped (real contact present)');
+  } else {
+    fail(
+      `9. expected sentinelBogusNameSkippedCount 0, got ${result.scenarioDistribution.sentinelBogusNameSkippedCount}`,
+    );
+  }
+
+  const { client: verifyClient, db: verifyDb } = await getMongoDb();
+  try {
+    // 15a, 15d: skipped before matching — no verification doc should exist for either.
+    for (const [label, caseId] of [
+      ['15a', SENTINEL_NO_NAME_NO_ADDRESS_CASE_ID],
+      ['15d', NON_SENTINEL_EMPTY_DEMOGRAPHICS_CASE_ID],
+    ] as const) {
+      const verification = await verifyDb
+        .collection('trustee-match-verification')
+        .findOne({ caseId });
+      if (!verification) {
+        pass(`9. ${label} (${caseId}) was skipped — no verification doc written`);
+      } else {
+        fail(
+          `9. ${label} (${caseId}) expected no verification doc, got: ${JSON.stringify(verification)}`,
+        );
+      }
+    }
+
+    // 15b, 15c: both expected to proceed to matching, resolve to NO_TRUSTEE_MATCH (no seeded
+    // trustee named "Not Assigned - XX" or "Jane A Example"), and write a pending
+    // trustee-match-verification doc — proof neither was skipped, since a skipped event never
+    // reaches upsertMatchVerification at all.
+    for (const [label, caseId] of [
+      ['15b', SENTINEL_BOGUS_NAME_WITH_CONTACT_CASE_ID],
+      ['15c', SENTINEL_GENUINE_NAME_AND_ADDRESS_CASE_ID],
+    ] as const) {
+      const verification = await verifyDb
+        .collection('trustee-match-verification')
+        .findOne({ caseId });
+      if (
+        verification?.status === 'pending' &&
+        verification?.mismatchReason === 'NO_TRUSTEE_MATCH'
+      ) {
+        pass(
+          `9. ${label} (${caseId}) was NOT skipped — reached matching and wrote a pending NO_TRUSTEE_MATCH verification`,
+        );
+      } else {
+        fail(
+          `9. ${label} (${caseId}) expected a pending NO_TRUSTEE_MATCH verification, got: ${JSON.stringify(verification)}`,
+        );
+      }
+    }
+  } finally {
+    await verifyClient.close();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Stage 10 — district/chapter cross-appointment scoring
+// ---------------------------------------------------------------------------
+
+/**
+ * Proves calculateChapterScore (trustee-match.helpers.ts) scopes chapter evidence to only the
+ * active appointments that also cover the case's court+division, against a real Mongo read (no
+ * mocked repositories) — direct-Cosmos proof, no DXTR round trip needed since
+ * resolveNameCollisionByScoring/calculateCandidateScore consume TrusteeAppointment[] +
+ * court/division/chapter values only.
+ *
+ * Seeds one trustee with two active appointments in different divisions/chapters (division A/
+ * chapter 7, division B/chapter 13), then calls resolveNameCollisionByScoring directly for a case
+ * whose division matches ONLY the first appointment and whose chapter matches ONLY the second
+ * (unrelated-division) appointment. If chapter evidence weren't scoped to division-matching
+ * appointments, this exact fixture would score chapterScore=100 despite no single appointment
+ * covering the case's division+chapter combination. Asserts chapterScore=0 and
+ * districtDivisionScore=100 (the division score is unaffected — only chapter evidence needed
+ * scoping).
+ */
+async function runCrossAppointmentScoringStage(context: Awaited<ReturnType<typeof getAppContext>>) {
+  console.log(
+    '\nStage 10: district/chapter cross-appointment scoring — real Mongo read, no mocks\n',
+  );
+
+  const now = new Date().toISOString();
+  const systemUser = { id: 'SYSTEM', name: 'SYSTEM' };
+  const { client, db } = await getMongoDb();
+  try {
+    await db.collection('trustees').replaceOne(
+      { documentType: 'TRUSTEE', trusteeId: CROSS_APPOINTMENT_TRUSTEE.id },
+      {
+        documentType: 'TRUSTEE',
+        trusteeId: CROSS_APPOINTMENT_TRUSTEE.id,
+        name: CROSS_APPOINTMENT_TRUSTEE.name,
+        firstName: 'CrossAppt',
+        middleName: 'M',
+        lastName: 'ScoringTrustee',
+        public: {
+          address: {
+            address1: '10 Cross Appointment Rd',
+            city: 'Scenario City',
+            state: 'SC',
+            zipCode: '11111',
+            countryCode: 'US',
+          },
+        },
+        updatedOn: now,
+        updatedBy: systemUser,
+      },
+      { upsert: true },
+    );
+
+    const appointmentSpecs = [
+      {
+        id: 'appointment-cross-div-a',
+        divisionCode: CROSS_APPOINTMENT_DIV_A,
+        chapter: CROSS_APPOINTMENT_CHAPTER_A,
+      },
+      {
+        id: 'appointment-cross-div-b',
+        divisionCode: CROSS_APPOINTMENT_DIV_B,
+        chapter: CROSS_APPOINTMENT_CHAPTER_B,
+      },
+    ];
+    for (const spec of appointmentSpecs) {
+      await db.collection('trustee-appointments').replaceOne(
+        { documentType: 'TRUSTEE_APPOINTMENT', id: spec.id },
+        {
+          documentType: 'TRUSTEE_APPOINTMENT',
+          id: spec.id,
+          trusteeId: CROSS_APPOINTMENT_TRUSTEE.id,
+          chapter: spec.chapter,
+          appointmentType: 'panel',
+          courtId: COURT_ID,
+          divisionCode: spec.divisionCode,
+          appointedDate: '2020-01-01',
+          status: 'active',
+          effectiveDate: '2020-01-01',
+          updatedOn: now,
+          updatedBy: systemUser,
+          createdOn: now,
+          createdBy: systemUser,
+        },
+        { upsert: true },
+      );
+    }
+    pass(
+      `10. seeded trustee ${CROSS_APPOINTMENT_TRUSTEE.id} with active appointments in division ${CROSS_APPOINTMENT_DIV_A}/chapter ${CROSS_APPOINTMENT_CHAPTER_A} and division ${CROSS_APPOINTMENT_DIV_B}/chapter ${CROSS_APPOINTMENT_CHAPTER_B}`,
+    );
+  } finally {
+    await client.close();
+  }
+
+  const event: TrusteeAppointmentSyncEvent = {
+    caseId: 'cross-appointment-scoring-case',
+    courtId: CROSS_APPOINTMENT_CASE_COURT_ID,
+    courtDivisionCode: CROSS_APPOINTMENT_CASE_DIVISION,
+    chapter: CROSS_APPOINTMENT_CASE_CHAPTER,
+    dxtrTrustee: {
+      fullName: CROSS_APPOINTMENT_TRUSTEE.name,
+      firstName: 'CrossAppt',
+      lastName: 'ScoringTrustee',
+    },
+  };
+
+  const outcome = await resolveNameCollisionByScoring(context, event, [
+    CROSS_APPOINTMENT_TRUSTEE.id,
+  ]);
+
+  if (outcome.kind === 'no-match') {
+    fail('10. resolveNameCollisionByScoring returned no-match — expected a scored candidate');
+    return;
+  }
+
+  const candidate = outcome.candidateScores.find(
+    (c) => c.trusteeId === CROSS_APPOINTMENT_TRUSTEE.id,
+  );
+  if (!candidate) {
+    fail(
+      `10. no candidateScore found for ${CROSS_APPOINTMENT_TRUSTEE.id}: ${JSON.stringify(outcome.candidateScores)}`,
+    );
+    return;
+  }
+
+  if (candidate.districtDivisionScore === 100) {
+    pass('10. districtDivisionScore=100 (case division matches the first appointment)');
+  } else {
+    fail(`10. expected districtDivisionScore=100, got ${candidate.districtDivisionScore}`);
+  }
+
+  if (candidate.chapterScore === 0) {
+    pass(
+      "10. chapterScore=0 — chapter evidence correctly scoped to division-matching appointments only, not the trustee's full appointment history",
+    );
+  } else {
+    fail(
+      `10. REGRESSION: expected chapterScore=0, got ${candidate.chapterScore} — chapter is being credited from an appointment in an unrelated division`,
     );
   }
 }
@@ -1958,9 +2300,7 @@ async function main() {
       console.log('  1. ./trustee-match-scenarios/scripts/start-services.sh');
       console.log(`  2. ${HARNESS} seed-schema  (create DXTR_INT + apply AO_* DDL)`);
       console.log(`  3. ${HARNESS} seed-sql     (seed 13 scenario cases)`);
-      console.log(
-        `  4. ${HARNESS} seed-cosmos  (seed synced cases, trustees, appointments, professional ids)`,
-      );
+      console.log(`  4. ${HARNESS} seed-cosmos  (seed synced cases, trustees, appointments)`);
       console.log(`  5. ${HARNESS} run          (read DXTR → match → write, then assert)`);
       console.log(`  6. ${HARNESS} clean        (remove all test data from both databases)`);
       console.log('  7. ./trustee-match-scenarios/scripts/stop-services.sh');
@@ -1968,7 +2308,7 @@ async function main() {
       console.log('  check-env    Verify required environment variables');
       console.log('  seed-schema  [local] Create DXTR_INT + apply AO_* DDL');
       console.log('  seed-sql     Seed AO_CS_DIV/AO_CS/AO_PY/AO_TX fixture rows for 13 scenarios');
-      console.log('  seed-cosmos  Seed synced cases, trustees, appointments, professional ids');
+      console.log('  seed-cosmos  Seed synced cases, trustees, appointments');
       console.log('  run          Full test: clean → seed → read DXTR → process → assert');
       console.log('  clean        Remove seeded data from DXTR SQL + Cosmos');
       console.log('  help         Show this help');

@@ -33,13 +33,14 @@ const makeEmptyScenarioDistribution = () => ({
   multipleMatchCount: 0,
   reVerificationCount: 0,
   perfectMatchInactiveCount: 0,
-  reservedIdSkippedCount: 0,
   verificationBucketHitCount: 0,
   fingerprintHitCount: 0,
   fingerprintMissCount: 0,
   retryableCount: 0,
   candidateLoadFailedCount: 0,
   emptyDemographicsSkippedCount: 0,
+  sentinelBogusNameSkippedCount: 0,
+  unattributableBogusNameSkippedCount: 0,
 });
 
 describe('sync-trustee-case-appointments handlePage', () => {
@@ -82,44 +83,6 @@ describe('sync-trustee-case-appointments handlePage', () => {
       'handlePage',
       expect.anything(),
       expect.objectContaining({ success: true, documentsWritten: 2, documentsFailed: 0 }),
-    );
-  });
-
-  test('should surface reservedIdSkippedCount in the dataflow-run summary and metrics', async () => {
-    const { handlePage } = await import('./sync-trustee-case-appointments');
-    const events = [makeTrusteeEvent('001-25-00001'), makeTrusteeEvent('001-25-00002')];
-    const message = { events };
-    const invocationContext = makeInvocationContext();
-
-    const processResult = {
-      successCount: 2,
-      dlqMessages: [],
-      scenarioDistribution: { ...makeEmptyScenarioDistribution(), reservedIdSkippedCount: 2 },
-      notYetSyncedEvents: [],
-      retryableEvents: [],
-    };
-    vi.spyOn(SyncTrusteeCaseAppointmentsModule.default, 'processAppointments').mockResolvedValue(
-      processResult,
-    );
-    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
-      await createMockApplicationContext(),
-    );
-    const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
-
-    await handlePage(message, invocationContext);
-
-    expect(telemetrySpy).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.anything(),
-      'SYNC-TRUSTEE-CASE-APPOINTMENTS',
-      'handlePage',
-      expect.anything(),
-      expect.objectContaining({
-        details: expect.objectContaining({ reservedIdSkippedCount: '2' }),
-        additionalMetrics: expect.arrayContaining([
-          { name: 'TrusteeReservedIdSkippedCount', value: 2 },
-        ]),
-      }),
     );
   });
 

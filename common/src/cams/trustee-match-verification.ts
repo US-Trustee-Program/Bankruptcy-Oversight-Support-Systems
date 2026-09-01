@@ -17,13 +17,27 @@ export type TrusteeMatchVerification = Auditable & {
    * (informational/display continuity only) — NOT the source of truth for which cases this
    * mismatch affects. The write path never updates caseId on an existing document, so this
    * is the originating case, not the most recent one. This document is keyed by
-   * fingerprint/variant, so one document can represent many cases; case membership is
-   * answered by querying trustee-case-appointments for trusteeId = <fingerprint> (the
-   * surrogate rows written while the mismatch is pending), never by anything stored here.
+   * fingerprint/variant, so one document can represent many cases; while pending, case
+   * membership is answered by querying trustee-case-appointments for trusteeId =
+   * <fingerprint> (the surrogate rows written while the mismatch is pending) — never from
+   * caseId. Once approved, the surrogate rows are gone (remap deletes them), so case
+   * membership comes from the affectedCaseIds snapshot below instead.
    */
   caseId: string;
   courtId: string;
   dxtrTrustee: DxtrTrusteeParty;
+  /**
+   * The ACMS professional ID this event's DXTR record maps to, formatted
+   * "{GROUP_DESIGNATOR}-{PROF_CODE}" (e.g. "NY-00123") — informational/diagnostic only, never
+   * used to pick or auto-link a trustee (see isSentinelWithNoIdentity in
+   * sync-trustee-case-appointments.ts, which keys off the underlying raw profCode, not this
+   * formatted field). Omitted (not persisted) when the underlying profCode is a known sentinel
+   * value ("00000"/"99999") — a formatted sentinel ID would read as a real professional ID to a
+   * reviewer rather than the "no trustee appointed"/"ID unavailable" placeholder it actually is.
+   * Lets a reviewer distinguish a genuine unmatched trustee from a sentinel-coded placeholder
+   * without needing to cross-reference DXTR directly.
+   */
+  acmsProfessionalId?: string;
   mismatchReason?: TrusteeAppointmentSyncErrorCode;
   matchCandidates: CandidateScore[];
   status: OrderStatus;
@@ -35,18 +49,18 @@ export type TrusteeMatchVerification = Auditable & {
   inactiveAppointmentStatus?: AppointmentStatus;
   taskDate?: string | Date;
   /**
-   * Compound ACMS key ("{GROUP_DESIGNATOR}-{PROF_CODE}") carried from the source
-   * DXTR event, so approval can persist a trustee-professional-ids mapping without
-   * re-deriving it. Undefined when the source event had no resolvable professional code.
-   */
-  acmsProfessionalId?: string;
-  /**
    * The court's actual appointment date, carried from the source DXTR event's
    * appointedDate. Distinct from the approval timestamp used for assignedOn.
    */
   appointedDate?: string;
   /** sha256(variant) — the bucket key used to find this document. See variant below. */
   fingerprint: string;
+  /**
+   * Snapshot of case IDs affected by this fingerprint, written only by approveVerification,
+   * before the async trustee-verification-remap job deletes the surrogate CaseAppointment
+   * rows that are otherwise the only source of this information.
+   */
+  affectedCaseIds?: string[];
   /**
    * The canonicalized (not raw) demographic variant string this document was created from —
    * buildVariant trims, collapses internal whitespace, and lowercases every field (see design
@@ -87,6 +101,7 @@ export type TrusteeMatchVerificationListItem = Pick<
   preselectedCandidate: TrusteeCandidate | null;
   candidateCount: number;
   affectedCaseCount: number;
+  affectedCaseIds: string[];
 };
 
 export type EnrichedTrusteeMatchVerification = TrusteeMatchVerification & {

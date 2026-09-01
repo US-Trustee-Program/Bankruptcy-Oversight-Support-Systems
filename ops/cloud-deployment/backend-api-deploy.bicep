@@ -1,8 +1,4 @@
-import {
-  acsConnectionStringSecretName as acsConnectionStringSecretNameFor
-  acsSenderAddressSecretName as acsSenderAddressSecretNameFor
-  sqlIdentityName as sqlIdentityNameFor
-} from './lib/naming.bicep'
+import { sqlIdentityName as sqlIdentityNameFor } from './lib/naming.bicep'
 
 param location string = resourceGroup().location
 
@@ -101,6 +97,10 @@ param actionGroupName string = ''
 
 param actionGroupResourceGroupName string = ''
 
+@description('Subscription ID that contains the action group resource group. Defaults to the deploying subscription.')
+@minLength(36)
+param actionGroupSubscriptionId string = subscription().subscriptionId
+
 @description('boolean to determine creation and configuration of Alerts')
 param createAlerts bool = false
 
@@ -108,11 +108,9 @@ param privateDnsZoneName string = 'privatelink.azurewebsites.us'
 
 param privateDnsZoneResourceGroup string = virtualNetworkResourceGroupName
 
-@description('When true, reach the SQL server via a Private Endpoint instead of the sql-vnet-rule.bicep VNet rule -- see the createSqlServerVnetRule/createSqlPrivateEndpoint vars below for the mutual-exclusivity rationale.')
+@description('When true, this app reaches SQL through the shared Private Link hub and no sql-vnet-rule.bicep VNet rule is created for it. Required for cross-region consumers: Azure enforces same-region between a SQL server and any subnet in a virtualNetworkRules resource, which cross-region compute cannot satisfy. The hub Private Endpoint has no such restriction.')
 param useSqlPrivateLink bool = false
 
-@description('Fixed Azure Government private-link DNS zone name for Azure SQL. Only consumed when useSqlPrivateLink is true.')
-param sqlPrivateDnsZoneName string = 'privatelink.database.usgovcloudapi.net'
 
 @description('DNS Zone Subscription ID. USTP uses a different subscription for prod deployment.')
 param privateDnsZoneSubscriptionId string = subscription().subscriptionId
@@ -192,20 +190,18 @@ module apiFunctionSlotStorageAccount './lib/storage/storage-account.bicep' = {
   }
 }
 
-// Attach the SQL managed identity whenever this function app connects to
-// SQL at all, regardless of which of the two mutually-exclusive mechanisms
-// (VNet rule vs. Private Endpoint) is used for the network path -- the
-// identity is needed for authentication either way. Gating this on
-// createSqlServerVnetRule alone (its original condition, before the
-// Private Endpoint alternative existed) silently dropped the identity for
-// any function app using useSqlPrivateLink, since createSqlServerVnetRule
-// is false in that case -- causing ManagedIdentityCredential SQL auth
-// failures with no compile-time signal.
+// Attached whenever this app talks to SQL at all. The identity authenticates;
+// it is independent of how the network path is reached, so it must NOT be gated
+// on the VNet rule -- doing that silently drops the identity for consumers that
+// reach SQL through the hub, and ManagedIdentityCredential then fails at runtime
+// with no compile-time signal.
+var attachSqlIdentity = !empty(sqlServerResourceGroupName) && !empty(sqlServerName) && !isUstpDeployment
+
 var userAssignedIdentities = union(
   {
     '${appConfigIdentity.id}': {}
   },
-  (createSqlServerVnetRule || createSqlPrivateEndpoint) ? { '${sqlIdentityResourceId}': {} } : {}
+  attachSqlIdentity ? { '${sqlIdentityResourceId}': {} } : {}
 )
 
 resource apiFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
@@ -386,6 +382,7 @@ module apiFunctionAppInsights 'lib/app-insights/function-app-insights.bicep' = {
   params: {
     actionGroupName: actionGroupName
     actionGroupResourceGroupName: actionGroupResourceGroupName
+    actionGroupSubscriptionId: actionGroupSubscriptionId
     analyticsWorkspaceId: analyticsWorkspaceId
     createAlerts: createAlerts
     createApplicationInsights: createApplicationInsights
@@ -428,14 +425,8 @@ var apiSlotBaseAppSettingsObject = union(
     MAX_OBJECT_DEPTH: maxObjectDepth
     MAX_OBJECT_KEY_COUNT: maxObjectKeyCount
     DEFAULT_NOTIFICATION_RECIPIENT: defaultNotificationRecipient
-    // Branch-qualified to match acs-email.bicep's per-stack secret names
-    // (CAMS-760, GH #2749 bug shape fix) — each branch has its own ACS
-    // communication service, so its connection string/sender address must
-    // read from that same branch's secret, not a name shared across
-    // branches. Both names come from naming.bicep, imported above, so the
-    // two files can't drift apart on this name.
-    ACS_EMAIL_CONNECTION_STRING: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=${acsConnectionStringSecretNameFor(stackName)})'
-    ACS_EMAIL_SENDER_ADDRESS: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=${acsSenderAddressSecretNameFor(stackName)})'
+    ACS_EMAIL_CONNECTION_STRING: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACS-EMAIL-CONNECTION-STRING)'
+    ACS_EMAIL_SENDER_ADDRESS: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACS-EMAIL-SENDER-ADDRESS)'
   },
   isUstpDeployment
     ? {
@@ -509,15 +500,11 @@ module apiSlotPrivateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
 }
 
 
-// useSqlPrivateLink and !useSqlPrivateLink make these mutually exclusive:
-// exactly one of the VNet rule or the Private Endpoint is ever deployed for a
-// given function app's SQL connectivity, never both. The VNet rule remains
-// the default (useSqlPrivateLink defaults to false) since Azure enforces
+// A VNet rule is created only for same-region consumers. Azure enforces
 // same-region between a SQL server and any subnet referenced by a
-// virtualNetworkRules resource -- fine for main and same-region branches,
-// but it fails for a cross-region branch whose subnets follow compute region
-// (AZ-FUNCTIONS-LOCATION). A Private Endpoint has no such restriction, so
-// cross-region branches opt into it instead.
+// virtualNetworkRules resource, which a cross-region branch (subnets follow
+// AZ-FUNCTIONS-LOCATION) cannot satisfy -- those set useSqlPrivateLink and
+// reach SQL through the shared hub instead, with no rule of their own.
 var createSqlServerVnetRule = !useSqlPrivateLink && !empty(sqlServerResourceGroupName) && !empty(sqlServerName) && !isUstpDeployment
 
 module setApiFunctionSqlServerVnetRule './lib/network/sql-vnet-rule.bicep' = if (createSqlServerVnetRule) {
@@ -530,36 +517,6 @@ module setApiFunctionSqlServerVnetRule './lib/network/sql-vnet-rule.bicep' = if 
   }
 }
 
-var createSqlPrivateEndpoint = useSqlPrivateLink && !empty(sqlServerResourceGroupName) && !empty(sqlServerName) && !isUstpDeployment
-
-// The SQL server is never declared `existing` in this codebase -- see the
-// comment above sqlIdentityName below for why constructed resource IDs are
-// preferred here for scope resolution. Assumes the SQL server lives in the
-// deploying subscription (no dedicated sqlServerSubscriptionId param exists
-// anywhere else in this codebase either).
-var sqlServerResourceId = resourceId(sqlServerResourceGroupName, 'Microsoft.Sql/servers', sqlServerName)
-
-module apiSqlPrivateEndpoint './lib/network/subnet-private-endpoint.bicep' = if (createSqlPrivateEndpoint) {
-  name: '${apiFunctionName}-sql-pep-module'
-  scope: resourceGroup(virtualNetworkResourceGroupName)
-  params: {
-    privateLinkGroup: 'sqlServer'
-    stackName: '${apiFunctionName}-sql'
-    // Overrides subnet-private-endpoint.bicep's default
-    // 'privatelink_azurewebsites_${stackName}' config-entry name, which would
-    // otherwise mislabel this SQL DNS zone config as "azurewebsites". This is
-    // a brand-new resource on first deploy, so there is no existing config
-    // entry to rename/replace.
-    dnsZoneConfigName: 'privatelink_database_${apiFunctionName}-sql'
-    location: location
-    privateLinkServiceId: sqlServerResourceId
-    privateEndpointSubnetId: privateEndpointSubnetId
-    privateDnsZoneName: sqlPrivateDnsZoneName
-    privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
-    privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
-    tags: tags
-  }
-}
 
 // The identity itself is created once, in app-shared-setup.bicep (CAMS-760,
 // Option E / Slice 2) — its name is a fixed value shared by main and every

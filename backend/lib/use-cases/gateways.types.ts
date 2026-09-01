@@ -76,7 +76,10 @@ import {
   BankruptcySoftwareAuditHistory,
   BankruptcySoftwareProfile,
 } from '@common/cams/bankruptcy-software';
-import { TrusteeProfessionalId } from '@common/cams/trustee-professional-ids';
+import {
+  TrusteeProfessionalId,
+  TrusteeProfessionalIdError,
+} from '@common/cams/trustee-professional-ids';
 import { TrusteeVariation } from '@common/cams/trustee-variation';
 import {
   Notification,
@@ -84,6 +87,7 @@ import {
   NotificationRoutingRecord,
   NotificationRoutingUpdateInput,
   NotificationRoutingAuditHistory,
+  TrusteeChangeSet,
 } from '@common/cams/notifications';
 
 export type ReplaceResult = {
@@ -222,6 +226,14 @@ export interface RuntimeStateRepository<T extends RuntimeState = RuntimeState>
     field: keyof T & string,
     amount?: number,
   ): Promise<number>;
+  /**
+   * Atomically sets a single field (dotted-path notation supported, e.g. 'someMap.someKey') via
+   * Mongo $set, upserting the document if it doesn't exist yet. Unlike a read-modify-write of
+   * the whole document, this is safe under concurrent writers that only ever touch distinct
+   * fields/keys of the same document (e.g. sync-acms-professional-ids.ts's per-group bookmark
+   * map, where each group only ever sets its own key).
+   */
+  setField(documentType: RuntimeStateDocumentType, path: string, value: unknown): Promise<void>;
 }
 
 export interface CaseDocketGateway {
@@ -278,6 +290,45 @@ export type AcmsTrusteeProfessionalRecord = {
   state: string;
 };
 
+/**
+ * A single ACMS trustee professional record from CMMPR carrying the full
+ * demographic field set needed to build a fingerprint/variant comparable to a
+ * DXTR-sourced trustee record (see `buildAcmsVariant` in
+ * `acms-trustee-variant.helpers.ts`). Used by the CMMPR-driven professional-ID
+ * sync (CAMS-876), distinct from `AcmsTrusteeProfessionalRecord`'s
+ * name/state-only shape used by the ATS-driven backfill pass.
+ */
+export type AcmsTrusteeProfessionalDetailRecord = {
+  acmsProfessionalId: string;
+  firstName: string;
+  lastName: string;
+  middleInitial?: string;
+  address1?: string;
+  address2?: string;
+  city?: string;
+  state?: string;
+  /** Raw NUMERIC(9,0) PROF_ZIP value — see formatAcmsZip for the zero-padded/hyphenated shape. */
+  zip?: number;
+  phone?: string;
+  fax?: string;
+  /**
+   * The raw numeric UST_PROF_CODE cursor value for this record, used to
+   * advance the per-GROUP_DESIGNATOR sync bookmark. Not part of the
+   * fingerprint/variant input.
+   */
+  ustProfCode: number;
+};
+
+/**
+ * A distinct division+chapter combination an ACMS professional currently holds an active
+ * (undisposed) CMMAP appointment in — used to gate whether an unmatched professional ID is
+ * urgent enough to record for review right now.
+ */
+export type AcmsActiveAppointment = {
+  division: string;
+  chapter: string;
+};
+
 export function formatCaseId(div: number, year: number, num: number): string {
   return `${String(div).padStart(3, '0')}-${String(year).padStart(2, '0')}-${String(num).padStart(5, '0')}`;
 }
@@ -315,6 +366,31 @@ export interface AcmsGateway {
   getAllTrusteeProfessionalRecords(
     context: ApplicationContext,
   ): Promise<AcmsTrusteeProfessionalRecord[]>;
+  /**
+   * Return one page of CMMPR trustee professional records (PROF_TYPE = 'TR')
+   * for a single GROUP_DESIGNATOR, with full demographic fields for
+   * fingerprint/variant matching. Paginated via a UST_PROF_CODE keyset cursor
+   * scoped to the group, since UST_PROF_CODE is only monotonically increasing
+   * within a group, not globally.
+   */
+  getTrusteeProfessionalRecordsPage(
+    context: ApplicationContext,
+    groupDesignator: string,
+    lastUstProfCode: number,
+    pageSize: number,
+  ): Promise<AcmsTrusteeProfessionalDetailRecord[]>;
+  /**
+   * Return the distinct division+chapter combinations a single ACMS
+   * professional currently holds an active (undisposed) CMMAP appointment
+   * in. Called on-demand for professionals that fail to auto-link, to decide
+   * whether a verification record is warranted — not part of the hot-path
+   * paged CMMPR query, since most professionals auto-link and never need it.
+   */
+  getActiveAppointmentsForProfessional(
+    context: ApplicationContext,
+    groupDesignator: string,
+    ustProfCode: number,
+  ): Promise<AcmsActiveAppointment[]>;
   getCmmapAppointments(
     context: ApplicationContext,
     lastId: number,
@@ -416,8 +492,20 @@ export interface ListsRepository extends Releasable {
   deleteBank(id: string): Promise<void>;
 }
 
+export type NotificationSendResult = {
+  /** The provider's own message id for this send (e.g. ACS's beginSend() poller result.id). */
+  messageId: string;
+};
+
 export interface NotificationGateway {
-  send(notification: Notification): Promise<void>;
+  send(notification: Notification): Promise<NotificationSendResult>;
+}
+
+export type DomainVerificationResult = 'valid' | 'not-found' | 'indeterminate';
+
+export interface DomainVerificationGateway {
+  /** Checks whether a domain appears able to accept email (MX, falling back to A/AAAA). */
+  verifyMailDomain(domain: string): Promise<DomainVerificationResult>;
 }
 
 export interface NotificationRoutingRepository extends Releasable {
@@ -432,6 +520,36 @@ export interface NotificationRoutingRepository extends Releasable {
   ): Promise<NotificationRoutingRecord>;
   /** Records an audit entry for a routing record change. */
   createRoutingAuditRecord(record: Creatable<NotificationRoutingAuditHistory>): Promise<void>;
+}
+
+export type EmailNotificationArchiveRecord = {
+  /** ACS's own message id (EmailClient.beginSend()'s poller result.id), the correlation key. */
+  messageId: string;
+  /** The specific recipient address this messageId was sent to. */
+  recipientAddress: string;
+  /** The changeSet used to compile the original email; re-running compileTrusteeChangeTemplate against it reproduces the same subject/html/text. */
+  changeSet: TrusteeChangeSet;
+};
+
+export interface EmailNotificationArchiveRepository extends Releasable {
+  /** Persists a record of a sent notification, keyed by ACS messageId, for later bounce reconstruction. */
+  archiveSentEmail(record: EmailNotificationArchiveRecord): Promise<void>;
+  /** Returns the record for a given ACS messageId, or null if not found (e.g. already TTL-expired). */
+  readArchivedEmail(messageId: string): Promise<EmailNotificationArchiveRecord | null>;
+}
+
+export type BounceLogRow = {
+  /** ISO 8601 (UTC) timestamp of the underlying resource log row. */
+  timeGenerated: string;
+  /** ACS's CorrelationId column -- populated with the messageId returned by the original send. */
+  messageId: string;
+  /** ACS's DeliveryStatus column, e.g. 'Bounced', 'Failed', 'Suppressed'. */
+  deliveryStatus: string;
+};
+
+export interface EmailBounceQueryGateway {
+  /** Returns bounce rows with timeGenerated strictly after `since`, ascending by timeGenerated. */
+  queryBounces(workspaceId: string, since: string): Promise<BounceLogRow[]>;
 }
 
 export interface BanksRepository extends Releasable {
@@ -563,6 +681,10 @@ export interface TrusteeCaseAppointmentsRepository extends Releasable {
     lastId: string | null,
     limit: number,
   ): Promise<Array<CaseAppointment & { _id: string }>>;
+  findClosedAppointments(
+    lastId: string | null,
+    limit: number,
+  ): Promise<Array<CaseAppointment & { _id: string }>>;
   getAllCaseAppointments(
     lastId: string | null,
     limit: number,
@@ -661,7 +783,9 @@ export type RuntimeStateDocumentType =
   | 'DELETED_CASES_SYNC_STATE'
   | 'ZOOM_CSV_IMPORT_STATE'
   | 'TRUSTEE_APPOINTMENTS_DOWNSTREAM_BACKFILL_STATE'
-  | 'PROFESSIONAL_ID_COUNTER';
+  | 'PROFESSIONAL_ID_COUNTER'
+  | 'ACMS_PROFESSIONAL_ID_SYNC_STATE'
+  | 'ACS_BOUNCE_POLL_STATE';
 
 export type RuntimeState = {
   id?: string;
@@ -756,6 +880,19 @@ export type TrusteePetitionSyncState = RuntimeState & {
   lastSyncDate: string;
 };
 
+/**
+ * Sync cursor for sync-acms-professional-ids.ts. UST_PROF_CODE is only monotonically
+ * increasing WITHIN a GROUP_DESIGNATOR, never globally, so the bookmark is a per-group map
+ * rather than a single value. Concurrent handlePage invocations for different groups only ever
+ * touch their own key in this map — see RuntimeStateRepository.setField, which updates a single
+ * dotted-path field atomically (Mongo $set) rather than a read-modify-write of the whole
+ * document, so two groups finishing at the same time can never clobber each other's bookmark.
+ */
+export type AcmsProfessionalIdSyncState = RuntimeState & {
+  documentType: 'ACMS_PROFESSIONAL_ID_SYNC_STATE';
+  lastUstProfCodeByGroup: Record<string, number>;
+};
+
 export type TrusteeNotesMetricsState = RuntimeState & {
   documentType: 'TRUSTEE_NOTES_METRICS_STATE';
   lastSyncDate: string;
@@ -764,6 +901,12 @@ export type TrusteeNotesMetricsState = RuntimeState & {
 export type DeletedCasesSyncState = RuntimeState & {
   documentType: 'DELETED_CASES_SYNC_STATE';
   lastChangeDate: string;
+};
+
+export type AcsBouncePollState = RuntimeState & {
+  documentType: 'ACS_BOUNCE_POLL_STATE';
+  /** ISO 8601 timestamp of the latest TimeGenerated value observed across all bounce rows processed so far. */
+  lastProcessedTimeGenerated: string;
 };
 
 export type ProfessionalIdCounterState = RuntimeState & {
@@ -879,6 +1022,27 @@ export interface TrusteeProfessionalIdsRepository extends Releasable {
     acmsProfessionalId: string,
     user: CamsUserReference,
   ): Promise<TrusteeProfessionalId>;
+  /**
+   * Writes a professional ID record for an ACMS professional that could not be auto-linked to a
+   * CAMS trustee — keyed by `fingerprint` in place of a real trusteeId, decorated with `variant`
+   * and `error` so it can be found and healed later. Unlike createProfessionalId, this does not
+   * enforce or check any uniqueness — the same ACMS ID can accumulate multiple errored records
+   * across sync runs (e.g. a fingerprint changes, or the disposition changes from ambiguous to
+   * conflict).
+   */
+  createErroredProfessionalId(
+    fingerprint: string,
+    acmsProfessionalId: string,
+    variant: string,
+    error: TrusteeProfessionalIdError,
+    user: CamsUserReference,
+  ): Promise<TrusteeProfessionalId>;
+  /**
+   * The following finders exclude documents carrying an `error` (unmatched placeholder records
+   * keyed by fingerprint, not a real trusteeId) — callers resolving real trustee<->ACMS links
+   * should never see them. A dedicated finder for errored records will be added when a healing
+   * workflow needs one.
+   */
   findAll(): Promise<TrusteeProfessionalId[]>;
   findByCamsTrusteeId(camsTrusteeId: string): Promise<TrusteeProfessionalId[]>;
   findByAcmsProfessionalId(acmsProfessionalId: string): Promise<TrusteeProfessionalId[]>;

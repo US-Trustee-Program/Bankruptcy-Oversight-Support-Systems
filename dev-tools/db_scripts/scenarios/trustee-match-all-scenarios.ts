@@ -29,6 +29,19 @@
  *     - Inactive trustee + removed appointment
  *     - Inactive trustee + deceased appointment
  *
+ *   - Multi-case scenarios. For a pending mismatch, affectedCaseCount/affectedCaseIds are
+ *     derived live by querying trustee-case-appointments for surrogate CASE_APPOINTMENT rows
+ *     sharing the mismatch's fingerprint (see getAffectedCaseIdsByFingerprint in
+ *     trustee-match-verification.use-case.ts); once approved, they come from the affectedCaseIds
+ *     snapshot taken at approval time instead, since the remap deletes the surrogates:
+ *     5. Pending, 3 affected cases, one match candidate.
+ *     6. Already approved, with NO affectedCaseIds snapshot and NO surviving surrogate rows -
+ *        simulates the state after trustee-verification-remap.ts has deleted every surrogate for
+ *        a resolved fingerprint approved before the affectedCaseIds snapshot existed, leaving no
+ *        durable record of which cases it affected.
+ *     7. Already approved, WITH a populated affectedCaseIds snapshot (3 cases) - the normal
+ *        post-fix state for an approved multi-case mismatch.
+ *
  * NOTE: Uses existing DXTR cases - no DXTR seeding required.
  */
 
@@ -49,6 +62,12 @@ const CASE_TERMINATED = '091-99-00874'; // Ch 11 (reuse)
 const CASE_RESIGNED = '091-99-92748'; // Ch 12 (reuse)
 const CASE_REMOVED = '091-99-87899'; // Ch 11 (reuse)
 const CASE_DECEASED = '091-99-00874'; // Ch 11 (reuse)
+
+// Multi-case scenarios (3 distinct cases, previously-unused in this file)
+const CASE_MULTI_A = '091-99-86706';
+const CASE_MULTI_B = '091-99-99943';
+const CASE_MULTI_C = '091-99-98483';
+const CASE_RESOLVED_NO_SURROGATES = '091-99-97816';
 
 // DXTR trustee identities shared between `fingerprint` (via computeFingerprint) and
 // `dxtrTrustee` below, so the two can never drift out of sync with each other.
@@ -100,8 +119,43 @@ const DXTR_INACTIVE_TRUSTEE_DECEASED_APPT = {
   lastName: 'Inactivematch',
   fullName: 'Morgan E Inactivematch',
 };
+const DXTR_MULTI_CASE = {
+  firstName: 'Casey',
+  lastName: 'Multicasematch',
+  fullName: 'Casey Multicasematch',
+};
+const DXTR_RESOLVED_NO_SURROGATES = {
+  firstName: 'Riley',
+  lastName: 'Resolvedmatch',
+  fullName: 'Riley Resolvedmatch',
+};
+const DXTR_RESOLVED_WITH_SNAPSHOT = {
+  firstName: 'Drew',
+  lastName: 'Snapshotmatch',
+  fullName: 'Drew Snapshotmatch',
+};
 
 export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
+  // Surrogates shared by the multi-case pending mismatch below. Computed up front (rather than
+  // inline in the array) so the fingerprint on the surrogates and the verification document
+  // can never drift apart.
+  const multiCaseFingerprint = computeFingerprint(DXTR_MULTI_CASE);
+  const multiCaseSurrogates = [CASE_MULTI_A, CASE_MULTI_B, CASE_MULTI_C].map((caseId) => ({
+    id: `seed-surrogate-multicase-${caseId}`,
+    documentType: 'CASE_APPOINTMENT',
+    caseId,
+    trusteeId: multiCaseFingerprint,
+    assignedOn: '2018-01-01T00:00:00.000Z',
+    appointedDate: '2018-01-01',
+    isSurrogate: true,
+    chapter: '11',
+    courtDivisionCode: '091',
+    createdOn: '2025-03-01T00:00:00.000Z',
+    createdBy: SEEDER,
+    updatedOn: '2025-03-01T00:00:00.000Z',
+    updatedBy: SEEDER,
+  }));
+
   return [
     // ── Cosmos: Trustees for match scenarios ─────────────────────────────────
 
@@ -221,6 +275,26 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           zipCode: '10006',
           phone: '212-555-6000',
           email: 'morgan.inactivematch@example.com',
+        }),
+      ],
+    },
+
+    // Active trustee, candidate for the multi-case mismatch scenario
+    {
+      db: 'cams',
+      collectionOrTable: 'trustees',
+      data: [
+        createTrusteeBase({
+          id: 'seed-trustee-match-multicase',
+          firstName: 'Cassidy',
+          lastName: 'Multicasematch',
+          status: 'active',
+          address1: '700 Match Ln',
+          city: 'New York',
+          state: 'NY',
+          zipCode: '10007',
+          phone: '212-555-7000',
+          email: 'cassidy.multicasematch@example.com',
         }),
       ],
     },
@@ -415,11 +489,26 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           fingerprint: computeFingerprint(DXTR_MULTIPLE_MATCH),
           dxtrTrustee: DXTR_MULTIPLE_MATCH,
           matchCandidates: [
+            // Real values (computed via trustee-match.helpers.ts's calculateNameScore/
+            // calculateAddressScore/calculatePhoneScore/calculateEmailScore/calculateTotalScore
+            // against this fixture's actual DXTR/candidate data, then hand-transcribed here -
+            // see slice notes). DXTR provided only "T Multimatch" - no legacy address/phone/
+            // email at all, and "T" is an initial-vs-full partial match against either
+            // candidate's first name (85, identical for both - a genuine tie, which is exactly
+            // why this scenario is ambiguous). addressScore is a real mismatch (0), not "not
+            // comparable" - address never has a null/not-comparable state, unlike phone/email.
+            // phoneScore/emailScore are hardcoded to 0 rather than the real function's null
+            // (not-comparable) result - deliberately, to keep the mismatch icon visible for
+            // missing contact info per product decision, not because the real algorithm would
+            // penalize it this way.
             {
               trusteeId: 'seed-trustee-match-multi-a',
               trusteeName: 'Taylor Multimatch',
-              totalScore: 90,
-              addressScore: 90,
+              totalScore: 72.1,
+              addressScore: 0,
+              nameScore: 85,
+              phoneScore: 0,
+              emailScore: 0,
               districtDivisionScore: 100,
               chapterScore: 100,
               address: {
@@ -435,8 +524,11 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
             {
               trusteeId: 'seed-trustee-match-multi-b',
               trusteeName: 'Tyler Multimatch',
-              totalScore: 90,
-              addressScore: 90,
+              totalScore: 72.1,
+              addressScore: 0,
+              nameScore: 85,
+              phoneScore: 0,
+              emailScore: 0,
               districtDivisionScore: 100,
               chapterScore: 100,
               address: {
@@ -474,17 +566,28 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           status: 'pending',
           taskDate: '2016-04-11T00:00:00.000Z',
           mismatchReason: 'AMBIGUOUS_MATCH_UNRESOLVED',
+          fingerprint: computeFingerprint({
+            firstName: 'S',
+            lastName: 'Lowconfidence',
+            fullName: 'S Lowconfidence',
+          }),
           dxtrTrustee: {
             firstName: 'S',
             lastName: 'Lowconfidence',
             fullName: 'S Lowconfidence',
           },
           matchCandidates: [
+            // Real values (see multiple's comment above for methodology). "S" is an
+            // initial-vs-full partial match against "Sam" (nameScore 85); no DXTR legacy data
+            // at all, so addressScore is a real 0 (not 100 as previously hardcoded).
             {
               trusteeId: 'seed-trustee-match-lowconf',
               trusteeName: 'Sam Lowconfidence',
-              totalScore: 70,
-              addressScore: 100,
+              totalScore: 72.1,
+              addressScore: 0,
+              nameScore: 85,
+              phoneScore: 0,
+              emailScore: 0,
               districtDivisionScore: 100,
               chapterScore: 100,
               address: {
@@ -521,11 +624,17 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           fingerprint: computeFingerprint(DXTR_IMPERFECT_MATCH),
           dxtrTrustee: DXTR_IMPERFECT_MATCH,
           matchCandidates: [
+            // Real values (see multiple's comment above for methodology). "J" is an
+            // initial-vs-full partial match against "Jordan" (nameScore 85); no DXTR legacy
+            // data at all, so addressScore is a real 0 (not 70 as previously hardcoded).
             {
               trusteeId: 'seed-trustee-match-imperfect',
               trusteeName: 'Jordan Imperfectmatch',
-              totalScore: 65,
-              addressScore: 70,
+              totalScore: 67.1,
+              addressScore: 0,
+              nameScore: 85,
+              phoneScore: 0,
+              emailScore: 0,
               districtDivisionScore: 80,
               chapterScore: 100,
               address: {
@@ -558,15 +667,26 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           courtId: '0208',
           status: 'pending',
           taskDate: '2010-05-12T00:00:00.000Z',
-          mismatchReason: 'AMBIGUOUS_MATCH_RESOLVED',
+          // 'AMBIGUOUS_MATCH_RESOLVED' was not a valid TrusteeAppointmentSyncErrorCode value -
+          // this candidate's own seeded appointment (seed-appointment-active-trustee-inactive-
+          // appt) has status 'inactive', the same underlying record "5b" (seed-match-inactive-
+          // appt) uses, so this is genuinely a PERFECT_MATCH_INACTIVE_STATUS case.
+          mismatchReason: 'PERFECT_MATCH_INACTIVE_STATUS',
           fingerprint: computeFingerprint(DXTR_HIGH_CONFIDENCE),
           dxtrTrustee: DXTR_HIGH_CONFIDENCE,
           matchCandidates: [
+            // Real values (see multiple's comment above for methodology). "Alex Highconfidence"
+            // (no middle name either side) is a genuine, complete name match (nameScore 100) -
+            // the only such case among these fixtures. No DXTR legacy data at all, so
+            // addressScore is a real 0 (not 95 as previously hardcoded).
             {
               trusteeId: 'seed-trustee-match-highconf',
               trusteeName: 'Alex Highconfidence',
-              totalScore: 95,
-              addressScore: 95,
+              totalScore: 76,
+              addressScore: 0,
+              nameScore: 100,
+              phoneScore: 0,
+              emailScore: 0,
               districtDivisionScore: 100,
               chapterScore: 100,
               address: {
@@ -580,6 +700,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
               email: 'alex.highconfidence@example.com',
             },
           ],
+          inactiveAppointmentStatus: 'inactive',
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
         },
@@ -608,8 +729,17 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
             {
               trusteeId: 'seed-trustee-match-inactive',
               trusteeName: 'Morgan Inactivematch',
-              totalScore: 100,
-              addressScore: 100,
+              // Real values (see multiple's comment above for methodology). A one-sided middle
+              // name/initial (DXTR has one, CAMS doesn't) is neutral per calculateNameScore's
+              // real scoreMiddleNamePart logic, not a penalty - so this is a genuine, complete
+              // name match (nameScore 100) despite the middle-initial variation across these six
+              // fixtures. No DXTR legacy data at all, so addressScore is a real 0 (not 100 as
+              // previously hardcoded).
+              totalScore: 76,
+              addressScore: 0,
+              nameScore: 100,
+              phoneScore: 0,
+              emailScore: 0,
               districtDivisionScore: 100,
               chapterScore: 100,
               address: {
@@ -650,8 +780,17 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
             {
               trusteeId: 'seed-trustee-match-highconf',
               trusteeName: 'Alex Highconfidence',
-              totalScore: 100,
-              addressScore: 100,
+              // Real values (see multiple's comment above for methodology). A one-sided middle
+              // name/initial (DXTR has one, CAMS doesn't) is neutral per calculateNameScore's
+              // real scoreMiddleNamePart logic, not a penalty - so this is a genuine, complete
+              // name match (nameScore 100) despite the middle-initial variation across these six
+              // fixtures. No DXTR legacy data at all, so addressScore is a real 0 (not 100 as
+              // previously hardcoded).
+              totalScore: 76,
+              addressScore: 0,
+              nameScore: 100,
+              phoneScore: 0,
+              emailScore: 0,
               districtDivisionScore: 100,
               chapterScore: 100,
               address: {
@@ -692,8 +831,17 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
             {
               trusteeId: 'seed-trustee-match-inactive',
               trusteeName: 'Morgan Inactivematch',
-              totalScore: 100,
-              addressScore: 100,
+              // Real values (see multiple's comment above for methodology). A one-sided middle
+              // name/initial (DXTR has one, CAMS doesn't) is neutral per calculateNameScore's
+              // real scoreMiddleNamePart logic, not a penalty - so this is a genuine, complete
+              // name match (nameScore 100) despite the middle-initial variation across these six
+              // fixtures. No DXTR legacy data at all, so addressScore is a real 0 (not 100 as
+              // previously hardcoded).
+              totalScore: 76,
+              addressScore: 0,
+              nameScore: 100,
+              phoneScore: 0,
+              emailScore: 0,
               districtDivisionScore: 100,
               chapterScore: 100,
               address: {
@@ -734,8 +882,17 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
             {
               trusteeId: 'seed-trustee-match-inactive',
               trusteeName: 'Morgan Inactivematch',
-              totalScore: 100,
-              addressScore: 100,
+              // Real values (see multiple's comment above for methodology). A one-sided middle
+              // name/initial (DXTR has one, CAMS doesn't) is neutral per calculateNameScore's
+              // real scoreMiddleNamePart logic, not a penalty - so this is a genuine, complete
+              // name match (nameScore 100) despite the middle-initial variation across these six
+              // fixtures. No DXTR legacy data at all, so addressScore is a real 0 (not 100 as
+              // previously hardcoded).
+              totalScore: 76,
+              addressScore: 0,
+              nameScore: 100,
+              phoneScore: 0,
+              emailScore: 0,
               districtDivisionScore: 100,
               chapterScore: 100,
               address: {
@@ -776,8 +933,17 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
             {
               trusteeId: 'seed-trustee-match-inactive',
               trusteeName: 'Morgan Inactivematch',
-              totalScore: 100,
-              addressScore: 100,
+              // Real values (see multiple's comment above for methodology). A one-sided middle
+              // name/initial (DXTR has one, CAMS doesn't) is neutral per calculateNameScore's
+              // real scoreMiddleNamePart logic, not a penalty - so this is a genuine, complete
+              // name match (nameScore 100) despite the middle-initial variation across these six
+              // fixtures. No DXTR legacy data at all, so addressScore is a real 0 (not 100 as
+              // previously hardcoded).
+              totalScore: 76,
+              addressScore: 0,
+              nameScore: 100,
+              phoneScore: 0,
+              emailScore: 0,
               districtDivisionScore: 100,
               chapterScore: 100,
               address: {
@@ -818,8 +984,17 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
             {
               trusteeId: 'seed-trustee-match-inactive',
               trusteeName: 'Morgan Inactivematch',
-              totalScore: 100,
-              addressScore: 100,
+              // Real values (see multiple's comment above for methodology). A one-sided middle
+              // name/initial (DXTR has one, CAMS doesn't) is neutral per calculateNameScore's
+              // real scoreMiddleNamePart logic, not a penalty - so this is a genuine, complete
+              // name match (nameScore 100) despite the middle-initial variation across these six
+              // fixtures. No DXTR legacy data at all, so addressScore is a real 0 (not 100 as
+              // previously hardcoded).
+              totalScore: 76,
+              addressScore: 0,
+              nameScore: 100,
+              phoneScore: 0,
+              emailScore: 0,
               districtDivisionScore: 100,
               chapterScore: 100,
               address: {
@@ -835,6 +1010,123 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           ],
           inactiveAppointmentStatus: 'deceased',
           updatedOn: '2025-03-01T00:00:00.000Z',
+          updatedBy: SEEDER,
+        },
+      ],
+    },
+
+    // Pending multi-case mismatch: 3 surrogate CASE_APPOINTMENTs sharing one fingerprint,
+    // dual-written to both partitions (see TrusteeCaseAppointmentsMongoRepository's
+    // casePartition/trusteePartition) so getSurrogatesByFingerprints can find them.
+    {
+      db: 'cams',
+      collectionOrTable: 'case-trustee-appointments',
+      data: multiCaseSurrogates,
+    },
+    {
+      db: 'cams',
+      collectionOrTable: 'trustee-case-appointments',
+      data: multiCaseSurrogates,
+    },
+    {
+      db: 'cams',
+      collectionOrTable: 'trustee-match-verification',
+      data: [
+        {
+          id: `seed-match-multicase-${CASE_MULTI_A}`,
+          documentType: 'TRUSTEE_MATCH_VERIFICATION',
+          taskType: 'trustee-match',
+          caseId: CASE_MULTI_A,
+          courtId: '0208',
+          status: 'pending',
+          taskDate: '2018-01-01T00:00:00.000Z',
+          mismatchReason: 'IMPERFECT_MATCH',
+          fingerprint: multiCaseFingerprint,
+          dxtrTrustee: DXTR_MULTI_CASE,
+          matchCandidates: [
+            // Real values (see multiple's comment above for methodology). "Casey" vs "Cassidy"
+            // is a genuine first-name mismatch (not an initial-vs-full relationship), so
+            // nameScore is a real 0 - not the 70 previously hardcoded for addressScore (which is
+            // also 0: no DXTR legacy data at all).
+            {
+              trusteeId: 'seed-trustee-match-multicase',
+              trusteeName: 'Cassidy Multicasematch',
+              totalScore: 50,
+              addressScore: 0,
+              nameScore: 0,
+              phoneScore: 0,
+              emailScore: 0,
+              districtDivisionScore: 100,
+              chapterScore: 100,
+              address: {
+                address1: '700 Match Ln',
+                city: 'New York',
+                state: 'NY',
+                zipCode: '10007',
+                countryCode: 'US',
+              },
+              phone: { number: '212-555-7000' },
+              email: 'cassidy.multicasematch@example.com',
+            },
+          ],
+          updatedOn: '2025-03-01T00:00:00.000Z',
+          updatedBy: SEEDER,
+        },
+      ],
+    },
+
+    // Already-approved mismatch, no surviving surrogates: simulates the state after
+    // trustee-verification-remap.ts has deleted every surrogate for this fingerprint, so
+    // getAffectedCaseIdsByFingerprint returns an empty array.
+    {
+      db: 'cams',
+      collectionOrTable: 'trustee-match-verification',
+      data: [
+        {
+          id: `seed-match-resolved-no-surrogates-${CASE_RESOLVED_NO_SURROGATES}`,
+          documentType: 'TRUSTEE_MATCH_VERIFICATION',
+          taskType: 'trustee-match',
+          caseId: CASE_RESOLVED_NO_SURROGATES,
+          courtId: '0208',
+          status: 'approved',
+          taskDate: '2018-06-01T00:00:00.000Z',
+          mismatchReason: 'IMPERFECT_MATCH',
+          fingerprint: computeFingerprint(DXTR_RESOLVED_NO_SURROGATES),
+          dxtrTrustee: DXTR_RESOLVED_NO_SURROGATES,
+          matchCandidates: [],
+          resolvedTrusteeId: 'seed-trustee-match-highconf',
+          resolvedTrusteeName: 'Alex Highconfidence',
+          updatedOn: '2025-06-01T00:00:00.000Z',
+          updatedBy: SEEDER,
+        },
+      ],
+    },
+
+    // Already-approved multi-case mismatch WITH a populated affectedCaseIds snapshot: the
+    // normal post-fix state (see the doc comment on TrusteeMatchVerification.affectedCaseIds in
+    // common/src/cams/trustee-match-verification.ts). No surrogate rows are seeded for this
+    // fingerprint - approval's remap would have deleted them, so the snapshot (not a live
+    // surrogate query) is the only source for this document's affected cases.
+    {
+      db: 'cams',
+      collectionOrTable: 'trustee-match-verification',
+      data: [
+        {
+          id: `seed-match-resolved-with-snapshot-${CASE_MULTI_A}`,
+          documentType: 'TRUSTEE_MATCH_VERIFICATION',
+          taskType: 'trustee-match',
+          caseId: CASE_MULTI_A,
+          courtId: '0208',
+          status: 'approved',
+          taskDate: '2018-06-01T00:00:00.000Z',
+          mismatchReason: 'IMPERFECT_MATCH',
+          fingerprint: computeFingerprint(DXTR_RESOLVED_WITH_SNAPSHOT),
+          dxtrTrustee: DXTR_RESOLVED_WITH_SNAPSHOT,
+          matchCandidates: [],
+          resolvedTrusteeId: 'seed-trustee-match-highconf',
+          resolvedTrusteeName: 'Alex Highconfidence',
+          affectedCaseIds: [CASE_MULTI_A, CASE_MULTI_B, CASE_MULTI_C],
+          updatedOn: '2025-06-01T00:00:00.000Z',
           updatedBy: SEEDER,
         },
       ],

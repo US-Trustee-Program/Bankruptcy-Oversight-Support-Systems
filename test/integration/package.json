@@ -3,9 +3,12 @@
   "version": "1.0.0",
   "private": true,
   "dependencies": {
-    "@azure/storage-blob": "12.33.0"
+    "@azure/storage-blob": "12.33.0",
+    "@azure/storage-queue": "12.31.0"
   },
   "scripts": {
+    "api-to-dataflows-bridge": "npx tsx --tsconfig ../../backend/tsconfig.json api-to-dataflows-bridge/scripts/run-tests.ts",
+    "api-to-dataflows-bridge:local": "npx tsx --tsconfig ../../backend/tsconfig.json api-to-dataflows-bridge/scripts/run-tests.ts",
     "acms-cams-transition": "npx tsx --tsconfig ../../backend/tsconfig.json acms-cams-transition/scripts/test-trustee-appointment-downstream.ts",
     "acms-cams-transition:local": "INTEGRATION_ENV=local npx tsx --tsconfig ../../backend/tsconfig.json acms-cams-transition/scripts/test-trustee-appointment-downstream.ts",
     "acms-cams-transition:azure": "INTEGRATION_ENV=azure npx tsx --tsconfig ../../backend/tsconfig.json acms-cams-transition/scripts/test-trustee-appointment-downstream.ts",
@@ -16,6 +19,7 @@
     "migrate-case-appointments:local": "INTEGRATION_ENV=local npx tsx --tsconfig ../../backend/tsconfig.json migrate-case-appointments/scripts/migrate-case-appointments-harness.ts",
     "migrate-case-appointments:azure": "INTEGRATION_ENV=azure npx tsx --tsconfig ../../backend/tsconfig.json migrate-case-appointments/scripts/migrate-case-appointments-harness.ts",
     "fix-chapter-7-appointments": "npx tsx --tsconfig ../../backend/tsconfig.json fix-chapter-7-appointments/scripts/run-tests.ts",
+    "backfill-unassigned-on": "npx tsx --tsconfig ../../backend/tsconfig.json backfill-unassigned-on/scripts/run-tests.ts",
     "query-builder": "npx tsx --tsconfig ../../backend/tsconfig.json query-builder/scripts/run-tests.ts",
     "trustee-case-filter": "npx tsx --tsconfig ../../backend/tsconfig.json trustee-case-filter/scripts/run-tests.ts",
     "trustee-case-filter:local": "npx tsx --env-file=trustee-case-filter/.env.local --tsconfig ../../backend/tsconfig.json trustee-case-filter/scripts/run-tests.ts",
@@ -34,6 +38,11 @@
     "trustee-match-verification-search:local": "INTEGRATION_ENV=local npx tsx --tsconfig ../../backend/tsconfig.json trustee-match-verification-search/scripts/run-tests.ts",
     "trustee-match-verification-search:azure": "INTEGRATION_ENV=azure npx tsx --tsconfig ../../backend/tsconfig.json trustee-match-verification-search/scripts/run-tests.ts",
     "trustee-match-normalization": "npx tsx --tsconfig ../../backend/tsconfig.json trustee-match-normalization/scripts/trustee-match-normalization-harness.ts",
-    "trustee-variation-audit": "npx tsx --tsconfig ../../backend/tsconfig.json trustee-variation-audit/scripts/trustee-variation-audit-harness.ts"
+    "trustee-variation-audit": "npx tsx --tsconfig ../../backend/tsconfig.json trustee-variation-audit/scripts/trustee-variation-audit-harness.ts",
+    "trustee-match-weight-backtest": "npx tsx --tsconfig ../../backend/tsconfig.json trustee-variation-audit/scripts/trustee-match-weight-backtest-harness.ts",
+    "sync-acms-professional-ids-audit": "npx tsx --tsconfig ../../backend/tsconfig.json sync-acms-professional-ids-audit/scripts/sync-acms-professional-ids-audit-harness.ts",
+    "sync-acms-professional-ids": "npx tsx --tsconfig ../../backend/tsconfig.json sync-acms-professional-ids/scripts/sync-acms-professional-ids-harness.ts",
+    "sync-acms-professional-ids:local": "INTEGRATION_ENV=local npx tsx --tsconfig ../../backend/tsconfig.json sync-acms-professional-ids/scripts/sync-acms-professional-ids-harness.ts",
+    "sync-acms-professional-ids:azure": "INTEGRATION_ENV=azure npx tsx --tsconfig ../../backend/tsconfig.json sync-acms-professional-ids/scripts/sync-acms-professional-ids-harness.ts"
   }
 }

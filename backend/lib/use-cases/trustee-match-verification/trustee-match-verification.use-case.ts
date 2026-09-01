@@ -49,19 +49,26 @@ export class TrusteeMatchVerificationUseCase {
       const results = await repo.search({ status });
 
       const courts = await new CourtsUseCase().getCourts(context);
+      const resultsWithoutSnapshot = results.filter(
+        (verification) => !verification.affectedCaseIds,
+      );
       const affectedCaseIdsByFingerprint = await this.getAffectedCaseIdsByFingerprint(
         context,
-        results.map((verification) => verification.fingerprint),
+        resultsWithoutSnapshot.map((v) => v.fingerprint),
       );
       return results.map((verification) => {
         const { matchCandidates, ...rest } = verification;
+        const affectedCaseIds =
+          verification.affectedCaseIds ??
+          affectedCaseIdsByFingerprint.get(verification.fingerprint) ??
+          [];
         return {
           ...rest,
           courtName: this.resolveCourtName(verification, courts) ?? verification.courtName,
           candidateCount: matchCandidates.length,
           preselectedCandidate: this.resolvePreselectedCandidate(verification),
-          affectedCaseCount: (affectedCaseIdsByFingerprint.get(verification.fingerprint) ?? [])
-            .length,
+          affectedCaseIds,
+          affectedCaseCount: affectedCaseIds.length,
         };
       });
     } catch (originalError) {
@@ -83,6 +90,8 @@ export class TrusteeMatchVerificationUseCase {
     context: ApplicationContext,
     fingerprints: string[],
   ): Promise<Map<string, string[]>> {
+    if (fingerprints.length === 0) return new Map();
+
     const appointmentsRepo = factory.getTrusteeCaseAppointmentsRepository(context);
     const uniqueFingerprints = [...new Set(fingerprints)];
     const surrogates = await appointmentsRepo.getSurrogatesByFingerprints(uniqueFingerprints);
@@ -268,28 +277,35 @@ export class TrusteeMatchVerificationUseCase {
         );
       }
 
-      // 2b. Close the trustee-professional-ids mapping loop now that a human has
-      // confirmed the trustee, using the professional ID carried on the verification doc.
-      if (verification.acmsProfessionalId) {
-        const professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
-        await professionalIdsRepo.createProfessionalId(
-          resolvedTrusteeId,
-          verification.acmsProfessionalId,
-          userRef,
-        );
-      }
+      // 3. Snapshot affected case IDs while surrogates are still live — the remap job
+      // enqueued next deletes them, and this is the only remaining chance to read them.
+      const affectedCaseIdsByFingerprint = await this.getAffectedCaseIdsByFingerprint(context, [
+        verification.fingerprint,
+      ]);
+      const affectedCaseIds = affectedCaseIdsByFingerprint.get(verification.fingerprint) ?? [];
 
-      // 3. Enqueue the async batch remap BEFORE flipping status — every surrogate
-      // CaseAppointment sharing this fingerprint (not just verification.caseId) gets
-      // remapped to resolvedTrusteeId by the queue-triggered trustee-verification-remap
-      // handler. Enqueue-then-approve (not approve-then-enqueue) is deliberate: if this
-      // throws, the verification stays 'pending' and is retryable through this same
-      // endpoint, rather than permanently 'approved' with no way to re-trigger the remap
-      // (the pending-status guard above would otherwise block a retry forever, the same
-      // silent-drop failure mode this PR fixes for extraOutputs elsewhere). A retried
-      // approve that re-enqueues is safe: handleRemap is itself idempotent, so re-running
-      // it against a fingerprint that was already fully remapped on a prior attempt just
-      // finds no surrogates left and no-ops.
+      // 4. Persist the approval and its affectedCaseIds snapshot BEFORE enqueueing the
+      // remap. The snapshot is the durable record we most need to protect: if this write
+      // throws, the verification stays 'pending' and retryable, and no remap message has
+      // gone out yet, so nothing downstream has acted on stale data.
+      await repo.update(id, {
+        status: 'approved',
+        resolvedTrusteeId,
+        resolvedTrusteeName,
+        affectedCaseIds,
+        updatedBy: userRef,
+        updatedOn: now,
+      });
+
+      // 5. Enqueue the async batch remap now that the approval is durably recorded. Every
+      // surrogate CaseAppointment sharing this fingerprint (not just verification.caseId)
+      // gets remapped to resolvedTrusteeId by the queue-triggered trustee-verification-remap
+      // handler. handleRemap is idempotent, so a redelivered or duplicate message just finds
+      // no surrogates left and no-ops. If this enqueue throws, the approval above already
+      // succeeded and will not be retried through this endpoint (status is no longer
+      // 'pending') — the error is rethrown as-is so it surfaces loudly rather than being
+      // swallowed, since surrogates for this fingerprint will remain unmapped until the
+      // remap is retriggered by other means.
       const apiToDataflows = factory.getApiToDataflowsGateway(context);
       const remapMessage: TrusteeVerificationRemapMessage = {
         fingerprint: verification.fingerprint,
@@ -298,15 +314,6 @@ export class TrusteeMatchVerificationUseCase {
         verificationId: id,
       };
       await apiToDataflows.queueTrusteeVerificationRemap(remapMessage);
-
-      // 4. Mark verification as approved
-      await repo.update(id, {
-        status: 'approved',
-        resolvedTrusteeId,
-        resolvedTrusteeName,
-        updatedBy: userRef,
-        updatedOn: now,
-      });
 
       context.observability.completeTrace(
         trace,
@@ -357,10 +364,18 @@ export class TrusteeMatchVerificationUseCase {
       const appointmentsRepo = factory.getTrusteeAppointmentsRepository(context);
 
       const verification = await repo.findById(id);
-      const affectedCaseIdsByFingerprint = await this.getAffectedCaseIdsByFingerprint(context, [
-        verification.fingerprint,
-      ]);
-      const affectedCaseIds = affectedCaseIdsByFingerprint.get(verification.fingerprint) ?? [];
+      let affectedCaseIds: string[];
+      if (verification.status === 'approved') {
+        // Only approveVerification writes a snapshot, so read it for approved verifications.
+        affectedCaseIds = verification.affectedCaseIds ?? [];
+      } else {
+        // Pending and rejected verifications have no snapshot — rejection never touches
+        // surrogates, and pending hasn't been resolved yet — so derive live in both cases.
+        const affectedCaseIdsByFingerprint = await this.getAffectedCaseIdsByFingerprint(context, [
+          verification.fingerprint,
+        ]);
+        affectedCaseIds = affectedCaseIdsByFingerprint.get(verification.fingerprint) ?? [];
+      }
 
       const enrichedCandidates = await Promise.all(
         verification.matchCandidates.map(async (candidate) => {

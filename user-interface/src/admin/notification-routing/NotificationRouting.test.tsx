@@ -356,6 +356,56 @@ describe('NotificationRouting component', () => {
     });
   });
 
+  test('should attribute a save warning to its routing category', async () => {
+    vi.spyOn(Api2, 'updateNotificationRouting').mockResolvedValue({
+      data: { ...existingRecords[0], recipientAddresses: ['new@example.com'] },
+      warnings: ["Could not verify that the domain 'example.com' accepts email."],
+    });
+
+    renderComponent();
+    const input = await screen.findByTestId('routing-email-chapter-7-oversight');
+    fireEvent.change(input, { target: { value: 'new@example.com' } });
+
+    const saveButton = screen.getByTestId('button-save-routing-button');
+    fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('alert-container-routing-save-warning')).toBeInTheDocument();
+      expect(
+        screen.getByText(/Chapter 7 Oversight: Could not verify that the domain/),
+      ).toBeInTheDocument();
+    });
+  });
+
+  test('should attribute each warning to its own routing category when multiple sections warn in one save', async () => {
+    vi.spyOn(Api2, 'updateNotificationRouting')
+      .mockResolvedValueOnce({
+        data: { ...existingRecords[0], recipientAddresses: ['new-ch7@example.com'] },
+        warnings: ["Could not verify that the domain 'example.com' accepts email."],
+      })
+      .mockResolvedValueOnce({
+        data: { ...existingRecords[1], recipientAddresses: ['new-ch11@example.org'] },
+        warnings: ["Could not verify that the domain 'example.org' accepts email."],
+      });
+
+    renderComponent();
+    const ch7Input = await screen.findByTestId('routing-email-chapter-7-oversight');
+    fireEvent.change(ch7Input, { target: { value: 'new-ch7@example.com' } });
+    const ch11Input = screen.getByTestId('routing-email-chapter-11-oversight');
+    fireEvent.change(ch11Input, { target: { value: 'new-ch11@example.org' } });
+
+    fireEvent.click(screen.getByTestId('button-save-routing-button'));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Chapter 7 Oversight: Could not verify that the domain 'example\.com'/),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(/Chapter 11 Oversight: Could not verify that the domain 'example\.org'/),
+      ).toBeInTheDocument();
+    });
+  });
+
   test('should render display names as labels', async () => {
     renderComponent();
     await waitFor(() => {

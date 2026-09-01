@@ -41,9 +41,12 @@ jobs:
       - name: Fetch secrets from Key Vault
         if: ${{ ! inputs.skip }}
         run: |
-          echo "AZ_SECURITY_SCAN_STORAGE_NAME=$(az keyvault secret show --vault-name kv-ustp-cams --name AZ-SECURITY-SCAN-STORAGE-NAME --query value -o tsv)" >> "$GITHUB_ENV"
-          echo "SNYK_OAUTH_CLIENT_ID=$(az keyvault secret show --vault-name kv-ustp-cams --name SNYK-OAUTH-CLIENT-ID --query value -o tsv)" >> "$GITHUB_ENV"
-          echo "SNYK_OAUTH_CLIENT_SECRET=$(az keyvault secret show --vault-name kv-ustp-cams --name SNYK-OAUTH-CLIENT-SECRET --query value -o tsv)" >> "$GITHUB_ENV"
+          set -euo pipefail
+          # shellcheck source=ops/scripts/pipeline/_kv-to-env.sh
+          source ops/scripts/pipeline/_kv-to-env.sh
+          kv_to_env AZ_SECURITY_SCAN_STORAGE_NAME kv-ustp-cams AZ-SECURITY-SCAN-STORAGE-NAME
+          kv_to_env SNYK_OAUTH_CLIENT_ID kv-ustp-cams SNYK-OAUTH-CLIENT-ID
+          kv_to_env SNYK_OAUTH_CLIENT_SECRET kv-ustp-cams SNYK-OAUTH-CLIENT-SECRET
 
       - name: Setup Snyk CLI
         if: ${{ ! inputs.skip }}
@@ -53,13 +56,17 @@ jobs:
 
       - name: Authenticate with Snyk
         if: ${{ ! inputs.skip }}
-        run: snyk auth --auth-type=oauth --client-secret="$SNYK_OAUTH_CLIENT_SECRET" --client-id="$SNYK_OAUTH_CLIENT_ID"
+        run:
+          snyk auth --auth-type=oauth --client-secret="$SNYK_OAUTH_CLIENT_SECRET"
+          --client-id="$SNYK_OAUTH_CLIENT_ID"
         env:
           SNYK_API: https://api.snykgov.io
 
       - name: Run Snyk SCA scan
         if: ${{ ! inputs.skip }}
-        run: snyk test --all-projects --exclude=function-apps,integration --severity-threshold=medium --policy-path=. --sarif-file-output=snyk-sca.sarif
+        run:
+          snyk test --all-projects --exclude=function-apps,integration --severity-threshold=medium
+          --policy-path=. --sarif-file-output=snyk-sca.sarif
         env:
           SNYK_API: https://api.snykgov.io
 
@@ -97,7 +104,7 @@ jobs:
 
       - name: Upload SARIF to GitHub
         if: ${{ ! inputs.skip && always() }}
-        uses: github/codeql-action/upload-sarif@d1ba80a13dd99fba24a470575428917156a28b43 # v4.37.5
+        uses: github/codeql-action/upload-sarif@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
         with:
           sarif_file: snyk-sca.sarif
 
@@ -124,9 +131,12 @@ jobs:
       - name: Fetch secrets from Key Vault
         if: ${{ ! inputs.skip }}
         run: |
-          echo "AZ_SECURITY_SCAN_STORAGE_NAME=$(az keyvault secret show --vault-name kv-ustp-cams --name AZ-SECURITY-SCAN-STORAGE-NAME --query value -o tsv)" >> "$GITHUB_ENV"
-          echo "SNYK_OAUTH_CLIENT_ID=$(az keyvault secret show --vault-name kv-ustp-cams --name SNYK-OAUTH-CLIENT-ID --query value -o tsv)" >> "$GITHUB_ENV"
-          echo "SNYK_OAUTH_CLIENT_SECRET=$(az keyvault secret show --vault-name kv-ustp-cams --name SNYK-OAUTH-CLIENT-SECRET --query value -o tsv)" >> "$GITHUB_ENV"
+          set -euo pipefail
+          # shellcheck source=ops/scripts/pipeline/_kv-to-env.sh
+          source ops/scripts/pipeline/_kv-to-env.sh
+          kv_to_env AZ_SECURITY_SCAN_STORAGE_NAME kv-ustp-cams AZ-SECURITY-SCAN-STORAGE-NAME
+          kv_to_env SNYK_OAUTH_CLIENT_ID kv-ustp-cams SNYK-OAUTH-CLIENT-ID
+          kv_to_env SNYK_OAUTH_CLIENT_SECRET kv-ustp-cams SNYK-OAUTH-CLIENT-SECRET
 
       - name: Setup Snyk CLI
         if: ${{ ! inputs.skip }}
@@ -136,7 +146,9 @@ jobs:
 
       - name: Authenticate with Snyk
         if: ${{ ! inputs.skip }}
-        run: snyk auth --auth-type=oauth --client-secret="$SNYK_OAUTH_CLIENT_SECRET" --client-id="$SNYK_OAUTH_CLIENT_ID"
+        run:
+          snyk auth --auth-type=oauth --client-secret="$SNYK_OAUTH_CLIENT_SECRET"
+          --client-id="$SNYK_OAUTH_CLIENT_ID"
         env:
           SNYK_API: https://api.snykgov.io
 
@@ -202,7 +214,7 @@ jobs:
 
       - name: Upload SARIF to GitHub
         if: ${{ ! inputs.skip && always() }}
-        uses: github/codeql-action/upload-sarif@d1ba80a13dd99fba24a470575428917156a28b43 # v4.37.5
+        uses: github/codeql-action/upload-sarif@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
         with:
           sarif_file: snyk-code.sarif
 

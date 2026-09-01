@@ -13,6 +13,11 @@ import {
   calculateEmailScore,
   calculateTotalScore,
   resolveNameCollisionByScoring,
+  resolveByContactCorroboration,
+  resolveDuplicateNameCandidates,
+  tokenizeNameForIntersection,
+  findTokenIntersectionCandidates,
+  findAnchoredLevenshteinCandidates,
   isAppointmentMatch,
   findInactivePerfectMatch,
   stripParentheticalAnnotations,
@@ -22,6 +27,8 @@ import {
   normalizeGenerationalSuffix,
   stripNamePunctuation,
   normalizeNameForMatching,
+  jaccardSimilarity,
+  normalizeAddressLine,
 } from './trustee-match.helpers';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
@@ -82,9 +89,13 @@ const makeTrustee = (overrides: Partial<Trustee> = {}): Trustee => ({
   ...overrides,
 });
 
-const makeDxtrTrustee = (cityStateZip?: string): DxtrTrusteeParty => ({
+// address1's default is intentionally kept equal to makeTrustee's default address1 ('123 Main
+// St') so a test that doesn't care about the address dimension (only passing cityStateZip) still
+// scores a full address match rather than an incidental partial one - callers that DO care about
+// the address dimension should pass address1 explicitly rather than relying on this coincidence.
+const makeDxtrTrustee = (cityStateZip?: string, address1 = '123 Main St'): DxtrTrusteeParty => ({
   fullName: 'John Doe',
-  legacy: cityStateZip ? { cityStateZipCountry: cityStateZip } : undefined,
+  legacy: cityStateZip ? { cityStateZipCountry: cityStateZip, address1 } : undefined,
 });
 
 const makeEvent = (
@@ -448,15 +459,8 @@ describe('matchTrusteeByName', () => {
     });
   });
 
-  // First-token-lastName search tier: neither composed-name tier above found a match, so this
-  // tier searches CAMS by just the first token of DXTR's lastName (see firstLastNameToken) and
-  // narrows results to trustees with an active appointment in the event's court - the same
-  // courtId filter TrusteeSearchUseCase applies for the UI's manual search feature. Weaker
-  // evidence than a full string match, so it always surfaces as 'ambiguous' even for a single
-  // candidate, routing through resolveNameCollisionByScoring's scoring/appointment-match gate
-  // rather than auto-resolving.
   describe('first-token-lastName search tier', () => {
-    test('should surface a single candidate as ambiguous when found by first-token lastName search with a matching court appointment', async () => {
+    test('should surface a single candidate as ambiguous when found by first-token lastName search', async () => {
       const trustee = MockData.getTrustee({
         firstName: 'Richard',
         lastName: 'Marshack',
@@ -466,9 +470,6 @@ describe('matchTrusteeByName', () => {
       vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored')
         .mockResolvedValueOnce([]) // full-name search (tiers 1-2)
         .mockResolvedValueOnce([trustee]); // first-token lastName search
-      vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([
-        { trusteeId: trustee.trusteeId, courtId: '081' },
-      ]);
 
       const result = await matchTrusteeByName(
         context,
@@ -477,7 +478,6 @@ describe('matchTrusteeByName', () => {
           middleName: 'A',
           lastName: 'Marshack (TR)',
         }),
-        '081',
       );
 
       expect(result).toEqual({
@@ -496,13 +496,12 @@ describe('matchTrusteeByName', () => {
       await matchTrusteeByName(
         context,
         dxtrNamed('Kc Cohen Trustee', { firstName: 'Kc', lastName: 'Cohen Trustee' }),
-        '081',
       );
 
       expect(scoredSpy).toHaveBeenNthCalledWith(2, 'cohen');
     });
 
-    test('should exclude a candidate with no active appointment in the event court', async () => {
+    test('should surface a candidate with no active appointment in the event court, not exclude it', async () => {
       const trustee = MockData.getTrustee({
         firstName: 'Richard',
         lastName: 'Marshack',
@@ -512,35 +511,29 @@ describe('matchTrusteeByName', () => {
       vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored')
         .mockResolvedValueOnce([])
         .mockResolvedValueOnce([trustee]);
-      vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([
-        { trusteeId: trustee.trusteeId, courtId: '999' },
-      ]);
 
       const result = await matchTrusteeByName(
         context,
         dxtrNamed('Richard Marshack (TR)', { firstName: 'Richard', lastName: 'Marshack (TR)' }),
-        '081',
       );
 
-      expect(result).toEqual({ kind: 'no-match' });
+      expect(result).toEqual({
+        kind: 'ambiguous',
+        matchCandidates: [expect.objectContaining({ trusteeId: trustee.trusteeId })],
+      });
     });
 
-    test('should surface every candidate sharing the lastName token and a matching court appointment', async () => {
+    test('should surface every candidate sharing the lastName token', async () => {
       const trustee1 = MockData.getTrustee({ lastName: 'Cohen', name: 'Aaron Cohen' });
       const trustee2 = MockData.getTrustee({ lastName: 'Cohen', name: 'Merrill Cohen' });
       vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([]);
       vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored')
         .mockResolvedValueOnce([])
         .mockResolvedValueOnce([trustee1, trustee2]);
-      vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([
-        { trusteeId: trustee1.trusteeId, courtId: '081' },
-        { trusteeId: trustee2.trusteeId, courtId: '081' },
-      ]);
 
       const result = await matchTrusteeByName(
         context,
         dxtrNamed('Kc Cohen Trustee', { firstName: 'Kc', lastName: 'Cohen Trustee' }),
-        '081',
       );
 
       expect(result).toEqual({
@@ -558,191 +551,537 @@ describe('matchTrusteeByName', () => {
         .spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored')
         .mockResolvedValueOnce([]);
 
-      const result = await matchTrusteeByName(context, dxtrNamed('John Quincy Doe'), '081');
+      const result = await matchTrusteeByName(context, dxtrNamed('John Quincy Doe'));
 
       expect(scoredSpy).toHaveBeenCalledTimes(1); // only the tier-2 full-name search, no second call
-      expect(result).toEqual({ kind: 'no-match' });
-    });
-
-    test('should not apply this tier when no courtId is provided', async () => {
-      vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([]);
-      const scoredSpy = vi
-        .spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored')
-        .mockResolvedValueOnce([]); // tier-2 full-name search finds nothing
-
-      const result = await matchTrusteeByName(
-        context,
-        dxtrNamed('Kc Cohen Trustee', { firstName: 'Kc', lastName: 'Cohen Trustee' }),
-      );
-
-      expect(scoredSpy).toHaveBeenCalledTimes(1); // only the tier-2 full-name search
       expect(result).toEqual({ kind: 'no-match' });
     });
   });
 });
 
+describe('tokenizeNameForIntersection', () => {
+  test('lowercases, strips punctuation, and dedupes tokens', () => {
+    expect(tokenizeNameForIntersection('W. Wheeler Bryan')).toEqual(['wheeler', 'bryan']);
+  });
+
+  test('drops single-character tokens', () => {
+    expect(tokenizeNameForIntersection('C. Eugene Chamberlain')).toEqual(['eugene', 'chamberlain']);
+  });
+
+  test('keeps 2-character tokens (e.g. a "Mc" name-particle)', () => {
+    expect(tokenizeNameForIntersection('Melissa Mc Cue')).toEqual(['melissa', 'mc', 'cue']);
+  });
+
+  test('drops role-suffix stopwords', () => {
+    expect(tokenizeNameForIntersection('Frank Pola, Jr.')).toEqual(['frank', 'pola']);
+  });
+
+  test('drops "do not use" style ACMS annotations', () => {
+    expect(tokenizeNameForIntersection('Michael B Joseph - Do Not Use')).toEqual([
+      'michael',
+      'joseph',
+    ]);
+  });
+
+  test('handles a lastName with an internal space (the McLane case)', () => {
+    expect(tokenizeNameForIntersection('Frank O Mc Lane')).toEqual(['frank', 'mc', 'lane']);
+  });
+});
+
+describe('findTokenIntersectionCandidates', () => {
+  let context: ApplicationContext;
+
+  beforeEach(async () => {
+    vi.restoreAllMocks();
+    context = await createMockApplicationContext();
+  });
+
+  test('returns the single trustee present in every token search result', async () => {
+    const bryan = makeTrustee({ trusteeId: 'trustee-1', name: 'William Wheeler Bryan' });
+    const otherWheeler = makeTrustee({ trusteeId: 'trustee-2', name: 'Wheeler Someone Else' });
+    const otherBryan = makeTrustee({ trusteeId: 'trustee-3', name: 'Someone Else Bryan' });
+
+    const searchSpy = vi
+      .spyOn(MockMongoRepository.prototype, 'searchTrusteesByName')
+      .mockImplementation(async (token: string) => {
+        if (token === 'wheeler') return [bryan, otherWheeler];
+        if (token === 'bryan') return [bryan, otherBryan];
+        return [];
+      });
+
+    const result = await findTokenIntersectionCandidates(context, {
+      fullName: 'W. Wheeler Bryan',
+    });
+
+    expect(result).toEqual([bryan]);
+    expect(searchSpy).toHaveBeenCalledWith('wheeler');
+    expect(searchSpy).toHaveBeenCalledWith('bryan');
+  });
+
+  test('returns an empty array when fewer than 2 usable tokens exist', async () => {
+    const searchSpy = vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName');
+
+    const result = await findTokenIntersectionCandidates(context, { fullName: 'Jo' });
+
+    expect(result).toEqual([]);
+    expect(searchSpy).not.toHaveBeenCalled();
+  });
+
+  test('returns an empty array when the intersection is empty', async () => {
+    vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName').mockImplementation(
+      async (token: string) => {
+        if (token === 'wheeler') return [makeTrustee({ trusteeId: 'trustee-1' })];
+        if (token === 'bryan') return [makeTrustee({ trusteeId: 'trustee-2' })];
+        return [];
+      },
+    );
+
+    const result = await findTokenIntersectionCandidates(context, {
+      fullName: 'W. Wheeler Bryan',
+    });
+
+    expect(result).toEqual([]);
+  });
+
+  test('short-circuits remaining token searches once the intersection is already empty', async () => {
+    const searchSpy = vi
+      .spyOn(MockMongoRepository.prototype, 'searchTrusteesByName')
+      .mockImplementation(async (token: string) => {
+        if (token === 'first') return [makeTrustee({ trusteeId: 'trustee-1' })];
+        return []; // 'second' would never match trustee-1
+      });
+
+    await findTokenIntersectionCandidates(context, { fullName: 'First Second' });
+
+    expect(searchSpy).toHaveBeenCalledTimes(2); // still queries both, but stops narrowing early
+  });
+
+  test('returns multiple candidates when more than one trustee appears in every token result', async () => {
+    const cox1 = makeTrustee({ trusteeId: 'trustee-1', name: 'Arthur Clay Cox' });
+    const cox2 = makeTrustee({ trusteeId: 'trustee-2', name: 'A. Clay Cox' });
+
+    vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName').mockImplementation(
+      async (token: string) => {
+        if (token === 'clay') return [cox1, cox2];
+        if (token === 'cox') return [cox1, cox2];
+        return [];
+      },
+    );
+
+    const result = await findTokenIntersectionCandidates(context, { fullName: 'Clay A Cox' });
+
+    expect(result).toHaveLength(2);
+    expect(result.map((t) => t.trusteeId).sort()).toEqual(['trustee-1', 'trustee-2']);
+  });
+
+  test('includes a 2-character token (below the old 3-char floor) in the search', async () => {
+    const mcCue = makeTrustee({ trusteeId: 'trustee-1', name: 'Melissa McCue' });
+
+    const searchSpy = vi
+      .spyOn(MockMongoRepository.prototype, 'searchTrusteesByName')
+      .mockImplementation(async (token: string) => {
+        if (token === 'melissa') return [mcCue];
+        if (token === 'mc') return [mcCue];
+        if (token === 'cue') return [mcCue];
+        return [];
+      });
+
+    const result = await findTokenIntersectionCandidates(context, { fullName: 'Melissa Mc Cue' });
+
+    expect(result).toEqual([mcCue]);
+    expect(searchSpy).toHaveBeenCalledWith('mc');
+  });
+});
+
+describe('findAnchoredLevenshteinCandidates', () => {
+  let context: ApplicationContext;
+
+  beforeEach(async () => {
+    vi.restoreAllMocks();
+    context = await createMockApplicationContext();
+  });
+
+  test('finds a candidate via lastName-anchor with a firstName typo (edit distance 1)', async () => {
+    const darr = makeTrustee({
+      trusteeId: 'trustee-1',
+      firstName: 'Stephen',
+      lastName: 'Darr',
+      name: 'Stephen Darr',
+    });
+
+    const searchSpy = vi
+      .spyOn(MockMongoRepository.prototype, 'searchTrusteesByName')
+      .mockImplementation(async (token: string) => {
+        if (token === 'darr') return [darr];
+        return [];
+      });
+
+    const result = await findAnchoredLevenshteinCandidates(context, {
+      fullName: 'Stephan Darr',
+      firstName: 'Stephan',
+      lastName: 'Darr',
+    });
+
+    expect(result).toEqual([darr]);
+    expect(searchSpy).toHaveBeenCalledWith('darr');
+  });
+
+  test('finds a candidate via firstName-anchor with a lastName typo (edit distance 1)', async () => {
+    const gibson = makeTrustee({
+      trusteeId: 'trustee-1',
+      firstName: 'Ronald',
+      lastName: 'Gibson',
+      name: 'Ronald M. Gibson',
+    });
+
+    vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName').mockImplementation(
+      async (token: string) => {
+        if (token === 'ronald') return [gibson];
+        return [];
+      },
+    );
+
+    const result = await findAnchoredLevenshteinCandidates(context, {
+      fullName: 'Ronald Gipson',
+      firstName: 'Ronald',
+      lastName: 'Gipson',
+    });
+
+    expect(result).toEqual([gibson]);
+  });
+
+  test('does not match a candidate beyond the max edit distance', async () => {
+    const faraway = makeTrustee({
+      trusteeId: 'trustee-1',
+      firstName: 'Robert',
+      lastName: 'Completely',
+      name: 'Robert Completely',
+    });
+
+    vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName').mockImplementation(
+      async (token: string) => {
+        if (token === 'robert') return [faraway];
+        return [];
+      },
+    );
+
+    const result = await findAnchoredLevenshteinCandidates(context, {
+      fullName: 'Robert Different',
+      firstName: 'Robert',
+      lastName: 'Different',
+    });
+
+    expect(result).toEqual([]);
+  });
+
+  test('excludes an exact match on the fuzzy field (already handled by cheaper tiers)', async () => {
+    const exact = makeTrustee({
+      trusteeId: 'trustee-1',
+      firstName: 'Robert',
+      lastName: 'Baker',
+      name: 'Robert E. Baker',
+    });
+
+    vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName').mockImplementation(
+      async (token: string) => {
+        if (token === 'robert') return [exact];
+        return [];
+      },
+    );
+
+    const result = await findAnchoredLevenshteinCandidates(context, {
+      fullName: 'Robert Baker',
+      firstName: 'Robert',
+      lastName: 'Baker',
+    });
+
+    expect(result).toEqual([]);
+  });
+
+  test('excludes the fuzzy field from matching when its token is shorter than the minimum length', async () => {
+    const short = makeTrustee({
+      trusteeId: 'trustee-1',
+      firstName: 'Al',
+      lastName: 'Darr',
+      name: 'Al Darr',
+    });
+
+    vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName').mockImplementation(
+      async (token: string) => {
+        if (token === 'darr') return [short];
+        return [];
+      },
+    );
+
+    // "Al" (2 chars) is below the fuzzy-side length floor - should never be tried as a fuzz target
+    // even though it's within edit distance 2 of many things.
+    const result = await findAnchoredLevenshteinCandidates(context, {
+      fullName: 'Ed Darr',
+      firstName: 'Ed',
+      lastName: 'Darr',
+    });
+
+    expect(result).toEqual([]);
+  });
+
+  test('unions candidates found via both anchor directions', async () => {
+    const viaLastAnchor = makeTrustee({
+      trusteeId: 'trustee-1',
+      firstName: 'Stephen',
+      lastName: 'Darr',
+      name: 'Stephen Darr',
+    });
+    const viaFirstAnchor = makeTrustee({
+      trusteeId: 'trustee-2',
+      firstName: 'Stephan',
+      lastName: 'Dorr',
+      name: 'Stephan Dorr',
+    });
+
+    vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName').mockImplementation(
+      async (token: string) => {
+        if (token === 'darr') return [viaLastAnchor];
+        if (token === 'stephan') return [viaFirstAnchor];
+        return [];
+      },
+    );
+
+    const result = await findAnchoredLevenshteinCandidates(context, {
+      fullName: 'Stephan Darr',
+      firstName: 'Stephan',
+      lastName: 'Darr',
+    });
+
+    expect(result.map((t) => t.trusteeId).sort()).toEqual(['trustee-1', 'trustee-2']);
+  });
+
+  test('returns an empty array when firstName or lastName is missing', async () => {
+    const searchSpy = vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName');
+
+    const result = await findAnchoredLevenshteinCandidates(context, { fullName: 'Solo' });
+
+    expect(result).toEqual([]);
+    expect(searchSpy).not.toHaveBeenCalled();
+  });
+
+  test('deduplicates a candidate found via both directions', async () => {
+    const both = makeTrustee({
+      trusteeId: 'trustee-1',
+      firstName: 'Stephen',
+      lastName: 'Darr',
+      name: 'Stephen Darr',
+    });
+
+    vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName').mockImplementation(
+      async (token: string) => {
+        if (token === 'darr') return [both];
+        if (token === 'stephan') return [both];
+        return [];
+      },
+    );
+
+    const result = await findAnchoredLevenshteinCandidates(context, {
+      fullName: 'Stephan Darr',
+      firstName: 'Stephan',
+      lastName: 'Darr',
+    });
+
+    expect(result).toEqual([both]);
+  });
+});
+
 describe('calculateAddressScore', () => {
   test.each([
+    ['address lines, city, state, and zip all match exactly', '123 Main St', '123 Main St', 100],
+    // addressLinesScore=0 (50%) + zipScore=100 (30%) + cityStateScore=100 (20%) = 50 - a complete
+    // address-line mismatch caps the total well below what locale-only agreement can reach alone.
     [
-      'all fields match (city, state, zipCode)',
-      'New York, NY 10001',
-      { city: 'New York', state: 'NY', zipCode: '10001' },
+      'city/state/zip match but address lines are completely different',
+      '123 Main St',
+      '456 Oak Ave',
+      50,
+    ],
+    // normalizeAddressLine expands "St" -> "street" on the DXTR side, so both sides normalize to
+    // the identical string "123 main street" - addressLinesScore=100 (50%) + zipScore=100 (30%)
+    // + cityStateScore=100 (20%) = 100
+    [
+      'an abbreviation and its expanded form are treated as an exact address-line match',
+      '123 Main St',
+      '123 Main Street',
       100,
     ],
+  ])('should return correct score when %s', (_desc, dxtrAddress1, camsAddress1, expected) => {
+    const dxtrAddress: LegacyAddress = {
+      cityStateZipCountry: 'New York, NY 10001',
+      address1: dxtrAddress1,
+    };
+    const camsAddress: Address = {
+      city: 'New York',
+      state: 'NY',
+      zipCode: '10001',
+      address1: camsAddress1,
+      countryCode: 'US',
+    };
+
+    expect(calculateAddressScore(dxtrAddress, camsAddress)).toBe(expected);
+  });
+
+  // Regression coverage: bigram similarity alone cannot distinguish a single-digit house/suite
+  // number, since generateBigrams drops any token shorter than 2 characters. Without the
+  // numeric-token handling in calculateAddressScore's address-lines component, two different
+  // single-digit suite numbers in the same building would score a false 100 here. Multi-digit
+  // numbers already clear generateBigrams's length floor but are still diluted by the word
+  // bigrams around them, so a mismatch there must also score below a true match. Expected values
+  // are exact (not just "below 100") so this pins the fix's magnitude, not just its direction -
+  // a future change that weakens the numeric-token penalty should fail these.
+  test.each([
     [
-      'city and state match but zipCode differs',
-      'New York, NY 10001',
-      { city: 'New York', state: 'NY', zipCode: '10002' },
-      40,
+      'a single-digit suite number mismatch in an otherwise-identical address',
+      '123 Main St Suite 4',
+      '123 Main St Suite 5',
+      84,
     ],
+    ['a single-digit house number mismatch', '4 Main St', '5 Main St', 70],
     [
-      'zip matches but city differs',
-      'Somewhere, NY 10001',
-      { city: 'New York', state: 'NY', zipCode: '10001' },
-      60,
+      'a multi-digit suite number mismatch, even though bigram overlap alone is high',
+      '100 Main Street Suite 100',
+      '100 Main Street Suite 200',
+      86,
     ],
+    // Asymmetric case: a numeric token present on only one side scores a real partial penalty
+    // rather than being ignored (see calculateNumericTokenScore's doc comment) - this is the
+    // shape a missing suite number in DXTR or CAMS data actually produces.
     [
-      'only state matches',
-      'New York, NY 10001',
-      { city: 'Brooklyn', state: 'NY', zipCode: '11201' },
-      30,
+      'a numeric token present on only one side (missing suite number)',
+      '123 Main St Suite 4',
+      '123 Main St',
+      79,
     ],
+  ])('should score exactly %i for %s', (_desc, dxtrAddress1, camsAddress1, expected) => {
+    const dxtrAddress: LegacyAddress = {
+      cityStateZipCountry: 'New York, NY 10001',
+      address1: dxtrAddress1,
+    };
+    const camsAddress: Address = {
+      city: 'New York',
+      state: 'NY',
+      zipCode: '10001',
+      address1: camsAddress1,
+      countryCode: 'US',
+    };
+
+    expect(calculateAddressScore(dxtrAddress, camsAddress)).toBe(expected);
+  });
+
+  test('should treat a number and its leading-zero-padded form as an exact numeric match', () => {
+    const dxtrAddress: LegacyAddress = {
+      cityStateZipCountry: 'New York, NY 10001',
+      address1: '123 Main St Suite 4',
+    };
+    const camsAddress: Address = {
+      city: 'New York',
+      state: 'NY',
+      zipCode: '10001',
+      address1: '123 Main St Suite 04',
+      countryCode: 'US',
+    };
+
+    expect(calculateAddressScore(dxtrAddress, camsAddress)).toBe(100);
+  });
+
+  // Neither side has a numeric token at all, so calculateNumericTokenScore returns null and
+  // calculateAddressScore must fall back to bigram similarity alone for the address-lines
+  // component - if that fallback were broken (e.g. a missing numeric score defaulted to 0
+  // instead of being excluded), this would score 50, not 100, since bigram similarity alone is
+  // already a perfect match once "St" expands to "Street".
+  test('should fall back to bigram-only scoring when neither address line has a numeric token', () => {
+    const dxtrAddress: LegacyAddress = {
+      cityStateZipCountry: 'New York, NY 10001',
+      address1: 'Main St',
+    };
+    const camsAddress: Address = {
+      city: 'New York',
+      state: 'NY',
+      zipCode: '10001',
+      address1: 'Main Street',
+      countryCode: 'US',
+    };
+
+    expect(calculateAddressScore(dxtrAddress, camsAddress)).toBe(100);
+  });
+
+  test('should score zip match + address line mismatch + city mismatch below a full match', () => {
+    const dxtrAddress: LegacyAddress = {
+      cityStateZipCountry: 'Somewhere, NY 10001',
+      address1: '123 Main St',
+    };
+    const camsAddress: Address = {
+      city: 'New York',
+      state: 'NY',
+      zipCode: '10001',
+      address1: '456 Oak Ave',
+      countryCode: 'US',
+    };
+
+    // addressLinesScore=0 (50%) + zipScore=100 (30%) + cityStateScore~15.38 (20%) ~= 33.08,
+    // rounded to the nearest integer
+    expect(calculateAddressScore(dxtrAddress, camsAddress)).toBe(33);
+  });
+
+  test('should return 0 when address lines, city, state, and zip all differ', () => {
+    const dxtrAddress: LegacyAddress = {
+      cityStateZipCountry: 'New York, NY 10001',
+      address1: '123 Main St',
+    };
+    const camsAddress: Address = {
+      city: 'Los Angeles',
+      state: 'CA',
+      zipCode: '90001',
+      address1: '456 Oak Ave',
+      countryCode: 'US',
+    };
+
+    expect(calculateAddressScore(dxtrAddress, camsAddress)).toBe(0);
+  });
+
+  test('should be case-insensitive', () => {
+    const dxtrAddress: LegacyAddress = {
+      cityStateZipCountry: 'NEW YORK, ny 10001',
+      address1: '123 MAIN ST',
+    };
+    const camsAddress: Address = {
+      city: 'new york',
+      state: 'NY',
+      zipCode: '10001',
+      address1: '123 main st',
+      countryCode: 'US',
+    };
+
+    expect(calculateAddressScore(dxtrAddress, camsAddress)).toBe(100);
+  });
+
+  test.each([
+    ['DXTR address is undefined', undefined, 0],
     [
-      'no fields match',
-      'New York, NY 10001',
-      { city: 'Los Angeles', state: 'CA', zipCode: '90001' },
+      'cityStateZipCountry is malformed',
+      { cityStateZipCountry: 'Invalid Format', address1: '123 Main St' },
       0,
     ],
-  ])('should return correct score when %s', (_desc, cityStateZipCountry, camsFields, expected) => {
-    const dxtrAddress: LegacyAddress = {
-      cityStateZipCountry,
-      address1: '123 Main St',
-    };
-
-    const camsAddress: Address = {
-      city: camsFields.city,
-      state: camsFields.state,
-      zipCode: camsFields.zipCode,
-      address1: '456 Different St',
-      countryCode: 'US',
-    };
-
-    const score = calculateAddressScore(dxtrAddress, camsAddress);
-    expect(score).toBe(expected);
-  });
-
-  test.each([
     [
-      'DXTR has a ZIP+4 extension CAMS lacks, same base ZIP5',
-      'New York, NY 10001-1234',
-      '10001',
+      'cityStateZipCountry has a country suffix',
+      { cityStateZipCountry: 'New York, NY 10001 US', address1: '123 Main St' },
       100,
     ],
-    [
-      'CAMS has a ZIP+4 extension DXTR lacks, same base ZIP5',
-      'New York, NY 10001',
-      '10001-5678',
-      100,
-    ],
-    [
-      'both sides have a ZIP+4 extension but they differ, same base ZIP5',
-      'New York, NY 10001-1234',
-      '10001-5678',
-      100,
-    ],
-    [
-      'the base ZIP5 itself genuinely differs despite a ZIP+4 on one side',
-      'New York, NY 10002-1234',
-      '10001',
-      40,
-    ],
-  ])('should return correct score when %s', (_desc, cityStateZipCountry, camsZipCode, expected) => {
-    const dxtrAddress: LegacyAddress = {
-      cityStateZipCountry,
-      address1: '123 Main St',
-    };
-
-    const camsAddress: Address = {
-      city: 'New York',
-      state: 'NY',
-      zipCode: camsZipCode,
-      address1: '456 Different St',
-      countryCode: 'US',
-    };
-
-    const score = calculateAddressScore(dxtrAddress, camsAddress);
-    expect(score).toBe(expected);
-  });
-
-  test.each([
-    ['case-insensitive', 'NEW YORK, ny 10001', 'new york', 100],
-    ['cityStateZipCountry is malformed', 'Invalid Format', 'New York', 0],
-    ['cityStateZipCountry has a country suffix', 'New York, NY 10001 US', 'New York', 100],
-  ])('should handle when %s', (_desc, cityStateZipCountry, city, expected) => {
-    const dxtrAddress: LegacyAddress = {
-      cityStateZipCountry,
-      address1: '123 Main St',
-    };
-
-    const camsAddress: Address = {
-      city,
-      state: 'NY',
-      zipCode: '10001',
-      address1: '456 Different St',
-      countryCode: 'US',
-    };
-
-    const score = calculateAddressScore(dxtrAddress, camsAddress);
-    expect(score).toBe(expected);
-  });
-
-  test('should return 0 when DXTR address is undefined', () => {
+  ])('should handle when %s', (_desc, dxtrAddress, expected) => {
     const camsAddress: Address = {
       city: 'New York',
       state: 'NY',
       zipCode: '10001',
-      address1: '456 Different St',
-      countryCode: 'US',
-    };
-
-    const score = calculateAddressScore(undefined, camsAddress);
-    expect(score).toBe(0);
-  });
-
-  test('should return 0 when cityStateZipCountry is malformed', () => {
-    const dxtrAddress: LegacyAddress = {
-      cityStateZipCountry: 'Invalid Format',
       address1: '123 Main St',
-    };
-
-    const camsAddress: Address = {
-      city: 'New York',
-      state: 'NY',
-      zipCode: '10001',
-      address1: '456 Different St',
       countryCode: 'US',
     };
 
-    const score = calculateAddressScore(dxtrAddress, camsAddress);
-    expect(score).toBe(0);
-  });
-
-  test('should handle cityStateZipCountry with country suffix', () => {
-    const dxtrAddress: LegacyAddress = {
-      cityStateZipCountry: 'New York, NY 10001 US',
-      address1: '123 Main St',
-    };
-
-    const camsAddress: Address = {
-      city: 'New York',
-      state: 'NY',
-      zipCode: '10001',
-      address1: '456 Different St',
-      countryCode: 'US',
-    };
-
-    const score = calculateAddressScore(dxtrAddress, camsAddress);
-    expect(score).toBe(100);
+    expect(calculateAddressScore(dxtrAddress, camsAddress)).toBe(expected);
   });
 
   test.each([
@@ -754,17 +1093,155 @@ describe('calculateAddressScore', () => {
       cityStateZipCountry,
       address1: '123 Main St',
     };
-
     const camsAddress: Address = {
       city: 'Corinth',
       state: 'MS',
       zipCode: '38834',
-      address1: '456 Different St',
+      address1: '123 Main St',
       countryCode: 'US',
     };
 
-    const score = calculateAddressScore(dxtrAddress, camsAddress);
-    expect(score).toBe(100);
+    expect(calculateAddressScore(dxtrAddress, camsAddress)).toBe(100);
+  });
+
+  test.each([
+    ['DXTR has a ZIP+4 extension CAMS lacks, same base ZIP5', 'New York, NY 10001-1234', '10001'],
+    ['CAMS has a ZIP+4 extension DXTR lacks, same base ZIP5', 'New York, NY 10001', '10001-5678'],
+    [
+      'both sides have a ZIP+4 extension but they differ, same base ZIP5',
+      'New York, NY 10001-1234',
+      '10001-5678',
+    ],
+  ])('should return 100 when %s', (_desc, cityStateZipCountry, camsZipCode) => {
+    const dxtrAddress: LegacyAddress = {
+      cityStateZipCountry,
+      address1: '123 Main St',
+    };
+    const camsAddress: Address = {
+      city: 'New York',
+      state: 'NY',
+      zipCode: camsZipCode,
+      address1: '123 Main St',
+      countryCode: 'US',
+    };
+
+    expect(calculateAddressScore(dxtrAddress, camsAddress)).toBe(100);
+  });
+
+  test('should score lower when the base ZIP5 genuinely differs despite a ZIP+4 on one side', () => {
+    const dxtrAddress: LegacyAddress = {
+      cityStateZipCountry: 'New York, NY 10002-1234',
+      address1: '123 Main St',
+    };
+    const camsAddress: Address = {
+      city: 'New York',
+      state: 'NY',
+      zipCode: '10001',
+      address1: '123 Main St',
+      countryCode: 'US',
+    };
+
+    // addressLinesScore=100 (50%) + zipScore=0 (30%) + cityStateScore=100 (20%) = 70
+    expect(calculateAddressScore(dxtrAddress, camsAddress)).toBe(70);
+  });
+});
+
+describe('jaccardSimilarity', () => {
+  test('should return 100 for identical bigram sets', () => {
+    expect(jaccardSimilarity(['ab', 'bc', 'cd'], ['ab', 'bc', 'cd'])).toBe(100);
+  });
+
+  test('should return 0 for completely disjoint bigram sets', () => {
+    expect(jaccardSimilarity(['ab', 'bc'], ['xy', 'yz'])).toBe(0);
+  });
+
+  test('should return a partial score proportional to overlap', () => {
+    // intersection {ab, bc} = 2, union {ab, bc, cd, ef} = 4 -> 2/4 = 50
+    expect(jaccardSimilarity(['ab', 'bc', 'cd'], ['ab', 'bc', 'ef'])).toBe(50);
+  });
+
+  test('should return 0 when both sets are empty', () => {
+    expect(jaccardSimilarity([], [])).toBe(0);
+  });
+
+  test('should return 0 when only one set is empty', () => {
+    expect(jaccardSimilarity(['ab'], [])).toBe(0);
+    expect(jaccardSimilarity([], ['ab'])).toBe(0);
+  });
+
+  test('should treat duplicate bigrams within a set as a single member', () => {
+    // intersection {ab} = 1, union {ab, bc} = 2 -> 1/2 = 50, duplicates don't inflate either set
+    expect(jaccardSimilarity(['ab', 'ab', 'bc'], ['ab'])).toBe(50);
+  });
+});
+
+describe('normalizeAddressLine', () => {
+  test('should lowercase and strip punctuation', () => {
+    expect(normalizeAddressLine('123 Main St., Suite #4')).toBe('123 main street suite 4');
+  });
+
+  test.each([
+    ['St', 'Street'],
+    ['St.', 'Street'],
+    ['Ave', 'Avenue'],
+    ['Blvd', 'Boulevard'],
+    ['Dr', 'Drive'],
+    ['Rd', 'Road'],
+    ['Ln', 'Lane'],
+    ['Ct', 'Court'],
+    ['Pl', 'Place'],
+    ['Ste', 'Suite'],
+    ['Apt', 'Apartment'],
+    ['Fl', 'Floor'],
+    ['Bldg', 'Building'],
+  ])('should expand street/unit abbreviation %s to %s', (abbreviation, expanded) => {
+    const result = normalizeAddressLine(`123 Main ${abbreviation}`);
+    expect(result).toBe(`123 main ${expanded.toLowerCase()}`);
+  });
+
+  test.each([
+    ['N', 'North'],
+    ['S', 'South'],
+    ['E', 'East'],
+    ['W', 'West'],
+  ])('should expand standalone directional %s to %s', (abbreviation, expanded) => {
+    const result = normalizeAddressLine(`123 ${abbreviation} Main Street`);
+    expect(result).toBe(`123 ${expanded.toLowerCase()} main street`);
+  });
+
+  test('should expand a # unit marker to suite', () => {
+    expect(normalizeAddressLine('123 Main Street #4')).toBe('123 main street suite 4');
+  });
+
+  test.each([
+    ['Suite', 'suite'],
+    ['Apt', 'apartment'],
+    ['Floor', 'floor'],
+    ['Unit', 'unit'],
+    ['Room', 'room'],
+  ])(
+    'should not duplicate the unit designator when # follows an already-spelled-out %s',
+    (spelled, expanded) => {
+      expect(normalizeAddressLine(`123 Main St., ${spelled} #4`)).toBe(
+        `123 main street ${expanded} 4`,
+      );
+    },
+  );
+
+  test('should expand a leading # with no preceding unit designator to suite', () => {
+    expect(normalizeAddressLine('#4 Main St')).toBe('suite 4 main street');
+  });
+
+  test('should collapse repeated whitespace', () => {
+    expect(normalizeAddressLine('123   Main    Street')).toBe('123 main street');
+  });
+
+  test('should return an empty string for undefined input', () => {
+    expect(normalizeAddressLine(undefined)).toBe('');
+  });
+
+  test('should return an empty string for blank input', () => {
+    expect(normalizeAddressLine('   ')).toBe('');
   });
 });
 
@@ -875,35 +1352,74 @@ describe('calculateChapterScore', () => {
     ['chapter matches after normalization', '7', '07'],
     ['chapter with subchapter matches', '11', '11-subchapter-v'],
   ])('should return 100 when %s', (_desc, appointmentChapter, queryChapter) => {
-    const appointments = [makeAppointment({ chapter: appointmentChapter, status: 'active' })];
-    const score = calculateChapterScore(queryChapter, appointments);
+    const appointments = [
+      makeAppointment({
+        courtId: '081',
+        divisionCode: '1',
+        chapter: appointmentChapter,
+        status: 'active',
+      }),
+    ];
+    const score = calculateChapterScore('081', '1', queryChapter, appointments);
     expect(score).toBe(100);
   });
 
   test('should return 0 when no matching chapter', () => {
-    const appointments = [makeAppointment({ chapter: '11', status: 'active' })];
-    const score = calculateChapterScore('7', appointments);
+    const appointments = [
+      makeAppointment({ courtId: '081', divisionCode: '1', chapter: '11', status: 'active' }),
+    ];
+    const score = calculateChapterScore('081', '1', '7', appointments);
     expect(score).toBe(0);
   });
 
   test('should return 0 when matching appointment is not active', () => {
-    const appointments = [makeAppointment({ chapter: '7', status: 'inactive' })];
-    const score = calculateChapterScore('7', appointments);
+    const appointments = [
+      makeAppointment({ courtId: '081', divisionCode: '1', chapter: '7', status: 'inactive' }),
+    ];
+    const score = calculateChapterScore('081', '1', '7', appointments);
     expect(score).toBe(0);
   });
 
   test('should return 0 when appointments array is empty', () => {
-    const score = calculateChapterScore('7', []);
+    const score = calculateChapterScore('081', '1', '7', []);
     expect(score).toBe(0);
   });
 
-  test('should return 100 when multiple appointments and one matches', () => {
+  test('should return 100 when multiple division-matching appointments and one matches chapter', () => {
     const appointments = [
-      makeAppointment({ chapter: '11', status: 'active' }),
-      makeAppointment({ chapter: '7', status: 'active' }),
-      makeAppointment({ chapter: '13', status: 'active' }),
+      makeAppointment({ courtId: '081', divisionCode: '1', chapter: '11', status: 'active' }),
+      makeAppointment({ courtId: '081', divisionCode: '1', chapter: '7', status: 'active' }),
+      makeAppointment({ courtId: '081', divisionCode: '1', chapter: '13', status: 'active' }),
     ];
-    const score = calculateChapterScore('7', appointments);
+    const score = calculateChapterScore('081', '1', '7', appointments);
+    expect(score).toBe(100);
+  });
+
+  test('should return 0 when the trustee has no appointment covering the case division, even if a different-division appointment matches the case chapter', () => {
+    const appointments = [
+      makeAppointment({ courtId: '081', divisionCode: '2', chapter: '7', status: 'active' }),
+    ];
+    const score = calculateChapterScore('081', '1', '7', appointments);
+    expect(score).toBe(0);
+  });
+
+  test('should return 0 when a division-matching appointment has a different chapter, even though an unrelated-division appointment matches the case chapter', () => {
+    const appointments = [
+      // Covers the case's division (081/1), but a different chapter (11).
+      makeAppointment({ courtId: '081', divisionCode: '1', chapter: '11', status: 'active' }),
+      // Matches the case's chapter (7), but an unrelated division (2) — must not count.
+      makeAppointment({ courtId: '081', divisionCode: '2', chapter: '7', status: 'active' }),
+    ];
+    const score = calculateChapterScore('081', '1', '7', appointments);
+    expect(score).toBe(0);
+  });
+
+  test('should return 100 when a division-matching appointment also matches chapter, even alongside an unrelated-division appointment', () => {
+    const appointments = [
+      makeAppointment({ courtId: '081', divisionCode: '1', chapter: '7', status: 'active' }),
+      makeAppointment({ courtId: '081', divisionCode: '2', chapter: '13', status: 'active' }),
+    ];
+    const score = calculateChapterScore('081', '1', '7', appointments);
     expect(score).toBe(100);
   });
 });
@@ -916,14 +1432,21 @@ describe('calculateCandidateScore', () => {
   });
 
   test('should return totalScore 100 when all scores are 100', () => {
+    // address1 explicit (matches makeTrustee()'s default) so addressScore=100 is visibly
+    // intentional here, not a coincidence of two fixtures' defaults happening to agree.
+    const dxtrTrustee = {
+      ...makeDxtrTrustee('New York, NY 10001', '123 Main St'),
+      firstName: 'John',
+      lastName: 'Doe',
+    };
+    const camsTrustee = makeTrustee();
     const score = calculateCandidateScore(
       context,
-      { ...makeDxtrTrustee('New York, NY 10001'), firstName: 'John', lastName: 'Doe' },
-      '081',
-      '1',
-      '7',
-      makeTrustee(),
+      dxtrTrustee,
+      { courtId: '081', courtDivisionCode: '1', chapter: '7' },
+      camsTrustee,
       [makeAppointment({ chapter: '7', courtId: '081', divisionCode: '1', status: 'active' })],
+      calculateNameScore(dxtrTrustee, camsTrustee),
     );
 
     expect(score.trusteeId).toBe('trustee-1');
@@ -933,132 +1456,197 @@ describe('calculateCandidateScore', () => {
     expect(score.districtDivisionScore).toBe(100);
     expect(score.chapterScore).toBe(100);
     // phone/email are null (fixture sets no phone/email on either side), so their weight
-    // is excluded and redistributed: applicableWeight = 0.05 + 0.25 + 0.3 + 0.3 = 0.9
-    // weightedSum = 100*0.05 + 100*0.25 + 100*0.3 + 100*0.3 = 5 + 25 + 30 + 30 = 90
-    // 90 / 0.9 = 100 (toBeCloseTo guards against floating-point division noise)
+    // is excluded and redistributed: applicableWeight = 0.08 + 0.26 + 0.25 + 0.25 = 0.84
+    // weightedSum = 100*0.08 + 100*0.26 + 100*0.25 + 100*0.25 = 8 + 26 + 25 + 25 = 84
+    // 84 / 0.84 = 100 (toBeCloseTo guards against floating-point division noise)
     expect(score.totalScore).toBeCloseTo(100, 10);
   });
 
-  test('should apply weighted scoring correctly (address 5% / name 25% / district 30% / chapter 30%, phone/email null)', () => {
+  test('should apply weighted scoring correctly (address 8% / name 26% / district 25% / chapter 25%, phone/email null)', () => {
+    const dxtrTrustee = {
+      ...makeDxtrTrustee('New York, NY 10001'),
+      firstName: 'John',
+      lastName: 'Doe',
+    };
+    const camsTrustee = makeTrustee({
+      public: {
+        address: {
+          address1: '123 Main St',
+          city: 'New York',
+          state: 'NY',
+          zipCode: '10002',
+          countryCode: 'US',
+        },
+      },
+    });
     const score = calculateCandidateScore(
       context,
-      { ...makeDxtrTrustee('New York, NY 10001'), firstName: 'John', lastName: 'Doe' },
-      '081',
-      '1',
-      '7',
-      makeTrustee({
-        public: {
-          address: {
-            address1: '123 Main St',
-            city: 'New York',
-            state: 'NY',
-            zipCode: '10002',
-            countryCode: 'US',
-          },
-        },
-      }),
+      dxtrTrustee,
+      { courtId: '081', courtDivisionCode: '1', chapter: '7' },
+      camsTrustee,
       [makeAppointment({ chapter: '7', courtId: '081', divisionCode: '2', status: 'active' })],
+      calculateNameScore(dxtrTrustee, camsTrustee),
     );
 
-    expect(score.addressScore).toBe(40); // City + state match (different zip)
+    // addressLinesScore=100 (identical address1, 50%) + zipScore=0 (mismatch, 30%) +
+    // cityStateScore=100 (match, 20%) = 70
+    expect(score.addressScore).toBe(70); // Address lines + city/state match, zip differs
     expect(score.nameScore).toBe(100); // First and last name match
     expect(score.districtDivisionScore).toBe(50); // Same court, different division
-    expect(score.chapterScore).toBe(100); // Chapter matches
-    // phone/email null (no phone/email on either side) -> applicableWeight = 0.9
-    // weightedSum = 40*0.05 + 100*0.25 + 50*0.3 + 100*0.3 = 2 + 25 + 15 + 30 = 72
-    // 72 / 0.9 = 80
-    expect(score.totalScore).toBeCloseTo(80, 10);
+    // The only appointment here (division '2') doesn't cover the case's division ('1'), so
+    // chapter cannot be credited even though its chapter value equals the case's chapter.
+    expect(score.chapterScore).toBe(0);
+    // phone/email null (no phone/email on either side) -> applicableWeight = 0.84
+    // weightedSum = 70*0.08 + 100*0.26 + 50*0.25 + 0*0.25 = 5.6 + 26 + 12.5 + 0 = 44.1
+    // 44.1 / 0.84 = 52.5
+    expect(score.totalScore).toBeCloseTo(52.5, 4);
   });
 
-  test('should return totalScore ~5.56 when only address matches (phone/email null)', () => {
+  test('should return totalScore ~9.52 when only address matches (phone/email null)', () => {
+    // address1 explicit (matches makeTrustee()'s default) so addressScore=100 below is
+    // visibly intentional, not a coincidence of two fixtures' defaults happening to agree.
+    const dxtrTrustee = makeDxtrTrustee('New York, NY 10001', '123 Main St'); // No firstName/lastName - nameScore is 0
+    const camsTrustee = makeTrustee();
     const score = calculateCandidateScore(
       context,
-      makeDxtrTrustee('New York, NY 10001'), // No firstName/lastName - nameScore is 0
-      '082',
-      '1',
-      '11',
-      makeTrustee(),
+      dxtrTrustee,
+      { courtId: '082', courtDivisionCode: '1', chapter: '11' },
+      camsTrustee,
       [makeAppointment({ chapter: '7', courtId: '081', divisionCode: '1', status: 'active' })],
+      calculateNameScore(dxtrTrustee, camsTrustee),
     );
 
     expect(score.addressScore).toBe(100);
     expect(score.nameScore).toBe(0);
     expect(score.districtDivisionScore).toBe(0);
     expect(score.chapterScore).toBe(0);
-    // phone/email null -> applicableWeight = 0.05 + 0.25 + 0.3 + 0.3 = 0.9
-    // weightedSum = 100*0.05 + 0*0.25 + 0*0.3 + 0*0.3 = 5
-    // 5 / 0.9 = 5.5556
-    expect(score.totalScore).toBeCloseTo(5.5556, 4);
+    // phone/email null -> applicableWeight = 0.08 + 0.26 + 0.25 + 0.25 = 0.84
+    // weightedSum = 100*0.08 + 0*0.26 + 0*0.25 + 0*0.25 = 8
+    // 8 / 0.84 = 9.5238
+    expect(score.totalScore).toBeCloseTo(9.5238, 4);
   });
 
-  test('should return totalScore ~33.33 when only district matches (phone/email null)', () => {
+  test('should return totalScore ~29.76 when only district matches (phone/email null)', () => {
+    const dxtrTrustee = makeDxtrTrustee(); // No address, no firstName/lastName - nameScore is 0
+    const camsTrustee = makeTrustee();
     const score = calculateCandidateScore(
       context,
-      makeDxtrTrustee(), // No address, no firstName/lastName - nameScore is 0
-      '081',
-      '1',
-      '11',
-      makeTrustee(),
+      dxtrTrustee,
+      { courtId: '081', courtDivisionCode: '1', chapter: '11' },
+      camsTrustee,
       [makeAppointment({ chapter: '7', courtId: '081', divisionCode: '1', status: 'active' })],
+      calculateNameScore(dxtrTrustee, camsTrustee),
     );
 
     expect(score.addressScore).toBe(0);
     expect(score.nameScore).toBe(0);
     expect(score.districtDivisionScore).toBe(100);
     expect(score.chapterScore).toBe(0);
-    // phone/email null -> applicableWeight = 0.9
-    // weightedSum = 0*0.05 + 0*0.25 + 100*0.3 + 0*0.3 = 30
-    // 30 / 0.9 = 33.3333
-    expect(score.totalScore).toBeCloseTo(33.3333, 4);
+    // phone/email null -> applicableWeight = 0.84
+    // weightedSum = 0*0.08 + 0*0.26 + 100*0.25 + 0*0.25 = 25
+    // 25 / 0.84 = 29.7619
+    expect(score.totalScore).toBeCloseTo(29.7619, 4);
   });
 
-  test('should return totalScore ~33.33 when only chapter matches (phone/email null)', () => {
+  test('should return totalScore 0 when court differs, even though the case chapter equals the trustee appointment chapter', () => {
+    // A matching chapter value alone must NOT be creditable when no active appointment covers
+    // the case's court+division.
+    const dxtrTrustee = makeDxtrTrustee(); // No address, no firstName/lastName - nameScore is 0
+    const camsTrustee = makeTrustee();
     const score = calculateCandidateScore(
       context,
-      makeDxtrTrustee(), // No address, no firstName/lastName - nameScore is 0
-      '082',
-      '1',
-      '7',
-      makeTrustee(),
+      dxtrTrustee,
+      { courtId: '082', courtDivisionCode: '1', chapter: '7' },
+      camsTrustee,
       [makeAppointment({ chapter: '7', courtId: '081', divisionCode: '1', status: 'active' })],
+      calculateNameScore(dxtrTrustee, camsTrustee),
     );
 
     expect(score.addressScore).toBe(0);
     expect(score.nameScore).toBe(0);
     expect(score.districtDivisionScore).toBe(0);
-    expect(score.chapterScore).toBe(100);
-    // phone/email null -> applicableWeight = 0.9
-    // weightedSum = 0*0.05 + 0*0.25 + 0*0.3 + 100*0.3 = 30
-    // 30 / 0.9 = 33.3333
-    expect(score.totalScore).toBeCloseTo(33.3333, 4);
+    expect(score.chapterScore).toBe(0);
+    // phone/email null -> applicableWeight = 0.84
+    // weightedSum = 0*0.08 + 0*0.26 + 0*0.25 + 0*0.25 = 0
+    expect(score.totalScore).toBeCloseTo(0, 10);
   });
 
   test('should populate phoneScore/emailScore as null when DXTR has no phone/email', () => {
+    const dxtrTrustee = {
+      ...makeDxtrTrustee('New York, NY 10001'),
+      firstName: 'John',
+      lastName: 'Doe',
+    };
+    const camsTrustee = makeTrustee({
+      public: {
+        address: {
+          address1: '123 Main St',
+          city: 'New York',
+          state: 'NY',
+          zipCode: '10001',
+          countryCode: 'US',
+        },
+        phone: { number: '662-286-9796' },
+        email: 'john.doe@example.com',
+      },
+    });
     const score = calculateCandidateScore(
       context,
-      { ...makeDxtrTrustee('New York, NY 10001'), firstName: 'John', lastName: 'Doe' },
-      '081',
-      '1',
-      '7',
-      makeTrustee({
-        public: {
-          address: {
-            address1: '123 Main St',
-            city: 'New York',
-            state: 'NY',
-            zipCode: '10001',
-            countryCode: 'US',
-          },
-          phone: { number: '662-286-9796' },
-          email: 'john.doe@example.com',
-        },
-      }),
+      dxtrTrustee,
+      { courtId: '081', courtDivisionCode: '1', chapter: '7' },
+      camsTrustee,
       [makeAppointment({ chapter: '7', courtId: '081', divisionCode: '1', status: 'active' })],
+      calculateNameScore(dxtrTrustee, camsTrustee),
     );
 
     // DXTR trustee has no legacy.phone/legacy.email, so both are not comparable.
     expect(score.phoneScore).toBeNull();
     expect(score.emailScore).toBeNull();
+  });
+
+  // Regression coverage for the sync-professionalIds dataflow: a fuzzy (partial, non-exact)
+  // addressScore must flow through calculateCandidateScore's weighting at its documented 8% share
+  // like any other sub-score, not just the exact-match/zero-match extremes exercised elsewhere.
+  test('should apply an exact 8% weight to a fuzzy (non-exact) address score', () => {
+    const dxtrTrustee = {
+      ...makeDxtrTrustee('New York, NY 10001', '123 Main Streat'), // typo'd street suffix
+      firstName: 'John',
+      lastName: 'Doe',
+    };
+    const camsTrustee = makeTrustee({
+      public: {
+        address: {
+          address1: '123 Main Street',
+          city: 'New York',
+          state: 'NY',
+          zipCode: '10001',
+          countryCode: 'US',
+        },
+      },
+    });
+    const score = calculateCandidateScore(
+      context,
+      dxtrTrustee,
+      { courtId: '081', courtDivisionCode: '1', chapter: '7' },
+      camsTrustee,
+      [makeAppointment({ chapter: '7', courtId: '081', divisionCode: '1', status: 'active' })],
+      calculateNameScore(dxtrTrustee, camsTrustee),
+    );
+
+    // "123 main streat" vs "123 main street": bigram Jaccard = 8 shared / 12 union = 66.67%,
+    // blended 50/50 with the numeric-token score (both sides share "123" -> 100) per
+    // calculateAddressScore's addressLinesScore = 66.67*0.5 + 100*0.5 = 83.33. Rolled up with
+    // zipScore=100 (30%) and cityStateScore=100 (20%): round(83.33*0.5 + 100*0.3 + 100*0.2) = 92 -
+    // a genuine fuzzy value, not the 0/100 extremes calculateAddressScore's other call sites in
+    // this file exercise.
+    expect(score.addressScore).toBe(92);
+    expect(score.nameScore).toBe(100);
+    expect(score.districtDivisionScore).toBe(100);
+    expect(score.chapterScore).toBe(100);
+    // phone/email null -> applicableWeight = 0.08 + 0.26 + 0.25 + 0.25 = 0.84
+    // weightedSum = 92*0.08 + 100*0.26 + 100*0.25 + 100*0.25 = 7.36 + 26 + 25 + 25 = 83.36
+    // 83.36 / 0.84 = 99.2381
+    expect(score.totalScore).toBeCloseTo(99.2381, 4);
   });
 });
 
@@ -1362,7 +1950,7 @@ describe('calculateTotalScore', () => {
       districtDivisionScore: 100,
       chapterScore: 100,
     });
-    // Only phoneScore (weight 0.05) is excluded; all applicable scores are 100.
+    // Only phoneScore (weight 0.08) is excluded; all applicable scores are 100.
     expect(total).toBe(100);
   });
 
@@ -1387,10 +1975,10 @@ describe('calculateTotalScore', () => {
       districtDivisionScore: 100,
       chapterScore: 100,
     });
-    // applicableWeight = 0.05 (address) + 0.25 (name) + 0.05 (phone) + 0.3 (district) + 0.3 (chapter) = 0.95
-    // weightedSum = 100*0.05 + 100*0.25 + 0*0.05 + 100*0.3 + 100*0.3 = 5 + 25 + 0 + 30 + 30 = 90
-    // 90 / 0.95 = 94.7368...
-    expect(total).toBeCloseTo(94.7368, 4);
+    // applicableWeight = 0.08 (address) + 0.26 (name) + 0.08 (phone) + 0.25 (district) + 0.25 (chapter) = 0.92
+    // weightedSum = 100*0.08 + 100*0.26 + 0*0.08 + 100*0.25 + 100*0.25 = 8 + 26 + 0 + 25 + 25 = 84
+    // 84 / 0.92 = 91.3043...
+    expect(total).toBeCloseTo(91.3043, 4);
   });
 });
 
@@ -1524,7 +2112,7 @@ describe('resolveNameCollisionByScoring', () => {
     );
   });
 
-  test('should return trusteeId when clear winner found (>75% and 5+ gap)', async () => {
+  test('should return trusteeId when clear winner found (meets threshold and gap)', async () => {
     const event = makeEvent({
       dxtrTrustee: {
         fullName: 'John Doe',
@@ -1600,28 +2188,41 @@ describe('resolveNameCollisionByScoring', () => {
     expect(result.candidateScores).toHaveLength(2);
   });
 
-  test('does not resolve a single candidate at exactly the 75-point threshold (boundary: > not >=)', async () => {
-    // name=100 (25%), phone=100/email=0 (5%/5%), district=50/same-court-different-division
-    // (30%), chapter=100 (30%), address=0 (5%) => weighted total = exactly 75. meetsThreshold
-    // requires totalScore > FUZZY_MATCH_SCORE_THRESHOLD (75), so this must NOT auto-resolve.
+  test('does not resolve a single candidate at exactly the 74-point threshold (boundary: > not >=)', async () => {
+    // address=100 (8%), name=0/genuine mismatch (26%), phone=100/email=100 (8%/8%),
+    // district=100/chapter=100 (25%/25%) => weighted total = exactly 74. meetsThreshold requires
+    // totalScore > FUZZY_MATCH_SCORE_THRESHOLD (74), so this must NOT auto-resolve. district=100
+    // and chapter=100 must come from a single division+chapter-matching appointment, not two
+    // different ones, so this fixture's one appointment covers both.
     const event = makeEvent({
       courtId: '081',
       courtDivisionCode: '1',
       chapter: '7',
       dxtrTrustee: {
-        fullName: 'John Doe',
+        fullName: 'John Smith',
         firstName: 'John',
-        lastName: 'Doe',
-        legacy: { phone: '5555551234', email: 'dxtr@example.com' },
+        lastName: 'Smith',
+        legacy: {
+          address1: '123 Main St',
+          cityStateZipCountry: 'New York, NY 10001',
+          phone: '5555551234',
+          email: 'shared@example.com',
+        },
       },
     });
     const candidate = makeTrustee({
       trusteeId: 'trustee-1',
-      name: 'John Doe',
+      name: 'John Doe', // genuine last-name mismatch vs. DXTR's "Smith" => nameScore 0
       public: {
-        address: undefined,
+        address: {
+          address1: '123 Main St',
+          city: 'New York',
+          state: 'NY',
+          zipCode: '10001',
+          countryCode: 'US',
+        },
         phone: { number: '5555551234' },
-        email: 'cams@example.com',
+        email: 'shared@example.com',
       },
     });
     const appointments = [
@@ -1630,7 +2231,7 @@ describe('resolveNameCollisionByScoring', () => {
         trusteeId: 'trustee-1',
         chapter: '7',
         courtId: '081',
-        divisionCode: '2', // same court, different division => districtDivisionScore 50
+        divisionCode: '1', // exact court+division+chapter match on this one record
       }),
     ];
 
@@ -1643,15 +2244,14 @@ describe('resolveNameCollisionByScoring', () => {
 
     expect(result.kind).toBe('unresolved');
     if (result.kind !== 'unresolved') throw new Error('expected unresolved outcome');
-    expect(result.candidateScores[0].totalScore).toBe(75);
+    expect(result.candidateScores[0].totalScore).toBe(74);
   });
 
-  test('resolves when the winner/runner-up gap is exactly the 5-point minimum (boundary: >= not >)', async () => {
-    // Both candidates: address=0 (no dxtr cityStateZipCountry), name=100, phone=0 (mismatched,
-    // comparable), district=100, chapter=100 (same-appointment match on both) — differing only on
-    // email: winner matches (100) => total 90, runner-up mismatches (0) => total 85. Gap is
-    // exactly 5 == FUZZY_MATCH_MIN_GAP, which hasSignificantGap requires via >=, so this must
-    // resolve.
+  test('resolves when the winner/runner-up gap is exactly the 8-point minimum (boundary: >= not >)', async () => {
+    // Both candidates: address=100, name=100, phone=100, district=100, chapter=100 (same-appointment
+    // match on both) — differing only on email: winner matches (100) => total 100, runner-up
+    // mismatches (0) => total 92. Gap is exactly 8 == FUZZY_MATCH_MIN_GAP, which hasSignificantGap
+    // requires via >=, so this must resolve.
     const event = makeEvent({
       courtId: '081',
       courtDivisionCode: '1',
@@ -1660,15 +2260,26 @@ describe('resolveNameCollisionByScoring', () => {
         fullName: 'John Doe',
         firstName: 'John',
         lastName: 'Doe',
-        legacy: { phone: '5555550000', email: 'shared@example.com' },
+        legacy: {
+          address1: '123 Main St',
+          cityStateZipCountry: 'New York, NY 10001',
+          phone: '5555550000',
+          email: 'shared@example.com',
+        },
       },
     });
     const winner = makeTrustee({
       trusteeId: 'trustee-1',
       name: 'John Doe',
       public: {
-        address: undefined,
-        phone: { number: '5555559999' },
+        address: {
+          address1: '123 Main St',
+          city: 'New York',
+          state: 'NY',
+          zipCode: '10001',
+          countryCode: 'US',
+        },
+        phone: { number: '5555550000' },
         email: 'shared@example.com',
       },
     });
@@ -1676,8 +2287,14 @@ describe('resolveNameCollisionByScoring', () => {
       trusteeId: 'trustee-2',
       name: 'John Doe',
       public: {
-        address: undefined,
-        phone: { number: '5555559999' },
+        address: {
+          address1: '123 Main St',
+          city: 'New York',
+          state: 'NY',
+          zipCode: '10001',
+          countryCode: 'US',
+        },
+        phone: { number: '5555550000' },
         email: 'different@example.com',
       },
     });
@@ -1712,11 +2329,11 @@ describe('resolveNameCollisionByScoring', () => {
     expect(result.kind).toBe('resolved');
     if (result.kind !== 'resolved') throw new Error('expected resolved outcome');
     expect(result.trusteeId).toBe('trustee-1');
-    expect(result.candidateScores.find((c) => c.trusteeId === 'trustee-1')?.totalScore).toBe(90);
-    expect(result.candidateScores.find((c) => c.trusteeId === 'trustee-2')?.totalScore).toBe(85);
+    expect(result.candidateScores.find((c) => c.trusteeId === 'trustee-1')?.totalScore).toBe(100);
+    expect(result.candidateScores.find((c) => c.trusteeId === 'trustee-2')?.totalScore).toBe(92);
   });
 
-  test('should return an unresolved outcome when no candidate scores >75%', async () => {
+  test('should return an unresolved outcome when no candidate meets the threshold', async () => {
     const event = makeEvent();
     const candidate1 = makeTrustee({
       trusteeId: 'trustee-1',
@@ -1783,11 +2400,18 @@ describe('resolveNameCollisionByScoring', () => {
     });
   });
 
-  test('should return an unresolved outcome when top scores within 5 points', async () => {
-    const event = makeEvent();
+  test('should return an unresolved outcome when both candidates meet the threshold but the gap is too small', async () => {
+    const event = makeEvent({
+      dxtrTrustee: {
+        fullName: 'John Doe',
+        firstName: 'John',
+        lastName: 'Doe',
+        legacy: { cityStateZipCountry: 'New York, NY 10001', address1: '123 Main St' },
+      },
+    });
     const candidate1 = makeTrustee({
       trusteeId: 'trustee-1',
-      name: 'John Doe 1',
+      name: 'John Doe',
       public: {
         address: {
           address1: '123 Main St',
@@ -1798,12 +2422,16 @@ describe('resolveNameCollisionByScoring', () => {
         },
       },
     });
+    // addressLinesScore=0 (completely different line, 50%) + zipScore=100 (30%) +
+    // cityStateScore=100 (20%) = 50 - a partial addressScore, not the 0/100 extremes used
+    // elsewhere in this describe block, so the resulting 4-point gap is a genuine (not
+    // coincidental) consequence of address's fuzzy scoring.
     const candidate2 = makeTrustee({
       trusteeId: 'trustee-2',
-      name: 'John Doe 2',
+      name: 'John Doe',
       public: {
         address: {
-          address1: '123 Main St',
+          address1: '456 Oak Ave',
           city: 'New York',
           state: 'NY',
           zipCode: '10001',
@@ -1811,15 +2439,13 @@ describe('resolveNameCollisionByScoring', () => {
         },
       },
     });
-
-    // Both score 80 (perfect address + court match = 20 + 40 = 60, then chapter 50% match = 20, total 80)
     const appointments1 = [
       makeAppointment({
         id: 'appointment-trustee-1',
         trusteeId: 'trustee-1',
         chapter: '7',
         courtId: '081',
-        divisionCode: '2',
+        divisionCode: '1',
       }),
     ];
     const appointments2 = [
@@ -1828,7 +2454,7 @@ describe('resolveNameCollisionByScoring', () => {
         trusteeId: 'trustee-2',
         chapter: '7',
         courtId: '081',
-        divisionCode: '3',
+        divisionCode: '1',
       }),
     ];
 
@@ -1841,13 +2467,23 @@ describe('resolveNameCollisionByScoring', () => {
 
     const result = await resolveNameCollisionByScoring(context, event, ['trustee-1', 'trustee-2']);
 
-    expect(result).toEqual({
-      kind: 'unresolved',
-      candidateScores: expect.any(Array),
-    });
+    expect(result.kind).toBe('unresolved');
+    if (result.kind !== 'unresolved') throw new Error('expected unresolved outcome');
+    // name=100 (26%) + district=100 (25%) + chapter=100 (25%) tied on both, phone/email null
+    // -> applicableWeight = 0.84. candidate1: address=100 -> (100*.08+100*.26+100*.25+100*.25)/.84 = 100
+    // candidate2: address=50 -> (50*.08+100*.26+100*.25+100*.25)/.84 = 95.2381. Both clear the 74
+    // threshold, but the gap (4.76) is below FUZZY_MATCH_MIN_GAP (8), so this must stay unresolved.
+    expect(result.candidateScores.find((c) => c.trusteeId === 'trustee-1')?.totalScore).toBeCloseTo(
+      100,
+      4,
+    );
+    expect(result.candidateScores.find((c) => c.trusteeId === 'trustee-2')?.totalScore).toBeCloseTo(
+      95.2381,
+      4,
+    );
   });
 
-  test('should return winner when single candidate meets 75% threshold', async () => {
+  test('should return winner when single candidate meets threshold', async () => {
     const event = makeEvent({
       dxtrTrustee: {
         fullName: 'John Doe',
@@ -1892,13 +2528,13 @@ describe('resolveNameCollisionByScoring', () => {
     expect(result.candidateScores).toHaveLength(1);
   });
 
-  test('does not auto-resolve when district/division and chapter scores each come from a different active appointment', async () => {
+  test('remains unresolved because chapterScore is scoped to the division-matching appointment', async () => {
     // Trustee holds two active appointments: one matches the case's division (different
     // chapter), the other matches the case's chapter (different division). Neither appointment
-    // alone matches court + division + chapter, so isAppointmentMatch is false for both — but
-    // districtDivisionScore and chapterScore are each computed independently via .some() across
-    // all appointments, so the combined score can still clear the auto-match threshold. This
-    // must fall through to 'unresolved' (human review) rather than auto-linking.
+    // alone matches court + division + chapter, so isAppointmentMatch is false for both, and
+    // chapterScore is 0 since the division-matching appointment's chapter differs from the
+    // case's. Guards the outcome at the resolveNameCollisionByScoring level, on top of
+    // calculateChapterScore's own unit coverage of the same scenario.
     const event = makeEvent({
       courtId: '081',
       courtDivisionCode: '2',
@@ -2109,6 +2745,547 @@ describe('resolveNameCollisionByScoring', () => {
     if (result.kind !== 'resolved') throw new Error('expected resolved outcome');
     expect(result.trusteeId).toBe('trustee-2');
     expect(result.candidateScores).toHaveLength(1);
+  });
+});
+
+describe('resolveByContactCorroboration', () => {
+  let context: ApplicationContext;
+  let mockTrusteesRepo: Partial<TrusteesRepository>;
+
+  beforeEach(async () => {
+    vi.restoreAllMocks();
+    context = await createMockApplicationContext();
+
+    mockTrusteesRepo = {
+      read: vi.fn(),
+      release: vi.fn(),
+    };
+
+    vi.spyOn(factory, 'getTrusteesRepository').mockReturnValue(
+      mockTrusteesRepo as TrusteesRepository,
+    );
+  });
+
+  const sourceTrustee: DxtrTrusteeParty = {
+    fullName: 'Richard Belford',
+    firstName: 'Richard',
+    lastName: 'Belford',
+    legacy: {
+      address1: '9 Trumbull Street',
+      cityStateZipCountry: 'New Haven, CT 06511',
+      phone: '2038650867',
+    },
+  };
+
+  test('resolves when the sole name-qualifying candidate has a strong address match', async () => {
+    const candidate = makeTrustee({
+      trusteeId: 'trustee-1',
+      firstName: 'Richard',
+      lastName: 'Belford',
+      name: 'Richard L. Belford',
+      public: {
+        address: {
+          address1: '9 Trumbull Street',
+          city: 'New Haven',
+          state: 'CT',
+          zipCode: '06511',
+          countryCode: 'US',
+        },
+      },
+    });
+    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>).mockResolvedValue(candidate);
+
+    const result = await resolveByContactCorroboration(context, sourceTrustee, ['trustee-1']);
+
+    expect(result.kind).toBe('resolved');
+    if (result.kind !== 'resolved') throw new Error('expected resolved outcome');
+    expect(result.trusteeId).toBe('trustee-1');
+  });
+
+  test('resolves when the sole name-qualifying candidate has an exact phone match despite a weak address', async () => {
+    const candidate = makeTrustee({
+      trusteeId: 'trustee-1',
+      firstName: 'Richard',
+      lastName: 'Belford',
+      name: 'Richard L. Belford',
+      public: {
+        address: {
+          address1: 'Some Other Street',
+          city: 'Elsewhere',
+          state: 'CT',
+          zipCode: '00000',
+          countryCode: 'US',
+        },
+        phone: { number: '203-865-0867' },
+      },
+    });
+    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>).mockResolvedValue(candidate);
+
+    const result = await resolveByContactCorroboration(context, sourceTrustee, ['trustee-1']);
+
+    expect(result.kind).toBe('resolved');
+    if (result.kind !== 'resolved') throw new Error('expected resolved outcome');
+    expect(result.trusteeId).toBe('trustee-1');
+  });
+
+  test('resolves when the sole name-qualifying candidate has an exact email match despite a weak address', async () => {
+    const withEmailSource: DxtrTrusteeParty = {
+      ...sourceTrustee,
+      legacy: { ...sourceTrustee.legacy, email: 'rbelford@example.com' },
+    };
+    const candidate = makeTrustee({
+      trusteeId: 'trustee-1',
+      firstName: 'Richard',
+      lastName: 'Belford',
+      name: 'Richard L. Belford',
+      public: {
+        address: {
+          address1: 'Some Other Street',
+          city: 'Elsewhere',
+          state: 'CT',
+          zipCode: '00000',
+          countryCode: 'US',
+        },
+        email: 'rbelford@example.com',
+      },
+    });
+    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>).mockResolvedValue(candidate);
+
+    const result = await resolveByContactCorroboration(context, withEmailSource, ['trustee-1']);
+
+    expect(result.kind).toBe('resolved');
+    if (result.kind !== 'resolved') throw new Error('expected resolved outcome');
+    expect(result.trusteeId).toBe('trustee-1');
+  });
+
+  test('stays unresolved when the sole name-qualifying candidate has no strong corroboration and its address is a genuine disagreement (not an absence)', async () => {
+    // sourceTrustee has a real, parseable cityStateZipCountry ("New Haven, CT 06511") - the
+    // candidate's address is in a different city/state entirely, so this is a genuine address
+    // disagreement, not an absence of data - the no-contradiction fallback must NOT rescue it.
+    const candidate = makeTrustee({
+      trusteeId: 'trustee-1',
+      firstName: 'Richard',
+      lastName: 'Belford',
+      name: 'Richard L. Belford',
+      public: {
+        address: {
+          address1: 'Some Other Street',
+          city: 'Elsewhere',
+          state: 'CT',
+          zipCode: '00000',
+          countryCode: 'US',
+        },
+      },
+    });
+    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>).mockResolvedValue(candidate);
+
+    const result = await resolveByContactCorroboration(context, sourceTrustee, ['trustee-1']);
+
+    expect(result.kind).toBe('unresolved');
+  });
+
+  test('resolves via the no-contradiction fallback when the sole nameScore===100 candidate has no comparable phone/email and the ACMS address is unparseable (not a disagreement)', async () => {
+    const unparseableAddressSource: DxtrTrusteeParty = {
+      fullName: 'Richard Belford',
+      firstName: 'Richard',
+      lastName: 'Belford',
+      legacy: {
+        // No cityStateZipCountry at all - parseCityStateZip returns null (unparseable/absent),
+        // not a genuine disagreement - but address1 is present so this is NOT a blank demographic.
+        address1: '9 Trumbull Street',
+      },
+    };
+    const candidate = makeTrustee({
+      trusteeId: 'trustee-1',
+      firstName: 'Richard',
+      lastName: 'Belford',
+      name: 'Richard L. Belford',
+      public: {
+        address: {
+          address1: '9 Trumbull Street',
+          city: 'New Haven',
+          state: 'CT',
+          zipCode: '06511',
+          countryCode: 'US',
+        },
+      },
+    });
+    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>).mockResolvedValue(candidate);
+
+    const result = await resolveByContactCorroboration(context, unparseableAddressSource, [
+      'trustee-1',
+    ]);
+
+    expect(result.kind).toBe('resolved');
+    if (result.kind !== 'resolved') throw new Error('expected resolved outcome');
+    expect(result.trusteeId).toBe('trustee-1');
+  });
+
+  test('does NOT resolve via the no-contradiction fallback when the ACMS demographic is fully blank (no address, phone, or email at all)', async () => {
+    const blankDemographicSource: DxtrTrusteeParty = {
+      fullName: 'Richard Belford',
+      firstName: 'Richard',
+      lastName: 'Belford',
+      // legacy omitted entirely - no address, phone, or email recorded in ACMS whatsoever.
+    };
+    const candidate = makeTrustee({
+      trusteeId: 'trustee-1',
+      firstName: 'Richard',
+      lastName: 'Belford',
+      name: 'Richard L. Belford',
+      public: {
+        address: {
+          address1: '9 Trumbull Street',
+          city: 'New Haven',
+          state: 'CT',
+          zipCode: '06511',
+          countryCode: 'US',
+        },
+      },
+    });
+    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>).mockResolvedValue(candidate);
+
+    const result = await resolveByContactCorroboration(context, blankDemographicSource, [
+      'trustee-1',
+    ]);
+
+    expect(result.kind).toBe('unresolved');
+  });
+
+  test('does NOT resolve via the no-contradiction fallback when nameScore is 85 (fuzzy tier), not 100', async () => {
+    const initialOnlySource: DxtrTrusteeParty = {
+      fullName: 'R. Belford',
+      firstName: 'R', // initial-only, not exact - scoreFirstNamePart caps this at 85, not 100
+      lastName: 'Belford',
+      legacy: {
+        address1: '9 Trumbull Street',
+      },
+    };
+    const candidate = makeTrustee({
+      trusteeId: 'trustee-1',
+      firstName: 'Richard',
+      lastName: 'Belford',
+      name: 'Richard L. Belford',
+      public: {
+        address: {
+          address1: '9 Trumbull Street',
+          city: 'New Haven',
+          state: 'CT',
+          zipCode: '06511',
+          countryCode: 'US',
+        },
+      },
+    });
+    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>).mockResolvedValue(candidate);
+
+    const result = await resolveByContactCorroboration(context, initialOnlySource, ['trustee-1']);
+
+    expect(result.kind).toBe('unresolved');
+  });
+
+  test('stays unresolved when no candidate clears the name threshold', async () => {
+    const candidate = makeTrustee({
+      trusteeId: 'trustee-1',
+      firstName: 'Totally',
+      lastName: 'Different',
+      name: 'Totally Different Person',
+      public: {
+        address: {
+          address1: '9 Trumbull Street',
+          city: 'New Haven',
+          state: 'CT',
+          zipCode: '06511',
+          countryCode: 'US',
+        },
+      },
+    });
+    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>).mockResolvedValue(candidate);
+
+    const result = await resolveByContactCorroboration(context, sourceTrustee, ['trustee-1']);
+
+    expect(result.kind).toBe('unresolved');
+  });
+
+  test('stays unresolved when more than one candidate clears the name threshold, even with strong corroboration', async () => {
+    const strongCandidate = makeTrustee({
+      trusteeId: 'trustee-1',
+      firstName: 'Richard',
+      lastName: 'Belford',
+      name: 'Richard L. Belford',
+      public: {
+        address: {
+          address1: '9 Trumbull Street',
+          city: 'New Haven',
+          state: 'CT',
+          zipCode: '06511',
+          countryCode: 'US',
+        },
+      },
+    });
+    const otherQualifyingCandidate = makeTrustee({
+      trusteeId: 'trustee-2',
+      firstName: 'Richard',
+      lastName: 'Belford',
+      name: 'Richard Belford',
+      public: {
+        address: {
+          address1: 'Some Other Street',
+          city: 'Elsewhere',
+          state: 'CT',
+          zipCode: '00000',
+          countryCode: 'US',
+        },
+      },
+    });
+    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce(strongCandidate)
+      .mockResolvedValueOnce(otherQualifyingCandidate);
+
+    const result = await resolveByContactCorroboration(context, sourceTrustee, [
+      'trustee-1',
+      'trustee-2',
+    ]);
+
+    expect(result.kind).toBe('unresolved');
+    if (result.kind !== 'unresolved') throw new Error('expected unresolved outcome');
+    expect(result.candidateScores).toHaveLength(2);
+  });
+
+  test('returns no-match when every candidate fails to load', async () => {
+    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new Error('trustee not found'),
+    );
+
+    const result = await resolveByContactCorroboration(context, sourceTrustee, ['trustee-1']);
+
+    expect(result.kind).toBe('no-match');
+  });
+
+  test('propagates a transient infrastructure error rather than treating it as unscorable', async () => {
+    const transientError = new TooManyRequestsError('COSMOS_DB');
+    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>).mockRejectedValue(transientError);
+
+    await expect(resolveByContactCorroboration(context, sourceTrustee, ['trustee-1'])).rejects.toBe(
+      transientError,
+    );
+  });
+
+  test('does not require appointment/district/chapter evidence - candidates score purely on name/address/phone/email', async () => {
+    // No getTrusteeAppointmentsRepository mock is set up at all in this describe block's
+    // beforeEach - if resolveByContactCorroboration ever started calling it, this test would
+    // throw on an unmocked factory call rather than silently passing.
+    const candidate = makeTrustee({
+      trusteeId: 'trustee-1',
+      firstName: 'Richard',
+      lastName: 'Belford',
+      name: 'Richard L. Belford',
+      public: {
+        address: {
+          address1: '9 Trumbull Street',
+          city: 'New Haven',
+          state: 'CT',
+          zipCode: '06511',
+          countryCode: 'US',
+        },
+      },
+    });
+    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>).mockResolvedValue(candidate);
+
+    const result = await resolveByContactCorroboration(context, sourceTrustee, ['trustee-1']);
+
+    expect(result.kind).toBe('resolved');
+  });
+});
+
+describe('resolveDuplicateNameCandidates', () => {
+  let context: ApplicationContext;
+  let mockTrusteesRepo: Partial<TrusteesRepository>;
+
+  beforeEach(async () => {
+    vi.restoreAllMocks();
+    context = await createMockApplicationContext();
+
+    mockTrusteesRepo = {
+      read: vi.fn(),
+      release: vi.fn(),
+    };
+
+    vi.spyOn(factory, 'getTrusteesRepository').mockReturnValue(
+      mockTrusteesRepo as TrusteesRepository,
+    );
+  });
+
+  const sourceTrustee: DxtrTrusteeParty = {
+    fullName: 'Roy Cohen',
+    firstName: 'Roy',
+    lastName: 'Cohen',
+    legacy: {
+      address1: '9 Trumbull Street',
+      cityStateZipCountry: 'New Haven, CT 06511',
+    },
+  };
+
+  test('resolves to the richer-data candidate when two candidates share the same normalized trusteeName and the addressScore gap is large', async () => {
+    const richerCandidate = makeTrustee({
+      trusteeId: 'trustee-1',
+      firstName: 'Roy',
+      lastName: 'Cohen',
+      name: 'Roy J. Cohen',
+      public: {
+        address: {
+          address1: '9 Trumbull Street',
+          city: 'New Haven',
+          state: 'CT',
+          zipCode: '06511',
+          countryCode: 'US',
+        },
+      },
+    });
+    const staleCandidate = makeTrustee({
+      trusteeId: 'trustee-2',
+      firstName: 'Roy',
+      lastName: 'Cohen',
+      name: 'Roy J. Cohen', // same normalized name as trustee-1 - a likely CAMS duplicate
+      public: {
+        address: {
+          address1: 'Some Other Street',
+          city: 'Elsewhere',
+          state: 'CT',
+          zipCode: '00000',
+          countryCode: 'US',
+        },
+      },
+    });
+    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce(richerCandidate)
+      .mockResolvedValueOnce(staleCandidate);
+
+    const result = await resolveDuplicateNameCandidates(context, sourceTrustee, [
+      'trustee-1',
+      'trustee-2',
+    ]);
+
+    expect(result.kind).toBe('resolved-duplicate');
+    if (result.kind !== 'resolved-duplicate')
+      throw new Error('expected resolved-duplicate outcome');
+    expect(result.trusteeId).toBe('trustee-1');
+  });
+
+  test('stays unresolved when two same-name candidates have too small an addressScore gap to trust', async () => {
+    const candidateA = makeTrustee({
+      trusteeId: 'trustee-1',
+      firstName: 'Roy',
+      lastName: 'Cohen',
+      name: 'Roy J. Cohen',
+      public: {
+        address: {
+          address1: 'Some Other Street A',
+          city: 'Elsewhere',
+          state: 'CT',
+          zipCode: '00000',
+          countryCode: 'US',
+        },
+      },
+    });
+    const candidateB = makeTrustee({
+      trusteeId: 'trustee-2',
+      firstName: 'Roy',
+      lastName: 'Cohen',
+      name: 'Roy J. Cohen',
+      public: {
+        address: {
+          address1: 'Some Other Street B',
+          city: 'Elsewhere',
+          state: 'CT',
+          zipCode: '00000',
+          countryCode: 'US',
+        },
+      },
+    });
+    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce(candidateA)
+      .mockResolvedValueOnce(candidateB);
+
+    const result = await resolveDuplicateNameCandidates(context, sourceTrustee, [
+      'trustee-1',
+      'trustee-2',
+    ]);
+
+    expect(result.kind).toBe('unresolved');
+  });
+
+  test('stays unresolved when the candidates have genuinely different names, regardless of addressScore gap', async () => {
+    const candidateA = makeTrustee({
+      trusteeId: 'trustee-1',
+      firstName: 'David',
+      lastName: 'Miller',
+      middleName: 'L.',
+      name: 'David L. Miller',
+      public: {
+        address: {
+          address1: '9 Trumbull Street',
+          city: 'New Haven',
+          state: 'CT',
+          zipCode: '06511',
+          countryCode: 'US',
+        },
+      },
+    });
+    const candidateB = makeTrustee({
+      trusteeId: 'trustee-2',
+      firstName: 'David',
+      lastName: 'Miller',
+      middleName: 'P.',
+      name: 'David P. Miller', // genuinely different name from candidateA - not a duplicate
+      public: {
+        address: {
+          address1: 'Some Other Street',
+          city: 'Elsewhere',
+          state: 'CT',
+          zipCode: '00000',
+          countryCode: 'US',
+        },
+      },
+    });
+    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce(candidateA)
+      .mockResolvedValueOnce(candidateB);
+
+    const davidMillerSource: DxtrTrusteeParty = {
+      fullName: 'David Miller',
+      firstName: 'David',
+      lastName: 'Miller',
+      legacy: {
+        address1: '9 Trumbull Street',
+        cityStateZipCountry: 'New Haven, CT 06511',
+      },
+    };
+
+    const result = await resolveDuplicateNameCandidates(context, davidMillerSource, [
+      'trustee-1',
+      'trustee-2',
+    ]);
+
+    expect(result.kind).toBe('unresolved');
+  });
+
+  test('returns no-match when every candidate fails to load', async () => {
+    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new Error('trustee not found'),
+    );
+
+    const result = await resolveDuplicateNameCandidates(context, sourceTrustee, ['trustee-1']);
+
+    expect(result.kind).toBe('no-match');
+  });
+
+  test('propagates a transient infrastructure error rather than treating it as unscorable', async () => {
+    const transientError = new TooManyRequestsError('COSMOS_DB');
+    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>).mockRejectedValue(transientError);
+
+    await expect(
+      resolveDuplicateNameCandidates(context, sourceTrustee, ['trustee-1']),
+    ).rejects.toBe(transientError);
   });
 });
 

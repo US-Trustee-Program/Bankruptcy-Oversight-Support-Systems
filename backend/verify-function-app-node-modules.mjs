@@ -15,6 +15,11 @@
 // ancestor and mask a package missing from the app tree. To catch that, each top-level
 // external is required AND asserted to resolve from inside the app's own node_modules.
 //
+// Additionally, this checks that every EXTERNAL package that appears as a require() call
+// in the built bundle is actually declared in the function app's own package.json.
+// This guards against the case where a package is added to a bundled module but never
+// added to the app's dependencies.
+//
 // USAGE
 //   node verify-function-app-node-modules.mjs <appDir>
 // where <appDir> contains the built node_modules (i.e. <appDir>/node_modules exists).
@@ -23,6 +28,8 @@ import { createRequire } from 'node:module';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
+import { findUndeclaredBundledExternals } from './find-undeclared-bundled-externals.mjs';
+import { EXTERNAL_DEPENDENCIES } from './esbuild-shared.mjs';
 
 const appDirArg = process.argv[2];
 if (!appDirArg) {
@@ -126,4 +133,31 @@ if (failures) {
   console.error(`\nnode_modules verification FAILED: ${failures} module(s) could not be loaded.`);
   process.exit(1);
 }
+
+// Check that every EXTERNAL package used in the bundle is declared in the app's dependencies.
+// This catches cases where a package was added to bundled code but not declared in the app's package.json.
+// The bundle path is determined from the app's package.json "main" field (or dist/index.js as default).
+const mainField = appPj.main ?? 'dist/index.js';
+const bundlePath = path.join(appDir, mainField);
+if (!existsSync(bundlePath)) {
+  console.error(`Bundle not found at ${bundlePath} (specified by "main" in ${appPjPath}).`);
+  process.exit(1);
+}
+
+const bundleSource = readFileSync(bundlePath, 'utf8');
+const undeclaredExternals = findUndeclaredBundledExternals({
+  bundleSource,
+  externalDependencies: EXTERNAL_DEPENDENCIES,
+  declaredDependencies: appDeps,
+});
+
+if (undeclaredExternals.length > 0) {
+  console.error(
+    `\nBundled external verification FAILED: the following external dependencies appear in the bundle ` +
+      `but are not declared in ${appPjPath}:\n` +
+      undeclaredExternals.map((spec) => `  - ${spec}`).join('\n'),
+  );
+  process.exit(1);
+}
+
 console.log('\nnode_modules verification passed: all runtime dependencies load.');

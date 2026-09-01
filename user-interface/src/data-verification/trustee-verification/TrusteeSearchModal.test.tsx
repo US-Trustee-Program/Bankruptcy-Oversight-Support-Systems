@@ -237,7 +237,7 @@ describe('TrusteeSearchModal', () => {
     expect(searchSpy).not.toHaveBeenCalled();
   });
 
-  test('shows "similar name" label for phonetic matches in dropdown', async () => {
+  test('shows only the trustee name for phonetic matches in dropdown, without a "similar name" label', async () => {
     vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: sampleResults });
 
     renderWithProps();
@@ -248,10 +248,9 @@ describe('TrusteeSearchModal', () => {
     await waitFor(() => {
       const listItems = document.querySelectorAll(`#${comboBoxId}-item-list li`);
       expect(listItems.length).toBe(2);
-      // First result is exact match - no badge
       expect(listItems[0].textContent).toBe('John Smith');
-      // Second result is phonetic match - has badge
-      expect(listItems[1].textContent).toBe('Jane Smithson (similar name)');
+      // Second result is a phonetic match — no "(similar name)" suffix
+      expect(listItems[1].textContent).toBe('Jane Smithson');
     });
   });
 
@@ -410,6 +409,102 @@ describe('TrusteeSearchModal', () => {
     });
   });
 
+  test('prefers the courts-list courtName over the appointment courtName when both are present', async () => {
+    const resultWithAppointment: TrusteeSearchResult = {
+      trusteeId: 'trustee-appt',
+      name: 'Appt Trustee',
+      appointments: [
+        {
+          ...MockData.getTrusteeAppointment({ courtDivisionName: 'Manhattan', chapter: '7' }),
+          courtId: '0208',
+          courtName: 'Stale Appointment-Supplied Name',
+        },
+      ],
+      matchType: 'exact',
+    };
+    vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: [resultWithAppointment] });
+
+    renderWithProps();
+    act(() => modalRef.current?.show());
+
+    await expandComboBoxAndType('appt');
+
+    await waitFor(() => {
+      expect(screen.getByTestId(`${comboBoxId}-option-item-0`)).toBeVisible();
+    });
+    await userEvent.click(screen.getByTestId(`${comboBoxId}-option-item-0`));
+
+    await waitFor(() => {
+      // courtId 0208 = Southern District of New York in COURT_DIVISIONS - must win over the
+      // (deliberately conflicting) stale appt.courtName.
+      const details = document.querySelector('.trustee-details');
+      expect(details?.textContent).toContain('Southern District of New York');
+      expect(details?.textContent).not.toContain('Stale Appointment-Supplied Name');
+    });
+  });
+
+  test('falls back to the appointment courtName when the courts list has no match for courtId', async () => {
+    const resultWithAppointment: TrusteeSearchResult = {
+      trusteeId: 'trustee-appt',
+      name: 'Appt Trustee',
+      appointments: [
+        {
+          ...MockData.getTrusteeAppointment({ courtDivisionName: 'Manhattan', chapter: '7' }),
+          courtId: 'no-such-court',
+          courtName: 'Appointment-Supplied Court Name',
+        },
+      ],
+      matchType: 'exact',
+    };
+    vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: [resultWithAppointment] });
+
+    renderWithProps();
+    act(() => modalRef.current?.show());
+
+    await expandComboBoxAndType('appt');
+
+    await waitFor(() => {
+      expect(screen.getByTestId(`${comboBoxId}-option-item-0`)).toBeVisible();
+    });
+    await userEvent.click(screen.getByTestId(`${comboBoxId}-option-item-0`));
+
+    await waitFor(() => {
+      const details = document.querySelector('.trustee-details');
+      expect(details?.textContent).toContain('Appointment-Supplied Court Name');
+    });
+  });
+
+  test('falls back to the appointment courtId when neither the courts list nor courtName has a match', async () => {
+    const resultWithAppointment: TrusteeSearchResult = {
+      trusteeId: 'trustee-appt',
+      name: 'Appt Trustee',
+      appointments: [
+        {
+          ...MockData.getTrusteeAppointment({ courtDivisionName: 'Manhattan', chapter: '7' }),
+          courtId: 'no-such-court',
+          courtName: undefined,
+        },
+      ],
+      matchType: 'exact',
+    };
+    vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: [resultWithAppointment] });
+
+    renderWithProps();
+    act(() => modalRef.current?.show());
+
+    await expandComboBoxAndType('appt');
+
+    await waitFor(() => {
+      expect(screen.getByTestId(`${comboBoxId}-option-item-0`)).toBeVisible();
+    });
+    await userEvent.click(screen.getByTestId(`${comboBoxId}-option-item-0`));
+
+    await waitFor(() => {
+      const details = document.querySelector('.trustee-details');
+      expect(details?.textContent).toContain('no-such-court');
+    });
+  });
+
   test('clears selected trustee and disables Confirm button when selection is removed', async () => {
     vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: sampleResults });
 
@@ -450,6 +545,95 @@ describe('TrusteeSearchModal', () => {
         `button-trustee-search-modal-${modalId}-submit-button`,
       );
       expect(submitButton).toBeDisabled();
+    });
+  });
+
+  test('clears previously selected trustee when the modal is canceled and reopened', async () => {
+    vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: sampleResults });
+
+    renderWithProps();
+    act(() => modalRef.current?.show());
+
+    await expandComboBoxAndType('smith');
+    await waitFor(() => {
+      expect(screen.getByTestId(`${comboBoxId}-option-item-0`)).toBeVisible();
+    });
+    await userEvent.click(screen.getByTestId(`${comboBoxId}-option-item-0`));
+
+    await waitFor(() => {
+      expect(screen.getByText('123 Main St')).toBeInTheDocument();
+    });
+
+    const cancelButton = screen.getByTestId(`button-trustee-search-modal-${modalId}-cancel-button`);
+    await waitFor(() => expect(cancelButton).toBeEnabled());
+    await userEvent.click(cancelButton);
+
+    act(() => modalRef.current?.show());
+
+    await waitFor(() => {
+      const input = document.querySelector(`#${comboBoxId}-combo-box-input`) as HTMLInputElement;
+      expect(input?.value).toBe('');
+      expect(screen.queryByText('123 Main St')).not.toBeInTheDocument();
+      const submitButton = screen.getByTestId(
+        `button-trustee-search-modal-${modalId}-submit-button`,
+      );
+      expect(submitButton).toBeDisabled();
+    });
+  });
+
+  test('shows a loading spinner and disables Confirm when isProcessing is true', async () => {
+    vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: sampleResults });
+
+    render(
+      <BrowserRouter>
+        <TrusteeSearchModal
+          ref={modalRef}
+          id={modalId}
+          dxtrTrusteeName="DOE, JOHN"
+          onConfirm={vi.fn()}
+          isProcessing={true}
+        />
+      </BrowserRouter>,
+    );
+    act(() => modalRef.current?.show());
+
+    await waitFor(() => {
+      expect(screen.getByText('Confirming appointment...')).toBeInTheDocument();
+      const submitButton = screen.getByTestId(
+        `button-trustee-search-modal-${modalId}-submit-button`,
+      );
+      expect(submitButton).toBeDisabled();
+    });
+  });
+
+  test('disables Cancel when isProcessing is true', async () => {
+    render(
+      <BrowserRouter>
+        <TrusteeSearchModal
+          ref={modalRef}
+          id={modalId}
+          dxtrTrusteeName="DOE, JOHN"
+          onConfirm={vi.fn()}
+          isProcessing={true}
+        />
+      </BrowserRouter>,
+    );
+    act(() => modalRef.current?.show());
+
+    await waitFor(() => {
+      const cancelButton = screen.getByTestId(
+        `button-trustee-search-modal-${modalId}-cancel-button`,
+      );
+      expect(cancelButton).toBeDisabled();
+    });
+  });
+
+  test('does not show a loading spinner when isProcessing is omitted', async () => {
+    renderWithProps();
+    act(() => modalRef.current?.show());
+
+    await waitFor(() => {
+      expect(screen.queryByText('Confirming appointment...')).not.toBeInTheDocument();
     });
   });
 });

@@ -134,6 +134,9 @@ function validateDateFields(): ValidatorFunction {
       'pastAudit',
       'pastTprSubmission',
       'lastMonthlyReportReceived',
+      'leaseExpiration',
+      'idExpiration',
+      'lastCompensationStudy',
     ];
 
     fullDateFields.forEach((field) => {
@@ -223,6 +226,9 @@ export type TrusteeUpcomingKeyDates = Auditable &
     tirSemiAnnualReview?: string;
     lastAuditFiscalYear?: number;
     lastMonthlyReportReceived?: string;
+    leaseExpiration?: string;
+    idExpiration?: string;
+    lastCompensationStudy?: string;
   };
 
 export type TrusteeUpcomingKeyDatesInput = {
@@ -249,6 +255,9 @@ export type TrusteeUpcomingKeyDatesInput = {
   tirSemiAnnualReview: string | null;
   lastAuditFiscalYear: number | null;
   lastMonthlyReportReceived: string | null;
+  leaseExpiration: string | null;
+  idExpiration: string | null;
+  lastCompensationStudy: string | null;
 };
 
 export type TrusteeUpcomingKeyDatesHistory = AbstractTrusteeHistory<
@@ -275,7 +284,10 @@ type DateField =
   | 'tirSemiAnnualReviewPeriodEnd'
   | 'tirSemiAnnualSubmission'
   | 'tirSemiAnnualReview'
-  | 'lastMonthlyReportReceived';
+  | 'lastMonthlyReportReceived'
+  | 'leaseExpiration'
+  | 'idExpiration'
+  | 'lastCompensationStudy';
 
 export const DATE_FIELDS: DateField[] = [
   'pastBackgroundQuestion',
@@ -294,6 +306,9 @@ export const DATE_FIELDS: DateField[] = [
   'tirSemiAnnualSubmission',
   'tirSemiAnnualReview',
   'lastMonthlyReportReceived',
+  'leaseExpiration',
+  'idExpiration',
+  'lastCompensationStudy',
 ];
 
 type TextField = 'tprDueYearType' | 'tirFrequency';

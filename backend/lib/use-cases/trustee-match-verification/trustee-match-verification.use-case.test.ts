@@ -57,7 +57,6 @@ describe('TrusteeMatchVerificationUseCase', () => {
 
   let mockFindById: ReturnType<typeof vi.fn>;
   let mockUpdate: ReturnType<typeof vi.fn>;
-  let mockCreateProfessionalId: ReturnType<typeof vi.fn>;
   let mockFindVariationByFingerprint: ReturnType<typeof vi.fn>;
   let mockCreateVariation: ReturnType<typeof vi.fn>;
   let mockQueueTrusteeVerificationRemap: Mock<
@@ -75,7 +74,6 @@ describe('TrusteeMatchVerificationUseCase', () => {
 
     mockFindById = vi.fn().mockResolvedValue(sampleVerification);
     mockUpdate = vi.fn().mockResolvedValue({ ...sampleVerification, status: 'approved' });
-    mockCreateProfessionalId = vi.fn().mockResolvedValue({});
     mockFindVariationByFingerprint = vi.fn().mockResolvedValue([]);
     mockCreateVariation = vi.fn().mockResolvedValue({});
     mockQueueTrusteeVerificationRemap = vi.fn().mockResolvedValue(undefined);
@@ -90,11 +88,6 @@ describe('TrusteeMatchVerificationUseCase', () => {
       Object.assign(new MockMongoRepository(), {
         findById: mockFindById,
         update: mockUpdate,
-      }),
-    );
-    vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue(
-      Object.assign(new MockMongoRepository(), {
-        createProfessionalId: mockCreateProfessionalId,
       }),
     );
     vi.spyOn(factory, 'getTrusteeVariationRepository').mockReturnValue(
@@ -228,6 +221,26 @@ describe('TrusteeMatchVerificationUseCase', () => {
       expect(result[0].candidateCount).toBe(2);
     });
 
+    test('selects the highest-scoring candidate even when it is not first in the array', async () => {
+      mockSearch.mockResolvedValue([
+        {
+          ...sampleVerification,
+          mismatchReason: 'AMBIGUOUS_MATCH_UNRESOLVED',
+          // Reversed from sampleVerification's own order - Bob (lower score) first, Alice
+          // (higher score) second - so a mutation that swaps reduce() for matchCandidates[0]
+          // would return Bob and fail this assertion.
+          matchCandidates: [...sampleVerification.matchCandidates].reverse(),
+        },
+      ]);
+
+      const result = await useCase.getVerifications(context, {});
+
+      expect(result[0].preselectedCandidate).toEqual({
+        trusteeId: 'trustee-a',
+        trusteeName: 'Alice',
+      });
+    });
+
     test('preselects the sole candidate for AmbiguousMatchUnresolved with only one candidate', async () => {
       mockSearch.mockResolvedValue([
         {
@@ -264,7 +277,7 @@ describe('TrusteeMatchVerificationUseCase', () => {
       expect(result[0].candidateCount).toBe(0);
     });
 
-    test('computes affectedCaseCount from surrogate rows sharing the fingerprint', async () => {
+    test('computes affectedCaseCount/affectedCaseIds from surrogate rows sharing the fingerprint', async () => {
       mockGetSurrogatesByFingerprints.mockResolvedValue([
         { caseId: 'case-001', trusteeId: 'fp-abc123', isSurrogate: true },
         { caseId: 'case-002', trusteeId: 'fp-abc123', isSurrogate: true },
@@ -274,14 +287,53 @@ describe('TrusteeMatchVerificationUseCase', () => {
 
       expect(mockGetSurrogatesByFingerprints).toHaveBeenCalledWith(['fp-abc123']);
       expect(result[0].affectedCaseCount).toBe(2);
+      expect(result[0].affectedCaseIds).toEqual(['case-001', 'case-002']);
     });
 
-    test('returns affectedCaseCount of 0 when no surrogate cases remain', async () => {
+    test('returns affectedCaseCount of 0 and an empty affectedCaseIds when no surrogate cases remain', async () => {
       mockGetSurrogatesByFingerprints.mockResolvedValue([]);
 
       const result = await useCase.getVerifications(context, {});
 
       expect(result[0].affectedCaseCount).toBe(0);
+      expect(result[0].affectedCaseIds).toEqual([]);
+    });
+
+    test('computes affectedCaseCount/affectedCaseIds from affectedCaseIds when present, without querying live surrogates', async () => {
+      mockSearch.mockResolvedValue([
+        {
+          ...sampleVerification,
+          status: 'approved',
+          affectedCaseIds: ['case-a', 'case-b', 'case-c'],
+        },
+      ]);
+
+      const result = await useCase.getVerifications(context, {});
+
+      expect(result[0].affectedCaseCount).toBe(3);
+      expect(result[0].affectedCaseIds).toEqual(['case-a', 'case-b', 'case-c']);
+      expect(mockGetSurrogatesByFingerprints).not.toHaveBeenCalled();
+    });
+
+    test('only queries live surrogates for rows without an affectedCaseIds snapshot, in a mixed page', async () => {
+      mockSearch.mockResolvedValue([
+        { ...sampleVerification, status: 'approved', affectedCaseIds: ['case-a'] },
+        {
+          ...sampleVerification,
+          id: 'verification-2',
+          fingerprint: 'fp-xyz789',
+          status: 'pending',
+        },
+      ]);
+      mockGetSurrogatesByFingerprints.mockResolvedValue([
+        { caseId: 'case-live-1', trusteeId: 'fp-xyz789', isSurrogate: true },
+      ]);
+
+      const result = await useCase.getVerifications(context, {});
+
+      expect(mockGetSurrogatesByFingerprints).toHaveBeenCalledWith(['fp-xyz789']);
+      expect(result[0].affectedCaseCount).toBe(1);
+      expect(result[1].affectedCaseCount).toBe(1);
     });
 
     test('batches all fingerprints in a page into a single query instead of one per row', async () => {
@@ -300,6 +352,18 @@ describe('TrusteeMatchVerificationUseCase', () => {
 
       expect(mockGetSurrogatesByFingerprints).toHaveBeenCalledTimes(1);
       expect(mockGetSurrogatesByFingerprints).toHaveBeenCalledWith(['fp-abc123', 'fp-xyz789']);
+    });
+
+    test('rethrows via getCamsError when the repository search fails', async () => {
+      mockSearch.mockRejectedValue(new Error('db unavailable'));
+
+      await expect(useCase.getVerifications(context, {})).rejects.toThrow();
+    });
+
+    test('rethrows via getCamsError when resolving courts fails', async () => {
+      vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockRejectedValue(new Error('courts down'));
+
+      await expect(useCase.getVerifications(context, {})).rejects.toThrow();
     });
   });
 
@@ -407,6 +471,58 @@ describe('TrusteeMatchVerificationUseCase', () => {
       );
     });
 
+    test('resolves wasPreselectedConfirmed against the highest-scoring candidate even when it is not first in the array', async () => {
+      mockFindById.mockResolvedValue({
+        ...sampleVerification,
+        // Reversed - Bob (lower score) first, Alice (higher score) second. A mutation that
+        // swaps the reduce() for matchCandidates[0] would preselect Bob instead of Alice.
+        matchCandidates: [...sampleVerification.matchCandidates].reverse(),
+      });
+
+      await useCase.approveVerification(context, 'verification-1', 'trustee-a');
+
+      expect(mockCompleteTrace).toHaveBeenCalledWith(
+        expect.anything(),
+        'TrusteeMatchVerificationResolved',
+        expect.objectContaining({
+          properties: expect.objectContaining({ wasPreselectedConfirmed: 'true' }),
+        }),
+        expect.anything(),
+        context.logger,
+      );
+    });
+
+    test('treats no candidate as preselected when matchCandidates is empty', async () => {
+      mockFindById.mockResolvedValue({ ...sampleVerification, matchCandidates: [] });
+
+      await useCase.approveVerification(context, 'verification-1', 'trustee-new');
+
+      expect(mockCompleteTrace).toHaveBeenCalledWith(
+        expect.anything(),
+        'TrusteeMatchVerificationResolved',
+        expect.objectContaining({
+          properties: expect.objectContaining({ wasPreselectedConfirmed: 'false' }),
+          measurements: expect.objectContaining({ candidateCount: 0 }),
+        }),
+        expect.anything(),
+        context.logger,
+      );
+    });
+
+    test('includes a 1-based selectedCandidateRank in telemetry when the resolved trustee is found', async () => {
+      await useCase.approveVerification(context, 'verification-1', 'trustee-b');
+
+      const [, , eventBody] = vi.mocked(context.observability.completeTrace).mock.calls[0];
+      expect(eventBody.properties.selectedCandidateRank).toBe('2');
+    });
+
+    test('omits selectedCandidateRank from telemetry when the resolved trustee is not among matchCandidates', async () => {
+      await useCase.approveVerification(context, 'verification-1', 'trustee-unknown');
+
+      const [, , eventBody] = vi.mocked(context.observability.completeTrace).mock.calls[0];
+      expect('selectedCandidateRank' in eventBody.properties).toBe(false);
+    });
+
     test('emits failed telemetry when approveVerification throws', async () => {
       mockFindById.mockRejectedValue(new NotFoundError('REPO', { message: 'Not found' }));
 
@@ -449,37 +565,76 @@ describe('TrusteeMatchVerificationUseCase', () => {
       expect(mockQueueTrusteeVerificationRemap).not.toHaveBeenCalled();
     });
 
-    test('leaves the verification pending (retryable) when the remap enqueue fails', async () => {
+    test('persists the approval and snapshot even when the remap enqueue fails afterward', async () => {
       mockQueueTrusteeVerificationRemap.mockRejectedValueOnce(new Error('queue unavailable'));
 
       await expect(
         useCase.approveVerification(context, 'verification-1', 'trustee-new'),
       ).rejects.toThrow();
 
-      // The status write must not have happened -- a failed enqueue must not leave the
-      // verification permanently 'approved' with no way to re-trigger the remap.
-      expect(mockUpdate).not.toHaveBeenCalled();
+      // The approval and its affectedCaseIds snapshot are the durable record we protect --
+      // they're written before the enqueue, so a failed send doesn't lose them. The error
+      // still propagates so a failure to notify the remap job is never silently swallowed.
+      expect(mockUpdate).toHaveBeenCalledWith(
+        'verification-1',
+        expect.objectContaining({ status: 'approved' }),
+      );
     });
 
-    test('creates a trustee-professional-ids mapping when the verification has acmsProfessionalId', async () => {
-      mockFindById.mockResolvedValue({
-        ...sampleVerification,
-        acmsProfessionalId: '081-00123',
+    test('snapshots affectedCaseIds onto the same update call that sets status approved', async () => {
+      mockGetSurrogatesByFingerprints.mockResolvedValue([
+        { caseId: 'case-001', trusteeId: 'fp-abc123', isSurrogate: true },
+        { caseId: 'case-002', trusteeId: 'fp-abc123', isSurrogate: true },
+      ]);
+
+      await useCase.approveVerification(context, 'verification-1', 'trustee-new', 'New Trustee');
+
+      expect(mockGetSurrogatesByFingerprints).toHaveBeenCalledWith(['fp-abc123']);
+      expect(mockUpdate).toHaveBeenCalledWith(
+        'verification-1',
+        expect.objectContaining({
+          status: 'approved',
+          affectedCaseIds: ['case-001', 'case-002'],
+        }),
+      );
+    });
+
+    test('snapshots an empty affectedCaseIds array when no surrogates remain', async () => {
+      mockGetSurrogatesByFingerprints.mockResolvedValue([]);
+
+      await useCase.approveVerification(context, 'verification-1', 'trustee-new');
+
+      expect(mockUpdate).toHaveBeenCalledWith(
+        'verification-1',
+        expect.objectContaining({ affectedCaseIds: [] }),
+      );
+    });
+
+    // Ordering matters here, not just outcome: surrogates must be read while still live
+    // (before the remap job can delete them), and the approval + snapshot must be durably
+    // persisted before the remap is enqueued, so a failed enqueue never loses the record of
+    // what was approved or what cases it affected.
+    test('derives affectedCaseIds, then persists the approval, then enqueues the remap message', async () => {
+      const callOrder: string[] = [];
+      mockGetSurrogatesByFingerprints.mockImplementation(async () => {
+        callOrder.push('getSurrogatesByFingerprints');
+        return [];
+      });
+      mockUpdate.mockImplementation(async () => {
+        callOrder.push('update');
+        return { ...sampleVerification, status: 'approved' };
+      });
+      mockQueueTrusteeVerificationRemap.mockImplementation(async () => {
+        callOrder.push('queueTrusteeVerificationRemap');
       });
 
       await useCase.approveVerification(context, 'verification-1', 'trustee-new');
 
-      expect(mockCreateProfessionalId).toHaveBeenCalledWith(
-        'trustee-new',
-        '081-00123',
-        expect.objectContaining({ id: expect.any(String) }),
-      );
-    });
-
-    test('does not attempt a professional-ids mapping when the verification has no acmsProfessionalId', async () => {
-      await useCase.approveVerification(context, 'verification-1', 'trustee-new');
-
-      expect(mockCreateProfessionalId).not.toHaveBeenCalled();
+      expect(callOrder).toEqual([
+        'getSurrogatesByFingerprints',
+        'update',
+        'queueTrusteeVerificationRemap',
+      ]);
     });
   });
 
@@ -609,6 +764,49 @@ describe('TrusteeMatchVerificationUseCase', () => {
       expect(result.affectedCaseIds).toEqual([]);
     });
 
+    test('reads affectedCaseIds from the persisted snapshot for an approved verification, without querying surrogates', async () => {
+      mockFindById.mockResolvedValue({
+        ...sampleVerification,
+        status: 'approved',
+        resolvedTrusteeId: 'trustee-a',
+        affectedCaseIds: ['case-001', 'case-002'],
+      });
+
+      const result = await useCase.getEnrichedVerification(context, 'verification-1');
+
+      expect(result.affectedCaseIds).toEqual(['case-001', 'case-002']);
+      expect(mockGetSurrogatesByFingerprints).not.toHaveBeenCalled();
+    });
+
+    test('falls back to an empty affectedCaseIds for an approved verification with no persisted snapshot', async () => {
+      mockFindById.mockResolvedValue({
+        ...sampleVerification,
+        status: 'approved',
+        resolvedTrusteeId: 'trustee-a',
+        affectedCaseIds: undefined,
+      });
+
+      const result = await useCase.getEnrichedVerification(context, 'verification-1');
+
+      expect(result.affectedCaseIds).toEqual([]);
+    });
+
+    test('derives affectedCaseIds live for a rejected verification rather than reading a snapshot', async () => {
+      mockFindById.mockResolvedValue({
+        ...sampleVerification,
+        status: 'rejected',
+        affectedCaseIds: undefined,
+      });
+      mockGetSurrogatesByFingerprints.mockResolvedValue([
+        { caseId: 'case-001', trusteeId: 'fp-abc123', isSurrogate: true },
+      ]);
+
+      const result = await useCase.getEnrichedVerification(context, 'verification-1');
+
+      expect(mockGetSurrogatesByFingerprints).toHaveBeenCalledWith(['fp-abc123']);
+      expect(result.affectedCaseIds).toEqual(['case-001']);
+    });
+
     test('logs a warning when affected case count exceeds the sanity cap', async () => {
       const manyCases = Array.from({ length: 51 }, (_, i) => ({
         caseId: `case-${i}`,
@@ -625,6 +823,27 @@ describe('TrusteeMatchVerificationUseCase', () => {
         expect.any(String),
         expect.stringContaining('fp-abc123'),
       );
+    });
+
+    test('does not log a warning when affected case count is exactly at the sanity cap', async () => {
+      const exactlyCapCases = Array.from({ length: 50 }, (_, i) => ({
+        caseId: `case-${i}`,
+        trusteeId: 'fp-abc123',
+        isSurrogate: true,
+      }));
+      mockGetSurrogatesByFingerprints.mockResolvedValue(exactlyCapCases);
+      const warnSpy = vi.spyOn(context.logger, 'warn');
+
+      const result = await useCase.getEnrichedVerification(context, 'verification-1');
+
+      expect(result.affectedCaseIds).toHaveLength(50);
+      expect(warnSpy).not.toHaveBeenCalled();
+    });
+
+    test('rethrows via getCamsError when findById fails', async () => {
+      mockFindById.mockRejectedValue(new Error('db unavailable'));
+
+      await expect(useCase.getEnrichedVerification(context, 'verification-1')).rejects.toThrow();
     });
   });
 

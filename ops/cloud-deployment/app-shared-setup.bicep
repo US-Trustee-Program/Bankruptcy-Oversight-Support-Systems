@@ -51,6 +51,25 @@ param networkLocation string = location
 
 param isUstpDeployment bool = false
 
+@description('Matches main.bicep\'s createAlerts (ghaEnvironment == Main-Gov, i.e. Flexion staging). Together with isUstpDeployment, distinguishes the two standalone environments (staging, USTP prod) -- each keeps its own dedicated ACS resource via main.bicep -- from the dev tier (Flexion dev + every ephemeral PR branch), which shares one ACS resource created here.')
+param createAlerts bool = false
+
+@description('Resource group containing the shared Log Analytics workspace for alerts/bounce-poll. Required to create the dev-tier shared ACS alerting/bounce-poll resources.')
+param analyticsResourceGroupName string = ''
+
+@description('For staging/USTP prod only: resource ID of that environment\'s own existing Log Analytics workspace, used to source its ANALYTICS-WORKSPACE-CUSTOMER-ID-SHARED secret value. Unused for the dev tier, which creates its own shared workspace here.')
+param analyticsWorkspaceId string = ''
+
+@description('Subscription ID of the Log Analytics workspace named by analyticsWorkspaceId, for the staging/USTP-prod (non-dev-tier) path where that workspace may live in a different subscription than this deployment. Defaults to the current subscription, so same-subscription environments (incl. Flexion) are unaffected. Mirrors main.bicep\'s analyticsSubscriptionId for the same workspace.')
+param analyticsSubscriptionId string = subscription().subscriptionId
+
+@description('Email address to notify for dev-tier ACS bounce alerts.')
+@secure()
+param adminNotificationEmail string
+
+@description('Custom domain FQDN for sending email. Leave empty to use Azure-managed subdomain.')
+param customDomain string = ''
+
 @description('Flag: determines the setup of DNS Zone, Link virtual networks to zone.')
 param deployDns bool = true
 
@@ -78,6 +97,8 @@ param privateDnsZoneSubscriptionId string = subscription().subscriptionId
 @description('Set true when the deploying pipeline has already confirmed a vnet link into the KV private DNS zone exists (see vnet-links.bicep) -- avoids a Conflict from trying to create a second, differently-named link.')
 param vnetLinkAlreadyExists bool = false
 
+param enableResourceLocks bool = false
+
 // Not a param: nothing overrides it (the deploy script hardcodes the same
 // literal locally rather than passing it through -- see
 // azure-deploy-app-shared-setup.sh), and this value is also hardcoded in
@@ -96,22 +117,12 @@ var webappPrivateDnsZoneName = 'privatelink.azurewebsites.us'
 // stack teardown the same way the webapp zone's link already does -- no
 // defense-in-depth delete call needed here. Only the zone itself (this var,
 // consumed below by the sqlDnsZone module) must stay in lockstep with the
-// bash literal in azure-deploy-app-shared-setup.sh, which uses it to decide
-// whether to bootstrap-create all three shared zones (kv/webapp/sql).
+// bash literal in azure-deploy-app-shared-setup.sh.
 //
 // This is the fixed Azure Government private-link DNS zone name for Azure
 // SQL (Microsoft.Sql/servers, subresource sqlServer) -- see
 // https://learn.microsoft.com/en-us/azure/private-link/private-endpoint-dns
 // for the public-vs-Gov cloud zone-name mapping.
-//
-// IMPORTANT: the sqlDnsZone module below is created/looked-up UNCONDITIONALLY
-// for every branch and main, exactly like webappDnsZone -- it is NOT gated on
-// useSqlPrivateLink. Only the per-branch vnet link (ustpSqlDnsZoneLink in
-// main.bicep) and the PE (backend-api-deploy.bicep/
-// dataflows-resource-deploy.bicep's useSqlPrivateLink param) are conditional.
-// That means this zone must exist in the target RG (or deployDns=true must
-// create it) for EVERY deployment of this template, including same-region
-// branches and main that never use the SQL Private Endpoint path.
 var sqlPrivateDnsZoneName = 'privatelink.database.usgovcloudapi.net'
 
 @description('Resource group containing the app-config Key Vault')
@@ -160,9 +171,13 @@ resource privateEndpointSubnetExisting 'Microsoft.Network/virtualNetworks/subnet
 // per-branch-uniquely-named resource (webappPrivateDnsZoneName-vnet-link-${stackName})
 // and is instead created inside main.bicep, where it becomes stack-managed
 // and self-cleans on branch teardown (see main.bicep's ustpWebappDnsZoneLink
-// module for the rationale). createVnetLink: false suppresses the link here;
-// deployDns still governs whether the zone itself is created vs. looked up.
-module webappDnsZone './lib/network/private-dns-zones.bicep' = {
+// module for the rationale). This module is gated on deployDns: when false the
+// module is skipped (create-only, no existing-lookup); the zone must already
+// exist (created by prior main.bicep deploy, or bootstrapped for fresh Flexion
+// branch RG by azure-deploy-app-shared-setup.sh). When true the zone is
+// created if missing. USTP (deployDns=false) never creates this zone -- USTP
+// owns its webapp zone out-of-band.
+module webappDnsZone './lib/network/private-dns-zones.bicep' = if (deployDns) {
   name: '${stackName}-webapp-dns-zone-module'
   scope: resourceGroup(privateDnsZoneSubscriptionId, privateDnsZoneResourceGroup)
   params: {
@@ -177,18 +192,14 @@ module webappDnsZone './lib/network/private-dns-zones.bicep' = {
 // SQL Private Link DNS zone, mirroring webappDnsZone above exactly: only the
 // ZONE is created here (create-if-missing, shared across main and every
 // branch); the per-branch vnet-link lives in main.bicep (ustpSqlDnsZoneLink)
-// so it is stack-managed and self-cleans on branch teardown. Azure Private
-// Endpoints (unlike VNet Service Endpoints/sql-vnet-rule.bicep) have no
-// same-region requirement between the SQL server and the linked subnet, so
-// this zone + its per-branch PE (created per-function-app, see
-// backend-api-deploy.bicep/dataflows-resource-deploy.bicep) is the mechanism
-// cross-region branches use for SQL connectivity instead of the VNet rule.
-// This module call is unconditional (every branch/main runs it, same as
-// webappDnsZone above) -- azure-deploy-app-shared-setup.sh's zone-bootstrap
-// check must know about sqlPrivateDnsZoneName too, or a branch whose RG
-// already has the kv/webapp zones but not this new one will pass
-// deployDns=false and fail resolving this zone as `existing`.
-module sqlDnsZone './lib/network/private-dns-zones.bicep' = {
+// so it is stack-managed and self-cleans on branch teardown. This module is
+// gated on deployDns (create-only, no existing-lookup). When deployDns=false
+// the module is skipped; the zone must already exist (created by prior
+// Flexion main deploy, or bootstrapped for fresh branch RG). When true the
+// zone is created if missing. USTP (deployDns=false) never creates this zone
+// -- USTP does not own SQL Server and uses ordinary SQL auth (not private
+// link). SQL private link is Flexion-only.
+module sqlDnsZone './lib/network/private-dns-zones.bicep' = if (deployDns) {
   name: '${stackName}-sql-dns-zone-module'
   scope: resourceGroup(privateDnsZoneSubscriptionId, privateDnsZoneResourceGroup)
   params: {
@@ -243,4 +254,161 @@ module sqlManagedIdentity './lib/identity/managed-identity.bicep' = if (createSq
     location: location
     tags: tags
   }
+}
+
+var isStandaloneEnvironment = createAlerts || isUstpDeployment
+var isDevTier = !isStandaloneEnvironment
+var sharedBounceWorkspaceName = 'law-cams-branches'
+
+var acsCommunicationServiceName = isDevTier ? 'comms-cams-dev-shared' : '${stackName}-comms'
+var acsEmailServiceName = isDevTier ? 'email-cams-dev-shared' : '${stackName}-email'
+var acsConnectionStringSecretName = 'ACS-EMAIL-CONNECTION-STRING' // pragma: allowlist secret
+var acsSenderAddressSecretName = 'ACS-EMAIL-SENDER-ADDRESS' // pragma: allowlist secret
+
+module sharedBounceWorkspace 'lib/analytics/log-analytics-workspace.bicep' = if (isDevTier && !empty(analyticsResourceGroupName)) {
+  name: '${stackName}-bounce-workspace-module'
+  scope: resourceGroup(analyticsResourceGroupName)
+  params: {
+    workspaceName: sharedBounceWorkspaceName
+    location: location
+    tags: tags
+  }
+}
+
+var acsAnalyticsWorkspaceId = isDevTier
+  ? (!empty(analyticsResourceGroupName) ? sharedBounceWorkspace.outputs.id : '')
+  : analyticsWorkspaceId
+
+module acsEmail './lib/email/acs-email.bicep' = {
+  name: '${stackName}-acs-email-module'
+  params: {
+    stackName: stackName
+    communicationServiceName: acsCommunicationServiceName
+    emailServiceName: acsEmailServiceName
+    connectionStringSecretName: acsConnectionStringSecretName
+    senderAddressSecretName: acsSenderAddressSecretName
+    kvAppConfigName: kvAppConfigName
+    kvAppConfigResourceGroupName: kvAppConfigResourceGroupName
+    tags: tags
+    customDomain: customDomain
+    analyticsWorkspaceId: acsAnalyticsWorkspaceId
+  }
+  dependsOn: [
+    kvSetup
+  ]
+}
+
+module acsEmailLock './lib/email/acs-communication-service-lock.bicep' = if (enableResourceLocks) {
+  name: '${stackName}-acs-email-lock-module'
+  params: {
+    communicationServiceName: acsCommunicationServiceName
+    lockName: 'CanNotDelete-${acsCommunicationServiceName}'
+    lockNotes: 'Protects the ACS Communication Service from accidental or automated deletion (GH #2749 bug shape).'
+  }
+  dependsOn: [
+    acsEmail
+  ]
+}
+
+module sharedBounceWorkspaceLock './lib/analytics/log-analytics-workspace-lock.bicep' = if (isDevTier && enableResourceLocks && !empty(analyticsResourceGroupName)) {
+  name: '${stackName}-bounce-workspace-lock-module'
+  scope: resourceGroup(analyticsResourceGroupName)
+  params: {
+    workspaceName: sharedBounceWorkspaceName
+    lockName: 'CanNotDelete-law-cams-branches'
+    lockNotes: 'Protects the shared dev-tier bounce-poll Log Analytics workspace from accidental or automated deletion (GH #2749 bug shape).'
+  }
+  dependsOn: [
+    sharedBounceWorkspace
+  ]
+}
+
+module sharedAdminActionGroup './lib/monitoring-alerts/admin-notification-action-group.bicep' =
+  if (isDevTier && !empty(analyticsResourceGroupName)) {
+    name: '${stackName}-admin-action-group-shared-module'
+    scope: resourceGroup(analyticsResourceGroupName)
+    params: {
+      actionGroupName: 'cams-dev-shared-admin-notifications'
+      adminEmail: adminNotificationEmail
+      tags: tags
+    }
+  }
+
+module sharedAcsBounceAlert './lib/monitoring-alerts/scheduled-query-alert-rule.bicep' =
+  if (isDevTier && !empty(analyticsResourceGroupName)) {
+    name: '${stackName}-acs-bounce-alert-shared-module'
+    scope: resourceGroup(analyticsResourceGroupName)
+    params: {
+      alertRuleName: 'cams-dev-shared-acs-email-bounce-alert'
+      logQueryScopeResourceId: sharedBounceWorkspace.outputs.id
+      actionGroupId: sharedAdminActionGroup!.outputs.actionGroupId
+      query: '''
+        ACSEmailStatusUpdateOperational
+        | where DeliveryStatus in ('Failed', 'Bounced', 'Quarantined', 'FilteredSpam', 'Suppressed')
+        | project TimeGenerated, CorrelationId, RecipientId, DeliveryStatus
+      '''
+      timeAggregation: 'Count'
+      threshold: 0
+      operator: 'GreaterThan'
+      evaluationFrequencyMinutes: 15
+      windowSizeMinutes: 15
+      severity: 2
+      alertDescription: 'One or more trustee-notification emails failed to deliver via the shared dev-tier ACS resource. Search Log Analytics/application traces around the reported timestamp for the correlationId (logged as messageId in application traces) to find which branch and trustee this affects.'
+    }
+  }
+
+module sharedAnalyticsReaderRoleAssignment './lib/analytics/log-analytics-reader-role-assignment.bicep' =
+  if (isDevTier && !empty(analyticsResourceGroupName)) {
+    name: '${stackName}-analytics-reader-shared-module'
+    scope: resourceGroup(analyticsResourceGroupName)
+    params: {
+      workspaceName: sharedBounceWorkspaceName
+      principalId: kvSetup.outputs.principalId
+    }
+    dependsOn: [
+      sharedBounceWorkspace
+    ]
+  }
+
+resource existingAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10-01' existing =
+  if (!isDevTier && !empty(analyticsWorkspaceId) && !empty(analyticsResourceGroupName)) {
+    name: last(split(analyticsWorkspaceId, '/'))
+    scope: resourceGroup(analyticsSubscriptionId, analyticsResourceGroupName)
+  }
+
+// Grants the same app-config managed identity used by the dev-tier bounce
+// poller (backend/lib/adapters/gateways/monitor/acs-bounce-query.gateway.ts)
+// read access to staging/USTP prod's own existing analytics workspace. Before
+// this, only the dev-tier path (sharedAnalyticsReaderRoleAssignment above)
+// ever wired this role -- staging and USTP prod's bounce poll always hit a
+// 403 InsufficientAccessError until someone granted it by hand.
+module standaloneAnalyticsReaderRoleAssignment './lib/analytics/log-analytics-reader-role-assignment.bicep' =
+  if (!isDevTier && !empty(analyticsWorkspaceId) && !empty(analyticsResourceGroupName)) {
+    name: '${stackName}-analytics-reader-module'
+    scope: resourceGroup(analyticsSubscriptionId, analyticsResourceGroupName)
+    params: {
+      workspaceName: last(split(analyticsWorkspaceId, '/'))
+      principalId: kvSetup.outputs.principalId
+    }
+  }
+
+var sharedAnalyticsWorkspaceCustomerId = isDevTier
+  ? (!empty(analyticsResourceGroupName) ? sharedBounceWorkspace.outputs.customerId : '')
+  : (existingAnalyticsWorkspace.?properties.?customerId ?? '')
+
+var canWriteSharedAnalyticsCustomerId = isDevTier
+  ? !empty(analyticsResourceGroupName)
+  : (!empty(analyticsWorkspaceId) && !empty(analyticsResourceGroupName))
+
+module sharedAnalyticsCustomerIdSecret './lib/keyvault/keyvault-secret.bicep' = if (canWriteSharedAnalyticsCustomerId) {
+  name: '${stackName}-analytics-customer-id-shared-secret'
+  scope: resourceGroup(kvAppConfigResourceGroupName)
+  params: {
+    keyVaultName: kvAppConfigName
+    secretName: 'ANALYTICS-WORKSPACE-CUSTOMER-ID-SHARED' // pragma: allowlist secret
+    secretValue: sharedAnalyticsWorkspaceCustomerId
+  }
+  dependsOn: [
+    kvSetup
+  ]
 }

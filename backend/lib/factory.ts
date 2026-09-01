@@ -97,6 +97,9 @@ import {
   ApiToDataflowsGateway,
   BanksRepository,
   BankruptcySoftwareRepository,
+  DomainVerificationGateway,
+  EmailBounceQueryGateway,
+  EmailNotificationArchiveRepository,
   NotificationGateway,
   NotificationRoutingRepository,
   ObjectStorageGateway,
@@ -107,8 +110,11 @@ import {
 import { ApiToDataflowsGatewayImpl } from './adapters/gateways/api-to-dataflows/api-to-dataflows.gateway';
 import { AzureBlobObjectStorageGateway } from './adapters/gateways/storage/azure-blob-object-storage.gateway';
 import { NotificationRoutingMongoRepository } from './adapters/gateways/mongo/notification-routing.mongo.repository';
+import { EmailNotificationArchiveMongoRepository } from './adapters/gateways/mongo/email-notification-archive.mongo.repository';
 import { MockNotificationGateway } from './testing/mock-gateways/mock-notification.gateway';
 import { AcsNotificationGateway } from './adapters/gateways/notifications/acs-notification.gateway';
+import { DnsDomainVerificationGateway } from './adapters/gateways/dns/dns-domain-verification.gateway';
+import { AcsBounceQueryGateway } from './adapters/gateways/monitor/acs-bounce-query.gateway';
 import { EmailClient } from '@azure/communication-email';
 import { AppInsightsObservability, NoOpObservability } from './adapters/services/observability';
 import { LoggerImpl } from './adapters/services/logger.service';
@@ -121,6 +127,8 @@ let acmsGateway: AcmsGateway;
 let atsGateway: AtsGateway;
 let idpApiGateway: UserGroupGateway & Initializer<UserGroupGatewayConfig | ApplicationContext>;
 let notificationGateway: NotificationGateway | undefined;
+let domainVerificationGateway: DomainVerificationGateway | undefined;
+let emailBounceQueryGateway: EmailBounceQueryGateway | undefined;
 let observabilityGateway: ObservabilityGateway;
 
 let orderSyncStateRepo: RuntimeStateRepository<OrderSyncState>;
@@ -557,6 +565,31 @@ const getNotificationRoutingRepository = (
   return repo;
 };
 
+const getDomainVerificationGateway = (): DomainVerificationGateway => {
+  if (!domainVerificationGateway) {
+    domainVerificationGateway = new DnsDomainVerificationGateway();
+  }
+  return domainVerificationGateway;
+};
+
+const getEmailBounceQueryGateway = (context: ApplicationContext): EmailBounceQueryGateway => {
+  if (!emailBounceQueryGateway) {
+    emailBounceQueryGateway = new AcsBounceQueryGateway(undefined, context.logger);
+  }
+  return emailBounceQueryGateway;
+};
+
+const getEmailNotificationArchiveRepository = (
+  context: ApplicationContext,
+): EmailNotificationArchiveRepository => {
+  if (context.config.get('dbMock')) {
+    return new MockMongoRepository();
+  }
+  const repo = EmailNotificationArchiveMongoRepository.getInstance(context);
+  deferRelease(repo, context);
+  return repo;
+};
+
 const getNotificationGateway = (context: ApplicationContext): NotificationGateway => {
   if (!notificationGateway) {
     if (context.config.get('dbMock')) {
@@ -602,8 +635,8 @@ const getTrusteeMatchVerificationRepository = (
   return repo;
 };
 
-const getApiToDataflowsGateway = (context: ApplicationContext): ApiToDataflowsGateway => {
-  return new ApiToDataflowsGatewayImpl(context);
+const getApiToDataflowsGateway = (_context: ApplicationContext): ApiToDataflowsGateway => {
+  return new ApiToDataflowsGatewayImpl();
 };
 
 /**
@@ -694,6 +727,9 @@ const factory = {
   getListsGateway,
   getNotificationRoutingRepository,
   getNotificationGateway,
+  getDomainVerificationGateway,
+  getEmailBounceQueryGateway,
+  getEmailNotificationArchiveRepository,
   resetNotificationGateway,
   getUserGroupsRepository,
   getApiToDataflowsGateway,

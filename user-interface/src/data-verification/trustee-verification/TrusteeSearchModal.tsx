@@ -4,12 +4,14 @@ import useDebounce from '@/lib/hooks/UseDebounce';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
+import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
 import Api2 from '@/lib/models/api2';
 import { TrusteeSearchResult } from '@common/cams/trustee-search';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { NewTabLink } from '@/lib/components/cams/NewTabLink/NewTabLink';
 import { formatChapterType } from '@common/cams/trustees';
 import { formatAppointmentStatus } from '@common/cams/trustee-appointments';
+import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 
 interface TrusteeSearchModalProps {
   id: string;
@@ -17,6 +19,7 @@ interface TrusteeSearchModalProps {
   courtId?: string;
   onConfirm: (result: TrusteeSearchResult) => void;
   onCancel?: () => void;
+  isProcessing?: boolean;
 }
 
 export type TrusteeSearchModalImperative = {
@@ -28,8 +31,9 @@ function TrusteeSearchModal_(
   props: TrusteeSearchModalProps,
   ref: React.Ref<TrusteeSearchModalImperative>,
 ) {
-  const { id, courtId, onConfirm, onCancel } = props;
+  const { id, courtId, onConfirm, onCancel, isProcessing } = props;
   const modalRef = useRef<ModalRefType>(null);
+  const trusteeNameComboBoxRef = useRef<ComboBoxRef>(null);
   const [searchResults, setSearchResults] = useState<TrusteeSearchResult[]>([]);
   const [selectedTrustee, setSelectedTrustee] = useState<TrusteeSearchResult | null>(null);
   const [courts, setCourts] = useState<CourtDivisionDetails[]>([]);
@@ -56,6 +60,7 @@ function TrusteeSearchModal_(
     setSearchResults([]);
     setSelectedTrustee(null);
     setSelectedCourtId(courtId);
+    trusteeNameComboBoxRef.current?.clearSelections();
     modalRef.current?.show({});
   }
 
@@ -112,7 +117,7 @@ function TrusteeSearchModal_(
 
   const comboOptions: ComboOption[] = searchResults.map((r) => ({
     value: r.trusteeId,
-    label: r.matchType === 'phonetic' ? `${r.name} (similar name)` : r.name,
+    label: r.name,
   }));
 
   const addressLines = selectedTrustee?.address
@@ -144,16 +149,18 @@ function TrusteeSearchModal_(
     modalRef,
     submitButton: {
       label: 'Confirm Appointment',
-      disabled: !selectedTrustee,
+      disabled: !selectedTrustee || isProcessing,
+      // Without this, Modal closes itself on click by default, before isProcessing can render.
+      closeOnClick: false,
       onClick: () => {
         if (selectedTrustee) {
           onConfirm(selectedTrustee);
-          hide();
         }
       },
     },
     cancelButton: {
       label: 'Cancel',
+      disabled: isProcessing,
       onClick: () => {
         if (onCancel) onCancel();
         hide();
@@ -179,6 +186,7 @@ function TrusteeSearchModal_(
             autoComplete="off"
           />
           <ComboBox
+            ref={trusteeNameComboBoxRef}
             id={`trustee-search-combobox-${id}`}
             label="Trustee Name"
             options={comboOptions}
@@ -206,6 +214,7 @@ function TrusteeSearchModal_(
           )}
         </>
       }
+      footerContent={isProcessing && <LoadingSpinner caption="Confirming appointment..." />}
       actionButtonGroup={actionButtonGroup}
     />
   );

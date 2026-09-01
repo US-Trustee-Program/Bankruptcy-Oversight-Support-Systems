@@ -12,6 +12,8 @@ import {
   CaseAssignmentRepository,
   CasesRepository,
   ConsolidationOrdersRepository,
+  EmailNotificationArchiveRecord,
+  EmailNotificationArchiveRepository,
   ListsRepository,
   NotificationRoutingRepository,
   OfficeAssigneesRepository,
@@ -77,11 +79,13 @@ export class MockMongoRepository
     TrusteeUpcomingKeyDatesRepository,
     ListsRepository,
     NotificationRoutingRepository,
+    EmailNotificationArchiveRepository,
     UserGroupsRepository
 {
   private professionalIds = new Map<string, TrusteeProfessionalId>();
   private trusteeVariations: TrusteeVariation[] = [];
   private notificationRouting = new Map<string, NotificationRoutingRecord>();
+  private emailNotificationArchive = new Map<string, EmailNotificationArchiveRecord>();
   private notificationConfig: NotificationConfig = { enabled: true };
   private runtimeStateCounters = new Map<string, number>();
 
@@ -106,6 +110,10 @@ export class MockMongoRepository
     const next = current + amount;
     this.runtimeStateCounters.set(key, next);
     return next;
+  }
+
+  async setField(..._ignore: any[]): Promise<void> {
+    return;
   }
 
   release() {
@@ -362,6 +370,10 @@ export class MockMongoRepository
   }
 
   findActiveMissingAppointedDate(..._ignore): Promise<any[]> {
+    throw new Error('Method not implemented.');
+  }
+
+  findClosedAppointments(..._ignore): Promise<any[]> {
     throw new Error('Method not implemented.');
   }
 
@@ -695,20 +707,44 @@ export class MockMongoRepository
     return Promise.resolve(mapping);
   }
 
+  createErroredProfessionalId(
+    fingerprint: string,
+    acmsProfessionalId: string,
+    variant: string,
+    error: TrusteeProfessionalId['error'],
+    user: CamsUserReference,
+  ): Promise<TrusteeProfessionalId> {
+    const key = `${fingerprint}:${acmsProfessionalId}:${crypto.randomUUID()}`;
+    const mapping: TrusteeProfessionalId = {
+      documentType: 'TRUSTEE_PROFESSIONAL_ID',
+      id: crypto.randomUUID(),
+      camsTrusteeId: fingerprint,
+      acmsProfessionalId,
+      variant,
+      error,
+      updatedBy: user,
+      updatedOn: new Date().toISOString(),
+    };
+    this.professionalIds.set(key, mapping);
+    return Promise.resolve(mapping);
+  }
+
   findAll(): Promise<TrusteeProfessionalId[]> {
     return Promise.resolve([]);
   }
 
   findByCamsTrusteeId(camsTrusteeId: string): Promise<TrusteeProfessionalId[]> {
     return Promise.resolve(
-      Array.from(this.professionalIds.values()).filter((m) => m.camsTrusteeId === camsTrusteeId),
+      Array.from(this.professionalIds.values()).filter(
+        (m) => m.camsTrusteeId === camsTrusteeId && !m.error,
+      ),
     );
   }
 
   findByAcmsProfessionalId(acmsProfessionalId: string): Promise<TrusteeProfessionalId[]> {
     return Promise.resolve(
       Array.from(this.professionalIds.values()).filter(
-        (m) => m.acmsProfessionalId === acmsProfessionalId,
+        (m) => m.acmsProfessionalId === acmsProfessionalId && !m.error,
       ),
     );
   }
@@ -739,9 +775,9 @@ export class MockMongoRepository
   }
 
   // ── TrusteeVariationRepository / TrusteeMatchVerificationRepository ──────
-  // Both interfaces declare findByFingerprint with different return types; overloaded here
-  // to satisfy both. Only the TrusteeVariationRepository behavior is backed by real state —
-  // tests needing TrusteeMatchVerificationRepository's findByFingerprint spy over
+  // Both interfaces declare findByFingerprint with different return types; overloaded here to
+  // satisfy both. Only the TrusteeVariationRepository behavior is backed by real state — tests
+  // needing TrusteeMatchVerificationRepository's findByFingerprint spy over
   // MockMongoRepository.prototype, same as getVerification/upsertVerification/findById above.
   findByFingerprint(fingerprint: string): Promise<TrusteeVariation[]>;
   findByFingerprint(fingerprint: string): Promise<TrusteeMatchVerification[]>;
@@ -828,6 +864,15 @@ export class MockMongoRepository
     ..._args: [caseId: string, excludeTrusteeId: string]
   ): Promise<CaseAppointment | null> {
     return null; // Mock defaults to "nothing stranded" — test spies will override
+  }
+
+  // ── EmailNotificationArchiveRepository ────────────────────────────────────
+  async archiveSentEmail(record: EmailNotificationArchiveRecord): Promise<void> {
+    this.emailNotificationArchive.set(record.messageId, record);
+  }
+
+  async readArchivedEmail(messageId: string): Promise<EmailNotificationArchiveRecord | null> {
+    return this.emailNotificationArchive.get(messageId) ?? null;
   }
 
   // Mock implementation for replaceOneInTrusteePartition

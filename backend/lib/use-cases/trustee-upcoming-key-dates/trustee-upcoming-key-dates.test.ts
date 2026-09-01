@@ -51,6 +51,9 @@ function buildMockInput(
     tirSemiAnnualReview: null,
     lastAuditFiscalYear: null,
     lastMonthlyReportReceived: null,
+    leaseExpiration: null,
+    idExpiration: null,
+    lastCompensationStudy: null,
     ...overrides,
   };
 }
@@ -201,6 +204,9 @@ describe('TrusteeUpcomingKeyDatesUseCase', () => {
       ['lastAuditFiscalYear', 2024],
       ['upcomingExamOrAuditYear', 2029],
       ['upcomingExamOrAuditType', 'Field Exam'],
+      ['leaseExpiration', '2027-06-30'],
+      ['idExpiration', '2028-01-15'],
+      ['lastCompensationStudy', '2024-06-01'],
     ])('saves %s when set', async (field, value) => {
       vi.spyOn(MockMongoRepository.prototype, 'getByAppointmentId').mockResolvedValue(null);
       const upsertSpy = vi
@@ -222,7 +228,7 @@ describe('TrusteeUpcomingKeyDatesUseCase', () => {
       expect(upsertSpy).toHaveBeenCalledWith(expect.objectContaining({ [field]: value }));
     });
 
-    test.each([['lastAuditFiscalYear'], ['upcomingExamOrAuditYear']])(
+    test.each([['lastAuditFiscalYear'], ['upcomingExamOrAuditYear'], ['upcomingExamOrAuditType']])(
       'does not include %s in saved doc when null',
       async (field) => {
         vi.spyOn(MockMongoRepository.prototype, 'getByAppointmentId').mockResolvedValue(null);
@@ -250,6 +256,9 @@ describe('TrusteeUpcomingKeyDatesUseCase', () => {
     test.each([
       ['lastAuditFiscalYear', 2022, 2024],
       ['upcomingExamOrAuditYear', 2027, 2029],
+      ['leaseExpiration', '2026-06-30', '2027-06-30'],
+      ['idExpiration', '2027-01-15', '2028-01-15'],
+      ['lastCompensationStudy', '2023-06-01', '2024-06-01'],
     ])('%s change is captured in audit history', async (field, before, after) => {
       const existing = buildMockDocument({ [field]: before });
       vi.spyOn(MockMongoRepository.prototype, 'getByAppointmentId').mockResolvedValue(existing);
@@ -315,6 +324,13 @@ describe('TrusteeUpcomingKeyDatesUseCase', () => {
         'upcomingExamOrAuditType',
         { upcomingExamOrAuditType: 'Field Exam' as const },
         { upcomingExamOrAuditType: null },
+      ],
+      ['leaseExpiration', { leaseExpiration: '2027-06-30' }, { leaseExpiration: null }],
+      ['idExpiration', { idExpiration: '2028-01-15' }, { idExpiration: null }],
+      [
+        'lastCompensationStudy',
+        { lastCompensationStudy: '2024-06-01' },
+        { lastCompensationStudy: null },
       ],
     ])(
       'scalar field cleared (%s → null): history shows old value in before, absent from after',

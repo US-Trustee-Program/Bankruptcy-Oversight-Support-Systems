@@ -40,7 +40,7 @@ param privateDnsZoneSubscriptionId string = subscription().subscriptionId
 @description('Set true when the deploying pipeline has already confirmed a vnet link into the webapp private DNS zone exists (see vnet-links.bicep) -- avoids a Conflict from trying to create a second, differently-named link. Mirrors the param of the same shape that used to live on app-shared-setup.bicep before the webapp zone\'s vnet link moved here.')
 param webappVnetLinkAlreadyExists bool = false
 
-@description('When true, the API and dataflows function apps reach the SQL server via a Private Endpoint (privatelink.database.usgovcloudapi.net) instead of the sql-vnet-rule.bicep VNet rule. Required for cross-region branches (AZ-FUNCTIONS-LOCATION set) because Azure enforces same-region between a SQL server and any subnet referenced by a virtualNetworkRules resource, but a Private Endpoint has no such restriction. Defaults to false, preserving today\'s VNet-rule behavior for main and same-region branches unchanged.')
+@description('When true, the API and dataflows function apps reach SQL through the shared Private Link hub and no sql-vnet-rule.bicep VNet rule is created for them. Required for cross-region branches (AZ-FUNCTIONS-LOCATION set), because Azure enforces same-region between a SQL server and any subnet referenced by a virtualNetworkRules resource. Neither creates a Private Endpoint of its own -- the hub holds the only one.')
 param useSqlPrivateLink bool = false
 
 @description('Fixed Azure Government private-link DNS zone name for Azure SQL -- see app-shared-setup.bicep (sqlDnsZone module) for why this is a separate zone from the webapp/api/dataflows one and where it is created.')
@@ -48,6 +48,17 @@ param sqlPrivateDnsZoneName string = 'privatelink.database.usgovcloudapi.net'
 
 @description('Set true when the deploying pipeline has already confirmed a vnet link into the SQL private DNS zone exists (see vnet-links.bicep) -- avoids a Conflict from trying to create a second, differently-named link. Mirrors webappVnetLinkAlreadyExists above.')
 param sqlVnetLinkAlreadyExists bool = false
+
+@description('Set true when the deploying pipeline has confirmed the SQL private DNS zone itself exists in privateDnsZoneResourceGroup (azure-deploy.sh computes this via zone_exists_for). Gates ustpSqlDnsZoneLink below, because a vnet link is a child of the zone and linking into an absent zone fails the whole deployment with ParentResourceNotFound rather than degrading. Distinct from sqlVnetLinkAlreadyExists above: that one asks whether a LINK exists, this one asks whether the ZONE does. Defaults false so any caller that does not compute it -- notably the USTP ADO pipeline template, which cannot be changed without a multi-step change on government-furnished equipment -- gets the safe no-op instead of a failed deploy.')
+param sqlDnsZoneExists bool = false
+@description('Flag: creates the peering connecting main\'s own VNet (virtualNetworkName, in networkResourceGroupName) to the shared SQL Private Link hub VNet (see lib/network/sql-hub.bicep, Goal 1 of cams-vwsp3). Should only be true for the Main-Gov deploy -- same shape as createAlerts above, gated in reusable-deploy.yml on `ghaEnvironment == \'Main-Gov\'`, because hubVirtualNetworkResourceGroupName below is a FIXED resource group, not one derived from this branch\'s stackName; every branch flipping this on would mean every branch\'s stack independently declares a peering resource under the SAME fixed hub-facing name pattern, which is unnecessary (main\'s peering already gives every branch DNS/route visibility once branches migrate to resolve through the hub -- a later goal) and adds churn for no benefit. Defaults false so branch deploys never touch this.')
+param createMainHubPeering bool = false
+
+@description('Name of the shared SQL Private Link hub VNet (see lib/network/sql-hub.bicep). Fixed -- deployed once, directly, not derived from any stackName.')
+param hubVirtualNetworkName string = 'vnet-ustp-cams-sql-hub'
+
+@description('Resource group containing the hub VNet above -- the SQL server\'s own resource group (bankruptcy-oversight-support-systems), not networkResourceGroupName. Fixed for the same reason as hubVirtualNetworkName.')
+param hubVirtualNetworkResourceGroupName string = 'bankruptcy-oversight-support-systems'
 
 param privateEndpointSubnetName string = privateEndpointSubnetNameFor(stackName)
 
@@ -119,6 +130,10 @@ param analyticsWorkspaceId string = ''
 
 param analyticsResourceGroupName string
 
+@description('Subscription ID that contains the analytics resource group. Defaults to the deploying subscription.')
+@minLength(36)
+param analyticsSubscriptionId string = subscription().subscriptionId
+
 @description('Url for our Okta Provider')
 param oktaUrl string = ''
 
@@ -137,6 +152,10 @@ param maxObjectKeyCount string
 @description('Fallback email recipient for notifications when no Cosmos routing record matches')
 param defaultNotificationRecipient string = ''
 
+@description('Email address to notify when an ACS email delivery-failure alert fires.')
+@secure()
+param adminNotificationEmail string
+
 @description('Used to set Content-Security-Policy for USTP.')
 @secure()
 param ustpIssueCollectorHash string = ''
@@ -150,9 +169,6 @@ param enabledDataflows string = ''
 
 @description('Rows fetched from ACMS per migrate-case-appointments continuation. Empty string uses the function app default.')
 param migrateCaseAppointmentsFetchSize string = ''
-
-@description('Custom domain FQDN for sending email. Leave empty to use Azure-managed subdomain.')
-param customDomain string = ''
 
 @description('Name of the blob container used for migration and operational artifacts.')
 param objectContainerName string = 'migration-files'
@@ -177,10 +193,21 @@ var dataflowsTags = {
   'deployed-at': deployedAt
 }
 
-// GUARD (CAMS-760, GH #2749 bug shape): this module deploys into the SHARED
-// analyticsResourceGroupName, but main.bicep itself is wrapped in a per-branch
-// Deployment Stack for branch deploys (see azure-deploy.sh). That combination
-// is exactly what deleted the shared Key Vault in GH #2749. It is safe ONLY
+var emailTags = {
+  app: 'cams'
+  component: 'email'
+  'deployed-at': deployedAt
+}
+
+var acsBounceAlertRuleName = '${stackName}-acs-email-bounce-alert'
+var acsSendFailureAlertRuleName = '${stackName}-acs-send-failure-alert'
+var isStandaloneEnvironment = createAlerts || isUstpDeployment
+
+// GUARD: this module deploys into the SHARED analyticsResourceGroupName, but
+// main.bicep is wrapped in a per-branch Deployment Stack for branch deploys
+// (see azure-deploy.sh). A stack owns -- and on teardown DELETES -- every
+// resource its template creates in ANY resource group, which is how a branch
+// teardown once deleted the shared Key Vault. It is safe ONLY
 // because createAlerts is wired to `ghaEnvironment == 'Main-Gov'`
 // (reusable-deploy.yml), so this module never actually instantiates for a
 // branch deploy, and Main-Gov itself is never stacked. Before changing
@@ -191,7 +218,7 @@ var dataflowsTags = {
 module actionGroup './lib/monitoring-alerts/alert-action-group.bicep' =
   if (createAlerts) {
     name: '${actionGroupName}-action-group-module'
-    scope: resourceGroup(analyticsResourceGroupName)
+    scope: resourceGroup(analyticsSubscriptionId, analyticsResourceGroupName)
     params: {
       actionGroupName: actionGroupName
     }
@@ -235,8 +262,8 @@ resource dataflowsFunctionSubnetExisting 'Microsoft.Network/virtualNetworks/subn
 // assignments) and the SQL managed identity are deployed separately by
 // app-shared-setup.bicep — always a plain (non-stack) deployment, before this
 // template runs, because they are genuinely shared across main and every
-// branch (CAMS-760, Option E / Slice 2; see app-shared-setup.bicep for why).
-// This template references them by the name/id strings passed in as params.
+// branch (see app-shared-setup.bicep for why). This template references them
+// by the name/id strings passed in as params.
 //
 // This does NOT mean every module below is RG-local: the webapp/api/dataflows
 // private endpoints (into the shared network RG) and the two SQL vnet-rule
@@ -246,19 +273,9 @@ resource dataflowsFunctionSubnetExisting 'Microsoft.Network/virtualNetworks/subn
 // template because each one is named using this branch's own stackName-derived
 // value (webappName/apiFunctionName/dataflowsFunctionName, further disambiguated
 // by uniqueString(subnetId) for the SQL vnet rules) — so a branch's own app
-// stack owning and deleting them on teardown is the intended behavior, not the
-// GH #2749 bug shape. Only resources with a FIXED, shared name (not derived
-// from this branch's stackName) must live outside this stack, as the Key
-// Vault and SQL managed identity do above.
-//
-// The webapp/api/dataflows private DNS zone's vnet link is another instance
-// of that same stackName-derived shape: the zone itself (privateDnsZoneName,
-// a fixed shared name) is created in app-shared-setup.bicep, but its link
-// (privateDnsZoneName-vnet-link-${stackName}) is unique per branch and
-// meaningless once that branch's VNet is deleted. Creating it here, inside
-// this branch's stack, makes it stack-managed and self-cleaning on branch
-// teardown -- matching the private-endpoint precedent above -- instead of
-// requiring az-delete-branch-resources.sh to delete it by hand.
+// stack deleting them on teardown is the intended behavior. The rule: only
+// resources with a FIXED, shared name must live outside this stack, as the
+// Key Vault and SQL managed identity do above.
 module ustpWebappDnsZoneLink './lib/network/vnet-links.bicep' = {
   name: '${stackName}-webapp-dns-zone-link-module'
   scope: resourceGroup(privateDnsZoneSubscriptionId, privateDnsZoneResourceGroup)
@@ -274,10 +291,7 @@ module ustpWebappDnsZoneLink './lib/network/vnet-links.bicep' = {
 // for the SQL Private Link zone (see app-shared-setup.bicep's sqlDnsZone
 // module for where the zone itself is created).
 //
-// UNCONDITIONAL, unlike the SQL Private Endpoint modules below (in
-// backend-api-deploy.bicep / dataflows-resource-deploy.bicep), which stay
-// gated on `useSqlPrivateLink`. This looks asymmetric right next to that
-// condition, but it is deliberate, not an oversight: the SQL server
+// UNCONDITIONAL, and deliberately so: the SQL server
 // (sql-ustp-cams) is shared across main and every branch. The moment ANY
 // consumer's Private Endpoint against that server is approved, Azure
 // CNAME-redirects the server's public FQDN to its privatelink subdomain --
@@ -289,7 +303,19 @@ module ustpWebappDnsZoneLink './lib/network/vnet-links.bicep' = {
 // resolution working for everyone regardless of which single branch first
 // flips useSqlPrivateLink on. Do not re-add an `if (useSqlPrivateLink)`
 // condition to this module.
-module ustpSqlDnsZoneLink './lib/network/vnet-links.bicep' = {
+//
+// It IS gated on sqlDnsZoneExists, which is a different axis and not a
+// weakening of the above. A vnet link is a CHILD resource of the zone, so
+// when the zone is absent this module cannot degrade gracefully -- it fails
+// the entire deployment with ParentResourceNotFound. USTP hits exactly that:
+// its ADO pipeline never runs app-shared-setup.bicep (which bootstraps this
+// zone on Flexion) and passes deployDns=false, so the zone has never existed
+// there and USTP staging could not deploy at all. Skipping a link into a zone
+// that does not exist strands nobody: with no
+// zone there is no privatelink A record for anything to resolve against, so
+// every consumer in that environment is resolving the SQL FQDN publicly
+// already. The rationale above only binds where the zone is actually present.
+module ustpSqlDnsZoneLink './lib/network/vnet-links.bicep' = if (sqlDnsZoneExists) {
   name: '${stackName}-sql-dns-zone-link-module'
   scope: resourceGroup(privateDnsZoneSubscriptionId, privateDnsZoneResourceGroup)
   params: {
@@ -297,6 +323,37 @@ module ustpSqlDnsZoneLink './lib/network/vnet-links.bicep' = {
     virtualNetworkId: ustpVirtualNetwork.id
     privateDnsZoneName: sqlPrivateDnsZoneName
     vnetLinkAlreadyExists: sqlVnetLinkAlreadyExists
+  }
+}
+
+// Connects main's VNet to the shared SQL Private Link hub. Purely additive:
+// main still reaches SQL through its existing path, and migrating it onto the
+// hub's endpoint is a separate operation. Main owns BOTH sides of its own
+// peering, declared as two separately-scoped modules here -- one module call
+// is one side (see vnet-peering.bicep's header) -- so onboarding a spoke never
+// redeploys the shared endpoint every other environment depends on.
+module mainHubPeering './lib/network/vnet-peering.bicep' = if (createMainHubPeering) {
+  name: '${stackName}-main-hub-peering-module'
+  scope: resourceGroup(networkResourceGroupName)
+  params: {
+    localVirtualNetworkName: virtualNetworkName
+    remoteVirtualNetworkId: resourceId(hubVirtualNetworkResourceGroupName, 'Microsoft.Network/virtualNetworks', hubVirtualNetworkName)
+    peeringName: 'peer-${virtualNetworkName}-to-${hubVirtualNetworkName}'
+  }
+}
+
+// The matching hub-side resource. A bidirectional peering is two independent
+// resources, one nested under each VNet in that VNet's own resource group, so
+// this is scoped to the hub RG rather than main's network RG. Without it main's
+// side sits in Initiated and never reaches Connected, so no traffic flows.
+// Requires the deploying identity to hold peering write on the hub RG.
+module mainHubPeeringHubSide './lib/network/vnet-peering.bicep' = if (createMainHubPeering) {
+  name: '${stackName}-hub-main-peering-module'
+  scope: resourceGroup(hubVirtualNetworkResourceGroupName)
+  params: {
+    localVirtualNetworkName: hubVirtualNetworkName
+    remoteVirtualNetworkId: ustpVirtualNetwork.id
+    peeringName: 'peer-${hubVirtualNetworkName}-to-${virtualNetworkName}'
   }
 }
 
@@ -315,6 +372,7 @@ module ustpWebapp 'frontend-webapp-deploy.bicep' = {
       createAlerts: createAlerts
       actionGroupName: actionGroupName
       actionGroupResourceGroupName: analyticsResourceGroupName
+      actionGroupSubscriptionId: analyticsSubscriptionId
       targetApiServerHost: '${apiFunctionName}.azurewebsites.us ${apiFunctionName}-${slotName}.azurewebsites.us' //adding both production and slot hostname to CSP
       ustpIssueCollectorHash: ustpIssueCollectorHash
       webappSubnetId: webappSubnetExisting.id
@@ -332,25 +390,70 @@ module ustpWebapp 'frontend-webapp-deploy.bicep' = {
     }
 }
 
-module acsEmail './lib/email/acs-email.bicep' = {
-  name: '${stackName}-acs-email-module'
-  params: {
-    stackName: stackName
-    kvAppConfigName: kvAppConfigName
-    kvAppConfigResourceGroupName: kvAppConfigResourceGroupName
-    customDomain: customDomain
-    tags: {
-      app: 'cams'
-      component: 'email'
-      'deployed-at': deployedAt
+module adminActionGroup './lib/monitoring-alerts/admin-notification-action-group.bicep' =
+  if (deployAppInsights && !empty(analyticsWorkspaceId)) {
+    name: '${stackName}-admin-action-group-module'
+    scope: resourceGroup(analyticsSubscriptionId, analyticsResourceGroupName)
+    params: {
+      actionGroupName: '${stackName}-admin-notifications'
+      adminEmail: adminNotificationEmail
+      tags: emailTags
     }
   }
-}
+
+module acsBounceAlert './lib/monitoring-alerts/scheduled-query-alert-rule.bicep' =
+  if (isStandaloneEnvironment && deployAppInsights && !empty(analyticsWorkspaceId)) {
+    name: '${stackName}-acs-bounce-alert-module'
+    scope: resourceGroup(analyticsSubscriptionId, analyticsResourceGroupName)
+    params: {
+      alertRuleName: acsBounceAlertRuleName
+      logQueryScopeResourceId: analyticsWorkspaceId
+      actionGroupId: adminActionGroup!.outputs.actionGroupId
+      query: '''
+        ACSEmailStatusUpdateOperational
+        | where DeliveryStatus in ('Failed', 'Bounced', 'Quarantined', 'FilteredSpam', 'Suppressed')
+        | project TimeGenerated, CorrelationId, RecipientId, DeliveryStatus
+      '''
+      timeAggregation: 'Count'
+      threshold: 0
+      operator: 'GreaterThan'
+      evaluationFrequencyMinutes: 15
+      // windowSize intentionally == evaluationFrequency (no overlap). Accepted low-severity
+      // tradeoff: a bounce landing near a window boundary could be missed if ACS resource-log
+      // ingestion delay exceeds Azure Monitor's ~4-min late-data grace period. Revisit by
+      // measuring actual ingestion_time() - TimeGenerated on this table before widening.
+      windowSizeMinutes: 15
+      severity: 2
+      alertDescription: 'One or more trustee-notification emails failed to deliver via ACS. Check the admin notification-routing page for a wrong recipient address, or search Log Analytics/application traces around the reported timestamp for the correlationId (logged as messageId in application traces) to find the trusteeId.'
+    }
+  }
+
+module acsSendFailureAlert './lib/monitoring-alerts/scheduled-query-alert-rule.bicep' =
+  if (deployAppInsights && !empty(analyticsWorkspaceId)) {
+    name: '${stackName}-acs-send-failure-alert-module'
+    scope: resourceGroup(analyticsSubscriptionId, analyticsResourceGroupName)
+    params: {
+      alertRuleName: acsSendFailureAlertRuleName
+      logQueryScopeResourceId: analyticsWorkspaceId
+      actionGroupId: adminActionGroup!.outputs.actionGroupId
+      query: '''
+        AppTraces
+        | where Message has '[ERROR] [ACS-NOTIFICATION-GATEWAY]' or Message has '[ERROR] [TRUSTEE-CHANGE-NOTIFICATION]'
+        | project TimeGenerated, Message
+      '''
+      timeAggregation: 'Count'
+      threshold: 0
+      operator: 'GreaterThan'
+      evaluationFrequencyMinutes: 15
+      windowSizeMinutes: 15
+      severity: 2
+      alertDescription: 'The API could not reach ACS or ACS rejected a trustee-notification email at send time (as opposed to a later bounce), or no mailing list was configured for the change -- so no notification was even attempted. Search Log Analytics traces around the reported timestamp for ACS-NOTIFICATION-GATEWAY or TRUSTEE-CHANGE-NOTIFICATION to see the specific failure.'
+    }
+  }
 
 module ustpApiFunction 'backend-api-deploy.bicep' = {
     name: '${stackName}-function-module'
     scope: resourceGroup(appResourceGroup)
-    dependsOn: [acsEmail]
     params: {
       stackName: stackName
       deployAppInsights: deployAppInsights
@@ -375,13 +478,13 @@ module ustpApiFunction 'backend-api-deploy.bicep' = {
       privateEndpointSubnetId: privateEndpointSubnetExisting.id
       actionGroupName: actionGroupName
       actionGroupResourceGroupName: analyticsResourceGroupName
+      actionGroupSubscriptionId: analyticsSubscriptionId
       createAlerts: createAlerts
       privateDnsZoneName: privateDnsZoneName
       privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
       privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
       useSqlPrivateLink: useSqlPrivateLink
-      sqlPrivateDnsZoneName: sqlPrivateDnsZoneName
-      loginProviderConfig: loginProviderConfig
+        loginProviderConfig: loginProviderConfig
       loginProvider: loginProvider
       cosmosDatabaseName: cosmosDatabaseName
       e2eDatabaseName: e2eDatabaseName
@@ -425,12 +528,12 @@ module ustpDataflowsFunction 'dataflows-resource-deploy.bicep' = {
     privateEndpointSubnetId: privateEndpointSubnetExisting.id
     actionGroupName: actionGroupName
     actionGroupResourceGroupName: analyticsResourceGroupName
+    actionGroupSubscriptionId: analyticsSubscriptionId
     createAlerts: createAlerts
     privateDnsZoneName: privateDnsZoneName
     privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
     privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
     useSqlPrivateLink: useSqlPrivateLink
-    sqlPrivateDnsZoneName: sqlPrivateDnsZoneName
     loginProviderConfig: loginProviderConfig
     loginProvider: loginProvider
     cosmosDatabaseName: cosmosDatabaseName
