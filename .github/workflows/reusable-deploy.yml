@@ -75,9 +75,9 @@ jobs:
           set -euo pipefail
 
           # Distinguishes "secret genuinely doesn't exist yet" (a legitimate,
-          # optional-not-configured state for ADMIN-NOTIFICATION-EMAIL and
-          # DEFAULT-NOTIFICATION-RECIPIENT below) from any other read failure
-          # (auth, throttling, KV firewall, transient network error). The
+          # optional-not-configured state for DEFAULT-NOTIFICATION-RECIPIENT
+          # below) from any other read failure (auth, throttling, KV
+          # firewall, transient network error). The
           # latter must fail the deploy loudly instead of silently freezing
           # the resulting app setting blank until some future deploy happens
           # to re-read it correctly.
@@ -195,8 +195,8 @@ jobs:
           _val=$(az keyvault secret show --vault-name "$KV" --name MIGRATE-CASE-APPOINTMENTS-FETCH-SIZE --query value -o tsv)
           echo "::add-mask::${_val}"
           echo "MIGRATE_CASE_APPOINTMENTS_FETCH_SIZE=${_val}" >> "$GITHUB_ENV"
-          _val=$(read_optional_secret "$KV" ADMIN-NOTIFICATION-EMAIL)
-          if [[ -n "${_val}" ]]; then echo "::add-mask::${_val}"; fi
+          _val=$(az keyvault secret show --vault-name "$KV" --name ADMIN-NOTIFICATION-EMAIL --query value -o tsv)
+          echo "::add-mask::${_val}"
           echo "ADMIN_NOTIFICATION_EMAIL=${_val}" >> "$GITHUB_ENV"
           _val=$(read_optional_secret "$KV" DEFAULT-NOTIFICATION-RECIPIENT)
           if [[ -n "${_val}" ]]; then echo "::add-mask::${_val}"; fi

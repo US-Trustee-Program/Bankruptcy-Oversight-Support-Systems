@@ -63,9 +63,9 @@ param analyticsWorkspaceId string = ''
 @description('Subscription ID of the Log Analytics workspace named by analyticsWorkspaceId, for the staging/USTP-prod (non-dev-tier) path where that workspace may live in a different subscription than this deployment. Defaults to the current subscription, so same-subscription environments (incl. Flexion) are unaffected. Mirrors main.bicep\'s analyticsSubscriptionId for the same workspace.')
 param analyticsSubscriptionId string = subscription().subscriptionId
 
-@description('Email address to notify for dev-tier ACS bounce alerts. Leave empty to skip creating the dev-tier alert.')
+@description('Email address to notify for dev-tier ACS bounce alerts.')
 @secure()
-param adminNotificationEmail string = ''
+param adminNotificationEmail string
 
 @description('Custom domain FQDN for sending email. Leave empty to use Azure-managed subdomain.')
 param customDomain string = ''
@@ -324,7 +324,7 @@ module sharedBounceWorkspaceLock './lib/analytics/log-analytics-workspace-lock.b
 }
 
 module sharedAdminActionGroup './lib/monitoring-alerts/admin-notification-action-group.bicep' =
-  if (isDevTier && !empty(adminNotificationEmail) && !empty(analyticsResourceGroupName)) {
+  if (isDevTier && !empty(analyticsResourceGroupName)) {
     name: '${stackName}-admin-action-group-shared-module'
     scope: resourceGroup(analyticsResourceGroupName)
     params: {
@@ -335,7 +335,7 @@ module sharedAdminActionGroup './lib/monitoring-alerts/admin-notification-action
   }
 
 module sharedAcsBounceAlert './lib/monitoring-alerts/scheduled-query-alert-rule.bicep' =
-  if (isDevTier && !empty(adminNotificationEmail) && !empty(analyticsResourceGroupName)) {
+  if (isDevTier && !empty(analyticsResourceGroupName)) {
     name: '${stackName}-acs-bounce-alert-shared-module'
     scope: resourceGroup(analyticsResourceGroupName)
     params: {

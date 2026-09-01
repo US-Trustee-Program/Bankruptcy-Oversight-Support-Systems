@@ -152,9 +152,9 @@ param maxObjectKeyCount string
 @description('Fallback email recipient for notifications when no Cosmos routing record matches')
 param defaultNotificationRecipient string = ''
 
-@description('Email address to notify when an ACS email delivery-failure alert fires. Leave empty to skip creating the alert.')
+@description('Email address to notify when an ACS email delivery-failure alert fires.')
 @secure()
-param adminNotificationEmail string = ''
+param adminNotificationEmail string
 
 @description('Used to set Content-Security-Policy for USTP.')
 @secure()
@@ -391,7 +391,7 @@ module ustpWebapp 'frontend-webapp-deploy.bicep' = {
 }
 
 module adminActionGroup './lib/monitoring-alerts/admin-notification-action-group.bicep' =
-  if (!empty(adminNotificationEmail) && deployAppInsights && !empty(analyticsWorkspaceId)) {
+  if (deployAppInsights && !empty(analyticsWorkspaceId)) {
     name: '${stackName}-admin-action-group-module'
     scope: resourceGroup(analyticsSubscriptionId, analyticsResourceGroupName)
     params: {
@@ -402,7 +402,7 @@ module adminActionGroup './lib/monitoring-alerts/admin-notification-action-group
   }
 
 module acsBounceAlert './lib/monitoring-alerts/scheduled-query-alert-rule.bicep' =
-  if (isStandaloneEnvironment && !empty(adminNotificationEmail) && deployAppInsights && !empty(analyticsWorkspaceId)) {
+  if (isStandaloneEnvironment && deployAppInsights && !empty(analyticsWorkspaceId)) {
     name: '${stackName}-acs-bounce-alert-module'
     scope: resourceGroup(analyticsSubscriptionId, analyticsResourceGroupName)
     params: {
@@ -429,7 +429,7 @@ module acsBounceAlert './lib/monitoring-alerts/scheduled-query-alert-rule.bicep'
   }
 
 module acsSendFailureAlert './lib/monitoring-alerts/scheduled-query-alert-rule.bicep' =
-  if (!empty(adminNotificationEmail) && deployAppInsights && !empty(analyticsWorkspaceId)) {
+  if (deployAppInsights && !empty(analyticsWorkspaceId)) {
     name: '${stackName}-acs-send-failure-alert-module'
     scope: resourceGroup(analyticsSubscriptionId, analyticsResourceGroupName)
     params: {
