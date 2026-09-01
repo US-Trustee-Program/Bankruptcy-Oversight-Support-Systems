@@ -28,6 +28,8 @@
 # for settings an environment may simply not have opted into. Without it, a
 # missing secret fails the step, which is the right default for a credential.
 #
+# The value is masked by kv_get; kv_write_env writes without re-masking.
+#
 # Returns 0 on success. Echoes nothing to stdout: the value goes to
 # GITHUB_ENV, never to the log.
 function kv_to_env() {
@@ -37,7 +39,7 @@ function kv_to_env() {
     # those, which this does.
     local kvToEnvValue=''
     kv_get kvToEnvValue "${@:2}" || return 1
-    kv_mask_and_write "${envName}" "${kvToEnvValue}"
+    kv_write_env "${envName}" "${kvToEnvValue}"
 }
 
 # Fetches a secret, masks it, and assigns it to the shell variable named by
@@ -100,29 +102,49 @@ function kv_mask() {
     # would leave every line after the first unmasked. Empty lines are skipped
     # -- masking "" makes Actions warn and would redact nothing useful.
     local line
+    # The GitHub Actions runner percent-DECODES the data portion of workflow commands
+    # before acting on it, so a value literally containing `%25`, `%0A`, or `%0D` would
+    # get decoded to a different string and the runner would register a mask for the
+    # wrong value. Escaping must happen inside the loop after the newline split -- not
+    # on ${1} before the loop -- because pre-escaping \n→%0A would collapse to single
+    # iteration and lose multiline masking. Percent sign is escaped first so that the
+    # % introduced by later substitutions is not re-escaped.
     while IFS= read -r line; do
-        [[ -n "${line}" ]] && echo "::add-mask::${line}"
+        [[ -n "${line}" ]] && line="${line//\%/%25}" && line="${line//$'\r'/%0D}" && line="${line//$'\n'/%0A}" && echo "::add-mask::${line}"
     done <<<"${1}"
 }
 
-# Masks a value and writes it to GITHUB_ENV. Split out from kv_to_env so a
-# caller that already holds a value (e.g. one it derived or defaulted) gets
-# the same masking and multiline handling.
+# Writes a masked value to GITHUB_ENV. Assumes the value has ALREADY been masked
+# by the caller -- it deliberately does not mask, so it must never be called with
+# an unmasked value. Use this when the value has already been registered via
+# ::add-mask:: elsewhere (e.g., by kv_get).
+function kv_write_env() {
+    local envName=$1 val=$2
+
+    # Heredoc syntax so a newline in the value cannot break the env file. The
+    # delimiter is randomised: randomness is a security property that ensures an
+    # attacker who controlled a secret cannot inject arbitrary environment variables.
+    # A predictable delimiter that happened to appear in a secret would let the value
+    # terminate its own block, enabling injection.
+    local delimiter
+    delimiter="EOF_$(openssl rand -hex 8)"
+    # Guard against failed random generation (security property must not degrade to predictable EOF_).
+    if [[ ! "${delimiter}" =~ ^EOF_[0-9a-f]{16}$ ]]; then
+        echo "ERROR: failed to generate a random GITHUB_ENV delimiter." >&2
+        return 1
+    fi
+    {
+        echo "${envName}<<${delimiter}"
+        printf '%s\n' "${val}"  # printf instead of echo to prevent -n, -e, -E being consumed as flags
+        echo "${delimiter}"
+    } >>"${GITHUB_ENV}"
+}
+
+# Masks a value and writes it to GITHUB_ENV. For callers that already hold a value
+# (e.g. one derived or defaulted) and need both the masking and multiline-safe write.
 function kv_mask_and_write() {
     local envName=$1 val=$2
 
     kv_mask "${val}"
-
-    # Heredoc syntax so a newline in the value cannot break the env file. The
-    # delimiter is randomised because a fixed one that happened to appear in a
-    # secret would let the value terminate its own block -- and an attacker who
-    # controlled a secret could otherwise inject arbitrary environment
-    # variables into the job.
-    local delimiter
-    delimiter="EOF_$(openssl rand -hex 8)"
-    {
-        echo "${envName}<<${delimiter}"
-        echo "${val}"
-        echo "${delimiter}"
-    } >>"${GITHUB_ENV}"
+    kv_write_env "${envName}" "${val}"
 }
