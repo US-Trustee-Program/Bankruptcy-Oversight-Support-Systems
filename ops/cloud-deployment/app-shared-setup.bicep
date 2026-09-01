@@ -63,9 +63,9 @@ param analyticsWorkspaceId string = ''
 @description('Subscription ID of the Log Analytics workspace named by analyticsWorkspaceId, for the staging/USTP-prod (non-dev-tier) path where that workspace may live in a different subscription than this deployment. Defaults to the current subscription, so same-subscription environments (incl. Flexion) are unaffected. Mirrors main.bicep\'s analyticsSubscriptionId for the same workspace.')
 param analyticsSubscriptionId string = subscription().subscriptionId
 
-@description('Email address to notify for dev-tier ACS bounce alerts. Leave empty to skip creating the dev-tier alert.')
+@description('Email address to notify for dev-tier ACS bounce alerts.')
 @secure()
-param adminNotificationEmail string = ''
+param adminNotificationEmail string
 
 @description('Custom domain FQDN for sending email. Leave empty to use Azure-managed subdomain.')
 param customDomain string = ''
@@ -324,7 +324,7 @@ module sharedBounceWorkspaceLock './lib/analytics/log-analytics-workspace-lock.b
 }
 
 module sharedAdminActionGroup './lib/monitoring-alerts/admin-notification-action-group.bicep' =
-  if (isDevTier && !empty(adminNotificationEmail) && !empty(analyticsResourceGroupName)) {
+  if (isDevTier && !empty(analyticsResourceGroupName)) {
     name: '${stackName}-admin-action-group-shared-module'
     scope: resourceGroup(analyticsResourceGroupName)
     params: {
@@ -335,7 +335,7 @@ module sharedAdminActionGroup './lib/monitoring-alerts/admin-notification-action
   }
 
 module sharedAcsBounceAlert './lib/monitoring-alerts/scheduled-query-alert-rule.bicep' =
-  if (isDevTier && !empty(adminNotificationEmail) && !empty(analyticsResourceGroupName)) {
+  if (isDevTier && !empty(analyticsResourceGroupName)) {
     name: '${stackName}-acs-bounce-alert-shared-module'
     scope: resourceGroup(analyticsResourceGroupName)
     params: {
@@ -374,6 +374,22 @@ resource existingAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@20
   if (!isDevTier && !empty(analyticsWorkspaceId) && !empty(analyticsResourceGroupName)) {
     name: last(split(analyticsWorkspaceId, '/'))
     scope: resourceGroup(analyticsSubscriptionId, analyticsResourceGroupName)
+  }
+
+// Grants the same app-config managed identity used by the dev-tier bounce
+// poller (backend/lib/adapters/gateways/monitor/acs-bounce-query.gateway.ts)
+// read access to staging/USTP prod's own existing analytics workspace. Before
+// this, only the dev-tier path (sharedAnalyticsReaderRoleAssignment above)
+// ever wired this role -- staging and USTP prod's bounce poll always hit a
+// 403 InsufficientAccessError until someone granted it by hand.
+module standaloneAnalyticsReaderRoleAssignment './lib/analytics/log-analytics-reader-role-assignment.bicep' =
+  if (!isDevTier && !empty(analyticsWorkspaceId) && !empty(analyticsResourceGroupName)) {
+    name: '${stackName}-analytics-reader-module'
+    scope: resourceGroup(analyticsSubscriptionId, analyticsResourceGroupName)
+    params: {
+      workspaceName: last(split(analyticsWorkspaceId, '/'))
+      principalId: kvSetup.outputs.principalId
+    }
   }
 
 var sharedAnalyticsWorkspaceCustomerId = isDevTier

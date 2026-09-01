@@ -311,7 +311,7 @@ Flexion and **shared** with USTP.
 | AZ_COSMOS_ID_NAME              | Secret                 | ---              | Name of Managed Identity accessing cosmos                                                                                                       |
 | AZ_ANALYTICS_WORKSPACE_ID      | Secret                 | ---              | Azure resource id of Log Analytics.                                                                                                             |
 | AZ_ACTION_GROUP_NAME           | Secret                 | Yes              | Action Group Name for alert rules                                                                                                               |
-| ADMIN-NOTIFICATION-EMAIL       | Secret                 | Yes              | Optional email for ACS delivery-failure alerts; leave empty to skip the alert. New Action Group receivers require manual passcode verification. |
+| ADMIN-NOTIFICATION-EMAIL       | Key Vault Secret       | Yes              | Required. Email notified when an ACS email delivery-failure alert fires.                          |
 | DEFAULT-NOTIFICATION-RECIPIENT | Secret                 | Yes              | Optional fallback email recipient for notifications when no Cosmos routing record matches a case.                                               |
 
 ### Snyk

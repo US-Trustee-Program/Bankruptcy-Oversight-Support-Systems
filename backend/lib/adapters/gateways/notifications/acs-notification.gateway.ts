@@ -92,7 +92,10 @@ export class AcsNotificationGateway implements NotificationGateway {
         correlationId: notification.correlationId,
         trusteeId: notification.trusteeId,
       });
-      throw new CamsError(MODULE_NAME, { message, data: { reason: 'send' } });
+      throw new CamsError(MODULE_NAME, {
+        message,
+        data: { reason: 'send', messageId: result.id },
+      });
     }
 
     this.logger?.info(MODULE_NAME, `Email sent successfully`, {

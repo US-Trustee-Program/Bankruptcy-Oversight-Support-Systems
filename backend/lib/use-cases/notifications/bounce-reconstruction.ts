@@ -61,7 +61,7 @@ export class BounceReconstructionUseCase {
 function buildAdminHtml(originalRecipient: string, originalHtml: string): string {
   return (
     `<p>The trustee change notification below failed to deliver to <strong>${escapeHtml(originalRecipient)}</strong>. ` +
-    `The original message content is reproduced below for review and forwarding to a corrected address.</p>` +
+    `The original message content is reproduced below for review. Be sure this information is forwarded on to OO.</p>` +
     `<hr>${originalHtml}`
   );
 }
@@ -69,6 +69,6 @@ function buildAdminHtml(originalRecipient: string, originalHtml: string): string
 function buildAdminText(originalRecipient: string, originalText: string): string {
   return (
     `The trustee change notification below failed to deliver to ${originalRecipient}. ` +
-    `The original message content is reproduced below for review and forwarding to a corrected address.\n\n---\n\n${originalText}`
+    `The original message content is reproduced below for review. Be sure this information is forwarded on to OO.\n\n---\n\n${originalText}`
   );
 }

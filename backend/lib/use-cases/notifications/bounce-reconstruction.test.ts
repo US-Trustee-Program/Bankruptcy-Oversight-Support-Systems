@@ -57,8 +57,16 @@ describe('BounceReconstructionUseCase', () => {
     expect(recorded[0].html).toContain('<hr>');
     expect(recorded[0].html).toContain('old@example.test');
     expect(recorded[0].html).toContain('new@example.test');
+    expect(recorded[0].html).toContain('Be sure this information is forwarded on to OO.');
+    expect(recorded[0].html.indexOf('forwarded on to OO')).toBeLessThan(
+      recorded[0].html.indexOf('<hr>'),
+    );
     expect(recorded[0].text).toContain('ch-oversight@example.test');
     expect(recorded[0].text).toContain('Public Contact: old@example.test -> new@example.test');
+    expect(recorded[0].text).toContain('Be sure this information is forwarded on to OO.');
+    expect(recorded[0].text.indexOf('forwarded on to OO')).toBeLessThan(
+      recorded[0].text.indexOf('Public Contact'),
+    );
     expect(recorded[0].correlationId).toBe(context.invocationId);
   });
 
