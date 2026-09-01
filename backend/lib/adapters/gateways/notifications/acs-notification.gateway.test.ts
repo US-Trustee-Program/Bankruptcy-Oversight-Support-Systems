@@ -167,10 +167,16 @@ describe('AcsNotificationGateway', () => {
     expect(error).toBeInstanceOf(CamsError);
     expect(error.message).toBe('Failed to send email: Network timeout');
     expect(error.data).toEqual({ reason: 'send' });
+    expect(error.originalError).toContain('Network timeout');
     expect(mockLogger.error).toHaveBeenCalledWith(
       'ACS-NOTIFICATION-GATEWAY',
       'Failed to send email: Network timeout',
-      expect.objectContaining({ to: notification.to }),
+      expect.objectContaining({
+        to: notification.to,
+        correlationId: notification.correlationId,
+        trusteeId: notification.trusteeId,
+        errorName: 'Error',
+      }),
     );
   });
 
@@ -185,7 +191,12 @@ describe('AcsNotificationGateway', () => {
     expect(mockLogger.error).toHaveBeenCalledWith(
       'ACS-NOTIFICATION-GATEWAY',
       'Failed to send email: Timed out',
-      expect.objectContaining({ to: notification.to }),
+      expect.objectContaining({
+        to: notification.to,
+        correlationId: notification.correlationId,
+        trusteeId: notification.trusteeId,
+        errorName: 'Error',
+      }),
     );
   });
 
@@ -212,7 +223,13 @@ describe('AcsNotificationGateway', () => {
     expect(mockLogger.error).toHaveBeenCalledWith(
       'ACS-NOTIFICATION-GATEWAY',
       'Unable to connect to the email service',
-      expect.objectContaining({ errorCode: 'ECONNREFUSED' }),
+      expect.objectContaining({
+        to: notification.to,
+        correlationId: notification.correlationId,
+        trusteeId: notification.trusteeId,
+        errorCode: 'ECONNREFUSED',
+        errorName: 'Error',
+      }),
     );
   });
 
@@ -245,6 +262,10 @@ describe('AcsNotificationGateway', () => {
 describe('isConnectionFailure', () => {
   test.each([
     { description: 'a network error code', error: { code: 'ECONNREFUSED' } },
+    { description: 'an ENOTFOUND error code', error: { code: 'ENOTFOUND' } },
+    { description: 'an ECONNRESET error code', error: { code: 'ECONNRESET' } },
+    { description: 'an EAI_AGAIN error code', error: { code: 'EAI_AGAIN' } },
+    { description: 'an EPIPE error code', error: { code: 'EPIPE' } },
     {
       description: 'a network error code nested under cause',
       error: { cause: { code: 'ETIMEDOUT' } },
