@@ -166,6 +166,6 @@ test.describe('Trustee Match Verification', () => {
 
     const heading = page.getByTestId(`accordion-heading-${inactiveItem!.id}`);
     await expect(heading).toBeVisible(timeoutOption);
-    await expect(heading).toContainText('Inactive trustee');
+    await expect(heading).toContainText('Inactive Trustee');
   });
 });
