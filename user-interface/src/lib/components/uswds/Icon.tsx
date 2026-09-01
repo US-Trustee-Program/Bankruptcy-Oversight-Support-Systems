@@ -20,7 +20,7 @@ export default function Icon(props: IconProps) {
       role={isDecorative ? undefined : 'img'}
       aria-hidden={isDecorative ? 'true' : undefined}
       data-testid="icon"
-      aria-label={isDecorative ? undefined : `${props.name} icon`}
+      aria-label={isDecorative ? undefined : (props.tooltip ?? `${props.name} icon`)}
     >
       {props.tooltip && <title>{props.tooltip}</title>}
       <use xlinkHref={link}></use>

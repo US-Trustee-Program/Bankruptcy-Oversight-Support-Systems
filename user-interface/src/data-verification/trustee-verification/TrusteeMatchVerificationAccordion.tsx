@@ -40,14 +40,20 @@ type MismatchIconProps = {
 
 /**
  * A red "no match" icon for a CAMS Strongest Match column header, shown only when that field's
- * CandidateScore indicates a mismatch. Meaning is also conveyed via a visually-hidden text label
- * so it's never color-only signaling (WCAG 1.4.1).
+ * CandidateScore indicates a mismatch. The icon carries its own accessible name (rather than a
+ * visually-hidden sibling span) so screen readers announce it on hover/touch exploration, not
+ * only when reading the full page - an aria-hidden icon with a separate sr-only label is skipped
+ * by that interaction mode. Meaning is also never color-only signaling (WCAG 1.4.1).
  */
 function MismatchIcon({ label }: MismatchIconProps) {
   return (
     <span className="mismatch-icon">
-      <Icon name="cancel" className="mismatch-icon-symbol" decorative />
-      <span className="usa-sr-only">{label} does not match</span>
+      <Icon
+        name="cancel"
+        className="mismatch-icon-symbol"
+        decorative={false}
+        tooltip={`${label} does not match`}
+      />
     </span>
   );
 }
@@ -444,9 +450,9 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   const isInactiveStatus =
     order.mismatchReason === TrusteeAppointmentSyncErrorCode.PerfectMatchInactiveStatus;
   const taskTypeLabel = isMultipleMatch
-    ? 'Multiple Match'
+    ? 'Multiple Matches'
     : isInactiveStatus
-      ? 'Inactive trustee'
+      ? 'Inactive Trustee'
       : taskType.get(order.taskType);
 
   const { legacy } = order.dxtrTrustee;
@@ -663,6 +669,10 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   const inactiveMismatchedFieldsPrefix = inactiveOtherMismatchedFields.length
     ? `${formatFieldList(inactiveOtherMismatchedFields)} `
     : '';
+
+  // "does not match" for a single case, "do not match" once the sentence covers more than one -
+  // the subject (trustee name/address/phone/email) is grammatically plural across multiple cases.
+  const matchVerb = affectedCaseCount > 1 ? 'do not match' : 'does not match';
 
   function renderDetailSection() {
     if (isLoadingDetail) {
@@ -896,7 +906,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
                   <p className="problem-statement">
                     <span>
                       Trustee is inactive in CAMS and {inactiveMismatchedFieldsPrefix}sent from the
-                      court does not match a CAMS Trustee for{' '}
+                      court {matchVerb} a CAMS Trustee for{' '}
                       {isLoadingDetail ? '' : affectedCaseCount > 1 ? '' : 'case: '}
                     </span>
                     {caseLink}
@@ -913,8 +923,8 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
               ) : (
                 <p className="problem-statement">
                   <span>
-                    Trustee {mismatchedFieldsPrefix}sent from the court does not match a CAMS
-                    Trustee for {isLoadingDetail ? '' : affectedCaseCount > 1 ? '' : 'case: '}
+                    Trustee {mismatchedFieldsPrefix}sent from the court {matchVerb} a CAMS Trustee
+                    for {isLoadingDetail ? '' : affectedCaseCount > 1 ? '' : 'case: '}
                   </span>
                   {caseLink}
                 </p>

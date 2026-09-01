@@ -53,6 +53,12 @@ describe('Test Icon component', async () => {
     expect(icon).toHaveAttribute('aria-label', 'warning icon');
   });
 
+  test('should use the tooltip text as the aria-label when both are provided', () => {
+    renderWithProps({ name: 'cancel', decorative: false, tooltip: 'Name does not match' });
+    const icon = screen.getByTestId('icon');
+    expect(icon).toHaveAttribute('aria-label', 'Name does not match');
+  });
+
   test('should not be focusable', () => {
     renderWithProps({ name: 'check' });
     const icon = screen.getByTestId('icon');

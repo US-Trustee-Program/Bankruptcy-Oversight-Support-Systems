@@ -264,7 +264,9 @@ describe('AssociatedBanksTable', () => {
     await waitFor(() => {
       expect(screen.getByTestId('trustee-count-error-bank-1')).toBeInTheDocument();
     });
-    expect(screen.getByRole('img', { name: 'warning icon' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('img', { name: 'Unable to retrieve trustee count' }),
+    ).toBeInTheDocument();
   });
 
   test('should merge trustee counts when associations change', async () => {

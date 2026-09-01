@@ -451,6 +451,30 @@ describe('TrusteeMatchVerificationAccordion', () => {
         'Trustee name sent from the court does not match a CAMS Trustee for case:',
       );
     });
+
+    test('uses singular "does not match" for a single affected case', () => {
+      renderWithProps({ order: { ...sampleOrderWithCandidates, affectedCaseCount: 1 } });
+
+      const content = screen.getByTestId(`accordion-content-${sampleOrderWithCandidates.id}`);
+      expect(content.textContent).toContain('sent from the court does not match a CAMS Trustee');
+    });
+
+    test('uses plural "do not match" once the sentence covers more than one case', async () => {
+      const multiCaseOrder: TrusteeMatchVerificationListItem = {
+        ...sampleOrderWithCandidates,
+        affectedCaseCount: 2,
+        affectedCaseIds: ['081-22-11111', '081-22-22222'],
+      };
+      renderWithProps({ order: multiCaseOrder });
+      await mockDetailAndExpand({
+        ...sampleOrderWithCandidatesDetail,
+        affectedCaseIds: ['081-22-11111', '081-22-22222'],
+      });
+
+      const content = screen.getByTestId(`accordion-content-${multiCaseOrder.id}`);
+      expect(content.textContent).toContain('sent from the court do not match a CAMS Trustee');
+      expect(content.textContent).not.toContain('does not match a CAMS Trustee');
+    });
   });
 
   describe('resolved-order case list sourced from the list response', () => {
@@ -1593,11 +1617,11 @@ describe('TrusteeMatchVerificationAccordion', () => {
       matchCandidates: inactiveCandidates,
     };
 
-    test('should render "Inactive trustee" as task type label for inactive match', () => {
+    test('should render "Inactive Trustee" as task type label for inactive match', () => {
       renderWithProps({ order: inactiveOrder });
 
       const heading = screen.getByTestId(`accordion-heading-${inactiveOrder.id}`);
-      expect(heading.textContent).toContain('Inactive trustee');
+      expect(heading.textContent).toContain('Inactive Trustee');
       expect(heading.textContent).not.toContain('Trustee Mismatch');
     });
 
@@ -1637,6 +1661,27 @@ describe('TrusteeMatchVerificationAccordion', () => {
       );
     });
 
+    test('uses plural "do not match" for the inactive-match sentence once more than one case is affected', async () => {
+      const multiCaseInactiveOrder: TrusteeMatchVerificationListItem = {
+        ...inactiveOrder,
+        affectedCaseCount: 2,
+        affectedCaseIds: ['081-22-11111', '081-22-22222'],
+      };
+      renderWithProps({ order: multiCaseInactiveOrder });
+      await mockDetailAndExpand({
+        ...inactiveDetail,
+        matchCandidates: [{ ...inactiveCandidates[0], nameScore: 90, emailScore: 80 }],
+        affectedCaseIds: ['081-22-11111', '081-22-22222'],
+      });
+
+      const problemStatement = screen
+        .getByTestId(`accordion-content-${multiCaseInactiveOrder.id}`)
+        .querySelector('.problem-statement');
+      expect(problemStatement?.textContent).toContain(
+        'Trustee is inactive in CAMS and name and email sent from the court do not match a CAMS Trustee for',
+      );
+    });
+
     test('renders the mismatch problem statement (not inactive) for an unresolved multiple-match', async () => {
       const unresolvedOrder: TrusteeMatchVerificationListItem = {
         ...sampleOrderWithCandidates,
@@ -1663,7 +1708,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
 
       const heading = screen.getByTestId(`accordion-heading-${sampleOrder.id}`);
       expect(heading.textContent).toContain('Trustee Mismatch');
-      expect(heading.textContent).not.toContain('Inactive trustee');
+      expect(heading.textContent).not.toContain('Inactive Trustee');
     });
   });
 
@@ -1798,15 +1843,15 @@ describe('TrusteeMatchVerificationAccordion', () => {
       expect(searchButton).toBeInTheDocument();
     });
 
-    test('shows "Multiple Match" as task type in accordion heading', () => {
+    test('shows "Multiple Matches" as task type in accordion heading', () => {
       renderWithProps({ order: multipleCandidatesOrder });
 
       const heading = screen.getByTestId(`accordion-heading-${sampleOrder.id}`);
-      expect(heading.textContent).toContain('Multiple Match');
+      expect(heading.textContent).toContain('Multiple Matches');
       expect(heading.textContent).not.toContain('Trustee Mismatch');
     });
 
-    test('shows "Trustee Mismatch", not "Multiple Match", for AMBIGUOUS_MATCH_UNRESOLVED with only one candidate', () => {
+    test('shows "Trustee Mismatch", not "Multiple Matches", for AMBIGUOUS_MATCH_UNRESOLVED with only one candidate', () => {
       renderWithProps({ order: singleCandidateAmbiguousOrder });
 
       const heading = screen.getByTestId(`accordion-heading-${sampleOrder.id}`);
@@ -2002,11 +2047,11 @@ describe('TrusteeMatchVerificationAccordion', () => {
       expect(searchButton).toBeInTheDocument();
     });
 
-    test('CANDIDATE_LOAD_FAILED renders no-candidates view without the "Multiple Match" label', () => {
+    test('CANDIDATE_LOAD_FAILED renders no-candidates view without the "Multiple Matches" label', () => {
       // Distinct from AMBIGUOUS_MATCH_UNRESOLVED: this reason means scoring couldn't load any
       // candidate's data, not that scoring ran and found no winner among real candidates. If it
       // were misclassified as AMBIGUOUS_MATCH_UNRESOLVED, isMultipleMatch would be true and the
-      // task type column would read "Multiple Match" right next to a "no suggested matches"
+      // task type column would read "Multiple Matches" right next to a "no suggested matches"
       // message — this proves that does not happen for the new reason code.
       renderWithProps({
         order: {
@@ -2019,7 +2064,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
 
       expect(screen.queryByTestId('multiple-candidates-info')).not.toBeInTheDocument();
       expect(screen.queryByTestId('candidate-info')).not.toBeInTheDocument();
-      expect(screen.queryByText('Multiple Match')).not.toBeInTheDocument();
+      expect(screen.queryByText('Multiple Matches')).not.toBeInTheDocument();
       const searchButton = screen.getByRole('button', {
         name: /Search for a trustee/,
         hidden: true,
