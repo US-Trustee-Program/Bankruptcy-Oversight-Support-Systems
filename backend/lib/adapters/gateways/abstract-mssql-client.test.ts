@@ -4,6 +4,7 @@ import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { AbstractMssqlClient } from './abstract-mssql-client';
 import { ApplicationContext } from '../types/basic';
 import { IResult } from 'mssql';
+import { isGatewayTimeoutError } from '../../common-errors/gateway-timeout';
 
 type sqlConnect = {
   request: () => void;
@@ -27,6 +28,10 @@ vi.mock('mssql', async (importOriginal) => {
   const actual = await importOriginal<typeof import('mssql')>();
   return {
     ...actual,
+    // mssql's CJS default export nests its named classes (ConnectionError, RequestError,
+    // MSSQLError, etc.) under `default` rather than at the module's top level, so spreading
+    // `actual` alone loses them here — re-spread `actual.default` to recover them.
+    ...(actual as unknown as { default: typeof import('mssql') }).default,
     ConnectionPool: vi.fn().mockImplementation(function () {
       return {
         connect: vi.fn().mockImplementation((): Promise<sqlConnect> =>
@@ -122,6 +127,58 @@ describe('Abstract MS-SQL client', () => {
 
     expect(mockConnectionPool).toHaveBeenCalledTimes(1);
   });
+
+  test('should throw GatewayTimeoutError when a query request times out (ETIMEOUT)', async () => {
+    const { ConnectionPool, RequestError } = await import('mssql');
+    const mockConnectionPool = vi.mocked(ConnectionPool);
+    const requestError = new RequestError('Timeout: Request failed to complete in time.');
+    requestError.code = 'ETIMEOUT';
+    mockConnectionPool.mockImplementationOnce(function () {
+      return {
+        connected: true,
+        request: vi.fn().mockImplementation(() => ({
+          input: vi.fn(),
+          query: vi.fn().mockRejectedValue(requestError),
+        })),
+      } as unknown as InstanceType<typeof ConnectionPool>;
+    });
+
+    const context = await createMockApplicationContext();
+    const config: IDbConfig = { ...context.config.dxtrDbConfig, database: 'ETIMEOUT_REQUEST_DB' };
+    const client = new TestDbClient(context, config, 'TIMEOUT_TEST');
+
+    const error = await client
+      .executeQuery(context, 'SELECT * FROM bar', [])
+      .catch((e: unknown) => e);
+
+    expect(isGatewayTimeoutError(error)).toBe(true);
+  });
+
+  test('should throw GatewayTimeoutError when a connection times out (ETIMEOUT)', async () => {
+    const { ConnectionPool, ConnectionError } = await import('mssql');
+    const mockConnectionPool = vi.mocked(ConnectionPool);
+    const connectionError = new ConnectionError('Failed to connect within the specified time.');
+    connectionError.code = 'ETIMEOUT';
+    mockConnectionPool.mockImplementationOnce(function () {
+      return {
+        connected: false,
+        connect: vi.fn().mockRejectedValue(connectionError),
+      } as unknown as InstanceType<typeof ConnectionPool>;
+    });
+
+    const context = await createMockApplicationContext();
+    const config: IDbConfig = {
+      ...context.config.dxtrDbConfig,
+      database: 'ETIMEOUT_CONNECT_DB',
+    };
+    const client = new TestDbClient(context, config, 'TIMEOUT_TEST');
+
+    const error = await client
+      .executeQuery(context, 'SELECT * FROM bar', [])
+      .catch((e: unknown) => e);
+
+    expect(isGatewayTimeoutError(error)).toBe(true);
+  });
 });
 
 describe('AbstractMssqlClient.withTransaction', () => {
@@ -166,6 +223,21 @@ describe('AbstractMssqlClient.withTransaction', () => {
         throw cause;
       }),
     ).rejects.toMatchObject({ isCamsError: true });
+
+    expect(mockTransaction.rollback).toHaveBeenCalledOnce();
+    expect(mockTransaction.commit).not.toHaveBeenCalled();
+  });
+
+  test('rolls back and throws a GatewayTimeoutError when the callback hits an ETIMEOUT', async () => {
+    const { RequestError } = await import('mssql');
+    const requestError = new RequestError('Timeout: Request failed to complete in time.');
+    requestError.code = 'ETIMEOUT';
+
+    await expect(
+      client.withTransaction(context, async (_tx) => {
+        throw requestError;
+      }),
+    ).rejects.toSatisfy((error: unknown) => isGatewayTimeoutError(error));
 
     expect(mockTransaction.rollback).toHaveBeenCalledOnce();
     expect(mockTransaction.commit).not.toHaveBeenCalled();
