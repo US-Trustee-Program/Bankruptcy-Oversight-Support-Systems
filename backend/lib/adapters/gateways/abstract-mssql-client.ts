@@ -48,7 +48,7 @@ export abstract class AbstractMssqlClient {
       const label = options?.operationName ?? unknownError.message;
       const detail = { ...options?.logContext, error: unknownError };
       context.logger.error(this.moduleName, label, detail);
-      throw getCamsError(unknownError, this.moduleName);
+      throw this.toCamsError(error, unknownError);
     }
   }
 
@@ -125,16 +125,23 @@ export abstract class AbstractMssqlClient {
         context.logger.error(this.moduleName, unknownError.message, { error, query, input });
       }
 
-      // A request/connection timeout (ETIMEOUT) is a transient infrastructure condition, not a
-      // data/query bug — surface it as GatewayTimeoutError so callers' rate-limit/timeout retry
-      // logic (e.g. handleRateLimitRetry) can requeue with backoff instead of poisoning the
-      // message. Without this, getCamsError below would wrap it as an unrecognized UnknownError.
-      if (isMssqlTimeoutError(error)) {
-        throw new GatewayTimeoutError(this.moduleName, { message: unknownError.message });
-      }
-
-      throw getCamsError(unknownError, this.moduleName);
+      throw this.toCamsError(error, unknownError);
     }
+  }
+
+  /**
+   * A request/connection timeout (ETIMEOUT) is a transient infrastructure condition, not a
+   * data/query bug — surface it as GatewayTimeoutError so callers' rate-limit/timeout retry
+   * logic (e.g. handleRateLimitRetry) can requeue with backoff instead of poisoning the
+   * message. Without this, getCamsError would wrap it as an unrecognized UnknownError. Shared
+   * by executeQuery and withTransaction so an ETIMEOUT raised at any point in either path
+   * (connect, transaction begin/commit, the request itself) gets the same classification.
+   */
+  private toCamsError(error: unknown, unknownError: Error): Error {
+    if (isMssqlTimeoutError(error)) {
+      return new GatewayTimeoutError(this.moduleName, { message: unknownError.message });
+    }
+    return getCamsError(unknownError, this.moduleName);
   }
 }
 

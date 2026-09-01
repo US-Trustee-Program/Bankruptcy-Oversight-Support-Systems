@@ -228,6 +228,21 @@ describe('AbstractMssqlClient.withTransaction', () => {
     expect(mockTransaction.commit).not.toHaveBeenCalled();
   });
 
+  test('rolls back and throws a GatewayTimeoutError when the callback hits an ETIMEOUT', async () => {
+    const { RequestError } = await import('mssql');
+    const requestError = new RequestError('Timeout: Request failed to complete in time.');
+    requestError.code = 'ETIMEOUT';
+
+    await expect(
+      client.withTransaction(context, async (_tx) => {
+        throw requestError;
+      }),
+    ).rejects.toSatisfy((error: unknown) => isGatewayTimeoutError(error));
+
+    expect(mockTransaction.rollback).toHaveBeenCalledOnce();
+    expect(mockTransaction.commit).not.toHaveBeenCalled();
+  });
+
   test('rolls back and throws a CamsError when commit fails', async () => {
     mockTransaction.commit.mockRejectedValue(new Error('commit failed'));
 
