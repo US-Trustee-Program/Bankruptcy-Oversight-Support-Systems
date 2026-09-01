@@ -5,6 +5,7 @@ import BackfillUnassignedOnUseCase from './backfill-unassigned-on';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { CaseAppointment } from '@common/cams/trustee-appointments';
 import factory from '../../factory';
+import { SENTINEL_TRUSTEE_ID } from './migrate-case-appointments-constants';
 
 function makeCaseAppointment(override: Partial<CaseAppointment> = {}): CaseAppointment {
   return {
@@ -162,7 +163,7 @@ describe('BackfillUnassignedOnUseCase', () => {
       const closed = makeCaseAppointment({ id: 'old', assignedOn: '2025-01-01' });
       const sentinel = makeCaseAppointment({
         id: 'sentinel',
-        trusteeId: '00000000-0000-0000-0000-000000000000',
+        trusteeId: SENTINEL_TRUSTEE_ID,
         assignedOn: '2025-01-10',
       });
       const real = makeCaseAppointment({
@@ -289,7 +290,11 @@ describe('BackfillUnassignedOnUseCase', () => {
         tiedB,
       ]);
 
-      expect(result).not.toBeNull();
+      // Pins the tie-break winner (mutation guard): the reduce's comparator is `candidate <
+      // current ? candidate : current`, which is false on a tie, so the first-seen candidate
+      // (tiedA) wins and is returned -- weakening `<` to `<=` would flip this to tiedB without
+      // failing any other assertion here.
+      expect(result?.id).toBe('tied-a');
       expect(warnSpy).toHaveBeenCalledWith(
         'BACKFILL-UNASSIGNED-ON-USE-CASE',
         expect.stringContaining('AMBIGUOUS SUPERSEDING APPOINTMENT'),
@@ -404,6 +409,30 @@ describe('BackfillUnassignedOnUseCase', () => {
       expect(updateSpy).not.toHaveBeenCalled();
     });
 
+    test('reports failure for a calendar-invalid but YYYY-MM-DD-shaped superseding.assignedOn', async () => {
+      // '2025-02-30' has the right shape but isn't a real date -- DateHelper.isValidDateString
+      // now round-trips the parsed date to catch this (Date.UTC silently rolls impossible
+      // components into the next month rather than rejecting them), not just checking shape.
+      const closed = { ...makeCaseAppointment(), _id: 'appt-id-1' };
+      const superseding = makeCaseAppointment({
+        id: 'appt-id-2',
+        trusteeId: 'trustee-002',
+        assignedOn: '2025-02-30',
+      });
+
+      vi.spyOn(MockMongoRepository.prototype, 'getByCaseId').mockResolvedValue([
+        closed,
+        superseding,
+      ]);
+      const updateSpy = vi.spyOn(MockMongoRepository.prototype, 'updateCaseAppointment');
+
+      const result = await BackfillUnassignedOnUseCase.correctUnassignedOn(context, [closed]);
+
+      expect(result.data?.[0].success).toBe(false);
+      expect(result.data?.[0].error).toContain('invalid assignedOn');
+      expect(updateSpy).not.toHaveBeenCalled();
+    });
+
     test('reports a batch-level error when the repo cannot be obtained', async () => {
       // Exercises correctUnassignedOn's outer try/catch (distinct from the per-item catch inside
       // the loop, covered by the tests above): a failure obtaining the repository itself, before
@@ -415,7 +444,9 @@ describe('BackfillUnassignedOnUseCase', () => {
 
       const result = await BackfillUnassignedOnUseCase.correctUnassignedOn(context, [closed]);
 
-      expect(result.error).toBeDefined();
+      // getCamsError's own .message is the generic string passed to it, not the original error's
+      // message -- the actual failure cause is preserved on .originalError (via util.inspect).
+      expect(result.error?.originalError).toContain('Repository unavailable');
       expect(result.data).toBeUndefined();
     });
 
@@ -441,7 +472,31 @@ describe('BackfillUnassignedOnUseCase', () => {
       expect(result.data?.[0].error).toBe('Write failed');
     });
 
-    test('returns error when the batch-level read throws', async () => {
+    test('records failure with a stringified error when a non-Error value is thrown', async () => {
+      // Covers the String(originalError) branch of the per-item catch, distinct from the
+      // originalError.message branch exercised by the test above.
+      const closed = { ...makeCaseAppointment(), _id: 'appt-id-1' };
+      const superseding = makeCaseAppointment({
+        id: 'appt-id-2',
+        trusteeId: 'trustee-002',
+        assignedOn: '2025-06-20',
+      });
+
+      vi.spyOn(MockMongoRepository.prototype, 'getByCaseId').mockResolvedValue([
+        closed,
+        superseding,
+      ]);
+      vi.spyOn(MockMongoRepository.prototype, 'updateCaseAppointment').mockRejectedValue(
+        'write failed as a string',
+      );
+
+      const result = await BackfillUnassignedOnUseCase.correctUnassignedOn(context, [closed]);
+
+      expect(result.data?.[0].success).toBe(false);
+      expect(result.data?.[0].error).toBe('write failed as a string');
+    });
+
+    test('records a per-item failure (not a batch-level error) when getByCaseId throws', async () => {
       const closed = { ...makeCaseAppointment(), _id: 'appt-id-1' };
 
       vi.spyOn(MockMongoRepository.prototype, 'getByCaseId').mockRejectedValue(
@@ -557,6 +612,12 @@ describe('BackfillUnassignedOnUseCase', () => {
       const result = await BackfillUnassignedOnUseCase.processBackfillPage(context, null, 100);
 
       expect(result.status).toBe('error');
+      if (result.status !== 'error') return;
+      // Confirms the actual correction failure is what gets forwarded, not a placeholder --
+      // getCamsError's .message here is the generic string correctUnassignedOn passes it, so the
+      // real cause is on .originalError (see the equivalent assertion in correctUnassignedOn's
+      // own "reports a batch-level error" test above).
+      expect(result.error.originalError).toContain('Repository unavailable');
     });
 
     test('should return ok with failedResults when some appointments fail to update', async () => {

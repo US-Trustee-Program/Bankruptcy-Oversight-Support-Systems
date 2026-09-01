@@ -46,9 +46,19 @@ describe('date helper tests', () => {
     ['empty string', '', false],
     ['bogus string', 'bogus', false],
     ['US date format', '01/01/2024', false],
+    // Calendar-invalid but YYYY-MM-DD-shaped -- Date.UTC silently normalizes out-of-range
+    // components (rolls over into the next month) rather than rejecting them, so these must be
+    // caught by round-tripping the parsed date back to a string, not by shape alone.
+    ['nonexistent day (Feb 30)', '2025-02-30', false],
+    ['nonexistent month (13)', '2025-13-01', false],
+    ['day zero', '2025-01-00', false],
+    ['nonexistent day in non-leap Feb 29', '2025-02-29', false],
   ] as const;
 
-  const validDateStrings = [['ISO date format', '2024-01-01', true]] as const;
+  const validDateStrings = [
+    ['ISO date format', '2024-01-01', true],
+    ['leap day in a leap year', '2024-02-29', true],
+  ] as const;
 
   test.each([...invalidDateStrings, ...validDateStrings])(
     'should filter date strings - %s should return %s',

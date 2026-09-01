@@ -21,10 +21,19 @@ function sortDatesReverse(dateA: Date | string, dateB: Date | string): number {
   return sortDates(dateA, dateB) * -1;
 }
 
+// Checks calendar validity, not just YYYY-MM-DD shape -- Date.UTC normalizes out-of-range
+// components instead of rejecting them (e.g. new Date(Date.UTC(2025, 1, 30)) silently rolls over
+// to March 2nd), so a syntactically-shaped but impossible date like '2025-02-30' or '2025-13-01'
+// would otherwise pass. Re-deriving the ISO date from the parsed components and comparing it back
+// to the original prefix catches exactly this: a real calendar date round-trips unchanged, an
+// impossible one does not.
 function isValidDateString(dateString: string | null | undefined) {
   if (!dateString) return false;
   const evaluation = dateString.match(/^[\d]{4}-[\d]{2}-[\d]{2}/);
-  return !!evaluation && evaluation.length === 1;
+  if (!evaluation || evaluation.length !== 1) return false;
+  const [year, month, day] = evaluation[0].split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return getIsoDate(date) === evaluation[0];
 }
 
 function getIsoDate(date: Date) {

@@ -187,9 +187,17 @@ async function correctUnassignedOn(
         // DateHelper.subtractDays silently returns its input unchanged on an invalid date string
         // rather than throwing — since this migration explicitly targets historically-dirty data,
         // an unvalidated malformed assignedOn here would get written straight into unassignedOn
-        // via updateCaseAppointment below. Throw loudly instead, matching the convention
-        // applyResolvedTrustee/writeSurrogateAppointment use for a missing/unparseable date.
+        // via updateCaseAppointment below. Log then throw, matching applyResolvedTrustee/
+        // writeSurrogateAppointment's convention (sync-trustee-case-appointments.ts) of logging a
+        // distinctly-tagged error at the point of detection rather than only surfacing later via
+        // the generic per-item catch/DLQ path.
         if (!DateHelper.isValidDateString(superseding.assignedOn)) {
+          context.logger.error(
+            MODULE_NAME,
+            `TRUSTEE APPOINTMENT DATA INTEGRITY ERROR: case ${appointment.caseId} — superseding ` +
+              `appointment ${superseding.id} has an invalid assignedOn (${superseding.assignedOn}). ` +
+              `Refusing to derive unassignedOn from it.`,
+          );
           throw new CamsError(MODULE_NAME, {
             message: `Case ${appointment.caseId}: superseding appointment ${superseding.id} has an invalid assignedOn (${superseding.assignedOn}), cannot safely derive unassignedOn.`,
           });
