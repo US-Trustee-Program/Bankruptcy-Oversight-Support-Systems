@@ -66,24 +66,22 @@ jobs:
           GHA_ENVIRONMENT: ${{ inputs.environment }}
         run: |
           set -euo pipefail
+          # shellcheck source=ops/scripts/pipeline/_kv-to-env.sh
+          source ops/scripts/pipeline/_kv-to-env.sh
           if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
             KV="kv-ustp-cams"
           else
             KV="kv-ustp-cams-dev"
           fi
-          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-APP-RG --query value -o tsv)
-          echo "::add-mask::${_val}"
           # CAMS-760, Option E / Slice 2: branches deploy into the SAME stable
           # app RG main uses, distinguished by per-branch-unique resource
           # names, rather than a per-branch hash-suffixed RG (matches
           # reusable-deploy.yml's derivation — keep both in lockstep).
-          echo "AZ_APP_RG=${_val}" >> "$GITHUB_ENV"
-          _val=$(az keyvault secret show --vault-name "$KV" --name SLOT-NAME --query value -o tsv 2>/dev/null || true)
-          if [[ -n "${_val}" ]]; then echo "::add-mask::${_val}"; fi
-          echo "SLOT_NAME=${_val}" >> "$GITHUB_ENV"
-          _val=$(az keyvault secret show --vault-name "$KV" --name CAMS-LOGIN-PROVIDER --query value -o tsv)
-          echo "::add-mask::${_val}"
-          echo "CAMS_LOGIN_PROVIDER=${_val}" >> "$GITHUB_ENV"
+          kv_to_env AZ_APP_RG "$KV" AZ-APP-RG
+          # Optional: absent outside slot-deploying environments, and an empty
+          # SLOT_NAME is a meaningful value downstream.
+          kv_to_env SLOT_NAME "$KV" SLOT-NAME --optional
+          kv_to_env CAMS_LOGIN_PROVIDER "$KV" CAMS-LOGIN-PROVIDER
 
       - name: Use Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0

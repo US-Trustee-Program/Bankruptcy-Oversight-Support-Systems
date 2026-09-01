@@ -68,3 +68,21 @@ repos:
         language: script
         files: '^\.github/workflows/(continuous-deployment|sub-deploy|reusable-deploy)\.yml$'
         pass_filenames: false
+      - id: guard-source-requires-checkout
+        name: Guard that sourcing a pipeline script implies a prior checkout (CAMS-760)
+        entry: .pre-commit-hooks/guard-source-requires-checkout.sh
+        language: script
+        # Scans every workflow on any workflow change: a job that sources the
+        # helper can be added to a file this guard has already cleared.
+        files: '^\.github/workflows/.*\.ya?ml$'
+        pass_filenames: false
+        verbose: true
+      - id: kv-to-env-tests
+        name: Test _kv-to-env.sh against a mocked az CLI (CAMS-760)
+        entry: ops/scripts/pipeline/tests/kv-to-env-test.sh
+        language: script
+        # Runs on a change to the helper or to its own tests. Uses stub CLIs on
+        # PATH -- no network, no Azure, no az login required.
+        files: '^ops/scripts/pipeline/(_kv-to-env\.sh|tests/kv-to-env-test\.sh)$'
+        pass_filenames: false
+        verbose: true
