@@ -1420,10 +1420,11 @@ export async function matchTrusteeByName(
     };
   }
 
-  // Third-pass fallback: search by just the first token of DXTR's lastName (see
-  // findLastNameTokenMatches). Always surfaced as 'ambiguous', even for a single candidate, so it
-  // routes through resolveNameCollisionByScoring's scoring and appointment-match gate rather than
-  // being trusted outright.
+  // Third-pass fallback: search by DXTR's lastName-token candidates - the first token, plus the
+  // first token of the last hyphen segment for a compound surname (see
+  // lastNameTokenSearchCandidates/findLastNameTokenMatches). Always surfaced as 'ambiguous', even
+  // for a single candidate, so it routes through resolveNameCollisionByScoring's scoring and
+  // appointment-match gate rather than being trusted outright.
   const lastNameTokenMatches = await findLastNameTokenMatches(context, dxtrTrustee);
 
   if (lastNameTokenMatches.length > 0) {
@@ -1432,7 +1433,7 @@ export async function matchTrusteeByName(
       .join(', ');
     context.logger.info(
       MODULE_NAME,
-      `CAMS trustee(s) found matching "${normalized}" by first-token lastName search: ${candidates}.`,
+      `CAMS trustee(s) found matching "${normalized}" by lastName-token search: ${candidates}.`,
     );
     return { kind: 'ambiguous', matchCandidates: toUnscoredCandidates(lastNameTokenMatches) };
   }
