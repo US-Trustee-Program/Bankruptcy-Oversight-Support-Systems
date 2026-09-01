@@ -556,6 +556,75 @@ describe('matchTrusteeByName', () => {
       expect(scoredSpy).toHaveBeenCalledTimes(1); // only the tier-2 full-name search, no second call
       expect(result).toEqual({ kind: 'no-match' });
     });
+
+    // Regression coverage: a hyphenated compound lastName where DXTR carries both a maiden and
+    // married surname ("Casciato-Northrup") but CAMS only has the second half ("Northrup") - the
+    // real-world pattern found auditing a 2026-09-01 staging trustee-match-verification export
+    // (Janet S Casciato-Northrup, resolved in CAMS as "Janet S. Northrup"). Searching only the
+    // first hyphen segment ("casciato") finds nothing, so the second segment must also be tried.
+    test('should also search the last hyphen segment of a hyphenated lastName', async () => {
+      const trustee = MockData.getTrustee({ lastName: 'Northrup', name: 'Janet S. Northrup' });
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([]);
+      const scoredSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored')
+        .mockResolvedValueOnce([]) // tier-2 full-name search
+        .mockResolvedValueOnce([]) // first-token lastName search: "casciato"
+        .mockResolvedValueOnce([trustee]); // last-token lastName search: "northrup"
+
+      const result = await matchTrusteeByName(
+        context,
+        dxtrNamed('Janet S Casciato-Northrup', {
+          firstName: 'Janet',
+          middleName: 'S',
+          lastName: 'Casciato-Northrup',
+        }),
+      );
+
+      expect(scoredSpy).toHaveBeenNthCalledWith(2, 'casciato');
+      expect(scoredSpy).toHaveBeenNthCalledWith(3, 'northrup');
+      expect(result).toEqual({
+        kind: 'ambiguous',
+        matchCandidates: [expect.objectContaining({ trusteeId: trustee.trusteeId })],
+      });
+    });
+
+    test('should not issue a redundant last-hyphen-segment search when the lastName has no hyphen', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([]);
+      const scoredSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored')
+        .mockResolvedValueOnce([]) // tier-2 full-name search
+        .mockResolvedValueOnce([]); // first-token lastName search
+
+      const result = await matchTrusteeByName(
+        context,
+        dxtrNamed('Richard Marshack (TR)', { firstName: 'Richard', lastName: 'Marshack (TR)' }),
+      );
+
+      expect(scoredSpy).toHaveBeenCalledTimes(2);
+      expect(result).toEqual({ kind: 'no-match' });
+    });
+
+    test('should dedupe a candidate found by both hyphen segments', async () => {
+      const trustee = MockData.getTrustee({
+        lastName: 'Garcia-Miranda',
+        name: 'Ana Garcia-Miranda',
+      });
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([]);
+      vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored')
+        .mockResolvedValueOnce([]) // tier-2 full-name search
+        .mockResolvedValueOnce([trustee]) // first-token lastName search: "garcia"
+        .mockResolvedValueOnce([trustee]); // last-token lastName search: "miranda"
+
+      const result = await matchTrusteeByName(
+        context,
+        dxtrNamed('Ana Garcia-Miranda', { firstName: 'Ana', lastName: 'Garcia-Miranda' }),
+      );
+
+      expect(result).toEqual({
+        kind: 'ambiguous',
+        matchCandidates: [expect.objectContaining({ trusteeId: trustee.trusteeId })],
+      });
+    });
   });
 });
 
@@ -910,6 +979,18 @@ describe('calculateAddressScore', () => {
       '123 Main Street',
       100,
     ],
+    [
+      'Pkwy and its expanded Parkway form are treated as an exact address-line match',
+      '1052 Highland Colony Pkwy',
+      '1052 Highland Colony Parkway',
+      100,
+    ],
+    [
+      'PO Box and P.O. Box are treated as an exact address-line match',
+      'PO Box 51067',
+      'P.O. Box 51067',
+      100,
+    ],
   ])('should return correct score when %s', (_desc, dxtrAddress1, camsAddress1, expected) => {
     const dxtrAddress: LegacyAddress = {
       cityStateZipCountry: 'New York, NY 10001',
@@ -1194,6 +1275,7 @@ describe('normalizeAddressLine', () => {
     ['Apt', 'Apartment'],
     ['Fl', 'Floor'],
     ['Bldg', 'Building'],
+    ['Pkwy', 'Parkway'],
   ])('should expand street/unit abbreviation %s to %s', (abbreviation, expanded) => {
     const result = normalizeAddressLine(`123 Main ${abbreviation}`);
     expect(result).toBe(`123 main ${expanded.toLowerCase()}`);
@@ -1234,6 +1316,14 @@ describe('normalizeAddressLine', () => {
 
   test('should collapse repeated whitespace', () => {
     expect(normalizeAddressLine('123   Main    Street')).toBe('123 main street');
+  });
+
+  test.each([
+    ['P.O. Box 51067', 'po box 51067'],
+    ['PO Box 51067', 'po box 51067'],
+    ['P.O.Box 51067', 'po box 51067'],
+  ])('should normalize %s to the same PO box form', (line, expected) => {
+    expect(normalizeAddressLine(line)).toBe(expected);
   });
 
   test('should return an empty string for undefined input', () => {

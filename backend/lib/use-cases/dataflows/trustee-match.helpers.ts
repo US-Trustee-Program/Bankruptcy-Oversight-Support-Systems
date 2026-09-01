@@ -211,6 +211,7 @@ const ADDRESS_ABBREVIATIONS: Record<string, string> = {
   apt: 'apartment',
   fl: 'floor',
   bldg: 'building',
+  pkwy: 'parkway',
   n: 'north',
   s: 'south',
   e: 'east',
@@ -289,12 +290,17 @@ function calculateNumericTokenScore(
  *
  * Example: "123 Main St., Suite #4" -> "123 main street suite 4".
  * Example: "123 Main St. #4" -> "123 main street suite 4".
+ * Example: "P.O. Box 51067" -> "po box 51067" (same as "PO Box 51067").
  */
 export function normalizeAddressLine(line?: string): string {
   if (!line) return '';
 
   const withoutPunctuation = line
     .toLowerCase()
+    // "P.O." has to collapse to "po" before the generic punctuation strip below runs, or its
+    // periods leave "p" and "o" as separate 1-character tokens instead of one token equal to
+    // "PO" Box's own "po" - the same PO box would otherwise never bigram-match itself.
+    .replace(/\bp\.?\s*o\.?\b/g, 'po ')
     .replaceAll('#', ' # ')
     .replace(/[.,]/g, ' ')
     .replace(/\s+/g, ' ')
@@ -1300,23 +1306,56 @@ function toUnscoredCandidates(trustees: Trustee[]): CandidateScore[] {
 }
 
 /**
- * Searches CAMS trustees by just the first token of the DXTR trustee's lastName (see
- * firstLastNameToken). Does not narrow results by court appointment - district/division evidence
- * is left to the caller's resolveNameCollisionByScoring, which scores it (0/50/100, see
- * calculateDistrictDivisionScore) rather than gating candidate discovery on it.
- * Returns raw, unscored candidates; the caller's resolveNameCollisionByScoring performs the
- * address/phone/email/district/chapter/name scoring and appointment-match discrimination.
- * Requires a lastName on the DXTR side - there's nothing to search by without one.
+ * Reduces a raw lastName field to the lastName-token search candidates for discovery: the first
+ * token (see firstLastNameToken) plus, when the lastName contains a hyphen, the first token of
+ * its last hyphen segment. A hyphenated compound surname carries a maiden/married or two-family
+ * name across DXTR and CAMS inconsistently ("Casciato-Northrup" in DXTR vs just "Northrup" in
+ * CAMS) - unlike calculateNameScore's use of firstLastNameToken (which compares two names already
+ * identified as candidates), this function's job is candidate DISCOVERY, so trying only the first
+ * segment can miss the person entirely when CAMS only carries the second half. Returns 1 token
+ * for a non-hyphenated lastName (no redundant second search), deduped so a lastName that is
+ * itself unhyphenated but whose hyphen segment coincides doesn't double up.
+ */
+function lastNameTokenSearchCandidates(lastName?: string): string[] {
+  const firstToken = firstLastNameToken(lastName);
+  if (!firstToken) return [];
+
+  const hyphenSegments = (lastName ?? '').split('-');
+  if (hyphenSegments.length < 2) return [firstToken];
+
+  const lastSegmentToken = firstLastNameToken(hyphenSegments.at(-1));
+  const tokens = [firstToken];
+  if (lastSegmentToken && lastSegmentToken !== firstToken) tokens.push(lastSegmentToken);
+  return tokens;
+}
+
+/**
+ * Searches CAMS trustees by lastName-token candidates (see lastNameTokenSearchCandidates) derived
+ * from the DXTR trustee's lastName. Does not narrow results by court appointment -
+ * district/division evidence is left to the caller's resolveNameCollisionByScoring, which scores
+ * it (0/50/100, see calculateDistrictDivisionScore) rather than gating candidate discovery on it.
+ * Returns raw, unscored, deduped-by-trusteeId candidates; the caller's
+ * resolveNameCollisionByScoring performs the address/phone/email/district/chapter/name scoring
+ * and appointment-match discrimination. Requires a lastName on the DXTR side - there's nothing to
+ * search by without one.
  */
 async function findLastNameTokenMatches(
   context: ApplicationContext,
   dxtrTrustee: DxtrTrusteeParty,
 ): Promise<Trustee[]> {
-  const token = firstLastNameToken(dxtrTrustee.lastName);
-  if (!token) return [];
+  const tokens = lastNameTokenSearchCandidates(dxtrTrustee.lastName);
+  if (tokens.length === 0) return [];
 
   const trusteesRepo = factory.getTrusteesRepository(context);
-  return trusteesRepo.searchTrusteesByNameScored(token);
+  const matchesByToken = await Promise.all(
+    tokens.map((token) => trusteesRepo.searchTrusteesByNameScored(token)),
+  );
+
+  const dedupedById = new Map<string, Trustee>();
+  for (const trustee of matchesByToken.flat()) {
+    dedupedById.set(trustee.trusteeId, trustee);
+  }
+  return Array.from(dedupedById.values());
 }
 
 /**
