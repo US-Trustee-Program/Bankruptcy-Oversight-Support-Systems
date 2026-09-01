@@ -63,3 +63,17 @@ resource trusteeDueDateMetricsWorkbook 'Microsoft.Insights/workbooks@2023-06-01'
     serializedData: loadTextContent('trustee-due-date-metrics.json')
   }
 }
+
+resource notificationPipelineWorkbook 'Microsoft.Insights/workbooks@2023-06-01' = {
+  name: guid('trustee-notification-pipeline-workbook', resourceGroup().id, stackName)
+  location: location
+  tags: tags
+  kind: 'shared'
+  properties: {
+    displayName: 'Trustee Notification Pipeline'
+    description: 'Visibility into the trustee-change-notification / ACS bounce-poll pipeline: send volume, bounce-poll job health, and per-email bounce detail.'
+    category: 'workbook'
+    sourceId: appInsightsResourceId
+    serializedData: loadTextContent('trustee-notification-pipeline.json')
+  }
+}

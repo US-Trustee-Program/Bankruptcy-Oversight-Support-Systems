@@ -1,0 +1,104 @@
+{
+  "version": "Notebook/1.0",
+  "items": [
+    {
+      "type": 1,
+      "content": {
+        "json": "# Trustee Notification Pipeline\n\nVisibility into the trustee-change-notification / ACS bounce-poll pipeline: send volume, bounce-poll job health, and per-email bounce detail."
+      },
+      "name": "header"
+    },
+    {
+      "type": 9,
+      "content": {
+        "version": "KqlParameterItem/1.0",
+        "parameters": [
+          {
+            "id": "time-range",
+            "version": "KqlParameterItem/1.0",
+            "name": "TimeRange",
+            "type": 4,
+            "isRequired": true,
+            "typeSettings": {
+              "selectableValues": [
+                { "durationMs": 3600000 },
+                { "durationMs": 14400000 },
+                { "durationMs": 43200000 },
+                { "durationMs": 86400000 },
+                { "durationMs": 259200000 },
+                { "durationMs": 604800000 },
+                { "durationMs": 2592000000 }
+              ],
+              "allowCustom": true
+            },
+            "value": { "durationMs": 86400000 }
+          }
+        ]
+      },
+      "name": "parameters"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "## Poll Health Status\n\nOne row per 15-minute bounce-poll tick (`POLL-NOTIFICATION-BOUNCES`). Every tick is labeled into exactly one state: `Didn't run`, `Ran, query failed`, `Ran, zero bounces`, `Ran, partial reconstruction failure`, or `Ran, bounces reconstructed`. The underlying error text is shown verbatim for any failed tick -- never just a status label."
+      },
+      "name": "poll-health-header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let binSize = 15m;\nlet rangeStart = bin({TimeRange:start}, binSize);\nlet rangeEnd = bin({TimeRange:end}, binSize);\nlet expectedTicks = range TimeBin from rangeStart to rangeEnd step binSize;\nlet actualRuns = customEvents\n| where name == \"DataflowHandlerComplete\"\n| where tostring(customDimensions.moduleName) == \"POLL-NOTIFICATION-BOUNCES\"\n| extend TimeBin = bin(timestamp, binSize),\n         success = tostring(customDimensions.success),\n         errorText = tostring(customDimensions.error),\n         hasBouncesFound = isnotempty(customDimensions.bouncesFound),\n         bouncesFound = toint(customDimensions.bouncesFound),\n         bouncesExpired = toint(customDimensions.bouncesExpired),\n         documentsFailed = toint(customMeasurements.documentsFailed)\n| summarize arg_max(timestamp, success, errorText, hasBouncesFound, bouncesFound, bouncesExpired, documentsFailed) by TimeBin;\nexpectedTicks\n| join kind=leftouter (actualRuns) on TimeBin\n| extend Status = case(\n    isnull(timestamp), \"Didn't run\",\n    success == \"false\" and not(hasBouncesFound), \"Ran, query failed\",\n    documentsFailed > 0, \"Ran, partial reconstruction failure\",\n    bouncesFound == 0, \"Ran, zero bounces\",\n    \"Ran, bounces reconstructed\")\n| project TimeBin, Status, errorText, bouncesFound, bouncesExpired, documentsFailed\n| order by TimeBin desc",
+        "size": 0,
+        "title": "Poll Health by 15-Minute Tick",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "visualization": "table",
+        "gridSettings": {
+          "formatters": [
+            {
+              "columnMatch": "Status",
+              "formatter": 18,
+              "formatOptions": {
+                "thresholdsOptions": "icons",
+                "thresholdsGrid": [
+                  {
+                    "operator": "==",
+                    "thresholdValue": "Didn't run",
+                    "representation": "4",
+                    "text": "{0}"
+                  },
+                  {
+                    "operator": "==",
+                    "thresholdValue": "Ran, query failed",
+                    "representation": "4",
+                    "text": "{0}"
+                  },
+                  {
+                    "operator": "==",
+                    "thresholdValue": "Ran, partial reconstruction failure",
+                    "representation": "2",
+                    "text": "{0}"
+                  },
+                  { "operator": "Default", "representation": "success", "text": "{0}" }
+                ]
+              }
+            }
+          ],
+          "labelSettings": [
+            { "columnId": "TimeBin", "label": "Tick" },
+            { "columnId": "Status", "label": "Status" },
+            { "columnId": "errorText", "label": "Error" },
+            { "columnId": "bouncesFound", "label": "Bounces Found" },
+            { "columnId": "bouncesExpired", "label": "Bounces Expired (unrecoverable)" },
+            { "columnId": "documentsFailed", "label": "Reconstruction Failures" }
+          ]
+        }
+      },
+      "name": "poll-health-table"
+    }
+  ],
+  "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json",
+  "styleSettings": {},
+  "fallbackResourceIds": []
+}
