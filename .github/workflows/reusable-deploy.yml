@@ -41,15 +41,7 @@ permissions:
 jobs:
   deploy-azure-infrastructure:
     runs-on: ubuntu-latest
-    # TEMPORARY (CAMS-760): this branch alone uses deploy-branch-narrow-test
-    # instead of deploy-branch, since deploy-branch's shared identity had to
-    # keep its broad subscription-scope grant to avoid breaking other
-    # in-flight branches. Remove this branch-name gate once PR #2803 merges
-    # to main and deploy-branch itself can be safely narrowed for everyone.
-    environment: >-
-      ${{ inputs.ghaEnvironment == 'Main-Gov' && 'deploy-main' ||
-      (github.ref_name == 'CAMS-760-branch-rbac-least-privilege' && 'deploy-branch-narrow-test') ||
-      'deploy-branch' }}
+    environment: ${{ inputs.ghaEnvironment == 'Main-Gov' && 'deploy-main' || 'deploy-branch' }}
     # No concurrency group here: this reusable workflow's only caller
     # (sub-deploy.yml, itself only called by continuous-deployment.yml's
     # `deploy` job) holds the cams-branch-<hash> group for the entire
