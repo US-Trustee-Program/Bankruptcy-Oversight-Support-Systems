@@ -96,6 +96,34 @@
         }
       },
       "name": "poll-health-table"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "## Sent Volume & Bounce Rate\n\nHow many trustee-change notification attempts were made (successful sends and synchronous ACS rejections that still received a messageId, e.g. `Suppressed`), and what fraction of those were later found in ACS's delivery-status log as failed/bounced/quarantined/filtered-spam/suppressed."
+      },
+      "name": "sent-bounce-rate-header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let attempted = app('{{API_APP_INSIGHTS_ID}}').traces\n| where message has \"Email sent successfully\" or message has \"Email service rejected the message with status\"\n| extend jsonStart = indexof(message, \"{\")\n| extend data = iif(jsonStart >= 0, parse_json(substring(message, jsonStart)), dynamic(null))\n| extend messageId = tostring(coalesce(data.messageId, data.id)), trusteeId = tostring(data.trusteeId)\n| where isnotempty(messageId) and isnotempty(trusteeId)\n| summarize by messageId;\nlet bounced = workspace('{{ANALYTICS_WORKSPACE_ID}}').ACSEmailStatusUpdateOperational\n| where DeliveryStatus in ('Failed', 'Bounced', 'Quarantined', 'FilteredSpam', 'Suppressed')\n| summarize by CorrelationId;\nattempted\n| join kind=leftouter (bounced) on $left.messageId == $right.CorrelationId\n| summarize AttemptedCount = dcount(messageId), BouncedCount = dcountif(messageId, isnotempty(CorrelationId))\n| extend BounceRatePercent = round(100.0 * BouncedCount / AttemptedCount, 1)",
+        "size": 0,
+        "title": "Attempted Notifications & Bounce Rate",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "visualization": "table",
+        "crossComponentResources": ["{{API_APP_INSIGHTS_ID}}", "{{ANALYTICS_WORKSPACE_ID}}"],
+        "gridSettings": {
+          "labelSettings": [
+            { "columnId": "AttemptedCount", "label": "Attempted" },
+            { "columnId": "BouncedCount", "label": "Bounced" },
+            { "columnId": "BounceRatePercent", "label": "Bounce Rate (%)" }
+          ]
+        }
+      },
+      "name": "sent-bounce-rate-table"
     }
   ],
   "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json",
