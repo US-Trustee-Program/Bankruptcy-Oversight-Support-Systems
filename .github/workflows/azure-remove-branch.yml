@@ -29,6 +29,7 @@ jobs:
           tenant-id: ${{ secrets.AZ_TENANT_ID }}
           subscription-id: ${{ secrets.AZ_SUBSCRIPTION_ID }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: List existing tagged Azure branch resources
         env:
           # This workflow only ever tears down branch/dev deployments (never
@@ -386,6 +387,7 @@ jobs:
           tenant-id: ${{ secrets.AZ_TENANT_ID }}
           subscription-id: ${{ secrets.AZ_SUBSCRIPTION_ID }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Fetch config from Key Vault
         env:
           GHA_ENVIRONMENT: 'Develop'
@@ -409,7 +411,6 @@ jobs:
           kv_to_env AZ_ANALYTICS_RG "$KV" AZ-ANALYTICS-RG
 
           kv_to_env AZURE_RG "$KV" AZURE-RG
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Delete Branch Resources
         uses: azure/cli@9eb25b8360668fb0ecbafa808d40e2197b2f5f52 # v3.0.0
         id: deleteBranchResources

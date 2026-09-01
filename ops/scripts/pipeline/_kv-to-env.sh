@@ -28,6 +28,13 @@
 # for settings an environment may simply not have opted into. Without it, a
 # missing secret fails the step, which is the right default for a credential.
 #
+# --optional covers ABSENCE ONLY, where absence means the vault answered
+# SecretNotFound (see _kv_stderr_means_absent) or returned an empty value. Any
+# other failure -- RBAC, token expiry, throttling, vault firewall, a
+# misspelled vault, or a non-zero exit with no diagnostic at all -- is fatal
+# either way: a default standing in for a transient fault turns a retryable
+# error into a successful deploy of the wrong configuration.
+#
 # The value is masked by kv_get; kv_write_env writes without re-masking.
 #
 # Returns 0 on success. Echoes nothing to stdout: the value goes to
@@ -40,6 +47,51 @@ function kv_to_env() {
     local kvToEnvValue=''
     kv_get kvToEnvValue "${@:2}" || return 1
     kv_write_env "${envName}" "${kvToEnvValue}"
+}
+
+# Classifies an `az keyvault secret show` failure: true only when the vault
+# answered and its answer was "no such secret".
+#
+#   _kv_stderr_means_absent SECRET_NAME STDERR_TEXT
+#
+# Same grep-the-captured-stderr idiom as delete_vnet_link_if_exists in
+# ops/scripts/utility/az-delete-branch-resources.sh, and for the same reason:
+# one specific error code is a legitimate "there is nothing there", every other
+# failure is a fault that must stay loud.
+#
+# SecretNotFound is the ONLY code treated as absence:
+#
+#   * SecretNotFound -- the 404 the data plane returns for a name that is not
+#     in the vault. A soft-deleted secret also 404s on this path (the
+#     recoverable-object codes only appear when SETTING a name that is pending
+#     purge), so deleted-but-recoverable is covered by this same code.
+#   * SecretDisabled is deliberately NOT absence. The secret exists; a human
+#     turned it off, and disabling is how a compromised credential gets
+#     revoked in a hurry. Quietly deploying a default over a value someone
+#     just revoked is the opposite of what they asked for.
+#   * A missing or misspelled VAULT (VaultNotFound, ResourceNotFound, or a bare
+#     DNS resolution failure) is NOT absence either -- it is a misconfigured
+#     pipeline, and the secret's real value may well exist in the vault that
+#     was meant. This is why the broad "ResourceNotFound" match used for the
+#     DNS-zone cleanup is too coarse here and only the secret-scoped code is
+#     matched.
+#   * Forbidden / ForbiddenByRbac stay fatal. Key Vault's data plane returns
+#     403 rather than a decoy 404 when the identity lacks the role, so a 404 is
+#     genuinely about existence and not about permission.
+function _kv_stderr_means_absent() {
+    local _kv_absName=$1 _kv_absText=$2
+    # az echoes the requested name back inside its diagnostic, so a secret
+    # LITERALLY named e.g. "SecretNotFound" could otherwise make an unrelated
+    # 403 read as absence -- the one direction that must never misfire, since
+    # it is the one that substitutes a default. Stripping the name first makes
+    # the classification depend on az's words alone. Key Vault names are
+    # [0-9a-zA-Z-] only, so there are no glob metacharacters to worry about in
+    # the pattern; anything stranger can only strip MORE and therefore only
+    # fail closed.
+    if [[ -n "${_kv_absName}" ]]; then
+        _kv_absText="${_kv_absText//${_kv_absName}/}"
+    fi
+    grep -qi 'SecretNotFound' <<<"${_kv_absText}"
 }
 
 # Fetches a secret, masks it, and assigns it to the shell variable named by
@@ -73,21 +125,79 @@ function kv_get() {
         _kv_default="${5:-}"
     fi
 
-    local _kv_val _kv_rc
+    local _kv_val _kv_rc _kv_stderrFile _kv_stderrText
     # Captured as a plain assignment, not inline in a test: a real CLI failure
     # (expired token, throttling) must surface, not be read as "no value".
+    #
+    # stderr goes to a FILE, not /dev/null: ForbiddenByRbac, an expired AAD
+    # token and 429 throttling are distinct causes with distinct fixes, and a
+    # blanket "not found in vault" sends whoever is on call to the wrong
+    # problem -- the secret exists, the identity's RBAC does not. Same
+    # stderrFile idiom as ops/scripts/utility/az-delete-branch-resources.sh.
+    _kv_stderrFile=$(mktemp)
     set +e
-    _kv_val=$(az keyvault secret show --vault-name "${_kv_vault}" --name "${_kv_secretName}" --query value -o tsv 2>/dev/null)
+    _kv_val=$(az keyvault secret show --vault-name "${_kv_vault}" --name "${_kv_secretName}" --query value -o tsv 2>"${_kv_stderrFile}")
     _kv_rc=$?
     set -e
+    _kv_stderrText=$(cat "${_kv_stderrFile}")
+    rm -f "${_kv_stderrFile}"
 
-    if [[ ${_kv_rc} -ne 0 || -z "${_kv_val}" ]]; then
-        if [[ "${_kv_optional}" == "true" ]]; then
-            _kv_val="${_kv_default}"
-        else
-            echo "ERROR: required secret '${_kv_secretName}' not found in vault '${_kv_vault}'." >&2
+    # A non-zero rc and an empty value are DISTINCT outcomes and are reported
+    # as such. Conflating them is what let a transient Key Vault fault read as
+    # "this environment did not opt in": under --optional the step then
+    # deployed the DEFAULT and reported success -- e.g. a throttled
+    # AZ_FUNCTIONS_LOCATION silently placing Function Apps, plans and the VNet
+    # in the wrong region.
+    if [[ ${_kv_rc} -ne 0 ]]; then
+        # Nothing on stderr at all. Real `az` always says why it failed --
+        # including for a missing secret -- so this shape is not a plain
+        # absence, it is a fetch whose cause was lost (az killed mid-flight, a
+        # wrapper swallowing stderr). Absence has a known signature; anything
+        # without that signature has not been SHOWN to be absence, so it is
+        # fatal in both modes rather than defaulted past. Failing closed here
+        # costs nothing in practice: az does not produce this in production, so
+        # if it ever fires something is genuinely broken.
+        if [[ -z "${_kv_stderrText}" ]]; then
+            echo "ERROR: failed to read secret '${_kv_secretName}' from vault '${_kv_vault}': az exited ${_kv_rc} with nothing on stderr. Cause unattributable, so absence cannot be told from a fault and no default is applied (even under --optional)." >&2
             return 1
         fi
+        if _kv_stderr_means_absent "${_kv_secretName}" "${_kv_stderrText}"; then
+            # The vault answered, and its answer is that the secret is not
+            # there. THIS is the case --optional exists for.
+            if [[ "${_kv_optional}" != "true" ]]; then
+                echo "ERROR: required secret '${_kv_secretName}' does not exist in vault '${_kv_vault}' (az exited ${_kv_rc}: ${_kv_stderrText})." >&2
+                return 1
+            fi
+            # Says a default was substituted, but never what it was. Somebody
+            # reading the log later has to be able to see WHY a Function App
+            # landed in the default region; the value itself has not reached
+            # kv_mask yet, so echoing it would put it in the log in clear.
+            echo "Note: secret '${_kv_secretName}' does not exist in vault '${_kv_vault}'; using the --optional default." >&2
+        else
+            # The CLI failed for some OTHER reason -- RBAC, expired token,
+            # throttling, vault firewall, not logged in. Fatal even under
+            # --optional: a default must only ever stand in for a value the
+            # vault genuinely does not hold, and a default standing in for a
+            # transient fault turns a retryable error into a successful deploy
+            # of the wrong configuration. The CLI's own text is echoed verbatim
+            # because "not found in vault" for what was really a 403 sends
+            # whoever is on call to the wrong problem.
+            local _kv_optionalNote=''
+            if [[ "${_kv_optional}" == "true" ]]; then
+                _kv_optionalNote=' --optional covers absence only, so its default was NOT applied.'
+            fi
+            echo "ERROR: failed to read secret '${_kv_secretName}' from vault '${_kv_vault}': az exited ${_kv_rc}: ${_kv_stderrText}${_kv_optionalNote}" >&2
+            return 1
+        fi
+        _kv_val="${_kv_default}"
+    elif [[ -z "${_kv_val}" ]]; then
+        # rc 0 and empty: the fetch worked and the value really is empty. This
+        # is the genuine "not set" case --optional exists for.
+        if [[ "${_kv_optional}" != "true" ]]; then
+            echo "ERROR: required secret '${_kv_secretName}' is present but empty in vault '${_kv_vault}'." >&2
+            return 1
+        fi
+        _kv_val="${_kv_default}"
     fi
 
     kv_mask "${_kv_val}"
@@ -112,6 +222,15 @@ function kv_mask() {
     while IFS= read -r line; do
         [[ -n "${line}" ]] && line="${line//\%/%25}" && line="${line//$'\r'/%0D}" && line="${line//$'\n'/%0A}" && echo "::add-mask::${line}"
     done <<<"${1}"
+    # Skipping a line is a no-op, not an error, so the caller must not inherit
+    # its status. Without this the `&&` chain's status on the LAST line becomes
+    # the loop body's, the loop's, and then the function's -- so kv_mask "" and
+    # any value ending in a blank line returned 1. kv_get calls kv_mask
+    # unconditionally, so under `set -euo pipefail` (every real `run:` block)
+    # that killed the step outright with no message and no output variable.
+    # Invisible through kv_to_env, which shields it with `|| return 1`, but
+    # live at the bare `kv_get` call sites.
+    return 0
 }
 
 # Writes a masked value to GITHUB_ENV. Assumes the value has ALREADY been masked
@@ -126,11 +245,20 @@ function kv_write_env() {
     # attacker who controlled a secret cannot inject arbitrary environment variables.
     # A predictable delimiter that happened to appear in a secret would let the value
     # terminate its own block, enabling injection.
-    local delimiter
-    delimiter="EOF_$(openssl rand -hex 8)"
+    #
+    # Generating the delimiter and checking that it worked are SEPARATE
+    # statements. Written as one `delimiter="EOF_$(openssl rand -hex 8)"` the
+    # assignment takes the command substitution's exit status, so under
+    # `set -e` the shell aborts here and the guard below never runs: an openssl
+    # missing from the runner image gave a bare non-zero exit, no message, and
+    # a GITHUB_ENV left partially written. `|| randomRc=$?` keeps the status
+    # without letting it abort the function.
+    local delimiter randomHex randomRc=0
+    randomHex=$(openssl rand -hex 8) || randomRc=$?
+    delimiter="EOF_${randomHex}"
     # Guard against failed random generation (security property must not degrade to predictable EOF_).
     if [[ ! "${delimiter}" =~ ^EOF_[0-9a-f]{16}$ ]]; then
-        echo "ERROR: failed to generate a random GITHUB_ENV delimiter." >&2
+        echo "ERROR: failed to generate a random GITHUB_ENV delimiter for '${envName}' (openssl rand exited ${randomRc}); refusing to write '${envName}' with a predictable one." >&2
         return 1
     fi
     {
@@ -146,5 +274,8 @@ function kv_mask_and_write() {
     local envName=$1 val=$2
 
     kv_mask "${val}"
+    # No explicit `return 0`: unlike kv_mask, kv_write_env's status is the
+    # meaningful one here (a bad delimiter or a failed append must reach the
+    # caller), so the tail call's status is deliberately the return value.
     kv_write_env "${envName}" "${val}"
 }
