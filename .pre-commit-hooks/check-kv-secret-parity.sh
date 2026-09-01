@@ -8,9 +8,10 @@
 #
 #   1. Every runbook carries a "# KV-Workflows: <file>[,<file>]" tag.
 #   2. Every workflow named by such a tag exists.
-#   3. Every "az keyvault secret show --name X" reference in a tagged workflow
-#      appears in that runbook's KV_SECRETS — a gap there means the deploy
-#      identity was never granted access to the secret.
+#   3. Every Key Vault secret reference in a tagged workflow appears in that
+#      runbook's KV_SECRETS — a gap there means the deploy identity was never
+#      granted access to the secret. See extract_secret_names_from_stream for
+#      the call shapes that count as a reference.
 #   4. Every workflow that reads a Key Vault secret is named by at least one
 #      runbook's tag. A workflow no runbook tags is never reached by the
 #      runbook walk, so without this it passes silently — exactly the case
@@ -20,6 +21,11 @@
 # Invariants 1 and 2 are properties of a runbook and are invisible from the
 # workflow side; invariant 4 is the converse. Reversing the traversal would
 # trade one blind spot for two, so both indexes are built and asserted over.
+#
+# All four invariants are gated on recognizing a secret reference in the first
+# place, so an extractor that matches nothing makes the whole hook pass
+# vacuously. A self-test below asserts the extractor still finds a plausible
+# number of reads and still recognizes every known call shape.
 #
 # Two things no local check can confirm, both reported rather than enforced:
 #   - Whether a referenced secret actually exists in Azure Key Vault. If a
@@ -47,8 +53,51 @@ extract_kv_workflows() {
   grep -m1 '^# KV-Workflows:' "$1" | sed 's/^# KV-Workflows: *//' | tr ',' ' '
 }
 
+# Two call shapes read a Key Vault secret, and both must be recognized or the
+# checks below pass vacuously (see the self-test after this block):
+#
+#   Legacy, inline az cli. Still used by ops/scripts/pipeline/az-cosmos-deploy.sh
+#   and available to any future workflow:
+#     az keyvault secret show --vault-name X --name SECRET-NAME --query value
+#
+#   Current, via the shared helper in ops/scripts/pipeline/_kv-to-env.sh, whose
+#   THIRD positional argument is the secret name:
+#     kv_to_env ENV_NAME "$KV" SECRET-NAME
+#     kv_to_env ENV_NAME "$KV" SECRET-NAME --optional [DEFAULT]
+#     kv_get    OUT_VAR  "$KV" SECRET-NAME [--optional [DEFAULT]]
+#     if   ! kv_to_env ENV_NAME "$KV" SECRET-NAME; then
+#     elif ! kv_to_env ENV_NAME "$KV" SECRET-NAME; then
+#
+# The vault argument is matched as "any non-blank token" on purpose: it appears
+# as "$KV", "${KV}" and as a literal vault name, and only the third argument
+# matters here. Anchoring on the function name plus argument *position* rather
+# than on the surrounding statement is what makes the guarded 'if !' / 'elif !'
+# forms fall out for free.
+#
+# Reads from stdin so the working-tree walk and the git-show comparison in
+# remind_if_new_secret cannot drift apart — they did once, when only the working
+# tree was taught the new shape.
+extract_secret_names_from_stream() {
+  local content
+  content="$(cat)"
+
+  # '|| true' on each pipeline is load-bearing twice over: these run inside
+  # process substitutions where 'set -e' would exit the subshell, so a first
+  # pattern that matches nothing would otherwise silently discard the second
+  # pattern's output entirely.
+  { printf '%s\n' "$content" \
+    | grep -E 'keyvault secret show' \
+    | grep -oE -- '--name [A-Za-z0-9_-]+' \
+    | awk '{print $2}'; } || true
+
+  { printf '%s\n' "$content" \
+    | grep -oE '\bkv_(to_env|get)[[:space:]]+[A-Za-z_][A-Za-z0-9_]*[[:space:]]+[^[:space:]]+[[:space:]]+"?[A-Za-z0-9_-]+"?' \
+    | awk '{print $4}' \
+    | tr -d '"'; } || true
+}
+
 extract_workflow_secret_names() {
-  grep -E 'keyvault secret show' "$1" | grep -oE -- '--name [A-Za-z0-9_-]+' | awk '{print $2}'
+  extract_secret_names_from_stream < "$1"
 }
 
 remind_if_new_secret() {
@@ -57,7 +106,7 @@ remind_if_new_secret() {
   git cat-file -e "HEAD:$rel" 2>/dev/null || return 0
 
   added=$(comm -13 \
-    <(git show "HEAD:$rel" | grep -E 'keyvault secret show' | grep -oE -- '--name [A-Za-z0-9_-]+' | awk '{print $2}' | sort -u) \
+    <(git show "HEAD:$rel" | extract_secret_names_from_stream | sort -u) \
     <(extract_workflow_secret_names "$wf_path" | sort -u))
 
   if [[ -n "$added" ]]; then
@@ -69,6 +118,70 @@ remind_if_new_secret() {
     echo "  ops/scripts/utility/federated-credentials/ with TARGET=main and TARGET=branch."
   fi
 }
+
+# --- Self-test: does the extractor still see anything at all? ---------------
+#
+# Every invariant below is gated on extract_workflow_secret_names returning
+# something. When it returns nothing the hook still exits 0, but vacuously:
+# required_secrets is empty so runbook parity passes trivially, and the coverage
+# loop 'continue's past every workflow. That is not a hypothetical — a refactor
+# that replaced 82 inline 'az keyvault secret show' calls with helper calls
+# dropped the extractor to 0 matches and the hook kept reporting success.
+#
+# So assert a floor, not merely non-emptiness: a regex that breaks for one call
+# shape while others still match would slip past a '> 0' test. If a change
+# legitimately removes reads, lower this deliberately in the same commit.
+MIN_EXPECTED_WORKFLOW_SECRET_READS=60
+
+self_test() {
+  local total shape_output shape wf_path
+
+  total=0
+  for wf_path in "$WORKFLOW_DIR"/*.yml "$WORKFLOW_DIR"/*.yaml; do
+    [[ -f "$wf_path" ]] || continue
+    total=$(( total + $(extract_workflow_secret_names "$wf_path" | grep -c . || true) ))
+  done
+
+  if (( total < MIN_EXPECTED_WORKFLOW_SECRET_READS )); then
+    echo "ERROR: self-test failed — extract_workflow_secret_names found only $total Key" >&2
+    echo "       Vault secret reads across .github/workflows/, below the expected floor" >&2
+    echo "       of $MIN_EXPECTED_WORKFLOW_SECRET_READS. Every check in this hook is gated on that extraction, so" >&2
+    echo "       it would now pass vacuously rather than actually verify anything." >&2
+    echo "       Either the extractor no longer recognizes how workflows read secrets" >&2
+    echo "       (a new call shape was introduced — teach it to the regexes above), or" >&2
+    echo "       the reads were genuinely removed (lower the floor in this commit)." >&2
+    exit_code=1
+  fi
+
+  # Per-shape assertions. The count floor above catches a wholesale collapse;
+  # this catches one shape silently going unrecognized while the total stays up.
+  # Each fixture line must yield exactly SELF-TEST-SECRET.
+  while IFS= read -r shape; do
+    [[ -n "$shape" ]] || continue
+    shape_output="$(printf '%s\n' "$shape" | extract_secret_names_from_stream)"
+    if [[ "$shape_output" != "SELF-TEST-SECRET" ]]; then
+      echo "ERROR: self-test failed — extract_secret_names_from_stream no longer" >&2
+      echo "       recognizes this call shape:" >&2
+      echo "         $shape" >&2
+      echo "       expected 'SELF-TEST-SECRET', got '${shape_output:-<nothing>}'." >&2
+      exit_code=1
+    fi
+  done <<'SHAPES'
+az keyvault secret show --vault-name kv-ustp-cams --name SELF-TEST-SECRET --query value -o tsv
+          kv_to_env SELF_TEST "$KV" SELF-TEST-SECRET
+          kv_to_env SELF_TEST "${KV}" SELF-TEST-SECRET
+          kv_to_env SELF_TEST kv-ustp-cams SELF-TEST-SECRET
+          kv_to_env SELF_TEST "$KV" SELF-TEST-SECRET --optional
+          kv_to_env SELF_TEST "$KV" SELF-TEST-SECRET --optional EP1
+          kv_to_env SELF_TEST "$KV" SELF-TEST-SECRET --optional "${AZ_LOCATION}"
+          kv_get self_test_out "$KV" SELF-TEST-SECRET
+          kv_get self_test_out "$KV" SELF-TEST-SECRET --optional
+          if ! kv_to_env SELF_TEST "$KV" SELF-TEST-SECRET; then
+          elif ! kv_to_env SELF_TEST "$KV" SELF-TEST-SECRET; then
+SHAPES
+}
+
+self_test
 
 for script in "$RUNBOOK_DIR"/setup-*-federated-credential.sh; do
   [[ -f "$script" ]] || continue
