@@ -604,6 +604,23 @@ describe('matchTrusteeByName', () => {
       expect(result).toEqual({ kind: 'no-match' });
     });
 
+    test('should not issue a redundant search when both hyphen segments reduce to the same token', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([]);
+      const scoredSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored')
+        .mockResolvedValueOnce([]) // tier-2 full-name search
+        .mockResolvedValueOnce([]); // single deduped lastName-token search: "lee"
+
+      const result = await matchTrusteeByName(
+        context,
+        dxtrNamed('Robert Lee-Lee', { firstName: 'Robert', lastName: 'Lee-Lee' }),
+      );
+
+      expect(scoredSpy).toHaveBeenCalledTimes(2);
+      expect(scoredSpy).toHaveBeenNthCalledWith(2, 'lee');
+      expect(result).toEqual({ kind: 'no-match' });
+    });
+
     test('should dedupe a candidate found by both hyphen segments', async () => {
       const trustee = MockData.getTrustee({
         lastName: 'Garcia-Miranda',
