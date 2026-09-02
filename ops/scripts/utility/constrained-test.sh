@@ -16,7 +16,7 @@
 #
 #   To reproduce faithfully we must make the container REPORT 4 cores (so the
 #   pool sizes correctly), not merely cap total CPU time. We pin a core COUNT
-#   (--cores, default 4) and translate it to --cpuset-cpus=0-(n-1); Node 22
+#   (--cores, default 4) and translate it to --cpuset-cpus=0-(n-1); Node 24
 #   respects the cpuset cgroup in availableParallelism().
 #
 #   This is intentionally NOT part of pr-validation / the normal GHA workflow:
