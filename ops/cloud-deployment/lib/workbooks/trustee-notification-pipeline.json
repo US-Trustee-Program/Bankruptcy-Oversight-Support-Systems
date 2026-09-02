@@ -21,19 +21,38 @@
             "isRequired": true,
             "typeSettings": {
               "selectableValues": [
-                { "durationMs": 3600000 },
-                { "durationMs": 14400000 },
-                { "durationMs": 43200000 },
-                { "durationMs": 86400000 },
-                { "durationMs": 259200000 },
-                { "durationMs": 604800000 },
-                { "durationMs": 2592000000 }
+                {
+                  "durationMs": 3600000
+                },
+                {
+                  "durationMs": 14400000
+                },
+                {
+                  "durationMs": 43200000
+                },
+                {
+                  "durationMs": 86400000
+                },
+                {
+                  "durationMs": 259200000
+                },
+                {
+                  "durationMs": 604800000
+                },
+                {
+                  "durationMs": 2592000000
+                }
               ],
               "allowCustom": true
             },
-            "value": { "durationMs": 86400000 }
+            "value": {
+              "durationMs": 43200000
+            }
           }
-        ]
+        ],
+        "style": "pills",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components"
       },
       "name": "parameters"
     },
@@ -53,6 +72,7 @@
         "title": "Poll Health by 15-Minute Tick",
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
+        "resourceType": "microsoft.insights/components",
         "visualization": "table",
         "gridSettings": {
           "formatters": [
@@ -80,18 +100,40 @@
                     "representation": "2",
                     "text": "{0}"
                   },
-                  { "operator": "Default", "representation": "success", "text": "{0}" }
+                  {
+                    "operator": "Default",
+                    "representation": "success",
+                    "text": "{0}"
+                  }
                 ]
               }
             }
           ],
           "labelSettings": [
-            { "columnId": "TimeBin", "label": "Tick" },
-            { "columnId": "Status", "label": "Status" },
-            { "columnId": "errorText", "label": "Error" },
-            { "columnId": "bouncesFound", "label": "Bounces Found" },
-            { "columnId": "bouncesExpired", "label": "Bounces Expired (unrecoverable)" },
-            { "columnId": "documentsFailed", "label": "Reconstruction Failures" }
+            {
+              "columnId": "TimeBin",
+              "label": "Tick"
+            },
+            {
+              "columnId": "Status",
+              "label": "Status"
+            },
+            {
+              "columnId": "errorText",
+              "label": "Error"
+            },
+            {
+              "columnId": "bouncesFound",
+              "label": "Bounces Found"
+            },
+            {
+              "columnId": "bouncesExpired",
+              "label": "Bounces Expired (unrecoverable)"
+            },
+            {
+              "columnId": "documentsFailed",
+              "label": "Reconstruction Failures"
+            }
           ]
         }
       },
@@ -108,20 +150,13 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "let attempted = app('{{API_APP_INSIGHTS_ID}}').traces\n| where message has \"Email sent successfully\" or message has \"Email service rejected the message with status\"\n| extend jsonStart = indexof(message, \"{\")\n| extend data = iif(jsonStart >= 0, parse_json(substring(message, jsonStart)), dynamic(null))\n| extend messageId = tostring(coalesce(data.messageId, data.id)), trusteeId = tostring(data.trusteeId)\n| where isnotempty(messageId) and isnotempty(trusteeId)\n| summarize by messageId;\nlet bounced = workspace('{{ANALYTICS_WORKSPACE_ID}}').ACSEmailStatusUpdateOperational\n| where DeliveryStatus in ('Failed', 'Bounced', 'Quarantined', 'FilteredSpam', 'Suppressed')\n| summarize by CorrelationId;\nattempted\n| join kind=leftouter (bounced) on $left.messageId == $right.CorrelationId\n| summarize AttemptedCount = dcount(messageId), BouncedCount = dcountif(messageId, isnotempty(CorrelationId))\n| extend BounceRatePercent = round(100.0 * BouncedCount / AttemptedCount, 1)",
+        "query": "let bounced = workspace('{LogAnalyticsWorkspace:name}').ACSEmailStatusUpdateOperational\n    | where TimeGenerated between ({TimeRange:start} .. {TimeRange:end})\n    | where DeliveryStatus in ('Failed', 'Bounced', 'Quarantined', 'FilteredSpam', 'Suppressed')\n    | summarize BouncedTime = min(todatetime(TimeGenerated)) by RecipientId;\nlet attempted = app('{NodeApiAppInsights:name}').traces\n    | where timestamp between ({TimeRange:start} .. {TimeRange:end})\n    | where message has \"[ACS-NOTIFICATION-GATEWAY]\" and (message has \"Email sent successfully\" or message has \"Failed to send email\")\n    | extend messageId = extract(@'\"messageId\"\\s*:\\s*\"([^\"]+)\"', 1, message),\n             recipientEmail = extract(@'\"to\"\\s*:\\s*\"([^\"]+)\"', 1, message),\n             trusteeId = extract(@'\"trusteeId\"\\s*:\\s*\"([^\"]+)\"', 1, message)\n    | where isnotempty(recipientEmail)\n    | extend messageId = coalesce(messageId, strcat(\"failed-\", recipientEmail, \"-\", format_datetime(timestamp, 'yyyyMMddHHmmss')))\n    | summarize SendTime = min(todatetime(timestamp)) by messageId, recipientEmail;\nattempted\n| join kind=leftouter (bounced) on $left.recipientEmail == $right.RecipientId\n| summarize AttemptedCount = dcount(messageId), \n            BouncedCount = dcountif(messageId, isnotempty(BouncedTime))\n| extend BounceRatePercent = round(100.0 * BouncedCount / AttemptedCount, 1)",
         "size": 0,
         "title": "Attempted Notifications & Bounce Rate",
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
-        "visualization": "table",
-        "crossComponentResources": ["{{API_APP_INSIGHTS_ID}}", "{{ANALYTICS_WORKSPACE_ID}}"],
-        "gridSettings": {
-          "labelSettings": [
-            { "columnId": "AttemptedCount", "label": "Attempted" },
-            { "columnId": "BouncedCount", "label": "Bounced" },
-            { "columnId": "BounceRatePercent", "label": "Bounce Rate (%)" }
-          ]
-        }
+        "resourceType": "microsoft.insights/components",
+        "visualization": "table"
       },
       "name": "sent-bounce-rate-table"
     },
@@ -136,29 +171,47 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "let sendTraces = app('{{API_APP_INSIGHTS_ID}}').traces\n| where timestamp between ({TimeRange:start} .. {TimeRange:end})\n| where message has \"Email sent successfully\" or message has \"Email service rejected the message with status\"\n| extend jsonStart = indexof(message, \"{\")\n| extend data = iif(jsonStart >= 0, parse_json(substring(message, jsonStart)), dynamic(null))\n| extend messageId = tostring(coalesce(data.messageId, data.id)),\n         recipient = tostring(data.to),\n         trusteeId = tostring(data.trusteeId),\n         invocationId = tostring(data.correlationId)\n| where isnotempty(messageId) and isnotempty(trusteeId)\n| summarize arg_max(timestamp, recipient, trusteeId, invocationId) by messageId;\nlet bounceRows = workspace('{{ANALYTICS_WORKSPACE_ID}}').ACSEmailStatusUpdateOperational\n| where TimeGenerated between ({TimeRange:start} .. {TimeRange:end})\n| where DeliveryStatus in ('Failed', 'Bounced', 'Quarantined', 'FilteredSpam', 'Suppressed');\nbounceRows\n| join kind=leftouter (sendTraces) on $left.CorrelationId == $right.messageId\n| extend Recipient = iif(isnull(recipient), \"Unavailable\", recipient),\n         Trustee = iif(isnull(trusteeId), \"Unavailable\", trusteeId)\n| project TimeGenerated, DeliveryStatus, CorrelationId, Recipient, Trustee, SentAt = timestamp, InvocationId = invocationId\n| order by TimeGenerated desc",
+        "query": "let sendTraces = app('{NodeApiAppInsights:name}').traces\n    | where timestamp between ({TimeRange:start} .. {TimeRange:end})\n    | where message has \"[ACS-NOTIFICATION-GATEWAY]\" and (message has \"Email sent successfully\" or message has \"Failed to send email\")\n    | extend jsonStart = indexof(message, \"{\")\n    | extend data = iif(jsonStart >= 0, parse_json(substring(message, jsonStart)), dynamic(null))\n    | extend messageId = tostring(coalesce(data.messageId, data.id)),\n             recipient = tostring(data[\"to\"]),\n             trusteeId = tostring(data.trusteeId),\n             invocationId = tostring(data.correlationId)\n    | where isnotempty(recipient)\n    | summarize arg_max(timestamp, recipient, trusteeId, invocationId) by messageId, recipient;\nlet statusEvents = workspace('{LogAnalyticsWorkspace:name}').ACSEmailStatusUpdateOperational\n    | where TimeGenerated between ({TimeRange:start} .. {TimeRange:end})\n    | where DeliveryStatus in ('Delivered', 'Failed', 'Bounced', 'Quarantined', 'FilteredSpam', 'Suppressed')\n    | project BouncedTime = TimeGenerated, RecipientId, DeliveryStatus, CorrelationId, InternetMessageId;\nstatusEvents\n| join kind=leftouter (sendTraces) on $left.RecipientId == $right.recipient\n| project TimeGenerated = BouncedTime,\n          Recipient = coalesce(recipient, RecipientId),\n          TrusteeId = coalesce(trusteeId, \"Unavailable\"),\n          DeliveryStatus,\n          NodeMessageId = messageId,\n          ACSCorrelationId = CorrelationId,\n          InternetMessageId",
         "size": 0,
         "title": "Bounce & Suppression Detail",
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
+        "resourceType": "microsoft.insights/components",
         "visualization": "table",
-        "crossComponentResources": ["{{API_APP_INSIGHTS_ID}}", "{{ANALYTICS_WORKSPACE_ID}}"],
         "gridSettings": {
+          "sortBy": [
+            {
+              "itemKey": "TimeGenerated",
+              "sortOrder": 2
+            }
+          ],
           "labelSettings": [
-            { "columnId": "TimeGenerated", "label": "Bounce Detected" },
-            { "columnId": "DeliveryStatus", "label": "Status" },
-            { "columnId": "CorrelationId", "label": "Message ID" },
-            { "columnId": "Recipient", "label": "Recipient" },
-            { "columnId": "Trustee", "label": "Trustee" },
-            { "columnId": "SentAt", "label": "Sent At" },
-            { "columnId": "InvocationId", "label": "Invocation ID" }
+            {
+              "columnId": "TimeGenerated",
+              "label": "Bounce Detected"
+            },
+            {
+              "columnId": "Recipient",
+              "label": "Recipient"
+            },
+            {
+              "columnId": "DeliveryStatus",
+              "label": "Status"
+            }
           ]
-        }
+        },
+        "sortBy": [
+          {
+            "itemKey": "TimeGenerated",
+            "sortOrder": 2
+          }
+        ]
       },
       "name": "bounce-detail-table"
     }
   ],
-  "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json",
-  "styleSettings": {},
-  "fallbackResourceIds": []
+  "fallbackResourceIds": [
+    "/subscriptions/729f9083-9edf-4269-919f-3f05f7a0ab20/resourcegroups/rg-cams-app/providers/microsoft.insights/components/appi-ustp-cams-dataflows"
+  ],
+  "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
 }
