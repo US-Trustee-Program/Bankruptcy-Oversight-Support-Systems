@@ -500,9 +500,22 @@ provision_identity() {
   # roleAssignment on this workspace on EVERY branch deploy (its isDevTier gate
   # is true whenever createAlerts is false, which reusable-deploy.yml sets for
   # every non-Main-Gov deploy), and Contributor cannot perform that write.
-  # Main never needs it: isDevTier is false for main/staging/USTP, whose
-  # equivalent grant is standaloneAnalyticsReaderRoleAssignment against their
-  # own pre-existing workspace, covered by main's own subscription-scope grant.
+  # Main is NOT covered by its subscription-scope Contributor, contrary to what
+  # this comment claimed until the audit script was pointed at TARGET=main.
+  # isDevTier is false for main/staging/USTP, so they take
+  # standaloneAnalyticsReaderRoleAssignment (app-shared-setup.bicep:385)
+  # instead -- a different module invocation, but the SAME
+  # log-analytics-reader-role-assignment.bicep, so it also creates a
+  # Microsoft.Authorization/roleAssignments. Contributor's notActions exclude
+  # Microsoft.Authorization/*/Write at EVERY scope, subscription included, so
+  # main's broad grant cannot perform it either. Main works today only because
+  # cams-deploy-main-oidc separately holds "Role Based Access Control
+  # Administrator" on rg-analytics -- also out-of-band, also load-bearing, and
+  # with no narrower replacement queued. Deliberately not addressed here:
+  # narrowing main is out of scope for this slice (see cams-y8s2), and adding
+  # a grant to the main path would widen this change's blast radius to the
+  # production deploy identity. Flagged so nobody reads the old claim and
+  # sweeps main's grant as residue.
   # BRANCH_ANALYTICS_RG was already validated and BRANCH_ANALYTICS_RG_SCOPE
   # computed above for the Contributor grant -- reused here rather than
   # re-validated, same as the deny-setting block does for app/network.
