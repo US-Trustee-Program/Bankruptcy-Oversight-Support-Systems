@@ -11,7 +11,7 @@
     "typecheck": "npx tsc --noEmit"
   },
   "dependencies": {
-    "@uswds/uswds": "3.13.0",
+    "@uswds/uswds": "3.14.0",
     "cams": "*",
     "react": "19.2.8",
     "react-dom": "19.2.8"
