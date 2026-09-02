@@ -325,6 +325,24 @@ describe('TrusteeMatchVerificationAccordion', () => {
       expect(candidateInfo.textContent).not.toContain('Email does not match');
     });
 
+    // Regression guard for the mismatch icon's accessible name: an `<svg>` with aria-hidden="true"
+    // (the "decorative" state) has no accessible name at all, so a screen reader's hover/touch
+    // exploration announces nothing for it - only a full linear page read would surface the
+    // visually-hidden sibling text this PR replaced. Asserting textContent alone (as the tests
+    // above do) can't catch that regression, because the icon's <title> element still contributes
+    // to textContent regardless of aria-hidden. Only an accessible-name query like getByRole
+    // actually depends on the icon being non-decorative.
+    test('exposes each mismatch icon with an accessible name a screen reader can announce on hover', async () => {
+      renderWithProps({ order: sampleOrderWithCandidates });
+      await mockDetailAndExpand(sampleOrderWithCandidatesDetail);
+
+      expect(screen.getByRole('img', { name: 'Name does not match' })).toBeInTheDocument();
+      expect(screen.getByRole('img', { name: 'Address does not match' })).toBeInTheDocument();
+      expect(
+        screen.getByRole('img', { name: 'Trustee Appointment does not match' }),
+      ).toBeInTheDocument();
+    });
+
     test('does not show a mismatch icon for a field that scores a full 100 match', async () => {
       renderWithProps({ order: sampleOrderWithCandidates });
       await mockDetailAndExpand({
@@ -415,7 +433,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
 
       const content = screen.getByTestId(`accordion-content-${sampleOrderWithCandidates.id}`);
       expect(content.textContent).toContain(
-        'Trustee name, address, and appointment sent from the court does not match a CAMS Trustee for case:',
+        'Trustee name, address, and appointment sent from the court do not match a CAMS Trustee for case:',
       );
     });
 
@@ -428,7 +446,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
 
       const content = screen.getByTestId(`accordion-content-${sampleOrderWithCandidates.id}`);
       expect(content.textContent).toContain(
-        'Trustee name and address sent from the court does not match a CAMS Trustee for case:',
+        'Trustee name and address sent from the court do not match a CAMS Trustee for case:',
       );
     });
 
@@ -459,7 +477,10 @@ describe('TrusteeMatchVerificationAccordion', () => {
       expect(content.textContent).toContain('sent from the court does not match a CAMS Trustee');
     });
 
-    test('uses plural "do not match" once the sentence covers more than one case', async () => {
+    test('uses plural "do not match" once the sentence names more than one mismatched field', async () => {
+      // sampleOrderWithCandidatesDetail's candidate (candidateJaneSmith) mismatches on name,
+      // address, and appointment - three fields, so the verb must be plural regardless of case
+      // count.
       const multiCaseOrder: TrusteeMatchVerificationListItem = {
         ...sampleOrderWithCandidates,
         affectedCaseCount: 2,
@@ -474,6 +495,36 @@ describe('TrusteeMatchVerificationAccordion', () => {
       const content = screen.getByTestId(`accordion-content-${multiCaseOrder.id}`);
       expect(content.textContent).toContain('sent from the court do not match a CAMS Trustee');
       expect(content.textContent).not.toContain('does not match a CAMS Trustee');
+    });
+
+    test('keeps singular "does not match" for a single mismatched field even with multiple affected cases', async () => {
+      // Regression guard: the verb's number must agree with the mismatched-fields list (the
+      // sentence's actual subject), not with affectedCaseCount. A single mismatched field
+      // ("name") affecting 2+ cases must still read "does not match", not "do not match".
+      const multiCaseOrder: TrusteeMatchVerificationListItem = {
+        ...sampleOrderWithCandidates,
+        affectedCaseCount: 2,
+        affectedCaseIds: ['081-22-11111', '081-22-22222'],
+      };
+      renderWithProps({ order: multiCaseOrder });
+      await mockDetailAndExpand({
+        ...sampleOrderWithCandidatesDetail,
+        affectedCaseIds: ['081-22-11111', '081-22-22222'],
+        matchCandidates: [
+          {
+            ...candidateJaneSmith,
+            addressScore: 100,
+            districtDivisionScore: 100,
+            chapterScore: 100,
+          },
+        ],
+      });
+
+      const content = screen.getByTestId(`accordion-content-${multiCaseOrder.id}`);
+      expect(content.textContent).toContain(
+        'Trustee name sent from the court does not match a CAMS Trustee for 2 cases:',
+      );
+      expect(content.textContent).not.toContain('do not match a CAMS Trustee');
     });
   });
 
@@ -1657,11 +1708,11 @@ describe('TrusteeMatchVerificationAccordion', () => {
         .getByTestId(`accordion-content-${inactiveOrder.id}`)
         .querySelector('.problem-statement');
       expect(problemStatement?.textContent).toContain(
-        'Trustee is inactive in CAMS and name and email sent from the court does not match a CAMS Trustee for case:',
+        'Trustee is inactive in CAMS and name and email sent from the court do not match a CAMS Trustee for case:',
       );
     });
 
-    test('uses plural "do not match" for the inactive-match sentence once more than one case is affected', async () => {
+    test('uses plural "do not match" for the inactive-match sentence when it names more than one mismatched field', async () => {
       const multiCaseInactiveOrder: TrusteeMatchVerificationListItem = {
         ...inactiveOrder,
         affectedCaseCount: 2,
@@ -1682,6 +1733,32 @@ describe('TrusteeMatchVerificationAccordion', () => {
       );
     });
 
+    test('keeps singular "does not match" for the inactive-match sentence with a single mismatched field and multiple affected cases', async () => {
+      // Regression guard: the inactive-branch verb's number must agree with
+      // inactiveOtherMismatchedFields.length (the sentence's actual subject), not with
+      // affectedCaseCount. A single mismatched field ("name") affecting 2+ cases must still
+      // read "does not match", not "do not match".
+      const multiCaseInactiveOrder: TrusteeMatchVerificationListItem = {
+        ...inactiveOrder,
+        affectedCaseCount: 2,
+        affectedCaseIds: ['081-22-11111', '081-22-22222'],
+      };
+      renderWithProps({ order: multiCaseInactiveOrder });
+      await mockDetailAndExpand({
+        ...inactiveDetail,
+        matchCandidates: [{ ...inactiveCandidates[0], nameScore: 90 }],
+        affectedCaseIds: ['081-22-11111', '081-22-22222'],
+      });
+
+      const problemStatement = screen
+        .getByTestId(`accordion-content-${multiCaseInactiveOrder.id}`)
+        .querySelector('.problem-statement');
+      expect(problemStatement?.textContent).toContain(
+        'Trustee is inactive in CAMS and name sent from the court does not match a CAMS Trustee for',
+      );
+      expect(problemStatement?.textContent).not.toContain('do not match a CAMS Trustee');
+    });
+
     test('renders the mismatch problem statement (not inactive) for an unresolved multiple-match', async () => {
       const unresolvedOrder: TrusteeMatchVerificationListItem = {
         ...sampleOrderWithCandidates,
@@ -1695,7 +1772,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
       await mockDetailAndExpand(unresolvedDetail);
 
       const content = screen.getByTestId(`accordion-content-${sampleOrder.id}`);
-      expect(content.textContent).toContain('sent from the court does not match a CAMS Trustee');
+      expect(content.textContent).toContain('sent from the court do not match a CAMS Trustee');
       expect(content.textContent).not.toContain('inactive');
       // Guards against reintroducing pre-#2821 copy for this mismatch reason.
       expect(content.textContent).not.toContain('CAMS found a possible match');

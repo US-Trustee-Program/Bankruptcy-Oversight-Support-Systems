@@ -670,9 +670,12 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     ? `${formatFieldList(inactiveOtherMismatchedFields)} `
     : '';
 
-  // "does not match" for a single case, "do not match" once the sentence covers more than one -
-  // the subject (trustee name/address/phone/email) is grammatically plural across multiple cases.
-  const matchVerb = affectedCaseCount > 1 ? 'do not match' : 'does not match';
+  // "does not match" when the sentence names a single field (or none, pre-expand), "do not
+  // match" once it names more than one - the verb's number agrees with the mismatched-fields
+  // list (the sentence's actual subject), NOT the affected case count, which is unrelated.
+  const matchVerb = mismatchedFields.length > 1 ? 'do not match' : 'does not match';
+  const inactiveMatchVerb =
+    inactiveOtherMismatchedFields.length > 1 ? 'do not match' : 'does not match';
 
   function renderDetailSection() {
     if (isLoadingDetail) {
@@ -906,7 +909,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
                   <p className="problem-statement">
                     <span>
                       Trustee is inactive in CAMS and {inactiveMismatchedFieldsPrefix}sent from the
-                      court {matchVerb} a CAMS Trustee for{' '}
+                      court {inactiveMatchVerb} a CAMS Trustee for{' '}
                       {isLoadingDetail ? '' : affectedCaseCount > 1 ? '' : 'case: '}
                     </span>
                     {caseLink}
