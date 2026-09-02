@@ -120,6 +120,35 @@
 # sequence, including live-Azure cleanup of orphaned grants left over from an
 # earlier, abandoned per-RG RBAC design.
 #
+# WHAT ACTUALLY HAS TO BE REVOKED, from a live listing of
+# cams-deploy-branch-oidc on 2026-09-02 (`az role assignment list --all`).
+# Getting this list wrong is the failure mode to worry about: revoke only the
+# first entry and the deploy still goes green while the identity keeps
+# subscription-scope resource-group and deployment write, which reads as
+# "least privilege achieved" when it is not.
+#
+#   Contributor                    /subscriptions/<sub>
+#   CAMS Deploy Subscription Role  /subscriptions/<sub>
+#       A CUSTOM role, defined only in live Azure and referenced by NO script
+#       in this repo, granting Microsoft.Resources/deployments/* plus
+#       subscriptions/resourceGroups/{write,read}. Its own description marks
+#       it as residue of the abandoned per-RG design. These are precisely the
+#       two capabilities this whole slice exists to remove, so missing it
+#       defeats the exercise.
+#   User Access Administrator      .../resourceGroups/bankruptcy-oversight-support-systems
+#       RESOURCE-GROUP scoped, not subscription-scoped as earlier notes
+#       implied. Unmanaged by any script. Worth removing on its own merits: it
+#       lets the identity grant itself Owner within that RG.
+#
+# And one that must NOT be revoked yet:
+#   Role Based Access Control Administrator  .../resourceGroups/rg-analytics
+#       Out-of-band, created by no script here, and currently LOAD-BEARING --
+#       it is the only reason the analytics role assignment described above
+#       succeeds. Remove it only after the narrower workspace-scoped grant is
+#       in place AND a branch deploy has gone green on it.
+#
+# Tracked in beads as cams-v4ngd, which carries the full sequence.
+#
 # Prerequisites:
 #   - az CLI logged in as an Entra ID admin (can create app registrations and role assignments)
 #   - The Azure subscription already exists
