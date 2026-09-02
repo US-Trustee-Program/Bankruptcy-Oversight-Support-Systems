@@ -171,8 +171,19 @@ wait_for_role_definition() {
     echo "    Waiting for role definition '$ROLE_NAME' to propagate ($i/$attempts)..." >&2
     sleep 5
   done
-  echo "    WARNING: role definition '$ROLE_NAME' still not resolvable after waiting; continuing." >&2
-  return 0
+  # Fail CLOSED. Returning 0 here used to hand the caller an EMPTY stdout, which
+  # every caller assigns straight into a ROLE_ID and passes to
+  # ensure_role_assignment as `--role ""`. set -e does abort on the resulting
+  # `az role assignment create` failure, so nothing silently half-applied -- but
+  # the operator saw an az usage error about an empty role rather than the
+  # propagation timeout that actually caused it. Exiting here names the real
+  # cause at the point it happens. Exit 12 = infrastructure/propagation error,
+  # distinct from require_var's 10 (validation); see the consuming script's
+  # Exitcodes header.
+  echo "ERROR: role definition '$ROLE_NAME' still not resolvable after ${attempts} attempts (~$((attempts * 5))s)." >&2
+  echo "       The role was created but has not propagated. Re-run this script -- it is" >&2
+  echo "       idempotent and will pick up the existing definition." >&2
+  exit 12
 }
 
 # Idempotent role assignment: assigns ROLE at SCOPE to SP_ID if not already present.

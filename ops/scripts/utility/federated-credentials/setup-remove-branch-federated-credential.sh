@@ -14,8 +14,11 @@
 # Exitcodes
 # ==========
 # 0   No error
-# 10+ Validation check errors (a required environment variable is missing --
-#     see require_var in _oidc-helpers.sh)
+# 10+ Validation check errors
+#     10  a required environment variable is missing -- see require_var in
+#         _oidc-helpers.sh
+#     12  a custom role definition was created but did not propagate in time --
+#         see wait_for_role_definition in _oidc-helpers.sh. Re-run; idempotent.
 #
 # Permissions granted:
 #   - Contributor at subscription scope: discovers and deletes branch resource

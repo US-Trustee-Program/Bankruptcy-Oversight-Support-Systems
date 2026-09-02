@@ -21,6 +21,8 @@
 #         _oidc-helpers.sh
 #     11  a required prerequisite Azure resource does not exist yet -- see the
 #         law-cams-branches workspace check in provision_identity
+#     12  a custom role definition was created but did not propagate in time --
+#         see wait_for_role_definition in _oidc-helpers.sh. Re-run; idempotent.
 #
 # Permissions granted:
 #   - main: Contributor at subscription scope. Covers az deployment sub
