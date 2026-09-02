@@ -53,7 +53,7 @@ export async function timerTrigger(
 
 function setup() {
   app.timer(buildFunctionName(MODULE_NAME, 'timerTrigger'), {
-    // Every 15 minutes, matching the acsBounceAlert rule's evaluation window.
+    // Every 15 minutes.
     schedule: '0 */15 * * * *',
     handler: timerTrigger,
   });

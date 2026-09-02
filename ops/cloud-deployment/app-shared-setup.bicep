@@ -63,10 +63,6 @@ param analyticsWorkspaceId string = ''
 @description('Subscription ID of the Log Analytics workspace named by analyticsWorkspaceId, for the staging/USTP-prod (non-dev-tier) path where that workspace may live in a different subscription than this deployment. Defaults to the current subscription, so same-subscription environments (incl. Flexion) are unaffected. Mirrors main.bicep\'s analyticsSubscriptionId for the same workspace.')
 param analyticsSubscriptionId string = subscription().subscriptionId
 
-@description('Email address to notify for dev-tier ACS bounce alerts.')
-@secure()
-param adminNotificationEmail string
-
 @description('Custom domain FQDN for sending email. Leave empty to use Azure-managed subdomain.')
 param customDomain string = ''
 
@@ -322,40 +318,6 @@ module sharedBounceWorkspaceLock './lib/analytics/log-analytics-workspace-lock.b
     sharedBounceWorkspace
   ]
 }
-
-module sharedAdminActionGroup './lib/monitoring-alerts/admin-notification-action-group.bicep' =
-  if (isDevTier && !empty(analyticsResourceGroupName)) {
-    name: '${stackName}-admin-action-group-shared-module'
-    scope: resourceGroup(analyticsResourceGroupName)
-    params: {
-      actionGroupName: 'cams-dev-shared-admin-notifications'
-      adminEmail: adminNotificationEmail
-      tags: tags
-    }
-  }
-
-module sharedAcsBounceAlert './lib/monitoring-alerts/scheduled-query-alert-rule.bicep' =
-  if (isDevTier && !empty(analyticsResourceGroupName)) {
-    name: '${stackName}-acs-bounce-alert-shared-module'
-    scope: resourceGroup(analyticsResourceGroupName)
-    params: {
-      alertRuleName: 'cams-dev-shared-acs-email-bounce-alert'
-      logQueryScopeResourceId: sharedBounceWorkspace.outputs.id
-      actionGroupId: sharedAdminActionGroup!.outputs.actionGroupId
-      query: '''
-        ACSEmailStatusUpdateOperational
-        | where DeliveryStatus in ('Failed', 'Bounced', 'Quarantined', 'FilteredSpam', 'Suppressed')
-        | project TimeGenerated, CorrelationId, RecipientId, DeliveryStatus
-      '''
-      timeAggregation: 'Count'
-      threshold: 0
-      operator: 'GreaterThan'
-      evaluationFrequencyMinutes: 15
-      windowSizeMinutes: 15
-      severity: 2
-      alertDescription: 'One or more trustee-notification emails failed to deliver via the shared dev-tier ACS resource. Search Log Analytics/application traces around the reported timestamp for the correlationId (logged as messageId in application traces) to find which branch and trustee this affects.'
-    }
-  }
 
 module sharedAnalyticsReaderRoleAssignment './lib/analytics/log-analytics-reader-role-assignment.bicep' =
   if (isDevTier && !empty(analyticsResourceGroupName)) {
