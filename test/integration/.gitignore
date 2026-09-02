@@ -17,3 +17,8 @@ trustee-variation-audit/fixtures/
 # export and a real trustees export (both trustee PII). Never committed — local-only, re-created
 # per audit session.
 sync-acms-professional-ids-audit/fixtures/
+
+# backfill-unassigned-on: fixtures/ holds real prod case-trustee-appointments exports used to
+# prove the migration against actual affected data before the one-shot prod run. Never
+# committed — local-only, re-created per validation session.
+backfill-unassigned-on/fixtures/
