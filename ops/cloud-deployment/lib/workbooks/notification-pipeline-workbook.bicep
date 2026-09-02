@@ -14,14 +14,17 @@ param analyticsWorkspaceResourceId string
 
 param tags object = {}
 
+var apiAppInsightsName = last(split(apiAppInsightsResourceId, '/'))
+var analyticsWorkspaceName = last(split(analyticsWorkspaceResourceId, '/'))
+
 var workbookJson = replace(
   replace(
     loadTextContent('trustee-notification-pipeline.json'),
-    '{{API_APP_INSIGHTS_ID}}',
-    apiAppInsightsResourceId
+    '{NodeApiAppInsights:name}',
+    apiAppInsightsName
   ),
-  '{{ANALYTICS_WORKSPACE_ID}}',
-  analyticsWorkspaceResourceId
+  '{LogAnalyticsWorkspace:name}',
+  analyticsWorkspaceName
 )
 
 resource notificationPipelineWorkbook 'Microsoft.Insights/workbooks@2023-06-01' = {
