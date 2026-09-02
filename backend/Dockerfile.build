@@ -1,6 +1,6 @@
 # Build a function app's production node_modules on Linux for Azure deployment.
-# Use Node 22 to match .nvmrc (v22.22.2)
-FROM node:22.22.2-slim
+# Use Node 24 to match .nvmrc (v24.20.0)
+FROM node:24.20.0-slim
 
 # Accept FUNCTION_APP as build argument (api or dataflows)
 ARG FUNCTION_APP
