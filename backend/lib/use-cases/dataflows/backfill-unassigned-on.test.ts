@@ -1,9 +1,11 @@
-import { describe, test, expect, vi, beforeAll, afterEach } from 'vitest';
+import { describe, test, expect, vi, beforeAll, beforeEach } from 'vitest';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import BackfillUnassignedOnUseCase from './backfill-unassigned-on';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { CaseAppointment } from '@common/cams/trustee-appointments';
+import factory from '../../factory';
+import { SENTINEL_TRUSTEE_ID } from './migrate-case-appointments-constants';
 
 function makeCaseAppointment(override: Partial<CaseAppointment> = {}): CaseAppointment {
   return {
@@ -27,7 +29,7 @@ describe('BackfillUnassignedOnUseCase', () => {
     context = await createMockApplicationContext();
   });
 
-  afterEach(() => {
+  beforeEach(() => {
     vi.restoreAllMocks();
   });
 
@@ -110,7 +112,7 @@ describe('BackfillUnassignedOnUseCase', () => {
         assignedOn: '2025-02-01',
       });
 
-      const result = BackfillUnassignedOnUseCase.findSupersedingAppointment(closed, [
+      const result = BackfillUnassignedOnUseCase.findSupersedingAppointment(context, closed, [
         closed,
         laterStill,
         superseding,
@@ -123,7 +125,7 @@ describe('BackfillUnassignedOnUseCase', () => {
       const closed = makeCaseAppointment({ id: 'old', assignedOn: '2025-06-01' });
       const earlier = makeCaseAppointment({ id: 'earlier', assignedOn: '2025-01-01' });
 
-      const result = BackfillUnassignedOnUseCase.findSupersedingAppointment(closed, [
+      const result = BackfillUnassignedOnUseCase.findSupersedingAppointment(context, closed, [
         closed,
         earlier,
       ]);
@@ -148,7 +150,7 @@ describe('BackfillUnassignedOnUseCase', () => {
         assignedOn: '2025-01-20',
       });
 
-      const result = BackfillUnassignedOnUseCase.findSupersedingAppointment(closed, [
+      const result = BackfillUnassignedOnUseCase.findSupersedingAppointment(context, closed, [
         closed,
         surrogate,
         real,
@@ -161,7 +163,7 @@ describe('BackfillUnassignedOnUseCase', () => {
       const closed = makeCaseAppointment({ id: 'old', assignedOn: '2025-01-01' });
       const sentinel = makeCaseAppointment({
         id: 'sentinel',
-        trusteeId: '00000000-0000-0000-0000-000000000000',
+        trusteeId: SENTINEL_TRUSTEE_ID,
         assignedOn: '2025-01-10',
       });
       const real = makeCaseAppointment({
@@ -170,7 +172,7 @@ describe('BackfillUnassignedOnUseCase', () => {
         assignedOn: '2025-01-20',
       });
 
-      const result = BackfillUnassignedOnUseCase.findSupersedingAppointment(closed, [
+      const result = BackfillUnassignedOnUseCase.findSupersedingAppointment(context, closed, [
         closed,
         sentinel,
         real,
@@ -196,7 +198,7 @@ describe('BackfillUnassignedOnUseCase', () => {
         assignedOn: '2025-01-20',
       });
 
-      const result = BackfillUnassignedOnUseCase.findSupersedingAppointment(closed, [
+      const result = BackfillUnassignedOnUseCase.findSupersedingAppointment(context, closed, [
         closed,
         sameTrustee,
         differentTrustee,
@@ -221,7 +223,7 @@ describe('BackfillUnassignedOnUseCase', () => {
         assignedOn: '2025-08-01',
       });
 
-      const result = BackfillUnassignedOnUseCase.findSupersedingAppointment(closed, [
+      const result = BackfillUnassignedOnUseCase.findSupersedingAppointment(context, closed, [
         closed,
         sameTrustee,
       ]);
@@ -236,9 +238,89 @@ describe('BackfillUnassignedOnUseCase', () => {
         assignedOn: '2025-01-01',
       });
 
-      const result = BackfillUnassignedOnUseCase.findSupersedingAppointment(closed, [closed]);
+      const result = BackfillUnassignedOnUseCase.findSupersedingAppointment(context, closed, [
+        closed,
+      ]);
 
       expect(result).toBeNull();
+    });
+
+    test('keeps the earliest-seen candidate when a later candidate is still later than it', () => {
+      // Guards the reduce's "keep current earliest" (: earliest) branch specifically: candidates
+      // are NOT in assignedOn order here, so a mutant that always returned `candidate` instead of
+      // `earliest` would incorrectly return 'later' (2025-01-20) instead of 'earliest' (2025-01-10).
+      const closed = makeCaseAppointment({ id: 'old', assignedOn: '2025-01-01' });
+      const earliest = makeCaseAppointment({
+        id: 'earliest',
+        trusteeId: 'trustee-B',
+        assignedOn: '2025-01-10',
+      });
+      const later = makeCaseAppointment({
+        id: 'later',
+        trusteeId: 'trustee-C',
+        assignedOn: '2025-01-20',
+      });
+
+      const result = BackfillUnassignedOnUseCase.findSupersedingAppointment(context, closed, [
+        closed,
+        earliest,
+        later,
+      ]);
+
+      expect(result?.id).toBe('earliest');
+    });
+
+    test('logs a warning when two candidates tie on assignedOn', () => {
+      const warnSpy = vi.spyOn(context.logger, 'warn');
+      const closed = makeCaseAppointment({ id: 'old', assignedOn: '2025-01-01' });
+      const tiedA = makeCaseAppointment({
+        id: 'tied-a',
+        trusteeId: 'trustee-B',
+        assignedOn: '2025-01-10',
+      });
+      const tiedB = makeCaseAppointment({
+        id: 'tied-b',
+        trusteeId: 'trustee-C',
+        assignedOn: '2025-01-10',
+      });
+
+      const result = BackfillUnassignedOnUseCase.findSupersedingAppointment(context, closed, [
+        closed,
+        tiedA,
+        tiedB,
+      ]);
+
+      // Pins the tie-break winner (mutation guard): the reduce's comparator is `candidate <
+      // current ? candidate : current`, which is false on a tie, so the first-seen candidate
+      // (tiedA) wins and is returned -- weakening `<` to `<=` would flip this to tiedB without
+      // failing any other assertion here.
+      expect(result?.id).toBe('tied-a');
+      expect(warnSpy).toHaveBeenCalledWith(
+        'BACKFILL-UNASSIGNED-ON-USE-CASE',
+        expect.stringContaining('AMBIGUOUS SUPERSEDING APPOINTMENT'),
+        expect.objectContaining({
+          caseId: closed.caseId,
+          assignedOn: '2025-01-10',
+          candidateIds: expect.arrayContaining(['tied-a', 'tied-b']),
+        }),
+      );
+    });
+
+    test('does not log a warning when there is no tie', () => {
+      const warnSpy = vi.spyOn(context.logger, 'warn');
+      const closed = makeCaseAppointment({ id: 'old', assignedOn: '2025-01-01' });
+      const superseding = makeCaseAppointment({
+        id: 'new',
+        trusteeId: 'trustee-B',
+        assignedOn: '2025-01-15',
+      });
+
+      BackfillUnassignedOnUseCase.findSupersedingAppointment(context, closed, [
+        closed,
+        superseding,
+      ]);
+
+      expect(warnSpy).not.toHaveBeenCalled();
     });
   });
 
@@ -303,6 +385,71 @@ describe('BackfillUnassignedOnUseCase', () => {
       expect(updateSpy).not.toHaveBeenCalled();
     });
 
+    test('reports failure instead of writing a malformed unassignedOn when superseding.assignedOn is invalid', async () => {
+      // This migration explicitly targets historically-dirty data. DateHelper.subtractDays
+      // silently returns its input unchanged on an invalid date string rather than throwing, so
+      // without this guard a malformed assignedOn would get written straight into unassignedOn.
+      const closed = { ...makeCaseAppointment(), _id: 'appt-id-1' };
+      const superseding = makeCaseAppointment({
+        id: 'appt-id-2',
+        trusteeId: 'trustee-002',
+        assignedOn: 'not-a-valid-date',
+      });
+
+      vi.spyOn(MockMongoRepository.prototype, 'getByCaseId').mockResolvedValue([
+        closed,
+        superseding,
+      ]);
+      const updateSpy = vi.spyOn(MockMongoRepository.prototype, 'updateCaseAppointment');
+
+      const result = await BackfillUnassignedOnUseCase.correctUnassignedOn(context, [closed]);
+
+      expect(result.data?.[0].success).toBe(false);
+      expect(result.data?.[0].error).toContain('invalid assignedOn');
+      expect(updateSpy).not.toHaveBeenCalled();
+    });
+
+    test('reports failure for a calendar-invalid but YYYY-MM-DD-shaped superseding.assignedOn', async () => {
+      // '2025-02-30' has the right shape but isn't a real date -- DateHelper.isValidDateString
+      // now round-trips the parsed date to catch this (Date.UTC silently rolls impossible
+      // components into the next month rather than rejecting them), not just checking shape.
+      const closed = { ...makeCaseAppointment(), _id: 'appt-id-1' };
+      const superseding = makeCaseAppointment({
+        id: 'appt-id-2',
+        trusteeId: 'trustee-002',
+        assignedOn: '2025-02-30',
+      });
+
+      vi.spyOn(MockMongoRepository.prototype, 'getByCaseId').mockResolvedValue([
+        closed,
+        superseding,
+      ]);
+      const updateSpy = vi.spyOn(MockMongoRepository.prototype, 'updateCaseAppointment');
+
+      const result = await BackfillUnassignedOnUseCase.correctUnassignedOn(context, [closed]);
+
+      expect(result.data?.[0].success).toBe(false);
+      expect(result.data?.[0].error).toContain('invalid assignedOn');
+      expect(updateSpy).not.toHaveBeenCalled();
+    });
+
+    test('reports a batch-level error when the repo cannot be obtained', async () => {
+      // Exercises correctUnassignedOn's outer try/catch (distinct from the per-item catch inside
+      // the loop, covered by the tests above): a failure obtaining the repository itself, before
+      // the loop starts, must surface as a top-level error rather than per-item results.
+      const closed = { ...makeCaseAppointment(), _id: 'appt-id-1' };
+      vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository').mockImplementation(() => {
+        throw new Error('Repository unavailable');
+      });
+
+      const result = await BackfillUnassignedOnUseCase.correctUnassignedOn(context, [closed]);
+
+      // getCamsError's own .message is the generic string passed to it, not the original error's
+      // message -- the actual failure cause is preserved on .originalError (via util.inspect).
+      expect(result.error?.originalError).toContain('Repository unavailable');
+      expect(result.data).toBeUndefined();
+    });
+
     test('records failure when updateCaseAppointment throws', async () => {
       const closed = { ...makeCaseAppointment(), _id: 'appt-id-1' };
       const superseding = makeCaseAppointment({
@@ -325,7 +472,31 @@ describe('BackfillUnassignedOnUseCase', () => {
       expect(result.data?.[0].error).toBe('Write failed');
     });
 
-    test('returns error when the batch-level read throws', async () => {
+    test('records failure with a stringified error when a non-Error value is thrown', async () => {
+      // Covers the String(originalError) branch of the per-item catch, distinct from the
+      // originalError.message branch exercised by the test above.
+      const closed = { ...makeCaseAppointment(), _id: 'appt-id-1' };
+      const superseding = makeCaseAppointment({
+        id: 'appt-id-2',
+        trusteeId: 'trustee-002',
+        assignedOn: '2025-06-20',
+      });
+
+      vi.spyOn(MockMongoRepository.prototype, 'getByCaseId').mockResolvedValue([
+        closed,
+        superseding,
+      ]);
+      vi.spyOn(MockMongoRepository.prototype, 'updateCaseAppointment').mockRejectedValue(
+        'write failed as a string',
+      );
+
+      const result = await BackfillUnassignedOnUseCase.correctUnassignedOn(context, [closed]);
+
+      expect(result.data?.[0].success).toBe(false);
+      expect(result.data?.[0].error).toBe('write failed as a string');
+    });
+
+    test('records a per-item failure (not a batch-level error) when getByCaseId throws', async () => {
       const closed = { ...makeCaseAppointment(), _id: 'appt-id-1' };
 
       vi.spyOn(MockMongoRepository.prototype, 'getByCaseId').mockRejectedValue(
@@ -422,6 +593,31 @@ describe('BackfillUnassignedOnUseCase', () => {
       const result = await BackfillUnassignedOnUseCase.processBackfillPage(context, null, 100);
 
       expect(result.status).toBe('error');
+    });
+
+    test('should return error when correctUnassignedOn fails at the batch level', async () => {
+      // Distinct from the page-read failure above: this exercises processBackfillPage's second
+      // error-forwarding branch (correctionResult.error), reached when the page read succeeds but
+      // the correction batch fails before producing per-item results. getPageNeedingBackfill and
+      // correctUnassignedOn each call factory.getTrusteeCaseAppointmentsRepository independently —
+      // let the first call (page read) succeed and only fail the second (correction).
+      const appt = makeAppointment('ffff');
+      vi.spyOn(MockMongoRepository.prototype, 'findClosedAppointments').mockResolvedValue([appt]);
+      vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository')
+        .mockImplementationOnce(() => new MockMongoRepository())
+        .mockImplementationOnce(() => {
+          throw new Error('Repository unavailable');
+        });
+
+      const result = await BackfillUnassignedOnUseCase.processBackfillPage(context, null, 100);
+
+      expect(result.status).toBe('error');
+      if (result.status !== 'error') return;
+      // Confirms the actual correction failure is what gets forwarded, not a placeholder --
+      // getCamsError's .message here is the generic string correctUnassignedOn passes it, so the
+      // real cause is on .originalError (see the equivalent assertion in correctUnassignedOn's
+      // own "reports a batch-level error" test above).
+      expect(result.error.originalError).toContain('Repository unavailable');
     });
 
     test('should return ok with failedResults when some appointments fail to update', async () => {

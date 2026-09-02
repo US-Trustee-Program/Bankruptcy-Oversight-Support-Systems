@@ -20,6 +20,7 @@
     "migrate-case-appointments:azure": "INTEGRATION_ENV=azure npx tsx --tsconfig ../../backend/tsconfig.json migrate-case-appointments/scripts/migrate-case-appointments-harness.ts",
     "fix-chapter-7-appointments": "npx tsx --tsconfig ../../backend/tsconfig.json fix-chapter-7-appointments/scripts/run-tests.ts",
     "backfill-unassigned-on": "npx tsx --tsconfig ../../backend/tsconfig.json backfill-unassigned-on/scripts/run-tests.ts",
+    "backfill-unassigned-on:prod-dump": "npx tsx --tsconfig ../../backend/tsconfig.json backfill-unassigned-on/scripts/run-prod-dump.ts",
     "query-builder": "npx tsx --tsconfig ../../backend/tsconfig.json query-builder/scripts/run-tests.ts",
     "trustee-case-filter": "npx tsx --tsconfig ../../backend/tsconfig.json trustee-case-filter/scripts/run-tests.ts",
     "trustee-case-filter:local": "npx tsx --env-file=trustee-case-filter/.env.local --tsconfig ../../backend/tsconfig.json trustee-case-filter/scripts/run-tests.ts",
