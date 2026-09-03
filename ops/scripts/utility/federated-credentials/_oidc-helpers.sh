@@ -259,6 +259,13 @@ ensure_deployment_stack_deny_setting_role() {
 EOF
 )" --output none
   echo "    Custom role created." >&2
-  ROLE_ID=$(wait_for_role_definition "$DEPLOYMENT_STACK_DENY_SETTING_ROLE_NAME")
+  # `|| exit $?` is load-bearing. wait_for_role_definition exits 12 on a
+  # propagation timeout, but this function is itself always invoked as
+  # `X=$(ensure_deployment_stack_deny_setting_role ...)`, so the OUTER command
+  # substitution catches the inner exit and execution continues with an empty
+  # ROLE_ID -- straight into `az role assignment create --role ""`. errexit
+  # does not help: the outer substitution is what reports status, and it
+  # succeeded. Re-raising here is the only thing that reaches the real caller.
+  ROLE_ID=$(wait_for_role_definition "$DEPLOYMENT_STACK_DENY_SETTING_ROLE_NAME") || exit $?
   echo "$ROLE_ID"
 }

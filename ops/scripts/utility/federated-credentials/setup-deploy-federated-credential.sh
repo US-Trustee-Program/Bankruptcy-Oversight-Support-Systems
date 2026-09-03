@@ -322,7 +322,13 @@ ensure_role_assignment_operator_role() {
 EOF
 )" --output none
   echo "    Custom role created." >&2
-  ROLE_ID=$(wait_for_role_definition "$ROLE_NAME")
+  # `|| exit $?` is load-bearing -- see the identical guard in
+  # _oidc-helpers.sh's ensure_deployment_stack_deny_setting_role. This function
+  # is reached via a wrapper that is itself called in a command substitution
+  # (KV_ROLE_ID=$(ensure_kv_role_assignment_role ...)), so the outer
+  # substitution swallows wait_for_role_definition's exit 12 and leaves
+  # ROLE_ID empty. Re-raise so the propagation failure reaches the caller.
+  ROLE_ID=$(wait_for_role_definition "$ROLE_NAME") || exit $?
   echo "$ROLE_ID"
 }
 
