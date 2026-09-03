@@ -30,7 +30,7 @@ requiredUSTPParams=("--enabledDataflows" "--mssqlRequestTimeout" "--migrateCaseA
 requiredFlexionParams=("--enabledDataflows" "--mssqlRequestTimeout" "--migrateCaseAppointmentsFetchSize" "--resource-group" "--file" "--stackName" "--slotName" "--gitSha" "--networkResourceGroupName" "--kvAppConfigName" "--kvAppConfigResourceGroupName" "--virtualNetworkName" "--analyticsResourceGroupName" "--idKeyvaultAppConfiguration" "--cosmosDatabaseName" "--ustpIssueCollectorHash" "--createAlerts" "--createMainHubPeering" "--deployAppInsights" "--loginProvider" "--loginProviderConfig" "--sqlServerName" "--sqlServerResourceGroupName" "--sqlServerIdentityName" "--actionGroupName" "--oktaUrl" "--e2eDatabaseName" "--e2eSqlDatabaseName")
 
 # shellcheck disable=SC2034 # REASON: to have a reference for all possible parameters
-allParams=("--enabledDataflows" "--mssqlRequestTimeout" "--migrateCaseAppointmentsFetchSize" "--isUstpDeployment" "--resource-group" "--file" "--stackName" "--slotName" "--gitSha" "--networkResourceGroupName" "--virtualNetworkName" "--analyticsWorkspaceId" "--idKeyvaultAppConfiguration" "--kvAppConfigName" "--cosmosDatabaseName" "--deployVnet" "--ustpIssueCollectorHash" "--createAlerts" "--createMainHubPeering" "--deployAppInsights" "--apiFunctionPlanName" "--dataflowsFunctionPlanName" "--webappPlanType" "--functionsPlanType" "--loginProvider" "--loginProviderConfig" "--sqlServerName" "--sqlServerResourceGroupName" "--sqlServerIdentityResourceGroupName" "--sqlServerIdentityName" "--sqlServerIdentitySubscriptionId" "--actionGroupName" "--adminNotificationEmail" "--defaultNotificationRecipient" "--oktaUrl" "--location" "--webappSubnetName" "--apiFunctionSubnetName" "--privateEndpointSubnetName" "--webappSubnetAddressPrefix" "--apiFunctionSubnetAddressPrefix" "--dataflowsSubnetName" "--dataflowsSubnetAddressPrefix" "--vnetAddressPrefix" "--linkVnetIds" "--privateDnsZoneName" "--privateDnsZoneResourceGroup" "--privateDnsZoneSubscriptionId" "--analyticsResourceGroupName" "--analyticsSubscriptionId" "--kvAppConfigResourceGroupName" "--deployDns" "--e2eDatabaseName" "--e2eSqlDatabaseName" "--customDomain" "--useSqlPrivateLink")
+allParams=("--enabledDataflows" "--mssqlRequestTimeout" "--migrateCaseAppointmentsFetchSize" "--isUstpDeployment" "--resource-group" "--file" "--stackName" "--slotName" "--gitSha" "--networkResourceGroupName" "--virtualNetworkName" "--analyticsWorkspaceId" "--idKeyvaultAppConfiguration" "--kvAppConfigName" "--cosmosDatabaseName" "--deployVnet" "--ustpIssueCollectorHash" "--createAlerts" "--createMainHubPeering" "--deployAppInsights" "--apiFunctionPlanName" "--dataflowsFunctionPlanName" "--webappPlanType" "--functionsPlanType" "--loginProvider" "--loginProviderConfig" "--sqlServerName" "--sqlServerResourceGroupName" "--sqlServerIdentityResourceGroupName" "--sqlServerIdentityName" "--sqlServerIdentitySubscriptionId" "--actionGroupName" "--defaultNotificationRecipient" "--oktaUrl" "--location" "--webappSubnetName" "--apiFunctionSubnetName" "--privateEndpointSubnetName" "--webappSubnetAddressPrefix" "--apiFunctionSubnetAddressPrefix" "--dataflowsSubnetName" "--dataflowsSubnetAddressPrefix" "--vnetAddressPrefix" "--linkVnetIds" "--privateDnsZoneName" "--privateDnsZoneResourceGroup" "--privateDnsZoneSubscriptionId" "--analyticsResourceGroupName" "--analyticsSubscriptionId" "--kvAppConfigResourceGroupName" "--deployDns" "--e2eDatabaseName" "--e2eSqlDatabaseName" "--customDomain" "--useSqlPrivateLink")
 
 
 function validateParameters() {
@@ -412,12 +412,6 @@ while [[ $# -gt 0 ]]; do
         inputParams+=("${1}")
         action_group_name_param="actionGroupName=${2}"
         deployment_parameters="${deployment_parameters} ${action_group_name_param}"
-        shift 2
-        ;;
-    --adminNotificationEmail)
-        inputParams+=("${1}")
-        admin_notification_email_param="adminNotificationEmail=${2}"
-        deployment_parameters="${deployment_parameters} ${admin_notification_email_param}"
         shift 2
         ;;
     --defaultNotificationRecipient)

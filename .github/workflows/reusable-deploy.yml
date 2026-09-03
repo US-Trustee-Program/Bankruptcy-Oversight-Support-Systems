@@ -59,7 +59,7 @@ jobs:
     steps:
       - uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a # main
 
-      - uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3.0.0
+      - uses: azure/login@f5d393ae46f8fde4be8b75f32e3fc50e654ad0ca # v3.0.1
         with:
           client-id: ${{ secrets.AZ_CLIENT_ID }}
           tenant-id: ${{ secrets.AZ_TENANT_ID }}
@@ -131,7 +131,6 @@ jobs:
           kv_to_env CAMS_ENABLED_DATAFLOWS "$KV" CAMS-ENABLED-DATAFLOWS
           kv_to_env MSSQL_REQUEST_TIMEOUT "$KV" MSSQL-REQUEST-TIMEOUT
           kv_to_env MIGRATE_CASE_APPOINTMENTS_FETCH_SIZE "$KV" MIGRATE-CASE-APPOINTMENTS-FETCH-SIZE
-          kv_to_env ADMIN_NOTIFICATION_EMAIL "$KV" ADMIN-NOTIFICATION-EMAIL
           kv_to_env DEFAULT_NOTIFICATION_RECIPIENT "$KV" DEFAULT-NOTIFICATION-RECIPIENT --optional
 
       - name: Create Azure resource groups
@@ -250,7 +249,7 @@ jobs:
             --sqlServerResourceGroupName "${AZURE_RG}" \
             --sqlServerIdentityName "${AZ_SQL_IDENTITY_NAME}" \
             --networkLocation ${{ env.AZ_FUNCTIONS_LOCATION }} \
-            -p "createAlerts=${createAlerts} analyticsResourceGroupName=${AZ_ANALYTICS_RG} analyticsWorkspaceId=${ANALYTICS_WORKSPACE_ID} adminNotificationEmail=${ADMIN_NOTIFICATION_EMAIL}" \
+            -p "createAlerts=${createAlerts} analyticsResourceGroupName=${AZ_ANALYTICS_RG} analyticsWorkspaceId=${ANALYTICS_WORKSPACE_ID}" \
             -l "${AZ_LOCATION}"
 
       - name: Deploy Azure resources
@@ -313,6 +312,5 @@ jobs:
             --migrateCaseAppointmentsFetchSize ${{ env.MIGRATE_CASE_APPOINTMENTS_FETCH_SIZE }} \
             --maxObjectDepth "${MAX_OBJECT_DEPTH}" \
             --maxObjectKeyCount "${MAX_OBJECT_KEY_COUNT}" \
-            --adminNotificationEmail "${{ env.ADMIN_NOTIFICATION_EMAIL }}" \
             --defaultNotificationRecipient "${{ env.DEFAULT_NOTIFICATION_RECIPIENT }}" \
             --gitSha "${GIT_SHA}"

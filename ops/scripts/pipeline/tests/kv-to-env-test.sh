@@ -354,9 +354,9 @@ function case_required_missing() {
 }
 
 # --- optional missing, WITH default -----------------------------------------
-# The behaviour six live --optional call sites depend on (SLOT-NAME,
-# AZ-FUNCTIONS-PLAN-TYPE, AZ-FUNCTIONS-LOCATION, ADMIN-NOTIFICATION-EMAIL,
-# DEFAULT-NOTIFICATION-RECIPIENT): an environment that never opted in must get
+# The behaviour the live --optional call sites depend on (SLOT-NAME,
+# AZ-FUNCTIONS-PLAN-TYPE, AZ-FUNCTIONS-LOCATION, DEFAULT-NOTIFICATION-RECIPIENT):
+# an environment that never opted in must get
 # the default and a green deploy, exactly as it did before CAMS-760. Real az
 # ALWAYS writes a diagnostic here, so classifying "stderr is non-empty" as a
 # fault would make every one of those a hard deploy failure.
