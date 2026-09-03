@@ -75,9 +75,11 @@
 #       Microsoft.Authorization/roleAssignments granting the app-config managed
 #       identity Log Analytics Reader on that workspace, so the dev-tier ACS
 #       bounce poller can query it. That module is gated on isDevTier, which is
-#       !(createAlerts || isUstpDeployment) -- and reusable-deploy.yml sets
-#       createAlerts=false for every non-Main-Gov deploy, so isDevTier is true
-#       and the module fires on EVERY branch deploy. Same root cause as the KV
+#       !(createAlerts || isUstpDeployment). BOTH terms matter: reusable-deploy.yml
+#       sets createAlerts=false for every non-Main-Gov deploy, but USTP is also
+#       non-Main-Gov and sets isUstpDeployment=true, so isDevTier is FALSE there.
+#       It is true for Flexion dev and every ephemeral PR branch -- so the module
+#       fires on EVERY branch deploy. Same root cause as the KV
 #       role above: Contributor's notActions exclude
 #       Microsoft.Authorization/*/Write, so NONE of the four RG-scoped
 #       Contributor grants can perform this write -- including the one on
@@ -352,7 +354,7 @@ ensure_kv_role_assignment_role() {
 }
 
 # Required because app-shared-setup.bicep's sharedAnalyticsReaderRoleAssignment
-# module (app-shared-setup.bicep:360) creates a roleAssignment on the shared
+# module (app-shared-setup.bicep:323) creates a roleAssignment on the shared
 # law-cams-branches workspace on every branch deploy, and Contributor does not
 # include roleAssignments/write. See the header for the full rationale, the
 # reason this is a separate role from the KV one, and the sequencing constraint
@@ -509,17 +511,21 @@ provision_identity() {
 
   # Analytics role-assignment operator on the shared law-cams-branches Log
   # Analytics workspace RESOURCE (branch only, never main). See the header for
-  # the full rationale; in short, app-shared-setup.bicep:360 creates a
+  # the full rationale; in short, app-shared-setup.bicep:323 creates a
   # roleAssignment on this workspace on EVERY branch deploy (its isDevTier gate
-  # is true whenever createAlerts is false, which reusable-deploy.yml sets for
-  # every non-Main-Gov deploy), and Contributor cannot perform that write.
-  # Main is NOT covered by its subscription-scope Contributor, contrary to what
-  # this comment claimed until the audit script was pointed at TARGET=main.
-  # isDevTier is false for main/staging/USTP, so they take
-  # standaloneAnalyticsReaderRoleAssignment (app-shared-setup.bicep:385)
-  # instead -- a different module invocation, but the SAME
-  # log-analytics-reader-role-assignment.bicep, so it also creates a
-  # Microsoft.Authorization/roleAssignments. Contributor's notActions exclude
+  # is !(createAlerts || isUstpDeployment), true for Flexion dev and every
+  # ephemeral branch -- NOT simply "every non-Main-Gov deploy", since USTP is
+  # non-Main-Gov but sets isUstpDeployment=true), and Contributor cannot perform
+  # that write.
+  # Main needs no equivalent grant. isDevTier is false for main/staging/USTP,
+  # and log-analytics-reader-role-assignment.bicep has exactly one caller --
+  # the isDevTier one above -- so nothing on the main path writes a
+  # roleAssignment into rg-analytics. Analytics reader grants for those
+  # environments are applied by hand in the customer environment.
+  #
+  # Worth stating because it is easy to re-derive wrongly: had main needed one,
+  # its subscription-scope Contributor would NOT have covered it.
+  # Contributor's notActions exclude
   # Microsoft.Authorization/*/Write at EVERY scope, subscription included, so
   # main's broad grant cannot perform it either. Main works today only because
   # cams-deploy-main-oidc separately holds "Role Based Access Control

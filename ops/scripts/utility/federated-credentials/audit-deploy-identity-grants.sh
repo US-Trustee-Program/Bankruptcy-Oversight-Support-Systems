@@ -381,26 +381,24 @@ audit_identity() {
     # which is the honest classification: unmanaged, and not yet triaged. Feed
     # that section into cams-y8s2 rather than acting on it from here.
     #
-    # The ONE exception, which must not sit in UNKNOWN where a reader could
-    # mistake it for sweepable residue: main needs roleAssignments/write in
-    # rg-analytics for exactly the same reason branch does, via the sibling
-    # module on the other side of the same isDevTier gate. Verified against
-    # app-shared-setup.bicep:385 -- standaloneAnalyticsReaderRoleAssignment
-    # (the !isDevTier path, i.e. main/staging/USTP) deploys with
-    # `scope: resourceGroup(analyticsSubscriptionId, analyticsResourceGroupName)`
-    # and creates a Log Analytics Reader roleAssignment there. The granting
-    # runbook's header asserts this is "covered by main's own subscription-scope
-    # grant", which is NOT true: Contributor's notActions exclude
-    # Microsoft.Authorization/*/Write at every scope, so the subscription-scope
-    # Contributor cannot perform that write either. This out-of-band grant is
-    # what makes main's analytics reader assignment succeed today, and main has
-    # no narrower replacement queued the way branch now does. Left as a hold,
-    # not promoted to an expected grant, because no script in this repo creates
-    # it -- reclassifying it as "expected" would imply the granting runbook
-    # would restore it, and it would not.
+    # main's rg-analytics grant is NOT load-bearing. Only one template in the
+    # tree writes a roleAssignment into rg-analytics --
+    # log-analytics-reader-role-assignment.bicep, reached solely from
+    # app-shared-setup.bicep's sharedAnalyticsReaderRoleAssignment, which is
+    # gated on isDevTier and therefore never fires for main. The tree's only
+    # other roleAssignment write, keyvault-secret-role-assignment.bicep via
+    # kvSetup, targets the shared Key Vault resource group, not this one.
+    #
+    # Held anyway rather than moved into the revoke set or left in UNKNOWN.
+    # Unjustified is not the same as verified-safe-to-remove: no script here
+    # creates this grant, its provenance is untraced (cams-y8s2), and analytics
+    # reader grants for staging/USTP are applied by hand in the customer
+    # environment -- a human may still need this grant to do that. Revoke it
+    # deliberately under cams-y8s2, not as a side effect of the branch cutover,
+    # which is what UNKNOWN or the revoke set would invite.
     hold "Role Based Access Control Administrator" \
       "${SUBSCRIPTION_SCOPE}/resourceGroups/${BRANCH_ANALYTICS_RG}" \
-      "LOAD-BEARING for main, and unmanaged by any script here. app-shared-setup.bicep:385's standaloneAnalyticsReaderRoleAssignment (the !isDevTier path) creates a Log Analytics Reader roleAssignment in this resource group on every main/staging/USTP deploy. Contributor excludes Microsoft.Authorization/roleAssignments/write at EVERY scope, so main's subscription-scope Contributor does not cover it, contrary to the note in setup-deploy-federated-credential.sh's header. Unlike branch, main has no narrower workspace-scoped replacement queued yet -- see cams-y8s2. Do not revoke."
+      "Not load-bearing for main: no template writes a roleAssignment into this resource group on the main path. Held rather than revoked because provenance is untraced and staging/USTP analytics reader grants are applied manually, which may require it. Revoke deliberately under cams-y8s2, not as part of the branch cutover. Contrast the BRANCH identity, where the equivalent grant IS load-bearing -- sharedAnalyticsReaderRoleAssignment fires on every branch deploy."
   else
     require_var "$BRANCH_KV_RG" "AZ_BRANCH_KV_RG" "when auditing the branch identity"
     require_var "$BRANCH_APP_RG" "AZ_BRANCH_APP_RG" "when auditing the branch identity"
