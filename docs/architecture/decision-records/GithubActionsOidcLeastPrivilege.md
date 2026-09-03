@@ -128,6 +128,8 @@ Alongside Contributor, `deploy-branch` holds two narrowly scoped custom roles in
 - `CAMS Deploy Subscription Role`, a custom role at subscription scope (`Microsoft.Resources/deployments/*`, `subscriptions/resourceGroups/read`, `subscriptions/resourceGroups/write`). It is residue of an earlier, abandoned per-resource-group RBAC design, is defined only in live Azure, and is referenced nowhere in this repository; to be revoked.
 - `Role Based Access Control Administrator`, scoped to `rg-analytics`. Granted out of band and currently **load-bearing** — it must not be revoked until a narrower replacement grant is in place. Its provenance is untraced (cams-y8s2).
 
+Beyond those, the most consequential over-grant that will remain once the revocations above are complete is the resource-group scope itself. Two of the four `Contributor` grants — `rg-analytics` and `bankruptcy-oversight-support-systems` — are on resource groups shared with `main`, and Contributor at resource-group scope carries delete rights over everything else in that group, including main's shared Key Vault and Log Analytics workspace. Narrowing subscription to resource group is a real reduction, and these two grants are necessary today because every branch deploy writes into both groups — but resource-group scope is not the floor, and it should not be mistaken for the end state (cams-y8s2).
+
 ### Role Assignments Created by Bicep
 
 Contributor does not include `Microsoft.Authorization/roleAssignments/write`. Any Bicep module that creates a role assignment therefore requires the identity deploying it to hold that permission **at the scope of the assignment being created**, granted separately from Contributor.
