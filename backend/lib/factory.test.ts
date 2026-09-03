@@ -255,18 +255,20 @@ describe('Factory real implementations (DATABASE_MOCK=false)', () => {
       );
     });
 
-    test('returns the same instance on repeated calls (singleton) until reset', () => {
+    test('returns a new instance on each call so each invocation gets the correct logger', () => {
       process.env.ACS_EMAIL_CONNECTION_STRING = 'endpoint=https://fake;accesskey=fake';
       process.env.ACS_EMAIL_SENDER_ADDRESS = 'noreply@example.com';
 
       const first = factory.getNotificationGateway(context);
       const second = factory.getNotificationGateway(context);
-      expect(first).toBe(second);
-
-      factory.resetNotificationGateway();
-      const third = factory.getNotificationGateway(context);
-      expect(third).not.toBe(first);
+      expect(first).not.toBe(second);
     });
+  });
+
+  test('getEmailBounceQueryGateway returns a new instance on each call so each invocation gets the correct logger', () => {
+    const first = factory.getEmailBounceQueryGateway(context);
+    const second = factory.getEmailBounceQueryGateway(context);
+    expect(first).not.toBe(second);
   });
 
   test('getOfficesRepository returns OfficesMongoRepository for okta provider', () => {

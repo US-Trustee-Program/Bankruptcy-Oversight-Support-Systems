@@ -376,6 +376,20 @@ module ustpWebapp 'frontend-webapp-deploy.bicep' = {
     }
 }
 
+module notificationPipelineWorkbook './lib/workbooks/notification-pipeline-workbook.bicep' =
+  if (deployAppInsights && !empty(analyticsWorkspaceId)) {
+    name: '${stackName}-notification-pipeline-workbook-module'
+    scope: resourceGroup(appResourceGroup)
+    params: {
+      stackName: stackName
+      location: location
+      dataflowsAppInsightsResourceId: ustpDataflowsFunction.outputs.appInsightsId
+      apiAppInsightsResourceId: ustpApiFunction.outputs.appInsightsId
+      analyticsWorkspaceResourceId: analyticsWorkspaceId
+      tags: dataflowsTags
+    }
+  }
+
 module ustpApiFunction 'backend-api-deploy.bicep' = {
     name: '${stackName}-function-module'
     scope: resourceGroup(appResourceGroup)

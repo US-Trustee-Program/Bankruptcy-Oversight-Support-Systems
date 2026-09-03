@@ -1,0 +1,217 @@
+{
+  "version": "Notebook/1.0",
+  "items": [
+    {
+      "type": 1,
+      "content": {
+        "json": "# Trustee Notification Pipeline\n\nVisibility into the trustee-change-notification / ACS bounce-poll pipeline: send volume, bounce-poll job health, and per-email bounce detail."
+      },
+      "name": "header"
+    },
+    {
+      "type": 9,
+      "content": {
+        "version": "KqlParameterItem/1.0",
+        "parameters": [
+          {
+            "id": "time-range",
+            "version": "KqlParameterItem/1.0",
+            "name": "TimeRange",
+            "type": 4,
+            "isRequired": true,
+            "typeSettings": {
+              "selectableValues": [
+                {
+                  "durationMs": 3600000
+                },
+                {
+                  "durationMs": 14400000
+                },
+                {
+                  "durationMs": 43200000
+                },
+                {
+                  "durationMs": 86400000
+                },
+                {
+                  "durationMs": 259200000
+                },
+                {
+                  "durationMs": 604800000
+                },
+                {
+                  "durationMs": 2592000000
+                }
+              ],
+              "allowCustom": true
+            },
+            "value": {
+              "durationMs": 43200000
+            }
+          }
+        ],
+        "style": "pills",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components"
+      },
+      "name": "parameters"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "## Poll Health Status\n\nOne row per 15-minute bounce-poll tick (`POLL-NOTIFICATION-BOUNCES`). Every tick is labeled into exactly one state: `Didn't run`, `Ran, query failed`, `Ran, zero bounces`, `Ran, partial reconstruction failure`, or `Ran, bounces reconstructed`. The underlying error text is shown verbatim for any failed tick -- never just a status label."
+      },
+      "name": "poll-health-header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let binSize = 15m;\nlet rangeStart = bin({TimeRange:start}, binSize);\nlet rangeEnd = bin({TimeRange:end}, binSize);\nlet expectedTicks = range TimeBin from rangeStart to rangeEnd step binSize;\nlet actualRuns = customEvents\n| where name == \"DataflowHandlerComplete\"\n| where tostring(customDimensions.moduleName) == \"POLL-NOTIFICATION-BOUNCES\"\n| extend TimeBin = bin(timestamp, binSize),\n         success = tostring(customDimensions.success),\n         errorText = tostring(customDimensions.error),\n         hasBouncesFound = isnotempty(customDimensions.bouncesFound),\n         bouncesFound = toint(customDimensions.bouncesFound),\n         bouncesExpired = toint(customDimensions.bouncesExpired),\n         documentsFailed = toint(customMeasurements.documentsFailed)\n| summarize arg_max(timestamp, success, errorText, hasBouncesFound, bouncesFound, bouncesExpired, documentsFailed) by TimeBin;\nexpectedTicks\n| join kind=leftouter (actualRuns) on TimeBin\n| extend Status = case(\n    isnull(timestamp), \"Didn't run\",\n    success == \"false\" and not(hasBouncesFound), \"Ran, query failed\",\n    documentsFailed > 0, \"Ran, partial reconstruction failure\",\n    bouncesFound == 0, \"Ran, zero bounces\",\n    \"Ran, bounces reconstructed\")\n| project TimeBin, Status, errorText, bouncesFound, bouncesExpired, documentsFailed\n| order by TimeBin desc",
+        "size": 0,
+        "title": "Poll Health by 15-Minute Tick",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "table",
+        "gridSettings": {
+          "formatters": [
+            {
+              "columnMatch": "Status",
+              "formatter": 18,
+              "formatOptions": {
+                "thresholdsOptions": "icons",
+                "thresholdsGrid": [
+                  {
+                    "operator": "==",
+                    "thresholdValue": "Didn't run",
+                    "representation": "4",
+                    "text": "{0}"
+                  },
+                  {
+                    "operator": "==",
+                    "thresholdValue": "Ran, query failed",
+                    "representation": "4",
+                    "text": "{0}"
+                  },
+                  {
+                    "operator": "==",
+                    "thresholdValue": "Ran, partial reconstruction failure",
+                    "representation": "2",
+                    "text": "{0}"
+                  },
+                  {
+                    "operator": "Default",
+                    "representation": "success",
+                    "text": "{0}"
+                  }
+                ]
+              }
+            }
+          ],
+          "labelSettings": [
+            {
+              "columnId": "TimeBin",
+              "label": "Tick"
+            },
+            {
+              "columnId": "Status",
+              "label": "Status"
+            },
+            {
+              "columnId": "errorText",
+              "label": "Error"
+            },
+            {
+              "columnId": "bouncesFound",
+              "label": "Bounces Found"
+            },
+            {
+              "columnId": "bouncesExpired",
+              "label": "Bounces Expired (unrecoverable)"
+            },
+            {
+              "columnId": "documentsFailed",
+              "label": "Reconstruction Failures"
+            }
+          ]
+        }
+      },
+      "name": "poll-health-table"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "## Sent Volume & Bounce Rate\n\nHow many trustee-change notification attempts were made (successful sends and synchronous ACS rejections that still received a messageId, e.g. `Suppressed`), and what fraction of those were later found in ACS's delivery-status log as failed/bounced/quarantined/filtered-spam/suppressed."
+      },
+      "name": "sent-bounce-rate-header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let bounced = workspace('{LogAnalyticsWorkspace:name}').ACSEmailStatusUpdateOperational\n    | where TimeGenerated between ({TimeRange:start} .. {TimeRange:end})\n    | where DeliveryStatus in ('Failed', 'Bounced', 'Quarantined', 'FilteredSpam', 'Suppressed')\n    | summarize BouncedTime = min(todatetime(TimeGenerated)) by RecipientId;\nlet attempted = app('{NodeApiAppInsights:name}').traces\n    | where timestamp between ({TimeRange:start} .. {TimeRange:end})\n    | where message has \"[ACS-NOTIFICATION-GATEWAY]\" and (message has \"Email sent successfully\" or message has \"Failed to send email\")\n    | extend messageId = extract(@'\"messageId\"\\s*:\\s*\"([^\"]+)\"', 1, message),\n             recipientEmail = extract(@'\"to\"\\s*:\\s*\"([^\"]+)\"', 1, message),\n             trusteeId = extract(@'\"trusteeId\"\\s*:\\s*\"([^\"]+)\"', 1, message)\n    | where isnotempty(recipientEmail)\n    | extend messageId = coalesce(messageId, strcat(\"failed-\", recipientEmail, \"-\", format_datetime(timestamp, 'yyyyMMddHHmmss')))\n    | summarize SendTime = min(todatetime(timestamp)) by messageId, recipientEmail;\nattempted\n| join kind=leftouter (bounced) on $left.recipientEmail == $right.RecipientId\n| summarize AttemptedCount = dcount(messageId), \n            BouncedCount = dcountif(messageId, isnotempty(BouncedTime))\n| extend BounceRatePercent = round(100.0 * BouncedCount / AttemptedCount, 1)",
+        "size": 0,
+        "title": "Attempted Notifications & Bounce Rate",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "table"
+      },
+      "name": "sent-bounce-rate-table"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "## Suppression/Bounce Detail Table\n\nOne row per bounced/suppressed email in the selected time range, joined to its original send-time log line to resolve recipient and trustee identity -- so you don't need direct access to the (TTL'd, 7-day) archive collection to identify who was affected. Rows with no matching send-time trace (e.g. the trace has aged out of retention) are still shown, with Recipient/Trustee marked `Unavailable` rather than being hidden."
+      },
+      "name": "bounce-detail-header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let sendTraces = app('{NodeApiAppInsights:name}').traces\n    | where timestamp between ({TimeRange:start} .. {TimeRange:end})\n    | where message has \"[ACS-NOTIFICATION-GATEWAY]\" and (message has \"Email sent successfully\" or message has \"Failed to send email\")\n    | extend jsonStart = indexof(message, \"{\")\n    | extend data = iif(jsonStart >= 0, parse_json(substring(message, jsonStart)), dynamic(null))\n    | extend messageId = tostring(coalesce(data.messageId, data.id)),\n             recipient = tostring(data[\"to\"]),\n             trusteeId = tostring(data.trusteeId),\n             invocationId = tostring(data.correlationId)\n    | where isnotempty(recipient)\n    | summarize arg_max(timestamp, recipient, trusteeId, invocationId) by messageId, recipient;\nlet statusEvents = workspace('{LogAnalyticsWorkspace:name}').ACSEmailStatusUpdateOperational\n    | where TimeGenerated between ({TimeRange:start} .. {TimeRange:end})\n    | where DeliveryStatus in ('Delivered', 'Failed', 'Bounced', 'Quarantined', 'FilteredSpam', 'Suppressed')\n    | project BouncedTime = TimeGenerated, RecipientId, DeliveryStatus, CorrelationId, InternetMessageId;\nstatusEvents\n| join kind=leftouter (sendTraces) on $left.RecipientId == $right.recipient\n| project TimeGenerated = BouncedTime,\n          Recipient = coalesce(recipient, RecipientId),\n          TrusteeId = coalesce(trusteeId, \"Unavailable\"),\n          DeliveryStatus,\n          NodeMessageId = messageId,\n          ACSCorrelationId = CorrelationId,\n          InternetMessageId",
+        "size": 0,
+        "title": "Bounce & Suppression Detail",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "table",
+        "gridSettings": {
+          "sortBy": [
+            {
+              "itemKey": "TimeGenerated",
+              "sortOrder": 2
+            }
+          ],
+          "labelSettings": [
+            {
+              "columnId": "TimeGenerated",
+              "label": "Bounce Detected"
+            },
+            {
+              "columnId": "Recipient",
+              "label": "Recipient"
+            },
+            {
+              "columnId": "DeliveryStatus",
+              "label": "Status"
+            }
+          ]
+        },
+        "sortBy": [
+          {
+            "itemKey": "TimeGenerated",
+            "sortOrder": 2
+          }
+        ]
+      },
+      "name": "bounce-detail-table"
+    }
+  ],
+  "fallbackResourceIds": [
+    "/subscriptions/729f9083-9edf-4269-919f-3f05f7a0ab20/resourcegroups/rg-cams-app/providers/microsoft.insights/components/appi-ustp-cams-dataflows"
+  ],
+  "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
+}

@@ -126,9 +126,9 @@ let objectStorageGateway: ObjectStorageGateway;
 let acmsGateway: AcmsGateway;
 let atsGateway: AtsGateway;
 let idpApiGateway: UserGroupGateway & Initializer<UserGroupGatewayConfig | ApplicationContext>;
-let notificationGateway: NotificationGateway | undefined;
+let notificationEmailClient: EmailClient | undefined;
+let notificationSenderAddress: string | undefined;
 let domainVerificationGateway: DomainVerificationGateway | undefined;
-let emailBounceQueryGateway: EmailBounceQueryGateway | undefined;
 let observabilityGateway: ObservabilityGateway;
 
 let orderSyncStateRepo: RuntimeStateRepository<OrderSyncState>;
@@ -573,10 +573,9 @@ const getDomainVerificationGateway = (): DomainVerificationGateway => {
 };
 
 const getEmailBounceQueryGateway = (context: ApplicationContext): EmailBounceQueryGateway => {
-  if (!emailBounceQueryGateway) {
-    emailBounceQueryGateway = new AcsBounceQueryGateway(undefined, context.logger);
-  }
-  return emailBounceQueryGateway;
+  // Do not cache: the logger closes over InvocationContext and becomes stale after
+  // the first invocation completes, silently dropping logs in subsequent invocations.
+  return new AcsBounceQueryGateway(undefined, context.logger);
 };
 
 const getEmailNotificationArchiveRepository = (
@@ -591,26 +590,33 @@ const getEmailNotificationArchiveRepository = (
 };
 
 const getNotificationGateway = (context: ApplicationContext): NotificationGateway => {
-  if (!notificationGateway) {
-    if (context.config.get('dbMock')) {
-      notificationGateway = MockNotificationGateway.getInstance();
-    } else {
-      const connectionString = process.env.ACS_EMAIL_CONNECTION_STRING;
-      const senderAddress = process.env.ACS_EMAIL_SENDER_ADDRESS;
-      if (!connectionString || !senderAddress) {
-        throw new Error(
-          'ACS_EMAIL_CONNECTION_STRING and ACS_EMAIL_SENDER_ADDRESS must be configured.',
-        );
-      }
-      const client = new EmailClient(connectionString);
-      notificationGateway = new AcsNotificationGateway(client, senderAddress, context.logger);
-    }
+  if (context.config.get('dbMock')) {
+    return MockNotificationGateway.getInstance();
   }
-  return notificationGateway;
+  if (!notificationEmailClient) {
+    const connectionString = process.env.ACS_EMAIL_CONNECTION_STRING;
+    const senderAddress = process.env.ACS_EMAIL_SENDER_ADDRESS;
+    if (!connectionString || !senderAddress) {
+      throw new Error(
+        'ACS_EMAIL_CONNECTION_STRING and ACS_EMAIL_SENDER_ADDRESS must be configured.',
+      );
+    }
+    notificationEmailClient = new EmailClient(connectionString);
+    notificationSenderAddress = senderAddress;
+  }
+  // Create a new gateway per invocation so each gets the current invocation-scoped logger.
+  // The EmailClient is cached but the wrapper is not — the logger closes over InvocationContext
+  // and becomes stale after the first invocation completes, silently dropping logs.
+  return new AcsNotificationGateway(
+    notificationEmailClient,
+    notificationSenderAddress!,
+    context.logger,
+  );
 };
 
 const resetNotificationGateway = () => {
-  notificationGateway = undefined;
+  notificationEmailClient = undefined;
+  notificationSenderAddress = undefined;
 };
 
 const getTrusteeUpcomingKeyDatesRepository = (
