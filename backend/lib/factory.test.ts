@@ -265,6 +265,12 @@ describe('Factory real implementations (DATABASE_MOCK=false)', () => {
     });
   });
 
+  test('getEmailBounceQueryGateway returns a new instance on each call so each invocation gets the correct logger', () => {
+    const first = factory.getEmailBounceQueryGateway(context);
+    const second = factory.getEmailBounceQueryGateway(context);
+    expect(first).not.toBe(second);
+  });
+
   test('getOfficesRepository returns OfficesMongoRepository for okta provider', () => {
     expect(
       factory.getOfficesRepository(cloneContext(context, { provider: 'okta' })),
