@@ -52,11 +52,14 @@
 #     DeploymentActive/InvalidResourceOperation-still-provisioning; any other
 #     failure (or exhausted attempts) returns the failing exit code immediately.
 #
-# The retry behavior is tunable via env vars, each defaulting to the values
-# above so existing callers are unaffected:
-#   AZ_DEPLOY_RETRY_PATTERN                 grep -E pattern of retryable
-#                                           conditions (default
-#                                           'AnotherOperationInProgress|DeploymentActive|is being provisioned with state')
+# The retry behavior is tunable via env vars. A caller-set AZ_DEPLOY_RETRY_PATTERN
+# EXTENDS the three base shapes below rather than replacing them (e.g.
+# az-cosmos-deploy.sh's Cosmos-throttling pattern also gets shared-RG-contention
+# coverage for free) — so existing callers gain retry coverage, not lose it:
+#   AZ_DEPLOY_RETRY_PATTERN                 grep -E pattern of additional
+#                                           retryable conditions, ORed with the
+#                                           base pattern
+#                                           'AnotherOperationInProgress|DeploymentActive|is being provisioned with state'
 #   AZ_DEPLOY_RETRY_MAX_ATTEMPTS            total attempts before giving up
 #                                           (default 3)
 #   AZ_DEPLOY_RETRY_INITIAL_DELAY_SECONDS  first backoff delay, doubled each
@@ -68,7 +71,7 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
 fi
 
 az_deploy_with_retry_func() {
-    local retryPattern="${AZ_DEPLOY_RETRY_PATTERN:-AnotherOperationInProgress|DeploymentActive|is being provisioned with state}"
+    local retryPattern="${AZ_DEPLOY_RETRY_PATTERN:+${AZ_DEPLOY_RETRY_PATTERN}|}AnotherOperationInProgress|DeploymentActive|is being provisioned with state"
     local maxAttempts="${AZ_DEPLOY_RETRY_MAX_ATTEMPTS:-3}"
     local attempt=1
     local delaySeconds="${AZ_DEPLOY_RETRY_INITIAL_DELAY_SECONDS:-15}"
