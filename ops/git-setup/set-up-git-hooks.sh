@@ -25,7 +25,12 @@ if [ "$SUBMODULE" = true ]; then
     GITHOOKS_DIR="../../../.git/modules/cams/hooks"
 else
     echo "Setting up git hooks for main repository..."
-    GITHOOKS_DIR="../../.git/hooks"
+    # Resolve the actual effective hooks directory instead of assuming
+    # .git/hooks: core.hooksPath may point elsewhere (e.g. beads sets it to
+    # .beads/hooks), and a hardcoded path silently installs hooks nothing
+    # will ever run. Resolved as an absolute path since the rest of this
+    # script cd's into ops/git-setup/ before using GITHOOKS_DIR.
+    GITHOOKS_DIR="$(cd "$(git rev-parse --git-path hooks)" && pwd)"
 fi
 
 # check current working directory
@@ -78,6 +83,19 @@ chmod +x ${GITHOOKS_DIR}/post-rewrite
 
 cp ./pre-push ${GITHOOKS_DIR}/pre-push
 chmod +x ${GITHOOKS_DIR}/pre-push
+
+# Set up commit-msg hook (delegates to the ustp-cams-fdp plugin's validation)
+cp ./commit-msg ${GITHOOKS_DIR}/commit-msg
+chmod +x ${GITHOOKS_DIR}/commit-msg
+
+# Defensive: if beads has already claimed .beads/hooks (or claims it later
+# via `bd hooks install`), seed commit-msg there directly too. `bd hooks`
+# only manages pre-commit/post-merge/pre-push/post-checkout/prepare-commit-msg
+# by name, so it won't overwrite or remove this file.
+if [ -d ../../.beads/hooks ]; then
+    cp ./commit-msg ../../.beads/hooks/commit-msg
+    chmod +x ../../.beads/hooks/commit-msg
+fi
 
 popd || exit
 
