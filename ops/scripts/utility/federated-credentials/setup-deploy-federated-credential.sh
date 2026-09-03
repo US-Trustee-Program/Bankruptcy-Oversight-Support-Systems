@@ -303,14 +303,22 @@ ensure_role_assignment_operator_role() {
   fi
 
   echo "    Creating custom role '$ROLE_NAME'..." >&2
+  # write + read only, deliberately NOT roleAssignments/delete. Both consuming
+  # modules -- keyvault-secret-role-assignment.bicep and
+  # log-analytics-reader-role-assignment.bicep -- only ever declare the
+  # assignment (an idempotent PUT); neither deletes one. Granting delete would
+  # let this identity revoke ANY other principal's role assignment on the target
+  # resource, not just its own. Checked before trimming: no Deployment Stack
+  # manages a roleAssignment either -- both modules are reached only from
+  # app-shared-setup.bicep, which deploys via plain `az deployment group create`,
+  # so no action-on-unmanage teardown needs the delete action.
   az role definition create --role-definition "$(cat <<EOF
 {
   "Name": "${ROLE_NAME}",
   "Description": "${ROLE_DESCRIPTION}",
   "Actions": [
     "Microsoft.Authorization/roleAssignments/write",
-    "Microsoft.Authorization/roleAssignments/read",
-    "Microsoft.Authorization/roleAssignments/delete"
+    "Microsoft.Authorization/roleAssignments/read"
   ],
   "NotActions": [],
   "DataActions": [],
