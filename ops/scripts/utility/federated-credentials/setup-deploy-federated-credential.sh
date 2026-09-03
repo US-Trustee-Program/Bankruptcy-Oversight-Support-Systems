@@ -75,11 +75,9 @@
 #       Microsoft.Authorization/roleAssignments granting the app-config managed
 #       identity Log Analytics Reader on that workspace, so the dev-tier ACS
 #       bounce poller can query it. That module is gated on isDevTier, which is
-#       !(createAlerts || isUstpDeployment). BOTH terms matter: reusable-deploy.yml
-#       sets createAlerts=false for every non-Main-Gov deploy, but USTP is also
-#       non-Main-Gov and sets isUstpDeployment=true, so isDevTier is FALSE there.
-#       It is true for Flexion dev and every ephemeral PR branch -- so the module
-#       fires on EVERY branch deploy. Same root cause as the KV
+#       !(createAlerts || isUstpDeployment): true for Flexion dev and every
+#       ephemeral PR branch, false for Main-Gov (createAlerts) and for USTP
+#       (isUstpDeployment). So the module fires on EVERY branch deploy. Same root cause as the KV
 #       role above: Contributor's notActions exclude
 #       Microsoft.Authorization/*/Write, so NONE of the four RG-scoped
 #       Contributor grants can perform this write -- including the one on
@@ -523,15 +521,11 @@ provision_identity() {
   # roleAssignment into rg-analytics. Analytics reader grants for those
   # environments are applied by hand in the customer environment.
   #
-  # Worth stating because it is easy to re-derive wrongly: had main needed one,
-  # its subscription-scope Contributor would NOT have covered it.
-  # Contributor's notActions exclude
-  # Microsoft.Authorization/*/Write at EVERY scope, subscription included, so
-  # main's broad grant cannot perform it either. Main works today only because
-  # cams-deploy-main-oidc separately holds "Role Based Access Control
-  # Administrator" on rg-analytics -- also out-of-band, also load-bearing, and
-  # with no narrower replacement queued. Deliberately not addressed here:
-  # narrowing main is out of scope for this slice (see cams-y8s2), and adding
+  # Note for anyone reinstating a main-path equivalent: subscription-scope
+  # Contributor would not cover it. Contributor's notActions exclude
+  # Microsoft.Authorization/*/Write at EVERY scope, subscription included, so a
+  # broader grant does not help -- it would need its own narrow role, as branch
+  # has. Narrowing main is out of scope for this slice (see cams-y8s2), and adding
   # a grant to the main path would widen this change's blast radius to the
   # production deploy identity. Flagged so nobody reads the old claim and
   # sweeps main's grant as residue.

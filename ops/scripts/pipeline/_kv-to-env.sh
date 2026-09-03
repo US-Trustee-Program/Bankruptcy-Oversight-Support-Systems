@@ -107,7 +107,7 @@ function kv_get() {
     # Every local here is _kv_-prefixed. bash is dynamically scoped, so an
     # unprefixed local sharing a name with the caller's output variable would
     # shadow it -- printf -v would then assign to this function's copy and the
-    # caller would see nothing. Caught in testing with a caller using "val".
+    # caller would see nothing.
     local _kv_outVar=$1 _kv_vault=$2 _kv_secretName=$3
 
     # The prefix keeps callers safe, but only if they stay off it. A caller
