@@ -150,7 +150,7 @@ test.describe('Trustee Match Verification', () => {
     const content = page.getByTestId(`accordion-content-order-list-${inactiveItem!.id}`);
     await expect(content).toBeVisible(timeoutOption);
     await expect(content).toContainText(
-      'Trustee is inactive in CAMS and name, address, phone, and email sent from the court does not match a CAMS Trustee for case:',
+      'Trustee is inactive in CAMS and name, address, phone, and email sent from the court do not match a CAMS Trustee for case:',
     );
   });
 
@@ -166,6 +166,6 @@ test.describe('Trustee Match Verification', () => {
 
     const heading = page.getByTestId(`accordion-heading-${inactiveItem!.id}`);
     await expect(heading).toBeVisible(timeoutOption);
-    await expect(heading).toContainText('Inactive trustee');
+    await expect(heading).toContainText('Inactive Trustee');
   });
 });

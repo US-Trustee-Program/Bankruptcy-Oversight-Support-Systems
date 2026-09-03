@@ -16,7 +16,7 @@
   }
 
   p.other-matches-subtext {
-    margin: 1.5rem 0;
+    margin: 1rem 0;
   }
 
   .affected-cases-list {
@@ -51,6 +51,8 @@
       .trustee-data-cell {
         padding: 0.5rem 0.5rem 0.5rem 0;
         word-wrap: break-word;
+        overflow-wrap: anywhere;
+        min-width: 0;
         border-bottom: 1px solid colors.$ink;
 
         &.no-border {
