@@ -100,6 +100,21 @@
 # the check-kv-secret-parity pre-commit hook (whose file filter matches only
 # setup-*-federated-credential.sh -- this filename deliberately does not).
 #
+# What is NOT derived: the grant TOPOLOGY
+# ---------------------------------------
+# The values above are derived. Which role lands on which scope -- the
+# expect()/revoke()/hold() calls in build_expectations -- is hand-mirrored from
+# the granting script's provision_identity and maintained in parallel with it.
+# In sync as of this commit; nothing enforces that it stays so.
+#
+# The failure direction is at least safe: add a grant to provision_identity
+# without a matching expect() here and it surfaces as UNKNOWN / UNMANAGED --
+# loud, and exactly the bucket an operator is told to treat as suspicious --
+# rather than being silently accepted. The reverse (an expect() for a grant the
+# granting script no longer creates) surfaces as expected-MISSING. Both are
+# visible; neither is silent. But if this topology ever grows past a handful of
+# entries, derive it too rather than trusting the mirror.
+#
 # Prerequisites:
 #   - az CLI logged in. Reader on the subscription is sufficient; no write
 #     permission of any kind is needed or used.
