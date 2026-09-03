@@ -6,13 +6,16 @@
 # Every branch (plus main) now deploys into the SAME shared resource groups
 # (CAMS-760, Option E). A deployment/stack NAME collision there can hit a
 # transient conflict — retry with backoff rather than failing the whole
-# pipeline run on what is usually just a timing collision. Two known
+# pipeline run on what is usually just a timing collision. Three known
 # conflict shapes: a 409 AnotherOperationInProgress on the resource group
-# itself, and a (DeploymentActive) error when the SAME branch redeploys
+# itself, a (DeploymentActive) error when the SAME branch redeploys
 # while its own prior deployment to that name is still active — that one
 # prints no literal "409" anywhere in the CLI output, so it needs its own
-# pattern. Only retries when the captured output actually looks like one of
-# these two named shapes — NOT a bare "409", which is too broad: a genuine
+# pattern — and an InvalidResourceOperation on a shared child resource (e.g.
+# the ACS email service) still finishing provisioning (state 'Accepted')
+# from another branch's/main's very recent write to the same shared
+# resource group. Only retries when the captured output actually looks like
+# one of these named shapes — NOT a bare "409", which is too broad: a genuine
 # resource Conflict unrelated to lock contention is also sometimes reported
 # as a 409, and retrying that would just resend the same parameters and hit
 # the identical Conflict again, burning attempts before failing with a
@@ -46,14 +49,14 @@
 # Exports:
 #   az_deploy_with_retry_func CMD... -> runs CMD, retrying up to 3 attempts
 #     with exponential backoff (15s, 30s) on AnotherOperationInProgress/
-#     DeploymentActive; any other failure (or exhausted attempts) returns
-#     the failing exit code immediately.
+#     DeploymentActive/InvalidResourceOperation-still-provisioning; any other
+#     failure (or exhausted attempts) returns the failing exit code immediately.
 #
 # The retry behavior is tunable via env vars, each defaulting to the values
 # above so existing callers are unaffected:
 #   AZ_DEPLOY_RETRY_PATTERN                 grep -E pattern of retryable
 #                                           conditions (default
-#                                           'AnotherOperationInProgress|DeploymentActive')
+#                                           'AnotherOperationInProgress|DeploymentActive|is being provisioned with state')
 #   AZ_DEPLOY_RETRY_MAX_ATTEMPTS            total attempts before giving up
 #                                           (default 3)
 #   AZ_DEPLOY_RETRY_INITIAL_DELAY_SECONDS  first backoff delay, doubled each
@@ -65,7 +68,7 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
 fi
 
 az_deploy_with_retry_func() {
-    local retryPattern="${AZ_DEPLOY_RETRY_PATTERN:-AnotherOperationInProgress|DeploymentActive}"
+    local retryPattern="${AZ_DEPLOY_RETRY_PATTERN:-AnotherOperationInProgress|DeploymentActive|is being provisioned with state}"
     local maxAttempts="${AZ_DEPLOY_RETRY_MAX_ATTEMPTS:-3}"
     local attempt=1
     local delaySeconds="${AZ_DEPLOY_RETRY_INITIAL_DELAY_SECONDS:-15}"
