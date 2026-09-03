@@ -82,10 +82,7 @@ fallback.
 
 ## Step 2 — Revoke
 
-**Three** grants. Revoking only the first two leaves the identity holding
-subscription-scope `resourceGroups/write` and `deployments/*` — precisely the
-capabilities this work exists to remove — and the next deploy still goes green,
-which reads as success.
+**Three** grants:
 
 | Role | Scope |
 | --- | --- |
@@ -93,15 +90,47 @@ which reads as success.
 | `CAMS Deploy Subscription Role` | subscription |
 | `User Access Administrator` | resource group `bankruptcy-oversight-support-systems` |
 
-`CAMS Deploy Subscription Role` is a custom role defined only in live Azure and
-referenced by no script in this repo; its own description marks it as residue of
-an abandoned per-RG RBAC design. `User Access Administrator` is
-resource-group scoped, not subscription scoped.
+`Contributor` and `CAMS Deploy Subscription Role` **each independently** grant
+subscription-scope `resourceGroups/write` and `deployments/*`. Revoking one
+without the other leaves that capability fully in place — precisely what this
+work exists to remove — and the next deploy still goes green, which reads as
+confirmation. The custom role is the easy one to miss: it is defined only in
+live Azure, referenced by no script in this repo, and its own description marks
+it as residue of an abandoned per-RG RBAC design.
+
+`User Access Administrator` grants neither of those actions; it is
+resource-group scoped and is revoked here on its own merits, because it lets
+the identity grant itself Owner within that resource group.
+
+IDs are derived rather than hardcoded, matching every other script in this
+family:
+
+```bash
+SUB_ID=$(az account show --query id -o tsv)
+BRANCH_SP_ID=$(az ad sp show \
+  --id "$(az ad app list --display-name cams-deploy-branch-oidc --query '[0].appId' -o tsv)" \
+  --query id -o tsv)
+
+az role assignment delete --assignee-object-id "$BRANCH_SP_ID" \
+  --role "Contributor" --scope "/subscriptions/${SUB_ID}"
+
+az role assignment delete --assignee-object-id "$BRANCH_SP_ID" \
+  --role "CAMS Deploy Subscription Role" --scope "/subscriptions/${SUB_ID}"
+
+az role assignment delete --assignee-object-id "$BRANCH_SP_ID" \
+  --role "User Access Administrator" \
+  --scope "/subscriptions/${SUB_ID}/resourceGroups/bankruptcy-oversight-support-systems"
+```
 
 Immediately afterwards, canary: dispatch `Continuous Deployment` via
 `workflow_dispatch` with `deployBranch=true` and confirm it reaches the end.
-Then re-run the audit — `to-be-revoked, present` should be **0** and
-`UNKNOWN / UNMANAGED` must remain **0**.
+Then re-run the audit and check **all three** counts:
+
+- `to-be-revoked, present` — must be **0**
+- `must-not-revoke, present` — must still be **1**. This is the check that
+  catches an over-broad sweep taking the `rg-analytics` grant with it. See
+  [Do NOT revoke](#do-not-revoke).
+- `UNKNOWN / UNMANAGED` — must remain **0**
 
 ### Do NOT revoke
 
@@ -123,11 +152,16 @@ not.
 ## Rollback
 
 ```bash
+SUB_ID=$(az account show --query id -o tsv)
+BRANCH_SP_ID=$(az ad sp show \
+  --id "$(az ad app list --display-name cams-deploy-branch-oidc --query '[0].appId' -o tsv)" \
+  --query id -o tsv)
+
 az role assignment create \
-  --assignee-object-id 9215f25f-549a-47d2-b7f9-b3002623c66b \
+  --assignee-object-id "$BRANCH_SP_ID" \
   --assignee-principal-type ServicePrincipal \
   --role Contributor \
-  --scope /subscriptions/729f9083-9edf-4269-919f-3f05f7a0ab20
+  --scope "/subscriptions/${SUB_ID}"
 ```
 
 Restores the broad grant in seconds. This is what was done in August. Re-add the
@@ -182,6 +216,12 @@ definition.
 those three is ever deleted or renamed, the call fires and hard-fails under the
 narrow grant. That is by design, but it means this procedure's safety depends on
 those resource groups continuing to exist.
+
+`rg-analytics` is not in that existence check — the analytics RG check is gated
+to non-branch deploys — but it is equally load-bearing for branch, by a
+different path: the Log Analytics workspace deploy step and
+`app-shared-setup.bicep`'s analytics role assignment both write into it. If it
+disappears, branch deploys fail there rather than at the resource-group step.
 
 ## Out of scope
 
