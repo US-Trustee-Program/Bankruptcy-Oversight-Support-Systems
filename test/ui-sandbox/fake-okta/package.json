@@ -1,0 +1,21 @@
+{
+  "name": "cams-ui-sandbox-fake-okta",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Self-contained OIDC provider standing in for Okta in the ui-sandbox - own dependency tree, independent of the monorepo root install, so it can build/run in a container regardless of root node_modules state.",
+  "scripts": {
+    "start": "tsx server.ts",
+    "seed-users": "tsx seed-users.ts"
+  },
+  "dependencies": {
+    "express": "5.2.1",
+    "jose": "4.15.9",
+    "mongodb": "7.5.0"
+  },
+  "devDependencies": {
+    "@types/express": "5.0.6",
+    "@types/node": "24.13.3",
+    "tsx": "4.23.12",
+    "typescript": "6.0.3"
+  }
+}

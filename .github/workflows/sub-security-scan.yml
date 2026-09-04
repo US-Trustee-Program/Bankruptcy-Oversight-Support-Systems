@@ -65,14 +65,14 @@ jobs:
       - name: Run Snyk SCA scan
         if: ${{ ! inputs.skip }}
         run:
-          snyk test --all-projects --exclude=function-apps,integration --severity-threshold=medium
-          --policy-path=. --sarif-file-output=snyk-sca.sarif
+          snyk test --all-projects --exclude=function-apps,integration,fake-okta
+          --severity-threshold=medium --policy-path=. --sarif-file-output=snyk-sca.sarif
         env:
           SNYK_API: https://api.snykgov.io
 
       - name: Monitor project in Snyk
         if: ${{ ! inputs.skip && always() }}
-        run: snyk monitor --all-projects --exclude=function-apps,integration
+        run: snyk monitor --all-projects --exclude=function-apps,integration,fake-okta
         env:
           SNYK_API: https://api.snykgov.io
 

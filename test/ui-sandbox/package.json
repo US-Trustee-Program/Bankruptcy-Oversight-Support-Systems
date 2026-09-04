@@ -1,0 +1,9 @@
+{
+  "name": "cams-ui-sandbox",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "seed": "npx tsx --tsconfig ../../backend/tsconfig.json scripts/seed.ts",
+    "seed:sql": "MSSQL_HOST=localhost MSSQL_USER=sa MSSQL_PASS='YourStrong!Passw0rd' MSSQL_DATABASE_DXTR=CAMS_E2E MSSQL_ENCRYPT=false MSSQL_TRUST_UNSIGNED_CERT=true bash -c 'cd ../e2e && npx tsx --tsconfig ../../backend/tsconfig.json scripts/seed-sqlserver.ts'"
+  }
+}
