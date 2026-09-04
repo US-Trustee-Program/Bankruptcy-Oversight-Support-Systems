@@ -71,6 +71,7 @@ describe('TrusteeChangeNotificationUseCase', () => {
   beforeEach(async () => {
     vi.restoreAllMocks();
     delete process.env.DEFAULT_NOTIFICATION_RECIPIENT;
+    delete process.env.ADMIN_NOTIFICATION_EMAIL;
     context = await createMockApplicationContext();
     mockGateway = MockNotificationGateway.getInstance();
     mockGateway.clear();
@@ -168,12 +169,11 @@ describe('TrusteeChangeNotificationUseCase', () => {
     ).toBe(true);
   });
 
-  test('archives the email even when ACS synchronously rejects the send (e.g. Suppressed)', async () => {
+  test('does not archive when ACS synchronously rejects the send (e.g. Suppressed) -- it forwards immediately instead', async () => {
     seedRouting([CHAPTER_OVERSIGHT_RECIPIENT]);
-    const archiveSpy = vi
-      .spyOn(MockMongoRepository.prototype, 'archiveSentEmail')
-      .mockResolvedValue(undefined);
-    vi.spyOn(mockGateway, 'send').mockRejectedValue(
+    process.env.ADMIN_NOTIFICATION_EMAIL = 'admin@example.test';
+    const archiveSpy = vi.spyOn(MockMongoRepository.prototype, 'archiveSentEmail');
+    vi.spyOn(mockGateway, 'send').mockRejectedValueOnce(
       new CamsError('ACS-NOTIFICATION-GATEWAY', {
         message:
           "Email service rejected the message with status 'Suppressed' (id: msg-suppressed-1)",
@@ -184,11 +184,7 @@ describe('TrusteeChangeNotificationUseCase', () => {
     const changeSet = buildChangeSet([buildField()]);
     const summary = await useCase.notify(context, changeSet);
 
-    expect(archiveSpy).toHaveBeenCalledWith({
-      messageId: 'msg-suppressed-1',
-      recipientAddress: CHAPTER_OVERSIGHT_RECIPIENT.recipientAddresses[0],
-      changeSet,
-    });
+    expect(archiveSpy).not.toHaveBeenCalled();
     expect(summary).toEqual({
       attempted: 1,
       failed: 1,
@@ -200,6 +196,91 @@ describe('TrusteeChangeNotificationUseCase', () => {
         },
       ],
     });
+  });
+
+  test('forwards the compiled notification content to the admin immediately on a synchronous send failure', async () => {
+    seedRouting([CHAPTER_OVERSIGHT_RECIPIENT]);
+    process.env.ADMIN_NOTIFICATION_EMAIL = 'admin@example.test';
+    vi.spyOn(mockGateway, 'send').mockRejectedValueOnce(
+      new CamsError('ACS-NOTIFICATION-GATEWAY', {
+        message:
+          "Email service rejected the message with status 'Suppressed' (id: msg-suppressed-1)",
+        data: { reason: 'send', messageId: 'msg-suppressed-1' },
+      }),
+    );
+
+    await useCase.notify(context, buildChangeSet([buildField()]));
+
+    const recorded = mockGateway.getRecorded();
+    const adminEmail = recorded.find((n) => n.to === 'admin@example.test');
+    expect(adminEmail).toBeDefined();
+    expect(adminEmail!.subject).toBe('[Undeliverable] Trustee Information Changed: Henry Green');
+    expect(adminEmail!.html).toContain(CHAPTER_OVERSIGHT_RECIPIENT.recipientAddresses[0]);
+    expect(adminEmail!.html).toContain('<hr>');
+    expect(adminEmail!.text).toContain(CHAPTER_OVERSIGHT_RECIPIENT.recipientAddresses[0]);
+  });
+
+  test('does not forward to admin, and logs instead, when ADMIN_NOTIFICATION_EMAIL is not configured', async () => {
+    seedRouting([CHAPTER_OVERSIGHT_RECIPIENT]);
+    vi.spyOn(mockGateway, 'send').mockRejectedValueOnce(
+      new CamsError('ACS-NOTIFICATION-GATEWAY', {
+        message: "Email service rejected the message with status 'Suppressed' (id: msg-1)",
+        data: { reason: 'send', messageId: 'msg-1' },
+      }),
+    );
+    const errorSpy = vi.spyOn(context.logger, 'error');
+
+    await useCase.notify(context, buildChangeSet([buildField()]));
+
+    expect(mockGateway.getRecorded()).toEqual([]);
+    expect(
+      errorSpy.mock.calls.some(
+        (call) =>
+          typeof call[1] === 'string' && call[1].includes('ADMIN_NOTIFICATION_EMAIL is not'),
+      ),
+    ).toBe(true);
+  });
+
+  test('does not forward to admin for a transient connection failure', async () => {
+    seedRouting([CHAPTER_OVERSIGHT_RECIPIENT]);
+    process.env.ADMIN_NOTIFICATION_EMAIL = 'admin@example.test';
+    vi.spyOn(mockGateway, 'send').mockRejectedValueOnce(
+      new CamsError('ACS-NOTIFICATION-GATEWAY', {
+        message: 'Unable to connect to the email service',
+        data: { reason: 'connection' },
+      }),
+    );
+
+    await useCase.notify(context, buildChangeSet([buildField()]));
+
+    expect(mockGateway.getRecorded()).toEqual([]);
+  });
+
+  test('logs an error without masking the original send failure when the admin forward itself fails', async () => {
+    seedRouting([CHAPTER_OVERSIGHT_RECIPIENT]);
+    process.env.ADMIN_NOTIFICATION_EMAIL = 'admin@example.test';
+    vi.spyOn(mockGateway, 'send').mockImplementation(async (notification) => {
+      if (notification.to === 'admin@example.test') {
+        throw new Error('admin forward failed too');
+      }
+      throw new CamsError('ACS-NOTIFICATION-GATEWAY', {
+        message: "Email service rejected the message with status 'Suppressed' (id: msg-1)",
+        data: { reason: 'send', messageId: 'msg-1' },
+      });
+    });
+    const errorSpy = vi.spyOn(context.logger, 'error');
+
+    const summary = await useCase.notify(context, buildChangeSet([buildField()]));
+
+    expect(summary.failed).toBe(1);
+    expect(summary.failures[0].reason).toBe('send');
+    expect(
+      errorSpy.mock.calls.some(
+        (call) =>
+          typeof call[1] === 'string' &&
+          call[1].includes('Failed to forward undeliverable trustee change notification'),
+      ),
+    ).toBe(true);
   });
 
   test('does not attempt to archive when a send fails without a messageId (e.g. connection failure)', async () => {
@@ -216,33 +297,6 @@ describe('TrusteeChangeNotificationUseCase', () => {
 
     expect(archiveSpy).not.toHaveBeenCalled();
     expect(summary.failures[0].reason).toBe('connection');
-  });
-
-  test('logs an archive failure without masking the original send failure when ACS rejects synchronously', async () => {
-    seedRouting([CHAPTER_OVERSIGHT_RECIPIENT]);
-    vi.spyOn(MockMongoRepository.prototype, 'archiveSentEmail').mockRejectedValue(
-      new Error('archive write failed'),
-    );
-    vi.spyOn(mockGateway, 'send').mockRejectedValue(
-      new CamsError('ACS-NOTIFICATION-GATEWAY', {
-        message:
-          "Email service rejected the message with status 'Suppressed' (id: msg-suppressed-2)",
-        data: { reason: 'send', messageId: 'msg-suppressed-2' },
-      }),
-    );
-    const errorSpy = vi.spyOn(context.logger, 'error');
-
-    const summary = await useCase.notify(context, buildChangeSet([buildField()]));
-
-    expect(summary.failed).toBe(1);
-    expect(summary.failures[0].reason).toBe('send');
-    expect(
-      errorSpy.mock.calls.some(
-        (call) =>
-          typeof call[1] === 'string' &&
-          call[1].includes('Failed to archive sent trustee change notification'),
-      ),
-    ).toBe(true);
   });
 
   test('dispatches to all addresses when a routing record has multiple recipients', async () => {

@@ -2,7 +2,11 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { Notification } from '@common/cams/notifications';
 import { EmailNotificationArchiveRepository, NotificationGateway } from '../gateways.types';
 import factory from '../../factory';
-import { compileTrusteeChangeTemplate, escapeHtml } from './templates/trustee-change-template';
+import {
+  buildUndeliverableAdminHtml,
+  buildUndeliverableAdminText,
+  compileTrusteeChangeTemplate,
+} from './templates/trustee-change-template';
 import { NotFoundError } from '../../common-errors/not-found-error';
 
 const MODULE_NAME = 'BOUNCE-RECONSTRUCTION';
@@ -44,8 +48,8 @@ export class BounceReconstructionUseCase {
     const notification: Notification = {
       to: adminEmail,
       subject: `[Bounced] ${compiled.subject}`,
-      html: buildAdminHtml(archived.recipientAddress, compiled.html),
-      text: buildAdminText(archived.recipientAddress, compiled.text),
+      html: buildUndeliverableAdminHtml(archived.recipientAddress, compiled.html),
+      text: buildUndeliverableAdminText(archived.recipientAddress, compiled.text),
       correlationId: context.invocationId,
     };
 
@@ -56,19 +60,4 @@ export class BounceReconstructionUseCase {
       `Forwarded bounced trustee change notification to admin (messageId: '${messageId}', originalRecipient: '${archived.recipientAddress}', deliveryStatus: '${deliveryStatus ?? 'unknown'}').`,
     );
   }
-}
-
-function buildAdminHtml(originalRecipient: string, originalHtml: string): string {
-  return (
-    `<p>The trustee change notification below failed to deliver to <strong>${escapeHtml(originalRecipient)}</strong>. ` +
-    `The original message content is reproduced below for review. Be sure this information is forwarded on to OO.</p>` +
-    `<hr>${originalHtml}`
-  );
-}
-
-function buildAdminText(originalRecipient: string, originalText: string): string {
-  return (
-    `The trustee change notification below failed to deliver to ${originalRecipient}. ` +
-    `The original message content is reproduced below for review. Be sure this information is forwarded on to OO.\n\n---\n\n${originalText}`
-  );
 }
