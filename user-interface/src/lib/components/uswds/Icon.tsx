@@ -22,7 +22,6 @@ export default function Icon(props: IconProps) {
       data-testid="icon"
       aria-label={isDecorative ? undefined : props.tooltip || `${props.name} icon`}
     >
-      {props.tooltip && <title>{props.tooltip}</title>}
       <use xlinkHref={link}></use>
     </svg>
   );
