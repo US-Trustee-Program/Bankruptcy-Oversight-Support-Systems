@@ -414,6 +414,15 @@ while [[ $# -gt 0 ]]; do
         deployment_parameters="${deployment_parameters} ${action_group_name_param}"
         shift 2
         ;;
+    --adminNotificationEmail)
+        # Accepted and ignored for one release so the USTP ADO template can be
+        # updated out of band without a hard deploy break (CAMS-856). The
+        # deploy pipeline no longer threads this value through: the dataflows
+        # function reads ADMIN_NOTIFICATION_EMAIL live from Key Vault at
+        # runtime instead, so no redeploy is needed when the secret rotates.
+        # Remove this arm once the ADO template stops passing the flag.
+        shift 2
+        ;;
     --defaultNotificationRecipient)
         inputParams+=("${1}")
         default_notification_recipient_param="defaultNotificationRecipient=${2}"

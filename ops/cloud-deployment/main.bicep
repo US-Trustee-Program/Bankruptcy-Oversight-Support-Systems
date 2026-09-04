@@ -189,6 +189,8 @@ var dataflowsTags = {
   'deployed-at': deployedAt
 }
 
+var acsSendFailureAlertRuleName = '${stackName}-acs-send-failure-alert'
+
 // GUARD: this module deploys into the SHARED analyticsResourceGroupName, but
 // main.bicep is wrapped in a per-branch Deployment Stack for branch deploys
 // (see azure-deploy.sh). A stack owns -- and on teardown DELETES -- every
@@ -207,6 +209,38 @@ module actionGroup './lib/monitoring-alerts/alert-action-group.bicep' =
     scope: resourceGroup(analyticsSubscriptionId, analyticsResourceGroupName)
     params: {
       actionGroupName: actionGroupName
+    }
+  }
+
+// Re-points at the existing shared action group above (existing name+RG lookup, no
+// bicep dependsOn -- see the GUARD comment above) instead of a dedicated
+// admin-notification action group, so this alert needs no adminNotificationEmail
+// secret threaded through the deploy pipeline. Routes to whoever holds the
+// Monitoring Contributor/Reader RBAC roles on this resource group (alert-action-group.bicep's
+// armRoleReceivers), not a named mailbox -- add an emailReceivers entry there if a
+// named recipient is wanted instead.
+module acsSendFailureAlert './lib/monitoring-alerts/scheduled-query-alert-rule.bicep' =
+  if (createAlerts && deployAppInsights && !empty(analyticsWorkspaceId)) {
+    name: '${stackName}-acs-send-failure-alert-module'
+    scope: resourceGroup(analyticsSubscriptionId, analyticsResourceGroupName)
+    params: {
+      alertRuleName: acsSendFailureAlertRuleName
+      logQueryScopeResourceId: analyticsWorkspaceId
+      actionGroupName: actionGroupName
+      actionGroupResourceGroupName: analyticsResourceGroupName
+      actionGroupSubscriptionId: analyticsSubscriptionId
+      query: '''
+        AppTraces
+        | where Message has '[ERROR] [ACS-NOTIFICATION-GATEWAY]' or Message has '[ERROR] [TRUSTEE-CHANGE-NOTIFICATION]'
+        | project TimeGenerated, Message
+      '''
+      timeAggregation: 'Count'
+      threshold: 0
+      operator: 'GreaterThan'
+      evaluationFrequencyMinutes: 15
+      windowSizeMinutes: 15
+      severity: 2
+      alertDescription: 'The API could not reach ACS or ACS rejected a trustee-notification email at send time (as opposed to a later bounce), or no mailing list was configured for the change -- so no notification was even attempted. Search Log Analytics traces around the reported timestamp for ACS-NOTIFICATION-GATEWAY or TRUSTEE-CHANGE-NOTIFICATION to see the specific failure.'
     }
   }
 

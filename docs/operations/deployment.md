@@ -90,6 +90,18 @@ post-swap correction:
 4. **Test both pipeline types**: Changes to deployment scripts should be validated in both GHA
    (Flexion) and ADO (USTP) pipelines.
 
+5. **Staging/USTP-prod's Log Analytics Reader grant is manual, by design**: the dataflows function's
+   bounce-poll (`acs-bounce-query.gateway.ts`) queries Log Analytics via the app-config managed
+   identity (`ANALYTICS_IDENTITY_CLIENT_ID`), which needs `Log Analytics Reader` on the analytics
+   workspace. This is only automated for the dev tier (`sharedAnalyticsReaderRoleAssignment` in
+   `app-shared-setup.bicep`, gated on `isDevTier`); staging and USTP prod require someone to grant
+   it by hand, per the least-privilege pattern in
+   [GithubActionsOidcLeastPrivilege.md](../architecture/decision-records/GithubActionsOidcLeastPrivilege.md#L143).
+   Without it, queries fail with `403 InsufficientAccessError` -- and that fails **silently**:
+   `poll-notification-bounces.ts`'s timer catches the error, records it via
+   `completeDataflowTrace(success: false)`, and does not rethrow, so Azure's own function-failure
+   signals see a successful invocation.
+
 ## Infrastructure as Code
 
 Bicep files are used to provision resources in the Azure cloud environment with support for both
@@ -122,29 +134,29 @@ The endpoint registers **nothing** itself. `sql-hub.bicep` declares one explicit
 consumer zone, and pins the endpoint to a static private IP so those records have a knowable address
 to point at.
 
-It does not use a `privateDnsZoneGroup`, because a zone group keys its registration by zone **name**,
-not by zone resource id. Pointed at two zones that share a name it writes exactly **one** record,
-into a zone it picks arbitrarily — verified on throwaway resources, where the same two-config group
-landed the record in the first zone when the configs were added one at a time and in the second when
-they were sent in a single PUT. In production it picked `rg-cams-network-dev`, leaving
-`rg-cams-network` — the zone main is actually linked to — holding nothing but an SOA record, so main
-silently resolved through the public path for as long as that lasted.
+It does not use a `privateDnsZoneGroup`, because a zone group keys its registration by zone
+**name**, not by zone resource id. Pointed at two zones that share a name it writes exactly **one**
+record, into a zone it picks arbitrarily — verified on throwaway resources, where the same
+two-config group landed the record in the first zone when the configs were added one at a time and
+in the second when they were sent in a single PUT. In production it picked `rg-cams-network-dev`,
+leaving `rg-cams-network` — the zone main is actually linked to — holding nothing but an SOA record,
+so main silently resolved through the public path for as long as that lasted.
 
-> [!WARNING]
-> The endpoint's pinned IP is **write-once**. Azure refuses to move a deployed endpoint's static
-> address by any route: changing it directly fails with
+> [!WARNING] The endpoint's pinned IP is **write-once**. Azure refuses to move a deployed endpoint's
+> static address by any route: changing it directly fails with
 > `PrivateEndpointWithStaticIpConfigurationsCannotChangeIpAddress`, and reverting to dynamic first
 > (which succeeds, keeping the same address) then re-pinning fails with
 > `PrivateEndpointStaticIpMustMatchDynamicIpMapping`. The only way to change it is to delete and
 > recreate the endpoint every environment depends on. The address is derived from the subnet prefix
-> (`cidrHost(prefix, 3)` — Azure reserves the first four addresses of every subnet), so re-addressing
-> the subnet will fail loudly rather than silently orphan the A records.
+> (`cidrHost(prefix, 3)` — Azure reserves the first four addresses of every subnet), so
+> re-addressing the subnet will fail loudly rather than silently orphan the A records.
 
 ### Removing the legacy zone group (one-time, order matters)
 
 The endpoint still carries a `privateDnsZoneGroup` named `default` from the original design.
-`sql-hub.bicep` no longer declares it, and ARM incremental mode never deletes an undeclared child, so
-it survives every deploy until removed by hand. The deploy script detects it and prints these steps.
+`sql-hub.bicep` no longer declares it, and ARM incremental mode never deletes an undeclared child,
+so it survives every deploy until removed by hand. The deploy script detects it and prints these
+steps.
 
 1. **Deploy.** Safe with the group present — it does not re-assert over the explicit A records
    (checked immediately after a deploy and again 45s later).
@@ -193,14 +205,14 @@ of the same name in the hub RG — cannot be adopted without an outage, because 
 one VNet to two zones sharing a name, so every consumer would have to unlink before it could relink
 and would resolve nothing in between.
 
-> [!CAUTION]
-> That rejected third zone **physically exists** in `bankruptcy-oversight-support-systems`, left over
-> from when the option was evaluated. It has no vnet links and no A record, and nothing writes to it.
-> Linking anything to it would break SQL resolution for that VNet, and because Azure enforces
-> one-link-per-vnet-per-zone-**name** it would also block linking to the correct zone. Leave it
-> alone; deleting it outright is the cleanest fix if someone wants to remove the trap.
-> `_vnet-link-check.sh` already fails loud if a vnet is ever found linked into a stray same-named
-> zone, so an accidental link surfaces as a deploy error rather than silent misresolution.
+> [!CAUTION] That rejected third zone **physically exists** in
+> `bankruptcy-oversight-support-systems`, left over from when the option was evaluated. It has no
+> vnet links and no A record, and nothing writes to it. Linking anything to it would break SQL
+> resolution for that VNet, and because Azure enforces one-link-per-vnet-per-zone-**name** it would
+> also block linking to the correct zone. Leave it alone; deleting it outright is the cleanest fix
+> if someone wants to remove the trap. `_vnet-link-check.sh` already fails loud if a vnet is ever
+> found linked into a stray same-named zone, so an accidental link surfaces as a deploy error rather
+> than silent misresolution.
 
 Any ad-hoc `az` command against this zone name must therefore RG-qualify with `-g` — there are three
 zones with this name in the subscription, and the CLI will not disambiguate for you.
@@ -290,29 +302,29 @@ Flexion and **shared** with USTP.
 
 ### Azure
 
-| Name                           | Type (Secret/Variable) | Is Flexion Only? | Description                                                                                                                                     |
-| ------------------------------ | ---------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| AZURE_SUBSCRIPTION             | Secret                 | ---              | Azure Subscription ID                                                                                                                           |
-| AZURE_CREDENTIALS              | Secret                 | ---              | Credentials for Azure Cloud Environment                                                                                                         |
-| AZURE_ENVIRONMENT              | Variable               | Yes              | Specify target Azure cloud environment.                                                                                                         |
-| AZ_APP_RG                      | Secret                 | ---              | Resource group name for all application related infrastructure.                                                                                 |
-| AZURE_RG                       | Secret                 | ---              | Resource group for miscellaneous Azure resources                                                                                                |
-| AZ_PLAN_TYPE                   | Variable               | ---              | Determine plan type for Azure App Service plans.                                                                                                |
-| AZ_ACTION_GROUP_NAME           | Secret                 | ---              | Action Group Name for Azure Alerts                                                                                                              |
-| AZ_PRIVATE_DNS_ZONE            | Variable               | ---              | Private DNS Zone name                                                                                                                           |
-| AZ_PRIVATE_DNS_ZONE_RG         | Secret                 | ---              | Private DNS Zone Azure resource group name                                                                                                      |
-| AZ_PRIVATE_DNS_ZONE_ID         | Secret                 | ---              | Private DNS Zone Azure Fully qualified ID                                                                                                       |
-| AZ_NETWORK_RG                  | Secret                 | ---              | Resource Group for networking components                                                                                                        |
-| AZ_NETWORK_VNET_NAME           | Variable               | ---              | Virtual Network Name                                                                                                                            |
-| AZ_SQL_SERVER_NAME             | Secret                 | ---              | ---                                                                                                                                             |
-| AZ_SQL_IDENTITY_NAME           | Secret                 | ---              | Name of Azure managed identity with access to SQL Server database. Required if not using SQL Auth                                               |
-| AZ_COSMOS_DATABASE_NAME        | Secret                 | ---              | ---                                                                                                                                             |
-| AZ_COSMOS_MONGO_ACCOUNT_NAME   | Secret                 | ---              | ---                                                                                                                                             |
-| AZ_COSMOS_ID_NAME              | Secret                 | ---              | Name of Managed Identity accessing cosmos                                                                                                       |
-| AZ_ANALYTICS_WORKSPACE_ID      | Secret                 | ---              | Azure resource id of Log Analytics.                                                                                                             |
-| AZ_ACTION_GROUP_NAME           | Secret                 | Yes              | Action Group Name for alert rules                                                                                                               |
-| ADMIN-NOTIFICATION-EMAIL       | Key Vault Secret       | Yes              | Required. Email notified when an ACS email delivery-failure alert fires.                          |
-| DEFAULT-NOTIFICATION-RECIPIENT | Secret                 | Yes              | Optional fallback email recipient for notifications when no Cosmos routing record matches a case.                                               |
+| Name                           | Type (Secret/Variable) | Is Flexion Only? | Description                                                                                                                                                                                                                                                                                                                    |
+| ------------------------------ | ---------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| AZURE_SUBSCRIPTION             | Secret                 | ---              | Azure Subscription ID                                                                                                                                                                                                                                                                                                          |
+| AZURE_CREDENTIALS              | Secret                 | ---              | Credentials for Azure Cloud Environment                                                                                                                                                                                                                                                                                        |
+| AZURE_ENVIRONMENT              | Variable               | Yes              | Specify target Azure cloud environment.                                                                                                                                                                                                                                                                                        |
+| AZ_APP_RG                      | Secret                 | ---              | Resource group name for all application related infrastructure.                                                                                                                                                                                                                                                                |
+| AZURE_RG                       | Secret                 | ---              | Resource group for miscellaneous Azure resources                                                                                                                                                                                                                                                                               |
+| AZ_PLAN_TYPE                   | Variable               | ---              | Determine plan type for Azure App Service plans.                                                                                                                                                                                                                                                                               |
+| AZ_ACTION_GROUP_NAME           | Secret                 | ---              | Action Group Name for Azure Alerts                                                                                                                                                                                                                                                                                             |
+| AZ_PRIVATE_DNS_ZONE            | Variable               | ---              | Private DNS Zone name                                                                                                                                                                                                                                                                                                          |
+| AZ_PRIVATE_DNS_ZONE_RG         | Secret                 | ---              | Private DNS Zone Azure resource group name                                                                                                                                                                                                                                                                                     |
+| AZ_PRIVATE_DNS_ZONE_ID         | Secret                 | ---              | Private DNS Zone Azure Fully qualified ID                                                                                                                                                                                                                                                                                      |
+| AZ_NETWORK_RG                  | Secret                 | ---              | Resource Group for networking components                                                                                                                                                                                                                                                                                       |
+| AZ_NETWORK_VNET_NAME           | Variable               | ---              | Virtual Network Name                                                                                                                                                                                                                                                                                                           |
+| AZ_SQL_SERVER_NAME             | Secret                 | ---              | ---                                                                                                                                                                                                                                                                                                                            |
+| AZ_SQL_IDENTITY_NAME           | Secret                 | ---              | Name of Azure managed identity with access to SQL Server database. Required if not using SQL Auth                                                                                                                                                                                                                              |
+| AZ_COSMOS_DATABASE_NAME        | Secret                 | ---              | ---                                                                                                                                                                                                                                                                                                                            |
+| AZ_COSMOS_MONGO_ACCOUNT_NAME   | Secret                 | ---              | ---                                                                                                                                                                                                                                                                                                                            |
+| AZ_COSMOS_ID_NAME              | Secret                 | ---              | Name of Managed Identity accessing cosmos                                                                                                                                                                                                                                                                                      |
+| AZ_ANALYTICS_WORKSPACE_ID      | Secret                 | ---              | Azure resource id of Log Analytics.                                                                                                                                                                                                                                                                                            |
+| AZ_ACTION_GROUP_NAME           | Secret                 | Yes              | Action Group Name for alert rules                                                                                                                                                                                                                                                                                              |
+| ADMIN-NOTIFICATION-EMAIL       | Key Vault Secret       | Yes              | Required. Email notified of reconstructed bounced trustee-change notifications. Not fetched or passed through the deploy pipeline -- the dataflows function's bounce-poll (`poll-notification-bounces.ts`) reads it directly and live via a Key Vault app-setting reference, so no redeploy is needed when the secret rotates. |
+| DEFAULT-NOTIFICATION-RECIPIENT | Secret                 | Yes              | Optional fallback email recipient for notifications when no Cosmos routing record matches a case.                                                                                                                                                                                                                              |
 
 ### Snyk
 
