@@ -73,6 +73,18 @@ function base64url(input: Buffer): string {
   return input.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
+// Fixture user fields (name/email) and echoed query params both land in the sign-in page's HTML
+// - escape both, since either could contain markup (a fixture with an unescaped name/email is an
+// easy mistake to make when editing seed-users.ts).
+function escapeHtml(value: unknown): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 async function loadKeys() {
   const privateKeyPem = readFileSync(resolve(CERT_DIR, 'jwt-signing-key.pem'), 'utf-8').trim();
   const publicKeyPem = readFileSync(resolve(CERT_DIR, 'jwt-signing-key.pub.pem'), 'utf-8').trim();
@@ -151,7 +163,10 @@ async function main() {
     const { redirect_uri, state, code_challenge, code_challenge_method, client_id } = req.query;
     const users = await listUsers();
     const options = users
-      .map((u) => `<option value="${u.sub}">${u.name} (${u.email})</option>`)
+      .map(
+        (u) =>
+          `<option value="${escapeHtml(u.sub)}">${escapeHtml(u.name)} (${escapeHtml(u.email)})</option>`,
+      )
       .join('');
     res.type('html').send(`
       <!doctype html>
@@ -159,11 +174,11 @@ async function main() {
         <body>
           <h1 id="okta-sign-in">Fake Okta Sign-In (ui-sandbox)</h1>
           <form method="POST" action="/oauth2/default/v1/authorize">
-            <input type="hidden" name="redirect_uri" value="${redirect_uri ?? ''}" />
-            <input type="hidden" name="state" value="${state ?? ''}" />
-            <input type="hidden" name="code_challenge" value="${code_challenge ?? ''}" />
-            <input type="hidden" name="code_challenge_method" value="${code_challenge_method ?? ''}" />
-            <input type="hidden" name="client_id" value="${client_id ?? ''}" />
+            <input type="hidden" name="redirect_uri" value="${escapeHtml(redirect_uri)}" />
+            <input type="hidden" name="state" value="${escapeHtml(state)}" />
+            <input type="hidden" name="code_challenge" value="${escapeHtml(code_challenge)}" />
+            <input type="hidden" name="code_challenge_method" value="${escapeHtml(code_challenge_method)}" />
+            <input type="hidden" name="client_id" value="${escapeHtml(client_id)}" />
             <label for="sub">Choose a fixture user:</label>
             <select id="sub" name="sub" data-testid="fake-okta-user-select">${options}</select>
             <button type="submit" data-testid="fake-okta-submit">Sign In</button>
@@ -271,8 +286,17 @@ async function main() {
     }
     // The access token's own claims already carry sub/name/email (set at /v1/token above) -
     // decode without re-verifying here, since HumbleVerifier.ts already verified the signature
-    // via /v1/keys before okta-gateway.ts ever calls this endpoint.
-    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString('utf-8'));
+    // via /v1/keys before okta-gateway.ts ever calls this endpoint. Still guard the decode
+    // itself: a malformed/non-JWT bearer token must produce the OIDC-required 401, not an
+    // unhandled JSON.parse exception surfacing as a 500.
+    let payload: { sub?: string; name?: string; email?: string };
+    try {
+      const [, encodedPayload] = token.split('.');
+      payload = JSON.parse(Buffer.from(encodedPayload, 'base64url').toString('utf-8'));
+    } catch {
+      res.status(401).json({ error: 'invalid_token' });
+      return;
+    }
     res.json({
       sub: payload.sub,
       name: payload.name,

@@ -135,3 +135,15 @@ point, then hand-editing.
   `CourtsUseCase` → `OfficesUseCase` → the real `OfficesDxtrGateway`, which queries DXTR
   office/court tables whenever `DATABASE_MOCK=false` (which this sandbox always uses, to keep
   Mongo-backed repositories real too).
+- **Privileged Identity Management screens don't work in this sandbox.** `OktaUserGroupGateway`
+  (`backend/lib/adapters/gateways/okta/okta-user-group-gateway.ts`) calls the real Okta _management_
+  API (`@okta/okta-sdk-nodejs`'s `listUserGroups`) to look up a user's groups by ID - a completely
+  different, much larger surface than the login/JWT flow this sandbox's fake-okta server implements,
+  and it requires either a real Okta API token or a real private-key JWT client credential
+  (`CAMS_USER_GROUP_GATEWAY_CONFIG`'s `provider`/`clientId`/`keyId`/`privateKey` fields - this
+  sandbox's config only sets `url`, so `validateConfiguration` will reject it). This only affects
+  `PrivilegedIdentityUser`-gated admin screens (feature-flagged, not the
+  trustee-mismatch/data-verification screens this sandbox exists for) - out of scope for now. Fixing
+  it for real would mean either implementing fake Okta management/groups endpoints too, or swapping
+  in a from-scratch local gateway that reads groups from the same `okta.users` Mongo fixtures
+  instead of calling out to Okta at all.
