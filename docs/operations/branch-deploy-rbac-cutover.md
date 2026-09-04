@@ -225,11 +225,21 @@ disappears, branch deploys fail there rather than at the resource-group step.
 
 ## Out of scope
 
-`cams-deploy-main-oidc` has the **same** load-bearing dependency:
-`standaloneAnalyticsReaderRoleAssignment` is a different invocation of the same
-bicep module, so main's `rg-analytics` RBAC Administrator grant is also
-load-bearing, with no narrower replacement queued. Auditing `TARGET=main` also
-surfaces five grants created by no script in this repo, residue of the same
-abandoned design.
+`cams-deploy-main-oidc` also holds `Role Based Access Control Administrator` on
+`rg-analytics`, but — unlike branch — it is **not** load-bearing. Nothing on the
+main path writes a `roleAssignment` into that resource group:
+`log-analytics-reader-role-assignment.bicep` has a single caller,
+`sharedAnalyticsReaderRoleAssignment`, which is gated on `isDevTier` and so
+never fires for main. Analytics reader grants for staging and USTP are applied
+by hand in the customer environment.
 
-Do not narrow main during this cutover. Tracked as `cams-y8s2`.
+That makes it unjustified rather than verified-safe-to-remove. No script here
+creates it, its provenance is untraced, and a human applying those manual
+grants may still need it. The audit script holds it for that reason rather than
+listing it for revocation.
+
+Auditing `TARGET=main` also surfaces five grants created by no script in this
+repo, residue of the same abandoned per-resource-group design.
+
+Do not narrow main during this cutover — none of the above is this procedure's
+to resolve. Tracked as `cams-y8s2`.
