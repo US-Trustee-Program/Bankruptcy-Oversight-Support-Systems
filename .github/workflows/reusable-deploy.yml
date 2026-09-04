@@ -136,15 +136,14 @@ jobs:
       - name: Create Azure resource groups
         id: azure-resource-group
         env:
-          BRANCH_NAME: ${{ github.ref_name }}
-          ENVIRONMENT_HASH: ${{ inputs.environmentHash }}
           AZURE_SUBSCRIPTION: ${{ secrets.AZURE_SUBSCRIPTION }} # pragma: allowlist secret
           AZ_LOCATION: ${{ secrets.AZ_LOCATION }} # pragma: allowlist secret
         run: |
           ./ops/scripts/pipeline/azure-deploy-rg.sh \
             --show-what-if \
             --file ./ops/cloud-deployment/lib/subscription/ustp-cams-rg.bicep \
-            --parameters "databaseResourceGroupName=${AZURE_RG} networkResourceGroupName=${{ env.AZ_NETWORK_RG }} webappResourceGroupName=${{ env.AZ_APP_RG }} analyticsResourceGroupName=${AZ_ANALYTICS_RG} azSubscription=${AZURE_SUBSCRIPTION} branchName=${BRANCH_NAME} branchHashId=${ENVIRONMENT_HASH} isBranchDeployment=${IS_BRANCH_DEPLOYMENT}" \
+            --parameters "databaseResourceGroupName=${AZURE_RG} networkResourceGroupName=${{ env.AZ_NETWORK_RG }} webappResourceGroupName=${{ env.AZ_APP_RG }} analyticsResourceGroupName=${AZ_ANALYTICS_RG} azSubscription=${AZURE_SUBSCRIPTION}" \
+            --isBranchDeployment "${IS_BRANCH_DEPLOYMENT}" \
             -l "${AZ_LOCATION}"
 
       - name: Deploy Branch Log Analytics Workspace

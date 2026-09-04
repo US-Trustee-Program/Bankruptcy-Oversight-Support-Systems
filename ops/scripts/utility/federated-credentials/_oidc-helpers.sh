@@ -13,6 +13,8 @@
 #   wait_for_role_definition    ROLE_NAME [ATTEMPTS] -> prints role definition GUID to stdout
 #   ensure_role_assignment      SP_ID ROLE SCOPE
 #   ensure_deployment_stack_deny_setting_role SUBSCRIPTION_ID -> prints role definition GUID to stdout
+#   require_var                 VALUE ENV_VAR_NAME CONTEXT -> exits 10 (validation error, see consuming
+#                                script's Exitcodes header) with a consistent error if VALUE is empty
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   echo "ERROR: This script must be sourced, not executed directly." >&2
@@ -32,6 +34,24 @@ if [[ ! "$GITHUB_ORG" =~ ^[A-Za-z0-9_-]+$ ]] || [[ ! "$GITHUB_REPO" =~ ^[A-Za-z0
   echo "       These values control the OIDC trust boundary. Set them intentionally." >&2
   exit 1
 fi
+
+# Fails fast with a consistent message if VALUE is empty. Replaces the
+# `if [[ -z "$VAR" ]]; then echo "ERROR: ..."; exit 1; fi` shape that had
+# accumulated across both runbooks in this directory (7 near-identical
+# occurrences) as each new required variable was added independently.
+# Exits 10 rather than 1 -- matches the "10+ Validation check errors" bucket
+# already established by sibling scripts (e.g. az-delete-branch-resources.sh),
+# distinct from the invalid-usage/configuration errors (exit 1) elsewhere in
+# these two runbooks.
+require_var() {
+  local value="$1"
+  local env_var_name="$2"
+  local context="$3"
+  if [[ -z "$value" ]]; then
+    echo "ERROR: ${env_var_name} is required ${context}." >&2
+    exit 10
+  fi
+}
 
 # Look up an app registration by display name, or create one if absent.
 # Fails with exit 1 if multiple registrations share the display name to prevent
@@ -151,8 +171,19 @@ wait_for_role_definition() {
     echo "    Waiting for role definition '$ROLE_NAME' to propagate ($i/$attempts)..." >&2
     sleep 5
   done
-  echo "    WARNING: role definition '$ROLE_NAME' still not resolvable after waiting; continuing." >&2
-  return 0
+  # Fail CLOSED. Returning 0 here used to hand the caller an EMPTY stdout, which
+  # every caller assigns straight into a ROLE_ID and passes to
+  # ensure_role_assignment as `--role ""`. set -e does abort on the resulting
+  # `az role assignment create` failure, so nothing silently half-applied -- but
+  # the operator saw an az usage error about an empty role rather than the
+  # propagation timeout that actually caused it. Exiting here names the real
+  # cause at the point it happens. Exit 12 = infrastructure/propagation error,
+  # distinct from require_var's 10 (validation); see the consuming script's
+  # Exitcodes header.
+  echo "ERROR: role definition '$ROLE_NAME' still not resolvable after ${attempts} attempts (~$((attempts * 5))s)." >&2
+  echo "       The role was created but has not propagated. Re-run this script -- it is" >&2
+  echo "       idempotent and will pick up the existing definition." >&2
+  exit 12
 }
 
 # Idempotent role assignment: assigns ROLE at SCOPE to SP_ID if not already present.
@@ -228,6 +259,13 @@ ensure_deployment_stack_deny_setting_role() {
 EOF
 )" --output none
   echo "    Custom role created." >&2
-  ROLE_ID=$(wait_for_role_definition "$DEPLOYMENT_STACK_DENY_SETTING_ROLE_NAME")
+  # `|| exit $?` is load-bearing. wait_for_role_definition exits 12 on a
+  # propagation timeout, but this function is itself always invoked as
+  # `X=$(ensure_deployment_stack_deny_setting_role ...)`, so the OUTER command
+  # substitution catches the inner exit and execution continues with an empty
+  # ROLE_ID -- straight into `az role assignment create --role ""`. errexit
+  # does not help: the outer substitution is what reports status, and it
+  # succeeded. Re-raising here is the only thing that reaches the real caller.
+  ROLE_ID=$(wait_for_role_definition "$DEPLOYMENT_STACK_DENY_SETTING_ROLE_NAME") || exit $?
   echo "$ROLE_ID"
 }

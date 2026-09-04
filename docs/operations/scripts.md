@@ -12,6 +12,23 @@ Shared scripts that are utilized for slot deployments in Flexion and USTP enviro
 
 Adhoc helper scripts
 
+### audit-deploy-identity-grants.sh
+
+Read-only audit of a deploy identity's Azure role assignments, in
+`federated-credentials/`. Lists every assignment via `az role assignment list --all`
+and classifies it as expected, to-be-revoked, must-not-revoke-yet, or
+unknown/unmanaged — reporting both missing-but-expected and present-but-unexpected.
+The expected set is derived from `setup-deploy-federated-credential.sh` at runtime
+rather than hand-copied, so it cannot drift as secrets are added.
+
+Findings exit 0, because the script is run repeatedly through a multi-step manual
+cutover where some findings are the correct state at each step. `STRICT=true` opts
+into a non-zero exit on any drift, for post-cutover use. Nothing is ever modified.
+
+Run it with the same `TARGET` and `AZ_*_RG` variables as
+`setup-deploy-federated-credential.sh`. See
+[Branch Deploy RBAC Cutover](/operations/branch-deploy-rbac-cutover.md).
+
 ### az-cosmos-add-user.sh
 
 To simplify Cosmosdb administration, this script assigns a role to a principal for a target Cosmos Db account.
