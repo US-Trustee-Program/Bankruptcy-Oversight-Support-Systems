@@ -267,6 +267,13 @@ describe('AssociatedBanksTable', () => {
     expect(
       screen.getByRole('img', { name: 'Unable to retrieve trustee count' }),
     ).toBeInTheDocument();
+    // The icon's aria-label covers screen readers; a `title` attribute on the wrapper restores
+    // the sighted-mouse-user hover tooltip that Icon.tsx's <title> removal (NVDA double-
+    // announcement fix) took away, without reintroducing the duplicate accessible-name issue.
+    expect(screen.getByTestId('trustee-count-error-bank-1')).toHaveAttribute(
+      'title',
+      'Unable to retrieve trustee count',
+    );
   });
 
   test('should merge trustee counts when associations change', async () => {

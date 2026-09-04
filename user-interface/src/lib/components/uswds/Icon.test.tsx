@@ -45,6 +45,12 @@ describe('Test Icon component', async () => {
     expect(icon).not.toHaveAttribute('aria-label');
   });
 
+  test('should not surface tooltip as aria-label when still decorative', () => {
+    renderWithProps({ name: 'info', tooltip: 'Should be ignored' });
+    const icon = screen.getByTestId('icon');
+    expect(icon).not.toHaveAttribute('aria-label');
+  });
+
   test('should not be decorative when decorative is false', () => {
     renderWithProps({ name: 'warning', decorative: false });
     const icon = screen.getByTestId('icon');
@@ -71,16 +77,10 @@ describe('Test Icon component', async () => {
     expect(icon).toHaveAttribute('focusable', 'false');
   });
 
-  test('should render tooltip when provided', () => {
-    renderWithProps({ name: 'info', tooltip: 'Information icon' });
-    const icon = screen.getByTestId('icon');
-    const title = icon.querySelector('title');
-    expect(title).toBeInTheDocument();
-    expect(title).toHaveTextContent('Information icon');
-  });
-
-  test('should not render tooltip when not provided', () => {
-    renderWithProps({ name: 'info' });
+  test('should not render a title element even when tooltip is provided', () => {
+    // A <title> alongside aria-label duplicates the accessible name and causes some screen
+    // readers (e.g. NVDA on hover) to announce it twice - aria-label alone is sufficient.
+    renderWithProps({ name: 'info', decorative: false, tooltip: 'Information icon' });
     const icon = screen.getByTestId('icon');
     const title = icon.querySelector('title');
     expect(title).not.toBeInTheDocument();

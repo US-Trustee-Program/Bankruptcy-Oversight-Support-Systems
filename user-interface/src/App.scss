@@ -1,6 +1,7 @@
 @use 'uswds-core' with (
   $theme-font-path: '/assets/fonts',
-  $theme-image-path: '/assets/styles/img'
+  $theme-image-path: '/assets/styles/img',
+  $theme-accordion-icon-position: 'end'
 );
 @use 'uswds/index' as uswds;
 @use 'styles/theme';

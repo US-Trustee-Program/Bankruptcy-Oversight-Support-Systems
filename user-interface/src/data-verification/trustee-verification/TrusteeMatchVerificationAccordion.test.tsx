@@ -317,21 +317,21 @@ describe('TrusteeMatchVerificationAccordion', () => {
       renderWithProps({ order: sampleOrderWithCandidates });
       await mockDetailAndExpand(sampleOrderWithCandidatesDetail);
 
-      const candidateInfo = screen.getByTestId('candidate-info');
-      expect(candidateInfo.textContent).toContain('Name does not match');
-      expect(candidateInfo.textContent).toContain('Address does not match');
-      expect(candidateInfo.textContent).toContain('Trustee Appointment does not match');
-      expect(candidateInfo.textContent).not.toContain('Phone does not match');
-      expect(candidateInfo.textContent).not.toContain('Email does not match');
+      expect(screen.getByRole('img', { name: 'Name does not match' })).toBeInTheDocument();
+      expect(screen.getByRole('img', { name: 'Address does not match' })).toBeInTheDocument();
+      expect(
+        screen.getByRole('img', { name: 'Trustee Appointment does not match' }),
+      ).toBeInTheDocument();
+      expect(screen.queryByRole('img', { name: 'Phone does not match' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('img', { name: 'Email does not match' })).not.toBeInTheDocument();
     });
 
     // Regression guard for the mismatch icon's accessible name: an `<svg>` with aria-hidden="true"
     // (the "decorative" state) has no accessible name at all, so a screen reader's hover/touch
     // exploration announces nothing for it - only a full linear page read would surface the
-    // visually-hidden sibling text this PR replaced. Asserting textContent alone (as the tests
-    // above do) can't catch that regression, because the icon's <title> element still contributes
-    // to textContent regardless of aria-hidden. Only an accessible-name query like getByRole
-    // actually depends on the icon being non-decorative.
+    // visually-hidden sibling text this PR replaced. An accessible-name query like getByRole
+    // depends on the icon being non-decorative; Icon.tsx intentionally has no <title> child
+    // (a redundant <title> alongside aria-label caused NVDA to announce the name twice on hover).
     test('exposes each mismatch icon with an accessible name a screen reader can announce on hover', async () => {
       renderWithProps({ order: sampleOrderWithCandidates });
       await mockDetailAndExpand(sampleOrderWithCandidatesDetail);
@@ -343,6 +343,17 @@ describe('TrusteeMatchVerificationAccordion', () => {
       ).toBeInTheDocument();
     });
 
+    // A `title` attribute on the icon's wrapping span restores the sighted-mouse-user hover
+    // tooltip that Icon.tsx's <title> removal (NVDA double-announcement fix) took away, without
+    // reintroducing a duplicate accessible name - the wrapper itself carries no ARIA role.
+    test('shows a native hover tooltip on the mismatch icon wrapper for sighted users', async () => {
+      renderWithProps({ order: sampleOrderWithCandidates });
+      await mockDetailAndExpand(sampleOrderWithCandidatesDetail);
+
+      const icon = screen.getByRole('img', { name: 'Name does not match' });
+      expect(icon.closest('.mismatch-icon')).toHaveAttribute('title', 'Name does not match');
+    });
+
     test('does not show a mismatch icon for a field that scores a full 100 match', async () => {
       renderWithProps({ order: sampleOrderWithCandidates });
       await mockDetailAndExpand({
@@ -350,8 +361,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
         matchCandidates: [{ ...candidateJaneSmith, nameScore: 100 }],
       });
 
-      const candidateInfo = screen.getByTestId('candidate-info');
-      expect(candidateInfo.textContent).not.toContain('Name does not match');
+      expect(screen.queryByRole('img', { name: 'Name does not match' })).not.toBeInTheDocument();
     });
 
     test('shows a Trustee Appointment mismatch icon when only district/division score mismatches', async () => {
@@ -361,8 +371,9 @@ describe('TrusteeMatchVerificationAccordion', () => {
         matchCandidates: [{ ...candidateJaneSmith, districtDivisionScore: 50, chapterScore: 100 }],
       });
 
-      const candidateInfo = screen.getByTestId('candidate-info');
-      expect(candidateInfo.textContent).toContain('Trustee Appointment does not match');
+      expect(
+        screen.getByRole('img', { name: 'Trustee Appointment does not match' }),
+      ).toBeInTheDocument();
     });
 
     test('shows a mismatch icon for a phone score that is neither null nor a full match', async () => {
@@ -381,10 +392,11 @@ describe('TrusteeMatchVerificationAccordion', () => {
         ],
       });
 
-      const candidateInfo = screen.getByTestId('candidate-info');
-      expect(candidateInfo.textContent).toContain('Phone does not match');
-      expect(candidateInfo.textContent).not.toContain('Name does not match');
-      expect(candidateInfo.textContent).not.toContain('Trustee Appointment does not match');
+      expect(screen.getByRole('img', { name: 'Phone does not match' })).toBeInTheDocument();
+      expect(screen.queryByRole('img', { name: 'Name does not match' })).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('img', { name: 'Trustee Appointment does not match' }),
+      ).not.toBeInTheDocument();
     });
 
     test('does not show mismatch icons in the Other Potential Matches header', async () => {
@@ -408,12 +420,10 @@ describe('TrusteeMatchVerificationAccordion', () => {
       renderWithProps({ order: twoCandidateOrder });
       await mockDetailAndExpand(twoCandidateDetail);
 
-      const content = screen.getByTestId(`accordion-content-${sampleOrder.id}`);
-      // "Name does not match" would only appear from a column-header mismatch icon - the
+      // A "Name does not match" icon would only appear from a column-header mismatch icon - the
       // strongest match's own header renders it once; it must not repeat for the "Other
       // Potential Matches" table's header.
-      const occurrences = content.textContent?.split('Name does not match').length ?? 0;
-      expect(occurrences - 1).toBe(1);
+      expect(screen.getAllByRole('img', { name: 'Name does not match' })).toHaveLength(1);
     });
   });
 
@@ -1693,8 +1703,9 @@ describe('TrusteeMatchVerificationAccordion', () => {
       renderWithProps({ order: inactiveOrder });
       await mockDetailAndExpand(inactiveDetail);
 
-      const candidateInfo = screen.getByTestId('candidate-info');
-      expect(candidateInfo.textContent).toContain('Trustee Appointment does not match');
+      expect(
+        screen.getByRole('img', { name: 'Trustee Appointment does not match' }),
+      ).toBeInTheDocument();
     });
 
     test('lists other mismatching fields alongside the inactive statement, excluding appointment', async () => {
