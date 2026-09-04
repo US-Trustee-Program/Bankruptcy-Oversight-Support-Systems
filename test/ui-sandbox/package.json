@@ -1,0 +1,9 @@
+{
+  "name": "cams-ui-sandbox",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "seed": "npx tsx --tsconfig ../../backend/tsconfig.json scripts/seed.ts",
+    "seed:sql": "cd ../e2e && npx tsx --tsconfig ../../backend/tsconfig.json scripts/seed-sqlserver.ts"
+  }
+}
