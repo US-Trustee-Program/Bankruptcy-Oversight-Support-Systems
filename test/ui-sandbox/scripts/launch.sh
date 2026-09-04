@@ -73,7 +73,7 @@ podman rm -f cams-ui-sandbox-fake-okta 2>/dev/null || true
 # "localhost" the way a bare host process can.
 podman run --rm --name cams-ui-sandbox-fake-okta \
   -p 8443:8443 \
-  -e MONGO_CONNECTION_STRING="mongodb://host.containers.internal:27017/cams-e2e?retrywrites=false" \
+  -e MONGO_CONNECTION_STRING="mongodb://host.containers.internal:27017/cams-sandbox?retrywrites=false" \
   -v "${SANDBOX_DIR}/fake-okta/certs:/app/certs:ro" \
   cams-ui-sandbox-fake-okta &
 PIDS+=($!)

@@ -16,7 +16,7 @@ import type { FakeOktaUser } from './users';
 import { OKTA_DB_NAME, OKTA_USERS_COLLECTION } from './users';
 
 const MONGO_CONNECTION_STRING =
-  process.env.MONGO_CONNECTION_STRING || 'mongodb://localhost:27017/cams-e2e?retrywrites=false';
+  process.env.MONGO_CONNECTION_STRING || 'mongodb://localhost:27017/cams-sandbox?retrywrites=false';
 
 const FIXTURE_USERS: FakeOktaUser[] = [
   {

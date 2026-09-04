@@ -3,8 +3,8 @@
   "Values": {
     "FUNCTIONS_WORKER_RUNTIME": "node",
     "AzureWebJobsStorage": "UseDevelopmentStorage=true",
-    "COSMOS_DATABASE_NAME": "cams-e2e",
-    "MONGO_CONNECTION_STRING": "mongodb://localhost:27017/cams-e2e?retrywrites=false",
+    "COSMOS_DATABASE_NAME": "cams-sandbox",
+    "MONGO_CONNECTION_STRING": "mongodb://localhost:27017/cams-sandbox?retrywrites=false",
     "DATABASE_MOCK": "false",
     "MSSQL_HOST": "localhost",
     "MSSQL_DATABASE_DXTR": "CAMS_E2E",
@@ -17,6 +17,7 @@
     "CAMS_LOGIN_PROVIDER": "okta",
     "CAMS_LOGIN_PROVIDER_CONFIG": "issuer=https://localhost:8443/oauth2/default|clientId=sandbox-client",
     "CAMS_USER_GROUP_GATEWAY_CONFIG": "url=https://localhost:8443",
+    "OKTA_API_KEY": "sandbox-management-token",
     "NODE_TLS_REJECT_UNAUTHORIZED": "0"
   },
   "Host": {

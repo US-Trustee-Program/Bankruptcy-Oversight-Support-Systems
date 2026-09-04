@@ -11,8 +11,11 @@ control over:
 - **Login and principals** - a real (if minimal) OIDC provider stands in for Okta, backed by a Mongo
   `okta.users` collection anyone can edit. Log in as any fixture user with any role/office
   combination, at will, with no Okta account needed.
-- **Data** - trustee-match-verification fixtures live in the same `cams-e2e` Mongo database, own
-  seed script (`scripts/seed.ts`), edit directly for whatever scenario you're chasing next.
+- **Data** - fixtures live in the `cams-sandbox` Mongo database, seeded by `scripts/seed.ts`. It
+  isn't scoped to any one screen or feature - add a new seeding function and call it for whatever
+  collection/scenario you're chasing next (case detail, staff assignments, trustee profiles,
+  trustee-match-verification mismatches, whatever). The trustee-match-verification mismatch fixture
+  currently in there is just the first example, not the sandbox's scope.
 - **Longevity** - services stay up across runs; re-seed and re-launch independently instead of a
   full build-seed-test-teardown cycle.
 
@@ -47,7 +50,7 @@ browser with `ignoreHTTPSErrors: true`).
 npm run seed:sql                     # one-time DXTR office/court schema + rows (needed even for
                                       # Mongo-only screens - courtName enrichment queries real
                                       # DXTR office/court tables via OfficesDxtrGateway)
-npm run seed                         # trustee-match-verification Mongo fixtures
+npm run seed                         # cams-sandbox Mongo fixtures (scripts/seed.ts)
 npx tsx fake-okta/seed-users.ts      # okta.users Mongo fixtures - edit fake-okta/seed-users.ts
                                       # directly to add/change fixture principals
 ./scripts/launch.sh                  # builds+runs the fake-okta container, starts the backend
@@ -115,35 +118,30 @@ A user with an empty `groups` array gets no role and no office - a valid "no per
 
 ## Extending the seeded data
 
-`scripts/seed.ts` is a minimal, standalone script - extend it directly for whatever
-trustee-match-verification scenario (or add seeding for other collections) you need next; it isn't
-wired to any other suite, so there's nothing else to keep in sync. For richer, more realistic
-fixtures across more collections, consider harvesting from a real dev environment with
+`scripts/seed.ts` is a minimal, standalone script, not scoped to any one screen or feature - add a
+new seeding function and call it for whatever collection/scenario you need next; it isn't wired to
+any other suite, so there's nothing else to keep in sync. For richer, more realistic fixtures across
+more collections, consider harvesting from a real dev environment with
 `test/e2e/scripts/harvest-fixtures.sh` (PII-scrubbed via `synthesize-fixtures.ts`) as a starting
 point, then hand-editing.
 
-## Known gaps / things to watch
+## Privileged Identity Management support
 
-- The root monorepo's `node_modules` currently has a broken `path-to-regexp` resolution (present in
-  `package-lock.json` via a root `overrides` pin, but absent from the installed tree) that breaks
-  any `express`-based process run directly against the root install (`backend/express/server.ts`,
-  for instance). This is why fake-okta runs in its own container with its own `npm install` rather
-  than as a bare `tsx` process - it sidesteps the issue entirely. Worth a real fix in the root
-  lockfile at some point; out of scope for this sandbox.
-- SQL Edge seeding (`npm run seed:sql`) is required even though the trustee-match-verification
-  screen's data lives entirely in Mongo - the list endpoint's `courtName` enrichment calls
-  `CourtsUseCase` → `OfficesUseCase` → the real `OfficesDxtrGateway`, which queries DXTR
-  office/court tables whenever `DATABASE_MOCK=false` (which this sandbox always uses, to keep
-  Mongo-backed repositories real too).
-- **Privileged Identity Management screens don't work in this sandbox.** `OktaUserGroupGateway`
-  (`backend/lib/adapters/gateways/okta/okta-user-group-gateway.ts`) calls the real Okta _management_
-  API (`@okta/okta-sdk-nodejs`'s `listUserGroups`) to look up a user's groups by ID - a completely
-  different, much larger surface than the login/JWT flow this sandbox's fake-okta server implements,
-  and it requires either a real Okta API token or a real private-key JWT client credential
-  (`CAMS_USER_GROUP_GATEWAY_CONFIG`'s `provider`/`clientId`/`keyId`/`privateKey` fields - this
-  sandbox's config only sets `url`, so `validateConfiguration` will reject it). This only affects
-  `PrivilegedIdentityUser`-gated admin screens (feature-flagged, not the
-  trustee-mismatch/data-verification screens this sandbox exists for) - out of scope for now. Fixing
-  it for real would mean either implementing fake Okta management/groups endpoints too, or swapping
-  in a from-scratch local gateway that reads groups from the same `okta.users` Mongo fixtures
-  instead of calling out to Okta at all.
+`OktaUserGroupGateway` (`backend/lib/adapters/gateways/okta/okta-user-group-gateway.ts`) calls the
+real Okta _management_ API (`@okta/okta-sdk-nodejs`) to look up groups and their members -
+`PrivilegedIdentityUser`-gated admin screens depend on this, separately from the login/JWT flow.
+fake-okta implements the slice of that API `OktaHumble` actually calls (`GET /api/v1/groups`,
+`GET /api/v1/groups/{groupId}/users`, `GET /api/v1/users/{userId}`,
+`GET /api/v1/users/{userId}/groups`), backed by the same `okta.users` Mongo fixtures - group
+membership is just each fixture user's `groups` array, no separate groups collection to maintain.
+Auth uses the simpler SSWS static-token mode (`local.settings.json`'s `OKTA_API_KEY`, checked
+against fake-okta's `FAKE_OKTA_MANAGEMENT_TOKEN`) rather than the private-key JWT mode.
+
+## Why seed SQL Edge too?
+
+`npm run seed:sql` imitates the real DXTR/ACMS database dependencies that Mongo-backed screens still
+reach through - it's not a limitation to work around. The trustee-match-verification screen's data
+lives in Mongo, but the list endpoint's `courtName` enrichment calls `CourtsUseCase` →
+`OfficesUseCase` → the real `OfficesDxtrGateway`, which queries DXTR office/court tables whenever
+`DATABASE_MOCK=false` (which this sandbox always uses, to keep Mongo-backed repositories exercising
+real code too).

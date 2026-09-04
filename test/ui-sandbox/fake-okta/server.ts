@@ -33,6 +33,19 @@
  *                                                              .ts hardcodes this path, no
  *                                                              discovery-doc lookup)
  *
+ * Also implements the slice of the real Okta Management API that OktaUserGroupGateway/OktaHumble
+ * (backend/lib/humble-objects/okta-humble.ts) call for Privileged Identity Management, using the
+ * simpler SSWS static-token authorizationMode (a bearer token compared against
+ * FAKE_OKTA_MANAGEMENT_TOKEN) rather than the private-key JWT mode - confirmed against
+ * node_modules/@okta/okta-sdk-nodejs/src/generated/apis/{Group,User}Api.js:
+ *   GET /api/v1/groups                  - listGroups (q param)
+ *   GET /api/v1/groups/{groupId}/users   - listGroupUsers
+ *   GET /api/v1/users/{userId}           - getUser
+ *   GET /api/v1/users/{userId}/groups    - listUserGroups
+ * Fixture users' `sub` doubles as their Okta user id, and group ids are derived deterministically
+ * from group name (see groupId() below) - there's no separate Okta group collection to seed or
+ * keep in sync, group membership is just each fixture user's `groups` array.
+ *
  * @okta/jwt-verifier's assertIssuer (node_modules/@okta/jwt-verifier/lib.js) hard-rejects any
  * issuer that doesn't match /^https:\/\//, with no config hook available to the backend's call
  * site (HumbleVerifier.ts constructs OktaJwtVerifier with no `testing` option) - so this server
@@ -52,10 +65,32 @@ const PORT = Number(process.env.FAKE_OKTA_PORT) || 8443;
 const ISSUER = process.env.FAKE_OKTA_ISSUER || `https://localhost:${PORT}/oauth2/default`;
 const AUDIENCE = 'api://default';
 const MONGO_CONNECTION_STRING =
-  process.env.MONGO_CONNECTION_STRING || 'mongodb://localhost:27017/cams-e2e?retrywrites=false';
+  process.env.MONGO_CONNECTION_STRING || 'mongodb://localhost:27017/cams-sandbox?retrywrites=false';
 
 const CERT_DIR = resolve(__dirname, 'certs');
 const KEY_ID = 'sandbox-fake-okta-key-1';
+const MANAGEMENT_TOKEN = process.env.FAKE_OKTA_MANAGEMENT_TOKEN || 'sandbox-management-token';
+
+// Okta groups have their own stable id separate from name - derive one deterministically from
+// the group name so group membership can round-trip through /groups/{groupId}/users without a
+// separate groups collection, since fixture data only ever stores group names on each user.
+function groupId(groupName: string): string {
+  return `sandbox-group-${createHash('sha256').update(groupName).digest('hex').slice(0, 16)}`;
+}
+
+function toOktaUserProfile(user: FakeOktaUser) {
+  const [firstName, ...rest] = user.name.split(' ');
+  return {
+    id: user.sub,
+    profile: {
+      firstName,
+      lastName: rest.join(' ') || firstName,
+      displayName: user.name,
+      email: user.email,
+      login: user.email,
+    },
+  };
+}
 
 // In-memory only - fine for a throwaway local dev server, never reused across restarts.
 type PendingAuth = {
@@ -313,6 +348,52 @@ async function main() {
       family_name: payload.name?.split(' ').slice(1).join(' ') || payload.name,
       email_verified: true,
     });
+  });
+
+  // Management API (Privileged Identity Management) - SSWS static-token auth, matching OktaHumble's
+  // `authorizationMode: 'SSWS'` path (config.token set, no clientId/keyId/privateKey needed).
+  app.use('/api/v1', (req, res, next) => {
+    const authHeader = req.headers.authorization || '';
+    if (authHeader !== `SSWS ${MANAGEMENT_TOKEN}`) {
+      res.status(401).json({ errorSummary: 'Invalid or missing SSWS token' });
+      return;
+    }
+    next();
+  });
+
+  app.get('/api/v1/groups', async (req, res) => {
+    const q = typeof req.query.q === 'string' ? req.query.q : undefined;
+    const users = await listUsers();
+    const groupNames = [...new Set(users.flatMap((u) => u.groups))].filter(
+      (name) => !q || name.includes(q),
+    );
+    res.json(groupNames.map((name) => ({ id: groupId(name), profile: { name } })));
+  });
+
+  app.get('/api/v1/groups/:groupId/users', async (req, res) => {
+    const users = await listUsers();
+    const members = users.filter((u) =>
+      u.groups.some((name) => groupId(name) === req.params.groupId),
+    );
+    res.json(members.map(toOktaUserProfile));
+  });
+
+  app.get('/api/v1/users/:userId', async (req, res) => {
+    const user = await findUser(req.params.userId);
+    if (!user) {
+      res.status(404).json({ errorSummary: 'Not found: Resource not found' });
+      return;
+    }
+    res.json(toOktaUserProfile(user));
+  });
+
+  app.get('/api/v1/users/:userId/groups', async (req, res) => {
+    const user = await findUser(req.params.userId);
+    if (!user) {
+      res.status(404).json({ errorSummary: 'Not found: Resource not found' });
+      return;
+    }
+    res.json(user.groups.map((name) => ({ id: groupId(name), profile: { name } })));
   });
 
   const httpsOptions = {
