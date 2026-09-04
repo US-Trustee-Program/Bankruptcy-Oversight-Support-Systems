@@ -25,7 +25,12 @@ if [ "$SUBMODULE" = true ]; then
     GITHOOKS_DIR="../../../.git/modules/cams/hooks"
 else
     echo "Setting up git hooks for main repository..."
-    GITHOOKS_DIR="../../.git/hooks"
+    # Resolve the actual effective hooks directory instead of assuming
+    # .git/hooks: core.hooksPath may point elsewhere (e.g. beads sets it to
+    # .beads/hooks), and a hardcoded path silently installs hooks nothing
+    # will ever run. Resolved as an absolute path since the rest of this
+    # script cd's into ops/git-setup/ before using GITHOOKS_DIR.
+    GITHOOKS_DIR="$(cd "$(git rev-parse --git-path hooks)" && pwd)"
 fi
 
 # check current working directory
@@ -50,34 +55,47 @@ temp_file=$(mktemp)
 
 ## Read the original file and insert the contents of source-file into it
 {
-    head -n 1 ${GITHOOKS_DIR}/pre-commit
+    head -n 1 "${GITHOOKS_DIR}"/pre-commit
     cat pre-commit-hook-content
-    tail -n +3 ${GITHOOKS_DIR}/pre-commit
+    tail -n +3 "${GITHOOKS_DIR}"/pre-commit
 } > "$temp_file"
 
 ## Move the modified contents back to the original file
-mv "$temp_file" ${GITHOOKS_DIR}/pre-commit
-chmod +x ${GITHOOKS_DIR}/pre-commit
+mv "$temp_file" "${GITHOOKS_DIR}"/pre-commit
+chmod +x "${GITHOOKS_DIR}"/pre-commit
 
 # Set up prepare-commit-msg hook
-cp ./prepare-commit-msg ${GITHOOKS_DIR}/prepare-commit-msg
-chmod +x ${GITHOOKS_DIR}/prepare-commit-msg
+cp ./prepare-commit-msg "${GITHOOKS_DIR}"/prepare-commit-msg
+chmod +x "${GITHOOKS_DIR}"/prepare-commit-msg
 
 # Set up QMD index update hooks (optional - only runs if qmd is installed)
-cp ./post-checkout ${GITHOOKS_DIR}/post-checkout
-chmod +x ${GITHOOKS_DIR}/post-checkout
+cp ./post-checkout "${GITHOOKS_DIR}"/post-checkout
+chmod +x "${GITHOOKS_DIR}"/post-checkout
 
-cp ./post-merge ${GITHOOKS_DIR}/post-merge
-chmod +x ${GITHOOKS_DIR}/post-merge
+cp ./post-merge "${GITHOOKS_DIR}"/post-merge
+chmod +x "${GITHOOKS_DIR}"/post-merge
 
-cp ./post-commit ${GITHOOKS_DIR}/post-commit
-chmod +x ${GITHOOKS_DIR}/post-commit
+cp ./post-commit "${GITHOOKS_DIR}"/post-commit
+chmod +x "${GITHOOKS_DIR}"/post-commit
 
-cp ./post-rewrite ${GITHOOKS_DIR}/post-rewrite
-chmod +x ${GITHOOKS_DIR}/post-rewrite
+cp ./post-rewrite "${GITHOOKS_DIR}"/post-rewrite
+chmod +x "${GITHOOKS_DIR}"/post-rewrite
 
-cp ./pre-push ${GITHOOKS_DIR}/pre-push
-chmod +x ${GITHOOKS_DIR}/pre-push
+cp ./pre-push "${GITHOOKS_DIR}"/pre-push
+chmod +x "${GITHOOKS_DIR}"/pre-push
+
+# Set up commit-msg hook (delegates to the ustp-cams-fdp plugin's validation)
+cp ./commit-msg "${GITHOOKS_DIR}"/commit-msg
+chmod +x "${GITHOOKS_DIR}"/commit-msg
+
+# Defensive: if beads has already claimed .beads/hooks (or claims it later
+# via `bd hooks install`), seed commit-msg there directly too. `bd hooks`
+# only manages pre-commit/post-merge/pre-push/post-checkout/prepare-commit-msg
+# by name, so it won't overwrite or remove this file.
+if [ -d ../../.beads/hooks ]; then
+    cp ./commit-msg ../../.beads/hooks/commit-msg
+    chmod +x ../../.beads/hooks/commit-msg
+fi
 
 popd || exit
 
