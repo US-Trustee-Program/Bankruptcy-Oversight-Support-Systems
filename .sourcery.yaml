@@ -1,8 +1,6 @@
 ignore:
   - test/e2e/fixtures/**
-  # Manual local dev tooling, not reviewed/merged code paths - test/ui-sandbox/local.settings.json
-  # contains only the well-known, publicly documented Azurite emulator storage key (also present
-  # in test/e2e/local.settings.backend.json), not a real secret.
+  # Manual local dev tooling, not reviewed/merged code paths.
   - test/ui-sandbox/**
 
 rules:
