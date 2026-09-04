@@ -15,7 +15,7 @@ const HTML_ESCAPES: Record<string, string> = {
   "'": '&#39;',
 };
 
-export function escapeHtml(text: string): string {
+function escapeHtml(text: string): string {
   return text.replace(/[&<>"']/g, (char) => HTML_ESCAPES[char]);
 }
 
@@ -177,6 +177,27 @@ function buildAuthorSection(changeSet: TrusteeChangeSet): string {
                             <p style="margin: 0 0 8px 0; font-size: 13px; color: #333333;">Changed by ${name}${emailDisplay}${timestamp}</p>${profileLinkHtml}
                         </td>
                     </tr>`;
+}
+
+export function buildUndeliverableAdminHtml(
+  originalRecipient: string,
+  originalHtml: string,
+): string {
+  return (
+    `<p>The trustee change notification below failed to deliver to <strong>${escapeHtml(originalRecipient)}</strong>. ` +
+    `The original message content is reproduced below for review. Be sure this information is forwarded on to OO.</p>` +
+    `<hr>${originalHtml}`
+  );
+}
+
+export function buildUndeliverableAdminText(
+  originalRecipient: string,
+  originalText: string,
+): string {
+  return (
+    `The trustee change notification below failed to deliver to ${originalRecipient}. ` +
+    `The original message content is reproduced below for review. Be sure this information is forwarded on to OO.\n\n---\n\n${originalText}`
+  );
 }
 
 export function compileTrusteeChangeTemplate(changeSet: TrusteeChangeSet): CompiledTemplate {
