@@ -45,6 +45,12 @@ describe('Test Icon component', async () => {
     expect(icon).not.toHaveAttribute('aria-label');
   });
 
+  test('should not surface tooltip as aria-label when still decorative', () => {
+    renderWithProps({ name: 'info', tooltip: 'Should be ignored' });
+    const icon = screen.getByTestId('icon');
+    expect(icon).not.toHaveAttribute('aria-label');
+  });
+
   test('should not be decorative when decorative is false', () => {
     renderWithProps({ name: 'warning', decorative: false });
     const icon = screen.getByTestId('icon');
