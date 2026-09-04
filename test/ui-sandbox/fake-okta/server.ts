@@ -224,16 +224,23 @@ async function main() {
       return;
     }
 
-    if (pending.codeChallengeMethod === 'S256') {
-      const expected = base64url(
-        createHash('sha256')
-          .update(code_verifier ?? '')
-          .digest(),
-      );
-      if (expected !== pending.codeChallenge) {
-        res.status(400).json({ error: 'invalid_grant', error_description: 'PKCE mismatch' });
-        return;
-      }
+    // Only S256 is supported - okta-auth-js always sends S256 by default, so this only rejects
+    // a request that's deliberately supplying something else, rather than quietly skipping PKCE
+    // verification for any method this sandbox doesn't recognize.
+    if (pending.codeChallengeMethod !== 'S256') {
+      res
+        .status(400)
+        .json({ error: 'invalid_grant', error_description: 'Unsupported PKCE method' });
+      return;
+    }
+    const expected = base64url(
+      createHash('sha256')
+        .update(code_verifier ?? '')
+        .digest(),
+    );
+    if (expected !== pending.codeChallenge) {
+      res.status(400).json({ error: 'invalid_grant', error_description: 'PKCE mismatch' });
+      return;
     }
     usedAuthCodes.add(code);
     pendingAuthByCode.delete(code);

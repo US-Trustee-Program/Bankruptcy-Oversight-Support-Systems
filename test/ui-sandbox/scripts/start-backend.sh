@@ -23,7 +23,9 @@ REAL_SETTINGS="${API_DIR}/local.settings.json"
 BACKUP_SETTINGS="${API_DIR}/local.settings.json.ui-sandbox-backup"
 SANDBOX_SETTINGS="${SCRIPT_DIR}/../local.settings.json"
 
+REAL_SETTINGS_EXISTED=false
 if [ -f "${REAL_SETTINGS}" ]; then
+  REAL_SETTINGS_EXISTED=true
   cp "${REAL_SETTINGS}" "${BACKUP_SETTINGS}"
 fi
 
@@ -51,8 +53,12 @@ restore() {
     done
     kill_tree "${FUNC_PID}" KILL
   fi
-  if [ -f "${BACKUP_SETTINGS}" ]; then
+  if [ "${REAL_SETTINGS_EXISTED}" = true ]; then
     mv "${BACKUP_SETTINGS}" "${REAL_SETTINGS}"
+  else
+    # No original file existed before launch - remove the sandbox-created one instead of
+    # leaving it stranded (there's nothing to restore it to).
+    rm -f "${REAL_SETTINGS}"
   fi
 }
 trap restore EXIT INT TERM
