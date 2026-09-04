@@ -343,6 +343,17 @@ describe('TrusteeMatchVerificationAccordion', () => {
       ).toBeInTheDocument();
     });
 
+    // A `title` attribute on the icon's wrapping span restores the sighted-mouse-user hover
+    // tooltip that Icon.tsx's <title> removal (NVDA double-announcement fix) took away, without
+    // reintroducing a duplicate accessible name - the wrapper itself carries no ARIA role.
+    test('shows a native hover tooltip on the mismatch icon wrapper for sighted users', async () => {
+      renderWithProps({ order: sampleOrderWithCandidates });
+      await mockDetailAndExpand(sampleOrderWithCandidatesDetail);
+
+      const icon = screen.getByRole('img', { name: 'Name does not match' });
+      expect(icon.closest('.mismatch-icon')).toHaveAttribute('title', 'Name does not match');
+    });
+
     test('does not show a mismatch icon for a field that scores a full 100 match', async () => {
       renderWithProps({ order: sampleOrderWithCandidates });
       await mockDetailAndExpand({

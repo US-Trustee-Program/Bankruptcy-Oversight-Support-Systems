@@ -133,7 +133,10 @@ export function AssociatedBanksTable({
                 </CamsTableCell>
                 <CamsTableCell data-cell="Trustees">
                   {hasError ? (
-                    <span data-testid={`trustee-count-error-${association.bankId}`}>
+                    <span
+                      data-testid={`trustee-count-error-${association.bankId}`}
+                      title="Unable to retrieve trustee count"
+                    >
                       <Icon
                         name="warning"
                         tooltip="Unable to retrieve trustee count"

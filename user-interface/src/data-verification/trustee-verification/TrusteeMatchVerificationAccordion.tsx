@@ -47,7 +47,7 @@ type MismatchIconProps = {
  */
 function MismatchIcon({ label }: MismatchIconProps) {
   return (
-    <span className="mismatch-icon">
+    <span className="mismatch-icon" title={`${label} does not match`}>
       <Icon
         name="cancel"
         className="mismatch-icon-symbol"

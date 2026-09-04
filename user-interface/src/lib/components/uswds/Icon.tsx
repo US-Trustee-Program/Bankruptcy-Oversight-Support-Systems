@@ -4,6 +4,9 @@
  */
 export interface IconProps {
   name: string;
+  /** Sets the icon's accessible name (aria-label) when non-decorative. Does not render a visible
+   * tooltip on its own - pair with a `title` attribute on a wrapping element (or adjacent visible
+   * text) if sighted mouse users also need to discover the icon's meaning on hover. */
   tooltip?: string;
   className?: string;
   decorative?: boolean;
