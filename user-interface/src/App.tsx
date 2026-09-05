@@ -20,7 +20,7 @@ import { AdminScreen } from './admin/AdminScreen';
 import { GoHome } from './lib/components/GoHome';
 import TrusteesScreen from './trustees/TrusteesScreen';
 import TrusteeDetailScreen from './trustees/TrusteeDetailScreen';
-import TrusteePublicContactForm from './trustees/forms/TrusteePublicContactForm';
+import { AddTrusteeRouteGuard } from './trustees/AddTrusteeRouteGuard';
 import SessionTimeoutManager from './lib/components/cams/SessionTimeoutManager/SessionTimeoutManager';
 import { NavigationTracker } from './lib/components/NavigationTracker';
 
@@ -67,10 +67,7 @@ function App() {
               <Route path="/admin/*" element={<AdminScreen />}></Route>
               <Route path="/trustees/:trusteeId/*" element={<TrusteeDetailScreen />}></Route>
               <Route path="/trustees" element={<TrusteesScreen />}>
-                <Route
-                  path="create"
-                  element={<TrusteePublicContactForm action="create" cancelTo="/trustees" />}
-                />
+                <Route path="create" element={<AddTrusteeRouteGuard />} />
               </Route>
               <Route index element={<GoHome />}></Route>
               <Route path="*" element={<GoHome />}></Route>
