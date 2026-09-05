@@ -1,5 +1,5 @@
 import { renderHook, act } from '@testing-library/react';
-import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
 import useFeatureFlagReadiness from './UseFeatureFlagReadiness';
 import * as LaunchDarkly from 'launchdarkly-react-client-sdk';
 import * as featureFlagConfig from '@/configuration/featureFlagConfiguration';
@@ -9,12 +9,9 @@ vi.mock('@/configuration/featureFlagConfiguration');
 
 describe('useFeatureFlagReadiness', () => {
   beforeEach(() => {
-    vi.useFakeTimers();
-  });
-
-  afterEach(() => {
     vi.useRealTimers();
     vi.restoreAllMocks();
+    vi.useFakeTimers();
   });
 
   test('is immediately ready and timed out when LaunchDarkly is not configured', () => {
@@ -41,6 +38,32 @@ describe('useFeatureFlagReadiness', () => {
     const { result } = renderHook(() => useFeatureFlagReadiness());
 
     expect(result.current).toEqual({ isReady: false, hasTimedOut: false });
+  });
+
+  test('becomes ready once the LD client transitions from undefined to available', async () => {
+    const mockWaitForInitialization = vi.fn().mockResolvedValue(undefined);
+
+    vi.mocked(featureFlagConfig.getFeatureFlagConfiguration).mockReturnValue({
+      clientId: 'test-client-id',
+      useExternalProvider: true,
+      useCamelCaseFlagKeys: false,
+    });
+    vi.mocked(LaunchDarkly.useLDClient).mockReturnValue(undefined);
+
+    const { result, rerender } = renderHook(() => useFeatureFlagReadiness());
+
+    expect(result.current).toEqual({ isReady: false, hasTimedOut: false });
+
+    vi.mocked(LaunchDarkly.useLDClient).mockReturnValue({
+      waitForInitialization: mockWaitForInitialization,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any);
+    rerender();
+
+    await act(async () => {
+      await mockWaitForInitialization.mock.results[0].value;
+    });
+    expect(result.current.isReady).toBe(true);
   });
 
   test('becomes ready once initialization succeeds, then times out 500ms later', async () => {
@@ -73,6 +96,38 @@ describe('useFeatureFlagReadiness', () => {
       vi.advanceTimersByTime(1);
     });
     expect(result.current.hasTimedOut).toBe(true);
+  });
+
+  test('does not update state if the component unmounts before initialization resolves', async () => {
+    let resolveInit!: () => void;
+    const mockWaitForInitialization = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveInit = resolve;
+        }),
+    );
+
+    vi.mocked(featureFlagConfig.getFeatureFlagConfiguration).mockReturnValue({
+      clientId: 'test-client-id',
+      useExternalProvider: true,
+      useCamelCaseFlagKeys: false,
+    });
+    vi.mocked(LaunchDarkly.useLDClient).mockReturnValue({
+      waitForInitialization: mockWaitForInitialization,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any);
+
+    const { result, unmount } = renderHook(() => useFeatureFlagReadiness());
+    expect(result.current).toEqual({ isReady: false, hasTimedOut: false });
+
+    unmount();
+
+    await act(async () => {
+      resolveInit();
+      await Promise.resolve();
+    });
+
+    expect(result.current).toEqual({ isReady: false, hasTimedOut: false });
   });
 
   test('becomes ready and timed out immediately when initialization fails', async () => {
