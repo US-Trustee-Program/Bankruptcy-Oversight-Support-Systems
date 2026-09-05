@@ -73,6 +73,7 @@ describe('App Router Tests', () => {
 
     vi.spyOn(FeatureFlags, 'default').mockReturnValue({
       'trustee-management': true,
+      'restrict-adding-trustees': true,
     });
 
     setUseLocationMock('/trustees/create', {
@@ -143,6 +144,7 @@ describe('App Router Tests', () => {
 
       vi.spyOn(FeatureFlags, 'default').mockReturnValue({
         'trustee-management': true, // Feature flag enabled
+        'restrict-adding-trustees': true,
       });
 
       setUseLocationMock('/trustees/create', {
@@ -169,6 +171,7 @@ describe('App Router Tests', () => {
 
       vi.spyOn(FeatureFlags, 'default').mockReturnValue({
         'trustee-management': false, // Feature flag disabled
+        'restrict-adding-trustees': true,
       });
 
       setUseLocationMock('/trustees/create', {
@@ -186,6 +189,36 @@ describe('App Router Tests', () => {
         expect(
           document.querySelector('[data-testid="trustee-create-disabled"]'),
         ).toBeInTheDocument();
+      });
+    });
+
+    test('should redirect /trustees/create to /trustees when restrict-adding-trustees is disabled', async () => {
+      const authorizedUser = MockData.getCamsUser({ roles: [CamsRole.TrusteeAdmin] });
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(
+        MockData.getCamsSession({ user: authorizedUser }),
+      );
+
+      vi.spyOn(FeatureFlags, 'default').mockReturnValue({
+        'trustee-management': true,
+        'restrict-adding-trustees': false,
+      });
+
+      setUseLocationMock('/trustees/create', {
+        action: 'create',
+        cancelTo: '/trustees',
+      });
+
+      render(
+        <MemoryRouter initialEntries={['/trustees/create']}>
+          <App />
+        </MemoryRouter>,
+      );
+
+      await waitFor(() => {
+        expect(
+          document.querySelector('[data-testid="trustee-public-form"]'),
+        ).not.toBeInTheDocument();
+        expect(document.querySelector('[data-testid="trustees"]')).toBeInTheDocument();
       });
     });
   });

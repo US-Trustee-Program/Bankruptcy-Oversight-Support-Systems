@@ -19,6 +19,7 @@ export const SHOW_DEBTOR_NAME_COLUMN = 'show-debtor-name-column';
 export const SYSTEM_MAINTENANCE_BANNER = 'system-maintenance-banner';
 export const TRANSFER_ORDERS_ENABLED = 'transfer-orders-enabled';
 export const TRUSTEE_MANAGEMENT = 'trustee-management';
+export const RESTRICT_ADDING_TRUSTEES = 'restrict-adding-trustees';
 export const TRUSTEE_VERIFICATION_ENABLED = 'trustee-verification-enabled';
 export const TRUSTEE_SOFTWARE_BANK_DISPLAY = 'trustee-software-bank-display';
 export const TRUSTEE_ASSIGNED_STAFF_ENABLED = 'trustee-assigned-staff-enabled';
