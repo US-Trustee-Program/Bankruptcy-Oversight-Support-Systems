@@ -1,5 +1,9 @@
 import { NavLink, Outlet, useOutlet } from 'react-router-dom';
-import useFeatureFlags, { TRUSTEE_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags';
+import useFeatureFlags, {
+  isFlagEnabled,
+  RESTRICT_ADDING_TRUSTEES,
+  TRUSTEE_MANAGEMENT,
+} from '@/lib/hooks/UseFeatureFlags';
 import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
 import TrusteesList from './TrusteesList';
@@ -38,13 +42,15 @@ export default function TrusteesScreen() {
       <div>
         <div className="display-flex flex-justify flex-align-end">
           <h1 className="display-inline-block margin-bottom-0">Trustees</h1>
-          <NavLink
-            to="/trustees/create"
-            data-testid="trustees-add-link"
-            className="usa-button width-auto margin-right-0"
-          >
-            Add New Trustee
-          </NavLink>
+          {isFlagEnabled(flags, RESTRICT_ADDING_TRUSTEES) && (
+            <NavLink
+              to="/trustees/create"
+              data-testid="trustees-add-link"
+              className="usa-button width-auto margin-right-0"
+            >
+              Add New Trustee
+            </NavLink>
+          )}
         </div>
         <div className="grid-row">
           <div className="grid-col-12">

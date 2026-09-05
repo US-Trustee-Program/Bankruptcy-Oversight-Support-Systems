@@ -1,14 +1,23 @@
 import { render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import TrusteesScreen from './TrusteesScreen';
-import useFeatureFlags, { TRUSTEE_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags';
+import useFeatureFlags, {
+  RESTRICT_ADDING_TRUSTEES,
+  TRUSTEE_MANAGEMENT,
+} from '@/lib/hooks/UseFeatureFlags';
 import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
 import { vi } from 'vitest';
 import { CamsUser } from '@common/cams/users';
 
 // Mock the dependencies
-vi.mock('@/lib/hooks/UseFeatureFlags');
+vi.mock('@/lib/hooks/UseFeatureFlags', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/hooks/UseFeatureFlags')>();
+  return {
+    ...actual,
+    default: vi.fn(),
+  };
+});
 vi.mock('@/lib/utils/local-storage');
 vi.mock('./TrusteesList', () => ({
   default: () => <div data-testid="trustees-list">Trustees List Component</div>,
@@ -30,6 +39,7 @@ describe('TrusteesScreen', () => {
     // Mock feature flag enabled
     mockUseFeatureFlags.mockReturnValue({
       [TRUSTEE_MANAGEMENT]: true,
+      [RESTRICT_ADDING_TRUSTEES]: true,
     });
 
     // Mock user session with TrusteeAdmin role
@@ -57,6 +67,37 @@ describe('TrusteesScreen', () => {
     const addLink = screen.getByTestId('trustees-add-link');
     expect(addLink).toHaveAttribute('href', '/trustees/create');
     expect(addLink).toHaveClass('usa-button');
+  });
+
+  test('should not render Add New Trustee link when restrict-adding-trustees flag is false', () => {
+    // Mock trustee management enabled, but restrict-adding-trustees disabled
+    mockUseFeatureFlags.mockReturnValue({
+      [TRUSTEE_MANAGEMENT]: true,
+      [RESTRICT_ADDING_TRUSTEES]: false,
+    });
+
+    // Mock user session with TrusteeAdmin role (passes the screen-level gate)
+    mockLocalStorage.getSession.mockReturnValue({
+      accessToken: 'fake-token',
+      provider: 'test',
+      issuer: 'test-issuer',
+      expires: 1,
+      user: {
+        id: 'user-1',
+        name: 'Test User',
+        roles: [CamsRole.TrusteeAdmin],
+      },
+    });
+
+    renderWithRouter(<TrusteesScreen />);
+
+    // Rest of the screen still renders
+    expect(screen.getByText('Trustees')).toBeInTheDocument();
+    expect(screen.getByTestId('trustees-list')).toBeInTheDocument();
+
+    // Only the Add New Trustee link is gated off
+    expect(screen.queryByTestId('trustees-add-link')).not.toBeInTheDocument();
+    expect(screen.queryByText('Add New Trustee')).not.toBeInTheDocument();
   });
 
   test('should not render when feature flag is disabled', () => {
