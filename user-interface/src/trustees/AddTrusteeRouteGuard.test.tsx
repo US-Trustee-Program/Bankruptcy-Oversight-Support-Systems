@@ -75,4 +75,24 @@ describe('AddTrusteeRouteGuard', () => {
     expect(screen.getByTestId('trustees-list-page')).toBeInTheDocument();
     expect(screen.queryByTestId('trustee-create-form')).not.toBeInTheDocument();
   });
+
+  test('renders nothing when the LD client is ready but the flag has not populated and the grace period has not elapsed', () => {
+    mockUseFeatureFlagReadiness.mockReturnValue({ isReady: true, hasTimedOut: false });
+    mockUseFeatureFlags.mockReturnValue({});
+
+    const { container } = renderGuard();
+
+    expect(container).toBeEmptyDOMElement();
+    expect(screen.queryByTestId('trustee-create-form')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('trustees-list-page')).not.toBeInTheDocument();
+  });
+
+  test('renders the create form once the flag value arrives, even before the grace period elapses', () => {
+    mockUseFeatureFlagReadiness.mockReturnValue({ isReady: true, hasTimedOut: false });
+    mockUseFeatureFlags.mockReturnValue({ [RESTRICT_ADDING_TRUSTEES]: true });
+
+    renderGuard();
+
+    expect(screen.getByTestId('trustee-create-form')).toBeInTheDocument();
+  });
 });
