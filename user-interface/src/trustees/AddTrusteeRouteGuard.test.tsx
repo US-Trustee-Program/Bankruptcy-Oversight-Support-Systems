@@ -14,7 +14,9 @@ vi.mock('@/lib/hooks/UseFeatureFlags', async (importOriginal) => {
 });
 vi.mock('@/lib/hooks/UseFeatureFlagReadiness');
 vi.mock('./forms/TrusteePublicContactForm', () => ({
-  default: () => <div data-testid="trustee-create-form">Trustee Create Form</div>,
+  default: (props: { action: string; cancelTo: string }) => (
+    <div data-testid="trustee-create-form">{JSON.stringify(props)}</div>
+  ),
 }));
 
 const mockUseFeatureFlags = vi.mocked(useFeatureFlags);
@@ -33,7 +35,7 @@ function renderGuard() {
 
 describe('AddTrusteeRouteGuard', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   test('renders nothing while feature flags are not ready', () => {
@@ -53,11 +55,24 @@ describe('AddTrusteeRouteGuard', () => {
 
     renderGuard();
 
-    expect(screen.getByTestId('trustee-create-form')).toBeInTheDocument();
+    const form = screen.getByTestId('trustee-create-form');
+    expect(form).toBeInTheDocument();
+    expect(form).toHaveTextContent('"action":"create"');
+    expect(form).toHaveTextContent('"cancelTo":"/trustees"');
   });
 
   test('redirects to /trustees once ready when the flag is disabled', () => {
     mockUseFeatureFlagReadiness.mockReturnValue({ isReady: true, hasTimedOut: true });
+    mockUseFeatureFlags.mockReturnValue({ [RESTRICT_ADDING_TRUSTEES]: false });
+
+    renderGuard();
+
+    expect(screen.getByTestId('trustees-list-page')).toBeInTheDocument();
+    expect(screen.queryByTestId('trustee-create-form')).not.toBeInTheDocument();
+  });
+
+  test('redirects to /trustees once the flag value arrives as false, even before the grace period elapses', () => {
+    mockUseFeatureFlagReadiness.mockReturnValue({ isReady: true, hasTimedOut: false });
     mockUseFeatureFlags.mockReturnValue({ [RESTRICT_ADDING_TRUSTEES]: false });
 
     renderGuard();
@@ -93,6 +108,9 @@ describe('AddTrusteeRouteGuard', () => {
 
     renderGuard();
 
-    expect(screen.getByTestId('trustee-create-form')).toBeInTheDocument();
+    const form = screen.getByTestId('trustee-create-form');
+    expect(form).toBeInTheDocument();
+    expect(form).toHaveTextContent('"action":"create"');
+    expect(form).toHaveTextContent('"cancelTo":"/trustees"');
   });
 });
