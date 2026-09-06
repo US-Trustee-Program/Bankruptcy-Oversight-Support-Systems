@@ -29,5 +29,3 @@ export function AddTrusteeRouteGuard() {
 
   return <Navigate to="/trustees" replace />;
 }
-
-export default AddTrusteeRouteGuard;
