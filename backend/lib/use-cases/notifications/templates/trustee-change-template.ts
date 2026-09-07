@@ -245,21 +245,27 @@ export function compileTrusteeChangeTemplate(changeSet: TrusteeChangeSet): Compi
   const appointmentRows = compileRows(appointmentFields);
   const meetingRows = compileRows(meetingFields);
 
-  const rendered = TRUSTEE_CHANGE_TEMPLATE.replaceAll(
-    '{{trustee_name}}',
+  const rendered = TRUSTEE_CHANGE_TEMPLATE.replaceAll('{{trustee_name}}', () =>
     escapeHtml(changeSet.trusteeName),
   )
     .replace(
       /<!-- Appointment Information Section -->[\s\S]*?{{appointment_info_rows}}[\s\S]*?<\/td>\s*<\/tr>/,
       (match) =>
-        renderSection(match.replace('{{appointment_info_rows}}', appointmentRows), appointmentRows),
+        renderSection(
+          match.replace('{{appointment_info_rows}}', () => appointmentRows),
+          appointmentRows,
+        ),
     )
     .replace(
       /<!-- 341 Meeting Information Section -->[\s\S]*?{{meeting_info_rows}}[\s\S]*?<\/td>\s*<\/tr>/,
-      (match) => renderSection(match.replace('{{meeting_info_rows}}', meetingRows), meetingRows),
+      (match) =>
+        renderSection(
+          match.replace('{{meeting_info_rows}}', () => meetingRows),
+          meetingRows,
+        ),
     )
-    .replace('{{chapter_line}}', buildChapterLineHtml(changeSet))
-    .replace('{{author_section}}', buildAuthorSection(changeSet));
+    .replace('{{chapter_line}}', () => buildChapterLineHtml(changeSet))
+    .replace('{{author_section}}', () => buildAuthorSection(changeSet));
 
   const baseSubject =
     changeSet.subjectOverride ?? `Trustee Information Changed: ${changeSet.trusteeName}`;

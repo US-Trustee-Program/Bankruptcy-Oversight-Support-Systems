@@ -706,5 +706,53 @@ describe('compileTrusteeChangeTemplate', () => {
       expect(result.text).not.toContain('Changed by');
       expect(result.text).not.toContain('View profile');
     });
+
+    test('does not leak the placeholder token for an author name containing "$&"', () => {
+      const result = compileTrusteeChangeTemplate({
+        ...baseChangeSet,
+        author: { name: 'A$&B' },
+      });
+
+      expect(result.html).toContain('Changed by A$&amp;B');
+      expect(result.html).not.toContain('{{author_section}}');
+    });
+
+    test('does not duplicate the preceding template for an author name containing "$`"', () => {
+      const result = compileTrusteeChangeTemplate({
+        ...baseChangeSet,
+        author: { name: 'X$`Y' },
+      });
+
+      expect(result.html).toContain('Changed by X$`Y');
+      expect(result.html.match(/<!DOCTYPE html>/g)?.length).toBe(1);
+    });
+
+    test('does not collapse a doubled "$$" in an author name', () => {
+      const result = compileTrusteeChangeTemplate({
+        ...baseChangeSet,
+        author: { name: 'Cost$$100' },
+      });
+
+      expect(result.html).toContain('Changed by Cost$$100');
+    });
+
+    test('does not leak the placeholder token when escaping an apostrophe manufactures a "$&" pattern', () => {
+      const result = compileTrusteeChangeTemplate({
+        ...baseChangeSet,
+        author: { name: "P$'Q" },
+      });
+
+      expect(result.html).toContain('Changed by P$&#39;Q');
+      expect(result.html).not.toContain('{{author_section}}');
+    });
+
+    test('does not treat "$" sequences in the trustee name as replace() substitution patterns', () => {
+      const result = compileTrusteeChangeTemplate({
+        ...baseChangeSet,
+        trusteeName: 'A$&B',
+      });
+
+      expect(result.html).toContain("Trustee A$&amp;B's information has changed.");
+    });
   });
 });
