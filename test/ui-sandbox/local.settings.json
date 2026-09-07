@@ -1,0 +1,27 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "FUNCTIONS_WORKER_RUNTIME": "node",
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "COSMOS_DATABASE_NAME": "cams-sandbox",
+    "MONGO_CONNECTION_STRING": "mongodb://localhost:27017/cams-sandbox?retrywrites=false",
+    "DATABASE_MOCK": "false",
+    "MSSQL_HOST": "localhost",
+    "MSSQL_DATABASE_DXTR": "CAMS_E2E",
+    "MSSQL_USER": "sa",
+    "MSSQL_PASS": "YourStrong!Passw0rd",
+    "MSSQL_ENCRYPT": "false",
+    "MSSQL_TRUST_UNSIGNED_CERT": "true",
+    "MSSQL_REQUEST_TIMEOUT": "60000",
+    "SLOT_NAME": "local",
+    "CAMS_LOGIN_PROVIDER": "okta",
+    "CAMS_LOGIN_PROVIDER_CONFIG": "issuer=https://localhost:8443/oauth2/default|clientId=sandbox-client",
+    "CAMS_USER_GROUP_GATEWAY_CONFIG": "url=https://localhost:8443",
+    "OKTA_API_KEY": "sandbox-management-token",
+    "NODE_TLS_REJECT_UNAUTHORIZED": "0"
+  },
+  "Host": {
+    "LocalHttpPort": 7071,
+    "CORS": "*"
+  }
+}
