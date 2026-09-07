@@ -39,6 +39,19 @@ ignore:
           controlled config files here (okta config-loader.js, cosmiconfig
           build tooling), so exploitability is low in the interim.
         expires: 2026-08-24T00:00:00.000Z
+  SNYK-JS-NODEFORGE-19635204:
+    - '*':
+        reason: >-
+          Transitive dependency via @okta/okta-sdk-nodejs@8.1.0, which
+          hard-depends on node-jose for its own package.json (every
+          node-jose version, 0.9.0 through latest, requires node-forge,
+          so no version swap avoids this). CVE-2026-85393 is an RSA
+          signature-verification bypass, but our only reachable node-jose
+          call is JWS.createSign for outbound DPoP proof signing
+          (@okta/okta-sdk-nodejs/src/dpop.js) — JWS.createVerify is never
+          invoked anywhere in our usage. No fixed node-forge version
+          exists upstream as of 2026-09-07.
+        expires: 2026-10-07T00:00:00.000Z
   SNYK-JS-REACTROUTER-18313151:
     - '*':
         reason: >-
