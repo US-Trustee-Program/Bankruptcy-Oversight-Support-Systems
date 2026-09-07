@@ -3,8 +3,12 @@ name: Clean up Flexion Azure Resources
 on:
   delete:
   schedule:
-    # Run at 9 PM Pacific. GitHub schedules use UTC, so run both possible
-    # UTC hours and gate on America/Los_Angeles local time in the check job.
+    # Target 9 PM Pacific. GitHub schedules use UTC, so run both possible
+    # UTC hours. GitHub's own scheduler can delay a cron trigger by hours
+    # (worse at :00, the most contended minute platform-wide), so the check
+    # job accepts any run landing in a 9pm-6am Pacific window rather than
+    # requiring the exact hour — late is fine, but it must never fire during
+    # business hours and tear down an env someone's actively using.
     - cron: '0 4,5 * * *'
   workflow_dispatch:
     inputs:
@@ -137,8 +141,12 @@ jobs:
 
           if [[ "${GITHUB_EVENT_NAME}" == "schedule" ]]; then
             localHour=$(TZ=America/Los_Angeles date +%H)
-            if [[ "${localHour}" != "21" ]]; then
-              echo "Skipping scheduled cleanup because Pacific local hour is ${localHour}, not 21."
+            # Accept any run landing between 9pm and 6am Pacific (not just
+            # the exact top-of-hour target) so a scheduler delay still lets
+            # cleanup run overnight, while still refusing to run during
+            # business hours when a branch env could be in active use.
+            if (( 10#${localHour} >= 6 && 10#${localHour} < 21 )); then
+              echo "Skipping scheduled cleanup because Pacific local hour is ${localHour}, outside the 9pm-6am cleanup window."
               echo "executeCleanup=false" >> "$GITHUB_OUTPUT"
               echo 'targetBranchHashIds=[]' >> "$GITHUB_OUTPUT"
               echo 'staleBranchNotices=[]' >> "$GITHUB_OUTPUT"
