@@ -32,7 +32,7 @@ describe('NotificationRoutingController', () => {
       getAll: vi.fn(),
       updateRoutingRecord: vi.fn(),
       createRoutingAuditRecord: vi.fn().mockResolvedValue(undefined),
-      findRecipientByRoutingKey: vi.fn().mockResolvedValue(null),
+      findRecipientsByRoutingKeys: vi.fn().mockResolvedValue([]),
       release: vi.fn(),
     } as unknown as Mocked<NotificationRoutingRepository>;
 
@@ -111,10 +111,12 @@ describe('NotificationRoutingController', () => {
       context.request.method = 'PUT';
       context.request.params = { routingId: 'chapter-7-oversight' };
       context.request.body = { recipientAddresses: ['updated@example.com'] };
-      mockRepo.findRecipientByRoutingKey.mockResolvedValue({
-        ...mockRecord,
-        recipientAddresses: ['original@example.com', 'backup@example.com'],
-      });
+      mockRepo.findRecipientsByRoutingKeys.mockResolvedValue([
+        {
+          ...mockRecord,
+          recipientAddresses: ['original@example.com', 'backup@example.com'],
+        },
+      ]);
       mockRepo.updateRoutingRecord.mockResolvedValue({
         ...mockRecord,
         recipientAddresses: ['updated@example.com'],

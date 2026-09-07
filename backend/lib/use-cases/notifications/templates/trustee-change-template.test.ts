@@ -121,8 +121,29 @@ describe('compileTrusteeChangeTemplate', () => {
       );
 
       expect(result.subject).toBe(
-        'Trustee Information Changed: Henry Green (Chapter 7, 11 Subchapter V)',
+        'Trustee Information Changed: Henry Green (Chapters 7, 11 Subchapter V)',
       );
+    });
+
+    test('pluralizes "Chapter(s)" consistently between subject and body', () => {
+      const fields: TrusteeChangeField[] = [
+        {
+          label: 'Public Email',
+          comparisons: [{ before: 'a@b.test', after: 'c@d.test' }],
+          category: 'profile',
+          section: 'appointment',
+        },
+      ];
+
+      const single = compileTrusteeChangeTemplate(buildChangeSet(fields, { chapters: ['7'] }));
+      expect(single.subject).toContain('(Chapter 7)');
+      expect(single.text).toContain('Chapter: 7');
+
+      const multiple = compileTrusteeChangeTemplate(
+        buildChangeSet(fields, { chapters: ['7', '11'] }),
+      );
+      expect(multiple.subject).toContain('(Chapters 7, 11)');
+      expect(multiple.text).toContain('Chapters: 7, 11');
     });
 
     test('appends a 341 Meeting Update marker when meeting fields changed', () => {

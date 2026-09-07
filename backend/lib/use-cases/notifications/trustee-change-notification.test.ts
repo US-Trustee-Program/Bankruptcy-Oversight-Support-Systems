@@ -53,9 +53,11 @@ const SUBV_RECIPIENT: NotificationRecipient = {
 };
 
 function seedRouting(rows: NotificationRecipient[]) {
-  vi.spyOn(MockMongoRepository.prototype, 'findRecipientsByRoutingKeys').mockImplementation(
-    async (keys: string[]) => rows.filter((row) => row.covers.some((c) => keys.includes(c))),
-  );
+  return vi
+    .spyOn(MockMongoRepository.prototype, 'findRecipientsByRoutingKeys')
+    .mockImplementation(async (keys: string[]) =>
+      rows.filter((row) => row.covers.some((c) => keys.includes(c))),
+    );
 }
 
 describe('TrusteeChangeNotificationUseCase', () => {
@@ -451,13 +453,15 @@ describe('TrusteeChangeNotificationUseCase', () => {
   });
 
   test('dispatches to each chapter oversight recipient when the trustee has multiple chapter appointments', async () => {
-    seedRouting([CHAPTER_OVERSIGHT_RECIPIENT, SUBV_RECIPIENT]);
+    const routingSpy = seedRouting([CHAPTER_OVERSIGHT_RECIPIENT, SUBV_RECIPIENT]);
 
     await useCase.notify(
       context,
       buildChangeSet([buildField()], { chapters: ['7', '11-subchapter-v'] }),
     );
 
+    expect(routingSpy).toHaveBeenCalledTimes(1);
+    expect(routingSpy).toHaveBeenCalledWith(['chapter:7', 'chapter:11-subchapter-v']);
     const recorded = mockGateway.getRecorded();
     expect(recorded).toHaveLength(2);
     const addresses = recorded.map((n) => n.to).sort();
@@ -485,6 +489,26 @@ describe('TrusteeChangeNotificationUseCase', () => {
     const recorded = mockGateway.getRecorded();
     expect(recorded).toHaveLength(1);
     expect(recorded[0].to).toBe(CHAPTER_OVERSIGHT_RECIPIENT.recipientAddresses[0]);
+  });
+
+  test('resolves all routing keys for a change in a single batched query', async () => {
+    const routingSpy = seedRouting([CHAPTER_OVERSIGHT_RECIPIENT, ZOOM_341_RECIPIENT]);
+
+    await useCase.notify(
+      context,
+      buildChangeSet([
+        buildField({ label: 'Name', category: 'profile', section: 'appointment' }),
+        buildField({
+          label: 'Zoom Info',
+          category: 'zoom-341',
+          section: 'meeting',
+          comparisons: [{ before: 'old', after: 'new' }],
+        }),
+      ]),
+    );
+
+    expect(routingSpy).toHaveBeenCalledTimes(1);
+    expect(routingSpy).toHaveBeenCalledWith(['chapter:7', 'category:zoom-341']);
   });
 
   test('groups dispatch by category, not by field count', async () => {

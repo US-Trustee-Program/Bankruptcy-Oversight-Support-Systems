@@ -57,10 +57,17 @@ function buildChangedAtSuffix(iso?: string): string {
   return iso ? ` on ${formatTimestamp(iso)}` : '';
 }
 
+function chapterWord(chapters: NonNullable<TrusteeChangeSet['chapters']>): string {
+  return chapters.length > 1 ? 'Chapters' : 'Chapter';
+}
+
+function formatChapterList(chapters: NonNullable<TrusteeChangeSet['chapters']>): string {
+  return chapters.map(formatChapterType).join(', ');
+}
+
 function formatChapterLabel(chapters: TrusteeChangeSet['chapters']): string | undefined {
   if (!chapters || chapters.length === 0) return undefined;
-  const labels = chapters.map(formatChapterType);
-  return labels.length > 1 ? `Chapters: ${labels.join(', ')}` : `Chapter: ${labels[0]}`;
+  return `${chapterWord(chapters)}: ${formatChapterList(chapters)}`;
 }
 
 function generateRow(field: TrusteeChangeField): string {
@@ -222,7 +229,7 @@ function buildSubjectContextSuffix(changeSet: TrusteeChangeSet): string {
   const parts: string[] = [];
 
   if (changeSet.chapters && changeSet.chapters.length > 0) {
-    parts.push(`Chapter ${changeSet.chapters.map(formatChapterType).join(', ')}`);
+    parts.push(`${chapterWord(changeSet.chapters)} ${formatChapterList(changeSet.chapters)}`);
   }
 
   if (changeSet.fields.some((field) => field.section === 'meeting')) {

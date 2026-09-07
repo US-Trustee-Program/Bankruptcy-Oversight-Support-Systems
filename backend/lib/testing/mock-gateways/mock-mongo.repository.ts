@@ -794,13 +794,6 @@ export class MockMongoRepository
   }
 
   // ── NotificationRoutingRepository ─────────────────────────────────────────
-  async findRecipientByRoutingKey(key: string): Promise<NotificationRecipient | null> {
-    for (const record of this.notificationRouting.values()) {
-      if (record.covers.includes(key)) return record;
-    }
-    return null;
-  }
-
   async findRecipientsByRoutingKeys(keys: string[]): Promise<NotificationRecipient[]> {
     return Array.from(this.notificationRouting.values()).filter((record) =>
       record.covers.some((covered) => keys.includes(covered)),

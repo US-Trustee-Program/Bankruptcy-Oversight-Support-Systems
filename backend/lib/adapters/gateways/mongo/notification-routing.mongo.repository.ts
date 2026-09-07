@@ -1,7 +1,6 @@
 import { ApplicationContext } from '../../types/basic';
 import QueryBuilder from '../../../query/query-builder';
 import { getCamsError } from '../../../common-errors/error-utilities';
-import { isNotFoundError } from '../../../common-errors/not-found-error';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import {
   NotificationRecipient,
@@ -68,34 +67,12 @@ export class NotificationRoutingMongoRepository
     NotificationRoutingMongoRepository.dropInstance();
   }
 
-  public async findRecipientByRoutingKey(key: string): Promise<NotificationRecipient | null> {
+  public async findRecipientsByRoutingKeys(keys: string[]): Promise<NotificationRecipient[]> {
+    if (keys.length === 0) return [];
     // Scoped to the known definition ids so a document outside the
     // UI-managed set (e.g. a legacy/orphaned record with a broader `covers`
     // array) can never silently win this match instead of the one an admin
     // can actually see and edit on the Notification Routing screen.
-    const knownIds = NOTIFICATION_ROUTING_DEFINITIONS.map((definition) => definition.id);
-    const query = QueryBuilder.and(
-      this.doc('covers').contains([key]),
-      this.doc('id').contains(knownIds),
-    );
-    try {
-      const result = await this.getAdapter<NotificationRoutingDoc>().findOne(query);
-      return {
-        covers: result.covers ?? [],
-        recipientAddresses: toAddressArray(result),
-        displayName: result.displayName ?? '',
-      };
-    } catch (originalError) {
-      if (isNotFoundError(originalError)) {
-        return null;
-      }
-      throw getCamsError(originalError, MODULE_NAME);
-    }
-  }
-
-  public async findRecipientsByRoutingKeys(keys: string[]): Promise<NotificationRecipient[]> {
-    if (keys.length === 0) return [];
-    // Scoped to the known definition ids for the same reason as findRecipientByRoutingKey above.
     const knownIds = NOTIFICATION_ROUTING_DEFINITIONS.map((definition) => definition.id);
     const query = QueryBuilder.and(
       this.doc('covers').contains(keys),
