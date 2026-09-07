@@ -50,11 +50,7 @@ ignore:
           call is JWS.createSign for outbound DPoP proof signing
           (@okta/okta-sdk-nodejs/src/dpop.js) — JWS.createVerify is never
           invoked anywhere in our usage. No fixed node-forge version
-          exists upstream. Despite the Snyk advisory's wording, no fix is
-          actually on node-forge's main branch yet — it's an open,
-          unreviewed PR (digitalbazaar/forge#1151, opened 2026-09-05)
-          against digitalbazaar/forge#1149, and main's lib/rsa.js still
-          lacks the nested DigestAlgorithm length check as of 2026-09-07.
+          exists upstream as of 2026-09-07.
         expires: 2026-10-07T00:00:00.000Z
   SNYK-JS-REACTROUTER-18313151:
     - '*':
