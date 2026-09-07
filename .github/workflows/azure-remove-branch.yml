@@ -3,13 +3,15 @@ name: Clean up Flexion Azure Resources
 on:
   delete:
   schedule:
-    # Target 9 PM Pacific. GitHub schedules use UTC, so run both possible
-    # UTC hours. GitHub's own scheduler can delay a cron trigger by hours
-    # (worse at :00, the most contended minute platform-wide), so the check
-    # job accepts any run landing in a 9pm-6am Pacific window rather than
-    # requiring the exact hour — late is fine, but it must never fire during
-    # business hours and tear down an env someone's actively using.
-    - cron: '0 4,5 * * *'
+    # Target 9-10 PM Pacific (05:00 UTC lands at 9pm during PST, 10pm during
+    # PDT — both fine, see the check job's window below). A single cron
+    # entry avoids double-firing across the DST boundary; GitHub's own
+    # scheduler can also delay a cron trigger by hours (worse at :00, the
+    # most contended minute platform-wide), so the check job accepts any
+    # run landing in a 9pm-6am Pacific window rather than requiring the
+    # exact hour — late is fine, but it must never fire during business
+    # hours and tear down an env someone's actively using.
+    - cron: '0 5 * * *'
   workflow_dispatch:
     inputs:
       hashId:
