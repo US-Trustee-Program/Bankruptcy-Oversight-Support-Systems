@@ -53,13 +53,8 @@ const SUBV_RECIPIENT: NotificationRecipient = {
 };
 
 function seedRouting(rows: NotificationRecipient[]) {
-  vi.spyOn(MockMongoRepository.prototype, 'findRecipientByRoutingKey').mockImplementation(
-    async (key: string) => {
-      for (const row of rows) {
-        if (row.covers.includes(key)) return row;
-      }
-      return null;
-    },
+  vi.spyOn(MockMongoRepository.prototype, 'findRecipientsByRoutingKeys').mockImplementation(
+    async (keys: string[]) => rows.filter((row) => row.covers.some((c) => keys.includes(c))),
   );
 }
 
@@ -470,6 +465,24 @@ describe('TrusteeChangeNotificationUseCase', () => {
         SUBV_RECIPIENT.recipientAddresses[0],
       ].sort(),
     );
+  });
+
+  test('sends once when a single recipient record covers multiple requested chapters', async () => {
+    seedRouting([
+      {
+        ...CHAPTER_OVERSIGHT_RECIPIENT,
+        covers: ['chapter:7', 'chapter:11-subchapter-v'],
+      },
+    ]);
+
+    await useCase.notify(
+      context,
+      buildChangeSet([buildField()], { chapters: ['7', '11-subchapter-v'] }),
+    );
+
+    const recorded = mockGateway.getRecorded();
+    expect(recorded).toHaveLength(1);
+    expect(recorded[0].to).toBe(CHAPTER_OVERSIGHT_RECIPIENT.recipientAddresses[0]);
   });
 
   test('groups dispatch by category, not by field count', async () => {

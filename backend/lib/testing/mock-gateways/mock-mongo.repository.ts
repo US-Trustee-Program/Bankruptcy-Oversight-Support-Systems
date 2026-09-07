@@ -801,6 +801,12 @@ export class MockMongoRepository
     return null;
   }
 
+  async findRecipientsByRoutingKeys(keys: string[]): Promise<NotificationRecipient[]> {
+    return Array.from(this.notificationRouting.values()).filter((record) =>
+      record.covers.some((covered) => keys.includes(covered)),
+    );
+  }
+
   async getAll(): Promise<NotificationRoutingRecord[]> {
     return Array.from(this.notificationRouting.values());
   }

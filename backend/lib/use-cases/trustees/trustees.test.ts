@@ -2007,16 +2007,18 @@ describe('TrusteesUseCase tests', () => {
       vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(existingTrustee);
       vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
 
-      vi.spyOn(MockMongoRepository.prototype, 'findRecipientByRoutingKey').mockImplementation(
-        async (key: string) => {
-          if (key === 'chapter:7') {
-            return {
-              covers: ['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'],
-              recipientAddresses: ['ch7-oversight@example.test'],
-              displayName: 'Default Chapter Oversight',
-            };
+      vi.spyOn(MockMongoRepository.prototype, 'findRecipientsByRoutingKeys').mockImplementation(
+        async (keys: string[]) => {
+          if (keys.includes('chapter:7')) {
+            return [
+              {
+                covers: ['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'],
+                recipientAddresses: ['ch7-oversight@example.test'],
+                displayName: 'Default Chapter Oversight',
+              },
+            ];
           }
-          return null;
+          return [];
         },
       );
 

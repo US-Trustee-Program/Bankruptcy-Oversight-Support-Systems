@@ -511,6 +511,8 @@ export interface DomainVerificationGateway {
 export interface NotificationRoutingRepository extends Releasable {
   /** Returns the recipient whose covers array contains the given key, or null. */
   findRecipientByRoutingKey(key: string): Promise<NotificationRecipient | null>;
+  /** Returns every recipient whose covers array contains any of the given keys, in one query. */
+  findRecipientsByRoutingKeys(keys: string[]): Promise<NotificationRecipient[]>;
   /** Returns all routing records. */
   getAll(): Promise<NotificationRoutingRecord[]>;
   /** Updates the recipientAddresses for a routing record by id. */

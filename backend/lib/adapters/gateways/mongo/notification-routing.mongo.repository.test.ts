@@ -151,6 +151,89 @@ describe('NotificationRoutingMongoRepository', () => {
     });
   });
 
+  describe('findRecipientsByRoutingKeys', () => {
+    test('returns every record whose covers array matches any of the given keys', async () => {
+      const docs = [
+        {
+          covers: ['chapter:7'],
+          recipientAddresses: ['ch-oversight@example.test'],
+          displayName: 'Chapter 7 Oversight',
+        },
+        {
+          covers: ['category:zoom-341'],
+          recipientAddresses: ['zoom-341@example.test'],
+          displayName: '341 Meeting Oversight',
+        },
+      ];
+      mockFind.mockResolvedValue(docs);
+
+      const result = await repository.findRecipientsByRoutingKeys([
+        'chapter:7',
+        'category:zoom-341',
+      ]);
+
+      expect(result).toEqual(docs);
+      expect(mockFind).toHaveBeenCalledTimes(1);
+      const query = mockFind.mock.calls[0][0];
+      expect(query).toEqual({
+        conjunction: 'AND',
+        values: [
+          {
+            condition: 'CONTAINS',
+            leftOperand: { name: 'covers' },
+            rightOperand: ['chapter:7', 'category:zoom-341'],
+          },
+          {
+            condition: 'CONTAINS',
+            leftOperand: { name: 'id' },
+            rightOperand: NOTIFICATION_ROUTING_DEFINITIONS.map((d) => d.id),
+          },
+        ],
+      });
+    });
+
+    test('defaults missing fields to empty values', async () => {
+      mockFind.mockResolvedValue([{}]);
+
+      const result = await repository.findRecipientsByRoutingKeys(['chapter:7']);
+
+      expect(result).toEqual([{ covers: [], recipientAddresses: [], displayName: '' }]);
+    });
+
+    test('coerces legacy recipientAddress string to recipientAddresses array', async () => {
+      mockFind.mockResolvedValue([
+        { covers: ['chapter:7'], recipientAddress: 'legacy@example.test' },
+      ]);
+
+      const result = await repository.findRecipientsByRoutingKeys(['chapter:7']);
+
+      expect(result[0].recipientAddresses).toEqual(['legacy@example.test']);
+    });
+
+    test('returns an empty array without querying when given no keys', async () => {
+      const result = await repository.findRecipientsByRoutingKeys([]);
+
+      expect(result).toEqual([]);
+      expect(mockFind).not.toHaveBeenCalled();
+    });
+
+    test('returns an empty array when no record matches any key', async () => {
+      mockFind.mockResolvedValue([]);
+
+      const result = await repository.findRecipientsByRoutingKeys(['missing-key']);
+
+      expect(result).toEqual([]);
+    });
+
+    test('rethrows errors as a CamsError', async () => {
+      mockFind.mockRejectedValue(new Error('connection refused'));
+
+      await expect(repository.findRecipientsByRoutingKeys(['chapter:7'])).rejects.toThrow(
+        CamsError,
+      );
+    });
+  });
+
   describe('getAll', () => {
     test('returns all notification routing records', async () => {
       const records: NotificationRoutingRecord[] = [

@@ -93,6 +93,26 @@ export class NotificationRoutingMongoRepository
     }
   }
 
+  public async findRecipientsByRoutingKeys(keys: string[]): Promise<NotificationRecipient[]> {
+    if (keys.length === 0) return [];
+    // Scoped to the known definition ids for the same reason as findRecipientByRoutingKey above.
+    const knownIds = NOTIFICATION_ROUTING_DEFINITIONS.map((definition) => definition.id);
+    const query = QueryBuilder.and(
+      this.doc('covers').contains(keys),
+      this.doc('id').contains(knownIds),
+    );
+    try {
+      const results = await this.getAdapter<NotificationRoutingDoc>().find(query);
+      return results.map((doc) => ({
+        covers: doc.covers ?? [],
+        recipientAddresses: toAddressArray(doc),
+        displayName: doc.displayName ?? '',
+      }));
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
+
   public async getAll(): Promise<NotificationRoutingRecord[]> {
     try {
       const query = this.doc('documentType').equals('NOTIFICATION_ROUTING');
