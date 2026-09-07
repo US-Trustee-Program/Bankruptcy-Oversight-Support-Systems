@@ -90,7 +90,7 @@ describe('TrusteeChangeNotificationUseCase', () => {
     expect(recorded).toHaveLength(1);
     expect(recorded[0].to).toBe(CHAPTER_OVERSIGHT_RECIPIENT.recipientAddresses[0]);
     expect(recorded[0].toDisplayName).toBe(CHAPTER_OVERSIGHT_RECIPIENT.displayName);
-    expect(recorded[0].subject).toBe('Trustee Information Changed: Henry Green');
+    expect(recorded[0].subject).toBe('Trustee Information Changed: Henry Green (Chapter 7)');
     expect(recorded[0].correlationId).toBe(context.invocationId);
     expect(recorded[0].trusteeId).toBe('trustee-1');
   });
@@ -209,7 +209,9 @@ describe('TrusteeChangeNotificationUseCase', () => {
     const recorded = mockGateway.getRecorded();
     const adminEmail = recorded.find((n) => n.to === 'admin@example.test');
     expect(adminEmail).toBeDefined();
-    expect(adminEmail!.subject).toBe('[Undeliverable] Trustee Information Changed: Henry Green');
+    expect(adminEmail!.subject).toBe(
+      '[Undeliverable] Trustee Information Changed: Henry Green (Chapter 7)',
+    );
     expect(adminEmail!.html).toContain(CHAPTER_OVERSIGHT_RECIPIENT.recipientAddresses[0]);
     expect(adminEmail!.html).toContain('<hr>');
     expect(adminEmail!.text).toContain(CHAPTER_OVERSIGHT_RECIPIENT.recipientAddresses[0]);

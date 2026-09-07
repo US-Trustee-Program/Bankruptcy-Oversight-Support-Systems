@@ -2054,7 +2054,7 @@ describe('TrusteesUseCase tests', () => {
       const recorded = MockNotificationGateway.getInstance().getRecorded();
       expect(recorded).toHaveLength(1);
       expect(recorded[0].to).toBe('ch7-oversight@example.test');
-      expect(recorded[0].subject).toBe('Trustee Information Changed: Henry G. Green');
+      expect(recorded[0].subject).toBe('Trustee Information Changed: Henry G. Green (Chapter 7)');
     });
 
     test('does not dispatch when the change set is empty', async () => {

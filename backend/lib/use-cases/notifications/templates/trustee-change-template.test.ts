@@ -31,7 +31,7 @@ describe('compileTrusteeChangeTemplate', () => {
         ),
       );
 
-      expect(result.subject).toBe('Trustee Information Changed: Smith & Co');
+      expect(result.subject).toBe('Trustee Information Changed: Smith & Co (Chapter 7)');
     });
 
     test('uses the default subject when subjectOverride is not set', () => {
@@ -46,7 +46,7 @@ describe('compileTrusteeChangeTemplate', () => {
         ]),
       );
 
-      expect(result.subject).toBe('Trustee Information Changed: Henry Green');
+      expect(result.subject).toBe('Trustee Information Changed: Henry Green (Chapter 7)');
     });
 
     test('uses subjectOverride when provided', () => {
@@ -64,7 +64,7 @@ describe('compileTrusteeChangeTemplate', () => {
         ),
       );
 
-      expect(result.subject).toBe('Trustee Appointment Changed: Henry Green');
+      expect(result.subject).toBe('Trustee Appointment Changed: Henry Green (Chapter 7)');
     });
 
     test('strips CRLF from subjectOverride to prevent header injection', () => {
@@ -82,9 +82,88 @@ describe('compileTrusteeChangeTemplate', () => {
         ),
       );
 
-      expect(result.subject).toBe('Appointment Changed  Bcc: attacker@evil.test');
+      expect(result.subject).toBe('Appointment Changed  Bcc: attacker@evil.test (Chapter 7)');
       expect(result.subject).not.toContain('\r');
       expect(result.subject).not.toContain('\n');
+    });
+
+    test('omits the chapter suffix when no chapters are known', () => {
+      const result = compileTrusteeChangeTemplate(
+        buildChangeSet(
+          [
+            {
+              label: 'Public Email',
+              comparisons: [{ before: 'a@b.test', after: 'c@d.test' }],
+              category: 'profile',
+              section: 'appointment',
+            },
+          ],
+          { chapters: undefined },
+        ),
+      );
+
+      expect(result.subject).toBe('Trustee Information Changed: Henry Green');
+    });
+
+    test('joins multiple chapters with a comma', () => {
+      const result = compileTrusteeChangeTemplate(
+        buildChangeSet(
+          [
+            {
+              label: 'Public Email',
+              comparisons: [{ before: 'a@b.test', after: 'c@d.test' }],
+              category: 'profile',
+              section: 'appointment',
+            },
+          ],
+          { chapters: ['7', '11-subchapter-v'] },
+        ),
+      );
+
+      expect(result.subject).toBe(
+        'Trustee Information Changed: Henry Green (Chapter 7, 11 Subchapter V)',
+      );
+    });
+
+    test('appends a 341 Meeting Update marker when meeting fields changed', () => {
+      const result = compileTrusteeChangeTemplate(
+        buildChangeSet(
+          [
+            {
+              label: 'Zoom Link',
+              comparisons: [{ before: 'https://zoom.us/old', after: 'https://zoom.us/new' }],
+              category: 'zoom-341',
+              section: 'meeting',
+            },
+          ],
+          { chapters: undefined },
+        ),
+      );
+
+      expect(result.subject).toBe('Trustee Information Changed: Henry Green (341 Meeting Update)');
+    });
+
+    test('includes both chapter and meeting marker for a mixed change', () => {
+      const result = compileTrusteeChangeTemplate(
+        buildChangeSet([
+          {
+            label: 'Name',
+            comparisons: [{ before: 'Henry Green', after: 'Henry G. Green' }],
+            category: 'profile',
+            section: 'appointment',
+          },
+          {
+            label: 'Zoom Link',
+            comparisons: [{ before: 'https://zoom.us/old', after: 'https://zoom.us/new' }],
+            category: 'zoom-341',
+            section: 'meeting',
+          },
+        ]),
+      );
+
+      expect(result.subject).toBe(
+        'Trustee Information Changed: Henry Green (Chapter 7, 341 Meeting Update)',
+      );
     });
   });
 
@@ -295,11 +374,48 @@ describe('compileTrusteeChangeTemplate', () => {
       expect(result.text).toBe(
         [
           "Trustee Henry Green's information has changed.",
+          'Chapter: 7',
           '',
           'Appointment Information',
           'Public Email: old@example.test -> new@example.test',
         ].join('\n'),
       );
+    });
+
+    test('adds a chapter line to the plaintext body when chapters are known', () => {
+      const result = compileTrusteeChangeTemplate(
+        buildChangeSet(
+          [
+            {
+              label: 'Public Email',
+              comparisons: [{ before: 'old@example.test', after: 'new@example.test' }],
+              category: 'profile',
+              section: 'appointment',
+            },
+          ],
+          { chapters: ['7', '11-subchapter-v'] },
+        ),
+      );
+
+      expect(result.text).toContain('Chapters: 7, 11 Subchapter V');
+    });
+
+    test('omits the chapter line from the plaintext body when no chapters are known', () => {
+      const result = compileTrusteeChangeTemplate(
+        buildChangeSet(
+          [
+            {
+              label: 'Public Email',
+              comparisons: [{ before: 'old@example.test', after: 'new@example.test' }],
+              category: 'profile',
+              section: 'appointment',
+            },
+          ],
+          { chapters: undefined },
+        ),
+      );
+
+      expect(result.text).not.toContain('Chapter');
     });
 
     test('omits the meeting section when no meeting fields are present', () => {

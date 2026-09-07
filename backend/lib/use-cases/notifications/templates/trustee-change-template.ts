@@ -1,4 +1,5 @@
 import { TrusteeChangeField, TrusteeChangeSet } from '@common/cams/notifications';
+import { formatChapterType } from '@common/cams/trustees';
 import { TRUSTEE_CHANGE_TEMPLATE } from './trustee-change.template';
 
 export type CompiledTemplate = {
@@ -56,6 +57,12 @@ function buildChangedAtSuffix(iso?: string): string {
   return iso ? ` on ${formatTimestamp(iso)}` : '';
 }
 
+function formatChapterLabel(chapters: TrusteeChangeSet['chapters']): string | undefined {
+  if (!chapters || chapters.length === 0) return undefined;
+  const labels = chapters.map(formatChapterType);
+  return labels.length > 1 ? `Chapters: ${labels.join(', ')}` : `Chapter: ${labels[0]}`;
+}
+
 function generateRow(field: TrusteeChangeField): string {
   const shouldStack = field.stackValues ?? false;
   const beforeCell = field.comparisons
@@ -110,6 +117,11 @@ function buildPlaintext(changeSet: TrusteeChangeSet): string {
   const safeName = changeSet.trusteeName.replace(/[\r\n]/g, ' ');
   const lines: string[] = [`Trustee ${safeName}'s information has changed.`];
 
+  const chapterLabel = formatChapterLabel(changeSet.chapters);
+  if (chapterLabel) {
+    lines.push(chapterLabel);
+  }
+
   const appointmentFields = changeSet.fields.filter((f) => f.section === 'appointment');
   const meetingFields = changeSet.fields.filter((f) => f.section === 'meeting');
 
@@ -161,6 +173,12 @@ function renderSection(sectionHtml: string, rows: string): string {
   return sectionHtml;
 }
 
+function buildChapterLineHtml(changeSet: TrusteeChangeSet): string {
+  const label = formatChapterLabel(changeSet.chapters);
+  if (!label) return '';
+  return `\n                            <p style="margin: 4px 0 0 0; font-size: 14px; color: #000000;">${escapeHtml(label)}</p>`;
+}
+
 function buildAuthorSection(changeSet: TrusteeChangeSet): string {
   if (!changeSet.author) return '';
 
@@ -200,6 +218,20 @@ export function buildUndeliverableAdminText(
   );
 }
 
+function buildSubjectContextSuffix(changeSet: TrusteeChangeSet): string {
+  const parts: string[] = [];
+
+  if (changeSet.chapters && changeSet.chapters.length > 0) {
+    parts.push(`Chapter ${changeSet.chapters.map(formatChapterType).join(', ')}`);
+  }
+
+  if (changeSet.fields.some((field) => field.section === 'meeting')) {
+    parts.push('341 Meeting Update');
+  }
+
+  return parts.length > 0 ? ` (${parts.join(', ')})` : '';
+}
+
 export function compileTrusteeChangeTemplate(changeSet: TrusteeChangeSet): CompiledTemplate {
   const appointmentFields = changeSet.fields.filter((f) => f.section === 'appointment');
   const meetingFields = changeSet.fields.filter((f) => f.section === 'meeting');
@@ -219,10 +251,12 @@ export function compileTrusteeChangeTemplate(changeSet: TrusteeChangeSet): Compi
       /<!-- 341 Meeting Information Section -->[\s\S]*?{{meeting_info_rows}}[\s\S]*?<\/td>\s*<\/tr>/,
       (match) => renderSection(match.replace('{{meeting_info_rows}}', meetingRows), meetingRows),
     )
+    .replace('{{chapter_line}}', buildChapterLineHtml(changeSet))
     .replace('{{author_section}}', buildAuthorSection(changeSet));
 
-  const rawSubject =
+  const baseSubject =
     changeSet.subjectOverride ?? `Trustee Information Changed: ${changeSet.trusteeName}`;
+  const rawSubject = `${baseSubject}${buildSubjectContextSuffix(changeSet)}`;
   const subject = rawSubject.replace(/[\r\n]/g, ' ');
 
   return {
