@@ -16,6 +16,7 @@ interface UpcomingKeyDatesDisplayField {
   label: string;
   value: string;
   testId: string;
+  stacked?: boolean;
 }
 
 interface ConstantField {
@@ -43,7 +44,12 @@ function tprFrequencyField(data: TrusteeUpcomingKeyDates | null): UpcomingKeyDat
   const value = data?.tprFrequency
     ? (frequencyLabels[data.tprFrequency] ?? 'No frequency selected')
     : 'No frequency selected';
-  return { label: 'TPR Review Period Frequency', value, testId: 'tpr-review-period-frequency-row' };
+  return {
+    label: 'TPR Review Period Frequency',
+    value,
+    testId: 'tpr-review-period-frequency-row',
+    stacked: true,
+  };
 }
 
 function tprReviewPeriodField(data: TrusteeUpcomingKeyDates | null): UpcomingKeyDatesDisplayField {
