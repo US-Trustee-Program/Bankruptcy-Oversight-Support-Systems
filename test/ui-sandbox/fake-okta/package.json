@@ -10,7 +10,7 @@
   "dependencies": {
     "express": "5.2.1",
     "jose": "4.15.9",
-    "mongodb": "7.5.0"
+    "mongodb": "7.6.0"
   },
   "devDependencies": {
     "@types/express": "5.0.6",
