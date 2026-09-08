@@ -1997,6 +1997,15 @@ describe('TrusteesUseCase tests', () => {
       (event: TrusteeChangeNotificationEvent) => Promise<void>
     >;
 
+    afterEach(() => {
+      // Plain process.env mutation, not vi.stubEnv: createMockApplicationContext()
+      // reassigns process.env wholesale (testing-utilities.ts), which defeats
+      // vi.stubEnv/vi.unstubAllEnvs's internal bookkeeping. Runs unconditionally
+      // (even if a test's assertions throw) so CAMS_FRONTEND_URL never leaks into
+      // later tests in this file.
+      delete process.env.CAMS_FRONTEND_URL;
+    });
+
     beforeEach(async () => {
       vi.restoreAllMocks();
       context = await createMockApplicationContext();
@@ -2161,13 +2170,37 @@ describe('TrusteesUseCase tests', () => {
           profileLink: `https://cams.ustp.gov/trustees/${trusteeId}`,
         }),
       });
+    });
 
-      delete process.env.CAMS_FRONTEND_URL;
+    test('enqueued changeSet includes a profileLink when CAMS_FRONTEND_URL has a trailing slash', async () => {
+      process.env.CAMS_FRONTEND_URL = 'https://cams.ustp.gov/';
+
+      const updatedTrustee = { ...existingTrustee, name: 'Henry G. Green' };
+      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
+
+      await trusteesUseCase.updateTrustee(context, trusteeId, { name: 'Henry G. Green' });
+
+      expect(queueTrusteeChangeNotificationSpy).toHaveBeenCalledWith({
+        changeSet: expect.objectContaining({
+          profileLink: `https://cams.ustp.gov/trustees/${trusteeId}`,
+        }),
+      });
+    });
+
+    test('enqueued changeSet omits profileLink when CAMS_FRONTEND_URL fails the https?:// check', async () => {
+      process.env.CAMS_FRONTEND_URL = 'not-a-url';
+
+      const updatedTrustee = { ...existingTrustee, name: 'Henry G. Green' };
+      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
+
+      await trusteesUseCase.updateTrustee(context, trusteeId, { name: 'Henry G. Green' });
+
+      expect(queueTrusteeChangeNotificationSpy).toHaveBeenCalledTimes(1);
+      const { changeSet } = queueTrusteeChangeNotificationSpy.mock.calls[0][0];
+      expect(changeSet.profileLink).toBeUndefined();
     });
 
     test('enqueued changeSet omits profileLink when CAMS_FRONTEND_URL is not set', async () => {
-      delete process.env.CAMS_FRONTEND_URL;
-
       const updatedTrustee = { ...existingTrustee, name: 'Henry G. Green' };
       vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
 

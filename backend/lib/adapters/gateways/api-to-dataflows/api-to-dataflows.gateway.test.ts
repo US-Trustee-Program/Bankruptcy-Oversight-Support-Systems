@@ -18,6 +18,21 @@ import {
   TrusteeVerificationRemapMessage,
 } from '@common/cams/dataflow-events';
 
+const buildTrusteeChangeNotificationEvent = (): TrusteeChangeNotificationEvent => ({
+  changeSet: {
+    trusteeId: 'trustee-123',
+    trusteeName: 'Jane Trustee',
+    fields: [
+      {
+        label: 'Name',
+        comparisons: [{ before: 'A', after: 'B' }],
+        category: 'profile',
+        section: 'appointment',
+      },
+    ],
+  },
+});
+
 describe('ApiToDataflowsGatewayImpl', () => {
   let mockSendMessage: ReturnType<typeof vi.fn>;
   let fromConnectionStringSpy: ReturnType<typeof vi.spyOn>;
@@ -152,20 +167,7 @@ describe('ApiToDataflowsGatewayImpl', () => {
   describe('queueTrusteeChangeNotification', () => {
     test('sends the trustee change notification event as-is to the trustee-change-notification queue', async () => {
       const gateway = new ApiToDataflowsGatewayImpl();
-      const event: TrusteeChangeNotificationEvent = {
-        changeSet: {
-          trusteeId: 'trustee-123',
-          trusteeName: 'Jane Trustee',
-          fields: [
-            {
-              label: 'Name',
-              comparisons: [{ before: 'A', after: 'B' }],
-              category: 'profile',
-              section: 'appointment',
-            },
-          ],
-        },
-      };
+      const event = buildTrusteeChangeNotificationEvent();
 
       await gateway.queueTrusteeChangeNotification(event);
 
@@ -221,20 +223,7 @@ describe('ApiToDataflowsGatewayImpl', () => {
       [
         'queueTrusteeChangeNotification',
         (gateway: ApiToDataflowsGatewayImpl) =>
-          gateway.queueTrusteeChangeNotification({
-            changeSet: {
-              trusteeId: 'trustee-123',
-              trusteeName: 'Jane Trustee',
-              fields: [
-                {
-                  label: 'Name',
-                  comparisons: [{ before: 'A', after: 'B' }],
-                  category: 'profile',
-                  section: 'appointment',
-                },
-              ],
-            },
-          }),
+          gateway.queueTrusteeChangeNotification(buildTrusteeChangeNotificationEvent()),
       ],
     ])(
       '%s propagates a send failure instead of silently dropping the message',

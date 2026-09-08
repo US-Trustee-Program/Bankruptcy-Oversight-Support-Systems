@@ -38,15 +38,19 @@ describe('trustee-change-notification-event handler', () => {
     const { handler } = await import('./trustee-change-notification-event');
     const context = await createMockApplicationContext();
     vi.spyOn(ContextCreator, 'getApplicationContext').mockResolvedValue(context);
-    vi.spyOn(TrusteeChangeNotificationUseCase.prototype, 'notify').mockResolvedValue({
-      attempted: 2,
-      failed: 0,
-      failures: [],
-    });
+    const notifySpy = vi
+      .spyOn(TrusteeChangeNotificationUseCase.prototype, 'notify')
+      .mockResolvedValue({
+        attempted: 2,
+        failed: 0,
+        failures: [],
+      });
     const completeTraceSpy = vi.spyOn(context.observability, 'completeTrace');
+    const event = makeEvent();
 
-    await handler(makeEvent(), makeInvocationContext());
+    await handler(event, makeInvocationContext());
 
+    expect(notifySpy).toHaveBeenCalledWith(context, event.changeSet);
     expect(completeTraceSpy).toHaveBeenCalledWith(
       expect.anything(),
       'Trustee Change Notification',
@@ -64,11 +68,13 @@ describe('trustee-change-notification-event handler', () => {
     const context = await createMockApplicationContext();
     vi.spyOn(ContextCreator, 'getApplicationContext').mockResolvedValue(context);
     const failures = [{ reason: 'send' as const, message: 'boom' }];
-    vi.spyOn(TrusteeChangeNotificationUseCase.prototype, 'notify').mockResolvedValue({
-      attempted: 2,
-      failed: 1,
-      failures,
-    });
+    const notifySpy = vi
+      .spyOn(TrusteeChangeNotificationUseCase.prototype, 'notify')
+      .mockResolvedValue({
+        attempted: 2,
+        failed: 1,
+        failures,
+      });
     const completeTraceSpy = vi.spyOn(context.observability, 'completeTrace');
     const invocationContext = makeInvocationContext();
     const extraOutputsSetSpy = vi.spyOn(invocationContext.extraOutputs, 'set');
@@ -76,6 +82,7 @@ describe('trustee-change-notification-event handler', () => {
 
     await handler(event, invocationContext);
 
+    expect(notifySpy).toHaveBeenCalledWith(context, event.changeSet);
     expect(completeTraceSpy).toHaveBeenCalledWith(
       expect.anything(),
       'Trustee Change Notification',
