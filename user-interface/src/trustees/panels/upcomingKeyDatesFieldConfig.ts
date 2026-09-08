@@ -34,6 +34,16 @@ interface ComputedField {
 
 export type UpcomingKeyDatesFieldConfig = ConstantField | ComputedField;
 
+function tprFrequencyField(data: TrusteeUpcomingKeyDates | null): UpcomingKeyDatesDisplayField {
+  const frequencyLabels: Record<string, string> = {
+    BIANNUAL: 'Two years',
+    ANNUAL: 'One year',
+    SEMI_ANNUAL: '6 months',
+  };
+  const value = data?.tprFrequency ? (frequencyLabels[data.tprFrequency] ?? NO_DATE) : NO_DATE;
+  return { label: 'TPR Review Period Frequency', value, testId: 'tpr-review-period-frequency-row' };
+}
+
 function tprReviewPeriodField(data: TrusteeUpcomingKeyDates | null): UpcomingKeyDatesDisplayField {
   const value =
     data?.tprReviewPeriodStart && data?.tprReviewPeriodEnd
@@ -91,6 +101,11 @@ export const UPCOMING_KEY_DATES_FIELD_CONFIG: Record<
       kind: 'computed',
       key: 'tprReviewPeriod',
       buildField: tprReviewPeriodField,
+    },
+    {
+      kind: 'computed',
+      key: 'tprFrequency',
+      buildField: tprFrequencyField,
     },
     {
       kind: 'computed',
@@ -166,6 +181,11 @@ export const UPCOMING_KEY_DATES_FIELD_CONFIG: Record<
     },
     {
       kind: 'computed',
+      key: 'tprFrequency',
+      buildField: tprFrequencyField,
+    },
+    {
+      kind: 'computed',
       key: 'tprDue',
       buildField: tprDueField,
     },
@@ -191,6 +211,11 @@ export const UPCOMING_KEY_DATES_FIELD_CONFIG: Record<
       kind: 'computed',
       key: 'tprReviewPeriod',
       buildField: tprReviewPeriodField,
+    },
+    {
+      kind: 'computed',
+      key: 'tprFrequency',
+      buildField: tprFrequencyField,
     },
     {
       kind: 'computed',
@@ -242,6 +267,11 @@ export const UPCOMING_KEY_DATES_FIELD_CONFIG: Record<
             : NO_DATE;
         return { label: 'TPR Review Period', value, testId: 'tpr-review-period-row' };
       },
+    },
+    {
+      kind: 'computed',
+      key: 'tprFrequency',
+      buildField: tprFrequencyField,
     },
     {
       kind: 'computed',

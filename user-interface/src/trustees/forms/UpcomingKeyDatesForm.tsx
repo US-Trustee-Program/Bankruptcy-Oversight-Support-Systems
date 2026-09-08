@@ -105,6 +105,7 @@ type FormState = {
   tprReviewPeriodEnd: string;
   tprDue: string;
   tprDueYearType: string;
+  tprFrequency: 'BIANNUAL' | 'ANNUAL' | 'SEMI_ANNUAL' | '';
   upcomingExamOrAuditYear: number | '';
   upcomingExamOrAuditType: 'Field Exam' | 'Audit' | '';
   tirFrequency: TirFrequency;
@@ -129,6 +130,7 @@ const EMPTY_FORM: FormState = {
   tprReviewPeriodEnd: '',
   tprDue: '',
   tprDueYearType: '',
+  tprFrequency: '',
   upcomingExamOrAuditYear: '',
   upcomingExamOrAuditType: '',
   tirFrequency: '',
@@ -171,6 +173,7 @@ function buildFormStateFromData(data: TrusteeUpcomingKeyDates): FormState {
     tprReviewPeriodEnd: data.tprReviewPeriodEnd ?? '',
     tprDue: data.tprDue ?? '',
     tprDueYearType: data.tprDueYearType ?? '',
+    tprFrequency: data.tprFrequency ?? '',
     upcomingExamOrAuditYear: data.upcomingExamOrAuditYear ?? '',
     upcomingExamOrAuditType: data.upcomingExamOrAuditType ?? '',
     tirFrequency,
@@ -414,6 +417,7 @@ export default function UpcomingKeyDatesForm() {
       tprReviewPeriodEnd: form.tprReviewPeriodEnd || null,
       tprDue: form.tprDue ? isoToSentinel(form.tprDue) : null,
       tprDueYearType: form.tprDueYearType || null,
+      tprFrequency: (form.tprFrequency as 'BIANNUAL' | 'ANNUAL' | 'SEMI_ANNUAL') || null,
       upcomingExamOrAuditYear:
         form.upcomingExamOrAuditYear !== '' ? form.upcomingExamOrAuditYear : null,
       upcomingExamOrAuditType: form.upcomingExamOrAuditType || null,
@@ -603,6 +607,32 @@ export default function UpcomingKeyDatesForm() {
               }
               customErrorMessage={errors.tprReviewPeriodEnd}
             />
+          </div>
+        );
+
+      case 'tpr-frequency':
+        return (
+          <div key="tpr-frequency" className="usa-form-group">
+            <label className="usa-label" htmlFor="tpr-frequency">
+              Trustee Performance Review Period Frequency
+            </label>
+            <select
+              className="usa-select"
+              id="tpr-frequency"
+              data-testid="tpr-frequency"
+              value={form.tprFrequency}
+              onChange={(e) =>
+                setForm((prev) => ({
+                  ...prev,
+                  tprFrequency: e.target.value as 'BIANNUAL' | 'ANNUAL' | 'SEMI_ANNUAL' | '',
+                }))
+              }
+            >
+              <option value="">- Select -</option>
+              <option value="BIANNUAL">Two years</option>
+              <option value="ANNUAL">One year</option>
+              <option value="SEMI_ANNUAL">6 months</option>
+            </select>
           </div>
         );
 

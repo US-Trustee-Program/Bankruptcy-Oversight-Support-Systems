@@ -68,6 +68,7 @@ function buildUpcomingKeyDatesInput(
       : null,
     tprDue: original?.tprDue ? isoToSentinel(original.tprDue) : null,
     tprDueYearType: original?.tprDueYearType ?? null,
+    tprFrequency: original?.tprFrequency ?? null,
     tirReviewPeriodStart: original?.tirReviewPeriodStart
       ? isoToSentinel(original.tirReviewPeriodStart)
       : null,

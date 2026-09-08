@@ -358,6 +358,7 @@ describe('validateTrusteeUpcomingKeyDates', () => {
       tprReviewPeriodEnd: null,
       tprDue: null,
       tprDueYearType: null,
+      tprFrequency: null,
       tirReviewPeriodStart: null,
       tirReviewPeriodEnd: null,
       tirSubmission: null,
@@ -704,7 +705,7 @@ describe('validateTrusteeUpcomingKeyDates', () => {
   });
 
   test('TEXT_FIELDS contains the exact set of expected fields', () => {
-    expect(TEXT_FIELDS).toEqual(['tprDueYearType', 'tirFrequency']);
+    expect(TEXT_FIELDS).toEqual(['tprDueYearType', 'tprFrequency', 'tirFrequency']);
   });
 });
 

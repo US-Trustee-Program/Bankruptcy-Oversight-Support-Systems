@@ -516,6 +516,90 @@ describe('UpcomingKeyDatesForm', () => {
     });
   });
 
+  describe('tpr-frequency dropdown', () => {
+    test('renders tpr-frequency select for chapter7-panel variant', async () => {
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('tpr-frequency')).toBeInTheDocument();
+    });
+
+    test.each([
+      ['ch12-13-case-by-case', { chapter: '12', appointmentType: 'case-by-case' }],
+      ['chapter12-standing', { chapter: '12', appointmentType: 'standing' }],
+      ['chapter13-standing', { chapter: '13', appointmentType: 'standing' }],
+    ] as const)('renders tpr-frequency select for %s variant', async (_, apptOverride) => {
+      const appt = { ...chapter7Appointment, ...apptOverride };
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [appt] });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('tpr-frequency')).toBeInTheDocument();
+    });
+
+    test('selecting "One year" then saving sends tprFrequency: ANNUAL in the API call', async () => {
+      const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('tpr-frequency')).toBeInTheDocument();
+      });
+
+      await userEvent.selectOptions(screen.getByTestId('tpr-frequency'), 'ANNUAL');
+      await userEvent.click(screen.getByTestId('button-save-upcoming-key-dates'));
+
+      await waitFor(() => expect(putSpy).toHaveBeenCalled());
+      expect(putSpy).toHaveBeenCalledWith(
+        'trustee-001',
+        'appointment-001',
+        expect.objectContaining({ tprFrequency: 'ANNUAL' }),
+      );
+    });
+
+    test('saving with "- Select -" (empty) sends tprFrequency: null', async () => {
+      const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('tpr-frequency')).toBeInTheDocument();
+      });
+
+      await userEvent.click(screen.getByTestId('button-save-upcoming-key-dates'));
+
+      await waitFor(() => expect(putSpy).toHaveBeenCalled());
+      expect(putSpy).toHaveBeenCalledWith(
+        'trustee-001',
+        'appointment-001',
+        expect.objectContaining({ tprFrequency: null }),
+      );
+    });
+
+    test('loading a record with tprFrequency: SEMI_ANNUAL pre-selects "6 months" option', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({
+        data: { ...populatedDocument, tprFrequency: 'SEMI_ANNUAL' },
+      });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('tpr-frequency')).toHaveValue('SEMI_ANNUAL');
+      });
+
+      const select = screen.getByTestId('tpr-frequency') as HTMLSelectElement;
+      const selectedOption = Array.from(select.options).find((o) => o.selected);
+      expect(selectedOption?.text).toBe('6 months');
+    });
+  });
+
   describe('TPR Review Period validation', () => {
     test('shows error and blocks save when review period start is set without end', async () => {
       const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });

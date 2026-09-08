@@ -26,8 +26,8 @@ describe('UPCOMING_KEY_DATES_FIELD_CONFIG chapter13-standing variant', () => {
     vi.useRealTimers();
   });
 
-  test('has 7 entries', () => {
-    expect(config).toHaveLength(7);
+  test('has 8 entries', () => {
+    expect(config).toHaveLength(8);
   });
 
   test('first field is Annual Audit Review Period constant 10/01 - 09/30', () => {
@@ -237,6 +237,80 @@ describe('UPCOMING_KEY_DATES_FIELD_CONFIG tprReviewPeriod display format across 
       const result = field.buildField({ ...baseDoc });
       expect(result.value).toBe('No date added');
     }
+  });
+});
+
+describe('UPCOMING_KEY_DATES_FIELD_CONFIG tprFrequency computed field', () => {
+  test.each([
+    ['chapter7-panel'],
+    ['ch12-13-case-by-case'],
+    ['chapter12-standing'],
+    ['chapter13-standing'],
+  ] as const)('%s: null data → "No date added"', (variant) => {
+    const config = UPCOMING_KEY_DATES_FIELD_CONFIG[variant];
+    const field = config.find((f) => f.key === 'tprFrequency');
+    expect(field?.kind).toBe('computed');
+    if (field?.kind === 'computed') {
+      const result = field.buildField(null);
+      expect(result.label).toBe('TPR Review Period Frequency');
+      expect(result.value).toBe('No date added');
+      expect(result.testId).toBe('tpr-review-period-frequency-row');
+    }
+  });
+
+  test.each([
+    ['chapter7-panel'],
+    ['ch12-13-case-by-case'],
+    ['chapter12-standing'],
+    ['chapter13-standing'],
+  ] as const)('%s: BIANNUAL → "Two years"', (variant) => {
+    const config = UPCOMING_KEY_DATES_FIELD_CONFIG[variant];
+    const field = config.find((f) => f.key === 'tprFrequency');
+    expect(field?.kind).toBe('computed');
+    if (field?.kind === 'computed') {
+      const result = field.buildField({ ...baseDoc, tprFrequency: 'BIANNUAL' });
+      expect(result.value).toBe('Two years');
+    }
+  });
+
+  test.each([
+    ['chapter7-panel'],
+    ['ch12-13-case-by-case'],
+    ['chapter12-standing'],
+    ['chapter13-standing'],
+  ] as const)('%s: ANNUAL → "One year"', (variant) => {
+    const config = UPCOMING_KEY_DATES_FIELD_CONFIG[variant];
+    const field = config.find((f) => f.key === 'tprFrequency');
+    expect(field?.kind).toBe('computed');
+    if (field?.kind === 'computed') {
+      const result = field.buildField({ ...baseDoc, tprFrequency: 'ANNUAL' });
+      expect(result.value).toBe('One year');
+    }
+  });
+
+  test.each([
+    ['chapter7-panel'],
+    ['ch12-13-case-by-case'],
+    ['chapter12-standing'],
+    ['chapter13-standing'],
+  ] as const)('%s: SEMI_ANNUAL → "6 months"', (variant) => {
+    const config = UPCOMING_KEY_DATES_FIELD_CONFIG[variant];
+    const field = config.find((f) => f.key === 'tprFrequency');
+    expect(field?.kind).toBe('computed');
+    if (field?.kind === 'computed') {
+      const result = field.buildField({ ...baseDoc, tprFrequency: 'SEMI_ANNUAL' });
+      expect(result.value).toBe('6 months');
+    }
+  });
+
+  test.each([
+    ['chapter7-panel', 8],
+    ['ch12-13-case-by-case', 5],
+    ['chapter12-standing', 9],
+    ['chapter13-standing', 8],
+  ] as const)('%s field count increased by 1', (variant, expectedCount) => {
+    const config = UPCOMING_KEY_DATES_FIELD_CONFIG[variant];
+    expect(config).toHaveLength(expectedCount);
   });
 });
 
