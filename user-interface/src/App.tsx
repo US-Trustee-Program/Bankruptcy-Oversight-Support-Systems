@@ -45,15 +45,15 @@ function App() {
   // (anonymous) context has already resolved. A consumer that only waits on the client's own
   // initialization (see useFeatureFlagReadiness) can read a flag value that reflects the
   // anonymous context, not this user, if it acts before this promise resolves.
+  //
+  // No separate "not configured" branch is needed here: if LaunchDarkly isn't configured at all,
+  // `ldClient` is never created (no provider supplies one), so this effect simply never calls
+  // identify() and `hasIdentified` stays false -- which is fine, because
+  // useFeatureFlagReadiness's own hasTimedOut already resolves immediately in that case
+  // independent of `hasIdentified`.
   useEffect(() => {
-    if (!featureFlagConfig.useExternalProvider) {
-      // LaunchDarkly isn't configured at all -- nothing to identify.
-      setHasIdentified(true);
-      return;
-    }
     if (!ldClient) {
-      // Configured, but the client hasn't been created yet -- wait for it; this effect re-runs
-      // once `ldClient` becomes available.
+      // Not yet available -- wait for it; this effect re-runs once `ldClient` becomes available.
       return;
     }
     const session = LocalStorage.getSession();
