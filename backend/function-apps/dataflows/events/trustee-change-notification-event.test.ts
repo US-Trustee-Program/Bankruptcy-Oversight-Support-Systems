@@ -34,7 +34,7 @@ describe('trustee-change-notification-event handler', () => {
     vi.restoreAllMocks();
   });
 
-  test('on success, calls notify() and completes the trace with the attempted/failed counts', async () => {
+  test('on success, calls notify() and completes the trace with the attempted/failed counts and the per-invocation logger', async () => {
     const { handler } = await import('./trustee-change-notification-event');
     const context = await createMockApplicationContext();
     vi.spyOn(ContextCreator, 'getApplicationContext').mockResolvedValue(context);
@@ -54,6 +54,8 @@ describe('trustee-change-notification-event handler', () => {
         success: true,
         properties: { attempted: '2', failed: '0' },
       }),
+      undefined,
+      context.logger,
     );
   });
 
@@ -81,6 +83,8 @@ describe('trustee-change-notification-event handler', () => {
         success: false,
         properties: { attempted: '2', failed: '1' },
       }),
+      undefined,
+      context.logger,
     );
     expect(extraOutputsSetSpy).toHaveBeenCalledWith(TRUSTEE_CHANGE_NOTIFICATION_DLQ, {
       event,
@@ -108,7 +112,7 @@ describe('trustee-change-notification-event handler', () => {
     expect(extraOutputsSetSpy).not.toHaveBeenCalled();
   });
 
-  test('on an uncaught exception, routes the event and a serialized error to the DLQ, completes the trace with success: false, and does not rethrow', async () => {
+  test('on an uncaught exception, routes the event and a serialized error to the DLQ, completes the trace with success: false and the per-invocation logger, and does not rethrow', async () => {
     const { handler } = await import('./trustee-change-notification-event');
     const context = await createMockApplicationContext();
     vi.spyOn(ContextCreator, 'getApplicationContext').mockResolvedValue(context);
@@ -125,6 +129,8 @@ describe('trustee-change-notification-event handler', () => {
       expect.anything(),
       'Trustee Change Notification',
       expect.objectContaining({ success: false }),
+      undefined,
+      context.logger,
     );
     expect(extraOutputsSetSpy).toHaveBeenCalledWith(TRUSTEE_CHANGE_NOTIFICATION_DLQ, {
       event,

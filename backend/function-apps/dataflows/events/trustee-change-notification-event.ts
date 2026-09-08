@@ -30,14 +30,20 @@ async function handler(
       context,
       event.changeSet,
     );
-    context.observability.completeTrace(trace, 'Trustee Change Notification', {
-      success: summary.failed === 0,
-      properties: {
-        attempted: String(summary.attempted),
-        failed: String(summary.failed),
+    context.observability.completeTrace(
+      trace,
+      'Trustee Change Notification',
+      {
+        success: summary.failed === 0,
+        properties: {
+          attempted: String(summary.attempted),
+          failed: String(summary.failed),
+        },
+        measurements: {},
       },
-      measurements: {},
-    });
+      undefined,
+      context.logger,
+    );
     if (summary.failed > 0) {
       invocationContext.extraOutputs.set(TRUSTEE_CHANGE_NOTIFICATION_DLQ, {
         event,
@@ -48,11 +54,17 @@ async function handler(
       });
     }
   } catch (error) {
-    context.observability.completeTrace(trace, 'Trustee Change Notification', {
-      success: false,
-      properties: {},
-      measurements: {},
-    });
+    context.observability.completeTrace(
+      trace,
+      'Trustee Change Notification',
+      {
+        success: false,
+        properties: {},
+        measurements: {},
+      },
+      undefined,
+      context.logger,
+    );
     invocationContext.extraOutputs.set(TRUSTEE_CHANGE_NOTIFICATION_DLQ, {
       event,
       error: serializeError(error),

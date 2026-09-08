@@ -408,14 +408,20 @@ export class TrusteeAppointmentsUseCase {
         }
         const notificationUseCase = new TrusteeChangeNotificationUseCase(context);
         const summary = await notificationUseCase.notify(context, changeSet);
-        context.observability.completeTrace(trace, 'Trustee Change Notification', {
-          success: summary.failed === 0,
-          properties: {
-            attempted: String(summary.attempted),
-            failed: String(summary.failed),
+        context.observability.completeTrace(
+          trace,
+          'Trustee Change Notification',
+          {
+            success: summary.failed === 0,
+            properties: {
+              attempted: String(summary.attempted),
+              failed: String(summary.failed),
+            },
+            measurements: {},
           },
-          measurements: {},
-        });
+          undefined,
+          context.logger,
+        );
       }
     } catch (error) {
       context.logger.error(MODULE_NAME, 'Failed to dispatch appointment notification.', error);
