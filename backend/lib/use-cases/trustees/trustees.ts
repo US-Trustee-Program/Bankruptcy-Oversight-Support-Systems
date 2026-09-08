@@ -658,8 +658,8 @@ export class TrusteesUseCase {
       await this.apiToDataflowsGateway.queueTrusteeChangeNotification(event);
     } catch (originalError) {
       context.logger.error(
-        'TRUSTEE-CHANGE-NOTIFICATION',
-        'Failed to enqueue trustee change notification.',
+        MODULE_NAME,
+        'Failed to prepare or enqueue trustee change notification.',
         originalError,
       );
     }
