@@ -37,7 +37,9 @@ export type UpcomingKeyDatesFieldConfig = ConstantField | ComputedField;
 function tprReviewPeriodField(data: TrusteeUpcomingKeyDates | null): UpcomingKeyDatesDisplayField {
   const value =
     data?.tprReviewPeriodStart && data?.tprReviewPeriodEnd
-      ? isoRangeToMMDD(data.tprReviewPeriodStart, data.tprReviewPeriodEnd)
+      ? data.tprReviewPeriodStart.startsWith('1900-')
+        ? isoRangeToMMDD(data.tprReviewPeriodStart, data.tprReviewPeriodEnd)
+        : `${isoToMMDDYYYY(data.tprReviewPeriodStart)} - ${isoToMMDDYYYY(data.tprReviewPeriodEnd)}`
       : NO_DATE;
   return { label: 'Trustee Performance Review Period', value, testId: 'tpr-review-period-row' };
 }
@@ -234,7 +236,9 @@ export const UPCOMING_KEY_DATES_FIELD_CONFIG: Record<
       buildField: (data) => {
         const value =
           data?.tprReviewPeriodStart && data?.tprReviewPeriodEnd
-            ? isoRangeToMMDD(data.tprReviewPeriodStart, data.tprReviewPeriodEnd)
+            ? data.tprReviewPeriodStart.startsWith('1900-')
+              ? isoRangeToMMDD(data.tprReviewPeriodStart, data.tprReviewPeriodEnd)
+              : `${isoToMMDDYYYY(data.tprReviewPeriodStart)} - ${isoToMMDDYYYY(data.tprReviewPeriodEnd)}`
             : NO_DATE;
         return { label: 'TPR Review Period', value, testId: 'tpr-review-period-row' };
       },

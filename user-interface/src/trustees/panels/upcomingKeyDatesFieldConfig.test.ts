@@ -65,6 +65,12 @@ describe('UPCOMING_KEY_DATES_FIELD_CONFIG chapter13-standing variant', () => {
       { tprReviewPeriodStart: '1900-04-01', tprReviewPeriodEnd: '1900-03-31' },
       '04/01 - 03/31',
     ],
+    [
+      'tprReviewPeriod',
+      'TPR Review Period',
+      { tprReviewPeriodStart: '2025-04-01', tprReviewPeriodEnd: '2026-03-31' },
+      '04/01/2025 - 03/31/2026',
+    ],
     ['tprDue', 'TPR Due', { tprDue: '1900-06-15', tprDueYearType: 'EVEN' }, '06/15/2026'],
   ])(
     '%s computed field has label "%s" and correct null/value output',
@@ -167,6 +173,69 @@ describe('UPCOMING_KEY_DATES_FIELD_CONFIG tprDue across variants — pinned to 2
         tprDueYearType: 'ODD',
       });
       expect(oddResult.value).toBe('06/15/2027');
+    }
+  });
+});
+
+describe('UPCOMING_KEY_DATES_FIELD_CONFIG tprReviewPeriod display format across variants', () => {
+  test.each([
+    ['chapter7-panel', 'Trustee Performance Review Period'],
+    ['ch12-13-case-by-case', 'Trustee Performance Review Period'],
+    ['chapter12-standing', 'Trustee Performance Review Period'],
+    ['chapter13-standing', 'TPR Review Period'],
+  ] as const)(
+    '%s sentinel dates (1900) show mm/dd - mm/dd legacy format',
+    (variant, expectedLabel) => {
+      const config = UPCOMING_KEY_DATES_FIELD_CONFIG[variant];
+      const field = config.find((f) => f.key === 'tprReviewPeriod');
+      expect(field?.kind).toBe('computed');
+      if (field?.kind === 'computed') {
+        const result = field.buildField({
+          ...baseDoc,
+          tprReviewPeriodStart: '1900-04-01',
+          tprReviewPeriodEnd: '1900-03-31',
+        });
+        expect(result.label).toBe(expectedLabel);
+        expect(result.value).toBe('04/01 - 03/31');
+      }
+    },
+  );
+
+  test.each([
+    ['chapter7-panel', 'Trustee Performance Review Period'],
+    ['ch12-13-case-by-case', 'Trustee Performance Review Period'],
+    ['chapter12-standing', 'Trustee Performance Review Period'],
+    ['chapter13-standing', 'TPR Review Period'],
+  ] as const)(
+    '%s full-year dates show mm/dd/yyyy - mm/dd/yyyy format',
+    (variant, expectedLabel) => {
+      const config = UPCOMING_KEY_DATES_FIELD_CONFIG[variant];
+      const field = config.find((f) => f.key === 'tprReviewPeriod');
+      expect(field?.kind).toBe('computed');
+      if (field?.kind === 'computed') {
+        const result = field.buildField({
+          ...baseDoc,
+          tprReviewPeriodStart: '2025-04-01',
+          tprReviewPeriodEnd: '2026-03-31',
+        });
+        expect(result.label).toBe(expectedLabel);
+        expect(result.value).toBe('04/01/2025 - 03/31/2026');
+      }
+    },
+  );
+
+  test.each([
+    ['chapter7-panel'],
+    ['ch12-13-case-by-case'],
+    ['chapter12-standing'],
+    ['chapter13-standing'],
+  ] as const)('%s shows No date added when both dates are absent', (variant) => {
+    const config = UPCOMING_KEY_DATES_FIELD_CONFIG[variant];
+    const field = config.find((f) => f.key === 'tprReviewPeriod');
+    expect(field?.kind).toBe('computed');
+    if (field?.kind === 'computed') {
+      const result = field.buildField({ ...baseDoc });
+      expect(result.value).toBe('No date added');
     }
   });
 });

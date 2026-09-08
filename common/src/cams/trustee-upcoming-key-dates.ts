@@ -107,8 +107,6 @@ function validateDateFields(): ValidatorFunction {
 
     // Validate sentinel date fields (MM/DD format)
     const sentinelFields: DateField[] = [
-      'tprReviewPeriodStart',
-      'tprReviewPeriodEnd',
       'tprDue',
       'tirReviewPeriodStart',
       'tirReviewPeriodEnd',
@@ -133,6 +131,8 @@ function validateDateFields(): ValidatorFunction {
       'pastFieldExam',
       'pastAudit',
       'pastTprSubmission',
+      'tprReviewPeriodStart',
+      'tprReviewPeriodEnd',
       'lastMonthlyReportReceived',
       'leaseExpiration',
       'idExpiration',

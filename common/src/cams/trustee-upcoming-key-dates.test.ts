@@ -480,8 +480,6 @@ describe('validateTrusteeUpcomingKeyDates', () => {
   });
 
   test.each([
-    ['tprReviewPeriodStart'],
-    ['tprReviewPeriodEnd'],
     ['tirReviewPeriodStart'],
     ['tirReviewPeriodEnd'],
     ['tirSubmission'],
@@ -497,14 +495,17 @@ describe('validateTrusteeUpcomingKeyDates', () => {
     expect(result.reasonMap?.[field]?.reasons?.[0]).toBe('Must be a valid date mm/dd.');
   });
 
-  test('returns error when a full date field contains an invalid ISO date', () => {
-    const result = validateTrusteeUpcomingKeyDates({
-      ...baseInput(),
-      pastFieldExam: '2026-13-01',
-    });
-    expect(result.valid).toBeFalsy();
-    expect(result.reasonMap?.pastFieldExam?.reasons?.[0]).toBe('Must be a valid date mm/dd/yyyy.');
-  });
+  test.each([['pastFieldExam'], ['tprReviewPeriodStart'], ['tprReviewPeriodEnd']])(
+    'returns error when %s (full date field) contains an invalid ISO date',
+    (field) => {
+      const result = validateTrusteeUpcomingKeyDates({
+        ...baseInput(),
+        [field]: '2026-13-01',
+      });
+      expect(result.valid).toBeFalsy();
+      expect(result.reasonMap?.[field]?.reasons?.[0]).toBe('Must be a valid date mm/dd/yyyy.');
+    },
+  );
 
   test('returns VALID when pastBackgroundQuestion is a valid full date', () => {
     expect(

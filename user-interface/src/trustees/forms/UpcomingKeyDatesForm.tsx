@@ -19,7 +19,6 @@ import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
-import MonthDayRangeSelector from '@/lib/components/uswds/MonthDayRangeSelector';
 import MonthDaySelector from '@/lib/components/uswds/MonthDaySelector';
 import DatePicker from '@/lib/components/uswds/DatePicker';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
@@ -255,7 +254,6 @@ export default function UpcomingKeyDatesForm() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [errors, setErrors] = useState({
     tprReviewPeriodStart: '',
@@ -264,8 +262,6 @@ export default function UpcomingKeyDatesForm() {
     tprDueYearType: '',
   });
   const { registerFieldError, hasErrorAmong } = useDateFieldErrors();
-  const [validationState, setValidationState] = useState({ tprReviewPeriod: true });
-  const [tprReviewPeriodFocused, setTprReviewPeriodFocused] = useState(false);
   const [tprDueRowFocused, setTprDueRowFocused] = useState(false);
   const [tprDueRowHasInteracted, setTprDueRowHasInteracted] = useState(false);
 
@@ -330,7 +326,6 @@ export default function UpcomingKeyDatesForm() {
 
   function handleMonthDayChange(field: keyof FormState) {
     return (value: string) => {
-      setSubmitted(false);
       setForm((prev) => ({ ...prev, [field]: value }));
       if (field === 'tprDue') {
         setErrors((prev) => ({ ...prev, tprDue: '', tprDueYearType: '' }));
@@ -341,7 +336,6 @@ export default function UpcomingKeyDatesForm() {
   }
 
   function handleYearTypeChange(ev: React.ChangeEvent<HTMLSelectElement>) {
-    setSubmitted(false);
     setForm((prev) => ({ ...prev, tprDueYearType: ev.target.value }));
     setErrors((prev) => ({ ...prev, tprDue: '', tprDueYearType: '' }));
   }
@@ -392,8 +386,6 @@ export default function UpcomingKeyDatesForm() {
   }
 
   async function handleSave() {
-    setSubmitted(true);
-
     let tirSubmission: string | null = null;
     let tirReview: string | null = null;
     let tirSemiAnnualSubmission: string | null = null;
@@ -418,10 +410,8 @@ export default function UpcomingKeyDatesForm() {
       pastFieldExam: form.pastFieldExam || null,
       pastAudit: form.pastAudit || null,
       pastTprSubmission: form.pastTprSubmission || null,
-      tprReviewPeriodStart: form.tprReviewPeriodStart
-        ? isoToSentinel(form.tprReviewPeriodStart)
-        : null,
-      tprReviewPeriodEnd: form.tprReviewPeriodEnd ? isoToSentinel(form.tprReviewPeriodEnd) : null,
+      tprReviewPeriodStart: form.tprReviewPeriodStart || null,
+      tprReviewPeriodEnd: form.tprReviewPeriodEnd || null,
       tprDue: form.tprDue ? isoToSentinel(form.tprDue) : null,
       tprDueYearType: form.tprDueYearType || null,
       upcomingExamOrAuditYear:
@@ -453,7 +443,7 @@ export default function UpcomingKeyDatesForm() {
       tprDueYearType: result.reasonMap?.tprDueYearType?.reasons?.[0] ?? '',
     });
 
-    if (!validationState.tprReviewPeriod || !result.valid) {
+    if (!result.valid) {
       return;
     }
 
@@ -513,13 +503,20 @@ export default function UpcomingKeyDatesForm() {
     .filter((d): d is DatePickerFieldDescriptor => typeof d !== 'string')
     .map((d) => d.id);
 
+  const hasTprReviewPeriod = (config as UpcomingFormFieldDescriptor[]).includes(
+    'tpr-review-period',
+  );
+  const tprReviewPeriodDatePickerIds = hasTprReviewPeriod
+    ? ['tpr-review-period-start', 'tpr-review-period-end']
+    : [];
+  const allDatePickerIds = [...datePickerIds, ...tprReviewPeriodDatePickerIds];
+
   const isSaveDisabled =
     isSaving ||
-    (!validationState.tprReviewPeriod && !tprReviewPeriodFocused) ||
     !!errors.tprDue ||
     !!errors.tprDueYearType ||
     !!tprDueBlurError ||
-    (datePickerIds.length > 0 && hasErrorAmong(datePickerIds));
+    (allDatePickerIds.length > 0 && hasErrorAmong(allDatePickerIds));
 
   function renderField(descriptor: UpcomingFormFieldDescriptor) {
     const kind = typeof descriptor === 'string' ? descriptor : descriptor.kind;
@@ -581,27 +578,30 @@ export default function UpcomingKeyDatesForm() {
 
       case 'tpr-review-period':
         return (
-          <div
-            key="tpr-review-period"
-            onFocus={() => setTprReviewPeriodFocused(true)}
-            onBlur={(e) => {
-              if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-                setTprReviewPeriodFocused(false);
+          <div key="tpr-review-period">
+            <DatePicker
+              id="tpr-review-period-start"
+              label="TPR Review Period Start"
+              value={form.tprReviewPeriodStart}
+              disableMax
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, tprReviewPeriodStart: e.target.value }))
               }
-            }}
-          >
-            <MonthDayRangeSelector
-              id="tpr-review-period"
-              label="Trustee Performance Review (TPR) Period"
-              startValue={form.tprReviewPeriodStart}
-              endValue={form.tprReviewPeriodEnd}
-              onStartChange={handleMonthDayChange('tprReviewPeriodStart')}
-              onEndChange={handleMonthDayChange('tprReviewPeriodEnd')}
-              onValidationChange={(isValid) =>
-                setValidationState((prev) => ({ ...prev, tprReviewPeriod: isValid }))
+              onValidationChange={(hasError) =>
+                registerFieldError('tpr-review-period-start', hasError)
               }
-              externalError={errors.tprReviewPeriodStart || errors.tprReviewPeriodEnd}
-              submitted={submitted}
+              customErrorMessage={errors.tprReviewPeriodStart}
+            />
+            <DatePicker
+              id="tpr-review-period-end"
+              label="TPR Review Period End"
+              value={form.tprReviewPeriodEnd}
+              disableMax
+              onChange={(e) => setForm((prev) => ({ ...prev, tprReviewPeriodEnd: e.target.value }))}
+              onValidationChange={(hasError) =>
+                registerFieldError('tpr-review-period-end', hasError)
+              }
+              customErrorMessage={errors.tprReviewPeriodEnd}
             />
           </div>
         );
