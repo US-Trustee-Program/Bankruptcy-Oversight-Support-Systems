@@ -7,7 +7,6 @@ import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import factory from '../../../lib/factory';
 import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
-import { StorageQueueHumbleObject } from '../../../lib/humble-objects/storage-queue-humble';
 import { handleRateLimitRetry } from '../dataflows-rate-limit';
 
 const MODULE_NAME = 'SYNC-ACMS-PROFESSIONAL-IDS';
@@ -22,6 +21,9 @@ type SyncAcmsProfessionalIdsStartMessage = StartMessage & {
 type PageMessage = {
   groupDesignator: string;
   lastUstProfCode: number;
+  // Groups still to be synced after this one, processed one at a time via
+  // self-requeue — see handlePage's continuation logic below.
+  remainingGroups: string[];
   retryCount?: number;
   firstAttemptAt?: string;
 };
@@ -75,22 +77,27 @@ async function handleStart(
     }
 
     const groupDesignators = await SyncAcmsProfessionalIds.getGroupDesignators(deps);
-    const queueClient = StorageQueueHumbleObject.fromConnectionString(
-      connectionString,
-      PAGE.queueName,
-    );
 
-    for (const groupDesignator of groupDesignators) {
+    // Only the first group is queued here — handlePage requeues itself for each
+    // subsequent group in `remainingGroups` once the current one is exhausted, so
+    // exactly one group's ACMS queries are ever in flight for this dataflow (see
+    // handlePage's continuation logic). This avoids fanning out one PageMessage
+    // per group, which let every group's queries hit ACMS concurrently and
+    // overwhelmed it (ACMS_TIMEOUT DLQ entries in staging).
+    const [firstGroup, ...remainingGroups] = groupDesignators;
+
+    if (firstGroup) {
       const state = await SyncAcmsProfessionalIds.resolveSyncState(
         deps,
-        groupDesignator,
+        firstGroup,
         startMessage.purge,
       );
       const pageMessage: PageMessage = {
-        groupDesignator,
-        lastUstProfCode: state.lastUstProfCodeByGroup[groupDesignator] ?? 0,
+        groupDesignator: firstGroup,
+        lastUstProfCode: state.lastUstProfCodeByGroup[firstGroup] ?? 0,
+        remainingGroups,
       };
-      await queueClient.sendMessage(JSON.stringify(pageMessage));
+      invocationContext.extraOutputs.set(PAGE, pageMessage);
     }
 
     completeDataflowTrace(observability, trace, MODULE_NAME, 'handleStart', logger, {
@@ -119,7 +126,7 @@ async function handlePage(message: PageMessage, invocationContext: InvocationCon
     throw new Error('Missing required environment variable: AzureWebJobsDataflowsStorage');
   }
 
-  const { groupDesignator } = message;
+  const { groupDesignator, remainingGroups } = message;
   const appContext = await ContextCreator.getApplicationContext({ invocationContext });
   const trace = appContext.observability.startTrace(invocationContext.invocationId);
   const deps = SyncAcmsProfessionalIds.createDeps(appContext);
@@ -129,25 +136,21 @@ async function handlePage(message: PageMessage, invocationContext: InvocationCon
     let processedCount = 0;
     const outcomeCounts: Record<string, number> = {};
 
-    let page = await deps.acmsGateway.getTrusteeProfessionalRecordsPage(
+    // Only one page is fetched per invocation — the continuation below requeues
+    // for the next page (same group) or the next group in remainingGroups, so
+    // exactly one PageMessage for this dataflow is ever in flight, and ACMS is
+    // never queried by more than one invocation at a time.
+    const page = await deps.acmsGateway.getTrusteeProfessionalRecordsPage(
       appContext,
       groupDesignator,
       lastUstProfCode,
       PAGE_SIZE,
     );
-    while (page.length > 0) {
-      for (const record of page) {
-        const outcome = await SyncAcmsProfessionalIds.processOneRecord(deps, record);
-        outcomeCounts[outcome.kind] = (outcomeCounts[outcome.kind] ?? 0) + 1;
-        processedCount++;
-        lastUstProfCode = record.ustProfCode;
-      }
-      page = await deps.acmsGateway.getTrusteeProfessionalRecordsPage(
-        appContext,
-        groupDesignator,
-        lastUstProfCode,
-        PAGE_SIZE,
-      );
+    for (const record of page) {
+      const outcome = await SyncAcmsProfessionalIds.processOneRecord(deps, record);
+      outcomeCounts[outcome.kind] = (outcomeCounts[outcome.kind] ?? 0) + 1;
+      processedCount++;
+      lastUstProfCode = record.ustProfCode;
     }
 
     await SyncAcmsProfessionalIds.storeRuntimeState(deps, {
@@ -155,6 +158,28 @@ async function handlePage(message: PageMessage, invocationContext: InvocationCon
       documentType: 'ACMS_PROFESSIONAL_ID_SYNC_STATE',
       lastUstProfCodeByGroup: { [groupDesignator]: lastUstProfCode },
     });
+
+    const groupExhausted = page.length < PAGE_SIZE;
+
+    if (!groupExhausted) {
+      const nextPageMessage: PageMessage = {
+        groupDesignator,
+        lastUstProfCode,
+        remainingGroups,
+      };
+      invocationContext.extraOutputs.set(PAGE, nextPageMessage);
+    } else {
+      const [nextGroup, ...restGroups] = remainingGroups;
+      if (nextGroup) {
+        const state = await SyncAcmsProfessionalIds.resolveSyncState(deps, nextGroup);
+        const nextGroupMessage: PageMessage = {
+          groupDesignator: nextGroup,
+          lastUstProfCode: state.lastUstProfCodeByGroup[nextGroup] ?? 0,
+          remainingGroups: restGroups,
+        };
+        invocationContext.extraOutputs.set(PAGE, nextGroupMessage);
+      }
+    }
 
     completeDataflowTrace(
       appContext.observability,
@@ -262,7 +287,7 @@ function setup() {
   app.storageQueue(HANDLE_PAGE, {
     connection: PAGE.connection,
     queueName: PAGE.queueName,
-    extraOutputs: [DLQ],
+    extraOutputs: [DLQ, PAGE],
     handler: handlePage,
   });
 
@@ -275,7 +300,7 @@ function setup() {
   });
 }
 
-export { handleStart, handlePage, timerTrigger };
+export { handleStart, handlePage, timerTrigger, PAGE_SIZE };
 export default {
   MODULE_NAME,
   setup,

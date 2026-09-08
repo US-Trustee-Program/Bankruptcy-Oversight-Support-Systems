@@ -67,22 +67,33 @@ describe('sync-acms-professional-ids handleStart', () => {
       lastUstProfCodeByGroup: {},
     });
     vi.spyOn(SyncAcmsProfessionalIdsModule.default, 'purgeAll').mockResolvedValue(undefined);
-    const mockSendMessage = vi.fn().mockResolvedValue(undefined);
-    const fromConnectionStringSpy = vi
-      .spyOn(StorageQueueHumbleObject, 'fromConnectionString')
-      .mockReturnValue({ sendMessage: mockSendMessage } as unknown as StorageQueueHumbleObject);
-    return { mockContext, mockSendMessage, fromConnectionStringSpy };
+    return { mockContext };
   }
 
-  test('should queue one page message per group and emit success telemetry', async () => {
+  test('should queue only the first group as a page message, carrying the rest as remainingGroups', async () => {
     const { handleStart } = await import('./sync-acms-professional-ids');
     const invocationContext = makeInvocationContext();
+    const extraOutputsSetSpy = vi.spyOn(invocationContext.extraOutputs, 'set');
     const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
-    const { mockSendMessage } = await setupMocks({ groupDesignators: ['NY', 'UT', 'AK'] });
+    await setupMocks({ groupDesignators: ['NY', 'UT', 'AK'] });
 
     await handleStart({}, invocationContext);
 
-    expect(mockSendMessage).toHaveBeenCalledTimes(3);
+    expect(extraOutputsSetSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        groupDesignator: 'NY',
+        remainingGroups: ['UT', 'AK'],
+      }),
+    );
+    expect(extraOutputsSetSpy).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ groupDesignator: 'UT' }),
+    );
+    expect(extraOutputsSetSpy).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ groupDesignator: 'AK' }),
+    );
     expect(telemetrySpy).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
@@ -93,9 +104,10 @@ describe('sync-acms-professional-ids handleStart', () => {
     );
   });
 
-  test('should include each groupDesignator and its bookmark in the queued page message', async () => {
+  test('should include the first groupDesignator and its bookmark in the queued page message', async () => {
     const { handleStart } = await import('./sync-acms-professional-ids');
     const invocationContext = makeInvocationContext();
+    const extraOutputsSetSpy = vi.spyOn(invocationContext.extraOutputs, 'set');
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
       await createMockApplicationContext(),
     );
@@ -107,16 +119,14 @@ describe('sync-acms-professional-ids handleStart', () => {
       documentType: 'ACMS_PROFESSIONAL_ID_SYNC_STATE',
       lastUstProfCodeByGroup: { NY: 63 },
     });
-    const mockSendMessage = vi.fn().mockResolvedValue(undefined);
-    vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
-      sendMessage: mockSendMessage,
-    } as unknown as StorageQueueHumbleObject);
 
     await handleStart({}, invocationContext);
 
-    expect(mockSendMessage).toHaveBeenCalledWith(
-      JSON.stringify({ groupDesignator: 'NY', lastUstProfCode: 63 }),
-    );
+    expect(extraOutputsSetSpy).toHaveBeenCalledWith(expect.anything(), {
+      groupDesignator: 'NY',
+      lastUstProfCode: 63,
+      remainingGroups: [],
+    });
   });
 
   test('should purge existing professional IDs and reset the bookmark when the purge flag is set', async () => {
@@ -153,6 +163,29 @@ describe('sync-acms-professional-ids handleStart', () => {
       }),
     );
   });
+
+  test('should complete successfully without queuing a page message when there are no groups', async () => {
+    const { handleStart } = await import('./sync-acms-professional-ids');
+    const invocationContext = makeInvocationContext();
+    const extraOutputsSetSpy = vi.spyOn(invocationContext.extraOutputs, 'set');
+    const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+    await setupMocks({ groupDesignators: [] });
+
+    await handleStart({}, invocationContext);
+
+    expect(extraOutputsSetSpy).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ groupDesignator: expect.anything() }),
+    );
+    expect(telemetrySpy).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      'SYNC-ACMS-PROFESSIONAL-IDS',
+      'handleStart',
+      expect.anything(),
+      expect.objectContaining({ success: true }),
+    );
+  });
 });
 
 describe('sync-acms-professional-ids handlePage', () => {
@@ -161,43 +194,30 @@ describe('sync-acms-professional-ids handlePage', () => {
     process.env.AzureWebJobsDataflowsStorage = 'DefaultEndpointsProtocol=https://test';
   });
 
-  /**
-   * A cursor-aware fake for getTrusteeProfessionalRecordsPage, keyed by the incoming
-   * lastUstProfCode argument — unlike a fixed mockResolvedValueOnce sequence, this actually
-   * fails if handlePage's loop doesn't thread the advancing cursor into each subsequent call
-   * (e.g. re-fetching from the same starting bookmark, or advancing by the wrong amount).
-   */
-  function makeCursorAwarePageFetcher(pages: ReturnType<typeof makeRecord>[][]) {
-    const byStartingCursor = new Map<number, ReturnType<typeof makeRecord>[]>();
-    let cursor = 0;
-    for (const page of pages) {
-      byStartingCursor.set(cursor, page);
-      cursor = page.length > 0 ? page[page.length - 1].ustProfCode : cursor;
-    }
-    return vi.fn(
-      async (_ctx: unknown, _group: string, lastUstProfCode: number) =>
-        byStartingCursor.get(lastUstProfCode) ?? [],
-    );
-  }
-
-  test('should page through all records for the group and emit success telemetry', async () => {
-    const { handlePage } = await import('./sync-acms-professional-ids');
-    const invocationContext = makeInvocationContext();
-    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
-      await createMockApplicationContext(),
-    );
-
-    const page1 = [makeRecord(1), makeRecord(2)];
-    const getPageSpy = makeCursorAwarePageFetcher([page1, []]);
+  function mockDeps(overrides?: { getTrusteeProfessionalRecordsPage?: ReturnType<typeof vi.fn> }) {
     vi.spyOn(SyncAcmsProfessionalIdsModule.default, 'createDeps').mockReturnValue({
       context: {} as never,
-      acmsGateway: { getTrusteeProfessionalRecordsPage: getPageSpy } as never,
+      acmsGateway: {
+        getTrusteeProfessionalRecordsPage:
+          overrides?.getTrusteeProfessionalRecordsPage ?? vi.fn().mockResolvedValue([]),
+      } as never,
       officesGateway: {} as never,
       trusteesRepo: {} as never,
       variationRepo: {} as never,
       professionalIdsRepo: {} as never,
       runtimeStateRepo: {} as never,
     });
+  }
+
+  test('should fetch exactly one page per invocation and emit success telemetry', async () => {
+    const { handlePage } = await import('./sync-acms-professional-ids');
+    const invocationContext = makeInvocationContext();
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
+      await createMockApplicationContext(),
+    );
+
+    const getPageSpy = vi.fn().mockResolvedValue([makeRecord(1), makeRecord(2)]);
+    mockDeps({ getTrusteeProfessionalRecordsPage: getPageSpy });
     vi.spyOn(SyncAcmsProfessionalIdsModule.default, 'processOneRecord').mockResolvedValue({
       kind: 'auto-linked',
       via: 'fingerprint',
@@ -207,11 +227,13 @@ describe('sync-acms-professional-ids handlePage', () => {
     );
     const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
 
-    await handlePage({ groupDesignator: 'NY', lastUstProfCode: 0 }, invocationContext);
+    await handlePage(
+      { groupDesignator: 'NY', lastUstProfCode: 0, remainingGroups: [] },
+      invocationContext,
+    );
 
-    expect(getPageSpy).toHaveBeenCalledTimes(2);
-    expect(getPageSpy).toHaveBeenNthCalledWith(1, expect.anything(), 'NY', 0, expect.any(Number));
-    expect(getPageSpy).toHaveBeenNthCalledWith(2, expect.anything(), 'NY', 2, expect.any(Number));
+    expect(getPageSpy).toHaveBeenCalledTimes(1);
+    expect(getPageSpy).toHaveBeenCalledWith(expect.anything(), 'NY', 0, expect.any(Number));
     expect(SyncAcmsProfessionalIdsModule.default.processOneRecord).toHaveBeenCalledTimes(2);
     expect(telemetrySpy).toHaveBeenCalledWith(
       expect.anything(),
@@ -223,45 +245,104 @@ describe('sync-acms-professional-ids handlePage', () => {
     );
   });
 
-  test('should thread the advancing cursor across three or more pages, not just a hardcoded two calls', async () => {
-    const { handlePage } = await import('./sync-acms-professional-ids');
+  test('should requeue the same group with the advanced cursor when a full page is returned', async () => {
+    const { handlePage, PAGE_SIZE } = await import('./sync-acms-professional-ids');
     const invocationContext = makeInvocationContext();
+    const extraOutputsSetSpy = vi.spyOn(invocationContext.extraOutputs, 'set');
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
       await createMockApplicationContext(),
     );
 
-    const page1 = [makeRecord(1), makeRecord(2)];
-    const page2 = [makeRecord(3), makeRecord(4)];
-    const page3 = [makeRecord(5)];
-    const getPageSpy = makeCursorAwarePageFetcher([page1, page2, page3, []]);
-    vi.spyOn(SyncAcmsProfessionalIdsModule.default, 'createDeps').mockReturnValue({
-      context: {} as never,
-      acmsGateway: { getTrusteeProfessionalRecordsPage: getPageSpy } as never,
-      officesGateway: {} as never,
-      trusteesRepo: {} as never,
-      variationRepo: {} as never,
-      professionalIdsRepo: {} as never,
-      runtimeStateRepo: {} as never,
+    // A full page (length === PAGE_SIZE) signals more records may remain for this group.
+    const fullPage = Array.from({ length: PAGE_SIZE }, (_, i) => makeRecord(i + 1));
+    mockDeps({ getTrusteeProfessionalRecordsPage: vi.fn().mockResolvedValue(fullPage) });
+    vi.spyOn(SyncAcmsProfessionalIdsModule.default, 'processOneRecord').mockResolvedValue({
+      kind: 'auto-linked',
+      via: 'fingerprint',
+    });
+    vi.spyOn(SyncAcmsProfessionalIdsModule.default, 'storeRuntimeState').mockResolvedValue(
+      undefined,
+    );
+
+    await handlePage(
+      { groupDesignator: 'NY', lastUstProfCode: 0, remainingGroups: ['UT'] },
+      invocationContext,
+    );
+
+    expect(extraOutputsSetSpy).toHaveBeenCalledWith(expect.anything(), {
+      groupDesignator: 'NY',
+      lastUstProfCode: PAGE_SIZE,
+      remainingGroups: ['UT'],
+    });
+  });
+
+  test('should requeue the next remaining group once the current group is exhausted', async () => {
+    const { handlePage } = await import('./sync-acms-professional-ids');
+    const invocationContext = makeInvocationContext();
+    const extraOutputsSetSpy = vi.spyOn(invocationContext.extraOutputs, 'set');
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
+      await createMockApplicationContext(),
+    );
+
+    mockDeps({
+      getTrusteeProfessionalRecordsPage: vi.fn().mockResolvedValue([makeRecord(1), makeRecord(2)]),
     });
     vi.spyOn(SyncAcmsProfessionalIdsModule.default, 'processOneRecord').mockResolvedValue({
       kind: 'auto-linked',
       via: 'fingerprint',
     });
-    const storeSpy = vi
-      .spyOn(SyncAcmsProfessionalIdsModule.default, 'storeRuntimeState')
-      .mockResolvedValue(undefined);
+    vi.spyOn(SyncAcmsProfessionalIdsModule.default, 'storeRuntimeState').mockResolvedValue(
+      undefined,
+    );
+    vi.spyOn(SyncAcmsProfessionalIdsModule.default, 'resolveSyncState').mockResolvedValue({
+      id: 'state-1',
+      documentType: 'ACMS_PROFESSIONAL_ID_SYNC_STATE',
+      lastUstProfCodeByGroup: { UT: 42 },
+    });
 
-    await handlePage({ groupDesignator: 'NY', lastUstProfCode: 0 }, invocationContext);
+    await handlePage(
+      { groupDesignator: 'NY', lastUstProfCode: 0, remainingGroups: ['UT', 'AK'] },
+      invocationContext,
+    );
 
-    expect(getPageSpy).toHaveBeenCalledTimes(4);
-    expect(getPageSpy).toHaveBeenNthCalledWith(1, expect.anything(), 'NY', 0, expect.any(Number));
-    expect(getPageSpy).toHaveBeenNthCalledWith(2, expect.anything(), 'NY', 2, expect.any(Number));
-    expect(getPageSpy).toHaveBeenNthCalledWith(3, expect.anything(), 'NY', 4, expect.any(Number));
-    expect(getPageSpy).toHaveBeenNthCalledWith(4, expect.anything(), 'NY', 5, expect.any(Number));
-    expect(SyncAcmsProfessionalIdsModule.default.processOneRecord).toHaveBeenCalledTimes(5);
-    expect(storeSpy).toHaveBeenCalledWith(
+    expect(SyncAcmsProfessionalIdsModule.default.resolveSyncState).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ lastUstProfCodeByGroup: { NY: 5 } }),
+      'UT',
+    );
+    expect(extraOutputsSetSpy).toHaveBeenCalledWith(expect.anything(), {
+      groupDesignator: 'UT',
+      lastUstProfCode: 42,
+      remainingGroups: ['AK'],
+    });
+  });
+
+  test('should not requeue when the last group is exhausted and none remain', async () => {
+    const { handlePage } = await import('./sync-acms-professional-ids');
+    const invocationContext = makeInvocationContext();
+    const extraOutputsSetSpy = vi.spyOn(invocationContext.extraOutputs, 'set');
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
+      await createMockApplicationContext(),
+    );
+
+    mockDeps({
+      getTrusteeProfessionalRecordsPage: vi.fn().mockResolvedValue([makeRecord(1)]),
+    });
+    vi.spyOn(SyncAcmsProfessionalIdsModule.default, 'processOneRecord').mockResolvedValue({
+      kind: 'auto-linked',
+      via: 'fingerprint',
+    });
+    vi.spyOn(SyncAcmsProfessionalIdsModule.default, 'storeRuntimeState').mockResolvedValue(
+      undefined,
+    );
+
+    await handlePage(
+      { groupDesignator: 'NY', lastUstProfCode: 0, remainingGroups: [] },
+      invocationContext,
+    );
+
+    expect(extraOutputsSetSpy).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ groupDesignator: expect.anything() }),
     );
   });
 
@@ -271,15 +352,8 @@ describe('sync-acms-professional-ids handlePage', () => {
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
       await createMockApplicationContext(),
     );
-    const getPageSpy = makeCursorAwarePageFetcher([[makeRecord(5), makeRecord(9)], []]);
-    vi.spyOn(SyncAcmsProfessionalIdsModule.default, 'createDeps').mockReturnValue({
-      context: {} as never,
-      acmsGateway: { getTrusteeProfessionalRecordsPage: getPageSpy } as never,
-      officesGateway: {} as never,
-      trusteesRepo: {} as never,
-      variationRepo: {} as never,
-      professionalIdsRepo: {} as never,
-      runtimeStateRepo: {} as never,
+    mockDeps({
+      getTrusteeProfessionalRecordsPage: vi.fn().mockResolvedValue([makeRecord(5), makeRecord(9)]),
     });
     vi.spyOn(SyncAcmsProfessionalIdsModule.default, 'processOneRecord').mockResolvedValue({
       kind: 'auto-linked',
@@ -289,7 +363,10 @@ describe('sync-acms-professional-ids handlePage', () => {
       .spyOn(SyncAcmsProfessionalIdsModule.default, 'storeRuntimeState')
       .mockResolvedValue(undefined);
 
-    await handlePage({ groupDesignator: 'NY', lastUstProfCode: 0 }, invocationContext);
+    await handlePage(
+      { groupDesignator: 'NY', lastUstProfCode: 0, remainingGroups: [] },
+      invocationContext,
+    );
 
     expect(storeSpy).toHaveBeenCalledWith(
       expect.anything(),
@@ -303,13 +380,21 @@ describe('sync-acms-professional-ids handlePage', () => {
     const invocationContext = makeInvocationContext();
 
     await expect(
-      handlePage({ groupDesignator: 'NY', lastUstProfCode: 0 }, invocationContext),
+      handlePage(
+        { groupDesignator: 'NY', lastUstProfCode: 0, remainingGroups: [] },
+        invocationContext,
+      ),
     ).rejects.toThrow('Missing required environment variable');
   });
 
   test('should re-enqueue with backoff and emit rate-limited-requeued telemetry on 429 error', async () => {
     const { handlePage } = await import('./sync-acms-professional-ids');
-    const message = { groupDesignator: 'NY', lastUstProfCode: 0, retryCount: 0 };
+    const message = {
+      groupDesignator: 'NY',
+      lastUstProfCode: 0,
+      remainingGroups: [],
+      retryCount: 0,
+    };
     const invocationContext = makeInvocationContext();
 
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
@@ -348,17 +433,19 @@ describe('sync-acms-professional-ids handlePage', () => {
 
   test('should resume the retry from the original starting bookmark, not any locally-advanced progress', async () => {
     const { handlePage } = await import('./sync-acms-professional-ids');
-    const message = { groupDesignator: 'NY', lastUstProfCode: 0, retryCount: 0 };
+    const message = {
+      groupDesignator: 'NY',
+      lastUstProfCode: 0,
+      remainingGroups: [],
+      retryCount: 0,
+    };
     const invocationContext = makeInvocationContext();
 
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
       await createMockApplicationContext(),
     );
     const tooManyError = new TooManyRequestsError('SYNC-ACMS-PROFESSIONAL-IDS');
-    const getPageSpy = vi
-      .fn()
-      .mockResolvedValueOnce([makeRecord(1), makeRecord(2)])
-      .mockRejectedValueOnce(tooManyError);
+    const getPageSpy = vi.fn().mockResolvedValue([makeRecord(1), makeRecord(2)]);
     vi.spyOn(SyncAcmsProfessionalIdsModule.default, 'createDeps').mockReturnValue({
       context: {} as never,
       acmsGateway: { getTrusteeProfessionalRecordsPage: getPageSpy } as never,
@@ -368,10 +455,12 @@ describe('sync-acms-professional-ids handlePage', () => {
       professionalIdsRepo: {} as never,
       runtimeStateRepo: {} as never,
     });
-    vi.spyOn(SyncAcmsProfessionalIdsModule.default, 'processOneRecord').mockResolvedValue({
-      kind: 'auto-linked',
-      via: 'fingerprint',
-    });
+    // The error surfaces from processing the page's records (not a second page
+    // fetch) — with one page per invocation, that's the only way a transient
+    // error can occur after some local progress has already been made.
+    vi.spyOn(SyncAcmsProfessionalIdsModule.default, 'processOneRecord')
+      .mockResolvedValueOnce({ kind: 'auto-linked', via: 'fingerprint' })
+      .mockRejectedValueOnce(tooManyError);
     const mockSendMessage = vi.fn().mockResolvedValue(undefined);
     vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
       sendMessage: mockSendMessage,
@@ -390,7 +479,12 @@ describe('sync-acms-professional-ids handlePage', () => {
 
   test('should route to DLQ and emit telemetry when retry limit exhausted', async () => {
     const { handlePage } = await import('./sync-acms-professional-ids');
-    const message = { groupDesignator: 'NY', lastUstProfCode: 0, retryCount: 10 };
+    const message = {
+      groupDesignator: 'NY',
+      lastUstProfCode: 0,
+      remainingGroups: [],
+      retryCount: 10,
+    };
     const invocationContext = makeInvocationContext();
 
     const mockContext = await createMockApplicationContext();
@@ -428,7 +522,7 @@ describe('sync-acms-professional-ids handlePage', () => {
 
   test('should re-throw on non-rate-limit errors', async () => {
     const { handlePage } = await import('./sync-acms-professional-ids');
-    const message = { groupDesignator: 'NY', lastUstProfCode: 0 };
+    const message = { groupDesignator: 'NY', lastUstProfCode: 0, remainingGroups: [] };
     const invocationContext = makeInvocationContext();
 
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
