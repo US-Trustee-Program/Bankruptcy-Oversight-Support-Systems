@@ -464,6 +464,7 @@ describe('UpcomingKeyDatesForm', () => {
           tprReviewPeriodEnd: '2026-03-31',
         }),
       );
+      expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');
     });
 
     test('shows error alert when save fails and re-enables save button', async () => {
@@ -561,6 +562,26 @@ describe('UpcomingKeyDatesForm', () => {
         'trustee-001',
         'appointment-001',
         expect.objectContaining({ tprFrequency: 'ANNUAL' }),
+      );
+    });
+
+    test('selecting "Two years" then saving sends tprFrequency: BIANNUAL in the API call', async () => {
+      const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('tpr-frequency')).toBeInTheDocument();
+      });
+
+      await userEvent.selectOptions(screen.getByTestId('tpr-frequency'), 'BIANNUAL');
+      await userEvent.click(screen.getByTestId('button-save-upcoming-key-dates'));
+
+      await waitFor(() => expect(putSpy).toHaveBeenCalled());
+      expect(putSpy).toHaveBeenCalledWith(
+        'trustee-001',
+        'appointment-001',
+        expect.objectContaining({ tprFrequency: 'BIANNUAL' }),
       );
     });
 

@@ -59,18 +59,6 @@ describe('UPCOMING_KEY_DATES_FIELD_CONFIG chapter13-standing variant', () => {
   });
 
   test.each([
-    [
-      'tprReviewPeriod',
-      'TPR Review Period',
-      { tprReviewPeriodStart: '1900-04-01', tprReviewPeriodEnd: '1900-03-31' },
-      '04/01 - 03/31',
-    ],
-    [
-      'tprReviewPeriod',
-      'TPR Review Period',
-      { tprReviewPeriodStart: '2025-04-01', tprReviewPeriodEnd: '2026-03-31' },
-      '04/01/2025 - 03/31/2026',
-    ],
     ['tprDue', 'TPR Due', { tprDue: '1900-06-15', tprDueYearType: 'EVEN' }, '06/15/2026'],
   ])(
     '%s computed field has label "%s" and correct null/value output',

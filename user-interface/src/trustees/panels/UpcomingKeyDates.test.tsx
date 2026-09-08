@@ -42,6 +42,7 @@ const populatedDocument: TrusteeUpcomingKeyDates = {
   tprReviewPeriodEnd: '1900-03-31',
   tprDue: '1900-09-15',
   tprDueYearType: 'EVEN',
+  tprFrequency: 'ANNUAL',
   tirReviewPeriodStart: '1900-07-01',
   tirReviewPeriodEnd: '1900-06-30',
   tirSubmission: '1900-10-15',
@@ -79,6 +80,9 @@ describe('UpcomingKeyDates', () => {
     expect(screen.getByTestId('upcoming-exam-audit-row')).toHaveTextContent('No date added');
     expect(screen.getByTestId('audit-req-by-row')).toHaveTextContent('No date added');
     expect(screen.getByTestId('tpr-review-period-row')).toHaveTextContent('No date added');
+    expect(screen.getByTestId('tpr-review-period-frequency-row')).toHaveTextContent(
+      'No frequency selected',
+    );
     expect(screen.getByTestId('tpr-due-row')).toHaveTextContent('No date added');
     expect(screen.getByTestId('tir-review-period-row')).toHaveTextContent('No date added');
     expect(screen.getByTestId('tir-submission-row')).toHaveTextContent('No date added');
@@ -93,6 +97,7 @@ describe('UpcomingKeyDates', () => {
     expect(screen.getByText('Field Exam / Audit:')).toBeInTheDocument();
     expect(screen.getByText('Audit Required by:')).toBeInTheDocument();
     expect(screen.getByText('Trustee Performance Review Period:')).toBeInTheDocument();
+    expect(screen.getByText('TPR Review Period Frequency:')).toBeInTheDocument();
     expect(screen.getByText('Trustee Performance Review Due:')).toBeInTheDocument();
     expect(screen.getByText('TIR Review Period:')).toBeInTheDocument();
     expect(screen.getByText('TIR Submission:')).toBeInTheDocument();
@@ -106,7 +111,31 @@ describe('UpcomingKeyDates', () => {
 
     expect(screen.getByTestId('upcoming-exam-audit-row')).toHaveTextContent('2029');
     expect(screen.getByTestId('tpr-review-period-row')).toHaveTextContent('04/01 - 03/31');
+    expect(screen.getByTestId('tpr-review-period-frequency-row')).toHaveTextContent('One year');
     expect(screen.getByTestId('tpr-due-row')).toHaveTextContent('09/15/2026');
+  });
+
+  test('TPR Review Period shows mm/dd/yyyy - mm/dd/yyyy when full-year dates are stored', () => {
+    renderComponent({
+      data: {
+        ...populatedDocument,
+        tprReviewPeriodStart: '2025-04-01',
+        tprReviewPeriodEnd: '2026-03-31',
+      },
+    });
+
+    expect(screen.getByTestId('tpr-review-period-row')).toHaveTextContent(
+      '04/01/2025 - 03/31/2026',
+    );
+  });
+
+  test('TPR Due shows correct year for ODD year type on chapter7-panel', () => {
+    renderComponent({
+      data: { ...populatedDocument, tprDueYearType: 'ODD' },
+    });
+
+    // System time pinned to 2026-01-15 (even year) → ODD type → next odd year is 2027
+    expect(screen.getByTestId('tpr-due-row')).toHaveTextContent('09/15/2027');
   });
 
   test('exam/audit row uses type as label when upcomingExamOrAuditType is set', () => {
