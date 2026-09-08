@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, test, expect, vi, beforeEach } from 'vitest';
+import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
 import UpcomingKeyDates, { UpcomingKeyDatesProps } from './UpcomingKeyDates';
 import TestingUtilities from '@/lib/testing/testing-utilities';
@@ -60,9 +60,15 @@ describe('UpcomingKeyDates', () => {
   const mockNavigate = vi.fn();
 
   beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-15'));
     vi.restoreAllMocks();
     mockUseNavigate.mockReturnValue(mockNavigate);
     TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   test('renders "No date added" for all fields when data is null', () => {
@@ -100,7 +106,7 @@ describe('UpcomingKeyDates', () => {
 
     expect(screen.getByTestId('upcoming-exam-audit-row')).toHaveTextContent('2029');
     expect(screen.getByTestId('tpr-review-period-row')).toHaveTextContent('04/01 - 03/31');
-    expect(screen.getByTestId('tpr-due-row')).toHaveTextContent('09/15 EVEN');
+    expect(screen.getByTestId('tpr-due-row')).toHaveTextContent('09/15/2026');
   });
 
   test('exam/audit row uses type as label when upcomingExamOrAuditType is set', () => {
@@ -272,7 +278,7 @@ describe('UpcomingKeyDates', () => {
     test.each([
       ['audit-req-by-row', '2025'],
       ['tpr-review-period-row', '01/01 - 12/31'],
-      ['tpr-due-row', '03/15 ODD'],
+      ['tpr-due-row', '03/15/2027'],
       ['lease-expiration-row', '06/30/2027'],
       ['id-expiration-row', '01/15/2028'],
     ])('shows formatted value for %s when data is populated', (testId, expectedValue) => {
@@ -315,7 +321,7 @@ describe('UpcomingKeyDates', () => {
       expect(screen.getByTestId('annual-report-submission-row')).toHaveTextContent('09/01');
       expect(screen.getByTestId('annual-report-due-oo-row')).toHaveTextContent('09/15');
       expect(screen.getByTestId('tpr-review-period-row')).toHaveTextContent('04/01 - 03/31');
-      expect(screen.getByTestId('tpr-due-row')).toHaveTextContent('09/15 EVEN');
+      expect(screen.getByTestId('tpr-due-row')).toHaveTextContent('09/15/2026');
     });
 
     test('renders constant fields the same even when no key-dates document exists', () => {

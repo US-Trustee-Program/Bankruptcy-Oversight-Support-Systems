@@ -16,6 +16,7 @@ import {
   calculateTirReview,
   calculateNextAuditDate,
   calculateAuditReqBy,
+  calculateTprDueYear,
   validateMonthDay,
   validateMonthDayRange,
   validateTrusteeUpcomingKeyDates,
@@ -766,5 +767,20 @@ describe('trustee-upcoming-key-dates - mutation gap tests', () => {
     test('preserves zero-padded month and day', () => {
       expect(isoToSentinel('2024-03-05')).toBe('1900-03-05');
     });
+  });
+});
+
+describe('calculateTprDueYear', () => {
+  test.each([
+    ['EVEN', 2026, 2026],
+    ['ODD', 2026, 2027],
+    ['ODD', 2027, 2027],
+    ['EVEN', 2027, 2028],
+    ['EVEN', 2025, 2026],
+    ['ODD', 2025, 2025],
+    ['EVEN', 2024, 2024],
+    ['ODD', 2024, 2025],
+  ] as const)('calculateTprDueYear(%s, %d) -> %d', (yearType, currentYear, expected) => {
+    expect(calculateTprDueYear(yearType, currentYear)).toBe(expected);
   });
 });

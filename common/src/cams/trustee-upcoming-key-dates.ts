@@ -464,6 +464,12 @@ export function calculateAuditReqBy(lastAuditFiscalYear: number | null | undefin
   return lastAuditFiscalYear + 3;
 }
 
+export function calculateTprDueYear(yearType: 'EVEN' | 'ODD', currentYear: number): number {
+  const yearIsEven = currentYear % 2 === 0;
+  const typeIsEven = yearType === 'EVEN';
+  return yearIsEven === typeIsEven ? currentYear : currentYear + 1;
+}
+
 export function calculateNextAuditDate(
   fieldExam: string | undefined,
   audit: string | undefined,

@@ -4,6 +4,7 @@ import {
   isoToMMDDYYYY,
   isoRangeToMMDD,
   calculateAuditReqBy,
+  calculateTprDueYear,
 } from '@common/cams/trustee-upcoming-key-dates';
 
 export type UpcomingKeyDatesVariant =
@@ -44,7 +45,7 @@ function tprReviewPeriodField(data: TrusteeUpcomingKeyDates | null): UpcomingKey
 function tprDueField(data: TrusteeUpcomingKeyDates | null): UpcomingKeyDatesDisplayField {
   const value =
     data?.tprDue && data?.tprDueYearType
-      ? `${isoToMMDD(data.tprDue)} ${data.tprDueYearType}`
+      ? `${isoToMMDD(data.tprDue)}/${calculateTprDueYear(data.tprDueYearType, new Date().getFullYear())}`
       : NO_DATE;
   return { label: 'Trustee Performance Review Due', value, testId: 'tpr-due-row' };
 }
@@ -244,7 +245,7 @@ export const UPCOMING_KEY_DATES_FIELD_CONFIG: Record<
       buildField: (data) => {
         const value =
           data?.tprDue && data?.tprDueYearType
-            ? `${isoToMMDD(data.tprDue)} ${data.tprDueYearType}`
+            ? `${isoToMMDD(data.tprDue)}/${calculateTprDueYear(data.tprDueYearType, new Date().getFullYear())}`
             : NO_DATE;
         return { label: 'TPR Due', value, testId: 'tpr-due-row' };
       },
