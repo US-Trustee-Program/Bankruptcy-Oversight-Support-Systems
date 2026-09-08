@@ -54,6 +54,9 @@ async function handler(
       });
     }
   } catch (error) {
+    // No handleRateLimitRetry here, unlike sibling consumers (e.g. trustee-verification-remap.ts):
+    // this processes one notification per invocation rather than a page of Mongo writes, so a
+    // transient Cosmos throttle routes straight to the DLQ instead of requeuing with backoff.
     context.observability.completeTrace(
       trace,
       'Trustee Change Notification',

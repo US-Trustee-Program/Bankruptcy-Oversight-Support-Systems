@@ -418,7 +418,6 @@ module notificationPipelineWorkbook './lib/workbooks/notification-pipeline-workb
       stackName: stackName
       location: location
       dataflowsAppInsightsResourceId: ustpDataflowsFunction.outputs.appInsightsId
-      apiAppInsightsResourceId: ustpApiFunction.outputs.appInsightsId
       analyticsWorkspaceResourceId: analyticsWorkspaceId
       tags: dataflowsTags
     }

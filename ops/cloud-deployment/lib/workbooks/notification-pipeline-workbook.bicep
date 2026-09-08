@@ -6,25 +6,17 @@ param stackName string
 @description('Resource ID of the dataflows function app\'s Application Insights instance.')
 param dataflowsAppInsightsResourceId string
 
-@description('Resource ID of the API function app\'s Application Insights instance.')
-param apiAppInsightsResourceId string
-
 @description('Resource ID of the shared Log Analytics workspace hosting ACS diagnostic logs (ACSEmailStatusUpdateOperational).')
 param analyticsWorkspaceResourceId string
 
 param tags object = {}
 
-var apiAppInsightsName = last(split(apiAppInsightsResourceId, '/'))
 var dataflowsAppInsightsName = last(split(dataflowsAppInsightsResourceId, '/'))
 var analyticsWorkspaceName = last(split(analyticsWorkspaceResourceId, '/'))
 
 var workbookJson = replace(
   replace(
-    replace(
-      loadTextContent('trustee-notification-pipeline.json'),
-      '{NodeApiAppInsights:name}',
-      apiAppInsightsName
-    ),
+    loadTextContent('trustee-notification-pipeline.json'),
     '{DataflowsAppInsights:name}',
     dataflowsAppInsightsName
   ),

@@ -58,13 +58,6 @@ export type CaseClosedEvent = {
   caseId: string;
 };
 
-/**
- * Enqueued by TrusteesUseCase.updateTrustee's dispatchChangeNotification (and, in a later
- * slice, TrusteeAppointmentsUseCase's dispatchAppointmentNotification) instead of sending the
- * notification synchronously in the HTTP request path. Processed asynchronously by the
- * trustee-change-notification-event dataflow, which calls
- * TrusteeChangeNotificationUseCase.notify() unchanged.
- */
 export type TrusteeChangeNotificationEvent = {
   changeSet: TrusteeChangeSet;
 };
