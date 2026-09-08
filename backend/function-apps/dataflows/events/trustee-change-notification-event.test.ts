@@ -134,8 +134,8 @@ describe('trustee-change-notification-event handler', () => {
     await expect(handler(event, invocationContext)).resolves.toBeUndefined();
 
     expect(errorSpy).toHaveBeenCalledWith(
-      'TRUSTEE-CHANGE-NOTIFICATION',
-      'Uncaught exception dispatching trustee change notification.',
+      'TRUSTEE-CHANGE-NOTIFICATION-EVENT',
+      '[notification-send-failure] Uncaught exception dispatching trustee change notification.',
       originalError,
     );
     expect(completeTraceSpy).toHaveBeenCalledWith(

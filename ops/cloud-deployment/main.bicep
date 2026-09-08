@@ -231,7 +231,7 @@ module acsSendFailureAlert './lib/monitoring-alerts/scheduled-query-alert-rule.b
       actionGroupSubscriptionId: analyticsSubscriptionId
       query: '''
         AppTraces
-        | where Message has '[ERROR] [ACS-NOTIFICATION-GATEWAY]' or Message has '[ERROR] [TRUSTEE-CHANGE-NOTIFICATION]'
+        | where Message has '[ERROR]' and Message has '[notification-send-failure]'
         | project TimeGenerated, Message
       '''
       timeAggregation: 'Count'
@@ -240,7 +240,7 @@ module acsSendFailureAlert './lib/monitoring-alerts/scheduled-query-alert-rule.b
       evaluationFrequencyMinutes: 15
       windowSizeMinutes: 15
       severity: 2
-      alertDescription: 'The API could not reach ACS or ACS rejected a trustee-notification email at send time (as opposed to a later bounce), or no mailing list was configured for the change -- so no notification was even attempted. Search Log Analytics traces around the reported timestamp for ACS-NOTIFICATION-GATEWAY or TRUSTEE-CHANGE-NOTIFICATION to see the specific failure.'
+      alertDescription: 'A trustee-notification email failed to send, could not be enqueued for async delivery, or the async queue consumer hit an uncaught error dispatching it -- so the recipient never got (or will not get) the notification. Matches on the NOTIFICATION_SEND_FAILURE_TAG message marker (backend/lib/use-cases/notifications/notification-alert-tag.ts), not moduleName -- search Log Analytics traces around the reported timestamp for that marker to see the specific failure and which module actually emitted it.'
     }
   }
 

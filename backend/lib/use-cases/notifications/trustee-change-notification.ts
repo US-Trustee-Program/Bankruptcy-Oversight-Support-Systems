@@ -17,11 +17,9 @@ import {
   compileTrusteeChangeTemplate,
 } from './templates/trustee-change-template';
 import { isCamsError } from '../../common-errors/cams-error';
+import { NOTIFICATION_SEND_FAILURE_TAG } from './notification-alert-tag';
 
-// Exported so every enqueue-side caller (TrusteesUseCase, TrusteeAppointmentsUseCase, the queue
-// consumer) logs failures under the same tag the acsSendFailureAlert scheduled query matches on
-// (ops/cloud-deployment/main.bicep) -- do not let a caller hardcode its own module string here.
-export const MODULE_NAME = 'TRUSTEE-CHANGE-NOTIFICATION';
+const MODULE_NAME = 'TRUSTEE-CHANGE-NOTIFICATION';
 
 type NotificationFailureReason = 'connection' | 'send' | 'skipped';
 
@@ -144,7 +142,7 @@ export class TrusteeChangeNotificationUseCase {
       const reason = getSendFailureReason(error);
       const detail = error instanceof Error ? error.message : 'unknown error';
       const message = `Failed to notify ${address} (covers: ${mailingList.covers.join(', ')}): ${detail}`;
-      context.logger.error(MODULE_NAME, message, error);
+      context.logger.error(MODULE_NAME, `${NOTIFICATION_SEND_FAILURE_TAG} ${message}`, error);
       if (reason === 'send') {
         await this.forwardUndeliverableToAdmin(context, address, compiled, detail);
       }
@@ -170,7 +168,7 @@ export class TrusteeChangeNotificationUseCase {
     if (!adminEmail) {
       context.logger.error(
         MODULE_NAME,
-        `ADMIN_NOTIFICATION_EMAIL is not configured; cannot forward the undeliverable notification originally addressed to '${address}'.`,
+        `${NOTIFICATION_SEND_FAILURE_TAG} ADMIN_NOTIFICATION_EMAIL is not configured; cannot forward the undeliverable notification originally addressed to '${address}'.`,
       );
       return;
     }
@@ -192,7 +190,7 @@ export class TrusteeChangeNotificationUseCase {
     } catch (error) {
       context.logger.error(
         MODULE_NAME,
-        `Failed to forward undeliverable trustee change notification to admin for '${address}'.`,
+        `${NOTIFICATION_SEND_FAILURE_TAG} Failed to forward undeliverable trustee change notification to admin for '${address}'.`,
         error,
       );
     }
@@ -221,7 +219,7 @@ export class TrusteeChangeNotificationUseCase {
     } catch (error) {
       context.logger.error(
         MODULE_NAME,
-        `Failed to archive sent trustee change notification (messageId: '${messageId}', recipient: '${recipientAddress}'). A bounce for this message cannot be reconstructed.`,
+        `${NOTIFICATION_SEND_FAILURE_TAG} Failed to archive sent trustee change notification (messageId: '${messageId}', recipient: '${recipientAddress}'). A bounce for this message cannot be reconstructed.`,
         error,
       );
     }
@@ -260,7 +258,7 @@ export class TrusteeChangeNotificationUseCase {
       }
 
       const message = `No mailing list is configured to receive notifications for '${routingKey}'; the change was saved but no email notification was sent.`;
-      context.logger.error(MODULE_NAME, message);
+      context.logger.error(MODULE_NAME, `${NOTIFICATION_SEND_FAILURE_TAG} ${message}`);
       skipped.push({ reason: 'skipped', message });
     }
 

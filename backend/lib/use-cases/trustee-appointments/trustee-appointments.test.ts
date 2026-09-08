@@ -1297,8 +1297,8 @@ describe('TrusteeAppointmentsUseCase tests', () => {
 
       expect(result).toEqual(updatedAppointment);
       expect(errorSpy).toHaveBeenCalledWith(
-        'TRUSTEE-CHANGE-NOTIFICATION',
-        'Failed to prepare or enqueue appointment change notification.',
+        'TRUSTEE-APPOINTMENTS-USE-CASE',
+        '[notification-send-failure] Failed to prepare or enqueue appointment change notification.',
         expect.any(Error),
       );
     });
@@ -1671,8 +1671,8 @@ describe('TrusteeAppointmentsUseCase tests', () => {
 
       expect(result).toEqual(mockCreatedAppointment);
       expect(errorSpy).toHaveBeenCalledWith(
-        'TRUSTEE-CHANGE-NOTIFICATION',
-        'Failed to prepare or enqueue appointment change notification.',
+        'TRUSTEE-APPOINTMENTS-USE-CASE',
+        '[notification-send-failure] Failed to prepare or enqueue appointment change notification.',
         expect.any(Error),
       );
     });

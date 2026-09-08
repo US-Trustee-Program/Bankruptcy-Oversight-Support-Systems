@@ -2089,8 +2089,8 @@ describe('TrusteesUseCase tests', () => {
 
       expect(result).toEqual(updatedTrustee);
       expect(errorSpy).toHaveBeenCalledWith(
-        'TRUSTEE-CHANGE-NOTIFICATION',
-        'Failed to prepare or enqueue trustee change notification.',
+        'TRUSTEES-USE-CASE',
+        '[notification-send-failure] Failed to prepare or enqueue trustee change notification.',
         expect.any(Error),
       );
     });
@@ -2110,8 +2110,8 @@ describe('TrusteesUseCase tests', () => {
 
       expect(result).toEqual(updatedTrustee);
       expect(errorSpy).toHaveBeenCalledWith(
-        'TRUSTEE-CHANGE-NOTIFICATION',
-        'Failed to prepare or enqueue trustee change notification.',
+        'TRUSTEES-USE-CASE',
+        '[notification-send-failure] Failed to prepare or enqueue trustee change notification.',
         expect.any(Error),
       );
       expect(queueTrusteeChangeNotificationSpy).not.toHaveBeenCalled();

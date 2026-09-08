@@ -32,7 +32,7 @@ import {
   AppointmentFieldSnapshot,
 } from './build-appointment-change-set';
 import { enqueueTrusteeChangeNotification } from '../notifications/enqueue-trustee-change-notification';
-import { MODULE_NAME as NOTIFICATION_MODULE_NAME } from '../notifications/trustee-change-notification';
+import { NOTIFICATION_SEND_FAILURE_TAG } from '../notifications/notification-alert-tag';
 
 const MODULE_NAME = 'TRUSTEE-APPOINTMENTS-USE-CASE';
 
@@ -412,8 +412,8 @@ export class TrusteeAppointmentsUseCase {
       }
     } catch (error) {
       context.logger.error(
-        NOTIFICATION_MODULE_NAME,
-        'Failed to prepare or enqueue appointment change notification.',
+        MODULE_NAME,
+        `${NOTIFICATION_SEND_FAILURE_TAG} Failed to prepare or enqueue appointment change notification.`,
         error,
       );
     }
