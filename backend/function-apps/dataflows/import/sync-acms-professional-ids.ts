@@ -10,7 +10,16 @@ import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow
 import { handleRateLimitRetry } from '../dataflows-rate-limit';
 
 const MODULE_NAME = 'SYNC-ACMS-PROFESSIONAL-IDS';
-const PAGE_SIZE = 500;
+// host.json's queues.visibilityTimeout (60s) is shared by every dataflow in this
+// function app, so it can't be raised just for this one — and the storage-queue
+// trigger binding used here doesn't expose the pop receipt needed to renew the
+// lease mid-invocation. Keeping PAGE_SIZE small (matching migrate-trustees.ts's
+// PAGE_SIZE) instead gives per-page processing time (each record does several
+// Cosmos round-trips: fingerprint lookup, name match, conflict check, write)
+// enough headroom to reliably finish well under the visibility timeout, so the
+// same PageMessage can't become visible again and be redelivered to a second,
+// concurrent invocation while the first is still processing it.
+const PAGE_SIZE = 50;
 
 type SyncAcmsProfessionalIdsStartMessage = StartMessage & {
   // Purges all existing trustee-professional-ids mappings and resets every group's sync
@@ -126,7 +135,11 @@ async function handlePage(message: PageMessage, invocationContext: InvocationCon
     throw new Error('Missing required environment variable: AzureWebJobsDataflowsStorage');
   }
 
-  const { groupDesignator, remainingGroups } = message;
+  // Defaults to [] so a PageMessage enqueued by the pre-continuation deploy
+  // (no remainingGroups field) degrades safely to "no more groups" instead of
+  // throwing when destructured below, rather than requiring the deploy to
+  // drain the queue first.
+  const { groupDesignator, remainingGroups = [] } = message;
   const appContext = await ContextCreator.getApplicationContext({ invocationContext });
   const trace = appContext.observability.startTrace(invocationContext.invocationId);
   const deps = SyncAcmsProfessionalIds.createDeps(appContext);
