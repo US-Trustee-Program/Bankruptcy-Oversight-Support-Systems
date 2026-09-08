@@ -57,18 +57,22 @@ describe('trustee-change-notification-event handler', () => {
     );
   });
 
-  test('on a partial failure, completes the trace with success: false', async () => {
+  test('on a partial failure, completes the trace with success: false and routes the event and failures to the DLQ', async () => {
     const { handler } = await import('./trustee-change-notification-event');
     const context = await createMockApplicationContext();
     vi.spyOn(ContextCreator, 'getApplicationContext').mockResolvedValue(context);
+    const failures = [{ reason: 'send' as const, message: 'boom' }];
     vi.spyOn(TrusteeChangeNotificationUseCase.prototype, 'notify').mockResolvedValue({
       attempted: 2,
       failed: 1,
-      failures: [{ reason: 'send', message: 'boom' }],
+      failures,
     });
     const completeTraceSpy = vi.spyOn(context.observability, 'completeTrace');
+    const invocationContext = makeInvocationContext();
+    const extraOutputsSetSpy = vi.spyOn(invocationContext.extraOutputs, 'set');
+    const event = makeEvent();
 
-    await handler(makeEvent(), makeInvocationContext());
+    await handler(event, invocationContext);
 
     expect(completeTraceSpy).toHaveBeenCalledWith(
       expect.anything(),
@@ -78,9 +82,33 @@ describe('trustee-change-notification-event handler', () => {
         properties: { attempted: '2', failed: '1' },
       }),
     );
+    expect(extraOutputsSetSpy).toHaveBeenCalledWith(TRUSTEE_CHANGE_NOTIFICATION_DLQ, {
+      event,
+      error: {
+        message: 'Trustee change notification partially failed: 1 of 2 recipient(s).',
+        failures,
+      },
+    });
   });
 
-  test('on an uncaught exception, routes the event and error to the DLQ, completes the trace with success: false, and does not rethrow', async () => {
+  test('on full success, does not route anything to the DLQ', async () => {
+    const { handler } = await import('./trustee-change-notification-event');
+    const context = await createMockApplicationContext();
+    vi.spyOn(ContextCreator, 'getApplicationContext').mockResolvedValue(context);
+    vi.spyOn(TrusteeChangeNotificationUseCase.prototype, 'notify').mockResolvedValue({
+      attempted: 2,
+      failed: 0,
+      failures: [],
+    });
+    const invocationContext = makeInvocationContext();
+    const extraOutputsSetSpy = vi.spyOn(invocationContext.extraOutputs, 'set');
+
+    await handler(makeEvent(), invocationContext);
+
+    expect(extraOutputsSetSpy).not.toHaveBeenCalled();
+  });
+
+  test('on an uncaught exception, routes the event and a serialized error to the DLQ, completes the trace with success: false, and does not rethrow', async () => {
     const { handler } = await import('./trustee-change-notification-event');
     const context = await createMockApplicationContext();
     vi.spyOn(ContextCreator, 'getApplicationContext').mockResolvedValue(context);
@@ -100,7 +128,30 @@ describe('trustee-change-notification-event handler', () => {
     );
     expect(extraOutputsSetSpy).toHaveBeenCalledWith(TRUSTEE_CHANGE_NOTIFICATION_DLQ, {
       event,
-      error: originalError,
+      error: {
+        name: 'Error',
+        message: 'notify blew up',
+        stack: originalError.stack,
+      },
+    });
+  });
+
+  test('on an uncaught exception with a non-Error value, serializes it via String()', async () => {
+    const { handler } = await import('./trustee-change-notification-event');
+    const context = await createMockApplicationContext();
+    vi.spyOn(ContextCreator, 'getApplicationContext').mockResolvedValue(context);
+    vi.spyOn(TrusteeChangeNotificationUseCase.prototype, 'notify').mockRejectedValue(
+      'not-an-error',
+    );
+    const invocationContext = makeInvocationContext();
+    const extraOutputsSetSpy = vi.spyOn(invocationContext.extraOutputs, 'set');
+    const event = makeEvent();
+
+    await handler(event, invocationContext);
+
+    expect(extraOutputsSetSpy).toHaveBeenCalledWith(TRUSTEE_CHANGE_NOTIFICATION_DLQ, {
+      event,
+      error: { message: 'not-an-error' },
     });
   });
 });

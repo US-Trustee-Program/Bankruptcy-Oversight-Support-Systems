@@ -12,6 +12,13 @@ import { TrusteeChangeNotificationUseCase } from '../../../lib/use-cases/notific
 const MODULE_NAME = ModuleNames.TRUSTEE_CHANGE_NOTIFICATION_EVENT;
 const HANDLER = buildFunctionName(MODULE_NAME, 'handler');
 
+function serializeError(error: unknown): { name?: string; message: string; stack?: string } {
+  if (error instanceof Error) {
+    return { name: error.name, message: error.message, stack: error.stack };
+  }
+  return { message: String(error) };
+}
+
 async function handler(
   event: TrusteeChangeNotificationEvent,
   invocationContext: InvocationContext,
@@ -31,13 +38,25 @@ async function handler(
       },
       measurements: {},
     });
+    if (summary.failed > 0) {
+      invocationContext.extraOutputs.set(TRUSTEE_CHANGE_NOTIFICATION_DLQ, {
+        event,
+        error: {
+          message: `Trustee change notification partially failed: ${summary.failed} of ${summary.attempted} recipient(s).`,
+          failures: summary.failures,
+        },
+      });
+    }
   } catch (error) {
     context.observability.completeTrace(trace, 'Trustee Change Notification', {
       success: false,
       properties: {},
       measurements: {},
     });
-    invocationContext.extraOutputs.set(TRUSTEE_CHANGE_NOTIFICATION_DLQ, { event, error });
+    invocationContext.extraOutputs.set(TRUSTEE_CHANGE_NOTIFICATION_DLQ, {
+      event,
+      error: serializeError(error),
+    });
   }
 }
 
