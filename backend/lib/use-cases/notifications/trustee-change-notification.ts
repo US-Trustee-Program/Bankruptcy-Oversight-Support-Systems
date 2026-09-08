@@ -81,12 +81,12 @@ export class TrusteeChangeNotificationUseCase {
       ? { address: changeSet.author.email, displayName: changeSet.author.name }
       : undefined;
 
-    const results: AddressSendResult[] = [];
-    for (const mailingList of mailingLists) {
-      results.push(
-        ...(await this.sendToMailingList(context, mailingList, changeSet, compiled, replyTo)),
-      );
-    }
+    const resultsByMailingList = await Promise.all(
+      mailingLists.map((mailingList) =>
+        this.sendToMailingList(context, mailingList, changeSet, compiled, replyTo),
+      ),
+    );
+    const results = resultsByMailingList.flat();
 
     const sendFailures = results.filter((r) => r.failure).map((r) => r.failure!);
     const failures = [...skipped, ...sendFailures];
@@ -108,34 +108,45 @@ export class TrusteeChangeNotificationUseCase {
     compiled: { subject: string; html: string; text: string },
     replyTo: Notification['replyTo'],
   ): Promise<AddressSendResult[]> {
-    const results: AddressSendResult[] = [];
-    for (const address of mailingList.recipientAddresses) {
-      const notification: Notification = {
-        to: address,
-        toDisplayName: mailingList.displayName,
-        subject: compiled.subject,
-        html: compiled.html,
-        text: compiled.text,
-        correlationId: context.invocationId,
-        replyTo,
-        trusteeId: changeSet.trusteeId,
-      };
-      try {
-        const result = await this.notificationGateway.send(notification);
-        await this.archiveSentEmail(context, result.messageId, address, changeSet);
-        results.push({ address });
-      } catch (error) {
-        const reason = getSendFailureReason(error);
-        const detail = error instanceof Error ? error.message : 'unknown error';
-        const message = `Failed to notify ${address} (covers: ${mailingList.covers.join(', ')}): ${detail}`;
-        context.logger.error(MODULE_NAME, message, error);
-        if (reason === 'send') {
-          await this.forwardUndeliverableToAdmin(context, address, compiled, detail);
-        }
-        results.push({ address, failure: { address, reason, message } });
+    return Promise.all(
+      mailingList.recipientAddresses.map((address) =>
+        this.sendToAddress(context, address, mailingList, changeSet, compiled, replyTo),
+      ),
+    );
+  }
+
+  private async sendToAddress(
+    context: ApplicationContext,
+    address: string,
+    mailingList: NotificationRecipient,
+    changeSet: TrusteeChangeSet,
+    compiled: { subject: string; html: string; text: string },
+    replyTo: Notification['replyTo'],
+  ): Promise<AddressSendResult> {
+    const notification: Notification = {
+      to: address,
+      toDisplayName: mailingList.displayName,
+      subject: compiled.subject,
+      html: compiled.html,
+      text: compiled.text,
+      correlationId: context.invocationId,
+      replyTo,
+      trusteeId: changeSet.trusteeId,
+    };
+    try {
+      const result = await this.notificationGateway.send(notification);
+      await this.archiveSentEmail(context, result.messageId, address, changeSet);
+      return { address };
+    } catch (error) {
+      const reason = getSendFailureReason(error);
+      const detail = error instanceof Error ? error.message : 'unknown error';
+      const message = `Failed to notify ${address} (covers: ${mailingList.covers.join(', ')}): ${detail}`;
+      context.logger.error(MODULE_NAME, message, error);
+      if (reason === 'send') {
+        await this.forwardUndeliverableToAdmin(context, address, compiled, detail);
       }
+      return { address, failure: { address, reason, message } };
     }
-    return results;
   }
 
   /**
@@ -218,17 +229,36 @@ export class TrusteeChangeNotificationUseCase {
     changeSet: TrusteeChangeSet,
   ): Promise<{ mailingLists: NotificationRecipient[]; skipped: NotificationFailure[] }> {
     const categories = new Set<RoutingCategory>(changeSet.fields.map((f) => f.category));
+    const routingKeys = Array.from(
+      new Set(
+        Array.from(categories).flatMap((category) =>
+          this.routingKeysForCategory(category, changeSet.chapters),
+        ),
+      ),
+    );
+
+    if (routingKeys.length === 0) return { mailingLists: [], skipped: [] };
+
+    const hits = await this.routingRepository.findRecipientsByRoutingKeys(routingKeys);
 
     const candidates: NotificationRecipient[] = [];
     const skipped: NotificationFailure[] = [];
-    for (const category of categories) {
-      const resolved = await this.resolveMailingListsForCategory(
-        context,
-        category,
-        changeSet.chapters,
-      );
-      candidates.push(...resolved.mailingLists);
-      skipped.push(...resolved.skipped);
+    for (const routingKey of routingKeys) {
+      const hit = hits.find((recipient) => recipient.covers.includes(routingKey));
+      if (hit) {
+        candidates.push(hit);
+        continue;
+      }
+
+      const fallback = process.env.DEFAULT_NOTIFICATION_RECIPIENT;
+      if (fallback) {
+        candidates.push({ covers: [], recipientAddresses: [fallback], displayName: 'Default' });
+        continue;
+      }
+
+      const message = `No mailing list is configured to receive notifications for '${routingKey}'; the change was saved but no email notification was sent.`;
+      context.logger.error(MODULE_NAME, message);
+      skipped.push({ reason: 'skipped', message });
     }
 
     const seen = new Set<string>();
@@ -247,44 +277,12 @@ export class TrusteeChangeNotificationUseCase {
     return { mailingLists: unique, skipped };
   }
 
-  private async resolveMailingListsForCategory(
-    context: ApplicationContext,
+  private routingKeysForCategory(
     category: RoutingCategory,
     chapters: TrusteeChangeSet['chapters'],
-  ): Promise<{ mailingLists: NotificationRecipient[]; skipped: NotificationFailure[] }> {
-    const routingKeys =
-      category === 'zoom-341'
-        ? ['category:zoom-341']
-        : (chapters ?? []).map((chapter) => `chapter:${chapter}`);
-
-    if (routingKeys.length === 0) return { mailingLists: [], skipped: [] };
-
-    const mailingLists: NotificationRecipient[] = [];
-    const skipped: NotificationFailure[] = [];
-    for (const routingKey of routingKeys) {
-      const resolved = await this.resolveMailingListForRoutingKey(context, routingKey);
-      if (resolved.mailingList) mailingLists.push(resolved.mailingList);
-      if (resolved.skip) skipped.push(resolved.skip);
-    }
-    return { mailingLists, skipped };
-  }
-
-  private async resolveMailingListForRoutingKey(
-    context: ApplicationContext,
-    routingKey: string,
-  ): Promise<{ mailingList: NotificationRecipient | null; skip?: NotificationFailure }> {
-    const hit = await this.routingRepository.findRecipientByRoutingKey(routingKey);
-    if (hit) return { mailingList: hit };
-
-    const fallback = process.env.DEFAULT_NOTIFICATION_RECIPIENT;
-    if (fallback) {
-      return {
-        mailingList: { covers: [], recipientAddresses: [fallback], displayName: 'Default' },
-      };
-    }
-
-    const message = `No mailing list is configured to receive notifications for '${routingKey}'; the change was saved but no email notification was sent.`;
-    context.logger.error(MODULE_NAME, message);
-    return { mailingList: null, skip: { reason: 'skipped', message } };
+  ): string[] {
+    return category === 'zoom-341'
+      ? ['category:zoom-341']
+      : (chapters ?? []).map((chapter) => `chapter:${chapter}`);
   }
 }

@@ -9,6 +9,7 @@ import { AppointmentType } from '@common/cams/trustees';
 import { MockNotificationGateway } from '../../testing/mock-gateways/mock-notification.gateway';
 import { CourtsUseCase } from '../courts/courts';
 import { CourtDivisionDetails } from '@common/cams/courts';
+import { NotificationRecipient } from '@common/cams/notifications';
 
 describe('TrusteeAppointmentsUseCase tests', () => {
   let context: ApplicationContext;
@@ -1155,23 +1156,28 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
       vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([]);
 
-      vi.spyOn(MockMongoRepository.prototype, 'findRecipientByRoutingKey').mockImplementation(
-        async (key: string) => {
-          if (key === 'chapter:11-subchapter-v') {
-            return {
+      vi.spyOn(MockMongoRepository.prototype, 'findRecipientsByRoutingKeys').mockImplementation(
+        async (keys: string[]) => {
+          const results: NotificationRecipient[] = [];
+          if (keys.includes('chapter:11-subchapter-v')) {
+            results.push({
               covers: ['chapter:11-subchapter-v'],
               recipientAddresses: ['subv@example.test'],
               displayName: 'Subchapter V Oversight',
-            };
+            });
           }
-          if (['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'].includes(key)) {
-            return {
+          if (
+            keys.some((key) =>
+              ['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'].includes(key),
+            )
+          ) {
+            results.push({
               covers: ['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'],
               recipientAddresses: ['ch7-oversight@example.test'],
               displayName: 'Default Chapter Oversight',
-            };
+            });
           }
-          return null;
+          return results;
         },
       );
     });
@@ -1592,16 +1598,22 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
       vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([]);
 
-      vi.spyOn(MockMongoRepository.prototype, 'findRecipientByRoutingKey').mockImplementation(
-        async (key: string) => {
-          if (['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'].includes(key)) {
-            return {
-              covers: ['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'],
-              recipientAddresses: ['ch-oversight@example.test'],
-              displayName: 'Default Chapter Oversight',
-            };
+      vi.spyOn(MockMongoRepository.prototype, 'findRecipientsByRoutingKeys').mockImplementation(
+        async (keys: string[]) => {
+          if (
+            keys.some((key) =>
+              ['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'].includes(key),
+            )
+          ) {
+            return [
+              {
+                covers: ['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'],
+                recipientAddresses: ['ch-oversight@example.test'],
+                displayName: 'Default Chapter Oversight',
+              },
+            ];
           }
-          return null;
+          return [];
         },
       );
     });

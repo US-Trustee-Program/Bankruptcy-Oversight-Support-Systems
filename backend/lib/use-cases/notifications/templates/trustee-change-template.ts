@@ -1,4 +1,5 @@
 import { TrusteeChangeField, TrusteeChangeSet } from '@common/cams/notifications';
+import { formatChapterType } from '@common/cams/trustees';
 import { TRUSTEE_CHANGE_TEMPLATE } from './trustee-change.template';
 
 export type CompiledTemplate = {
@@ -56,6 +57,19 @@ function buildChangedAtSuffix(iso?: string): string {
   return iso ? ` on ${formatTimestamp(iso)}` : '';
 }
 
+function chapterWord(chapters: NonNullable<TrusteeChangeSet['chapters']>): string {
+  return chapters.length > 1 ? 'Chapters' : 'Chapter';
+}
+
+function formatChapterList(chapters: NonNullable<TrusteeChangeSet['chapters']>): string {
+  return chapters.map(formatChapterType).join(', ');
+}
+
+function formatChapterLabel(chapters: TrusteeChangeSet['chapters']): string | undefined {
+  if (!chapters || chapters.length === 0) return undefined;
+  return `${chapterWord(chapters)}: ${formatChapterList(chapters)}`;
+}
+
 function generateRow(field: TrusteeChangeField): string {
   const shouldStack = field.stackValues ?? false;
   const beforeCell = field.comparisons
@@ -110,6 +124,11 @@ function buildPlaintext(changeSet: TrusteeChangeSet): string {
   const safeName = changeSet.trusteeName.replace(/[\r\n]/g, ' ');
   const lines: string[] = [`Trustee ${safeName}'s information has changed.`];
 
+  const chapterLabel = formatChapterLabel(changeSet.chapters);
+  if (chapterLabel) {
+    lines.push(chapterLabel);
+  }
+
   const appointmentFields = changeSet.fields.filter((f) => f.section === 'appointment');
   const meetingFields = changeSet.fields.filter((f) => f.section === 'meeting');
 
@@ -161,6 +180,12 @@ function renderSection(sectionHtml: string, rows: string): string {
   return sectionHtml;
 }
 
+function buildChapterLineHtml(changeSet: TrusteeChangeSet): string {
+  const label = formatChapterLabel(changeSet.chapters);
+  if (!label) return '';
+  return `\n                            <p style="margin: 4px 0 0 0; font-size: 14px; color: #000000;">${escapeHtml(label)}</p>`;
+}
+
 function buildAuthorSection(changeSet: TrusteeChangeSet): string {
   if (!changeSet.author) return '';
 
@@ -200,29 +225,51 @@ export function buildUndeliverableAdminText(
   );
 }
 
+function buildSubjectContextSuffix(changeSet: TrusteeChangeSet): string {
+  const parts: string[] = [];
+
+  if (changeSet.chapters && changeSet.chapters.length > 0) {
+    parts.push(`${chapterWord(changeSet.chapters)} ${formatChapterList(changeSet.chapters)}`);
+  }
+
+  if (changeSet.fields.some((field) => field.section === 'meeting')) {
+    parts.push('341 Meeting Update');
+  }
+
+  return parts.length > 0 ? ` (${parts.join(', ')})` : '';
+}
+
 export function compileTrusteeChangeTemplate(changeSet: TrusteeChangeSet): CompiledTemplate {
   const appointmentFields = changeSet.fields.filter((f) => f.section === 'appointment');
   const meetingFields = changeSet.fields.filter((f) => f.section === 'meeting');
   const appointmentRows = compileRows(appointmentFields);
   const meetingRows = compileRows(meetingFields);
 
-  const rendered = TRUSTEE_CHANGE_TEMPLATE.replaceAll(
-    '{{trustee_name}}',
+  const rendered = TRUSTEE_CHANGE_TEMPLATE.replaceAll('{{trustee_name}}', () =>
     escapeHtml(changeSet.trusteeName),
   )
     .replace(
       /<!-- Appointment Information Section -->[\s\S]*?{{appointment_info_rows}}[\s\S]*?<\/td>\s*<\/tr>/,
       (match) =>
-        renderSection(match.replace('{{appointment_info_rows}}', appointmentRows), appointmentRows),
+        renderSection(
+          match.replace('{{appointment_info_rows}}', () => appointmentRows),
+          appointmentRows,
+        ),
     )
     .replace(
       /<!-- 341 Meeting Information Section -->[\s\S]*?{{meeting_info_rows}}[\s\S]*?<\/td>\s*<\/tr>/,
-      (match) => renderSection(match.replace('{{meeting_info_rows}}', meetingRows), meetingRows),
+      (match) =>
+        renderSection(
+          match.replace('{{meeting_info_rows}}', () => meetingRows),
+          meetingRows,
+        ),
     )
-    .replace('{{author_section}}', buildAuthorSection(changeSet));
+    .replace('{{chapter_line}}', () => buildChapterLineHtml(changeSet))
+    .replace('{{author_section}}', () => buildAuthorSection(changeSet));
 
-  const rawSubject =
+  const baseSubject =
     changeSet.subjectOverride ?? `Trustee Information Changed: ${changeSet.trusteeName}`;
+  const rawSubject = `${baseSubject}${buildSubjectContextSuffix(changeSet)}`;
   const subject = rawSubject.replace(/[\r\n]/g, ' ');
 
   return {

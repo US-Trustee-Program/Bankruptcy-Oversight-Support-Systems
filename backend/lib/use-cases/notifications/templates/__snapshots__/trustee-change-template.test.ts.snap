@@ -18,6 +18,7 @@ exports[`compileTrusteeChangeTemplate > snapshot > matches the rendered HTML for
                     <tr>
                         <td style="padding-bottom: 20px;">
                             <p style="margin: 0; font-size: 14px; color: #000000;">Trustee Henry Green's information has changed.</p>
+                            <p style="margin: 4px 0 0 0; font-size: 14px; color: #000000;">Chapter: 7</p>
                         </td>
                     </tr>
 
