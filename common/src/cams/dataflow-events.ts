@@ -3,6 +3,7 @@ import { DxtrCase } from './cases';
 import { LegacyAddress } from './parties';
 import { Address, PhoneNumber } from './contact';
 import { TrusteeAppointment } from './trustee-appointments';
+import { TrusteeChangeSet } from './notifications';
 
 /**
  * Event triggered when trial attorney assignments change (add/remove).
@@ -55,6 +56,17 @@ export type TrusteeVerificationRemapMessage = {
  */
 export type CaseClosedEvent = {
   caseId: string;
+};
+
+/**
+ * Enqueued by TrusteesUseCase.updateTrustee's dispatchChangeNotification (and, in a later
+ * slice, TrusteeAppointmentsUseCase's dispatchAppointmentNotification) instead of sending the
+ * notification synchronously in the HTTP request path. Processed asynchronously by the
+ * trustee-change-notification-event dataflow, which calls
+ * TrusteeChangeNotificationUseCase.notify() unchanged.
+ */
+export type TrusteeChangeNotificationEvent = {
+  changeSet: TrusteeChangeSet;
 };
 
 /**

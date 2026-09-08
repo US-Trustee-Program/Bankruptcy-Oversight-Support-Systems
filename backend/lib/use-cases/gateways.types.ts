@@ -33,6 +33,7 @@ import { CaseAssignment } from '@common/cams/assignments';
 import {
   CaseAssignmentDownstreamEvent,
   TrusteeAppointmentDownstreamEvent,
+  TrusteeChangeNotificationEvent,
   TrusteeVerificationRemapMessage,
 } from '@common/cams/dataflow-events';
 import { CamsSession } from '@common/cams/session';
@@ -964,6 +965,7 @@ export interface ApiToDataflowsGateway {
   queueTrusteeAppointmentEvent(event: TrusteeAppointmentDownstreamEvent): Promise<void>;
   queueCaseReload(caseId: string): Promise<void>;
   queueTrusteeVerificationRemap(message: TrusteeVerificationRemapMessage): Promise<void>;
+  queueTrusteeChangeNotification(event: TrusteeChangeNotificationEvent): Promise<void>;
 }
 
 export interface ObservabilityTrace {

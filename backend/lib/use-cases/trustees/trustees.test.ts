@@ -1,4 +1,4 @@
-import { vi } from 'vitest';
+import { vi, Mock } from 'vitest';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext, getTheThrownError } from '../../testing/testing-utilities';
 import MockData from '@common/cams/test-utilities/mock-data';
@@ -11,7 +11,8 @@ import { NotFoundError } from '../../common-errors/not-found-error';
 import { FIELD_VALIDATION_MESSAGES } from '@common/cams/validation-messages';
 import { CourtsUseCase } from '../courts/courts';
 import { CourtDivisionDetails } from '@common/cams/courts';
-import { MockNotificationGateway } from '../../testing/mock-gateways/mock-notification.gateway';
+import factory from '../../factory';
+import { TrusteeChangeNotificationEvent } from '@common/cams/dataflow-events';
 import { AppointmentChapterType } from '@common/cams/trustees';
 import { ContactInformation, TypedPhoneNumber } from '@common/cams/contact';
 import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
@@ -1989,40 +1990,34 @@ describe('TrusteesUseCase tests', () => {
     });
   });
 
-  describe('updateTrustee notification dispatch (CAMS-768 Slice 1)', () => {
+  describe('updateTrustee notification dispatch (CAMS-856 async queue)', () => {
     const trusteeId = 'trustee-notify-1';
     let existingTrustee: ReturnType<typeof MockData.getTrustee>;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let sendSpy: ReturnType<typeof vi.spyOn<any, any>>;
+    let queueTrusteeChangeNotificationSpy: Mock<
+      (event: TrusteeChangeNotificationEvent) => Promise<void>
+    >;
 
     beforeEach(async () => {
       vi.restoreAllMocks();
       context = await createMockApplicationContext();
       context.featureFlags['trustee-change-notification-enabled'] = true;
+
+      queueTrusteeChangeNotificationSpy = vi.fn().mockResolvedValue(undefined);
+      vi.spyOn(factory, 'getApiToDataflowsGateway').mockReturnValue({
+        queueTrusteeChangeNotification: queueTrusteeChangeNotificationSpy,
+        queueCaseAssignmentEvent: vi.fn(),
+        queueTrusteeAppointmentEvent: vi.fn(),
+        queueCaseReload: vi.fn(),
+        queueTrusteeVerificationRemap: vi.fn(),
+      });
+
       trusteesUseCase = new TrusteesUseCase(context);
-      MockNotificationGateway.getInstance().clear();
-      sendSpy = vi.spyOn(MockNotificationGateway.prototype, 'send');
 
       existingTrustee = MockData.getTrustee({ trusteeId, name: 'Henry Green' });
       vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(existingTrustee);
       vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
 
-      vi.spyOn(MockMongoRepository.prototype, 'findRecipientsByRoutingKeys').mockImplementation(
-        async (keys: string[]) => {
-          if (keys.includes('chapter:7')) {
-            return [
-              {
-                covers: ['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'],
-                recipientAddresses: ['ch7-oversight@example.test'],
-                displayName: 'Default Chapter Oversight',
-              },
-            ];
-          }
-          return [];
-        },
-      );
-
-      // Provide a CH7 active appointment so resolvePrimaryChapter resolves.
+      // Provide a CH7 active appointment so resolveChapters resolves.
       vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([
         MockData.getTrusteeAppointment({
           trusteeId,
@@ -2033,7 +2028,7 @@ describe('TrusteesUseCase tests', () => {
       ]);
     });
 
-    test('does not dispatch when feature flag is disabled', async () => {
+    test('does not enqueue when feature flag is disabled', async () => {
       context.featureFlags['trustee-change-notification-enabled'] = false;
 
       const updatedTrustee = { ...existingTrustee, name: 'Henry G. Green' };
@@ -2041,40 +2036,42 @@ describe('TrusteesUseCase tests', () => {
 
       await trusteesUseCase.updateTrustee(context, trusteeId, { name: 'Henry G. Green' });
 
-      expect(MockNotificationGateway.getInstance().getRecorded()).toHaveLength(0);
+      expect(queueTrusteeChangeNotificationSpy).not.toHaveBeenCalled();
     });
 
-    test('dispatches one notification to the chapter:7 recipient on a profile-only change', async () => {
+    test('enqueues the fully-enriched changeSet (chapters, author, changedAt) on a profile-only change', async () => {
       const updatedTrustee = { ...existingTrustee, name: 'Henry G. Green' };
       vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
 
       await trusteesUseCase.updateTrustee(context, trusteeId, { name: 'Henry G. Green' });
 
-      await vi.waitFor(() => expect(sendSpy).toHaveBeenCalled());
-      const recorded = MockNotificationGateway.getInstance().getRecorded();
-      expect(recorded).toHaveLength(1);
-      expect(recorded[0].to).toBe('ch7-oversight@example.test');
-      expect(recorded[0].subject).toBe('Trustee Information Changed: Henry G. Green (Chapter 7)');
+      expect(queueTrusteeChangeNotificationSpy).toHaveBeenCalledWith({
+        changeSet: expect.objectContaining({
+          trusteeId,
+          chapters: ['7'],
+          author: { name: context.session.user.name, email: context.session.user.email },
+          changedAt: expect.any(String),
+        }),
+      });
     });
 
-    test('does not dispatch when the change set is empty', async () => {
+    test('does not enqueue when the change set is empty', async () => {
       // Update with the existing name -> no fields differ.
       const updatedTrustee = { ...existingTrustee };
       vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
 
       await trusteesUseCase.updateTrustee(context, trusteeId, { name: existingTrustee.name });
 
-      expect(MockNotificationGateway.getInstance().getRecorded()).toEqual([]);
+      expect(queueTrusteeChangeNotificationSpy).not.toHaveBeenCalled();
     });
 
-    test('returns the updated trustee successfully when the gateway throws', async () => {
+    test('returns the updated trustee successfully when the enqueue call rejects', async () => {
       const updatedTrustee = { ...existingTrustee, name: 'Henry G. Green' };
       vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
 
-      // Force the gateway to throw on send. The notification use case isolates this
-      // per-recipient failure, so it no longer bubbles up to dispatchChangeNotification's
-      // generic catch (see trustee-change-notification.ts).
-      sendSpy.mockRejectedValue(new Error('Simulated provider failure'));
+      // An enqueue failure must never fail the save -- this preserves today's contract that a
+      // notification-side failure of any kind never blocks the save.
+      queueTrusteeChangeNotificationSpy.mockRejectedValue(new Error('queue unavailable'));
       const errorSpy = vi.spyOn(context.logger, 'error');
 
       const result = await trusteesUseCase.updateTrustee(context, trusteeId, {
@@ -2082,71 +2079,17 @@ describe('TrusteesUseCase tests', () => {
       });
 
       expect(result).toEqual(updatedTrustee);
-      await vi.waitFor(() =>
-        expect(errorSpy).toHaveBeenCalledWith(
-          'TRUSTEE-CHANGE-NOTIFICATION',
-          'Failed to notify ch7-oversight@example.test (covers: chapter:7, chapter:11, chapter:12, chapter:13): Simulated provider failure',
-          expect.any(Error),
-        ),
+      expect(errorSpy).toHaveBeenCalledWith(
+        'TRUSTEE-CHANGE-NOTIFICATION',
+        'Failed to enqueue trustee change notification.',
+        expect.any(Error),
       );
     });
 
-    test('reports a failed completeTrace event when every send in the batch fails', async () => {
+    test('returns the updated trustee successfully when resolveChapters throws, and never enqueues', async () => {
       const updatedTrustee = { ...existingTrustee, name: 'Henry G. Green' };
       vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
 
-      // Every send fails, so notify() never throws (per-recipient isolation), but the
-      // aggregate failure should still surface via completeTrace rather than going unreported.
-      sendSpy.mockRejectedValue(new Error('Simulated provider failure'));
-      const completeTraceSpy = vi.spyOn(context.observability, 'completeTrace');
-
-      const result = await trusteesUseCase.updateTrustee(context, trusteeId, {
-        name: 'Henry G. Green',
-      });
-
-      expect(result).toEqual(updatedTrustee);
-      await vi.waitFor(() =>
-        expect(completeTraceSpy).toHaveBeenCalledWith(
-          expect.anything(),
-          'Trustee Change Notification',
-          expect.objectContaining({
-            success: false,
-            properties: { attempted: '1', failed: '1' },
-          }),
-        ),
-      );
-    });
-
-    test('reports a successful completeTrace event when every send in the batch succeeds', async () => {
-      const updatedTrustee = { ...existingTrustee, name: 'Henry G. Green' };
-      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
-      const completeTraceSpy = vi.spyOn(context.observability, 'completeTrace');
-
-      const result = await trusteesUseCase.updateTrustee(context, trusteeId, {
-        name: 'Henry G. Green',
-      });
-
-      expect(result).toEqual(updatedTrustee);
-      await vi.waitFor(() =>
-        expect(completeTraceSpy).toHaveBeenCalledWith(
-          expect.anything(),
-          'Trustee Change Notification',
-          expect.objectContaining({
-            success: true,
-            properties: { attempted: '1', failed: '0' },
-          }),
-        ),
-      );
-    });
-
-    test('returns the updated trustee successfully when resolveChapters throws, outside the per-recipient send isolation', async () => {
-      const updatedTrustee = { ...existingTrustee, name: 'Henry G. Green' };
-      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
-
-      // Unlike the gateway-throws case above, this failure happens before notify() is ever
-      // called (in dispatchChangeNotification's own resolveChapters call), so it's still
-      // caught by dispatchChangeNotification's outer try/catch rather than notify()'s
-      // per-recipient isolation.
       vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockRejectedValue(
         new Error('Simulated repository failure'),
       );
@@ -2157,17 +2100,15 @@ describe('TrusteesUseCase tests', () => {
       });
 
       expect(result).toEqual(updatedTrustee);
-      await vi.waitFor(() =>
-        expect(errorSpy).toHaveBeenCalledWith(
-          'TRUSTEES-USE-CASE',
-          'Failed to dispatch trustee change notification.',
-          expect.any(Error),
-        ),
+      expect(errorSpy).toHaveBeenCalledWith(
+        'TRUSTEE-CHANGE-NOTIFICATION',
+        'Failed to enqueue trustee change notification.',
+        expect.any(Error),
       );
-      expect(MockNotificationGateway.getInstance().getRecorded()).toEqual([]);
+      expect(queueTrusteeChangeNotificationSpy).not.toHaveBeenCalled();
     });
 
-    test('multi-field save produces one notification whose body contains every changed label', async () => {
+    test('multi-field save enqueues one changeSet whose fields contain every changed label', async () => {
       const newPublic = MockData.getContactInformation({ companyName: 'New Co' });
       const updatedTrustee = {
         ...existingTrustee,
@@ -2181,14 +2122,14 @@ describe('TrusteesUseCase tests', () => {
         public: newPublic,
       });
 
-      await vi.waitFor(() => expect(sendSpy).toHaveBeenCalled());
-      const recorded = MockNotificationGateway.getInstance().getRecorded();
-      expect(recorded).toHaveLength(1);
-      expect(recorded[0].html).toContain('Name');
-      expect(recorded[0].html).toContain('Public Contact');
+      expect(queueTrusteeChangeNotificationSpy).toHaveBeenCalledTimes(1);
+      const { changeSet } = queueTrusteeChangeNotificationSpy.mock.calls[0][0];
+      expect(changeSet.fields.map((field: { label: string }) => field.label)).toEqual(
+        expect.arrayContaining(['Name', 'Public Contact']),
+      );
     });
 
-    test('notification body includes author name and email from session user', async () => {
+    test('enqueued changeSet author reflects the session user name and email', async () => {
       context.session.user = {
         ...context.session.user,
         name: 'Alex Rivera',
@@ -2200,14 +2141,14 @@ describe('TrusteesUseCase tests', () => {
 
       await trusteesUseCase.updateTrustee(context, trusteeId, { name: 'Henry G. Green' });
 
-      await vi.waitFor(() => expect(sendSpy).toHaveBeenCalled());
-      const recorded = MockNotificationGateway.getInstance().getRecorded();
-      expect(recorded).toHaveLength(1);
-      expect(recorded[0].html).toContain('Alex Rivera');
-      expect(recorded[0].html).toContain('alex@ustp.test');
+      expect(queueTrusteeChangeNotificationSpy).toHaveBeenCalledWith({
+        changeSet: expect.objectContaining({
+          author: { name: 'Alex Rivera', email: 'alex@ustp.test' },
+        }),
+      });
     });
 
-    test('notification body includes profile link when CAMS_FRONTEND_URL is set', async () => {
+    test('enqueued changeSet includes a profileLink when CAMS_FRONTEND_URL is set', async () => {
       process.env.CAMS_FRONTEND_URL = 'https://cams.ustp.gov';
 
       const updatedTrustee = { ...existingTrustee, name: 'Henry G. Green' };
@@ -2215,15 +2156,16 @@ describe('TrusteesUseCase tests', () => {
 
       await trusteesUseCase.updateTrustee(context, trusteeId, { name: 'Henry G. Green' });
 
-      await vi.waitFor(() => expect(sendSpy).toHaveBeenCalled());
-      const recorded = MockNotificationGateway.getInstance().getRecorded();
-      expect(recorded).toHaveLength(1);
-      expect(recorded[0].html).toContain(`https://cams.ustp.gov/trustees/${trusteeId}`);
+      expect(queueTrusteeChangeNotificationSpy).toHaveBeenCalledWith({
+        changeSet: expect.objectContaining({
+          profileLink: `https://cams.ustp.gov/trustees/${trusteeId}`,
+        }),
+      });
 
       delete process.env.CAMS_FRONTEND_URL;
     });
 
-    test('notification body omits profile link when CAMS_FRONTEND_URL is not set', async () => {
+    test('enqueued changeSet omits profileLink when CAMS_FRONTEND_URL is not set', async () => {
       delete process.env.CAMS_FRONTEND_URL;
 
       const updatedTrustee = { ...existingTrustee, name: 'Henry G. Green' };
@@ -2231,13 +2173,12 @@ describe('TrusteesUseCase tests', () => {
 
       await trusteesUseCase.updateTrustee(context, trusteeId, { name: 'Henry G. Green' });
 
-      await vi.waitFor(() => expect(sendSpy).toHaveBeenCalled());
-      const recorded = MockNotificationGateway.getInstance().getRecorded();
-      expect(recorded).toHaveLength(1);
-      expect(recorded[0].html).not.toContain('View Trustee Profile');
+      expect(queueTrusteeChangeNotificationSpy).toHaveBeenCalledTimes(1);
+      const { changeSet } = queueTrusteeChangeNotificationSpy.mock.calls[0][0];
+      expect(changeSet.profileLink).toBeUndefined();
     });
 
-    test('does not dispatch notification when suppressNotifications is true', async () => {
+    test('does not enqueue when suppressNotifications is true', async () => {
       const updatedTrustee = { ...existingTrustee, name: 'Henry G. Green' };
       vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
 
@@ -2249,7 +2190,7 @@ describe('TrusteesUseCase tests', () => {
       );
 
       expect(result).toEqual(updatedTrustee);
-      expect(MockNotificationGateway.getInstance().getRecorded()).toHaveLength(0);
+      expect(queueTrusteeChangeNotificationSpy).not.toHaveBeenCalled();
     });
 
     test('still writes audit history when suppressNotifications is true', async () => {
@@ -2267,17 +2208,17 @@ describe('TrusteesUseCase tests', () => {
       expect(historySpy).toHaveBeenCalled();
     });
 
-    test('does not dispatch when only internal contact changes', async () => {
+    test('does not enqueue when only internal contact changes', async () => {
       const newInternal = MockData.getContactInformation({ companyName: 'Internal Co' });
       const updatedTrustee = { ...existingTrustee, internal: newInternal };
       vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
 
       await trusteesUseCase.updateTrustee(context, trusteeId, { internal: newInternal });
 
-      expect(MockNotificationGateway.getInstance().getRecorded()).toHaveLength(0);
+      expect(queueTrusteeChangeNotificationSpy).not.toHaveBeenCalled();
     });
 
-    test('does not dispatch when only banks change', async () => {
+    test('does not enqueue when only banks change', async () => {
       const trusteeWithSoftware = MockData.getTrustee({ trusteeId, softwareId: 'sw-axos' });
       vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(trusteeWithSoftware);
       vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockResolvedValue({
@@ -2293,10 +2234,10 @@ describe('TrusteesUseCase tests', () => {
 
       await trusteesUseCase.updateTrustee(context, trusteeId, { banks: ['bank-a'] });
 
-      expect(MockNotificationGateway.getInstance().getRecorded()).toHaveLength(0);
+      expect(queueTrusteeChangeNotificationSpy).not.toHaveBeenCalled();
     });
 
-    test('does not dispatch when only software vendor changes', async () => {
+    test('does not enqueue when only software vendor changes', async () => {
       const newSoftwareId = 'sw-new';
       vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockResolvedValue({
         id: newSoftwareId,
@@ -2308,10 +2249,10 @@ describe('TrusteesUseCase tests', () => {
 
       await trusteesUseCase.updateTrustee(context, trusteeId, { softwareId: newSoftwareId });
 
-      expect(MockNotificationGateway.getInstance().getRecorded()).toHaveLength(0);
+      expect(queueTrusteeChangeNotificationSpy).not.toHaveBeenCalled();
     });
 
-    test('does not dispatch when only suppressed fields change', async () => {
+    test('does not enqueue when only suppressed fields change', async () => {
       const newInternal = MockData.getContactInformation({ companyName: 'Internal Co' });
       const newSoftwareId = 'sw-new';
       vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockResolvedValue({
@@ -2331,10 +2272,10 @@ describe('TrusteesUseCase tests', () => {
         softwareId: newSoftwareId,
       });
 
-      expect(MockNotificationGateway.getInstance().getRecorded()).toHaveLength(0);
+      expect(queueTrusteeChangeNotificationSpy).not.toHaveBeenCalled();
     });
 
-    test('dispatches when name and internal contact change together, omitting internal contact from email', async () => {
+    test('enqueues when name and internal contact change together, omitting internal contact from the changeSet fields', async () => {
       const newInternal = MockData.getContactInformation({ companyName: 'Internal Co' });
       const updatedTrustee = {
         ...existingTrustee,
@@ -2348,11 +2289,9 @@ describe('TrusteesUseCase tests', () => {
         internal: newInternal,
       });
 
-      await vi.waitFor(() => expect(sendSpy).toHaveBeenCalled());
-      const recorded = MockNotificationGateway.getInstance().getRecorded();
-      expect(recorded).toHaveLength(1);
-      expect(recorded[0].html).toContain('Name');
-      expect(recorded[0].html).not.toContain('Internal Contact');
+      expect(queueTrusteeChangeNotificationSpy).toHaveBeenCalledTimes(1);
+      const { changeSet } = queueTrusteeChangeNotificationSpy.mock.calls[0][0];
+      expect(changeSet.fields.map((field: { label: string }) => field.label)).toEqual(['Name']);
     });
 
     test('still writes audit history for suppressed fields even when notification is not sent', async () => {
@@ -2366,7 +2305,7 @@ describe('TrusteesUseCase tests', () => {
       expect(historySpy).toHaveBeenCalledWith(
         expect.objectContaining({ documentType: 'AUDIT_INTERNAL_CONTACT' }),
       );
-      expect(MockNotificationGateway.getInstance().getRecorded()).toHaveLength(0);
+      expect(queueTrusteeChangeNotificationSpy).not.toHaveBeenCalled();
     });
   });
 });

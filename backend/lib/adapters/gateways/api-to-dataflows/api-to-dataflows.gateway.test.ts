@@ -8,11 +8,13 @@ import {
   CASE_ASSIGNMENT_EVENT_QUEUE,
   SYNC_CASES_PAGE_QUEUE,
   TRUSTEE_APPOINTMENT_EVENT_QUEUE,
+  TRUSTEE_CHANGE_NOTIFICATION_QUEUE,
   TRUSTEE_MATCH_VERIFICATION_REMAP_QUEUE,
 } from '../../../storage-queues';
 import {
   CaseAssignmentDownstreamEvent,
   TrusteeAppointmentDownstreamEvent,
+  TrusteeChangeNotificationEvent,
   TrusteeVerificationRemapMessage,
 } from '@common/cams/dataflow-events';
 
@@ -147,7 +149,35 @@ describe('ApiToDataflowsGatewayImpl', () => {
     });
   });
 
-  // Shared behavior across all four queue methods: each delegates to the private enqueue(),
+  describe('queueTrusteeChangeNotification', () => {
+    test('sends the trustee change notification event as-is to the trustee-change-notification queue', async () => {
+      const gateway = new ApiToDataflowsGatewayImpl();
+      const event: TrusteeChangeNotificationEvent = {
+        changeSet: {
+          trusteeId: 'trustee-123',
+          trusteeName: 'Jane Trustee',
+          fields: [
+            {
+              label: 'Name',
+              comparisons: [{ before: 'A', after: 'B' }],
+              category: 'profile',
+              section: 'appointment',
+            },
+          ],
+        },
+      };
+
+      await gateway.queueTrusteeChangeNotification(event);
+
+      expect(fromConnectionStringSpy).toHaveBeenCalledWith(
+        'UseDevelopmentStorage=true',
+        TRUSTEE_CHANGE_NOTIFICATION_QUEUE.queueName,
+      );
+      expect(mockSendMessage).toHaveBeenCalledWith(JSON.stringify(event));
+    });
+  });
+
+  // Shared behavior across all five queue methods: each delegates to the private enqueue(),
   // so a send failure must propagate the same way regardless of which public method was called.
   describe('when the underlying send fails', () => {
     test.each([
@@ -187,6 +217,24 @@ describe('ApiToDataflowsGatewayImpl', () => {
       [
         'queueCaseReload',
         (gateway: ApiToDataflowsGatewayImpl) => gateway.queueCaseReload('081-12-34567'),
+      ],
+      [
+        'queueTrusteeChangeNotification',
+        (gateway: ApiToDataflowsGatewayImpl) =>
+          gateway.queueTrusteeChangeNotification({
+            changeSet: {
+              trusteeId: 'trustee-123',
+              trusteeName: 'Jane Trustee',
+              fields: [
+                {
+                  label: 'Name',
+                  comparisons: [{ before: 'A', after: 'B' }],
+                  category: 'profile',
+                  section: 'appointment',
+                },
+              ],
+            },
+          }),
       ],
     ])(
       '%s propagates a send failure instead of silently dropping the message',

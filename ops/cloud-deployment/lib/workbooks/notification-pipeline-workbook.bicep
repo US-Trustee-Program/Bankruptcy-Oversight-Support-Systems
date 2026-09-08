@@ -15,13 +15,18 @@ param analyticsWorkspaceResourceId string
 param tags object = {}
 
 var apiAppInsightsName = last(split(apiAppInsightsResourceId, '/'))
+var dataflowsAppInsightsName = last(split(dataflowsAppInsightsResourceId, '/'))
 var analyticsWorkspaceName = last(split(analyticsWorkspaceResourceId, '/'))
 
 var workbookJson = replace(
   replace(
-    loadTextContent('trustee-notification-pipeline.json'),
-    '{NodeApiAppInsights:name}',
-    apiAppInsightsName
+    replace(
+      loadTextContent('trustee-notification-pipeline.json'),
+      '{NodeApiAppInsights:name}',
+      apiAppInsightsName
+    ),
+    '{DataflowsAppInsights:name}',
+    dataflowsAppInsightsName
   ),
   '{LogAnalyticsWorkspace:name}',
   analyticsWorkspaceName
