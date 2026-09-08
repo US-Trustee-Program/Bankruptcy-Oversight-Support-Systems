@@ -4,6 +4,7 @@ import useFeatureFlags, {
   RESTRICT_ADDING_TRUSTEES,
 } from '@/lib/hooks/UseFeatureFlags';
 import useFeatureFlagReadiness from '@/lib/hooks/UseFeatureFlagReadiness';
+import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import TrusteePublicContactForm from './forms/TrusteePublicContactForm';
 
 export function AddTrusteeRouteGuard() {
@@ -11,7 +12,7 @@ export function AddTrusteeRouteGuard() {
   const flags = useFeatureFlags();
 
   if (!isReady) {
-    return <></>;
+    return <LoadingSpinner caption="Checking access..." />;
   }
 
   // isReady only means the LaunchDarkly client finished initializing, not that this
@@ -20,7 +21,7 @@ export function AddTrusteeRouteGuard() {
   // as false and wrongly redirecting an authorized user.
   const hasFlagValue = RESTRICT_ADDING_TRUSTEES in flags;
   if (!hasFlagValue && !hasTimedOut) {
-    return <></>;
+    return <LoadingSpinner caption="Checking access..." />;
   }
 
   if (isFlagEnabled(flags, RESTRICT_ADDING_TRUSTEES)) {

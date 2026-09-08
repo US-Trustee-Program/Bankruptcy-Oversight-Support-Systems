@@ -38,13 +38,13 @@ describe('AddTrusteeRouteGuard', () => {
     vi.restoreAllMocks();
   });
 
-  test('renders nothing while feature flags are not ready', () => {
+  test('shows a loading spinner while feature flags are not ready', () => {
     mockUseFeatureFlagReadiness.mockReturnValue({ isReady: false, hasTimedOut: false });
     mockUseFeatureFlags.mockReturnValue({});
 
-    const { container } = renderGuard();
+    renderGuard();
 
-    expect(container).toBeEmptyDOMElement();
+    expect(screen.getByRole('status')).toBeInTheDocument();
     expect(screen.queryByTestId('trustee-create-form')).not.toBeInTheDocument();
     expect(screen.queryByTestId('trustees-list-page')).not.toBeInTheDocument();
   });
@@ -91,13 +91,13 @@ describe('AddTrusteeRouteGuard', () => {
     expect(screen.queryByTestId('trustee-create-form')).not.toBeInTheDocument();
   });
 
-  test('renders nothing when the LD client is ready but the flag has not populated and the grace period has not elapsed', () => {
+  test('shows a loading spinner when the LD client is ready but the flag has not populated and the grace period has not elapsed', () => {
     mockUseFeatureFlagReadiness.mockReturnValue({ isReady: true, hasTimedOut: false });
     mockUseFeatureFlags.mockReturnValue({});
 
-    const { container } = renderGuard();
+    renderGuard();
 
-    expect(container).toBeEmptyDOMElement();
+    expect(screen.getByRole('status')).toBeInTheDocument();
     expect(screen.queryByTestId('trustee-create-form')).not.toBeInTheDocument();
     expect(screen.queryByTestId('trustees-list-page')).not.toBeInTheDocument();
   });
