@@ -7,7 +7,10 @@ import {
 import { buildFunctionName } from '../dataflows-common';
 import { TrusteeChangeNotificationEvent } from '@common/cams/dataflow-events';
 import ContextCreator from '../../azure/application-context-creator';
-import { TrusteeChangeNotificationUseCase } from '../../../lib/use-cases/notifications/trustee-change-notification';
+import {
+  TrusteeChangeNotificationUseCase,
+  MODULE_NAME as NOTIFICATION_MODULE_NAME,
+} from '../../../lib/use-cases/notifications/trustee-change-notification';
 
 const MODULE_NAME = ModuleNames.TRUSTEE_CHANGE_NOTIFICATION_EVENT;
 const HANDLER = buildFunctionName(MODULE_NAME, 'handler');
@@ -57,6 +60,11 @@ async function handler(
     // No handleRateLimitRetry here, unlike sibling consumers (e.g. trustee-verification-remap.ts):
     // this processes one notification per invocation rather than a page of Mongo writes, so a
     // transient Cosmos throttle routes straight to the DLQ instead of requeuing with backoff.
+    context.logger.error(
+      NOTIFICATION_MODULE_NAME,
+      'Uncaught exception dispatching trustee change notification.',
+      error,
+    );
     context.observability.completeTrace(
       trace,
       'Trustee Change Notification',

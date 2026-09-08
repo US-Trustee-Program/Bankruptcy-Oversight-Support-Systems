@@ -1142,7 +1142,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
     });
   });
 
-  describe('updateAppointment notification dispatch (CAMS-856 async queue)', () => {
+  describe('updateAppointment notification dispatch', () => {
     const trusteeId = 'trustee-notify-apt';
     const appointmentId = 'appointment-notify-1';
     let queueTrusteeChangeNotificationSpy: Mock<
@@ -1249,6 +1249,8 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       expect(queueTrusteeChangeNotificationSpy).toHaveBeenCalledTimes(1);
       const { changeSet } = queueTrusteeChangeNotificationSpy.mock.calls[0][0];
       expect(changeSet.trusteeId).toBe(trusteeId);
+      expect(changeSet.trusteeName).toBe('Henry Green');
+      expect(changeSet.subjectOverride).toBe('Trustee Appointment Changed: Henry Green');
       expect(changeSet.fields).toEqual([expect.objectContaining({ label: 'Status' })]);
     });
 
@@ -1295,8 +1297,8 @@ describe('TrusteeAppointmentsUseCase tests', () => {
 
       expect(result).toEqual(updatedAppointment);
       expect(errorSpy).toHaveBeenCalledWith(
-        'TRUSTEE-APPOINTMENTS-USE-CASE',
-        'Failed to dispatch appointment notification.',
+        'TRUSTEE-CHANGE-NOTIFICATION',
+        'Failed to prepare or enqueue appointment change notification.',
         expect.any(Error),
       );
     });
@@ -1543,7 +1545,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
     });
   });
 
-  describe('createAppointment notification dispatch (CAMS-856 async queue)', () => {
+  describe('createAppointment notification dispatch', () => {
     const trusteeId = 'trustee-notify-create';
     let queueTrusteeChangeNotificationSpy: Mock<
       (event: TrusteeChangeNotificationEvent) => Promise<void>
@@ -1669,8 +1671,8 @@ describe('TrusteeAppointmentsUseCase tests', () => {
 
       expect(result).toEqual(mockCreatedAppointment);
       expect(errorSpy).toHaveBeenCalledWith(
-        'TRUSTEE-APPOINTMENTS-USE-CASE',
-        'Failed to dispatch appointment notification.',
+        'TRUSTEE-CHANGE-NOTIFICATION',
+        'Failed to prepare or enqueue appointment change notification.',
         expect.any(Error),
       );
     });

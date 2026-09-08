@@ -126,12 +126,18 @@ describe('trustee-change-notification-event handler', () => {
     const originalError = new Error('notify blew up');
     vi.spyOn(TrusteeChangeNotificationUseCase.prototype, 'notify').mockRejectedValue(originalError);
     const completeTraceSpy = vi.spyOn(context.observability, 'completeTrace');
+    const errorSpy = vi.spyOn(context.logger, 'error');
     const invocationContext = makeInvocationContext();
     const extraOutputsSetSpy = vi.spyOn(invocationContext.extraOutputs, 'set');
     const event = makeEvent();
 
     await expect(handler(event, invocationContext)).resolves.toBeUndefined();
 
+    expect(errorSpy).toHaveBeenCalledWith(
+      'TRUSTEE-CHANGE-NOTIFICATION',
+      'Uncaught exception dispatching trustee change notification.',
+      originalError,
+    );
     expect(completeTraceSpy).toHaveBeenCalledWith(
       expect.anything(),
       'Trustee Change Notification',

@@ -1990,7 +1990,7 @@ describe('TrusteesUseCase tests', () => {
     });
   });
 
-  describe('updateTrustee notification dispatch (CAMS-856 async queue)', () => {
+  describe('updateTrustee notification dispatch', () => {
     const trusteeId = 'trustee-notify-1';
     let existingTrustee: ReturnType<typeof MockData.getTrustee>;
     let queueTrusteeChangeNotificationSpy: Mock<
@@ -2089,7 +2089,7 @@ describe('TrusteesUseCase tests', () => {
 
       expect(result).toEqual(updatedTrustee);
       expect(errorSpy).toHaveBeenCalledWith(
-        'TRUSTEES-USE-CASE',
+        'TRUSTEE-CHANGE-NOTIFICATION',
         'Failed to prepare or enqueue trustee change notification.',
         expect.any(Error),
       );
@@ -2110,7 +2110,7 @@ describe('TrusteesUseCase tests', () => {
 
       expect(result).toEqual(updatedTrustee);
       expect(errorSpy).toHaveBeenCalledWith(
-        'TRUSTEES-USE-CASE',
+        'TRUSTEE-CHANGE-NOTIFICATION',
         'Failed to prepare or enqueue trustee change notification.',
         expect.any(Error),
       );

@@ -18,7 +18,10 @@ import {
 } from './templates/trustee-change-template';
 import { isCamsError } from '../../common-errors/cams-error';
 
-const MODULE_NAME = 'TRUSTEE-CHANGE-NOTIFICATION';
+// Exported so every enqueue-side caller (TrusteesUseCase, TrusteeAppointmentsUseCase, the queue
+// consumer) logs failures under the same tag the acsSendFailureAlert scheduled query matches on
+// (ops/cloud-deployment/main.bicep) -- do not let a caller hardcode its own module string here.
+export const MODULE_NAME = 'TRUSTEE-CHANGE-NOTIFICATION';
 
 type NotificationFailureReason = 'connection' | 'send' | 'skipped';
 
