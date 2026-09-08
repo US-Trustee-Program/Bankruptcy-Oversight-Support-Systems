@@ -1,4 +1,4 @@
-import { vi } from 'vitest';
+import { vi, Mock } from 'vitest';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext, getTheThrownError } from '../../testing/testing-utilities';
 import MockData from '@common/cams/test-utilities/mock-data';
@@ -6,10 +6,10 @@ import { TrusteeAppointmentsUseCase } from './trustee-appointments';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
 import { AppointmentType } from '@common/cams/trustees';
-import { MockNotificationGateway } from '../../testing/mock-gateways/mock-notification.gateway';
 import { CourtsUseCase } from '../courts/courts';
 import { CourtDivisionDetails } from '@common/cams/courts';
-import { NotificationRecipient } from '@common/cams/notifications';
+import factory from '../../factory';
+import { TrusteeChangeNotificationEvent } from '@common/cams/dataflow-events';
 
 describe('TrusteeAppointmentsUseCase tests', () => {
   let context: ApplicationContext;
@@ -1142,47 +1142,40 @@ describe('TrusteeAppointmentsUseCase tests', () => {
     });
   });
 
-  describe('updateAppointment notification dispatch', () => {
+  describe('updateAppointment notification dispatch (CAMS-856 async queue)', () => {
     const trusteeId = 'trustee-notify-apt';
     const appointmentId = 'appointment-notify-1';
+    let queueTrusteeChangeNotificationSpy: Mock<
+      (event: TrusteeChangeNotificationEvent) => Promise<void>
+    >;
+
+    afterEach(() => {
+      // See the matching comment in trustees.test.ts: createMockApplicationContext()
+      // reassigns process.env wholesale, so vi.stubEnv bookkeeping can't be relied on here.
+      delete process.env.CAMS_FRONTEND_URL;
+    });
 
     beforeEach(async () => {
       vi.restoreAllMocks();
       context = await createMockApplicationContext();
       context.featureFlags['trustee-change-notification-enabled'] = true;
+
+      queueTrusteeChangeNotificationSpy = vi.fn().mockResolvedValue(undefined);
+      vi.spyOn(factory, 'getApiToDataflowsGateway').mockReturnValue({
+        queueTrusteeChangeNotification: queueTrusteeChangeNotificationSpy,
+        queueCaseAssignmentEvent: vi.fn(),
+        queueTrusteeAppointmentEvent: vi.fn(),
+        queueCaseReload: vi.fn(),
+        queueTrusteeVerificationRemap: vi.fn(),
+      });
+
       trusteeAppointmentsUseCase = new TrusteeAppointmentsUseCase(context);
-      MockNotificationGateway.getInstance().clear();
 
       vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
       vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([]);
-
-      vi.spyOn(MockMongoRepository.prototype, 'findRecipientsByRoutingKeys').mockImplementation(
-        async (keys: string[]) => {
-          const results: NotificationRecipient[] = [];
-          if (keys.includes('chapter:11-subchapter-v')) {
-            results.push({
-              covers: ['chapter:11-subchapter-v'],
-              recipientAddresses: ['subv@example.test'],
-              displayName: 'Subchapter V Oversight',
-            });
-          }
-          if (
-            keys.some((key) =>
-              ['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'].includes(key),
-            )
-          ) {
-            results.push({
-              covers: ['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'],
-              recipientAddresses: ['ch7-oversight@example.test'],
-              displayName: 'Default Chapter Oversight',
-            });
-          }
-          return results;
-        },
-      );
     });
 
-    test('does not dispatch when feature flag is disabled', async () => {
+    test('does not enqueue when feature flag is disabled', async () => {
       context.featureFlags['trustee-change-notification-enabled'] = false;
 
       const existingAppointment = MockData.getTrusteeAppointment({
@@ -1216,10 +1209,10 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         effectiveDate: '2024-01-15',
       });
 
-      expect(MockNotificationGateway.getInstance().getRecorded()).toHaveLength(0);
+      expect(queueTrusteeChangeNotificationSpy).not.toHaveBeenCalled();
     });
 
-    test('dispatches one notification when appointment status changes', async () => {
+    test('enqueues one changeSet when appointment status changes', async () => {
       const mockTrustee = MockData.getTrustee({ trusteeId, name: 'Henry Green' });
       const existingAppointment = MockData.getTrusteeAppointment({
         id: appointmentId,
@@ -1253,13 +1246,13 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         effectiveDate: '2024-01-15',
       });
 
-      const recorded = MockNotificationGateway.getInstance().getRecorded();
-      expect(recorded).toHaveLength(1);
-      expect(recorded[0].subject).toContain('Trustee Appointment Changed');
-      expect(recorded[0].html).toContain('Status');
+      expect(queueTrusteeChangeNotificationSpy).toHaveBeenCalledTimes(1);
+      const { changeSet } = queueTrusteeChangeNotificationSpy.mock.calls[0][0];
+      expect(changeSet.trusteeId).toBe(trusteeId);
+      expect(changeSet.fields).toEqual([expect.objectContaining({ label: 'Status' })]);
     });
 
-    test('notification failure does not fail the appointment save', async () => {
+    test('returns the updated appointment successfully when the enqueue call rejects', async () => {
       const mockTrustee = MockData.getTrustee({ trusteeId, name: 'Henry Green' });
       const existingAppointment = MockData.getTrusteeAppointment({
         id: appointmentId,
@@ -1282,9 +1275,8 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(
         updatedAppointment,
       );
-      vi.spyOn(MockNotificationGateway.prototype, 'send').mockRejectedValue(
-        new Error('Simulated provider failure'),
-      );
+      queueTrusteeChangeNotificationSpy.mockRejectedValue(new Error('queue unavailable'));
+      const errorSpy = vi.spyOn(context.logger, 'error');
 
       const result = await trusteeAppointmentsUseCase.updateAppointment(
         context,
@@ -1302,9 +1294,14 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       );
 
       expect(result).toEqual(updatedAppointment);
+      expect(errorSpy).toHaveBeenCalledWith(
+        'TRUSTEE-APPOINTMENTS-USE-CASE',
+        'Failed to dispatch appointment notification.',
+        expect.any(Error),
+      );
     });
 
-    test('no notification when appointment does not change', async () => {
+    test('does not enqueue when appointment does not change', async () => {
       const existingAppointment = MockData.getTrusteeAppointment({
         id: appointmentId,
         trusteeId,
@@ -1332,10 +1329,10 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         effectiveDate: '2024-01-15',
       });
 
-      expect(MockNotificationGateway.getInstance().getRecorded()).toHaveLength(0);
+      expect(queueTrusteeChangeNotificationSpy).not.toHaveBeenCalled();
     });
 
-    test('routes to Sub-V mailbox when chapter changes to 11-subchapter-v', async () => {
+    test('enqueued changeSet reflects a chapter change to 11-subchapter-v', async () => {
       const mockTrustee = MockData.getTrustee({ trusteeId, name: 'Henry Green' });
       const existingAppointment = MockData.getTrusteeAppointment({
         id: appointmentId,
@@ -1370,51 +1367,16 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         effectiveDate: '2024-01-15',
       });
 
-      const recorded = MockNotificationGateway.getInstance().getRecorded();
-      expect(recorded).toHaveLength(1);
-      expect(recorded[0].to).toBe('subv@example.test');
+      expect(queueTrusteeChangeNotificationSpy).toHaveBeenCalledTimes(1);
+      const { changeSet } = queueTrusteeChangeNotificationSpy.mock.calls[0][0];
+      // Chapter-based mailbox routing (Sub-V vs. default oversight) now happens downstream in
+      // TrusteeChangeNotificationUseCase.notify(), which is exercised directly in
+      // trustee-change-notification.test.ts. This only confirms the routing input is threaded
+      // through correctly.
+      expect(changeSet.chapters).toEqual(['11-subchapter-v']);
     });
 
-    test('routes to the chapter oversight recipient for non-SubV chapters', async () => {
-      const mockTrustee = MockData.getTrustee({ trusteeId, name: 'Henry Green' });
-      const existingAppointment = MockData.getTrusteeAppointment({
-        id: appointmentId,
-        trusteeId,
-        chapter: '12',
-        appointmentType: 'case-by-case',
-        courtId: '081',
-        divisionCodes: ['001'],
-        appointedDate: '2024-01-15',
-        status: 'active',
-        effectiveDate: '2024-01-15',
-      });
-      const updatedAppointment = {
-        ...existingAppointment,
-        status: 'inactive' as const,
-      };
-
-      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValueOnce(existingAppointment);
-      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValueOnce(mockTrustee);
-      vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(
-        updatedAppointment,
-      );
-
-      await trusteeAppointmentsUseCase.updateAppointment(context, trusteeId, appointmentId, {
-        chapter: '12',
-        appointmentType: 'case-by-case',
-        courtId: '081',
-        divisionCode: '001',
-        appointedDate: '2024-01-15',
-        status: 'inactive',
-        effectiveDate: '2024-01-15',
-      });
-
-      const recorded = MockNotificationGateway.getInstance().getRecorded();
-      expect(recorded).toHaveLength(1);
-      expect(recorded[0].to).toBe('ch7-oversight@example.test');
-    });
-
-    test('notification includes author info and profile link', async () => {
+    test('enqueued changeSet includes author info and profileLink', async () => {
       process.env.CAMS_FRONTEND_URL = 'https://cams.ustp.gov';
       context.session.user = {
         ...context.session.user,
@@ -1455,18 +1417,19 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         effectiveDate: '2024-01-15',
       });
 
-      const recorded = MockNotificationGateway.getInstance().getRecorded();
-      expect(recorded).toHaveLength(1);
-      expect(recorded[0].html).toContain('Alex Rivera');
-      expect(recorded[0].html).toContain('alex@ustp.test');
-      expect(recorded[0].html).toContain(`https://cams.ustp.gov/trustees/${trusteeId}`);
-
-      delete process.env.CAMS_FRONTEND_URL;
+      expect(queueTrusteeChangeNotificationSpy).toHaveBeenCalledWith({
+        changeSet: expect.objectContaining({
+          author: { name: 'Alex Rivera', email: 'alex@ustp.test' },
+          profileLink: `https://cams.ustp.gov/trustees/${trusteeId}`,
+        }),
+      });
     });
 
-    test('resolves district and division names from live courts data in the dispatched email', async () => {
-      // Two known divisions under one courtId; the resolvers built inside
-      // dispatchAppointmentNotification derive names and the all-divisions set from this data.
+    test('enqueued changeSet threads live courts data into the District (Division) field', async () => {
+      // Full district/division formatting rules (all-divisions collapsing, per-division listing,
+      // etc.) are exhaustively covered in build-appointment-change-set.test.ts. This only confirms
+      // CourtsUseCase.getCourts() results are actually wired into the resolvers passed to
+      // buildAppointmentChangeSet.
       const courts: CourtDivisionDetails[] = [
         {
           officeName: 'Manhattan',
@@ -1505,11 +1468,10 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         status: 'active',
         effectiveDate: '2024-01-15',
       });
-      // after assigns both known divisions, so the resolver collapses it to "(All)"
       const updatedAppointment = {
         ...existingAppointment,
-        divisionCode: '081',
-        divisionCodes: ['081', '071'],
+        divisionCode: '071',
+        divisionCodes: ['071'],
       };
 
       vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValueOnce(existingAppointment);
@@ -1522,25 +1484,21 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         chapter: '7',
         appointmentType: 'panel',
         courtId: '0208',
-        divisionCodes: ['081', '071'],
+        divisionCodes: ['071'],
         appointedDate: '2024-01-15',
         status: 'active',
         effectiveDate: '2024-01-15',
       });
 
-      const recorded = MockNotificationGateway.getInstance().getRecorded();
-      expect(recorded).toHaveLength(1);
-      expect(recorded[0].html).toContain('District (Division)');
-      // before: single division resolved to its name via divisionNameResolver
-      expect(recorded[0].html).toContain('Southern District of New York (Manhattan)');
-      // after: all known divisions assigned, collapsed via allDivisionsResolver
-      expect(recorded[0].html).toContain('Southern District of New York (All)');
-      // raw division codes must not leak into the rendered email
-      expect(recorded[0].html).not.toContain('(081)');
-      expect(recorded[0].html).not.toContain('(071)');
+      const { changeSet } = queueTrusteeChangeNotificationSpy.mock.calls[0][0];
+      const districtField = changeSet.fields.find(
+        (field: { label: string }) => field.label === 'District (Division)',
+      );
+      expect(districtField.comparisons[0].before).toBe('Southern District of New York (Manhattan)');
+      expect(districtField.comparisons[0].after).toBe('Southern District of New York (Brooklyn)');
     });
 
-    test('does not dispatch notification when suppressNotifications is true', async () => {
+    test('does not enqueue when suppressNotifications is true', async () => {
       const mockTrustee = MockData.getTrustee({ trusteeId, name: 'Henry Green' });
       const existingAppointment = MockData.getTrusteeAppointment({
         id: appointmentId,
@@ -1581,44 +1539,37 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       );
 
       expect(result).toEqual(updatedAppointment);
-      expect(MockNotificationGateway.getInstance().getRecorded()).toHaveLength(0);
+      expect(queueTrusteeChangeNotificationSpy).not.toHaveBeenCalled();
     });
   });
 
-  describe('createAppointment notification dispatch', () => {
+  describe('createAppointment notification dispatch (CAMS-856 async queue)', () => {
     const trusteeId = 'trustee-notify-create';
+    let queueTrusteeChangeNotificationSpy: Mock<
+      (event: TrusteeChangeNotificationEvent) => Promise<void>
+    >;
 
     beforeEach(async () => {
       vi.restoreAllMocks();
       context = await createMockApplicationContext();
       context.featureFlags['trustee-change-notification-enabled'] = true;
+
+      queueTrusteeChangeNotificationSpy = vi.fn().mockResolvedValue(undefined);
+      vi.spyOn(factory, 'getApiToDataflowsGateway').mockReturnValue({
+        queueTrusteeChangeNotification: queueTrusteeChangeNotificationSpy,
+        queueCaseAssignmentEvent: vi.fn(),
+        queueTrusteeAppointmentEvent: vi.fn(),
+        queueCaseReload: vi.fn(),
+        queueTrusteeVerificationRemap: vi.fn(),
+      });
+
       trusteeAppointmentsUseCase = new TrusteeAppointmentsUseCase(context);
-      MockNotificationGateway.getInstance().clear();
 
       vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
       vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([]);
-
-      vi.spyOn(MockMongoRepository.prototype, 'findRecipientsByRoutingKeys').mockImplementation(
-        async (keys: string[]) => {
-          if (
-            keys.some((key) =>
-              ['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'].includes(key),
-            )
-          ) {
-            return [
-              {
-                covers: ['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'],
-                recipientAddresses: ['ch-oversight@example.test'],
-                displayName: 'Default Chapter Oversight',
-              },
-            ];
-          }
-          return [];
-        },
-      );
     });
 
-    test('does not dispatch when feature flag is disabled', async () => {
+    test('does not enqueue when feature flag is disabled', async () => {
       context.featureFlags['trustee-change-notification-enabled'] = false;
 
       const mockTrustee = MockData.getTrustee({ trusteeId, name: 'Henry Green' });
@@ -1648,10 +1599,10 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         effectiveDate: '2024-01-15',
       });
 
-      expect(MockNotificationGateway.getInstance().getRecorded()).toHaveLength(0);
+      expect(queueTrusteeChangeNotificationSpy).not.toHaveBeenCalled();
     });
 
-    test('dispatches a notification when a new appointment is created', async () => {
+    test('enqueues a changeSet when a new appointment is created', async () => {
       const mockTrustee = MockData.getTrustee({ trusteeId, name: 'Henry Green' });
       const mockCreatedAppointment = MockData.getTrusteeAppointment({
         trusteeId,
@@ -1679,14 +1630,14 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         effectiveDate: '2024-01-15',
       });
 
-      const recorded = MockNotificationGateway.getInstance().getRecorded();
-      expect(recorded).toHaveLength(1);
-      expect(recorded[0].subject).toContain('New Trustee Appointment');
-      expect(recorded[0].html).toContain('Chapter');
-      expect(recorded[0].html).toContain('Status');
+      expect(queueTrusteeChangeNotificationSpy).toHaveBeenCalledTimes(1);
+      const { changeSet } = queueTrusteeChangeNotificationSpy.mock.calls[0][0];
+      expect(changeSet.trusteeId).toBe(trusteeId);
+      expect(changeSet.subjectOverride).toBe('New Trustee Appointment: Henry Green');
+      expect(changeSet.chapters).toEqual(['7']);
     });
 
-    test('notification failure does not fail appointment creation', async () => {
+    test('returns the created appointment successfully when the enqueue call rejects', async () => {
       const mockTrustee = MockData.getTrustee({ trusteeId, name: 'Henry Green' });
       const mockCreatedAppointment = MockData.getTrusteeAppointment({
         trusteeId,
@@ -1703,9 +1654,8 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       vi.spyOn(MockMongoRepository.prototype, 'createAppointment').mockResolvedValue(
         mockCreatedAppointment,
       );
-      vi.spyOn(MockNotificationGateway.prototype, 'send').mockRejectedValue(
-        new Error('Simulated provider failure'),
-      );
+      queueTrusteeChangeNotificationSpy.mockRejectedValue(new Error('queue unavailable'));
+      const errorSpy = vi.spyOn(context.logger, 'error');
 
       const result = await trusteeAppointmentsUseCase.createAppointment(context, trusteeId, {
         chapter: '7',
@@ -1718,9 +1668,14 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       });
 
       expect(result).toEqual(mockCreatedAppointment);
+      expect(errorSpy).toHaveBeenCalledWith(
+        'TRUSTEE-APPOINTMENTS-USE-CASE',
+        'Failed to dispatch appointment notification.',
+        expect.any(Error),
+      );
     });
 
-    test('routes to the created appointment chapter mailbox', async () => {
+    test('enqueued changeSet reflects the created appointment chapter', async () => {
       const mockTrustee = MockData.getTrustee({ trusteeId, name: 'Henry Green' });
       const mockCreatedAppointment = MockData.getTrusteeAppointment({
         trusteeId,
@@ -1748,12 +1703,11 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         effectiveDate: '2024-01-15',
       });
 
-      const recorded = MockNotificationGateway.getInstance().getRecorded();
-      expect(recorded).toHaveLength(1);
-      expect(recorded[0].to).toBe('ch-oversight@example.test');
+      const { changeSet } = queueTrusteeChangeNotificationSpy.mock.calls[0][0];
+      expect(changeSet.chapters).toEqual(['13']);
     });
 
-    test('does not dispatch notification when suppressNotifications is true', async () => {
+    test('does not enqueue when suppressNotifications is true', async () => {
       const mockTrustee = MockData.getTrustee({ trusteeId, name: 'Henry Green' });
       const mockCreatedAppointment = MockData.getTrusteeAppointment({
         trusteeId,
@@ -1787,7 +1741,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       );
 
       expect(result).toEqual(mockCreatedAppointment);
-      expect(MockNotificationGateway.getInstance().getRecorded()).toHaveLength(0);
+      expect(queueTrusteeChangeNotificationSpy).not.toHaveBeenCalled();
     });
   });
 });

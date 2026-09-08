@@ -1,5 +1,9 @@
 import { ApplicationContext } from '../../adapters/types/basic';
-import { TrusteeAppointmentsRepository, TrusteesRepository } from '../gateways.types';
+import {
+  ApiToDataflowsGateway,
+  TrusteeAppointmentsRepository,
+  TrusteesRepository,
+} from '../gateways.types';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import factory from '../../factory';
 import {
@@ -27,7 +31,7 @@ import {
   buildAppointmentChangeSet,
   AppointmentFieldSnapshot,
 } from './build-appointment-change-set';
-import { TrusteeChangeNotificationUseCase } from '../notifications/trustee-change-notification';
+import { TrusteeChangeNotificationEvent } from '@common/cams/dataflow-events';
 
 const MODULE_NAME = 'TRUSTEE-APPOINTMENTS-USE-CASE';
 
@@ -59,11 +63,13 @@ export class TrusteeAppointmentsUseCase {
   private readonly trusteeAppointmentsRepository: TrusteeAppointmentsRepository;
   private readonly trusteesRepository: TrusteesRepository;
   private readonly courtsUseCase: CourtsUseCase;
+  private readonly apiToDataflowsGateway: ApiToDataflowsGateway;
 
   constructor(context: ApplicationContext) {
     this.trusteeAppointmentsRepository = factory.getTrusteeAppointmentsRepository(context);
     this.trusteesRepository = factory.getTrusteesRepository(context);
     this.courtsUseCase = new CourtsUseCase();
+    this.apiToDataflowsGateway = factory.getApiToDataflowsGateway(context);
   }
 
   /**
@@ -375,7 +381,6 @@ export class TrusteeAppointmentsUseCase {
       courts: CourtDivisionDetails[];
     },
   ): Promise<void> {
-    const trace = context.observability.startTrace(context.invocationId);
     try {
       const trusteeName =
         params.trusteeName ?? (await this.trusteesRepository.read(params.trusteeId)).name;
@@ -406,22 +411,8 @@ export class TrusteeAppointmentsUseCase {
         if (frontendUrl && /^https?:\/\//i.test(frontendUrl)) {
           changeSet.profileLink = `${frontendUrl}/trustees/${params.trusteeId}`;
         }
-        const notificationUseCase = new TrusteeChangeNotificationUseCase(context);
-        const summary = await notificationUseCase.notify(context, changeSet);
-        context.observability.completeTrace(
-          trace,
-          'Trustee Change Notification',
-          {
-            success: summary.failed === 0,
-            properties: {
-              attempted: String(summary.attempted),
-              failed: String(summary.failed),
-            },
-            measurements: {},
-          },
-          undefined,
-          context.logger,
-        );
+        const event: TrusteeChangeNotificationEvent = { changeSet };
+        await this.apiToDataflowsGateway.queueTrusteeChangeNotification(event);
       }
     } catch (error) {
       context.logger.error(MODULE_NAME, 'Failed to dispatch appointment notification.', error);
