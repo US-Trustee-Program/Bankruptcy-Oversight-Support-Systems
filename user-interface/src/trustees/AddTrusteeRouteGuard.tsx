@@ -8,19 +8,24 @@ import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import TrusteePublicContactForm from './forms/TrusteePublicContactForm';
 
 export function AddTrusteeRouteGuard() {
-  const { isReady, hasTimedOut } = useFeatureFlagReadiness();
+  const { isReady, hasTimedOut, hasIdentified } = useFeatureFlagReadiness();
   const flags = useFeatureFlags();
 
   if (!isReady) {
     return <LoadingSpinner caption="Checking access..." />;
   }
 
-  // isReady only means the LaunchDarkly client finished initializing, not that this
-  // specific flag's value has arrived yet. Wait for the flag to actually populate (or
-  // for the grace-period timeout) before acting, to avoid misreading an unpopulated flag
-  // as false and wrongly redirecting an authorized user.
+  // isReady only means the LaunchDarkly client finished initializing its initial, anonymous
+  // context -- not that this flag has been re-evaluated for the identified (logged-in) user yet,
+  // nor that the flag has arrived at all. Waiting on hasFlagValue alone isn't enough: the
+  // anonymous context's value can populate before identify() resolves, and that value belongs to
+  // the wrong context. Wait for BOTH identify() to complete AND the flag to populate (or the
+  // grace-period timeout, as a safety valve if either never resolves) before acting -- otherwise
+  // an authorized user's flag read could reflect the anonymous context and redirect them away
+  // from a route they're allowed to reach.
   const hasFlagValue = RESTRICT_ADDING_TRUSTEES in flags;
-  if (!hasFlagValue && !hasTimedOut) {
+  const readyToDecide = hasTimedOut || (hasIdentified && hasFlagValue);
+  if (!readyToDecide) {
     return <LoadingSpinner caption="Checking access..." />;
   }
 

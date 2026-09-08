@@ -2,10 +2,11 @@ import { Routes, Route } from 'react-router-dom';
 import { Header } from './lib/components/Header';
 import { AppInsightsErrorBoundary } from '@microsoft/applicationinsights-react-js';
 import { getAppInsights } from './lib/hooks/UseApplicationInsights';
-import { createContext, useEffect, useRef } from 'react';
+import { createContext, useEffect, useRef, useState } from 'react';
 import { useLDClient, withLDProvider } from 'launchdarkly-react-client-sdk';
 import { buildLaunchDarklyContext } from '@common/feature-flags';
 import { getFeatureFlagConfiguration } from './configuration/featureFlagConfiguration';
+import { LaunchDarklyIdentifyContext } from './lib/contexts/LaunchDarklyIdentifyContext';
 import LocalStorage from './lib/utils/local-storage';
 import CaseDetailScreen from './case-detail/CaseDetailScreen';
 import ScrollToTopButton from './lib/components/ScrollToTopButton';
@@ -33,14 +34,36 @@ function App() {
   const { reactPlugin } = getAppInsights();
   const globalAlertRef = useRef<GlobalAlertRef>(null);
   const ldClient = useLDClient();
+  const [hasIdentified, setHasIdentified] = useState(false);
 
   // Identifies once, on mount. `Session.tsx` blocks rendering `App` until the full
   // session is resolved, so this always reflects the logged-in user. A re-login as
   // a different user without a full remount would not re-identify.
+  //
+  // Tracks completion via `hasIdentified` (provided below through LaunchDarklyIdentifyContext)
+  // because `identify()` re-evaluates flags for the real user *after* the client's initial
+  // (anonymous) context has already resolved. A consumer that only waits on the client's own
+  // initialization (see useFeatureFlagReadiness) can read a flag value that reflects the
+  // anonymous context, not this user, if it acts before this promise resolves.
   useEffect(() => {
+    if (!featureFlagConfig.useExternalProvider) {
+      // LaunchDarkly isn't configured at all -- nothing to identify.
+      setHasIdentified(true);
+      return;
+    }
+    if (!ldClient) {
+      // Configured, but the client hasn't been created yet -- wait for it; this effect re-runs
+      // once `ldClient` becomes available.
+      return;
+    }
     const session = LocalStorage.getSession();
-    if (session?.user && ldClient) {
-      ldClient.identify(buildLaunchDarklyContext(session.user));
+    if (session?.user) {
+      ldClient.identify(buildLaunchDarklyContext(session.user)).then(() => {
+        setHasIdentified(true);
+      });
+    } else {
+      // No session/user to identify -- nothing to wait for.
+      setHasIdentified(true);
     }
   }, [ldClient]);
 
@@ -57,21 +80,23 @@ function App() {
         <NavigationTracker />
         <GlobalAlertContext.Provider value={globalAlertRef}>
           <div className="cams-content">
-            <Routes>
-              <Route path="/my-cases" element={<MyCasesScreen />}></Route>
-              <Route path="/search" element={<SearchScreen />}></Route>
-              <Route path="/staff-assignment" element={<StaffAssignmentScreen />}></Route>
-              <Route path="/search/:caseId" element={<SearchScreen />}></Route>
-              <Route path="/case-detail/:caseId/*" element={<CaseDetailScreen />}></Route>
-              <Route path="/data-verification" element={<DataVerificationScreen />}></Route>
-              <Route path="/admin/*" element={<AdminScreen />}></Route>
-              <Route path="/trustees/:trusteeId/*" element={<TrusteeDetailScreen />}></Route>
-              <Route path="/trustees" element={<TrusteesScreen />}>
-                <Route path="create" element={<AddTrusteeRouteGuard />} />
-              </Route>
-              <Route index element={<GoHome />}></Route>
-              <Route path="*" element={<GoHome />}></Route>
-            </Routes>
+            <LaunchDarklyIdentifyContext.Provider value={hasIdentified}>
+              <Routes>
+                <Route path="/my-cases" element={<MyCasesScreen />}></Route>
+                <Route path="/search" element={<SearchScreen />}></Route>
+                <Route path="/staff-assignment" element={<StaffAssignmentScreen />}></Route>
+                <Route path="/search/:caseId" element={<SearchScreen />}></Route>
+                <Route path="/case-detail/:caseId/*" element={<CaseDetailScreen />}></Route>
+                <Route path="/data-verification" element={<DataVerificationScreen />}></Route>
+                <Route path="/admin/*" element={<AdminScreen />}></Route>
+                <Route path="/trustees/:trusteeId/*" element={<TrusteeDetailScreen />}></Route>
+                <Route path="/trustees" element={<TrusteesScreen />}>
+                  <Route path="create" element={<AddTrusteeRouteGuard />} />
+                </Route>
+                <Route index element={<GoHome />}></Route>
+                <Route path="*" element={<GoHome />}></Route>
+              </Routes>
+            </LaunchDarklyIdentifyContext.Provider>
             <SessionTimeoutManager />
             <ScrollToTopButton data-testid="scroll-to-top-button" />
           </div>

@@ -3,6 +3,7 @@ import { describe, test, expect, vi, beforeEach } from 'vitest';
 import useFeatureFlagReadiness from './UseFeatureFlagReadiness';
 import * as LaunchDarkly from 'launchdarkly-react-client-sdk';
 import * as featureFlagConfig from '@/configuration/featureFlagConfiguration';
+import { LaunchDarklyIdentifyContext } from '@/lib/contexts/LaunchDarklyIdentifyContext';
 
 vi.mock('launchdarkly-react-client-sdk');
 vi.mock('@/configuration/featureFlagConfiguration');
@@ -24,7 +25,7 @@ describe('useFeatureFlagReadiness', () => {
 
     const { result } = renderHook(() => useFeatureFlagReadiness());
 
-    expect(result.current).toEqual({ isReady: true, hasTimedOut: true });
+    expect(result.current).toEqual({ isReady: true, hasTimedOut: true, hasIdentified: false });
   });
 
   test('stays not ready while LaunchDarkly is configured but the client is not yet available', () => {
@@ -37,7 +38,7 @@ describe('useFeatureFlagReadiness', () => {
 
     const { result } = renderHook(() => useFeatureFlagReadiness());
 
-    expect(result.current).toEqual({ isReady: false, hasTimedOut: false });
+    expect(result.current).toEqual({ isReady: false, hasTimedOut: false, hasIdentified: false });
   });
 
   test('becomes ready once the LD client transitions from undefined to available', async () => {
@@ -52,7 +53,7 @@ describe('useFeatureFlagReadiness', () => {
 
     const { result, rerender } = renderHook(() => useFeatureFlagReadiness());
 
-    expect(result.current).toEqual({ isReady: false, hasTimedOut: false });
+    expect(result.current).toEqual({ isReady: false, hasTimedOut: false, hasIdentified: false });
 
     vi.mocked(LaunchDarkly.useLDClient).mockReturnValue({
       waitForInitialization: mockWaitForInitialization,
@@ -118,7 +119,7 @@ describe('useFeatureFlagReadiness', () => {
     } as any);
 
     const { result, unmount } = renderHook(() => useFeatureFlagReadiness());
-    expect(result.current).toEqual({ isReady: false, hasTimedOut: false });
+    expect(result.current).toEqual({ isReady: false, hasTimedOut: false, hasIdentified: false });
 
     unmount();
 
@@ -127,7 +128,7 @@ describe('useFeatureFlagReadiness', () => {
       await Promise.resolve();
     });
 
-    expect(result.current).toEqual({ isReady: false, hasTimedOut: false });
+    expect(result.current).toEqual({ isReady: false, hasTimedOut: false, hasIdentified: false });
   });
 
   test('becomes ready and timed out immediately when initialization fails', async () => {
@@ -148,7 +149,39 @@ describe('useFeatureFlagReadiness', () => {
     await act(async () => {
       await mockWaitForInitialization.mock.results[0].value.catch(() => undefined);
     });
-    expect(result.current).toEqual({ isReady: true, hasTimedOut: true });
+    expect(result.current).toEqual({ isReady: true, hasTimedOut: true, hasIdentified: false });
+  });
+
+  test('reflects hasIdentified from LaunchDarklyIdentifyContext', () => {
+    vi.mocked(featureFlagConfig.getFeatureFlagConfiguration).mockReturnValue({
+      clientId: '',
+      useExternalProvider: false,
+      useCamelCaseFlagKeys: false,
+    });
+    vi.mocked(LaunchDarkly.useLDClient).mockReturnValue(undefined);
+
+    const { result } = renderHook(() => useFeatureFlagReadiness(), {
+      wrapper: ({ children }) => (
+        <LaunchDarklyIdentifyContext.Provider value={true}>
+          {children}
+        </LaunchDarklyIdentifyContext.Provider>
+      ),
+    });
+
+    expect(result.current.hasIdentified).toBe(true);
+  });
+
+  test('defaults hasIdentified to false with no provider', () => {
+    vi.mocked(featureFlagConfig.getFeatureFlagConfiguration).mockReturnValue({
+      clientId: '',
+      useExternalProvider: false,
+      useCamelCaseFlagKeys: false,
+    });
+    vi.mocked(LaunchDarkly.useLDClient).mockReturnValue(undefined);
+
+    const { result } = renderHook(() => useFeatureFlagReadiness());
+
+    expect(result.current.hasIdentified).toBe(false);
   });
 
   test('clears the pending timeout and does not update state after unmount', async () => {

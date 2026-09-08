@@ -22,15 +22,25 @@ vi.mock('./forms/TrusteePublicContactForm', () => ({
 const mockUseFeatureFlags = vi.mocked(useFeatureFlags);
 const mockUseFeatureFlagReadiness = vi.mocked(useFeatureFlagReadiness);
 
-function renderGuard() {
-  return render(
+function guardTree() {
+  return (
     <MemoryRouter initialEntries={['/trustees/create']}>
       <Routes>
         <Route path="/trustees" element={<div data-testid="trustees-list-page">Trustees</div>} />
         <Route path="/trustees/create" element={<AddTrusteeRouteGuard />} />
       </Routes>
-    </MemoryRouter>,
+    </MemoryRouter>
   );
+}
+
+function renderGuard() {
+  return render(guardTree());
+}
+
+function expectSpinner() {
+  expect(screen.getByRole('status')).toBeInTheDocument();
+  expect(screen.queryByTestId('trustee-create-form')).not.toBeInTheDocument();
+  expect(screen.queryByTestId('trustees-list-page')).not.toBeInTheDocument();
 }
 
 describe('AddTrusteeRouteGuard', () => {
@@ -39,18 +49,24 @@ describe('AddTrusteeRouteGuard', () => {
   });
 
   test('shows a loading spinner while feature flags are not ready', () => {
-    mockUseFeatureFlagReadiness.mockReturnValue({ isReady: false, hasTimedOut: false });
+    mockUseFeatureFlagReadiness.mockReturnValue({
+      isReady: false,
+      hasTimedOut: false,
+      hasIdentified: false,
+    });
     mockUseFeatureFlags.mockReturnValue({});
 
     renderGuard();
 
-    expect(screen.getByRole('status')).toBeInTheDocument();
-    expect(screen.queryByTestId('trustee-create-form')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('trustees-list-page')).not.toBeInTheDocument();
+    expectSpinner();
   });
 
-  test('renders the create form once ready and the flag is enabled', () => {
-    mockUseFeatureFlagReadiness.mockReturnValue({ isReady: true, hasTimedOut: true });
+  test('renders the create form once ready and the flag is enabled, via the timeout safety valve', () => {
+    mockUseFeatureFlagReadiness.mockReturnValue({
+      isReady: true,
+      hasTimedOut: true,
+      hasIdentified: false,
+    });
     mockUseFeatureFlags.mockReturnValue({ [RESTRICT_ADDING_TRUSTEES]: true });
 
     renderGuard();
@@ -61,8 +77,12 @@ describe('AddTrusteeRouteGuard', () => {
     expect(form).toHaveTextContent('"cancelTo":"/trustees"');
   });
 
-  test('redirects to /trustees once ready when the flag is disabled', () => {
-    mockUseFeatureFlagReadiness.mockReturnValue({ isReady: true, hasTimedOut: true });
+  test('redirects to /trustees once ready when the flag is disabled, via the timeout safety valve', () => {
+    mockUseFeatureFlagReadiness.mockReturnValue({
+      isReady: true,
+      hasTimedOut: true,
+      hasIdentified: false,
+    });
     mockUseFeatureFlags.mockReturnValue({ [RESTRICT_ADDING_TRUSTEES]: false });
 
     renderGuard();
@@ -71,39 +91,55 @@ describe('AddTrusteeRouteGuard', () => {
     expect(screen.queryByTestId('trustee-create-form')).not.toBeInTheDocument();
   });
 
-  test('redirects to /trustees once the flag value arrives as false, even before the grace period elapses', () => {
-    mockUseFeatureFlagReadiness.mockReturnValue({ isReady: true, hasTimedOut: false });
+  test('redirects to /trustees once ready when the flag is absent, via the timeout safety valve', () => {
+    mockUseFeatureFlagReadiness.mockReturnValue({
+      isReady: true,
+      hasTimedOut: true,
+      hasIdentified: false,
+    });
+    mockUseFeatureFlags.mockReturnValue({});
+
+    renderGuard();
+
+    expect(screen.getByTestId('trustees-list-page')).toBeInTheDocument();
+    expect(screen.queryByTestId('trustee-create-form')).not.toBeInTheDocument();
+  });
+
+  test('shows a loading spinner when the flag has populated but identify() has not resolved yet, even though a value is already present', () => {
+    // The flag already has a value (e.g. the anonymous, pre-identify context's evaluation), but
+    // identify() for the real user hasn't completed. That value cannot be trusted yet -- the
+    // guard must keep waiting rather than acting on it, regardless of what the value is.
+    mockUseFeatureFlagReadiness.mockReturnValue({
+      isReady: true,
+      hasTimedOut: false,
+      hasIdentified: false,
+    });
     mockUseFeatureFlags.mockReturnValue({ [RESTRICT_ADDING_TRUSTEES]: false });
 
     renderGuard();
 
-    expect(screen.getByTestId('trustees-list-page')).toBeInTheDocument();
-    expect(screen.queryByTestId('trustee-create-form')).not.toBeInTheDocument();
+    expectSpinner();
   });
 
-  test('redirects to /trustees once ready when the flag is absent', () => {
-    mockUseFeatureFlagReadiness.mockReturnValue({ isReady: true, hasTimedOut: true });
+  test('shows a loading spinner when identified but the flag itself has not populated yet', () => {
+    mockUseFeatureFlagReadiness.mockReturnValue({
+      isReady: true,
+      hasTimedOut: false,
+      hasIdentified: true,
+    });
     mockUseFeatureFlags.mockReturnValue({});
 
     renderGuard();
 
-    expect(screen.getByTestId('trustees-list-page')).toBeInTheDocument();
-    expect(screen.queryByTestId('trustee-create-form')).not.toBeInTheDocument();
+    expectSpinner();
   });
 
-  test('shows a loading spinner when the LD client is ready but the flag has not populated and the grace period has not elapsed', () => {
-    mockUseFeatureFlagReadiness.mockReturnValue({ isReady: true, hasTimedOut: false });
-    mockUseFeatureFlags.mockReturnValue({});
-
-    renderGuard();
-
-    expect(screen.getByRole('status')).toBeInTheDocument();
-    expect(screen.queryByTestId('trustee-create-form')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('trustees-list-page')).not.toBeInTheDocument();
-  });
-
-  test('renders the create form once the flag value arrives, even before the grace period elapses', () => {
-    mockUseFeatureFlagReadiness.mockReturnValue({ isReady: true, hasTimedOut: false });
+  test('renders the create form once identified and the flag is enabled, even before the grace period elapses', () => {
+    mockUseFeatureFlagReadiness.mockReturnValue({
+      isReady: true,
+      hasTimedOut: false,
+      hasIdentified: true,
+    });
     mockUseFeatureFlags.mockReturnValue({ [RESTRICT_ADDING_TRUSTEES]: true });
 
     renderGuard();
@@ -112,5 +148,52 @@ describe('AddTrusteeRouteGuard', () => {
     expect(form).toBeInTheDocument();
     expect(form).toHaveTextContent('"action":"create"');
     expect(form).toHaveTextContent('"cancelTo":"/trustees"');
+  });
+
+  test('redirects to /trustees once identified and the flag is disabled, even before the grace period elapses', () => {
+    mockUseFeatureFlagReadiness.mockReturnValue({
+      isReady: true,
+      hasTimedOut: false,
+      hasIdentified: true,
+    });
+    mockUseFeatureFlags.mockReturnValue({ [RESTRICT_ADDING_TRUSTEES]: false });
+
+    renderGuard();
+
+    expect(screen.getByTestId('trustees-list-page')).toBeInTheDocument();
+    expect(screen.queryByTestId('trustee-create-form')).not.toBeInTheDocument();
+  });
+
+  // Regression test for the identify()-timing race originally flagged in PR review: the
+  // anonymous (pre-identify) context can evaluate the flag as false and that value can arrive
+  // before identify() resolves for the real, authorized user. Proves the guard now waits for
+  // identify() rather than acting on the early, untrustworthy value.
+  test('waits for identify() rather than acting on an early anonymous-context value, then decides correctly once identified', () => {
+    mockUseFeatureFlagReadiness.mockReturnValue({
+      isReady: true,
+      hasTimedOut: false,
+      hasIdentified: false,
+    });
+    mockUseFeatureFlags.mockReturnValue({ [RESTRICT_ADDING_TRUSTEES]: false });
+
+    const { rerender } = renderGuard();
+
+    // The anonymous context's (wrong, for this authorized user) value has already arrived, but
+    // identify() has not resolved yet -- the guard must not have decided anything permanent.
+    expectSpinner();
+
+    // Simulate identify() resolving with the real user's context, which flips the flag to true.
+    mockUseFeatureFlagReadiness.mockReturnValue({
+      isReady: true,
+      hasTimedOut: false,
+      hasIdentified: true,
+    });
+    mockUseFeatureFlags.mockReturnValue({ [RESTRICT_ADDING_TRUSTEES]: true });
+    rerender(guardTree());
+
+    const form = screen.getByTestId('trustee-create-form');
+    expect(form).toBeInTheDocument();
+    expect(form).toHaveTextContent('"action":"create"');
+    expect(screen.queryByTestId('trustees-list-page')).not.toBeInTheDocument();
   });
 });

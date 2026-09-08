@@ -1,16 +1,19 @@
-import { useEffect, useRef, useState } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
 import { useLDClient } from 'launchdarkly-react-client-sdk';
 import { getFeatureFlagConfiguration } from '@/configuration/featureFlagConfiguration';
+import { LaunchDarklyIdentifyContext } from '@/lib/contexts/LaunchDarklyIdentifyContext';
 
 const FLAG_POPULATION_TIMEOUT_MS = 500;
 
 type FeatureFlagReadiness = {
   isReady: boolean;
   hasTimedOut: boolean;
+  hasIdentified: boolean;
 };
 
 export default function useFeatureFlagReadiness(): FeatureFlagReadiness {
   const ldClient = useLDClient();
+  const hasIdentified = useContext(LaunchDarklyIdentifyContext);
   const [isReady, setIsReady] = useState(false);
   const [hasTimedOut, setHasTimedOut] = useState(false);
   const timeoutIdRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -56,5 +59,5 @@ export default function useFeatureFlagReadiness(): FeatureFlagReadiness {
     };
   }, [ldClient]);
 
-  return { isReady, hasTimedOut };
+  return { isReady, hasTimedOut, hasIdentified };
 }
