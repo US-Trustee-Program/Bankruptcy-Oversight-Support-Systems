@@ -588,9 +588,10 @@ export default function UpcomingKeyDatesForm() {
               label="Trustee Performance Review Period Start"
               value={form.tprReviewPeriodStart}
               disableMax
-              onChange={(e) =>
-                setForm((prev) => ({ ...prev, tprReviewPeriodStart: e.target.value }))
-              }
+              onChange={(e) => {
+                setForm((prev) => ({ ...prev, tprReviewPeriodStart: e.target.value }));
+                setErrors((prev) => ({ ...prev, tprReviewPeriodStart: '' }));
+              }}
               onValidationChange={(hasError) =>
                 registerFieldError('tpr-review-period-start', hasError)
               }
@@ -601,7 +602,10 @@ export default function UpcomingKeyDatesForm() {
               label="Trustee Performance Review Period End"
               value={form.tprReviewPeriodEnd}
               disableMax
-              onChange={(e) => setForm((prev) => ({ ...prev, tprReviewPeriodEnd: e.target.value }))}
+              onChange={(e) => {
+                setForm((prev) => ({ ...prev, tprReviewPeriodEnd: e.target.value }));
+                setErrors((prev) => ({ ...prev, tprReviewPeriodEnd: '' }));
+              }}
               onValidationChange={(hasError) =>
                 registerFieldError('tpr-review-period-end', hasError)
               }
