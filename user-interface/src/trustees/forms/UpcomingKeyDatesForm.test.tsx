@@ -156,15 +156,15 @@ describe('UpcomingKeyDatesForm', () => {
       expect(screen.getByTestId('tir-period')).toBeInTheDocument();
     });
 
-    test('TPR labels show "TPR Review Period Start/End" and "Trustee Performance Review Due"', async () => {
+    test('TPR labels show "Trustee Performance Review Period Start/End" and "Trustee Performance Review Due"', async () => {
       renderComponent();
 
       await waitFor(() => {
         expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
       });
 
-      expect(screen.getByLabelText('TPR Review Period Start')).toBeInTheDocument();
-      expect(screen.getByLabelText('TPR Review Period End')).toBeInTheDocument();
+      expect(screen.getByLabelText('Trustee Performance Review Period Start')).toBeInTheDocument();
+      expect(screen.getByLabelText('Trustee Performance Review Period End')).toBeInTheDocument();
       expect(screen.getByText('Trustee Performance Review (TPR) Due')).toBeInTheDocument();
     });
 
@@ -906,7 +906,7 @@ describe('UpcomingKeyDatesForm', () => {
       await waitFor(() => {
         expect(screen.getByLabelText(/Lease Expiration/i)).toBeInTheDocument();
       });
-      expect(screen.getByLabelText('TPR Review Period Start')).toBeInTheDocument();
+      expect(screen.getByLabelText('Trustee Performance Review Period Start')).toBeInTheDocument();
       expect(screen.getByText(/Trustee Performance Review \(TPR\) Due/i)).toBeInTheDocument();
       expect(screen.getByTestId('tpr-due-year-type')).toBeInTheDocument();
       expect(screen.getByLabelText(/ID Expiration/i)).toBeInTheDocument();
@@ -1073,7 +1073,9 @@ describe('UpcomingKeyDatesForm', () => {
       renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByLabelText('TPR Review Period Start')).toBeInTheDocument();
+        expect(
+          screen.getByLabelText('Trustee Performance Review Period Start'),
+        ).toBeInTheDocument();
       });
 
       expect(screen.getByText(/Trustee Performance Review \(TPR\) Due/i)).toBeInTheDocument();

@@ -246,14 +246,14 @@ describe('UPCOMING_KEY_DATES_FIELD_CONFIG tprFrequency computed field', () => {
     ['ch12-13-case-by-case'],
     ['chapter12-standing'],
     ['chapter13-standing'],
-  ] as const)('%s: null data → "No date added"', (variant) => {
+  ] as const)('%s: null data → "No frequency selected"', (variant) => {
     const config = UPCOMING_KEY_DATES_FIELD_CONFIG[variant];
     const field = config.find((f) => f.key === 'tprFrequency');
     expect(field?.kind).toBe('computed');
     if (field?.kind === 'computed') {
       const result = field.buildField(null);
       expect(result.label).toBe('TPR Review Period Frequency');
-      expect(result.value).toBe('No date added');
+      expect(result.value).toBe('No frequency selected');
       expect(result.testId).toBe('tpr-review-period-frequency-row');
     }
   });

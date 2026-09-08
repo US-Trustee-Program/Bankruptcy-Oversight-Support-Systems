@@ -585,7 +585,7 @@ export default function UpcomingKeyDatesForm() {
           <div key="tpr-review-period">
             <DatePicker
               id="tpr-review-period-start"
-              label="TPR Review Period Start"
+              label="Trustee Performance Review Period Start"
               value={form.tprReviewPeriodStart}
               disableMax
               onChange={(e) =>
@@ -598,7 +598,7 @@ export default function UpcomingKeyDatesForm() {
             />
             <DatePicker
               id="tpr-review-period-end"
-              label="TPR Review Period End"
+              label="Trustee Performance Review Period End"
               value={form.tprReviewPeriodEnd}
               disableMax
               onChange={(e) => setForm((prev) => ({ ...prev, tprReviewPeriodEnd: e.target.value }))}

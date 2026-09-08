@@ -40,7 +40,9 @@ function tprFrequencyField(data: TrusteeUpcomingKeyDates | null): UpcomingKeyDat
     ANNUAL: 'One year',
     SEMI_ANNUAL: '6 months',
   };
-  const value = data?.tprFrequency ? (frequencyLabels[data.tprFrequency] ?? NO_DATE) : NO_DATE;
+  const value = data?.tprFrequency
+    ? (frequencyLabels[data.tprFrequency] ?? 'No frequency selected')
+    : 'No frequency selected';
   return { label: 'TPR Review Period Frequency', value, testId: 'tpr-review-period-frequency-row' };
 }
 
