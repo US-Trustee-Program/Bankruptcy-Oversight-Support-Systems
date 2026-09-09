@@ -15,6 +15,8 @@ interface PastKeyDatesFieldConfigBase {
   /** Label shown on the Edit Past Key Dates form. Differs from displayLabel for pastTprSubmission. */
   formLabel: string;
   hint?: string;
+  /** Note shown below the value on the read-only Past Key Dates display card. */
+  displayNote?: string;
   testId: string;
   inputId: string;
   /** Renders the value on its own line below the label on the display card. */
@@ -140,6 +142,7 @@ export const PAST_KEY_DATES_FIELD_CONFIG: Record<PastKeyDatesVariant, PastKeyDat
       key: 'lastCompensationStudy',
       displayLabel: 'Last Compensation Study',
       formLabel: 'Last Compensation Study',
+      displayNote: '(Required every 5 years)',
       testId: 'last-compensation-study-row',
       inputId: 'last-compensation-study',
       kind: 'month-year',

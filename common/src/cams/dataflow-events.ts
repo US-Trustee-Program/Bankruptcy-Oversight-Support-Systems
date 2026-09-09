@@ -3,6 +3,7 @@ import { DxtrCase } from './cases';
 import { LegacyAddress } from './parties';
 import { Address, PhoneNumber } from './contact';
 import { TrusteeAppointment } from './trustee-appointments';
+import { TrusteeChangeSet } from './notifications';
 
 /**
  * Event triggered when trial attorney assignments change (add/remove).
@@ -55,6 +56,10 @@ export type TrusteeVerificationRemapMessage = {
  */
 export type CaseClosedEvent = {
   caseId: string;
+};
+
+export type TrusteeChangeNotificationEvent = {
+  changeSet: TrusteeChangeSet;
 };
 
 /**

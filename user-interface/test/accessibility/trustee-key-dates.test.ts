@@ -102,8 +102,7 @@ test.describe('Trustee Key Dates', () => {
       trusteeProfilePage.locator('[data-testid="edit-upcoming-key-dates"]'),
     ).toBeVisible();
 
-    await trusteeProfilePage.locator('#tpr-review-period-start-month').selectOption('04');
-    await trusteeProfilePage.locator('#tpr-review-period-start-day').selectOption('01');
+    await trusteeProfilePage.locator('#tpr-review-period-start').fill('2025-04-01');
     await trusteeProfilePage.locator('#save-upcoming-key-dates').click({ force: true });
 
     await trusteeProfilePage.waitForTimeout(ANALYZE_DELAY);

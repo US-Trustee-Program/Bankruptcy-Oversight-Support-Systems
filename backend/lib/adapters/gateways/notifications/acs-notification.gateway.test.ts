@@ -171,7 +171,7 @@ describe('AcsNotificationGateway', () => {
     expect(error.originalError).toContain('Network timeout');
     expect(mockLogger.error).toHaveBeenCalledWith(
       'ACS-NOTIFICATION-GATEWAY',
-      'Failed to send email: Network timeout',
+      '[notification-send-failure] Failed to send email: Network timeout',
       expect.objectContaining({
         to: notification.to,
         correlationId: notification.correlationId,
@@ -191,7 +191,7 @@ describe('AcsNotificationGateway', () => {
     expect(error.data).toEqual({ reason: 'send' });
     expect(mockLogger.error).toHaveBeenCalledWith(
       'ACS-NOTIFICATION-GATEWAY',
-      'Failed to send email: Timed out',
+      '[notification-send-failure] Failed to send email: Timed out',
       expect.objectContaining({
         to: notification.to,
         correlationId: notification.correlationId,
@@ -223,7 +223,7 @@ describe('AcsNotificationGateway', () => {
     expect(error.data).toEqual({ reason: 'connection' });
     expect(mockLogger.error).toHaveBeenCalledWith(
       'ACS-NOTIFICATION-GATEWAY',
-      'Unable to connect to the email service',
+      '[notification-send-failure] Unable to connect to the email service',
       expect.objectContaining({
         to: notification.to,
         correlationId: notification.correlationId,
