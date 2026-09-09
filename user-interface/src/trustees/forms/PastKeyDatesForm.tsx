@@ -60,14 +60,11 @@ function buildUpcomingKeyDatesInput(
     pastAudit: dateValue('pastAudit'),
     pastTprSubmission: dateValue('pastTprSubmission'),
     lastMonthlyReportReceived: dateValue('lastMonthlyReportReceived'),
-    tprReviewPeriodStart: original?.tprReviewPeriodStart
-      ? isoToSentinel(original.tprReviewPeriodStart)
-      : null,
-    tprReviewPeriodEnd: original?.tprReviewPeriodEnd
-      ? isoToSentinel(original.tprReviewPeriodEnd)
-      : null,
+    tprReviewPeriodStart: original?.tprReviewPeriodStart ?? null,
+    tprReviewPeriodEnd: original?.tprReviewPeriodEnd ?? null,
     tprDue: original?.tprDue ? isoToSentinel(original.tprDue) : null,
     tprDueYearType: original?.tprDueYearType ?? null,
+    tprFrequency: original?.tprFrequency ?? null,
     tirReviewPeriodStart: original?.tirReviewPeriodStart
       ? isoToSentinel(original.tirReviewPeriodStart)
       : null,

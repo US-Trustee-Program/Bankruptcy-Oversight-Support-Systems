@@ -143,6 +143,7 @@ describe('TrusteeUpcomingKeyDatesController', () => {
         tprReviewPeriodEnd: null,
         tprDue: null,
         tprDueYearType: null,
+        tprFrequency: null,
         tirReviewPeriodStart: null,
         tirReviewPeriodEnd: null,
         tirSubmission: null,
@@ -247,6 +248,30 @@ describe('TrusteeUpcomingKeyDatesController', () => {
         .mockResolvedValue(undefined);
 
       const body = buildValidInput({ lastCompensationStudy: '2024-06-01' });
+      context.request = mockCamsHttpRequest({
+        method: 'PUT',
+        params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
+        body,
+      });
+
+      const controller = new TrusteeUpcomingKeyDatesController(context);
+      const response = await controller.handleRequest(context);
+
+      expect(response.statusCode).toBe(HttpStatusCodes.OK);
+      expect(putSpy).toHaveBeenCalledWith(
+        'trustee-001',
+        'appointment-001',
+        body,
+        context.session.user,
+      );
+    });
+
+    test('PUT with tprFrequency set passes through to use case', async () => {
+      const putSpy = vi
+        .spyOn(TrusteeUpcomingKeyDatesUseCase.prototype, 'upsertUpcomingKeyDates')
+        .mockResolvedValue(undefined);
+
+      const body = buildValidInput({ tprFrequency: 'SEMI_ANNUAL' });
       context.request = mockCamsHttpRequest({
         method: 'PUT',
         params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
