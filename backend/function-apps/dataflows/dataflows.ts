@@ -3,6 +3,7 @@ import { LoggerImpl } from '../../lib/adapters/services/logger.service';
 
 import CaseAssignmentEvent from './events/case-assignment-event';
 import CaseClosedEvent from './events/case-closed-event';
+import TrusteeChangeNotificationEvent from './events/trustee-change-notification-event';
 import BackfillPhoneticTokens from './migrations/backfill-phonetic-tokens';
 import BackfillCaseAppointmentDates from './migrations/backfill-case-appointment-dates';
 import BackfillTrusteePhoneticTokens from './migrations/backfill-trustee-phonetic-tokens';
@@ -132,6 +133,7 @@ dataflows.register(
   SyncTrusteeDueDateMetrics,
   StaffAssignmentDownstream,
   TrusteeAppointmentDownstream,
+  TrusteeChangeNotificationEvent,
   TrusteeVerificationRemap,
   AcmsDailySync,
   BackfillTrusteeAppointmentsDownstreamDataflow,
@@ -158,6 +160,7 @@ const DEFAULT_DATAFLOWS = listDataflowNames(
   SyncAcmsProfessionalIds,
   SyncTrusteeDueDateMetrics,
   SyncTrusteeNotesMetrics,
+  TrusteeChangeNotificationEvent,
   TrusteeVerificationRemap,
 );
 

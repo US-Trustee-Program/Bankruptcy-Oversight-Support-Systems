@@ -58,8 +58,9 @@ import {
   TrusteeChangeField,
   TrusteeChangeSet,
 } from '@common/cams/notifications';
-import { TrusteeChangeNotificationUseCase } from '../notifications/trustee-change-notification';
-import DateHelper from '@common/date-helper';
+import { ApiToDataflowsGateway } from '../gateways.types';
+import { enqueueTrusteeChangeNotification } from '../notifications/enqueue-trustee-change-notification';
+import { NOTIFICATION_SEND_FAILURE_TAG } from '../notifications/notification-alert-tag';
 
 const MODULE_NAME = 'TRUSTEES-USE-CASE';
 
@@ -116,6 +117,7 @@ export class TrusteesUseCase {
   private readonly runtimeStateRepository: RuntimeStateRepository<ProfessionalIdCounterState>;
   private readonly trusteeProfessionalIdsRepository: TrusteeProfessionalIdsRepository;
   private readonly courtsUseCase: CourtsUseCase;
+  private readonly apiToDataflowsGateway: ApiToDataflowsGateway;
 
   constructor(context: ApplicationContext) {
     this.trusteesRepository = factory.getTrusteesRepository(context);
@@ -126,6 +128,7 @@ export class TrusteesUseCase {
       factory.getRuntimeStateRepository<ProfessionalIdCounterState>(context);
     this.trusteeProfessionalIdsRepository = factory.getTrusteeProfessionalIdsRepository(context);
     this.courtsUseCase = new CourtsUseCase();
+    this.apiToDataflowsGateway = factory.getApiToDataflowsGateway(context);
   }
 
   private static readonly INACTIVE_STATUSES: AppointmentStatus[] = [
@@ -364,7 +367,6 @@ export class TrusteesUseCase {
     context: ApplicationContext,
     trusteeId: string,
     trustee: Partial<TrusteeInput>,
-    options?: { suppressNotifications?: boolean },
   ): Promise<Trustee> {
     try {
       const existingTrustee = await this.trusteesRepository.read(trusteeId);
@@ -416,7 +418,6 @@ export class TrusteesUseCase {
 
       if (
         context.featureFlags['trustee-change-notification-enabled'] &&
-        !options?.suppressNotifications &&
         changeSet.fields.length > 0
       ) {
         await this.dispatchChangeNotification(context, changeSet, trusteeId);
@@ -640,39 +641,20 @@ export class TrusteesUseCase {
     changeSet: TrusteeChangeSet,
     trusteeId: string,
   ): Promise<void> {
-    const trace = context.observability.startTrace(context.invocationId);
     try {
       changeSet.chapters = await this.resolveChapters(trusteeId);
-      changeSet.author = {
-        name: context.session.user.name,
-        email: context.session.user.email,
-      };
-      changeSet.changedAt = DateHelper.getCurrentIsoTimestamp();
-      const frontendUrl = process.env.CAMS_FRONTEND_URL?.replace(/\/+$/, '');
-      if (frontendUrl && /^https?:\/\//i.test(frontendUrl)) {
-        changeSet.profileLink = `${frontendUrl}/trustees/${trusteeId}`;
-      }
-      const notificationUseCase = new TrusteeChangeNotificationUseCase(context);
-      const summary = await notificationUseCase.notify(context, changeSet);
-      context.observability.completeTrace(trace, 'Trustee Change Notification', {
-        success: summary.failed === 0,
-        properties: {
-          attempted: String(summary.attempted),
-          failed: String(summary.failed),
-        },
-        measurements: {},
-      });
+      await enqueueTrusteeChangeNotification(
+        context,
+        this.apiToDataflowsGateway,
+        changeSet,
+        trusteeId,
+      );
     } catch (originalError) {
       context.logger.error(
         MODULE_NAME,
-        'Failed to dispatch trustee change notification.',
+        `${NOTIFICATION_SEND_FAILURE_TAG} Failed to prepare or enqueue trustee change notification.`,
         originalError,
       );
-      context.observability.completeTrace(trace, 'Trustee Change Notification', {
-        success: false,
-        properties: {},
-        measurements: {},
-      });
     }
   }
 

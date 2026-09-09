@@ -81,6 +81,7 @@ describe('trustee-verification-remap handleRemap', () => {
       queueCaseAssignmentEvent: vi.fn(),
       queueCaseReload: vi.fn(),
       queueTrusteeVerificationRemap: vi.fn(),
+      queueTrusteeChangeNotification: vi.fn(),
     });
   });
 
