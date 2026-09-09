@@ -290,6 +290,17 @@ describe('UPCOMING_KEY_DATES_FIELD_CONFIG tprFrequency computed field', () => {
       expect(result.value).toBe('6 months');
     }
   });
+
+  test('unrecognized tprFrequency value falls back to "No frequency selected"', () => {
+    const config = UPCOMING_KEY_DATES_FIELD_CONFIG['chapter7-panel'];
+    const field = config.find((f) => f.key === 'tprFrequency');
+    expect(field?.kind).toBe('computed');
+    if (field?.kind === 'computed') {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const result = field.buildField({ ...baseDoc, tprFrequency: 'BOGUS' as any });
+      expect(result.value).toBe('No frequency selected');
+    }
+  });
 });
 
 describe('UPCOMING_KEY_DATES_FIELD_CONFIG tprDue — pinned to 2027 (odd)', () => {
