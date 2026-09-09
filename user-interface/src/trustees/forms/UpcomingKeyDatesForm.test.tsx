@@ -580,7 +580,7 @@ describe('UpcomingKeyDatesForm', () => {
       ['SEMI_ANNUAL', '6 months'],
     ] as const)(
       'selecting "%s" then saving sends tprFrequency: %s in the API call',
-      async (value) => {
+      async (value, _label) => {
         const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
 
         renderComponent();
