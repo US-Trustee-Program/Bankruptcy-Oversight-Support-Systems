@@ -891,6 +891,23 @@ describe('UpcomingKeyDatesForm', () => {
       });
     });
 
+    test('Save button is disabled when a legacy 1900 sentinel date is entered into tprReviewPeriodStart', async () => {
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+      });
+
+      const startInput = document.getElementById('tpr-review-period-start') as HTMLInputElement;
+      const endInput = document.getElementById('tpr-review-period-end') as HTMLInputElement;
+      fireEvent.change(startInput, { target: { value: '1900-04-01' } });
+      fireEvent.change(endInput, { target: { value: '1900-03-31' } });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('button-save-upcoming-key-dates')).toBeDisabled();
+      });
+    });
+
     test('Save button re-enables after selecting Year Type following TPR Due error', async () => {
       renderComponent();
 
