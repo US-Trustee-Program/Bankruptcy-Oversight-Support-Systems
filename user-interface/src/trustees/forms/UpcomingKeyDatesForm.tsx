@@ -327,15 +327,9 @@ export default function UpcomingKeyDatesForm() {
     });
   }, [trusteeId, appointmentId, variantFromState, globalAlert]);
 
-  function handleMonthDayChange(field: keyof FormState) {
-    return (value: string) => {
-      setForm((prev) => ({ ...prev, [field]: value }));
-      if (field === 'tprDue') {
-        setErrors((prev) => ({ ...prev, tprDue: '', tprDueYearType: '' }));
-      } else if (field in errors) {
-        setErrors((prev) => ({ ...prev, [field]: '' }));
-      }
-    };
+  function handleTprDueChange(value: string) {
+    setForm((prev) => ({ ...prev, tprDue: value }));
+    setErrors((prev) => ({ ...prev, tprDue: '', tprDueYearType: '' }));
   }
 
   function handleYearTypeChange(ev: React.ChangeEvent<HTMLSelectElement>) {
@@ -656,7 +650,7 @@ export default function UpcomingKeyDatesForm() {
               <MonthDaySelector
                 id="tpr-due"
                 value={form.tprDue}
-                onChange={handleMonthDayChange('tprDue')}
+                onChange={handleTprDueChange}
                 hasError={!!errors.tprDue || (!tprDueDateComplete && !!tprDueBlurError)}
               />
               <div className="usa-form-group year-type-selector">
