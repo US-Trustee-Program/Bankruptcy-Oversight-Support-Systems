@@ -1254,4 +1254,81 @@ describe('UpcomingKeyDatesForm', () => {
       });
     });
   });
+
+  describe('tprDisplayUpdates=false (flag OFF) behavior', () => {
+    function renderFlagOff() {
+      return render(
+        <BrowserRouter>
+          <GlobalAlertContext.Provider value={mockGlobalAlertRef}>
+            <UpcomingKeyDatesForm tprDisplayUpdates={false} />
+          </GlobalAlertContext.Provider>
+        </BrowserRouter>,
+      );
+    }
+
+    beforeEach(() => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [chapter7Appointment] });
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+    });
+
+    test('tpr-frequency select is not rendered when flag is OFF', async () => {
+      renderFlagOff();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByTestId('tpr-frequency')).not.toBeInTheDocument();
+    });
+
+    test('MonthDayRangeSelector is rendered for TPR Review Period when flag is OFF', async () => {
+      renderFlagOff();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+      });
+
+      expect(screen.getByText('Trustee Performance Review (TPR) Period')).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText('Trustee Performance Review Period Start'),
+      ).not.toBeInTheDocument();
+    });
+
+    test('save payload uses sentinel format for tprReviewPeriod when flag is OFF', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({
+        data: {
+          id: 'doc-001',
+          documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
+          trusteeId: 'trustee-001',
+          appointmentId: 'appointment-001',
+          createdBy: SYSTEM_USER_REFERENCE,
+          createdOn: '2026-01-01T00:00:00.000Z',
+          updatedBy: SYSTEM_USER_REFERENCE,
+          updatedOn: '2026-01-01T00:00:00.000Z',
+          tprReviewPeriodStart: '1900-04-01',
+          tprReviewPeriodEnd: '1900-03-31',
+        },
+      });
+      const mockPut = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: undefined });
+
+      renderFlagOff();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+      });
+
+      await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+      await waitFor(() => {
+        expect(mockPut).toHaveBeenCalledWith(
+          'trustee-001',
+          'appointment-001',
+          expect.objectContaining({
+            tprReviewPeriodStart: '1900-04-01',
+            tprReviewPeriodEnd: '1900-03-31',
+          }),
+        );
+      });
+    });
+  });
 });

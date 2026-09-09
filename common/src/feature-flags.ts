@@ -35,6 +35,7 @@ export const testFeatureFlags: FeatureFlagSet = {
   'trustee-change-notification-enabled': true,
   'trustee-typed-phones': true,
   'software-vendor-typed-phones': true,
+  'tpr-display-updates': true,
 };
 
 export type LaunchDarklyContext = {
