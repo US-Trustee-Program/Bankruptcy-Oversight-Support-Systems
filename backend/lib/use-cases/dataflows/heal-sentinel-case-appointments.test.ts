@@ -10,7 +10,9 @@ import { CaseAppointment } from '@common/cams/trustee-appointments';
 import { TrusteeProfessionalId } from '@common/cams/trustee-professional-ids';
 import { SENTINEL_TRUSTEE_ID } from './migrate-case-appointments-constants';
 
-const makeSentinel = (overrides: Partial<CaseAppointment> = {}): CaseAppointment =>
+type SentinelAppointment = CaseAppointment & { reason?: string; acmsProfessionalId?: string };
+
+const makeSentinel = (overrides: Partial<SentinelAppointment> = {}): CaseAppointment =>
   ({
     id: `sentinel-${overrides.caseId ?? '001'}`,
     caseId: '081-25-00001',
@@ -131,6 +133,33 @@ describe('HealSentinelCaseAppointmentsUseCase', () => {
       pageSize: 1,
       remainingCount: 1,
     });
+  });
+
+  test('ambiguous match (more than one professional-id record): leaves the sentinel in place', async () => {
+    const sentinel = makeSentinel();
+    mockFindSentinelAppointments.mockResolvedValue([sentinel]);
+    mockFindByAcmsProfessionalId.mockResolvedValue([
+      makeProfessionalId({ id: 'prof-id-1', camsTrusteeId: 'trustee-a' }),
+      makeProfessionalId({ id: 'prof-id-2', camsTrusteeId: 'trustee-b' }),
+    ]);
+
+    const result = await useCase.healPage(25);
+
+    expect(mockUpsert).not.toHaveBeenCalled();
+    expect(mockDelete).not.toHaveBeenCalled();
+    expect(result.documentsWritten).toBe(0);
+  });
+
+  test('missing acmsProfessionalId on the sentinel: leaves the sentinel in place without looking up a match', async () => {
+    const sentinel = makeSentinel({ acmsProfessionalId: undefined });
+    mockFindSentinelAppointments.mockResolvedValue([sentinel]);
+
+    const result = await useCase.healPage(25);
+
+    expect(mockFindByAcmsProfessionalId).not.toHaveBeenCalled();
+    expect(mockUpsert).not.toHaveBeenCalled();
+    expect(mockDelete).not.toHaveBeenCalled();
+    expect(result.documentsWritten).toBe(0);
   });
 
   test('a failed upsert leaves the sentinel untouched and counts as a failure without aborting the page', async () => {
