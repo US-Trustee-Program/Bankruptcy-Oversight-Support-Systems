@@ -21,7 +21,6 @@ export default function useFeatureFlagReadiness(): FeatureFlagReadiness {
   // Wait for LaunchDarkly to be ready
   useEffect(() => {
     const config = getFeatureFlagConfiguration();
-    let isUnmounted = false;
 
     // If LaunchDarkly is configured, wait for the client to be available
     if (config.useExternalProvider) {
@@ -29,7 +28,6 @@ export default function useFeatureFlagReadiness(): FeatureFlagReadiness {
         ldClient
           .waitForInitialization()
           .then(() => {
-            if (isUnmounted) return;
             setIsReady(true);
             // Set a timeout: if flags don't arrive via useFlags() within 500ms, proceed anyway
             // This handles cases where LD initializes but returns no flags for the user
@@ -38,7 +36,6 @@ export default function useFeatureFlagReadiness(): FeatureFlagReadiness {
             }, FLAG_POPULATION_TIMEOUT_MS);
           })
           .catch(() => {
-            if (isUnmounted) return;
             // Even if LD fails, we should proceed
             setIsReady(true);
             setHasTimedOut(true);
@@ -52,7 +49,6 @@ export default function useFeatureFlagReadiness(): FeatureFlagReadiness {
     }
 
     return () => {
-      isUnmounted = true;
       if (timeoutIdRef.current) {
         clearTimeout(timeoutIdRef.current);
       }
