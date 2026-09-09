@@ -27,6 +27,7 @@ export const TRUSTEE_CASE_LIST = 'trustee-case-list';
 export const TRUSTEE_CHANGE_NOTIFICATIONS = 'trustee-change-notification-enabled';
 export const TRUSTEE_TYPED_PHONES = 'trustee-typed-phones';
 export const SOFTWARE_VENDOR_TYPED_PHONES = 'software-vendor-typed-phones';
+export const TPR_DISPLAY_UPDATES = 'tpr-display-updates';
 
 export function isFlagEnabled(flags: FeatureFlagSet, flag: string): boolean {
   return flags[flag] === true;

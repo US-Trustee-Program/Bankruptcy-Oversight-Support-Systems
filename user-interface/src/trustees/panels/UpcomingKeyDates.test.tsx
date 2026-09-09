@@ -64,6 +64,7 @@ describe('UpcomingKeyDates', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-01-15'));
     vi.restoreAllMocks();
+    mockNavigate.mockClear();
     mockUseNavigate.mockReturnValue(mockNavigate);
     TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
   });
@@ -113,6 +114,8 @@ describe('UpcomingKeyDates', () => {
     expect(screen.getByTestId('tpr-review-period-row')).toHaveTextContent('04/01 - 03/31');
     expect(screen.getByTestId('tpr-review-period-frequency-row')).toHaveTextContent('One year');
     expect(screen.getByTestId('tpr-due-row')).toHaveTextContent('09/15/2026');
+    expect(screen.getByTestId('tir-submission-row')).toHaveTextContent('10/15');
+    expect(screen.getByTestId('tir-review-row')).toHaveTextContent('11/01');
   });
 
   test('TPR Review Period shows mm/dd/yyyy - mm/dd/yyyy when full-year dates are stored', () => {
@@ -448,5 +451,35 @@ describe('UpcomingKeyDates', () => {
       `/trustees/${defaultProps.trusteeId}/appointments/${defaultProps.appointmentId}/upcoming-key-dates/edit`,
       { state: { subHeading: defaultProps.appointmentHeading, variant: 'chapter7-panel' } },
     );
+  });
+
+  describe('tprDisplayUpdates=false (flag OFF) behavior', () => {
+    test('does not render tpr-review-period-frequency-row when tprDisplayUpdates is false', () => {
+      renderComponent({ tprDisplayUpdates: false, data: populatedDocument });
+
+      expect(screen.queryByTestId('tpr-review-period-frequency-row')).not.toBeInTheDocument();
+    });
+
+    test('tprDue shows "mm/dd YEARTYPE" format when tprDisplayUpdates is false', () => {
+      renderComponent({
+        tprDisplayUpdates: false,
+        data: { ...populatedDocument, tprDue: '1900-09-15', tprDueYearType: 'EVEN' },
+      });
+
+      expect(screen.getByTestId('tpr-due-row')).toHaveTextContent('09/15 EVEN');
+    });
+
+    test('tprReviewPeriod shows mm/dd - mm/dd even for full-year dates when tprDisplayUpdates is false', () => {
+      renderComponent({
+        tprDisplayUpdates: false,
+        data: {
+          ...populatedDocument,
+          tprReviewPeriodStart: '2025-04-01',
+          tprReviewPeriodEnd: '2026-03-31',
+        },
+      });
+
+      expect(screen.getByTestId('tpr-review-period-row')).toHaveTextContent('04/01 - 03/31');
+    });
   });
 });

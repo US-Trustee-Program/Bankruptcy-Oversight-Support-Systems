@@ -310,3 +310,50 @@ export const UPCOMING_KEY_DATES_FIELD_CONFIG: Record<
     },
   ],
 };
+
+export function getUpcomingKeyDatesFieldConfig(
+  variant: UpcomingKeyDatesVariant,
+  tprDisplayUpdates: boolean,
+): UpcomingKeyDatesFieldConfig[] {
+  if (tprDisplayUpdates) {
+    return UPCOMING_KEY_DATES_FIELD_CONFIG[variant];
+  }
+
+  return UPCOMING_KEY_DATES_FIELD_CONFIG[variant]
+    .filter((f) => f.key !== 'tprFrequency')
+    .map((f): UpcomingKeyDatesFieldConfig => {
+      if (f.kind !== 'computed') return f;
+
+      if (f.key === 'tprDue') {
+        return {
+          kind: 'computed',
+          key: f.key,
+          buildField: (data: TrusteeUpcomingKeyDates | null) => {
+            const template = f.buildField(null);
+            const value =
+              data?.tprDue && data?.tprDueYearType
+                ? `${isoToMMDD(data.tprDue)} ${data.tprDueYearType}`
+                : 'No date added';
+            return { ...template, value };
+          },
+        };
+      }
+
+      if (f.key === 'tprReviewPeriod') {
+        return {
+          kind: 'computed',
+          key: f.key,
+          buildField: (data: TrusteeUpcomingKeyDates | null) => {
+            const template = f.buildField(null);
+            const value =
+              data?.tprReviewPeriodStart && data?.tprReviewPeriodEnd
+                ? isoRangeToMMDD(data.tprReviewPeriodStart, data.tprReviewPeriodEnd)
+                : 'No date added';
+            return { ...template, value };
+          },
+        };
+      }
+
+      return f;
+    });
+}
