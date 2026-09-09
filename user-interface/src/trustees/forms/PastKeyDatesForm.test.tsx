@@ -81,6 +81,7 @@ const populatedDocument: TrusteeUpcomingKeyDates = {
   upcomingExamOrAuditYear: 2029,
   upcomingExamOrAuditType: 'Field Exam',
   tirFrequency: 'SEMI_ANNUAL',
+  tprFrequency: 'BIANNUAL',
   leaseExpiration: '2027-06-30',
   idExpiration: '2028-01-15',
 };
@@ -266,7 +267,7 @@ describe('PastKeyDatesForm', () => {
         tprReviewPeriodEnd: '1900-03-31',
         tprDue: '1900-09-15',
         tprDueYearType: 'EVEN',
-        tprFrequency: null,
+        tprFrequency: 'BIANNUAL',
         tirReviewPeriodStart: '1900-07-01',
         tirReviewPeriodEnd: '1900-06-30',
         tirSubmission: '1900-10-15',
