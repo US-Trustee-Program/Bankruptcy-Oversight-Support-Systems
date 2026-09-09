@@ -19,9 +19,10 @@ const HEAL = HEAL_SENTINEL_CASE_APPOINTMENTS_QUEUE;
 const DLQ = HEAL_SENTINEL_CASE_APPOINTMENTS_DLQ;
 
 // Bounds how many sentinel appointments a single invocation heals serially, so an unexpectedly
-// large sentinel population can't run past the function timeout. No cursor is needed: a healed
-// sentinel is deleted outright, so re-querying findSentinelAppointments after this page naturally
-// returns only what's left (see HealSentinelCaseAppointmentsUseCase.healPage's doc comment).
+// large sentinel population can't run past the function timeout. The cursor advances every page
+// regardless of how many rows resolve, so an unresolvable run of sentinels can never stall
+// progress through the rest of the collection (see HealSentinelCaseAppointmentsUseCase.healPage's
+// doc comment).
 const HEAL_PAGE_SIZE = 25;
 
 /**
@@ -50,22 +51,25 @@ async function handleHeal(
 
   try {
     const useCase = new HealSentinelCaseAppointmentsUseCase(context);
-    const { documentsWritten, documentsFailed, pageSize, remainingCount } =
-      await useCase.healPage(HEAL_PAGE_SIZE);
+    const { documentsWritten, documentsFailed, pageSize, nextLastId } = await useCase.healPage(
+      message.lastId ?? null,
+      HEAL_PAGE_SIZE,
+    );
 
-    if (remainingCount > 0) {
-      // The page returned a full (or partial-but-nonempty) set of sentinel rows — more may
-      // remain. Re-send the message unchanged: the next invocation re-queries
-      // findSentinelAppointments and naturally sees only what's left, since this page's healed
-      // rows were deleted. Terminates once a page comes back empty.
+    if (nextLastId !== null) {
+      // The page was non-empty — more sentinel rows may exist beyond this page's cursor
+      // position, whether or not this page's rows resolved. Re-send with the advanced cursor so
+      // the next invocation always makes forward progress through the collection, regardless of
+      // how many of this page's sentinels were actually healed. Terminates once a page comes
+      // back empty (nextLastId stays null).
       const queueClient = StorageQueueHumbleObject.fromConnectionString(
         connectionString,
         HEAL.queueName,
       );
-      await queueClient.sendMessage(JSON.stringify(message));
+      await queueClient.sendMessage(JSON.stringify({ ...message, lastId: nextLastId }));
       context.logger.info(
         MODULE_NAME,
-        `Healed a page of ${pageSize} sentinel appointment(s); requeued to check for more.`,
+        `Healed ${documentsWritten} of ${pageSize} sentinel appointment(s) in this page; requeued to check for more.`,
       );
     }
 
@@ -75,7 +79,7 @@ async function handleHeal(
       success: true,
       details: {
         pageSize: String(pageSize),
-        continuationQueued: String(remainingCount > 0),
+        continuationQueued: String(nextLastId !== null),
       },
     });
   } catch (error) {

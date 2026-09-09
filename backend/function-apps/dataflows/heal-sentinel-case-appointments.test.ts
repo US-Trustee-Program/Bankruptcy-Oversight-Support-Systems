@@ -26,9 +26,16 @@ const makeMessage = (
   ...overrides,
 });
 
-const makeSentinel = (overrides: Partial<CaseAppointment> = {}): CaseAppointment =>
+type SentinelAppointment = CaseAppointment & {
+  _id: string;
+  reason?: string;
+  acmsProfessionalId?: string;
+};
+
+const makeSentinel = (overrides: Partial<SentinelAppointment> = {}): SentinelAppointment =>
   ({
     id: `sentinel-${overrides.caseId ?? '001'}`,
+    _id: 'mongo-1',
     caseId: '081-25-00001',
     trusteeId: SENTINEL_TRUSTEE_ID,
     assignedOn: '2025-01-01T00:00:00.000Z',
@@ -39,7 +46,7 @@ const makeSentinel = (overrides: Partial<CaseAppointment> = {}): CaseAppointment
     reason: 'trustee-not-found',
     acmsProfessionalId: 'NY-00063',
     ...overrides,
-  }) as CaseAppointment;
+  }) as SentinelAppointment;
 
 const makeProfessionalId = (
   overrides: Partial<TrusteeProfessionalId> = {},
@@ -129,7 +136,28 @@ describe('heal-sentinel-case-appointments handleHeal', () => {
     const message = makeMessage();
     await handleHeal(message, makeInvocationContext());
 
-    expect(mockSendMessage).toHaveBeenCalledWith(JSON.stringify(message));
+    expect(mockSendMessage).toHaveBeenCalledWith(
+      JSON.stringify({ ...message, lastId: sentinel._id }),
+    );
+  });
+
+  test('advances the cursor on requeue so an unresolvable sentinel does not stall the run', async () => {
+    const { handleHeal } = await import('./heal-sentinel-case-appointments');
+    const sentinel = makeSentinel({ _id: 'mongo-unresolvable' });
+    mockFindSentinelAppointments.mockResolvedValue([sentinel]);
+    mockFindByAcmsProfessionalId.mockResolvedValue([]);
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
+      await createMockApplicationContext(),
+    );
+    const mockSendMessage = vi.fn().mockResolvedValue(undefined);
+    vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
+      sendMessage: mockSendMessage,
+    } as unknown as StorageQueueHumbleObject);
+
+    await handleHeal(makeMessage(), makeInvocationContext());
+
+    expect(mockUpsert).not.toHaveBeenCalled();
+    expect(mockSendMessage).toHaveBeenCalledWith(JSON.stringify({ lastId: 'mongo-unresolvable' }));
   });
 
   test('does not requeue when the page is empty (no sentinels left)', async () => {
