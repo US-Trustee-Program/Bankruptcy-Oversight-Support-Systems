@@ -104,13 +104,22 @@ jobs:
       launchDarklyEnvironment: ${{ vars.CAMS_LAUNCH_DARKLY_ENV }}
       isDeployment: true
 
+  # No `needs: [deploy-infra]`: this workflow's jobs (deploy-db,
+  # deploy-log-analytics-workspace) target shared, pre-existing resources
+  # (the Cosmos account, resource groups, and Key Vault named in KV) and drive
+  # the ARM control plane, not branch-created network resources — so they run
+  # at t=0 in parallel with deploy-infra. deploy-db is the widest post-infra
+  # step (~12 min median) and shorter than deploy-infra (~19.6 min), so this
+  # overlap removes it from the critical path; deploy-code-slot still gates on
+  # both via its own `needs`. The one branch coupling to deploy-infra (the
+  # snet-* lookup that reads the branch VNet) is guarded to Main-Gov in
+  # reusable-infrastructure-deploy.yml's Deploy Cosmos MongoDB step.
   deploy-supporting-infrastructure:
     name: Supporting Infrastructure
     uses: ./.github/workflows/reusable-infrastructure-deploy.yml
     permissions:
       contents: read
       id-token: write
-    needs: [deploy-infra]
     with:
       ghaEnvironment: ${{ inputs.ghaEnvironment }}
       environmentHash: ${{ inputs.environmentHash }}

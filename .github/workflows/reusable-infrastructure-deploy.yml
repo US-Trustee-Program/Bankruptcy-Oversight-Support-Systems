@@ -162,7 +162,18 @@ jobs:
           ENVIRONMENT_HASH: ${{ inputs.environmentHash || 'DOES_NOT_EXIST' }}
           AZ_ACTION_GROUP_NAME: ${{ secrets.AZ_ACTION_GROUP_NAME }} # pragma: allowlist secret
         run: |
-          allowedNetworks=$(az network vnet subnet list -g ${{ env.AZ_NETWORK_RG }} --vnet-name ${{ env.AZ_NETWORK_VNET_NAME }} --query "[?name=='snet-${API_FUNCTION_NAME}' || name=='snet-${DATAFLOWS_FUNCTION_NAME}'].id" -o json)
+          # This job runs in parallel with deploy-infra (no `needs` on it; see
+          # sub-deploy.yml), so a branch's VNet (vnet-<stackName>) may not exist
+          # yet when this runs. Branch deploys discard allowedNetworks anyway:
+          # az-cosmos-deploy.sh sets allowAllNetworks=true for non-Main-Gov,
+          # forcing isVirtualNetworkFilterEnabled=false (cosmos-account.bicep).
+          # Only Main-Gov applies the subnet rules, and its VNet is persistent,
+          # so query it there only; branches pass an empty set.
+          if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
+            allowedNetworks=$(az network vnet subnet list -g ${{ env.AZ_NETWORK_RG }} --vnet-name ${{ env.AZ_NETWORK_VNET_NAME }} --query "[?name=='snet-${API_FUNCTION_NAME}' || name=='snet-${DATAFLOWS_FUNCTION_NAME}'].id" -o json)
+          else
+            allowedNetworks='[]'
+          fi
 
           ./ops/scripts/pipeline/az-cosmos-deploy.sh \
             -g "${AZURE_RG}" \
