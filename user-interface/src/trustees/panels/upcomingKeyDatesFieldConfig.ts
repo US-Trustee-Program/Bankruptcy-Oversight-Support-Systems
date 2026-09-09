@@ -52,22 +52,28 @@ function tprFrequencyField(data: TrusteeUpcomingKeyDates | null): UpcomingKeyDat
   };
 }
 
-function tprReviewPeriodField(data: TrusteeUpcomingKeyDates | null): UpcomingKeyDatesDisplayField {
+function tprReviewPeriodField(
+  data: TrusteeUpcomingKeyDates | null,
+  label = 'Trustee Performance Review Period',
+): UpcomingKeyDatesDisplayField {
   const value =
     data?.tprReviewPeriodStart && data?.tprReviewPeriodEnd
       ? data.tprReviewPeriodStart.startsWith('1900-')
         ? isoRangeToMMDD(data.tprReviewPeriodStart, data.tprReviewPeriodEnd)
         : `${isoToMMDDYYYY(data.tprReviewPeriodStart)} - ${isoToMMDDYYYY(data.tprReviewPeriodEnd)}`
       : NO_DATE;
-  return { label: 'Trustee Performance Review Period', value, testId: 'tpr-review-period-row' };
+  return { label, value, testId: 'tpr-review-period-row' };
 }
 
-function tprDueField(data: TrusteeUpcomingKeyDates | null): UpcomingKeyDatesDisplayField {
+function tprDueField(
+  data: TrusteeUpcomingKeyDates | null,
+  label = 'Trustee Performance Review Due',
+): UpcomingKeyDatesDisplayField {
   const value =
     data?.tprDue && data?.tprDueYearType
       ? `${isoToMMDD(data.tprDue)}/${calculateTprDueYear(data.tprDueYearType, new Date().getFullYear())}`
       : NO_DATE;
-  return { label: 'Trustee Performance Review Due', value, testId: 'tpr-due-row' };
+  return { label, value, testId: 'tpr-due-row' };
 }
 
 function leaseExpirationField(data: TrusteeUpcomingKeyDates | null): UpcomingKeyDatesDisplayField {
@@ -266,15 +272,7 @@ export const UPCOMING_KEY_DATES_FIELD_CONFIG: Record<
     {
       kind: 'computed',
       key: 'tprReviewPeriod',
-      buildField: (data) => {
-        const value =
-          data?.tprReviewPeriodStart && data?.tprReviewPeriodEnd
-            ? data.tprReviewPeriodStart.startsWith('1900-')
-              ? isoRangeToMMDD(data.tprReviewPeriodStart, data.tprReviewPeriodEnd)
-              : `${isoToMMDDYYYY(data.tprReviewPeriodStart)} - ${isoToMMDDYYYY(data.tprReviewPeriodEnd)}`
-            : NO_DATE;
-        return { label: 'TPR Review Period', value, testId: 'tpr-review-period-row' };
-      },
+      buildField: (data) => tprReviewPeriodField(data, 'TPR Review Period'),
     },
     {
       kind: 'computed',
@@ -284,13 +282,7 @@ export const UPCOMING_KEY_DATES_FIELD_CONFIG: Record<
     {
       kind: 'computed',
       key: 'tprDue',
-      buildField: (data) => {
-        const value =
-          data?.tprDue && data?.tprDueYearType
-            ? `${isoToMMDD(data.tprDue)}/${calculateTprDueYear(data.tprDueYearType, new Date().getFullYear())}`
-            : NO_DATE;
-        return { label: 'TPR Due', value, testId: 'tpr-due-row' };
-      },
+      buildField: (data) => tprDueField(data, 'TPR Due'),
     },
     {
       kind: 'computed',
