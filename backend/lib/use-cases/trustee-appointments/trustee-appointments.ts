@@ -230,7 +230,6 @@ export class TrusteeAppointmentsUseCase {
     context: ApplicationContext,
     trusteeId: string,
     appointmentData: TrusteeAppointmentInput,
-    options?: { suppressNotifications?: boolean },
   ): Promise<TrusteeAppointment> {
     try {
       let trusteeName: string;
@@ -272,10 +271,7 @@ export class TrusteeAppointmentsUseCase {
 
       await this.trusteesRepository.createTrusteeHistory(history as Creatable<TrusteeHistory>);
 
-      if (
-        context.featureFlags['trustee-change-notification-enabled'] &&
-        !options?.suppressNotifications
-      ) {
+      if (context.featureFlags['trustee-change-notification-enabled']) {
         await this.dispatchAppointmentNotification(context, {
           trusteeId,
           trusteeName,
@@ -306,7 +302,6 @@ export class TrusteeAppointmentsUseCase {
     trusteeId: string,
     appointmentId: string,
     appointmentData: TrusteeAppointmentInput,
-    options?: { suppressNotifications?: boolean },
   ): Promise<TrusteeAppointment> {
     try {
       // Normalize data (convert old format to new format if needed)
@@ -346,10 +341,7 @@ export class TrusteeAppointmentsUseCase {
 
         await this.trusteesRepository.createTrusteeHistory(history as Creatable<TrusteeHistory>);
 
-        if (
-          context.featureFlags['trustee-change-notification-enabled'] &&
-          !options?.suppressNotifications
-        ) {
+        if (context.featureFlags['trustee-change-notification-enabled']) {
           await this.dispatchAppointmentNotification(context, {
             trusteeId,
             before: beforeSnapshot,

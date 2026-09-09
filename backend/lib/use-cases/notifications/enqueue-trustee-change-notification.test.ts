@@ -44,19 +44,22 @@ describe('enqueueTrusteeChangeNotification', () => {
     delete process.env.CAMS_FRONTEND_URL;
   });
 
-  test('enriches the changeSet with author and changedAt, and enqueues it', async () => {
+  test('enriches the changeSet with author and changedAt, and enqueues it without mutating the input', async () => {
     const changeSet = buildChangeSet();
+    const originalChangeSet = { ...changeSet };
     const gateway = buildGateway();
 
     await enqueueTrusteeChangeNotification(context, gateway, changeSet, 'trustee-1');
 
-    expect(changeSet.author).toEqual({
+    expect(changeSet).toEqual(originalChangeSet);
+    const [{ changeSet: enrichedChangeSet }] = vi.mocked(gateway.queueTrusteeChangeNotification)
+      .mock.calls[0];
+    expect(enrichedChangeSet.author).toEqual({
       name: context.session.user.name,
       email: context.session.user.email,
     });
-    expect(changeSet.changedAt).toEqual(expect.any(String));
-    expect(new Date(changeSet.changedAt!).toString()).not.toBe('Invalid Date');
-    expect(gateway.queueTrusteeChangeNotification).toHaveBeenCalledWith({ changeSet });
+    expect(enrichedChangeSet.changedAt).toEqual(expect.any(String));
+    expect(new Date(enrichedChangeSet.changedAt!).toString()).not.toBe('Invalid Date');
   });
 
   test('sets profileLink when CAMS_FRONTEND_URL is a valid https URL', async () => {
@@ -66,7 +69,9 @@ describe('enqueueTrusteeChangeNotification', () => {
 
     await enqueueTrusteeChangeNotification(context, gateway, changeSet, 'trustee-1');
 
-    expect(changeSet.profileLink).toBe('https://cams.ustp.gov/trustees/trustee-1');
+    const [{ changeSet: enrichedChangeSet }] = vi.mocked(gateway.queueTrusteeChangeNotification)
+      .mock.calls[0];
+    expect(enrichedChangeSet.profileLink).toBe('https://cams.ustp.gov/trustees/trustee-1');
   });
 
   test('trims a trailing slash from CAMS_FRONTEND_URL before building profileLink', async () => {
@@ -76,7 +81,9 @@ describe('enqueueTrusteeChangeNotification', () => {
 
     await enqueueTrusteeChangeNotification(context, gateway, changeSet, 'trustee-1');
 
-    expect(changeSet.profileLink).toBe('https://cams.ustp.gov/trustees/trustee-1');
+    const [{ changeSet: enrichedChangeSet }] = vi.mocked(gateway.queueTrusteeChangeNotification)
+      .mock.calls[0];
+    expect(enrichedChangeSet.profileLink).toBe('https://cams.ustp.gov/trustees/trustee-1');
   });
 
   test('omits profileLink when CAMS_FRONTEND_URL is not set', async () => {
@@ -86,7 +93,9 @@ describe('enqueueTrusteeChangeNotification', () => {
 
     await enqueueTrusteeChangeNotification(context, gateway, changeSet, 'trustee-1');
 
-    expect(changeSet.profileLink).toBeUndefined();
+    const [{ changeSet: enrichedChangeSet }] = vi.mocked(gateway.queueTrusteeChangeNotification)
+      .mock.calls[0];
+    expect(enrichedChangeSet.profileLink).toBeUndefined();
   });
 
   test('omits profileLink when CAMS_FRONTEND_URL does not match the https?:// pattern', async () => {
@@ -96,7 +105,9 @@ describe('enqueueTrusteeChangeNotification', () => {
 
     await enqueueTrusteeChangeNotification(context, gateway, changeSet, 'trustee-1');
 
-    expect(changeSet.profileLink).toBeUndefined();
+    const [{ changeSet: enrichedChangeSet }] = vi.mocked(gateway.queueTrusteeChangeNotification)
+      .mock.calls[0];
+    expect(enrichedChangeSet.profileLink).toBeUndefined();
   });
 
   test('propagates a rejection from the gateway without catching it', async () => {

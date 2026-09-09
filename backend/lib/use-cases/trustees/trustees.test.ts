@@ -2211,36 +2211,6 @@ describe('TrusteesUseCase tests', () => {
       expect(changeSet.profileLink).toBeUndefined();
     });
 
-    test('does not enqueue when suppressNotifications is true', async () => {
-      const updatedTrustee = { ...existingTrustee, name: 'Henry G. Green' };
-      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
-
-      const result = await trusteesUseCase.updateTrustee(
-        context,
-        trusteeId,
-        { name: 'Henry G. Green' },
-        { suppressNotifications: true },
-      );
-
-      expect(result).toEqual(updatedTrustee);
-      expect(queueTrusteeChangeNotificationSpy).not.toHaveBeenCalled();
-    });
-
-    test('still writes audit history when suppressNotifications is true', async () => {
-      const updatedTrustee = { ...existingTrustee, name: 'Henry G. Green' };
-      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
-      const historySpy = vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory');
-
-      await trusteesUseCase.updateTrustee(
-        context,
-        trusteeId,
-        { name: 'Henry G. Green' },
-        { suppressNotifications: true },
-      );
-
-      expect(historySpy).toHaveBeenCalled();
-    });
-
     test('does not enqueue when only internal contact changes', async () => {
       const newInternal = MockData.getContactInformation({ companyName: 'Internal Co' });
       const updatedTrustee = { ...existingTrustee, internal: newInternal };

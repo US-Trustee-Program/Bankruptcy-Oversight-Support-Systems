@@ -238,7 +238,11 @@ export class TrusteeChangeNotificationUseCase {
       ),
     );
 
-    if (routingKeys.length === 0) return { mailingLists: [], skipped: [] };
+    if (routingKeys.length === 0) {
+      const message = `No routing category resolved a mailing list for trusteeId '${changeSet.trusteeId}'; the change was saved but no email notification was sent.`;
+      context.logger.error(MODULE_NAME, `${NOTIFICATION_SEND_FAILURE_TAG} ${message}`);
+      return { mailingLists: [], skipped: [{ reason: 'skipped', message }] };
+    }
 
     const hits = await this.routingRepository.findRecipientsByRoutingKeys(routingKeys);
 

@@ -1499,50 +1499,6 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       expect(districtField.comparisons[0].before).toBe('Southern District of New York (Manhattan)');
       expect(districtField.comparisons[0].after).toBe('Southern District of New York (Brooklyn)');
     });
-
-    test('does not enqueue when suppressNotifications is true', async () => {
-      const mockTrustee = MockData.getTrustee({ trusteeId, name: 'Henry Green' });
-      const existingAppointment = MockData.getTrusteeAppointment({
-        id: appointmentId,
-        trusteeId,
-        chapter: '7',
-        appointmentType: 'panel',
-        courtId: '081',
-        divisionCodes: ['001'],
-        appointedDate: '2024-01-15',
-        status: 'active',
-        effectiveDate: '2024-01-15',
-      });
-      const updatedAppointment = {
-        ...existingAppointment,
-        status: 'voluntarily-suspended' as const,
-      };
-
-      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValueOnce(existingAppointment);
-      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValueOnce(mockTrustee);
-      vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(
-        updatedAppointment,
-      );
-
-      const result = await trusteeAppointmentsUseCase.updateAppointment(
-        context,
-        trusteeId,
-        appointmentId,
-        {
-          chapter: '7',
-          appointmentType: 'panel',
-          courtId: '081',
-          divisionCode: '001',
-          appointedDate: '2024-01-15',
-          status: 'voluntarily-suspended',
-          effectiveDate: '2024-01-15',
-        },
-        { suppressNotifications: true },
-      );
-
-      expect(result).toEqual(updatedAppointment);
-      expect(queueTrusteeChangeNotificationSpy).not.toHaveBeenCalled();
-    });
   });
 
   describe('createAppointment notification dispatch', () => {
@@ -1707,43 +1663,6 @@ describe('TrusteeAppointmentsUseCase tests', () => {
 
       const { changeSet } = queueTrusteeChangeNotificationSpy.mock.calls[0][0];
       expect(changeSet.chapters).toEqual(['13']);
-    });
-
-    test('does not enqueue when suppressNotifications is true', async () => {
-      const mockTrustee = MockData.getTrustee({ trusteeId, name: 'Henry Green' });
-      const mockCreatedAppointment = MockData.getTrusteeAppointment({
-        trusteeId,
-        chapter: '7',
-        appointmentType: 'panel',
-        courtId: '081',
-        divisionCodes: ['001'],
-        appointedDate: '2024-01-15',
-        status: 'active',
-        effectiveDate: '2024-01-15',
-      });
-
-      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
-      vi.spyOn(MockMongoRepository.prototype, 'createAppointment').mockResolvedValue(
-        mockCreatedAppointment,
-      );
-
-      const result = await trusteeAppointmentsUseCase.createAppointment(
-        context,
-        trusteeId,
-        {
-          chapter: '7',
-          appointmentType: 'panel',
-          courtId: '081',
-          divisionCode: '001',
-          appointedDate: '2024-01-15',
-          status: 'active',
-          effectiveDate: '2024-01-15',
-        },
-        { suppressNotifications: true },
-      );
-
-      expect(result).toEqual(mockCreatedAppointment);
-      expect(queueTrusteeChangeNotificationSpy).not.toHaveBeenCalled();
     });
   });
 });

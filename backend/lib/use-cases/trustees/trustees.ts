@@ -367,7 +367,6 @@ export class TrusteesUseCase {
     context: ApplicationContext,
     trusteeId: string,
     trustee: Partial<TrusteeInput>,
-    options?: { suppressNotifications?: boolean },
   ): Promise<Trustee> {
     try {
       const existingTrustee = await this.trusteesRepository.read(trusteeId);
@@ -419,7 +418,6 @@ export class TrusteesUseCase {
 
       if (
         context.featureFlags['trustee-change-notification-enabled'] &&
-        !options?.suppressNotifications &&
         changeSet.fields.length > 0
       ) {
         await this.dispatchChangeNotification(context, changeSet, trusteeId);

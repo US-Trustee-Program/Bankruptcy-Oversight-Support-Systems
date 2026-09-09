@@ -10,15 +10,18 @@ export async function enqueueTrusteeChangeNotification(
   changeSet: TrusteeChangeSet,
   trusteeId: string,
 ): Promise<void> {
-  changeSet.author = {
-    name: context.session.user.name,
-    email: context.session.user.email,
+  const enrichedChangeSet: TrusteeChangeSet = {
+    ...changeSet,
+    author: {
+      name: context.session.user.name,
+      email: context.session.user.email,
+    },
+    changedAt: DateHelper.getCurrentIsoTimestamp(),
   };
-  changeSet.changedAt = DateHelper.getCurrentIsoTimestamp();
   const frontendUrl = process.env.CAMS_FRONTEND_URL?.replace(/\/+$/, '');
   if (frontendUrl && /^https?:\/\//i.test(frontendUrl)) {
-    changeSet.profileLink = `${frontendUrl}/trustees/${trusteeId}`;
+    enrichedChangeSet.profileLink = `${frontendUrl}/trustees/${trusteeId}`;
   }
-  const event: TrusteeChangeNotificationEvent = { changeSet };
+  const event: TrusteeChangeNotificationEvent = { changeSet: enrichedChangeSet };
   await gateway.queueTrusteeChangeNotification(event);
 }
