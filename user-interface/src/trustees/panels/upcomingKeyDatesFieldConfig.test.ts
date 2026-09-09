@@ -40,11 +40,11 @@ describe('UPCOMING_KEY_DATES_FIELD_CONFIG chapter13-standing variant', () => {
     }
   });
 
-  test('Budget Review to OO constant is 08/15', () => {
+  test('Budget Due to OO constant is 08/15', () => {
     const field = config.find((f) => f.key === 'budgetReviewToOO');
     expect(field?.kind).toBe('constant');
     if (field?.kind === 'constant') {
-      expect(field.displayLabel).toBe('Budget Review to OO');
+      expect(field.displayLabel).toBe('Budget Due to OO');
       expect(field.value).toBe('08/15');
     }
   });
