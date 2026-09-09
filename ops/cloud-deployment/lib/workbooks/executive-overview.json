@@ -1,0 +1,358 @@
+{
+  "version": "Notebook/1.0",
+  "items": [
+    {
+      "type": 1,
+      "content": {
+        "json": "# CAMS Executive Usage Overview\n\nConsolidated stakeholder view of growth, engagement, feature adoption, and reliability. Built entirely from existing Application Insights telemetry (pageViews, customEvents) plus the auto-generated anonymous per-browser `user_Id` \u2014 no new instrumentation required.\n\n**Known approximations:** engagement is per-browser (not per-person) since real authenticated user identity is not wired into telemetry today; Case Notes usage is a tab-visit proxy, not confirmed note creation; Data Verification cannot be broken out by order type (Transfer/Consolidation/Trustee Mismatch) since all three share one URL."
+      },
+      "name": "header"
+    },
+    {
+      "type": 9,
+      "content": {
+        "version": "KqlParameterItem/1.0",
+        "parameters": [
+          {
+            "id": "time-range",
+            "version": "KqlParameterItem/1.0",
+            "name": "TimeRange",
+            "type": 4,
+            "isRequired": true,
+            "typeSettings": {
+              "selectableValues": [
+                {
+                  "durationMs": 604800000
+                },
+                {
+                  "durationMs": 1209600000
+                },
+                {
+                  "durationMs": 2592000000
+                },
+                {
+                  "durationMs": 5184000000
+                },
+                {
+                  "durationMs": 7776000000
+                }
+              ],
+              "allowCustom": true
+            },
+            "value": {
+              "durationMs": 2592000000
+            }
+          },
+          {
+            "id": "section-filter",
+            "version": "KqlParameterItem/1.0",
+            "name": "SectionFilter",
+            "type": 2,
+            "isRequired": false,
+            "query": "datatable(Section:string) [\"Cases\", \"Trustees\", \"Data Verification\", \"Staff Assignment\"]",
+            "typeSettings": {
+              "additionalResourceOptions": [
+                "value::all"
+              ],
+              "showDefault": false
+            },
+            "value": "value::all"
+          }
+        ],
+        "style": "pills",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components"
+      },
+      "name": "parameters"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "## Growth & Engagement\n\nEngagement is measured against App Insights' auto-generated anonymous `user_Id` (one per browser), not real authenticated identity."
+      },
+      "name": "growth-header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let TotalActiveUsers = toscalar(union pageViews, customEvents | where timestamp {TimeRange} | summarize dcount(user_Id));\nlet NewUsers = toscalar(\n    union pageViews, customEvents\n    | where timestamp > ago(400d)\n    | summarize FirstSeen = min(timestamp) by user_Id\n    | where FirstSeen {TimeRange}\n    | count\n);\nlet Current30d = toscalar(union pageViews, customEvents | where timestamp > ago(30d) | summarize dcount(user_Id));\nlet Previous30d = toscalar(union pageViews, customEvents | where timestamp between (ago(60d) .. ago(30d)) | summarize dcount(user_Id));\nlet MoMGrowthPercent = round(iif(Previous30d > 0, 100.0 * (Current30d - Previous30d) / Previous30d, 0.0), 1);\nunion\n    (print Metric = \"Active Users (selected period)\", Value = toreal(TotalActiveUsers)),\n    (print Metric = \"New Users (selected period)\", Value = toreal(NewUsers)),\n    (print Metric = \"MoM Growth % (rolling 30d)\", Value = MoMGrowthPercent)",
+        "size": 3,
+        "title": "Growth Summary",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {
+            "columnMatch": "Metric"
+          },
+          "leftContent": {
+            "columnMatch": "Value",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "blue"
+            },
+            "numberFormat": {
+              "unit": 1,
+              "options": {
+                "style": "decimal",
+                "minimumFractionDigits": 0,
+                "maximumFractionDigits": 1
+              }
+            }
+          },
+          "showBorder": true
+        }
+      },
+      "name": "growth-kpis"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let raw = union pageViews, customEvents | where timestamp > ago(120d) | project timestamp, user_Id;\nlet dau = raw\n    | summarize DAU = dcount(user_Id) by Day = bin(timestamp, 1d);\nlet wau = raw\n    | extend Day = bin(timestamp, 1d)\n    | mv-expand WindowDay = range(Day, Day + 6d, 1d) to typeof(datetime)\n    | summarize WAU = dcount(user_Id) by Day = WindowDay;\nlet mau = raw\n    | extend Day = bin(timestamp, 1d)\n    | mv-expand WindowDay = range(Day, Day + 29d, 1d) to typeof(datetime)\n    | summarize MAU = dcount(user_Id) by Day = WindowDay;\ndau\n| join kind=fullouter wau on Day\n| join kind=fullouter mau on Day\n| project Day = coalesce(Day, Day1, Day2), DAU = coalesce(DAU, 0), WAU = coalesce(WAU, 0), MAU = coalesce(MAU, 0)\n| extend Stickiness = round(iif(MAU > 0, 100.0 * DAU / MAU, 0.0), 1)\n| where Day > ago(90d)\n| order by Day asc",
+        "size": 0,
+        "title": "DAU / WAU / MAU and Stickiness (DAU\u00f7MAU %)",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "linechart",
+        "chartSettings": {
+          "xAxis": "Day",
+          "showDataPoints": false
+        }
+      },
+      "name": "dau-wau-mau-trend"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "union pageViews, customEvents\n| where timestamp {TimeRange}\n| summarize ActiveDays = dcount(startofday(timestamp)) by user_Id\n| extend Segment = iif(ActiveDays >= 8, \"Engaged (8+ active days)\", \"Occasional (1-7 active days)\")\n| summarize Users = count() by Segment",
+        "size": 0,
+        "title": "Engaged vs. Occasional Users",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "piechart"
+      },
+      "name": "engaged-occasional-pie",
+      "customWidth": "50"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let FirstSeen = union pageViews, customEvents | where timestamp > ago(400d) | summarize FirstSeen = min(timestamp) by user_Id;\nunion pageViews, customEvents\n| where timestamp {TimeRange}\n| summarize by user_Id\n| join kind=inner FirstSeen on user_Id\n| extend Status = iif(FirstSeen >= {TimeRange:start} and FirstSeen <= {TimeRange:end}, \"New\", \"Returning\")\n| summarize Users = count() by Status",
+        "size": 0,
+        "title": "New vs. Returning Users",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "piechart"
+      },
+      "name": "new-returning-pie",
+      "customWidth": "50"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let raw = union pageViews, customEvents | where timestamp > ago(120d) | project timestamp, user_Id;\nlet cohorts = raw | summarize CohortWeek = startofweek(min(timestamp)) by user_Id;\nlet cohortSizes = cohorts | summarize CohortSize = count() by CohortWeek;\nraw\n| extend ActiveWeek = startofweek(timestamp)\n| join kind=inner cohorts on user_Id\n| extend WeekNumber = datetime_diff('week', ActiveWeek, CohortWeek)\n| where WeekNumber >= 0 and WeekNumber <= 8\n| where CohortWeek > ago(70d)\n| summarize ActiveUsers = dcount(user_Id) by CohortWeek, WeekNumber\n| join kind=inner cohortSizes on CohortWeek\n| extend RetentionPercent = round(100.0 * ActiveUsers / CohortSize, 1)\n| project CohortWeek = format_datetime(CohortWeek, 'yyyy-MM-dd'), WeekNumber, RetentionPercent\n| order by CohortWeek asc, WeekNumber asc",
+        "size": 0,
+        "title": "Weekly Cohort Retention (% of cohort still active by week N)",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "linechart",
+        "chartSettings": {
+          "xAxis": "WeekNumber",
+          "showDataPoints": true
+        }
+      },
+      "name": "retention-cohort-trend"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "## Feature Adoption\n\nEvery case-detail and trustee-detail tab is a distinct route, and the app already auto-tracks a `pageView` on every route change \u2014 so this is a direct measure of which tabs are actually being visited, no new instrumentation needed. **Data Verification** is a single URL (its three order types render as accordions, not routes) so it cannot be broken out further without new instrumentation."
+      },
+      "name": "feature-header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let Routes = pageViews\n    | where timestamp {TimeRange}\n    | where isnotempty(url)\n    | extend Section = case(\n        url contains \"/case-detail/\" or url contains \"/my-cases\" or (url contains \"/search\" and not(url contains \"/case-detail/\")), \"Cases\",\n        url contains \"/trustees\", \"Trustees\",\n        url contains \"/data-verification\", \"Data Verification\",\n        url contains \"/staff-assignment\", \"Staff Assignment\",\n        \"Other\"\n      )\n    | extend Tab = case(\n        Section == \"Cases\" and url contains \"/my-cases\", \"My Cases (list)\",\n        Section == \"Cases\" and url contains \"/search\" and not(url contains \"/case-detail/\"), \"Case Search\",\n        Section == \"Cases\" and url contains \"/trustee-and-assigned-staff\", \"Assigned Staff\",\n        Section == \"Cases\" and url contains \"/court-docket\", \"Court Docket\",\n        Section == \"Cases\" and url contains \"/notes\", \"Case Notes\",\n        Section == \"Cases\" and url contains \"/associated-cases\", \"Associated Cases\",\n        Section == \"Cases\" and url contains \"/audit-history\", \"Change History\",\n        Section == \"Cases\" and url contains \"/trustee\", \"Trustee\",\n        Section == \"Cases\" and url contains \"/case-detail/\", \"Overview\",\n        Section == \"Trustees\" and url endswith \"/trustees\", \"Trustees List\",\n        Section == \"Trustees\" and url contains \"/appointments\", \"Appointments\",\n        Section == \"Trustees\" and url contains \"/assigned-staff\", \"Assigned Staff\",\n        Section == \"Trustees\" and url contains \"/audit-history\", \"Change History\",\n        Section == \"Trustees\" and url contains \"/notes\", \"Trustee Notes\",\n        Section == \"Trustees\" and url contains \"/cases\", \"Case List\",\n        Section == \"Trustees\", \"Overview\",\n        Section == \"Data Verification\", \"Data Verification\",\n        Section == \"Staff Assignment\", \"Staff Assignment\",\n        \"Other\"\n      )\n    | where Section != \"Other\";\nlet TotalActiveUsers = toscalar(pageViews | where timestamp {TimeRange} | summarize dcount(user_Id));\nRoutes\n| summarize UsersVisiting = dcount(user_Id) by Section, Tab\n| extend ['% of Active Users'] = round(100.0 * UsersVisiting / TotalActiveUsers, 1)\n| project Section, Tab, UsersVisiting, ['% of Active Users']\n| order by Section asc, ['% of Active Users'] desc",
+        "size": 0,
+        "title": "Tab-Level Adoption (% of active users visiting each tab)",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "table"
+      },
+      "name": "feature-adoption-table"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let Routes = pageViews\n    | where timestamp {TimeRange}\n    | where isnotempty(url)\n    | extend Section = case(\n        url contains \"/case-detail/\" or url contains \"/my-cases\" or (url contains \"/search\" and not(url contains \"/case-detail/\")), \"Cases\",\n        url contains \"/trustees\", \"Trustees\",\n        url contains \"/data-verification\", \"Data Verification\",\n        url contains \"/staff-assignment\", \"Staff Assignment\",\n        \"Other\"\n      )\n    | extend Tab = case(\n        Section == \"Cases\" and url contains \"/my-cases\", \"My Cases (list)\",\n        Section == \"Cases\" and url contains \"/search\" and not(url contains \"/case-detail/\"), \"Case Search\",\n        Section == \"Cases\" and url contains \"/trustee-and-assigned-staff\", \"Assigned Staff\",\n        Section == \"Cases\" and url contains \"/court-docket\", \"Court Docket\",\n        Section == \"Cases\" and url contains \"/notes\", \"Case Notes\",\n        Section == \"Cases\" and url contains \"/associated-cases\", \"Associated Cases\",\n        Section == \"Cases\" and url contains \"/audit-history\", \"Change History\",\n        Section == \"Cases\" and url contains \"/trustee\", \"Trustee\",\n        Section == \"Cases\" and url contains \"/case-detail/\", \"Overview\",\n        Section == \"Trustees\" and url endswith \"/trustees\", \"Trustees List\",\n        Section == \"Trustees\" and url contains \"/appointments\", \"Appointments\",\n        Section == \"Trustees\" and url contains \"/assigned-staff\", \"Assigned Staff\",\n        Section == \"Trustees\" and url contains \"/audit-history\", \"Change History\",\n        Section == \"Trustees\" and url contains \"/notes\", \"Trustee Notes\",\n        Section == \"Trustees\" and url contains \"/cases\", \"Case List\",\n        Section == \"Trustees\", \"Overview\",\n        Section == \"Data Verification\", \"Data Verification\",\n        Section == \"Staff Assignment\", \"Staff Assignment\",\n        \"Other\"\n      )\n    | where Section != \"Other\";\nlet TotalActiveUsers = toscalar(pageViews | where timestamp {TimeRange} | summarize dcount(user_Id));\nRoutes\n| where '{SectionFilter}' == 'value::all' or Section == '{SectionFilter}'\n| summarize UsersVisiting = dcount(user_Id) by Tab, Week = startofweek(timestamp)\n| extend ['% of Active Users'] = round(100.0 * UsersVisiting / TotalActiveUsers, 1)\n| order by Week asc",
+        "size": 0,
+        "title": "Tab Adoption Trend (filter by Section above)",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "linechart",
+        "chartSettings": {
+          "xAxis": "Week",
+          "showDataPoints": true
+        }
+      },
+      "name": "feature-adoption-trend"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let SearchEvents = customEvents | where timestamp {TimeRange} | where name == \"search\" | project session_Id, SearchTime = timestamp;\nlet ClickEvents = customEvents | where timestamp {TimeRange} | where name == \"searchResultClick\" | project session_Id, ClickTime = timestamp;\nSearchEvents\n| join kind=leftouter ClickEvents on session_Id\n| where isnull(ClickTime) or ClickTime >= SearchTime\n| summarize HadClick = max(isnotempty(ClickTime) and (ClickTime - SearchTime) < 5m) by session_Id, SearchTime\n| summarize TotalSearches = count(), SearchesWithClick = countif(HadClick)\n| extend ['Click-Through Rate %'] = round(iif(TotalSearches > 0, 100.0 * SearchesWithClick / TotalSearches, 0.0), 1)\n| project TotalSearches, SearchesWithClick, ['Click-Through Rate %']",
+        "size": 0,
+        "title": "Search Click-Through Rate (proxy for search success \u2014 no zero-result field exists in telemetry today)",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "table"
+      },
+      "name": "search-clickthrough"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "### Notes Engagement\n\nCalled out specifically since stakeholders have asked about these two features."
+      },
+      "name": "notes-header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "app('{DataflowsAppInsights:name}').customEvents\n| where customDimensions.moduleName == \"SYNC-TRUSTEE-NOTES-METRICS\"\n| where name == \"DataflowHandlerComplete\"\n| where timestamp {TimeRange}\n| extend\n    TrusteesWithNotesPercent = todouble(customDimensions.trusteesWithNotesPercent),\n    UserEngagementPercent = todouble(customDimensions.userEngagementPercent),\n    NotesLast24Hrs = todouble(customDimensions.notesLast24Hrs)\n| summarize\n    ['Trustees With Notes %'] = round(max(TrusteesWithNotesPercent), 1),\n    ['User Engagement %'] = round(max(UserEngagementPercent), 1),\n    ['Notes Created (last 24h)'] = round(max(NotesLast24Hrs), 0)\n    by Day = startofday(timestamp)\n| order by Day asc",
+        "size": 0,
+        "title": "Trustee Notes Engagement (from existing SYNC-TRUSTEE-NOTES-METRICS aggregate)",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "linechart",
+        "chartSettings": {
+          "xAxis": "Day",
+          "showDataPoints": true
+        }
+      },
+      "name": "trustee-notes-engagement",
+      "customWidth": "50"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let CaseDetailUsers = toscalar(pageViews | where timestamp {TimeRange} | where url contains \"/case-detail/\" | summarize dcount(user_Id));\nlet NotesUsers = toscalar(pageViews | where timestamp {TimeRange} | where url contains \"/case-detail/\" and url contains \"/notes\" | summarize dcount(user_Id));\nprint\n    ['Case Detail Users'] = CaseDetailUsers,\n    ['Users Visiting Case Notes Tab'] = NotesUsers,\n    ['Case Notes Visit Rate %'] = round(iif(CaseDetailUsers > 0, 100.0 * NotesUsers / CaseDetailUsers, 0.0), 1)",
+        "size": 0,
+        "title": "Case Notes Visit Rate (proxy \u2014 tab visits, not confirmed note creation; no backend aggregate exists yet)",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "table"
+      },
+      "name": "case-notes-visit-rate",
+      "customWidth": "50"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "## Reliability & Data Quality\n\nSystem health, framed as the trust signal behind the usage numbers above."
+      },
+      "name": "reliability-header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "pageViews\n| where timestamp {TimeRange}\n| summarize P50Ms = percentile(duration, 50), P95Ms = percentile(duration, 95) by Day = bin(timestamp, 1d)\n| order by Day asc",
+        "size": 0,
+        "title": "Page Load Latency (P50 / P95, ms)",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "linechart",
+        "chartSettings": {
+          "xAxis": "Day",
+          "showDataPoints": false
+        }
+      },
+      "name": "page-load-latency-trend",
+      "customWidth": "50"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"Case Search Performance\"\n| extend DurationMs = todouble(customMeasurements.durationMs)\n| summarize P50Ms = percentile(DurationMs, 50), P95Ms = percentile(DurationMs, 95) by Day = bin(timestamp, 1d)\n| order by Day asc",
+        "size": 0,
+        "title": "Search Latency (P50 / P95, ms)",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "linechart",
+        "chartSettings": {
+          "xAxis": "Day",
+          "showDataPoints": false
+        }
+      },
+      "name": "search-latency-trend",
+      "customWidth": "50"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let dailyExceptions = exceptions | where timestamp {TimeRange} | summarize Exceptions = count() by Day = bin(timestamp, 1d);\nlet dailyViews = pageViews | where timestamp {TimeRange} | summarize Views = count() by Day = bin(timestamp, 1d);\ndailyViews\n| join kind=fullouter dailyExceptions on Day\n| project Day = coalesce(Day, Day1), Exceptions = coalesce(Exceptions, 0), Views = coalesce(Views, 0)\n| extend ['Exceptions per 1,000 Views'] = round(iif(Views > 0, 1000.0 * Exceptions / Views, 0.0), 2)\n| order by Day asc",
+        "size": 0,
+        "title": "Frontend Exception Rate",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "linechart",
+        "chartSettings": {
+          "xAxis": "Day",
+          "showDataPoints": false
+        }
+      },
+      "name": "exception-rate-trend",
+      "customWidth": "50"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "app('{DataflowsAppInsights:name}').customEvents\n| where timestamp {TimeRange}\n| where name == \"DataflowHandlerComplete\"\n| extend Success = tostring(customDimensions.success)\n| summarize Total = count(), Succeeded = countif(Success == \"true\") by Day = bin(timestamp, 1d)\n| extend ['Success Rate %'] = round(iif(Total > 0, 100.0 * Succeeded / Total, 0.0), 1)\n| order by Day asc",
+        "size": 0,
+        "title": "Dataflow Sync Success Rate (data freshness health)",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "linechart",
+        "chartSettings": {
+          "xAxis": "Day",
+          "showDataPoints": false
+        }
+      },
+      "name": "dataflow-success-rate-trend",
+      "customWidth": "50"
+    }
+  ],
+  "fallbackResourceIds": [
+    "/subscriptions/729f9083-9edf-4269-919f-3f05f7a0ab20/resourceGroups/rg-cams-app-dev-471a3f/providers/Microsoft.Insights/components/appi-ustp-cams-dev-471a3f-webapp"
+  ],
+  "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
+}
