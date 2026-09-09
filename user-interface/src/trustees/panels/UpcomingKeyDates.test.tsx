@@ -291,6 +291,18 @@ describe('UpcomingKeyDates', () => {
       expect(screen.getByTestId(testId)).toHaveTextContent(expectedValue);
     });
 
+    test('displays "Audit Recommended by" (not "Audit Req. By") as field label', () => {
+      renderComponent({ ...ch12StandingProps, data: null });
+
+      expect(screen.getByText('Audit Recommended by:')).toBeInTheDocument();
+    });
+
+    test('displays "Budget Due to OO" (not "Budget Review to OO") as field label', () => {
+      renderComponent({ ...ch12StandingProps, data: null });
+
+      expect(screen.getByText('Budget Due to OO:')).toBeInTheDocument();
+    });
+
     test('Edit button navigates with chapter12-standing variant', () => {
       renderComponent(ch12StandingProps);
 
