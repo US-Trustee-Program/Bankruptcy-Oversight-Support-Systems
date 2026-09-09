@@ -343,6 +343,70 @@ describe('UpcomingKeyDates', () => {
     });
   });
 
+  describe('chapter13-standing variant', () => {
+    const ch13StandingProps: UpcomingKeyDatesProps = {
+      ...defaultProps,
+      variant: 'chapter13-standing',
+      trusteeId: 'trustee-ch13-001',
+      appointmentId: 'appointment-ch13-001',
+      appointmentHeading: 'Southern District of New York (Manhattan) - Chapter 13 Standing',
+    };
+
+    const ch13StandingDoc: TrusteeUpcomingKeyDates = {
+      id: 'doc-ch13-001',
+      documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
+      trusteeId: 'trustee-ch13-001',
+      appointmentId: 'appointment-ch13-001',
+      createdBy: SYSTEM_USER_REFERENCE,
+      createdOn: '2026-01-01T00:00:00.000Z',
+      updatedBy: SYSTEM_USER_REFERENCE,
+      updatedOn: '2026-01-01T00:00:00.000Z',
+      tprReviewPeriodStart: '1900-01-01',
+      tprReviewPeriodEnd: '1900-12-31',
+      tprDue: '1900-03-15',
+      tprDueYearType: 'ODD',
+      leaseExpiration: '2027-06-30',
+      idExpiration: '2028-01-15',
+    };
+
+    test('renders "No date added" for computed fields when data is null', () => {
+      renderComponent({ ...ch13StandingProps, data: null });
+
+      expect(screen.getByTestId('tpr-review-period-row')).toHaveTextContent('No date added');
+      expect(screen.getByTestId('tpr-due-row')).toHaveTextContent('No date added');
+      expect(screen.getByTestId('lease-expiration-row')).toHaveTextContent('No date added');
+      expect(screen.getByTestId('id-expiration-row')).toHaveTextContent('No date added');
+    });
+
+    test.each([
+      ['tpr-review-period-row', '01/01 - 12/31'],
+      ['tpr-due-row', '03/15/2027'],
+      ['lease-expiration-row', '06/30/2027'],
+      ['id-expiration-row', '01/15/2028'],
+    ])('shows formatted value for %s when data is populated', (testId, expectedValue) => {
+      renderComponent({ ...ch13StandingProps, data: ch13StandingDoc });
+
+      expect(screen.getByTestId(testId)).toHaveTextContent(expectedValue);
+    });
+
+    test('uses chapter13-specific label text for TPR fields', () => {
+      renderComponent({ ...ch13StandingProps, data: null });
+
+      expect(screen.getByText('TPR Review Period:')).toBeInTheDocument();
+      expect(screen.getByText('TPR Due:')).toBeInTheDocument();
+    });
+
+    test.each([
+      ['annual-audit-review-period-row', '10/01 - 09/30'],
+      ['budget-submission-due-row', '07/01'],
+      ['budget-review-to-oo-row', '08/15'],
+    ])('constant row %s always shows %s', (testId, expectedValue) => {
+      renderComponent({ ...ch13StandingProps, data: null });
+
+      expect(screen.getByTestId(testId)).toHaveTextContent(expectedValue);
+    });
+  });
+
   describe('ch12-13-case-by-case variant', () => {
     test('renders constant fields always showing 09/01 and 09/15 and computed TPR fields', () => {
       renderComponent({ variant: 'ch12-13-case-by-case', data: populatedDocument });
