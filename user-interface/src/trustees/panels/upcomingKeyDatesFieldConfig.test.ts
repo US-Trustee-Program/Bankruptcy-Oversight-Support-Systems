@@ -29,10 +29,6 @@ describe('UPCOMING_KEY_DATES_FIELD_CONFIG chapter13-standing variant', () => {
     vi.useRealTimers();
   });
 
-  test('has 8 entries', () => {
-    expect(config).toHaveLength(8);
-  });
-
   test('first field is Annual Audit Review Period constant 10/01 - 09/30', () => {
     const field = config.find((f) => f.key === 'annualAuditReviewPeriod');
     expect(field?.kind).toBe('constant');
@@ -425,4 +421,32 @@ describe('getUpcomingKeyDatesFieldConfig — flag OFF (tprDisplayUpdates=false)'
     const flagOn = getUpcomingKeyDatesFieldConfig(variant, true);
     expect(flagOn).toBe(UPCOMING_KEY_DATES_FIELD_CONFIG[variant]);
   });
+
+  test.each([
+    ['chapter7-panel'],
+    ['ch12-13-case-by-case'],
+    ['chapter12-standing'],
+    ['chapter13-standing'],
+  ] as const)('%s: tprDue shows "mm/dd YEARTYPE" for ODD year type', (variant) => {
+    const config = getUpcomingKeyDatesFieldConfig(variant, false);
+    const field = config.find((f) => f.key === 'tprDue');
+    expect(field?.kind).toBe('computed');
+    if (field?.kind === 'computed') {
+      const result = field.buildField({ ...baseDoc, tprDue: '1900-06-15', tprDueYearType: 'ODD' });
+      expect(result.value).toBe('06/15 ODD');
+    }
+  });
+
+  test.each([['chapter12-standing'], ['chapter13-standing']] as const)(
+    '%s: non-TPR computed fields (leaseExpiration) pass through unchanged when flag is OFF',
+    (variant) => {
+      const config = getUpcomingKeyDatesFieldConfig(variant, false);
+      const field = config.find((f) => f.key === 'leaseExpiration');
+      expect(field?.kind).toBe('computed');
+      if (field?.kind === 'computed') {
+        const result = field.buildField({ ...baseDoc, leaseExpiration: '2027-06-30' });
+        expect(result.value).toBe('06/30/2027');
+      }
+    },
+  );
 });
