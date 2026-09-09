@@ -574,45 +574,32 @@ describe('UpcomingKeyDatesForm', () => {
       },
     );
 
-    test('selecting "One year" then saving sends tprFrequency: ANNUAL in the API call', async () => {
-      const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
+    test.each([
+      ['ANNUAL', 'One year'],
+      ['BIANNUAL', 'Two years'],
+      ['SEMI_ANNUAL', '6 months'],
+    ] as const)(
+      'selecting "%s" then saving sends tprFrequency: %s in the API call',
+      async (value) => {
+        const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
 
-      renderComponent();
+        renderComponent();
 
-      await waitFor(() => {
-        expect(screen.getByTestId('tpr-frequency')).toBeInTheDocument();
-      });
+        await waitFor(() => {
+          expect(screen.getByTestId('tpr-frequency')).toBeInTheDocument();
+        });
 
-      await userEvent.selectOptions(screen.getByTestId('tpr-frequency'), 'ANNUAL');
-      await userEvent.click(screen.getByTestId('button-save-upcoming-key-dates'));
+        await userEvent.selectOptions(screen.getByTestId('tpr-frequency'), value);
+        await userEvent.click(screen.getByTestId('button-save-upcoming-key-dates'));
 
-      await waitFor(() => expect(putSpy).toHaveBeenCalled());
-      expect(putSpy).toHaveBeenCalledWith(
-        'trustee-001',
-        'appointment-001',
-        expect.objectContaining({ tprFrequency: 'ANNUAL' }),
-      );
-    });
-
-    test('selecting "Two years" then saving sends tprFrequency: BIANNUAL in the API call', async () => {
-      const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
-
-      renderComponent();
-
-      await waitFor(() => {
-        expect(screen.getByTestId('tpr-frequency')).toBeInTheDocument();
-      });
-
-      await userEvent.selectOptions(screen.getByTestId('tpr-frequency'), 'BIANNUAL');
-      await userEvent.click(screen.getByTestId('button-save-upcoming-key-dates'));
-
-      await waitFor(() => expect(putSpy).toHaveBeenCalled());
-      expect(putSpy).toHaveBeenCalledWith(
-        'trustee-001',
-        'appointment-001',
-        expect.objectContaining({ tprFrequency: 'BIANNUAL' }),
-      );
-    });
+        await waitFor(() => expect(putSpy).toHaveBeenCalled());
+        expect(putSpy).toHaveBeenCalledWith(
+          'trustee-001',
+          'appointment-001',
+          expect.objectContaining({ tprFrequency: value }),
+        );
+      },
+    );
 
     test('saving with "- Select -" (empty) sends tprFrequency: null', async () => {
       const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
