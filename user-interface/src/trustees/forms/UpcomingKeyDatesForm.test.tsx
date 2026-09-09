@@ -1309,7 +1309,7 @@ describe('UpcomingKeyDatesForm', () => {
           tprReviewPeriodEnd: '1900-03-31',
         },
       });
-      const mockPut = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: undefined });
+      const mockPut = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
 
       renderFlagOff();
 
