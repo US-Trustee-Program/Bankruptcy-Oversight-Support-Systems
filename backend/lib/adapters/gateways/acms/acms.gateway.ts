@@ -347,6 +347,12 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
     // PROF_LAST_NAME NOT LIKE '%NO TRUSTEE%' excludes ACMS sentinel/placeholder rows that are not
     // real professionals (e.g. "NO TRUSTEE", "NO TRUSTEE ASSIGNED", "CASE STRICKEN: NO TRUSTEE"),
     // always carried in PROF_LAST_NAME with PROF_FIRST_NAME empty.
+    //
+    // UST_PROF_CODE < 98000 excludes ACMS's reserved sentinel/dummy trustee code range (known
+    // values include 99999 and 98000). These rows must never reach the keyset cursor: since
+    // pagination advances the bookmark to the highest UST_PROF_CODE seen, a sentinel row would
+    // permanently wedge that group's sync (UST_PROF_CODE > @lastUstProfCode would then never
+    // match any real record again).
     const query = `
       SELECT
         CONCAT(ACMS.GROUP_DESIGNATOR, '-', RIGHT(CONCAT('0000', ACMS.UST_PROF_CODE), 5)) AS acmsProfessionalId,
@@ -365,6 +371,7 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
       WHERE ACMS.PROF_TYPE = 'TR'
         AND ACMS.DELETE_CODE != 'D'
         AND ACMS.PROF_LAST_NAME NOT LIKE '%NO TRUSTEE%'
+        AND ACMS.UST_PROF_CODE < 98000
         AND ACMS.GROUP_DESIGNATOR = @groupDesignator
         AND ACMS.UST_PROF_CODE > @lastUstProfCode
       ORDER BY ACMS.UST_PROF_CODE
