@@ -1,5 +1,7 @@
 ignore:
   - test/e2e/fixtures/**
+  # Manual local dev tooling, not reviewed/merged code paths.
+  - test/ui-sandbox/**
 
 rules:
   - id: no-it-tests

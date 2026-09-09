@@ -1,3 +1,4 @@
+import { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   TrusteeUpcomingKeyDates,
@@ -52,7 +53,20 @@ export default function PastKeyDates(props: Readonly<PastKeyDatesProps>) {
         : field.kind === 'month-year'
           ? formatMonthYearOrDefault(data?.[field.key])
           : formatDateOrDefault(data?.[field.key]);
-    return { label: field.displayLabel, value, testId: field.testId, stacked: field.stacked };
+    const displayValue: ReactNode = field.displayNote ? (
+      <>
+        {value}
+        <div className="info-card-value-note">{field.displayNote}</div>
+      </>
+    ) : (
+      value
+    );
+    return {
+      label: field.displayLabel,
+      value: displayValue,
+      testId: field.testId,
+      stacked: field.stacked,
+    };
   });
 
   return (

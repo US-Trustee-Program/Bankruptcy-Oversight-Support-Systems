@@ -53,14 +53,11 @@ const SUBV_RECIPIENT: NotificationRecipient = {
 };
 
 function seedRouting(rows: NotificationRecipient[]) {
-  vi.spyOn(MockMongoRepository.prototype, 'findRecipientByRoutingKey').mockImplementation(
-    async (key: string) => {
-      for (const row of rows) {
-        if (row.covers.includes(key)) return row;
-      }
-      return null;
-    },
-  );
+  return vi
+    .spyOn(MockMongoRepository.prototype, 'findRecipientsByRoutingKeys')
+    .mockImplementation(async (keys: string[]) =>
+      rows.filter((row) => row.covers.some((c) => keys.includes(c))),
+    );
 }
 
 describe('TrusteeChangeNotificationUseCase', () => {
@@ -95,7 +92,7 @@ describe('TrusteeChangeNotificationUseCase', () => {
     expect(recorded).toHaveLength(1);
     expect(recorded[0].to).toBe(CHAPTER_OVERSIGHT_RECIPIENT.recipientAddresses[0]);
     expect(recorded[0].toDisplayName).toBe(CHAPTER_OVERSIGHT_RECIPIENT.displayName);
-    expect(recorded[0].subject).toBe('Trustee Information Changed: Henry Green');
+    expect(recorded[0].subject).toBe('Trustee Information Changed: Henry Green (Chapter 7)');
     expect(recorded[0].correlationId).toBe(context.invocationId);
     expect(recorded[0].trusteeId).toBe('trustee-1');
   });
@@ -214,7 +211,9 @@ describe('TrusteeChangeNotificationUseCase', () => {
     const recorded = mockGateway.getRecorded();
     const adminEmail = recorded.find((n) => n.to === 'admin@example.test');
     expect(adminEmail).toBeDefined();
-    expect(adminEmail!.subject).toBe('[Undeliverable] Trustee Information Changed: Henry Green');
+    expect(adminEmail!.subject).toBe(
+      '[Undeliverable] Trustee Information Changed: Henry Green (Chapter 7)',
+    );
     expect(adminEmail!.html).toContain(CHAPTER_OVERSIGHT_RECIPIENT.recipientAddresses[0]);
     expect(adminEmail!.html).toContain('<hr>');
     expect(adminEmail!.text).toContain(CHAPTER_OVERSIGHT_RECIPIENT.recipientAddresses[0]);
@@ -454,13 +453,15 @@ describe('TrusteeChangeNotificationUseCase', () => {
   });
 
   test('dispatches to each chapter oversight recipient when the trustee has multiple chapter appointments', async () => {
-    seedRouting([CHAPTER_OVERSIGHT_RECIPIENT, SUBV_RECIPIENT]);
+    const routingSpy = seedRouting([CHAPTER_OVERSIGHT_RECIPIENT, SUBV_RECIPIENT]);
 
     await useCase.notify(
       context,
       buildChangeSet([buildField()], { chapters: ['7', '11-subchapter-v'] }),
     );
 
+    expect(routingSpy).toHaveBeenCalledTimes(1);
+    expect(routingSpy).toHaveBeenCalledWith(['chapter:7', 'chapter:11-subchapter-v']);
     const recorded = mockGateway.getRecorded();
     expect(recorded).toHaveLength(2);
     const addresses = recorded.map((n) => n.to).sort();
@@ -470,6 +471,44 @@ describe('TrusteeChangeNotificationUseCase', () => {
         SUBV_RECIPIENT.recipientAddresses[0],
       ].sort(),
     );
+  });
+
+  test('sends once when a single recipient record covers multiple requested chapters', async () => {
+    seedRouting([
+      {
+        ...CHAPTER_OVERSIGHT_RECIPIENT,
+        covers: ['chapter:7', 'chapter:11-subchapter-v'],
+      },
+    ]);
+
+    await useCase.notify(
+      context,
+      buildChangeSet([buildField()], { chapters: ['7', '11-subchapter-v'] }),
+    );
+
+    const recorded = mockGateway.getRecorded();
+    expect(recorded).toHaveLength(1);
+    expect(recorded[0].to).toBe(CHAPTER_OVERSIGHT_RECIPIENT.recipientAddresses[0]);
+  });
+
+  test('resolves all routing keys for a change in a single batched query', async () => {
+    const routingSpy = seedRouting([CHAPTER_OVERSIGHT_RECIPIENT, ZOOM_341_RECIPIENT]);
+
+    await useCase.notify(
+      context,
+      buildChangeSet([
+        buildField({ label: 'Name', category: 'profile', section: 'appointment' }),
+        buildField({
+          label: 'Zoom Info',
+          category: 'zoom-341',
+          section: 'meeting',
+          comparisons: [{ before: 'old', after: 'new' }],
+        }),
+      ]),
+    );
+
+    expect(routingSpy).toHaveBeenCalledTimes(1);
+    expect(routingSpy).toHaveBeenCalledWith(['chapter:7', 'category:zoom-341']);
   });
 
   test('groups dispatch by category, not by field count', async () => {

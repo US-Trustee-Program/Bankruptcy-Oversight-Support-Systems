@@ -38,6 +38,7 @@ function buildMockInput(
     tprReviewPeriodEnd: null,
     tprDue: null,
     tprDueYearType: null,
+    tprFrequency: null,
     tirReviewPeriodStart: null,
     tirReviewPeriodEnd: null,
     tirSubmission: null,
@@ -207,6 +208,7 @@ describe('TrusteeUpcomingKeyDatesUseCase', () => {
       ['leaseExpiration', '2027-06-30'],
       ['idExpiration', '2028-01-15'],
       ['lastCompensationStudy', '2024-06-01'],
+      ['tprFrequency', 'ANNUAL'],
     ])('saves %s when set', async (field, value) => {
       vi.spyOn(MockMongoRepository.prototype, 'getByAppointmentId').mockResolvedValue(null);
       const upsertSpy = vi
@@ -259,6 +261,7 @@ describe('TrusteeUpcomingKeyDatesUseCase', () => {
       ['leaseExpiration', '2026-06-30', '2027-06-30'],
       ['idExpiration', '2027-01-15', '2028-01-15'],
       ['lastCompensationStudy', '2023-06-01', '2024-06-01'],
+      ['tprFrequency', 'ANNUAL', 'BIANNUAL'],
     ])('%s change is captured in audit history', async (field, before, after) => {
       const existing = buildMockDocument({ [field]: before });
       vi.spyOn(MockMongoRepository.prototype, 'getByAppointmentId').mockResolvedValue(existing);

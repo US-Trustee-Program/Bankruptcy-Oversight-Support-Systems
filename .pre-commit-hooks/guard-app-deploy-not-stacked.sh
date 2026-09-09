@@ -30,6 +30,7 @@ TARGETS=(
   "$REPO_ROOT/ops/cloud-deployment/dataflows-resource-deploy.bicep"
   "$REPO_ROOT/ops/cloud-deployment/frontend-webapp-deploy.bicep"
   "$REPO_ROOT/ops/cloud-deployment/lib/monitoring-alerts/alert-action-group.bicep"
+  "$REPO_ROOT/ops/cloud-deployment/lib/monitoring-alerts/scheduled-query-alert-rule.bicep"
 )
 # Whenever main.bicep gains a NEW cross-scope module call (any module with
 # a `scope:` pointing outside the per-branch app RG), add it here too — the

@@ -10,6 +10,9 @@
  * string `.replace()`):
  *
  *   {{trustee_name}}            — escaped trustee display name
+ *   {{chapter_line}}            — pre-rendered <p> line naming the chapter(s)
+ *                                 the change pertains to, or empty string if
+ *                                 no chapters are known
  *   {{appointment_info_rows}}   — pre-rendered <tr> rows for the Appointment
  *                                 Information section, or empty string if no
  *                                 appointment-section fields changed
@@ -44,7 +47,7 @@ export const TRUSTEE_CHANGE_TEMPLATE = `<!DOCTYPE html>
                     <!-- Header Text -->
                     <tr>
                         <td style="padding-bottom: 20px;">
-                            <p style="margin: 0; font-size: 14px; color: #000000;">Trustee {{trustee_name}}'s information has changed.</p>
+                            <p style="margin: 0; font-size: 14px; color: #000000;">Trustee {{trustee_name}}'s information has changed.</p>{{chapter_line}}
                         </td>
                     </tr>
 

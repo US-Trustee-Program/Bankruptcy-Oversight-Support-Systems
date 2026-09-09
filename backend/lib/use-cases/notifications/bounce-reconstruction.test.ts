@@ -52,7 +52,9 @@ describe('BounceReconstructionUseCase', () => {
     const recorded = mockGateway.getRecorded();
     expect(recorded).toHaveLength(1);
     expect(recorded[0].to).toBe('admin@example.test');
-    expect(recorded[0].subject).toBe('[Bounced] Trustee Information Changed: Henry Green');
+    expect(recorded[0].subject).toBe(
+      '[Bounced] Trustee Information Changed: Henry Green (Chapter 7)',
+    );
     expect(recorded[0].html).toContain('ch-oversight@example.test');
     expect(recorded[0].html).toContain('<hr>');
     expect(recorded[0].html).toContain('old@example.test');

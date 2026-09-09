@@ -70,7 +70,7 @@ export class NotificationRoutingController implements CamsController {
     const warnings = await this.validateAndCollectDomainWarnings(context, input.recipientAddresses);
 
     const definition = NOTIFICATION_ROUTING_DEFINITIONS.find((d) => d.id === routingId)!;
-    const existing = await this.repository.findRecipientByRoutingKey(definition.covers[0]);
+    const [existing] = await this.repository.findRecipientsByRoutingKeys([definition.covers[0]]);
     const record = await this.repository.updateRoutingRecord(routingId, input);
     await this.repository.createRoutingAuditRecord({
       documentType: 'AUDIT_NOTIFICATION_ROUTING',
