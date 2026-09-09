@@ -211,7 +211,7 @@ export const UPCOMING_KEY_DATES_FIELD_CONFIG: Record<
       buildField: (data) => {
         const auditReqByYear = calculateAuditReqBy(data?.lastAuditFiscalYear);
         const value = auditReqByYear !== null ? String(auditReqByYear) : NO_DATE;
-        return { label: 'Audit Req. By', value, testId: 'audit-req-by-row' };
+        return { label: 'Audit Recommended by', value, testId: 'audit-req-by-row' };
       },
     },
     {
@@ -251,7 +251,7 @@ export const UPCOMING_KEY_DATES_FIELD_CONFIG: Record<
     {
       kind: 'constant',
       key: 'budgetReviewToOO',
-      displayLabel: 'Budget Review to OO',
+      displayLabel: 'Budget Due to OO',
       value: '06/01',
       testId: 'budget-review-to-oo-row',
     },
@@ -299,7 +299,7 @@ export const UPCOMING_KEY_DATES_FIELD_CONFIG: Record<
     {
       kind: 'constant',
       key: 'budgetReviewToOO',
-      displayLabel: 'Budget Review to OO',
+      displayLabel: 'Budget Due to OO',
       value: '08/15',
       testId: 'budget-review-to-oo-row',
     },

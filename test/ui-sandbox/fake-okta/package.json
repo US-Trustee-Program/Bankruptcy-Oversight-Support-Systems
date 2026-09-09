@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "express": "5.2.1",
-    "jose": "4.15.9",
+    "jose": "6.2.10",
     "mongodb": "7.6.0"
   },
   "devDependencies": {
