@@ -10,11 +10,16 @@ import { CaseAppointment } from '@common/cams/trustee-appointments';
 import { TrusteeProfessionalId } from '@common/cams/trustee-professional-ids';
 import { SENTINEL_TRUSTEE_ID } from './migrate-case-appointments-constants';
 
-type SentinelAppointment = CaseAppointment & { reason?: string; acmsProfessionalId?: string };
+type SentinelAppointment = CaseAppointment & {
+  _id: string;
+  reason?: string;
+  acmsProfessionalId?: string;
+};
 
-const makeSentinel = (overrides: Partial<SentinelAppointment> = {}): CaseAppointment =>
+const makeSentinel = (overrides: Partial<SentinelAppointment> = {}): SentinelAppointment =>
   ({
     id: `sentinel-${overrides.caseId ?? '001'}`,
+    _id: 'mongo-1',
     caseId: '081-25-00001',
     trusteeId: SENTINEL_TRUSTEE_ID,
     assignedOn: '2025-01-01T00:00:00.000Z',
@@ -25,7 +30,7 @@ const makeSentinel = (overrides: Partial<SentinelAppointment> = {}): CaseAppoint
     reason: 'trustee-not-found',
     acmsProfessionalId: 'NY-00063',
     ...overrides,
-  }) as CaseAppointment;
+  }) as SentinelAppointment;
 
 const makeProfessionalId = (
   overrides: Partial<TrusteeProfessionalId> = {},
@@ -78,7 +83,7 @@ describe('HealSentinelCaseAppointmentsUseCase', () => {
     mockFindSentinelAppointments.mockResolvedValue([sentinel]);
     mockFindByAcmsProfessionalId.mockResolvedValue([makeProfessionalId()]);
 
-    const result = await useCase.healPage(25);
+    const result = await useCase.healPage(null, 25);
 
     expect(mockUpsert).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -100,7 +105,7 @@ describe('HealSentinelCaseAppointmentsUseCase', () => {
       documentsWritten: 1,
       documentsFailed: 0,
       pageSize: 1,
-      remainingCount: 1,
+      nextLastId: sentinel._id,
     });
   });
 
@@ -112,18 +117,18 @@ describe('HealSentinelCaseAppointmentsUseCase', () => {
     mockFindSentinelAppointments.mockResolvedValue([sentinel]);
     mockFindByAcmsProfessionalId.mockResolvedValue([makeProfessionalId()]);
 
-    await useCase.healPage(25);
+    await useCase.healPage(null, 25);
 
     expect(mockUpsert).toHaveBeenCalledTimes(1);
     expect(mockDelete).toHaveBeenCalledTimes(1);
   });
 
-  test('no match: leaves the sentinel in place and does not upsert or delete', async () => {
+  test('no match: leaves the sentinel in place, does not upsert or delete, but still advances the cursor', async () => {
     const sentinel = makeSentinel();
     mockFindSentinelAppointments.mockResolvedValue([sentinel]);
     mockFindByAcmsProfessionalId.mockResolvedValue([]);
 
-    const result = await useCase.healPage(25);
+    const result = await useCase.healPage(null, 25);
 
     expect(mockUpsert).not.toHaveBeenCalled();
     expect(mockDelete).not.toHaveBeenCalled();
@@ -131,7 +136,7 @@ describe('HealSentinelCaseAppointmentsUseCase', () => {
       documentsWritten: 0,
       documentsFailed: 0,
       pageSize: 1,
-      remainingCount: 1,
+      nextLastId: sentinel._id,
     });
   });
 
@@ -143,7 +148,7 @@ describe('HealSentinelCaseAppointmentsUseCase', () => {
       makeProfessionalId({ id: 'prof-id-2', camsTrusteeId: 'trustee-b' }),
     ]);
 
-    const result = await useCase.healPage(25);
+    const result = await useCase.healPage(null, 25);
 
     expect(mockUpsert).not.toHaveBeenCalled();
     expect(mockDelete).not.toHaveBeenCalled();
@@ -154,7 +159,7 @@ describe('HealSentinelCaseAppointmentsUseCase', () => {
     const sentinel = makeSentinel({ acmsProfessionalId: undefined });
     mockFindSentinelAppointments.mockResolvedValue([sentinel]);
 
-    const result = await useCase.healPage(25);
+    const result = await useCase.healPage(null, 25);
 
     expect(mockFindByAcmsProfessionalId).not.toHaveBeenCalled();
     expect(mockUpsert).not.toHaveBeenCalled();
@@ -162,37 +167,38 @@ describe('HealSentinelCaseAppointmentsUseCase', () => {
     expect(result.documentsWritten).toBe(0);
   });
 
-  test('a failed upsert leaves the sentinel untouched and counts as a failure without aborting the page', async () => {
-    const sentinelA = makeSentinel({ id: 'sentinel-a', caseId: '081-25-00001' });
-    const sentinelB = makeSentinel({ id: 'sentinel-b', caseId: '081-25-00002' });
+  test('a failed upsert leaves the sentinel untouched, counts as a failure without aborting the page, and still advances the cursor past it', async () => {
+    const sentinelA = makeSentinel({ id: 'sentinel-a', _id: 'mongo-a', caseId: '081-25-00001' });
+    const sentinelB = makeSentinel({ id: 'sentinel-b', _id: 'mongo-b', caseId: '081-25-00002' });
     mockFindSentinelAppointments.mockResolvedValue([sentinelA, sentinelB]);
     mockFindByAcmsProfessionalId.mockResolvedValue([makeProfessionalId()]);
     mockUpsert.mockRejectedValueOnce(new Error('upsert failed')).mockResolvedValue({});
 
-    const result = await useCase.healPage(25);
+    const result = await useCase.healPage(null, 25);
 
     expect(mockDelete).not.toHaveBeenCalledWith('sentinel-a');
     expect(mockDelete).toHaveBeenCalledWith('sentinel-b');
     expect(result.documentsWritten).toBe(1);
     expect(result.documentsFailed).toBe(1);
+    expect(result.nextLastId).toBe('mongo-b');
   });
 
   test('a rate-limit error mid-page rethrows instead of being counted as a per-record failure', async () => {
-    const sentinelA = makeSentinel({ id: 'sentinel-a', caseId: '081-25-00001' });
-    const sentinelB = makeSentinel({ id: 'sentinel-b', caseId: '081-25-00002' });
+    const sentinelA = makeSentinel({ id: 'sentinel-a', _id: 'mongo-a', caseId: '081-25-00001' });
+    const sentinelB = makeSentinel({ id: 'sentinel-b', _id: 'mongo-b', caseId: '081-25-00002' });
     mockFindSentinelAppointments.mockResolvedValue([sentinelA, sentinelB]);
     mockFindByAcmsProfessionalId.mockResolvedValue([makeProfessionalId()]);
     const tooManyError = new TooManyRequestsError('HEAL-SENTINEL-CASE-APPOINTMENTS-USE-CASE');
     mockUpsert.mockRejectedValueOnce(tooManyError).mockResolvedValue({});
 
-    await expect(useCase.healPage(25)).rejects.toThrow(tooManyError);
+    await expect(useCase.healPage(null, 25)).rejects.toThrow(tooManyError);
     expect(mockUpsert).toHaveBeenCalledTimes(1);
     expect(mockDelete).not.toHaveBeenCalled();
   });
 
   test('a gateway-timeout error mid-page rethrows instead of being counted as a per-record failure', async () => {
-    const sentinelA = makeSentinel({ id: 'sentinel-a', caseId: '081-25-00001' });
-    const sentinelB = makeSentinel({ id: 'sentinel-b', caseId: '081-25-00002' });
+    const sentinelA = makeSentinel({ id: 'sentinel-a', _id: 'mongo-a', caseId: '081-25-00001' });
+    const sentinelB = makeSentinel({ id: 'sentinel-b', _id: 'mongo-b', caseId: '081-25-00002' });
     mockFindSentinelAppointments.mockResolvedValue([sentinelA, sentinelB]);
     mockFindByAcmsProfessionalId.mockResolvedValue([makeProfessionalId()]);
     const timeoutError = new GatewayTimeoutError('TRUSTEE-CASE-APPOINTMENTS-MONGO-REPOSITORY', {
@@ -200,31 +206,35 @@ describe('HealSentinelCaseAppointmentsUseCase', () => {
     });
     mockDelete.mockRejectedValueOnce(timeoutError).mockResolvedValue(undefined);
 
-    await expect(useCase.healPage(25)).rejects.toThrow(timeoutError);
+    await expect(useCase.healPage(null, 25)).rejects.toThrow(timeoutError);
     expect(mockDelete).toHaveBeenCalledTimes(1);
   });
 
-  test('reports remainingCount > 0 when a full page is returned (more may remain)', async () => {
+  test('advances the cursor to the last row seen when a full page is returned (more may remain)', async () => {
     const sentinels = Array.from({ length: 25 }, (_, i) =>
-      makeSentinel({ id: `sentinel-${i}`, caseId: `081-25-${String(i).padStart(5, '0')}` }),
+      makeSentinel({
+        id: `sentinel-${i}`,
+        _id: `mongo-${String(i).padStart(2, '0')}`,
+        caseId: `081-25-${String(i).padStart(5, '0')}`,
+      }),
     );
     mockFindSentinelAppointments.mockResolvedValue(sentinels);
     mockFindByAcmsProfessionalId.mockResolvedValue([makeProfessionalId()]);
 
-    const result = await useCase.healPage(25);
+    const result = await useCase.healPage(null, 25);
 
     expect(mockUpsert).toHaveBeenCalledTimes(25);
     expect(result).toMatchObject({
       documentsWritten: 25,
       pageSize: 25,
-      remainingCount: 25,
+      nextLastId: 'mongo-24',
     });
   });
 
-  test('an empty page (no sentinels left) returns all zeros and remainingCount 0', async () => {
+  test('an empty page (no sentinels left) returns all zeros and a null cursor', async () => {
     mockFindSentinelAppointments.mockResolvedValue([]);
 
-    const result = await useCase.healPage(25);
+    const result = await useCase.healPage(null, 25);
 
     expect(mockFindByAcmsProfessionalId).not.toHaveBeenCalled();
     expect(mockUpsert).not.toHaveBeenCalled();
@@ -233,13 +243,13 @@ describe('HealSentinelCaseAppointmentsUseCase', () => {
       documentsWritten: 0,
       documentsFailed: 0,
       pageSize: 0,
-      remainingCount: 0,
+      nextLastId: null,
     });
   });
 
-  test('queries findSentinelAppointments with the requested page size', async () => {
-    await useCase.healPage(25);
+  test('queries findSentinelAppointments with the given cursor and page size', async () => {
+    await useCase.healPage('mongo-1', 25);
 
-    expect(mockFindSentinelAppointments).toHaveBeenCalledWith(25);
+    expect(mockFindSentinelAppointments).toHaveBeenCalledWith('mongo-1', 25);
   });
 });

@@ -290,12 +290,15 @@ export type TrusteeAppointmentSyncError = TrusteeAppointmentSyncEvent & {
 };
 
 /**
- * Enqueued manually to start (or continue) heal-sentinel-case-appointments. Carries no cursor —
- * each invocation re-queries for remaining SENTINEL_TRUSTEE_ID appointments, so a healed row
- * (sentinel deleted) naturally drops out of the next page. Continuation re-sends this same
- * message unchanged, mirroring TrusteeVerificationRemapMessage's re-query rationale.
+ * Enqueued manually to start (or continue) heal-sentinel-case-appointments. Carries lastId, the
+ * greatest _id seen in the previous page — a sentinel left unresolved this run (no mapping,
+ * ambiguous mapping, missing acmsProfessionalId, or a permanent per-record failure) is left in
+ * place rather than deleted, so a no-cursor re-query (unlike TrusteeVerificationRemapMessage's)
+ * would keep re-fetching the same unresolvable leading page forever and never reach resolvable
+ * sentinels further back in the collection. omit/null lastId starts from the beginning.
  */
 export type HealSentinelCaseAppointmentsMessage = {
+  lastId?: string | null;
   retryCount?: number;
   firstAttemptAt?: string;
 };
