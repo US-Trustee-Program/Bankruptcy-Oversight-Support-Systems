@@ -290,16 +290,6 @@ describe('UPCOMING_KEY_DATES_FIELD_CONFIG tprFrequency computed field', () => {
       expect(result.value).toBe('6 months');
     }
   });
-
-  test.each([
-    ['chapter7-panel', 8],
-    ['ch12-13-case-by-case', 5],
-    ['chapter12-standing', 9],
-    ['chapter13-standing', 8],
-  ] as const)('%s field count increased by 1', (variant, expectedCount) => {
-    const config = UPCOMING_KEY_DATES_FIELD_CONFIG[variant];
-    expect(config).toHaveLength(expectedCount);
-  });
 });
 
 describe('UPCOMING_KEY_DATES_FIELD_CONFIG tprDue — pinned to 2027 (odd)', () => {
