@@ -536,6 +536,31 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
     });
   }
 
+  /**
+   * Returns sentinel rows (trusteeId === SENTINEL_TRUSTEE_ID) for heal-sentinel-case-appointments.
+   * Unlike the cursor-paged finders above, this takes no lastId: a healed row's trusteeId is
+   * changed away from SENTINEL_TRUSTEE_ID (and the sentinel document deleted), so re-running this
+   * same query after each page naturally returns only what's left — no offset/cursor tracking
+   * needed, same rationale as TrusteeVerificationRemapUseCase.remapPage.
+   */
+  async findSentinelAppointments(limit: number): Promise<CaseAppointment[]> {
+    try {
+      const doc = using<CaseAppointmentDocument>();
+      const query = and(
+        doc('documentType').equals('CASE_APPOINTMENT'),
+        doc('trusteeId').equals(SENTINEL_TRUSTEE_ID),
+      );
+      const results = await this.casePartition
+        .adapter<CaseAppointmentDocument>()
+        .find(query, undefined, limit);
+      return results.map(stripMongoId);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: 'Failed to retrieve sentinel case appointments.',
+      });
+    }
+  }
+
   async getAllCaseAppointments(
     lastId: string | null,
     limit: number,
