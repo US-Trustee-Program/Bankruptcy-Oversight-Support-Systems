@@ -916,6 +916,28 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       expect(findSpy).toHaveBeenCalledWith(expect.any(Object), undefined, 50);
       repo.release();
     });
+
+    test('should return an empty array when no sentinel appointments remain', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const result = await repo.findSentinelAppointments(50);
+
+      expect(result).toEqual([]);
+      repo.release();
+    });
+
+    test('should wrap and rethrow when find rejects', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(new Error('boom'));
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(repo.findSentinelAppointments(50)).rejects.toThrow(
+        'Failed to retrieve sentinel case appointments.',
+      );
+      repo.release();
+    });
   });
 
   describe('getCasesForTrustee', () => {
