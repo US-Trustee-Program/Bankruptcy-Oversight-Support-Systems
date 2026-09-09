@@ -1,0 +1,47 @@
+name: Active Issue Notification
+
+on:
+  issues:
+    types: [labeled]
+
+permissions: {}
+
+jobs:
+  notify:
+    if: github.event.label.name == 'active'
+    runs-on: ubuntu-latest
+    environment: chatops
+    permissions: {}
+    steps:
+      - name: Ring the SoWork gong
+        env:
+          SOWORK_API_TOKEN: ${{ secrets.SOWORK_API_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+        run: |
+          # SoWork gong text is capped at 100 characters
+          text=$(printf '#%s active: %s' "$ISSUE_NUMBER" "$ISSUE_TITLE" | cut -c1-100)
+
+          curl --fail --silent --show-error --request POST \
+            --header "Authorization: Bearer $SOWORK_API_TOKEN" \
+            --header 'Content-Type: application/json' \
+            --data "$(jq -n --arg text "$text" '{text: $text}')" \
+            https://api.sowork.com/public/v1/gong
+
+      - name: Post Slack notification
+        env:
+          SLACK_ACTIVE_ISSUE_WEBHOOK_URL: ${{ secrets.SLACK_ACTIVE_ISSUE_WEBHOOK_URL }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_URL: ${{ github.event.issue.html_url }}
+          ISSUE_ASSIGNEES: ${{ join(github.event.issue.assignees.*.login, ', ') }}
+        run: |
+          message="🚀 *Issue moved to active:* <${ISSUE_URL}|#${ISSUE_NUMBER} ${ISSUE_TITLE}>"
+          if [ -n "$ISSUE_ASSIGNEES" ]; then
+            message="${message}"$'\n'"• *Assignee:* ${ISSUE_ASSIGNEES}"
+          fi
+
+          curl --fail --silent --show-error --request POST \
+            --header 'Content-type: application/json' \
+            --data "$(jq -n --arg text "$message" '{text: $text}')" \
+            "$SLACK_ACTIVE_ISSUE_WEBHOOK_URL"
