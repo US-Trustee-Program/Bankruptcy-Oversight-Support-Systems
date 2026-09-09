@@ -9,10 +9,8 @@ import {
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import { closeDeferred } from '../../../deferrable/defer-close';
-import { NotFoundError } from '../../../common-errors/not-found-error';
 import { CamsError } from '../../../common-errors/cams-error';
 
-const mockFindOne = vi.fn();
 const mockFind = vi.fn();
 const mockReplaceOne = vi.fn();
 
@@ -22,10 +20,8 @@ describe('NotificationRoutingMongoRepository', () => {
 
   beforeEach(async () => {
     vi.restoreAllMocks();
-    mockFindOne.mockReset();
     mockFind.mockReset();
     mockReplaceOne.mockReset();
-    vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockImplementation(mockFindOne);
     vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockImplementation(mockFind);
     vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockImplementation(mockReplaceOne);
     context = await createMockApplicationContext({
@@ -73,31 +69,37 @@ describe('NotificationRoutingMongoRepository', () => {
     });
   });
 
-  describe('findRecipientByRoutingKey', () => {
-    test('returns the recipient when a record covers the given key', async () => {
-      const doc = {
-        covers: ['chapter:7'],
-        recipientAddresses: ['ch-oversight@example.test'],
-        displayName: 'Chapter 7 Oversight',
-      };
-      mockFindOne.mockResolvedValue(doc);
+  describe('findRecipientsByRoutingKeys', () => {
+    test('returns every record whose covers array matches any of the given keys', async () => {
+      const docs = [
+        {
+          covers: ['chapter:7'],
+          recipientAddresses: ['ch-oversight@example.test'],
+          displayName: 'Chapter 7 Oversight',
+        },
+        {
+          covers: ['category:zoom-341'],
+          recipientAddresses: ['zoom-341@example.test'],
+          displayName: '341 Meeting Oversight',
+        },
+      ];
+      mockFind.mockResolvedValue(docs);
 
-      const result = await repository.findRecipientByRoutingKey('chapter:7');
+      const result = await repository.findRecipientsByRoutingKeys([
+        'chapter:7',
+        'category:zoom-341',
+      ]);
 
-      expect(result).toEqual({
-        covers: doc.covers,
-        recipientAddresses: doc.recipientAddresses,
-        displayName: doc.displayName,
-      });
-      expect(mockFindOne).toHaveBeenCalledTimes(1);
-      const query = mockFindOne.mock.calls[0][0];
+      expect(result).toEqual(docs);
+      expect(mockFind).toHaveBeenCalledTimes(1);
+      const query = mockFind.mock.calls[0][0];
       expect(query).toEqual({
         conjunction: 'AND',
         values: [
           {
             condition: 'CONTAINS',
             leftOperand: { name: 'covers' },
-            rightOperand: ['chapter:7'],
+            rightOperand: ['chapter:7', 'category:zoom-341'],
           },
           {
             condition: 'CONTAINS',
@@ -109,45 +111,44 @@ describe('NotificationRoutingMongoRepository', () => {
     });
 
     test('defaults missing fields to empty values', async () => {
-      mockFindOne.mockResolvedValue({});
+      mockFind.mockResolvedValue([{}]);
 
-      const result = await repository.findRecipientByRoutingKey('chapter:7');
+      const result = await repository.findRecipientsByRoutingKeys(['chapter:7']);
 
-      expect(result).toEqual({
-        covers: [],
-        recipientAddresses: [],
-        displayName: '',
-      });
+      expect(result).toEqual([{ covers: [], recipientAddresses: [], displayName: '' }]);
     });
 
     test('coerces legacy recipientAddress string to recipientAddresses array', async () => {
-      mockFindOne.mockResolvedValue({
-        covers: ['chapter:7'],
-        recipientAddress: 'legacy@example.test',
-        displayName: 'Legacy Record',
-      });
+      mockFind.mockResolvedValue([
+        { covers: ['chapter:7'], recipientAddress: 'legacy@example.test' },
+      ]);
 
-      const result = await repository.findRecipientByRoutingKey('chapter:7');
+      const result = await repository.findRecipientsByRoutingKeys(['chapter:7']);
 
-      expect(result?.recipientAddresses).toEqual(['legacy@example.test']);
+      expect(result[0].recipientAddresses).toEqual(['legacy@example.test']);
     });
 
-    test('returns null when no record covers the given key', async () => {
-      mockFindOne.mockRejectedValue(
-        new NotFoundError('NOTIFICATION-ROUTING-MONGO-REPOSITORY', {
-          message: 'No matching item found.',
-        }),
+    test('returns an empty array without querying when given no keys', async () => {
+      const result = await repository.findRecipientsByRoutingKeys([]);
+
+      expect(result).toEqual([]);
+      expect(mockFind).not.toHaveBeenCalled();
+    });
+
+    test('returns an empty array when no record matches any key', async () => {
+      mockFind.mockResolvedValue([]);
+
+      const result = await repository.findRecipientsByRoutingKeys(['missing-key']);
+
+      expect(result).toEqual([]);
+    });
+
+    test('rethrows errors as a CamsError', async () => {
+      mockFind.mockRejectedValue(new Error('connection refused'));
+
+      await expect(repository.findRecipientsByRoutingKeys(['chapter:7'])).rejects.toThrow(
+        CamsError,
       );
-
-      const result = await repository.findRecipientByRoutingKey('missing-key');
-
-      expect(result).toBeNull();
-    });
-
-    test('rethrows non-NotFound errors as a CamsError', async () => {
-      mockFindOne.mockRejectedValue(new Error('connection refused'));
-
-      await expect(repository.findRecipientByRoutingKey('chapter:7')).rejects.toThrow(CamsError);
     });
   });
 

@@ -1,0 +1,5 @@
+# Generated TLS cert/key + JWT signing keypair (scripts/generate-cert.sh) - regenerate anytime,
+# never commit private key material.
+fake-okta/certs/
+
+node_modules/

@@ -2153,7 +2153,7 @@ describe('Migrate Trustees Use Case', () => {
       context.featureFlags['trustee-change-notification-enabled'] = true;
       MockNotificationGateway.getInstance().clear();
 
-      vi.spyOn(MockMongoRepository.prototype, 'findRecipientByRoutingKey').mockResolvedValue(null);
+      vi.spyOn(MockMongoRepository.prototype, 'findRecipientsByRoutingKeys').mockResolvedValue([]);
     });
 
     test('upsertTrustee does not dispatch notifications when updating an existing trustee', async () => {

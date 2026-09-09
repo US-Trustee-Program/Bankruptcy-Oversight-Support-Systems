@@ -107,8 +107,6 @@ function validateDateFields(): ValidatorFunction {
 
     // Validate sentinel date fields (MM/DD format)
     const sentinelFields: DateField[] = [
-      'tprReviewPeriodStart',
-      'tprReviewPeriodEnd',
       'tprDue',
       'tirReviewPeriodStart',
       'tirReviewPeriodEnd',
@@ -133,6 +131,8 @@ function validateDateFields(): ValidatorFunction {
       'pastFieldExam',
       'pastAudit',
       'pastTprSubmission',
+      'tprReviewPeriodStart',
+      'tprReviewPeriodEnd',
       'lastMonthlyReportReceived',
       'leaseExpiration',
       'idExpiration',
@@ -213,6 +213,7 @@ export type TrusteeUpcomingKeyDates = Auditable &
     tprReviewPeriodEnd?: string;
     tprDue?: string;
     tprDueYearType?: 'EVEN' | 'ODD';
+    tprFrequency?: 'BIANNUAL' | 'ANNUAL' | 'SEMI_ANNUAL';
     tirReviewPeriodStart?: string;
     tirReviewPeriodEnd?: string;
     tirSubmission?: string;
@@ -242,6 +243,7 @@ export type TrusteeUpcomingKeyDatesInput = {
   tprReviewPeriodEnd: string | null;
   tprDue: string | null;
   tprDueYearType: string | null;
+  tprFrequency: 'BIANNUAL' | 'ANNUAL' | 'SEMI_ANNUAL' | null;
   tirReviewPeriodStart: string | null;
   tirReviewPeriodEnd: string | null;
   tirSubmission: string | null;
@@ -311,9 +313,9 @@ export const DATE_FIELDS: DateField[] = [
   'lastCompensationStudy',
 ];
 
-type TextField = 'tprDueYearType' | 'tirFrequency';
+type TextField = 'tprDueYearType' | 'tprFrequency' | 'tirFrequency';
 
-export const TEXT_FIELDS: TextField[] = ['tprDueYearType', 'tirFrequency'];
+export const TEXT_FIELDS: TextField[] = ['tprDueYearType', 'tprFrequency', 'tirFrequency'];
 
 export function isoToMMDDYYYY(iso: string): string {
   const [year, month, day] = iso.split('-');
@@ -462,6 +464,12 @@ function startOfMonthIso(date: Date): string {
 export function calculateAuditReqBy(lastAuditFiscalYear: number | null | undefined): number | null {
   if (lastAuditFiscalYear == null) return null;
   return lastAuditFiscalYear + 3;
+}
+
+export function calculateTprDueYear(yearType: 'EVEN' | 'ODD', currentYear: number): number {
+  const yearIsEven = currentYear % 2 === 0;
+  const typeIsEven = yearType === 'EVEN';
+  return yearIsEven === typeIsEven ? currentYear : currentYear + 1;
 }
 
 export function calculateNextAuditDate(

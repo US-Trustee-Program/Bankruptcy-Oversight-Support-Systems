@@ -31,7 +31,7 @@ describe('compileTrusteeChangeTemplate', () => {
         ),
       );
 
-      expect(result.subject).toBe('Trustee Information Changed: Smith & Co');
+      expect(result.subject).toBe('Trustee Information Changed: Smith & Co (Chapter 7)');
     });
 
     test('uses the default subject when subjectOverride is not set', () => {
@@ -46,7 +46,7 @@ describe('compileTrusteeChangeTemplate', () => {
         ]),
       );
 
-      expect(result.subject).toBe('Trustee Information Changed: Henry Green');
+      expect(result.subject).toBe('Trustee Information Changed: Henry Green (Chapter 7)');
     });
 
     test('uses subjectOverride when provided', () => {
@@ -64,7 +64,7 @@ describe('compileTrusteeChangeTemplate', () => {
         ),
       );
 
-      expect(result.subject).toBe('Trustee Appointment Changed: Henry Green');
+      expect(result.subject).toBe('Trustee Appointment Changed: Henry Green (Chapter 7)');
     });
 
     test('strips CRLF from subjectOverride to prevent header injection', () => {
@@ -82,9 +82,109 @@ describe('compileTrusteeChangeTemplate', () => {
         ),
       );
 
-      expect(result.subject).toBe('Appointment Changed  Bcc: attacker@evil.test');
+      expect(result.subject).toBe('Appointment Changed  Bcc: attacker@evil.test (Chapter 7)');
       expect(result.subject).not.toContain('\r');
       expect(result.subject).not.toContain('\n');
+    });
+
+    test('omits the chapter suffix when no chapters are known', () => {
+      const result = compileTrusteeChangeTemplate(
+        buildChangeSet(
+          [
+            {
+              label: 'Public Email',
+              comparisons: [{ before: 'a@b.test', after: 'c@d.test' }],
+              category: 'profile',
+              section: 'appointment',
+            },
+          ],
+          { chapters: undefined },
+        ),
+      );
+
+      expect(result.subject).toBe('Trustee Information Changed: Henry Green');
+    });
+
+    test('joins multiple chapters with a comma', () => {
+      const result = compileTrusteeChangeTemplate(
+        buildChangeSet(
+          [
+            {
+              label: 'Public Email',
+              comparisons: [{ before: 'a@b.test', after: 'c@d.test' }],
+              category: 'profile',
+              section: 'appointment',
+            },
+          ],
+          { chapters: ['7', '11-subchapter-v'] },
+        ),
+      );
+
+      expect(result.subject).toBe(
+        'Trustee Information Changed: Henry Green (Chapters 7, 11 Subchapter V)',
+      );
+    });
+
+    test('pluralizes "Chapter(s)" consistently between subject and body', () => {
+      const fields: TrusteeChangeField[] = [
+        {
+          label: 'Public Email',
+          comparisons: [{ before: 'a@b.test', after: 'c@d.test' }],
+          category: 'profile',
+          section: 'appointment',
+        },
+      ];
+
+      const single = compileTrusteeChangeTemplate(buildChangeSet(fields, { chapters: ['7'] }));
+      expect(single.subject).toContain('(Chapter 7)');
+      expect(single.text).toContain('Chapter: 7');
+
+      const multiple = compileTrusteeChangeTemplate(
+        buildChangeSet(fields, { chapters: ['7', '11'] }),
+      );
+      expect(multiple.subject).toContain('(Chapters 7, 11)');
+      expect(multiple.text).toContain('Chapters: 7, 11');
+    });
+
+    test('appends a 341 Meeting Update marker when meeting fields changed', () => {
+      const result = compileTrusteeChangeTemplate(
+        buildChangeSet(
+          [
+            {
+              label: 'Zoom Link',
+              comparisons: [{ before: 'https://zoom.us/old', after: 'https://zoom.us/new' }],
+              category: 'zoom-341',
+              section: 'meeting',
+            },
+          ],
+          { chapters: undefined },
+        ),
+      );
+
+      expect(result.subject).toBe('Trustee Information Changed: Henry Green (341 Meeting Update)');
+    });
+
+    test('includes both chapter and meeting marker for a mixed change', () => {
+      const result = compileTrusteeChangeTemplate(
+        buildChangeSet([
+          {
+            label: 'Name',
+            comparisons: [{ before: 'Henry Green', after: 'Henry G. Green' }],
+            category: 'profile',
+            section: 'appointment',
+          },
+          {
+            label: 'Zoom Link',
+            comparisons: [{ before: 'https://zoom.us/old', after: 'https://zoom.us/new' }],
+            category: 'zoom-341',
+            section: 'meeting',
+          },
+        ]),
+      );
+
+      expect(result.subject).toBe(
+        'Trustee Information Changed: Henry Green (Chapter 7, 341 Meeting Update)',
+      );
     });
   });
 
@@ -295,11 +395,48 @@ describe('compileTrusteeChangeTemplate', () => {
       expect(result.text).toBe(
         [
           "Trustee Henry Green's information has changed.",
+          'Chapter: 7',
           '',
           'Appointment Information',
           'Public Email: old@example.test -> new@example.test',
         ].join('\n'),
       );
+    });
+
+    test('adds a chapter line to the plaintext body when chapters are known', () => {
+      const result = compileTrusteeChangeTemplate(
+        buildChangeSet(
+          [
+            {
+              label: 'Public Email',
+              comparisons: [{ before: 'old@example.test', after: 'new@example.test' }],
+              category: 'profile',
+              section: 'appointment',
+            },
+          ],
+          { chapters: ['7', '11-subchapter-v'] },
+        ),
+      );
+
+      expect(result.text).toContain('Chapters: 7, 11 Subchapter V');
+    });
+
+    test('omits the chapter line from the plaintext body when no chapters are known', () => {
+      const result = compileTrusteeChangeTemplate(
+        buildChangeSet(
+          [
+            {
+              label: 'Public Email',
+              comparisons: [{ before: 'old@example.test', after: 'new@example.test' }],
+              category: 'profile',
+              section: 'appointment',
+            },
+          ],
+          { chapters: undefined },
+        ),
+      );
+
+      expect(result.text).not.toContain('Chapter');
     });
 
     test('omits the meeting section when no meeting fields are present', () => {
@@ -568,6 +705,54 @@ describe('compileTrusteeChangeTemplate', () => {
 
       expect(result.text).not.toContain('Changed by');
       expect(result.text).not.toContain('View profile');
+    });
+
+    test('does not leak the placeholder token for an author name containing "$&"', () => {
+      const result = compileTrusteeChangeTemplate({
+        ...baseChangeSet,
+        author: { name: 'A$&B' },
+      });
+
+      expect(result.html).toContain('Changed by A$&amp;B');
+      expect(result.html).not.toContain('{{author_section}}');
+    });
+
+    test('does not duplicate the preceding template for an author name containing "$`"', () => {
+      const result = compileTrusteeChangeTemplate({
+        ...baseChangeSet,
+        author: { name: 'X$`Y' },
+      });
+
+      expect(result.html).toContain('Changed by X$`Y');
+      expect(result.html.match(/<!DOCTYPE html>/g)?.length).toBe(1);
+    });
+
+    test('does not collapse a doubled "$$" in an author name', () => {
+      const result = compileTrusteeChangeTemplate({
+        ...baseChangeSet,
+        author: { name: 'Cost$$100' },
+      });
+
+      expect(result.html).toContain('Changed by Cost$$100');
+    });
+
+    test('does not leak the placeholder token when escaping an apostrophe manufactures a "$&" pattern', () => {
+      const result = compileTrusteeChangeTemplate({
+        ...baseChangeSet,
+        author: { name: "P$'Q" },
+      });
+
+      expect(result.html).toContain('Changed by P$&#39;Q');
+      expect(result.html).not.toContain('{{author_section}}');
+    });
+
+    test('does not treat "$" sequences in the trustee name as replace() substitution patterns', () => {
+      const result = compileTrusteeChangeTemplate({
+        ...baseChangeSet,
+        trusteeName: 'A$&B',
+      });
+
+      expect(result.html).toContain("Trustee A$&amp;B's information has changed.");
     });
   });
 });
