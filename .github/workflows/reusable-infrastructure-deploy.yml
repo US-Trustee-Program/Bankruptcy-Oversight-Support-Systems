@@ -73,8 +73,16 @@ jobs:
         id: azure-analytics-deploy
         env:
           AZ_LOCATION: ${{ secrets.AZ_LOCATION }} # pragma: allowlist secret
+          STACK_NAME: ${{ inputs.stackName }}
         run: |
+          # --name is stack-scoped: the default ARM deployment name derives from
+          # the template filename (log-analytics-workspace), which collides in the
+          # shared AZ_ANALYTICS_RG with reusable-deploy.yml's branch-LAW deploy
+          # (this job now runs parallel to deploy-infra, not gated on it) and with
+          # concurrent branch deploys. ARM serializes deployments by name within an
+          # RG, so a collision fails with DeploymentActive.
           az deployment group create \
+            --name "log-analytics-workspace-${STACK_NAME}" \
             -g "${AZ_ANALYTICS_RG}" \
             -f ./ops/cloud-deployment/lib/analytics/log-analytics-workspace.bicep \
             -p workspaceName=${{ env.AZ_ANALYTICS_WORKSPACE_NAME }} \
