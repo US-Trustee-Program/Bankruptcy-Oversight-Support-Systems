@@ -377,6 +377,10 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
+  findSentinelAppointments(..._ignore): Promise<any[]> {
+    throw new Error('Method not implemented.');
+  }
+
   findTransferOrdersMissingTaskDate(..._ignore): Promise<any[]> {
     throw new Error('Method not implemented.');
   }

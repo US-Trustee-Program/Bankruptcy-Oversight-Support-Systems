@@ -290,6 +290,17 @@ export type TrusteeAppointmentSyncError = TrusteeAppointmentSyncEvent & {
 };
 
 /**
+ * Enqueued manually to start (or continue) heal-sentinel-case-appointments. Carries no cursor —
+ * each invocation re-queries for remaining SENTINEL_TRUSTEE_ID appointments, so a healed row
+ * (sentinel deleted) naturally drops out of the next page. Continuation re-sends this same
+ * message unchanged, mirroring TrusteeVerificationRemapMessage's re-query rationale.
+ */
+export type HealSentinelCaseAppointmentsMessage = {
+  retryCount?: number;
+  firstAttemptAt?: string;
+};
+
+/**
  * Event triggered to start trustee migration from ATS.
  * Supports optional flags for migration control.
  */
