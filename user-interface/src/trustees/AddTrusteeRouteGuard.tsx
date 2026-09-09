@@ -1,6 +1,6 @@
 import { Navigate } from 'react-router-dom';
 import useFeatureFlags, {
-  isFlagEnabled,
+  canAddTrustee,
   RESTRICT_ADDING_TRUSTEES,
 } from '@/lib/hooks/UseFeatureFlags';
 import useFeatureFlagReadiness from '@/lib/hooks/UseFeatureFlagReadiness';
@@ -29,7 +29,7 @@ export function AddTrusteeRouteGuard() {
     return <LoadingSpinner caption="Checking access..." />;
   }
 
-  if (isFlagEnabled(flags, RESTRICT_ADDING_TRUSTEES)) {
+  if (canAddTrustee(flags)) {
     return <TrusteePublicContactForm action="create" cancelTo="/trustees" />;
   }
 

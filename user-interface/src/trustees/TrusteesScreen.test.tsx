@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { BrowserRouter } from 'react-router-dom';
+import { BrowserRouter, MemoryRouter, Route, Routes } from 'react-router-dom';
 import TrusteesScreen from './TrusteesScreen';
 import useFeatureFlags, {
   RESTRICT_ADDING_TRUSTEES,
@@ -209,6 +209,30 @@ describe('TrusteesScreen', () => {
 
     // Component should return null and render nothing
     expect(container.firstChild).toBeNull();
+  });
+
+  test('should render the outlet directly, bypassing the trustee-management/role gate, when a nested route is active', () => {
+    // Mirrors what AddTrusteeRouteGuard depends on at /trustees/create: even with the
+    // top-level flag disabled and no session, the nested route's content must still render.
+    mockUseFeatureFlags.mockReturnValue({
+      [TRUSTEE_MANAGEMENT]: false,
+    });
+    mockLocalStorage.getSession.mockReturnValue(null);
+
+    render(
+      <MemoryRouter initialEntries={['/trustees/create']}>
+        <Routes>
+          <Route path="/trustees" element={<TrusteesScreen />}>
+            <Route path="create" element={<div data-testid="nested-route-content">Nested</div>} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId('trustees')).toBeInTheDocument();
+    expect(screen.getByTestId('nested-route-content')).toBeInTheDocument();
+    expect(screen.queryByText('Add New Trustee')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('trustees-list')).not.toBeInTheDocument();
   });
 
   test('should not render when both feature flag is disabled and user lacks permission', () => {

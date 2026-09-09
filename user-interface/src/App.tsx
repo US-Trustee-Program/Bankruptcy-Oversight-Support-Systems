@@ -58,9 +58,14 @@ function App() {
     }
     const session = LocalStorage.getSession();
     if (session?.user) {
-      ldClient.identify(buildLaunchDarklyContext(session.user)).then(() => {
-        setHasIdentified(true);
-      });
+      ldClient
+        .identify(buildLaunchDarklyContext(session.user))
+        .then(() => {
+          setHasIdentified(true);
+        })
+        .catch((error) => {
+          getAppInsights()?.appInsights?.trackException({ exception: error as Error });
+        });
     } else {
       // No session/user to identify -- nothing to wait for.
       setHasIdentified(true);
