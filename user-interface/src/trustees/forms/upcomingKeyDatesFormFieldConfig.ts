@@ -12,7 +12,7 @@ export interface DatePickerFieldDescriptor {
 
 export type UpcomingFormFieldDescriptor = StaticFieldKind | DatePickerFieldDescriptor;
 
-export const UPCOMING_KEY_DATES_FORM_CONFIG: Record<
+const UPCOMING_KEY_DATES_FORM_CONFIG: Record<
   UpcomingKeyDatesVariant,
   UpcomingFormFieldDescriptor[]
 > = {
@@ -59,3 +59,14 @@ export const UPCOMING_KEY_DATES_FORM_CONFIG: Record<
     },
   ],
 };
+
+export function getUpcomingKeyDatesFormConfig(
+  variant: UpcomingKeyDatesVariant,
+  tprDisplayUpdates: boolean,
+): UpcomingFormFieldDescriptor[] {
+  const base = UPCOMING_KEY_DATES_FORM_CONFIG[variant];
+  if (tprDisplayUpdates) {
+    return base;
+  }
+  return base.filter((d) => d !== 'tpr-frequency');
+}
