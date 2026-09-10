@@ -131,6 +131,7 @@ describe('Case assignment tests', () => {
         queueTrusteeAppointmentEvent: vi.fn(),
         queueCaseReload: vi.fn(),
         queueTrusteeVerificationRemap: vi.fn(),
+        queueTrusteeChangeNotification: vi.fn(),
       });
     });
 

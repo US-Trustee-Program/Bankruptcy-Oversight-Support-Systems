@@ -64,8 +64,8 @@ const populatedDocument: TrusteeUpcomingKeyDates = {
   tirReviewPeriodEnd: '1900-06-30',
   tirSubmission: '1900-07-30',
   tirReview: '1900-09-28',
-  tprReviewPeriodStart: '1900-04-01',
-  tprReviewPeriodEnd: '1900-03-31',
+  tprReviewPeriodStart: '2025-04-01',
+  tprReviewPeriodEnd: '2026-03-31',
   tprDue: '1900-09-15',
   tprDueYearType: 'ODD',
   lastAuditFiscalYear: 2024,
@@ -156,16 +156,15 @@ describe('UpcomingKeyDatesForm', () => {
       expect(screen.getByTestId('tir-period')).toBeInTheDocument();
     });
 
-    test('TPR labels show "Trustee Performance Review Period" and "Trustee Performance Review Due"', async () => {
+    test('TPR labels show "Trustee Performance Review Period Start/End" and "Trustee Performance Review Due"', async () => {
       renderComponent();
 
       await waitFor(() => {
         expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
       });
 
-      expect(screen.getByTestId('tpr-review-period-label')).toHaveTextContent(
-        'Trustee Performance Review (TPR) Period',
-      );
+      expect(screen.getByLabelText('Trustee Performance Review Period Start')).toBeInTheDocument();
+      expect(screen.getByLabelText('Trustee Performance Review Period End')).toBeInTheDocument();
       expect(screen.getByText('Trustee Performance Review (TPR) Due')).toBeInTheDocument();
     });
 
@@ -444,6 +443,30 @@ describe('UpcomingKeyDatesForm', () => {
       );
     });
 
+    test('save handler sends full ISO dates for tprReviewPeriodStart and tprReviewPeriodEnd', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+      const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('upcoming-exam-audit-year')).toHaveValue(String(currentYear + 3));
+      });
+
+      await userEvent.click(screen.getByTestId('button-save-upcoming-key-dates'));
+
+      await waitFor(() => expect(putSpy).toHaveBeenCalled());
+      expect(putSpy).toHaveBeenCalledWith(
+        'trustee-001',
+        'appointment-001',
+        expect.objectContaining({
+          tprReviewPeriodStart: '2025-04-01',
+          tprReviewPeriodEnd: '2026-03-31',
+        }),
+      );
+      expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');
+    });
+
     test('shows error alert when save fails and re-enables save button', async () => {
       vi.spyOn(Api2, 'putUpcomingKeyDates').mockRejectedValue(new Error('Server error'));
 
@@ -494,6 +517,126 @@ describe('UpcomingKeyDatesForm', () => {
     });
   });
 
+  describe('tpr-frequency dropdown', () => {
+    test('renders tpr-frequency select for chapter7-panel variant', async () => {
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('tpr-frequency')).toBeInTheDocument();
+    });
+
+    test.each([
+      ['ch12-13-case-by-case', { chapter: '12', appointmentType: 'case-by-case' }],
+      ['chapter12-standing', { chapter: '12', appointmentType: 'standing' }],
+      ['chapter13-standing', { chapter: '13', appointmentType: 'standing' }],
+    ] as const)('renders tpr-frequency select for %s variant', async (_, apptOverride) => {
+      const appt = { ...chapter7Appointment, ...apptOverride };
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [appt] });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('tpr-frequency')).toBeInTheDocument();
+    });
+
+    test.each([
+      ['ch12-13-case-by-case', { chapter: '12', appointmentType: 'case-by-case' }],
+      ['chapter12-standing', { chapter: '12', appointmentType: 'standing' }],
+      ['chapter13-standing', { chapter: '13', appointmentType: 'standing' }],
+    ] as const)(
+      'selecting tprFrequency for %s variant sends it in the PUT payload',
+      async (_, apptOverride) => {
+        const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
+        const appt = { ...chapter7Appointment, ...apptOverride };
+        vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [appt] });
+
+        renderComponent();
+
+        await waitFor(() => {
+          expect(screen.getByTestId('tpr-frequency')).toBeInTheDocument();
+        });
+
+        await userEvent.selectOptions(screen.getByTestId('tpr-frequency'), 'ANNUAL');
+        await userEvent.click(screen.getByTestId('button-save-upcoming-key-dates'));
+
+        await waitFor(() => expect(putSpy).toHaveBeenCalled());
+        expect(putSpy).toHaveBeenCalledWith(
+          'trustee-001',
+          'appointment-001',
+          expect.objectContaining({ tprFrequency: 'ANNUAL' }),
+        );
+      },
+    );
+
+    test.each([
+      ['ANNUAL', 'One year'],
+      ['BIANNUAL', 'Two years'],
+      ['SEMI_ANNUAL', '6 months'],
+    ] as const)(
+      'selecting "%s" then saving sends tprFrequency: %s in the API call',
+      async (value, _label) => {
+        const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
+
+        renderComponent();
+
+        await waitFor(() => {
+          expect(screen.getByTestId('tpr-frequency')).toBeInTheDocument();
+        });
+
+        await userEvent.selectOptions(screen.getByTestId('tpr-frequency'), value);
+        await userEvent.click(screen.getByTestId('button-save-upcoming-key-dates'));
+
+        await waitFor(() => expect(putSpy).toHaveBeenCalled());
+        expect(putSpy).toHaveBeenCalledWith(
+          'trustee-001',
+          'appointment-001',
+          expect.objectContaining({ tprFrequency: value }),
+        );
+      },
+    );
+
+    test('saving with "- Select -" (empty) sends tprFrequency: null', async () => {
+      const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('tpr-frequency')).toBeInTheDocument();
+      });
+
+      await userEvent.click(screen.getByTestId('button-save-upcoming-key-dates'));
+
+      await waitFor(() => expect(putSpy).toHaveBeenCalled());
+      expect(putSpy).toHaveBeenCalledWith(
+        'trustee-001',
+        'appointment-001',
+        expect.objectContaining({ tprFrequency: null }),
+      );
+    });
+
+    test('loading a record with tprFrequency: SEMI_ANNUAL pre-selects "6 months" option', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({
+        data: { ...populatedDocument, tprFrequency: 'SEMI_ANNUAL' },
+      });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('tpr-frequency')).toHaveValue('SEMI_ANNUAL');
+      });
+
+      const select = screen.getByTestId('tpr-frequency') as HTMLSelectElement;
+      const selectedOption = Array.from(select.options).find((o) => o.selected);
+      expect(selectedOption?.text).toBe('6 months');
+    });
+  });
+
   describe('TPR Review Period validation', () => {
     test('shows error and blocks save when review period start is set without end', async () => {
       const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
@@ -504,14 +647,13 @@ describe('UpcomingKeyDatesForm', () => {
         expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
       });
 
-      await userEvent.selectOptions(
-        document.getElementById('tpr-review-period-start-month')!,
-        '04',
-      );
-      await userEvent.selectOptions(document.getElementById('tpr-review-period-start-day')!, '01');
+      const startInput = document.getElementById('tpr-review-period-start') as HTMLInputElement;
+      fireEvent.change(startInput, { target: { value: '2025-04-01' } });
       await userEvent.click(screen.getByTestId('button-save-upcoming-key-dates'));
 
-      expect(screen.getByTestId('tpr-review-period-error')).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByText('TPR Review Period End is required.')).toBeInTheDocument();
+      });
       expect(putSpy).not.toHaveBeenCalled();
     });
 
@@ -524,11 +666,13 @@ describe('UpcomingKeyDatesForm', () => {
         expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
       });
 
-      await userEvent.selectOptions(document.getElementById('tpr-review-period-end-month')!, '03');
-      await userEvent.selectOptions(document.getElementById('tpr-review-period-end-day')!, '31');
+      const endInput = document.getElementById('tpr-review-period-end') as HTMLInputElement;
+      fireEvent.change(endInput, { target: { value: '2026-03-31' } });
       await userEvent.click(screen.getByTestId('button-save-upcoming-key-dates'));
 
-      expect(screen.getByTestId('tpr-review-period-error')).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByText('TPR Review Period Start is required.')).toBeInTheDocument();
+      });
       expect(putSpy).not.toHaveBeenCalled();
     });
   });
@@ -564,7 +708,7 @@ describe('UpcomingKeyDatesForm', () => {
         expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
       });
 
-      expect(document.getElementById('tpr-review-period-start-month')).toBeInTheDocument();
+      expect(document.getElementById('tpr-review-period-start')).toBeInTheDocument();
       expect(document.getElementById('tpr-due-month')).toBeInTheDocument();
     });
 
@@ -586,7 +730,7 @@ describe('UpcomingKeyDatesForm', () => {
       expect(payload.pastFieldExam).toBe(populatedDocument.pastFieldExam);
       expect(payload.pastAudit).toBe(populatedDocument.pastAudit);
       expect(payload.upcomingExamOrAuditYear).toBe(populatedDocument.upcomingExamOrAuditYear);
-      expect(payload.tprReviewPeriodStart).toBe(populatedDocument.tprReviewPeriodStart);
+      expect(payload.tprReviewPeriodStart).toBe('2025-04-01');
       expect(payload.tprDue).toBe(populatedDocument.tprDue);
     });
   });
@@ -709,11 +853,8 @@ describe('UpcomingKeyDatesForm', () => {
         expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
       });
 
-      await userEvent.selectOptions(
-        document.getElementById('tpr-review-period-start-month')!,
-        '04',
-      );
-      await userEvent.selectOptions(document.getElementById('tpr-review-period-start-day')!, '01');
+      const startInput = document.getElementById('tpr-review-period-start') as HTMLInputElement;
+      fireEvent.change(startInput, { target: { value: '2025-04-01' } });
       await userEvent.click(screen.getByTestId('button-save-upcoming-key-dates'));
 
       await waitFor(() => {
@@ -731,6 +872,23 @@ describe('UpcomingKeyDatesForm', () => {
       await userEvent.selectOptions(document.getElementById('tpr-due-month')!, '09');
       await userEvent.selectOptions(document.getElementById('tpr-due-day')!, '15');
       await userEvent.click(screen.getByTestId('button-save-upcoming-key-dates'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('button-save-upcoming-key-dates')).toBeDisabled();
+      });
+    });
+
+    test('Save button is disabled when a legacy 1900 sentinel date is entered into tprReviewPeriodStart', async () => {
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+      });
+
+      const startInput = document.getElementById('tpr-review-period-start') as HTMLInputElement;
+      const endInput = document.getElementById('tpr-review-period-end') as HTMLInputElement;
+      fireEvent.change(startInput, { target: { value: '1900-04-01' } });
+      fireEvent.change(endInput, { target: { value: '1900-03-31' } });
 
       await waitFor(() => {
         expect(screen.getByTestId('button-save-upcoming-key-dates')).toBeDisabled();
@@ -785,8 +943,8 @@ describe('UpcomingKeyDatesForm', () => {
       createdOn: '2026-01-01T00:00:00.000Z',
       updatedBy: SYSTEM_USER_REFERENCE,
       updatedOn: '2026-01-01T00:00:00.000Z',
-      tprReviewPeriodStart: '1900-01-01',
-      tprReviewPeriodEnd: '1900-12-31',
+      tprReviewPeriodStart: '2025-01-01',
+      tprReviewPeriodEnd: '2025-12-31',
       tprDue: '1900-03-15',
       tprDueYearType: 'ODD',
       leaseExpiration: '2027-06-30',
@@ -802,7 +960,7 @@ describe('UpcomingKeyDatesForm', () => {
       await waitFor(() => {
         expect(screen.getByLabelText(/Lease Expiration/i)).toBeInTheDocument();
       });
-      expect(screen.getByText(/Trustee Performance Review \(TPR\) Period/i)).toBeInTheDocument();
+      expect(screen.getByLabelText('Trustee Performance Review Period Start')).toBeInTheDocument();
       expect(screen.getByText(/Trustee Performance Review \(TPR\) Due/i)).toBeInTheDocument();
       expect(screen.getByTestId('tpr-due-year-type')).toBeInTheDocument();
       expect(screen.getByLabelText(/ID Expiration/i)).toBeInTheDocument();
@@ -939,8 +1097,8 @@ describe('UpcomingKeyDatesForm', () => {
       createdOn: '2026-01-01T00:00:00.000Z',
       updatedBy: SYSTEM_USER_REFERENCE,
       updatedOn: '2026-01-01T00:00:00.000Z',
-      tprReviewPeriodStart: '1900-01-01',
-      tprReviewPeriodEnd: '1900-12-31',
+      tprReviewPeriodStart: '2025-01-01',
+      tprReviewPeriodEnd: '2025-12-31',
       tprDue: '1900-03-15',
       tprDueYearType: 'ODD',
       leaseExpiration: '2027-06-30',
@@ -969,7 +1127,9 @@ describe('UpcomingKeyDatesForm', () => {
       renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByText(/Trustee Performance Review \(TPR\) Period/i)).toBeInTheDocument();
+        expect(
+          screen.getByLabelText('Trustee Performance Review Period Start'),
+        ).toBeInTheDocument();
       });
 
       expect(screen.getByText(/Trustee Performance Review \(TPR\) Due/i)).toBeInTheDocument();
@@ -1091,6 +1251,83 @@ describe('UpcomingKeyDatesForm', () => {
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /save/i })).not.toBeDisabled();
+      });
+    });
+  });
+
+  describe('tprDisplayUpdates=false (flag OFF) behavior', () => {
+    function renderFlagOff() {
+      return render(
+        <BrowserRouter>
+          <GlobalAlertContext.Provider value={mockGlobalAlertRef}>
+            <UpcomingKeyDatesForm tprDisplayUpdates={false} />
+          </GlobalAlertContext.Provider>
+        </BrowserRouter>,
+      );
+    }
+
+    beforeEach(() => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [chapter7Appointment] });
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+    });
+
+    test('tpr-frequency select is not rendered when flag is OFF', async () => {
+      renderFlagOff();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByTestId('tpr-frequency')).not.toBeInTheDocument();
+    });
+
+    test('MonthDayRangeSelector is rendered for TPR Review Period when flag is OFF', async () => {
+      renderFlagOff();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+      });
+
+      expect(screen.getByText('Trustee Performance Review (TPR) Period')).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText('Trustee Performance Review Period Start'),
+      ).not.toBeInTheDocument();
+    });
+
+    test('save payload uses sentinel format for tprReviewPeriod when flag is OFF', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({
+        data: {
+          id: 'doc-001',
+          documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
+          trusteeId: 'trustee-001',
+          appointmentId: 'appointment-001',
+          createdBy: SYSTEM_USER_REFERENCE,
+          createdOn: '2026-01-01T00:00:00.000Z',
+          updatedBy: SYSTEM_USER_REFERENCE,
+          updatedOn: '2026-01-01T00:00:00.000Z',
+          tprReviewPeriodStart: '1900-04-01',
+          tprReviewPeriodEnd: '1900-03-31',
+        },
+      });
+      const mockPut = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderFlagOff();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+      });
+
+      await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+      await waitFor(() => {
+        expect(mockPut).toHaveBeenCalledWith(
+          'trustee-001',
+          'appointment-001',
+          expect.objectContaining({
+            tprReviewPeriodStart: '1900-04-01',
+            tprReviewPeriodEnd: '1900-03-31',
+          }),
+        );
       });
     });
   });

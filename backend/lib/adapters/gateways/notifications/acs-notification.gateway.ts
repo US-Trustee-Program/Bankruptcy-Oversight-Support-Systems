@@ -2,6 +2,7 @@ import { EmailClient, EmailMessage } from '@azure/communication-email';
 import { Notification } from '@common/cams/notifications';
 import { NotificationGateway, NotificationSendResult } from '../../../use-cases/gateways.types';
 import { CamsError } from '../../../common-errors/cams-error';
+import { NOTIFICATION_SEND_FAILURE_TAG } from '../../../use-cases/notifications/notification-alert-tag';
 
 const MODULE_NAME = 'ACS-NOTIFICATION-GATEWAY';
 const POLL_TIMEOUT_MS = 30_000;
@@ -86,7 +87,7 @@ export class AcsNotificationGateway implements NotificationGateway {
 
     if (result.status !== 'Succeeded') {
       const message = `Email service rejected the message with status '${result.status}' (id: ${result.id})`;
-      this.logger?.error(MODULE_NAME, message, {
+      this.logger?.error(MODULE_NAME, `${NOTIFICATION_SEND_FAILURE_TAG} ${message}`, {
         id: result.id,
         to: notification.to,
         correlationId: notification.correlationId,
@@ -113,7 +114,7 @@ export class AcsNotificationGateway implements NotificationGateway {
     const message = connection
       ? 'Unable to connect to the email service'
       : `Failed to send email: ${error instanceof Error ? error.message : 'unknown error'}`;
-    this.logger?.error(MODULE_NAME, message, {
+    this.logger?.error(MODULE_NAME, `${NOTIFICATION_SEND_FAILURE_TAG} ${message}`, {
       to: notification.to,
       correlationId: notification.correlationId,
       trusteeId: notification.trusteeId,

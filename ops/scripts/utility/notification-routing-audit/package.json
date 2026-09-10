@@ -1,0 +1,10 @@
+{
+  "name": "notification-routing-audit",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Standalone, read-only audit of NOTIFICATION_ROUTING recipient address domains. See README.md.",
+  "type": "module",
+  "dependencies": {
+    "mongodb": "7.6.0"
+  }
+}

@@ -12,6 +12,7 @@
         "test/migration/**",
         "ops/migrations/**",
         "ops/cloud-deployment/lib/cosmos/mongo/index-*.js",
+        "ops/scripts/utility/notification-routing-audit/*.mjs",
         "test/ui-sandbox/**"
       ]
     },

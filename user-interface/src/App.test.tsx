@@ -185,7 +185,7 @@ describe('App', () => {
     test('calls identify with the session user when a session and ldClient are present', async () => {
       const session = MockData.getCamsSession();
       vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
-      const identify = vi.fn();
+      const identify = vi.fn().mockResolvedValue(undefined);
       vi.mocked(LaunchDarklyReactClientSdk.useLDClient).mockReturnValue({
         identify,
         waitForInitialization: vi.fn().mockResolvedValue(undefined),

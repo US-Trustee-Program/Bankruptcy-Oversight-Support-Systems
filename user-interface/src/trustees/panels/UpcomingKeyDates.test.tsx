@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, test, expect, vi, beforeEach } from 'vitest';
+import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
 import UpcomingKeyDates, { UpcomingKeyDatesProps } from './UpcomingKeyDates';
 import TestingUtilities from '@/lib/testing/testing-utilities';
@@ -42,6 +42,7 @@ const populatedDocument: TrusteeUpcomingKeyDates = {
   tprReviewPeriodEnd: '1900-03-31',
   tprDue: '1900-09-15',
   tprDueYearType: 'EVEN',
+  tprFrequency: 'ANNUAL',
   tirReviewPeriodStart: '1900-07-01',
   tirReviewPeriodEnd: '1900-06-30',
   tirSubmission: '1900-10-15',
@@ -60,9 +61,16 @@ describe('UpcomingKeyDates', () => {
   const mockNavigate = vi.fn();
 
   beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-15'));
     vi.restoreAllMocks();
+    mockNavigate.mockClear();
     mockUseNavigate.mockReturnValue(mockNavigate);
     TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   test('renders "No date added" for all fields when data is null', () => {
@@ -73,6 +81,9 @@ describe('UpcomingKeyDates', () => {
     expect(screen.getByTestId('upcoming-exam-audit-row')).toHaveTextContent('No date added');
     expect(screen.getByTestId('audit-req-by-row')).toHaveTextContent('No date added');
     expect(screen.getByTestId('tpr-review-period-row')).toHaveTextContent('No date added');
+    expect(screen.getByTestId('tpr-review-period-frequency-row')).toHaveTextContent(
+      'No frequency selected',
+    );
     expect(screen.getByTestId('tpr-due-row')).toHaveTextContent('No date added');
     expect(screen.getByTestId('tir-review-period-row')).toHaveTextContent('No date added');
     expect(screen.getByTestId('tir-submission-row')).toHaveTextContent('No date added');
@@ -87,6 +98,7 @@ describe('UpcomingKeyDates', () => {
     expect(screen.getByText('Field Exam / Audit:')).toBeInTheDocument();
     expect(screen.getByText('Audit Required by:')).toBeInTheDocument();
     expect(screen.getByText('Trustee Performance Review Period:')).toBeInTheDocument();
+    expect(screen.getByText('TPR Review Period Frequency:')).toBeInTheDocument();
     expect(screen.getByText('Trustee Performance Review Due:')).toBeInTheDocument();
     expect(screen.getByText('TIR Review Period:')).toBeInTheDocument();
     expect(screen.getByText('TIR Submission:')).toBeInTheDocument();
@@ -100,7 +112,33 @@ describe('UpcomingKeyDates', () => {
 
     expect(screen.getByTestId('upcoming-exam-audit-row')).toHaveTextContent('2029');
     expect(screen.getByTestId('tpr-review-period-row')).toHaveTextContent('04/01 - 03/31');
-    expect(screen.getByTestId('tpr-due-row')).toHaveTextContent('09/15 EVEN');
+    expect(screen.getByTestId('tpr-review-period-frequency-row')).toHaveTextContent('One year');
+    expect(screen.getByTestId('tpr-due-row')).toHaveTextContent('09/15/2026');
+    expect(screen.getByTestId('tir-submission-row')).toHaveTextContent('10/15');
+    expect(screen.getByTestId('tir-review-row')).toHaveTextContent('11/01');
+  });
+
+  test('TPR Review Period shows mm/dd/yyyy - mm/dd/yyyy when full-year dates are stored', () => {
+    renderComponent({
+      data: {
+        ...populatedDocument,
+        tprReviewPeriodStart: '2025-04-01',
+        tprReviewPeriodEnd: '2026-03-31',
+      },
+    });
+
+    expect(screen.getByTestId('tpr-review-period-row')).toHaveTextContent(
+      '04/01/2025 - 03/31/2026',
+    );
+  });
+
+  test('TPR Due shows correct year for ODD year type on chapter7-panel', () => {
+    renderComponent({
+      data: { ...populatedDocument, tprDueYearType: 'ODD' },
+    });
+
+    // System time pinned to 2026-01-15 (even year) → ODD type → next odd year is 2027
+    expect(screen.getByTestId('tpr-due-row')).toHaveTextContent('09/15/2027');
   });
 
   test('exam/audit row uses type as label when upcomingExamOrAuditType is set', () => {
@@ -272,7 +310,7 @@ describe('UpcomingKeyDates', () => {
     test.each([
       ['audit-req-by-row', '2025'],
       ['tpr-review-period-row', '01/01 - 12/31'],
-      ['tpr-due-row', '03/15 ODD'],
+      ['tpr-due-row', '03/15/2027'],
       ['lease-expiration-row', '06/30/2027'],
       ['id-expiration-row', '01/15/2028'],
     ])('shows formatted value for %s when data is populated', (testId, expectedValue) => {
@@ -289,6 +327,18 @@ describe('UpcomingKeyDates', () => {
       renderComponent({ ...ch12StandingProps, data: null });
 
       expect(screen.getByTestId(testId)).toHaveTextContent(expectedValue);
+    });
+
+    test('displays "Audit Recommended by" (not "Audit Req. By") as field label', () => {
+      renderComponent({ ...ch12StandingProps, data: null });
+
+      expect(screen.getByText('Audit Recommended by:')).toBeInTheDocument();
+    });
+
+    test('displays "Budget Due to OO" (not "Budget Review to OO") as field label', () => {
+      renderComponent({ ...ch12StandingProps, data: null });
+
+      expect(screen.getByText('Budget Due to OO:')).toBeInTheDocument();
     });
 
     test('Edit button navigates with chapter12-standing variant', () => {
@@ -308,6 +358,70 @@ describe('UpcomingKeyDates', () => {
     });
   });
 
+  describe('chapter13-standing variant', () => {
+    const ch13StandingProps: UpcomingKeyDatesProps = {
+      ...defaultProps,
+      variant: 'chapter13-standing',
+      trusteeId: 'trustee-ch13-001',
+      appointmentId: 'appointment-ch13-001',
+      appointmentHeading: 'Southern District of New York (Manhattan) - Chapter 13 Standing',
+    };
+
+    const ch13StandingDoc: TrusteeUpcomingKeyDates = {
+      id: 'doc-ch13-001',
+      documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
+      trusteeId: 'trustee-ch13-001',
+      appointmentId: 'appointment-ch13-001',
+      createdBy: SYSTEM_USER_REFERENCE,
+      createdOn: '2026-01-01T00:00:00.000Z',
+      updatedBy: SYSTEM_USER_REFERENCE,
+      updatedOn: '2026-01-01T00:00:00.000Z',
+      tprReviewPeriodStart: '1900-01-01',
+      tprReviewPeriodEnd: '1900-12-31',
+      tprDue: '1900-03-15',
+      tprDueYearType: 'ODD',
+      leaseExpiration: '2027-06-30',
+      idExpiration: '2028-01-15',
+    };
+
+    test('renders "No date added" for computed fields when data is null', () => {
+      renderComponent({ ...ch13StandingProps, data: null });
+
+      expect(screen.getByTestId('tpr-review-period-row')).toHaveTextContent('No date added');
+      expect(screen.getByTestId('tpr-due-row')).toHaveTextContent('No date added');
+      expect(screen.getByTestId('lease-expiration-row')).toHaveTextContent('No date added');
+      expect(screen.getByTestId('id-expiration-row')).toHaveTextContent('No date added');
+    });
+
+    test.each([
+      ['tpr-review-period-row', '01/01 - 12/31'],
+      ['tpr-due-row', '03/15/2027'],
+      ['lease-expiration-row', '06/30/2027'],
+      ['id-expiration-row', '01/15/2028'],
+    ])('shows formatted value for %s when data is populated', (testId, expectedValue) => {
+      renderComponent({ ...ch13StandingProps, data: ch13StandingDoc });
+
+      expect(screen.getByTestId(testId)).toHaveTextContent(expectedValue);
+    });
+
+    test('uses chapter13-specific label text for TPR fields', () => {
+      renderComponent({ ...ch13StandingProps, data: null });
+
+      expect(screen.getByText('TPR Review Period:')).toBeInTheDocument();
+      expect(screen.getByText('TPR Due:')).toBeInTheDocument();
+    });
+
+    test.each([
+      ['annual-audit-review-period-row', '10/01 - 09/30'],
+      ['budget-submission-due-row', '07/01'],
+      ['budget-review-to-oo-row', '08/15'],
+    ])('constant row %s always shows %s', (testId, expectedValue) => {
+      renderComponent({ ...ch13StandingProps, data: null });
+
+      expect(screen.getByTestId(testId)).toHaveTextContent(expectedValue);
+    });
+  });
+
   describe('ch12-13-case-by-case variant', () => {
     test('renders constant fields always showing 09/01 and 09/15 and computed TPR fields', () => {
       renderComponent({ variant: 'ch12-13-case-by-case', data: populatedDocument });
@@ -315,7 +429,7 @@ describe('UpcomingKeyDates', () => {
       expect(screen.getByTestId('annual-report-submission-row')).toHaveTextContent('09/01');
       expect(screen.getByTestId('annual-report-due-oo-row')).toHaveTextContent('09/15');
       expect(screen.getByTestId('tpr-review-period-row')).toHaveTextContent('04/01 - 03/31');
-      expect(screen.getByTestId('tpr-due-row')).toHaveTextContent('09/15 EVEN');
+      expect(screen.getByTestId('tpr-due-row')).toHaveTextContent('09/15/2026');
     });
 
     test('renders constant fields the same even when no key-dates document exists', () => {
@@ -337,5 +451,35 @@ describe('UpcomingKeyDates', () => {
       `/trustees/${defaultProps.trusteeId}/appointments/${defaultProps.appointmentId}/upcoming-key-dates/edit`,
       { state: { subHeading: defaultProps.appointmentHeading, variant: 'chapter7-panel' } },
     );
+  });
+
+  describe('tprDisplayUpdates=false (flag OFF) behavior', () => {
+    test('does not render tpr-review-period-frequency-row when tprDisplayUpdates is false', () => {
+      renderComponent({ tprDisplayUpdates: false, data: populatedDocument });
+
+      expect(screen.queryByTestId('tpr-review-period-frequency-row')).not.toBeInTheDocument();
+    });
+
+    test('tprDue shows "mm/dd YEARTYPE" format when tprDisplayUpdates is false', () => {
+      renderComponent({
+        tprDisplayUpdates: false,
+        data: { ...populatedDocument, tprDue: '1900-09-15', tprDueYearType: 'EVEN' },
+      });
+
+      expect(screen.getByTestId('tpr-due-row')).toHaveTextContent('09/15 EVEN');
+    });
+
+    test('tprReviewPeriod shows mm/dd - mm/dd even for full-year dates when tprDisplayUpdates is false', () => {
+      renderComponent({
+        tprDisplayUpdates: false,
+        data: {
+          ...populatedDocument,
+          tprReviewPeriodStart: '2025-04-01',
+          tprReviewPeriodEnd: '2026-03-31',
+        },
+      });
+
+      expect(screen.getByTestId('tpr-review-period-row')).toHaveTextContent('04/01 - 03/31');
+    });
   });
 });

@@ -235,6 +235,17 @@ describe('PastKeyDates', () => {
       expect(screen.getByTestId('last-compensation-study-row')).toHaveTextContent('No date added');
     });
 
+    test('displays "(Required every 5 years)" below the Last Compensation Study date', () => {
+      renderComponent({
+        ...ch13Props,
+        data: { ...populatedDocument, lastCompensationStudy: '2023-08-01' },
+      });
+
+      const row = screen.getByTestId('last-compensation-study-row');
+      expect(row).toHaveTextContent('08/2023');
+      expect(row).toHaveTextContent('(Required every 5 years)');
+    });
+
     test('Edit button shown for TrusteeAdmin', () => {
       renderComponent(ch13Props);
 

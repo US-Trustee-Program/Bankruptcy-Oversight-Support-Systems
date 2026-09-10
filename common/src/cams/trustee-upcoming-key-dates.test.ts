@@ -16,6 +16,7 @@ import {
   calculateTirReview,
   calculateNextAuditDate,
   calculateAuditReqBy,
+  calculateTprDueYear,
   validateMonthDay,
   validateMonthDayRange,
   validateTrusteeUpcomingKeyDates,
@@ -357,6 +358,7 @@ describe('validateTrusteeUpcomingKeyDates', () => {
       tprReviewPeriodEnd: null,
       tprDue: null,
       tprDueYearType: null,
+      tprFrequency: null,
       tirReviewPeriodStart: null,
       tirReviewPeriodEnd: null,
       tirSubmission: null,
@@ -390,6 +392,7 @@ describe('validateTrusteeUpcomingKeyDates', () => {
         tprReviewPeriodEnd: '1900-03-31',
         tprDue: '1900-09-15',
         tprDueYearType: 'EVEN',
+        tprFrequency: 'ANNUAL',
         tirReviewPeriodStart: '1900-07-01',
         tirReviewPeriodEnd: '1900-06-30',
         tirSubmission: '1900-10-15',
@@ -479,8 +482,6 @@ describe('validateTrusteeUpcomingKeyDates', () => {
   });
 
   test.each([
-    ['tprReviewPeriodStart'],
-    ['tprReviewPeriodEnd'],
     ['tirReviewPeriodStart'],
     ['tirReviewPeriodEnd'],
     ['tirSubmission'],
@@ -496,14 +497,17 @@ describe('validateTrusteeUpcomingKeyDates', () => {
     expect(result.reasonMap?.[field]?.reasons?.[0]).toBe('Must be a valid date mm/dd.');
   });
 
-  test('returns error when a full date field contains an invalid ISO date', () => {
-    const result = validateTrusteeUpcomingKeyDates({
-      ...baseInput(),
-      pastFieldExam: '2026-13-01',
-    });
-    expect(result.valid).toBeFalsy();
-    expect(result.reasonMap?.pastFieldExam?.reasons?.[0]).toBe('Must be a valid date mm/dd/yyyy.');
-  });
+  test.each([['pastFieldExam'], ['tprReviewPeriodStart'], ['tprReviewPeriodEnd']])(
+    'returns error when %s (full date field) contains an invalid ISO date',
+    (field) => {
+      const result = validateTrusteeUpcomingKeyDates({
+        ...baseInput(),
+        [field]: '2026-13-01',
+      });
+      expect(result.valid).toBeFalsy();
+      expect(result.reasonMap?.[field]?.reasons?.[0]).toBe('Must be a valid date mm/dd/yyyy.');
+    },
+  );
 
   test('returns VALID when pastBackgroundQuestion is a valid full date', () => {
     expect(
@@ -702,7 +706,7 @@ describe('validateTrusteeUpcomingKeyDates', () => {
   });
 
   test('TEXT_FIELDS contains the exact set of expected fields', () => {
-    expect(TEXT_FIELDS).toEqual(['tprDueYearType', 'tirFrequency']);
+    expect(TEXT_FIELDS).toEqual(['tprDueYearType', 'tprFrequency', 'tirFrequency']);
   });
 });
 
@@ -766,5 +770,20 @@ describe('trustee-upcoming-key-dates - mutation gap tests', () => {
     test('preserves zero-padded month and day', () => {
       expect(isoToSentinel('2024-03-05')).toBe('1900-03-05');
     });
+  });
+});
+
+describe('calculateTprDueYear', () => {
+  test.each([
+    ['EVEN', 2026, 2026],
+    ['ODD', 2026, 2027],
+    ['ODD', 2027, 2027],
+    ['EVEN', 2027, 2028],
+    ['EVEN', 2025, 2026],
+    ['ODD', 2025, 2025],
+    ['EVEN', 2024, 2024],
+    ['ODD', 2024, 2025],
+  ] as const)('calculateTprDueYear(%s, %d) -> %d', (yearType, currentYear, expected) => {
+    expect(calculateTprDueYear(yearType, currentYear)).toBe(expected);
   });
 });

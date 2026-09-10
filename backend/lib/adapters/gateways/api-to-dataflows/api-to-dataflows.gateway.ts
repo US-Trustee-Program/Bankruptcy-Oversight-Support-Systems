@@ -3,12 +3,14 @@ import {
   CASE_ASSIGNMENT_EVENT_QUEUE,
   SYNC_CASES_PAGE_QUEUE,
   TRUSTEE_APPOINTMENT_EVENT_QUEUE,
+  TRUSTEE_CHANGE_NOTIFICATION_QUEUE,
   TRUSTEE_MATCH_VERIFICATION_REMAP_QUEUE,
 } from '../../../storage-queues';
 import {
   CaseAssignmentDownstreamEvent,
   CaseSyncEvent,
   TrusteeAppointmentDownstreamEvent,
+  TrusteeChangeNotificationEvent,
   TrusteeVerificationRemapMessage,
 } from '@common/cams/dataflow-events';
 import { ApiToDataflowsGateway } from '../../../use-cases/gateways.types';
@@ -54,6 +56,10 @@ export class ApiToDataflowsGatewayImpl implements ApiToDataflowsGateway {
 
   async queueTrusteeVerificationRemap(message: TrusteeVerificationRemapMessage): Promise<void> {
     await this.enqueue(TRUSTEE_MATCH_VERIFICATION_REMAP_QUEUE, message);
+  }
+
+  async queueTrusteeChangeNotification(event: TrusteeChangeNotificationEvent): Promise<void> {
+    await this.enqueue(TRUSTEE_CHANGE_NOTIFICATION_QUEUE, event);
   }
 
   private async enqueue(queue: StorageQueueOutput, message: unknown): Promise<void> {

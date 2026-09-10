@@ -16,6 +16,7 @@ import useFeatureFlags, {
   DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES,
   DISPLAY_CHPT12_STANDING_KEY_DATES,
   DISPLAY_CHPT13_STANDING_KEY_DATES,
+  TPR_DISPLAY_UPDATES,
 } from '@/lib/hooks/UseFeatureFlags';
 import useCourts from '@/lib/hooks/UseCourts';
 import { buildDivisionsDisplay } from '@/lib/utils/court-utils';
@@ -53,6 +54,7 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
     featureFlags[DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES] === true;
   const displayChpt12StandingKeyDates = featureFlags[DISPLAY_CHPT12_STANDING_KEY_DATES] === true;
   const displayChpt13StandingKeyDates = featureFlags[DISPLAY_CHPT13_STANDING_KEY_DATES] === true;
+  const tprDisplayUpdates = !!featureFlags[TPR_DISPLAY_UPDATES];
   const { chapter, appointmentType } = props.appointment;
   const formattedChapter = formatChapterType(chapter);
   const formattedAppointmentType = formatAppointmentType(appointmentType);
@@ -172,6 +174,7 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
               appointmentHeading={appointmentHeading}
               data={keyDatesData}
               isLoading={isKeyDatesLoading}
+              tprDisplayUpdates={tprDisplayUpdates}
             />
             <PastKeyDates
               variant="chapter7-panel"
@@ -201,6 +204,7 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
             appointmentHeading={appointmentHeading}
             data={keyDatesData}
             isLoading={isKeyDatesLoading}
+            tprDisplayUpdates={tprDisplayUpdates}
           />
         )}
         {showsChpt12StandingKeyDatesCards && (
@@ -212,6 +216,7 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
               appointmentHeading={appointmentHeading}
               data={keyDatesData}
               isLoading={isKeyDatesLoading}
+              tprDisplayUpdates={tprDisplayUpdates}
             />
             <PastKeyDates
               variant="chapter12-standing"
@@ -232,6 +237,7 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
               appointmentHeading={appointmentHeading}
               data={keyDatesData}
               isLoading={isKeyDatesLoading}
+              tprDisplayUpdates={tprDisplayUpdates}
             />
             <PastKeyDates
               variant="chapter13-standing"

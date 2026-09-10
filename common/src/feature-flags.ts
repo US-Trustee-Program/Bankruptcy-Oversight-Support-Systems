@@ -22,6 +22,7 @@ export const testFeatureFlags: FeatureFlagSet = {
   'display-chpt12-13-case-by-case-upcoming-key-dates': true,
   'phonetic-search-enabled': true,
   'privileged-identity-management': true,
+  'restrict-adding-trustees': true,
   'show-debtor-name-column': true,
   'transfer-orders-enabled': true,
   'trustee-appointment-history-enabled': true,
@@ -35,6 +36,7 @@ export const testFeatureFlags: FeatureFlagSet = {
   'trustee-change-notification-enabled': true,
   'trustee-typed-phones': true,
   'software-vendor-typed-phones': true,
+  'tpr-display-updates': true,
 };
 
 export type LaunchDarklyContext = {

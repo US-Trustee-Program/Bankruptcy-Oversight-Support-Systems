@@ -186,6 +186,7 @@ describe('SyncTrusteeCaseAppointments', () => {
         queueCaseAssignmentEvent: vi.fn().mockResolvedValue(undefined),
         queueCaseReload: vi.fn().mockResolvedValue(undefined),
         queueTrusteeVerificationRemap: vi.fn().mockResolvedValue(undefined),
+        queueTrusteeChangeNotification: vi.fn().mockResolvedValue(undefined),
       } as ApiToDataflowsGateway);
       vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({
         kind: 'resolved',
@@ -3891,6 +3892,7 @@ describe('SyncTrusteeCaseAppointments', () => {
         queueCaseAssignmentEvent: vi.fn().mockResolvedValue(undefined),
         queueCaseReload: vi.fn().mockResolvedValue(undefined),
         queueTrusteeVerificationRemap: vi.fn().mockResolvedValue(undefined),
+        queueTrusteeChangeNotification: vi.fn().mockResolvedValue(undefined),
       } as ApiToDataflowsGateway);
       vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({
         kind: 'resolved',
