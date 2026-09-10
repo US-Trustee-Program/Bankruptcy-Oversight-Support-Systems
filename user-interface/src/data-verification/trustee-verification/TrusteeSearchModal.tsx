@@ -210,13 +210,13 @@ function TrusteeSearchModal_(
             disableFiltering={true}
           />
           <div className="trustee-data-grid trustee-comparison-grid">
-            <div className="trustee-data-header grid-row grid-gap-lg">
-              <div className="trustee-data-cell grid-col-6">Information sent by court</div>
-              <div className="trustee-data-cell grid-col-6">Selected Trustee</div>
+            <div className="trustee-data-header">
+              <h4 className="trustee-data-cell">Information sent by court</h4>
+              <h4 className="trustee-data-cell">Selected Trustee</h4>
             </div>
-            <div className="trustee-data-row grid-row grid-gap-lg">
+            <div className="trustee-data-row">
               <div
-                className="trustee-data-cell grid-col-6 court-details"
+                className="trustee-data-cell court-details"
                 data-cell="Information sent by court"
               >
                 <div>{courtName}</div>
@@ -228,10 +228,7 @@ function TrusteeSearchModal_(
                 <div>{courtPhone ?? 'Phone not provided'}</div>
                 <div>{courtEmail ?? 'Email not provided'}</div>
               </div>
-              <div
-                className="trustee-data-cell grid-col-6 trustee-details"
-                data-cell="Selected Trustee"
-              >
+              <div className="trustee-data-cell trustee-details" data-cell="Selected Trustee">
                 {selectedTrustee ? (
                   <>
                     <NewTabLink
