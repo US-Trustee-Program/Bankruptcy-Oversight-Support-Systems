@@ -1150,6 +1150,56 @@ describe('TrusteeMatchVerificationAccordion', () => {
       });
     });
 
+    test("TrusteeSearchModal shows the court's legacy address/phone/email once opened", async () => {
+      const orderWithLegacy: TrusteeMatchVerificationListItem = {
+        ...sampleOrder,
+        dxtrTrustee: {
+          fullName: 'John Doe',
+          legacy: {
+            address1: '123 Legacy St',
+            address2: 'Suite 4',
+            cityStateZipCountry: 'Buffalo, NY 14202',
+            phone: '716-555-0100',
+            email: 'legacy.contact@example.com',
+          },
+        },
+      };
+      renderWithProps({ order: orderWithLegacy });
+
+      const searchButton = screen.getByRole('button', {
+        name: /Search for a trustee/,
+        hidden: true,
+      });
+      fireEvent.click(searchButton);
+
+      await waitFor(() => {
+        const details = document.querySelector('.court-trustee-details');
+        expect(details?.textContent).toContain('John Doe');
+        expect(details?.textContent).toContain('123 Legacy St');
+        expect(details?.textContent).toContain('Suite 4');
+        expect(details?.textContent).toContain('Buffalo, NY 14202');
+        expect(details?.textContent).toContain('716-555-0100');
+        expect(details?.textContent).toContain('legacy.contact@example.com');
+      });
+    });
+
+    test('TrusteeSearchModal shows "not provided" placeholders when the order has no legacy contact fields', async () => {
+      renderWithProps();
+
+      const searchButton = screen.getByRole('button', {
+        name: /Search for a trustee/,
+        hidden: true,
+      });
+      fireEvent.click(searchButton);
+
+      await waitFor(() => {
+        const details = document.querySelector('.court-trustee-details');
+        expect(details?.textContent).toContain('Address not provided');
+        expect(details?.textContent).toContain('Phone not provided');
+        expect(details?.textContent).toContain('Email not provided');
+      });
+    });
+
     // Integration test: exercises full search-to-approval flow
     test('confirming a search result calls approval API and shows success', async () => {
       vi.spyOn(Api2, 'patchTrusteeVerificationOrderApproval').mockResolvedValue(undefined);

@@ -16,10 +16,17 @@ import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 interface TrusteeSearchModalProps {
   id: string;
   dxtrTrusteeName: string;
+  dxtrTrusteeAddressLines?: string[];
+  dxtrTrusteePhone?: string;
+  dxtrTrusteeEmail?: string;
   courtId?: string;
   onConfirm: (result: TrusteeSearchResult) => void;
   onCancel?: () => void;
   isProcessing?: boolean;
+}
+
+function fieldOrPlaceholder(label: string, value?: string): string {
+  return value ? value : `${label} not provided`;
 }
 
 export type TrusteeSearchModalImperative = {
@@ -31,7 +38,17 @@ function TrusteeSearchModal_(
   props: TrusteeSearchModalProps,
   ref: React.Ref<TrusteeSearchModalImperative>,
 ) {
-  const { id, courtId, onConfirm, onCancel, isProcessing } = props;
+  const {
+    id,
+    dxtrTrusteeName,
+    dxtrTrusteeAddressLines,
+    dxtrTrusteePhone,
+    dxtrTrusteeEmail,
+    courtId,
+    onConfirm,
+    onCancel,
+    isProcessing,
+  } = props;
   const modalRef = useRef<ModalRefType>(null);
   const trusteeNameComboBoxRef = useRef<ComboBoxRef>(null);
   const [searchResults, setSearchResults] = useState<TrusteeSearchResult[]>([]);
@@ -196,22 +213,42 @@ function TrusteeSearchModal_(
             placeholder="- Search Trustee name -"
             disableFiltering={true}
           />
-          {selectedTrustee && (
-            <div className="trustee-details">
-              <NewTabLink
-                to={`/trustees/${selectedTrustee.trusteeId}`}
-                label={selectedTrustee.name}
-              />
-              {addressLines.map((line, i) => (
-                <div key={i}>{line}</div>
-              ))}
-              {selectedTrustee.phone && <div>{selectedTrustee.phone.number}</div>}
-              {selectedTrustee.email && <div>{selectedTrustee.email}</div>}
-              {appointmentLines.map((line, i) => (
-                <div key={i}>{line}</div>
-              ))}
+          <div className="trustee-comparison">
+            <div className="court-trustee-details">
+              <h4>Information sent by court</h4>
+              <div>{dxtrTrusteeName}</div>
+              {dxtrTrusteeAddressLines && dxtrTrusteeAddressLines.length > 0 ? (
+                dxtrTrusteeAddressLines.map((line, i) => <div key={i}>{line}</div>)
+              ) : (
+                <div>{fieldOrPlaceholder('Address')}</div>
+              )}
+              <div>{fieldOrPlaceholder('Phone', dxtrTrusteePhone)}</div>
+              <div>{fieldOrPlaceholder('Email', dxtrTrusteeEmail)}</div>
             </div>
-          )}
+            <div className="trustee-details">
+              <h4>Selected Trustee</h4>
+              {selectedTrustee ? (
+                <>
+                  <NewTabLink
+                    to={`/trustees/${selectedTrustee.trusteeId}`}
+                    label={selectedTrustee.name}
+                  />
+                  {addressLines.length > 0 ? (
+                    addressLines.map((line, i) => <div key={i}>{line}</div>)
+                  ) : (
+                    <div>{fieldOrPlaceholder('Address')}</div>
+                  )}
+                  <div>{fieldOrPlaceholder('Phone', selectedTrustee.phone?.number)}</div>
+                  <div>{fieldOrPlaceholder('Email', selectedTrustee.email)}</div>
+                  {appointmentLines.map((line, i) => (
+                    <div key={i}>{line}</div>
+                  ))}
+                </>
+              ) : (
+                <div>No Trustee selected</div>
+              )}
+            </div>
+          </div>
         </>
       }
       footerContent={isProcessing && <LoadingSpinner caption="Confirming appointment..." />}
