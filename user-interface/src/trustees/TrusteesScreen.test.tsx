@@ -1,14 +1,23 @@
 import { render, screen } from '@testing-library/react';
-import { BrowserRouter } from 'react-router-dom';
+import { BrowserRouter, MemoryRouter, Route, Routes } from 'react-router-dom';
 import TrusteesScreen from './TrusteesScreen';
-import useFeatureFlags, { TRUSTEE_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags';
+import useFeatureFlags, {
+  RESTRICT_ADDING_TRUSTEES,
+  TRUSTEE_MANAGEMENT,
+} from '@/lib/hooks/UseFeatureFlags';
 import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
 import { vi } from 'vitest';
 import { CamsUser } from '@common/cams/users';
 
 // Mock the dependencies
-vi.mock('@/lib/hooks/UseFeatureFlags');
+vi.mock('@/lib/hooks/UseFeatureFlags', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/hooks/UseFeatureFlags')>();
+  return {
+    ...actual,
+    default: vi.fn(),
+  };
+});
 vi.mock('@/lib/utils/local-storage');
 vi.mock('./TrusteesList', () => ({
   default: () => <div data-testid="trustees-list">Trustees List Component</div>,
@@ -30,6 +39,7 @@ describe('TrusteesScreen', () => {
     // Mock feature flag enabled
     mockUseFeatureFlags.mockReturnValue({
       [TRUSTEE_MANAGEMENT]: true,
+      [RESTRICT_ADDING_TRUSTEES]: true,
     });
 
     // Mock user session with TrusteeAdmin role
@@ -57,6 +67,37 @@ describe('TrusteesScreen', () => {
     const addLink = screen.getByTestId('trustees-add-link');
     expect(addLink).toHaveAttribute('href', '/trustees/create');
     expect(addLink).toHaveClass('usa-button');
+  });
+
+  test('should not render Add New Trustee link when restrict-adding-trustees flag is false', () => {
+    // Mock trustee management enabled, but restrict-adding-trustees disabled
+    mockUseFeatureFlags.mockReturnValue({
+      [TRUSTEE_MANAGEMENT]: true,
+      [RESTRICT_ADDING_TRUSTEES]: false,
+    });
+
+    // Mock user session with TrusteeAdmin role (passes the screen-level gate)
+    mockLocalStorage.getSession.mockReturnValue({
+      accessToken: 'fake-token',
+      provider: 'test',
+      issuer: 'test-issuer',
+      expires: 1,
+      user: {
+        id: 'user-1',
+        name: 'Test User',
+        roles: [CamsRole.TrusteeAdmin],
+      },
+    });
+
+    renderWithRouter(<TrusteesScreen />);
+
+    // Rest of the screen still renders
+    expect(screen.getByText('Trustees')).toBeInTheDocument();
+    expect(screen.getByTestId('trustees-list')).toBeInTheDocument();
+
+    // Only the Add New Trustee link is gated off
+    expect(screen.queryByTestId('trustees-add-link')).not.toBeInTheDocument();
+    expect(screen.queryByText('Add New Trustee')).not.toBeInTheDocument();
   });
 
   test('should not render when feature flag is disabled', () => {
@@ -168,6 +209,30 @@ describe('TrusteesScreen', () => {
 
     // Component should return null and render nothing
     expect(container.firstChild).toBeNull();
+  });
+
+  test('should render the outlet directly, bypassing the trustee-management/role gate, when a nested route is active', () => {
+    // Mirrors what AddTrusteeRouteGuard depends on at /trustees/create: even with the
+    // top-level flag disabled and no session, the nested route's content must still render.
+    mockUseFeatureFlags.mockReturnValue({
+      [TRUSTEE_MANAGEMENT]: false,
+    });
+    mockLocalStorage.getSession.mockReturnValue(null);
+
+    render(
+      <MemoryRouter initialEntries={['/trustees/create']}>
+        <Routes>
+          <Route path="/trustees" element={<TrusteesScreen />}>
+            <Route path="create" element={<div data-testid="nested-route-content">Nested</div>} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId('trustees')).toBeInTheDocument();
+    expect(screen.getByTestId('nested-route-content')).toBeInTheDocument();
+    expect(screen.queryByText('Add New Trustee')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('trustees-list')).not.toBeInTheDocument();
   });
 
   test('should not render when both feature flag is disabled and user lacks permission', () => {

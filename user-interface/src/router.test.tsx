@@ -7,7 +7,10 @@ import LocalStorage from './lib/utils/local-storage';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { CamsRole } from '@common/cams/roles';
 import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
+import useFeatureFlagReadiness from '@/lib/hooks/UseFeatureFlagReadiness';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
+
+vi.mock('@/lib/hooks/UseFeatureFlagReadiness');
 
 describe('App Router Tests', () => {
   let userEvent: CamsUserEvent;
@@ -49,6 +52,13 @@ describe('App Router Tests', () => {
         }),
       }),
     );
+    // Resolved by default so AddTrusteeRouteGuard decides deterministically from the mocked
+    // flags above instead of racing the real LaunchDarkly SDK (waitForInitialization()).
+    vi.mocked(useFeatureFlagReadiness).mockReturnValue({
+      isReady: true,
+      hasTimedOut: true,
+      hasIdentified: true,
+    });
   });
 
   test('should route /search to SearchScreen', async () => {
@@ -73,6 +83,7 @@ describe('App Router Tests', () => {
 
     vi.spyOn(FeatureFlags, 'default').mockReturnValue({
       'trustee-management': true,
+      'restrict-adding-trustees': true,
     });
 
     setUseLocationMock('/trustees/create', {
@@ -143,6 +154,7 @@ describe('App Router Tests', () => {
 
       vi.spyOn(FeatureFlags, 'default').mockReturnValue({
         'trustee-management': true, // Feature flag enabled
+        'restrict-adding-trustees': true,
       });
 
       setUseLocationMock('/trustees/create', {
@@ -169,6 +181,7 @@ describe('App Router Tests', () => {
 
       vi.spyOn(FeatureFlags, 'default').mockReturnValue({
         'trustee-management': false, // Feature flag disabled
+        'restrict-adding-trustees': true,
       });
 
       setUseLocationMock('/trustees/create', {
@@ -187,6 +200,41 @@ describe('App Router Tests', () => {
           document.querySelector('[data-testid="trustee-create-disabled"]'),
         ).toBeInTheDocument();
       });
+    });
+
+    test('should redirect /trustees/create to /trustees when restrict-adding-trustees is disabled', async () => {
+      const authorizedUser = MockData.getCamsUser({ roles: [CamsRole.TrusteeAdmin] });
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(
+        MockData.getCamsSession({ user: authorizedUser }),
+      );
+
+      vi.spyOn(FeatureFlags, 'default').mockReturnValue({
+        'trustee-management': true,
+        'restrict-adding-trustees': false,
+      });
+
+      setUseLocationMock('/trustees/create', {
+        action: 'create',
+        cancelTo: '/trustees',
+      });
+
+      render(
+        <MemoryRouter initialEntries={['/trustees/create']}>
+          <App />
+        </MemoryRouter>,
+      );
+
+      // The MainContent/Outlet wrapper (data-testid="trustees") renders both while the guard is
+      // still deciding and after a real redirect, so it can't distinguish the two on its own.
+      // Assert the redirect actually completed: the guard's loading spinner is gone and the full
+      // trustees screen (only rendered once /trustees/create is no longer the active route) is up.
+      // (TrusteesList renders its own unrelated `role="status"` live region, so check the
+      // guard's spinner by its caption text rather than by role.)
+      await waitFor(() => {
+        expect(screen.queryByText('Checking access...')).not.toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Trustees', level: 1 })).toBeInTheDocument();
+      });
+      expect(document.querySelector('[data-testid="trustee-public-form"]')).not.toBeInTheDocument();
     });
   });
 });
