@@ -1,8 +1,20 @@
 @use '@/styles/abstracts/colors' as colors;
+@use 'styles/abstracts/device-screens' as device-screens;
 
 .trustee-search-modal {
-  .trustee-details {
-    margin-top: 2rem;
+  .trustee-data-grid {
+    margin-top: 1.5rem;
+
+    .trustee-data-header {
+      font-weight: bold;
+      margin-bottom: 0.5rem;
+    }
+
+    .trustee-data-cell {
+      word-wrap: break-word;
+      overflow-wrap: anywhere;
+      min-width: 0;
+    }
   }
 
   .usa-modal__footer {
@@ -12,6 +24,32 @@
   [id^='trustee-search-combobox-']:not(:has(.clear-all-button)) {
     .selection-label {
       color: colors.$gray-50;
+    }
+  }
+}
+
+@media screen and (max-width: #{device-screens.$desktop-screen-small}) {
+  .trustee-search-modal {
+    .trustee-data-grid {
+      .trustee-data-header {
+        display: none;
+      }
+
+      .trustee-data-row {
+        display: block;
+      }
+
+      .trustee-data-cell[data-cell] {
+        display: block;
+        width: 100%;
+        padding-top: 0.5rem;
+
+        &::before {
+          content: attr(data-cell) ':';
+          display: block;
+          font-weight: 700;
+        }
+      }
     }
   }
 }

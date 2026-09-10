@@ -15,7 +15,10 @@ import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 
 interface TrusteeSearchModalProps {
   id: string;
-  dxtrTrusteeName: string;
+  courtName: string;
+  courtAddressLines: string[];
+  courtPhone?: string;
+  courtEmail?: string;
   courtId?: string;
   onConfirm: (result: TrusteeSearchResult) => void;
   onCancel?: () => void;
@@ -31,7 +34,17 @@ function TrusteeSearchModal_(
   props: TrusteeSearchModalProps,
   ref: React.Ref<TrusteeSearchModalImperative>,
 ) {
-  const { id, courtId, onConfirm, onCancel, isProcessing } = props;
+  const {
+    id,
+    courtName,
+    courtAddressLines,
+    courtPhone,
+    courtEmail,
+    courtId,
+    onConfirm,
+    onCancel,
+    isProcessing,
+  } = props;
   const modalRef = useRef<ModalRefType>(null);
   const trusteeNameComboBoxRef = useRef<ComboBoxRef>(null);
   const [searchResults, setSearchResults] = useState<TrusteeSearchResult[]>([]);
@@ -196,22 +209,56 @@ function TrusteeSearchModal_(
             placeholder="- Search Trustee name -"
             disableFiltering={true}
           />
-          {selectedTrustee && (
-            <div className="trustee-details">
-              <NewTabLink
-                to={`/trustees/${selectedTrustee.trusteeId}`}
-                label={selectedTrustee.name}
-              />
-              {addressLines.map((line, i) => (
-                <div key={i}>{line}</div>
-              ))}
-              {selectedTrustee.phone && <div>{selectedTrustee.phone.number}</div>}
-              {selectedTrustee.email && <div>{selectedTrustee.email}</div>}
-              {appointmentLines.map((line, i) => (
-                <div key={i}>{line}</div>
-              ))}
+          <div className="trustee-data-grid trustee-comparison-grid">
+            <div className="trustee-data-header grid-row grid-gap-lg">
+              <div className="trustee-data-cell grid-col-6">Information sent by court</div>
+              <div className="trustee-data-cell grid-col-6">Selected Trustee</div>
             </div>
-          )}
+            <div className="trustee-data-row grid-row grid-gap-lg">
+              <div
+                className="trustee-data-cell grid-col-6 court-details"
+                data-cell="Information sent by court"
+              >
+                <div>{courtName}</div>
+                {courtAddressLines.length > 0 ? (
+                  courtAddressLines.map((line, i) => <div key={i}>{line}</div>)
+                ) : (
+                  <div>Address not provided</div>
+                )}
+                <div>{courtPhone ?? 'Phone not provided'}</div>
+                <div>{courtEmail ?? 'Email not provided'}</div>
+              </div>
+              <div
+                className="trustee-data-cell grid-col-6 trustee-details"
+                data-cell="Selected Trustee"
+              >
+                {selectedTrustee ? (
+                  <>
+                    <NewTabLink
+                      to={`/trustees/${selectedTrustee.trusteeId}`}
+                      label={selectedTrustee.name}
+                    />
+                    {addressLines.length > 0 ? (
+                      addressLines.map((line, i) => <div key={i}>{line}</div>)
+                    ) : (
+                      <div>Address not provided</div>
+                    )}
+                    <div>
+                      {selectedTrustee.phone
+                        ? `${selectedTrustee.phone.number}${selectedTrustee.phone.extension ? ` x${selectedTrustee.phone.extension}` : ''}`
+                        : 'Phone not provided'}
+                    </div>
+                    <div>{selectedTrustee.email ?? 'Email not provided'}</div>
+                    {appointmentLines.map((line, i) => (
+                      <div key={i}>{line}</div>
+                    ))}
+                  </>
+                ) : (
+                  <div>No Trustee selected</div>
+                )}
+              </div>
+            </div>
+          </div>
         </>
       }
       footerContent={isProcessing && <LoadingSpinner caption="Confirming appointment..." />}
