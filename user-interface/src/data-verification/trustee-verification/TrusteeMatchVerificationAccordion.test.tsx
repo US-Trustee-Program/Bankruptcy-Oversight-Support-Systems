@@ -1150,6 +1150,85 @@ describe('TrusteeMatchVerificationAccordion', () => {
       });
     });
 
+    test('TrusteeSearchModal shows full legacy contact info in its court column once opened', async () => {
+      const orderWithLegacy: TrusteeMatchVerificationListItem = {
+        ...sampleOrder,
+        dxtrTrustee: {
+          fullName: 'John Doe',
+          legacy: {
+            address1: '123 Main St',
+            address2: 'Suite 200',
+            cityStateZipCountry: 'New York, NY 10001',
+            phone: '555-1234',
+            email: 'john@example.com',
+          },
+        },
+      };
+      renderWithProps({ order: orderWithLegacy });
+
+      const searchButton = screen.getByRole('button', {
+        name: /Search for a trustee/,
+        hidden: true,
+      });
+      fireEvent.click(searchButton);
+
+      await waitFor(() => {
+        const details = document.querySelector('.court-trustee-details');
+        expect(details?.textContent).toContain('John Doe');
+        expect(details?.textContent).toContain('123 Main St');
+        expect(details?.textContent).toContain('Suite 200');
+        expect(details?.textContent).toContain('New York, NY 10001');
+        expect(details?.textContent).toContain('555-1234');
+        expect(details?.textContent).toContain('john@example.com');
+      });
+    });
+
+    test('TrusteeSearchModal shows "not provided" placeholders when the order has no legacy contact fields', async () => {
+      renderWithProps();
+
+      const searchButton = screen.getByRole('button', {
+        name: /Search for a trustee/,
+        hidden: true,
+      });
+      fireEvent.click(searchButton);
+
+      await waitFor(() => {
+        const details = document.querySelector('.court-trustee-details');
+        expect(details?.textContent).toContain('Address not provided');
+        expect(details?.textContent).toContain('Phone not provided');
+        expect(details?.textContent).toContain('Email not provided');
+      });
+    });
+
+    test('TrusteeSearchModal shows partial legacy info with placeholders only for the missing fields', async () => {
+      const orderWithPartialLegacy: TrusteeMatchVerificationListItem = {
+        ...sampleOrder,
+        dxtrTrustee: {
+          fullName: 'John Doe',
+          legacy: {
+            address1: '123 Main St',
+            cityStateZipCountry: 'New York, NY 10001',
+          },
+        },
+      };
+      renderWithProps({ order: orderWithPartialLegacy });
+
+      const searchButton = screen.getByRole('button', {
+        name: /Search for a trustee/,
+        hidden: true,
+      });
+      fireEvent.click(searchButton);
+
+      await waitFor(() => {
+        const details = document.querySelector('.court-trustee-details');
+        expect(details?.textContent).toContain('123 Main St');
+        expect(details?.textContent).toContain('New York, NY 10001');
+        expect(details?.textContent).toContain('Phone not provided');
+        expect(details?.textContent).toContain('Email not provided');
+        expect(details?.textContent).not.toContain('Address not provided');
+      });
+    });
+
     // Integration test: exercises full search-to-approval flow
     test('confirming a search result calls approval API and shows success', async () => {
       vi.spyOn(Api2, 'patchTrusteeVerificationOrderApproval').mockResolvedValue(undefined);

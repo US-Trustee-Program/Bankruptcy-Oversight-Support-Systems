@@ -636,4 +636,134 @@ describe('TrusteeSearchModal', () => {
       expect(screen.queryByText('Confirming appointment...')).not.toBeInTheDocument();
     });
   });
+
+  test('renders both column headings, court data, and "No Trustee selected" before any selection', async () => {
+    render(
+      <BrowserRouter>
+        <TrusteeSearchModal
+          ref={modalRef}
+          id={modalId}
+          dxtrTrusteeName="DOE, JOHN"
+          dxtrTrusteeAddressLines={['123 Court St', 'Buffalo, NY 14202']}
+          dxtrTrusteePhone="716-555-0100"
+          dxtrTrusteeEmail="court.contact@example.com"
+          onConfirm={vi.fn()}
+        />
+      </BrowserRouter>,
+    );
+    act(() => modalRef.current?.show());
+
+    await waitFor(() => {
+      expect(screen.getByText('Information sent by court')).toBeInTheDocument();
+      expect(screen.getByText('Selected Trustee')).toBeInTheDocument();
+
+      const courtDetails = document.querySelector('.court-trustee-details');
+      expect(courtDetails?.textContent).toContain('DOE, JOHN');
+      expect(courtDetails?.textContent).toContain('123 Court St');
+      expect(courtDetails?.textContent).toContain('Buffalo, NY 14202');
+      expect(courtDetails?.textContent).toContain('716-555-0100');
+      expect(courtDetails?.textContent).toContain('court.contact@example.com');
+
+      const selectedDetails = document.querySelector('.trustee-details');
+      expect(selectedDetails?.textContent).toContain('No Trustee selected');
+    });
+  });
+
+  test.each(['Address not provided', 'Phone not provided', 'Email not provided'])(
+    'renders "%s" for the court column when the corresponding prop is omitted',
+    async (placeholder) => {
+      renderWithProps();
+      act(() => modalRef.current?.show());
+
+      await waitFor(() => {
+        const details = document.querySelector('.court-trustee-details');
+        expect(details?.textContent).toContain(placeholder);
+      });
+    },
+  );
+
+  test('renders "Address/Phone/Email not provided" for the selected-trustee column when a result is missing those fields', async () => {
+    const resultMissingContact: TrusteeSearchResult = {
+      trusteeId: 'trustee-003',
+      name: 'No Contact Trustee',
+      appointments: [],
+      matchType: 'exact',
+    };
+    vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: [resultMissingContact] });
+
+    renderWithProps();
+    act(() => modalRef.current?.show());
+
+    await expandComboBoxAndType('no');
+    await waitFor(() => {
+      expect(screen.getByTestId(`${comboBoxId}-option-item-0`)).toBeVisible();
+    });
+    await userEvent.click(screen.getByTestId(`${comboBoxId}-option-item-0`));
+
+    await waitFor(() => {
+      const selectedDetails = document.querySelector('.trustee-details');
+      expect(selectedDetails?.textContent).toContain('Address not provided');
+      expect(selectedDetails?.textContent).toContain('Phone not provided');
+      expect(selectedDetails?.textContent).toContain('Email not provided');
+    });
+  });
+
+  test('renders the selected trustee\'s phone extension as "x1234"', async () => {
+    const resultWithExtension: TrusteeSearchResult = {
+      trusteeId: 'trustee-ext',
+      name: 'Ext Trustee',
+      phone: { number: '(212) 555-0100', extension: '1234' },
+      appointments: [],
+      matchType: 'exact',
+    };
+    vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: [resultWithExtension] });
+
+    renderWithProps();
+    act(() => modalRef.current?.show());
+
+    await expandComboBoxAndType('ext');
+    await waitFor(() => {
+      expect(screen.getByTestId(`${comboBoxId}-option-item-0`)).toBeVisible();
+    });
+    await userEvent.click(screen.getByTestId(`${comboBoxId}-option-item-0`));
+
+    await waitFor(() => {
+      expect(screen.getByText('(212) 555-0100 x1234')).toBeInTheDocument();
+    });
+  });
+
+  test('changing the selected result updates only the selected-trustee column, not the court column', async () => {
+    render(
+      <BrowserRouter>
+        <TrusteeSearchModal
+          ref={modalRef}
+          id={modalId}
+          dxtrTrusteeName="DOE, JOHN"
+          dxtrTrusteeAddressLines={['123 Court St']}
+          dxtrTrusteePhone="716-555-0100"
+          dxtrTrusteeEmail="court.contact@example.com"
+          onConfirm={vi.fn()}
+        />
+      </BrowserRouter>,
+    );
+    vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: sampleResults });
+    act(() => modalRef.current?.show());
+
+    await expandComboBoxAndType('smith');
+    await waitFor(() => {
+      expect(screen.getByTestId(`${comboBoxId}-option-item-0`)).toBeVisible();
+    });
+    await userEvent.click(screen.getByTestId(`${comboBoxId}-option-item-0`));
+
+    await waitFor(() => {
+      const selectedDetails = document.querySelector('.trustee-details');
+      expect(selectedDetails?.textContent).toContain('123 Main St');
+
+      const courtDetails = document.querySelector('.court-trustee-details');
+      expect(courtDetails?.textContent).toContain('DOE, JOHN');
+      expect(courtDetails?.textContent).toContain('123 Court St');
+      expect(courtDetails?.textContent).toContain('716-555-0100');
+      expect(courtDetails?.textContent).toContain('court.contact@example.com');
+    });
+  });
 });
