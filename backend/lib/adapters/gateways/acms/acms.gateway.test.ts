@@ -758,7 +758,17 @@ describe('ACMS gateway tests', () => {
       expect(timeoutArg).toBe(expectedTimeout);
     });
 
-    test('should exclude soft-deleted professional records', async () => {
+    test.each([
+      ['should exclude soft-deleted professional records', "DELETE_CODE != 'D'"],
+      [
+        'should exclude "NO TRUSTEE"-pattern placeholder records',
+        "PROF_LAST_NAME NOT LIKE '%NO TRUSTEE%'",
+      ],
+      [
+        'should exclude ACMS reserved sentinel/dummy trustee codes (>= 98000)',
+        'ACMS.UST_PROF_CODE < 98000',
+      ],
+    ])('%s', async (_description, expectedClause) => {
       const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
         success: true,
         results: { recordset: [] },
@@ -770,22 +780,7 @@ describe('ACMS gateway tests', () => {
       await gateway.getTrusteeProfessionalRecordsPage(context, 'NY', 0, 500);
 
       const query = spy.mock.calls[0][1] as string;
-      expect(query).toContain("DELETE_CODE != 'D'");
-    });
-
-    test('should exclude "NO TRUSTEE"-pattern placeholder records', async () => {
-      const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
-        success: true,
-        results: { recordset: [] },
-        message: '',
-      });
-
-      const context = await createMockApplicationContext();
-      const gateway = new AcmsGatewayImpl(context);
-      await gateway.getTrusteeProfessionalRecordsPage(context, 'NY', 0, 500);
-
-      const query = spy.mock.calls[0][1] as string;
-      expect(query).toContain("PROF_LAST_NAME NOT LIKE '%NO TRUSTEE%'");
+      expect(query).toContain(expectedClause);
     });
 
     test.each([
