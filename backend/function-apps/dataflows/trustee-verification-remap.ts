@@ -84,7 +84,10 @@ async function handleRemap(
       {
         documentsWritten,
         documentsFailed,
-        success: true,
+        // A page where every case failed was previously reported as success:true, which is why
+        // CAMS-894 (stuck surrogates never getting remapped) had no telemetry trail at all.
+        success: documentsFailed === 0,
+        ...(documentsFailed > 0 ? { error: 'per-case-remap-failure' } : {}),
         details: {
           fingerprint: message.fingerprint,
           verificationId: message.verificationId,

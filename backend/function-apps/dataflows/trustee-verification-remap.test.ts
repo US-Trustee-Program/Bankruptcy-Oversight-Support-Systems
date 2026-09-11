@@ -219,7 +219,7 @@ describe('trustee-verification-remap handleRemap', () => {
       'TRUSTEE-MATCH-VERIFICATION-REMAP',
       'handleRemap',
       expect.anything(),
-      expect.objectContaining({ success: true, documentsWritten: 1, documentsFailed: 1 }),
+      expect.objectContaining({ success: false, documentsWritten: 1, documentsFailed: 1 }),
     );
   });
 
@@ -281,7 +281,7 @@ describe('trustee-verification-remap handleRemap', () => {
       'TRUSTEE-MATCH-VERIFICATION-REMAP',
       'handleRemap',
       expect.anything(),
-      expect.objectContaining({ success: true, documentsWritten: 1, documentsFailed: 1 }),
+      expect.objectContaining({ success: false, documentsWritten: 1, documentsFailed: 1 }),
     );
   });
 
