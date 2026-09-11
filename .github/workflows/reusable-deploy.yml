@@ -159,7 +159,14 @@ jobs:
           echo "Creating branch-specific Log Analytics Workspace: ${branchWorkspaceName}"
 
           # Deploy LAW using existing template (includes 1GB daily cap for cost control)
+          # --name is stack-scoped: the default ARM deployment name derives from
+          # the template filename (log-analytics-workspace), which collides in the
+          # shared AZ_ANALYTICS_RG with reusable-infrastructure-deploy.yml's
+          # deploy-log-analytics-workspace job (now parallel, not gated on infra)
+          # and with concurrent branch deploys. ARM serializes deployments by name
+          # within an RG, so a collision fails with DeploymentActive.
           az deployment group create \
+            --name "law-branch-${STACK_NAME}" \
             --resource-group "${AZ_ANALYTICS_RG}" \
             --template-file ./ops/cloud-deployment/lib/analytics/log-analytics-workspace.bicep \
             --parameters workspaceName="${branchWorkspaceName}" \
