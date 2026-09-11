@@ -675,6 +675,54 @@ describe('UpcomingKeyDatesForm', () => {
       });
       expect(putSpy).not.toHaveBeenCalled();
     });
+
+    test('clears save-attempt required error when user focuses the end field', async () => {
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+      });
+
+      const startInput = document.getElementById('tpr-review-period-start') as HTMLInputElement;
+      const endInput = document.getElementById('tpr-review-period-end') as HTMLInputElement;
+
+      fireEvent.change(startInput, { target: { value: '2025-04-01' } });
+      await userEvent.click(screen.getByTestId('button-save-upcoming-key-dates'));
+
+      await waitFor(() => {
+        expect(screen.getByText('TPR Review Period End is required.')).toBeInTheDocument();
+      });
+
+      fireEvent.focus(endInput);
+
+      await waitFor(() => {
+        expect(screen.queryByText('TPR Review Period End is required.')).not.toBeInTheDocument();
+      });
+    });
+
+    test('clears save-attempt required error when user focuses the start field', async () => {
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+      });
+
+      const startInput = document.getElementById('tpr-review-period-start') as HTMLInputElement;
+      const endInput = document.getElementById('tpr-review-period-end') as HTMLInputElement;
+
+      fireEvent.change(endInput, { target: { value: '2026-03-31' } });
+      await userEvent.click(screen.getByTestId('button-save-upcoming-key-dates'));
+
+      await waitFor(() => {
+        expect(screen.getByText('TPR Review Period Start is required.')).toBeInTheDocument();
+      });
+
+      fireEvent.focus(startInput);
+
+      await waitFor(() => {
+        expect(screen.queryByText('TPR Review Period Start is required.')).not.toBeInTheDocument();
+      });
+    });
   });
 
   describe('ch12-13-case-by-case variant', () => {

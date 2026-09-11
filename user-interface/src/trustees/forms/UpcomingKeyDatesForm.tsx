@@ -598,7 +598,17 @@ export default function UpcomingKeyDatesForm({
       case 'tpr-review-period':
         if (tprDisplayUpdates) {
           return (
-            <div key="tpr-review-period">
+            <div
+              key="tpr-review-period"
+              onFocus={(e) => {
+                const id = (e.target as HTMLElement).id;
+                if (id === 'tpr-review-period-start') {
+                  setErrors((prev) => ({ ...prev, tprReviewPeriodStart: '' }));
+                } else if (id === 'tpr-review-period-end') {
+                  setErrors((prev) => ({ ...prev, tprReviewPeriodEnd: '' }));
+                }
+              }}
+            >
               <DatePicker
                 id="tpr-review-period-start"
                 label="Trustee Performance Review Period Start"
