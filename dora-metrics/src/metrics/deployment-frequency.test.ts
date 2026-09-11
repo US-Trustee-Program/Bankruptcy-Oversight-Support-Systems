@@ -75,6 +75,33 @@ describe('computeDeploymentFrequency', () => {
     expect(buckets[0].deploymentsPerDay).toBe(1);
   });
 
+  test('throws when periodDays is zero, negative, or not a finite number', () => {
+    const startDate = new Date('2026-01-01T00:00:00.000Z');
+    const endDate = new Date('2026-01-15T00:00:00.000Z');
+
+    expect(() => computeDeploymentFrequency([], { startDate, endDate, periodDays: 0 })).toThrow();
+    expect(() => computeDeploymentFrequency([], { startDate, endDate, periodDays: -7 })).toThrow();
+    expect(() => computeDeploymentFrequency([], { startDate, endDate, periodDays: NaN })).toThrow();
+    expect(() =>
+      computeDeploymentFrequency([], { startDate, endDate, periodDays: Infinity }),
+    ).toThrow();
+  });
+
+  test('rounds up to a partial final bucket when the range is not an exact multiple of periodDays', () => {
+    const startDate = new Date('2026-01-01T00:00:00.000Z');
+    const endDate = new Date('2026-01-11T00:00:00.000Z'); // 10-day range, 7-day periods
+
+    const buckets = computeDeploymentFrequency([], { startDate, endDate, periodDays: 7 });
+
+    expect(buckets).toHaveLength(2);
+    expect(buckets[1]).toEqual({
+      periodStart: '2026-01-08T00:00:00.000Z',
+      periodEnd: '2026-01-15T00:00:00.000Z', // extends 4 days past endDate
+      deploymentCount: 0,
+      deploymentsPerDay: 0,
+    });
+  });
+
   test('an empty input array produces zero-count buckets across the requested date range', () => {
     const startDate = new Date('2026-01-01T00:00:00.000Z');
     const endDate = new Date('2026-01-22T00:00:00.000Z');

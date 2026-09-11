@@ -72,9 +72,14 @@ describe('fetchWorkflowRuns', () => {
   });
 
   test('paginates through multiple pages and stops once a run is older than since', async () => {
+    // total_count is deliberately larger than the sum of runs across the two
+    // mocked pages (1 + 2 = 3): without the since-boundary early exit, the
+    // outer fetchedCount < totalCount loop would request a third page (for
+    // which no mock is queued, failing the test) rather than stopping only
+    // because pagination happened to run out.
     const { octokit, listWorkflowRuns } = mockOctokit([
       {
-        total_count: 3,
+        total_count: 100,
         workflow_runs: [
           {
             id: 1,
@@ -86,7 +91,7 @@ describe('fetchWorkflowRuns', () => {
         ],
       },
       {
-        total_count: 3,
+        total_count: 100,
         workflow_runs: [
           {
             id: 2,

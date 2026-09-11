@@ -24,6 +24,9 @@ export function computeDeploymentFrequency(
   options: ComputeDeploymentFrequencyOptions,
 ): PeriodBucket[] {
   const { startDate, periodDays } = options;
+  if (!Number.isFinite(periodDays) || periodDays <= 0) {
+    throw new Error(`periodDays must be a positive finite number, got ${periodDays}`);
+  }
   const endDate = options.endDate ?? new Date();
   const periodMs = periodDays * MS_PER_DAY;
   const totalMs = endDate.getTime() - startDate.getTime();
