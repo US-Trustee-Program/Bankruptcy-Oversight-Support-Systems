@@ -15,7 +15,11 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
 function resolveStartDate(): Date {
   const raw = process.env.DORA_START_DATE;
   if (raw) {
-    return new Date(raw);
+    const startDate = new Date(raw);
+    if (Number.isNaN(startDate.getTime())) {
+      throw new Error(`Invalid DORA_START_DATE: ${raw}`);
+    }
+    return startDate;
   }
   return new Date(Date.now() - DEFAULT_LOOKBACK_DAYS * MS_PER_DAY);
 }
