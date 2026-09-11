@@ -221,6 +221,17 @@ module frontendWorkbooks 'lib/workbooks/frontend-workbooks.bicep' = if (createAp
   }
 }
 
+module executiveWorkbooks 'lib/workbooks/executive-workbooks.bicep' = if (createApplicationInsights) {
+  name: '${webappName}-executive-workbooks-module'
+  params: {
+    location: location
+    stackName: stackName
+    appInsightsResourceId: webappInsights.outputs.id
+    dataflowsAppInsightsResourceId: dataflowsAppInsightsId
+    tags: tags
+  }
+}
+
 var applicationSettings = concat(
   [
     {
