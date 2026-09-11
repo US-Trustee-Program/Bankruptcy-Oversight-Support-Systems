@@ -11,6 +11,7 @@ import {
 import { CandidateScore } from '@common/cams/dataflow-events';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { formatDate } from '@/lib/utils/datetime';
+import { formatPhoneWithExtension } from '@/lib/utils/phone-extension.utils';
 import { formatAppointmentStatus } from '@common/cams/trustee-appointments';
 import { formatChapterType } from '@common/cams/trustees';
 import { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
@@ -224,9 +225,7 @@ function TrusteeCandidateRow({ candidate, onApprove, isProcessing }: TrusteeCand
           : 'Not Provided'}
       </div>
       <div className="trustee-data-cell grid-col-1" data-cell="Phone">
-        {candidate.phone
-          ? `${candidate.phone.number}${candidate.phone.extension ? ` x${candidate.phone.extension}` : ''}`
-          : 'Not Provided'}
+        {formatPhoneWithExtension(candidate.phone) ?? 'Not Provided'}
       </div>
       <div className="trustee-data-cell grid-col-2" data-cell="Email">
         {candidate.email ?? 'Not Provided'}

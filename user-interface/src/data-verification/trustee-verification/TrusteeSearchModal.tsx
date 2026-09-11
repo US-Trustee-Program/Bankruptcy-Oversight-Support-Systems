@@ -12,6 +12,8 @@ import { NewTabLink } from '@/lib/components/cams/NewTabLink/NewTabLink';
 import { formatChapterType } from '@common/cams/trustees';
 import { formatAppointmentStatus } from '@common/cams/trustee-appointments';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
+import { formatPhoneWithExtension } from '@/lib/utils/phone-extension.utils';
+import { AccessibleFieldValue } from '@/lib/components/cams/AccessibleFieldValue/AccessibleFieldValue';
 
 interface TrusteeSearchModalProps {
   id: string;
@@ -216,37 +218,44 @@ function TrusteeSearchModal_(
           <div className="trustee-comparison">
             <div className="court-trustee-details">
               <h4>Information sent by court</h4>
-              <div>{dxtrTrusteeName}</div>
-              {dxtrTrusteeAddressLines && dxtrTrusteeAddressLines.length > 0 ? (
-                dxtrTrusteeAddressLines.map((line, i) => <div key={i}>{line}</div>)
-              ) : (
-                <div>{fieldOrPlaceholder('Address')}</div>
-              )}
-              <div>{fieldOrPlaceholder('Phone', dxtrTrusteePhone)}</div>
-              <div>{fieldOrPlaceholder('Email', dxtrTrusteeEmail)}</div>
+              <AccessibleFieldValue label="Name">{dxtrTrusteeName}</AccessibleFieldValue>
+              <AccessibleFieldValue label="Address">
+                {dxtrTrusteeAddressLines && dxtrTrusteeAddressLines.length > 0 ? (
+                  dxtrTrusteeAddressLines.map((line, i) => <div key={i}>{line}</div>)
+                ) : (
+                  <div>{fieldOrPlaceholder('Address')}</div>
+                )}
+              </AccessibleFieldValue>
+              <AccessibleFieldValue label="Phone">
+                {fieldOrPlaceholder('Phone', dxtrTrusteePhone)}
+              </AccessibleFieldValue>
+              <AccessibleFieldValue label="Email">
+                {fieldOrPlaceholder('Email', dxtrTrusteeEmail)}
+              </AccessibleFieldValue>
             </div>
             <div className="trustee-details">
               <h4>Selected Trustee</h4>
               {selectedTrustee ? (
                 <>
-                  <NewTabLink
-                    to={`/trustees/${selectedTrustee.trusteeId}`}
-                    label={selectedTrustee.name}
-                  />
-                  {addressLines.length > 0 ? (
-                    addressLines.map((line, i) => <div key={i}>{line}</div>)
-                  ) : (
-                    <div>{fieldOrPlaceholder('Address')}</div>
-                  )}
-                  <div>
-                    {fieldOrPlaceholder(
-                      'Phone',
-                      selectedTrustee.phone
-                        ? `${selectedTrustee.phone.number}${selectedTrustee.phone.extension ? ` x${selectedTrustee.phone.extension}` : ''}`
-                        : undefined,
+                  <AccessibleFieldValue label="Name">
+                    <NewTabLink
+                      to={`/trustees/${selectedTrustee.trusteeId}`}
+                      label={selectedTrustee.name}
+                    />
+                  </AccessibleFieldValue>
+                  <AccessibleFieldValue label="Address">
+                    {addressLines.length > 0 ? (
+                      addressLines.map((line, i) => <div key={i}>{line}</div>)
+                    ) : (
+                      <div>{fieldOrPlaceholder('Address')}</div>
                     )}
-                  </div>
-                  <div>{fieldOrPlaceholder('Email', selectedTrustee.email)}</div>
+                  </AccessibleFieldValue>
+                  <AccessibleFieldValue label="Phone">
+                    {fieldOrPlaceholder('Phone', formatPhoneWithExtension(selectedTrustee.phone))}
+                  </AccessibleFieldValue>
+                  <AccessibleFieldValue label="Email">
+                    {fieldOrPlaceholder('Email', selectedTrustee.email)}
+                  </AccessibleFieldValue>
                   {appointmentLines.map((line, i) => (
                     <div key={i}>{line}</div>
                   ))}

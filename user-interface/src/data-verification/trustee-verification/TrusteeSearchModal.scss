@@ -38,7 +38,7 @@
   }
 }
 
-@media screen and (max-width: #{device-screens.$desktop-screen-small}) {
+@media screen and (max-width: #{device-screens.$phone-screen-large}) {
   .trustee-search-modal {
     .trustee-comparison {
       flex-direction: column;
