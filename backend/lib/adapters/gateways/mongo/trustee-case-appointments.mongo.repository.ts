@@ -536,6 +536,35 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
     });
   }
 
+  /**
+   * Returns sentinel rows (trusteeId === SENTINEL_TRUSTEE_ID) for heal-sentinel-case-appointments.
+   * Cursor-paginated on _id, same shape as findClosedAppointments/getAllCaseAppointments — NOT a
+   * shrinking-set no-cursor query like getSurrogatesByFingerprint/TrusteeVerificationRemapUseCase.
+   * A sentinel with no resolvable trustee-professional-ids mapping is left in place by the healing
+   * use case rather than deleted, so without a cursor a page of permanently-unresolvable sentinels
+   * would keep being re-fetched forever, starving any resolvable sentinels behind them in the
+   * collection. The cursor guarantees forward progress through the whole population every run
+   * regardless of how many rows any single page manages to resolve.
+   */
+  async findSentinelAppointments(
+    lastId: string | null,
+    limit: number,
+  ): Promise<Array<CaseAppointment & { _id: string }>> {
+    type CaseAppointmentQueryable = CaseAppointmentDocument & { _id: string };
+    const doc = using<CaseAppointmentQueryable>();
+    const conditions = [
+      doc('documentType').equals('CASE_APPOINTMENT'),
+      doc('trusteeId').equals(SENTINEL_TRUSTEE_ID),
+    ];
+    if (lastId) conditions.push(doc('_id').greaterThan(lastId));
+    const query = and(...conditions);
+    return this.findByCursor<CaseAppointmentQueryable>(query, {
+      limit,
+      sortField: '_id',
+      sortDirection: 'ASCENDING',
+    });
+  }
+
   async getAllCaseAppointments(
     lastId: string | null,
     limit: number,

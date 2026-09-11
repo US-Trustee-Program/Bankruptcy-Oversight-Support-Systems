@@ -11,6 +11,7 @@ import ImportZoomCsv from './migrations/import-zoom-csv';
 import DivisionChangeCleanup from './migrations/division-change-cleanup';
 import FixChapter7Appointments from './migrations/fix-chapter-7-appointments';
 import HandleMissedDivisionChanges from './migrations/handle-missed-division-changes';
+import HealSentinelCaseAppointments from './heal-sentinel-case-appointments';
 import MigrateAssignees from './migrations/migrate-assignees';
 import MigrateCases from './migrations/migrate-cases';
 import MigrateChildCasesToMemberCases from './migrations/migrate-childcases-to-membercases';
@@ -112,6 +113,7 @@ dataflows.register(
   DivisionChangeCleanup,
   FixChapter7Appointments,
   HandleMissedDivisionChanges,
+  HealSentinelCaseAppointments,
   ImportZoomCsv,
   MigrateAssignees,
   MigrateCaseAppointments,
@@ -162,6 +164,7 @@ const DEFAULT_DATAFLOWS = listDataflowNames(
   SyncTrusteeNotesMetrics,
   TrusteeChangeNotificationEvent,
   TrusteeVerificationRemap,
+  HealSentinelCaseAppointments,
 );
 
 const additional = envVarToNames(process.env.CAMS_ENABLED_DATAFLOWS);

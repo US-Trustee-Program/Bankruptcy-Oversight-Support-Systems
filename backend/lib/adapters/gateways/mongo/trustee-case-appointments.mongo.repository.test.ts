@@ -877,6 +877,90 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
     });
   });
 
+  describe('findSentinelAppointments', () => {
+    test('should return sentinel appointments when lastId is null', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([
+        { ...baseAppointment, _id: 'mongo-1', trusteeId: SENTINEL_TRUSTEE_ID },
+      ]);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const result = await repo.findSentinelAppointments(null, 100);
+
+      expect(result).toHaveLength(1);
+      repo.release();
+    });
+
+    test('should query for trusteeId equal to SENTINEL_TRUSTEE_ID', async () => {
+      const findSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockResolvedValue([
+          { ...baseAppointment, _id: 'mongo-1', trusteeId: SENTINEL_TRUSTEE_ID },
+        ]);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await repo.findSentinelAppointments(null, 50);
+
+      const query = findSpy.mock.calls[0][0];
+      const queryValues = (query as Record<string, unknown>).values as Record<string, unknown>[];
+
+      const trusteeIdCondition = queryValues.find(
+        (v) => (v.leftOperand as { name: string })?.name === 'trusteeId',
+      );
+      expect(trusteeIdCondition).toEqual(
+        expect.objectContaining({ condition: 'EQUALS', rightOperand: SENTINEL_TRUSTEE_ID }),
+      );
+
+      repo.release();
+    });
+
+    test('should filter by _id > lastId when provided', async () => {
+      const findSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockResolvedValue([
+          { ...baseAppointment, _id: 'mongo-2', trusteeId: SENTINEL_TRUSTEE_ID },
+        ]);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await repo.findSentinelAppointments('mongo-1', 50);
+
+      expect(findSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          values: expect.arrayContaining([
+            expect.objectContaining({ condition: 'GREATER_THAN', rightOperand: 'mongo-1' }),
+          ]),
+        }),
+        expect.any(Object),
+        50,
+      );
+      repo.release();
+    });
+
+    test('should return an empty array when no sentinel appointments remain', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const result = await repo.findSentinelAppointments(null, 50);
+
+      expect(result).toEqual([]);
+      repo.release();
+    });
+
+    test('should wrap and rethrow when find rejects', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(new Error('boom'));
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(repo.findSentinelAppointments(null, 50)).rejects.toThrow(
+        'Failed to retrieve case appointments by cursor.',
+      );
+      repo.release();
+    });
+  });
+
   describe('getCasesForTrustee', () => {
     const basePredicate: TrusteeCasesSearchPredicate = { limit: 25, offset: 0 };
 
