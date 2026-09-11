@@ -40,6 +40,7 @@ async function main(): Promise<void> {
   const workflowFileName = resolveEnvVar('DORA_WORKFLOW_FILE_NAME', DEFAULT_WORKFLOW_FILE_NAME);
   const startDate = resolveStartDate();
   const periodDays = resolvePeriodDays();
+  const endDate = new Date();
 
   const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
 
@@ -52,12 +53,12 @@ async function main(): Promise<void> {
     since: startDate,
   });
 
-  const buckets = computeDeploymentFrequency(runs, { startDate, periodDays });
+  const buckets = computeDeploymentFrequency(runs, { startDate, periodDays, endDate });
 
   await writeCsv(buckets, OUTPUT_PATH);
 
   const totalDeployments = buckets.reduce((sum, bucket) => sum + bucket.deploymentCount, 0);
-  const totalDays = buckets.length * periodDays;
+  const totalDays = (endDate.getTime() - startDate.getTime()) / MS_PER_DAY;
   const averagePerDay = totalDays > 0 ? totalDeployments / totalDays : 0;
 
   console.log(

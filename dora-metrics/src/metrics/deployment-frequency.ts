@@ -28,6 +28,12 @@ export function computeDeploymentFrequency(
     throw new Error(`periodDays must be a positive finite number, got ${periodDays}`);
   }
   const endDate = options.endDate ?? new Date();
+  if (!Number.isFinite(startDate.getTime()) || !Number.isFinite(endDate.getTime())) {
+    throw new Error('startDate and endDate must be valid dates');
+  }
+  if (startDate.getTime() > endDate.getTime()) {
+    throw new Error('startDate must be on or before endDate');
+  }
   const periodMs = periodDays * MS_PER_DAY;
   const totalMs = endDate.getTime() - startDate.getTime();
   const periodCount = Math.max(1, Math.ceil(totalMs / periodMs));
@@ -42,7 +48,8 @@ export function computeDeploymentFrequency(
     const bucketEndMs = bucketStartMs + periodMs;
 
     const deploymentCount = successfulRunTimestamps.filter(
-      (timestamp) => timestamp >= bucketStartMs && timestamp < bucketEndMs,
+      (timestamp) =>
+        timestamp >= bucketStartMs && timestamp < bucketEndMs && timestamp < endDate.getTime(),
     ).length;
 
     const elapsedDays = (Math.min(bucketEndMs, endDate.getTime()) - bucketStartMs) / MS_PER_DAY;

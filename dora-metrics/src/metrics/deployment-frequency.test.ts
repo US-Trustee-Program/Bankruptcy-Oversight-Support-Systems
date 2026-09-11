@@ -56,8 +56,11 @@ describe('computeDeploymentFrequency', () => {
     expect(buckets[0].deploymentCount).toBe(1);
   });
 
-  test('produces a single bucket when the date range is zero-width', () => {
+  test('produces a single zero-count bucket when the date range is zero-width', () => {
     const startDate = new Date('2026-01-01T00:00:00.000Z');
+    // No instant can be both >= startDate and < endDate when they're equal, so
+    // even runs that land inside the nominal (but not yet elapsed) bucket window
+    // correctly can't count toward a report with no elapsed time.
     const runs: WorkflowRun[] = Array.from({ length: 14 }, (_, i) => ({
       id: i,
       conclusion: 'success' as const,
@@ -71,8 +74,8 @@ describe('computeDeploymentFrequency', () => {
     });
 
     expect(buckets).toHaveLength(1);
-    expect(buckets[0].deploymentCount).toBe(14);
-    expect(buckets[0].deploymentsPerDay).toBe(1);
+    expect(buckets[0].deploymentCount).toBe(0);
+    expect(buckets[0].deploymentsPerDay).toBe(0);
   });
 
   test('throws when periodDays is zero, negative, or not a finite number', () => {
@@ -118,6 +121,29 @@ describe('computeDeploymentFrequency', () => {
     // elapsed before endDate, so the rate should be 3 deployments / 3 days, not / 7.
     expect(buckets[1].deploymentCount).toBe(3);
     expect(buckets[1].deploymentsPerDay).toBe(1);
+  });
+
+  test('excludes a run that falls after endDate but within the nominal trailing bucket', () => {
+    const startDate = new Date('2026-01-01T00:00:00.000Z');
+    const endDate = new Date('2026-01-11T00:00:00.000Z'); // 10-day range, 7-day periods
+    const runs: WorkflowRun[] = [
+      { id: 1, conclusion: 'success', created_at: '2026-01-09T00:00:00.000Z' },
+      // Falls after endDate (Jan 11) but before the nominal bucket end (Jan 15).
+      { id: 2, conclusion: 'success', created_at: '2026-01-13T00:00:00.000Z' },
+    ];
+
+    const buckets = computeDeploymentFrequency(runs, { startDate, endDate, periodDays: 7 });
+
+    expect(buckets[1].deploymentCount).toBe(1);
+  });
+
+  test('throws when startDate is after endDate', () => {
+    const startDate = new Date('2026-01-15T00:00:00.000Z');
+    const endDate = new Date('2026-01-01T00:00:00.000Z');
+
+    expect(() => computeDeploymentFrequency([], { startDate, endDate, periodDays: 7 })).toThrow(
+      'startDate must be on or before endDate',
+    );
   });
 
   test('an empty input array produces zero-count buckets across the requested date range', () => {
