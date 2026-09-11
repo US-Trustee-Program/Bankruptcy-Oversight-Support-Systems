@@ -489,15 +489,27 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
     return updatedDocument;
   }
 
+  /**
+   * Idempotent per partition: delete(id)'s contract is "no row with this id in either
+   * partition," and a partition that already has no matching row has already satisfied that —
+   * throwing there is wrong. Critically, tolerating a missing case-partition copy lets the
+   * trustee-partition delete still run, which is what un-sticks a surrogate whose two partition
+   * copies have diverged (see existsInTrusteePartition's doc comment on this exact risk) instead
+   * of leaving it stranded forever: remapPage's per-case catch would otherwise count the 404 as a
+   * failure and leave the surrogate in place, so every future getSurrogatesByFingerprint call
+   * rediscovers and re-fails the same case (CAMS-894).
+   */
   async delete(id: string): Promise<void> {
     try {
       const doc = using<CaseAppointmentDocument>();
       const query = doc('id').equals(id);
       await this.casePartition.adapter<CaseAppointmentDocument>().deleteOne(query);
     } catch (originalError) {
-      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        message: `Failed to delete case appointment ${id}.`,
-      });
+      if (!isNotFoundError(originalError)) {
+        throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+          message: `Failed to delete case appointment ${id}.`,
+        });
+      }
     }
 
     try {
@@ -505,6 +517,9 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
       const query = doc('id').equals(id);
       await this.trusteePartition.adapter<CaseAppointmentDocument>().deleteOne(query);
     } catch (secondaryError) {
+      if (isNotFoundError(secondaryError)) {
+        return;
+      }
       this.context.logger.error(
         MODULE_NAME,
         `Dual-delete from trustee partition failed for appointment ${id}:`,

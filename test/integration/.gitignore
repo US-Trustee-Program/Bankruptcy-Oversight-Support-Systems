@@ -1,6 +1,10 @@
 .env
 .env.*
 !.env.template
+# .env.*.template files are meant to be committed (e.g. .env.local.template) — without this,
+# `.env.*` above silently swallows them too, which is why several harnesses' READMEs reference
+# a .env.local.template that was never actually committed.
+!.env.*.template
 local.settings.json
 **/local.settings.integration.json
 
