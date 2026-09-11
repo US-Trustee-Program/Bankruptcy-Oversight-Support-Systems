@@ -90,6 +90,15 @@ describe('computeDeploymentFrequency', () => {
     ).toThrow();
   });
 
+  test('throws when periodDays is a positive finite number too small to produce a bounded bucket count', () => {
+    const startDate = new Date('2026-01-01T00:00:00.000Z');
+    const endDate = new Date('2026-01-15T00:00:00.000Z');
+
+    expect(() =>
+      computeDeploymentFrequency([], { startDate, endDate, periodDays: Number.MIN_VALUE }),
+    ).toThrow('unbounded number of buckets');
+  });
+
   test('rounds up to a partial final bucket when the range is not an exact multiple of periodDays', () => {
     const startDate = new Date('2026-01-01T00:00:00.000Z');
     const endDate = new Date('2026-01-11T00:00:00.000Z'); // 10-day range, 7-day periods

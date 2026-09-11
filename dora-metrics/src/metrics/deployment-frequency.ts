@@ -37,6 +37,11 @@ export function computeDeploymentFrequency(
   const periodMs = periodDays * MS_PER_DAY;
   const totalMs = endDate.getTime() - startDate.getTime();
   const periodCount = Math.max(1, Math.ceil(totalMs / periodMs));
+  if (!Number.isFinite(periodCount)) {
+    throw new Error(
+      'periodDays is too small relative to the date range (would produce an unbounded number of buckets)',
+    );
+  }
 
   const successfulRunTimestamps = runs
     .filter((run) => run.conclusion === 'success')
