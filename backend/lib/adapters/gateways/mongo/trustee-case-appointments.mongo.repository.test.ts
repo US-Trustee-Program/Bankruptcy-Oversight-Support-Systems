@@ -751,6 +751,55 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       );
       repo.release();
     });
+
+    // CAMS-894: a surrogate whose case-partition copy is already missing (dual-write divergence)
+    // must not be left stranded — see existsInTrusteePartition's doc comment on this exact risk.
+    test('should tolerate a 404 on the case-partition delete and still delete the trustee partition', async () => {
+      const deleteOneSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'deleteOne')
+        .mockRejectedValueOnce(
+          new NotFoundError('MONGO-ADAPTER', { message: 'Matched and deleted 0 items.' }),
+        )
+        .mockResolvedValueOnce(undefined);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(repo.delete('appt-001')).resolves.toBeUndefined();
+
+      expect(deleteOneSpy).toHaveBeenCalledTimes(2);
+      repo.release();
+    });
+
+    test('should tolerate a 404 on the trustee-partition delete', async () => {
+      const deleteOneSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'deleteOne')
+        .mockResolvedValueOnce(undefined)
+        .mockRejectedValueOnce(
+          new NotFoundError('MONGO-ADAPTER', { message: 'Matched and deleted 0 items.' }),
+        );
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(repo.delete('appt-001')).resolves.toBeUndefined();
+
+      expect(deleteOneSpy).toHaveBeenCalledTimes(2);
+      repo.release();
+    });
+
+    test('should still throw a non-404 trustee-partition failure even after a case-partition 404', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'deleteOne')
+        .mockRejectedValueOnce(
+          new NotFoundError('MONGO-ADAPTER', { message: 'Matched and deleted 0 items.' }),
+        )
+        .mockRejectedValueOnce(new Error('trustee partition delete failed'));
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(repo.delete('appt-001')).rejects.toThrow(
+        'Dual-delete from trustee partition failed',
+      );
+      repo.release();
+    });
   });
 
   describe('getAllCaseAppointments', () => {
