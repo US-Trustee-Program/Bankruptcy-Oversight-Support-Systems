@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
@@ -43,7 +43,8 @@ describe('writeCsv', () => {
   });
 
   test('creates the parent directory if it does not exist', async () => {
-    const filePath = join(workDir, 'nested', 'dir', 'deployment-frequency.csv');
+    const nestedDir = join(workDir, 'nested', 'dir');
+    const filePath = join(nestedDir, 'deployment-frequency.csv');
     const buckets: PeriodBucket[] = [
       {
         periodStart: '2026-01-01T00:00:00.000Z',
@@ -55,7 +56,12 @@ describe('writeCsv', () => {
 
     await writeCsv(buckets, filePath);
 
+    const dirStats = await stat(nestedDir);
+    expect(dirStats.isDirectory()).toBe(true);
+
     const contents = await readFile(filePath, 'utf8');
-    expect(contents).toContain('periodStart,periodEnd,deploymentCount,deploymentsPerDay');
+    const lines = contents.trim().split('\n');
+    expect(lines[0]).toBe('periodStart,periodEnd,deploymentCount,deploymentsPerDay');
+    expect(lines[1]).toBe(`2026-01-01T00:00:00.000Z,2026-01-08T00:00:00.000Z,1,${1 / 7}`);
   });
 });

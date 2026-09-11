@@ -135,4 +135,32 @@ describe('fetchWorkflowRuns', () => {
 
     expect(runs).toEqual([]);
   });
+
+  test('includes a run whose created_at exactly equals since', async () => {
+    const { octokit } = mockOctokit([
+      {
+        total_count: 1,
+        workflow_runs: [
+          {
+            id: 1,
+            conclusion: 'success',
+            created_at: '2026-01-01T00:00:00.000Z',
+            head_branch: 'main',
+            status: 'completed',
+          },
+        ],
+      },
+    ]);
+
+    const runs = await fetchWorkflowRuns({
+      octokit,
+      owner: 'US-Trustee-Program',
+      repo: 'Bankruptcy-Oversight-Support-Systems',
+      workflowFileName: 'continuous-deployment.yml',
+      branch: 'main',
+      since: new Date('2026-01-01T00:00:00.000Z'),
+    });
+
+    expect(runs.map((run) => run.id)).toEqual([1]);
+  });
 });
