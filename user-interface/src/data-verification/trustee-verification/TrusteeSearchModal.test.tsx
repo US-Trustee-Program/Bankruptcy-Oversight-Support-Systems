@@ -76,6 +76,11 @@ describe('TrusteeSearchModal', () => {
   }
 
   beforeEach(() => {
+    // Restore/unstub here (start of beforeEach), not in afterEach — a failing test skips
+    // afterEach, which would leak un-restored spies/stubs into the next test's setup.
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+
     vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
       cb(0);
       return 0;
@@ -83,11 +88,6 @@ describe('TrusteeSearchModal', () => {
     vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: COURT_DIVISIONS });
     vi.spyOn(UseDebounceModule, 'default').mockReturnValue(((cb: () => void) =>
       cb()) as unknown as ReturnType<typeof UseDebounceModule.default>);
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-    vi.unstubAllGlobals();
   });
 
   test('modal is not visible before show() is called', () => {
@@ -226,6 +226,58 @@ describe('TrusteeSearchModal', () => {
     });
   });
 
+  test('still renders and searches by name when Api2.getCourts fails to load', async () => {
+    vi.spyOn(Api2, 'getCourts').mockRejectedValue(new Error('Network error'));
+    const searchSpy = vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: sampleResults });
+
+    renderWithProps();
+    act(() => modalRef.current?.show());
+
+    // District list has no options since the courts list failed to load, but the modal
+    // still renders and doesn't crash.
+    await waitFor(() => {
+      const districtItems = document.querySelectorAll(`#${districtComboBoxId}-item-list li`);
+      expect(districtItems.length).toBe(0);
+    });
+
+    // Name search still works despite the courts list failing.
+    await expandComboBoxAndType('sm');
+
+    await waitFor(() => {
+      expect(searchSpy).toHaveBeenCalledWith('sm', undefined);
+    });
+  });
+
+  test('does not pre-select a district and searches without a court filter when courtId matches no known court', async () => {
+    const searchSpy = vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: [] });
+
+    render(
+      <BrowserRouter>
+        <TrusteeSearchModal
+          ref={modalRef}
+          id={modalId}
+          dxtrTrusteeName="DOE, JOHN"
+          courtId="no-such-court"
+          onConfirm={vi.fn()}
+        />
+      </BrowserRouter>,
+    );
+    act(() => modalRef.current?.show());
+
+    await waitFor(() => {
+      const input = document.querySelector(
+        `#${districtComboBoxId}-combo-box-input`,
+      ) as HTMLInputElement;
+      expect(input?.value).toBe('');
+    });
+
+    await expandComboBoxAndType('sm');
+
+    await waitFor(() => {
+      expect(searchSpy).toHaveBeenCalledWith('sm', undefined);
+    });
+  });
+
   test('does not call searchTrustees when input is less than 2 characters', async () => {
     const searchSpy = vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: [] });
 
@@ -274,6 +326,80 @@ describe('TrusteeSearchModal', () => {
       expect(screen.getByText('123 Main St')).toBeInTheDocument();
       expect(screen.getByText('(212) 555-0100')).toBeInTheDocument();
       expect(screen.getByText('john.smith@example.com')).toBeInTheDocument();
+    });
+  });
+
+  test('shows all address lines, including address2 and address3, when present', async () => {
+    const resultWithFullAddress: TrusteeSearchResult = {
+      trusteeId: 'trustee-full-address',
+      name: 'Full Address Trustee',
+      address: {
+        address1: '123 Main St',
+        address2: 'Suite 200',
+        address3: 'Building C',
+        city: 'New York',
+        state: 'NY',
+        zipCode: '10001',
+        countryCode: 'US',
+      },
+      appointments: [],
+      matchType: 'exact',
+    };
+    vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: [resultWithFullAddress] });
+
+    renderWithProps();
+    act(() => modalRef.current?.show());
+
+    await expandComboBoxAndType('full');
+    await waitFor(() => {
+      expect(screen.getByTestId(`${comboBoxId}-option-item-0`)).toBeVisible();
+    });
+    await userEvent.click(screen.getByTestId(`${comboBoxId}-option-item-0`));
+
+    await waitFor(() => {
+      expect(screen.getByText('123 Main St')).toBeInTheDocument();
+      expect(screen.getByText('Suite 200')).toBeInTheDocument();
+      expect(screen.getByText('Building C')).toBeInTheDocument();
+    });
+  });
+
+  test('shows a line per appointment when a trustee has multiple appointments', async () => {
+    const resultWithMultipleAppointments: TrusteeSearchResult = {
+      trusteeId: 'trustee-multi-appt',
+      name: 'Multi Appt Trustee',
+      appointments: [
+        MockData.getTrusteeAppointment({
+          courtId: '0208',
+          courtName: undefined,
+          courtDivisionName: 'Manhattan',
+          chapter: '7',
+          status: 'active',
+        }),
+        MockData.getTrusteeAppointment({
+          courtId: '0208',
+          courtName: undefined,
+          courtDivisionName: 'Manhattan',
+          chapter: '13',
+          status: 'terminated',
+        }),
+      ],
+      matchType: 'exact',
+    };
+    vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: [resultWithMultipleAppointments] });
+
+    renderWithProps();
+    act(() => modalRef.current?.show());
+
+    await expandComboBoxAndType('multi');
+    await waitFor(() => {
+      expect(screen.getByTestId(`${comboBoxId}-option-item-0`)).toBeVisible();
+    });
+    await userEvent.click(screen.getByTestId(`${comboBoxId}-option-item-0`));
+
+    await waitFor(() => {
+      const details = document.querySelector('.trustee-details');
+      expect(details?.textContent).toContain('Chap 7');
+      expect(details?.textContent).toContain('Chap 13');
     });
   });
 
@@ -634,6 +760,135 @@ describe('TrusteeSearchModal', () => {
 
     await waitFor(() => {
       expect(screen.queryByText('Confirming appointment...')).not.toBeInTheDocument();
+    });
+  });
+
+  test('renders both column headings, court data, and "No Trustee selected" before any selection', async () => {
+    render(
+      <BrowserRouter>
+        <TrusteeSearchModal
+          ref={modalRef}
+          id={modalId}
+          dxtrTrusteeName="DOE, JOHN"
+          dxtrTrusteeAddressLines={['123 Court St', 'Buffalo, NY 14202']}
+          dxtrTrusteePhone="716-555-0100"
+          dxtrTrusteeEmail="court.contact@example.com"
+          onConfirm={vi.fn()}
+        />
+      </BrowserRouter>,
+    );
+    act(() => modalRef.current?.show());
+
+    await waitFor(() => {
+      expect(screen.getByText('Information sent by court')).toBeInTheDocument();
+      expect(screen.getByText('Selected Trustee')).toBeInTheDocument();
+
+      const courtDetails = document.querySelector('.court-trustee-details');
+      expect(courtDetails?.textContent).toContain('DOE, JOHN');
+      expect(courtDetails?.textContent).toContain('123 Court St');
+      expect(courtDetails?.textContent).toContain('Buffalo, NY 14202');
+      expect(courtDetails?.textContent).toContain('716-555-0100');
+      expect(courtDetails?.textContent).toContain('court.contact@example.com');
+
+      const selectedDetails = document.querySelector('.trustee-details');
+      expect(selectedDetails?.textContent).toContain('No Trustee selected');
+    });
+  });
+
+  test('renders "Address/Phone/Email not provided" for the court column when those props are omitted', async () => {
+    renderWithProps();
+    act(() => modalRef.current?.show());
+
+    await waitFor(() => {
+      const details = document.querySelector('.court-trustee-details');
+      expect(details?.textContent).toContain('Address not provided');
+      expect(details?.textContent).toContain('Phone not provided');
+      expect(details?.textContent).toContain('Email not provided');
+    });
+  });
+
+  test('renders "Address/Phone/Email not provided" for the selected-trustee column when a result is missing those fields', async () => {
+    const resultMissingContact: TrusteeSearchResult = {
+      trusteeId: 'trustee-003',
+      name: 'No Contact Trustee',
+      appointments: [],
+      matchType: 'exact',
+    };
+    vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: [resultMissingContact] });
+
+    renderWithProps();
+    act(() => modalRef.current?.show());
+
+    await expandComboBoxAndType('no');
+    await waitFor(() => {
+      expect(screen.getByTestId(`${comboBoxId}-option-item-0`)).toBeVisible();
+    });
+    await userEvent.click(screen.getByTestId(`${comboBoxId}-option-item-0`));
+
+    await waitFor(() => {
+      const selectedDetails = document.querySelector('.trustee-details');
+      expect(selectedDetails?.textContent).toContain('Address not provided');
+      expect(selectedDetails?.textContent).toContain('Phone not provided');
+      expect(selectedDetails?.textContent).toContain('Email not provided');
+    });
+  });
+
+  test('renders the selected trustee\'s phone extension as "x1234"', async () => {
+    const resultWithExtension: TrusteeSearchResult = {
+      trusteeId: 'trustee-ext',
+      name: 'Ext Trustee',
+      phone: { number: '(212) 555-0100', extension: '1234' },
+      appointments: [],
+      matchType: 'exact',
+    };
+    vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: [resultWithExtension] });
+
+    renderWithProps();
+    act(() => modalRef.current?.show());
+
+    await expandComboBoxAndType('ext');
+    await waitFor(() => {
+      expect(screen.getByTestId(`${comboBoxId}-option-item-0`)).toBeVisible();
+    });
+    await userEvent.click(screen.getByTestId(`${comboBoxId}-option-item-0`));
+
+    await waitFor(() => {
+      expect(screen.getByText('(212) 555-0100 x1234')).toBeInTheDocument();
+    });
+  });
+
+  test('changing the selected result updates only the selected-trustee column, not the court column', async () => {
+    render(
+      <BrowserRouter>
+        <TrusteeSearchModal
+          ref={modalRef}
+          id={modalId}
+          dxtrTrusteeName="DOE, JOHN"
+          dxtrTrusteeAddressLines={['123 Court St']}
+          dxtrTrusteePhone="716-555-0100"
+          dxtrTrusteeEmail="court.contact@example.com"
+          onConfirm={vi.fn()}
+        />
+      </BrowserRouter>,
+    );
+    vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: sampleResults });
+    act(() => modalRef.current?.show());
+
+    await expandComboBoxAndType('smith');
+    await waitFor(() => {
+      expect(screen.getByTestId(`${comboBoxId}-option-item-0`)).toBeVisible();
+    });
+    await userEvent.click(screen.getByTestId(`${comboBoxId}-option-item-0`));
+
+    await waitFor(() => {
+      const selectedDetails = document.querySelector('.trustee-details');
+      expect(selectedDetails?.textContent).toContain('123 Main St');
+
+      const courtDetails = document.querySelector('.court-trustee-details');
+      expect(courtDetails?.textContent).toContain('DOE, JOHN');
+      expect(courtDetails?.textContent).toContain('123 Court St');
+      expect(courtDetails?.textContent).toContain('716-555-0100');
+      expect(courtDetails?.textContent).toContain('court.contact@example.com');
     });
   });
 });

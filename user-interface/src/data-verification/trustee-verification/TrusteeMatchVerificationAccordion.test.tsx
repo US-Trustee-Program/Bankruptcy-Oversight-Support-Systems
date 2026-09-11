@@ -128,13 +128,23 @@ async function mockDetailAndExpand(detail: EnrichedTrusteeMatchVerification) {
   await expandAccordion(detail.id);
 }
 
+/**
+ * Clicks the given button twice inside one act() call so React doesn't get a chance to commit
+ * the first click's isProcessing update (and thus disable the button) before the second fires -
+ * simulating a rapid repeat invocation reaching the handler before React commits. The
+ * no-unnecessary-act rule doesn't account for this: nesting changes batching timing here.
+ */
+function clickTwiceInSameBatch(button: HTMLElement | null) {
+  // eslint-disable-next-line testing-library/no-unnecessary-act
+  act(() => {
+    fireEvent.click(button!);
+    fireEvent.click(button!);
+  });
+}
+
 describe('TrusteeMatchVerificationAccordion', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-  });
-
-  afterEach(() => {
-    // intentionally empty — cleanup is in beforeEach
   });
 
   test('should render accordion heading with court, date, task type, and status', () => {
@@ -254,6 +264,49 @@ describe('TrusteeMatchVerificationAccordion', () => {
     expect(candidateInfo.textContent).toContain('Manhattan');
   });
 
+  test('backfills court name/division via courtId when divisionCode does not match any court', async () => {
+    renderWithProps({
+      order: sampleOrderWithCandidates,
+      courts: [
+        {
+          courtId: '0881',
+          courtName: 'Southern District of New York',
+          officeName: '',
+          officeCode: '',
+          courtDivisionCode: '081',
+          courtDivisionName: 'Manhattan',
+          groupDesignator: '',
+          regionId: '',
+          regionName: '',
+        },
+      ],
+    });
+    await mockDetailAndExpand({
+      ...sampleOrderWithCandidatesDetail,
+      matchCandidates: [
+        {
+          ...candidateJaneSmith,
+          appointments: [
+            MockData.getTrusteeAppointment({
+              courtId: '0881',
+              // Deliberately does not match the courts prop's courtDivisionCode ('081'),
+              // proving the `|| c.courtId === appt.courtId` fallback alone finds the court.
+              divisionCode: 'no-such-division',
+              chapter: '7',
+              status: 'active',
+              courtName: undefined,
+              courtDivisionName: undefined,
+            }),
+          ],
+        },
+      ],
+    });
+
+    const candidateInfo = screen.getByTestId('candidate-info');
+    expect(candidateInfo.textContent).toContain('Southern District of New York');
+    expect(candidateInfo.textContent).toContain('Manhattan');
+  });
+
   test('should NOT render candidate-info section for approved order', () => {
     renderWithProps({ order: { ...sampleOrderWithCandidates, status: 'approved' } });
 
@@ -280,6 +333,20 @@ describe('TrusteeMatchVerificationAccordion', () => {
     expect(link).toHaveAttribute('target', '_blank');
 
     expect(screen.queryByTestId('approve-candidate-trustee-1')).not.toBeInTheDocument();
+  });
+
+  test('falls back to resolvedTrusteeId in the resolved statement when resolvedTrusteeName is absent', () => {
+    renderWithProps({
+      order: {
+        ...sampleOrderWithCandidates,
+        status: 'approved',
+        resolvedTrusteeId: 'trustee-1',
+        resolvedTrusteeName: undefined,
+      },
+    });
+
+    const resolved = screen.getByTestId('resolved-statement');
+    expect(resolved.textContent).toContain('trustee-1');
   });
 
   describe('mismatch info prominence', () => {
@@ -376,28 +443,34 @@ describe('TrusteeMatchVerificationAccordion', () => {
       ).toBeInTheDocument();
     });
 
-    test('shows a mismatch icon for a phone score that is neither null nor a full match', async () => {
-      renderWithProps({ order: sampleOrderWithCandidates });
-      await mockDetailAndExpand({
-        ...sampleOrderWithCandidatesDetail,
-        matchCandidates: [
-          {
-            ...candidateJaneSmith,
-            nameScore: 100,
-            addressScore: 100,
-            districtDivisionScore: 100,
-            chapterScore: 100,
-            phoneScore: 50,
-          },
-        ],
-      });
+    test.each([
+      { scoreField: 'phoneScore' as const, label: 'Phone' },
+      { scoreField: 'emailScore' as const, label: 'Email' },
+    ])(
+      'shows a mismatch icon for a $label score that is neither null nor a full match',
+      async ({ scoreField, label }) => {
+        renderWithProps({ order: sampleOrderWithCandidates });
+        await mockDetailAndExpand({
+          ...sampleOrderWithCandidatesDetail,
+          matchCandidates: [
+            {
+              ...candidateJaneSmith,
+              nameScore: 100,
+              addressScore: 100,
+              districtDivisionScore: 100,
+              chapterScore: 100,
+              [scoreField]: 50,
+            },
+          ],
+        });
 
-      expect(screen.getByRole('img', { name: 'Phone does not match' })).toBeInTheDocument();
-      expect(screen.queryByRole('img', { name: 'Name does not match' })).not.toBeInTheDocument();
-      expect(
-        screen.queryByRole('img', { name: 'Trustee Appointment does not match' }),
-      ).not.toBeInTheDocument();
-    });
+        expect(screen.getByRole('img', { name: `${label} does not match` })).toBeInTheDocument();
+        expect(screen.queryByRole('img', { name: 'Name does not match' })).not.toBeInTheDocument();
+        expect(
+          screen.queryByRole('img', { name: 'Trustee Appointment does not match' }),
+        ).not.toBeInTheDocument();
+      },
+    );
 
     test('does not show mismatch icons in the Other Potential Matches header', async () => {
       const secondCandidate: CandidateScore = {
@@ -669,15 +742,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
     const modalSubmit = document.getElementById(
       `trustee-confirmation-modal-${sampleOrderWithCandidates.id}-submit-button`,
     );
-    // Both dispatches inside one act() call so React doesn't get a chance to commit the first
-    // click's isProcessing update (and thus disable the button) before the second fires -
-    // simulating a rapid repeat invocation reaching the handler before React commits. The
-    // no-unnecessary-act rule doesn't account for this: nesting changes batching timing here.
-    // eslint-disable-next-line testing-library/no-unnecessary-act
-    act(() => {
-      fireEvent.click(modalSubmit!);
-      fireEvent.click(modalSubmit!);
-    });
+    clickTwiceInSameBatch(modalSubmit);
 
     expect(approvalSpy).toHaveBeenCalledTimes(1);
     resolveApproval();
@@ -1150,6 +1215,70 @@ describe('TrusteeMatchVerificationAccordion', () => {
       });
     });
 
+    // Consolidated into one test.each: proves the Accordion threads order.dxtrTrustee.legacy
+    // through to TrusteeSearchModal's court column correctly across full/none/partial legacy
+    // data. TrusteeSearchModal.test.tsx already covers the placeholder-rendering logic itself in
+    // isolation - these cases exist to prove correct *wiring*, not to re-verify that logic.
+    test.each([
+      {
+        label: 'full legacy contact info',
+        legacy: {
+          address1: '123 Main St',
+          address2: 'Suite 200',
+          cityStateZipCountry: 'New York, NY 10001',
+          phone: '555-1234',
+          email: 'john@example.com',
+        },
+        expectContains: [
+          'John Doe',
+          '123 Main St',
+          'Suite 200',
+          'New York, NY 10001',
+          '555-1234',
+          'john@example.com',
+        ],
+        expectNotContains: [] as string[],
+      },
+      {
+        label: 'no legacy contact fields',
+        legacy: undefined,
+        expectContains: ['Address not provided', 'Phone not provided', 'Email not provided'],
+        expectNotContains: [] as string[],
+      },
+      {
+        label: 'partial legacy info (address only)',
+        legacy: { address1: '123 Main St', cityStateZipCountry: 'New York, NY 10001' },
+        expectContains: [
+          '123 Main St',
+          'New York, NY 10001',
+          'Phone not provided',
+          'Email not provided',
+        ],
+        expectNotContains: ['Address not provided'],
+      },
+    ])(
+      "TrusteeSearchModal's court column shows $label",
+      async ({ legacy, expectContains, expectNotContains }) => {
+        const order: TrusteeMatchVerificationListItem = {
+          ...sampleOrder,
+          dxtrTrustee: { fullName: 'John Doe', legacy },
+        };
+        renderWithProps({ order });
+
+        const searchButton = screen.getByRole('button', {
+          name: /Search for a trustee/,
+          hidden: true,
+        });
+        fireEvent.click(searchButton);
+
+        await waitFor(() => {
+          const details = document.querySelector('.court-trustee-details');
+          expectContains.forEach((text) => expect(details?.textContent).toContain(text));
+          expectNotContains.forEach((text) => expect(details?.textContent).not.toContain(text));
+        });
+      },
+    );
+
     // Integration test: exercises full search-to-approval flow
     test('confirming a search result calls approval API and shows success', async () => {
       vi.spyOn(Api2, 'patchTrusteeVerificationOrderApproval').mockResolvedValue(undefined);
@@ -1209,15 +1338,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
         `button-trustee-search-modal-${sampleOrder.id}-submit-button`,
       );
       await waitFor(() => expect(submitButton).toBeEnabled());
-      // Both dispatches inside one act() call so React doesn't get a chance to commit the first
-      // click's isProcessing update (and thus disable the button) before the second fires -
-      // simulating a rapid repeat invocation reaching the handler before React commits. The
-      // no-unnecessary-act rule doesn't account for this: nesting changes batching timing here.
-      // eslint-disable-next-line testing-library/no-unnecessary-act
-      act(() => {
-        fireEvent.click(submitButton);
-        fireEvent.click(submitButton);
-      });
+      clickTwiceInSameBatch(submitButton);
 
       expect(approvalSpy).toHaveBeenCalledTimes(1);
       resolveApproval();
@@ -1371,15 +1492,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
       const submitButton = document.getElementById(
         `trustee-rejection-modal-${sampleOrderWithCandidates.id}-submit-button`,
       );
-      // Both dispatches inside one act() call so React doesn't get a chance to commit the
-      // first click's state updates (and thus disable the button) before the second fires -
-      // simulating a rapid repeat invocation reaching the handler before React commits. The
-      // no-unnecessary-act rule doesn't account for this: nesting changes batching timing here.
-      // eslint-disable-next-line testing-library/no-unnecessary-act
-      act(() => {
-        fireEvent.click(submitButton!);
-        fireEvent.click(submitButton!);
-      });
+      clickTwiceInSameBatch(submitButton);
 
       expect(rejectSpy).toHaveBeenCalledTimes(1);
       resolveRejection();

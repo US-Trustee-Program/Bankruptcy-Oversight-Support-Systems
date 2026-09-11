@@ -12,14 +12,23 @@ import { NewTabLink } from '@/lib/components/cams/NewTabLink/NewTabLink';
 import { formatChapterType } from '@common/cams/trustees';
 import { formatAppointmentStatus } from '@common/cams/trustee-appointments';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
+import { formatPhoneWithExtension } from '@/lib/utils/phone-extension.utils';
+import { AccessibleFieldValue } from '@/lib/components/cams/AccessibleFieldValue/AccessibleFieldValue';
 
 interface TrusteeSearchModalProps {
   id: string;
   dxtrTrusteeName: string;
+  dxtrTrusteeAddressLines?: string[];
+  dxtrTrusteePhone?: string;
+  dxtrTrusteeEmail?: string;
   courtId?: string;
   onConfirm: (result: TrusteeSearchResult) => void;
   onCancel?: () => void;
   isProcessing?: boolean;
+}
+
+function fieldOrPlaceholder(label: string, value?: string): string {
+  return value ? value : `${label} not provided`;
 }
 
 export type TrusteeSearchModalImperative = {
@@ -31,7 +40,17 @@ function TrusteeSearchModal_(
   props: TrusteeSearchModalProps,
   ref: React.Ref<TrusteeSearchModalImperative>,
 ) {
-  const { id, courtId, onConfirm, onCancel, isProcessing } = props;
+  const {
+    id,
+    dxtrTrusteeName,
+    dxtrTrusteeAddressLines,
+    dxtrTrusteePhone,
+    dxtrTrusteeEmail,
+    courtId,
+    onConfirm,
+    onCancel,
+    isProcessing,
+  } = props;
   const modalRef = useRef<ModalRefType>(null);
   const trusteeNameComboBoxRef = useRef<ComboBoxRef>(null);
   const [searchResults, setSearchResults] = useState<TrusteeSearchResult[]>([]);
@@ -196,22 +215,56 @@ function TrusteeSearchModal_(
             placeholder="- Search Trustee name -"
             disableFiltering={true}
           />
-          {selectedTrustee && (
-            <div className="trustee-details">
-              <NewTabLink
-                to={`/trustees/${selectedTrustee.trusteeId}`}
-                label={selectedTrustee.name}
-              />
-              {addressLines.map((line, i) => (
-                <div key={i}>{line}</div>
-              ))}
-              {selectedTrustee.phone && <div>{selectedTrustee.phone.number}</div>}
-              {selectedTrustee.email && <div>{selectedTrustee.email}</div>}
-              {appointmentLines.map((line, i) => (
-                <div key={i}>{line}</div>
-              ))}
+          <div className="trustee-comparison">
+            <div className="court-trustee-details">
+              <h4>Information sent by court</h4>
+              <AccessibleFieldValue label="Name">{dxtrTrusteeName}</AccessibleFieldValue>
+              <AccessibleFieldValue label="Address">
+                {dxtrTrusteeAddressLines && dxtrTrusteeAddressLines.length > 0 ? (
+                  dxtrTrusteeAddressLines.map((line, i) => <div key={i}>{line}</div>)
+                ) : (
+                  <div>{fieldOrPlaceholder('Address')}</div>
+                )}
+              </AccessibleFieldValue>
+              <AccessibleFieldValue label="Phone">
+                {fieldOrPlaceholder('Phone', dxtrTrusteePhone)}
+              </AccessibleFieldValue>
+              <AccessibleFieldValue label="Email">
+                {fieldOrPlaceholder('Email', dxtrTrusteeEmail)}
+              </AccessibleFieldValue>
             </div>
-          )}
+            <div className="trustee-details">
+              <h4>Selected Trustee</h4>
+              {selectedTrustee ? (
+                <>
+                  <AccessibleFieldValue label="Name">
+                    <NewTabLink
+                      to={`/trustees/${selectedTrustee.trusteeId}`}
+                      label={selectedTrustee.name}
+                    />
+                  </AccessibleFieldValue>
+                  <AccessibleFieldValue label="Address">
+                    {addressLines.length > 0 ? (
+                      addressLines.map((line, i) => <div key={i}>{line}</div>)
+                    ) : (
+                      <div>{fieldOrPlaceholder('Address')}</div>
+                    )}
+                  </AccessibleFieldValue>
+                  <AccessibleFieldValue label="Phone">
+                    {fieldOrPlaceholder('Phone', formatPhoneWithExtension(selectedTrustee.phone))}
+                  </AccessibleFieldValue>
+                  <AccessibleFieldValue label="Email">
+                    {fieldOrPlaceholder('Email', selectedTrustee.email)}
+                  </AccessibleFieldValue>
+                  {appointmentLines.map((line, i) => (
+                    <div key={i}>{line}</div>
+                  ))}
+                </>
+              ) : (
+                <div>No Trustee selected</div>
+              )}
+            </div>
+          </div>
         </>
       }
       footerContent={isProcessing && <LoadingSpinner caption="Confirming appointment..." />}
