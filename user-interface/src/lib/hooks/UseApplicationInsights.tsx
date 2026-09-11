@@ -24,17 +24,17 @@ const appInsights = new ApplicationInsights({
 });
 
 if (appInsightsConnectionString) {
+  appInsights.addTelemetryInitializer((env: ITelemetryItem) => {
+    env.tags = env.tags || [];
+    env.tags['ai.cloud.role'] = 'ustp.cams.web';
+  });
+
   appInsights.loadAppInsights();
 
   appInsights.trackEvent(
     { name: 'Viewport Size' },
     { width: window.innerWidth, height: window.innerHeight },
   );
-
-  appInsights.addTelemetryInitializer((env: ITelemetryItem) => {
-    env.tags = env.tags || [];
-    env.tags['ai.cloud.role'] = 'ustp.cams.web';
-  });
 }
 
 export function getAppInsights() {
