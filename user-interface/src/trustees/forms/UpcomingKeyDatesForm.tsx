@@ -608,6 +608,20 @@ export default function UpcomingKeyDatesForm({
                   setErrors((prev) => ({ ...prev, tprReviewPeriodEnd: '' }));
                 }
               }}
+              onBlur={(e) => {
+                if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+
+                const { tprReviewPeriodStart: start, tprReviewPeriodEnd: end } = form;
+                if (!start || !end || start <= end) return;
+
+                setErrors((prev) => ({
+                  ...prev,
+                  tprReviewPeriodStart:
+                    'TPR Review Period Start must be before TPR Review Period End.',
+                  tprReviewPeriodEnd:
+                    'TPR Review Period End must be after TPR Review Period Start.',
+                }));
+              }}
             >
               <DatePicker
                 id="tpr-review-period-start"
@@ -616,7 +630,11 @@ export default function UpcomingKeyDatesForm({
                 disableMax
                 onChange={(e) => {
                   setForm((prev) => ({ ...prev, tprReviewPeriodStart: e.target.value }));
-                  setErrors((prev) => ({ ...prev, tprReviewPeriodStart: '' }));
+                  setErrors((prev) => ({
+                    ...prev,
+                    tprReviewPeriodStart: '',
+                    tprReviewPeriodEnd: '',
+                  }));
                 }}
                 onValidationChange={(hasError) =>
                   registerFieldError('tpr-review-period-start', hasError)
@@ -630,7 +648,11 @@ export default function UpcomingKeyDatesForm({
                 disableMax
                 onChange={(e) => {
                   setForm((prev) => ({ ...prev, tprReviewPeriodEnd: e.target.value }));
-                  setErrors((prev) => ({ ...prev, tprReviewPeriodEnd: '' }));
+                  setErrors((prev) => ({
+                    ...prev,
+                    tprReviewPeriodStart: '',
+                    tprReviewPeriodEnd: '',
+                  }));
                 }}
                 onValidationChange={(hasError) =>
                   registerFieldError('tpr-review-period-end', hasError)

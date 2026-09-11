@@ -723,6 +723,98 @@ describe('UpcomingKeyDatesForm', () => {
         expect(screen.queryByText('TPR Review Period Start is required.')).not.toBeInTheDocument();
       });
     });
+
+    test('shows chronological error on both fields when start is after end and focus leaves the group', async () => {
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+      });
+
+      const startInput = document.getElementById('tpr-review-period-start') as HTMLInputElement;
+      const endInput = document.getElementById('tpr-review-period-end') as HTMLInputElement;
+
+      fireEvent.change(startInput, { target: { value: '2026-12-31' } });
+      fireEvent.change(endInput, { target: { value: '2025-01-01' } });
+
+      fireEvent.blur(endInput, { relatedTarget: null });
+
+      await waitFor(() => {
+        expect(
+          screen.getByText('TPR Review Period Start must be before TPR Review Period End.'),
+        ).toBeInTheDocument();
+        expect(
+          screen.getByText('TPR Review Period End must be after TPR Review Period Start.'),
+        ).toBeInTheDocument();
+      });
+    });
+
+    test('chronological errors clear on both fields when start date is corrected', async () => {
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+      });
+
+      const startInput = document.getElementById('tpr-review-period-start') as HTMLInputElement;
+      const endInput = document.getElementById('tpr-review-period-end') as HTMLInputElement;
+
+      fireEvent.change(startInput, { target: { value: '2026-12-31' } });
+      fireEvent.change(endInput, { target: { value: '2025-01-01' } });
+      fireEvent.blur(endInput, { relatedTarget: null });
+
+      await waitFor(() => {
+        expect(
+          screen.getByText('TPR Review Period Start must be before TPR Review Period End.'),
+        ).toBeInTheDocument();
+        expect(
+          screen.getByText('TPR Review Period End must be after TPR Review Period Start.'),
+        ).toBeInTheDocument();
+      });
+
+      fireEvent.change(startInput, { target: { value: '2024-01-01' } });
+
+      await waitFor(() => {
+        expect(
+          screen.queryByText('TPR Review Period Start must be before TPR Review Period End.'),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.queryByText('TPR Review Period End must be after TPR Review Period Start.'),
+        ).not.toBeInTheDocument();
+      });
+    });
+
+    test('chronological errors clear on both fields when end date is corrected', async () => {
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+      });
+
+      const startInput = document.getElementById('tpr-review-period-start') as HTMLInputElement;
+      const endInput = document.getElementById('tpr-review-period-end') as HTMLInputElement;
+
+      fireEvent.change(startInput, { target: { value: '2026-12-31' } });
+      fireEvent.change(endInput, { target: { value: '2025-01-01' } });
+      fireEvent.blur(endInput, { relatedTarget: null });
+
+      await waitFor(() => {
+        expect(
+          screen.getByText('TPR Review Period End must be after TPR Review Period Start.'),
+        ).toBeInTheDocument();
+      });
+
+      fireEvent.change(endInput, { target: { value: '2027-01-01' } });
+
+      await waitFor(() => {
+        expect(
+          screen.queryByText('TPR Review Period Start must be before TPR Review Period End.'),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.queryByText('TPR Review Period End must be after TPR Review Period Start.'),
+        ).not.toBeInTheDocument();
+      });
+    });
   });
 
   describe('ch12-13-case-by-case variant', () => {
