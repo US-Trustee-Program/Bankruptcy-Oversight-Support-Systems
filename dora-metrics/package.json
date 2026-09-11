@@ -1,0 +1,30 @@
+{
+  "name": "dora-metrics",
+  "version": "1.0.0",
+  "license": "CC0 v1.0",
+  "description": "DORA metrics reporting tools.",
+  "type": "module",
+  "scripts": {
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "report:deployment-frequency": "tsx src/report-deployment-frequency.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "npx tsc --noEmit"
+  },
+  "dependencies": {
+    "@octokit/rest": "22.0.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.0",
+    "eslint": "10.9.1",
+    "eslint-config-prettier": "10.1.8",
+    "eslint-plugin-n": "18.3.0",
+    "eslint-plugin-prettier": "5.5.6",
+    "eslint-plugin-promise": "7.3.0",
+    "tsx": "4.23.12",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.68.0",
+    "vitest": "4.1.11"
+  }
+}
