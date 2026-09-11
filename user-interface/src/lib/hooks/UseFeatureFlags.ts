@@ -31,6 +31,7 @@ export const TRUSTEE_APPOINTMENT_HISTORY_ENABLED = 'trustee-appointment-history-
 export const TRUSTEE_CASE_LIST = 'trustee-case-list';
 export const TRUSTEE_CHANGE_NOTIFICATIONS = 'trustee-change-notification-enabled';
 export const TRUSTEE_TYPED_PHONES = 'trustee-typed-phones';
+export const TRUSTEE_APPOINTMENT_LAYOUT_V2 = 'trustee-appointment-layout-v2';
 export const SOFTWARE_VENDOR_TYPED_PHONES = 'software-vendor-typed-phones';
 export const TPR_DISPLAY_UPDATES = 'tpr-display-updates';
 

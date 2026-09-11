@@ -132,6 +132,7 @@ function validateDateFields(): ValidatorFunction {
     const reasonMap: ValidatorReasonMap = {};
 
     // Validate sentinel date fields (MM/DD format)
+    // Note: tprReviewPeriodStart/End are now full dates (YYYY-MM-DD), validated separately
     const sentinelFields: DateField[] = [
       'tprDue',
       'tirReviewPeriodStart',
@@ -157,8 +158,6 @@ function validateDateFields(): ValidatorFunction {
       'pastFieldExam',
       'pastAudit',
       'pastTprSubmission',
-      'tprReviewPeriodStart',
-      'tprReviewPeriodEnd',
       'lastMonthlyReportReceived',
       'leaseExpiration',
       'idExpiration',
@@ -234,6 +233,9 @@ export function validateTprDuePair(
   return '';
 }
 
+export type CompletionStatus = 'COMPLETE' | 'INCOMPLETE';
+export type TprFrequency = 'ANNUAL' | 'BIANNUAL' | 'SEMI_ANNUAL';
+
 export type TrusteeUpcomingKeyDates = Auditable &
   Identifiable & {
     documentType: 'TRUSTEE_UPCOMING_REPORT_DATES';
@@ -243,15 +245,21 @@ export type TrusteeUpcomingKeyDates = Auditable &
     pastFieldExam?: string;
     pastAudit?: string;
     pastTprSubmission?: string;
+    // TPR period fields — now full dates (YYYY-MM-DD), not sentinel dates
     tprReviewPeriodStart?: string;
     tprReviewPeriodEnd?: string;
+    tprFrequency?: TprFrequency;
     tprDue?: string;
     tprDueYearType?: 'EVEN' | 'ODD';
-    tprFrequency?: 'BIANNUAL' | 'ANNUAL' | 'SEMI_ANNUAL';
+    lastTprSubmitted?: string;
+    tprCompletionYear?: number;
+    tprCompletionStatus?: CompletionStatus;
     tirReviewPeriodStart?: string;
     tirReviewPeriodEnd?: string;
     tirSubmission?: string;
     tirReview?: string;
+    tirCompletionYear?: number;
+    tirCompletionStatus?: CompletionStatus;
     upcomingExamOrAuditYear?: number;
     upcomingExamOrAuditType?: 'Field Exam' | 'Audit';
     tirFrequency?: 'ANNUAL' | 'SEMI_ANNUAL';
@@ -260,12 +268,22 @@ export type TrusteeUpcomingKeyDates = Auditable &
     tirSemiAnnualSubmission?: string;
     tirSemiAnnualReview?: string;
     lastAuditFiscalYear?: number;
+    auditCompletionYear?: number;
+    auditCompletionStatus?: CompletionStatus;
     lastMonthlyReportReceived?: string;
     leaseExpiration?: string;
     idExpiration?: string;
     lastCompensationStudy?: string;
     bondIssuedDate?: string;
     bondRenewalDate?: string;
+    annualReportDue?: string;
+    annualReportCompletionYear?: number;
+    annualReportCompletionStatus?: CompletionStatus;
+    budgetSubmissionStart?: string;
+    budgetSubmissionEnd?: string;
+    budgetReviewToOO?: string;
+    budgetCompletionYear?: number;
+    budgetCompletionStatus?: CompletionStatus;
   };
 
 export type TrusteeUpcomingKeyDatesInput = {
@@ -275,15 +293,21 @@ export type TrusteeUpcomingKeyDatesInput = {
   pastFieldExam: string | null;
   pastAudit: string | null;
   pastTprSubmission: string | null;
+  // TPR period fields — now full dates (YYYY-MM-DD), not sentinel dates
   tprReviewPeriodStart: string | null;
   tprReviewPeriodEnd: string | null;
+  tprFrequency: TprFrequency | null;
   tprDue: string | null;
   tprDueYearType: string | null;
-  tprFrequency: 'BIANNUAL' | 'ANNUAL' | 'SEMI_ANNUAL' | null;
+  lastTprSubmitted: string | null;
+  tprCompletionYear: number | null;
+  tprCompletionStatus: CompletionStatus | null;
   tirReviewPeriodStart: string | null;
   tirReviewPeriodEnd: string | null;
   tirSubmission: string | null;
   tirReview: string | null;
+  tirCompletionYear: number | null;
+  tirCompletionStatus: CompletionStatus | null;
   upcomingExamOrAuditYear: number | null;
   upcomingExamOrAuditType: 'Field Exam' | 'Audit' | null;
   tirFrequency: 'ANNUAL' | 'SEMI_ANNUAL' | null;
@@ -292,12 +316,18 @@ export type TrusteeUpcomingKeyDatesInput = {
   tirSemiAnnualSubmission: string | null;
   tirSemiAnnualReview: string | null;
   lastAuditFiscalYear: number | null;
+  auditCompletionYear: number | null;
+  auditCompletionStatus: CompletionStatus | null;
   lastMonthlyReportReceived: string | null;
   leaseExpiration: string | null;
   idExpiration: string | null;
   lastCompensationStudy: string | null;
   bondIssuedDate: string | null;
   bondRenewalDate: string | null;
+  budgetCompletionYear: number | null;
+  budgetCompletionStatus: CompletionStatus | null;
+  annualReportCompletionYear: number | null;
+  annualReportCompletionStatus: CompletionStatus | null;
 };
 
 export type TrusteeUpcomingKeyDatesHistory = AbstractTrusteeHistory<
@@ -313,8 +343,6 @@ type DateField =
   | 'pastFieldExam'
   | 'pastAudit'
   | 'pastTprSubmission'
-  | 'tprReviewPeriodStart'
-  | 'tprReviewPeriodEnd'
   | 'tprDue'
   | 'tirReviewPeriodStart'
   | 'tirReviewPeriodEnd'
@@ -329,15 +357,21 @@ type DateField =
   | 'idExpiration'
   | 'lastCompensationStudy'
   | 'bondIssuedDate'
-  | 'bondRenewalDate';
+  | 'bondRenewalDate'
+  | 'lastTprSubmitted';
+
+// Full date fields (YYYY-MM-DD) — includes tprReviewPeriodStart/End which
+// changed from sentinel (1900-MM-DD) to full dates to support year display
+type FullDateField =
+  | 'tprReviewPeriodStart'
+  | 'tprReviewPeriodEnd'
+  | 'lastTprSubmitted';
 
 export const DATE_FIELDS: DateField[] = [
   'pastBackgroundQuestion',
   'pastFieldExam',
   'pastAudit',
   'pastTprSubmission',
-  'tprReviewPeriodStart',
-  'tprReviewPeriodEnd',
   'tprDue',
   'tirReviewPeriodStart',
   'tirReviewPeriodEnd',
@@ -353,11 +387,18 @@ export const DATE_FIELDS: DateField[] = [
   'lastCompensationStudy',
   'bondIssuedDate',
   'bondRenewalDate',
+  'lastTprSubmitted',
 ];
 
-type TextField = 'tprDueYearType' | 'tprFrequency' | 'tirFrequency';
+export const FULL_DATE_FIELDS: FullDateField[] = [
+  'tprReviewPeriodStart',
+  'tprReviewPeriodEnd',
+  'lastTprSubmitted',
+];
 
-export const TEXT_FIELDS: TextField[] = ['tprDueYearType', 'tprFrequency', 'tirFrequency'];
+type TextField = 'tprDueYearType' | 'tirFrequency' | 'tprFrequency' | 'tprCompletionStatus' | 'tirCompletionStatus' | 'auditCompletionStatus';
+
+export const TEXT_FIELDS: TextField[] = ['tprDueYearType', 'tirFrequency', 'tprFrequency', 'tprCompletionStatus', 'tirCompletionStatus', 'auditCompletionStatus'];
 
 export function isoToMMDDYYYY(iso: string): string {
   const [year, month, day] = iso.split('-');

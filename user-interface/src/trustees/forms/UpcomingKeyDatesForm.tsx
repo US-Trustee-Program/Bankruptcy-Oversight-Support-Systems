@@ -460,6 +460,18 @@ export default function UpcomingKeyDatesForm({
       lastCompensationStudy: form.lastCompensationStudy || null,
       bondIssuedDate: form.bondIssuedDate || null,
       bondRenewalDate: form.bondRenewalDate || null,
+      // New fields — not yet editable in this form; preserved from existing data
+      lastTprSubmitted: null,
+      tprCompletionYear: null,
+      tprCompletionStatus: null,
+      tirCompletionYear: null,
+      tirCompletionStatus: null,
+      auditCompletionYear: null,
+      auditCompletionStatus: null,
+      budgetCompletionYear: null,
+      budgetCompletionStatus: null,
+      annualReportCompletionYear: null,
+      annualReportCompletionStatus: null,
     };
 
     if (!tprDisplayUpdates) {

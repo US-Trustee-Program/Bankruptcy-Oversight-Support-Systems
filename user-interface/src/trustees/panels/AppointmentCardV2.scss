@@ -1,0 +1,82 @@
+.usa-accordion__content:has(.appointment-v2-container) {
+  padding-top: 0;
+}
+
+.appointment-v2-container {
+  padding: 1rem 0;
+}
+
+.appointment-v2-meta {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  font-size: 0.9375rem;
+}
+
+
+.appointment-v2-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.appointment-v2-report-card {
+  border: 1px solid #dde;
+  border-radius: 4px;
+  padding: 1.25rem 1.5rem;
+  background: #fff;
+  width: fit-content;
+  min-width: 20rem;
+}
+
+.appointment-v2-report-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.appointment-v2-report-card-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+
+  h4 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+  }
+}
+
+.appointment-v2-report-card-body {
+  overflow-x: auto;
+}
+
+
+.appointment-v2-table {
+  width: auto;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+
+  th {
+    text-align: left;
+    font-weight: 700;
+    padding: 0 1rem 0.5rem;
+    border-bottom: 1px solid #1b1b1b;
+    white-space: nowrap;
+
+    &:first-child { padding-left: 0; }
+    &:last-child { padding-right: 0; }
+  }
+
+  td {
+    padding: 0.5rem 1rem 0;
+    vertical-align: top;
+    white-space: nowrap;
+
+    &:first-child { padding-left: 0; }
+    &:last-child { padding-right: 0; }
+  }
+}
+

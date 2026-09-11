@@ -98,6 +98,7 @@ export default function CaseDetailHeader(props: Readonly<CaseDetailHeaderProps>)
                 </h1>
                 <div className="tag-list">
                   <Tag
+                    big
                     uswdsStyle={UswdsTagStyle.Primary}
                     title="Court Name and District"
                     id="court-name-and-district"
@@ -105,12 +106,13 @@ export default function CaseDetailHeader(props: Readonly<CaseDetailHeaderProps>)
                     {courtInformation}
                   </Tag>
                   {judgeInformation && (
-                    <Tag title="Judge" id="case-judge">
+                    <Tag big title="Judge" id="case-judge">
                       <GavelIcon />
                       {judgeInformation}
                     </Tag>
                   )}
                   <Tag
+                    big
                     // className="text-ink"
                     uswdsStyle={UswdsTagStyle.Warm}
                     title="Case Chapter"

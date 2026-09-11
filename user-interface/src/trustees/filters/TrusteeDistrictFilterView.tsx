@@ -161,6 +161,7 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
                     hideInternalLabel={true}
                     onSelectionsChange={viewModel.handleFilterDivision}
                     onDefaultsApplied={viewModel.onDivisionDefaultsApplied}
+                    disableDefaultDivisionCodes
                     ref={divisionRef}
                   />
                 </div>

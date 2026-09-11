@@ -377,6 +377,17 @@ describe('validateTrusteeUpcomingKeyDates', () => {
       lastCompensationStudy: null,
       bondIssuedDate: null,
       bondRenewalDate: null,
+      lastTprSubmitted: null,
+      tprCompletionYear: null,
+      tprCompletionStatus: null,
+      tirCompletionYear: null,
+      tirCompletionStatus: null,
+      auditCompletionYear: null,
+      auditCompletionStatus: null,
+      budgetCompletionYear: null,
+      budgetCompletionStatus: null,
+      annualReportCompletionYear: null,
+      annualReportCompletionStatus: null,
     };
   }
 

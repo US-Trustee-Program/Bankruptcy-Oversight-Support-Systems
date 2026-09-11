@@ -8,3 +8,22 @@
     max-width: 60rem;
   }
 }
+
+.appointment-accordion {
+  margin-bottom: 0.75rem;
+
+  .appointment-accordion-title {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+
+    .usa-tag {
+      font-weight: normal;
+    }
+  }
+
+  .usa-accordion__content {
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+  }
+}

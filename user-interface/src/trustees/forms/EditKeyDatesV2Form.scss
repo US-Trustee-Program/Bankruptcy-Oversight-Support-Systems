@@ -1,0 +1,46 @@
+.edit-kd-v2-inline-group {
+  .edit-kd-v2-inline-row {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-end;
+    margin-top: 0.25rem;
+
+    > div {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .usa-select {
+      width: 10rem;
+      margin-top: 0.25rem;
+    }
+  }
+}
+
+.edit-kd-v2-tpr-due-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 1rem;
+  margin-top: 0.25rem;
+
+  .month-day-selector {
+    margin-top: 0;
+    flex: 0 0 auto;
+    width: auto;
+  }
+
+  .edit-kd-v2-year-type {
+    margin-top: 0;
+    flex: 0 0 auto;
+
+    .usa-hint {
+      display: block;
+      padding-bottom: 0.5rem;
+    }
+
+    .usa-select {
+      width: 9rem;
+      margin-top: 0;
+    }
+  }
+}

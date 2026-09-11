@@ -102,6 +102,18 @@ function buildUpcomingKeyDatesInput(
     lastCompensationStudy: dateValue('lastCompensationStudy'),
     bondIssuedDate: dateValue('bondIssuedDate'),
     bondRenewalDate: original?.bondRenewalDate ?? null,
+    // New fields — preserved from existing data, not yet editable in this form
+    lastTprSubmitted: original?.lastTprSubmitted ?? null,
+    tprCompletionYear: original?.tprCompletionYear ?? null,
+    tprCompletionStatus: original?.tprCompletionStatus ?? null,
+    tirCompletionYear: original?.tirCompletionYear ?? null,
+    tirCompletionStatus: original?.tirCompletionStatus ?? null,
+    auditCompletionYear: original?.auditCompletionYear ?? null,
+    auditCompletionStatus: original?.auditCompletionStatus ?? null,
+    budgetCompletionYear: original?.budgetCompletionYear ?? null,
+    budgetCompletionStatus: original?.budgetCompletionStatus ?? null,
+    annualReportCompletionYear: original?.annualReportCompletionYear ?? null,
+    annualReportCompletionStatus: original?.annualReportCompletionStatus ?? null,
   };
 }
 

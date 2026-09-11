@@ -38,6 +38,7 @@ export const testFeatureFlags: FeatureFlagSet = {
   'trustee-typed-phones': true,
   'software-vendor-typed-phones': true,
   'tpr-display-updates': true,
+  'trustee-appointment-layout-v2': true,
 };
 
 export type LaunchDarklyContext = {

@@ -50,25 +50,33 @@ interface AccordionProps extends PropsWithChildren {
   expandedId?: string;
   onExpand?: (id: string) => void;
   onCollapse?: (id: string) => void;
+  onToggle?: (expanded: boolean) => void;
   hidden?: boolean;
   ariaDescription?: string;
+  initialExpanded?: boolean;
 }
 
 export const Accordion: FunctionComponent<AccordionProps> = (props) => {
   const { hidden } = props;
-  const [expanded, setExpanded] = useState<boolean>(false);
+  const [expanded, setExpanded] = useState<boolean>(props.initialExpanded ?? false);
 
   useEffect(() => {
-    setExpanded(props.expandedId === props.id);
+    if (props.expandedId !== undefined) {
+      setExpanded(props.expandedId === props.id);
+    }
   }, [props.expandedId]);
 
   function toggle() {
-    setExpanded(!expanded);
+    const newExpanded = !expanded;
+    setExpanded(newExpanded);
     if (props.onExpand) {
       props.onExpand(props.id);
     }
     if (props.onCollapse) {
       props.onCollapse(props.id);
+    }
+    if (props.onToggle) {
+      props.onToggle(newExpanded);
     }
   }
 

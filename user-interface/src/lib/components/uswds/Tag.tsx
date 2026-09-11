@@ -15,13 +15,15 @@ export enum UswdsTagStyle {
 
 type TagProps = JSX.IntrinsicElements['span'] & {
   uswdsStyle?: UswdsTagStyle;
+  big?: boolean;
 };
 
 const Tag = (props: TagProps) => {
-  const { id, uswdsStyle, className, title, children, ...otherProps } = props;
+  const { id, uswdsStyle, big, className, title, children, ...otherProps } = props;
   const generatedId = useId();
 
-  const classes = ['usa-tag', 'usa-tag--big', 'text-no-uppercase'];
+  const classes = ['usa-tag', 'text-no-uppercase'];
+  if (big) classes.push('usa-tag--big');
 
   if (uswdsStyle) {
     classes.push(uswdsStyle);

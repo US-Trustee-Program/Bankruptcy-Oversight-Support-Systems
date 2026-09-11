@@ -44,13 +44,14 @@ import {
 import {
   CaseAppointment,
   CaseTrusteeAppointmentHistory,
+  TrusteeAppointment,
   TrusteeAppointmentInput,
   TrusteeCaseListItem,
 } from '@common/cams/trustee-appointments';
 import { TrusteeStaff, TrusteeStaffInput } from '@common/cams/trustee-staff';
 import { TrusteeNote, TrusteeNoteInput } from '@common/cams/trustee-notes';
 import { TrusteeSearchResult } from '@common/cams/trustee-search';
-import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
+import { TrusteeUpcomingKeyDates, TrusteeUpcomingKeyDatesInput } from '@common/cams/trustee-upcoming-key-dates';
 import { BankProfile } from '@common/cams/banks';
 import {
   NotificationRoutingRecord,
@@ -548,6 +549,30 @@ const courts = [
     regionId: '18',
     regionName: 'SEATTLE',
     state: 'AK',
+  },
+  {
+    officeName: 'Manhattan',
+    officeCode: '1',
+    courtId: '0208',
+    courtName: 'Southern District of New York',
+    courtDivisionCode: '081',
+    courtDivisionName: 'Manhattan',
+    groupDesignator: 'NY',
+    regionId: '2',
+    regionName: 'NEW YORK',
+    state: 'NY',
+  },
+  {
+    officeName: 'White Plains',
+    officeCode: '2',
+    courtId: '0208',
+    courtName: 'Southern District of New York',
+    courtDivisionCode: '087',
+    courtDivisionName: 'White Plains',
+    groupDesignator: 'NY',
+    regionId: '2',
+    regionName: 'NEW YORK',
+    state: 'NY',
   },
 ];
 
@@ -1788,12 +1813,38 @@ async function post<T = unknown>(
       );
     }
     return response as ResponseBody<T>;
+  } else if (path.match(/\/trustees\/[\w-]+\/appointments/i)) {
+    const trusteeId = path.match(/\/trustees\/([\w-]+)\/appointments/i)?.[1] ?? '';
+    const input = body as TrusteeAppointmentInput;
+    const divCode = input.divisionCode ?? input.divisionCodes?.[0];
+    const courtEntry = courts.find((c) => c.courtId === input.courtId && c.courtDivisionCode === divCode)
+      ?? courts.find((c) => c.courtId === input.courtId);
+    const appointment: TrusteeAppointment = {
+      id: randomId(),
+      trusteeId,
+      chapter: input.chapter,
+      appointmentType: input.appointmentType,
+      courtId: input.courtId,
+      courtName: input.courtName ?? courtEntry?.courtName,
+      divisionCode: divCode,
+      divisionCodes: input.divisionCodes,
+      courtDivisionName: input.courtDivisionName ?? courtEntry?.courtDivisionName,
+      appointedDate: input.appointedDate,
+      status: input.status,
+      effectiveDate: input.effectiveDate,
+      updatedOn: new Date().toISOString(),
+      updatedBy: { id: 'user-1', name: 'Mock User' },
+    };
+    const existing = mockNewAppointmentsStore.get(trusteeId) ?? [];
+    mockNewAppointmentsStore.set(trusteeId, [...existing, appointment]);
+    return { data: appointment } as ResponseBody<T>;
   } else if (path.match(/^\/trustees$/)) {
     const input = body as TrusteeInput;
+    const newId = randomId();
     const created: Trustee = {
       ...input,
-      id: randomId(),
-      trusteeId: randomId(),
+      id: newId,
+      trusteeId: newId,
       createdBy: { id: 'user-1', name: 'Mock User' },
       createdOn: new Date().toISOString(),
       lastUpdatedBy: { id: 'user-1', name: 'Mock User' },
@@ -1801,6 +1852,7 @@ async function post<T = unknown>(
       updatedBy: { id: 'user-1', name: 'Mock User' },
       updatedOn: new Date().toISOString(),
     } as unknown as Trustee;
+    mockNewTrusteesStore.set(newId, (input as { name?: string }).name ?? 'New Trustee');
     return { data: created } as ResponseBody<T>;
   } else {
     throw new Error();
@@ -1898,71 +1950,39 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
       data: resourceActionTrusteeNotes,
     };
   } else if (path.match(/\/trustees\/[A-Z\d-]+/i)) {
+    const trusteeIdFromPath = path.match(/\/trustees\/([\w-]+)/i)?.[1] ?? '';
+    const trusteeProfiles: Record<string, { name: string; email: string; phone: string; address1: string; city: string; state: string; zipCode: string }> = {
+      'trustee-001': { name: 'Henry Green',   email: 'henry.green@example.com',   phone: '(212) 555-1234', address1: '8904 Marquardt Keys',   city: 'New York',       state: 'NY', zipCode: '10001' },
+      'trustee-002': { name: 'Jane Smith',    email: 'jane.smith@example.com',    phone: '(207) 555-9632', address1: '18098 Kitty Canyon',     city: 'Portland',       state: 'ME', zipCode: '04101' },
+      'trustee-003': { name: 'Bob Johnson',   email: 'bob.johnson@example.com',   phone: '(203) 555-4970', address1: '68622 Judd Highway',     city: 'Hartford',       state: 'CT', zipCode: '06103' },
+      'trustee-004': { name: 'Maria Ramirez', email: 'maria.ramirez@example.com', phone: '(312) 555-7890', address1: '221 Baker Street',       city: 'Chicago',        state: 'IL', zipCode: '60601' },
+      'trustee-005': { name: 'David Chen',    email: 'david.chen@example.com',    phone: '(415) 555-3322', address1: '450 Market Street',      city: 'San Francisco',  state: 'CA', zipCode: '94105' },
+    };
+    const storedName = mockNewTrusteesStore.get(trusteeIdFromPath);
+    const profile = trusteeProfiles[trusteeIdFromPath]
+      ?? (storedName ? { name: storedName, email: '', phone: '', address1: '', city: '', state: '', zipCode: '' } : null)
+      ?? { name: 'Jeffery Roberts', email: 'Turner92@yahoo.com', phone: '599-900-2822', address1: '64045 Dare Mews', city: 'Makaylaberg', state: 'TN', zipCode: '97087' };
     response = {
       data: {
-        id: '79423bc7-a086-47f1-adb4-f66bdcdee74a',
-        trusteeId: 'ab6b007b-deb3-4f88-b376-0f3786ce75d3',
+        id: trusteeIdFromPath,
+        trusteeId: trusteeIdFromPath,
         updatedOn: '2025-11-05T11:24:27.700Z',
-        updatedBy: {
-          id: 'guid-88076',
-          name: 'Elizabeth Grady',
-        },
-        name: 'Jeffery Roberts',
+        updatedBy: { id: 'user-1', name: 'Mock User' },
+        name: profile.name,
         public: {
-          phone: {
-            number: '599-900-2822',
-          },
-          email: 'Turner92@yahoo.com',
+          phone: { number: profile.phone },
+          email: profile.email,
           address: {
-            address1: '64045 Dare Mews',
-            address2: 'Suite 470',
+            address1: profile.address1,
+            address2: '',
             address3: '',
-            city: 'Makaylaberg',
-            state: 'TN',
-            zipCode: '97087',
+            city: profile.city,
+            state: profile.state,
+            zipCode: profile.zipCode,
             countryCode: 'US',
           },
         },
-        staff: [
-          {
-            id: 'staff-001',
-            trusteeId: 'ab6b007b-deb3-4f88-b376-0f3786ce75d3',
-            name: 'Test Staff One',
-            title: 'Senior Staff',
-            contact: {
-              address: {
-                address1: '123 Main St',
-                city: 'Test City',
-                state: 'NY',
-                zipCode: '10001',
-                countryCode: 'US' as const,
-              },
-              phone: { number: '555-123-4567' },
-              email: 'staff1@example.com',
-            },
-            updatedBy: { id: 'user-1', name: 'Admin User' },
-            updatedOn: '2025-01-01T00:00:00.000Z',
-          },
-          {
-            id: 'staff-002',
-            trusteeId: 'ab6b007b-deb3-4f88-b376-0f3786ce75d3',
-            name: 'Test Staff Two',
-            title: 'Junior Staff',
-            contact: {
-              address: {
-                address1: '456 Oak Ave',
-                city: 'Another City',
-                state: 'CA',
-                zipCode: '90001',
-                countryCode: 'US' as const,
-              },
-              phone: { number: '555-987-6543' },
-              email: 'staff2@example.com',
-            },
-            updatedBy: { id: 'user-1', name: 'Admin User' },
-            updatedOn: '2025-01-02T00:00:00.000Z',
-          },
-        ],
+        staff: [],
       },
     };
   } else if (path.match(/\/trustees/)) {
@@ -1971,36 +1991,48 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
         {
           id: 'trustee-001',
           trusteeId: 'trustee-001',
-          name: 'John Doe',
-          firstName: 'John',
-          lastName: 'Doe',
+          name: 'Henry Green',
+          firstName: 'Henry',
+          lastName: 'Green',
           updatedOn: '2025-01-01T00:00:00.000Z',
-          updatedBy: {
-            id: 'user-1',
-            name: 'Mock User',
-          },
+          updatedBy: { id: 'user-1', name: 'Mock User' },
           legacy: {
             address1: '8904 Marquardt Keys',
             address2: 'Apt. 284',
-            address3: 'suite 100',
-            cityStateZipCountry: 'Margate, CT, 85948-6281, US',
-            phone: '(694) 876-7057 x45546',
-            email: 'Maurice.Windler@gmail.com',
+            address3: '',
+            cityStateZipCountry: 'New York, NY, 10001, US',
+            phone: '(212) 555-1234',
+            email: 'henry.green@example.com',
           },
           appointments: [
             {
-              id: 'appt-001',
+              id: 'appointment-1',
               trusteeId: 'trustee-001',
               chapter: '7',
               appointmentType: 'panel',
-              courtId: '097-',
-              courtName: 'District of Alaska',
-              divisionCode: '730',
-              courtDivisionName: 'Anchorage',
-              appointedDate: '2020-01-01',
+              courtId: '0208',
+              courtName: 'Southern District of New York',
+              divisionCode: '081',
+              courtDivisionName: 'Manhattan',
+              appointedDate: '2023-01-01T00:00:00Z',
               status: 'active',
-              effectiveDate: '2020-01-01',
-              updatedOn: '2025-01-01T00:00:00.000Z',
+              effectiveDate: '2023-01-01T00:00:00Z',
+              updatedOn: '2023-01-01T00:00:00Z',
+              updatedBy: { id: 'user-1', name: 'Mock User' },
+            },
+            {
+              id: 'appointment-2',
+              trusteeId: 'trustee-001',
+              chapter: '12',
+              appointmentType: 'standing',
+              courtId: '0208',
+              courtName: 'Southern District of New York',
+              divisionCode: '081',
+              courtDivisionName: 'Manhattan',
+              appointedDate: '2022-02-21T00:00:00Z',
+              status: 'active',
+              effectiveDate: '2022-02-21T00:00:00Z',
+              updatedOn: '2022-02-21T00:00:00Z',
               updatedBy: { id: 'user-1', name: 'Mock User' },
             },
           ],
@@ -2012,17 +2044,14 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
           firstName: 'Jane',
           lastName: 'Smith',
           updatedOn: '2025-01-01T00:00:00.000Z',
-          updatedBy: {
-            id: 'user-1',
-            name: 'Mock User',
-          },
+          updatedBy: { id: 'user-1', name: 'Mock User' },
           legacy: {
             address1: '18098 Kitty Canyon',
             address2: 'Suite 449',
-            address3: 'suite 100',
-            cityStateZipCountry: 'Johnscester, ME, 83363, US',
-            phone: '963-363-4964 x4002',
-            email: 'Arnaldo_Runolfsson@yahoo.com',
+            address3: '',
+            cityStateZipCountry: 'Portland, ME, 04101, US',
+            phone: '(207) 555-9632',
+            email: 'jane.smith@example.com',
           },
           appointments: [
             {
@@ -2030,10 +2059,10 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
               trusteeId: 'trustee-002',
               chapter: '13',
               appointmentType: 'standing',
-              courtId: '097-',
-              courtName: 'District of Alaska',
-              divisionCode: '710',
-              courtDivisionName: 'Juneau',
+              courtId: '010-',
+              courtName: 'District of Maine',
+              divisionCode: '101',
+              courtDivisionName: 'Portland',
               appointedDate: '2019-06-01',
               status: 'active',
               effectiveDate: '2019-06-01',
@@ -2049,17 +2078,14 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
           firstName: 'Bob',
           lastName: 'Johnson',
           updatedOn: '2025-01-01T00:00:00.000Z',
-          updatedBy: {
-            id: 'user-1',
-            name: 'Mock User',
-          },
+          updatedBy: { id: 'user-1', name: 'Mock User' },
           legacy: {
             address1: '68622 Judd Highway',
             address2: 'Suite 147',
-            address3: 'suite 100',
-            cityStateZipCountry: 'Urbanworth, CT, 12981, US',
-            phone: '(203) 424-9970',
-            email: 'Lawrence_Auer9@hotmail.com',
+            address3: '',
+            cityStateZipCountry: 'Hartford, CT, 06103, US',
+            phone: '(203) 555-4970',
+            email: 'bob.johnson@example.com',
           },
           appointments: [
             {
@@ -2067,10 +2093,10 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
               trusteeId: 'trustee-003',
               chapter: '7',
               appointmentType: 'panel',
-              courtId: '097-',
-              courtName: 'District of Alaska',
-              divisionCode: '720',
-              courtDivisionName: 'Nome',
+              courtId: '020-',
+              courtName: 'District of Connecticut',
+              divisionCode: '201',
+              courtDivisionName: 'Hartford',
               appointedDate: '2021-03-15',
               status: 'active',
               effectiveDate: '2021-03-15',
@@ -2078,6 +2104,42 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
               updatedBy: { id: 'user-1', name: 'Mock User' },
             },
           ],
+        },
+        {
+          id: 'trustee-004',
+          trusteeId: 'trustee-004',
+          name: 'Maria Ramirez',
+          firstName: 'Maria',
+          lastName: 'Ramirez',
+          updatedOn: '2025-01-01T00:00:00.000Z',
+          updatedBy: { id: 'user-1', name: 'Mock User' },
+          legacy: {
+            address1: '221 Baker Street',
+            address2: '',
+            address3: '',
+            cityStateZipCountry: 'Chicago, IL, 60601, US',
+            phone: '(312) 555-7890',
+            email: 'maria.ramirez@example.com',
+          },
+          appointments: [],
+        },
+        {
+          id: 'trustee-005',
+          trusteeId: 'trustee-005',
+          name: 'David Chen',
+          firstName: 'David',
+          lastName: 'Chen',
+          updatedOn: '2025-01-01T00:00:00.000Z',
+          updatedBy: { id: 'user-1', name: 'Mock User' },
+          legacy: {
+            address1: '450 Market Street',
+            address2: 'Ste 300',
+            address3: '',
+            cityStateZipCountry: 'San Francisco, CA, 94105, US',
+            phone: '(415) 555-3322',
+            email: 'david.chen@example.com',
+          },
+          appointments: [],
         },
       ],
     };
@@ -2692,23 +2754,146 @@ async function getTrusteeHistory(_ignore: string): Promise<ResponseBody<TrusteeH
 }
 
 async function getTrusteeAppointments(trusteeId: string) {
-  return {
-    data: [
-      {
-        id: 'appointment-1',
-        trusteeId,
-        chapter: '7' as const,
-        appointmentType: 'panel' as const,
-        courtId: '0208',
-        divisionCode: '081',
-        appointedDate: '2023-01-01T00:00:00Z',
-        status: 'active' as const,
-        effectiveDate: '2023-01-01T00:00:00Z',
-        updatedOn: '2023-01-01T00:00:00Z',
-        updatedBy: { id: 'user-1', name: 'Mock User' },
-      },
-    ],
-  };
+  if (trusteeId === 'trustee-001') {
+    return {
+      data: [
+        {
+          id: 'appointment-1',
+          trusteeId,
+          chapter: '7' as const,
+          appointmentType: 'panel' as const,
+          courtId: '0208',
+          courtName: 'Southern District of New York',
+          divisionCode: '081',
+          courtDivisionName: 'Manhattan',
+          appointedDate: '2023-01-01T00:00:00Z',
+          status: 'active' as const,
+          effectiveDate: '2023-01-01T00:00:00Z',
+          updatedOn: '2023-01-01T00:00:00Z',
+          updatedBy: { id: 'user-1', name: 'Mock User' },
+        },
+        {
+          id: 'appointment-2',
+          trusteeId,
+          chapter: '12' as const,
+          appointmentType: 'standing' as const,
+          courtId: '0208',
+          courtName: 'Southern District of New York',
+          divisionCode: '081',
+          courtDivisionName: 'Manhattan',
+          appointedDate: '2022-02-21T00:00:00Z',
+          status: 'active' as const,
+          effectiveDate: '2022-02-21T00:00:00Z',
+          updatedOn: '2022-02-21T00:00:00Z',
+          updatedBy: { id: 'user-1', name: 'Mock User' },
+        },
+        {
+          id: 'appointment-4',
+          trusteeId,
+          chapter: '11-subchapter-v' as const,
+          appointmentType: 'pool' as const,
+          courtId: '0208',
+          courtName: 'Southern District of New York',
+          divisionCode: '081',
+          courtDivisionName: 'Manhattan',
+          appointedDate: '2022-02-21T00:00:00Z',
+          status: 'active' as const,
+          effectiveDate: '2022-02-21T00:00:00Z',
+          updatedOn: '2022-02-21T00:00:00Z',
+          updatedBy: { id: 'user-1', name: 'Mock User' },
+        },
+        {
+          id: 'appointment-3',
+          trusteeId,
+          chapter: '13' as const,
+          appointmentType: 'standing' as const,
+          courtId: '0208',
+          courtName: 'Southern District of New York',
+          divisionCode: '081',
+          courtDivisionName: 'Manhattan',
+          appointedDate: '2021-06-15T00:00:00Z',
+          status: 'active' as const,
+          effectiveDate: '2021-06-15T00:00:00Z',
+          updatedOn: '2021-06-15T00:00:00Z',
+          updatedBy: { id: 'user-1', name: 'Mock User' },
+        },
+        {
+          id: 'appointment-6',
+          trusteeId,
+          chapter: '13' as const,
+          appointmentType: 'case-by-case' as const,
+          courtId: '0208',
+          courtName: 'Southern District of New York',
+          divisionCode: '081',
+          courtDivisionName: 'Manhattan',
+          appointedDate: '2022-02-21T00:00:00Z',
+          status: 'active' as const,
+          effectiveDate: '2022-02-21T00:00:00Z',
+          updatedOn: '2022-02-21T00:00:00Z',
+          updatedBy: { id: 'user-1', name: 'Mock User' },
+        },
+        {
+          id: 'appointment-5',
+          trusteeId,
+          chapter: '12' as const,
+          appointmentType: 'case-by-case' as const,
+          courtId: '0208',
+          courtName: 'Southern District of New York',
+          divisionCode: '081',
+          courtDivisionName: 'Manhattan',
+          appointedDate: '2022-02-21T00:00:00Z',
+          status: 'active' as const,
+          effectiveDate: '2022-02-21T00:00:00Z',
+          updatedOn: '2022-02-21T00:00:00Z',
+          updatedBy: { id: 'user-1', name: 'Mock User' },
+        },
+      ],
+    };
+  }
+  if (trusteeId === 'trustee-002') {
+    return {
+      data: [
+        {
+          id: 'appt-002',
+          trusteeId,
+          chapter: '13' as const,
+          appointmentType: 'standing' as const,
+          courtId: '010-',
+          courtName: 'District of Maine',
+          divisionCode: '101',
+          courtDivisionName: 'Portland',
+          appointedDate: '2019-06-01T00:00:00Z',
+          status: 'active' as const,
+          effectiveDate: '2019-06-01T00:00:00Z',
+          updatedOn: '2025-01-01T00:00:00.000Z',
+          updatedBy: { id: 'user-1', name: 'Mock User' },
+        },
+      ],
+    };
+  }
+  if (trusteeId === 'trustee-003') {
+    return {
+      data: [
+        {
+          id: 'appt-003',
+          trusteeId,
+          chapter: '7' as const,
+          appointmentType: 'panel' as const,
+          courtId: '020-',
+          courtName: 'District of Connecticut',
+          divisionCode: '201',
+          courtDivisionName: 'Hartford',
+          appointedDate: '2021-03-15T00:00:00Z',
+          status: 'active' as const,
+          effectiveDate: '2021-03-15T00:00:00Z',
+          updatedOn: '2025-01-01T00:00:00.000Z',
+          updatedBy: { id: 'user-1', name: 'Mock User' },
+        },
+      ],
+    };
+  }
+  const stored = mockNewAppointmentsStore.get(trusteeId);
+  return { data: stored ?? [] };
 }
 
 async function postTrusteeAppointment(trusteeId: string, appointment: TrusteeAppointmentInput) {
@@ -3076,18 +3261,237 @@ async function getCaseTrusteeAppointment(
   return { data };
 }
 
+const mockNewTrusteesStore = new Map<string, string>(); // trusteeId -> name
+const mockNewAppointmentsStore = new Map<string, TrusteeAppointment[]>(); // trusteeId -> appointments
+
+const MOCK_KEY_DATES_SESSION_KEY = 'cams:mock:key-dates';
+
+function persistKeyDates(store: Map<string, TrusteeUpcomingKeyDates>) {
+  try {
+    const obj: Record<string, TrusteeUpcomingKeyDates> = {};
+    store.forEach((v, k) => { obj[k] = v; });
+    sessionStorage.setItem(MOCK_KEY_DATES_SESSION_KEY, JSON.stringify(obj));
+  } catch { /* ignore */ }
+}
+
+function loadPersistedKeyDates(store: Map<string, TrusteeUpcomingKeyDates>) {
+  try {
+    const raw = sessionStorage.getItem(MOCK_KEY_DATES_SESSION_KEY);
+    if (!raw) return;
+    const saved = JSON.parse(raw) as Record<string, TrusteeUpcomingKeyDates>;
+    for (const [id, data] of Object.entries(saved)) {
+      store.set(id, data);
+    }
+  } catch { /* ignore */ }
+}
+
+const mockKeyDatesStore = new Map<string, TrusteeUpcomingKeyDates>([
+  [
+    'appointment-1',
+    {
+      id: 'key-dates-1',
+      documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
+      trusteeId: 'trustee-1',
+      appointmentId: 'appointment-1',
+      createdOn: '2023-01-01T00:00:00Z',
+      createdBy: { id: 'user-1', name: 'Mock User' },
+      updatedOn: '2024-06-01T00:00:00Z',
+      updatedBy: { id: 'user-1', name: 'Mock User' },
+      upcomingExamOrAuditYear: 2026,
+      upcomingExamOrAuditType: 'Audit',
+      lastAuditFiscalYear: 2023,
+      pastAudit: '2024-02-04',
+      pastFieldExam: '2025-04-12',
+      auditCompletionYear: 2026,
+      auditCompletionStatus: 'COMPLETE',
+      tprReviewPeriodStart: '2026-04-01',
+      tprReviewPeriodEnd: '2027-03-31',
+      tprFrequency: 'ANNUAL',
+      tprDue: '1900-10-06',
+      tprDueYearType: 'EVEN',
+      lastTprSubmitted: '2024-10-03',
+      tprCompletionYear: 2026,
+      tprCompletionStatus: 'INCOMPLETE',
+      tirFrequency: 'ANNUAL',
+      tirReviewPeriodStart: '1900-01-01',
+      tirReviewPeriodEnd: '1900-12-31',
+      tirSubmission: '1900-01-30',
+      tirReview: '1900-03-30',
+      pastTprSubmission: '2026-06-06',
+      tirCompletionYear: 2026,
+      tirCompletionStatus: 'INCOMPLETE',
+      pastBackgroundQuestion: '2023-06-03',
+    },
+  ],
+  [
+    'appointment-2',
+    {
+      id: 'key-dates-2',
+      documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
+      trusteeId: 'trustee-1',
+      appointmentId: 'appointment-2',
+      createdOn: '2022-02-21T00:00:00Z',
+      createdBy: { id: 'user-1', name: 'Mock User' },
+      updatedOn: '2024-06-01T00:00:00Z',
+      updatedBy: { id: 'user-1', name: 'Mock User' },
+      // Audit
+      lastAuditFiscalYear: 2023,
+      pastAudit: '2023-02-04',
+      auditCompletionYear: 2026,
+      auditCompletionStatus: 'COMPLETE',
+      // TPR
+      tprReviewPeriodStart: '2026-04-01',
+      tprReviewPeriodEnd: '2027-03-31',
+      tprFrequency: 'ANNUAL',
+      tprDue: '1900-10-06',
+      tprDueYearType: 'EVEN',
+      lastTprSubmitted: '2024-10-03',
+      tprCompletionYear: 2026,
+      tprCompletionStatus: 'INCOMPLETE',
+      // Budget (fixed display values, not editable)
+      budgetSubmissionStart: '1900-01-01',
+      budgetSubmissionEnd: '1900-12-31',
+      budgetReviewToOO: '1900-01-30',
+      budgetCompletionYear: 2026,
+      budgetCompletionStatus: 'INCOMPLETE',
+      // Other
+      annualReportDue: '1900-09-30',
+      leaseExpiration: '2027-06-03',
+      idExpiration: '2027-06-03',
+      pastBackgroundQuestion: '2023-06-03',
+    },
+  ],
+  [
+    'appointment-3',
+    {
+      id: 'key-dates-3',
+      documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
+      trusteeId: 'trustee-001',
+      appointmentId: 'appointment-3',
+      createdOn: '2021-06-15T00:00:00Z',
+      createdBy: { id: 'user-1', name: 'Mock User' },
+      updatedOn: '2024-06-01T00:00:00Z',
+      updatedBy: { id: 'user-1', name: 'Mock User' },
+      // Audit
+      lastAuditFiscalYear: 2023,
+      pastAudit: '2023-02-04',
+      auditCompletionYear: 2026,
+      auditCompletionStatus: 'COMPLETE',
+      // TPR
+      tprReviewPeriodStart: '2026-04-01',
+      tprReviewPeriodEnd: '2027-03-31',
+      tprFrequency: 'ANNUAL',
+      tprDue: '1900-10-06',
+      tprDueYearType: 'EVEN',
+      lastTprSubmitted: '2024-10-03',
+      tprCompletionYear: 2026,
+      tprCompletionStatus: 'INCOMPLETE',
+      // Budget (fixed display values, not editable)
+      budgetSubmissionStart: '1900-01-01',
+      budgetSubmissionEnd: '1900-12-31',
+      budgetReviewToOO: '1900-01-30',
+      budgetCompletionYear: 2026,
+      budgetCompletionStatus: 'INCOMPLETE',
+      // Other (no annualReportDue for Chapter 13)
+      leaseExpiration: '2027-06-03',
+      idExpiration: '2027-06-03',
+      pastBackgroundQuestion: '2023-06-03',
+    },
+  ],
+  [
+    'appointment-4',
+    {
+      id: 'key-dates-4',
+      documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
+      trusteeId: 'trustee-001',
+      appointmentId: 'appointment-4',
+      createdOn: '2022-02-21T00:00:00Z',
+      createdBy: { id: 'user-1', name: 'Mock User' },
+      updatedOn: '2024-06-01T00:00:00Z',
+      updatedBy: { id: 'user-1', name: 'Mock User' },
+      lastMonthlyReportReceived: '2023-06-03',
+    },
+  ],
+  [
+    'appointment-6',
+    {
+      id: 'key-dates-6',
+      documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
+      trusteeId: 'trustee-001',
+      appointmentId: 'appointment-6',
+      createdOn: '2022-02-21T00:00:00Z',
+      createdBy: { id: 'user-1', name: 'Mock User' },
+      updatedOn: '2024-06-01T00:00:00Z',
+      updatedBy: { id: 'user-1', name: 'Mock User' },
+      annualReportCompletionYear: 2026,
+      annualReportCompletionStatus: 'INCOMPLETE',
+      tprReviewPeriodStart: '2026-04-01',
+      tprReviewPeriodEnd: '2027-03-31',
+      tprFrequency: 'ANNUAL',
+      tprDue: '1900-10-06',
+      tprDueYearType: 'EVEN',
+      lastTprSubmitted: '2024-10-03',
+      tprCompletionYear: 2026,
+      tprCompletionStatus: 'INCOMPLETE',
+    },
+  ],
+  [
+    'appointment-5',
+    {
+      id: 'key-dates-5',
+      documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
+      trusteeId: 'trustee-001',
+      appointmentId: 'appointment-5',
+      createdOn: '2022-02-21T00:00:00Z',
+      createdBy: { id: 'user-1', name: 'Mock User' },
+      updatedOn: '2024-06-01T00:00:00Z',
+      updatedBy: { id: 'user-1', name: 'Mock User' },
+      annualReportCompletionYear: 2026,
+      annualReportCompletionStatus: 'INCOMPLETE',
+      tprReviewPeriodStart: '2026-04-01',
+      tprReviewPeriodEnd: '2027-03-31',
+      tprFrequency: 'ANNUAL',
+      tprDue: '1900-10-06',
+      tprDueYearType: 'EVEN',
+      lastTprSubmitted: '2024-10-03',
+      tprCompletionYear: 2026,
+      tprCompletionStatus: 'INCOMPLETE',
+    },
+  ],
+]);
+
+loadPersistedKeyDates(mockKeyDatesStore);
+
 async function getUpcomingKeyDates(
   _trusteeId: string,
-  _appointmentId: string,
+  appointmentId: string,
 ): Promise<ResponseBody<TrusteeUpcomingKeyDates | null>> {
-  return { data: null };
+  return { data: mockKeyDatesStore.get(appointmentId) ?? null };
 }
 
 async function putUpcomingKeyDates(
-  _trusteeId: string,
-  _appointmentId: string,
-  _input: unknown,
+  trusteeId: string,
+  appointmentId: string,
+  input: TrusteeUpcomingKeyDatesInput,
 ): Promise<ResponseBody<null>> {
+  const existing = mockKeyDatesStore.get(appointmentId) ?? {
+    id: randomId(),
+    documentType: 'TRUSTEE_UPCOMING_REPORT_DATES' as const,
+    trusteeId,
+    appointmentId,
+    createdOn: new Date().toISOString(),
+    createdBy: { id: 'user-1', name: 'Mock User' },
+    updatedOn: new Date().toISOString(),
+    updatedBy: { id: 'user-1', name: 'Mock User' },
+  };
+  const updated: TrusteeUpcomingKeyDates = { ...existing };
+  for (const [key, value] of Object.entries(input)) {
+    if (key !== 'trusteeId' && key !== 'appointmentId') {
+      (updated as Record<string, unknown>)[key] = value ?? undefined;
+    }
+  }
+  mockKeyDatesStore.set(appointmentId, updated);
+  persistKeyDates(mockKeyDatesStore);
   return { data: null };
 }
 

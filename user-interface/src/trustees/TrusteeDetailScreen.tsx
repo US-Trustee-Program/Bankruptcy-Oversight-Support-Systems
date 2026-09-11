@@ -27,6 +27,7 @@ import TrusteeAppointmentForm from './forms/TrusteeAppointmentForm';
 import EditTrusteeAppointment from './forms/EditTrusteeAppointment';
 import UpcomingKeyDatesForm from './forms/UpcomingKeyDatesForm';
 import PastKeyDatesForm from './forms/PastKeyDatesForm';
+import EditKeyDatesV2Form from './forms/EditKeyDatesV2Form';
 import TrusteeMeetingOfCreditorsInfoForm from './forms/TrusteeMeetingOfCreditorsInfoForm';
 import TrusteeNotes from '@/trustees/panels/trustee-notes/TrusteeNotes';
 import useFeatureFlags, {
@@ -277,6 +278,11 @@ export default function TrusteeDetailScreen() {
       ),
       subHeading: (location.state as { subHeading?: string } | null)?.subHeading ?? '',
       content: <UpcomingKeyDatesForm tprDisplayUpdates={tprDisplayUpdates} />,
+    },
+    {
+      path: 'appointments/:appointmentId/edit-key-dates-v2/:section',
+      subHeading: (location.state as { subHeading?: string } | null)?.subHeading ?? '',
+      content: <EditKeyDatesV2Form />,
     },
     {
       path: 'appointments/:appointmentId/past-key-dates/edit',
