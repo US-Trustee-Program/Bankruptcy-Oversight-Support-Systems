@@ -7,7 +7,7 @@ const CSV_HEADER = 'periodStart,periodEnd,deploymentCount,deploymentsPerDay';
 export async function writeCsv(buckets: PeriodBucket[], filePath: string): Promise<void> {
   const rows = buckets.map(
     (bucket) =>
-      `${bucket.periodStart},${bucket.periodEnd},${bucket.deploymentCount},${bucket.deploymentsPerDay}`,
+      `${bucket.periodStart},${bucket.periodEnd},${bucket.deploymentCount},${bucket.deploymentsPerDay.toFixed(2)}`,
   );
   const csv = [CSV_HEADER, ...rows].join('\n') + '\n';
 

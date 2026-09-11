@@ -29,10 +29,15 @@ function resolvePeriodDays(): number {
   return raw ? Number(raw) : DEFAULT_PERIOD_DAYS;
 }
 
+function resolveEnvVar(name: string, defaultValue: string): string {
+  const raw = process.env[name];
+  return raw ? raw : defaultValue;
+}
+
 async function main(): Promise<void> {
-  const owner = process.env.DORA_OWNER ?? DEFAULT_OWNER;
-  const repo = process.env.DORA_REPO ?? DEFAULT_REPO;
-  const workflowFileName = process.env.DORA_WORKFLOW_FILE_NAME ?? DEFAULT_WORKFLOW_FILE_NAME;
+  const owner = resolveEnvVar('DORA_OWNER', DEFAULT_OWNER);
+  const repo = resolveEnvVar('DORA_REPO', DEFAULT_REPO);
+  const workflowFileName = resolveEnvVar('DORA_WORKFLOW_FILE_NAME', DEFAULT_WORKFLOW_FILE_NAME);
   const startDate = resolveStartDate();
   const periodDays = resolvePeriodDays();
 

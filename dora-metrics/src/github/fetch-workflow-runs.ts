@@ -20,6 +20,10 @@ export async function fetchWorkflowRuns({
   branch,
   since,
 }: FetchWorkflowRunsParams): Promise<WorkflowRun[]> {
+  if (Number.isNaN(since.getTime())) {
+    throw new Error('fetchWorkflowRuns: since must be a valid Date');
+  }
+
   const runs: WorkflowRun[] = [];
   let page = 1;
   let fetchedCount = 0;
@@ -30,6 +34,7 @@ export async function fetchWorkflowRuns({
       owner,
       repo,
       workflow_id: workflowFileName,
+      branch,
       per_page: PER_PAGE,
       page,
     });

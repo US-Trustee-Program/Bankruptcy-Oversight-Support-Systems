@@ -38,8 +38,10 @@ describe('writeCsv', () => {
     const contents = await readFile(filePath, 'utf8');
     const lines = contents.trim().split('\n');
     expect(lines[0]).toBe('periodStart,periodEnd,deploymentCount,deploymentsPerDay');
-    expect(lines[1]).toBe(`2026-01-01T00:00:00.000Z,2026-01-08T00:00:00.000Z,3,${3 / 7}`);
-    expect(lines[2]).toBe('2026-01-08T00:00:00.000Z,2026-01-15T00:00:00.000Z,0,0');
+    expect(lines[1]).toBe(
+      `2026-01-01T00:00:00.000Z,2026-01-08T00:00:00.000Z,3,${(3 / 7).toFixed(2)}`,
+    );
+    expect(lines[2]).toBe('2026-01-08T00:00:00.000Z,2026-01-15T00:00:00.000Z,0,0.00');
   });
 
   test('creates the parent directory if it does not exist', async () => {
@@ -62,6 +64,8 @@ describe('writeCsv', () => {
     const contents = await readFile(filePath, 'utf8');
     const lines = contents.trim().split('\n');
     expect(lines[0]).toBe('periodStart,periodEnd,deploymentCount,deploymentsPerDay');
-    expect(lines[1]).toBe(`2026-01-01T00:00:00.000Z,2026-01-08T00:00:00.000Z,1,${1 / 7}`);
+    expect(lines[1]).toBe(
+      `2026-01-01T00:00:00.000Z,2026-01-08T00:00:00.000Z,1,${(1 / 7).toFixed(2)}`,
+    );
   });
 });

@@ -45,11 +45,14 @@ export function computeDeploymentFrequency(
       (timestamp) => timestamp >= bucketStartMs && timestamp < bucketEndMs,
     ).length;
 
+    const elapsedDays = (Math.min(bucketEndMs, endDate.getTime()) - bucketStartMs) / MS_PER_DAY;
+    const effectiveDays = elapsedDays > 0 ? elapsedDays : periodDays;
+
     buckets.push({
       periodStart: new Date(bucketStartMs).toISOString(),
       periodEnd: new Date(bucketEndMs).toISOString(),
       deploymentCount,
-      deploymentsPerDay: deploymentCount / periodDays,
+      deploymentsPerDay: deploymentCount / effectiveDays,
     });
   }
 

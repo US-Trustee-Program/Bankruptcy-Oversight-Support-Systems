@@ -44,6 +44,13 @@ describe('fetchWorkflowRuns', () => {
             head_branch: 'main',
             status: 'in_progress',
           },
+          {
+            id: 4,
+            conclusion: 'failure',
+            created_at: '2026-01-05T00:00:00.000Z',
+            head_branch: 'main',
+            status: 'completed',
+          },
         ],
       },
     ]);
@@ -59,16 +66,33 @@ describe('fetchWorkflowRuns', () => {
 
     expect(runs).toEqual([
       { id: 1, conclusion: 'success', created_at: '2026-01-05T00:00:00.000Z' },
+      { id: 4, conclusion: 'failure', created_at: '2026-01-05T00:00:00.000Z' },
     ]);
     expect(listWorkflowRuns).toHaveBeenCalledWith(
       expect.objectContaining({
         owner: 'US-Trustee-Program',
         repo: 'Bankruptcy-Oversight-Support-Systems',
         workflow_id: 'continuous-deployment.yml',
+        branch: 'main',
         per_page: 100,
         page: 1,
       }),
     );
+  });
+
+  test('throws when since is an invalid Date', async () => {
+    const { octokit } = mockOctokit([]);
+
+    await expect(
+      fetchWorkflowRuns({
+        octokit,
+        owner: 'US-Trustee-Program',
+        repo: 'Bankruptcy-Oversight-Support-Systems',
+        workflowFileName: 'continuous-deployment.yml',
+        branch: 'main',
+        since: new Date('not-a-date'),
+      }),
+    ).rejects.toThrow('since must be a valid Date');
   });
 
   test('paginates through multiple pages and stops once a run is older than since', async () => {

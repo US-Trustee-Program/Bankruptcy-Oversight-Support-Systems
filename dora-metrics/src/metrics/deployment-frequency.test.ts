@@ -102,6 +102,24 @@ describe('computeDeploymentFrequency', () => {
     });
   });
 
+  test('prorates the trailing bucket rate by its real elapsed days, not the nominal period length', () => {
+    const startDate = new Date('2026-01-01T00:00:00.000Z');
+    const endDate = new Date('2026-01-11T00:00:00.000Z'); // 10-day range, 7-day periods
+    const runs: WorkflowRun[] = [
+      { id: 1, conclusion: 'success', created_at: '2026-01-09T00:00:00.000Z' },
+      { id: 2, conclusion: 'success', created_at: '2026-01-10T00:00:00.000Z' },
+      { id: 3, conclusion: 'success', created_at: '2026-01-10T12:00:00.000Z' },
+    ];
+
+    const buckets = computeDeploymentFrequency(runs, { startDate, endDate, periodDays: 7 });
+
+    expect(buckets).toHaveLength(2);
+    // Trailing bucket nominally spans Jan 8-15, but only 3 days (Jan 8-11) actually
+    // elapsed before endDate, so the rate should be 3 deployments / 3 days, not / 7.
+    expect(buckets[1].deploymentCount).toBe(3);
+    expect(buckets[1].deploymentsPerDay).toBe(1);
+  });
+
   test('an empty input array produces zero-count buckets across the requested date range', () => {
     const startDate = new Date('2026-01-01T00:00:00.000Z');
     const endDate = new Date('2026-01-22T00:00:00.000Z');
