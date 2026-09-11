@@ -97,6 +97,9 @@ describe('HealSentinelCaseAppointmentsUseCase', () => {
       }),
     );
     expect(mockUpsert.mock.calls[0][0]).not.toHaveProperty('reason');
+    expect(mockUpsert.mock.calls[0][0]).not.toHaveProperty('acmsProfessionalId');
+    expect(mockUpsert.mock.calls[0][0]).not.toHaveProperty('_id');
+    expect(mockUpsert.mock.calls[0][0]).not.toHaveProperty('id');
     expect(mockDelete).toHaveBeenCalledWith(sentinel.id);
     const upsertOrder = mockUpsert.mock.invocationCallOrder[0];
     const deleteOrder = mockDelete.mock.invocationCallOrder[0];
@@ -107,6 +110,32 @@ describe('HealSentinelCaseAppointmentsUseCase', () => {
       pageSize: 1,
       nextLastId: sentinel._id,
     });
+  });
+
+  test('preserves unassignedOn, closedDate, and reopenedDate from a sentinel that represents an already-closed/reopened case', async () => {
+    // migrate-case-appointments populates these straight off ACMS's historical record,
+    // uncorrelated with why a row became a sentinel (that only depends on whether the
+    // professional ID resolved) — so a sentinel can genuinely carry a closed/reopened case's
+    // history. upsert() is a full replaceOne with no merge, so an allow-list that omitted these
+    // would silently discard them and (since caseStatus derives from closedDate inside upsert())
+    // misreport a closed case as 'OPEN' after healing.
+    const sentinel = makeSentinel({
+      unassignedOn: '2025-03-01T00:00:00.000Z',
+      closedDate: '2025-03-01',
+      reopenedDate: '2025-04-01',
+    });
+    mockFindSentinelAppointments.mockResolvedValue([sentinel]);
+    mockFindByAcmsProfessionalId.mockResolvedValue([makeProfessionalId()]);
+
+    await useCase.healPage(null, 25);
+
+    expect(mockUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        unassignedOn: '2025-03-01T00:00:00.000Z',
+        closedDate: '2025-03-01',
+        reopenedDate: '2025-04-01',
+      }),
+    );
   });
 
   test('upsert is idempotent: healing an already-healed case (matching natural key) does not error', async () => {

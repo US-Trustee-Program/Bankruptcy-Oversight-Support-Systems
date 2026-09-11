@@ -17,6 +17,15 @@ type HealPageResult = {
   nextLastId: string | null;
 };
 
+// _id (cursor bookkeeping) and reason/acmsProfessionalId (sentinel-only markers written by
+// migrate-case-appointments) are never valid on a real, resolved appointment and must not survive
+// into the healed upsert payload.
+type SentinelAppointment = CaseAppointment & {
+  _id: string;
+  reason?: string;
+  acmsProfessionalId?: string;
+};
+
 class HealSentinelCaseAppointmentsUseCase {
   private readonly context: ApplicationContext;
   private readonly appointmentsRepo: TrusteeCaseAppointmentsRepository;
@@ -41,30 +50,42 @@ class HealSentinelCaseAppointmentsUseCase {
    * path" (e.g. a live DXTR sync) identically — the natural-key replace is a no-op in the latter
    * case, so no separate skip-write branch is needed.
    *
+   * The upsert payload spreads the full sentinel rather than naming an allow-list of fields.
+   * migrate-case-appointments populates unassignedOn/closedDate/reopenedDate straight off ACMS's
+   * own historical record, uncorrelated with why a row became a sentinel in the first place (that
+   * only depends on whether the professional ID resolved) — so a sentinel can genuinely represent
+   * an already-closed or -reopened case. upsert() is a full replaceOne with no merge against the
+   * existing document, so naming only some fields would silently discard whichever of those the
+   * sentinel actually carried, and — since caseStatus is derived from closedDate inside upsert()
+   * — would misreport a closed case as 'OPEN' after healing. Only the sentinel-only markers
+   * (_id, reason, acmsProfessionalId) and the field actually being resolved (trusteeId) are
+   * excluded/overridden; everything else survives unchanged.
+   *
    * Returns false when no CAMS trustee mapping exists yet for this sentinel's acmsProfessionalId
    * — the sentinel is left in place for a future run once trustee-professional-ids improves.
    */
-  private async healSentinelAppointment(sentinel: CaseAppointment): Promise<{ healed: boolean }> {
-    const acmsProfessionalId = (sentinel as CaseAppointment & { acmsProfessionalId?: string })
-      .acmsProfessionalId;
-    if (!acmsProfessionalId) {
+  private async healSentinelAppointment(
+    sentinel: SentinelAppointment,
+  ): Promise<{ healed: boolean }> {
+    if (!sentinel.acmsProfessionalId) {
       return { healed: false };
     }
 
-    const matches = await this.professionalIdsRepo.findByAcmsProfessionalId(acmsProfessionalId);
+    const matches = await this.professionalIdsRepo.findByAcmsProfessionalId(
+      sentinel.acmsProfessionalId,
+    );
     if (matches.length !== 1) {
       return { healed: false };
     }
 
-    await this.appointmentsRepo.upsert({
-      caseId: sentinel.caseId,
-      trusteeId: matches[0].camsTrusteeId,
-      assignedOn: sentinel.assignedOn,
-      appointedDate: sentinel.appointedDate,
-      dateFiled: sentinel.dateFiled,
-      chapter: sentinel.chapter,
-      courtDivisionCode: sentinel.courtDivisionCode,
-    });
+    const {
+      _id: _mongoId,
+      id: _id,
+      reason: _reason,
+      acmsProfessionalId: _acmsId,
+      ...rest
+    } = sentinel;
+    await this.appointmentsRepo.upsert({ ...rest, trusteeId: matches[0].camsTrusteeId });
 
     await this.appointmentsRepo.delete(sentinel.id);
 
@@ -90,7 +111,7 @@ class HealSentinelCaseAppointmentsUseCase {
 
     for (const sentinel of page) {
       try {
-        const { healed } = await this.healSentinelAppointment(sentinel);
+        const { healed } = await this.healSentinelAppointment(sentinel as SentinelAppointment);
         if (healed) {
           documentsWritten++;
         }
