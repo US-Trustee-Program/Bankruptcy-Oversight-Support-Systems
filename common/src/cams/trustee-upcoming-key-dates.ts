@@ -100,6 +100,32 @@ function requirePair(
   };
 }
 
+function requireChronologicalOrder(
+  startField: keyof TrusteeUpcomingKeyDatesInput,
+  endField: keyof TrusteeUpcomingKeyDatesInput,
+  startLabel: string,
+  endLabel: string,
+): ValidatorFunction {
+  return (obj: unknown): ValidatorResult => {
+    const input = obj as TrusteeUpcomingKeyDatesInput;
+    const start = input[startField] as string | null;
+    const end = input[endField] as string | null;
+    if (!start || !end) return VALID;
+    // Sentinel dates (1900-MM-DD) represent month/day only and may intentionally cross
+    // a year boundary (e.g. Apr 1 – Mar 31), so skip chronological check for them.
+    if (start.startsWith('1900-') || end.startsWith('1900-')) return VALID;
+    if (start > end) {
+      return {
+        reasonMap: {
+          [startField as string]: { reasons: [`${startLabel} must be before ${endLabel}.`] },
+          [endField as string]: { reasons: [`${endLabel} must be after ${startLabel}.`] },
+        },
+      };
+    }
+    return VALID;
+  };
+}
+
 function validateDateFields(): ValidatorFunction {
   return (obj: unknown): ValidatorResult => {
     const input = obj as TrusteeUpcomingKeyDatesInput;
@@ -154,6 +180,12 @@ const trusteeUpcomingKeyDatesSpec: ValidationSpec<TrusteeUpcomingKeyDatesInput> 
   $: [
     validateDateFields(),
     requirePair(
+      'tprReviewPeriodStart',
+      'tprReviewPeriodEnd',
+      'TPR Review Period Start',
+      'TPR Review Period End',
+    ),
+    requireChronologicalOrder(
       'tprReviewPeriodStart',
       'tprReviewPeriodEnd',
       'TPR Review Period Start',

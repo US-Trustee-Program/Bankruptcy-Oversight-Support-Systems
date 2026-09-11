@@ -428,6 +428,52 @@ describe('validateTrusteeUpcomingKeyDates', () => {
     );
   });
 
+  test('returns VALID when tprReviewPeriodStart is before tprReviewPeriodEnd (full ISO dates)', () => {
+    expect(
+      validateTrusteeUpcomingKeyDates({
+        ...baseInput(),
+        tprReviewPeriodStart: '2025-01-01',
+        tprReviewPeriodEnd: '2026-12-31',
+      }),
+    ).toEqual(VALID);
+  });
+
+  test('returns VALID when tprReviewPeriodStart equals tprReviewPeriodEnd (same day)', () => {
+    expect(
+      validateTrusteeUpcomingKeyDates({
+        ...baseInput(),
+        tprReviewPeriodStart: '2025-06-30',
+        tprReviewPeriodEnd: '2025-06-30',
+      }),
+    ).toEqual(VALID);
+  });
+
+  test('returns VALID for sentinel-format tprReviewPeriod dates that cross a year boundary', () => {
+    // Apr 1 – Mar 31 is a valid cross-year sentinel range
+    expect(
+      validateTrusteeUpcomingKeyDates({
+        ...baseInput(),
+        tprReviewPeriodStart: '1900-04-01',
+        tprReviewPeriodEnd: '1900-03-31',
+      }),
+    ).toEqual(VALID);
+  });
+
+  test('returns error on both fields when tprReviewPeriodStart is after tprReviewPeriodEnd', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      tprReviewPeriodStart: '2026-12-31',
+      tprReviewPeriodEnd: '2025-01-01',
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.tprReviewPeriodStart?.reasons?.[0]).toBe(
+      'TPR Review Period Start must be before TPR Review Period End.',
+    );
+    expect(result.reasonMap?.tprReviewPeriodEnd?.reasons?.[0]).toBe(
+      'TPR Review Period End must be after TPR Review Period Start.',
+    );
+  });
+
   test('returns error when tirReviewPeriodStart is set but tirReviewPeriodEnd is null', () => {
     const result = validateTrusteeUpcomingKeyDates({
       ...baseInput(),
