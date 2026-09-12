@@ -8,14 +8,14 @@ export type CompletedIssue = {
   closed_at: string;
 };
 
-export type IssueLeadTime = {
+type IssueLeadTime = {
   issueNumber: number;
   closedAt: string;
   deployedAt: string;
   leadTimeHours: number;
 };
 
-export type LeadTimeBucket = {
+type LeadTimeBucket = {
   periodStart: string;
   periodEnd: string;
   issueCount: number;
@@ -74,6 +74,7 @@ export function computeLeadTime(
   const perIssue: IssueLeadTime[] = [];
   for (const issue of issues) {
     const closedAtMs = new Date(issue.closed_at).getTime();
+    if (closedAtMs < startDate.getTime() || closedAtMs >= endDate.getTime()) continue;
     const deployedAtMs = successfulRunTimestamps.find((t) => t > closedAtMs);
     if (deployedAtMs === undefined) continue;
     perIssue.push({
@@ -92,7 +93,7 @@ export function computeLeadTime(
     const bucketLeadTimes = perIssue
       .filter((issue) => {
         const t = new Date(issue.closedAt).getTime();
-        return t >= bucketStartMs && t < bucketEndMs && t < endDate.getTime();
+        return t >= bucketStartMs && t < bucketEndMs;
       })
       .map((issue) => issue.leadTimeHours);
 
