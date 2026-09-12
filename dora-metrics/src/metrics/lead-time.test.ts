@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { computeLeadTime, CompletedIssue } from './lead-time.js';
 import { WorkflowRun } from './deployment-frequency.js';
 
@@ -152,5 +152,42 @@ describe('computeLeadTime', () => {
     expect(() => computeLeadTime([], [], { startDate, endDate, periodDays: 7 })).toThrow(
       'startDate must be on or before endDate',
     );
+  });
+
+  describe('defaults endDate to now when not provided', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-01-08T00:00:00.000Z'));
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    test('buckets exactly up to the current time', () => {
+      const startDate = new Date('2026-01-01T00:00:00.000Z');
+
+      const { byPeriod } = computeLeadTime([], [], { startDate, periodDays: 7 });
+
+      expect(byPeriod).toHaveLength(1);
+      expect(byPeriod[0].periodEnd).toBe('2026-01-08T00:00:00.000Z');
+    });
+
+    test('excludes an issue closed after the defaulted endDate from its bucket', () => {
+      const startDate = new Date('2026-01-01T00:00:00.000Z');
+      const issues: CompletedIssue[] = [
+        // Closed after the defaulted endDate (now = Jan 8), so it can't be
+        // counted yet even though its closed_at falls in the nominal bucket.
+        { number: 1, closed_at: '2026-01-09T00:00:00.000Z' },
+      ];
+      const runs: WorkflowRun[] = [
+        { id: 1, conclusion: 'success', created_at: '2026-01-10T00:00:00.000Z' },
+      ];
+
+      const { byPeriod } = computeLeadTime(issues, runs, { startDate, periodDays: 7 });
+
+      expect(byPeriod).toHaveLength(1);
+      expect(byPeriod[0].issueCount).toBe(0);
+    });
   });
 });
