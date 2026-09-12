@@ -8,6 +8,7 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "report:deployment-frequency": "tsx src/report-deployment-frequency.ts",
+    "report:lead-time": "tsx src/report-lead-time.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "npx tsc --noEmit"
