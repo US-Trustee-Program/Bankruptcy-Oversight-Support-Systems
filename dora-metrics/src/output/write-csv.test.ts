@@ -100,4 +100,21 @@ describe('writeCsv', () => {
       'cannot determine columns for an empty rows array',
     );
   });
+
+  test('escapes field values containing commas, quotes, or newlines', async () => {
+    const filePath = join(workDir, 'escaped.csv');
+    const rows = [
+      { title: 'Fix "critical" bug', notes: 'blocked, needs review' },
+      { title: 'Multi\nline note', notes: 'plain' },
+    ];
+
+    await writeCsv(rows, filePath);
+
+    const contents = await readFile(filePath, 'utf8');
+    expect(contents).toBe(
+      'title,notes\n' +
+        '"Fix ""critical"" bug","blocked, needs review"\n' +
+        '"Multi\nline note",plain\n',
+    );
+  });
 });

@@ -107,10 +107,34 @@ describe('computeLeadTime', () => {
       { id: 2, conclusion: 'success', created_at: '2026-01-14T00:00:00.000Z' },
     ];
 
-    const { byPeriod } = computeLeadTime(issues, runs, { startDate, periodDays: 7, endDate });
+    const { perIssue, byPeriod } = computeLeadTime(issues, runs, {
+      startDate,
+      periodDays: 7,
+      endDate,
+    });
 
+    // The out-of-window issue must be excluded from perIssue too, not just its
+    // bucket — otherwise the detail CSV and overall mean would include a
+    // change outside the requested reporting window.
+    expect(perIssue.map((issue) => issue.issueNumber)).toEqual([1]);
     expect(byPeriod).toHaveLength(2);
     expect(byPeriod[1].issueCount).toBe(1);
+  });
+
+  test('excludes an issue whose closedAt falls before startDate', () => {
+    const startDate = new Date('2026-01-08T00:00:00.000Z');
+    const endDate = new Date('2026-01-22T00:00:00.000Z');
+    const issues: CompletedIssue[] = [
+      { number: 1, closed_at: '2026-01-05T00:00:00.000Z' },
+      { number: 2, closed_at: '2026-01-10T00:00:00.000Z' },
+    ];
+    const runs: WorkflowRun[] = [
+      { id: 1, conclusion: 'success', created_at: '2026-01-12T00:00:00.000Z' },
+    ];
+
+    const { perIssue } = computeLeadTime(issues, runs, { startDate, periodDays: 7, endDate });
+
+    expect(perIssue.map((issue) => issue.issueNumber)).toEqual([2]);
   });
 
   test('throws when periodDays is zero, negative, or not a finite number', () => {

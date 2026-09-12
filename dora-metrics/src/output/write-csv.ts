@@ -1,6 +1,11 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
+function escapeCsvField(value: string): string {
+  const escaped = value.replace(/"/g, '""');
+  return /[",\r\n]/.test(value) ? `"${escaped}"` : escaped;
+}
+
 export async function writeCsv<T extends Record<string, string | number>>(
   rows: T[],
   filePath: string,
@@ -13,8 +18,8 @@ export async function writeCsv<T extends Record<string, string | number>>(
       'writeCsv: cannot determine columns for an empty rows array without an explicit columns argument',
     );
   }
-  const header = cols.join(',');
-  const csvRows = rows.map((row) => cols.map((col) => String(row[col])).join(','));
+  const header = cols.map((col) => escapeCsvField(col)).join(',');
+  const csvRows = rows.map((row) => cols.map((col) => escapeCsvField(String(row[col]))).join(','));
   const csv = [header, ...csvRows].join('\n') + '\n';
 
   await mkdir(dirname(filePath), { recursive: true });
