@@ -109,6 +109,50 @@ describe('fetchCompletedIssues', () => {
     expect(issues.map((issue) => issue.number)).toEqual([1, 2]);
   });
 
+  test('excludes an otherwise-qualifying issue that has no closed_at', async () => {
+    const { octokit } = mockOctokit([
+      [
+        {
+          number: 1,
+          state_reason: 'completed',
+          closed_at: null,
+          labels: [{ name: 'CAMS-200' }],
+        },
+      ],
+    ]);
+
+    const issues = await fetchCompletedIssues({
+      octokit,
+      owner: 'US-Trustee-Program',
+      repo: 'Bankruptcy-Oversight-Support-Systems',
+      since: new Date('2026-01-01T00:00:00.000Z'),
+    });
+
+    expect(issues).toEqual([]);
+  });
+
+  test('excludes an issue whose only label has an empty name', async () => {
+    const { octokit } = mockOctokit([
+      [
+        {
+          number: 1,
+          state_reason: 'completed',
+          closed_at: '2026-01-05T00:00:00.000Z',
+          labels: [{ name: '' }],
+        },
+      ],
+    ]);
+
+    const issues = await fetchCompletedIssues({
+      octokit,
+      owner: 'US-Trustee-Program',
+      repo: 'Bankruptcy-Oversight-Support-Systems',
+      since: new Date('2026-01-01T00:00:00.000Z'),
+    });
+
+    expect(issues).toEqual([]);
+  });
+
   test('throws when since is an invalid Date', async () => {
     const { octokit } = mockOctokit([]);
 
