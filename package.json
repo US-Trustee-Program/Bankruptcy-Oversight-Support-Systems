@@ -9,6 +9,7 @@
     "backend",
     "user-interface",
     "dev-tools",
+    "dora-metrics",
     "test/bdd",
     "test/e2e",
     "test/uswds"
