@@ -1957,6 +1957,96 @@ describe('calculateNameScore', () => {
 
     expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(85);
   });
+
+  // Real-world pattern from a staging backtest: a trustee who goes by their middle name has it
+  // recorded first in CAMS ("M. Douglas Flahaut"), while ACMS's PROF_FIRST_NAME/PROF_MI keep the
+  // legal first/middle order ("Douglas"/"M"). Positional-only comparison sees this as two
+  // unrelated first names (0) even though every other signal (last name, address, phone) agrees.
+  test('should tolerate a first/middle name swap between dxtr and cams', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'Douglas M Flahaut',
+      firstName: 'Douglas',
+      middleName: 'M',
+      lastName: 'Flahaut',
+    };
+    const camsTrustee = makeTrustee({
+      firstName: 'M.',
+      middleName: 'Douglas',
+      lastName: 'Flahaut',
+    });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(85);
+  });
+
+  test('should tolerate a first/middle name swap where the swapped middle name is spelled out on one side', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'Calvin J Hermansen',
+      firstName: 'Calvin',
+      middleName: 'J',
+      lastName: 'Hermansen',
+    };
+    const camsTrustee = makeTrustee({
+      firstName: 'J.',
+      middleName: 'Calvin',
+      lastName: 'Hermansen',
+    });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(85);
+  });
+
+  test('should not treat an unrelated first/middle pair as a swap match', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'Douglas M Flahaut',
+      firstName: 'Douglas',
+      middleName: 'M',
+      lastName: 'Flahaut',
+    };
+    const camsTrustee = makeTrustee({
+      firstName: 'Robert',
+      middleName: 'James',
+      lastName: 'Flahaut',
+    });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(0);
+  });
+
+  // Real-world pattern from a staging backtest: ACMS often carries a nickname ("Jim Rigby") where
+  // CAMS has the formal name ("Jim F. Rigby" - itself a nickname, but also the reverse direction:
+  // "Liz Rojas" vs CAMS "Elizabeth F. Rojas"). getNameVariations (name-match library, already used
+  // by phonetic-helper.ts's candidate-discovery search) is reused here for scoring rather than a
+  // new, separately-maintained nickname list.
+  test('should recognize a known nickname-to-formal-name relationship', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'Jim Rigby',
+      firstName: 'Jim',
+      lastName: 'Rigby',
+    };
+    const camsTrustee = makeTrustee({ firstName: 'James', lastName: 'Rigby' });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(85);
+  });
+
+  test('should recognize a known formal-to-nickname relationship in the reverse direction', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'Liz Rojas',
+      firstName: 'Liz',
+      lastName: 'Rojas',
+    };
+    const camsTrustee = makeTrustee({ firstName: 'Elizabeth', lastName: 'Rojas' });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(85);
+  });
+
+  test('should not treat an unrelated first name as a nickname match', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'Jim Rigby',
+      firstName: 'Jim',
+      lastName: 'Rigby',
+    };
+    const camsTrustee = makeTrustee({ firstName: 'Robert', lastName: 'Rigby' });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(0);
+  });
 });
 
 describe('calculatePhoneScore', () => {

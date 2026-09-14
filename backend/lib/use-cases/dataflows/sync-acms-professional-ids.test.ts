@@ -443,6 +443,7 @@ describe('SyncAcmsProfessionalIds', () => {
         kind: 'unresolved',
         candidateScores: matchCandidates,
       });
+      vi.spyOn(trusteeMatchHelpers, 'findAnchoredLevenshteinCandidates').mockResolvedValue([]);
       await SyncAcmsProfessionalIds.processNameMatch(deps, record);
       expect(tokenIntersectionSpy).not.toHaveBeenCalled();
     });
@@ -625,7 +626,7 @@ describe('SyncAcmsProfessionalIds', () => {
       expect(result).toEqual({ kind: 'no-match' });
     });
 
-    test('should return ambiguous with the unscored candidates when neither contact corroboration nor duplicate-name resolution resolve it', async () => {
+    test('should return ambiguous with the unscored candidates when neither contact corroboration, duplicate-name resolution, nor anchored-Levenshtein resolve it', async () => {
       const matchCandidates = [{ trusteeId: 't1', trusteeName: 'John Smith' }] as never;
       vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({
         kind: 'ambiguous',
@@ -639,10 +640,71 @@ describe('SyncAcmsProfessionalIds', () => {
         kind: 'unresolved',
         candidateScores: matchCandidates,
       });
+      vi.spyOn(trusteeMatchHelpers, 'findAnchoredLevenshteinCandidates').mockResolvedValue([]);
 
       const result = await SyncAcmsProfessionalIds.processNameMatch(deps, record);
 
       expect(result).toEqual({ kind: 'ambiguous', matchCandidates });
+    });
+
+    // Real-world pattern from a staging backtest: matchTrusteeByName's lastName-token search
+    // finds a single candidate whose lastName is a genuine spelling variant (ACMS "RADAKOVICH" vs
+    // CAMS "Radokovich") - calculateNameScore's exact-first-token lastName comparison scores this
+    // 0 regardless of how well address/phone corroborate, so resolveByContactCorroboration never
+    // gets a qualifying candidate to work with in the first place. findAnchoredLevenshteinCandidates
+    // (already shipped for the no-match branch) is reused here rather than duplicating its
+    // edit-distance logic, since the underlying signal - a small spelling difference on an
+    // otherwise-anchored name part - is identical regardless of which branch found the record.
+    test('should try anchored-Levenshtein candidates when corroboration and duplicate-name resolution both fail on the original ambiguous candidates', async () => {
+      const matchCandidates = [{ trusteeId: 't1', trusteeName: 'John Smyth' }] as never;
+      vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({
+        kind: 'ambiguous',
+        matchCandidates,
+      });
+      vi.spyOn(trusteeMatchHelpers, 'resolveByContactCorroboration').mockResolvedValue({
+        kind: 'unresolved',
+        candidateScores: matchCandidates,
+      });
+      vi.spyOn(trusteeMatchHelpers, 'resolveDuplicateNameCandidates').mockResolvedValue({
+        kind: 'unresolved',
+        candidateScores: matchCandidates,
+      });
+      const levenshteinSpy = vi
+        .spyOn(trusteeMatchHelpers, 'findAnchoredLevenshteinCandidates')
+        .mockResolvedValue([]);
+
+      await SyncAcmsProfessionalIds.processNameMatch(deps, record);
+
+      expect(levenshteinSpy).toHaveBeenCalledWith(deps.context, expect.anything());
+    });
+
+    test('should return auto-linked when contact corroboration resolves an anchored-Levenshtein candidate found on the ambiguous path', async () => {
+      const matchCandidates = [{ trusteeId: 't1', trusteeName: 'John Smyth' }] as never;
+      const levenshteinCandidate = { trusteeId: 't2', name: 'John Smith' } as never;
+      vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({
+        kind: 'ambiguous',
+        matchCandidates,
+      });
+      const corroborationSpy = vi.spyOn(trusteeMatchHelpers, 'resolveByContactCorroboration');
+      corroborationSpy
+        .mockResolvedValueOnce({ kind: 'unresolved', candidateScores: matchCandidates })
+        .mockResolvedValueOnce({
+          kind: 'resolved',
+          trusteeId: 't2',
+          candidateScores: [levenshteinCandidate],
+        });
+      vi.spyOn(trusteeMatchHelpers, 'resolveDuplicateNameCandidates').mockResolvedValue({
+        kind: 'unresolved',
+        candidateScores: matchCandidates,
+      });
+      vi.spyOn(trusteeMatchHelpers, 'findAnchoredLevenshteinCandidates').mockResolvedValue([
+        levenshteinCandidate,
+      ]);
+
+      const result = await SyncAcmsProfessionalIds.processNameMatch(deps, record);
+
+      expect(result).toEqual({ kind: 'auto-linked', trusteeId: 't2' });
+      expect(corroborationSpy).toHaveBeenLastCalledWith(deps.context, expect.anything(), ['t2']);
     });
 
     test('should call resolveByContactCorroboration with the ambiguous candidate trusteeIds', async () => {
@@ -661,6 +723,7 @@ describe('SyncAcmsProfessionalIds', () => {
         kind: 'unresolved',
         candidateScores: matchCandidates,
       });
+      vi.spyOn(trusteeMatchHelpers, 'findAnchoredLevenshteinCandidates').mockResolvedValue([]);
 
       await SyncAcmsProfessionalIds.processNameMatch(deps, record);
 
@@ -702,6 +765,7 @@ describe('SyncAcmsProfessionalIds', () => {
       const duplicateSpy = vi
         .spyOn(trusteeMatchHelpers, 'resolveDuplicateNameCandidates')
         .mockResolvedValue({ kind: 'unresolved', candidateScores: matchCandidates });
+      vi.spyOn(trusteeMatchHelpers, 'findAnchoredLevenshteinCandidates').mockResolvedValue([]);
 
       await SyncAcmsProfessionalIds.processNameMatch(deps, record);
 
@@ -924,6 +988,7 @@ describe('SyncAcmsProfessionalIds', () => {
       vi.spyOn(deps.acmsGateway, 'getActiveAppointmentsForProfessional').mockResolvedValue(
         activeAppointments,
       );
+      vi.spyOn(trusteeMatchHelpers, 'findAnchoredLevenshteinCandidates').mockResolvedValue([]);
       const createErroredSpy = vi
         .spyOn(deps.professionalIdsRepo, 'createErroredProfessionalId')
         .mockResolvedValue(linkedProfessionalId());
@@ -946,6 +1011,7 @@ describe('SyncAcmsProfessionalIds', () => {
         kind: 'ambiguous',
         matchCandidates: [],
       });
+      vi.spyOn(trusteeMatchHelpers, 'findAnchoredLevenshteinCandidates').mockResolvedValue([]);
       const gateSpy = vi
         .spyOn(deps.acmsGateway, 'getActiveAppointmentsForProfessional')
         .mockResolvedValue([]);

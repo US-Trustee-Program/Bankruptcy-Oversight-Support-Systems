@@ -294,6 +294,27 @@ async function processNameMatch(
     if (resolvedTrusteeId) {
       return { kind: 'auto-linked', trusteeId: resolvedTrusteeId };
     }
+
+    // matchTrusteeByName's candidates all failed corroboration/duplicate resolution - one more
+    // chance via a genuine spelling variant (see findAnchoredLevenshteinCandidates), reusing the
+    // same tier the no-match branch already relies on rather than duplicating its edit-distance
+    // logic. A real-world example: matchTrusteeByName's lastName-token search finds "Radokovich"
+    // as the sole candidate for ACMS "RADAKOVICH" - calculateNameScore's exact-first-token
+    // lastName comparison scores that pair 0 regardless of how well address/phone corroborate, so
+    // resolveByContactCorroboration never even gets a qualifying candidate.
+    const anchoredLevenshteinCandidates = await findAnchoredLevenshteinCandidates(
+      deps.context,
+      acmsTrusteeProfessional,
+    );
+    const anchoredLevenshteinResolvedTrusteeId = await resolveCandidatesByCorroboration(
+      deps.context,
+      acmsTrusteeProfessional,
+      anchoredLevenshteinCandidates.map((t) => t.trusteeId),
+    );
+    if (anchoredLevenshteinResolvedTrusteeId) {
+      return { kind: 'auto-linked', trusteeId: anchoredLevenshteinResolvedTrusteeId };
+    }
+
     return { kind: 'ambiguous', matchCandidates: result.matchCandidates };
   }
 

@@ -14,6 +14,7 @@ import { Trustee } from '@common/cams/trustees';
 import { isTooManyRequestsError } from '../../common-errors/too-many-requests-error';
 import { isGatewayTimeoutError } from '../../common-errors/gateway-timeout';
 import { generateBigrams } from '../../adapters/utils/phonetic-helper';
+import { getNameVariations } from 'name-match/src/name-normalizer';
 
 const MODULE_NAME = 'TRUSTEE-MATCH';
 
@@ -564,16 +565,42 @@ const isInitialOf = (initial: string, full: string): boolean =>
   initial.length === 1 && full.length > 0 && full.startsWith(initial);
 
 /**
+ * Whether a and b are a known nickname/formal-name pair (e.g. "jim"/"james", "liz"/"elizabeth"),
+ * via getNameVariations (name-match library - already a production dependency, used by
+ * phonetic-helper.ts's candidate-discovery search) rather than a new, separately-maintained
+ * nickname list. getNameVariations is directional in its underlying dictionary but is queried
+ * from both sides here, since a caller may pass either the nickname or the formal name first.
+ * Swallows lookup errors the same way phonetic-helper.ts does - an unrecognized name is simply
+ * not a nickname match, not a hard failure.
+ */
+function isKnownNicknamePair(a: string, b: string): boolean {
+  if (!a || !b) return false;
+  try {
+    if ((getNameVariations(a) as string[]).includes(b)) return true;
+  } catch {
+    // No variations available for a.
+  }
+  try {
+    if ((getNameVariations(b) as string[]).includes(a)) return true;
+  } catch {
+    // No variations available for b.
+  }
+  return false;
+}
+
+/**
  * Scores how well two already-normalized firstName values compare. Unlike scoreMiddleNamePart, a
  * firstName is expected to always be present and a genuine mismatch is strong evidence of
- * different people, so missing or mismatched both score 0. The one relaxation: an initial-vs-full
- * relationship (e.g. DXTR "G." vs CAMS "George") scores 85, the same credit scoreMiddleNamePart
- * gives that relationship.
+ * different people, so missing or mismatched both score 0. Two relaxations: an initial-vs-full
+ * relationship (e.g. DXTR "G." vs CAMS "George") scores 85, and a known nickname/formal-name pair
+ * (see isKnownNicknamePair) also scores 85 - the same credit scoreMiddleNamePart gives an
+ * initial-vs-full relationship, since neither is a certain match the way exact equality is.
  */
 function scoreFirstNamePart(a: string, b: string): number {
   if (!a || !b) return 0;
   if (a === b) return 100;
   if (isInitialOf(a, b) || isInitialOf(b, a)) return 85;
+  if (isKnownNicknamePair(a, b)) return 85;
   return 0;
 }
 
@@ -596,13 +623,46 @@ function scoreMiddleNamePart(a: string, b: string): number {
 }
 
 /**
+ * Minimum score scoreFirstNamePart must reach for the swapped pairing (dxtr first vs cams
+ * middle, dxtr middle vs cams first) to be trusted as a genuine first/middle swap rather than
+ * coincidental overlap. Both crossed comparisons must clear this - a person who goes by their
+ * middle name has it recorded first on one side and second on the other, so a real swap agrees
+ * in BOTH directions (not just one), unlike a same-first-name coincidence between two different
+ * people who happen to share a common first name.
+ */
+const NAME_SWAP_MIN_PART_SCORE = 85;
+
+/**
+ * Detects a first/middle name swap: a trustee who goes by their middle name may have it recorded
+ * first on one side (e.g. CAMS "M. Douglas Flahaut") while the other side keeps the legal
+ * first/middle order (ACMS PROF_FIRST_NAME "Douglas", PROF_MI "M"). Positional-only comparison
+ * (scoreFirstNamePart alone) sees this as two unrelated first names. Requires BOTH crossed pairs
+ * (dxtr first vs cams middle, dxtr middle vs cams first) to independently clear
+ * NAME_SWAP_MIN_PART_SCORE, so a real swap - not a coincidental partial overlap - is what's being
+ * credited. Capped at 85 (never 100) since a swap is still a real discrepancy in field placement,
+ * the same treatment an initial-vs-full relationship gets in scoreFirstNamePart/scoreMiddleNamePart.
+ */
+function isFirstMiddleSwap(
+  dxtrFirst: string,
+  dxtrMiddle: string,
+  camsFirst: string,
+  camsMiddle: string,
+): boolean {
+  if (!dxtrMiddle || !camsMiddle) return false;
+  const crossedFirst = scoreFirstNamePart(dxtrFirst, camsMiddle);
+  const crossedMiddle = scoreFirstNamePart(dxtrMiddle, camsFirst);
+  return crossedFirst >= NAME_SWAP_MIN_PART_SCORE && crossedMiddle >= NAME_SWAP_MIN_PART_SCORE;
+}
+
+/**
  * Calculates a name match score between DXTR and CAMS trustee parties.
  * Scoring:
  * - Last name must match on its first token (see firstLastNameToken), or the score is 0 - no
  *   further relaxation on lastName, since it is the one part of the name most likely to
  *   distinguish two genuinely different people.
  * - First name must also match, or relax to an initial-vs-full relationship (see
- *   scoreFirstNamePart) - a genuine first-name mismatch is still disqualifying (score 0).
+ *   scoreFirstNamePart) - a genuine first-name mismatch is still disqualifying (score 0), UNLESS
+ *   it's a first/middle swap (see isFirstMiddleSwap), which scores 85.
  * - When last and first both clear their bar, a middle-name sub-score (see scoreMiddleNamePart)
  *   determines the final result - the lower of the first/middle sub-scores wins, so an
  *   initial-vs-full relationship on either part still caps the result at 85.
@@ -615,16 +675,17 @@ export function calculateNameScore(dxtrTrustee: DxtrTrusteeParty, camsTrustee: T
     return 0;
   }
 
-  const firstScore = scoreFirstNamePart(
-    normalizeNamePart(dxtrTrustee.firstName),
-    normalizeNamePart(camsTrustee.firstName),
-  );
-  if (firstScore === 0) return 0;
+  const dxtrFirst = normalizeNamePart(dxtrTrustee.firstName);
+  const camsFirst = normalizeNamePart(camsTrustee.firstName);
+  const dxtrMiddle = normalizeNamePart(dxtrTrustee.middleName);
+  const camsMiddle = normalizeNamePart(camsTrustee.middleName);
 
-  const middleScore = scoreMiddleNamePart(
-    normalizeNamePart(dxtrTrustee.middleName),
-    normalizeNamePart(camsTrustee.middleName),
-  );
+  const firstScore = scoreFirstNamePart(dxtrFirst, camsFirst);
+  if (firstScore === 0) {
+    return isFirstMiddleSwap(dxtrFirst, dxtrMiddle, camsFirst, camsMiddle) ? 85 : 0;
+  }
+
+  const middleScore = scoreMiddleNamePart(dxtrMiddle, camsMiddle);
 
   return Math.min(firstScore, middleScore);
 }

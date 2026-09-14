@@ -348,6 +348,12 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
     // real professionals (e.g. "NO TRUSTEE", "NO TRUSTEE ASSIGNED", "CASE STRICKEN: NO TRUSTEE"),
     // always carried in PROF_LAST_NAME with PROF_FIRST_NAME empty.
     //
+    // PROF_LAST_NAME NOT LIKE '%DECEASED%' excludes a similar placeholder shape found via a
+    // staging backtest (e.g. "DECEASED - THISTLETHWAITE, JR."): a status marker prepended to the
+    // real surname rather than replacing it outright, which defeats matching regardless (a
+    // trustee-match.helpers.ts candidate-discovery tier would need to strip the marker text
+    // itself, not just tolerate it, to find the real person underneath).
+    //
     // UST_PROF_CODE < 98000 excludes ACMS's reserved sentinel/dummy trustee code range (known
     // values include 99999 and 98000). These rows must never reach the keyset cursor: since
     // pagination advances the bookmark to the highest UST_PROF_CODE seen, a sentinel row would
@@ -371,6 +377,7 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
       WHERE ACMS.PROF_TYPE = 'TR'
         AND ACMS.DELETE_CODE != 'D'
         AND ACMS.PROF_LAST_NAME NOT LIKE '%NO TRUSTEE%'
+        AND ACMS.PROF_LAST_NAME NOT LIKE '%DECEASED%'
         AND ACMS.UST_PROF_CODE < 98000
         AND ACMS.GROUP_DESIGNATOR = @groupDesignator
         AND ACMS.UST_PROF_CODE > @lastUstProfCode
