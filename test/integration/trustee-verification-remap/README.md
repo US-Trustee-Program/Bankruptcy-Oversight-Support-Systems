@@ -148,7 +148,7 @@ Data is not persisted between runs — the next `start-services.sh` starts fresh
 check-env        Verify required environment variables
 run              Happy path: one fingerprint across 4 cases
 run-pagination   Seed 30 surrogates (> REMAP_PAGE_SIZE) to exercise requeue
-run-divergence   Regression test for CAMS-894 — expected to FAIL until fixed
+run-divergence   Regression test for CAMS-894 — passes after the fix
 run-replay       Deliver the same message twice; asserts no duplicates
 clean            Remove all fixtures and clear queues
 help             Show usage

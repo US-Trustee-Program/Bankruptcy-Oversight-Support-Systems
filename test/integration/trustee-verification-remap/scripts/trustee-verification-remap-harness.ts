@@ -51,9 +51,10 @@ import * as dotenv from 'dotenv';
 import * as fs from 'fs';
 import * as path from 'path';
 import { InvocationContext } from '@azure/functions';
-import { QueueServiceClient } from '@azure/storage-queue';
+import { QueueServiceClient, RestError } from '@azure/storage-queue';
 import { MongoClient, Db } from 'mongodb';
 import ContextCreator from '../../../../backend/function-apps/azure/application-context-creator';
+import { REMAP_PAGE_SIZE } from '../../../../backend/function-apps/dataflows/trustee-verification-remap';
 import factory from '../../../../backend/lib/factory';
 import { ApplicationContext } from '../../../../backend/lib/adapters/types/basic';
 import { TrusteeMatchVerificationUseCase } from '../../../../backend/lib/use-cases/trustee-match-verification/trustee-match-verification.use-case';
@@ -125,9 +126,6 @@ const VARIATION_COLLECTION = 'trustee-variation';
 // See backend/lib/storage-queues.ts.
 const REMAP_QUEUE = 'trustee-match-verification-remap';
 const REMAP_DLQ = 'trustee-match-verification-remap-dlq';
-
-// Must match REMAP_PAGE_SIZE in backend/function-apps/dataflows/trustee-verification-remap.ts
-const REMAP_PAGE_SIZE = 25;
 
 const COURT_DIVISION_CODE = '081';
 const RESOLVED_TRUSTEE_ID = 'INTEGRATION-TRUSTEE-CAMS894-001';
@@ -224,14 +222,27 @@ async function getQueueClient(queueName: string) {
   return client;
 }
 
-async function getDlqMessageCount(): Promise<number> {
+function isQueueNotFoundError(error: unknown): boolean {
+  return error instanceof RestError && (error.statusCode === 404 || error.code === 'QueueNotFound');
+}
+
+async function getQueueMessageCount(queueName: string): Promise<number> {
   try {
-    const client = await getQueueClient(REMAP_DLQ);
+    const client = await getQueueClient(queueName);
     const props = await client.getProperties();
     return props.approximateMessagesCount ?? 0;
-  } catch {
-    return 0;
+  } catch (error) {
+    // A queue that hasn't been created yet is a legitimate "empty" — anything else (auth,
+    // connection, a typo'd name) is a real problem and must not be reported as an empty queue.
+    if (isQueueNotFoundError(error)) {
+      return 0;
+    }
+    throw error;
   }
+}
+
+async function getDlqMessageCount(): Promise<number> {
+  return getQueueMessageCount(REMAP_DLQ);
 }
 
 async function clearQueues(): Promise<void> {
@@ -467,12 +478,10 @@ async function clean(): Promise<void> {
     const r4 = await db.collection(TRUSTEE_PARTITION_COLLECTION).deleteMany(surrogateQuery);
     pass(`Deleted ${r3.deletedCount + r4.deletedCount} surrogate row(s)`);
 
-    const r5 = await db
-      .collection(VERIFICATION_COLLECTION)
-      .deleteMany({
-        documentType: TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE,
-        caseId: { $regex: '^081-26-8' },
-      });
+    const r5 = await db.collection(VERIFICATION_COLLECTION).deleteMany({
+      documentType: TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE,
+      caseId: { $regex: '^081-26-8' },
+    });
     pass(`Deleted ${r5.deletedCount} verification doc(s)`);
 
     const r6 = await db
@@ -779,9 +788,19 @@ async function runReplay(): Promise<void> {
     pass('Re-enqueued the identical message');
     console.log('');
 
-    // getSurrogatesByFingerprint now returns nothing for this fingerprint — the second delivery
-    // should no-op quickly. Give it a shorter window since there's nothing left to page through.
-    await new Promise((r) => setTimeout(r, 8000));
+    console.log('Step 5: Wait for the second delivery to be consumed from the queue (up to 45s)');
+    const secondDeliveryConsumed = await pollUntil(async () => {
+      const queueDepth = await getQueueMessageCount(REMAP_QUEUE);
+      return queueDepth === 0;
+    });
+    if (!secondDeliveryConsumed) {
+      fail(
+        'Timed out waiting for the second delivery to be consumed from the queue — is the function app running?',
+      );
+      return;
+    }
+    pass('Second delivery consumed from the queue');
+    console.log('');
 
     console.log('Assertions:\n');
     for (const id of caseIds) {
@@ -858,7 +877,7 @@ async function main() {
       console.log('  check-env        Verify required environment variables');
       console.log('  run              Happy path: one fingerprint across 4 cases');
       console.log('  run-pagination   Seed 30 surrogates (> REMAP_PAGE_SIZE) to exercise requeue');
-      console.log('  run-divergence   Regression test for CAMS-894 — expected to FAIL until fixed');
+      console.log('  run-divergence   Regression test for CAMS-894 — passes after the fix');
       console.log('  run-replay       Deliver the same message twice; asserts no duplicates');
       console.log('  clean            Remove all fixtures and clear queues');
       console.log('  help             Show this help');

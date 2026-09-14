@@ -510,6 +510,10 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
           message: `Failed to delete case appointment ${id}.`,
         });
       }
+      this.context.logger.warn(
+        MODULE_NAME,
+        `Case partition copy of appointment ${id} was already missing; recovered a dual-write divergence and continuing to delete the trustee partition copy.`,
+      );
     }
 
     try {
@@ -518,6 +522,10 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
       await this.trusteePartition.adapter<CaseAppointmentDocument>().deleteOne(query);
     } catch (secondaryError) {
       if (isNotFoundError(secondaryError)) {
+        this.context.logger.warn(
+          MODULE_NAME,
+          `Trustee partition copy of appointment ${id} was already missing; recovered a dual-write divergence.`,
+        );
         return;
       }
       this.context.logger.error(

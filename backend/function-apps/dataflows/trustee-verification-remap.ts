@@ -26,7 +26,7 @@ const DLQ = TRUSTEE_MATCH_VERIFICATION_REMAP_DLQ;
 // letting the next invocation re-query naturally picks up only what's left (see
 // TrusteeVerificationRemapUseCase.remapPage's doc comment on natural idempotency) — no
 // offset/cursor tracking needed.
-const REMAP_PAGE_SIZE = 25;
+export const REMAP_PAGE_SIZE = 25;
 
 /**
  * handleRemap
