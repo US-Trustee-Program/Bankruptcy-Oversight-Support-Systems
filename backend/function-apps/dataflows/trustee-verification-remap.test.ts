@@ -55,6 +55,7 @@ describe('trustee-verification-remap handleRemap', () => {
   let mockQueueTrusteeAppointmentEvent: Mock<
     (event: TrusteeAppointmentDownstreamEvent) => Promise<void>
   >;
+  let mockUpdateVerification: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -66,6 +67,7 @@ describe('trustee-verification-remap handleRemap', () => {
     mockUpsert = vi.fn().mockResolvedValue({});
     mockDelete = vi.fn().mockResolvedValue(undefined);
     mockQueueTrusteeAppointmentEvent = vi.fn().mockResolvedValue(undefined);
+    mockUpdateVerification = vi.fn().mockResolvedValue({});
 
     vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository').mockReturnValue(
       Object.assign(new MockMongoRepository(), {
@@ -74,6 +76,11 @@ describe('trustee-verification-remap handleRemap', () => {
         updateCaseAppointment: mockUpdateCaseAppointment,
         upsert: mockUpsert,
         delete: mockDelete,
+      }),
+    );
+    vi.spyOn(factory, 'getTrusteeMatchVerificationRepository').mockReturnValue(
+      Object.assign(new MockMongoRepository(), {
+        update: mockUpdateVerification,
       }),
     );
     vi.spyOn(factory, 'getApiToDataflowsGateway').mockReturnValue({

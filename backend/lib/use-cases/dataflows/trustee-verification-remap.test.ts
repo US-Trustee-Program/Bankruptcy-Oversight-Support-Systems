@@ -48,6 +48,7 @@ describe('TrusteeVerificationRemapUseCase', () => {
   let mockQueueTrusteeAppointmentEvent: Mock<
     (event: TrusteeAppointmentDownstreamEvent) => Promise<void>
   >;
+  let mockUpdateVerification: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
     vi.restoreAllMocks();
@@ -59,6 +60,7 @@ describe('TrusteeVerificationRemapUseCase', () => {
     mockUpsert = vi.fn().mockResolvedValue({});
     mockDelete = vi.fn().mockResolvedValue(undefined);
     mockQueueTrusteeAppointmentEvent = vi.fn().mockResolvedValue(undefined);
+    mockUpdateVerification = vi.fn().mockResolvedValue({});
 
     vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository').mockReturnValue(
       Object.assign(new MockMongoRepository(), {
@@ -67,6 +69,11 @@ describe('TrusteeVerificationRemapUseCase', () => {
         updateCaseAppointment: mockUpdateCaseAppointment,
         upsert: mockUpsert,
         delete: mockDelete,
+      }),
+    );
+    vi.spyOn(factory, 'getTrusteeMatchVerificationRepository').mockReturnValue(
+      Object.assign(new MockMongoRepository(), {
+        update: mockUpdateVerification,
       }),
     );
     vi.spyOn(factory, 'getApiToDataflowsGateway').mockReturnValue({
@@ -110,6 +117,10 @@ describe('TrusteeVerificationRemapUseCase', () => {
       pageSize: 1,
       remainingCount: 0,
     });
+    expect(mockUpdateVerification).toHaveBeenCalledWith(
+      'verification-1',
+      expect.objectContaining({ remapStatus: 'completed', remapFailureDetails: undefined }),
+    );
   });
 
   test('soft-closes a different-trustee real appointment before upserting the canonical row', async () => {
@@ -162,6 +173,17 @@ describe('TrusteeVerificationRemapUseCase', () => {
     expect(mockDelete).toHaveBeenCalledWith('surrogate-b');
     expect(result.documentsWritten).toBe(1);
     expect(result.documentsFailed).toBe(1);
+    expect(mockUpdateVerification).toHaveBeenCalledWith(
+      'verification-1',
+      expect.objectContaining({
+        remapStatus: 'failed',
+        remapFailureDetails: {
+          documentsWritten: 1,
+          documentsFailed: 1,
+          failures: [{ caseId: '081-25-00001', error: 'upsert failed' }],
+        },
+      }),
+    );
   });
 
   test('a rate-limit error mid-page rethrows instead of being counted as a per-case failure', async () => {
@@ -271,6 +293,8 @@ describe('TrusteeVerificationRemapUseCase', () => {
       pageSize: 25,
       remainingCount: 5,
     });
+    // More pages remain and nothing failed yet -- no terminal status to report.
+    expect(mockUpdateVerification).not.toHaveBeenCalled();
   });
 
   test('a no-op page (no surrogates left) returns all zeros', async () => {
@@ -288,5 +312,10 @@ describe('TrusteeVerificationRemapUseCase', () => {
       pageSize: 0,
       remainingCount: 0,
     });
+    // Nothing left for this fingerprint and no failures -- the remap is done.
+    expect(mockUpdateVerification).toHaveBeenCalledWith(
+      'verification-1',
+      expect.objectContaining({ remapStatus: 'completed' }),
+    );
   });
 });

@@ -69,6 +69,36 @@ export type TrusteeMatchVerification = Auditable & {
    * an accepted cost, not a bug.
    */
   variant: string;
+  /**
+   * Outcome of the async trustee-verification-remap dataflow — separate from `status` above,
+   * which drives Data Verification UI/reviewer behavior (pending/approved/rejected). Not
+   * surfaced in the UI; queryable behind the scenes to resolve a remap that silently failed or
+   * is stuck. Absent while a multi-page remap is still in progress with no per-case failures
+   * yet. Set to 'failed' as soon as any page hits a per-case failure; a later page that fully
+   * clears the fingerprint (no candidates left, no failures) overwrites this back to
+   * 'completed', since the surrogate for a permanently-stuck case is never deleted.
+   */
+  remapStatus?: TrusteeVerificationRemapStatus;
+  remapStatusOn?: string;
+  /**
+   * Present only when remapStatus is 'failed' — as much diagnostic detail as the dataflow had
+   * at the point of failure (which cases, what error) so the exact failure can be pinpointed
+   * without reproducing it. Cleared when a later page overwrites remapStatus to 'completed'.
+   */
+  remapFailureDetails?: TrusteeVerificationRemapFailureDetails;
+};
+
+type TrusteeVerificationRemapStatus = 'completed' | 'failed';
+
+export type TrusteeVerificationRemapFailure = {
+  caseId: string;
+  error: string;
+};
+
+type TrusteeVerificationRemapFailureDetails = {
+  documentsWritten: number;
+  documentsFailed: number;
+  failures: TrusteeVerificationRemapFailure[];
 };
 
 /**
