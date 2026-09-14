@@ -19,7 +19,7 @@ import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 
 const MODULE_NAME = 'TRUSTEE-UPCOMING-KEY-DATES-CONTROLLER';
 
-const KEY_DATE_FEATURE_FLAGS = [
+export const KEY_DATE_FEATURE_FLAGS = [
   'display-chpt7-panel-upcoming-key-dates',
   'display-chpt11-subv-past-key-dates',
   'display-chpt12-13-case-by-case-upcoming-key-dates',

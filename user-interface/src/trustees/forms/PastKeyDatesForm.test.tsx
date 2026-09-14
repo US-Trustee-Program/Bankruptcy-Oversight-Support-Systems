@@ -903,6 +903,7 @@ describe('PastKeyDatesForm', () => {
       await waitFor(() => {
         expect(screen.getByTestId('bond-issued-date')).toBeInTheDocument();
       });
+      expect(screen.getByText('Bond Issued Date')).toBeInTheDocument();
     });
 
     test('pre-populates bondIssuedDate from existing key dates', async () => {

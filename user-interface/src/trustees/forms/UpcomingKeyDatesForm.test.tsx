@@ -1520,6 +1520,7 @@ describe('UpcomingKeyDatesForm', () => {
       });
       expect(screen.queryByText(/Field Exam or Audit/i)).not.toBeInTheDocument();
       expect(screen.queryByTestId('tpr-due-year-type')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('tpr-frequency')).not.toBeInTheDocument();
       expect(screen.queryByTestId('tir-frequency')).not.toBeInTheDocument();
     });
 
