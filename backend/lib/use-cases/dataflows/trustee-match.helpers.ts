@@ -543,22 +543,50 @@ function normalizeNamePart(namePart?: string): string {
 }
 
 /**
- * Reduces a raw lastName field to just its first word: drops apostrophes (so "O'Brien" stays one
- * word), replaces remaining punctuation with spaces, collapses whitespace, and returns the first
- * token (lowercased). Used both for candidate discovery (the first-token-lastName search tier in
+ * Space-separated surname prefix particles that are never a complete surname on their own -
+ * CAMS stores these two-word ("Van Meter", "Del Piero", "Mc Lane") rather than joined
+ * ("VanMeter"), unlike a hyphenated compound ("Garcia-Miranda") where truncating to the first
+ * segment is an accepted trade-off (see firstLastNameToken). Truncating one of these to just the
+ * particle collapses genuinely different surnames together (a real staging backtest false
+ * positive: "Van Arsdale" and "Van Meter" both reduced to "van" and were treated as the same
+ * person). Lowercase, no trailing space.
+ */
+const LAST_NAME_PREFIX_PARTICLES = new Set([
+  'van',
+  'de',
+  'mc',
+  'la',
+  'le',
+  'von',
+  'st',
+  'del',
+  'di',
+]);
+
+/**
+ * Reduces a raw lastName field to its surname-identifying token(s): drops apostrophes (so
+ * "O'Brien" stays one word), replaces remaining punctuation with spaces, collapses whitespace,
+ * then returns the first token - or, when that first token is a known surname prefix particle
+ * (see LAST_NAME_PREFIX_PARTICLES) and a second token follows, both tokens joined by a single
+ * space. Used both for candidate discovery (the first-token-lastName search tier in
  * matchTrusteeByName) and for calculateNameScore's own lastName comparison - taking only the
- * first token sidesteps needing to enumerate every shape of trailing noise (a role marker, a
- * comma, a generational suffix), since by definition anything after the first token isn't the
- * real surname. Trade-off: a hyphenated compound surname ("Garcia-Miranda") also reduces to just
+ * first token (or particle pair) sidesteps needing to enumerate every shape of trailing noise (a
+ * role marker, a comma, a generational suffix), since by definition anything after it isn't the
+ * real surname. Trade-off: a hyphenated compound surname ("Garcia-Miranda") still reduces to just
  * "garcia" - the downstream scoring/appointment-match gate is responsible for confirming that was
  * enough to identify the right person.
  * Example: "Marshack (TR)" -> "marshack", "Wallo, Trustee" -> "wallo", "Malloy, III" -> "malloy",
- * "O'Brien" -> "obrien".
+ * "O'Brien" -> "obrien", "Van Meter" -> "van meter", "Mc Kay, Sr." -> "mc kay".
  */
 export function firstLastNameToken(namePart?: string): string {
   const withoutApostrophes = (namePart ?? '').toLowerCase().replaceAll("'", '');
   const spaced = withoutApostrophes.replace(/[^a-z0-9]+/g, ' ');
-  return spaced.trim().split(' ')[0] ?? '';
+  const tokens = spaced.trim().split(' ').filter(Boolean);
+  if (tokens.length === 0) return '';
+  if (tokens.length > 1 && LAST_NAME_PREFIX_PARTICLES.has(tokens[0])) {
+    return `${tokens[0]} ${tokens[1]}`;
+  }
+  return tokens[0];
 }
 
 const isInitialOf = (initial: string, full: string): boolean =>

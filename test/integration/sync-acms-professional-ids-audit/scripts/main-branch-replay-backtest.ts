@@ -205,8 +205,31 @@ async function run() {
   await seedTrustees(uri, dbName, trustees);
 
   const context = await buildRealApplicationContext();
-  const { matchTrusteeByName, resolveByContactCorroboration, resolveDuplicateNameCandidates } =
-    await import('../../../../backend/lib/use-cases/dataflows/trustee-match.helpers');
+  const {
+    matchTrusteeByName,
+    resolveByContactCorroboration,
+    resolveDuplicateNameCandidates,
+    calculateNameScore,
+    calculateAddressScore,
+    calculatePhoneScore,
+    calculateEmailScore,
+  } = await import('../../../../backend/lib/use-cases/dataflows/trustee-match.helpers');
+
+  const trusteesById = new Map(trustees.map((t) => [t.trusteeId, t]));
+
+  // Minimum nameScore for a raw matchTrusteeByName candidate to be considered "real" rather than
+  // lastName-token search noise (a phonetically-similar but unrelated surname). Mirrors
+  // CONTACT_CORROBORATION_NAME_THRESHOLD in trustee-match.helpers.ts.
+  const NAME_PREFILTER_THRESHOLD = 85;
+
+  function scoreCandidate(acmsTrusteeProfessional: AcmsTrusteeProfessional, trustee: Trustee): Score {
+    return {
+      nameScore: calculateNameScore(acmsTrusteeProfessional, trustee),
+      addressScore: calculateAddressScore(acmsTrusteeProfessional.legacy, trustee.public?.address),
+      phoneScore: calculatePhoneScore(acmsTrusteeProfessional.legacy?.phone, trustee.public?.phone),
+      emailScore: calculateEmailScore(acmsTrusteeProfessional.legacy?.email, trustee.public?.email),
+    };
+  }
 
   /**
    * Inlines sync-acms-professional-ids.ts's module-private resolveCandidatesByCorroboration
@@ -240,11 +263,13 @@ async function run() {
   };
   const newlyResolved: { acmsProfessionalId: string; fullName: string; trusteeId: string; priorDisposition: string }[] =
     [];
+  type Score = { nameScore: number; addressScore: number; phoneScore: number | null; emailScore: number | null };
   const stillAmbiguous: {
     acmsProfessionalId: string;
     fullName: string;
     candidateCount: number;
-    soleCandidateScore?: { nameScore: number; addressScore: number; phoneScore: number | null; emailScore: number | null };
+    soleCandidateScore?: Score;
+    qualifyingAfterNamePrefilter?: { trusteeId: string; score: Score }[];
   }[] = [];
 
   let i = 0;
@@ -258,9 +283,8 @@ async function run() {
     const nameResult = await matchTrusteeByName(context, acmsTrusteeProfessional);
 
     let verdict: Verdict;
-    let soleCandidateScore:
-      | { nameScore: number; addressScore: number; phoneScore: number | null; emailScore: number | null }
-      | undefined;
+    let soleCandidateScore: Score | undefined;
+    let qualifyingAfterNamePrefilter: { trusteeId: string; score: Score }[] | undefined;
     if (nameResult.kind === 'resolved') {
       verdict = {
         kind: 'would-resolve',
@@ -281,13 +305,21 @@ async function run() {
         const solo = await resolveByContactCorroboration(context, acmsTrusteeProfessional, candidateTrusteeIds);
         const score = solo.kind !== 'no-match' ? solo.candidateScores[0] : undefined;
         if (score) {
-          soleCandidateScore = {
-            nameScore: score.nameScore,
-            addressScore: score.addressScore,
-            phoneScore: score.phoneScore,
-            emailScore: score.emailScore,
-          };
+          soleCandidateScore = score;
         }
+      } else if (verdict.kind === 'still-ambiguous' && candidateTrusteeIds.length > 1) {
+        // Does matchTrusteeByName's raw candidate list actually contain multiple REAL name
+        // matches, or is it mostly lastName-token search noise (phonetically-similar but
+        // unrelated surnames) that would collapse to a single real candidate under a name-score
+        // prefilter? resolveByContactCorroboration already requires "exactly one qualifying
+        // candidate" internally, but it computes that using its OWN internal scoring pass - this
+        // reproduces the same nameScore >= 85 bar directly against every raw candidate to
+        // characterize the population, not to change any behavior.
+        const scored = candidateTrusteeIds
+          .map((id) => trusteesById.get(id))
+          .filter((t): t is Trustee => !!t)
+          .map((t) => ({ trusteeId: t.trusteeId, score: scoreCandidate(acmsTrusteeProfessional, t) }));
+        qualifyingAfterNamePrefilter = scored.filter((s) => s.score.nameScore >= NAME_PREFILTER_THRESHOLD);
       }
     } else {
       verdict = { kind: 'still-no-match' };
@@ -307,6 +339,7 @@ async function run() {
         fullName: acmsTrusteeProfessional.fullName,
         candidateCount: verdict.candidateCount,
         soleCandidateScore,
+        qualifyingAfterNamePrefilter,
       });
     }
   }
@@ -387,6 +420,41 @@ async function run() {
   console.log('\nSample of multi-candidate still-ambiguous records (first 15):');
   for (const r of multiCandidateStuck.slice(0, 15)) {
     console.log(`  "${r.fullName}" (${r.acmsProfessionalId}) [${r.candidateCount} candidates]`);
+  }
+
+  // Does matchTrusteeByName's raw candidate list for a multi-candidate record actually contain
+  // multiple real name matches, or is it mostly lastName-token search noise that would collapse
+  // to a single real candidate under a name-score prefilter (nameScore >= 85, the same bar
+  // resolveByContactCorroboration already applies internally - see NAME_PREFILTER_THRESHOLD)?
+  const collapsesToOne = multiCandidateStuck.filter((r) => r.qualifyingAfterNamePrefilter?.length === 1);
+  const collapsesToZero = multiCandidateStuck.filter((r) => r.qualifyingAfterNamePrefilter?.length === 0);
+  const staysMultiple = multiCandidateStuck.filter((r) => (r.qualifyingAfterNamePrefilter?.length ?? 0) > 1);
+  console.log(
+    `\nMulti-candidate population after a nameScore>=${NAME_PREFILTER_THRESHOLD} prefilter (${multiCandidateStuck.length} records):`,
+  );
+  console.log(`  collapses to exactly 1 real candidate: ${collapsesToOne.length}`);
+  console.log(`  collapses to 0 (all candidates were noise): ${collapsesToZero.length}`);
+  console.log(`  still 2+ genuine name matches (real ambiguity): ${staysMultiple.length}`);
+
+  const collapsedWithStrongContact = collapsesToOne.filter((r) => {
+    const s = r.qualifyingAfterNamePrefilter![0].score;
+    return s.addressScore >= 80 || s.phoneScore === 100 || s.emailScore === 100;
+  });
+  console.log(
+    `\nOf those that collapse to 1, ${collapsedWithStrongContact.length} also have strong contact ` +
+      `corroboration (address>=80 or phone=100 or email=100) for that sole real candidate - a ` +
+      `record resolveByContactCorroboration's own "exactly one qualifying candidate" rule should ` +
+      `already trust, but never does today because the >1 RAW candidate count never lets it reach ` +
+      `that check via the main ambiguous-branch call (candidateTrusteeIds passed in is the raw, ` +
+      `un-prefiltered list from matchTrusteeByName).`,
+  );
+  console.log('\nSample (first 15):');
+  for (const r of collapsedWithStrongContact.slice(0, 15)) {
+    const s = r.qualifyingAfterNamePrefilter![0].score;
+    console.log(
+      `  "${r.fullName}" (${r.acmsProfessionalId}) [${r.candidateCount} raw candidates] -> ` +
+        `${r.qualifyingAfterNamePrefilter![0].trusteeId} [name=${s.nameScore} address=${s.addressScore} phone=${s.phoneScore} email=${s.emailScore}]`,
+    );
   }
 
   console.log(

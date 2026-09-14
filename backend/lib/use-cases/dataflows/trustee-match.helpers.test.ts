@@ -9,6 +9,7 @@ import {
   normalizeChapter,
   calculateCandidateScore,
   calculateNameScore,
+  firstLastNameToken,
   calculatePhoneScore,
   calculateEmailScore,
   calculateTotalScore,
@@ -1757,6 +1758,55 @@ describe('calculateCandidateScore', () => {
   });
 });
 
+describe('firstLastNameToken', () => {
+  test('should return just the first word for a simple lastName', () => {
+    expect(firstLastNameToken('Doe')).toBe('doe');
+  });
+
+  test('should strip a trailing role marker', () => {
+    expect(firstLastNameToken('Marshack (TR)')).toBe('marshack');
+  });
+
+  test('should strip a trailing comma-separated suffix', () => {
+    expect(firstLastNameToken('Wallo, Trustee')).toBe('wallo');
+    expect(firstLastNameToken('Malloy, III')).toBe('malloy');
+  });
+
+  test('should keep an apostrophe-joined surname as one word', () => {
+    expect(firstLastNameToken("O'Brien")).toBe('obrien');
+  });
+
+  // Real-world false positive from a staging backtest: "VAN ARSDALE" and "VAN METER" both
+  // reduced to just "van" under the old first-token-only rule, so calculateNameScore's lastName
+  // gate treated two different real trustees as the same person. CAMS itself stores these
+  // two-word surnames space-separated ("Van Meter", not "VanMeter"), so the fix keeps a known
+  // prefix particle joined to the next token rather than truncating after it.
+  test.each([
+    ['Van Arsdale', 'van arsdale'],
+    ['VAN CUREN', 'van curen'],
+    ['Mc Lane', 'mc lane'],
+    ['MC KAY, SR.', 'mc kay'],
+    ['De Verges', 'de verges'],
+    ['La Penna', 'la penna'],
+    ['Von Eberstein', 'von eberstein'],
+    ['Del Piero', 'del piero'],
+  ])(
+    'should keep a known multi-word surname prefix joined to the next token: %s',
+    (input, expected) => {
+      expect(firstLastNameToken(input)).toBe(expected);
+    },
+  );
+
+  test('should NOT join a prefix particle when it is not followed by another token', () => {
+    // A bare "Van" with nothing after it isn't a compound surname — nothing to join to.
+    expect(firstLastNameToken('Van')).toBe('van');
+  });
+
+  test('should treat two different multi-word surnames sharing the same prefix as different', () => {
+    expect(firstLastNameToken('Van Arsdale')).not.toBe(firstLastNameToken('Van Meter'));
+  });
+});
+
 describe('calculateNameScore', () => {
   test('should return 100 when first and last match and neither side has a middle name', () => {
     const dxtrTrustee: DxtrTrusteeParty = {
@@ -2046,6 +2096,36 @@ describe('calculateNameScore', () => {
     const camsTrustee = makeTrustee({ firstName: 'Robert', lastName: 'Rigby' });
 
     expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(0);
+  });
+
+  // Real-world false positive from a staging backtest: the old first-token-only
+  // firstLastNameToken reduced both surnames to "van", so this scored 100 despite being two
+  // different real trustees (coincidentally in the same city/zip too, which would have let a
+  // weak address score corroborate a wrong match).
+  test('should return 0 for two different multi-word surnames sharing the same prefix particle', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'William Van Arsdale',
+      firstName: 'William',
+      lastName: 'Van Arsdale',
+    };
+    const camsTrustee = makeTrustee({
+      firstName: 'William',
+      middleName: 'A.',
+      lastName: 'Van Meter',
+    });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(0);
+  });
+
+  test('should return 100 when both sides use the same multi-word surname prefix and match', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'John Van Meter',
+      firstName: 'John',
+      lastName: 'Van Meter',
+    };
+    const camsTrustee = makeTrustee({ firstName: 'John', lastName: 'Van Meter' });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(100);
   });
 });
 
