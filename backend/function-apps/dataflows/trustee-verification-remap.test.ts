@@ -55,6 +55,7 @@ describe('trustee-verification-remap handleRemap', () => {
   let mockQueueTrusteeAppointmentEvent: Mock<
     (event: TrusteeAppointmentDownstreamEvent) => Promise<void>
   >;
+  let mockUpdateVerification: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -66,6 +67,7 @@ describe('trustee-verification-remap handleRemap', () => {
     mockUpsert = vi.fn().mockResolvedValue({});
     mockDelete = vi.fn().mockResolvedValue(undefined);
     mockQueueTrusteeAppointmentEvent = vi.fn().mockResolvedValue(undefined);
+    mockUpdateVerification = vi.fn().mockResolvedValue({});
 
     vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository').mockReturnValue(
       Object.assign(new MockMongoRepository(), {
@@ -74,6 +76,11 @@ describe('trustee-verification-remap handleRemap', () => {
         updateCaseAppointment: mockUpdateCaseAppointment,
         upsert: mockUpsert,
         delete: mockDelete,
+      }),
+    );
+    vi.spyOn(factory, 'getTrusteeMatchVerificationRepository').mockReturnValue(
+      Object.assign(new MockMongoRepository(), {
+        update: mockUpdateVerification,
       }),
     );
     vi.spyOn(factory, 'getApiToDataflowsGateway').mockReturnValue({
@@ -122,6 +129,9 @@ describe('trustee-verification-remap handleRemap', () => {
       expect.anything(),
       expect.objectContaining({ success: true, documentsWritten: 1, documentsFailed: 0 }),
     );
+    expect(mockUpdateVerification).toHaveBeenCalledWith('verification-1', {
+      remap: { status: 'complete' },
+    });
   });
 
   test('remaps every surrogate case sharing the fingerprint (N>1)', async () => {
@@ -209,7 +219,8 @@ describe('trustee-verification-remap handleRemap', () => {
     );
     const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
 
-    await handleRemap(makeMessage(), makeInvocationContext());
+    const message = makeMessage();
+    await handleRemap(message, makeInvocationContext());
 
     expect(mockDelete).not.toHaveBeenCalledWith('surrogate-a');
     expect(mockDelete).toHaveBeenCalledWith('surrogate-b');
@@ -219,8 +230,18 @@ describe('trustee-verification-remap handleRemap', () => {
       'TRUSTEE-MATCH-VERIFICATION-REMAP',
       'handleRemap',
       expect.anything(),
-      expect.objectContaining({ success: true, documentsWritten: 1, documentsFailed: 1 }),
+      expect.objectContaining({ success: false, documentsWritten: 1, documentsFailed: 1 }),
     );
+    // Aggregate status only -- no per-case-id breakdown on the verification document itself.
+    expect(mockUpdateVerification).toHaveBeenCalledWith('verification-1', {
+      remap: {
+        status: 'error',
+        error: expect.objectContaining({
+          message: expect.stringContaining(message.fingerprint),
+          data: message,
+        }),
+      },
+    });
   });
 
   test('a rate-limit error mid-batch propagates to the outer retry handler instead of being counted as a per-case failure', async () => {
@@ -281,7 +302,7 @@ describe('trustee-verification-remap handleRemap', () => {
       'TRUSTEE-MATCH-VERIFICATION-REMAP',
       'handleRemap',
       expect.anything(),
-      expect.objectContaining({ success: true, documentsWritten: 1, documentsFailed: 1 }),
+      expect.objectContaining({ success: false, documentsWritten: 1, documentsFailed: 1 }),
     );
   });
 
@@ -384,6 +405,9 @@ describe('trustee-verification-remap handleRemap', () => {
       expect.anything(),
       expect.objectContaining({ success: true, documentsWritten: 0, documentsFailed: 0 }),
     );
+    expect(mockUpdateVerification).toHaveBeenCalledWith('verification-1', {
+      remap: { status: 'complete' },
+    });
   });
 
   test('should re-enqueue with backoff and emit rate-limited-requeued telemetry on 429 error', async () => {
@@ -412,6 +436,9 @@ describe('trustee-verification-remap handleRemap', () => {
       expect.anything(),
       expect.objectContaining({ success: false, error: 'rate-limited-requeued' }),
     );
+    // A transient rate-limit backoff isn't a terminal outcome -- leave whatever remap.status
+    // approveVerification/a prior page already wrote (pending/processing) untouched.
+    expect(mockUpdateVerification).not.toHaveBeenCalled();
   });
 
   test('should route to DLQ and emit telemetry when retry limit exhausted', async () => {
@@ -442,6 +469,14 @@ describe('trustee-verification-remap handleRemap', () => {
         error: 'rate-limit-retry-exhausted',
       }),
     );
+    // getCamsErrorWithStack passes an already-CamsError (TooManyRequestsError) through via
+    // addCamsStack rather than rewrapping it, so it keeps its own message/status here.
+    expect(mockUpdateVerification).toHaveBeenCalledWith('verification-1', {
+      remap: {
+        status: 'error',
+        error: expect.objectContaining({ message: 'Too Many Requests', status: 429 }),
+      },
+    });
   });
 
   test('rethrows non-rate-limit errors', async () => {
@@ -451,7 +486,18 @@ describe('trustee-verification-remap handleRemap', () => {
       await createMockApplicationContext(),
     );
 
-    await expect(handleRemap(makeMessage(), makeInvocationContext())).rejects.toThrow('boom');
+    const message = makeMessage();
+    await expect(handleRemap(message, makeInvocationContext())).rejects.toThrow('boom');
+
+    expect(mockUpdateVerification).toHaveBeenCalledWith('verification-1', {
+      remap: {
+        status: 'error',
+        error: expect.objectContaining({
+          data: message,
+          originalError: expect.stringContaining('boom'),
+        }),
+      },
+    });
   });
 
   test('throws when AzureWebJobsDataflowsStorage is not configured', async () => {
@@ -503,6 +549,10 @@ describe('trustee-verification-remap handleRemap', () => {
           }),
         }),
       );
+      // More pages remain and nothing failed yet -- 'processing', not a terminal status.
+      expect(mockUpdateVerification).toHaveBeenCalledWith('verification-1', {
+        remap: { status: 'processing' },
+      });
     });
 
     test('does not requeue a continuation when surrogates fit within one page', async () => {
@@ -537,6 +587,9 @@ describe('trustee-verification-remap handleRemap', () => {
           }),
         }),
       );
+      expect(mockUpdateVerification).toHaveBeenCalledWith('verification-1', {
+        remap: { status: 'complete' },
+      });
     });
   });
 });
