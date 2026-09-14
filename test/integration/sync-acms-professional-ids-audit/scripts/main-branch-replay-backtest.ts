@@ -29,8 +29,9 @@
  * Every run writes a per-record CSV report to ./data (repo root, gitignored — real trustee PII,
  * never committed) at data/replay-backtest-report.csv, one row per error record with ACMS fields
  * on the left, the final outcome, and one column group per pipeline stage the record actually
- * passed through (which stage, its result, its candidate count, and — when it produced a
- * representative winner — that winner's CAMS fields and four component scores). This makes "where
+ * passed through (which stage, its result, its candidate count, and — when the stage had a best
+ * candidate to show — that candidate's CAMS fields and four component scores, populated even when
+ * the stage's own result is unresolved/ambiguous, for reviewing near-misses). This makes "where
  * exactly did this record fall through the pipeline" answerable by filtering the CSV, not by
  * re-reading a raw console log.
  *
@@ -191,7 +192,14 @@ type Score = {
   emailScore: number | null;
 };
 
-type Winner = {
+/**
+ * The best-scoring (by name, then address) CAMS trustee a stage examined among its candidates -
+ * regardless of whether that stage actually resolved. A record's stage can end 'unresolved' or
+ * 'ambiguous' and still carry a bestCandidate, since this is populated for human review of
+ * near-misses (e.g. a real person who WOULD score well, but whose corroboration fell short of
+ * production's auto-link bar) - it is never a claim that this candidate was chosen.
+ */
+type BestCandidate = {
   trusteeId: string;
   name: string;
   address: string;
@@ -206,7 +214,7 @@ type StageTrace = {
   stage: StageName;
   result: StageResult;
   candidateCount: number;
-  winner?: Winner;
+  bestCandidate?: BestCandidate;
 };
 
 type RecordTrace = {
@@ -255,17 +263,17 @@ const MAX_STAGES = 3; // matchTrusteeByName + up to 2 fallback tiers (ambiguous:
 // Stage 1 is always matchTrusteeByName, which only ever reaches this backtest's population in
 // its 'ambiguous'/'no-match' shape - any record where matchTrusteeByName alone resolved outright
 // would have auto-linked at write time and never become an error record to replay in the first
-// place. So stage1's winner/score columns are always empty by construction (confirmed against a
-// full run: 0 of 2734 rows). Only candidateCount carries real signal for stage 1.
+// place. So stage1's bestCandidate/score columns are always empty by construction (confirmed
+// against a full run: 0 of 2734 rows). Only candidateCount carries real signal for stage 1.
 function stageHeaderColumns(stageIndex: number): string[] {
   const base = [`stage${stageIndex}_name`, `stage${stageIndex}_result`, `stage${stageIndex}_candidateCount`];
   if (stageIndex === 1) return base;
   return [
     ...base,
-    `stage${stageIndex}_winnerTrusteeId`,
-    `stage${stageIndex}_winnerName`,
-    `stage${stageIndex}_winnerAddress`,
-    `stage${stageIndex}_winnerPhone`,
+    `stage${stageIndex}_bestCandidateTrusteeId`,
+    `stage${stageIndex}_bestCandidateName`,
+    `stage${stageIndex}_bestCandidateAddress`,
+    `stage${stageIndex}_bestCandidatePhone`,
     `stage${stageIndex}_nameScore`,
     `stage${stageIndex}_addressScore`,
     `stage${stageIndex}_phoneScore`,
@@ -278,24 +286,24 @@ function stageRowFields(
   s: StageTrace | undefined,
 ): (string | number | null | undefined)[] {
   const skippedBase = ['', 'skipped', ''];
-  const skippedWinner = ['', '', '', '', '', '', '', ''];
+  const skippedBestCandidate = ['', '', '', '', '', '', '', ''];
 
   if (stageIndex === 1) {
     return s ? [s.stage, s.result, s.candidateCount] : skippedBase;
   }
-  if (!s) return [...skippedBase, ...skippedWinner];
+  if (!s) return [...skippedBase, ...skippedBestCandidate];
   return [
     s.stage,
     s.result,
     s.candidateCount,
-    s.winner?.trusteeId,
-    s.winner?.name,
-    s.winner?.address,
-    s.winner?.phone,
-    s.winner?.score.nameScore,
-    s.winner?.score.addressScore,
-    s.winner?.score.phoneScore,
-    s.winner?.score.emailScore,
+    s.bestCandidate?.trusteeId,
+    s.bestCandidate?.name,
+    s.bestCandidate?.address,
+    s.bestCandidate?.phone,
+    s.bestCandidate?.score.nameScore,
+    s.bestCandidate?.score.addressScore,
+    s.bestCandidate?.score.phoneScore,
+    s.bestCandidate?.score.emailScore,
   ];
 }
 
@@ -385,7 +393,7 @@ async function run() {
     };
   }
 
-  function toWinner(trustee: Trustee, score: Score): Winner {
+  function toBestCandidate(trustee: Trustee, score: Score): BestCandidate {
     return {
       trusteeId: trustee.trusteeId,
       name: trustee.name,
@@ -399,9 +407,9 @@ async function run() {
    * Runs the real resolveByContactCorroboration -> resolveDuplicateNameCandidates sequence
    * (same composition as sync-acms-professional-ids.ts's module-private
    * resolveCandidatesByCorroboration) and returns BOTH the resolved trusteeId (if any) and a
-   * StageTrace describing what happened, so the CSV can show a representative winner even for an
+   * StageTrace describing what happened, so the CSV can show a bestCandidate even for an
    * 'unresolved'/'ambiguous' outcome (the best-scoring candidate by name then address, for human
-   * review — not a claim that candidate should have won).
+   * review — not a claim that candidate should have resolved).
    */
   async function runCorroborationStage(
     acmsTrusteeProfessional: AcmsTrusteeProfessional,
@@ -428,9 +436,9 @@ async function run() {
           stage: 'corroboration',
           result: 'resolved',
           candidateCount: candidateTrusteeIds.length,
-          winner:
+          bestCandidate:
             trustee && score
-              ? toWinner(trustee, {
+              ? toBestCandidate(trustee, {
                   nameScore: score.nameScore,
                   addressScore: score.addressScore,
                   phoneScore: score.phoneScore,
@@ -455,7 +463,9 @@ async function run() {
           stage: 'corroboration',
           result: 'resolved',
           candidateCount: candidateTrusteeIds.length,
-          winner: trustee ? toWinner(trustee, scoreCandidate(acmsTrusteeProfessional, trustee)) : undefined,
+          bestCandidate: trustee
+            ? toBestCandidate(trustee, scoreCandidate(acmsTrusteeProfessional, trustee))
+            : undefined,
         },
       };
     }
@@ -466,7 +476,7 @@ async function run() {
         stage: 'corroboration',
         result: candidateTrusteeIds.length === 1 ? 'unresolved' : 'ambiguous',
         candidateCount: candidateTrusteeIds.length,
-        winner: representative,
+        bestCandidate: representative,
       },
     };
   }
@@ -475,7 +485,7 @@ async function run() {
   function pickRepresentative(
     candidateTrusteeIds: string[],
     acmsTrusteeProfessional: AcmsTrusteeProfessional,
-  ): Winner | undefined {
+  ): BestCandidate | undefined {
     let best: { trustee: Trustee; score: Score } | undefined;
     for (const id of candidateTrusteeIds) {
       const trustee = trusteesById.get(id);
@@ -489,7 +499,7 @@ async function run() {
         best = { trustee, score };
       }
     }
-    return best ? toWinner(best.trustee, best.score) : undefined;
+    return best ? toBestCandidate(best.trustee, best.score) : undefined;
   }
 
   const traces: RecordTrace[] = [];
@@ -509,11 +519,13 @@ async function run() {
       stage: 'matchTrusteeByName',
       result: nameResult.kind,
       candidateCount: nameResult.kind === 'ambiguous' ? nameResult.matchCandidates.length : nameResult.kind === 'resolved' ? 1 : 0,
-      winner:
+      bestCandidate:
         nameResult.kind === 'resolved'
           ? (() => {
               const trustee = trusteesById.get(nameResult.trusteeId);
-              return trustee ? toWinner(trustee, scoreCandidate(acmsTrusteeProfessional, trustee)) : undefined;
+              return trustee
+                ? toBestCandidate(trustee, scoreCandidate(acmsTrusteeProfessional, trustee))
+                : undefined;
             })()
           : undefined,
     });
