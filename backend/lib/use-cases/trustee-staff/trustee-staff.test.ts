@@ -160,13 +160,16 @@ describe('TrusteeStaffUseCase', () => {
     });
 
     test('should throw error when input is not a valid object', async () => {
-      await expect(
+      const actualError = await getTheThrownError(() =>
         trusteeStaffUseCase.createStaffMember(
           context,
           trusteeId,
           null as unknown as TrusteeStaffInput,
         ),
-      ).rejects.toThrow();
+      );
+
+      expect(actualError.isCamsError).toBe(true);
+      expect(actualError.message).toContain('Staff validation failed');
     });
 
     test('should not track a Phone Number Added event when the created staff member has no contact info', async () => {
