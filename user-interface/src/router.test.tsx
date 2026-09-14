@@ -12,22 +12,22 @@ import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities
 
 vi.mock('@/lib/hooks/UseFeatureFlagReadiness');
 
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
+  return {
+    ...(actual as typeof actual),
+    useLocation: vi.fn().mockReturnValue({
+      pathname: '/',
+      search: '',
+      hash: '',
+      state: null,
+      key: 'default',
+    }),
+  };
+});
+
 describe('App Router Tests', () => {
   let userEvent: CamsUserEvent;
-
-  vi.mock('react-router-dom', async () => {
-    const actual = await vi.importActual('react-router-dom');
-    return {
-      ...(actual as typeof actual),
-      useLocation: vi.fn().mockReturnValue({
-        pathname: '/',
-        search: '',
-        hash: '',
-        state: null,
-        key: 'default',
-      }),
-    };
-  });
 
   const setUseLocationMock = (pathname: string = '/', state: object | undefined = undefined) => {
     vi.mocked(ReactRouterDOM.useLocation).mockReturnValue({

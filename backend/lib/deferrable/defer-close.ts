@@ -46,6 +46,14 @@ async function closeGlobal() {
   closeDeferred();
 }
 
-process.on('SIGINT', closeGlobal);
-process.on('SIGTERM', closeGlobal);
-process.on('exit', closeGlobal);
+// Guard against duplicate registration: this module's top-level code re-runs on every
+// fresh module evaluation (e.g. once per test file under Vitest), but `process` itself
+// is the same persistent object each time, so an unguarded process.on() here would stack
+// a new set of listeners per evaluation instead of registering once for the process.
+const SIGNAL_HANDLERS_REGISTERED = Symbol.for('cams.defer-close.signal-handlers-registered');
+if (!(process as unknown as Record<symbol, boolean>)[SIGNAL_HANDLERS_REGISTERED]) {
+  process.on('SIGINT', closeGlobal);
+  process.on('SIGTERM', closeGlobal);
+  process.on('exit', closeGlobal);
+  (process as unknown as Record<symbol, boolean>)[SIGNAL_HANDLERS_REGISTERED] = true;
+}

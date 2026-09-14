@@ -18,6 +18,11 @@ export function checkForSessionEnd() {
   }
 }
 
+// setInterval delays beyond this overflow Node/browser's 32-bit signed timer and
+// silently clamp to 1ms, turning a single scheduled check into a tight busy-loop.
+const MAX_32_BIT_DELAY_MS = 2_147_483_647;
+
 export function initializeSessionEndLogout(session: CamsSession) {
-  setInterval(checkForSessionEnd, Math.floor(session.expires - DateHelper.nowInSeconds()) * 1000);
+  const delayMs = Math.floor(session.expires - DateHelper.nowInSeconds()) * 1000;
+  setInterval(checkForSessionEnd, Math.min(delayMs, MAX_32_BIT_DELAY_MS));
 }
