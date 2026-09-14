@@ -8,12 +8,7 @@ import {
   TrusteeAppointmentDownstreamEvent,
   TrusteeVerificationRemapMessage,
 } from '@common/cams/dataflow-events';
-import { TrusteeVerificationRemapFailure } from '@common/cams/trustee-match-verification';
-import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
-import {
-  TrusteeCaseAppointmentsRepository,
-  TrusteeMatchVerificationRepository,
-} from '../gateways.types';
+import { TrusteeCaseAppointmentsRepository } from '../gateways.types';
 
 const MODULE_NAME = 'TRUSTEE-VERIFICATION-REMAP-USE-CASE';
 
@@ -29,48 +24,10 @@ type RemapPageResult = {
 class TrusteeVerificationRemapUseCase {
   private readonly context: ApplicationContext;
   private readonly appointmentsRepo: TrusteeCaseAppointmentsRepository;
-  private readonly verificationRepo: TrusteeMatchVerificationRepository;
 
   constructor(context: ApplicationContext) {
     this.context = context;
     this.appointmentsRepo = factory.getTrusteeCaseAppointmentsRepository(context);
-    this.verificationRepo = factory.getTrusteeMatchVerificationRepository(context);
-  }
-
-  /**
-   * Persists the async remap outcome to the verification document — see
-   * TrusteeMatchVerification.remapStatus's doc comment for why this is separate from `status`.
-   * Skipped when this page had no failures but more pages remain: nothing new to report yet,
-   * so an in-progress multi-page remap is left without a terminal status until it either fails
-   * or fully clears the fingerprint.
-   */
-  private async writeRemapStatus(
-    verificationId: string,
-    outcome: {
-      documentsWritten: number;
-      documentsFailed: number;
-      failures: TrusteeVerificationRemapFailure[];
-      remainingCount: number;
-    },
-  ): Promise<void> {
-    if (outcome.failures.length === 0 && outcome.remainingCount > 0) {
-      return;
-    }
-    const now = new Date().toISOString();
-    await this.verificationRepo.update(verificationId, {
-      remapStatus: outcome.failures.length > 0 ? 'failed' : 'completed',
-      remapStatusOn: now,
-      remapFailureDetails:
-        outcome.failures.length > 0
-          ? {
-              documentsWritten: outcome.documentsWritten,
-              documentsFailed: outcome.documentsFailed,
-              failures: outcome.failures,
-            }
-          : undefined,
-      updatedBy: SYSTEM_USER_REFERENCE,
-      updatedOn: now,
-    });
   }
 
   /**
@@ -175,7 +132,6 @@ class TrusteeVerificationRemapUseCase {
     let documentsWritten = 0;
     let documentsFailed = 0;
     let downstreamNotificationFailedCount = 0;
-    const failures: TrusteeVerificationRemapFailure[] = [];
 
     for (const surrogate of page) {
       try {
@@ -192,10 +148,6 @@ class TrusteeVerificationRemapUseCase {
           throw perCaseError;
         }
         documentsFailed++;
-        failures.push({
-          caseId: surrogate.caseId,
-          error: perCaseError instanceof Error ? perCaseError.message : String(perCaseError),
-        });
         this.context.logger.error(
           MODULE_NAME,
           `Failed to remap case ${surrogate.caseId} for fingerprint ${message.fingerprint} — its surrogate row is left in place for the next attempt to rediscover.`,
@@ -203,13 +155,6 @@ class TrusteeVerificationRemapUseCase {
         );
       }
     }
-
-    await this.writeRemapStatus(message.verificationId, {
-      documentsWritten,
-      documentsFailed,
-      failures,
-      remainingCount,
-    });
 
     return {
       documentsWritten,

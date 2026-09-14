@@ -72,33 +72,35 @@ export type TrusteeMatchVerification = Auditable & {
   /**
    * Outcome of the async trustee-verification-remap dataflow — separate from `status` above,
    * which drives Data Verification UI/reviewer behavior (pending/approved/rejected). Not
-   * surfaced in the UI; queryable behind the scenes to resolve a remap that silently failed or
-   * is stuck. Absent while a multi-page remap is still in progress with no per-case failures
-   * yet. Set to 'failed' as soon as any page hits a per-case failure; a later page that fully
-   * clears the fingerprint (no candidates left, no failures) overwrites this back to
-   * 'completed', since the surrogate for a permanently-stuck case is never deleted.
+   * surfaced in the UI; queryable behind the scenes to resolve a remap that's stuck or failed.
+   * Aggregate only, no per-case-id tracking here: affectedCaseIds already snapshots the full
+   * scope of the run, and any case still present in trustee-case-appointments under
+   * trusteeId === fingerprint hasn't been remapped yet (see getSurrogatesByFingerprint) — that
+   * is always re-derivable on demand instead of duplicated here. Set to 'pending' by
+   * approveVerification before the remap message is even sent, 'processing' by handleRemap
+   * while a page is in flight and pages remain, then 'complete' or 'error' once the run either
+   * fully clears the fingerprint or a page fails.
    */
-  remapStatus?: TrusteeVerificationRemapStatus;
-  remapStatusOn?: string;
-  /**
-   * Present only when remapStatus is 'failed' — as much diagnostic detail as the dataflow had
-   * at the point of failure (which cases, what error) so the exact failure can be pinpointed
-   * without reproducing it. Cleared when a later page overwrites remapStatus to 'completed'.
-   */
-  remapFailureDetails?: TrusteeVerificationRemapFailureDetails;
+  remap?: TrusteeMatchVerificationRemapStatus;
 };
 
-type TrusteeVerificationRemapStatus = 'completed' | 'failed';
-
-export type TrusteeVerificationRemapFailure = {
-  caseId: string;
-  error: string;
+type TrusteeMatchVerificationRemapStatus = {
+  status: 'pending' | 'processing' | 'complete' | 'error';
+  error?: TrusteeVerificationRemapError;
 };
 
-type TrusteeVerificationRemapFailureDetails = {
-  documentsWritten: number;
-  documentsFailed: number;
-  failures: TrusteeVerificationRemapFailure[];
+/**
+ * Mirrors CamsError's (backend/lib/common-errors/cams-error.ts) serializable shape without
+ * importing it — common cannot depend on backend (the Dependency Rule runs the other way: both
+ * backend and user-interface depend on common, never the reverse). A real CamsError/UnknownError
+ * instance is structurally assignable here, so backend can write one directly.
+ */
+type TrusteeVerificationRemapError = {
+  message: string;
+  module: string;
+  status: number;
+  originalError?: string;
+  data?: object;
 };
 
 /**

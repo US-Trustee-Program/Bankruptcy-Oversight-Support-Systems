@@ -11,6 +11,9 @@ import { handleRateLimitRetry } from './dataflows-rate-limit';
 import TrusteeVerificationRemapUseCase from '../../lib/use-cases/dataflows/trustee-verification-remap';
 import { TrusteeVerificationRemapMessage } from '@common/cams/dataflow-events';
 import { StorageQueueHumbleObject } from '../../lib/humble-objects/storage-queue-humble';
+import factory from '../../lib/factory';
+import { getCamsErrorWithStack } from '../../lib/common-errors/error-utilities';
+import { TrusteeMatchVerificationRepository } from '../../lib/use-cases/gateways.types';
 
 const MODULE_NAME = ModuleNames.TRUSTEE_MATCH_VERIFICATION_REMAP;
 const HANDLE_REMAP = buildFunctionName(MODULE_NAME, 'handleRemap');
@@ -29,12 +32,38 @@ const DLQ = TRUSTEE_MATCH_VERIFICATION_REMAP_DLQ;
 export const REMAP_PAGE_SIZE = 25;
 
 /**
+ * Writes the async remap outcome onto the verification document identified by
+ * message.verificationId — see TrusteeMatchVerification.remap's doc comment for why this is
+ * separate from `status` (which drives Data Verification UI/reviewer behavior) and why it
+ * carries no per-case-id detail (affectedCaseIds + getSurrogatesByFingerprint already answer
+ * "which cases are still stuck" on demand).
+ */
+async function writeRemapStatus(
+  verificationRepo: TrusteeMatchVerificationRepository,
+  message: TrusteeVerificationRemapMessage,
+  remap: { status: 'processing' | 'complete' } | { status: 'error'; originalError: Error },
+): Promise<void> {
+  if (remap.status === 'error') {
+    const error = getCamsErrorWithStack(remap.originalError, MODULE_NAME, {
+      message: `Remap failed for fingerprint ${message.fingerprint}.`,
+      data: message,
+    });
+    await verificationRepo.update(message.verificationId, {
+      remap: { status: 'error', error },
+    });
+    return;
+  }
+  await verificationRepo.update(message.verificationId, { remap: { status: remap.status } });
+}
+
+/**
  * handleRemap
  *
- * Queue-trigger mechanics only (dequeue, paginate-and-requeue, rate-limit retry, telemetry) —
- * mirrors sync-trustee-case-appointments.ts's split, which keeps this layer free of the actual
- * remap business rules (soft-close-before-upsert ordering, idempotency invariants). Those live
- * in TrusteeVerificationRemapUseCase.remapPage.
+ * Queue-trigger mechanics (dequeue, paginate-and-requeue, rate-limit retry, telemetry) plus
+ * reporting the run's status back onto the verification document — mirrors
+ * sync-trustee-case-appointments.ts's split, which keeps this layer free of the actual remap
+ * business rules (soft-close-before-upsert ordering, idempotency invariants). Those live in
+ * TrusteeVerificationRemapUseCase.remapPage.
  */
 async function handleRemap(
   message: TrusteeVerificationRemapMessage,
@@ -47,6 +76,7 @@ async function handleRemap(
 
   const context = await ContextCreator.getApplicationContext({ invocationContext });
   const trace = context.observability.startTrace(invocationContext.invocationId);
+  const verificationRepo = factory.getTrusteeMatchVerificationRepository(context);
 
   try {
     const useCase = new TrusteeVerificationRemapUseCase(context);
@@ -73,6 +103,19 @@ async function handleRemap(
         MODULE_NAME,
         `Remapped a page of ${pageSize} case(s) for fingerprint ${message.fingerprint}; requeued for ${remainingCount} remaining.`,
       );
+    }
+
+    if (documentsFailed > 0) {
+      await writeRemapStatus(verificationRepo, message, {
+        status: 'error',
+        originalError: new Error(
+          `${documentsFailed} of ${pageSize} case(s) failed to remap in this page — see logs for fingerprint ${message.fingerprint}.`,
+        ),
+      });
+    } else {
+      await writeRemapStatus(verificationRepo, message, {
+        status: remainingCount === 0 ? 'complete' : 'processing',
+      });
     }
 
     completeDataflowTrace(
@@ -137,6 +180,7 @@ async function handleRemap(
     }
 
     if (rateLimitRetryStatus === 'exhausted') {
+      await writeRemapStatus(verificationRepo, message, { status: 'error', originalError: error });
       completeDataflowTrace(
         context.observability,
         trace,
@@ -153,6 +197,7 @@ async function handleRemap(
       return;
     }
 
+    await writeRemapStatus(verificationRepo, message, { status: 'error', originalError: error });
     throw error;
   }
 }
