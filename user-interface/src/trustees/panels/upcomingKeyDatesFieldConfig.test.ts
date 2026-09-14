@@ -417,6 +417,7 @@ describe('getUpcomingKeyDatesFieldConfig — flag OFF (tprDisplayUpdates=false)'
     ['ch12-13-case-by-case'],
     ['chapter12-standing'],
     ['chapter13-standing'],
+    ['chapter7-elected'],
   ] as const)('%s: flag ON returns same config as UPCOMING_KEY_DATES_FIELD_CONFIG', (variant) => {
     const flagOn = getUpcomingKeyDatesFieldConfig(variant, true);
     expect(flagOn).toBe(UPCOMING_KEY_DATES_FIELD_CONFIG[variant]);
@@ -472,10 +473,5 @@ describe('UPCOMING_KEY_DATES_FIELD_CONFIG chapter7-elected variant', () => {
       const result = field.buildField({ ...baseDoc, bondRenewalDate: '2026-06-01' });
       expect(result.value).toBe('06/01/2026');
     }
-  });
-
-  test('flag ON returns same config as UPCOMING_KEY_DATES_FIELD_CONFIG', () => {
-    const flagOn = getUpcomingKeyDatesFieldConfig('chapter7-elected', true);
-    expect(flagOn).toBe(UPCOMING_KEY_DATES_FIELD_CONFIG['chapter7-elected']);
   });
 });

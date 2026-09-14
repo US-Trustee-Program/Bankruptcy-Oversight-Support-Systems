@@ -40,6 +40,17 @@ describe('TrusteeUpcomingKeyDatesController', () => {
     context.session.user.roles = [CamsRole.TrusteeAdmin];
   });
 
+  test('KEY_DATE_FEATURE_FLAGS contains the exact set of expected flags', () => {
+    expect(KEY_DATE_FEATURE_FLAGS).toEqual([
+      'display-chpt7-panel-upcoming-key-dates',
+      'display-chpt11-subv-past-key-dates',
+      'display-chpt12-13-case-by-case-upcoming-key-dates',
+      'display-chpt12-standing-key-dates',
+      'display-chpt13-standing-key-dates',
+      'display-chpt7-elected-key-dates',
+    ]);
+  });
+
   test('throws NotFoundError when all key-dates flags are disabled', async () => {
     KEY_DATE_FEATURE_FLAGS.forEach((f) => {
       context.featureFlags[f] = false;
@@ -246,60 +257,19 @@ describe('TrusteeUpcomingKeyDatesController', () => {
       });
     });
 
-    test('PUT with lastCompensationStudy set passes through to use case', async () => {
+    test.each([
+      { name: 'lastCompensationStudy', overrides: { lastCompensationStudy: '2024-06-01' } },
+      { name: 'tprFrequency', overrides: { tprFrequency: 'SEMI_ANNUAL' as const } },
+      {
+        name: 'tprDue and tprDueYearType',
+        overrides: { tprDue: '1900-09-15', tprDueYearType: 'EVEN' as const },
+      },
+    ])('PUT with $name set passes through to use case', async ({ overrides }) => {
       const putSpy = vi
         .spyOn(TrusteeUpcomingKeyDatesUseCase.prototype, 'upsertUpcomingKeyDates')
         .mockResolvedValue(undefined);
 
-      const body = buildValidInput({ lastCompensationStudy: '2024-06-01' });
-      context.request = mockCamsHttpRequest({
-        method: 'PUT',
-        params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
-        body,
-      });
-
-      const controller = new TrusteeUpcomingKeyDatesController(context);
-      const response = await controller.handleRequest(context);
-
-      expect(response.statusCode).toBe(HttpStatusCodes.OK);
-      expect(putSpy).toHaveBeenCalledWith(
-        'trustee-001',
-        'appointment-001',
-        body,
-        context.session.user,
-      );
-    });
-
-    test('PUT with tprFrequency set passes through to use case', async () => {
-      const putSpy = vi
-        .spyOn(TrusteeUpcomingKeyDatesUseCase.prototype, 'upsertUpcomingKeyDates')
-        .mockResolvedValue(undefined);
-
-      const body = buildValidInput({ tprFrequency: 'SEMI_ANNUAL' });
-      context.request = mockCamsHttpRequest({
-        method: 'PUT',
-        params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
-        body,
-      });
-
-      const controller = new TrusteeUpcomingKeyDatesController(context);
-      const response = await controller.handleRequest(context);
-
-      expect(response.statusCode).toBe(HttpStatusCodes.OK);
-      expect(putSpy).toHaveBeenCalledWith(
-        'trustee-001',
-        'appointment-001',
-        body,
-        context.session.user,
-      );
-    });
-
-    test('PUT with tprDue and tprDueYearType both set returns 200', async () => {
-      const putSpy = vi
-        .spyOn(TrusteeUpcomingKeyDatesUseCase.prototype, 'upsertUpcomingKeyDates')
-        .mockResolvedValue(undefined);
-
-      const body = buildValidInput({ tprDue: '1900-09-15', tprDueYearType: 'EVEN' });
+      const body = buildValidInput(overrides);
       context.request = mockCamsHttpRequest({
         method: 'PUT',
         params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },

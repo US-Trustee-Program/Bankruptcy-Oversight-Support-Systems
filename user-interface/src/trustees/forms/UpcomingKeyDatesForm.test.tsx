@@ -1579,5 +1579,22 @@ describe('UpcomingKeyDatesForm', () => {
         ),
       );
     });
+
+    test('Save button is disabled when bond renewal date has an invalid date', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [electedAppointment] });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/Bond Renewal Date/i)).toBeInTheDocument();
+      });
+
+      const bondRenewalInput = screen.getByLabelText(/Bond Renewal Date/i) as HTMLInputElement;
+      fireEvent.change(bondRenewalInput, { target: { value: '1900-01-01' } });
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /save/i })).toBeDisabled();
+      });
+    });
   });
 });

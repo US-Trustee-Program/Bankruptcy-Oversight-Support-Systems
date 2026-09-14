@@ -20,6 +20,7 @@ import {
   isChapter13Standing,
   isChapter7Elected,
 } from '@common/cams/trustee-appointments';
+import { AppointmentChapterType, AppointmentType } from '@common/cams/trustees';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
@@ -104,7 +105,10 @@ function buildUpcomingKeyDatesInput(
   };
 }
 
-function deriveVariant(chapter: string, appointmentType: string): PastKeyDatesVariant {
+function deriveVariant(
+  chapter: AppointmentChapterType,
+  appointmentType: AppointmentType,
+): PastKeyDatesVariant {
   if (chapter === '11-subchapter-v' && appointmentType === 'pool') return 'subv-pool';
   if (isChapter13Standing(chapter, appointmentType)) return 'chapter13-standing';
   if (isChapter12Standing(chapter, appointmentType)) return 'chapter12-standing';

@@ -16,6 +16,7 @@ import {
   isChapter13Standing,
   isChapter7Elected,
 } from '@common/cams/trustee-appointments';
+import { AppointmentChapterType, AppointmentType } from '@common/cams/trustees';
 import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
@@ -155,7 +156,10 @@ const EMPTY_FORM: FormState = {
 const currentYear = new Date().getFullYear();
 const YEAR_OPTIONS = Array.from({ length: 11 }, (_, i) => currentYear + i);
 
-function deriveVariant(chapter: string, appointmentType: string): UpcomingKeyDatesVariant {
+function deriveVariant(
+  chapter: AppointmentChapterType,
+  appointmentType: AppointmentType,
+): UpcomingKeyDatesVariant {
   if ((chapter === '12' || chapter === '13') && appointmentType === 'case-by-case') {
     return 'ch12-13-case-by-case';
   }
@@ -237,10 +241,7 @@ function resolveFormLoadResult(
   let formState: FormState | null = null;
   let keyDatesAlert: string | null = null;
   if (keyDatesResult.status === 'fulfilled') {
-    const data =
-      !variantFromState && appointmentsResult.status === 'rejected'
-        ? null
-        : keyDatesResult.value.data;
+    const data = keyDatesResult.value.data;
     if (data) {
       formState = buildFormStateFromData(data);
     }

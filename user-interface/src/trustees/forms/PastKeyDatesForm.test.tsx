@@ -906,6 +906,47 @@ describe('PastKeyDatesForm', () => {
       expect(screen.getByText('Bond Issued Date')).toBeInTheDocument();
     });
 
+    test('renders exactly 1 date input: Bond Issued Date', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [electedAppointment] });
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('bond-issued-date')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByTestId('past-background-question')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('past-field-exam')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('past-audit')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('past-tpr-submission')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('last-audit-fiscal-year')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('last-compensation-study-month')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('last-compensation-study-year')).not.toBeInTheDocument();
+    });
+
+    test('shows empty bond-issued-date input and sends null when API returns null', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [electedAppointment] });
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+      const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('bond-issued-date')).toHaveValue('');
+      });
+
+      await userEvent.click(screen.getByTestId('button-save-past-key-dates'));
+
+      await waitFor(() =>
+        expect(putSpy).toHaveBeenCalledWith(
+          'trustee-001',
+          'appointment-001',
+          expect.objectContaining({ bondIssuedDate: null }),
+        ),
+      );
+    });
+
     test('pre-populates bondIssuedDate from existing key dates', async () => {
       vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [electedAppointment] });
       vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: electedDocument });
