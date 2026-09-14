@@ -6,13 +6,16 @@ import path from 'path';
 export default defineConfig({
   resolve: {
     alias: [
-      { find: /^@common\/cams$/, replacement: path.resolve(__dirname, '../common/src/index.ts') },
+      {
+        find: /^@common\/cams$/,
+        replacement: path.resolve(import.meta.dirname, '../common/src/index.ts'),
+      },
       {
         find: /^@common\/cams\/(.+)$/,
-        replacement: path.resolve(__dirname, '../common/src/cams/$1'),
+        replacement: path.resolve(import.meta.dirname, '../common/src/cams/$1'),
       },
       // Catch-all for @common/queues and other non-cams subpaths
-      { find: '@common', replacement: path.resolve(__dirname, '../common/src') },
+      { find: '@common', replacement: path.resolve(import.meta.dirname, '../common/src') },
     ],
   },
   test: {
