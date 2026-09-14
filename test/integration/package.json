@@ -42,6 +42,7 @@
     "trustee-variation-audit": "npx tsx --tsconfig ../../backend/tsconfig.json trustee-variation-audit/scripts/trustee-variation-audit-harness.ts",
     "trustee-match-weight-backtest": "npx tsx --tsconfig ../../backend/tsconfig.json trustee-variation-audit/scripts/trustee-match-weight-backtest-harness.ts",
     "sync-acms-professional-ids-audit": "npx tsx --tsconfig ../../backend/tsconfig.json sync-acms-professional-ids-audit/scripts/sync-acms-professional-ids-audit-harness.ts",
+    "heal-sentinel-case-appointments-audit": "npx tsx --tsconfig ../../backend/tsconfig.json heal-sentinel-case-appointments-audit/scripts/heal-sentinel-case-appointments-audit-harness.ts",
     "sync-acms-professional-ids": "npx tsx --tsconfig ../../backend/tsconfig.json sync-acms-professional-ids/scripts/sync-acms-professional-ids-harness.ts",
     "sync-acms-professional-ids:local": "INTEGRATION_ENV=local npx tsx --tsconfig ../../backend/tsconfig.json sync-acms-professional-ids/scripts/sync-acms-professional-ids-harness.ts",
     "sync-acms-professional-ids:azure": "INTEGRATION_ENV=azure npx tsx --tsconfig ../../backend/tsconfig.json sync-acms-professional-ids/scripts/sync-acms-professional-ids-harness.ts"

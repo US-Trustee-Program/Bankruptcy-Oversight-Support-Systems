@@ -113,9 +113,17 @@ function loadProfessionalIds(): TrusteeProfessionalId[] {
 
 function loadTrustees(): Trustee[] {
   const file = resolveFixtureFile('TRUSTEES_FIXTURE', 'trustees');
-  const raw: (Trustee & { _id?: MongoExtendedId })[] = JSON.parse(fs.readFileSync(file, 'utf-8'));
-  console.log(`Trustees fixture: ${path.basename(file)}\n`);
-  return raw.map((doc) => stripMongoId(doc) as Trustee);
+  const raw: (Record<string, unknown> & { _id?: MongoExtendedId })[] = JSON.parse(
+    fs.readFileSync(file, 'utf-8'),
+  );
+  // A raw trustees-collection export also contains sibling document types sharing the same
+  // trusteeId partition (AUDIT_PUBLIC_CONTACT, AUDIT_STAFF, TRUSTEE_STAFF, ...) — only
+  // documentType: 'TRUSTEE' docs carry the public/internal shape this harness scores against.
+  const trustees = raw.filter((doc) => doc.documentType === 'TRUSTEE');
+  console.log(
+    `Trustees fixture: ${path.basename(file)} (${trustees.length} of ${raw.length} docs are TRUSTEE)\n`,
+  );
+  return trustees.map((doc) => stripMongoId(doc) as Trustee);
 }
 
 /**

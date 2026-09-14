@@ -22,3 +22,8 @@ sync-acms-professional-ids-audit/fixtures/
 # prove the migration against actual affected data before the one-shot prod run. Never
 # committed — local-only, re-created per validation session.
 backfill-unassigned-on/fixtures/
+
+# heal-sentinel-case-appointments-audit: fixtures/ holds a real sample of sentinel
+# case-trustee-appointments and a real trustee-professional-ids export (both trustee/case PII).
+# Never committed — local-only, re-created per audit session.
+heal-sentinel-case-appointments-audit/fixtures/
