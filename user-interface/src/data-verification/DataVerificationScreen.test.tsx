@@ -67,35 +67,73 @@ describe('Review Orders screen', () => {
     expect(callArgs[0]).toBeInstanceOf(Array);
   });
 
-  // TODO: Unskip this test.
-  test.skip('should toggle filter button', async () => {
+  test('should filter on status when clicking status filter', async () => {
+    setupFeatureFlags();
+    const ordersResponse = {
+      data: [
+        MockData.getTransferOrder({ override: { status: 'approved' } }),
+        MockData.getTransferOrder({ override: { status: 'pending' } }),
+        MockData.getConsolidationOrder({
+          override: { status: 'approved', leadCase: MockData.getCaseSummary() },
+        }),
+        MockData.getConsolidationOrder({
+          override: { status: 'pending', leadCase: MockData.getCaseSummary() },
+        }),
+      ],
+    };
+    vi.spyOn(Api2, 'getOrders').mockResolvedValue(ordersResponse);
+    const orders = ordersResponse.data;
+    const approvedOrders = orders.filter((order) => order.status === 'approved');
+    const pendingOrders = orders.filter((order) => order.status === 'pending');
+
     render(
       <BrowserRouter>
         <DataVerificationScreen />
       </BrowserRouter>,
     );
 
-    const ordersScreen = screen.getByTestId('data-verification-screen');
-    expect(ordersScreen).toBeInTheDocument();
-
-    let accordionGroup;
     await waitFor(() => {
-      accordionGroup = screen.getByTestId('accordion-group');
-      expect(accordionGroup).toBeInTheDocument();
-    });
-    const approvedOrderFilter = screen.getByTestId(`order-status-filter-approved`);
-
-    fireEvent.click(approvedOrderFilter);
-
-    await waitFor(() => {
-      expect(approvedOrderFilter).toHaveClass('active');
+      expect(screen.getByTestId('accordion-group')).toBeInTheDocument();
     });
 
-    fireEvent.click(approvedOrderFilter);
+    // Deselect Pending → only approved visible.
+    const statusExpandBtn = document.querySelector('#task-status-filter-expand') as HTMLElement;
+    fireEvent.click(statusExpandBtn);
+    const pendingOption = screen.getByTestId('task-status-filter-option-item-0');
+    fireEvent.click(pendingOption);
 
-    await waitFor(() => {
-      expect(approvedOrderFilter).toHaveClass('inactive');
+    await waitFor(async () => {
+      for (const order of approvedOrders) {
+        const heading = screen.queryByTestId(`accordion-order-list-${order.id}`);
+        expect(heading).toBeInTheDocument();
+        expect(heading).toBeVisible();
+      }
+
+      for (const order of pendingOrders) {
+        const heading = screen.queryByTestId(`accordion-order-list-${order.id}`);
+        expect(heading).not.toBeVisible();
+      }
     });
+
+    // Deselect Approved, reselect Pending → only pending visible.
+    const approvedOption = screen.getByTestId('task-status-filter-option-item-1');
+    fireEvent.click(approvedOption);
+    fireEvent.click(pendingOption);
+
+    for (const order of pendingOrders) {
+      await waitFor(async () => {
+        const heading = screen.queryByTestId(`accordion-order-list-${order.id}`);
+        expect(heading).toBeInTheDocument();
+        expect(heading).toBeVisible();
+      });
+    }
+
+    for (const order of approvedOrders) {
+      await waitFor(async () => {
+        const heading = screen.queryByTestId(`accordion-order-list-${order.id}`);
+        expect(heading).not.toBeVisible();
+      });
+    }
   });
 
   test('should render a list of orders', async () => {

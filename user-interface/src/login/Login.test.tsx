@@ -230,8 +230,8 @@ describe('Login', () => {
     expect(sessionComponent).not.toHaveBeenCalled();
   });
 
-  test.skip('should show privacy warning if not acknowledged', async () => {
-    vi.spyOn(localStorage, 'getAck').mockReturnValueOnce(false);
+  test('should show privacy warning if not acknowledged', async () => {
+    vi.spyOn(LocalStorage, 'getAck').mockReset().mockReturnValueOnce(false);
     render(
       <BrowserRouter>
         <Login>{children}</Login>
