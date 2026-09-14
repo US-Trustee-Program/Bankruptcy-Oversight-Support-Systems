@@ -282,6 +282,8 @@ describe('PastKeyDatesForm', () => {
         leaseExpiration: '2027-06-30',
         idExpiration: '2028-01-15',
         lastCompensationStudy: null,
+        bondIssuedDate: null,
+        bondRenewalDate: null,
       }),
     );
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');
@@ -867,6 +869,94 @@ describe('PastKeyDatesForm', () => {
             pastTprSubmission: populatedDocument.pastTprSubmission,
             lastAuditFiscalYear: populatedDocument.lastAuditFiscalYear,
           }),
+        ),
+      );
+    });
+  });
+
+  describe('chapter7-elected variant', () => {
+    const electedAppointment: TrusteeAppointment = {
+      ...chapter7Appointment,
+      chapter: '7',
+      appointmentType: 'elected',
+    };
+
+    const electedDocument: TrusteeUpcomingKeyDates = {
+      id: 'doc-elected-001',
+      documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
+      trusteeId: 'trustee-001',
+      appointmentId: 'appointment-001',
+      createdBy: SYSTEM_USER_REFERENCE,
+      createdOn: '2026-01-01T00:00:00.000Z',
+      updatedBy: SYSTEM_USER_REFERENCE,
+      updatedOn: '2026-01-01T00:00:00.000Z',
+      bondIssuedDate: '2023-06-01',
+      bondRenewalDate: '2026-06-01',
+    };
+
+    test('deriveVariant renders Bond Issued Date field for chapter 7 elected appointment', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [electedAppointment] });
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('bond-issued-date')).toBeInTheDocument();
+      });
+    });
+
+    test('pre-populates bondIssuedDate from existing key dates', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [electedAppointment] });
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: electedDocument });
+
+      renderComponent();
+
+      await waitFor(() => {
+        const input = screen.getByTestId('bond-issued-date') as HTMLInputElement;
+        expect(input.value).toBe('2023-06-01');
+      });
+    });
+
+    test('on save, includes bondIssuedDate in PUT payload', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [electedAppointment] });
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: electedDocument });
+      const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('bond-issued-date')).toBeInTheDocument();
+      });
+
+      await userEvent.click(screen.getByTestId('button-save-past-key-dates'));
+
+      await waitFor(() =>
+        expect(putSpy).toHaveBeenCalledWith(
+          'trustee-001',
+          'appointment-001',
+          expect.objectContaining({ bondIssuedDate: '2023-06-01' }),
+        ),
+      );
+    });
+
+    test('save preserves bondRenewalDate from original doc unchanged', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [electedAppointment] });
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: electedDocument });
+      const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('bond-issued-date')).toBeInTheDocument();
+      });
+
+      await userEvent.click(screen.getByTestId('button-save-past-key-dates'));
+
+      await waitFor(() =>
+        expect(putSpy).toHaveBeenCalledWith(
+          'trustee-001',
+          'appointment-001',
+          expect.objectContaining({ bondRenewalDate: '2026-06-01' }),
         ),
       );
     });

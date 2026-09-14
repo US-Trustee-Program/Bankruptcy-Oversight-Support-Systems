@@ -1471,4 +1471,112 @@ describe('UpcomingKeyDatesForm', () => {
       });
     });
   });
+
+  describe('chapter7-elected variant', () => {
+    const electedAppointment: TrusteeAppointment = {
+      id: 'appointment-001',
+      trusteeId: 'trustee-001',
+      chapter: '7',
+      appointmentType: 'elected',
+      courtId: '0208',
+      courtName: 'Southern District of New York',
+      appointedDate: '2021-03-15',
+      status: 'active',
+      effectiveDate: '2021-03-15',
+      updatedOn: '2026-01-01T00:00:00.000Z',
+      updatedBy: SYSTEM_USER_REFERENCE,
+    };
+
+    const electedDocument: TrusteeUpcomingKeyDates = {
+      id: 'doc-elected-001',
+      documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
+      trusteeId: 'trustee-001',
+      appointmentId: 'appointment-001',
+      createdBy: SYSTEM_USER_REFERENCE,
+      createdOn: '2026-01-01T00:00:00.000Z',
+      updatedBy: SYSTEM_USER_REFERENCE,
+      updatedOn: '2026-01-01T00:00:00.000Z',
+      bondIssuedDate: '2023-06-01',
+      bondRenewalDate: '2026-06-01',
+    };
+
+    test('deriveVariant renders Bond Renewal Date field for chapter 7 elected appointment', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [electedAppointment] });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/Bond Renewal Date/i)).toBeInTheDocument();
+      });
+    });
+
+    test('does not render Field Exam / Audit or TPR/TIR sections', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [electedAppointment] });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/Bond Renewal Date/i)).toBeInTheDocument();
+      });
+      expect(screen.queryByText(/Field Exam or Audit/i)).not.toBeInTheDocument();
+      expect(screen.queryByTestId('tpr-due-year-type')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('tir-frequency')).not.toBeInTheDocument();
+    });
+
+    test('pre-populates bondRenewalDate from existing key dates', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [electedAppointment] });
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: electedDocument });
+
+      renderComponent();
+
+      await waitFor(() => {
+        const bondRenewalInput = screen.getByLabelText(/Bond Renewal Date/i) as HTMLInputElement;
+        expect(bondRenewalInput.value).toBe('2026-06-01');
+      });
+    });
+
+    test('on save, includes bondRenewalDate in PUT payload', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [electedAppointment] });
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: electedDocument });
+      const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/Bond Renewal Date/i)).toBeInTheDocument();
+      });
+
+      await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+      await waitFor(() =>
+        expect(putSpy).toHaveBeenCalledWith(
+          'trustee-001',
+          'appointment-001',
+          expect.objectContaining({ bondRenewalDate: '2026-06-01' }),
+        ),
+      );
+    });
+
+    test('preserves bondIssuedDate in PUT payload when no UI control modifies it', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [electedAppointment] });
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: electedDocument });
+      const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/Bond Renewal Date/i)).toBeInTheDocument();
+      });
+
+      await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+      await waitFor(() =>
+        expect(putSpy).toHaveBeenCalledWith(
+          'trustee-001',
+          'appointment-001',
+          expect.objectContaining({ bondIssuedDate: '2023-06-01' }),
+        ),
+      );
+    });
+  });
 });

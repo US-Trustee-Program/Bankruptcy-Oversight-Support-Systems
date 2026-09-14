@@ -450,3 +450,32 @@ describe('getUpcomingKeyDatesFieldConfig — flag OFF (tprDisplayUpdates=false)'
     },
   );
 });
+
+describe('UPCOMING_KEY_DATES_FIELD_CONFIG chapter7-elected variant', () => {
+  const config = UPCOMING_KEY_DATES_FIELD_CONFIG['chapter7-elected'];
+
+  test('bondRenewalDate computed shows No date added when data is null', () => {
+    const field = config.find((f) => f.key === 'bondRenewalDate');
+    expect(field?.kind).toBe('computed');
+    if (field?.kind === 'computed') {
+      const result = field.buildField(null);
+      expect(result.label).toBe('Bond Renewal Date');
+      expect(result.value).toBe('No date added');
+      expect(result.testId).toBe('bond-renewal-date-row');
+    }
+  });
+
+  test('bondRenewalDate computed shows MM/DD/YYYY when data is set', () => {
+    const field = config.find((f) => f.key === 'bondRenewalDate');
+    expect(field?.kind).toBe('computed');
+    if (field?.kind === 'computed') {
+      const result = field.buildField({ ...baseDoc, bondRenewalDate: '2026-06-01' });
+      expect(result.value).toBe('06/01/2026');
+    }
+  });
+
+  test('flag ON returns same config as UPCOMING_KEY_DATES_FIELD_CONFIG', () => {
+    const flagOn = getUpcomingKeyDatesFieldConfig('chapter7-elected', true);
+    expect(flagOn).toBe(UPCOMING_KEY_DATES_FIELD_CONFIG['chapter7-elected']);
+  });
+});

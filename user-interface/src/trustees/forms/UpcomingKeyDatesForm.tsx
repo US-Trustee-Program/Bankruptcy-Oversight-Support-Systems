@@ -14,6 +14,7 @@ import {
   TrusteeAppointment,
   isChapter12Standing,
   isChapter13Standing,
+  isChapter7Elected,
 } from '@common/cams/trustee-appointments';
 import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
@@ -120,6 +121,8 @@ type FormState = {
   leaseExpiration: string;
   idExpiration: string;
   lastCompensationStudy: string;
+  bondIssuedDate: string;
+  bondRenewalDate: string;
 };
 
 const EMPTY_FORM: FormState = {
@@ -145,6 +148,8 @@ const EMPTY_FORM: FormState = {
   leaseExpiration: '',
   idExpiration: '',
   lastCompensationStudy: '',
+  bondIssuedDate: '',
+  bondRenewalDate: '',
 };
 
 const currentYear = new Date().getFullYear();
@@ -159,6 +164,9 @@ function deriveVariant(chapter: string, appointmentType: string): UpcomingKeyDat
   }
   if (isChapter13Standing(chapter, appointmentType)) {
     return 'chapter13-standing';
+  }
+  if (isChapter7Elected(chapter, appointmentType)) {
+    return 'chapter7-elected';
   }
   return 'chapter7-panel';
 }
@@ -188,6 +196,8 @@ function buildFormStateFromData(data: TrusteeUpcomingKeyDates): FormState {
     leaseExpiration: data.leaseExpiration ?? '',
     idExpiration: data.idExpiration ?? '',
     lastCompensationStudy: data.lastCompensationStudy ?? '',
+    bondIssuedDate: data.bondIssuedDate ?? '',
+    bondRenewalDate: data.bondRenewalDate ?? '',
   };
 }
 
@@ -447,6 +457,8 @@ export default function UpcomingKeyDatesForm({
       leaseExpiration: form.leaseExpiration || null,
       idExpiration: form.idExpiration || null,
       lastCompensationStudy: form.lastCompensationStudy || null,
+      bondIssuedDate: form.bondIssuedDate || null,
+      bondRenewalDate: form.bondRenewalDate || null,
     };
 
     if (!tprDisplayUpdates) {

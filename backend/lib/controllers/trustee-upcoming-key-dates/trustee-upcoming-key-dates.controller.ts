@@ -24,6 +24,8 @@ const KEY_DATE_FEATURE_FLAGS = [
   'display-chpt11-subv-past-key-dates',
   'display-chpt12-13-case-by-case-upcoming-key-dates',
   'display-chpt12-standing-key-dates',
+  'display-chpt13-standing-key-dates',
+  'display-chpt7-elected-key-dates',
 ] as const;
 
 export class TrusteeUpcomingKeyDatesController implements CamsController {

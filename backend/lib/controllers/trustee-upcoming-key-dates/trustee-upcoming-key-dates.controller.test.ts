@@ -42,6 +42,8 @@ describe('TrusteeUpcomingKeyDatesController', () => {
     context.featureFlags['display-chpt11-subv-past-key-dates'] = false;
     context.featureFlags['display-chpt12-13-case-by-case-upcoming-key-dates'] = false;
     context.featureFlags['display-chpt12-standing-key-dates'] = false;
+    context.featureFlags['display-chpt13-standing-key-dates'] = false;
+    context.featureFlags['display-chpt7-elected-key-dates'] = false;
     context.request = mockCamsHttpRequest({
       method: 'GET',
       params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
@@ -72,6 +74,46 @@ describe('TrusteeUpcomingKeyDatesController', () => {
 
     expect(response.statusCode).toBe(HttpStatusCodes.OK);
     expect(response.body).toEqual({ data: null });
+  });
+
+  test('GET succeeds when only display-chpt13-standing-key-dates flag is enabled', async () => {
+    context.featureFlags['display-chpt7-panel-upcoming-key-dates'] = false;
+    context.featureFlags['display-chpt11-subv-past-key-dates'] = false;
+    context.featureFlags['display-chpt12-13-case-by-case-upcoming-key-dates'] = false;
+    context.featureFlags['display-chpt12-standing-key-dates'] = false;
+    context.featureFlags['display-chpt13-standing-key-dates'] = true;
+    vi.spyOn(TrusteeUpcomingKeyDatesUseCase.prototype, 'getUpcomingKeyDates').mockResolvedValue(
+      null,
+    );
+    context.request = mockCamsHttpRequest({
+      method: 'GET',
+      params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
+    });
+
+    const controller = new TrusteeUpcomingKeyDatesController(context);
+    const response = await controller.handleRequest(context);
+
+    expect(response.statusCode).toBe(HttpStatusCodes.OK);
+  });
+
+  test('GET succeeds when only display-chpt7-elected-key-dates flag is enabled', async () => {
+    context.featureFlags['display-chpt7-panel-upcoming-key-dates'] = false;
+    context.featureFlags['display-chpt11-subv-past-key-dates'] = false;
+    context.featureFlags['display-chpt12-13-case-by-case-upcoming-key-dates'] = false;
+    context.featureFlags['display-chpt12-standing-key-dates'] = false;
+    context.featureFlags['display-chpt7-elected-key-dates'] = true;
+    vi.spyOn(TrusteeUpcomingKeyDatesUseCase.prototype, 'getUpcomingKeyDates').mockResolvedValue(
+      null,
+    );
+    context.request = mockCamsHttpRequest({
+      method: 'GET',
+      params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
+    });
+
+    const controller = new TrusteeUpcomingKeyDatesController(context);
+    const response = await controller.handleRequest(context);
+
+    expect(response.statusCode).toBe(HttpStatusCodes.OK);
   });
 
   test('GET returns 200 with document when found', async () => {
@@ -160,6 +202,8 @@ describe('TrusteeUpcomingKeyDatesController', () => {
         leaseExpiration: null,
         idExpiration: null,
         lastCompensationStudy: null,
+        bondIssuedDate: null,
+        bondRenewalDate: null,
         ...overrides,
       };
     }

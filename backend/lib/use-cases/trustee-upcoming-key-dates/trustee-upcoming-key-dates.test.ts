@@ -55,6 +55,8 @@ function buildMockInput(
     leaseExpiration: null,
     idExpiration: null,
     lastCompensationStudy: null,
+    bondIssuedDate: null,
+    bondRenewalDate: null,
     ...overrides,
   };
 }

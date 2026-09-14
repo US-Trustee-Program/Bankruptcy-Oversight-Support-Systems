@@ -8,6 +8,7 @@ import {
   CaseAppointment,
   isChapter12Standing,
   isChapter13Standing,
+  isChapter7Elected,
 } from './trustee-appointments';
 import { AppointmentChapterType, AppointmentType, AppointmentStatus } from './trustees';
 import { validateObject } from './validation';
@@ -537,6 +538,21 @@ describe('trustee-appointments', () => {
       ['13', ''],
     ])('returns false for chapter %s / %s', (chapter, type) => {
       expect(isChapter13Standing(chapter, type)).toBe(false);
+    });
+  });
+
+  describe('isChapter7Elected', () => {
+    test('returns true for chapter 7 elected', () => {
+      expect(isChapter7Elected('7', 'elected')).toBe(true);
+    });
+
+    test.each([
+      ['7', 'panel'],
+      ['12', 'elected'],
+      ['13', 'standing'],
+      ['7', ''],
+    ])('returns false for chapter %s / %s', (chapter, type) => {
+      expect(isChapter7Elected(chapter, type)).toBe(false);
     });
   });
 });
