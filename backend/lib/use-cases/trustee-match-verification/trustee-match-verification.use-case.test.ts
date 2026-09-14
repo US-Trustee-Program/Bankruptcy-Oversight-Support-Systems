@@ -138,6 +138,19 @@ describe('TrusteeMatchVerificationUseCase', () => {
       expect(mockSearch).toHaveBeenCalledWith({ status: ['approved'] });
     });
 
+    test('drops rejected but keeps pending and approved when all three are selected (default UI filter state)', async () => {
+      await useCase.getVerifications(context, { statusParam: 'pending,approved,rejected' });
+
+      expect(mockSearch).toHaveBeenCalledWith({ status: ['pending', 'approved'] });
+    });
+
+    test('returns no results without querying when statusParam is entirely invalid statuses', async () => {
+      const result = await useCase.getVerifications(context, { statusParam: 'rejected' });
+
+      expect(result).toEqual([]);
+      expect(mockSearch).not.toHaveBeenCalled();
+    });
+
     test('returns data from repository', async () => {
       const result = await useCase.getVerifications(context, {});
 

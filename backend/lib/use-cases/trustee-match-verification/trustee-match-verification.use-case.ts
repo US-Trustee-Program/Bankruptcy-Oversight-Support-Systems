@@ -43,6 +43,16 @@ export class TrusteeMatchVerificationUseCase {
         .split(',')
         .map((s) => s.trim() as OrderStatus)
         .filter((s) => VALID_STATUSES.includes(s));
+
+      // A statusParam was given but none of it survived validation (e.g. the shared
+      // Data Verification "Rejected" filter, which trustee-match no longer supports) —
+      // that's a request for statuses that can't exist here, not "no filter given". Return
+      // no results rather than falling through to the no-filter default below, which would
+      // otherwise silently substitute pending verifications for the (always-empty) requested set.
+      if (params.statusParam && parsedStatuses.length === 0) {
+        return [];
+      }
+
       const status: OrderStatus[] = parsedStatuses.length > 0 ? parsedStatuses : ['pending'];
 
       const repo = factory.getTrusteeMatchVerificationRepository(context);
