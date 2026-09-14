@@ -215,7 +215,7 @@ type RecordTrace = {
   acmsAddress: string;
   acmsPhone: string;
   priorDisposition: string;
-  finalOutcome: 'resolved' | 'still-ambiguous' | 'still-no-match';
+  finalOutcome: 'resolved' | 'ambiguous' | 'no-match';
   resolvedTrusteeId?: string;
   resolvedVia?: StageName | 'name-exact' | 'name-fuzzy';
   stages: StageTrace[];
@@ -252,6 +252,53 @@ function camsAddressString(trustee: Trustee): string {
 
 const MAX_STAGES = 3; // matchTrusteeByName + up to 2 fallback tiers (ambiguous: corroboration, levenshtein; no-match: tokenIntersection, levenshtein)
 
+// Stage 1 is always matchTrusteeByName, which only ever reaches this backtest's population in
+// its 'ambiguous'/'no-match' shape - any record where matchTrusteeByName alone resolved outright
+// would have auto-linked at write time and never become an error record to replay in the first
+// place. So stage1's winner/score columns are always empty by construction (confirmed against a
+// full run: 0 of 2734 rows). Only candidateCount carries real signal for stage 1.
+function stageHeaderColumns(stageIndex: number): string[] {
+  const base = [`stage${stageIndex}_name`, `stage${stageIndex}_result`, `stage${stageIndex}_candidateCount`];
+  if (stageIndex === 1) return base;
+  return [
+    ...base,
+    `stage${stageIndex}_winnerTrusteeId`,
+    `stage${stageIndex}_winnerName`,
+    `stage${stageIndex}_winnerAddress`,
+    `stage${stageIndex}_winnerPhone`,
+    `stage${stageIndex}_nameScore`,
+    `stage${stageIndex}_addressScore`,
+    `stage${stageIndex}_phoneScore`,
+    `stage${stageIndex}_emailScore`,
+  ];
+}
+
+function stageRowFields(
+  stageIndex: number,
+  s: StageTrace | undefined,
+): (string | number | null | undefined)[] {
+  const skippedBase = ['', 'skipped', ''];
+  const skippedWinner = ['', '', '', '', '', '', '', ''];
+
+  if (stageIndex === 1) {
+    return s ? [s.stage, s.result, s.candidateCount] : skippedBase;
+  }
+  if (!s) return [...skippedBase, ...skippedWinner];
+  return [
+    s.stage,
+    s.result,
+    s.candidateCount,
+    s.winner?.trusteeId,
+    s.winner?.name,
+    s.winner?.address,
+    s.winner?.phone,
+    s.winner?.score.nameScore,
+    s.winner?.score.addressScore,
+    s.winner?.score.phoneScore,
+    s.winner?.score.emailScore,
+  ];
+}
+
 function writeReportCsv(traces: RecordTrace[]) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 
@@ -266,19 +313,7 @@ function writeReportCsv(traces: RecordTrace[]) {
     'resolvedVia',
   ];
   for (let i = 1; i <= MAX_STAGES; i++) {
-    header.push(
-      `stage${i}_name`,
-      `stage${i}_result`,
-      `stage${i}_candidateCount`,
-      `stage${i}_winnerTrusteeId`,
-      `stage${i}_winnerName`,
-      `stage${i}_winnerAddress`,
-      `stage${i}_winnerPhone`,
-      `stage${i}_nameScore`,
-      `stage${i}_addressScore`,
-      `stage${i}_phoneScore`,
-      `stage${i}_emailScore`,
-    );
+    header.push(...stageHeaderColumns(i));
   }
 
   const rows = traces.map((t) => {
@@ -292,25 +327,8 @@ function writeReportCsv(traces: RecordTrace[]) {
       t.resolvedTrusteeId,
       t.resolvedVia,
     ];
-    for (let i = 0; i < MAX_STAGES; i++) {
-      const s = t.stages[i];
-      if (!s) {
-        fields.push('', 'skipped', '', '', '', '', '', '', '', '', '');
-        continue;
-      }
-      fields.push(
-        s.stage,
-        s.result,
-        s.candidateCount,
-        s.winner?.trusteeId,
-        s.winner?.name,
-        s.winner?.address,
-        s.winner?.phone,
-        s.winner?.score.nameScore,
-        s.winner?.score.addressScore,
-        s.winner?.score.phoneScore,
-        s.winner?.score.emailScore,
-      );
+    for (let i = 1; i <= MAX_STAGES; i++) {
+      fields.push(...stageRowFields(i, t.stages[i - 1]));
     }
     return csvRow(fields);
   });
@@ -475,7 +493,7 @@ async function run() {
   }
 
   const traces: RecordTrace[] = [];
-  const counts = { resolved: 0, 'still-ambiguous': 0, 'still-no-match': 0 };
+  const counts = { resolved: 0, ambiguous: 0, 'no-match': 0 };
 
   let i = 0;
   for (const record of errored) {
@@ -528,7 +546,7 @@ async function run() {
           resolvedTrusteeId = levenshteinStage.resolvedTrusteeId;
           resolvedVia = 'levenshtein';
         } else {
-          finalOutcome = 'still-ambiguous';
+          finalOutcome = 'ambiguous';
         }
       }
     } else {
@@ -552,7 +570,7 @@ async function run() {
           resolvedTrusteeId = levenshteinStage.resolvedTrusteeId;
           resolvedVia = 'levenshtein';
         } else {
-          finalOutcome = 'still-no-match';
+          finalOutcome = 'no-match';
         }
       }
     }
@@ -599,16 +617,16 @@ async function run() {
     console.log(`  ${via.padEnd(15)} ${c}`);
   }
 
-  const stillAmbiguous = traces.filter((t) => t.finalOutcome === 'still-ambiguous');
+  const ambiguous = traces.filter((t) => t.finalOutcome === 'ambiguous');
   const matchStage = (t: RecordTrace) => t.stages[0];
-  const singleCandidateStuck = stillAmbiguous.filter((t) => matchStage(t).candidateCount === 1);
-  const multiCandidateStuck = stillAmbiguous.filter((t) => matchStage(t).candidateCount > 1);
-  const candidateCounts = stillAmbiguous.map((t) => matchStage(t).candidateCount).sort((a, b) => a - b);
+  const singleCandidateStuck = ambiguous.filter((t) => matchStage(t).candidateCount === 1);
+  const multiCandidateStuck = ambiguous.filter((t) => matchStage(t).candidateCount > 1);
+  const candidateCounts = ambiguous.map((t) => matchStage(t).candidateCount).sort((a, b) => a - b);
   const percentile = (p: number) =>
     candidateCounts.length > 0 ? candidateCounts[Math.floor(candidateCounts.length * p)] : 0;
 
   console.log(
-    `\n=== Still-ambiguous breakdown (${stillAmbiguous.length} records, genuine remaining matcher gap) ===\n`,
+    `\n=== Ambiguous breakdown (${ambiguous.length} records, genuine remaining matcher gap) ===\n`,
   );
   console.log(`  single-candidate: ${singleCandidateStuck.length}`);
   console.log(`  multi-candidate:  ${multiCandidateStuck.length}`);
