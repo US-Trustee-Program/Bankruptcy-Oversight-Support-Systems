@@ -229,38 +229,12 @@ describe('TrusteeMatchVerificationController', () => {
       expect(response.statusCode).toBe(204);
     });
 
-    test('should call useCase.rejectVerification with reason and return 204', async () => {
+    test('should throw BadRequestError for reject action since rejection is no longer supported', async () => {
       context.request.body = { action: 'reject', reason: 'Not the right trustee' };
-      vi.spyOn(TrusteeMatchVerificationUseCase.prototype, 'rejectVerification').mockResolvedValue(
-        undefined,
-      );
 
       const controller = new TrusteeMatchVerificationController();
-      const response = await controller.handleRequest(context);
 
-      expect(TrusteeMatchVerificationUseCase.prototype.rejectVerification).toHaveBeenCalledWith(
-        context,
-        'verification-1',
-        'Not the right trustee',
-      );
-      expect(response.statusCode).toBe(204);
-    });
-
-    test('should call useCase.rejectVerification without reason and return 204', async () => {
-      context.request.body = { action: 'reject' };
-      vi.spyOn(TrusteeMatchVerificationUseCase.prototype, 'rejectVerification').mockResolvedValue(
-        undefined,
-      );
-
-      const controller = new TrusteeMatchVerificationController();
-      const response = await controller.handleRequest(context);
-
-      expect(TrusteeMatchVerificationUseCase.prototype.rejectVerification).toHaveBeenCalledWith(
-        context,
-        'verification-1',
-        undefined,
-      );
-      expect(response.statusCode).toBe(204);
+      await expect(controller.handleRequest(context)).rejects.toThrow('Missing or invalid action.');
     });
 
     test('should throw BadRequestError when id is missing', async () => {

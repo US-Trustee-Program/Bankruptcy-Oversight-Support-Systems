@@ -1121,31 +1121,6 @@ describe('TrusteeMatchVerificationAccordion', () => {
     expect(content.textContent).not.toContain('x555');
   });
 
-  describe('reject flow', () => {
-    test('does not render reject-button for pending order with candidate', async () => {
-      renderWithProps({ order: sampleOrderWithCandidates });
-      await mockDetailAndExpand(sampleOrderWithCandidatesDetail);
-
-      expect(screen.getByTestId('approve-candidate-trustee-1')).toBeInTheDocument();
-      expect(screen.queryByTestId('reject-button')).not.toBeInTheDocument();
-    });
-
-    test('reject-button does not appear for non-pending orders (Branch B)', async () => {
-      const rejectedOrder: TrusteeMatchVerificationListItem = {
-        ...sampleOrderWithCandidates,
-        status: 'rejected',
-      };
-      const rejectedDetail: EnrichedTrusteeMatchVerification = {
-        ...sampleOrderWithCandidatesDetail,
-        status: 'rejected',
-      };
-      renderWithProps({ order: rejectedOrder });
-      await mockDetailAndExpand(rejectedDetail);
-
-      expect(screen.queryByTestId('reject-button')).not.toBeInTheDocument();
-    });
-  });
-
   describe('manual trustee search flow', () => {
     const manualSearchMockData: TrusteeSearchResult[] = [
       { trusteeId: 'manual-trustee-1', name: 'Manual Match', appointments: [], matchType: 'exact' },
@@ -1448,72 +1423,6 @@ describe('TrusteeMatchVerificationAccordion', () => {
         (el) => el.textContent === 'Not Provided',
       );
       expect(candidateAddressCell).toBeInTheDocument();
-    });
-  });
-
-  describe('reject flow via rejection modal', () => {
-    function submitRejectionModal(orderId: string, reason: string) {
-      const textarea = screen.getByTestId(`rejection-reason-input-${orderId}`);
-      fireEvent.change(textarea, { target: { value: reason } });
-      const submitButton = document.getElementById(
-        `trustee-rejection-modal-${orderId}-submit-button`,
-      );
-      fireEvent.click(submitButton!);
-    }
-
-    test('calls rejection API and onOrderUpdate with warning on reject success', async () => {
-      vi.spyOn(Api2, 'patchTrusteeVerificationOrderRejection').mockResolvedValue(undefined);
-      const onOrderUpdate = vi.fn();
-      renderWithProps({ order: sampleOrderWithCandidates, onOrderUpdate });
-
-      submitRejectionModal(sampleOrderWithCandidates.id, 'Wrong person');
-
-      await waitFor(() => {
-        expect(Api2.patchTrusteeVerificationOrderRejection).toHaveBeenCalledWith(
-          sampleOrderWithCandidates.id,
-          'Wrong person',
-        );
-        expect(onOrderUpdate).toHaveBeenCalledWith(
-          { message: 'Trustee match rejected.', type: UswdsAlertStyle.Warning, timeOut: 8 },
-          expect.objectContaining({ status: 'rejected', reason: 'Wrong person' }),
-        );
-      });
-    });
-
-    test('ignores a second rapid submit while the first rejection is still in flight', async () => {
-      let resolveRejection: () => void = () => {};
-      const rejectSpy = vi
-        .spyOn(Api2, 'patchTrusteeVerificationOrderRejection')
-        .mockImplementation(() => new Promise<void>((resolve) => (resolveRejection = resolve)));
-      renderWithProps({ order: sampleOrderWithCandidates });
-
-      const textarea = screen.getByTestId(`rejection-reason-input-${sampleOrderWithCandidates.id}`);
-      fireEvent.change(textarea, { target: { value: 'Wrong person' } });
-      const submitButton = document.getElementById(
-        `trustee-rejection-modal-${sampleOrderWithCandidates.id}-submit-button`,
-      );
-      clickTwiceInSameBatch(submitButton);
-
-      expect(rejectSpy).toHaveBeenCalledTimes(1);
-      resolveRejection();
-      await waitFor(() => expect(rejectSpy).toHaveBeenCalledTimes(1));
-    });
-
-    test('calls onOrderUpdate with error alert on reject failure', async () => {
-      vi.spyOn(Api2, 'patchTrusteeVerificationOrderRejection').mockRejectedValue(
-        new Error('Network error'),
-      );
-      const onOrderUpdate = vi.fn();
-      renderWithProps({ order: sampleOrderWithCandidates, onOrderUpdate });
-
-      submitRejectionModal(sampleOrderWithCandidates.id, 'Wrong person');
-
-      await waitFor(() => {
-        expect(onOrderUpdate).toHaveBeenCalledWith(
-          { message: 'Failed to reject trustee match.', type: UswdsAlertStyle.Error, timeOut: 8 },
-          sampleOrderWithCandidates,
-        );
-      });
     });
   });
 
@@ -2131,13 +2040,6 @@ describe('TrusteeMatchVerificationAccordion', () => {
           }),
         );
       });
-    });
-
-    test('reject button is not rendered for multiple match order', async () => {
-      renderWithProps({ order: multipleCandidatesOrder });
-      await mockDetailAndExpand(multipleCandidatesDetail);
-
-      expect(screen.queryByTestId('reject-button')).not.toBeInTheDocument();
     });
 
     test('"search here" inline link opens search modal', async () => {

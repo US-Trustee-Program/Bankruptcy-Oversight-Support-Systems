@@ -22,7 +22,7 @@ import { Creatable } from '@common/cams/creatable';
 import { TRUSTEE_VARIATION_DOCUMENT_TYPE, TrusteeVariation } from '@common/cams/trustee-variation';
 
 const MODULE_NAME = 'TRUSTEE-MATCH-VERIFICATION-USE-CASE';
-const VALID_STATUSES: OrderStatus[] = ['pending', 'approved', 'rejected'];
+const VALID_STATUSES: OrderStatus[] = ['pending', 'approved'];
 
 // Defensive sanity cap only — the fingerprint-keyed model expects a handful of cases per
 // variant (see this slice's ~2.2% fragmentation figure), not the hundreds a case-keyed model
@@ -153,66 +153,6 @@ export class TrusteeMatchVerificationUseCase {
       return court.courtDivisionName
         ? `${court.courtName} - ${court.courtDivisionName}`
         : court.courtName;
-    }
-  }
-
-  async rejectVerification(
-    context: ApplicationContext,
-    id: string,
-    reason?: string,
-  ): Promise<void> {
-    const trace = context.observability.startTrace(context.invocationId);
-    try {
-      const repo = factory.getTrusteeMatchVerificationRepository(context);
-      const verification = await repo.findById(id);
-      if (verification.status !== 'pending') {
-        throw new NotFoundError(MODULE_NAME, {
-          message: `Pending verification ${id} not found.`,
-        });
-      }
-      const resolutionMs = verification.createdOn
-        ? Date.now() - new Date(verification.createdOn).getTime()
-        : 0;
-      const now = new Date().toISOString();
-      const userRef = getCamsUserReference(context.session.user);
-      await repo.update(id, {
-        status: 'rejected',
-        reason,
-        updatedBy: userRef,
-        updatedOn: now,
-      });
-      context.observability.completeTrace(
-        trace,
-        'TrusteeMatchVerificationResolved',
-        {
-          success: true,
-          properties: {
-            action: 'reject',
-            caseId: verification.caseId,
-            mismatchReason: verification.mismatchReason,
-            resolutionPath: 'escalated',
-          },
-          measurements: {
-            resolutionMs,
-            candidateCount: verification.matchCandidates.length,
-          },
-        },
-        [{ name: 'TrusteeVerificationResolutionMs', value: resolutionMs }],
-        context.logger,
-      );
-    } catch (originalError) {
-      context.observability.completeTrace(
-        trace,
-        'TrusteeMatchVerificationResolved',
-        {
-          success: false,
-          properties: { action: 'reject' },
-          measurements: {},
-        },
-        undefined,
-        context.logger,
-      );
-      throw getCamsError(originalError, MODULE_NAME);
     }
   }
 
