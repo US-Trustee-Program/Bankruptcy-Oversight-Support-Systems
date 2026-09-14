@@ -231,6 +231,7 @@ describe('Login', () => {
   });
 
   test('should show privacy warning if not acknowledged', async () => {
+    getLoginProviderFromEnv.mockReturnValue('mock');
     vi.spyOn(LocalStorage, 'getAck').mockReset().mockReturnValueOnce(false);
     render(
       <BrowserRouter>
