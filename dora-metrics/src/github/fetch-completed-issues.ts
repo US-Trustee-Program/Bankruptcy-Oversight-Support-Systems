@@ -52,8 +52,6 @@ export async function fetchCompletedIssues({
       page,
     });
 
-    if (response.data.length === 0) break;
-
     for (const issue of response.data) {
       const completedIssue = toCompletedIssue(issue, since.getTime());
       if (completedIssue) issues.push(completedIssue);

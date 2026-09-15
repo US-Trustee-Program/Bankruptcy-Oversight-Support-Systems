@@ -95,6 +95,29 @@ describe('computeLeadTime', () => {
     expect(byPeriod[0].medianLeadTimeHours).toBe(25);
   });
 
+  test('computes the median correctly for an odd-count bucket, distinct from the mean', () => {
+    const startDate = new Date('2026-01-01T00:00:00.000Z');
+    const endDate = new Date('2026-01-08T00:00:00.000Z');
+    // lead times 10h, 20h, 60h -> mean 30h, median (the middle value) 20h.
+    const issues: CompletedIssue[] = [
+      { number: 1, closed_at: '2026-01-01T00:00:00.000Z' }, // -> run at 10h, lead 10h
+      { number: 2, closed_at: '2026-01-01T15:00:00.000Z' }, // -> run at 35h, lead 20h
+      { number: 3, closed_at: '2026-01-02T16:00:00.000Z' }, // -> run at 100h, lead 60h
+    ];
+    const runs: WorkflowRun[] = [
+      { id: 1, conclusion: 'success', created_at: '2026-01-01T10:00:00.000Z' },
+      { id: 2, conclusion: 'success', created_at: '2026-01-02T11:00:00.000Z' },
+      { id: 3, conclusion: 'success', created_at: '2026-01-05T04:00:00.000Z' },
+    ];
+
+    const { byPeriod } = computeLeadTime(issues, runs, { startDate, periodDays: 7, endDate });
+
+    expect(byPeriod).toHaveLength(1);
+    expect(byPeriod[0].issueCount).toBe(3);
+    expect(byPeriod[0].meanLeadTimeHours).toBe(30);
+    expect(byPeriod[0].medianLeadTimeHours).toBe(20);
+  });
+
   test('an empty issues array still produces zero-count buckets across the requested range', () => {
     const startDate = new Date('2026-01-01T00:00:00.000Z');
     const endDate = new Date('2026-01-22T00:00:00.000Z');
@@ -158,10 +181,18 @@ describe('computeLeadTime', () => {
     const startDate = new Date('2026-01-01T00:00:00.000Z');
     const endDate = new Date('2026-01-15T00:00:00.000Z');
 
-    expect(() => computeLeadTime([], [], { startDate, endDate, periodDays: 0 })).toThrow();
-    expect(() => computeLeadTime([], [], { startDate, endDate, periodDays: -7 })).toThrow();
-    expect(() => computeLeadTime([], [], { startDate, endDate, periodDays: NaN })).toThrow();
-    expect(() => computeLeadTime([], [], { startDate, endDate, periodDays: Infinity })).toThrow();
+    expect(() => computeLeadTime([], [], { startDate, endDate, periodDays: 0 })).toThrow(
+      'periodDays must be a positive finite number, got 0',
+    );
+    expect(() => computeLeadTime([], [], { startDate, endDate, periodDays: -7 })).toThrow(
+      'periodDays must be a positive finite number, got -7',
+    );
+    expect(() => computeLeadTime([], [], { startDate, endDate, periodDays: NaN })).toThrow(
+      'periodDays must be a positive finite number, got NaN',
+    );
+    expect(() => computeLeadTime([], [], { startDate, endDate, periodDays: Infinity })).toThrow(
+      'periodDays must be a positive finite number, got Infinity',
+    );
   });
 
   test('throws when periodDays is a positive finite number too small to produce a bounded bucket count', () => {

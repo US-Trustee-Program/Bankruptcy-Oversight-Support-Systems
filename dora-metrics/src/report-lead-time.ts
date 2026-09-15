@@ -40,6 +40,7 @@ async function main(): Promise<void> {
       medianLeadTimeHours: bucket.medianLeadTimeHours.toFixed(2),
     })),
     BY_PERIOD_OUTPUT_PATH,
+    ['periodStart', 'periodEnd', 'issueCount', 'meanLeadTimeHours', 'medianLeadTimeHours'],
   );
 
   const meanOverall =
