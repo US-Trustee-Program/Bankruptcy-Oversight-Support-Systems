@@ -2,30 +2,37 @@
  * Scenario: trustees-comprehensive
  * Database: cams only
  *
- * Seeds 32 trustees with comprehensive coverage for testing trustee filtering and multi-division support:
+ * Seeds 33 trustees with comprehensive coverage for testing trustee filtering and multi-division support:
  *
  * Geographic Distribution:
- *   - New York (081 Manhattan/Southern, 091 Buffalo/Western): 32 trustees
+ *   - New York: 33 trustees, using only division codes 081 (Southern District,
+ *     Manhattan, courtId 0208) and 091 (Western District, Buffalo, courtId 0209)
  *     - Uses only division codes 081 and 091 (confirmed in DXTR)
  *     - These are the only codes guaranteed to resolve to proper division names
+ *     - NOTE: 081 and 091 belong to two different courts (courtId 0208 vs 0209),
+ *       not two divisions of a single court, so every appointment in this file
+ *       currently has exactly one divisionCode. There is no true single-appointment
+ *       multi-division (`divisionCodes.length > 1`) example here yet — that would
+ *       require a second confirmed-in-DXTR division code belonging to the *same*
+ *       courtId as an existing one.
  *
  * Chapter Coverage:
- *   - Chapter 7 (panel): 11 trustees
- *   - Chapter 11 (panel): 6 trustees
- *   - Chapter 12 (standing): 3 trustees
- *   - Chapter 13 (standing): 9 trustees
- *   - Chapter 11 Subchapter V (pool): 3 trustees
+ *   - Chapter 7 (panel): 13 appointments
+ *   - Chapter 11 (panel/case-by-case): 8 appointments
+ *   - Chapter 12 (standing/case-by-case): 4 appointments
+ *   - Chapter 13 (standing/case-by-case): 10 appointments
+ *   - Chapter 11 Subchapter V (pool): 3 appointments
  *
- * Multi-Division Support (CAMS-740):
- *   - Single-division appointments (29 trustees)
- *   - Multi-division appointments (3 trustees):
- *     - Patricia Manhattan: divisions 081, 091
- *     - William T Statewide: divisions 081, 091
- *     - Patricia Ann Statewide: divisions 081, 091
+ * Multi-Court Support (CAMS-740):
+ *   - Single-court trustees (32 trustees, one single-division appointment each
+ *     in either 081 or 091; William T Statewide (081) and Patricia Ann Statewide
+ *     (091) are one such pair, added specifically so both division codes are
+ *     represented in this "additional" batch)
+ *   - Multi-court trustee (1 trustee): Patricia Manhattan holds 6 separate
+ *     single-division appointments across NY, CA, ID, and IA courts
  *   - Mix of active and inactive statuses
  *
  * NOTE: Uses CAMS-only seeding pattern - no DXTR seeding required.
- * NOTE: All trustees use Manhattan (NY) divisions 081/091 since these are known valid codes.
  */
 
 import type { SeedContext, SeedOperation } from '../../runner.js';
@@ -116,6 +123,8 @@ function createAppointment(opts: {
   courtName: string;
   courtDivisionName: string;
   status: 'active' | 'inactive';
+  appointedDate?: string;
+  effectiveDate?: string;
 }) {
   const appointment: Record<string, unknown> = {
     id: opts.id,
@@ -125,9 +134,9 @@ function createAppointment(opts: {
     appointmentType: opts.appointmentType,
     courtId: opts.courtId,
     divisionCodes: opts.divisionCodes,
-    appointedDate: '2020-01-01',
+    appointedDate: opts.appointedDate ?? '2020-01-01',
     status: opts.status,
-    effectiveDate: '2020-01-01',
+    effectiveDate: opts.effectiveDate ?? '2020-01-01',
     courtName: opts.courtName,
     courtDivisionName: opts.courtDivisionName,
     updatedOn: '2025-03-01T00:00:00.000Z',
@@ -274,6 +283,34 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       courtName: 'U.S. Bankruptcy Court Southern District of New York',
       courtDivisionName: 'Manhattan',
       status: 'active',
+    }),
+  );
+
+  // Additional-6: Ch11 Case by Case, Inactive (081) - exercises the appointment accordion's
+  // collapsed/gray-tag state with dates distinct from the common 2020-01-01 default
+  trustees.push(
+    createTrustee({
+      id: 'seed-trustee-add-025',
+      firstName: 'Olivia',
+      lastName: 'Ashworth',
+      status: 'active',
+      state: 'NY',
+      city: 'New York',
+    }),
+  );
+  appointments.push(
+    createAppointment({
+      id: 'seed-appt-add-025-ch11-casebycase',
+      trusteeId: 'seed-trustee-add-025',
+      chapter: '11',
+      appointmentType: 'case-by-case',
+      courtId: '0208',
+      divisionCodes: ['081'],
+      courtName: 'U.S. Bankruptcy Court Southern District of New York',
+      courtDivisionName: 'Manhattan',
+      status: 'inactive',
+      appointedDate: '2022-03-15',
+      effectiveDate: '2023-09-01',
     }),
   );
 
@@ -1011,13 +1048,16 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
   );
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // Additional Multi-Division Examples (CAMS-740 testing)
+  // Additional Division-Coverage Examples (CAMS-740 testing)
   // ═══════════════════════════════════════════════════════════════════════════
 
-  // Note: Patricia Manhattan (NY-2) already has multi-division (081, 091)
-  // Adding 2 more multi-division examples
+  // Note: these two trustees are single-division appointments (081 and 091
+  // respectively), added as a pair so both known-good division codes are
+  // represented in this "additional" batch. Patricia Manhattan (NY-2) is the
+  // one trustee in this file with multiple appointments, but each of hers is
+  // still single-division (spread across separate out-of-state courts).
 
-  // Additional-23: Ch7 Panel across Manhattan divisions (081, 091)
+  // Additional-23: Ch7 Panel, single division (081)
   trustees.push(
     createTrustee({
       id: 'seed-trustee-add-023',
@@ -1043,7 +1083,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
     }),
   );
 
-  // Additional-24: Ch13 Standing across Manhattan divisions (081, 091)
+  // Additional-24: Ch13 Standing, single division (091)
   trustees.push(
     createTrustee({
       id: 'seed-trustee-add-024',
