@@ -261,6 +261,59 @@ describe('Test Modal component', () => {
     expect(document.body).not.toHaveClass('modal-open');
   });
 
+  test('should focus the newly-opened modal, not leave focus trapped in the previously-opened one', async () => {
+    const secondModalId = 'stacked-second-modal';
+    const secondModalRef = React.createRef<ModalRefType>();
+
+    render(
+      <BrowserRouter>
+        <>
+          <OpenModalButton
+            buttonIndex="open-stacked-second"
+            modalId={secondModalId}
+            modalRef={secondModalRef}
+          >
+            Open Second Modal
+          </OpenModalButton>
+          <Modal
+            modalId={secondModalId}
+            ref={secondModalRef}
+            heading={'Second Modal'}
+            content={'Second Modal Content'}
+            actionButtonGroup={{
+              modalId: secondModalId,
+              modalRef: secondModalRef,
+              submitButton: { label: 'Submit' },
+            }}
+          />
+        </>
+      </BrowserRouter>,
+    );
+
+    fireEvent.click(screen.getByTestId(testButtonId));
+    const firstModalFirstElement = document.querySelector('.usa-checkbox__label') as HTMLElement;
+    expect(firstModalFirstElement).toHaveFocus();
+
+    fireEvent.click(screen.getByTestId('open-modal-button_open-stacked-second'));
+
+    const secondSubmitButton = screen.getByTestId(`button-${secondModalId}-submit-button`);
+    expect(secondSubmitButton).toHaveFocus();
+
+    const secondCloseButton = screen.getByTestId(`modal-x-button-${secondModalId}`);
+    fireEvent.click(secondCloseButton);
+
+    const outsideButton = document.createElement('button');
+    outsideButton.textContent = 'Outside';
+    document.body.appendChild(outsideButton);
+    outsideButton.focus();
+
+    await vi.waitFor(() => {
+      expect(firstModalFirstElement).toHaveFocus();
+    });
+
+    document.body.removeChild(outsideButton);
+  });
+
   test('should redirect focus back into the modal when focus lands outside of it', async () => {
     const openButton = screen.getByTestId(testButtonId);
     fireEvent.click(openButton);

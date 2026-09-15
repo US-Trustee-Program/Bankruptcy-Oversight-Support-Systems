@@ -16,6 +16,8 @@ type ModalShowOptions = {
   openModalButtonRef?: RefObject<OpenModalButtonRef | null>;
 };
 
+const visibleModalIds: string[] = [];
+
 interface ModalProps {
   modalId: string;
   className?: string;
@@ -147,6 +149,19 @@ function Modal_(props: ModalProps, ref: React.Ref<ModalRefType>) {
   }));
 
   useEffect(() => {
+    if (!isVisible) {
+      return;
+    }
+    visibleModalIds.push(props.modalId);
+    return () => {
+      const index = visibleModalIds.lastIndexOf(props.modalId);
+      if (index !== -1) {
+        visibleModalIds.splice(index, 1);
+      }
+    };
+  }, [isVisible, props.modalId]);
+
+  useEffect(() => {
     let firstEl: HTMLElement | null = null;
     if (isVisible && modalShellRef.current) {
       const interactiveElements = modalShellRef.current.querySelectorAll(
@@ -228,7 +243,8 @@ function Modal_(props: ModalProps, ref: React.Ref<ModalRefType>) {
     const handleFocusIn = (ev: FocusEvent) => {
       const modalEl = modalShellRef.current;
       const target = ev.target;
-      if (modalEl && target instanceof Node && !modalEl.contains(target)) {
+      const isTopmostModal = visibleModalIds[visibleModalIds.length - 1] === props.modalId;
+      if (isTopmostModal && modalEl && target instanceof Node && !modalEl.contains(target)) {
         (firstElement ?? modalEl).focus();
       }
     };
