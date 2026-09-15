@@ -28,11 +28,20 @@
  *     debtorAttorney.address*, debtorAttorney.cityStateZipCountry
  *
  * Usage: tsx ./scripts/synthesize-fixtures.ts
+ *
+ * KNOWN GAP: the committed mongo-fixture.json also contains a `trustee-match-verification`
+ * collection, plus a "test-trustee-0" trustee/trustee-appointment and 3 case-appointments
+ * (trusteeId aaaabbbb-cccc-dddd-eeee-ffff00000001, caseId 091-69-12345) that this script does
+ * not produce -- they were added directly to the committed file by earlier, unrelated work.
+ * Running this script end-to-end will DROP those records. Until that's reconciled, treat
+ * fixtures/mongo-fixture.json as the source of truth for those and hand-merge instead of
+ * overwriting outright.
  */
 
 import { readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { resolve } from 'path';
 import { randomUUID } from 'crypto';
+import { buildTrusteeFixtureData } from './lib/trustee-fixture-data';
 
 const FIXTURES_DIR = resolve(__dirname, '../fixtures');
 
@@ -341,27 +350,15 @@ for (const id of allReferencedCaseIds) {
 
 // ── Trustees ──────────────────────────────────────────────────────────────────
 
-// Synthesized — no real data needed, trustees.spec.ts just checks the table renders.
-// trusteeId must be a UUID — the backend queries by trusteeId and the nav link uses it.
-const TRUSTEE_UUID = 'aaaabbbb-cccc-dddd-eeee-ffff00000001';
-const trustees: MongoDocument[] = [
-  {
-    _id: '000000000000000000000001',
-    id: 'test-trustee-0',
-    trusteeId: TRUSTEE_UUID,
-    documentType: 'TRUSTEE',
-    name: null, // ← Faker at seed time
-    professional: {
-      firstName: null, // ← Faker at seed time
-      lastName: null, // ← Faker at seed time
-      office: null, // ← Faker at seed time
-      phone: null,
-      email: null,
-    },
-    updatedOn: new Date().toISOString(),
-    updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
-  },
-];
+// Fully synthetic (no PII, not sourced from the harvest) — covers trustees.spec.ts's
+// basic list/create-form checks plus the Trustees list sort/filter/pagination and
+// Trustee Case List E2E specs. See lib/trustee-fixture-data.ts for the fixture design.
+const trusteeFixtures = buildTrusteeFixtureData();
+const trustees: MongoDocument[] = trusteeFixtures.trustees;
+const trusteeAppointments: MongoDocument[] = trusteeFixtures.trusteeAppointments;
+const caseTrusteeAppointments: MongoDocument[] = trusteeFixtures.caseAppointments;
+const trusteeCaseAppointments: MongoDocument[] = trusteeFixtures.caseAppointments;
+const trusteeFixtureCases: MongoDocument[] = trusteeFixtures.cases;
 
 // ── User groups ───────────────────────────────────────────────────────────────
 
@@ -394,10 +391,13 @@ const userGroups: MongoDocument[] = [
 const mongoFixture = {
   synthesizedAt: new Date().toISOString(),
   collections: {
-    cases: syncedCases,
+    cases: [...syncedCases, ...trusteeFixtureCases],
     consolidations,
     orders: transferOrders,
     trustees,
+    'trustee-appointments': trusteeAppointments,
+    'case-trustee-appointments': caseTrusteeAppointments,
+    'trustee-case-appointments': trusteeCaseAppointments,
     'user-groups': userGroups,
   },
 };

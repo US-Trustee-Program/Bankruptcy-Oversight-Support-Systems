@@ -886,6 +886,486 @@
           "id": "SYSTEM",
           "name": "SYSTEM"
         }
+      },
+      {
+        "id": "081-24-90000",
+        "documentType": "SYNCED_CASE",
+        "caseId": "081-24-90000",
+        "caseNumber": "24-90000",
+        "caseTitle": "E2E Trustee Case List Test Case 001",
+        "chapter": "7",
+        "dateFiled": "2024-01-01",
+        "courtId": "0208",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "081-24-90001",
+        "documentType": "SYNCED_CASE",
+        "caseId": "081-24-90001",
+        "caseNumber": "24-90001",
+        "caseTitle": "E2E Trustee Case List Test Case 002",
+        "chapter": "7",
+        "dateFiled": "2024-01-02",
+        "courtId": "0208",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "081-24-90002",
+        "documentType": "SYNCED_CASE",
+        "caseId": "081-24-90002",
+        "caseNumber": "24-90002",
+        "caseTitle": "E2E Trustee Case List Test Case 003",
+        "chapter": "7",
+        "dateFiled": "2024-01-03",
+        "courtId": "0208",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "081-24-90003",
+        "documentType": "SYNCED_CASE",
+        "caseId": "081-24-90003",
+        "caseNumber": "24-90003",
+        "caseTitle": "E2E Trustee Case List Test Case 004",
+        "chapter": "7",
+        "dateFiled": "2024-01-04",
+        "courtId": "0208",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "081-24-90004",
+        "documentType": "SYNCED_CASE",
+        "caseId": "081-24-90004",
+        "caseNumber": "24-90004",
+        "caseTitle": "E2E Trustee Case List Test Case 005",
+        "chapter": "7",
+        "dateFiled": "2024-01-05",
+        "courtId": "0208",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "081-24-90005",
+        "documentType": "SYNCED_CASE",
+        "caseId": "081-24-90005",
+        "caseNumber": "24-90005",
+        "caseTitle": "E2E Trustee Case List Test Case 006",
+        "chapter": "7",
+        "dateFiled": "2024-01-06",
+        "courtId": "0208",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "081-24-90006",
+        "documentType": "SYNCED_CASE",
+        "caseId": "081-24-90006",
+        "caseNumber": "24-90006",
+        "caseTitle": "E2E Trustee Case List Test Case 007",
+        "chapter": "7",
+        "dateFiled": "2024-01-07",
+        "courtId": "0208",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "081-24-90007",
+        "documentType": "SYNCED_CASE",
+        "caseId": "081-24-90007",
+        "caseNumber": "24-90007",
+        "caseTitle": "E2E Trustee Case List Test Case 008",
+        "chapter": "7",
+        "dateFiled": "2024-01-08",
+        "courtId": "0208",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "081-24-90008",
+        "documentType": "SYNCED_CASE",
+        "caseId": "081-24-90008",
+        "caseNumber": "24-90008",
+        "caseTitle": "E2E Trustee Case List Test Case 009",
+        "chapter": "7",
+        "dateFiled": "2024-01-09",
+        "courtId": "0208",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "081-24-90009",
+        "documentType": "SYNCED_CASE",
+        "caseId": "081-24-90009",
+        "caseNumber": "24-90009",
+        "caseTitle": "E2E Trustee Case List Test Case 010",
+        "chapter": "7",
+        "dateFiled": "2024-01-10",
+        "courtId": "0208",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "081-24-90010",
+        "documentType": "SYNCED_CASE",
+        "caseId": "081-24-90010",
+        "caseNumber": "24-90010",
+        "caseTitle": "E2E Trustee Case List Test Case 011",
+        "chapter": "7",
+        "dateFiled": "2024-01-11",
+        "courtId": "0208",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "081-24-90011",
+        "documentType": "SYNCED_CASE",
+        "caseId": "081-24-90011",
+        "caseNumber": "24-90011",
+        "caseTitle": "E2E Trustee Case List Test Case 012",
+        "chapter": "7",
+        "dateFiled": "2024-01-12",
+        "courtId": "0208",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "081-24-90012",
+        "documentType": "SYNCED_CASE",
+        "caseId": "081-24-90012",
+        "caseNumber": "24-90012",
+        "caseTitle": "E2E Trustee Case List Test Case 013",
+        "chapter": "7",
+        "dateFiled": "2024-01-13",
+        "courtId": "0208",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "081-24-90013",
+        "documentType": "SYNCED_CASE",
+        "caseId": "081-24-90013",
+        "caseNumber": "24-90013",
+        "caseTitle": "E2E Trustee Case List Test Case 014",
+        "chapter": "7",
+        "dateFiled": "2024-01-14",
+        "courtId": "0208",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "081-24-90014",
+        "documentType": "SYNCED_CASE",
+        "caseId": "081-24-90014",
+        "caseNumber": "24-90014",
+        "caseTitle": "E2E Trustee Case List Test Case 015",
+        "chapter": "7",
+        "dateFiled": "2024-01-15",
+        "courtId": "0208",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "081-24-90015",
+        "documentType": "SYNCED_CASE",
+        "caseId": "081-24-90015",
+        "caseNumber": "24-90015",
+        "caseTitle": "E2E Trustee Case List Test Case 016",
+        "chapter": "7",
+        "dateFiled": "2024-01-16",
+        "courtId": "0208",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "081-24-90016",
+        "documentType": "SYNCED_CASE",
+        "caseId": "081-24-90016",
+        "caseNumber": "24-90016",
+        "caseTitle": "E2E Trustee Case List Test Case 017",
+        "chapter": "7",
+        "dateFiled": "2024-01-17",
+        "courtId": "0208",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "081-24-90017",
+        "documentType": "SYNCED_CASE",
+        "caseId": "081-24-90017",
+        "caseNumber": "24-90017",
+        "caseTitle": "E2E Trustee Case List Test Case 018",
+        "chapter": "7",
+        "dateFiled": "2024-01-18",
+        "courtId": "0208",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "081-24-90018",
+        "documentType": "SYNCED_CASE",
+        "caseId": "081-24-90018",
+        "caseNumber": "24-90018",
+        "caseTitle": "E2E Trustee Case List Test Case 019",
+        "chapter": "7",
+        "dateFiled": "2024-01-19",
+        "courtId": "0208",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "081-24-90019",
+        "documentType": "SYNCED_CASE",
+        "caseId": "081-24-90019",
+        "caseNumber": "24-90019",
+        "caseTitle": "E2E Trustee Case List Test Case 020",
+        "chapter": "7",
+        "dateFiled": "2024-01-20",
+        "courtId": "0208",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "081-24-90020",
+        "documentType": "SYNCED_CASE",
+        "caseId": "081-24-90020",
+        "caseNumber": "24-90020",
+        "caseTitle": "E2E Trustee Case List Test Case 021",
+        "chapter": "7",
+        "dateFiled": "2024-01-21",
+        "courtId": "0208",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "081-24-90021",
+        "documentType": "SYNCED_CASE",
+        "caseId": "081-24-90021",
+        "caseNumber": "24-90021",
+        "caseTitle": "E2E Trustee Case List Test Case 022",
+        "chapter": "7",
+        "dateFiled": "2024-01-22",
+        "courtId": "0208",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "081-24-90022",
+        "documentType": "SYNCED_CASE",
+        "caseId": "081-24-90022",
+        "caseNumber": "24-90022",
+        "caseTitle": "E2E Trustee Case List Test Case 023",
+        "chapter": "7",
+        "dateFiled": "2024-01-23",
+        "courtId": "0208",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "081-24-90023",
+        "documentType": "SYNCED_CASE",
+        "caseId": "081-24-90023",
+        "caseNumber": "24-90023",
+        "caseTitle": "E2E Trustee Case List Test Case 024",
+        "chapter": "7",
+        "dateFiled": "2024-01-24",
+        "courtId": "0208",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "081-24-90024",
+        "documentType": "SYNCED_CASE",
+        "caseId": "081-24-90024",
+        "caseNumber": "24-90024",
+        "caseTitle": "E2E Trustee Case List Test Case 025",
+        "chapter": "7",
+        "dateFiled": "2024-01-25",
+        "courtId": "0208",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "081-24-90025",
+        "documentType": "SYNCED_CASE",
+        "caseId": "081-24-90025",
+        "caseNumber": "24-90025",
+        "caseTitle": "E2E Trustee Case List Test Case 026",
+        "chapter": "7",
+        "dateFiled": "2024-01-26",
+        "courtId": "0208",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "081-24-90026",
+        "documentType": "SYNCED_CASE",
+        "caseId": "081-24-90026",
+        "caseNumber": "24-90026",
+        "caseTitle": "E2E Trustee Case List Test Case 027",
+        "chapter": "7",
+        "dateFiled": "2024-01-27",
+        "courtId": "0208",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "081-24-90027",
+        "documentType": "SYNCED_CASE",
+        "caseId": "081-24-90027",
+        "caseNumber": "24-90027",
+        "caseTitle": "E2E Trustee Case List Test Case 028",
+        "chapter": "7",
+        "dateFiled": "2024-01-28",
+        "courtId": "0208",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "081-24-90028",
+        "documentType": "SYNCED_CASE",
+        "caseId": "081-24-90028",
+        "caseNumber": "24-90028",
+        "caseTitle": "E2E Trustee Case List Test Case 029",
+        "chapter": "7",
+        "dateFiled": "2024-01-29",
+        "courtId": "0208",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "081-24-90029",
+        "documentType": "SYNCED_CASE",
+        "caseId": "081-24-90029",
+        "caseNumber": "24-90029",
+        "caseTitle": "E2E Trustee Case List Test Case 030",
+        "chapter": "7",
+        "dateFiled": "2024-01-30",
+        "courtId": "0208",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
       }
     ],
     "consolidations": [
@@ -2420,6 +2900,843 @@
           "id": "SYSTEM",
           "name": "SYSTEM"
         }
+      },
+      {
+        "id": "e2e-trustee-sort4level",
+        "documentType": "TRUSTEE",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000002",
+        "name": "AaaSortFourLevel, E2e",
+        "firstName": "E2e",
+        "lastName": "AaaSortFourLevel",
+        "status": "active",
+        "public": {
+          "address": {
+            "address1": "100 Test Street",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10001",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-0100"
+          },
+          "email": "e2e-trustee-sort4level@example.com"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-trustee-comp-filler-001",
+        "documentType": "TRUSTEE",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000101",
+        "name": "Zzz001Filler, E2e",
+        "firstName": "E2e",
+        "lastName": "Zzz001Filler",
+        "status": "active",
+        "public": {
+          "address": {
+            "address1": "100 Test Street",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10001",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-0100"
+          },
+          "email": "e2e-trustee-comp-filler-001@example.com"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-trustee-comp-filler-002",
+        "documentType": "TRUSTEE",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000102",
+        "name": "Zzz002Filler, E2e",
+        "firstName": "E2e",
+        "lastName": "Zzz002Filler",
+        "status": "active",
+        "public": {
+          "address": {
+            "address1": "100 Test Street",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10001",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-0100"
+          },
+          "email": "e2e-trustee-comp-filler-002@example.com"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-trustee-comp-filler-003",
+        "documentType": "TRUSTEE",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000103",
+        "name": "Zzz003Filler, E2e",
+        "firstName": "E2e",
+        "lastName": "Zzz003Filler",
+        "status": "active",
+        "public": {
+          "address": {
+            "address1": "100 Test Street",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10001",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-0100"
+          },
+          "email": "e2e-trustee-comp-filler-003@example.com"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-trustee-comp-filler-004",
+        "documentType": "TRUSTEE",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000104",
+        "name": "Zzz004Filler, E2e",
+        "firstName": "E2e",
+        "lastName": "Zzz004Filler",
+        "status": "active",
+        "public": {
+          "address": {
+            "address1": "100 Test Street",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10001",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-0100"
+          },
+          "email": "e2e-trustee-comp-filler-004@example.com"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-trustee-comp-filler-005",
+        "documentType": "TRUSTEE",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000105",
+        "name": "Zzz005Filler, E2e",
+        "firstName": "E2e",
+        "lastName": "Zzz005Filler",
+        "status": "active",
+        "public": {
+          "address": {
+            "address1": "100 Test Street",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10001",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-0100"
+          },
+          "email": "e2e-trustee-comp-filler-005@example.com"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-trustee-comp-filler-006",
+        "documentType": "TRUSTEE",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000106",
+        "name": "Zzz006Filler, E2e",
+        "firstName": "E2e",
+        "lastName": "Zzz006Filler",
+        "status": "active",
+        "public": {
+          "address": {
+            "address1": "100 Test Street",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10001",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-0100"
+          },
+          "email": "e2e-trustee-comp-filler-006@example.com"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-trustee-comp-filler-007",
+        "documentType": "TRUSTEE",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000107",
+        "name": "Zzz007Filler, E2e",
+        "firstName": "E2e",
+        "lastName": "Zzz007Filler",
+        "status": "active",
+        "public": {
+          "address": {
+            "address1": "100 Test Street",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10001",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-0100"
+          },
+          "email": "e2e-trustee-comp-filler-007@example.com"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-trustee-comp-filler-008",
+        "documentType": "TRUSTEE",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000108",
+        "name": "Zzz008Filler, E2e",
+        "firstName": "E2e",
+        "lastName": "Zzz008Filler",
+        "status": "active",
+        "public": {
+          "address": {
+            "address1": "100 Test Street",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10001",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-0100"
+          },
+          "email": "e2e-trustee-comp-filler-008@example.com"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-trustee-comp-filler-009",
+        "documentType": "TRUSTEE",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000109",
+        "name": "Zzz009Filler, E2e",
+        "firstName": "E2e",
+        "lastName": "Zzz009Filler",
+        "status": "active",
+        "public": {
+          "address": {
+            "address1": "100 Test Street",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10001",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-0100"
+          },
+          "email": "e2e-trustee-comp-filler-009@example.com"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-trustee-comp-filler-010",
+        "documentType": "TRUSTEE",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000110",
+        "name": "Zzz010Filler, E2e",
+        "firstName": "E2e",
+        "lastName": "Zzz010Filler",
+        "status": "active",
+        "public": {
+          "address": {
+            "address1": "100 Test Street",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10001",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-0100"
+          },
+          "email": "e2e-trustee-comp-filler-010@example.com"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-trustee-comp-filler-011",
+        "documentType": "TRUSTEE",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000111",
+        "name": "Zzz011Filler, E2e",
+        "firstName": "E2e",
+        "lastName": "Zzz011Filler",
+        "status": "active",
+        "public": {
+          "address": {
+            "address1": "100 Test Street",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10001",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-0100"
+          },
+          "email": "e2e-trustee-comp-filler-011@example.com"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-trustee-comp-filler-012",
+        "documentType": "TRUSTEE",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000112",
+        "name": "Zzz012Filler, E2e",
+        "firstName": "E2e",
+        "lastName": "Zzz012Filler",
+        "status": "active",
+        "public": {
+          "address": {
+            "address1": "100 Test Street",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10001",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-0100"
+          },
+          "email": "e2e-trustee-comp-filler-012@example.com"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-trustee-comp-filler-013",
+        "documentType": "TRUSTEE",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000113",
+        "name": "Zzz013Filler, E2e",
+        "firstName": "E2e",
+        "lastName": "Zzz013Filler",
+        "status": "active",
+        "public": {
+          "address": {
+            "address1": "100 Test Street",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10001",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-0100"
+          },
+          "email": "e2e-trustee-comp-filler-013@example.com"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-trustee-comp-filler-014",
+        "documentType": "TRUSTEE",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000114",
+        "name": "Zzz014Filler, E2e",
+        "firstName": "E2e",
+        "lastName": "Zzz014Filler",
+        "status": "active",
+        "public": {
+          "address": {
+            "address1": "100 Test Street",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10001",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-0100"
+          },
+          "email": "e2e-trustee-comp-filler-014@example.com"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-trustee-comp-filler-015",
+        "documentType": "TRUSTEE",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000115",
+        "name": "Zzz015Filler, E2e",
+        "firstName": "E2e",
+        "lastName": "Zzz015Filler",
+        "status": "active",
+        "public": {
+          "address": {
+            "address1": "100 Test Street",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10001",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-0100"
+          },
+          "email": "e2e-trustee-comp-filler-015@example.com"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-trustee-comp-filler-016",
+        "documentType": "TRUSTEE",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000116",
+        "name": "Zzz016Filler, E2e",
+        "firstName": "E2e",
+        "lastName": "Zzz016Filler",
+        "status": "active",
+        "public": {
+          "address": {
+            "address1": "100 Test Street",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10001",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-0100"
+          },
+          "email": "e2e-trustee-comp-filler-016@example.com"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-trustee-comp-filler-017",
+        "documentType": "TRUSTEE",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000117",
+        "name": "Zzz017Filler, E2e",
+        "firstName": "E2e",
+        "lastName": "Zzz017Filler",
+        "status": "active",
+        "public": {
+          "address": {
+            "address1": "100 Test Street",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10001",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-0100"
+          },
+          "email": "e2e-trustee-comp-filler-017@example.com"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-trustee-comp-filler-018",
+        "documentType": "TRUSTEE",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000118",
+        "name": "Zzz018Filler, E2e",
+        "firstName": "E2e",
+        "lastName": "Zzz018Filler",
+        "status": "active",
+        "public": {
+          "address": {
+            "address1": "100 Test Street",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10001",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-0100"
+          },
+          "email": "e2e-trustee-comp-filler-018@example.com"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-trustee-comp-filler-019",
+        "documentType": "TRUSTEE",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000119",
+        "name": "Zzz019Filler, E2e",
+        "firstName": "E2e",
+        "lastName": "Zzz019Filler",
+        "status": "active",
+        "public": {
+          "address": {
+            "address1": "100 Test Street",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10001",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-0100"
+          },
+          "email": "e2e-trustee-comp-filler-019@example.com"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-trustee-comp-filler-020",
+        "documentType": "TRUSTEE",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000120",
+        "name": "Zzz020Filler, E2e",
+        "firstName": "E2e",
+        "lastName": "Zzz020Filler",
+        "status": "active",
+        "public": {
+          "address": {
+            "address1": "100 Test Street",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10001",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-0100"
+          },
+          "email": "e2e-trustee-comp-filler-020@example.com"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-trustee-comp-filler-021",
+        "documentType": "TRUSTEE",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000121",
+        "name": "Zzz021Filler, E2e",
+        "firstName": "E2e",
+        "lastName": "Zzz021Filler",
+        "status": "active",
+        "public": {
+          "address": {
+            "address1": "100 Test Street",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10001",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-0100"
+          },
+          "email": "e2e-trustee-comp-filler-021@example.com"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-trustee-comp-filler-022",
+        "documentType": "TRUSTEE",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000122",
+        "name": "Zzz022Filler, E2e",
+        "firstName": "E2e",
+        "lastName": "Zzz022Filler",
+        "status": "active",
+        "public": {
+          "address": {
+            "address1": "100 Test Street",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10001",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-0100"
+          },
+          "email": "e2e-trustee-comp-filler-022@example.com"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-trustee-comp-filler-023",
+        "documentType": "TRUSTEE",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000123",
+        "name": "Zzz023Filler, E2e",
+        "firstName": "E2e",
+        "lastName": "Zzz023Filler",
+        "status": "active",
+        "public": {
+          "address": {
+            "address1": "100 Test Street",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10001",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-0100"
+          },
+          "email": "e2e-trustee-comp-filler-023@example.com"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-trustee-comp-filler-024",
+        "documentType": "TRUSTEE",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000124",
+        "name": "Zzz024Filler, E2e",
+        "firstName": "E2e",
+        "lastName": "Zzz024Filler",
+        "status": "active",
+        "public": {
+          "address": {
+            "address1": "100 Test Street",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10001",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-0100"
+          },
+          "email": "e2e-trustee-comp-filler-024@example.com"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-trustee-comp-filler-025",
+        "documentType": "TRUSTEE",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000125",
+        "name": "Zzz025Filler, E2e",
+        "firstName": "E2e",
+        "lastName": "Zzz025Filler",
+        "status": "active",
+        "public": {
+          "address": {
+            "address1": "100 Test Street",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10001",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-0100"
+          },
+          "email": "e2e-trustee-comp-filler-025@example.com"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-trustee-comp-filler-026",
+        "documentType": "TRUSTEE",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000126",
+        "name": "Zzz026Filler, E2e",
+        "firstName": "E2e",
+        "lastName": "Zzz026Filler",
+        "status": "active",
+        "public": {
+          "address": {
+            "address1": "100 Test Street",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10001",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-0100"
+          },
+          "email": "e2e-trustee-comp-filler-026@example.com"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-trustee-comp-needle",
+        "documentType": "TRUSTEE",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000003",
+        "name": "AabCompNeedle, E2e",
+        "firstName": "E2e",
+        "lastName": "AabCompNeedle",
+        "status": "active",
+        "public": {
+          "address": {
+            "address1": "100 Test Street",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10001",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-0100"
+          },
+          "email": "e2e-trustee-comp-needle@example.com"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-trustee-split-conjunction",
+        "documentType": "TRUSTEE",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000006",
+        "name": "AacSplitConjunction, E2e",
+        "firstName": "E2e",
+        "lastName": "AacSplitConjunction",
+        "status": "active",
+        "public": {
+          "address": {
+            "address1": "100 Test Street",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10001",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-0100"
+          },
+          "email": "e2e-trustee-split-conjunction@example.com"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-trustee-caselist-paginated",
+        "documentType": "TRUSTEE",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "name": "CaseListPaginated, E2e",
+        "firstName": "E2e",
+        "lastName": "CaseListPaginated",
+        "status": "active",
+        "public": {
+          "address": {
+            "address1": "100 Test Street",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10001",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-0100"
+          },
+          "email": "e2e-trustee-caselist-paginated@example.com"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-trustee-caselist-empty",
+        "documentType": "TRUSTEE",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000005",
+        "name": "CaseListEmpty, E2e",
+        "firstName": "E2e",
+        "lastName": "CaseListEmpty",
+        "status": "active",
+        "public": {
+          "address": {
+            "address1": "100 Test Street",
+            "city": "New York",
+            "state": "NY",
+            "zipCode": "10001",
+            "countryCode": "US"
+          },
+          "phone": {
+            "number": "212-555-0100"
+          },
+          "email": "e2e-trustee-caselist-empty@example.com"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
       }
     ],
     "user-groups": [
@@ -2524,6 +3841,666 @@
           "id": "SYSTEM",
           "name": "SYSTEM"
         }
+      },
+      {
+        "id": "e2e-case-appt-001",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90000",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-01T00:00:00Z",
+        "appointedDate": "2024-01-01",
+        "dateFiled": "2024-01-01",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-002",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90001",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-02T00:00:00Z",
+        "appointedDate": "2024-01-02",
+        "dateFiled": "2024-01-02",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-003",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90002",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-03T00:00:00Z",
+        "appointedDate": "2024-01-03",
+        "dateFiled": "2024-01-03",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-004",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90003",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-04T00:00:00Z",
+        "appointedDate": "2024-01-04",
+        "dateFiled": "2024-01-04",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-005",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90004",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-05T00:00:00Z",
+        "appointedDate": "2024-01-05",
+        "dateFiled": "2024-01-05",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-006",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90005",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-06T00:00:00Z",
+        "appointedDate": "2024-01-06",
+        "dateFiled": "2024-01-06",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-007",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90006",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-07T00:00:00Z",
+        "appointedDate": "2024-01-07",
+        "dateFiled": "2024-01-07",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-008",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90007",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-08T00:00:00Z",
+        "appointedDate": "2024-01-08",
+        "dateFiled": "2024-01-08",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-009",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90008",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-09T00:00:00Z",
+        "appointedDate": "2024-01-09",
+        "dateFiled": "2024-01-09",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-010",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90009",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-10T00:00:00Z",
+        "appointedDate": "2024-01-10",
+        "dateFiled": "2024-01-10",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-011",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90010",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-11T00:00:00Z",
+        "appointedDate": "2024-01-11",
+        "dateFiled": "2024-01-11",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-012",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90011",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-12T00:00:00Z",
+        "appointedDate": "2024-01-12",
+        "dateFiled": "2024-01-12",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-013",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90012",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-13T00:00:00Z",
+        "appointedDate": "2024-01-13",
+        "dateFiled": "2024-01-13",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-014",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90013",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-14T00:00:00Z",
+        "appointedDate": "2024-01-14",
+        "dateFiled": "2024-01-14",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-015",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90014",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-15T00:00:00Z",
+        "appointedDate": "2024-01-15",
+        "dateFiled": "2024-01-15",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-016",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90015",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-16T00:00:00Z",
+        "appointedDate": "2024-01-16",
+        "dateFiled": "2024-01-16",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-017",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90016",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-17T00:00:00Z",
+        "appointedDate": "2024-01-17",
+        "dateFiled": "2024-01-17",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-018",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90017",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-18T00:00:00Z",
+        "appointedDate": "2024-01-18",
+        "dateFiled": "2024-01-18",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-019",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90018",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-19T00:00:00Z",
+        "appointedDate": "2024-01-19",
+        "dateFiled": "2024-01-19",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-020",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90019",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-20T00:00:00Z",
+        "appointedDate": "2024-01-20",
+        "dateFiled": "2024-01-20",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-021",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90020",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-21T00:00:00Z",
+        "appointedDate": "2024-01-21",
+        "dateFiled": "2024-01-21",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-022",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90021",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-22T00:00:00Z",
+        "appointedDate": "2024-01-22",
+        "dateFiled": "2024-01-22",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-023",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90022",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-23T00:00:00Z",
+        "appointedDate": "2024-01-23",
+        "dateFiled": "2024-01-23",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-024",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90023",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-24T00:00:00Z",
+        "appointedDate": "2024-01-24",
+        "dateFiled": "2024-01-24",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-025",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90024",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-25T00:00:00Z",
+        "appointedDate": "2024-01-25",
+        "dateFiled": "2024-01-25",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-026",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90025",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-26T00:00:00Z",
+        "appointedDate": "2024-01-26",
+        "dateFiled": "2024-01-26",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-027",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90026",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-27T00:00:00Z",
+        "appointedDate": "2024-01-27",
+        "dateFiled": "2024-01-27",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-028",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90027",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-28T00:00:00Z",
+        "appointedDate": "2024-01-28",
+        "dateFiled": "2024-01-28",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-029",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90028",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-29T00:00:00Z",
+        "appointedDate": "2024-01-29",
+        "dateFiled": "2024-01-29",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-030",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90029",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-30T00:00:00Z",
+        "appointedDate": "2024-01-30",
+        "dateFiled": "2024-01-30",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
       }
     ],
     "trustee-case-appointments": [
@@ -2588,6 +4565,666 @@
           "id": "SYSTEM",
           "name": "SYSTEM"
         }
+      },
+      {
+        "id": "e2e-case-appt-001",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90000",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-01T00:00:00Z",
+        "appointedDate": "2024-01-01",
+        "dateFiled": "2024-01-01",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-002",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90001",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-02T00:00:00Z",
+        "appointedDate": "2024-01-02",
+        "dateFiled": "2024-01-02",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-003",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90002",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-03T00:00:00Z",
+        "appointedDate": "2024-01-03",
+        "dateFiled": "2024-01-03",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-004",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90003",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-04T00:00:00Z",
+        "appointedDate": "2024-01-04",
+        "dateFiled": "2024-01-04",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-005",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90004",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-05T00:00:00Z",
+        "appointedDate": "2024-01-05",
+        "dateFiled": "2024-01-05",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-006",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90005",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-06T00:00:00Z",
+        "appointedDate": "2024-01-06",
+        "dateFiled": "2024-01-06",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-007",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90006",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-07T00:00:00Z",
+        "appointedDate": "2024-01-07",
+        "dateFiled": "2024-01-07",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-008",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90007",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-08T00:00:00Z",
+        "appointedDate": "2024-01-08",
+        "dateFiled": "2024-01-08",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-009",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90008",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-09T00:00:00Z",
+        "appointedDate": "2024-01-09",
+        "dateFiled": "2024-01-09",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-010",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90009",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-10T00:00:00Z",
+        "appointedDate": "2024-01-10",
+        "dateFiled": "2024-01-10",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-011",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90010",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-11T00:00:00Z",
+        "appointedDate": "2024-01-11",
+        "dateFiled": "2024-01-11",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-012",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90011",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-12T00:00:00Z",
+        "appointedDate": "2024-01-12",
+        "dateFiled": "2024-01-12",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-013",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90012",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-13T00:00:00Z",
+        "appointedDate": "2024-01-13",
+        "dateFiled": "2024-01-13",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-014",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90013",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-14T00:00:00Z",
+        "appointedDate": "2024-01-14",
+        "dateFiled": "2024-01-14",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-015",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90014",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-15T00:00:00Z",
+        "appointedDate": "2024-01-15",
+        "dateFiled": "2024-01-15",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-016",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90015",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-16T00:00:00Z",
+        "appointedDate": "2024-01-16",
+        "dateFiled": "2024-01-16",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-017",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90016",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-17T00:00:00Z",
+        "appointedDate": "2024-01-17",
+        "dateFiled": "2024-01-17",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-018",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90017",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-18T00:00:00Z",
+        "appointedDate": "2024-01-18",
+        "dateFiled": "2024-01-18",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-019",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90018",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-19T00:00:00Z",
+        "appointedDate": "2024-01-19",
+        "dateFiled": "2024-01-19",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-020",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90019",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-20T00:00:00Z",
+        "appointedDate": "2024-01-20",
+        "dateFiled": "2024-01-20",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-021",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90020",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-21T00:00:00Z",
+        "appointedDate": "2024-01-21",
+        "dateFiled": "2024-01-21",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-022",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90021",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-22T00:00:00Z",
+        "appointedDate": "2024-01-22",
+        "dateFiled": "2024-01-22",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-023",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90022",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-23T00:00:00Z",
+        "appointedDate": "2024-01-23",
+        "dateFiled": "2024-01-23",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-024",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90023",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-24T00:00:00Z",
+        "appointedDate": "2024-01-24",
+        "dateFiled": "2024-01-24",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-025",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90024",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-25T00:00:00Z",
+        "appointedDate": "2024-01-25",
+        "dateFiled": "2024-01-25",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-026",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90025",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-26T00:00:00Z",
+        "appointedDate": "2024-01-26",
+        "dateFiled": "2024-01-26",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-027",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90026",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-27T00:00:00Z",
+        "appointedDate": "2024-01-27",
+        "dateFiled": "2024-01-27",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-028",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90027",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-28T00:00:00Z",
+        "appointedDate": "2024-01-28",
+        "dateFiled": "2024-01-28",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-029",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90028",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-29T00:00:00Z",
+        "appointedDate": "2024-01-29",
+        "dateFiled": "2024-01-29",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-case-appt-030",
+        "documentType": "CASE_APPOINTMENT",
+        "caseId": "081-24-90029",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000004",
+        "assignedOn": "2024-01-30T00:00:00Z",
+        "appointedDate": "2024-01-30",
+        "dateFiled": "2024-01-30",
+        "chapter": "7",
+        "courtDivisionCode": "081",
+        "caseStatus": "OPEN",
+        "createdOn": "2025-03-01T00:00:00.000Z",
+        "createdBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        },
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
       }
     ],
     "trustee-appointments": [
@@ -2614,6 +5251,706 @@
         "updatedBy": {
           "id": "SYSTEM",
           "name": "SYSTEM"
+        }
+      },
+      {
+        "id": "e2e-appt-sort-ca-east-ch7-offpanel",
+        "documentType": "TRUSTEE_APPOINTMENT",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000002",
+        "chapter": "7",
+        "appointmentType": "off-panel",
+        "courtId": "0972",
+        "divisionCode": "722",
+        "divisionCodes": ["722"],
+        "appointedDate": "2020-01-01",
+        "status": "active",
+        "effectiveDate": "2020-01-01",
+        "courtName": "Eastern District of California",
+        "courtDivisionName": "Sacramento",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-appt-sort-ca-east-ch7-panel",
+        "documentType": "TRUSTEE_APPOINTMENT",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000002",
+        "chapter": "7",
+        "appointmentType": "panel",
+        "courtId": "0972",
+        "divisionCode": "722",
+        "divisionCodes": ["722"],
+        "appointedDate": "2020-01-01",
+        "status": "active",
+        "effectiveDate": "2020-01-01",
+        "courtName": "Eastern District of California",
+        "courtDivisionName": "Sacramento",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-appt-sort-ca-north-ch11",
+        "documentType": "TRUSTEE_APPOINTMENT",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000002",
+        "chapter": "11",
+        "appointmentType": "case-by-case",
+        "courtId": "0971",
+        "divisionCode": "713",
+        "divisionCodes": ["713"],
+        "appointedDate": "2020-01-01",
+        "status": "active",
+        "effectiveDate": "2020-01-01",
+        "courtName": "Northern District of California",
+        "courtDivisionName": "San Francisco",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-appt-sort-id-district-ch12",
+        "documentType": "TRUSTEE_APPOINTMENT",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000002",
+        "chapter": "12",
+        "appointmentType": "standing",
+        "courtId": "0976",
+        "divisionCode": "761",
+        "divisionCodes": ["761"],
+        "appointedDate": "2020-01-01",
+        "status": "active",
+        "effectiveDate": "2020-01-01",
+        "courtName": "District of Idaho",
+        "courtDivisionName": "Boise",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-appt-sort-ia-north-ch13",
+        "documentType": "TRUSTEE_APPOINTMENT",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000002",
+        "chapter": "13",
+        "appointmentType": "case-by-case",
+        "courtId": "0862",
+        "divisionCode": "621",
+        "divisionCodes": ["621"],
+        "appointedDate": "2020-01-01",
+        "status": "active",
+        "effectiveDate": "2020-01-01",
+        "courtName": "Northern District of Iowa",
+        "courtDivisionName": "Cedar Rapids",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-appt-sort-ia-south-ch13",
+        "documentType": "TRUSTEE_APPOINTMENT",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000002",
+        "chapter": "13",
+        "appointmentType": "standing",
+        "courtId": "0863",
+        "divisionCode": "633",
+        "divisionCodes": ["633"],
+        "appointedDate": "2020-01-01",
+        "status": "active",
+        "effectiveDate": "2020-01-01",
+        "courtName": "Southern District of Iowa",
+        "courtDivisionName": "Davenport",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-appt-comp-filler-001",
+        "documentType": "TRUSTEE_APPOINTMENT",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000101",
+        "chapter": "7",
+        "appointmentType": "panel",
+        "courtId": "0208",
+        "divisionCode": "081",
+        "divisionCodes": ["081"],
+        "appointedDate": "2020-01-01",
+        "status": "active",
+        "effectiveDate": "2020-01-01",
+        "courtName": "Southern District of New York",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-appt-comp-filler-002",
+        "documentType": "TRUSTEE_APPOINTMENT",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000102",
+        "chapter": "7",
+        "appointmentType": "panel",
+        "courtId": "0208",
+        "divisionCode": "081",
+        "divisionCodes": ["081"],
+        "appointedDate": "2020-01-01",
+        "status": "active",
+        "effectiveDate": "2020-01-01",
+        "courtName": "Southern District of New York",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-appt-comp-filler-003",
+        "documentType": "TRUSTEE_APPOINTMENT",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000103",
+        "chapter": "7",
+        "appointmentType": "panel",
+        "courtId": "0208",
+        "divisionCode": "081",
+        "divisionCodes": ["081"],
+        "appointedDate": "2020-01-01",
+        "status": "active",
+        "effectiveDate": "2020-01-01",
+        "courtName": "Southern District of New York",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-appt-comp-filler-004",
+        "documentType": "TRUSTEE_APPOINTMENT",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000104",
+        "chapter": "7",
+        "appointmentType": "panel",
+        "courtId": "0208",
+        "divisionCode": "081",
+        "divisionCodes": ["081"],
+        "appointedDate": "2020-01-01",
+        "status": "active",
+        "effectiveDate": "2020-01-01",
+        "courtName": "Southern District of New York",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-appt-comp-filler-005",
+        "documentType": "TRUSTEE_APPOINTMENT",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000105",
+        "chapter": "7",
+        "appointmentType": "panel",
+        "courtId": "0208",
+        "divisionCode": "081",
+        "divisionCodes": ["081"],
+        "appointedDate": "2020-01-01",
+        "status": "active",
+        "effectiveDate": "2020-01-01",
+        "courtName": "Southern District of New York",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-appt-comp-filler-006",
+        "documentType": "TRUSTEE_APPOINTMENT",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000106",
+        "chapter": "7",
+        "appointmentType": "panel",
+        "courtId": "0208",
+        "divisionCode": "081",
+        "divisionCodes": ["081"],
+        "appointedDate": "2020-01-01",
+        "status": "active",
+        "effectiveDate": "2020-01-01",
+        "courtName": "Southern District of New York",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-appt-comp-filler-007",
+        "documentType": "TRUSTEE_APPOINTMENT",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000107",
+        "chapter": "7",
+        "appointmentType": "panel",
+        "courtId": "0208",
+        "divisionCode": "081",
+        "divisionCodes": ["081"],
+        "appointedDate": "2020-01-01",
+        "status": "active",
+        "effectiveDate": "2020-01-01",
+        "courtName": "Southern District of New York",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-appt-comp-filler-008",
+        "documentType": "TRUSTEE_APPOINTMENT",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000108",
+        "chapter": "7",
+        "appointmentType": "panel",
+        "courtId": "0208",
+        "divisionCode": "081",
+        "divisionCodes": ["081"],
+        "appointedDate": "2020-01-01",
+        "status": "active",
+        "effectiveDate": "2020-01-01",
+        "courtName": "Southern District of New York",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-appt-comp-filler-009",
+        "documentType": "TRUSTEE_APPOINTMENT",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000109",
+        "chapter": "7",
+        "appointmentType": "panel",
+        "courtId": "0208",
+        "divisionCode": "081",
+        "divisionCodes": ["081"],
+        "appointedDate": "2020-01-01",
+        "status": "active",
+        "effectiveDate": "2020-01-01",
+        "courtName": "Southern District of New York",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-appt-comp-filler-010",
+        "documentType": "TRUSTEE_APPOINTMENT",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000110",
+        "chapter": "7",
+        "appointmentType": "panel",
+        "courtId": "0208",
+        "divisionCode": "081",
+        "divisionCodes": ["081"],
+        "appointedDate": "2020-01-01",
+        "status": "active",
+        "effectiveDate": "2020-01-01",
+        "courtName": "Southern District of New York",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-appt-comp-filler-011",
+        "documentType": "TRUSTEE_APPOINTMENT",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000111",
+        "chapter": "7",
+        "appointmentType": "panel",
+        "courtId": "0208",
+        "divisionCode": "081",
+        "divisionCodes": ["081"],
+        "appointedDate": "2020-01-01",
+        "status": "active",
+        "effectiveDate": "2020-01-01",
+        "courtName": "Southern District of New York",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-appt-comp-filler-012",
+        "documentType": "TRUSTEE_APPOINTMENT",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000112",
+        "chapter": "7",
+        "appointmentType": "panel",
+        "courtId": "0208",
+        "divisionCode": "081",
+        "divisionCodes": ["081"],
+        "appointedDate": "2020-01-01",
+        "status": "active",
+        "effectiveDate": "2020-01-01",
+        "courtName": "Southern District of New York",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-appt-comp-filler-013",
+        "documentType": "TRUSTEE_APPOINTMENT",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000113",
+        "chapter": "7",
+        "appointmentType": "panel",
+        "courtId": "0208",
+        "divisionCode": "081",
+        "divisionCodes": ["081"],
+        "appointedDate": "2020-01-01",
+        "status": "active",
+        "effectiveDate": "2020-01-01",
+        "courtName": "Southern District of New York",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-appt-comp-filler-014",
+        "documentType": "TRUSTEE_APPOINTMENT",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000114",
+        "chapter": "7",
+        "appointmentType": "panel",
+        "courtId": "0208",
+        "divisionCode": "081",
+        "divisionCodes": ["081"],
+        "appointedDate": "2020-01-01",
+        "status": "active",
+        "effectiveDate": "2020-01-01",
+        "courtName": "Southern District of New York",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-appt-comp-filler-015",
+        "documentType": "TRUSTEE_APPOINTMENT",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000115",
+        "chapter": "7",
+        "appointmentType": "panel",
+        "courtId": "0208",
+        "divisionCode": "081",
+        "divisionCodes": ["081"],
+        "appointedDate": "2020-01-01",
+        "status": "active",
+        "effectiveDate": "2020-01-01",
+        "courtName": "Southern District of New York",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-appt-comp-filler-016",
+        "documentType": "TRUSTEE_APPOINTMENT",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000116",
+        "chapter": "7",
+        "appointmentType": "panel",
+        "courtId": "0208",
+        "divisionCode": "081",
+        "divisionCodes": ["081"],
+        "appointedDate": "2020-01-01",
+        "status": "active",
+        "effectiveDate": "2020-01-01",
+        "courtName": "Southern District of New York",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-appt-comp-filler-017",
+        "documentType": "TRUSTEE_APPOINTMENT",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000117",
+        "chapter": "7",
+        "appointmentType": "panel",
+        "courtId": "0208",
+        "divisionCode": "081",
+        "divisionCodes": ["081"],
+        "appointedDate": "2020-01-01",
+        "status": "active",
+        "effectiveDate": "2020-01-01",
+        "courtName": "Southern District of New York",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-appt-comp-filler-018",
+        "documentType": "TRUSTEE_APPOINTMENT",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000118",
+        "chapter": "7",
+        "appointmentType": "panel",
+        "courtId": "0208",
+        "divisionCode": "081",
+        "divisionCodes": ["081"],
+        "appointedDate": "2020-01-01",
+        "status": "active",
+        "effectiveDate": "2020-01-01",
+        "courtName": "Southern District of New York",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-appt-comp-filler-019",
+        "documentType": "TRUSTEE_APPOINTMENT",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000119",
+        "chapter": "7",
+        "appointmentType": "panel",
+        "courtId": "0208",
+        "divisionCode": "081",
+        "divisionCodes": ["081"],
+        "appointedDate": "2020-01-01",
+        "status": "active",
+        "effectiveDate": "2020-01-01",
+        "courtName": "Southern District of New York",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-appt-comp-filler-020",
+        "documentType": "TRUSTEE_APPOINTMENT",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000120",
+        "chapter": "7",
+        "appointmentType": "panel",
+        "courtId": "0208",
+        "divisionCode": "081",
+        "divisionCodes": ["081"],
+        "appointedDate": "2020-01-01",
+        "status": "active",
+        "effectiveDate": "2020-01-01",
+        "courtName": "Southern District of New York",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-appt-comp-filler-021",
+        "documentType": "TRUSTEE_APPOINTMENT",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000121",
+        "chapter": "7",
+        "appointmentType": "panel",
+        "courtId": "0208",
+        "divisionCode": "081",
+        "divisionCodes": ["081"],
+        "appointedDate": "2020-01-01",
+        "status": "active",
+        "effectiveDate": "2020-01-01",
+        "courtName": "Southern District of New York",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-appt-comp-filler-022",
+        "documentType": "TRUSTEE_APPOINTMENT",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000122",
+        "chapter": "7",
+        "appointmentType": "panel",
+        "courtId": "0208",
+        "divisionCode": "081",
+        "divisionCodes": ["081"],
+        "appointedDate": "2020-01-01",
+        "status": "active",
+        "effectiveDate": "2020-01-01",
+        "courtName": "Southern District of New York",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-appt-comp-filler-023",
+        "documentType": "TRUSTEE_APPOINTMENT",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000123",
+        "chapter": "7",
+        "appointmentType": "panel",
+        "courtId": "0208",
+        "divisionCode": "081",
+        "divisionCodes": ["081"],
+        "appointedDate": "2020-01-01",
+        "status": "active",
+        "effectiveDate": "2020-01-01",
+        "courtName": "Southern District of New York",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-appt-comp-filler-024",
+        "documentType": "TRUSTEE_APPOINTMENT",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000124",
+        "chapter": "7",
+        "appointmentType": "panel",
+        "courtId": "0208",
+        "divisionCode": "081",
+        "divisionCodes": ["081"],
+        "appointedDate": "2020-01-01",
+        "status": "active",
+        "effectiveDate": "2020-01-01",
+        "courtName": "Southern District of New York",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-appt-comp-filler-025",
+        "documentType": "TRUSTEE_APPOINTMENT",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000125",
+        "chapter": "7",
+        "appointmentType": "panel",
+        "courtId": "0208",
+        "divisionCode": "081",
+        "divisionCodes": ["081"],
+        "appointedDate": "2020-01-01",
+        "status": "active",
+        "effectiveDate": "2020-01-01",
+        "courtName": "Southern District of New York",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-appt-comp-filler-026",
+        "documentType": "TRUSTEE_APPOINTMENT",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000126",
+        "chapter": "7",
+        "appointmentType": "panel",
+        "courtId": "0208",
+        "divisionCode": "081",
+        "divisionCodes": ["081"],
+        "appointedDate": "2020-01-01",
+        "status": "active",
+        "effectiveDate": "2020-01-01",
+        "courtName": "Southern District of New York",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-appt-comp-needle",
+        "documentType": "TRUSTEE_APPOINTMENT",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000003",
+        "chapter": "12",
+        "appointmentType": "standing",
+        "courtId": "0209",
+        "divisionCode": "091",
+        "divisionCodes": ["091"],
+        "appointedDate": "2020-01-01",
+        "status": "active",
+        "effectiveDate": "2020-01-01",
+        "courtName": "Western District of New York",
+        "courtDivisionName": "Buffalo",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-appt-split-ch7-sacramento",
+        "documentType": "TRUSTEE_APPOINTMENT",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000006",
+        "chapter": "7",
+        "appointmentType": "panel",
+        "courtId": "0972",
+        "divisionCode": "722",
+        "divisionCodes": ["722"],
+        "appointedDate": "2020-01-01",
+        "status": "active",
+        "effectiveDate": "2020-01-01",
+        "courtName": "Eastern District of California",
+        "courtDivisionName": "Sacramento",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
+        }
+      },
+      {
+        "id": "e2e-appt-split-ch13-manhattan",
+        "documentType": "TRUSTEE_APPOINTMENT",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000006",
+        "chapter": "13",
+        "appointmentType": "standing",
+        "courtId": "0208",
+        "divisionCode": "081",
+        "divisionCodes": ["081"],
+        "appointedDate": "2020-01-01",
+        "status": "active",
+        "effectiveDate": "2020-01-01",
+        "courtName": "Southern District of New York",
+        "courtDivisionName": "Manhattan",
+        "updatedOn": "2025-03-01T00:00:00.000Z",
+        "updatedBy": {
+          "id": "SEED",
+          "name": "Test Data Seeder"
         }
       }
     ]

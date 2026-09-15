@@ -1,5 +1,11 @@
 import { expect } from '@playwright/test';
 import { test } from './fixture/urlQueryString';
+import {
+  gotoTrusteesList,
+  openTrusteeFilters,
+  setStatusFilterToAll,
+  clearDivisionAndChapterFilters,
+} from './trustees-filter-helpers';
 
 const timeoutOption = { timeout: 60000 };
 
@@ -126,6 +132,47 @@ test.describe('Trustees', () => {
     await expect(address2Input).toHaveValue('Suite 100');
     await expect(cityInput).toHaveValue('Anytown');
     await expect(zipInput).toHaveValue('12345');
+  });
+
+  test('should create a trustee via the form and persist it in the list', async ({ page }) => {
+    // Navigate to create trustee form
+    await page.getByTestId('trustees-add-link').click();
+    await expect(page.getByTestId('trustee-public-form')).toBeVisible(timeoutOption);
+
+    // lastName has a 20-character max length validation -- keep this short.
+    const uniqueLastName = 'E2ePersistChk';
+    await page.locator('#trustee-first-name').fill('E2e');
+    await page.locator('#trustee-last-name').fill(uniqueLastName);
+    await page.locator('#trustee-address1').fill('123 Persist Ave');
+    await page.locator('#trustee-city').fill('Anytown');
+
+    const stateCombobox = page.locator('#trustee-state');
+    await stateCombobox.click();
+    await page
+      .locator('#trustee-state [data-testid^="trustee-state-option-item-"]')
+      .first()
+      .click();
+
+    await page.locator('#trustee-zip').fill('12345');
+    await page.locator('#trustee-phone').fill('212-555-0100');
+    await page.locator('#trustee-email').fill(`${uniqueLastName.toLowerCase()}@example.com`);
+
+    await page.locator('#submit-button').click();
+
+    // Submitting navigates to the new trustee's detail page (not back to /trustees/create).
+    await expect(page).toHaveURL(/\/trustees\/(?!create$)[^/]+$/, timeoutOption);
+    await expect(page.getByTestId('trustee-detail-screen')).toBeVisible(timeoutOption);
+    const createdId = page.url().split('/trustees/')[1];
+
+    // A freshly created trustee has no appointments yet, so it only shows up when the
+    // Status filter is "All" (the default "Active" view excludes appointment-less trustees)
+    // and no District (Division) filter is narrowing the list.
+    await gotoTrusteesList(page);
+    await openTrusteeFilters(page);
+    await setStatusFilterToAll(page);
+    await clearDivisionAndChapterFilters(page);
+
+    await expect(page.getByTestId(`trustee-link-${createdId}`)).toBeVisible(timeoutOption);
   });
 
   test.skip('should assign an auditor to a trustee', async ({ page }) => {
