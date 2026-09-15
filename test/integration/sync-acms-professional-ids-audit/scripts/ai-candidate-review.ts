@@ -57,7 +57,7 @@ const REPORT_COLUMNS = [
   'candidateOutcome',
   'acmsFullName',
   'camsName',
-  'surnameExactMatch',
+  'stateMatch',
   'nameScore',
   'fullNameSimilarity',
   'tokenNameMatchRate',
@@ -315,7 +315,7 @@ function formatCandidate(row: CandidateRow, index: number): string {
     `Address: ${row.camsAddress || '(blank)'}`,
     `Phone: ${row.camsPhone || '(blank)'}`,
     `Structured signals: nameScore=${row.nameScore}, fullNameSimilarity=${row.fullNameSimilarity}, ` +
-      `tokenNameMatchRate=${row.tokenNameMatchRate}, surnameExactMatch=${row.surnameExactMatch}, ` +
+      `tokenNameMatchRate=${row.tokenNameMatchRate}, stateMatch=${row.stateMatch}, ` +
       `addressScore=${row.addressScore}, phoneScore=${row.phoneScore}`,
     `introductionStage: ${row.introductionStage}, candidateOutcome: ${row.candidateOutcome}`,
   ].join('\n');

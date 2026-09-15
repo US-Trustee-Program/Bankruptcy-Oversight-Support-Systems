@@ -63,6 +63,14 @@ describe('createInitialState', () => {
     expect(state.skip).toBe(false);
     expect(state.error).toBeNull();
   });
+
+  test('seeds acmsNormalized with the raw record under the "raw" key', () => {
+    const acmsRaw = makeDxtrTrustee();
+
+    const state = createInitialState(acmsRaw);
+
+    expect(state.acmsNormalized.get('raw')).toBe(acmsRaw);
+  });
 });
 
 describe('addCandidate', () => {
@@ -73,7 +81,17 @@ describe('addCandidate', () => {
     const candidate = addCandidate(state, projectTrustee(trustee));
 
     expect(state.candidates.get('t1')).toBe(candidate);
-    expect(candidate.scores).toEqual([]);
+    expect(candidate.scores).toEqual({});
+  });
+
+  test('seeds camsNormalized with the raw projected trustee under the "raw" key', () => {
+    const state = createInitialState(makeDxtrTrustee());
+    const trustee = makeTrustee({ trusteeId: 't1' });
+    const projected = projectTrustee(trustee);
+
+    const candidate = addCandidate(state, projected);
+
+    expect(candidate.camsNormalized.get('raw')).toBe(projected);
   });
 
   test('is idempotent - proposing the same trusteeId twice returns the SAME candidate, preserving prior scores', () => {
@@ -81,11 +99,11 @@ describe('addCandidate', () => {
     const trustee = makeTrustee({ trusteeId: 't1' });
 
     const first = addCandidate(state, projectTrustee(trustee));
-    addScore(first, { scorer: 'testScorer', nameScore: 100 });
+    addScore(first, 'calculateNameScore', { nameScore: 100, match: true });
     const second = addCandidate(state, projectTrustee(trustee));
 
     expect(second).toBe(first);
-    expect(second.scores).toEqual([{ scorer: 'testScorer', nameScore: 100 }]);
+    expect(second.scores).toEqual({ calculateNameScore: { nameScore: 100, match: true } });
     expect(state.candidates.size).toBe(1);
   });
 
@@ -111,13 +129,13 @@ describe('promoteCandidate', () => {
       innerState,
       projectTrustee(makeTrustee({ trusteeId: 't1' })),
     );
-    addScore(innerCandidate, { scorer: 'innerTierScorer', nameScore: 100 });
+    addScore(innerCandidate, 'calculateNameScore', { nameScore: 100, match: true });
 
     const outerState = createInitialState(makeDxtrTrustee());
     const promoted = promoteCandidate(outerState, innerCandidate);
 
     expect(outerState.candidates.get('t1')).toBe(promoted);
-    expect(promoted.scores).toEqual([{ scorer: 'innerTierScorer', nameScore: 100 }]);
+    expect(promoted.scores).toEqual({ calculateNameScore: { nameScore: 100, match: true } });
   });
 
   test('is idempotent - promoting a trusteeId already present in the outer state returns the OUTER entry unchanged', () => {
@@ -126,19 +144,19 @@ describe('promoteCandidate', () => {
       outerState,
       projectTrustee(makeTrustee({ trusteeId: 't1' })),
     );
-    addScore(outerCandidate, { scorer: 'outerStage', nameScore: 50 });
+    addScore(outerCandidate, 'calculateNameScore', { nameScore: 50, match: false });
 
     const innerState = createInitialState(makeDxtrTrustee());
     const innerCandidate = addCandidate(
       innerState,
       projectTrustee(makeTrustee({ trusteeId: 't1' })),
     );
-    addScore(innerCandidate, { scorer: 'innerTierScorer', nameScore: 100 });
+    addScore(innerCandidate, 'calculateNameScore', { nameScore: 100, match: true });
 
     const result = promoteCandidate(outerState, innerCandidate);
 
     expect(result).toBe(outerCandidate);
-    expect(result.scores).toEqual([{ scorer: 'outerStage', nameScore: 50 }]);
+    expect(result.scores).toEqual({ calculateNameScore: { nameScore: 50, match: false } });
   });
 
   test('never removes an existing outer candidate when a different candidate is promoted', () => {
@@ -167,40 +185,40 @@ describe('mergedScore', () => {
     expect(mergedScore(candidate)).toEqual({});
   });
 
-  test('a later score entry overrides an earlier entry for the SAME key', () => {
+  test('a later write to the SAME scorer overwrites its prior slot', () => {
     const state = createInitialState(makeDxtrTrustee());
     const candidate = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })));
 
-    addScore(candidate, { scorer: 'nameScoreStage', nameScore: 0 });
-    addScore(candidate, { scorer: 'nameScoreStage', nameScore: 100 });
+    addScore(candidate, 'calculateNameScore', { nameScore: 0, match: false });
+    addScore(candidate, 'calculateNameScore', { nameScore: 100, match: true });
 
-    expect(mergedScore(candidate)).toEqual({ scorer: 'nameScoreStage', nameScore: 100 });
+    expect(mergedScore(candidate)).toEqual({ nameScore: 100, match: true });
   });
 
-  test('a key set by an earlier entry survives when a later entry contributes only DIFFERENT keys', () => {
-    // This is the core cumulative-merge guarantee: a stage that only computes stateMismatch
-    // should never need to also re-carry-forward nameScore from an earlier stage.
+  test('a key set by one scorer survives when a different scorer contributes only DIFFERENT keys', () => {
+    // This is the core cumulative-merge guarantee: a stage that only computes stateMatch
+    // should never need to also re-carry-forward nameScore from another scorer.
     const state = createInitialState(makeDxtrTrustee());
     const candidate = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })));
 
-    addScore(candidate, { scorer: 'nameScoreStage', nameScore: 100 });
-    addScore(candidate, { scorer: 'stateFilterStage', stateMismatch: true });
+    addScore(candidate, 'calculateNameScore', { nameScore: 100, match: true });
+    addScore(candidate, 'stateFilterStage', { stateMatch: false });
 
     expect(mergedScore(candidate)).toEqual({
-      scorer: 'stateFilterStage',
       nameScore: 100,
-      stateMismatch: true,
+      match: true,
+      stateMatch: false,
     });
   });
 
-  test('does not mutate the underlying scores array', () => {
+  test('does not mutate the underlying scores map', () => {
     const state = createInitialState(makeDxtrTrustee());
     const candidate = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })));
-    addScore(candidate, { scorer: 'nameScoreStage', nameScore: 100 });
+    addScore(candidate, 'calculateNameScore', { nameScore: 100, match: true });
 
     mergedScore(candidate);
 
-    expect(candidate.scores).toEqual([{ scorer: 'nameScoreStage', nameScore: 100 }]);
+    expect(candidate.scores).toEqual({ calculateNameScore: { nameScore: 100, match: true } });
   });
 });
 
@@ -305,14 +323,17 @@ describe('runPipeline', () => {
     const state = createInitialState(makeDxtrTrustee());
     const matchingStage: Stage = async (s) => ({
       ...s,
-      match: { trusteeId: 't1', score: { nameScore: 100 } },
+      match: { trusteeId: 't1', score: { nameScore: 100, nameMatchQuality: 'exact' } },
     });
     const laterStage = vi.fn(async (s) => ({ ...s, error: 'should-not-run' }));
 
     const result = await runPipeline(state, [matchingStage, withGuard(laterStage)]);
 
     expect(laterStage).not.toHaveBeenCalled();
-    expect(result.match).toEqual({ trusteeId: 't1', score: { nameScore: 100 } });
+    expect(result.match).toEqual({
+      trusteeId: 't1',
+      score: { nameScore: 100, nameMatchQuality: 'exact' },
+    });
     expect(result.error).toBeNull();
   });
 });
@@ -323,19 +344,19 @@ describe('serializeState', () => {
     normalize(state.acmsNormalized, 'lastNameToken', () => 'doe');
     const candidate = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })));
     normalize(candidate.camsNormalized, 'lastNameToken', () => 'doe');
-    addScore(candidate, { scorer: 'nameScoreStage', nameScore: 100 });
+    addScore(candidate, 'calculateNameScore', { nameScore: 100, match: true });
 
     const serialized = serializeState(state);
     const roundTripped = JSON.parse(JSON.stringify(serialized));
 
     expect(roundTripped).toEqual({
       acmsRaw: state.acmsRaw,
-      acmsNormalized: { lastNameToken: 'doe' },
+      acmsNormalized: { raw: state.acmsRaw, lastNameToken: 'doe' },
       candidates: [
         {
           camsRaw: candidate.camsRaw,
-          camsNormalized: { lastNameToken: 'doe' },
-          scores: [{ scorer: 'nameScoreStage', nameScore: 100 }],
+          camsNormalized: { raw: candidate.camsRaw, lastNameToken: 'doe' },
+          scores: { calculateNameScore: { nameScore: 100, match: true } },
         },
       ],
       match: null,
@@ -347,12 +368,15 @@ describe('serializeState', () => {
   test('serializes a resolved match and its score', () => {
     const state: PipelineState = {
       ...createInitialState(makeDxtrTrustee()),
-      match: { trusteeId: 't1', score: { nameScore: 100 } },
+      match: { trusteeId: 't1', score: { nameScore: 100, nameMatchQuality: 'exact' } },
     };
 
     const serialized = serializeState(state);
 
-    expect(serialized.match).toEqual({ trusteeId: 't1', score: { nameScore: 100 } });
+    expect(serialized.match).toEqual({
+      trusteeId: 't1',
+      score: { nameScore: 100, nameMatchQuality: 'exact' },
+    });
   });
 
   test('serializes an empty candidate map as an empty array', () => {

@@ -49,7 +49,7 @@ async function runNestedTier(
   ]);
 
   for (const candidate of nestedResult.candidates.values()) {
-    if (mergedScore(candidate).stateMismatch === true) continue;
+    if (mergedScore(candidate).stateMatch === false) continue;
     promoteCandidate(outerState, candidate);
   }
 
@@ -99,7 +99,7 @@ async function resolveMatchTrusteeByNameAmbiguous(
     const candidate: PipelineCandidate = {
       camsRaw: projectTrustee(trustee),
       camsNormalized: new Map(),
-      scores: [],
+      scores: {},
     };
     nestedState.candidates.set(trustee.trusteeId, candidate);
   }
@@ -109,7 +109,7 @@ async function resolveMatchTrusteeByNameAmbiguous(
   ]);
 
   for (const candidate of nestedResult.candidates.values()) {
-    if (mergedScore(candidate).stateMismatch === true) continue;
+    if (mergedScore(candidate).stateMatch === false) continue;
     promoteCandidate(outerState, candidate);
   }
 

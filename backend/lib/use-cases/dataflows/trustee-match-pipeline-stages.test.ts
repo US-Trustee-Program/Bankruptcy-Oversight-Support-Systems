@@ -91,13 +91,13 @@ describe('surnameExactDiscoveryStage', () => {
       makeDxtrTrustee({ fullName: 'Phillip A Moon', lastName: 'Moon' }),
     );
     const existingCandidate = addCandidate(state, projectTrustee(johnMoon));
-    existingCandidate.scores.push({ scorer: 'earlierStage', nameScore: 42 });
+    addScore(existingCandidate, 'calculateNameScore', { nameScore: 42, match: false });
 
     const result = await surnameExactDiscoveryStage(context)(state);
 
-    expect(result.candidates.get('t1')!.scores).toEqual([
-      { scorer: 'earlierStage', nameScore: 42 },
-    ]);
+    expect(result.candidates.get('t1')!.scores).toEqual({
+      calculateNameScore: { nameScore: 42, match: false },
+    });
   });
 });
 
@@ -193,11 +193,9 @@ describe('nameScoreStage', () => {
     const result = await nameScoreStage()(state);
 
     expect(mergedScore(result.candidates.get('t1')!)).toMatchObject({
-      scorer: 'calculateNameScore',
       nameScore: 100,
     });
     expect(mergedScore(result.candidates.get('t2')!)).toMatchObject({
-      scorer: 'calculateNameScore',
       nameScore: 0,
     });
   });
@@ -211,7 +209,7 @@ describe('nameScoreStage', () => {
 
     const result = await nameScoreStage()(state);
 
-    expect(result.candidates.get('t1')!.scores).toEqual([]);
+    expect(result.candidates.get('t1')!.scores).toEqual({});
   });
 
   test("preserves an earlier stage's score keys via cumulative merge", async () => {
@@ -220,12 +218,12 @@ describe('nameScoreStage', () => {
       state,
       projectTrustee(makeTrustee({ trusteeId: 't1', firstName: 'John', lastName: 'Doe' })),
     );
-    candidate.scores.push({ scorer: 'stateFilterStage', stateMismatch: false });
+    addScore(candidate, 'stateFilterStage', { stateMatch: true });
 
     const result = await nameScoreStage()(state);
 
     expect(mergedScore(result.candidates.get('t1')!)).toMatchObject({
-      stateMismatch: false,
+      stateMatch: true,
       nameScore: 100,
     });
   });
@@ -273,7 +271,7 @@ describe('stateFilterStage', () => {
     const result = await stateFilterStage()(state);
 
     for (const candidate of result.candidates.values()) {
-      expect(mergedScore(candidate)).toMatchObject({ stateMismatch: false });
+      expect(mergedScore(candidate)).toMatchObject({ stateMatch: true });
     }
   });
 
@@ -311,10 +309,10 @@ describe('stateFilterStage', () => {
     const result = await stateFilterStage()(state);
 
     expect(mergedScore(result.candidates.get('trustee-wa')!)).toMatchObject({
-      stateMismatch: false,
+      stateMatch: true,
     });
     expect(mergedScore(result.candidates.get('trustee-fl-0')!)).toMatchObject({
-      stateMismatch: true,
+      stateMatch: false,
     });
   });
 
@@ -356,7 +354,7 @@ describe('stateFilterStage', () => {
     const result = await stateFilterStage()(state);
 
     expect(mergedScore(result.candidates.get('trustee-fl-phone')!)).toMatchObject({
-      stateMismatch: false,
+      stateMatch: true,
     });
   });
 
@@ -398,7 +396,7 @@ describe('stateFilterStage', () => {
     const result = await stateFilterStage()(state);
 
     expect(mergedScore(result.candidates.get('trustee-fl-name')!)).toMatchObject({
-      stateMismatch: false,
+      stateMatch: true,
     });
   });
 
@@ -425,7 +423,7 @@ describe('stateFilterStage', () => {
     const result = await stateFilterStage()(state);
 
     for (const candidate of result.candidates.values()) {
-      expect(mergedScore(candidate)).toMatchObject({ stateMismatch: false });
+      expect(mergedScore(candidate)).toMatchObject({ stateMatch: true });
     }
   });
 
@@ -463,7 +461,7 @@ describe('stateFilterStage', () => {
     const result = await stateFilterStage()(state);
 
     expect(mergedScore(result.candidates.get('trustee-no-state')!)).toMatchObject({
-      stateMismatch: false,
+      stateMatch: true,
     });
   });
 
@@ -476,7 +474,7 @@ describe('stateFilterStage', () => {
 
     const result = await stateFilterStage()(state);
 
-    expect(result.candidates.get('t1')!.scores).toEqual([]);
+    expect(result.candidates.get('t1')!.scores).toEqual({});
   });
 });
 
@@ -544,10 +542,10 @@ describe('corroborationStage', () => {
     expect(result.match).toBeNull();
   });
 
-  test('excludes candidates flagged stateMismatch by an earlier stage from the ids passed to corroboration', async () => {
+  test('excludes candidates flagged stateMatch: false by an earlier stage from the ids passed to corroboration', async () => {
     const state = createInitialState(makeDxtrTrustee());
     const mismatched = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })));
-    addScore(mismatched, { scorer: 'stateFilterStage', stateMismatch: true });
+    addScore(mismatched, 'stateFilterStage', { stateMatch: false });
     addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't2' })));
     const corroborationSpy = vi
       .spyOn(trusteeMatchHelpers, 'resolveByContactCorroboration')

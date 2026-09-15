@@ -74,7 +74,7 @@ export function nameScoreStage(): Stage {
   return withGuard(async (state: PipelineState): Promise<PipelineState> => {
     for (const candidate of state.candidates.values()) {
       const nameScore = calculateNameScore(state.acmsRaw, candidate.camsRaw as unknown as Trustee);
-      addScore(candidate, { scorer: 'calculateNameScore', nameScore, match: nameScore >= 85 });
+      addScore(candidate, 'calculateNameScore', { nameScore, match: nameScore >= 85 });
     }
     return state;
   });
@@ -83,8 +83,8 @@ export function nameScoreStage(): Stage {
 /**
  * Reimplements filterNoisyStateMismatches' logic (see that function's doc comment in
  * trustee-match.helpers.ts for the full rationale) as an ANNOTATION rather than an array filter -
- * the pipeline's candidate list is append-only, so a state mismatch is recorded as a score entry
- * (stateMismatch: boolean) for a later resolution stage to read, never used to remove a candidate
+ * the pipeline's candidate list is append-only, so state agreement is recorded as a score entry
+ * (stateMatch: boolean) for a later resolution stage to read, never used to remove a candidate
  * outright. Reimplemented rather than called through a type cast because
  * filterNoisyStateMismatches reads candidate.public.address/phone (Trustee's real nested shape),
  * which ProjectedTrustee deliberately flattens - a cast would compile but read undefined at
@@ -92,15 +92,15 @@ export function nameScoreStage(): Stage {
  * are reused unchanged; only the nested-vs-flat field access differs.
  *
  * Only activates once the pool already exceeds STATE_FILTER_POOL_SIZE_THRESHOLD - below that, every
- * candidate is annotated stateMismatch: false unconditionally, matching
- * filterNoisyStateMismatches' own early return.
+ * candidate is annotated stateMatch: true unconditionally, matching filterNoisyStateMismatches' own
+ * early return.
  */
 export function stateFilterStage(): Stage {
   return withGuard(async (state: PipelineState): Promise<PipelineState> => {
     const candidates = [...state.candidates.values()];
     if (candidates.length <= STATE_FILTER_POOL_SIZE_THRESHOLD) {
       for (const candidate of candidates) {
-        addScore(candidate, { scorer: 'stateFilterStage', stateMismatch: false });
+        addScore(candidate, 'stateFilterStage', { stateMatch: true });
       }
       return state;
     }
@@ -108,7 +108,7 @@ export function stateFilterStage(): Stage {
     const parsedAcmsAddress = parseCityStateZip(state.acmsRaw.legacy?.cityStateZipCountry);
     if (!parsedAcmsAddress) {
       for (const candidate of candidates) {
-        addScore(candidate, { scorer: 'stateFilterStage', stateMismatch: false });
+        addScore(candidate, 'stateFilterStage', { stateMatch: true });
       }
       return state;
     }
@@ -117,19 +117,19 @@ export function stateFilterStage(): Stage {
     for (const candidate of candidates) {
       const camsState = candidate.camsRaw.address?.state?.toLowerCase();
       if (!camsState || camsState === acmsState) {
-        addScore(candidate, { scorer: 'stateFilterStage', stateMismatch: false });
+        addScore(candidate, 'stateFilterStage', { stateMatch: true });
         continue;
       }
 
       const phoneScore = calculatePhoneScore(state.acmsRaw.legacy?.phone, candidate.camsRaw.phone);
       if (phoneScore === 100) {
-        addScore(candidate, { scorer: 'stateFilterStage', stateMismatch: false });
+        addScore(candidate, 'stateFilterStage', { stateMatch: true });
         continue;
       }
 
       const nameScore = calculateNameScore(state.acmsRaw, candidate.camsRaw as unknown as Trustee);
-      const stateMismatch = nameScore < STATE_OVERRIDE_MIN_NAME_SCORE;
-      addScore(candidate, { scorer: 'stateFilterStage', stateMismatch });
+      const stateMatch = nameScore >= STATE_OVERRIDE_MIN_NAME_SCORE;
+      addScore(candidate, 'stateFilterStage', { stateMatch });
     }
     return state;
   });
@@ -144,14 +144,14 @@ export function stateFilterStage(): Stage {
  * own accumulated scores are not reused here, since these functions need their own controlled
  * fetch (email/appointments alongside name/address/phone) that camsRaw does not carry.
  *
- * Only considers candidates whose merged score does NOT have stateMismatch: true (see
+ * Only considers candidates whose merged score does NOT have stateMatch: false (see
  * stateFilterStage) - a candidate a state-filter annotated as noise is excluded from the id list
  * passed to corroboration, without ever being removed from state.candidates itself.
  */
 export function corroborationStage(context: ApplicationContext): Stage {
   return withGuard(async (state: PipelineState): Promise<PipelineState> => {
     const candidateTrusteeIds = [...state.candidates.entries()]
-      .filter(([, candidate]) => mergedScore(candidate).stateMismatch !== true)
+      .filter(([, candidate]) => mergedScore(candidate).stateMatch !== false)
       .map(([trusteeId]) => trusteeId);
 
     if (candidateTrusteeIds.length === 0) return state;

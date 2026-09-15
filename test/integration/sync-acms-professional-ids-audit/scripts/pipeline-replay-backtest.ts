@@ -184,7 +184,7 @@ type CandidateRow = {
   phoneScore: number | null;
   fullNameSimilarity: number;
   tokenNameMatchRate: number;
-  surnameExactMatch: boolean;
+  stateMatch: boolean;
   notes: string;
 };
 
@@ -287,7 +287,7 @@ const REPORT_HEADER = [
   'candidateOutcome',
   'acmsFullName',
   'camsName',
-  'surnameExactMatch',
+  'stateMatch',
   'nameScore',
   'fullNameSimilarity',
   'tokenNameMatchRate',
@@ -323,7 +323,7 @@ class ReportWriter {
         r.candidateOutcome,
         r.acmsFullName,
         r.camsName,
-        r.surnameExactMatch,
+        r.stateMatch,
         r.nameScore,
         r.fullNameSimilarity,
         r.tokenNameMatchRate,
@@ -473,7 +473,7 @@ async function run() {
     // (rejected-corroboration) from one of several that left the group genuinely ambiguous
     // (rejected-ambiguous-group).
     const nameQualifyingCount = serialized.candidates.filter(
-      (c) => (Object.assign({}, ...c.scores).nameScore ?? 0) >= 85,
+      (c) => (Object.assign({}, ...Object.values(c.scores)).nameScore ?? 0) >= 85,
     ).length;
 
     const rows: CandidateRow[] = serialized.candidates.map((candidate) => {
@@ -484,9 +484,13 @@ async function run() {
       const isWinner = candidate.camsRaw.trusteeId === state.match?.trusteeId;
       const merged = Object.assign(
         {},
-        ...candidate.scores,
+        ...Object.values(candidate.scores),
         isWinner ? state.match?.score : {},
       ) as Record<string, unknown>;
+      // scores is keyed by scorer name (see ScoreByScorer) - the last key present is whichever
+      // scorer most recently touched this candidate, used here purely as a display label.
+      const scorerNames = Object.keys(candidate.scores);
+      const introductionStage = scorerNames[scorerNames.length - 1] ?? 'unknown';
       const nameScore = typeof merged.nameScore === 'number' ? merged.nameScore : 0;
       const addressScore = typeof merged.addressScore === 'number' ? merged.addressScore : null;
       const phoneScore = typeof merged.phoneScore === 'number' ? merged.phoneScore : null;
@@ -509,7 +513,7 @@ async function run() {
         acmsFullName: acmsTrusteeProfessional.fullName,
         acmsAddress,
         acmsPhone,
-        introductionStage: typeof merged.scorer === 'string' ? merged.scorer : 'unknown',
+        introductionStage,
         candidateOutcome,
         camsTrusteeId: candidate.camsRaw.trusteeId,
         camsName: candidate.camsRaw.name,
@@ -520,8 +524,7 @@ async function run() {
         phoneScore,
         fullNameSimilarity: similarity,
         tokenNameMatchRate: tokenMatchRate,
-        surnameExactMatch:
-          typeof merged.stateMismatch === 'boolean' ? !merged.stateMismatch : false,
+        stateMatch: typeof merged.stateMatch === 'boolean' ? merged.stateMatch : true,
         notes: buildNotes(nameScore, addressScore, phoneScore, similarity, tokenMatchRate),
       };
     });

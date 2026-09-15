@@ -1,5 +1,6 @@
-import { DxtrTrusteeParty } from '@common/cams/dataflow-events';
+import { CandidateScore, DxtrTrusteeParty } from '@common/cams/dataflow-events';
 import { Trustee } from '@common/cams/trustees';
+import { NameMatchQuality } from './trustee-match.helpers';
 
 /**
  * Projection of Trustee down to the fields matching actually reads, via Pick rather than Omit -
@@ -32,47 +33,96 @@ export function projectTrustee(trustee: Trustee): ProjectedTrustee {
 }
 
 /**
- * One stage's contribution to a candidate's evaluation history. `scorer` is passive attribution -
- * which function/stage produced this entry - never used for control flow, only for the audit
- * trail (see PipelineCandidate.scores). Remaining fields are whatever metrics that scorer
- * computed; a scorer only writes the keys it actually computed; every prior key from earlier
- * scores in the same candidate's history keeps its last-written value in the MERGED view (see
- * mergedScore) even though this individual entry doesn't repeat it.
+ * nameScoreStage's contribution (see trustee-match-pipeline-stages.ts) - calculateNameScore's
+ * result plus whether it cleared the auto-link threshold.
  */
-export type ScoreEntry = { scorer: string } & Record<string, unknown>;
+export type NameScoreEntry = {
+  nameScore: number;
+  match: boolean;
+};
 
 /**
- * One candidate under consideration, plus its append-only evaluation history. camsRaw is set once
- * when the candidate is first proposed and never changes; camsNormalized is a memo of on-demand
- * normalizations keyed by normalizer name (see memoize); scores is append-only - see mergedScore
- * for how pipeline logic reads a single current view out of the full history.
+ * stateFilterStage's contribution (see trustee-match-pipeline-stages.ts) - whether this
+ * candidate's state agrees with the ACMS record's state, or was excused from the check (small
+ * pool, unparseable ACMS address, exact phone match, or a high enough nameScore override).
+ */
+export type StateFilterScoreEntry = {
+  stateMatch: boolean;
+};
+
+/**
+ * Every known scorer's contribution shape, keyed by the scorer's own name - a closed map of
+ * exactly the scorers that exist today. A new stage adds its own key/shape pair here; every
+ * switch/narrowing consumer (see mergedScore) then requires that new case to be handled
+ * deliberately rather than silently accepting an arbitrary payload shape. Keying by scorer name
+ * (rather than an array of {scorer, ...fields} tags) makes a re-run of the same stage naturally
+ * idempotent - it overwrites its own slot instead of appending a duplicate entry - and makes
+ * "what did scorer X conclude" a direct lookup instead of a scan.
+ */
+export type ScoreEntryByScorer = {
+  calculateNameScore: NameScoreEntry;
+  stateFilterStage: StateFilterScoreEntry;
+};
+
+export type ScorerName = keyof ScoreEntryByScorer;
+
+/** A candidate's full evaluation history: one slot per scorer that has run against it. Never all
+ * scorers are guaranteed present (see mergedScore). */
+export type ScoreByScorer = Partial<ScoreEntryByScorer>;
+
+/** The cumulative view of every scorer's fields flattened into one object, for consumers that
+ * only care about a specific field's current value regardless of which scorer set it (see
+ * mergedScore). All fields optional since no single candidate is guaranteed to have been touched
+ * by every scorer. */
+export type MergedScore = Partial<NameScoreEntry> & Partial<StateFilterScoreEntry>;
+
+/**
+ * One candidate under consideration, plus its evaluation history. camsRaw is set once when the
+ * candidate is first proposed and never changes; camsNormalized is a memo of normalizations keyed
+ * by normalizer name (see memoize), pre-seeded with camsRaw itself under the 'raw' key so the
+ * audit trail always shows at least the untransformed value even before any stage normalizes it -
+ * a real normalizer stage adds its own variant under its own key without touching 'raw'; scores
+ * holds one slot per scorer that has run against this candidate (see ScoreByScorer/addScore) - see
+ * mergedScore for how pipeline logic reads a single flattened view out of the full history.
  */
 export type PipelineCandidate = {
   camsRaw: ProjectedTrustee;
   camsNormalized: Map<string, unknown>;
-  scores: ScoreEntry[];
+  scores: ScoreByScorer;
 };
 
 /**
- * Reduces a candidate's full score history down to ONE merged view for pipeline decision-making:
- * later entries' keys override earlier entries' keys (last write wins per key), but a key an
- * earlier entry set and a later entry never touched is NOT lost - this is what lets one stage
- * contribute just e.g. {stateMismatch: true} without also having to recompute and re-carry
- * forward nameScore from an earlier stage. The full scores array remains the audit trail (which
- * scorer set which value and when); this merged view is derived, never stored.
+ * Flattens a candidate's per-scorer score history into ONE merged view for pipeline
+ * decision-making: every scorer's fields are combined into a single object, so a consumer that
+ * only cares about e.g. stateMatch doesn't need to know stateFilterStage specifically produced it.
+ * The per-scorer ScoreByScorer map remains the audit trail (which scorer set which value); this
+ * merged view is derived, never stored.
  */
-export function mergedScore(candidate: PipelineCandidate): Record<string, unknown> {
-  return Object.assign({}, ...candidate.scores);
+export function mergedScore(candidate: PipelineCandidate): MergedScore {
+  return Object.assign({}, ...Object.values(candidate.scores));
 }
 
+/** matchTrusteeByName's exact-resolved outcome carries only its own confidence signals (see
+ * trustee-match.helpers.ts's NameMatchResult 'resolved' case) - it resolves on name alone, with no
+ * contact corroboration, so it has no address/phone/email score to report. */
+export type NameOnlyMatchScore = {
+  nameScore: number;
+  nameMatchQuality: NameMatchQuality;
+};
+
 /**
- * A confirmed match, carrying the score that justified it (see mergedScore) rather than just a
- * trusteeId - a consumer should never need to re-scan the candidate's score history to answer
- * "why was this the match".
+ * A confirmed match, carrying the score that justified it rather than just a trusteeId - a
+ * consumer should never need to re-scan the candidate's score history to answer "why was this the
+ * match". `score` is whichever real outcome type actually produced this match - a CandidateScore
+ * from corroborationStage's resolveByContactCorroboration/resolveDuplicateNameCandidates (contact
+ * fields scored alongside name), or a NameOnlyMatchScore from matchTrusteeByName's own
+ * exact-resolved path (name alone, no corroboration attempted) - never a ScoreEntry (see
+ * mergedScore), since both real producers score a broader or narrower set of fields than any
+ * single ScoreEntry case carries.
  */
 export type PipelineMatch = {
   trusteeId: string;
-  score: Record<string, unknown>;
+  score: CandidateScore | NameOnlyMatchScore | Record<string, never>;
 };
 
 /**
@@ -94,9 +144,11 @@ export type PipelineState = {
 };
 
 export function createInitialState(acmsRaw: DxtrTrusteeParty): PipelineState {
+  const acmsNormalized = new Map<string, unknown>();
+  acmsNormalized.set('raw', acmsRaw);
   return {
     acmsRaw,
-    acmsNormalized: new Map(),
+    acmsNormalized,
     candidates: new Map(),
     match: null,
     skip: false,
@@ -116,10 +168,12 @@ export function addCandidate(state: PipelineState, camsRaw: ProjectedTrustee): P
   const existing = state.candidates.get(camsRaw.trusteeId);
   if (existing) return existing;
 
+  const camsNormalized = new Map<string, unknown>();
+  camsNormalized.set('raw', camsRaw);
   const candidate: PipelineCandidate = {
     camsRaw,
-    camsNormalized: new Map(),
-    scores: [],
+    camsNormalized,
+    scores: {},
   };
   state.candidates.set(camsRaw.trusteeId, candidate);
   return candidate;
@@ -146,10 +200,15 @@ export function promoteCandidate(
   return candidate;
 }
 
-/** Appends a new score entry to a candidate's history - see ScoreEntry/mergedScore. Never
- * overwrites or removes a prior entry. */
-export function addScore(candidate: PipelineCandidate, score: ScoreEntry): void {
-  candidate.scores.push(score);
+/** Records (or overwrites) a scorer's contribution to a candidate's history - see
+ * ScoreEntryByScorer/mergedScore. Keyed by scorer name, so a stage that runs more than once
+ * against the same candidate overwrites its own prior slot rather than accumulating duplicates. */
+export function addScore<Name extends ScorerName>(
+  candidate: PipelineCandidate,
+  scorer: Name,
+  score: ScoreEntryByScorer[Name],
+): void {
+  candidate.scores[scorer] = score;
 }
 
 /**
@@ -195,11 +254,12 @@ export async function runPipeline(
   return state;
 }
 
-/** JSON-serializable projection of PipelineCandidate - Maps become plain objects. */
+/** JSON-serializable projection of PipelineCandidate - Maps become plain objects. scores is
+ * already a plain object (ScoreByScorer), so it passes through serializeState unchanged. */
 export type SerializedCandidate = {
   camsRaw: ProjectedTrustee;
   camsNormalized: Record<string, unknown>;
-  scores: ScoreEntry[];
+  scores: ScoreByScorer;
 };
 
 /** JSON-serializable projection of PipelineState - Maps become plain objects/arrays so the state
