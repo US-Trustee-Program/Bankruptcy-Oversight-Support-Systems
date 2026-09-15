@@ -452,6 +452,20 @@ async function run(): Promise<void> {
       const stdout = await runClaudeReview(prompt);
       const verdicts = extractVerdicts(stdout);
       const verdictsByTrusteeId = new Map(verdicts.map((v) => [v.camsTrusteeId, v]));
+      // A response covering fewer candidates than the record actually has (the model truncated,
+      // skipped some, or otherwise gave a partial answer) must be treated as a full failure, not
+      // partially written - writing blanks for the uncovered rows would silently and permanently
+      // lose those candidates, since a record only ever gets retried on resume when it's NOT
+      // already present in the output file at all.
+      const missingIds = rows
+        .map((row) => row.camsTrusteeId)
+        .filter((id) => !verdictsByTrusteeId.has(id));
+      if (missingIds.length > 0) {
+        throw new Error(
+          `claude -p response covered ${verdicts.length}/${rows.length} candidates, missing ` +
+            `${missingIds.length}: ${missingIds.slice(0, 5).join(', ')}${missingIds.length > 5 ? '...' : ''}`,
+        );
+      }
       writer.writeRecord(rows, verdictsByTrusteeId);
       for (const v of verdicts) {
         if (v.verdict === 'match') matchCount++;
