@@ -10,6 +10,7 @@ import {
   calculateCandidateScore,
   calculateNameScore,
   firstLastNameToken,
+  lastNameTokensMatch,
   calculatePhoneScore,
   calculateEmailScore,
   calculateTotalScore,
@@ -2099,7 +2100,86 @@ describe('firstLastNameToken', () => {
   });
 });
 
+describe('lastNameTokensMatch', () => {
+  // Real-world false negative from a staging backtest: ACMS "MELISSA MC CUE" (space-separated)
+  // vs CAMS "Melissa McCue" (concatenated) reduce to "mc cue" and "mccue" via firstLastNameToken
+  // - two different strings for the same surname, so calculateNameScore's old strict-equality
+  // lastName gate scored a genuine match 0. Rather than guessing whether any given concatenated
+  // word IS a split-worthy particle+surname (ambiguous without a space - "Mack"/"Devine"/"Vance"
+  // are ordinary single-word surnames that merely start with a particle's letters), this compares
+  // BOTH the token as-is AND, when it starts with a known particle, the particle-split variant -
+  // a match on EITHER representation counts, so a genuine McCue/Mc Cue pair matches without
+  // requiring "Mack" or "Devine" to ever be force-split in the first place.
+  test.each([
+    ['McCue', 'Mc Cue'],
+    ['MCLANE', 'Mc Lane'],
+    ['DeRosa', 'De Rosa'],
+    ['McManigle', 'Mc Manigle'],
+    ['Dicello', 'Di Cello'],
+  ])(
+    'should match a concatenated surname against its spaced form: %s vs %s',
+    (concatenated, spaced) => {
+      expect(
+        lastNameTokensMatch(firstLastNameToken(concatenated), firstLastNameToken(spaced)),
+      ).toBe(true);
+    },
+  );
+
+  test('should still match two identical already-spaced multi-word surnames', () => {
+    expect(
+      lastNameTokensMatch(firstLastNameToken('Van Meter'), firstLastNameToken('Van Meter')),
+    ).toBe(true);
+  });
+
+  test('should still match two identical ordinary single-word surnames', () => {
+    expect(lastNameTokensMatch(firstLastNameToken('Doe'), firstLastNameToken('Doe'))).toBe(true);
+  });
+
+  test('should NOT match an ordinary single-word surname against an unrelated particle-prefixed surname', () => {
+    // "Mack" happens to start with letters that could look like a particle, but splitting it
+    // must never manufacture a false match against an unrelated "Mc <something>" surname.
+    expect(lastNameTokensMatch(firstLastNameToken('Mack'), firstLastNameToken('Mc Kay'))).toBe(
+      false,
+    );
+  });
+
+  test('should NOT match two different multi-word surnames sharing the same prefix', () => {
+    expect(
+      lastNameTokensMatch(firstLastNameToken('Van Arsdale'), firstLastNameToken('Van Meter')),
+    ).toBe(false);
+  });
+
+  test('should NOT match two genuinely different surnames', () => {
+    expect(lastNameTokensMatch(firstLastNameToken('Smith'), firstLastNameToken('Jones'))).toBe(
+      false,
+    );
+  });
+
+  test('should return false when either token is empty', () => {
+    expect(lastNameTokensMatch('', firstLastNameToken('Smith'))).toBe(false);
+    expect(lastNameTokensMatch(firstLastNameToken('Smith'), '')).toBe(false);
+  });
+});
+
 describe('calculateNameScore', () => {
+  // Real-world false negative from a staging backtest (CAMS-879): ACMS "MELISSA MC CUE"
+  // (space-separated lastName) vs CAMS "Melissa McCue" (concatenated) scored 0 before
+  // lastNameTokensMatch tolerated the formatting difference.
+  test('should score 100 for a genuine match where one side concatenates a prefix particle onto the surname', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'Melissa Mc Cue',
+      firstName: 'Melissa',
+      lastName: 'Mc Cue',
+    };
+    const camsTrustee = makeTrustee({
+      firstName: 'Melissa',
+      lastName: 'McCue',
+      name: 'Melissa McCue',
+    });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(100);
+  });
+
   test('should return 100 when first and last match and neither side has a middle name', () => {
     const dxtrTrustee: DxtrTrusteeParty = {
       fullName: 'John Doe',

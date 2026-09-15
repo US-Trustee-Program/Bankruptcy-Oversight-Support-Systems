@@ -589,6 +589,53 @@ export function firstLastNameToken(namePart?: string): string {
   return tokens[0];
 }
 
+/**
+ * When a firstLastNameToken result is a single word that STARTS WITH a known prefix particle
+ * (see LAST_NAME_PREFIX_PARTICLES) with more letters after it, returns the particle-split variant
+ * joined by a space (e.g. "mccue" -> "mc cue"). Returns null for anything else - an already
+ * multi-word result (firstLastNameToken already split it), a word that doesn't start with a known
+ * particle, or a bare particle with nothing following it to split off.
+ */
+function particleSplitVariant(token: string): string | null {
+  if (token.includes(' ')) return null;
+  for (const particle of LAST_NAME_PREFIX_PARTICLES) {
+    if (token.length > particle.length && token.startsWith(particle)) {
+      return `${particle} ${token.slice(particle.length)}`;
+    }
+  }
+  return null;
+}
+
+/**
+ * Compares two firstLastNameToken results for a genuine surname match, tolerating a source
+ * system's choice to CONCATENATE a prefix particle onto the rest of the surname instead of
+ * space-separating it (see particleSplitVariant) - e.g. ACMS "MELISSA MC CUE" (space-separated,
+ * firstLastNameToken already returns "mc cue") vs CAMS "Melissa McCue" (concatenated,
+ * firstLastNameToken returns "mccue"): a plain string-equality lastName gate scores this a
+ * mismatch even though it's the same surname written two different ways.
+ *
+ * Deliberately does NOT force firstLastNameToken itself to always split on a particle-looking
+ * prefix - "Mack", "Devine", "Vance", "Stone" are ordinary single-word surnames that happen to
+ * start with the same letters as a known particle, and there is no way to tell from a
+ * concatenated word alone whether it's "particle + surname" or just a word - splitting them would
+ * manufacture false matches (e.g. "Mack" turning into "mc ack" and colliding with an unrelated
+ * "Mc Ack"). Comparing both the as-is token AND its particle-split variant (when one exists)
+ * sidesteps that ambiguity: a genuine McCue/Mc Cue pair matches on the split form without "Mack"
+ * ever needing to be force-split into a false particle pair in the first place.
+ */
+export function lastNameTokensMatch(dxtrLast: string, camsLast: string): boolean {
+  if (!dxtrLast || !camsLast) return false;
+  if (dxtrLast === camsLast) return true;
+
+  const dxtrSplit = particleSplitVariant(dxtrLast);
+  if (dxtrSplit === camsLast) return true;
+
+  const camsSplit = particleSplitVariant(camsLast);
+  if (camsSplit === dxtrLast) return true;
+
+  return false;
+}
+
 const isInitialOf = (initial: string, full: string): boolean =>
   initial.length === 1 && full.length > 0 && full.startsWith(initial);
 
@@ -713,9 +760,10 @@ function isOneSidedMiddleNameMatch(
 /**
  * Calculates a name match score between DXTR and CAMS trustee parties.
  * Scoring:
- * - Last name must match on its first token (see firstLastNameToken), or the score is 0 - no
- *   further relaxation on lastName, since it is the one part of the name most likely to
- *   distinguish two genuinely different people.
+ * - Last name must match on its first token (see firstLastNameToken), tolerating a concatenated
+ *   vs space-separated prefix particle on either side (see lastNameTokensMatch - e.g. "McCue" vs
+ *   "Mc Cue"), or the score is 0 - no further relaxation on lastName, since it is the one part of
+ *   the name most likely to distinguish two genuinely different people.
  * - First name must also match, or relax to an initial-vs-full relationship (see
  *   scoreFirstNamePart) - a genuine first-name mismatch is still disqualifying (score 0), UNLESS
  *   it's a first/middle swap (see isFirstMiddleSwap, both sides have a middle name) or a
@@ -729,7 +777,7 @@ export function calculateNameScore(dxtrTrustee: DxtrTrusteeParty, camsTrustee: T
   const dxtrLast = firstLastNameToken(dxtrTrustee.lastName);
   const camsLast = firstLastNameToken(camsTrustee.lastName);
 
-  if (!dxtrLast || dxtrLast !== camsLast) {
+  if (!lastNameTokensMatch(dxtrLast, camsLast)) {
     return 0;
   }
 
