@@ -1728,7 +1728,7 @@ export async function findSurnameExactCandidates(
  * corroboration tiers untouched, since state filtering exists to cut noise in an already-bloated
  * tail, not to second-guess an already-tight result.
  */
-const STATE_FILTER_POOL_SIZE_THRESHOLD = 5;
+export const STATE_FILTER_POOL_SIZE_THRESHOLD = 5;
 
 /**
  * Minimum calculateNameScore a state-mismatched candidate needs to survive this filter anyway -

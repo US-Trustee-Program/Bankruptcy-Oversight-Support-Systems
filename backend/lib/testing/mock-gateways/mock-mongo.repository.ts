@@ -462,6 +462,10 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
+  findTrusteesByIds(_trusteeIds: string[]): Promise<any[]> {
+    throw new Error('Method not implemented.');
+  }
+
   searchTrusteesByName(_name: string): Promise<any[]> {
     throw new Error('Method not implemented.');
   }

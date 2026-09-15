@@ -601,6 +601,7 @@ export interface TrusteesRepository extends Reads<Trustee>, Releasable {
   listTrustees(): Promise<Trustee[]>;
   findTrusteeByLegacyTruId(truId: string): Promise<Trustee | null>;
   findTrusteesByName(name: string): Promise<Trustee[]>;
+  findTrusteesByIds(trusteeIds: string[]): Promise<Trustee[]>;
   searchTrusteesByName(name: string): Promise<Trustee[]>;
   searchTrusteesByPhoneticTokens(tokens: string[]): Promise<Trustee[]>;
   searchTrusteesByNameScored(name: string): Promise<Trustee[]>;

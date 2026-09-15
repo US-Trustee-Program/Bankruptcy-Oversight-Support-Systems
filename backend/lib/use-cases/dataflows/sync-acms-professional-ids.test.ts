@@ -689,6 +689,69 @@ describe('SyncAcmsProfessionalIds', () => {
       expect(result).toEqual({ kind: 'no-match' });
     });
 
+    test('should NOT re-fetch full trustee records when matchTrusteeByName returns a pool at or below the state-filter threshold', async () => {
+      const matchCandidates = [{ trusteeId: 't1', trusteeName: 'John Smith' }] as never;
+      vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({
+        kind: 'ambiguous',
+        matchCandidates,
+      });
+      const findByIdsSpy = vi.spyOn(deps.trusteesRepo, 'findTrusteesByIds');
+      vi.spyOn(trusteeMatchHelpers, 'resolveByContactCorroboration').mockResolvedValue({
+        kind: 'unresolved',
+        candidateScores: matchCandidates,
+      });
+      vi.spyOn(trusteeMatchHelpers, 'resolveDuplicateNameCandidates').mockResolvedValue({
+        kind: 'unresolved',
+        candidateScores: matchCandidates,
+      });
+      vi.spyOn(trusteeMatchHelpers, 'findAnchoredLevenshteinCandidates').mockResolvedValue([]);
+
+      await SyncAcmsProfessionalIds.processNameMatch(deps, record);
+
+      expect(findByIdsSpy).not.toHaveBeenCalled();
+    });
+
+    // Real-world pattern: matchTrusteeByName's own broader phonetic/fuzzy pool can run into the
+    // hundreds of candidates for a common surname fragment - unlike the other three tiers, this
+    // pool only carries CandidateScore[] (no structured lastName), so filtering it requires
+    // re-fetching the full Trustee records by id first.
+    test('should re-fetch and filter out state-mismatched candidates once the pool exceeds the state-filter threshold', async () => {
+      const matchCandidates = Array.from({ length: 6 }, (_, i) => ({
+        trusteeId: `t${i}`,
+        trusteeName: `Someone ${i}`,
+      })) as never;
+      vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({
+        kind: 'ambiguous',
+        matchCandidates,
+      });
+      const rawTrustees = [
+        { trusteeId: 't0', lastName: 'Smith', public: { address: { state: 'NY' } } },
+        { trusteeId: 't1', lastName: 'Smith', public: { address: { state: 'CA' } } },
+      ] as never;
+      const findByIdsSpy = vi
+        .spyOn(deps.trusteesRepo, 'findTrusteesByIds')
+        .mockResolvedValue(rawTrustees);
+      // Only the re-fetched matchTrusteeByName pool should be filtered down here - the earlier
+      // findSurnameExactCandidates call (mocked to [] in beforeEach) must pass straight through
+      // unfiltered, so this discriminates by identity rather than blindly stubbing every call.
+      vi.spyOn(trusteeMatchHelpers, 'filterNoisyStateMismatches').mockImplementation(
+        (_source, candidates) => (candidates === rawTrustees ? [rawTrustees[0]] : candidates),
+      );
+      const corroborationSpy = vi
+        .spyOn(trusteeMatchHelpers, 'resolveByContactCorroboration')
+        .mockResolvedValue({ kind: 'unresolved', candidateScores: [] });
+      vi.spyOn(trusteeMatchHelpers, 'resolveDuplicateNameCandidates').mockResolvedValue({
+        kind: 'unresolved',
+        candidateScores: [],
+      });
+      vi.spyOn(trusteeMatchHelpers, 'findAnchoredLevenshteinCandidates').mockResolvedValue([]);
+
+      await SyncAcmsProfessionalIds.processNameMatch(deps, record);
+
+      expect(findByIdsSpy).toHaveBeenCalledWith(['t0', 't1', 't2', 't3', 't4', 't5']);
+      expect(corroborationSpy).toHaveBeenCalledWith(deps.context, expect.anything(), ['t0']);
+    });
+
     test('should return ambiguous with the unscored candidates when neither contact corroboration, duplicate-name resolution, nor anchored-Levenshtein resolve it', async () => {
       const matchCandidates = [{ trusteeId: 't1', trusteeName: 'John Smith' }] as never;
       vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({

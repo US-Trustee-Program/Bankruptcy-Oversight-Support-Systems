@@ -1314,6 +1314,74 @@ describe('TrusteesMongoRepository', () => {
     });
   });
 
+  describe('findTrusteesByIds', () => {
+    test('should find trustees by trusteeId using a CONTAINS query', async () => {
+      const mockIds = ['trust-001', 'trust-002'];
+      const mockTrustees = [
+        {
+          id: 'trustee-1',
+          trusteeId: 'trust-001',
+          name: 'John Smith',
+          documentType: 'TRUSTEE',
+          public: {
+            address: {
+              address1: '123 Main St',
+              city: 'New York',
+              state: 'NY',
+              zipCode: '10001',
+              countryCode: 'US' as const,
+            },
+          },
+          createdOn: '2025-01-01T10:00:00Z',
+          createdBy: mockUser,
+          updatedOn: '2025-01-01T10:00:00Z',
+          updatedBy: mockUser,
+        },
+      ];
+
+      const mockAdapter = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockResolvedValue(mockTrustees as TrusteeDocument[]);
+
+      const result = await repository.findTrusteesByIds(mockIds);
+
+      expect(mockAdapter).toHaveBeenCalledWith({
+        conjunction: 'AND',
+        values: [
+          {
+            condition: 'EQUALS',
+            leftOperand: { name: 'documentType' },
+            rightOperand: 'TRUSTEE',
+          },
+          {
+            condition: 'CONTAINS',
+            leftOperand: { name: 'trusteeId' },
+            rightOperand: mockIds,
+          },
+        ],
+      });
+      expect(result).toEqual(mockTrustees);
+    });
+
+    test('should return an empty array without querying when given an empty id list', async () => {
+      const mockAdapter = vi.spyOn(MongoCollectionAdapter.prototype, 'find');
+
+      const result = await repository.findTrusteesByIds([]);
+
+      expect(result).toEqual([]);
+      expect(mockAdapter).not.toHaveBeenCalled();
+    });
+
+    test('should handle database errors when finding trustees by ids', async () => {
+      const error = new Error('Database connection failed');
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(error);
+
+      await expect(repository.findTrusteesByIds(['trust-001'])).rejects.toThrow(
+        'Failed to find trustees by ids',
+      );
+    });
+  });
+
   describe('searchTrusteesByNameScored', () => {
     test('should filter pre-filter by phoneticTokens contains (no notExists fallback)', async () => {
       const aggregateSpy = vi

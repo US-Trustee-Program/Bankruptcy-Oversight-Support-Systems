@@ -615,7 +615,15 @@ async function run() {
       nameQualifyingIds = new Set([nameResult.trusteeId]);
       finalOutcome = 'resolved';
     } else if (nameResult.kind === 'ambiguous') {
-      const corroboration = await resolveCandidatesByCorroboration(acmsTrusteeProfessional, rawIds);
+      // Mirrors processNameMatch's re-fetch-then-filter step for matchTrusteeByName's own broader
+      // pool (sync-acms-professional-ids.ts): this pool only carries CandidateScore[] with no
+      // structured lastName, so filtering requires the raw Trustee records - already available
+      // here via trusteesById rather than a real repository round-trip.
+      const filteredIds = filterNoisyStateMismatches(
+        acmsTrusteeProfessional,
+        rawIds.map((id) => trusteesById.get(id)).filter((t): t is Trustee => !!t),
+      ).map((t) => t.trusteeId);
+      const corroboration = await resolveCandidatesByCorroboration(acmsTrusteeProfessional, filteredIds);
       nameQualifyingIds = corroboration.nameQualifyingIds;
       resolvedTrusteeId = corroboration.resolvedTrusteeId;
 

@@ -17,6 +17,7 @@ import {
   findSurnameExactCandidates,
   filterNoisyStateMismatches,
   toUnscoredCandidates,
+  STATE_FILTER_POOL_SIZE_THRESHOLD,
 } from './trustee-match.helpers';
 import { buildAcmsVariant } from './acms-trustee-variant.helpers';
 import { computeFingerprint } from './trustee-variant.helpers';
@@ -325,7 +326,19 @@ async function processNameMatch(
   const result = await matchTrusteeByName(deps.context, acmsTrusteeProfessional);
 
   if (result.kind === 'ambiguous') {
-    const candidateTrusteeIds = result.matchCandidates.map((c) => c.trusteeId);
+    // matchTrusteeByName's ambiguous result only carries CandidateScore[] (no structured
+    // firstName/middleName/lastName - just a composed trusteeName string), so
+    // filterNoisyStateMismatches can't run directly against it the way it does for the other
+    // three tiers' raw Trustee[] pools. Re-fetching by id is real extra DB load, so it's only
+    // worth paying once the pool is already large enough for the filter to activate at all (see
+    // STATE_FILTER_POOL_SIZE_THRESHOLD) - a typical small ambiguous group skips this entirely.
+    let candidateTrusteeIds = result.matchCandidates.map((c) => c.trusteeId);
+    if (candidateTrusteeIds.length > STATE_FILTER_POOL_SIZE_THRESHOLD) {
+      const rawCandidates = await deps.trusteesRepo.findTrusteesByIds(candidateTrusteeIds);
+      candidateTrusteeIds = filterNoisyStateMismatches(acmsTrusteeProfessional, rawCandidates).map(
+        (t) => t.trusteeId,
+      );
+    }
     const resolvedTrusteeId = await resolveCandidatesByCorroboration(
       deps.context,
       acmsTrusteeProfessional,
