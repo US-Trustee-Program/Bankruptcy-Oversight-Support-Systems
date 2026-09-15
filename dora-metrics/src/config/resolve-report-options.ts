@@ -1,6 +1,8 @@
 const DEFAULT_OWNER = 'US-Trustee-Program';
 const DEFAULT_REPO = 'Bankruptcy-Oversight-Support-Systems';
 const DEFAULT_WORKFLOW_FILE_NAME = 'continuous-deployment.yml';
+const DEFAULT_BRANCH = 'main';
+const DEFAULT_TICKET_LABEL_PATTERN = '^CAMS-\\d+$';
 const DEFAULT_PERIOD_DAYS = 7;
 const DEFAULT_LOOKBACK_DAYS = 90;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -9,6 +11,8 @@ export type ReportOptions = {
   owner: string;
   repo: string;
   workflowFileName: string;
+  branch: string;
+  ticketLabelPattern: RegExp;
   startDate: Date;
   periodDays: number;
   endDate: Date;
@@ -36,11 +40,22 @@ function resolvePeriodDays(): number {
   return raw ? Number(raw) : DEFAULT_PERIOD_DAYS;
 }
 
+function resolveTicketLabelPattern(): RegExp {
+  const source = resolveEnvVar('DORA_TICKET_LABEL_PATTERN', DEFAULT_TICKET_LABEL_PATTERN);
+  try {
+    return new RegExp(source);
+  } catch {
+    throw new Error(`Invalid DORA_TICKET_LABEL_PATTERN: ${source}`);
+  }
+}
+
 export function resolveReportOptions(): ReportOptions {
   return {
     owner: resolveEnvVar('DORA_OWNER', DEFAULT_OWNER),
     repo: resolveEnvVar('DORA_REPO', DEFAULT_REPO),
     workflowFileName: resolveEnvVar('DORA_WORKFLOW_FILE_NAME', DEFAULT_WORKFLOW_FILE_NAME),
+    branch: resolveEnvVar('DORA_BRANCH', DEFAULT_BRANCH),
+    ticketLabelPattern: resolveTicketLabelPattern(),
     startDate: resolveStartDate(),
     periodDays: resolvePeriodDays(),
     endDate: new Date(),

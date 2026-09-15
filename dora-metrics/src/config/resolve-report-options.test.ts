@@ -5,6 +5,8 @@ const ENV_KEYS = [
   'DORA_OWNER',
   'DORA_REPO',
   'DORA_WORKFLOW_FILE_NAME',
+  'DORA_BRANCH',
+  'DORA_TICKET_LABEL_PATTERN',
   'DORA_START_DATE',
   'DORA_PERIOD_DAYS',
 ] as const;
@@ -38,33 +40,49 @@ describe('resolveReportOptions', () => {
     expect(options.owner).toBe('US-Trustee-Program');
     expect(options.repo).toBe('Bankruptcy-Oversight-Support-Systems');
     expect(options.workflowFileName).toBe('continuous-deployment.yml');
+    expect(options.branch).toBe('main');
+    expect(options.ticketLabelPattern).toEqual(/^CAMS-\d+$/);
     expect(options.periodDays).toBe(7);
     expect(options.endDate).toEqual(new Date('2026-01-08T00:00:00.000Z'));
     expect(options.startDate).toEqual(new Date('2025-10-10T00:00:00.000Z'));
   });
 
-  test('reads owner, repo, and workflowFileName from env vars when set', () => {
+  test('reads owner, repo, workflowFileName, branch, and ticketLabelPattern from env vars when set', () => {
     process.env.DORA_OWNER = 'some-org';
     process.env.DORA_REPO = 'some-repo';
     process.env.DORA_WORKFLOW_FILE_NAME = 'deploy.yml';
+    process.env.DORA_BRANCH = 'develop';
+    process.env.DORA_TICKET_LABEL_PATTERN = '^JIRA-\\d+$';
 
     const options = resolveReportOptions();
 
     expect(options.owner).toBe('some-org');
     expect(options.repo).toBe('some-repo');
     expect(options.workflowFileName).toBe('deploy.yml');
+    expect(options.branch).toBe('develop');
+    expect(options.ticketLabelPattern).toEqual(/^JIRA-\d+$/);
   });
 
   test('treats empty-string env vars as unset and falls back to defaults', () => {
     process.env.DORA_OWNER = '';
     process.env.DORA_REPO = '';
     process.env.DORA_WORKFLOW_FILE_NAME = '';
+    process.env.DORA_BRANCH = '';
+    process.env.DORA_TICKET_LABEL_PATTERN = '';
 
     const options = resolveReportOptions();
 
     expect(options.owner).toBe('US-Trustee-Program');
     expect(options.repo).toBe('Bankruptcy-Oversight-Support-Systems');
     expect(options.workflowFileName).toBe('continuous-deployment.yml');
+    expect(options.branch).toBe('main');
+    expect(options.ticketLabelPattern).toEqual(/^CAMS-\d+$/);
+  });
+
+  test('throws when DORA_TICKET_LABEL_PATTERN is not a valid regular expression', () => {
+    process.env.DORA_TICKET_LABEL_PATTERN = '(unclosed';
+
+    expect(() => resolveReportOptions()).toThrow('Invalid DORA_TICKET_LABEL_PATTERN: (unclosed');
   });
 
   test('parses DORA_PERIOD_DAYS from the environment', () => {

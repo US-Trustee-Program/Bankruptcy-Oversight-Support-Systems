@@ -4,12 +4,12 @@ import { computeDeploymentFrequency } from './metrics/deployment-frequency.js';
 import { writeCsv } from './output/write-csv.js';
 import { resolveReportOptions } from './config/resolve-report-options.js';
 
-const MAIN_BRANCH = 'main';
 const OUTPUT_PATH = 'data/deployment-frequency.csv';
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 async function main(): Promise<void> {
-  const { owner, repo, workflowFileName, startDate, periodDays, endDate } = resolveReportOptions();
+  const { owner, repo, workflowFileName, branch, startDate, periodDays, endDate } =
+    resolveReportOptions();
 
   const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
 
@@ -18,7 +18,7 @@ async function main(): Promise<void> {
     owner,
     repo,
     workflowFileName,
-    branch: MAIN_BRANCH,
+    branch,
     since: startDate,
   });
 

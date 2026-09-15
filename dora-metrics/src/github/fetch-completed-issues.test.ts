@@ -2,6 +2,8 @@ import { describe, expect, test, vi } from 'vitest';
 import { Octokit } from '@octokit/rest';
 import { fetchCompletedIssues } from './fetch-completed-issues.js';
 
+const TICKET_LABEL_PATTERN = /^CAMS-\d+$/;
+
 function mockOctokit(pages: Array<unknown[]>) {
   const listForRepo = vi.fn();
   pages.forEach((page) => {
@@ -54,6 +56,7 @@ describe('fetchCompletedIssues', () => {
       owner: 'US-Trustee-Program',
       repo: 'Bankruptcy-Oversight-Support-Systems',
       since: new Date('2026-01-01T00:00:00.000Z'),
+      ticketLabelPattern: TICKET_LABEL_PATTERN,
     });
 
     expect(issues).toEqual([{ number: 4, closed_at: '2026-01-05T00:00:00.000Z' }]);
@@ -76,6 +79,7 @@ describe('fetchCompletedIssues', () => {
       owner: 'US-Trustee-Program',
       repo: 'Bankruptcy-Oversight-Support-Systems',
       since: new Date('2026-01-01T00:00:00.000Z'),
+      ticketLabelPattern: TICKET_LABEL_PATTERN,
     });
 
     expect(issues).toEqual([]);
@@ -104,6 +108,7 @@ describe('fetchCompletedIssues', () => {
       owner: 'US-Trustee-Program',
       repo: 'Bankruptcy-Oversight-Support-Systems',
       since: new Date('2026-01-01T00:00:00.000Z'),
+      ticketLabelPattern: TICKET_LABEL_PATTERN,
     });
 
     expect(issues.map((issue) => issue.number)).toEqual([1, 2]);
@@ -126,6 +131,7 @@ describe('fetchCompletedIssues', () => {
       owner: 'US-Trustee-Program',
       repo: 'Bankruptcy-Oversight-Support-Systems',
       since: new Date('2026-01-01T00:00:00.000Z'),
+      ticketLabelPattern: TICKET_LABEL_PATTERN,
     });
 
     expect(issues).toEqual([]);
@@ -148,6 +154,7 @@ describe('fetchCompletedIssues', () => {
       owner: 'US-Trustee-Program',
       repo: 'Bankruptcy-Oversight-Support-Systems',
       since: new Date('2026-01-01T00:00:00.000Z'),
+      ticketLabelPattern: TICKET_LABEL_PATTERN,
     });
 
     expect(issues).toEqual([]);
@@ -162,6 +169,7 @@ describe('fetchCompletedIssues', () => {
         owner: 'US-Trustee-Program',
         repo: 'Bankruptcy-Oversight-Support-Systems',
         since: new Date('not-a-date'),
+        ticketLabelPattern: TICKET_LABEL_PATTERN,
       }),
     ).rejects.toThrow('since must be a valid Date');
   });
@@ -188,6 +196,7 @@ describe('fetchCompletedIssues', () => {
       owner: 'US-Trustee-Program',
       repo: 'Bankruptcy-Oversight-Support-Systems',
       since: new Date('2026-01-01T00:00:00.000Z'),
+      ticketLabelPattern: TICKET_LABEL_PATTERN,
     });
 
     expect(issues).toHaveLength(101);
@@ -204,6 +213,7 @@ describe('fetchCompletedIssues', () => {
       owner: 'US-Trustee-Program',
       repo: 'Bankruptcy-Oversight-Support-Systems',
       since: new Date('2026-01-01T00:00:00.000Z'),
+      ticketLabelPattern: TICKET_LABEL_PATTERN,
     });
 
     expect(issues).toEqual([]);
@@ -219,6 +229,7 @@ describe('fetchCompletedIssues', () => {
       owner: 'US-Trustee-Program',
       repo: 'Bankruptcy-Oversight-Support-Systems',
       since,
+      ticketLabelPattern: TICKET_LABEL_PATTERN,
     });
 
     expect(listForRepo).toHaveBeenCalledWith(
@@ -231,5 +242,34 @@ describe('fetchCompletedIssues', () => {
         page: 1,
       }),
     );
+  });
+
+  test('uses the supplied ticketLabelPattern instead of the CAMS-specific default', async () => {
+    const { octokit } = mockOctokit([
+      [
+        {
+          number: 1,
+          state_reason: 'completed',
+          closed_at: '2026-01-05T00:00:00.000Z',
+          labels: [{ name: 'CAMS-999' }],
+        },
+        {
+          number: 2,
+          state_reason: 'completed',
+          closed_at: '2026-01-05T00:00:00.000Z',
+          labels: [{ name: 'JIRA-42' }],
+        },
+      ],
+    ]);
+
+    const issues = await fetchCompletedIssues({
+      octokit,
+      owner: 'US-Trustee-Program',
+      repo: 'Bankruptcy-Oversight-Support-Systems',
+      since: new Date('2026-01-01T00:00:00.000Z'),
+      ticketLabelPattern: /^JIRA-\d+$/,
+    });
+
+    expect(issues.map((issue) => issue.number)).toEqual([2]);
   });
 });

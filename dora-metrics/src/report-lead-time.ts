@@ -5,12 +5,20 @@ import { computeLeadTime } from './metrics/lead-time.js';
 import { writeCsv } from './output/write-csv.js';
 import { resolveReportOptions } from './config/resolve-report-options.js';
 
-const MAIN_BRANCH = 'main';
 const DETAIL_OUTPUT_PATH = 'data/lead-time-detail.csv';
 const BY_PERIOD_OUTPUT_PATH = 'data/lead-time-by-period.csv';
 
 async function main(): Promise<void> {
-  const { owner, repo, workflowFileName, startDate, periodDays, endDate } = resolveReportOptions();
+  const {
+    owner,
+    repo,
+    workflowFileName,
+    branch,
+    ticketLabelPattern,
+    startDate,
+    periodDays,
+    endDate,
+  } = resolveReportOptions();
 
   const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
 
@@ -20,10 +28,10 @@ async function main(): Promise<void> {
       owner,
       repo,
       workflowFileName,
-      branch: MAIN_BRANCH,
+      branch,
       since: startDate,
     }),
-    fetchCompletedIssues({ octokit, owner, repo, since: startDate }),
+    fetchCompletedIssues({ octokit, owner, repo, since: startDate, ticketLabelPattern }),
   ]);
 
   const { perIssue, byPeriod } = computeLeadTime(issues, runs, { startDate, periodDays, endDate });
