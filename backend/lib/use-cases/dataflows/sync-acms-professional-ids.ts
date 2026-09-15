@@ -247,10 +247,92 @@ function recoverCorruptedFirstName(
   return { firstName: firstNameFirstToken, lastName };
 }
 
+/**
+ * Known administrative/placeholder phrases ACMS records carry instead of, or alongside, a real
+ * trustee name - a "this professional-id code is deprecated/superseded" marker, not part of
+ * anyone's real name. Confirmed via a CAMS-879 backtest survey of every marker-bearing record in
+ * a real staging export. Deliberately excludes standalone role words like "trustee"/"office"/
+ * "code"/"case" from this list - those only signal "not a person" when they're ALL that's left
+ * after stripping (see isLikelyNotAPerson), but stripping them unconditionally here would also
+ * mangle a real surname that happens to contain one as a substring.
+ */
+const ADMINISTRATIVE_MARKER_PHRASES = [
+  'do not use this code',
+  'do not use',
+  'inactive',
+  'duplicate',
+  'cancelled',
+  'canceled',
+  'cancel',
+  'delete me',
+  'delete',
+  'not assigned',
+  'reopening pending',
+  'pending',
+];
+
+const ADMINISTRATIVE_MARKER_PATTERN = new RegExp(
+  `\\(?\\s*(${ADMINISTRATIVE_MARKER_PHRASES.join('|')})\\s*\\)?`,
+  'gi',
+);
+
+/** Bare words that, once every ADMINISTRATIVE_MARKER_PHRASES marker is stripped, indicate
+ * whatever is left is STILL administrative text describing a role/case rather than a person's
+ * name (e.g. "UNITED STATES TRUSTEE" -> stripped to itself, unchanged, since none of its words
+ * are markers - but "trustee" alone is not a surname). Used only by isLikelyNotAPerson's
+ * word-by-word check, never to strip text from a name that will proceed to matching. */
+const NON_PERSON_ONLY_WORDS = new Set([
+  'trustee',
+  'trustees',
+  'office',
+  "office's",
+  'code',
+  'case',
+  'appt',
+  'as',
+  'united',
+  'states',
+  'this',
+]);
+
+/**
+ * Strips known administrative marker phrases (see ADMINISTRATIVE_MARKER_PHRASES) from a name
+ * part, collapsing whitespace and trimming leftover punctuation. Applied to both firstName and
+ * lastName before either is used for matching or the isLikelyNotAPerson check.
+ */
+function stripAdministrativeMarkers(value: string): string {
+  return value
+    .replace(ADMINISTRATIVE_MARKER_PATTERN, ' ')
+    .replace(/[-/*.,]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * After stripping known markers from both name parts, determines whether what's left is still
+ * just administrative/role text (an office, a case-processing label) rather than any real
+ * person's name - e.g. "UNITED STATES TRUSTEE'S OFFICE" or "APPT AS TRUSTEE" / "UNITED STATES
+ * TRUSTEE" have no marker-phrase to strip (nothing in ADMINISTRATIVE_MARKER_PHRASES matches), yet
+ * are clearly not a person. True when EVERY word in the stripped firstName+lastName is either a
+ * known non-person word (see NON_PERSON_ONLY_WORDS) or empty - a single real name-shaped word on
+ * either side is enough evidence of a real person to proceed with matching.
+ */
+function isLikelyNotAPerson(strippedFirstName: string, strippedLastName: string): boolean {
+  const words = `${strippedFirstName} ${strippedLastName}`
+    .toLowerCase()
+    .replaceAll("'", '')
+    .split(/\s+/)
+    .filter(Boolean);
+  if (words.length === 0) return true;
+  return words.every((word) => NON_PERSON_ONLY_WORDS.has(word));
+}
+
 function toAcmsTrusteeProfessional(
   record: AcmsTrusteeProfessionalDetailRecord,
 ): AcmsTrusteeProfessional {
-  const recovered = recoverCorruptedFirstName(record.firstName, record.lastName);
+  const strippedFirstName = stripAdministrativeMarkers(record.firstName);
+  const strippedLastName = stripAdministrativeMarkers(record.lastName);
+  const recovered = recoverCorruptedFirstName(strippedFirstName, strippedLastName);
   const { firstName, middleName } = splitCompoundFirstName(
     recovered.firstName,
     record.middleInitial,
@@ -501,20 +583,29 @@ type GateOutcome = 'skipped' | 'error-written';
 type ProcessOneRecordOutcome =
   | { kind: 'auto-linked'; via: 'fingerprint' | 'name' }
   | { kind: 'conflict'; via: 'fingerprint' | 'name' }
-  | { kind: 'no-match' | 'ambiguous'; gated: GateOutcome };
+  | { kind: 'no-match' | 'ambiguous'; gated: GateOutcome }
+  | { kind: 'skipped-not-a-person' };
 
 /**
- * The full per-record decision tree: fingerprint match first (cheapest, most confident); on a
- * miss, fall through to name matching. A resolved match (either path) that collides with a
- * different trustee already holding this ACMS id is reported as a conflict, always written
- * (bypassing the active-appointment gate — a data-integrity problem is always worth recording).
- * Any other non-auto-link outcome (no-match, ambiguous) routes through the active-appointment
- * gate. Returns a summary outcome so the caller (handlePage) can aggregate per-page telemetry.
+ * The full per-record decision tree: a not-a-person check first (see isLikelyNotAPerson - cheap,
+ * no I/O, and there is no real identity here to look up either way), then fingerprint match
+ * (cheapest real lookup, most confident), then on a miss, name matching. A resolved match (either
+ * path) that collides with a different trustee already holding this ACMS id is reported as a
+ * conflict, always written (bypassing the active-appointment gate — a data-integrity problem is
+ * always worth recording). Any other non-auto-link outcome (no-match, ambiguous) routes through
+ * the active-appointment gate. Returns a summary outcome so the caller (handlePage) can aggregate
+ * per-page telemetry.
  */
 async function processOneRecord(
   deps: SyncAcmsProfessionalIdsDeps,
   record: AcmsTrusteeProfessionalDetailRecord,
 ): Promise<ProcessOneRecordOutcome> {
+  const strippedFirstName = stripAdministrativeMarkers(record.firstName);
+  const strippedLastName = stripAdministrativeMarkers(record.lastName);
+  if (isLikelyNotAPerson(strippedFirstName, strippedLastName)) {
+    return { kind: 'skipped-not-a-person' };
+  }
+
   const variant = buildAcmsVariant(record);
   const fingerprint = computeFingerprint(variant);
 

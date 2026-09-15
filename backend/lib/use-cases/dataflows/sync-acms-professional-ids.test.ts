@@ -479,10 +479,13 @@ describe('SyncAcmsProfessionalIds', () => {
         lastName: 'K. MICHAEL FITZGERALD',
       });
 
+      // firstName "K" without a trailing period - stripAdministrativeMarkers (run on both name
+      // parts before recoverCorruptedFirstName) also strips stray punctuation, which is harmless
+      // here since calculateNameScore's normalizeNamePart strips it too before ever comparing.
       expect(matchSpy).toHaveBeenCalledWith(
         deps.context,
         expect.objectContaining({
-          firstName: 'K.',
+          firstName: 'K',
           middleName: 'MICHAEL',
           lastName: 'FITZGERALD',
         }),
@@ -1052,6 +1055,66 @@ describe('SyncAcmsProfessionalIds', () => {
       // Default: no surname-exact candidates, so existing scenarios exercise matchTrusteeByName's
       // tiers unchanged unless a test explicitly overrides this to exercise the new gate itself.
       vi.spyOn(trusteeMatchHelpers, 'findSurnameExactCandidates').mockResolvedValue([]);
+    });
+
+    // Real-world pattern from a CAMS-879 backtest: ~8 ACMS professional-id records carry no real
+    // person at all - pure administrative/placeholder text like "NOT ASSIGNED", "DUPLICATE
+    // TRUSTEE", or "UNITED STATES TRUSTEE'S OFFICE" (an office, not a person). Attempting to match
+    // these wastes a noisy candidate fan-out (one such record alone surfaced 451 phonetic
+    // candidates) for a record that was never going to resolve to a real trustee. Detected BEFORE
+    // fingerprint matching even runs, since there's no real identity here to look up either way.
+    test.each([
+      ['', 'NOT ASSIGNED'],
+      ['', 'DUPLICATE TRUSTEE'],
+      ['', "UNITED STATES TRUSTEE'S OFFICE"],
+      ['APPT AS TRUSTEE', 'UNITED STATES TRUSTEE'],
+      ['', 'REOPENING PENDING'],
+    ])(
+      'should skip entirely without attempting any matching when no real person name is present: firstName=%j lastName=%j',
+      async (firstName, lastName) => {
+        const fingerprintSpy = vi.spyOn(deps.variationRepo, 'findByFingerprint');
+        const nameMatchSpy = vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName');
+        const gateSpy = vi.spyOn(deps.acmsGateway, 'getActiveAppointmentsForProfessional');
+        const createSpy = vi.spyOn(deps.professionalIdsRepo, 'createProfessionalId');
+
+        const outcome = await SyncAcmsProfessionalIds.processOneRecord(deps, {
+          ...record,
+          firstName,
+          lastName,
+        });
+
+        expect(fingerprintSpy).not.toHaveBeenCalled();
+        expect(nameMatchSpy).not.toHaveBeenCalled();
+        expect(gateSpy).not.toHaveBeenCalled();
+        expect(createSpy).not.toHaveBeenCalled();
+        expect(outcome).toEqual({ kind: 'skipped-not-a-person' });
+      },
+    );
+
+    // Companion pattern: a REAL trustee's professional-id record with an administrative marker
+    // attached to an otherwise-recoverable name (e.g. "JULES COHEN/DO NOT USE",
+    // "FREDERICK REIGLE - INACTIVE DO NOT USE") must NOT be skipped - the marker text should be
+    // stripped and the real name underneath still goes through normal matching, since a real
+    // trustee identity exists here.
+    test('should strip administrative marker text and proceed with normal matching when a real name is still present', async () => {
+      const matchSpy = vi
+        .spyOn(trusteeMatchHelpers, 'matchTrusteeByName')
+        .mockResolvedValue({ kind: 'no-match' });
+      vi.spyOn(trusteeMatchHelpers, 'findTokenIntersectionCandidates').mockResolvedValue([]);
+      vi.spyOn(trusteeMatchHelpers, 'findAnchoredLevenshteinCandidates').mockResolvedValue([]);
+      vi.spyOn(deps.variationRepo, 'findByFingerprint').mockResolvedValue([]);
+      vi.spyOn(deps.acmsGateway, 'getActiveAppointmentsForProfessional').mockResolvedValue([]);
+
+      await SyncAcmsProfessionalIds.processOneRecord(deps, {
+        ...record,
+        firstName: 'JULES',
+        lastName: 'COHEN/DO NOT USE',
+      });
+
+      expect(matchSpy).toHaveBeenCalledWith(
+        deps.context,
+        expect.objectContaining({ firstName: 'JULES', lastName: 'COHEN' }),
+      );
     });
 
     test('should auto-link and skip name matching entirely on a fingerprint hit', async () => {

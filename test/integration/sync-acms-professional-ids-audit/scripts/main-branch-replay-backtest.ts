@@ -162,11 +162,70 @@ function recoverCorruptedFirstName(
   return { firstName: firstNameFirstToken, lastName };
 }
 
+/**
+ * Reimplements sync-acms-professional-ids.ts's module-private ADMINISTRATIVE_MARKER_PHRASES/
+ * stripAdministrativeMarkers/NON_PERSON_ONLY_WORDS/isLikelyNotAPerson exactly - see those for the
+ * full rationale.
+ */
+const ADMINISTRATIVE_MARKER_PHRASES = [
+  'do not use this code',
+  'do not use',
+  'inactive',
+  'duplicate',
+  'cancelled',
+  'canceled',
+  'cancel',
+  'delete me',
+  'delete',
+  'not assigned',
+  'reopening pending',
+  'pending',
+];
+
+const ADMINISTRATIVE_MARKER_PATTERN = new RegExp(
+  `\\(?\\s*(${ADMINISTRATIVE_MARKER_PHRASES.join('|')})\\s*\\)?`,
+  'gi',
+);
+
+const NON_PERSON_ONLY_WORDS = new Set([
+  'trustee',
+  'trustees',
+  'office',
+  "office's",
+  'code',
+  'case',
+  'appt',
+  'as',
+  'united',
+  'states',
+  'this',
+]);
+
+function stripAdministrativeMarkers(value: string): string {
+  return value
+    .replace(ADMINISTRATIVE_MARKER_PATTERN, ' ')
+    .replace(/[-/*.,]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function isLikelyNotAPerson(strippedFirstName: string, strippedLastName: string): boolean {
+  const words = `${strippedFirstName} ${strippedLastName}`
+    .toLowerCase()
+    .replaceAll("'", '')
+    .split(/\s+/)
+    .filter(Boolean);
+  if (words.length === 0) return true;
+  return words.every((word) => NON_PERSON_ONLY_WORDS.has(word));
+}
+
 function toAcmsTrusteeProfessional(variant: DecodedVariant): AcmsTrusteeProfessional {
   const fullName = [variant.firstName, variant.middleName, variant.lastName]
     .filter(Boolean)
     .join(' ');
-  const recovered = recoverCorruptedFirstName(variant.firstName, variant.lastName);
+  const strippedFirstName = stripAdministrativeMarkers(variant.firstName);
+  const strippedLastName = stripAdministrativeMarkers(variant.lastName);
+  const recovered = recoverCorruptedFirstName(strippedFirstName, strippedLastName);
   const { firstName, middleName } = splitCompoundFirstName(
     recovered.firstName || undefined,
     variant.middleName || undefined,
@@ -230,16 +289,10 @@ type Score = {
 };
 
 type IntroductionStage =
-  | 'surnameExact'
-  | 'matchTrusteeByName'
-  | 'tokenIntersection'
-  | 'levenshtein';
+  'surnameExact' | 'matchTrusteeByName' | 'tokenIntersection' | 'levenshtein';
 
 type CandidateOutcome =
-  | 'resolved'
-  | 'rejected-name'
-  | 'rejected-corroboration'
-  | 'rejected-ambiguous-group';
+  'resolved' | 'rejected-name' | 'rejected-corroboration' | 'rejected-ambiguous-group';
 
 type CandidateRow = {
   acmsProfessionalId: string;
@@ -293,12 +346,7 @@ function camsAddressString(trustee: Trustee): string {
  * it's module-private. Applied before fullNameSimilarity so case/punctuation differences don't
  * masquerade as real dissimilarity. */
 function normalizeForSimilarity(name: string): string {
-  return name
-    .toLowerCase()
-    .replaceAll("'", '')
-    .replace(/[.,-]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+  return name.toLowerCase().replaceAll("'", '').replace(/[.,-]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 function fullNameSimilarity(acmsFullName: string, camsName: string): number {
@@ -370,16 +418,22 @@ function buildNotes(score: Score, similarity: number, tokenMatchRate: number): s
     notes.push('phone present on both sides but disagrees');
   }
   if (similarity >= 0.85 && score.nameScore < 85) {
-    notes.push('high full-name similarity despite low structured nameScore (possible nickname/reorder)');
+    notes.push(
+      'high full-name similarity despite low structured nameScore (possible nickname/reorder)',
+    );
   }
   if (similarity < 0.5 && score.nameScore >= 85) {
     notes.push('low full-name similarity despite high structured nameScore (verify by eye)');
   }
   if (tokenMatchRate === 1 && similarity < 0.7 && score.nameScore < 85) {
-    notes.push('every ACMS token matches some CAMS token but low char-similarity (likely nickname/reorder)');
+    notes.push(
+      'every ACMS token matches some CAMS token but low char-similarity (likely nickname/reorder)',
+    );
   }
   if (tokenMatchRate === 1 && similarity >= 0.7 && score.nameScore < 85) {
-    notes.push('all tokens match and names look similar but structured nameScore still low (verify surname)');
+    notes.push(
+      'all tokens match and names look similar but structured nameScore still low (verify surname)',
+    );
   }
   return notes.join('; ');
 }
@@ -462,7 +516,7 @@ async function run() {
   if (!uri || !dbName) {
     throw new Error(
       'MONGO_CONNECTION_STRING and COSMOS_DATABASE_NAME must be set, pointed at a disposable ' +
-        'local Mongo container — see this file\'s header comment. Do NOT point this at the ' +
+        "local Mongo container — see this file's header comment. Do NOT point this at the " +
         'shared cams-local-infra-mongo container.',
     );
   }
@@ -496,7 +550,10 @@ async function run() {
 
   const trusteesById = new Map(trustees.map((t) => [t.trusteeId, t]));
 
-  function scoreCandidate(acmsTrusteeProfessional: AcmsTrusteeProfessional, trustee: Trustee): Score {
+  function scoreCandidate(
+    acmsTrusteeProfessional: AcmsTrusteeProfessional,
+    trustee: Trustee,
+  ): Score {
     return {
       nameScore: calculateNameScore(acmsTrusteeProfessional, trustee),
       addressScore: calculateAddressScore(acmsTrusteeProfessional.legacy, trustee.public?.address),
@@ -517,7 +574,11 @@ async function run() {
     if (candidateTrusteeIds.length === 0) {
       return { resolvedTrusteeId: null, nameQualifyingIds: new Set() };
     }
-    const corroboration = await resolveByContactCorroboration(context, acmsTrusteeProfessional, candidateTrusteeIds);
+    const corroboration = await resolveByContactCorroboration(
+      context,
+      acmsTrusteeProfessional,
+      candidateTrusteeIds,
+    );
     const nameQualifyingIds = new Set(
       corroboration.kind !== 'no-match'
         ? corroboration.candidateScores.filter((c) => c.nameScore >= 85).map((c) => c.trusteeId)
@@ -526,7 +587,11 @@ async function run() {
     if (corroboration.kind === 'resolved') {
       return { resolvedTrusteeId: corroboration.trusteeId, nameQualifyingIds };
     }
-    const duplicateResolution = await resolveDuplicateNameCandidates(context, acmsTrusteeProfessional, candidateTrusteeIds);
+    const duplicateResolution = await resolveDuplicateNameCandidates(
+      context,
+      acmsTrusteeProfessional,
+      candidateTrusteeIds,
+    );
     if (duplicateResolution.kind === 'resolved-duplicate') {
       return { resolvedTrusteeId: duplicateResolution.trusteeId, nameQualifyingIds };
     }
@@ -543,7 +608,7 @@ async function run() {
     return nameQualifyingIds.size === 1 ? 'rejected-corroboration' : 'rejected-ambiguous-group';
   }
 
-  const outcomeCounts = { resolved: 0, ambiguous: 0, 'no-match': 0 };
+  const outcomeCounts = { resolved: 0, ambiguous: 0, 'no-match': 0, skipped: 0 };
   const outcomeByCandidate: Record<CandidateOutcome, number> = {
     resolved: 0,
     'rejected-name': 0,
@@ -558,6 +623,20 @@ async function run() {
     if (i % 250 === 0) console.log(`  ...${i}/${errored.length}`);
 
     const decoded: DecodedVariant = JSON.parse(record.variant!);
+
+    // Mirrors processOneRecord's not-a-person short-circuit (sync-acms-professional-ids.ts): no
+    // real identity to look up here at all, so skip entirely before any matching tier runs -
+    // never written to the CSV, matching production's true-no-op behavior for this outcome.
+    if (
+      isLikelyNotAPerson(
+        stripAdministrativeMarkers(decoded.firstName),
+        stripAdministrativeMarkers(decoded.lastName),
+      )
+    ) {
+      outcomeCounts.skipped++;
+      continue;
+    }
+
     const acmsTrusteeProfessional = toAcmsTrusteeProfessional(decoded);
     const acmsFullName = acmsTrusteeProfessional.fullName;
     const acmsAddress = acmsAddressString(acmsTrusteeProfessional);
@@ -584,7 +663,10 @@ async function run() {
         introducedAt.set(id, 'surnameExact');
         recordCandidateIds.add(id);
       }
-      const surnameExactResult = await resolveCandidatesByCorroboration(acmsTrusteeProfessional, surnameExactIds);
+      const surnameExactResult = await resolveCandidatesByCorroboration(
+        acmsTrusteeProfessional,
+        surnameExactIds,
+      );
       nameQualifyingIds = surnameExactResult.nameQualifyingIds;
       resolvedTrusteeId = surnameExactResult.resolvedTrusteeId;
       finalOutcome = resolvedTrusteeId ? 'resolved' : 'ambiguous';
@@ -627,7 +709,8 @@ async function run() {
     }
 
     const nameResult = await matchTrusteeByName(context, acmsTrusteeProfessional);
-    const rawIds = nameResult.kind === 'ambiguous' ? nameResult.matchCandidates.map((c) => c.trusteeId) : [];
+    const rawIds =
+      nameResult.kind === 'ambiguous' ? nameResult.matchCandidates.map((c) => c.trusteeId) : [];
     for (const id of rawIds) {
       introducedAt.set(id, 'matchTrusteeByName');
       recordCandidateIds.add(id);
@@ -648,7 +731,10 @@ async function run() {
         acmsTrusteeProfessional,
         rawIds.map((id) => trusteesById.get(id)).filter((t): t is Trustee => !!t),
       ).map((t) => t.trusteeId);
-      const corroboration = await resolveCandidatesByCorroboration(acmsTrusteeProfessional, filteredIds);
+      const corroboration = await resolveCandidatesByCorroboration(
+        acmsTrusteeProfessional,
+        filteredIds,
+      );
       nameQualifyingIds = corroboration.nameQualifyingIds;
       resolvedTrusteeId = corroboration.resolvedTrusteeId;
 
@@ -662,7 +748,10 @@ async function run() {
           if (!introducedAt.has(id)) introducedAt.set(id, 'levenshtein');
           recordCandidateIds.add(id);
         }
-        const levenshteinResult = await resolveCandidatesByCorroboration(acmsTrusteeProfessional, levenshteinIds);
+        const levenshteinResult = await resolveCandidatesByCorroboration(
+          acmsTrusteeProfessional,
+          levenshteinIds,
+        );
         for (const id of levenshteinResult.nameQualifyingIds) nameQualifyingIds.add(id);
         resolvedTrusteeId = levenshteinResult.resolvedTrusteeId;
       }
@@ -677,7 +766,10 @@ async function run() {
         introducedAt.set(id, 'tokenIntersection');
         recordCandidateIds.add(id);
       }
-      const tokenIntersectionResult = await resolveCandidatesByCorroboration(acmsTrusteeProfessional, tokenIntersectionIds);
+      const tokenIntersectionResult = await resolveCandidatesByCorroboration(
+        acmsTrusteeProfessional,
+        tokenIntersectionIds,
+      );
       nameQualifyingIds = tokenIntersectionResult.nameQualifyingIds;
       resolvedTrusteeId = tokenIntersectionResult.resolvedTrusteeId;
 
@@ -691,7 +783,10 @@ async function run() {
           if (!introducedAt.has(id)) introducedAt.set(id, 'levenshtein');
           recordCandidateIds.add(id);
         }
-        const levenshteinResult = await resolveCandidatesByCorroboration(acmsTrusteeProfessional, levenshteinIds);
+        const levenshteinResult = await resolveCandidatesByCorroboration(
+          acmsTrusteeProfessional,
+          levenshteinIds,
+        );
         for (const id of levenshteinResult.nameQualifyingIds) nameQualifyingIds.add(id);
         resolvedTrusteeId = levenshteinResult.resolvedTrusteeId;
       }
@@ -741,7 +836,9 @@ async function run() {
 
   console.log('\n=== Replay outcome (current main vs. what was actually persisted) ===\n');
   for (const [k, v] of Object.entries(outcomeCounts)) {
-    console.log(`  ${k.padEnd(20)} ${v.toString().padStart(6)}  (${((v / errored.length) * 100).toFixed(1)}%)`);
+    console.log(
+      `  ${k.padEnd(20)} ${v.toString().padStart(6)}  (${((v / errored.length) * 100).toFixed(1)}%)`,
+    );
   }
 
   console.log(`\nTotal candidate rows across all records: ${candidateRowCount}`);
