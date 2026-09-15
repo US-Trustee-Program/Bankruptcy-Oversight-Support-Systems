@@ -53,44 +53,6 @@ const makeAppointment = (
 const getAppointmentCards = () =>
   Array.from(document.querySelectorAll('.appointment-card-container'));
 
-const getAppointmentHeading = (card: Element) =>
-  card.querySelector('.appointment-card-heading')?.textContent ?? '';
-
-const parseAppointmentHeading = (heading: string) => {
-  const stateMatch = heading.match(/District of ([A-Za-z ]+)/);
-  const districtMatch = heading.match(/(Eastern|Southern|Northern|Central|Western) District/);
-  const divisionMatch = heading.match(/\(([^)]+)\)/);
-  const chapterMatch = heading.match(/Chapter (\d+)/);
-  const typeMatch = heading.match(/ - ([^-]+)$/);
-
-  return {
-    state: stateMatch ? stateMatch[1].trim() : '',
-    district: districtMatch ? districtMatch[1] : '',
-    division: divisionMatch ? divisionMatch[1] : '',
-    chapter: chapterMatch ? chapterMatch[1] : '',
-    type: typeMatch ? typeMatch[1].trim() : '',
-  };
-};
-
-const getParsedAppointments = () =>
-  getAppointmentCards().map((card) => parseAppointmentHeading(getAppointmentHeading(card)));
-
-const getAppointmentStates = () => getParsedAppointments().map((a) => a.state);
-
-const getAppointmentDistricts = () => getParsedAppointments().map((a) => a.district);
-
-const getAppointmentChapters = () => getParsedAppointments().map((a) => a.chapter);
-
-const getAppointmentTypes = () => getParsedAppointments().map((a) => a.type);
-
-const getAppointmentInfo = () =>
-  getParsedAppointments().map(({ district, division, chapter, type }) => ({
-    district,
-    division,
-    chapter,
-    type,
-  }));
-
 // ============================================================================
 // Tests
 // ============================================================================
@@ -230,27 +192,19 @@ describe('TrusteeAppointments', () => {
     });
   });
 
-  test('should handle null data from API', async () => {
-    // @ts-expect-error - Testing edge case where API returns null despite type contract
-    vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: null });
+  test.each([['null', null] as const, ['undefined', undefined] as const])(
+    'should handle %s data from API',
+    async (_label, dataValue) => {
+      // @ts-expect-error - Testing edge case where API returns null/undefined despite type contract
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: dataValue });
 
-    renderComponent('trustee-123');
+      renderComponent('trustee-123');
 
-    await waitFor(() => {
-      expect(screen.getByText(EMPTY_APPOINTMENTS_MESSAGE)).toBeInTheDocument();
-    });
-  });
-
-  test('should handle undefined data from API', async () => {
-    // @ts-expect-error - Testing edge case where API returns undefined despite type contract
-    vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: undefined });
-
-    renderComponent('trustee-123');
-
-    await waitFor(() => {
-      expect(screen.getByText(EMPTY_APPOINTMENTS_MESSAGE)).toBeInTheDocument();
-    });
-  });
+      await waitFor(() => {
+        expect(screen.getByText(EMPTY_APPOINTMENTS_MESSAGE)).toBeInTheDocument();
+      });
+    },
+  );
 
   test('should navigate with appointments data when add button is clicked with no appointments', async () => {
     vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [] });
@@ -298,217 +252,27 @@ describe('TrusteeAppointments', () => {
       });
     });
 
-    test('should sort appointments by state first (derived from courtName)', async () => {
+    test('renders appointments in the order returned by sortByCourtLocation', async () => {
       const appointments: TrusteeAppointment[] = [
-        makeAppointment('appointment-001', {
-          courtDivisionName: 'Manhattan',
-          courtName: 'Southern District of New York',
-        }),
-        makeAppointment('appointment-002', {
-          chapter: '12',
-          appointmentType: 'case-by-case',
-          courtId: '082',
-          courtDivisionName: 'Los Angeles',
-          courtName: 'Central District of California',
-        }),
-        makeAppointment('appointment-003', {
-          chapter: '13',
-          appointmentType: 'standing',
-          courtId: '083',
-          courtDivisionName: 'Houston',
-          courtName: 'Southern District of Texas',
-        }),
+        makeAppointment('appointment-001', { courtName: 'First Court' }),
+        makeAppointment('appointment-002', { courtName: 'Second Court' }),
       ];
 
       vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: appointments });
-      renderComponent('trustee-123');
-
-      await waitFor(() => {
-        expect(getAppointmentCards()).toHaveLength(3);
-      });
-
-      // Verify appointments are sorted by state alphabetically: California, New York, Texas
-      expect(getAppointmentStates()).toEqual(['California', 'New York', 'Texas']);
-    });
-
-    test('should sort appointments by district name within each state', async () => {
-      const appointments: TrusteeAppointment[] = [
-        makeAppointment('appointment-001', {
-          courtDivisionName: 'Manhattan',
-          courtName: 'Southern District of New York',
-        }),
-        makeAppointment('appointment-002', {
-          chapter: '12',
-          appointmentType: 'case-by-case',
-          courtId: '082',
-          courtDivisionName: 'Brooklyn',
-          courtName: 'Eastern District of New York',
-        }),
-        makeAppointment('appointment-003', {
-          chapter: '13',
-          appointmentType: 'standing',
-          courtDivisionName: 'White Plains',
-          courtName: 'Southern District of New York',
-        }),
-      ];
-
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: appointments });
-      renderComponent('trustee-123');
-
-      await waitFor(() => {
-        expect(getAppointmentCards()).toHaveLength(3);
-      });
-
-      // Verify that Eastern District appointments come before Southern District
-      expect(getAppointmentDistricts()).toEqual(['Eastern', 'Southern', 'Southern']);
-    });
-
-    test('should sort appointments by chapter when in the same district', async () => {
-      const appointments: TrusteeAppointment[] = [
-        makeAppointment('appointment-001', {
-          chapter: '13',
-          appointmentType: 'standing',
-          courtName: 'Southern District of New York',
-        }),
-        makeAppointment('appointment-002', {
-          chapter: '7',
-          appointmentType: 'panel',
-          courtName: 'Southern District of New York',
-        }),
-        makeAppointment('appointment-003', {
-          chapter: '12',
-          appointmentType: 'case-by-case',
-          courtName: 'Southern District of New York',
-        }),
-      ];
-
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: appointments });
-      renderComponent('trustee-123');
-
-      await waitFor(() => {
-        expect(getAppointmentCards()).toHaveLength(3);
-      });
-
-      const chapters = getAppointmentCards().map((card) => {
-        const text = card.textContent || '';
-        if (text.includes('Chapter 7')) return '7';
-        if (text.includes('Chapter 12')) return '12';
-        if (text.includes('Chapter 13')) return '13';
-        return '';
-      });
-      expect(chapters).toEqual(['7', '12', '13']);
-    });
-
-    test('should sort appointments by chapter in ascending order when in the same district and division', async () => {
-      const appointments: TrusteeAppointment[] = [
-        makeAppointment('appointment-001', {
-          chapter: '13',
-          appointmentType: 'standing',
-          courtDivisionName: 'Manhattan',
-          courtName: 'Southern District of New York',
-        }),
-        makeAppointment('appointment-002', {
-          chapter: '7',
-          courtDivisionName: 'Manhattan',
-          courtName: 'Southern District of New York',
-        }),
-        makeAppointment('appointment-003', {
-          chapter: '12',
-          appointmentType: 'case-by-case',
-          courtDivisionName: 'Manhattan',
-          courtName: 'Southern District of New York',
-        }),
-      ];
-
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: appointments });
-      renderComponent('trustee-123');
-
-      await waitFor(() => {
-        expect(getAppointmentCards()).toHaveLength(3);
-      });
-
-      // Verify chapters are in ascending order: 7, 12, 13
-      expect(getAppointmentChapters()).toEqual(['7', '12', '13']);
-    });
-
-    test('should sort appointments alphabetically by appointment type when in the same district, division, and chapter', async () => {
-      const appointments: TrusteeAppointment[] = [
-        makeAppointment('appointment-001', {
-          chapter: '7',
-          appointmentType: 'panel',
-          courtDivisionName: 'Manhattan',
-          courtName: 'Southern District of New York',
-        }),
-        makeAppointment('appointment-002', {
-          chapter: '7',
-          appointmentType: 'off-panel',
-          courtDivisionName: 'Manhattan',
-          courtName: 'Southern District of New York',
-        }),
-        makeAppointment('appointment-003', {
-          chapter: '7',
-          appointmentType: 'elected',
-          courtDivisionName: 'Manhattan',
-          courtName: 'Southern District of New York',
-        }),
-      ];
-
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: appointments });
-      renderComponent('trustee-123');
-
-      await waitFor(() => {
-        expect(getAppointmentCards()).toHaveLength(3);
-      });
-
-      // Verify appointment types are in alphabetical order: Elected, Off Panel, Panel
-      expect(getAppointmentTypes()).toEqual(['Elected', 'Off Panel', 'Panel']);
-    });
-
-    test('should apply all sorting rules together: state, then district, then chapter, then appointment type', async () => {
-      const appointments: TrusteeAppointment[] = [
-        makeAppointment('appointment-001', {
-          chapter: '13',
-          appointmentType: 'standing',
-          courtId: '082',
-          courtName: 'Eastern District of New York',
-        }),
-        makeAppointment('appointment-002', {
-          chapter: '7',
-          appointmentType: 'panel',
-          courtName: 'Southern District of New York',
-        }),
-        makeAppointment('appointment-003', {
-          chapter: '7',
-          appointmentType: 'off-panel',
-          courtName: 'Southern District of New York',
-        }),
-        makeAppointment('appointment-004', {
-          chapter: '7',
-          appointmentType: 'elected',
-          courtName: 'Southern District of New York',
-        }),
-        makeAppointment('appointment-005', {
-          chapter: '12',
-          appointmentType: 'case-by-case',
-          courtId: '082',
-          courtName: 'Eastern District of New York',
-        }),
-      ];
-
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: appointments });
-      renderComponent('trustee-123');
-
-      await waitFor(() => {
-        expect(getAppointmentCards()).toHaveLength(5);
-      });
-
-      expect(getAppointmentInfo()).toEqual([
-        { district: 'Eastern', division: '', chapter: '12', type: 'Case by Case' },
-        { district: 'Eastern', division: '', chapter: '13', type: 'Standing' },
-        { district: 'Southern', division: '', chapter: '7', type: 'Elected' },
-        { district: 'Southern', division: '', chapter: '7', type: 'Off Panel' },
-        { district: 'Southern', division: '', chapter: '7', type: 'Panel' },
+      vi.spyOn(courtUtils, 'sortByCourtLocation').mockReturnValue([
+        appointments[1],
+        appointments[0],
       ]);
+
+      renderComponent('trustee-123');
+
+      await waitFor(() => {
+        expect(getAppointmentCards()).toHaveLength(2);
+      });
+
+      const cardTexts = getAppointmentCards().map((card) => card.textContent);
+      expect(cardTexts[0]).toContain('Second Court');
+      expect(cardTexts[1]).toContain('First Court');
     });
 
     test('should handle appointments with missing courtName gracefully', async () => {

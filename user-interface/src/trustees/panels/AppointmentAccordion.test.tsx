@@ -117,38 +117,4 @@ describe('AppointmentAccordion', () => {
 
     expect(onToggle).toHaveBeenCalledWith(mockAppointment.id);
   });
-
-  test('does not affect other accordion instances when toggled independently', async () => {
-    const onToggleFirst = vi.fn();
-    const onToggleSecond = vi.fn();
-    const secondAppointment: TrusteeAppointment = { ...mockAppointment, id: 'appointment-002' };
-
-    render(
-      <>
-        <AppointmentAccordion
-          appointment={mockAppointment}
-          expanded={true}
-          onToggle={onToggleFirst}
-        >
-          <div data-testid="first-body">First body</div>
-        </AppointmentAccordion>
-        <AppointmentAccordion
-          appointment={secondAppointment}
-          expanded={true}
-          onToggle={onToggleSecond}
-        >
-          <div data-testid="second-body">Second body</div>
-        </AppointmentAccordion>
-      </>,
-    );
-
-    expect(screen.getByTestId('first-body')).toBeInTheDocument();
-    expect(screen.getByTestId('second-body')).toBeInTheDocument();
-
-    const user = userEvent.setup();
-    await user.click(screen.getByTestId(`accordion-button-${mockAppointment.id}`));
-
-    expect(onToggleFirst).toHaveBeenCalledWith(mockAppointment.id);
-    expect(onToggleSecond).not.toHaveBeenCalled();
-  });
 });

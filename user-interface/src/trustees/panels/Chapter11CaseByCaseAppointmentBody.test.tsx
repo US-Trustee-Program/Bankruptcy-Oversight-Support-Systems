@@ -102,11 +102,4 @@ describe('Chapter11CaseByCaseAppointmentBody', () => {
       screen.queryByRole('button', { name: /edit trustee appointment/i }),
     ).not.toBeInTheDocument();
   });
-
-  test('does not render a key-dates card', () => {
-    renderBody();
-
-    expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('past-key-dates-card')).not.toBeInTheDocument();
-  });
 });

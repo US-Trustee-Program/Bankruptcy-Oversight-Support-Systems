@@ -48,6 +48,37 @@ describe('Accordion tests', () => {
     });
   });
 
+  test('Should toggle standalone accordion instances independently when not grouped in an accordion group', async () => {
+    const onToggleA = vi.fn();
+    const onToggleB = vi.fn();
+
+    render(
+      <React.StrictMode>
+        <Accordion id="standalone-a" expandedId="standalone-a" onExpand={onToggleA}>
+          <span>Title A</span>
+          <span>Content A</span>
+        </Accordion>
+        <Accordion id="standalone-b" expandedId="standalone-b" onExpand={onToggleB}>
+          <span>Title B</span>
+          <span>Content B</span>
+        </Accordion>
+      </React.StrictMode>,
+    );
+
+    const contentA = screen.getByTestId('accordion-content-standalone-a');
+    const contentB = screen.getByTestId('accordion-content-standalone-b');
+    const buttonA = screen.getByTestId('accordion-button-standalone-a');
+
+    expect(contentA).toBeVisible();
+    expect(contentB).toBeVisible();
+
+    fireEvent.click(buttonA);
+
+    expect(onToggleA).toHaveBeenCalledWith('standalone-a');
+    expect(onToggleB).not.toHaveBeenCalled();
+    expect(contentB).toBeVisible();
+  });
+
   test('Should expand accordions 1 at a time, such that 1 closes when another is opened, when grouped together in an accordion group', async () => {
     render(
       <React.StrictMode>

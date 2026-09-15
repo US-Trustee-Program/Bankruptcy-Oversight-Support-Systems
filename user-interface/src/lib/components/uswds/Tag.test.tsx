@@ -31,49 +31,25 @@ describe('Tag', () => {
     expect(id).toMatch(/^tag-id-.+$/);
   });
 
-  test('should apply UswdsTagStyle.Default correctly', () => {
-    render(<Tag uswdsStyle={UswdsTagStyle.Default}>Test Tag</Tag>);
+  test.each([
+    [UswdsTagStyle.Default, 'bg-base'],
+    [UswdsTagStyle.Cool, 'bg-accent-cool'],
+    [UswdsTagStyle.CoolLight, 'bg-accent-cool-light'],
+    [UswdsTagStyle.Warm, 'bg-accent-warm-dark'],
+    [UswdsTagStyle.Primary, 'bg-primary'],
+    [UswdsTagStyle.Green, 'bg-success'],
+    [UswdsTagStyle.BaseDarkest, 'bg-base-darkest'],
+    [UswdsTagStyle.Secondary, 'bg-secondary'],
+    [UswdsTagStyle.SecondaryDark, 'bg-secondary-dark'],
+    [UswdsTagStyle.Success, 'bg-success-vivid'],
+    [UswdsTagStyle.InactiveGray, 'bg-gray-cool-50'],
+  ])('should apply %s style as class %s', (uswdsStyle, expectedClass) => {
+    render(<Tag uswdsStyle={uswdsStyle}>Test Tag</Tag>);
 
     const tag = screen.getByTestId('tag-test');
     expect(tag).toHaveClass(TAG_BASE_CLASS);
     expect(tag).toHaveClass('usa-tag--big');
-    expect(tag).toHaveClass('bg-base');
-  });
-
-  test('should apply UswdsTagStyle.Cool correctly', () => {
-    render(<Tag uswdsStyle={UswdsTagStyle.Cool}>Test Tag</Tag>);
-
-    const tag = screen.getByTestId('tag-test');
-    expect(tag).toHaveClass(TAG_BASE_CLASS);
-    expect(tag).toHaveClass('usa-tag--big');
-    expect(tag).toHaveClass('bg-accent-cool');
-  });
-
-  test('should apply UswdsTagStyle.Primary correctly', () => {
-    render(<Tag uswdsStyle={UswdsTagStyle.Primary}>Test Tag</Tag>);
-
-    const tag = screen.getByTestId('tag-test');
-    expect(tag).toHaveClass(TAG_BASE_CLASS);
-    expect(tag).toHaveClass('usa-tag--big');
-    expect(tag).toHaveClass('bg-primary');
-  });
-
-  test('should apply UswdsTagStyle.Success correctly', () => {
-    render(<Tag uswdsStyle={UswdsTagStyle.Success}>Test Tag</Tag>);
-
-    const tag = screen.getByTestId('tag-test');
-    expect(tag).toHaveClass(TAG_BASE_CLASS);
-    expect(tag).toHaveClass('usa-tag--big');
-    expect(tag).toHaveClass('bg-success-vivid');
-  });
-
-  test('should apply UswdsTagStyle.InactiveGray correctly', () => {
-    render(<Tag uswdsStyle={UswdsTagStyle.InactiveGray}>Test Tag</Tag>);
-
-    const tag = screen.getByTestId('tag-test');
-    expect(tag).toHaveClass(TAG_BASE_CLASS);
-    expect(tag).toHaveClass('usa-tag--big');
-    expect(tag).toHaveClass('bg-gray-cool-50');
+    expect(tag).toHaveClass(expectedClass);
   });
 
   test('should apply custom className in addition to base classes', () => {
