@@ -78,11 +78,10 @@ export type MergedScore = Partial<NameScoreEntry> & Partial<StateFilterScoreEntr
 
 /**
  * One candidate under consideration, plus its evaluation history. camsRaw is set once when the
- * candidate is first proposed and never changes; camsNormalized is a memo of normalizations keyed
- * by normalizer name (see memoize), pre-seeded with camsRaw itself under the 'raw' key so the
- * audit trail always shows at least the untransformed value even before any stage normalizes it -
- * a real normalizer stage adds its own variant under its own key without touching 'raw'; scores
- * holds one slot per scorer that has run against this candidate (see ScoreByScorer/addScore) - see
+ * candidate is first proposed and never changes; camsNormalized is a memo of normalizer function
+ * results keyed by call signature (see normalize) - it holds ONLY derived/computed values, never a
+ * copy of camsRaw itself (camsRaw is already available directly on the candidate); scores holds
+ * one slot per scorer that has run against this candidate (see ScoreByScorer/addScore) - see
  * mergedScore for how pipeline logic reads a single flattened view out of the full history.
  */
 export type PipelineCandidate = {
@@ -144,11 +143,9 @@ export type PipelineState = {
 };
 
 export function createInitialState(acmsRaw: DxtrTrusteeParty): PipelineState {
-  const acmsNormalized = new Map<string, unknown>();
-  acmsNormalized.set('raw', acmsRaw);
   return {
     acmsRaw,
-    acmsNormalized,
+    acmsNormalized: new Map(),
     candidates: new Map(),
     match: null,
     skip: false,
@@ -168,11 +165,9 @@ export function addCandidate(state: PipelineState, camsRaw: ProjectedTrustee): P
   const existing = state.candidates.get(camsRaw.trusteeId);
   if (existing) return existing;
 
-  const camsNormalized = new Map<string, unknown>();
-  camsNormalized.set('raw', camsRaw);
   const candidate: PipelineCandidate = {
     camsRaw,
-    camsNormalized,
+    camsNormalized: new Map(),
     scores: {},
   };
   state.candidates.set(camsRaw.trusteeId, candidate);

@@ -316,31 +316,31 @@ describe('stateFilterStage', () => {
       ),
     );
 
-  test('annotates candidates as NOT mismatched when the pool has 5 or fewer candidates, regardless of state', async () => {
+  test('annotates a state-mismatched candidate even in a small pool - runs regardless of pool size', async () => {
     const state = createInitialState(dxtrInWashington);
-    for (let i = 0; i < 5; i++) {
-      addTrustee(state, {
-        trusteeId: `trustee-${i}`,
-        public: {
-          address: {
-            address1: '1 Elm St',
-            city: 'Miami',
-            state: 'FL',
-            zipCode: '33101',
-            countryCode: 'US',
-          },
+    addTrustee(state, {
+      trusteeId: 'trustee-fl',
+      firstName: 'Nobody',
+      name: 'Nobody Moon',
+      public: {
+        address: {
+          address1: '1 Elm St',
+          city: 'Miami',
+          state: 'FL',
+          zipCode: '33101',
+          countryCode: 'US',
         },
-      });
-    }
+      },
+    });
 
     const result = await stateFilterStage()(state);
 
-    for (const candidate of result.candidates.values()) {
-      expect(mergedScore(candidate)).toMatchObject({ stateMatch: true });
-    }
+    expect(mergedScore(result.candidates.get('trustee-fl')!)).toMatchObject({
+      stateMatch: false,
+    });
   });
 
-  test('annotates a state-mismatched candidate once the pool exceeds 5 candidates', async () => {
+  test('annotates a state-mismatched candidate in a large pool too', async () => {
     const state = createInitialState(dxtrInWashington);
     addTrustee(state, {
       trusteeId: 'trustee-wa',

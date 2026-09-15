@@ -64,12 +64,10 @@ describe('createInitialState', () => {
     expect(state.error).toBeNull();
   });
 
-  test('seeds acmsNormalized with the raw record under the "raw" key', () => {
-    const acmsRaw = makeDxtrTrustee();
+  test('starts with an empty acmsNormalized memo - no raw-value seeding, only real normalizer results belong here', () => {
+    const state = createInitialState(makeDxtrTrustee());
 
-    const state = createInitialState(acmsRaw);
-
-    expect(state.acmsNormalized.get('raw')).toBe(acmsRaw);
+    expect(state.acmsNormalized.size).toBe(0);
   });
 });
 
@@ -84,14 +82,13 @@ describe('addCandidate', () => {
     expect(candidate.scores).toEqual({});
   });
 
-  test('seeds camsNormalized with the raw projected trustee under the "raw" key', () => {
+  test('starts with an empty camsNormalized memo - no raw-value seeding, only real normalizer results belong here', () => {
     const state = createInitialState(makeDxtrTrustee());
     const trustee = makeTrustee({ trusteeId: 't1' });
-    const projected = projectTrustee(trustee);
 
-    const candidate = addCandidate(state, projected);
+    const candidate = addCandidate(state, projectTrustee(trustee));
 
-    expect(candidate.camsNormalized.get('raw')).toBe(projected);
+    expect(candidate.camsNormalized.size).toBe(0);
   });
 
   test('is idempotent - proposing the same trusteeId twice returns the SAME candidate, preserving prior scores', () => {
@@ -351,11 +348,11 @@ describe('serializeState', () => {
 
     expect(roundTripped).toEqual({
       acmsRaw: state.acmsRaw,
-      acmsNormalized: { raw: state.acmsRaw, lastNameToken: 'doe' },
+      acmsNormalized: { lastNameToken: 'doe' },
       candidates: [
         {
           camsRaw: candidate.camsRaw,
-          camsNormalized: { raw: candidate.camsRaw, lastNameToken: 'doe' },
+          camsNormalized: { lastNameToken: 'doe' },
           scores: { calculateNameScore: { nameScore: 100, match: true } },
         },
       ],

@@ -11,7 +11,6 @@ import {
   parseCityStateZip,
   resolveByContactCorroboration,
   resolveDuplicateNameCandidates,
-  STATE_FILTER_POOL_SIZE_THRESHOLD,
   STATE_OVERRIDE_MIN_NAME_SCORE,
 } from './trustee-match.helpers';
 import {
@@ -193,22 +192,25 @@ export function similarityDiagnosticsStage(): Stage {
  * outright. Reimplemented rather than called through a type cast because
  * filterNoisyStateMismatches reads candidate.public.address/phone (Trustee's real nested shape),
  * which ProjectedTrustee deliberately flattens - a cast would compile but read undefined at
- * runtime. calculateNameScore/calculatePhoneScore/parseCityStateZip/the two threshold constants
- * are reused unchanged; only the nested-vs-flat field access differs.
+ * runtime. calculateNameScore/calculatePhoneScore/parseCityStateZip/the override threshold are
+ * reused unchanged; only the nested-vs-flat field access differs.
  *
- * Only activates once the pool already exceeds STATE_FILTER_POOL_SIZE_THRESHOLD - below that, every
- * candidate is annotated stateMatch: true unconditionally, matching filterNoisyStateMismatches' own
- * early return.
+ * Deliberately diverges from filterNoisyStateMismatches' own STATE_FILTER_POOL_SIZE_THRESHOLD
+ * skip: that skip exists to avoid a wasted computation on a pool already small enough that state
+ * was never going to be a useful discriminator, which only made sense when the filter's result
+ * was consumed as an eliminate-or-keep decision. As an ANNOTATION every candidate keeps regardless
+ * (see corroborationStage's stateMatch !== false read), so there is no such thing as a
+ * "wasted" computation here - every candidate gets a real, checked stateMatch value every time,
+ * independent of pool size.
+ *
+ * A candidate this stage never evaluates (which cannot happen today, since every candidate in
+ * state.candidates is visited) is left with no stateMatch key at all, rather than a fabricated
+ * true - mergedScore(candidate).stateMatch reads as undefined, not a false claim that the check
+ * ran and passed.
  */
 export function stateFilterStage(): Stage {
   return withGuard(async (state: PipelineState): Promise<PipelineState> => {
     const candidates = [...state.candidates.values()];
-    if (candidates.length <= STATE_FILTER_POOL_SIZE_THRESHOLD) {
-      for (const candidate of candidates) {
-        addScore(candidate, 'stateFilterStage', { stateMatch: true });
-      }
-      return state;
-    }
 
     const parsedAcmsAddress = parseCityStateZip(state.acmsRaw.legacy?.cityStateZipCountry);
     if (!parsedAcmsAddress) {
