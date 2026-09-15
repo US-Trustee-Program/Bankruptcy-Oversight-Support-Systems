@@ -26,14 +26,24 @@
  * sync-acms-professional-ids/scripts/sync-acms-professional-ids-harness.ts's
  * buildRealApplicationContext() uses.
  *
- * Every run writes a per-record CSV report to ./data (repo root, gitignored — real trustee PII,
- * never committed) at data/replay-backtest-report.csv, one row per error record with ACMS fields
- * on the left, the final outcome, and one column group per pipeline stage the record actually
- * passed through (which stage, its result, its candidate count, and — when the stage had a best
- * candidate to show — that candidate's CAMS fields and four component scores, populated even when
- * the stage's own result is unresolved/ambiguous, for reviewing near-misses). This makes "where
- * exactly did this record fall through the pipeline" answerable by filtering the CSV, not by
- * re-reading a raw console log.
+ * Every run writes a per-CANDIDATE CSV report to ./data (repo root, gitignored — real trustee
+ * PII, never committed) at data/replay-backtest-report.csv: one row per (record, raw candidate)
+ * pair — a genuine cartesian product, since a record's candidate pool can range from 0 to 909 —
+ * with fields laid out in ACMS/CAMS pairs (acmsFullName next to camsName, acmsAddress next to
+ * camsAddress, etc.) for left-right visual scanning, rather than grouped by pipeline stage. Each
+ * row also carries introductionStage (the first stage that surfaced this specific candidate) and
+ * candidateOutcome (what happened to THIS candidate specifically — resolved / rejected at the
+ * name gate / rejected at corroboration / part of a group that stayed ambiguous), plus
+ * fullNameSimilarity (see FULL_NAME_SIMILARITY NOTE below) and a short auto-generated note.
+ *
+ * FULL_NAME_SIMILARITY NOTE: this is natural.JaroWinklerDistance (already a project dependency)
+ * on the normalized (lowercased, punctuation-stripped) full names — a coarse, cheap SIGNAL for
+ * cutting a long noise tail (an 18- or 909-candidate list down to a handful worth a human's
+ * attention), NOT a surname-aware replacement for calculateNameScore/the existing lastName-token
+ * exact-match discipline. It does NOT reliably catch a same-surname-different-person false
+ * positive (confirmed: "William Van Arsdale" vs "William A. Van Meter" scores 0.87 despite being
+ * two different real trustees — in the same range as genuine matches). Never auto-resolve or prune
+ * candidates off this score alone; it's here for visual/AI triage only.
  *
  * Usage (from test/integration/), against a disposable local Mongo container (NOT the shared
  * cams-local-infra-mongo container other agents/tooling depend on):
@@ -45,6 +55,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { MongoClient } from 'mongodb';
 import { InvocationContext } from '@azure/functions';
+import * as natural from 'natural';
 import { Trustee } from '../../../../common/src/cams/trustees';
 import { TrusteeProfessionalId } from '../../../../common/src/cams/trustee-professional-ids';
 import { AcmsTrusteeProfessional } from '../../../../common/src/cams/dataflow-events';
@@ -192,41 +203,28 @@ type Score = {
   emailScore: number | null;
 };
 
-/**
- * The best-scoring (by name, then address) CAMS trustee a stage examined among its candidates -
- * regardless of whether that stage actually resolved. A record's stage can end 'unresolved' or
- * 'ambiguous' and still carry a bestCandidate, since this is populated for human review of
- * near-misses (e.g. a real person who WOULD score well, but whose corroboration fell short of
- * production's auto-link bar) - it is never a claim that this candidate was chosen.
- */
-type BestCandidate = {
-  trusteeId: string;
-  name: string;
-  address: string;
-  phone: string;
-  score: Score;
-};
+type IntroductionStage = 'matchTrusteeByName' | 'tokenIntersection' | 'levenshtein';
 
-type StageName = 'matchTrusteeByName' | 'corroboration' | 'tokenIntersection' | 'levenshtein';
-type StageResult = 'resolved' | 'ambiguous' | 'no-match' | 'unresolved' | 'skipped';
+type CandidateOutcome =
+  | 'resolved'
+  | 'rejected-name'
+  | 'rejected-corroboration'
+  | 'rejected-ambiguous-group';
 
-type StageTrace = {
-  stage: StageName;
-  result: StageResult;
-  candidateCount: number;
-  bestCandidate?: BestCandidate;
-};
-
-type RecordTrace = {
+type CandidateRow = {
   acmsProfessionalId: string;
   acmsFullName: string;
   acmsAddress: string;
   acmsPhone: string;
-  priorDisposition: string;
-  finalOutcome: 'resolved' | 'ambiguous' | 'no-match';
-  resolvedTrusteeId?: string;
-  resolvedVia?: StageName | 'name-exact' | 'name-fuzzy';
-  stages: StageTrace[];
+  introductionStage: IntroductionStage;
+  candidateOutcome: CandidateOutcome;
+  camsTrusteeId: string;
+  camsName: string;
+  camsAddress: string;
+  camsPhone: string;
+  score: Score;
+  fullNameSimilarity: number;
+  notes: string;
 };
 
 function csvEscape(value: string | number | null | undefined): string {
@@ -258,92 +256,107 @@ function camsAddressString(trustee: Trustee): string {
     .join(', ');
 }
 
-const MAX_STAGES = 3; // matchTrusteeByName + up to 2 fallback tiers (ambiguous: corroboration, levenshtein; no-match: tokenIntersection, levenshtein)
-
-// Stage 1 is always matchTrusteeByName, which only ever reaches this backtest's population in
-// its 'ambiguous'/'no-match' shape - any record where matchTrusteeByName alone resolved outright
-// would have auto-linked at write time and never become an error record to replay in the first
-// place. So stage1's bestCandidate/score columns are always empty by construction (confirmed
-// against a full run: 0 of 2734 rows). Only candidateCount carries real signal for stage 1.
-function stageHeaderColumns(stageIndex: number): string[] {
-  const base = [`stage${stageIndex}_name`, `stage${stageIndex}_result`, `stage${stageIndex}_candidateCount`];
-  if (stageIndex === 1) return base;
-  return [
-    ...base,
-    `stage${stageIndex}_bestCandidateTrusteeId`,
-    `stage${stageIndex}_bestCandidateName`,
-    `stage${stageIndex}_bestCandidateAddress`,
-    `stage${stageIndex}_bestCandidatePhone`,
-    `stage${stageIndex}_nameScore`,
-    `stage${stageIndex}_addressScore`,
-    `stage${stageIndex}_phoneScore`,
-    `stage${stageIndex}_emailScore`,
-  ];
+/** Lowercase, drop punctuation, collapse whitespace — same normalization shape as
+ * stripNamePunctuation in trustee-match.helpers.ts, reimplemented here rather than imported since
+ * it's module-private. Applied before fullNameSimilarity so case/punctuation differences don't
+ * masquerade as real dissimilarity. */
+function normalizeForSimilarity(name: string): string {
+  return name
+    .toLowerCase()
+    .replaceAll("'", '')
+    .replace(/[.,-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
-function stageRowFields(
-  stageIndex: number,
-  s: StageTrace | undefined,
-): (string | number | null | undefined)[] {
-  const skippedBase = ['', 'skipped', ''];
-  const skippedBestCandidate = ['', '', '', '', '', '', '', ''];
-
-  if (stageIndex === 1) {
-    return s ? [s.stage, s.result, s.candidateCount] : skippedBase;
-  }
-  if (!s) return [...skippedBase, ...skippedBestCandidate];
-  return [
-    s.stage,
-    s.result,
-    s.candidateCount,
-    s.bestCandidate?.trusteeId,
-    s.bestCandidate?.name,
-    s.bestCandidate?.address,
-    s.bestCandidate?.phone,
-    s.bestCandidate?.score.nameScore,
-    s.bestCandidate?.score.addressScore,
-    s.bestCandidate?.score.phoneScore,
-    s.bestCandidate?.score.emailScore,
-  ];
+function fullNameSimilarity(acmsFullName: string, camsName: string): number {
+  const a = normalizeForSimilarity(acmsFullName);
+  const b = normalizeForSimilarity(camsName);
+  if (!a || !b) return 0;
+  return Math.round(natural.JaroWinklerDistance(a, b) * 1000) / 1000;
 }
 
-function writeReportCsv(traces: RecordTrace[]) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
+function buildNotes(score: Score, similarity: number): string {
+  const notes: string[] = [];
+  if (score.nameScore >= 85 && score.addressScore < 50 && score.phoneScore !== 100) {
+    notes.push('name matches but corroboration (address/phone) is weak');
+  }
+  if (score.nameScore < 85 && (score.addressScore >= 80 || score.phoneScore === 100)) {
+    notes.push('strong address/phone despite weak name score');
+  }
+  if (score.phoneScore === 0) {
+    notes.push('phone present on both sides but disagrees');
+  }
+  if (similarity >= 0.85 && score.nameScore < 85) {
+    notes.push('high full-name similarity despite low structured nameScore (possible nickname/reorder)');
+  }
+  if (similarity < 0.5 && score.nameScore >= 85) {
+    notes.push('low full-name similarity despite high structured nameScore (verify by eye)');
+  }
+  return notes.join('; ');
+}
 
-  const header: string[] = [
-    'acmsProfessionalId',
-    'acmsFullName',
-    'acmsAddress',
-    'acmsPhone',
-    'priorDisposition',
-    'finalOutcome',
-    'resolvedTrusteeId',
-    'resolvedVia',
-  ];
-  for (let i = 1; i <= MAX_STAGES; i++) {
-    header.push(...stageHeaderColumns(i));
+const REPORT_HEADER = [
+  'acmsProfessionalId',
+  'introductionStage',
+  'candidateOutcome',
+  'acmsFullName',
+  'camsName',
+  'nameScore',
+  'fullNameSimilarity',
+  'acmsAddress',
+  'camsAddress',
+  'addressScore',
+  'acmsPhone',
+  'camsPhone',
+  'phoneScore',
+  'camsTrusteeId',
+  'notes',
+];
+
+/**
+ * A record's candidate pool ranges from 0 to 909 - buffering every CandidateRow across all 2734
+ * records before writing risks holding tens of thousands of objects in memory at once for no
+ * reason. Opens the file once and writes each row as it's produced instead.
+ */
+class ReportWriter {
+  private readonly stream: fs.WriteStream;
+  private rowCount = 0;
+
+  constructor(reportPath: string) {
+    this.stream = fs.createWriteStream(reportPath, { encoding: 'utf-8' });
+    this.stream.write(csvRow(REPORT_HEADER) + '\n');
   }
 
-  const rows = traces.map((t) => {
-    const fields: (string | number | null | undefined)[] = [
-      t.acmsProfessionalId,
-      t.acmsFullName,
-      t.acmsAddress,
-      t.acmsPhone,
-      t.priorDisposition,
-      t.finalOutcome,
-      t.resolvedTrusteeId,
-      t.resolvedVia,
-    ];
-    for (let i = 1; i <= MAX_STAGES; i++) {
-      fields.push(...stageRowFields(i, t.stages[i - 1]));
-    }
-    return csvRow(fields);
-  });
+  writeRow(r: CandidateRow): void {
+    this.stream.write(
+      csvRow([
+        r.acmsProfessionalId,
+        r.introductionStage,
+        r.candidateOutcome,
+        r.acmsFullName,
+        r.camsName,
+        r.score.nameScore,
+        r.fullNameSimilarity,
+        r.acmsAddress,
+        r.camsAddress,
+        r.score.addressScore,
+        r.acmsPhone,
+        r.camsPhone,
+        r.score.phoneScore,
+        r.camsTrusteeId,
+        r.notes,
+      ]) + '\n',
+    );
+    this.rowCount++;
+  }
 
-  const reportPath = path.join(DATA_DIR, 'replay-backtest-report.csv');
-  fs.writeFileSync(reportPath, [csvRow(header), ...rows].join('\n') + '\n');
-  console.log(`\nWrote ${rows.length} rows to ${reportPath}`);
+  async close(): Promise<number> {
+    await new Promise<void>((resolve, reject) => {
+      this.stream.end((error?: Error | null) => (error ? reject(error) : resolve()));
+    });
+    return this.rowCount;
+  }
 }
 
 async function run() {
@@ -369,6 +382,10 @@ async function run() {
 
   await seedTrustees(uri, dbName, trustees);
 
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+  const reportPath = path.join(DATA_DIR, 'replay-backtest-report.csv');
+  const report = new ReportWriter(reportPath);
+
   const context = await buildRealApplicationContext();
   const {
     matchTrusteeByName,
@@ -393,117 +410,52 @@ async function run() {
     };
   }
 
-  function toBestCandidate(trustee: Trustee, score: Score): BestCandidate {
-    return {
-      trusteeId: trustee.trusteeId,
-      name: trustee.name,
-      address: camsAddressString(trustee),
-      phone: trustee.public?.phone?.number ?? '',
-      score,
-    };
-  }
-
-  /**
-   * Runs the real resolveByContactCorroboration -> resolveDuplicateNameCandidates sequence
-   * (same composition as sync-acms-professional-ids.ts's module-private
-   * resolveCandidatesByCorroboration) and returns BOTH the resolved trusteeId (if any) and a
-   * StageTrace describing what happened, so the CSV can show a bestCandidate even for an
-   * 'unresolved'/'ambiguous' outcome (the best-scoring candidate by name then address, for human
-   * review — not a claim that candidate should have resolved).
-   */
-  async function runCorroborationStage(
+  /** Same composition as sync-acms-professional-ids.ts's module-private
+   * resolveCandidatesByCorroboration (exported primitives, same order) - returns the resolved
+   * trusteeId (if any) plus the raw ids that CLEARED the name-qualify bar inside
+   * resolveByContactCorroboration, so the caller can classify every candidate's fate precisely
+   * (rejected-name vs rejected-corroboration vs rejected-ambiguous-group). */
+  async function resolveCandidatesByCorroboration(
     acmsTrusteeProfessional: AcmsTrusteeProfessional,
     candidateTrusteeIds: string[],
-  ): Promise<{ resolvedTrusteeId: string | null; trace: StageTrace }> {
+  ): Promise<{ resolvedTrusteeId: string | null; nameQualifyingIds: Set<string> }> {
     if (candidateTrusteeIds.length === 0) {
-      return {
-        resolvedTrusteeId: null,
-        trace: { stage: 'corroboration', result: 'no-match', candidateCount: 0 },
-      };
+      return { resolvedTrusteeId: null, nameQualifyingIds: new Set() };
     }
-
-    const corroboration = await resolveByContactCorroboration(
-      context,
-      acmsTrusteeProfessional,
-      candidateTrusteeIds,
+    const corroboration = await resolveByContactCorroboration(context, acmsTrusteeProfessional, candidateTrusteeIds);
+    const nameQualifyingIds = new Set(
+      corroboration.kind !== 'no-match'
+        ? corroboration.candidateScores.filter((c) => c.nameScore >= 85).map((c) => c.trusteeId)
+        : [],
     );
     if (corroboration.kind === 'resolved') {
-      const trustee = trusteesById.get(corroboration.trusteeId);
-      const score = corroboration.candidateScores.find((c) => c.trusteeId === corroboration.trusteeId);
-      return {
-        resolvedTrusteeId: corroboration.trusteeId,
-        trace: {
-          stage: 'corroboration',
-          result: 'resolved',
-          candidateCount: candidateTrusteeIds.length,
-          bestCandidate:
-            trustee && score
-              ? toBestCandidate(trustee, {
-                  nameScore: score.nameScore,
-                  addressScore: score.addressScore,
-                  phoneScore: score.phoneScore,
-                  emailScore: score.emailScore,
-                })
-              : undefined,
-        },
-      };
+      return { resolvedTrusteeId: corroboration.trusteeId, nameQualifyingIds };
     }
-
-    const duplicateResolution = await resolveDuplicateNameCandidates(
-      context,
-      acmsTrusteeProfessional,
-      candidateTrusteeIds,
-    );
-    const representative = pickRepresentative(candidateTrusteeIds, acmsTrusteeProfessional);
+    const duplicateResolution = await resolveDuplicateNameCandidates(context, acmsTrusteeProfessional, candidateTrusteeIds);
     if (duplicateResolution.kind === 'resolved-duplicate') {
-      const trustee = trusteesById.get(duplicateResolution.trusteeId);
-      return {
-        resolvedTrusteeId: duplicateResolution.trusteeId,
-        trace: {
-          stage: 'corroboration',
-          result: 'resolved',
-          candidateCount: candidateTrusteeIds.length,
-          bestCandidate: trustee
-            ? toBestCandidate(trustee, scoreCandidate(acmsTrusteeProfessional, trustee))
-            : undefined,
-        },
-      };
+      return { resolvedTrusteeId: duplicateResolution.trusteeId, nameQualifyingIds };
     }
-
-    return {
-      resolvedTrusteeId: null,
-      trace: {
-        stage: 'corroboration',
-        result: candidateTrusteeIds.length === 1 ? 'unresolved' : 'ambiguous',
-        candidateCount: candidateTrusteeIds.length,
-        bestCandidate: representative,
-      },
-    };
+    return { resolvedTrusteeId: null, nameQualifyingIds };
   }
 
-  /** Best-scoring (name, then address) candidate among a raw id list — for CSV review only. */
-  function pickRepresentative(
-    candidateTrusteeIds: string[],
-    acmsTrusteeProfessional: AcmsTrusteeProfessional,
-  ): BestCandidate | undefined {
-    let best: { trustee: Trustee; score: Score } | undefined;
-    for (const id of candidateTrusteeIds) {
-      const trustee = trusteesById.get(id);
-      if (!trustee) continue;
-      const score = scoreCandidate(acmsTrusteeProfessional, trustee);
-      if (
-        !best ||
-        score.nameScore > best.score.nameScore ||
-        (score.nameScore === best.score.nameScore && score.addressScore > best.score.addressScore)
-      ) {
-        best = { trustee, score };
-      }
-    }
-    return best ? toBestCandidate(best.trustee, best.score) : undefined;
+  function classifyCandidate(
+    trusteeId: string,
+    resolvedTrusteeId: string | null,
+    nameQualifyingIds: Set<string>,
+  ): CandidateOutcome {
+    if (trusteeId === resolvedTrusteeId) return 'resolved';
+    if (!nameQualifyingIds.has(trusteeId)) return 'rejected-name';
+    return nameQualifyingIds.size === 1 ? 'rejected-corroboration' : 'rejected-ambiguous-group';
   }
 
-  const traces: RecordTrace[] = [];
-  const counts = { resolved: 0, ambiguous: 0, 'no-match': 0 };
+  const outcomeCounts = { resolved: 0, ambiguous: 0, 'no-match': 0 };
+  const outcomeByCandidate: Record<CandidateOutcome, number> = {
+    resolved: 0,
+    'rejected-name': 0,
+    'rejected-corroboration': 0,
+    'rejected-ambiguous-group': 0,
+  };
+  let candidateRowCount = 0;
 
   let i = 0;
   for (const record of errored) {
@@ -512,149 +464,120 @@ async function run() {
 
     const decoded: DecodedVariant = JSON.parse(record.variant!);
     const acmsTrusteeProfessional = toAcmsTrusteeProfessional(decoded);
-    const stages: StageTrace[] = [];
+    const acmsFullName = acmsTrusteeProfessional.fullName;
+    const acmsAddress = acmsAddressString(acmsTrusteeProfessional);
+    const acmsPhone = acmsTrusteeProfessional.legacy?.phone ?? '';
+
+    // introducedAt: trusteeId -> first stage that surfaced it, so a candidate found by multiple
+    // stages (e.g. matchTrusteeByName AND levenshtein) is reported once, at its earliest stage.
+    const introducedAt = new Map<string, IntroductionStage>();
+    const recordCandidateIds = new Set<string>();
+    let resolvedTrusteeId: string | null = null;
+    let finalOutcome: 'resolved' | 'ambiguous' | 'no-match';
+    let nameQualifyingIds = new Set<string>();
 
     const nameResult = await matchTrusteeByName(context, acmsTrusteeProfessional);
-    stages.push({
-      stage: 'matchTrusteeByName',
-      result: nameResult.kind,
-      candidateCount: nameResult.kind === 'ambiguous' ? nameResult.matchCandidates.length : nameResult.kind === 'resolved' ? 1 : 0,
-      bestCandidate:
-        nameResult.kind === 'resolved'
-          ? (() => {
-              const trustee = trusteesById.get(nameResult.trusteeId);
-              return trustee
-                ? toBestCandidate(trustee, scoreCandidate(acmsTrusteeProfessional, trustee))
-                : undefined;
-            })()
-          : undefined,
-    });
-
-    let finalOutcome: RecordTrace['finalOutcome'];
-    let resolvedTrusteeId: string | undefined;
-    let resolvedVia: RecordTrace['resolvedVia'];
+    const rawIds = nameResult.kind === 'ambiguous' ? nameResult.matchCandidates.map((c) => c.trusteeId) : [];
+    for (const id of rawIds) {
+      introducedAt.set(id, 'matchTrusteeByName');
+      recordCandidateIds.add(id);
+    }
 
     if (nameResult.kind === 'resolved') {
-      finalOutcome = 'resolved';
       resolvedTrusteeId = nameResult.trusteeId;
-      resolvedVia = nameResult.nameMatchQuality === 'exact' ? 'name-exact' : 'name-fuzzy';
+      introducedAt.set(nameResult.trusteeId, 'matchTrusteeByName');
+      recordCandidateIds.add(nameResult.trusteeId);
+      nameQualifyingIds = new Set([nameResult.trusteeId]);
+      finalOutcome = 'resolved';
     } else if (nameResult.kind === 'ambiguous') {
-      const rawCandidateIds = nameResult.matchCandidates.map((c) => c.trusteeId);
-      const corroborationStage = await runCorroborationStage(acmsTrusteeProfessional, rawCandidateIds);
-      stages.push(corroborationStage.trace);
+      const corroboration = await resolveCandidatesByCorroboration(acmsTrusteeProfessional, rawIds);
+      nameQualifyingIds = corroboration.nameQualifyingIds;
+      resolvedTrusteeId = corroboration.resolvedTrusteeId;
 
-      if (corroborationStage.resolvedTrusteeId) {
-        finalOutcome = 'resolved';
-        resolvedTrusteeId = corroborationStage.resolvedTrusteeId;
-        resolvedVia = 'corroboration';
-      } else {
+      if (!resolvedTrusteeId) {
         const levenshteinCandidates = await findAnchoredLevenshteinCandidates(context, acmsTrusteeProfessional);
         const levenshteinIds = levenshteinCandidates.map((t) => t.trusteeId);
-        const levenshteinStage = await runCorroborationStage(acmsTrusteeProfessional, levenshteinIds);
-        stages.push({ ...levenshteinStage.trace, stage: 'levenshtein' });
-
-        if (levenshteinStage.resolvedTrusteeId) {
-          finalOutcome = 'resolved';
-          resolvedTrusteeId = levenshteinStage.resolvedTrusteeId;
-          resolvedVia = 'levenshtein';
-        } else {
-          finalOutcome = 'ambiguous';
+        for (const id of levenshteinIds) {
+          if (!introducedAt.has(id)) introducedAt.set(id, 'levenshtein');
+          recordCandidateIds.add(id);
         }
+        const levenshteinResult = await resolveCandidatesByCorroboration(acmsTrusteeProfessional, levenshteinIds);
+        for (const id of levenshteinResult.nameQualifyingIds) nameQualifyingIds.add(id);
+        resolvedTrusteeId = levenshteinResult.resolvedTrusteeId;
       }
+      finalOutcome = resolvedTrusteeId ? 'resolved' : 'ambiguous';
     } else {
       const tokenIntersectionCandidates = await findTokenIntersectionCandidates(context, acmsTrusteeProfessional);
       const tokenIntersectionIds = tokenIntersectionCandidates.map((t) => t.trusteeId);
-      const tokenIntersectionStage = await runCorroborationStage(acmsTrusteeProfessional, tokenIntersectionIds);
-      stages.push({ ...tokenIntersectionStage.trace, stage: 'tokenIntersection' });
+      for (const id of tokenIntersectionIds) {
+        introducedAt.set(id, 'tokenIntersection');
+        recordCandidateIds.add(id);
+      }
+      const tokenIntersectionResult = await resolveCandidatesByCorroboration(acmsTrusteeProfessional, tokenIntersectionIds);
+      nameQualifyingIds = tokenIntersectionResult.nameQualifyingIds;
+      resolvedTrusteeId = tokenIntersectionResult.resolvedTrusteeId;
 
-      if (tokenIntersectionStage.resolvedTrusteeId) {
-        finalOutcome = 'resolved';
-        resolvedTrusteeId = tokenIntersectionStage.resolvedTrusteeId;
-        resolvedVia = 'tokenIntersection';
-      } else {
+      if (!resolvedTrusteeId) {
         const levenshteinCandidates = await findAnchoredLevenshteinCandidates(context, acmsTrusteeProfessional);
         const levenshteinIds = levenshteinCandidates.map((t) => t.trusteeId);
-        const levenshteinStage = await runCorroborationStage(acmsTrusteeProfessional, levenshteinIds);
-        stages.push({ ...levenshteinStage.trace, stage: 'levenshtein' });
-
-        if (levenshteinStage.resolvedTrusteeId) {
-          finalOutcome = 'resolved';
-          resolvedTrusteeId = levenshteinStage.resolvedTrusteeId;
-          resolvedVia = 'levenshtein';
-        } else {
-          finalOutcome = 'no-match';
+        for (const id of levenshteinIds) {
+          if (!introducedAt.has(id)) introducedAt.set(id, 'levenshtein');
+          recordCandidateIds.add(id);
         }
+        const levenshteinResult = await resolveCandidatesByCorroboration(acmsTrusteeProfessional, levenshteinIds);
+        for (const id of levenshteinResult.nameQualifyingIds) nameQualifyingIds.add(id);
+        resolvedTrusteeId = levenshteinResult.resolvedTrusteeId;
       }
+      finalOutcome = resolvedTrusteeId ? 'resolved' : 'no-match';
     }
 
-    counts[finalOutcome]++;
-    traces.push({
-      acmsProfessionalId: record.acmsProfessionalId,
-      acmsFullName: acmsTrusteeProfessional.fullName,
-      acmsAddress: acmsAddressString(acmsTrusteeProfessional),
-      acmsPhone: acmsTrusteeProfessional.legacy?.phone ?? '',
-      priorDisposition: record.error!.disposition,
-      finalOutcome,
-      resolvedTrusteeId,
-      resolvedVia,
-      stages,
-    });
+    outcomeCounts[finalOutcome]++;
+
+    for (const trusteeId of recordCandidateIds) {
+      const trustee = trusteesById.get(trusteeId);
+      if (!trustee) continue;
+      const score = scoreCandidate(acmsTrusteeProfessional, trustee);
+      const similarity = fullNameSimilarity(acmsFullName, trustee.name);
+      const candidateOutcome = classifyCandidate(trusteeId, resolvedTrusteeId, nameQualifyingIds);
+      report.writeRow({
+        acmsProfessionalId: record.acmsProfessionalId,
+        acmsFullName,
+        acmsAddress,
+        acmsPhone,
+        introductionStage: introducedAt.get(trusteeId)!,
+        candidateOutcome,
+        camsTrusteeId: trustee.trusteeId,
+        camsName: trustee.name,
+        camsAddress: camsAddressString(trustee),
+        camsPhone: trustee.public?.phone?.number ?? '',
+        score,
+        fullNameSimilarity: similarity,
+        notes: buildNotes(score, similarity),
+      });
+      outcomeByCandidate[candidateOutcome]++;
+      candidateRowCount++;
+    }
   }
 
   console.log('\n=== Replay outcome (current main vs. what was actually persisted) ===\n');
-  for (const [k, v] of Object.entries(counts)) {
+  for (const [k, v] of Object.entries(outcomeCounts)) {
     console.log(`  ${k.padEnd(20)} ${v.toString().padStart(6)}  (${((v / errored.length) * 100).toFixed(1)}%)`);
   }
 
-  const resolved = traces.filter((t) => t.finalOutcome === 'resolved');
-  const byPriorDisposition: Record<string, number> = {};
-  for (const t of resolved) {
-    byPriorDisposition[t.priorDisposition] = (byPriorDisposition[t.priorDisposition] ?? 0) + 1;
-  }
-  console.log(
-    `\n${resolved.length} records that were persisted as error dispositions would resolve ` +
-      `under current main. Broken down by their PERSISTED (stale) disposition:`,
-  );
-  for (const [d, c] of Object.entries(byPriorDisposition)) {
-    console.log(`  ${d.padEnd(15)} ${c}`);
+  console.log(`\nTotal candidate rows across all records: ${candidateRowCount}`);
+  console.log('Candidate rows by outcome:');
+  for (const [k, v] of Object.entries(outcomeByCandidate)) {
+    console.log(`  ${k.padEnd(28)} ${v}`);
   }
 
-  const byResolvedVia: Record<string, number> = {};
-  for (const t of resolved) {
-    const via = t.resolvedVia ?? 'unknown';
-    byResolvedVia[via] = (byResolvedVia[via] ?? 0) + 1;
-  }
-  console.log('\nBroken down by which stage resolved them:');
-  for (const [via, c] of Object.entries(byResolvedVia)) {
-    console.log(`  ${via.padEnd(15)} ${c}`);
-  }
-
-  const ambiguous = traces.filter((t) => t.finalOutcome === 'ambiguous');
-  const matchStage = (t: RecordTrace) => t.stages[0];
-  const singleCandidateStuck = ambiguous.filter((t) => matchStage(t).candidateCount === 1);
-  const multiCandidateStuck = ambiguous.filter((t) => matchStage(t).candidateCount > 1);
-  const candidateCounts = ambiguous.map((t) => matchStage(t).candidateCount).sort((a, b) => a - b);
-  const percentile = (p: number) =>
-    candidateCounts.length > 0 ? candidateCounts[Math.floor(candidateCounts.length * p)] : 0;
-
-  console.log(
-    `\n=== Ambiguous breakdown (${ambiguous.length} records, genuine remaining matcher gap) ===\n`,
-  );
-  console.log(`  single-candidate: ${singleCandidateStuck.length}`);
-  console.log(`  multi-candidate:  ${multiCandidateStuck.length}`);
-  if (candidateCounts.length > 0) {
-    console.log(
-      `  candidate-count percentiles: p50=${percentile(0.5)} p75=${percentile(0.75)} p90=${percentile(0.9)} max=${candidateCounts[candidateCounts.length - 1]}`,
-    );
-  }
-
-  writeReportCsv(traces);
+  const writtenRowCount = await report.close();
+  console.log(`\nWrote ${writtenRowCount} candidate rows to ${reportPath}`);
 
   console.log(
     `\nConclusion: a full purge + re-sync against current main would recover ` +
-      `${resolved.length} of ${errored.length} (${((resolved.length / errored.length) * 100).toFixed(1)}%) ` +
+      `${outcomeCounts.resolved} of ${errored.length} (${((outcomeCounts.resolved / errored.length) * 100).toFixed(1)}%) ` +
       `of this export's error population WITHOUT any matcher code change beyond what's already on ` +
-      `main. See data/replay-backtest-report.csv for the full per-record, per-stage trace.`,
+      `main. See data/replay-backtest-report.csv for the full per-candidate trace.`,
   );
 }
 
