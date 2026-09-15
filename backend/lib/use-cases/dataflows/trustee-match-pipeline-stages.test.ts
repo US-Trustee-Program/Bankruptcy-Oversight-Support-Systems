@@ -246,6 +246,84 @@ describe('nameScoreStage', () => {
       calculateNameScore: { value: 100, pass: true },
     });
   });
+
+  test.each([
+    {
+      description: 'a bare middle initial disagrees with the other side (neutral, not a conflict)',
+      dxtrMiddle: 'T',
+      camsMiddle: 'B',
+    },
+    {
+      description: "a bare middle initial doesn't match the other side's leading character",
+      dxtrMiddle: 'T',
+      camsMiddle: 'Bruce',
+    },
+  ])(
+    'treats $description as full nameScore, not a 15-point penalty',
+    async ({ dxtrMiddle, camsMiddle }) => {
+      const state = createInitialState(
+        makeDxtrTrustee({ firstName: 'John', middleName: dxtrMiddle, lastName: 'Doe' }),
+      );
+      addCandidate(
+        state,
+        projectTrustee(
+          makeTrustee({
+            trusteeId: 't1',
+            firstName: 'John',
+            middleName: camsMiddle,
+            lastName: 'Doe',
+          }),
+        ),
+      );
+
+      const result = await nameScoreStage()(state);
+
+      expect(mergedScore(result.candidates.get('t1')!)).toMatchObject({
+        calculateNameScore: { value: 100, pass: true },
+      });
+    },
+  );
+
+  test('scores two full middle names that are a plausible spelling variant as 85, not a flat 15', async () => {
+    const state = createInitialState(
+      makeDxtrTrustee({ firstName: 'Richard', middleName: 'Jeffery', lastName: 'MacLeod' }),
+    );
+    addCandidate(
+      state,
+      projectTrustee(
+        makeTrustee({
+          trusteeId: 't1',
+          firstName: 'Richard',
+          middleName: 'Jeffrey',
+          lastName: 'MacLeod',
+        }),
+      ),
+    );
+
+    const result = await nameScoreStage()(state);
+
+    expect(mergedScore(result.candidates.get('t1')!)).toMatchObject({
+      calculateNameScore: { value: 85, pass: true },
+    });
+  });
+
+  test('scores two full middle names that are NOT a plausible variant as a 15-point conflict, capping nameScore', async () => {
+    const state = createInitialState(
+      makeDxtrTrustee({ firstName: 'John', middleName: 'Alexander', lastName: 'Doe' }),
+    );
+    addCandidate(
+      state,
+      projectTrustee(
+        makeTrustee({ trusteeId: 't1', firstName: 'John', middleName: 'Robert', lastName: 'Doe' }),
+      ),
+    );
+
+    const result = await nameScoreStage()(state);
+
+    expect(mergedScore(result.candidates.get('t1')!)).toMatchObject({
+      calculateNameScore: { value: 15, pass: false },
+    });
+  });
 });
 
 describe('similarityDiagnosticsStage', () => {

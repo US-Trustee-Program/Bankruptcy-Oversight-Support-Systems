@@ -23,7 +23,6 @@ import {
   resolveByContactCorroboration,
   resolveDuplicateNameCandidates,
   scoreFirstNamePart,
-  scoreMiddleNamePart,
   STATE_OVERRIDE_MIN_NAME_SCORE,
 } from './trustee-match.helpers';
 import { generateBigrams } from '../../adapters/utils/phonetic-helper';
@@ -43,17 +42,99 @@ import {
 } from './trustee-match-pipeline';
 
 /**
+ * Whether two name parts (a first name, or a full - non-initial - middle name) are plausibly the
+ * same underlying name, tolerating either a nickname/truncation (JaroWinkler) or a spelling
+ * variant (SoundEx/Metaphone phonetic match) - neither alone is reliable (see the real-world
+ * false positives/negatives documented on firstNameFuzzyMatchStage and pipelineMiddleNameScore),
+ * so this ORs both families together. Never trusted as a sole decisive signal by any caller -
+ * every caller records this as one vote among several independent corroborating signals (see
+ * CONSENSUS_VOTING_SCORERS), specifically because of the Joseph/Joshua false positive documented
+ * on firstNameFuzzyMatchStage.
+ */
+const FUZZY_NAME_PART_JARO_WINKLER_THRESHOLD = 0.8;
+
+function isFuzzyNamePartMatch(acmsNamePart: string, camsNamePart: string): boolean {
+  const a = acmsNamePart.toLowerCase();
+  const b = camsNamePart.toLowerCase();
+  if (natural.JaroWinklerDistance(a, b) >= FUZZY_NAME_PART_JARO_WINKLER_THRESHOLD) return true;
+
+  const soundex = new natural.SoundEx();
+  const metaphone = new natural.Metaphone();
+  return soundex.compare(a, b) || metaphone.compare(a, b);
+}
+
+/**
+ * Memoizes isFuzzyNamePartMatch per candidate (see normalize/NormalizedMemo) - a candidate can be
+ * scored more than once across nested pipeline tiers (see
+ * docs/architecture/decision-records/TrusteeMatchingPipeline.md on nesting) against the SAME
+ * ACMS record, and JaroWinklerDistance plus two phonetic algorithms is real work worth not
+ * repeating for an identical (acms, cams) name-part pair.
+ */
+function memoizedIsFuzzyNamePartMatch(
+  memo: NormalizedMemo,
+  acmsNamePart: string,
+  camsNamePart: string,
+): boolean {
+  return normalize(memo, 'isFuzzyNamePartMatch', `${acmsNamePart}|${camsNamePart}`, () =>
+    isFuzzyNamePartMatch(acmsNamePart, camsNamePart),
+  );
+}
+
+function isBareInitial(namePart: string): boolean {
+  return namePart.length === 1;
+}
+
+/**
+ * ACMS-pipeline-only middle-name scorer, replacing calculateNameScore's scoreMiddleNamePart for
+ * the sole-candidate consensus path. scoreMiddleNamePart treats two POPULATED, DIFFERING middle
+ * names as a flat 15-point conflict regardless of why they differ - a real spelling typo
+ * (Jeffery/Jeffrey) scores exactly the same as a genuinely conflicting middle initial (T vs B).
+ * Confirmed via a CAMS-876 backtest: 28 sole-candidate records ALL score nameScore=15 this way
+ * (Math.min(firstScore, middleScore) with middleScore pinned at 15), including cases the AI
+ * screener confirmed as real matches.
+ *
+ * Two relaxations, both still scored (never an automatic pass) so lastNameOnlyConsensusStage's
+ * vote can weigh them alongside independent contact corroboration - exactly the same "never
+ * trust one signal alone" posture as firstNameFuzzyMatchStage, and for the same reason (a bare
+ * initial or a fuzzy match is real but not certain evidence):
+ *   - Either side a BARE INITIAL that doesn't match the other side's leading character: NEUTRAL
+ *     (100), not a conflict - a bare initial carries too little information to call it a
+ *     disagreement (e.g. dxtr "T" vs cams "B" could just as easily be two different real middle
+ *     names for the same person as it could be two different people).
+ *   - Both sides a FULL (non-initial) middle name that differs: scored via isFuzzyNamePartMatch
+ *     (85 if plausibly the same name, 15 if not) instead of an automatic 15 - the same
+ *     nickname/typo tolerance firstNameFuzzyMatchStage already gives first names.
+ * Exact match and either-side-missing still behave exactly like scoreMiddleNamePart (100 in both
+ * cases - absence isn't evidence, agreement is full credit).
+ */
+function pipelineMiddleNameScore(
+  memo: NormalizedMemo,
+  dxtrMiddle: string,
+  camsMiddle: string,
+): number {
+  if (!dxtrMiddle || !camsMiddle) return 100;
+  if (dxtrMiddle === camsMiddle) return 100;
+  if (isBareInitial(dxtrMiddle) || isBareInitial(camsMiddle)) return 100;
+  return memoizedIsFuzzyNamePartMatch(memo, dxtrMiddle, camsMiddle) ? 85 : 15;
+}
+
+/**
  * ACMS-pipeline-only orchestration of calculateNameScore's exact scoring logic, built from the
  * same atomic, exported pieces calculateNameScore itself uses (firstLastNameToken,
- * lastNameTokensMatch, normalizeNamePart, scoreFirstNamePart, scoreMiddleNamePart,
- * isFirstMiddleSwap, isOneSidedMiddleNameMatch) rather than calling calculateNameScore directly -
- * calculateNameScore is shared with the DXTR trustee-appointment dataflow
- * (sync-trustee-case-appointments.ts), so this pipeline never calls it, to guarantee an ACMS-only
- * tuning change can never ripple into that unrelated call path. The comparison logic itself is
- * NOT duplicated - every atomic piece is the exact same exported function DXTR's path uses, only
- * the top-level composition lives here instead of in calculateNameScore.
+ * lastNameTokensMatch, normalizeNamePart, scoreFirstNamePart, isFirstMiddleSwap,
+ * isOneSidedMiddleNameMatch) rather than calling calculateNameScore directly - calculateNameScore
+ * is shared with the DXTR trustee-appointment dataflow (sync-trustee-case-appointments.ts), so
+ * this pipeline never calls it, to guarantee an ACMS-only tuning change can never ripple into
+ * that unrelated call path. Diverges from calculateNameScore in exactly one place: middle-name
+ * scoring uses pipelineMiddleNameScore (see its doc comment) instead of the shared
+ * scoreMiddleNamePart, since ACMS-specific middle-name tolerance has no business affecting DXTR's
+ * call path either.
  */
-function pipelineNameScore(dxtrTrustee: DxtrTrusteeParty, camsTrustee: Trustee): number {
+function pipelineNameScore(
+  memo: NormalizedMemo,
+  dxtrTrustee: DxtrTrusteeParty,
+  camsTrustee: Trustee,
+): number {
   const dxtrLast = firstLastNameToken(dxtrTrustee.lastName);
   const camsLast = firstLastNameToken(camsTrustee.lastName);
 
@@ -71,7 +152,7 @@ function pipelineNameScore(dxtrTrustee: DxtrTrusteeParty, camsTrustee: Trustee):
     return 0;
   }
 
-  const middleScore = scoreMiddleNamePart(dxtrMiddle, camsMiddle);
+  const middleScore = pipelineMiddleNameScore(memo, dxtrMiddle, camsMiddle);
   return Math.min(firstScore, middleScore);
 }
 
@@ -195,7 +276,11 @@ export function anchoredLevenshteinDiscoveryStage(context: ApplicationContext): 
 export function nameScoreStage(): Stage {
   return withGuard(async (state: PipelineState): Promise<PipelineState> => {
     for (const candidate of state.candidates.values()) {
-      const nameScore = pipelineNameScore(state.acmsRaw, candidate.camsRaw as unknown as Trustee);
+      const nameScore = pipelineNameScore(
+        candidate.camsNormalized,
+        state.acmsRaw,
+        candidate.camsRaw as unknown as Trustee,
+      );
       addScore(candidate, 'calculateNameScore', {
         value: nameScore,
         threshold: CONTACT_CORROBORATION_NAME_THRESHOLD,
@@ -362,7 +447,11 @@ export function stateFilterStage(): Stage {
         continue;
       }
 
-      const nameScore = pipelineNameScore(state.acmsRaw, candidate.camsRaw as unknown as Trustee);
+      const nameScore = pipelineNameScore(
+        candidate.camsNormalized,
+        state.acmsRaw,
+        candidate.camsRaw as unknown as Trustee,
+      );
       const stateMatch = nameScore >= STATE_OVERRIDE_MIN_NAME_SCORE;
       addScore(candidate, 'stateFilterStage', stateMatchRecord(stateMatch));
     }
@@ -732,42 +821,7 @@ export function soleCandidateConsensusStage(): Stage {
 }
 
 /**
- * calculateNameScore's lastNameTokensMatch requires an (almost) exact lastName token match before
- * it will even consider the first name (see trustee-match.helpers.ts) - a real first-name
- * NICKNAME or spelling variant (Geoff/Geoffrey, Randy/Randolph, Phillip/Philip) still tanks the
- * WHOLE nameScore to 0, because calculateNameScore has no fuzzy first-name path at all. Confirmed
- * via a CAMS-876 backtest: 105 sole-candidate, exact-lastName-match records score nameScore=0 this
- * way, and hand-sampling shows this population is genuinely MIXED - real nickname/typo matches
- * interspersed with coincidentally-shared-surname, different-person pairs (e.g. "George
- * Itule"/"Margo Itule", "Harry Campbell"/"Kevin Campbell").
- *
- * A single fuzzy-first-name metric is not safe alone: natural's JaroWinklerDistance catches
- * prefix-style nicknames well (Geoff/Geoffrey=0.925) but misses non-prefix real nicknames
- * (Dick/Richard=0.595, Jay/John=0.575), while phonetic matching (SoundEx/Metaphone) catches
- * spelling variants (Phillip/Philip, Gregory/Greogry) but misses truncation nicknames entirely.
- * Combining both with OR (either clears FIRST_NAME_JARO_WINKLER_THRESHOLD, or either phonetic
- * algorithm agrees) still lets at least one real false positive through on first-name evidence
- * alone (Joseph/Joshua scores 0.844, well above the 0.8 threshold, despite not actually being a
- * nickname pair) - which is why this stage NEVER resolves on the fuzzy-name signal by itself. It
- * only records the fuzzy-name evidence as its own vote (firstNameFuzzyMatchStage) for
- * lastNameOnlyConsensusStage to weigh alongside independent contact corroboration (state, city,
- * zip, address, phone) - the same "many independent signals, no single one decisive" model
- * CONSENSUS_VOTING_SCORERS already uses.
- */
-const FIRST_NAME_JARO_WINKLER_THRESHOLD = 0.8;
-
-function isFuzzyFirstNameMatch(acmsFirstName: string, camsFirstName: string): boolean {
-  const a = acmsFirstName.toLowerCase();
-  const b = camsFirstName.toLowerCase();
-  if (natural.JaroWinklerDistance(a, b) >= FIRST_NAME_JARO_WINKLER_THRESHOLD) return true;
-
-  const soundex = new natural.SoundEx();
-  const metaphone = new natural.Metaphone();
-  return soundex.compare(a, b) || metaphone.compare(a, b);
-}
-
-/**
- * Records a fuzzy first-name comparison as its OWN vote (see isFuzzyFirstNameMatch for why this
+ * Records a fuzzy first-name comparison as its OWN vote (see isFuzzyNamePartMatch for why this
  * signal is never trusted alone) - only for a sole candidate whose lastName is an exact token
  * match (mirrors calculateNameScore's own lastNameTokensMatch gate) but whose overall nameScore is
  * 0 (a fuzzy-but-not-exact first name is exactly what tanks calculateNameScore to 0 despite a real
@@ -806,8 +860,8 @@ export function firstNameFuzzyMatchStage(): Stage {
       const camsFirst = (candidate.camsRaw.firstName ?? '').toLowerCase();
       addScore(candidate, 'firstNameFuzzyMatchStage', {
         value: Math.round(natural.JaroWinklerDistance(acmsFirst, camsFirst) * 100),
-        threshold: Math.round(FIRST_NAME_JARO_WINKLER_THRESHOLD * 100),
-        pass: isFuzzyFirstNameMatch(acmsFirst, camsFirst),
+        threshold: Math.round(FUZZY_NAME_PART_JARO_WINKLER_THRESHOLD * 100),
+        pass: isFuzzyNamePartMatch(acmsFirst, camsFirst),
       });
     }
     return state;
