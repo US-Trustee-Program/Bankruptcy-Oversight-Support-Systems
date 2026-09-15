@@ -460,7 +460,7 @@ describe('UPCOMING_KEY_DATES_FIELD_CONFIG chapter7-elected variant', () => {
     expect(field?.kind).toBe('computed');
     if (field?.kind === 'computed') {
       const result = field.buildField(null);
-      expect(result.label).toBe('Bond Renewal Date');
+      expect(result.label).toBe('Bond Renewal');
       expect(result.value).toBe('No date added');
       expect(result.testId).toBe('bond-renewal-date-row');
     }
