@@ -31,4 +31,5 @@
 - [SAST Baseline Comparison](/architecture/decision-records/SastBaselineComparison.md)
 - [Phonetic Debtor Search](/architecture/decision-records/PhoneticDebtorSearch.md)
 - [Storage Queue](/architecture/decision-records/StorageQueue.md)
+- [Trustee Matching Pipeline](/architecture/decision-records/TrusteeMatchingPipeline.md)
 - [Zero Downtime](/architecture/decision-records/ZeroDowntimeDeployment.md)
