@@ -29,6 +29,35 @@ Run it with the same `TARGET` and `AZ_*_RG` variables as
 `setup-deploy-federated-credential.sh`. See
 [Branch Deploy RBAC Cutover](/operations/branch-deploy-rbac-cutover.md).
 
+### audit-unreferenced-gha-secrets.sh
+
+Read-only audit of the GitHub Actions secrets and variables slated for deletion by
+the CAMS-760 cleanup. Re-derives the "is anything still referencing this?" check by
+grepping `.github/` rather than trusting the runbook's tables, then corroborates it
+against the checks that make a static grep sound — no dynamic `secrets[...]` access,
+no composite actions, empty Dependabot/Codespaces scopes — plus environment-scoped
+name collisions and open PRs.
+
+A gate that cannot run reports `ERROR` and exits 3 (inconclusive), never `OK` — the
+dangerous failure for a pre-deletion gate is not a crash but a green light over a
+scan that never really looked. Exit 1 means a target is still referenced; exit 4 is
+`STRICT=true` with warnings.
+
+Three false-pass classes are closed deliberately, and a preflight self-test proves
+the pattern against fixtures before any real input is trusted. References are matched
+**case-insensitively** with optional whitespace around the dot, because GitHub
+expression property access is case-insensitive and `${{ secrets.azure_rg }}` is a
+working reference to `AZURE_RG`. The file walk uses `find -L`, because BSD `grep -R`
+does not follow a symlinked subdirectory and returns "no match" having searched
+nothing. Files are enumerated once so an unreadable file is reported on its own
+rather than poisoning every per-name scan, and `gh` calls pass an explicit `-R` with
+full `repos/OWNER/REPO/...` paths since the `:owner/:repo` placeholder shells out to
+git.
+
+`-b` additionally lists every remote branch still referencing a target, with age and
+commits-behind. Nothing is ever modified. See
+[GHA Secret and Variable Deletion](/operations/gha-secret-deletion.md).
+
 ### az-cosmos-add-user.sh
 
 To simplify Cosmosdb administration, this script assigns a role to a principal for a target Cosmos Db account.
