@@ -434,11 +434,11 @@ describe('PastKeyDates', () => {
       isLoading: false,
     };
 
-    test('renders exactly one row: Bond Issued Date', () => {
+    test('renders exactly one row: Bond Issued', () => {
       renderComponent(ch7ElectedProps);
 
       expect(screen.getByTestId('bond-issued-date-row')).toBeInTheDocument();
-      expect(screen.getByText('Bond Issued Date:')).toBeInTheDocument();
+      expect(screen.getByText('Bond Issued:')).toBeInTheDocument();
       expect(screen.queryByTestId('past-background-question-row')).not.toBeInTheDocument();
       expect(screen.queryByTestId('past-field-exam-row')).not.toBeInTheDocument();
       expect(screen.queryByTestId('past-audit-row')).not.toBeInTheDocument();

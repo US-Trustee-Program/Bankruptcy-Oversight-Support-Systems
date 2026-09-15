@@ -152,7 +152,7 @@ export const PAST_KEY_DATES_FIELD_CONFIG: Record<PastKeyDatesVariant, PastKeyDat
   'chapter7-elected': [
     {
       key: 'bondIssuedDate',
-      displayLabel: 'Bond Issued Date',
+      displayLabel: 'Bond Issued',
       formLabel: 'Bond Issued Date',
       testId: 'bond-issued-date-row',
       inputId: 'bond-issued-date',
