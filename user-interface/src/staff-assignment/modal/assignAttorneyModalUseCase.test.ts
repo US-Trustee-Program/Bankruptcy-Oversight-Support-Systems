@@ -88,7 +88,7 @@ function buildLocalUseCase(overrides: Record<string, unknown> = {}) {
 }
 
 describe('assignAttorneyModalUseCase tests', () => {
-  afterEach(() => {
+  beforeEach(() => {
     vi.restoreAllMocks();
   });
 
@@ -339,6 +339,13 @@ describe('assignAttorneyModalUseCase tests', () => {
     expect(localSetGlobalAlertError).toHaveBeenCalledWith('Network error');
   });
 
+  test('fetchAttorneys should do nothing when no case is supplied', async () => {
+    const getOfficeAttorneysSpy = vi.spyOn(Api2, 'getOfficeAttorneys');
+    const localUseCase = buildLocalUseCase({ bCase: null });
+    await localUseCase.fetchAttorneys();
+    expect(getOfficeAttorneysSpy).not.toHaveBeenCalled();
+  });
+
   test('submitValues should call submissionCallback with success and invoke the assignment change callback', async () => {
     vi.spyOn(Api2, 'postStaffAssignments').mockResolvedValue({} as never);
     const mockSubmissionCallback = vi.fn();
@@ -378,6 +385,40 @@ describe('assignAttorneyModalUseCase tests', () => {
     );
   });
 
+  test('submitValues should complete successfully when no submissionCallback is set', async () => {
+    vi.spyOn(Api2, 'postStaffAssignments').mockResolvedValue({} as never);
+    const localSetCheckListValues = vi.fn();
+    const localSetIsUpdatingAssignment = vi.fn();
+    const localUseCase = buildLocalUseCase({
+      bCase: { caseId: 'c1', officeCode: 'OFF', assignments: [] },
+      checkListValues: [],
+      attorneyList: [],
+      submissionCallback: null,
+      setCheckListValues: localSetCheckListValues,
+      setIsUpdatingAssignment: localSetIsUpdatingAssignment,
+    });
+    await localUseCase.submitValues(() => {}, { id: 'att-1', name: 'Test Attorney' });
+    expect(localSetCheckListValues).toHaveBeenCalledWith([]);
+    expect(localSetIsUpdatingAssignment).toHaveBeenLastCalledWith(false);
+  });
+
+  test('submitValues should complete without a submissionCallback when the API call fails', async () => {
+    vi.spyOn(Api2, 'postStaffAssignments').mockRejectedValue(new Error('API error'));
+    const localSetCheckListValues = vi.fn();
+    const localSetIsUpdatingAssignment = vi.fn();
+    const localUseCase = buildLocalUseCase({
+      bCase: { caseId: 'c1', officeCode: 'OFF', assignments: [] },
+      checkListValues: [],
+      attorneyList: [],
+      submissionCallback: null,
+      setCheckListValues: localSetCheckListValues,
+      setIsUpdatingAssignment: localSetIsUpdatingAssignment,
+    });
+    await localUseCase.submitValues(() => {}, { id: 'att-1', name: 'Test Attorney' });
+    expect(localSetCheckListValues).toHaveBeenCalledWith([]);
+    expect(localSetIsUpdatingAssignment).toHaveBeenLastCalledWith(false);
+  });
+
   test('updateCheckList should remove attorney from checklist when unchecked', () => {
     const mockAttorney: AttorneyUser = { id: 'att-1', name: 'Attorney One' };
     const localSetCheckListValues = vi.fn();
@@ -390,6 +431,57 @@ describe('assignAttorneyModalUseCase tests', () => {
     mockInput.checked = false;
     const mockEvent = { target: mockInput } as unknown as ChangeEvent<HTMLInputElement>;
     localUseCase.updateCheckList(mockEvent, mockAttorney);
+    expect(localSetCheckListValues).toHaveBeenCalledWith([]);
+  });
+
+  test('updateCheckList should add attorney to checklist when checked', () => {
+    const mockAttorney: AttorneyUser = { id: 'att-1', name: 'Attorney One' };
+    const localSetCheckListValues = vi.fn();
+    const localUseCase = buildLocalUseCase({
+      bCase: { caseId: 'c1', assignments: [] },
+      checkListValues: [],
+      setCheckListValues: localSetCheckListValues,
+    });
+    const mockInput = document.createElement('input');
+    mockInput.checked = true;
+    const mockEvent = { target: mockInput } as unknown as ChangeEvent<HTMLInputElement>;
+    localUseCase.updateCheckList(mockEvent, mockAttorney);
+    expect(localSetCheckListValues).toHaveBeenCalledWith([mockAttorney]);
+  });
+
+  test('updateCheckList should not add a duplicate attorney already in the checklist', () => {
+    const mockAttorney: AttorneyUser = { id: 'att-1', name: 'Attorney One' };
+    const localSetCheckListValues = vi.fn();
+    const localUseCase = buildLocalUseCase({
+      bCase: { caseId: 'c1', assignments: [] },
+      checkListValues: [mockAttorney],
+      setCheckListValues: localSetCheckListValues,
+    });
+    const mockInput = document.createElement('input');
+    mockInput.checked = true;
+    const mockEvent = { target: mockInput } as unknown as ChangeEvent<HTMLInputElement>;
+    localUseCase.updateCheckList(mockEvent, mockAttorney);
+    expect(localSetCheckListValues).toHaveBeenCalledWith([mockAttorney]);
+  });
+
+  describe('attorneyIsInCheckList', () => {
+    test('should return true when the attorney is already in the checklist', () => {
+      const mockAttorney: AttorneyUser = { id: 'att-1', name: 'Attorney One' };
+      const localUseCase = buildLocalUseCase({ checkListValues: [mockAttorney] });
+      expect(localUseCase.attorneyIsInCheckList(mockAttorney)).toBe(true);
+    });
+
+    test('should return false when the attorney is not in the checklist', () => {
+      const mockAttorney: AttorneyUser = { id: 'att-1', name: 'Attorney One' };
+      const localUseCase = buildLocalUseCase({ checkListValues: [] });
+      expect(localUseCase.attorneyIsInCheckList(mockAttorney)).toBe(false);
+    });
+  });
+
+  test('cancelModal should clear checkListValues', () => {
+    const localSetCheckListValues = vi.fn();
+    const localUseCase = buildLocalUseCase({ setCheckListValues: localSetCheckListValues });
+    localUseCase.cancelModal();
     expect(localSetCheckListValues).toHaveBeenCalledWith([]);
   });
 
@@ -559,5 +651,29 @@ describe('assignAttorneyModalUseCase tests', () => {
       callback: mockCallback,
     } as never);
     expect(localSetSubmissionCallback).toHaveBeenCalled();
+  });
+
+  test('show should open the modal without populating the checklist when no props are supplied', () => {
+    const mockShow = vi.fn();
+    const localControls: AssignAttorneyModalControls = {
+      ...mockControls,
+      modalRef: {
+        current: { ...mockControls.modalRef.current, show: mockShow },
+      } as React.RefObject<ModalRefType | null>,
+    };
+    const localSetBCase = vi.fn();
+    const localSetCheckListValues = vi.fn();
+    const localStore = {
+      ...mockStore,
+      setBCase: localSetBCase,
+      setCheckListValues: localSetCheckListValues,
+    };
+    const localUseCase = assignAttorneyModalUseCase(localStore, localControls);
+
+    localUseCase.show(undefined);
+
+    expect(localSetBCase).not.toHaveBeenCalled();
+    expect(localSetCheckListValues).not.toHaveBeenCalled();
+    expect(mockShow).toHaveBeenCalledWith({ openModalButtonRef: undefined });
   });
 });
