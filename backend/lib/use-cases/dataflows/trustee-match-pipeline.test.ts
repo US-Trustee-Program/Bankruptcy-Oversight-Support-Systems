@@ -8,9 +8,11 @@ import {
   createInitialState,
   mergedScore,
   normalize,
+  PipelineState,
   projectTrustee,
   promoteCandidate,
   runPipeline,
+  serializeState,
   Stage,
   withGuard,
 } from './trustee-match-pipeline';
@@ -312,5 +314,52 @@ describe('runPipeline', () => {
     expect(laterStage).not.toHaveBeenCalled();
     expect(result.match).toEqual({ trusteeId: 't1', score: { nameScore: 100 } });
     expect(result.error).toBeNull();
+  });
+});
+
+describe('serializeState', () => {
+  test('produces a JSON.stringify-safe plain object - Maps become plain objects/arrays', () => {
+    const state = createInitialState(makeDxtrTrustee());
+    normalize(state.acmsNormalized, 'lastNameToken', () => 'doe');
+    const candidate = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })));
+    normalize(candidate.camsNormalized, 'lastNameToken', () => 'doe');
+    addScore(candidate, { scorer: 'nameScoreStage', nameScore: 100 });
+
+    const serialized = serializeState(state);
+    const roundTripped = JSON.parse(JSON.stringify(serialized));
+
+    expect(roundTripped).toEqual({
+      acmsRaw: state.acmsRaw,
+      acmsNormalized: { lastNameToken: 'doe' },
+      candidates: [
+        {
+          camsRaw: candidate.camsRaw,
+          camsNormalized: { lastNameToken: 'doe' },
+          scores: [{ scorer: 'nameScoreStage', nameScore: 100 }],
+        },
+      ],
+      match: null,
+      skip: false,
+      error: null,
+    });
+  });
+
+  test('serializes a resolved match and its score', () => {
+    const state: PipelineState = {
+      ...createInitialState(makeDxtrTrustee()),
+      match: { trusteeId: 't1', score: { nameScore: 100 } },
+    };
+
+    const serialized = serializeState(state);
+
+    expect(serialized.match).toEqual({ trusteeId: 't1', score: { nameScore: 100 } });
+  });
+
+  test('serializes an empty candidate map as an empty array', () => {
+    const state = createInitialState(makeDxtrTrustee());
+
+    const serialized = serializeState(state);
+
+    expect(serialized.candidates).toEqual([]);
   });
 });

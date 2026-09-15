@@ -194,3 +194,40 @@ export async function runPipeline(
   }
   return state;
 }
+
+/** JSON-serializable projection of PipelineCandidate - Maps become plain objects. */
+export type SerializedCandidate = {
+  camsRaw: ProjectedTrustee;
+  camsNormalized: Record<string, unknown>;
+  scores: ScoreEntry[];
+};
+
+/** JSON-serializable projection of PipelineState - Maps become plain objects/arrays so the state
+ * can be written to a JSONL file or a Mongo document for later review (see
+ * docs/architecture/decision-records/TrusteeMatchingPipeline.md: the full evaluation history is
+ * retained even after a terminal outcome, specifically so it remains inspectable). candidates
+ * becomes an array (order of discovery, not lookup, is what a reviewer scans), acmsNormalized/
+ * camsNormalized become plain objects (Object.fromEntries over the memo Map). */
+export type SerializedState = {
+  acmsRaw: DxtrTrusteeParty;
+  acmsNormalized: Record<string, unknown>;
+  candidates: SerializedCandidate[];
+  match: PipelineMatch | null;
+  skip: boolean;
+  error: unknown | null;
+};
+
+export function serializeState(state: PipelineState): SerializedState {
+  return {
+    acmsRaw: state.acmsRaw,
+    acmsNormalized: Object.fromEntries(state.acmsNormalized),
+    candidates: [...state.candidates.values()].map((candidate) => ({
+      camsRaw: candidate.camsRaw,
+      camsNormalized: Object.fromEntries(candidate.camsNormalized),
+      scores: candidate.scores,
+    })),
+    match: state.match,
+    skip: state.skip,
+    error: state.error,
+  };
+}
