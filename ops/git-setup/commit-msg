@@ -1,0 +1,8 @@
+#!/usr/bin/env sh
+# Delegates to the ustp-cams-fdp plugin's already-tested commit-msg
+# validation instead of duplicating it here. Skips silently if the
+# submodule isn't checked out, so a missing/uninitialized submodule never
+# blocks a commit.
+hook="$(git rev-parse --show-toplevel)/.ustp-cams-fdp/.githooks/commit-msg"
+[ -x "$hook" ] || exit 0
+exec "$hook" "$1"
