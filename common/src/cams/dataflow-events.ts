@@ -215,6 +215,14 @@ export const UNSCORED = -1;
 /**
  * Scoring details for a candidate trustee during fuzzy matching.
  * Used to aid manual resolution when fuzzy matching cannot determine a clear winner.
+ *
+ * TODO: trusteeId/trusteeName/address/phone/appointments mix candidate IDENTITY into a type meant
+ * to carry SCORE data, and appointments is populated even for callers with no case-appointment
+ * context to score against (see trustee-match.helpers.ts's resolveByContactCorroboration/
+ * resolveDuplicateNameCandidates, which always pass appointments: []). Worth a refactor for
+ * clarity - splitting identity fields from the score fields - but this type is shared with the
+ * DXTR trustee-appointment dataflow (sync-trustee-case-appointments.ts), so any change here needs
+ * to account for both call paths, not just the ACMS one.
  */
 export type CandidateScore = {
   trusteeId: string;
