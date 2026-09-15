@@ -15,6 +15,7 @@ import {
   findTokenIntersectionCandidates,
   findAnchoredLevenshteinCandidates,
   findSurnameExactCandidates,
+  filterNoisyStateMismatches,
   toUnscoredCandidates,
 } from './trustee-match.helpers';
 import { buildAcmsVariant } from './acms-trustee-variant.helpers';
@@ -278,6 +279,13 @@ async function resolveCandidatesByCorroboration(
  *     Both are deliberately gated behind matchTrusteeByName (and each other) already returning
  *     nothing — each issues its own extra query per attempt and must never run speculatively
  *     alongside the cheaper tiers.
+ *
+ * findSurnameExactCandidates', findTokenIntersectionCandidates', and
+ * findAnchoredLevenshteinCandidates' raw candidate pools are each passed through
+ * filterNoisyStateMismatches before corroboration - a candidate-elimination filter, not a scoring
+ * change, that only activates once a pool is already large enough for state to be a useful
+ * discriminator (see filterNoisyStateMismatches for the pool-size threshold and the override
+ * conditions that keep a state-mismatched candidate in the pool anyway).
  */
 async function processNameMatch(
   deps: SyncAcmsProfessionalIdsDeps,
@@ -295,9 +303,9 @@ async function processNameMatch(
   // is, by construction, someone calculateNameScore's own lastName gate was always going to reject
   // anyway (see CAMS-879 backtest finding: ACMS "Phillip A Moon" resolving against a 13-candidate
   // phonetic pool that included Mann/Mooney/Wyman/Khorrami alongside the two actual "Moon"s).
-  const surnameExactCandidates = await findSurnameExactCandidates(
-    deps.context,
+  const surnameExactCandidates = filterNoisyStateMismatches(
     acmsTrusteeProfessional,
+    await findSurnameExactCandidates(deps.context, acmsTrusteeProfessional),
   );
   if (surnameExactCandidates.length > 0) {
     const resolvedTrusteeId = await resolveCandidatesByCorroboration(
@@ -334,9 +342,9 @@ async function processNameMatch(
     // as the sole candidate for ACMS "RADAKOVICH" - calculateNameScore's exact-first-token
     // lastName comparison scores that pair 0 regardless of how well address/phone corroborate, so
     // resolveByContactCorroboration never even gets a qualifying candidate.
-    const anchoredLevenshteinCandidates = await findAnchoredLevenshteinCandidates(
-      deps.context,
+    const anchoredLevenshteinCandidates = filterNoisyStateMismatches(
       acmsTrusteeProfessional,
+      await findAnchoredLevenshteinCandidates(deps.context, acmsTrusteeProfessional),
     );
     const anchoredLevenshteinResolvedTrusteeId = await resolveCandidatesByCorroboration(
       deps.context,
@@ -351,9 +359,9 @@ async function processNameMatch(
   }
 
   if (result.kind === 'no-match') {
-    const tokenIntersectionCandidates = await findTokenIntersectionCandidates(
-      deps.context,
+    const tokenIntersectionCandidates = filterNoisyStateMismatches(
       acmsTrusteeProfessional,
+      await findTokenIntersectionCandidates(deps.context, acmsTrusteeProfessional),
     );
     const tokenIntersectionResolvedTrusteeId = await resolveCandidatesByCorroboration(
       deps.context,
@@ -364,9 +372,9 @@ async function processNameMatch(
       return { kind: 'auto-linked', trusteeId: tokenIntersectionResolvedTrusteeId };
     }
 
-    const anchoredLevenshteinCandidates = await findAnchoredLevenshteinCandidates(
-      deps.context,
+    const anchoredLevenshteinCandidates = filterNoisyStateMismatches(
       acmsTrusteeProfessional,
+      await findAnchoredLevenshteinCandidates(deps.context, acmsTrusteeProfessional),
     );
     const anchoredLevenshteinResolvedTrusteeId = await resolveCandidatesByCorroboration(
       deps.context,

@@ -1721,6 +1721,62 @@ export async function findSurnameExactCandidates(
   return searchResults.filter((trustee) => firstLastNameToken(trustee.lastName) === lastNameToken);
 }
 
+/**
+ * Above this candidate-pool size, findSurnameExactCandidates/findTokenIntersectionCandidates/
+ * findAnchoredLevenshteinCandidates' shared surname is common enough that a state mismatch starts
+ * being a meaningful discriminator - below it, a small pool is trusted to the existing name/
+ * corroboration tiers untouched, since state filtering exists to cut noise in an already-bloated
+ * tail, not to second-guess an already-tight result.
+ */
+const STATE_FILTER_POOL_SIZE_THRESHOLD = 5;
+
+/**
+ * Minimum calculateNameScore a state-mismatched candidate needs to survive this filter anyway -
+ * the same "initial/nickname/swap" ceiling calculateNameScore itself uses throughout (see
+ * NAME_SWAP_MIN_PART_SCORE), reused here rather than inventing a new threshold.
+ */
+const STATE_OVERRIDE_MIN_NAME_SCORE = 85;
+
+/**
+ * Cuts a noisy, oversized raw candidate pool down using USPS state as a cheap secondary
+ * discriminator - NOT a scoring signal (calculateAddressScore/calculateTotalScore are untouched),
+ * a candidate-elimination filter applied only once a pool is already large enough that surname
+ * alone stopped being a useful discriminator (see STATE_FILTER_POOL_SIZE_THRESHOLD). A trustee
+ * whose CAMS state disagrees with the ACMS record's parsed state is dropped from the pool UNLESS
+ * it has independent strong evidence of being the same person: an exact phone match (see
+ * calculatePhoneScore) or a structured name match at or above calculateNameScore's existing 85
+ * "initial/nickname/swap" ceiling. This mirrors calculatePhoneScore's own asymmetry - an exact
+ * state match is not scored here at all (it was never the noisy case), but a state MISMATCH is
+ * still only weak-to-neutral evidence on its own (a trustee can relocate, maintain a second
+ * office, or simply have a stale address on one side), so it must never disqualify a candidate
+ * that already has stronger corroborating evidence elsewhere.
+ *
+ * Returns the pool unchanged (never partially filtered) when the pool is at or below the size
+ * threshold, or when the ACMS record's address can't be parsed for a state at all (see
+ * parseCityStateZip) - with no ACMS state to compare against, there is nothing to filter on.
+ */
+export function filterNoisyStateMismatches(
+  sourceTrustee: DxtrTrusteeParty,
+  candidates: Trustee[],
+): Trustee[] {
+  if (candidates.length <= STATE_FILTER_POOL_SIZE_THRESHOLD) return candidates;
+
+  const parsedAcmsAddress = parseCityStateZip(sourceTrustee.legacy?.cityStateZipCountry);
+  if (!parsedAcmsAddress) return candidates;
+
+  const acmsState = parsedAcmsAddress.state.toLowerCase();
+
+  return candidates.filter((candidate) => {
+    const camsState = candidate.public?.address?.state?.toLowerCase();
+    if (!camsState || camsState === acmsState) return true;
+
+    const phoneScore = calculatePhoneScore(sourceTrustee.legacy?.phone, candidate.public?.phone);
+    if (phoneScore === 100) return true;
+
+    return calculateNameScore(sourceTrustee, candidate) >= STATE_OVERRIDE_MIN_NAME_SCORE;
+  });
+}
+
 export async function findTokenIntersectionCandidates(
   context: ApplicationContext,
   sourceTrustee: DxtrTrusteeParty,

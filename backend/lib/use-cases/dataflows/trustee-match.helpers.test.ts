@@ -20,6 +20,7 @@ import {
   findTokenIntersectionCandidates,
   findAnchoredLevenshteinCandidates,
   findSurnameExactCandidates,
+  filterNoisyStateMismatches,
   isAppointmentMatch,
   findInactivePerfectMatch,
   stripParentheticalAnnotations,
@@ -864,6 +865,210 @@ describe('findSurnameExactCandidates', () => {
     });
 
     expect(result.map((t) => t.trusteeId)).toEqual(['trustee-1']);
+  });
+});
+
+describe('filterNoisyStateMismatches', () => {
+  const dxtrInWashington: DxtrTrusteeParty = {
+    fullName: 'Phillip A Moon',
+    firstName: 'Phillip',
+    middleName: 'A',
+    lastName: 'Moon',
+    legacy: { cityStateZipCountry: 'Tacoma, WA 98402' },
+  };
+
+  const makeCandidate = (overrides: Partial<Trustee> = {}) =>
+    makeTrustee({
+      firstName: 'Someone',
+      lastName: 'Moon',
+      name: 'Someone Moon',
+      ...overrides,
+    });
+
+  test('passes an oversized pool through unchanged when it has 5 or fewer candidates', () => {
+    // Below the noise threshold - state filtering only targets an already-bloated pool, so a
+    // small group is trusted to the existing name/corroboration tiers untouched.
+    const candidates = Array.from({ length: 5 }, (_, i) =>
+      makeCandidate({
+        trusteeId: `trustee-${i}`,
+        public: {
+          address: {
+            address1: '1 Elm St',
+            city: 'Miami',
+            state: 'FL',
+            zipCode: '33101',
+            countryCode: 'US',
+          },
+        },
+      }),
+    );
+
+    expect(filterNoisyStateMismatches(dxtrInWashington, candidates)).toEqual(candidates);
+  });
+
+  test('drops a state-mismatched candidate once the pool exceeds 5 candidates', () => {
+    const matchingState = makeCandidate({
+      trusteeId: 'trustee-wa',
+      public: {
+        address: {
+          address1: '1 Elm St',
+          city: 'Seattle',
+          state: 'WA',
+          zipCode: '98101',
+          countryCode: 'US',
+        },
+      },
+    });
+    const mismatchedCandidates = Array.from({ length: 5 }, (_, i) =>
+      makeCandidate({
+        trusteeId: `trustee-fl-${i}`,
+        firstName: 'Nobody',
+        name: 'Nobody Moon',
+        public: {
+          address: {
+            address1: '1 Elm St',
+            city: 'Miami',
+            state: 'FL',
+            zipCode: '33101',
+            countryCode: 'US',
+          },
+        },
+      }),
+    );
+    const pool = [matchingState, ...mismatchedCandidates];
+
+    const result = filterNoisyStateMismatches(dxtrInWashington, pool);
+
+    expect(result.map((t) => t.trusteeId)).toEqual(['trustee-wa']);
+  });
+
+  test('keeps a state-mismatched candidate anyway when it has an exact phone match', () => {
+    const dxtrWithPhone: DxtrTrusteeParty = {
+      ...dxtrInWashington,
+      legacy: { ...dxtrInWashington.legacy, phone: '2065551212' },
+    };
+    const phoneMatch = makeCandidate({
+      trusteeId: 'trustee-fl-phone',
+      public: {
+        address: {
+          address1: '1 Elm St',
+          city: 'Miami',
+          state: 'FL',
+          zipCode: '33101',
+          countryCode: 'US',
+        },
+        phone: { number: '206-555-1212' },
+      },
+    });
+    const filler = Array.from({ length: 5 }, (_, i) =>
+      makeCandidate({
+        trusteeId: `trustee-fl-${i}`,
+        firstName: 'Nobody',
+        name: 'Nobody Moon',
+        public: {
+          address: {
+            address1: '1 Elm St',
+            city: 'Miami',
+            state: 'FL',
+            zipCode: '33101',
+            countryCode: 'US',
+          },
+        },
+      }),
+    );
+
+    const result = filterNoisyStateMismatches(dxtrWithPhone, [phoneMatch, ...filler]);
+
+    expect(result.map((t) => t.trusteeId)).toContain('trustee-fl-phone');
+  });
+
+  test('keeps a state-mismatched candidate anyway when its structured nameScore would be >= 85', () => {
+    const strongNameMatch = makeCandidate({
+      trusteeId: 'trustee-fl-name',
+      firstName: 'Phillip',
+      middleName: 'A',
+      lastName: 'Moon',
+      name: 'Phillip A. Moon',
+      public: {
+        address: {
+          address1: '1 Elm St',
+          city: 'Miami',
+          state: 'FL',
+          zipCode: '33101',
+          countryCode: 'US',
+        },
+      },
+    });
+    const filler = Array.from({ length: 5 }, (_, i) =>
+      makeCandidate({
+        trusteeId: `trustee-fl-${i}`,
+        firstName: 'Nobody',
+        name: 'Nobody Moon',
+        public: {
+          address: {
+            address1: '1 Elm St',
+            city: 'Miami',
+            state: 'FL',
+            zipCode: '33101',
+            countryCode: 'US',
+          },
+        },
+      }),
+    );
+
+    const result = filterNoisyStateMismatches(dxtrInWashington, [strongNameMatch, ...filler]);
+
+    expect(result.map((t) => t.trusteeId)).toContain('trustee-fl-name');
+  });
+
+  test('does not filter when the DXTR address has no parseable state', () => {
+    const dxtrNoState: DxtrTrusteeParty = {
+      ...dxtrInWashington,
+      legacy: { cityStateZipCountry: undefined },
+    };
+    const candidates = Array.from({ length: 6 }, (_, i) =>
+      makeCandidate({
+        trusteeId: `trustee-${i}`,
+        public: {
+          address: {
+            address1: '1 Elm St',
+            city: 'Miami',
+            state: 'FL',
+            zipCode: '33101',
+            countryCode: 'US',
+          },
+        },
+      }),
+    );
+
+    expect(filterNoisyStateMismatches(dxtrNoState, candidates)).toEqual(candidates);
+  });
+
+  test('does not filter a candidate missing a CAMS state (nothing to compare against)', () => {
+    const noState = makeCandidate({
+      trusteeId: 'trustee-no-state',
+      public: { address: undefined },
+    });
+    const mismatched = Array.from({ length: 5 }, (_, i) =>
+      makeCandidate({
+        trusteeId: `trustee-fl-${i}`,
+        firstName: 'Nobody',
+        name: 'Nobody Moon',
+        public: {
+          address: {
+            address1: '1 Elm St',
+            city: 'Miami',
+            state: 'FL',
+            zipCode: '33101',
+            countryCode: 'US',
+          },
+        },
+      }),
+    );
+
+    const result = filterNoisyStateMismatches(dxtrInWashington, [noState, ...mismatched]);
+
+    expect(result.map((t) => t.trusteeId)).toContain('trustee-no-state');
   });
 });
 

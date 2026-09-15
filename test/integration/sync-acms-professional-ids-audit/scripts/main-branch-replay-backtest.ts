@@ -461,6 +461,7 @@ async function run() {
     findTokenIntersectionCandidates,
     findAnchoredLevenshteinCandidates,
     findSurnameExactCandidates,
+    filterNoisyStateMismatches,
     calculateNameScore,
     calculateAddressScore,
     calculatePhoneScore,
@@ -548,7 +549,10 @@ async function run() {
     // Mirrors processNameMatch's production gate (sync-acms-professional-ids.ts): surname-exact
     // match tried first: if 1+ candidates, that's the ONLY pool - matchTrusteeByName's broader
     // pool is never also consulted. If 0, fall through unchanged to the existing tiers below.
-    const surnameExactCandidates = await findSurnameExactCandidates(context, acmsTrusteeProfessional);
+    const surnameExactCandidates = filterNoisyStateMismatches(
+      acmsTrusteeProfessional,
+      await findSurnameExactCandidates(context, acmsTrusteeProfessional),
+    );
     if (surnameExactCandidates.length > 0) {
       const surnameExactIds = surnameExactCandidates.map((t) => t.trusteeId);
       for (const id of surnameExactIds) {
@@ -616,7 +620,10 @@ async function run() {
       resolvedTrusteeId = corroboration.resolvedTrusteeId;
 
       if (!resolvedTrusteeId) {
-        const levenshteinCandidates = await findAnchoredLevenshteinCandidates(context, acmsTrusteeProfessional);
+        const levenshteinCandidates = filterNoisyStateMismatches(
+          acmsTrusteeProfessional,
+          await findAnchoredLevenshteinCandidates(context, acmsTrusteeProfessional),
+        );
         const levenshteinIds = levenshteinCandidates.map((t) => t.trusteeId);
         for (const id of levenshteinIds) {
           if (!introducedAt.has(id)) introducedAt.set(id, 'levenshtein');
@@ -628,7 +635,10 @@ async function run() {
       }
       finalOutcome = resolvedTrusteeId ? 'resolved' : 'ambiguous';
     } else {
-      const tokenIntersectionCandidates = await findTokenIntersectionCandidates(context, acmsTrusteeProfessional);
+      const tokenIntersectionCandidates = filterNoisyStateMismatches(
+        acmsTrusteeProfessional,
+        await findTokenIntersectionCandidates(context, acmsTrusteeProfessional),
+      );
       const tokenIntersectionIds = tokenIntersectionCandidates.map((t) => t.trusteeId);
       for (const id of tokenIntersectionIds) {
         introducedAt.set(id, 'tokenIntersection');
@@ -639,7 +649,10 @@ async function run() {
       resolvedTrusteeId = tokenIntersectionResult.resolvedTrusteeId;
 
       if (!resolvedTrusteeId) {
-        const levenshteinCandidates = await findAnchoredLevenshteinCandidates(context, acmsTrusteeProfessional);
+        const levenshteinCandidates = filterNoisyStateMismatches(
+          acmsTrusteeProfessional,
+          await findAnchoredLevenshteinCandidates(context, acmsTrusteeProfessional),
+        );
         const levenshteinIds = levenshteinCandidates.map((t) => t.trusteeId);
         for (const id of levenshteinIds) {
           if (!introducedAt.has(id)) introducedAt.set(id, 'levenshtein');
