@@ -66,3 +66,22 @@ ignore:
           SPA that uses neither RSC nor server actions, so exploitability
           is low in the interim.
         expires: 2026-09-10T00:00:00.000Z
+  SNYK-JS-PROXYADDR-19812342:
+    - '*':
+        reason: >-
+          Transitive dependency via express@5.2.1 > proxy-addr@2.0.7.
+          CVE-2026-90711 (User Impersonation) lets an attacker control
+          req.ip / req.ips via a crafted X-Forwarded-For header when
+          proxy-addr's subnet matching mishandles IPv4-mapped IPv6 trust
+          entries. Express is used ONLY by backend/express/server.ts, a
+          local development server (npm run start:express, tsx --watch);
+          it is not built, packaged, or deployed. The deployed backend is
+          Azure Functions (function-apps/api, function-apps/dataflows),
+          which never routes requests through express or proxy-addr, so
+          the vuln is not reachable in any deployed request path. Fixed in
+          proxy-addr@2.0.8, which satisfies express's ^2.0.7 range, but
+          2.0.8 was published 2026-09-15 — inside CAMS's 14-day minimum
+          release age window (renovate.json; patch update). This ignore
+          expires 2026-09-29, when 2.0.8 is 14 days old and Renovate can
+          bump the lockfile.
+        expires: 2026-09-29T00:00:00.000Z
