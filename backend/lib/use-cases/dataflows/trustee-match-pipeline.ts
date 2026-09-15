@@ -79,14 +79,14 @@ export type MergedScore = Partial<NameScoreEntry> & Partial<StateFilterScoreEntr
 /**
  * One candidate under consideration, plus its evaluation history. camsRaw is set once when the
  * candidate is first proposed and never changes; camsNormalized is a memo of normalizer function
- * results keyed by call signature (see normalize) - it holds ONLY derived/computed values, never a
- * copy of camsRaw itself (camsRaw is already available directly on the candidate); scores holds
- * one slot per scorer that has run against this candidate (see ScoreByScorer/addScore) - see
- * mergedScore for how pipeline logic reads a single flattened view out of the full history.
+ * calls (see NormalizedMemo/normalize) - it holds ONLY derived/computed values, never a copy of
+ * camsRaw itself (camsRaw is already available directly on the candidate); scores holds one slot
+ * per scorer that has run against this candidate (see ScoreByScorer/addScore) - see mergedScore
+ * for how pipeline logic reads a single flattened view out of the full history.
  */
 export type PipelineCandidate = {
   camsRaw: ProjectedTrustee;
-  camsNormalized: Map<string, unknown>;
+  camsNormalized: NormalizedMemo;
   scores: ScoreByScorer;
 };
 
@@ -135,7 +135,7 @@ export type PipelineMatch = {
  */
 export type PipelineState = {
   acmsRaw: DxtrTrusteeParty;
-  acmsNormalized: Map<string, unknown>;
+  acmsNormalized: NormalizedMemo;
   candidates: Map<string, PipelineCandidate>;
   match: PipelineMatch | null;
   skip: boolean;
@@ -207,17 +207,46 @@ export function addScore<Name extends ScorerName>(
 }
 
 /**
- * Memoizes a per-side normalization (ACMS or a specific candidate) keyed by normalizer name -
- * computed once on first access, read directly from the memo on every later access regardless of
- * which stage asks. A normalizer that depends on another normalizer's output calls this
- * recursively for that dependency rather than recomputing it inline (see
- * docs/architecture/decision-records/TrusteeMatchingPipeline.md).
+ * One cached call of a normalizer function: `key` is a caller-built fingerprint of that call's
+ * actual input(s) (e.g. `"John Doe"`, or `"John Doe|Jon Doe"` for a two-argument comparison), and
+ * `value` is what it returned. Fingerprinting the real inputs - not just the function's name - is
+ * what makes two DIFFERENT calls to the same normalizer against the same memo distinguishable; a
+ * memo keyed by function name alone cannot tell "already computed for these inputs" apart from
+ * "computed once for different inputs" and would silently return the wrong cached value.
  */
-export function normalize<T>(memo: Map<string, unknown>, key: string, compute: () => T): T {
-  if (!memo.has(key)) {
-    memo.set(key, compute());
-  }
-  return memo.get(key) as T;
+export type MemoEntry = { key: string; value: unknown };
+
+/**
+ * A per-side memo (ACMS or a specific candidate) of every normalizer call made against it,
+ * organized by function name - each function name maps to the list of distinct-fingerprint calls
+ * made so far (see MemoEntry/normalize). Keying the outer map by function name (rather than by the
+ * fingerprint directly) is what gives a downstream consumer (e.g. ai-candidate-review.ts) a
+ * stable, well-known name to look under - "this candidate's fullNameSimilarity entries" - without
+ * needing to know what inputs produced them.
+ */
+export type NormalizedMemo = Map<string, MemoEntry[]>;
+
+/**
+ * Memoizes one normalizer call keyed by function name AND a caller-built fingerprint of its actual
+ * input(s) (see MemoEntry) - computed once per distinct fingerprint, read directly from the memo on
+ * every later call with that same fingerprint regardless of which stage asks. A normalizer that
+ * depends on another normalizer's output calls this recursively for that dependency rather than
+ * recomputing it inline (see docs/architecture/decision-records/TrusteeMatchingPipeline.md).
+ */
+export function normalize<T>(
+  memo: NormalizedMemo,
+  functionName: string,
+  fingerprint: string,
+  compute: () => T,
+): T {
+  const entries = memo.get(functionName) ?? [];
+  const existing = entries.find((entry) => entry.key === fingerprint);
+  if (existing) return existing.value as T;
+
+  const value = compute();
+  entries.push({ key: fingerprint, value });
+  memo.set(functionName, entries);
+  return value;
 }
 
 export type Stage = (state: PipelineState) => Promise<PipelineState>;
@@ -249,11 +278,14 @@ export async function runPipeline(
   return state;
 }
 
-/** JSON-serializable projection of PipelineCandidate - Maps become plain objects. scores is
- * already a plain object (ScoreByScorer), so it passes through serializeState unchanged. */
+/** JSON-serializable projection of PipelineCandidate - Maps become plain objects. camsNormalized
+ * keeps its full { functionName: MemoEntry[] } shape rather than collapsing to a single value per
+ * function name - a reviewer/consumer reading this sees exactly which fingerprinted call(s) were
+ * made, never an ambiguous flattened result. scores is already a plain object (ScoreByScorer), so
+ * it passes through serializeState unchanged. */
 export type SerializedCandidate = {
   camsRaw: ProjectedTrustee;
-  camsNormalized: Record<string, unknown>;
+  camsNormalized: Record<string, MemoEntry[]>;
   scores: ScoreByScorer;
 };
 
@@ -262,10 +294,11 @@ export type SerializedCandidate = {
  * docs/architecture/decision-records/TrusteeMatchingPipeline.md: the full evaluation history is
  * retained even after a terminal outcome, specifically so it remains inspectable). candidates
  * becomes an array (order of discovery, not lookup, is what a reviewer scans), acmsNormalized/
- * camsNormalized become plain objects (Object.fromEntries over the memo Map). */
+ * camsNormalized become plain objects (Object.fromEntries over the memo Map) - see
+ * SerializedCandidate for why each function name maps to an array rather than a single value. */
 export type SerializedState = {
   acmsRaw: DxtrTrusteeParty;
-  acmsNormalized: Record<string, unknown>;
+  acmsNormalized: Record<string, MemoEntry[]>;
   candidates: SerializedCandidate[];
   match: PipelineMatch | null;
   skip: boolean;

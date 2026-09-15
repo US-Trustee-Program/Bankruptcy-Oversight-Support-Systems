@@ -46,6 +46,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { execFile } from 'child_process';
 import {
+  MemoEntry,
   ProjectedTrustee,
   ScoreByScorer,
   SerializedState,
@@ -226,6 +227,20 @@ function introductionStageOf(scores: ScoreByScorer): string {
   return names[names.length - 1] ?? 'unknown';
 }
 
+/** Reads the most recently cached call's value for a normalizer function out of a serialized
+ * NormalizedMemo (see trustee-match-pipeline.ts) - camsNormalized[functionName] is an array of
+ * every distinct-fingerprint call made against this candidate (see MemoEntry), not a single bare
+ * value, since a normalizer CAN be called more than once with different inputs. This reviewer only
+ * ever displays a candidate's OWN latest fullNameSimilarity/tokenNameMatchRate, so the last entry
+ * is the one that matters here. */
+function latestMemoValue(
+  camsNormalized: Record<string, MemoEntry[]>,
+  functionName: string,
+): unknown {
+  const entries = camsNormalized[functionName];
+  return entries?.[entries.length - 1]?.value;
+}
+
 /** Derives one flattened CSV row's worth of display fields for a single candidate, merging in the
  * winning candidate's corroboration score (see PipelineMatch.score) the same way
  * pipeline-replay-backtest.ts does, since that score is never written through addScore onto
@@ -243,14 +258,10 @@ function deriveCandidateFields(
   const addressScore = typeof merged.addressScore === 'number' ? merged.addressScore : null;
   const phoneScore = typeof merged.phoneScore === 'number' ? merged.phoneScore : null;
   const stateMatch = typeof merged.stateMatch === 'boolean' ? merged.stateMatch : true;
-  const fullNameSimilarity =
-    typeof candidate.camsNormalized.fullNameSimilarity === 'number'
-      ? candidate.camsNormalized.fullNameSimilarity
-      : 0;
-  const tokenNameMatchRate =
-    typeof candidate.camsNormalized.tokenNameMatchRate === 'number'
-      ? candidate.camsNormalized.tokenNameMatchRate
-      : 0;
+  const rawFullNameSimilarity = latestMemoValue(candidate.camsNormalized, 'fullNameSimilarity');
+  const fullNameSimilarity = typeof rawFullNameSimilarity === 'number' ? rawFullNameSimilarity : 0;
+  const rawTokenNameMatchRate = latestMemoValue(candidate.camsNormalized, 'tokenNameMatchRate');
+  const tokenNameMatchRate = typeof rawTokenNameMatchRate === 'number' ? rawTokenNameMatchRate : 0;
   return {
     introductionStage: introductionStageOf(candidate.scores),
     nameScore,

@@ -241,8 +241,12 @@ describe('similarityDiagnosticsStage', () => {
     const result = await similarityDiagnosticsStage()(state);
 
     expect(result.candidates.get('t1')).toBe(candidate);
-    expect(candidate.camsNormalized.get('fullNameSimilarity')).toBe(1);
-    expect(candidate.camsNormalized.get('tokenNameMatchRate')).toBe(1);
+    expect(candidate.camsNormalized.get('fullNameSimilarity')).toEqual([
+      { key: 'john doe|john doe', value: 1 },
+    ]);
+    expect(candidate.camsNormalized.get('tokenNameMatchRate')).toEqual([
+      { key: 'john doe|john doe', value: 1 },
+    ]);
   });
 
   test('never writes a ScoreEntry - this stage is diagnostic only, never gates match/skip', async () => {
@@ -264,7 +268,9 @@ describe('similarityDiagnosticsStage', () => {
 
     await similarityDiagnosticsStage()(state);
 
-    expect(state.acmsNormalized.get('normalizeForSimilarity(John Doe)')).toBe('john doe');
+    expect(state.acmsNormalized.get('normalizeForSimilarity')).toEqual([
+      { key: 'John Doe', value: 'john doe' },
+    ]);
   });
 
   test("memoizes each candidate's own normalized name once, reused by both fullNameSimilarity and tokenNameMatchRate", async () => {
@@ -276,9 +282,9 @@ describe('similarityDiagnosticsStage', () => {
 
     await similarityDiagnosticsStage()(state);
 
-    expect(candidate.camsNormalized.get("normalizeForSimilarity(O'Brien-Smith)")).toBe(
-      'obrien smith',
-    );
+    expect(candidate.camsNormalized.get('normalizeForSimilarity')).toEqual([
+      { key: "O'Brien-Smith", value: 'obrien smith' },
+    ]);
   });
 
   test('no-ops once the pipeline has already matched', async () => {

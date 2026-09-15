@@ -8,6 +8,7 @@ import {
   createInitialState,
   mergedScore,
   normalize,
+  NormalizedMemo,
   PipelineState,
   projectTrustee,
   promoteCandidate,
@@ -220,32 +221,47 @@ describe('mergedScore', () => {
 });
 
 describe('normalize', () => {
-  test('computes and caches a value under the given key on first access', () => {
-    const memo = new Map<string, unknown>();
+  test('computes and caches a value under the given function name and fingerprint on first access', () => {
+    const memo: NormalizedMemo = new Map();
     const compute = vi.fn(() => 'computed-value');
 
-    const result = normalize(memo, 'someKey', compute);
+    const result = normalize(memo, 'someFunction', 'someFingerprint', compute);
 
     expect(result).toBe('computed-value');
     expect(compute).toHaveBeenCalledTimes(1);
+    expect(memo.get('someFunction')).toEqual([{ key: 'someFingerprint', value: 'computed-value' }]);
   });
 
-  test('returns the cached value on a second access WITHOUT recomputing', () => {
-    const memo = new Map<string, unknown>();
+  test('returns the cached value on a second access with the SAME fingerprint WITHOUT recomputing', () => {
+    const memo: NormalizedMemo = new Map();
     const compute = vi.fn(() => 'computed-value');
 
-    normalize(memo, 'someKey', compute);
-    const second = normalize(memo, 'someKey', compute);
+    normalize(memo, 'someFunction', 'someFingerprint', compute);
+    const second = normalize(memo, 'someFunction', 'someFingerprint', compute);
 
     expect(second).toBe('computed-value');
     expect(compute).toHaveBeenCalledTimes(1);
   });
 
-  test('different keys on the same memo are computed and cached independently', () => {
-    const memo = new Map<string, unknown>();
+  test('a DIFFERENT fingerprint under the SAME function name is computed and cached independently - no collision', () => {
+    const memo: NormalizedMemo = new Map();
 
-    const a = normalize(memo, 'keyA', () => 'value-a');
-    const b = normalize(memo, 'keyB', () => 'value-b');
+    const a = normalize(memo, 'someFunction', 'fingerprint-a', () => 'value-a');
+    const b = normalize(memo, 'someFunction', 'fingerprint-b', () => 'value-b');
+
+    expect(a).toBe('value-a');
+    expect(b).toBe('value-b');
+    expect(memo.get('someFunction')).toEqual([
+      { key: 'fingerprint-a', value: 'value-a' },
+      { key: 'fingerprint-b', value: 'value-b' },
+    ]);
+  });
+
+  test('different function names on the same memo are computed and cached independently', () => {
+    const memo: NormalizedMemo = new Map();
+
+    const a = normalize(memo, 'functionA', 'someFingerprint', () => 'value-a');
+    const b = normalize(memo, 'functionB', 'someFingerprint', () => 'value-b');
 
     expect(a).toBe('value-a');
     expect(b).toBe('value-b');
@@ -338,9 +354,9 @@ describe('runPipeline', () => {
 describe('serializeState', () => {
   test('produces a JSON.stringify-safe plain object - Maps become plain objects/arrays', () => {
     const state = createInitialState(makeDxtrTrustee());
-    normalize(state.acmsNormalized, 'lastNameToken', () => 'doe');
+    normalize(state.acmsNormalized, 'lastNameToken', 'John Doe', () => 'doe');
     const candidate = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })));
-    normalize(candidate.camsNormalized, 'lastNameToken', () => 'doe');
+    normalize(candidate.camsNormalized, 'lastNameToken', 'John Doe', () => 'doe');
     addScore(candidate, 'calculateNameScore', { nameScore: 100, match: true });
 
     const serialized = serializeState(state);
@@ -348,11 +364,11 @@ describe('serializeState', () => {
 
     expect(roundTripped).toEqual({
       acmsRaw: state.acmsRaw,
-      acmsNormalized: { lastNameToken: 'doe' },
+      acmsNormalized: { lastNameToken: [{ key: 'John Doe', value: 'doe' }] },
       candidates: [
         {
           camsRaw: candidate.camsRaw,
-          camsNormalized: { lastNameToken: 'doe' },
+          camsNormalized: { lastNameToken: [{ key: 'John Doe', value: 'doe' }] },
           scores: { calculateNameScore: { nameScore: 100, match: true } },
         },
       ],

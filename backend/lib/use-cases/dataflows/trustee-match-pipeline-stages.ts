@@ -18,6 +18,7 @@ import {
   addScore,
   mergedScore,
   normalize,
+  NormalizedMemo,
   PipelineState,
   projectTrustee,
   Stage,
@@ -90,16 +91,13 @@ function normalizeForSimilarity(name: string): string {
  * Memoizes normalizeForSimilarity's result once per memo (the ACMS side is invariant across every
  * candidate in a record; a candidate's own name is invariant across fullNameSimilarity and
  * tokenNameMatchRate both needing it) rather than recomputing the same string transform
- * repeatedly. Keys on the function name AND its input argument together
- * (`normalizeForSimilarity(John Doe)`), not just the bare function name - a memo map keyed by bare
- * name alone would silently return a stale value for a different input if this normalizer were
- * ever called twice against the same memo with two different names (normalize has no way to
- * detect that mismatch itself; it only knows "has this key been computed before"). The raw name is
- * embedded directly, no quoting/escaping - a memoization key only needs to be unique per input, not
- * a faithfully round-trippable serialization.
+ * repeatedly. Fingerprints on the raw name itself (see normalize) - a memo storing only
+ * function-name-keyed calls with no fingerprint would conflate two different inputs to the same
+ * function into one cached result. The raw name is used as-is, no quoting/escaping - a
+ * fingerprint only needs to be unique per input, not a faithfully round-trippable serialization.
  */
-function memoizedNormalizeForSimilarity(memo: Map<string, unknown>, name: string): string {
-  return normalize(memo, `normalizeForSimilarity(${name})`, () => normalizeForSimilarity(name));
+function memoizedNormalizeForSimilarity(memo: NormalizedMemo, name: string): string {
+  return normalize(memo, 'normalizeForSimilarity', name, () => normalizeForSimilarity(name));
 }
 
 /** Jaro-Winkler character-level similarity between the ACMS full name and a candidate's composed
@@ -173,10 +171,11 @@ export function similarityDiagnosticsStage(): Stage {
         candidate.camsNormalized,
         candidate.camsRaw.name,
       );
-      normalize(candidate.camsNormalized, 'fullNameSimilarity', () =>
+      const fingerprint = `${normalizedAcms}|${normalizedCams}`;
+      normalize(candidate.camsNormalized, 'fullNameSimilarity', fingerprint, () =>
         fullNameSimilarity(normalizedAcms, normalizedCams),
       );
-      normalize(candidate.camsNormalized, 'tokenNameMatchRate', () =>
+      normalize(candidate.camsNormalized, 'tokenNameMatchRate', fingerprint, () =>
         tokenNameMatchRate(normalizedAcms, normalizedCams),
       );
     }
