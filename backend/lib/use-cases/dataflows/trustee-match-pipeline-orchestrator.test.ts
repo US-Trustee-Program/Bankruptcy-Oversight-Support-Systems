@@ -165,6 +165,53 @@ describe('runTrusteeMatchPipeline', () => {
     expect(result.match?.trusteeId).toBe('t1');
   });
 
+  test('scores nameScore for matchTrusteeByName ambiguous candidates, enabling phoneTypoToleranceStage', async () => {
+    vi.spyOn(trusteeMatchHelpers, 'findSurnameExactCandidates').mockResolvedValue([]);
+    vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({
+      kind: 'ambiguous',
+      matchCandidates: [{ trusteeId: 't1' } as never],
+    });
+    const candidate = makeTrustee({
+      trusteeId: 't1',
+      firstName: 'Sample',
+      middleName: 'R.',
+      lastName: 'Testerson',
+      name: 'Sample R. Testerson',
+      public: {
+        address: {
+          address1: '606 Baltimore Ave., Suite 202',
+          city: 'Baltimore',
+          state: 'MD',
+          zipCode: '21204-4026',
+          countryCode: 'US',
+        },
+        phone: { number: '410-321-7908' },
+      },
+    });
+    vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByIds').mockResolvedValue([candidate]);
+    vi.spyOn(trusteeMatchHelpers, 'resolveByContactCorroboration').mockResolvedValue({
+      kind: 'unresolved',
+      candidateScores: [],
+    });
+    vi.spyOn(trusteeMatchHelpers, 'resolveDuplicateNameCandidates').mockResolvedValue({
+      kind: 'unresolved',
+      candidateScores: [],
+    });
+
+    const result = await runTrusteeMatchPipeline(
+      context,
+      makeDxtrTrustee({
+        fullName: 'Sample R Testerson',
+        firstName: 'Sample',
+        middleName: 'R',
+        lastName: 'Testerson',
+        legacy: { phone: '4103217900' } as never,
+      }),
+    );
+
+    expect(result.match?.trusteeId).toBe('t1');
+  });
+
   test('returns no match when every tier is exhausted', async () => {
     vi.spyOn(trusteeMatchHelpers, 'findSurnameExactCandidates').mockResolvedValue([]);
     vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({ kind: 'no-match' });

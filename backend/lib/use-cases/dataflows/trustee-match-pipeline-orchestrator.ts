@@ -111,6 +111,7 @@ async function resolveMatchTrusteeByNameAmbiguous(
   }
   const nestedResult = await runPipeline(nestedState, [
     stateFilterStage(),
+    nameScoreStage(),
     similarityDiagnosticsStage(),
     corroborationStage(context),
     comparativeCorroborationStage(),
