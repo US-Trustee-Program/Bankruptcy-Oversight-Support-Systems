@@ -258,6 +258,60 @@ export function stateFilterStage(): Stage {
 }
 
 /**
+ * Independent city-agreement scorer, for the sole-candidate consensus vote (see
+ * soleCandidateConsensusStage) - a new, cheap corroborating signal distinct from
+ * calculateAddressScore's bigram-similarity comparison of the FULL address line.
+ * Case-insensitive exact match on the parsed city name alone (not a fuzzy/bigram compare,
+ * unlike calculateAddressScore - city names are short enough that a typo either round-trips
+ * through parseCityStateZip's tokenization exactly or doesn't, and a partial-credit scheme adds
+ * complexity with no evidence yet that it's needed). No record is added when either side's city
+ * is unavailable (unparseable ACMS address, or a candidate with no address on file) - absence is
+ * not evidence either way, so it should not count as a vote (see soleCandidateConsensusStage's
+ * "scorers that actually ran" framing).
+ */
+export function cityMatchStage(): Stage {
+  return withGuard(async (state: PipelineState): Promise<PipelineState> => {
+    const parsedAcmsAddress = parseCityStateZip(state.acmsRaw.legacy?.cityStateZipCountry);
+    const acmsCity = parsedAcmsAddress?.city.toLowerCase();
+    if (!acmsCity) return state;
+
+    for (const candidate of state.candidates.values()) {
+      const camsCity = candidate.camsRaw.address?.city?.toLowerCase();
+      if (!camsCity) continue;
+
+      const pass = camsCity === acmsCity;
+      addScore(candidate, 'cityMatchStage', { value: pass ? 100 : 0, threshold: 100, pass });
+    }
+    return state;
+  });
+}
+
+/**
+ * Independent zip-agreement scorer, for the sole-candidate consensus vote (see
+ * soleCandidateConsensusStage) - compares only the 5-digit zip prefix (never the +4 extension,
+ * which is far more granular than a professional's on-file mailing address is likely to stay
+ * current with) between the ACMS record's parsed zip and a candidate's zipCode. No record is
+ * added when either side has fewer than 5 digits to compare (unparseable ACMS address, or a
+ * candidate with no/blank zipCode) - same "absence is not evidence" rule as cityMatchStage.
+ */
+export function zipMatchStage(): Stage {
+  return withGuard(async (state: PipelineState): Promise<PipelineState> => {
+    const parsedAcmsAddress = parseCityStateZip(state.acmsRaw.legacy?.cityStateZipCountry);
+    const acmsZip5 = parsedAcmsAddress?.zipCode.slice(0, 5);
+    if (!acmsZip5 || acmsZip5.length < 5) return state;
+
+    for (const candidate of state.candidates.values()) {
+      const camsZip5 = candidate.camsRaw.address?.zipCode?.slice(0, 5);
+      if (!camsZip5 || camsZip5.length < 5) continue;
+
+      const pass = camsZip5 === acmsZip5;
+      addScore(candidate, 'zipMatchStage', { value: pass ? 100 : 0, threshold: 100, pass });
+    }
+    return state;
+  });
+}
+
+/**
  * Resolution stage wrapping the existing resolveByContactCorroboration and
  * resolveDuplicateNameCandidates unchanged, in the same order sync-acms-professional-ids.ts's
  * resolveCandidatesByCorroboration already composes them: contact corroboration first, duplicate-
@@ -449,6 +503,84 @@ export function phoneTypoToleranceStage(): Stage {
     });
 
     if (distance > PHONE_TYPO_MAX_DIGIT_DISTANCE) return state;
+
+    return {
+      ...state,
+      match: { trusteeId: candidate.camsRaw.trusteeId, score: candidate.scores },
+    };
+  });
+}
+
+/**
+ * The corroborating scorers a sole candidate's consensus vote counts - deliberately excludes
+ * calculateNameScore itself (that is the GATE into this stage, not a vote; every candidate this
+ * stage considers already cleared it) and phoneTypoToleranceScore (a narrower, already-resolved
+ * special case handled by phoneTypoToleranceStage - counting it here would double-count the same
+ * underlying phone comparison contactCorroborationPhone already covers).
+ */
+const CONSENSUS_VOTING_SCORERS = [
+  'stateFilterStage',
+  'cityMatchStage',
+  'zipMatchStage',
+  'contactCorroborationAddress',
+  'contactCorroborationPhone',
+] as const;
+
+/**
+ * Minimum percentage (0-100, the same scale every ScoreRecord.value/threshold uses - never a 0-1
+ * fraction, so this stage's internal arithmetic never has to convert between two scales) of
+ * applicable votes (see CONSENSUS_VOTING_SCORERS) that must pass for soleCandidateConsensusStage
+ * to resolve. A starting point, not a derived constant - tuned against a real backtest population
+ * (see test/integration/sync-acms-professional-ids-audit) rather than reasoned about in the
+ * abstract, the same way CONTACT_CORROBORATION_NAME_THRESHOLD and PHONE_TYPO_MAX_DIGIT_DISTANCE
+ * were each tuned against real recovered/rejected populations: 75% left a real, systematic
+ * pattern unresolved (a stale zip/phone on file, but exact name/city/state agreement); 60%
+ * recovers that whole pattern with every sampled resolve looking correct by hand; 50% recovers
+ * only 3 more records than 60% - diminishing returns past that point.
+ */
+const CONSENSUS_PASS_PERCENT = 60;
+
+/**
+ * Resolves a SOLE name-qualifying candidate (comparativeCorroborationStage's multi-candidate case,
+ * and phoneTypoToleranceStage's narrower phone-typo case, both do not apply) using a
+ * pass-fraction vote across every independent corroborating scorer that actually produced a
+ * record for this candidate (see CONSENSUS_VOTING_SCORERS) - state, city, zip, address, phone.
+ * A scorer that never ran (e.g. no comparable phone/zip data on either side) does not count as a
+ * vote either way, so a thin-data candidate is judged only on the evidence that actually exists,
+ * never penalized for missing data. Requires at least one scorer to have run at all - a candidate
+ * with ZERO corroborating evidence of any kind never resolves via consensus, regardless of how
+ * high the (trivially 0/0) pass fraction would otherwise compute to.
+ *
+ * Complements comparativeCorroborationStage/phoneTypoToleranceStage rather than replacing them:
+ * this stage is the general fallback for the shape neither of those two covers - exactly one
+ * name-qualifying candidate whose nameScore is below 100 (so phoneTypoToleranceStage's stricter
+ * gate does not apply) with no second candidate to compare against (so
+ * comparativeCorroborationStage's gate does not apply either).
+ */
+export function soleCandidateConsensusStage(): Stage {
+  return withGuard(async (state: PipelineState): Promise<PipelineState> => {
+    const qualifying = [...state.candidates.values()].filter(
+      (candidate) => mergedScore(candidate).calculateNameScore?.pass === true,
+    );
+    if (qualifying.length !== 1) return state;
+
+    const candidate = qualifying[0];
+    const scores = mergedScore(candidate);
+    const votes = CONSENSUS_VOTING_SCORERS.map((scorer) => scores[scorer]).filter(
+      (record): record is ScoreRecord => record !== undefined,
+    );
+    if (votes.length === 0) return state;
+
+    const passCount = votes.filter((record) => record.pass).length;
+    const passPercent = Math.round((passCount / votes.length) * 100);
+    const pass = passPercent >= CONSENSUS_PASS_PERCENT;
+    addScore(candidate, 'soleCandidateConsensusStage', {
+      value: passPercent,
+      threshold: CONSENSUS_PASS_PERCENT,
+      pass,
+    });
+
+    if (!pass) return state;
 
     return {
       ...state,

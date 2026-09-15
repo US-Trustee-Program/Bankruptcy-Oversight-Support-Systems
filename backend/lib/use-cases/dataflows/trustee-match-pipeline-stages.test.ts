@@ -21,9 +21,12 @@ import {
   nameScoreStage,
   similarityDiagnosticsStage,
   stateFilterStage,
+  cityMatchStage,
+  zipMatchStage,
   corroborationStage,
   comparativeCorroborationStage,
   phoneTypoToleranceStage,
+  soleCandidateConsensusStage,
 } from './trustee-match-pipeline-stages';
 
 const makeDxtrTrustee = (overrides: Partial<DxtrTrusteeParty> = {}): DxtrTrusteeParty => ({
@@ -546,6 +549,202 @@ describe('stateFilterStage', () => {
     addTrustee(state, { trusteeId: 't1' });
 
     const result = await stateFilterStage()(state);
+
+    expect(result.candidates.get('t1')!.scores).toEqual({});
+  });
+});
+
+describe('cityMatchStage', () => {
+  const dxtrInSeattle = makeDxtrTrustee({
+    fullName: 'Aldric A Moon',
+    legacy: { cityStateZipCountry: 'Seattle, WA 98101' },
+  });
+
+  const addTrustee = (state: PipelineState, overrides: Partial<Trustee> = {}) =>
+    addCandidate(
+      state,
+      projectTrustee(
+        makeTrustee({ firstName: 'Someone', lastName: 'Moon', name: 'Someone Moon', ...overrides }),
+      ),
+    );
+
+  test('records a pass when the candidate city matches, case-insensitively', async () => {
+    const state = createInitialState(dxtrInSeattle);
+    addTrustee(state, {
+      trusteeId: 't1',
+      public: {
+        address: {
+          address1: '1 Elm St',
+          city: 'SEATTLE',
+          state: 'WA',
+          zipCode: '98101',
+          countryCode: 'US',
+        },
+      },
+    });
+
+    const result = await cityMatchStage()(state);
+
+    expect(mergedScore(result.candidates.get('t1')!)).toMatchObject({
+      cityMatchStage: { value: 100, threshold: 100, pass: true },
+    });
+  });
+
+  test('records a fail when the candidate city differs', async () => {
+    const state = createInitialState(dxtrInSeattle);
+    addTrustee(state, {
+      trusteeId: 't1',
+      public: {
+        address: {
+          address1: '1 Elm St',
+          city: 'Tacoma',
+          state: 'WA',
+          zipCode: '98402',
+          countryCode: 'US',
+        },
+      },
+    });
+
+    const result = await cityMatchStage()(state);
+
+    expect(mergedScore(result.candidates.get('t1')!)).toMatchObject({
+      cityMatchStage: { pass: false },
+    });
+  });
+
+  test('adds no record when the ACMS address is unparseable', async () => {
+    const state = createInitialState(makeDxtrTrustee({ legacy: { cityStateZipCountry: '' } }));
+    addTrustee(state, {
+      trusteeId: 't1',
+      public: {
+        address: {
+          address1: '1 Elm St',
+          city: 'Seattle',
+          state: 'WA',
+          zipCode: '98101',
+          countryCode: 'US',
+        },
+      },
+    });
+
+    const result = await cityMatchStage()(state);
+
+    expect(result.candidates.get('t1')!.scores.cityMatchStage).toBeUndefined();
+  });
+
+  test('adds no record when the candidate has no city on file', async () => {
+    const state = createInitialState(dxtrInSeattle);
+    addTrustee(state, {
+      trusteeId: 't1',
+      public: {
+        address: { address1: '1 Elm St', city: '', state: 'WA', zipCode: '', countryCode: 'US' },
+      },
+    });
+
+    const result = await cityMatchStage()(state);
+
+    expect(result.candidates.get('t1')!.scores.cityMatchStage).toBeUndefined();
+  });
+
+  test('no-ops once the pipeline has already matched', async () => {
+    const state: PipelineState = {
+      ...createInitialState(dxtrInSeattle),
+      match: { trusteeId: 'already-matched', score: {} },
+    };
+    addTrustee(state, { trusteeId: 't1' });
+
+    const result = await cityMatchStage()(state);
+
+    expect(result.candidates.get('t1')!.scores).toEqual({});
+  });
+});
+
+describe('zipMatchStage', () => {
+  const dxtrInSeattle = makeDxtrTrustee({
+    fullName: 'Aldric A Moon',
+    legacy: { cityStateZipCountry: 'Seattle, WA 98101' },
+  });
+
+  const addTrustee = (state: PipelineState, overrides: Partial<Trustee> = {}) =>
+    addCandidate(
+      state,
+      projectTrustee(
+        makeTrustee({ firstName: 'Someone', lastName: 'Moon', name: 'Someone Moon', ...overrides }),
+      ),
+    );
+
+  test('records a pass when the 5-digit zip prefix matches, ignoring a +4 extension', async () => {
+    const state = createInitialState(dxtrInSeattle);
+    addTrustee(state, {
+      trusteeId: 't1',
+      public: {
+        address: {
+          address1: '1 Elm St',
+          city: 'Seattle',
+          state: 'WA',
+          zipCode: '98101-4321',
+          countryCode: 'US',
+        },
+      },
+    });
+
+    const result = await zipMatchStage()(state);
+
+    expect(mergedScore(result.candidates.get('t1')!)).toMatchObject({
+      zipMatchStage: { value: 100, threshold: 100, pass: true },
+    });
+  });
+
+  test('records a fail when the 5-digit zip prefix differs', async () => {
+    const state = createInitialState(dxtrInSeattle);
+    addTrustee(state, {
+      trusteeId: 't1',
+      public: {
+        address: {
+          address1: '1 Elm St',
+          city: 'Tacoma',
+          state: 'WA',
+          zipCode: '98402',
+          countryCode: 'US',
+        },
+      },
+    });
+
+    const result = await zipMatchStage()(state);
+
+    expect(mergedScore(result.candidates.get('t1')!)).toMatchObject({
+      zipMatchStage: { pass: false },
+    });
+  });
+
+  test('adds no record when the candidate has no zip on file', async () => {
+    const state = createInitialState(dxtrInSeattle);
+    addTrustee(state, {
+      trusteeId: 't1',
+      public: {
+        address: {
+          address1: '1 Elm St',
+          city: 'Seattle',
+          state: 'WA',
+          zipCode: '',
+          countryCode: 'US',
+        },
+      },
+    });
+
+    const result = await zipMatchStage()(state);
+
+    expect(result.candidates.get('t1')!.scores.zipMatchStage).toBeUndefined();
+  });
+
+  test('no-ops once the pipeline has already matched', async () => {
+    const state: PipelineState = {
+      ...createInitialState(dxtrInSeattle),
+      match: { trusteeId: 'already-matched', score: {} },
+    };
+    addTrustee(state, { trusteeId: 't1' });
+
+    const result = await zipMatchStage()(state);
 
     expect(result.candidates.get('t1')!.scores).toEqual({});
   });
@@ -1097,5 +1296,114 @@ describe('phoneTypoToleranceStage', () => {
     await phoneTypoToleranceStage()(state);
 
     expect(candidate.scores).not.toHaveProperty('phoneTypoToleranceScore');
+  });
+});
+
+describe('soleCandidateConsensusStage', () => {
+  const acmsRecord = makeDxtrTrustee({ fullName: 'Aldric A Moon' });
+
+  test('resolves a sole nameScore=85 candidate when every corroborating vote passes', async () => {
+    const state = createInitialState(acmsRecord);
+    const candidate = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Moon' })),
+    );
+    addScore(candidate, 'calculateNameScore', { value: 85, threshold: 85, pass: true });
+    addScore(candidate, 'stateFilterStage', { value: 100, threshold: 100, pass: true });
+    addScore(candidate, 'cityMatchStage', { value: 100, threshold: 100, pass: true });
+    addScore(candidate, 'zipMatchStage', { value: 100, threshold: 100, pass: true });
+
+    const result = await soleCandidateConsensusStage()(state);
+
+    expect(result.match).toEqual({
+      trusteeId: 't1',
+      score: expect.objectContaining({
+        soleCandidateConsensusStage: expect.objectContaining({ pass: true }),
+      }),
+    });
+  });
+
+  test('does not resolve when most votes fail', async () => {
+    const state = createInitialState(acmsRecord);
+    const candidate = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Moon' })),
+    );
+    addScore(candidate, 'calculateNameScore', { value: 85, threshold: 85, pass: true });
+    addScore(candidate, 'stateFilterStage', { value: 100, threshold: 100, pass: true });
+    addScore(candidate, 'cityMatchStage', { value: 0, threshold: 100, pass: false });
+    addScore(candidate, 'contactCorroborationAddress', { value: 3, threshold: 80, pass: false });
+
+    const result = await soleCandidateConsensusStage()(state);
+
+    expect(result.match).toBeNull();
+    expect(mergedScore(candidate)).toMatchObject({
+      soleCandidateConsensusStage: { pass: false },
+    });
+  });
+
+  test('does not resolve when no corroborating scorer ran at all', async () => {
+    const state = createInitialState(acmsRecord);
+    const candidate = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Moon' })),
+    );
+    addScore(candidate, 'calculateNameScore', { value: 85, threshold: 85, pass: true });
+
+    const result = await soleCandidateConsensusStage()(state);
+
+    expect(result.match).toBeNull();
+    expect(candidate.scores.soleCandidateConsensusStage).toBeUndefined();
+  });
+
+  test('does not resolve when the candidate never cleared the name threshold', async () => {
+    const state = createInitialState(acmsRecord);
+    const candidate = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Else' })),
+    );
+    addScore(candidate, 'calculateNameScore', { value: 0, threshold: 85, pass: false });
+    addScore(candidate, 'stateFilterStage', { value: 100, threshold: 100, pass: true });
+
+    const result = await soleCandidateConsensusStage()(state);
+
+    expect(result.match).toBeNull();
+  });
+
+  test("does not resolve when more than one candidate qualifies - not this stage's job", async () => {
+    const state = createInitialState(acmsRecord);
+    const first = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Moon' })),
+    );
+    addScore(first, 'calculateNameScore', { value: 85, threshold: 85, pass: true });
+    addScore(first, 'stateFilterStage', { value: 100, threshold: 100, pass: true });
+    const second = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't2', name: 'Someone Else Moon' })),
+    );
+    addScore(second, 'calculateNameScore', { value: 85, threshold: 85, pass: true });
+    addScore(second, 'stateFilterStage', { value: 100, threshold: 100, pass: true });
+
+    const result = await soleCandidateConsensusStage()(state);
+
+    expect(result.match).toBeNull();
+  });
+
+  test('no-ops once the pipeline has already matched', async () => {
+    const state: PipelineState = {
+      ...createInitialState(acmsRecord),
+      match: { trusteeId: 'already-matched', score: {} },
+    };
+    const candidate = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Moon' })),
+    );
+    addScore(candidate, 'calculateNameScore', { value: 85, threshold: 85, pass: true });
+    addScore(candidate, 'stateFilterStage', { value: 100, threshold: 100, pass: true });
+
+    const result = await soleCandidateConsensusStage()(state);
+
+    expect(result.match).toEqual({ trusteeId: 'already-matched', score: {} });
   });
 });

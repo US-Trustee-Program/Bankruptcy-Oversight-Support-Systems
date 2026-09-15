@@ -67,7 +67,7 @@ describe('runTrusteeMatchPipeline', () => {
 
     const result = await runTrusteeMatchPipeline(
       context,
-      makeDxtrTrustee({ fullName: 'Someone Moon', lastName: 'Moon' }),
+      makeDxtrTrustee({ fullName: 'Someone Moon', firstName: 'Someone', lastName: 'Moon' }),
     );
 
     expect(matchSpy).not.toHaveBeenCalled();
@@ -123,7 +123,7 @@ describe('runTrusteeMatchPipeline', () => {
       matchCandidates: [{ trusteeId: 't1' } as never],
     });
     vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByIds').mockResolvedValue([
-      makeTrustee({ trusteeId: 't1' }),
+      makeTrustee({ trusteeId: 't1', firstName: 'Someone', lastName: 'Else' }),
     ]);
     vi.spyOn(trusteeMatchHelpers, 'resolveByContactCorroboration')
       .mockResolvedValueOnce({ kind: 'unresolved', candidateScores: [] })

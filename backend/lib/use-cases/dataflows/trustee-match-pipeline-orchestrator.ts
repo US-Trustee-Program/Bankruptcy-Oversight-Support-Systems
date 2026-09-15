@@ -13,14 +13,17 @@ import {
 } from './trustee-match-pipeline';
 import {
   anchoredLevenshteinDiscoveryStage,
+  cityMatchStage,
   comparativeCorroborationStage,
   corroborationStage,
   nameScoreStage,
   phoneTypoToleranceStage,
   similarityDiagnosticsStage,
+  soleCandidateConsensusStage,
   stateFilterStage,
   surnameExactDiscoveryStage,
   tokenIntersectionDiscoveryStage,
+  zipMatchStage,
 } from './trustee-match-pipeline-stages';
 
 /**
@@ -50,9 +53,12 @@ async function runNestedTier(
     stateFilterStage(),
     nameScoreStage(),
     similarityDiagnosticsStage(),
+    cityMatchStage(),
+    zipMatchStage(),
     corroborationStage(context),
     comparativeCorroborationStage(),
     phoneTypoToleranceStage(),
+    soleCandidateConsensusStage(),
   ]);
 
   for (const candidate of nestedResult.candidates.values()) {
@@ -114,9 +120,12 @@ async function resolveMatchTrusteeByNameAmbiguous(
     stateFilterStage(),
     nameScoreStage(),
     similarityDiagnosticsStage(),
+    cityMatchStage(),
+    zipMatchStage(),
     corroborationStage(context),
     comparativeCorroborationStage(),
     phoneTypoToleranceStage(),
+    soleCandidateConsensusStage(),
   ]);
 
   for (const candidate of nestedResult.candidates.values()) {
