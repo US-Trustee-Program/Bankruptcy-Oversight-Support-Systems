@@ -24,8 +24,8 @@ Tracked as `cams-9n4tg`.
   PR gate cannot check a ref that is not present locally.
 - `az` CLI logged in to `Flexion DOJ USTP`, for the [Rollback](#rollback) path.
 - Nobody mid-deploy. Check for in-flight `Continuous Deployment` runs first.
-- **For Step 5 only:** `cams-q7lo1` closed — the Veracode/SourceClear ownership
-  question. Steps 0–4 and 6–7 do not depend on it.
+- No outstanding prerequisites. The Veracode/SourceClear ownership question that
+  gated Step 5 was confirmed on 2026-09-15 (`cams-q7lo1`, closed).
 
 ## Do NOT delete
 
@@ -250,62 +250,48 @@ risk here is not breakage — it is that deletion destroys the value permanently
 That is the entire reason this is a separate gated step rather than part of
 Step 2.
 
-### Prerequisite: answer the Veracode/SourceClear question first
-
-Tracked as `cams-q7lo1`, which blocks `cams-9n4tg`. **Do not run Step 5 until it
-is closed.**
+### Prerequisite — resolved
 
 Six of the eight — `VERACODE_API_ID`, `VERACODE_API_KEY`, `VERACODE_APP_ID`,
 `VERACODE_SAST_POLICY`, `SRCCLR_API_TOKEN`, `SRCCLR_REGION` — have no code path
 anywhere in the repository. Greps for `veracode`, `srcclr`, `sourceclear` and
-`pipeline-scan` across `.github/` and `ops/` return nothing, and Veracode was
-retired in favour of Snyk.
+`pipeline-scan` across `.github/` and `ops/` return nothing.
 
-Zero references is consistent with *dead tooling*. It is equally consistent with
-*a human runs a manual submission from a runbook that does not live in this
-repo*. **The repository cannot tell those apart**, which is why this needs a
-person rather than another audit — no amount of scanning will settle it.
+Zero references was not sufficient on its own: it is consistent with *dead
+tooling* and equally consistent with *a human running a manual submission from a
+runbook that does not live in this repo*, and the repository cannot tell those
+apart. That needed a person rather than another audit.
 
-Ask whoever owns Veracode/SourceClear submissions: has the contract lapsed, and
-does any manual or offline process still use these credentials?
-
-| Answer | Action |
-| --- | --- |
-| Lapsed / unused | Delete all six below. Also **rotate** the storage account key behind `AZ_STOR_VERACODE_KEY` in Azure — Step 4 deleted the GitHub copy but did not revoke the key. |
-| Still in use | Remove those six from this step and document where they are consumed, so the next audit does not re-flag them. |
-
-### Step 5a — the two that are not gated
-
-`LD_ACCESS_TOKEN` and `PGP_SIGNING_PASSPHRASE` are unrelated to the Veracode
-question and can go on their own merits:
+**Confirmed 2026-09-15: Veracode is not in use.** All six may be deleted
+(`cams-q7lo1`, closed). The confirmation is taken as covering `SRCCLR_*` as well
+— SourceClear is a Veracode product and both credential sets were retired
+together in the move to Snyk. If `SRCCLR_*` turns out to be a separate
+arrangement, stop and reopen that bead.
 
 ```bash
-for s in LD_ACCESS_TOKEN PGP_SIGNING_PASSPHRASE; do
-  if gh secret delete "$s" -R "$REPO"; then echo "  deleted $s"; else echo "  FAILED $s"; fi
-done
-```
-
-### Step 5b — the six gated on `cams-q7lo1`
-
-**Only run this block once `cams-q7lo1` is closed with "lapsed / unused".** It is
-kept separate precisely so that pasting Step 5a does not quietly take these six
-with it:
-
-```bash
-for s in VERACODE_API_ID VERACODE_API_KEY VERACODE_APP_ID VERACODE_SAST_POLICY \
+for s in LD_ACCESS_TOKEN PGP_SIGNING_PASSPHRASE \
+         VERACODE_API_ID VERACODE_API_KEY VERACODE_APP_ID VERACODE_SAST_POLICY \
          SRCCLR_API_TOKEN SRCCLR_REGION; do
   if gh secret delete "$s" -R "$REPO"; then echo "  deleted $s"; else echo "  FAILED $s"; fi
 done
 ```
 
-Then rotate the `AZ_STOR_VERACODE_KEY` storage account key in Azure, per the
-table above.
+### Then — rotate the Veracode storage key
+
+> **This is the one action in this runbook that is not a deletion, and the
+> easiest to skip.** `AZ_STOR_VERACODE_KEY` is a storage account **access key**.
+> Step 4 deleted the GitHub copy, which does **not** revoke it — the credential
+> remains live in Azure. Worse, once that secret is gone so is the record of
+> which key it held, so this gets harder the longer it is left.
+
+Rotate the key on the storage account that `AZ_STOR_VERACODE_NAME` referred to.
+Now that Veracode is confirmed unused, nothing should break.
 
 | Secret | Why there is no mirror |
 | --- | --- |
 | `LD_ACCESS_TOKEN` | LaunchDarkly **management API** token. `FEATURE-FLAG-SDK-KEY` exists in both vaults but is the *SDK* key — not the same credential. Regenerable from the LD console. |
 | `PGP_SIGNING_PASSPHRASE` | Served the encrypted-input scheme that CAMS-760 removed outright. Obsolete rather than migrated. |
-| `VERACODE_*`, `SRCCLR_*` | Vendor credentials for tooling retired in favour of Snyk. Gated on `cams-q7lo1` above. |
+| `VERACODE_*`, `SRCCLR_*` | Vendor credentials for tooling retired in favour of Snyk. Confirmed unused 2026-09-15 (`cams-q7lo1`). |
 
 > Two name collisions worth re-reading before you paste anything.
 > `PGP_SIGNING_PASSPHRASE` is **not** `BOT_PRIVATE_KEY` / `BOT_PASSPHRASE` —
