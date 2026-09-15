@@ -93,6 +93,32 @@ describe('writeCsv', () => {
     expect(contents).toBe('periodStart,periodEnd,issueCount\n');
   });
 
+  test('an explicit columns argument filters and orders fields from non-empty row data', async () => {
+    const filePath = join(workDir, 'explicit-columns.csv');
+    const rows = [
+      { a: 1, b: 2, c: 3 },
+      { a: 4, b: 5, c: 6 },
+    ];
+
+    await writeCsv(rows, filePath, ['c', 'a']);
+
+    const contents = await readFile(filePath, 'utf8');
+    const lines = contents.trim().split('\n');
+    expect(lines[0]).toBe('c,a');
+    expect(lines[1]).toBe('3,1');
+    expect(lines[2]).toBe('6,4');
+  });
+
+  test('guards fields starting with a formula-triggering character', async () => {
+    const filePath = join(workDir, 'formula-guard.csv');
+    const rows = [{ formula: '=SUM(A1:A10)', plus: '+1', minus: '-1', at: '@mention' }];
+
+    await writeCsv(rows, filePath);
+
+    const contents = await readFile(filePath, 'utf8');
+    expect(contents).toBe('formula,plus,minus,at\n' + "'=SUM(A1:A10),'+1,'-1,'@mention\n");
+  });
+
   test('throws when rows is empty and no columns argument is given', async () => {
     const filePath = join(workDir, 'empty.csv');
 

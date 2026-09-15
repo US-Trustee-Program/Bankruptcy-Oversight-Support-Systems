@@ -1,6 +1,6 @@
 import { WorkflowRun } from './deployment-frequency.js';
+import { resolvePeriodWindows } from './period-window.js';
 
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const MS_PER_HOUR = 60 * 60 * 1000;
 
 export type CompletedIssue = {
@@ -46,25 +46,11 @@ export function computeLeadTime(
   runs: WorkflowRun[],
   options: ComputeLeadTimeOptions,
 ): ComputeLeadTimeResult {
-  const { startDate, periodDays } = options;
-  if (!Number.isFinite(periodDays) || periodDays <= 0) {
-    throw new Error(`periodDays must be a positive finite number, got ${periodDays}`);
-  }
-  const endDate = options.endDate ?? new Date();
-  if (!Number.isFinite(startDate.getTime()) || !Number.isFinite(endDate.getTime())) {
-    throw new Error('startDate and endDate must be valid dates');
-  }
-  if (startDate.getTime() > endDate.getTime()) {
-    throw new Error('startDate must be on or before endDate');
-  }
-  const periodMs = periodDays * MS_PER_DAY;
-  const totalMs = endDate.getTime() - startDate.getTime();
-  const periodCount = Math.max(1, Math.ceil(totalMs / periodMs));
-  if (!Number.isFinite(periodCount)) {
-    throw new Error(
-      'periodDays is too small relative to the date range (would produce an unbounded number of buckets)',
-    );
-  }
+  const { startDate, endDate, windows } = resolvePeriodWindows(
+    options.startDate,
+    options.periodDays,
+    options.endDate,
+  );
 
   const successfulRunTimestamps = runs
     .filter((run) => run.conclusion === 'success')
@@ -85,29 +71,25 @@ export function computeLeadTime(
     });
   }
 
-  const byPeriod: LeadTimeBucket[] = [];
-  for (let i = 0; i < periodCount; i++) {
-    const bucketStartMs = startDate.getTime() + i * periodMs;
-    const bucketEndMs = bucketStartMs + periodMs;
-
+  const byPeriod: LeadTimeBucket[] = windows.map(({ startMs, endMs, periodStart, periodEnd }) => {
     const bucketLeadTimes = perIssue
       .filter((issue) => {
         const t = new Date(issue.closedAt).getTime();
-        return t >= bucketStartMs && t < bucketEndMs;
+        return t >= startMs && t < endMs;
       })
       .map((issue) => issue.leadTimeHours);
 
-    byPeriod.push({
-      periodStart: new Date(bucketStartMs).toISOString(),
-      periodEnd: new Date(bucketEndMs).toISOString(),
+    return {
+      periodStart,
+      periodEnd,
       issueCount: bucketLeadTimes.length,
       meanLeadTimeHours:
         bucketLeadTimes.length > 0
           ? bucketLeadTimes.reduce((sum, v) => sum + v, 0) / bucketLeadTimes.length
           : 0,
       medianLeadTimeHours: median(bucketLeadTimes),
-    });
-  }
+    };
+  });
 
   return { perIssue, byPeriod };
 }

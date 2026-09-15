@@ -52,6 +52,22 @@ describe('computeLeadTime', () => {
     expect(perIssue[0].deployedAt).toBe('2026-01-04T00:00:00.000Z');
   });
 
+  test('resolves the correct deploy even when runs are supplied newest-first, as the GitHub API returns them', () => {
+    const startDate = new Date('2026-01-01T00:00:00.000Z');
+    const endDate = new Date('2026-01-15T00:00:00.000Z');
+    const issues: CompletedIssue[] = [{ number: 1, closed_at: '2026-01-02T00:00:00.000Z' }];
+    const runs: WorkflowRun[] = [
+      { id: 3, conclusion: 'success', created_at: '2026-01-10T00:00:00.000Z' },
+      { id: 2, conclusion: 'success', created_at: '2026-01-05T00:00:00.000Z' },
+      { id: 1, conclusion: 'success', created_at: '2026-01-03T00:00:00.000Z' },
+    ];
+
+    const { perIssue } = computeLeadTime(issues, runs, { startDate, periodDays: 7, endDate });
+
+    expect(perIssue).toHaveLength(1);
+    expect(perIssue[0].deployedAt).toBe('2026-01-03T00:00:00.000Z');
+  });
+
   test('computes mean and median lead time per bucket, including an even-count median', () => {
     const startDate = new Date('2026-01-01T00:00:00.000Z');
     const endDate = new Date('2026-01-08T00:00:00.000Z');
@@ -118,6 +134,7 @@ describe('computeLeadTime', () => {
     // change outside the requested reporting window.
     expect(perIssue.map((issue) => issue.issueNumber)).toEqual([1]);
     expect(byPeriod).toHaveLength(2);
+    expect(byPeriod[0].issueCount).toBe(0);
     expect(byPeriod[1].issueCount).toBe(1);
   });
 

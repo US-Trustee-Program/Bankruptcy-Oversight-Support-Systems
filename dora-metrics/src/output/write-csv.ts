@@ -2,8 +2,10 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
 function escapeCsvField(value: string): string {
-  const escaped = value.replace(/"/g, '""');
-  return /[",\r\n]/.test(value) ? `"${escaped}"` : escaped;
+  // Prefix a leading quote to defuse spreadsheet formula injection (=, +, -, @, tab, CR).
+  const guarded = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+  const escaped = guarded.replace(/"/g, '""');
+  return /[",\r\n]/.test(guarded) ? `"${escaped}"` : escaped;
 }
 
 export async function writeCsv<T extends Record<string, string | number>>(
