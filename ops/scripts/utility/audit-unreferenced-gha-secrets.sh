@@ -11,6 +11,17 @@
 # crash -- it is a gate that finds nothing because it never really looked, and
 # prints a green light over an irreversible deletion.
 #
+# SCOPE: the name list below is FROZEN. It is the output of one audit of one
+# commit, not a live inventory, and this script is a gate for that specific
+# cleanup rather than a general "find unused secrets" tool.
+#
+# Do NOT regenerate the list by diffing the live secret inventory against
+# references on `main` alone. A secret added by an in-flight branch is absent
+# from `main` by definition, so that method reports a colleague's new secret as
+# unused and deletes their work. Gate 6 exists to catch exactly that mistake:
+# any branch with commits in the last ACTIVE_DAYS that references a listed name
+# is a hard failure. Anyone extending this list must clear Gate 6 first.
+#
 # Usage
 #   From the root directory, run the following command:
 #     ./ops/scripts/utility/audit-unreferenced-gha-secrets.sh [-b|h]
@@ -93,6 +104,23 @@ err()  { echo "  ERROR $*"; errors=$((errors + 1)); }
 ok()   { echo "  OK    $*"; }
 indent() { while IFS= read -r line; do echo "        ${line}"; done; }
 
+# A branch with recent commits is someone's work in progress; a branch untouched
+# for months is residue. The distinction decides whether a reference is a hard
+# failure or a note, so it is configurable rather than buried.
+ACTIVE_DAYS="${ACTIVE_DAYS:-90}"
+
+branch_age_days() {  # branch_age_days <ref>
+  local ts
+  ts=$(git log -1 --format=%ct "$1" 2>/dev/null) || { echo "unknown"; return; }
+  echo $(( ( $(date +%s) - ts ) / 86400 ))
+}
+
+branch_is_active() {  # branch_is_active <ref>
+  local ts
+  ts=$(git log -1 --format=%ct "$1" 2>/dev/null) || return 1
+  [[ ${ts} -ge $(( $(date +%s) - ACTIVE_DAYS * 86400 )) ]]
+}
+
 if [[ ! -d .github ]]; then
   echo "ERROR: run this from the repository root (no .github directory here)." >&2
   exit 2
@@ -119,21 +147,44 @@ fi
 # report errors back through a variable -- a subshell assignment is lost.)
 SCAN_FILES=()
 SCAN_UNREADABLE=()
+SCAN_TRAVERSAL_ERR=""
 scan_prepare() {  # scan_prepare <path>
-  local path="$1" f
+  local path="$1" f errfile
   SCAN_FILES=()
   SCAN_UNREADABLE=()
+  SCAN_TRAVERSAL_ERR=""
+  errfile=$(mktemp) || { SCAN_TRAVERSAL_ERR="mktemp failed"; return 1; }
+  # find's own status is lost inside a process substitution, so its stderr is
+  # captured instead: an unreadable directory or a symlink loop would otherwise
+  # shrink SCAN_FILES silently and Gate 1 would scan an incomplete set cleanly.
   while IFS= read -r f; do
     [[ -z "${f}" ]] && continue
     if [[ -r "${f}" ]]; then SCAN_FILES+=("${f}"); else SCAN_UNREADABLE+=("${f}"); fi
-  done < <(find -L "${path}" -type f 2>/dev/null)
+  done < <(find -L "${path}" -type f 2>"${errfile}")
+  [[ -s "${errfile}" ]] && SCAN_TRAVERSAL_ERR=$(head -3 "${errfile}")
+  rm -f "${errfile}"
+  [[ -z "${SCAN_TRAVERSAL_ERR}" ]]
 }
 
-# Returns: 0 match (prints hits), 1 no match.
+# ref_grep is called inside a command substitution, so it cannot report an error
+# back through a variable. It writes grep's stderr to REF_ERR_FILE, which the
+# caller checks -- a file survives the subshell where an assignment would not.
+# Without this, a file that becomes unreadable between scan_prepare and grep
+# (grep exits 2) is indistinguishable from a file with no reference.
+REF_ERR_FILE=$(mktemp) || { echo "ERROR: mktemp failed." >&2; exit 3; }
 ref_grep() {  # ref_grep <NAME>
+  : > "${REF_ERR_FILE}"
   [[ ${#SCAN_FILES[@]} -eq 0 ]] && return 1
   grep -HinE "(secrets|vars)[[:space:]]*\.[[:space:]]*${1}([^A-Za-z0-9_]|\$)" \
-    "${SCAN_FILES[@]}" 2>/dev/null
+    "${SCAN_FILES[@]}" 2>"${REF_ERR_FILE}"
+}
+
+# Same file set as Gate 1, so Gate 2 cannot certify soundness over a narrower
+# view than the gate it exists to certify.
+set_grep() {  # set_grep <ERE>
+  : > "${REF_ERR_FILE}"
+  [[ ${#SCAN_FILES[@]} -eq 0 ]] && return 1
+  grep -HinE "$1" "${SCAN_FILES[@]}" 2>"${REF_ERR_FILE}"
 }
 
 urlencode() {
@@ -240,6 +291,10 @@ if [[ ${SELF_TEST_OK} -eq 0 ]]; then
   echo "        from this gate would be meaningless."
 else
   scan_prepare .github/
+  if [[ -n "${SCAN_TRAVERSAL_ERR}" ]]; then
+    err "traversing .github/ produced errors; the file set may be incomplete:"
+    echo "${SCAN_TRAVERSAL_ERR}" | indent
+  fi
   if [[ ${#SCAN_UNREADABLE[@]} -gt 0 ]]; then
     err "${#SCAN_UNREADABLE[@]} file(s) under .github/ are unreadable and were NOT scanned:"
     printf '        %s\n' "${SCAN_UNREADABLE[@]}"
@@ -251,7 +306,11 @@ else
     g1=0
     for name in "${ALL[@]}"; do
       hits=$(ref_grep "${name}")
-      if [[ -n "${hits}" ]]; then
+      if [[ -s "${REF_ERR_FILE}" ]]; then
+        err "${name}: grep errored; cannot conclude this name is unused:"
+        head -3 "${REF_ERR_FILE}" | indent
+        g1=$((g1 + 1))
+      elif [[ -n "${hits}" ]]; then
         fail "${name} is still referenced:"
         echo "${hits}" | indent
         g1=$((g1 + 1))
@@ -268,10 +327,10 @@ echo
 echo "--- Gate 2: static-analysis soundness ---"
 # Case- and whitespace-insensitive: GHA expression function names are
 # case-insensitive, so toJson(secrets) is as valid as toJSON(secrets).
-dynamic=$(grep -RinE 'toJSON[[:space:]]*\([[:space:]]*(secrets|vars)[[:space:]]*\)|(secrets|vars)[[:space:]]*\[' .github/ 2>/dev/null)
-drc=$?
-if [[ ${drc} -ge 2 ]]; then
-  err "dynamic-access scan errored (rc=${drc}); Gate 1 soundness unproven."
+dynamic=$(set_grep 'toJSON[[:space:]]*\([[:space:]]*(secrets|vars)[[:space:]]*\)|(secrets|vars)[[:space:]]*\[')
+if [[ -s "${REF_ERR_FILE}" ]]; then
+  err "dynamic-access scan errored; Gate 1 soundness unproven:"
+  head -3 "${REF_ERR_FILE}" | indent
 elif [[ -n "${dynamic}" ]]; then
   fail "dynamic secret/variable access found -- Gate 1 cannot be trusted:"
   echo "${dynamic}" | indent
@@ -286,7 +345,7 @@ else
   ok "no composite actions; workflows are the only consumer surface."
 fi
 
-inherit=$(grep -Rn "secrets:[[:space:]]*inherit" .github/ 2>/dev/null)
+inherit=$(set_grep "secrets:[[:space:]]*inherit")
 if [[ -n "${inherit}" ]]; then
   warn "'secrets: inherit' present (cams-x83dl). Benign for deletion while Gate 1"
   echo "        passes, since callee references are caught there too:"
@@ -400,7 +459,14 @@ if [[ ${GH_OK} -eq 1 && ${GIT_OK} -eq 1 && ${GIT_GREP_OK} -eq 1 ]]; then
         h=$(git grep -hoiE "(secrets|vars)[[:space:]]*\.[[:space:]]*(${pattern})([^A-Za-z0-9_]|$)" \
           "origin/${branch}" -- .github/ 2>/dev/null | sort -u | tr '\n' ' ')
         if [[ -n "${h}" ]]; then
-          warn "PR #${num} (${branch}) still references: ${h}"
+          if branch_is_active "origin/${branch}"; then
+            fail "PR #${num} (${branch}) is ACTIVE and still references: ${h}"
+            echo "        Last commit $(branch_age_days "origin/${branch}") day(s) ago."
+            echo "        Deleting these would break work in progress. Stop."
+          else
+            warn "PR #${num} (${branch}) references: ${h}"
+            echo "        Dormant ($(branch_age_days "origin/${branch}") day(s) old); informational."
+          fi
           dirty=$((dirty + 1))
         fi
       done <<< "${open_prs}"
@@ -411,6 +477,40 @@ if [[ ${GH_OK} -eq 1 && ${GIT_OK} -eq 1 && ${GIT_GREP_OK} -eq 1 ]]; then
   fi
 else
   err "skipped -- needs git, gh, and a working git grep."
+fi
+echo
+
+# --- Gate 6: ACTIVE branches, with or without a pull request ----------------
+# Gate 5 only sees branches that already have an open PR. Someone actively
+# working on a branch that ADDS a secret has no PR yet, so a main-only view
+# reports that secret as unused and the operator deletes a colleague's work.
+# This gate is the answer to that: any branch with recent commits that
+# references a deletion target is a hard failure, PR or no PR.
+echo "--- Gate 6: active branches (last ${ACTIVE_DAYS} days) ---"
+if [[ ${GIT_OK} -eq 1 && ${GIT_GREP_OK} -eq 1 ]]; then
+  now=$(date +%s)
+  cutoff=$((now - ACTIVE_DAYS * 86400))
+  active_total=0
+  active_dirty=0
+  while read -r ref ts; do
+    [[ -z "${ref}" || "${ref}" == *"/HEAD" ]] && continue
+    [[ "${ts}" -lt ${cutoff} ]] && continue
+    [[ "${ref}" == "origin/main" ]] && continue
+    active_total=$((active_total + 1))
+    h=$(git grep -hoiE "(secrets|vars)[[:space:]]*\.[[:space:]]*(${pattern})([^A-Za-z0-9_]|$)" \
+      "${ref}" -- .github/ 2>/dev/null | sort -u | tr '\n' ' ')
+    if [[ -n "${h}" ]]; then
+      fail "ACTIVE branch ${ref#origin/} references: ${h}"
+      echo "        Last commit $(branch_age_days "${ref}") day(s) ago."
+      echo "        Deleting these would break work in progress. Stop."
+      active_dirty=$((active_dirty + 1))
+    fi
+  done < <(git for-each-ref --format='%(refname:short) %(committerdate:unix)' refs/remotes/origin)
+  if [[ ${active_dirty} -eq 0 ]]; then
+    ok "none of the ${active_total} active branch(es) reference a deletion target."
+  fi
+else
+  err "skipped -- needs git and a working git grep."
 fi
 echo
 

@@ -64,6 +64,25 @@ Three independent facts, all re-checkable by the audit script:
 
 The residual exposure is stale branches — see [Blast radius](#blast-radius).
 
+### The list is frozen — do not regenerate it from `main` alone
+
+The 31 names are the output of **one audit of one commit**. They are baked into
+the audit script deliberately: it is the gate for this specific cleanup, not a
+general "find unused secrets" tool.
+
+The method that produced the list — diff the live secret inventory against
+references on `main` — is **not safe to re-run on its own**. A secret added by
+an in-flight branch is absent from `main` by definition, so that method reports
+a colleague's brand-new secret as unused and the next operator deletes their
+work. The failure is invisible at the moment of deletion and surfaces later as a
+broken branch nobody connects to this runbook.
+
+Gate 6 of the audit exists for exactly this. It scans every branch with commits
+in the last 90 days — **with or without an open pull request**, since a branch
+being actively worked on usually has no PR yet — and a reference from one of
+those is a hard failure, not a warning. Anyone extending the list must clear
+Gate 6 before deleting anything.
+
 ## Why the ordering matters
 
 Tier A splits into 12 secrets whose values are recoverable from Key Vault and 6
@@ -94,9 +113,14 @@ rather than `OK`.
 | `4` | `STRICT=true` and at least one warning was raised. |
 
 Exit `0` is **not** an unconditional green light. Gate 4 (environment shadows)
-and Gate 5 (open PRs) report as warnings, and they are part of the safety case —
-the summary says so. `STRICT=true` turns any warning into exit 4 if you want a
-hard gate in CI.
+and a *dormant*-branch finding in Gate 5 report as warnings, and they are part
+of the safety case — the summary says so. `STRICT=true` turns any warning into
+exit 4 if you want a hard gate in CI.
+
+A reference from an **active** branch — commits within `ACTIVE_DAYS`, default
+90 — is a hard failure in both Gate 5 and Gate 6, because that is someone's work
+in progress rather than residue. Set `ACTIVE_DAYS` higher if your team's
+branches run longer.
 
 Add `-b` to also list every remote branch that still references a target. That
 output is informational and does **not** gate deletion — see
@@ -106,10 +130,17 @@ output is informational and does **not** gate deletion — see
 
 Variables are readable; secrets are not. Capture these before deleting:
 
+These recorded values are the only rollback path for Tier C, so a failed lookup
+must stop the procedure rather than print an empty string and continue:
+
 ```bash
 REPO=US-Trustee-Program/Bankruptcy-Oversight-Support-Systems
 for v in AZ_HOSTNAME_SUFFIX AZ_PRIVATE_DNS_ZONE NODE_VERSION SLOT_NAME STARTING_MONTH; do
-  printf '%-22s = %s\n' "$v" "$(gh api "repos/${REPO}/actions/variables/${v}" -q .value)"
+  if ! value=$(gh api "repos/${REPO}/actions/variables/${v}" -q .value); then
+    echo "ABORT: could not read ${v}; do not delete anything until this is recorded." >&2
+    break
+  fi
+  printf '%-22s = %s\n' "$v" "$value"
 done
 ```
 
@@ -129,12 +160,30 @@ Every one of these has its value preserved in Key Vault, so
 ```bash
 REPO=US-Trustee-Program/Bankruptcy-Oversight-Support-Systems
 
-for s in ANALYTICS_WORKSPACE_ID AZ_APP_RG AZ_NETWORK_RG AZURE_RG AZ_ANALYTICS_RG \
-         MSSQL_DATABASE_DXTR MSSQL_HOST MSSQL_TRUST_UNSIGNED_CERT MSSQL_USER \
-         ADMIN_KEY SNYK_OAUTH_CLIENT_ID SNYK_OAUTH_CLIENT_SECRET; do
+TIER_A_RECOVERABLE=(ANALYTICS_WORKSPACE_ID AZ_APP_RG AZ_NETWORK_RG AZURE_RG
+  AZ_ANALYTICS_RG MSSQL_DATABASE_DXTR MSSQL_HOST MSSQL_TRUST_UNSIGNED_CERT
+  MSSQL_USER ADMIN_KEY SNYK_OAUTH_CLIENT_ID SNYK_OAUTH_CLIENT_SECRET)
+
+for s in "${TIER_A_RECOVERABLE[@]}"; do
   if gh secret delete "$s" -R "$REPO"; then echo "  deleted $s"; else echo "  FAILED $s"; fi
 done
 ```
+
+### Gate: confirm Step 2 completed in full
+
+The canary in Step 3 is meant to prove the *complete* Tier A change before Step
+4 removes anything unrecoverable. It cannot do that over a partially-applied
+set, so verify before moving on — a failure mid-loop is easy to scroll past:
+
+```bash
+remaining=$(gh secret list -R "$REPO" --json name -q '.[].name')
+for s in "${TIER_A_RECOVERABLE[@]}"; do
+  if grep -qx "$s" <<< "$remaining"; then echo "  STILL PRESENT: $s"; fi
+done
+```
+
+Any output means Step 2 did not complete. Resolve it and re-run before the
+canary — do not proceed to Step 4.
 
 ## Step 3 — Canary
 
@@ -241,8 +290,17 @@ REPO=US-Trustee-Program/Bankruptcy-Oversight-Support-Systems
 VAULT=kv-ustp-cams-dev     # <-- choose deliberately; see the table above
 
 restore() {  # restore <GH_SECRET_NAME> <KV_SECRET_NAME>
-  az keyvault secret show --vault-name "$VAULT" --name "$2" --query value -o tsv \
-    | gh secret set "$1" -R "$REPO"
+  local value
+  if ! value=$(az keyvault secret show --vault-name "$VAULT" --name "$2" \
+       --query value -o tsv 2>/dev/null); then
+    echo "  FAILED $1: could not read $2 from $VAULT" >&2
+    return 1
+  fi
+  if [[ -z "$value" ]]; then
+    echo "  FAILED $1: $2 is empty in $VAULT -- refusing to store an empty secret" >&2
+    return 1
+  fi
+  printf '%s' "$value" | gh secret set "$1" -R "$REPO" && echo "  restored $1"
 }
 
 restore AZ_APP_RG                  AZ-APP-RG
@@ -258,7 +316,14 @@ restore SNYK_OAUTH_CLIENT_ID       SNYK-OAUTH-CLIENT-ID
 restore SNYK_OAUTH_CLIENT_SECRET   SNYK-OAUTH-CLIENT-SECRET
 ```
 
-`gh secret set` strips trailing newlines from stdin, so the `-o tsv` pipe does
+The value is captured and checked before `gh secret set` is called rather than
+piped straight through. `az keyvault secret show` exits 3 with empty output when
+a secret is missing, and `gh secret set` accepts empty stdin without complaint —
+piped together without `pipefail`, the pipeline reports `gh`'s status and
+silently stores an **empty** secret while looking successful. That is a bad way
+to discover a problem in the middle of an incident.
+
+`gh secret set` strips trailing newlines from stdin, so the `-o tsv` output does
 not corrupt the value. (A *leading* newline and a trailing space are preserved —
 the trim is specific to trailing newlines.)
 
