@@ -11,9 +11,16 @@
 # crash -- it is a gate that finds nothing because it never really looked, and
 # prints a green light over an irreversible deletion.
 #
-# SCOPE: the name list below is FROZEN. It is the output of one audit of one
-# commit, not a live inventory, and this script is a gate for that specific
-# cleanup rather than a general "find unused secrets" tool.
+# SCOPE: the name list below is FROZEN to CAMS-760. It is the output of one
+# audit of one commit, not a live inventory, and this script is a gate for that
+# specific cleanup rather than a general "find unused secrets" tool.
+#
+# SHELF LIFE: this script is scaffolding. The runbook
+# (docs/operations/gha-secret-deletion.md) is the durable artifact. Once
+# cams-9n4tg is verified complete, DELETE this script rather than leaving a
+# general-purpose-looking utility that structurally cannot do a general-purpose
+# job. Gate 7 reports how far the list has drifted from live scope in the
+# meantime; it does not repair it. Tracked as cams-xug4r.
 #
 # Do NOT regenerate the list by diffing the live secret inventory against
 # references on `main` alone. A secret added by an in-flight branch is absent
@@ -511,6 +518,64 @@ if [[ ${GIT_OK} -eq 1 && ${GIT_GREP_OK} -eq 1 ]]; then
   fi
 else
   err "skipped -- needs git and a working git grep."
+fi
+echo
+
+# --- Gate 7: drift between the frozen list and live repository scope --------
+# Every other gate checks references to a fixed list and never asks GitHub what
+# actually exists, which means the list silently rots: run this a year from now
+# and it audits names that were deleted months ago while being structurally
+# blind to anything added since.
+#
+# This gate enumerates live repository scope purely to REPORT that drift.
+#
+# Enumeration deliberately does NOT feed the deletion list. "Unreferenced on the
+# current ref" is exactly the test that misidentifies a secret added by an
+# in-flight branch (see Gate 6), so an orphan found here is a prompt for a human
+# to investigate -- never something to delete on this script's say-so.
+echo "--- Gate 7: frozen-list drift vs live repository scope ---"
+if [[ ${GH_OK} -eq 1 && ${SELF_TEST_OK} -eq 1 && ${#SCAN_FILES[@]} -gt 0 ]]; then
+  live_secrets=$(gh api "repos/${REPO}/actions/secrets" --paginate -q '.secrets[].name' 2>/dev/null)
+  ls_rc=$?
+  live_vars=$(gh api "repos/${REPO}/actions/variables" --paginate -q '.variables[].name' 2>/dev/null)
+  lv_rc=$?
+  if [[ ${ls_rc} -ne 0 || ${lv_rc} -ne 0 ]]; then
+    err "could not enumerate repository-scope secrets/variables."
+  else
+    live_all=$(printf '%s\n%s' "${live_secrets}" "${live_vars}")
+
+    gone=0
+    for name in "${ALL[@]}"; do
+      printf '%s' "${live_all}" | grep -qx "${name}" || gone=$((gone + 1))
+    done
+    if [[ ${gone} -gt 0 ]]; then
+      echo "  NOTE  ${gone} of ${#ALL[@]} targets no longer exist -- the runbook has"
+      echo "        been partially executed, or the list has aged."
+    fi
+
+    orphans=0
+    while read -r name; do
+      [[ -z "${name}" ]] && continue
+      printf '%s\n' "${ALL[@]}" | grep -qx "${name}" && continue
+      if [[ -z "$(ref_grep "${name}")" ]] && [[ ! -s "${REF_ERR_FILE}" ]]; then
+        if [[ ${orphans} -eq 0 ]]; then
+          warn "live objects are unreferenced but NOT in the frozen list:"
+        fi
+        echo "        ${name}"
+        orphans=$((orphans + 1))
+      fi
+    done <<< "${live_all}"
+
+    if [[ ${orphans} -gt 0 ]]; then
+      echo "        Either this list is stale, or someone added a secret that is not"
+      echo "        yet referenced on this ref. DO NOT delete these on this script's"
+      echo "        say-so -- an in-flight branch looks identical from here."
+    elif [[ ${gone} -eq 0 ]]; then
+      ok "frozen list exactly matches live unreferenced repository scope."
+    fi
+  fi
+else
+  err "skipped -- needs gh, a passing self-test, and a populated file set."
 fi
 echo
 

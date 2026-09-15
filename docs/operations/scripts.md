@@ -54,8 +54,23 @@ rather than poisoning every per-name scan, and `gh` calls pass an explicit `-R` 
 full `repos/OWNER/REPO/...` paths since the `:owner/:repo` placeholder shells out to
 git.
 
+Two gates cover the scoping hazard specific to this kind of cleanup. A reference
+check scoped to one branch quietly assumes nobody is adding secrets elsewhere, so
+Gate 6 scans every branch with commits in the last `ACTIVE_DAYS` (default 90)
+whether or not it has an open pull request — a branch being actively worked on
+usually has none — and treats a reference from one as a hard failure rather than a
+warning. Gate 7 enumerates live repository scope to report drift between the frozen
+list and reality, in both directions; that enumeration is reporting only and never
+feeds the deletion list, because an unreferenced orphan and a colleague's in-flight
+secret look identical from a single branch.
+
 `-b` additionally lists every remote branch still referencing a target, with age and
-commits-behind. Nothing is ever modified. See
+commits-behind. Nothing is ever modified.
+
+**Shelf life:** the target list is frozen to CAMS-760 rather than derived, so this
+script is single-use scaffolding — it will keep auditing already-deleted names and
+cannot surface a secret added after authoring. Delete it once `cams-9n4tg` is
+verified complete (`cams-xug4r`). The durable artifact is
 [GHA Secret and Variable Deletion](/operations/gha-secret-deletion.md).
 
 ### az-cosmos-add-user.sh

@@ -83,6 +83,19 @@ being actively worked on usually has no PR yet — and a reference from one of
 those is a hard failure, not a warning. Anyone extending the list must clear
 Gate 6 before deleting anything.
 
+Gate 7 reports the opposite drift: it enumerates live repository scope and flags
+targets that no longer exist, plus live objects that are unreferenced but absent
+from the frozen list. That enumeration is **reporting only** and deliberately
+does not feed the deletion list, for the reason above — an unreferenced orphan
+and a colleague's in-flight secret are indistinguishable from `main`.
+
+### Shelf life
+
+The audit script is scaffolding; this runbook is the durable artifact. Because
+the list is frozen rather than derived, the script will keep auditing
+already-deleted names and cannot surface anything added later. Delete it once
+`cams-9n4tg` is verified complete — tracked as `cams-xug4r`.
+
 ## Why the ordering matters
 
 Tier A splits into 12 secrets whose values are recoverable from Key Vault and 6
