@@ -97,8 +97,9 @@ describe('Review Orders screen', () => {
     });
 
     // Deselect Pending → only approved visible.
-    const statusExpandBtn = document.querySelector('#task-status-filter-expand') as HTMLElement;
-    fireEvent.click(statusExpandBtn);
+    const statusExpandBtn = document.getElementById('task-status-filter-expand');
+    expect(statusExpandBtn).not.toBeNull();
+    fireEvent.click(statusExpandBtn!);
     const pendingOption = screen.getByTestId('task-status-filter-option-item-0');
     fireEvent.click(pendingOption);
 
@@ -252,8 +253,9 @@ describe('Review Orders screen', () => {
     await waitFor(() => {
       expect(loadingSpinner).not.toBeInTheDocument();
     });
-    const statusExpandBtn = document.querySelector('#task-status-filter-expand') as HTMLElement;
-    fireEvent.click(statusExpandBtn);
+    const statusExpandBtn = document.getElementById('task-status-filter-expand');
+    expect(statusExpandBtn).not.toBeNull();
+    fireEvent.click(statusExpandBtn!);
     fireEvent.click(screen.getByTestId('task-status-filter-option-item-0'));
     fireEvent.click(screen.getByTestId('task-status-filter-option-item-1'));
 
