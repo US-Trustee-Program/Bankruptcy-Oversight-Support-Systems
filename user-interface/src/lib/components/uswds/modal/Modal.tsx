@@ -138,8 +138,6 @@ function Modal_(props: ModalProps, ref: React.Ref<ModalRefType>) {
     }
 
     hide();
-
-    openModalButtonRef?.current?.focus();
   }
 
   useImperativeHandle(ref, () => ({
@@ -216,7 +214,9 @@ function Modal_(props: ModalProps, ref: React.Ref<ModalRefType>) {
     }
     document.body.classList.add('modal-open');
     return () => {
-      document.body.classList.remove('modal-open');
+      if (document.querySelectorAll('.usa-modal-wrapper.is-visible').length === 0) {
+        document.body.classList.remove('modal-open');
+      }
     };
   }, [isVisible]);
 
@@ -239,6 +239,13 @@ function Modal_(props: ModalProps, ref: React.Ref<ModalRefType>) {
       document.removeEventListener('focusin', handleFocusIn);
     };
   }, [isVisible, firstElement]);
+
+  useEffect(() => {
+    if (isVisible) {
+      return;
+    }
+    openModalButtonRef?.current?.focus();
+  }, [isVisible, openModalButtonRef]);
 
   return (
     <div

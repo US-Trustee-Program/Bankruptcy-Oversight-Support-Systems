@@ -3,7 +3,7 @@ import React, { useRef, useEffect } from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import OpenModalButton from './OpenModalButton';
 import Modal from './Modal';
-import { ModalRefType } from './modal-refs';
+import { ModalRefType, OpenModalButtonRef } from './modal-refs';
 import Checkbox from '../Checkbox';
 import Radio from '../Radio';
 import Button from '../Button';
@@ -159,6 +159,48 @@ describe('Test Modal component', () => {
     expect(cancelButtonOnClick).toHaveBeenCalled();
   });
 
+  test('should return focus to the opener button after closing, not back into the modal', async () => {
+    const openerModalId = 'opener-focus-modal';
+    const openButtonRef = React.createRef<OpenModalButtonRef>();
+    const modalRef = React.createRef<ModalRefType>();
+
+    render(
+      <BrowserRouter>
+        <>
+          <OpenModalButton
+            buttonIndex="opener-focus-test"
+            modalId={openerModalId}
+            modalRef={modalRef}
+            ref={openButtonRef}
+          >
+            Open Modal
+          </OpenModalButton>
+          <Modal
+            modalId={openerModalId}
+            ref={modalRef}
+            heading={'Test Heading'}
+            content={'Test Content'}
+            actionButtonGroup={{
+              modalId: openerModalId,
+              modalRef,
+              submitButton: { label: 'Submit' },
+            }}
+          />
+        </>
+      </BrowserRouter>,
+    );
+
+    const openButton = screen.getByTestId('open-modal-button_opener-focus-test');
+    fireEvent.click(openButton);
+
+    const closeButton = screen.getByTestId(`modal-x-button-${openerModalId}`);
+    fireEvent.click(closeButton);
+
+    await vi.waitFor(() => {
+      expect(openButton).toHaveFocus();
+    });
+  });
+
   test('should add modal-open class to document.body when opened and remove it when closed', async () => {
     const button = screen.getByTestId(testButtonId);
     expect(document.body).not.toHaveClass('modal-open');
@@ -168,6 +210,53 @@ describe('Test Modal component', () => {
 
     const closeButton = screen.getByTestId(`modal-x-button-${modalId}`);
     fireEvent.click(closeButton);
+
+    expect(document.body).not.toHaveClass('modal-open');
+  });
+
+  test('should keep modal-open on document.body while another modal is still visible', async () => {
+    const secondModalId = 'second-modal';
+    const secondModalRef = React.createRef<ModalRefType>();
+
+    render(
+      <BrowserRouter>
+        <>
+          <OpenModalButton
+            buttonIndex="open-second"
+            modalId={secondModalId}
+            modalRef={secondModalRef}
+          >
+            Open Second Modal
+          </OpenModalButton>
+          <Modal
+            modalId={secondModalId}
+            ref={secondModalRef}
+            heading={'Second Modal'}
+            content={'Second Modal Content'}
+            actionButtonGroup={{
+              modalId: secondModalId,
+              modalRef: secondModalRef,
+              submitButton: { label: 'Submit' },
+            }}
+          />
+        </>
+      </BrowserRouter>,
+    );
+
+    const firstOpenButton = screen.getByTestId(testButtonId);
+    const secondOpenButton = screen.getByTestId('open-modal-button_open-second');
+
+    fireEvent.click(firstOpenButton);
+    fireEvent.click(secondOpenButton);
+    expect(document.body).toHaveClass('modal-open');
+
+    const firstCloseButton = screen.getByTestId(`modal-x-button-${modalId}`);
+    fireEvent.click(firstCloseButton);
+
+    expect(document.body).toHaveClass('modal-open');
+
+    const secondCloseButton = screen.getByTestId(`modal-x-button-${secondModalId}`);
+    fireEvent.click(secondCloseButton);
 
     expect(document.body).not.toHaveClass('modal-open');
   });
