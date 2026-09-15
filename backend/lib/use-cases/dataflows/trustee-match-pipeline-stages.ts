@@ -2,20 +2,31 @@ import * as natural from 'natural';
 import { getNameVariations } from 'name-match/src/name-normalizer';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { Trustee } from '@common/cams/trustees';
+import { DxtrTrusteeParty } from '@common/cams/dataflow-events';
+import { Address, PhoneNumber } from '@common/cams/contact';
 import {
-  calculateAddressScore,
-  calculateNameScore,
-  calculatePhoneScore,
+  calculateNumericTokenScore,
   CONTACT_CORROBORATION_ADDRESS_THRESHOLD,
   CONTACT_CORROBORATION_NAME_THRESHOLD,
   findAnchoredLevenshteinCandidates,
   findSurnameExactCandidates,
   findTokenIntersectionCandidates,
+  firstLastNameToken,
+  isFirstMiddleSwap,
+  isOneSidedMiddleNameMatch,
+  jaccardSimilarity,
+  lastNameTokensMatch,
+  normalizeAddressLine,
+  normalizeNamePart,
+  padSingleDigitNumericToken,
   parseCityStateZip,
   resolveByContactCorroboration,
   resolveDuplicateNameCandidates,
+  scoreFirstNamePart,
+  scoreMiddleNamePart,
   STATE_OVERRIDE_MIN_NAME_SCORE,
 } from './trustee-match.helpers';
+import { generateBigrams } from '../../adapters/utils/phonetic-helper';
 import {
   addCandidate,
   addScore,
@@ -30,6 +41,108 @@ import {
   Stage,
   withGuard,
 } from './trustee-match-pipeline';
+
+/**
+ * ACMS-pipeline-only orchestration of calculateNameScore's exact scoring logic, built from the
+ * same atomic, exported pieces calculateNameScore itself uses (firstLastNameToken,
+ * lastNameTokensMatch, normalizeNamePart, scoreFirstNamePart, scoreMiddleNamePart,
+ * isFirstMiddleSwap, isOneSidedMiddleNameMatch) rather than calling calculateNameScore directly -
+ * calculateNameScore is shared with the DXTR trustee-appointment dataflow
+ * (sync-trustee-case-appointments.ts), so this pipeline never calls it, to guarantee an ACMS-only
+ * tuning change can never ripple into that unrelated call path. The comparison logic itself is
+ * NOT duplicated - every atomic piece is the exact same exported function DXTR's path uses, only
+ * the top-level composition lives here instead of in calculateNameScore.
+ */
+function pipelineNameScore(dxtrTrustee: DxtrTrusteeParty, camsTrustee: Trustee): number {
+  const dxtrLast = firstLastNameToken(dxtrTrustee.lastName);
+  const camsLast = firstLastNameToken(camsTrustee.lastName);
+
+  if (!lastNameTokensMatch(dxtrLast, camsLast)) return 0;
+
+  const dxtrFirst = normalizeNamePart(dxtrTrustee.firstName);
+  const camsFirst = normalizeNamePart(camsTrustee.firstName);
+  const dxtrMiddle = normalizeNamePart(dxtrTrustee.middleName);
+  const camsMiddle = normalizeNamePart(camsTrustee.middleName);
+
+  const firstScore = scoreFirstNamePart(dxtrFirst, camsFirst);
+  if (firstScore === 0) {
+    if (isFirstMiddleSwap(dxtrFirst, dxtrMiddle, camsFirst, camsMiddle)) return 85;
+    if (isOneSidedMiddleNameMatch(dxtrFirst, dxtrMiddle, camsFirst, camsMiddle)) return 85;
+    return 0;
+  }
+
+  const middleScore = scoreMiddleNamePart(dxtrMiddle, camsMiddle);
+  return Math.min(firstScore, middleScore);
+}
+
+/**
+ * ACMS-pipeline-only reimplementation of calculatePhoneScore - fully self-contained (no shared
+ * helper dependencies at all), so this is a plain copy rather than an orchestration of atomic
+ * pieces. Never calls calculatePhoneScore directly, for the same DXTR-isolation reason
+ * pipelineNameScore exists (see its doc comment).
+ */
+function pipelinePhoneScore(
+  dxtrPhone: string | undefined,
+  camsPhone: PhoneNumber | undefined,
+): number | null {
+  const dxtrDigits = (dxtrPhone ?? '').replace(/\D/g, '');
+  const camsDigits = (camsPhone?.number ?? '').replace(/\D/g, '');
+
+  if (dxtrDigits.length < 10 || camsDigits.length < 10) return null;
+
+  return dxtrDigits.slice(-10) === camsDigits.slice(-10) ? 100 : 0;
+}
+
+/**
+ * ACMS-pipeline-only orchestration of calculateAddressScore's exact scoring logic, built from the
+ * same atomic, exported pieces (parseCityStateZip, normalizeAddressLine, padSingleDigitNumericToken,
+ * calculateNumericTokenScore, jaccardSimilarity, generateBigrams) rather than calling
+ * calculateAddressScore directly - same DXTR-isolation reason as pipelineNameScore.
+ */
+function pipelineAddressScore(
+  dxtrAddress: DxtrTrusteeParty['legacy'],
+  camsAddress: Address,
+): number {
+  const parsed = parseCityStateZip(dxtrAddress?.cityStateZipCountry);
+  if (!parsed) return 0;
+
+  const zip5 = (zip: string) => zip.trim().split('-')[0].toLowerCase();
+
+  const joinAddressLines = (address?: {
+    address1?: string;
+    address2?: string;
+    address3?: string;
+  }) =>
+    [address?.address1, address?.address2, address?.address3]
+      .filter((line): line is string => !!line && line.trim().length > 0)
+      .join(' ');
+
+  const dxtrAddressLines = normalizeAddressLine(joinAddressLines(dxtrAddress));
+  const camsAddressLines = normalizeAddressLine(joinAddressLines(camsAddress));
+
+  const padForBigrams = (line: string) => line.split(' ').map(padSingleDigitNumericToken).join(' ');
+  const bigramScore = jaccardSimilarity(
+    generateBigrams(padForBigrams(dxtrAddressLines)),
+    generateBigrams(padForBigrams(camsAddressLines)),
+  );
+
+  const numericTokenScore = calculateNumericTokenScore(dxtrAddressLines, camsAddressLines);
+  const addressLinesScore =
+    numericTokenScore === null ? bigramScore : bigramScore * 0.5 + numericTokenScore * 0.5;
+
+  const dxtrCityState = normalizeAddressLine(`${parsed.city} ${parsed.state}`);
+  const camsCityState = normalizeAddressLine(`${camsAddress.city} ${camsAddress.state}`);
+  const cityStateScore = jaccardSimilarity(
+    generateBigrams(dxtrCityState),
+    generateBigrams(camsCityState),
+  );
+
+  const dxtrZip = zip5(parsed.zipCode);
+  const camsZip = zip5(camsAddress.zipCode);
+  const zipScore = dxtrZip && camsZip && dxtrZip === camsZip ? 100 : 0;
+
+  return Math.round(addressLinesScore * 0.5 + zipScore * 0.3 + cityStateScore * 0.2);
+}
 
 /**
  * Discovery stage wrapping the existing findSurnameExactCandidates unchanged - proposes every
@@ -82,7 +195,7 @@ export function anchoredLevenshteinDiscoveryStage(context: ApplicationContext): 
 export function nameScoreStage(): Stage {
   return withGuard(async (state: PipelineState): Promise<PipelineState> => {
     for (const candidate of state.candidates.values()) {
-      const nameScore = calculateNameScore(state.acmsRaw, candidate.camsRaw as unknown as Trustee);
+      const nameScore = pipelineNameScore(state.acmsRaw, candidate.camsRaw as unknown as Trustee);
       addScore(candidate, 'calculateNameScore', {
         value: nameScore,
         threshold: CONTACT_CORROBORATION_NAME_THRESHOLD,
@@ -243,13 +356,13 @@ export function stateFilterStage(): Stage {
         continue;
       }
 
-      const phoneScore = calculatePhoneScore(state.acmsRaw.legacy?.phone, candidate.camsRaw.phone);
+      const phoneScore = pipelinePhoneScore(state.acmsRaw.legacy?.phone, candidate.camsRaw.phone);
       if (phoneScore === 100) {
         addScore(candidate, 'stateFilterStage', stateMatchRecord(true));
         continue;
       }
 
-      const nameScore = calculateNameScore(state.acmsRaw, candidate.camsRaw as unknown as Trustee);
+      const nameScore = pipelineNameScore(state.acmsRaw, candidate.camsRaw as unknown as Trustee);
       const stateMatch = nameScore >= STATE_OVERRIDE_MIN_NAME_SCORE;
       addScore(candidate, 'stateFilterStage', stateMatchRecord(stateMatch));
     }
@@ -396,8 +509,8 @@ export function comparativeCorroborationStage(): Stage {
 
     const strong: { candidate: PipelineCandidate; score: ScoreByScorer }[] = [];
     for (const candidate of qualifying) {
-      const addressScore = calculateAddressScore(state.acmsRaw.legacy, candidate.camsRaw.address);
-      const phoneScore = calculatePhoneScore(state.acmsRaw.legacy?.phone, candidate.camsRaw.phone);
+      const addressScore = pipelineAddressScore(state.acmsRaw.legacy, candidate.camsRaw.address);
+      const phoneScore = pipelinePhoneScore(state.acmsRaw.legacy?.phone, candidate.camsRaw.phone);
       addScore(candidate, 'contactCorroborationAddress', {
         value: addressScore,
         threshold: CONTACT_CORROBORATION_ADDRESS_THRESHOLD,

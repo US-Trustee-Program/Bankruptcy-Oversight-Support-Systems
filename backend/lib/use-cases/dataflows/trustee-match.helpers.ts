@@ -231,7 +231,7 @@ const UNIT_DESIGNATOR_WORDS = new Set(['suite', 'apartment', 'floor', 'unit', 'r
  * "04" are the same number, per stripLeadingZeros below), so that case still compares equal.
  * Tokens already 2+ characters (e.g. "10") clear the length floor on their own and are untouched.
  */
-function padSingleDigitNumericToken(token: string): string {
+export function padSingleDigitNumericToken(token: string): string {
   if (!/^\d+$/.test(token)) return token;
   return token.length === 1 ? `0${token}` : token;
 }
@@ -260,7 +260,7 @@ function extractNumericTokens(normalizedLine: string): string[] {
  * alone. A numeric token present on only one side scores a real partial penalty rather than being
  * ignored, since a missing unit number should lower confidence, not be invisible to it.
  */
-function calculateNumericTokenScore(
+export function calculateNumericTokenScore(
   normalizedLineA: string,
   normalizedLineB: string,
 ): number | null {
@@ -538,7 +538,7 @@ export function calculateChapterScore(
  * characters (e.g. "L." -> "l", "O'Brien" -> "obrien"). Distinct from `normalizeName`, which
  * only collapses whitespace for full-name lookup matching.
  */
-function normalizeNamePart(namePart?: string): string {
+export function normalizeNamePart(namePart?: string): string {
   return (namePart ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
@@ -648,7 +648,7 @@ const isInitialOf = (initial: string, full: string): boolean =>
  * Swallows lookup errors the same way phonetic-helper.ts does - an unrecognized name is simply
  * not a nickname match, not a hard failure.
  */
-function isKnownNicknamePair(a: string, b: string): boolean {
+export function isKnownNicknamePair(a: string, b: string): boolean {
   if (!a || !b) return false;
   try {
     if ((getNameVariations(a) as string[]).includes(b)) return true;
@@ -671,7 +671,7 @@ function isKnownNicknamePair(a: string, b: string): boolean {
  * (see isKnownNicknamePair) also scores 85 - the same credit scoreMiddleNamePart gives an
  * initial-vs-full relationship, since neither is a certain match the way exact equality is.
  */
-function scoreFirstNamePart(a: string, b: string): number {
+export function scoreFirstNamePart(a: string, b: string): number {
   if (!a || !b) return 0;
   if (a === b) return 100;
   if (isInitialOf(a, b) || isInitialOf(b, a)) return 85;
@@ -690,7 +690,7 @@ function scoreFirstNamePart(a: string, b: string): number {
  *     character: 85 (initial-vs-full relationship)
  *   - Both present and genuinely differ: 15 (moderate conflict penalty)
  */
-function scoreMiddleNamePart(a: string, b: string): number {
+export function scoreMiddleNamePart(a: string, b: string): number {
   if (!a || !b) return 100;
   if (a === b) return 100;
   if (isInitialOf(a, b) || isInitialOf(b, a)) return 85;
@@ -717,7 +717,7 @@ const NAME_SWAP_MIN_PART_SCORE = 85;
  * credited. Capped at 85 (never 100) since a swap is still a real discrepancy in field placement,
  * the same treatment an initial-vs-full relationship gets in scoreFirstNamePart/scoreMiddleNamePart.
  */
-function isFirstMiddleSwap(
+export function isFirstMiddleSwap(
   dxtrFirst: string,
   dxtrMiddle: string,
   camsFirst: string,
@@ -745,7 +745,7 @@ function isFirstMiddleSwap(
  * do, isFirstMiddleSwap's stricter bidirectional check is the correct gate (see
  * calculateNameScore), since two populated middle slots that disagree IS real evidence.
  */
-function isOneSidedMiddleNameMatch(
+export function isOneSidedMiddleNameMatch(
   dxtrFirst: string,
   dxtrMiddle: string,
   camsFirst: string,

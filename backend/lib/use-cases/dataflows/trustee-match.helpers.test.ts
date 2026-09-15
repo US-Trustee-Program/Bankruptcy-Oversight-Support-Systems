@@ -33,6 +33,13 @@ import {
   normalizeNameForMatching,
   jaccardSimilarity,
   normalizeAddressLine,
+  scoreFirstNamePart,
+  scoreMiddleNamePart,
+  isKnownNicknamePair,
+  isFirstMiddleSwap,
+  isOneSidedMiddleNameMatch,
+  calculateNumericTokenScore,
+  padSingleDigitNumericToken,
 } from './trustee-match.helpers';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
@@ -1538,6 +1545,56 @@ describe('calculateAddressScore', () => {
   });
 });
 
+describe('calculateNumericTokenScore', () => {
+  test('should return null when neither side has a numeric token', () => {
+    expect(calculateNumericTokenScore('main street', 'main street')).toBeNull();
+  });
+
+  test('should return 100 when the sole numeric token on each side matches exactly', () => {
+    expect(calculateNumericTokenScore('123 main street', '123 main street')).toBe(100);
+  });
+
+  test('should return 0 when the sole numeric token on each side differs', () => {
+    expect(calculateNumericTokenScore('4 main street', '5 main street')).toBe(0);
+  });
+
+  test('should treat a number and its leading-zero-padded form as equal', () => {
+    expect(calculateNumericTokenScore('123 main street suite 4', '123 main street suite 04')).toBe(
+      100,
+    );
+  });
+
+  // A numeric token present on only one side scores a real partial penalty rather than being
+  // ignored - the shape a missing suite number in DXTR or CAMS data actually produces.
+  test('should score a partial match when a numeric token is present on only one side', () => {
+    // Larger side has 2 numeric tokens ({123, 4}), smaller side has 1 ({123}) which is contained
+    // in the larger side - 1 match / 2 (larger side size) = 50.
+    expect(calculateNumericTokenScore('123 main street suite 4', '123 main street')).toBe(50);
+  });
+
+  test('should score the fraction of matching numeric tokens when multiple tokens partially agree', () => {
+    // {100, 100} vs {100, 200} - "100" matches, "200" doesn't - 1 match / 2 (larger side size, tied) = 50.
+    expect(
+      calculateNumericTokenScore('100 main street suite 100', '100 main street suite 200'),
+    ).toBe(50);
+  });
+});
+
+describe('padSingleDigitNumericToken', () => {
+  test('should leave a non-numeric token unchanged', () => {
+    expect(padSingleDigitNumericToken('main')).toBe('main');
+  });
+
+  test('should pad a single digit with a leading zero', () => {
+    expect(padSingleDigitNumericToken('4')).toBe('04');
+  });
+
+  test('should leave a multi-digit token unchanged', () => {
+    expect(padSingleDigitNumericToken('10')).toBe('10');
+    expect(padSingleDigitNumericToken('123')).toBe('123');
+  });
+});
+
 describe('jaccardSimilarity', () => {
   test('should return 100 for identical bigram sets', () => {
     expect(jaccardSimilarity(['ab', 'bc', 'cd'], ['ab', 'bc', 'cd'])).toBe(100);
@@ -2595,6 +2652,129 @@ describe('calculateNameScore', () => {
     const camsTrustee = makeTrustee({ firstName: 'John', lastName: 'Van Meter' });
 
     expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(100);
+  });
+});
+
+describe('scoreFirstNamePart', () => {
+  test('should return 100 for an exact match', () => {
+    expect(scoreFirstNamePart('john', 'john')).toBe(100);
+  });
+
+  test('should return 0 when either side is empty', () => {
+    expect(scoreFirstNamePart('', 'john')).toBe(0);
+    expect(scoreFirstNamePart('john', '')).toBe(0);
+  });
+
+  test('should return 85 when the dxtr side is a single-character initial of the cams side', () => {
+    expect(scoreFirstNamePart('g', 'george')).toBe(85);
+  });
+
+  test('should return 85 when the cams side is a single-character initial of the dxtr side', () => {
+    expect(scoreFirstNamePart('george', 'g')).toBe(85);
+  });
+
+  test('should return 85 for a known nickname/formal-name pair', () => {
+    expect(scoreFirstNamePart('jim', 'james')).toBe(85);
+  });
+
+  test('should return 0 for a genuine mismatch', () => {
+    expect(scoreFirstNamePart('jane', 'john')).toBe(0);
+  });
+});
+
+describe('scoreMiddleNamePart', () => {
+  test('should return 100 when either side is missing (neutral, not disqualifying)', () => {
+    expect(scoreMiddleNamePart('', 'quincy')).toBe(100);
+    expect(scoreMiddleNamePart('quincy', '')).toBe(100);
+    expect(scoreMiddleNamePart('', '')).toBe(100);
+  });
+
+  test('should return 100 for an exact match', () => {
+    expect(scoreMiddleNamePart('quincy', 'quincy')).toBe(100);
+  });
+
+  test('should return 85 for an initial-vs-full relationship in either direction', () => {
+    expect(scoreMiddleNamePart('l', 'lee')).toBe(85);
+    expect(scoreMiddleNamePart('lee', 'l')).toBe(85);
+  });
+
+  test('should return 15 for a genuine conflict between two present middle names', () => {
+    expect(scoreMiddleNamePart('quincy', 'robert')).toBe(15);
+  });
+});
+
+describe('isKnownNicknamePair', () => {
+  test('should return true for a known nickname-to-formal-name pair', () => {
+    expect(isKnownNicknamePair('jim', 'james')).toBe(true);
+  });
+
+  test('should return true for a known formal-to-nickname pair (order reversed)', () => {
+    expect(isKnownNicknamePair('elizabeth', 'liz')).toBe(true);
+  });
+
+  test('should return false for an unrelated pair', () => {
+    expect(isKnownNicknamePair('jim', 'robert')).toBe(false);
+  });
+
+  test('should return false when either side is empty', () => {
+    expect(isKnownNicknamePair('', 'james')).toBe(false);
+    expect(isKnownNicknamePair('jim', '')).toBe(false);
+  });
+});
+
+describe('isFirstMiddleSwap', () => {
+  // Real-world pattern: a trustee who goes by their middle name has it recorded first on one
+  // side (CAMS "M. Douglas Flahaut") while the other side keeps the legal first/middle order
+  // (ACMS "Douglas"/"M").
+  test('should return true when both crossed pairs (dxtr-first/cams-middle, dxtr-middle/cams-first) clear the swap threshold', () => {
+    expect(isFirstMiddleSwap('douglas', 'm', 'm', 'douglas')).toBe(true);
+  });
+
+  test('should return true when the swapped middle name is spelled out on only one side', () => {
+    expect(isFirstMiddleSwap('calvin', 'j', 'j', 'calvin')).toBe(true);
+  });
+
+  test('should return false when either side has no middle name at all', () => {
+    expect(isFirstMiddleSwap('douglas', '', 'm', 'douglas')).toBe(false);
+    expect(isFirstMiddleSwap('douglas', 'm', 'm', '')).toBe(false);
+  });
+
+  test('should return false for an unrelated first/middle pair', () => {
+    expect(isFirstMiddleSwap('douglas', 'm', 'robert', 'james')).toBe(false);
+  });
+
+  test('should return false when only one crossed pair matches, not both', () => {
+    // dxtrFirst vs camsMiddle matches, but dxtrMiddle vs camsFirst does not - a real swap must
+    // agree in both directions, not just one.
+    expect(isFirstMiddleSwap('douglas', 'x', 'y', 'douglas')).toBe(false);
+  });
+});
+
+describe('isOneSidedMiddleNameMatch', () => {
+  test('should return false when both sides have a middle name (isFirstMiddleSwap territory instead)', () => {
+    expect(isOneSidedMiddleNameMatch('m', 'o', 'watson', 'm')).toBe(false);
+  });
+
+  test('should return true when the dxtr side has no middle name and its first name exactly matches the cams middle name', () => {
+    expect(isOneSidedMiddleNameMatch('lance', '', 'w', 'lance')).toBe(true);
+  });
+
+  test('should return true when the cams side has no middle name and its first name exactly matches the dxtr middle name', () => {
+    expect(isOneSidedMiddleNameMatch('w', 'lance', 'lance', '')).toBe(true);
+  });
+
+  test('should return false for a merely initial-vs-full relationship (requires an exact match)', () => {
+    // The confirmed real-world false positive: "michael" (no middle name) must not match against
+    // a bare middle initial "m" just because "m" is an initial of "michael".
+    expect(isOneSidedMiddleNameMatch('michael', '', 'kathy', 'm')).toBe(false);
+  });
+
+  test('should return false for an unrelated first name', () => {
+    expect(isOneSidedMiddleNameMatch('robert', '', 'w', 'lance')).toBe(false);
+  });
+
+  test('should return false when neither side has a middle name', () => {
+    expect(isOneSidedMiddleNameMatch('john', '', 'john', '')).toBe(false);
   });
 });
 
