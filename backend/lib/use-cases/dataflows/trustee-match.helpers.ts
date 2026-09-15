@@ -1740,7 +1740,7 @@ function logTokenIntersectionCandidates(
  * same firstLastNameToken as the DXTR record - the same token comparison calculateNameScore's
  * hard lastName gate already enforces, just run as a standalone filter before the noisier
  * name-scoring tiers see the candidate pool at all. Two different people who happen to share a
- * common first/middle name (e.g. "Phillip A Moon" vs "John P. Moon" and "Martin A. Mooney") get
+ * common first/middle name (e.g. "Aldric T Voss" vs "Jordan P. Voss" and "Marcus A. Vossey") get
  * correctly separated here: only an exact surname token match proceeds, so a human or automated
  * reviewer scanning the remaining pool isn't wading through candidates calculateNameScore was
  * always going to reject anyway.
@@ -1887,8 +1887,8 @@ function levenshteinDistance(a: string, b: string): number {
  * style character error) in the first or last name - a different failure shape than
  * findTokenIntersectionCandidates' target (name-part reordering). calculateNameScore's
  * firstLastNameToken-exact-match-required lastName gate, and matchTrusteeByName's own tiers, all
- * fail outright on e.g. "STEPHAN DARR" vs CAMS "Stephen Darr", or "KATHYLN SELLECK" vs CAMS
- * "Kathlyn Selleck" - a single transposed/substituted character anywhere in either name part.
+ * fail outright on e.g. "NORBURT FALK" vs CAMS "Norbert Falk", or "MARISOL QUAID" vs CAMS
+ * "Marisol Quade" - a single transposed/substituted character anywhere in either name part.
  *
  * Approach: anchor one name part with an exact match, then allow the other part to be a close
  * (edit distance <= 2) match rather than requiring exact equality. Tried in both directions,

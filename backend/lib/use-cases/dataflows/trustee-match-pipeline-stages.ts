@@ -23,6 +23,7 @@ import {
   mergedScore,
   normalize,
   NormalizedMemo,
+  PhoneTypoToleranceScoreEntry,
   PipelineCandidate,
   PipelineState,
   projectTrustee,
@@ -304,11 +305,11 @@ export function corroborationStage(context: ApplicationContext): Stage {
  * CONTACT_CORROBORATION_NAME_THRESHOLD), so that function bails out with 'unresolved' rather than
  * guess between them - even when one candidate has decisive contact evidence (an exact phone
  * match, or a strong address match) and the others have none at all. Confirmed via a CAMS-876
- * backtest finding (ACMS "Andrew Wilson" with two WA/TX "Wilson" candidates both scoring
- * nameScore=85, only one with an exact phone match) that this is a real, recoverable gap, not a
- * genuine ambiguity - resolveByContactCorroboration's single-candidate-only rule exists to avoid
- * guessing when there's NO differentiating evidence, not to discard differentiating evidence that
- * does exist.
+ * backtest finding (an ACMS record with two same-surname candidates in different states, both
+ * scoring nameScore=85, only one with an exact phone match) that this is a real, recoverable gap,
+ * not a genuine ambiguity - resolveByContactCorroboration's single-candidate-only rule exists to
+ * avoid guessing when there's NO differentiating evidence, not to discard differentiating evidence
+ * that does exist.
  *
  * Resolves only when EXACTLY ONE name-qualifying candidate clears
  * CONTACT_CORROBORATION_ADDRESS_THRESHOLD or has an exact phone match (phoneScore 100) and no
@@ -347,6 +348,80 @@ export function comparativeCorroborationStage(): Stage {
     return {
       ...state,
       match: { trusteeId: winner.candidate.camsRaw.trusteeId, score: winner.score },
+    };
+  });
+}
+
+/** Maximum digit-hamming-distance (see phoneDigitDistance) between an ACMS and CAMS phone number
+ * for phoneTypoToleranceStage to treat the mismatch as a likely data-entry typo rather than a
+ * genuinely different number. Backtested against a real 245-record population sharing this
+ * stage's exact trigger shape (sole candidate, nameScore=100, a comparable-but-mismatched phone):
+ * every number differing by 1-2 digits was confirmed the same real person by hand; every number
+ * differing by 8+ digits was a genuinely different number. */
+const PHONE_TYPO_MAX_DIGIT_DISTANCE = 2;
+
+/** Count of differing digit positions between the last 10 digits of two phone numbers - null if
+ * either side isn't a full, comparable 10-digit number (mirrors calculatePhoneScore's own
+ * comparability rule). Both numbers are always exactly 10 digits once comparable, so a simple
+ * position-by-position count is sufficient - no insertions/deletions are possible once both sides
+ * are fixed at the same length, unlike a general edit-distance problem. */
+function phoneDigitDistance(
+  dxtrPhone: string | undefined,
+  camsPhone: string | undefined,
+): number | null {
+  const dxtrDigits = (dxtrPhone ?? '').replace(/\D/g, '').slice(-10);
+  const camsDigits = (camsPhone ?? '').replace(/\D/g, '').slice(-10);
+  if (dxtrDigits.length < 10 || camsDigits.length < 10) return null;
+
+  let distance = 0;
+  for (let i = 0; i < 10; i++) {
+    if (dxtrDigits[i] !== camsDigits[i]) distance++;
+  }
+  return distance;
+}
+
+/**
+ * Rescues the complementary case to comparativeCorroborationStage: exactly ONE candidate clears
+ * calculateNameScore's threshold (so resolveByContactCorroboration's single-candidate path
+ * applies), that candidate's name is a PERFECT structured match (nameScore 100, a materially
+ * higher bar than the 85 auto-link threshold since there's no other corroborating evidence to
+ * lean on), but its phone is a real, comparable, MISMATCHED number - not missing, which is exactly
+ * the case isNoContradictionMatch's existing fallback declines to help (it only relaxes when
+ * phoneScore is null/uncomparable). calculatePhoneScore's binary 100-or-0 makes no distinction
+ * between a one-digit transposition and a totally different area code; this stage adds
+ * phoneDigitDistance as a new, pipeline-only signal to recover the former specifically. Confirmed
+ * via a CAMS-876 backtest finding (a sole exact-name CAMS candidate whose recorded phone differs
+ * from the ACMS record's phone by exactly one digit) that this is a real, recoverable gap.
+ *
+ * Deliberately does NOT modify calculatePhoneScore or isNoContradictionMatch themselves - both are
+ * shared with the DXTR trustee-appointment dataflow (sync-trustee-case-appointments.ts) via
+ * trustee-match.helpers.ts, and a change tuned for ACMS's specific typo patterns has no business
+ * affecting that unrelated call path. phoneDigitDistance is defined and used only here.
+ */
+export function phoneTypoToleranceStage(): Stage {
+  return withGuard(async (state: PipelineState): Promise<PipelineState> => {
+    const qualifying = [...state.candidates.values()].filter(
+      (candidate) =>
+        (mergedScore(candidate).nameScore ?? 0) >= CONTACT_CORROBORATION_NAME_THRESHOLD,
+    );
+    if (qualifying.length !== 1) return state;
+
+    const candidate = qualifying[0];
+    const nameScore = mergedScore(candidate).nameScore ?? 0;
+    if (nameScore !== 100) return state;
+
+    const distance = phoneDigitDistance(
+      state.acmsRaw.legacy?.phone,
+      candidate.camsRaw.phone?.number,
+    );
+    const score: PhoneTypoToleranceScoreEntry = { nameScore, phoneDigitDistance: distance };
+    addScore(candidate, 'phoneTypoToleranceScore', score);
+
+    if (distance === null || distance > PHONE_TYPO_MAX_DIGIT_DISTANCE) return state;
+
+    return {
+      ...state,
+      match: { trusteeId: candidate.camsRaw.trusteeId, score },
     };
   });
 }

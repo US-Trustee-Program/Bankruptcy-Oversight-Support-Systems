@@ -298,9 +298,9 @@ describe('SyncAcmsProfessionalIds', () => {
       expect(matchSpy).toHaveBeenCalledWith(deps.context, expect.anything());
     });
 
-    // Real-world pattern from a CAMS-879 backtest: ACMS "Phillip A Moon" against
-    // matchTrusteeByName's own (broader, phonetic/fuzzy) candidate pool surfaced 13 candidates -
-    // only 2 of which ("John P. Moon", "Fred Charles Moon") actually share the surname "Moon".
+    // Real-world pattern from a CAMS-879 backtest: an ACMS record against matchTrusteeByName's
+    // own (broader, phonetic/fuzzy) candidate pool surfaced 13 candidates - only 2 of which
+    // ("John P. Moon", "Fred Charles Moon") actually share the same surname.
     // findSurnameExactCandidates narrows to just those before matchTrusteeByName ever runs, so a
     // resolvable surname-exact match short-circuits the noisier tiers entirely.
     test('should auto-link on a surname-exact candidate without ever calling matchTrusteeByName', async () => {
@@ -645,7 +645,7 @@ describe('SyncAcmsProfessionalIds', () => {
     test('should return auto-linked when token intersection finds a single candidate resolved by contact corroboration', async () => {
       vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({ kind: 'no-match' });
       vi.spyOn(trusteeMatchHelpers, 'findTokenIntersectionCandidates').mockResolvedValue([
-        { trusteeId: 't1', name: 'William Wheeler Bryan' } as never,
+        { trusteeId: 't1', name: 'Desmond Wheeler Cray' } as never,
       ]);
       vi.spyOn(trusteeMatchHelpers, 'resolveByContactCorroboration').mockResolvedValue({
         kind: 'resolved',
@@ -661,7 +661,7 @@ describe('SyncAcmsProfessionalIds', () => {
     test('should call resolveByContactCorroboration with the token-intersection candidate trusteeIds', async () => {
       vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({ kind: 'no-match' });
       vi.spyOn(trusteeMatchHelpers, 'findTokenIntersectionCandidates').mockResolvedValue([
-        { trusteeId: 't1', name: 'William Wheeler Bryan' } as never,
+        { trusteeId: 't1', name: 'Desmond Wheeler Cray' } as never,
       ]);
       const corroborationSpy = vi
         .spyOn(trusteeMatchHelpers, 'resolveByContactCorroboration')
@@ -735,7 +735,7 @@ describe('SyncAcmsProfessionalIds', () => {
     test('should NOT call findAnchoredLevenshteinCandidates when token intersection already resolves', async () => {
       vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({ kind: 'no-match' });
       vi.spyOn(trusteeMatchHelpers, 'findTokenIntersectionCandidates').mockResolvedValue([
-        { trusteeId: 't1', name: 'William Wheeler Bryan' } as never,
+        { trusteeId: 't1', name: 'Desmond Wheeler Cray' } as never,
       ]);
       vi.spyOn(trusteeMatchHelpers, 'resolveByContactCorroboration').mockResolvedValue({
         kind: 'resolved',

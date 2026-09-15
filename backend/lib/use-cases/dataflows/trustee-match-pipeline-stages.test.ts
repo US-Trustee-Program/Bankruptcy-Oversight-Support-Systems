@@ -23,6 +23,7 @@ import {
   stateFilterStage,
   corroborationStage,
   comparativeCorroborationStage,
+  phoneTypoToleranceStage,
 } from './trustee-match-pipeline-stages';
 
 const makeDxtrTrustee = (overrides: Partial<DxtrTrusteeParty> = {}): DxtrTrusteeParty => ({
@@ -44,22 +45,22 @@ describe('surnameExactDiscoveryStage', () => {
   });
 
   test('adds every surname-exact candidate found to the pipeline state', async () => {
-    const johnMoon = makeTrustee({
+    const jordanVoss = makeTrustee({
       trusteeId: 't1',
-      firstName: 'John',
-      lastName: 'Moon',
-      name: 'John P. Moon',
+      firstName: 'Jordan',
+      lastName: 'Voss',
+      name: 'Jordan P. Voss',
     });
-    vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName').mockResolvedValue([johnMoon]);
+    vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName').mockResolvedValue([jordanVoss]);
 
     const state = createInitialState(
-      makeDxtrTrustee({ fullName: 'Phillip A Moon', lastName: 'Moon' }),
+      makeDxtrTrustee({ fullName: 'Aldric T Voss', lastName: 'Voss' }),
     );
 
     const result = await surnameExactDiscoveryStage(context)(state);
 
     expect(result.candidates.has('t1')).toBe(true);
-    expect(result.candidates.get('t1')!.camsRaw.name).toBe('John P. Moon');
+    expect(result.candidates.get('t1')!.camsRaw.name).toBe('Jordan P. Voss');
   });
 
   test('no-ops once the pipeline has already matched', async () => {
@@ -86,13 +87,13 @@ describe('surnameExactDiscoveryStage', () => {
   });
 
   test('does not reset an existing candidate already discovered by a prior stage', async () => {
-    const johnMoon = makeTrustee({ trusteeId: 't1', name: 'John P. Moon' });
-    vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName').mockResolvedValue([johnMoon]);
+    const jordanVoss = makeTrustee({ trusteeId: 't1', name: 'Jordan P. Voss' });
+    vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName').mockResolvedValue([jordanVoss]);
 
     const state = createInitialState(
-      makeDxtrTrustee({ fullName: 'Phillip A Moon', lastName: 'Moon' }),
+      makeDxtrTrustee({ fullName: 'Aldric T Voss', lastName: 'Voss' }),
     );
-    const existingCandidate = addCandidate(state, projectTrustee(johnMoon));
+    const existingCandidate = addCandidate(state, projectTrustee(jordanVoss));
     addScore(existingCandidate, 'calculateNameScore', { nameScore: 42, match: false });
 
     const result = await surnameExactDiscoveryStage(context)(state);
@@ -112,12 +113,12 @@ describe('tokenIntersectionDiscoveryStage', () => {
   });
 
   test('adds every token-intersection candidate found to the pipeline state', async () => {
-    const bryan = makeTrustee({ trusteeId: 't1', name: 'William Wheeler Bryan' });
+    const cray = makeTrustee({ trusteeId: 't1', name: 'Desmond Wheeler Cray' });
     vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName').mockImplementation(
-      async (token: string) => (token === 'wheeler' || token === 'bryan' ? [bryan] : []),
+      async (token: string) => (token === 'wheeler' || token === 'cray' ? [cray] : []),
     );
 
-    const state = createInitialState(makeDxtrTrustee({ fullName: 'W. Wheeler Bryan' }));
+    const state = createInitialState(makeDxtrTrustee({ fullName: 'D. Wheeler Cray' }));
 
     const result = await tokenIntersectionDiscoveryStage(context)(state);
 
@@ -146,18 +147,18 @@ describe('anchoredLevenshteinDiscoveryStage', () => {
   });
 
   test('adds every anchored-Levenshtein candidate found to the pipeline state', async () => {
-    const darr = makeTrustee({
+    const falk = makeTrustee({
       trusteeId: 't1',
-      firstName: 'Stephen',
-      lastName: 'Darr',
-      name: 'Stephen Darr',
+      firstName: 'Norbert',
+      lastName: 'Falk',
+      name: 'Norbert Falk',
     });
     vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName').mockImplementation(
-      async (token: string) => (token === 'darr' ? [darr] : []),
+      async (token: string) => (token === 'falk' ? [falk] : []),
     );
 
     const state = createInitialState(
-      makeDxtrTrustee({ fullName: 'Stephan Darr', firstName: 'Stephan', lastName: 'Darr' }),
+      makeDxtrTrustee({ fullName: 'Norburt Falk', firstName: 'Norburt', lastName: 'Falk' }),
     );
 
     const result = await anchoredLevenshteinDiscoveryStage(context)(state);
@@ -303,8 +304,8 @@ describe('similarityDiagnosticsStage', () => {
 
 describe('stateFilterStage', () => {
   const dxtrInWashington = makeDxtrTrustee({
-    fullName: 'Phillip A Moon',
-    firstName: 'Phillip',
+    fullName: 'Aldric T Moon',
+    firstName: 'Aldric',
     middleName: 'A',
     lastName: 'Moon',
     legacy: { cityStateZipCountry: 'Tacoma, WA 98402' },
@@ -434,10 +435,10 @@ describe('stateFilterStage', () => {
     const state = createInitialState(dxtrInWashington);
     addTrustee(state, {
       trusteeId: 'trustee-fl-name',
-      firstName: 'Phillip',
+      firstName: 'Aldric',
       middleName: 'A',
       lastName: 'Moon',
-      name: 'Phillip A. Moon',
+      name: 'Aldric A. Moon',
       public: {
         address: {
           address1: '1 Elm St',
@@ -646,88 +647,89 @@ describe('corroborationStage', () => {
 });
 
 describe('comparativeCorroborationStage', () => {
-  // Models SE-06869: ACMS "Andrew Wilson" (Seattle WA, phone 206-850-8777) has two CAMS
-  // candidates that both clear calculateNameScore's 85 threshold - "A. Bruce Wilson" (Fort Worth
-  // TX, unrelated phone) and "J. Andrew Wilson" (Seattle WA, phone 206-850-8777, an EXACT match).
-  // resolveByContactCorroboration refuses to arbitrate between multiple name-qualifying candidates
-  // at all (see trustee-match.helpers.ts) - this stage exists specifically to pick up that case
-  // when exactly one qualifying candidate has decisive contact evidence the others lack.
-  const acmsAndrewWilson = makeDxtrTrustee({
-    fullName: 'Andrew Wilson',
-    firstName: 'Andrew',
-    lastName: 'Wilson',
+  // Models a real backtest finding (anonymized): an ACMS record for "Marcus Feld" (Seattle WA
+  // area, a specific phone number) has two CAMS candidates that both clear calculateNameScore's
+  // 85 threshold - "A. Bruce Halden" (a different state, unrelated phone) and "J. Marcus Feld"
+  // (same Seattle WA area, an EXACT phone match). resolveByContactCorroboration refuses to
+  // arbitrate between multiple name-qualifying candidates at all (see trustee-match.helpers.ts) -
+  // this stage exists specifically to pick up that case when exactly one qualifying candidate has
+  // decisive contact evidence the others lack.
+  const acmsMarcusFeld = makeDxtrTrustee({
+    fullName: 'Marcus Feld',
+    firstName: 'Marcus',
+    lastName: 'Feld',
     legacy: {
-      address1: 'PO Box 573',
-      cityStateZipCountry: 'Edmonds, WA 98020',
-      phone: '2068508777',
+      address1: 'PO Box 100',
+      cityStateZipCountry: 'Fictionville, WA 98999',
+      phone: '2065551000',
     },
   });
 
   test('resolves to the sole candidate with an exact phone match among multiple name-qualifying candidates', async () => {
-    const state = createInitialState(acmsAndrewWilson);
-    const bruceWilson = addCandidate(
+    const state = createInitialState(acmsMarcusFeld);
+    const bruceHalden = addCandidate(
       state,
       projectTrustee(
         makeTrustee({
           trusteeId: 'bruce-wilson',
           firstName: 'A.',
           middleName: 'Bruce',
-          lastName: 'Wilson',
-          name: 'A. Bruce Wilson',
+          lastName: 'Feld',
+          name: 'A. Bruce Halden',
           public: {
             address: {
               address1: '1300 S. University Dr. #308',
-              city: 'Ft. Worth',
+              city: 'Fictionburg',
               state: 'TX',
-              zipCode: '76107',
+              zipCode: '99999',
               countryCode: 'US',
             },
-            phone: { number: '817-877-4400' },
+            phone: { number: '555-555-2000' },
           },
         }),
       ),
     );
-    addScore(bruceWilson, 'calculateNameScore', { nameScore: 85, match: true });
-    const andrewWilson = addCandidate(
+    addScore(bruceHalden, 'calculateNameScore', { nameScore: 85, match: true });
+    const marcusFeld = addCandidate(
       state,
       projectTrustee(
         makeTrustee({
-          trusteeId: 'j-andrew-wilson',
+          trusteeId: 'j-marcus-feld',
           firstName: 'J.',
-          middleName: 'Andrew',
-          lastName: 'Wilson',
-          name: 'J. Andrew Wilson',
+          middleName: 'Marcus',
+          lastName: 'Feld',
+          name: 'J. Marcus Feld',
           public: {
             address: {
-              address1: '403 Galer Street',
-              city: 'Seattle',
+              address1: '1 Fictional Ave',
+              city: 'Fictionburg',
               state: 'WA',
-              zipCode: '98109',
+              zipCode: '98999',
               countryCode: 'US',
             },
-            phone: { number: '206-850-8777' },
+            phone: { number: '206-555-1000' },
           },
         }),
       ),
     );
-    addScore(andrewWilson, 'calculateNameScore', { nameScore: 85, match: true });
+    addScore(marcusFeld, 'calculateNameScore', { nameScore: 85, match: true });
 
     const result = await comparativeCorroborationStage()(state);
 
     expect(result.match).toEqual({
-      trusteeId: 'j-andrew-wilson',
+      trusteeId: 'j-marcus-feld',
       score: expect.objectContaining({ phoneScore: 100 }),
     });
   });
 
   test('does not resolve when more than one qualifying candidate has strong corroboration', async () => {
-    const state = createInitialState(acmsAndrewWilson);
+    const state = createInitialState(acmsMarcusFeld);
     const first = addCandidate(
       state,
       projectTrustee(
         makeTrustee({
           trusteeId: 'candidate-1',
-          name: 'Andrew Wilson',
+          name: 'Marcus Feld',
           public: {
             address: {
               address1: '1 Unrelated St',
@@ -736,7 +738,7 @@ describe('comparativeCorroborationStage', () => {
               zipCode: '00000',
               countryCode: 'US',
             },
-            phone: { number: '206-850-8777' },
+            phone: { number: '206-555-1000' },
           },
         }),
       ),
@@ -747,7 +749,7 @@ describe('comparativeCorroborationStage', () => {
       projectTrustee(
         makeTrustee({
           trusteeId: 'candidate-2',
-          name: 'Andrew J. Wilson',
+          name: 'Marcus J. Feld',
           public: {
             address: {
               address1: '1 Unrelated St',
@@ -756,7 +758,7 @@ describe('comparativeCorroborationStage', () => {
               zipCode: '00000',
               countryCode: 'US',
             },
-            phone: { number: '206-850-8777' },
+            phone: { number: '206-555-1000' },
           },
         }),
       ),
@@ -769,13 +771,13 @@ describe('comparativeCorroborationStage', () => {
   });
 
   test('does not resolve when no qualifying candidate has strong corroboration', async () => {
-    const state = createInitialState(acmsAndrewWilson);
+    const state = createInitialState(acmsMarcusFeld);
     const first = addCandidate(
       state,
       projectTrustee(
         makeTrustee({
           trusteeId: 'candidate-1',
-          name: 'Andrew Wilson',
+          name: 'Marcus Feld',
           public: {
             address: {
               address1: '1 Elm St',
@@ -795,7 +797,7 @@ describe('comparativeCorroborationStage', () => {
       projectTrustee(
         makeTrustee({
           trusteeId: 'candidate-2',
-          name: 'Andrew J. Wilson',
+          name: 'Marcus J. Feld',
           public: {
             address: {
               address1: '1 Oak St',
@@ -817,13 +819,13 @@ describe('comparativeCorroborationStage', () => {
   });
 
   test('ignores candidates that never cleared the name-score threshold', async () => {
-    const state = createInitialState(acmsAndrewWilson);
+    const state = createInitialState(acmsMarcusFeld);
     const nameNoMatch = addCandidate(
       state,
       projectTrustee(
         makeTrustee({
           trusteeId: 'jason-wilson-aguilar',
-          name: 'Jason Wilson-Aguilar',
+          name: 'Jason Feld-Aguilar',
           public: {
             address: {
               address1: '1 Unrelated St',
@@ -832,7 +834,7 @@ describe('comparativeCorroborationStage', () => {
               zipCode: '00000',
               countryCode: 'US',
             },
-            phone: { number: '206-850-8777' },
+            phone: { number: '206-555-1000' },
           },
         }),
       ),
@@ -845,33 +847,33 @@ describe('comparativeCorroborationStage', () => {
   });
 
   test('records addressScore/phoneScore onto every qualifying candidate regardless of outcome', async () => {
-    const state = createInitialState(acmsAndrewWilson);
-    const bruceWilson = addCandidate(
+    const state = createInitialState(acmsMarcusFeld);
+    const bruceHalden = addCandidate(
       state,
       projectTrustee(
         makeTrustee({
           trusteeId: 'bruce-wilson',
-          name: 'A. Bruce Wilson',
+          name: 'A. Bruce Halden',
           public: {
             address: {
               address1: '1300 S. University Dr. #308',
-              city: 'Ft. Worth',
+              city: 'Fictionburg',
               state: 'TX',
-              zipCode: '76107',
+              zipCode: '99999',
               countryCode: 'US',
             },
-            phone: { number: '817-877-4400' },
+            phone: { number: '555-555-2000' },
           },
         }),
       ),
     );
-    addScore(bruceWilson, 'calculateNameScore', { nameScore: 85, match: true });
-    const andrewWilson = addCandidate(
+    addScore(bruceHalden, 'calculateNameScore', { nameScore: 85, match: true });
+    const marcusFeld = addCandidate(
       state,
       projectTrustee(
         makeTrustee({
-          trusteeId: 'j-andrew-wilson',
-          name: 'J. Andrew Wilson',
+          trusteeId: 'j-marcus-feld',
+          name: 'J. Marcus Feld',
           public: {
             address: {
               address1: '1 Unrelated St',
@@ -880,22 +882,22 @@ describe('comparativeCorroborationStage', () => {
               zipCode: '00000',
               countryCode: 'US',
             },
-            phone: { number: '206-850-8777' },
+            phone: { number: '206-555-1000' },
           },
         }),
       ),
     );
-    addScore(andrewWilson, 'calculateNameScore', { nameScore: 85, match: true });
+    addScore(marcusFeld, 'calculateNameScore', { nameScore: 85, match: true });
 
     await comparativeCorroborationStage()(state);
 
-    expect(mergedScore(bruceWilson)).toMatchObject({ phoneScore: 0 });
-    expect(mergedScore(andrewWilson)).toMatchObject({ phoneScore: 100 });
+    expect(mergedScore(bruceHalden)).toMatchObject({ phoneScore: 0 });
+    expect(mergedScore(marcusFeld)).toMatchObject({ phoneScore: 100 });
   });
 
   test('no-ops once the pipeline has already matched', async () => {
     const state: PipelineState = {
-      ...createInitialState(acmsAndrewWilson),
+      ...createInitialState(acmsMarcusFeld),
       match: { trusteeId: 'already-matched', score: {} },
     };
     const candidate = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })));
@@ -904,5 +906,185 @@ describe('comparativeCorroborationStage', () => {
     await comparativeCorroborationStage()(state);
 
     expect(candidate.scores).not.toHaveProperty('contactCorroborationScore');
+  });
+});
+
+describe('phoneTypoToleranceStage', () => {
+  // Models a real backtest finding (anonymized): an ACMS record for "Terrence Boyle" has exactly
+  // ONE CAMS candidate, "Terrence J. Boyle", an EXACT structured name match (nameScore=100), whose
+  // recorded phone differs by exactly the LAST digit - a real, comparable, MISMATCHED number, not
+  // a missing one. resolveByContactCorroboration's isNoContradictionMatch fallback never triggers
+  // here - it only relaxes when phoneScore is null (uncomparable), not merely mismatched. A
+  // backtest of the real 245-record population sharing this exact shape (sole candidate,
+  // nameScore=100, a comparable-but-mismatched phone) found phone numbers differing by 1-2 digits
+  // are essentially always a typo (still the same person), while numbers differing by 8-10 digits
+  // are genuinely different phone numbers - calculatePhoneScore's binary 100-or-0 can't
+  // distinguish the two, so this stage adds digit-hamming-distance as a new, pipeline-only
+  // diagnostic to recover the former without touching the latter.
+  const acmsTerrenceBoyle = makeDxtrTrustee({
+    fullName: 'Terrence Boyle',
+    firstName: 'Terrence',
+    lastName: 'Boyle',
+    legacy: {
+      cityStateZipCountry: 'Fictionburg, NY 10999',
+      phone: '2125550100',
+    },
+  });
+
+  test('resolves the sole exact-name candidate when its phone differs by only 1-2 digits', async () => {
+    const state = createInitialState(acmsTerrenceBoyle);
+    const candidate = addCandidate(
+      state,
+      projectTrustee(
+        makeTrustee({
+          trusteeId: 'terrence-j-boyle',
+          firstName: 'Terrence',
+          middleName: 'J.',
+          lastName: 'Boyle',
+          name: 'Terrence J. Boyle',
+          public: {
+            address: {
+              address1: '1 Fictional Way',
+              city: 'Fictionburg',
+              state: 'NY',
+              zipCode: '10999',
+              countryCode: 'US',
+            },
+            phone: { number: '212-555-0108' },
+          },
+        }),
+      ),
+    );
+    addScore(candidate, 'calculateNameScore', { nameScore: 100, match: true });
+
+    const result = await phoneTypoToleranceStage()(state);
+
+    expect(result.match).toEqual({
+      trusteeId: 'terrence-j-boyle',
+      score: expect.objectContaining({ nameScore: 100, phoneDigitDistance: expect.any(Number) }),
+    });
+  });
+
+  test.each([
+    {
+      description: "sole candidate's phone is genuinely a different number (large digit distance)",
+      nameScore: 100,
+      phone: '425-894-9945',
+    },
+    {
+      description: 'nameScore is 85, not a perfect 100',
+      nameScore: 85,
+      phone: '212-573-0640',
+    },
+    {
+      description: 'candidate phone is not comparable (fewer than 10 digits)',
+      nameScore: 100,
+      phone: '5550640',
+    },
+  ])('does not resolve when $description', async ({ nameScore, phone }) => {
+    const state = createInitialState(acmsTerrenceBoyle);
+    const candidate = addCandidate(
+      state,
+      projectTrustee(
+        makeTrustee({
+          trusteeId: 'terrence-j-boyle',
+          name: 'Marisol B. Quade',
+          public: {
+            address: {
+              address1: '825 Third Avenue, 26th Floor',
+              city: 'New York',
+              state: 'NY',
+              zipCode: '10022',
+              countryCode: 'US',
+            },
+            phone: { number: phone },
+          },
+        }),
+      ),
+    );
+    addScore(candidate, 'calculateNameScore', { nameScore, match: true });
+
+    const result = await phoneTypoToleranceStage()(state);
+
+    expect(result.match).toBeNull();
+  });
+
+  test("does not resolve when more than one candidate qualifies - not this stage's job", async () => {
+    const state = createInitialState(acmsTerrenceBoyle);
+    const first = addCandidate(
+      state,
+      projectTrustee(
+        makeTrustee({
+          trusteeId: 'candidate-1',
+          name: 'Marisol Quade',
+          public: {
+            address: {
+              address1: '825 Third Avenue, 26th Floor',
+              city: 'New York',
+              state: 'NY',
+              zipCode: '10022',
+              countryCode: 'US',
+            },
+            phone: { number: '212-573-0640' },
+          },
+        }),
+      ),
+    );
+    addScore(first, 'calculateNameScore', { nameScore: 100, match: true });
+    const second = addCandidate(
+      state,
+      projectTrustee(
+        makeTrustee({
+          trusteeId: 'candidate-2',
+          name: 'Marisol R. Quade',
+          public: {
+            address: {
+              address1: '825 Third Avenue, 26th Floor',
+              city: 'New York',
+              state: 'NY',
+              zipCode: '10022',
+              countryCode: 'US',
+            },
+            phone: { number: '212-573-0641' },
+          },
+        }),
+      ),
+    );
+    addScore(second, 'calculateNameScore', { nameScore: 100, match: true });
+
+    const result = await phoneTypoToleranceStage()(state);
+
+    expect(result.match).toBeNull();
+  });
+
+  test('no-ops once the pipeline has already matched', async () => {
+    const state: PipelineState = {
+      ...createInitialState(acmsTerrenceBoyle),
+      match: { trusteeId: 'already-matched', score: {} },
+    };
+    const candidate = addCandidate(
+      state,
+      projectTrustee(
+        makeTrustee({
+          trusteeId: 'terrence-j-boyle',
+          name: 'Marisol B. Quade',
+          public: {
+            address: {
+              address1: '825 Third Avenue, 26th Floor',
+              city: 'New York',
+              state: 'NY',
+              zipCode: '10022',
+              countryCode: 'US',
+            },
+            phone: { number: '212-573-0640' },
+          },
+        }),
+      ),
+    );
+    addScore(candidate, 'calculateNameScore', { nameScore: 100, match: true });
+
+    await phoneTypoToleranceStage()(state);
+
+    expect(candidate.scores).not.toHaveProperty('phoneTypoToleranceScore');
   });
 });

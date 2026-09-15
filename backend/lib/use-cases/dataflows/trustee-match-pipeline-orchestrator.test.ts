@@ -67,7 +67,7 @@ describe('runTrusteeMatchPipeline', () => {
 
     const result = await runTrusteeMatchPipeline(
       context,
-      makeDxtrTrustee({ fullName: 'Phillip Moon', lastName: 'Moon' }),
+      makeDxtrTrustee({ fullName: 'Someone Moon', lastName: 'Moon' }),
     );
 
     expect(matchSpy).not.toHaveBeenCalled();

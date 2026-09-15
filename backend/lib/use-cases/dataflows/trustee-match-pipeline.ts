@@ -65,6 +65,20 @@ export type ContactCorroborationScoreEntry = {
 };
 
 /**
+ * phoneTypoToleranceStage's contribution (see trustee-match-pipeline-stages.ts) - the sole
+ * qualifying candidate's phone digit-hamming-distance against the ACMS record, alongside the
+ * nameScore that made it eligible (copied forward, same self-containment rationale as
+ * ContactCorroborationScoreEntry). calculatePhoneScore's binary 100-or-0 can't distinguish a
+ * likely typo (1-2 digits off) from a genuinely different number (most/all digits differ);
+ * phoneDigitDistance is the raw count of differing digit positions across the last 10 digits of
+ * each side, null when either side isn't a full comparable 10-digit number.
+ */
+export type PhoneTypoToleranceScoreEntry = {
+  nameScore: number;
+  phoneDigitDistance: number | null;
+};
+
+/**
  * Every known scorer's contribution shape, keyed by the scorer's own name - a closed map of
  * exactly the scorers that exist today. A new stage adds its own key/shape pair here; every
  * switch/narrowing consumer (see mergedScore) then requires that new case to be handled
@@ -77,6 +91,7 @@ export type ScoreEntryByScorer = {
   calculateNameScore: NameScoreEntry;
   stateFilterStage: StateFilterScoreEntry;
   contactCorroborationScore: ContactCorroborationScoreEntry;
+  phoneTypoToleranceScore: PhoneTypoToleranceScoreEntry;
 };
 
 export type ScorerName = keyof ScoreEntryByScorer;
@@ -91,7 +106,8 @@ export type ScoreByScorer = Partial<ScoreEntryByScorer>;
  * by every scorer. */
 export type MergedScore = Partial<NameScoreEntry> &
   Partial<StateFilterScoreEntry> &
-  Partial<ContactCorroborationScoreEntry>;
+  Partial<ContactCorroborationScoreEntry> &
+  Partial<PhoneTypoToleranceScoreEntry>;
 
 /**
  * One candidate under consideration, plus its evaluation history. camsRaw is set once when the
@@ -140,7 +156,11 @@ export type NameOnlyMatchScore = {
 export type PipelineMatch = {
   trusteeId: string;
   score:
-    CandidateScore | NameOnlyMatchScore | ContactCorroborationScoreEntry | Record<string, never>;
+    | CandidateScore
+    | NameOnlyMatchScore
+    | ContactCorroborationScoreEntry
+    | PhoneTypoToleranceScoreEntry
+    | Record<string, never>;
 };
 
 /**

@@ -16,6 +16,7 @@ import {
   comparativeCorroborationStage,
   corroborationStage,
   nameScoreStage,
+  phoneTypoToleranceStage,
   similarityDiagnosticsStage,
   stateFilterStage,
   surnameExactDiscoveryStage,
@@ -50,6 +51,7 @@ async function runNestedTier(
     similarityDiagnosticsStage(),
     corroborationStage(context),
     comparativeCorroborationStage(),
+    phoneTypoToleranceStage(),
   ]);
 
   for (const candidate of nestedResult.candidates.values()) {
@@ -112,6 +114,7 @@ async function resolveMatchTrusteeByNameAmbiguous(
     similarityDiagnosticsStage(),
     corroborationStage(context),
     comparativeCorroborationStage(),
+    phoneTypoToleranceStage(),
   ]);
 
   for (const candidate of nestedResult.candidates.values()) {

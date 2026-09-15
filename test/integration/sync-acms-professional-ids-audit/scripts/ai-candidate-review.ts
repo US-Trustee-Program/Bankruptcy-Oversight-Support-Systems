@@ -29,13 +29,22 @@
  *   npx tsx --tsconfig ../../backend/tsconfig.json sync-acms-professional-ids-audit/scripts/ai-candidate-review.ts --shard=3 --of=4
  *   npx tsx --tsconfig ../../backend/tsconfig.json sync-acms-professional-ids-audit/scripts/ai-candidate-review.ts --shard=4 --of=4
  *
- * Each shard is independently resumable: if data/ai-review-shard-{N}-of-{M}.csv already exists,
- * acmsProfessionalId values already present in it are skipped and new results are appended, so an
- * interrupted run only re-does what's left.
+ * Each shard is independently resumable: if its output CSV already exists, acmsProfessionalId
+ * values already present in it are skipped and new results are appended, so an interrupted run
+ * only re-does what's left.
  *
  * Every shard writes a flattened CSV for human review (one row per record/candidate pair, plus
  * aiVerdict/aiReason) - the same shape the old CSV-driven version produced, still derived fresh
  * from each JSONL line rather than carried over from any prior CSV.
+ *
+ * By default only screens UNRESOLVED records (record.match === null) - pattern-hunting for new
+ * matcher gaps only needs the population the pipeline didn't already auto-resolve, so screening
+ * the resolved population too would just re-confirm already-trusted answers at real cost. Pass
+ * --unresolved-only=false to run a full false-positive sweep across EVERY record (including
+ * already-resolved ones) instead - a separate, more expensive pass, intended for later once
+ * obvious matcher gaps have already been addressed. The two modes write to different files
+ * (data/ai-review-unresolved-shard-{N}-of-{M}.csv vs. data/ai-review-full-shard-{N}-of-{M}.csv) so
+ * they never collide or get resumed into each other by mistake.
  *
  * Override the input JSONL path with REPLAY_BACKTEST_REPORT_JSONL, following the same env-var
  * override convention pipeline-replay-backtest.ts uses for its own fixture paths. Override the
@@ -181,16 +190,20 @@ function partitionIds(ids: string[], shard: number, of: number): string[] {
 type CliArgs = {
   shard: number;
   of: number;
+  unresolvedOnly: boolean;
 };
 
 function parseCliArgs(argv: string[]): CliArgs {
   let shard: number | undefined;
   let of: number | undefined;
+  let unresolvedOnly = true;
   for (const arg of argv) {
     const shardMatch = arg.match(/^--shard=(\d+)$/);
     const ofMatch = arg.match(/^--of=(\d+)$/);
+    const unresolvedOnlyMatch = arg.match(/^--unresolved-only=(true|false)$/);
     if (shardMatch) shard = Number(shardMatch[1]);
     if (ofMatch) of = Number(ofMatch[1]);
+    if (unresolvedOnlyMatch) unresolvedOnly = unresolvedOnlyMatch[1] === 'true';
   }
   if (shard === undefined || of === undefined) {
     throw new Error('Both --shard=N and --of=M are required, e.g. --shard=1 --of=4');
@@ -201,7 +214,7 @@ function parseCliArgs(argv: string[]): CliArgs {
   if (shard < 1 || shard > of) {
     throw new Error(`--shard must satisfy 1 <= shard <= of (got --shard=${shard} --of=${of})`);
   }
-  return { shard, of };
+  return { shard, of, unresolvedOnly };
 }
 
 function acmsAddressString(acmsRaw: DxtrTrusteeParty): string {
@@ -445,7 +458,7 @@ async function runWithConcurrency<T>(
 }
 
 async function run(): Promise<void> {
-  const { shard, of } = parseCliArgs(process.argv.slice(2));
+  const { shard, of, unresolvedOnly } = parseCliArgs(process.argv.slice(2));
 
   const inputJsonlPath =
     process.env.REPLAY_BACKTEST_REPORT_JSONL ?? path.join(DATA_DIR, 'replay-backtest-report.jsonl');
@@ -459,18 +472,26 @@ async function run(): Promise<void> {
   const promptTemplate = fs.readFileSync(PROMPT_TEMPLATE_PATH, 'utf-8');
 
   const allRecords = readReviewRecords(inputJsonlPath);
-  const recordsById = new Map(allRecords.map((r) => [r.acmsProfessionalId, r]));
+  // Unresolved-only is the default: pattern-hunting only needs the records the pipeline DIDN'T
+  // already auto-resolve (record.match === null) - screening the already-resolved population too
+  // is a separate, more expensive false-positive sweep (see --unresolved-only=false), deliberately
+  // NOT run by default since it re-confirms answers already trusted rather than surfacing new gaps.
+  const candidateRecords = unresolvedOnly ? allRecords.filter((r) => r.match === null) : allRecords;
+  const recordsById = new Map(candidateRecords.map((r) => [r.acmsProfessionalId, r]));
   const allIds = [...recordsById.keys()];
   const shardIds = partitionIds(allIds, shard, of);
 
   fs.mkdirSync(DATA_DIR, { recursive: true });
-  const outputPath = path.join(DATA_DIR, `ai-review-shard-${shard}-of-${of}.csv`);
+  const shardLabel = unresolvedOnly
+    ? `unresolved-shard-${shard}-of-${of}`
+    : `full-shard-${shard}-of-${of}`;
+  const outputPath = path.join(DATA_DIR, `ai-review-${shardLabel}.csv`);
   const alreadyDone = alreadyReviewedIds(outputPath);
   const remainingIds = shardIds.filter((id) => !alreadyDone.has(id));
 
   console.log(
-    `shard ${shard}/${of}: ${shardIds.length} records assigned, ${alreadyDone.size} already ` +
-      `reviewed (resuming), ${remainingIds.length} remaining\n`,
+    `${shardLabel} (unresolvedOnly=${unresolvedOnly}): ${shardIds.length} records assigned, ` +
+      `${alreadyDone.size} already reviewed (resuming), ${remainingIds.length} remaining\n`,
   );
 
   const writer = new ShardReportWriter(outputPath, alreadyDone.size > 0);
@@ -514,14 +535,14 @@ async function run(): Promise<void> {
     } finally {
       completed++;
       if (completed % PROGRESS_LOG_INTERVAL === 0) {
-        console.log(`shard ${shard}/${of}: ${completed}/${remainingIds.length} records reviewed`);
+        console.log(`${shardLabel}: ${completed}/${remainingIds.length} records reviewed`);
       }
     }
   });
 
   await writer.close();
 
-  console.log(`\n=== shard ${shard}/${of} summary ===`);
+  console.log(`\n=== ${shardLabel} summary ===`);
   console.log(`  records reviewed:  ${completed - erroredIds.length}`);
   console.log(`  verdicts match:    ${matchCount}`);
   console.log(`  verdicts no-match: ${noMatchCount}`);

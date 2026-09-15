@@ -687,25 +687,25 @@ describe('findTokenIntersectionCandidates', () => {
   });
 
   test('returns the single trustee present in every token search result', async () => {
-    const bryan = makeTrustee({ trusteeId: 'trustee-1', name: 'William Wheeler Bryan' });
+    const cray = makeTrustee({ trusteeId: 'trustee-1', name: 'Desmond Wheeler Cray' });
     const otherWheeler = makeTrustee({ trusteeId: 'trustee-2', name: 'Wheeler Someone Else' });
-    const otherBryan = makeTrustee({ trusteeId: 'trustee-3', name: 'Someone Else Bryan' });
+    const otherCray = makeTrustee({ trusteeId: 'trustee-3', name: 'Someone Else Cray' });
 
     const searchSpy = vi
       .spyOn(MockMongoRepository.prototype, 'searchTrusteesByName')
       .mockImplementation(async (token: string) => {
-        if (token === 'wheeler') return [bryan, otherWheeler];
-        if (token === 'bryan') return [bryan, otherBryan];
+        if (token === 'wheeler') return [cray, otherWheeler];
+        if (token === 'cray') return [cray, otherCray];
         return [];
       });
 
     const result = await findTokenIntersectionCandidates(context, {
-      fullName: 'W. Wheeler Bryan',
+      fullName: 'D. Wheeler Cray',
     });
 
-    expect(result).toEqual([bryan]);
+    expect(result).toEqual([cray]);
     expect(searchSpy).toHaveBeenCalledWith('wheeler');
-    expect(searchSpy).toHaveBeenCalledWith('bryan');
+    expect(searchSpy).toHaveBeenCalledWith('cray');
   });
 
   test('returns an empty array when fewer than 2 usable tokens exist', async () => {
@@ -808,7 +808,7 @@ describe('findSurnameExactCandidates', () => {
       });
 
     const result = await findSurnameExactCandidates(context, {
-      fullName: 'Phillip A Moon',
+      fullName: 'Someone A Moon',
       lastName: 'Moon',
     });
 
@@ -834,7 +834,7 @@ describe('findSurnameExactCandidates', () => {
     );
 
     const result = await findSurnameExactCandidates(context, {
-      fullName: 'Phillip A Moon',
+      fullName: 'Someone A Moon',
       lastName: 'Moon',
     });
 
@@ -871,8 +871,8 @@ describe('findSurnameExactCandidates', () => {
 
 describe('filterNoisyStateMismatches', () => {
   const dxtrInWashington: DxtrTrusteeParty = {
-    fullName: 'Phillip A Moon',
-    firstName: 'Phillip',
+    fullName: 'Aldric A Moon',
+    firstName: 'Aldric',
     middleName: 'A',
     lastName: 'Moon',
     legacy: { cityStateZipCountry: 'Tacoma, WA 98402' },
@@ -986,10 +986,10 @@ describe('filterNoisyStateMismatches', () => {
   test('keeps a state-mismatched candidate anyway when its structured nameScore would be >= 85', () => {
     const strongNameMatch = makeCandidate({
       trusteeId: 'trustee-fl-name',
-      firstName: 'Phillip',
+      firstName: 'Aldric',
       middleName: 'A',
       lastName: 'Moon',
-      name: 'Phillip A. Moon',
+      name: 'Aldric A. Moon',
       public: {
         address: {
           address1: '1 Elm St',

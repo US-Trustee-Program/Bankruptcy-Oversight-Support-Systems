@@ -480,8 +480,9 @@ async function processNameMatch(
   // those become the ONLY pool passed to corroboration - matchTrusteeByName's own (broader,
   // phonetic/fuzzy) candidate list is not also unioned in, since every candidate it could add here
   // is, by construction, someone calculateNameScore's own lastName gate was always going to reject
-  // anyway (see CAMS-879 backtest finding: ACMS "Phillip A Moon" resolving against a 13-candidate
-  // phonetic pool that included Mann/Mooney/Wyman/Khorrami alongside the two actual "Moon"s).
+  // anyway (see CAMS-879 backtest finding: an ACMS record resolving against a 13-candidate
+  // phonetic pool that included several unrelated-surname candidates alongside the two actual
+  // same-surname matches).
   const surnameExactCandidates = filterNoisyStateMismatches(
     acmsTrusteeProfessional,
     await findSurnameExactCandidates(deps.context, acmsTrusteeProfessional),
