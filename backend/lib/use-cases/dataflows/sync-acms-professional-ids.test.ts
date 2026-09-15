@@ -459,6 +459,58 @@ describe('SyncAcmsProfessionalIds', () => {
       );
     });
 
+    // Mirrors cases.dxtr.gateway.ts's dxtrTrustee construction, which populates `legacy` from the
+    // raw record's address/phone/fax fields via the same formatCityStateZipCountry/formatAcmsZip
+    // composition - toAcmsTrusteeProfessional previously never did this at all, meaning every live
+    // ACMS professional-id sync's address/phone corroboration and state-mismatch filtering
+    // silently ran against undefined data.
+    test('should populate legacy with address/phone/fax so address/phone corroboration has real data to compare', async () => {
+      const matchSpy = vi
+        .spyOn(trusteeMatchHelpers, 'matchTrusteeByName')
+        .mockResolvedValue({ kind: 'no-match' });
+      vi.spyOn(trusteeMatchHelpers, 'findTokenIntersectionCandidates').mockResolvedValue([]);
+      vi.spyOn(trusteeMatchHelpers, 'findAnchoredLevenshteinCandidates').mockResolvedValue([]);
+
+      await SyncAcmsProfessionalIds.processNameMatch(deps, {
+        ...record,
+        address1: '123 Main St',
+        address2: 'Suite 200',
+        city: 'Springfield',
+        state: 'IL',
+        zip: 627010000,
+        phone: '2175551212',
+        fax: '2175551213',
+      });
+
+      expect(matchSpy).toHaveBeenCalledWith(
+        deps.context,
+        expect.objectContaining({
+          legacy: expect.objectContaining({
+            address1: '123 Main St',
+            address2: 'Suite 200',
+            cityStateZipCountry: 'Springfield IL 62701-0000',
+            phone: '2175551212',
+            fax: '2175551213',
+          }),
+        }),
+      );
+    });
+
+    test('should leave legacy undefined when the record has no address/phone fields at all', async () => {
+      const matchSpy = vi
+        .spyOn(trusteeMatchHelpers, 'matchTrusteeByName')
+        .mockResolvedValue({ kind: 'no-match' });
+      vi.spyOn(trusteeMatchHelpers, 'findTokenIntersectionCandidates').mockResolvedValue([]);
+      vi.spyOn(trusteeMatchHelpers, 'findAnchoredLevenshteinCandidates').mockResolvedValue([]);
+
+      await SyncAcmsProfessionalIds.processNameMatch(deps, { ...record });
+
+      expect(matchSpy).toHaveBeenCalledWith(
+        deps.context,
+        expect.objectContaining({ legacy: undefined }),
+      );
+    });
+
     // Real-world pattern from a CAMS-879 backtest: ACMS "TACOMACH13 K. MICHAEL FITZGERALD" -
     // PROF_FIRST_NAME holds a mangled city+chapter code ("TACOMACH13") and PROF_LAST_NAME holds
     // the trustee's ENTIRE real name. A digit anywhere in firstName is a reliable corruption

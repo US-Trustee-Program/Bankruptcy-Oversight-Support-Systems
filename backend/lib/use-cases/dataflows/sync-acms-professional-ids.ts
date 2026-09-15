@@ -19,7 +19,8 @@ import {
   toUnscoredCandidates,
   STATE_FILTER_POOL_SIZE_THRESHOLD,
 } from './trustee-match.helpers';
-import { buildAcmsVariant } from './acms-trustee-variant.helpers';
+import { buildAcmsVariant, formatAcmsZip } from './acms-trustee-variant.helpers';
+import { formatCityStateZipCountry } from '../../adapters/utils/string-helper';
 import { computeFingerprint } from './trustee-variant.helpers';
 import { AcmsTrusteeProfessional, CandidateScore } from '@common/cams/dataflow-events';
 import { TrusteeProfessionalIdError } from '@common/cams/trustee-professional-ids';
@@ -341,6 +342,41 @@ export function shouldSkipAsNotAPerson(firstName: string, lastName: string): boo
   );
 }
 
+/**
+ * Composes the legacy (ACMS-side address/phone/fax) block the same way
+ * cases.dxtr.gateway.ts's dxtrTrustee construction composes DXTR's equivalent - reusing the same
+ * formatCityStateZipCountry/formatAcmsZip helpers buildAcmsVariant already uses for the persisted
+ * variant string, so this stays in sync with that composition rather than drifting from it.
+ * Returns undefined (not an all-undefined object) when the record has no address/phone/fax data
+ * at all, mirroring AcmsTrusteeProfessional.legacy's own optionality.
+ */
+function toAcmsLegacy(
+  record: AcmsTrusteeProfessionalDetailRecord,
+): AcmsTrusteeProfessional['legacy'] {
+  const cityStateZipCountry = formatCityStateZipCountry(
+    record.city,
+    record.state,
+    formatAcmsZip(record.zip),
+    undefined,
+  );
+  if (
+    !record.address1 &&
+    !record.address2 &&
+    !cityStateZipCountry &&
+    !record.phone &&
+    !record.fax
+  ) {
+    return undefined;
+  }
+  return {
+    address1: record.address1,
+    address2: record.address2,
+    cityStateZipCountry,
+    phone: record.phone,
+    fax: record.fax,
+  };
+}
+
 export function toAcmsTrusteeProfessional(
   record: AcmsTrusteeProfessionalDetailRecord,
 ): AcmsTrusteeProfessional {
@@ -359,6 +395,7 @@ export function toAcmsTrusteeProfessional(
     middleName,
     lastName: recovered.lastName,
     fullName,
+    legacy: toAcmsLegacy(record),
   };
 }
 
