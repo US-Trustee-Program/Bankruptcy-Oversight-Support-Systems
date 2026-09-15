@@ -12,8 +12,6 @@ import { RefObject, type JSX } from 'react';
 export interface AssignAttorneyModalStore {
   bCase: CaseBasics | null;
   setBCase(val: CaseBasics | null): void;
-  initialDocumentBodyStyle: string;
-  setInitialDocumentBodyStyle(val: string): void;
   checkListValues: CamsUserReference[];
   setCheckListValues(val: CamsUserReference[]): void;
   previouslySelectedList: AttorneyUser[];
@@ -45,7 +43,6 @@ export interface AssignAttorneyModalViewModel {
   modalHeading: JSX.Element;
   modalId: string;
   modalRef: RefObject<ModalRefType | null>;
-  onOpen(): void;
   sortAttorneys(a: AttorneyUser, b: AttorneyUser): number;
   tableContainerRef: RefObject<HTMLDivElement | null>;
   updateCheckList(ev: React.ChangeEvent<HTMLInputElement>, attorney: AttorneyUser): void;
@@ -61,7 +58,6 @@ export interface AssignAttorneyModalUseCase {
   handleFocus(event: React.FocusEvent<HTMLElement>): void;
   handleTab(ev: React.KeyboardEvent, isVisible: boolean, modalId: string): void;
   hide(): void;
-  onOpen(): void;
   show(showProps: AssignAttorneyModalOpenProps | undefined): void;
   sortAttorneys(a: AttorneyUser, b: AttorneyUser): number;
   submitValues(
