@@ -1,6 +1,7 @@
 import { vi } from 'vitest';
 import { DxtrTrusteeParty } from '@common/cams/dataflow-events';
 import { Trustee } from '@common/cams/trustees';
+import MockData from '@common/cams/test-utilities/mock-data';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
@@ -11,7 +12,11 @@ import {
   PipelineState,
   projectTrustee,
 } from './trustee-match-pipeline';
-import { surnameExactDiscoveryStage, nameScoreStage } from './trustee-match-pipeline-stages';
+import {
+  surnameExactDiscoveryStage,
+  nameScoreStage,
+  stateFilterStage,
+} from './trustee-match-pipeline-stages';
 
 const makeDxtrTrustee = (overrides: Partial<DxtrTrusteeParty> = {}): DxtrTrusteeParty => ({
   fullName: 'John Doe',
@@ -20,28 +25,8 @@ const makeDxtrTrustee = (overrides: Partial<DxtrTrusteeParty> = {}): DxtrTrustee
   ...overrides,
 });
 
-const makeTrustee = (overrides: Partial<Trustee> = {}): Trustee => ({
-  id: 'trustee-1',
-  trusteeId: 'trustee-1',
-  firstName: 'John',
-  lastName: 'Doe',
-  name: 'John Doe',
-  status: 'active',
-  public: {
-    address: {
-      address1: '123 Main St',
-      city: 'New York',
-      state: 'NY',
-      zipCode: '10001',
-      countryCode: 'US',
-    },
-  },
-  createdBy: { id: 'system', name: 'System' },
-  createdOn: '2024-01-01T00:00:00Z',
-  updatedBy: { id: 'system', name: 'System' },
-  updatedOn: '2024-01-01T00:00:00Z',
-  ...overrides,
-});
+const makeTrustee = (overrides: Partial<Trustee> = {}): Trustee =>
+  MockData.getTrustee({ firstName: 'John', lastName: 'Doe', ...overrides });
 
 describe('surnameExactDiscoveryStage', () => {
   let context: ApplicationContext;
@@ -153,7 +138,7 @@ describe('nameScoreStage', () => {
     const state = createInitialState(makeDxtrTrustee({ firstName: 'John', lastName: 'Doe' }));
     const candidate = addCandidate(
       state,
-      makeTrustee({ trusteeId: 't1', firstName: 'John', lastName: 'Doe' }),
+      projectTrustee(makeTrustee({ trusteeId: 't1', firstName: 'John', lastName: 'Doe' })),
     );
     candidate.scores.push({ scorer: 'stateFilterStage', stateMismatch: false });
 
@@ -163,5 +148,254 @@ describe('nameScoreStage', () => {
       stateMismatch: false,
       nameScore: 100,
     });
+  });
+});
+
+describe('stateFilterStage', () => {
+  const dxtrInWashington = makeDxtrTrustee({
+    fullName: 'Phillip A Moon',
+    firstName: 'Phillip',
+    middleName: 'A',
+    lastName: 'Moon',
+    legacy: { cityStateZipCountry: 'Tacoma, WA 98402' },
+  });
+
+  const addTrustee = (state: PipelineState, overrides: Partial<Trustee> = {}) =>
+    addCandidate(
+      state,
+      projectTrustee(
+        makeTrustee({
+          firstName: 'Someone',
+          lastName: 'Moon',
+          name: 'Someone Moon',
+          ...overrides,
+        }),
+      ),
+    );
+
+  test('annotates candidates as NOT mismatched when the pool has 5 or fewer candidates, regardless of state', async () => {
+    const state = createInitialState(dxtrInWashington);
+    for (let i = 0; i < 5; i++) {
+      addTrustee(state, {
+        trusteeId: `trustee-${i}`,
+        public: {
+          address: {
+            address1: '1 Elm St',
+            city: 'Miami',
+            state: 'FL',
+            zipCode: '33101',
+            countryCode: 'US',
+          },
+        },
+      });
+    }
+
+    const result = await stateFilterStage()(state);
+
+    for (const candidate of result.candidates.values()) {
+      expect(mergedScore(candidate)).toMatchObject({ stateMismatch: false });
+    }
+  });
+
+  test('annotates a state-mismatched candidate once the pool exceeds 5 candidates', async () => {
+    const state = createInitialState(dxtrInWashington);
+    addTrustee(state, {
+      trusteeId: 'trustee-wa',
+      public: {
+        address: {
+          address1: '1 Elm St',
+          city: 'Seattle',
+          state: 'WA',
+          zipCode: '98101',
+          countryCode: 'US',
+        },
+      },
+    });
+    for (let i = 0; i < 5; i++) {
+      addTrustee(state, {
+        trusteeId: `trustee-fl-${i}`,
+        firstName: 'Nobody',
+        name: 'Nobody Moon',
+        public: {
+          address: {
+            address1: '1 Elm St',
+            city: 'Miami',
+            state: 'FL',
+            zipCode: '33101',
+            countryCode: 'US',
+          },
+        },
+      });
+    }
+
+    const result = await stateFilterStage()(state);
+
+    expect(mergedScore(result.candidates.get('trustee-wa')!)).toMatchObject({
+      stateMismatch: false,
+    });
+    expect(mergedScore(result.candidates.get('trustee-fl-0')!)).toMatchObject({
+      stateMismatch: true,
+    });
+  });
+
+  test('does NOT mark a state-mismatched candidate as mismatched when it has an exact phone match', async () => {
+    const state = createInitialState({
+      ...dxtrInWashington,
+      legacy: { ...dxtrInWashington.legacy, phone: '2065551212' },
+    });
+    addTrustee(state, {
+      trusteeId: 'trustee-fl-phone',
+      public: {
+        address: {
+          address1: '1 Elm St',
+          city: 'Miami',
+          state: 'FL',
+          zipCode: '33101',
+          countryCode: 'US',
+        },
+        phone: { number: '206-555-1212' },
+      },
+    });
+    for (let i = 0; i < 5; i++) {
+      addTrustee(state, {
+        trusteeId: `trustee-fl-${i}`,
+        firstName: 'Nobody',
+        name: 'Nobody Moon',
+        public: {
+          address: {
+            address1: '1 Elm St',
+            city: 'Miami',
+            state: 'FL',
+            zipCode: '33101',
+            countryCode: 'US',
+          },
+        },
+      });
+    }
+
+    const result = await stateFilterStage()(state);
+
+    expect(mergedScore(result.candidates.get('trustee-fl-phone')!)).toMatchObject({
+      stateMismatch: false,
+    });
+  });
+
+  test('does NOT mark a state-mismatched candidate as mismatched when its nameScore would be >= 85', async () => {
+    const state = createInitialState(dxtrInWashington);
+    addTrustee(state, {
+      trusteeId: 'trustee-fl-name',
+      firstName: 'Phillip',
+      middleName: 'A',
+      lastName: 'Moon',
+      name: 'Phillip A. Moon',
+      public: {
+        address: {
+          address1: '1 Elm St',
+          city: 'Miami',
+          state: 'FL',
+          zipCode: '33101',
+          countryCode: 'US',
+        },
+      },
+    });
+    for (let i = 0; i < 5; i++) {
+      addTrustee(state, {
+        trusteeId: `trustee-fl-${i}`,
+        firstName: 'Nobody',
+        name: 'Nobody Moon',
+        public: {
+          address: {
+            address1: '1 Elm St',
+            city: 'Miami',
+            state: 'FL',
+            zipCode: '33101',
+            countryCode: 'US',
+          },
+        },
+      });
+    }
+
+    const result = await stateFilterStage()(state);
+
+    expect(mergedScore(result.candidates.get('trustee-fl-name')!)).toMatchObject({
+      stateMismatch: false,
+    });
+  });
+
+  test('does not mark anything mismatched when the ACMS address has no parseable state', async () => {
+    const state = createInitialState({
+      ...dxtrInWashington,
+      legacy: { cityStateZipCountry: undefined },
+    });
+    for (let i = 0; i < 6; i++) {
+      addTrustee(state, {
+        trusteeId: `trustee-${i}`,
+        public: {
+          address: {
+            address1: '1 Elm St',
+            city: 'Miami',
+            state: 'FL',
+            zipCode: '33101',
+            countryCode: 'US',
+          },
+        },
+      });
+    }
+
+    const result = await stateFilterStage()(state);
+
+    for (const candidate of result.candidates.values()) {
+      expect(mergedScore(candidate)).toMatchObject({ stateMismatch: false });
+    }
+  });
+
+  test('does not mark a candidate with no CAMS state as mismatched', async () => {
+    const state = createInitialState(dxtrInWashington);
+    addTrustee(state, {
+      trusteeId: 'trustee-no-state',
+      public: {
+        address: {
+          address1: '1 Elm St',
+          city: 'Unknown',
+          state: '',
+          zipCode: '',
+          countryCode: 'US',
+        },
+      },
+    });
+    for (let i = 0; i < 5; i++) {
+      addTrustee(state, {
+        trusteeId: `trustee-fl-${i}`,
+        firstName: 'Nobody',
+        name: 'Nobody Moon',
+        public: {
+          address: {
+            address1: '1 Elm St',
+            city: 'Miami',
+            state: 'FL',
+            zipCode: '33101',
+            countryCode: 'US',
+          },
+        },
+      });
+    }
+
+    const result = await stateFilterStage()(state);
+
+    expect(mergedScore(result.candidates.get('trustee-no-state')!)).toMatchObject({
+      stateMismatch: false,
+    });
+  });
+
+  test('no-ops once the pipeline has already matched', async () => {
+    const state: PipelineState = {
+      ...createInitialState(dxtrInWashington),
+      match: { trusteeId: 'already-matched', score: {} },
+    };
+    addTrustee(state, { trusteeId: 't1' });
+
+    const result = await stateFilterStage()(state);
+
+    expect(result.candidates.get('t1')!.scores).toEqual([]);
   });
 });

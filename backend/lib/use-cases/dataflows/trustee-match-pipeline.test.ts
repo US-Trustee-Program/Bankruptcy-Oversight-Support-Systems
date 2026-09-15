@@ -1,6 +1,7 @@
 import { vi } from 'vitest';
 import { DxtrTrusteeParty } from '@common/cams/dataflow-events';
 import { Trustee } from '@common/cams/trustees';
+import MockData from '@common/cams/test-utilities/mock-data';
 import {
   addCandidate,
   addScore,
@@ -21,28 +22,8 @@ const makeDxtrTrustee = (overrides: Partial<DxtrTrusteeParty> = {}): DxtrTrustee
   ...overrides,
 });
 
-const makeTrustee = (overrides: Partial<Trustee> = {}): Trustee => ({
-  id: 'trustee-1',
-  trusteeId: 'trustee-1',
-  firstName: 'John',
-  lastName: 'Doe',
-  name: 'John Doe',
-  status: 'active',
-  public: {
-    address: {
-      address1: '123 Main St',
-      city: 'New York',
-      state: 'NY',
-      zipCode: '10001',
-      countryCode: 'US',
-    },
-  },
-  createdBy: { id: 'system', name: 'System' },
-  createdOn: '2024-01-01T00:00:00Z',
-  updatedBy: { id: 'system', name: 'System' },
-  updatedOn: '2024-01-01T00:00:00Z',
-  ...overrides,
-});
+const makeTrustee = (overrides: Partial<Trustee> = {}): Trustee =>
+  MockData.getTrustee({ firstName: 'John', lastName: 'Doe', ...overrides });
 
 describe('projectTrustee', () => {
   test('projects only the matching-relevant fields off a full Trustee', () => {

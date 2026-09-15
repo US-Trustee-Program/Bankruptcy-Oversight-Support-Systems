@@ -1783,7 +1783,7 @@ export const STATE_FILTER_POOL_SIZE_THRESHOLD = 5;
  * the same "initial/nickname/swap" ceiling calculateNameScore itself uses throughout (see
  * NAME_SWAP_MIN_PART_SCORE), reused here rather than inventing a new threshold.
  */
-const STATE_OVERRIDE_MIN_NAME_SCORE = 85;
+export const STATE_OVERRIDE_MIN_NAME_SCORE = 85;
 
 /**
  * Cuts a noisy, oversized raw candidate pool down using USPS state as a cheap secondary
