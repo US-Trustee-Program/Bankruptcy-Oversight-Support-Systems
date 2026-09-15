@@ -123,7 +123,7 @@ export class TrusteeMatchVerificationMongoRepository
       await this.getAdapter<TrusteeMatchVerification>().replaceOne(query, item, true);
     } catch (originalError) {
       if (isDuplicateKeyError(originalError)) {
-        // The racing documents are not guaranteed identical (taskDate, reason, updatedOn may
+        // The racing documents are not guaranteed identical (taskDate, updatedOn may
         // differ), so the loser's field values are silently discarded here with no other trace
         // -- log so an unexpectedly high rate of this is visible in telemetry.
         this.context.logger.warn(
@@ -167,7 +167,6 @@ export class TrusteeMatchVerificationMongoRepository
         'affectedCaseIds',
         'taskType',
         'taskDate',
-        'reason',
         'inactiveAppointmentStatus',
         'fingerprint',
         'variant',

@@ -2292,46 +2292,6 @@
         "taskType": "trustee-match"
       },
       {
-        "_id": "69c3f5c935071a9817e23cf4",
-        "id": "e2e-trustee-match-verification-rejected",
-        "documentType": "TRUSTEE_MATCH_VERIFICATION",
-        "caseId": "081-65-67641",
-        "courtId": "0208",
-        "status": "rejected",
-        "mismatchReason": "IMPERFECT_MATCH",
-        "dxtrTrustee": {
-          "fullName": "E2E Dxtr Trustee Rejected"
-        },
-        "matchCandidates": [
-          {
-            "trusteeId": "e2e-trustee-candidate-rejected",
-            "trusteeName": "E2E Trustee Rejected",
-            "totalScore": 70,
-            "addressScore": 0,
-            "nameScore": 0,
-            "phoneScore": 0,
-            "emailScore": 0,
-            "districtDivisionScore": 80,
-            "chapterScore": 70
-          }
-        ],
-        "reason": "Rejected during e2e test seeding",
-        "fingerprint": "d0f9c1fe6895ee5bf75d7326ee07f9daa3757936728cd485d201c2e53e65d489",
-        "variant": "{\"firstName\":\"e2e\",\"middleName\":\"\",\"lastName\":\"dxtr trustee rejected\",\"generation\":\"\",\"address1\":\"\",\"address2\":\"\",\"address3\":\"\",\"cityStateZipCountry\":\"\",\"phone\":\"\",\"fax\":\"\",\"email\":\"\"}",
-        "updatedOn": "2026-03-26T21:28:24.333Z",
-        "updatedBy": {
-          "id": "SYSTEM",
-          "name": "SYSTEM"
-        },
-        "createdOn": "2026-03-26T21:28:24.333Z",
-        "createdBy": {
-          "id": "SYSTEM",
-          "name": "SYSTEM"
-        },
-        "taskDate": "2026-03-26T21:28:24.333Z",
-        "taskType": "trustee-match"
-      },
-      {
         "_id": "69c3f5c935071a9817e23cf5",
         "id": "e2e-trustee-match-verification-inactive",
         "documentType": "TRUSTEE_MATCH_VERIFICATION",
