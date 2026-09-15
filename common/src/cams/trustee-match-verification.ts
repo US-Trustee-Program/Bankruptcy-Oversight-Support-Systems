@@ -45,7 +45,6 @@ export type TrusteeMatchVerification = Auditable & {
   resolvedTrusteeName?: string;
   courtName?: string;
   taskType: 'trustee-match';
-  reason?: string;
   inactiveAppointmentStatus?: AppointmentStatus;
   taskDate?: string | Date;
   /**
@@ -71,8 +70,9 @@ export type TrusteeMatchVerification = Auditable & {
   variant: string;
   /**
    * Outcome of the async trustee-verification-remap dataflow — separate from `status` above,
-   * which drives Data Verification UI/reviewer behavior (pending/approved/rejected). Not
-   * surfaced in the UI; queryable behind the scenes to resolve a remap that's stuck or failed.
+   * which drives Data Verification UI/reviewer behavior (pending/approved; rejected is
+   * legacy-read-only, no longer producible). Not surfaced in the UI; queryable behind the
+   * scenes to resolve a remap that's stuck or failed.
    * Aggregate only, no per-case-id tracking here: affectedCaseIds already snapshots the full
    * scope of the run, and any case still present in trustee-case-appointments under
    * trusteeId === fingerprint hasn't been remapped yet (see getSurrogatesByFingerprint) — that
@@ -127,7 +127,6 @@ export type TrusteeMatchVerificationListItem = Pick<
   | 'resolvedTrusteeName'
   | 'taskType'
   | 'taskDate'
-  | 'reason'
   | 'inactiveAppointmentStatus'
 > & {
   preselectedCandidate: TrusteeCandidate | null;

@@ -22,7 +22,7 @@ import { Creatable } from '@common/cams/creatable';
 import { TRUSTEE_VARIATION_DOCUMENT_TYPE, TrusteeVariation } from '@common/cams/trustee-variation';
 
 const MODULE_NAME = 'TRUSTEE-MATCH-VERIFICATION-USE-CASE';
-const VALID_STATUSES: OrderStatus[] = ['pending', 'approved', 'rejected'];
+const VALID_STATUSES: OrderStatus[] = ['pending', 'approved'];
 
 // Defensive sanity cap only — the fingerprint-keyed model expects a handful of cases per
 // variant (see this slice's ~2.2% fragmentation figure), not the hundreds a case-keyed model
@@ -43,6 +43,16 @@ export class TrusteeMatchVerificationUseCase {
         .split(',')
         .map((s) => s.trim() as OrderStatus)
         .filter((s) => VALID_STATUSES.includes(s));
+
+      // A statusParam was given but none of it survived validation (e.g. the shared
+      // Data Verification "Rejected" filter, which trustee-match no longer supports) —
+      // that's a request for statuses that can't exist here, not "no filter given". Return
+      // no results rather than falling through to the no-filter default below, which would
+      // otherwise silently substitute pending verifications for the (always-empty) requested set.
+      if (params.statusParam && parsedStatuses.length === 0) {
+        return [];
+      }
+
       const status: OrderStatus[] = parsedStatuses.length > 0 ? parsedStatuses : ['pending'];
 
       const repo = factory.getTrusteeMatchVerificationRepository(context);
@@ -153,66 +163,6 @@ export class TrusteeMatchVerificationUseCase {
       return court.courtDivisionName
         ? `${court.courtName} - ${court.courtDivisionName}`
         : court.courtName;
-    }
-  }
-
-  async rejectVerification(
-    context: ApplicationContext,
-    id: string,
-    reason?: string,
-  ): Promise<void> {
-    const trace = context.observability.startTrace(context.invocationId);
-    try {
-      const repo = factory.getTrusteeMatchVerificationRepository(context);
-      const verification = await repo.findById(id);
-      if (verification.status !== 'pending') {
-        throw new NotFoundError(MODULE_NAME, {
-          message: `Pending verification ${id} not found.`,
-        });
-      }
-      const resolutionMs = verification.createdOn
-        ? Date.now() - new Date(verification.createdOn).getTime()
-        : 0;
-      const now = new Date().toISOString();
-      const userRef = getCamsUserReference(context.session.user);
-      await repo.update(id, {
-        status: 'rejected',
-        reason,
-        updatedBy: userRef,
-        updatedOn: now,
-      });
-      context.observability.completeTrace(
-        trace,
-        'TrusteeMatchVerificationResolved',
-        {
-          success: true,
-          properties: {
-            action: 'reject',
-            caseId: verification.caseId,
-            mismatchReason: verification.mismatchReason,
-            resolutionPath: 'escalated',
-          },
-          measurements: {
-            resolutionMs,
-            candidateCount: verification.matchCandidates.length,
-          },
-        },
-        [{ name: 'TrusteeVerificationResolutionMs', value: resolutionMs }],
-        context.logger,
-      );
-    } catch (originalError) {
-      context.observability.completeTrace(
-        trace,
-        'TrusteeMatchVerificationResolved',
-        {
-          success: false,
-          properties: { action: 'reject' },
-          measurements: {},
-        },
-        undefined,
-        context.logger,
-      );
-      throw getCamsError(originalError, MODULE_NAME);
     }
   }
 
@@ -370,8 +320,9 @@ export class TrusteeMatchVerificationUseCase {
         // Only approveVerification writes a snapshot, so read it for approved verifications.
         affectedCaseIds = verification.affectedCaseIds ?? [];
       } else {
-        // Pending and rejected verifications have no snapshot — rejection never touches
-        // surrogates, and pending hasn't been resolved yet — so derive live in both cases.
+        // Pending and (legacy, read-only) rejected verifications have no snapshot — rejection
+        // never touched surrogates, and pending hasn't been resolved yet — so derive live in
+        // both cases.
         const affectedCaseIdsByFingerprint = await this.getAffectedCaseIdsByFingerprint(context, [
           verification.fingerprint,
         ]);
