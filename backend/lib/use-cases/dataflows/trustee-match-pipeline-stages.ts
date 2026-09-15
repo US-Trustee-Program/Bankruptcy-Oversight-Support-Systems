@@ -3,14 +3,19 @@ import { Trustee } from '@common/cams/trustees';
 import {
   calculateNameScore,
   calculatePhoneScore,
+  findAnchoredLevenshteinCandidates,
   findSurnameExactCandidates,
+  findTokenIntersectionCandidates,
   parseCityStateZip,
+  resolveByContactCorroboration,
+  resolveDuplicateNameCandidates,
   STATE_FILTER_POOL_SIZE_THRESHOLD,
   STATE_OVERRIDE_MIN_NAME_SCORE,
 } from './trustee-match.helpers';
 import {
   addCandidate,
   addScore,
+  mergedScore,
   PipelineState,
   projectTrustee,
   Stage,
@@ -26,6 +31,30 @@ import {
 export function surnameExactDiscoveryStage(context: ApplicationContext): Stage {
   return withGuard(async (state: PipelineState): Promise<PipelineState> => {
     const found = await findSurnameExactCandidates(context, state.acmsRaw);
+    for (const trustee of found) {
+      addCandidate(state, projectTrustee(trustee));
+    }
+    return state;
+  });
+}
+
+/** Discovery stage wrapping findTokenIntersectionCandidates unchanged - see
+ * surnameExactDiscoveryStage for the shared discovery-stage shape/rationale. */
+export function tokenIntersectionDiscoveryStage(context: ApplicationContext): Stage {
+  return withGuard(async (state: PipelineState): Promise<PipelineState> => {
+    const found = await findTokenIntersectionCandidates(context, state.acmsRaw);
+    for (const trustee of found) {
+      addCandidate(state, projectTrustee(trustee));
+    }
+    return state;
+  });
+}
+
+/** Discovery stage wrapping findAnchoredLevenshteinCandidates unchanged - see
+ * surnameExactDiscoveryStage for the shared discovery-stage shape/rationale. */
+export function anchoredLevenshteinDiscoveryStage(context: ApplicationContext): Stage {
+  return withGuard(async (state: PipelineState): Promise<PipelineState> => {
+    const found = await findAnchoredLevenshteinCandidates(context, state.acmsRaw);
     for (const trustee of found) {
       addCandidate(state, projectTrustee(trustee));
     }
@@ -102,6 +131,58 @@ export function stateFilterStage(): Stage {
       const stateMismatch = nameScore < STATE_OVERRIDE_MIN_NAME_SCORE;
       addScore(candidate, { scorer: 'stateFilterStage', stateMismatch });
     }
+    return state;
+  });
+}
+
+/**
+ * Resolution stage wrapping the existing resolveByContactCorroboration and
+ * resolveDuplicateNameCandidates unchanged, in the same order sync-acms-professional-ids.ts's
+ * resolveCandidatesByCorroboration already composes them: contact corroboration first, duplicate-
+ * name resolution only if that leaves the group unresolved. Both re-fetch and re-score candidates
+ * by id internally, so this stage passes trusteeIds, not PipelineCandidate objects - the pipeline's
+ * own accumulated scores are not reused here, since these functions need their own controlled
+ * fetch (email/appointments alongside name/address/phone) that camsRaw does not carry.
+ *
+ * Only considers candidates whose merged score does NOT have stateMismatch: true (see
+ * stateFilterStage) - a candidate a state-filter annotated as noise is excluded from the id list
+ * passed to corroboration, without ever being removed from state.candidates itself.
+ */
+export function corroborationStage(context: ApplicationContext): Stage {
+  return withGuard(async (state: PipelineState): Promise<PipelineState> => {
+    const candidateTrusteeIds = [...state.candidates.entries()]
+      .filter(([, candidate]) => mergedScore(candidate).stateMismatch !== true)
+      .map(([trusteeId]) => trusteeId);
+
+    if (candidateTrusteeIds.length === 0) return state;
+
+    const corroboration = await resolveByContactCorroboration(
+      context,
+      state.acmsRaw,
+      candidateTrusteeIds,
+    );
+    if (corroboration.kind === 'resolved') {
+      const score = corroboration.candidateScores.find(
+        (c) => c.trusteeId === corroboration.trusteeId,
+      );
+      return { ...state, match: { trusteeId: corroboration.trusteeId, score: score ?? {} } };
+    }
+
+    const duplicateResolution = await resolveDuplicateNameCandidates(
+      context,
+      state.acmsRaw,
+      candidateTrusteeIds,
+    );
+    if (duplicateResolution.kind === 'resolved-duplicate') {
+      const score = duplicateResolution.candidateScores.find(
+        (c) => c.trusteeId === duplicateResolution.trusteeId,
+      );
+      return {
+        ...state,
+        match: { trusteeId: duplicateResolution.trusteeId, score: score ?? {} },
+      };
+    }
+
     return state;
   });
 }

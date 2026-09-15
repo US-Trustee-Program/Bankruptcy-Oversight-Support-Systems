@@ -7,15 +7,20 @@ import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import {
   addCandidate,
+  addScore,
   createInitialState,
   mergedScore,
   PipelineState,
   projectTrustee,
 } from './trustee-match-pipeline';
+import * as trusteeMatchHelpers from './trustee-match.helpers';
 import {
   surnameExactDiscoveryStage,
+  tokenIntersectionDiscoveryStage,
+  anchoredLevenshteinDiscoveryStage,
   nameScoreStage,
   stateFilterStage,
+  corroborationStage,
 } from './trustee-match-pipeline-stages';
 
 const makeDxtrTrustee = (overrides: Partial<DxtrTrusteeParty> = {}): DxtrTrusteeParty => ({
@@ -93,6 +98,81 @@ describe('surnameExactDiscoveryStage', () => {
     expect(result.candidates.get('t1')!.scores).toEqual([
       { scorer: 'earlierStage', nameScore: 42 },
     ]);
+  });
+});
+
+describe('tokenIntersectionDiscoveryStage', () => {
+  let context: ApplicationContext;
+
+  beforeEach(async () => {
+    vi.restoreAllMocks();
+    context = await createMockApplicationContext();
+  });
+
+  test('adds every token-intersection candidate found to the pipeline state', async () => {
+    const bryan = makeTrustee({ trusteeId: 't1', name: 'William Wheeler Bryan' });
+    vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName').mockImplementation(
+      async (token: string) => (token === 'wheeler' || token === 'bryan' ? [bryan] : []),
+    );
+
+    const state = createInitialState(makeDxtrTrustee({ fullName: 'W. Wheeler Bryan' }));
+
+    const result = await tokenIntersectionDiscoveryStage(context)(state);
+
+    expect(result.candidates.has('t1')).toBe(true);
+  });
+
+  test('no-ops once the pipeline has already matched', async () => {
+    const searchSpy = vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName');
+    const state: PipelineState = {
+      ...createInitialState(makeDxtrTrustee()),
+      match: { trusteeId: 'already-matched', score: {} },
+    };
+
+    await tokenIntersectionDiscoveryStage(context)(state);
+
+    expect(searchSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe('anchoredLevenshteinDiscoveryStage', () => {
+  let context: ApplicationContext;
+
+  beforeEach(async () => {
+    vi.restoreAllMocks();
+    context = await createMockApplicationContext();
+  });
+
+  test('adds every anchored-Levenshtein candidate found to the pipeline state', async () => {
+    const darr = makeTrustee({
+      trusteeId: 't1',
+      firstName: 'Stephen',
+      lastName: 'Darr',
+      name: 'Stephen Darr',
+    });
+    vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName').mockImplementation(
+      async (token: string) => (token === 'darr' ? [darr] : []),
+    );
+
+    const state = createInitialState(
+      makeDxtrTrustee({ fullName: 'Stephan Darr', firstName: 'Stephan', lastName: 'Darr' }),
+    );
+
+    const result = await anchoredLevenshteinDiscoveryStage(context)(state);
+
+    expect(result.candidates.has('t1')).toBe(true);
+  });
+
+  test('no-ops once the pipeline has already matched', async () => {
+    const searchSpy = vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName');
+    const state: PipelineState = {
+      ...createInitialState(makeDxtrTrustee()),
+      match: { trusteeId: 'already-matched', score: {} },
+    };
+
+    await anchoredLevenshteinDiscoveryStage(context)(state);
+
+    expect(searchSpy).not.toHaveBeenCalled();
   });
 });
 
@@ -397,5 +477,100 @@ describe('stateFilterStage', () => {
     const result = await stateFilterStage()(state);
 
     expect(result.candidates.get('t1')!.scores).toEqual([]);
+  });
+});
+
+describe('corroborationStage', () => {
+  let context: ApplicationContext;
+
+  beforeEach(async () => {
+    vi.restoreAllMocks();
+    context = await createMockApplicationContext();
+  });
+
+  test('sets state.match when resolveByContactCorroboration resolves', async () => {
+    const state = createInitialState(makeDxtrTrustee());
+    addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })));
+    vi.spyOn(trusteeMatchHelpers, 'resolveByContactCorroboration').mockResolvedValue({
+      kind: 'resolved',
+      trusteeId: 't1',
+      candidateScores: [{ trusteeId: 't1', nameScore: 100 } as never],
+    });
+
+    const result = await corroborationStage(context)(state);
+
+    expect(result.match).toEqual({
+      trusteeId: 't1',
+      score: { trusteeId: 't1', nameScore: 100 },
+    });
+  });
+
+  test('falls through to resolveDuplicateNameCandidates when contact corroboration is unresolved', async () => {
+    const state = createInitialState(makeDxtrTrustee());
+    addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })));
+    addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't2' })));
+    vi.spyOn(trusteeMatchHelpers, 'resolveByContactCorroboration').mockResolvedValue({
+      kind: 'unresolved',
+      candidateScores: [],
+    });
+    vi.spyOn(trusteeMatchHelpers, 'resolveDuplicateNameCandidates').mockResolvedValue({
+      kind: 'resolved-duplicate',
+      trusteeId: 't2',
+      candidateScores: [{ trusteeId: 't2', nameScore: 100 } as never],
+    });
+
+    const result = await corroborationStage(context)(state);
+
+    expect(result.match).toEqual({
+      trusteeId: 't2',
+      score: { trusteeId: 't2', nameScore: 100 },
+    });
+  });
+
+  test('leaves state.match null when neither corroboration path resolves', async () => {
+    const state = createInitialState(makeDxtrTrustee());
+    addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })));
+    vi.spyOn(trusteeMatchHelpers, 'resolveByContactCorroboration').mockResolvedValue({
+      kind: 'unresolved',
+      candidateScores: [],
+    });
+    vi.spyOn(trusteeMatchHelpers, 'resolveDuplicateNameCandidates').mockResolvedValue({
+      kind: 'unresolved',
+      candidateScores: [],
+    });
+
+    const result = await corroborationStage(context)(state);
+
+    expect(result.match).toBeNull();
+  });
+
+  test('excludes candidates flagged stateMismatch by an earlier stage from the ids passed to corroboration', async () => {
+    const state = createInitialState(makeDxtrTrustee());
+    const mismatched = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })));
+    addScore(mismatched, { scorer: 'stateFilterStage', stateMismatch: true });
+    addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't2' })));
+    const corroborationSpy = vi
+      .spyOn(trusteeMatchHelpers, 'resolveByContactCorroboration')
+      .mockResolvedValue({ kind: 'unresolved', candidateScores: [] });
+    vi.spyOn(trusteeMatchHelpers, 'resolveDuplicateNameCandidates').mockResolvedValue({
+      kind: 'unresolved',
+      candidateScores: [],
+    });
+
+    await corroborationStage(context)(state);
+
+    expect(corroborationSpy).toHaveBeenCalledWith(context, state.acmsRaw, ['t2']);
+  });
+
+  test('no-ops once the pipeline has already matched', async () => {
+    const corroborationSpy = vi.spyOn(trusteeMatchHelpers, 'resolveByContactCorroboration');
+    const state: PipelineState = {
+      ...createInitialState(makeDxtrTrustee()),
+      match: { trusteeId: 'already-matched', score: {} },
+    };
+
+    await corroborationStage(context)(state);
+
+    expect(corroborationSpy).not.toHaveBeenCalled();
   });
 });
