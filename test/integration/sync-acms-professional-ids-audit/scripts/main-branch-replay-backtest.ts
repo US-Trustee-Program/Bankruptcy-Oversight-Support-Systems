@@ -56,6 +56,7 @@ import * as path from 'path';
 import { MongoClient } from 'mongodb';
 import { InvocationContext } from '@azure/functions';
 import * as natural from 'natural';
+import { getNameVariations } from 'name-match/src/name-normalizer';
 import { Trustee } from '../../../../common/src/cams/trustees';
 import { TrusteeProfessionalId } from '../../../../common/src/cams/trustee-professional-ids';
 import { AcmsTrusteeProfessional } from '../../../../common/src/cams/dataflow-events';
@@ -224,6 +225,7 @@ type CandidateRow = {
   camsPhone: string;
   score: Score;
   fullNameSimilarity: number;
+  tokenNameMatchRate: number;
   notes: string;
 };
 
@@ -276,7 +278,57 @@ function fullNameSimilarity(acmsFullName: string, camsName: string): number {
   return Math.round(natural.JaroWinklerDistance(a, b) * 1000) / 1000;
 }
 
-function buildNotes(score: Score, similarity: number): string {
+function isInitialOf(a: string, b: string): boolean {
+  return a.length === 1 && b.length > 0 && b.startsWith(a);
+}
+
+/** Whether a and b are a known nickname/formal-name pair, via getNameVariations (name-match
+ * library — the same dictionary calculateNameScore's scoreFirstNamePart uses in production, not a
+ * new, separately-maintained list). Queried from both sides since a caller may pass either the
+ * nickname or the formal name first. */
+function isNicknamePair(a: string, b: string): boolean {
+  try {
+    if ((getNameVariations(a) as string[]).includes(b)) return true;
+  } catch {
+    // No variations available for a.
+  }
+  try {
+    if ((getNameVariations(b) as string[]).includes(a)) return true;
+  } catch {
+    // No variations available for b.
+  }
+  return false;
+}
+
+/**
+ * A second, complementary signal to fullNameSimilarity: the fraction of ACMS name tokens that
+ * have SOME matching CAMS token (exact, initial-vs-full, or a known nickname pair — the same
+ * tolerances calculateNameScore's scoreFirstNamePart/scoreMiddleNamePart already apply, just
+ * generalized across every token instead of only first/middle). fullNameSimilarity (character-
+ * sequence similarity) misses nickname/reorder cases entirely - "Bob Kearney" vs "Robert Gene
+ * Kearney" scores only 0.68 on JaroWinkler despite being a genuine match - because the actual
+ * characters diverge even though the underlying identity doesn't. tokenNameMatchRate catches
+ * those (scores 1.0), but is LESS reliable than fullNameSimilarity at catching a same-surname-
+ * different-person false positive (confirmed: "Van Arsdale" vs "Van Meter" ALSO scores 1.0 here,
+ * since "william"/"william" and "van"/"van" both match, leaving only "arsdale" vs "meter"
+ * ungraded). Shown as its own column rather than blended into fullNameSimilarity so a reviewer can
+ * see which signal is driving a given row and reason about disagreements between them.
+ */
+function tokenNameMatchRate(acmsFullName: string, camsName: string): number {
+  const acmsTokens = normalizeForSimilarity(acmsFullName).split(' ').filter(Boolean);
+  const camsTokens = normalizeForSimilarity(camsName).split(' ').filter(Boolean);
+  if (acmsTokens.length === 0) return 0;
+  let matched = 0;
+  for (const at of acmsTokens) {
+    const hit = camsTokens.some(
+      (ct) => at === ct || isInitialOf(at, ct) || isInitialOf(ct, at) || isNicknamePair(at, ct),
+    );
+    if (hit) matched++;
+  }
+  return Math.round((matched / acmsTokens.length) * 1000) / 1000;
+}
+
+function buildNotes(score: Score, similarity: number, tokenMatchRate: number): string {
   const notes: string[] = [];
   if (score.nameScore >= 85 && score.addressScore < 50 && score.phoneScore !== 100) {
     notes.push('name matches but corroboration (address/phone) is weak');
@@ -293,6 +345,12 @@ function buildNotes(score: Score, similarity: number): string {
   if (similarity < 0.5 && score.nameScore >= 85) {
     notes.push('low full-name similarity despite high structured nameScore (verify by eye)');
   }
+  if (tokenMatchRate === 1 && similarity < 0.7 && score.nameScore < 85) {
+    notes.push('every ACMS token matches some CAMS token but low char-similarity (likely nickname/reorder)');
+  }
+  if (tokenMatchRate === 1 && similarity >= 0.7 && score.nameScore < 85) {
+    notes.push('all tokens match and names look similar but structured nameScore still low (verify surname)');
+  }
   return notes.join('; ');
 }
 
@@ -304,6 +362,7 @@ const REPORT_HEADER = [
   'camsName',
   'nameScore',
   'fullNameSimilarity',
+  'tokenNameMatchRate',
   'acmsAddress',
   'camsAddress',
   'addressScore',
@@ -338,6 +397,7 @@ class ReportWriter {
         r.camsName,
         r.score.nameScore,
         r.fullNameSimilarity,
+        r.tokenNameMatchRate,
         r.acmsAddress,
         r.camsAddress,
         r.score.addressScore,
@@ -533,13 +593,19 @@ async function run() {
 
     outcomeCounts[finalOutcome]++;
 
+    // Buffered per-RECORD (not per-dataset) so the real candidate sorts to the top of its own
+    // group for visual scanning (see Mitchel Friday: real match at similarity=0.92 vs noise
+    // topping out at 0.70) without holding the full ~41k-row dataset in memory at once - a
+    // record's candidate pool is at most 909, trivially small to sort and flush immediately.
+    const recordRows: CandidateRow[] = [];
     for (const trusteeId of recordCandidateIds) {
       const trustee = trusteesById.get(trusteeId);
       if (!trustee) continue;
       const score = scoreCandidate(acmsTrusteeProfessional, trustee);
       const similarity = fullNameSimilarity(acmsFullName, trustee.name);
+      const tokenMatchRate = tokenNameMatchRate(acmsFullName, trustee.name);
       const candidateOutcome = classifyCandidate(trusteeId, resolvedTrusteeId, nameQualifyingIds);
-      report.writeRow({
+      recordRows.push({
         acmsProfessionalId: record.acmsProfessionalId,
         acmsFullName,
         acmsAddress,
@@ -552,11 +618,14 @@ async function run() {
         camsPhone: trustee.public?.phone?.number ?? '',
         score,
         fullNameSimilarity: similarity,
-        notes: buildNotes(score, similarity),
+        tokenNameMatchRate: tokenMatchRate,
+        notes: buildNotes(score, similarity, tokenMatchRate),
       });
       outcomeByCandidate[candidateOutcome]++;
       candidateRowCount++;
     }
+    recordRows.sort((a, b) => b.fullNameSimilarity - a.fullNameSimilarity);
+    for (const row of recordRows) report.writeRow(row);
   }
 
   console.log('\n=== Replay outcome (current main vs. what was actually persisted) ===\n');
