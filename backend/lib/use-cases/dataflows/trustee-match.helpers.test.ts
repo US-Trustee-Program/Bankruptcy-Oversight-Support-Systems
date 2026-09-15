@@ -19,6 +19,7 @@ import {
   tokenizeNameForIntersection,
   findTokenIntersectionCandidates,
   findAnchoredLevenshteinCandidates,
+  findSurnameExactCandidates,
   isAppointmentMatch,
   findInactivePerfectMatch,
   stripParentheticalAnnotations,
@@ -777,6 +778,92 @@ describe('findTokenIntersectionCandidates', () => {
 
     expect(result).toEqual([mcCue]);
     expect(searchSpy).toHaveBeenCalledWith('mc');
+  });
+});
+
+describe('findSurnameExactCandidates', () => {
+  let context: ApplicationContext;
+
+  beforeEach(async () => {
+    vi.restoreAllMocks();
+    context = await createMockApplicationContext();
+  });
+
+  test('returns only candidates whose lastName token exactly matches the DXTR lastName token', async () => {
+    const johnMoon = makeTrustee({ trusteeId: 'trustee-1', firstName: 'John', lastName: 'Moon' });
+    const fredMoon = makeTrustee({ trusteeId: 'trustee-2', firstName: 'Fred', lastName: 'Moon' });
+    const martinMooney = makeTrustee({
+      trusteeId: 'trustee-3',
+      firstName: 'Martin',
+      lastName: 'Mooney',
+    });
+
+    const searchSpy = vi
+      .spyOn(MockMongoRepository.prototype, 'searchTrusteesByName')
+      .mockImplementation(async (token: string) => {
+        if (token === 'moon') return [johnMoon, fredMoon, martinMooney];
+        return [];
+      });
+
+    const result = await findSurnameExactCandidates(context, {
+      fullName: 'Phillip A Moon',
+      lastName: 'Moon',
+    });
+
+    expect(result.map((t) => t.trusteeId).sort()).toEqual(['trustee-1', 'trustee-2']);
+    expect(searchSpy).toHaveBeenCalledWith('moon');
+  });
+
+  test('returns an empty array when the DXTR record has no usable lastName', async () => {
+    const searchSpy = vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName');
+
+    const result = await findSurnameExactCandidates(context, { fullName: 'Cher', lastName: '' });
+
+    expect(result).toEqual([]);
+    expect(searchSpy).not.toHaveBeenCalled();
+  });
+
+  test('returns an empty array when no candidate shares the exact surname token', async () => {
+    vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName').mockImplementation(
+      async (token: string) => {
+        if (token === 'moon') return [makeTrustee({ trusteeId: 'trustee-1', lastName: 'Mooney' })];
+        return [];
+      },
+    );
+
+    const result = await findSurnameExactCandidates(context, {
+      fullName: 'Phillip A Moon',
+      lastName: 'Moon',
+    });
+
+    expect(result).toEqual([]);
+  });
+
+  test('honors the multi-word surname-prefix-particle reduction (e.g. Van Meter)', async () => {
+    const vanMeter = makeTrustee({
+      trusteeId: 'trustee-1',
+      firstName: 'William',
+      lastName: 'Van Meter',
+    });
+    const vanArsdale = makeTrustee({
+      trusteeId: 'trustee-2',
+      firstName: 'William',
+      lastName: 'Van Arsdale',
+    });
+
+    vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName').mockImplementation(
+      async (token: string) => {
+        if (token === 'van meter') return [vanMeter, vanArsdale];
+        return [];
+      },
+    );
+
+    const result = await findSurnameExactCandidates(context, {
+      fullName: 'William Van Meter',
+      lastName: 'Van Meter',
+    });
+
+    expect(result.map((t) => t.trusteeId)).toEqual(['trustee-1']);
   });
 });
 
@@ -2056,6 +2143,103 @@ describe('calculateNameScore', () => {
       middleName: 'James',
       lastName: 'Flahaut',
     });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(0);
+  });
+
+  // Real-world pattern from a staging backtest: unlike the swap cases above (both sides have
+  // SOME middle name, just in the "wrong" field), ACMS sometimes never records a middle name at
+  // all for a trustee who goes by their middle name - PROF_MI is genuinely empty, not just
+  // omitted from this comparison. "Lance Owens" (ACMS firstName="Lance", no middle name) vs CAMS
+  // "W. Lance Owens" (firstName="W.", middleName="Lance") is not a swap between two populated
+  // slots; it is ACMS's only name slot landing on what CAMS considers the middle name, with
+  // nothing on the ACMS side to contradict the CAMS side's bare initial firstName.
+  //
+  // Requires an EXACT match (not merely initial-vs-full) on the crossed pair - unlike
+  // isFirstMiddleSwap, there is no second, independent direction to cross-check an initial
+  // against here (the "empty" side's middle slot has nothing in it to compare), so a mere
+  // initial-vs-full relationship is too weak a signal to stand alone. Confirmed via a real
+  // backtest regression: allowing initial-vs-full here credited ACMS "MICHAEL MCCARTY" (no middle
+  // name) against BOTH the correct "Michael B. McCarty" (exact first-name match, needs no
+  // relaxation at all) AND the unrelated "Kathy M. McCarty" (only "M." vs "Michael", an
+  // initial-of relationship with nothing to confirm it), producing two candidates that both
+  // qualified and turning a previously-clean single-candidate resolution into a false ambiguity.
+  test('should tolerate a first name that EXACTLY matches the CAMS middle name, when ACMS has no middle name recorded', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'Lance Owens',
+      firstName: 'Lance',
+      lastName: 'Owens',
+    };
+    const camsTrustee = makeTrustee({ firstName: 'W.', middleName: 'Lance', lastName: 'Owens' });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(85);
+  });
+
+  test('should tolerate a first name that EXACTLY matches the DXTR middle name, when CAMS has no middle name recorded', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'W. Lance Owens',
+      firstName: 'W.',
+      middleName: 'Lance',
+      lastName: 'Owens',
+    };
+    const camsTrustee = makeTrustee({ firstName: 'Lance', lastName: 'Owens' });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(85);
+  });
+
+  test('should NOT credit a merely initial-vs-full relationship as a one-sided middle-name match', () => {
+    // The confirmed real-world false positive: ACMS "MICHAEL MCCARTY" (no middle name) must not
+    // match CAMS "Kathy M. McCarty" just because "M." is an initial of "Michael" - with nothing on
+    // the ACMS side to independently confirm it, a bare middle initial is too weak (and too likely
+    // to coincidentally collide with an unrelated person sharing the same surname) to credit alone.
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'Michael McCarty',
+      firstName: 'Michael',
+      lastName: 'McCarty',
+    };
+    const camsTrustee = makeTrustee({ firstName: 'Kathy', middleName: 'M', lastName: 'McCarty' });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(0);
+  });
+
+  test('should still resolve the correct candidate via the ordinary firstName match when one exists, alongside a rejected one-sided lookalike', () => {
+    // Companion to the McCarty regression: the CORRECT candidate ("Michael B. McCarty") needs no
+    // one-sided relaxation at all - dxtrFirst="michael" equals camsFirst="michael" directly - so
+    // it must keep scoring 100 regardless of how isOneSidedMiddleNameMatch handles other
+    // candidates sharing the same surname.
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'Michael McCarty',
+      firstName: 'Michael',
+      lastName: 'McCarty',
+    };
+    const camsTrustee = makeTrustee({ firstName: 'Michael', middleName: 'B', lastName: 'McCarty' });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(100);
+  });
+
+  test('should NOT credit a one-sided middle-name match when the other side has ITS OWN middle name that contradicts', () => {
+    // "M O Marshall" (dxtrFirst=M, dxtrMiddle=O) vs "Watson M. Marshall" (camsFirst=Watson,
+    // camsMiddle=M): dxtrFirst=M does equal camsMiddle=M, but dxtrMiddle=O is NOT empty, so this
+    // must go through the full bidirectional swap check (both sides populated), not the one-sided
+    // relaxation - and "O" is not related to "Watson", so it correctly stays unmatched.
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'M O Marshall',
+      firstName: 'M',
+      middleName: 'O',
+      lastName: 'Marshall',
+    };
+    const camsTrustee = makeTrustee({ firstName: 'Watson', middleName: 'M', lastName: 'Marshall' });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(0);
+  });
+
+  test('should not treat an unrelated first name as a one-sided middle-name match', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'Robert Owens',
+      firstName: 'Robert',
+      lastName: 'Owens',
+    };
+    const camsTrustee = makeTrustee({ firstName: 'W.', middleName: 'Lance', lastName: 'Owens' });
 
     expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(0);
   });

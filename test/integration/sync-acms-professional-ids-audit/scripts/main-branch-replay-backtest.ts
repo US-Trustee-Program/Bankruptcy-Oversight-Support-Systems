@@ -204,7 +204,11 @@ type Score = {
   emailScore: number | null;
 };
 
-type IntroductionStage = 'matchTrusteeByName' | 'tokenIntersection' | 'levenshtein';
+type IntroductionStage =
+  | 'surnameExact'
+  | 'matchTrusteeByName'
+  | 'tokenIntersection'
+  | 'levenshtein';
 
 type CandidateOutcome =
   | 'resolved'
@@ -226,10 +230,11 @@ type CandidateRow = {
   score: Score;
   fullNameSimilarity: number;
   tokenNameMatchRate: number;
+  surnameExactMatch: boolean;
   notes: string;
 };
 
-function csvEscape(value: string | number | null | undefined): string {
+function csvEscape(value: string | number | boolean | null | undefined): string {
   const s = value === null || value === undefined ? '' : String(value);
   if (s.includes(',') || s.includes('"') || s.includes('\n')) {
     return `"${s.replaceAll('"', '""')}"`;
@@ -237,7 +242,7 @@ function csvEscape(value: string | number | null | undefined): string {
   return s;
 }
 
-function csvRow(fields: (string | number | null | undefined)[]): string {
+function csvRow(fields: (string | number | boolean | null | undefined)[]): string {
   return fields.map(csvEscape).join(',');
 }
 
@@ -360,6 +365,7 @@ const REPORT_HEADER = [
   'candidateOutcome',
   'acmsFullName',
   'camsName',
+  'surnameExactMatch',
   'nameScore',
   'fullNameSimilarity',
   'tokenNameMatchRate',
@@ -395,6 +401,7 @@ class ReportWriter {
         r.candidateOutcome,
         r.acmsFullName,
         r.camsName,
+        r.surnameExactMatch,
         r.score.nameScore,
         r.fullNameSimilarity,
         r.tokenNameMatchRate,
@@ -453,10 +460,12 @@ async function run() {
     resolveDuplicateNameCandidates,
     findTokenIntersectionCandidates,
     findAnchoredLevenshteinCandidates,
+    findSurnameExactCandidates,
     calculateNameScore,
     calculateAddressScore,
     calculatePhoneScore,
     calculateEmailScore,
+    firstLastNameToken,
   } = await import('../../../../backend/lib/use-cases/dataflows/trustee-match.helpers');
 
   const trusteesById = new Map(trustees.map((t) => [t.trusteeId, t]));
@@ -536,6 +545,58 @@ async function run() {
     let finalOutcome: 'resolved' | 'ambiguous' | 'no-match';
     let nameQualifyingIds = new Set<string>();
 
+    // Mirrors processNameMatch's production gate (sync-acms-professional-ids.ts): surname-exact
+    // match tried first: if 1+ candidates, that's the ONLY pool - matchTrusteeByName's broader
+    // pool is never also consulted. If 0, fall through unchanged to the existing tiers below.
+    const surnameExactCandidates = await findSurnameExactCandidates(context, acmsTrusteeProfessional);
+    if (surnameExactCandidates.length > 0) {
+      const surnameExactIds = surnameExactCandidates.map((t) => t.trusteeId);
+      for (const id of surnameExactIds) {
+        introducedAt.set(id, 'surnameExact');
+        recordCandidateIds.add(id);
+      }
+      const surnameExactResult = await resolveCandidatesByCorroboration(acmsTrusteeProfessional, surnameExactIds);
+      nameQualifyingIds = surnameExactResult.nameQualifyingIds;
+      resolvedTrusteeId = surnameExactResult.resolvedTrusteeId;
+      finalOutcome = resolvedTrusteeId ? 'resolved' : 'ambiguous';
+
+      outcomeCounts[finalOutcome]++;
+      const recordRows: CandidateRow[] = [];
+      for (const trusteeId of recordCandidateIds) {
+        const trustee = trusteesById.get(trusteeId);
+        if (!trustee) continue;
+        const score = scoreCandidate(acmsTrusteeProfessional, trustee);
+        const similarity = fullNameSimilarity(acmsFullName, trustee.name);
+        const tokenMatchRate = tokenNameMatchRate(acmsFullName, trustee.name);
+        const candidateOutcome = classifyCandidate(trusteeId, resolvedTrusteeId, nameQualifyingIds);
+        const acmsLastToken = firstLastNameToken(acmsTrusteeProfessional.lastName);
+        const surnameExactMatch =
+          !!acmsLastToken && acmsLastToken === firstLastNameToken(trustee.lastName);
+        recordRows.push({
+          acmsProfessionalId: record.acmsProfessionalId,
+          acmsFullName,
+          acmsAddress,
+          acmsPhone,
+          introductionStage: introducedAt.get(trusteeId)!,
+          candidateOutcome,
+          camsTrusteeId: trustee.trusteeId,
+          camsName: trustee.name,
+          camsAddress: camsAddressString(trustee),
+          camsPhone: trustee.public?.phone?.number ?? '',
+          score,
+          fullNameSimilarity: similarity,
+          tokenNameMatchRate: tokenMatchRate,
+          surnameExactMatch,
+          notes: buildNotes(score, similarity, tokenMatchRate),
+        });
+        outcomeByCandidate[candidateOutcome]++;
+        candidateRowCount++;
+      }
+      recordRows.sort((a, b) => b.fullNameSimilarity - a.fullNameSimilarity);
+      for (const row of recordRows) report.writeRow(row);
+      continue;
+    }
+
     const nameResult = await matchTrusteeByName(context, acmsTrusteeProfessional);
     const rawIds = nameResult.kind === 'ambiguous' ? nameResult.matchCandidates.map((c) => c.trusteeId) : [];
     for (const id of rawIds) {
@@ -605,6 +666,9 @@ async function run() {
       const similarity = fullNameSimilarity(acmsFullName, trustee.name);
       const tokenMatchRate = tokenNameMatchRate(acmsFullName, trustee.name);
       const candidateOutcome = classifyCandidate(trusteeId, resolvedTrusteeId, nameQualifyingIds);
+      const acmsLastToken = firstLastNameToken(acmsTrusteeProfessional.lastName);
+      const surnameExactMatch =
+        !!acmsLastToken && acmsLastToken === firstLastNameToken(trustee.lastName);
       recordRows.push({
         acmsProfessionalId: record.acmsProfessionalId,
         acmsFullName,
@@ -619,6 +683,7 @@ async function run() {
         score,
         fullNameSimilarity: similarity,
         tokenNameMatchRate: tokenMatchRate,
+        surnameExactMatch,
         notes: buildNotes(score, similarity, tokenMatchRate),
       });
       outcomeByCandidate[candidateOutcome]++;

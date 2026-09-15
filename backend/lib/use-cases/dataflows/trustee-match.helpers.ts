@@ -683,6 +683,34 @@ function isFirstMiddleSwap(
 }
 
 /**
+ * Detects a ONE-SIDED first/middle match: unlike isFirstMiddleSwap (both sides have SOME middle
+ * name, just in the "wrong" field), this covers a trustee who goes by their middle name where one
+ * source never recorded a middle name at all - ACMS "Lance Owens" (PROF_MI genuinely empty, not
+ * just omitted from this comparison) vs CAMS "W. Lance Owens" (firstName="W.", middleName=
+ * "Lance"). Requires an EXACT match (not merely initial-vs-full) on the crossed pair - unlike
+ * isFirstMiddleSwap, there is no second, independent direction to cross-check an initial against
+ * here (the "empty" side's middle slot has nothing in it to compare against), so a bare initial
+ * relationship is too weak and too collision-prone to credit alone. Confirmed via a real backtest
+ * regression: allowing initial-vs-full here credited ACMS "MICHAEL MCCARTY" (no middle name)
+ * against the UNRELATED "Kathy M. McCarty" (only "M." vs "Michael"), producing a second qualifying
+ * candidate alongside the correct "Michael B. McCarty" and turning a clean single-candidate
+ * resolution into a false ambiguity. Only fires when EXACTLY ONE side has a middle name - if both
+ * do, isFirstMiddleSwap's stricter bidirectional check is the correct gate (see
+ * calculateNameScore), since two populated middle slots that disagree IS real evidence.
+ */
+function isOneSidedMiddleNameMatch(
+  dxtrFirst: string,
+  dxtrMiddle: string,
+  camsFirst: string,
+  camsMiddle: string,
+): boolean {
+  if (dxtrMiddle && camsMiddle) return false; // both populated - isFirstMiddleSwap's job
+  if (!dxtrMiddle && camsMiddle) return dxtrFirst === camsMiddle;
+  if (dxtrMiddle && !camsMiddle) return dxtrMiddle === camsFirst;
+  return false;
+}
+
+/**
  * Calculates a name match score between DXTR and CAMS trustee parties.
  * Scoring:
  * - Last name must match on its first token (see firstLastNameToken), or the score is 0 - no
@@ -690,7 +718,9 @@ function isFirstMiddleSwap(
  *   distinguish two genuinely different people.
  * - First name must also match, or relax to an initial-vs-full relationship (see
  *   scoreFirstNamePart) - a genuine first-name mismatch is still disqualifying (score 0), UNLESS
- *   it's a first/middle swap (see isFirstMiddleSwap), which scores 85.
+ *   it's a first/middle swap (see isFirstMiddleSwap, both sides have a middle name) or a
+ *   one-sided middle-name match (see isOneSidedMiddleNameMatch, only one side does), either of
+ *   which scores 85.
  * - When last and first both clear their bar, a middle-name sub-score (see scoreMiddleNamePart)
  *   determines the final result - the lower of the first/middle sub-scores wins, so an
  *   initial-vs-full relationship on either part still caps the result at 85.
@@ -710,7 +740,9 @@ export function calculateNameScore(dxtrTrustee: DxtrTrusteeParty, camsTrustee: T
 
   const firstScore = scoreFirstNamePart(dxtrFirst, camsFirst);
   if (firstScore === 0) {
-    return isFirstMiddleSwap(dxtrFirst, dxtrMiddle, camsFirst, camsMiddle) ? 85 : 0;
+    if (isFirstMiddleSwap(dxtrFirst, dxtrMiddle, camsFirst, camsMiddle)) return 85;
+    if (isOneSidedMiddleNameMatch(dxtrFirst, dxtrMiddle, camsFirst, camsMiddle)) return 85;
+    return 0;
   }
 
   const middleScore = scoreMiddleNamePart(dxtrMiddle, camsMiddle);
@@ -1377,7 +1409,7 @@ export type NameMatchResult =
  * candidates came from the exact-match path or the fuzzy fallback below - these candidates have
  * not been through resolveNameCollisionByScoring yet, so every score field is UNSCORED.
  */
-function toUnscoredCandidates(trustees: Trustee[]): CandidateScore[] {
+export function toUnscoredCandidates(trustees: Trustee[]): CandidateScore[] {
   return trustees.map((t) => ({
     trusteeId: t.trusteeId,
     trusteeName: t.name,
@@ -1653,6 +1685,40 @@ function logTokenIntersectionCandidates(
     `Token-intersection search found ${candidates.length} candidate(s) for ` +
       `"${sourceTrustee.fullName}" (tokens=[${tokens.join(', ')}]): ${candidateList}.`,
   );
+}
+
+/**
+ * Cheap, early candidate-discovery tier: narrows to trustees whose lastName reduces to the EXACT
+ * same firstLastNameToken as the DXTR record - the same token comparison calculateNameScore's
+ * hard lastName gate already enforces, just run as a standalone filter before the noisier
+ * name-scoring tiers see the candidate pool at all. Two different people who happen to share a
+ * common first/middle name (e.g. "Phillip A Moon" vs "John P. Moon" and "Martin A. Mooney") get
+ * correctly separated here: only an exact surname token match proceeds, so a human or automated
+ * reviewer scanning the remaining pool isn't wading through candidates calculateNameScore was
+ * always going to reject anyway.
+ *
+ * Candidate sourcing: a single searchTrusteesByName query on the reduced lastName token (same
+ * substring-containment primitive findTokenIntersectionCandidates/findAnchoredLevenshteinCandidates
+ * already use), filtered in-memory to an EXACT firstLastNameToken match - substring containment
+ * alone would also match "Moon" against "Moonstone", so the in-memory filter is load-bearing, not
+ * a redundant re-check.
+ *
+ * Returns raw, unscored candidates - same contract as findTokenIntersectionCandidates/
+ * findAnchoredLevenshteinCandidates. The caller is responsible for routing a single candidate
+ * through resolveByContactCorroboration and 2+ candidates through resolveDuplicateNameCandidates
+ * before ever auto-linking.
+ */
+export async function findSurnameExactCandidates(
+  context: ApplicationContext,
+  sourceTrustee: DxtrTrusteeParty,
+): Promise<Trustee[]> {
+  const lastNameToken = firstLastNameToken(sourceTrustee.lastName);
+  if (!lastNameToken) return [];
+
+  const trusteesRepo = factory.getTrusteesRepository(context);
+  const searchResults = await trusteesRepo.searchTrusteesByName(lastNameToken);
+
+  return searchResults.filter((trustee) => firstLastNameToken(trustee.lastName) === lastNameToken);
 }
 
 export async function findTokenIntersectionCandidates(

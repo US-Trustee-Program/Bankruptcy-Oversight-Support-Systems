@@ -281,6 +281,9 @@ describe('SyncAcmsProfessionalIds', () => {
 
     beforeEach(() => {
       deps = SyncAcmsProfessionalIds.createDeps(context);
+      // Default: no surname-exact candidates, so existing scenarios exercise matchTrusteeByName's
+      // tiers unchanged unless a test explicitly overrides this to exercise the new gate itself.
+      vi.spyOn(trusteeMatchHelpers, 'findSurnameExactCandidates').mockResolvedValue([]);
     });
 
     test('should call matchTrusteeByName with the built DXTR-shaped trustee party', async () => {
@@ -293,6 +296,66 @@ describe('SyncAcmsProfessionalIds', () => {
       await SyncAcmsProfessionalIds.processNameMatch(deps, record);
 
       expect(matchSpy).toHaveBeenCalledWith(deps.context, expect.anything());
+    });
+
+    // Real-world pattern from a CAMS-879 backtest: ACMS "Phillip A Moon" against
+    // matchTrusteeByName's own (broader, phonetic/fuzzy) candidate pool surfaced 13 candidates -
+    // only 2 of which ("John P. Moon", "Fred Charles Moon") actually share the surname "Moon".
+    // findSurnameExactCandidates narrows to just those before matchTrusteeByName ever runs, so a
+    // resolvable surname-exact match short-circuits the noisier tiers entirely.
+    test('should auto-link on a surname-exact candidate without ever calling matchTrusteeByName', async () => {
+      const johnMoon = { trusteeId: 't1', name: 'John P. Moon' } as never;
+      vi.spyOn(trusteeMatchHelpers, 'findSurnameExactCandidates').mockResolvedValue([johnMoon]);
+      const matchSpy = vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName');
+      vi.spyOn(trusteeMatchHelpers, 'resolveByContactCorroboration').mockResolvedValue({
+        kind: 'resolved',
+        trusteeId: 't1',
+        candidateScores: [],
+      });
+
+      const result = await SyncAcmsProfessionalIds.processNameMatch(deps, record);
+
+      expect(result).toEqual({ kind: 'auto-linked', trusteeId: 't1' });
+      expect(matchSpy).not.toHaveBeenCalled();
+    });
+
+    test('should fall through to matchTrusteeByName when there are no surname-exact candidates', async () => {
+      vi.spyOn(trusteeMatchHelpers, 'findSurnameExactCandidates').mockResolvedValue([]);
+      const matchSpy = vi
+        .spyOn(trusteeMatchHelpers, 'matchTrusteeByName')
+        .mockResolvedValue({ kind: 'no-match' });
+      vi.spyOn(trusteeMatchHelpers, 'findTokenIntersectionCandidates').mockResolvedValue([]);
+      vi.spyOn(trusteeMatchHelpers, 'findAnchoredLevenshteinCandidates').mockResolvedValue([]);
+
+      const result = await SyncAcmsProfessionalIds.processNameMatch(deps, record);
+
+      expect(matchSpy).toHaveBeenCalled();
+      expect(result).toEqual({ kind: 'no-match' });
+    });
+
+    test("should return ambiguous with ONLY the surname-exact candidates when corroboration and duplicate-name resolution both fail, never falling back to matchTrusteeByName's broader pool", async () => {
+      const johnMoon = { trusteeId: 't1', name: 'John P. Moon', public: {} } as never;
+      const fredMoon = { trusteeId: 't2', name: 'Fred Charles Moon', public: {} } as never;
+      vi.spyOn(trusteeMatchHelpers, 'findSurnameExactCandidates').mockResolvedValue([
+        johnMoon,
+        fredMoon,
+      ]);
+      const matchSpy = vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName');
+      vi.spyOn(trusteeMatchHelpers, 'resolveByContactCorroboration').mockResolvedValue({
+        kind: 'unresolved',
+        candidateScores: [],
+      });
+      vi.spyOn(trusteeMatchHelpers, 'resolveDuplicateNameCandidates').mockResolvedValue({
+        kind: 'unresolved',
+        candidateScores: [],
+      });
+
+      const result = await SyncAcmsProfessionalIds.processNameMatch(deps, record);
+
+      expect(matchSpy).not.toHaveBeenCalled();
+      expect(result.kind).toEqual('ambiguous');
+      const ambiguousResult = result as Extract<typeof result, { kind: 'ambiguous' }>;
+      expect(ambiguousResult.matchCandidates.map((c) => c.trusteeId).sort()).toEqual(['t1', 't2']);
     });
 
     test('should pass firstName/middleName through unchanged when PROF_MI already holds a middle initial', async () => {
@@ -847,6 +910,9 @@ describe('SyncAcmsProfessionalIds', () => {
     beforeEach(() => {
       deps = SyncAcmsProfessionalIds.createDeps(context);
       vi.spyOn(deps.professionalIdsRepo, 'findByAcmsProfessionalId').mockResolvedValue([]);
+      // Default: no surname-exact candidates, so existing scenarios exercise matchTrusteeByName's
+      // tiers unchanged unless a test explicitly overrides this to exercise the new gate itself.
+      vi.spyOn(trusteeMatchHelpers, 'findSurnameExactCandidates').mockResolvedValue([]);
     });
 
     test('should auto-link and skip name matching entirely on a fingerprint hit', async () => {

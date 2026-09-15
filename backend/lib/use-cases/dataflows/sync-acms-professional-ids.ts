@@ -14,6 +14,8 @@ import {
   resolveDuplicateNameCandidates,
   findTokenIntersectionCandidates,
   findAnchoredLevenshteinCandidates,
+  findSurnameExactCandidates,
+  toUnscoredCandidates,
 } from './trustee-match.helpers';
 import { buildAcmsVariant } from './acms-trustee-variant.helpers';
 import { computeFingerprint } from './trustee-variant.helpers';
@@ -282,6 +284,36 @@ async function processNameMatch(
   record: AcmsTrusteeProfessionalDetailRecord,
 ): Promise<NameMatchResult> {
   const acmsTrusteeProfessional = toAcmsTrusteeProfessional(record);
+
+  // Cheapest, most authoritative gate first: narrow to trustees sharing an EXACT lastName token
+  // (see findSurnameExactCandidates) before any of the fuzzier tiers below ever see the candidate
+  // pool. When this finds nothing, fall through unchanged to matchTrusteeByName and the rest of
+  // this function - a genuine name-part reordering or spelling error still needs those tiers, and
+  // an empty result here says nothing about whether one applies. When it finds 1+ candidates,
+  // those become the ONLY pool passed to corroboration - matchTrusteeByName's own (broader,
+  // phonetic/fuzzy) candidate list is not also unioned in, since every candidate it could add here
+  // is, by construction, someone calculateNameScore's own lastName gate was always going to reject
+  // anyway (see CAMS-879 backtest finding: ACMS "Phillip A Moon" resolving against a 13-candidate
+  // phonetic pool that included Mann/Mooney/Wyman/Khorrami alongside the two actual "Moon"s).
+  const surnameExactCandidates = await findSurnameExactCandidates(
+    deps.context,
+    acmsTrusteeProfessional,
+  );
+  if (surnameExactCandidates.length > 0) {
+    const resolvedTrusteeId = await resolveCandidatesByCorroboration(
+      deps.context,
+      acmsTrusteeProfessional,
+      surnameExactCandidates.map((t) => t.trusteeId),
+    );
+    if (resolvedTrusteeId) {
+      return { kind: 'auto-linked', trusteeId: resolvedTrusteeId };
+    }
+    return {
+      kind: 'ambiguous',
+      matchCandidates: toUnscoredCandidates(surnameExactCandidates),
+    };
+  }
+
   const result = await matchTrusteeByName(deps.context, acmsTrusteeProfessional);
 
   if (result.kind === 'ambiguous') {
