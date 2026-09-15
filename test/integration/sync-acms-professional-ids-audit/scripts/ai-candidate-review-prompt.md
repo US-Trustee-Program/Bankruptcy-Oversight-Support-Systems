@@ -30,11 +30,19 @@ Some important expectations:
   genuinely contains duplicate records for the same real person. Do not force artificial
   uniqueness — if two candidates both look like the same real person as the ACMS record, mark both
   "match."
-- Addresses and phone numbers can be stale, missing, or use different formatting on either side.
-  Weigh them as supporting or contradicting evidence, not as an automatic disqualifier or an
-  automatic confirmation on their own.
+- Phone and address comparisons are NOT symmetric. An EXACT phone or address match is strong
+  positive evidence of the same person. A phone or address that DOESN'T match is only NEUTRAL, not
+  negative — the underlying comparison is a blunt exact-match-or-not check with no concept of "how
+  different," so a mismatch is equally consistent with a genuine typo, an old number/address still
+  on file, a office relocation, or two different people. Never treat a phone or address mismatch,
+  by itself, as a reason to reject a candidate that otherwise has a strong name match — only
+  DOWNGRADE your confidence when a mismatch is corroborated by other real evidence pointing to a
+  different person (e.g. a different first name too, or a different city/state entirely rather
+  than just a different suite number or a relocated office in the same metro area).
 - A shared surname alone is not enough for a match. A shared surname AND first name, or a shared
-  surname with strong corroborating address/phone evidence, is much stronger.
+  surname with a strong corroborating exact address/phone match, is much stronger evidence than
+  name alone. But the ABSENCE of that corroboration should not count against an otherwise strong
+  name match — treat it as "no extra evidence either way," not as a strike against the candidate.
 
 For every candidate, give a CONCISE one-sentence reason for your verdict. This is read by a human
 scanning across thousands of rows quickly, so keep it short and specific — not a paragraph.
@@ -45,6 +53,7 @@ Examples of the right length and specificity:
 - "Corrupted ACMS firstName field, cannot compare reliably."
 - "Nickname of the CAMS first name, address and phone both match."
 - "Same surname and city but different first name and no phone/address corroboration."
+- "Exact full name match; phone differs but that alone is not disqualifying, likely stale or a typo."
 
 Return your answer as structured JSON with one verdict entry per candidate listed below, in any
 order, each entry containing the candidate's camsTrusteeId, your verdict ("match" or "no-match"),
