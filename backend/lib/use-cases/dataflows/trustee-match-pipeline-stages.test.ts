@@ -19,6 +19,7 @@ import {
   tokenIntersectionDiscoveryStage,
   anchoredLevenshteinDiscoveryStage,
   nameScoreStage,
+  similarityDiagnosticsStage,
   stateFilterStage,
   corroborationStage,
 } from './trustee-match-pipeline-stages';
@@ -226,6 +227,70 @@ describe('nameScoreStage', () => {
       stateMatch: true,
       nameScore: 100,
     });
+  });
+});
+
+describe('similarityDiagnosticsStage', () => {
+  test('memoizes fullNameSimilarity and tokenNameMatchRate onto every candidate currently in the pipeline', async () => {
+    const state = createInitialState(makeDxtrTrustee({ fullName: 'John Doe' }));
+    const candidate = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'John Doe' })),
+    );
+
+    const result = await similarityDiagnosticsStage()(state);
+
+    expect(result.candidates.get('t1')).toBe(candidate);
+    expect(candidate.camsNormalized.get('fullNameSimilarity')).toBe(1);
+    expect(candidate.camsNormalized.get('tokenNameMatchRate')).toBe(1);
+  });
+
+  test('never writes a ScoreEntry - this stage is diagnostic only, never gates match/skip', async () => {
+    const state = createInitialState(makeDxtrTrustee({ fullName: 'John Doe' }));
+    const candidate = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Else' })),
+    );
+
+    await similarityDiagnosticsStage()(state);
+
+    expect(candidate.scores).toEqual({});
+  });
+
+  test('memoizes the ACMS-side normalized name once on state.acmsNormalized rather than recomputing it per candidate', async () => {
+    const state = createInitialState(makeDxtrTrustee({ fullName: 'John Doe' }));
+    addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Jane Smith' })));
+    addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't2', name: 'Bob Jones' })));
+
+    await similarityDiagnosticsStage()(state);
+
+    expect(state.acmsNormalized.get('normalizeForSimilarity(John Doe)')).toBe('john doe');
+  });
+
+  test("memoizes each candidate's own normalized name once, reused by both fullNameSimilarity and tokenNameMatchRate", async () => {
+    const state = createInitialState(makeDxtrTrustee({ fullName: 'John Doe' }));
+    const candidate = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', name: "O'Brien-Smith" })),
+    );
+
+    await similarityDiagnosticsStage()(state);
+
+    expect(candidate.camsNormalized.get("normalizeForSimilarity(O'Brien-Smith)")).toBe(
+      'obrien smith',
+    );
+  });
+
+  test('no-ops once the pipeline has already matched', async () => {
+    const state: PipelineState = {
+      ...createInitialState(makeDxtrTrustee()),
+      match: { trusteeId: 'already-matched', score: {} },
+    };
+    const candidate = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })));
+
+    await similarityDiagnosticsStage()(state);
+
+    expect(candidate.camsNormalized.has('fullNameSimilarity')).toBe(false);
   });
 });
 

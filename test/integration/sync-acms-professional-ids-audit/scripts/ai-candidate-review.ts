@@ -1,17 +1,23 @@
 /**
- * AI second-opinion review of data/replay-backtest-report.csv (produced by
- * main-branch-replay-backtest.ts): for every ACMS record and its full candidate pool, spawns one
+ * AI second-opinion review of data/replay-backtest-report.jsonl (produced by
+ * pipeline-replay-backtest.ts): for every ACMS record and its full candidate pool, spawns one
  * ISOLATED `claude -p` invocation per record to judge each candidate as "match"/"no-match", using
  * the actual name/address/phone data rather than the structured scores alone. One invocation per
  * record (never batched across records) so one trustee's candidate context can never bleed into
  * another's judgment.
  *
- * Prerequisites: data/replay-backtest-report.csv must already exist (run
- * main-branch-replay-backtest.ts first). Requires the `claude` CLI to be installed and
- * authenticated. Each `claude -p` call is spawned through an interactive `/bin/zsh -i -c` shell
- * with cwd pinned to the repo root rather than the bare binary, so any account-routing shell
- * function defined in .zshrc (interactive-only, path-based) still activates. Spawning the bare
- * binary directly can silently authenticate against the wrong backend/account.
+ * Reads the JSONL directly (the full serialized pipeline state per record) rather than the
+ * flattened CSV - the CSV only ever carries the WINNING candidate's corroboration score and a
+ * single "introductionStage" label; the JSONL carries every scorer's contribution for every
+ * candidate (see ScoreByScorer), so the prompt built from it can show the model the complete
+ * evaluation history, not just whichever scorer happened to run last.
+ *
+ * Prerequisites: data/replay-backtest-report.jsonl must already exist (run
+ * pipeline-replay-backtest.ts first). Requires the `claude` CLI to be installed and authenticated.
+ * Each `claude -p` call is spawned through an interactive `/bin/zsh -i -c` shell with cwd pinned to
+ * the repo root rather than the bare binary, so any account-routing shell function defined in
+ * .zshrc (interactive-only, path-based) still activates. Spawning the bare binary directly can
+ * silently authenticate against the wrong backend/account.
  *
  * Usage (from test/integration/):
  *   npx tsx --tsconfig ../../backend/tsconfig.json \
@@ -27,14 +33,24 @@
  * acmsProfessionalId values already present in it are skipped and new results are appended, so an
  * interrupted run only re-does what's left.
  *
- * Override the input CSV path with REPLAY_BACKTEST_REPORT_CSV, following the same env-var
- * override convention main-branch-replay-backtest.ts uses for its own fixture paths. Override the
+ * Every shard writes a flattened CSV for human review (one row per record/candidate pair, plus
+ * aiVerdict/aiReason) - the same shape the old CSV-driven version produced, still derived fresh
+ * from each JSONL line rather than carried over from any prior CSV.
+ *
+ * Override the input JSONL path with REPLAY_BACKTEST_REPORT_JSONL, following the same env-var
+ * override convention pipeline-replay-backtest.ts uses for its own fixture paths. Override the
  * reviewing model with AI_REVIEW_MODEL (a full model name or CLI alias accepted by `claude
  * --model`); unset inherits the session/account default.
  */
 import * as fs from 'fs';
 import * as path from 'path';
 import { execFile } from 'child_process';
+import {
+  ProjectedTrustee,
+  ScoreByScorer,
+  SerializedState,
+} from '../../../../backend/lib/use-cases/dataflows/trustee-match-pipeline';
+import { DxtrTrusteeParty } from '../../../../common/src/cams/dataflow-events';
 
 const DATA_DIR = path.resolve(__dirname, '../../../../data');
 const REPO_ROOT = path.resolve(__dirname, '../../../../');
@@ -51,30 +67,7 @@ const CONCURRENCY = 4;
 
 const PROGRESS_LOG_INTERVAL = 25;
 
-const REPORT_COLUMNS = [
-  'acmsProfessionalId',
-  'introductionStage',
-  'candidateOutcome',
-  'acmsFullName',
-  'camsName',
-  'stateMatch',
-  'nameScore',
-  'fullNameSimilarity',
-  'tokenNameMatchRate',
-  'acmsAddress',
-  'camsAddress',
-  'addressScore',
-  'acmsPhone',
-  'camsPhone',
-  'phoneScore',
-  'camsTrusteeId',
-  'notes',
-] as const;
-
-type ReportColumn = (typeof REPORT_COLUMNS)[number];
-type CandidateRow = Record<ReportColumn, string>;
-
-const OUTPUT_HEADER = [...REPORT_COLUMNS, 'aiVerdict', 'aiReason'];
+type ReviewRecord = { acmsProfessionalId: string } & SerializedState;
 
 type AiVerdict = 'match' | 'no-match';
 
@@ -109,119 +102,66 @@ const VERDICT_JSON_SCHEMA = {
   additionalProperties: false,
 };
 
-/** RFC 4180-minimal parser: handles quoted fields, embedded commas, embedded newlines, and doubled
- * quotes-as-escape, which is all main-branch-replay-backtest.ts's csvEscape ever produces. Not a
- * general CSV library dependency since the input shape is fully controlled by that one writer. */
-function parseCsv(text: string): string[][] {
-  const rows: string[][] = [];
-  let row: string[] = [];
-  let field = '';
-  let inQuotes = false;
-  let i = 0;
-  while (i < text.length) {
-    const c = text[i];
-    if (inQuotes) {
-      if (c === '"') {
-        if (text[i + 1] === '"') {
-          field += '"';
-          i += 2;
-          continue;
-        }
-        inQuotes = false;
-        i++;
-        continue;
-      }
-      field += c;
-      i++;
-      continue;
-    }
-    if (c === '"') {
-      inQuotes = true;
-      i++;
-      continue;
-    }
-    if (c === ',') {
-      row.push(field);
-      field = '';
-      i++;
-      continue;
-    }
-    if (c === '\r') {
-      i++;
-      continue;
-    }
-    if (c === '\n') {
-      row.push(field);
-      rows.push(row);
-      row = [];
-      field = '';
-      i++;
-      continue;
-    }
-    field += c;
-    i++;
+function csvEscape(value: string | number | boolean | null | undefined): string {
+  const s = value === null || value === undefined ? '' : String(value);
+  if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+    return `"${s.replaceAll('"', '""')}"`;
   }
-  if (field.length > 0 || row.length > 0) {
-    row.push(field);
-    rows.push(row);
-  }
-  return rows;
+  return s;
 }
 
-function csvEscape(value: string): string {
-  if (value.includes(',') || value.includes('"') || value.includes('\n')) {
-    return `"${value.replaceAll('"', '""')}"`;
-  }
-  return value;
-}
-
-function csvRowLine(fields: string[]): string {
+function csvRowLine(fields: (string | number | boolean | null | undefined)[]): string {
   return fields.map(csvEscape).join(',') + '\n';
 }
 
-function readCandidateRows(csvPath: string): CandidateRow[] {
-  const text = fs.readFileSync(csvPath, 'utf-8');
-  const rows = parseCsv(text);
-  if (rows.length === 0) return [];
-  const header = rows[0];
-  const indexOf = new Map(header.map((col, i) => [col, i]));
-  for (const col of REPORT_COLUMNS) {
-    if (!indexOf.has(col)) {
-      throw new Error(`${csvPath} is missing expected column "${col}"`);
-    }
-  }
-  return rows.slice(1).map((raw) => {
-    const record = {} as CandidateRow;
-    for (const col of REPORT_COLUMNS) {
-      record[col] = raw[indexOf.get(col)!] ?? '';
-    }
-    return record;
-  });
+const REPORT_COLUMNS = [
+  'acmsProfessionalId',
+  'introductionStage',
+  'acmsFullName',
+  'camsName',
+  'stateMatch',
+  'nameScore',
+  'fullNameSimilarity',
+  'tokenNameMatchRate',
+  'acmsAddress',
+  'camsAddress',
+  'addressScore',
+  'acmsPhone',
+  'camsPhone',
+  'phoneScore',
+  'camsTrusteeId',
+] as const;
+
+const OUTPUT_HEADER = [...REPORT_COLUMNS, 'aiVerdict', 'aiReason'];
+
+function readReviewRecords(jsonlPath: string): ReviewRecord[] {
+  const text = fs.readFileSync(jsonlPath, 'utf-8');
+  return text
+    .split('\n')
+    .filter((line) => line.trim().length > 0)
+    .map((line) => JSON.parse(line) as ReviewRecord);
 }
 
-/** Preserves input row order within each group (required by the grouping contract) by relying on
- * Map's insertion-order iteration rather than re-sorting. */
-function groupByAcmsProfessionalId(rows: CandidateRow[]): Map<string, CandidateRow[]> {
-  const groups = new Map<string, CandidateRow[]>();
-  for (const row of rows) {
-    const key = row.acmsProfessionalId;
-    const existing = groups.get(key);
-    if (existing) {
-      existing.push(row);
-    } else {
-      groups.set(key, [row]);
-    }
+function alreadyReviewedIds(outputCsvPath: string): Set<string> {
+  if (!fs.existsSync(outputCsvPath)) return new Set();
+  const text = fs.readFileSync(outputCsvPath, 'utf-8');
+  const lines = text.split('\n').filter((l) => l.trim().length > 0);
+  if (lines.length <= 1) return new Set();
+  const ids = new Set<string>();
+  for (const line of lines.slice(1)) {
+    const commaIndex = line.indexOf(',');
+    ids.add(commaIndex === -1 ? line : line.slice(0, commaIndex).replace(/^"|"$/g, ''));
   }
-  return groups;
+  return ids;
 }
 
 /**
  * Deterministic, dependency-free sharding: sort every distinct acmsProfessionalId with a plain
  * string sort, then slice into M contiguous near-equal partitions using the standard
  * "remainder-first" distribution (the first `total % of` partitions get one extra element). Given
- * the same CSV and the same `--of`, this always produces the same partition boundaries regardless
- * of which `--shard` is requested or what order records were read in, so independently-run shards
- * never overlap and never miss a record.
+ * the same JSONL and the same `--of`, this always produces the same partition boundaries
+ * regardless of which `--shard` is requested or what order records were read in, so
+ * independently-run shards never overlap and never miss a record.
  */
 function partitionIds(ids: string[], shard: number, of: number): string[] {
   const sorted = [...ids].sort();
@@ -263,15 +203,71 @@ function parseCliArgs(argv: string[]): CliArgs {
   return { shard, of };
 }
 
-function alreadyReviewedIds(outputPath: string): Set<string> {
-  if (!fs.existsSync(outputPath)) return new Set();
-  const rows = readCandidateRows(outputPath);
-  return new Set(rows.map((r) => r.acmsProfessionalId));
+function acmsAddressString(acmsRaw: DxtrTrusteeParty): string {
+  return [acmsRaw.legacy?.address1, acmsRaw.legacy?.cityStateZipCountry].filter(Boolean).join(', ');
 }
 
-/** Streams shard results one record's rows at a time, matching main-branch-replay-backtest.ts's
- * ReportWriter pattern. Opens in append mode so a resumed run adds to an existing partial shard
- * file instead of truncating already-reviewed records. */
+function camsAddressString(candidate: ProjectedTrustee): string {
+  const a = candidate.address;
+  if (!a) return '';
+  return [a.address1, [a.city, a.state, a.zipCode].filter(Boolean).join(' ')]
+    .filter(Boolean)
+    .join(', ');
+}
+
+function mergeScores(scores: ScoreByScorer): Record<string, unknown> {
+  return Object.assign({}, ...Object.values(scores));
+}
+
+/** Whichever scorer most recently touched this candidate - purely a display label, matching
+ * pipeline-replay-backtest.ts's own convention. */
+function introductionStageOf(scores: ScoreByScorer): string {
+  const names = Object.keys(scores);
+  return names[names.length - 1] ?? 'unknown';
+}
+
+/** Derives one flattened CSV row's worth of display fields for a single candidate, merging in the
+ * winning candidate's corroboration score (see PipelineMatch.score) the same way
+ * pipeline-replay-backtest.ts does, since that score is never written through addScore onto
+ * candidate.scores itself. */
+function deriveCandidateFields(
+  record: ReviewRecord,
+  candidate: ReviewRecord['candidates'][number],
+) {
+  const isWinner = candidate.camsRaw.trusteeId === record.match?.trusteeId;
+  const merged = {
+    ...mergeScores(candidate.scores),
+    ...(isWinner ? record.match?.score : {}),
+  } as Record<string, unknown>;
+  const nameScore = typeof merged.nameScore === 'number' ? merged.nameScore : 0;
+  const addressScore = typeof merged.addressScore === 'number' ? merged.addressScore : null;
+  const phoneScore = typeof merged.phoneScore === 'number' ? merged.phoneScore : null;
+  const stateMatch = typeof merged.stateMatch === 'boolean' ? merged.stateMatch : true;
+  const fullNameSimilarity =
+    typeof candidate.camsNormalized.fullNameSimilarity === 'number'
+      ? candidate.camsNormalized.fullNameSimilarity
+      : 0;
+  const tokenNameMatchRate =
+    typeof candidate.camsNormalized.tokenNameMatchRate === 'number'
+      ? candidate.camsNormalized.tokenNameMatchRate
+      : 0;
+  return {
+    introductionStage: introductionStageOf(candidate.scores),
+    nameScore,
+    addressScore,
+    phoneScore,
+    stateMatch,
+    fullNameSimilarity,
+    tokenNameMatchRate,
+    acmsAddress: acmsAddressString(record.acmsRaw),
+    acmsPhone: record.acmsRaw.legacy?.phone ?? '',
+    camsAddress: camsAddressString(candidate.camsRaw),
+    camsPhone: candidate.camsRaw.phone?.number ?? '',
+  };
+}
+
+/** Streams shard results one record's rows at a time. Opens in append mode so a resumed run adds
+ * to an existing partial shard file instead of truncating already-reviewed records. */
 class ShardReportWriter {
   private readonly stream: fs.WriteStream;
 
@@ -283,12 +279,31 @@ class ShardReportWriter {
     }
   }
 
-  writeRecord(rows: CandidateRow[], verdictsByTrusteeId: Map<string, VerdictResult>): void {
-    for (const row of rows) {
-      const verdict = verdictsByTrusteeId.get(row.camsTrusteeId);
-      const fields = REPORT_COLUMNS.map((col) => row[col]);
-      fields.push(verdict?.verdict ?? '', verdict?.reason ?? '');
-      this.stream.write(csvRowLine(fields));
+  writeRecord(record: ReviewRecord, verdictsByTrusteeId: Map<string, VerdictResult>): void {
+    for (const candidate of record.candidates) {
+      const fields = deriveCandidateFields(record, candidate);
+      const verdict = verdictsByTrusteeId.get(candidate.camsRaw.trusteeId);
+      this.stream.write(
+        csvRowLine([
+          record.acmsProfessionalId,
+          fields.introductionStage,
+          record.acmsRaw.fullName,
+          candidate.camsRaw.name,
+          fields.stateMatch,
+          fields.nameScore,
+          fields.fullNameSimilarity,
+          fields.tokenNameMatchRate,
+          fields.acmsAddress,
+          fields.camsAddress,
+          fields.addressScore,
+          fields.acmsPhone,
+          fields.camsPhone,
+          fields.phoneScore,
+          candidate.camsRaw.trusteeId,
+          verdict?.verdict ?? '',
+          verdict?.reason ?? '',
+        ]),
+      );
     }
   }
 
@@ -299,31 +314,38 @@ class ShardReportWriter {
   }
 }
 
-function formatAcmsRecord(row: CandidateRow): string {
+function formatAcmsRecord(record: ReviewRecord): string {
   return [
-    `Full name: ${row.acmsFullName || '(blank)'}`,
-    `Address: ${row.acmsAddress || '(blank)'}`,
-    `Phone: ${row.acmsPhone || '(blank)'}`,
+    `Full name: ${record.acmsRaw.fullName || '(blank)'}`,
+    `Address: ${acmsAddressString(record.acmsRaw) || '(blank)'}`,
+    `Phone: ${record.acmsRaw.legacy?.phone || '(blank)'}`,
   ].join('\n');
 }
 
-function formatCandidate(row: CandidateRow, index: number): string {
+function formatCandidate(
+  record: ReviewRecord,
+  candidate: ReviewRecord['candidates'][number],
+  index: number,
+): string {
+  const fields = deriveCandidateFields(record, candidate);
   return [
     `### Candidate ${index + 1}`,
-    `camsTrusteeId: ${row.camsTrusteeId}`,
-    `Name: ${row.camsName || '(blank)'}`,
-    `Address: ${row.camsAddress || '(blank)'}`,
-    `Phone: ${row.camsPhone || '(blank)'}`,
-    `Structured signals: nameScore=${row.nameScore}, fullNameSimilarity=${row.fullNameSimilarity}, ` +
-      `tokenNameMatchRate=${row.tokenNameMatchRate}, stateMatch=${row.stateMatch}, ` +
-      `addressScore=${row.addressScore}, phoneScore=${row.phoneScore}`,
-    `introductionStage: ${row.introductionStage}, candidateOutcome: ${row.candidateOutcome}`,
+    `camsTrusteeId: ${candidate.camsRaw.trusteeId}`,
+    `Name: ${candidate.camsRaw.name || '(blank)'}`,
+    `Address: ${fields.camsAddress || '(blank)'}`,
+    `Phone: ${fields.camsPhone || '(blank)'}`,
+    `Structured signals: nameScore=${fields.nameScore}, fullNameSimilarity=${fields.fullNameSimilarity}, ` +
+      `tokenNameMatchRate=${fields.tokenNameMatchRate}, stateMatch=${fields.stateMatch}, ` +
+      `addressScore=${fields.addressScore}, phoneScore=${fields.phoneScore}`,
+    `introductionStage: ${fields.introductionStage}`,
   ].join('\n');
 }
 
-function buildPrompt(template: string, rows: CandidateRow[]): string {
-  const acmsRecord = formatAcmsRecord(rows[0]);
-  const candidates = rows.map((row, i) => formatCandidate(row, i)).join('\n\n');
+function buildPrompt(template: string, record: ReviewRecord): string {
+  const acmsRecord = formatAcmsRecord(record);
+  const candidates = record.candidates
+    .map((candidate, i) => formatCandidate(record, candidate, i))
+    .join('\n\n');
   return template.replace('{{ACMS_RECORD}}', acmsRecord).replace('{{CANDIDATES}}', candidates);
 }
 
@@ -382,7 +404,9 @@ function extractVerdicts(claudeStdout: string): VerdictResult[] {
   }
   const result = envelope.result;
   const parsed: VerdictResponse =
-    typeof result === 'string' ? (JSON.parse(result) as VerdictResponse) : (result as VerdictResponse);
+    typeof result === 'string'
+      ? (JSON.parse(result) as VerdictResponse)
+      : (result as VerdictResponse);
   if (!parsed || !Array.isArray(parsed.verdicts)) {
     throw new Error('claude -p response did not contain a verdicts array');
   }
@@ -412,20 +436,20 @@ async function runWithConcurrency<T>(
 async function run(): Promise<void> {
   const { shard, of } = parseCliArgs(process.argv.slice(2));
 
-  const inputCsvPath =
-    process.env.REPLAY_BACKTEST_REPORT_CSV ?? path.join(DATA_DIR, 'replay-backtest-report.csv');
-  if (!fs.existsSync(inputCsvPath)) {
+  const inputJsonlPath =
+    process.env.REPLAY_BACKTEST_REPORT_JSONL ?? path.join(DATA_DIR, 'replay-backtest-report.jsonl');
+  if (!fs.existsSync(inputJsonlPath)) {
     throw new Error(
-      `${inputCsvPath} does not exist. Run main-branch-replay-backtest.ts first, or set ` +
-        'REPLAY_BACKTEST_REPORT_CSV to point at an existing report.',
+      `${inputJsonlPath} does not exist. Run pipeline-replay-backtest.ts first, or set ` +
+        'REPLAY_BACKTEST_REPORT_JSONL to point at an existing report.',
     );
   }
 
   const promptTemplate = fs.readFileSync(PROMPT_TEMPLATE_PATH, 'utf-8');
 
-  const allRows = readCandidateRows(inputCsvPath);
-  const groups = groupByAcmsProfessionalId(allRows);
-  const allIds = [...groups.keys()];
+  const allRecords = readReviewRecords(inputJsonlPath);
+  const recordsById = new Map(allRecords.map((r) => [r.acmsProfessionalId, r]));
+  const allIds = [...recordsById.keys()];
   const shardIds = partitionIds(allIds, shard, of);
 
   fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -446,9 +470,9 @@ async function run(): Promise<void> {
   const erroredIds: string[] = [];
 
   await runWithConcurrency(remainingIds, CONCURRENCY, async (acmsProfessionalId) => {
-    const rows = groups.get(acmsProfessionalId)!;
+    const record = recordsById.get(acmsProfessionalId)!;
     try {
-      const prompt = buildPrompt(promptTemplate, rows);
+      const prompt = buildPrompt(promptTemplate, record);
       const stdout = await runClaudeReview(prompt);
       const verdicts = extractVerdicts(stdout);
       const verdictsByTrusteeId = new Map(verdicts.map((v) => [v.camsTrusteeId, v]));
@@ -457,16 +481,16 @@ async function run(): Promise<void> {
       // partially written - writing blanks for the uncovered rows would silently and permanently
       // lose those candidates, since a record only ever gets retried on resume when it's NOT
       // already present in the output file at all.
-      const missingIds = rows
-        .map((row) => row.camsTrusteeId)
+      const missingIds = record.candidates
+        .map((c) => c.camsRaw.trusteeId)
         .filter((id) => !verdictsByTrusteeId.has(id));
       if (missingIds.length > 0) {
         throw new Error(
-          `claude -p response covered ${verdicts.length}/${rows.length} candidates, missing ` +
-            `${missingIds.length}: ${missingIds.slice(0, 5).join(', ')}${missingIds.length > 5 ? '...' : ''}`,
+          `claude -p response covered ${verdicts.length}/${record.candidates.length} candidates, ` +
+            `missing ${missingIds.length}: ${missingIds.slice(0, 5).join(', ')}${missingIds.length > 5 ? '...' : ''}`,
         );
       }
-      writer.writeRecord(rows, verdictsByTrusteeId);
+      writer.writeRecord(record, verdictsByTrusteeId);
       for (const v of verdicts) {
         if (v.verdict === 'match') matchCount++;
         else noMatchCount++;

@@ -14,16 +14,14 @@
  * then calls the real repository/matching code unmodified via a real (non-mocked)
  * ApplicationContext.
  *
- * Every run writes two files to ./data (repo root, gitignored — real trustee PII, never
- * committed):
- *   - data/replay-backtest-report.csv: one row per (record, candidate) pair, ACMS/CAMS field pairs
- *     for visual scanning, sorted by fullNameSimilarity within each record - consumed by the
- *     AI-review tooling (ai-candidate-review.ts).
- *   - data/replay-backtest-report.jsonl: one JSON line per record, the FULL serialized pipeline
- *     state (serializeState) - every candidate's complete score history from every stage that
- *     touched it, not just the winner. This is the reactive-investigation record: for an
- *     ambiguous/no-match record, a reviewer can see exactly which stages ran, what each one
- *     concluded, and why the pipeline didn't collapse to a match.
+ * Writes data/replay-backtest-report.jsonl (repo root, gitignored — real trustee PII, never
+ * committed): one JSON line per record, the FULL serialized pipeline state (serializeState) -
+ * every candidate's complete score history from every stage that touched it, not just the winner.
+ * This is the reactive-investigation record: for an ambiguous/no-match record, a reviewer can see
+ * exactly which stages ran, what each one concluded, and why the pipeline didn't collapse to a
+ * match. ai-candidate-review.ts reads this file directly and produces the human-facing CSV (with
+ * an AI second-opinion verdict per candidate) - this script has no CSV output of its own, since it
+ * would only ever be a strict subset of what that CSV already shows.
  *
  * Usage (from test/integration/), against a disposable local Mongo container (NOT the shared
  * cams-local-infra-mongo container other agents/tooling depend on):
@@ -35,15 +33,10 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { MongoClient } from 'mongodb';
 import { InvocationContext } from '@azure/functions';
-import * as natural from 'natural';
-import { getNameVariations } from 'name-match/src/name-normalizer';
 import { Trustee } from '../../../../common/src/cams/trustees';
 import { TrusteeProfessionalId } from '../../../../common/src/cams/trustee-professional-ids';
 import { AcmsTrusteeProfessionalDetailRecord } from '../../../../backend/lib/use-cases/gateways.types';
-import {
-  ProjectedTrustee,
-  SerializedState,
-} from '../../../../backend/lib/use-cases/dataflows/trustee-match-pipeline';
+import { SerializedState } from '../../../../backend/lib/use-cases/dataflows/trustee-match-pipeline';
 
 const FIXTURES_DIR = path.resolve(__dirname, '../fixtures');
 const DATA_DIR = path.resolve(__dirname, '../../../../data');
@@ -168,215 +161,34 @@ async function buildRealApplicationContext() {
 type CandidateOutcome =
   'resolved' | 'rejected-name' | 'rejected-corroboration' | 'rejected-ambiguous-group';
 
-type CandidateRow = {
-  acmsProfessionalId: string;
-  acmsFullName: string;
-  acmsAddress: string;
-  acmsPhone: string;
-  introductionStage: string;
-  candidateOutcome: CandidateOutcome;
-  camsTrusteeId: string;
-  camsName: string;
-  camsAddress: string;
-  camsPhone: string;
-  nameScore: number;
-  addressScore: number | null;
-  phoneScore: number | null;
-  fullNameSimilarity: number;
-  tokenNameMatchRate: number;
-  stateMatch: boolean;
-  notes: string;
-};
-
-function csvEscape(value: string | number | boolean | null | undefined): string {
-  const s = value === null || value === undefined ? '' : String(value);
-  if (s.includes(',') || s.includes('"') || s.includes('\n')) {
-    return `"${s.replaceAll('"', '""')}"`;
-  }
-  return s;
-}
-
-function csvRow(fields: (string | number | boolean | null | undefined)[]): string {
-  return fields.map(csvEscape).join(',');
-}
-
-function normalizeForSimilarity(name: string): string {
-  return name.toLowerCase().replaceAll("'", '').replace(/[.,-]/g, ' ').replace(/\s+/g, ' ').trim();
-}
-
-function fullNameSimilarity(acmsFullName: string, camsName: string): number {
-  const a = normalizeForSimilarity(acmsFullName);
-  const b = normalizeForSimilarity(camsName);
-  if (!a || !b) return 0;
-  return Math.round(natural.JaroWinklerDistance(a, b) * 1000) / 1000;
-}
-
-function isInitialOf(a: string, b: string): boolean {
-  return a.length === 1 && b.length > 0 && b.startsWith(a);
-}
-
-function isNicknamePair(a: string, b: string): boolean {
-  try {
-    if ((getNameVariations(a) as string[]).includes(b)) return true;
-  } catch {
-    // No variations available for a.
-  }
-  try {
-    if ((getNameVariations(b) as string[]).includes(a)) return true;
-  } catch {
-    // No variations available for b.
-  }
-  return false;
-}
-
-function tokenNameMatchRate(acmsFullName: string, camsName: string): number {
-  const acmsTokens = normalizeForSimilarity(acmsFullName).split(' ').filter(Boolean);
-  const camsTokens = normalizeForSimilarity(camsName).split(' ').filter(Boolean);
-  if (acmsTokens.length === 0) return 0;
-  let matched = 0;
-  for (const at of acmsTokens) {
-    const hit = camsTokens.some(
-      (ct) => at === ct || isInitialOf(at, ct) || isInitialOf(ct, at) || isNicknamePair(at, ct),
-    );
-    if (hit) matched++;
-  }
-  return Math.round((matched / acmsTokens.length) * 1000) / 1000;
-}
-
-function buildNotes(
-  nameScore: number,
-  addressScore: number | null,
-  phoneScore: number | null,
-  similarity: number,
-  tokenMatchRate: number,
-): string {
-  const notes: string[] = [];
-  if (nameScore >= 85 && (addressScore ?? 0) < 50 && phoneScore !== 100) {
-    notes.push('name matches but corroboration (address/phone) is weak');
-  }
-  if (nameScore < 85 && ((addressScore ?? 0) >= 80 || phoneScore === 100)) {
-    notes.push('strong address/phone despite weak name score');
-  }
-  if (phoneScore === 0) {
-    notes.push('phone present on both sides but disagrees');
-  }
-  if (similarity >= 0.85 && nameScore < 85) {
-    notes.push(
-      'high full-name similarity despite low structured nameScore (possible nickname/reorder)',
-    );
-  }
-  if (similarity < 0.5 && nameScore >= 85) {
-    notes.push('low full-name similarity despite high structured nameScore (verify by eye)');
-  }
-  if (tokenMatchRate === 1 && similarity < 0.7 && nameScore < 85) {
-    notes.push(
-      'every ACMS token matches some CAMS token but low char-similarity (likely nickname/reorder)',
-    );
-  }
-  if (tokenMatchRate === 1 && similarity >= 0.7 && nameScore < 85) {
-    notes.push(
-      'all tokens match and names look similar but structured nameScore still low (verify surname)',
-    );
-  }
-  return notes.join('; ');
-}
-
-const REPORT_HEADER = [
-  'acmsProfessionalId',
-  'introductionStage',
-  'candidateOutcome',
-  'acmsFullName',
-  'camsName',
-  'stateMatch',
-  'nameScore',
-  'fullNameSimilarity',
-  'tokenNameMatchRate',
-  'acmsAddress',
-  'camsAddress',
-  'addressScore',
-  'acmsPhone',
-  'camsPhone',
-  'phoneScore',
-  'camsTrusteeId',
-  'notes',
-];
-
-/** Streams both the CSV and JSONL reports one record at a time - a record's candidate pool can
- * range from 0 to several hundred, so buffering every row across the whole population before
- * writing risks holding tens of thousands of objects in memory at once for no reason. */
+/** Streams the JSONL report one record at a time - a record's candidate pool can range from 0 to
+ * several hundred, so buffering every record across the whole population before writing risks
+ * holding tens of thousands of objects in memory at once for no reason. */
 class ReportWriter {
-  private readonly csvStream: fs.WriteStream;
   private readonly jsonlStream: fs.WriteStream;
-  private rowCount = 0;
 
-  constructor(csvPath: string, jsonlPath: string) {
-    this.csvStream = fs.createWriteStream(csvPath, { encoding: 'utf-8' });
-    this.csvStream.write(csvRow(REPORT_HEADER) + '\n');
+  constructor(jsonlPath: string) {
     this.jsonlStream = fs.createWriteStream(jsonlPath, { encoding: 'utf-8' });
-  }
-
-  writeCsvRow(r: CandidateRow): void {
-    this.csvStream.write(
-      csvRow([
-        r.acmsProfessionalId,
-        r.introductionStage,
-        r.candidateOutcome,
-        r.acmsFullName,
-        r.camsName,
-        r.stateMatch,
-        r.nameScore,
-        r.fullNameSimilarity,
-        r.tokenNameMatchRate,
-        r.acmsAddress,
-        r.camsAddress,
-        r.addressScore,
-        r.acmsPhone,
-        r.camsPhone,
-        r.phoneScore,
-        r.camsTrusteeId,
-        r.notes,
-      ]) + '\n',
-    );
-    this.rowCount++;
   }
 
   writeJsonlLine(acmsProfessionalId: string, serialized: SerializedState): void {
     this.jsonlStream.write(JSON.stringify({ acmsProfessionalId, ...serialized }) + '\n');
   }
 
-  async close(): Promise<number> {
-    await Promise.all([
-      new Promise<void>((resolve, reject) => {
-        this.csvStream.end((error?: Error | null) => (error ? reject(error) : resolve()));
-      }),
-      new Promise<void>((resolve, reject) => {
-        this.jsonlStream.end((error?: Error | null) => (error ? reject(error) : resolve()));
-      }),
-    ]);
-    return this.rowCount;
+  async close(): Promise<void> {
+    await new Promise<void>((resolve, reject) => {
+      this.jsonlStream.end((error?: Error | null) => (error ? reject(error) : resolve()));
+    });
   }
 }
 
-function acmsAddressString(cityStateZipCountry: string, address1: string): string {
-  return [address1, cityStateZipCountry].filter(Boolean).join(', ');
-}
-
-function camsAddressString(candidate: ProjectedTrustee): string {
-  const a = candidate.address;
-  if (!a) return '';
-  return [a.address1, [a.city, a.state, a.zipCode].filter(Boolean).join(' ')]
-    .filter(Boolean)
-    .join(', ');
-}
-
 /**
- * Derives this backtest's per-candidate CSV columns from the pipeline's own serialized score
- * history, rather than re-deriving scores separately: candidateOutcome is inferred from the
- * candidate's merged score (last-write-wins per key, same rule the pipeline itself uses for
- * control flow) - resolved if this candidate IS the match, rejected-name if its nameScore never
- * cleared calculateNameScore's threshold, rejected-corroboration if it did but nothing resolved
- * and it was the only qualifying candidate in its group, rejected-ambiguous-group if it did and
- * multiple candidates qualified.
+ * Classifies a candidate for the console summary only (see outcomeByCandidate below) - inferred
+ * from the pipeline's own serialized score history (last-write-wins per key, same rule the
+ * pipeline itself uses for control flow): resolved if this candidate IS the match, rejected-name
+ * if its nameScore never cleared calculateNameScore's threshold, rejected-corroboration if it did
+ * but nothing resolved and it was the only qualifying candidate in its group,
+ * rejected-ambiguous-group if it did and multiple candidates qualified.
  */
 function classifyCandidate(
   trusteeId: string,
@@ -413,10 +225,8 @@ async function run() {
   await seedTrustees(uri, dbName, trustees);
 
   fs.mkdirSync(DATA_DIR, { recursive: true });
-  const csvPath =
-    process.env.REPLAY_BACKTEST_REPORT_CSV ?? path.join(DATA_DIR, 'replay-backtest-report.csv');
   const jsonlPath = path.join(DATA_DIR, 'replay-backtest-report.jsonl');
-  const report = new ReportWriter(csvPath, jsonlPath);
+  const report = new ReportWriter(jsonlPath);
 
   const context = await buildRealApplicationContext();
   const { toAcmsTrusteeProfessional, shouldSkipAsNotAPerson } =
@@ -461,12 +271,6 @@ async function run() {
         : 'no-match';
     outcomeCounts[finalOutcome]++;
 
-    const acmsAddress = acmsAddressString(
-      acmsTrusteeProfessional.legacy?.cityStateZipCountry ?? '',
-      acmsTrusteeProfessional.legacy?.address1 ?? '',
-    );
-    const acmsPhone = acmsTrusteeProfessional.legacy?.phone ?? '';
-
     // nameQualifyingCount mirrors classifyCandidate's group-size rule: how many candidates in
     // THIS record's pool cleared calculateNameScore's threshold, regardless of which stage scored
     // them - needed to distinguish a lone qualifying candidate that still failed corroboration
@@ -476,62 +280,19 @@ async function run() {
       (c) => (Object.assign({}, ...Object.values(c.scores)).nameScore ?? 0) >= 85,
     ).length;
 
-    const rows: CandidateRow[] = serialized.candidates.map((candidate) => {
-      // The winning candidate's addressScore/phoneScore live on state.match.score (a CandidateScore
-      // from resolveByContactCorroboration/resolveDuplicateNameCandidates, see corroborationStage) -
-      // that object is never pushed through addScore onto candidate.scores itself, so it must be
-      // merged in here for the one row where candidate.camsRaw.trusteeId === state.match?.trusteeId.
-      const isWinner = candidate.camsRaw.trusteeId === state.match?.trusteeId;
-      const merged = Object.assign(
-        {},
-        ...Object.values(candidate.scores),
-        isWinner ? state.match?.score : {},
-      ) as Record<string, unknown>;
-      // scores is keyed by scorer name (see ScoreByScorer) - the last key present is whichever
-      // scorer most recently touched this candidate, used here purely as a display label.
-      const scorerNames = Object.keys(candidate.scores);
-      const introductionStage = scorerNames[scorerNames.length - 1] ?? 'unknown';
+    for (const candidate of serialized.candidates) {
+      const merged = Object.assign({}, ...Object.values(candidate.scores)) as Record<
+        string,
+        unknown
+      >;
       const nameScore = typeof merged.nameScore === 'number' ? merged.nameScore : 0;
-      const addressScore = typeof merged.addressScore === 'number' ? merged.addressScore : null;
-      const phoneScore = typeof merged.phoneScore === 'number' ? merged.phoneScore : null;
-      const similarity = fullNameSimilarity(
-        acmsTrusteeProfessional.fullName,
-        candidate.camsRaw.name,
-      );
-      const tokenMatchRate = tokenNameMatchRate(
-        acmsTrusteeProfessional.fullName,
-        candidate.camsRaw.name,
-      );
       const candidateOutcome = classifyCandidate(
         candidate.camsRaw.trusteeId,
         state.match?.trusteeId,
         nameQualifyingCount,
         nameScore,
       );
-      return {
-        acmsProfessionalId: record.acmsProfessionalId,
-        acmsFullName: acmsTrusteeProfessional.fullName,
-        acmsAddress,
-        acmsPhone,
-        introductionStage,
-        candidateOutcome,
-        camsTrusteeId: candidate.camsRaw.trusteeId,
-        camsName: candidate.camsRaw.name,
-        camsAddress: camsAddressString(candidate.camsRaw),
-        camsPhone: candidate.camsRaw.phone?.number ?? '',
-        nameScore,
-        addressScore,
-        phoneScore,
-        fullNameSimilarity: similarity,
-        tokenNameMatchRate: tokenMatchRate,
-        stateMatch: typeof merged.stateMatch === 'boolean' ? merged.stateMatch : true,
-        notes: buildNotes(nameScore, addressScore, phoneScore, similarity, tokenMatchRate),
-      };
-    });
-    rows.sort((a, b) => b.fullNameSimilarity - a.fullNameSimilarity);
-    for (const row of rows) {
-      report.writeCsvRow(row);
-      outcomeByCandidate[row.candidateOutcome]++;
+      outcomeByCandidate[candidateOutcome]++;
       candidateRowCount++;
     }
   }
@@ -543,15 +304,14 @@ async function run() {
     );
   }
 
-  console.log(`\nTotal candidate rows across all records: ${candidateRowCount}`);
-  console.log('Candidate rows by outcome:');
+  console.log(`\nTotal candidates across all records: ${candidateRowCount}`);
+  console.log('Candidates by outcome:');
   for (const [k, v] of Object.entries(outcomeByCandidate)) {
     console.log(`  ${k.padEnd(28)} ${v}`);
   }
 
-  const writtenRowCount = await report.close();
-  console.log(`\nWrote ${writtenRowCount} candidate rows to ${csvPath}`);
-  console.log(`Wrote full pipeline state for each replayed record to ${jsonlPath}`);
+  await report.close();
+  console.log(`\nWrote full pipeline state for each replayed record to ${jsonlPath}`);
 
   console.log(
     `\nConclusion: a full purge + re-sync against current main would recover ` +

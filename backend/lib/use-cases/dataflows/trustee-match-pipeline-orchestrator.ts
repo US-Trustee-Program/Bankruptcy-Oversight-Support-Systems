@@ -15,6 +15,7 @@ import {
   anchoredLevenshteinDiscoveryStage,
   corroborationStage,
   nameScoreStage,
+  similarityDiagnosticsStage,
   stateFilterStage,
   surnameExactDiscoveryStage,
   tokenIntersectionDiscoveryStage,
@@ -45,6 +46,7 @@ async function runNestedTier(
     discoveryStage(context),
     stateFilterStage(),
     nameScoreStage(),
+    similarityDiagnosticsStage(),
     corroborationStage(context),
   ]);
 
@@ -105,6 +107,7 @@ async function resolveMatchTrusteeByNameAmbiguous(
   }
   const nestedResult = await runPipeline(nestedState, [
     stateFilterStage(),
+    similarityDiagnosticsStage(),
     corroborationStage(context),
   ]);
 
