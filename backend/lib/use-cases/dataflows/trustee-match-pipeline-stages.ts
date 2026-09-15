@@ -3,8 +3,11 @@ import { getNameVariations } from 'name-match/src/name-normalizer';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { Trustee } from '@common/cams/trustees';
 import {
+  calculateAddressScore,
   calculateNameScore,
   calculatePhoneScore,
+  CONTACT_CORROBORATION_ADDRESS_THRESHOLD,
+  CONTACT_CORROBORATION_NAME_THRESHOLD,
   findAnchoredLevenshteinCandidates,
   findSurnameExactCandidates,
   findTokenIntersectionCandidates,
@@ -16,9 +19,11 @@ import {
 import {
   addCandidate,
   addScore,
+  ContactCorroborationScoreEntry,
   mergedScore,
   normalize,
   NormalizedMemo,
+  PipelineCandidate,
   PipelineState,
   projectTrustee,
   Stage,
@@ -290,5 +295,58 @@ export function corroborationStage(context: ApplicationContext): Stage {
     }
 
     return state;
+  });
+}
+
+/**
+ * Rescues the specific case resolveByContactCorroboration deliberately refuses to arbitrate:
+ * MULTIPLE candidates independently clear calculateNameScore's auto-link threshold (see
+ * CONTACT_CORROBORATION_NAME_THRESHOLD), so that function bails out with 'unresolved' rather than
+ * guess between them - even when one candidate has decisive contact evidence (an exact phone
+ * match, or a strong address match) and the others have none at all. Confirmed via a CAMS-876
+ * backtest finding (ACMS "Andrew Wilson" with two WA/TX "Wilson" candidates both scoring
+ * nameScore=85, only one with an exact phone match) that this is a real, recoverable gap, not a
+ * genuine ambiguity - resolveByContactCorroboration's single-candidate-only rule exists to avoid
+ * guessing when there's NO differentiating evidence, not to discard differentiating evidence that
+ * does exist.
+ *
+ * Resolves only when EXACTLY ONE name-qualifying candidate clears
+ * CONTACT_CORROBORATION_ADDRESS_THRESHOLD or has an exact phone match (phoneScore 100) and no
+ * OTHER qualifying candidate does - the same "strong evidence" bar
+ * resolveByContactCorroboration itself uses for the single-candidate case, just applied
+ * comparatively across the qualifying set instead of requiring the set to already be size 1.
+ * Every qualifying candidate's addressScore/phoneScore is recorded via addScore regardless of
+ * whether this stage ultimately resolves anything, alongside the nameScore that made it eligible
+ * (see ContactCorroborationScoreEntry) - so the evidence this stage considered remains visible in
+ * a persisted, unresolved record's serialized state even when it correctly declines to guess.
+ */
+export function comparativeCorroborationStage(): Stage {
+  return withGuard(async (state: PipelineState): Promise<PipelineState> => {
+    const qualifying = [...state.candidates.values()].filter(
+      (candidate) =>
+        (mergedScore(candidate).nameScore ?? 0) >= CONTACT_CORROBORATION_NAME_THRESHOLD,
+    );
+    if (qualifying.length < 2) return state;
+
+    const strong: { candidate: PipelineCandidate; score: ContactCorroborationScoreEntry }[] = [];
+    for (const candidate of qualifying) {
+      const nameScore = mergedScore(candidate).nameScore ?? 0;
+      const addressScore = calculateAddressScore(state.acmsRaw.legacy, candidate.camsRaw.address);
+      const phoneScore = calculatePhoneScore(state.acmsRaw.legacy?.phone, candidate.camsRaw.phone);
+      const score: ContactCorroborationScoreEntry = { nameScore, addressScore, phoneScore };
+      addScore(candidate, 'contactCorroborationScore', score);
+
+      if (addressScore >= CONTACT_CORROBORATION_ADDRESS_THRESHOLD || phoneScore === 100) {
+        strong.push({ candidate, score });
+      }
+    }
+
+    if (strong.length !== 1) return state;
+
+    const winner = strong[0];
+    return {
+      ...state,
+      match: { trusteeId: winner.candidate.camsRaw.trusteeId, score: winner.score },
+    };
   });
 }

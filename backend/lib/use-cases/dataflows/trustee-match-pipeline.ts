@@ -51,6 +51,20 @@ export type StateFilterScoreEntry = {
 };
 
 /**
+ * comparativeCorroborationStage's contribution (see trustee-match-pipeline-stages.ts) - this
+ * candidate's own address/phone corroboration against the ACMS record, alongside the nameScore
+ * that made it eligible for comparison in the first place. nameScore is COPIED FORWARD from
+ * calculateNameScore's own entry (not recomputed) so this one entry is self-contained - a reviewer
+ * reading contactCorroborationScore alone sees the full name+address+phone picture that informed
+ * this stage's decision, without needing to cross-reference calculateNameScore's separate entry.
+ */
+export type ContactCorroborationScoreEntry = {
+  nameScore: number;
+  addressScore: number;
+  phoneScore: number | null;
+};
+
+/**
  * Every known scorer's contribution shape, keyed by the scorer's own name - a closed map of
  * exactly the scorers that exist today. A new stage adds its own key/shape pair here; every
  * switch/narrowing consumer (see mergedScore) then requires that new case to be handled
@@ -62,6 +76,7 @@ export type StateFilterScoreEntry = {
 export type ScoreEntryByScorer = {
   calculateNameScore: NameScoreEntry;
   stateFilterStage: StateFilterScoreEntry;
+  contactCorroborationScore: ContactCorroborationScoreEntry;
 };
 
 export type ScorerName = keyof ScoreEntryByScorer;
@@ -74,7 +89,9 @@ export type ScoreByScorer = Partial<ScoreEntryByScorer>;
  * only care about a specific field's current value regardless of which scorer set it (see
  * mergedScore). All fields optional since no single candidate is guaranteed to have been touched
  * by every scorer. */
-export type MergedScore = Partial<NameScoreEntry> & Partial<StateFilterScoreEntry>;
+export type MergedScore = Partial<NameScoreEntry> &
+  Partial<StateFilterScoreEntry> &
+  Partial<ContactCorroborationScoreEntry>;
 
 /**
  * One candidate under consideration, plus its evaluation history. camsRaw is set once when the
@@ -114,14 +131,16 @@ export type NameOnlyMatchScore = {
  * consumer should never need to re-scan the candidate's score history to answer "why was this the
  * match". `score` is whichever real outcome type actually produced this match - a CandidateScore
  * from corroborationStage's resolveByContactCorroboration/resolveDuplicateNameCandidates (contact
- * fields scored alongside name), or a NameOnlyMatchScore from matchTrusteeByName's own
- * exact-resolved path (name alone, no corroboration attempted) - never a ScoreEntry (see
- * mergedScore), since both real producers score a broader or narrower set of fields than any
+ * fields scored alongside name), a NameOnlyMatchScore from matchTrusteeByName's own exact-resolved
+ * path (name alone, no corroboration attempted), or a ContactCorroborationScoreEntry from
+ * comparativeCorroborationStage's own tie-break (see ScoreEntryByScorer) - never a ScoreEntry (see
+ * mergedScore), since every real producer scores a broader or narrower set of fields than any
  * single ScoreEntry case carries.
  */
 export type PipelineMatch = {
   trusteeId: string;
-  score: CandidateScore | NameOnlyMatchScore | Record<string, never>;
+  score:
+    CandidateScore | NameOnlyMatchScore | ContactCorroborationScoreEntry | Record<string, never>;
 };
 
 /**

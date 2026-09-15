@@ -13,6 +13,7 @@ import {
 } from './trustee-match-pipeline';
 import {
   anchoredLevenshteinDiscoveryStage,
+  comparativeCorroborationStage,
   corroborationStage,
   nameScoreStage,
   similarityDiagnosticsStage,
@@ -48,6 +49,7 @@ async function runNestedTier(
     nameScoreStage(),
     similarityDiagnosticsStage(),
     corroborationStage(context),
+    comparativeCorroborationStage(),
   ]);
 
   for (const candidate of nestedResult.candidates.values()) {
@@ -109,6 +111,7 @@ async function resolveMatchTrusteeByNameAmbiguous(
     stateFilterStage(),
     similarityDiagnosticsStage(),
     corroborationStage(context),
+    comparativeCorroborationStage(),
   ]);
 
   for (const candidate of nestedResult.candidates.values()) {

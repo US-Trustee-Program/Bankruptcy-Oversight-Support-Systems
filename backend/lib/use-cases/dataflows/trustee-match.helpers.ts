@@ -1131,7 +1131,7 @@ export async function resolveNameCollisionByScoring(
  * contact-field corroboration to rescue, regardless of how well address/phone/email line up.
  * Tuned via test/integration/sync-acms-professional-ids-audit/scripts/auto-link-threshold-backtest.ts.
  */
-const CONTACT_CORROBORATION_NAME_THRESHOLD = 85;
+export const CONTACT_CORROBORATION_NAME_THRESHOLD = 85;
 
 /**
  * Minimum addressScore for address alone to count as strong corroboration under
@@ -1139,7 +1139,7 @@ const CONTACT_CORROBORATION_NAME_THRESHOLD = 85;
  * since both are short, structured values where a partial match isn't meaningfully distinguishable
  * from coincidence the way a fuzzy address bigram score is.
  */
-const CONTACT_CORROBORATION_ADDRESS_THRESHOLD = 80;
+export const CONTACT_CORROBORATION_ADDRESS_THRESHOLD = 80;
 
 /**
  * Minimum addressScore for a parseable ACMS address to be treated as a weak positive signal
