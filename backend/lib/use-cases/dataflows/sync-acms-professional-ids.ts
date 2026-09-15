@@ -327,7 +327,21 @@ function isLikelyNotAPerson(strippedFirstName: string, strippedLastName: string)
   return words.every((word) => NON_PERSON_ONLY_WORDS.has(word));
 }
 
-function toAcmsTrusteeProfessional(
+/**
+ * Public composition of stripAdministrativeMarkers + isLikelyNotAPerson - the exact check
+ * processOneRecord runs before attempting any match at all (see that function). Exported so
+ * callers that need to replicate this decision outside processOneRecord (e.g. a backtest
+ * replaying the real matching pipeline) can call the real function rather than hand-duplicating
+ * ADMINISTRATIVE_MARKER_PHRASES/NON_PERSON_ONLY_WORDS and risking drift.
+ */
+export function shouldSkipAsNotAPerson(firstName: string, lastName: string): boolean {
+  return isLikelyNotAPerson(
+    stripAdministrativeMarkers(firstName),
+    stripAdministrativeMarkers(lastName),
+  );
+}
+
+export function toAcmsTrusteeProfessional(
   record: AcmsTrusteeProfessionalDetailRecord,
 ): AcmsTrusteeProfessional {
   const strippedFirstName = stripAdministrativeMarkers(record.firstName);
@@ -600,9 +614,7 @@ async function processOneRecord(
   deps: SyncAcmsProfessionalIdsDeps,
   record: AcmsTrusteeProfessionalDetailRecord,
 ): Promise<ProcessOneRecordOutcome> {
-  const strippedFirstName = stripAdministrativeMarkers(record.firstName);
-  const strippedLastName = stripAdministrativeMarkers(record.lastName);
-  if (isLikelyNotAPerson(strippedFirstName, strippedLastName)) {
+  if (shouldSkipAsNotAPerson(record.firstName, record.lastName)) {
     return { kind: 'skipped-not-a-person' };
   }
 
