@@ -19,14 +19,14 @@ import {
 import {
   addCandidate,
   addScore,
-  ContactCorroborationScoreEntry,
   mergedScore,
   normalize,
   NormalizedMemo,
-  PhoneTypoToleranceScoreEntry,
   PipelineCandidate,
   PipelineState,
   projectTrustee,
+  ScoreByScorer,
+  ScoreRecord,
   Stage,
   withGuard,
 } from './trustee-match-pipeline';
@@ -83,7 +83,11 @@ export function nameScoreStage(): Stage {
   return withGuard(async (state: PipelineState): Promise<PipelineState> => {
     for (const candidate of state.candidates.values()) {
       const nameScore = calculateNameScore(state.acmsRaw, candidate.camsRaw as unknown as Trustee);
-      addScore(candidate, 'calculateNameScore', { nameScore, match: nameScore >= 85 });
+      addScore(candidate, 'calculateNameScore', {
+        value: nameScore,
+        threshold: CONTACT_CORROBORATION_NAME_THRESHOLD,
+        pass: nameScore >= CONTACT_CORROBORATION_NAME_THRESHOLD,
+      });
     }
     return state;
   });
@@ -213,6 +217,12 @@ export function similarityDiagnosticsStage(): Stage {
  * true - mergedScore(candidate).stateMatch reads as undefined, not a false claim that the check
  * ran and passed.
  */
+/** stateFilterStage's stateMatch is a pure pass/fail with no natural numeric magnitude - value
+ * mirrors pass (100/0) purely so it conforms to ScoreRecord's shared vocabulary. */
+function stateMatchRecord(stateMatch: boolean): ScoreRecord {
+  return { value: stateMatch ? 100 : 0, threshold: 100, pass: stateMatch };
+}
+
 export function stateFilterStage(): Stage {
   return withGuard(async (state: PipelineState): Promise<PipelineState> => {
     const candidates = [...state.candidates.values()];
@@ -220,7 +230,7 @@ export function stateFilterStage(): Stage {
     const parsedAcmsAddress = parseCityStateZip(state.acmsRaw.legacy?.cityStateZipCountry);
     if (!parsedAcmsAddress) {
       for (const candidate of candidates) {
-        addScore(candidate, 'stateFilterStage', { stateMatch: true });
+        addScore(candidate, 'stateFilterStage', stateMatchRecord(true));
       }
       return state;
     }
@@ -229,19 +239,19 @@ export function stateFilterStage(): Stage {
     for (const candidate of candidates) {
       const camsState = candidate.camsRaw.address?.state?.toLowerCase();
       if (!camsState || camsState === acmsState) {
-        addScore(candidate, 'stateFilterStage', { stateMatch: true });
+        addScore(candidate, 'stateFilterStage', stateMatchRecord(true));
         continue;
       }
 
       const phoneScore = calculatePhoneScore(state.acmsRaw.legacy?.phone, candidate.camsRaw.phone);
       if (phoneScore === 100) {
-        addScore(candidate, 'stateFilterStage', { stateMatch: true });
+        addScore(candidate, 'stateFilterStage', stateMatchRecord(true));
         continue;
       }
 
       const nameScore = calculateNameScore(state.acmsRaw, candidate.camsRaw as unknown as Trustee);
       const stateMatch = nameScore >= STATE_OVERRIDE_MIN_NAME_SCORE;
-      addScore(candidate, 'stateFilterStage', { stateMatch });
+      addScore(candidate, 'stateFilterStage', stateMatchRecord(stateMatch));
     }
     return state;
   });
@@ -263,7 +273,7 @@ export function stateFilterStage(): Stage {
 export function corroborationStage(context: ApplicationContext): Stage {
   return withGuard(async (state: PipelineState): Promise<PipelineState> => {
     const candidateTrusteeIds = [...state.candidates.entries()]
-      .filter(([, candidate]) => mergedScore(candidate).stateMatch !== false)
+      .filter(([, candidate]) => mergedScore(candidate).stateFilterStage?.pass !== false)
       .map(([trusteeId]) => trusteeId);
 
     if (candidateTrusteeIds.length === 0) return state;
@@ -316,29 +326,39 @@ export function corroborationStage(context: ApplicationContext): Stage {
  * OTHER qualifying candidate does - the same "strong evidence" bar
  * resolveByContactCorroboration itself uses for the single-candidate case, just applied
  * comparatively across the qualifying set instead of requiring the set to already be size 1.
- * Every qualifying candidate's addressScore/phoneScore is recorded via addScore regardless of
- * whether this stage ultimately resolves anything, alongside the nameScore that made it eligible
- * (see ContactCorroborationScoreEntry) - so the evidence this stage considered remains visible in
- * a persisted, unresolved record's serialized state even when it correctly declines to guess.
+ * Every qualifying candidate's address/phone corroboration is recorded via addScore regardless of
+ * whether this stage ultimately resolves anything (as independent contactCorroborationAddress/
+ * contactCorroborationPhone entries - nameScore itself is already recorded separately by
+ * nameScoreStage, so it is not duplicated here) - so the evidence this stage considered remains
+ * visible in a persisted, unresolved record's serialized state even when it correctly declines to
+ * guess.
  */
 export function comparativeCorroborationStage(): Stage {
   return withGuard(async (state: PipelineState): Promise<PipelineState> => {
     const qualifying = [...state.candidates.values()].filter(
-      (candidate) =>
-        (mergedScore(candidate).nameScore ?? 0) >= CONTACT_CORROBORATION_NAME_THRESHOLD,
+      (candidate) => mergedScore(candidate).calculateNameScore?.pass === true,
     );
     if (qualifying.length < 2) return state;
 
-    const strong: { candidate: PipelineCandidate; score: ContactCorroborationScoreEntry }[] = [];
+    const strong: { candidate: PipelineCandidate; score: ScoreByScorer }[] = [];
     for (const candidate of qualifying) {
-      const nameScore = mergedScore(candidate).nameScore ?? 0;
       const addressScore = calculateAddressScore(state.acmsRaw.legacy, candidate.camsRaw.address);
       const phoneScore = calculatePhoneScore(state.acmsRaw.legacy?.phone, candidate.camsRaw.phone);
-      const score: ContactCorroborationScoreEntry = { nameScore, addressScore, phoneScore };
-      addScore(candidate, 'contactCorroborationScore', score);
+      addScore(candidate, 'contactCorroborationAddress', {
+        value: addressScore,
+        threshold: CONTACT_CORROBORATION_ADDRESS_THRESHOLD,
+        pass: addressScore >= CONTACT_CORROBORATION_ADDRESS_THRESHOLD,
+      });
+      if (phoneScore !== null) {
+        addScore(candidate, 'contactCorroborationPhone', {
+          value: phoneScore,
+          threshold: 100,
+          pass: phoneScore === 100,
+        });
+      }
 
       if (addressScore >= CONTACT_CORROBORATION_ADDRESS_THRESHOLD || phoneScore === 100) {
-        strong.push({ candidate, score });
+        strong.push({ candidate, score: candidate.scores });
       }
     }
 
@@ -397,31 +417,42 @@ function phoneDigitDistance(
  * shared with the DXTR trustee-appointment dataflow (sync-trustee-case-appointments.ts) via
  * trustee-match.helpers.ts, and a change tuned for ACMS's specific typo patterns has no business
  * affecting that unrelated call path. phoneDigitDistance is defined and used only here.
+ *
+ * phoneDigitDistance's raw units (lower is better - 0 is an exact match) are the opposite polarity
+ * of every other ScoreRecord.value (higher is better) - converted to a same-polarity similarity
+ * (10 - distance, so an exact match scores 10) purely so `pass` stays computable the same way
+ * everywhere (value >= threshold). The raw digit distance is kept alongside as phoneDigitDistance
+ * for a reviewer who wants the human-readable count, not just the derived similarity.
  */
 export function phoneTypoToleranceStage(): Stage {
   return withGuard(async (state: PipelineState): Promise<PipelineState> => {
     const qualifying = [...state.candidates.values()].filter(
-      (candidate) =>
-        (mergedScore(candidate).nameScore ?? 0) >= CONTACT_CORROBORATION_NAME_THRESHOLD,
+      (candidate) => mergedScore(candidate).calculateNameScore?.pass === true,
     );
     if (qualifying.length !== 1) return state;
 
     const candidate = qualifying[0];
-    const nameScore = mergedScore(candidate).nameScore ?? 0;
-    if (nameScore !== 100) return state;
+    if (mergedScore(candidate).calculateNameScore?.value !== 100) return state;
 
     const distance = phoneDigitDistance(
       state.acmsRaw.legacy?.phone,
       candidate.camsRaw.phone?.number,
     );
-    const score: PhoneTypoToleranceScoreEntry = { nameScore, phoneDigitDistance: distance };
-    addScore(candidate, 'phoneTypoToleranceScore', score);
+    if (distance === null) return state;
 
-    if (distance === null || distance > PHONE_TYPO_MAX_DIGIT_DISTANCE) return state;
+    const similarityThreshold = 10 - PHONE_TYPO_MAX_DIGIT_DISTANCE;
+    addScore(candidate, 'phoneTypoToleranceScore', {
+      value: 10 - distance,
+      threshold: similarityThreshold,
+      pass: 10 - distance >= similarityThreshold,
+      phoneDigitDistance: distance,
+    });
+
+    if (distance > PHONE_TYPO_MAX_DIGIT_DISTANCE) return state;
 
     return {
       ...state,
-      match: { trusteeId: candidate.camsRaw.trusteeId, score },
+      match: { trusteeId: candidate.camsRaw.trusteeId, score: candidate.scores },
     };
   });
 }

@@ -277,15 +277,11 @@ async function run() {
     // (rejected-corroboration) from one of several that left the group genuinely ambiguous
     // (rejected-ambiguous-group).
     const nameQualifyingCount = serialized.candidates.filter(
-      (c) => (Object.assign({}, ...Object.values(c.scores)).nameScore ?? 0) >= 85,
+      (c) => c.scores.calculateNameScore?.pass === true,
     ).length;
 
     for (const candidate of serialized.candidates) {
-      const merged = Object.assign({}, ...Object.values(candidate.scores)) as Record<
-        string,
-        unknown
-      >;
-      const nameScore = typeof merged.nameScore === 'number' ? merged.nameScore : 0;
+      const nameScore = candidate.scores.calculateNameScore?.value ?? 0;
       const candidateOutcome = classifyCandidate(
         candidate.camsRaw.trusteeId,
         state.match?.trusteeId,

@@ -229,10 +229,6 @@ function camsAddressString(candidate: ProjectedTrustee): string {
     .join(', ');
 }
 
-function mergeScores(scores: ScoreByScorer): Record<string, unknown> {
-  return Object.assign({}, ...Object.values(scores));
-}
-
 /** Whichever scorer most recently touched this candidate - purely a display label, matching
  * pipeline-replay-backtest.ts's own convention. */
 function introductionStageOf(scores: ScoreByScorer): string {
@@ -257,20 +253,22 @@ function latestMemoValue(
 /** Derives one flattened CSV row's worth of display fields for a single candidate, merging in the
  * winning candidate's corroboration score (see PipelineMatch.score) the same way
  * pipeline-replay-backtest.ts does, since that score is never written through addScore onto
- * candidate.scores itself. */
+ * candidate.scores itself. Each scorer's contribution is now a ScoreRecord keyed by scorer name
+ * (see trustee-match-pipeline.ts) rather than a bundle of bespoke fields - this reads the specific
+ * keys this CSV has always displayed (nameScore/addressScore/phoneScore/stateMatch), tolerating
+ * either the address or phone corroboration key being absent (not every candidate reaches
+ * comparativeCorroborationStage). */
 function deriveCandidateFields(
   record: ReviewRecord,
   candidate: ReviewRecord['candidates'][number],
 ) {
   const isWinner = candidate.camsRaw.trusteeId === record.match?.trusteeId;
-  const merged = {
-    ...mergeScores(candidate.scores),
-    ...(isWinner ? record.match?.score : {}),
-  } as Record<string, unknown>;
-  const nameScore = typeof merged.nameScore === 'number' ? merged.nameScore : 0;
-  const addressScore = typeof merged.addressScore === 'number' ? merged.addressScore : null;
-  const phoneScore = typeof merged.phoneScore === 'number' ? merged.phoneScore : null;
-  const stateMatch = typeof merged.stateMatch === 'boolean' ? merged.stateMatch : true;
+  const winnerScores = isWinner ? (record.match?.score as ScoreByScorer | undefined) : undefined;
+  const merged: ScoreByScorer = { ...candidate.scores, ...winnerScores };
+  const nameScore = merged.calculateNameScore?.value ?? 0;
+  const addressScore = merged.contactCorroborationAddress?.value ?? null;
+  const phoneScore = merged.contactCorroborationPhone?.value ?? null;
+  const stateMatch = merged.stateFilterStage?.pass ?? true;
   const rawFullNameSimilarity = latestMemoValue(candidate.camsNormalized, 'fullNameSimilarity');
   const fullNameSimilarity = typeof rawFullNameSimilarity === 'number' ? rawFullNameSimilarity : 0;
   const rawTokenNameMatchRate = latestMemoValue(candidate.camsNormalized, 'tokenNameMatchRate');

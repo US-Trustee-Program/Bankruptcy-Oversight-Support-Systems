@@ -26,8 +26,9 @@ import {
 /**
  * Runs one candidate-discovery tier as its OWN nested pipeline (see
  * docs/architecture/decision-records/TrusteeMatchingPipeline.md on nesting), then promotes only
- * the candidates that cleared the tier's own quality bar (mergedScore(c).match === true from
- * nameScoreStage, or the candidate resolved within the tier) into the outer state. An oversized
+ * the candidates that cleared the tier's own quality bar (mergedScore(c).calculateNameScore?.pass
+ * === true from nameScoreStage, or the candidate resolved within the tier) into the outer state.
+ * An oversized
  * internal candidate pool (500+ candidates for a common surname fragment) never becomes top-level
  * pipeline state - only genuinely relevant survivors do. Returns the NESTED result state so the
  * orchestrator can inspect whether this tier found anything at all (nestedResult.candidates.size)
@@ -55,7 +56,7 @@ async function runNestedTier(
   ]);
 
   for (const candidate of nestedResult.candidates.values()) {
-    if (mergedScore(candidate).stateMatch === false) continue;
+    if (mergedScore(candidate).stateFilterStage?.pass === false) continue;
     promoteCandidate(outerState, candidate);
   }
 
@@ -119,7 +120,7 @@ async function resolveMatchTrusteeByNameAmbiguous(
   ]);
 
   for (const candidate of nestedResult.candidates.values()) {
-    if (mergedScore(candidate).stateMatch === false) continue;
+    if (mergedScore(candidate).stateFilterStage?.pass === false) continue;
     promoteCandidate(outerState, candidate);
   }
 

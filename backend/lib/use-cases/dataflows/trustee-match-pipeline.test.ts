@@ -97,11 +97,13 @@ describe('addCandidate', () => {
     const trustee = makeTrustee({ trusteeId: 't1' });
 
     const first = addCandidate(state, projectTrustee(trustee));
-    addScore(first, 'calculateNameScore', { nameScore: 100, match: true });
+    addScore(first, 'calculateNameScore', { value: 100, threshold: 85, pass: true });
     const second = addCandidate(state, projectTrustee(trustee));
 
     expect(second).toBe(first);
-    expect(second.scores).toEqual({ calculateNameScore: { nameScore: 100, match: true } });
+    expect(second.scores).toEqual({
+      calculateNameScore: { value: 100, threshold: 85, pass: true },
+    });
     expect(state.candidates.size).toBe(1);
   });
 
@@ -127,13 +129,15 @@ describe('promoteCandidate', () => {
       innerState,
       projectTrustee(makeTrustee({ trusteeId: 't1' })),
     );
-    addScore(innerCandidate, 'calculateNameScore', { nameScore: 100, match: true });
+    addScore(innerCandidate, 'calculateNameScore', { value: 100, threshold: 85, pass: true });
 
     const outerState = createInitialState(makeDxtrTrustee());
     const promoted = promoteCandidate(outerState, innerCandidate);
 
     expect(outerState.candidates.get('t1')).toBe(promoted);
-    expect(promoted.scores).toEqual({ calculateNameScore: { nameScore: 100, match: true } });
+    expect(promoted.scores).toEqual({
+      calculateNameScore: { value: 100, threshold: 85, pass: true },
+    });
   });
 
   test('is idempotent - promoting a trusteeId already present in the outer state returns the OUTER entry unchanged', () => {
@@ -142,19 +146,21 @@ describe('promoteCandidate', () => {
       outerState,
       projectTrustee(makeTrustee({ trusteeId: 't1' })),
     );
-    addScore(outerCandidate, 'calculateNameScore', { nameScore: 50, match: false });
+    addScore(outerCandidate, 'calculateNameScore', { value: 50, threshold: 85, pass: false });
 
     const innerState = createInitialState(makeDxtrTrustee());
     const innerCandidate = addCandidate(
       innerState,
       projectTrustee(makeTrustee({ trusteeId: 't1' })),
     );
-    addScore(innerCandidate, 'calculateNameScore', { nameScore: 100, match: true });
+    addScore(innerCandidate, 'calculateNameScore', { value: 100, threshold: 85, pass: true });
 
     const result = promoteCandidate(outerState, innerCandidate);
 
     expect(result).toBe(outerCandidate);
-    expect(result.scores).toEqual({ calculateNameScore: { nameScore: 50, match: false } });
+    expect(result.scores).toEqual({
+      calculateNameScore: { value: 50, threshold: 85, pass: false },
+    });
   });
 
   test('never removes an existing outer candidate when a different candidate is promoted', () => {
@@ -187,36 +193,37 @@ describe('mergedScore', () => {
     const state = createInitialState(makeDxtrTrustee());
     const candidate = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })));
 
-    addScore(candidate, 'calculateNameScore', { nameScore: 0, match: false });
-    addScore(candidate, 'calculateNameScore', { nameScore: 100, match: true });
+    addScore(candidate, 'calculateNameScore', { value: 0, threshold: 85, pass: false });
+    addScore(candidate, 'calculateNameScore', { value: 100, threshold: 85, pass: true });
 
-    expect(mergedScore(candidate)).toEqual({ nameScore: 100, match: true });
+    expect(mergedScore(candidate)).toEqual({
+      calculateNameScore: { value: 100, threshold: 85, pass: true },
+    });
   });
 
-  test('a key set by one scorer survives when a different scorer contributes only DIFFERENT keys', () => {
-    // This is the core cumulative-merge guarantee: a stage that only computes stateMatch
-    // should never need to also re-carry-forward nameScore from another scorer.
+  test('a key set by one scorer survives when a different scorer contributes a different key', () => {
     const state = createInitialState(makeDxtrTrustee());
     const candidate = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })));
 
-    addScore(candidate, 'calculateNameScore', { nameScore: 100, match: true });
-    addScore(candidate, 'stateFilterStage', { stateMatch: false });
+    addScore(candidate, 'calculateNameScore', { value: 100, threshold: 85, pass: true });
+    addScore(candidate, 'stateFilterStage', { value: 0, threshold: 100, pass: false });
 
     expect(mergedScore(candidate)).toEqual({
-      nameScore: 100,
-      match: true,
-      stateMatch: false,
+      calculateNameScore: { value: 100, threshold: 85, pass: true },
+      stateFilterStage: { value: 0, threshold: 100, pass: false },
     });
   });
 
   test('does not mutate the underlying scores map', () => {
     const state = createInitialState(makeDxtrTrustee());
     const candidate = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })));
-    addScore(candidate, 'calculateNameScore', { nameScore: 100, match: true });
+    addScore(candidate, 'calculateNameScore', { value: 100, threshold: 85, pass: true });
 
     mergedScore(candidate);
 
-    expect(candidate.scores).toEqual({ calculateNameScore: { nameScore: 100, match: true } });
+    expect(candidate.scores).toEqual({
+      calculateNameScore: { value: 100, threshold: 85, pass: true },
+    });
   });
 });
 
@@ -357,7 +364,7 @@ describe('serializeState', () => {
     normalize(state.acmsNormalized, 'lastNameToken', 'John Doe', () => 'doe');
     const candidate = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })));
     normalize(candidate.camsNormalized, 'lastNameToken', 'John Doe', () => 'doe');
-    addScore(candidate, 'calculateNameScore', { nameScore: 100, match: true });
+    addScore(candidate, 'calculateNameScore', { value: 100, threshold: 85, pass: true });
 
     const serialized = serializeState(state);
     const roundTripped = JSON.parse(JSON.stringify(serialized));
@@ -369,7 +376,7 @@ describe('serializeState', () => {
         {
           camsRaw: candidate.camsRaw,
           camsNormalized: { lastNameToken: [{ key: 'John Doe', value: 'doe' }] },
-          scores: { calculateNameScore: { nameScore: 100, match: true } },
+          scores: { calculateNameScore: { value: 100, threshold: 85, pass: true } },
         },
       ],
       match: null,

@@ -94,12 +94,12 @@ describe('surnameExactDiscoveryStage', () => {
       makeDxtrTrustee({ fullName: 'Aldric T Voss', lastName: 'Voss' }),
     );
     const existingCandidate = addCandidate(state, projectTrustee(jordanVoss));
-    addScore(existingCandidate, 'calculateNameScore', { nameScore: 42, match: false });
+    addScore(existingCandidate, 'calculateNameScore', { value: 42, threshold: 85, pass: false });
 
     const result = await surnameExactDiscoveryStage(context)(state);
 
     expect(result.candidates.get('t1')!.scores).toEqual({
-      calculateNameScore: { nameScore: 42, match: false },
+      calculateNameScore: { value: 42, threshold: 85, pass: false },
     });
   });
 });
@@ -196,10 +196,10 @@ describe('nameScoreStage', () => {
     const result = await nameScoreStage()(state);
 
     expect(mergedScore(result.candidates.get('t1')!)).toMatchObject({
-      nameScore: 100,
+      calculateNameScore: { value: 100, pass: true },
     });
     expect(mergedScore(result.candidates.get('t2')!)).toMatchObject({
-      nameScore: 0,
+      calculateNameScore: { value: 0, pass: false },
     });
   });
 
@@ -221,13 +221,13 @@ describe('nameScoreStage', () => {
       state,
       projectTrustee(makeTrustee({ trusteeId: 't1', firstName: 'John', lastName: 'Doe' })),
     );
-    addScore(candidate, 'stateFilterStage', { stateMatch: true });
+    addScore(candidate, 'stateFilterStage', { value: 100, threshold: 100, pass: true });
 
     const result = await nameScoreStage()(state);
 
     expect(mergedScore(result.candidates.get('t1')!)).toMatchObject({
-      stateMatch: true,
-      nameScore: 100,
+      stateFilterStage: { value: 100, pass: true },
+      calculateNameScore: { value: 100, pass: true },
     });
   });
 });
@@ -344,7 +344,7 @@ describe('stateFilterStage', () => {
     const result = await stateFilterStage()(state);
 
     expect(mergedScore(result.candidates.get('trustee-fl')!)).toMatchObject({
-      stateMatch: false,
+      stateFilterStage: { pass: false },
     });
   });
 
@@ -382,10 +382,10 @@ describe('stateFilterStage', () => {
     const result = await stateFilterStage()(state);
 
     expect(mergedScore(result.candidates.get('trustee-wa')!)).toMatchObject({
-      stateMatch: true,
+      stateFilterStage: { pass: true },
     });
     expect(mergedScore(result.candidates.get('trustee-fl-0')!)).toMatchObject({
-      stateMatch: false,
+      stateFilterStage: { pass: false },
     });
   });
 
@@ -427,7 +427,7 @@ describe('stateFilterStage', () => {
     const result = await stateFilterStage()(state);
 
     expect(mergedScore(result.candidates.get('trustee-fl-phone')!)).toMatchObject({
-      stateMatch: true,
+      stateFilterStage: { pass: true },
     });
   });
 
@@ -469,7 +469,7 @@ describe('stateFilterStage', () => {
     const result = await stateFilterStage()(state);
 
     expect(mergedScore(result.candidates.get('trustee-fl-name')!)).toMatchObject({
-      stateMatch: true,
+      stateFilterStage: { pass: true },
     });
   });
 
@@ -496,7 +496,7 @@ describe('stateFilterStage', () => {
     const result = await stateFilterStage()(state);
 
     for (const candidate of result.candidates.values()) {
-      expect(mergedScore(candidate)).toMatchObject({ stateMatch: true });
+      expect(mergedScore(candidate)).toMatchObject({ stateFilterStage: { pass: true } });
     }
   });
 
@@ -534,7 +534,7 @@ describe('stateFilterStage', () => {
     const result = await stateFilterStage()(state);
 
     expect(mergedScore(result.candidates.get('trustee-no-state')!)).toMatchObject({
-      stateMatch: true,
+      stateFilterStage: { pass: true },
     });
   });
 
@@ -618,7 +618,7 @@ describe('corroborationStage', () => {
   test('excludes candidates flagged stateMatch: false by an earlier stage from the ids passed to corroboration', async () => {
     const state = createInitialState(makeDxtrTrustee());
     const mismatched = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })));
-    addScore(mismatched, 'stateFilterStage', { stateMatch: false });
+    addScore(mismatched, 'stateFilterStage', { value: 0, threshold: 100, pass: false });
     addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't2' })));
     const corroborationSpy = vi
       .spyOn(trusteeMatchHelpers, 'resolveByContactCorroboration')
@@ -689,7 +689,7 @@ describe('comparativeCorroborationStage', () => {
         }),
       ),
     );
-    addScore(bruceHalden, 'calculateNameScore', { nameScore: 85, match: true });
+    addScore(bruceHalden, 'calculateNameScore', { value: 85, threshold: 85, pass: true });
     const marcusFeld = addCandidate(
       state,
       projectTrustee(
@@ -712,13 +712,15 @@ describe('comparativeCorroborationStage', () => {
         }),
       ),
     );
-    addScore(marcusFeld, 'calculateNameScore', { nameScore: 85, match: true });
+    addScore(marcusFeld, 'calculateNameScore', { value: 85, threshold: 85, pass: true });
 
     const result = await comparativeCorroborationStage()(state);
 
     expect(result.match).toEqual({
       trusteeId: 'j-marcus-feld',
-      score: expect.objectContaining({ phoneScore: 100 }),
+      score: expect.objectContaining({
+        contactCorroborationPhone: expect.objectContaining({ value: 100, pass: true }),
+      }),
     });
   });
 
@@ -743,7 +745,7 @@ describe('comparativeCorroborationStage', () => {
         }),
       ),
     );
-    addScore(first, 'calculateNameScore', { nameScore: 85, match: true });
+    addScore(first, 'calculateNameScore', { value: 85, threshold: 85, pass: true });
     const second = addCandidate(
       state,
       projectTrustee(
@@ -763,7 +765,7 @@ describe('comparativeCorroborationStage', () => {
         }),
       ),
     );
-    addScore(second, 'calculateNameScore', { nameScore: 85, match: true });
+    addScore(second, 'calculateNameScore', { value: 85, threshold: 85, pass: true });
 
     const result = await comparativeCorroborationStage()(state);
 
@@ -791,7 +793,7 @@ describe('comparativeCorroborationStage', () => {
         }),
       ),
     );
-    addScore(first, 'calculateNameScore', { nameScore: 85, match: true });
+    addScore(first, 'calculateNameScore', { value: 85, threshold: 85, pass: true });
     const second = addCandidate(
       state,
       projectTrustee(
@@ -811,7 +813,7 @@ describe('comparativeCorroborationStage', () => {
         }),
       ),
     );
-    addScore(second, 'calculateNameScore', { nameScore: 85, match: true });
+    addScore(second, 'calculateNameScore', { value: 85, threshold: 85, pass: true });
 
     const result = await comparativeCorroborationStage()(state);
 
@@ -839,7 +841,7 @@ describe('comparativeCorroborationStage', () => {
         }),
       ),
     );
-    addScore(nameNoMatch, 'calculateNameScore', { nameScore: 0, match: false });
+    addScore(nameNoMatch, 'calculateNameScore', { value: 0, threshold: 85, pass: false });
 
     const result = await comparativeCorroborationStage()(state);
 
@@ -867,7 +869,7 @@ describe('comparativeCorroborationStage', () => {
         }),
       ),
     );
-    addScore(bruceHalden, 'calculateNameScore', { nameScore: 85, match: true });
+    addScore(bruceHalden, 'calculateNameScore', { value: 85, threshold: 85, pass: true });
     const marcusFeld = addCandidate(
       state,
       projectTrustee(
@@ -887,12 +889,16 @@ describe('comparativeCorroborationStage', () => {
         }),
       ),
     );
-    addScore(marcusFeld, 'calculateNameScore', { nameScore: 85, match: true });
+    addScore(marcusFeld, 'calculateNameScore', { value: 85, threshold: 85, pass: true });
 
     await comparativeCorroborationStage()(state);
 
-    expect(mergedScore(bruceHalden)).toMatchObject({ phoneScore: 0 });
-    expect(mergedScore(marcusFeld)).toMatchObject({ phoneScore: 100 });
+    expect(mergedScore(bruceHalden)).toMatchObject({
+      contactCorroborationPhone: { value: 0, pass: false },
+    });
+    expect(mergedScore(marcusFeld)).toMatchObject({
+      contactCorroborationPhone: { value: 100, pass: true },
+    });
   });
 
   test('no-ops once the pipeline has already matched', async () => {
@@ -901,11 +907,12 @@ describe('comparativeCorroborationStage', () => {
       match: { trusteeId: 'already-matched', score: {} },
     };
     const candidate = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })));
-    addScore(candidate, 'calculateNameScore', { nameScore: 85, match: true });
+    addScore(candidate, 'calculateNameScore', { value: 85, threshold: 85, pass: true });
 
     await comparativeCorroborationStage()(state);
 
-    expect(candidate.scores).not.toHaveProperty('contactCorroborationScore');
+    expect(candidate.scores).not.toHaveProperty('contactCorroborationAddress');
+    expect(candidate.scores).not.toHaveProperty('contactCorroborationPhone');
   });
 });
 
@@ -955,13 +962,17 @@ describe('phoneTypoToleranceStage', () => {
         }),
       ),
     );
-    addScore(candidate, 'calculateNameScore', { nameScore: 100, match: true });
+    addScore(candidate, 'calculateNameScore', { value: 100, threshold: 85, pass: true });
 
     const result = await phoneTypoToleranceStage()(state);
 
     expect(result.match).toEqual({
       trusteeId: 'terrence-j-boyle',
-      score: expect.objectContaining({ nameScore: 100, phoneDigitDistance: expect.any(Number) }),
+      score: expect.objectContaining({
+        phoneTypoToleranceScore: expect.objectContaining({
+          phoneDigitDistance: expect.any(Number),
+        }),
+      }),
     });
   });
 
@@ -1002,7 +1013,7 @@ describe('phoneTypoToleranceStage', () => {
         }),
       ),
     );
-    addScore(candidate, 'calculateNameScore', { nameScore, match: true });
+    addScore(candidate, 'calculateNameScore', { value: nameScore, threshold: 85, pass: true });
 
     const result = await phoneTypoToleranceStage()(state);
 
@@ -1030,7 +1041,7 @@ describe('phoneTypoToleranceStage', () => {
         }),
       ),
     );
-    addScore(first, 'calculateNameScore', { nameScore: 100, match: true });
+    addScore(first, 'calculateNameScore', { value: 100, threshold: 85, pass: true });
     const second = addCandidate(
       state,
       projectTrustee(
@@ -1050,7 +1061,7 @@ describe('phoneTypoToleranceStage', () => {
         }),
       ),
     );
-    addScore(second, 'calculateNameScore', { nameScore: 100, match: true });
+    addScore(second, 'calculateNameScore', { value: 100, threshold: 85, pass: true });
 
     const result = await phoneTypoToleranceStage()(state);
 
@@ -1081,7 +1092,7 @@ describe('phoneTypoToleranceStage', () => {
         }),
       ),
     );
-    addScore(candidate, 'calculateNameScore', { nameScore: 100, match: true });
+    addScore(candidate, 'calculateNameScore', { value: 100, threshold: 85, pass: true });
 
     await phoneTypoToleranceStage()(state);
 
