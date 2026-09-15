@@ -54,8 +54,8 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
-      '@common': path.resolve(__dirname, '../common/src'),
+      '@': path.resolve(import.meta.dirname, './src'),
+      '@common': path.resolve(import.meta.dirname, '../common/src'),
     },
   },
 });
