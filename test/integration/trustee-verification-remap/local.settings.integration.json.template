@@ -1,0 +1,15 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "FUNCTIONS_WORKER_RUNTIME": "node",
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "AzureWebJobsDataflowsStorage": "UseDevelopmentStorage=true",
+    "MONGO_CONNECTION_STRING": "mongodb://localhost:27017",
+    "COSMOS_DATABASE_NAME": "cams-trustee-verification-remap-local"
+  },
+  "ConnectionStrings": {},
+  "Host": {
+    "LocalHttpPort": 7072,
+    "CORS": "*"
+  }
+}

@@ -293,6 +293,7 @@ export class TrusteeMatchVerificationUseCase {
         resolvedTrusteeId,
         resolvedTrusteeName,
         affectedCaseIds,
+        remap: { status: 'pending' },
         updatedBy: userRef,
         updatedOn: now,
       });

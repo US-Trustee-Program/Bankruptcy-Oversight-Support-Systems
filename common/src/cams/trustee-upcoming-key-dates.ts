@@ -163,6 +163,8 @@ function validateDateFields(): ValidatorFunction {
       'leaseExpiration',
       'idExpiration',
       'lastCompensationStudy',
+      'bondIssuedDate',
+      'bondRenewalDate',
     ];
 
     fullDateFields.forEach((field) => {
@@ -262,6 +264,8 @@ export type TrusteeUpcomingKeyDates = Auditable &
     leaseExpiration?: string;
     idExpiration?: string;
     lastCompensationStudy?: string;
+    bondIssuedDate?: string;
+    bondRenewalDate?: string;
   };
 
 export type TrusteeUpcomingKeyDatesInput = {
@@ -292,6 +296,8 @@ export type TrusteeUpcomingKeyDatesInput = {
   leaseExpiration: string | null;
   idExpiration: string | null;
   lastCompensationStudy: string | null;
+  bondIssuedDate: string | null;
+  bondRenewalDate: string | null;
 };
 
 export type TrusteeUpcomingKeyDatesHistory = AbstractTrusteeHistory<
@@ -321,7 +327,9 @@ type DateField =
   | 'lastMonthlyReportReceived'
   | 'leaseExpiration'
   | 'idExpiration'
-  | 'lastCompensationStudy';
+  | 'lastCompensationStudy'
+  | 'bondIssuedDate'
+  | 'bondRenewalDate';
 
 export const DATE_FIELDS: DateField[] = [
   'pastBackgroundQuestion',
@@ -343,6 +351,8 @@ export const DATE_FIELDS: DateField[] = [
   'leaseExpiration',
   'idExpiration',
   'lastCompensationStudy',
+  'bondIssuedDate',
+  'bondRenewalDate',
 ];
 
 type TextField = 'tprDueYearType' | 'tprFrequency' | 'tirFrequency';

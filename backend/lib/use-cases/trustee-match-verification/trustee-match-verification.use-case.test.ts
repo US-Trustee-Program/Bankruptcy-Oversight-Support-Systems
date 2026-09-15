@@ -388,6 +388,7 @@ describe('TrusteeMatchVerificationUseCase', () => {
           status: 'approved',
           resolvedTrusteeId: 'trustee-new',
           resolvedTrusteeName: 'New Trustee',
+          remap: { status: 'pending' },
           updatedBy: expect.objectContaining({ id: expect.any(String) }),
           updatedOn: expect.any(String),
         }),

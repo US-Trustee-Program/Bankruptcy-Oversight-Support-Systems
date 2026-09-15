@@ -18,6 +18,7 @@ export function getCamsErrorWithStack(
         message: options.message,
         originalError,
         camsStackInfo: options.camsStackInfo,
+        data: options.data,
       });
 }
 
