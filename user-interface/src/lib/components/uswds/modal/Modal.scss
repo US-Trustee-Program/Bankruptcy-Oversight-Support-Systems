@@ -2,3 +2,11 @@
   margin: 0;
   max-width: 100%;
 }
+
+body.modal-open {
+  overflow-y: hidden;
+}
+
+.usa-modal-overlay {
+  overscroll-behavior: contain;
+}

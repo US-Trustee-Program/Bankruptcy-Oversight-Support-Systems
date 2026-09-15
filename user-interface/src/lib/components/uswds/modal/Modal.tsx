@@ -210,6 +210,36 @@ function Modal_(props: ModalProps, ref: React.Ref<ModalRefType>) {
     }
   }, [isVisible]);
 
+  useEffect(() => {
+    if (!isVisible) {
+      return;
+    }
+    document.body.classList.add('modal-open');
+    return () => {
+      document.body.classList.remove('modal-open');
+    };
+  }, [isVisible]);
+
+  useEffect(() => {
+    if (!isVisible) {
+      return;
+    }
+
+    const handleFocusIn = (ev: FocusEvent) => {
+      const modalEl = modalShellRef.current;
+      const target = ev.target;
+      if (modalEl && target instanceof Node && !modalEl.contains(target)) {
+        (firstElement ?? modalEl).focus();
+      }
+    };
+
+    document.addEventListener('focusin', handleFocusIn);
+
+    return () => {
+      document.removeEventListener('focusin', handleFocusIn);
+    };
+  }, [isVisible, firstElement]);
+
   return (
     <div
       id={props.modalId + '-wrapper'}

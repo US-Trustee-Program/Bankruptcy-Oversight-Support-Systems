@@ -66,8 +66,6 @@ const mockControls = useAssignAttorneyModalControlsMock();
 const mockStore: AssignAttorneyModalStore = {
   bCase: null,
   setBCase: vi.fn(),
-  initialDocumentBodyStyle: '',
-  setInitialDocumentBodyStyle: vi.fn(),
   checkListValues: [],
   setCheckListValues: vi.fn(),
   previouslySelectedList: [],

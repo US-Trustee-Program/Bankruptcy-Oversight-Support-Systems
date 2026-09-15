@@ -159,6 +159,39 @@ describe('Test Modal component', () => {
     expect(cancelButtonOnClick).toHaveBeenCalled();
   });
 
+  test('should add modal-open class to document.body when opened and remove it when closed', async () => {
+    const button = screen.getByTestId(testButtonId);
+    expect(document.body).not.toHaveClass('modal-open');
+
+    fireEvent.click(button);
+    expect(document.body).toHaveClass('modal-open');
+
+    const closeButton = screen.getByTestId(`modal-x-button-${modalId}`);
+    fireEvent.click(closeButton);
+
+    expect(document.body).not.toHaveClass('modal-open');
+  });
+
+  test('should redirect focus back into the modal when focus lands outside of it', async () => {
+    const openButton = screen.getByTestId(testButtonId);
+    fireEvent.click(openButton);
+
+    const firstElement = document.querySelector('.usa-checkbox__label') as HTMLElement;
+    expect(firstElement).toHaveFocus();
+
+    const outsideButton = document.createElement('button');
+    outsideButton.textContent = 'Outside';
+    document.body.appendChild(outsideButton);
+
+    outsideButton.focus();
+
+    await vi.waitFor(() => {
+      expect(firstElement).toHaveFocus();
+    });
+
+    document.body.removeChild(outsideButton);
+  });
+
   test('should run onClick handler when submit button is clicked', async () => {
     const openButton = screen.getByTestId(testButtonId);
     const submitButton = screen.getByTestId(`button-${modalId}-submit-button`);
