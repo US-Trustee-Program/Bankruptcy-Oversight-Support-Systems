@@ -320,8 +320,9 @@ export class TrusteeMatchVerificationUseCase {
         // Only approveVerification writes a snapshot, so read it for approved verifications.
         affectedCaseIds = verification.affectedCaseIds ?? [];
       } else {
-        // Pending and rejected verifications have no snapshot — rejection never touches
-        // surrogates, and pending hasn't been resolved yet — so derive live in both cases.
+        // Pending and (legacy, read-only) rejected verifications have no snapshot — rejection
+        // never touched surrogates, and pending hasn't been resolved yet — so derive live in
+        // both cases.
         const affectedCaseIdsByFingerprint = await this.getAffectedCaseIdsByFingerprint(context, [
           verification.fingerprint,
         ]);
