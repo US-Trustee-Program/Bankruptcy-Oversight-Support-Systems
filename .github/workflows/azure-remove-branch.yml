@@ -244,12 +244,19 @@ jobs:
 
               echo "Branch '${branchName}' idle for ${idleDays}d (>= ${staleDaysThreshold}d threshold); tearing down env ${branchHashId} and notifying the branch owner."
               targets=$(jq -c --arg h "${branchHashId}" '. + [$h]' <<<"${targets}")
+              # Prefer the commit AUTHOR's GitHub login over the committer's:
+              # a merge/update commit created via GitHub's web UI (e.g. the
+              # PR "Update branch" button) is attributed to GitHub's own
+              # web-flow bot as committer, even though the author metadata
+              # still correctly identifies the real developer. Falling back
+              # to committer only when author is unset covers the rare case
+              # of a commit with no linked GitHub account for its author.
               notice=$(jq -c -n \
                 --arg branchName "${branchName}" \
                 --argjson idleDays "${idleDays}" \
-                --arg committerLogin "$(jq -r '.commit.committer.login // ""' <<<"${branchInfo}")" \
-                --arg committerEmail "$(jq -r '.commit.commit.committer.email // ""' <<<"${branchInfo}")" \
-                '{branchName: $branchName, idleDays: $idleDays, committerLogin: $committerLogin, committerEmail: $committerEmail}')
+                --arg authorLogin "$(jq -r '.commit.author.login // .commit.committer.login // ""' <<<"${branchInfo}")" \
+                --arg authorEmail "$(jq -r '.commit.commit.author.email // .commit.commit.committer.email // ""' <<<"${branchInfo}")" \
+                '{branchName: $branchName, idleDays: $idleDays, authorLogin: $authorLogin, authorEmail: $authorEmail}')
               notices=$(jq -c --argjson n "${notice}" '. + [$n]' <<<"${notices}")
             done < <(jq -c '.[]' <<<"${candidates}")
 
@@ -338,21 +345,21 @@ jobs:
           while IFS= read -r notice; do
             branchName=$(jq -r '.branchName' <<<"${notice}")
             idleDays=$(jq -r '.idleDays' <<<"${notice}")
-            committerLogin=$(jq -r '.committerLogin' <<<"${notice}")
-            committerEmail=$(jq -r '.committerEmail' <<<"${notice}")
+            authorLogin=$(jq -r '.authorLogin' <<<"${notice}")
+            authorEmail=$(jq -r '.authorEmail' <<<"${notice}")
 
-            # Match on committerLogin only: it's GitHub's verified linked-account
-            # identity, whereas committerEmail comes from raw git commit metadata
+            # Match on authorLogin only: it's GitHub's verified linked-account
+            # identity, whereas authorEmail comes from raw git commit metadata
             # that anyone with push access can set to an arbitrary string
-            # (git config user.email). committerEmail is still used below as a
+            # (git config user.email). authorEmail is still used below as a
             # display fallback, just not as a lookup key.
-            slackId=$(echo "${SLACK_USER_MAPPING}" | jq -r --arg username "${committerLogin}" \
+            slackId=$(echo "${SLACK_USER_MAPPING}" | jq -r --arg username "${authorLogin}" \
               '.[] | select(.github == $username) | .slack // empty' | head -1)
 
             if [[ -n "${slackId}" ]]; then
               who=" <@${slackId}>"
             else
-              who=" (${committerLogin:-${committerEmail:-unknown committer}})"
+              who=" (${authorLogin:-${authorEmail:-unknown author}})"
             fi
 
             message=$(printf '🧹 Branch `%s` has had no commits for %sd (stale threshold: %sd) — its Azure branch environment is being torn down tonight.%s If you'"'"'re still using this branch, push a commit to redeploy it; otherwise please delete the branch.' \
