@@ -16,6 +16,8 @@ import {
   cityMatchStage,
   comparativeCorroborationStage,
   corroborationStage,
+  firstNameFuzzyMatchStage,
+  lastNameOnlyConsensusStage,
   nameScoreStage,
   phoneTypoToleranceStage,
   similarityDiagnosticsStage,
@@ -59,6 +61,8 @@ async function runNestedTier(
     comparativeCorroborationStage(),
     phoneTypoToleranceStage(),
     soleCandidateConsensusStage(),
+    firstNameFuzzyMatchStage(),
+    lastNameOnlyConsensusStage(),
   ]);
 
   for (const candidate of nestedResult.candidates.values()) {
@@ -126,6 +130,8 @@ async function resolveMatchTrusteeByNameAmbiguous(
     comparativeCorroborationStage(),
     phoneTypoToleranceStage(),
     soleCandidateConsensusStage(),
+    firstNameFuzzyMatchStage(),
+    lastNameOnlyConsensusStage(),
   ]);
 
   for (const candidate of nestedResult.candidates.values()) {

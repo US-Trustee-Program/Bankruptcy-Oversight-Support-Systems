@@ -527,6 +527,17 @@ const CONSENSUS_VOTING_SCORERS = [
 ] as const;
 
 /**
+ * lastNameOnlyConsensusStage's voting set - CONSENSUS_VOTING_SCORERS' independent contact
+ * corroboration PLUS firstNameFuzzyMatchStage's own result as one more vote, since this stage
+ * (unlike soleCandidateConsensusStage) is never gated on calculateNameScore.pass, so a fuzzy
+ * first-name match is real, additional evidence rather than a already-cleared precondition.
+ */
+const LAST_NAME_ONLY_VOTING_SCORERS = [
+  ...CONSENSUS_VOTING_SCORERS,
+  'firstNameFuzzyMatchStage',
+] as const;
+
+/**
  * Minimum percentage (0-100, the same scale every ScoreRecord.value/threshold uses - never a 0-1
  * fraction, so this stage's internal arithmetic never has to convert between two scales) of
  * applicable votes (see CONSENSUS_VOTING_SCORERS) that must pass for soleCandidateConsensusStage
@@ -539,6 +550,35 @@ const CONSENSUS_VOTING_SCORERS = [
  * only 3 more records than 60% - diminishing returns past that point.
  */
 const CONSENSUS_PASS_PERCENT = 60;
+
+/**
+ * Tallies a given voting set's pass/fail into one percentage (see CONSENSUS_PASS_PERCENT for the
+ * threshold and its tuning rationale) - shared by every stage that resolves a sole candidate via
+ * consensus rather than a single decisive scorer, so the vote-counting rule itself (how absent
+ * votes are treated, the pass bar) stays in exactly one place; only WHICH scorers count varies per
+ * caller (see CONSENSUS_VOTING_SCORERS vs. LAST_NAME_ONLY_VOTING_SCORERS). Returns null when no
+ * applicable scorer ran at all, so a caller can distinguish "zero corroborating evidence of any
+ * kind" from "corroborating evidence that happened to fail" - the former should never resolve,
+ * regardless of what a trivial 0/0 percentage would otherwise suggest.
+ */
+function computeConsensus(
+  candidate: PipelineCandidate,
+  votingScorers: readonly string[],
+): ScoreRecord | null {
+  const scores = mergedScore(candidate);
+  const votes = votingScorers
+    .map((scorer) => scores[scorer])
+    .filter((record): record is ScoreRecord => record !== undefined);
+  if (votes.length === 0) return null;
+
+  const passCount = votes.filter((record) => record.pass).length;
+  const passPercent = Math.round((passCount / votes.length) * 100);
+  return {
+    value: passPercent,
+    threshold: CONSENSUS_PASS_PERCENT,
+    pass: passPercent >= CONSENSUS_PASS_PERCENT,
+  };
+}
 
 /**
  * Resolves a SOLE name-qualifying candidate (comparativeCorroborationStage's multi-candidate case,
@@ -565,22 +605,126 @@ export function soleCandidateConsensusStage(): Stage {
     if (qualifying.length !== 1) return state;
 
     const candidate = qualifying[0];
-    const scores = mergedScore(candidate);
-    const votes = CONSENSUS_VOTING_SCORERS.map((scorer) => scores[scorer]).filter(
-      (record): record is ScoreRecord => record !== undefined,
+    const consensus = computeConsensus(candidate, CONSENSUS_VOTING_SCORERS);
+    if (!consensus) return state;
+    addScore(candidate, 'soleCandidateConsensusStage', consensus);
+
+    if (!consensus.pass) return state;
+
+    return {
+      ...state,
+      match: { trusteeId: candidate.camsRaw.trusteeId, score: candidate.scores },
+    };
+  });
+}
+
+/**
+ * calculateNameScore's lastNameTokensMatch requires an (almost) exact lastName token match before
+ * it will even consider the first name (see trustee-match.helpers.ts) - a real first-name
+ * NICKNAME or spelling variant (Geoff/Geoffrey, Randy/Randolph, Phillip/Philip) still tanks the
+ * WHOLE nameScore to 0, because calculateNameScore has no fuzzy first-name path at all. Confirmed
+ * via a CAMS-876 backtest: 105 sole-candidate, exact-lastName-match records score nameScore=0 this
+ * way, and hand-sampling shows this population is genuinely MIXED - real nickname/typo matches
+ * interspersed with coincidentally-shared-surname, different-person pairs (e.g. "George
+ * Itule"/"Margo Itule", "Harry Campbell"/"Kevin Campbell").
+ *
+ * A single fuzzy-first-name metric is not safe alone: natural's JaroWinklerDistance catches
+ * prefix-style nicknames well (Geoff/Geoffrey=0.925) but misses non-prefix real nicknames
+ * (Dick/Richard=0.595, Jay/John=0.575), while phonetic matching (SoundEx/Metaphone) catches
+ * spelling variants (Phillip/Philip, Gregory/Greogry) but misses truncation nicknames entirely.
+ * Combining both with OR (either clears FIRST_NAME_JARO_WINKLER_THRESHOLD, or either phonetic
+ * algorithm agrees) still lets at least one real false positive through on first-name evidence
+ * alone (Joseph/Joshua scores 0.844, well above the 0.8 threshold, despite not actually being a
+ * nickname pair) - which is why this stage NEVER resolves on the fuzzy-name signal by itself. It
+ * only records the fuzzy-name evidence as its own vote (firstNameFuzzyMatchStage) for
+ * lastNameOnlyConsensusStage to weigh alongside independent contact corroboration (state, city,
+ * zip, address, phone) - the same "many independent signals, no single one decisive" model
+ * CONSENSUS_VOTING_SCORERS already uses.
+ */
+const FIRST_NAME_JARO_WINKLER_THRESHOLD = 0.8;
+
+function isFuzzyFirstNameMatch(acmsFirstName: string, camsFirstName: string): boolean {
+  const a = acmsFirstName.toLowerCase();
+  const b = camsFirstName.toLowerCase();
+  if (natural.JaroWinklerDistance(a, b) >= FIRST_NAME_JARO_WINKLER_THRESHOLD) return true;
+
+  const soundex = new natural.SoundEx();
+  const metaphone = new natural.Metaphone();
+  return soundex.compare(a, b) || metaphone.compare(a, b);
+}
+
+/**
+ * Records a fuzzy first-name comparison as its OWN vote (see isFuzzyFirstNameMatch for why this
+ * signal is never trusted alone) - only for a sole candidate whose lastName is an exact token
+ * match (mirrors calculateNameScore's own lastNameTokensMatch gate) but whose overall nameScore is
+ * 0 (a fuzzy-but-not-exact first name is exactly what tanks calculateNameScore to 0 despite a real
+ * lastName match - see calculateNameScore's doc comment). A candidate whose lastName does NOT
+ * match is left alone entirely; that is a genuinely different surname, not this pattern.
+ */
+function isExactLastNameMatch(acmsLastName: string, camsLastName: string): boolean {
+  const acmsLast = acmsLastName.trim().toLowerCase();
+  const camsLast = camsLastName.trim().toLowerCase();
+  return acmsLast.length > 0 && acmsLast === camsLast;
+}
+
+/** The sole candidate eligible for a fuzzy first-name vote - a real lastName match (see
+ * isExactLastNameMatch) whose overall nameScore was tanked to 0, with both sides having a first
+ * name to actually compare. Returns undefined when zero or multiple candidates qualify, or when
+ * either side has no first name to compare - firstNameFuzzyMatchStage no-ops in every such case. */
+function findSoleZeroNameScoreCandidateWithMatchingLastName(
+  state: PipelineState,
+): PipelineCandidate | undefined {
+  const qualifying = [...state.candidates.values()].filter(
+    (candidate) =>
+      mergedScore(candidate).calculateNameScore?.value === 0 &&
+      isExactLastNameMatch(state.acmsRaw.lastName ?? '', candidate.camsRaw.lastName ?? ''),
+  );
+  if (qualifying.length !== 1) return undefined;
+
+  const candidate = qualifying[0];
+  return state.acmsRaw.firstName && candidate.camsRaw.firstName ? candidate : undefined;
+}
+
+export function firstNameFuzzyMatchStage(): Stage {
+  return withGuard(async (state: PipelineState): Promise<PipelineState> => {
+    const candidate = findSoleZeroNameScoreCandidateWithMatchingLastName(state);
+    if (candidate) {
+      const acmsFirst = (state.acmsRaw.firstName ?? '').toLowerCase();
+      const camsFirst = (candidate.camsRaw.firstName ?? '').toLowerCase();
+      addScore(candidate, 'firstNameFuzzyMatchStage', {
+        value: Math.round(natural.JaroWinklerDistance(acmsFirst, camsFirst) * 100),
+        threshold: Math.round(FIRST_NAME_JARO_WINKLER_THRESHOLD * 100),
+        pass: isFuzzyFirstNameMatch(acmsFirst, camsFirst),
+      });
+    }
+    return state;
+  });
+}
+
+/**
+ * The complementary gate to soleCandidateConsensusStage: resolves a sole candidate whose lastName
+ * matches exactly but whose OVERALL nameScore was 0 (see firstNameFuzzyMatchStage), using the same
+ * consensus vote (see computeConsensus/CONSENSUS_VOTING_SCORERS) PLUS the fuzzy first-name result
+ * as one more independent vote. Never runs for a candidate soleCandidateConsensusStage already
+ * covers (that stage's gate is calculateNameScore.pass===true; this stage's gate is
+ * calculateNameScore.value===0 - the two gates are mutually exclusive for any nameScore between 0
+ * and 85 exclusive, calculateNameScore never actually returns a value in that open range - see
+ * calculateNameScore's discrete field-by-field comparison, so no candidate is ever double-counted
+ * by both stages).
+ */
+export function lastNameOnlyConsensusStage(): Stage {
+  return withGuard(async (state: PipelineState): Promise<PipelineState> => {
+    const qualifying = [...state.candidates.values()].filter(
+      (candidate) => mergedScore(candidate).firstNameFuzzyMatchStage !== undefined,
     );
-    if (votes.length === 0) return state;
+    if (qualifying.length !== 1) return state;
 
-    const passCount = votes.filter((record) => record.pass).length;
-    const passPercent = Math.round((passCount / votes.length) * 100);
-    const pass = passPercent >= CONSENSUS_PASS_PERCENT;
-    addScore(candidate, 'soleCandidateConsensusStage', {
-      value: passPercent,
-      threshold: CONSENSUS_PASS_PERCENT,
-      pass,
-    });
+    const candidate = qualifying[0];
+    const consensus = computeConsensus(candidate, LAST_NAME_ONLY_VOTING_SCORERS);
+    if (!consensus) return state;
+    addScore(candidate, 'lastNameOnlyConsensusStage', consensus);
 
-    if (!pass) return state;
+    if (!consensus.pass) return state;
 
     return {
       ...state,

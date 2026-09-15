@@ -27,6 +27,8 @@ import {
   comparativeCorroborationStage,
   phoneTypoToleranceStage,
   soleCandidateConsensusStage,
+  firstNameFuzzyMatchStage,
+  lastNameOnlyConsensusStage,
 } from './trustee-match-pipeline-stages';
 
 const makeDxtrTrustee = (overrides: Partial<DxtrTrusteeParty> = {}): DxtrTrusteeParty => ({
@@ -38,6 +40,17 @@ const makeDxtrTrustee = (overrides: Partial<DxtrTrusteeParty> = {}): DxtrTrustee
 
 const makeTrustee = (overrides: Partial<Trustee> = {}): Trustee =>
   MockData.getTrustee({ firstName: 'John', lastName: 'Doe', ...overrides });
+
+/** Shared "Someone Moon" candidate fixture used across stateFilterStage/cityMatchStage/
+ * zipMatchStage's describe blocks - a generic, deliberately-unrelated-to-the-ACMS-record surname
+ * collision, not a specific name under test. */
+const addSomeoneMoon = (state: PipelineState, overrides: Partial<Trustee> = {}) =>
+  addCandidate(
+    state,
+    projectTrustee(
+      makeTrustee({ firstName: 'Someone', lastName: 'Moon', name: 'Someone Moon', ...overrides }),
+    ),
+  );
 
 describe('surnameExactDiscoveryStage', () => {
   let context: ApplicationContext;
@@ -314,22 +327,9 @@ describe('stateFilterStage', () => {
     legacy: { cityStateZipCountry: 'Tacoma, WA 98402' },
   });
 
-  const addTrustee = (state: PipelineState, overrides: Partial<Trustee> = {}) =>
-    addCandidate(
-      state,
-      projectTrustee(
-        makeTrustee({
-          firstName: 'Someone',
-          lastName: 'Moon',
-          name: 'Someone Moon',
-          ...overrides,
-        }),
-      ),
-    );
-
   test('annotates a state-mismatched candidate even in a small pool - runs regardless of pool size', async () => {
     const state = createInitialState(dxtrInWashington);
-    addTrustee(state, {
+    addSomeoneMoon(state, {
       trusteeId: 'trustee-fl',
       firstName: 'Nobody',
       name: 'Nobody Moon',
@@ -353,7 +353,7 @@ describe('stateFilterStage', () => {
 
   test('annotates a state-mismatched candidate in a large pool too', async () => {
     const state = createInitialState(dxtrInWashington);
-    addTrustee(state, {
+    addSomeoneMoon(state, {
       trusteeId: 'trustee-wa',
       public: {
         address: {
@@ -366,7 +366,7 @@ describe('stateFilterStage', () => {
       },
     });
     for (let i = 0; i < 5; i++) {
-      addTrustee(state, {
+      addSomeoneMoon(state, {
         trusteeId: `trustee-fl-${i}`,
         firstName: 'Nobody',
         name: 'Nobody Moon',
@@ -397,7 +397,7 @@ describe('stateFilterStage', () => {
       ...dxtrInWashington,
       legacy: { ...dxtrInWashington.legacy, phone: '2065551212' },
     });
-    addTrustee(state, {
+    addSomeoneMoon(state, {
       trusteeId: 'trustee-fl-phone',
       public: {
         address: {
@@ -411,7 +411,7 @@ describe('stateFilterStage', () => {
       },
     });
     for (let i = 0; i < 5; i++) {
-      addTrustee(state, {
+      addSomeoneMoon(state, {
         trusteeId: `trustee-fl-${i}`,
         firstName: 'Nobody',
         name: 'Nobody Moon',
@@ -436,7 +436,7 @@ describe('stateFilterStage', () => {
 
   test('does NOT mark a state-mismatched candidate as mismatched when its nameScore would be >= 85', async () => {
     const state = createInitialState(dxtrInWashington);
-    addTrustee(state, {
+    addSomeoneMoon(state, {
       trusteeId: 'trustee-fl-name',
       firstName: 'Aldric',
       middleName: 'A',
@@ -453,7 +453,7 @@ describe('stateFilterStage', () => {
       },
     });
     for (let i = 0; i < 5; i++) {
-      addTrustee(state, {
+      addSomeoneMoon(state, {
         trusteeId: `trustee-fl-${i}`,
         firstName: 'Nobody',
         name: 'Nobody Moon',
@@ -482,7 +482,7 @@ describe('stateFilterStage', () => {
       legacy: { cityStateZipCountry: undefined },
     });
     for (let i = 0; i < 6; i++) {
-      addTrustee(state, {
+      addSomeoneMoon(state, {
         trusteeId: `trustee-${i}`,
         public: {
           address: {
@@ -505,7 +505,7 @@ describe('stateFilterStage', () => {
 
   test('does not mark a candidate with no CAMS state as mismatched', async () => {
     const state = createInitialState(dxtrInWashington);
-    addTrustee(state, {
+    addSomeoneMoon(state, {
       trusteeId: 'trustee-no-state',
       public: {
         address: {
@@ -518,7 +518,7 @@ describe('stateFilterStage', () => {
       },
     });
     for (let i = 0; i < 5; i++) {
-      addTrustee(state, {
+      addSomeoneMoon(state, {
         trusteeId: `trustee-fl-${i}`,
         firstName: 'Nobody',
         name: 'Nobody Moon',
@@ -546,7 +546,7 @@ describe('stateFilterStage', () => {
       ...createInitialState(dxtrInWashington),
       match: { trusteeId: 'already-matched', score: {} },
     };
-    addTrustee(state, { trusteeId: 't1' });
+    addSomeoneMoon(state, { trusteeId: 't1' });
 
     const result = await stateFilterStage()(state);
 
@@ -560,17 +560,9 @@ describe('cityMatchStage', () => {
     legacy: { cityStateZipCountry: 'Seattle, WA 98101' },
   });
 
-  const addTrustee = (state: PipelineState, overrides: Partial<Trustee> = {}) =>
-    addCandidate(
-      state,
-      projectTrustee(
-        makeTrustee({ firstName: 'Someone', lastName: 'Moon', name: 'Someone Moon', ...overrides }),
-      ),
-    );
-
   test('records a pass when the candidate city matches, case-insensitively', async () => {
     const state = createInitialState(dxtrInSeattle);
-    addTrustee(state, {
+    addSomeoneMoon(state, {
       trusteeId: 't1',
       public: {
         address: {
@@ -592,7 +584,7 @@ describe('cityMatchStage', () => {
 
   test('records a fail when the candidate city differs', async () => {
     const state = createInitialState(dxtrInSeattle);
-    addTrustee(state, {
+    addSomeoneMoon(state, {
       trusteeId: 't1',
       public: {
         address: {
@@ -614,7 +606,7 @@ describe('cityMatchStage', () => {
 
   test('adds no record when the ACMS address is unparseable', async () => {
     const state = createInitialState(makeDxtrTrustee({ legacy: { cityStateZipCountry: '' } }));
-    addTrustee(state, {
+    addSomeoneMoon(state, {
       trusteeId: 't1',
       public: {
         address: {
@@ -634,7 +626,7 @@ describe('cityMatchStage', () => {
 
   test('adds no record when the candidate has no city on file', async () => {
     const state = createInitialState(dxtrInSeattle);
-    addTrustee(state, {
+    addSomeoneMoon(state, {
       trusteeId: 't1',
       public: {
         address: { address1: '1 Elm St', city: '', state: 'WA', zipCode: '', countryCode: 'US' },
@@ -651,7 +643,7 @@ describe('cityMatchStage', () => {
       ...createInitialState(dxtrInSeattle),
       match: { trusteeId: 'already-matched', score: {} },
     };
-    addTrustee(state, { trusteeId: 't1' });
+    addSomeoneMoon(state, { trusteeId: 't1' });
 
     const result = await cityMatchStage()(state);
 
@@ -665,17 +657,9 @@ describe('zipMatchStage', () => {
     legacy: { cityStateZipCountry: 'Seattle, WA 98101' },
   });
 
-  const addTrustee = (state: PipelineState, overrides: Partial<Trustee> = {}) =>
-    addCandidate(
-      state,
-      projectTrustee(
-        makeTrustee({ firstName: 'Someone', lastName: 'Moon', name: 'Someone Moon', ...overrides }),
-      ),
-    );
-
   test('records a pass when the 5-digit zip prefix matches, ignoring a +4 extension', async () => {
     const state = createInitialState(dxtrInSeattle);
-    addTrustee(state, {
+    addSomeoneMoon(state, {
       trusteeId: 't1',
       public: {
         address: {
@@ -697,7 +681,7 @@ describe('zipMatchStage', () => {
 
   test('records a fail when the 5-digit zip prefix differs', async () => {
     const state = createInitialState(dxtrInSeattle);
-    addTrustee(state, {
+    addSomeoneMoon(state, {
       trusteeId: 't1',
       public: {
         address: {
@@ -719,7 +703,7 @@ describe('zipMatchStage', () => {
 
   test('adds no record when the candidate has no zip on file', async () => {
     const state = createInitialState(dxtrInSeattle);
-    addTrustee(state, {
+    addSomeoneMoon(state, {
       trusteeId: 't1',
       public: {
         address: {
@@ -742,7 +726,7 @@ describe('zipMatchStage', () => {
       ...createInitialState(dxtrInSeattle),
       match: { trusteeId: 'already-matched', score: {} },
     };
-    addTrustee(state, { trusteeId: 't1' });
+    addSomeoneMoon(state, { trusteeId: 't1' });
 
     const result = await zipMatchStage()(state);
 
@@ -1403,6 +1387,188 @@ describe('soleCandidateConsensusStage', () => {
     addScore(candidate, 'stateFilterStage', { value: 100, threshold: 100, pass: true });
 
     const result = await soleCandidateConsensusStage()(state);
+
+    expect(result.match).toEqual({ trusteeId: 'already-matched', score: {} });
+  });
+});
+
+describe('firstNameFuzzyMatchStage', () => {
+  const acmsGeoffGroshong = makeDxtrTrustee({
+    fullName: 'Geoff Groshong',
+    firstName: 'Geoff',
+    lastName: 'Groshong',
+  });
+
+  test('records a pass for a sole exact-lastName candidate with a plausible nickname first name', async () => {
+    const state = createInitialState(acmsGeoffGroshong);
+    const candidate = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', firstName: 'Geoffrey', lastName: 'Groshong' })),
+    );
+    addScore(candidate, 'calculateNameScore', { value: 0, threshold: 85, pass: false });
+
+    const result = await firstNameFuzzyMatchStage()(state);
+
+    expect(mergedScore(result.candidates.get('t1')!)).toMatchObject({
+      firstNameFuzzyMatchStage: { pass: true },
+    });
+  });
+
+  test('records a fail for a sole exact-lastName candidate whose first name is not plausibly related', async () => {
+    const state = createInitialState(
+      makeDxtrTrustee({ fullName: 'Harry Campbell', firstName: 'Harry', lastName: 'Campbell' }),
+    );
+    const candidate = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', firstName: 'Kevin', lastName: 'Campbell' })),
+    );
+    addScore(candidate, 'calculateNameScore', { value: 0, threshold: 85, pass: false });
+
+    const result = await firstNameFuzzyMatchStage()(state);
+
+    expect(mergedScore(result.candidates.get('t1')!)).toMatchObject({
+      firstNameFuzzyMatchStage: { pass: false },
+    });
+  });
+
+  test('does not run when the candidate lastName differs', async () => {
+    const state = createInitialState(acmsGeoffGroshong);
+    const candidate = addCandidate(
+      state,
+      projectTrustee(
+        makeTrustee({ trusteeId: 't1', firstName: 'Geoffrey', lastName: 'Someone Else' }),
+      ),
+    );
+    addScore(candidate, 'calculateNameScore', { value: 0, threshold: 85, pass: false });
+
+    const result = await firstNameFuzzyMatchStage()(state);
+
+    expect(result.candidates.get('t1')!.scores.firstNameFuzzyMatchStage).toBeUndefined();
+  });
+
+  test('does not run when nameScore is nonzero (a genuinely ambiguous or partial match, not this pattern)', async () => {
+    const state = createInitialState(acmsGeoffGroshong);
+    const candidate = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', firstName: 'Geoffrey', lastName: 'Groshong' })),
+    );
+    addScore(candidate, 'calculateNameScore', { value: 85, threshold: 85, pass: true });
+
+    const result = await firstNameFuzzyMatchStage()(state);
+
+    expect(result.candidates.get('t1')!.scores.firstNameFuzzyMatchStage).toBeUndefined();
+  });
+
+  test('does not run when more than one sole-lastName candidate qualifies', async () => {
+    const state = createInitialState(acmsGeoffGroshong);
+    const first = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', firstName: 'Geoffrey', lastName: 'Groshong' })),
+    );
+    addScore(first, 'calculateNameScore', { value: 0, threshold: 85, pass: false });
+    const second = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't2', firstName: 'Jeff', lastName: 'Groshong' })),
+    );
+    addScore(second, 'calculateNameScore', { value: 0, threshold: 85, pass: false });
+
+    const result = await firstNameFuzzyMatchStage()(state);
+
+    expect(result.candidates.get('t1')!.scores.firstNameFuzzyMatchStage).toBeUndefined();
+    expect(result.candidates.get('t2')!.scores.firstNameFuzzyMatchStage).toBeUndefined();
+  });
+
+  test('no-ops once the pipeline has already matched', async () => {
+    const state: PipelineState = {
+      ...createInitialState(acmsGeoffGroshong),
+      match: { trusteeId: 'already-matched', score: {} },
+    };
+    const candidate = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', firstName: 'Geoffrey', lastName: 'Groshong' })),
+    );
+    addScore(candidate, 'calculateNameScore', { value: 0, threshold: 85, pass: false });
+
+    const result = await firstNameFuzzyMatchStage()(state);
+
+    expect(result.candidates.get('t1')!.scores).toEqual({
+      calculateNameScore: { value: 0, threshold: 85, pass: false },
+    });
+  });
+});
+
+describe('lastNameOnlyConsensusStage', () => {
+  const acmsGeoffGroshong = makeDxtrTrustee({
+    fullName: 'Geoff Groshong',
+    firstName: 'Geoff',
+    lastName: 'Groshong',
+  });
+
+  test('resolves when the fuzzy-name vote and other corroboration together clear the consensus bar', async () => {
+    const state = createInitialState(acmsGeoffGroshong);
+    const candidate = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', firstName: 'Geoffrey', lastName: 'Groshong' })),
+    );
+    addScore(candidate, 'calculateNameScore', { value: 0, threshold: 85, pass: false });
+    addScore(candidate, 'firstNameFuzzyMatchStage', { value: 93, threshold: 80, pass: true });
+    addScore(candidate, 'stateFilterStage', { value: 100, threshold: 100, pass: true });
+    addScore(candidate, 'cityMatchStage', { value: 100, threshold: 100, pass: true });
+
+    const result = await lastNameOnlyConsensusStage()(state);
+
+    expect(result.match).toEqual({
+      trusteeId: 't1',
+      score: expect.objectContaining({
+        lastNameOnlyConsensusStage: expect.objectContaining({ pass: true }),
+      }),
+    });
+  });
+
+  test('does not resolve when most votes (including the fuzzy-name vote) fail', async () => {
+    const state = createInitialState(
+      makeDxtrTrustee({ fullName: 'Harry Campbell', firstName: 'Harry', lastName: 'Campbell' }),
+    );
+    const candidate = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', firstName: 'Kevin', lastName: 'Campbell' })),
+    );
+    addScore(candidate, 'calculateNameScore', { value: 0, threshold: 85, pass: false });
+    addScore(candidate, 'firstNameFuzzyMatchStage', { value: 0, threshold: 80, pass: false });
+    addScore(candidate, 'stateFilterStage', { value: 100, threshold: 100, pass: true });
+    addScore(candidate, 'cityMatchStage', { value: 0, threshold: 100, pass: false });
+    addScore(candidate, 'zipMatchStage', { value: 0, threshold: 100, pass: false });
+
+    const result = await lastNameOnlyConsensusStage()(state);
+
+    expect(result.match).toBeNull();
+  });
+
+  test('does not resolve when no candidate has a firstNameFuzzyMatchStage record at all', async () => {
+    const state = createInitialState(acmsGeoffGroshong);
+    const candidate = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', firstName: 'Geoffrey', lastName: 'Groshong' })),
+    );
+    addScore(candidate, 'calculateNameScore', { value: 0, threshold: 85, pass: false });
+
+    const result = await lastNameOnlyConsensusStage()(state);
+
+    expect(result.match).toBeNull();
+  });
+
+  test('no-ops once the pipeline has already matched', async () => {
+    const state: PipelineState = {
+      ...createInitialState(acmsGeoffGroshong),
+      match: { trusteeId: 'already-matched', score: {} },
+    };
+    const candidate = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', firstName: 'Geoffrey', lastName: 'Groshong' })),
+    );
+    addScore(candidate, 'firstNameFuzzyMatchStage', { value: 93, threshold: 80, pass: true });
+
+    const result = await lastNameOnlyConsensusStage()(state);
 
     expect(result.match).toEqual({ trusteeId: 'already-matched', score: {} });
   });
