@@ -58,6 +58,24 @@ describe('Tag', () => {
     expect(tag).toHaveClass('bg-primary');
   });
 
+  test('should apply UswdsTagStyle.Success correctly', () => {
+    render(<Tag uswdsStyle={UswdsTagStyle.Success}>Test Tag</Tag>);
+
+    const tag = screen.getByTestId('tag-test');
+    expect(tag).toHaveClass(TAG_BASE_CLASS);
+    expect(tag).toHaveClass('usa-tag--big');
+    expect(tag).toHaveClass('bg-success-vivid');
+  });
+
+  test('should apply UswdsTagStyle.InactiveGray correctly', () => {
+    render(<Tag uswdsStyle={UswdsTagStyle.InactiveGray}>Test Tag</Tag>);
+
+    const tag = screen.getByTestId('tag-test');
+    expect(tag).toHaveClass(TAG_BASE_CLASS);
+    expect(tag).toHaveClass('usa-tag--big');
+    expect(tag).toHaveClass('bg-gray-cool-50');
+  });
+
   test('should apply custom className in addition to base classes', () => {
     render(<Tag className="custom-class">Test Tag</Tag>);
 

@@ -116,6 +116,8 @@ function createAppointment(opts: {
   courtName: string;
   courtDivisionName: string;
   status: 'active' | 'inactive';
+  appointedDate?: string;
+  effectiveDate?: string;
 }) {
   const appointment: Record<string, unknown> = {
     id: opts.id,
@@ -125,9 +127,9 @@ function createAppointment(opts: {
     appointmentType: opts.appointmentType,
     courtId: opts.courtId,
     divisionCodes: opts.divisionCodes,
-    appointedDate: '2020-01-01',
+    appointedDate: opts.appointedDate ?? '2020-01-01',
     status: opts.status,
-    effectiveDate: '2020-01-01',
+    effectiveDate: opts.effectiveDate ?? '2020-01-01',
     courtName: opts.courtName,
     courtDivisionName: opts.courtDivisionName,
     updatedOn: '2025-03-01T00:00:00.000Z',
@@ -274,6 +276,34 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       courtName: 'U.S. Bankruptcy Court Southern District of New York',
       courtDivisionName: 'Manhattan',
       status: 'active',
+    }),
+  );
+
+  // Additional-6: Ch11 Case by Case, Inactive (081) - exercises the appointment accordion's
+  // collapsed/gray-tag state with dates distinct from the common 2020-01-01 default
+  trustees.push(
+    createTrustee({
+      id: 'seed-trustee-add-025',
+      firstName: 'Olivia',
+      lastName: 'Ashworth',
+      status: 'active',
+      state: 'NY',
+      city: 'New York',
+    }),
+  );
+  appointments.push(
+    createAppointment({
+      id: 'seed-appt-add-025-ch11-casebycase',
+      trusteeId: 'seed-trustee-add-025',
+      chapter: '11',
+      appointmentType: 'case-by-case',
+      courtId: '0208',
+      divisionCodes: ['081'],
+      courtName: 'U.S. Bankruptcy Court Southern District of New York',
+      courtDivisionName: 'Manhattan',
+      status: 'inactive',
+      appointedDate: '2022-03-15',
+      effectiveDate: '2023-09-01',
     }),
   );
 

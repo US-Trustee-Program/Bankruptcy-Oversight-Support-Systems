@@ -6,7 +6,6 @@ import InfoCard from './InfoCard';
 import { TrusteeAppointment, formatAppointmentStatus } from '@common/cams/trustee-appointments';
 import { formatChapterType, formatAppointmentType } from '@common/cams/trustees';
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
-import { formatDate } from '@/lib/utils/datetime';
 import { useNavigate } from 'react-router-dom';
 import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
@@ -27,23 +26,10 @@ import {
   isChapter13Standing,
   isChapter7Elected,
 } from '@common/cams/trustee-appointments';
+import { formatAppointmentDate, buildDistrictDisplay } from './appointmentDisplay';
 
 export interface AppointmentCardProps {
   appointment: TrusteeAppointment;
-}
-
-const UNIX_EPOCH = '1970-01-01';
-
-/**
- * Format appointment date with special handling for sentinel values.
- * Unix epoch (1970-01-01) is used as a sentinel value during ATS migration
- * to indicate dates that were not specified in the source system.
- */
-function formatAppointmentDate(dateString: string): string {
-  if (dateString.startsWith(UNIX_EPOCH)) {
-    return 'Not Specified';
-  }
-  return formatDate(dateString);
 }
 
 export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
@@ -72,18 +58,7 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
     console.error('Error loading courts:', courtsError);
   }
 
-  // Build district display with guards for missing data
-  // Use court name (e.g., "Eastern District of Missouri") populated by backend enrichment
-  // Only fallback to court ID if court name is not available
-  let districtDisplay: string;
-  if (props.appointment.courtName) {
-    districtDisplay = props.appointment.courtName;
-  } else if (props.appointment.courtId) {
-    // Fallback to court ID if court name is not available
-    districtDisplay = `Court ${props.appointment.courtId}`;
-  } else {
-    districtDisplay = 'Court information not available';
-  }
+  const districtDisplay = buildDistrictDisplay(props.appointment);
 
   const divisionsDisplay = buildDivisionsDisplay(props.appointment, allCourts);
 

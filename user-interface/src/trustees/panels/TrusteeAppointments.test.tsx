@@ -106,7 +106,7 @@ describe('TrusteeAppointments', () => {
       courtName: 'Southern District of New York',
     }),
     makeAppointment('appointment-002', {
-      chapter: '11',
+      chapter: '12',
       appointmentType: 'case-by-case',
       courtDivisionName: 'New York',
       courtName: 'Northern District of New York',
@@ -173,7 +173,7 @@ describe('TrusteeAppointments', () => {
       expect(
         screen.getByText(/Southern District of New York: Chapter 7 - Panel/i),
       ).toBeInTheDocument();
-      expect(screen.getByText(/Northern District of New York: Chapter 11/i)).toBeInTheDocument();
+      expect(screen.getByText(/Northern District of New York: Chapter 12/i)).toBeInTheDocument();
     });
   });
 
@@ -305,7 +305,7 @@ describe('TrusteeAppointments', () => {
           courtName: 'Southern District of New York',
         }),
         makeAppointment('appointment-002', {
-          chapter: '11',
+          chapter: '12',
           appointmentType: 'case-by-case',
           courtId: '082',
           courtDivisionName: 'Los Angeles',
@@ -338,7 +338,7 @@ describe('TrusteeAppointments', () => {
           courtName: 'Southern District of New York',
         }),
         makeAppointment('appointment-002', {
-          chapter: '11',
+          chapter: '12',
           appointmentType: 'case-by-case',
           courtId: '082',
           courtDivisionName: 'Brooklyn',
@@ -376,7 +376,7 @@ describe('TrusteeAppointments', () => {
           courtName: 'Southern District of New York',
         }),
         makeAppointment('appointment-003', {
-          chapter: '11',
+          chapter: '12',
           appointmentType: 'case-by-case',
           courtName: 'Southern District of New York',
         }),
@@ -392,11 +392,11 @@ describe('TrusteeAppointments', () => {
       const chapters = getAppointmentCards().map((card) => {
         const text = card.textContent || '';
         if (text.includes('Chapter 7')) return '7';
-        if (text.includes('Chapter 11')) return '11';
+        if (text.includes('Chapter 12')) return '12';
         if (text.includes('Chapter 13')) return '13';
         return '';
       });
-      expect(chapters).toEqual(['7', '11', '13']);
+      expect(chapters).toEqual(['7', '12', '13']);
     });
 
     test('should sort appointments by chapter in ascending order when in the same district and division', async () => {
@@ -413,7 +413,7 @@ describe('TrusteeAppointments', () => {
           courtName: 'Southern District of New York',
         }),
         makeAppointment('appointment-003', {
-          chapter: '11',
+          chapter: '12',
           appointmentType: 'case-by-case',
           courtDivisionName: 'Manhattan',
           courtName: 'Southern District of New York',
@@ -427,8 +427,8 @@ describe('TrusteeAppointments', () => {
         expect(getAppointmentCards()).toHaveLength(3);
       });
 
-      // Verify chapters are in ascending order: 7, 11, 13
-      expect(getAppointmentChapters()).toEqual(['7', '11', '13']);
+      // Verify chapters are in ascending order: 7, 12, 13
+      expect(getAppointmentChapters()).toEqual(['7', '12', '13']);
     });
 
     test('should sort appointments alphabetically by appointment type when in the same district, division, and chapter', async () => {
@@ -488,7 +488,7 @@ describe('TrusteeAppointments', () => {
           courtName: 'Southern District of New York',
         }),
         makeAppointment('appointment-005', {
-          chapter: '11',
+          chapter: '12',
           appointmentType: 'case-by-case',
           courtId: '082',
           courtName: 'Eastern District of New York',
@@ -503,7 +503,7 @@ describe('TrusteeAppointments', () => {
       });
 
       expect(getAppointmentInfo()).toEqual([
-        { district: 'Eastern', division: '', chapter: '11', type: 'Case by Case' },
+        { district: 'Eastern', division: '', chapter: '12', type: 'Case by Case' },
         { district: 'Eastern', division: '', chapter: '13', type: 'Standing' },
         { district: 'Southern', division: '', chapter: '7', type: 'Elected' },
         { district: 'Southern', division: '', chapter: '7', type: 'Off Panel' },
@@ -517,7 +517,7 @@ describe('TrusteeAppointments', () => {
           courtName: 'Southern District of New York',
         }),
         makeAppointment('appointment-002', {
-          chapter: '11',
+          chapter: '12',
           appointmentType: 'case-by-case',
           courtId: '999',
           courtName: undefined,
@@ -535,6 +535,191 @@ describe('TrusteeAppointments', () => {
 
       expect(cards[0].textContent).toContain('Court 999');
       expect(cards[1].textContent).toContain('Southern District of New York');
+    });
+  });
+
+  describe('Chapter 11 Case by Case accordion', () => {
+    const ch11Active = makeAppointment('ch11-active', {
+      chapter: '11',
+      appointmentType: 'case-by-case',
+      status: 'active',
+      courtName: 'Southern District of New York',
+    });
+    const ch11ActiveTwo = makeAppointment('ch11-active-two', {
+      chapter: '11',
+      appointmentType: 'case-by-case',
+      status: 'active',
+      courtName: 'Southern District of New York',
+    });
+    const ch11Inactive = makeAppointment('ch11-inactive', {
+      chapter: '11',
+      appointmentType: 'case-by-case',
+      status: 'inactive',
+      courtName: 'Southern District of New York',
+    });
+    const ch7Panel = makeAppointment('ch7-panel', {
+      chapter: '7',
+      appointmentType: 'panel',
+      status: 'active',
+      courtName: 'Southern District of New York',
+    });
+
+    beforeEach(() => {
+      window.sessionStorage.clear();
+    });
+
+    test('renders Chapter 11 Case by Case appointments via the accordion and other types via AppointmentCard', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({
+        data: [ch11Active, ch7Panel],
+      });
+
+      renderComponent('trustee-123');
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId(`appointment-accordion-header-${ch11Active.id}`),
+        ).toBeInTheDocument();
+      });
+      expect(getAppointmentCards()).toHaveLength(1);
+    });
+
+    test('an active Chapter 11 Case by Case appointment is expanded by default', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch11Active] });
+
+      renderComponent('trustee-123');
+
+      await waitFor(() => {
+        expect(screen.getByText(/Appointed/i)).toBeInTheDocument();
+      });
+    });
+
+    test('a non-active Chapter 11 Case by Case appointment is collapsed by default', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch11Inactive] });
+
+      renderComponent('trustee-123');
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId(`appointment-accordion-header-${ch11Inactive.id}`),
+        ).toBeInTheDocument();
+      });
+      expect(screen.queryByText(/Appointed/i)).not.toBeInTheDocument();
+    });
+
+    test('multiple active Chapter 11 Case by Case appointments can be expanded simultaneously', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({
+        data: [ch11Active, ch11ActiveTwo],
+      });
+
+      renderComponent('trustee-123');
+
+      await waitFor(() => {
+        expect(screen.getAllByText(/Appointed/i)).toHaveLength(2);
+      });
+    });
+
+    test('toggling one appointment does not affect another appointment expand state', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({
+        data: [ch11Active, ch11Inactive],
+      });
+      const user = userEvent.setup();
+
+      renderComponent('trustee-123');
+
+      await waitFor(() => {
+        expect(screen.getAllByText(/Appointed/i)).toHaveLength(1);
+      });
+
+      await user.click(screen.getByTestId(`accordion-button-${ch11Inactive.id}`));
+
+      await waitFor(() => {
+        expect(screen.getAllByText(/Appointed/i)).toHaveLength(2);
+      });
+    });
+
+    test('toggling an expanded active appointment collapses it', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch11Active] });
+      const user = userEvent.setup();
+
+      renderComponent('trustee-123');
+
+      await waitFor(() => {
+        expect(screen.getByText(/Appointed/i)).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByTestId(`accordion-button-${ch11Active.id}`));
+
+      await waitFor(() => {
+        expect(screen.queryByText(/Appointed/i)).not.toBeInTheDocument();
+      });
+    });
+
+    test('an appointment explicitly expanded while active collapses once its status changes to inactive', async () => {
+      const getTrusteeAppointmentsSpy = vi
+        .spyOn(Api2, 'getTrusteeAppointments')
+        .mockResolvedValue({ data: [ch11Active] });
+      const user = userEvent.setup();
+
+      const { unmount } = renderComponent('trustee-123');
+
+      await waitFor(() => {
+        expect(screen.getByText(/Appointed/i)).toBeInTheDocument();
+      });
+
+      // Explicitly collapse it, then re-expand it, recording an explicit
+      // toggle for the "active" status in session state.
+      await user.click(screen.getByTestId(`accordion-button-${ch11Active.id}`));
+      await waitFor(() => {
+        expect(screen.queryByText(/Appointed/i)).not.toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId(`accordion-button-${ch11Active.id}`));
+      await waitFor(() => {
+        expect(screen.getByText(/Appointed/i)).toBeInTheDocument();
+      });
+
+      unmount();
+
+      // Simulate the appointment's status changing to inactive (e.g. via edit).
+      getTrusteeAppointmentsSpy.mockResolvedValue({
+        data: [{ ...ch11Active, status: 'inactive' }],
+      });
+
+      renderComponent('trustee-123');
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId(`appointment-accordion-header-${ch11Active.id}`),
+        ).toBeInTheDocument();
+      });
+      expect(screen.queryByText(/Appointed/i)).not.toBeInTheDocument();
+    });
+
+    test('toggling an appointment persists its expand state across simulated navigation within the same session', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch11Inactive] });
+      const user = userEvent.setup();
+
+      const { unmount } = renderComponent('trustee-123');
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId(`appointment-accordion-header-${ch11Inactive.id}`),
+        ).toBeInTheDocument();
+      });
+      expect(screen.queryByText(/Appointed/i)).not.toBeInTheDocument();
+
+      await user.click(screen.getByTestId(`accordion-button-${ch11Inactive.id}`));
+
+      await waitFor(() => {
+        expect(screen.getByText(/Appointed/i)).toBeInTheDocument();
+      });
+
+      unmount();
+
+      renderComponent('trustee-123');
+
+      await waitFor(() => {
+        expect(screen.getByText(/Appointed/i)).toBeInTheDocument();
+      });
     });
   });
 });

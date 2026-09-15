@@ -1,0 +1,12 @@
+.chapter11-case-by-case-appointment-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1.5rem;
+  padding-top: 1rem;
+  padding-bottom: 1.5rem;
+
+  .info-card-label {
+    font-weight: 600;
+  }
+}

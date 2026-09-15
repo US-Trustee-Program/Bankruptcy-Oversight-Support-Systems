@@ -6,9 +6,12 @@ import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import AppointmentCard from './AppointmentCard';
+import AppointmentAccordion from './AppointmentAccordion';
+import Chapter11CaseByCaseAppointmentBody from './Chapter11CaseByCaseAppointmentBody';
 import Button from '@/lib/components/uswds/Button';
 import Icon from '@/lib/components/uswds/Icon';
 import { useNavigate } from 'react-router-dom';
+import { useSessionState } from '@/lib/hooks/UseSessionState';
 
 interface TrusteeAppointmentsProps {
   trusteeId: string;
@@ -20,6 +23,34 @@ export default function TrusteeAppointments(props: Readonly<TrusteeAppointmentsP
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const [expandedMap, setExpandedMap] = useSessionState<Record<string, boolean>>(
+    `trustee-appointments-expanded-${trusteeId}`,
+    {},
+  );
+
+  function isChapter11CaseByCase(appointment: TrusteeAppointment): boolean {
+    return appointment.chapter === '11' && appointment.appointmentType === 'case-by-case';
+  }
+
+  function expandedMapKey(appointment: TrusteeAppointment): string {
+    // Include status so that an explicit toggle recorded for a prior status
+    // (e.g. active) doesn't override the default once the status changes
+    // (e.g. to inactive).
+    return `${appointment.id}:${appointment.status}`;
+  }
+
+  function isExpanded(appointment: TrusteeAppointment): boolean {
+    return expandedMap[expandedMapKey(appointment)] ?? appointment.status === 'active';
+  }
+
+  function toggleExpanded(appointmentId: string) {
+    const appointment = appointments.find((a) => a.id === appointmentId);
+    if (!appointment) {
+      return;
+    }
+    const currentlyExpanded = isExpanded(appointment);
+    setExpandedMap({ ...expandedMap, [expandedMapKey(appointment)]: !currentlyExpanded });
+  }
 
   useEffect(() => {
     const loadAppointments = async () => {
@@ -90,9 +121,20 @@ export default function TrusteeAppointments(props: Readonly<TrusteeAppointmentsP
         </Button>
       </div>
       <div className="appointments-list">
-        {sortedAppointments.map((appointment) => (
-          <AppointmentCard key={appointment.id} appointment={appointment} />
-        ))}
+        {sortedAppointments.map((appointment) =>
+          isChapter11CaseByCase(appointment) ? (
+            <AppointmentAccordion
+              key={appointment.id}
+              appointment={appointment}
+              expanded={isExpanded(appointment)}
+              onToggle={toggleExpanded}
+            >
+              <Chapter11CaseByCaseAppointmentBody appointment={appointment} />
+            </AppointmentAccordion>
+          ) : (
+            <AppointmentCard key={appointment.id} appointment={appointment} />
+          ),
+        )}
       </div>
     </div>
   );

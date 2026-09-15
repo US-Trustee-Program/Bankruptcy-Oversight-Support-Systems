@@ -7,7 +7,7 @@ describe('trustees-comprehensive scenario', () => {
     generateCaseId: vi.fn(),
   };
 
-  test('generates 32 trustees and 37 appointments', async () => {
+  test('generates 33 trustees and 38 appointments', async () => {
     const ops = await generate(mockContext);
 
     expect(ops).toHaveLength(2);
@@ -16,12 +16,12 @@ describe('trustees-comprehensive scenario', () => {
     const appointmentsOp = ops.find((op) => op.collectionOrTable === 'trustee-appointments');
 
     expect(trusteesOp?.db).toBe('cams');
-    expect(trusteesOp?.data).toHaveLength(32);
+    expect(trusteesOp?.data).toHaveLength(33);
 
-    // 32 single-court trustees + Patricia Manhattan's 5 extra cross-court
-    // appointments (CA Eastern, CA Northern, ID, IA Northern, IA Southern) = 37.
+    // 33 single-court trustees + Patricia Manhattan's 5 extra cross-court
+    // appointments (CA Eastern, CA Northern, ID, IA Northern, IA Southern) = 38.
     expect(appointmentsOp?.db).toBe('cams');
-    expect(appointmentsOp?.data).toHaveLength(37);
+    expect(appointmentsOp?.data).toHaveLength(38);
   });
 
   test('all trustees have documentType TRUSTEE', async () => {
@@ -140,12 +140,12 @@ describe('trustees-comprehensive scenario', () => {
       appointments.map((a: Record<string, unknown>) => a.trusteeId),
     );
 
-    expect(trusteeIds.size).toBe(32);
-    expect(appointmentTrusteeIds.size).toBe(32);
+    expect(trusteeIds.size).toBe(33);
+    expect(appointmentTrusteeIds.size).toBe(33);
     expect([...trusteeIds]).toEqual([...appointmentTrusteeIds]);
   });
 
-  test('all 32 trustees are from New York', async () => {
+  test('all 33 trustees are from New York', async () => {
     const ops = await generate(mockContext);
     const trustees = ops.find((op) => op.collectionOrTable === 'trustees')?.data || [];
 
@@ -156,7 +156,7 @@ describe('trustees-comprehensive scenario', () => {
       return acc;
     }, {});
 
-    expect(byState['NY']).toBe(32); // All trustees from New York (Manhattan divisions)
+    expect(byState['NY']).toBe(33); // All trustees from New York (Manhattan divisions)
     expect(Object.keys(byState).length).toBe(1); // Only NY
   });
 
@@ -189,8 +189,8 @@ describe('trustees-comprehensive scenario', () => {
     const ch11 = appointments.filter((a: Record<string, unknown>) => a.chapter === '11');
 
     // 6 single-court ch11 appointments + 1 from Patricia Manhattan
-    // (CA Northern case-by-case)
-    expect(ch11.length).toBe(7);
+    // (CA Northern case-by-case) + 1 new inactive Ch11 case-by-case (Additional-6)
+    expect(ch11.length).toBe(8);
   });
 
   test('Chapter 12 appointments have expected count', async () => {
