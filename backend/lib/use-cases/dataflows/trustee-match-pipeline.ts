@@ -1,21 +1,22 @@
 import { DxtrTrusteeParty } from '@common/cams/dataflow-events';
-import { Address, PhoneNumber } from '@common/cams/contact';
 import { Trustee } from '@common/cams/trustees';
 
 /**
- * Projection of Trustee down to the fields matching actually reads - keeps a candidate's raw
+ * Projection of Trustee down to the fields matching actually reads, via Pick rather than Omit -
+ * an Omit-based projection silently widens back to the full shape every time Trustee grows a new
+ * field, which is exactly the coupling this projection exists to avoid. Keeps a candidate's raw
  * record symmetric with acmsRaw (both lean, matching-relevant shapes) rather than carrying the
  * full ORM-shaped Trustee (audit fields, oversight assignments, staff, appointments) through the
- * pipeline untouched.
+ * pipeline. This is the ONLY Trustee-shaped type pipeline internals traffic in - projectTrustee is
+ * the single conversion point where a real Trustee becomes pipeline data; everything past that
+ * point (addCandidate, promoteCandidate, every stage) reads and writes ProjectedTrustee only.
  */
-export type ProjectedTrustee = {
-  trusteeId: string;
-  firstName: string;
-  middleName?: string;
-  lastName: string;
-  name: string;
-  address?: Address;
-  phone?: PhoneNumber;
+export type ProjectedTrustee = Pick<
+  Trustee,
+  'trusteeId' | 'firstName' | 'middleName' | 'lastName' | 'name'
+> & {
+  address?: Trustee['public']['address'];
+  phone?: Trustee['public']['phone'];
 };
 
 export function projectTrustee(trustee: Trustee): ProjectedTrustee {
@@ -105,20 +106,43 @@ export function createInitialState(acmsRaw: DxtrTrusteeParty): PipelineState {
 
 /**
  * Adds a candidate to the pipeline state if not already present (by trusteeId), or returns the
- * existing entry unchanged if it is - this is the ONLY way a candidate enters the state, and it
- * is idempotent by design: a discovery stage that finds the same trustee another stage already
- * proposed must never reset that candidate's accumulated score history.
+ * existing entry unchanged if it is - this is the ONLY way a NEW candidate enters the state, and
+ * it is idempotent by design: a discovery stage that finds the same trustee another stage already
+ * proposed must never reset that candidate's accumulated score history. Takes a ProjectedTrustee,
+ * not a raw Trustee - callers project at the true boundary (see projectTrustee) rather than
+ * passing a full Trustee through the pipeline.
  */
-export function addCandidate(state: PipelineState, trustee: Trustee): PipelineCandidate {
-  const existing = state.candidates.get(trustee.trusteeId);
+export function addCandidate(state: PipelineState, camsRaw: ProjectedTrustee): PipelineCandidate {
+  const existing = state.candidates.get(camsRaw.trusteeId);
   if (existing) return existing;
 
   const candidate: PipelineCandidate = {
-    camsRaw: projectTrustee(trustee),
+    camsRaw,
     camsNormalized: new Map(),
     scores: [],
   };
-  state.candidates.set(trustee.trusteeId, candidate);
+  state.candidates.set(camsRaw.trusteeId, candidate);
+  return candidate;
+}
+
+/**
+ * Merges a candidate produced by a NESTED pipeline run (see
+ * docs/architecture/decision-records/TrusteeMatchingPipeline.md on nesting: a stage may run its
+ * own scoped discovery-then-filter pipeline internally and promote only the survivors) into the
+ * outer state, preserving that candidate's full inner score history rather than discarding it -
+ * the inner tier's reasoning for why this candidate survived its own quality bar is exactly the
+ * kind of evidence a later reviewer needs, so it is carried forward, not re-derived from scratch.
+ * Idempotent like addCandidate: promoting a trusteeId already present in the outer state is a
+ * no-op that returns the outer state's existing entry unchanged.
+ */
+export function promoteCandidate(
+  state: PipelineState,
+  candidate: PipelineCandidate,
+): PipelineCandidate {
+  const existing = state.candidates.get(candidate.camsRaw.trusteeId);
+  if (existing) return existing;
+
+  state.candidates.set(candidate.camsRaw.trusteeId, candidate);
   return candidate;
 }
 

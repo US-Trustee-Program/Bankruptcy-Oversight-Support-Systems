@@ -8,6 +8,7 @@ import {
   mergedScore,
   normalize,
   projectTrustee,
+  promoteCandidate,
   runPipeline,
   Stage,
   withGuard,
@@ -86,7 +87,7 @@ describe('addCandidate', () => {
     const state = createInitialState(makeDxtrTrustee());
     const trustee = makeTrustee({ trusteeId: 't1' });
 
-    const candidate = addCandidate(state, trustee);
+    const candidate = addCandidate(state, projectTrustee(trustee));
 
     expect(state.candidates.get('t1')).toBe(candidate);
     expect(candidate.scores).toEqual([]);
@@ -96,9 +97,9 @@ describe('addCandidate', () => {
     const state = createInitialState(makeDxtrTrustee());
     const trustee = makeTrustee({ trusteeId: 't1' });
 
-    const first = addCandidate(state, trustee);
+    const first = addCandidate(state, projectTrustee(trustee));
     addScore(first, { scorer: 'testScorer', nameScore: 100 });
-    const second = addCandidate(state, trustee);
+    const second = addCandidate(state, projectTrustee(trustee));
 
     expect(second).toBe(first);
     expect(second.scores).toEqual([{ scorer: 'testScorer', nameScore: 100 }]);
@@ -107,8 +108,8 @@ describe('addCandidate', () => {
 
   test('never removes an existing candidate when a different trustee is added', () => {
     const state = createInitialState(makeDxtrTrustee());
-    addCandidate(state, makeTrustee({ trusteeId: 't1' }));
-    addCandidate(state, makeTrustee({ trusteeId: 't2' }));
+    addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })));
+    addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't2' })));
 
     expect(state.candidates.size).toBe(2);
     expect(state.candidates.has('t1')).toBe(true);
@@ -116,17 +117,76 @@ describe('addCandidate', () => {
   });
 });
 
+describe('promoteCandidate', () => {
+  // Models the nested-pipeline pattern (see
+  // docs/architecture/decision-records/TrusteeMatchingPipeline.md): a stage runs its own scoped
+  // discovery-then-filter pipeline internally, then promotes only the survivors into the outer
+  // state - carrying the inner pipeline's own score history forward rather than discarding it.
+  test('merges a candidate built by a nested pipeline run into the outer state, preserving its score history', () => {
+    const innerState = createInitialState(makeDxtrTrustee());
+    const innerCandidate = addCandidate(
+      innerState,
+      projectTrustee(makeTrustee({ trusteeId: 't1' })),
+    );
+    addScore(innerCandidate, { scorer: 'innerTierScorer', nameScore: 100 });
+
+    const outerState = createInitialState(makeDxtrTrustee());
+    const promoted = promoteCandidate(outerState, innerCandidate);
+
+    expect(outerState.candidates.get('t1')).toBe(promoted);
+    expect(promoted.scores).toEqual([{ scorer: 'innerTierScorer', nameScore: 100 }]);
+  });
+
+  test('is idempotent - promoting a trusteeId already present in the outer state returns the OUTER entry unchanged', () => {
+    const outerState = createInitialState(makeDxtrTrustee());
+    const outerCandidate = addCandidate(
+      outerState,
+      projectTrustee(makeTrustee({ trusteeId: 't1' })),
+    );
+    addScore(outerCandidate, { scorer: 'outerStage', nameScore: 50 });
+
+    const innerState = createInitialState(makeDxtrTrustee());
+    const innerCandidate = addCandidate(
+      innerState,
+      projectTrustee(makeTrustee({ trusteeId: 't1' })),
+    );
+    addScore(innerCandidate, { scorer: 'innerTierScorer', nameScore: 100 });
+
+    const result = promoteCandidate(outerState, innerCandidate);
+
+    expect(result).toBe(outerCandidate);
+    expect(result.scores).toEqual([{ scorer: 'outerStage', nameScore: 50 }]);
+  });
+
+  test('never removes an existing outer candidate when a different candidate is promoted', () => {
+    const outerState = createInitialState(makeDxtrTrustee());
+    addCandidate(outerState, projectTrustee(makeTrustee({ trusteeId: 't1' })));
+
+    const innerState = createInitialState(makeDxtrTrustee());
+    const innerCandidate = addCandidate(
+      innerState,
+      projectTrustee(makeTrustee({ trusteeId: 't2' })),
+    );
+
+    promoteCandidate(outerState, innerCandidate);
+
+    expect(outerState.candidates.size).toBe(2);
+    expect(outerState.candidates.has('t1')).toBe(true);
+    expect(outerState.candidates.has('t2')).toBe(true);
+  });
+});
+
 describe('mergedScore', () => {
   test('returns an empty object for a candidate with no scores yet', () => {
     const state = createInitialState(makeDxtrTrustee());
-    const candidate = addCandidate(state, makeTrustee({ trusteeId: 't1' }));
+    const candidate = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })));
 
     expect(mergedScore(candidate)).toEqual({});
   });
 
   test('a later score entry overrides an earlier entry for the SAME key', () => {
     const state = createInitialState(makeDxtrTrustee());
-    const candidate = addCandidate(state, makeTrustee({ trusteeId: 't1' }));
+    const candidate = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })));
 
     addScore(candidate, { scorer: 'nameScoreStage', nameScore: 0 });
     addScore(candidate, { scorer: 'nameScoreStage', nameScore: 100 });
@@ -138,7 +198,7 @@ describe('mergedScore', () => {
     // This is the core cumulative-merge guarantee: a stage that only computes stateMismatch
     // should never need to also re-carry-forward nameScore from an earlier stage.
     const state = createInitialState(makeDxtrTrustee());
-    const candidate = addCandidate(state, makeTrustee({ trusteeId: 't1' }));
+    const candidate = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })));
 
     addScore(candidate, { scorer: 'nameScoreStage', nameScore: 100 });
     addScore(candidate, { scorer: 'stateFilterStage', stateMismatch: true });
@@ -152,7 +212,7 @@ describe('mergedScore', () => {
 
   test('does not mutate the underlying scores array', () => {
     const state = createInitialState(makeDxtrTrustee());
-    const candidate = addCandidate(state, makeTrustee({ trusteeId: 't1' }));
+    const candidate = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })));
     addScore(candidate, { scorer: 'nameScoreStage', nameScore: 100 });
 
     mergedScore(candidate);

@@ -1,7 +1,14 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { Trustee } from '@common/cams/trustees';
 import { calculateNameScore, findSurnameExactCandidates } from './trustee-match.helpers';
-import { addCandidate, addScore, PipelineState, Stage, withGuard } from './trustee-match-pipeline';
+import {
+  addCandidate,
+  addScore,
+  PipelineState,
+  projectTrustee,
+  Stage,
+  withGuard,
+} from './trustee-match-pipeline';
 
 /**
  * Discovery stage wrapping the existing findSurnameExactCandidates unchanged - proposes every
@@ -13,7 +20,7 @@ export function surnameExactDiscoveryStage(context: ApplicationContext): Stage {
   return withGuard(async (state: PipelineState): Promise<PipelineState> => {
     const found = await findSurnameExactCandidates(context, state.acmsRaw);
     for (const trustee of found) {
-      addCandidate(state, trustee);
+      addCandidate(state, projectTrustee(trustee));
     }
     return state;
   });

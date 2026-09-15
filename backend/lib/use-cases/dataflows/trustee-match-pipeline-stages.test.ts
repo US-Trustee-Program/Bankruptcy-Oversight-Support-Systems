@@ -9,6 +9,7 @@ import {
   createInitialState,
   mergedScore,
   PipelineState,
+  projectTrustee,
 } from './trustee-match-pipeline';
 import { surnameExactDiscoveryStage, nameScoreStage } from './trustee-match-pipeline-stages';
 
@@ -99,7 +100,7 @@ describe('surnameExactDiscoveryStage', () => {
     const state = createInitialState(
       makeDxtrTrustee({ fullName: 'Phillip A Moon', lastName: 'Moon' }),
     );
-    const existingCandidate = addCandidate(state, johnMoon);
+    const existingCandidate = addCandidate(state, projectTrustee(johnMoon));
     existingCandidate.scores.push({ scorer: 'earlierStage', nameScore: 42 });
 
     const result = await surnameExactDiscoveryStage(context)(state);
@@ -115,8 +116,14 @@ describe('nameScoreStage', () => {
     const state = createInitialState(
       makeDxtrTrustee({ fullName: 'John Doe', firstName: 'John', lastName: 'Doe' }),
     );
-    addCandidate(state, makeTrustee({ trusteeId: 't1', firstName: 'John', lastName: 'Doe' }));
-    addCandidate(state, makeTrustee({ trusteeId: 't2', firstName: 'Someone', lastName: 'Else' }));
+    addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', firstName: 'John', lastName: 'Doe' })),
+    );
+    addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't2', firstName: 'Someone', lastName: 'Else' })),
+    );
 
     const result = await nameScoreStage()(state);
 
@@ -135,7 +142,7 @@ describe('nameScoreStage', () => {
       ...createInitialState(makeDxtrTrustee()),
       match: { trusteeId: 'already-matched', score: {} },
     };
-    addCandidate(state, makeTrustee({ trusteeId: 't1' }));
+    addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })));
 
     const result = await nameScoreStage()(state);
 
