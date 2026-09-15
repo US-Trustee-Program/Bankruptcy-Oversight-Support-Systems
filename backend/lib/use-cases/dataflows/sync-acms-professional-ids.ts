@@ -206,17 +206,62 @@ function splitCompoundFirstName(
   return { firstName: tokens[0], middleName: tokens.slice(1).join(' ') };
 }
 
+/**
+ * A digit anywhere in PROF_FIRST_NAME is a reliable ACMS corruption signal - no real first name
+ * contains one. Confirmed via a CAMS-879 backtest to cover two distinct real shapes, handled
+ * differently:
+ *
+ * 1. Whole-name-in-lastName (e.g. PROF_FIRST_NAME="TACOMACH13", a mangled city+chapter code,
+ *    PROF_LAST_NAME="K. MICHAEL FITZGERALD" - the trustee's entire real name): when lastName has
+ *    2+ space-separated tokens, it's treated as the real "firstName [middleName] lastName" and
+ *    re-derived from it wholesale - the corrupted firstName is discarded entirely, since it never
+ *    held any real name data to begin with.
+ * 2. Trailing-junk-only (e.g. PROF_FIRST_NAME="WALTER 12,13" with a clean PROF_LAST_NAME=
+ *    "O'CHESKEY" - a real trustee's chapter-number annotation glued onto an otherwise-correct
+ *    firstName): when lastName is already a single clean token, re-deriving from it would destroy
+ *    a value that was never corrupted, so only firstName's first token is kept.
+ *
+ * Left untouched (both fields as-is) when firstName has no digit, or when there's no usable
+ * recovery target (firstName has a digit but reduces to nothing usable and lastName is also a
+ * single token) - a record with no real name signal on either side (e.g. an ACMS batch-upload
+ * placeholder) should be left for matching to correctly find no-match, not forced into a guess.
+ */
+function recoverCorruptedFirstName(
+  firstName: string,
+  lastName: string,
+): { firstName: string; lastName: string } {
+  if (!/\d/.test(firstName)) return { firstName, lastName };
+
+  const lastNameTokens = lastName.trim().split(/\s+/).filter(Boolean);
+  if (lastNameTokens.length >= 2) {
+    return {
+      // Everything but the real surname (the final token) becomes the new firstName - still
+      // possibly compound (e.g. "K. MICHAEL"), left for splitCompoundFirstName below to divide
+      // into firstName/middleName exactly as it already does for a normal compound PROF_FIRST_NAME.
+      firstName: lastNameTokens.slice(0, -1).join(' '),
+      lastName: lastNameTokens[lastNameTokens.length - 1],
+    };
+  }
+
+  const firstNameFirstToken = firstName.trim().split(/\s+/)[0] ?? '';
+  return { firstName: firstNameFirstToken, lastName };
+}
+
 function toAcmsTrusteeProfessional(
   record: AcmsTrusteeProfessionalDetailRecord,
 ): AcmsTrusteeProfessional {
-  const { firstName, middleName } = splitCompoundFirstName(record.firstName, record.middleInitial);
+  const recovered = recoverCorruptedFirstName(record.firstName, record.lastName);
+  const { firstName, middleName } = splitCompoundFirstName(
+    recovered.firstName,
+    record.middleInitial,
+  );
   const fullName = [record.firstName, record.middleInitial, record.lastName]
     .filter(Boolean)
     .join(' ');
   return {
     firstName,
     middleName,
-    lastName: record.lastName,
+    lastName: recovered.lastName,
     fullName,
   };
 }

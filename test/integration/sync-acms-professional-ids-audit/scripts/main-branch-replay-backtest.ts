@@ -138,18 +138,43 @@ function splitCompoundFirstName(
   return { firstName: tokens[0], middleName: tokens.slice(1).join(' ') };
 }
 
+/**
+ * Reimplements sync-acms-professional-ids.ts's module-private recoverCorruptedFirstName exactly -
+ * see that function's doc comment for the full rationale (a digit in PROF_FIRST_NAME is a
+ * reliable corruption signal; a multi-token PROF_LAST_NAME means the whole real name landed
+ * there, a single-token one means only firstName has trailing junk to strip).
+ */
+function recoverCorruptedFirstName(
+  firstName: string,
+  lastName: string,
+): { firstName: string; lastName: string } {
+  if (!/\d/.test(firstName)) return { firstName, lastName };
+
+  const lastNameTokens = lastName.trim().split(/\s+/).filter(Boolean);
+  if (lastNameTokens.length >= 2) {
+    return {
+      firstName: lastNameTokens.slice(0, -1).join(' '),
+      lastName: lastNameTokens[lastNameTokens.length - 1],
+    };
+  }
+
+  const firstNameFirstToken = firstName.trim().split(/\s+/)[0] ?? '';
+  return { firstName: firstNameFirstToken, lastName };
+}
+
 function toAcmsTrusteeProfessional(variant: DecodedVariant): AcmsTrusteeProfessional {
   const fullName = [variant.firstName, variant.middleName, variant.lastName]
     .filter(Boolean)
     .join(' ');
+  const recovered = recoverCorruptedFirstName(variant.firstName, variant.lastName);
   const { firstName, middleName } = splitCompoundFirstName(
-    variant.firstName || undefined,
+    recovered.firstName || undefined,
     variant.middleName || undefined,
   );
   return {
     firstName,
     middleName,
-    lastName: variant.lastName || undefined,
+    lastName: recovered.lastName || undefined,
     generation: variant.generation || undefined,
     fullName,
     legacy: {

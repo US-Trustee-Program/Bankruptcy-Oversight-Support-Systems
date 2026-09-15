@@ -459,6 +459,82 @@ describe('SyncAcmsProfessionalIds', () => {
       );
     });
 
+    // Real-world pattern from a CAMS-879 backtest: ACMS "TACOMACH13 K. MICHAEL FITZGERALD" -
+    // PROF_FIRST_NAME holds a mangled city+chapter code ("TACOMACH13") and PROF_LAST_NAME holds
+    // the trustee's ENTIRE real name. A digit anywhere in firstName is a reliable corruption
+    // signal (no real first name contains one), and when lastName has 2+ tokens it's the real
+    // name to recover from - the last token is the true surname, everything before it is
+    // first/middle.
+    test('should recover firstName/middleName/lastName from a multi-token lastName when firstName is corrupted with a digit', async () => {
+      const matchSpy = vi
+        .spyOn(trusteeMatchHelpers, 'matchTrusteeByName')
+        .mockResolvedValue({ kind: 'no-match' });
+      vi.spyOn(trusteeMatchHelpers, 'findTokenIntersectionCandidates').mockResolvedValue([]);
+      vi.spyOn(trusteeMatchHelpers, 'findAnchoredLevenshteinCandidates').mockResolvedValue([]);
+
+      await SyncAcmsProfessionalIds.processNameMatch(deps, {
+        ...record,
+        firstName: 'TACOMACH13',
+        middleInitial: '',
+        lastName: 'K. MICHAEL FITZGERALD',
+      });
+
+      expect(matchSpy).toHaveBeenCalledWith(
+        deps.context,
+        expect.objectContaining({
+          firstName: 'K.',
+          middleName: 'MICHAEL',
+          lastName: 'FITZGERALD',
+        }),
+      );
+    });
+
+    // Companion pattern: a real trustee ("Walter O'Cheskey") recorded across several ACMS
+    // professional-id records, each with a different trailing chapter annotation glued onto
+    // firstName ("WALTER 12,13", "WALTER 11", "WALTER 7") while lastName stays a clean single
+    // surname. This is NOT the whole-name-in-lastName shape above - re-deriving from lastName
+    // here would be wrong, since lastName was never corrupted. Only the trailing junk after the
+    // first token needs to be dropped.
+    test('should strip trailing digit/punctuation junk from firstName without touching lastName when lastName is already a single clean token', async () => {
+      const matchSpy = vi
+        .spyOn(trusteeMatchHelpers, 'matchTrusteeByName')
+        .mockResolvedValue({ kind: 'no-match' });
+      vi.spyOn(trusteeMatchHelpers, 'findTokenIntersectionCandidates').mockResolvedValue([]);
+      vi.spyOn(trusteeMatchHelpers, 'findAnchoredLevenshteinCandidates').mockResolvedValue([]);
+
+      await SyncAcmsProfessionalIds.processNameMatch(deps, {
+        ...record,
+        firstName: 'WALTER 12,13',
+        middleInitial: '',
+        lastName: "O'CHESKEY",
+      });
+
+      expect(matchSpy).toHaveBeenCalledWith(
+        deps.context,
+        expect.objectContaining({ firstName: 'WALTER', lastName: "O'CHESKEY" }),
+      );
+    });
+
+    test('should leave firstName/lastName unchanged when firstName has no digit', async () => {
+      const matchSpy = vi
+        .spyOn(trusteeMatchHelpers, 'matchTrusteeByName')
+        .mockResolvedValue({ kind: 'no-match' });
+      vi.spyOn(trusteeMatchHelpers, 'findTokenIntersectionCandidates').mockResolvedValue([]);
+      vi.spyOn(trusteeMatchHelpers, 'findAnchoredLevenshteinCandidates').mockResolvedValue([]);
+
+      await SyncAcmsProfessionalIds.processNameMatch(deps, {
+        ...record,
+        firstName: 'John',
+        middleInitial: '',
+        lastName: 'Smith',
+      });
+
+      expect(matchSpy).toHaveBeenCalledWith(
+        deps.context,
+        expect.objectContaining({ firstName: 'John', lastName: 'Smith' }),
+      );
+    });
+
     test('should return no-match when matchTrusteeByName finds no candidates and token intersection also finds nothing', async () => {
       vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({ kind: 'no-match' });
       vi.spyOn(trusteeMatchHelpers, 'findTokenIntersectionCandidates').mockResolvedValue([]);
