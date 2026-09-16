@@ -7,6 +7,7 @@ const ATTRIBUTION_WINDOW_MS = 24 * MS_PER_HOUR;
 export type SeverityHighBug = {
   number: number;
   created_at: string;
+  // Not used by this metric; reserved for a future time-to-resolve/MTTR metric.
   closed_at: string | null;
 };
 
@@ -50,11 +51,20 @@ export function computeChangeFailureRate(
     .map((bug) => ({ number: bug.number, createdAtMs: new Date(bug.created_at).getTime() }))
     .sort((a, b) => a.createdAtMs - b.createdAtMs);
 
+  const attributedBugNumbers = new Set<number>();
+
+  // Deployments are processed in ascending deployedAtMs order below, so the
+  // earliest qualifying deployment claims a bug; later deployments within the
+  // same window cannot re-attribute it.
   function findAttributedIssue(deployedAtMs: number): number | null {
     const windowEndMs = deployedAtMs + ATTRIBUTION_WINDOW_MS;
     const match = bugsByCreatedAt.find(
-      (bug) => bug.createdAtMs > deployedAtMs && bug.createdAtMs <= windowEndMs,
+      (bug) =>
+        !attributedBugNumbers.has(bug.number) &&
+        bug.createdAtMs > deployedAtMs &&
+        bug.createdAtMs <= windowEndMs,
     );
+    if (match) attributedBugNumbers.add(match.number);
     return match ? match.number : null;
   }
 

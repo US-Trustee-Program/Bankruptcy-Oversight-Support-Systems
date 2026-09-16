@@ -85,6 +85,37 @@ describe('computeChangeFailureRate', () => {
     expect(perDeployment[0].attributedIssueNumber).toBe(1);
   });
 
+  test('a bug is attributed to only the earliest of two deployments whose windows both cover it', () => {
+    const startDate = new Date('2026-01-01T00:00:00.000Z');
+    const endDate = new Date('2026-01-15T00:00:00.000Z');
+    const runs: WorkflowRun[] = [
+      { id: 1, conclusion: 'success', created_at: '2026-01-02T00:00:00.000Z' },
+      { id: 2, conclusion: 'success', created_at: '2026-01-02T06:00:00.000Z' },
+    ];
+    // Falls within 24h of both deployments above.
+    const bugIssues: SeverityHighBug[] = [
+      { number: 1, created_at: '2026-01-02T03:00:00.000Z', closed_at: null },
+    ];
+
+    const { perDeployment } = computeChangeFailureRate(bugIssues, runs, {
+      startDate,
+      periodDays: 7,
+      endDate,
+    });
+
+    expect(perDeployment).toHaveLength(2);
+    expect(perDeployment[0]).toEqual({
+      deployedAt: '2026-01-02T00:00:00.000Z',
+      isChangeFailure: true,
+      attributedIssueNumber: 1,
+    });
+    expect(perDeployment[1]).toEqual({
+      deployedAt: '2026-01-02T06:00:00.000Z',
+      isChangeFailure: false,
+      attributedIssueNumber: null,
+    });
+  });
+
   test('a deployment with zero qualifying bugs is not a change failure', () => {
     const startDate = new Date('2026-01-01T00:00:00.000Z');
     const endDate = new Date('2026-01-15T00:00:00.000Z');
