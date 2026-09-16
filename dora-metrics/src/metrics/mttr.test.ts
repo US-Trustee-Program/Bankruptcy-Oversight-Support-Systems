@@ -87,6 +87,49 @@ describe('computeMttr', () => {
     expect(perIncident).toEqual([]);
   });
 
+  test('excludes a non-success run from starting the attribution clock', () => {
+    const startDate = new Date('2026-01-01T00:00:00.000Z');
+    const endDate = new Date('2026-01-15T00:00:00.000Z');
+    const runs: WorkflowRun[] = [
+      { id: 1, conclusion: 'failure', created_at: '2026-01-02T00:00:00.000Z' },
+    ];
+    const bugIssues: SeverityHighBug[] = [
+      {
+        number: 1,
+        created_at: '2026-01-02T06:00:00.000Z',
+        closed_at: '2026-01-02T18:00:00.000Z',
+      },
+    ];
+
+    const { perIncident } = computeMttr(bugIssues, runs, { startDate, periodDays: 7, endDate });
+
+    expect(perIncident).toEqual([]);
+  });
+
+  test('excludes a deployment before startDate from starting the attribution clock', () => {
+    const startDate = new Date('2026-01-01T00:00:00.000Z');
+    const endDate = new Date('2026-01-15T00:00:00.000Z');
+    const runs: WorkflowRun[] = [
+      // Falls before startDate, so cannot attribute the bug below even
+      // though the bug is otherwise within its 24h attribution window.
+      { id: 1, conclusion: 'success', created_at: '2025-12-31T00:00:00.000Z' },
+    ];
+    const bugIssues: SeverityHighBug[] = [
+      // Within 24h of the excluded deployment, and itself inside
+      // [startDate, endDate) — isolates the deployment-side window filter
+      // from the incident-side one covered by the test above.
+      {
+        number: 1,
+        created_at: '2026-01-01T00:00:00.000Z',
+        closed_at: '2026-01-01T06:00:00.000Z',
+      },
+    ];
+
+    const { perIncident } = computeMttr(bugIssues, runs, { startDate, periodDays: 7, endDate });
+
+    expect(perIncident).toEqual([]);
+  });
+
   test('buckets an incident by created_at, not closed_at, when they fall in different periods', () => {
     const startDate = new Date('2026-01-01T00:00:00.000Z');
     const endDate = new Date('2026-01-22T00:00:00.000Z');

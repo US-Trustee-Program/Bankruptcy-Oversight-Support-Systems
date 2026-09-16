@@ -61,6 +61,21 @@ describe('attributeDeploymentsToBugs', () => {
     expect(result).toEqual([1, null]);
   });
 
+  test('when a bug is already claimed, a later overlapping deployment falls through to a different unclaimed bug', () => {
+    const firstDeployedAtMs = new Date('2026-01-02T00:00:00.000Z').getTime();
+    const secondDeployedAtMs = new Date('2026-01-02T06:00:00.000Z').getTime();
+    const bugs: AttributableBug[] = [
+      // Falls within 24h of both deployments; claimed by the first.
+      { number: 1, createdAtMs: new Date('2026-01-02T03:00:00.000Z').getTime() },
+      // Falls within 24h of the second deployment only.
+      { number: 2, createdAtMs: new Date('2026-01-02T18:00:00.000Z').getTime() },
+    ];
+
+    const result = attributeDeploymentsToBugs([firstDeployedAtMs, secondDeployedAtMs], bugs);
+
+    expect(result).toEqual([1, 2]);
+  });
+
   test('returns one null per deployment when there are no bugs', () => {
     const deployedAtMs = new Date('2026-01-02T00:00:00.000Z').getTime();
 
