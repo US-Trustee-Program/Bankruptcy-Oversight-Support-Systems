@@ -93,10 +93,24 @@ and a colleague's in-flight secret are indistinguishable from `main`.
 
 ### Shelf life
 
-The audit script is scaffolding; this runbook is the durable artifact. Because
-the list is frozen rather than derived, the script will keep auditing
-already-deleted names and cannot surface anything added later. Delete it once
-`cams-9n4tg` is verified complete — tracked as `cams-xug4r`.
+The gate script is scaffolding; this runbook is the durable artifact. Because
+its list is frozen rather than derived, it will keep auditing already-deleted
+names and cannot surface anything added later. Delete it once `cams-9n4tg` is
+verified complete — tracked as `cams-xug4r`.
+
+What survives is `ops/scripts/utility/audit-orphaned-gha-secrets.sh`, which
+enumerates live repository scope instead of checking a frozen list, and so keeps
+working after this cleanup is done:
+
+```bash
+./ops/scripts/utility/audit-orphaned-gha-secrets.sh
+```
+
+Silent when nothing has changed. It reports orphans as *evidence*, never as a
+deletion list — when it finds something, the answer is to come back to this
+runbook, not to delete what it printed. Its baseline is currently seeded with
+the 31 names below, so it will stay quiet until something genuinely new goes
+unreferenced.
 
 ## Why the ordering matters
 
