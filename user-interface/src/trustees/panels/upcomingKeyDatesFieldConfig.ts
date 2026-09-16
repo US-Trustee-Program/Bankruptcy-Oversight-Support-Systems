@@ -92,7 +92,7 @@ function idExpirationField(data: TrusteeUpcomingKeyDates | null): UpcomingKeyDat
 
 function bondRenewalDateField(data: TrusteeUpcomingKeyDates | null): UpcomingKeyDatesDisplayField {
   const value = data?.bondRenewalDate ? isoToMMDDYYYY(data.bondRenewalDate) : NO_DATE;
-  return { label: 'Bond Renewal Date', value, testId: 'bond-renewal-date-row' };
+  return { label: 'Bond Renewal', value, testId: 'bond-renewal-date-row' };
 }
 
 export const UPCOMING_KEY_DATES_FIELD_CONFIG: Record<

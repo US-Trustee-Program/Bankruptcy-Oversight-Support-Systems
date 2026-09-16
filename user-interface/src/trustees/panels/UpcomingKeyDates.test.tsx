@@ -451,11 +451,11 @@ describe('UpcomingKeyDates', () => {
       appointmentHeading: 'Southern District of New York (Manhattan) - Chapter 7 Elected',
     };
 
-    test('renders exactly one row: Bond Renewal Date', () => {
+    test('renders exactly one row: Bond Renewal', () => {
       renderComponent({ ...ch7ElectedProps, data: null });
 
       expect(screen.getByTestId('bond-renewal-date-row')).toBeInTheDocument();
-      expect(screen.getByText('Bond Renewal Date:')).toBeInTheDocument();
+      expect(screen.getByText('Bond Renewal:')).toBeInTheDocument();
       expect(screen.queryByTestId('tpr-review-period-row')).not.toBeInTheDocument();
       expect(screen.queryByTestId('tpr-due-row')).not.toBeInTheDocument();
       expect(screen.queryByTestId('lease-expiration-row')).not.toBeInTheDocument();

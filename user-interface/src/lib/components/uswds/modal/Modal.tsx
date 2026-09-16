@@ -16,6 +16,8 @@ type ModalShowOptions = {
   openModalButtonRef?: RefObject<OpenModalButtonRef | null>;
 };
 
+const visibleModalIds: string[] = [];
+
 interface ModalProps {
   modalId: string;
   className?: string;
@@ -138,8 +140,6 @@ function Modal_(props: ModalProps, ref: React.Ref<ModalRefType>) {
     }
 
     hide();
-
-    openModalButtonRef?.current?.focus();
   }
 
   useImperativeHandle(ref, () => ({
@@ -147,6 +147,19 @@ function Modal_(props: ModalProps, ref: React.Ref<ModalRefType>) {
     show: showModal,
     buttons: submitCancelButtonGroupRef,
   }));
+
+  useEffect(() => {
+    if (!isVisible) {
+      return;
+    }
+    visibleModalIds.push(props.modalId);
+    return () => {
+      const index = visibleModalIds.lastIndexOf(props.modalId);
+      if (index !== -1) {
+        visibleModalIds.splice(index, 1);
+      }
+    };
+  }, [isVisible, props.modalId]);
 
   useEffect(() => {
     let firstEl: HTMLElement | null = null;
@@ -209,6 +222,46 @@ function Modal_(props: ModalProps, ref: React.Ref<ModalRefType>) {
       };
     }
   }, [isVisible]);
+
+  useEffect(() => {
+    if (!isVisible) {
+      return;
+    }
+    document.body.classList.add('modal-open');
+    return () => {
+      if (document.querySelectorAll('.usa-modal-wrapper.is-visible').length === 0) {
+        document.body.classList.remove('modal-open');
+      }
+    };
+  }, [isVisible]);
+
+  useEffect(() => {
+    if (!isVisible) {
+      return;
+    }
+
+    const handleFocusIn = (ev: FocusEvent) => {
+      const modalEl = modalShellRef.current;
+      const target = ev.target;
+      const isTopmostModal = visibleModalIds[visibleModalIds.length - 1] === props.modalId;
+      if (isTopmostModal && modalEl && target instanceof Node && !modalEl.contains(target)) {
+        (firstElement ?? modalEl).focus();
+      }
+    };
+
+    document.addEventListener('focusin', handleFocusIn);
+
+    return () => {
+      document.removeEventListener('focusin', handleFocusIn);
+    };
+  }, [isVisible, firstElement]);
+
+  useEffect(() => {
+    if (isVisible) {
+      return;
+    }
+    openModalButtonRef?.current?.focus();
+  }, [isVisible, openModalButtonRef]);
 
   return (
     <div

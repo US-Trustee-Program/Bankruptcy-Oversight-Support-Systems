@@ -13,7 +13,7 @@ describe('PAST_KEY_DATES_FIELD_CONFIG chapter7-elected variant', () => {
     const field = config.find((f) => f.key === 'bondIssuedDate');
     expect(field).toMatchObject({
       key: 'bondIssuedDate',
-      displayLabel: 'Bond Issued Date',
+      displayLabel: 'Bond Issued',
       formLabel: 'Bond Issued Date',
       testId: 'bond-issued-date-row',
       inputId: 'bond-issued-date',

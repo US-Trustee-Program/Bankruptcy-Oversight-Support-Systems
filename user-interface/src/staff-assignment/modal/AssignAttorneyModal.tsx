@@ -97,7 +97,6 @@ function AssignAttorneyModal_(
     modalHeading: modalHeading,
     modalId: props.modalId,
     modalRef: controls.modalRef,
-    onOpen: useCase.onOpen,
     sortAttorneys: useCase.sortAttorneys,
     tableContainerRef: controls.tableContainerRef,
     updateCheckList: useCase.updateCheckList,
@@ -114,7 +113,6 @@ export default AssignAttorneyModal;
 
 function useAssignAttorneyModalStoreReact() {
   const [bCase, setBCase] = useState<CaseBasics | null>(null);
-  const [initialDocumentBodyStyle, setInitialDocumentBodyStyle] = useState<string>('');
   const [checkListValues, setCheckListValues] = useState<CamsUserReference[]>([]);
   const [previouslySelectedList, setPreviouslySelectedList] = useState<AttorneyUser[]>([]);
   const [isUpdatingAssignment, setIsUpdatingAssignment] = useState<boolean>(false);
@@ -126,8 +124,6 @@ function useAssignAttorneyModalStoreReact() {
   return {
     bCase,
     setBCase,
-    initialDocumentBodyStyle,
-    setInitialDocumentBodyStyle,
     checkListValues,
     setCheckListValues,
     previouslySelectedList,
