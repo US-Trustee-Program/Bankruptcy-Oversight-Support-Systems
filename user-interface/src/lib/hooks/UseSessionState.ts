@@ -1,9 +1,6 @@
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 
-export function useSessionState<T>(
-  key: string,
-  initialValue: T,
-): [T, (value: T | ((prev: T) => T)) => void] {
+export function useSessionState<T>(key: string, initialValue: T): [T, (value: T) => void] {
   const [state, setState] = useState<T>(() => {
     try {
       const item = window.sessionStorage.getItem(key);
@@ -13,22 +10,14 @@ export function useSessionState<T>(
     }
   });
 
-  const setValue = useCallback(
-    (value: T | ((prev: T) => T)) => {
-      setState((prev) => {
-        const next = typeof value === 'function' ? (value as (prev: T) => T)(prev) : value;
-        if (next !== prev) {
-          try {
-            window.sessionStorage.setItem(key, JSON.stringify(next));
-          } catch {
-            // sessionStorage unavailable — degrade to in-memory state only
-          }
-        }
-        return next;
-      });
-    },
-    [key],
-  );
+  function setValue(value: T) {
+    try {
+      window.sessionStorage.setItem(key, JSON.stringify(value));
+    } catch {
+      // sessionStorage unavailable — degrade to in-memory state only
+    }
+    setState(value);
+  }
 
   return [state, setValue];
 }

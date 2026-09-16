@@ -11,8 +11,6 @@ export enum UswdsTagStyle {
   BaseDarkest = 'bg-base-darkest',
   Secondary = 'bg-secondary',
   SecondaryDark = 'bg-secondary-dark',
-  Success = 'bg-success-vivid',
-  InactiveGray = 'bg-gray-cool-50',
 }
 
 type TagProps = JSX.IntrinsicElements['span'] & {
