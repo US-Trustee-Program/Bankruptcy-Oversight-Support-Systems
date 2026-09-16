@@ -1,5 +1,5 @@
 const MS_PER_HOUR = 60 * 60 * 1000;
-export const ATTRIBUTION_WINDOW_MS = 24 * MS_PER_HOUR;
+const ATTRIBUTION_WINDOW_MS = 24 * MS_PER_HOUR;
 
 export type AttributableBug = {
   number: number;
