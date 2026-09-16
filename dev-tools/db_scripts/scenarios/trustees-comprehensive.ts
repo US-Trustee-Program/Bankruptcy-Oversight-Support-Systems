@@ -286,7 +286,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
     }),
   );
 
-  // Additional-6: Ch11 Case by Case, Inactive (081) - exercises the appointment accordion's
+  // Additional-25: Ch11 Case by Case, Inactive (081) - exercises the appointment accordion's
   // collapsed/gray-tag state with dates distinct from the common 2020-01-01 default
   trustees.push(
     createTrustee({

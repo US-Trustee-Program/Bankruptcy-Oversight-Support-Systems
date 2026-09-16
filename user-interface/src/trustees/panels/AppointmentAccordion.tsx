@@ -42,18 +42,12 @@ export default function AppointmentAccordion(props: Readonly<AppointmentAccordio
             {districtDisplay} ({divisionsDisplay}) - Chapter{' '}
             {getAppointmentDetails(appointment.chapter, appointment.appointmentType)}
           </span>
-          {isActive ? (
-            <Tag uswdsStyle={UswdsTagStyle.Success} id={`appointment-status-tag-${appointment.id}`}>
-              Active
-            </Tag>
-          ) : (
-            <Tag
-              uswdsStyle={UswdsTagStyle.InactiveGray}
-              id={`appointment-status-tag-${appointment.id}`}
-            >
-              {formatAppointmentStatus(appointment.status)}
-            </Tag>
-          )}
+          <Tag
+            uswdsStyle={isActive ? UswdsTagStyle.Success : UswdsTagStyle.InactiveGray}
+            id={`appointment-status-tag-${appointment.id}`}
+          >
+            {formatAppointmentStatus(appointment.status)}
+          </Tag>
         </div>
         <div data-testid={`appointment-accordion-body-${appointment.id}`}>{children}</div>
       </Accordion>

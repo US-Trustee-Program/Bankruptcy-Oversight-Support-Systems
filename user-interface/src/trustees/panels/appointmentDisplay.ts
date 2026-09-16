@@ -1,5 +1,6 @@
 import { formatDate } from '@/lib/utils/datetime';
 import { AppointmentStatus } from '@common/cams/trustees';
+import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 
 const UNIX_EPOCH = '1970-01-01';
 
@@ -19,14 +20,11 @@ export function formatAppointmentDate(dateString: string): string {
   return formatDate(dateString);
 }
 
-export function buildDistrictDisplay(appointment: {
-  courtName?: string;
-  courtId?: string;
-}): string {
+export function buildDistrictDisplay(
+  appointment: Pick<TrusteeAppointment, 'courtName' | 'courtId'>,
+): string {
   if (appointment.courtName) {
     return appointment.courtName;
-  } else if (appointment.courtId) {
-    return `Court ${appointment.courtId}`;
   }
-  return 'Court information not available';
+  return `Court ${appointment.courtId}`;
 }

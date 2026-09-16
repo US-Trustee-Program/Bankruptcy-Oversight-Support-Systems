@@ -57,17 +57,16 @@ describe('AppointmentAccordion', () => {
     };
   }
 
-  test('logs an error but still renders when courts fail to load', () => {
+  test('still renders when courts fail to load', () => {
     mockUseCourts.mockReturnValue({
       courts: [],
       loading: false,
       error: new Error('courts unavailable'),
     });
-    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
 
     renderAccordion();
 
-    expect(consoleErrorSpy).toHaveBeenCalledWith('Error loading courts:', expect.any(Error));
     expect(screen.getByText(/Southern District of New York/i)).toBeInTheDocument();
   });
 

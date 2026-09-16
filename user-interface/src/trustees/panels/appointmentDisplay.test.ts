@@ -12,18 +12,14 @@ describe('appointmentDisplay', () => {
   });
 
   describe('buildDistrictDisplay', () => {
-    test('uses courtName when available', () => {
-      expect(buildDistrictDisplay({ courtName: 'Southern District of New York' })).toBe(
-        'Southern District of New York',
-      );
+    test('uses courtName over courtId when both are available', () => {
+      expect(
+        buildDistrictDisplay({ courtName: 'Southern District of New York', courtId: '0208' }),
+      ).toBe('Southern District of New York');
     });
 
     test('falls back to courtId when courtName is missing', () => {
       expect(buildDistrictDisplay({ courtId: '0208' })).toBe('Court 0208');
-    });
-
-    test('falls back to a default message when neither is available', () => {
-      expect(buildDistrictDisplay({})).toBe('Court information not available');
     });
   });
 });
