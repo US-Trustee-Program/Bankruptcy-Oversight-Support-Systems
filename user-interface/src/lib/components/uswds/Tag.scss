@@ -3,8 +3,18 @@
 .usa-tag {
   white-space: nowrap;
 
-  .bg-success {
+  &.bg-success {
     background-color: colors.$success;
+  }
+
+  &.bg-success-vivid {
+    background-color: colors.$success-vivid;
+    color: white;
+  }
+
+  &.bg-gray-cool-50 {
+    background-color: colors.$gray-cool-50;
+    color: white;
   }
 }
 

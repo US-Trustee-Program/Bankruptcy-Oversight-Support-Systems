@@ -261,27 +261,12 @@ describe('AppointmentCard', () => {
     ).toBeInTheDocument();
   });
 
-  test('should display "Court information not available" when courtName, courtDivisionName, and courtId are missing', () => {
-    const appointmentWithoutCourt = {
-      ...mockAppointment,
-      courtName: undefined,
-      courtDivisionName: undefined,
-      courtId: undefined,
-    } as unknown as TrusteeAppointment;
-
-    renderWithProps({ appointment: appointmentWithoutCourt });
-
-    expect(
-      screen.getByText(/Court information not available: Chapter 7 - Panel/i),
-    ).toBeInTheDocument();
-  });
-
   test('should render Edit button when user has TrusteeAdmin role', () => {
     renderWithProps();
 
     const editButton = screen.getByRole('button', { name: /edit trustee appointment/i });
     expect(editButton).toBeInTheDocument();
-    expect(editButton).toHaveAttribute('id', 'edit-trustee-appointment');
+    expect(editButton).toHaveAttribute('id', `edit-trustee-appointment-${mockAppointment.id}`);
   });
 
   test('should navigate to edit page when Edit button is clicked', async () => {

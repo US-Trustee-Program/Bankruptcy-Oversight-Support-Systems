@@ -45,6 +45,13 @@ export function isChapter7Elected(
   return chapter === '7' && appointmentType === 'elected';
 }
 
+export function isChapter11CaseByCase(
+  chapter: AppointmentChapterType,
+  appointmentType: AppointmentType,
+): boolean {
+  return chapter === '11' && appointmentType === 'case-by-case';
+}
+
 export function formatAppointmentStatus(status: AppointmentStatus): string {
   const statusLabels: Record<AppointmentStatus, string> = {
     active: 'Active',

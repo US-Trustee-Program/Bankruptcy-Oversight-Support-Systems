@@ -251,7 +251,7 @@ export default function TrusteeDetailScreen() {
             <TrusteeDetailNavigation trusteeId={trusteeId} initiallySelectedNavLink={navState} />
           </div>
           <div className="main-content-area">
-            <TrusteeAppointments trusteeId={trusteeId} />
+            <TrusteeAppointments key={trusteeId} trusteeId={trusteeId} />
           </div>
         </div>
       ),
