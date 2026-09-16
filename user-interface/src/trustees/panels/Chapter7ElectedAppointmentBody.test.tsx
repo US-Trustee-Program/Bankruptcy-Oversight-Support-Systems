@@ -5,6 +5,8 @@ import Api2 from '@/lib/models/api2';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
+import * as featureFlagsHook from '@/lib/hooks/UseFeatureFlags';
+import { DISPLAY_CHPT7_ELECTED_KEY_DATES } from '@/lib/hooks/UseFeatureFlags';
 
 vi.mock('./AppointmentBasicFields', () => ({
   default: (props: { appointment: TrusteeAppointment }) => (
@@ -55,6 +57,9 @@ describe('Chapter7ElectedAppointmentBody', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+      [DISPLAY_CHPT7_ELECTED_KEY_DATES]: true,
+    });
   });
 
   function renderBody(appointment: TrusteeAppointment = mockAppointment) {
@@ -94,7 +99,7 @@ describe('Chapter7ElectedAppointmentBody', () => {
     });
   });
 
-  test('forwards null data to BondKeyDatesCard when the fetch fails', async () => {
+  test('shows an error alert instead of the Bond card when the fetch fails', async () => {
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const fetchError = new Error('network error');
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockRejectedValue(fetchError);
@@ -102,9 +107,22 @@ describe('Chapter7ElectedAppointmentBody', () => {
     renderBody();
 
     await waitFor(() => {
-      expect(screen.getByTestId('bond-key-dates-card')).toHaveAttribute('data-is-loading', 'false');
+      expect(screen.getByTestId('alert-bond-key-dates-error')).toBeInTheDocument();
     });
-    expect(screen.getByTestId('bond-key-dates-card')).toHaveAttribute('data-has-data', 'false');
+    expect(screen.queryByTestId('bond-key-dates-card')).not.toBeInTheDocument();
     expect(consoleErrorSpy).toHaveBeenCalledWith('Could not load bond key dates', fetchError);
+  });
+
+  test('does not fetch or render the Bond card when DISPLAY_CHPT7_ELECTED_KEY_DATES is disabled', () => {
+    vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+      [DISPLAY_CHPT7_ELECTED_KEY_DATES]: false,
+    });
+    const getSpy = vi.spyOn(Api2, 'getUpcomingKeyDates');
+
+    renderBody();
+
+    expect(getSpy).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('bond-key-dates-card')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('alert-bond-key-dates-error')).not.toBeInTheDocument();
   });
 });
