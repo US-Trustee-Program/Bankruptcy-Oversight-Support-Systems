@@ -1,16 +1,7 @@
 import './BondKeyDatesCard.scss';
 import { useNavigate } from 'react-router-dom';
-import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
-import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
-import {
-  CamsTable,
-  CamsTableHeader,
-  CamsTableHeaderCell,
-  CamsTableBody,
-  CamsTableRow,
-  CamsTableCell,
-} from '@/lib/components/cams/CamsTable';
+import EditableTableCard from '@/lib/components/cams/EditableTableCard/EditableTableCard';
 import { TrusteeUpcomingKeyDates, isoToMMDDYYYY } from '@common/cams/trustee-upcoming-key-dates';
 import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
@@ -42,45 +33,25 @@ export default function BondKeyDatesCard(props: Readonly<BondKeyDatesCardProps>)
   }
 
   return (
-    <div className="bond-key-dates-card usa-card" data-testid="bond-key-dates-card">
-      <div className="usa-card__container">
-        <div className="usa-card__body">
-          <div className="bond-key-dates-card-header">
-            <h4>Bond</h4>
-            {canManage && (
-              <Button
-                id={`edit-bond-key-dates-${appointmentId}`}
-                uswdsStyle={UswdsButtonStyle.Unstyled}
-                aria-label="Edit bond key dates"
-                title="Edit bond key dates"
-                onClick={openEdit}
-              >
-                <IconLabel icon="edit" label="Edit" />
-              </Button>
-            )}
-          </div>
-          <CamsTable
-            id={`bond-key-dates-table-${appointmentId}`}
-            className="bond-key-dates-table"
-            aria-label="Bond key dates"
-          >
-            <CamsTableHeader>
-              <CamsTableHeaderCell>Bond Renewal</CamsTableHeaderCell>
-              <CamsTableHeaderCell>Bond Issued</CamsTableHeaderCell>
-            </CamsTableHeader>
-            <CamsTableBody>
-              <CamsTableRow>
-                <CamsTableCell data-cell="Bond Renewal" data-testid="bond-renewal-date">
-                  {formatDateOrDefault(data?.bondRenewalDate)}
-                </CamsTableCell>
-                <CamsTableCell data-cell="Bond Issued" data-testid="bond-issued-date">
-                  {formatDateOrDefault(data?.bondIssuedDate)}
-                </CamsTableCell>
-              </CamsTableRow>
-            </CamsTableBody>
-          </CamsTable>
-        </div>
-      </div>
-    </div>
+    <EditableTableCard
+      id={`edit-bond-key-dates-${appointmentId}`}
+      title="Bond"
+      testId="bond-key-dates-card"
+      className="bond-key-dates-card"
+      tableId={`bond-key-dates-table-${appointmentId}`}
+      tableClassName="bond-key-dates-table"
+      tableAriaLabel="Bond key dates"
+      onEdit={canManage ? openEdit : undefined}
+      editAriaLabel="Edit bond key dates"
+      editTitle="Edit bond key dates"
+      columns={[
+        { key: 'bondRenewalDate', header: 'Bond Renewal', testId: 'bond-renewal-date' },
+        { key: 'bondIssuedDate', header: 'Bond Issued', testId: 'bond-issued-date' },
+      ]}
+      values={{
+        bondRenewalDate: formatDateOrDefault(data?.bondRenewalDate),
+        bondIssuedDate: formatDateOrDefault(data?.bondIssuedDate),
+      }}
+    />
   );
 }

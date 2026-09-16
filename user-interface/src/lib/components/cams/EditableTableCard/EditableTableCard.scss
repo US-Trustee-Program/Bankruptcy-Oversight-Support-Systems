@@ -1,0 +1,17 @@
+.editable-table-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.65rem;
+
+  .editable-table-card-heading {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  h4 {
+    margin: 0;
+    font-weight: bold;
+  }
+}
