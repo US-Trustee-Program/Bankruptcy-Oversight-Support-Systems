@@ -327,7 +327,6 @@ describe('TrusteeAppointments', () => {
       status: 'active',
       courtName: 'Southern District of New York',
     });
-
     beforeEach(() => {
       window.sessionStorage.clear();
     });

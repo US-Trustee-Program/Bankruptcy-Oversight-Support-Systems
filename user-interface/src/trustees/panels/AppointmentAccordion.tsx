@@ -6,7 +6,7 @@ import { TrusteeAppointment, formatAppointmentStatus } from '@common/cams/truste
 import { getAppointmentDetails } from '@common/cams/trustees';
 import useCourts from '@/lib/hooks/UseCourts';
 import { buildDivisionsDisplay } from '@/lib/utils/court-utils';
-import { buildDistrictDisplay } from './appointmentDisplay';
+import { buildDistrictDisplay, isActiveAppointment } from './appointmentDisplay';
 
 export interface AppointmentAccordionProps {
   appointment: TrusteeAppointment;
@@ -25,7 +25,7 @@ export default function AppointmentAccordion(props: Readonly<AppointmentAccordio
 
   const districtDisplay = buildDistrictDisplay(appointment);
   const divisionsDisplay = buildDivisionsDisplay(appointment, allCourts);
-  const isActive = appointment.status === 'active';
+  const isActive = isActiveAppointment(appointment.status);
 
   return (
     <div className="appointment-accordion">

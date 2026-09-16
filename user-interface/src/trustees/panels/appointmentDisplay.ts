@@ -1,6 +1,11 @@
 import { formatDate } from '@/lib/utils/datetime';
+import { AppointmentStatus } from '@common/cams/trustees';
 
 const UNIX_EPOCH = '1970-01-01';
+
+export function isActiveAppointment(status: AppointmentStatus): boolean {
+  return status === 'active';
+}
 
 /**
  * Format appointment date with special handling for sentinel values.

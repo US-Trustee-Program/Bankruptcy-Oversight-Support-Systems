@@ -2,7 +2,7 @@ import './TrusteeAppointments.scss';
 import { useEffect, useState } from 'react';
 import Api2 from '@/lib/models/api2';
 import { sortByCourtLocation } from '@/lib/utils/court-utils';
-import { TrusteeAppointment } from '@common/cams/trustee-appointments';
+import { TrusteeAppointment, isChapter11CaseByCase } from '@common/cams/trustee-appointments';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import AppointmentCard from './AppointmentCard';
@@ -12,6 +12,7 @@ import Button from '@/lib/components/uswds/Button';
 import Icon from '@/lib/components/uswds/Icon';
 import { useNavigate } from 'react-router-dom';
 import { useSessionState } from '@/lib/hooks/UseSessionState';
+import { isActiveAppointment } from './appointmentDisplay';
 
 interface TrusteeAppointmentsProps {
   trusteeId: string;
@@ -33,12 +34,8 @@ export default function TrusteeAppointments(props: Readonly<TrusteeAppointmentsP
     {},
   );
 
-  function isChapter11CaseByCase(appointment: TrusteeAppointment): boolean {
-    return appointment.chapter === '11' && appointment.appointmentType === 'case-by-case';
-  }
-
   function defaultExpanded(appointment: TrusteeAppointment): boolean {
-    return appointment.status === 'active';
+    return isActiveAppointment(appointment.status);
   }
 
   function isExpanded(appointment: TrusteeAppointment): boolean {
@@ -156,7 +153,7 @@ export default function TrusteeAppointments(props: Readonly<TrusteeAppointmentsP
       </div>
       <div className="appointments-list">
         {sortedAppointments.map((appointment) =>
-          isChapter11CaseByCase(appointment) ? (
+          isChapter11CaseByCase(appointment.chapter, appointment.appointmentType) ? (
             <AppointmentAccordion
               key={appointment.id}
               appointment={appointment}
