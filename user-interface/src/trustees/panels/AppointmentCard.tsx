@@ -123,7 +123,10 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
   }, [props.appointment.trusteeId, props.appointment.id, shouldFetchKeyDates]);
 
   return (
-    <div className="appointment-card-container">
+    <div
+      className="appointment-card-container"
+      data-testid={`appointment-card-${props.appointment.id}`}
+    >
       <h3 className="appointment-card-heading">{appointmentCardHeaderText}</h3>
       <div className="appointment-cards-row">
         <InfoCard

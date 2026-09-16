@@ -30,8 +30,6 @@ export function buildDistrictDisplay(appointment: {
 }): string {
   if (appointment.courtName) {
     return appointment.courtName;
-  } else if (appointment.courtId) {
-    return `Court ${appointment.courtId}`;
   }
-  return 'Court information not available';
+  return `Court ${appointment.courtId}`;
 }
