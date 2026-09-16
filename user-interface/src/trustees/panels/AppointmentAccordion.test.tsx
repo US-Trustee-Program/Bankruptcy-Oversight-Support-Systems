@@ -97,16 +97,24 @@ describe('AppointmentAccordion', () => {
     expect(tag).toHaveClass('bg-gray-cool-50');
   });
 
-  test('renders children content when expanded is true', () => {
+  test('shows children content and marks the button expanded when expanded is true', () => {
     renderAccordion({ expanded: true });
 
-    expect(screen.getByTestId('accordion-body-content')).toBeInTheDocument();
+    expect(screen.getByTestId('accordion-body-content')).toBeVisible();
+    expect(screen.getByTestId(`accordion-button-${mockAppointment.id}`)).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
   });
 
-  test('does not render children content when expanded is false', () => {
+  test('hides children content and marks the button collapsed when expanded is false', () => {
     renderAccordion({ expanded: false });
 
-    expect(screen.queryByTestId('accordion-body-content')).not.toBeInTheDocument();
+    expect(screen.getByTestId('accordion-body-content')).not.toBeVisible();
+    expect(screen.getByTestId(`accordion-button-${mockAppointment.id}`)).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
   });
 
   test('calls onToggle with the appointment id when the header is clicked', async () => {

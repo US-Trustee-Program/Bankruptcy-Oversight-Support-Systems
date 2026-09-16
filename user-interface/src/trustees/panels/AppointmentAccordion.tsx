@@ -55,9 +55,7 @@ export default function AppointmentAccordion(props: Readonly<AppointmentAccordio
             </Tag>
           )}
         </div>
-        <div data-testid={`appointment-accordion-body-${appointment.id}`}>
-          {expanded && children}
-        </div>
+        <div data-testid={`appointment-accordion-body-${appointment.id}`}>{children}</div>
       </Accordion>
     </div>
   );

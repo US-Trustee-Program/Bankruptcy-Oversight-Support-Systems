@@ -332,6 +332,12 @@ describe('TrusteeAppointments', () => {
       window.sessionStorage.clear();
     });
 
+    // Body content is now always mounted (see AppointmentAccordion); expand/collapse
+    // is expressed via the `hidden` attribute on an ancestor, not DOM presence.
+    function isAppointmentExpanded(appointmentId: string): boolean {
+      return !screen.getByTestId(`appointment-accordion-body-${appointmentId}`).closest('[hidden]');
+    }
+
     test('renders Chapter 11 Case by Case appointments via the accordion and other types via AppointmentCard', async () => {
       vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({
         data: [ch11Active, ch7Panel],
@@ -353,7 +359,7 @@ describe('TrusteeAppointments', () => {
       renderComponent('trustee-123');
 
       await waitFor(() => {
-        expect(screen.getByText(/Appointed/i)).toBeInTheDocument();
+        expect(isAppointmentExpanded(ch11Active.id)).toBe(true);
       });
     });
 
@@ -367,7 +373,7 @@ describe('TrusteeAppointments', () => {
           screen.getByTestId(`appointment-accordion-header-${ch11Inactive.id}`),
         ).toBeInTheDocument();
       });
-      expect(screen.queryByText(/Appointed/i)).not.toBeInTheDocument();
+      expect(isAppointmentExpanded(ch11Inactive.id)).toBe(false);
     });
 
     test('multiple active Chapter 11 Case by Case appointments can be expanded simultaneously', async () => {
@@ -378,7 +384,8 @@ describe('TrusteeAppointments', () => {
       renderComponent('trustee-123');
 
       await waitFor(() => {
-        expect(screen.getAllByText(/Appointed/i)).toHaveLength(2);
+        expect(isAppointmentExpanded(ch11Active.id)).toBe(true);
+        expect(isAppointmentExpanded(ch11ActiveTwo.id)).toBe(true);
       });
     });
 
@@ -391,13 +398,15 @@ describe('TrusteeAppointments', () => {
       renderComponent('trustee-123');
 
       await waitFor(() => {
-        expect(screen.getAllByText(/Appointed/i)).toHaveLength(1);
+        expect(isAppointmentExpanded(ch11Active.id)).toBe(true);
+        expect(isAppointmentExpanded(ch11Inactive.id)).toBe(false);
       });
 
       await user.click(screen.getByTestId(`accordion-button-${ch11Inactive.id}`));
 
       await waitFor(() => {
-        expect(screen.getAllByText(/Appointed/i)).toHaveLength(2);
+        expect(isAppointmentExpanded(ch11Active.id)).toBe(true);
+        expect(isAppointmentExpanded(ch11Inactive.id)).toBe(true);
       });
     });
 
@@ -408,13 +417,13 @@ describe('TrusteeAppointments', () => {
       renderComponent('trustee-123');
 
       await waitFor(() => {
-        expect(screen.getByText(/Appointed/i)).toBeInTheDocument();
+        expect(isAppointmentExpanded(ch11Active.id)).toBe(true);
       });
 
       await user.click(screen.getByTestId(`accordion-button-${ch11Active.id}`));
 
       await waitFor(() => {
-        expect(screen.queryByText(/Appointed/i)).not.toBeInTheDocument();
+        expect(isAppointmentExpanded(ch11Active.id)).toBe(false);
       });
     });
 
@@ -427,18 +436,18 @@ describe('TrusteeAppointments', () => {
       const { unmount } = renderComponent('trustee-123');
 
       await waitFor(() => {
-        expect(screen.getByText(/Appointed/i)).toBeInTheDocument();
+        expect(isAppointmentExpanded(ch11Active.id)).toBe(true);
       });
 
       // Explicitly collapse it, then re-expand it, recording an explicit
       // toggle for the "active" status in session state.
       await user.click(screen.getByTestId(`accordion-button-${ch11Active.id}`));
       await waitFor(() => {
-        expect(screen.queryByText(/Appointed/i)).not.toBeInTheDocument();
+        expect(isAppointmentExpanded(ch11Active.id)).toBe(false);
       });
       await user.click(screen.getByTestId(`accordion-button-${ch11Active.id}`));
       await waitFor(() => {
-        expect(screen.getByText(/Appointed/i)).toBeInTheDocument();
+        expect(isAppointmentExpanded(ch11Active.id)).toBe(true);
       });
 
       unmount();
@@ -455,7 +464,7 @@ describe('TrusteeAppointments', () => {
           screen.getByTestId(`appointment-accordion-header-${ch11Active.id}`),
         ).toBeInTheDocument();
       });
-      expect(screen.queryByText(/Appointed/i)).not.toBeInTheDocument();
+      expect(isAppointmentExpanded(ch11Active.id)).toBe(false);
     });
 
     test('toggling an appointment persists its expand state across simulated navigation within the same session', async () => {
@@ -469,12 +478,12 @@ describe('TrusteeAppointments', () => {
           screen.getByTestId(`appointment-accordion-header-${ch11Inactive.id}`),
         ).toBeInTheDocument();
       });
-      expect(screen.queryByText(/Appointed/i)).not.toBeInTheDocument();
+      expect(isAppointmentExpanded(ch11Inactive.id)).toBe(false);
 
       await user.click(screen.getByTestId(`accordion-button-${ch11Inactive.id}`));
 
       await waitFor(() => {
-        expect(screen.getByText(/Appointed/i)).toBeInTheDocument();
+        expect(isAppointmentExpanded(ch11Inactive.id)).toBe(true);
       });
 
       unmount();
@@ -482,7 +491,7 @@ describe('TrusteeAppointments', () => {
       renderComponent('trustee-123');
 
       await waitFor(() => {
-        expect(screen.getByText(/Appointed/i)).toBeInTheDocument();
+        expect(isAppointmentExpanded(ch11Inactive.id)).toBe(true);
       });
     });
 
@@ -499,12 +508,12 @@ describe('TrusteeAppointments', () => {
           screen.getByTestId(`appointment-accordion-header-${ch11Inactive.id}`),
         ).toBeInTheDocument();
       });
-      expect(screen.queryByText(/Appointed/i)).not.toBeInTheDocument();
+      expect(isAppointmentExpanded(ch11Inactive.id)).toBe(false);
 
       // Explicitly expand it while inactive, recording an override for "inactive".
       await user.click(screen.getByTestId(`accordion-button-${ch11Inactive.id}`));
       await waitFor(() => {
-        expect(screen.getByText(/Appointed/i)).toBeInTheDocument();
+        expect(isAppointmentExpanded(ch11Inactive.id)).toBe(true);
       });
 
       unmountFirst();
@@ -515,7 +524,7 @@ describe('TrusteeAppointments', () => {
       });
       const { unmount: unmountSecond } = renderComponent('trustee-123');
       await waitFor(() => {
-        expect(screen.getByText(/Appointed/i)).toBeInTheDocument();
+        expect(isAppointmentExpanded(ch11Inactive.id)).toBe(true);
       });
       unmountSecond();
 
@@ -528,7 +537,7 @@ describe('TrusteeAppointments', () => {
         ).toBeInTheDocument();
       });
       // The stale "inactive" override from before the cycle must not be reused.
-      expect(screen.queryByText(/Appointed/i)).not.toBeInTheDocument();
+      expect(isAppointmentExpanded(ch11Inactive.id)).toBe(false);
     });
 
     test('toggling two different appointments in the same update batch updates both independently', async () => {
@@ -549,7 +558,8 @@ describe('TrusteeAppointments', () => {
           screen.getByTestId(`appointment-accordion-header-${ch11Inactive.id}`),
         ).toBeInTheDocument();
       });
-      expect(screen.queryByText(/Appointed/i)).not.toBeInTheDocument();
+      expect(isAppointmentExpanded(ch11Inactive.id)).toBe(false);
+      expect(isAppointmentExpanded(ch11InactiveTwo.id)).toBe(false);
 
       // Fire both toggles within a single update batch so a closure-captured
       // (rather than functional) state update would drop one of them.
@@ -559,7 +569,8 @@ describe('TrusteeAppointments', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getAllByText(/Appointed/i)).toHaveLength(2);
+        expect(isAppointmentExpanded(ch11Inactive.id)).toBe(true);
+        expect(isAppointmentExpanded(ch11InactiveTwo.id)).toBe(true);
       });
     });
   });
