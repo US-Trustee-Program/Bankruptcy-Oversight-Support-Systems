@@ -14,7 +14,6 @@ import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
 import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
 import { Stop } from '@/lib/components/Stop';
-import useFeatureFlags, { DISPLAY_CHPT7_ELECTED_ACCORDION } from '@/lib/hooks/UseFeatureFlags';
 
 type BondKeyDatesFormState = {
   bondIssuedDate: string;
@@ -72,19 +71,14 @@ export default function BondKeyDatesForm() {
   const navigate = useNavigate();
   const globalAlert = useGlobalAlert();
   const canManage = !!LocalStorage.getSession()?.user?.roles?.includes(CamsRole.TrusteeAdmin);
-  const featureFlags = useFeatureFlags();
-  const displayChpt7ElectedAccordion = featureFlags[DISPLAY_CHPT7_ELECTED_ACCORDION] === true;
 
-  const [isLoading, setIsLoading] = useState(displayChpt7ElectedAccordion);
+  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [form, setForm] = useState<BondKeyDatesFormState>(EMPTY_FORM);
   const [original, setOriginal] = useState<TrusteeUpcomingKeyDates | null>(null);
   const { registerFieldError, hasErrorAmong } = useDateFieldErrors();
 
   useEffect(() => {
-    if (!displayChpt7ElectedAccordion) {
-      return;
-    }
     Api2.getUpcomingKeyDates(trusteeId!, appointmentId!)
       .then((response) => {
         const data = response.data;
@@ -102,7 +96,7 @@ export default function BondKeyDatesForm() {
       .finally(() => {
         setIsLoading(false);
       });
-  }, [trusteeId, appointmentId, displayChpt7ElectedAccordion]);
+  }, [trusteeId, appointmentId]);
 
   function handleDateChange(field: keyof BondKeyDatesFormState) {
     return (ev: React.ChangeEvent<HTMLInputElement>) => {
@@ -130,16 +124,6 @@ export default function BondKeyDatesForm() {
 
   function handleCancel() {
     navigate(`/trustees/${trusteeId}/appointments`);
-  }
-
-  if (!displayChpt7ElectedAccordion) {
-    return (
-      <Stop
-        id="chapter7-elected-accordion-disabled-alert"
-        title="Moved"
-        message="Bond key dates for this appointment are managed from the appointment's Upcoming Key Dates form."
-      />
-    );
   }
 
   if (isLoading) {

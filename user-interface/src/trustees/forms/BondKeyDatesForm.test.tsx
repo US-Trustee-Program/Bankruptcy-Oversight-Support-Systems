@@ -8,8 +8,6 @@ import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { CamsRole } from '@common/cams/roles';
 import { GlobalAlertContext } from '@/App';
-import * as featureFlagsHook from '@/lib/hooks/UseFeatureFlags';
-import { DISPLAY_CHPT7_ELECTED_ACCORDION } from '@/lib/hooks/UseFeatureFlags';
 
 const mockUseNavigate = vi.hoisted(() => vi.fn());
 const mockUseParams = vi.hoisted(() =>
@@ -72,23 +70,6 @@ describe('BondKeyDatesForm', () => {
     mockUseNavigate.mockReturnValue(mockNavigate);
     TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
     userEvent = TestingUtilities.setupUserEvent();
-    vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-      [DISPLAY_CHPT7_ELECTED_ACCORDION]: true,
-    });
-  });
-
-  test('shows a "moved" message when the accordion flag is disabled', () => {
-    vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-      [DISPLAY_CHPT7_ELECTED_ACCORDION]: false,
-    });
-    const getSpy = vi.spyOn(Api2, 'getUpcomingKeyDates');
-
-    renderComponent();
-
-    expect(screen.getByTestId('alert-chapter7-elected-accordion-disabled-alert')).toHaveTextContent(
-      'Moved',
-    );
-    expect(getSpy).not.toHaveBeenCalled();
   });
 
   test('shows forbidden message when user lacks TrusteeAdmin role', async () => {
