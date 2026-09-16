@@ -281,7 +281,7 @@ describe('AppointmentCard', () => {
 
     const editButton = screen.getByRole('button', { name: /edit trustee appointment/i });
     expect(editButton).toBeInTheDocument();
-    expect(editButton).toHaveAttribute('id', 'edit-trustee-appointment');
+    expect(editButton).toHaveAttribute('id', `edit-trustee-appointment-${mockAppointment.id}`);
   });
 
   test('should navigate to edit page when Edit button is clicked', async () => {

@@ -6,9 +6,7 @@ import InfoCard from './InfoCard';
 import { TrusteeAppointment, formatAppointmentStatus } from '@common/cams/trustee-appointments';
 import { formatChapterType, formatAppointmentType } from '@common/cams/trustees';
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
-import { useNavigate } from 'react-router-dom';
-import LocalStorage from '@/lib/utils/local-storage';
-import { CamsRole } from '@common/cams/roles';
+import useEditTrusteeAppointment from '@/lib/hooks/UseEditTrusteeAppointment';
 import useFeatureFlags, {
   DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES,
   DISPLAY_CHPT11_SUBV_PAST_KEY_DATES,
@@ -33,9 +31,7 @@ export interface AppointmentCardProps {
 }
 
 export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
-  const navigate = useNavigate();
-  const session = LocalStorage.getSession();
-  const canManage = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
+  const { canManage, openEditTrustee } = useEditTrusteeAppointment(props.appointment);
 
   const featureFlags = useFeatureFlags();
   const displayChpt7PanelUpcomingKeyDates =
@@ -65,10 +61,6 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
   const formattedEffectiveDate = formatAppointmentDate(props.appointment.effectiveDate);
   const formattedAppointedDate = formatAppointmentDate(props.appointment.appointedDate);
   const formattedStatus = formatAppointmentStatus(props.appointment.status);
-
-  function openEditTrustee() {
-    navigate(`/trustees/${props.appointment.trusteeId}/appointments/${props.appointment.id}/edit`);
-  }
 
   const appointmentCardHeaderText = `${districtDisplay}: Chapter ${formattedChapter} - ${formattedAppointmentType}`;
 
@@ -135,7 +127,7 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
       <h3 className="appointment-card-heading">{appointmentCardHeaderText}</h3>
       <div className="appointment-cards-row">
         <InfoCard
-          id="edit-trustee-appointment"
+          id={`edit-trustee-appointment-${props.appointment.id}`}
           title="Key Information"
           onEdit={canManage ? openEditTrustee : undefined}
           editAriaLabel="Edit trustee appointment"

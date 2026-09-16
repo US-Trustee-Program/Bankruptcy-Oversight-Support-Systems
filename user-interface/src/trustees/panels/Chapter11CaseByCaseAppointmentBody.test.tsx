@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
 import userEvent from '@testing-library/user-event';
@@ -52,18 +52,20 @@ describe('Chapter11CaseByCaseAppointmentBody', () => {
     );
   }
 
-  test('renders the appointed date', () => {
+  test('renders the appointed date in the appointed date field', () => {
     renderBody();
 
-    expect(screen.getByText(/Appointed/i)).toBeInTheDocument();
-    expect(screen.getByText('01/15/2020')).toBeInTheDocument();
+    const appointedField = within(screen.getByTestId('appointment-body-appointed-date'));
+    expect(appointedField.getByText(/Appointed/i)).toBeInTheDocument();
+    expect(appointedField.getByText('01/15/2020')).toBeInTheDocument();
   });
 
-  test('renders the status effective date', () => {
+  test('renders the status effective date in the status effective field', () => {
     renderBody();
 
-    expect(screen.getByText(/Status Effective/i)).toBeInTheDocument();
-    expect(screen.getByText('06/01/2021')).toBeInTheDocument();
+    const effectiveField = within(screen.getByTestId('appointment-body-status-effective-date'));
+    expect(effectiveField.getByText(/Status Effective/i)).toBeInTheDocument();
+    expect(effectiveField.getByText('06/01/2021')).toBeInTheDocument();
   });
 
   test('displays "Not Specified" for Unix epoch sentinel dates', () => {
