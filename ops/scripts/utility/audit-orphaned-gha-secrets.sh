@@ -137,6 +137,29 @@ fi
 if ! scan_prepare; then
   err "could not build the file set to scan."
 fi
+
+# The active-branch check reads LOCAL refs/remotes/origin, so a clone that has
+# not fetched recently cannot see recent branches -- and a secret in use on a
+# branch this clone has never seen would be reported as an orphan. Being
+# report-only softens that, but it would still point someone at a live secret.
+# Compare against the remote and refuse to report rather than guess.
+if git rev-parse --git-dir >/dev/null 2>&1; then
+  if remote_heads=$(git ls-remote --heads origin 2>/dev/null); then
+    missing=0
+    while read -r sha ref; do
+      [[ -z "${ref}" ]] && continue
+      local_sha=$(git rev-parse --verify --quiet "refs/remotes/origin/${ref#refs/heads/}" 2>/dev/null)
+      [[ "${local_sha}" == "${sha}" ]] || missing=$((missing + 1))
+    done <<< "${remote_heads}"
+    if [[ ${missing} -gt 0 ]]; then
+      err "${missing} remote branch(es) are missing locally or out of date."
+      echo "        This clone cannot see them, so a secret referenced only on one" >&2
+      echo "        would be reported as an orphan. Run: git fetch origin --prune" >&2
+    fi
+  else
+    err "could not reach the remote to confirm this clone is current."
+  fi
+fi
 if [[ ${errors} -gt 0 ]]; then
   echo "INCONCLUSIVE -- preconditions failed; not reporting a clean result." >&2
   exit 3

@@ -52,6 +52,11 @@ work. Branches with commits in the last `ACTIVE_DAYS` (default 90) are included.
 references are gathered in one pass per ref using a single alternation; the naive
 per-name-per-branch form is roughly a thousand `git grep` invocations and takes minutes.
 
+It refuses to report on a clone that is behind the remote. The active-branch check
+reads local refs, so a clone that has not fetched cannot see recent branches, and a
+secret in use on one would be reported as an orphan; rather than guess, it compares
+against `git ls-remote` and exits 3 telling you to fetch.
+
 Requires a token with repository admin — listing secrets needs it and `GITHUB_TOKEN` in
 Actions does not have it, which is why this is run on demand rather than on a schedule.
 Only names are read, never values. Exit codes: `0` no new orphans, `1` new orphans, `2`
