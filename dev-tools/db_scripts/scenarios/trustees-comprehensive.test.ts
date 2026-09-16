@@ -19,9 +19,11 @@ describe('trustees-comprehensive scenario', () => {
     expect(trusteesOp?.data).toHaveLength(33);
 
     // 33 single-court trustees + Patricia Manhattan's 5 extra cross-court
-    // appointments (CA Eastern, CA Northern, ID, IA Northern, IA Southern) = 38.
+    // appointments (CA Eastern, CA Northern, ID, IA Northern, IA Southern) +
+    // Olivia Ashworth's 1 extra appointment (active Ch11 case-by-case
+    // alongside her inactive one) = 39.
     expect(appointmentsOp?.db).toBe('cams');
-    expect(appointmentsOp?.data).toHaveLength(38);
+    expect(appointmentsOp?.data).toHaveLength(39);
   });
 
   test('all trustees have documentType TRUSTEE', async () => {
@@ -145,13 +147,13 @@ describe('trustees-comprehensive scenario', () => {
   });
 
   // Chapter 7: 11 single-court appointments + 2 from Patricia Manhattan (CA Eastern off-panel, CA Eastern panel)
-  // Chapter 11: 6 single-court appointments + 1 from Patricia Manhattan (CA Northern case-by-case) + 1 inactive Ch11 case-by-case (Additional-25)
+  // Chapter 11: 6 single-court appointments + 1 from Patricia Manhattan (CA Northern case-by-case) + Olivia Ashworth's active and inactive Ch11 case-by-case appointments (Additional-25)
   // Chapter 12: 3 single-court appointments + 1 from Patricia Manhattan (ID standing)
   // Chapter 13: 8 single-court appointments + 2 from Patricia Manhattan (IA Northern case-by-case, IA Southern standing)
   // Chapter 11 Subchapter V: 3 single-court appointments
   test.each([
     ['7', 13],
-    ['11', 8],
+    ['11', 9],
     ['12', 4],
     ['13', 10],
     ['11-subchapter-v', 3],

@@ -27,6 +27,7 @@ Quick reference for available test data scenarios. For detailed setup instructio
 | **Trustee Name Search**       | `trustee-fuzzy-search.ts`                                  | Exact/substring, phonetic (e.g. Smith/Smyth), nickname, and prefix name matching for trustee search — including the mismatch verification search modal                                                                                                                                                                           |
 | **341 Meeting Info**          | `dxtr-historical-trustees.ts`, `trustees-comprehensive.ts` | Trustees with Zoom meeting details for 341 hearings                                                                                                                                                                                                                                                                              |
 | **4-Level Sorting Test**      | `trustees-comprehensive.ts`                                | **Patricia Manhattan** (seed-trustee-ny-002) - 6 appointments demonstrating state → region → chapter → appointment type sorting across CA, ID, IA with real DXTR court IDs                                                                                                                                                       |
+| **Ch11 Accordion States**     | `trustees-comprehensive.ts`                                | **Olivia Ashworth** (seed-trustee-add-025) - one trustee holding both an active and an inactive Chapter 11 case-by-case appointment, for verifying the appointment accordion's expanded/green-tag and collapsed/gray-tag states side by side on the same trustee                                                                 |
 | **Comprehensive Trustee Set** | `trustees-comprehensive.ts`                                | 24+ trustees with varied chapters, districts, and appointment types for pagination/filtering tests                                                                                                                                                                                                                               |
 | **Trustee Case List**         | `trustee-case-list.ts`                                     | Paginated trustee with 60 active case appointments (pages of 25/25/10) across chapters 7, 11, 13 with varied dateFiled dates (2020–2024). Empty trustee for empty-state testing. Cases seeded in both DXTR (AO_CS, AO_PY, AO_DE) and Cosmos (SYNCED_CASE) so case detail and docket tabs render completely when following links. |
 | **Missing Email Trustee**     | `trustee-data.ts`                                          | **Nolan Nocontact** (seed-trustee-nocontact-001) - active, searchable trustee with an address and phone but no email, for exercising the "Email not provided" placeholder in `TrusteeSearchModal`'s selected-trustee comparison column                                                                                           |
@@ -44,6 +45,12 @@ Quick reference for available test data scenarios. For detailed setup instructio
 ### 4-Level Appointment Sorting
 
 **Trustee:** Patricia Manhattan
+
+### Ch11 Accordion States
+
+**Trustee:** Olivia Ashworth (`seed-trustee-add-025`) — active Ch11 case-by-case appointment
+(Manhattan, division 091) and inactive Ch11 case-by-case appointment (Manhattan, division 081, dates
+distinct from the 2020-01-01 default)
 
 ### Historical Trustee Changes
 

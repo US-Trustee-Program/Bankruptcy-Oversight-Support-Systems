@@ -210,7 +210,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
     }),
   );
 
-  // Additional-3: Ch11 Panel, Single Division (081)
+  // Additional-3: Ch11 Case by Case, Single Division (081)
   trustees.push(
     createTrustee({
       id: 'seed-trustee-add-003',
@@ -227,7 +227,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       id: 'seed-appt-add-003-ch11',
       trusteeId: 'seed-trustee-add-003',
       chapter: '11',
-      appointmentType: 'panel',
+      appointmentType: 'case-by-case',
       courtId: '0208',
       divisionCodes: ['081'],
       courtName: 'U.S. Bankruptcy Court Southern District of New York',
@@ -286,8 +286,9 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
     }),
   );
 
-  // Additional-25: Ch11 Case by Case, Inactive (081) - exercises the appointment accordion's
-  // collapsed/gray-tag state with dates distinct from the common 2020-01-01 default
+  // Additional-25: Ch11 Case by Case, Active (091) + Inactive (081) - exercises the appointment
+  // accordion's expanded/green-tag and collapsed/gray-tag states on the same trustee, with the
+  // inactive appointment's dates distinct from the common 2020-01-01 default
   trustees.push(
     createTrustee({
       id: 'seed-trustee-add-025',
@@ -299,6 +300,17 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
     }),
   );
   appointments.push(
+    createAppointment({
+      id: 'seed-appt-add-025-ch11-active',
+      trusteeId: 'seed-trustee-add-025',
+      chapter: '11',
+      appointmentType: 'case-by-case',
+      courtId: '0209',
+      divisionCodes: ['091'],
+      courtName: 'U.S. Bankruptcy Court Southern District of New York',
+      courtDivisionName: 'Manhattan',
+      status: 'active',
+    }),
     createAppointment({
       id: 'seed-appt-add-025-ch11-casebycase',
       trusteeId: 'seed-trustee-add-025',
@@ -456,7 +468,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
     }),
   );
 
-  // NY-3: Ch11 Panel, Single Division (091)
+  // NY-3: Ch11 Case by Case, Single Division (091)
   trustees.push(
     createTrustee({
       id: 'seed-trustee-ny-003',
@@ -472,7 +484,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       id: 'seed-appt-ny-003-ch11',
       trusteeId: 'seed-trustee-ny-003',
       chapter: '11',
-      appointmentType: 'panel',
+      appointmentType: 'case-by-case',
       courtId: '0209',
       divisionCodes: ['091'],
       courtName: 'U.S. Bankruptcy Court Southern District of New York',
@@ -582,7 +594,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
     }),
   );
 
-  // NY-8: Ch11 Panel
+  // NY-8: Ch11 Case by Case
   trustees.push(
     createTrustee({
       id: 'seed-trustee-ny-008',
@@ -598,7 +610,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       id: 'seed-appt-ny-008-ch11',
       trusteeId: 'seed-trustee-ny-008',
       chapter: '11',
-      appointmentType: 'panel',
+      appointmentType: 'case-by-case',
       courtId: '0209',
       divisionCodes: ['091'],
       courtName: 'U.S. Bankruptcy Court Southern District of New York',
@@ -662,7 +674,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
     }),
   );
 
-  // Additional-8: Ch11 Panel (081)
+  // Additional-8: Ch11 Case by Case (081)
   trustees.push(
     createTrustee({
       id: 'seed-trustee-add-008',
@@ -678,7 +690,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       id: 'seed-appt-add-008-ch11',
       trusteeId: 'seed-trustee-add-008',
       chapter: '11',
-      appointmentType: 'panel',
+      appointmentType: 'case-by-case',
       courtId: '0208',
       divisionCodes: ['081'],
       courtName: 'U.S. Bankruptcy Court Southern District of New York',
@@ -817,7 +829,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
     }),
   );
 
-  // Additional-14: Ch11 Panel (081)
+  // Additional-14: Ch11 Case by Case (081)
   trustees.push(
     createTrustee({
       id: 'seed-trustee-add-014',
@@ -833,7 +845,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       id: 'seed-appt-add-014-ch11',
       trusteeId: 'seed-trustee-add-014',
       chapter: '11',
-      appointmentType: 'panel',
+      appointmentType: 'case-by-case',
       courtId: '0208',
       divisionCodes: ['081'],
       courtName: 'U.S. Bankruptcy Court Southern District of New York',
@@ -972,7 +984,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
     }),
   );
 
-  // Additional-20: Ch11 Panel (081)
+  // Additional-20: Ch11 Case by Case (081)
   trustees.push(
     createTrustee({
       id: 'seed-trustee-add-020',
@@ -988,7 +1000,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       id: 'seed-appt-add-020-ch11',
       trusteeId: 'seed-trustee-add-020',
       chapter: '11',
-      appointmentType: 'panel',
+      appointmentType: 'case-by-case',
       courtId: '0208',
       divisionCodes: ['081'],
       courtName: 'U.S. Bankruptcy Court Southern District of New York',
