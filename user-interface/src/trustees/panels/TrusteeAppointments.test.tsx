@@ -1,4 +1,4 @@
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { render, screen, waitFor, act, within } from '@testing-library/react';
 import { vi, describe, test, expect, beforeEach } from 'vitest';
 import { MemoryRouter, useNavigate } from 'react-router-dom';
 import TrusteeAppointments from './TrusteeAppointments';
@@ -88,6 +88,7 @@ describe('TrusteeAppointments', () => {
     vi.restoreAllMocks();
     mockNavigate.mockClear();
     vi.mocked(useNavigate).mockReturnValue(mockNavigate);
+    window.sessionStorage.clear();
   });
 
   test('should display loading spinner while fetching appointments', () => {
@@ -270,9 +271,9 @@ describe('TrusteeAppointments', () => {
         expect(getAppointmentCards()).toHaveLength(2);
       });
 
-      const cardTexts = getAppointmentCards().map((card) => card.textContent);
-      expect(cardTexts[0]).toContain('Second Court');
-      expect(cardTexts[1]).toContain('First Court');
+      const cards = getAppointmentCards();
+      expect(cards[0]).toHaveAttribute('data-testid', `appointment-card-${appointments[1].id}`);
+      expect(cards[1]).toHaveAttribute('data-testid', `appointment-card-${appointments[0].id}`);
     });
 
     test('should handle appointments with missing courtName gracefully', async () => {
@@ -295,10 +296,16 @@ describe('TrusteeAppointments', () => {
         expect(getAppointmentCards()).toHaveLength(2);
       });
 
-      const cards = getAppointmentCards();
-
-      expect(cards[0].textContent).toContain('Court 999');
-      expect(cards[1].textContent).toContain('Southern District of New York');
+      expect(
+        within(screen.getByTestId(`appointment-card-${appointments[0].id}`)).getAllByText(
+          /Southern District of New York/i,
+        ),
+      ).not.toHaveLength(0);
+      expect(
+        within(screen.getByTestId(`appointment-card-${appointments[1].id}`)).getAllByText(
+          /Court 999/i,
+        ),
+      ).not.toHaveLength(0);
     });
   });
 
@@ -326,9 +333,6 @@ describe('TrusteeAppointments', () => {
       appointmentType: 'panel',
       status: 'active',
       courtName: 'Southern District of New York',
-    });
-    beforeEach(() => {
-      window.sessionStorage.clear();
     });
 
     // Body content is now always mounted (see AppointmentAccordion); expand/collapse
