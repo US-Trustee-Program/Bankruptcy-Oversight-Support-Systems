@@ -7,6 +7,8 @@ import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import userEvent from '@testing-library/user-event';
 import * as courtUtils from '@/lib/utils/court-utils';
+import * as featureFlagsHook from '@/lib/hooks/UseFeatureFlags';
+import { DISPLAY_CHPT7_ELECTED_ACCORDION } from '@/lib/hooks/UseFeatureFlags';
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');
@@ -571,6 +573,105 @@ describe('TrusteeAppointments', () => {
         expect(isAppointmentExpanded(ch11Inactive.id)).toBe(true);
         expect(isAppointmentExpanded(ch11InactiveTwo.id)).toBe(true);
       });
+    });
+  });
+
+  describe('Chapter 7 Elected accordion', () => {
+    const ch7ElectedActive = makeAppointment('ch7-elected-active', {
+      chapter: '7',
+      appointmentType: 'elected',
+      status: 'active',
+      courtName: 'Southern District of New York',
+    });
+    const ch7ElectedInactive = makeAppointment('ch7-elected-inactive', {
+      chapter: '7',
+      appointmentType: 'elected',
+      status: 'inactive',
+      courtName: 'Southern District of New York',
+    });
+
+    beforeEach(() => {
+      window.sessionStorage.clear();
+    });
+
+    function isAppointmentExpanded(appointmentId: string): boolean {
+      return !screen.getByTestId(`appointment-accordion-body-${appointmentId}`).closest('[hidden]');
+    }
+
+    test('renders via the accordion when the flag is enabled', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch7ElectedActive] });
+
+      renderComponent('trustee-123');
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId(`appointment-accordion-header-${ch7ElectedActive.id}`),
+        ).toBeInTheDocument();
+      });
+      expect(
+        screen.getByTestId(`appointment-accordion-body-${ch7ElectedActive.id}`),
+      ).toBeInTheDocument();
+      expect(getAppointmentCards()).toHaveLength(0);
+    });
+
+    test('falls back to AppointmentCard when the flag is disabled', async () => {
+      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+        [DISPLAY_CHPT7_ELECTED_ACCORDION]: false,
+      });
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch7ElectedActive] });
+
+      renderComponent('trustee-123');
+
+      await waitFor(() => {
+        expect(getAppointmentCards()).toHaveLength(1);
+      });
+      expect(
+        screen.queryByTestId(`appointment-accordion-header-${ch7ElectedActive.id}`),
+      ).not.toBeInTheDocument();
+    });
+
+    test('renders Chapter 11 Case by Case via the accordion regardless of the new flag', async () => {
+      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+        [DISPLAY_CHPT7_ELECTED_ACCORDION]: false,
+      });
+      const ch11Active = makeAppointment('ch11-active', {
+        chapter: '11',
+        appointmentType: 'case-by-case',
+        status: 'active',
+        courtName: 'Southern District of New York',
+      });
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch11Active] });
+
+      renderComponent('trustee-123');
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId(`appointment-accordion-header-${ch11Active.id}`),
+        ).toBeInTheDocument();
+      });
+    });
+
+    test('an active Chapter 7 Elected appointment is expanded by default', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch7ElectedActive] });
+
+      renderComponent('trustee-123');
+
+      await waitFor(() => {
+        expect(isAppointmentExpanded(ch7ElectedActive.id)).toBe(true);
+      });
+    });
+
+    test('an inactive Chapter 7 Elected appointment is collapsed by default', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch7ElectedInactive] });
+
+      renderComponent('trustee-123');
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId(`appointment-accordion-header-${ch7ElectedInactive.id}`),
+        ).toBeInTheDocument();
+      });
+      expect(isAppointmentExpanded(ch7ElectedInactive.id)).toBe(false);
     });
   });
 });

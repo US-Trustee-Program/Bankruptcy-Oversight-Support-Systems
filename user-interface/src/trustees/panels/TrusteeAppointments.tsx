@@ -1,21 +1,44 @@
 import './TrusteeAppointments.scss';
-import { useEffect, useState } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import Api2 from '@/lib/models/api2';
 import { sortByCourtLocation } from '@/lib/utils/court-utils';
-import { TrusteeAppointment, isChapter11CaseByCase } from '@common/cams/trustee-appointments';
+import {
+  TrusteeAppointment,
+  isChapter11CaseByCase,
+  isChapter7Elected,
+} from '@common/cams/trustee-appointments';
+import { FeatureFlagSet } from '@common/feature-flags';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import AppointmentCard from './AppointmentCard';
 import AppointmentAccordion from './AppointmentAccordion';
 import Chapter11CaseByCaseAppointmentBody from './Chapter11CaseByCaseAppointmentBody';
+import Chapter7ElectedAppointmentBody from './Chapter7ElectedAppointmentBody';
 import Button from '@/lib/components/uswds/Button';
 import Icon from '@/lib/components/uswds/Icon';
 import { useNavigate } from 'react-router-dom';
 import { useSessionState } from '@/lib/hooks/UseSessionState';
 import { isActiveAppointment } from './appointmentDisplay';
+import useFeatureFlags, { DISPLAY_CHPT7_ELECTED_ACCORDION } from '@/lib/hooks/UseFeatureFlags';
 
 interface TrusteeAppointmentsProps {
   trusteeId: string;
+}
+
+function resolveAccordionBody(
+  appointment: TrusteeAppointment,
+  flags: FeatureFlagSet,
+): ReactNode | undefined {
+  if (isChapter11CaseByCase(appointment.chapter, appointment.appointmentType)) {
+    return <Chapter11CaseByCaseAppointmentBody appointment={appointment} />;
+  }
+  if (
+    isChapter7Elected(appointment.chapter, appointment.appointmentType) &&
+    flags[DISPLAY_CHPT7_ELECTED_ACCORDION] === true
+  ) {
+    return <Chapter7ElectedAppointmentBody appointment={appointment} />;
+  }
+  return undefined;
 }
 
 export default function TrusteeAppointments(props: Readonly<TrusteeAppointmentsProps>) {
@@ -24,6 +47,7 @@ export default function TrusteeAppointments(props: Readonly<TrusteeAppointmentsP
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const featureFlags = useFeatureFlags();
   interface ExpandedEntry {
     status: TrusteeAppointment['status'];
     expanded: boolean;
@@ -152,20 +176,21 @@ export default function TrusteeAppointments(props: Readonly<TrusteeAppointmentsP
         </Button>
       </div>
       <div className="appointments-list">
-        {sortedAppointments.map((appointment) =>
-          isChapter11CaseByCase(appointment.chapter, appointment.appointmentType) ? (
+        {sortedAppointments.map((appointment) => {
+          const accordionBody = resolveAccordionBody(appointment, featureFlags);
+          return accordionBody ? (
             <AppointmentAccordion
               key={appointment.id}
               appointment={appointment}
               expanded={isExpanded(appointment)}
               onToggle={toggleExpanded}
             >
-              <Chapter11CaseByCaseAppointmentBody appointment={appointment} />
+              {accordionBody}
             </AppointmentAccordion>
           ) : (
             <AppointmentCard key={appointment.id} appointment={appointment} />
-          ),
-        )}
+          );
+        })}
       </div>
     </div>
   );

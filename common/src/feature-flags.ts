@@ -18,6 +18,7 @@ export const testFeatureFlags: FeatureFlagSet = {
   'display-chpt12-standing-key-dates': true,
   'display-chpt13-standing-key-dates': true,
   'display-chpt7-panel-upcoming-key-dates': true,
+  'display-chpt7-elected-accordion': true,
   'display-chpt7-elected-key-dates': true,
   'display-chpt11-subv-past-key-dates': true,
   'display-chpt12-13-case-by-case-upcoming-key-dates': true,

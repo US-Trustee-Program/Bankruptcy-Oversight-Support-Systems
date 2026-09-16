@@ -1,7 +1,6 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
-import userEvent from '@testing-library/user-event';
 import Chapter11CaseByCaseAppointmentBody from './Chapter11CaseByCaseAppointmentBody';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
@@ -19,8 +18,6 @@ vi.mock('react-router-dom', async () => {
 });
 
 describe('Chapter11CaseByCaseAppointmentBody', () => {
-  const mockNavigate = vi.fn();
-
   const mockAppointment: TrusteeAppointment = {
     id: 'appointment-001',
     trusteeId: 'trustee-123',
@@ -40,68 +37,18 @@ describe('Chapter11CaseByCaseAppointmentBody', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
-    mockUseNavigate.mockReturnValue(mockNavigate);
+    mockUseNavigate.mockReturnValue(vi.fn());
     TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
   });
 
-  function renderBody(appointment: TrusteeAppointment = mockAppointment) {
-    return render(
+  test('renders AppointmentBasicFields content for the appointment', () => {
+    render(
       <BrowserRouter>
-        <Chapter11CaseByCaseAppointmentBody appointment={appointment} />
+        <Chapter11CaseByCaseAppointmentBody appointment={mockAppointment} />
       </BrowserRouter>,
     );
-  }
 
-  test('renders the appointed date in the appointed date field', () => {
-    renderBody();
-
-    const appointedField = within(screen.getByTestId('appointment-body-appointed-date'));
-    expect(appointedField.getByText(/Appointed/i)).toBeInTheDocument();
-    expect(appointedField.getByText('01/15/2020')).toBeInTheDocument();
-  });
-
-  test('renders the status effective date in the status effective field', () => {
-    renderBody();
-
-    const effectiveField = within(screen.getByTestId('appointment-body-status-effective-date'));
-    expect(effectiveField.getByText(/Status Effective/i)).toBeInTheDocument();
-    expect(effectiveField.getByText('06/01/2021')).toBeInTheDocument();
-  });
-
-  test('displays "Not Specified" for Unix epoch sentinel dates', () => {
-    renderBody({
-      ...mockAppointment,
-      appointedDate: '1970-01-01T00:00:00.000Z',
-      effectiveDate: '1970-01-01T00:00:00.000Z',
-    });
-
-    expect(screen.getAllByText('Not Specified').length).toBe(2);
-  });
-
-  test('renders an Edit link when user has TrusteeAdmin role', () => {
-    renderBody();
-
+    expect(screen.getByTestId('appointment-body-appointed-date')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /edit trustee appointment/i })).toBeInTheDocument();
-  });
-
-  test('navigates to the edit page when Edit is clicked', async () => {
-    const user = userEvent.setup();
-    renderBody();
-
-    await user.click(screen.getByRole('button', { name: /edit trustee appointment/i }));
-
-    expect(mockNavigate).toHaveBeenCalledWith(
-      `/trustees/${mockAppointment.trusteeId}/appointments/${mockAppointment.id}/edit`,
-    );
-  });
-
-  test('does not render an Edit link when user lacks TrusteeAdmin role', () => {
-    TestingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
-
-    renderBody();
-
-    expect(
-      screen.queryByRole('button', { name: /edit trustee appointment/i }),
-    ).not.toBeInTheDocument();
   });
 });

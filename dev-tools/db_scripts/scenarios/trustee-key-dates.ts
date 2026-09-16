@@ -13,6 +13,8 @@
  *     card's TPR Period/Due fields: one populated, one empty
  *   - Two Chapter 7 Elected trustees to exercise the Bond Issued Date (Past) /
  *     Bond Renewal Date (Upcoming) fields: one populated, one empty
+ *   - One Chapter 7 Elected trustee with an inactive appointment to exercise the
+ *     accordion's default-collapsed/inactive-status-tag behavior
  *
  * NOTE: Key dates are separate documents with documentType='TRUSTEE_UPCOMING_REPORT_DATES'.
  */
@@ -768,6 +770,70 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           trusteeId: 'seed-trustee-keydates-elected-empty',
           appointmentId: 'seed-appointment-keydates-elected-empty',
           // bondIssuedDate/bondRenewalDate omitted - tests "No date added" / empty form state
+          updatedOn: '2025-03-01T00:00:00.000Z',
+          updatedBy: SEEDER,
+        },
+      ],
+    },
+
+    // ── Cosmos: Chapter 7 Elected Trustee with an inactive appointment ───────
+    {
+      db: 'cams',
+      collectionOrTable: 'trustees',
+      data: [
+        {
+          ...createTrusteeBase({
+            id: 'seed-trustee-keydates-elected-inactive',
+            firstName: 'Owen',
+            lastName: 'Inactivekeydates',
+            status: 'active',
+            address1: '1100 Key Dates Way',
+            city: 'New York',
+            state: 'NY',
+            zipCode: '10011',
+            phone: '212-555-1800',
+            email: 'owen.inactivekeydates@example.com',
+          }),
+          updatedOn: '2025-03-01T00:00:00.000Z',
+          updatedBy: SEEDER,
+        },
+      ],
+    },
+
+    {
+      db: 'cams',
+      collectionOrTable: 'trustee-appointments',
+      data: [
+        {
+          id: 'seed-appointment-keydates-elected-inactive',
+          documentType: 'TRUSTEE_APPOINTMENT',
+          trusteeId: 'seed-trustee-keydates-elected-inactive',
+          chapter: '7',
+          appointmentType: 'elected',
+          courtId: '0208',
+          divisionCodes: ['081'],
+          appointedDate: '2022-01-01',
+          status: 'inactive',
+          effectiveDate: '2024-01-01',
+          courtName: 'U.S. Bankruptcy Court Southern District of New York',
+          courtDivisionName: 'Manhattan',
+          updatedOn: '2025-03-01T00:00:00.000Z',
+          updatedBy: SEEDER,
+        },
+      ],
+    },
+
+    {
+      db: 'cams',
+      collectionOrTable: 'trustees',
+      data: [
+        {
+          id: 'seed-key-dates-elected-inactive',
+          documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
+          trusteeId: 'seed-trustee-keydates-elected-inactive',
+          appointmentId: 'seed-appointment-keydates-elected-inactive',
+          bondIssuedDate: '2022-06-01',
+          bondRenewalDate: '2025-06-01',
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
         },
