@@ -1,12 +1,10 @@
 import { useNavigate } from 'react-router-dom';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
-import { CamsRole } from '@common/cams/roles';
-import LocalStorage from '@/lib/utils/local-storage';
+import useCanManageTrustees from './UseCanManageTrustees';
 
 function useEditTrusteeAppointment(appointment: TrusteeAppointment) {
   const navigate = useNavigate();
-  const session = LocalStorage.getSession();
-  const canManage = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
+  const canManage = useCanManageTrustees();
 
   function openEditTrustee() {
     navigate(`/trustees/${appointment.trusteeId}/appointments/${appointment.id}/edit`);

@@ -55,16 +55,11 @@ describe('Accordion tests', () => {
 
     render(
       <React.StrictMode>
-        <Accordion
-          id="standalone-a"
-          expandedId="standalone-a"
-          onExpand={onExpandA}
-          onCollapse={onCollapseA}
-        >
+        <Accordion id="standalone-a" onExpand={onExpandA} onCollapse={onCollapseA}>
           <span>Title A</span>
           <span>Content A</span>
         </Accordion>
-        <Accordion id="standalone-b" expandedId="standalone-b" onExpand={onExpandB}>
+        <Accordion id="standalone-b" onExpand={onExpandB}>
           <span>Title B</span>
           <span>Content B</span>
         </Accordion>
@@ -75,21 +70,20 @@ describe('Accordion tests', () => {
     const contentB = screen.getByTestId('accordion-content-standalone-b');
     const buttonA = screen.getByTestId('accordion-button-standalone-a');
 
-    expect(contentA).toBeVisible();
-    expect(contentB).toBeVisible();
-
-    fireEvent.click(buttonA);
-
     expect(contentA).not.toBeVisible();
-    expect(onCollapseA).toHaveBeenCalledWith('standalone-a');
-    expect(onExpandA).not.toHaveBeenCalled();
-    expect(onExpandB).not.toHaveBeenCalled();
-    expect(contentB).toBeVisible();
+    expect(contentB).not.toBeVisible();
 
     fireEvent.click(buttonA);
 
     expect(contentA).toBeVisible();
     expect(onExpandA).toHaveBeenCalledWith('standalone-a');
+    expect(onExpandB).not.toHaveBeenCalled();
+    expect(contentB).not.toBeVisible();
+
+    fireEvent.click(buttonA);
+
+    expect(contentA).not.toBeVisible();
+    expect(onCollapseA).toHaveBeenCalledWith('standalone-a');
   });
 
   test('Should hide heading and content regardless of expanded state when hidden is true', () => {

@@ -6,8 +6,7 @@ import {
   isoToMMYYYY,
 } from '@common/cams/trustee-upcoming-key-dates';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
-import LocalStorage from '@/lib/utils/local-storage';
-import { CamsRole } from '@common/cams/roles';
+import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import InfoCard from './InfoCard';
 import { PAST_KEY_DATES_FIELD_CONFIG, PastKeyDatesVariant } from './pastKeyDatesFieldConfig';
 
@@ -33,8 +32,7 @@ function formatMonthYearOrDefault(isoDate: string | undefined): string {
 export default function PastKeyDates(props: Readonly<PastKeyDatesProps>) {
   const { variant, trusteeId, appointmentId, appointmentHeading, data, isLoading } = props;
   const navigate = useNavigate();
-  const session = LocalStorage.getSession();
-  const canManage = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
+  const canManage = useCanManageTrustees();
 
   function openEdit() {
     navigate(`/trustees/${trusteeId}/appointments/${appointmentId}/past-key-dates/edit`, {

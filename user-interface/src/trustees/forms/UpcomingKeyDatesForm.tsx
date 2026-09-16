@@ -26,8 +26,7 @@ import MonthDayRangeSelector from '@/lib/components/uswds/MonthDayRangeSelector'
 import DatePicker from '@/lib/components/uswds/DatePicker';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
-import LocalStorage from '@/lib/utils/local-storage';
-import { CamsRole } from '@common/cams/roles';
+import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import { Stop } from '@/lib/components/Stop';
 import { UpcomingKeyDatesVariant } from '@/trustees/panels/upcomingKeyDatesFieldConfig';
 import {
@@ -264,7 +263,7 @@ export default function UpcomingKeyDatesForm({
   const navigate = useNavigate();
   const location = useLocation();
   const globalAlert = useGlobalAlert();
-  const canManage = !!LocalStorage.getSession()?.user?.roles?.includes(CamsRole.TrusteeAdmin);
+  const canManage = useCanManageTrustees();
 
   const variantFromState = (location.state as { variant?: UpcomingKeyDatesVariant } | null)
     ?.variant;

@@ -31,7 +31,10 @@ export default function AppointmentAccordion(props: Readonly<AppointmentAccordio
     <div className="appointment-accordion">
       <Accordion
         id={appointment.id}
-        expandedId={expanded ? appointment.id : undefined}
+        // Always a defined string (never undefined) so Accordion stays in
+        // controlled mode consistently across every render; '' is a
+        // sentinel that never matches a real appointment id.
+        expandedId={expanded ? appointment.id : ''}
         onExpand={() => onToggle(appointment.id)}
         onCollapse={() => onToggle(appointment.id)}
       >

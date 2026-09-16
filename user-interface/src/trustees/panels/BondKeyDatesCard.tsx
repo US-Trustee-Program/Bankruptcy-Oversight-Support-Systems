@@ -3,8 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import EditableTableCard from '@/lib/components/cams/EditableTableCard/EditableTableCard';
 import { TrusteeUpcomingKeyDates, isoToMMDDYYYY } from '@common/cams/trustee-upcoming-key-dates';
-import LocalStorage from '@/lib/utils/local-storage';
-import { CamsRole } from '@common/cams/roles';
+import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 
 export interface BondKeyDatesCardProps {
   trusteeId: string;
@@ -22,7 +21,7 @@ function formatDateOrDefault(isoDate: string | undefined): string {
 export default function BondKeyDatesCard(props: Readonly<BondKeyDatesCardProps>) {
   const { trusteeId, appointmentId, data, isLoading } = props;
   const navigate = useNavigate();
-  const canManage = !!LocalStorage.getSession()?.user?.roles?.includes(CamsRole.TrusteeAdmin);
+  const canManage = useCanManageTrustees();
 
   function openEdit() {
     navigate(`/trustees/${trusteeId}/appointments/${appointmentId}/bond-key-dates/edit`);
