@@ -23,6 +23,7 @@ import {
   stateFilterStage,
   stateMatchCorroborationStage,
   noContactDataFilterStage,
+  acmsContactDataFilterStage,
   cityMatchStage,
   zipMatchStage,
   corroborationStage,
@@ -728,6 +729,70 @@ describe('noContactDataFilterStage', () => {
   });
 });
 
+describe('acmsContactDataFilterStage', () => {
+  test('fails every candidate when the ACMS record has no address1, cityStateZipCountry, phone, or email at all', async () => {
+    const state = createInitialState(
+      makeDxtrTrustee({ legacy: { address1: '', cityStateZipCountry: '', phone: '0', fax: '0' } }),
+    );
+    addSomeoneMoon(state, { trusteeId: 't1' });
+
+    const result = await acmsContactDataFilterStage()(state);
+
+    expect(mergedScore(result.candidates.get('t1')!)).toMatchObject({
+      acmsContactDataFilterStage: { pass: false },
+    });
+  });
+
+  test.each([
+    {
+      description: 'address1 populated',
+      legacy: { address1: '123 Main St', cityStateZipCountry: '', phone: '0', fax: '0' },
+    },
+    {
+      description: 'cityStateZipCountry populated',
+      legacy: { address1: '', cityStateZipCountry: 'Seattle WA 98101', phone: '0', fax: '0' },
+    },
+    {
+      description: 'a real phone number populated',
+      legacy: { address1: '', cityStateZipCountry: '', phone: '206-555-0100', fax: '0' },
+    },
+  ])('passes every candidate when the ACMS record has $description', async ({ legacy }) => {
+    const state = createInitialState(makeDxtrTrustee({ legacy }));
+    addSomeoneMoon(state, { trusteeId: 't1' });
+
+    const result = await acmsContactDataFilterStage()(state);
+
+    expect(mergedScore(result.candidates.get('t1')!)).toMatchObject({
+      acmsContactDataFilterStage: { pass: true },
+    });
+  });
+
+  test('treats ACMS phone/fax "0" as blank, not a real value', async () => {
+    const state = createInitialState(
+      makeDxtrTrustee({ legacy: { address1: '', cityStateZipCountry: '', phone: '0', fax: '0' } }),
+    );
+    addSomeoneMoon(state, { trusteeId: 't1' });
+
+    const result = await acmsContactDataFilterStage()(state);
+
+    expect(mergedScore(result.candidates.get('t1')!)).toMatchObject({
+      acmsContactDataFilterStage: { pass: false },
+    });
+  });
+
+  test('no-ops once the pipeline has already matched', async () => {
+    const state: PipelineState = {
+      ...createInitialState(makeDxtrTrustee()),
+      match: { trusteeId: 'already-matched', score: {} },
+    };
+    addSomeoneMoon(state, { trusteeId: 't1' });
+
+    const result = await acmsContactDataFilterStage()(state);
+
+    expect(result.candidates.get('t1')!.scores).toEqual({});
+  });
+});
+
 describe('stateMatchCorroborationStage', () => {
   const dxtrInWashington = makeDxtrTrustee({
     fullName: 'Aldric A Moon',
@@ -1042,7 +1107,8 @@ describe('corroborationStage', () => {
     const state = createInitialState(
       makeDxtrTrustee({ legacy: { phone: '0', fax: '0' } as never }),
     );
-    addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })));
+    const candidate = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })));
+    addScore(candidate, 'acmsContactDataFilterStage', { value: 0, threshold: 100, pass: false });
     vi.spyOn(trusteeMatchHelpers, 'resolveByContactCorroboration').mockResolvedValue({
       kind: 'resolved',
       trusteeId: 't1',
@@ -1587,7 +1653,7 @@ describe('phoneTypoToleranceStage', () => {
 describe('exactNameStateMatchStage', () => {
   const acmsRecord = makeDxtrTrustee({ fullName: 'Ronald Durkin' });
 
-  test('resolves a sole exact-name-match candidate when state corroborates, even if city/zip/phone disagree', async () => {
+  test('resolves an office-relocation case: state and zip corroborate even though city differs', async () => {
     const state = createInitialState(acmsRecord);
     const candidate = addCandidate(
       state,
@@ -1596,21 +1662,40 @@ describe('exactNameStateMatchStage', () => {
     addScore(candidate, 'calculateNameScore', { value: 100, threshold: 85, pass: true });
     addScore(candidate, 'stateMatchCorroborationStage', { value: 100, threshold: 100, pass: true });
     addScore(candidate, 'cityMatchStage', { value: 0, threshold: 100, pass: false });
-    addScore(candidate, 'zipMatchStage', { value: 0, threshold: 100, pass: false });
+    addScore(candidate, 'zipMatchStage', { value: 100, threshold: 100, pass: true });
 
     const result = await exactNameStateMatchStage()(state);
 
     expect(result.match).toEqual({ trusteeId: 't1', score: candidate.scores });
   });
 
-  test('does not resolve when state does not corroborate, even with an exact name match', async () => {
+  test.each([
+    {
+      description: 'name+state alone - a common name could still be a different real person',
+      scores: {
+        stateMatchCorroborationStage: { value: 100, threshold: 100, pass: true },
+        cityMatchStage: { value: 0, threshold: 100, pass: false },
+        zipMatchStage: { value: 0, threshold: 100, pass: false },
+      },
+    },
+    {
+      description: 'name+state alone when city/zip never ran at all',
+      scores: { stateMatchCorroborationStage: { value: 100, threshold: 100, pass: true } },
+    },
+    {
+      description: 'state does not corroborate, even with an exact name match',
+      scores: { stateMatchCorroborationStage: { value: 0, threshold: 100, pass: false } },
+    },
+  ])('does not resolve on $description', async ({ scores }) => {
     const state = createInitialState(acmsRecord);
     const candidate = addCandidate(
       state,
       projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Ronald L. Durkin' })),
     );
     addScore(candidate, 'calculateNameScore', { value: 100, threshold: 85, pass: true });
-    addScore(candidate, 'stateMatchCorroborationStage', { value: 0, threshold: 100, pass: false });
+    for (const [scorer, score] of Object.entries(scores)) {
+      addScore(candidate, scorer, score);
+    }
 
     const result = await exactNameStateMatchStage()(state);
 
@@ -1673,6 +1758,20 @@ describe('exactNameStateMatchStage', () => {
     addScore(candidate, 'calculateNameScore', { value: 100, threshold: 85, pass: true });
     addScore(candidate, 'stateMatchCorroborationStage', { value: 100, threshold: 100, pass: true });
     addScore(candidate, 'noContactDataFilterStage', { value: 0, threshold: 100, pass: false });
+
+    const result = await exactNameStateMatchStage()(state);
+
+    expect(result.match).toBeNull();
+  });
+
+  test('does not resolve when the ACMS record itself has no contact data, even with an exact name match', async () => {
+    const state = createInitialState(acmsRecord);
+    const candidate = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Ronald L. Durkin' })),
+    );
+    addScore(candidate, 'calculateNameScore', { value: 100, threshold: 85, pass: true });
+    addScore(candidate, 'acmsContactDataFilterStage', { value: 0, threshold: 100, pass: false });
 
     const result = await exactNameStateMatchStage()(state);
 

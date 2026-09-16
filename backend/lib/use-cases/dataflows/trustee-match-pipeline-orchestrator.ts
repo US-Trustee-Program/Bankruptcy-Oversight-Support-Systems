@@ -12,6 +12,7 @@ import {
   runPipeline,
 } from './trustee-match-pipeline';
 import {
+  acmsContactDataFilterStage,
   anchoredLevenshteinDiscoveryStage,
   cityMatchStage,
   comparativeCorroborationStage,
@@ -61,6 +62,7 @@ async function runNestedTier(
     // TrusteeMatchingPipeline.md on the append-only model).
     stateFilterStage(),
     noContactDataFilterStage(),
+    acmsContactDataFilterStage(),
 
     // SCORE - pure, no I/O, mutually independent (each reads acmsRaw/camsRaw and the FILTER
     // phase's annotations; none reads another SCORE stage's output, so their relative order
@@ -125,6 +127,7 @@ async function resolveMatchTrusteeByNameAmbiguous(
     // TrusteeMatchingPipeline.md on the append-only model).
     stateFilterStage(),
     noContactDataFilterStage(),
+    acmsContactDataFilterStage(),
 
     // SCORE - pure, no I/O, mutually independent (each reads acmsRaw/camsRaw and the FILTER
     // phase's annotations; none reads another SCORE stage's output, so their relative order
