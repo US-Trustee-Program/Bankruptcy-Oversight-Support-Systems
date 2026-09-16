@@ -54,18 +54,32 @@ async function runNestedTier(
   const nestedState = createInitialState(acmsRaw);
   const nestedResult = await runPipeline(nestedState, [
     discoveryStage(context),
+
+    // FILTER - pure, no I/O. Annotate candidates for later stages to exclude; never resolve a
+    // match, never remove a candidate (see docs/architecture/decision-records/
+    // TrusteeMatchingPipeline.md on the append-only model).
     stateFilterStage(),
     noContactDataFilterStage(),
+
+    // SCORE - pure, no I/O, mutually independent (each reads acmsRaw/camsRaw and the FILTER
+    // phase's annotations; none reads another SCORE stage's output, so their relative order
+    // here is arbitrary). Every RESOLVE stage below depends on nameScoreStage having run.
     nameScoreStage(),
     similarityDiagnosticsStage(),
     cityMatchStage(),
     stateMatchCorroborationStage(),
     zipMatchStage(),
+
+    // RESOLVE - may set state.match, in PRIORITY order (once one resolves, withGuard makes
+    // every later stage a no-op) - this order is a real behavioral decision, not just
+    // sequencing, and must not be reshuffled without a backtest confirming outcomes hold.
+    // corroborationStage is the only I/O-bound stage in this whole list (it re-fetches
+    // candidates from the repository); every other RESOLVE stage is pure.
     corroborationStage(context),
     comparativeCorroborationStage(),
     phoneTypoToleranceStage(),
     soleCandidateConsensusStage(),
-    firstNameFuzzyMatchStage(),
+    firstNameFuzzyMatchStage(), // scores only - lastNameOnlyConsensusStage below reads its vote
     lastNameOnlyConsensusStage(),
   ]);
 
@@ -77,27 +91,6 @@ async function runNestedTier(
   return nestedResult;
 }
 
-/**
- * Full priority-ordered tier sequence, replicating processNameMatch's exact behavior
- * (sync-acms-professional-ids.ts) via reusable pipeline stages instead of nested if/else
- * branches. Tier priority and fallthrough rules are preserved exactly as they exist today:
- *
- * 1. surnameExact: if it finds ANY candidates (resolved or not), the pipeline stops here - no
- *    other tier runs, matching processNameMatch's "surname-exact wins outright" rule.
- * 2. matchTrusteeByName (only tried if surnameExact found nothing): its own internal exact/fuzzy
- *    logic can resolve directly, or return an ambiguous CandidateScore[] pool. If ambiguous and
- *    the pool is large, it is re-fetched and passed through the state filter before corroboration
- *    (mirroring processNameMatch's STATE_FILTER_POOL_SIZE_THRESHOLD-gated re-fetch). If THAT still
- *    doesn't resolve, anchoredLevenshtein is tried as a rescue before giving up - unlike
- *    surnameExact, an unresolved matchTrusteeByName does NOT block anchoredLevenshtein.
- * 3. tokenIntersection (only tried if matchTrusteeByName found nothing at all, not merely
- *    ambiguous).
- * 4. anchoredLevenshtein (only tried if tokenIntersection didn't resolve).
- *
- * Every promoted candidate's full score history (including from its nested tier's internal
- * discovery/scoring/corroboration attempts) is preserved on the returned state for later
- * persistence/review, regardless of whether the pipeline as a whole ends in a match.
- */
 /**
  * Re-fetches matchTrusteeByName's ambiguous CandidateScore[] pool as raw Trustee records (needed
  * for the state filter, which reads structured firstName/middleName/lastName/state -
@@ -125,18 +118,31 @@ async function resolveMatchTrusteeByNameAmbiguous(
     nestedState.candidates.set(trustee.trusteeId, candidate);
   }
   const nestedResult = await runPipeline(nestedState, [
+    // FILTER - pure, no I/O. Annotate candidates for later stages to exclude; never resolve a
+    // match, never remove a candidate (see docs/architecture/decision-records/
+    // TrusteeMatchingPipeline.md on the append-only model).
     stateFilterStage(),
     noContactDataFilterStage(),
+
+    // SCORE - pure, no I/O, mutually independent (each reads acmsRaw/camsRaw and the FILTER
+    // phase's annotations; none reads another SCORE stage's output, so their relative order
+    // here is arbitrary). Every RESOLVE stage below depends on nameScoreStage having run.
     nameScoreStage(),
     similarityDiagnosticsStage(),
     cityMatchStage(),
     stateMatchCorroborationStage(),
     zipMatchStage(),
+
+    // RESOLVE - may set state.match, in PRIORITY order (once one resolves, withGuard makes
+    // every later stage a no-op) - this order is a real behavioral decision, not just
+    // sequencing, and must not be reshuffled without a backtest confirming outcomes hold.
+    // corroborationStage is the only I/O-bound stage in this whole list (it re-fetches
+    // candidates from the repository); every other RESOLVE stage is pure.
     corroborationStage(context),
     comparativeCorroborationStage(),
     phoneTypoToleranceStage(),
     soleCandidateConsensusStage(),
-    firstNameFuzzyMatchStage(),
+    firstNameFuzzyMatchStage(), // scores only - lastNameOnlyConsensusStage below reads its vote
     lastNameOnlyConsensusStage(),
   ]);
 
@@ -152,6 +158,27 @@ async function resolveMatchTrusteeByNameAmbiguous(
   return false;
 }
 
+/**
+ * Full priority-ordered tier sequence, replicating processNameMatch's exact behavior
+ * (sync-acms-professional-ids.ts) via reusable pipeline stages instead of nested if/else
+ * branches. Tier priority and fallthrough rules are preserved exactly as they exist today:
+ *
+ * 1. surnameExact: if it finds ANY candidates (resolved or not), the pipeline stops here - no
+ *    other tier runs, matching processNameMatch's "surname-exact wins outright" rule.
+ * 2. matchTrusteeByName (only tried if surnameExact found nothing): its own internal exact/fuzzy
+ *    logic can resolve directly, or return an ambiguous CandidateScore[] pool. If ambiguous and
+ *    the pool is large, it is re-fetched and passed through the state filter before corroboration
+ *    (mirroring processNameMatch's STATE_FILTER_POOL_SIZE_THRESHOLD-gated re-fetch). If THAT still
+ *    doesn't resolve, anchoredLevenshtein is tried as a rescue before giving up - unlike
+ *    surnameExact, an unresolved matchTrusteeByName does NOT block anchoredLevenshtein.
+ * 3. tokenIntersection (only tried if matchTrusteeByName found nothing at all, not merely
+ *    ambiguous).
+ * 4. anchoredLevenshtein (only tried if tokenIntersection didn't resolve).
+ *
+ * Every promoted candidate's full score history (including from its nested tier's internal
+ * discovery/scoring/corroboration attempts) is preserved on the returned state for later
+ * persistence/review, regardless of whether the pipeline as a whole ends in a match.
+ */
 export async function runTrusteeMatchPipeline(
   context: ApplicationContext,
   acmsRaw: DxtrTrusteeParty,

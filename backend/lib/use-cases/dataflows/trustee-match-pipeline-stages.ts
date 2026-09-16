@@ -475,11 +475,30 @@ export function noContactDataFilterStage(): Stage {
   });
 }
 
+/**
+ * Memoizes parseCityStateZip's result for the ACMS record onto state.acmsNormalized (see
+ * normalize/NormalizedMemo) - state.acmsRaw is invariant for the whole record, but
+ * stateFilterStage, stateMatchCorroborationStage, cityMatchStage, and zipMatchStage each
+ * independently re-parsed the same cityStateZipCountry string every time they ran. Fingerprinted
+ * on the raw string itself, same convention as memoizedNormalizeForSimilarity.
+ */
+function memoizedParseAcmsAddress(
+  memo: NormalizedMemo,
+  cityStateZipCountry: string | undefined,
+): ReturnType<typeof parseCityStateZip> {
+  return normalize(memo, 'parseCityStateZip', cityStateZipCountry ?? '', () =>
+    parseCityStateZip(cityStateZipCountry),
+  );
+}
+
 export function stateFilterStage(): Stage {
   return withGuard(async (state: PipelineState): Promise<PipelineState> => {
     const candidates = [...state.candidates.values()];
 
-    const parsedAcmsAddress = parseCityStateZip(state.acmsRaw.legacy?.cityStateZipCountry);
+    const parsedAcmsAddress = memoizedParseAcmsAddress(
+      state.acmsNormalized,
+      state.acmsRaw.legacy?.cityStateZipCountry,
+    );
     if (!parsedAcmsAddress) {
       for (const candidate of candidates) {
         addScore(candidate, 'stateFilterStage', stateMatchRecord(true));
@@ -531,7 +550,10 @@ export function stateFilterStage(): Stage {
  */
 export function stateMatchCorroborationStage(): Stage {
   return withGuard(async (state: PipelineState): Promise<PipelineState> => {
-    const parsedAcmsAddress = parseCityStateZip(state.acmsRaw.legacy?.cityStateZipCountry);
+    const parsedAcmsAddress = memoizedParseAcmsAddress(
+      state.acmsNormalized,
+      state.acmsRaw.legacy?.cityStateZipCountry,
+    );
     const acmsState = parsedAcmsAddress?.state.toLowerCase();
     if (!acmsState) return state;
 
@@ -564,7 +586,10 @@ export function stateMatchCorroborationStage(): Stage {
  */
 export function cityMatchStage(): Stage {
   return withGuard(async (state: PipelineState): Promise<PipelineState> => {
-    const parsedAcmsAddress = parseCityStateZip(state.acmsRaw.legacy?.cityStateZipCountry);
+    const parsedAcmsAddress = memoizedParseAcmsAddress(
+      state.acmsNormalized,
+      state.acmsRaw.legacy?.cityStateZipCountry,
+    );
     const acmsCity = parsedAcmsAddress?.city.toLowerCase();
     if (!acmsCity) return state;
 
@@ -589,7 +614,10 @@ export function cityMatchStage(): Stage {
  */
 export function zipMatchStage(): Stage {
   return withGuard(async (state: PipelineState): Promise<PipelineState> => {
-    const parsedAcmsAddress = parseCityStateZip(state.acmsRaw.legacy?.cityStateZipCountry);
+    const parsedAcmsAddress = memoizedParseAcmsAddress(
+      state.acmsNormalized,
+      state.acmsRaw.legacy?.cityStateZipCountry,
+    );
     const acmsZip5 = parsedAcmsAddress?.zipCode.slice(0, 5);
     if (!acmsZip5 || acmsZip5.length < 5) return state;
 
