@@ -60,7 +60,7 @@
     {
       "type": 1,
       "content": {
-        "json": "**Growth Summary** gives three top-line numbers for the selected time range: how many distinct browsers were active, how many showed up for the first time, and how that compares to the prior 30-day period (month-over-month growth)."
+        "json": "**Growth Summary** gives three top-line numbers for the selected time range: how many distinct browsers were active, how many showed up for the first time, and how that compares to the immediately preceding period of the same length (e.g. if you're viewing the last 7 days, this compares against the 7 days before that)."
       },
       "name": "growth-summary-header"
     },
@@ -68,7 +68,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "let TotalActiveUsers = toscalar(union pageViews, customEvents | where timestamp {TimeRange} | summarize dcount(user_Id));\nlet NewUsers = toscalar(\n    union pageViews, customEvents\n    | where timestamp > ago(400d)\n    | summarize FirstSeen = min(timestamp) by user_Id\n    | where FirstSeen {TimeRange}\n    | count\n);\nlet Current30d = toscalar(union pageViews, customEvents | where timestamp > ago(30d) | summarize dcount(user_Id));\nlet Previous30d = toscalar(union pageViews, customEvents | where timestamp between (ago(60d) .. ago(30d)) | summarize dcount(user_Id));\nlet MoMGrowthPercent = round(iif(Previous30d > 0, 100.0 * (Current30d - Previous30d) / Previous30d, 0.0), 1);\nunion\n    (print Metric = \"Active Users (selected period)\", Value = toreal(TotalActiveUsers)),\n    (print Metric = \"New Users (selected period)\", Value = toreal(NewUsers)),\n    (print Metric = \"MoM Growth % (rolling 30d)\", Value = MoMGrowthPercent)",
+        "query": "let RangeStart = {TimeRange:start};\nlet RangeEnd = {TimeRange:end};\nlet RangeDuration = RangeEnd - RangeStart;\nlet TotalActiveUsers = toscalar(union pageViews, customEvents | where timestamp {TimeRange} | summarize dcount(user_Id));\nlet NewUsers = toscalar(\n    union pageViews, customEvents\n    | where timestamp > ago(400d)\n    | summarize FirstSeen = min(timestamp) by user_Id\n    | where FirstSeen {TimeRange}\n    | count\n);\nlet PreviousPeriodUsers = toscalar(union pageViews, customEvents | where timestamp between ((RangeStart - RangeDuration) .. RangeStart) | summarize dcount(user_Id));\nlet GrowthPercent = round(iif(PreviousPeriodUsers > 0, 100.0 * (TotalActiveUsers - PreviousPeriodUsers) / PreviousPeriodUsers, 0.0), 1);\nunion\n    (print Metric = \"Active Users (selected period)\", Value = toreal(TotalActiveUsers)),\n    (print Metric = \"New Users (selected period)\", Value = toreal(NewUsers)),\n    (print Metric = \"Growth % (vs. prior period)\", Value = GrowthPercent)",
         "size": 3,
         "title": "Growth Summary",
         "timeContextFromParameter": "TimeRange",
