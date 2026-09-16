@@ -110,7 +110,7 @@ describe('Chapter7ElectedAppointmentBody', () => {
       expect(screen.getByTestId('alert-bond-key-dates-error')).toBeInTheDocument();
     });
     expect(screen.queryByTestId('bond-key-dates-card')).not.toBeInTheDocument();
-    expect(consoleErrorSpy).toHaveBeenCalledWith('Could not load bond key dates', fetchError);
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Could not load upcoming key dates', fetchError);
   });
 
   test('does not fetch or render the Bond card when DISPLAY_CHPT7_ELECTED_KEY_DATES is disabled', () => {

@@ -29,6 +29,8 @@ describe('EditableTableCard', () => {
     expect(screen.getByText('Issued')).toBeInTheDocument();
     expect(screen.getByTestId('renewal-value')).toHaveTextContent('06/01/2026');
     expect(screen.getByTestId('issued-value')).toHaveTextContent('06/01/2023');
+    expect(screen.getByTestId('renewal-value')).toHaveAttribute('data-cell', 'Renewal');
+    expect(screen.getByTestId('issued-value')).toHaveAttribute('data-cell', 'Issued');
   });
 
   test('does not render an edit button when onEdit is not provided', () => {
@@ -149,21 +151,6 @@ describe('EditableTableCard', () => {
     const table = document.getElementById('my-table');
     expect(table).not.toBeNull();
     expect(table).toHaveClass('my-table-class');
-  });
-
-  test('omits data-cell for non-string column headers', () => {
-    render(
-      <EditableTableCard
-        id="edit-thing"
-        title="Bond"
-        tableAriaLabel="Bond key dates"
-        columns={[{ key: 'icon', header: <span>Icon</span>, testId: 'icon-value' }]}
-        values={{ icon: 'value' }}
-      />,
-    );
-
-    const cell = screen.getByTestId('icon-value');
-    expect(cell).not.toHaveAttribute('data-cell');
   });
 
   test('applies testId and className to the card', () => {

@@ -29,6 +29,7 @@ import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
 import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
 import { Stop } from '@/lib/components/Stop';
+import useFeatureFlags, { DISPLAY_CHPT7_ELECTED_ACCORDION } from '@/lib/hooks/UseFeatureFlags';
 import { UpcomingKeyDatesVariant } from '@/trustees/panels/upcomingKeyDatesFieldConfig';
 import {
   getUpcomingKeyDatesFormConfig,
@@ -265,6 +266,8 @@ export default function UpcomingKeyDatesForm({
   const location = useLocation();
   const globalAlert = useGlobalAlert();
   const canManage = !!LocalStorage.getSession()?.user?.roles?.includes(CamsRole.TrusteeAdmin);
+  const featureFlags = useFeatureFlags();
+  const displayChpt7ElectedAccordion = featureFlags[DISPLAY_CHPT7_ELECTED_ACCORDION] === true;
 
   const variantFromState = (location.state as { variant?: UpcomingKeyDatesVariant } | null)
     ?.variant;
@@ -510,6 +513,16 @@ export default function UpcomingKeyDatesForm({
         title="Forbidden"
         message="You do not have permission to manage Trustee Upcoming Key Dates"
         asError
+      />
+    );
+  }
+
+  if (variant === 'chapter7-elected' && displayChpt7ElectedAccordion) {
+    return (
+      <Stop
+        id="chapter7-elected-moved-alert"
+        title="Moved"
+        message="Bond key dates for this appointment are now managed from the appointment accordion."
       />
     );
   }

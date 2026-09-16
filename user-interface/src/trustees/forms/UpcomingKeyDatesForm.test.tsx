@@ -13,6 +13,8 @@ import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { UpcomingKeyDatesVariant } from '@/trustees/panels/upcomingKeyDatesFieldConfig';
 import { GlobalAlertContext } from '@/App';
 import { CamsRole } from '@common/cams/roles';
+import * as featureFlagsHook from '@/lib/hooks/UseFeatureFlags';
+import { DISPLAY_CHPT7_ELECTED_ACCORDION } from '@/lib/hooks/UseFeatureFlags';
 
 const mockUseNavigate = vi.hoisted(() => vi.fn());
 const mockUseParams = vi.hoisted(() =>
@@ -1499,6 +1501,26 @@ describe('UpcomingKeyDatesForm', () => {
       bondIssuedDate: '2023-06-01',
       bondRenewalDate: '2026-06-01',
     };
+
+    beforeEach(() => {
+      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+        [DISPLAY_CHPT7_ELECTED_ACCORDION]: false,
+      });
+    });
+
+    test('shows a "moved" message instead of the form when the accordion flag is enabled', async () => {
+      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+        [DISPLAY_CHPT7_ELECTED_ACCORDION]: true,
+      });
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [electedAppointment] });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('alert-chapter7-elected-moved-alert')).toHaveTextContent('Moved');
+      });
+      expect(screen.queryByLabelText(/Bond Renewal Date/i)).not.toBeInTheDocument();
+    });
 
     test('deriveVariant renders Bond Renewal Date field for chapter 7 elected appointment', async () => {
       vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [electedAppointment] });

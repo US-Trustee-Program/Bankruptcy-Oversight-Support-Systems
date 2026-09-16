@@ -1,13 +1,15 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
-import BondKeyDatesForm from './BondKeyDatesForm';
+import BondKeyDatesForm, { buildBondKeyDatesInput } from './BondKeyDatesForm';
 import Api2 from '@/lib/models/api2';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { CamsRole } from '@common/cams/roles';
 import { GlobalAlertContext } from '@/App';
+import * as featureFlagsHook from '@/lib/hooks/UseFeatureFlags';
+import { DISPLAY_CHPT7_ELECTED_ACCORDION } from '@/lib/hooks/UseFeatureFlags';
 
 const mockUseNavigate = vi.hoisted(() => vi.fn());
 const mockUseParams = vi.hoisted(() =>
@@ -70,6 +72,23 @@ describe('BondKeyDatesForm', () => {
     mockUseNavigate.mockReturnValue(mockNavigate);
     TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
     userEvent = TestingUtilities.setupUserEvent();
+    vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+      [DISPLAY_CHPT7_ELECTED_ACCORDION]: true,
+    });
+  });
+
+  test('shows a "moved" message when the accordion flag is disabled', () => {
+    vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+      [DISPLAY_CHPT7_ELECTED_ACCORDION]: false,
+    });
+    const getSpy = vi.spyOn(Api2, 'getUpcomingKeyDates');
+
+    renderComponent();
+
+    expect(screen.getByTestId('alert-chapter7-elected-accordion-disabled-alert')).toHaveTextContent(
+      'Moved',
+    );
+    expect(getSpy).not.toHaveBeenCalled();
   });
 
   test('shows forbidden message when user lacks TrusteeAdmin role', async () => {
@@ -210,5 +229,125 @@ describe('BondKeyDatesForm', () => {
 
     expect(putSpy).not.toHaveBeenCalled();
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');
+  });
+});
+
+describe('buildBondKeyDatesInput', () => {
+  const fullOriginal: TrusteeUpcomingKeyDates = {
+    id: 'doc-full',
+    documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
+    trusteeId: 'trustee-001',
+    appointmentId: 'appointment-001',
+    createdBy: SYSTEM_USER_REFERENCE,
+    createdOn: '2026-01-01T00:00:00.000Z',
+    updatedBy: SYSTEM_USER_REFERENCE,
+    updatedOn: '2026-01-01T00:00:00.000Z',
+    pastBackgroundQuestion: 'past-background-question',
+    pastFieldExam: '2020-01-01',
+    pastAudit: '2020-01-02',
+    pastTprSubmission: '2020-01-03',
+    tprReviewPeriodStart: '2020-01-04',
+    tprReviewPeriodEnd: '2020-01-05',
+    tprDue: '2020-01-06',
+    tprDueYearType: 'EVEN',
+    tprFrequency: 'ANNUAL',
+    tirReviewPeriodStart: '2020-01-07',
+    tirReviewPeriodEnd: '2020-01-08',
+    tirSubmission: '2020-01-09',
+    tirReview: '2020-01-10',
+    upcomingExamOrAuditYear: 2025,
+    upcomingExamOrAuditType: 'Audit',
+    tirFrequency: 'SEMI_ANNUAL',
+    tirSemiAnnualReviewPeriodStart: '2020-01-11',
+    tirSemiAnnualReviewPeriodEnd: '2020-01-12',
+    tirSemiAnnualSubmission: '2020-01-13',
+    tirSemiAnnualReview: '2020-01-14',
+    lastAuditFiscalYear: 2024,
+    lastMonthlyReportReceived: '2020-01-15',
+    leaseExpiration: '2020-01-16',
+    idExpiration: '2020-01-17',
+    lastCompensationStudy: '2020-01-18',
+    bondIssuedDate: '2020-01-19',
+    bondRenewalDate: '2020-01-20',
+  };
+
+  test('preserves every non-bond field from the original document and overrides only the bond dates', () => {
+    const result = buildBondKeyDatesInput(
+      { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
+      fullOriginal,
+      { bondIssuedDate: '2023-06-01', bondRenewalDate: '2026-06-01' },
+    );
+
+    expect(result).toEqual({
+      trusteeId: 'trustee-001',
+      appointmentId: 'appointment-001',
+      pastBackgroundQuestion: 'past-background-question',
+      pastFieldExam: '2020-01-01',
+      pastAudit: '2020-01-02',
+      pastTprSubmission: '2020-01-03',
+      tprReviewPeriodStart: '2020-01-04',
+      tprReviewPeriodEnd: '2020-01-05',
+      tprDue: '2020-01-06',
+      tprDueYearType: 'EVEN',
+      tprFrequency: 'ANNUAL',
+      tirReviewPeriodStart: '2020-01-07',
+      tirReviewPeriodEnd: '2020-01-08',
+      tirSubmission: '2020-01-09',
+      tirReview: '2020-01-10',
+      upcomingExamOrAuditYear: 2025,
+      upcomingExamOrAuditType: 'Audit',
+      tirFrequency: 'SEMI_ANNUAL',
+      tirSemiAnnualReviewPeriodStart: '2020-01-11',
+      tirSemiAnnualReviewPeriodEnd: '2020-01-12',
+      tirSemiAnnualSubmission: '2020-01-13',
+      tirSemiAnnualReview: '2020-01-14',
+      lastAuditFiscalYear: 2024,
+      lastMonthlyReportReceived: '2020-01-15',
+      leaseExpiration: '2020-01-16',
+      idExpiration: '2020-01-17',
+      lastCompensationStudy: '2020-01-18',
+      bondIssuedDate: '2023-06-01',
+      bondRenewalDate: '2026-06-01',
+    });
+  });
+
+  test('defaults every field to null when there is no original document and the form is empty', () => {
+    const result = buildBondKeyDatesInput(
+      { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
+      null,
+      { bondIssuedDate: '', bondRenewalDate: '' },
+    );
+
+    expect(result).toEqual({
+      trusteeId: 'trustee-001',
+      appointmentId: 'appointment-001',
+      pastBackgroundQuestion: null,
+      pastFieldExam: null,
+      pastAudit: null,
+      pastTprSubmission: null,
+      tprReviewPeriodStart: null,
+      tprReviewPeriodEnd: null,
+      tprDue: null,
+      tprDueYearType: null,
+      tprFrequency: null,
+      tirReviewPeriodStart: null,
+      tirReviewPeriodEnd: null,
+      tirSubmission: null,
+      tirReview: null,
+      upcomingExamOrAuditYear: null,
+      upcomingExamOrAuditType: null,
+      tirFrequency: null,
+      tirSemiAnnualReviewPeriodStart: null,
+      tirSemiAnnualReviewPeriodEnd: null,
+      tirSemiAnnualSubmission: null,
+      tirSemiAnnualReview: null,
+      lastAuditFiscalYear: null,
+      lastMonthlyReportReceived: null,
+      leaseExpiration: null,
+      idExpiration: null,
+      lastCompensationStudy: null,
+      bondIssuedDate: null,
+      bondRenewalDate: null,
+    });
   });
 });
