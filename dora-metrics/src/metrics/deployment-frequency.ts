@@ -1,4 +1,4 @@
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
+import { MS_PER_DAY, resolvePeriodWindows } from './period-window.js';
 
 export type WorkflowRun = {
   id: number;
@@ -23,50 +23,29 @@ export function computeDeploymentFrequency(
   runs: WorkflowRun[],
   options: ComputeDeploymentFrequencyOptions,
 ): PeriodBucket[] {
-  const { startDate, periodDays } = options;
-  if (!Number.isFinite(periodDays) || periodDays <= 0) {
-    throw new Error(`periodDays must be a positive finite number, got ${periodDays}`);
-  }
-  const endDate = options.endDate ?? new Date();
-  if (!Number.isFinite(startDate.getTime()) || !Number.isFinite(endDate.getTime())) {
-    throw new Error('startDate and endDate must be valid dates');
-  }
-  if (startDate.getTime() > endDate.getTime()) {
-    throw new Error('startDate must be on or before endDate');
-  }
-  const periodMs = periodDays * MS_PER_DAY;
-  const totalMs = endDate.getTime() - startDate.getTime();
-  const periodCount = Math.max(1, Math.ceil(totalMs / periodMs));
-  if (!Number.isFinite(periodCount)) {
-    throw new Error(
-      'periodDays is too small relative to the date range (would produce an unbounded number of buckets)',
-    );
-  }
+  const { endDate, periodDays, windows } = resolvePeriodWindows(
+    options.startDate,
+    options.periodDays,
+    options.endDate,
+  );
 
   const successfulRunTimestamps = runs
     .filter((run) => run.conclusion === 'success')
     .map((run) => new Date(run.created_at).getTime());
 
-  const buckets: PeriodBucket[] = [];
-  for (let i = 0; i < periodCount; i++) {
-    const bucketStartMs = startDate.getTime() + i * periodMs;
-    const bucketEndMs = bucketStartMs + periodMs;
-
+  return windows.map(({ startMs, endMs, periodStart, periodEnd }) => {
     const deploymentCount = successfulRunTimestamps.filter(
-      (timestamp) =>
-        timestamp >= bucketStartMs && timestamp < bucketEndMs && timestamp < endDate.getTime(),
+      (timestamp) => timestamp >= startMs && timestamp < endMs && timestamp < endDate.getTime(),
     ).length;
 
-    const elapsedDays = (Math.min(bucketEndMs, endDate.getTime()) - bucketStartMs) / MS_PER_DAY;
+    const elapsedDays = (Math.min(endMs, endDate.getTime()) - startMs) / MS_PER_DAY;
     const effectiveDays = elapsedDays > 0 ? elapsedDays : periodDays;
 
-    buckets.push({
-      periodStart: new Date(bucketStartMs).toISOString(),
-      periodEnd: new Date(bucketEndMs).toISOString(),
+    return {
+      periodStart,
+      periodEnd,
       deploymentCount,
       deploymentsPerDay: deploymentCount / effectiveDays,
-    });
-  }
-
-  return buckets;
+    };
+  });
 }
