@@ -66,6 +66,54 @@ describe('fetchSeverityHighBugs', () => {
     expect(bugs).toEqual([]);
   });
 
+  test('includes an issue whose created_at exactly equals since (inclusive boundary)', async () => {
+    const { octokit } = mockOctokit([
+      [
+        {
+          number: 1,
+          created_at: '2026-01-01T00:00:00.000Z',
+          closed_at: null,
+        },
+      ],
+    ]);
+
+    const bugs = await fetchSeverityHighBugs({
+      octokit,
+      owner: 'US-Trustee-Program',
+      repo: 'Bankruptcy-Oversight-Support-Systems',
+      since: new Date('2026-01-01T00:00:00.000Z'),
+    });
+
+    expect(bugs.map((bug) => bug.number)).toEqual([1]);
+  });
+
+  test('includes an issue whose pull_request key is present but falsy (not a real PR)', async () => {
+    const { octokit } = mockOctokit([
+      [
+        {
+          number: 1,
+          created_at: '2026-01-05T00:00:00.000Z',
+          closed_at: null,
+          pull_request: null,
+        },
+        {
+          number: 2,
+          created_at: '2026-01-05T00:00:00.000Z',
+          closed_at: null,
+        },
+      ],
+    ]);
+
+    const bugs = await fetchSeverityHighBugs({
+      octokit,
+      owner: 'US-Trustee-Program',
+      repo: 'Bankruptcy-Oversight-Support-Systems',
+      since: new Date('2026-01-01T00:00:00.000Z'),
+    });
+
+    expect(bugs.map((bug) => bug.number)).toEqual([1, 2]);
+  });
+
   test('includes both open and closed issues', async () => {
     const { octokit } = mockOctokit([
       [
