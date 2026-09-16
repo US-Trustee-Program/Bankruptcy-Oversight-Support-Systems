@@ -36,3 +36,19 @@ jobs:
         dora-metrics/data/lead-time-by-period.csv
     secrets:
       github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  change-failure-rate:
+    name: Report change failure rate
+    permissions:
+      contents: read
+      actions: read
+      issues: read
+    uses: ./.github/workflows/reusable-dora-metrics-report.yml
+    with:
+      npm-script: report:change-failure-rate
+      artifact-name: dora-metrics-change-failure-rate
+      artifact-path: |
+        dora-metrics/data/change-failure-detail.csv
+        dora-metrics/data/change-failure-rate-by-period.csv
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
