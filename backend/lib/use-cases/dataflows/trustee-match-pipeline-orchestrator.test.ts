@@ -34,7 +34,9 @@ describe('runTrusteeMatchPipeline', () => {
     vi.spyOn(trusteeMatchHelpers, 'resolveByContactCorroboration').mockResolvedValue({
       kind: 'resolved',
       trusteeId: 't1',
-      candidateScores: [{ trusteeId: 't1', nameScore: 100 } as never],
+      candidateScores: [
+        { trusteeId: 't1', nameScore: 100, addressScore: 0, phoneScore: 100 } as never,
+      ],
     });
 
     const result = await runTrusteeMatchPipeline(
@@ -106,7 +108,9 @@ describe('runTrusteeMatchPipeline', () => {
     vi.spyOn(trusteeMatchHelpers, 'resolveByContactCorroboration').mockResolvedValue({
       kind: 'resolved',
       trusteeId: 't1',
-      candidateScores: [{ trusteeId: 't1', nameScore: 100 } as never],
+      candidateScores: [
+        { trusteeId: 't1', nameScore: 100, addressScore: 0, phoneScore: 100 } as never,
+      ],
     });
     const tokenIntersectionSpy = vi.spyOn(trusteeMatchHelpers, 'findTokenIntersectionCandidates');
 
@@ -130,7 +134,9 @@ describe('runTrusteeMatchPipeline', () => {
       .mockResolvedValueOnce({
         kind: 'resolved',
         trusteeId: 't2',
-        candidateScores: [{ trusteeId: 't2', nameScore: 100 } as never],
+        candidateScores: [
+          { trusteeId: 't2', nameScore: 100, addressScore: 0, phoneScore: 100 } as never,
+        ],
       });
     vi.spyOn(trusteeMatchHelpers, 'resolveDuplicateNameCandidates').mockResolvedValue({
       kind: 'unresolved',
@@ -157,7 +163,9 @@ describe('runTrusteeMatchPipeline', () => {
     vi.spyOn(trusteeMatchHelpers, 'resolveByContactCorroboration').mockResolvedValue({
       kind: 'resolved',
       trusteeId: 't1',
-      candidateScores: [{ trusteeId: 't1', nameScore: 100 } as never],
+      candidateScores: [
+        { trusteeId: 't1', nameScore: 100, addressScore: 0, phoneScore: 100 } as never,
+      ],
     });
 
     const result = await runTrusteeMatchPipeline(context, makeDxtrTrustee());

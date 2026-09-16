@@ -2,7 +2,7 @@ import * as natural from 'natural';
 import { getNameVariations } from 'name-match/src/name-normalizer';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { Trustee } from '@common/cams/trustees';
-import { DxtrTrusteeParty } from '@common/cams/dataflow-events';
+import { CandidateScore, DxtrTrusteeParty } from '@common/cams/dataflow-events';
 import { Address, PhoneNumber } from '@common/cams/contact';
 import {
   calculateNumericTokenScore,
@@ -40,6 +40,8 @@ import {
   Stage,
   withGuard,
 } from './trustee-match-pipeline';
+
+const MODULE_NAME = 'TRUSTEE-MATCH-PIPELINE';
 
 /**
  * Whether two name parts (a first name, or a full - non-initial - middle name) are plausibly the
@@ -421,6 +423,58 @@ function stateMatchRecord(stateMatch: boolean): ScoreRecord {
   return { value: stateMatch ? 100 : 0, threshold: 100, pass: stateMatch };
 }
 
+/**
+ * Whether a candidate/ACMS side has ANY usable contact data at all - address1, city, state, zip,
+ * or phone. Deliberately does NOT treat a missing address1/phone alone as insufficient (a real
+ * city+state correlation, even with no street address or phone on file, is still a strong,
+ * legitimate signal - see cityMatchStage/stateFilterStage) - only fires when literally every one
+ * of these fields is blank, since that is the one shape that carries zero real evidence either
+ * way. Confirmed via a CAMS-876 backtest investigation (cams-ea1w5): a "thin candidate" population
+ * defined any looser than this (e.g. no address1/zip/phone but a real city+state) sweeps in
+ * candidates with genuine, checkable evidence, which would be unsafe to treat as non-competing.
+ */
+function hasNoContactData(fields: {
+  address1?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  phone?: string;
+}): boolean {
+  return !fields.address1 && !fields.city && !fields.state && !fields.zipCode && !fields.phone;
+}
+
+/**
+ * Annotates every candidate with whether it carries ANY usable contact data at all (see
+ * hasNoContactData) - a candidate with NONE (no address1, city, state, zip, or phone) provides
+ * zero real corroborating evidence either way, so every later qualifying-candidate filter (see
+ * comparativeCorroborationStage, soleCandidateConsensusStage, lastNameOnlyConsensusStage) excludes
+ * it from being counted as a genuine competing candidate - it can neither resolve a match on its
+ * own nor create false ambiguity by "qualifying" alongside a real, data-backed candidate.
+ * Confirmed via a CAMS-876 backtest investigation (cams-ea1w5) that this shape is real, though
+ * rarer than initially assumed (the strictest all-blank bar matches 0 candidates in that
+ * population's snapshot - this stage exists as defensive correctness for whatever data the
+ * pipeline encounters next, not because it was observed firing there).
+ */
+export function noContactDataFilterStage(): Stage {
+  return withGuard(async (state: PipelineState): Promise<PipelineState> => {
+    for (const candidate of state.candidates.values()) {
+      const noContactData = hasNoContactData({
+        address1: candidate.camsRaw.address?.address1,
+        city: candidate.camsRaw.address?.city,
+        state: candidate.camsRaw.address?.state,
+        zipCode: candidate.camsRaw.address?.zipCode,
+        phone: candidate.camsRaw.phone?.number,
+      });
+      addScore(candidate, 'noContactDataFilterStage', {
+        value: noContactData ? 0 : 100,
+        threshold: 100,
+        pass: !noContactData,
+      });
+    }
+    return state;
+  });
+}
+
 export function stateFilterStage(): Stage {
   return withGuard(async (state: PipelineState): Promise<PipelineState> => {
     const candidates = [...state.candidates.values()];
@@ -454,6 +508,43 @@ export function stateFilterStage(): Stage {
       );
       const stateMatch = nameScore >= STATE_OVERRIDE_MIN_NAME_SCORE;
       addScore(candidate, 'stateFilterStage', stateMatchRecord(stateMatch));
+    }
+    return state;
+  });
+}
+
+/**
+ * Independent state-agreement scorer, for the sole-candidate consensus vote (see
+ * soleCandidateConsensusStage) - distinct from stateFilterStage's own stateMatch annotation,
+ * which is deliberately an ELIMINATION-style filter, not a corroborating vote: stateFilterStage
+ * defaults to pass:true whenever a real comparison isn't possible (unparseable ACMS address, or a
+ * candidate with no state on file) or an override applies (exact phone match, high nameScore) -
+ * those defaults are correct for "don't wrongly exclude this candidate" but WRONG as "real
+ * evidence this candidate's state agrees", since a candidate that was never actually checked
+ * shouldn't out-vote a candidate that was. Confirmed via a CAMS-876 backtest: SC-00222 (4
+ * same-surname candidates, ACMS record with only a phone:'0' sentinel - no address at all)
+ * resolved via soleCandidateConsensusStage's consensus tally counting stateFilterStage's
+ * unconditional true (ACMS address unparseable) as its ONLY vote, a false 100% consensus built on
+ * zero real corroboration. Same "no record when data is unavailable" convention as
+ * cityMatchStage/zipMatchStage - no override paths, no defaults, only a genuine state comparison
+ * counts as a vote at all.
+ */
+export function stateMatchCorroborationStage(): Stage {
+  return withGuard(async (state: PipelineState): Promise<PipelineState> => {
+    const parsedAcmsAddress = parseCityStateZip(state.acmsRaw.legacy?.cityStateZipCountry);
+    const acmsState = parsedAcmsAddress?.state.toLowerCase();
+    if (!acmsState) return state;
+
+    for (const candidate of state.candidates.values()) {
+      const camsState = candidate.camsRaw.address?.state?.toLowerCase();
+      if (!camsState) continue;
+
+      const pass = camsState === acmsState;
+      addScore(candidate, 'stateMatchCorroborationStage', {
+        value: pass ? 100 : 0,
+        threshold: 100,
+        pass,
+      });
     }
     return state;
   });
@@ -514,6 +605,40 @@ export function zipMatchStage(): Stage {
 }
 
 /**
+ * ACMS's sentinel for "no real value recorded" on the legacy phone/fax fields is the STRING "0",
+ * not an empty string - a raw truthiness check (!value) never catches it, since a non-empty
+ * string is always truthy in JS. Confirmed via a CAMS-876 backtest: this exact gap let
+ * isNoContradictionMatch's hasBlankAcmsDemographic guard (trustee-match.helpers.ts) silently pass
+ * for a record with phone:'0', treating "no phone" as "has a phone" and letting a name-only,
+ * zero-corroboration auto-link through its no-contradiction fallback (SC-00222: 4 same-surname
+ * candidates, resolved to one purely by exact first+last name equality). Pipeline-only, not
+ * exported to trustee-match.helpers.ts - see isGenuinelyContactCorroborated for why.
+ */
+function isBlankAcmsValue(value: string | undefined): boolean {
+  return !value || value === '0';
+}
+
+/**
+ * Re-verifies a resolveByContactCorroboration 'resolved' outcome using the SAME
+ * CONTACT_CORROBORATION_ADDRESS_THRESHOLD/phoneScore/emailScore bar that function's own
+ * corroborated branch uses - but never trusting its OWN no-contradiction fallback branch, since
+ * that branch's hasBlankAcmsDemographic guard has a real bug (see isBlankAcmsValue) that lets a
+ * pure name-equality guess through when ACMS's phone/fax legacy fields are the "0" sentinel
+ * rather than genuinely blank. Deliberately does NOT fork resolveByContactCorroboration itself
+ * (a large, stateful, repository-fetching function) - this only re-checks whether ITS OWN
+ * candidateScores already prove genuine corroboration existed, which is enough to distinguish
+ * "real evidence" from "name-only guess" without re-implementing the fetch/scoring machinery.
+ */
+function isGenuinelyContactCorroborated(score: CandidateScore | undefined): boolean {
+  if (!score) return false;
+  return (
+    score.addressScore >= CONTACT_CORROBORATION_ADDRESS_THRESHOLD ||
+    score.phoneScore === 100 ||
+    score.emailScore === 100
+  );
+}
+
+/**
  * Resolution stage wrapping the existing resolveByContactCorroboration and
  * resolveDuplicateNameCandidates unchanged, in the same order sync-acms-professional-ids.ts's
  * resolveCandidatesByCorroboration already composes them: contact corroboration first, duplicate-
@@ -525,6 +650,10 @@ export function zipMatchStage(): Stage {
  * Only considers candidates whose merged score does NOT have stateMatch: false (see
  * stateFilterStage) - a candidate a state-filter annotated as noise is excluded from the id list
  * passed to corroboration, without ever being removed from state.candidates itself.
+ *
+ * Never trusts resolveByContactCorroboration's 'resolved' outcome blindly when the ACMS side is
+ * genuinely blank (see isBlankAcmsValue/isGenuinelyContactCorroborated) - see this file's
+ * isGenuinelyContactCorroborated doc comment for the real bug this guards against.
  */
 export function corroborationStage(context: ApplicationContext): Stage {
   return withGuard(async (state: PipelineState): Promise<PipelineState> => {
@@ -543,7 +672,20 @@ export function corroborationStage(context: ApplicationContext): Stage {
       const score = corroboration.candidateScores.find(
         (c) => c.trusteeId === corroboration.trusteeId,
       );
-      return { ...state, match: { trusteeId: corroboration.trusteeId, score: score ?? {} } };
+      const acmsIsBlank =
+        isBlankAcmsValue(state.acmsRaw.legacy?.address1) &&
+        isBlankAcmsValue(state.acmsRaw.legacy?.cityStateZipCountry) &&
+        isBlankAcmsValue(state.acmsRaw.legacy?.phone) &&
+        isBlankAcmsValue(state.acmsRaw.legacy?.email);
+      if (acmsIsBlank && !isGenuinelyContactCorroborated(score)) {
+        context.logger.warn(
+          MODULE_NAME,
+          `Refusing corroborationStage's name-only resolution for ${corroboration.trusteeId} - ` +
+            'ACMS record has no real contact data to corroborate against (pipeline-only override).',
+        );
+      } else {
+        return { ...state, match: { trusteeId: corroboration.trusteeId, score: score ?? {} } };
+      }
     }
 
     const duplicateResolution = await resolveDuplicateNameCandidates(
@@ -592,7 +734,9 @@ export function corroborationStage(context: ApplicationContext): Stage {
 export function comparativeCorroborationStage(): Stage {
   return withGuard(async (state: PipelineState): Promise<PipelineState> => {
     const qualifying = [...state.candidates.values()].filter(
-      (candidate) => mergedScore(candidate).calculateNameScore?.pass === true,
+      (candidate) =>
+        mergedScore(candidate).calculateNameScore?.pass === true &&
+        mergedScore(candidate).noContactDataFilterStage?.pass !== false,
     );
     if (qualifying.length < 2) return state;
 
@@ -683,7 +827,9 @@ function phoneDigitDistance(
 export function phoneTypoToleranceStage(): Stage {
   return withGuard(async (state: PipelineState): Promise<PipelineState> => {
     const qualifying = [...state.candidates.values()].filter(
-      (candidate) => mergedScore(candidate).calculateNameScore?.pass === true,
+      (candidate) =>
+        mergedScore(candidate).calculateNameScore?.pass === true &&
+        mergedScore(candidate).noContactDataFilterStage?.pass !== false,
     );
     if (qualifying.length !== 1) return state;
 
@@ -721,7 +867,7 @@ export function phoneTypoToleranceStage(): Stage {
  * underlying phone comparison contactCorroborationPhone already covers).
  */
 const CONSENSUS_VOTING_SCORERS = [
-  'stateFilterStage',
+  'stateMatchCorroborationStage',
   'cityMatchStage',
   'zipMatchStage',
   'contactCorroborationAddress',
@@ -802,7 +948,9 @@ function computeConsensus(
 export function soleCandidateConsensusStage(): Stage {
   return withGuard(async (state: PipelineState): Promise<PipelineState> => {
     const qualifying = [...state.candidates.values()].filter(
-      (candidate) => mergedScore(candidate).calculateNameScore?.pass === true,
+      (candidate) =>
+        mergedScore(candidate).calculateNameScore?.pass === true &&
+        mergedScore(candidate).noContactDataFilterStage?.pass !== false,
     );
     if (qualifying.length !== 1) return state;
 
@@ -844,6 +992,7 @@ function findSoleZeroNameScoreCandidateWithMatchingLastName(
   const qualifying = [...state.candidates.values()].filter(
     (candidate) =>
       mergedScore(candidate).calculateNameScore?.value === 0 &&
+      mergedScore(candidate).noContactDataFilterStage?.pass !== false &&
       isExactLastNameMatch(state.acmsRaw.lastName ?? '', candidate.camsRaw.lastName ?? ''),
   );
   if (qualifying.length !== 1) return undefined;

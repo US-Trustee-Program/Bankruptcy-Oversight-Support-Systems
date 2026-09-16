@@ -21,6 +21,8 @@ import {
   nameScoreStage,
   similarityDiagnosticsStage,
   stateFilterStage,
+  stateMatchCorroborationStage,
+  noContactDataFilterStage,
   cityMatchStage,
   zipMatchStage,
   corroborationStage,
@@ -632,6 +634,202 @@ describe('stateFilterStage', () => {
   });
 });
 
+describe('noContactDataFilterStage', () => {
+  test('fails a candidate with NO address1, city, state, zip, or phone at all', async () => {
+    const state = createInitialState(makeDxtrTrustee());
+    addSomeoneMoon(state, {
+      trusteeId: 't1',
+      public: {
+        address: { address1: '', city: '', state: '', zipCode: '', countryCode: 'US' },
+      },
+    });
+
+    const result = await noContactDataFilterStage()(state);
+
+    expect(mergedScore(result.candidates.get('t1')!)).toMatchObject({
+      noContactDataFilterStage: { pass: false },
+    });
+  });
+
+  test.each([
+    {
+      description: 'only a city populated',
+      address: {
+        address1: '',
+        city: 'Seattle',
+        state: '',
+        zipCode: '',
+        countryCode: 'US' as const,
+      },
+    },
+    {
+      description: 'only a state populated',
+      address: { address1: '', city: '', state: 'WA', zipCode: '', countryCode: 'US' as const },
+    },
+    {
+      description: 'only a zip populated',
+      address: {
+        address1: '',
+        city: '',
+        state: '',
+        zipCode: '98101',
+        countryCode: 'US' as const,
+      },
+    },
+    {
+      description: 'only address1 populated',
+      address: {
+        address1: '1 Elm St',
+        city: '',
+        state: '',
+        zipCode: '',
+        countryCode: 'US' as const,
+      },
+    },
+  ])('passes a candidate with $description, even with nothing else', async ({ address }) => {
+    const state = createInitialState(makeDxtrTrustee());
+    addSomeoneMoon(state, { trusteeId: 't1', public: { address } });
+
+    const result = await noContactDataFilterStage()(state);
+
+    expect(mergedScore(result.candidates.get('t1')!)).toMatchObject({
+      noContactDataFilterStage: { pass: true },
+    });
+  });
+
+  test('passes a candidate with no address at all but a phone on file', async () => {
+    const state = createInitialState(makeDxtrTrustee());
+    addSomeoneMoon(state, {
+      trusteeId: 't1',
+      public: {
+        address: { address1: '', city: '', state: '', zipCode: '', countryCode: 'US' },
+        phone: { number: '206-555-0100' },
+      },
+    });
+
+    const result = await noContactDataFilterStage()(state);
+
+    expect(mergedScore(result.candidates.get('t1')!)).toMatchObject({
+      noContactDataFilterStage: { pass: true },
+    });
+  });
+
+  test('no-ops once the pipeline has already matched', async () => {
+    const state: PipelineState = {
+      ...createInitialState(makeDxtrTrustee()),
+      match: { trusteeId: 'already-matched', score: {} },
+    };
+    addSomeoneMoon(state, { trusteeId: 't1' });
+
+    const result = await noContactDataFilterStage()(state);
+
+    expect(result.candidates.get('t1')!.scores).toEqual({});
+  });
+});
+
+describe('stateMatchCorroborationStage', () => {
+  const dxtrInWashington = makeDxtrTrustee({
+    fullName: 'Aldric A Moon',
+    legacy: { cityStateZipCountry: 'Seattle, WA 98101' },
+  });
+
+  test('records a pass when the candidate state matches, case-insensitively', async () => {
+    const state = createInitialState(dxtrInWashington);
+    addSomeoneMoon(state, {
+      trusteeId: 't1',
+      public: {
+        address: {
+          address1: '1 Elm St',
+          city: 'Seattle',
+          state: 'wa',
+          zipCode: '98101',
+          countryCode: 'US',
+        },
+      },
+    });
+
+    const result = await stateMatchCorroborationStage()(state);
+
+    expect(mergedScore(result.candidates.get('t1')!)).toMatchObject({
+      stateMatchCorroborationStage: { value: 100, threshold: 100, pass: true },
+    });
+  });
+
+  test('records a fail when the candidate state differs', async () => {
+    const state = createInitialState(dxtrInWashington);
+    addSomeoneMoon(state, {
+      trusteeId: 't1',
+      public: {
+        address: {
+          address1: '1 Elm St',
+          city: 'Miami',
+          state: 'FL',
+          zipCode: '33101',
+          countryCode: 'US',
+        },
+      },
+    });
+
+    const result = await stateMatchCorroborationStage()(state);
+
+    expect(mergedScore(result.candidates.get('t1')!)).toMatchObject({
+      stateMatchCorroborationStage: { pass: false },
+    });
+  });
+
+  test('adds no record when the ACMS address is unparseable', async () => {
+    const state = createInitialState(makeDxtrTrustee({ legacy: { cityStateZipCountry: '' } }));
+    addSomeoneMoon(state, {
+      trusteeId: 't1',
+      public: {
+        address: {
+          address1: '1 Elm St',
+          city: 'Seattle',
+          state: 'WA',
+          zipCode: '98101',
+          countryCode: 'US',
+        },
+      },
+    });
+
+    const result = await stateMatchCorroborationStage()(state);
+
+    expect(result.candidates.get('t1')!.scores.stateMatchCorroborationStage).toBeUndefined();
+  });
+
+  test('adds no record when the candidate has no state on file', async () => {
+    const state = createInitialState(dxtrInWashington);
+    addSomeoneMoon(state, {
+      trusteeId: 't1',
+      public: {
+        address: {
+          address1: '1 Elm St',
+          city: 'Seattle',
+          state: '',
+          zipCode: '',
+          countryCode: 'US',
+        },
+      },
+    });
+
+    const result = await stateMatchCorroborationStage()(state);
+
+    expect(result.candidates.get('t1')!.scores.stateMatchCorroborationStage).toBeUndefined();
+  });
+
+  test('no-ops once the pipeline has already matched', async () => {
+    const state: PipelineState = {
+      ...createInitialState(dxtrInWashington),
+      match: { trusteeId: 'already-matched', score: {} },
+    };
+    addSomeoneMoon(state, { trusteeId: 't1' });
+
+    const result = await stateMatchCorroborationStage()(state);
+
+    expect(result.candidates.get('t1')!.scores).toEqual({});
+  });
+});
+
 describe('cityMatchStage', () => {
   const dxtrInSeattle = makeDxtrTrustee({
     fullName: 'Aldric A Moon',
@@ -820,21 +1018,45 @@ describe('corroborationStage', () => {
     context = await createMockApplicationContext();
   });
 
-  test('sets state.match when resolveByContactCorroboration resolves', async () => {
+  test('sets state.match when resolveByContactCorroboration resolves with genuine corroboration', async () => {
     const state = createInitialState(makeDxtrTrustee());
     addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })));
     vi.spyOn(trusteeMatchHelpers, 'resolveByContactCorroboration').mockResolvedValue({
       kind: 'resolved',
       trusteeId: 't1',
-      candidateScores: [{ trusteeId: 't1', nameScore: 100 } as never],
+      candidateScores: [
+        { trusteeId: 't1', nameScore: 100, addressScore: 0, phoneScore: 100 } as never,
+      ],
     });
 
     const result = await corroborationStage(context)(state);
 
     expect(result.match).toEqual({
       trusteeId: 't1',
-      score: { trusteeId: 't1', nameScore: 100 },
+      score: { trusteeId: 't1', nameScore: 100, addressScore: 0, phoneScore: 100 },
     });
+  });
+
+  test('refuses a name-only resolution when the ACMS record has no real contact data to corroborate', async () => {
+    const state = createInitialState(
+      makeDxtrTrustee({ legacy: { phone: '0', fax: '0' } as never }),
+    );
+    addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })));
+    vi.spyOn(trusteeMatchHelpers, 'resolveByContactCorroboration').mockResolvedValue({
+      kind: 'resolved',
+      trusteeId: 't1',
+      candidateScores: [
+        { trusteeId: 't1', nameScore: 100, addressScore: 0, phoneScore: null } as never,
+      ],
+    });
+    vi.spyOn(trusteeMatchHelpers, 'resolveDuplicateNameCandidates').mockResolvedValue({
+      kind: 'unresolved',
+      candidateScores: [],
+    });
+
+    const result = await corroborationStage(context)(state);
+
+    expect(result.match).toBeNull();
   });
 
   test('falls through to resolveDuplicateNameCandidates when contact corroboration is unresolved', async () => {
