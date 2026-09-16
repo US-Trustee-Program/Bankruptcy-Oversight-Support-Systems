@@ -41,12 +41,17 @@ describe('BondKeyDatesCard', () => {
     TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
   });
 
-  function renderCard(data: TrusteeUpcomingKeyDates | null = keyDates, isLoading = false) {
+  function renderCard(
+    data: TrusteeUpcomingKeyDates | null = keyDates,
+    isLoading = false,
+    appointmentHeading?: string,
+  ) {
     return render(
       <BrowserRouter>
         <BondKeyDatesCard
           trusteeId="trustee-123"
           appointmentId="appointment-001"
+          appointmentHeading={appointmentHeading}
           data={data}
           isLoading={isLoading}
         />
@@ -97,7 +102,19 @@ describe('BondKeyDatesCard', () => {
     ).not.toBeInTheDocument();
   });
 
-  test('navigates to the bond key dates edit form when Edit is clicked', async () => {
+  test('navigates to the bond key dates edit form with the appointment heading as subHeading', async () => {
+    const user = userEvent.setup();
+    renderCard(keyDates, false, 'Southern District of New York (Manhattan): Chapter 7 - Elected');
+
+    await user.click(screen.getByTestId('button-edit-bond-key-dates-appointment-001'));
+
+    expect(mockNavigate).toHaveBeenCalledWith(
+      '/trustees/trustee-123/appointments/appointment-001/bond-key-dates/edit',
+      { state: { subHeading: 'Southern District of New York (Manhattan): Chapter 7 - Elected' } },
+    );
+  });
+
+  test('navigates with an empty subHeading when no appointmentHeading is provided', async () => {
     const user = userEvent.setup();
     renderCard();
 
@@ -105,6 +122,7 @@ describe('BondKeyDatesCard', () => {
 
     expect(mockNavigate).toHaveBeenCalledWith(
       '/trustees/trustee-123/appointments/appointment-001/bond-key-dates/edit',
+      { state: { subHeading: '' } },
     );
   });
 });

@@ -15,11 +15,16 @@ vi.mock('./AppointmentBasicFields', () => ({
 }));
 
 vi.mock('./BondKeyDatesCard', () => ({
-  default: (props: { data: TrusteeUpcomingKeyDates | null; isLoading: boolean }) => (
+  default: (props: {
+    data: TrusteeUpcomingKeyDates | null;
+    isLoading: boolean;
+    appointmentHeading?: string;
+  }) => (
     <div
       data-testid="bond-key-dates-card"
       data-is-loading={String(props.isLoading)}
       data-has-data={String(props.data !== null)}
+      data-appointment-heading={props.appointmentHeading}
     />
   ),
 }));
@@ -87,6 +92,32 @@ describe('Chapter7ElectedAppointmentBody', () => {
     });
     expect(getSpy).toHaveBeenCalledWith('trustee-456', 'appointment-002');
     expect(screen.getByTestId('bond-key-dates-card')).toHaveAttribute('data-has-data', 'true');
+  });
+
+  test('builds the district/division/chapter/type appointment heading for BondKeyDatesCard', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: keyDates });
+
+    renderBody();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('bond-key-dates-card')).toHaveAttribute(
+        'data-appointment-heading',
+        'Southern District of New York (Manhattan): Chapter 7 - Elected',
+      );
+    });
+  });
+
+  test('omits the division parenthetical when the appointment has none', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: keyDates });
+
+    renderBody({ ...mockAppointment, courtDivisionName: undefined });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('bond-key-dates-card')).toHaveAttribute(
+        'data-appointment-heading',
+        'Southern District of New York: Chapter 7 - Elected',
+      );
+    });
   });
 
   test('forwards null data to BondKeyDatesCard when no key dates document exists', async () => {

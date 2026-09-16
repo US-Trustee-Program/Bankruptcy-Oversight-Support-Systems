@@ -8,6 +8,7 @@ import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 export interface BondKeyDatesCardProps {
   trusteeId: string;
   appointmentId: string;
+  appointmentHeading?: string;
   data: TrusteeUpcomingKeyDates | null;
   isLoading: boolean;
 }
@@ -19,12 +20,14 @@ function formatDateOrDefault(isoDate: string | undefined): string {
 }
 
 export default function BondKeyDatesCard(props: Readonly<BondKeyDatesCardProps>) {
-  const { trusteeId, appointmentId, data, isLoading } = props;
+  const { trusteeId, appointmentId, appointmentHeading, data, isLoading } = props;
   const navigate = useNavigate();
   const canManage = useCanManageTrustees();
 
   function openEdit() {
-    navigate(`/trustees/${trusteeId}/appointments/${appointmentId}/bond-key-dates/edit`);
+    navigate(`/trustees/${trusteeId}/appointments/${appointmentId}/bond-key-dates/edit`, {
+      state: { subHeading: appointmentHeading ?? '' },
+    });
   }
 
   if (isLoading) {
