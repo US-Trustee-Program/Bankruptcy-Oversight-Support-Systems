@@ -599,6 +599,9 @@ describe('TrusteeAppointments', () => {
     }
 
     test('renders via the accordion when the flag is enabled', async () => {
+      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+        [DISPLAY_CHPT7_ELECTED_ACCORDION]: true,
+      });
       vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch7ElectedActive] });
 
       renderComponent('trustee-123');
@@ -652,6 +655,9 @@ describe('TrusteeAppointments', () => {
     });
 
     test('an active Chapter 7 Elected appointment is expanded by default', async () => {
+      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+        [DISPLAY_CHPT7_ELECTED_ACCORDION]: true,
+      });
       vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch7ElectedActive] });
 
       renderComponent('trustee-123');
@@ -662,6 +668,9 @@ describe('TrusteeAppointments', () => {
     });
 
     test('an inactive Chapter 7 Elected appointment is collapsed by default', async () => {
+      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+        [DISPLAY_CHPT7_ELECTED_ACCORDION]: true,
+      });
       vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch7ElectedInactive] });
 
       renderComponent('trustee-123');
