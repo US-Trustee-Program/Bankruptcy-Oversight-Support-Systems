@@ -49,6 +49,11 @@ export default function useFeatureFlags(): FeatureFlagSet {
   // Always call hooks unconditionally (rules of hooks)
   const featureFlags = useFlags();
 
+  // CAMS_USE_FAKE_API=true is how `npm test` runs, so any test that doesn't
+  // explicitly mock this hook's default export gets testFeatureFlags here,
+  // not {} or the real LaunchDarkly state. A flag missing from
+  // testFeatureFlags reads as false for every such test regardless of
+  // intent — mock this hook explicitly for any flag-dependent assertion.
   if (appConfig.useFakeApi) {
     return testFeatureFlags;
   }
