@@ -7,8 +7,6 @@ import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import userEvent from '@testing-library/user-event';
 import * as courtUtils from '@/lib/utils/court-utils';
-import * as featureFlagsHook from '@/lib/hooks/UseFeatureFlags';
-import { DISPLAY_CHPT7_ELECTED_ACCORDION } from '@/lib/hooks/UseFeatureFlags';
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');
@@ -404,10 +402,7 @@ describe('TrusteeAppointments', () => {
       return !screen.getByTestId(`appointment-accordion-body-${appointmentId}`).closest('[hidden]');
     }
 
-    test('renders via the accordion when the flag is enabled', async () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT7_ELECTED_ACCORDION]: true,
-      });
+    test('renders Chapter 7 Elected via the accordion', async () => {
       vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch7ElectedActive] });
 
       renderComponent('trustee-123');
@@ -423,47 +418,7 @@ describe('TrusteeAppointments', () => {
       expect(getAppointmentCards()).toHaveLength(0);
     });
 
-    test('falls back to AppointmentCard when the flag is disabled', async () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT7_ELECTED_ACCORDION]: false,
-      });
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch7ElectedActive] });
-
-      renderComponent('trustee-123');
-
-      await waitFor(() => {
-        expect(getAppointmentCards()).toHaveLength(1);
-      });
-      expect(
-        screen.queryByTestId(`appointment-accordion-header-${ch7ElectedActive.id}`),
-      ).not.toBeInTheDocument();
-    });
-
-    test('renders Chapter 11 Case by Case via the accordion regardless of the new flag', async () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT7_ELECTED_ACCORDION]: false,
-      });
-      const ch11Active = makeAppointment('ch11-active', {
-        chapter: '11',
-        appointmentType: 'case-by-case',
-        status: 'active',
-        courtName: 'Southern District of New York',
-      });
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch11Active] });
-
-      renderComponent('trustee-123');
-
-      await waitFor(() => {
-        expect(
-          screen.getByTestId(`appointment-accordion-header-${ch11Active.id}`),
-        ).toBeInTheDocument();
-      });
-    });
-
     test('an active Chapter 7 Elected appointment is expanded by default', async () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT7_ELECTED_ACCORDION]: true,
-      });
       vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch7ElectedActive] });
 
       renderComponent('trustee-123');
@@ -474,9 +429,6 @@ describe('TrusteeAppointments', () => {
     });
 
     test('an inactive Chapter 7 Elected appointment is collapsed by default', async () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT7_ELECTED_ACCORDION]: true,
-      });
       vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch7ElectedInactive] });
 
       renderComponent('trustee-123');

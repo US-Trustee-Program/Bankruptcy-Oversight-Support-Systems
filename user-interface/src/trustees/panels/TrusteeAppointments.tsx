@@ -7,7 +7,6 @@ import {
   isChapter11CaseByCase,
   isChapter7Elected,
 } from '@common/cams/trustee-appointments';
-import { FeatureFlagSet } from '@common/feature-flags';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import AppointmentCard from './AppointmentCard';
@@ -18,23 +17,16 @@ import Button from '@/lib/components/uswds/Button';
 import Icon from '@/lib/components/uswds/Icon';
 import { useNavigate } from 'react-router-dom';
 import { useAppointmentExpansion } from './useAppointmentExpansion';
-import useFeatureFlags, { DISPLAY_CHPT7_ELECTED_ACCORDION } from '@/lib/hooks/UseFeatureFlags';
 
 interface TrusteeAppointmentsProps {
   trusteeId: string;
 }
 
-function resolveAccordionBody(
-  appointment: TrusteeAppointment,
-  flags: FeatureFlagSet,
-): ReactNode | undefined {
+function resolveAccordionBody(appointment: TrusteeAppointment): ReactNode | undefined {
   if (isChapter11CaseByCase(appointment.chapter, appointment.appointmentType)) {
     return <Chapter11CaseByCaseAppointmentBody appointment={appointment} />;
   }
-  if (
-    isChapter7Elected(appointment.chapter, appointment.appointmentType) &&
-    flags[DISPLAY_CHPT7_ELECTED_ACCORDION] === true
-  ) {
+  if (isChapter7Elected(appointment.chapter, appointment.appointmentType)) {
     return <Chapter7ElectedAppointmentBody appointment={appointment} />;
   }
   return undefined;
@@ -46,7 +38,6 @@ export default function TrusteeAppointments(props: Readonly<TrusteeAppointmentsP
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
-  const featureFlags = useFeatureFlags();
   const { isExpanded, toggleExpanded } = useAppointmentExpansion(trusteeId, appointments);
 
   useEffect(() => {
@@ -119,7 +110,7 @@ export default function TrusteeAppointments(props: Readonly<TrusteeAppointmentsP
       </div>
       <div className="appointments-list">
         {sortedAppointments.map((appointment) => {
-          const accordionBody = resolveAccordionBody(appointment, featureFlags);
+          const accordionBody = resolveAccordionBody(appointment);
           return accordionBody ? (
             <AppointmentAccordion
               key={appointment.id}

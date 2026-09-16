@@ -37,7 +37,6 @@ import useFeatureFlags, {
   DISPLAY_CHPT12_STANDING_KEY_DATES,
   DISPLAY_CHPT13_STANDING_KEY_DATES,
   DISPLAY_CHPT7_ELECTED_KEY_DATES,
-  DISPLAY_CHPT7_ELECTED_ACCORDION,
   TRUSTEE_SOFTWARE_BANK_DISPLAY,
   TRUSTEE_ASSIGNED_STAFF_ENABLED,
   TRUSTEE_CASE_LIST,
@@ -294,7 +293,7 @@ export default function TrusteeDetailScreen() {
     },
     {
       path: 'appointments/:appointmentId/bond-key-dates/edit',
-      disabled: !featureFlags[DISPLAY_CHPT7_ELECTED_ACCORDION],
+      disabled: !featureFlags[DISPLAY_CHPT7_ELECTED_KEY_DATES],
       subHeading: (location.state as { subHeading?: string } | null)?.subHeading ?? '',
       content: <BondKeyDatesForm />,
     },
