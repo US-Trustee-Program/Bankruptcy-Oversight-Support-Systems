@@ -957,6 +957,45 @@ function computeConsensus(
 }
 
 /**
+ * Resolves a SOLE candidate whose name matches EXACTLY (calculateNameScore === 100, not merely
+ * >= 85) and whose state also corroborates - deliberately its own small stage rather than one
+ * more weighted vote inside computeConsensus, since a 100 nameScore is categorically stronger
+ * evidence than an 85 fuzzy match (last AND first name both matched exactly, see
+ * calculateNameScore) and deserves its own simple, readable rule instead of a fragile weighting
+ * scheme. Runs BEFORE soleCandidateConsensusStage (withGuard makes it a no-op once this resolves)
+ * so an exact-name/same-state candidate never has to clear the general 60% consensus bar.
+ *
+ * City/zip/phone mismatches are NOT disqualifying here - discovered via a CAMS-876 AI-screener
+ * backtest sample (121 records) of the shape "sole candidate, exact name match, same state, but
+ * city/zip/phone all differ" - the classic signature of a trustee whose office relocated within
+ * the state after their ACMS record was created (e.g. Ronald Durkin: ACMS address in Indio CA,
+ * CAMS address in Westlake Village CA, ~150 miles apart, same state). State agreement is still
+ * required and NOT relaxed: a same-name, cross-state mismatch (e.g. Martin Rechnitzer: ACMS
+ * Burleson TX vs CAMS Camarillo CA, found in the same sample) is exactly the "different real
+ * person, same name" risk this stage must not paper over, so it is left for
+ * soleCandidateConsensusStage's general vote (which will not resolve it either, absent other
+ * corroboration).
+ */
+export function exactNameStateMatchStage(): Stage {
+  return withGuard(async (state: PipelineState): Promise<PipelineState> => {
+    const qualifying = [...state.candidates.values()].filter(
+      (candidate) =>
+        mergedScore(candidate).calculateNameScore?.value === 100 &&
+        mergedScore(candidate).noContactDataFilterStage?.pass !== false,
+    );
+    if (qualifying.length !== 1) return state;
+
+    const candidate = qualifying[0];
+    if (mergedScore(candidate).stateMatchCorroborationStage?.pass !== true) return state;
+
+    return {
+      ...state,
+      match: { trusteeId: candidate.camsRaw.trusteeId, score: candidate.scores },
+    };
+  });
+}
+
+/**
  * Resolves a SOLE name-qualifying candidate (comparativeCorroborationStage's multi-candidate case,
  * and phoneTypoToleranceStage's narrower phone-typo case, both do not apply) using a
  * pass-fraction vote across every independent corroborating scorer that actually produced a

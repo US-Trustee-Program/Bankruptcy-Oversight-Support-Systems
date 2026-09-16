@@ -28,6 +28,7 @@ import {
   corroborationStage,
   comparativeCorroborationStage,
   phoneTypoToleranceStage,
+  exactNameStateMatchStage,
   soleCandidateConsensusStage,
   firstNameFuzzyMatchStage,
   lastNameOnlyConsensusStage,
@@ -1580,6 +1581,119 @@ describe('phoneTypoToleranceStage', () => {
     await phoneTypoToleranceStage()(state);
 
     expect(candidate.scores).not.toHaveProperty('phoneTypoToleranceScore');
+  });
+});
+
+describe('exactNameStateMatchStage', () => {
+  const acmsRecord = makeDxtrTrustee({ fullName: 'Ronald Durkin' });
+
+  test('resolves a sole exact-name-match candidate when state corroborates, even if city/zip/phone disagree', async () => {
+    const state = createInitialState(acmsRecord);
+    const candidate = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Ronald L. Durkin' })),
+    );
+    addScore(candidate, 'calculateNameScore', { value: 100, threshold: 85, pass: true });
+    addScore(candidate, 'stateMatchCorroborationStage', { value: 100, threshold: 100, pass: true });
+    addScore(candidate, 'cityMatchStage', { value: 0, threshold: 100, pass: false });
+    addScore(candidate, 'zipMatchStage', { value: 0, threshold: 100, pass: false });
+
+    const result = await exactNameStateMatchStage()(state);
+
+    expect(result.match).toEqual({ trusteeId: 't1', score: candidate.scores });
+  });
+
+  test('does not resolve when state does not corroborate, even with an exact name match', async () => {
+    const state = createInitialState(acmsRecord);
+    const candidate = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Ronald L. Durkin' })),
+    );
+    addScore(candidate, 'calculateNameScore', { value: 100, threshold: 85, pass: true });
+    addScore(candidate, 'stateMatchCorroborationStage', { value: 0, threshold: 100, pass: false });
+
+    const result = await exactNameStateMatchStage()(state);
+
+    expect(result.match).toBeNull();
+  });
+
+  test('does not resolve when the state comparison never ran', async () => {
+    const state = createInitialState(acmsRecord);
+    const candidate = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Ronald L. Durkin' })),
+    );
+    addScore(candidate, 'calculateNameScore', { value: 100, threshold: 85, pass: true });
+
+    const result = await exactNameStateMatchStage()(state);
+
+    expect(result.match).toBeNull();
+  });
+
+  test('does not resolve a fuzzy (non-exact) 85 name score, even with state corroboration', async () => {
+    const state = createInitialState(acmsRecord);
+    const candidate = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Ronald L. Durkin' })),
+    );
+    addScore(candidate, 'calculateNameScore', { value: 85, threshold: 85, pass: true });
+    addScore(candidate, 'stateMatchCorroborationStage', { value: 100, threshold: 100, pass: true });
+
+    const result = await exactNameStateMatchStage()(state);
+
+    expect(result.match).toBeNull();
+  });
+
+  test('does not resolve when more than one candidate has an exact name match', async () => {
+    const state = createInitialState(acmsRecord);
+    const first = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Ronald L. Durkin' })),
+    );
+    addScore(first, 'calculateNameScore', { value: 100, threshold: 85, pass: true });
+    addScore(first, 'stateMatchCorroborationStage', { value: 100, threshold: 100, pass: true });
+    const second = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't2', name: 'Ronald L. Durkin' })),
+    );
+    addScore(second, 'calculateNameScore', { value: 100, threshold: 85, pass: true });
+    addScore(second, 'stateMatchCorroborationStage', { value: 100, threshold: 100, pass: true });
+
+    const result = await exactNameStateMatchStage()(state);
+
+    expect(result.match).toBeNull();
+  });
+
+  test('does not resolve a candidate excluded by noContactDataFilterStage', async () => {
+    const state = createInitialState(acmsRecord);
+    const candidate = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Ronald L. Durkin' })),
+    );
+    addScore(candidate, 'calculateNameScore', { value: 100, threshold: 85, pass: true });
+    addScore(candidate, 'stateMatchCorroborationStage', { value: 100, threshold: 100, pass: true });
+    addScore(candidate, 'noContactDataFilterStage', { value: 0, threshold: 100, pass: false });
+
+    const result = await exactNameStateMatchStage()(state);
+
+    expect(result.match).toBeNull();
+  });
+
+  test('no-ops once the pipeline has already matched', async () => {
+    const state: PipelineState = {
+      ...createInitialState(acmsRecord),
+      match: { trusteeId: 'already-matched', score: {} },
+    };
+    const candidate = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Ronald L. Durkin' })),
+    );
+    addScore(candidate, 'calculateNameScore', { value: 100, threshold: 85, pass: true });
+    addScore(candidate, 'stateMatchCorroborationStage', { value: 100, threshold: 100, pass: true });
+
+    const result = await exactNameStateMatchStage()(state);
+
+    expect(result.match).toEqual({ trusteeId: 'already-matched', score: {} });
   });
 });
 

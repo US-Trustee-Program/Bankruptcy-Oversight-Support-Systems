@@ -16,6 +16,7 @@ import {
   cityMatchStage,
   comparativeCorroborationStage,
   corroborationStage,
+  exactNameStateMatchStage,
   firstNameFuzzyMatchStage,
   lastNameOnlyConsensusStage,
   nameScoreStage,
@@ -78,6 +79,7 @@ async function runNestedTier(
     corroborationStage(context),
     comparativeCorroborationStage(),
     phoneTypoToleranceStage(),
+    exactNameStateMatchStage(),
     soleCandidateConsensusStage(),
     firstNameFuzzyMatchStage(), // scores only - lastNameOnlyConsensusStage below reads its vote
     lastNameOnlyConsensusStage(),
@@ -141,6 +143,7 @@ async function resolveMatchTrusteeByNameAmbiguous(
     corroborationStage(context),
     comparativeCorroborationStage(),
     phoneTypoToleranceStage(),
+    exactNameStateMatchStage(),
     soleCandidateConsensusStage(),
     firstNameFuzzyMatchStage(), // scores only - lastNameOnlyConsensusStage below reads its vote
     lastNameOnlyConsensusStage(),
