@@ -1,23 +1,26 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import { BrowserRouter } from 'react-router-dom';
 import Chapter7ElectedAppointmentBody from './Chapter7ElectedAppointmentBody';
 import Api2 from '@/lib/models/api2';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
-import { CamsRole } from '@common/cams/roles';
-import TestingUtilities from '@/lib/testing/testing-utilities';
 
-const mockUseNavigate = vi.hoisted(() => vi.fn());
+vi.mock('./AppointmentBasicFields', () => ({
+  default: (props: { appointment: TrusteeAppointment }) => (
+    <div data-testid="appointment-basic-fields" data-appointment-id={props.appointment.id} />
+  ),
+}));
 
-vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual('react-router-dom');
-  return {
-    ...actual,
-    useNavigate: mockUseNavigate,
-  };
-});
+vi.mock('./BondKeyDatesCard', () => ({
+  default: (props: { data: TrusteeUpcomingKeyDates | null; isLoading: boolean }) => (
+    <div
+      data-testid="bond-key-dates-card"
+      data-is-loading={String(props.isLoading)}
+      data-has-data={String(props.data !== null)}
+    />
+  ),
+}));
 
 describe('Chapter7ElectedAppointmentBody', () => {
   const mockAppointment: TrusteeAppointment = {
@@ -52,48 +55,56 @@ describe('Chapter7ElectedAppointmentBody', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
-    mockUseNavigate.mockReturnValue(vi.fn());
-    TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
   });
 
   function renderBody(appointment: TrusteeAppointment = mockAppointment) {
-    return render(
-      <BrowserRouter>
-        <Chapter7ElectedAppointmentBody appointment={appointment} />
-      </BrowserRouter>,
-    );
+    return render(<Chapter7ElectedAppointmentBody appointment={appointment} />);
   }
 
-  test('renders AppointmentBasicFields content for the appointment', () => {
+  test('forwards the appointment prop to AppointmentBasicFields', () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderBody();
 
-    expect(screen.getByTestId('appointment-body-appointed-date')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /edit trustee appointment/i })).toBeInTheDocument();
+    expect(screen.getByTestId('appointment-basic-fields')).toHaveAttribute(
+      'data-appointment-id',
+      'appointment-002',
+    );
   });
 
-  test('fetches and renders the Bond key dates card for this appointment', async () => {
+  test('fetches key dates for this appointment and forwards the result to BondKeyDatesCard', async () => {
     const getSpy = vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: keyDates });
 
     renderBody();
 
     await waitFor(() => {
-      expect(screen.getByTestId('bond-key-dates-card')).toBeInTheDocument();
+      expect(screen.getByTestId('bond-key-dates-card')).toHaveAttribute('data-is-loading', 'false');
     });
     expect(getSpy).toHaveBeenCalledWith('trustee-456', 'appointment-002');
-    expect(screen.getByTestId('bond-renewal-date')).toHaveTextContent('06/01/2026');
-    expect(screen.getByTestId('bond-issued-date')).toHaveTextContent('06/01/2023');
+    expect(screen.getByTestId('bond-key-dates-card')).toHaveAttribute('data-has-data', 'true');
   });
 
-  test('shows the Bond card in a "no date added" state when no key dates document exists', async () => {
+  test('forwards null data to BondKeyDatesCard when no key dates document exists', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderBody();
 
     await waitFor(() => {
-      expect(screen.getByTestId('bond-key-dates-card')).toBeInTheDocument();
+      expect(screen.getByTestId('bond-key-dates-card')).toHaveAttribute('data-has-data', 'false');
     });
-    expect(screen.getAllByText('No date added')).toHaveLength(2);
+  });
+
+  test('forwards null data to BondKeyDatesCard when the fetch fails', async () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const fetchError = new Error('network error');
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockRejectedValue(fetchError);
+
+    renderBody();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('bond-key-dates-card')).toHaveAttribute('data-is-loading', 'false');
+    });
+    expect(screen.getByTestId('bond-key-dates-card')).toHaveAttribute('data-has-data', 'false');
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Could not load bond key dates', fetchError);
   });
 });

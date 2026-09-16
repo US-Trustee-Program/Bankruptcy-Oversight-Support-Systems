@@ -67,7 +67,7 @@ describe('EditableTableCard', () => {
     expect(onEdit).toHaveBeenCalledOnce();
   });
 
-  test('renders a tag when provided', () => {
+  test('defaults the edit button title to "Edit" when editTitle is not provided', () => {
     render(
       <EditableTableCard
         id="edit-thing"
@@ -75,11 +75,48 @@ describe('EditableTableCard', () => {
         tableAriaLabel="Bond key dates"
         columns={columns}
         values={values}
-        tag={{ label: 'Active', color: 'green', id: 'bond-status-tag' }}
+        onEdit={vi.fn()}
       />,
     );
 
-    expect(screen.getByTestId('tag-bond-status-tag')).toHaveTextContent('Active');
+    expect(screen.getByRole('button', { name: 'Edit' })).toHaveAttribute('title', 'Edit');
+  });
+
+  test('uses editTitle for both the title and the default aria-label', () => {
+    render(
+      <EditableTableCard
+        id="edit-thing"
+        title="Bond"
+        tableAriaLabel="Bond key dates"
+        columns={columns}
+        values={values}
+        onEdit={vi.fn()}
+        editTitle="Edit bond key dates"
+      />,
+    );
+
+    const button = screen.getByRole('button', { name: 'Edit bond key dates' });
+    expect(button).toHaveAttribute('title', 'Edit bond key dates');
+  });
+
+  test.each([
+    ['green', 'bg-success'],
+    ['red', 'bg-secondary'],
+  ] as const)('renders a %s tag with the %s style', (color, expectedClass) => {
+    render(
+      <EditableTableCard
+        id="edit-thing"
+        title="Bond"
+        tableAriaLabel="Bond key dates"
+        columns={columns}
+        values={values}
+        tag={{ label: 'Active', color, id: 'bond-status-tag' }}
+      />,
+    );
+
+    const tag = screen.getByTestId('tag-bond-status-tag');
+    expect(tag).toHaveTextContent('Active');
+    expect(tag).toHaveClass(expectedClass);
   });
 
   test('does not render a tag when not provided', () => {
@@ -94,6 +131,39 @@ describe('EditableTableCard', () => {
     );
 
     expect(screen.queryByText('Active')).not.toBeInTheDocument();
+  });
+
+  test('applies tableId and tableClassName to the table', () => {
+    render(
+      <EditableTableCard
+        id="edit-thing"
+        title="Bond"
+        tableAriaLabel="Bond key dates"
+        columns={columns}
+        values={values}
+        tableId="my-table"
+        tableClassName="my-table-class"
+      />,
+    );
+
+    const table = document.getElementById('my-table');
+    expect(table).not.toBeNull();
+    expect(table).toHaveClass('my-table-class');
+  });
+
+  test('omits data-cell for non-string column headers', () => {
+    render(
+      <EditableTableCard
+        id="edit-thing"
+        title="Bond"
+        tableAriaLabel="Bond key dates"
+        columns={[{ key: 'icon', header: <span>Icon</span>, testId: 'icon-value' }]}
+        values={{ icon: 'value' }}
+      />,
+    );
+
+    const cell = screen.getByTestId('icon-value');
+    expect(cell).not.toHaveAttribute('data-cell');
   });
 
   test('applies testId and className to the card', () => {

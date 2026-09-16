@@ -33,6 +33,7 @@ export default function AppointmentAccordion(props: Readonly<AppointmentAccordio
         id={appointment.id}
         expandedId={expanded ? appointment.id : undefined}
         onExpand={() => onToggle(appointment.id)}
+        onCollapse={() => onToggle(appointment.id)}
       >
         <div
           className="appointment-accordion-header"

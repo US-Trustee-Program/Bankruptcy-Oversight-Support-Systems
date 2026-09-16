@@ -99,7 +99,6 @@ export function getStatusOptions(
   appointmentType: AppointmentType,
 ): readonly AppointmentStatus[] {
   const defaultStatusOptions: AppointmentStatus[] = ['active', 'inactive'];
-  if (!statusOptionsConfig[chapter]) return defaultStatusOptions;
   return statusOptionsConfig[chapter][appointmentType] || defaultStatusOptions;
 }
 

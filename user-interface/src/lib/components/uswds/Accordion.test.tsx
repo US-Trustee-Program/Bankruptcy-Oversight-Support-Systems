@@ -49,16 +49,22 @@ describe('Accordion tests', () => {
   });
 
   test('Should toggle standalone accordion instances independently when not grouped in an accordion group', async () => {
-    const onToggleA = vi.fn();
-    const onToggleB = vi.fn();
+    const onExpandA = vi.fn();
+    const onCollapseA = vi.fn();
+    const onExpandB = vi.fn();
 
     render(
       <React.StrictMode>
-        <Accordion id="standalone-a" expandedId="standalone-a" onExpand={onToggleA}>
+        <Accordion
+          id="standalone-a"
+          expandedId="standalone-a"
+          onExpand={onExpandA}
+          onCollapse={onCollapseA}
+        >
           <span>Title A</span>
           <span>Content A</span>
         </Accordion>
-        <Accordion id="standalone-b" expandedId="standalone-b" onExpand={onToggleB}>
+        <Accordion id="standalone-b" expandedId="standalone-b" onExpand={onExpandB}>
           <span>Title B</span>
           <span>Content B</span>
         </Accordion>
@@ -74,9 +80,64 @@ describe('Accordion tests', () => {
 
     fireEvent.click(buttonA);
 
-    expect(onToggleA).toHaveBeenCalledWith('standalone-a');
-    expect(onToggleB).not.toHaveBeenCalled();
+    expect(contentA).not.toBeVisible();
+    expect(onCollapseA).toHaveBeenCalledWith('standalone-a');
+    expect(onExpandA).not.toHaveBeenCalled();
+    expect(onExpandB).not.toHaveBeenCalled();
     expect(contentB).toBeVisible();
+
+    fireEvent.click(buttonA);
+
+    expect(contentA).toBeVisible();
+    expect(onExpandA).toHaveBeenCalledWith('standalone-a');
+  });
+
+  test('Should hide heading and content regardless of expanded state when hidden is true', () => {
+    render(
+      <Accordion id="hidden-accordion" expandedId="hidden-accordion" hidden>
+        <span>Title</span>
+        <span>Content</span>
+      </Accordion>,
+    );
+
+    const heading = screen.getByTestId('accordion-hidden-accordion');
+    const content = screen.getByTestId('accordion-content-hidden-accordion');
+
+    expect(heading).not.toBeVisible();
+    expect(content).not.toBeVisible();
+
+    fireEvent.click(screen.getByTestId('accordion-button-hidden-accordion'));
+
+    expect(heading).not.toBeVisible();
+    expect(content).not.toBeVisible();
+  });
+
+  test('AccordionGroup renders an empty container when given no children', () => {
+    render(<AccordionGroup />);
+
+    expect(screen.getByTestId('accordion-group')).toBeEmptyDOMElement();
+  });
+
+  test('AccordionGroup composes a child accordion onExpand with its own mutual-exclusion tracking', () => {
+    const childOnExpand = vi.fn();
+
+    render(
+      <AccordionGroup>
+        <Accordion id="composed-a" onExpand={childOnExpand}>
+          <span>Title composed-a</span>
+          <span>Content composed-a</span>
+        </Accordion>
+        <Accordion id="composed-b">
+          <span>Title composed-b</span>
+          <span>Content composed-b</span>
+        </Accordion>
+      </AccordionGroup>,
+    );
+
+    fireEvent.click(screen.getByTestId('accordion-button-composed-a'));
+
+    expect(childOnExpand).toHaveBeenCalledWith('composed-a');
+    expect(screen.getByTestId('accordion-content-composed-a')).toBeVisible();
   });
 
   test('Should expand accordions 1 at a time, such that 1 closes when another is opened, when grouped together in an accordion group', async () => {

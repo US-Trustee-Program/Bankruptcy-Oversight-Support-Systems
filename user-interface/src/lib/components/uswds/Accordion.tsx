@@ -51,7 +51,6 @@ interface AccordionProps extends PropsWithChildren {
   onExpand?: (id: string) => void;
   onCollapse?: (id: string) => void;
   hidden?: boolean;
-  ariaDescription?: string;
 }
 
 export const Accordion: FunctionComponent<AccordionProps> = (props) => {
@@ -63,12 +62,16 @@ export const Accordion: FunctionComponent<AccordionProps> = (props) => {
   }, [props.expandedId]);
 
   function toggle() {
-    setExpanded(!expanded);
-    if (props.onExpand) {
-      props.onExpand(props.id);
-    }
-    if (props.onCollapse) {
-      props.onCollapse(props.id);
+    const nextExpanded = !expanded;
+    setExpanded(nextExpanded);
+    if (nextExpanded) {
+      if (props.onExpand) {
+        props.onExpand(props.id);
+      }
+    } else {
+      if (props.onCollapse) {
+        props.onCollapse(props.id);
+      }
     }
   }
 

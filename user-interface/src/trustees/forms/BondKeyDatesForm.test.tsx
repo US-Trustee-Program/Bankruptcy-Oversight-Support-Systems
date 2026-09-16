@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
 import BondKeyDatesForm from './BondKeyDatesForm';
@@ -142,6 +142,60 @@ describe('BondKeyDatesForm', () => {
       );
     });
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');
+  });
+
+  test('shows inline error alert when bond key dates fail to load', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockRejectedValue(new Error('Network error'));
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-bond-key-dates')).toBeInTheDocument();
+    });
+    expect(mockGlobalAlertRef.current.error).toHaveBeenCalledWith(
+      'Failed to load bond key dates: Network error',
+    );
+    expect(screen.getByTestId('bond-issued-date')).toHaveValue('');
+    expect(screen.getByTestId('bond-renewal-date')).toHaveValue('');
+  });
+
+  test('shows error alert when save fails and re-enables save button', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+    vi.spyOn(Api2, 'putUpcomingKeyDates').mockRejectedValue(new Error('Server error'));
+
+    renderComponent();
+
+    await waitFor(() => expect(screen.getByTestId('bond-issued-date')).toHaveValue('2023-06-01'));
+
+    await userEvent.click(screen.getByTestId('button-save-bond-key-dates'));
+
+    await waitFor(() => {
+      const saveButton = screen.getByTestId('button-save-bond-key-dates');
+      expect(saveButton).not.toBeDisabled();
+      expect(saveButton).toHaveTextContent('Save');
+    });
+    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(mockGlobalAlertRef.current.error).toHaveBeenCalledWith(
+      'Failed to save bond key dates: Server error',
+    );
+  });
+
+  test('Save button is disabled when bond renewal date has an invalid date', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('bond-renewal-date')).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByTestId('bond-renewal-date'), {
+      target: { value: '1900-01-01' },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('button-save-bond-key-dates')).toBeDisabled();
+    });
   });
 
   test('cancel navigates back to the appointments page without saving', async () => {

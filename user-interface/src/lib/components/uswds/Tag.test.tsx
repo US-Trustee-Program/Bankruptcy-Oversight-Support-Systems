@@ -14,6 +14,7 @@ describe('Tag', () => {
     expect(tag.tagName).toBe('SPAN');
     expect(tag).toHaveClass(TAG_BASE_CLASS);
     expect(tag).toHaveClass('usa-tag--big');
+    expect(tag).toHaveClass('text-no-uppercase');
   });
 
   test('should use custom id when provided', () => {

@@ -94,8 +94,7 @@ describe('trustee-appointments', () => {
       });
     });
 
-    test('should return default fallback for unknown combinations', () => {
-      // This tests the fallback case
+    test('should return default fallback when appointmentType has no configured statuses', () => {
       const result = getStatusOptions('7' as AppointmentChapterType, 'standing' as AppointmentType);
       expect(result).toEqual(['active', 'inactive']);
     });

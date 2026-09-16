@@ -5,6 +5,7 @@ import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { CamsRole } from '@common/cams/roles';
 import TestingUtilities from '@/lib/testing/testing-utilities';
+import LocalStorage from '@/lib/utils/local-storage';
 
 const mockNavigate = vi.fn();
 
@@ -36,6 +37,7 @@ describe('useEditTrusteeAppointment', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.mocked(useNavigate).mockReturnValue(mockNavigate);
+    LocalStorage.removeSession();
   });
 
   function renderTheHook(appointment: TrusteeAppointment = mockAppointment) {
@@ -58,7 +60,15 @@ describe('useEditTrusteeAppointment', () => {
     expect(result.current.canManage).toBe(false);
   });
 
+  test('canManage is false when there is no session', () => {
+    const { result } = renderTheHook();
+
+    expect(result.current.canManage).toBe(false);
+  });
+
   test('openEditTrustee navigates to the appointment edit page', () => {
+    TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
+
     const { result } = renderTheHook();
 
     result.current.openEditTrustee();

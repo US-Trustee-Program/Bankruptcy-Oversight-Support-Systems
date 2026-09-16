@@ -78,30 +78,32 @@ describe('AppointmentBasicFields', () => {
     expect(screen.getAllByText('Not Specified')).toHaveLength(2);
   });
 
-  test('renders an Edit link when user has TrusteeAdmin role', () => {
+  test('renders an Edit button when user has TrusteeAdmin role', () => {
     renderBody();
 
-    expect(screen.getByRole('button', { name: /edit trustee appointment/i })).toBeInTheDocument();
+    expect(
+      screen.getByTestId(`button-edit-trustee-appointment-${mockAppointment.id}`),
+    ).toBeInTheDocument();
   });
 
   test('navigates to the edit page when Edit is clicked', async () => {
     const user = userEvent.setup();
     renderBody();
 
-    await user.click(screen.getByRole('button', { name: /edit trustee appointment/i }));
+    await user.click(screen.getByTestId(`button-edit-trustee-appointment-${mockAppointment.id}`));
 
     expect(mockNavigate).toHaveBeenCalledWith(
       `/trustees/${mockAppointment.trusteeId}/appointments/${mockAppointment.id}/edit`,
     );
   });
 
-  test('does not render an Edit link when user lacks TrusteeAdmin role', () => {
+  test('does not render an Edit button when user lacks TrusteeAdmin role', () => {
     TestingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
 
     renderBody();
 
     expect(
-      screen.queryByRole('button', { name: /edit trustee appointment/i }),
+      screen.queryByTestId(`button-edit-trustee-appointment-${mockAppointment.id}`),
     ).not.toBeInTheDocument();
   });
 });

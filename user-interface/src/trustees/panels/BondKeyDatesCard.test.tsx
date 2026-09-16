@@ -19,7 +19,7 @@ vi.mock('react-router-dom', async () => {
 });
 
 describe('BondKeyDatesCard', () => {
-  const mockNavigate = vi.fn();
+  let mockNavigate: ReturnType<typeof vi.fn>;
 
   const keyDates: TrusteeUpcomingKeyDates = {
     id: 'key-dates-001',
@@ -36,6 +36,7 @@ describe('BondKeyDatesCard', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    mockNavigate = vi.fn();
     mockUseNavigate.mockReturnValue(mockNavigate);
     TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
   });
@@ -83,7 +84,7 @@ describe('BondKeyDatesCard', () => {
   test('renders an Edit button when user has TrusteeAdmin role', () => {
     renderCard();
 
-    expect(screen.getByRole('button', { name: /edit bond key dates/i })).toBeInTheDocument();
+    expect(screen.getByTestId('button-edit-bond-key-dates-appointment-001')).toBeInTheDocument();
   });
 
   test('does not render an Edit button when user lacks TrusteeAdmin role', () => {
@@ -91,14 +92,16 @@ describe('BondKeyDatesCard', () => {
 
     renderCard();
 
-    expect(screen.queryByRole('button', { name: /edit bond key dates/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('button-edit-bond-key-dates-appointment-001'),
+    ).not.toBeInTheDocument();
   });
 
   test('navigates to the bond key dates edit form when Edit is clicked', async () => {
     const user = userEvent.setup();
     renderCard();
 
-    await user.click(screen.getByRole('button', { name: /edit bond key dates/i }));
+    await user.click(screen.getByTestId('button-edit-bond-key-dates-appointment-001'));
 
     expect(mockNavigate).toHaveBeenCalledWith(
       '/trustees/trustee-123/appointments/appointment-001/bond-key-dates/edit',

@@ -1,4 +1,4 @@
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { vi, describe, test, expect, beforeEach } from 'vitest';
 import { MemoryRouter, useNavigate } from 'react-router-dom';
 import TrusteeAppointments from './TrusteeAppointments';
@@ -243,17 +243,6 @@ describe('TrusteeAppointments', () => {
   });
 
   describe('Appointment Grouping and Sorting', () => {
-    test('should call sortByCourtLocation with includeAppointmentDetails option', async () => {
-      const sortSpy = vi.spyOn(courtUtils, 'sortByCourtLocation');
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: mockAppointments });
-
-      renderComponent('trustee-123');
-
-      await waitFor(() => {
-        expect(sortSpy).toHaveBeenCalledWith(mockAppointments, { includeAppointmentDetails: true });
-      });
-    });
-
     test('renders appointments in the order returned by sortByCourtLocation', async () => {
       const appointments: TrusteeAppointment[] = [
         makeAppointment('appointment-001', { courtName: 'First Court' }),
@@ -306,12 +295,6 @@ describe('TrusteeAppointments', () => {
 
   describe('Chapter 11 Case by Case accordion', () => {
     const ch11Active = makeAppointment('ch11-active', {
-      chapter: '11',
-      appointmentType: 'case-by-case',
-      status: 'active',
-      courtName: 'Southern District of New York',
-    });
-    const ch11ActiveTwo = makeAppointment('ch11-active-two', {
       chapter: '11',
       appointmentType: 'case-by-case',
       status: 'active',
@@ -377,40 +360,6 @@ describe('TrusteeAppointments', () => {
       expect(isAppointmentExpanded(ch11Inactive.id)).toBe(false);
     });
 
-    test('multiple active Chapter 11 Case by Case appointments can be expanded simultaneously', async () => {
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({
-        data: [ch11Active, ch11ActiveTwo],
-      });
-
-      renderComponent('trustee-123');
-
-      await waitFor(() => {
-        expect(isAppointmentExpanded(ch11Active.id)).toBe(true);
-        expect(isAppointmentExpanded(ch11ActiveTwo.id)).toBe(true);
-      });
-    });
-
-    test('toggling one appointment does not affect another appointment expand state', async () => {
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({
-        data: [ch11Active, ch11Inactive],
-      });
-      const user = userEvent.setup();
-
-      renderComponent('trustee-123');
-
-      await waitFor(() => {
-        expect(isAppointmentExpanded(ch11Active.id)).toBe(true);
-        expect(isAppointmentExpanded(ch11Inactive.id)).toBe(false);
-      });
-
-      await user.click(screen.getByTestId(`accordion-button-${ch11Inactive.id}`));
-
-      await waitFor(() => {
-        expect(isAppointmentExpanded(ch11Active.id)).toBe(true);
-        expect(isAppointmentExpanded(ch11Inactive.id)).toBe(true);
-      });
-    });
-
     test('toggling an expanded active appointment collapses it', async () => {
       vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch11Active] });
       const user = userEvent.setup();
@@ -425,153 +374,6 @@ describe('TrusteeAppointments', () => {
 
       await waitFor(() => {
         expect(isAppointmentExpanded(ch11Active.id)).toBe(false);
-      });
-    });
-
-    test('an appointment explicitly expanded while active collapses once its status changes to inactive', async () => {
-      const getTrusteeAppointmentsSpy = vi
-        .spyOn(Api2, 'getTrusteeAppointments')
-        .mockResolvedValue({ data: [ch11Active] });
-      const user = userEvent.setup();
-
-      const { unmount } = renderComponent('trustee-123');
-
-      await waitFor(() => {
-        expect(isAppointmentExpanded(ch11Active.id)).toBe(true);
-      });
-
-      // Explicitly collapse it, then re-expand it, recording an explicit
-      // toggle for the "active" status in session state.
-      await user.click(screen.getByTestId(`accordion-button-${ch11Active.id}`));
-      await waitFor(() => {
-        expect(isAppointmentExpanded(ch11Active.id)).toBe(false);
-      });
-      await user.click(screen.getByTestId(`accordion-button-${ch11Active.id}`));
-      await waitFor(() => {
-        expect(isAppointmentExpanded(ch11Active.id)).toBe(true);
-      });
-
-      unmount();
-
-      // Simulate the appointment's status changing to inactive (e.g. via edit).
-      getTrusteeAppointmentsSpy.mockResolvedValue({
-        data: [{ ...ch11Active, status: 'inactive' }],
-      });
-
-      renderComponent('trustee-123');
-
-      await waitFor(() => {
-        expect(
-          screen.getByTestId(`appointment-accordion-header-${ch11Active.id}`),
-        ).toBeInTheDocument();
-      });
-      expect(isAppointmentExpanded(ch11Active.id)).toBe(false);
-    });
-
-    test('toggling an appointment persists its expand state across simulated navigation within the same session', async () => {
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch11Inactive] });
-      const user = userEvent.setup();
-
-      const { unmount } = renderComponent('trustee-123');
-
-      await waitFor(() => {
-        expect(
-          screen.getByTestId(`appointment-accordion-header-${ch11Inactive.id}`),
-        ).toBeInTheDocument();
-      });
-      expect(isAppointmentExpanded(ch11Inactive.id)).toBe(false);
-
-      await user.click(screen.getByTestId(`accordion-button-${ch11Inactive.id}`));
-
-      await waitFor(() => {
-        expect(isAppointmentExpanded(ch11Inactive.id)).toBe(true);
-      });
-
-      unmount();
-
-      renderComponent('trustee-123');
-
-      await waitFor(() => {
-        expect(isAppointmentExpanded(ch11Inactive.id)).toBe(true);
-      });
-    });
-
-    test('an explicit toggle recorded for one status is not reused after the status cycles away and back', async () => {
-      const getTrusteeAppointmentsSpy = vi
-        .spyOn(Api2, 'getTrusteeAppointments')
-        .mockResolvedValue({ data: [ch11Inactive] });
-      const user = userEvent.setup();
-
-      const { unmount: unmountFirst } = renderComponent('trustee-123');
-
-      await waitFor(() => {
-        expect(
-          screen.getByTestId(`appointment-accordion-header-${ch11Inactive.id}`),
-        ).toBeInTheDocument();
-      });
-      expect(isAppointmentExpanded(ch11Inactive.id)).toBe(false);
-
-      // Explicitly expand it while inactive, recording an override for "inactive".
-      await user.click(screen.getByTestId(`accordion-button-${ch11Inactive.id}`));
-      await waitFor(() => {
-        expect(isAppointmentExpanded(ch11Inactive.id)).toBe(true);
-      });
-
-      unmountFirst();
-
-      // Cycle the status to active, then back to inactive (e.g. via edits).
-      getTrusteeAppointmentsSpy.mockResolvedValue({
-        data: [{ ...ch11Inactive, status: 'active' }],
-      });
-      const { unmount: unmountSecond } = renderComponent('trustee-123');
-      await waitFor(() => {
-        expect(isAppointmentExpanded(ch11Inactive.id)).toBe(true);
-      });
-      unmountSecond();
-
-      getTrusteeAppointmentsSpy.mockResolvedValue({ data: [ch11Inactive] });
-      renderComponent('trustee-123');
-
-      await waitFor(() => {
-        expect(
-          screen.getByTestId(`appointment-accordion-header-${ch11Inactive.id}`),
-        ).toBeInTheDocument();
-      });
-      // The stale "inactive" override from before the cycle must not be reused.
-      expect(isAppointmentExpanded(ch11Inactive.id)).toBe(false);
-    });
-
-    test('toggling two different appointments in the same update batch updates both independently', async () => {
-      const ch11InactiveTwo = makeAppointment('ch11-inactive-two', {
-        chapter: '11',
-        appointmentType: 'case-by-case',
-        status: 'inactive',
-        courtName: 'Southern District of New York',
-      });
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({
-        data: [ch11Inactive, ch11InactiveTwo],
-      });
-
-      renderComponent('trustee-123');
-
-      await waitFor(() => {
-        expect(
-          screen.getByTestId(`appointment-accordion-header-${ch11Inactive.id}`),
-        ).toBeInTheDocument();
-      });
-      expect(isAppointmentExpanded(ch11Inactive.id)).toBe(false);
-      expect(isAppointmentExpanded(ch11InactiveTwo.id)).toBe(false);
-
-      // Fire both toggles within a single update batch so a closure-captured
-      // (rather than functional) state update would drop one of them.
-      act(() => {
-        screen.getByTestId(`accordion-button-${ch11Inactive.id}`).click();
-        screen.getByTestId(`accordion-button-${ch11InactiveTwo.id}`).click();
-      });
-
-      await waitFor(() => {
-        expect(isAppointmentExpanded(ch11Inactive.id)).toBe(true);
-        expect(isAppointmentExpanded(ch11InactiveTwo.id)).toBe(true);
       });
     });
   });

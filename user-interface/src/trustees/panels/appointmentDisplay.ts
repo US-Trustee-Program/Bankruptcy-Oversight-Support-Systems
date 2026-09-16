@@ -19,6 +19,11 @@ export function formatAppointmentDate(dateString: string): string {
   return formatDate(dateString);
 }
 
+/**
+ * courtName and courtId are optional here even though TrusteeAppointment
+ * requires courtId, because legacy/malformed data from the ATS migration
+ * can still arrive without either field.
+ */
 export function buildDistrictDisplay(appointment: {
   courtName?: string;
   courtId?: string;

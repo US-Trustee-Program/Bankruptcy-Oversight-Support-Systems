@@ -1,6 +1,29 @@
-import { formatAppointmentDate, buildDistrictDisplay } from './appointmentDisplay';
+import {
+  isActiveAppointment,
+  formatAppointmentDate,
+  buildDistrictDisplay,
+} from './appointmentDisplay';
+import { AppointmentStatus } from '@common/cams/trustees';
 
 describe('appointmentDisplay', () => {
+  describe('isActiveAppointment', () => {
+    test('returns true for active status', () => {
+      expect(isActiveAppointment('active')).toBe(true);
+    });
+
+    test.each<AppointmentStatus>([
+      'inactive',
+      'voluntarily-suspended',
+      'involuntarily-suspended',
+      'deceased',
+      'resigned',
+      'terminated',
+      'removed',
+    ])('returns false for %s status', (status) => {
+      expect(isActiveAppointment(status)).toBe(false);
+    });
+  });
+
   describe('formatAppointmentDate', () => {
     test('formats a normal date as mm/dd/yyyy', () => {
       expect(formatAppointmentDate('2025-12-01T00:00:00.000Z')).toBe('12/01/2025');

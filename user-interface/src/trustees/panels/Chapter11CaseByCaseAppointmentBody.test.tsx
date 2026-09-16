@@ -1,21 +1,14 @@
 import { render, screen } from '@testing-library/react';
-import { describe, test, expect, vi, beforeEach } from 'vitest';
-import { BrowserRouter } from 'react-router-dom';
+import { describe, test, expect, vi } from 'vitest';
 import Chapter11CaseByCaseAppointmentBody from './Chapter11CaseByCaseAppointmentBody';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
-import { CamsRole } from '@common/cams/roles';
-import TestingUtilities from '@/lib/testing/testing-utilities';
 
-const mockUseNavigate = vi.hoisted(() => vi.fn());
-
-vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual('react-router-dom');
-  return {
-    ...actual,
-    useNavigate: mockUseNavigate,
-  };
-});
+vi.mock('./AppointmentBasicFields', () => ({
+  default: (props: { appointment: TrusteeAppointment }) => (
+    <div data-testid="appointment-basic-fields" data-appointment-id={props.appointment.id} />
+  ),
+}));
 
 describe('Chapter11CaseByCaseAppointmentBody', () => {
   const mockAppointment: TrusteeAppointment = {
@@ -35,20 +28,12 @@ describe('Chapter11CaseByCaseAppointmentBody', () => {
     updatedBy: SYSTEM_USER_REFERENCE,
   };
 
-  beforeEach(() => {
-    vi.restoreAllMocks();
-    mockUseNavigate.mockReturnValue(vi.fn());
-    TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
-  });
+  test('forwards the appointment prop to AppointmentBasicFields', () => {
+    render(<Chapter11CaseByCaseAppointmentBody appointment={mockAppointment} />);
 
-  test('renders AppointmentBasicFields content for the appointment', () => {
-    render(
-      <BrowserRouter>
-        <Chapter11CaseByCaseAppointmentBody appointment={mockAppointment} />
-      </BrowserRouter>,
+    expect(screen.getByTestId('appointment-basic-fields')).toHaveAttribute(
+      'data-appointment-id',
+      'appointment-001',
     );
-
-    expect(screen.getByTestId('appointment-body-appointed-date')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /edit trustee appointment/i })).toBeInTheDocument();
   });
 });
