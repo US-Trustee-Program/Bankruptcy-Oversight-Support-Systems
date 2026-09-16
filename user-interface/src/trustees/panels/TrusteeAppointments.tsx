@@ -23,7 +23,12 @@ export default function TrusteeAppointments(props: Readonly<TrusteeAppointmentsP
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
-  const [expandedMap, setExpandedMap] = useSessionState<Record<string, boolean>>(
+  interface ExpandedEntry {
+    status: TrusteeAppointment['status'];
+    expanded: boolean;
+  }
+
+  const [expandedMap, setExpandedMap] = useSessionState<Record<string, ExpandedEntry>>(
     `trustee-appointments-expanded-${trusteeId}`,
     {},
   );
@@ -32,15 +37,16 @@ export default function TrusteeAppointments(props: Readonly<TrusteeAppointmentsP
     return appointment.chapter === '11' && appointment.appointmentType === 'case-by-case';
   }
 
-  function expandedMapKey(appointment: TrusteeAppointment): string {
-    // Include status so that an explicit toggle recorded for a prior status
-    // (e.g. active) doesn't override the default once the status changes
-    // (e.g. to inactive).
-    return `${appointment.id}:${appointment.status}`;
+  function defaultExpanded(appointment: TrusteeAppointment): boolean {
+    return appointment.status === 'active';
   }
 
   function isExpanded(appointment: TrusteeAppointment): boolean {
-    return expandedMap[expandedMapKey(appointment)] ?? appointment.status === 'active';
+    const entry = expandedMap[appointment.id];
+    if (entry && entry.status === appointment.status) {
+      return entry.expanded;
+    }
+    return defaultExpanded(appointment);
   }
 
   function toggleExpanded(appointmentId: string) {
@@ -48,8 +54,21 @@ export default function TrusteeAppointments(props: Readonly<TrusteeAppointmentsP
     if (!appointment) {
       return;
     }
-    const currentlyExpanded = isExpanded(appointment);
-    setExpandedMap({ ...expandedMap, [expandedMapKey(appointment)]: !currentlyExpanded });
+    setExpandedMap((prev) => {
+      const entry = prev[appointmentId];
+      const currentlyExpanded =
+        entry && entry.status === appointment.status
+          ? entry.expanded
+          : defaultExpanded(appointment);
+      const nextExpanded = !currentlyExpanded;
+      const next = { ...prev };
+      if (nextExpanded === defaultExpanded(appointment)) {
+        delete next[appointmentId];
+      } else {
+        next[appointmentId] = { status: appointment.status, expanded: nextExpanded };
+      }
+      return next;
+    });
   }
 
   useEffect(() => {
@@ -69,6 +88,21 @@ export default function TrusteeAppointments(props: Readonly<TrusteeAppointmentsP
 
     loadAppointments();
   }, [trusteeId]);
+
+  useEffect(() => {
+    setExpandedMap((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const appointment of appointments) {
+        const entry = next[appointment.id];
+        if (entry && entry.status !== appointment.status) {
+          delete next[appointment.id];
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [appointments, setExpandedMap]);
 
   if (isLoading) {
     return (

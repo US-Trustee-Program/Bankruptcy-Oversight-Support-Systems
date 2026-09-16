@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import { vi, describe, test, expect, beforeEach } from 'vitest';
 import { MemoryRouter, useNavigate } from 'react-router-dom';
 import TrusteeAppointments from './TrusteeAppointments';
@@ -483,6 +483,83 @@ describe('TrusteeAppointments', () => {
 
       await waitFor(() => {
         expect(screen.getByText(/Appointed/i)).toBeInTheDocument();
+      });
+    });
+
+    test('an explicit toggle recorded for one status is not reused after the status cycles away and back', async () => {
+      const getTrusteeAppointmentsSpy = vi
+        .spyOn(Api2, 'getTrusteeAppointments')
+        .mockResolvedValue({ data: [ch11Inactive] });
+      const user = userEvent.setup();
+
+      const { unmount: unmountFirst } = renderComponent('trustee-123');
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId(`appointment-accordion-header-${ch11Inactive.id}`),
+        ).toBeInTheDocument();
+      });
+      expect(screen.queryByText(/Appointed/i)).not.toBeInTheDocument();
+
+      // Explicitly expand it while inactive, recording an override for "inactive".
+      await user.click(screen.getByTestId(`accordion-button-${ch11Inactive.id}`));
+      await waitFor(() => {
+        expect(screen.getByText(/Appointed/i)).toBeInTheDocument();
+      });
+
+      unmountFirst();
+
+      // Cycle the status to active, then back to inactive (e.g. via edits).
+      getTrusteeAppointmentsSpy.mockResolvedValue({
+        data: [{ ...ch11Inactive, status: 'active' }],
+      });
+      const { unmount: unmountSecond } = renderComponent('trustee-123');
+      await waitFor(() => {
+        expect(screen.getByText(/Appointed/i)).toBeInTheDocument();
+      });
+      unmountSecond();
+
+      getTrusteeAppointmentsSpy.mockResolvedValue({ data: [ch11Inactive] });
+      renderComponent('trustee-123');
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId(`appointment-accordion-header-${ch11Inactive.id}`),
+        ).toBeInTheDocument();
+      });
+      // The stale "inactive" override from before the cycle must not be reused.
+      expect(screen.queryByText(/Appointed/i)).not.toBeInTheDocument();
+    });
+
+    test('toggling two different appointments in the same update batch updates both independently', async () => {
+      const ch11InactiveTwo = makeAppointment('ch11-inactive-two', {
+        chapter: '11',
+        appointmentType: 'case-by-case',
+        status: 'inactive',
+        courtName: 'Southern District of New York',
+      });
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({
+        data: [ch11Inactive, ch11InactiveTwo],
+      });
+
+      renderComponent('trustee-123');
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId(`appointment-accordion-header-${ch11Inactive.id}`),
+        ).toBeInTheDocument();
+      });
+      expect(screen.queryByText(/Appointed/i)).not.toBeInTheDocument();
+
+      // Fire both toggles within a single update batch so a closure-captured
+      // (rather than functional) state update would drop one of them.
+      act(() => {
+        screen.getByTestId(`accordion-button-${ch11Inactive.id}`).click();
+        screen.getByTestId(`accordion-button-${ch11InactiveTwo.id}`).click();
+      });
+
+      await waitFor(() => {
+        expect(screen.getAllByText(/Appointed/i)).toHaveLength(2);
       });
     });
   });
