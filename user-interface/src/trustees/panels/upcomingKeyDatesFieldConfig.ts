@@ -35,7 +35,9 @@ interface ComputedField {
 
 export type UpcomingKeyDatesFieldConfig = ConstantField | ComputedField;
 
-function tprFrequencyField(data: TrusteeUpcomingKeyDates | null): UpcomingKeyDatesDisplayField {
+export function tprFrequencyField(
+  data: TrusteeUpcomingKeyDates | null,
+): UpcomingKeyDatesDisplayField {
   const frequencyLabels: Record<string, string> = {
     BIANNUAL: 'Two years',
     ANNUAL: 'One year',
@@ -52,7 +54,7 @@ function tprFrequencyField(data: TrusteeUpcomingKeyDates | null): UpcomingKeyDat
   };
 }
 
-function tprReviewPeriodField(
+export function tprReviewPeriodField(
   data: TrusteeUpcomingKeyDates | null,
   label = 'Trustee Performance Review Period',
 ): UpcomingKeyDatesDisplayField {
@@ -65,7 +67,7 @@ function tprReviewPeriodField(
   return { label, value, testId: 'tpr-review-period-row' };
 }
 
-function tprDueField(
+export function tprDueField(
   data: TrusteeUpcomingKeyDates | null,
   label = 'Trustee Performance Review Due',
 ): UpcomingKeyDatesDisplayField {
@@ -86,6 +88,63 @@ function idExpirationField(data: TrusteeUpcomingKeyDates | null): UpcomingKeyDat
   return { label: 'ID Expiration', value, testId: 'id-expiration-row' };
 }
 
+export function examOrAuditField(
+  data: TrusteeUpcomingKeyDates | null,
+): UpcomingKeyDatesDisplayField {
+  const label = data?.upcomingExamOrAuditType ?? 'Field Exam / Audit';
+  const value = data?.upcomingExamOrAuditYear ? String(data.upcomingExamOrAuditYear) : NO_DATE;
+  return { label, value, testId: 'upcoming-exam-audit-row' };
+}
+
+export function auditReqByField(
+  data: TrusteeUpcomingKeyDates | null,
+): UpcomingKeyDatesDisplayField {
+  const auditReqByYear = calculateAuditReqBy(data?.lastAuditFiscalYear);
+  const value = auditReqByYear !== null ? String(auditReqByYear) : NO_DATE;
+  return { label: 'Audit Required by', value, testId: 'audit-req-by-row' };
+}
+
+export function tirReviewPeriodField(
+  data: TrusteeUpcomingKeyDates | null,
+): UpcomingKeyDatesDisplayField {
+  let value = NO_DATE;
+  if (data?.tirReviewPeriodStart && data?.tirReviewPeriodEnd) {
+    const period1 = isoRangeToMMDD(data.tirReviewPeriodStart, data.tirReviewPeriodEnd);
+    if (data.tirSemiAnnualReviewPeriodStart && data.tirSemiAnnualReviewPeriodEnd) {
+      const period2 = isoRangeToMMDD(
+        data.tirSemiAnnualReviewPeriodStart,
+        data.tirSemiAnnualReviewPeriodEnd,
+      );
+      value = `${period1} & ${period2}`;
+    } else {
+      value = period1;
+    }
+  }
+  return { label: 'TIR Review Period', value, testId: 'tir-review-period-row' };
+}
+
+export function tirSubmissionField(
+  data: TrusteeUpcomingKeyDates | null,
+): UpcomingKeyDatesDisplayField {
+  let value = NO_DATE;
+  if (data?.tirSubmission) {
+    value = data.tirSemiAnnualSubmission
+      ? `${isoToMMDD(data.tirSubmission)} & ${isoToMMDD(data.tirSemiAnnualSubmission)}`
+      : isoToMMDD(data.tirSubmission);
+  }
+  return { label: 'TIR Submission', value, testId: 'tir-submission-row' };
+}
+
+export function tirReviewField(data: TrusteeUpcomingKeyDates | null): UpcomingKeyDatesDisplayField {
+  let value = NO_DATE;
+  if (data?.tirReview) {
+    value = data.tirSemiAnnualReview
+      ? `${isoToMMDD(data.tirReview)} & ${isoToMMDD(data.tirSemiAnnualReview)}`
+      : isoToMMDD(data.tirReview);
+  }
+  return { label: 'TIR Due', value, testId: 'tir-review-row' };
+}
+
 export const UPCOMING_KEY_DATES_FIELD_CONFIG: Record<
   UpcomingKeyDatesVariant,
   UpcomingKeyDatesFieldConfig[]
@@ -94,22 +153,12 @@ export const UPCOMING_KEY_DATES_FIELD_CONFIG: Record<
     {
       kind: 'computed',
       key: 'upcomingExamOrAudit',
-      buildField: (data) => {
-        const label = data?.upcomingExamOrAuditType ?? 'Field Exam / Audit';
-        const value = data?.upcomingExamOrAuditYear
-          ? String(data.upcomingExamOrAuditYear)
-          : NO_DATE;
-        return { label, value, testId: 'upcoming-exam-audit-row' };
-      },
+      buildField: examOrAuditField,
     },
     {
       kind: 'computed',
       key: 'auditReqBy',
-      buildField: (data) => {
-        const auditReqByYear = calculateAuditReqBy(data?.lastAuditFiscalYear);
-        const value = auditReqByYear !== null ? String(auditReqByYear) : NO_DATE;
-        return { label: 'Audit Required by', value, testId: 'audit-req-by-row' };
-      },
+      buildField: auditReqByField,
     },
     {
       kind: 'computed',
@@ -129,48 +178,17 @@ export const UPCOMING_KEY_DATES_FIELD_CONFIG: Record<
     {
       kind: 'computed',
       key: 'tirReviewPeriod',
-      buildField: (data) => {
-        let value = NO_DATE;
-        if (data?.tirReviewPeriodStart && data?.tirReviewPeriodEnd) {
-          const period1 = isoRangeToMMDD(data.tirReviewPeriodStart, data.tirReviewPeriodEnd);
-          if (data.tirSemiAnnualReviewPeriodStart && data.tirSemiAnnualReviewPeriodEnd) {
-            const period2 = isoRangeToMMDD(
-              data.tirSemiAnnualReviewPeriodStart,
-              data.tirSemiAnnualReviewPeriodEnd,
-            );
-            value = `${period1} & ${period2}`;
-          } else {
-            value = period1;
-          }
-        }
-        return { label: 'TIR Review Period', value, testId: 'tir-review-period-row' };
-      },
+      buildField: tirReviewPeriodField,
     },
     {
       kind: 'computed',
       key: 'tirSubmission',
-      buildField: (data) => {
-        let value = NO_DATE;
-        if (data?.tirSubmission) {
-          value = data.tirSemiAnnualSubmission
-            ? `${isoToMMDD(data.tirSubmission)} & ${isoToMMDD(data.tirSemiAnnualSubmission)}`
-            : isoToMMDD(data.tirSubmission);
-        }
-        return { label: 'TIR Submission', value, testId: 'tir-submission-row' };
-      },
+      buildField: tirSubmissionField,
     },
     {
       kind: 'computed',
       key: 'tirReview',
-      buildField: (data) => {
-        let value = NO_DATE;
-        if (data?.tirReview) {
-          value = data.tirSemiAnnualReview
-            ? `${isoToMMDD(data.tirReview)} & ${isoToMMDD(data.tirSemiAnnualReview)}`
-            : isoToMMDD(data.tirReview);
-        }
-        return { label: 'TIR Due', value, testId: 'tir-review-row' };
-      },
+      buildField: tirReviewField,
     },
   ],
   'ch12-13-case-by-case': [
