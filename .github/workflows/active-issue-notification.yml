@@ -14,6 +14,7 @@ jobs:
     permissions: {}
     steps:
       - name: Ring the SoWork gong
+        continue-on-error: true
         env:
           SOWORK_API_TOKEN: ${{ secrets.SOWORK_API_TOKEN }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
