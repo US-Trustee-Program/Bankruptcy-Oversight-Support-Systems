@@ -444,12 +444,28 @@ describe('TrusteeChangeNotificationUseCase', () => {
     expect(recorded[0].to).toBe(SUBV_RECIPIENT.recipientAddresses[0]);
   });
 
-  test('skips notification for a profile change with no chapters', async () => {
+  test('logs a tagged error and reports a failure for a profile change with no chapters (no routing keys resolve)', async () => {
     seedRouting([CHAPTER_OVERSIGHT_RECIPIENT]);
+    const errorSpy = vi.spyOn(context.logger, 'error');
 
-    await useCase.notify(context, buildChangeSet([buildField()], { chapters: undefined }));
+    const summary = await useCase.notify(
+      context,
+      buildChangeSet([buildField()], { chapters: undefined }),
+    );
 
     expect(mockGateway.getRecorded()).toEqual([]);
+    expect(errorSpy).toHaveBeenCalled();
+    expect(errorSpy.mock.calls[0][1]).toContain('[notification-send-failure]');
+    expect(summary).toEqual({
+      attempted: 0,
+      failed: 1,
+      failures: [
+        {
+          reason: 'skipped',
+          message: expect.any(String),
+        },
+      ],
+    });
   });
 
   test('dispatches to each chapter oversight recipient when the trustee has multiple chapter appointments', async () => {

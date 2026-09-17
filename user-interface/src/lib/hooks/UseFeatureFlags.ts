@@ -8,6 +8,7 @@ export const CHAPTER_ELEVEN_ENABLED = 'chapter-eleven-enabled';
 export const CHAPTER_TWELVE_ENABLED = 'chapter-twelve-enabled';
 export const CONSOLIDATIONS_ENABLED = 'consolidations-enabled';
 export const DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES = 'display-chpt7-panel-upcoming-key-dates';
+export const DISPLAY_CHPT7_ELECTED_KEY_DATES = 'display-chpt7-elected-key-dates';
 export const DISPLAY_CHPT11_SUBV_PAST_KEY_DATES = 'display-chpt11-subv-past-key-dates';
 export const DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES =
   'display-chpt12-13-case-by-case-upcoming-key-dates';
@@ -19,6 +20,10 @@ export const SHOW_DEBTOR_NAME_COLUMN = 'show-debtor-name-column';
 export const SYSTEM_MAINTENANCE_BANNER = 'system-maintenance-banner';
 export const TRANSFER_ORDERS_ENABLED = 'transfer-orders-enabled';
 export const TRUSTEE_MANAGEMENT = 'trustee-management';
+// Named for the LaunchDarkly segment it restricts trustee creation to (Office of Oversight), not
+// for its own boolean sense -- `true` means the current user IS in that segment and CAN add
+// trustees. Use `canAddTrustee()` below instead of reading this flag directly.
+export const RESTRICT_ADDING_TRUSTEES = 'restrict-adding-trustees';
 export const TRUSTEE_VERIFICATION_ENABLED = 'trustee-verification-enabled';
 export const TRUSTEE_SOFTWARE_BANK_DISPLAY = 'trustee-software-bank-display';
 export const TRUSTEE_ASSIGNED_STAFF_ENABLED = 'trustee-assigned-staff-enabled';
@@ -27,9 +32,14 @@ export const TRUSTEE_CASE_LIST = 'trustee-case-list';
 export const TRUSTEE_CHANGE_NOTIFICATIONS = 'trustee-change-notification-enabled';
 export const TRUSTEE_TYPED_PHONES = 'trustee-typed-phones';
 export const SOFTWARE_VENDOR_TYPED_PHONES = 'software-vendor-typed-phones';
+export const TPR_DISPLAY_UPDATES = 'tpr-display-updates';
 
 export function isFlagEnabled(flags: FeatureFlagSet, flag: string): boolean {
   return flags[flag] === true;
+}
+
+export function canAddTrustee(flags: FeatureFlagSet): boolean {
+  return isFlagEnabled(flags, RESTRICT_ADDING_TRUSTEES);
 }
 
 export default function useFeatureFlags(): FeatureFlagSet {

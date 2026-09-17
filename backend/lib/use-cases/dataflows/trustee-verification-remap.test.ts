@@ -74,6 +74,7 @@ describe('TrusteeVerificationRemapUseCase', () => {
       queueCaseAssignmentEvent: vi.fn(),
       queueCaseReload: vi.fn(),
       queueTrusteeVerificationRemap: vi.fn(),
+      queueTrusteeChangeNotification: vi.fn(),
     });
 
     useCase = new TrusteeVerificationRemapUseCase(context);

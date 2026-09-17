@@ -5,7 +5,7 @@ import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
 import InfoCard from './InfoCard';
 import {
-  UPCOMING_KEY_DATES_FIELD_CONFIG,
+  getUpcomingKeyDatesFieldConfig,
   UpcomingKeyDatesVariant,
 } from './upcomingKeyDatesFieldConfig';
 
@@ -16,6 +16,7 @@ export interface UpcomingKeyDatesProps {
   appointmentHeading?: string;
   data: TrusteeUpcomingKeyDates | null;
   isLoading: boolean;
+  tprDisplayUpdates?: boolean;
 }
 
 export default function UpcomingKeyDates(props: Readonly<UpcomingKeyDatesProps>) {
@@ -26,6 +27,7 @@ export default function UpcomingKeyDates(props: Readonly<UpcomingKeyDatesProps>)
     appointmentHeading,
     data,
     isLoading,
+    tprDisplayUpdates = true,
   } = props;
   const navigate = useNavigate();
   const session = LocalStorage.getSession();
@@ -41,7 +43,7 @@ export default function UpcomingKeyDates(props: Readonly<UpcomingKeyDatesProps>)
     return <LoadingSpinner id="upcoming-key-dates-loading" />;
   }
 
-  const fields = UPCOMING_KEY_DATES_FIELD_CONFIG[variant].map((field) =>
+  const fields = getUpcomingKeyDatesFieldConfig(variant, tprDisplayUpdates).map((field) =>
     field.kind === 'constant'
       ? { label: field.displayLabel, value: field.value, testId: field.testId }
       : field.buildField(data),

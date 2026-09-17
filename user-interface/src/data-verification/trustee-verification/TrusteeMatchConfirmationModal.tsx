@@ -7,6 +7,7 @@ import { CandidateScore } from '@common/cams/dataflow-events';
 import { formatAppointmentStatus } from '@common/cams/trustee-appointments';
 import { formatChapterType } from '@common/cams/trustees';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
+import { formatPhoneWithExtension } from '@/lib/utils/phone-extension.utils';
 
 interface TrusteeMatchConfirmationModalProps {
   id: string;
@@ -96,10 +97,7 @@ function TrusteeMatchConfirmationModal_(
                 <div key={i}>{line}</div>
               ))}
               {candidate.phone && (
-                <div className="phone">
-                  {candidate.phone.number}
-                  {candidate.phone.extension ? ` x${candidate.phone.extension}` : ''}
-                </div>
+                <div className="phone">{formatPhoneWithExtension(candidate.phone)}</div>
               )}
               {candidate.email && <div className="email">{candidate.email}</div>}
               {candidate.appointments?.map((appt, i) => (

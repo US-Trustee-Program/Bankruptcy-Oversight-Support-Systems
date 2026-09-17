@@ -3,6 +3,7 @@ import { DxtrCase } from './cases';
 import { LegacyAddress } from './parties';
 import { Address, PhoneNumber } from './contact';
 import { TrusteeAppointment } from './trustee-appointments';
+import { TrusteeChangeSet } from './notifications';
 
 /**
  * Event triggered when trial attorney assignments change (add/remove).
@@ -55,6 +56,10 @@ export type TrusteeVerificationRemapMessage = {
  */
 export type CaseClosedEvent = {
   caseId: string;
+};
+
+export type TrusteeChangeNotificationEvent = {
+  changeSet: TrusteeChangeSet;
 };
 
 /**
@@ -282,6 +287,20 @@ export function calculateTotalScore(scores: {
 export type TrusteeAppointmentSyncError = TrusteeAppointmentSyncEvent & {
   mismatchReason: TrusteeAppointmentSyncErrorCode | SoftCloseWriteFailed;
   matchCandidates: CandidateScore[];
+};
+
+/**
+ * Enqueued manually to start (or continue) heal-sentinel-case-appointments. Carries lastId, the
+ * greatest _id seen in the previous page — a sentinel left unresolved this run (no mapping,
+ * ambiguous mapping, missing acmsProfessionalId, or a permanent per-record failure) is left in
+ * place rather than deleted, so a no-cursor re-query (unlike TrusteeVerificationRemapMessage's)
+ * would keep re-fetching the same unresolvable leading page forever and never reach resolvable
+ * sentinels further back in the collection. omit/null lastId starts from the beginning.
+ */
+export type HealSentinelCaseAppointmentsMessage = {
+  lastId?: string | null;
+  retryCount?: number;
+  firstAttemptAt?: string;
 };
 
 /**

@@ -64,6 +64,7 @@ describe('UpcomingKeyDates', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-01-15'));
     vi.restoreAllMocks();
+    mockNavigate.mockClear();
     mockUseNavigate.mockReturnValue(mockNavigate);
     TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
   });
@@ -113,6 +114,8 @@ describe('UpcomingKeyDates', () => {
     expect(screen.getByTestId('tpr-review-period-row')).toHaveTextContent('04/01 - 03/31');
     expect(screen.getByTestId('tpr-review-period-frequency-row')).toHaveTextContent('One year');
     expect(screen.getByTestId('tpr-due-row')).toHaveTextContent('09/15/2026');
+    expect(screen.getByTestId('tir-submission-row')).toHaveTextContent('10/15');
+    expect(screen.getByTestId('tir-review-row')).toHaveTextContent('11/01');
   });
 
   test('TPR Review Period shows mm/dd/yyyy - mm/dd/yyyy when full-year dates are stored', () => {
@@ -439,6 +442,58 @@ describe('UpcomingKeyDates', () => {
     });
   });
 
+  describe('chapter7-elected variant', () => {
+    const ch7ElectedProps: UpcomingKeyDatesProps = {
+      ...defaultProps,
+      variant: 'chapter7-elected',
+      trusteeId: 'trustee-ch7-elected-001',
+      appointmentId: 'appointment-ch7-elected-001',
+      appointmentHeading: 'Southern District of New York (Manhattan) - Chapter 7 Elected',
+    };
+
+    test('renders exactly one row: Bond Renewal', () => {
+      renderComponent({ ...ch7ElectedProps, data: null });
+
+      expect(screen.getByTestId('bond-renewal-date-row')).toBeInTheDocument();
+      expect(screen.getByText('Bond Renewal:')).toBeInTheDocument();
+      expect(screen.queryByTestId('tpr-review-period-row')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('tpr-due-row')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('lease-expiration-row')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('id-expiration-row')).not.toBeInTheDocument();
+    });
+
+    test('renders "No date added" when bondRenewalDate is absent', () => {
+      renderComponent({ ...ch7ElectedProps, data: null });
+
+      expect(screen.getByTestId('bond-renewal-date-row')).toHaveTextContent('No date added');
+    });
+
+    test('renders the saved date when bondRenewalDate is present', () => {
+      renderComponent({
+        ...ch7ElectedProps,
+        data: { ...populatedDocument, bondRenewalDate: '2026-06-01' },
+      });
+
+      expect(screen.getByTestId('bond-renewal-date-row')).toHaveTextContent('06/01/2026');
+    });
+
+    test('Edit button navigates with chapter7-elected variant', () => {
+      renderComponent({ ...ch7ElectedProps, data: null });
+
+      screen.getByRole('button', { name: /edit upcoming key dates/i }).click();
+
+      expect(mockNavigate).toHaveBeenCalledWith(
+        `/trustees/${ch7ElectedProps.trusteeId}/appointments/${ch7ElectedProps.appointmentId}/upcoming-key-dates/edit`,
+        {
+          state: {
+            subHeading: ch7ElectedProps.appointmentHeading,
+            variant: 'chapter7-elected',
+          },
+        },
+      );
+    });
+  });
+
   test('Edit button navigates to edit route', () => {
     renderComponent();
 
@@ -448,5 +503,35 @@ describe('UpcomingKeyDates', () => {
       `/trustees/${defaultProps.trusteeId}/appointments/${defaultProps.appointmentId}/upcoming-key-dates/edit`,
       { state: { subHeading: defaultProps.appointmentHeading, variant: 'chapter7-panel' } },
     );
+  });
+
+  describe('tprDisplayUpdates=false (flag OFF) behavior', () => {
+    test('does not render tpr-review-period-frequency-row when tprDisplayUpdates is false', () => {
+      renderComponent({ tprDisplayUpdates: false, data: populatedDocument });
+
+      expect(screen.queryByTestId('tpr-review-period-frequency-row')).not.toBeInTheDocument();
+    });
+
+    test('tprDue shows "mm/dd YEARTYPE" format when tprDisplayUpdates is false', () => {
+      renderComponent({
+        tprDisplayUpdates: false,
+        data: { ...populatedDocument, tprDue: '1900-09-15', tprDueYearType: 'EVEN' },
+      });
+
+      expect(screen.getByTestId('tpr-due-row')).toHaveTextContent('09/15 EVEN');
+    });
+
+    test('tprReviewPeriod shows mm/dd - mm/dd even for full-year dates when tprDisplayUpdates is false', () => {
+      renderComponent({
+        tprDisplayUpdates: false,
+        data: {
+          ...populatedDocument,
+          tprReviewPeriodStart: '2025-04-01',
+          tprReviewPeriodEnd: '2026-03-31',
+        },
+      });
+
+      expect(screen.getByTestId('tpr-review-period-row')).toHaveTextContent('04/01 - 03/31');
+    });
   });
 });

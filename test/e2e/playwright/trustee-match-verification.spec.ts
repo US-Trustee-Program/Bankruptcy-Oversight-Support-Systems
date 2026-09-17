@@ -96,21 +96,6 @@ test.describe('Trustee Match Verification', () => {
     await expect(resolvedStatement).toContainText('was appointed to case');
   });
 
-  test('should show read-only candidate table for a rejected trustee match verification', async ({
-    page,
-  }) => {
-    const rejectedItem = verificationItems.find(
-      (v) => v.taskType === 'trustee-match' && v.status === 'rejected',
-    );
-    expect(rejectedItem).not.toBeFalsy();
-
-    await page.getByTestId(`accordion-button-order-list-${rejectedItem!.id}`).click();
-
-    const content = page.getByTestId(`accordion-content-order-list-${rejectedItem!.id}`);
-    await expect(content).toBeVisible(timeoutOption);
-    await expect(content.getByTestId('reject-button')).not.toBeAttached();
-  });
-
   test('should show distinct problem statement for inactive match verification', async ({
     page,
   }) => {

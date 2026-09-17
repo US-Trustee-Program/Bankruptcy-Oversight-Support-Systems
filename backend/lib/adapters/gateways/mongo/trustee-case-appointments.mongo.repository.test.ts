@@ -751,6 +751,55 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       );
       repo.release();
     });
+
+    // CAMS-894: a surrogate whose case-partition copy is already missing (dual-write divergence)
+    // must not be left stranded — see existsInTrusteePartition's doc comment on this exact risk.
+    test('should tolerate a 404 on the case-partition delete and still delete the trustee partition', async () => {
+      const deleteOneSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'deleteOne')
+        .mockRejectedValueOnce(
+          new NotFoundError('MONGO-ADAPTER', { message: 'Matched and deleted 0 items.' }),
+        )
+        .mockResolvedValueOnce(undefined);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(repo.delete('appt-001')).resolves.toBeUndefined();
+
+      expect(deleteOneSpy).toHaveBeenCalledTimes(2);
+      repo.release();
+    });
+
+    test('should tolerate a 404 on the trustee-partition delete', async () => {
+      const deleteOneSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'deleteOne')
+        .mockResolvedValueOnce(undefined)
+        .mockRejectedValueOnce(
+          new NotFoundError('MONGO-ADAPTER', { message: 'Matched and deleted 0 items.' }),
+        );
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(repo.delete('appt-001')).resolves.toBeUndefined();
+
+      expect(deleteOneSpy).toHaveBeenCalledTimes(2);
+      repo.release();
+    });
+
+    test('should still throw a non-404 trustee-partition failure even after a case-partition 404', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'deleteOne')
+        .mockRejectedValueOnce(
+          new NotFoundError('MONGO-ADAPTER', { message: 'Matched and deleted 0 items.' }),
+        )
+        .mockRejectedValueOnce(new Error('trustee partition delete failed'));
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(repo.delete('appt-001')).rejects.toThrow(
+        'Dual-delete from trustee partition failed',
+      );
+      repo.release();
+    });
   });
 
   describe('getAllCaseAppointments', () => {
@@ -872,6 +921,90 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
         }),
         expect.any(Object),
         50,
+      );
+      repo.release();
+    });
+  });
+
+  describe('findSentinelAppointments', () => {
+    test('should return sentinel appointments when lastId is null', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([
+        { ...baseAppointment, _id: 'mongo-1', trusteeId: SENTINEL_TRUSTEE_ID },
+      ]);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const result = await repo.findSentinelAppointments(null, 100);
+
+      expect(result).toHaveLength(1);
+      repo.release();
+    });
+
+    test('should query for trusteeId equal to SENTINEL_TRUSTEE_ID', async () => {
+      const findSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockResolvedValue([
+          { ...baseAppointment, _id: 'mongo-1', trusteeId: SENTINEL_TRUSTEE_ID },
+        ]);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await repo.findSentinelAppointments(null, 50);
+
+      const query = findSpy.mock.calls[0][0];
+      const queryValues = (query as Record<string, unknown>).values as Record<string, unknown>[];
+
+      const trusteeIdCondition = queryValues.find(
+        (v) => (v.leftOperand as { name: string })?.name === 'trusteeId',
+      );
+      expect(trusteeIdCondition).toEqual(
+        expect.objectContaining({ condition: 'EQUALS', rightOperand: SENTINEL_TRUSTEE_ID }),
+      );
+
+      repo.release();
+    });
+
+    test('should filter by _id > lastId when provided', async () => {
+      const findSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockResolvedValue([
+          { ...baseAppointment, _id: 'mongo-2', trusteeId: SENTINEL_TRUSTEE_ID },
+        ]);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await repo.findSentinelAppointments('mongo-1', 50);
+
+      expect(findSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          values: expect.arrayContaining([
+            expect.objectContaining({ condition: 'GREATER_THAN', rightOperand: 'mongo-1' }),
+          ]),
+        }),
+        expect.any(Object),
+        50,
+      );
+      repo.release();
+    });
+
+    test('should return an empty array when no sentinel appointments remain', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const result = await repo.findSentinelAppointments(null, 50);
+
+      expect(result).toEqual([]);
+      repo.release();
+    });
+
+    test('should wrap and rethrow when find rejects', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(new Error('boom'));
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(repo.findSentinelAppointments(null, 50)).rejects.toThrow(
+        'Failed to retrieve case appointments by cursor.',
       );
       repo.release();
     });

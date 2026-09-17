@@ -24,12 +24,17 @@ const appInsights = new ApplicationInsights({
 });
 
 if (appInsightsConnectionString) {
-  appInsights.loadAppInsights();
-
   appInsights.addTelemetryInitializer((env: ITelemetryItem) => {
     env.tags = env.tags || [];
     env.tags['ai.cloud.role'] = 'ustp.cams.web';
   });
+
+  appInsights.loadAppInsights();
+
+  appInsights.trackEvent(
+    { name: 'Viewport Size' },
+    { width: window.innerWidth, height: window.innerHeight },
+  );
 }
 
 export function getAppInsights() {

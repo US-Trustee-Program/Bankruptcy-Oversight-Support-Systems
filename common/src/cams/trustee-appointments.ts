@@ -24,12 +24,25 @@ export const chapterAppointmentTypeMap: Record<AppointmentChapterType, readonly 
     '13': chapter13AppointmentTypes,
   };
 
-export function isChapter12Standing(chapter: string, appointmentType: string): boolean {
+export function isChapter12Standing(
+  chapter: AppointmentChapterType,
+  appointmentType: AppointmentType,
+): boolean {
   return chapter === '12' && appointmentType === 'standing';
 }
 
-export function isChapter13Standing(chapter: string, appointmentType: string): boolean {
+export function isChapter13Standing(
+  chapter: AppointmentChapterType,
+  appointmentType: AppointmentType,
+): boolean {
   return chapter === '13' && appointmentType === 'standing';
+}
+
+export function isChapter7Elected(
+  chapter: AppointmentChapterType,
+  appointmentType: AppointmentType,
+): boolean {
+  return chapter === '7' && appointmentType === 'elected';
 }
 
 export function formatAppointmentStatus(status: AppointmentStatus): string {

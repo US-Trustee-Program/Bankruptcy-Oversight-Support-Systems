@@ -375,6 +375,8 @@ describe('validateTrusteeUpcomingKeyDates', () => {
       leaseExpiration: null,
       idExpiration: null,
       lastCompensationStudy: null,
+      bondIssuedDate: null,
+      bondRenewalDate: null,
     };
   }
 
@@ -425,6 +427,52 @@ describe('validateTrusteeUpcomingKeyDates', () => {
     expect(result.valid).toBeFalsy();
     expect(result.reasonMap?.tprReviewPeriodStart?.reasons?.[0]).toBe(
       'TPR Review Period Start is required.',
+    );
+  });
+
+  test('returns VALID when tprReviewPeriodStart is before tprReviewPeriodEnd (full ISO dates)', () => {
+    expect(
+      validateTrusteeUpcomingKeyDates({
+        ...baseInput(),
+        tprReviewPeriodStart: '2025-01-01',
+        tprReviewPeriodEnd: '2026-12-31',
+      }),
+    ).toEqual(VALID);
+  });
+
+  test('returns VALID when tprReviewPeriodStart equals tprReviewPeriodEnd (same day)', () => {
+    expect(
+      validateTrusteeUpcomingKeyDates({
+        ...baseInput(),
+        tprReviewPeriodStart: '2025-06-30',
+        tprReviewPeriodEnd: '2025-06-30',
+      }),
+    ).toEqual(VALID);
+  });
+
+  test('returns VALID for sentinel-format tprReviewPeriod dates that cross a year boundary', () => {
+    // Apr 1 – Mar 31 is a valid cross-year sentinel range
+    expect(
+      validateTrusteeUpcomingKeyDates({
+        ...baseInput(),
+        tprReviewPeriodStart: '1900-04-01',
+        tprReviewPeriodEnd: '1900-03-31',
+      }),
+    ).toEqual(VALID);
+  });
+
+  test('returns error on both fields when tprReviewPeriodStart is after tprReviewPeriodEnd', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      tprReviewPeriodStart: '2026-12-31',
+      tprReviewPeriodEnd: '2025-01-01',
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.tprReviewPeriodStart?.reasons?.[0]).toBe(
+      'TPR Review Period Start must be before TPR Review Period End.',
+    );
+    expect(result.reasonMap?.tprReviewPeriodEnd?.reasons?.[0]).toBe(
+      'TPR Review Period End must be after TPR Review Period Start.',
     );
   });
 
@@ -681,6 +729,38 @@ describe('validateTrusteeUpcomingKeyDates', () => {
     );
   });
 
+  test('returns VALID when bondIssuedDate is a valid full date', () => {
+    expect(
+      validateTrusteeUpcomingKeyDates({ ...baseInput(), bondIssuedDate: '2023-06-01' }),
+    ).toEqual(VALID);
+  });
+
+  test('returns error when bondIssuedDate contains an invalid ISO date', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      bondIssuedDate: '2023-13-01',
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.bondIssuedDate?.reasons?.[0]).toBe('Must be a valid date mm/dd/yyyy.');
+  });
+
+  test('returns VALID when bondRenewalDate is a valid full date', () => {
+    expect(
+      validateTrusteeUpcomingKeyDates({ ...baseInput(), bondRenewalDate: '2026-06-01' }),
+    ).toEqual(VALID);
+  });
+
+  test('returns error when bondRenewalDate contains an invalid ISO date', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      bondRenewalDate: '2026-00-01',
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.bondRenewalDate?.reasons?.[0]).toBe(
+      'Must be a valid date mm/dd/yyyy.',
+    );
+  });
+
   test('DATE_FIELDS contains the exact set of expected fields', () => {
     expect(DATE_FIELDS).toEqual([
       'pastBackgroundQuestion',
@@ -702,6 +782,8 @@ describe('validateTrusteeUpcomingKeyDates', () => {
       'leaseExpiration',
       'idExpiration',
       'lastCompensationStudy',
+      'bondIssuedDate',
+      'bondRenewalDate',
     ]);
   });
 

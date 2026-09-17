@@ -54,6 +54,16 @@ export const TRUSTEE_APPOINTMENT_DOWNSTREAM_DLQ = output.storageQueue({
   connection,
 });
 
+export const TRUSTEE_CHANGE_NOTIFICATION_QUEUE = output.storageQueue({
+  queueName: buildQueueName(ModuleNames.TRUSTEE_CHANGE_NOTIFICATION_EVENT),
+  connection,
+});
+
+export const TRUSTEE_CHANGE_NOTIFICATION_DLQ = output.storageQueue({
+  queueName: buildQueueName(ModuleNames.TRUSTEE_CHANGE_NOTIFICATION_EVENT, 'DLQ'),
+  connection,
+});
+
 export const TRUSTEE_MATCH_VERIFICATION_REMAP_QUEUE = output.storageQueue({
   queueName: buildQueueName(ModuleNames.TRUSTEE_MATCH_VERIFICATION_REMAP),
   connection,
@@ -61,6 +71,16 @@ export const TRUSTEE_MATCH_VERIFICATION_REMAP_QUEUE = output.storageQueue({
 
 export const TRUSTEE_MATCH_VERIFICATION_REMAP_DLQ = output.storageQueue({
   queueName: buildQueueName(ModuleNames.TRUSTEE_MATCH_VERIFICATION_REMAP, 'DLQ'),
+  connection,
+});
+
+export const HEAL_SENTINEL_CASE_APPOINTMENTS_QUEUE = output.storageQueue({
+  queueName: buildQueueName(ModuleNames.HEAL_SENTINEL_CASE_APPOINTMENTS),
+  connection,
+});
+
+export const HEAL_SENTINEL_CASE_APPOINTMENTS_DLQ = output.storageQueue({
+  queueName: buildQueueName(ModuleNames.HEAL_SENTINEL_CASE_APPOINTMENTS, 'DLQ'),
   connection,
 });
 

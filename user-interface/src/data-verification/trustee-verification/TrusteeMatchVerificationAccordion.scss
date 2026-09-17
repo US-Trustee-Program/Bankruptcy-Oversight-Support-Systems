@@ -168,25 +168,6 @@
   .multiple-match-actions {
     margin: 1rem 0 0.5rem;
   }
-
-  .reject-task-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    margin-top: 0.5rem;
-    color: colors.$secondary-dark;
-    text-decoration: underline;
-    background: none;
-    border: none;
-    padding: 0;
-    cursor: pointer;
-    font-size: inherit;
-    font-family: inherit;
-    svg {
-      width: 1.275rem;
-      height: 1.275rem;
-    }
-  }
 }
 
 @media screen and (max-width: #{device-screens.$desktop-screen-small}) {

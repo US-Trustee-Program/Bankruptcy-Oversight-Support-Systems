@@ -1,5 +1,9 @@
 import { ApplicationContext } from '../../adapters/types/basic';
-import { TrusteeAppointmentsRepository, TrusteesRepository } from '../gateways.types';
+import {
+  ApiToDataflowsGateway,
+  TrusteeAppointmentsRepository,
+  TrusteesRepository,
+} from '../gateways.types';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import factory from '../../factory';
 import {
@@ -27,7 +31,8 @@ import {
   buildAppointmentChangeSet,
   AppointmentFieldSnapshot,
 } from './build-appointment-change-set';
-import { TrusteeChangeNotificationUseCase } from '../notifications/trustee-change-notification';
+import { enqueueTrusteeChangeNotification } from '../notifications/enqueue-trustee-change-notification';
+import { NOTIFICATION_SEND_FAILURE_TAG } from '../notifications/notification-alert-tag';
 
 const MODULE_NAME = 'TRUSTEE-APPOINTMENTS-USE-CASE';
 
@@ -59,11 +64,13 @@ export class TrusteeAppointmentsUseCase {
   private readonly trusteeAppointmentsRepository: TrusteeAppointmentsRepository;
   private readonly trusteesRepository: TrusteesRepository;
   private readonly courtsUseCase: CourtsUseCase;
+  private readonly apiToDataflowsGateway: ApiToDataflowsGateway;
 
   constructor(context: ApplicationContext) {
     this.trusteeAppointmentsRepository = factory.getTrusteeAppointmentsRepository(context);
     this.trusteesRepository = factory.getTrusteesRepository(context);
     this.courtsUseCase = new CourtsUseCase();
+    this.apiToDataflowsGateway = factory.getApiToDataflowsGateway(context);
   }
 
   /**
@@ -223,7 +230,6 @@ export class TrusteeAppointmentsUseCase {
     context: ApplicationContext,
     trusteeId: string,
     appointmentData: TrusteeAppointmentInput,
-    options?: { suppressNotifications?: boolean },
   ): Promise<TrusteeAppointment> {
     try {
       let trusteeName: string;
@@ -265,10 +271,7 @@ export class TrusteeAppointmentsUseCase {
 
       await this.trusteesRepository.createTrusteeHistory(history as Creatable<TrusteeHistory>);
 
-      if (
-        context.featureFlags['trustee-change-notification-enabled'] &&
-        !options?.suppressNotifications
-      ) {
+      if (context.featureFlags['trustee-change-notification-enabled']) {
         await this.dispatchAppointmentNotification(context, {
           trusteeId,
           trusteeName,
@@ -299,7 +302,6 @@ export class TrusteeAppointmentsUseCase {
     trusteeId: string,
     appointmentId: string,
     appointmentData: TrusteeAppointmentInput,
-    options?: { suppressNotifications?: boolean },
   ): Promise<TrusteeAppointment> {
     try {
       // Normalize data (convert old format to new format if needed)
@@ -339,10 +341,7 @@ export class TrusteeAppointmentsUseCase {
 
         await this.trusteesRepository.createTrusteeHistory(history as Creatable<TrusteeHistory>);
 
-        if (
-          context.featureFlags['trustee-change-notification-enabled'] &&
-          !options?.suppressNotifications
-        ) {
+        if (context.featureFlags['trustee-change-notification-enabled']) {
           await this.dispatchAppointmentNotification(context, {
             trusteeId,
             before: beforeSnapshot,
@@ -375,7 +374,6 @@ export class TrusteeAppointmentsUseCase {
       courts: CourtDivisionDetails[];
     },
   ): Promise<void> {
-    const trace = context.observability.startTrace(context.invocationId);
     try {
       const trusteeName =
         params.trusteeName ?? (await this.trusteesRepository.read(params.trusteeId)).name;
@@ -397,28 +395,19 @@ export class TrusteeAppointmentsUseCase {
         allDivisionsResolver,
       });
       if (changeSet.fields.length > 0) {
-        changeSet.author = {
-          name: context.session.user.name,
-          email: context.session.user.email,
-        };
-        changeSet.changedAt = DateHelper.getCurrentIsoTimestamp();
-        const frontendUrl = process.env.CAMS_FRONTEND_URL?.replace(/\/+$/, '');
-        if (frontendUrl && /^https?:\/\//i.test(frontendUrl)) {
-          changeSet.profileLink = `${frontendUrl}/trustees/${params.trusteeId}`;
-        }
-        const notificationUseCase = new TrusteeChangeNotificationUseCase(context);
-        const summary = await notificationUseCase.notify(context, changeSet);
-        context.observability.completeTrace(trace, 'Trustee Change Notification', {
-          success: summary.failed === 0,
-          properties: {
-            attempted: String(summary.attempted),
-            failed: String(summary.failed),
-          },
-          measurements: {},
-        });
+        await enqueueTrusteeChangeNotification(
+          context,
+          this.apiToDataflowsGateway,
+          changeSet,
+          params.trusteeId,
+        );
       }
     } catch (error) {
-      context.logger.error(MODULE_NAME, 'Failed to dispatch appointment notification.', error);
+      context.logger.error(
+        MODULE_NAME,
+        `${NOTIFICATION_SEND_FAILURE_TAG} Failed to prepare or enqueue appointment change notification.`,
+        error,
+      );
     }
   }
 }

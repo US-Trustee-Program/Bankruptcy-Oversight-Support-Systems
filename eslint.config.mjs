@@ -43,6 +43,7 @@ const nodeConfig = eslintNodeConfig.map((configObject) => ({
   files: [
     'user-interface/**/envToConfig.js',
     'ops/cloud-deployment/lib/cosmos/mongo/index-trustee-case-appointments.js',
+    'ops/scripts/utility/notification-routing-audit/audit-notification-routing-domains.mjs',
   ],
 }));
 

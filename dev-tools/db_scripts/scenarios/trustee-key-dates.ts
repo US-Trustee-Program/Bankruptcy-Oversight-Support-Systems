@@ -11,6 +11,8 @@
  *     Received past key date: one populated, one empty
  *   - Two Chapter 12/13 Case by Case trustees to exercise the Upcoming Key Dates
  *     card's TPR Period/Due fields: one populated, one empty
+ *   - Two Chapter 7 Elected trustees to exercise the Bond Issued Date (Past) /
+ *     Bond Renewal Date (Upcoming) fields: one populated, one empty
  *
  * NOTE: Key dates are separate documents with documentType='TRUSTEE_UPCOMING_REPORT_DATES'.
  */
@@ -639,6 +641,133 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           tprDueYearType: 'ODD',
           leaseExpiration: '2027-06-30',
           idExpiration: '2028-01-15',
+          updatedOn: '2025-03-01T00:00:00.000Z',
+          updatedBy: SEEDER,
+        },
+      ],
+    },
+
+    // ── Cosmos: Chapter 7 Elected Trustee with saved bond dates ──────────────
+    {
+      db: 'cams',
+      collectionOrTable: 'trustees',
+      data: [
+        {
+          ...createTrusteeBase({
+            id: 'seed-trustee-keydates-elected-001',
+            firstName: 'Owen',
+            lastName: 'Keydates',
+            status: 'active',
+            address1: '900 Key Dates Way',
+            city: 'New York',
+            state: 'NY',
+            zipCode: '10009',
+            phone: '212-555-1600',
+            email: 'owen.keydates@example.com',
+          }),
+          updatedOn: '2025-03-01T00:00:00.000Z',
+          updatedBy: SEEDER,
+        },
+      ],
+    },
+
+    {
+      db: 'cams',
+      collectionOrTable: 'trustee-appointments',
+      data: [
+        {
+          id: 'seed-appointment-keydates-elected-001',
+          documentType: 'TRUSTEE_APPOINTMENT',
+          trusteeId: 'seed-trustee-keydates-elected-001',
+          chapter: '7',
+          appointmentType: 'elected',
+          courtId: '0208',
+          divisionCodes: ['081'],
+          appointedDate: '2023-01-01',
+          status: 'active',
+          effectiveDate: '2023-01-01',
+          courtName: 'U.S. Bankruptcy Court Southern District of New York',
+          courtDivisionName: 'Manhattan',
+          updatedOn: '2025-03-01T00:00:00.000Z',
+          updatedBy: SEEDER,
+        },
+      ],
+    },
+
+    {
+      db: 'cams',
+      collectionOrTable: 'trustees',
+      data: [
+        {
+          id: 'seed-key-dates-elected-001',
+          documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
+          trusteeId: 'seed-trustee-keydates-elected-001',
+          appointmentId: 'seed-appointment-keydates-elected-001',
+          bondIssuedDate: '2023-06-01',
+          bondRenewalDate: '2026-06-01',
+          updatedOn: '2025-03-01T00:00:00.000Z',
+          updatedBy: SEEDER,
+        },
+      ],
+    },
+
+    // ── Cosmos: Chapter 7 Elected Trustee with no saved bond dates ───────────
+    {
+      db: 'cams',
+      collectionOrTable: 'trustees',
+      data: [
+        {
+          ...createTrusteeBase({
+            id: 'seed-trustee-keydates-elected-empty',
+            firstName: 'Owen',
+            lastName: 'Nokeydates',
+            status: 'active',
+            address1: '1000 Key Dates Way',
+            city: 'New York',
+            state: 'NY',
+            zipCode: '10010',
+            phone: '212-555-1700',
+            email: 'owen.nokeydates@example.com',
+          }),
+          updatedOn: '2025-03-01T00:00:00.000Z',
+          updatedBy: SEEDER,
+        },
+      ],
+    },
+
+    {
+      db: 'cams',
+      collectionOrTable: 'trustee-appointments',
+      data: [
+        {
+          id: 'seed-appointment-keydates-elected-empty',
+          documentType: 'TRUSTEE_APPOINTMENT',
+          trusteeId: 'seed-trustee-keydates-elected-empty',
+          chapter: '7',
+          appointmentType: 'elected',
+          courtId: '0208',
+          divisionCodes: ['081'],
+          appointedDate: '2023-01-01',
+          status: 'active',
+          effectiveDate: '2023-01-01',
+          courtName: 'U.S. Bankruptcy Court Southern District of New York',
+          courtDivisionName: 'Manhattan',
+          updatedOn: '2025-03-01T00:00:00.000Z',
+          updatedBy: SEEDER,
+        },
+      ],
+    },
+
+    {
+      db: 'cams',
+      collectionOrTable: 'trustees',
+      data: [
+        {
+          id: 'seed-key-dates-elected-empty',
+          documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
+          trusteeId: 'seed-trustee-keydates-elected-empty',
+          appointmentId: 'seed-appointment-keydates-elected-empty',
+          // bondIssuedDate/bondRenewalDate omitted - tests "No date added" / empty form state
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
         },

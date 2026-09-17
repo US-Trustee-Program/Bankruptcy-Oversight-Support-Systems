@@ -16,11 +16,17 @@ import useFeatureFlags, {
   DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES,
   DISPLAY_CHPT12_STANDING_KEY_DATES,
   DISPLAY_CHPT13_STANDING_KEY_DATES,
+  DISPLAY_CHPT7_ELECTED_KEY_DATES,
+  TPR_DISPLAY_UPDATES,
 } from '@/lib/hooks/UseFeatureFlags';
 import useCourts from '@/lib/hooks/UseCourts';
 import { buildDivisionsDisplay } from '@/lib/utils/court-utils';
 import Api2 from '@/lib/models/api2';
-import { isChapter12Standing, isChapter13Standing } from '@common/cams/trustee-appointments';
+import {
+  isChapter12Standing,
+  isChapter13Standing,
+  isChapter7Elected,
+} from '@common/cams/trustee-appointments';
 
 export interface AppointmentCardProps {
   appointment: TrusteeAppointment;
@@ -53,6 +59,8 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
     featureFlags[DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES] === true;
   const displayChpt12StandingKeyDates = featureFlags[DISPLAY_CHPT12_STANDING_KEY_DATES] === true;
   const displayChpt13StandingKeyDates = featureFlags[DISPLAY_CHPT13_STANDING_KEY_DATES] === true;
+  const displayChpt7ElectedKeyDates = featureFlags[DISPLAY_CHPT7_ELECTED_KEY_DATES] === true;
+  const tprDisplayUpdates = !!featureFlags[TPR_DISPLAY_UPDATES];
   const { chapter, appointmentType } = props.appointment;
   const formattedChapter = formatChapterType(chapter);
   const formattedAppointmentType = formatAppointmentType(appointmentType);
@@ -107,6 +115,7 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
     props.appointment.appointmentType,
   );
   const isChapter13StandingAppointment = isChapter13Standing(chapter, appointmentType);
+  const isElectedChapter7 = isChapter7Elected(chapter, appointmentType);
 
   const showsChpt7KeyDatesCards = displayChpt7PanelUpcomingKeyDates && isPanelChapter7 && canManage;
   const showsSubVPastKeyDatesCard = displayChpt11SubVPastKeyDates && isSubVPool;
@@ -116,12 +125,14 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
     displayChpt12StandingKeyDates && isChapter12StandingAppointment;
   const showsChpt13StandingUpcomingKeyDates =
     displayChpt13StandingKeyDates && isChapter13StandingAppointment;
+  const showsChpt7ElectedKeyDatesCards = displayChpt7ElectedKeyDates && isElectedChapter7;
   const shouldFetchKeyDates =
     showsChpt7KeyDatesCards ||
     showsSubVPastKeyDatesCard ||
     showsCh1213UpcomingKeyDatesCard ||
     showsChpt12StandingKeyDatesCards ||
-    showsChpt13StandingUpcomingKeyDates;
+    showsChpt13StandingUpcomingKeyDates ||
+    showsChpt7ElectedKeyDatesCards;
 
   const [keyDatesData, setKeyDatesData] = useState<TrusteeUpcomingKeyDates | null>(null);
   const [isKeyDatesLoading, setIsKeyDatesLoading] = useState(shouldFetchKeyDates);
@@ -172,6 +183,7 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
               appointmentHeading={appointmentHeading}
               data={keyDatesData}
               isLoading={isKeyDatesLoading}
+              tprDisplayUpdates={tprDisplayUpdates}
             />
             <PastKeyDates
               variant="chapter7-panel"
@@ -201,6 +213,7 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
             appointmentHeading={appointmentHeading}
             data={keyDatesData}
             isLoading={isKeyDatesLoading}
+            tprDisplayUpdates={tprDisplayUpdates}
           />
         )}
         {showsChpt12StandingKeyDatesCards && (
@@ -212,6 +225,7 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
               appointmentHeading={appointmentHeading}
               data={keyDatesData}
               isLoading={isKeyDatesLoading}
+              tprDisplayUpdates={tprDisplayUpdates}
             />
             <PastKeyDates
               variant="chapter12-standing"
@@ -232,9 +246,31 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
               appointmentHeading={appointmentHeading}
               data={keyDatesData}
               isLoading={isKeyDatesLoading}
+              tprDisplayUpdates={tprDisplayUpdates}
             />
             <PastKeyDates
               variant="chapter13-standing"
+              trusteeId={props.appointment.trusteeId}
+              appointmentId={props.appointment.id}
+              appointmentHeading={appointmentHeading}
+              data={keyDatesData}
+              isLoading={isKeyDatesLoading}
+            />
+          </>
+        )}
+        {showsChpt7ElectedKeyDatesCards && (
+          <>
+            <UpcomingKeyDates
+              variant="chapter7-elected"
+              trusteeId={props.appointment.trusteeId}
+              appointmentId={props.appointment.id}
+              appointmentHeading={appointmentHeading}
+              data={keyDatesData}
+              isLoading={isKeyDatesLoading}
+              tprDisplayUpdates={tprDisplayUpdates}
+            />
+            <PastKeyDates
+              variant="chapter7-elected"
               trusteeId={props.appointment.trusteeId}
               appointmentId={props.appointment.id}
               appointmentHeading={appointmentHeading}

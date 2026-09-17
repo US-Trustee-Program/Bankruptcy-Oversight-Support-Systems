@@ -35,9 +35,11 @@ import useFeatureFlags, {
   DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES,
   DISPLAY_CHPT12_STANDING_KEY_DATES,
   DISPLAY_CHPT13_STANDING_KEY_DATES,
+  DISPLAY_CHPT7_ELECTED_KEY_DATES,
   TRUSTEE_SOFTWARE_BANK_DISPLAY,
   TRUSTEE_ASSIGNED_STAFF_ENABLED,
   TRUSTEE_CASE_LIST,
+  TPR_DISPLAY_UPDATES,
 } from '@/lib/hooks/UseFeatureFlags';
 import TrusteeCaseList from '@/trustees/panels/TrusteeCaseList';
 import { TrusteeCaseListFilterValue } from '@/trustees/panels/filters/trusteeCaseListFilter.types';
@@ -78,6 +80,7 @@ export default function TrusteeDetailScreen() {
   const globalAlert = useGlobalAlert();
   const featureFlags = useFeatureFlags();
   const showSoftwareBankInfo = !!featureFlags[TRUSTEE_SOFTWARE_BANK_DISPLAY];
+  const tprDisplayUpdates = !!featureFlags[TPR_DISPLAY_UPDATES];
   const [caseListFilter, setCaseListFilter] = useSessionState<TrusteeCaseListFilterValue>(
     `cams:trustee-case-list-filter:${trusteeId}`,
     { caseStatus: 'OPEN', chapters: [] },
@@ -269,10 +272,11 @@ export default function TrusteeDetailScreen() {
         featureFlags[DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES] ||
         featureFlags[DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES] ||
         featureFlags[DISPLAY_CHPT12_STANDING_KEY_DATES] ||
-        featureFlags[DISPLAY_CHPT13_STANDING_KEY_DATES]
+        featureFlags[DISPLAY_CHPT13_STANDING_KEY_DATES] ||
+        featureFlags[DISPLAY_CHPT7_ELECTED_KEY_DATES]
       ),
       subHeading: (location.state as { subHeading?: string } | null)?.subHeading ?? '',
-      content: <UpcomingKeyDatesForm />,
+      content: <UpcomingKeyDatesForm tprDisplayUpdates={tprDisplayUpdates} />,
     },
     {
       path: 'appointments/:appointmentId/past-key-dates/edit',
@@ -280,7 +284,8 @@ export default function TrusteeDetailScreen() {
         featureFlags[DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES] ||
         featureFlags[DISPLAY_CHPT11_SUBV_PAST_KEY_DATES] ||
         featureFlags[DISPLAY_CHPT12_STANDING_KEY_DATES] ||
-        featureFlags[DISPLAY_CHPT13_STANDING_KEY_DATES]
+        featureFlags[DISPLAY_CHPT13_STANDING_KEY_DATES] ||
+        featureFlags[DISPLAY_CHPT7_ELECTED_KEY_DATES]
       ),
       subHeading: (location.state as { subHeading?: string } | null)?.subHeading ?? '',
       content: <PastKeyDatesForm />,

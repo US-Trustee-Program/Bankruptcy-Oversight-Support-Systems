@@ -9,9 +9,9 @@
       "entry": ["vitest.config.ts"],
       "ignore": [],
       "ignoreFiles": [
-        "test/migration/**",
         "ops/migrations/**",
         "ops/cloud-deployment/lib/cosmos/mongo/index-*.js",
+        "ops/scripts/utility/notification-routing-audit/*.mjs",
         "test/ui-sandbox/**"
       ]
     },
@@ -30,7 +30,7 @@
     },
     "user-interface": {
       "entry": ["test/**/*.ts", "src/**/*.test.ts", "src/**/*.test.tsx"],
-      "project": ["src/**/*.{ts,tsx}", "test/**/*.ts", "!playwright.config.ts"],
+      "project": ["src/**/*.{ts,tsx,scss,sass}", "test/**/*.ts", "!playwright.config.ts"],
       "ignore": [],
       "ignoreFiles": []
     },
@@ -46,7 +46,7 @@
         "helpers/**/*.tsx",
         "fixtures/**/*.ts"
       ],
-      "project": ["**/*.{ts,tsx}"],
+      "project": ["**/*.{ts,tsx,scss,sass}"],
       "ignore": []
     },
     "test/e2e": {
@@ -67,16 +67,7 @@
       "ignoreDependencies": ["dotenv", "@azure/functions"]
     }
   },
-  "ignoreBinaries": [
-    "pushd",
-    "popd",
-    "dot",
-    "dev-tools/.venv-docs/bin/python",
-    "dev-tools/.venv-docs/bin/python3",
-    "python3",
-    "podman",
-    "podman-compose"
-  ],
+  "ignoreBinaries": ["pushd", "popd", "dot", "podman", "podman-compose"],
   "ignoreDependencies": [
     "@azure/storage-blob",
     "@azure/storage-queue",

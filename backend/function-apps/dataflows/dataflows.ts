@@ -3,6 +3,7 @@ import { LoggerImpl } from '../../lib/adapters/services/logger.service';
 
 import CaseAssignmentEvent from './events/case-assignment-event';
 import CaseClosedEvent from './events/case-closed-event';
+import TrusteeChangeNotificationEvent from './events/trustee-change-notification-event';
 import BackfillPhoneticTokens from './migrations/backfill-phonetic-tokens';
 import BackfillCaseAppointmentDates from './migrations/backfill-case-appointment-dates';
 import BackfillTrusteePhoneticTokens from './migrations/backfill-trustee-phonetic-tokens';
@@ -10,6 +11,7 @@ import ImportZoomCsv from './migrations/import-zoom-csv';
 import DivisionChangeCleanup from './migrations/division-change-cleanup';
 import FixChapter7Appointments from './migrations/fix-chapter-7-appointments';
 import HandleMissedDivisionChanges from './migrations/handle-missed-division-changes';
+import HealSentinelCaseAppointments from './heal-sentinel-case-appointments';
 import MigrateAssignees from './migrations/migrate-assignees';
 import MigrateCases from './migrations/migrate-cases';
 import MigrateChildCasesToMemberCases from './migrations/migrate-childcases-to-membercases';
@@ -111,6 +113,7 @@ dataflows.register(
   DivisionChangeCleanup,
   FixChapter7Appointments,
   HandleMissedDivisionChanges,
+  HealSentinelCaseAppointments,
   ImportZoomCsv,
   MigrateAssignees,
   MigrateCaseAppointments,
@@ -132,6 +135,7 @@ dataflows.register(
   SyncTrusteeDueDateMetrics,
   StaffAssignmentDownstream,
   TrusteeAppointmentDownstream,
+  TrusteeChangeNotificationEvent,
   TrusteeVerificationRemap,
   AcmsDailySync,
   BackfillTrusteeAppointmentsDownstreamDataflow,
@@ -158,7 +162,9 @@ const DEFAULT_DATAFLOWS = listDataflowNames(
   SyncAcmsProfessionalIds,
   SyncTrusteeDueDateMetrics,
   SyncTrusteeNotesMetrics,
+  TrusteeChangeNotificationEvent,
   TrusteeVerificationRemap,
+  HealSentinelCaseAppointments,
 );
 
 const additional = envVarToNames(process.env.CAMS_ENABLED_DATAFLOWS);

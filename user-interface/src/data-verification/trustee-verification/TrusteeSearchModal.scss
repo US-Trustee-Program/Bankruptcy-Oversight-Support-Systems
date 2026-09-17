@@ -1,8 +1,30 @@
 @use '@/styles/abstracts/colors' as colors;
+@use '@/styles/abstracts/device-screens' as device-screens;
 
 .trustee-search-modal {
+  width: 32rem;
+  max-width: 100%;
+
+  .trustee-comparison {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+
+  .court-trustee-details,
   .trustee-details {
-    margin-top: 2rem;
+    flex: 1 1 0;
+    padding: 0;
+    font-size: 1rem;
+    word-wrap: break-word;
+    overflow-wrap: anywhere;
+    min-width: 0;
+
+    h4 {
+      margin-top: 0;
+      margin-bottom: 1rem;
+      font-size: 1rem;
+    }
   }
 
   .usa-modal__footer {
@@ -12,6 +34,14 @@
   [id^='trustee-search-combobox-']:not(:has(.clear-all-button)) {
     .selection-label {
       color: colors.$gray-50;
+    }
+  }
+}
+
+@media screen and (max-width: #{device-screens.$phone-screen-large}) {
+  .trustee-search-modal {
+    .trustee-comparison {
+      flex-direction: column;
     }
   }
 }

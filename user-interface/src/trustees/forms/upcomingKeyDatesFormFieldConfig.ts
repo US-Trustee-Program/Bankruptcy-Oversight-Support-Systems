@@ -7,12 +7,12 @@ export interface DatePickerFieldDescriptor {
   kind: 'date-picker';
   id: string;
   label: string;
-  formKey: 'leaseExpiration' | 'idExpiration';
+  formKey: 'leaseExpiration' | 'idExpiration' | 'bondRenewalDate';
 }
 
 export type UpcomingFormFieldDescriptor = StaticFieldKind | DatePickerFieldDescriptor;
 
-export const UPCOMING_KEY_DATES_FORM_CONFIG: Record<
+const UPCOMING_KEY_DATES_FORM_CONFIG: Record<
   UpcomingKeyDatesVariant,
   UpcomingFormFieldDescriptor[]
 > = {
@@ -58,4 +58,23 @@ export const UPCOMING_KEY_DATES_FORM_CONFIG: Record<
       formKey: 'idExpiration',
     },
   ],
+  'chapter7-elected': [
+    {
+      kind: 'date-picker',
+      id: 'bond-renewal-date',
+      label: 'Bond Renewal Date',
+      formKey: 'bondRenewalDate',
+    },
+  ],
 };
+
+export function getUpcomingKeyDatesFormConfig(
+  variant: UpcomingKeyDatesVariant,
+  tprDisplayUpdates: boolean,
+): UpcomingFormFieldDescriptor[] {
+  const base = UPCOMING_KEY_DATES_FORM_CONFIG[variant];
+  if (tprDisplayUpdates) {
+    return base;
+  }
+  return base.filter((d) => d !== 'tpr-frequency');
+}

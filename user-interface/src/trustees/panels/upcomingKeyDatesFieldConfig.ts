@@ -8,7 +8,11 @@ import {
 } from '@common/cams/trustee-upcoming-key-dates';
 
 export type UpcomingKeyDatesVariant =
-  'chapter7-panel' | 'ch12-13-case-by-case' | 'chapter12-standing' | 'chapter13-standing';
+  | 'chapter7-panel'
+  | 'ch12-13-case-by-case'
+  | 'chapter12-standing'
+  | 'chapter13-standing'
+  | 'chapter7-elected';
 
 const NO_DATE = 'No date added';
 
@@ -84,6 +88,11 @@ function leaseExpirationField(data: TrusteeUpcomingKeyDates | null): UpcomingKey
 function idExpirationField(data: TrusteeUpcomingKeyDates | null): UpcomingKeyDatesDisplayField {
   const value = data?.idExpiration ? isoToMMDDYYYY(data.idExpiration) : NO_DATE;
   return { label: 'ID Expiration', value, testId: 'id-expiration-row' };
+}
+
+function bondRenewalDateField(data: TrusteeUpcomingKeyDates | null): UpcomingKeyDatesDisplayField {
+  const value = data?.bondRenewalDate ? isoToMMDDYYYY(data.bondRenewalDate) : NO_DATE;
+  return { label: 'Bond Renewal', value, testId: 'bond-renewal-date-row' };
 }
 
 export const UPCOMING_KEY_DATES_FIELD_CONFIG: Record<
@@ -309,4 +318,58 @@ export const UPCOMING_KEY_DATES_FIELD_CONFIG: Record<
       buildField: idExpirationField,
     },
   ],
+  'chapter7-elected': [
+    {
+      kind: 'computed',
+      key: 'bondRenewalDate',
+      buildField: bondRenewalDateField,
+    },
+  ],
 };
+
+export function getUpcomingKeyDatesFieldConfig(
+  variant: UpcomingKeyDatesVariant,
+  tprDisplayUpdates: boolean,
+): UpcomingKeyDatesFieldConfig[] {
+  if (tprDisplayUpdates) {
+    return UPCOMING_KEY_DATES_FIELD_CONFIG[variant];
+  }
+
+  return UPCOMING_KEY_DATES_FIELD_CONFIG[variant]
+    .filter((f) => f.key !== 'tprFrequency')
+    .map((f): UpcomingKeyDatesFieldConfig => {
+      if (f.kind !== 'computed') return f;
+
+      if (f.key === 'tprDue') {
+        return {
+          kind: 'computed',
+          key: f.key,
+          buildField: (data: TrusteeUpcomingKeyDates | null) => {
+            const template = f.buildField(null);
+            const value =
+              data?.tprDue && data?.tprDueYearType
+                ? `${isoToMMDD(data.tprDue)} ${data.tprDueYearType}`
+                : 'No date added';
+            return { ...template, value };
+          },
+        };
+      }
+
+      if (f.key === 'tprReviewPeriod') {
+        return {
+          kind: 'computed',
+          key: f.key,
+          buildField: (data: TrusteeUpcomingKeyDates | null) => {
+            const template = f.buildField(null);
+            const value =
+              data?.tprReviewPeriodStart && data?.tprReviewPeriodEnd
+                ? isoRangeToMMDD(data.tprReviewPeriodStart, data.tprReviewPeriodEnd)
+                : 'No date added';
+            return { ...template, value };
+          },
+        };
+      }
+
+      return f;
+    });
+}

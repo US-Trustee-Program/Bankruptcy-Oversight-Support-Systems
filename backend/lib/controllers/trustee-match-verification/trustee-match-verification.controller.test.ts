@@ -1,4 +1,4 @@
-import { vi, describe, test, expect, beforeEach, afterEach } from 'vitest';
+import { vi, describe, test, expect, beforeEach } from 'vitest';
 import { TrusteeMatchVerificationController } from './trustee-match-verification.controller';
 import { TrusteeMatchVerificationUseCase } from '../../use-cases/trustee-match-verification/trustee-match-verification.use-case';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
@@ -116,10 +116,6 @@ describe('TrusteeMatchVerificationController', () => {
     context.request.method = 'GET';
   });
 
-  afterEach(() => {
-    // intentionally empty — cleanup is in beforeEach
-  });
-
   test('should return 404 when trustee-verification-enabled flag is off', async () => {
     context.featureFlags['trustee-verification-enabled'] = false;
 
@@ -170,6 +166,34 @@ describe('TrusteeMatchVerificationController', () => {
       const expectedError = getCamsError(error, 'TRUSTEE-MATCH-VERIFICATION-CONTROLLER');
 
       await expect(controller.handleRequest(context)).rejects.toThrow(expectedError.message);
+    });
+
+    test('should map the ?status= query param through to the repository search', async () => {
+      context.request.query = { status: 'approved,rejected' };
+      const search = vi.fn().mockResolvedValue([]);
+      vi.spyOn(factory, 'getTrusteeMatchVerificationRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), { search }),
+      );
+      vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue(mockCourts);
+
+      const controller = new TrusteeMatchVerificationController();
+      await controller.handleRequest(context);
+
+      expect(search).toHaveBeenCalledWith({ status: ['approved'] });
+    });
+
+    test('should return an empty array without querying the repository when the status filter contains only unsupported statuses', async () => {
+      context.request.query = { status: 'rejected' };
+      const search = vi.fn().mockResolvedValue([sampleOrder]);
+      vi.spyOn(factory, 'getTrusteeMatchVerificationRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), { search }),
+      );
+
+      const controller = new TrusteeMatchVerificationController();
+      const response = await controller.handleRequest(context);
+
+      expect(search).not.toHaveBeenCalled();
+      expect(response.body.data).toEqual([]);
     });
   });
 
@@ -229,38 +253,12 @@ describe('TrusteeMatchVerificationController', () => {
       expect(response.statusCode).toBe(204);
     });
 
-    test('should call useCase.rejectVerification with reason and return 204', async () => {
+    test('should throw BadRequestError for reject action since rejection is no longer supported', async () => {
       context.request.body = { action: 'reject', reason: 'Not the right trustee' };
-      vi.spyOn(TrusteeMatchVerificationUseCase.prototype, 'rejectVerification').mockResolvedValue(
-        undefined,
-      );
 
       const controller = new TrusteeMatchVerificationController();
-      const response = await controller.handleRequest(context);
 
-      expect(TrusteeMatchVerificationUseCase.prototype.rejectVerification).toHaveBeenCalledWith(
-        context,
-        'verification-1',
-        'Not the right trustee',
-      );
-      expect(response.statusCode).toBe(204);
-    });
-
-    test('should call useCase.rejectVerification without reason and return 204', async () => {
-      context.request.body = { action: 'reject' };
-      vi.spyOn(TrusteeMatchVerificationUseCase.prototype, 'rejectVerification').mockResolvedValue(
-        undefined,
-      );
-
-      const controller = new TrusteeMatchVerificationController();
-      const response = await controller.handleRequest(context);
-
-      expect(TrusteeMatchVerificationUseCase.prototype.rejectVerification).toHaveBeenCalledWith(
-        context,
-        'verification-1',
-        undefined,
-      );
-      expect(response.statusCode).toBe(204);
+      await expect(controller.handleRequest(context)).rejects.toThrow('Missing or invalid action.');
     });
 
     test('should throw BadRequestError when id is missing', async () => {
