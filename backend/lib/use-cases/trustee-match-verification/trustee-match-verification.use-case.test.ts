@@ -127,9 +127,28 @@ describe('TrusteeMatchVerificationUseCase', () => {
     });
 
     test('parses comma-separated statuses from statusParam', async () => {
+      await useCase.getVerifications(context, { statusParam: 'pending,approved' });
+
+      expect(mockSearch).toHaveBeenCalledWith({ status: ['pending', 'approved'] });
+    });
+
+    test('filters out rejected from statusParam since it is no longer a valid status', async () => {
       await useCase.getVerifications(context, { statusParam: 'approved,rejected' });
 
-      expect(mockSearch).toHaveBeenCalledWith({ status: ['approved', 'rejected'] });
+      expect(mockSearch).toHaveBeenCalledWith({ status: ['approved'] });
+    });
+
+    test('drops rejected but keeps pending and approved when all three are selected (default UI filter state)', async () => {
+      await useCase.getVerifications(context, { statusParam: 'pending,approved,rejected' });
+
+      expect(mockSearch).toHaveBeenCalledWith({ status: ['pending', 'approved'] });
+    });
+
+    test('returns no results without querying when statusParam is entirely invalid statuses', async () => {
+      const result = await useCase.getVerifications(context, { statusParam: 'rejected' });
+
+      expect(result).toEqual([]);
+      expect(mockSearch).not.toHaveBeenCalled();
     });
 
     test('returns data from repository', async () => {
@@ -388,6 +407,7 @@ describe('TrusteeMatchVerificationUseCase', () => {
           status: 'approved',
           resolvedTrusteeId: 'trustee-new',
           resolvedTrusteeName: 'New Trustee',
+          remap: { status: 'pending' },
           updatedBy: expect.objectContaining({ id: expect.any(String) }),
           updatedOn: expect.any(String),
         }),
@@ -845,88 +865,6 @@ describe('TrusteeMatchVerificationUseCase', () => {
       mockFindById.mockRejectedValue(new Error('db unavailable'));
 
       await expect(useCase.getEnrichedVerification(context, 'verification-1')).rejects.toThrow();
-    });
-  });
-
-  describe('rejectVerification', () => {
-    test('happy path with reason: sets status to rejected with reason, updatedBy, updatedOn', async () => {
-      await useCase.rejectVerification(context, 'verification-1', 'Not the right trustee');
-
-      expect(mockFindById).toHaveBeenCalledWith('verification-1');
-      expect(mockUpdate).toHaveBeenCalledWith(
-        'verification-1',
-        expect.objectContaining({
-          status: 'rejected',
-          reason: 'Not the right trustee',
-          updatedBy: expect.objectContaining({ id: expect.any(String) }),
-          updatedOn: expect.any(String),
-        }),
-      );
-    });
-
-    test('emits TrusteeMatchVerificationResolved telemetry on rejection', async () => {
-      await useCase.rejectVerification(context, 'verification-1', 'Not the right trustee');
-
-      expect(mockCompleteTrace).toHaveBeenCalledWith(
-        expect.anything(),
-        'TrusteeMatchVerificationResolved',
-        expect.objectContaining({
-          success: true,
-          properties: expect.objectContaining({
-            action: 'reject',
-            caseId: 'case-001',
-            mismatchReason: 'IMPERFECT_MATCH',
-          }),
-          measurements: expect.objectContaining({
-            resolutionMs: expect.any(Number),
-            candidateCount: 2,
-          }),
-        }),
-        [{ name: 'TrusteeVerificationResolutionMs', value: expect.any(Number) }],
-        context.logger,
-      );
-    });
-
-    test('emits failed telemetry when rejectVerification throws', async () => {
-      mockFindById.mockRejectedValue(new NotFoundError('REPO', { message: 'Not found' }));
-
-      await expect(useCase.rejectVerification(context, 'missing-id')).rejects.toThrow();
-
-      expect(mockCompleteTrace).toHaveBeenCalledWith(
-        expect.anything(),
-        'TrusteeMatchVerificationResolved',
-        expect.objectContaining({ success: false, properties: { action: 'reject' } }),
-        undefined,
-        context.logger,
-      );
-    });
-
-    test('happy path without reason: sets status to rejected with undefined reason', async () => {
-      await useCase.rejectVerification(context, 'verification-1');
-
-      expect(mockUpdate).toHaveBeenCalledWith(
-        'verification-1',
-        expect.objectContaining({
-          status: 'rejected',
-          reason: undefined,
-        }),
-      );
-    });
-
-    test('throws NotFoundError when document does not exist', async () => {
-      mockFindById.mockRejectedValue(new NotFoundError('REPO', { message: 'Not found' }));
-
-      await expect(useCase.rejectVerification(context, 'missing-id')).rejects.toThrow(
-        NotFoundError,
-      );
-    });
-
-    test('throws NotFoundError when verification exists but is not pending', async () => {
-      mockFindById.mockResolvedValue({ ...sampleVerification, status: 'approved' });
-
-      await expect(useCase.rejectVerification(context, 'verification-1')).rejects.toThrow(
-        NotFoundError,
-      );
     });
   });
 });

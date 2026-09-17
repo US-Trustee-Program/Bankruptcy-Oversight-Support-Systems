@@ -45,7 +45,6 @@ export type TrusteeMatchVerification = Auditable & {
   resolvedTrusteeName?: string;
   courtName?: string;
   taskType: 'trustee-match';
-  reason?: string;
   inactiveAppointmentStatus?: AppointmentStatus;
   taskDate?: string | Date;
   /**
@@ -69,6 +68,39 @@ export type TrusteeMatchVerification = Auditable & {
    * an accepted cost, not a bug.
    */
   variant: string;
+  /**
+   * Outcome of the async trustee-verification-remap dataflow — separate from `status` above,
+   * which drives Data Verification UI/reviewer behavior (pending/approved; rejected is
+   * legacy-read-only, no longer producible). Not surfaced in the UI; queryable behind the
+   * scenes to resolve a remap that's stuck or failed.
+   * Aggregate only, no per-case-id tracking here: affectedCaseIds already snapshots the full
+   * scope of the run, and any case still present in trustee-case-appointments under
+   * trusteeId === fingerprint hasn't been remapped yet (see getSurrogatesByFingerprint) — that
+   * is always re-derivable on demand instead of duplicated here. Set to 'pending' by
+   * approveVerification before the remap message is even sent, 'processing' by handleRemap
+   * while a page is in flight and pages remain, then 'complete' or 'error' once the run either
+   * fully clears the fingerprint or a page fails.
+   */
+  remap?: TrusteeMatchVerificationRemapStatus;
+};
+
+type TrusteeMatchVerificationRemapStatus = {
+  status: 'pending' | 'processing' | 'complete' | 'error';
+  error?: TrusteeVerificationRemapError;
+};
+
+/**
+ * Mirrors CamsError's (backend/lib/common-errors/cams-error.ts) serializable shape without
+ * importing it — common cannot depend on backend (the Dependency Rule runs the other way: both
+ * backend and user-interface depend on common, never the reverse). A real CamsError/UnknownError
+ * instance is structurally assignable here, so backend can write one directly.
+ */
+type TrusteeVerificationRemapError = {
+  message: string;
+  module: string;
+  status: number;
+  originalError?: string;
+  data?: object;
 };
 
 /**
@@ -95,7 +127,6 @@ export type TrusteeMatchVerificationListItem = Pick<
   | 'resolvedTrusteeName'
   | 'taskType'
   | 'taskDate'
-  | 'reason'
   | 'inactiveAppointmentStatus'
 > & {
   preselectedCandidate: TrusteeCandidate | null;

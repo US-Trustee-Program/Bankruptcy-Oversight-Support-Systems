@@ -3,12 +3,81 @@ import React, { useRef, useEffect } from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import OpenModalButton from './OpenModalButton';
 import Modal from './Modal';
-import { ModalRefType } from './modal-refs';
+import { ModalRefType, OpenModalButtonRef } from './modal-refs';
+import { SubmitCancelBtnProps } from './SubmitCancelButtonGroup';
 import Checkbox from '../Checkbox';
 import Radio from '../Radio';
-import Button from '../Button';
 
 const testButtonId = 'open-modal-button_open-test';
+
+type RenderModalOptions = {
+  modalId?: string;
+  modalRef?: React.RefObject<ModalRefType | null>;
+  openButtonRef?: React.RefObject<OpenModalButtonRef | null>;
+  openButtonIndex?: string;
+  openButtonLabel?: React.ReactNode;
+  withOpenButton?: boolean;
+  heading?: React.ReactNode;
+  headingTooltip?: string;
+  content?: React.ReactNode;
+  buttonGroup?: Pick<SubmitCancelBtnProps, 'submitButton' | 'cancelButton' | 'className'>;
+  onOpen?: () => void;
+  onClose?: () => void;
+  forceAction?: boolean;
+  footerContent?: React.ReactNode;
+  strictMode?: boolean;
+};
+
+function renderModal(options: RenderModalOptions = {}) {
+  const modalId = options.modalId ?? 'test-modal';
+  const modalRef = options.modalRef ?? React.createRef<ModalRefType>();
+  const openButtonIndex = options.openButtonIndex ?? 'open-test';
+  const withOpenButton = options.withOpenButton ?? true;
+  const buttonGroup = options.buttonGroup ?? { submitButton: { label: 'Submit' } };
+
+  const modalElement = (
+    <Modal
+      modalId={modalId}
+      ref={modalRef}
+      heading={options.heading ?? 'Test Heading'}
+      headingTooltip={options.headingTooltip}
+      content={options.content ?? 'Test Content'}
+      actionButtonGroup={{ modalId, modalRef, ...buttonGroup }}
+      onOpen={options.onOpen}
+      onClose={options.onClose}
+      forceAction={options.forceAction}
+      footerContent={options.footerContent}
+    />
+  );
+
+  const tree = (
+    <BrowserRouter>
+      {withOpenButton ? (
+        <>
+          <OpenModalButton
+            buttonIndex={openButtonIndex}
+            modalId={modalId}
+            modalRef={modalRef}
+            ref={options.openButtonRef}
+          >
+            {options.openButtonLabel ?? 'Open Modal'}
+          </OpenModalButton>
+          {modalElement}
+        </>
+      ) : (
+        modalElement
+      )}
+    </BrowserRouter>
+  );
+
+  render(options.strictMode ? <React.StrictMode>{tree}</React.StrictMode> : tree);
+
+  return {
+    modalId,
+    modalRef,
+    openButton: withOpenButton ? screen.getByTestId(`open-modal-button_${openButtonIndex}`) : null,
+  };
+}
 
 describe('Test Modal component', () => {
   const modalId = 'test-modal';
@@ -17,56 +86,32 @@ describe('Test Modal component', () => {
   const submitButtonOnClick = vi.fn();
   const cancelButtonOnClick = vi.fn();
 
-  function createModal() {
-    const modalRef = React.createRef<ModalRefType>();
-    const actionButtonGroup = {
-      modalId: modalId,
-      modalRef: modalRef,
-      submitButton: {
-        label: 'Submit',
-        className: 'submit-button',
-        onClick: submitButtonOnClick,
-      },
-      cancelButton: {
-        label: 'Cancel',
-        className: 'cancel-button',
-        onClick: cancelButtonOnClick,
-      },
-    };
-
-    const content = (
-      <div>
-        Test Content
-        <Checkbox id={'test-checkbox'} value={5}></Checkbox>
-        <Radio id={'test-radio-button'} name={'radio1'} label={'Radio 1'} value={'1'}></Radio>
-        <Button>Foo</Button>;
-      </div>
-    );
-
-    render(
-      <React.StrictMode>
-        <BrowserRouter>
-          <>
-            <OpenModalButton buttonIndex="open-test" modalId={modalId} modalRef={modalRef}>
-              Open Modal
-            </OpenModalButton>
-            <Modal
-              modalId={modalId}
-              ref={modalRef}
-              heading={'Test Heading'}
-              content={content}
-              actionButtonGroup={actionButtonGroup}
-              onClose={closeModal}
-              onOpen={onOpenModal}
-            ></Modal>
-          </>
-        </BrowserRouter>
-      </React.StrictMode>,
-    );
-  }
-
   beforeEach(() => {
-    createModal();
+    renderModal({
+      modalId,
+      onOpen: onOpenModal,
+      onClose: closeModal,
+      strictMode: true,
+      content: (
+        <div>
+          Test Content
+          <Checkbox id={'test-checkbox'} value={5}></Checkbox>
+          <Radio id={'test-radio-button'} name={'radio1'} label={'Radio 1'} value={'1'}></Radio>
+        </div>
+      ),
+      buttonGroup: {
+        submitButton: {
+          label: 'Submit',
+          className: 'submit-button',
+          onClick: submitButtonOnClick,
+        },
+        cancelButton: {
+          label: 'Cancel',
+          className: 'cancel-button',
+          onClick: cancelButtonOnClick,
+        },
+      },
+    });
   });
 
   test('should open modal', async () => {
@@ -159,6 +204,118 @@ describe('Test Modal component', () => {
     expect(cancelButtonOnClick).toHaveBeenCalled();
   });
 
+  test('should return focus to the opener button after closing, not back into the modal', async () => {
+    const openButtonRef = React.createRef<OpenModalButtonRef>();
+    const { openButton } = renderModal({
+      modalId: 'opener-focus-modal',
+      openButtonIndex: 'opener-focus-test',
+      openButtonRef,
+    });
+
+    fireEvent.click(openButton!);
+
+    const closeButton = screen.getByTestId('modal-x-button-opener-focus-modal');
+    fireEvent.click(closeButton);
+
+    await vi.waitFor(() => {
+      expect(openButton).toHaveFocus();
+    });
+  });
+
+  test('should add modal-open class to document.body when opened and remove it when closed', async () => {
+    const button = screen.getByTestId(testButtonId);
+    expect(document.body).not.toHaveClass('modal-open');
+
+    fireEvent.click(button);
+    expect(document.body).toHaveClass('modal-open');
+
+    const closeButton = screen.getByTestId(`modal-x-button-${modalId}`);
+    fireEvent.click(closeButton);
+
+    expect(document.body).not.toHaveClass('modal-open');
+  });
+
+  test('should keep modal-open on document.body while another modal is still visible', async () => {
+    const secondModalId = 'second-modal';
+    const { openButton: secondOpenButton } = renderModal({
+      modalId: secondModalId,
+      openButtonIndex: 'open-second',
+      openButtonLabel: 'Open Second Modal',
+      heading: 'Second Modal',
+      content: 'Second Modal Content',
+    });
+
+    const firstOpenButton = screen.getByTestId(testButtonId);
+
+    fireEvent.click(firstOpenButton);
+    fireEvent.click(secondOpenButton!);
+    expect(document.body).toHaveClass('modal-open');
+
+    const firstCloseButton = screen.getByTestId(`modal-x-button-${modalId}`);
+    fireEvent.click(firstCloseButton);
+
+    expect(document.body).toHaveClass('modal-open');
+
+    const secondCloseButton = screen.getByTestId(`modal-x-button-${secondModalId}`);
+    fireEvent.click(secondCloseButton);
+
+    expect(document.body).not.toHaveClass('modal-open');
+  });
+
+  test('should focus the newly-opened modal, not leave focus trapped in the previously-opened one', async () => {
+    const secondModalId = 'stacked-second-modal';
+    const { openButton: secondOpenButton } = renderModal({
+      modalId: secondModalId,
+      openButtonIndex: 'open-stacked-second',
+      openButtonLabel: 'Open Second Modal',
+      heading: 'Second Modal',
+      content: 'Second Modal Content',
+    });
+
+    fireEvent.click(screen.getByTestId(testButtonId));
+    const firstModalFirstElement = document.querySelector('.usa-checkbox__label') as HTMLElement;
+    expect(firstModalFirstElement).toHaveFocus();
+
+    fireEvent.click(secondOpenButton!);
+
+    const secondSubmitButton = screen.getByTestId(`button-${secondModalId}-submit-button`);
+    expect(secondSubmitButton).toHaveFocus();
+
+    const secondCloseButton = screen.getByTestId(`modal-x-button-${secondModalId}`);
+    fireEvent.click(secondCloseButton);
+
+    const outsideButton = document.createElement('button');
+    outsideButton.textContent = 'Outside';
+    document.body.appendChild(outsideButton);
+    outsideButton.focus();
+
+    await vi.waitFor(() => {
+      expect(firstModalFirstElement).toHaveFocus();
+    });
+
+    document.body.removeChild(outsideButton);
+  });
+
+  test('should redirect focus back into the modal when focus lands outside of it', async () => {
+    const openButton = screen.getByTestId(testButtonId);
+    fireEvent.click(openButton);
+
+    const firstElement = document.querySelector('.usa-checkbox__label') as HTMLElement;
+    expect(firstElement).toHaveFocus();
+
+    const outsideButton = document.createElement('button');
+    outsideButton.textContent = 'Outside';
+    document.body.appendChild(outsideButton);
+
+    outsideButton.focus();
+
+    await vi.waitFor(() => {
+      expect(firstElement).toHaveFocus();
+    });
+
+    document.body.removeChild(outsideButton);
+  });
+
   test('should run onClick handler when submit button is clicked', async () => {
     const openButton = screen.getByTestId(testButtonId);
     const submitButton = screen.getByTestId(`button-${modalId}-submit-button`);
@@ -217,115 +374,68 @@ describe('Test Modal component', () => {
   });
 
   test('should render modal with headingTooltip', async () => {
-    const modalId = 'tooltip-modal';
-    const modalRef = React.createRef<ModalRefType>();
     const tooltip = 'This is a tooltip for the heading';
+    const { modalId: tooltipModalId } = renderModal({
+      modalId: 'tooltip-modal',
+      headingTooltip: tooltip,
+      withOpenButton: false,
+    });
 
-    const actionButtonGroup = {
-      modalId: modalId,
-      modalRef: modalRef,
-      submitButton: {
-        label: 'Submit',
-      },
-    };
-
-    render(
-      <BrowserRouter>
-        <Modal
-          modalId={modalId}
-          ref={modalRef}
-          heading={'Test Heading'}
-          headingTooltip={tooltip}
-          content={'Test Content'}
-          actionButtonGroup={actionButtonGroup}
-        />
-      </BrowserRouter>,
-    );
-
-    const heading = document.getElementById(`${modalId}-heading`);
+    const heading = document.getElementById(`${tooltipModalId}-heading`);
     expect(heading).toHaveAttribute('title', tooltip);
   });
 
-  test('should handle Tab key when no first element is available', async () => {
-    const modalId = 'empty-modal';
-    const modalRef = React.createRef<ModalRefType>();
-
-    const actionButtonGroup = {
-      modalId: modalId,
-      modalRef: modalRef,
-      submitButton: {
-        label: 'Submit',
+  test('should not invoke cancel button onClick and should stay open when cancel button is disabled', async () => {
+    const disabledCancelOnClick = vi.fn();
+    const { modalId: disabledCancelModalId, openButton } = renderModal({
+      modalId: 'disabled-cancel-modal',
+      openButtonIndex: 'open-disabled-cancel',
+      heading: 'Disabled Cancel Modal',
+      buttonGroup: {
+        submitButton: { label: 'Submit' },
+        cancelButton: { label: 'Cancel', onClick: disabledCancelOnClick, disabled: true },
       },
-    };
+    });
 
-    // Create modal with no interactive elements
-    render(
-      <BrowserRouter>
-        <>
-          <OpenModalButton buttonIndex="open-empty" modalId={modalId} modalRef={modalRef}>
-            Open Modal
-          </OpenModalButton>
-          <Modal
-            modalId={modalId}
-            ref={modalRef}
-            heading={'Empty Modal'}
-            content={<div>No interactive content</div>}
-            actionButtonGroup={actionButtonGroup}
-          />
-        </>
-      </BrowserRouter>,
-    );
+    const modal = screen.getByTestId(`modal-${disabledCancelModalId}`);
+    fireEvent.click(openButton!);
+    expect(modal).toHaveClass('is-visible');
 
-    const openButton = screen.getByTestId('open-modal-button_open-empty');
-    fireEvent.click(openButton);
+    const cancelButton = screen.getByTestId(`button-${disabledCancelModalId}-cancel-button`);
+    fireEvent.click(cancelButton);
 
-    const closeButton = screen.getByTestId(`modal-x-button-${modalId}`);
+    expect(disabledCancelOnClick).not.toHaveBeenCalled();
+    expect(modal).toHaveClass('is-visible');
+  });
 
-    // This should trigger the handleTab function with no firstElement
-    fireEvent.keyDown(closeButton, { key: 'Tab' });
+  test('should render footerContent inside the modal footer', async () => {
+    const { openButton } = renderModal({
+      modalId: 'footer-content-modal',
+      openButtonIndex: 'open-footer-content',
+      heading: 'Footer Content Modal',
+      footerContent: <span data-testid="custom-footer-content">Processing...</span>,
+    });
 
-    // Should still work without errors
-    expect(closeButton).toBeInTheDocument();
+    fireEvent.click(openButton!);
+
+    expect(screen.getByTestId('custom-footer-content')).toBeInTheDocument();
   });
 
   test('should handle radio input focus correctly', async () => {
-    const modalId = 'radio-modal';
-    const modalRef = React.createRef<ModalRefType>();
+    const { openButton } = renderModal({
+      modalId: 'radio-modal',
+      openButtonIndex: 'open-radio',
+      openButtonLabel: 'Open Radio Modal',
+      heading: 'Radio Modal',
+      content: (
+        <div>
+          <Radio id={'first-radio'} name={'radio-group'} label={'First Radio'} value={'1'} />
+          <Radio id={'second-radio'} name={'radio-group'} label={'Second Radio'} value={'2'} />
+        </div>
+      ),
+    });
 
-    const actionButtonGroup = {
-      modalId: modalId,
-      modalRef: modalRef,
-      submitButton: {
-        label: 'Submit',
-      },
-    };
-
-    const content = (
-      <div>
-        <Radio id={'first-radio'} name={'radio-group'} label={'First Radio'} value={'1'} />
-        <Radio id={'second-radio'} name={'radio-group'} label={'Second Radio'} value={'2'} />
-      </div>
-    );
-
-    render(
-      <BrowserRouter>
-        <>
-          <OpenModalButton buttonIndex="open-radio" modalId={modalId} modalRef={modalRef}>
-            Open Radio Modal
-          </OpenModalButton>
-          <Modal
-            modalId={modalId}
-            ref={modalRef}
-            heading={'Radio Modal'}
-            content={content}
-            actionButtonGroup={actionButtonGroup}
-          />
-        </>
-      </BrowserRouter>,
-    );
-
-    const openButton = screen.getByTestId('open-modal-button_open-radio');
-    fireEvent.click(openButton);
+    fireEvent.click(openButton!);
 
     // The radio input should be handled and focus should go to the radio button label
     const firstRadioLabel = screen.getByTestId('button-radio-first-radio-click-target');
@@ -333,44 +443,21 @@ describe('Test Modal component', () => {
   });
 
   test('should not close modal when submit button has closeOnClick set to false', async () => {
-    const modalId = 'no-close-modal';
-    const modalRef = React.createRef<ModalRefType>();
     const submitOnClick = vi.fn();
-
-    const actionButtonGroup = {
-      modalId: modalId,
-      modalRef: modalRef,
-      submitButton: {
-        label: 'Submit',
-        onClick: submitOnClick,
-        closeOnClick: false,
+    const { modalId: noCloseModalId, openButton } = renderModal({
+      modalId: 'no-close-modal',
+      openButtonIndex: 'open-no-close',
+      buttonGroup: {
+        submitButton: { label: 'Submit', onClick: submitOnClick, closeOnClick: false },
       },
-    };
+    });
 
-    render(
-      <BrowserRouter>
-        <>
-          <OpenModalButton buttonIndex="open-no-close" modalId={modalId} modalRef={modalRef}>
-            Open Modal
-          </OpenModalButton>
-          <Modal
-            modalId={modalId}
-            ref={modalRef}
-            heading={'Test Heading'}
-            content={'Test Content'}
-            actionButtonGroup={actionButtonGroup}
-          />
-        </>
-      </BrowserRouter>,
-    );
+    const modal = screen.getByTestId(`modal-${noCloseModalId}`);
 
-    const openButton = screen.getByTestId('open-modal-button_open-no-close');
-    const modal = screen.getByTestId(`modal-${modalId}`);
-
-    fireEvent.click(openButton);
+    fireEvent.click(openButton!);
     expect(modal).toHaveClass('is-visible');
 
-    const submitButton = screen.getByTestId(`button-${modalId}-submit-button`);
+    const submitButton = screen.getByTestId(`button-${noCloseModalId}-submit-button`);
     fireEvent.click(submitButton);
 
     expect(submitOnClick).toHaveBeenCalled();
@@ -379,17 +466,7 @@ describe('Test Modal component', () => {
   });
 
   test('should handle elements with existing keydown handlers', async () => {
-    const modalId = 'existing-handler-modal';
-    const modalRef = React.createRef<ModalRefType>();
     const existingHandler = vi.fn();
-
-    const actionButtonGroup = {
-      modalId: modalId,
-      modalRef: modalRef,
-      submitButton: {
-        label: 'Submit',
-      },
-    };
 
     const TestElementWithHandler = () => {
       const elementRef = useRef<HTMLInputElement>(null);
@@ -403,31 +480,18 @@ describe('Test Modal component', () => {
       return <input ref={elementRef} data-testid="element-with-handler" />;
     };
 
-    const content = (
-      <div>
-        <TestElementWithHandler />
-      </div>
-    );
+    const { openButton } = renderModal({
+      modalId: 'existing-handler-modal',
+      openButtonIndex: 'open-handler',
+      heading: 'Handler Modal',
+      content: (
+        <div>
+          <TestElementWithHandler />
+        </div>
+      ),
+    });
 
-    render(
-      <BrowserRouter>
-        <>
-          <OpenModalButton buttonIndex="open-handler" modalId={modalId} modalRef={modalRef}>
-            Open Modal
-          </OpenModalButton>
-          <Modal
-            modalId={modalId}
-            ref={modalRef}
-            heading={'Handler Modal'}
-            content={content}
-            actionButtonGroup={actionButtonGroup}
-          />
-        </>
-      </BrowserRouter>,
-    );
-
-    const openButton = screen.getByTestId('open-modal-button_open-handler');
-    fireEvent.click(openButton);
+    fireEvent.click(openButton!);
 
     const elementWithHandler = screen.getByTestId('element-with-handler');
     fireEvent.keyDown(elementWithHandler, { key: 'a' });
@@ -435,186 +499,77 @@ describe('Test Modal component', () => {
     expect(existingHandler).toHaveBeenCalled();
   });
 
-  test('should handle Tab key early return when firstEl is null', async () => {
-    const modalId = 'null-firstel-modal';
-    const modalRef = React.createRef<ModalRefType>();
-    const actionButtonGroup = {
-      modalId: modalId,
-      modalRef: modalRef,
-      submitButton: {
-        label: 'Submit',
-      },
-    };
+  test('should handle modal with no cancel button', async () => {
+    const { modalId: noCancelModalId, openButton } = renderModal({
+      modalId: 'no-cancel-modal',
+      openButtonIndex: 'open-no-cancel',
+      heading: 'No Cancel Modal',
+      content: <div>Content without cancel button</div>,
+      buttonGroup: { submitButton: { label: 'Submit Only' } },
+    });
 
-    render(
-      <BrowserRouter>
-        <>
-          <OpenModalButton buttonIndex="open-early-return" modalId={modalId} modalRef={modalRef}>
-            Open Modal
-          </OpenModalButton>
-          <Modal
-            modalId={modalId}
-            ref={modalRef}
-            heading="Early Return Test"
-            content={<div>Test content with no interactive elements</div>}
-            actionButtonGroup={actionButtonGroup}
-          />
-        </>
-      </BrowserRouter>,
-    );
+    fireEvent.click(openButton!);
 
-    const openButton = screen.getByTestId('open-modal-button_open-early-return');
-    fireEvent.click(openButton);
-
-    const modal = screen.getByTestId(`modal-${modalId}`);
-    expect(modal).toHaveClass('is-visible');
-
-    // Directly simulate Tab key press on the modal to trigger handleTab
-    // This tests various handleTab scenarios including when firstEl might be null
-    fireEvent.keyDown(modal, { key: 'Tab' });
-    fireEvent.keyDown(modal, { key: 'Tab', shiftKey: true });
-
-    // Modal should remain functional
-    expect(modal).toHaveClass('is-visible');
-  });
-
-  test('should set firstElement to modalShellRef when no interactive elements found', async () => {
-    const modalId = 'no-interactive-modal';
-    const modalRef = React.createRef<ModalRefType>();
-    const actionButtonGroup = {
-      modalId: modalId,
-      modalRef: modalRef,
-      submitButton: {
-        label: 'Submit',
-      },
-    };
-
-    // Content with no interactive elements (no buttons, inputs, etc.)
-    const content = (
-      <div>
-        <p>Just text content with no interactive elements</p>
-        <span>More text</span>
-        <div>A div</div>
-      </div>
-    );
-
-    render(
-      <BrowserRouter>
-        <>
-          <OpenModalButton buttonIndex="open-no-interactive" modalId={modalId} modalRef={modalRef}>
-            Open Modal
-          </OpenModalButton>
-          <Modal
-            modalId={modalId}
-            ref={modalRef}
-            heading={'No Interactive Modal'}
-            content={content}
-            actionButtonGroup={actionButtonGroup}
-          />
-        </>
-      </BrowserRouter>,
-    );
-
-    const openButton = screen.getByTestId('open-modal-button_open-no-interactive');
-    fireEvent.click(openButton);
-
-    // Should fallback to modalShellRef.current as firstElement
-    const modal = screen.getByTestId(`modal-${modalId}`);
-    expect(modal).toHaveClass('is-visible');
-
-    // Modal should still be functional
-    const submitButton = screen.getByTestId(`button-${modalId}-submit-button`);
-    expect(submitButton).toBeInTheDocument();
-  });
-
-  test('should handle modal with no cancel button (undefined branch)', async () => {
-    const modalId = 'no-cancel-modal';
-    const modalRef = React.createRef<ModalRefType>();
-
-    // Only submit button, no cancel button to trigger undefined branch (line 272)
-    const actionButtonGroup = {
-      modalId: modalId,
-      modalRef: modalRef,
-      submitButton: {
-        label: 'Submit Only',
-      },
-      // No cancelButton property at all
-    };
-
-    render(
-      <BrowserRouter>
-        <>
-          <OpenModalButton buttonIndex="open-no-cancel" modalId={modalId} modalRef={modalRef}>
-            Open Modal
-          </OpenModalButton>
-          <Modal
-            modalId={modalId}
-            ref={modalRef}
-            heading={'No Cancel Modal'}
-            content={<div>Content without cancel button</div>}
-            actionButtonGroup={actionButtonGroup}
-          />
-        </>
-      </BrowserRouter>,
-    );
-
-    const openButton = screen.getByTestId('open-modal-button_open-no-cancel');
-    fireEvent.click(openButton);
-
-    const modal = screen.getByTestId(`modal-${modalId}`);
+    const modal = screen.getByTestId(`modal-${noCancelModalId}`);
     expect(modal).toHaveClass('is-visible');
 
     // Should only have submit button, no cancel button
-    const submitButton = screen.getByTestId(`button-${modalId}-submit-button`);
+    const submitButton = screen.getByTestId(`button-${noCancelModalId}-submit-button`);
     expect(submitButton).toBeInTheDocument();
 
-    // Cancel button should not exist
-    expect(() => screen.getByTestId(`button-${modalId}-cancel-button`)).toThrow();
+    expect(screen.queryByTestId(`button-${noCancelModalId}-cancel-button`)).not.toBeInTheDocument();
+  });
+});
+
+describe('Test Modal component focus fallback when no interactive content exists', () => {
+  test('should focus the submit button when it is the only interactive element in the modal', async () => {
+    const { modalId, openButton } = renderModal({
+      modalId: 'submit-only-modal',
+      openButtonIndex: 'open-submit-only',
+      heading: 'Submit Only Modal',
+      content: <div>Just text content with no interactive elements</div>,
+    });
+
+    fireEvent.click(openButton!);
+
+    const submitButton = screen.getByTestId(`button-${modalId}-submit-button`);
+    expect(submitButton).toHaveFocus();
   });
 
-  test('should handle modal with truly no interactive content (fallback case)', async () => {
-    const modalId = 'truly-no-interactive-modal';
-    const modalRef = React.createRef<ModalRefType>();
+  test('should loop focus back onto the close button when it is the only interactive element in the modal', async () => {
+    const { modalId, openButton } = renderModal({
+      modalId: 'close-only-modal',
+      openButtonIndex: 'open-close-only',
+      heading: 'Close Only Modal',
+      content: <div>No interactive content</div>,
+      buttonGroup: {},
+    });
 
-    // No buttons at all - this forces the modalShellRef fallback (lines 192-193)
-    const actionButtonGroup = {
-      modalId: modalId,
-      modalRef: modalRef,
-      // No submitButton or cancelButton at all
-    };
+    fireEvent.click(openButton!);
 
-    render(
-      <BrowserRouter>
-        <>
-          <OpenModalButton buttonIndex="open-truly-empty" modalId={modalId} modalRef={modalRef}>
-            Open Modal
-          </OpenModalButton>
-          <Modal
-            modalId={modalId}
-            ref={modalRef}
-            heading={'Truly Empty Modal'}
-            content={
-              <div>
-                {/* Only non-interactive elements */}
-                <p>Just a paragraph</p>
-                <span>Just text</span>
-                <img src="test.jpg" alt="test" />
-              </div>
-            }
-            actionButtonGroup={actionButtonGroup}
-          />
-        </>
-      </BrowserRouter>,
-    );
+    const closeButton = screen.getByTestId(`modal-x-button-${modalId}`);
+    expect(closeButton).toHaveFocus();
 
-    const openButton = screen.getByTestId('open-modal-button_open-truly-empty');
-    fireEvent.click(openButton);
+    fireEvent.keyDown(closeButton, { key: 'Tab' });
+
+    expect(closeButton).toHaveFocus();
+  });
+
+  test('should not automatically focus any element when a forceAction modal has no interactive content', async () => {
+    const { modalId, openButton } = renderModal({
+      modalId: 'force-action-no-interactive-modal',
+      openButtonIndex: 'open-force-action-no-interactive',
+      heading: 'No Interactive Content',
+      content: <div>Just a paragraph with no interactive elements</div>,
+      buttonGroup: {},
+      forceAction: true,
+    });
+
+    fireEvent.click(openButton!);
 
     const modal = screen.getByTestId(`modal-${modalId}`);
     expect(modal).toHaveClass('is-visible');
-
-    // Since no interactive elements exist, should fallback to modal itself for focus
-    // This exercises lines 192-193: setFirstElement(modalShellRef.current as HTMLElement)
+    expect(modal.contains(document.activeElement)).toBe(false);
   });
 });
 
@@ -622,33 +577,21 @@ describe('Test Modal handleTab via action buttons', () => {
   const modalId = 'tab-modal';
 
   beforeEach(() => {
-    const modalRef = React.createRef<ModalRefType>();
-    const content = (
-      <div>
-        <Checkbox id="tab-test-checkbox" value={1} />
-      </div>
-    );
-    render(
-      <BrowserRouter>
-        <>
-          <OpenModalButton buttonIndex="tab-test" modalId={modalId} modalRef={modalRef}>
-            Open
-          </OpenModalButton>
-          <Modal
-            modalId={modalId}
-            ref={modalRef}
-            heading="Tab Test Modal"
-            content={content}
-            actionButtonGroup={{
-              modalId,
-              modalRef,
-              submitButton: { label: 'Submit', className: 'tab-submit', onClick: vi.fn() },
-              cancelButton: { label: 'Cancel', className: 'tab-cancel', onClick: vi.fn() },
-            }}
-          />
-        </>
-      </BrowserRouter>,
-    );
+    renderModal({
+      modalId,
+      openButtonIndex: 'tab-test',
+      openButtonLabel: 'Open',
+      heading: 'Tab Test Modal',
+      content: (
+        <div>
+          <Checkbox id="tab-test-checkbox" value={1} />
+        </div>
+      ),
+      buttonGroup: {
+        submitButton: { label: 'Submit', className: 'tab-submit', onClick: vi.fn() },
+        cancelButton: { label: 'Cancel', className: 'tab-cancel', onClick: vi.fn() },
+      },
+    });
     fireEvent.click(screen.getByTestId('open-modal-button_tab-test'));
   });
 
@@ -670,39 +613,8 @@ describe('Test Modal handleTab via action buttons', () => {
 describe('Test Modal component with force action set to true', () => {
   const modalId = 'test-modal';
 
-  function createModal() {
-    const modalRef = React.createRef<ModalRefType>();
-    const actionButtonGroup = {
-      modalId: modalId,
-      modalRef: modalRef,
-      submitButton: {
-        label: 'Submit',
-      },
-    };
-
-    render(
-      <React.StrictMode>
-        <BrowserRouter>
-          <>
-            <OpenModalButton buttonIndex="open-test" modalId={modalId} modalRef={modalRef}>
-              Open Modal
-            </OpenModalButton>
-            <Modal
-              modalId={modalId}
-              ref={modalRef}
-              heading={'Test Heading'}
-              content={'Test Content'}
-              actionButtonGroup={actionButtonGroup}
-              forceAction={true}
-            ></Modal>
-          </>
-        </BrowserRouter>
-      </React.StrictMode>,
-    );
-  }
-
   beforeEach(() => {
-    createModal();
+    renderModal({ modalId, strictMode: true, forceAction: true });
   });
 
   test('should not close modal when we press the `esc` key if forceAction is true', async () => {
@@ -731,13 +643,7 @@ describe('Test Modal component with force action set to true', () => {
 
     expect(modal).toHaveClass('is-visible');
 
-    let xButton;
-    try {
-      xButton = screen.getByTestId(`modal-x-button-${modalId}`);
-    } catch (e) {
-      expect((e as Error).message).toContain('Unable to find an element by');
-    }
-    expect(xButton).toBeUndefined();
+    expect(screen.queryByTestId(`modal-x-button-${modalId}`)).not.toBeInTheDocument();
   });
 
   test('should not close modal when we click outside of modal if forceAction is true', async () => {

@@ -13,7 +13,6 @@ export function AssignAttorneyModalView(props: AssignAttorneyModalViewProps) {
       ref={viewModel.modalRef}
       modalId={viewModel.modalId}
       className="assign-attorney-modal"
-      onOpen={viewModel.onOpen}
       onClose={viewModel.cancelModal}
       onTabKey={(ev, isVisible) => viewModel.handleTab(ev, isVisible, viewModel.modalId)}
       heading={viewModel.modalHeading}

@@ -36,16 +36,6 @@ const assignAttorneyModalUseCase = (
   controls: AssignAttorneyModalControls,
 ): AssignAttorneyModalUseCase => {
   const uiActions = {
-    freezeBackground: () => {
-      store.setInitialDocumentBodyStyle(document.body.style.overflow);
-      document.body.style.overflow = 'hidden';
-    },
-
-    thawBackground: () => {
-      document.body.style.overflow = store.initialDocumentBodyStyle;
-      store.setInitialDocumentBodyStyle('');
-    },
-
     handleFocus: (event: React.FocusEvent<HTMLElement>) => {
       if (controls.tableContainerRef?.current && event.target instanceof HTMLInputElement) {
         // Get the position of the focused input element
@@ -166,7 +156,6 @@ const assignAttorneyModalUseCase = (
         store.setCheckListValues([]);
         store.setIsUpdatingAssignment(false);
       }
-      uiActions.thawBackground();
     },
   };
 
@@ -204,17 +193,12 @@ const assignAttorneyModalUseCase = (
 
   const cancelModal = () => {
     store.setCheckListValues([]);
-    uiActions.thawBackground();
   };
 
   const hide = () => {
     if (controls.modalRef.current?.hide) {
       controls.modalRef.current?.hide();
     }
-  };
-
-  const onOpen = () => {
-    uiActions.freezeBackground();
   };
 
   const show = (showProps: AssignAttorneyModalOpenProps | undefined) => {
@@ -241,7 +225,6 @@ const assignAttorneyModalUseCase = (
     ...checkListActions,
     cancelModal,
     hide,
-    onOpen,
     show,
   };
 };

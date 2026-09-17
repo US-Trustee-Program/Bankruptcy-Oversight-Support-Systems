@@ -15,6 +15,6 @@
       "@common/*": ["../common/src/*"]
     }
   },
-  "exclude": ["node_modules"],
+  "exclude": ["node_modules", "vitest.config.mts"],
   "references": [{ "path": "../common" }]
 }

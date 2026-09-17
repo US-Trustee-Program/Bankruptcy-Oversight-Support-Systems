@@ -1,4 +1,4 @@
-import { sanitizeExtensionInput } from './phone-extension.utils';
+import { formatPhoneWithExtension, sanitizeExtensionInput } from './phone-extension.utils';
 
 describe('sanitizeExtensionInput', () => {
   test('strips non-digit characters', () => {
@@ -21,5 +21,21 @@ describe('sanitizeExtensionInput', () => {
 
   test('returns an empty string for an empty input', () => {
     expect(sanitizeExtensionInput('')).toBe('');
+  });
+});
+
+describe('formatPhoneWithExtension', () => {
+  test('returns undefined when no phone is provided', () => {
+    expect(formatPhoneWithExtension(undefined)).toBeUndefined();
+  });
+
+  test('returns just the number when there is no extension', () => {
+    expect(formatPhoneWithExtension({ number: '212-555-0200' })).toBe('212-555-0200');
+  });
+
+  test('appends the extension in "x####" form when present', () => {
+    expect(formatPhoneWithExtension({ number: '212-555-0200', extension: '1234' })).toBe(
+      '212-555-0200 x1234',
+    );
   });
 });

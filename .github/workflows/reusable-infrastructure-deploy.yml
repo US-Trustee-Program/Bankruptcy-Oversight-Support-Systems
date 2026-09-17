@@ -73,8 +73,15 @@ jobs:
         id: azure-analytics-deploy
         env:
           AZ_LOCATION: ${{ secrets.AZ_LOCATION }} # pragma: allowlist secret
+          STACK_NAME: ${{ inputs.stackName }}
         run: |
+          # Explicit --name: the default ARM deployment name is the template
+          # filename (log-analytics-workspace), shared into AZ_ANALYTICS_RG by
+          # this job, reusable-deploy.yml's branch-LAW deploy, and concurrent
+          # branch deploys. ARM serializes deployments by name within an RG and
+          # fails same-name concurrent ones with DeploymentActive.
           az deployment group create \
+            --name "log-analytics-workspace-${STACK_NAME}" \
             -g "${AZ_ANALYTICS_RG}" \
             -f ./ops/cloud-deployment/lib/analytics/log-analytics-workspace.bicep \
             -p workspaceName=${{ env.AZ_ANALYTICS_WORKSPACE_NAME }} \
@@ -162,7 +169,17 @@ jobs:
           ENVIRONMENT_HASH: ${{ inputs.environmentHash || 'DOES_NOT_EXIST' }}
           AZ_ACTION_GROUP_NAME: ${{ secrets.AZ_ACTION_GROUP_NAME }} # pragma: allowlist secret
         run: |
-          allowedNetworks=$(az network vnet subnet list -g ${{ env.AZ_NETWORK_RG }} --vnet-name ${{ env.AZ_NETWORK_VNET_NAME }} --query "[?name=='snet-${API_FUNCTION_NAME}' || name=='snet-${DATAFLOWS_FUNCTION_NAME}'].id" -o json)
+          # Runs in parallel with deploy-infra (see sub-deploy.yml), so a
+          # branch's VNet (vnet-<stackName>) may not exist yet. Branches ignore
+          # allowedNetworks anyway: az-cosmos-deploy.sh sets allowAllNetworks=true
+          # for non-Main-Gov, forcing isVirtualNetworkFilterEnabled=false
+          # (cosmos-account.bicep). Only Main-Gov applies subnet rules and its
+          # VNet is persistent, so query it there only; branches pass an empty set.
+          if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
+            allowedNetworks=$(az network vnet subnet list -g ${{ env.AZ_NETWORK_RG }} --vnet-name ${{ env.AZ_NETWORK_VNET_NAME }} --query "[?name=='snet-${API_FUNCTION_NAME}' || name=='snet-${DATAFLOWS_FUNCTION_NAME}'].id" -o json)
+          else
+            allowedNetworks='[]'
+          fi
 
           ./ops/scripts/pipeline/az-cosmos-deploy.sh \
             -g "${AZURE_RG}" \
