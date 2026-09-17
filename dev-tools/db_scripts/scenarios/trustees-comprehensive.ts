@@ -2,10 +2,10 @@
  * Scenario: trustees-comprehensive
  * Database: cams only
  *
- * Seeds 33 trustees with comprehensive coverage for testing trustee filtering and multi-division support:
+ * Seeds 34 trustees with comprehensive coverage for testing trustee filtering and multi-division support:
  *
  * Geographic Distribution:
- *   - New York: 33 trustees, using only division codes 081 (Southern District,
+ *   - New York: 34 trustees, using only division codes 081 (Southern District,
  *     Manhattan, courtId 0208) and 091 (Western District, Buffalo, courtId 0209)
  *     - Uses only division codes 081 and 091 (confirmed in DXTR)
  *     - These are the only codes guaranteed to resolve to proper division names
@@ -17,8 +17,8 @@
  *       courtId as an existing one.
  *
  * Chapter Coverage:
- *   - Chapter 7 (panel): 13 appointments
- *   - Chapter 11 (panel/case-by-case): 8 appointments
+ *   - Chapter 7 (panel/elected): 15 appointments
+ *   - Chapter 11 (panel/case-by-case): 9 appointments
  *   - Chapter 12 (standing/case-by-case): 4 appointments
  *   - Chapter 13 (standing/case-by-case): 10 appointments
  *   - Chapter 11 Subchapter V (pool): 3 appointments
@@ -117,7 +117,7 @@ function createAppointment(opts: {
   id: string;
   trusteeId: string;
   chapter: string;
-  appointmentType: 'panel' | 'standing' | 'off-panel' | 'case-by-case' | 'pool';
+  appointmentType: 'panel' | 'standing' | 'off-panel' | 'case-by-case' | 'pool' | 'elected';
   courtId: string;
   divisionCodes: string[];
   courtName: string;
@@ -287,8 +287,8 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
   );
 
   // Additional-25: Ch11 Case by Case, Active (091) + Inactive (081) - exercises the appointment
-  // accordion's expanded/green-tag and collapsed/gray-tag states on the same trustee, with the
-  // inactive appointment's dates distinct from the common 2020-01-01 default
+  // accordion's green-tag (active) and gray-tag (inactive) status tags on the same trustee, with
+  // the inactive appointment's dates distinct from the common 2020-01-01 default
   trustees.push(
     createTrustee({
       id: 'seed-trustee-add-025',
@@ -316,6 +316,46 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       trusteeId: 'seed-trustee-add-025',
       chapter: '11',
       appointmentType: 'case-by-case',
+      courtId: '0208',
+      divisionCodes: ['081'],
+      courtName: 'U.S. Bankruptcy Court Southern District of New York',
+      courtDivisionName: 'Manhattan',
+      status: 'inactive',
+      appointedDate: '2022-03-15',
+      effectiveDate: '2023-09-01',
+    }),
+  );
+
+  // Additional-26: Ch7 Elected, Active (091) + Inactive (081) - exercises the appointment
+  // accordion's green-tag (active) and gray-tag (inactive) status tags on the same trustee, with
+  // the inactive appointment's dates distinct from the common 2020-01-01 default
+  trustees.push(
+    createTrustee({
+      id: 'seed-trustee-add-026',
+      firstName: 'Marcus',
+      lastName: 'Whitfield',
+      status: 'active',
+      state: 'NY',
+      city: 'New York',
+    }),
+  );
+  appointments.push(
+    createAppointment({
+      id: 'seed-appt-add-026-ch7-elected-active',
+      trusteeId: 'seed-trustee-add-026',
+      chapter: '7',
+      appointmentType: 'elected',
+      courtId: '0209',
+      divisionCodes: ['091'],
+      courtName: 'U.S. Bankruptcy Court Southern District of New York',
+      courtDivisionName: 'Manhattan',
+      status: 'active',
+    }),
+    createAppointment({
+      id: 'seed-appt-add-026-ch7-elected-inactive',
+      trusteeId: 'seed-trustee-add-026',
+      chapter: '7',
+      appointmentType: 'elected',
       courtId: '0208',
       divisionCodes: ['081'],
       courtName: 'U.S. Bankruptcy Court Southern District of New York',

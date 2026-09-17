@@ -339,14 +339,17 @@ describe('TrusteeAppointments', () => {
       expect(getAppointmentCards()).toHaveLength(1);
     });
 
-    test('an active Chapter 11 Case by Case appointment is expanded by default', async () => {
+    test('an active Chapter 11 Case by Case appointment is collapsed by default', async () => {
       vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch11Active] });
 
       renderComponent('trustee-123');
 
       await waitFor(() => {
-        expect(isAppointmentExpanded(ch11Active.id)).toBe(true);
+        expect(
+          screen.getByTestId(`appointment-accordion-header-${ch11Active.id}`),
+        ).toBeInTheDocument();
       });
+      expect(isAppointmentExpanded(ch11Active.id)).toBe(false);
     });
 
     test('a non-active Chapter 11 Case by Case appointment is collapsed by default', async () => {
@@ -362,11 +365,17 @@ describe('TrusteeAppointments', () => {
       expect(isAppointmentExpanded(ch11Inactive.id)).toBe(false);
     });
 
-    test('toggling an expanded active appointment collapses it', async () => {
+    test('toggling a collapsed appointment expands it, toggling again collapses it', async () => {
       vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch11Active] });
       const user = userEvent.setup();
 
       renderComponent('trustee-123');
+
+      await waitFor(() => {
+        expect(isAppointmentExpanded(ch11Active.id)).toBe(false);
+      });
+
+      await user.click(screen.getByTestId(`accordion-button-${ch11Active.id}`));
 
       await waitFor(() => {
         expect(isAppointmentExpanded(ch11Active.id)).toBe(true);
@@ -418,14 +427,17 @@ describe('TrusteeAppointments', () => {
       expect(getAppointmentCards()).toHaveLength(0);
     });
 
-    test('an active Chapter 7 Elected appointment is expanded by default', async () => {
+    test('an active Chapter 7 Elected appointment is collapsed by default', async () => {
       vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch7ElectedActive] });
 
       renderComponent('trustee-123');
 
       await waitFor(() => {
-        expect(isAppointmentExpanded(ch7ElectedActive.id)).toBe(true);
+        expect(
+          screen.getByTestId(`appointment-accordion-header-${ch7ElectedActive.id}`),
+        ).toBeInTheDocument();
       });
+      expect(isAppointmentExpanded(ch7ElectedActive.id)).toBe(false);
     });
 
     test('an inactive Chapter 7 Elected appointment is collapsed by default', async () => {
