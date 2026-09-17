@@ -6,7 +6,6 @@ import Api2 from '@/lib/models/api2';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import userEvent from '@testing-library/user-event';
-import * as courtUtils from '@/lib/utils/court-utils';
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');
@@ -242,17 +241,18 @@ describe('TrusteeAppointments', () => {
   });
 
   describe('Appointment Grouping and Sorting', () => {
-    test('renders appointments in the order returned by sortByCourtLocation', async () => {
-      const appointments: TrusteeAppointment[] = [
-        makeAppointment('appointment-001', { courtName: 'First Court' }),
-        makeAppointment('appointment-002', { courtName: 'Second Court' }),
-      ];
+    test('renders appointments sorted by court location', async () => {
+      // No `state` is set on either appointment, so sortByCourtLocation falls
+      // through to comparing courtName alphabetically: "Eastern" sorts before
+      // "Southern" regardless of API return order.
+      const southern = makeAppointment('appointment-001', {
+        courtName: 'Southern District of New York',
+      });
+      const eastern = makeAppointment('appointment-002', {
+        courtName: 'Eastern District of New York',
+      });
 
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: appointments });
-      vi.spyOn(courtUtils, 'sortByCourtLocation').mockReturnValue([
-        appointments[1],
-        appointments[0],
-      ]);
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [southern, eastern] });
 
       renderComponent('trustee-123');
 
@@ -261,8 +261,8 @@ describe('TrusteeAppointments', () => {
       });
 
       const cards = getAppointmentCards();
-      expect(cards[0]).toHaveAttribute('data-testid', `appointment-card-${appointments[1].id}`);
-      expect(cards[1]).toHaveAttribute('data-testid', `appointment-card-${appointments[0].id}`);
+      expect(cards[0]).toHaveAttribute('data-testid', `appointment-card-${eastern.id}`);
+      expect(cards[1]).toHaveAttribute('data-testid', `appointment-card-${southern.id}`);
     });
 
     test('should handle appointments with missing courtName gracefully', async () => {
@@ -318,11 +318,9 @@ describe('TrusteeAppointments', () => {
       courtName: 'Southern District of New York',
     });
 
-    // Body content is now always mounted (see AppointmentAccordion); expand/collapse
-    // is expressed via the `hidden` attribute on an ancestor, not DOM presence.
-    function isAppointmentExpanded(appointmentId: string): boolean {
-      return !screen.getByTestId(`appointment-accordion-body-${appointmentId}`).closest('[hidden]');
-    }
+    beforeEach(() => {
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
+    });
 
     test('renders Chapter 11 Case by Case appointments via the accordion and other types via AppointmentCard', async () => {
       vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({
@@ -339,14 +337,17 @@ describe('TrusteeAppointments', () => {
       expect(getAppointmentCards()).toHaveLength(1);
     });
 
-    test('an active Chapter 11 Case by Case appointment is expanded by default', async () => {
+    test('an active Chapter 11 Case by Case appointment is collapsed by default', async () => {
       vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch11Active] });
 
       renderComponent('trustee-123');
 
       await waitFor(() => {
-        expect(isAppointmentExpanded(ch11Active.id)).toBe(true);
+        expect(
+          screen.getByTestId(`appointment-accordion-header-${ch11Active.id}`),
+        ).toBeInTheDocument();
       });
+      expect(screen.getByTestId(`appointment-accordion-body-${ch11Active.id}`)).not.toBeVisible();
     });
 
     test('a non-active Chapter 11 Case by Case appointment is collapsed by default', async () => {
@@ -359,23 +360,29 @@ describe('TrusteeAppointments', () => {
           screen.getByTestId(`appointment-accordion-header-${ch11Inactive.id}`),
         ).toBeInTheDocument();
       });
-      expect(isAppointmentExpanded(ch11Inactive.id)).toBe(false);
+      expect(screen.getByTestId(`appointment-accordion-body-${ch11Inactive.id}`)).not.toBeVisible();
     });
 
-    test('toggling an expanded active appointment collapses it', async () => {
+    test('toggling a collapsed appointment expands it, toggling again collapses it', async () => {
       vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch11Active] });
       const user = userEvent.setup();
 
       renderComponent('trustee-123');
 
       await waitFor(() => {
-        expect(isAppointmentExpanded(ch11Active.id)).toBe(true);
+        expect(screen.getByTestId(`appointment-accordion-body-${ch11Active.id}`)).not.toBeVisible();
       });
 
       await user.click(screen.getByTestId(`accordion-button-${ch11Active.id}`));
 
       await waitFor(() => {
-        expect(isAppointmentExpanded(ch11Active.id)).toBe(false);
+        expect(screen.getByTestId(`appointment-accordion-body-${ch11Active.id}`)).toBeVisible();
+      });
+
+      await user.click(screen.getByTestId(`accordion-button-${ch11Active.id}`));
+
+      await waitFor(() => {
+        expect(screen.getByTestId(`appointment-accordion-body-${ch11Active.id}`)).not.toBeVisible();
       });
     });
   });
@@ -396,11 +403,8 @@ describe('TrusteeAppointments', () => {
 
     beforeEach(() => {
       window.sessionStorage.clear();
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
     });
-
-    function isAppointmentExpanded(appointmentId: string): boolean {
-      return !screen.getByTestId(`appointment-accordion-body-${appointmentId}`).closest('[hidden]');
-    }
 
     test('renders Chapter 7 Elected via the accordion', async () => {
       vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch7ElectedActive] });
@@ -418,14 +422,19 @@ describe('TrusteeAppointments', () => {
       expect(getAppointmentCards()).toHaveLength(0);
     });
 
-    test('an active Chapter 7 Elected appointment is expanded by default', async () => {
+    test('an active Chapter 7 Elected appointment is collapsed by default', async () => {
       vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch7ElectedActive] });
 
       renderComponent('trustee-123');
 
       await waitFor(() => {
-        expect(isAppointmentExpanded(ch7ElectedActive.id)).toBe(true);
+        expect(
+          screen.getByTestId(`appointment-accordion-header-${ch7ElectedActive.id}`),
+        ).toBeInTheDocument();
       });
+      expect(
+        screen.getByTestId(`appointment-accordion-body-${ch7ElectedActive.id}`),
+      ).not.toBeVisible();
     });
 
     test('an inactive Chapter 7 Elected appointment is collapsed by default', async () => {
@@ -438,7 +447,9 @@ describe('TrusteeAppointments', () => {
           screen.getByTestId(`appointment-accordion-header-${ch7ElectedInactive.id}`),
         ).toBeInTheDocument();
       });
-      expect(isAppointmentExpanded(ch7ElectedInactive.id)).toBe(false);
+      expect(
+        screen.getByTestId(`appointment-accordion-body-${ch7ElectedInactive.id}`),
+      ).not.toBeVisible();
     });
   });
 });

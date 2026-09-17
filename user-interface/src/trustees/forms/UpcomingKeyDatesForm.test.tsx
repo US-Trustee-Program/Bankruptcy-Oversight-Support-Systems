@@ -55,8 +55,11 @@ const populatedDocument: TrusteeUpcomingKeyDates = {
   createdOn: '2026-01-01T00:00:00.000Z',
   updatedBy: SYSTEM_USER_REFERENCE,
   updatedOn: '2026-01-01T00:00:00.000Z',
+  pastBackgroundQuestion: '2022-05-10',
   pastFieldExam: '2026-06-15',
   pastAudit: '2026-08-01',
+  pastTprSubmission: '2025-11-03',
+  lastMonthlyReportReceived: '2026-02-01',
   upcomingExamOrAuditYear: currentYear + 3,
   upcomingExamOrAuditType: 'Field Exam',
   tirFrequency: 'ANNUAL',
@@ -69,6 +72,8 @@ const populatedDocument: TrusteeUpcomingKeyDates = {
   tprDue: '1900-09-15',
   tprDueYearType: 'ODD',
   lastAuditFiscalYear: 2024,
+  bondIssuedDate: '2023-06-01',
+  bondRenewalDate: '2026-06-01',
 };
 
 const mockGlobalAlertRef = {
@@ -489,6 +494,36 @@ describe('UpcomingKeyDatesForm', () => {
       );
     });
 
+    test('shows "Saving..." and disables the button while the save request is in flight', async () => {
+      let resolvePut: (value: { data: null }) => void;
+      vi.spyOn(Api2, 'putUpcomingKeyDates').mockImplementation(
+        () =>
+          new Promise<{ data: null }>((resolve) => {
+            resolvePut = resolve;
+          }),
+      );
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+      });
+
+      await userEvent.click(screen.getByTestId('button-save-upcoming-key-dates'));
+
+      await waitFor(() => {
+        const saveButton = screen.getByTestId('button-save-upcoming-key-dates');
+        expect(saveButton).toBeDisabled();
+        expect(saveButton).toHaveTextContent('Saving...');
+      });
+
+      resolvePut!({ data: null });
+
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalled();
+      });
+    });
+
     test('shows inline error alert when appointments API fails on load', async () => {
       vi.spyOn(Api2, 'getTrusteeAppointments').mockRejectedValue(new Error('Appointments error'));
 
@@ -872,6 +907,11 @@ describe('UpcomingKeyDatesForm', () => {
       expect(payload.upcomingExamOrAuditYear).toBe(populatedDocument.upcomingExamOrAuditYear);
       expect(payload.tprReviewPeriodStart).toBe('2025-04-01');
       expect(payload.tprDue).toBe(populatedDocument.tprDue);
+      expect(payload.pastBackgroundQuestion).toBe(populatedDocument.pastBackgroundQuestion);
+      expect(payload.pastTprSubmission).toBe(populatedDocument.pastTprSubmission);
+      expect(payload.lastMonthlyReportReceived).toBe(populatedDocument.lastMonthlyReportReceived);
+      expect(payload.bondIssuedDate).toBe(populatedDocument.bondIssuedDate);
+      expect(payload.bondRenewalDate).toBe(populatedDocument.bondRenewalDate);
     });
   });
 
@@ -901,8 +941,10 @@ describe('UpcomingKeyDatesForm', () => {
       });
     });
 
-    test('shows the load-error alert when the appointment fetch fails', async () => {
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockRejectedValue(new Error('Network error'));
+    test('shows the load-error alert when the fallback appointment fetch fails', async () => {
+      const getTrusteeAppointmentsSpy = vi
+        .spyOn(Api2, 'getTrusteeAppointments')
+        .mockRejectedValue(new Error('Network error'));
       vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
       renderWithRouteState();
@@ -911,6 +953,10 @@ describe('UpcomingKeyDatesForm', () => {
         expect(screen.getByText('Something went wrong')).toBeInTheDocument();
       });
 
+      // No variant was supplied in route state, so this confirms the error
+      // came from the fallback fetch path (see the sibling "falls back to
+      // fetching" test above), not from a variant-supplied render skipping it.
+      expect(getTrusteeAppointmentsSpy).toHaveBeenCalled();
       expect(screen.queryByTestId('edit-upcoming-key-dates')).not.toBeInTheDocument();
     });
 
@@ -1434,6 +1480,25 @@ describe('UpcomingKeyDatesForm', () => {
       ).not.toBeInTheDocument();
     });
 
+    test('Save button is disabled when TPR Review Period is incomplete and focus leaves the group', async () => {
+      renderFlagOff();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+      });
+
+      const startMonth = document.getElementById(
+        'tpr-review-period-start-month',
+      ) as HTMLSelectElement;
+
+      fireEvent.change(startMonth, { target: { value: '04' } });
+      fireEvent.blur(startMonth, { relatedTarget: null });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('button-save-upcoming-key-dates')).toBeDisabled();
+      });
+    });
+
     test('save payload uses sentinel format for tprReviewPeriod when flag is OFF', async () => {
       vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({
         data: {
@@ -1468,132 +1533,6 @@ describe('UpcomingKeyDatesForm', () => {
             tprReviewPeriodEnd: '1900-03-31',
           }),
         );
-      });
-    });
-  });
-
-  describe('chapter7-elected variant', () => {
-    const electedAppointment: TrusteeAppointment = {
-      id: 'appointment-001',
-      trusteeId: 'trustee-001',
-      chapter: '7',
-      appointmentType: 'elected',
-      courtId: '0208',
-      courtName: 'Southern District of New York',
-      appointedDate: '2021-03-15',
-      status: 'active',
-      effectiveDate: '2021-03-15',
-      updatedOn: '2026-01-01T00:00:00.000Z',
-      updatedBy: SYSTEM_USER_REFERENCE,
-    };
-
-    const electedDocument: TrusteeUpcomingKeyDates = {
-      id: 'doc-elected-001',
-      documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
-      trusteeId: 'trustee-001',
-      appointmentId: 'appointment-001',
-      createdBy: SYSTEM_USER_REFERENCE,
-      createdOn: '2026-01-01T00:00:00.000Z',
-      updatedBy: SYSTEM_USER_REFERENCE,
-      updatedOn: '2026-01-01T00:00:00.000Z',
-      bondIssuedDate: '2023-06-01',
-      bondRenewalDate: '2026-06-01',
-    };
-
-    test('deriveVariant renders Bond Renewal Date field for chapter 7 elected appointment', async () => {
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [electedAppointment] });
-
-      renderComponent();
-
-      await waitFor(() => {
-        expect(screen.getByLabelText(/Bond Renewal Date/i)).toBeInTheDocument();
-      });
-    });
-
-    test('does not render Field Exam / Audit or TPR/TIR sections', async () => {
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [electedAppointment] });
-
-      renderComponent();
-
-      await waitFor(() => {
-        expect(screen.getByLabelText(/Bond Renewal Date/i)).toBeInTheDocument();
-      });
-      expect(screen.queryByText(/Field Exam or Audit/i)).not.toBeInTheDocument();
-      expect(screen.queryByTestId('tpr-due-year-type')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('tpr-frequency')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('tir-frequency')).not.toBeInTheDocument();
-    });
-
-    test('pre-populates bondRenewalDate from existing key dates', async () => {
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [electedAppointment] });
-      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: electedDocument });
-
-      renderComponent();
-
-      await waitFor(() => {
-        const bondRenewalInput = screen.getByLabelText(/Bond Renewal Date/i) as HTMLInputElement;
-        expect(bondRenewalInput.value).toBe('2026-06-01');
-      });
-    });
-
-    test('on save, includes bondRenewalDate in PUT payload', async () => {
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [electedAppointment] });
-      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: electedDocument });
-      const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
-
-      renderComponent();
-
-      await waitFor(() => {
-        expect(screen.getByLabelText(/Bond Renewal Date/i)).toBeInTheDocument();
-      });
-
-      await userEvent.click(screen.getByRole('button', { name: /save/i }));
-
-      await waitFor(() =>
-        expect(putSpy).toHaveBeenCalledWith(
-          'trustee-001',
-          'appointment-001',
-          expect.objectContaining({ bondRenewalDate: '2026-06-01' }),
-        ),
-      );
-    });
-
-    test('preserves bondIssuedDate in PUT payload when no UI control modifies it', async () => {
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [electedAppointment] });
-      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: electedDocument });
-      const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
-
-      renderComponent();
-
-      await waitFor(() => {
-        expect(screen.getByLabelText(/Bond Renewal Date/i)).toBeInTheDocument();
-      });
-
-      await userEvent.click(screen.getByRole('button', { name: /save/i }));
-
-      await waitFor(() =>
-        expect(putSpy).toHaveBeenCalledWith(
-          'trustee-001',
-          'appointment-001',
-          expect.objectContaining({ bondIssuedDate: '2023-06-01' }),
-        ),
-      );
-    });
-
-    test('Save button is disabled when bond renewal date has an invalid date', async () => {
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [electedAppointment] });
-
-      renderComponent();
-
-      await waitFor(() => {
-        expect(screen.getByLabelText(/Bond Renewal Date/i)).toBeInTheDocument();
-      });
-
-      const bondRenewalInput = screen.getByLabelText(/Bond Renewal Date/i) as HTMLInputElement;
-      fireEvent.change(bondRenewalInput, { target: { value: '1900-01-01' } });
-
-      await waitFor(() => {
-        expect(screen.getByRole('button', { name: /save/i })).toBeDisabled();
       });
     });
   });

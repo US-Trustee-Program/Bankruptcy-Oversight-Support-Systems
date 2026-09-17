@@ -7,7 +7,7 @@ describe('trustees-comprehensive scenario', () => {
     generateCaseId: vi.fn(),
   };
 
-  test('generates 33 trustees and 38 appointments', async () => {
+  test('generates 34 trustees and 41 appointments', async () => {
     const ops = await generate(mockContext);
 
     expect(ops).toHaveLength(2);
@@ -16,14 +16,15 @@ describe('trustees-comprehensive scenario', () => {
     const appointmentsOp = ops.find((op) => op.collectionOrTable === 'trustee-appointments');
 
     expect(trusteesOp?.db).toBe('cams');
-    expect(trusteesOp?.data).toHaveLength(33);
+    expect(trusteesOp?.data).toHaveLength(34);
 
-    // 33 single-court trustees + Patricia Manhattan's 5 extra cross-court
+    // 34 single-court trustees + Patricia Manhattan's 5 extra cross-court
     // appointments (CA Eastern, CA Northern, ID, IA Northern, IA Southern) +
     // Olivia Ashworth's 1 extra appointment (active Ch11 case-by-case
-    // alongside her inactive one) = 39.
+    // alongside her inactive one) + Marcus Whitfield's 1 extra appointment
+    // (active Ch7 Elected alongside his inactive one) = 41.
     expect(appointmentsOp?.db).toBe('cams');
-    expect(appointmentsOp?.data).toHaveLength(39);
+    expect(appointmentsOp?.data).toHaveLength(41);
   });
 
   test('all trustees have documentType TRUSTEE', async () => {
@@ -60,13 +61,15 @@ describe('trustees-comprehensive scenario', () => {
       expect(appt.documentType).toBe('TRUSTEE_APPOINTMENT');
       expect(appt.trusteeId).toBeTruthy();
       expect(appt.chapter).toBeTruthy();
-      expect(appt.appointmentType).toMatch(/^(panel|standing|off-panel|case-by-case|pool)$/);
+      expect(appt.appointmentType).toMatch(
+        /^(panel|standing|off-panel|case-by-case|pool|elected)$/,
+      );
       expect(Array.isArray(appt.divisionCodes)).toBe(true);
       expect((appt.divisionCodes as unknown[]).length).toBeGreaterThan(0);
     });
   });
 
-  test('all 33 trustees are based in New York', async () => {
+  test('all 34 trustees are based in New York', async () => {
     const ops = await generate(mockContext);
     const trustees = ops.find((op) => op.collectionOrTable === 'trustees')?.data || [];
 
@@ -80,7 +83,7 @@ describe('trustees-comprehensive scenario', () => {
     // All trustees are seeded with NY public addresses; Patricia Manhattan
     // (seed-trustee-ny-002) holds appointments in other states but the
     // trustee profile itself is NY.
-    expect(byState).toEqual({ NY: 33 });
+    expect(byState).toEqual({ NY: 34 });
   });
 
   test('includes all chapter types', async () => {
@@ -96,7 +99,7 @@ describe('trustees-comprehensive scenario', () => {
     expect(chapters).toContain('11-subchapter-v');
   });
 
-  test('includes panel, standing, pool, off-panel, and case-by-case appointment types', async () => {
+  test('includes panel, standing, pool, off-panel, case-by-case, and elected appointment types', async () => {
     const ops = await generate(mockContext);
     const appointments =
       ops.find((op) => op.collectionOrTable === 'trustee-appointments')?.data || [];
@@ -107,6 +110,7 @@ describe('trustees-comprehensive scenario', () => {
     expect(types).toContain('pool');
     expect(types).toContain('off-panel');
     expect(types).toContain('case-by-case');
+    expect(types).toContain('elected');
   });
 
   test('includes a trustee with appointments in multiple courts', async () => {
@@ -143,18 +147,18 @@ describe('trustees-comprehensive scenario', () => {
       appointments.map((a: Record<string, unknown>) => a.trusteeId),
     );
 
-    expect(trusteeIds.size).toBe(33);
-    expect(appointmentTrusteeIds.size).toBe(33);
-    expect([...trusteeIds]).toEqual([...appointmentTrusteeIds]);
+    expect(trusteeIds.size).toBe(34);
+    expect(appointmentTrusteeIds.size).toBe(34);
+    expect(trusteeIds).toEqual(appointmentTrusteeIds);
   });
 
-  // Chapter 7: 11 single-court appointments + 2 from Patricia Manhattan (CA Eastern off-panel, CA Eastern panel)
+  // Chapter 7: 11 single-court appointments + 2 from Patricia Manhattan (CA Eastern off-panel, CA Eastern panel) + Marcus Whitfield's active and inactive Ch7 Elected appointments (Additional-26)
   // Chapter 11: 6 single-court appointments + 1 from Patricia Manhattan (CA Northern case-by-case) + Olivia Ashworth's active and inactive Ch11 case-by-case appointments (Additional-25)
   // Chapter 12: 3 single-court appointments + 1 from Patricia Manhattan (ID standing)
   // Chapter 13: 8 single-court appointments + 2 from Patricia Manhattan (IA Northern case-by-case, IA Southern standing)
   // Chapter 11 Subchapter V: 3 single-court appointments
   test.each([
-    ['7', 13],
+    ['7', 15],
     ['11', 9],
     ['12', 4],
     ['13', 10],

@@ -1,5 +1,5 @@
 export type PastKeyDatesVariant =
-  'chapter7-panel' | 'subv-pool' | 'chapter12-standing' | 'chapter13-standing' | 'chapter7-elected';
+  'chapter7-panel' | 'subv-pool' | 'chapter12-standing' | 'chapter13-standing';
 
 export type PastDateFieldKey =
   | 'pastBackgroundQuestion'
@@ -147,16 +147,6 @@ export const PAST_KEY_DATES_FIELD_CONFIG: Record<PastKeyDatesVariant, PastKeyDat
       testId: 'last-compensation-study-row',
       inputId: 'last-compensation-study',
       kind: 'month-year',
-    },
-  ],
-  'chapter7-elected': [
-    {
-      key: 'bondIssuedDate',
-      displayLabel: 'Bond Issued',
-      formLabel: 'Bond Issued Date',
-      testId: 'bond-issued-date-row',
-      inputId: 'bond-issued-date',
-      kind: 'date',
     },
   ],
 };
