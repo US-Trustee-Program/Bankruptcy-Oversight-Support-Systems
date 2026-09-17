@@ -16,7 +16,6 @@ import {
   DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES,
   DISPLAY_CHPT12_STANDING_KEY_DATES,
   DISPLAY_CHPT13_STANDING_KEY_DATES,
-  DISPLAY_CHPT7_ELECTED_KEY_DATES,
   TPR_DISPLAY_UPDATES,
 } from '@/lib/hooks/UseFeatureFlags';
 
@@ -796,64 +795,5 @@ describe('AppointmentCard', () => {
     });
 
     expect(screen.getByText('081', { selector: 'li' })).toBeInTheDocument();
-  });
-
-  describe('when DISPLAY_CHPT7_ELECTED_KEY_DATES flag is enabled', () => {
-    const electedAppointment: TrusteeAppointment = {
-      ...mockAppointment,
-      chapter: '7',
-      appointmentType: 'elected',
-    };
-
-    test('renders both UpcomingKeyDates and PastKeyDates cards with chapter7-elected variant', () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT7_ELECTED_KEY_DATES]: true,
-      });
-
-      renderWithProps({ appointment: electedAppointment });
-
-      expect(screen.getByTestId('upcoming-key-dates-card')).toHaveAttribute(
-        'data-variant',
-        'chapter7-elected',
-      );
-      expect(screen.getByTestId('past-key-dates-card')).toHaveAttribute(
-        'data-variant',
-        'chapter7-elected',
-      );
-    });
-
-    test('does not render cards when flag is disabled', () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT7_ELECTED_KEY_DATES]: false,
-      });
-
-      renderWithProps({ appointment: electedAppointment });
-
-      expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('past-key-dates-card')).not.toBeInTheDocument();
-    });
-
-    test('does not render cards for chapter 7 panel appointment even when flag is enabled', () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT7_ELECTED_KEY_DATES]: true,
-      });
-
-      renderWithProps({ appointment: mockAppointment });
-
-      expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('past-key-dates-card')).not.toBeInTheDocument();
-    });
-
-    test('renders cards for users without TrusteeAdmin role', () => {
-      TestingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT7_ELECTED_KEY_DATES]: true,
-      });
-
-      renderWithProps({ appointment: electedAppointment });
-
-      expect(screen.getByTestId('upcoming-key-dates-card')).toBeInTheDocument();
-      expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
-    });
   });
 });

@@ -14,7 +14,6 @@ import {
   TrusteeAppointment,
   isChapter12Standing,
   isChapter13Standing,
-  isChapter7Elected,
 } from '@common/cams/trustee-appointments';
 import { AppointmentChapterType, AppointmentType } from '@common/cams/trustees';
 import Api2 from '@/lib/models/api2';
@@ -167,9 +166,6 @@ function deriveVariant(
   }
   if (isChapter13Standing(chapter, appointmentType)) {
     return 'chapter13-standing';
-  }
-  if (isChapter7Elected(chapter, appointmentType)) {
-    return 'chapter7-elected';
   }
   return 'chapter7-panel';
 }
