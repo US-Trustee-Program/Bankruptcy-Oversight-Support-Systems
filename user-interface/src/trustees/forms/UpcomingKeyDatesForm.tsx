@@ -116,6 +116,8 @@ type FormState = {
   tirSemiAnnualReviewPeriodStart: string;
   tirSemiAnnualReviewPeriodEnd: string;
   lastAuditFiscalYear: number | null;
+  auditCompletionYear: number | null;
+  auditCompletionStatus: 'CLOSED' | 'NOT_CLOSED' | null;
   lastMonthlyReportReceived: string;
   leaseExpiration: string;
   idExpiration: string;
@@ -143,6 +145,8 @@ const EMPTY_FORM: FormState = {
   tirSemiAnnualReviewPeriodStart: '',
   tirSemiAnnualReviewPeriodEnd: '',
   lastAuditFiscalYear: null,
+  auditCompletionYear: null,
+  auditCompletionStatus: null,
   lastMonthlyReportReceived: '',
   leaseExpiration: '',
   idExpiration: '',
@@ -191,6 +195,8 @@ function buildFormStateFromData(data: TrusteeUpcomingKeyDates): FormState {
     tirSemiAnnualReviewPeriodStart: data.tirSemiAnnualReviewPeriodStart ?? '',
     tirSemiAnnualReviewPeriodEnd: data.tirSemiAnnualReviewPeriodEnd ?? '',
     lastAuditFiscalYear: data.lastAuditFiscalYear ?? null,
+    auditCompletionYear: data.auditCompletionYear ?? null,
+    auditCompletionStatus: data.auditCompletionStatus ?? null,
     lastMonthlyReportReceived: data.lastMonthlyReportReceived ?? '',
     leaseExpiration: data.leaseExpiration ?? '',
     idExpiration: data.idExpiration ?? '',
@@ -449,6 +455,8 @@ export default function UpcomingKeyDatesForm({
       tirSemiAnnualSubmission,
       tirSemiAnnualReview,
       lastAuditFiscalYear: form.lastAuditFiscalYear,
+      auditCompletionYear: form.auditCompletionYear,
+      auditCompletionStatus: form.auditCompletionStatus,
       lastMonthlyReportReceived: form.lastMonthlyReportReceived || null,
       leaseExpiration: form.leaseExpiration || null,
       idExpiration: form.idExpiration || null,

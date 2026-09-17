@@ -371,6 +371,8 @@ describe('validateTrusteeUpcomingKeyDates', () => {
       tirSemiAnnualSubmission: null,
       tirSemiAnnualReview: null,
       lastAuditFiscalYear: null,
+      auditCompletionYear: null,
+      auditCompletionStatus: null,
       lastMonthlyReportReceived: null,
       leaseExpiration: null,
       idExpiration: null,
@@ -518,6 +520,39 @@ describe('validateTrusteeUpcomingKeyDates', () => {
     });
     expect(result.valid).toBeFalsy();
     expect(result.reasonMap?.tprDue?.reasons?.[0]).toBe('TPR Due is required.');
+  });
+
+  test('returns error when auditCompletionYear is set but auditCompletionStatus is null', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      auditCompletionYear: 2026,
+      auditCompletionStatus: null,
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.auditCompletionStatus?.reasons?.[0]).toBe(
+      'Field Exam/Audit Completion Status is required.',
+    );
+  });
+
+  test('returns error when auditCompletionStatus is set but auditCompletionYear is null', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      auditCompletionYear: null,
+      auditCompletionStatus: 'CLOSED',
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.auditCompletionYear?.reasons?.[0]).toBe(
+      'Field Exam/Audit Completion Status Year is required.',
+    );
+  });
+
+  test('returns VALID when both auditCompletionYear and auditCompletionStatus are set', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      auditCompletionYear: 2026,
+      auditCompletionStatus: 'CLOSED',
+    });
+    expect(result).toEqual(VALID);
   });
 
   test('returns error when a sentinel date field contains an invalid ISO date', () => {
@@ -788,7 +823,12 @@ describe('validateTrusteeUpcomingKeyDates', () => {
   });
 
   test('TEXT_FIELDS contains the exact set of expected fields', () => {
-    expect(TEXT_FIELDS).toEqual(['tprDueYearType', 'tprFrequency', 'tirFrequency']);
+    expect(TEXT_FIELDS).toEqual([
+      'tprDueYearType',
+      'tprFrequency',
+      'tirFrequency',
+      'auditCompletionStatus',
+    ]);
   });
 });
 

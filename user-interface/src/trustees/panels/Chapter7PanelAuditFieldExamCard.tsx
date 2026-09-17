@@ -31,9 +31,12 @@ export default function Chapter7PanelAuditFieldExamCard(
   const canManage = useCanManageTrustees();
 
   function openEdit() {
-    navigate(`/trustees/${trusteeId}/appointments/${appointmentId}/upcoming-key-dates/edit`, {
-      state: { subHeading: appointmentHeading ?? '' },
-    });
+    navigate(
+      `/trustees/${trusteeId}/appointments/${appointmentId}/audit-field-exam-key-dates/edit`,
+      {
+        state: { subHeading: appointmentHeading ?? '' },
+      },
+    );
   }
 
   if (isLoading) {
@@ -42,6 +45,15 @@ export default function Chapter7PanelAuditFieldExamCard(
 
   const examOrAudit = examOrAuditField(data);
   const auditReqBy = auditReqByField(data);
+
+  const tag =
+    data?.auditCompletionYear !== undefined && data?.auditCompletionStatus !== undefined
+      ? {
+          label: `${data.auditCompletionStatus === 'CLOSED' ? 'Closed' : 'Not Closed'} for ${data.auditCompletionYear}`,
+          color: (data.auditCompletionStatus === 'CLOSED' ? 'green' : 'red') as 'green' | 'red',
+          id: `audit-completion-status-tag-${appointmentId}`,
+        }
+      : undefined;
 
   return (
     <EditableTableCard
@@ -52,6 +64,7 @@ export default function Chapter7PanelAuditFieldExamCard(
       tableId={`chapter7-panel-audit-field-exam-table-${appointmentId}`}
       tableClassName="chapter7-panel-audit-field-exam-table"
       tableAriaLabel="Audit/Field Exam key dates"
+      tag={tag}
       onEdit={canManage ? openEdit : undefined}
       editAriaLabel="Edit Audit/Field Exam key dates"
       editTitle="Edit Audit/Field Exam key dates"

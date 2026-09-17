@@ -29,7 +29,7 @@ interface EditableTableCardTag {
 
 const TAG_COLOR_STYLES: Record<EditableTableCardTagColor, UswdsTagStyle> = {
   green: UswdsTagStyle.Green,
-  red: UswdsTagStyle.Secondary,
+  red: UswdsTagStyle.SecondaryDark,
 };
 
 interface EditableTableCardProps {

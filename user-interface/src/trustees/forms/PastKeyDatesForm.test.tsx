@@ -263,6 +263,8 @@ describe('PastKeyDatesForm', () => {
         pastTprSubmission: '2025-11-03',
         lastMonthlyReportReceived: null,
         lastAuditFiscalYear: 2022,
+        auditCompletionYear: null,
+        auditCompletionStatus: null,
         tprReviewPeriodStart: '2025-04-01',
         tprReviewPeriodEnd: '1900-03-31',
         tprDue: '1900-09-15',

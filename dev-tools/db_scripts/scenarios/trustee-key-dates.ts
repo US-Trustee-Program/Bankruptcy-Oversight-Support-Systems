@@ -113,6 +113,9 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           tprDue: '1900-10-15',
           tprDueYearType: 'EVEN',
           pastBackgroundQuestion: '2023-06-03',
+          // Completion status for the Audit/Field Exam card's tag (CAMS-912 Slice 2)
+          auditCompletionYear: 2020,
+          auditCompletionStatus: 'CLOSED',
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
         },

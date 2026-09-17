@@ -51,7 +51,7 @@ test.describe('Trustee Key Dates', () => {
 
     await editButton.click();
     await expect(
-      trusteeProfilePage.locator('[data-testid="edit-upcoming-key-dates"]'),
+      trusteeProfilePage.locator('[data-testid="edit-chapter7-panel-audit-field-exam"]'),
     ).toBeVisible();
 
     await trusteeProfilePage.waitForTimeout(ANALYZE_DELAY);

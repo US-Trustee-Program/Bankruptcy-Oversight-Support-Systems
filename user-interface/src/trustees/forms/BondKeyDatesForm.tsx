@@ -53,6 +53,8 @@ export function buildBondKeyDatesInput(
     tirSemiAnnualSubmission: original?.tirSemiAnnualSubmission ?? null,
     tirSemiAnnualReview: original?.tirSemiAnnualReview ?? null,
     lastAuditFiscalYear: original?.lastAuditFiscalYear ?? null,
+    auditCompletionYear: original?.auditCompletionYear ?? null,
+    auditCompletionStatus: original?.auditCompletionStatus ?? null,
     lastMonthlyReportReceived: original?.lastMonthlyReportReceived ?? null,
     leaseExpiration: original?.leaseExpiration ?? null,
     idExpiration: original?.idExpiration ?? null,

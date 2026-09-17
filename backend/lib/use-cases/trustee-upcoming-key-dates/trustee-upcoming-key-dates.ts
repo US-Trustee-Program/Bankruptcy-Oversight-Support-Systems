@@ -28,6 +28,9 @@ function buildFields(input: TrusteeUpcomingKeyDatesInput): Partial<TrusteeUpcomi
   if (input.upcomingExamOrAuditType !== null) {
     fields.upcomingExamOrAuditType = input.upcomingExamOrAuditType;
   }
+  if (input.auditCompletionYear !== null) {
+    fields.auditCompletionYear = input.auditCompletionYear;
+  }
   return fields;
 }
 
@@ -66,6 +69,16 @@ function diffFields(
   if (existingExamType !== incomingExamType) {
     if (existingExamType !== null) before.upcomingExamOrAuditType = existingExamType;
     if (incomingExamType !== null) after.upcomingExamOrAuditType = incomingExamType;
+  }
+  const existingAuditCompletionYear = existing?.auditCompletionYear ?? null;
+  const incomingAuditCompletionYear = input.auditCompletionYear ?? null;
+  if (existingAuditCompletionYear !== incomingAuditCompletionYear) {
+    if (existingAuditCompletionYear !== null) {
+      before.auditCompletionYear = existingAuditCompletionYear;
+    }
+    if (incomingAuditCompletionYear !== null) {
+      after.auditCompletionYear = incomingAuditCompletionYear;
+    }
   }
   return { before, after };
 }

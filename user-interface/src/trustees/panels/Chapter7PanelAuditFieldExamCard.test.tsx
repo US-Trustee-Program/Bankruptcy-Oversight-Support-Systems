@@ -134,7 +134,7 @@ describe('Chapter7PanelAuditFieldExamCard', () => {
     ).not.toBeInTheDocument();
   });
 
-  test('navigates to the upcoming key dates edit form with the appointment heading as subHeading', async () => {
+  test('navigates to the Audit/Field Exam edit form with the appointment heading as subHeading', async () => {
     const user = userEvent.setup();
     renderCard(keyDates, false, 'Southern District of New York (Manhattan): Chapter 7 - Panel');
 
@@ -143,8 +143,54 @@ describe('Chapter7PanelAuditFieldExamCard', () => {
     );
 
     expect(mockNavigate).toHaveBeenCalledWith(
-      '/trustees/trustee-123/appointments/appointment-001/upcoming-key-dates/edit',
+      '/trustees/trustee-123/appointments/appointment-001/audit-field-exam-key-dates/edit',
       { state: { subHeading: 'Southern District of New York (Manhattan): Chapter 7 - Panel' } },
     );
+  });
+
+  test('navigates with an empty subHeading when no appointmentHeading is provided', async () => {
+    const user = userEvent.setup();
+    renderCard();
+
+    await user.click(
+      screen.getByTestId('button-edit-chapter7-panel-audit-field-exam-appointment-001'),
+    );
+
+    expect(mockNavigate).toHaveBeenCalledWith(
+      '/trustees/trustee-123/appointments/appointment-001/audit-field-exam-key-dates/edit',
+      { state: { subHeading: '' } },
+    );
+  });
+
+  test('shows a green "Closed for <year>" tag when completion status is CLOSED', () => {
+    renderCard({ ...keyDates, auditCompletionYear: 2023, auditCompletionStatus: 'CLOSED' });
+
+    const tag = screen.getByTestId('tag-audit-completion-status-tag-appointment-001');
+    expect(tag).toHaveTextContent('Closed for 2023');
+    expect(tag).toHaveClass('bg-success');
+  });
+
+  test('shows a red "Not Closed for <year>" tag when completion status is NOT_CLOSED', () => {
+    renderCard({ ...keyDates, auditCompletionYear: 2024, auditCompletionStatus: 'NOT_CLOSED' });
+
+    const tag = screen.getByTestId('tag-audit-completion-status-tag-appointment-001');
+    expect(tag).toHaveTextContent('Not Closed for 2024');
+    expect(tag).toHaveClass('bg-secondary-dark');
+  });
+
+  test('shows no tag when completion status is not set', () => {
+    renderCard({ ...keyDates, auditCompletionYear: undefined, auditCompletionStatus: undefined });
+
+    expect(
+      screen.queryByTestId('tag-audit-completion-status-tag-appointment-001'),
+    ).not.toBeInTheDocument();
+  });
+
+  test('shows no tag when only the year is set', () => {
+    renderCard({ ...keyDates, auditCompletionYear: 2023, auditCompletionStatus: undefined });
+
+    expect(
+      screen.queryByTestId('tag-audit-completion-status-tag-appointment-001'),
+    ).not.toBeInTheDocument();
   });
 });

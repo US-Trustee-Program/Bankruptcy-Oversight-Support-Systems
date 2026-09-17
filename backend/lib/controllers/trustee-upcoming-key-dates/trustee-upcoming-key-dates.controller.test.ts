@@ -169,6 +169,8 @@ describe('TrusteeUpcomingKeyDatesController', () => {
         upcomingExamOrAuditYear: null,
         upcomingExamOrAuditType: null,
         lastAuditFiscalYear: null,
+        auditCompletionYear: null,
+        auditCompletionStatus: null,
         lastMonthlyReportReceived: null,
         leaseExpiration: null,
         idExpiration: null,
@@ -257,12 +259,30 @@ describe('TrusteeUpcomingKeyDatesController', () => {
       });
     });
 
+    test('PUT with auditCompletionYear set but auditCompletionStatus null returns 400', async () => {
+      context.request = mockCamsHttpRequest({
+        method: 'PUT',
+        params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
+        body: buildValidInput({ auditCompletionYear: 2026, auditCompletionStatus: null }),
+      });
+
+      const controller = new TrusteeUpcomingKeyDatesController(context);
+
+      await expect(controller.handleRequest(context)).rejects.toMatchObject({
+        status: 400,
+      });
+    });
+
     test.each([
       { name: 'lastCompensationStudy', overrides: { lastCompensationStudy: '2024-06-01' } },
       { name: 'tprFrequency', overrides: { tprFrequency: 'SEMI_ANNUAL' as const } },
       {
         name: 'tprDue and tprDueYearType',
         overrides: { tprDue: '1900-09-15', tprDueYearType: 'EVEN' as const },
+      },
+      {
+        name: 'auditCompletionYear and auditCompletionStatus',
+        overrides: { auditCompletionYear: 2026, auditCompletionStatus: 'CLOSED' as const },
       },
     ])('PUT with $name set passes through to use case', async ({ overrides }) => {
       const putSpy = vi

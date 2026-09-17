@@ -92,6 +92,8 @@ function buildUpcomingKeyDatesInput(
     lastAuditFiscalYear: hasYearField
       ? form.lastAuditFiscalYear || null
       : (original?.lastAuditFiscalYear ?? null),
+    auditCompletionYear: original?.auditCompletionYear ?? null,
+    auditCompletionStatus: original?.auditCompletionStatus ?? null,
     leaseExpiration: original?.leaseExpiration ?? null,
     idExpiration: original?.idExpiration ?? null,
     lastCompensationStudy: dateValue('lastCompensationStudy'),
