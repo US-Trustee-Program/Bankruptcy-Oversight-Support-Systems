@@ -24,6 +24,7 @@ jobs:
           text=$(printf '#%s active: %s' "$ISSUE_NUMBER" "$ISSUE_TITLE" | cut -c1-100)
 
           curl --fail --silent --show-error --request POST \
+            --max-time 15 --retry 2 --retry-delay 2 --retry-all-errors \
             --header "Authorization: Bearer $SOWORK_API_TOKEN" \
             --header 'Content-Type: application/json' \
             --data "$(jq -n --arg text "$text" '{text: $text}')" \
@@ -55,6 +56,7 @@ jobs:
           fi
 
           curl --fail --silent --show-error --request POST \
+            --max-time 15 --retry 2 --retry-delay 2 --retry-all-errors \
             --header 'Content-type: application/json' \
             --data "$(jq -n --arg text "$message" '{text: $text}')" \
             "$SLACK_WEBHOOK_URL"
