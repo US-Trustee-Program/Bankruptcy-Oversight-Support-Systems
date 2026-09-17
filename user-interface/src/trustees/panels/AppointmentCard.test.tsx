@@ -40,6 +40,9 @@ vi.mock('./UpcomingKeyDates', () => ({
     isLoading: boolean;
     variant?: string;
     tprDisplayUpdates?: boolean;
+    trusteeId?: string;
+    appointmentId?: string;
+    appointmentHeading?: string;
   }) => (
     <div
       data-testid="upcoming-key-dates-card"
@@ -47,16 +50,29 @@ vi.mock('./UpcomingKeyDates', () => ({
       data-has-data={String(props.data !== null)}
       data-variant={String(props.variant)}
       data-tpr-display-updates={String(props.tprDisplayUpdates)}
+      data-trustee-id={String(props.trusteeId)}
+      data-appointment-id={String(props.appointmentId)}
+      data-appointment-heading={String(props.appointmentHeading)}
     />
   ),
 }));
 vi.mock('./PastKeyDates', () => ({
-  default: (props: { data: unknown; isLoading: boolean; variant?: string }) => (
+  default: (props: {
+    data: unknown;
+    isLoading: boolean;
+    variant?: string;
+    trusteeId?: string;
+    appointmentId?: string;
+    appointmentHeading?: string;
+  }) => (
     <div
       data-testid="past-key-dates-card"
       data-is-loading={String(props.isLoading)}
       data-has-data={String(props.data !== null)}
       data-variant={String(props.variant)}
+      data-trustee-id={String(props.trusteeId)}
+      data-appointment-id={String(props.appointmentId)}
+      data-appointment-heading={String(props.appointmentHeading)}
     />
   ),
 }));
@@ -134,49 +150,15 @@ describe('AppointmentCard', () => {
     expect(screen.getAllByText(/01\/15\/2020/).length).toBe(2);
   });
 
-  test('should format chapter 11 correctly', () => {
-    const appointment11: TrusteeAppointment = {
-      ...mockAppointment,
-      chapter: '11',
-    };
+  test.each([
+    ['11', 'panel', /Chapter 11/i],
+    ['13', 'panel', /Chapter 13/i],
+    ['11-subchapter-v', 'panel', /Chapter 11 Subchapter V/i],
+    ['7', 'off-panel', /Chapter 7 - Off Panel/i],
+  ] as const)('should format chapter %s / %s correctly', (chapter, appointmentType, expected) => {
+    renderWithProps({ appointment: { ...mockAppointment, chapter, appointmentType } });
 
-    renderWithProps({ appointment: appointment11 });
-
-    expect(screen.getByText(/Chapter 11/i)).toBeInTheDocument();
-  });
-
-  test('should format chapter 13 correctly', () => {
-    const appointment13: TrusteeAppointment = {
-      ...mockAppointment,
-      chapter: '13',
-    };
-
-    renderWithProps({ appointment: appointment13 });
-
-    expect(screen.getByText(/Chapter 13/i)).toBeInTheDocument();
-  });
-
-  test('should format chapter 11-subchapter-v correctly', () => {
-    const appointment11v: TrusteeAppointment = {
-      ...mockAppointment,
-      chapter: '11-subchapter-v',
-    };
-
-    renderWithProps({ appointment: appointment11v });
-
-    expect(screen.getByText(/Chapter 11 Subchapter V/i)).toBeInTheDocument();
-  });
-
-  test('should format chapter 7 off-panel correctly', () => {
-    const appointment7OffPanel: TrusteeAppointment = {
-      ...mockAppointment,
-      chapter: '7',
-      appointmentType: 'off-panel',
-    };
-
-    renderWithProps({ appointment: appointment7OffPanel });
-
-    expect(screen.getByText(/Chapter 7 - Off Panel/i)).toBeInTheDocument();
+    expect(screen.getByText(expected)).toBeInTheDocument();
   });
 
   test('should display inactive status correctly', () => {
@@ -194,28 +176,16 @@ describe('AppointmentCard', () => {
     expect(screen.getByText(/06\/01\/2018/)).toBeInTheDocument();
   });
 
-  test('should display voluntarily suspended status correctly', () => {
-    renderWithProps({
-      appointment: { ...mockAppointment, status: 'voluntarily-suspended' },
-    });
+  test.each([
+    ['voluntarily-suspended', 'Voluntarily Suspended'],
+    ['involuntarily-suspended', 'Involuntarily Suspended'],
+    ['terminated', 'Terminated'],
+  ] as const)('should display %s status correctly', (status, expectedLabel) => {
+    renderWithProps({ appointment: { ...mockAppointment, status } });
 
-    expect(screen.getByText(/^Voluntarily Suspended$/, { selector: 'li' })).toBeInTheDocument();
-  });
-
-  test('should display involuntarily suspended status correctly', () => {
-    renderWithProps({
-      appointment: { ...mockAppointment, status: 'involuntarily-suspended' },
-    });
-
-    expect(screen.getByText(/^Involuntarily Suspended$/, { selector: 'li' })).toBeInTheDocument();
-  });
-
-  test('should display terminated status correctly', () => {
-    renderWithProps({
-      appointment: { ...mockAppointment, status: 'terminated' },
-    });
-
-    expect(screen.getByText(/^Terminated$/, { selector: 'li' })).toBeInTheDocument();
+    expect(
+      screen.getByText(new RegExp(`^${expectedLabel}$`), { selector: 'li' }),
+    ).toBeInTheDocument();
   });
 
   test('should display appointedDate with standardized mm/dd/yyyy formatting', () => {
@@ -252,19 +222,6 @@ describe('AppointmentCard', () => {
     renderWithProps({ appointment: appointmentWithoutCourtName });
 
     expect(screen.getByText(/Court 0208: Chapter 7 - Panel/i)).toBeInTheDocument();
-  });
-
-  test('should display court name when courtDivisionName is missing', () => {
-    const appointmentWithoutDivisionName: TrusteeAppointment = {
-      ...mockAppointment,
-      courtDivisionName: undefined,
-    };
-
-    renderWithProps({ appointment: appointmentWithoutDivisionName });
-
-    expect(
-      screen.getByText(/Southern District of New York: Chapter 7 - Panel/i),
-    ).toBeInTheDocument();
   });
 
   test('should render Edit button when user has TrusteeAdmin role', () => {
@@ -521,6 +478,49 @@ describe('AppointmentCard', () => {
 
       expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
     });
+
+    // Unlike the Ch7 panel card (gated on canManage), Ch12/13 case-by-case key
+    // dates have no such gate — this locks in that behavior.
+    test('renders UpcomingKeyDates card for non-TrusteeAdmin user when flag enabled (no canManage gate)', () => {
+      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+        [DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES]: true,
+      });
+      TestingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
+
+      renderWithProps({ appointment: ch12CaseByCaseAppointment });
+
+      expect(screen.getByTestId('upcoming-key-dates-card')).toBeInTheDocument();
+    });
+
+    test('includes courtDivisionName in the appointmentHeading passed to key-dates cards', () => {
+      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+        [DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES]: true,
+      });
+
+      renderWithProps({
+        appointment: { ...ch12CaseByCaseAppointment, courtDivisionName: 'Brooklyn' },
+      });
+
+      const heading = screen
+        .getByTestId('upcoming-key-dates-card')
+        .getAttribute('data-appointment-heading');
+      expect(heading).toContain('(Brooklyn)');
+    });
+
+    test('omits the division parenthetical from appointmentHeading when courtDivisionName is missing', () => {
+      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+        [DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES]: true,
+      });
+
+      renderWithProps({
+        appointment: { ...ch12CaseByCaseAppointment, courtDivisionName: undefined },
+      });
+
+      const heading = screen
+        .getByTestId('upcoming-key-dates-card')
+        .getAttribute('data-appointment-heading');
+      expect(heading).not.toContain('(');
+    });
   });
 
   describe('shared upcoming key dates fetch', () => {
@@ -658,6 +658,20 @@ describe('AppointmentCard', () => {
 
       expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
     });
+
+    // Unlike the Ch7 panel card (gated on canManage), Ch12 standing key dates
+    // have no such gate — this locks in that behavior.
+    test('renders cards for non-TrusteeAdmin user when flag enabled (no canManage gate)', () => {
+      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+        [DISPLAY_CHPT12_STANDING_KEY_DATES]: true,
+      });
+      TestingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
+
+      renderWithProps({ appointment: ch12StandingAppointment });
+
+      expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
+      expect(screen.getByTestId('upcoming-key-dates-card')).toBeInTheDocument();
+    });
   });
 
   describe('when DISPLAY_CHPT13_STANDING_KEY_DATES flag is enabled', () => {
@@ -734,6 +748,20 @@ describe('AppointmentCard', () => {
         'data-variant',
         'chapter13-standing',
       );
+    });
+
+    // Unlike the Ch7 panel card (gated on canManage), Ch13 standing key dates
+    // have no such gate — this locks in that behavior.
+    test('renders cards for non-TrusteeAdmin user when flag enabled (no canManage gate)', () => {
+      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+        [DISPLAY_CHPT13_STANDING_KEY_DATES]: true,
+      });
+      TestingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
+
+      renderWithProps({ appointment: ch13StandingAppointment });
+
+      expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
+      expect(screen.getByTestId('upcoming-key-dates-card')).toBeInTheDocument();
     });
   });
 

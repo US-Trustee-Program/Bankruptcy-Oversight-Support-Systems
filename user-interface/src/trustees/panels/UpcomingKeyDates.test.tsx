@@ -453,6 +453,17 @@ describe('UpcomingKeyDates', () => {
     );
   });
 
+  test('Edit button navigates with an empty subHeading when appointmentHeading is not provided', () => {
+    renderComponent({ appointmentHeading: undefined });
+
+    screen.getByRole('button', { name: /edit upcoming key dates/i }).click();
+
+    expect(mockNavigate).toHaveBeenCalledWith(
+      `/trustees/${defaultProps.trusteeId}/appointments/${defaultProps.appointmentId}/upcoming-key-dates/edit`,
+      { state: { subHeading: '', variant: 'chapter7-panel' } },
+    );
+  });
+
   describe('tprDisplayUpdates=false (flag OFF) behavior', () => {
     test('does not render tpr-review-period-frequency-row when tprDisplayUpdates is false', () => {
       renderComponent({ tprDisplayUpdates: false, data: populatedDocument });

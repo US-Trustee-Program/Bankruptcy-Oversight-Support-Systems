@@ -149,7 +149,7 @@ describe('trustees-comprehensive scenario', () => {
 
     expect(trusteeIds.size).toBe(34);
     expect(appointmentTrusteeIds.size).toBe(34);
-    expect([...trusteeIds]).toEqual([...appointmentTrusteeIds]);
+    expect(trusteeIds).toEqual(appointmentTrusteeIds);
   });
 
   // Chapter 7: 11 single-court appointments + 2 from Patricia Manhattan (CA Eastern off-panel, CA Eastern panel) + Marcus Whitfield's active and inactive Ch7 Elected appointments (Additional-26)

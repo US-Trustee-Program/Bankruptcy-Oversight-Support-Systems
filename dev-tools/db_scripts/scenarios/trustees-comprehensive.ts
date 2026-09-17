@@ -102,7 +102,7 @@ function createTrustee(opts: {
   }
 
   // Include banks and software if provided
-  if (opts.banks && opts.banks.length > 0) {
+  if (opts.banks) {
     trustee.banks = opts.banks;
   }
   if (opts.softwareId) {

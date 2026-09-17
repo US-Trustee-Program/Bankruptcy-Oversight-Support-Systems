@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, test, expect, beforeEach, vi } from 'vitest';
 import {
   UPCOMING_KEY_DATES_FIELD_CONFIG,
   getUpcomingKeyDatesFieldConfig,
@@ -21,12 +21,9 @@ describe('UPCOMING_KEY_DATES_FIELD_CONFIG chapter13-standing variant', () => {
   const config = UPCOMING_KEY_DATES_FIELD_CONFIG['chapter13-standing'];
 
   beforeEach(() => {
+    vi.useRealTimers();
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-01-15'));
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
   });
 
   test('first field is Annual Audit Review Period constant 10/01 - 09/30', () => {
@@ -59,6 +56,8 @@ describe('UPCOMING_KEY_DATES_FIELD_CONFIG chapter13-standing variant', () => {
 
   test.each([
     ['tprDue', 'TPR Due', { tprDue: '1900-06-15', tprDueYearType: 'EVEN' }, '06/15/2026'],
+    ['leaseExpiration', 'Lease Expiration', { leaseExpiration: '2027-06-30' }, '06/30/2027'],
+    ['idExpiration', 'ID Expiration', { idExpiration: '2028-12-31' }, '12/31/2028'],
   ])(
     '%s computed field has label "%s" and correct null/value output',
     (key, expectedLabel, dataOverride, expectedValue) => {
@@ -76,44 +75,6 @@ describe('UPCOMING_KEY_DATES_FIELD_CONFIG chapter13-standing variant', () => {
     },
   );
 
-  test('leaseExpiration computed shows No date added when data is null', () => {
-    const field = config.find((f) => f.key === 'leaseExpiration');
-    expect(field?.kind).toBe('computed');
-    if (field?.kind === 'computed') {
-      const result = field.buildField(null);
-      expect(result.label).toBe('Lease Expiration');
-      expect(result.value).toBe('No date added');
-    }
-  });
-
-  test('leaseExpiration computed shows MM/DD/YYYY when data is set', () => {
-    const field = config.find((f) => f.key === 'leaseExpiration');
-    expect(field?.kind).toBe('computed');
-    if (field?.kind === 'computed') {
-      const result = field.buildField({ ...baseDoc, leaseExpiration: '2027-06-30' });
-      expect(result.value).toBe('06/30/2027');
-    }
-  });
-
-  test('idExpiration computed shows No date added when data is null', () => {
-    const field = config.find((f) => f.key === 'idExpiration');
-    expect(field?.kind).toBe('computed');
-    if (field?.kind === 'computed') {
-      const result = field.buildField(null);
-      expect(result.label).toBe('ID Expiration');
-      expect(result.value).toBe('No date added');
-    }
-  });
-
-  test('idExpiration computed shows MM/DD/YYYY when data is set', () => {
-    const field = config.find((f) => f.key === 'idExpiration');
-    expect(field?.kind).toBe('computed');
-    if (field?.kind === 'computed') {
-      const result = field.buildField({ ...baseDoc, idExpiration: '2028-12-31' });
-      expect(result.value).toBe('12/31/2028');
-    }
-  });
-
   test('tprDue shows year+1 when year type is ODD and current year is even (2026)', () => {
     const field = config.find((f) => f.key === 'tprDue');
     expect(field?.kind).toBe('computed');
@@ -124,14 +85,180 @@ describe('UPCOMING_KEY_DATES_FIELD_CONFIG chapter13-standing variant', () => {
   });
 });
 
-describe('UPCOMING_KEY_DATES_FIELD_CONFIG tprDue across variants — pinned to 2026 (even)', () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-01-15'));
+describe('UPCOMING_KEY_DATES_FIELD_CONFIG chapter7-panel-only fields', () => {
+  const config = UPCOMING_KEY_DATES_FIELD_CONFIG['chapter7-panel'];
+
+  test.each([
+    [
+      'upcomingExamOrAudit: null data defaults label and shows No date added',
+      'upcomingExamOrAudit',
+      null,
+      'Field Exam / Audit',
+      'No date added',
+    ],
+    [
+      'upcomingExamOrAudit: uses upcomingExamOrAuditType as label and year as value',
+      'upcomingExamOrAudit',
+      { upcomingExamOrAuditType: 'Field Exam', upcomingExamOrAuditYear: 2029 },
+      'Field Exam',
+      '2029',
+    ],
+    [
+      'auditReqBy: null lastAuditFiscalYear shows No date added',
+      'auditReqBy',
+      null,
+      'Audit Required by',
+      'No date added',
+    ],
+    [
+      'auditReqBy: shows lastAuditFiscalYear + 3',
+      'auditReqBy',
+      { lastAuditFiscalYear: 2022 },
+      'Audit Required by',
+      '2025',
+    ],
+    [
+      'tirReviewPeriod: no periods set shows No date added',
+      'tirReviewPeriod',
+      null,
+      'TIR Review Period',
+      'No date added',
+    ],
+    [
+      'tirReviewPeriod: only the annual period set shows a single mm/dd - mm/dd period',
+      'tirReviewPeriod',
+      { tirReviewPeriodStart: '1900-07-01', tirReviewPeriodEnd: '1900-06-30' },
+      'TIR Review Period',
+      '07/01 - 06/30',
+    ],
+    [
+      'tirReviewPeriod: annual and semi-annual periods both set are joined with "&"',
+      'tirReviewPeriod',
+      {
+        tirReviewPeriodStart: '1900-07-01',
+        tirReviewPeriodEnd: '1900-06-30',
+        tirSemiAnnualReviewPeriodStart: '1900-01-01',
+        tirSemiAnnualReviewPeriodEnd: '1900-06-30',
+      },
+      'TIR Review Period',
+      '07/01 - 06/30 & 01/01 - 06/30',
+    ],
+    [
+      'tirSubmission: absent shows No date added',
+      'tirSubmission',
+      null,
+      'TIR Submission',
+      'No date added',
+    ],
+    [
+      'tirSubmission: only tirSubmission set shows a single date',
+      'tirSubmission',
+      { tirSubmission: '1900-10-15' },
+      'TIR Submission',
+      '10/15',
+    ],
+    [
+      'tirSubmission: tirSubmission and tirSemiAnnualSubmission both set are joined with "&"',
+      'tirSubmission',
+      { tirSubmission: '1900-10-15', tirSemiAnnualSubmission: '1900-07-30' },
+      'TIR Submission',
+      '10/15 & 07/30',
+    ],
+    ['tirReview: absent shows No date added', 'tirReview', null, 'TIR Due', 'No date added'],
+    [
+      'tirReview: only tirReview set shows a single date',
+      'tirReview',
+      { tirReview: '1900-11-01' },
+      'TIR Due',
+      '11/01',
+    ],
+    [
+      'tirReview: tirReview and tirSemiAnnualReview both set are joined with "&"',
+      'tirReview',
+      { tirReview: '1900-11-01', tirSemiAnnualReview: '1900-09-28' },
+      'TIR Due',
+      '11/01 & 09/28',
+    ],
+  ])('%s', (_name, key, dataOverride, expectedLabel, expectedValue) => {
+    const field = config.find((f) => f.key === key);
+    expect(field?.kind).toBe('computed');
+    if (field?.kind === 'computed') {
+      const data = dataOverride ? { ...baseDoc, ...(dataOverride as object) } : null;
+      const result = field.buildField(data);
+      expect(result.label).toBe(expectedLabel);
+      expect(result.value).toBe(expectedValue);
+    }
+  });
+});
+
+describe('UPCOMING_KEY_DATES_FIELD_CONFIG ch12-13-case-by-case constants', () => {
+  const config = UPCOMING_KEY_DATES_FIELD_CONFIG['ch12-13-case-by-case'];
+
+  test('annualReportSubmission constant is 09/01', () => {
+    const field = config.find((f) => f.key === 'annualReportSubmission');
+    expect(field?.kind).toBe('constant');
+    if (field?.kind === 'constant') {
+      expect(field.displayLabel).toBe('Annual Report Submission');
+      expect(field.value).toBe('09/01');
+    }
   });
 
-  afterEach(() => {
+  test('annualReportDueToOO constant is 09/15', () => {
+    const field = config.find((f) => f.key === 'annualReportDueToOO');
+    expect(field?.kind).toBe('constant');
+    if (field?.kind === 'constant') {
+      expect(field.displayLabel).toBe('Annual Report Due to OO');
+      expect(field.value).toBe('09/15');
+    }
+  });
+});
+
+describe('UPCOMING_KEY_DATES_FIELD_CONFIG chapter12-standing-only fields', () => {
+  const config = UPCOMING_KEY_DATES_FIELD_CONFIG['chapter12-standing'];
+
+  test('auditReqBy shows "Audit Recommended by" label, distinct from chapter7-panel', () => {
+    const field = config.find((f) => f.key === 'auditReqBy');
+    expect(field?.kind).toBe('computed');
+    if (field?.kind === 'computed') {
+      const result = field.buildField({ ...baseDoc, lastAuditFiscalYear: 2022 });
+      expect(result.label).toBe('Audit Recommended by');
+      expect(result.value).toBe('2025');
+    }
+  });
+
+  test('annualReportDueToOO constant is "09/30 (Due non-audit years)"', () => {
+    const field = config.find((f) => f.key === 'annualReportDueToOO');
+    expect(field?.kind).toBe('constant');
+    if (field?.kind === 'constant') {
+      expect(field.displayLabel).toBe('Annual Report Due to OO');
+      expect(field.value).toBe('09/30 (Due non-audit years)');
+    }
+  });
+
+  test('budgetSubmissionDue constant is 05/01', () => {
+    const field = config.find((f) => f.key === 'budgetSubmissionDue');
+    expect(field?.kind).toBe('constant');
+    if (field?.kind === 'constant') {
+      expect(field.displayLabel).toBe('Budget Submission Due');
+      expect(field.value).toBe('05/01');
+    }
+  });
+
+  test('budgetReviewToOO constant is 06/01', () => {
+    const field = config.find((f) => f.key === 'budgetReviewToOO');
+    expect(field?.kind).toBe('constant');
+    if (field?.kind === 'constant') {
+      expect(field.displayLabel).toBe('Budget Due to OO');
+      expect(field.value).toBe('06/01');
+    }
+  });
+});
+
+describe('UPCOMING_KEY_DATES_FIELD_CONFIG tprDue across variants — pinned to 2026 (even)', () => {
+  beforeEach(() => {
     vi.useRealTimers();
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-15'));
   });
 
   test.each([
@@ -304,12 +431,9 @@ describe('UPCOMING_KEY_DATES_FIELD_CONFIG tprFrequency computed field', () => {
 
 describe('UPCOMING_KEY_DATES_FIELD_CONFIG tprDue — pinned to 2027 (odd)', () => {
   beforeEach(() => {
+    vi.useRealTimers();
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2027-01-15'));
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
   });
 
   test('chapter13-standing tprDue: ODD type in 2027 → 2027', () => {
@@ -339,12 +463,9 @@ describe('UPCOMING_KEY_DATES_FIELD_CONFIG tprDue — pinned to 2027 (odd)', () =
 
 describe('getUpcomingKeyDatesFieldConfig — flag OFF (tprDisplayUpdates=false)', () => {
   beforeEach(() => {
+    vi.useRealTimers();
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-01-15'));
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
   });
 
   test.each([
@@ -419,7 +540,7 @@ describe('getUpcomingKeyDatesFieldConfig — flag OFF (tprDisplayUpdates=false)'
     ['chapter13-standing'],
   ] as const)('%s: flag ON returns same config as UPCOMING_KEY_DATES_FIELD_CONFIG', (variant) => {
     const flagOn = getUpcomingKeyDatesFieldConfig(variant, true);
-    expect(flagOn).toBe(UPCOMING_KEY_DATES_FIELD_CONFIG[variant]);
+    expect(flagOn).toEqual(UPCOMING_KEY_DATES_FIELD_CONFIG[variant]);
   });
 
   test.each([

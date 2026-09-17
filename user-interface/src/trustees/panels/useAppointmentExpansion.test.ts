@@ -34,19 +34,15 @@ describe('useAppointmentExpansion', () => {
     window.sessionStorage.clear();
   });
 
-  test('an active appointment is collapsed by default', () => {
-    const active = makeAppointment('active-1', { status: 'active' });
-    const { result } = renderHook(() => useAppointmentExpansion('trustee-123'));
+  test.each([['active' as const], ['inactive' as const]])(
+    'a %s appointment is collapsed by default',
+    (status) => {
+      const appointment = makeAppointment('appt-1', { status });
+      const { result } = renderHook(() => useAppointmentExpansion('trustee-123'));
 
-    expect(result.current.isExpanded(active)).toBe(false);
-  });
-
-  test('an inactive appointment is collapsed by default', () => {
-    const inactive = makeAppointment('inactive-1', { status: 'inactive' });
-    const { result } = renderHook(() => useAppointmentExpansion('trustee-123'));
-
-    expect(result.current.isExpanded(inactive)).toBe(false);
-  });
+      expect(result.current.isExpanded(appointment)).toBe(false);
+    },
+  );
 
   test('toggling one appointment does not affect another appointment', () => {
     const active = makeAppointment('active-1', { status: 'active' });
@@ -106,6 +102,19 @@ describe('useAppointmentExpansion', () => {
 
     const { result: secondResult } = renderHook(() => useAppointmentExpansion('trustee-123'));
     expect(secondResult.current.isExpanded(inactive)).toBe(true);
+  });
+
+  test('expansion state is isolated per trusteeId', () => {
+    const appointment = makeAppointment('appt-1', { status: 'active' });
+
+    const { result: trusteeAResult } = renderHook(() => useAppointmentExpansion('trustee-A'));
+    act(() => {
+      trusteeAResult.current.toggleExpanded(appointment.id);
+    });
+    expect(trusteeAResult.current.isExpanded(appointment)).toBe(true);
+
+    const { result: trusteeBResult } = renderHook(() => useAppointmentExpansion('trustee-B'));
+    expect(trusteeBResult.current.isExpanded(appointment)).toBe(false);
   });
 
   test('toggling two different appointments in the same update batch updates both independently', () => {
