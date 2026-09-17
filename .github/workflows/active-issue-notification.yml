@@ -1,0 +1,62 @@
+name: Active Issue Notification
+
+on:
+  issues:
+    types: [labeled]
+
+permissions: {}
+
+jobs:
+  notify:
+    if: github.event.label.name == 'active'
+    runs-on: ubuntu-latest
+    environment: chatops
+    permissions: {}
+    steps:
+      - name: Ring the SoWork gong
+        continue-on-error: true
+        env:
+          SOWORK_API_TOKEN: ${{ secrets.SOWORK_API_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+        run: |
+          # SoWork gong text is capped at 100 characters
+          text=$(printf '#%s active: %s' "$ISSUE_NUMBER" "$ISSUE_TITLE" | cut -c1-100)
+
+          curl --fail --silent --show-error --request POST \
+            --max-time 15 --retry 2 --retry-delay 2 --retry-all-errors \
+            --header "Authorization: Bearer $SOWORK_API_TOKEN" \
+            --header 'Content-Type: application/json' \
+            --data "$(jq -n --arg text "$text" '{text: $text}')" \
+            https://api.sowork.com/public/v1/gong
+
+      - name: Post Slack notification
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_USER_MAPPING: ${{ secrets.SLACK_USER_MAPPING }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_ASSIGNEE_LOGINS: ${{ toJSON(github.event.issue.assignees.*.login) }}
+        run: |
+          message="*Issue moved to active:* #${ISSUE_NUMBER} 🧵"
+
+          mentions=""
+          while IFS= read -r login; do
+            [ -z "$login" ] && continue
+            slack_id=$(echo "$SLACK_USER_MAPPING" | jq -r --arg username "$login" \
+              '.[] | select(.github == $username) | .slack // empty' | head -1)
+            if [ -n "$slack_id" ]; then
+              mentions="${mentions:+$mentions, }<@${slack_id}>"
+            else
+              mentions="${mentions:+$mentions, }${login}"
+            fi
+          done < <(echo "$ISSUE_ASSIGNEE_LOGINS" | jq -r '.[]')
+
+          if [ -n "$mentions" ]; then
+            message="${message}"$'\n'"• *Assignee:* ${mentions}"
+          fi
+
+          curl --fail --silent --show-error --request POST \
+            --max-time 15 --retry 2 --retry-delay 2 --retry-all-errors \
+            --header 'Content-type: application/json' \
+            --data "$(jq -n --arg text "$message" '{text: $text}')" \
+            "$SLACK_WEBHOOK_URL"
