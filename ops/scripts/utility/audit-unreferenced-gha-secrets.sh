@@ -343,7 +343,7 @@ if git rev-parse --git-dir >/dev/null 2>&1; then
   if [[ -z "${probe_name}" ]]; then
     err "no secret/variable reference found in .github/ to probe git grep with."
     GIT_GREP_OK=0
-  elif [[ -z "$(git grep -hoiE "(secrets|vars)[[:space:]]*\.[[:space:]]*(${probe_name})" HEAD -- .github/ 2>/dev/null)" ]]; then
+  elif [[ -z "$(branch_grep HEAD "${probe_name}")" ]]; then
     err "git grep failed to match a known-present reference (${probe_name})."
     echo "        Gates 5 and 6 cannot be trusted; they would report every branch clean."
     GIT_GREP_OK=0
@@ -410,8 +410,10 @@ echo "--- Gate 2: static-analysis soundness ---"
 # set_grep reads SCAN_FILES. If Gate 1 was skipped or found nothing, that array
 # still holds the preflight's self-test fixture, and Gate 2 would certify
 # soundness over a temp file while silently dropping real findings.
+GATE2_OK=1
 if ! scan_prepare .github/ || [[ ${#SCAN_FILES[@]} -eq 0 ]]; then
   err "cannot rebuild the .github/ file set; Gate 2 cannot certify anything."
+  GATE2_OK=0
 fi
 # Case- and whitespace-insensitive: GHA expression function names are
 # case-insensitive, so toJson(secrets) is as valid as toJSON(secrets).
@@ -422,7 +424,7 @@ if [[ -s "${REF_ERR_FILE}" ]]; then
 elif [[ -n "${dynamic}" ]]; then
   fail "dynamic secret/variable access found -- Gate 1 cannot be trusted:"
   echo "${dynamic}" | indent
-else
+elif [[ ${GATE2_OK} -eq 1 ]]; then
   ok "no dynamic access (toJSON(secrets), secrets[..], vars[..])."
 fi
 
@@ -602,7 +604,9 @@ if [[ ${GIT_OK} -eq 1 && ${GIT_GREP_OK} -eq 1 ]]; then
     # under an alias -- defeating the origin/main exclusion below.
     [[ -z "${ref}" || "${ref}" == "origin" ]] && continue
     [[ "${ts}" -lt ${cutoff} ]] && continue
-    [[ "${ref}" == "origin/main" ]] && continue
+    # origin/main is deliberately NOT excluded. Gate 1 scans the working tree,
+    # which is main only if the operator happens to be on it; on any feature
+    # branch main would otherwise go unscanned entirely.
     active_total=$((active_total + 1))
     h=$(branch_grep "${ref}" "${pattern}")
     if [[ -s "${REF_ERR_FILE}" ]]; then
@@ -617,7 +621,9 @@ if [[ ${GIT_OK} -eq 1 && ${GIT_GREP_OK} -eq 1 ]]; then
       active_dirty=$((active_dirty + 1))
     fi
   done < <(git for-each-ref --format='%(refname:short) %(committerdate:unix)' refs/remotes/origin)
-  if [[ ${active_dirty} -eq 0 ]]; then
+  if [[ ${active_total} -eq 0 ]]; then
+    err "no active branches to scan; this gate verified nothing."
+  elif [[ ${active_dirty} -eq 0 ]]; then
     ok "none of the ${active_total} active branch(es) reference a deletion target."
   fi
 else
@@ -648,6 +654,20 @@ if [[ ${GH_OK} -eq 1 && ${SELF_TEST_OK} -eq 1 && ${#SCAN_FILES[@]} -gt 0 \
     err "could not enumerate repository-scope secrets/variables."
   else
     live_all=$(printf '%s\n%s' "${live_secrets}" "${live_vars}")
+
+    # If NOTHING in live scope is referenced anywhere, the scan is broken --
+    # reporting all of repository scope as drift would be the same 100%-false
+    # result the orphan auditor guards against.
+    any_referenced=0
+    while read -r _n; do
+      [[ -z "${_n}" ]] && continue
+      if [[ -n "$(ref_grep "${_n}")" ]]; then any_referenced=1; break; fi
+    done <<< "${live_all}"
+    if [[ ${any_referenced} -eq 0 ]]; then
+      err "no live secret or variable is referenced anywhere -- the scan is"
+      echo "        broken, not the repository. Not reporting drift." | indent
+      live_all=""
+    fi
 
     gone=0
     for name in "${ALL[@]}"; do
@@ -698,7 +718,8 @@ if [[ ${SCAN_ALL_BRANCHES} -eq 1 ]]; then
         printf '  %-48s last=%s behind=%s\n' "${ref#origin/}" "${d}" "${behind}"
         count=$((count + 1))
       fi
-    done < <(git branch -r --format='%(refname:short)' | grep -v HEAD)
+    done < <(git for-each-ref --format='%(refname:short)' refs/remotes/origin \
+      | while IFS= read -r r; do [[ "${r}" == "origin" ]] || echo "${r}"; done)
     echo "  ${count} branch(es) still reference a deletion target."
     echo "  Informational only -- see the runbook for why this does not gate deletion."
   else

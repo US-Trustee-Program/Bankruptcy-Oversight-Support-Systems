@@ -391,14 +391,18 @@ what the secret is for. Check in this order:
 
 | Check | Command | If it hits |
 | --- | --- | --- |
-| Value lives in Key Vault? | `az keyvault secret list --vault-name kv-ustp-cams --query "[].name" -o tsv \| grep -i NAME` | **Recoverable.** Rollback is possible; note the exact KV name and which vault. |
-| Now a hardcoded literal? | `grep -rn "NAME=" .github/workflows/` | **Recoverable** in the sense that the value is visible in the repo. |
+| Value lives in Key Vault? | `for v in kv-ustp-cams kv-ustp-cams-dev; do az keyvault secret list --vault-name "$v" --query "[].name" -o tsv \| grep -i NAME; done` | **Recoverable.** Note the exact KV name **and which vault** — they hold different values, and one may hold it while the other does not. |
+| Now a hardcoded literal? | `find -L .github -type f -exec grep -in "NAME=" {} +` | **Recoverable** in the sense that the value is visible in the repo. |
 | Vendor credential? | — | **Unrecoverable**, but regenerable from the vendor console. |
 | None of the above? | — | **Unrecoverable, full stop.** Treat with the most care; there is no way back. |
 
-Remember both vaults hold *different* values — see the divergence table under
-[Rollback](#rollback). Recording the wrong vault's value is worse than
-recording none.
+Both vaults are checked above because they hold *different* values and a secret
+may exist in only one — see the divergence table under [Rollback](#rollback).
+Recording the wrong vault's value is worse than recording none.
+
+`find -L` rather than `grep -r`: BSD grep does not follow a symlinked
+subdirectory and reports "no match" having searched nothing. Both audit scripts
+were rewritten for this; the hand method should not reintroduce it.
 
 ### 3. Apply the same ordering
 

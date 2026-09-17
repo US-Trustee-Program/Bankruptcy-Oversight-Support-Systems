@@ -164,9 +164,17 @@ collect_references() {  # collect_references <NAME1|NAME2|...>
   grep -hoiE "(secrets|vars)[[:space:]]*\.[[:space:]]*(${alt})([^A-Za-z0-9_]|$)" \
     "${SCAN_FILES[@]}" 2>>"${COLLECT_ERR_FILE}"
   for ref in ${ACTIVE_REFS[@]+"${ACTIVE_REFS[@]}"}; do
-    git grep -hoiE "(secrets|vars)[[:space:]]*\.[[:space:]]*(${alt})([^A-Za-z0-9_]|$)" \
-      "${ref}" -- .github/ 2>>"${COLLECT_ERR_FILE}"
+    branch_grep "${ref}" "${alt}"
   done
+}
+
+# Split out so the self-test can drive the SAME code the real scan uses. A
+# self-test that only covers the file-grep half passes cleanly while the branch
+# half is broken -- which is how a secret live on an active branch gets reported
+# as an orphan.
+branch_grep() {  # branch_grep <ref> <alternation>
+  git grep -hoiE "(secrets|vars)[[:space:]]*\.[[:space:]]*($2)([^A-Za-z0-9_]|$)" \
+    "$1" -- .github/ 2>>"${COLLECT_ERR_FILE}"
 }
 
 # --- Preconditions ----------------------------------------------------------
@@ -258,8 +266,29 @@ if [[ -n "${st_missing}" ]]; then
   echo "INCONCLUSIVE -- reference collection failed its self-test:${st_missing}" >&2
   exit 3
 fi
-if [[ -z "$(git grep -hoiE '(secrets|vars)[[:space:]]*\.[[:space:]]*(AZ_CLIENT_ID)([^A-Za-z0-9_]|$)' HEAD -- .github/ 2>/dev/null)" ]]; then
-  echo "INCONCLUSIVE -- git grep did not match a known-present reference." >&2
+probe_name=$(grep -rhoiE '(secrets|vars)[[:space:]]*\.[[:space:]]*[A-Za-z0-9_]+' .github/ 2>/dev/null \
+  | sed -E 's/.*[.][[:space:]]*//' | sort -u | head -1)
+if [[ -z "${probe_name}" ]]; then
+  echo "INCONCLUSIVE -- no reference found in .github/ to probe git grep with." >&2
+  exit 3
+fi
+# Exercises branch_grep, the same function the real branch scan uses.
+if [[ -z "$(branch_grep HEAD "${probe_name}")" ]]; then
+  echo "INCONCLUSIVE -- git grep did not match a known-present reference (${probe_name})." >&2
+  exit 3
+fi
+
+# --- Dynamic access makes static matching unsound ---------------------------
+# toJSON(secrets) / secrets[...] consume names this scan can never see, so every
+# live secret could be referenced while appearing orphaned. Function names in
+# GitHub expressions are case-insensitive, hence -i.
+dynamic=$(grep -RinE 'toJSON[[:space:]]*\([[:space:]]*(secrets|vars)[[:space:]]*\)|(secrets|vars)[[:space:]]*\[' \
+  "${SCAN_FILES[@]}" 2>/dev/null)
+if [[ -n "${dynamic}" ]]; then
+  echo "INCONCLUSIVE -- dynamic secret/variable access found; a name consumed" >&2
+  echo "this way is invisible to a static scan, so any orphan list would be" >&2
+  echo "unreliable in the dangerous direction:" >&2
+  printf '%s\n' "${dynamic}" | head -5 >&2
   exit 3
 fi
 
@@ -315,8 +344,7 @@ if [[ ${#orphans[@]} -gt 0 && ${#STALE_REFS[@]} -gt 0 ]]; then
   orph_alt=$(printf '%s|' "${orphans[@]}"); orph_alt="${orph_alt%|}"
   stale_seen=""
   for ref in "${STALE_REFS[@]}"; do
-    stale_seen+=$(git grep -hoiE "(secrets|vars)[[:space:]]*\.[[:space:]]*(${orph_alt})([^A-Za-z0-9_]|$)" \
-      "${ref}" -- .github/ 2>/dev/null)$'\n'
+    stale_seen+=$(branch_grep "${ref}" "${orph_alt}")$'\n'
   done
   for name in "${orphans[@]}"; do
     grep -qiE "\.[[:space:]]*${name}([^A-Za-z0-9_]|$)" <<< "${stale_seen}" && stale_hits+=("${name}")
