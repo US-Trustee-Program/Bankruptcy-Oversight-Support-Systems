@@ -52,3 +52,19 @@ jobs:
         dora-metrics/data/change-failure-rate-by-period.csv
     secrets:
       github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  mttr:
+    name: Report mean time to restore
+    permissions:
+      contents: read
+      actions: read
+      issues: read
+    uses: ./.github/workflows/reusable-dora-metrics-report.yml
+    with:
+      npm-script: report:mttr
+      artifact-name: dora-metrics-mttr
+      artifact-path: |
+        dora-metrics/data/mttr-detail.csv
+        dora-metrics/data/mttr-by-period.csv
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
