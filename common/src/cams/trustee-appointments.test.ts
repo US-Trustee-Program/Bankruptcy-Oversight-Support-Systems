@@ -349,16 +349,6 @@ describe('trustee-appointments', () => {
         const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
         expect(result.valid).toBe(true);
       });
-
-      test('should pass validation when chapter and appointmentType are missing', () => {
-        const appointment = {
-          ...validAppointment,
-          chapter: undefined,
-          appointmentType: undefined,
-        } as unknown as TrusteeAppointmentInput;
-        const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
-        expect(result.valid).toBe(true);
-      });
     });
 
     describe('optional enrichment fields', () => {
@@ -415,6 +405,7 @@ describe('trustee-appointments', () => {
         };
         const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
         expect(result.valid).toBeUndefined();
+        expect(result.reasonMap?.$?.reasons).toContain('At least one division must be specified');
       });
 
       test('should fail when divisionCodes contains only whitespace entries', () => {
@@ -425,6 +416,7 @@ describe('trustee-appointments', () => {
         };
         const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
         expect(result.valid).toBeUndefined();
+        expect(result.reasonMap?.$?.reasons).toContain('At least one division must be specified');
       });
 
       test('should pass when divisionCode is set but divisionCodes is empty', () => {

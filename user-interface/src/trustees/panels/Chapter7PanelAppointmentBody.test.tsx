@@ -135,6 +135,19 @@ describe('Chapter7PanelAppointmentBody', () => {
     );
   });
 
+  test('omits the division parenthetical when the appointment has none', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: keyDates });
+
+    renderBody({ ...mockAppointment, courtDivisionName: undefined });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('chapter7-panel-audit-field-exam-card')).toHaveAttribute(
+        'data-appointment-heading',
+        'Southern District of New York: Chapter 7 - Panel',
+      );
+    });
+  });
+
   test('forwards null data to all four cards when no key dates document exists', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
@@ -149,9 +162,11 @@ describe('Chapter7PanelAppointmentBody', () => {
   });
 
   test('shows an error alert instead of the cards when the fetch fails', async () => {
-    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const fetchError = new Error('network error');
-    vi.spyOn(Api2, 'getUpcomingKeyDates').mockRejectedValue(fetchError);
+    // useUpcomingKeyDates.test.ts already covers the console.error call this
+    // fetch failure triggers; this test only asserts this component's own
+    // observable contract (alert shown, cards not rendered).
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockRejectedValue(new Error('network error'));
 
     renderBody();
 
@@ -159,7 +174,6 @@ describe('Chapter7PanelAppointmentBody', () => {
       expect(screen.getByTestId('alert-chapter7-panel-key-dates-error')).toBeInTheDocument();
     });
     expect(screen.queryByTestId('chapter7-panel-audit-field-exam-card')).not.toBeInTheDocument();
-    expect(consoleErrorSpy).toHaveBeenCalledWith('Could not load upcoming key dates', fetchError);
   });
 
   test('does not fetch or render any card when DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES is disabled', () => {
