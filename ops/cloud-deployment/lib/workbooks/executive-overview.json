@@ -42,21 +42,6 @@
             "value": {
               "durationMs": 2592000000
             }
-          },
-          {
-            "id": "section-filter",
-            "version": "KqlParameterItem/1.0",
-            "name": "SectionFilter",
-            "type": 2,
-            "isRequired": false,
-            "query": "datatable(Section:string) [\"Cases\", \"Trustees\", \"Data Verification\", \"Staff Assignment\"]",
-            "typeSettings": {
-              "additionalResourceOptions": [
-                "value::all"
-              ],
-              "showDefault": false
-            },
-            "value": "value::all"
           }
         ],
         "style": "pills",
@@ -73,10 +58,17 @@
       "name": "growth-header"
     },
     {
+      "type": 1,
+      "content": {
+        "json": "**Growth Summary** gives three top-line numbers for the selected time range: how many distinct browsers were active, how many showed up for the first time, and how that compares to the immediately preceding period of the same length (e.g. if you're viewing the last 7 days, this compares against the 7 days before that)."
+      },
+      "name": "growth-summary-header"
+    },
+    {
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "let TotalActiveUsers = toscalar(union pageViews, customEvents | where timestamp {TimeRange} | summarize dcount(user_Id));\nlet NewUsers = toscalar(\n    union pageViews, customEvents\n    | where timestamp > ago(400d)\n    | summarize FirstSeen = min(timestamp) by user_Id\n    | where FirstSeen {TimeRange}\n    | count\n);\nlet Current30d = toscalar(union pageViews, customEvents | where timestamp > ago(30d) | summarize dcount(user_Id));\nlet Previous30d = toscalar(union pageViews, customEvents | where timestamp between (ago(60d) .. ago(30d)) | summarize dcount(user_Id));\nlet MoMGrowthPercent = round(iif(Previous30d > 0, 100.0 * (Current30d - Previous30d) / Previous30d, 0.0), 1);\nunion\n    (print Metric = \"Active Users (selected period)\", Value = toreal(TotalActiveUsers)),\n    (print Metric = \"New Users (selected period)\", Value = toreal(NewUsers)),\n    (print Metric = \"MoM Growth % (rolling 30d)\", Value = MoMGrowthPercent)",
+        "query": "let RangeStart = {TimeRange:start};\nlet RangeEnd = {TimeRange:end};\nlet RangeDuration = RangeEnd - RangeStart;\nlet TotalActiveUsers = toscalar(union pageViews, customEvents | where timestamp {TimeRange} | summarize dcount(user_Id));\nlet NewUsers = toscalar(\n    union pageViews, customEvents\n    | where timestamp > ago(400d)\n    | summarize FirstSeen = min(timestamp) by user_Id\n    | where FirstSeen {TimeRange}\n    | count\n);\nlet PreviousPeriodUsers = toscalar(union pageViews, customEvents | where timestamp between ((RangeStart - RangeDuration) .. RangeStart) | summarize dcount(user_Id));\nlet GrowthPercent = round(iif(PreviousPeriodUsers > 0, 100.0 * (TotalActiveUsers - PreviousPeriodUsers) / PreviousPeriodUsers, 0.0), 1);\nunion\n    (print Metric = \"Active Users (selected period)\", Value = toreal(TotalActiveUsers)),\n    (print Metric = \"New Users (selected period)\", Value = toreal(NewUsers)),\n    (print Metric = \"Growth % (vs. prior period)\", Value = GrowthPercent)",
         "size": 3,
         "title": "Growth Summary",
         "timeContextFromParameter": "TimeRange",
@@ -108,10 +100,17 @@
       "name": "growth-kpis"
     },
     {
+      "type": 1,
+      "content": {
+        "json": "**DAU / WAU / MAU** count distinct active browsers per day, over a rolling 7-day window, and over a rolling 30-day window. **Stickiness** (DAU÷MAU) is a standard engagement measure — the higher it is, the more the monthly total is made up of people who show up daily rather than just once a month."
+      },
+      "name": "dau-wau-mau-header"
+    },
+    {
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "let raw = union pageViews, customEvents | where timestamp > ago(120d) | project timestamp, user_Id;\nlet dau = raw\n    | summarize DAU = dcount(user_Id) by Day = bin(timestamp, 1d);\nlet wau = raw\n    | extend Day = bin(timestamp, 1d)\n    | mv-expand WindowDay = range(Day, Day + 6d, 1d) to typeof(datetime)\n    | summarize WAU = dcount(user_Id) by Day = WindowDay;\nlet mau = raw\n    | extend Day = bin(timestamp, 1d)\n    | mv-expand WindowDay = range(Day, Day + 29d, 1d) to typeof(datetime)\n    | summarize MAU = dcount(user_Id) by Day = WindowDay;\ndau\n| join kind=fullouter wau on Day\n| join kind=fullouter mau on Day\n| project Day = coalesce(Day, Day1, Day2), DAU = coalesce(DAU, 0), WAU = coalesce(WAU, 0), MAU = coalesce(MAU, 0)\n| extend Stickiness = round(iif(MAU > 0, 100.0 * DAU / MAU, 0.0), 1)\n| where Day > ago(90d)\n| order by Day asc",
+        "query": "let raw = union pageViews, customEvents | where timestamp > ago(120d) | project timestamp, user_Id;\nlet dau = raw\n    | summarize DAU = dcount(user_Id) by Day = bin(timestamp, 1d);\nlet wau = raw\n    | extend Day = bin(timestamp, 1d)\n    | mv-expand WindowDay = range(Day, Day + 6d, 1d) to typeof(datetime)\n    | summarize WAU = dcount(user_Id) by Day = WindowDay;\nlet mau = raw\n    | extend Day = bin(timestamp, 1d)\n    | mv-expand WindowDay = range(Day, Day + 29d, 1d) to typeof(datetime)\n    | summarize MAU = dcount(user_Id) by Day = WindowDay;\ndau\n| join kind=fullouter wau on Day\n| join kind=fullouter mau on Day\n| project Day = coalesce(Day, Day1, Day2), DAU = coalesce(DAU, 0), WAU = coalesce(WAU, 0), MAU = coalesce(MAU, 0)\n| extend Stickiness = round(iif(MAU > 0, 100.0 * DAU / MAU, 0.0), 1)\n| where Day > ago(90d) and Day <= bin(now(), 1d)\n| order by Day asc",
         "size": 0,
         "title": "DAU / WAU / MAU and Stickiness (DAU\u00f7MAU %)",
         "timeContextFromParameter": "TimeRange",
@@ -124,6 +123,13 @@
         }
       },
       "name": "dau-wau-mau-trend"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "**Engaged vs. Occasional Users** splits browsers by how many distinct days they were active in the period: 8+ days is \"Engaged,\" fewer is \"Occasional\" (that 8-day line is provisional — see the open ticket item to tune it against real traffic). **New vs. Returning Users** splits browsers by whether their very first-ever visit falls inside the selected period (\"New\") or happened earlier (\"Returning\")."
+      },
+      "name": "engagement-pies-header"
     },
     {
       "type": 3,
@@ -156,6 +162,13 @@
       "customWidth": "50"
     },
     {
+      "type": 1,
+      "content": {
+        "json": "**Weekly Cohort Retention** groups users by the week they first showed up (their \"cohort\"), then tracks what percentage of that same group is still active in each week afterward. Each line is one starting week; a line that drops fast means those users didn't stick around, a line that stays high means they kept coming back. Because it takes a few weeks to build up a retention curve, only cohorts old enough to have that history are shown."
+      },
+      "name": "retention-cohort-header"
+    },
+    {
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
@@ -181,6 +194,13 @@
       "name": "feature-header"
     },
     {
+      "type": 1,
+      "content": {
+        "json": "**Tab-Level Adoption** ranks every tab and section by what percentage of all active users visited it at least once during the period — a snapshot of which features get used at all."
+      },
+      "name": "feature-adoption-table-header"
+    },
+    {
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
@@ -195,12 +215,44 @@
       "name": "feature-adoption-table"
     },
     {
+      "type": 1,
+      "content": {
+        "json": "**Tab Adoption Trend** shows that same tab-visit metric broken out week by week instead of as one snapshot, so you can see whether adoption of a tab (or a whole section, via the filter below) is growing, flat, or shrinking over time."
+      },
+      "name": "feature-adoption-trend-header"
+    },
+    {
+      "type": 9,
+      "content": {
+        "version": "KqlParameterItem/1.0",
+        "parameters": [
+          {
+            "id": "section-filter",
+            "version": "KqlParameterItem/1.0",
+            "name": "SectionFilter",
+            "type": 2,
+            "isRequired": false,
+            "query": "datatable(Section:string) [\"Cases\", \"Trustees\", \"Data Verification\", \"Staff Assignment\"]",
+            "typeSettings": {
+              "additionalResourceOptions": ["value::all"],
+              "showDefault": false
+            },
+            "value": "value::all"
+          }
+        ],
+        "style": "pills",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components"
+      },
+      "name": "section-filter-param"
+    },
+    {
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
         "query": "let Routes = pageViews\n    | where timestamp {TimeRange}\n    | where isnotempty(url)\n    | extend Section = case(\n        url contains \"/case-detail/\" or url contains \"/my-cases\" or (url contains \"/search\" and not(url contains \"/case-detail/\")), \"Cases\",\n        url contains \"/trustees\", \"Trustees\",\n        url contains \"/data-verification\", \"Data Verification\",\n        url contains \"/staff-assignment\", \"Staff Assignment\",\n        \"Other\"\n      )\n    | extend Tab = case(\n        Section == \"Cases\" and url contains \"/my-cases\", \"My Cases (list)\",\n        Section == \"Cases\" and url contains \"/search\" and not(url contains \"/case-detail/\"), \"Case Search\",\n        Section == \"Cases\" and url contains \"/trustee-and-assigned-staff\", \"Assigned Staff\",\n        Section == \"Cases\" and url contains \"/court-docket\", \"Court Docket\",\n        Section == \"Cases\" and url contains \"/notes\", \"Case Notes\",\n        Section == \"Cases\" and url contains \"/associated-cases\", \"Associated Cases\",\n        Section == \"Cases\" and url contains \"/audit-history\", \"Change History\",\n        Section == \"Cases\" and url contains \"/trustee\", \"Trustee\",\n        Section == \"Cases\" and url contains \"/case-detail/\", \"Overview\",\n        Section == \"Trustees\" and url endswith \"/trustees\", \"Trustees List\",\n        Section == \"Trustees\" and url contains \"/appointments\", \"Appointments\",\n        Section == \"Trustees\" and url contains \"/assigned-staff\", \"Assigned Staff\",\n        Section == \"Trustees\" and url contains \"/audit-history\", \"Change History\",\n        Section == \"Trustees\" and url contains \"/notes\", \"Trustee Notes\",\n        Section == \"Trustees\" and url contains \"/cases\", \"Case List\",\n        Section == \"Trustees\", \"Overview\",\n        Section == \"Data Verification\", \"Data Verification\",\n        Section == \"Staff Assignment\", \"Staff Assignment\",\n        \"Other\"\n      )\n    | where Section != \"Other\";\nlet TotalActiveUsers = toscalar(pageViews | where timestamp {TimeRange} | summarize dcount(user_Id));\nRoutes\n| where '{SectionFilter}' == 'value::all' or Section == '{SectionFilter}'\n| summarize UsersVisiting = dcount(user_Id) by Tab, Week = startofweek(timestamp)\n| extend ['% of Active Users'] = round(100.0 * UsersVisiting / TotalActiveUsers, 1)\n| order by Week asc",
         "size": 0,
-        "title": "Tab Adoption Trend (filter by Section above)",
+        "title": "Tab Adoption Trend",
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.insights/components",
@@ -211,6 +263,13 @@
         }
       },
       "name": "feature-adoption-trend"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "**Search Click-Through Rate** approximates search success: of all searches performed, what percentage were followed by a click on a result within 5 minutes. There's no \"zero results\" signal in telemetry today, so this is the closest available proxy — a low rate could mean bad results, or just a user who found what they needed some other way."
+      },
+      "name": "search-clickthrough-header"
     },
     {
       "type": 3,
@@ -229,7 +288,7 @@
     {
       "type": 1,
       "content": {
-        "json": "### Notes Engagement\n\nCalled out specifically since stakeholders have asked about these two features."
+        "json": "### Notes Engagement\n\nCalled out specifically since stakeholders have asked about these two features. **Trustee Notes Engagement** is pulled directly from the existing nightly Trustee Notes aggregate: what percentage of trustees have at least one note, what percentage of users have engaged with notes, and how many notes were created in the last 24 hours. **Case Notes Visit Rate** is a rougher proxy — no equivalent backend aggregate exists yet for Case Notes, so this only measures what percentage of users who opened a case detail page also clicked into its Notes tab, not whether they actually wrote anything."
       },
       "name": "notes-header"
     },
@@ -275,6 +334,13 @@
       "name": "reliability-header"
     },
     {
+      "type": 1,
+      "content": {
+        "json": "**Page Load** and **Search Latency** show the P50 (typical) and P95 (worst-case-for-most-users) response times in milliseconds, day by day — a proxy for whether the app feels fast or sluggish to users."
+      },
+      "name": "latency-header"
+    },
+    {
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
@@ -311,6 +377,13 @@
       },
       "name": "search-latency-trend",
       "customWidth": "50"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "**Frontend Exception Rate** normalizes JavaScript errors against traffic volume (errors per 1,000 page views) so a spike isn't just an artifact of more people using the app. **Dataflow Sync Success Rate** tracks the health of the backend jobs that keep CAMS data in sync — a drop here means the numbers elsewhere in this workbook (and in the app itself) may be stale."
+      },
+      "name": "exception-dataflow-header"
     },
     {
       "type": 3,
