@@ -175,6 +175,15 @@ branch_grep() {  # branch_grep <ref> <alternation>
 # failure or a note, so it is configurable rather than buried.
 ACTIVE_DAYS="${ACTIVE_DAYS:-90}"
 
+# Validated before any arithmetic uses it. Under `set -u` a non-numeric value
+# makes $(( ... )) fatal mid-run, and the script exits 1 -- which this contract
+# defines as "a deletion target is still referenced", sending the operator to
+# hunt a reference that does not exist.
+if ! [[ "${ACTIVE_DAYS}" =~ ^[0-9]+$ ]]; then
+  echo "ERROR: ACTIVE_DAYS must be a non-negative integer (got: '${ACTIVE_DAYS}')." >&2
+  exit 2
+fi
+
 branch_age_days() {  # branch_age_days <ref>
   local ts
   ts=$(git log -1 --format=%ct "$1" 2>/dev/null) || { echo "unknown"; return; }
