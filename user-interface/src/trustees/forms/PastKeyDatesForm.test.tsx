@@ -257,7 +257,7 @@ describe('PastKeyDatesForm', () => {
       expect(putSpy).toHaveBeenCalledWith(
         'trustee-001',
         'appointment-001',
-        expect.objectContaining({
+        {
           trusteeId: 'trustee-001',
           appointmentId: 'appointment-001',
           pastBackgroundQuestion: '2022-05-10',
@@ -287,7 +287,7 @@ describe('PastKeyDatesForm', () => {
           lastCompensationStudy: null,
           bondIssuedDate: null,
           bondRenewalDate: null,
-        }),
+        },
       ),
     );
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');

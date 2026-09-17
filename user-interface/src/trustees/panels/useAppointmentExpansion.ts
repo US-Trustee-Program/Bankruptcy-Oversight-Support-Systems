@@ -1,8 +1,7 @@
-import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { useSessionState } from '@/lib/hooks/UseSessionState';
 
 export interface UseAppointmentExpansion {
-  isExpanded: (appointment: TrusteeAppointment) => boolean;
+  isExpanded: (appointment: { id: string }) => boolean;
   toggleExpanded: (appointmentId: string) => void;
 }
 
@@ -12,7 +11,7 @@ export function useAppointmentExpansion(trusteeId: string): UseAppointmentExpans
     {},
   );
 
-  function isExpanded(appointment: TrusteeAppointment): boolean {
+  function isExpanded(appointment: { id: string }): boolean {
     return expandedIds[appointment.id] ?? false;
   }
 

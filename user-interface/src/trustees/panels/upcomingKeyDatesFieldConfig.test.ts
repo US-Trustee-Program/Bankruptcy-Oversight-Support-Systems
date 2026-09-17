@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach, vi } from 'vitest';
+import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   UPCOMING_KEY_DATES_FIELD_CONFIG,
   getUpcomingKeyDatesFieldConfig,
@@ -24,6 +24,10 @@ describe('UPCOMING_KEY_DATES_FIELD_CONFIG chapter13-standing variant', () => {
     vi.useRealTimers();
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-01-15'));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   test('first field is Annual Audit Review Period constant 10/01 - 09/30', () => {
@@ -261,6 +265,10 @@ describe('UPCOMING_KEY_DATES_FIELD_CONFIG tprDue across variants — pinned to 2
     vi.setSystemTime(new Date('2026-01-15'));
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   test.each([
     ['chapter7-panel', 'Trustee Performance Review Due'],
     ['ch12-13-case-by-case', 'Trustee Performance Review Due'],
@@ -436,6 +444,10 @@ describe('UPCOMING_KEY_DATES_FIELD_CONFIG tprDue — pinned to 2027 (odd)', () =
     vi.setSystemTime(new Date('2027-01-15'));
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   test('chapter13-standing tprDue: ODD type in 2027 → 2027', () => {
     const config = UPCOMING_KEY_DATES_FIELD_CONFIG['chapter13-standing'];
     const field = config.find((f) => f.key === 'tprDue');
@@ -466,6 +478,10 @@ describe('getUpcomingKeyDatesFieldConfig — flag OFF (tprDisplayUpdates=false)'
     vi.useRealTimers();
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-01-15'));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   test.each([
