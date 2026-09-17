@@ -29,6 +29,13 @@
 # any branch with commits in the last ACTIVE_DAYS that references a listed name
 # is a hard failure. Anyone extending this list must clear Gate 6 first.
 #
+# KNOWN LIMIT: Gates 5 and 6 read other refs with `git grep`, which treats a
+# symlinked directory as a blob and does not descend it. Gate 1's `find -L` walk
+# has no such blind spot, so a reference hidden behind a symlinked directory is
+# caught on the current ref but not on another branch. Fixing it would mean
+# checking every branch out, which is not worth the cost here -- but do not
+# assume branch coverage is identical to Gate 1's.
+#
 # Usage
 #   From the root directory, run the following command:
 #     ./ops/scripts/utility/audit-unreferenced-gha-secrets.sh [-b|h]
@@ -42,6 +49,15 @@
 
 set -uo pipefail
 
+# Gate 4 uses associative arrays (bash 4+). Stock macOS ships bash 3.2, where
+# `declare -A` fails and the subsequent assignment is parsed arithmetically,
+# aborting mid-run under `set -u` with no summary line and an undocumented 127.
+if [[ "${BASH_VERSINFO[0]:-0}" -lt 4 ]]; then
+  echo "ERROR: bash 4+ required (found ${BASH_VERSION:-unknown})." >&2
+  echo "       On macOS: brew install bash, or run with a bash 4+ interpreter." >&2
+  exit 2
+fi
+
 Help() {
   echo "Audits the GitHub Actions secrets/variables slated for deletion by CAMS-760."
   echo "Read-only: this script never deletes anything."
@@ -52,9 +68,11 @@ Help() {
   echo "h     Print this Help and exit."
   echo
   echo "environment:"
-  echo "GH_REPO   owner/repo to audit. Defaults to the US-Trustee-Program repo."
-  echo "          Set this when 'git' cannot resolve the remote."
-  echo "STRICT    'true' makes any warning exit 4 instead of 0."
+  echo "GH_REPO       owner/repo to audit. Defaults to the US-Trustee-Program repo."
+  echo "              Set this when 'git' cannot resolve the remote."
+  echo "STRICT        'true' makes any warning exit 4 instead of 0."
+  echo "ACTIVE_DAYS   branch recency window; a reference from a branch newer than"
+  echo "              this is a hard failure in Gates 5 and 6 (default 90)."
   echo
   echo "exit codes: 0 pass  1 still-referenced  2 usage  3 inconclusive  4 strict"
   echo
@@ -110,6 +128,47 @@ warn() { echo "  WARN  $*"; warnings=$((warnings + 1)); }
 err()  { echo "  ERROR $*"; errors=$((errors + 1)); }
 ok()   { echo "  OK    $*"; }
 indent() { while IFS= read -r line; do echo "        ${line}"; done; }
+
+# Gates 5 and 6 read LOCAL remote-tracking refs. A branch this clone has never
+# fetched simply does not exist to them, so the gate that exists to catch "an
+# active branch still references this" is blind to exactly the branch most
+# likely to be new. Checked once, used by both.
+CLONE_CURRENT=-1   # -1 unknown, 0 stale/unverifiable, 1 current
+CLONE_STALE_MSG=""
+clone_is_current() {
+  [[ ${CLONE_CURRENT} -ne -1 ]] && return ${CLONE_CURRENT}
+  local heads n missing=0 sha ref local_sha
+  if ! heads=$(git ls-remote --heads origin 2>/dev/null); then
+    CLONE_CURRENT=0; CLONE_STALE_MSG="could not reach the remote to verify freshness"
+    return 1
+  fi
+  n=$(printf '%s' "${heads}" | grep -c . )
+  if [[ "${n}" -eq 0 ]]; then
+    CLONE_CURRENT=0; CLONE_STALE_MSG="git ls-remote returned no branches"
+    return 1
+  fi
+  while read -r sha ref; do
+    [[ -z "${ref}" ]] && continue
+    local_sha=$(git rev-parse --verify --quiet "refs/remotes/origin/${ref#refs/heads/}" 2>/dev/null)
+    [[ "${local_sha}" == "${sha}" ]] || missing=$((missing + 1))
+  done <<< "${heads}"
+  if [[ ${missing} -gt 0 ]]; then
+    CLONE_CURRENT=0
+    CLONE_STALE_MSG="${missing} remote branch(es) missing locally or out of date"
+    return 1
+  fi
+  CLONE_CURRENT=1
+  return 0
+}
+
+# git grep exits 1 both for "no match" and for "could not read that object", so
+# a captured-and-empty result is ambiguous. Route stderr to REF_ERR_FILE so the
+# caller can tell the two apart.
+branch_grep() {  # branch_grep <ref> <alternation>
+  : > "${REF_ERR_FILE}"
+  git grep -hoiE "(secrets|vars)[[:space:]]*\.[[:space:]]*($2)([^A-Za-z0-9_]|$)" \
+    "$1" -- .github/ 2>"${REF_ERR_FILE}" | sort -u | tr '\n' ' '
+}
 
 # A branch with recent commits is someone's work in progress; a branch untouched
 # for months is residue. The distinction decides whether a reference is a hard
@@ -226,7 +285,7 @@ SELF_TEST_DIR=$(mktemp -d) || {
   echo "ERROR: mktemp failed; cannot run the self-test." >&2
   exit 3
 }
-trap '[[ -n "${SELF_TEST_DIR:-}" ]] && rm -rf "${SELF_TEST_DIR}"' EXIT
+trap '[[ -n "${SELF_TEST_DIR:-}" ]] && rm -rf "${SELF_TEST_DIR}"; [[ -n "${REF_ERR_FILE:-}" ]] && rm -f "${REF_ERR_FILE}"' EXIT
 
 # shellcheck disable=SC2016  # ${{ }} are GitHub Actions literals, not shell expansions
 {
@@ -268,12 +327,19 @@ if git rev-parse --git-dir >/dev/null 2>&1; then
   GIT_OK=1
   ok "git is usable."
   # Gate 5 uses `git grep`, a DIFFERENT regex engine from Gate 1's `grep`.
-  if [[ -z "$(git grep -hoiE '(secrets|vars)[[:space:]]*\.[[:space:]]*(AZ_CLIENT_ID|__NOPE__)' HEAD -- .github/ 2>/dev/null)" ]]; then
-    err "git grep failed to match a known-present reference (secrets.AZ_CLIENT_ID)."
-    echo "        Gate 5 cannot be trusted; it would report every branch as clean."
+  # Probe name derived from the tree rather than hardcoded: pinning it to a
+  # specific secret means renaming that secret silently disables Gates 5 and 6.
+  probe_name=$(grep -rhoiE '(secrets|vars)[[:space:]]*\.[[:space:]]*[A-Za-z0-9_]+' .github/ 2>/dev/null \
+    | sed -E 's/.*[.][[:space:]]*//' | sort -u | head -1)
+  if [[ -z "${probe_name}" ]]; then
+    err "no secret/variable reference found in .github/ to probe git grep with."
+    GIT_GREP_OK=0
+  elif [[ -z "$(git grep -hoiE "(secrets|vars)[[:space:]]*\.[[:space:]]*(${probe_name})" HEAD -- .github/ 2>/dev/null)" ]]; then
+    err "git grep failed to match a known-present reference (${probe_name})."
+    echo "        Gates 5 and 6 cannot be trusted; they would report every branch clean."
     GIT_GREP_OK=0
   else
-    ok "git grep self-test passed."
+    ok "git grep self-test passed (probe: ${probe_name})."
     GIT_GREP_OK=1
   fi
 else
@@ -332,6 +398,12 @@ echo
 
 # --- Gate 2: the checks that make a static grep sound -----------------------
 echo "--- Gate 2: static-analysis soundness ---"
+# set_grep reads SCAN_FILES. If Gate 1 was skipped or found nothing, that array
+# still holds the preflight's self-test fixture, and Gate 2 would certify
+# soundness over a temp file while silently dropping real findings.
+if ! scan_prepare .github/ || [[ ${#SCAN_FILES[@]} -eq 0 ]]; then
+  err "cannot rebuild the .github/ file set; Gate 2 cannot certify anything."
+fi
 # Case- and whitespace-insensitive: GHA expression function names are
 # case-insensitive, so toJson(secrets) is as valid as toJSON(secrets).
 dynamic=$(set_grep 'toJSON[[:space:]]*\([[:space:]]*(secrets|vars)[[:space:]]*\)|(secrets|vars)[[:space:]]*\[')
@@ -353,7 +425,10 @@ else
 fi
 
 inherit=$(set_grep "secrets:[[:space:]]*inherit")
-if [[ -n "${inherit}" ]]; then
+if [[ -s "${REF_ERR_FILE}" ]]; then
+  err "'secrets: inherit' scan errored:"
+  head -2 "${REF_ERR_FILE}" | indent
+elif [[ -n "${inherit}" ]]; then
   warn "'secrets: inherit' present (cams-x83dl). Benign for deletion while Gate 1"
   echo "        passes, since callee references are caught there too:"
   echo "${inherit}" | indent
@@ -387,6 +462,7 @@ echo "--- Gate 4: environment-scoped objects with the same names ---"
 if [[ ${GH_OK} -eq 1 ]]; then
   if envs=$(gh api "repos/${REPO}/environments" --paginate -q '.environments[].name' 2>/dev/null); then
     declare -A SHADOW_MAP=()
+    declare -A SHADOW_COUNT=()
     declare -A SHADOW_ENVS=()
     shadows=0
     while read -r env; do
@@ -402,6 +478,7 @@ if [[ ${GH_OK} -eq 1 ]]; then
       for name in "${ALL[@]}"; do
         if printf '%s' "${env_objs}" | grep -qx "${name}"; then
           SHADOW_MAP["${name}"]="${SHADOW_MAP[${name}]:-} ${env}"
+          SHADOW_COUNT["${name}"]=$(( ${SHADOW_COUNT[${name}]:-0} + 1 ))
           SHADOW_ENVS["${env}"]=1
           shadows=$((shadows + 1))
         fi
@@ -417,7 +494,7 @@ if [[ ${GH_OK} -eq 1 ]]; then
       env_count=${#SHADOW_ENVS[@]}
       for name in "${!SHADOW_MAP[@]}"; do
         present="${SHADOW_MAP[${name}]# }"
-        present_count=$(printf '%s' "${present}" | wc -w | tr -d ' ')
+        present_count=${SHADOW_COUNT[${name}]:-0}
         warn "'${name}' also exists at environment scope: ${present}"
         echo "        These are SEPARATE objects. Delete at repo scope only."
         if [[ ${present_count} -lt ${env_count} ]]; then
@@ -463,8 +540,12 @@ if [[ ${GH_OK} -eq 1 && ${GIT_OK} -eq 1 && ${GIT_GREP_OK} -eq 1 ]]; then
           echo "        Cannot check it. Run 'git fetch origin --prune' and re-run."
           continue
         fi
-        h=$(git grep -hoiE "(secrets|vars)[[:space:]]*\.[[:space:]]*(${pattern})([^A-Za-z0-9_]|$)" \
-          "origin/${branch}" -- .github/ 2>/dev/null | sort -u | tr '\n' ' ')
+        h=$(branch_grep "origin/${branch}" "${pattern}")
+        if [[ -s "${REF_ERR_FILE}" ]]; then
+          err "PR #${num} (${branch}): git grep errored; cannot conclude it is clean."
+          head -2 "${REF_ERR_FILE}" | indent
+          continue
+        fi
         if [[ -n "${h}" ]]; then
           if branch_is_active "origin/${branch}"; then
             fail "PR #${num} (${branch}) is ACTIVE and still references: ${h}"
@@ -495,17 +576,31 @@ echo
 # references a deletion target is a hard failure, PR or no PR.
 echo "--- Gate 6: active branches (last ${ACTIVE_DAYS} days) ---"
 if [[ ${GIT_OK} -eq 1 && ${GIT_GREP_OK} -eq 1 ]]; then
+  # Without this, an unfetched branch is invisible and the gate prints OK --
+  # defeating the one scenario it exists for.
+  if ! clone_is_current; then
+    err "cannot verify this clone is current: ${CLONE_STALE_MSG}."
+    echo "        An unfetched branch is invisible to this gate, which is exactly" >&2
+    echo "        the branch most likely to be new. Run: git fetch origin --prune" >&2
+  fi
   now=$(date +%s)
   cutoff=$((now - ACTIVE_DAYS * 86400))
   active_total=0
   active_dirty=0
   while read -r ref ts; do
-    [[ -z "${ref}" || "${ref}" == *"/HEAD" ]] && continue
+    # refname:short renders refs/remotes/origin/HEAD as bare "origin", not
+    # "origin/HEAD", so a */HEAD test never fires and origin/HEAD re-scans main
+    # under an alias -- defeating the origin/main exclusion below.
+    [[ -z "${ref}" || "${ref}" == "origin" ]] && continue
     [[ "${ts}" -lt ${cutoff} ]] && continue
     [[ "${ref}" == "origin/main" ]] && continue
     active_total=$((active_total + 1))
-    h=$(git grep -hoiE "(secrets|vars)[[:space:]]*\.[[:space:]]*(${pattern})([^A-Za-z0-9_]|$)" \
-      "${ref}" -- .github/ 2>/dev/null | sort -u | tr '\n' ' ')
+    h=$(branch_grep "${ref}" "${pattern}")
+    if [[ -s "${REF_ERR_FILE}" ]]; then
+      err "${ref#origin/}: git grep errored; cannot conclude it is clean."
+      head -2 "${REF_ERR_FILE}" | indent
+      continue
+    fi
     if [[ -n "${h}" ]]; then
       fail "ACTIVE branch ${ref#origin/} references: ${h}"
       echo "        Last commit $(branch_age_days "${ref}") day(s) ago."
@@ -534,7 +629,8 @@ echo
 # in-flight branch (see Gate 6), so an orphan found here is a prompt for a human
 # to investigate -- never something to delete on this script's say-so.
 echo "--- Gate 7: frozen-list drift vs live repository scope ---"
-if [[ ${GH_OK} -eq 1 && ${SELF_TEST_OK} -eq 1 && ${#SCAN_FILES[@]} -gt 0 ]]; then
+if [[ ${GH_OK} -eq 1 && ${SELF_TEST_OK} -eq 1 && ${#SCAN_FILES[@]} -gt 0 \
+      && -z "${SCAN_TRAVERSAL_ERR}" && ${#SCAN_UNREADABLE[@]} -eq 0 ]]; then
   live_secrets=$(gh api "repos/${REPO}/actions/secrets" --paginate -q '.secrets[].name' 2>/dev/null)
   ls_rc=$?
   live_vars=$(gh api "repos/${REPO}/actions/variables" --paginate -q '.variables[].name' 2>/dev/null)

@@ -25,8 +25,8 @@ Tracked as `cams-9n4tg`.
 ## Prerequisites
 
 - `gh` CLI authenticated with admin rights on the repository.
-- A working `git`, fetched and pruned (`git fetch origin --prune`). The audit's
-  PR gate cannot check a ref that is not present locally.
+- A working `git`, fetched and pruned (`git fetch origin --prune`). Both audit
+  scripts refuse to report on refs that are not present locally.
 - `az` CLI logged in to `Flexion DOJ USTP`, for the [Rollback](#rollback) path.
 - Nobody mid-deploy. Check for in-flight `Continuous Deployment` runs first.
 - No outstanding prerequisites. The Veracode/SourceClear ownership question that
@@ -36,10 +36,10 @@ Tracked as `cams-9n4tg`.
 
 Read this **before** running anything below.
 
-**`AZ_APP_RG`, `AZ_NETWORK_RG` and `SLOT_NAME` also exist as environment-scoped
-objects** on the `Develop` and `Main-Gov` environments. These are *separate
-objects* from the repo-scoped ones, and both environments are active
-`environment:` anchors. **Delete at repository scope only** — `gh secret delete`
+**`AZ_APP_RG` and `AZ_NETWORK_RG` also exist as environment-scoped objects** on
+the `Develop` **and** `Main-Gov` environments, and **`SLOT_NAME`** on `Develop`
+only. These are *separate objects* from the repo-scoped ones, and both
+environments are active `environment:` anchors. **Delete at repository scope only** — `gh secret delete`
 defaults to repository scope and needs `-e` to touch an environment, so the
 default is correct; do not add `-e`.
 
@@ -90,6 +90,11 @@ being actively worked on usually has no PR yet — and a reference from one of
 those is a hard failure, not a warning. Anyone extending the list must clear
 Gate 6 before deleting anything.
 
+It reads local remote-tracking refs, so it first verifies against
+`git ls-remote` that this clone is current and refuses to report if it is not —
+an unfetched branch would otherwise be invisible to precisely the check meant to
+catch it. Run `git fetch origin --prune` before Step 0.
+
 Gate 7 reports the opposite drift: it enumerates live repository scope and flags
 targets that no longer exist, plus live objects that are unreferenced but absent
 from the frozen list. That enumeration is **reporting only** and deliberately
@@ -119,11 +124,11 @@ unreferenced.
 
 ## Why the ordering matters
 
-Tier A splits into 12 secrets whose values are recoverable from Key Vault and 6
+Tier A splits into 11 secrets whose values are recoverable from Key Vault and 7
 that are not recoverable at all. Deleting them in one block puts the
-unrecoverable six at risk before anything has been proven.
+unrecoverable seven at risk before anything has been proven.
 
-So the recoverable twelve go first, then a canary, and only then the six that
+So the recoverable eleven go first, then a canary, and only then the seven that
 cannot be undone. By the time you reach an irreversible step, the reversible
 ones have already demonstrated that nothing depended on them.
 
@@ -171,7 +176,8 @@ output is informational and does **not** gate deletion — see
 
 Variables are readable; secrets are not. Capture these before deleting:
 
-These recorded values are the only rollback path for Tier C, so a failed lookup
+These recorded values are the only rollback path for all five variables — the
+three Tier C ones and the two Tier A ones deleted in Step 4 — so a failed lookup
 must stop the procedure rather than print an empty string and continue:
 
 ```bash
@@ -189,19 +195,19 @@ At the time of writing: `.us`, `privatelink.azurewebsites.us`, `24.20.0`,
 `development`, `-70`. Re-read them rather than trusting that list — and note
 `SLOT_NAME` also exists in both vaults as `SLOT-NAME`, a second recovery source.
 
-## Step 2 — Delete the 12 recoverable Tier A secrets
+## Step 2 — Delete the 11 recoverable Tier A secrets
 
 Every one of these has its value preserved in Key Vault, so
 [Rollback](#rollback) can restore it.
 
 > `gh secret delete` has **no confirmation prompt and no `--yes` flag**. Pasting
-> this block destroys 12 objects with zero interaction. There is no `set -e`, so
+> this block destroys 11 objects with zero interaction. There is no `set -e`, so
 > a failure mid-loop scrolls past and the loop continues — read the output.
 
 ```bash
 REPO=US-Trustee-Program/Bankruptcy-Oversight-Support-Systems
 
-TIER_A_RECOVERABLE=(ANALYTICS_WORKSPACE_ID AZ_APP_RG AZ_NETWORK_RG AZURE_RG
+TIER_A_RECOVERABLE=(AZ_APP_RG AZ_NETWORK_RG AZURE_RG
   AZ_ANALYTICS_RG MSSQL_DATABASE_DXTR MSSQL_HOST MSSQL_TRUST_UNSIGNED_CERT
   MSSQL_USER ADMIN_KEY SNYK_OAUTH_CLIENT_ID SNYK_OAUTH_CLIENT_SECRET)
 
@@ -245,18 +251,29 @@ Confirm it reaches the end, then re-run Step 0's audit.
 > names, so a run on `main` is green whether or not the deletions broke
 > anything. A branch deploy exercises the path that actually reads these values.
 
-## Step 4 — Delete the 6 unrecoverable Tier A secrets
+## Step 4 — Delete the 7 unrecoverable Tier A secrets
 
-No Key Vault mirror, so there is no rollback. All six are zero-reference dead
-weight, and recreating `AZURE_CREDENTIALS` would undo what CAMS-760 existed to
-do. Only proceed once Step 3 is green.
+No Key Vault mirror for any of these seven secrets, so there is no rollback.
+They are zero-reference dead weight, and recreating `AZURE_CREDENTIALS` would
+undo what CAMS-760 existed to do. Only proceed once Step 3 is green.
+
+`ANALYTICS_WORKSPACE_ID` is here rather than in Step 2 because the secret that
+migrated into KV `AZ-ANALYTICS-WORKSPACE-ID` was `AZ_ANALYTICS_WORKSPACE_ID` —
+a different, environment-scoped secret. See [Rollback](#rollback).
 
 ```bash
-for s in AZURE_CREDENTIALS AZ_PRIVATE_DNS_ZONE_ID AZ_PRIVATE_DNS_ZONE_RG \
+for s in ANALYTICS_WORKSPACE_ID AZURE_CREDENTIALS \
+         AZ_PRIVATE_DNS_ZONE_ID AZ_PRIVATE_DNS_ZONE_RG \
          AZ_STOR_VERACODE_KEY AZ_STOR_VERACODE_NAME CAMS_REACT_SELECT_HASH; do
   if gh secret delete "$s" -R "$REPO"; then echo "  deleted $s"; else echo "  FAILED $s"; fi
 done
+```
 
+The two Tier A **variables** go here too. Unlike the secrets above they *are*
+recoverable — from the values you recorded in Step 1 — so they are listed
+separately rather than under the "no rollback" warning:
+
+```bash
 for v in AZ_HOSTNAME_SUFFIX AZ_PRIVATE_DNS_ZONE; do
   if gh variable delete "$v" -R "$REPO"; then echo "  deleted $v"; else echo "  FAILED $v"; fi
 done
@@ -416,7 +433,7 @@ Presence in the baseline means *known*, not *safe to delete*.
 
 ## Rollback
 
-**Twelve of the eighteen Tier A secrets are restorable from Key Vault.**
+**Eleven of the eighteen Tier A secrets are restorable from Key Vault.**
 
 **Pick the vault deliberately.** The two vaults hold *different* values, and the
 repo-scoped secrets are the fallback used by branch deploys — restoring
@@ -428,20 +445,24 @@ groups:
 | `AZ-APP-RG` | `rg-cams-app` | `rg-cams-app-dev` |
 | `AZ-NETWORK-RG` | `rg-cams-network` | `rg-cams-network-dev` |
 | `AZ-ANALYTICS-WORKSPACE-ID` | `.../law-ustp-cams` | `.../law-cams-branches` |
+| `SNYK-OAUTH-CLIENT-ID` / `-SECRET` | present | **absent** |
+
+The last row is absence, not divergence: those two exist only in the production
+vault, so the loop below pins them rather than following `$VAULT`.
 
 ```bash
 REPO=US-Trustee-Program/Bankruptcy-Oversight-Support-Systems
 VAULT=kv-ustp-cams-dev     # <-- choose deliberately; see the table above
 
-restore() {  # restore <GH_SECRET_NAME> <KV_SECRET_NAME>
-  local value
-  if ! value=$(az keyvault secret show --vault-name "$VAULT" --name "$2" \
+restore() {  # restore <GH_SECRET_NAME> <KV_SECRET_NAME> [VAULT_OVERRIDE]
+  local vault="${3:-$VAULT}" value
+  if ! value=$(az keyvault secret show --vault-name "$vault" --name "$2" \
        --query value -o tsv 2>/dev/null); then
-    echo "  FAILED $1: could not read $2 from $VAULT" >&2
+    echo "  FAILED $1: could not read $2 from $vault" >&2
     return 1
   fi
   if [[ -z "$value" ]]; then
-    echo "  FAILED $1: $2 is empty in $VAULT -- refusing to store an empty secret" >&2
+    echo "  FAILED $1: $2 is empty in $vault -- refusing to store an empty secret" >&2
     return 1
   fi
   printf '%s' "$value" | gh secret set "$1" -R "$REPO" && echo "  restored $1"
@@ -456,8 +477,11 @@ restore MSSQL_HOST                 MSSQL-HOST
 restore MSSQL_TRUST_UNSIGNED_CERT  MSSQL-TRUST-UNSIGNED-CERT
 restore MSSQL_USER                 MSSQL-USER
 restore ADMIN_KEY                  ADMIN-KEY
-restore SNYK_OAUTH_CLIENT_ID       SNYK-OAUTH-CLIENT-ID
-restore SNYK_OAUTH_CLIENT_SECRET   SNYK-OAUTH-CLIENT-SECRET
+
+# These two exist ONLY in kv-ustp-cams -- there is no dev copy to choose, so the
+# vault is pinned rather than following $VAULT.
+restore SNYK_OAUTH_CLIENT_ID       SNYK-OAUTH-CLIENT-ID     kv-ustp-cams
+restore SNYK_OAUTH_CLIENT_SECRET   SNYK-OAUTH-CLIENT-SECRET kv-ustp-cams
 ```
 
 The value is captured and checked before `gh secret set` is called rather than
@@ -478,7 +502,8 @@ which survives today as an *environment*-scoped secret. The repo-scoped
 unrecoverable rather than assuming the values match. Note also that KV holds
 `ANALYTICS-WORKSPACE-CUSTOMER-ID`, a bare GUID that is a plausible wrong choice.
 
-The six Step 4 secrets and all eight Tier B secrets have **no** rollback path.
+The seven Step 4 secrets and all eight Tier B secrets have **no** rollback path.
+(The two Step 4 *variables* are recoverable from the Step 1 record.)
 Regenerate from the vendor console if one turns out to be needed.
 
 Variables restore with an explicit body — `gh variable set NAME -R "$REPO"` with
@@ -499,6 +524,10 @@ Smaller than the raw branch count suggests.
   ```bash
   ./ops/scripts/utility/audit-unreferenced-gha-secrets.sh -b
   ```
+
+  That flag belongs to the cleanup gate, which is deleted with it (`cams-xug4r`).
+  The branch-listing capability goes too; nothing replaces it, because it exists
+  to size the blast radius of *this* cleanup.
 
 - **`continuous-deployment.yml` fires on `push:` to any branch** other than
   `mob/**`, running *that branch's own* workflow files. A `workflow_dispatch`
