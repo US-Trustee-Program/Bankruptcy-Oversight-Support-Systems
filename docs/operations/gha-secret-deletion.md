@@ -17,6 +17,11 @@ organised around.
 
 Tracked as `cams-9n4tg`.
 
+> **Scope.** Steps 1–7 are specific to these 31 names. If you arrived here
+> because `audit-orphaned-gha-secrets.sh` surfaced something new, go to
+> [Deleting a newly surfaced orphan](#deleting-a-newly-surfaced-orphan) — the
+> method carries over, the name lists do not.
+
 ## Prerequisites
 
 - `gh` CLI authenticated with admin rights on the repository.
@@ -154,6 +159,13 @@ branches run longer.
 Add `-b` to also list every remote branch that still references a target. That
 output is informational and does **not** gate deletion — see
 [Blast radius](#blast-radius).
+
+> **If that script no longer exists**, this cleanup is finished and it was
+> deleted on purpose (`cams-xug4r`) — its list was frozen to these 31 names. You
+> are working from [Deleting a newly surfaced
+> orphan](#deleting-a-newly-surfaced-orphan) instead; use
+> `audit-orphaned-gha-secrets.sh`, which is the durable one, and treat Steps 1–7
+> below as a worked example rather than a script to follow.
 
 ## Step 1 — Record the variable values
 
@@ -332,6 +344,75 @@ done
 `SLOT_NAME` in its required-secrets table. Left alone, anyone standing up a new
 environment from that doc will provision secrets nothing reads. Remove the
 deleted rows, and note for the Snyk pair that they now come from Key Vault.
+
+## Deleting a newly surfaced orphan
+
+Steps 1–7 are **results, not a procedure**: every list in them is the 31 names
+this cleanup was scoped to. When
+`ops/scripts/utility/audit-orphaned-gha-secrets.sh` later reports something new,
+none of those steps will mention it. What transfers is the method below.
+
+### 1. Decide whether it is actually unused
+
+Unreferenced is evidence, not a verdict. Before anything else, rule out the
+three ways a live secret looks dead:
+
+- **A manual or offline process.** No amount of scanning finds this — it is why
+  the Veracode credentials in Step 5 needed a person to answer. If the secret
+  belongs to a vendor or an ops process, ask the owner.
+- **A dormant-but-present workflow.** A textual reference counts as "keep" here
+  deliberately; the auditor will not tell you whether a workflow that mentions it
+  is still live. That is a human call.
+- **An in-flight branch.** The auditor already checks branches with commits in
+  the last 90 days, so this is mostly handled — but widen `ACTIVE_DAYS` if your
+  team runs long-lived branches.
+
+### 2. Work out its tier — this is the expensive part
+
+The tier is decided by **what happens to the value if you are wrong**, not by
+what the secret is for. Check in this order:
+
+| Check | Command | If it hits |
+| --- | --- | --- |
+| Value lives in Key Vault? | `az keyvault secret list --vault-name kv-ustp-cams --query "[].name" -o tsv \| grep -i NAME` | **Recoverable.** Rollback is possible; note the exact KV name and which vault. |
+| Now a hardcoded literal? | `grep -rn "NAME=" .github/workflows/` | **Recoverable** in the sense that the value is visible in the repo. |
+| Vendor credential? | — | **Unrecoverable**, but regenerable from the vendor console. |
+| None of the above? | — | **Unrecoverable, full stop.** Treat with the most care; there is no way back. |
+
+Remember both vaults hold *different* values — see the divergence table under
+[Rollback](#rollback). Recording the wrong vault's value is worse than
+recording none.
+
+### 3. Apply the same ordering
+
+Recoverable first, then a branch-deploy canary, then anything unrecoverable.
+The point of the ordering is that by the time you reach a step you cannot undo,
+the reversible ones have already shown that nothing depended on them. See
+[Why the ordering matters](#why-the-ordering-matters).
+
+### 4. Re-read the traps
+
+These are properties of the repository, not of the 31 names, so they apply
+unchanged to anything new:
+
+- **Scope collisions** — check whether the name also exists at *environment*
+  scope on `Develop` or `Main-Gov` before deleting at repository scope. See
+  [Do NOT delete](#do-not-delete).
+- **Storage keys and similar are not revoked by deletion.** Removing the GitHub
+  copy of a credential does not invalidate it upstream. If the secret is an
+  access key, rotate it at the source as well.
+- **Stale branches** will break on the next push if they reference it, and that
+  is [self-healing](#blast-radius) rather than a reason to keep the secret.
+
+### 5. Baseline whatever you decide not to delete
+
+If the answer is "leave it", record that so it stops resurfacing:
+
+```bash
+./ops/scripts/utility/audit-orphaned-gha-secrets.sh -u
+```
+
+Presence in the baseline means *known*, not *safe to delete*.
 
 ## Rollback
 
