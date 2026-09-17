@@ -1,11 +1,9 @@
 import './AppointmentCard.scss';
-import { useEffect, useState } from 'react';
 import UpcomingKeyDates from './UpcomingKeyDates';
 import PastKeyDates from './PastKeyDates';
 import InfoCard from './InfoCard';
 import { TrusteeAppointment, formatAppointmentStatus } from '@common/cams/trustee-appointments';
 import { formatChapterType, formatAppointmentType } from '@common/cams/trustees';
-import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import useEditTrusteeAppointment from '@/lib/hooks/UseEditTrusteeAppointment';
 import useFeatureFlags, {
   DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES,
@@ -18,7 +16,7 @@ import useFeatureFlags, {
 } from '@/lib/hooks/UseFeatureFlags';
 import useCourts from '@/lib/hooks/UseCourts';
 import { buildDivisionsDisplay } from '@/lib/utils/court-utils';
-import Api2 from '@/lib/models/api2';
+import { useUpcomingKeyDates } from './useUpcomingKeyDates';
 import {
   isChapter12Standing,
   isChapter13Standing,
@@ -101,26 +99,11 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
     showsChpt13StandingUpcomingKeyDates ||
     showsChpt7ElectedKeyDatesCards;
 
-  const [keyDatesData, setKeyDatesData] = useState<TrusteeUpcomingKeyDates | null>(null);
-  const [isKeyDatesLoading, setIsKeyDatesLoading] = useState(shouldFetchKeyDates);
-
-  useEffect(() => {
-    if (!shouldFetchKeyDates) {
-      return;
-    }
-    setIsKeyDatesLoading(true);
-    Api2.getUpcomingKeyDates(props.appointment.trusteeId, props.appointment.id)
-      .then((response) => {
-        setKeyDatesData(response.data);
-      })
-      .catch((error) => {
-        console.error('Could not load upcoming key dates', error);
-        setKeyDatesData(null);
-      })
-      .finally(() => {
-        setIsKeyDatesLoading(false);
-      });
-  }, [props.appointment.trusteeId, props.appointment.id, shouldFetchKeyDates]);
+  const { data: keyDatesData, isLoading: isKeyDatesLoading } = useUpcomingKeyDates(
+    props.appointment.trusteeId,
+    props.appointment.id,
+    shouldFetchKeyDates,
+  );
 
   return (
     <div

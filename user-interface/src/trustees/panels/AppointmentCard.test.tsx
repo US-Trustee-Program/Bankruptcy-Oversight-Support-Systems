@@ -17,6 +17,7 @@ import {
   DISPLAY_CHPT12_STANDING_KEY_DATES,
   DISPLAY_CHPT13_STANDING_KEY_DATES,
   DISPLAY_CHPT7_ELECTED_KEY_DATES,
+  TPR_DISPLAY_UPDATES,
 } from '@/lib/hooks/UseFeatureFlags';
 
 const mockUseNavigate = vi.hoisted(() => vi.fn());
@@ -35,12 +36,18 @@ vi.mock('@/lib/hooks/UseCourts', () => ({
 }));
 
 vi.mock('./UpcomingKeyDates', () => ({
-  default: (props: { data: unknown; isLoading: boolean; variant?: string }) => (
+  default: (props: {
+    data: unknown;
+    isLoading: boolean;
+    variant?: string;
+    tprDisplayUpdates?: boolean;
+  }) => (
     <div
       data-testid="upcoming-key-dates-card"
       data-is-loading={String(props.isLoading)}
       data-has-data={String(props.data !== null)}
       data-variant={String(props.variant)}
+      data-tpr-display-updates={String(props.tprDisplayUpdates)}
     />
   ),
 }));
@@ -320,6 +327,33 @@ describe('AppointmentCard', () => {
       });
 
       expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
+    });
+
+    test('forwards tprDisplayUpdates derived from the TPR_DISPLAY_UPDATES flag', () => {
+      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+        [DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES]: true,
+        [TPR_DISPLAY_UPDATES]: true,
+      });
+
+      renderWithProps({
+        appointment: { ...mockAppointment, chapter: '7', appointmentType: 'panel' },
+      });
+
+      expect(screen.getByTestId('upcoming-key-dates-card')).toHaveAttribute(
+        'data-tpr-display-updates',
+        'true',
+      );
+    });
+
+    test('forwards tprDisplayUpdates as false when the TPR_DISPLAY_UPDATES flag is disabled', () => {
+      renderWithProps({
+        appointment: { ...mockAppointment, chapter: '7', appointmentType: 'panel' },
+      });
+
+      expect(screen.getByTestId('upcoming-key-dates-card')).toHaveAttribute(
+        'data-tpr-display-updates',
+        'false',
+      );
     });
   });
 
@@ -705,15 +739,18 @@ describe('AppointmentCard', () => {
   });
 
   test('still renders when courts fail to load', () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const courtsError = new Error('courts unavailable');
     mockUseCourts.mockReturnValue({
       courts: [],
       loading: false,
-      error: new Error('courts unavailable'),
+      error: courtsError,
     });
 
     renderWithProps();
 
     expect(screen.getByText(/District:/i)).toBeInTheDocument();
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Error loading courts:', courtsError);
   });
 
   test('Divisions field resolves a division code to its name using loaded courts', () => {

@@ -12,7 +12,7 @@ export const CardHeading = ({ children }: { children: ReactNode }) => <>{childre
 export const CardBody = ({ children }: { children: ReactNode }) => <>{children}</>;
 export const CardFooter = ({ children }: { children: ReactNode }) => <>{children}</>;
 
-export const Card = ({ children, headingLevel = 'h4', ...props }: CardProps) => {
+export const Card = ({ children, headingLevel = 'h4', className, ...props }: CardProps) => {
   let heading: ReactNode = null;
   let body: ReactNode = null;
   let footer: ReactNode = null;
@@ -34,9 +34,10 @@ export const Card = ({ children, headingLevel = 'h4', ...props }: CardProps) => 
   });
 
   const sectionAriaProps = heading ? { 'aria-labelledby': headingId } : {};
+  const sectionClassName = className ? `usa-card ${className}` : 'usa-card';
 
   return (
-    <section className="usa-card" {...props} {...sectionAriaProps}>
+    <section className={sectionClassName} {...props} {...sectionAriaProps}>
       <div className="usa-card__container">
         {heading && (
           <header className="usa-card__header">

@@ -96,7 +96,7 @@ describe('trustees-comprehensive scenario', () => {
     expect(chapters).toContain('11-subchapter-v');
   });
 
-  test('includes panel, standing, and pool appointment types', async () => {
+  test('includes panel, standing, pool, off-panel, and case-by-case appointment types', async () => {
     const ops = await generate(mockContext);
     const appointments =
       ops.find((op) => op.collectionOrTable === 'trustee-appointments')?.data || [];
@@ -105,6 +105,8 @@ describe('trustees-comprehensive scenario', () => {
     expect(types).toContain('panel');
     expect(types).toContain('standing');
     expect(types).toContain('pool');
+    expect(types).toContain('off-panel');
+    expect(types).toContain('case-by-case');
   });
 
   test('includes a trustee with appointments in multiple courts', async () => {

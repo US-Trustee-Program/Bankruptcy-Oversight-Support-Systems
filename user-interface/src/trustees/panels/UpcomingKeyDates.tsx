@@ -1,8 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
-import LocalStorage from '@/lib/utils/local-storage';
-import { CamsRole } from '@common/cams/roles';
+import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import InfoCard from './InfoCard';
 import {
   getUpcomingKeyDatesFieldConfig,
@@ -30,8 +29,7 @@ export default function UpcomingKeyDates(props: Readonly<UpcomingKeyDatesProps>)
     tprDisplayUpdates = true,
   } = props;
   const navigate = useNavigate();
-  const session = LocalStorage.getSession();
-  const canManage = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
+  const canManage = useCanManageTrustees();
 
   function openEdit() {
     navigate(`/trustees/${trusteeId}/appointments/${appointmentId}/upcoming-key-dates/edit`, {

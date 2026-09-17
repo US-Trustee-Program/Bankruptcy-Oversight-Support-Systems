@@ -27,6 +27,7 @@ import TrusteeAppointmentForm from './forms/TrusteeAppointmentForm';
 import EditTrusteeAppointment from './forms/EditTrusteeAppointment';
 import UpcomingKeyDatesForm from './forms/UpcomingKeyDatesForm';
 import PastKeyDatesForm from './forms/PastKeyDatesForm';
+import BondKeyDatesForm from './forms/BondKeyDatesForm';
 import TrusteeMeetingOfCreditorsInfoForm from './forms/TrusteeMeetingOfCreditorsInfoForm';
 import TrusteeNotes from '@/trustees/panels/trustee-notes/TrusteeNotes';
 import useFeatureFlags, {
@@ -289,6 +290,12 @@ export default function TrusteeDetailScreen() {
       ),
       subHeading: (location.state as { subHeading?: string } | null)?.subHeading ?? '',
       content: <PastKeyDatesForm />,
+    },
+    {
+      path: 'appointments/:appointmentId/bond-key-dates/edit',
+      disabled: !featureFlags[DISPLAY_CHPT7_ELECTED_KEY_DATES],
+      subHeading: (location.state as { subHeading?: string } | null)?.subHeading ?? '',
+      content: <BondKeyDatesForm />,
     },
     {
       path: 'assigned-staff',

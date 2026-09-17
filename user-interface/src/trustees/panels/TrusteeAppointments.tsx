@@ -1,21 +1,35 @@
 import './TrusteeAppointments.scss';
-import { useEffect, useState } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import Api2 from '@/lib/models/api2';
 import { sortByCourtLocation } from '@/lib/utils/court-utils';
-import { TrusteeAppointment, isChapter11CaseByCase } from '@common/cams/trustee-appointments';
+import {
+  TrusteeAppointment,
+  isChapter11CaseByCase,
+  isChapter7Elected,
+} from '@common/cams/trustee-appointments';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import AppointmentCard from './AppointmentCard';
 import AppointmentAccordion from './AppointmentAccordion';
 import Chapter11CaseByCaseAppointmentBody from './Chapter11CaseByCaseAppointmentBody';
+import Chapter7ElectedAppointmentBody from './Chapter7ElectedAppointmentBody';
 import Button from '@/lib/components/uswds/Button';
 import Icon from '@/lib/components/uswds/Icon';
 import { useNavigate } from 'react-router-dom';
-import { useSessionState } from '@/lib/hooks/UseSessionState';
-import { isActiveAppointment } from './appointmentDisplay';
+import { useAppointmentExpansion } from './useAppointmentExpansion';
 
 interface TrusteeAppointmentsProps {
   trusteeId: string;
+}
+
+function resolveAccordionBody(appointment: TrusteeAppointment): ReactNode | undefined {
+  if (isChapter11CaseByCase(appointment.chapter, appointment.appointmentType)) {
+    return <Chapter11CaseByCaseAppointmentBody appointment={appointment} />;
+  }
+  if (isChapter7Elected(appointment.chapter, appointment.appointmentType)) {
+    return <Chapter7ElectedAppointmentBody appointment={appointment} />;
+  }
+  return undefined;
 }
 
 export default function TrusteeAppointments(props: Readonly<TrusteeAppointmentsProps>) {
@@ -24,49 +38,7 @@ export default function TrusteeAppointments(props: Readonly<TrusteeAppointmentsP
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
-  interface ExpandedEntry {
-    status: TrusteeAppointment['status'];
-    expanded: boolean;
-  }
-
-  const [expandedMap, setExpandedMap] = useSessionState<Record<string, ExpandedEntry>>(
-    `trustee-appointments-expanded-${trusteeId}`,
-    {},
-  );
-
-  function defaultExpanded(appointment: TrusteeAppointment): boolean {
-    return isActiveAppointment(appointment.status);
-  }
-
-  function isExpanded(appointment: TrusteeAppointment): boolean {
-    const entry = expandedMap[appointment.id];
-    if (entry && entry.status === appointment.status) {
-      return entry.expanded;
-    }
-    return defaultExpanded(appointment);
-  }
-
-  function toggleExpanded(appointmentId: string) {
-    const appointment = appointments.find((a) => a.id === appointmentId);
-    if (!appointment) {
-      return;
-    }
-    setExpandedMap((prev) => {
-      const entry = prev[appointmentId];
-      const currentlyExpanded =
-        entry && entry.status === appointment.status
-          ? entry.expanded
-          : defaultExpanded(appointment);
-      const nextExpanded = !currentlyExpanded;
-      const next = { ...prev };
-      if (nextExpanded === defaultExpanded(appointment)) {
-        delete next[appointmentId];
-      } else {
-        next[appointmentId] = { status: appointment.status, expanded: nextExpanded };
-      }
-      return next;
-    });
-  }
+  const { isExpanded, toggleExpanded } = useAppointmentExpansion(trusteeId, appointments);
 
   useEffect(() => {
     const loadAppointments = async () => {
@@ -85,21 +57,6 @@ export default function TrusteeAppointments(props: Readonly<TrusteeAppointmentsP
 
     loadAppointments();
   }, [trusteeId]);
-
-  useEffect(() => {
-    setExpandedMap((prev) => {
-      let changed = false;
-      const next = { ...prev };
-      for (const appointment of appointments) {
-        const entry = next[appointment.id];
-        if (entry && entry.status !== appointment.status) {
-          delete next[appointment.id];
-          changed = true;
-        }
-      }
-      return changed ? next : prev;
-    });
-  }, [appointments, setExpandedMap]);
 
   if (isLoading) {
     return (
@@ -152,20 +109,21 @@ export default function TrusteeAppointments(props: Readonly<TrusteeAppointmentsP
         </Button>
       </div>
       <div className="appointments-list">
-        {sortedAppointments.map((appointment) =>
-          isChapter11CaseByCase(appointment.chapter, appointment.appointmentType) ? (
+        {sortedAppointments.map((appointment) => {
+          const accordionBody = resolveAccordionBody(appointment);
+          return accordionBody ? (
             <AppointmentAccordion
               key={appointment.id}
               appointment={appointment}
               expanded={isExpanded(appointment)}
               onToggle={toggleExpanded}
             >
-              <Chapter11CaseByCaseAppointmentBody appointment={appointment} />
+              {accordionBody}
             </AppointmentAccordion>
           ) : (
             <AppointmentCard key={appointment.id} appointment={appointment} />
-          ),
-        )}
+          );
+        })}
       </div>
     </div>
   );

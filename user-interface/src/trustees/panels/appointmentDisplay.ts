@@ -1,6 +1,5 @@
 import { formatDate } from '@/lib/utils/datetime';
 import { AppointmentStatus } from '@common/cams/trustees';
-import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 
 const UNIX_EPOCH = '1970-01-01';
 
@@ -20,9 +19,15 @@ export function formatAppointmentDate(dateString: string): string {
   return formatDate(dateString);
 }
 
-export function buildDistrictDisplay(
-  appointment: Pick<TrusteeAppointment, 'courtName' | 'courtId'>,
-): string {
+/**
+ * courtName and courtId are optional here even though TrusteeAppointment
+ * requires courtId, because legacy/malformed data from the ATS migration
+ * can still arrive without either field.
+ */
+export function buildDistrictDisplay(appointment: {
+  courtName?: string;
+  courtId?: string;
+}): string {
   if (appointment.courtName) {
     return appointment.courtName;
   }

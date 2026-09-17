@@ -1,0 +1,11 @@
+@import '@/lib/components/uswds/card-mixins';
+
+.editable-table-card-header {
+  @include card-header-with-action;
+
+  .editable-table-card-heading {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+}
