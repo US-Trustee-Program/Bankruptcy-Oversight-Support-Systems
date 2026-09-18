@@ -4,10 +4,11 @@
 # references. Read-only, and permanently so.
 #
 # This is the durable counterpart to the one-time CAMS-760 cleanup gate
-# (audit-unreferenced-gha-secrets.sh, deleted once that cleanup completes). That
-# script checks references against a frozen list of 31 names; this one enumerates
-# live scope and asks what has gone stale since. Orphans accumulate silently --
-# 31 of them built up here over years precisely because nothing was watching.
+# (audit-unreferenced-gha-secrets.sh, deleted with cams-xug4r once that cleanup
+# completed). That script checked references against a frozen list of 31 names;
+# this one enumerates live scope and asks what has gone stale since. Orphans
+# accumulate silently -- 31 of them built up here over years precisely because
+# nothing was watching.
 #
 # THREE RULES, in order of how badly breaking them hurts:
 #
