@@ -139,4 +139,27 @@ test.describe('Trustee Key Dates', () => {
     const accessibilityScanResults = await createAxeBuilder(trusteeProfilePage).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
   });
+
+  test('other key dates edit form should not have accessibility issues', async () => {
+    test.setTimeout(COMPLEX_TEST_TIMEOUT);
+
+    const editButton = trusteeProfilePage
+      .locator('[data-testid^="button-edit-chapter7-panel-other-key-dates-"]')
+      .first();
+    const isVisible = await editButton.isVisible().catch(() => false);
+
+    if (!isVisible) {
+      test.skip();
+      return;
+    }
+
+    await editButton.click();
+    await expect(
+      trusteeProfilePage.locator('[data-testid="edit-chapter7-panel-other"]'),
+    ).toBeVisible();
+
+    await trusteeProfilePage.waitForTimeout(ANALYZE_DELAY);
+    const accessibilityScanResults = await createAxeBuilder(trusteeProfilePage).analyze();
+    expect(accessibilityScanResults.violations).toEqual([]);
+  });
 });

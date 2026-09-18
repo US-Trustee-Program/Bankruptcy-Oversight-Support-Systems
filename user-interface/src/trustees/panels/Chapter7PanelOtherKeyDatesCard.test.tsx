@@ -1,10 +1,26 @@
 import { render, screen } from '@testing-library/react';
-import { describe, test, expect } from 'vitest';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
+import { BrowserRouter } from 'react-router-dom';
+import userEvent from '@testing-library/user-event';
 import Chapter7PanelOtherKeyDatesCard from './Chapter7PanelOtherKeyDatesCard';
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
+import { CamsRole } from '@common/cams/roles';
+import TestingUtilities from '@/lib/testing/testing-utilities';
+
+const mockUseNavigate = vi.hoisted(() => vi.fn());
+
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: mockUseNavigate,
+  };
+});
 
 describe('Chapter7PanelOtherKeyDatesCard', () => {
+  let mockNavigate: ReturnType<typeof vi.fn>;
+
   const keyDates: TrusteeUpcomingKeyDates = {
     id: 'key-dates-006',
     documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
@@ -17,14 +33,28 @@ describe('Chapter7PanelOtherKeyDatesCard', () => {
     pastBackgroundQuestion: '2023-06-03',
   };
 
-  function renderCard(data: TrusteeUpcomingKeyDates | null = keyDates, isLoading = false) {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    mockNavigate = vi.fn();
+    mockUseNavigate.mockReturnValue(mockNavigate);
+    TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
+  });
+
+  function renderCard(
+    data: TrusteeUpcomingKeyDates | null = keyDates,
+    isLoading = false,
+    appointmentHeading?: string,
+  ) {
     return render(
-      <Chapter7PanelOtherKeyDatesCard
-        trusteeId="trustee-123"
-        appointmentId="appointment-001"
-        data={data}
-        isLoading={isLoading}
-      />,
+      <BrowserRouter>
+        <Chapter7PanelOtherKeyDatesCard
+          trusteeId="trustee-123"
+          appointmentId="appointment-001"
+          appointmentHeading={appointmentHeading}
+          data={data}
+          isLoading={isLoading}
+        />
+      </BrowserRouter>,
     );
   }
 
@@ -48,9 +78,49 @@ describe('Chapter7PanelOtherKeyDatesCard', () => {
     expect(screen.queryByText('Other')).not.toBeInTheDocument();
   });
 
-  test('renders with no Edit button', () => {
+  test('renders an Edit button when user has TrusteeAdmin role', () => {
     renderCard();
 
-    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    expect(
+      screen.getByTestId('button-edit-chapter7-panel-other-key-dates-appointment-001'),
+    ).toBeInTheDocument();
+  });
+
+  test('does not render an Edit button when user lacks TrusteeAdmin role', () => {
+    TestingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
+
+    renderCard();
+
+    expect(
+      screen.queryByTestId('button-edit-chapter7-panel-other-key-dates-appointment-001'),
+    ).not.toBeInTheDocument();
+  });
+
+  test('navigates to the Other key dates edit form with the appointment heading as subHeading', async () => {
+    const user = userEvent.setup();
+    renderCard(keyDates, false, 'Southern District of New York (Manhattan): Chapter 7 - Panel');
+
+    await user.click(
+      screen.getByTestId('button-edit-chapter7-panel-other-key-dates-appointment-001'),
+    );
+
+    expect(mockNavigate).toHaveBeenCalledWith(
+      '/trustees/trustee-123/appointments/appointment-001/other-key-dates/edit',
+      { state: { subHeading: 'Southern District of New York (Manhattan): Chapter 7 - Panel' } },
+    );
+  });
+
+  test('navigates to the Other key dates edit form with an empty subHeading when none is provided', async () => {
+    const user = userEvent.setup();
+    renderCard(keyDates);
+
+    await user.click(
+      screen.getByTestId('button-edit-chapter7-panel-other-key-dates-appointment-001'),
+    );
+
+    expect(mockNavigate).toHaveBeenCalledWith(
+      '/trustees/trustee-123/appointments/appointment-001/other-key-dates/edit',
+      { state: { subHeading: '' } },
+    );
   });
 });

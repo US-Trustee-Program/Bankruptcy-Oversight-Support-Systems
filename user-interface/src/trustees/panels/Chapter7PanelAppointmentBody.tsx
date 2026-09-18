@@ -72,6 +72,7 @@ export default function Chapter7PanelAppointmentBody(
           <Chapter7PanelOtherKeyDatesCard
             trusteeId={appointment.trusteeId}
             appointmentId={appointment.id}
+            appointmentHeading={appointmentHeading}
             data={keyDates}
             isLoading={isKeyDatesLoading}
           />
