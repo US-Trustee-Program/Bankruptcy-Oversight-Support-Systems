@@ -36,6 +36,7 @@
  */
 
 import type { SeedContext, SeedOperation } from '../../runner.js';
+import type { AppointmentStatus } from '@common/cams/trustees.js';
 import { faker } from '@faker-js/faker';
 import { generateSearchTokens } from '../lib/phonetic-tokens.js';
 import { fakeUsPhoneNumber } from '../lib/test-data-utils.js';
@@ -123,7 +124,7 @@ function createAppointment(opts: {
   divisionCodes: string[];
   courtName: string;
   courtDivisionName: string;
-  status: 'active' | 'inactive' | 'deceased' | 'resigned' | 'removed';
+  status: AppointmentStatus;
   appointedDate?: string;
   effectiveDate?: string;
 }) {
