@@ -1,8 +1,6 @@
 import { WorkflowRun } from './deployment-frequency.js';
 import { resolvePeriodWindows } from './period-window.js';
-import { median } from './stats.js';
-
-const MS_PER_HOUR = 60 * 60 * 1000;
+import { mean, median, MS_PER_HOUR } from './stats.js';
 
 export type CompletedIssue = {
   number: number;
@@ -77,10 +75,7 @@ export function computeLeadTime(
       periodStart,
       periodEnd,
       issueCount: bucketLeadTimes.length,
-      meanLeadTimeHours:
-        bucketLeadTimes.length > 0
-          ? bucketLeadTimes.reduce((sum, v) => sum + v, 0) / bucketLeadTimes.length
-          : 0,
+      meanLeadTimeHours: mean(bucketLeadTimes),
       medianLeadTimeHours: median(bucketLeadTimes),
     };
   });

@@ -1,12 +1,7 @@
 import { WorkflowRun } from './deployment-frequency.js';
 import { resolvePeriodWindows } from './period-window.js';
-import { attributeDeploymentsToBugs } from './change-failure-attribution.js';
-
-export type SeverityHighBug = {
-  number: number;
-  created_at: string;
-  closed_at: string | null;
-};
+import { resolveDeploymentAttributions } from './change-failure-attribution.js';
+import { SeverityHighBug } from './types.js';
 
 type DeploymentFailure = {
   deployedAt: string;
@@ -44,19 +39,14 @@ export function computeChangeFailureRate(
     options.endDate,
   );
 
-  const deploymentTimestamps = runs
-    .filter((run) => run.conclusion === 'success')
-    .map((run) => new Date(run.created_at).getTime())
-    .filter((t) => t >= startDate.getTime() && t < endDate.getTime())
-    .sort((a, b) => a - b);
+  const { deploymentTimestampsMs, attributions } = resolveDeploymentAttributions(
+    bugIssues,
+    runs,
+    startDate,
+    endDate,
+  );
 
-  const bugs = bugIssues.map((bug) => ({
-    number: bug.number,
-    createdAtMs: new Date(bug.created_at).getTime(),
-  }));
-  const attributions = attributeDeploymentsToBugs(deploymentTimestamps, bugs);
-
-  const perDeployment: DeploymentFailure[] = deploymentTimestamps.map((deployedAtMs, i) => ({
+  const perDeployment: DeploymentFailure[] = deploymentTimestampsMs.map((deployedAtMs, i) => ({
     deployedAt: new Date(deployedAtMs).toISOString(),
     isChangeFailure: attributions[i] !== null,
     attributedIssueNumber: attributions[i],

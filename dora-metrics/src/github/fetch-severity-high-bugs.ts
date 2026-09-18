@@ -1,5 +1,5 @@
 import { Octokit } from '@octokit/rest';
-import { SeverityHighBug } from '../metrics/change-failure-rate.js';
+import { SeverityHighBug } from '../metrics/types.js';
 
 const PER_PAGE = 100;
 const LABELS = 'bug,severity:high';

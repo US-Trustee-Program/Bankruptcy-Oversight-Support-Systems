@@ -1,10 +1,8 @@
 import { WorkflowRun } from './deployment-frequency.js';
 import { resolvePeriodWindows } from './period-window.js';
-import { attributeDeploymentsToBugs } from './change-failure-attribution.js';
-import { median } from './stats.js';
-import { SeverityHighBug } from './change-failure-rate.js';
-
-const MS_PER_HOUR = 60 * 60 * 1000;
+import { resolveDeploymentAttributions } from './change-failure-attribution.js';
+import { mean, median, MS_PER_HOUR } from './stats.js';
+import { SeverityHighBug } from './types.js';
 
 type RestoredIncident = {
   issueNumber: number;
@@ -43,17 +41,7 @@ export function computeMttr(
     options.endDate,
   );
 
-  const deploymentTimestamps = runs
-    .filter((run) => run.conclusion === 'success')
-    .map((run) => new Date(run.created_at).getTime())
-    .filter((t) => t >= startDate.getTime() && t < endDate.getTime())
-    .sort((a, b) => a - b);
-
-  const bugs = bugIssues.map((bug) => ({
-    number: bug.number,
-    createdAtMs: new Date(bug.created_at).getTime(),
-  }));
-  const attributions = attributeDeploymentsToBugs(deploymentTimestamps, bugs);
+  const { attributions } = resolveDeploymentAttributions(bugIssues, runs, startDate, endDate);
   const attributedIssueNumbers = new Set(attributions.filter((n): n is number => n !== null));
 
   const perIncident: RestoredIncident[] = [];
@@ -61,8 +49,11 @@ export function computeMttr(
     if (!attributedIssueNumbers.has(bug.number)) continue;
     if (!bug.closed_at) continue;
     const createdAtMs = new Date(bug.created_at).getTime();
-    if (createdAtMs < startDate.getTime() || createdAtMs >= endDate.getTime()) continue;
+    // Every attributed bug's created_at is already > its deployment's timestamp,
+    // which is itself >= startDate, so createdAtMs can never be < startDate here.
+    if (createdAtMs >= endDate.getTime()) continue;
     const closedAtMs = new Date(bug.closed_at).getTime();
+    if (closedAtMs < createdAtMs) continue; // defensive: anomalous data, skip rather than corrupt the aggregate
     perIncident.push({
       issueNumber: bug.number,
       createdAt: bug.created_at,
@@ -83,10 +74,7 @@ export function computeMttr(
       periodStart,
       periodEnd,
       incidentCount: bucketRestoreTimes.length,
-      meanRestoreTimeHours:
-        bucketRestoreTimes.length > 0
-          ? bucketRestoreTimes.reduce((sum, v) => sum + v, 0) / bucketRestoreTimes.length
-          : 0,
+      meanRestoreTimeHours: mean(bucketRestoreTimes),
       medianRestoreTimeHours: median(bucketRestoreTimes),
     };
   });

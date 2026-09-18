@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
-import { computeChangeFailureRate, SeverityHighBug } from './change-failure-rate.js';
+import { computeChangeFailureRate } from './change-failure-rate.js';
 import { WorkflowRun } from './deployment-frequency.js';
+import { SeverityHighBug } from './types.js';
 
 describe('computeChangeFailureRate', () => {
   test('a deployment with zero qualifying bugs is not a change failure', () => {

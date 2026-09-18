@@ -1,5 +1,15 @@
 import { describe, expect, test } from 'vitest';
-import { median } from './stats.js';
+import { mean, median } from './stats.js';
+
+describe('mean', () => {
+  test('returns 0 for an empty array', () => {
+    expect(mean([])).toBe(0);
+  });
+
+  test('returns the average of the values', () => {
+    expect(mean([10, 20, 60])).toBe(30);
+  });
+});
 
 describe('median', () => {
   test('returns 0 for an empty array', () => {

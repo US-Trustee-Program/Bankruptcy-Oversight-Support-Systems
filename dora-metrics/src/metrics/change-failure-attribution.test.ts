@@ -1,5 +1,10 @@
 import { describe, expect, test } from 'vitest';
-import { attributeDeploymentsToBugs, AttributableBug } from './change-failure-attribution.js';
+import {
+  attributeDeploymentsToBugs,
+  AttributableBug,
+  resolveDeploymentAttributions,
+} from './change-failure-attribution.js';
+import { WorkflowRun } from './deployment-frequency.js';
 
 describe('attributeDeploymentsToBugs', () => {
   test('does not attribute a bug created exactly at the deployment boundary (exclusive lower bound)', () => {
@@ -82,5 +87,39 @@ describe('attributeDeploymentsToBugs', () => {
     const result = attributeDeploymentsToBugs([deployedAtMs], []);
 
     expect(result).toEqual([null]);
+  });
+
+  test('claims bugs in chronological deployment order and returns results in input order, even when input is unsorted', () => {
+    const firstDeployedAtMs = new Date('2026-01-02T00:00:00.000Z').getTime();
+    const secondDeployedAtMs = new Date('2026-01-02T06:00:00.000Z').getTime();
+    // Falls within 24h of both deployments; must be claimed by the chronologically
+    // earlier one (first) even though it is passed second in the input array.
+    const bugs: AttributableBug[] = [
+      { number: 1, createdAtMs: new Date('2026-01-02T03:00:00.000Z').getTime() },
+    ];
+
+    const result = attributeDeploymentsToBugs([secondDeployedAtMs, firstDeployedAtMs], bugs);
+
+    expect(result).toEqual([null, 1]);
+  });
+});
+
+describe('resolveDeploymentAttributions', () => {
+  test('excludes a successful run landing exactly at endDate (exclusive upper bound)', () => {
+    const startDate = new Date('2026-01-01T00:00:00.000Z');
+    const endDate = new Date('2026-01-08T00:00:00.000Z');
+    const runs: WorkflowRun[] = [
+      { id: 1, conclusion: 'success', created_at: endDate.toISOString() },
+    ];
+
+    const { deploymentTimestampsMs, attributions } = resolveDeploymentAttributions(
+      [],
+      runs,
+      startDate,
+      endDate,
+    );
+
+    expect(deploymentTimestampsMs).toEqual([]);
+    expect(attributions).toEqual([]);
   });
 });

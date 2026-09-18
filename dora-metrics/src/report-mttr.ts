@@ -4,6 +4,7 @@ import { fetchSeverityHighBugs } from './github/fetch-severity-high-bugs.js';
 import { computeMttr } from './metrics/mttr.js';
 import { writeCsv } from './output/write-csv.js';
 import { resolveReportOptions } from './config/resolve-report-options.js';
+import { mean } from './metrics/stats.js';
 
 const DETAIL_OUTPUT_PATH = 'data/mttr-detail.csv';
 const BY_PERIOD_OUTPUT_PATH = 'data/mttr-by-period.csv';
@@ -43,11 +44,7 @@ async function main(): Promise<void> {
     ['periodStart', 'periodEnd', 'incidentCount', 'meanRestoreTimeHours', 'medianRestoreTimeHours'],
   );
 
-  const meanOverall =
-    perIncident.length > 0
-      ? perIncident.reduce((sum, incident) => sum + incident.restoreTimeHours, 0) /
-        perIncident.length
-      : 0;
+  const meanOverall = mean(perIncident.map((incident) => incident.restoreTimeHours));
 
   console.log(
     `Mean Time to Restore: ${perIncident.length} resolved incident(s) across ${byPeriod.length} period(s) (${meanOverall.toFixed(2)} mean hours). Wrote ${DETAIL_OUTPUT_PATH} and ${BY_PERIOD_OUTPUT_PATH}`,
