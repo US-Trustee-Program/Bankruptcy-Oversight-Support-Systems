@@ -10,7 +10,11 @@ import {
 export type UpcomingKeyDatesVariant =
   'chapter7-panel' | 'ch12-13-case-by-case' | 'chapter12-standing' | 'chapter13-standing';
 
-const NO_DATE = 'No date added';
+export const NO_DATE = 'No date added';
+
+export function formatDateOrDefault(isoDate: string | undefined): string {
+  return isoDate ? isoToMMDDYYYY(isoDate) : NO_DATE;
+}
 
 interface UpcomingKeyDatesDisplayField {
   label: string;

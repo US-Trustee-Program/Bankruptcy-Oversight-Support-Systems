@@ -9,7 +9,6 @@ import useFeatureFlags, {
   DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES,
 } from '@/lib/hooks/UseFeatureFlags';
 import { useUpcomingKeyDates } from './useUpcomingKeyDates';
-import { buildAppointmentHeading } from './appointmentDisplay';
 
 export interface Chapter7PanelAppointmentBodyProps {
   appointment: TrusteeAppointment;
@@ -30,8 +29,6 @@ export default function Chapter7PanelAppointmentBody(
     error: keyDatesLoadError,
   } = useUpcomingKeyDates(appointment.trusteeId, appointment.id, displayKeyDates);
 
-  const appointmentHeading = buildAppointmentHeading(appointment);
-
   return (
     <>
       <AppointmentBasicFields appointment={appointment} />
@@ -51,28 +48,24 @@ export default function Chapter7PanelAppointmentBody(
           <Chapter7PanelAuditFieldExamCard
             trusteeId={appointment.trusteeId}
             appointmentId={appointment.id}
-            appointmentHeading={appointmentHeading}
             data={keyDates}
             isLoading={isKeyDatesLoading}
           />
           <Chapter7PanelTrusteePerformanceReportCard
             trusteeId={appointment.trusteeId}
             appointmentId={appointment.id}
-            appointmentHeading={appointmentHeading}
             data={keyDates}
             isLoading={isKeyDatesLoading}
           />
           <Chapter7PanelTrusteeInterimReportCard
             trusteeId={appointment.trusteeId}
             appointmentId={appointment.id}
-            appointmentHeading={appointmentHeading}
             data={keyDates}
             isLoading={isKeyDatesLoading}
           />
           <Chapter7PanelOtherKeyDatesCard
             trusteeId={appointment.trusteeId}
             appointmentId={appointment.id}
-            appointmentHeading={appointmentHeading}
             data={keyDates}
             isLoading={isKeyDatesLoading}
           />

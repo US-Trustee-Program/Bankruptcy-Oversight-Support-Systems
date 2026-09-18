@@ -320,8 +320,8 @@ export default function Chapter7PanelAuditFieldExamForm() {
               }}
             >
               <option value="">- Select -</option>
-              <option value="CLOSED">Closed</option>
-              <option value="NOT_CLOSED">Not Closed</option>
+              <option value="CLOSED">Complete</option>
+              <option value="NOT_CLOSED">Incomplete</option>
             </select>
           </div>
         </div>

@@ -44,17 +44,12 @@ describe('Chapter7PanelAuditFieldExamCard', () => {
     TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
   });
 
-  function renderCard(
-    data: TrusteeUpcomingKeyDates | null = keyDates,
-    isLoading = false,
-    appointmentHeading?: string,
-  ) {
+  function renderCard(data: TrusteeUpcomingKeyDates | null = keyDates, isLoading = false) {
     return render(
       <BrowserRouter>
         <Chapter7PanelAuditFieldExamCard
           trusteeId="trustee-123"
           appointmentId="appointment-001"
-          appointmentHeading={appointmentHeading}
           data={data}
           isLoading={isLoading}
         />
@@ -127,21 +122,7 @@ describe('Chapter7PanelAuditFieldExamCard', () => {
     ).not.toBeInTheDocument();
   });
 
-  test('navigates to the Audit/Field Exam edit form with the appointment heading as subHeading', async () => {
-    const user = userEvent.setup();
-    renderCard(keyDates, false, 'Southern District of New York (Manhattan): Chapter 7 - Panel');
-
-    await user.click(
-      screen.getByTestId('button-edit-chapter7-panel-audit-field-exam-appointment-001'),
-    );
-
-    expect(mockNavigate).toHaveBeenCalledWith(
-      '/trustees/trustee-123/appointments/appointment-001/audit-field-exam-key-dates/edit',
-      { state: { subHeading: 'Southern District of New York (Manhattan): Chapter 7 - Panel' } },
-    );
-  });
-
-  test('navigates with an empty subHeading when no appointmentHeading is provided', async () => {
+  test('navigates to the Audit/Field Exam edit form', async () => {
     const user = userEvent.setup();
     renderCard();
 
@@ -151,23 +132,22 @@ describe('Chapter7PanelAuditFieldExamCard', () => {
 
     expect(mockNavigate).toHaveBeenCalledWith(
       '/trustees/trustee-123/appointments/appointment-001/audit-field-exam-key-dates/edit',
-      { state: { subHeading: '' } },
     );
   });
 
-  test('shows a "Closed for <year>" tag when completion status is CLOSED', () => {
+  test('shows a "Complete for <year>" tag when completion status is CLOSED', () => {
     renderCard({ ...keyDates, auditCompletionYear: 2023, auditCompletionStatus: 'CLOSED' });
 
     expect(screen.getByTestId('tag-audit-completion-status-tag-appointment-001')).toHaveTextContent(
-      'Closed for 2023',
+      'Complete for 2023',
     );
   });
 
-  test('shows a "Not Closed for <year>" tag when completion status is NOT_CLOSED', () => {
+  test('shows an "Incomplete for <year>" tag when completion status is NOT_CLOSED', () => {
     renderCard({ ...keyDates, auditCompletionYear: 2024, auditCompletionStatus: 'NOT_CLOSED' });
 
     expect(screen.getByTestId('tag-audit-completion-status-tag-appointment-001')).toHaveTextContent(
-      'Not Closed for 2024',
+      'Incomplete for 2024',
     );
   });
 

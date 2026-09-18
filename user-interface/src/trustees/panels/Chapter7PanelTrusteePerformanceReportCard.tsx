@@ -1,39 +1,31 @@
 import { useNavigate } from 'react-router-dom';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import EditableTableCard from '@/lib/components/cams/EditableTableCard/EditableTableCard';
-import { TrusteeUpcomingKeyDates, isoToMMDDYYYY } from '@common/cams/trustee-upcoming-key-dates';
+import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import {
   tprReviewPeriodField,
   tprFrequencyField,
   tprDueField,
+  formatDateOrDefault,
 } from './upcomingKeyDatesFieldConfig';
 
 export interface Chapter7PanelTrusteePerformanceReportCardProps {
   trusteeId: string;
   appointmentId: string;
-  appointmentHeading?: string;
   data: TrusteeUpcomingKeyDates | null;
   isLoading: boolean;
-}
-
-const NO_DATE = 'No date added';
-
-function formatDateOrDefault(isoDate: string | undefined): string {
-  return isoDate ? isoToMMDDYYYY(isoDate) : NO_DATE;
 }
 
 export default function Chapter7PanelTrusteePerformanceReportCard(
   props: Readonly<Chapter7PanelTrusteePerformanceReportCardProps>,
 ) {
-  const { trusteeId, appointmentId, appointmentHeading, data, isLoading } = props;
+  const { trusteeId, appointmentId, data, isLoading } = props;
   const navigate = useNavigate();
   const canManage = useCanManageTrustees();
 
   function openEdit() {
-    navigate(`/trustees/${trusteeId}/appointments/${appointmentId}/tpr-key-dates/edit`, {
-      state: { subHeading: appointmentHeading ?? '' },
-    });
+    navigate(`/trustees/${trusteeId}/appointments/${appointmentId}/tpr-key-dates/edit`);
   }
 
   if (isLoading) {

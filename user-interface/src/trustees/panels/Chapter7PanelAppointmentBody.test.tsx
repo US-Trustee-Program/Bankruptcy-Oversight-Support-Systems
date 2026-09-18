@@ -15,16 +15,11 @@ vi.mock('./AppointmentBasicFields', () => ({
 }));
 
 function mockCard(testId: string) {
-  return (props: {
-    data: TrusteeUpcomingKeyDates | null;
-    isLoading: boolean;
-    appointmentHeading?: string;
-  }) => (
+  return (props: { data: TrusteeUpcomingKeyDates | null; isLoading: boolean }) => (
     <div
       data-testid={testId}
       data-is-loading={String(props.isLoading)}
       data-has-data={String(props.data !== null)}
-      data-appointment-heading={props.appointmentHeading}
     />
   );
 }
@@ -116,44 +111,6 @@ describe('Chapter7PanelAppointmentBody', () => {
     ]) {
       expect(screen.getByTestId(testId)).toHaveAttribute('data-has-data', 'true');
     }
-  });
-
-  test('builds the district/division/chapter/type appointment heading for all four cards', async () => {
-    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: keyDates });
-
-    renderBody();
-
-    await waitFor(() => {
-      expect(screen.getByTestId('chapter7-panel-audit-field-exam-card')).toHaveAttribute(
-        'data-appointment-heading',
-        'Southern District of New York (Manhattan): Chapter 7 - Panel',
-      );
-    });
-    expect(screen.getByTestId('chapter7-panel-tpr-card')).toHaveAttribute(
-      'data-appointment-heading',
-      'Southern District of New York (Manhattan): Chapter 7 - Panel',
-    );
-    expect(screen.getByTestId('chapter7-panel-tir-card')).toHaveAttribute(
-      'data-appointment-heading',
-      'Southern District of New York (Manhattan): Chapter 7 - Panel',
-    );
-    expect(screen.getByTestId('chapter7-panel-other-key-dates-card')).toHaveAttribute(
-      'data-appointment-heading',
-      'Southern District of New York (Manhattan): Chapter 7 - Panel',
-    );
-  });
-
-  test('omits the division parenthetical when the appointment has none', async () => {
-    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: keyDates });
-
-    renderBody({ ...mockAppointment, courtDivisionName: undefined });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('chapter7-panel-audit-field-exam-card')).toHaveAttribute(
-        'data-appointment-heading',
-        'Southern District of New York: Chapter 7 - Panel',
-      );
-    });
   });
 
   test('forwards null data to all four cards when no key dates document exists', async () => {

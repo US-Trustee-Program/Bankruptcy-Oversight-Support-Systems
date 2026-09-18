@@ -132,12 +132,6 @@ export default function Chapter7PanelTrusteePerformanceReportForm() {
       });
   }, [trusteeId, appointmentId]);
 
-  function handleDateChange(field: 'lastTprSubmitted') {
-    return (ev: React.ChangeEvent<HTMLInputElement>) => {
-      setForm((prev) => ({ ...prev, [field]: ev.target.value }));
-    };
-  }
-
   async function handleSave() {
     setIsSaving(true);
     const input = buildTrusteePerformanceReportKeyDatesInput(
@@ -292,7 +286,7 @@ export default function Chapter7PanelTrusteePerformanceReportForm() {
         id="last-tpr-submitted"
         label="Last TPR Submitted"
         value={form.lastTprSubmitted}
-        onChange={handleDateChange('lastTprSubmitted')}
+        onChange={(e) => setForm((prev) => ({ ...prev, lastTprSubmitted: e.target.value }))}
         onValidationChange={(hasError) => registerFieldError('last-tpr-submitted', hasError)}
         disableMax
       />

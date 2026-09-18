@@ -1,22 +1,20 @@
 import { useNavigate } from 'react-router-dom';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import EditableTableCard from '@/lib/components/cams/EditableTableCard/EditableTableCard';
-import { TrusteeUpcomingKeyDates, isoToMMDDYYYY } from '@common/cams/trustee-upcoming-key-dates';
+import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
-import { examOrAuditField, auditReqByField } from './upcomingKeyDatesFieldConfig';
+import {
+  examOrAuditField,
+  auditReqByField,
+  formatDateOrDefault,
+  NO_DATE,
+} from './upcomingKeyDatesFieldConfig';
 
 export interface Chapter7PanelAuditFieldExamCardProps {
   trusteeId: string;
   appointmentId: string;
-  appointmentHeading?: string;
   data: TrusteeUpcomingKeyDates | null;
   isLoading: boolean;
-}
-
-const NO_DATE = 'No date added';
-
-function formatDateOrDefault(isoDate: string | undefined): string {
-  return isoDate ? isoToMMDDYYYY(isoDate) : NO_DATE;
 }
 
 function formatYearOrDefault(year: number | undefined): string {
@@ -26,16 +24,13 @@ function formatYearOrDefault(year: number | undefined): string {
 export default function Chapter7PanelAuditFieldExamCard(
   props: Readonly<Chapter7PanelAuditFieldExamCardProps>,
 ) {
-  const { trusteeId, appointmentId, appointmentHeading, data, isLoading } = props;
+  const { trusteeId, appointmentId, data, isLoading } = props;
   const navigate = useNavigate();
   const canManage = useCanManageTrustees();
 
   function openEdit() {
     navigate(
       `/trustees/${trusteeId}/appointments/${appointmentId}/audit-field-exam-key-dates/edit`,
-      {
-        state: { subHeading: appointmentHeading ?? '' },
-      },
     );
   }
 
@@ -49,7 +44,7 @@ export default function Chapter7PanelAuditFieldExamCard(
   const tag =
     data?.auditCompletionYear !== undefined && data?.auditCompletionStatus !== undefined
       ? {
-          label: `${data.auditCompletionStatus === 'CLOSED' ? 'Closed' : 'Not Closed'} for ${data.auditCompletionYear}`,
+          label: `${data.auditCompletionStatus === 'CLOSED' ? 'Complete' : 'Incomplete'} for ${data.auditCompletionYear}`,
           color: (data.auditCompletionStatus === 'CLOSED' ? 'green' : 'red') as 'green' | 'red',
           id: `audit-completion-status-tag-${appointmentId}`,
         }

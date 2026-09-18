@@ -40,17 +40,12 @@ describe('Chapter7PanelOtherKeyDatesCard', () => {
     TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
   });
 
-  function renderCard(
-    data: TrusteeUpcomingKeyDates | null = keyDates,
-    isLoading = false,
-    appointmentHeading?: string,
-  ) {
+  function renderCard(data: TrusteeUpcomingKeyDates | null = keyDates, isLoading = false) {
     return render(
       <BrowserRouter>
         <Chapter7PanelOtherKeyDatesCard
           trusteeId="trustee-123"
           appointmentId="appointment-001"
-          appointmentHeading={appointmentHeading}
           data={data}
           isLoading={isLoading}
         />
@@ -96,9 +91,9 @@ describe('Chapter7PanelOtherKeyDatesCard', () => {
     ).not.toBeInTheDocument();
   });
 
-  test('navigates to the Other key dates edit form with the appointment heading as subHeading', async () => {
+  test('navigates to the Other key dates edit form', async () => {
     const user = userEvent.setup();
-    renderCard(keyDates, false, 'Southern District of New York (Manhattan): Chapter 7 - Panel');
+    renderCard();
 
     await user.click(
       screen.getByTestId('button-edit-chapter7-panel-other-key-dates-appointment-001'),
@@ -106,21 +101,6 @@ describe('Chapter7PanelOtherKeyDatesCard', () => {
 
     expect(mockNavigate).toHaveBeenCalledWith(
       '/trustees/trustee-123/appointments/appointment-001/other-key-dates/edit',
-      { state: { subHeading: 'Southern District of New York (Manhattan): Chapter 7 - Panel' } },
-    );
-  });
-
-  test('navigates to the Other key dates edit form with an empty subHeading when none is provided', async () => {
-    const user = userEvent.setup();
-    renderCard(keyDates);
-
-    await user.click(
-      screen.getByTestId('button-edit-chapter7-panel-other-key-dates-appointment-001'),
-    );
-
-    expect(mockNavigate).toHaveBeenCalledWith(
-      '/trustees/trustee-123/appointments/appointment-001/other-key-dates/edit',
-      { state: { subHeading: '' } },
     );
   });
 });
