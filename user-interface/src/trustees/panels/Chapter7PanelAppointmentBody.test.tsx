@@ -118,7 +118,7 @@ describe('Chapter7PanelAppointmentBody', () => {
     }
   });
 
-  test('builds the district/division/chapter/type appointment heading for the two editable cards', async () => {
+  test('builds the district/division/chapter/type appointment heading for the three editable cards', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: keyDates });
 
     renderBody();
@@ -130,6 +130,10 @@ describe('Chapter7PanelAppointmentBody', () => {
       );
     });
     expect(screen.getByTestId('chapter7-panel-tpr-card')).toHaveAttribute(
+      'data-appointment-heading',
+      'Southern District of New York (Manhattan): Chapter 7 - Panel',
+    );
+    expect(screen.getByTestId('chapter7-panel-tir-card')).toHaveAttribute(
       'data-appointment-heading',
       'Southern District of New York (Manhattan): Chapter 7 - Panel',
     );

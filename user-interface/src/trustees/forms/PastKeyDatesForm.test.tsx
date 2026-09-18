@@ -268,6 +268,8 @@ describe('PastKeyDatesForm', () => {
         auditCompletionStatus: null,
         tprCompletionYear: null,
         tprCompletionStatus: null,
+        tirCompletionYear: null,
+        tirCompletionStatus: null,
         tprReviewPeriodStart: '2025-04-01',
         tprReviewPeriodEnd: '1900-03-31',
         tprDue: '1900-09-15',

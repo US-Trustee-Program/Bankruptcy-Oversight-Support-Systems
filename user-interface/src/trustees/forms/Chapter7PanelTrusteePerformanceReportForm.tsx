@@ -77,6 +77,8 @@ export function buildTrusteePerformanceReportKeyDatesInput(
     auditCompletionStatus: original?.auditCompletionStatus ?? null,
     tprCompletionYear: form.tprCompletionYear !== '' ? form.tprCompletionYear : null,
     tprCompletionStatus: form.tprCompletionStatus || null,
+    tirCompletionYear: original?.tirCompletionYear ?? null,
+    tirCompletionStatus: original?.tirCompletionStatus ?? null,
     lastMonthlyReportReceived: original?.lastMonthlyReportReceived ?? null,
     leaseExpiration: original?.leaseExpiration ?? null,
     idExpiration: original?.idExpiration ?? null,

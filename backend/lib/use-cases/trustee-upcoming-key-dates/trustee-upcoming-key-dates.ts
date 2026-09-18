@@ -34,6 +34,9 @@ function buildFields(input: TrusteeUpcomingKeyDatesInput): Partial<TrusteeUpcomi
   if (input.tprCompletionYear !== null) {
     fields.tprCompletionYear = input.tprCompletionYear;
   }
+  if (input.tirCompletionYear !== null) {
+    fields.tirCompletionYear = input.tirCompletionYear;
+  }
   return fields;
 }
 
@@ -91,6 +94,16 @@ function diffFields(
     }
     if (incomingTprCompletionYear !== null) {
       after.tprCompletionYear = incomingTprCompletionYear;
+    }
+  }
+  const existingTirCompletionYear = existing?.tirCompletionYear ?? null;
+  const incomingTirCompletionYear = input.tirCompletionYear ?? null;
+  if (existingTirCompletionYear !== incomingTirCompletionYear) {
+    if (existingTirCompletionYear !== null) {
+      before.tirCompletionYear = existingTirCompletionYear;
+    }
+    if (incomingTirCompletionYear !== null) {
+      after.tirCompletionYear = incomingTirCompletionYear;
     }
   }
   return { before, after };

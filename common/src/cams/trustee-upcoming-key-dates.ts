@@ -218,6 +218,12 @@ const trusteeUpcomingKeyDatesSpec: ValidationSpec<TrusteeUpcomingKeyDatesInput> 
       'Trustee Performance Review Completion Status Year',
       'Trustee Performance Review Completion Status',
     ),
+    requirePair(
+      'tirCompletionYear',
+      'tirCompletionStatus',
+      'Trustee Interim Report Completion Status Year',
+      'Trustee Interim Report Completion Status',
+    ),
   ],
 };
 
@@ -277,6 +283,8 @@ export type TrusteeUpcomingKeyDates = Auditable &
     auditCompletionStatus?: 'CLOSED' | 'NOT_CLOSED';
     tprCompletionYear?: number;
     tprCompletionStatus?: 'COMPLETE' | 'INCOMPLETE';
+    tirCompletionYear?: number;
+    tirCompletionStatus?: 'COMPLETE' | 'INCOMPLETE';
     lastMonthlyReportReceived?: string;
     leaseExpiration?: string;
     idExpiration?: string;
@@ -314,6 +322,8 @@ export type TrusteeUpcomingKeyDatesInput = {
   auditCompletionStatus: 'CLOSED' | 'NOT_CLOSED' | null;
   tprCompletionYear: number | null;
   tprCompletionStatus: 'COMPLETE' | 'INCOMPLETE' | null;
+  tirCompletionYear: number | null;
+  tirCompletionStatus: 'COMPLETE' | 'INCOMPLETE' | null;
   lastMonthlyReportReceived: string | null;
   leaseExpiration: string | null;
   idExpiration: string | null;
@@ -384,7 +394,8 @@ type TextField =
   | 'tprFrequency'
   | 'tirFrequency'
   | 'auditCompletionStatus'
-  | 'tprCompletionStatus';
+  | 'tprCompletionStatus'
+  | 'tirCompletionStatus';
 
 export const TEXT_FIELDS: TextField[] = [
   'tprDueYearType',
@@ -392,6 +403,7 @@ export const TEXT_FIELDS: TextField[] = [
   'tirFrequency',
   'auditCompletionStatus',
   'tprCompletionStatus',
+  'tirCompletionStatus',
 ];
 
 export function isoToMMDDYYYY(iso: string): string {

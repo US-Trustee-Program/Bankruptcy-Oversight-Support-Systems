@@ -121,6 +121,8 @@ type FormState = {
   auditCompletionStatus: 'CLOSED' | 'NOT_CLOSED' | null;
   tprCompletionYear: number | null;
   tprCompletionStatus: 'COMPLETE' | 'INCOMPLETE' | null;
+  tirCompletionYear: number | null;
+  tirCompletionStatus: 'COMPLETE' | 'INCOMPLETE' | null;
   lastMonthlyReportReceived: string;
   leaseExpiration: string;
   idExpiration: string;
@@ -153,6 +155,8 @@ const EMPTY_FORM: FormState = {
   auditCompletionStatus: null,
   tprCompletionYear: null,
   tprCompletionStatus: null,
+  tirCompletionYear: null,
+  tirCompletionStatus: null,
   lastMonthlyReportReceived: '',
   leaseExpiration: '',
   idExpiration: '',
@@ -206,6 +210,8 @@ function buildFormStateFromData(data: TrusteeUpcomingKeyDates): FormState {
     auditCompletionStatus: data.auditCompletionStatus ?? null,
     tprCompletionYear: data.tprCompletionYear ?? null,
     tprCompletionStatus: data.tprCompletionStatus ?? null,
+    tirCompletionYear: data.tirCompletionYear ?? null,
+    tirCompletionStatus: data.tirCompletionStatus ?? null,
     lastMonthlyReportReceived: data.lastMonthlyReportReceived ?? '',
     leaseExpiration: data.leaseExpiration ?? '',
     idExpiration: data.idExpiration ?? '',
@@ -469,6 +475,8 @@ export default function UpcomingKeyDatesForm({
       auditCompletionStatus: form.auditCompletionStatus,
       tprCompletionYear: form.tprCompletionYear,
       tprCompletionStatus: form.tprCompletionStatus,
+      tirCompletionYear: form.tirCompletionYear,
+      tirCompletionStatus: form.tirCompletionStatus,
       lastMonthlyReportReceived: form.lastMonthlyReportReceived || null,
       leaseExpiration: form.leaseExpiration || null,
       idExpiration: form.idExpiration || null,

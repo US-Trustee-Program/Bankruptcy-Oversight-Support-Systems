@@ -75,6 +75,8 @@ export function buildAuditFieldExamKeyDatesInput(
     auditCompletionStatus: form.auditCompletionStatus || null,
     tprCompletionYear: original?.tprCompletionYear ?? null,
     tprCompletionStatus: original?.tprCompletionStatus ?? null,
+    tirCompletionYear: original?.tirCompletionYear ?? null,
+    tirCompletionStatus: original?.tirCompletionStatus ?? null,
     lastMonthlyReportReceived: original?.lastMonthlyReportReceived ?? null,
     leaseExpiration: original?.leaseExpiration ?? null,
     idExpiration: original?.idExpiration ?? null,

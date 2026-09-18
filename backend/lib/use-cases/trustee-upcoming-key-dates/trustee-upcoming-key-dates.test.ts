@@ -56,6 +56,8 @@ function buildMockInput(
     auditCompletionStatus: null,
     tprCompletionYear: null,
     tprCompletionStatus: null,
+    tirCompletionYear: null,
+    tirCompletionStatus: null,
     lastMonthlyReportReceived: null,
     leaseExpiration: null,
     idExpiration: null,
@@ -223,6 +225,8 @@ describe('TrusteeUpcomingKeyDatesUseCase', () => {
       ['lastTprSubmitted', '2026-01-15'],
       ['tprCompletionYear', 2026],
       ['tprCompletionStatus', 'COMPLETE'],
+      ['tirCompletionYear', 2026],
+      ['tirCompletionStatus', 'COMPLETE'],
     ])('saves %s when set', async (field, value) => {
       vi.spyOn(MockMongoRepository.prototype, 'getByAppointmentId').mockResolvedValue(null);
       const upsertSpy = vi
@@ -250,6 +254,7 @@ describe('TrusteeUpcomingKeyDatesUseCase', () => {
       ['upcomingExamOrAuditType'],
       ['auditCompletionYear'],
       ['tprCompletionYear'],
+      ['tirCompletionYear'],
     ])('does not include %s in saved doc when null', async (field) => {
       vi.spyOn(MockMongoRepository.prototype, 'getByAppointmentId').mockResolvedValue(null);
       const upsertSpy = vi
@@ -283,6 +288,7 @@ describe('TrusteeUpcomingKeyDatesUseCase', () => {
       ['bondRenewalDate', '2025-06-01', '2026-06-01'],
       ['auditCompletionYear', 2025, 2026],
       ['tprCompletionYear', 2025, 2026],
+      ['tirCompletionYear', 2025, 2026],
       ['lastTprSubmitted', '2025-01-15', '2026-01-15'],
     ])('%s change is captured in audit history', async (field, before, after) => {
       const existing = buildMockDocument({ [field]: before });
@@ -359,6 +365,7 @@ describe('TrusteeUpcomingKeyDatesUseCase', () => {
       ],
       ['auditCompletionYear', { auditCompletionYear: 2025 }, { auditCompletionYear: null }],
       ['tprCompletionYear', { tprCompletionYear: 2025 }, { tprCompletionYear: null }],
+      ['tirCompletionYear', { tirCompletionYear: 2025 }, { tirCompletionYear: null }],
       ['lastTprSubmitted', { lastTprSubmitted: '2025-01-15' }, { lastTprSubmitted: null }],
     ])(
       'scalar field cleared (%s → null): history shows old value in before, absent from after',

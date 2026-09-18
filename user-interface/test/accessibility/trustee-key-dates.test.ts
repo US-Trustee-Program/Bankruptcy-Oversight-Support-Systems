@@ -104,6 +104,29 @@ test.describe('Trustee Key Dates', () => {
     expect(accessibilityScanResults.violations).toEqual([]);
   });
 
+  test('trustee interim report edit form should not have accessibility issues', async () => {
+    test.setTimeout(COMPLEX_TEST_TIMEOUT);
+
+    const editButton = trusteeProfilePage
+      .locator('[data-testid^="button-edit-chapter7-panel-tir-"]')
+      .first();
+    const isVisible = await editButton.isVisible().catch(() => false);
+
+    if (!isVisible) {
+      test.skip();
+      return;
+    }
+
+    await editButton.click();
+    await expect(
+      trusteeProfilePage.locator('[data-testid="edit-chapter7-panel-tir"]'),
+    ).toBeVisible();
+
+    await trusteeProfilePage.waitForTimeout(ANALYZE_DELAY);
+    const accessibilityScanResults = await createAxeBuilder(trusteeProfilePage).analyze();
+    expect(accessibilityScanResults.violations).toEqual([]);
+  });
+
   test('other key dates card should not have accessibility issues', async () => {
     test.setTimeout(COMPLEX_TEST_TIMEOUT);
 

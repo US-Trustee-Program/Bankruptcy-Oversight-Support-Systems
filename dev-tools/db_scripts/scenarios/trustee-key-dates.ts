@@ -120,6 +120,9 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           // Completion status for the Trustee Performance Report card's tag (CAMS-912 Slice 3)
           tprCompletionYear: 2024,
           tprCompletionStatus: 'COMPLETE',
+          // Completion status for the Trustee Interim Report card's tag (CAMS-912 Slice 4)
+          tirCompletionYear: 2024,
+          tirCompletionStatus: 'COMPLETE',
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
         },

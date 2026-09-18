@@ -1,10 +1,26 @@
 import { render, screen } from '@testing-library/react';
-import { describe, test, expect } from 'vitest';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
+import { BrowserRouter } from 'react-router-dom';
+import userEvent from '@testing-library/user-event';
 import Chapter7PanelTrusteeInterimReportCard from './Chapter7PanelTrusteeInterimReportCard';
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
+import { CamsRole } from '@common/cams/roles';
+import TestingUtilities from '@/lib/testing/testing-utilities';
+
+const mockUseNavigate = vi.hoisted(() => vi.fn());
+
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: mockUseNavigate,
+  };
+});
 
 describe('Chapter7PanelTrusteeInterimReportCard', () => {
+  let mockNavigate: ReturnType<typeof vi.fn>;
+
   const keyDates: TrusteeUpcomingKeyDates = {
     id: 'key-dates-005',
     documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
@@ -21,31 +37,43 @@ describe('Chapter7PanelTrusteeInterimReportCard', () => {
     pastTprSubmission: '2026-06-06',
   };
 
-  function renderCard(data: TrusteeUpcomingKeyDates | null = keyDates, isLoading = false) {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    mockNavigate = vi.fn();
+    mockUseNavigate.mockReturnValue(mockNavigate);
+    TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
+  });
+
+  function renderCard(
+    data: TrusteeUpcomingKeyDates | null = keyDates,
+    isLoading = false,
+    appointmentHeading?: string,
+  ) {
     return render(
-      <Chapter7PanelTrusteeInterimReportCard
-        trusteeId="trustee-123"
-        appointmentId="appointment-001"
-        data={data}
-        isLoading={isLoading}
-      />,
+      <BrowserRouter>
+        <Chapter7PanelTrusteeInterimReportCard
+          trusteeId="trustee-123"
+          appointmentId="appointment-001"
+          appointmentHeading={appointmentHeading}
+          data={data}
+          isLoading={isLoading}
+        />
+      </BrowserRouter>,
     );
   }
 
-  test('renders the Trustee Interim Report title and all four columns', () => {
+  test('renders the Trustee Interim Report title, all four column headers, and their values', () => {
     renderCard();
 
     expect(screen.getByText('Trustee Interim Report')).toBeInTheDocument();
-    expect(screen.getByTestId('tir-review-period-row')).toBeInTheDocument();
+    expect(screen.getByText('TIR Review Period')).toBeInTheDocument();
+    expect(screen.getByText('TIR Submission')).toBeInTheDocument();
+    expect(screen.getByText('TIR Due')).toBeInTheDocument();
+    expect(screen.getByText('TIR Letter')).toBeInTheDocument();
+    expect(screen.getByTestId('tir-review-period-row')).toHaveTextContent('01/01 - 03/31');
     expect(screen.getByTestId('tir-submission-row')).toHaveTextContent('01/30');
     expect(screen.getByTestId('tir-review-row')).toHaveTextContent('03/30');
     expect(screen.getByTestId('past-tpr-submission-row')).toHaveTextContent('06/06/2026');
-  });
-
-  test('labels the TIR Due column "TIR Due" even though the underlying field is tirReview', () => {
-    renderCard();
-
-    expect(screen.getByText('TIR Due')).toBeInTheDocument();
   });
 
   test('shows "No date added" for all fields when there is no key dates document', () => {
@@ -64,9 +92,85 @@ describe('Chapter7PanelTrusteeInterimReportCard', () => {
     expect(screen.queryByText('Trustee Interim Report')).not.toBeInTheDocument();
   });
 
-  test('renders with no Edit button', () => {
+  test('renders an Edit button when user has TrusteeAdmin role', () => {
     renderCard();
 
-    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    expect(
+      screen.getByTestId('button-edit-chapter7-panel-tir-appointment-001'),
+    ).toBeInTheDocument();
+  });
+
+  test('does not render an Edit button when user lacks TrusteeAdmin role', () => {
+    TestingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
+
+    renderCard();
+
+    expect(
+      screen.queryByTestId('button-edit-chapter7-panel-tir-appointment-001'),
+    ).not.toBeInTheDocument();
+  });
+
+  test('navigates to the TIR key dates edit form with the appointment heading as subHeading', async () => {
+    const user = userEvent.setup();
+    renderCard(keyDates, false, 'Southern District of New York (Manhattan): Chapter 7 - Panel');
+
+    await user.click(screen.getByTestId('button-edit-chapter7-panel-tir-appointment-001'));
+
+    expect(mockNavigate).toHaveBeenCalledWith(
+      '/trustees/trustee-123/appointments/appointment-001/tir-key-dates/edit',
+      { state: { subHeading: 'Southern District of New York (Manhattan): Chapter 7 - Panel' } },
+    );
+  });
+
+  test('navigates to the TIR key dates edit form with an empty subHeading when none is provided', async () => {
+    const user = userEvent.setup();
+    renderCard(keyDates);
+
+    await user.click(screen.getByTestId('button-edit-chapter7-panel-tir-appointment-001'));
+
+    expect(mockNavigate).toHaveBeenCalledWith(
+      '/trustees/trustee-123/appointments/appointment-001/tir-key-dates/edit',
+      { state: { subHeading: '' } },
+    );
+  });
+
+  test('shows a "Complete for <year>" tag when tirCompletionStatus is COMPLETE', () => {
+    renderCard({ ...keyDates, tirCompletionYear: 2025, tirCompletionStatus: 'COMPLETE' });
+
+    expect(screen.getByTestId('tag-tir-completion-status-tag-appointment-001')).toHaveTextContent(
+      'Complete for 2025',
+    );
+  });
+
+  test('shows an "Incomplete for <year>" tag when tirCompletionStatus is INCOMPLETE', () => {
+    renderCard({ ...keyDates, tirCompletionYear: 2024, tirCompletionStatus: 'INCOMPLETE' });
+
+    expect(screen.getByTestId('tag-tir-completion-status-tag-appointment-001')).toHaveTextContent(
+      'Incomplete for 2024',
+    );
+  });
+
+  test('shows no tag when completion status is not set', () => {
+    renderCard({ ...keyDates, tirCompletionYear: undefined, tirCompletionStatus: undefined });
+
+    expect(
+      screen.queryByTestId('tag-tir-completion-status-tag-appointment-001'),
+    ).not.toBeInTheDocument();
+  });
+
+  test('shows no tag when only the year is set', () => {
+    renderCard({ ...keyDates, tirCompletionYear: 2025, tirCompletionStatus: undefined });
+
+    expect(
+      screen.queryByTestId('tag-tir-completion-status-tag-appointment-001'),
+    ).not.toBeInTheDocument();
+  });
+
+  test('shows no tag when only the status is set', () => {
+    renderCard({ ...keyDates, tirCompletionYear: undefined, tirCompletionStatus: 'COMPLETE' });
+
+    expect(
+      screen.queryByTestId('tag-tir-completion-status-tag-appointment-001'),
+    ).not.toBeInTheDocument();
   });
 });

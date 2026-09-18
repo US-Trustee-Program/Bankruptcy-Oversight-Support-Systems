@@ -174,6 +174,8 @@ describe('TrusteeUpcomingKeyDatesController', () => {
         auditCompletionStatus: null,
         tprCompletionYear: null,
         tprCompletionStatus: null,
+        tirCompletionYear: null,
+        tirCompletionStatus: null,
         lastMonthlyReportReceived: null,
         leaseExpiration: null,
         idExpiration: null,
@@ -290,6 +292,20 @@ describe('TrusteeUpcomingKeyDatesController', () => {
       });
     });
 
+    test('PUT with tirCompletionYear set but tirCompletionStatus null returns 400', async () => {
+      context.request = mockCamsHttpRequest({
+        method: 'PUT',
+        params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
+        body: buildValidInput({ tirCompletionYear: 2026, tirCompletionStatus: null }),
+      });
+
+      const controller = new TrusteeUpcomingKeyDatesController(context);
+
+      await expect(controller.handleRequest(context)).rejects.toMatchObject({
+        status: 400,
+      });
+    });
+
     test.each([
       { name: 'lastCompensationStudy', overrides: { lastCompensationStudy: '2024-06-01' } },
       { name: 'tprFrequency', overrides: { tprFrequency: 'SEMI_ANNUAL' as const } },
@@ -304,6 +320,10 @@ describe('TrusteeUpcomingKeyDatesController', () => {
       {
         name: 'tprCompletionYear and tprCompletionStatus',
         overrides: { tprCompletionYear: 2026, tprCompletionStatus: 'COMPLETE' as const },
+      },
+      {
+        name: 'tirCompletionYear and tirCompletionStatus',
+        overrides: { tirCompletionYear: 2026, tirCompletionStatus: 'COMPLETE' as const },
       },
       {
         name: 'lastTprSubmitted',

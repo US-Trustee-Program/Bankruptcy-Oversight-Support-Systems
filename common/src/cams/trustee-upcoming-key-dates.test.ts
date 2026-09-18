@@ -376,6 +376,8 @@ describe('validateTrusteeUpcomingKeyDates', () => {
       auditCompletionStatus: null,
       tprCompletionYear: null,
       tprCompletionStatus: null,
+      tirCompletionYear: null,
+      tirCompletionStatus: null,
       lastMonthlyReportReceived: null,
       leaseExpiration: null,
       idExpiration: null,
@@ -587,6 +589,39 @@ describe('validateTrusteeUpcomingKeyDates', () => {
       ...baseInput(),
       tprCompletionYear: 2026,
       tprCompletionStatus: 'COMPLETE',
+    });
+    expect(result).toEqual(VALID);
+  });
+
+  test('returns error when tirCompletionYear is set but tirCompletionStatus is null', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      tirCompletionYear: 2026,
+      tirCompletionStatus: null,
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.tirCompletionStatus?.reasons?.[0]).toBe(
+      'Trustee Interim Report Completion Status is required.',
+    );
+  });
+
+  test('returns error when tirCompletionStatus is set but tirCompletionYear is null', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      tirCompletionYear: null,
+      tirCompletionStatus: 'COMPLETE',
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.tirCompletionYear?.reasons?.[0]).toBe(
+      'Trustee Interim Report Completion Status Year is required.',
+    );
+  });
+
+  test('returns VALID when both tirCompletionYear and tirCompletionStatus are set', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      tirCompletionYear: 2026,
+      tirCompletionStatus: 'COMPLETE',
     });
     expect(result).toEqual(VALID);
   });
@@ -866,6 +901,7 @@ describe('validateTrusteeUpcomingKeyDates', () => {
       'tirFrequency',
       'auditCompletionStatus',
       'tprCompletionStatus',
+      'tirCompletionStatus',
     ]);
   });
 });
