@@ -7,7 +7,6 @@ import { formatChapterType, formatAppointmentType } from '@common/cams/trustees'
 import useEditTrusteeAppointment from '@/lib/hooks/UseEditTrusteeAppointment';
 import useFeatureFlags, {
   DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES,
-  DISPLAY_CHPT11_SUBV_PAST_KEY_DATES,
   DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES,
   DISPLAY_CHPT12_STANDING_KEY_DATES,
   DISPLAY_CHPT13_STANDING_KEY_DATES,
@@ -29,7 +28,6 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
   const featureFlags = useFeatureFlags();
   const displayChpt7PanelUpcomingKeyDates =
     featureFlags[DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES] === true;
-  const displayChpt11SubVPastKeyDates = featureFlags[DISPLAY_CHPT11_SUBV_PAST_KEY_DATES] === true;
   const displayChpt1213CaseByCaseUpcomingKeyDates =
     featureFlags[DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES] === true;
   const displayChpt12StandingKeyDates = featureFlags[DISPLAY_CHPT12_STANDING_KEY_DATES] === true;
@@ -64,8 +62,6 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
 
   const isPanelChapter7 =
     props.appointment.chapter === '7' && props.appointment.appointmentType === 'panel';
-  const isSubVPool =
-    props.appointment.chapter === '11-subchapter-v' && props.appointment.appointmentType === 'pool';
   const isCh1213CaseByCase =
     (props.appointment.chapter === '12' || props.appointment.chapter === '13') &&
     props.appointment.appointmentType === 'case-by-case';
@@ -76,7 +72,6 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
   const isChapter13StandingAppointment = isChapter13Standing(chapter, appointmentType);
 
   const showsChpt7KeyDatesCards = displayChpt7PanelUpcomingKeyDates && isPanelChapter7 && canManage;
-  const showsSubVPastKeyDatesCard = displayChpt11SubVPastKeyDates && isSubVPool;
   const showsCh1213UpcomingKeyDatesCard =
     displayChpt1213CaseByCaseUpcomingKeyDates && isCh1213CaseByCase;
   const showsChpt12StandingKeyDatesCards =
@@ -85,7 +80,6 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
     displayChpt13StandingKeyDates && isChapter13StandingAppointment;
   const shouldFetchKeyDates =
     showsChpt7KeyDatesCards ||
-    showsSubVPastKeyDatesCard ||
     showsCh1213UpcomingKeyDatesCard ||
     showsChpt12StandingKeyDatesCards ||
     showsChpt13StandingUpcomingKeyDates;
@@ -138,16 +132,6 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
               isLoading={isKeyDatesLoading}
             />
           </>
-        )}
-        {showsSubVPastKeyDatesCard && (
-          <PastKeyDates
-            variant="subv-pool"
-            trusteeId={props.appointment.trusteeId}
-            appointmentId={props.appointment.id}
-            appointmentHeading={appointmentHeading}
-            data={keyDatesData}
-            isLoading={isKeyDatesLoading}
-          />
         )}
         {showsCh1213UpcomingKeyDatesCard && (
           <UpcomingKeyDates

@@ -8,6 +8,7 @@ import {
 } from '@common/cams/trustee-upcoming-key-dates';
 import {
   PAST_KEY_DATES_FIELD_CONFIG,
+  PAST_KEY_DATES_VARIANT_LABELS,
   PastDateFieldKey,
   PastKeyDatesVariant,
 } from '@/trustees/panels/pastKeyDatesFieldConfig';
@@ -217,7 +218,7 @@ export default function PastKeyDatesForm() {
 
   return (
     <div className="edit-upcoming-key-dates" data-testid="edit-past-key-dates">
-      <h3>Edit Past Key Dates</h3>
+      <h3>{PAST_KEY_DATES_VARIANT_LABELS[variant].editHeading}</h3>
       {PAST_KEY_DATES_FIELD_CONFIG[variant].map((field) =>
         field.kind === 'year' ? (
           <div className="usa-form-group" key={field.inputId}>
