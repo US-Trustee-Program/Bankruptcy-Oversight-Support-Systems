@@ -1,3 +1,4 @@
+import './Chapter13StandingTrusteePerformanceReportForm.scss';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
@@ -196,7 +197,7 @@ export default function Chapter13StandingTrusteePerformanceReportForm() {
       <div className="tpr-review-period-group">
         <DatePicker
           id="tpr-review-period-start"
-          label="TPR Review Period Start"
+          label="Trustee Performance Review (TPR) Period Start"
           value={form.tprReviewPeriodStart}
           disableMax
           onChange={(e) => {
@@ -207,7 +208,7 @@ export default function Chapter13StandingTrusteePerformanceReportForm() {
         />
         <DatePicker
           id="tpr-review-period-end"
-          label="TPR Review Period End"
+          label="Trustee Performance Review (TPR) Period End"
           value={form.tprReviewPeriodEnd}
           disableMax
           onChange={(e) => {
@@ -224,10 +225,10 @@ export default function Chapter13StandingTrusteePerformanceReportForm() {
       </div>
       <div className="usa-form-group">
         <label className="usa-label" htmlFor="tpr-frequency">
-          TPR Review Period Frequency
+          Trustee Performance Review (TPR) Period Frequency
         </label>
         <select
-          className="usa-select"
+          className={`usa-select${form.tprFrequency === '' ? ' tpr-frequency-placeholder' : ''}`}
           id="tpr-frequency"
           data-testid="tpr-frequency"
           value={form.tprFrequency}
@@ -245,12 +246,13 @@ export default function Chapter13StandingTrusteePerformanceReportForm() {
         </select>
       </div>
       <div className="tpr-due-group">
-        <p className="usa-label">TPR Due</p>
+        <p className="usa-label tpr-due-title">Trustee Performance Review (TPR) Due</p>
         <div className="tpr-due-group__row">
           <MonthDaySelector
             id="tpr-due"
             value={form.tprDue}
             onChange={(value) => setForm((prev) => ({ ...prev, tprDue: value }))}
+            dayAlwaysEnabled
           />
           <div className="usa-form-group">
             <label className="usa-hint" htmlFor="tpr-due-year-type">
@@ -268,7 +270,7 @@ export default function Chapter13StandingTrusteePerformanceReportForm() {
                 }))
               }
             >
-              <option value="">- Select -</option>
+              <option value=""></option>
               <option value="EVEN">EVEN</option>
               <option value="ODD">ODD</option>
             </select>
@@ -282,14 +284,14 @@ export default function Chapter13StandingTrusteePerformanceReportForm() {
       </div>
       <DatePicker
         id="last-tpr-submitted"
-        label="Last TPR Submitted"
+        label="Last Trustee Performance Review (TPR) Submitted"
         value={form.pastTprSubmission}
         disableMax
         onChange={(e) => setForm((prev) => ({ ...prev, pastTprSubmission: e.target.value }))}
         onValidationChange={(hasError) => registerFieldError('last-tpr-submitted', hasError)}
       />
       <div className="tpr-completion-status-group">
-        <p className="usa-label">TPR Completion Status for Year</p>
+        <p className="usa-label tpr-completion-status-title">TPR Completion Status for Year</p>
         <div className="tpr-completion-status-group__row">
           <div className="usa-form-group">
             <label className="usa-hint" htmlFor="tpr-completion-year">
@@ -308,7 +310,7 @@ export default function Chapter13StandingTrusteePerformanceReportForm() {
                 }));
               }}
             >
-              <option value="">- Select -</option>
+              <option value=""></option>
               {COMPLETION_YEAR_OPTIONS.map((y) => (
                 <option key={y} value={y}>
                   {y}
@@ -332,7 +334,7 @@ export default function Chapter13StandingTrusteePerformanceReportForm() {
                 }))
               }
             >
-              <option value="">- Select -</option>
+              <option value=""></option>
               <option value="Complete">Complete</option>
               <option value="Incomplete">Incomplete</option>
             </select>

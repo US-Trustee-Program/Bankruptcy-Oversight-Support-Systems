@@ -1,3 +1,4 @@
+import './Chapter13StandingAuditForm.scss';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
@@ -165,7 +166,7 @@ export default function Chapter13StandingAuditForm() {
         onValidationChange={(hasError) => registerFieldError('past-audit', hasError)}
       />
       <div className="audit-completion-status-group">
-        <p className="usa-label">Audit Completion Status for Year</p>
+        <p className="usa-label audit-completion-status-title">Audit Completion Status for Year</p>
         <div className="audit-completion-status-group__row">
           <div className="usa-form-group">
             <label className="usa-hint" htmlFor="audit-completion-year">
@@ -184,7 +185,7 @@ export default function Chapter13StandingAuditForm() {
                 }));
               }}
             >
-              <option value="">- Select -</option>
+              <option value=""></option>
               {COMPLETION_YEAR_OPTIONS.map((y) => (
                 <option key={y} value={y}>
                   {y}
@@ -208,7 +209,7 @@ export default function Chapter13StandingAuditForm() {
                 }))
               }
             >
-              <option value="">- Select -</option>
+              <option value=""></option>
               <option value="Complete">Complete</option>
               <option value="Incomplete">Incomplete</option>
             </select>

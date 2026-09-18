@@ -15,6 +15,8 @@ type MonthDaySelectorProps = {
   className?: string;
   onFocus?: () => void;
   onBlur?: (e: FocusEvent<HTMLDivElement>) => void;
+  // When true, the Day dropdown is selectable before a Month is chosen (defaults to all 31 days)
+  dayAlwaysEnabled?: boolean;
 };
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => {
@@ -61,8 +63,18 @@ function parseValue(value?: string): { month: string; day: string } {
 }
 
 export default function MonthDaySelector(props: MonthDaySelectorProps) {
-  const { id, label, contextLabel, disabled, required, hasError, className, onFocus, onBlur } =
-    props;
+  const {
+    id,
+    label,
+    contextLabel,
+    disabled,
+    required,
+    hasError,
+    className,
+    onFocus,
+    onBlur,
+    dayAlwaysEnabled,
+  } = props;
 
   const parsed = parseValue(props.value);
   const [month, setMonth] = useState(parsed.month);
@@ -156,7 +168,7 @@ export default function MonthDaySelector(props: MonthDaySelectorProps) {
           className={`usa-select${hasError ? ' usa-input--error' : ''}`}
           value={day}
           onChange={handleDayChange}
-          disabled={disabled || !month}
+          disabled={disabled || (!month && !dayAlwaysEnabled)}
           required={required}
           aria-labelledby={label ? `${id}-label ${id}-day-label` : undefined}
           aria-label={!label && contextLabel ? `${contextLabel} Day` : undefined}
