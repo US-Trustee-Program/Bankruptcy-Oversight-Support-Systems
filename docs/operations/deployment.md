@@ -305,15 +305,11 @@ Flexion and **shared** with USTP.
 | Name                           | Type (Secret/Variable) | Is Flexion Only? | Description                                                                                                                                                                                                                                                                                                                    |
 | ------------------------------ | ---------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | AZURE_SUBSCRIPTION             | Secret                 | ---              | Azure Subscription ID                                                                                                                                                                                                                                                                                                          |
-| AZURE_CREDENTIALS              | Secret                 | ---              | Credentials for Azure Cloud Environment                                                                                                                                                                                                                                                                                        |
 | AZURE_ENVIRONMENT              | Variable               | Yes              | Specify target Azure cloud environment.                                                                                                                                                                                                                                                                                        |
 | AZ_APP_RG                      | Secret                 | ---              | Resource group name for all application related infrastructure.                                                                                                                                                                                                                                                                |
-| AZURE_RG                       | Secret                 | ---              | Resource group for miscellaneous Azure resources                                                                                                                                                                                                                                                                               |
+| AZURE_RG                       | Key Vault Secret       | ---              | Resource group for miscellaneous Azure resources. Read from Key Vault as `AZURE-RG`; no longer a GitHub Actions secret.                                                                                                                                                                                                        |
 | AZ_PLAN_TYPE                   | Variable               | ---              | Determine plan type for Azure App Service plans.                                                                                                                                                                                                                                                                               |
 | AZ_ACTION_GROUP_NAME           | Secret                 | ---              | Action Group Name for Azure Alerts                                                                                                                                                                                                                                                                                             |
-| AZ_PRIVATE_DNS_ZONE            | Variable               | ---              | Private DNS Zone name                                                                                                                                                                                                                                                                                                          |
-| AZ_PRIVATE_DNS_ZONE_RG         | Secret                 | ---              | Private DNS Zone Azure resource group name                                                                                                                                                                                                                                                                                     |
-| AZ_PRIVATE_DNS_ZONE_ID         | Secret                 | ---              | Private DNS Zone Azure Fully qualified ID                                                                                                                                                                                                                                                                                      |
 | AZ_NETWORK_RG                  | Secret                 | ---              | Resource Group for networking components                                                                                                                                                                                                                                                                                       |
 | AZ_NETWORK_VNET_NAME           | Variable               | ---              | Virtual Network Name                                                                                                                                                                                                                                                                                                           |
 | AZ_SQL_SERVER_NAME             | Secret                 | ---              | ---                                                                                                                                                                                                                                                                                                                            |
@@ -328,12 +324,12 @@ Flexion and **shared** with USTP.
 
 ### Snyk
 
-| Name                          | Type (Secret/Variable) | Is Flexion Only? | Description                                                      |
-| ----------------------------- | ---------------------- | ---------------- | ---------------------------------------------------------------- |
-| SNYK_OAUTH_CLIENT_ID          | Secrets                | ---              | OAuth client ID for Snyk government instance                     |
-| SNYK_OAUTH_CLIENT_SECRET      | Secrets                | ---              | OAuth client secret for Snyk government instance                 |
-| AZ_SECURITY_SCAN_RG           | Secrets                | ---              | Resource group for the security scan storage account             |
-| AZ_SECURITY_SCAN_STORAGE_NAME | Secrets                | ---              | Storage account name for security scan results (deployed by IaC) |
+| Name                          | Type (Secret/Variable) | Is Flexion Only? | Description                                                                                                                           |
+| ----------------------------- | ---------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| SNYK_OAUTH_CLIENT_ID          | Key Vault Secret       | ---              | OAuth client ID for Snyk government instance. Read from Key Vault as `SNYK-OAUTH-CLIENT-ID` (present in `kv-ustp-cams` only).         |
+| SNYK_OAUTH_CLIENT_SECRET      | Key Vault Secret       | ---              | OAuth client secret for Snyk government instance. Read from Key Vault as `SNYK-OAUTH-CLIENT-SECRET` (present in `kv-ustp-cams` only). |
+| AZ_SECURITY_SCAN_RG           | Secrets                | ---              | Resource group for the security scan storage account                                                                                  |
+| AZ_SECURITY_SCAN_STORAGE_NAME | Secrets                | ---              | Storage account name for security scan results (deployed by IaC)                                                                      |
 
 ### LaunchDarkly
 
@@ -343,11 +339,10 @@ Flexion and **shared** with USTP.
 
 ### API Function App
 
-| Name                      | Type (Secret/Variable) | Is Flexion Only? | Description                                            |
-| ------------------------- | ---------------------- | ---------------- | ------------------------------------------------------ |
-| STARTING_MONTH            | Variable               | ---              | Used by application for filtering cases by date range. |
-| USTP_ISSUE_COLLECTOR_HASH | Secrets                | ---              | USTP Only parameter used for CSP policy.               |
-| SLOT_NAME                 | Variable               | ---              | Deployment slot name for slot deployments              |
+| Name                      | Type (Secret/Variable) | Is Flexion Only? | Description                                                                    |
+| ------------------------- | ---------------------- | ---------------- | ------------------------------------------------------------------------------ |
+| USTP_ISSUE_COLLECTOR_HASH | Secrets                | ---              | USTP Only parameter used for CSP policy.                                       |
+| SLOT_NAME                 | Key Vault Secret       | ---              | Deployment slot name for slot deployments. Read from Key Vault as `SLOT-NAME`. |
 
 ### Dataflows Function App
 

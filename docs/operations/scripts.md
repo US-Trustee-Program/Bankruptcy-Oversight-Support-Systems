@@ -62,50 +62,6 @@ Actions does not have it, which is why this is run on demand rather than on a sc
 Only names are read, never values. Exit codes: `0` no new orphans, `1` new orphans, `2`
 usage, `3` inconclusive.
 
-### audit-unreferenced-gha-secrets.sh
-
-Read-only audit of the GitHub Actions secrets and variables slated for deletion by
-the CAMS-760 cleanup. Re-derives the "is anything still referencing this?" check by
-grepping `.github/` rather than trusting the runbook's tables, then corroborates it
-against the checks that make a static grep sound — no dynamic `secrets[...]` access,
-no composite actions, empty Dependabot/Codespaces scopes — plus environment-scoped
-name collisions and open PRs.
-
-A gate that cannot run reports `ERROR` and exits 3 (inconclusive), never `OK` — the
-dangerous failure for a pre-deletion gate is not a crash but a green light over a
-scan that never really looked. Exit 1 means a target is still referenced; exit 4 is
-`STRICT=true` with warnings.
-
-Three false-pass classes are closed deliberately, and a preflight self-test proves
-the pattern against fixtures before any real input is trusted. References are matched
-**case-insensitively** with optional whitespace around the dot, because GitHub
-expression property access is case-insensitive and `${{ secrets.azure_rg }}` is a
-working reference to `AZURE_RG`. The file walk uses `find -L`, because BSD `grep -R`
-does not follow a symlinked subdirectory and returns "no match" having searched
-nothing. Files are enumerated once so an unreadable file is reported on its own
-rather than poisoning every per-name scan, and `gh` calls pass an explicit `-R` with
-full `repos/OWNER/REPO/...` paths since the `:owner/:repo` placeholder shells out to
-git.
-
-Two gates cover the scoping hazard specific to this kind of cleanup. A reference
-check scoped to one branch quietly assumes nobody is adding secrets elsewhere, so
-Gate 6 scans every branch with commits in the last `ACTIVE_DAYS` (default 90)
-whether or not it has an open pull request — a branch being actively worked on
-usually has none — and treats a reference from one as a hard failure rather than a
-warning. Gate 7 enumerates live repository scope to report drift between the frozen
-list and reality, in both directions; that enumeration is reporting only and never
-feeds the deletion list, because an unreferenced orphan and a colleague's in-flight
-secret look identical from a single branch.
-
-`-b` additionally lists every remote branch still referencing a target, with age and
-commits-behind. Nothing is ever modified.
-
-**Shelf life:** the target list is frozen to CAMS-760 rather than derived, so this
-script is single-use scaffolding — it will keep auditing already-deleted names and
-cannot surface a secret added after authoring. Delete it once `cams-9n4tg` is
-verified complete (`cams-xug4r`). The durable artifact is
-[GHA Secret and Variable Deletion](/operations/gha-secret-deletion.md).
-
 ### az-cosmos-add-user.sh
 
 To simplify Cosmosdb administration, this script assigns a role to a principal for a target Cosmos Db account.
