@@ -103,7 +103,7 @@ describe('EditableTableCard', () => {
 
   test.each([
     ['green', 'bg-success'],
-    ['red', 'bg-secondary'],
+    ['red', 'bg-secondary-dark'],
   ] as const)('renders a %s tag with the %s style', (color, expectedClass) => {
     render(
       <EditableTableCard
