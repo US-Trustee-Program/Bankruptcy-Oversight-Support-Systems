@@ -140,7 +140,9 @@ describe('Chapter11SubchapterVAppointmentBody', () => {
     renderBody();
 
     await waitFor(() => {
-      expect(screen.getByTestId('alert-subv-past-key-dates-error')).toBeInTheDocument();
+      expect(
+        screen.getByTestId(`alert-subv-past-key-dates-error-${mockPoolAppointment.id}`),
+      ).toBeInTheDocument();
     });
     expect(screen.queryByTestId('past-key-dates-card')).not.toBeInTheDocument();
   });
@@ -155,7 +157,9 @@ describe('Chapter11SubchapterVAppointmentBody', () => {
 
     expect(getSpy).not.toHaveBeenCalled();
     expect(screen.queryByTestId('past-key-dates-card')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('alert-subv-past-key-dates-error')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId(`alert-subv-past-key-dates-error-${mockPoolAppointment.id}`),
+    ).not.toBeInTheDocument();
   });
 
   test('does not fetch or render the PastKeyDates card for an out-of-pool appointment, even when the flag is enabled', () => {
@@ -165,7 +169,9 @@ describe('Chapter11SubchapterVAppointmentBody', () => {
 
     expect(getSpy).not.toHaveBeenCalled();
     expect(screen.queryByTestId('past-key-dates-card')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('alert-subv-past-key-dates-error')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId(`alert-subv-past-key-dates-error-${mockOutOfPoolAppointment.id}`),
+    ).not.toBeInTheDocument();
   });
 
   test('still renders AppointmentBasicFields for an out-of-pool appointment', () => {

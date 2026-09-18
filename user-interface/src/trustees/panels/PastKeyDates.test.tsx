@@ -347,6 +347,22 @@ describe('PastKeyDates', () => {
       expect(screen.getByTestId('past-last-monthly-report-received-row')).toBeInTheDocument();
     });
 
+    test('Edit button shown for TrusteeAdmin', () => {
+      renderComponent(subVProps);
+
+      expect(screen.getByRole('button', { name: /edit other key dates/i })).toBeInTheDocument();
+    });
+
+    test('Edit button hidden for non-TrusteeAdmin', () => {
+      TestingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
+
+      renderComponent(subVProps);
+
+      expect(
+        screen.queryByRole('button', { name: /edit other key dates/i }),
+      ).not.toBeInTheDocument();
+    });
+
     test('Edit button navigates with subv-pool variant', () => {
       renderComponent(subVProps);
 
@@ -417,6 +433,22 @@ describe('PastKeyDates', () => {
       expect(screen.getByTestId('past-background-question-row')).toHaveTextContent('03/15/2023');
       expect(screen.getByTestId('past-audit-row')).toHaveTextContent('08/20/2024');
       expect(screen.getByTestId('past-last-audit-fiscal-year-row')).toHaveTextContent('2023');
+    });
+
+    test('Edit button shown for TrusteeAdmin', () => {
+      renderComponent(ch12StandingProps);
+
+      expect(screen.getByRole('button', { name: /edit past key dates/i })).toBeInTheDocument();
+    });
+
+    test('Edit button hidden for non-TrusteeAdmin', () => {
+      TestingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
+
+      renderComponent(ch12StandingProps);
+
+      expect(
+        screen.queryByRole('button', { name: /edit past key dates/i }),
+      ).not.toBeInTheDocument();
     });
 
     test('Edit button navigates with chapter12-standing variant', () => {
