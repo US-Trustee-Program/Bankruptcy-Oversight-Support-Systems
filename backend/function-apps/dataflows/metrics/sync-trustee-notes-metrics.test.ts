@@ -1,10 +1,11 @@
-import { vi, describe, test, expect, beforeEach } from 'vitest';
+import { vi, describe, test, expect, beforeEach, afterEach } from 'vitest';
 import { InvocationContext, Timer } from '@azure/functions';
-import { timerTrigger } from './sync-trustee-notes-metrics';
+import { httpTrigger, timerTrigger } from './sync-trustee-notes-metrics';
 import { TrusteeNotesMetricsController } from '../../../lib/controllers/trustee-notes-metrics/trustee-notes-metrics.controller';
 import { TooManyRequestsError } from '../../../lib/common-errors/too-many-requests-error';
 import { CamsError } from '../../../lib/common-errors/cams-error';
 import { createMockApplicationContext } from '../../../lib/testing/testing-utilities';
+import { createMockAzureFunctionRequest } from '../../azure/testing-helpers';
 import * as ContextCreator from '../../azure/application-context-creator';
 import * as DataflowTelemetry from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 import * as AzureFunctions from '../../azure/functions';
@@ -111,6 +112,106 @@ describe('sync-trustee-notes-metrics timerTrigger', () => {
       mockTrace,
       ModuleNames.SYNC_TRUSTEE_NOTES_METRICS,
       'timerTrigger',
+      expect.any(Object),
+      expect.objectContaining({
+        success: false,
+        error: 'Something went wrong',
+      }),
+    );
+  });
+});
+
+describe('sync-trustee-notes-metrics httpTrigger', () => {
+  const ADMIN_KEY = 'test-admin-key';
+  const { env } = process;
+
+  let invocationContext: InvocationContext;
+  let mockTrace: object;
+
+  beforeEach(async () => {
+    vi.restoreAllMocks();
+    process.env = { ADMIN_KEY };
+
+    const appContext = await createMockApplicationContext();
+    mockTrace = { startTime: Date.now(), instanceId: 'test-trace-id' };
+
+    vi.spyOn(appContext.observability, 'startTrace').mockReturnValue(mockTrace as never);
+    vi.spyOn(ContextCreator.default, 'getApplicationContext').mockResolvedValue(appContext);
+    vi.spyOn(DataflowTelemetry, 'completeDataflowTrace').mockReturnValue(undefined);
+
+    invocationContext = {
+      invocationId: 'test-invocation-id',
+      functionName: 'sync-trustee-notes-metrics-httpTrigger',
+      extraOutputs: {
+        set: vi.fn(),
+        get: vi.fn(),
+      },
+      log: vi.fn(),
+    } as unknown as InvocationContext;
+  });
+
+  afterEach(() => {
+    process.env = env;
+  });
+
+  test('runs the sync and completes trace with success true when authorized and controller succeeds', async () => {
+    vi.spyOn(TrusteeNotesMetricsController.prototype, 'handleTimer').mockResolvedValue(
+      MOCK_METRICS,
+    );
+    const request = createMockAzureFunctionRequest({
+      method: 'POST',
+      headers: { Authorization: `ApiKey ${ADMIN_KEY}` },
+    });
+
+    const response = await httpTrigger(request, invocationContext);
+
+    expect(response.status).toBe(201);
+    expect(DataflowTelemetry.completeDataflowTrace).toHaveBeenCalledWith(
+      expect.any(Object),
+      mockTrace,
+      ModuleNames.SYNC_TRUSTEE_NOTES_METRICS,
+      'httpTrigger',
+      expect.any(Object),
+      expect.objectContaining({
+        success: true,
+      }),
+    );
+  });
+
+  test('rejects the request without running the sync when the API key is missing or wrong', async () => {
+    const handleTimerSpy = vi.spyOn(TrusteeNotesMetricsController.prototype, 'handleTimer');
+    const request = createMockAzureFunctionRequest({
+      method: 'POST',
+      headers: { Authorization: 'ApiKey wrong-key' },
+    });
+
+    const response = await httpTrigger(request, invocationContext);
+
+    expect(response.status).not.toBe(201);
+    expect(handleTimerSpy).not.toHaveBeenCalled();
+    expect(DataflowTelemetry.completeDataflowTrace).not.toHaveBeenCalled();
+  });
+
+  test('completes a failure trace and returns an error response when the controller throws', async () => {
+    const genericError = new CamsError(ModuleNames.SYNC_TRUSTEE_NOTES_METRICS, {
+      message: 'Something went wrong',
+    });
+    vi.spyOn(TrusteeNotesMetricsController.prototype, 'handleTimer').mockRejectedValue(
+      genericError,
+    );
+    const request = createMockAzureFunctionRequest({
+      method: 'POST',
+      headers: { Authorization: `ApiKey ${ADMIN_KEY}` },
+    });
+
+    const response = await httpTrigger(request, invocationContext);
+
+    expect(response.status).not.toBe(201);
+    expect(DataflowTelemetry.completeDataflowTrace).toHaveBeenCalledWith(
+      expect.any(Object),
+      mockTrace,
+      ModuleNames.SYNC_TRUSTEE_NOTES_METRICS,
+      'httpTrigger',
       expect.any(Object),
       expect.objectContaining({
         success: false,
