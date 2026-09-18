@@ -377,6 +377,10 @@ describe('validateTrusteeUpcomingKeyDates', () => {
       lastCompensationStudy: null,
       bondIssuedDate: null,
       bondRenewalDate: null,
+      auditCompletionYear: null,
+      auditCompletionStatus: null,
+      tprCompletionYear: null,
+      tprCompletionStatus: null,
     };
   }
 
@@ -518,6 +522,74 @@ describe('validateTrusteeUpcomingKeyDates', () => {
     });
     expect(result.valid).toBeFalsy();
     expect(result.reasonMap?.tprDue?.reasons?.[0]).toBe('TPR Due is required.');
+  });
+
+  test('returns error when auditCompletionYear is set but auditCompletionStatus is null', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      auditCompletionYear: 2026,
+      auditCompletionStatus: null,
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.auditCompletionStatus?.reasons?.[0]).toBe(
+      'Audit Completion Status is required.',
+    );
+  });
+
+  test('returns error when auditCompletionStatus is set but auditCompletionYear is null', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      auditCompletionYear: null,
+      auditCompletionStatus: 'Complete',
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.auditCompletionYear?.reasons?.[0]).toBe(
+      'Audit Completion Year is required.',
+    );
+  });
+
+  test('returns VALID when auditCompletionYear and auditCompletionStatus are both set', () => {
+    expect(
+      validateTrusteeUpcomingKeyDates({
+        ...baseInput(),
+        auditCompletionYear: 2026,
+        auditCompletionStatus: 'Incomplete',
+      }),
+    ).toEqual(VALID);
+  });
+
+  test('returns error when tprCompletionYear is set but tprCompletionStatus is null', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      tprCompletionYear: 2026,
+      tprCompletionStatus: null,
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.tprCompletionStatus?.reasons?.[0]).toBe(
+      'TPR Completion Status is required.',
+    );
+  });
+
+  test('returns error when tprCompletionStatus is set but tprCompletionYear is null', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      tprCompletionYear: null,
+      tprCompletionStatus: 'Complete',
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.tprCompletionYear?.reasons?.[0]).toBe(
+      'TPR Completion Year is required.',
+    );
+  });
+
+  test('returns VALID when tprCompletionYear and tprCompletionStatus are both set', () => {
+    expect(
+      validateTrusteeUpcomingKeyDates({
+        ...baseInput(),
+        tprCompletionYear: 2026,
+        tprCompletionStatus: 'Incomplete',
+      }),
+    ).toEqual(VALID);
   });
 
   test('returns error when a sentinel date field contains an invalid ISO date', () => {
@@ -788,7 +860,13 @@ describe('validateTrusteeUpcomingKeyDates', () => {
   });
 
   test('TEXT_FIELDS contains the exact set of expected fields', () => {
-    expect(TEXT_FIELDS).toEqual(['tprDueYearType', 'tprFrequency', 'tirFrequency']);
+    expect(TEXT_FIELDS).toEqual([
+      'tprDueYearType',
+      'tprFrequency',
+      'tirFrequency',
+      'auditCompletionStatus',
+      'tprCompletionStatus',
+    ]);
   });
 });
 

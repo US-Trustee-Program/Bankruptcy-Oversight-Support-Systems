@@ -21,3 +21,28 @@ describe('PAST_KEY_DATES_FIELD_CONFIG chapter7-elected variant', () => {
     });
   });
 });
+
+describe('PAST_KEY_DATES_FIELD_CONFIG chapter13-standing variant', () => {
+  const config = PAST_KEY_DATES_FIELD_CONFIG['chapter13-standing'];
+
+  test('includes pastTprSubmission configured as Last TPR Submitted', () => {
+    const field = config.find((f) => f.key === 'pastTprSubmission');
+    expect(field).toMatchObject({
+      key: 'pastTprSubmission',
+      displayLabel: 'Last TPR Submitted',
+      formLabel: 'Last TPR Submitted',
+      testId: 'last-tpr-submitted-row',
+      inputId: 'last-tpr-submitted',
+      kind: 'date',
+    });
+  });
+
+  test('does not change the chapter7-panel pastTprSubmission entry (TIR Letter)', () => {
+    const chapter7PanelConfig = PAST_KEY_DATES_FIELD_CONFIG['chapter7-panel'];
+    const field = chapter7PanelConfig.find((f) => f.key === 'pastTprSubmission');
+    expect(field).toMatchObject({
+      displayLabel: 'TIR Letter',
+      formLabel: 'Trustee Interim Report Letter Date',
+    });
+  });
+});

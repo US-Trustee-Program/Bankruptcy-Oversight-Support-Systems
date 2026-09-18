@@ -57,6 +57,10 @@ function buildMockInput(
     lastCompensationStudy: null,
     bondIssuedDate: null,
     bondRenewalDate: null,
+    auditCompletionYear: null,
+    auditCompletionStatus: null,
+    tprCompletionYear: null,
+    tprCompletionStatus: null,
     ...overrides,
   };
 }
@@ -213,6 +217,10 @@ describe('TrusteeUpcomingKeyDatesUseCase', () => {
       ['tprFrequency', 'ANNUAL'],
       ['bondIssuedDate', '2023-06-01'],
       ['bondRenewalDate', '2026-06-01'],
+      ['auditCompletionYear', 2026],
+      ['auditCompletionStatus', 'Complete'],
+      ['tprCompletionYear', 2026],
+      ['tprCompletionStatus', 'Complete'],
     ])('saves %s when set', async (field, value) => {
       vi.spyOn(MockMongoRepository.prototype, 'getByAppointmentId').mockResolvedValue(null);
       const upsertSpy = vi
@@ -234,30 +242,33 @@ describe('TrusteeUpcomingKeyDatesUseCase', () => {
       expect(upsertSpy).toHaveBeenCalledWith(expect.objectContaining({ [field]: value }));
     });
 
-    test.each([['lastAuditFiscalYear'], ['upcomingExamOrAuditYear'], ['upcomingExamOrAuditType']])(
-      'does not include %s in saved doc when null',
-      async (field) => {
-        vi.spyOn(MockMongoRepository.prototype, 'getByAppointmentId').mockResolvedValue(null);
-        const upsertSpy = vi
-          .spyOn(MockMongoRepository.prototype, 'upsert')
-          .mockResolvedValue(undefined);
-        vi.spyOn(MockMongoRepository.prototype, 'createHistory').mockResolvedValue(undefined);
+    test.each([
+      ['lastAuditFiscalYear'],
+      ['upcomingExamOrAuditYear'],
+      ['upcomingExamOrAuditType'],
+      ['auditCompletionYear'],
+      ['tprCompletionYear'],
+    ])('does not include %s in saved doc when null', async (field) => {
+      vi.spyOn(MockMongoRepository.prototype, 'getByAppointmentId').mockResolvedValue(null);
+      const upsertSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'upsert')
+        .mockResolvedValue(undefined);
+      vi.spyOn(MockMongoRepository.prototype, 'createHistory').mockResolvedValue(undefined);
 
-        const context = await createMockApplicationContext();
-        const useCase = new TrusteeUpcomingKeyDatesUseCase(context);
-        const input = buildMockInput({ [field]: null });
+      const context = await createMockApplicationContext();
+      const useCase = new TrusteeUpcomingKeyDatesUseCase(context);
+      const input = buildMockInput({ [field]: null });
 
-        await useCase.upsertUpcomingKeyDates(
-          'trustee-001',
-          'appointment-001',
-          input,
-          SYSTEM_USER_REFERENCE,
-        );
+      await useCase.upsertUpcomingKeyDates(
+        'trustee-001',
+        'appointment-001',
+        input,
+        SYSTEM_USER_REFERENCE,
+      );
 
-        const savedDoc = upsertSpy.mock.calls[0][0];
-        expect(savedDoc).not.toHaveProperty(field);
-      },
-    );
+      const savedDoc = upsertSpy.mock.calls[0][0];
+      expect(savedDoc).not.toHaveProperty(field);
+    });
 
     test.each([
       ['lastAuditFiscalYear', 2022, 2024],
@@ -268,6 +279,8 @@ describe('TrusteeUpcomingKeyDatesUseCase', () => {
       ['tprFrequency', 'ANNUAL', 'BIANNUAL'],
       ['bondIssuedDate', '2022-06-01', '2023-06-01'],
       ['bondRenewalDate', '2025-06-01', '2026-06-01'],
+      ['auditCompletionYear', 2025, 2026],
+      ['tprCompletionYear', 2025, 2026],
     ])('%s change is captured in audit history', async (field, before, after) => {
       const existing = buildMockDocument({ [field]: before });
       vi.spyOn(MockMongoRepository.prototype, 'getByAppointmentId').mockResolvedValue(existing);
@@ -341,6 +354,8 @@ describe('TrusteeUpcomingKeyDatesUseCase', () => {
         { lastCompensationStudy: '2024-06-01' },
         { lastCompensationStudy: null },
       ],
+      ['auditCompletionYear', { auditCompletionYear: 2026 }, { auditCompletionYear: null }],
+      ['tprCompletionYear', { tprCompletionYear: 2026 }, { tprCompletionYear: null }],
     ])(
       'scalar field cleared (%s → null): history shows old value in before, absent from after',
       async (_field, existingOverride, inputOverride) => {

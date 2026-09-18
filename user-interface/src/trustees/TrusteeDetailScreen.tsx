@@ -27,6 +27,9 @@ import TrusteeAppointmentForm from './forms/TrusteeAppointmentForm';
 import EditTrusteeAppointment from './forms/EditTrusteeAppointment';
 import UpcomingKeyDatesForm from './forms/UpcomingKeyDatesForm';
 import PastKeyDatesForm from './forms/PastKeyDatesForm';
+import Chapter13StandingAuditForm from './forms/Chapter13StandingAuditForm';
+import Chapter13StandingTrusteePerformanceReportForm from './forms/Chapter13StandingTrusteePerformanceReportForm';
+import Chapter13StandingOtherForm from './forms/Chapter13StandingOtherForm';
 import TrusteeMeetingOfCreditorsInfoForm from './forms/TrusteeMeetingOfCreditorsInfoForm';
 import TrusteeNotes from '@/trustees/panels/trustee-notes/TrusteeNotes';
 import useFeatureFlags, {
@@ -289,6 +292,24 @@ export default function TrusteeDetailScreen() {
       ),
       subHeading: (location.state as { subHeading?: string } | null)?.subHeading ?? '',
       content: <PastKeyDatesForm />,
+    },
+    {
+      path: 'appointments/:appointmentId/chapter13-standing-audit-key-dates/edit',
+      disabled: !featureFlags[DISPLAY_CHPT13_STANDING_KEY_DATES],
+      subHeading: (location.state as { subHeading?: string } | null)?.subHeading ?? '',
+      content: <Chapter13StandingAuditForm />,
+    },
+    {
+      path: 'appointments/:appointmentId/chapter13-standing-tpr-key-dates/edit',
+      disabled: !featureFlags[DISPLAY_CHPT13_STANDING_KEY_DATES],
+      subHeading: (location.state as { subHeading?: string } | null)?.subHeading ?? '',
+      content: <Chapter13StandingTrusteePerformanceReportForm />,
+    },
+    {
+      path: 'appointments/:appointmentId/chapter13-standing-other-key-dates/edit',
+      disabled: !featureFlags[DISPLAY_CHPT13_STANDING_KEY_DATES],
+      subHeading: (location.state as { subHeading?: string } | null)?.subHeading ?? '',
+      content: <Chapter13StandingOtherForm />,
     },
     {
       path: 'assigned-staff',

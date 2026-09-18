@@ -124,6 +124,10 @@ type FormState = {
   lastCompensationStudy: string;
   bondIssuedDate: string;
   bondRenewalDate: string;
+  auditCompletionYear: number | null;
+  auditCompletionStatus: 'Complete' | 'Incomplete' | '';
+  tprCompletionYear: number | null;
+  tprCompletionStatus: 'Complete' | 'Incomplete' | '';
 };
 
 const EMPTY_FORM: FormState = {
@@ -151,6 +155,10 @@ const EMPTY_FORM: FormState = {
   lastCompensationStudy: '',
   bondIssuedDate: '',
   bondRenewalDate: '',
+  auditCompletionYear: null,
+  auditCompletionStatus: '',
+  tprCompletionYear: null,
+  tprCompletionStatus: '',
 };
 
 const currentYear = new Date().getFullYear();
@@ -202,6 +210,10 @@ function buildFormStateFromData(data: TrusteeUpcomingKeyDates): FormState {
     lastCompensationStudy: data.lastCompensationStudy ?? '',
     bondIssuedDate: data.bondIssuedDate ?? '',
     bondRenewalDate: data.bondRenewalDate ?? '',
+    auditCompletionYear: data.auditCompletionYear ?? null,
+    auditCompletionStatus: data.auditCompletionStatus ?? '',
+    tprCompletionYear: data.tprCompletionYear ?? null,
+    tprCompletionStatus: data.tprCompletionStatus ?? '',
   };
 }
 
@@ -460,6 +472,10 @@ export default function UpcomingKeyDatesForm({
       lastCompensationStudy: form.lastCompensationStudy || null,
       bondIssuedDate: form.bondIssuedDate || null,
       bondRenewalDate: form.bondRenewalDate || null,
+      auditCompletionYear: form.auditCompletionYear,
+      auditCompletionStatus: form.auditCompletionStatus || null,
+      tprCompletionYear: form.tprCompletionYear,
+      tprCompletionStatus: form.tprCompletionStatus || null,
     };
 
     if (!tprDisplayUpdates) {

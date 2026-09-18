@@ -148,6 +148,14 @@ export const PAST_KEY_DATES_FIELD_CONFIG: Record<PastKeyDatesVariant, PastKeyDat
       inputId: 'last-compensation-study',
       kind: 'month-year',
     },
+    {
+      key: 'pastTprSubmission',
+      displayLabel: 'Last TPR Submitted',
+      formLabel: 'Last TPR Submitted',
+      testId: 'last-tpr-submitted-row',
+      inputId: 'last-tpr-submitted',
+      kind: 'date',
+    },
   ],
   'chapter7-elected': [
     {

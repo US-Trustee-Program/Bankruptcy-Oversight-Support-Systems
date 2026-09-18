@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
 import AppointmentCard, { AppointmentCardProps } from './AppointmentCard';
@@ -649,42 +649,87 @@ describe('AppointmentCard', () => {
       appointmentType: 'standing',
     };
 
-    test('renders UpcomingKeyDates card with variant chapter13-standing when flag is enabled', () => {
+    test('renders the accordion header text matching the mockup format, with no duplicate outer heading', () => {
       vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
         [DISPLAY_CHPT13_STANDING_KEY_DATES]: true,
       });
 
       renderWithProps({ appointment: ch13StandingAppointment });
 
-      expect(screen.getByTestId('upcoming-key-dates-card')).toBeInTheDocument();
-      expect(screen.getByTestId('upcoming-key-dates-card')).toHaveAttribute(
-        'data-variant',
-        'chapter13-standing',
-      );
+      expect(
+        screen.getByText('Southern District of New York (Manhattan) - Chapter 13 - Standing'),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/Chapter 13 - Panel/i)).not.toBeInTheDocument();
+      expect(screen.queryByRole('heading', { level: 3 })).not.toBeInTheDocument();
     });
 
-    test('does not render UpcomingKeyDates card for ch13 standing when flag is disabled', () => {
+    test('does not render the generic Key Information card', async () => {
+      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+        [DISPLAY_CHPT13_STANDING_KEY_DATES]: true,
+      });
+
+      renderWithProps({ appointment: ch13StandingAppointment });
+      fireEvent.click(screen.getByTestId(`accordion-button-${ch13StandingAppointment.id}`));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('chapter13-standing-audit-card')).toBeInTheDocument();
+      });
+      expect(screen.queryByText('Key Information')).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: /edit trustee appointment/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    test('renders the four themed cards stacked full-width, not side by side', async () => {
+      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+        [DISPLAY_CHPT13_STANDING_KEY_DATES]: true,
+      });
+
+      renderWithProps({ appointment: ch13StandingAppointment });
+      fireEvent.click(screen.getByTestId(`accordion-button-${ch13StandingAppointment.id}`));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('chapter13-standing-audit-card')).toBeInTheDocument();
+      });
+      const stack = screen.getByTestId('chapter13-standing-cards-stack');
+      expect(stack).toContainElement(screen.getByTestId('chapter13-standing-audit-card'));
+      expect(stack).toContainElement(screen.getByTestId('chapter13-standing-other-card'));
+    });
+
+    test('renders an accordion with the four themed cards instead of the generic Upcoming/Past cards', async () => {
+      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+        [DISPLAY_CHPT13_STANDING_KEY_DATES]: true,
+      });
+
+      renderWithProps({ appointment: ch13StandingAppointment });
+
+      expect(
+        screen.getByTestId(`accordion-button-${ch13StandingAppointment.id}`),
+      ).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByTestId('chapter13-standing-audit-card')).toBeInTheDocument();
+      });
+      expect(screen.getByTestId('chapter13-standing-tpr-card')).toBeInTheDocument();
+      expect(screen.getByTestId('chapter13-standing-budget-card')).toBeInTheDocument();
+      expect(screen.getByTestId('chapter13-standing-other-card')).toBeInTheDocument();
+      expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('past-key-dates-card')).not.toBeInTheDocument();
+    });
+
+    test('does not render the accordion for ch13 standing when flag is disabled', () => {
       vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
         [DISPLAY_CHPT13_STANDING_KEY_DATES]: false,
       });
 
       renderWithProps({ appointment: ch13StandingAppointment });
 
-      expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId(`accordion-button-${ch13StandingAppointment.id}`),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId('chapter13-standing-audit-card')).not.toBeInTheDocument();
     });
 
-    test('does not render ch12 standing card for ch13 standing appointment', () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT13_STANDING_KEY_DATES]: true,
-        [DISPLAY_CHPT12_STANDING_KEY_DATES]: true,
-      });
-
-      renderWithProps({ appointment: ch13StandingAppointment });
-
-      expect(screen.getAllByTestId('upcoming-key-dates-card')).toHaveLength(1);
-    });
-
-    test('does not render ch13 standing card for ch12 standing appointment', () => {
+    test('does not render the ch13 standing accordion for a ch12 standing appointment', () => {
       vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
         [DISPLAY_CHPT13_STANDING_KEY_DATES]: true,
       });
@@ -696,26 +741,86 @@ describe('AppointmentCard', () => {
 
       renderWithProps({ appointment: ch12StandingAppointment });
 
-      expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('chapter13-standing-audit-card')).not.toBeInTheDocument();
     });
 
-    test('renders PastKeyDates card alongside UpcomingKeyDates when flag is enabled', () => {
+    test('renders a green Active tag by default for an active appointment', () => {
       vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
         [DISPLAY_CHPT13_STANDING_KEY_DATES]: true,
       });
 
       renderWithProps({ appointment: ch13StandingAppointment });
 
-      expect(screen.getByTestId('upcoming-key-dates-card')).toBeInTheDocument();
-      expect(screen.getByTestId('upcoming-key-dates-card')).toHaveAttribute(
-        'data-variant',
-        'chapter13-standing',
+      const tag = screen.getByTestId('tag-appointment-status');
+      expect(tag).toHaveTextContent('Active');
+      expect(tag.className).toContain('bg-success');
+    });
+
+    test('renders a gray status tag with the specific status label for a non-active appointment', () => {
+      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+        [DISPLAY_CHPT13_STANDING_KEY_DATES]: true,
+      });
+
+      renderWithProps({
+        appointment: { ...ch13StandingAppointment, status: 'voluntarily-suspended' },
+      });
+
+      const tag = screen.getByTestId('tag-appointment-status');
+      expect(tag).toHaveTextContent('Voluntarily Suspended');
+      expect(tag).toHaveStyle({ backgroundColor: '#71767A' });
+    });
+
+    test('accordion body shows Appointed Date, Status Effective Date, and an Edit Appointment button', () => {
+      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+        [DISPLAY_CHPT13_STANDING_KEY_DATES]: true,
+      });
+
+      renderWithProps({ appointment: ch13StandingAppointment });
+      fireEvent.click(screen.getByTestId(`accordion-button-${ch13StandingAppointment.id}`));
+
+      const accordionContent = screen.getByTestId(
+        `accordion-content-${ch13StandingAppointment.id}`,
       );
-      expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
-      expect(screen.getByTestId('past-key-dates-card')).toHaveAttribute(
-        'data-variant',
-        'chapter13-standing',
+      expect(within(accordionContent).getByText(/Appointed:/i)).toBeInTheDocument();
+      expect(within(accordionContent).getByText(/Status Effective:/i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /edit appointment/i })).toBeInTheDocument();
+    });
+
+    test('Edit Appointment button navigates to the edit appointment route', () => {
+      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+        [DISPLAY_CHPT13_STANDING_KEY_DATES]: true,
+      });
+
+      renderWithProps({ appointment: ch13StandingAppointment });
+      fireEvent.click(screen.getByTestId(`accordion-button-${ch13StandingAppointment.id}`));
+      fireEvent.click(screen.getByRole('button', { name: /edit appointment/i }));
+
+      expect(mockNavigate).toHaveBeenCalledWith(
+        `/trustees/${ch13StandingAppointment.trusteeId}/appointments/${ch13StandingAppointment.id}/edit`,
       );
+    });
+
+    test('accordion expand state is controlled by expandedId/onExpand/onCollapse props', () => {
+      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+        [DISPLAY_CHPT13_STANDING_KEY_DATES]: true,
+      });
+      const onExpand = vi.fn();
+      const onCollapse = vi.fn();
+
+      render(
+        <BrowserRouter>
+          <AppointmentCard
+            appointment={ch13StandingAppointment}
+            onExpand={onExpand}
+            onCollapse={onCollapse}
+          />
+        </BrowserRouter>,
+      );
+
+      fireEvent.click(screen.getByTestId(`accordion-button-${ch13StandingAppointment.id}`));
+
+      expect(onExpand).toHaveBeenCalledWith(ch13StandingAppointment.id);
+      expect(onCollapse).toHaveBeenCalledWith(ch13StandingAppointment.id);
     });
   });
 

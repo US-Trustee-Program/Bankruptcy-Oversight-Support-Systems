@@ -112,4 +112,39 @@ describe('Accordion tests', () => {
     expect(contentA2).not.toBeVisible();
     expect(contentA4).not.toBeVisible();
   });
+
+  test('Should expand the accordion matching initialExpandedId on first render', () => {
+    render(
+      <React.StrictMode>
+        <AccordionGroup initialExpandedId="a2">
+          <Accordion id="a1">
+            <span>Title of accordion a1</span>
+            <span>Content of accordion a1</span>
+          </Accordion>
+          <Accordion id="a2">
+            <span>Title of accordion a2</span>
+            <span>Content of accordion a2</span>
+          </Accordion>
+        </AccordionGroup>
+      </React.StrictMode>,
+    );
+
+    expect(screen.getByTestId('accordion-content-a1')).not.toBeVisible();
+    expect(screen.getByTestId('accordion-content-a2')).toBeVisible();
+  });
+
+  test('Without initialExpandedId, no accordion is expanded by default (regression check)', () => {
+    render(
+      <React.StrictMode>
+        <AccordionGroup>
+          <Accordion id="a1">
+            <span>Title of accordion a1</span>
+            <span>Content of accordion a1</span>
+          </Accordion>
+        </AccordionGroup>
+      </React.StrictMode>,
+    );
+
+    expect(screen.getByTestId('accordion-content-a1')).not.toBeVisible();
+  });
 });

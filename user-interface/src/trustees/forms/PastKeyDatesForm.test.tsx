@@ -284,6 +284,10 @@ describe('PastKeyDatesForm', () => {
         lastCompensationStudy: null,
         bondIssuedDate: null,
         bondRenewalDate: null,
+        auditCompletionYear: null,
+        auditCompletionStatus: null,
+        tprCompletionYear: null,
+        tprCompletionStatus: null,
       }),
     );
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');

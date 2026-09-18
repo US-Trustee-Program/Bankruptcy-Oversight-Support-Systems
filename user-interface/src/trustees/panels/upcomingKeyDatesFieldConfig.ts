@@ -39,7 +39,9 @@ interface ComputedField {
 
 export type UpcomingKeyDatesFieldConfig = ConstantField | ComputedField;
 
-function tprFrequencyField(data: TrusteeUpcomingKeyDates | null): UpcomingKeyDatesDisplayField {
+export function tprFrequencyField(
+  data: TrusteeUpcomingKeyDates | null,
+): UpcomingKeyDatesDisplayField {
   const frequencyLabels: Record<string, string> = {
     BIANNUAL: 'Two years',
     ANNUAL: 'One year',
@@ -56,7 +58,7 @@ function tprFrequencyField(data: TrusteeUpcomingKeyDates | null): UpcomingKeyDat
   };
 }
 
-function tprReviewPeriodField(
+export function tprReviewPeriodField(
   data: TrusteeUpcomingKeyDates | null,
   label = 'Trustee Performance Review Period',
 ): UpcomingKeyDatesDisplayField {
@@ -69,7 +71,7 @@ function tprReviewPeriodField(
   return { label, value, testId: 'tpr-review-period-row' };
 }
 
-function tprDueField(
+export function tprDueField(
   data: TrusteeUpcomingKeyDates | null,
   label = 'Trustee Performance Review Due',
 ): UpcomingKeyDatesDisplayField {
@@ -80,12 +82,16 @@ function tprDueField(
   return { label, value, testId: 'tpr-due-row' };
 }
 
-function leaseExpirationField(data: TrusteeUpcomingKeyDates | null): UpcomingKeyDatesDisplayField {
+export function leaseExpirationField(
+  data: TrusteeUpcomingKeyDates | null,
+): UpcomingKeyDatesDisplayField {
   const value = data?.leaseExpiration ? isoToMMDDYYYY(data.leaseExpiration) : NO_DATE;
   return { label: 'Lease Expiration', value, testId: 'lease-expiration-row' };
 }
 
-function idExpirationField(data: TrusteeUpcomingKeyDates | null): UpcomingKeyDatesDisplayField {
+export function idExpirationField(
+  data: TrusteeUpcomingKeyDates | null,
+): UpcomingKeyDatesDisplayField {
   const value = data?.idExpiration ? isoToMMDDYYYY(data.idExpiration) : NO_DATE;
   return { label: 'ID Expiration', value, testId: 'id-expiration-row' };
 }

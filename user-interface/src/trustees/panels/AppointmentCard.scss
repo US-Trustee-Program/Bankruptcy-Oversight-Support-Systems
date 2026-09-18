@@ -17,3 +17,46 @@
     width: 300px;
   }
 }
+
+.chapter13-standing-appointment-card {
+  margin-bottom: 1rem;
+
+  .usa-accordion__heading .usa-accordion__button {
+    background-color: #f0f0f0;
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+  }
+
+  .usa-accordion__content {
+    padding-top: 1.25rem;
+    padding-bottom: 1.5rem;
+  }
+
+  .chapter13-standing-accordion-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    width: 100%;
+    font-weight: normal;
+    text-align: left;
+  }
+
+  .chapter13-standing-accordion-body {
+    padding-top: 0;
+  }
+
+  .chapter13-standing-appointment-details {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .chapter13-standing-cards-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+}

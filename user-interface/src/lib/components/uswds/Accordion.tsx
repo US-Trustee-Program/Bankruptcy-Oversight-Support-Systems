@@ -12,10 +12,12 @@ import './Accordion.scss';
 interface AccordionGroupProps extends PropsWithChildren {
   /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
   children?: ReactElement<any> | Array<ReactElement<any>>;
+  /** Id of the child Accordion to expand on first render. Has no effect after mount. */
+  initialExpandedId?: string;
 }
 
 export const AccordionGroup: FunctionComponent<AccordionGroupProps> = (props) => {
-  const [expandedAccordion, setExpandedAccordion] = useState<string>('');
+  const [expandedAccordion, setExpandedAccordion] = useState<string>(props.initialExpandedId ?? '');
 
   function expandAccordion(accordionId: string) {
     setExpandedAccordion(accordionId);

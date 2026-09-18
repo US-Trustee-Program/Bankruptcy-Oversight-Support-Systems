@@ -3,10 +3,13 @@ import { useEffect, useState } from 'react';
 import UpcomingKeyDates from './UpcomingKeyDates';
 import PastKeyDates from './PastKeyDates';
 import InfoCard from './InfoCard';
+import Chapter13StandingAppointmentBody from './Chapter13StandingAppointmentBody';
+import { UpcomingKeyDatesVariant } from './upcomingKeyDatesFieldConfig';
+import { PastKeyDatesVariant } from './pastKeyDatesFieldConfig';
 import { TrusteeAppointment, formatAppointmentStatus } from '@common/cams/trustee-appointments';
 import { formatChapterType, formatAppointmentType } from '@common/cams/trustees';
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
-import { formatDate } from '@/lib/utils/datetime';
+import { formatAppointmentDate } from './appointmentDateFormat';
 import { useNavigate } from 'react-router-dom';
 import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
@@ -30,20 +33,39 @@ import {
 
 export interface AppointmentCardProps {
   appointment: TrusteeAppointment;
+  /** Only used for Chapter 13 Standing appointments, wired via an ancestor AccordionGroup. */
+  expandedId?: string;
+  onExpand?: (id: string) => void;
+  onCollapse?: (id: string) => void;
 }
 
-const UNIX_EPOCH = '1970-01-01';
-
 /**
- * Format appointment date with special handling for sentinel values.
- * Unix epoch (1970-01-01) is used as a sentinel value during ATS migration
- * to indicate dates that were not specified in the source system.
+ * Resolves which generic Upcoming/Past key-dates cards (if any) an appointment variant shows.
+ * Chapter 13 Standing is handled separately by Chapter13StandingAppointmentBody.
  */
-function formatAppointmentDate(dateString: string): string {
-  if (dateString.startsWith(UNIX_EPOCH)) {
-    return 'Not Specified';
+function resolveStandardKeyDatesVariants(flags: {
+  showsChpt7KeyDatesCards: boolean;
+  showsSubVPastKeyDatesCard: boolean;
+  showsCh1213UpcomingKeyDatesCard: boolean;
+  showsChpt12StandingKeyDatesCards: boolean;
+  showsChpt7ElectedKeyDatesCards: boolean;
+}): { upcoming: UpcomingKeyDatesVariant | null; past: PastKeyDatesVariant | null } {
+  if (flags.showsChpt7KeyDatesCards) {
+    return { upcoming: 'chapter7-panel', past: 'chapter7-panel' };
   }
-  return formatDate(dateString);
+  if (flags.showsSubVPastKeyDatesCard) {
+    return { upcoming: null, past: 'subv-pool' };
+  }
+  if (flags.showsCh1213UpcomingKeyDatesCard) {
+    return { upcoming: 'ch12-13-case-by-case', past: null };
+  }
+  if (flags.showsChpt12StandingKeyDatesCards) {
+    return { upcoming: 'chapter12-standing', past: 'chapter12-standing' };
+  }
+  if (flags.showsChpt7ElectedKeyDatesCards) {
+    return { upcoming: 'chapter7-elected', past: 'chapter7-elected' };
+  }
+  return { upcoming: null, past: null };
 }
 
 export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
@@ -155,6 +177,35 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
       });
   }, [props.appointment.trusteeId, props.appointment.id, shouldFetchKeyDates]);
 
+  if (showsChpt13StandingUpcomingKeyDates) {
+    return (
+      <Chapter13StandingAppointmentBody
+        appointment={props.appointment}
+        keyDatesData={keyDatesData}
+        isKeyDatesLoading={isKeyDatesLoading}
+        expandedId={props.expandedId}
+        onExpand={props.onExpand}
+        onCollapse={props.onCollapse}
+      />
+    );
+  }
+
+  const { upcoming: upcomingVariant, past: pastVariant } = resolveStandardKeyDatesVariants({
+    showsChpt7KeyDatesCards,
+    showsSubVPastKeyDatesCard,
+    showsCh1213UpcomingKeyDatesCard,
+    showsChpt12StandingKeyDatesCards,
+    showsChpt7ElectedKeyDatesCards,
+  });
+
+  const commonKeyDatesProps = {
+    trusteeId: props.appointment.trusteeId,
+    appointmentId: props.appointment.id,
+    appointmentHeading,
+    data: keyDatesData,
+    isLoading: isKeyDatesLoading,
+  };
+
   return (
     <div className="appointment-card-container">
       <h3 className="appointment-card-heading">{appointmentCardHeaderText}</h3>
@@ -175,110 +226,14 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
             { label: 'Status Effective', value: formattedEffectiveDate },
           ]}
         />
-        {showsChpt7KeyDatesCards && (
-          <>
-            <UpcomingKeyDates
-              trusteeId={props.appointment.trusteeId}
-              appointmentId={props.appointment.id}
-              appointmentHeading={appointmentHeading}
-              data={keyDatesData}
-              isLoading={isKeyDatesLoading}
-              tprDisplayUpdates={tprDisplayUpdates}
-            />
-            <PastKeyDates
-              variant="chapter7-panel"
-              trusteeId={props.appointment.trusteeId}
-              appointmentId={props.appointment.id}
-              appointmentHeading={appointmentHeading}
-              data={keyDatesData}
-              isLoading={isKeyDatesLoading}
-            />
-          </>
-        )}
-        {showsSubVPastKeyDatesCard && (
-          <PastKeyDates
-            variant="subv-pool"
-            trusteeId={props.appointment.trusteeId}
-            appointmentId={props.appointment.id}
-            appointmentHeading={appointmentHeading}
-            data={keyDatesData}
-            isLoading={isKeyDatesLoading}
-          />
-        )}
-        {showsCh1213UpcomingKeyDatesCard && (
+        {upcomingVariant && (
           <UpcomingKeyDates
-            variant="ch12-13-case-by-case"
-            trusteeId={props.appointment.trusteeId}
-            appointmentId={props.appointment.id}
-            appointmentHeading={appointmentHeading}
-            data={keyDatesData}
-            isLoading={isKeyDatesLoading}
+            variant={upcomingVariant}
+            {...commonKeyDatesProps}
             tprDisplayUpdates={tprDisplayUpdates}
           />
         )}
-        {showsChpt12StandingKeyDatesCards && (
-          <>
-            <UpcomingKeyDates
-              variant="chapter12-standing"
-              trusteeId={props.appointment.trusteeId}
-              appointmentId={props.appointment.id}
-              appointmentHeading={appointmentHeading}
-              data={keyDatesData}
-              isLoading={isKeyDatesLoading}
-              tprDisplayUpdates={tprDisplayUpdates}
-            />
-            <PastKeyDates
-              variant="chapter12-standing"
-              trusteeId={props.appointment.trusteeId}
-              appointmentId={props.appointment.id}
-              appointmentHeading={appointmentHeading}
-              data={keyDatesData}
-              isLoading={isKeyDatesLoading}
-            />
-          </>
-        )}
-        {showsChpt13StandingUpcomingKeyDates && (
-          <>
-            <UpcomingKeyDates
-              variant="chapter13-standing"
-              trusteeId={props.appointment.trusteeId}
-              appointmentId={props.appointment.id}
-              appointmentHeading={appointmentHeading}
-              data={keyDatesData}
-              isLoading={isKeyDatesLoading}
-              tprDisplayUpdates={tprDisplayUpdates}
-            />
-            <PastKeyDates
-              variant="chapter13-standing"
-              trusteeId={props.appointment.trusteeId}
-              appointmentId={props.appointment.id}
-              appointmentHeading={appointmentHeading}
-              data={keyDatesData}
-              isLoading={isKeyDatesLoading}
-            />
-          </>
-        )}
-        {showsChpt7ElectedKeyDatesCards && (
-          <>
-            <UpcomingKeyDates
-              variant="chapter7-elected"
-              trusteeId={props.appointment.trusteeId}
-              appointmentId={props.appointment.id}
-              appointmentHeading={appointmentHeading}
-              data={keyDatesData}
-              isLoading={isKeyDatesLoading}
-              tprDisplayUpdates={tprDisplayUpdates}
-            />
-            <PastKeyDates
-              variant="chapter7-elected"
-              trusteeId={props.appointment.trusteeId}
-              appointmentId={props.appointment.id}
-              appointmentHeading={appointmentHeading}
-              data={keyDatesData}
-              isLoading={isKeyDatesLoading}
-            />
-          </>
-        )}
+        {pastVariant && <PastKeyDates variant={pastVariant} {...commonKeyDatesProps} />}
       </div>
     </div>
   );
