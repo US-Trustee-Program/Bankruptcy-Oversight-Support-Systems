@@ -204,7 +204,7 @@ describe('Chapter7PanelTrusteePerformanceReportForm', () => {
     });
   });
 
-  test('resetting the completion status year back to blank clears it from the save payload', async () => {
+  test('resetting both completion status fields back to blank clears them from the save payload', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
     const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
 
@@ -215,8 +215,7 @@ describe('Chapter7PanelTrusteePerformanceReportForm', () => {
     );
 
     await userEvent.selectOptions(screen.getByTestId('tpr-completion-status-year'), '');
-
-    expect(screen.getByTestId('tpr-completion-status-year')).toHaveValue('');
+    await userEvent.selectOptions(screen.getByTestId('tpr-completion-status-status'), '');
 
     await userEvent.click(screen.getByTestId('button-save-chapter7-panel-tpr'));
 
@@ -224,8 +223,46 @@ describe('Chapter7PanelTrusteePerformanceReportForm', () => {
       expect(putSpy).toHaveBeenCalledWith(
         'trustee-001',
         'appointment-001',
-        expect.objectContaining({ tprCompletionYear: null }),
+        expect.objectContaining({ tprCompletionYear: null, tprCompletionStatus: null }),
       );
+    });
+  });
+
+  test('Save button is disabled and shows a message when only the completion status year is cleared', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+
+    renderComponent();
+
+    await waitFor(() =>
+      expect(screen.getByTestId('tpr-completion-status-year')).toHaveValue('2025'),
+    );
+
+    await userEvent.selectOptions(screen.getByTestId('tpr-completion-status-year'), '');
+
+    await waitFor(() => {
+      expect(screen.getByTestId('tpr-completion-status-error')).toHaveTextContent(
+        'Trustee Performance Review Completion Status Year and Status must both be set.',
+      );
+      expect(screen.getByTestId('button-save-chapter7-panel-tpr')).toBeDisabled();
+    });
+  });
+
+  test('Save button is disabled and shows a message when only the completion status status is cleared', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+
+    renderComponent();
+
+    await waitFor(() =>
+      expect(screen.getByTestId('tpr-completion-status-status')).toHaveValue('COMPLETE'),
+    );
+
+    await userEvent.selectOptions(screen.getByTestId('tpr-completion-status-status'), '');
+
+    await waitFor(() => {
+      expect(screen.getByTestId('tpr-completion-status-error')).toHaveTextContent(
+        'Trustee Performance Review Completion Status Year and Status must both be set.',
+      );
+      expect(screen.getByTestId('button-save-chapter7-panel-tpr')).toBeDisabled();
     });
   });
 

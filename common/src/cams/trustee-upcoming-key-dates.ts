@@ -126,6 +126,25 @@ function requireChronologicalOrder(
   };
 }
 
+function requireValidEnum(
+  field: keyof TrusteeUpcomingKeyDatesInput,
+  validValues: readonly string[],
+  label: string,
+): ValidatorFunction {
+  return (obj: unknown): ValidatorResult => {
+    const input = obj as TrusteeUpcomingKeyDatesInput;
+    const value = input[field];
+    if (value !== null && !validValues.includes(value as string)) {
+      return {
+        reasonMap: {
+          [field as string]: { reasons: [`${label} must be one of: ${validValues.join(', ')}.`] },
+        },
+      };
+    }
+    return VALID;
+  };
+}
+
 function validateDateFields(): ValidatorFunction {
   return (obj: unknown): ValidatorResult => {
     const input = obj as TrusteeUpcomingKeyDatesInput;
@@ -157,6 +176,7 @@ function validateDateFields(): ValidatorFunction {
       'pastFieldExam',
       'pastAudit',
       'pastTprSubmission',
+      'lastTprSubmitted',
       'tprReviewPeriodStart',
       'tprReviewPeriodEnd',
       'lastMonthlyReportReceived',
@@ -224,6 +244,21 @@ const trusteeUpcomingKeyDatesSpec: ValidationSpec<TrusteeUpcomingKeyDatesInput> 
       'Trustee Interim Report Completion Status Year',
       'Trustee Interim Report Completion Status',
     ),
+    requireValidEnum(
+      'auditCompletionStatus',
+      ['CLOSED', 'NOT_CLOSED'],
+      'Field Exam/Audit Completion Status',
+    ),
+    requireValidEnum(
+      'tprCompletionStatus',
+      ['COMPLETE', 'INCOMPLETE'],
+      'Trustee Performance Review Completion Status',
+    ),
+    requireValidEnum(
+      'tirCompletionStatus',
+      ['COMPLETE', 'INCOMPLETE'],
+      'Trustee Interim Report Completion Status',
+    ),
   ],
 };
 
@@ -250,6 +285,22 @@ export function validateTprDuePair(
   // Priority 3: year type set but no date
   if (!tprDue && tprDueYearType) return validateMonthDay('1900--').reasons?.[0] ?? '';
   return '';
+}
+
+/**
+ * Validates that a completion-status year/status pair is either both set or both blank,
+ * for direct per-render use on a card's dedicated edit form (mirrors validateTprDuePair's
+ * blur-time-feedback role, but for the Year+Status completion-status groups).
+ */
+export function validateCompletionPairPresence(
+  year: number | '' | null | undefined,
+  status: string | '' | null | undefined,
+  label: string,
+): string {
+  const yearSet = year !== '' && year !== null && year !== undefined;
+  const statusSet = status !== '' && status !== null && status !== undefined;
+  if (yearSet === statusSet) return '';
+  return `${label} Year and Status must both be set.`;
 }
 
 export type TrusteeUpcomingKeyDates = Auditable &

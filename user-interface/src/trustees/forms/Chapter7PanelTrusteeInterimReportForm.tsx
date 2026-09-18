@@ -7,6 +7,7 @@ import {
   calculateTirSubmission,
   calculateTirReview,
   isoToMMDD,
+  validateCompletionPairPresence,
 } from '@common/cams/trustee-upcoming-key-dates';
 import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
@@ -313,6 +314,11 @@ export default function Chapter7PanelTrusteeInterimReportForm() {
   const periodOptions = form.tirFrequency === 'ANNUAL' ? ANNUAL_OPTIONS : SEMI_ANNUAL_OPTIONS;
   const { tirSubmission, tirReview, tirSemiAnnualSubmission, tirSemiAnnualReview } =
     calculateSubmissionAndReview(form);
+  const completionPairError = validateCompletionPairPresence(
+    form.tirCompletionYear,
+    form.tirCompletionStatus,
+    'Trustee Interim Report Completion Status',
+  );
 
   return (
     <div className="edit-upcoming-key-dates" data-testid="edit-chapter7-panel-tir">
@@ -426,6 +432,11 @@ export default function Chapter7PanelTrusteeInterimReportForm() {
             </select>
           </div>
         </div>
+        {completionPairError && (
+          <span className="usa-error-message" data-testid="tir-completion-status-error">
+            {completionPairError}
+          </span>
+        )}
       </div>
 
       <div className="usa-button-group">
@@ -433,7 +444,7 @@ export default function Chapter7PanelTrusteeInterimReportForm() {
           id="save-chapter7-panel-tir"
           data-testid="button-save-chapter7-panel-tir"
           onClick={handleSave}
-          disabled={isSaving}
+          disabled={isSaving || !!completionPairError}
         >
           {isSaving ? 'Saving...' : 'Save'}
         </Button>

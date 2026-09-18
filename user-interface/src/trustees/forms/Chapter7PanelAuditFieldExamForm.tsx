@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   TrusteeUpcomingKeyDates,
   TrusteeUpcomingKeyDatesInput,
+  validateCompletionPairPresence,
 } from '@common/cams/trustee-upcoming-key-dates';
 import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
@@ -170,6 +171,11 @@ export default function Chapter7PanelAuditFieldExamForm() {
   }
 
   const hasAnyDateError = hasErrorAmong(['past-audit', 'past-field-exam']);
+  const completionPairError = validateCompletionPairPresence(
+    form.auditCompletionYear,
+    form.auditCompletionStatus,
+    'Field Exam/Audit Completion Status',
+  );
 
   return (
     <div className="edit-upcoming-key-dates" data-testid="edit-chapter7-panel-audit-field-exam">
@@ -319,6 +325,11 @@ export default function Chapter7PanelAuditFieldExamForm() {
             </select>
           </div>
         </div>
+        {completionPairError && (
+          <span className="usa-error-message" data-testid="audit-completion-status-error">
+            {completionPairError}
+          </span>
+        )}
       </div>
 
       <div className="usa-button-group">
@@ -326,7 +337,7 @@ export default function Chapter7PanelAuditFieldExamForm() {
           id="save-chapter7-panel-audit-field-exam"
           data-testid="button-save-chapter7-panel-audit-field-exam"
           onClick={handleSave}
-          disabled={isSaving || hasAnyDateError}
+          disabled={isSaving || hasAnyDateError || !!completionPairError}
         >
           {isSaving ? 'Saving...' : 'Save'}
         </Button>

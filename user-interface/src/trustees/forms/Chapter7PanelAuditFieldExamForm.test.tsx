@@ -240,21 +240,89 @@ describe('Chapter7PanelAuditFieldExamForm', () => {
     );
   });
 
-  test('Save button is disabled when Audit Report Date has an invalid date', async () => {
+  test.each(['past-audit', 'past-field-exam'])(
+    'Save button is disabled when %s has an invalid date',
+    async (testId) => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId(testId)).toBeInTheDocument();
+      });
+
+      fireEvent.change(screen.getByTestId(testId), {
+        target: { value: '1900-01-01' },
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('button-save-chapter7-panel-audit-field-exam')).toBeDisabled();
+      });
+    },
+  );
+
+  test('Save button is disabled and shows a message when only the completion status year is cleared', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
 
     renderComponent();
 
-    await waitFor(() => {
-      expect(screen.getByTestId('past-audit')).toBeInTheDocument();
-    });
+    await waitFor(() =>
+      expect(screen.getByTestId('audit-completion-status-year')).toHaveValue('2023'),
+    );
 
-    fireEvent.change(screen.getByTestId('past-audit'), {
-      target: { value: '1900-01-01' },
-    });
+    await userEvent.selectOptions(screen.getByTestId('audit-completion-status-year'), '');
 
     await waitFor(() => {
+      expect(screen.getByTestId('audit-completion-status-error')).toHaveTextContent(
+        'Field Exam/Audit Completion Status Year and Status must both be set.',
+      );
       expect(screen.getByTestId('button-save-chapter7-panel-audit-field-exam')).toBeDisabled();
+    });
+  });
+
+  test('Save button is disabled and shows a message when only the completion status status is cleared', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+
+    renderComponent();
+
+    await waitFor(() =>
+      expect(screen.getByTestId('audit-completion-status-status')).toHaveValue('CLOSED'),
+    );
+
+    await userEvent.selectOptions(screen.getByTestId('audit-completion-status-status'), '');
+
+    await waitFor(() => {
+      expect(screen.getByTestId('audit-completion-status-error')).toHaveTextContent(
+        'Field Exam/Audit Completion Status Year and Status must both be set.',
+      );
+      expect(screen.getByTestId('button-save-chapter7-panel-audit-field-exam')).toBeDisabled();
+    });
+  });
+
+  test('resetting both completion status fields back to blank clears them from the save payload', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+    const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
+
+    renderComponent();
+
+    await waitFor(() =>
+      expect(screen.getByTestId('audit-completion-status-year')).toHaveValue('2023'),
+    );
+
+    await userEvent.selectOptions(screen.getByTestId('audit-completion-status-year'), '');
+    await userEvent.selectOptions(screen.getByTestId('audit-completion-status-status'), '');
+
+    await userEvent.click(screen.getByTestId('button-save-chapter7-panel-audit-field-exam'));
+
+    await waitFor(() => {
+      expect(putSpy).toHaveBeenCalledWith(
+        'trustee-001',
+        'appointment-001',
+        expect.objectContaining({
+          auditCompletionYear: null,
+          auditCompletionStatus: null,
+        }),
+      );
     });
   });
 

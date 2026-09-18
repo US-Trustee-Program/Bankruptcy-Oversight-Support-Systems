@@ -5,6 +5,7 @@ import {
   TrusteeUpcomingKeyDates,
   TrusteeUpcomingKeyDatesInput,
   validateTprDuePair,
+  validateCompletionPairPresence,
 } from '@common/cams/trustee-upcoming-key-dates';
 import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
@@ -188,7 +189,13 @@ export default function Chapter7PanelTrusteePerformanceReportForm() {
     'tpr-review-period-end',
     'last-tpr-submitted',
   ]);
-  const isSaveDisabled = isSaving || hasAnyDateError || !!tprPeriodError || !!tprDuePairError;
+  const completionPairError = validateCompletionPairPresence(
+    form.tprCompletionYear,
+    form.tprCompletionStatus,
+    'Trustee Performance Review Completion Status',
+  );
+  const isSaveDisabled =
+    isSaving || hasAnyDateError || !!tprPeriodError || !!tprDuePairError || !!completionPairError;
 
   return (
     <div className="edit-upcoming-key-dates" data-testid="edit-chapter7-panel-tpr">
@@ -340,6 +347,11 @@ export default function Chapter7PanelTrusteePerformanceReportForm() {
             </select>
           </div>
         </div>
+        {completionPairError && (
+          <span className="usa-error-message" data-testid="tpr-completion-status-error">
+            {completionPairError}
+          </span>
+        )}
       </div>
 
       <div className="usa-button-group">

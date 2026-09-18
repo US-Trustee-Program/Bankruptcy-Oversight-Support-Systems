@@ -292,6 +292,68 @@ describe('Chapter7PanelTrusteeInterimReportForm', () => {
     );
   });
 
+  test('Save button is disabled and shows a message when only the completion status year is cleared', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+
+    renderComponent();
+
+    await waitFor(() =>
+      expect(screen.getByTestId('tir-completion-status-year')).toHaveValue('2025'),
+    );
+
+    await userEvent.selectOptions(screen.getByTestId('tir-completion-status-year'), '');
+
+    await waitFor(() => {
+      expect(screen.getByTestId('tir-completion-status-error')).toHaveTextContent(
+        'Trustee Interim Report Completion Status Year and Status must both be set.',
+      );
+      expect(screen.getByTestId('button-save-chapter7-panel-tir')).toBeDisabled();
+    });
+  });
+
+  test('Save button is disabled and shows a message when only the completion status status is cleared', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+
+    renderComponent();
+
+    await waitFor(() =>
+      expect(screen.getByTestId('tir-completion-status-status')).toHaveValue('COMPLETE'),
+    );
+
+    await userEvent.selectOptions(screen.getByTestId('tir-completion-status-status'), '');
+
+    await waitFor(() => {
+      expect(screen.getByTestId('tir-completion-status-error')).toHaveTextContent(
+        'Trustee Interim Report Completion Status Year and Status must both be set.',
+      );
+      expect(screen.getByTestId('button-save-chapter7-panel-tir')).toBeDisabled();
+    });
+  });
+
+  test('resetting both completion status fields back to blank clears them from the save payload', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+    const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
+
+    renderComponent();
+
+    await waitFor(() =>
+      expect(screen.getByTestId('tir-completion-status-year')).toHaveValue('2025'),
+    );
+
+    await userEvent.selectOptions(screen.getByTestId('tir-completion-status-year'), '');
+    await userEvent.selectOptions(screen.getByTestId('tir-completion-status-status'), '');
+
+    await userEvent.click(screen.getByTestId('button-save-chapter7-panel-tir'));
+
+    await waitFor(() => {
+      expect(putSpy).toHaveBeenCalledWith(
+        'trustee-001',
+        'appointment-001',
+        expect.objectContaining({ tirCompletionYear: null, tirCompletionStatus: null }),
+      );
+    });
+  });
+
   test('cancel navigates back to the appointments page without saving', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
     const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
