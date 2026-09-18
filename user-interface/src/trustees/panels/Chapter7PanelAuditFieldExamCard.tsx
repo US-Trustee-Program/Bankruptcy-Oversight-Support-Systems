@@ -69,7 +69,7 @@ export default function Chapter7PanelAuditFieldExamCard(
       editAriaLabel="Edit Audit/Field Exam key dates"
       editTitle="Edit Audit/Field Exam key dates"
       columns={[
-        { key: 'examOrAudit', header: examOrAudit.label, testId: 'upcoming-exam-audit-row' },
+        { key: 'examOrAudit', header: 'Audit', testId: 'upcoming-exam-audit-row' },
         { key: 'auditReqBy', header: 'Audit Req by', testId: 'audit-req-by-row' },
         {
           key: 'lastAuditFiscalYear',

@@ -73,21 +73,14 @@ describe('Chapter7PanelAuditFieldExamCard', () => {
     expect(screen.getByTestId('past-field-exam-row')).toHaveTextContent('04/12/2025');
   });
 
-  test('uses the upcoming exam/audit type as the first column header', () => {
-    renderCard();
+  test.each([['Audit'], ['Field Exam'], [undefined]] as const)(
+    'always labels the first column "Audit", regardless of upcomingExamOrAuditType %s',
+    (upcomingExamOrAuditType) => {
+      renderCard({ ...keyDates, upcomingExamOrAuditType });
 
-    expect(screen.getByText('Audit')).toBeInTheDocument();
-  });
-
-  test('falls back to "Field Exam / Audit" header when no upcoming type is set', () => {
-    renderCard({
-      ...keyDates,
-      upcomingExamOrAuditType: undefined,
-      upcomingExamOrAuditYear: undefined,
-    });
-
-    expect(screen.getByText('Field Exam / Audit')).toBeInTheDocument();
-  });
+      expect(screen.getByText('Audit')).toBeInTheDocument();
+    },
+  );
 
   test('shows "No date added" for missing fields', () => {
     renderCard({
