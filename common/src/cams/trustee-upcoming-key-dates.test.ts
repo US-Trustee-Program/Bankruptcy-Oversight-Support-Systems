@@ -354,6 +354,7 @@ describe('validateTrusteeUpcomingKeyDates', () => {
       pastFieldExam: null,
       pastAudit: null,
       pastTprSubmission: null,
+      lastTprSubmitted: null,
       tprReviewPeriodStart: null,
       tprReviewPeriodEnd: null,
       tprDue: null,
@@ -373,6 +374,8 @@ describe('validateTrusteeUpcomingKeyDates', () => {
       lastAuditFiscalYear: null,
       auditCompletionYear: null,
       auditCompletionStatus: null,
+      tprCompletionYear: null,
+      tprCompletionStatus: null,
       lastMonthlyReportReceived: null,
       leaseExpiration: null,
       idExpiration: null,
@@ -551,6 +554,39 @@ describe('validateTrusteeUpcomingKeyDates', () => {
       ...baseInput(),
       auditCompletionYear: 2026,
       auditCompletionStatus: 'CLOSED',
+    });
+    expect(result).toEqual(VALID);
+  });
+
+  test('returns error when tprCompletionYear is set but tprCompletionStatus is null', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      tprCompletionYear: 2026,
+      tprCompletionStatus: null,
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.tprCompletionStatus?.reasons?.[0]).toBe(
+      'Trustee Performance Review Completion Status is required.',
+    );
+  });
+
+  test('returns error when tprCompletionStatus is set but tprCompletionYear is null', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      tprCompletionYear: null,
+      tprCompletionStatus: 'COMPLETE',
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.tprCompletionYear?.reasons?.[0]).toBe(
+      'Trustee Performance Review Completion Status Year is required.',
+    );
+  });
+
+  test('returns VALID when both tprCompletionYear and tprCompletionStatus are set', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      tprCompletionYear: 2026,
+      tprCompletionStatus: 'COMPLETE',
     });
     expect(result).toEqual(VALID);
   });
@@ -802,6 +838,7 @@ describe('validateTrusteeUpcomingKeyDates', () => {
       'pastFieldExam',
       'pastAudit',
       'pastTprSubmission',
+      'lastTprSubmitted',
       'tprReviewPeriodStart',
       'tprReviewPeriodEnd',
       'tprDue',
@@ -828,6 +865,7 @@ describe('validateTrusteeUpcomingKeyDates', () => {
       'tprFrequency',
       'tirFrequency',
       'auditCompletionStatus',
+      'tprCompletionStatus',
     ]);
   });
 });

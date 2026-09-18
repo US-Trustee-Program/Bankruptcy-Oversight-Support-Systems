@@ -212,6 +212,12 @@ const trusteeUpcomingKeyDatesSpec: ValidationSpec<TrusteeUpcomingKeyDatesInput> 
       'Field Exam/Audit Completion Status Year',
       'Field Exam/Audit Completion Status',
     ),
+    requirePair(
+      'tprCompletionYear',
+      'tprCompletionStatus',
+      'Trustee Performance Review Completion Status Year',
+      'Trustee Performance Review Completion Status',
+    ),
   ],
 };
 
@@ -249,6 +255,7 @@ export type TrusteeUpcomingKeyDates = Auditable &
     pastFieldExam?: string;
     pastAudit?: string;
     pastTprSubmission?: string;
+    lastTprSubmitted?: string;
     tprReviewPeriodStart?: string;
     tprReviewPeriodEnd?: string;
     tprDue?: string;
@@ -268,6 +275,8 @@ export type TrusteeUpcomingKeyDates = Auditable &
     lastAuditFiscalYear?: number;
     auditCompletionYear?: number;
     auditCompletionStatus?: 'CLOSED' | 'NOT_CLOSED';
+    tprCompletionYear?: number;
+    tprCompletionStatus?: 'COMPLETE' | 'INCOMPLETE';
     lastMonthlyReportReceived?: string;
     leaseExpiration?: string;
     idExpiration?: string;
@@ -283,6 +292,7 @@ export type TrusteeUpcomingKeyDatesInput = {
   pastFieldExam: string | null;
   pastAudit: string | null;
   pastTprSubmission: string | null;
+  lastTprSubmitted: string | null;
   tprReviewPeriodStart: string | null;
   tprReviewPeriodEnd: string | null;
   tprDue: string | null;
@@ -302,6 +312,8 @@ export type TrusteeUpcomingKeyDatesInput = {
   lastAuditFiscalYear: number | null;
   auditCompletionYear: number | null;
   auditCompletionStatus: 'CLOSED' | 'NOT_CLOSED' | null;
+  tprCompletionYear: number | null;
+  tprCompletionStatus: 'COMPLETE' | 'INCOMPLETE' | null;
   lastMonthlyReportReceived: string | null;
   leaseExpiration: string | null;
   idExpiration: string | null;
@@ -323,6 +335,7 @@ type DateField =
   | 'pastFieldExam'
   | 'pastAudit'
   | 'pastTprSubmission'
+  | 'lastTprSubmitted'
   | 'tprReviewPeriodStart'
   | 'tprReviewPeriodEnd'
   | 'tprDue'
@@ -346,6 +359,7 @@ export const DATE_FIELDS: DateField[] = [
   'pastFieldExam',
   'pastAudit',
   'pastTprSubmission',
+  'lastTprSubmitted',
   'tprReviewPeriodStart',
   'tprReviewPeriodEnd',
   'tprDue',
@@ -365,13 +379,19 @@ export const DATE_FIELDS: DateField[] = [
   'bondRenewalDate',
 ];
 
-type TextField = 'tprDueYearType' | 'tprFrequency' | 'tirFrequency' | 'auditCompletionStatus';
+type TextField =
+  | 'tprDueYearType'
+  | 'tprFrequency'
+  | 'tirFrequency'
+  | 'auditCompletionStatus'
+  | 'tprCompletionStatus';
 
 export const TEXT_FIELDS: TextField[] = [
   'tprDueYearType',
   'tprFrequency',
   'tirFrequency',
   'auditCompletionStatus',
+  'tprCompletionStatus',
 ];
 
 export function isoToMMDDYYYY(iso: string): string {

@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import EditableTableCard from '@/lib/components/cams/EditableTableCard/EditableTableCard';
-import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
+import { TrusteeUpcomingKeyDates, isoToMMDDYYYY } from '@common/cams/trustee-upcoming-key-dates';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import {
   tprReviewPeriodField,
@@ -17,6 +17,12 @@ export interface Chapter7PanelTrusteePerformanceReportCardProps {
   isLoading: boolean;
 }
 
+const NO_DATE = 'No date added';
+
+function formatDateOrDefault(isoDate: string | undefined): string {
+  return isoDate ? isoToMMDDYYYY(isoDate) : NO_DATE;
+}
+
 export default function Chapter7PanelTrusteePerformanceReportCard(
   props: Readonly<Chapter7PanelTrusteePerformanceReportCardProps>,
 ) {
@@ -25,7 +31,7 @@ export default function Chapter7PanelTrusteePerformanceReportCard(
   const canManage = useCanManageTrustees();
 
   function openEdit() {
-    navigate(`/trustees/${trusteeId}/appointments/${appointmentId}/upcoming-key-dates/edit`, {
+    navigate(`/trustees/${trusteeId}/appointments/${appointmentId}/tpr-key-dates/edit`, {
       state: { subHeading: appointmentHeading ?? '' },
     });
   }
@@ -33,6 +39,15 @@ export default function Chapter7PanelTrusteePerformanceReportCard(
   if (isLoading) {
     return <LoadingSpinner id="chapter7-panel-tpr-loading" />;
   }
+
+  const tag =
+    data?.tprCompletionYear !== undefined && data?.tprCompletionStatus !== undefined
+      ? {
+          label: `${data.tprCompletionStatus === 'COMPLETE' ? 'Complete' : 'Incomplete'} for ${data.tprCompletionYear}`,
+          color: (data.tprCompletionStatus === 'COMPLETE' ? 'green' : 'red') as 'green' | 'red',
+          id: `tpr-completion-status-tag-${appointmentId}`,
+        }
+      : undefined;
 
   return (
     <EditableTableCard
@@ -43,6 +58,7 @@ export default function Chapter7PanelTrusteePerformanceReportCard(
       tableId={`chapter7-panel-tpr-table-${appointmentId}`}
       tableClassName="chapter7-panel-tpr-table"
       tableAriaLabel="Trustee Performance Report key dates"
+      tag={tag}
       onEdit={canManage ? openEdit : undefined}
       editAriaLabel="Edit Trustee Performance Report key dates"
       editTitle="Edit Trustee Performance Report key dates"
@@ -54,11 +70,17 @@ export default function Chapter7PanelTrusteePerformanceReportCard(
           testId: 'tpr-review-period-frequency-row',
         },
         { key: 'tprDue', header: 'TPR Due', testId: 'tpr-due-row' },
+        {
+          key: 'lastTprSubmitted',
+          header: 'Last TPR Submitted',
+          testId: 'last-tpr-submitted-row',
+        },
       ]}
       values={{
         tprReviewPeriod: tprReviewPeriodField(data).value,
         tprFrequency: tprFrequencyField(data).value,
         tprDue: tprDueField(data).value,
+        lastTprSubmitted: formatDateOrDefault(data?.lastTprSubmitted),
       }}
     />
   );

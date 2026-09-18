@@ -152,6 +152,7 @@ describe('TrusteeUpcomingKeyDatesController', () => {
         pastBackgroundQuestion: null,
         pastAudit: null,
         pastTprSubmission: null,
+        lastTprSubmitted: null,
         tprReviewPeriodStart: null,
         tprReviewPeriodEnd: null,
         tprDue: null,
@@ -171,6 +172,8 @@ describe('TrusteeUpcomingKeyDatesController', () => {
         lastAuditFiscalYear: null,
         auditCompletionYear: null,
         auditCompletionStatus: null,
+        tprCompletionYear: null,
+        tprCompletionStatus: null,
         lastMonthlyReportReceived: null,
         leaseExpiration: null,
         idExpiration: null,
@@ -273,6 +276,20 @@ describe('TrusteeUpcomingKeyDatesController', () => {
       });
     });
 
+    test('PUT with tprCompletionYear set but tprCompletionStatus null returns 400', async () => {
+      context.request = mockCamsHttpRequest({
+        method: 'PUT',
+        params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
+        body: buildValidInput({ tprCompletionYear: 2026, tprCompletionStatus: null }),
+      });
+
+      const controller = new TrusteeUpcomingKeyDatesController(context);
+
+      await expect(controller.handleRequest(context)).rejects.toMatchObject({
+        status: 400,
+      });
+    });
+
     test.each([
       { name: 'lastCompensationStudy', overrides: { lastCompensationStudy: '2024-06-01' } },
       { name: 'tprFrequency', overrides: { tprFrequency: 'SEMI_ANNUAL' as const } },
@@ -283,6 +300,14 @@ describe('TrusteeUpcomingKeyDatesController', () => {
       {
         name: 'auditCompletionYear and auditCompletionStatus',
         overrides: { auditCompletionYear: 2026, auditCompletionStatus: 'CLOSED' as const },
+      },
+      {
+        name: 'tprCompletionYear and tprCompletionStatus',
+        overrides: { tprCompletionYear: 2026, tprCompletionStatus: 'COMPLETE' as const },
+      },
+      {
+        name: 'lastTprSubmitted',
+        overrides: { lastTprSubmitted: '2026-01-15' },
       },
     ])('PUT with $name set passes through to use case', async ({ overrides }) => {
       const putSpy = vi

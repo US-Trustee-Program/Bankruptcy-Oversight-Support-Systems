@@ -35,6 +35,7 @@ describe('Chapter7PanelTrusteePerformanceReportCard', () => {
     tprFrequency: 'ANNUAL',
     tprDue: '1900-10-06',
     tprDueYearType: 'EVEN',
+    lastTprSubmitted: '2025-10-03',
   };
 
   beforeEach(() => {
@@ -62,13 +63,14 @@ describe('Chapter7PanelTrusteePerformanceReportCard', () => {
     );
   }
 
-  test('renders the Trustee Performance Report title and all three columns', () => {
+  test('renders the Trustee Performance Report title and all columns', () => {
     renderCard();
 
     expect(screen.getByText('Trustee Performance Report')).toBeInTheDocument();
     expect(screen.getByTestId('tpr-review-period-row')).toBeInTheDocument();
     expect(screen.getByTestId('tpr-review-period-frequency-row')).toHaveTextContent('One year');
     expect(screen.getByTestId('tpr-due-row')).toBeInTheDocument();
+    expect(screen.getByTestId('last-tpr-submitted-row')).toHaveTextContent('10/03/2025');
   });
 
   test('shows "No date added" / "No frequency selected" when there is no key dates document', () => {
@@ -79,6 +81,7 @@ describe('Chapter7PanelTrusteePerformanceReportCard', () => {
       'No frequency selected',
     );
     expect(screen.getByTestId('tpr-due-row')).toHaveTextContent('No date added');
+    expect(screen.getByTestId('last-tpr-submitted-row')).toHaveTextContent('No date added');
   });
 
   test('shows a loading spinner while loading', () => {
@@ -106,15 +109,59 @@ describe('Chapter7PanelTrusteePerformanceReportCard', () => {
     ).not.toBeInTheDocument();
   });
 
-  test('navigates to the upcoming key dates edit form with the appointment heading as subHeading', async () => {
+  test('navigates to the TPR key dates edit form with the appointment heading as subHeading', async () => {
     const user = userEvent.setup();
     renderCard(keyDates, false, 'Southern District of New York (Manhattan): Chapter 7 - Panel');
 
     await user.click(screen.getByTestId('button-edit-chapter7-panel-tpr-appointment-001'));
 
     expect(mockNavigate).toHaveBeenCalledWith(
-      '/trustees/trustee-123/appointments/appointment-001/upcoming-key-dates/edit',
+      '/trustees/trustee-123/appointments/appointment-001/tpr-key-dates/edit',
       { state: { subHeading: 'Southern District of New York (Manhattan): Chapter 7 - Panel' } },
     );
+  });
+
+  test('navigates to the TPR key dates edit form with an empty subHeading when none is provided', async () => {
+    const user = userEvent.setup();
+    renderCard(keyDates);
+
+    await user.click(screen.getByTestId('button-edit-chapter7-panel-tpr-appointment-001'));
+
+    expect(mockNavigate).toHaveBeenCalledWith(
+      '/trustees/trustee-123/appointments/appointment-001/tpr-key-dates/edit',
+      { state: { subHeading: '' } },
+    );
+  });
+
+  test('shows a "Complete for <year>" tag when tprCompletionStatus is COMPLETE', () => {
+    renderCard({ ...keyDates, tprCompletionYear: 2025, tprCompletionStatus: 'COMPLETE' });
+
+    expect(screen.getByTestId('tag-tpr-completion-status-tag-appointment-001')).toHaveTextContent(
+      'Complete for 2025',
+    );
+  });
+
+  test('shows an "Incomplete for <year>" tag when tprCompletionStatus is INCOMPLETE', () => {
+    renderCard({ ...keyDates, tprCompletionYear: 2024, tprCompletionStatus: 'INCOMPLETE' });
+
+    expect(screen.getByTestId('tag-tpr-completion-status-tag-appointment-001')).toHaveTextContent(
+      'Incomplete for 2024',
+    );
+  });
+
+  test('shows no tag when completion status is not set', () => {
+    renderCard({ ...keyDates, tprCompletionYear: undefined, tprCompletionStatus: undefined });
+
+    expect(
+      screen.queryByTestId('tag-tpr-completion-status-tag-appointment-001'),
+    ).not.toBeInTheDocument();
+  });
+
+  test('shows no tag when only the year is set', () => {
+    renderCard({ ...keyDates, tprCompletionYear: 2025, tprCompletionStatus: undefined });
+
+    expect(
+      screen.queryByTestId('tag-tpr-completion-status-tag-appointment-001'),
+    ).not.toBeInTheDocument();
   });
 });

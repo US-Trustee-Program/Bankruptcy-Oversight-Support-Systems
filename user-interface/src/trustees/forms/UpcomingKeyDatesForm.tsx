@@ -102,6 +102,7 @@ type FormState = {
   pastFieldExam: string;
   pastAudit: string;
   pastTprSubmission: string;
+  lastTprSubmitted: string;
   tprReviewPeriodStart: string;
   tprReviewPeriodEnd: string;
   tprDue: string;
@@ -118,6 +119,8 @@ type FormState = {
   lastAuditFiscalYear: number | null;
   auditCompletionYear: number | null;
   auditCompletionStatus: 'CLOSED' | 'NOT_CLOSED' | null;
+  tprCompletionYear: number | null;
+  tprCompletionStatus: 'COMPLETE' | 'INCOMPLETE' | null;
   lastMonthlyReportReceived: string;
   leaseExpiration: string;
   idExpiration: string;
@@ -131,6 +134,7 @@ const EMPTY_FORM: FormState = {
   pastFieldExam: '',
   pastAudit: '',
   pastTprSubmission: '',
+  lastTprSubmitted: '',
   tprReviewPeriodStart: '',
   tprReviewPeriodEnd: '',
   tprDue: '',
@@ -147,6 +151,8 @@ const EMPTY_FORM: FormState = {
   lastAuditFiscalYear: null,
   auditCompletionYear: null,
   auditCompletionStatus: null,
+  tprCompletionYear: null,
+  tprCompletionStatus: null,
   lastMonthlyReportReceived: '',
   leaseExpiration: '',
   idExpiration: '',
@@ -181,6 +187,7 @@ function buildFormStateFromData(data: TrusteeUpcomingKeyDates): FormState {
     pastFieldExam: data.pastFieldExam ?? '',
     pastAudit: data.pastAudit ?? '',
     pastTprSubmission: data.pastTprSubmission ?? '',
+    lastTprSubmitted: data.lastTprSubmitted ?? '',
     tprReviewPeriodStart: data.tprReviewPeriodStart ?? '',
     tprReviewPeriodEnd: data.tprReviewPeriodEnd ?? '',
     tprDue: data.tprDue ?? '',
@@ -197,6 +204,8 @@ function buildFormStateFromData(data: TrusteeUpcomingKeyDates): FormState {
     lastAuditFiscalYear: data.lastAuditFiscalYear ?? null,
     auditCompletionYear: data.auditCompletionYear ?? null,
     auditCompletionStatus: data.auditCompletionStatus ?? null,
+    tprCompletionYear: data.tprCompletionYear ?? null,
+    tprCompletionStatus: data.tprCompletionStatus ?? null,
     lastMonthlyReportReceived: data.lastMonthlyReportReceived ?? '',
     leaseExpiration: data.leaseExpiration ?? '',
     idExpiration: data.idExpiration ?? '',
@@ -427,6 +436,7 @@ export default function UpcomingKeyDatesForm({
       pastFieldExam: form.pastFieldExam || null,
       pastAudit: form.pastAudit || null,
       pastTprSubmission: form.pastTprSubmission || null,
+      lastTprSubmitted: form.lastTprSubmitted || null,
       tprReviewPeriodStart: tprDisplayUpdates
         ? form.tprReviewPeriodStart || null
         : form.tprReviewPeriodStart
@@ -457,6 +467,8 @@ export default function UpcomingKeyDatesForm({
       lastAuditFiscalYear: form.lastAuditFiscalYear,
       auditCompletionYear: form.auditCompletionYear,
       auditCompletionStatus: form.auditCompletionStatus,
+      tprCompletionYear: form.tprCompletionYear,
+      tprCompletionStatus: form.tprCompletionStatus,
       lastMonthlyReportReceived: form.lastMonthlyReportReceived || null,
       leaseExpiration: form.leaseExpiration || null,
       idExpiration: form.idExpiration || null,

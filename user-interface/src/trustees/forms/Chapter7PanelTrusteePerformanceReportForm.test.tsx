@@ -1,9 +1,9 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
-import Chapter7PanelAuditFieldExamForm, {
-  buildAuditFieldExamKeyDatesInput,
-} from './Chapter7PanelAuditFieldExamForm';
+import Chapter7PanelTrusteePerformanceReportForm, {
+  buildTrusteePerformanceReportKeyDatesInput,
+} from './Chapter7PanelTrusteePerformanceReportForm';
 import Api2 from '@/lib/models/api2';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
@@ -34,14 +34,14 @@ const populatedDocument: TrusteeUpcomingKeyDates = {
   createdOn: '2026-01-01T00:00:00.000Z',
   updatedBy: SYSTEM_USER_REFERENCE,
   updatedOn: '2026-01-01T00:00:00.000Z',
-  upcomingExamOrAuditYear: 2026,
-  upcomingExamOrAuditType: 'Audit',
-  pastAudit: '2023-02-04',
-  lastAuditFiscalYear: 2023,
-  pastFieldExam: '2025-04-12',
-  auditCompletionYear: 2023,
-  auditCompletionStatus: 'CLOSED',
-  pastBackgroundQuestion: '2023-06-03',
+  tprReviewPeriodStart: '2026-04-01',
+  tprReviewPeriodEnd: '2027-03-31',
+  tprFrequency: 'ANNUAL',
+  tprDue: '1900-10-06',
+  tprDueYearType: 'EVEN',
+  lastTprSubmitted: '2025-10-03',
+  tprCompletionYear: 2025,
+  tprCompletionStatus: 'COMPLETE',
 };
 
 const mockGlobalAlertRef = {
@@ -60,13 +60,13 @@ function renderComponent() {
   return render(
     <BrowserRouter>
       <GlobalAlertContext.Provider value={mockGlobalAlertRef}>
-        <Chapter7PanelAuditFieldExamForm />
+        <Chapter7PanelTrusteePerformanceReportForm />
       </GlobalAlertContext.Provider>
     </BrowserRouter>,
   );
 }
 
-describe('Chapter7PanelAuditFieldExamForm', () => {
+describe('Chapter7PanelTrusteePerformanceReportForm', () => {
   const mockNavigate = vi.fn();
   let userEvent: CamsUserEvent;
 
@@ -89,7 +89,7 @@ describe('Chapter7PanelAuditFieldExamForm', () => {
     expect(forbiddenAlert).toBeInTheDocument();
     expect(forbiddenAlert).toHaveTextContent('Forbidden');
     expect(forbiddenAlert).toHaveTextContent(
-      'You do not have permission to manage Trustee Audit/Field Exam Key Dates',
+      'You do not have permission to manage Trustee Performance Report Key Dates',
     );
   });
 
@@ -99,7 +99,7 @@ describe('Chapter7PanelAuditFieldExamForm', () => {
     renderComponent();
 
     expect(screen.getByRole('status')).toBeInTheDocument();
-    expect(screen.queryByTestId('edit-chapter7-panel-audit-field-exam')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('edit-chapter7-panel-tpr')).not.toBeInTheDocument();
   });
 
   test('pre-populates form from API response', async () => {
@@ -108,14 +108,14 @@ describe('Chapter7PanelAuditFieldExamForm', () => {
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByTestId('upcoming-exam-audit-year')).toHaveValue('2026');
+      expect(screen.getByTestId('tpr-review-period-start')).toHaveValue('2026-04-01');
     });
-    expect(screen.getByTestId('upcoming-exam-audit-type')).toHaveValue('Audit');
-    expect(screen.getByTestId('past-audit')).toHaveValue('2023-02-04');
-    expect(screen.getByTestId('last-audit-fiscal-year')).toHaveValue('2023');
-    expect(screen.getByTestId('past-field-exam')).toHaveValue('2025-04-12');
-    expect(screen.getByTestId('audit-completion-status-year')).toHaveValue('2023');
-    expect(screen.getByTestId('audit-completion-status-status')).toHaveValue('CLOSED');
+    expect(screen.getByTestId('tpr-review-period-end')).toHaveValue('2027-03-31');
+    expect(screen.getByTestId('tpr-frequency')).toHaveValue('ANNUAL');
+    expect(screen.getByTestId('tpr-due-year-type')).toHaveValue('EVEN');
+    expect(screen.getByTestId('last-tpr-submitted')).toHaveValue('2025-10-03');
+    expect(screen.getByTestId('tpr-completion-status-year')).toHaveValue('2025');
+    expect(screen.getByTestId('tpr-completion-status-status')).toHaveValue('COMPLETE');
   });
 
   test('shows empty inputs when API returns null', async () => {
@@ -124,15 +124,15 @@ describe('Chapter7PanelAuditFieldExamForm', () => {
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByTestId('edit-chapter7-panel-audit-field-exam')).toBeInTheDocument();
+      expect(screen.getByTestId('edit-chapter7-panel-tpr')).toBeInTheDocument();
     });
-    expect(screen.getByTestId('upcoming-exam-audit-year')).toHaveValue('');
-    expect(screen.getByTestId('upcoming-exam-audit-type')).toHaveValue('');
-    expect(screen.getByTestId('past-audit')).toHaveValue('');
-    expect(screen.getByTestId('last-audit-fiscal-year')).toHaveValue('');
-    expect(screen.getByTestId('past-field-exam')).toHaveValue('');
-    expect(screen.getByTestId('audit-completion-status-year')).toHaveValue('');
-    expect(screen.getByTestId('audit-completion-status-status')).toHaveValue('');
+    expect(screen.getByTestId('tpr-review-period-start')).toHaveValue('');
+    expect(screen.getByTestId('tpr-review-period-end')).toHaveValue('');
+    expect(screen.getByTestId('tpr-frequency')).toHaveValue('');
+    expect(screen.getByTestId('tpr-due-year-type')).toHaveValue('');
+    expect(screen.getByTestId('last-tpr-submitted')).toHaveValue('');
+    expect(screen.getByTestId('tpr-completion-status-year')).toHaveValue('');
+    expect(screen.getByTestId('tpr-completion-status-status')).toHaveValue('');
   });
 
   test('save calls PUT with all owned fields while preserving other fields, then navigates', async () => {
@@ -141,9 +141,11 @@ describe('Chapter7PanelAuditFieldExamForm', () => {
 
     renderComponent();
 
-    await waitFor(() => expect(screen.getByTestId('past-audit')).toHaveValue('2023-02-04'));
+    await waitFor(() =>
+      expect(screen.getByTestId('tpr-review-period-start')).toHaveValue('2026-04-01'),
+    );
 
-    await userEvent.click(screen.getByTestId('button-save-chapter7-panel-audit-field-exam'));
+    await userEvent.click(screen.getByTestId('button-save-chapter7-panel-tpr'));
 
     await waitFor(() => {
       expect(putSpy).toHaveBeenCalledWith(
@@ -152,14 +154,14 @@ describe('Chapter7PanelAuditFieldExamForm', () => {
         expect.objectContaining({
           trusteeId: 'trustee-001',
           appointmentId: 'appointment-001',
-          upcomingExamOrAuditYear: 2026,
-          upcomingExamOrAuditType: 'Audit',
-          pastAudit: '2023-02-04',
-          lastAuditFiscalYear: 2023,
-          pastFieldExam: '2025-04-12',
-          auditCompletionYear: 2023,
-          auditCompletionStatus: 'CLOSED',
-          pastBackgroundQuestion: '2023-06-03',
+          tprReviewPeriodStart: '2026-04-01',
+          tprReviewPeriodEnd: '2027-03-31',
+          tprFrequency: 'ANNUAL',
+          tprDue: '1900-10-06',
+          tprDueYearType: 'EVEN',
+          lastTprSubmitted: '2025-10-03',
+          tprCompletionYear: 2025,
+          tprCompletionStatus: 'COMPLETE',
         }),
       );
     });
@@ -172,36 +174,57 @@ describe('Chapter7PanelAuditFieldExamForm', () => {
 
     renderComponent();
 
-    await waitFor(() => expect(screen.getByTestId('past-audit')).toHaveValue('2023-02-04'));
-
-    await userEvent.selectOptions(screen.getByTestId('upcoming-exam-audit-year'), '2027');
-    await userEvent.selectOptions(screen.getByTestId('upcoming-exam-audit-type'), 'Field Exam');
-    await userEvent.selectOptions(screen.getByTestId('last-audit-fiscal-year'), '2022');
-    await userEvent.selectOptions(screen.getByTestId('audit-completion-status-year'), '2024');
-    await userEvent.selectOptions(
-      screen.getByTestId('audit-completion-status-status'),
-      'NOT_CLOSED',
+    await waitFor(() =>
+      expect(screen.getByTestId('tpr-review-period-start')).toHaveValue('2026-04-01'),
     );
 
-    expect(screen.getByTestId('upcoming-exam-audit-year')).toHaveValue('2027');
-    expect(screen.getByTestId('upcoming-exam-audit-type')).toHaveValue('Field Exam');
-    expect(screen.getByTestId('last-audit-fiscal-year')).toHaveValue('2022');
-    expect(screen.getByTestId('audit-completion-status-year')).toHaveValue('2024');
-    expect(screen.getByTestId('audit-completion-status-status')).toHaveValue('NOT_CLOSED');
+    await userEvent.selectOptions(screen.getByTestId('tpr-frequency'), 'SEMI_ANNUAL');
+    await userEvent.selectOptions(screen.getByTestId('tpr-due-year-type'), 'ODD');
+    await userEvent.selectOptions(screen.getByTestId('tpr-completion-status-year'), '2024');
+    await userEvent.selectOptions(screen.getByTestId('tpr-completion-status-status'), 'INCOMPLETE');
 
-    await userEvent.click(screen.getByTestId('button-save-chapter7-panel-audit-field-exam'));
+    expect(screen.getByTestId('tpr-frequency')).toHaveValue('SEMI_ANNUAL');
+    expect(screen.getByTestId('tpr-due-year-type')).toHaveValue('ODD');
+    expect(screen.getByTestId('tpr-completion-status-year')).toHaveValue('2024');
+    expect(screen.getByTestId('tpr-completion-status-status')).toHaveValue('INCOMPLETE');
+
+    await userEvent.click(screen.getByTestId('button-save-chapter7-panel-tpr'));
 
     await waitFor(() => {
       expect(putSpy).toHaveBeenCalledWith(
         'trustee-001',
         'appointment-001',
         expect.objectContaining({
-          upcomingExamOrAuditYear: 2027,
-          upcomingExamOrAuditType: 'Field Exam',
-          lastAuditFiscalYear: 2022,
-          auditCompletionYear: 2024,
-          auditCompletionStatus: 'NOT_CLOSED',
+          tprFrequency: 'SEMI_ANNUAL',
+          tprDueYearType: 'ODD',
+          tprCompletionYear: 2024,
+          tprCompletionStatus: 'INCOMPLETE',
         }),
+      );
+    });
+  });
+
+  test('resetting the completion status year back to blank clears it from the save payload', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+    const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
+
+    renderComponent();
+
+    await waitFor(() =>
+      expect(screen.getByTestId('tpr-completion-status-year')).toHaveValue('2025'),
+    );
+
+    await userEvent.selectOptions(screen.getByTestId('tpr-completion-status-year'), '');
+
+    expect(screen.getByTestId('tpr-completion-status-year')).toHaveValue('');
+
+    await userEvent.click(screen.getByTestId('button-save-chapter7-panel-tpr'));
+
+    await waitFor(() => {
+      expect(putSpy).toHaveBeenCalledWith(
+        'trustee-001',
+        'appointment-001',
+        expect.objectContaining({ tprCompletionYear: null }),
       );
     });
   });
@@ -212,10 +235,10 @@ describe('Chapter7PanelAuditFieldExamForm', () => {
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByTestId('edit-chapter7-panel-audit-field-exam')).toBeInTheDocument();
+      expect(screen.getByTestId('edit-chapter7-panel-tpr')).toBeInTheDocument();
     });
     expect(mockGlobalAlertRef.current.error).toHaveBeenCalledWith(
-      'Failed to load Audit/Field Exam key dates: Network error',
+      'Failed to load Trustee Performance Report key dates: Network error',
     );
   });
 
@@ -225,36 +248,80 @@ describe('Chapter7PanelAuditFieldExamForm', () => {
 
     renderComponent();
 
-    await waitFor(() => expect(screen.getByTestId('past-audit')).toHaveValue('2023-02-04'));
+    await waitFor(() =>
+      expect(screen.getByTestId('tpr-review-period-start')).toHaveValue('2026-04-01'),
+    );
 
-    await userEvent.click(screen.getByTestId('button-save-chapter7-panel-audit-field-exam'));
+    await userEvent.click(screen.getByTestId('button-save-chapter7-panel-tpr'));
 
     await waitFor(() => {
-      const saveButton = screen.getByTestId('button-save-chapter7-panel-audit-field-exam');
+      const saveButton = screen.getByTestId('button-save-chapter7-panel-tpr');
       expect(saveButton).not.toBeDisabled();
       expect(saveButton).toHaveTextContent('Save');
     });
     expect(mockNavigate).not.toHaveBeenCalled();
     expect(mockGlobalAlertRef.current.error).toHaveBeenCalledWith(
-      'Failed to save Audit/Field Exam key dates: Server error',
+      'Failed to save Trustee Performance Report key dates: Server error',
     );
   });
 
-  test('Save button is disabled when Audit Report Date has an invalid date', async () => {
+  test.each([
+    ['last-tpr-submitted', 'Last TPR Submitted'],
+    ['tpr-review-period-start', 'TPR Review Period Start'],
+    ['tpr-review-period-end', 'TPR Review Period End'],
+  ])('Save button is disabled when %s has an invalid date', async (testId) => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
 
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByTestId('past-audit')).toBeInTheDocument();
+      expect(screen.getByTestId(testId)).toBeInTheDocument();
     });
 
-    fireEvent.change(screen.getByTestId('past-audit'), {
+    fireEvent.change(screen.getByTestId(testId), {
       target: { value: '1900-01-01' },
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('button-save-chapter7-panel-audit-field-exam')).toBeDisabled();
+      expect(screen.getByTestId('button-save-chapter7-panel-tpr')).toBeDisabled();
+    });
+  });
+
+  test('Save button is disabled and shows a message when TPR Review Period is out of order', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+
+    renderComponent();
+
+    await waitFor(() =>
+      expect(screen.getByTestId('tpr-review-period-start')).toHaveValue('2026-04-01'),
+    );
+
+    fireEvent.change(screen.getByTestId('tpr-review-period-start'), {
+      target: { value: '2027-04-01' },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('tpr-review-period-error')).toHaveTextContent(
+        'TPR Review Period Start must be before TPR Review Period End.',
+      );
+      expect(screen.getByTestId('button-save-chapter7-panel-tpr')).toBeDisabled();
+    });
+  });
+
+  test('Save button is disabled and shows a message when TPR Due is set without a Year Type', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+
+    renderComponent();
+
+    await waitFor(() => expect(screen.getByTestId('tpr-due-year-type')).toHaveValue('EVEN'));
+
+    await userEvent.selectOptions(screen.getByTestId('tpr-due-year-type'), '');
+
+    await waitFor(() => {
+      expect(screen.getByTestId('tpr-due-error')).toHaveTextContent(
+        'TPR Due Year Type is required.',
+      );
+      expect(screen.getByTestId('button-save-chapter7-panel-tpr')).toBeDisabled();
     });
   });
 
@@ -264,16 +331,18 @@ describe('Chapter7PanelAuditFieldExamForm', () => {
 
     renderComponent();
 
-    await waitFor(() => expect(screen.getByTestId('past-audit')).toHaveValue('2023-02-04'));
+    await waitFor(() =>
+      expect(screen.getByTestId('tpr-review-period-start')).toHaveValue('2026-04-01'),
+    );
 
-    await userEvent.click(screen.getByTestId('button-cancel-chapter7-panel-audit-field-exam'));
+    await userEvent.click(screen.getByTestId('button-cancel-chapter7-panel-tpr'));
 
     expect(putSpy).not.toHaveBeenCalled();
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');
   });
 });
 
-describe('buildAuditFieldExamKeyDatesInput', () => {
+describe('buildTrusteePerformanceReportKeyDatesInput', () => {
   const fullOriginal: TrusteeUpcomingKeyDates = {
     id: 'doc-full',
     documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
@@ -318,17 +387,18 @@ describe('buildAuditFieldExamKeyDatesInput', () => {
   };
 
   test('preserves every non-owned field from the original document and overrides only this card fields', () => {
-    const result = buildAuditFieldExamKeyDatesInput(
+    const result = buildTrusteePerformanceReportKeyDatesInput(
       { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
       fullOriginal,
       {
-        upcomingExamOrAuditYear: 2026,
-        upcomingExamOrAuditType: 'Audit',
-        pastAudit: '2023-02-04',
-        lastAuditFiscalYear: 2023,
-        pastFieldExam: '2025-04-12',
-        auditCompletionYear: 2023,
-        auditCompletionStatus: 'CLOSED',
+        tprReviewPeriodStart: '2026-04-01',
+        tprReviewPeriodEnd: '2027-03-31',
+        tprFrequency: 'SEMI_ANNUAL',
+        tprDue: '1900-10-06',
+        tprDueYearType: 'ODD',
+        lastTprSubmitted: '2025-10-03',
+        tprCompletionYear: 2025,
+        tprCompletionStatus: 'COMPLETE',
       },
     );
 
@@ -336,31 +406,31 @@ describe('buildAuditFieldExamKeyDatesInput', () => {
       trusteeId: 'trustee-001',
       appointmentId: 'appointment-001',
       pastBackgroundQuestion: '2020-01-01',
-      pastFieldExam: '2025-04-12',
-      pastAudit: '2023-02-04',
+      pastFieldExam: '2020-01-02',
+      pastAudit: '2020-01-03',
       pastTprSubmission: '2020-01-04',
-      lastTprSubmitted: '2020-01-22',
-      tprReviewPeriodStart: '2020-01-05',
-      tprReviewPeriodEnd: '2020-01-06',
-      tprDue: '2020-01-07',
-      tprDueYearType: 'EVEN',
-      tprFrequency: 'ANNUAL',
+      lastTprSubmitted: '2025-10-03',
+      tprReviewPeriodStart: '2026-04-01',
+      tprReviewPeriodEnd: '2027-03-31',
+      tprDue: '1900-10-06',
+      tprDueYearType: 'ODD',
+      tprFrequency: 'SEMI_ANNUAL',
       tirReviewPeriodStart: '2020-01-08',
       tirReviewPeriodEnd: '2020-01-09',
       tirSubmission: '2020-01-10',
       tirReview: '2020-01-11',
-      upcomingExamOrAuditYear: 2026,
-      upcomingExamOrAuditType: 'Audit',
+      upcomingExamOrAuditYear: 2024,
+      upcomingExamOrAuditType: 'Field Exam',
       tirFrequency: 'SEMI_ANNUAL',
       tirSemiAnnualReviewPeriodStart: '2020-01-12',
       tirSemiAnnualReviewPeriodEnd: '2020-01-13',
       tirSemiAnnualSubmission: '2020-01-14',
       tirSemiAnnualReview: '2020-01-15',
-      lastAuditFiscalYear: 2023,
-      auditCompletionYear: 2023,
-      auditCompletionStatus: 'CLOSED',
-      tprCompletionYear: 2022,
-      tprCompletionStatus: 'INCOMPLETE',
+      lastAuditFiscalYear: 2021,
+      auditCompletionYear: 2021,
+      auditCompletionStatus: 'NOT_CLOSED',
+      tprCompletionYear: 2025,
+      tprCompletionStatus: 'COMPLETE',
       lastMonthlyReportReceived: '2020-01-16',
       leaseExpiration: '2020-01-17',
       idExpiration: '2020-01-18',
@@ -371,17 +441,18 @@ describe('buildAuditFieldExamKeyDatesInput', () => {
   });
 
   test('defaults every field to null when there is no original document and the form is empty', () => {
-    const result = buildAuditFieldExamKeyDatesInput(
+    const result = buildTrusteePerformanceReportKeyDatesInput(
       { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
       null,
       {
-        upcomingExamOrAuditYear: '',
-        upcomingExamOrAuditType: '',
-        pastAudit: '',
-        lastAuditFiscalYear: '',
-        pastFieldExam: '',
-        auditCompletionYear: '',
-        auditCompletionStatus: '',
+        tprReviewPeriodStart: '',
+        tprReviewPeriodEnd: '',
+        tprFrequency: '',
+        tprDue: '',
+        tprDueYearType: '',
+        lastTprSubmitted: '',
+        tprCompletionYear: '',
+        tprCompletionStatus: '',
       },
     );
 

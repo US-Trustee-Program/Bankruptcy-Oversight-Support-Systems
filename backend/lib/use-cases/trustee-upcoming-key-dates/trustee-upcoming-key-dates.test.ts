@@ -34,6 +34,7 @@ function buildMockInput(
     pastFieldExam: null,
     pastAudit: null,
     pastTprSubmission: null,
+    lastTprSubmitted: null,
     tprReviewPeriodStart: null,
     tprReviewPeriodEnd: null,
     tprDue: null,
@@ -53,6 +54,8 @@ function buildMockInput(
     lastAuditFiscalYear: null,
     auditCompletionYear: null,
     auditCompletionStatus: null,
+    tprCompletionYear: null,
+    tprCompletionStatus: null,
     lastMonthlyReportReceived: null,
     leaseExpiration: null,
     idExpiration: null,
@@ -217,6 +220,9 @@ describe('TrusteeUpcomingKeyDatesUseCase', () => {
       ['bondRenewalDate', '2026-06-01'],
       ['auditCompletionYear', 2026],
       ['auditCompletionStatus', 'CLOSED'],
+      ['lastTprSubmitted', '2026-01-15'],
+      ['tprCompletionYear', 2026],
+      ['tprCompletionStatus', 'COMPLETE'],
     ])('saves %s when set', async (field, value) => {
       vi.spyOn(MockMongoRepository.prototype, 'getByAppointmentId').mockResolvedValue(null);
       const upsertSpy = vi
@@ -243,6 +249,7 @@ describe('TrusteeUpcomingKeyDatesUseCase', () => {
       ['upcomingExamOrAuditYear'],
       ['upcomingExamOrAuditType'],
       ['auditCompletionYear'],
+      ['tprCompletionYear'],
     ])('does not include %s in saved doc when null', async (field) => {
       vi.spyOn(MockMongoRepository.prototype, 'getByAppointmentId').mockResolvedValue(null);
       const upsertSpy = vi
@@ -275,6 +282,8 @@ describe('TrusteeUpcomingKeyDatesUseCase', () => {
       ['bondIssuedDate', '2022-06-01', '2023-06-01'],
       ['bondRenewalDate', '2025-06-01', '2026-06-01'],
       ['auditCompletionYear', 2025, 2026],
+      ['tprCompletionYear', 2025, 2026],
+      ['lastTprSubmitted', '2025-01-15', '2026-01-15'],
     ])('%s change is captured in audit history', async (field, before, after) => {
       const existing = buildMockDocument({ [field]: before });
       vi.spyOn(MockMongoRepository.prototype, 'getByAppointmentId').mockResolvedValue(existing);
@@ -349,6 +358,8 @@ describe('TrusteeUpcomingKeyDatesUseCase', () => {
         { lastCompensationStudy: null },
       ],
       ['auditCompletionYear', { auditCompletionYear: 2025 }, { auditCompletionYear: null }],
+      ['tprCompletionYear', { tprCompletionYear: 2025 }, { tprCompletionYear: null }],
+      ['lastTprSubmitted', { lastTprSubmitted: '2025-01-15' }, { lastTprSubmitted: null }],
     ])(
       'scalar field cleared (%s → null): history shows old value in before, absent from after',
       async (_field, existingOverride, inputOverride) => {
