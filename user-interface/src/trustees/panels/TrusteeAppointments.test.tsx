@@ -91,7 +91,6 @@ describe('TrusteeAppointments', () => {
     vi.restoreAllMocks();
     mockNavigate.mockClear();
     vi.mocked(useNavigate).mockReturnValue(mockNavigate);
-    window.sessionStorage.clear();
   });
 
   test('should display loading spinner while fetching appointments', () => {
@@ -314,7 +313,6 @@ describe('TrusteeAppointments', () => {
       courtName: 'Southern District of New York',
     });
     beforeEach(() => {
-      window.sessionStorage.clear();
       vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
     });
 
@@ -347,7 +345,6 @@ describe('TrusteeAppointments', () => {
       courtName: 'Southern District of New York',
     });
     beforeEach(() => {
-      window.sessionStorage.clear();
       vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
     });
 

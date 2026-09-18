@@ -28,7 +28,7 @@ interface EditableTableCardTag {
 }
 
 const TAG_COLOR_STYLES: Record<EditableTableCardTagColor, UswdsTagStyle> = {
-  green: UswdsTagStyle.Green,
+  green: UswdsTagStyle.Success,
   red: UswdsTagStyle.SecondaryDark,
 };
 
