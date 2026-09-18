@@ -28,7 +28,7 @@ import {
 } from '../../../../backend/lib/adapters/utils/phonetic-helper';
 import { DxtrTrusteeParty } from '../../../../common/src/cams/dataflow-events';
 import { Trustee } from '../../../../common/src/cams/trustees';
-import { TrusteeProfessionalId } from '../../../../common/src/cams/trustee-professional-ids';
+import { TrusteeProfessionalId } from '../../../../backend/lib/use-cases/dataflows/trustee-professional-ids.types';
 
 const FIXTURES_DIR = path.resolve(__dirname, '../fixtures');
 const NAME_THRESHOLD = 85;

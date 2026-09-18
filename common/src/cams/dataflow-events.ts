@@ -81,10 +81,13 @@ export type CaseSyncEvent = {
 };
 
 /**
- * Trustee party data from DXTR AO_PY table.
- * Used during trustee appointment sync to match against CAMS trustees.
+ * The trustee-matching pipeline's source-record shape - a legacy-system trustee/professional
+ * record, in whatever form it takes before matching normalizes it. DxtrTrusteeParty and
+ * AcmsTrusteeProfessional are each their own nominal type sharing this shape, rather than aliases
+ * of it directly, so DXTR's and ACMS's upstream schemas can diverge independently without forcing
+ * a change here.
  */
-export type DxtrTrusteeParty = {
+export type CanonicalTrusteeSource = {
   firstName?: string;
   middleName?: string;
   lastName?: string;
@@ -95,36 +98,20 @@ export type DxtrTrusteeParty = {
     fax?: string;
     email?: string;
     /**
-     * Diagnostic field for QC visibility into the parseCityStateZip result for this
-     * trustee's raw cityStateZipCountry string. null means a raw string was present but
-     * did not match the expected pattern. Absent (undefined) when there was no raw
-     * cityStateZipCountry string to parse in the first place.
+     * QC visibility into the parseCityStateZip result for this record's raw
+     * cityStateZipCountry string. null means a raw string was present but did not match the
+     * expected pattern; absent (undefined) means there was no raw string to parse. A parsed
+     * state of null means a city and zip were recovered but no USPS state token was present.
      */
-    parsedCityStateZip?: { city: string; state: string; zipCode: string } | null;
+    parsedCityStateZip?: { city: string; state: string | null; zipCode: string } | null;
   };
 };
 
-/**
- * Trustee professional data from ACMS's CMMPR (Professional Master File) table — ACMS's
- * equivalent of DXTR's AO_PY party table, but its own distinct source system and table, hence a
- * separate type rather than reusing DxtrTrusteeParty. Same canonical shape as DxtrTrusteeParty
- * (both are mapped into it before reaching the shared trustee-match.helpers.ts scoring
- * functions) so each source's type can evolve independently if its upstream schema ever
- * diverges. Used during the ACMS professional-id sync to match against CAMS trustees.
- */
-export type AcmsTrusteeProfessional = {
-  firstName?: string;
-  middleName?: string;
-  lastName?: string;
-  generation?: string;
-  fullName: string;
-  legacy?: LegacyAddress & {
-    phone?: string;
-    fax?: string;
-    email?: string;
-    parsedCityStateZip?: { city: string; state: string; zipCode: string } | null;
-  };
-};
+/** Trustee party data from DXTR's AO_PY table. */
+export type DxtrTrusteeParty = CanonicalTrusteeSource;
+
+/** Trustee professional data from ACMS's CMMPR (Professional Master File) table. */
+export type AcmsTrusteeProfessional = CanonicalTrusteeSource;
 
 /**
  * Event triggered when a trustee appointment is detected in DXTR.
@@ -215,6 +202,14 @@ export const UNSCORED = -1;
 /**
  * Scoring details for a candidate trustee during fuzzy matching.
  * Used to aid manual resolution when fuzzy matching cannot determine a clear winner.
+ *
+ * TODO: trusteeId/trusteeName/address/phone/appointments mix candidate IDENTITY into a type meant
+ * to carry SCORE data, and appointments is populated even for callers with no case-appointment
+ * context to score against (see trustee-match.helpers.ts's resolveByContactCorroboration/
+ * resolveDuplicateNameCandidates, which always pass appointments: []). Worth a refactor for
+ * clarity - splitting identity fields from the score fields - but this type is shared with the
+ * DXTR trustee-appointment dataflow (sync-trustee-case-appointments.ts), so any change here needs
+ * to account for both call paths, not just the ACMS one.
  */
 export type CandidateScore = {
   trusteeId: string;

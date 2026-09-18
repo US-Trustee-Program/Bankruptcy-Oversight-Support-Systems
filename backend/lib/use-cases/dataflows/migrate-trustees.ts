@@ -11,7 +11,6 @@ import {
 } from '../../adapters/gateways/ats/cleansing/ats-mappings';
 import DateHelper from '@common/date-helper';
 import { getCamsError } from '../../common-errors/error-utilities';
-import { isTooManyRequestsError } from '../../common-errors/too-many-requests-error';
 import factory from '../../factory';
 import { MaybeData } from './queue-types';
 import { Trustee } from '@common/cams/trustees';
@@ -717,66 +716,26 @@ async function fetchAndAggregateAppointments(
 }
 
 /**
- * Look up ACMS professional IDs for a trustee and store them in the cross-reference collection.
- * Non-fatal: ACMS failures are logged as warnings and do not block trustee migration.
+ * PLACEHOLDER NO-OP (2026-09-18): this function used to look up a trustee's ACMS professional IDs
+ * and write a TrusteeProfessionalId for each one. That write was removed deliberately -
+ * sync-acms-professional-ids.ts (the CAMS-876 trustee-match pipeline) is now the ONLY code path
+ * allowed to write a TrusteeProfessionalId, so its evidence graph is the sole source of truth for
+ * how every link was reached. This whole migrate-trustees dataflow is legacy and unused in
+ * practice, but is left registered in the function app rather than force-removed outright, so this
+ * stub exists to keep it callable without silently resuming a second, uncoordinated write path if
+ * it is ever invoked again. Formally delete this dataflow, rather than extend this stub, once
+ * nothing depends on it.
  *
- * @returns Count of professional IDs successfully stored
+ * @returns 0, always - no professional IDs are looked up or stored by this stub.
  */
 export async function upsertProfessionalIds(
-  context: ApplicationContext,
-  trusteeId: string,
-  firstName: string,
-  lastName: string,
-  state: string,
+  _context: ApplicationContext,
+  _trusteeId: string,
+  _firstName: string,
+  _lastName: string,
+  _state: string,
 ): Promise<number> {
-  if (!firstName || !lastName || !state) {
-    return 0;
-  }
-
-  let acmsProfessionalIds: string[];
-
-  try {
-    acmsProfessionalIds = await factory
-      .getAcmsGateway(context)
-      .getTrusteeProfessionalIds(context, firstName, lastName, state);
-  } catch (originalError) {
-    context.logger.warn(
-      MODULE_NAME,
-      `Failed to retrieve ACMS professional IDs for trustee ${trusteeId} — skipping`,
-      { error: getCamsError(originalError, MODULE_NAME).message },
-    );
-    return 0;
-  }
-
-  const repo = factory.getTrusteeProfessionalIdsRepository(context);
-
-  const results = await Promise.allSettled(
-    acmsProfessionalIds.map((acmsProfessionalId) =>
-      repo.createProfessionalId(trusteeId, acmsProfessionalId, SYSTEM_USER),
-    ),
-  );
-
-  let stored = 0;
-  for (const result of results) {
-    if (result.status === 'fulfilled') {
-      stored++;
-    } else {
-      context.logger.warn(
-        MODULE_NAME,
-        `Failed to store a professional ID for trustee ${trusteeId} — continuing`,
-        { error: getCamsError(result.reason, MODULE_NAME).message },
-      );
-    }
-  }
-
-  if (stored > 0) {
-    context.logger.info(
-      MODULE_NAME,
-      `Stored ${stored} ACMS professional ID(s) for trustee ${trusteeId}`,
-    );
-  }
-
-  return stored;
+  return 0;
 }
 
 /**
@@ -1146,23 +1105,6 @@ type UnmatchedProfessionalId = {
 };
 
 /**
- * Build an UnmatchedProfessionalId from an ACMS record + reason, trimming the
- * name/state fields consistently. Centralizes the repeated object shape.
- */
-function makeUnmatched(
-  record: AcmsTrusteeProfessionalRecord,
-  reason: UnmatchedReason,
-): UnmatchedProfessionalId {
-  return {
-    acmsProfessionalId: record.acmsProfessionalId,
-    firstName: (record.firstName ?? '').trim(),
-    lastName: (record.lastName ?? '').trim(),
-    state: (record.state ?? '').trim(),
-    reason,
-  };
-}
-
-/**
  * Outcome of processing a single ACMS professional record.
  */
 type ProcessRecordResult =
@@ -1218,90 +1160,25 @@ export async function readAllTrusteeProfessionalRecords(
 }
 
 /**
- * Process a single ACMS professional record against CAMS:
- * - skip if a mapping already exists (idempotent),
- * - route incomplete name/state to unmatched,
- * - match by name+state and create the mapping.
- *
- * Cosmos 429 (TooManyRequestsError) on the lookup or create is surfaced as
- * `rateLimited` so the caller can back off and retry the SAME record in place —
- * it is NOT counted as unmatched. Any other error is logged and routed to
- * unmatched with the appropriate reason code.
+ * PLACEHOLDER NO-OP (2026-09-18): this function used to match an ACMS professional record to a
+ * CAMS trustee by name+state and write a TrusteeProfessionalId for it. That write was removed
+ * deliberately - sync-acms-professional-ids.ts (the CAMS-876 trustee-match pipeline) is now the
+ * ONLY code path allowed to write a TrusteeProfessionalId, so its evidence graph is the sole
+ * source of truth for how every link was reached. This whole migrate-trustees dataflow is legacy
+ * and unused in practice, but is left registered in the function app rather than force-removed
+ * outright, so this stub exists to keep it callable without silently resuming a second,
+ * uncoordinated write path if it is ever invoked again. Every record is now reported as
+ * 'alreadyMapped' (a soft no-op counter, not a real claim that a mapping exists) rather than
+ * 'unmatched', so a stray invocation doesn't misreport a page as full of matching failures.
+ * Formally delete this dataflow, rather than extend this stub, once nothing depends on it.
  */
 async function processAcmsRecord(
-  context: ApplicationContext,
-  record: AcmsTrusteeProfessionalRecord,
-  professionalIdsRepo: ReturnType<typeof factory.getTrusteeProfessionalIdsRepository>,
-  trusteesRepo: ReturnType<typeof factory.getTrusteesRepository>,
+  _context: ApplicationContext,
+  _record: AcmsTrusteeProfessionalRecord,
+  _professionalIdsRepo: ReturnType<typeof factory.getTrusteeProfessionalIdsRepository>,
+  _trusteesRepo: ReturnType<typeof factory.getTrusteesRepository>,
 ): Promise<ProcessRecordResult> {
-  const firstName = (record.firstName ?? '').trim();
-  const lastName = (record.lastName ?? '').trim();
-  const state = (record.state ?? '').trim();
-  const { acmsProfessionalId } = record;
-
-  // Skip records that already have a mapping (idempotent — leaves existing
-  // ATS-driven mappings untouched).
-  let existing: Awaited<ReturnType<typeof professionalIdsRepo.findByAcmsProfessionalId>>;
-  try {
-    existing = await professionalIdsRepo.findByAcmsProfessionalId(acmsProfessionalId);
-  } catch (originalError) {
-    if (isTooManyRequestsError(originalError)) {
-      return { kind: 'rateLimited' };
-    }
-    context.logger.warn(
-      MODULE_NAME,
-      `Backfill: failed to check existing mapping for ACMS professional ${acmsProfessionalId} — routing to unmatched`,
-      { error: getCamsError(originalError, MODULE_NAME).message },
-    );
-    return { kind: 'unmatched', value: makeUnmatched(record, 'LOOKUP_FAILED') };
-  }
-  if (existing.length > 0) {
-    return { kind: 'alreadyMapped' };
-  }
-
-  if (!firstName || !lastName || !state) {
-    return { kind: 'unmatched', value: makeUnmatched(record, 'INCOMPLETE_NAME_OR_STATE') };
-  }
-
-  // Match ACMS professional → CAMS trustee by name + state (same rules as the
-  // ATS-driven pass).
-  let camsTrustee: Trustee | null;
-  try {
-    camsTrustee = await trusteesRepo.findTrusteeByNameAndState(firstName, lastName, state);
-  } catch (originalError) {
-    if (isTooManyRequestsError(originalError)) {
-      return { kind: 'rateLimited' };
-    }
-    context.logger.warn(
-      MODULE_NAME,
-      `Backfill: failed to look up CAMS trustee for ACMS professional ${acmsProfessionalId} — routing to unmatched`,
-      { error: getCamsError(originalError, MODULE_NAME).message },
-    );
-    return { kind: 'unmatched', value: makeUnmatched(record, 'LOOKUP_FAILED') };
-  }
-
-  if (!camsTrustee) {
-    return { kind: 'unmatched', value: makeUnmatched(record, 'NO_TRUSTEE_MATCH') };
-  }
-
-  try {
-    await professionalIdsRepo.createProfessionalId(
-      camsTrustee.trusteeId,
-      acmsProfessionalId,
-      SYSTEM_USER,
-    );
-    return { kind: 'created' };
-  } catch (originalError) {
-    if (isTooManyRequestsError(originalError)) {
-      return { kind: 'rateLimited' };
-    }
-    context.logger.warn(
-      MODULE_NAME,
-      `Backfill: failed to create mapping for CAMS trustee ${camsTrustee.trusteeId} and ACMS professional ${acmsProfessionalId} — continuing`,
-      { error: getCamsError(originalError, MODULE_NAME).message },
-    );
-    return { kind: 'unmatched', value: makeUnmatched(record, 'CREATE_FAILED') };
-  }
+  return { kind: 'alreadyMapped' };
 }
 
 /** A terminal per-record outcome, or an escape-hatch signal with the backoff used. */

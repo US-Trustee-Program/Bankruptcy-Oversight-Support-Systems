@@ -9,7 +9,7 @@ import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repo
 import factory from '../../factory';
 import { AcmsCaseAppointmentRawRecord } from '../gateways.types';
 import { CaseAppointment } from '@common/cams/trustee-appointments';
-import { TrusteeProfessionalId } from '@common/cams/trustee-professional-ids';
+import { TrusteeProfessionalId } from './trustee-professional-ids.types';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { TooManyRequestsError } from '../../common-errors/too-many-requests-error';
 import { SyncedCase } from '@common/cams/cases';
@@ -60,6 +60,16 @@ function makeProfessionalId(override: Partial<TrusteeProfessionalId> = {}): Trus
     documentType: 'TRUSTEE_PROFESSIONAL_ID',
     camsTrusteeId: 'trustee-001',
     acmsProfessionalId: 'NY-00063',
+    disposition: 'auto-linked',
+    evidence: {
+      sourceRaw: { fullName: 'John Doe' },
+      sourceNormalized: {},
+      memo: {},
+      candidates: [],
+      match: { trusteeId: 'trustee-001', score: {} },
+      skip: false,
+      error: null,
+    },
     createdOn: '2024-01-01T00:00:00.000Z',
     createdBy: { id: 'system', name: 'System' },
     updatedOn: '2024-01-01T00:00:00.000Z',

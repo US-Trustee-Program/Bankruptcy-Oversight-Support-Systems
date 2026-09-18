@@ -4,15 +4,10 @@ import {
   TrusteeStaffRepository,
   TrusteeAppointmentsRepository,
   BankruptcySoftwareRepository,
-  RuntimeStateRepository,
-  TrusteeProfessionalIdsRepository,
-  ProfessionalIdCounterState,
 } from '../gateways.types';
-import { CamsUserReference } from '@common/cams/users';
 import { getCamsUserReference } from '@common/cams/session';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import { isCamsError } from '../../common-errors/cams-error';
-import { UnknownError } from '../../common-errors/unknown-error';
 import factory from '../../factory';
 import { ValidationSpec, validateObject, flatten, ValidatorResult } from '@common/cams/validation';
 import { BadRequestError } from '../../common-errors/bad-request';
@@ -64,17 +59,6 @@ import { NOTIFICATION_SEND_FAILURE_TAG } from '../notifications/notification-ale
 
 const MODULE_NAME = 'TRUSTEES-USE-CASE';
 
-const SYSTEM_USER: CamsUserReference = {
-  id: 'SYSTEM',
-  name: 'CAMS System',
-};
-
-const PROFESSIONAL_ID_COUNTER_INITIAL = 100000;
-
-function formatProfessionalCode(value: number): string {
-  return `ZZ-${String(value).padStart(5, '0')}`;
-}
-
 const addressSpec: ValidationSpec<Address> = {
   address1: [addressLine1],
   address2: [addressLine2],
@@ -114,8 +98,6 @@ export class TrusteesUseCase {
   private readonly trusteeStaffRepository: TrusteeStaffRepository;
   private readonly trusteeAppointmentsRepository: TrusteeAppointmentsRepository;
   private readonly softwareRepository: BankruptcySoftwareRepository;
-  private readonly runtimeStateRepository: RuntimeStateRepository<ProfessionalIdCounterState>;
-  private readonly trusteeProfessionalIdsRepository: TrusteeProfessionalIdsRepository;
   private readonly courtsUseCase: CourtsUseCase;
   private readonly apiToDataflowsGateway: ApiToDataflowsGateway;
 
@@ -124,9 +106,6 @@ export class TrusteesUseCase {
     this.trusteeStaffRepository = factory.getTrusteeStaffRepository(context);
     this.trusteeAppointmentsRepository = factory.getTrusteeAppointmentsRepository(context);
     this.softwareRepository = factory.getBankruptcySoftwareRepository(context);
-    this.runtimeStateRepository =
-      factory.getRuntimeStateRepository<ProfessionalIdCounterState>(context);
-    this.trusteeProfessionalIdsRepository = factory.getTrusteeProfessionalIdsRepository(context);
     this.courtsUseCase = new CourtsUseCase();
     this.apiToDataflowsGateway = factory.getApiToDataflowsGateway(context);
   }
@@ -205,8 +184,6 @@ export class TrusteesUseCase {
         ),
       );
 
-      await this.assignProfessionalCode(createdTrustee.trusteeId);
-
       // TODO: 12/17/25 We are only using the trusteeId on the front end after creation, so we only need to return the trusteeId, not the full trustee record.
       return createdTrustee;
     } catch (originalError) {
@@ -214,40 +191,6 @@ export class TrusteesUseCase {
         camsStackInfo: { module: MODULE_NAME, message: 'Failed to create trustee.' },
       });
     }
-  }
-
-  private async assignProfessionalCode(trusteeId: string): Promise<string> {
-    const codeNumber = await this.runtimeStateRepository.atomicDecrement(
-      'PROFESSIONAL_ID_COUNTER',
-      'lastAssigned',
-      PROFESSIONAL_ID_COUNTER_INITIAL,
-    );
-    if (codeNumber < 1) {
-      throw new UnknownError(MODULE_NAME, {
-        message: `Professional ID counter exhausted (value: ${codeNumber}). Cannot assign a valid ZZ-NNNNN code.`,
-      });
-    }
-    const acmsProfessionalId = formatProfessionalCode(codeNumber);
-
-    await this.trusteeProfessionalIdsRepository.createProfessionalId(
-      trusteeId,
-      acmsProfessionalId,
-      SYSTEM_USER,
-    );
-
-    await this.trusteesRepository.createTrusteeHistory(
-      createAuditRecord(
-        {
-          documentType: 'AUDIT_PROFESSIONAL_ID_ASSIGNED',
-          trusteeId,
-          before: undefined,
-          after: acmsProfessionalId,
-        },
-        SYSTEM_USER,
-      ),
-    );
-
-    return acmsProfessionalId;
   }
 
   async listTrustees(

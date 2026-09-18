@@ -37,7 +37,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { CaseAppointment } from '../../../../common/src/cams/trustee-appointments';
-import { TrusteeProfessionalId } from '../../../../common/src/cams/trustee-professional-ids';
+import { TrusteeProfessionalId } from '../../../../backend/lib/use-cases/dataflows/trustee-professional-ids.types';
 
 const FIXTURES_DIR = path.resolve(__dirname, '../fixtures');
 

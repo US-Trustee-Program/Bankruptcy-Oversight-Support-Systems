@@ -9,15 +9,20 @@ import {
   normalizeChapter,
   calculateCandidateScore,
   calculateNameScore,
+  firstLastNameToken,
+  lastNameSurnameCandidates,
+  lastNameTokensMatch,
   calculatePhoneScore,
   calculateEmailScore,
   calculateTotalScore,
   resolveNameCollisionByScoring,
   resolveByContactCorroboration,
-  resolveDuplicateNameCandidates,
   tokenizeNameForIntersection,
   findTokenIntersectionCandidates,
   findAnchoredLevenshteinCandidates,
+  findSurnameExactCandidates,
+  filterNoisyStateMismatches,
+  parseCityStateZip,
   isAppointmentMatch,
   findInactivePerfectMatch,
   stripParentheticalAnnotations,
@@ -29,6 +34,13 @@ import {
   normalizeNameForMatching,
   jaccardSimilarity,
   normalizeAddressLine,
+  scoreFirstNamePart,
+  scoreMiddleNamePart,
+  isKnownNicknamePair,
+  isFirstMiddleSwap,
+  isOneSidedMiddleNameMatch,
+  calculateNumericTokenScore,
+  padSingleDigitNumericToken,
 } from './trustee-match.helpers';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
@@ -642,6 +654,44 @@ describe('matchTrusteeByName', () => {
         matchCandidates: [expect.objectContaining({ trusteeId: trustee.trusteeId })],
       });
     });
+
+    // Confirmed via a CAMS-876 backtest audit: searchTrusteesByNameScored's bare matchScore > 0
+    // floor lets a single-word lastName-token query surface a candidate whose surname only
+    // coincidentally shares a phonetic code (e.g. "Malott" surfacing "Moldo"), with zero
+    // corroborating evidence anywhere else - this becomes a persisted "ambiguous" disposition for
+    // a candidate that never had any chance of resolving.
+    test('should exclude a candidate whose lastName is not JaroWinkler-close to the searched token', async () => {
+      const unrelatedTrustee = MockData.getTrustee({ lastName: 'Moldo', name: 'Byron Moldo' });
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([]);
+      vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored')
+        .mockResolvedValueOnce([]) // tier-2 full-name search
+        .mockResolvedValueOnce([unrelatedTrustee]); // lastName-token search: "malott"
+
+      const result = await matchTrusteeByName(
+        context,
+        dxtrNamed('Rex Malott', { firstName: 'Rex', lastName: 'Malott' }),
+      );
+
+      expect(result).toEqual({ kind: 'no-match' });
+    });
+
+    test('should keep a candidate whose lastName is a genuine near-miss of the searched token', async () => {
+      const trustee = MockData.getTrustee({ lastName: 'Danielsen', name: 'Pat Danielsen' });
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([]);
+      vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByNameScored')
+        .mockResolvedValueOnce([]) // tier-2 full-name search
+        .mockResolvedValueOnce([trustee]); // lastName-token search: "danielson"
+
+      const result = await matchTrusteeByName(
+        context,
+        dxtrNamed('Pat Danielson', { firstName: 'Pat', lastName: 'Danielson' }),
+      );
+
+      expect(result).toEqual({
+        kind: 'ambiguous',
+        matchCandidates: [expect.objectContaining({ trusteeId: trustee.trusteeId })],
+      });
+    });
   });
 });
 
@@ -683,25 +733,25 @@ describe('findTokenIntersectionCandidates', () => {
   });
 
   test('returns the single trustee present in every token search result', async () => {
-    const bryan = makeTrustee({ trusteeId: 'trustee-1', name: 'William Wheeler Bryan' });
+    const cray = makeTrustee({ trusteeId: 'trustee-1', name: 'Desmond Wheeler Cray' });
     const otherWheeler = makeTrustee({ trusteeId: 'trustee-2', name: 'Wheeler Someone Else' });
-    const otherBryan = makeTrustee({ trusteeId: 'trustee-3', name: 'Someone Else Bryan' });
+    const otherCray = makeTrustee({ trusteeId: 'trustee-3', name: 'Someone Else Cray' });
 
     const searchSpy = vi
       .spyOn(MockMongoRepository.prototype, 'searchTrusteesByName')
       .mockImplementation(async (token: string) => {
-        if (token === 'wheeler') return [bryan, otherWheeler];
-        if (token === 'bryan') return [bryan, otherBryan];
+        if (token === 'wheeler') return [cray, otherWheeler];
+        if (token === 'cray') return [cray, otherCray];
         return [];
       });
 
     const result = await findTokenIntersectionCandidates(context, {
-      fullName: 'W. Wheeler Bryan',
+      fullName: 'D. Wheeler Cray',
     });
 
-    expect(result).toEqual([bryan]);
+    expect(result).toEqual([cray]);
     expect(searchSpy).toHaveBeenCalledWith('wheeler');
-    expect(searchSpy).toHaveBeenCalledWith('bryan');
+    expect(searchSpy).toHaveBeenCalledWith('cray');
   });
 
   test('returns an empty array when fewer than 2 usable tokens exist', async () => {
@@ -776,6 +826,523 @@ describe('findTokenIntersectionCandidates', () => {
 
     expect(result).toEqual([mcCue]);
     expect(searchSpy).toHaveBeenCalledWith('mc');
+  });
+});
+
+describe('findSurnameExactCandidates', () => {
+  let context: ApplicationContext;
+
+  beforeEach(async () => {
+    vi.restoreAllMocks();
+    context = await createMockApplicationContext();
+  });
+
+  test('returns only candidates whose lastName token exactly matches the DXTR lastName token', async () => {
+    const johnMoon = makeTrustee({ trusteeId: 'trustee-1', firstName: 'John', lastName: 'Moon' });
+    const fredMoon = makeTrustee({ trusteeId: 'trustee-2', firstName: 'Fred', lastName: 'Moon' });
+    const martinMooney = makeTrustee({
+      trusteeId: 'trustee-3',
+      firstName: 'Martin',
+      lastName: 'Mooney',
+    });
+
+    const searchSpy = vi
+      .spyOn(MockMongoRepository.prototype, 'searchTrusteesByName')
+      .mockImplementation(async (token: string) => {
+        if (token === 'moon') return [johnMoon, fredMoon, martinMooney];
+        return [];
+      });
+
+    const result = await findSurnameExactCandidates(context, {
+      fullName: 'Someone A Moon',
+      lastName: 'Moon',
+    });
+
+    expect(result.map((t) => t.trusteeId).sort()).toEqual(['trustee-1', 'trustee-2']);
+    expect(searchSpy).toHaveBeenCalledWith('moon');
+  });
+
+  test('returns an empty array when the DXTR record has no usable lastName', async () => {
+    const searchSpy = vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName');
+
+    const result = await findSurnameExactCandidates(context, { fullName: 'Cher', lastName: '' });
+
+    expect(result).toEqual([]);
+    expect(searchSpy).not.toHaveBeenCalled();
+  });
+
+  test('returns an empty array when no candidate shares the exact surname token', async () => {
+    vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName').mockImplementation(
+      async (token: string) => {
+        if (token === 'moon') return [makeTrustee({ trusteeId: 'trustee-1', lastName: 'Mooney' })];
+        return [];
+      },
+    );
+
+    const result = await findSurnameExactCandidates(context, {
+      fullName: 'Someone A Moon',
+      lastName: 'Moon',
+    });
+
+    expect(result).toEqual([]);
+  });
+
+  test('honors the multi-word surname-prefix-particle reduction (e.g. Van Meter)', async () => {
+    const vanMeter = makeTrustee({
+      trusteeId: 'trustee-1',
+      firstName: 'William',
+      lastName: 'Van Meter',
+    });
+    const vanArsdale = makeTrustee({
+      trusteeId: 'trustee-2',
+      firstName: 'William',
+      lastName: 'Van Arsdale',
+    });
+
+    vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName').mockImplementation(
+      async (token: string) => {
+        if (token === 'van meter') return [vanMeter, vanArsdale];
+        return [];
+      },
+    );
+
+    const result = await findSurnameExactCandidates(context, {
+      fullName: 'William Van Meter',
+      lastName: 'Van Meter',
+    });
+
+    expect(result.map((t) => t.trusteeId)).toEqual(['trustee-1']);
+  });
+
+  // CAMS-876 (cams-rb9ie): a prepended maiden/second surname puts the real family surname LAST,
+  // not first - firstLastNameToken alone never searches for it, so discovery must also try the
+  // last-whitespace-token fallback (see lastNameSurnameCandidates).
+  test('discovers a candidate via the trailing surname token of a prepended-surname compound', async () => {
+    const wolff = makeTrustee({ trusteeId: 'trustee-1', firstName: 'Paul', lastName: 'Wolff' });
+
+    const searchSpy = vi
+      .spyOn(MockMongoRepository.prototype, 'searchTrusteesByName')
+      .mockImplementation(async (token: string) => (token === 'wolff' ? [wolff] : []));
+
+    const result = await findSurnameExactCandidates(context, {
+      fullName: 'Paul De Bruce Wolff',
+      lastName: 'DE BRUCE WOLFF',
+    });
+
+    expect(result.map((t) => t.trusteeId)).toEqual(['trustee-1']);
+    expect(searchSpy).toHaveBeenCalledWith('wolff');
+  });
+
+  // CAMS-876 (cams-rb9ie): a hyphenated compound surname carries a maiden/married or two-family
+  // name inconsistently across systems - discovery must also try the last hyphen segment.
+  test('discovers a candidate via the trailing segment of a hyphenated compound surname', async () => {
+    const clark = makeTrustee({
+      trusteeId: 'trustee-1',
+      firstName: 'Angelique',
+      lastName: 'Clark',
+    });
+
+    const searchSpy = vi
+      .spyOn(MockMongoRepository.prototype, 'searchTrusteesByName')
+      .mockImplementation(async (token: string) => (token === 'clark' ? [clark] : []));
+
+    const result = await findSurnameExactCandidates(context, {
+      fullName: 'Angelique Lamberti-Clark',
+      lastName: 'Lamberti-Clark',
+    });
+
+    expect(result.map((t) => t.trusteeId)).toEqual(['trustee-1']);
+    expect(searchSpy).toHaveBeenCalledWith('clark');
+  });
+
+  // CAMS-876 (cams-rb9ie): a bare administrative/role word (e.g. "trustee") must never itself
+  // become a surname search token - it genuinely phonetically matches unrelated real CAMS
+  // trustees, surfacing false candidates for an administrative-placeholder ACMS record that
+  // should have zero candidates at all.
+  test('never searches by a bare administrative/role word fallback token', async () => {
+    const unrelatedTrustee = makeTrustee({
+      trusteeId: 'trustee-1',
+      firstName: 'Standing',
+      lastName: 'Trustee',
+    });
+
+    const searchSpy = vi
+      .spyOn(MockMongoRepository.prototype, 'searchTrusteesByName')
+      .mockImplementation(async (token: string) => (token === 'trustee' ? [unrelatedTrustee] : []));
+
+    const result = await findSurnameExactCandidates(context, {
+      fullName: 'Involuntary Trustee',
+      lastName: 'INVOLUNTARY TRUSTEE',
+    });
+
+    expect(result).toEqual([]);
+    expect(searchSpy).not.toHaveBeenCalledWith('trustee');
+  });
+});
+
+describe('parseCityStateZip', () => {
+  test('parses city, state, and zip separated by commas', () => {
+    expect(parseCityStateZip('New York, NY 10001')).toEqual({
+      city: 'New York',
+      state: 'NY',
+      zipCode: '10001',
+    });
+  });
+
+  test('parses city, state, and zip separated by whitespace only', () => {
+    expect(parseCityStateZip('Corinth MS 38834')).toEqual({
+      city: 'Corinth',
+      state: 'MS',
+      zipCode: '38834',
+    });
+  });
+
+  test('ignores a trailing country segment', () => {
+    expect(parseCityStateZip('Corinth, MS, 38834, USA')).toEqual({
+      city: 'Corinth',
+      state: 'MS',
+      zipCode: '38834',
+    });
+  });
+
+  test('parses a ZIP+4 code', () => {
+    expect(parseCityStateZip('Corinth, MS 38834-1234')).toEqual({
+      city: 'Corinth',
+      state: 'MS',
+      zipCode: '38834-1234',
+    });
+  });
+
+  // A literal "-0000" +4 suffix is a placeholder, not real ZIP+4 data (see the dedicated test
+  // below), so this zipCode is now the plain 5-digit value.
+  test('recovers city and zip with a null state when no state token is present', () => {
+    expect(parseCityStateZip('Woodland Hills 91367-0000')).toEqual({
+      city: 'Woodland Hills',
+      state: null,
+      zipCode: '91367',
+    });
+  });
+
+  // CAMS-876 backtest finding: 2223 of 2726 replayed records carry a literal "-0000" +4 suffix -
+  // far too common across that many distinct addresses to be genuine ZIP+4 data, so it is stripped
+  // to the plain 5-digit zip rather than persisted as if it were real +4 precision.
+  test('strips a literal "-0000" +4 suffix as a placeholder, not real ZIP+4 data', () => {
+    expect(parseCityStateZip('Corinth, MS 38834-0000')).toEqual({
+      city: 'Corinth',
+      state: 'MS',
+      zipCode: '38834',
+    });
+  });
+
+  test('keeps a genuine, non-zero ZIP+4 suffix', () => {
+    expect(parseCityStateZip('Corinth, MS 38834-1234')).toEqual({
+      city: 'Corinth',
+      state: 'MS',
+      zipCode: '38834-1234',
+    });
+  });
+
+  test('recovers a multi-word city with a null state', () => {
+    expect(parseCityStateZip('Salt Lake City 84101')).toEqual({
+      city: 'Salt Lake City',
+      state: null,
+      zipCode: '84101',
+    });
+  });
+
+  test('returns null when no zip-like token exists at all', () => {
+    expect(parseCityStateZip('Corinth MS')).toBeNull();
+  });
+
+  test('returns null when the string is only a zip with no city', () => {
+    expect(parseCityStateZip('91367-0000')).toBeNull();
+  });
+
+  test('returns null when the string is only a state and zip with no city', () => {
+    expect(parseCityStateZip('MS 38834')).toBeNull();
+  });
+
+  test('returns null when the input is undefined', () => {
+    expect(parseCityStateZip(undefined)).toBeNull();
+  });
+
+  test('returns null for an empty string', () => {
+    expect(parseCityStateZip('')).toBeNull();
+  });
+
+  test('uses the rightmost zip-like token when multiple numeric tokens are present', () => {
+    // A trailing numeric segment (e.g. a stray extra code) must win over an earlier zip-like
+    // token - it also means the earlier "MS 38834" pair no longer reads as state+zip, so the
+    // preceding state is folded into the recovered city with a null state.
+    expect(parseCityStateZip('Corinth, MS 38834 12345')).toEqual({
+      city: 'Corinth MS 38834',
+      state: null,
+      zipCode: '12345',
+    });
+  });
+
+  // CAMS-876 backtest finding (ACMS "FARMINGTON CN 06032-0000" - a data-entry typo for
+  // Connecticut's real code, "CT"): a two-letter token in the state position that is NOT a real
+  // USPS state/territory code must recover as state: null, the same as if it were absent, rather
+  // than as the literal typo'd value - a bogus state then gets compared and scored as an active
+  // disagreement downstream (doesStateMatch/doesCityMatch), which is worse than honestly reporting
+  // "no state known" for a genuinely uncomparable field. Still excluded from `city` either way,
+  // since it was never really part of the city name in this format.
+  test('recovers city and zip with a null state when the state-position token is not a real USPS state code', () => {
+    expect(parseCityStateZip('Farmington CN 06032-0000')).toEqual({
+      city: 'Farmington',
+      state: null,
+      zipCode: '06032',
+    });
+  });
+
+  test('accepts a real USPS state code regardless of casing', () => {
+    expect(parseCityStateZip('Farmington ct 06032-0000')).toEqual({
+      city: 'Farmington',
+      state: 'ct',
+      zipCode: '06032',
+    });
+  });
+});
+
+describe('filterNoisyStateMismatches', () => {
+  const dxtrInWashington: DxtrTrusteeParty = {
+    fullName: 'Aldric A Moon',
+    firstName: 'Aldric',
+    middleName: 'A',
+    lastName: 'Moon',
+    legacy: { cityStateZipCountry: 'Tacoma, WA 98402' },
+  };
+
+  const makeCandidate = (overrides: Partial<Trustee> = {}) =>
+    makeTrustee({
+      firstName: 'Someone',
+      lastName: 'Moon',
+      name: 'Someone Moon',
+      ...overrides,
+    });
+
+  test('drops a state-mismatched candidate even in a small (2-candidate) pool', () => {
+    // A state mismatch is real noise whether the pool is large or small (see CAMS-876 for why
+    // the prior pool-size gate was removed) - a small pool is not exempt.
+    const matchingState = makeCandidate({
+      trusteeId: 'trustee-wa',
+      public: {
+        address: {
+          address1: '1 Elm St',
+          city: 'Seattle',
+          state: 'WA',
+          zipCode: '98101',
+          countryCode: 'US',
+        },
+      },
+    });
+    const mismatched = makeCandidate({
+      trusteeId: 'trustee-fl',
+      firstName: 'Nobody',
+      name: 'Nobody Moon',
+      public: {
+        address: {
+          address1: '1 Elm St',
+          city: 'Miami',
+          state: 'FL',
+          zipCode: '33101',
+          countryCode: 'US',
+        },
+      },
+    });
+
+    const result = filterNoisyStateMismatches(dxtrInWashington, [matchingState, mismatched]);
+
+    expect(result.map((t) => t.trusteeId)).toEqual(['trustee-wa']);
+  });
+
+  test('drops a state-mismatched candidate once the pool exceeds 5 candidates', () => {
+    const matchingState = makeCandidate({
+      trusteeId: 'trustee-wa',
+      public: {
+        address: {
+          address1: '1 Elm St',
+          city: 'Seattle',
+          state: 'WA',
+          zipCode: '98101',
+          countryCode: 'US',
+        },
+      },
+    });
+    const mismatchedCandidates = Array.from({ length: 5 }, (_, i) =>
+      makeCandidate({
+        trusteeId: `trustee-fl-${i}`,
+        firstName: 'Nobody',
+        name: 'Nobody Moon',
+        public: {
+          address: {
+            address1: '1 Elm St',
+            city: 'Miami',
+            state: 'FL',
+            zipCode: '33101',
+            countryCode: 'US',
+          },
+        },
+      }),
+    );
+    const pool = [matchingState, ...mismatchedCandidates];
+
+    const result = filterNoisyStateMismatches(dxtrInWashington, pool);
+
+    expect(result.map((t) => t.trusteeId)).toEqual(['trustee-wa']);
+  });
+
+  test('keeps a state-mismatched candidate anyway when it has an exact phone match', () => {
+    const dxtrWithPhone: DxtrTrusteeParty = {
+      ...dxtrInWashington,
+      legacy: { ...dxtrInWashington.legacy, phone: '2065551212' },
+    };
+    const phoneMatch = makeCandidate({
+      trusteeId: 'trustee-fl-phone',
+      public: {
+        address: {
+          address1: '1 Elm St',
+          city: 'Miami',
+          state: 'FL',
+          zipCode: '33101',
+          countryCode: 'US',
+        },
+        phone: { number: '206-555-1212' },
+      },
+    });
+    const filler = Array.from({ length: 5 }, (_, i) =>
+      makeCandidate({
+        trusteeId: `trustee-fl-${i}`,
+        firstName: 'Nobody',
+        name: 'Nobody Moon',
+        public: {
+          address: {
+            address1: '1 Elm St',
+            city: 'Miami',
+            state: 'FL',
+            zipCode: '33101',
+            countryCode: 'US',
+          },
+        },
+      }),
+    );
+
+    const result = filterNoisyStateMismatches(dxtrWithPhone, [phoneMatch, ...filler]);
+
+    expect(result.map((t) => t.trusteeId)).toContain('trustee-fl-phone');
+  });
+
+  test('keeps a state-mismatched candidate anyway when its structured nameScore would be >= 85', () => {
+    const strongNameMatch = makeCandidate({
+      trusteeId: 'trustee-fl-name',
+      firstName: 'Aldric',
+      middleName: 'A',
+      lastName: 'Moon',
+      name: 'Aldric A. Moon',
+      public: {
+        address: {
+          address1: '1 Elm St',
+          city: 'Miami',
+          state: 'FL',
+          zipCode: '33101',
+          countryCode: 'US',
+        },
+      },
+    });
+    const filler = Array.from({ length: 5 }, (_, i) =>
+      makeCandidate({
+        trusteeId: `trustee-fl-${i}`,
+        firstName: 'Nobody',
+        name: 'Nobody Moon',
+        public: {
+          address: {
+            address1: '1 Elm St',
+            city: 'Miami',
+            state: 'FL',
+            zipCode: '33101',
+            countryCode: 'US',
+          },
+        },
+      }),
+    );
+
+    const result = filterNoisyStateMismatches(dxtrInWashington, [strongNameMatch, ...filler]);
+
+    expect(result.map((t) => t.trusteeId)).toContain('trustee-fl-name');
+  });
+
+  test('does not filter when the DXTR address has no parseable state', () => {
+    const dxtrNoState: DxtrTrusteeParty = {
+      ...dxtrInWashington,
+      legacy: { cityStateZipCountry: undefined },
+    };
+    const candidates = Array.from({ length: 6 }, (_, i) =>
+      makeCandidate({
+        trusteeId: `trustee-${i}`,
+        public: {
+          address: {
+            address1: '1 Elm St',
+            city: 'Miami',
+            state: 'FL',
+            zipCode: '33101',
+            countryCode: 'US',
+          },
+        },
+      }),
+    );
+
+    expect(filterNoisyStateMismatches(dxtrNoState, candidates)).toEqual(candidates);
+  });
+
+  test('does not filter when the DXTR address parses but has no state token', () => {
+    const dxtrMissingStateOnly: DxtrTrusteeParty = {
+      ...dxtrInWashington,
+      legacy: { cityStateZipCountry: 'Woodland Hills 91367-0000' },
+    };
+    const candidates = Array.from({ length: 6 }, (_, i) =>
+      makeCandidate({
+        trusteeId: `trustee-${i}`,
+        public: {
+          address: {
+            address1: '1 Elm St',
+            city: 'Miami',
+            state: 'FL',
+            zipCode: '33101',
+            countryCode: 'US',
+          },
+        },
+      }),
+    );
+
+    expect(filterNoisyStateMismatches(dxtrMissingStateOnly, candidates)).toEqual(candidates);
+  });
+
+  test('does not filter a candidate missing a CAMS state (nothing to compare against)', () => {
+    const noState = makeCandidate({
+      trusteeId: 'trustee-no-state',
+      public: { address: undefined },
+    });
+    const mismatched = Array.from({ length: 5 }, (_, i) =>
+      makeCandidate({
+        trusteeId: `trustee-fl-${i}`,
+        firstName: 'Nobody',
+        name: 'Nobody Moon',
+        public: {
+          address: {
+            address1: '1 Elm St',
+            city: 'Miami',
+            state: 'FL',
+            zipCode: '33101',
+            countryCode: 'US',
+          },
+        },
+      }),
+    );
+
+    const result = filterNoisyStateMismatches(dxtrInWashington, [noState, ...mismatched]);
+
+    expect(result.map((t) => t.trusteeId)).toContain('trustee-no-state');
   });
 });
 
@@ -1241,6 +1808,66 @@ describe('calculateAddressScore', () => {
 
     // addressLinesScore=100 (50%) + zipScore=0 (30%) + cityStateScore=100 (20%) = 70
     expect(calculateAddressScore(dxtrAddress, camsAddress)).toBe(70);
+  });
+});
+
+describe('calculateNumericTokenScore', () => {
+  test.each([
+    {
+      description: 'neither side has a numeric token',
+      dxtrAddress1: 'main street',
+      camsAddress1: 'main street',
+      expected: null,
+    },
+    {
+      description: 'the sole numeric token on each side matches exactly',
+      dxtrAddress1: '123 main street',
+      camsAddress1: '123 main street',
+      expected: 100,
+    },
+    {
+      description: 'the sole numeric token on each side differs',
+      dxtrAddress1: '4 main street',
+      camsAddress1: '5 main street',
+      expected: 0,
+    },
+    {
+      description: 'a number and its leading-zero-padded form are treated as equal',
+      dxtrAddress1: '123 main street suite 4',
+      camsAddress1: '123 main street suite 04',
+      expected: 100,
+    },
+    // A numeric token present on only one side scores a real partial penalty rather than being
+    // ignored - the shape a missing suite number in DXTR or CAMS data actually produces. Larger
+    // side has 2 numeric tokens ({123, 4}), smaller side has 1 ({123}) which is contained in the
+    // larger side - 1 match / 2 (larger side size) = 50.
+    {
+      description: 'a numeric token is present on only one side',
+      dxtrAddress1: '123 main street suite 4',
+      camsAddress1: '123 main street',
+      expected: 50,
+    },
+    // {100, 100} vs {100, 200} - "100" matches, "200" doesn't - 1 match / 2 (larger side size,
+    // tied) = 50.
+    {
+      description: 'multiple tokens partially agree',
+      dxtrAddress1: '100 main street suite 100',
+      camsAddress1: '100 main street suite 200',
+      expected: 50,
+    },
+  ])('should score correctly when $description', ({ dxtrAddress1, camsAddress1, expected }) => {
+    expect(calculateNumericTokenScore(dxtrAddress1, camsAddress1)).toBe(expected);
+  });
+});
+
+describe('padSingleDigitNumericToken', () => {
+  test.each([
+    ['main', 'main'],
+    ['4', '04'],
+    ['10', '10'],
+    ['123', '123'],
+  ])('should return "%s" as "%s"', (token, expected) => {
+    expect(padSingleDigitNumericToken(token)).toBe(expected);
   });
 });
 
@@ -1757,7 +2384,282 @@ describe('calculateCandidateScore', () => {
   });
 });
 
+describe('firstLastNameToken', () => {
+  test('should return just the first word for a simple lastName', () => {
+    expect(firstLastNameToken('Doe')).toBe('doe');
+  });
+
+  test('should strip a trailing role marker', () => {
+    expect(firstLastNameToken('Marshack (TR)')).toBe('marshack');
+  });
+
+  test('should strip a trailing comma-separated suffix', () => {
+    expect(firstLastNameToken('Wallo, Trustee')).toBe('wallo');
+    expect(firstLastNameToken('Malloy, III')).toBe('malloy');
+  });
+
+  test('should keep an apostrophe-joined surname as one word', () => {
+    expect(firstLastNameToken("O'Brien")).toBe('obrien');
+  });
+
+  // Real-world false positive from a staging backtest: "VAN ARSDALE" and "VAN METER" both
+  // reduced to just "van" under the old first-token-only rule, so calculateNameScore's lastName
+  // gate treated two different real trustees as the same person. CAMS itself stores these
+  // two-word surnames space-separated ("Van Meter", not "VanMeter"), so the fix keeps a known
+  // prefix particle joined to the next token rather than truncating after it.
+  test.each([
+    ['Van Arsdale', 'van arsdale'],
+    ['VAN CUREN', 'van curen'],
+    ['Mc Lane', 'mc lane'],
+    ['MC KAY, SR.', 'mc kay'],
+    ['De Verges', 'de verges'],
+    ['La Penna', 'la penna'],
+    ['Von Eberstein', 'von eberstein'],
+    ['Del Piero', 'del piero'],
+  ])(
+    'should keep a known multi-word surname prefix joined to the next token: %s',
+    (input, expected) => {
+      expect(firstLastNameToken(input)).toBe(expected);
+    },
+  );
+
+  test('should NOT join a prefix particle when it is not followed by another token', () => {
+    // A bare "Van" with nothing after it isn't a compound surname — nothing to join to.
+    expect(firstLastNameToken('Van')).toBe('van');
+  });
+
+  test('should treat two different multi-word surnames sharing the same prefix as different', () => {
+    expect(firstLastNameToken('Van Arsdale')).not.toBe(firstLastNameToken('Van Meter'));
+  });
+});
+
+describe('lastNameTokensMatch', () => {
+  // Real-world false negative from a staging backtest: ACMS "MELISSA MC CUE" (space-separated)
+  // vs CAMS "Melissa McCue" (concatenated) reduce to "mc cue" and "mccue" via firstLastNameToken
+  // - two different strings for the same surname, so calculateNameScore's old strict-equality
+  // lastName gate scored a genuine match 0. Rather than guessing whether any given concatenated
+  // word IS a split-worthy particle+surname (ambiguous without a space - "Mack"/"Devine"/"Vance"
+  // are ordinary single-word surnames that merely start with a particle's letters), this compares
+  // BOTH the token as-is AND, when it starts with a known particle, the particle-split variant -
+  // a match on EITHER representation counts, so a genuine McCue/Mc Cue pair matches without
+  // requiring "Mack" or "Devine" to ever be force-split in the first place.
+  test.each([
+    ['McCue', 'Mc Cue'],
+    ['MCLANE', 'Mc Lane'],
+    ['DeRosa', 'De Rosa'],
+    ['McManigle', 'Mc Manigle'],
+    ['Dicello', 'Di Cello'],
+  ])(
+    'should match a concatenated surname against its spaced form: %s vs %s',
+    (concatenated, spaced) => {
+      expect(
+        lastNameTokensMatch(firstLastNameToken(concatenated), firstLastNameToken(spaced)),
+      ).toBe(true);
+    },
+  );
+
+  test('should still match two identical already-spaced multi-word surnames', () => {
+    expect(
+      lastNameTokensMatch(firstLastNameToken('Van Meter'), firstLastNameToken('Van Meter')),
+    ).toBe(true);
+  });
+
+  test('should still match two identical ordinary single-word surnames', () => {
+    expect(lastNameTokensMatch(firstLastNameToken('Doe'), firstLastNameToken('Doe'))).toBe(true);
+  });
+
+  test('should NOT match an ordinary single-word surname against an unrelated particle-prefixed surname', () => {
+    // "Mack" happens to start with letters that could look like a particle, but splitting it
+    // must never manufacture a false match against an unrelated "Mc <something>" surname.
+    expect(lastNameTokensMatch(firstLastNameToken('Mack'), firstLastNameToken('Mc Kay'))).toBe(
+      false,
+    );
+  });
+
+  test('should NOT match two different multi-word surnames sharing the same prefix', () => {
+    expect(
+      lastNameTokensMatch(firstLastNameToken('Van Arsdale'), firstLastNameToken('Van Meter')),
+    ).toBe(false);
+  });
+
+  test('should NOT match two genuinely different surnames', () => {
+    expect(lastNameTokensMatch(firstLastNameToken('Smith'), firstLastNameToken('Jones'))).toBe(
+      false,
+    );
+  });
+
+  test('should return false when either token is empty', () => {
+    expect(lastNameTokensMatch('', firstLastNameToken('Smith'))).toBe(false);
+    expect(lastNameTokensMatch(firstLastNameToken('Smith'), '')).toBe(false);
+  });
+
+  // Real-world false negatives from a CAMS-876 backtest (cams-rb9ie): firstLastNameToken always
+  // treats the FIRST token as the surname, which is wrong for a prepended maiden/second surname
+  // ("DE BRUCE WOLFF", real surname "Wolff", last not first) and for a hyphenated compound
+  // surname carried inconsistently across systems ("Hoyt-Fischer" vs "Fischer"). Only activates
+  // when the caller supplies the raw (pre-firstLastNameToken) lastName fields.
+  describe('raw-field fallback (cams-rb9ie)', () => {
+    test.each([
+      ['DE BRUCE WOLFF', 'Wolff'],
+      ['Anderson Sanchez', 'Sanchez'],
+      ['Carr Favors', 'Favors'],
+      ['Wolf Weiker', 'Weiker'],
+    ])(
+      'should match a prepended-surname compound against the real trailing surname: %s vs %s',
+      (compound, real) => {
+        expect(
+          lastNameTokensMatch(
+            firstLastNameToken(compound),
+            firstLastNameToken(real),
+            compound,
+            real,
+          ),
+        ).toBe(true);
+      },
+    );
+
+    test.each([
+      ['Hoyt-Fischer', 'Fischer'],
+      ['Kenneally-Walton', 'Walton'],
+      ['Lamberti-Clark', 'Clark'],
+      ['Williams-DeKalb', 'DeKalb'],
+    ])(
+      'should match a hyphenated compound against its real trailing segment: %s vs %s',
+      (compound, real) => {
+        expect(
+          lastNameTokensMatch(
+            firstLastNameToken(compound),
+            firstLastNameToken(real),
+            compound,
+            real,
+          ),
+        ).toBe(true);
+      },
+    );
+
+    test('should NOT match two different compound surnames that merely share one token', () => {
+      // Neither side is a bare single-token surname here - "Jones" is not actually either
+      // family's real surname alone, so a shared token must not be trusted.
+      expect(
+        lastNameTokensMatch(
+          firstLastNameToken('Smith Jones'),
+          firstLastNameToken('Jones Wilson'),
+          'Smith Jones',
+          'Jones Wilson',
+        ),
+      ).toBe(false);
+    });
+
+    test('should NOT apply the fallback when neither raw field is supplied', () => {
+      // Same firstLastNameToken inputs as the first parameterized case above, but without the
+      // raw fields - existing callers that never pass them must see unchanged (pre-cams-rb9ie)
+      // behavior, not a silent new match.
+      expect(
+        lastNameTokensMatch(firstLastNameToken('DE BRUCE WOLFF'), firstLastNameToken('Wolff')),
+      ).toBe(false);
+    });
+  });
+});
+
+describe('lastNameSurnameCandidates', () => {
+  test('returns just the primary token for an ordinary single-word surname', () => {
+    expect(lastNameSurnameCandidates('Smith')).toEqual(['smith']);
+  });
+
+  test('returns the prepended-surname primary plus the real trailing surname as an alternate', () => {
+    expect(lastNameSurnameCandidates('DE BRUCE WOLFF')).toEqual(['de bruce', 'wolff']);
+  });
+
+  test('returns the hyphenated-compound primary plus the whitespace-token and hyphen-segment alternates', () => {
+    // "hoyt-fischer" (the whole hyphenated compound, kept whole by the whitespace tokenizer since
+    // it deliberately preserves hyphens - see its own [^a-z0-9-]+ pattern) is a real, if
+    // redundant-with-the-others, third candidate - pre-existing behavior, not something this
+    // fix touches.
+    expect(lastNameSurnameCandidates('Hoyt-Fischer')).toEqual(['hoyt', 'hoyt-fischer', 'fischer']);
+  });
+
+  // CAMS-876 backtest finding: a bracketed role/chapter/status marker must never survive as a
+  // bogus fallback candidate - "(TR)" produced "tr" as an alternate, which then genuinely
+  // phonetically matched unrelated real CAMS trustees (the original cams-rb9ie/hvbyv finding).
+  // Inputs are real, isolated lastName field values (never a composite firstName+lastName
+  // string) - findSurnameExactCandidatesForAcms/lastNameSurnameCandidates only ever receive the
+  // raw lastName on its own.
+  test.each([
+    ['CURRY (TR)', 'curry'],
+    ['ODELL (SBRAV)', 'odell'],
+    ['ROJAS (CH 13)', 'rojas'],
+    ['DEKALB (CH 12 ONLY)', 'dekalb'],
+    ["O'NEAL (CHAPTER 12)", 'oneal'],
+    ['WOOD(NA)(INACTIVE)', 'wood'],
+  ])(
+    'excludes a bracketed role/chapter/status marker as a fallback candidate: %s',
+    (input, primary) => {
+      const result = lastNameSurnameCandidates(input);
+      expect(result[0]).toBe(primary);
+      expect(result).not.toContain('tr');
+      expect(result).not.toContain('ch');
+      expect(result).not.toContain('sbrav');
+      expect(result).not.toContain('na');
+      expect(result).not.toContain('inactive');
+    },
+  );
+
+  test('excludes a chapter-number token even though it clears the minimum length check', () => {
+    // "11"/"12"/"13" are 2-3 characters, long enough to pass SURNAME_CANDIDATE_MIN_TOKEN_LENGTH
+    // on their own - only the "a real surname never contains a digit" check excludes them.
+    const result = lastNameSurnameCandidates('ANDERSON (11)');
+    expect(result).toEqual(['anderson']);
+  });
+
+  test('excludes a bare single-letter fallback token', () => {
+    expect(lastNameSurnameCandidates('NEWHOUSE (D)')).toEqual(['newhouse']);
+  });
+
+  // Brian's explicit direction: a parenthetical is not assumed to always be a role/status code -
+  // a real backtest record, "BASSEL (HURST)", genuinely resolves to CAMS "Pamela A. Bassel", but
+  // the parenthetical could just as easily have carried a real alias/maiden surname instead, so
+  // its content is offered as its own candidate (filtered the same as any other fallback) rather
+  // than discarded outright.
+  test('offers a name-shaped parenthetical as a surname alternate rather than discarding it', () => {
+    expect(lastNameSurnameCandidates('BASSEL (HURST)')).toEqual(['bassel', 'hurst']);
+  });
+
+  test('excludes a business-entity suffix/title word confirmed leaking from a non-person record', () => {
+    expect(lastNameSurnameCandidates('AMJ ADVISORS LLC')).toEqual(['amj']);
+    expect(lastNameSurnameCandidates('WHALEY CPA')).toEqual(['whaley']);
+    expect(lastNameSurnameCandidates('LEVINE, ESQ.')).toEqual(['levine']);
+  });
+
+  test('excludes a generational suffix even after normalizeGenerationalSuffix joins it onto the name', () => {
+    expect(lastNameSurnameCandidates('LEONARD, JR.')).toEqual(['leonard']);
+    expect(lastNameSurnameCandidates('KIRK,II')).toEqual(['kirk']);
+  });
+
+  test('returns just the primary token when there is no usable fallback candidate at all', () => {
+    expect(lastNameSurnameCandidates('')).toEqual([]);
+    expect(lastNameSurnameCandidates(undefined)).toEqual([]);
+  });
+});
+
 describe('calculateNameScore', () => {
+  // Real-world false negative from a staging backtest (CAMS-879): ACMS "MELISSA MC CUE"
+  // (space-separated lastName) vs CAMS "Melissa McCue" (concatenated) scored 0 before
+  // lastNameTokensMatch tolerated the formatting difference.
+  test('should score 100 for a genuine match where one side concatenates a prefix particle onto the surname', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'Melissa Mc Cue',
+      firstName: 'Melissa',
+      lastName: 'Mc Cue',
+    };
+    const camsTrustee = makeTrustee({
+      firstName: 'Melissa',
+      lastName: 'McCue',
+      name: 'Melissa McCue',
+    });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(100);
+  });
+
   test('should return 100 when first and last match and neither side has a middle name', () => {
     const dxtrTrustee: DxtrTrusteeParty = {
       fullName: 'John Doe',
@@ -1793,7 +2695,7 @@ describe('calculateNameScore', () => {
     expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(100);
   });
 
-  test('should return 85 when dxtr middle name is a single initial matching cams middle name first letter', () => {
+  test('should return 100 when dxtr middle name is a single initial matching cams middle name first letter', () => {
     const dxtrTrustee: DxtrTrusteeParty = {
       fullName: 'John L Doe',
       firstName: 'John',
@@ -1802,10 +2704,10 @@ describe('calculateNameScore', () => {
     };
     const camsTrustee = makeTrustee({ firstName: 'John', middleName: 'Lee', lastName: 'Doe' });
 
-    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(85);
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(100);
   });
 
-  test('should return 85 when cams middle name is a single initial matching dxtr middle name first letter', () => {
+  test('should return 100 when cams middle name is a single initial matching dxtr middle name first letter', () => {
     const dxtrTrustee: DxtrTrusteeParty = {
       fullName: 'John Lee Doe',
       firstName: 'John',
@@ -1814,7 +2716,7 @@ describe('calculateNameScore', () => {
     };
     const camsTrustee = makeTrustee({ firstName: 'John', middleName: 'L', lastName: 'Doe' });
 
-    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(85);
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(100);
   });
 
   test('should return 15 when both middle names are present but genuinely differ', () => {
@@ -1898,8 +2800,10 @@ describe('calculateNameScore', () => {
       lastName: 'Malloy, III',
     });
 
-    // lastName equality holds once the baked-in suffix is stripped; middle is initial-vs-full.
-    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(85);
+    // lastName equality holds once the baked-in suffix is stripped; middle is initial-vs-full
+    // (a genuine match, scored 100 by scoreMiddleNamePart - see its own doc comment), so nothing
+    // caps the overall result below the exact firstName match.
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(100);
   });
 
   test('should return 0 when last name does not match', () => {
@@ -1955,8 +2859,544 @@ describe('calculateNameScore', () => {
     };
     const camsTrustee = makeTrustee({ firstName: 'John', middleName: 'Lee', lastName: 'Doe' });
 
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(100);
+  });
+
+  // Real-world pattern from a staging backtest: a trustee who goes by their middle name has it
+  // recorded first in CAMS ("M. Douglas Flahaut"), while ACMS's PROF_FIRST_NAME/PROF_MI keep the
+  // legal first/middle order ("Douglas"/"M"). Positional-only comparison sees this as two
+  // unrelated first names (0) even though every other signal (last name, address, phone) agrees.
+  test('should tolerate a first/middle name swap between dxtr and cams', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'Douglas M Flahaut',
+      firstName: 'Douglas',
+      middleName: 'M',
+      lastName: 'Flahaut',
+    };
+    const camsTrustee = makeTrustee({
+      firstName: 'M.',
+      middleName: 'Douglas',
+      lastName: 'Flahaut',
+    });
+
     expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(85);
   });
+
+  test('should tolerate a first/middle name swap where the swapped middle name is spelled out on one side', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'Calvin J Hermansen',
+      firstName: 'Calvin',
+      middleName: 'J',
+      lastName: 'Hermansen',
+    };
+    const camsTrustee = makeTrustee({
+      firstName: 'J.',
+      middleName: 'Calvin',
+      lastName: 'Hermansen',
+    });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(85);
+  });
+
+  test('should not treat an unrelated first/middle pair as a swap match', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'Douglas M Flahaut',
+      firstName: 'Douglas',
+      middleName: 'M',
+      lastName: 'Flahaut',
+    };
+    const camsTrustee = makeTrustee({
+      firstName: 'Robert',
+      middleName: 'James',
+      lastName: 'Flahaut',
+    });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(0);
+  });
+
+  // Real-world pattern from a staging backtest: unlike the swap cases above (both sides have
+  // SOME middle name, just in the "wrong" field), ACMS sometimes never records a middle name at
+  // all for a trustee who goes by their middle name - PROF_MI is genuinely empty, not just
+  // omitted from this comparison. "Lance Owens" (ACMS firstName="Lance", no middle name) vs CAMS
+  // "W. Lance Owens" (firstName="W.", middleName="Lance") is not a swap between two populated
+  // slots; it is ACMS's only name slot landing on what CAMS considers the middle name, with
+  // nothing on the ACMS side to contradict the CAMS side's bare initial firstName.
+  //
+  // Requires an EXACT match (not merely initial-vs-full) on the crossed pair - unlike
+  // isFirstMiddleSwap, there is no second, independent direction to cross-check an initial
+  // against here (the "empty" side's middle slot has nothing in it to compare), so a mere
+  // initial-vs-full relationship is too weak a signal to stand alone. Confirmed via a real
+  // backtest regression: allowing initial-vs-full here credited ACMS "MICHAEL MCCARTY" (no middle
+  // name) against BOTH the correct "Michael B. McCarty" (exact first-name match, needs no
+  // relaxation at all) AND the unrelated "Kathy M. McCarty" (only "M." vs "Michael", an
+  // initial-of relationship with nothing to confirm it), producing two candidates that both
+  // qualified and turning a previously-clean single-candidate resolution into a false ambiguity.
+  test('should tolerate a first name that EXACTLY matches the CAMS middle name, when ACMS has no middle name recorded', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'Lance Owens',
+      firstName: 'Lance',
+      lastName: 'Owens',
+    };
+    const camsTrustee = makeTrustee({ firstName: 'W.', middleName: 'Lance', lastName: 'Owens' });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(85);
+  });
+
+  test('should tolerate a first name that EXACTLY matches the DXTR middle name, when CAMS has no middle name recorded', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'W. Lance Owens',
+      firstName: 'W.',
+      middleName: 'Lance',
+      lastName: 'Owens',
+    };
+    const camsTrustee = makeTrustee({ firstName: 'Lance', lastName: 'Owens' });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(85);
+  });
+
+  // CAMS-876 backtest finding: a genuine nickname/formal-name pair (not just an exact string
+  // match) crossed into the "wrong" field must also be credited - ACMS " STEVE MILLER" (no middle
+  // name) vs CAMS "P. Stephen Miller" (firstName="P.", a bare initial unrelated to "Steve";
+  // middleName="Stephen", a real nickname/formal-name pair for "Steve") previously scored 0
+  // because isOneSidedMiddleNameMatch required an EXACT match on the crossed pair - "steve" !==
+  // "stephen" as strings, even though isKnownNicknamePair recognizes them as the same name. Still
+  // refuses a bare-initial relationship (see the McCarty test above) - only the nickname/distance
+  // relaxation was added, not isInitialOf.
+  test('should tolerate a genuine nickname pair crossed into the CAMS middle name, when ACMS has no middle name recorded', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'Steve Miller',
+      firstName: 'Steve',
+      lastName: 'Miller',
+    };
+    const camsTrustee = makeTrustee({ firstName: 'P.', middleName: 'Stephen', lastName: 'Miller' });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(85);
+  });
+
+  test('should NOT credit a merely initial-vs-full relationship as a one-sided middle-name match', () => {
+    // The confirmed real-world false positive: ACMS "MICHAEL MCCARTY" (no middle name) must not
+    // match CAMS "Kathy M. McCarty" just because "M." is an initial of "Michael" - with nothing on
+    // the ACMS side to independently confirm it, a bare middle initial is too weak (and too likely
+    // to coincidentally collide with an unrelated person sharing the same surname) to credit alone.
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'Michael McCarty',
+      firstName: 'Michael',
+      lastName: 'McCarty',
+    };
+    const camsTrustee = makeTrustee({ firstName: 'Kathy', middleName: 'M', lastName: 'McCarty' });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(0);
+  });
+
+  test('should still resolve the correct candidate via the ordinary firstName match when one exists, alongside a rejected one-sided lookalike', () => {
+    // Companion to the McCarty regression: the CORRECT candidate ("Michael B. McCarty") needs no
+    // one-sided relaxation at all - dxtrFirst="michael" equals camsFirst="michael" directly - so
+    // it must keep scoring 100 regardless of how isOneSidedMiddleNameMatch handles other
+    // candidates sharing the same surname.
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'Michael McCarty',
+      firstName: 'Michael',
+      lastName: 'McCarty',
+    };
+    const camsTrustee = makeTrustee({ firstName: 'Michael', middleName: 'B', lastName: 'McCarty' });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(100);
+  });
+
+  test('should NOT credit a one-sided middle-name match when the other side has ITS OWN middle name that contradicts', () => {
+    // "M O Marshall" (dxtrFirst=M, dxtrMiddle=O) vs "Watson M. Marshall" (camsFirst=Watson,
+    // camsMiddle=M): dxtrFirst=M does equal camsMiddle=M, but dxtrMiddle=O is NOT empty, so this
+    // must go through the full bidirectional swap check (both sides populated), not the one-sided
+    // relaxation - and "O" is not related to "Watson", so it correctly stays unmatched.
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'M O Marshall',
+      firstName: 'M',
+      middleName: 'O',
+      lastName: 'Marshall',
+    };
+    const camsTrustee = makeTrustee({ firstName: 'Watson', middleName: 'M', lastName: 'Marshall' });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(0);
+  });
+
+  test('should not treat an unrelated first name as a one-sided middle-name match', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'Robert Owens',
+      firstName: 'Robert',
+      lastName: 'Owens',
+    };
+    const camsTrustee = makeTrustee({ firstName: 'W.', middleName: 'Lance', lastName: 'Owens' });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(0);
+  });
+
+  // Real-world pattern from a staging backtest: ACMS often carries a nickname ("Jim Rigby") where
+  // CAMS has the formal name ("Jim F. Rigby" - itself a nickname, but also the reverse direction:
+  // "Liz Rojas" vs CAMS "Elizabeth F. Rojas"). getNameVariations (name-match library, already used
+  // by phonetic-helper.ts's candidate-discovery search) is reused here for scoring rather than a
+  // new, separately-maintained nickname list.
+  test('should recognize a known nickname-to-formal-name relationship', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'Jim Rigby',
+      firstName: 'Jim',
+      lastName: 'Rigby',
+    };
+    const camsTrustee = makeTrustee({ firstName: 'James', lastName: 'Rigby' });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(85);
+  });
+
+  test('should recognize a known formal-to-nickname relationship in the reverse direction', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'Liz Rojas',
+      firstName: 'Liz',
+      lastName: 'Rojas',
+    };
+    const camsTrustee = makeTrustee({ firstName: 'Elizabeth', lastName: 'Rojas' });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(85);
+  });
+
+  test('should not treat an unrelated first name as a nickname match', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'Jim Rigby',
+      firstName: 'Jim',
+      lastName: 'Rigby',
+    };
+    const camsTrustee = makeTrustee({ firstName: 'Robert', lastName: 'Rigby' });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(0);
+  });
+
+  // Real-world false positive from a staging backtest: the old first-token-only
+  // firstLastNameToken reduced both surnames to "van", so this scored 100 despite being two
+  // different real trustees (coincidentally in the same city/zip too, which would have let a
+  // weak address score corroborate a wrong match).
+  test('should return 0 for two different multi-word surnames sharing the same prefix particle', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'William Van Arsdale',
+      firstName: 'William',
+      lastName: 'Van Arsdale',
+    };
+    const camsTrustee = makeTrustee({
+      firstName: 'William',
+      middleName: 'A.',
+      lastName: 'Van Meter',
+    });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(0);
+  });
+
+  test('should return 100 when both sides use the same multi-word surname prefix and match', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'John Van Meter',
+      firstName: 'John',
+      lastName: 'Van Meter',
+    };
+    const camsTrustee = makeTrustee({ firstName: 'John', lastName: 'Van Meter' });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(100);
+  });
+});
+
+describe('scoreFirstNamePart', () => {
+  test.each([
+    { description: 'an exact match', dxtr: 'john', cams: 'john', expected: 100 },
+    { description: 'the dxtr side is empty', dxtr: '', cams: 'john', expected: 0 },
+    { description: 'the cams side is empty', dxtr: 'john', cams: '', expected: 0 },
+    {
+      description: 'the dxtr side is a single-character initial of the cams side',
+      dxtr: 'g',
+      cams: 'george',
+      expected: 85,
+    },
+    {
+      description: 'the cams side is a single-character initial of the dxtr side',
+      dxtr: 'george',
+      cams: 'g',
+      expected: 85,
+    },
+    {
+      description: 'a known nickname/formal-name pair',
+      dxtr: 'jim',
+      cams: 'james',
+      expected: 85,
+    },
+    { description: 'a genuine mismatch', dxtr: 'jane', cams: 'john', expected: 0 },
+    // Confirmed via a CAMS-876 backtest audit: a short form of a name close enough by
+    // JaroWinkler distance to its formal name, not recognized by the nickname library.
+    {
+      description: 'a short form close enough by distance to its formal name (rod/rodney)',
+      dxtr: 'rod',
+      cams: 'rodney',
+      expected: 85,
+    },
+    {
+      description: 'a short form close enough by distance to its formal name (randy/randolph)',
+      dxtr: 'randy',
+      cams: 'randolph',
+      expected: 85,
+    },
+    {
+      description: 'a short form close enough by distance to its formal name (kathy/kathryn)',
+      dxtr: 'kathy',
+      cams: 'kathryn',
+      expected: 85,
+    },
+    {
+      description: 'a name variant close enough by distance (antonio/anthony)',
+      dxtr: 'antonio',
+      cams: 'anthony',
+      expected: 85,
+    },
+    {
+      description: 'a spelling variant close enough by distance (jeffrey/jeffry)',
+      dxtr: 'jeffrey',
+      cams: 'jeffry',
+      expected: 85,
+    },
+    // Confirmed via the same audit: unrelated first names that happened to share a surname in a
+    // large candidate pool - real nicknames of DIFFERENT formal names, not of each other, and
+    // correctly excluded by distance even though a human might guess otherwise.
+    {
+      description: 'unrelated names below the distance threshold (al/randall)',
+      dxtr: 'al',
+      cams: 'randall',
+      expected: 0,
+    },
+    {
+      description: 'unrelated names below the distance threshold (samuel/joe)',
+      dxtr: 'samuel',
+      cams: 'joe',
+      expected: 0,
+    },
+    {
+      description: 'unrelated names below the distance threshold (steven/bob)',
+      dxtr: 'steven',
+      cams: 'bob',
+      expected: 0,
+    },
+  ])('should return $expected for $description', ({ dxtr, cams, expected }) => {
+    expect(scoreFirstNamePart(dxtr, cams)).toBe(expected);
+  });
+});
+
+describe('scoreMiddleNamePart', () => {
+  test.each([
+    {
+      description: 'the dxtr side is missing (neutral, not disqualifying)',
+      dxtr: '',
+      cams: 'quincy',
+      expected: 100,
+    },
+    {
+      description: 'the cams side is missing (neutral, not disqualifying)',
+      dxtr: 'quincy',
+      cams: '',
+      expected: 100,
+    },
+    {
+      description: 'both sides are missing (neutral, not disqualifying)',
+      dxtr: '',
+      cams: '',
+      expected: 100,
+    },
+    { description: 'an exact match', dxtr: 'quincy', cams: 'quincy', expected: 100 },
+    {
+      description: 'the dxtr side is an initial of the cams side',
+      dxtr: 'l',
+      cams: 'lee',
+      expected: 100,
+    },
+    {
+      description: 'the cams side is an initial of the dxtr side',
+      dxtr: 'lee',
+      cams: 'l',
+      expected: 100,
+    },
+    {
+      description: 'a genuine conflict between two present middle names',
+      dxtr: 'quincy',
+      cams: 'robert',
+      expected: 15,
+    },
+  ])('should return $expected for $description', ({ dxtr, cams, expected }) => {
+    expect(scoreMiddleNamePart(dxtr, cams)).toBe(expected);
+  });
+});
+
+describe('isKnownNicknamePair', () => {
+  test.each([
+    {
+      description: 'a known nickname-to-formal-name pair',
+      a: 'jim',
+      b: 'james',
+      expected: true,
+    },
+    {
+      description: 'a known formal-to-nickname pair (order reversed)',
+      a: 'elizabeth',
+      b: 'liz',
+      expected: true,
+    },
+    { description: 'an unrelated pair', a: 'jim', b: 'robert', expected: false },
+    { description: 'the first side is empty', a: '', b: 'james', expected: false },
+    { description: 'the second side is empty', a: 'jim', b: '', expected: false },
+  ])('should return $expected for $description', ({ a, b, expected }) => {
+    expect(isKnownNicknamePair(a, b)).toBe(expected);
+  });
+});
+
+describe('isFirstMiddleSwap', () => {
+  // Real-world pattern: a trustee who goes by their middle name has it recorded first on one
+  // side (CAMS "M. Douglas Flahaut") while the other side keeps the legal first/middle order
+  // (ACMS "Douglas"/"M").
+  test.each([
+    {
+      description:
+        'both crossed pairs (dxtr-first/cams-middle, dxtr-middle/cams-first) clear the swap threshold',
+      dxtrFirst: 'douglas',
+      dxtrMiddle: 'm',
+      camsFirst: 'm',
+      camsMiddle: 'douglas',
+      expected: true,
+    },
+    {
+      description: 'the swapped middle name is spelled out on only one side',
+      dxtrFirst: 'calvin',
+      dxtrMiddle: 'j',
+      camsFirst: 'j',
+      camsMiddle: 'calvin',
+      expected: true,
+    },
+    {
+      description: 'the dxtr side has no middle name at all',
+      dxtrFirst: 'douglas',
+      dxtrMiddle: '',
+      camsFirst: 'm',
+      camsMiddle: 'douglas',
+      expected: false,
+    },
+    {
+      description: 'the cams side has no middle name at all',
+      dxtrFirst: 'douglas',
+      dxtrMiddle: 'm',
+      camsFirst: 'm',
+      camsMiddle: '',
+      expected: false,
+    },
+    {
+      description: 'an unrelated first/middle pair',
+      dxtrFirst: 'douglas',
+      dxtrMiddle: 'm',
+      camsFirst: 'robert',
+      camsMiddle: 'james',
+      expected: false,
+    },
+    // dxtrFirst vs camsMiddle matches, but dxtrMiddle vs camsFirst does not - a real swap must
+    // agree in both directions, not just one.
+    {
+      description: 'only one crossed pair matches, not both',
+      dxtrFirst: 'douglas',
+      dxtrMiddle: 'x',
+      camsFirst: 'y',
+      camsMiddle: 'douglas',
+      expected: false,
+    },
+  ])(
+    'should return $expected when $description',
+    ({ dxtrFirst, dxtrMiddle, camsFirst, camsMiddle, expected }) => {
+      expect(isFirstMiddleSwap(dxtrFirst, dxtrMiddle, camsFirst, camsMiddle)).toBe(expected);
+    },
+  );
+});
+
+describe('isOneSidedMiddleNameMatch', () => {
+  test.each([
+    {
+      description: 'both sides have a middle name (isFirstMiddleSwap territory instead)',
+      dxtrFirst: 'm',
+      dxtrMiddle: 'o',
+      camsFirst: 'watson',
+      camsMiddle: 'm',
+      expected: false,
+    },
+    {
+      description:
+        'the dxtr side has no middle name and its first name exactly matches the cams middle name',
+      dxtrFirst: 'lance',
+      dxtrMiddle: '',
+      camsFirst: 'w',
+      camsMiddle: 'lance',
+      expected: true,
+    },
+    {
+      description:
+        'the cams side has no middle name and its first name exactly matches the dxtr middle name',
+      dxtrFirst: 'w',
+      dxtrMiddle: 'lance',
+      camsFirst: 'lance',
+      camsMiddle: '',
+      expected: true,
+    },
+    // The confirmed real-world false positive: "michael" (no middle name) must not match against
+    // a bare middle initial "m" just because "m" is an initial of "michael" - a bare-initial
+    // relationship is still refused even after the nickname/distance relaxation below (see
+    // isOneSidedCrossedNamePartMatch's own doc comment on why it deliberately never calls
+    // isInitialOf, unlike scoreFirstNamePart's other two callers).
+    {
+      description:
+        'a merely initial-vs-full relationship (still refused, unlike scoreFirstNamePart)',
+      dxtrFirst: 'michael',
+      dxtrMiddle: '',
+      camsFirst: 'kathy',
+      camsMiddle: 'm',
+      expected: false,
+    },
+    // CAMS-876 backtest finding (ACMS " STEVE MILLER" vs CAMS "P. Stephen Miller"): a genuine
+    // nickname pair crossed into the wrong field must still be credited, not just an exact
+    // string match - "Steve" is a real nickname/formal-name pair for "Stephen" (isKnownNicknamePair),
+    // a fundamentally different, much narrower relationship than the bare-initial case above.
+    {
+      description: 'a genuine nickname pair crossed into the cams middle name field',
+      dxtrFirst: 'steve',
+      dxtrMiddle: '',
+      camsFirst: 'p',
+      camsMiddle: 'stephen',
+      expected: true,
+    },
+    {
+      description: 'a genuine nickname pair crossed into the dxtr middle name field',
+      dxtrFirst: 'lance',
+      dxtrMiddle: 'stephen',
+      camsFirst: 'steve',
+      camsMiddle: '',
+      expected: true,
+    },
+    {
+      description: 'an unrelated first name',
+      dxtrFirst: 'robert',
+      dxtrMiddle: '',
+      camsFirst: 'w',
+      camsMiddle: 'lance',
+      expected: false,
+    },
+    {
+      description: 'neither side has a middle name',
+      dxtrFirst: 'john',
+      dxtrMiddle: '',
+      camsFirst: 'john',
+      camsMiddle: '',
+      expected: false,
+    },
+  ])(
+    'should return $expected when $description',
+    ({ dxtrFirst, dxtrMiddle, camsFirst, camsMiddle, expected }) => {
+      expect(isOneSidedMiddleNameMatch(dxtrFirst, dxtrMiddle, camsFirst, camsMiddle)).toBe(
+        expected,
+      );
+    },
+  );
 });
 
 describe('calculatePhoneScore', () => {
@@ -3059,6 +4499,43 @@ describe('resolveByContactCorroboration', () => {
     expect(result.kind).toBe('unresolved');
   });
 
+  test('does NOT resolve via the no-contradiction fallback when ACMS demographic fields are all the "0" sentinel, not genuinely blank', async () => {
+    // ACMS's legacy phone/fax/email fields use the string "0" as their no-value sentinel, which
+    // is truthy in JS - a raw !value check would treat this record as having real contact data
+    // and skip the fully-blank guard, letting a pure name-equality guess through.
+    const zeroSentinelSource: DxtrTrusteeParty = {
+      fullName: 'Richard Belford',
+      firstName: 'Richard',
+      lastName: 'Belford',
+      legacy: {
+        address1: '0',
+        cityStateZipCountry: '0',
+        phone: '0',
+        email: '0',
+      },
+    };
+    const candidate = makeTrustee({
+      trusteeId: 'trustee-1',
+      firstName: 'Richard',
+      lastName: 'Belford',
+      name: 'Richard L. Belford',
+      public: {
+        address: {
+          address1: '9 Trumbull Street',
+          city: 'New Haven',
+          state: 'CT',
+          zipCode: '06511',
+          countryCode: 'US',
+        },
+      },
+    });
+    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>).mockResolvedValue(candidate);
+
+    const result = await resolveByContactCorroboration(context, zeroSentinelSource, ['trustee-1']);
+
+    expect(result.kind).toBe('unresolved');
+  });
+
   test('does NOT resolve via the no-contradiction fallback when nameScore is 85 (fuzzy tier), not 100', async () => {
     const initialOnlySource: DxtrTrusteeParty = {
       fullName: 'R. Belford',
@@ -3201,198 +4678,6 @@ describe('resolveByContactCorroboration', () => {
     const result = await resolveByContactCorroboration(context, sourceTrustee, ['trustee-1']);
 
     expect(result.kind).toBe('resolved');
-  });
-});
-
-describe('resolveDuplicateNameCandidates', () => {
-  let context: ApplicationContext;
-  let mockTrusteesRepo: Partial<TrusteesRepository>;
-
-  beforeEach(async () => {
-    vi.restoreAllMocks();
-    context = await createMockApplicationContext();
-
-    mockTrusteesRepo = {
-      read: vi.fn(),
-      release: vi.fn(),
-    };
-
-    vi.spyOn(factory, 'getTrusteesRepository').mockReturnValue(
-      mockTrusteesRepo as TrusteesRepository,
-    );
-  });
-
-  const sourceTrustee: DxtrTrusteeParty = {
-    fullName: 'Roy Cohen',
-    firstName: 'Roy',
-    lastName: 'Cohen',
-    legacy: {
-      address1: '9 Trumbull Street',
-      cityStateZipCountry: 'New Haven, CT 06511',
-    },
-  };
-
-  test('resolves to the richer-data candidate when two candidates share the same normalized trusteeName and the addressScore gap is large', async () => {
-    const richerCandidate = makeTrustee({
-      trusteeId: 'trustee-1',
-      firstName: 'Roy',
-      lastName: 'Cohen',
-      name: 'Roy J. Cohen',
-      public: {
-        address: {
-          address1: '9 Trumbull Street',
-          city: 'New Haven',
-          state: 'CT',
-          zipCode: '06511',
-          countryCode: 'US',
-        },
-      },
-    });
-    const staleCandidate = makeTrustee({
-      trusteeId: 'trustee-2',
-      firstName: 'Roy',
-      lastName: 'Cohen',
-      name: 'Roy J. Cohen', // same normalized name as trustee-1 - a likely CAMS duplicate
-      public: {
-        address: {
-          address1: 'Some Other Street',
-          city: 'Elsewhere',
-          state: 'CT',
-          zipCode: '00000',
-          countryCode: 'US',
-        },
-      },
-    });
-    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>)
-      .mockResolvedValueOnce(richerCandidate)
-      .mockResolvedValueOnce(staleCandidate);
-
-    const result = await resolveDuplicateNameCandidates(context, sourceTrustee, [
-      'trustee-1',
-      'trustee-2',
-    ]);
-
-    expect(result.kind).toBe('resolved-duplicate');
-    if (result.kind !== 'resolved-duplicate')
-      throw new Error('expected resolved-duplicate outcome');
-    expect(result.trusteeId).toBe('trustee-1');
-  });
-
-  test('stays unresolved when two same-name candidates have too small an addressScore gap to trust', async () => {
-    const candidateA = makeTrustee({
-      trusteeId: 'trustee-1',
-      firstName: 'Roy',
-      lastName: 'Cohen',
-      name: 'Roy J. Cohen',
-      public: {
-        address: {
-          address1: 'Some Other Street A',
-          city: 'Elsewhere',
-          state: 'CT',
-          zipCode: '00000',
-          countryCode: 'US',
-        },
-      },
-    });
-    const candidateB = makeTrustee({
-      trusteeId: 'trustee-2',
-      firstName: 'Roy',
-      lastName: 'Cohen',
-      name: 'Roy J. Cohen',
-      public: {
-        address: {
-          address1: 'Some Other Street B',
-          city: 'Elsewhere',
-          state: 'CT',
-          zipCode: '00000',
-          countryCode: 'US',
-        },
-      },
-    });
-    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>)
-      .mockResolvedValueOnce(candidateA)
-      .mockResolvedValueOnce(candidateB);
-
-    const result = await resolveDuplicateNameCandidates(context, sourceTrustee, [
-      'trustee-1',
-      'trustee-2',
-    ]);
-
-    expect(result.kind).toBe('unresolved');
-  });
-
-  test('stays unresolved when the candidates have genuinely different names, regardless of addressScore gap', async () => {
-    const candidateA = makeTrustee({
-      trusteeId: 'trustee-1',
-      firstName: 'David',
-      lastName: 'Miller',
-      middleName: 'L.',
-      name: 'David L. Miller',
-      public: {
-        address: {
-          address1: '9 Trumbull Street',
-          city: 'New Haven',
-          state: 'CT',
-          zipCode: '06511',
-          countryCode: 'US',
-        },
-      },
-    });
-    const candidateB = makeTrustee({
-      trusteeId: 'trustee-2',
-      firstName: 'David',
-      lastName: 'Miller',
-      middleName: 'P.',
-      name: 'David P. Miller', // genuinely different name from candidateA - not a duplicate
-      public: {
-        address: {
-          address1: 'Some Other Street',
-          city: 'Elsewhere',
-          state: 'CT',
-          zipCode: '00000',
-          countryCode: 'US',
-        },
-      },
-    });
-    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>)
-      .mockResolvedValueOnce(candidateA)
-      .mockResolvedValueOnce(candidateB);
-
-    const davidMillerSource: DxtrTrusteeParty = {
-      fullName: 'David Miller',
-      firstName: 'David',
-      lastName: 'Miller',
-      legacy: {
-        address1: '9 Trumbull Street',
-        cityStateZipCountry: 'New Haven, CT 06511',
-      },
-    };
-
-    const result = await resolveDuplicateNameCandidates(context, davidMillerSource, [
-      'trustee-1',
-      'trustee-2',
-    ]);
-
-    expect(result.kind).toBe('unresolved');
-  });
-
-  test('returns no-match when every candidate fails to load', async () => {
-    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>).mockRejectedValue(
-      new Error('trustee not found'),
-    );
-
-    const result = await resolveDuplicateNameCandidates(context, sourceTrustee, ['trustee-1']);
-
-    expect(result.kind).toBe('no-match');
-  });
-
-  test('propagates a transient infrastructure error rather than treating it as unscorable', async () => {
-    const transientError = new TooManyRequestsError('COSMOS_DB');
-    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>).mockRejectedValue(transientError);
-
-    await expect(
-      resolveDuplicateNameCandidates(context, sourceTrustee, ['trustee-1']),
-    ).rejects.toBe(transientError);
   });
 });
 

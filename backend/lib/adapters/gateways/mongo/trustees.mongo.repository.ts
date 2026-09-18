@@ -266,6 +266,22 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
     }
   }
 
+  async findTrusteesByIds(trusteeIds: string[]): Promise<Trustee[]> {
+    if (trusteeIds.length === 0) return [];
+    try {
+      const doc = using<TrusteeDocument>();
+      const query = and(
+        doc('documentType').equals('TRUSTEE'),
+        doc('trusteeId').contains(trusteeIds),
+      );
+      return await this.getAdapter<TrusteeDocument>().find(query);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to find trustees by ids.`,
+      });
+    }
+  }
+
   async searchTrusteesByName(name: string): Promise<Trustee[]> {
     try {
       const normalized = normalizeName(name);

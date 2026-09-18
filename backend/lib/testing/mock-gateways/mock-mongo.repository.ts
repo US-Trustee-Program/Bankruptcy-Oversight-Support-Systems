@@ -37,7 +37,7 @@ import {
 import { AppointmentStatus, Trustee, TrusteeHistory, TrusteeSummary } from '@common/cams/trustees';
 import { TrusteeNote } from '@common/cams/trustee-notes';
 import { CaseAppointment, TrusteeCaseListItem } from '@common/cams/trustee-appointments';
-import { TrusteeProfessionalId } from '@common/cams/trustee-professional-ids';
+import { TrusteeProfessionalId } from '../../use-cases/dataflows/trustee-professional-ids.types';
 import { TrusteeVariation } from '@common/cams/trustee-variation';
 import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
 import { BankList, BankListItem, BankruptcySoftwareList } from '@common/cams/lists';
@@ -466,6 +466,10 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
+  findTrusteesByIds(_trusteeIds: string[]): Promise<any[]> {
+    throw new Error('Method not implemented.');
+  }
+
   searchTrusteesByName(_name: string): Promise<any[]> {
     throw new Error('Method not implemented.');
   }
@@ -691,41 +695,19 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
-  createProfessionalId(
-    camsTrusteeId: string,
-    acmsProfessionalId: string,
+  upsertProfessionalId(
+    document: Omit<
+      TrusteeProfessionalId,
+      'id' | 'createdOn' | 'createdBy' | 'updatedOn' | 'updatedBy'
+    >,
     user: CamsUserReference,
   ): Promise<TrusteeProfessionalId> {
-    const key = `${camsTrusteeId}:${acmsProfessionalId}`;
+    const key = `${document.camsTrusteeId}:${document.acmsProfessionalId}`;
     const existing = this.professionalIds.get(key);
     if (existing) return Promise.resolve(existing);
     const mapping: TrusteeProfessionalId = {
-      documentType: 'TRUSTEE_PROFESSIONAL_ID',
+      ...document,
       id: crypto.randomUUID(),
-      camsTrusteeId,
-      acmsProfessionalId,
-      updatedBy: user,
-      updatedOn: new Date().toISOString(),
-    };
-    this.professionalIds.set(key, mapping);
-    return Promise.resolve(mapping);
-  }
-
-  createErroredProfessionalId(
-    fingerprint: string,
-    acmsProfessionalId: string,
-    variant: string,
-    error: TrusteeProfessionalId['error'],
-    user: CamsUserReference,
-  ): Promise<TrusteeProfessionalId> {
-    const key = `${fingerprint}:${acmsProfessionalId}:${crypto.randomUUID()}`;
-    const mapping: TrusteeProfessionalId = {
-      documentType: 'TRUSTEE_PROFESSIONAL_ID',
-      id: crypto.randomUUID(),
-      camsTrusteeId: fingerprint,
-      acmsProfessionalId,
-      variant,
-      error,
       updatedBy: user,
       updatedOn: new Date().toISOString(),
     };
@@ -740,7 +722,7 @@ export class MockMongoRepository
   findByCamsTrusteeId(camsTrusteeId: string): Promise<TrusteeProfessionalId[]> {
     return Promise.resolve(
       Array.from(this.professionalIds.values()).filter(
-        (m) => m.camsTrusteeId === camsTrusteeId && !m.error,
+        (m) => m.camsTrusteeId === camsTrusteeId && m.disposition === 'auto-linked',
       ),
     );
   }
@@ -748,7 +730,7 @@ export class MockMongoRepository
   findByAcmsProfessionalId(acmsProfessionalId: string): Promise<TrusteeProfessionalId[]> {
     return Promise.resolve(
       Array.from(this.professionalIds.values()).filter(
-        (m) => m.acmsProfessionalId === acmsProfessionalId && !m.error,
+        (m) => m.acmsProfessionalId === acmsProfessionalId && m.disposition === 'auto-linked',
       ),
     );
   }

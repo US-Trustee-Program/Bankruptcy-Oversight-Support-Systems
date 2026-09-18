@@ -348,6 +348,23 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
     // real professionals (e.g. "NO TRUSTEE", "NO TRUSTEE ASSIGNED", "CASE STRICKEN: NO TRUSTEE"),
     // always carried in PROF_LAST_NAME with PROF_FIRST_NAME empty.
     //
+    // PROF_LAST_NAME NOT LIKE '%DECEASED%' excludes a similar placeholder shape found via a
+    // staging backtest (e.g. "DECEASED - THISTLETHWAITE, JR."): a status marker prepended to the
+    // real surname rather than replacing it outright, which defeats matching regardless (a
+    // trustee-match.helpers.ts candidate-discovery tier would need to strip the marker text
+    // itself, not just tolerate it, to find the real person underneath).
+    //
+    // The REOPENED/TRUSTEE/FAKE/PRO SE clauses below extend the same placeholder-filtering
+    // rationale, found via a CAMS-876 backtest of the still-unresolved population (see
+    // sync-acms-professional-ids-audit's README) — none of these carry a real person's identity,
+    // so no matcher tuning could ever resolve them; excluding at the source spares every later
+    // stage (candidate discovery, scoring, AI-assisted screening) the wasted cost of considering
+    // them at all. Each covers a distinct real value observed in PROF_LAST_NAME/PROF_FIRST_NAME:
+    // "REOPENED_CASE"/"TRUSTEE_UNASSIGNED", "RE OPENED (JACKSON)"/"REOPENED CASE", "NO TRRUSTEE"
+    // (a misspelling the existing "NO TRUSTEE" clause above does not catch)/"NO TR APT", "I M
+    // FAKE"/"FAKE" (with firstName "I"), and "PRO SE" (a litigant representing themselves, not a
+    // trustee).
+    //
     // UST_PROF_CODE < 98000 excludes ACMS's reserved sentinel/dummy trustee code range (known
     // values include 99999 and 98000). These rows must never reach the keyset cursor: since
     // pagination advances the bookmark to the highest UST_PROF_CODE seen, a sentinel row would
@@ -371,6 +388,14 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
       WHERE ACMS.PROF_TYPE = 'TR'
         AND ACMS.DELETE_CODE != 'D'
         AND ACMS.PROF_LAST_NAME NOT LIKE '%NO TRUSTEE%'
+        AND ACMS.PROF_LAST_NAME NOT LIKE '%NO TRRUSTEE%'
+        AND ACMS.PROF_LAST_NAME NOT LIKE '%DECEASED%'
+        AND ACMS.PROF_LAST_NAME NOT LIKE '%REOPENED%'
+        AND ACMS.PROF_LAST_NAME NOT LIKE '%RE OPENED%'
+        AND ACMS.PROF_LAST_NAME NOT LIKE '%TRUSTEE_UNASSIGNED%'
+        AND ACMS.PROF_LAST_NAME NOT LIKE '%NO TR APT%'
+        AND ACMS.PROF_LAST_NAME NOT LIKE '%FAKE%'
+        AND ACMS.PROF_LAST_NAME NOT LIKE '%PRO SE%'
         AND ACMS.UST_PROF_CODE < 98000
         AND ACMS.GROUP_DESIGNATOR = @groupDesignator
         AND ACMS.UST_PROF_CODE > @lastUstProfCode

@@ -16,8 +16,7 @@ import { createAuditRecord, SYSTEM_USER_REFERENCE } from '@common/cams/auditable
 import factory from '../../factory';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { CamsError } from '../../common-errors/cams-error';
-import { isTooManyRequestsError } from '../../common-errors/too-many-requests-error';
-import { isGatewayTimeoutError } from '../../common-errors/gateway-timeout';
+import { isTransientInfraError } from '../../common-errors/transient-infra-error';
 import {
   TrusteeCaseAppointmentsRepository,
   TrusteeAppointmentsSyncState,
@@ -135,24 +134,15 @@ type ProcessAppointmentsResult = {
   retryableEvents: TrusteeAppointmentSyncEvent[];
 };
 
-/**
- * True when error is a transient infrastructure failure (Cosmos RU throttling or a read/write
- * timeout) rather than a genuine match outcome. This is the check that decides whether
- * processOneEvent's one catch block reports 'retryable' instead of routing to the DLQ —
- * matchTrusteeByName and resolveNameCollisionByScoring return (rather than throw) for business
- * outcomes, so that catch is the only place in the per-event pipeline a transient error from
- * either call can surface (see cams-o5gh for the bug this fixed when a second, independent
- * recheck was still required). throwIfTransientSoftCloseFailure below calls this function
- * directly; resolveNameCollisionByScoring in trustee-match.helpers.ts reimplements the same
- * isTooManyRequestsError/isGatewayTimeoutError check independently rather than importing it,
- * since that module is imported BY this one and importing back here would be circular.
- *
- * Exported for testing only — no production importer outside this module; every other
- * production caller reaches this indirectly through processOneEvent's catch block.
- */
-export function isTransientInfraError(error: unknown): boolean {
-  return isTooManyRequestsError(error) || isGatewayTimeoutError(error);
-}
+// isTransientInfraError (shared, see ../../common-errors/transient-infra-error.ts) is the check
+// that decides whether processOneEvent's one catch block reports 'retryable' instead of routing
+// to the DLQ - matchTrusteeByName and resolveNameCollisionByScoring return (rather than throw)
+// for business outcomes, so that catch is the only place in the per-event pipeline a transient
+// error from either call can surface (see cams-o5gh for the bug this fixed when a second,
+// independent recheck was still required). throwIfTransientSoftCloseFailure below calls it
+// directly; trustee-match.helpers.ts (imported BY this module) also imports it now that it lives
+// in a neutral shared location rather than reimplementing the check independently to avoid what
+// would otherwise be a circular import back to this file.
 
 const SENTINEL_PROFESSIONAL_ID = 'XX-99999';
 

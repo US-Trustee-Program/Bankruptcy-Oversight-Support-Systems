@@ -765,6 +765,32 @@ describe('ACMS gateway tests', () => {
         "PROF_LAST_NAME NOT LIKE '%NO TRUSTEE%'",
       ],
       [
+        'should exclude "DECEASED"-pattern placeholder records',
+        "PROF_LAST_NAME NOT LIKE '%DECEASED%'",
+      ],
+      [
+        'should exclude "NO TRRUSTEE"-misspelling placeholder records',
+        "PROF_LAST_NAME NOT LIKE '%NO TRRUSTEE%'",
+      ],
+      [
+        'should exclude "REOPENED"-pattern placeholder records',
+        "PROF_LAST_NAME NOT LIKE '%REOPENED%'",
+      ],
+      [
+        'should exclude "RE OPENED"-pattern placeholder records',
+        "PROF_LAST_NAME NOT LIKE '%RE OPENED%'",
+      ],
+      [
+        'should exclude "TRUSTEE_UNASSIGNED"-pattern placeholder records',
+        "PROF_LAST_NAME NOT LIKE '%TRUSTEE_UNASSIGNED%'",
+      ],
+      [
+        'should exclude "NO TR APT"-pattern placeholder records',
+        "PROF_LAST_NAME NOT LIKE '%NO TR APT%'",
+      ],
+      ['should exclude "FAKE"-pattern placeholder records', "PROF_LAST_NAME NOT LIKE '%FAKE%'"],
+      ['should exclude "PRO SE"-pattern placeholder records', "PROF_LAST_NAME NOT LIKE '%PRO SE%'"],
+      [
         'should exclude ACMS reserved sentinel/dummy trustee codes (>= 98000)',
         'ACMS.UST_PROF_CODE < 98000',
       ],

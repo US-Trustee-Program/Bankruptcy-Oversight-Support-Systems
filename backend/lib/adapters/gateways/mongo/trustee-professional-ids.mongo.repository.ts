@@ -5,26 +5,31 @@ import { BaseMongoRepository } from './utils/base-mongo-repository';
 import QueryBuilder from '../../../query/query-builder';
 import {
   TrusteeProfessionalId,
-  TrusteeProfessionalIdError,
-} from '@common/cams/trustee-professional-ids';
-import { createAuditRecord } from '@common/cams/auditable';
+  TrusteeProfessionalIdSummary,
+} from '../../../use-cases/dataflows/trustee-professional-ids.types';
+import { Auditable, createAuditRecord } from '@common/cams/auditable';
+import { Identifiable } from '@common/cams/document';
 import { CamsUserReference } from '@common/cams/users';
 import { Creatable } from '@common/cams/creatable';
 
 const MODULE_NAME = 'TRUSTEE-PROFESSIONAL-IDS-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'trustee-professional-ids';
 
-const { and, using } = QueryBuilder;
+const { and, using, omit } = QueryBuilder;
 
 export type TrusteeProfessionalIdDocument = TrusteeProfessionalId & {
   documentType: 'TRUSTEE_PROFESSIONAL_ID';
 };
 
-// Excludes documents carrying an `error` — those are unmatched placeholder records keyed by
-// fingerprint rather than a real trusteeId, and must stay invisible to callers resolving real
-// trustee<->ACMS links. See TrusteeProfessionalIdsRepository's JSDoc.
-function notErrored<T extends { error?: unknown }>(doc: ReturnType<typeof using<T>>) {
-  return doc('error').notExists();
+// Excludes the heavy evidence graph at the Mongo query level (not merely in the TypeScript
+// return type) for every ordinary read - see TrusteeProfessionalIdsRepository's own doc comment.
+const SUMMARY_PROJECTION = omit<TrusteeProfessionalIdDocument>('evidence');
+
+// Only an auto-linked, non-conflicting disposition is a real trustee<->ACMS link - everything
+// else is a placeholder record keyed by fingerprint, and must stay invisible to callers
+// resolving real links. See TrusteeProfessionalIdsRepository's JSDoc.
+function isRealLink<T extends { disposition?: unknown }>(doc: ReturnType<typeof using<T>>) {
+  return doc('disposition').equals('auto-linked');
 }
 
 // Cosmos/MongoDB signals a unique-index violation via an "E11000" message; the code property
@@ -77,89 +82,43 @@ export class TrusteeProfessionalIdsMongoRepository
     TrusteeProfessionalIdsMongoRepository.dropInstance();
   }
 
-  async createProfessionalId(
-    camsTrusteeId: string,
-    acmsProfessionalId: string,
-    user: CamsUserReference,
-  ): Promise<TrusteeProfessionalId> {
-    try {
-      const doc = using<TrusteeProfessionalIdDocument>();
-      const query = and(
-        doc('documentType').equals('TRUSTEE_PROFESSIONAL_ID'),
-        doc('camsTrusteeId').equals(camsTrusteeId),
-        doc('acmsProfessionalId').equals(acmsProfessionalId),
-      );
-
-      const existing = await this.getAdapter<TrusteeProfessionalIdDocument>().find(query);
-
-      if (existing.length > 0) {
-        return existing[0];
-      }
-
-      const document = createAuditRecord<Creatable<TrusteeProfessionalIdDocument>>(
-        {
-          documentType: 'TRUSTEE_PROFESSIONAL_ID',
-          camsTrusteeId,
-          acmsProfessionalId,
-        },
-        user,
-      );
-
-      const id =
-        await this.getAdapter<Creatable<TrusteeProfessionalIdDocument>>().insertOne(document);
-
-      return { id, ...document };
-    } catch (originalError) {
-      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        message: `Failed to create professional ID mapping for trustee ${camsTrusteeId} and ACMS ID ${acmsProfessionalId}.`,
-      });
-    }
-  }
-
   /**
-   * Writes an errored (unmatched/ambiguous/conflicting) TrusteeProfessionalId, keyed by the
-   * ACMS variant's fingerprint in place of a real trusteeId. The (camsTrusteeId,
-   * acmsProfessionalId, documentType) unique index still applies to this fingerprint key, so a
-   * caller that retries the same record after a partial-page failure (see handlePage's
-   * retry-from-original-bookmark comment) will hit a duplicate-key violation here on the
-   * second pass — reprocessing is expected, not a race between two different callers, so this
-   * catches E11000 and returns the already-written document instead of throwing. Without this,
-   * the retry's uncaught error looks non-transient to handleRateLimitRetry, gets rethrown, and
-   * the message redelivers until it dead-letters — permanently stalling that group's sync.
+   * Writes a TrusteeProfessionalId for any pipeline outcome, keyed by (camsTrusteeId,
+   * acmsProfessionalId, documentType) - a caller that retries the same record after a partial-page
+   * failure (see handlePage's retry-from-original-bookmark comment) will hit a duplicate-key
+   * violation here on the second pass. Reprocessing is expected, not a race between two different
+   * callers, so this catches E11000 and returns the already-written document instead of throwing.
+   * Without this, the retry's uncaught error looks non-transient to handleRateLimitRetry, gets
+   * rethrown, and the message redelivers until it dead-letters - permanently stalling that group's
+   * sync.
    */
-  async createErroredProfessionalId(
-    fingerprint: string,
-    acmsProfessionalId: string,
-    variant: string,
-    error: TrusteeProfessionalIdError,
+  async upsertProfessionalId(
+    document: Omit<TrusteeProfessionalId, keyof Auditable | keyof Identifiable>,
     user: CamsUserReference,
   ): Promise<TrusteeProfessionalId> {
+    const { camsTrusteeId, acmsProfessionalId } = document;
     try {
-      const document = createAuditRecord<Creatable<TrusteeProfessionalIdDocument>>(
-        {
-          documentType: 'TRUSTEE_PROFESSIONAL_ID',
-          camsTrusteeId: fingerprint,
-          acmsProfessionalId,
-          variant,
-          error,
-        },
+      const auditedDocument = createAuditRecord<Creatable<TrusteeProfessionalIdDocument>>(
+        document,
         user,
       );
 
       const id =
-        await this.getAdapter<Creatable<TrusteeProfessionalIdDocument>>().insertOne(document);
+        await this.getAdapter<Creatable<TrusteeProfessionalIdDocument>>().insertOne(
+          auditedDocument,
+        );
 
-      return { id, ...document };
+      return { id, ...auditedDocument };
     } catch (originalError) {
       if (isDuplicateKeyError(originalError)) {
         this.context.logger.warn(
           MODULE_NAME,
-          `Errored professional ID record for ACMS ID ${acmsProfessionalId} already exists (reprocessed after a retry) — returning the existing document.`,
+          `Professional ID record for ACMS ID ${acmsProfessionalId} already exists (reprocessed after a retry) - returning the existing document.`,
         );
         const doc = using<TrusteeProfessionalIdDocument>();
         const query = and(
           doc('documentType').equals('TRUSTEE_PROFESSIONAL_ID'),
-          doc('camsTrusteeId').equals(fingerprint),
+          doc('camsTrusteeId').equals(camsTrusteeId),
           doc('acmsProfessionalId').equals(acmsProfessionalId),
         );
         const existing = await this.getAdapter<TrusteeProfessionalIdDocument>().find(query);
@@ -168,16 +127,21 @@ export class TrusteeProfessionalIdsMongoRepository
         }
       }
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        message: `Failed to create errored professional ID record for ACMS ID ${acmsProfessionalId}.`,
+        message: `Failed to write professional ID record for trustee ${camsTrusteeId} and ACMS ID ${acmsProfessionalId}.`,
       });
     }
   }
 
-  async findAll(): Promise<TrusteeProfessionalId[]> {
+  async findAll(): Promise<TrusteeProfessionalIdSummary[]> {
     try {
       const doc = using<TrusteeProfessionalIdDocument>();
-      const query = and(doc('documentType').equals('TRUSTEE_PROFESSIONAL_ID'), notErrored(doc));
-      return await this.getAdapter<TrusteeProfessionalIdDocument>().find(query);
+      const query = and(doc('documentType').equals('TRUSTEE_PROFESSIONAL_ID'), isRealLink(doc));
+      return await this.getAdapter<TrusteeProfessionalIdDocument>().find(
+        query,
+        undefined,
+        undefined,
+        SUMMARY_PROJECTION,
+      );
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: 'Failed to load all professional ID mappings.',
@@ -185,11 +149,16 @@ export class TrusteeProfessionalIdsMongoRepository
     }
   }
 
-  async findByCamsTrusteeId(camsTrusteeId: string): Promise<TrusteeProfessionalId[]> {
+  async findByCamsTrusteeId(camsTrusteeId: string): Promise<TrusteeProfessionalIdSummary[]> {
     try {
       const doc = using<TrusteeProfessionalIdDocument>();
-      const query = and(doc('camsTrusteeId').equals(camsTrusteeId), notErrored(doc));
-      return await this.getAdapter<TrusteeProfessionalIdDocument>().find(query);
+      const query = and(doc('camsTrusteeId').equals(camsTrusteeId), isRealLink(doc));
+      return await this.getAdapter<TrusteeProfessionalIdDocument>().find(
+        query,
+        undefined,
+        undefined,
+        SUMMARY_PROJECTION,
+      );
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: `Failed to find professional IDs for trustee ${camsTrusteeId}.`,
@@ -197,11 +166,18 @@ export class TrusteeProfessionalIdsMongoRepository
     }
   }
 
-  async findByAcmsProfessionalId(acmsProfessionalId: string): Promise<TrusteeProfessionalId[]> {
+  async findByAcmsProfessionalId(
+    acmsProfessionalId: string,
+  ): Promise<TrusteeProfessionalIdSummary[]> {
     try {
       const doc = using<TrusteeProfessionalIdDocument>();
-      const query = and(doc('acmsProfessionalId').equals(acmsProfessionalId), notErrored(doc));
-      return await this.getAdapter<TrusteeProfessionalIdDocument>().find(query);
+      const query = and(doc('acmsProfessionalId').equals(acmsProfessionalId), isRealLink(doc));
+      return await this.getAdapter<TrusteeProfessionalIdDocument>().find(
+        query,
+        undefined,
+        undefined,
+        SUMMARY_PROJECTION,
+      );
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: `Failed to find trustees with ACMS professional ID ${acmsProfessionalId}.`,
