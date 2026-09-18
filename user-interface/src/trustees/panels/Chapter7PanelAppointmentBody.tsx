@@ -4,13 +4,12 @@ import Chapter7PanelTrusteePerformanceReportCard from './Chapter7PanelTrusteePer
 import Chapter7PanelTrusteeInterimReportCard from './Chapter7PanelTrusteeInterimReportCard';
 import Chapter7PanelOtherKeyDatesCard from './Chapter7PanelOtherKeyDatesCard';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
-import { getAppointmentDetails } from '@common/cams/trustees';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import useFeatureFlags, {
   DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES,
 } from '@/lib/hooks/UseFeatureFlags';
 import { useUpcomingKeyDates } from './useUpcomingKeyDates';
-import { buildDistrictDisplay } from './appointmentDisplay';
+import { buildAppointmentHeading } from './appointmentDisplay';
 
 export interface Chapter7PanelAppointmentBodyProps {
   appointment: TrusteeAppointment;
@@ -31,10 +30,7 @@ export default function Chapter7PanelAppointmentBody(
     error: keyDatesLoadError,
   } = useUpcomingKeyDates(appointment.trusteeId, appointment.id, displayKeyDates);
 
-  const districtDisplay = buildDistrictDisplay(appointment);
-  const appointmentHeading = `${districtDisplay}${
-    appointment.courtDivisionName ? ` (${appointment.courtDivisionName})` : ''
-  }: Chapter ${getAppointmentDetails(appointment.chapter, appointment.appointmentType)}`;
+  const appointmentHeading = buildAppointmentHeading(appointment);
 
   return (
     <>
