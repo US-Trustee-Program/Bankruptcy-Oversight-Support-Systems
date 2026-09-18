@@ -145,38 +145,49 @@ function SearchResults(props: SearchResultsProps) {
   }
 
   function handleCaseClick(bCase: SyncedCase, rank: number) {
-    if (!searchPredicate.debtorName || !bCase.searchMetadata) return;
+    const debtorNameUsed = !!searchPredicate.debtorName;
 
-    const { matchScore, primaryMatchType, scoreBreakdown } = bCase.searchMetadata;
-    // Maximum number of higher-ranked results to include in analytics payload
-    const MAX_HIGHER_RANKED_CONTEXT = 5;
-    const cap = Math.min(rank - 1, MAX_HIGHER_RANKED_CONTEXT);
-    // Only includes results from the current page; earlier pages are not retained after navigation.
-    const higherRankedOnPage = (searchResults?.data ?? [])
-      .slice(0, cap)
-      .map((r, i) => ({ r, i }))
-      .filter(({ r }) => r.searchMetadata !== undefined)
-      .map(({ r, i }) => ({
-        rank: (searchPredicate.offset ?? 0) + i + 1,
-        matchScore: r.searchMetadata!.matchScore,
-        primaryMatchType: r.searchMetadata!.primaryMatchType,
-      }));
+    let primaryMatchType: string | undefined;
+    let scoreBreakdown: string | undefined;
+    let matchScore: number | undefined;
+    let higherRankedResults: string | undefined;
+
+    if (debtorNameUsed && bCase.searchMetadata) {
+      ({ matchScore, primaryMatchType } = bCase.searchMetadata);
+      scoreBreakdown = JSON.stringify(bCase.searchMetadata.scoreBreakdown);
+
+      // Maximum number of higher-ranked results to include in analytics payload
+      const MAX_HIGHER_RANKED_CONTEXT = 5;
+      const cap = Math.min(rank - 1, MAX_HIGHER_RANKED_CONTEXT);
+      // Only includes results from the current page; earlier pages are not retained after navigation.
+      const higherRankedOnPage = (searchResults?.data ?? [])
+        .slice(0, cap)
+        .map((r, i) => ({ r, i }))
+        .filter(({ r }) => r.searchMetadata !== undefined)
+        .map(({ r, i }) => ({
+          rank: (searchPredicate.offset ?? 0) + i + 1,
+          matchScore: r.searchMetadata!.matchScore,
+          primaryMatchType: r.searchMetadata!.primaryMatchType,
+        }));
+      higherRankedResults = JSON.stringify(higherRankedOnPage);
+    }
 
     getAppInsights().appInsights.trackEvent({
       name: 'searchResultClick',
       properties: {
+        debtorNameUsed,
         primaryMatchType,
-        scoreBreakdown: JSON.stringify(scoreBreakdown),
+        scoreBreakdown,
         chapters: searchPredicate.chapters ? JSON.stringify(searchPredicate.chapters) : undefined,
         divisionCodes: searchPredicate.divisionCodes
           ? JSON.stringify(searchPredicate.divisionCodes)
           : undefined,
         excludeClosedCases: searchPredicate.excludeClosedCases,
-        higherRankedResults: JSON.stringify(higherRankedOnPage),
+        higherRankedResults,
       },
       measurements: {
         rank,
-        matchScore,
+        ...(matchScore !== undefined ? { matchScore } : {}),
       },
     });
   }
