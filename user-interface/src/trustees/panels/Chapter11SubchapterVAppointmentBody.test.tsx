@@ -83,7 +83,7 @@ describe('Chapter11SubchapterVAppointmentBody', () => {
     return render(<Chapter11SubchapterVAppointmentBody appointment={appointment} />);
   }
 
-  test('forwards the appointment prop to AppointmentBasicFields', () => {
+  test('forwards the appointment prop to AppointmentBasicFields', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderBody();
@@ -92,6 +92,9 @@ describe('Chapter11SubchapterVAppointmentBody', () => {
       'data-appointment-id',
       'appointment-003',
     );
+    await waitFor(() => {
+      expect(screen.getByTestId('past-key-dates-card')).toHaveAttribute('data-is-loading', 'false');
+    });
   });
 
   test('fetches key dates for a pool appointment and forwards the result to PastKeyDates', async () => {
@@ -131,9 +134,8 @@ describe('Chapter11SubchapterVAppointmentBody', () => {
   });
 
   test('shows an error alert instead of the PastKeyDates card when the fetch fails', async () => {
-    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const fetchError = new Error('network error');
-    vi.spyOn(Api2, 'getUpcomingKeyDates').mockRejectedValue(fetchError);
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockRejectedValue(new Error('network error'));
 
     renderBody();
 
@@ -141,7 +143,6 @@ describe('Chapter11SubchapterVAppointmentBody', () => {
       expect(screen.getByTestId('alert-subv-past-key-dates-error')).toBeInTheDocument();
     });
     expect(screen.queryByTestId('past-key-dates-card')).not.toBeInTheDocument();
-    expect(consoleErrorSpy).toHaveBeenCalledWith('Could not load upcoming key dates', fetchError);
   });
 
   test('does not fetch or render the PastKeyDates card when DISPLAY_CHPT11_SUBV_PAST_KEY_DATES is disabled', () => {

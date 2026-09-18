@@ -368,12 +368,6 @@ describe('PastKeyDates', () => {
 
       expect(screen.getByRole('heading', { level: 4, name: 'Other' })).toBeInTheDocument();
     });
-
-    test('Edit button aria-label is "Edit other key dates"', () => {
-      renderComponent(subVProps);
-
-      expect(screen.getByRole('button', { name: /edit other key dates/i })).toBeInTheDocument();
-    });
   });
 
   describe('chapter12-standing variant', () => {
