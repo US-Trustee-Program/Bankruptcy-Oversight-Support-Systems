@@ -254,7 +254,38 @@ describe('TrusteeUpcomingKeyDatesController', () => {
       context.request = mockCamsHttpRequest({
         method: 'PUT',
         params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
-        body: buildValidInput({ tprReviewPeriodStart: '1900-03-01', tprReviewPeriodEnd: null }),
+        body: buildValidInput({ tprReviewPeriodStart: '2026-03-01', tprReviewPeriodEnd: null }),
+      });
+
+      const controller = new TrusteeUpcomingKeyDatesController(context);
+
+      await expect(controller.handleRequest(context)).rejects.toMatchObject({
+        status: 400,
+      });
+    });
+
+    test('PUT with tprReviewPeriodEnd set but tprReviewPeriodStart null returns 400', async () => {
+      context.request = mockCamsHttpRequest({
+        method: 'PUT',
+        params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
+        body: buildValidInput({ tprReviewPeriodStart: null, tprReviewPeriodEnd: '2026-03-01' }),
+      });
+
+      const controller = new TrusteeUpcomingKeyDatesController(context);
+
+      await expect(controller.handleRequest(context)).rejects.toMatchObject({
+        status: 400,
+      });
+    });
+
+    test('PUT with tprReviewPeriodStart after tprReviewPeriodEnd (real dates) returns 400', async () => {
+      context.request = mockCamsHttpRequest({
+        method: 'PUT',
+        params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
+        body: buildValidInput({
+          tprReviewPeriodStart: '2026-06-01',
+          tprReviewPeriodEnd: '2026-01-01',
+        }),
       });
 
       const controller = new TrusteeUpcomingKeyDatesController(context);
@@ -278,6 +309,20 @@ describe('TrusteeUpcomingKeyDatesController', () => {
       });
     });
 
+    test('PUT with auditCompletionStatus set but auditCompletionYear null returns 400', async () => {
+      context.request = mockCamsHttpRequest({
+        method: 'PUT',
+        params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
+        body: buildValidInput({ auditCompletionYear: null, auditCompletionStatus: 'CLOSED' }),
+      });
+
+      const controller = new TrusteeUpcomingKeyDatesController(context);
+
+      await expect(controller.handleRequest(context)).rejects.toMatchObject({
+        status: 400,
+      });
+    });
+
     test('PUT with tprCompletionYear set but tprCompletionStatus null returns 400', async () => {
       context.request = mockCamsHttpRequest({
         method: 'PUT',
@@ -292,11 +337,39 @@ describe('TrusteeUpcomingKeyDatesController', () => {
       });
     });
 
+    test('PUT with tprCompletionStatus set but tprCompletionYear null returns 400', async () => {
+      context.request = mockCamsHttpRequest({
+        method: 'PUT',
+        params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
+        body: buildValidInput({ tprCompletionYear: null, tprCompletionStatus: 'COMPLETE' }),
+      });
+
+      const controller = new TrusteeUpcomingKeyDatesController(context);
+
+      await expect(controller.handleRequest(context)).rejects.toMatchObject({
+        status: 400,
+      });
+    });
+
     test('PUT with tirCompletionYear set but tirCompletionStatus null returns 400', async () => {
       context.request = mockCamsHttpRequest({
         method: 'PUT',
         params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
         body: buildValidInput({ tirCompletionYear: 2026, tirCompletionStatus: null }),
+      });
+
+      const controller = new TrusteeUpcomingKeyDatesController(context);
+
+      await expect(controller.handleRequest(context)).rejects.toMatchObject({
+        status: 400,
+      });
+    });
+
+    test('PUT with tirCompletionStatus set but tirCompletionYear null returns 400', async () => {
+      context.request = mockCamsHttpRequest({
+        method: 'PUT',
+        params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
+        body: buildValidInput({ tirCompletionYear: null, tirCompletionStatus: 'COMPLETE' }),
       });
 
       const controller = new TrusteeUpcomingKeyDatesController(context);

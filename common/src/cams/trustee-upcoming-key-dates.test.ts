@@ -22,6 +22,7 @@ import {
   validateTrusteeUpcomingKeyDates,
   validateTprDuePair,
   DATE_FIELDS,
+  SCALAR_FIELDS,
   TEXT_FIELDS,
 } from './trustee-upcoming-key-dates';
 import { VALID } from './validation';
@@ -902,6 +903,17 @@ describe('validateTrusteeUpcomingKeyDates', () => {
       'auditCompletionStatus',
       'tprCompletionStatus',
       'tirCompletionStatus',
+    ]);
+  });
+
+  test('SCALAR_FIELDS contains the exact set of expected fields', () => {
+    expect(SCALAR_FIELDS).toEqual([
+      'lastAuditFiscalYear',
+      'upcomingExamOrAuditYear',
+      'upcomingExamOrAuditType',
+      'auditCompletionYear',
+      'tprCompletionYear',
+      'tirCompletionYear',
     ]);
   });
 });

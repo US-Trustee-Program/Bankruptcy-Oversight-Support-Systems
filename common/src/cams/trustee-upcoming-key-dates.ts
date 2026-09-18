@@ -406,6 +406,28 @@ export const TEXT_FIELDS: TextField[] = [
   'tirCompletionStatus',
 ];
 
+/**
+ * Fields whose values are neither ISO date strings (DATE_FIELDS) nor short enum
+ * strings (TEXT_FIELDS), but still only need `!== null` truthiness to copy/diff --
+ * a mix of numbers and the one non-enum-named string field, upcomingExamOrAuditType.
+ */
+type ScalarField =
+  | 'lastAuditFiscalYear'
+  | 'upcomingExamOrAuditYear'
+  | 'upcomingExamOrAuditType'
+  | 'auditCompletionYear'
+  | 'tprCompletionYear'
+  | 'tirCompletionYear';
+
+export const SCALAR_FIELDS: ScalarField[] = [
+  'lastAuditFiscalYear',
+  'upcomingExamOrAuditYear',
+  'upcomingExamOrAuditType',
+  'auditCompletionYear',
+  'tprCompletionYear',
+  'tirCompletionYear',
+];
+
 export function isoToMMDDYYYY(iso: string): string {
   const [year, month, day] = iso.split('-');
   return `${month}/${day}/${year}`;
