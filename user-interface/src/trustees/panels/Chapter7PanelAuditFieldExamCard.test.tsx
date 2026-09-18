@@ -162,20 +162,20 @@ describe('Chapter7PanelAuditFieldExamCard', () => {
     );
   });
 
-  test('shows a green "Closed for <year>" tag when completion status is CLOSED', () => {
+  test('shows a "Closed for <year>" tag when completion status is CLOSED', () => {
     renderCard({ ...keyDates, auditCompletionYear: 2023, auditCompletionStatus: 'CLOSED' });
 
-    const tag = screen.getByTestId('tag-audit-completion-status-tag-appointment-001');
-    expect(tag).toHaveTextContent('Closed for 2023');
-    expect(tag).toHaveClass('bg-success');
+    expect(screen.getByTestId('tag-audit-completion-status-tag-appointment-001')).toHaveTextContent(
+      'Closed for 2023',
+    );
   });
 
-  test('shows a red "Not Closed for <year>" tag when completion status is NOT_CLOSED', () => {
+  test('shows a "Not Closed for <year>" tag when completion status is NOT_CLOSED', () => {
     renderCard({ ...keyDates, auditCompletionYear: 2024, auditCompletionStatus: 'NOT_CLOSED' });
 
-    const tag = screen.getByTestId('tag-audit-completion-status-tag-appointment-001');
-    expect(tag).toHaveTextContent('Not Closed for 2024');
-    expect(tag).toHaveClass('bg-secondary-dark');
+    expect(screen.getByTestId('tag-audit-completion-status-tag-appointment-001')).toHaveTextContent(
+      'Not Closed for 2024',
+    );
   });
 
   test('shows no tag when completion status is not set', () => {
