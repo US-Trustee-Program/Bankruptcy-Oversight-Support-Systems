@@ -206,6 +206,24 @@ const trusteeUpcomingKeyDatesSpec: ValidationSpec<TrusteeUpcomingKeyDatesInput> 
       'TIR Review Period 2 End',
     ),
     requirePair('tprDue', 'tprDueYearType', 'TPR Due', 'TPR Due Year Type'),
+    requirePair(
+      'auditCompletionYear',
+      'auditCompletionStatus',
+      'Field Exam/Audit Completion Status Year',
+      'Field Exam/Audit Completion Status',
+    ),
+    requirePair(
+      'tprCompletionYear',
+      'tprCompletionStatus',
+      'Trustee Performance Review Completion Status Year',
+      'Trustee Performance Review Completion Status',
+    ),
+    requirePair(
+      'tirCompletionYear',
+      'tirCompletionStatus',
+      'Trustee Interim Report Completion Status Year',
+      'Trustee Interim Report Completion Status',
+    ),
   ],
 };
 
@@ -243,6 +261,7 @@ export type TrusteeUpcomingKeyDates = Auditable &
     pastFieldExam?: string;
     pastAudit?: string;
     pastTprSubmission?: string;
+    lastTprSubmitted?: string;
     tprReviewPeriodStart?: string;
     tprReviewPeriodEnd?: string;
     tprDue?: string;
@@ -260,6 +279,12 @@ export type TrusteeUpcomingKeyDates = Auditable &
     tirSemiAnnualSubmission?: string;
     tirSemiAnnualReview?: string;
     lastAuditFiscalYear?: number;
+    auditCompletionYear?: number;
+    auditCompletionStatus?: 'CLOSED' | 'NOT_CLOSED';
+    tprCompletionYear?: number;
+    tprCompletionStatus?: 'COMPLETE' | 'INCOMPLETE';
+    tirCompletionYear?: number;
+    tirCompletionStatus?: 'COMPLETE' | 'INCOMPLETE';
     lastMonthlyReportReceived?: string;
     leaseExpiration?: string;
     idExpiration?: string;
@@ -275,6 +300,7 @@ export type TrusteeUpcomingKeyDatesInput = {
   pastFieldExam: string | null;
   pastAudit: string | null;
   pastTprSubmission: string | null;
+  lastTprSubmitted: string | null;
   tprReviewPeriodStart: string | null;
   tprReviewPeriodEnd: string | null;
   tprDue: string | null;
@@ -292,6 +318,12 @@ export type TrusteeUpcomingKeyDatesInput = {
   tirSemiAnnualSubmission: string | null;
   tirSemiAnnualReview: string | null;
   lastAuditFiscalYear: number | null;
+  auditCompletionYear: number | null;
+  auditCompletionStatus: 'CLOSED' | 'NOT_CLOSED' | null;
+  tprCompletionYear: number | null;
+  tprCompletionStatus: 'COMPLETE' | 'INCOMPLETE' | null;
+  tirCompletionYear: number | null;
+  tirCompletionStatus: 'COMPLETE' | 'INCOMPLETE' | null;
   lastMonthlyReportReceived: string | null;
   leaseExpiration: string | null;
   idExpiration: string | null;
@@ -313,6 +345,7 @@ type DateField =
   | 'pastFieldExam'
   | 'pastAudit'
   | 'pastTprSubmission'
+  | 'lastTprSubmitted'
   | 'tprReviewPeriodStart'
   | 'tprReviewPeriodEnd'
   | 'tprDue'
@@ -336,6 +369,7 @@ export const DATE_FIELDS: DateField[] = [
   'pastFieldExam',
   'pastAudit',
   'pastTprSubmission',
+  'lastTprSubmitted',
   'tprReviewPeriodStart',
   'tprReviewPeriodEnd',
   'tprDue',
@@ -355,9 +389,44 @@ export const DATE_FIELDS: DateField[] = [
   'bondRenewalDate',
 ];
 
-type TextField = 'tprDueYearType' | 'tprFrequency' | 'tirFrequency';
+type TextField =
+  | 'tprDueYearType'
+  | 'tprFrequency'
+  | 'tirFrequency'
+  | 'auditCompletionStatus'
+  | 'tprCompletionStatus'
+  | 'tirCompletionStatus';
 
-export const TEXT_FIELDS: TextField[] = ['tprDueYearType', 'tprFrequency', 'tirFrequency'];
+export const TEXT_FIELDS: TextField[] = [
+  'tprDueYearType',
+  'tprFrequency',
+  'tirFrequency',
+  'auditCompletionStatus',
+  'tprCompletionStatus',
+  'tirCompletionStatus',
+];
+
+/**
+ * Fields whose values are neither ISO date strings (DATE_FIELDS) nor short enum
+ * strings (TEXT_FIELDS), but still only need `!== null` truthiness to copy/diff --
+ * a mix of numbers and the one non-enum-named string field, upcomingExamOrAuditType.
+ */
+type ScalarField =
+  | 'lastAuditFiscalYear'
+  | 'upcomingExamOrAuditYear'
+  | 'upcomingExamOrAuditType'
+  | 'auditCompletionYear'
+  | 'tprCompletionYear'
+  | 'tirCompletionYear';
+
+export const SCALAR_FIELDS: ScalarField[] = [
+  'lastAuditFiscalYear',
+  'upcomingExamOrAuditYear',
+  'upcomingExamOrAuditType',
+  'auditCompletionYear',
+  'tprCompletionYear',
+  'tirCompletionYear',
+];
 
 export function isoToMMDDYYYY(iso: string): string {
   const [year, month, day] = iso.split('-');

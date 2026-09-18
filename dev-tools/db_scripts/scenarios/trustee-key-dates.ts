@@ -105,6 +105,24 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           // Calculated next exam (3 years from most recent, quarter-aligned)
           upcomingExamOrAuditYear: 2025,
           upcomingExamOrAuditType: 'Field Exam',
+          // TPR dates, so the Chapter 7 Panel accordion's Trustee Performance
+          // Report card has non-blank demo data alongside the fields above
+          tprReviewPeriodStart: '1900-04-01',
+          tprReviewPeriodEnd: '1900-09-30',
+          tprFrequency: 'ANNUAL',
+          tprDue: '1900-10-15',
+          tprDueYearType: 'EVEN',
+          lastTprSubmitted: '2024-10-11',
+          pastBackgroundQuestion: '2023-06-03',
+          // Completion status for the Audit/Field Exam card's tag (CAMS-912 Slice 2)
+          auditCompletionYear: 2020,
+          auditCompletionStatus: 'CLOSED',
+          // Completion status for the Trustee Performance Report card's tag (CAMS-912 Slice 3)
+          tprCompletionYear: 2024,
+          tprCompletionStatus: 'COMPLETE',
+          // Completion status for the Trustee Interim Report card's tag (CAMS-912 Slice 4)
+          tirCompletionYear: 2024,
+          tirCompletionStatus: 'COMPLETE',
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
         },

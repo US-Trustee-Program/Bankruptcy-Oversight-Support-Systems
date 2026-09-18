@@ -152,6 +152,7 @@ describe('TrusteeUpcomingKeyDatesController', () => {
         pastBackgroundQuestion: null,
         pastAudit: null,
         pastTprSubmission: null,
+        lastTprSubmitted: null,
         tprReviewPeriodStart: null,
         tprReviewPeriodEnd: null,
         tprDue: null,
@@ -169,6 +170,12 @@ describe('TrusteeUpcomingKeyDatesController', () => {
         upcomingExamOrAuditYear: null,
         upcomingExamOrAuditType: null,
         lastAuditFiscalYear: null,
+        auditCompletionYear: null,
+        auditCompletionStatus: null,
+        tprCompletionYear: null,
+        tprCompletionStatus: null,
+        tirCompletionYear: null,
+        tirCompletionStatus: null,
         lastMonthlyReportReceived: null,
         leaseExpiration: null,
         idExpiration: null,
@@ -247,7 +254,122 @@ describe('TrusteeUpcomingKeyDatesController', () => {
       context.request = mockCamsHttpRequest({
         method: 'PUT',
         params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
-        body: buildValidInput({ tprReviewPeriodStart: '1900-03-01', tprReviewPeriodEnd: null }),
+        body: buildValidInput({ tprReviewPeriodStart: '2026-03-01', tprReviewPeriodEnd: null }),
+      });
+
+      const controller = new TrusteeUpcomingKeyDatesController(context);
+
+      await expect(controller.handleRequest(context)).rejects.toMatchObject({
+        status: 400,
+      });
+    });
+
+    test('PUT with tprReviewPeriodEnd set but tprReviewPeriodStart null returns 400', async () => {
+      context.request = mockCamsHttpRequest({
+        method: 'PUT',
+        params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
+        body: buildValidInput({ tprReviewPeriodStart: null, tprReviewPeriodEnd: '2026-03-01' }),
+      });
+
+      const controller = new TrusteeUpcomingKeyDatesController(context);
+
+      await expect(controller.handleRequest(context)).rejects.toMatchObject({
+        status: 400,
+      });
+    });
+
+    test('PUT with tprReviewPeriodStart after tprReviewPeriodEnd (real dates) returns 400', async () => {
+      context.request = mockCamsHttpRequest({
+        method: 'PUT',
+        params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
+        body: buildValidInput({
+          tprReviewPeriodStart: '2026-06-01',
+          tprReviewPeriodEnd: '2026-01-01',
+        }),
+      });
+
+      const controller = new TrusteeUpcomingKeyDatesController(context);
+
+      await expect(controller.handleRequest(context)).rejects.toMatchObject({
+        status: 400,
+      });
+    });
+
+    test('PUT with auditCompletionYear set but auditCompletionStatus null returns 400', async () => {
+      context.request = mockCamsHttpRequest({
+        method: 'PUT',
+        params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
+        body: buildValidInput({ auditCompletionYear: 2026, auditCompletionStatus: null }),
+      });
+
+      const controller = new TrusteeUpcomingKeyDatesController(context);
+
+      await expect(controller.handleRequest(context)).rejects.toMatchObject({
+        status: 400,
+      });
+    });
+
+    test('PUT with auditCompletionStatus set but auditCompletionYear null returns 400', async () => {
+      context.request = mockCamsHttpRequest({
+        method: 'PUT',
+        params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
+        body: buildValidInput({ auditCompletionYear: null, auditCompletionStatus: 'CLOSED' }),
+      });
+
+      const controller = new TrusteeUpcomingKeyDatesController(context);
+
+      await expect(controller.handleRequest(context)).rejects.toMatchObject({
+        status: 400,
+      });
+    });
+
+    test('PUT with tprCompletionYear set but tprCompletionStatus null returns 400', async () => {
+      context.request = mockCamsHttpRequest({
+        method: 'PUT',
+        params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
+        body: buildValidInput({ tprCompletionYear: 2026, tprCompletionStatus: null }),
+      });
+
+      const controller = new TrusteeUpcomingKeyDatesController(context);
+
+      await expect(controller.handleRequest(context)).rejects.toMatchObject({
+        status: 400,
+      });
+    });
+
+    test('PUT with tprCompletionStatus set but tprCompletionYear null returns 400', async () => {
+      context.request = mockCamsHttpRequest({
+        method: 'PUT',
+        params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
+        body: buildValidInput({ tprCompletionYear: null, tprCompletionStatus: 'COMPLETE' }),
+      });
+
+      const controller = new TrusteeUpcomingKeyDatesController(context);
+
+      await expect(controller.handleRequest(context)).rejects.toMatchObject({
+        status: 400,
+      });
+    });
+
+    test('PUT with tirCompletionYear set but tirCompletionStatus null returns 400', async () => {
+      context.request = mockCamsHttpRequest({
+        method: 'PUT',
+        params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
+        body: buildValidInput({ tirCompletionYear: 2026, tirCompletionStatus: null }),
+      });
+
+      const controller = new TrusteeUpcomingKeyDatesController(context);
+
+      await expect(controller.handleRequest(context)).rejects.toMatchObject({
+        status: 400,
+      });
+    });
+
+    test('PUT with tirCompletionStatus set but tirCompletionYear null returns 400', async () => {
+      context.request = mockCamsHttpRequest({
+        method: 'PUT',
+        params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
+        body: buildValidInput({ tirCompletionYear: null, tirCompletionStatus: 'COMPLETE' }),
       });
 
       const controller = new TrusteeUpcomingKeyDatesController(context);
@@ -263,6 +385,22 @@ describe('TrusteeUpcomingKeyDatesController', () => {
       {
         name: 'tprDue and tprDueYearType',
         overrides: { tprDue: '1900-09-15', tprDueYearType: 'EVEN' as const },
+      },
+      {
+        name: 'auditCompletionYear and auditCompletionStatus',
+        overrides: { auditCompletionYear: 2026, auditCompletionStatus: 'CLOSED' as const },
+      },
+      {
+        name: 'tprCompletionYear and tprCompletionStatus',
+        overrides: { tprCompletionYear: 2026, tprCompletionStatus: 'COMPLETE' as const },
+      },
+      {
+        name: 'tirCompletionYear and tirCompletionStatus',
+        overrides: { tirCompletionYear: 2026, tirCompletionStatus: 'COMPLETE' as const },
+      },
+      {
+        name: 'lastTprSubmitted',
+        overrides: { lastTprSubmitted: '2026-01-15' },
       },
     ])('PUT with $name set passes through to use case', async ({ overrides }) => {
       const putSpy = vi

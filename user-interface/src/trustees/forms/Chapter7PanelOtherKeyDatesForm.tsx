@@ -14,25 +14,23 @@ import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import { Stop } from '@/lib/components/Stop';
 
-type BondKeyDatesFormState = {
-  bondIssuedDate: string;
-  bondRenewalDate: string;
+type Chapter7PanelOtherKeyDatesFormState = {
+  pastBackgroundQuestion: string;
 };
 
-const EMPTY_FORM: BondKeyDatesFormState = {
-  bondIssuedDate: '',
-  bondRenewalDate: '',
+const EMPTY_FORM: Chapter7PanelOtherKeyDatesFormState = {
+  pastBackgroundQuestion: '',
 };
 
-export function buildBondKeyDatesInput(
+export function buildOtherKeyDatesInput(
   ids: { trusteeId: string; appointmentId: string },
   original: TrusteeUpcomingKeyDates | null,
-  form: BondKeyDatesFormState,
+  form: Chapter7PanelOtherKeyDatesFormState,
 ): TrusteeUpcomingKeyDatesInput {
   return {
     trusteeId: ids.trusteeId,
     appointmentId: ids.appointmentId,
-    pastBackgroundQuestion: original?.pastBackgroundQuestion ?? null,
+    pastBackgroundQuestion: form.pastBackgroundQuestion || null,
     pastFieldExam: original?.pastFieldExam ?? null,
     pastAudit: original?.pastAudit ?? null,
     pastTprSubmission: original?.pastTprSubmission ?? null,
@@ -64,12 +62,12 @@ export function buildBondKeyDatesInput(
     leaseExpiration: original?.leaseExpiration ?? null,
     idExpiration: original?.idExpiration ?? null,
     lastCompensationStudy: original?.lastCompensationStudy ?? null,
-    bondIssuedDate: form.bondIssuedDate || null,
-    bondRenewalDate: form.bondRenewalDate || null,
+    bondIssuedDate: original?.bondIssuedDate ?? null,
+    bondRenewalDate: original?.bondRenewalDate ?? null,
   };
 }
 
-export default function BondKeyDatesForm() {
+export default function Chapter7PanelOtherKeyDatesForm() {
   const { trusteeId, appointmentId } = useParams<{
     trusteeId: string;
     appointmentId: string;
@@ -80,7 +78,7 @@ export default function BondKeyDatesForm() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [form, setForm] = useState<BondKeyDatesFormState>(EMPTY_FORM);
+  const [form, setForm] = useState<Chapter7PanelOtherKeyDatesFormState>(EMPTY_FORM);
   const [original, setOriginal] = useState<TrusteeUpcomingKeyDates | null>(null);
   const { registerFieldError, hasErrorAmong } = useDateFieldErrors();
 
@@ -91,28 +89,21 @@ export default function BondKeyDatesForm() {
         if (data) {
           setOriginal(data);
           setForm({
-            bondIssuedDate: data.bondIssuedDate ?? '',
-            bondRenewalDate: data.bondRenewalDate ?? '',
+            pastBackgroundQuestion: data.pastBackgroundQuestion ?? '',
           });
         }
       })
       .catch((err) => {
-        globalAlert?.error(`Failed to load bond key dates: ${(err as Error).message}`);
+        globalAlert?.error(`Failed to load Other key dates: ${(err as Error).message}`);
       })
       .finally(() => {
         setIsLoading(false);
       });
   }, [trusteeId, appointmentId]);
 
-  function handleDateChange(field: keyof BondKeyDatesFormState) {
-    return (ev: React.ChangeEvent<HTMLInputElement>) => {
-      setForm((prev) => ({ ...prev, [field]: ev.target.value }));
-    };
-  }
-
   async function handleSave() {
     setIsSaving(true);
-    const input = buildBondKeyDatesInput(
+    const input = buildOtherKeyDatesInput(
       { trusteeId: trusteeId!, appointmentId: appointmentId! },
       original,
       form,
@@ -122,7 +113,7 @@ export default function BondKeyDatesForm() {
       await Api2.putUpcomingKeyDates(trusteeId!, appointmentId!, input);
       navigate(`/trustees/${trusteeId}/appointments`);
     } catch (err) {
-      globalAlert?.error(`Failed to save bond key dates: ${(err as Error).message}`);
+      globalAlert?.error(`Failed to save Other key dates: ${(err as Error).message}`);
     } finally {
       setIsSaving(false);
     }
@@ -133,7 +124,7 @@ export default function BondKeyDatesForm() {
   }
 
   if (isLoading) {
-    return <LoadingSpinner id="edit-bond-key-dates-loading" />;
+    return <LoadingSpinner id="edit-chapter7-panel-other-loading" />;
   }
 
   if (!canManage) {
@@ -141,45 +132,39 @@ export default function BondKeyDatesForm() {
       <Stop
         id="forbidden-alert"
         title="Forbidden"
-        message="You do not have permission to manage Trustee Bond Key Dates"
+        message="You do not have permission to manage Other Key Dates"
         asError
       />
     );
   }
 
-  const hasAnyDateError = hasErrorAmong(['bond-issued-date', 'bond-renewal-date']);
+  const isSaveDisabled = isSaving || hasErrorAmong(['past-background-question']);
 
   return (
-    <div className="edit-upcoming-key-dates" data-testid="edit-bond-key-dates">
-      <h3>Edit Key Dates</h3>
+    <div className="edit-upcoming-key-dates" data-testid="edit-chapter7-panel-other">
+      <h3>Edit Other Key Dates</h3>
+
       <DatePicker
-        id="bond-renewal-date"
-        label="Bond Renewal Date"
-        value={form.bondRenewalDate}
-        onChange={handleDateChange('bondRenewalDate')}
-        onValidationChange={(hasError) => registerFieldError('bond-renewal-date', hasError)}
+        id="past-background-question"
+        label="Last Update to Background Questionnaire"
+        value={form.pastBackgroundQuestion}
+        onChange={(e) => setForm((prev) => ({ ...prev, pastBackgroundQuestion: e.target.value }))}
+        onValidationChange={(hasError) => registerFieldError('past-background-question', hasError)}
         disableMax
       />
-      <DatePicker
-        id="bond-issued-date"
-        label="Bond Issued Date"
-        value={form.bondIssuedDate}
-        onChange={handleDateChange('bondIssuedDate')}
-        onValidationChange={(hasError) => registerFieldError('bond-issued-date', hasError)}
-        disableMax
-      />
+
       <div className="usa-button-group">
         <Button
-          id="save-bond-key-dates"
-          data-testid="button-save-bond-key-dates"
+          id="save-chapter7-panel-other"
+          data-testid="button-save-chapter7-panel-other"
           onClick={handleSave}
-          disabled={isSaving || hasAnyDateError}
+          disabled={isSaveDisabled}
         >
           {isSaving ? 'Saving...' : 'Save'}
         </Button>
         <Button
-          id="cancel-bond-key-dates"
-          data-testid="button-cancel-bond-key-dates"
+          id="cancel-chapter7-panel-other"
+          data-testid="button-cancel-chapter7-panel-other"
           uswdsStyle={UswdsButtonStyle.Unstyled}
           onClick={handleCancel}
         >

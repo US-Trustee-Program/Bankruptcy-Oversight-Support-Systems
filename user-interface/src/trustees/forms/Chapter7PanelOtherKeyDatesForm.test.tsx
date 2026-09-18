@@ -1,7 +1,9 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
-import BondKeyDatesForm, { buildBondKeyDatesInput } from './BondKeyDatesForm';
+import Chapter7PanelOtherKeyDatesForm, {
+  buildOtherKeyDatesInput,
+} from './Chapter7PanelOtherKeyDatesForm';
 import Api2 from '@/lib/models/api2';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
@@ -32,9 +34,7 @@ const populatedDocument: TrusteeUpcomingKeyDates = {
   createdOn: '2026-01-01T00:00:00.000Z',
   updatedBy: SYSTEM_USER_REFERENCE,
   updatedOn: '2026-01-01T00:00:00.000Z',
-  pastFieldExam: '2024-02-21',
-  bondIssuedDate: '2023-06-01',
-  bondRenewalDate: '2026-06-01',
+  pastBackgroundQuestion: '2023-06-03',
 };
 
 const mockGlobalAlertRef = {
@@ -53,13 +53,13 @@ function renderComponent() {
   return render(
     <BrowserRouter>
       <GlobalAlertContext.Provider value={mockGlobalAlertRef}>
-        <BondKeyDatesForm />
+        <Chapter7PanelOtherKeyDatesForm />
       </GlobalAlertContext.Provider>
     </BrowserRouter>,
   );
 }
 
-describe('BondKeyDatesForm', () => {
+describe('Chapter7PanelOtherKeyDatesForm', () => {
   const mockNavigate = vi.fn();
   let userEvent: CamsUserEvent;
 
@@ -82,7 +82,7 @@ describe('BondKeyDatesForm', () => {
     expect(forbiddenAlert).toBeInTheDocument();
     expect(forbiddenAlert).toHaveTextContent('Forbidden');
     expect(forbiddenAlert).toHaveTextContent(
-      'You do not have permission to manage Trustee Bond Key Dates',
+      'You do not have permission to manage Other Key Dates',
     );
   });
 
@@ -92,7 +92,7 @@ describe('BondKeyDatesForm', () => {
     renderComponent();
 
     expect(screen.getByRole('status')).toBeInTheDocument();
-    expect(screen.queryByTestId('edit-bond-key-dates')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('edit-chapter7-panel-other')).not.toBeInTheDocument();
   });
 
   test('pre-populates form from API response', async () => {
@@ -101,32 +101,36 @@ describe('BondKeyDatesForm', () => {
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByTestId('bond-issued-date')).toHaveValue('2023-06-01');
+      expect(screen.getByTestId('past-background-question')).toHaveValue('2023-06-03');
     });
-    expect(screen.getByTestId('bond-renewal-date')).toHaveValue('2026-06-01');
   });
 
-  test('shows empty inputs when API returns null', async () => {
+  test('shows empty input when API returns null', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByTestId('edit-bond-key-dates')).toBeInTheDocument();
+      expect(screen.getByTestId('edit-chapter7-panel-other')).toBeInTheDocument();
     });
-    expect(screen.getByTestId('bond-issued-date')).toHaveValue('');
-    expect(screen.getByTestId('bond-renewal-date')).toHaveValue('');
+    expect(screen.getByTestId('past-background-question')).toHaveValue('');
   });
 
-  test('save calls PUT with both bond dates while preserving other fields, then navigates', async () => {
+  test('save calls PUT with the owned field while preserving other fields, then navigates', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
     const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderComponent();
 
-    await waitFor(() => expect(screen.getByTestId('bond-issued-date')).toHaveValue('2023-06-01'));
+    await waitFor(() =>
+      expect(screen.getByTestId('past-background-question')).toHaveValue('2023-06-03'),
+    );
 
-    await userEvent.click(screen.getByTestId('button-save-bond-key-dates'));
+    fireEvent.change(screen.getByTestId('past-background-question'), {
+      target: { value: '2024-01-15' },
+    });
+
+    await userEvent.click(screen.getByTestId('button-save-chapter7-panel-other'));
 
     await waitFor(() => {
       expect(putSpy).toHaveBeenCalledWith(
@@ -135,28 +139,43 @@ describe('BondKeyDatesForm', () => {
         expect.objectContaining({
           trusteeId: 'trustee-001',
           appointmentId: 'appointment-001',
-          bondIssuedDate: '2023-06-01',
-          bondRenewalDate: '2026-06-01',
-          pastFieldExam: '2024-02-21',
+          pastBackgroundQuestion: '2024-01-15',
         }),
       );
     });
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');
   });
 
-  test('shows inline error alert when bond key dates fail to load', async () => {
+  test('disables the Save button and shows "Saving..." while the save request is in flight', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+    vi.spyOn(Api2, 'putUpcomingKeyDates').mockImplementation(() => new Promise<never>(() => {}));
+
+    renderComponent();
+
+    await waitFor(() =>
+      expect(screen.getByTestId('past-background-question')).toHaveValue('2023-06-03'),
+    );
+
+    await userEvent.click(screen.getByTestId('button-save-chapter7-panel-other'));
+
+    await waitFor(() => {
+      const saveButton = screen.getByTestId('button-save-chapter7-panel-other');
+      expect(saveButton).toBeDisabled();
+      expect(saveButton).toHaveTextContent('Saving...');
+    });
+  });
+
+  test('shows inline error alert when key dates fail to load', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockRejectedValue(new Error('Network error'));
 
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByTestId('edit-bond-key-dates')).toBeInTheDocument();
+      expect(screen.getByTestId('edit-chapter7-panel-other')).toBeInTheDocument();
     });
     expect(mockGlobalAlertRef.current.error).toHaveBeenCalledWith(
-      'Failed to load bond key dates: Network error',
+      'Failed to load Other key dates: Network error',
     );
-    expect(screen.getByTestId('bond-issued-date')).toHaveValue('');
-    expect(screen.getByTestId('bond-renewal-date')).toHaveValue('');
   });
 
   test('shows error alert when save fails and re-enables save button', async () => {
@@ -165,36 +184,38 @@ describe('BondKeyDatesForm', () => {
 
     renderComponent();
 
-    await waitFor(() => expect(screen.getByTestId('bond-issued-date')).toHaveValue('2023-06-01'));
+    await waitFor(() =>
+      expect(screen.getByTestId('past-background-question')).toHaveValue('2023-06-03'),
+    );
 
-    await userEvent.click(screen.getByTestId('button-save-bond-key-dates'));
+    await userEvent.click(screen.getByTestId('button-save-chapter7-panel-other'));
 
     await waitFor(() => {
-      const saveButton = screen.getByTestId('button-save-bond-key-dates');
+      const saveButton = screen.getByTestId('button-save-chapter7-panel-other');
       expect(saveButton).not.toBeDisabled();
       expect(saveButton).toHaveTextContent('Save');
     });
     expect(mockNavigate).not.toHaveBeenCalled();
     expect(mockGlobalAlertRef.current.error).toHaveBeenCalledWith(
-      'Failed to save bond key dates: Server error',
+      'Failed to save Other key dates: Server error',
     );
   });
 
-  test('Save button is disabled when bond renewal date has an invalid date', async () => {
+  test('Save button is disabled when the date is invalid', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
 
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByTestId('bond-renewal-date')).toBeInTheDocument();
+      expect(screen.getByTestId('past-background-question')).toBeInTheDocument();
     });
 
-    fireEvent.change(screen.getByTestId('bond-renewal-date'), {
+    fireEvent.change(screen.getByTestId('past-background-question'), {
       target: { value: '1900-01-01' },
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('button-save-bond-key-dates')).toBeDisabled();
+      expect(screen.getByTestId('button-save-chapter7-panel-other')).toBeDisabled();
     });
   });
 
@@ -204,16 +225,18 @@ describe('BondKeyDatesForm', () => {
 
     renderComponent();
 
-    await waitFor(() => expect(screen.getByTestId('bond-issued-date')).toHaveValue('2023-06-01'));
+    await waitFor(() =>
+      expect(screen.getByTestId('past-background-question')).toHaveValue('2023-06-03'),
+    );
 
-    await userEvent.click(screen.getByTestId('button-cancel-bond-key-dates'));
+    await userEvent.click(screen.getByTestId('button-cancel-chapter7-panel-other'));
 
     expect(putSpy).not.toHaveBeenCalled();
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');
   });
 });
 
-describe('buildBondKeyDatesInput', () => {
+describe('buildOtherKeyDatesInput', () => {
   const fullOriginal: TrusteeUpcomingKeyDates = {
     id: 'doc-full',
     documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
@@ -223,94 +246,94 @@ describe('buildBondKeyDatesInput', () => {
     createdOn: '2026-01-01T00:00:00.000Z',
     updatedBy: SYSTEM_USER_REFERENCE,
     updatedOn: '2026-01-01T00:00:00.000Z',
-    pastBackgroundQuestion: 'past-background-question',
-    pastFieldExam: '2020-01-01',
-    pastAudit: '2020-01-02',
-    pastTprSubmission: '2020-01-03',
+    pastBackgroundQuestion: '2020-01-01',
+    pastFieldExam: '2020-01-02',
+    pastAudit: '2020-01-03',
+    pastTprSubmission: '2020-01-04',
     lastTprSubmitted: '2020-01-22',
-    tprReviewPeriodStart: '2020-01-04',
-    tprReviewPeriodEnd: '2020-01-05',
-    tprDue: '2020-01-06',
+    tprReviewPeriodStart: '2020-01-05',
+    tprReviewPeriodEnd: '2020-01-06',
+    tprDue: '2020-01-07',
     tprDueYearType: 'EVEN',
     tprFrequency: 'ANNUAL',
-    tirReviewPeriodStart: '2020-01-07',
-    tirReviewPeriodEnd: '2020-01-08',
-    tirSubmission: '2020-01-09',
-    tirReview: '2020-01-10',
-    upcomingExamOrAuditYear: 2025,
-    upcomingExamOrAuditType: 'Audit',
+    tirReviewPeriodStart: '2020-01-08',
+    tirReviewPeriodEnd: '2020-01-09',
+    tirSubmission: '2020-01-10',
+    tirReview: '2020-01-11',
+    upcomingExamOrAuditYear: 2024,
+    upcomingExamOrAuditType: 'Field Exam',
     tirFrequency: 'SEMI_ANNUAL',
-    tirSemiAnnualReviewPeriodStart: '2020-01-11',
-    tirSemiAnnualReviewPeriodEnd: '2020-01-12',
-    tirSemiAnnualSubmission: '2020-01-13',
-    tirSemiAnnualReview: '2020-01-14',
-    lastAuditFiscalYear: 2024,
-    auditCompletionYear: 2024,
-    auditCompletionStatus: 'CLOSED',
-    tprCompletionYear: 2024,
-    tprCompletionStatus: 'COMPLETE',
+    tirSemiAnnualReviewPeriodStart: '2020-01-12',
+    tirSemiAnnualReviewPeriodEnd: '2020-01-13',
+    tirSemiAnnualSubmission: '2020-01-14',
+    tirSemiAnnualReview: '2020-01-15',
+    lastAuditFiscalYear: 2021,
+    auditCompletionYear: 2021,
+    auditCompletionStatus: 'NOT_CLOSED',
+    tprCompletionYear: 2022,
+    tprCompletionStatus: 'INCOMPLETE',
     tirCompletionYear: 2023,
-    tirCompletionStatus: 'INCOMPLETE',
-    lastMonthlyReportReceived: '2020-01-15',
-    leaseExpiration: '2020-01-16',
-    idExpiration: '2020-01-17',
-    lastCompensationStudy: '2020-01-18',
-    bondIssuedDate: '2020-01-19',
-    bondRenewalDate: '2020-01-20',
+    tirCompletionStatus: 'COMPLETE',
+    lastMonthlyReportReceived: '2020-01-16',
+    leaseExpiration: '2020-01-17',
+    idExpiration: '2020-01-18',
+    lastCompensationStudy: '2020-01-19',
+    bondIssuedDate: '2020-01-20',
+    bondRenewalDate: '2020-01-21',
   };
 
-  test('preserves every non-bond field from the original document and overrides only the bond dates', () => {
-    const result = buildBondKeyDatesInput(
+  test('preserves every non-owned field from the original document and overrides only pastBackgroundQuestion', () => {
+    const result = buildOtherKeyDatesInput(
       { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
       fullOriginal,
-      { bondIssuedDate: '2023-06-01', bondRenewalDate: '2026-06-01' },
+      { pastBackgroundQuestion: '2025-06-15' },
     );
 
     expect(result).toEqual({
       trusteeId: 'trustee-001',
       appointmentId: 'appointment-001',
-      pastBackgroundQuestion: 'past-background-question',
-      pastFieldExam: '2020-01-01',
-      pastAudit: '2020-01-02',
-      pastTprSubmission: '2020-01-03',
+      pastBackgroundQuestion: '2025-06-15',
+      pastFieldExam: '2020-01-02',
+      pastAudit: '2020-01-03',
+      pastTprSubmission: '2020-01-04',
       lastTprSubmitted: '2020-01-22',
-      tprReviewPeriodStart: '2020-01-04',
-      tprReviewPeriodEnd: '2020-01-05',
-      tprDue: '2020-01-06',
+      tprReviewPeriodStart: '2020-01-05',
+      tprReviewPeriodEnd: '2020-01-06',
+      tprDue: '2020-01-07',
       tprDueYearType: 'EVEN',
       tprFrequency: 'ANNUAL',
-      tirReviewPeriodStart: '2020-01-07',
-      tirReviewPeriodEnd: '2020-01-08',
-      tirSubmission: '2020-01-09',
-      tirReview: '2020-01-10',
-      upcomingExamOrAuditYear: 2025,
-      upcomingExamOrAuditType: 'Audit',
+      tirReviewPeriodStart: '2020-01-08',
+      tirReviewPeriodEnd: '2020-01-09',
+      tirSubmission: '2020-01-10',
+      tirReview: '2020-01-11',
+      upcomingExamOrAuditYear: 2024,
+      upcomingExamOrAuditType: 'Field Exam',
       tirFrequency: 'SEMI_ANNUAL',
-      tirSemiAnnualReviewPeriodStart: '2020-01-11',
-      tirSemiAnnualReviewPeriodEnd: '2020-01-12',
-      tirSemiAnnualSubmission: '2020-01-13',
-      tirSemiAnnualReview: '2020-01-14',
-      lastAuditFiscalYear: 2024,
-      auditCompletionYear: 2024,
-      auditCompletionStatus: 'CLOSED',
-      tprCompletionYear: 2024,
-      tprCompletionStatus: 'COMPLETE',
+      tirSemiAnnualReviewPeriodStart: '2020-01-12',
+      tirSemiAnnualReviewPeriodEnd: '2020-01-13',
+      tirSemiAnnualSubmission: '2020-01-14',
+      tirSemiAnnualReview: '2020-01-15',
+      lastAuditFiscalYear: 2021,
+      auditCompletionYear: 2021,
+      auditCompletionStatus: 'NOT_CLOSED',
+      tprCompletionYear: 2022,
+      tprCompletionStatus: 'INCOMPLETE',
       tirCompletionYear: 2023,
-      tirCompletionStatus: 'INCOMPLETE',
-      lastMonthlyReportReceived: '2020-01-15',
-      leaseExpiration: '2020-01-16',
-      idExpiration: '2020-01-17',
-      lastCompensationStudy: '2020-01-18',
-      bondIssuedDate: '2023-06-01',
-      bondRenewalDate: '2026-06-01',
+      tirCompletionStatus: 'COMPLETE',
+      lastMonthlyReportReceived: '2020-01-16',
+      leaseExpiration: '2020-01-17',
+      idExpiration: '2020-01-18',
+      lastCompensationStudy: '2020-01-19',
+      bondIssuedDate: '2020-01-20',
+      bondRenewalDate: '2020-01-21',
     });
   });
 
   test('defaults every field to null when there is no original document and the form is empty', () => {
-    const result = buildBondKeyDatesInput(
+    const result = buildOtherKeyDatesInput(
       { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
       null,
-      { bondIssuedDate: '', bondRenewalDate: '' },
+      { pastBackgroundQuestion: '' },
     );
 
     expect(result).toEqual({
