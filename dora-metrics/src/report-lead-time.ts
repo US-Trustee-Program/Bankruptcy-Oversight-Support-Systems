@@ -4,6 +4,7 @@ import { fetchCompletedIssues } from './github/fetch-completed-issues.js';
 import { computeLeadTime } from './metrics/lead-time.js';
 import { writeCsv } from './output/write-csv.js';
 import { resolveReportOptions } from './config/resolve-report-options.js';
+import { mean } from './metrics/stats.js';
 
 const DETAIL_OUTPUT_PATH = 'data/lead-time-detail.csv';
 const BY_PERIOD_OUTPUT_PATH = 'data/lead-time-by-period.csv';
@@ -51,10 +52,7 @@ async function main(): Promise<void> {
     ['periodStart', 'periodEnd', 'issueCount', 'meanLeadTimeHours', 'medianLeadTimeHours'],
   );
 
-  const meanOverall =
-    perIssue.length > 0
-      ? perIssue.reduce((sum, issue) => sum + issue.leadTimeHours, 0) / perIssue.length
-      : 0;
+  const meanOverall = mean(perIssue.map((issue) => issue.leadTimeHours));
 
   console.log(
     `Lead Time for Changes: ${perIssue.length} issue(s) with a qualifying deployment across ${byPeriod.length} period(s) (${meanOverall.toFixed(2)} mean hours). Wrote ${DETAIL_OUTPUT_PATH} and ${BY_PERIOD_OUTPUT_PATH}`,
