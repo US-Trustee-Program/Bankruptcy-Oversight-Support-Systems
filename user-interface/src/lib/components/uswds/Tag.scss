@@ -16,6 +16,11 @@
     background-color: colors.$gray-cool-50;
     color: white;
   }
+
+  &.bg-secondary-dark {
+    background-color: colors.$secondary-dark;
+    color: white;
+  }
 }
 
 .tag-list {

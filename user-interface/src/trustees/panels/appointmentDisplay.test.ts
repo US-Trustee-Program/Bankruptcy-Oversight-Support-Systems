@@ -2,6 +2,7 @@ import {
   isActiveAppointment,
   formatAppointmentDate,
   buildDistrictDisplay,
+  buildAppointmentHeading,
 } from './appointmentDisplay';
 import { AppointmentStatus } from '@common/cams/trustees';
 
@@ -43,6 +44,51 @@ describe('appointmentDisplay', () => {
 
     test('falls back to courtId when courtName is missing', () => {
       expect(buildDistrictDisplay({ courtId: '0208' })).toBe('Court 0208');
+    });
+  });
+
+  describe('buildAppointmentHeading', () => {
+    test('includes the division name when present', () => {
+      expect(
+        buildAppointmentHeading({
+          courtName: 'Southern District of New York',
+          courtDivisionName: 'Manhattan',
+          chapter: '7',
+          appointmentType: 'panel',
+        }),
+      ).toBe('Southern District of New York (Manhattan): Chapter 7 - Panel');
+    });
+
+    test('omits the division suffix when courtDivisionName is missing', () => {
+      expect(
+        buildAppointmentHeading({
+          courtName: 'District of Alaska',
+          chapter: '13',
+          appointmentType: 'standing',
+        }),
+      ).toBe('District of Alaska: Chapter 13 - Standing');
+    });
+
+    test('falls back to courtId when courtName is missing', () => {
+      expect(
+        buildAppointmentHeading({
+          courtId: '0208',
+          chapter: '11-subchapter-v',
+          appointmentType: 'pool',
+        }),
+      ).toBe('Court 0208: Chapter 11 Subchapter V - Pool');
+    });
+
+    test('falls back to "Court undefined" when neither courtName nor courtId is present', () => {
+      // Documents buildDistrictDisplay's existing fallback for legacy/malformed
+      // ATS-migration data missing both fields -- see appointmentDisplay.ts's
+      // comment on buildDistrictDisplay.
+      expect(
+        buildAppointmentHeading({
+          chapter: '7',
+          appointmentType: 'panel',
+        }),
+      ).toBe('Court undefined: Chapter 7 - Panel');
     });
   });
 });
