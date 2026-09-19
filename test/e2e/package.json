@@ -40,10 +40,10 @@
   "license": "CC0 v1.0",
   "devDependencies": {
     "@eslint/js": "10.0.0",
-    "@playwright/test": "1.62.1",
+    "@playwright/test": "1.63.0",
     "@types/node": "24.13.3",
     "dotenv": "17.4.2",
-    "eslint": "10.9.1",
+    "eslint": "10.10.0",
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-n": "18.3.0",
     "eslint-plugin-prettier": "5.5.6",
