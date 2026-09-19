@@ -130,6 +130,27 @@ describe('trustees-comprehensive scenario', () => {
     expect(ny002Appts.length).toBe(6);
   });
 
+  test('includes a trustee with paired Pool and Out of Pool Ch11 Subchapter V appointments', async () => {
+    const ops = await generate(mockContext);
+    const appointments =
+      ops.find((op) => op.collectionOrTable === 'trustee-appointments')?.data || [];
+
+    // Derek Pemberton (seed-trustee-add-027) holds both a Pool and an Out of
+    // Pool appointment to exercise the appointment accordion's Pool and Out
+    // of Pool bodies on the same trustee.
+    const add027Appts = appointments.filter(
+      (a: Record<string, unknown>) => a.trusteeId === 'seed-trustee-add-027',
+    );
+    expect(add027Appts).toHaveLength(2);
+
+    const pool = add027Appts.find((a: Record<string, unknown>) => a.appointmentType === 'pool');
+    const outOfPool = add027Appts.find(
+      (a: Record<string, unknown>) => a.appointmentType === 'out-of-pool',
+    );
+    expect(pool?.status).toBe('active');
+    expect(outOfPool?.status).toBe('resigned');
+  });
+
   test('includes both active and inactive statuses', async () => {
     const ops = await generate(mockContext);
     const trustees = ops.find((op) => op.collectionOrTable === 'trustees')?.data || [];

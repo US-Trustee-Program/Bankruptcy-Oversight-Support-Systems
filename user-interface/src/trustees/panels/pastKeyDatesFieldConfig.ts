@@ -1,14 +1,19 @@
 export type PastKeyDatesVariant =
   'chapter7-panel' | 'subv-pool' | 'chapter12-standing' | 'chapter13-standing';
 
+const DEFAULT_PAST_KEY_DATES_LABELS = {
+  cardTitle: 'Past Key Dates',
+  editHeading: 'Edit Past Key Dates',
+};
+
 export const PAST_KEY_DATES_VARIANT_LABELS: Record<
   PastKeyDatesVariant,
   { cardTitle: string; editHeading: string }
 > = {
-  'chapter7-panel': { cardTitle: 'Past Key Dates', editHeading: 'Edit Past Key Dates' },
+  'chapter7-panel': DEFAULT_PAST_KEY_DATES_LABELS,
   'subv-pool': { cardTitle: 'Other', editHeading: 'Edit Other Key Dates' },
-  'chapter12-standing': { cardTitle: 'Past Key Dates', editHeading: 'Edit Past Key Dates' },
-  'chapter13-standing': { cardTitle: 'Past Key Dates', editHeading: 'Edit Past Key Dates' },
+  'chapter12-standing': DEFAULT_PAST_KEY_DATES_LABELS,
+  'chapter13-standing': DEFAULT_PAST_KEY_DATES_LABELS,
 };
 
 export type PastDateFieldKey =

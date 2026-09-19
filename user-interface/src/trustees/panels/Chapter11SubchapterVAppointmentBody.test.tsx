@@ -7,6 +7,8 @@ import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import * as featureFlagsHook from '@/lib/hooks/UseFeatureFlags';
 import { DISPLAY_CHPT11_SUBV_PAST_KEY_DATES } from '@/lib/hooks/UseFeatureFlags';
+import TestingUtilities from '@/lib/testing/testing-utilities';
+import { CamsRole } from '@common/cams/roles';
 
 vi.mock('./AppointmentBasicFields', () => ({
   default: (props: { appointment: TrusteeAppointment }) => (
@@ -108,6 +110,17 @@ describe('Chapter11SubchapterVAppointmentBody', () => {
     expect(getSpy).toHaveBeenCalledWith('trustee-789', 'appointment-003');
     expect(screen.getByTestId('past-key-dates-card')).toHaveAttribute('data-variant', 'subv-pool');
     expect(screen.getByTestId('past-key-dates-card')).toHaveAttribute('data-has-data', 'true');
+  });
+
+  test('renders the PastKeyDates card for a non-TrusteeAdmin user when the flag is enabled (no canManage gate)', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: keyDates });
+    TestingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
+
+    renderBody();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
+    });
   });
 
   test('builds the district/division/chapter appointment heading for PastKeyDates, without the appointment type suffix', async () => {

@@ -283,6 +283,12 @@ describe('PastKeyDates', () => {
         },
       );
     });
+
+    test('renders "Past Key Dates" as the card title', () => {
+      renderComponent(ch13Props);
+
+      expect(screen.getByRole('heading', { level: 4, name: 'Past Key Dates' })).toBeInTheDocument();
+    });
   });
 
   describe('subv-pool variant', () => {
@@ -465,6 +471,12 @@ describe('PastKeyDates', () => {
           },
         },
       );
+    });
+
+    test('renders "Past Key Dates" as the card title', () => {
+      renderComponent(ch12StandingProps);
+
+      expect(screen.getByRole('heading', { level: 4, name: 'Past Key Dates' })).toBeInTheDocument();
     });
   });
 });
