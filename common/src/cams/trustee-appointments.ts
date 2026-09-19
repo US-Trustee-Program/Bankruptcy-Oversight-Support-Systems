@@ -52,6 +52,20 @@ export function isChapter11CaseByCase(
   return chapter === '11' && appointmentType === 'case-by-case';
 }
 
+export function isChapter11SubchapterVPool(
+  chapter: AppointmentChapterType,
+  appointmentType: AppointmentType,
+): boolean {
+  return chapter === '11-subchapter-v' && appointmentType === 'pool';
+}
+
+export function isChapter11SubchapterVOutOfPool(
+  chapter: AppointmentChapterType,
+  appointmentType: AppointmentType,
+): boolean {
+  return chapter === '11-subchapter-v' && appointmentType === 'out-of-pool';
+}
+
 export function formatAppointmentStatus(status: AppointmentStatus): string {
   const statusLabels: Record<AppointmentStatus, string> = {
     active: 'Active',

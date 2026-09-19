@@ -33,3 +33,14 @@ export function buildDistrictDisplay(appointment: {
   }
   return `Court ${appointment.courtId}`;
 }
+
+export function buildAppointmentHeading(
+  appointment: { courtName?: string; courtId?: string; courtDivisionName?: string },
+  chapterSuffix: string,
+): string {
+  const districtDisplay = buildDistrictDisplay(appointment);
+  const divisionDisplay = appointment.courtDivisionName
+    ? ` (${appointment.courtDivisionName})`
+    : '';
+  return `${districtDisplay}${divisionDisplay}: Chapter ${chapterSuffix}`;
+}
