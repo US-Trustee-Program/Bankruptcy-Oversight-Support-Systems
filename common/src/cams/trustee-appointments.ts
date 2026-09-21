@@ -59,6 +59,13 @@ export function isChapter12Or13CaseByCase(
   return (chapter === '12' || chapter === '13') && appointmentType === 'case-by-case';
 }
 
+export function isChapter7Panel(
+  chapter: AppointmentChapterType,
+  appointmentType: AppointmentType,
+): boolean {
+  return chapter === '7' && appointmentType === 'panel';
+}
+
 export function isChapter11SubchapterVPool(
   chapter: AppointmentChapterType,
   appointmentType: AppointmentType,

@@ -12,7 +12,7 @@ import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import { Stop } from '@/lib/components/Stop';
-import { buildKeyDatesInput } from './buildKeyDatesInput';
+import { mergeKeyDatesInput } from './chapter7PanelKeyDatesInput';
 import CompletionStatusFields, { CompletionStatusValue } from './CompletionStatusFields';
 
 const EMPTY_COMPLETION: CompletionStatusValue = { year: '', status: '' };
@@ -53,7 +53,7 @@ export default function AnnualReportKeyDatesForm() {
   }, [trusteeId, appointmentId]);
 
   function buildInput() {
-    return buildKeyDatesInput({ trusteeId: trusteeId!, appointmentId: appointmentId! }, original, {
+    return mergeKeyDatesInput({ trusteeId: trusteeId!, appointmentId: appointmentId! }, original, {
       annualReportCompletionYear: completion.year === '' ? null : completion.year,
       annualReportCompletionStatus: completion.status === '' ? null : completion.status,
     });

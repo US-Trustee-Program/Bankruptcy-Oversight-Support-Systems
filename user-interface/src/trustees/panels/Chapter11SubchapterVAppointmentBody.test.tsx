@@ -123,7 +123,7 @@ describe('Chapter11SubchapterVAppointmentBody', () => {
     });
   });
 
-  test('builds the district/division/chapter appointment heading for PastKeyDates, without the appointment type suffix', async () => {
+  test('builds the district/division/chapter/type appointment heading for PastKeyDates', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: keyDates });
 
     renderBody();
@@ -131,7 +131,7 @@ describe('Chapter11SubchapterVAppointmentBody', () => {
     await waitFor(() => {
       expect(screen.getByTestId('past-key-dates-card')).toHaveAttribute(
         'data-appointment-heading',
-        'Southern District of New York (Manhattan): Chapter 11 Subchapter V',
+        'Southern District of New York (Manhattan): Chapter 11 Subchapter V - Pool',
       );
     });
   });

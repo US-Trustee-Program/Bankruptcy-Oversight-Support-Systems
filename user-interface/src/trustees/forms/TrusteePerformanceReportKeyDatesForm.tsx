@@ -16,7 +16,7 @@ import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
 import { Stop } from '@/lib/components/Stop';
-import { buildKeyDatesInput } from './buildKeyDatesInput';
+import { mergeKeyDatesInput } from './chapter7PanelKeyDatesInput';
 import CompletionStatusFields, { CompletionStatusValue } from './CompletionStatusFields';
 
 type TprFormState = {
@@ -25,7 +25,7 @@ type TprFormState = {
   tprFrequency: 'BIANNUAL' | 'ANNUAL' | 'SEMI_ANNUAL' | '';
   tprDue: string;
   tprDueYearType: string;
-  pastTprSubmission: string;
+  lastTprSubmitted: string;
 };
 
 const EMPTY_FORM: TprFormState = {
@@ -34,7 +34,7 @@ const EMPTY_FORM: TprFormState = {
   tprFrequency: '',
   tprDue: '',
   tprDueYearType: '',
-  pastTprSubmission: '',
+  lastTprSubmitted: '',
 };
 
 const FREQUENCY_OPTIONS: { value: TprFormState['tprFrequency']; label: string }[] = [
@@ -73,7 +73,7 @@ export default function TrusteePerformanceReportKeyDatesForm() {
             tprFrequency: data.tprFrequency ?? '',
             tprDue: data.tprDue ?? '',
             tprDueYearType: data.tprDueYearType ?? '',
-            pastTprSubmission: data.pastTprSubmission ?? '',
+            lastTprSubmitted: data.lastTprSubmitted ?? '',
           });
           setCompletion({
             year: data.tprCompletionYear ?? '',
@@ -92,13 +92,13 @@ export default function TrusteePerformanceReportKeyDatesForm() {
   }, [trusteeId, appointmentId]);
 
   function buildInput() {
-    return buildKeyDatesInput({ trusteeId: trusteeId!, appointmentId: appointmentId! }, original, {
+    return mergeKeyDatesInput({ trusteeId: trusteeId!, appointmentId: appointmentId! }, original, {
       tprReviewPeriodStart: form.tprReviewPeriodStart || null,
       tprReviewPeriodEnd: form.tprReviewPeriodEnd || null,
       tprFrequency: form.tprFrequency || null,
       tprDue: form.tprDue || null,
       tprDueYearType: form.tprDueYearType || null,
-      pastTprSubmission: form.pastTprSubmission || null,
+      lastTprSubmitted: form.lastTprSubmitted || null,
       tprCompletionYear: completion.year === '' ? null : completion.year,
       tprCompletionStatus: completion.status === '' ? null : completion.status,
     });
@@ -149,7 +149,7 @@ export default function TrusteePerformanceReportKeyDatesForm() {
     );
   }
 
-  const saveDisabled = isSaving || !reviewPeriodValid || hasErrorAmong(['past-tpr-submission']);
+  const saveDisabled = isSaving || !reviewPeriodValid || hasErrorAmong(['last-tpr-submitted']);
 
   return (
     <div className="edit-upcoming-key-dates" data-testid="edit-tpr-key-dates">
@@ -217,11 +217,11 @@ export default function TrusteePerformanceReportKeyDatesForm() {
         </div>
       </div>
       <DatePicker
-        id="past-tpr-submission"
+        id="last-tpr-submitted"
         label="Last TPR Submitted"
-        value={form.pastTprSubmission}
-        onChange={(ev) => setForm((prev) => ({ ...prev, pastTprSubmission: ev.target.value }))}
-        onValidationChange={(hasError) => registerFieldError('past-tpr-submission', hasError)}
+        value={form.lastTprSubmitted}
+        onChange={(ev) => setForm((prev) => ({ ...prev, lastTprSubmitted: ev.target.value }))}
+        onValidationChange={(hasError) => registerFieldError('last-tpr-submitted', hasError)}
       />
       <CompletionStatusFields
         idPrefix="tpr-completion"

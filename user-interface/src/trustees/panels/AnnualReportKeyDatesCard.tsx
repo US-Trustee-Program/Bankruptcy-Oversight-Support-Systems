@@ -3,7 +3,7 @@ import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import EditableTableCard from '@/lib/components/cams/EditableTableCard/EditableTableCard';
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
-import { buildCompletionTag } from './completionTag';
+import { buildCompletionTag } from './upcomingKeyDatesFieldConfig';
 
 export interface AnnualReportKeyDatesCardProps {
   trusteeId: string;
@@ -23,9 +23,12 @@ export default function AnnualReportKeyDatesCard(props: Readonly<AnnualReportKey
   const canManage = useCanManageTrustees();
 
   function openEdit() {
-    navigate(`/trustees/${trusteeId}/appointments/${appointmentId}/annual-report-key-dates/edit`, {
-      state: { subHeading: appointmentHeading ?? '' },
-    });
+    navigate(
+      `/trustees/${trusteeId}/appointments/${appointmentId}/ch12-13-annual-report-key-dates/edit`,
+      {
+        state: { subHeading: appointmentHeading ?? '' },
+      },
+    );
   }
 
   if (isLoading) {
@@ -42,9 +45,10 @@ export default function AnnualReportKeyDatesCard(props: Readonly<AnnualReportKey
       tableClassName="annual-report-key-dates-table"
       tableAriaLabel="Annual Report key dates"
       tag={buildCompletionTag(
-        `annual-report-completion-status-${appointmentId}`,
         data?.annualReportCompletionYear,
         data?.annualReportCompletionStatus,
+        'COMPLETE',
+        `annual-report-completion-status-${appointmentId}`,
       )}
       onEdit={canManage ? openEdit : undefined}
       editAriaLabel="Edit Annual Report key dates"

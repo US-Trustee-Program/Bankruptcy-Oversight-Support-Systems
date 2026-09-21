@@ -31,7 +31,7 @@ describe('AnnualReportKeyDatesCard', () => {
     updatedOn: '2020-01-10T14:30:00.000Z',
     updatedBy: SYSTEM_USER_REFERENCE,
     annualReportCompletionYear: 2025,
-    annualReportCompletionStatus: 'Complete',
+    annualReportCompletionStatus: 'COMPLETE',
   };
 
   beforeEach(() => {
@@ -94,7 +94,7 @@ describe('AnnualReportKeyDatesCard', () => {
     renderCard({
       ...keyDates,
       annualReportCompletionYear: 2024,
-      annualReportCompletionStatus: 'Incomplete',
+      annualReportCompletionStatus: 'INCOMPLETE',
     });
 
     const tag = screen.getByTestId('tag-annual-report-completion-status-appointment-001');
@@ -107,7 +107,7 @@ describe('AnnualReportKeyDatesCard', () => {
   test.each([
     [
       'the year is missing',
-      { annualReportCompletionYear: undefined, annualReportCompletionStatus: 'Complete' as const },
+      { annualReportCompletionYear: undefined, annualReportCompletionStatus: 'COMPLETE' as const },
     ],
     [
       'the status is missing',
@@ -131,7 +131,7 @@ describe('AnnualReportKeyDatesCard', () => {
     await userEvent.click(screen.getByRole('button', { name: /edit annual report/i }));
 
     expect(mockNavigate).toHaveBeenCalledWith(
-      '/trustees/trustee-123/appointments/appointment-001/annual-report-key-dates/edit',
+      '/trustees/trustee-123/appointments/appointment-001/ch12-13-annual-report-key-dates/edit',
       { state: { subHeading: 'Southern District of New York (Manhattan): Chapter 12' } },
     );
   });
@@ -142,7 +142,7 @@ describe('AnnualReportKeyDatesCard', () => {
     await userEvent.click(screen.getByRole('button', { name: /edit annual report/i }));
 
     expect(mockNavigate).toHaveBeenCalledWith(
-      '/trustees/trustee-123/appointments/appointment-001/annual-report-key-dates/edit',
+      '/trustees/trustee-123/appointments/appointment-001/ch12-13-annual-report-key-dates/edit',
       { state: { subHeading: '' } },
     );
   });

@@ -4,10 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import PastKeyDatesForm from './PastKeyDatesForm';
 import Api2 from '@/lib/models/api2';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
-import {
-  TrusteeUpcomingKeyDates,
-  TrusteeUpcomingKeyDatesInput,
-} from '@common/cams/trustee-upcoming-key-dates';
+import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { CamsRole } from '@common/cams/roles';
@@ -88,47 +85,6 @@ const populatedDocument: TrusteeUpcomingKeyDates = {
   leaseExpiration: '2027-06-30',
   idExpiration: '2028-01-15',
 };
-
-function expectedPutPayload(
-  ids: { trusteeId: string; appointmentId: string },
-  doc: TrusteeUpcomingKeyDates,
-): TrusteeUpcomingKeyDatesInput {
-  return {
-    trusteeId: ids.trusteeId,
-    appointmentId: ids.appointmentId,
-    pastBackgroundQuestion: doc.pastBackgroundQuestion ?? null,
-    pastFieldExam: doc.pastFieldExam ?? null,
-    pastAudit: doc.pastAudit ?? null,
-    pastTprSubmission: doc.pastTprSubmission ?? null,
-    lastMonthlyReportReceived: doc.lastMonthlyReportReceived ?? null,
-    lastAuditFiscalYear: doc.lastAuditFiscalYear ?? null,
-    tprReviewPeriodStart: doc.tprReviewPeriodStart ?? null,
-    tprReviewPeriodEnd: doc.tprReviewPeriodEnd ?? null,
-    tprDue: doc.tprDue ?? null,
-    tprDueYearType: doc.tprDueYearType ?? null,
-    tprFrequency: doc.tprFrequency ?? null,
-    tirReviewPeriodStart: doc.tirReviewPeriodStart ?? null,
-    tirReviewPeriodEnd: doc.tirReviewPeriodEnd ?? null,
-    tirSubmission: doc.tirSubmission ?? null,
-    tirReview: doc.tirReview ?? null,
-    tirSemiAnnualReviewPeriodStart: doc.tirSemiAnnualReviewPeriodStart ?? null,
-    tirSemiAnnualReviewPeriodEnd: doc.tirSemiAnnualReviewPeriodEnd ?? null,
-    tirSemiAnnualSubmission: doc.tirSemiAnnualSubmission ?? null,
-    tirSemiAnnualReview: doc.tirSemiAnnualReview ?? null,
-    upcomingExamOrAuditYear: doc.upcomingExamOrAuditYear ?? null,
-    upcomingExamOrAuditType: doc.upcomingExamOrAuditType ?? null,
-    tirFrequency: doc.tirFrequency ?? null,
-    leaseExpiration: doc.leaseExpiration ?? null,
-    idExpiration: doc.idExpiration ?? null,
-    lastCompensationStudy: doc.lastCompensationStudy ?? null,
-    bondIssuedDate: doc.bondIssuedDate ?? null,
-    bondRenewalDate: doc.bondRenewalDate ?? null,
-    tprCompletionYear: doc.tprCompletionYear ?? null,
-    tprCompletionStatus: doc.tprCompletionStatus ?? null,
-    annualReportCompletionYear: doc.annualReportCompletionYear ?? null,
-    annualReportCompletionStatus: doc.annualReportCompletionStatus ?? null,
-  };
-}
 
 const mockGlobalAlertRef = {
   current: {
@@ -310,14 +266,46 @@ describe('PastKeyDatesForm', () => {
     await userEvent.click(screen.getByTestId('button-save-past-key-dates'));
 
     await waitFor(() =>
-      expect(putSpy).toHaveBeenCalledWith(
-        'trustee-001',
-        'appointment-001',
-        expectedPutPayload(
-          { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
-          populatedDocument,
-        ),
-      ),
+      expect(putSpy).toHaveBeenCalledWith('trustee-001', 'appointment-001', {
+        trusteeId: 'trustee-001',
+        appointmentId: 'appointment-001',
+        pastBackgroundQuestion: '2022-05-10',
+        pastFieldExam: '2024-02-21',
+        pastAudit: '2023-08-01',
+        pastTprSubmission: '2025-11-03',
+        lastTprSubmitted: null,
+        lastMonthlyReportReceived: null,
+        lastAuditFiscalYear: 2022,
+        auditCompletionYear: null,
+        auditCompletionStatus: null,
+        tprCompletionYear: null,
+        tprCompletionStatus: null,
+        tirCompletionYear: null,
+        tirCompletionStatus: null,
+        tprReviewPeriodStart: '2025-04-01',
+        tprReviewPeriodEnd: '1900-03-31',
+        tprDue: '1900-09-15',
+        tprDueYearType: 'EVEN',
+        tprFrequency: 'BIANNUAL',
+        tirReviewPeriodStart: '1900-07-01',
+        tirReviewPeriodEnd: '1900-06-30',
+        tirSubmission: '1900-10-15',
+        tirReview: '1900-11-01',
+        tirSemiAnnualReviewPeriodStart: '1900-01-01',
+        tirSemiAnnualReviewPeriodEnd: '1900-06-30',
+        tirSemiAnnualSubmission: '1900-07-30',
+        tirSemiAnnualReview: '1900-09-28',
+        upcomingExamOrAuditYear: 2029,
+        upcomingExamOrAuditType: 'Field Exam',
+        tirFrequency: 'SEMI_ANNUAL',
+        leaseExpiration: '2027-06-30',
+        idExpiration: '2028-01-15',
+        lastCompensationStudy: null,
+        bondIssuedDate: null,
+        bondRenewalDate: null,
+        annualReportCompletionYear: null,
+        annualReportCompletionStatus: null,
+      }),
     );
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');
   });

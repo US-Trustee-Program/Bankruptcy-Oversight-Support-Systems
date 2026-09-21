@@ -3,7 +3,7 @@ import factory from '../../factory';
 import { TrusteeUpcomingKeyDatesRepository } from '../gateways.types';
 import {
   DATE_FIELDS,
-  NUMBER_FIELDS,
+  SCALAR_FIELDS,
   TEXT_FIELDS,
   TrusteeUpcomingKeyDates,
   TrusteeUpcomingKeyDatesHistory,
@@ -13,20 +13,14 @@ import { createAuditRecord } from '@common/cams/auditable';
 import { CamsUserReference } from '@common/cams/users';
 import { Creatable } from '@common/cams/creatable';
 
+const GENERIC_FIELDS = [...DATE_FIELDS, ...TEXT_FIELDS, ...SCALAR_FIELDS];
+
 function buildFields(input: TrusteeUpcomingKeyDatesInput): Partial<TrusteeUpcomingKeyDates> {
   const fields: Partial<TrusteeUpcomingKeyDates> = {};
-  for (const field of [...DATE_FIELDS, ...TEXT_FIELDS]) {
+  for (const field of GENERIC_FIELDS) {
     if (input[field] !== null) {
-      (fields as Record<string, string>)[field] = input[field]!;
+      (fields as Record<string, string | number>)[field] = input[field]!;
     }
-  }
-  for (const field of NUMBER_FIELDS) {
-    if (input[field] !== null) {
-      (fields as Record<string, number>)[field] = input[field]!;
-    }
-  }
-  if (input.upcomingExamOrAuditType !== null) {
-    fields.upcomingExamOrAuditType = input.upcomingExamOrAuditType;
   }
   return fields;
 }
@@ -37,35 +31,17 @@ function diffFields(
 ): { before: Partial<TrusteeUpcomingKeyDates>; after: Partial<TrusteeUpcomingKeyDates> } {
   const before: Partial<TrusteeUpcomingKeyDates> = {};
   const after: Partial<TrusteeUpcomingKeyDates> = {};
-  for (const field of [...DATE_FIELDS, ...TEXT_FIELDS]) {
-    const existingValue = (existing?.[field] as string | undefined) ?? null;
+  for (const field of GENERIC_FIELDS) {
+    const existingValue = (existing?.[field] as string | number | undefined) ?? null;
     const incomingValue = input[field] ?? null;
     if (existingValue !== incomingValue) {
       if (existingValue !== null) {
-        (before as Record<string, string>)[field] = existingValue;
+        (before as Record<string, string | number>)[field] = existingValue;
       }
       if (incomingValue !== null) {
-        (after as Record<string, string>)[field] = incomingValue;
+        (after as Record<string, string | number>)[field] = incomingValue;
       }
     }
-  }
-  for (const field of NUMBER_FIELDS) {
-    const existingValue = existing?.[field] ?? null;
-    const incomingValue = input[field] ?? null;
-    if (existingValue !== incomingValue) {
-      if (existingValue !== null) {
-        (before as Record<string, number>)[field] = existingValue;
-      }
-      if (incomingValue !== null) {
-        (after as Record<string, number>)[field] = incomingValue;
-      }
-    }
-  }
-  const existingExamType = existing?.upcomingExamOrAuditType ?? null;
-  const incomingExamType = input.upcomingExamOrAuditType ?? null;
-  if (existingExamType !== incomingExamType) {
-    if (existingExamType !== null) before.upcomingExamOrAuditType = existingExamType;
-    if (incomingExamType !== null) after.upcomingExamOrAuditType = incomingExamType;
   }
   return { before, after };
 }

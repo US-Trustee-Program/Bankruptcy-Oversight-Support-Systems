@@ -35,9 +35,9 @@ describe('TrusteePerformanceReportKeyDatesCard', () => {
     tprDue: '1900-09-15',
     tprDueYearType: 'EVEN',
     tprFrequency: 'ANNUAL',
-    pastTprSubmission: '2025-09-10',
+    lastTprSubmitted: '2025-09-10',
     tprCompletionYear: 2025,
-    tprCompletionStatus: 'Complete',
+    tprCompletionStatus: 'COMPLETE',
   };
 
   beforeEach(() => {
@@ -142,7 +142,7 @@ describe('TrusteePerformanceReportKeyDatesCard', () => {
   });
 
   test('renders a red tag when the report is incomplete', () => {
-    renderCard({ ...keyDates, tprCompletionYear: 2024, tprCompletionStatus: 'Incomplete' });
+    renderCard({ ...keyDates, tprCompletionYear: 2024, tprCompletionStatus: 'INCOMPLETE' });
 
     const tag = screen.getByTestId('tag-tpr-completion-status-appointment-001');
     expect(tag).toHaveTextContent('Incomplete for 2024');
@@ -167,7 +167,7 @@ describe('TrusteePerformanceReportKeyDatesCard', () => {
     await userEvent.click(screen.getByRole('button', { name: /edit trustee performance report/i }));
 
     expect(mockNavigate).toHaveBeenCalledWith(
-      '/trustees/trustee-123/appointments/appointment-001/tpr-key-dates/edit',
+      '/trustees/trustee-123/appointments/appointment-001/ch12-13-tpr-key-dates/edit',
       { state: { subHeading: 'Southern District of New York (Manhattan): Chapter 12' } },
     );
   });
@@ -178,7 +178,7 @@ describe('TrusteePerformanceReportKeyDatesCard', () => {
     await userEvent.click(screen.getByRole('button', { name: /edit trustee performance report/i }));
 
     expect(mockNavigate).toHaveBeenCalledWith(
-      '/trustees/trustee-123/appointments/appointment-001/tpr-key-dates/edit',
+      '/trustees/trustee-123/appointments/appointment-001/ch12-13-tpr-key-dates/edit',
       { state: { subHeading: '' } },
     );
   });

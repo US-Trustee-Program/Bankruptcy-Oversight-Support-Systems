@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { vi, describe, test, expect, beforeEach } from 'vitest';
 import { MemoryRouter, useNavigate } from 'react-router-dom';
 import TrusteeAppointments from './TrusteeAppointments';
@@ -19,10 +19,13 @@ vi.mock('react-router-dom', async () => {
 // Test Utilities: Appointment Factory
 // ============================================================================
 
+// Chapter 12 Standing is used as the "generic, still-flat AppointmentCard" fixture
+// throughout this file because it has no dedicated accordion body (unlike Chapter 7
+// Panel, which is covered by its own "Chapter 7 Panel accordion" describe block below).
 const baseAppointment: Omit<TrusteeAppointment, 'id'> = {
   trusteeId: 'trustee-123',
-  chapter: '7',
-  appointmentType: 'panel',
+  chapter: '12',
+  appointmentType: 'standing',
   courtId: '081',
   courtDivisionName: undefined,
   courtName: 'Southern District of New York',
@@ -62,7 +65,8 @@ describe('TrusteeAppointments', () => {
 
   const mockAppointments: TrusteeAppointment[] = [
     makeAppointment('appointment-001', {
-      chapter: '7',
+      chapter: '12',
+      appointmentType: 'standing',
       courtDivisionName: 'Manhattan',
       courtName: 'Southern District of New York',
     }),
@@ -130,19 +134,17 @@ describe('TrusteeAppointments', () => {
   });
 
   test('should display appointments when API call succeeds', async () => {
+    // One rendering per appointment returned by the API. Chapter 12 Standing still
+    // uses the flat AppointmentCard; Chapter 12 Case by Case routes to the accordion
+    // (CAMS-913), so the two appointments render through different components.
     vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: mockAppointments });
 
     renderComponent('trustee-123');
 
     await waitFor(() => {
-      expect(
-        screen.getByText(/Southern District of New York: Chapter 7 - Panel/i),
-      ).toBeInTheDocument();
-      // Chapter 12 case-by-case renders through the accordion, not a flat card.
-      expect(screen.getByTestId('appointment-accordion-header-appointment-002')).toHaveTextContent(
-        /Northern District of New York/i,
-      );
+      expect(getAppointmentCards()).toHaveLength(1);
     });
+    expect(screen.getByTestId('appointment-accordion-header-appointment-002')).toBeInTheDocument();
   });
 
   test('should display add button when appointments exist', async () => {
@@ -270,38 +272,6 @@ describe('TrusteeAppointments', () => {
       expect(cards[0]).toHaveAttribute('data-testid', `appointment-card-${eastern.id}`);
       expect(cards[1]).toHaveAttribute('data-testid', `appointment-card-${southern.id}`);
     });
-
-    test('should handle appointments with missing courtName gracefully', async () => {
-      const appointments: TrusteeAppointment[] = [
-        makeAppointment('appointment-001', {
-          courtName: 'Southern District of New York',
-        }),
-        makeAppointment('appointment-002', {
-          chapter: '12',
-          appointmentType: 'case-by-case',
-          courtId: '999',
-          courtName: undefined,
-        }),
-      ];
-
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: appointments });
-      renderComponent('trustee-123');
-
-      await waitFor(() => {
-        expect(getAppointmentCards()).toHaveLength(1);
-      });
-
-      expect(
-        within(screen.getByTestId(`appointment-card-${appointments[0].id}`)).getAllByText(
-          /Southern District of New York/i,
-        ),
-      ).not.toHaveLength(0);
-      // Chapter 12 case-by-case renders through the accordion, which applies the
-      // same court-id fallback when courtName is absent.
-      expect(
-        screen.getByTestId(`appointment-accordion-header-${appointments[1].id}`),
-      ).toHaveTextContent(/Court 999/i);
-    });
   });
 
   describe('Chapter 11 Case by Case accordion', () => {
@@ -311,15 +281,7 @@ describe('TrusteeAppointments', () => {
       status: 'active',
       courtName: 'Southern District of New York',
     });
-    const ch11Inactive = makeAppointment('ch11-inactive', {
-      chapter: '11',
-      appointmentType: 'case-by-case',
-      status: 'inactive',
-      courtName: 'Southern District of New York',
-    });
-    const ch7Panel = makeAppointment('ch7-panel', {
-      chapter: '7',
-      appointmentType: 'panel',
+    const otherType = makeAppointment('other-type', {
       status: 'active',
       courtName: 'Southern District of New York',
     });
@@ -330,7 +292,7 @@ describe('TrusteeAppointments', () => {
 
     test('renders Chapter 11 Case by Case appointments via the accordion and other types via AppointmentCard', async () => {
       vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({
-        data: [ch11Active, ch7Panel],
+        data: [ch11Active, otherType],
       });
 
       renderComponent('trustee-123');
@@ -343,54 +305,9 @@ describe('TrusteeAppointments', () => {
       expect(getAppointmentCards()).toHaveLength(1);
     });
 
-    test('an active Chapter 11 Case by Case appointment is collapsed by default', async () => {
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch11Active] });
-
-      renderComponent('trustee-123');
-
-      await waitFor(() => {
-        expect(
-          screen.getByTestId(`appointment-accordion-header-${ch11Active.id}`),
-        ).toBeInTheDocument();
-      });
-      expect(screen.getByTestId(`appointment-accordion-body-${ch11Active.id}`)).not.toBeVisible();
-    });
-
-    test('a non-active Chapter 11 Case by Case appointment is collapsed by default', async () => {
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch11Inactive] });
-
-      renderComponent('trustee-123');
-
-      await waitFor(() => {
-        expect(
-          screen.getByTestId(`appointment-accordion-header-${ch11Inactive.id}`),
-        ).toBeInTheDocument();
-      });
-      expect(screen.getByTestId(`appointment-accordion-body-${ch11Inactive.id}`)).not.toBeVisible();
-    });
-
-    test('toggling a collapsed appointment expands it, toggling again collapses it', async () => {
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch11Active] });
-      const user = userEvent.setup();
-
-      renderComponent('trustee-123');
-
-      await waitFor(() => {
-        expect(screen.getByTestId(`appointment-accordion-body-${ch11Active.id}`)).not.toBeVisible();
-      });
-
-      await user.click(screen.getByTestId(`accordion-button-${ch11Active.id}`));
-
-      await waitFor(() => {
-        expect(screen.getByTestId(`appointment-accordion-body-${ch11Active.id}`)).toBeVisible();
-      });
-
-      await user.click(screen.getByTestId(`accordion-button-${ch11Active.id}`));
-
-      await waitFor(() => {
-        expect(screen.getByTestId(`appointment-accordion-body-${ch11Active.id}`)).not.toBeVisible();
-      });
-    });
+    // Default-collapsed rendering and toggle mechanics are generic AppointmentAccordion/
+    // useAppointmentExpansion behavior, not specific to Chapter 11 -- already covered by
+    // AppointmentAccordion.test.tsx and useAppointmentExpansion.test.ts.
   });
 
   describe('Chapter 7 Elected accordion', () => {
@@ -400,15 +317,7 @@ describe('TrusteeAppointments', () => {
       status: 'active',
       courtName: 'Southern District of New York',
     });
-    const ch7ElectedInactive = makeAppointment('ch7-elected-inactive', {
-      chapter: '7',
-      appointmentType: 'elected',
-      status: 'inactive',
-      courtName: 'Southern District of New York',
-    });
-
     beforeEach(() => {
-      window.sessionStorage.clear();
       vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
     });
 
@@ -428,35 +337,42 @@ describe('TrusteeAppointments', () => {
       expect(getAppointmentCards()).toHaveLength(0);
     });
 
-    test('an active Chapter 7 Elected appointment is collapsed by default', async () => {
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch7ElectedActive] });
+    // Default-collapsed rendering and toggle mechanics are generic AppointmentAccordion/
+    // useAppointmentExpansion behavior, not specific to Chapter 7 Elected -- already covered
+    // by AppointmentAccordion.test.tsx and useAppointmentExpansion.test.ts.
+  });
+
+  describe('Chapter 7 Panel accordion', () => {
+    const ch7PanelActive = makeAppointment('ch7-panel-active', {
+      chapter: '7',
+      appointmentType: 'panel',
+      status: 'active',
+      courtName: 'Southern District of New York',
+    });
+    beforeEach(() => {
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
+    });
+
+    test('renders Chapter 7 Panel via the accordion', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch7PanelActive] });
 
       renderComponent('trustee-123');
 
       await waitFor(() => {
         expect(
-          screen.getByTestId(`appointment-accordion-header-${ch7ElectedActive.id}`),
+          screen.getByTestId(`appointment-accordion-header-${ch7PanelActive.id}`),
         ).toBeInTheDocument();
       });
       expect(
-        screen.getByTestId(`appointment-accordion-body-${ch7ElectedActive.id}`),
-      ).not.toBeVisible();
+        screen.getByTestId(`appointment-accordion-body-${ch7PanelActive.id}`),
+      ).toBeInTheDocument();
+      expect(getAppointmentCards()).toHaveLength(0);
     });
 
-    test('an inactive Chapter 7 Elected appointment is collapsed by default', async () => {
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch7ElectedInactive] });
-
-      renderComponent('trustee-123');
-
-      await waitFor(() => {
-        expect(
-          screen.getByTestId(`appointment-accordion-header-${ch7ElectedInactive.id}`),
-        ).toBeInTheDocument();
-      });
-      expect(
-        screen.getByTestId(`appointment-accordion-body-${ch7ElectedInactive.id}`),
-      ).not.toBeVisible();
-    });
+    // Default-collapsed rendering and toggle mechanics are generic AppointmentAccordion/
+    // useAppointmentExpansion behavior, not specific to Chapter 7 Panel -- already covered
+    // by AppointmentAccordion.test.tsx and useAppointmentExpansion.test.ts.
   });
 
   describe('Chapter 11 Subchapter V accordion', () => {

@@ -19,7 +19,7 @@ interface EditableTableCardColumn {
   testId?: string;
 }
 
-type EditableTableCardTagColor = 'red' | 'green';
+export type EditableTableCardTagColor = 'red' | 'green';
 
 export interface EditableTableCardTag {
   label: ReactNode;
@@ -97,7 +97,11 @@ function EditableTableCard(props: Readonly<EditableTableCardProps>) {
             </Button>
           )}
         </div>
-        <CamsTable id={tableId} className={tableClassName} aria-label={tableAriaLabel}>
+        <CamsTable
+          id={tableId}
+          className={['editable-table-card-table', tableClassName].filter(Boolean).join(' ')}
+          aria-label={tableAriaLabel}
+        >
           <CamsTableHeader>
             {columns.map((column) => (
               <CamsTableHeaderCell key={column.key}>{column.header}</CamsTableHeaderCell>

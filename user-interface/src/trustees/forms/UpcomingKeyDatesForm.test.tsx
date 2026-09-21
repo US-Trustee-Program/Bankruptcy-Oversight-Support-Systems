@@ -1291,9 +1291,9 @@ describe('UpcomingKeyDatesForm', () => {
       idExpiration: '2028-01-15',
       lastCompensationStudy: '2024-06-01',
       tprCompletionYear: 2026,
-      tprCompletionStatus: 'Complete',
+      tprCompletionStatus: 'COMPLETE',
       annualReportCompletionYear: 2025,
-      annualReportCompletionStatus: 'Incomplete',
+      annualReportCompletionStatus: 'INCOMPLETE',
     };
 
     test('deriveVariant returns chapter13-standing for chapter 13 standing appointment', async () => {
@@ -1405,9 +1405,9 @@ describe('UpcomingKeyDatesForm', () => {
           'appointment-001',
           expect.objectContaining({
             tprCompletionYear: 2026,
-            tprCompletionStatus: 'Complete',
+            tprCompletionStatus: 'COMPLETE',
             annualReportCompletionYear: 2025,
-            annualReportCompletionStatus: 'Incomplete',
+            annualReportCompletionStatus: 'INCOMPLETE',
           }),
         ),
       );

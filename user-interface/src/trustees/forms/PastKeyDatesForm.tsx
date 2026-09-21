@@ -65,6 +65,7 @@ function buildUpcomingKeyDatesInput(
     pastFieldExam: dateValue('pastFieldExam'),
     pastAudit: dateValue('pastAudit'),
     pastTprSubmission: dateValue('pastTprSubmission'),
+    lastTprSubmitted: original?.lastTprSubmitted ?? null,
     lastMonthlyReportReceived: dateValue('lastMonthlyReportReceived'),
     tprReviewPeriodStart: original?.tprReviewPeriodStart ?? null,
     tprReviewPeriodEnd: original?.tprReviewPeriodEnd ?? null,
@@ -97,15 +98,19 @@ function buildUpcomingKeyDatesInput(
     lastAuditFiscalYear: hasYearField
       ? form.lastAuditFiscalYear || null
       : (original?.lastAuditFiscalYear ?? null),
+    auditCompletionYear: original?.auditCompletionYear ?? null,
+    auditCompletionStatus: original?.auditCompletionStatus ?? null,
+    tprCompletionYear: original?.tprCompletionYear ?? null,
+    tprCompletionStatus: original?.tprCompletionStatus ?? null,
+    tirCompletionYear: original?.tirCompletionYear ?? null,
+    tirCompletionStatus: original?.tirCompletionStatus ?? null,
+    annualReportCompletionYear: original?.annualReportCompletionYear ?? null,
+    annualReportCompletionStatus: original?.annualReportCompletionStatus ?? null,
     leaseExpiration: original?.leaseExpiration ?? null,
     idExpiration: original?.idExpiration ?? null,
     lastCompensationStudy: dateValue('lastCompensationStudy'),
     bondIssuedDate: dateValue('bondIssuedDate'),
     bondRenewalDate: original?.bondRenewalDate ?? null,
-    tprCompletionYear: original?.tprCompletionYear ?? null,
-    tprCompletionStatus: original?.tprCompletionStatus ?? null,
-    annualReportCompletionYear: original?.annualReportCompletionYear ?? null,
-    annualReportCompletionStatus: original?.annualReportCompletionStatus ?? null,
   };
 }
 

@@ -126,6 +126,25 @@ function requireChronologicalOrder(
   };
 }
 
+function requireValidEnum(
+  field: keyof TrusteeUpcomingKeyDatesInput,
+  validValues: readonly string[],
+  label: string,
+): ValidatorFunction {
+  return (obj: unknown): ValidatorResult => {
+    const input = obj as TrusteeUpcomingKeyDatesInput;
+    const value = input[field];
+    if (value !== null && !validValues.includes(value as string)) {
+      return {
+        reasonMap: {
+          [field as string]: { reasons: [`${label} must be one of: ${validValues.join(', ')}.`] },
+        },
+      };
+    }
+    return VALID;
+  };
+}
+
 function validateDateFields(): ValidatorFunction {
   return (obj: unknown): ValidatorResult => {
     const input = obj as TrusteeUpcomingKeyDatesInput;
@@ -157,6 +176,7 @@ function validateDateFields(): ValidatorFunction {
       'pastFieldExam',
       'pastAudit',
       'pastTprSubmission',
+      'lastTprSubmitted',
       'tprReviewPeriodStart',
       'tprReviewPeriodEnd',
       'lastMonthlyReportReceived',
@@ -207,15 +227,47 @@ const trusteeUpcomingKeyDatesSpec: ValidationSpec<TrusteeUpcomingKeyDatesInput> 
     ),
     requirePair('tprDue', 'tprDueYearType', 'TPR Due', 'TPR Due Year Type'),
     requirePair(
+      'auditCompletionYear',
+      'auditCompletionStatus',
+      'Field Exam/Audit Completion Status Year',
+      'Field Exam/Audit Completion Status',
+    ),
+    requirePair(
       'tprCompletionYear',
       'tprCompletionStatus',
-      'TPR Completion Year',
-      'TPR Completion Status',
+      'Trustee Performance Review Completion Status Year',
+      'Trustee Performance Review Completion Status',
+    ),
+    requirePair(
+      'tirCompletionYear',
+      'tirCompletionStatus',
+      'Trustee Interim Report Completion Status Year',
+      'Trustee Interim Report Completion Status',
+    ),
+    requireValidEnum(
+      'auditCompletionStatus',
+      ['CLOSED', 'NOT_CLOSED'],
+      'Field Exam/Audit Completion Status',
+    ),
+    requireValidEnum(
+      'tprCompletionStatus',
+      ['COMPLETE', 'INCOMPLETE'],
+      'Trustee Performance Review Completion Status',
+    ),
+    requireValidEnum(
+      'tirCompletionStatus',
+      ['COMPLETE', 'INCOMPLETE'],
+      'Trustee Interim Report Completion Status',
     ),
     requirePair(
       'annualReportCompletionYear',
       'annualReportCompletionStatus',
-      'Annual Report Completion Year',
+      'Annual Report Completion Status Year',
+      'Annual Report Completion Status',
+    ),
+    requireValidEnum(
+      'annualReportCompletionStatus',
+      ['COMPLETE', 'INCOMPLETE'],
       'Annual Report Completion Status',
     ),
   ],
@@ -247,10 +299,20 @@ export function validateTprDuePair(
 }
 
 /**
- * Completion status for a report in a given year, displayed as a tag on the
- * appointment key-dates cards and set alongside its paired completion year.
+ * Validates that a completion-status year/status pair is either both set or both blank,
+ * for direct per-render use on a card's dedicated edit form (mirrors validateTprDuePair's
+ * blur-time-feedback role, but for the Year+Status completion-status groups).
  */
-export type CompletionStatus = 'Complete' | 'Incomplete';
+export function validateCompletionPairPresence(
+  year: number | '' | null | undefined,
+  status: string | '' | null | undefined,
+  label: string,
+): string {
+  const yearSet = year !== '' && year !== null && year !== undefined;
+  const statusSet = status !== '' && status !== null && status !== undefined;
+  if (yearSet === statusSet) return '';
+  return `${label} Year and Status must both be set.`;
+}
 
 export type TrusteeUpcomingKeyDates = Auditable &
   Identifiable & {
@@ -261,6 +323,7 @@ export type TrusteeUpcomingKeyDates = Auditable &
     pastFieldExam?: string;
     pastAudit?: string;
     pastTprSubmission?: string;
+    lastTprSubmitted?: string;
     tprReviewPeriodStart?: string;
     tprReviewPeriodEnd?: string;
     tprDue?: string;
@@ -278,16 +341,20 @@ export type TrusteeUpcomingKeyDates = Auditable &
     tirSemiAnnualSubmission?: string;
     tirSemiAnnualReview?: string;
     lastAuditFiscalYear?: number;
+    auditCompletionYear?: number;
+    auditCompletionStatus?: 'CLOSED' | 'NOT_CLOSED';
+    tprCompletionYear?: number;
+    tprCompletionStatus?: 'COMPLETE' | 'INCOMPLETE';
+    tirCompletionYear?: number;
+    tirCompletionStatus?: 'COMPLETE' | 'INCOMPLETE';
+    annualReportCompletionYear?: number;
+    annualReportCompletionStatus?: 'COMPLETE' | 'INCOMPLETE';
     lastMonthlyReportReceived?: string;
     leaseExpiration?: string;
     idExpiration?: string;
     lastCompensationStudy?: string;
     bondIssuedDate?: string;
     bondRenewalDate?: string;
-    tprCompletionYear?: number;
-    tprCompletionStatus?: CompletionStatus;
-    annualReportCompletionYear?: number;
-    annualReportCompletionStatus?: CompletionStatus;
   };
 
 export type TrusteeUpcomingKeyDatesInput = {
@@ -297,6 +364,7 @@ export type TrusteeUpcomingKeyDatesInput = {
   pastFieldExam: string | null;
   pastAudit: string | null;
   pastTprSubmission: string | null;
+  lastTprSubmitted: string | null;
   tprReviewPeriodStart: string | null;
   tprReviewPeriodEnd: string | null;
   tprDue: string | null;
@@ -314,16 +382,20 @@ export type TrusteeUpcomingKeyDatesInput = {
   tirSemiAnnualSubmission: string | null;
   tirSemiAnnualReview: string | null;
   lastAuditFiscalYear: number | null;
+  auditCompletionYear: number | null;
+  auditCompletionStatus: 'CLOSED' | 'NOT_CLOSED' | null;
+  tprCompletionYear: number | null;
+  tprCompletionStatus: 'COMPLETE' | 'INCOMPLETE' | null;
+  tirCompletionYear: number | null;
+  tirCompletionStatus: 'COMPLETE' | 'INCOMPLETE' | null;
+  annualReportCompletionYear: number | null;
+  annualReportCompletionStatus: 'COMPLETE' | 'INCOMPLETE' | null;
   lastMonthlyReportReceived: string | null;
   leaseExpiration: string | null;
   idExpiration: string | null;
   lastCompensationStudy: string | null;
   bondIssuedDate: string | null;
   bondRenewalDate: string | null;
-  tprCompletionYear: number | null;
-  tprCompletionStatus: CompletionStatus | null;
-  annualReportCompletionYear: number | null;
-  annualReportCompletionStatus: CompletionStatus | null;
 };
 
 export type TrusteeUpcomingKeyDatesHistory = AbstractTrusteeHistory<
@@ -339,6 +411,7 @@ type DateField =
   | 'pastFieldExam'
   | 'pastAudit'
   | 'pastTprSubmission'
+  | 'lastTprSubmitted'
   | 'tprReviewPeriodStart'
   | 'tprReviewPeriodEnd'
   | 'tprDue'
@@ -362,6 +435,7 @@ export const DATE_FIELDS: DateField[] = [
   'pastFieldExam',
   'pastAudit',
   'pastTprSubmission',
+  'lastTprSubmitted',
   'tprReviewPeriodStart',
   'tprReviewPeriodEnd',
   'tprDue',
@@ -385,27 +459,42 @@ type TextField =
   | 'tprDueYearType'
   | 'tprFrequency'
   | 'tirFrequency'
+  | 'auditCompletionStatus'
   | 'tprCompletionStatus'
+  | 'tirCompletionStatus'
   | 'annualReportCompletionStatus';
 
 export const TEXT_FIELDS: TextField[] = [
   'tprDueYearType',
   'tprFrequency',
   'tirFrequency',
+  'auditCompletionStatus',
   'tprCompletionStatus',
+  'tirCompletionStatus',
   'annualReportCompletionStatus',
 ];
 
-type NumberField =
-  | 'upcomingExamOrAuditYear'
+/**
+ * Fields whose values are neither ISO date strings (DATE_FIELDS) nor short enum
+ * strings (TEXT_FIELDS), but still only need `!== null` truthiness to copy/diff --
+ * a mix of numbers and the one non-enum-named string field, upcomingExamOrAuditType.
+ */
+type ScalarField =
   | 'lastAuditFiscalYear'
+  | 'upcomingExamOrAuditYear'
+  | 'upcomingExamOrAuditType'
+  | 'auditCompletionYear'
   | 'tprCompletionYear'
+  | 'tirCompletionYear'
   | 'annualReportCompletionYear';
 
-export const NUMBER_FIELDS: NumberField[] = [
-  'upcomingExamOrAuditYear',
+export const SCALAR_FIELDS: ScalarField[] = [
   'lastAuditFiscalYear',
+  'upcomingExamOrAuditYear',
+  'upcomingExamOrAuditType',
+  'auditCompletionYear',
   'tprCompletionYear',
+  'tirCompletionYear',
   'annualReportCompletionYear',
 ];
 

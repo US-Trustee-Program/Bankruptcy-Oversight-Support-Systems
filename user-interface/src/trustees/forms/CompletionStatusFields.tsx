@@ -1,4 +1,5 @@
-import { CompletionStatus } from '@common/cams/trustee-upcoming-key-dates';
+/** Matches the COMPLETE/INCOMPLETE enum the key-dates model stores. */
+type CompletionStatus = 'COMPLETE' | 'INCOMPLETE';
 
 export interface CompletionStatusValue {
   year: number | '';
@@ -16,7 +17,7 @@ export interface CompletionStatusFieldsProps {
  * A completion year is always one that has begun, so the options run from the
  * current year backwards rather than forwards like the upcoming-date pickers.
  */
-export function buildCompletionYearOptions(currentYear = new Date().getFullYear()): number[] {
+function buildCompletionYearOptions(currentYear = new Date().getFullYear()): number[] {
   return Array.from({ length: 11 }, (_, i) => currentYear - i);
 }
 
@@ -63,8 +64,8 @@ export default function CompletionStatusFields(props: Readonly<CompletionStatusF
             }
           >
             <option value="">- Select -</option>
-            <option value="Complete">Complete</option>
-            <option value="Incomplete">Incomplete</option>
+            <option value="COMPLETE">Complete</option>
+            <option value="INCOMPLETE">Incomplete</option>
           </select>
         </div>
       </div>

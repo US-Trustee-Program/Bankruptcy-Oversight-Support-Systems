@@ -54,12 +54,12 @@ describe('TrusteePerformanceReportKeyDatesForm', () => {
     tprFrequency: 'ANNUAL',
     tprDue: '1900-09-15',
     tprDueYearType: 'EVEN',
-    pastTprSubmission: '2025-09-10',
+    lastTprSubmitted: '2025-09-10',
     tprCompletionYear: currentYear - 1,
-    tprCompletionStatus: 'Incomplete',
+    tprCompletionStatus: 'INCOMPLETE',
     // Owned by the Annual Report card; saving here must not disturb it.
     annualReportCompletionYear: currentYear,
-    annualReportCompletionStatus: 'Complete',
+    annualReportCompletionStatus: 'COMPLETE',
     pastAudit: '2025-06-30',
   };
 
@@ -101,7 +101,7 @@ describe('TrusteePerformanceReportKeyDatesForm', () => {
     });
     expect(screen.getByTestId('tpr-due-year-type')).toHaveValue('EVEN');
     expect(screen.getByTestId('tpr-completion-year')).toHaveValue(String(currentYear - 1));
-    expect(screen.getByTestId('tpr-completion-status')).toHaveValue('Incomplete');
+    expect(screen.getByTestId('tpr-completion-status')).toHaveValue('INCOMPLETE');
   });
 
   test('offers the three frequency options', async () => {
@@ -130,7 +130,7 @@ describe('TrusteePerformanceReportKeyDatesForm', () => {
     });
 
     await userEvent.selectOptions(screen.getByTestId('tpr-frequency'), 'BIANNUAL');
-    await userEvent.selectOptions(screen.getByTestId('tpr-completion-status'), 'Complete');
+    await userEvent.selectOptions(screen.getByTestId('tpr-completion-status'), 'COMPLETE');
     await userEvent.click(screen.getByTestId('button-save-tpr-key-dates'));
 
     await waitFor(() => {
@@ -140,9 +140,9 @@ describe('TrusteePerformanceReportKeyDatesForm', () => {
         expect.objectContaining({
           tprFrequency: 'BIANNUAL',
           tprCompletionYear: currentYear - 1,
-          tprCompletionStatus: 'Complete',
+          tprCompletionStatus: 'COMPLETE',
           annualReportCompletionYear: currentYear,
-          annualReportCompletionStatus: 'Complete',
+          annualReportCompletionStatus: 'COMPLETE',
           pastAudit: '2025-06-30',
         }),
       );
@@ -160,11 +160,11 @@ describe('TrusteePerformanceReportKeyDatesForm', () => {
       expect(screen.getByTestId('tpr-completion-status')).toBeInTheDocument();
     });
 
-    await userEvent.selectOptions(screen.getByTestId('tpr-completion-status'), 'Complete');
+    await userEvent.selectOptions(screen.getByTestId('tpr-completion-status'), 'COMPLETE');
     await userEvent.click(screen.getByTestId('button-save-tpr-key-dates'));
 
     expect(await screen.findByTestId('alert-tpr-completion-error')).toHaveTextContent(
-      'TPR Completion Year is required.',
+      'Trustee Performance Review Completion Status Year is required.',
     );
     expect(putSpy).not.toHaveBeenCalled();
   });

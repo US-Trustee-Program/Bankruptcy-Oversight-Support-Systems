@@ -34,6 +34,7 @@ function buildMockInput(
     pastFieldExam: null,
     pastAudit: null,
     pastTprSubmission: null,
+    lastTprSubmitted: null,
     tprReviewPeriodStart: null,
     tprReviewPeriodEnd: null,
     tprDue: null,
@@ -51,14 +52,18 @@ function buildMockInput(
     tirSemiAnnualSubmission: null,
     tirSemiAnnualReview: null,
     lastAuditFiscalYear: null,
+    auditCompletionYear: null,
+    auditCompletionStatus: null,
+    tprCompletionYear: null,
+    tprCompletionStatus: null,
+    tirCompletionYear: null,
+    tirCompletionStatus: null,
     lastMonthlyReportReceived: null,
     leaseExpiration: null,
     idExpiration: null,
     lastCompensationStudy: null,
     bondIssuedDate: null,
     bondRenewalDate: null,
-    tprCompletionYear: null,
-    tprCompletionStatus: null,
     annualReportCompletionYear: null,
     annualReportCompletionStatus: null,
     ...overrides,
@@ -92,7 +97,7 @@ describe('TrusteeUpcomingKeyDatesUseCase', () => {
   });
 
   describe('upsertUpcomingKeyDates', () => {
-    test('new appointment: creates history with all new fields', async () => {
+    test('new appointment: creates history with the new field', async () => {
       vi.spyOn(MockMongoRepository.prototype, 'getByAppointmentId').mockResolvedValue(null);
       const upsertSpy = vi
         .spyOn(MockMongoRepository.prototype, 'upsert')
@@ -154,7 +159,7 @@ describe('TrusteeUpcomingKeyDatesUseCase', () => {
       );
     });
 
-    test('new doc: saves lastMonthlyReportReceived and creates history without any ad hoc use-case handling', async () => {
+    test('new doc: saves lastMonthlyReportReceived and includes it in audit history', async () => {
       vi.spyOn(MockMongoRepository.prototype, 'getByAppointmentId').mockResolvedValue(null);
       const upsertSpy = vi
         .spyOn(MockMongoRepository.prototype, 'upsert')
@@ -207,20 +212,22 @@ describe('TrusteeUpcomingKeyDatesUseCase', () => {
       expect(createHistorySpy).not.toHaveBeenCalled();
     });
 
+    // buildFields()/diffFields() loop generically over DATE_FIELDS/TEXT_FIELDS/SCALAR_FIELDS
+    // with no per-field branching, so one representative field per category (plus the shared
+    // DATE_FIELDS/TEXT_FIELDS/SCALAR_FIELDS exact-array assertions in
+    // common/src/cams/trustee-upcoming-key-dates.test.ts, which guard against a field silently
+    // being dropped) is sufficient to cover every branch -- exhaustively re-testing all 21+
+    // fields here would be pure duplication with no added coverage.
     test.each([
-      ['lastAuditFiscalYear', 2024],
-      ['upcomingExamOrAuditYear', 2029],
-      ['upcomingExamOrAuditType', 'Field Exam'],
       ['leaseExpiration', '2027-06-30'],
-      ['idExpiration', '2028-01-15'],
-      ['lastCompensationStudy', '2024-06-01'],
       ['tprFrequency', 'ANNUAL'],
       ['bondIssuedDate', '2023-06-01'],
       ['bondRenewalDate', '2026-06-01'],
+      ['auditCompletionYear', 2026],
       ['tprCompletionYear', 2026],
-      ['tprCompletionStatus', 'Complete'],
+      ['tprCompletionStatus', 'COMPLETE'],
       ['annualReportCompletionYear', 2025],
-      ['annualReportCompletionStatus', 'Incomplete'],
+      ['annualReportCompletionStatus', 'INCOMPLETE'],
     ])('saves %s when set', async (field, value) => {
       vi.spyOn(MockMongoRepository.prototype, 'getByAppointmentId').mockResolvedValue(null);
       const upsertSpy = vi
@@ -242,7 +249,7 @@ describe('TrusteeUpcomingKeyDatesUseCase', () => {
       expect(upsertSpy).toHaveBeenCalledWith(expect.objectContaining({ [field]: value }));
     });
 
-    test.each([['lastAuditFiscalYear'], ['upcomingExamOrAuditYear'], ['upcomingExamOrAuditType']])(
+    test.each([['leaseExpiration'], ['tprFrequency'], ['auditCompletionYear']])(
       'does not include %s in saved doc when null',
       async (field) => {
         vi.spyOn(MockMongoRepository.prototype, 'getByAppointmentId').mockResolvedValue(null);
@@ -268,18 +275,15 @@ describe('TrusteeUpcomingKeyDatesUseCase', () => {
     );
 
     test.each([
-      ['lastAuditFiscalYear', 2022, 2024],
-      ['upcomingExamOrAuditYear', 2027, 2029],
       ['leaseExpiration', '2026-06-30', '2027-06-30'],
-      ['idExpiration', '2027-01-15', '2028-01-15'],
-      ['lastCompensationStudy', '2023-06-01', '2024-06-01'],
       ['tprFrequency', 'ANNUAL', 'BIANNUAL'],
       ['bondIssuedDate', '2022-06-01', '2023-06-01'],
       ['bondRenewalDate', '2025-06-01', '2026-06-01'],
+      ['auditCompletionYear', 2025, 2026],
       ['tprCompletionYear', 2025, 2026],
-      ['tprCompletionStatus', 'Incomplete', 'Complete'],
+      ['tprCompletionStatus', 'INCOMPLETE', 'COMPLETE'],
       ['annualReportCompletionYear', 2024, 2025],
-      ['annualReportCompletionStatus', 'Complete', 'Incomplete'],
+      ['annualReportCompletionStatus', 'COMPLETE', 'INCOMPLETE'],
     ])('%s change is captured in audit history', async (field, before, after) => {
       const existing = buildMockDocument({ [field]: before });
       vi.spyOn(MockMongoRepository.prototype, 'getByAppointmentId').mockResolvedValue(existing);
@@ -335,17 +339,6 @@ describe('TrusteeUpcomingKeyDatesUseCase', () => {
     });
 
     test.each([
-      ['lastAuditFiscalYear', { lastAuditFiscalYear: 2022 }, { lastAuditFiscalYear: null }],
-      [
-        'upcomingExamOrAuditYear',
-        { upcomingExamOrAuditYear: 2027 },
-        { upcomingExamOrAuditYear: null },
-      ],
-      [
-        'upcomingExamOrAuditType',
-        { upcomingExamOrAuditType: 'Field Exam' as const },
-        { upcomingExamOrAuditType: null },
-      ],
       ['leaseExpiration', { leaseExpiration: '2027-06-30' }, { leaseExpiration: null }],
       ['idExpiration', { idExpiration: '2028-01-15' }, { idExpiration: null }],
       [
@@ -360,11 +353,13 @@ describe('TrusteeUpcomingKeyDatesUseCase', () => {
       ],
       [
         'tprCompletionStatus',
-        { tprCompletionStatus: 'Complete' as const },
+        { tprCompletionStatus: 'COMPLETE' as const },
         { tprCompletionStatus: null },
       ],
+      ['tprFrequency', { tprFrequency: 'ANNUAL' as const }, { tprFrequency: null }],
+      ['auditCompletionYear', { auditCompletionYear: 2025 }, { auditCompletionYear: null }],
     ])(
-      'scalar field cleared (%s → null): history shows old value in before, absent from after',
+      'field cleared (%s → null): history shows old value in before, absent from after',
       async (_field, existingOverride, inputOverride) => {
         const existing = buildMockDocument(existingOverride);
         vi.spyOn(MockMongoRepository.prototype, 'getByAppointmentId').mockResolvedValue(existing);

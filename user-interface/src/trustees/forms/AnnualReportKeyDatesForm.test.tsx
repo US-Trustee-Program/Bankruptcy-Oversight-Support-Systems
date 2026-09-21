@@ -50,10 +50,10 @@ describe('AnnualReportKeyDatesForm', () => {
     updatedBy: SYSTEM_USER_REFERENCE,
     updatedOn: '2026-01-01T00:00:00.000Z',
     annualReportCompletionYear: currentYear - 1,
-    annualReportCompletionStatus: 'Incomplete',
+    annualReportCompletionStatus: 'INCOMPLETE',
     // Owned by other cards; saving here must not disturb them.
     tprCompletionYear: currentYear,
-    tprCompletionStatus: 'Complete',
+    tprCompletionStatus: 'COMPLETE',
     tprReviewPeriodStart: '1900-04-01',
     tprReviewPeriodEnd: '1900-03-31',
     pastAudit: '2025-06-30',
@@ -98,7 +98,7 @@ describe('AnnualReportKeyDatesForm', () => {
         String(currentYear - 1),
       );
     });
-    expect(screen.getByTestId('annual-report-completion-status')).toHaveValue('Incomplete');
+    expect(screen.getByTestId('annual-report-completion-status')).toHaveValue('INCOMPLETE');
   });
 
   test('offers the current year and the ten years before it', async () => {
@@ -130,7 +130,7 @@ describe('AnnualReportKeyDatesForm', () => {
     const values = Array.from(select.options)
       .map((o) => o.value)
       .filter((v) => v !== '');
-    expect(values).toEqual(['Complete', 'Incomplete']);
+    expect(values).toEqual(['COMPLETE', 'INCOMPLETE']);
   });
 
   test('saves the edited pair and preserves fields owned by other cards', async () => {
@@ -149,7 +149,7 @@ describe('AnnualReportKeyDatesForm', () => {
     );
     await userEvent.selectOptions(
       screen.getByTestId('annual-report-completion-status'),
-      'Complete',
+      'COMPLETE',
     );
     await userEvent.click(screen.getByTestId('button-save-annual-report-key-dates'));
 
@@ -159,9 +159,9 @@ describe('AnnualReportKeyDatesForm', () => {
         'appointment-001',
         expect.objectContaining({
           annualReportCompletionYear: currentYear,
-          annualReportCompletionStatus: 'Complete',
+          annualReportCompletionStatus: 'COMPLETE',
           tprCompletionYear: currentYear,
-          tprCompletionStatus: 'Complete',
+          tprCompletionStatus: 'COMPLETE',
           tprReviewPeriodStart: '1900-04-01',
           pastAudit: '2025-06-30',
         }),
@@ -204,12 +204,12 @@ describe('AnnualReportKeyDatesForm', () => {
 
     await userEvent.selectOptions(
       screen.getByTestId('annual-report-completion-status'),
-      'Complete',
+      'COMPLETE',
     );
     await userEvent.click(screen.getByTestId('button-save-annual-report-key-dates'));
 
     expect(await screen.findByTestId('alert-annual-report-completion-error')).toHaveTextContent(
-      'Annual Report Completion Year is required.',
+      'Annual Report Completion Status Year is required.',
     );
     expect(putSpy).not.toHaveBeenCalled();
   });

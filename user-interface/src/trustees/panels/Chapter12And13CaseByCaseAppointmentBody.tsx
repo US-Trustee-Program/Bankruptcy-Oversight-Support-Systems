@@ -3,7 +3,6 @@ import AppointmentBasicFields from './AppointmentBasicFields';
 import AnnualReportKeyDatesCard from './AnnualReportKeyDatesCard';
 import TrusteePerformanceReportKeyDatesCard from './TrusteePerformanceReportKeyDatesCard';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
-import { getAppointmentDetails } from '@common/cams/trustees';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import useFeatureFlags, {
   DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES,
@@ -29,10 +28,7 @@ export default function Chapter12And13CaseByCaseAppointmentBody(
     error: keyDatesLoadError,
   } = useUpcomingKeyDates(appointment.trusteeId, appointment.id, displayKeyDates);
 
-  const appointmentHeading = buildAppointmentHeading(
-    appointment,
-    getAppointmentDetails(appointment.chapter, appointment.appointmentType),
-  );
+  const appointmentHeading = buildAppointmentHeading(appointment);
 
   return (
     <>

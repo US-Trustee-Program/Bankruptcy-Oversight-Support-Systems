@@ -52,29 +52,47 @@ describe('appointmentDisplay', () => {
   });
 
   describe('buildAppointmentHeading', () => {
-    test('includes the division display when courtDivisionName is present', () => {
+    test('includes the division name when present', () => {
       expect(
-        buildAppointmentHeading(
-          { courtName: 'Southern District of New York', courtDivisionName: 'Manhattan' },
-          '11 Subchapter V',
-        ),
-      ).toBe('Southern District of New York (Manhattan): Chapter 11 Subchapter V');
+        buildAppointmentHeading({
+          courtName: 'Southern District of New York',
+          courtDivisionName: 'Manhattan',
+          chapter: '7',
+          appointmentType: 'panel',
+        }),
+      ).toBe('Southern District of New York (Manhattan): Chapter 7 - Panel');
     });
 
-    test('omits the division parenthetical when courtDivisionName is absent', () => {
+    test('omits the division suffix when courtDivisionName is missing', () => {
       expect(
-        buildAppointmentHeading({ courtName: 'Southern District of New York' }, '7 Panel'),
-      ).toBe('Southern District of New York: Chapter 7 Panel');
+        buildAppointmentHeading({
+          courtName: 'District of Alaska',
+          chapter: '13',
+          appointmentType: 'standing',
+        }),
+      ).toBe('District of Alaska: Chapter 13 - Standing');
     });
 
-    test('falls back to courtId via buildDistrictDisplay when courtName is missing', () => {
-      expect(buildAppointmentHeading({ courtId: '0208' }, '7 Panel')).toBe(
-        'Court 0208: Chapter 7 Panel',
-      );
+    test('falls back to courtId when courtName is missing', () => {
+      expect(
+        buildAppointmentHeading({
+          courtId: '0208',
+          chapter: '11-subchapter-v',
+          appointmentType: 'pool',
+        }),
+      ).toBe('Court 0208: Chapter 11 Subchapter V - Pool');
     });
 
-    test('renders "Court undefined" when both courtName and courtId are missing', () => {
-      expect(buildAppointmentHeading({}, '7 Panel')).toBe('Court undefined: Chapter 7 Panel');
+    test('falls back to "Court undefined" when neither courtName nor courtId is present', () => {
+      // Documents buildDistrictDisplay's existing fallback for legacy/malformed
+      // ATS-migration data missing both fields -- see appointmentDisplay.ts's
+      // comment on buildDistrictDisplay.
+      expect(
+        buildAppointmentHeading({
+          chapter: '7',
+          appointmentType: 'panel',
+        }),
+      ).toBe('Court undefined: Chapter 7 - Panel');
     });
   });
 });

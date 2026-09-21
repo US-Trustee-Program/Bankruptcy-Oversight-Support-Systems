@@ -1,11 +1,32 @@
+@use 'styles/abstracts/device-screens' as device-screens;
+@use '@/lib/components/cams/CamsTable/cams-table-mixins' as cams-table;
 @import '@/lib/components/uswds/card-mixins';
 
-.editable-table-card-header {
-  @include card-header-with-action;
+.editable-table-card {
+  width: fit-content;
+  max-width: 100%;
 
-  .editable-table-card-heading {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
+  .editable-table-card-header {
+    @include card-header-with-action;
+
+    .editable-table-card-heading {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+  }
+}
+
+// EditableTableCard sizes itself to its content (see .editable-table-card above),
+// so its table's columns should size to their content too, rather than stretching
+// to fill equal shares of the available width.
+.editable-table-card-table.cams-table--responsive {
+  @media screen and (min-width: #{device-screens.$tablet-screen-extra-small + 1}) {
+    @include cams-table.cams-table-flex-row;
+
+    .cams-table__cell {
+      flex: 0 0 auto;
+      white-space: nowrap;
+    }
   }
 }

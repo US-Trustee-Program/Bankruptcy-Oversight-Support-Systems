@@ -1,7 +1,6 @@
 import AppointmentBasicFields from './AppointmentBasicFields';
 import PastKeyDates from './PastKeyDates';
 import { isChapter11SubchapterVPool, TrusteeAppointment } from '@common/cams/trustee-appointments';
-import { formatChapterType } from '@common/cams/trustees';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import useFeatureFlags, { DISPLAY_CHPT11_SUBV_PAST_KEY_DATES } from '@/lib/hooks/UseFeatureFlags';
 import { useUpcomingKeyDates } from './useUpcomingKeyDates';
@@ -25,10 +24,7 @@ export default function Chapter11SubchapterVAppointmentBody(
     error: keyDatesLoadError,
   } = useUpcomingKeyDates(appointment.trusteeId, appointment.id, shouldShowPoolPastKeyDates);
 
-  const appointmentHeading = buildAppointmentHeading(
-    appointment,
-    formatChapterType(appointment.chapter),
-  );
+  const appointmentHeading = buildAppointmentHeading(appointment);
 
   return (
     <>

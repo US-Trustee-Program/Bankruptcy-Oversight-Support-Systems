@@ -1,7 +1,6 @@
 import AppointmentBasicFields from './AppointmentBasicFields';
 import BondKeyDatesCard from './BondKeyDatesCard';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
-import { getAppointmentDetails } from '@common/cams/trustees';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import useFeatureFlags, { DISPLAY_CHPT7_ELECTED_KEY_DATES } from '@/lib/hooks/UseFeatureFlags';
 import { useUpcomingKeyDates } from './useUpcomingKeyDates';
@@ -26,10 +25,7 @@ export default function Chapter7ElectedAppointmentBody(
     error: keyDatesLoadError,
   } = useUpcomingKeyDates(appointment.trusteeId, appointment.id, displayKeyDates);
 
-  const appointmentHeading = buildAppointmentHeading(
-    appointment,
-    getAppointmentDetails(appointment.chapter, appointment.appointmentType),
-  );
+  const appointmentHeading = buildAppointmentHeading(appointment);
 
   return (
     <>

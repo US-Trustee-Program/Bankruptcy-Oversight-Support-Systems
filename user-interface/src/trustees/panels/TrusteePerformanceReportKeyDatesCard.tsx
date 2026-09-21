@@ -3,13 +3,13 @@ import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import EditableTableCard from '@/lib/components/cams/EditableTableCard/EditableTableCard';
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
-import { buildCompletionTag } from './completionTag';
 import {
-  formatLastTprSubmitted,
-  formatTprDue,
-  formatTprFrequency,
-  formatTprReviewPeriod,
-} from './tprFieldFormatters';
+  buildCompletionTag,
+  formatDateOrDefault,
+  tprDueField,
+  tprFrequencyField,
+  tprReviewPeriodField,
+} from './upcomingKeyDatesFieldConfig';
 
 export interface TrusteePerformanceReportKeyDatesCardProps {
   trusteeId: string;
@@ -27,7 +27,7 @@ export default function TrusteePerformanceReportKeyDatesCard(
   const canManage = useCanManageTrustees();
 
   function openEdit() {
-    navigate(`/trustees/${trusteeId}/appointments/${appointmentId}/tpr-key-dates/edit`, {
+    navigate(`/trustees/${trusteeId}/appointments/${appointmentId}/ch12-13-tpr-key-dates/edit`, {
       state: { subHeading: appointmentHeading ?? '' },
     });
   }
@@ -46,9 +46,10 @@ export default function TrusteePerformanceReportKeyDatesCard(
       tableClassName="tpr-key-dates-table"
       tableAriaLabel="Trustee Performance Report key dates"
       tag={buildCompletionTag(
-        `tpr-completion-status-${appointmentId}`,
         data?.tprCompletionYear,
         data?.tprCompletionStatus,
+        'COMPLETE',
+        `tpr-completion-status-${appointmentId}`,
       )}
       onEdit={canManage ? openEdit : undefined}
       editAriaLabel="Edit Trustee Performance Report key dates"
@@ -60,10 +61,12 @@ export default function TrusteePerformanceReportKeyDatesCard(
         { key: 'lastTprSubmitted', header: 'Last TPR Submitted', testId: 'last-tpr-submitted' },
       ]}
       values={{
-        tprReviewPeriod: formatTprReviewPeriod(data),
-        tprFrequency: formatTprFrequency(data),
-        tprDue: formatTprDue(data),
-        lastTprSubmitted: formatLastTprSubmitted(data),
+        tprReviewPeriod: tprReviewPeriodField(data).value,
+        tprFrequency: tprFrequencyField(data).value,
+        tprDue: tprDueField(data).value,
+        // CAMS-912 added lastTprSubmitted as a field distinct from the
+        // pastTprSubmission used by the Chapter 7 Panel past-dates card.
+        lastTprSubmitted: formatDateOrDefault(data?.lastTprSubmitted),
       }}
     />
   );
