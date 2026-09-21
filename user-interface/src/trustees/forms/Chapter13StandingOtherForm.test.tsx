@@ -72,6 +72,7 @@ describe('Chapter13StandingOtherForm', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    mockNavigate.mockClear();
     mockUseNavigate.mockReturnValue(mockNavigate);
     mockGlobalAlertRef.current.error.mockClear();
     TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
@@ -140,5 +141,29 @@ describe('Chapter13StandingOtherForm', () => {
 
     expect(putSpy).not.toHaveBeenCalled();
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');
+  });
+
+  test('shows an error alert when load fails', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockRejectedValue(new Error('network error'));
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(mockGlobalAlertRef.current.error).toHaveBeenCalled();
+    });
+  });
+
+  test('shows an error alert when save fails', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: existingDocument });
+    vi.spyOn(Api2, 'putUpcomingKeyDates').mockRejectedValue(new Error('network error'));
+
+    renderComponent();
+    await screen.findByTestId('lease-expiration');
+
+    await userEvent.click(screen.getByTestId('button-save-chapter13-standing-other-key-dates'));
+
+    await waitFor(() => {
+      expect(mockGlobalAlertRef.current.error).toHaveBeenCalled();
+    });
   });
 });

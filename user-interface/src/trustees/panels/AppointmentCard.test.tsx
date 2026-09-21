@@ -767,7 +767,7 @@ describe('AppointmentCard', () => {
 
       const tag = screen.getByTestId('tag-appointment-status');
       expect(tag).toHaveTextContent('Voluntarily Suspended');
-      expect(tag).toHaveStyle({ backgroundColor: '#71767A' });
+      expect(tag.className).toContain('bg-base');
     });
 
     test('accordion body shows Appointed Date, Status Effective Date, and an Edit Appointment button', () => {

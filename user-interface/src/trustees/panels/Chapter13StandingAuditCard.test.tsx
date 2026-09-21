@@ -49,6 +49,7 @@ describe('Chapter13StandingAuditCard', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    mockNavigate.mockClear();
     mockUseNavigate.mockReturnValue(mockNavigate);
     TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
   });
@@ -89,7 +90,7 @@ describe('Chapter13StandingAuditCard', () => {
     });
     const tag = screen.getByTestId('tag-audit-completion-status');
     expect(tag).toHaveTextContent('Incomplete for 2026');
-    expect(tag).toHaveStyle({ backgroundColor: '#B50909' });
+    expect(tag.className).toContain('bg-secondary-dark');
   });
 
   test('Edit pencil navigates to the dedicated Audit edit route when canManage', () => {

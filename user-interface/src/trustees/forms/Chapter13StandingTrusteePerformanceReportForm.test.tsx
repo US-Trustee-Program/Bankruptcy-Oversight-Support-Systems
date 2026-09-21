@@ -74,6 +74,7 @@ describe('Chapter13StandingTrusteePerformanceReportForm', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    mockNavigate.mockClear();
     mockUseNavigate.mockReturnValue(mockNavigate);
     mockGlobalAlertRef.current.error.mockClear();
     TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
@@ -157,5 +158,31 @@ describe('Chapter13StandingTrusteePerformanceReportForm', () => {
 
     expect(putSpy).not.toHaveBeenCalled();
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');
+  });
+
+  test('shows an error alert when load fails', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockRejectedValue(new Error('network error'));
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(mockGlobalAlertRef.current.error).toHaveBeenCalled();
+    });
+  });
+
+  test('shows an error alert when save fails', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: existingDocument });
+    vi.spyOn(Api2, 'putUpcomingKeyDates').mockRejectedValue(new Error('network error'));
+
+    renderComponent();
+    await screen.findByTestId('tpr-review-period-start');
+
+    await userEvent.selectOptions(screen.getByTestId('tpr-completion-year'), '2026');
+    await userEvent.selectOptions(screen.getByTestId('tpr-completion-status'), 'Complete');
+    await userEvent.click(screen.getByTestId('button-save-chapter13-standing-tpr-key-dates'));
+
+    await waitFor(() => {
+      expect(mockGlobalAlertRef.current.error).toHaveBeenCalled();
+    });
   });
 });

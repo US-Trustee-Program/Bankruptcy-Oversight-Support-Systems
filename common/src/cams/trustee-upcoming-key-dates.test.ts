@@ -592,6 +592,100 @@ describe('validateTrusteeUpcomingKeyDates', () => {
     ).toEqual(VALID);
   });
 
+  test.each([
+    ['auditCompletionStatus' as const, 'Audit Completion Status'],
+    ['tprCompletionStatus' as const, 'TPR Completion Status'],
+  ])('returns error when %s contains a value outside the allowed enum', (field, label) => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      [field]: 'garbage',
+    } as unknown as ReturnType<typeof baseInput>);
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.[field]?.reasons?.[0]).toBe(
+      `${label} must be one of: Complete, Incomplete.`,
+    );
+  });
+
+  test.each([
+    ['auditCompletionStatus' as const, 'Complete'],
+    ['auditCompletionStatus' as const, 'Incomplete'],
+    ['tprCompletionStatus' as const, 'Complete'],
+    ['tprCompletionStatus' as const, 'Incomplete'],
+  ])('returns VALID when %s is %s', (field, value) => {
+    const yearField =
+      field === 'auditCompletionStatus' ? 'auditCompletionYear' : 'tprCompletionYear';
+    expect(
+      validateTrusteeUpcomingKeyDates({
+        ...baseInput(),
+        [field]: value,
+        [yearField]: 2026,
+      }),
+    ).toEqual(VALID);
+  });
+
+  test.each([
+    ['auditCompletionYear' as const, 'Audit Completion Year'],
+    ['tprCompletionYear' as const, 'TPR Completion Year'],
+  ])('returns error when %s is below the allowed range', (field, label) => {
+    const statusField =
+      field === 'auditCompletionYear' ? 'auditCompletionStatus' : 'tprCompletionStatus';
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      [field]: 1899,
+      [statusField]: 'Complete',
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.[field]?.reasons?.[0]).toBe(
+      `${label} must be a whole number between 1900 and 2100.`,
+    );
+  });
+
+  test.each([
+    ['auditCompletionYear' as const, 'Audit Completion Year'],
+    ['tprCompletionYear' as const, 'TPR Completion Year'],
+  ])('returns error when %s is above the allowed range', (field, label) => {
+    const statusField =
+      field === 'auditCompletionYear' ? 'auditCompletionStatus' : 'tprCompletionStatus';
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      [field]: 2101,
+      [statusField]: 'Complete',
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.[field]?.reasons?.[0]).toBe(
+      `${label} must be a whole number between 1900 and 2100.`,
+    );
+  });
+
+  test.each([
+    ['auditCompletionYear' as const, 'Audit Completion Year'],
+    ['tprCompletionYear' as const, 'TPR Completion Year'],
+  ])('returns error when %s is not an integer', (field, label) => {
+    const statusField =
+      field === 'auditCompletionYear' ? 'auditCompletionStatus' : 'tprCompletionStatus';
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      [field]: 2025.5,
+      [statusField]: 'Complete',
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.[field]?.reasons?.[0]).toBe(
+      `${label} must be a whole number between 1900 and 2100.`,
+    );
+  });
+
+  test.each([['auditCompletionYear' as const], ['tprCompletionYear' as const]])(
+    'returns VALID when %s is null',
+    (field) => {
+      expect(
+        validateTrusteeUpcomingKeyDates({
+          ...baseInput(),
+          [field]: null,
+        }),
+      ).toEqual(VALID);
+    },
+  );
+
   test('returns error when a sentinel date field contains an invalid ISO date', () => {
     const result = validateTrusteeUpcomingKeyDates({
       ...baseInput(),

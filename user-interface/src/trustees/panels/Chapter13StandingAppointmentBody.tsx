@@ -76,7 +76,7 @@ export default function Chapter13StandingAppointmentBody(
                 Active
               </Tag>
             ) : (
-              <Tag id="appointment-status" style={{ backgroundColor: '#71767A', color: 'white' }}>
+              <Tag id="appointment-status" uswdsStyle={UswdsTagStyle.Default}>
                 {formattedStatus}
               </Tag>
             )}

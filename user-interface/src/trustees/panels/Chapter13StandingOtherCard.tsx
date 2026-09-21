@@ -4,9 +4,8 @@ import {
   isoToMMDDYYYY,
   isoToMMYYYY,
 } from '@common/cams/trustee-upcoming-key-dates';
-import LocalStorage from '@/lib/utils/local-storage';
-import { CamsRole } from '@common/cams/roles';
 import Chapter13StandingKeyDatesCard from './Chapter13StandingKeyDatesCard';
+import { useCanManageTrustees } from './useCanManageTrustees';
 import { leaseExpirationField, idExpirationField } from './upcomingKeyDatesFieldConfig';
 
 export interface Chapter13StandingOtherCardProps {
@@ -23,8 +22,7 @@ export default function Chapter13StandingOtherCard(
 ) {
   const { trusteeId, appointmentId, appointmentHeading, data } = props;
   const navigate = useNavigate();
-  const session = LocalStorage.getSession();
-  const canManage = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
+  const canManage = useCanManageTrustees();
 
   function openEdit() {
     navigate(

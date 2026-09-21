@@ -28,8 +28,6 @@ export default function Chapter13StandingKeyDatesCard(
   props: Readonly<Chapter13StandingKeyDatesCardProps>,
 ) {
   const { title, tag, onEdit, editAriaLabel, editTitle, testId, fields } = props;
-  const effectiveEditTitle = editTitle ?? 'Edit';
-  const effectiveEditAriaLabel = editAriaLabel ?? effectiveEditTitle;
 
   return (
     <div className="key-dates-card usa-card" data-testid={testId}>
@@ -42,8 +40,8 @@ export default function Chapter13StandingKeyDatesCard(
               <Button
                 id={`edit-${testId}`}
                 uswdsStyle={UswdsButtonStyle.Unstyled}
-                aria-label={effectiveEditAriaLabel}
-                title={effectiveEditTitle}
+                aria-label={editAriaLabel}
+                title={editTitle}
                 onClick={onEdit}
               >
                 <IconLabel icon="edit" label="Edit" />

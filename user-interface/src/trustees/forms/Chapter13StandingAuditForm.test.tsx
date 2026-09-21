@@ -70,6 +70,7 @@ describe('Chapter13StandingAuditForm', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    mockNavigate.mockClear();
     mockUseNavigate.mockReturnValue(mockNavigate);
     mockGlobalAlertRef.current.error.mockClear();
     TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
@@ -160,6 +161,16 @@ describe('Chapter13StandingAuditForm', () => {
 
     expect(putSpy).not.toHaveBeenCalled();
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');
+  });
+
+  test('shows an error alert when load fails', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockRejectedValue(new Error('network error'));
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(mockGlobalAlertRef.current.error).toHaveBeenCalled();
+    });
   });
 
   test('shows an error alert when save fails', async () => {

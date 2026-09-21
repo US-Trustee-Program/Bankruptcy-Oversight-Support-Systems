@@ -1,9 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import { TrusteeUpcomingKeyDates, isoToMMDDYYYY } from '@common/cams/trustee-upcoming-key-dates';
-import LocalStorage from '@/lib/utils/local-storage';
-import { CamsRole } from '@common/cams/roles';
 import Chapter13StandingKeyDatesCard from './Chapter13StandingKeyDatesCard';
-import Tag, { UswdsTagStyle } from '@/lib/components/uswds/Tag';
+import { useCanManageTrustees } from './useCanManageTrustees';
+import CompletionStatusTag from './CompletionStatusTag';
 import {
   tprReviewPeriodField,
   tprFrequencyField,
@@ -24,8 +23,7 @@ export default function Chapter13StandingTrusteePerformanceReportCard(
 ) {
   const { trusteeId, appointmentId, appointmentHeading, data } = props;
   const navigate = useNavigate();
-  const session = LocalStorage.getSession();
-  const canManage = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
+  const canManage = useCanManageTrustees();
 
   function openEdit() {
     navigate(
@@ -36,15 +34,11 @@ export default function Chapter13StandingTrusteePerformanceReportCard(
 
   const tag =
     data?.tprCompletionYear && data?.tprCompletionStatus ? (
-      data.tprCompletionStatus === 'Complete' ? (
-        <Tag id="tpr-completion-status" uswdsStyle={UswdsTagStyle.Green}>
-          Complete for {data.tprCompletionYear}
-        </Tag>
-      ) : (
-        <Tag id="tpr-completion-status" style={{ backgroundColor: '#B50909', color: 'white' }}>
-          Incomplete for {data.tprCompletionYear}
-        </Tag>
-      )
+      <CompletionStatusTag
+        id="tpr-completion-status"
+        status={data.tprCompletionStatus}
+        year={data.tprCompletionYear}
+      />
     ) : undefined;
 
   const reviewPeriod = tprReviewPeriodField(data, 'TPR Review Period');

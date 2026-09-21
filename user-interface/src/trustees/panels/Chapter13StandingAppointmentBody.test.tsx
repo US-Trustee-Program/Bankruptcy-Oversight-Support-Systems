@@ -56,6 +56,7 @@ describe('Chapter13StandingAppointmentBody', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    mockNavigate.mockClear();
     mockUseNavigate.mockReturnValue(mockNavigate);
     TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
   });
@@ -78,7 +79,7 @@ describe('Chapter13StandingAppointmentBody', () => {
     renderComponent({ appointment: { ...appointment, status: 'inactive' } });
     const tag = screen.getByTestId('tag-appointment-status');
     expect(tag).toHaveTextContent('Inactive');
-    expect(tag).toHaveStyle({ backgroundColor: '#71767A' });
+    expect(tag.className).toContain('bg-base');
   });
 
   test('shows a loading spinner instead of the cards while key dates are loading', () => {

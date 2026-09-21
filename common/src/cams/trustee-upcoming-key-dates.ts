@@ -126,6 +126,62 @@ function requireChronologicalOrder(
   };
 }
 
+const COMPLETION_STATUS_VALUES = ['Complete', 'Incomplete'] as const;
+const MIN_COMPLETION_YEAR = 1900;
+const MAX_COMPLETION_YEAR = 2100;
+
+function validateCompletionStatus(value: unknown, label: string): ValidatorResult {
+  if (value === null || value === undefined) return VALID;
+  if (!COMPLETION_STATUS_VALUES.includes(value as (typeof COMPLETION_STATUS_VALUES)[number])) {
+    return { reasons: [`${label} must be one of: ${COMPLETION_STATUS_VALUES.join(', ')}.`] };
+  }
+  return VALID;
+}
+
+function validateCompletionYear(value: unknown, label: string): ValidatorResult {
+  if (value === null || value === undefined) return VALID;
+  const isValidYear =
+    typeof value === 'number' &&
+    Number.isInteger(value) &&
+    value >= MIN_COMPLETION_YEAR &&
+    value <= MAX_COMPLETION_YEAR;
+  if (!isValidYear) {
+    return {
+      reasons: [
+        `${label} must be a whole number between ${MIN_COMPLETION_YEAR} and ${MAX_COMPLETION_YEAR}.`,
+      ],
+    };
+  }
+  return VALID;
+}
+
+function validateCompletionFields(): ValidatorFunction {
+  return (obj: unknown): ValidatorResult => {
+    const input = obj as TrusteeUpcomingKeyDatesInput;
+    const reasonMap: ValidatorReasonMap = {};
+
+    const statusResult = validateCompletionStatus(
+      input.auditCompletionStatus,
+      'Audit Completion Status',
+    );
+    if (!statusResult.valid) reasonMap.auditCompletionStatus = statusResult;
+
+    const tprStatusResult = validateCompletionStatus(
+      input.tprCompletionStatus,
+      'TPR Completion Status',
+    );
+    if (!tprStatusResult.valid) reasonMap.tprCompletionStatus = tprStatusResult;
+
+    const yearResult = validateCompletionYear(input.auditCompletionYear, 'Audit Completion Year');
+    if (!yearResult.valid) reasonMap.auditCompletionYear = yearResult;
+
+    const tprYearResult = validateCompletionYear(input.tprCompletionYear, 'TPR Completion Year');
+    if (!tprYearResult.valid) reasonMap.tprCompletionYear = tprYearResult;
+
+    return Object.keys(reasonMap).length > 0 ? { reasonMap } : VALID;
+  };
+}
+
 function validateDateFields(): ValidatorFunction {
   return (obj: unknown): ValidatorResult => {
     const input = obj as TrusteeUpcomingKeyDatesInput;
@@ -181,6 +237,7 @@ function validateDateFields(): ValidatorFunction {
 const trusteeUpcomingKeyDatesSpec: ValidationSpec<TrusteeUpcomingKeyDatesInput> = {
   $: [
     validateDateFields(),
+    validateCompletionFields(),
     requirePair(
       'tprReviewPeriodStart',
       'tprReviewPeriodEnd',

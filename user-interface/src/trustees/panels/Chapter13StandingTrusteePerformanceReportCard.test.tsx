@@ -49,6 +49,7 @@ describe('Chapter13StandingTrusteePerformanceReportCard', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    mockNavigate.mockClear();
     mockUseNavigate.mockReturnValue(mockNavigate);
     TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
   });
@@ -90,7 +91,7 @@ describe('Chapter13StandingTrusteePerformanceReportCard', () => {
     });
     const tag = screen.getByTestId('tag-tpr-completion-status');
     expect(tag).toHaveTextContent('Incomplete for 2026');
-    expect(tag).toHaveStyle({ backgroundColor: '#B50909' });
+    expect(tag.className).toContain('bg-secondary-dark');
   });
 
   test('Edit pencil navigates to the dedicated TPR edit route when canManage', () => {

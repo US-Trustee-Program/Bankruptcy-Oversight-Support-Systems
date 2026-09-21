@@ -1,9 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import { TrusteeUpcomingKeyDates, isoToMMDDYYYY } from '@common/cams/trustee-upcoming-key-dates';
-import LocalStorage from '@/lib/utils/local-storage';
-import { CamsRole } from '@common/cams/roles';
 import Chapter13StandingKeyDatesCard from './Chapter13StandingKeyDatesCard';
-import Tag, { UswdsTagStyle } from '@/lib/components/uswds/Tag';
+import { useCanManageTrustees } from './useCanManageTrustees';
+import CompletionStatusTag from './CompletionStatusTag';
 
 export interface Chapter13StandingAuditCardProps {
   trusteeId: string;
@@ -20,8 +19,7 @@ export default function Chapter13StandingAuditCard(
 ) {
   const { trusteeId, appointmentId, appointmentHeading, data } = props;
   const navigate = useNavigate();
-  const session = LocalStorage.getSession();
-  const canManage = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
+  const canManage = useCanManageTrustees();
 
   function openEdit() {
     navigate(
@@ -32,15 +30,11 @@ export default function Chapter13StandingAuditCard(
 
   const tag =
     data?.auditCompletionYear && data?.auditCompletionStatus ? (
-      data.auditCompletionStatus === 'Complete' ? (
-        <Tag id="audit-completion-status" uswdsStyle={UswdsTagStyle.Green}>
-          Complete for {data.auditCompletionYear}
-        </Tag>
-      ) : (
-        <Tag id="audit-completion-status" style={{ backgroundColor: '#B50909', color: 'white' }}>
-          Incomplete for {data.auditCompletionYear}
-        </Tag>
-      )
+      <CompletionStatusTag
+        id="audit-completion-status"
+        status={data.auditCompletionStatus}
+        year={data.auditCompletionYear}
+      />
     ) : undefined;
 
   return (
