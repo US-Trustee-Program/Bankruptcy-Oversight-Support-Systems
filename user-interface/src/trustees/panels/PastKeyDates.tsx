@@ -8,7 +8,11 @@ import {
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import InfoCard from './InfoCard';
-import { PAST_KEY_DATES_FIELD_CONFIG, PastKeyDatesVariant } from './pastKeyDatesFieldConfig';
+import {
+  PAST_KEY_DATES_FIELD_CONFIG,
+  PAST_KEY_DATES_VARIANT_LABELS,
+  PastKeyDatesVariant,
+} from './pastKeyDatesFieldConfig';
 
 export interface PastKeyDatesProps {
   variant: PastKeyDatesVariant;
@@ -67,13 +71,15 @@ export default function PastKeyDates(props: Readonly<PastKeyDatesProps>) {
     };
   });
 
+  const { cardTitle, editHeading } = PAST_KEY_DATES_VARIANT_LABELS[variant];
+
   return (
     <InfoCard
       id="edit-past-key-dates"
-      title="Past Key Dates"
+      title={cardTitle}
       onEdit={canManage ? openEdit : undefined}
-      editAriaLabel="Edit past key dates"
-      editTitle="Edit past key dates"
+      editAriaLabel={editHeading}
+      editTitle={editHeading}
       testId="past-key-dates-card"
       listTestId="past-key-dates-list"
       fields={fields}

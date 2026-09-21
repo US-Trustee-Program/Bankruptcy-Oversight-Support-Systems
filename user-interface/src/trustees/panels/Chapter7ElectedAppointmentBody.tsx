@@ -5,7 +5,7 @@ import { getAppointmentDetails } from '@common/cams/trustees';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import useFeatureFlags, { DISPLAY_CHPT7_ELECTED_KEY_DATES } from '@/lib/hooks/UseFeatureFlags';
 import { useUpcomingKeyDates } from './useUpcomingKeyDates';
-import { buildDistrictDisplay } from './appointmentDisplay';
+import { buildAppointmentHeading } from './appointmentDisplay';
 
 export interface Chapter7ElectedAppointmentBodyProps {
   appointment: TrusteeAppointment;
@@ -26,10 +26,10 @@ export default function Chapter7ElectedAppointmentBody(
     error: keyDatesLoadError,
   } = useUpcomingKeyDates(appointment.trusteeId, appointment.id, displayKeyDates);
 
-  const districtDisplay = buildDistrictDisplay(appointment);
-  const appointmentHeading = `${districtDisplay}${
-    appointment.courtDivisionName ? ` (${appointment.courtDivisionName})` : ''
-  }: Chapter ${getAppointmentDetails(appointment.chapter, appointment.appointmentType)}`;
+  const appointmentHeading = buildAppointmentHeading(
+    appointment,
+    getAppointmentDetails(appointment.chapter, appointment.appointmentType),
+  );
 
   return (
     <>

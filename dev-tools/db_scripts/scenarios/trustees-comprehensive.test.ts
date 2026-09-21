@@ -7,7 +7,7 @@ describe('trustees-comprehensive scenario', () => {
     generateCaseId: vi.fn(),
   };
 
-  test('generates 34 trustees and 41 appointments', async () => {
+  test('generates 35 trustees and 43 appointments', async () => {
     const ops = await generate(mockContext);
 
     expect(ops).toHaveLength(2);
@@ -16,15 +16,17 @@ describe('trustees-comprehensive scenario', () => {
     const appointmentsOp = ops.find((op) => op.collectionOrTable === 'trustee-appointments');
 
     expect(trusteesOp?.db).toBe('cams');
-    expect(trusteesOp?.data).toHaveLength(34);
+    expect(trusteesOp?.data).toHaveLength(35);
 
-    // 34 single-court trustees + Patricia Manhattan's 5 extra cross-court
+    // 35 single-court trustees + Patricia Manhattan's 5 extra cross-court
     // appointments (CA Eastern, CA Northern, ID, IA Northern, IA Southern) +
     // Olivia Ashworth's 1 extra appointment (active Ch11 case-by-case
     // alongside her inactive one) + Marcus Whitfield's 1 extra appointment
-    // (active Ch7 Elected alongside his inactive one) = 41.
+    // (active Ch7 Elected alongside his inactive one) + Derek Pemberton's 1
+    // extra appointment (Ch11 Subchapter V Pool alongside his Out of Pool
+    // one) = 43.
     expect(appointmentsOp?.db).toBe('cams');
-    expect(appointmentsOp?.data).toHaveLength(41);
+    expect(appointmentsOp?.data).toHaveLength(43);
   });
 
   test('all trustees have documentType TRUSTEE', async () => {
@@ -62,14 +64,14 @@ describe('trustees-comprehensive scenario', () => {
       expect(appt.trusteeId).toBeTruthy();
       expect(appt.chapter).toBeTruthy();
       expect(appt.appointmentType).toMatch(
-        /^(panel|standing|off-panel|case-by-case|pool|elected)$/,
+        /^(panel|standing|off-panel|case-by-case|pool|out-of-pool|elected)$/,
       );
       expect(Array.isArray(appt.divisionCodes)).toBe(true);
       expect((appt.divisionCodes as unknown[]).length).toBeGreaterThan(0);
     });
   });
 
-  test('all 34 trustees are based in New York', async () => {
+  test('all 35 trustees are based in New York', async () => {
     const ops = await generate(mockContext);
     const trustees = ops.find((op) => op.collectionOrTable === 'trustees')?.data || [];
 
@@ -83,7 +85,7 @@ describe('trustees-comprehensive scenario', () => {
     // All trustees are seeded with NY public addresses; Patricia Manhattan
     // (seed-trustee-ny-002) holds appointments in other states but the
     // trustee profile itself is NY.
-    expect(byState).toEqual({ NY: 34 });
+    expect(byState).toEqual({ NY: 35 });
   });
 
   test('includes all chapter types', async () => {
@@ -99,7 +101,7 @@ describe('trustees-comprehensive scenario', () => {
     expect(chapters).toContain('11-subchapter-v');
   });
 
-  test('includes panel, standing, pool, off-panel, case-by-case, and elected appointment types', async () => {
+  test('includes panel, standing, pool, out-of-pool, off-panel, case-by-case, and elected appointment types', async () => {
     const ops = await generate(mockContext);
     const appointments =
       ops.find((op) => op.collectionOrTable === 'trustee-appointments')?.data || [];
@@ -108,6 +110,7 @@ describe('trustees-comprehensive scenario', () => {
     expect(types).toContain('panel');
     expect(types).toContain('standing');
     expect(types).toContain('pool');
+    expect(types).toContain('out-of-pool');
     expect(types).toContain('off-panel');
     expect(types).toContain('case-by-case');
     expect(types).toContain('elected');
@@ -125,6 +128,27 @@ describe('trustees-comprehensive scenario', () => {
       (a: Record<string, unknown>) => a.trusteeId === 'seed-trustee-ny-002',
     );
     expect(ny002Appts.length).toBe(6);
+  });
+
+  test('includes a trustee with paired Pool and Out of Pool Ch11 Subchapter V appointments', async () => {
+    const ops = await generate(mockContext);
+    const appointments =
+      ops.find((op) => op.collectionOrTable === 'trustee-appointments')?.data || [];
+
+    // Derek Pemberton (seed-trustee-add-027) holds both a Pool and an Out of
+    // Pool appointment to exercise the appointment accordion's Pool and Out
+    // of Pool bodies on the same trustee.
+    const add027Appts = appointments.filter(
+      (a: Record<string, unknown>) => a.trusteeId === 'seed-trustee-add-027',
+    );
+    expect(add027Appts).toHaveLength(2);
+
+    const pool = add027Appts.find((a: Record<string, unknown>) => a.appointmentType === 'pool');
+    const outOfPool = add027Appts.find(
+      (a: Record<string, unknown>) => a.appointmentType === 'out-of-pool',
+    );
+    expect(pool?.status).toBe('active');
+    expect(outOfPool?.status).toBe('resigned');
   });
 
   test('includes both active and inactive statuses', async () => {
@@ -147,8 +171,8 @@ describe('trustees-comprehensive scenario', () => {
       appointments.map((a: Record<string, unknown>) => a.trusteeId),
     );
 
-    expect(trusteeIds.size).toBe(34);
-    expect(appointmentTrusteeIds.size).toBe(34);
+    expect(trusteeIds.size).toBe(35);
+    expect(appointmentTrusteeIds.size).toBe(35);
     expect(trusteeIds).toEqual(appointmentTrusteeIds);
   });
 
@@ -156,13 +180,13 @@ describe('trustees-comprehensive scenario', () => {
   // Chapter 11: 6 single-court appointments + 1 from Patricia Manhattan (CA Northern case-by-case) + Olivia Ashworth's active and inactive Ch11 case-by-case appointments (Additional-25)
   // Chapter 12: 3 single-court appointments + 1 from Patricia Manhattan (ID standing)
   // Chapter 13: 8 single-court appointments + 2 from Patricia Manhattan (IA Northern case-by-case, IA Southern standing)
-  // Chapter 11 Subchapter V: 3 single-court appointments
+  // Chapter 11 Subchapter V: 3 single-court appointments + Derek Pemberton's Pool and Out of Pool appointments (Additional-27)
   test.each([
     ['7', 15],
     ['11', 9],
     ['12', 4],
     ['13', 10],
-    ['11-subchapter-v', 3],
+    ['11-subchapter-v', 5],
   ])('chapter %s appointments have expected count of %i', async (chapter, expectedCount) => {
     const ops = await generate(mockContext);
     const appointments =

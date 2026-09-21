@@ -12,7 +12,6 @@ import * as featureFlagsHook from '@/lib/hooks/UseFeatureFlags';
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import {
   DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES,
-  DISPLAY_CHPT11_SUBV_PAST_KEY_DATES,
   DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES,
   DISPLAY_CHPT12_STANDING_KEY_DATES,
   DISPLAY_CHPT13_STANDING_KEY_DATES,
@@ -349,72 +348,6 @@ describe('AppointmentCard', () => {
     });
 
     expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
-  });
-
-  describe('Chapter 11 Subchapter V Pool past key dates', () => {
-    const subVAppointment: TrusteeAppointment = {
-      ...mockAppointment,
-      chapter: '11-subchapter-v',
-      appointmentType: 'pool',
-    };
-
-    // AppointmentCard's own concern is whether the PastKeyDates card renders
-    // at all (the flag/chapter/appointmentType gate) — NOT whether its Edit
-    // button shows for a given role. That role-based visibility is
-    // PastKeyDates' own contract and is covered in PastKeyDates.test.tsx.
-    test('renders PastKeyDates card for non-TrusteeAdmin user when flag enabled (no canManage gate)', () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT11_SUBV_PAST_KEY_DATES]: true,
-      });
-      TestingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
-
-      renderWithProps({ appointment: subVAppointment });
-
-      expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
-    });
-
-    test('renders PastKeyDates card for TrusteeAdmin when flag enabled', () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT11_SUBV_PAST_KEY_DATES]: true,
-      });
-
-      renderWithProps({ appointment: subVAppointment });
-
-      expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
-    });
-
-    test('does not render UpcomingKeyDates card for Ch11-SubV appointment', () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT11_SUBV_PAST_KEY_DATES]: true,
-      });
-
-      renderWithProps({ appointment: subVAppointment });
-
-      expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
-      expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
-    });
-
-    test('does not render PastKeyDates card when flag is disabled', () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT11_SUBV_PAST_KEY_DATES]: false,
-      });
-
-      renderWithProps({ appointment: subVAppointment });
-
-      expect(screen.queryByTestId('past-key-dates-card')).not.toBeInTheDocument();
-    });
-
-    test('does not render PastKeyDates card for a non-pool Ch11-SubV appointment type', () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT11_SUBV_PAST_KEY_DATES]: true,
-      });
-
-      renderWithProps({
-        appointment: { ...mockAppointment, chapter: '11-subchapter-v', appointmentType: 'panel' },
-      });
-
-      expect(screen.queryByTestId('past-key-dates-card')).not.toBeInTheDocument();
-    });
   });
 
   describe('Chapter 12/13 Case by Case upcoming key dates', () => {

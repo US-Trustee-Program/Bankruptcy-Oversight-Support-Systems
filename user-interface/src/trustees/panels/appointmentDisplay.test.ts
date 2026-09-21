@@ -2,6 +2,7 @@ import {
   isActiveAppointment,
   formatAppointmentDate,
   buildDistrictDisplay,
+  buildAppointmentHeading,
 } from './appointmentDisplay';
 import { AppointmentStatus } from '@common/cams/trustees';
 
@@ -43,6 +44,37 @@ describe('appointmentDisplay', () => {
 
     test('falls back to courtId when courtName is missing', () => {
       expect(buildDistrictDisplay({ courtId: '0208' })).toBe('Court 0208');
+    });
+
+    test('renders "Court undefined" when both courtName and courtId are missing', () => {
+      expect(buildDistrictDisplay({})).toBe('Court undefined');
+    });
+  });
+
+  describe('buildAppointmentHeading', () => {
+    test('includes the division display when courtDivisionName is present', () => {
+      expect(
+        buildAppointmentHeading(
+          { courtName: 'Southern District of New York', courtDivisionName: 'Manhattan' },
+          '11 Subchapter V',
+        ),
+      ).toBe('Southern District of New York (Manhattan): Chapter 11 Subchapter V');
+    });
+
+    test('omits the division parenthetical when courtDivisionName is absent', () => {
+      expect(
+        buildAppointmentHeading({ courtName: 'Southern District of New York' }, '7 Panel'),
+      ).toBe('Southern District of New York: Chapter 7 Panel');
+    });
+
+    test('falls back to courtId via buildDistrictDisplay when courtName is missing', () => {
+      expect(buildAppointmentHeading({ courtId: '0208' }, '7 Panel')).toBe(
+        'Court 0208: Chapter 7 Panel',
+      );
+    });
+
+    test('renders "Court undefined" when both courtName and courtId are missing', () => {
+      expect(buildAppointmentHeading({}, '7 Panel')).toBe('Court undefined: Chapter 7 Panel');
     });
   });
 });
