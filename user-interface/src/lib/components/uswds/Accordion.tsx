@@ -65,12 +65,12 @@ export const Accordion: FunctionComponent<AccordionProps> = (props) => {
   }, [props.expandedId]);
 
   function toggle() {
-    setExpanded(!expanded);
-    if (props.onExpand) {
-      props.onExpand(props.id);
-    }
-    if (props.onCollapse) {
-      props.onCollapse(props.id);
+    const nextExpanded = !expanded;
+    setExpanded(nextExpanded);
+    if (nextExpanded) {
+      props.onExpand?.(props.id);
+    } else {
+      props.onCollapse?.(props.id);
     }
   }
 

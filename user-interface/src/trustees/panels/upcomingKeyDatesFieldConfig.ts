@@ -14,7 +14,7 @@ export type UpcomingKeyDatesVariant =
   | 'chapter13-standing'
   | 'chapter7-elected';
 
-const NO_DATE = 'No date added';
+export const NO_DATE = 'No date added';
 
 interface UpcomingKeyDatesDisplayField {
   label: string;

@@ -663,6 +663,29 @@ describe('AppointmentCard', () => {
       expect(screen.queryByRole('heading', { level: 3 })).not.toBeInTheDocument();
     });
 
+    test('does not fetch key dates until the accordion is expanded', async () => {
+      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+        [DISPLAY_CHPT13_STANDING_KEY_DATES]: true,
+      });
+      const getUpcomingKeyDatesSpy = vi
+        .spyOn(Api2, 'getUpcomingKeyDates')
+        .mockResolvedValue({ data: null });
+
+      renderWithProps({ appointment: ch13StandingAppointment });
+
+      expect(getUpcomingKeyDatesSpy).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByTestId(`accordion-button-${ch13StandingAppointment.id}`));
+
+      await waitFor(() => {
+        expect(getUpcomingKeyDatesSpy).toHaveBeenCalledTimes(1);
+      });
+      expect(getUpcomingKeyDatesSpy).toHaveBeenCalledWith(
+        ch13StandingAppointment.trusteeId,
+        ch13StandingAppointment.id,
+      );
+    });
+
     test('does not render the generic Key Information card', async () => {
       vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
         [DISPLAY_CHPT13_STANDING_KEY_DATES]: true,
@@ -817,10 +840,15 @@ describe('AppointmentCard', () => {
         </BrowserRouter>,
       );
 
-      fireEvent.click(screen.getByTestId(`accordion-button-${ch13StandingAppointment.id}`));
+      const button = screen.getByTestId(`accordion-button-${ch13StandingAppointment.id}`);
 
+      fireEvent.click(button);
       expect(onExpand).toHaveBeenCalledWith(ch13StandingAppointment.id);
+      expect(onCollapse).not.toHaveBeenCalled();
+
+      fireEvent.click(button);
       expect(onCollapse).toHaveBeenCalledWith(ch13StandingAppointment.id);
+      expect(onExpand).toHaveBeenCalledTimes(1);
     });
   });
 

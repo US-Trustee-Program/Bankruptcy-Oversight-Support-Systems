@@ -14,9 +14,8 @@ import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
 import { Stop } from '@/lib/components/Stop';
-
-const currentYear = new Date().getFullYear();
-const COMPLETION_YEAR_OPTIONS = Array.from({ length: 11 }, (_, i) => currentYear - i);
+import { buildKeyDatesInputFromOriginal } from './keyDatesInputDefaults';
+import CompletionStatusYearSelect from './CompletionStatusYearSelect';
 
 type FormState = {
   pastAudit: string;
@@ -45,39 +44,10 @@ function buildInput(
   form: FormState,
 ): TrusteeUpcomingKeyDatesInput {
   return {
-    trusteeId,
-    appointmentId,
-    pastBackgroundQuestion: original?.pastBackgroundQuestion ?? null,
-    pastFieldExam: original?.pastFieldExam ?? null,
+    ...buildKeyDatesInputFromOriginal(trusteeId, appointmentId, original),
     pastAudit: form.pastAudit || null,
-    pastTprSubmission: original?.pastTprSubmission ?? null,
-    tprReviewPeriodStart: original?.tprReviewPeriodStart ?? null,
-    tprReviewPeriodEnd: original?.tprReviewPeriodEnd ?? null,
-    tprDue: original?.tprDue ?? null,
-    tprDueYearType: original?.tprDueYearType ?? null,
-    tprFrequency: original?.tprFrequency ?? null,
-    tirReviewPeriodStart: original?.tirReviewPeriodStart ?? null,
-    tirReviewPeriodEnd: original?.tirReviewPeriodEnd ?? null,
-    tirSubmission: original?.tirSubmission ?? null,
-    tirReview: original?.tirReview ?? null,
-    upcomingExamOrAuditYear: original?.upcomingExamOrAuditYear ?? null,
-    upcomingExamOrAuditType: original?.upcomingExamOrAuditType ?? null,
-    tirFrequency: original?.tirFrequency ?? null,
-    tirSemiAnnualReviewPeriodStart: original?.tirSemiAnnualReviewPeriodStart ?? null,
-    tirSemiAnnualReviewPeriodEnd: original?.tirSemiAnnualReviewPeriodEnd ?? null,
-    tirSemiAnnualSubmission: original?.tirSemiAnnualSubmission ?? null,
-    tirSemiAnnualReview: original?.tirSemiAnnualReview ?? null,
-    lastAuditFiscalYear: original?.lastAuditFiscalYear ?? null,
-    lastMonthlyReportReceived: original?.lastMonthlyReportReceived ?? null,
-    leaseExpiration: original?.leaseExpiration ?? null,
-    idExpiration: original?.idExpiration ?? null,
-    lastCompensationStudy: original?.lastCompensationStudy ?? null,
-    bondIssuedDate: original?.bondIssuedDate ?? null,
-    bondRenewalDate: original?.bondRenewalDate ?? null,
     auditCompletionYear: form.auditCompletionYear || null,
     auditCompletionStatus: form.auditCompletionStatus || null,
-    tprCompletionYear: original?.tprCompletionYear ?? null,
-    tprCompletionStatus: original?.tprCompletionStatus ?? null,
   };
 }
 
@@ -165,57 +135,18 @@ export default function Chapter13StandingAuditForm() {
         onChange={(e) => setForm((prev) => ({ ...prev, pastAudit: e.target.value }))}
         onValidationChange={(hasError) => registerFieldError('past-audit', hasError)}
       />
-      <div className="audit-completion-status-group">
-        <p className="usa-label audit-completion-status-title">Audit Completion Status for Year</p>
-        <div className="audit-completion-status-group__row">
-          <div className="usa-form-group">
-            <label className="usa-hint" htmlFor="audit-completion-year">
-              Year
-            </label>
-            <select
-              className="usa-select"
-              id="audit-completion-year"
-              data-testid="audit-completion-year"
-              value={form.auditCompletionYear}
-              onChange={(e) => {
-                const val = e.target.value;
-                setForm((prev) => ({
-                  ...prev,
-                  auditCompletionYear: val ? Number(val) : '',
-                }));
-              }}
-            >
-              <option value=""></option>
-              {COMPLETION_YEAR_OPTIONS.map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="usa-form-group">
-            <label className="usa-hint" htmlFor="audit-completion-status">
-              Status
-            </label>
-            <select
-              className="usa-select"
-              id="audit-completion-status"
-              data-testid="audit-completion-status"
-              value={form.auditCompletionStatus}
-              onChange={(e) =>
-                setForm((prev) => ({
-                  ...prev,
-                  auditCompletionStatus: e.target.value as 'Complete' | 'Incomplete' | '',
-                }))
-              }
-            >
-              <option value=""></option>
-              <option value="Complete">Complete</option>
-              <option value="Incomplete">Incomplete</option>
-            </select>
-          </div>
-        </div>
-      </div>
+      <CompletionStatusYearSelect
+        idPrefix="audit-completion"
+        title="Audit Completion Status for Year"
+        year={form.auditCompletionYear}
+        status={form.auditCompletionStatus}
+        onYearChange={(auditCompletionYear) =>
+          setForm((prev) => ({ ...prev, auditCompletionYear }))
+        }
+        onStatusChange={(auditCompletionStatus) =>
+          setForm((prev) => ({ ...prev, auditCompletionStatus }))
+        }
+      />
       <div className="usa-button-group">
         <Button
           id="save-chapter13-standing-audit-key-dates"

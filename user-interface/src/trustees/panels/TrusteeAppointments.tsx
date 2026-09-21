@@ -112,7 +112,7 @@ export default function TrusteeAppointments(props: Readonly<TrusteeAppointmentsP
               key={appointment.id}
               appointment={appointment}
               onExpand={setPersistedExpandedId}
-              onCollapse={setPersistedExpandedId}
+              onCollapse={() => setPersistedExpandedId('')}
             />
           ))}
         </AccordionGroup>

@@ -15,6 +15,7 @@ import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
 import { Stop } from '@/lib/components/Stop';
+import { buildKeyDatesInputFromOriginal } from './keyDatesInputDefaults';
 
 type FormState = {
   leaseExpiration: string;
@@ -46,39 +47,11 @@ function buildInput(
   form: FormState,
 ): TrusteeUpcomingKeyDatesInput {
   return {
-    trusteeId,
-    appointmentId,
+    ...buildKeyDatesInputFromOriginal(trusteeId, appointmentId, original),
     pastBackgroundQuestion: form.pastBackgroundQuestion || null,
-    pastFieldExam: original?.pastFieldExam ?? null,
-    pastAudit: original?.pastAudit ?? null,
-    pastTprSubmission: original?.pastTprSubmission ?? null,
-    tprReviewPeriodStart: original?.tprReviewPeriodStart ?? null,
-    tprReviewPeriodEnd: original?.tprReviewPeriodEnd ?? null,
-    tprDue: original?.tprDue ?? null,
-    tprDueYearType: original?.tprDueYearType ?? null,
-    tprFrequency: original?.tprFrequency ?? null,
-    tirReviewPeriodStart: original?.tirReviewPeriodStart ?? null,
-    tirReviewPeriodEnd: original?.tirReviewPeriodEnd ?? null,
-    tirSubmission: original?.tirSubmission ?? null,
-    tirReview: original?.tirReview ?? null,
-    upcomingExamOrAuditYear: original?.upcomingExamOrAuditYear ?? null,
-    upcomingExamOrAuditType: original?.upcomingExamOrAuditType ?? null,
-    tirFrequency: original?.tirFrequency ?? null,
-    tirSemiAnnualReviewPeriodStart: original?.tirSemiAnnualReviewPeriodStart ?? null,
-    tirSemiAnnualReviewPeriodEnd: original?.tirSemiAnnualReviewPeriodEnd ?? null,
-    tirSemiAnnualSubmission: original?.tirSemiAnnualSubmission ?? null,
-    tirSemiAnnualReview: original?.tirSemiAnnualReview ?? null,
-    lastAuditFiscalYear: original?.lastAuditFiscalYear ?? null,
-    lastMonthlyReportReceived: original?.lastMonthlyReportReceived ?? null,
     leaseExpiration: form.leaseExpiration || null,
     idExpiration: form.idExpiration || null,
     lastCompensationStudy: form.lastCompensationStudy || null,
-    bondIssuedDate: original?.bondIssuedDate ?? null,
-    bondRenewalDate: original?.bondRenewalDate ?? null,
-    auditCompletionYear: original?.auditCompletionYear ?? null,
-    auditCompletionStatus: original?.auditCompletionStatus ?? null,
-    tprCompletionYear: original?.tprCompletionYear ?? null,
-    tprCompletionStatus: original?.tprCompletionStatus ?? null,
   };
 }
 

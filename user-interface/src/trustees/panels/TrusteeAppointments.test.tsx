@@ -695,5 +695,44 @@ describe('TrusteeAppointments', () => {
       });
       expect(screen.getByTestId('accordion-content-ch13-persist-001')).not.toBeVisible();
     });
+
+    test('clears the persisted expanded appointment when collapsed, and stays collapsed across a remount', async () => {
+      const appt1 = makeAppointment('ch13-collapse-001', {
+        chapter: '13',
+        appointmentType: 'standing',
+        status: 'inactive',
+        courtName: 'Southern District of New York',
+      });
+      const appt2 = makeAppointment('ch13-collapse-002', {
+        chapter: '13',
+        appointmentType: 'standing',
+        status: 'inactive',
+        courtId: '082',
+        courtName: 'Eastern District of New York',
+      });
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({
+        data: [appt1, appt2],
+      });
+
+      const { unmount } = renderComponent('trustee-123');
+
+      await waitFor(() => {
+        expect(screen.getByTestId('accordion-button-ch13-collapse-001')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId('accordion-button-ch13-collapse-002'));
+      expect(screen.getByTestId('accordion-content-ch13-collapse-002')).toBeVisible();
+
+      fireEvent.click(screen.getByTestId('accordion-button-ch13-collapse-002'));
+      expect(screen.getByTestId('accordion-content-ch13-collapse-002')).not.toBeVisible();
+
+      unmount();
+      renderComponent('trustee-123');
+
+      await waitFor(() => {
+        expect(screen.getByTestId('accordion-button-ch13-collapse-001')).toBeInTheDocument();
+      });
+      expect(screen.getByTestId('accordion-content-ch13-collapse-002')).not.toBeVisible();
+    });
   });
 });

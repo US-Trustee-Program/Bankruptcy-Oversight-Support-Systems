@@ -1,3 +1,5 @@
+@use 'styles/abstracts/colors' as colors;
+
 .edit-chapter13-standing-tpr-key-dates {
   .date-picker .usa-date-picker {
     max-width: 22rem;
@@ -18,7 +20,7 @@
   }
 
   .tpr-frequency-placeholder {
-    color: #71767a;
+    color: colors.$gray-cool-50;
   }
 
   .tpr-completion-status-title,

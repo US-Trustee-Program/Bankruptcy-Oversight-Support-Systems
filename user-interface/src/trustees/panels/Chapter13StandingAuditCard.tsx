@@ -1,8 +1,9 @@
-import { useNavigate } from 'react-router-dom';
 import { TrusteeUpcomingKeyDates, isoToMMDDYYYY } from '@common/cams/trustee-upcoming-key-dates';
 import Chapter13StandingKeyDatesCard from './Chapter13StandingKeyDatesCard';
 import { useCanManageTrustees } from './useCanManageTrustees';
+import { useOpenEditKeyDates } from './useOpenEditKeyDates';
 import CompletionStatusTag from './CompletionStatusTag';
+import { NO_DATE } from './upcomingKeyDatesFieldConfig';
 
 export interface Chapter13StandingAuditCardProps {
   trusteeId: string;
@@ -11,22 +12,19 @@ export interface Chapter13StandingAuditCardProps {
   data: TrusteeUpcomingKeyDates | null;
 }
 
-const NO_DATE = 'No date added';
 const ANNUAL_AUDIT_PERIOD = '10/01 - 09/30';
 
 export default function Chapter13StandingAuditCard(
   props: Readonly<Chapter13StandingAuditCardProps>,
 ) {
   const { trusteeId, appointmentId, appointmentHeading, data } = props;
-  const navigate = useNavigate();
   const canManage = useCanManageTrustees();
-
-  function openEdit() {
-    navigate(
-      `/trustees/${trusteeId}/appointments/${appointmentId}/chapter13-standing-audit-key-dates/edit`,
-      { state: { subHeading: appointmentHeading ?? '' } },
-    );
-  }
+  const openEdit = useOpenEditKeyDates(
+    trusteeId,
+    appointmentId,
+    'chapter13-standing-audit-key-dates',
+    appointmentHeading,
+  );
 
   const tag =
     data?.auditCompletionYear && data?.auditCompletionStatus ? (

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Accordion, AccordionGroup } from './Accordion';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { vi } from 'vitest';
 
 describe('Accordion tests', () => {
   test('Should expand accordion when clicking on expand button and collapse when clicking again and when accordion is used without an accordion group', async () => {
@@ -45,6 +46,36 @@ describe('Accordion tests', () => {
         }),
       ).toBeInTheDocument();
       expect(content).not.toBeVisible();
+    });
+  });
+
+  test('Should call onExpand when opened and onCollapse when closed, never both on the same click', async () => {
+    const accordionId = 'accordion1';
+    const onExpand = vi.fn();
+    const onCollapse = vi.fn();
+    render(
+      <React.StrictMode>
+        <Accordion id={accordionId} onExpand={onExpand} onCollapse={onCollapse}>
+          <span>Title of accordion</span>
+          <span>Content of accordion</span>
+        </Accordion>
+      </React.StrictMode>,
+    );
+
+    const button = screen.getByTestId(`accordion-button-${accordionId}`);
+
+    fireEvent.click(button);
+    await waitFor(() => {
+      expect(onExpand).toHaveBeenCalledWith(accordionId);
+      expect(onExpand).toHaveBeenCalledTimes(1);
+      expect(onCollapse).not.toHaveBeenCalled();
+    });
+
+    fireEvent.click(button);
+    await waitFor(() => {
+      expect(onCollapse).toHaveBeenCalledWith(accordionId);
+      expect(onCollapse).toHaveBeenCalledTimes(1);
+      expect(onExpand).toHaveBeenCalledTimes(1);
     });
   });
 

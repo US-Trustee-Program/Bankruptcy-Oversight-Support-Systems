@@ -16,9 +16,8 @@ import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
 import { Stop } from '@/lib/components/Stop';
-
-const currentYear = new Date().getFullYear();
-const COMPLETION_YEAR_OPTIONS = Array.from({ length: 11 }, (_, i) => currentYear - i);
+import { buildKeyDatesInputFromOriginal } from './keyDatesInputDefaults';
+import CompletionStatusYearSelect from './CompletionStatusYearSelect';
 
 type FormState = {
   tprReviewPeriodStart: string;
@@ -62,37 +61,13 @@ function buildInput(
   form: FormState,
 ): TrusteeUpcomingKeyDatesInput {
   return {
-    trusteeId,
-    appointmentId,
-    pastBackgroundQuestion: original?.pastBackgroundQuestion ?? null,
-    pastFieldExam: original?.pastFieldExam ?? null,
-    pastAudit: original?.pastAudit ?? null,
+    ...buildKeyDatesInputFromOriginal(trusteeId, appointmentId, original),
     pastTprSubmission: form.pastTprSubmission || null,
     tprReviewPeriodStart: form.tprReviewPeriodStart || null,
     tprReviewPeriodEnd: form.tprReviewPeriodEnd || null,
     tprDue: form.tprDue || null,
     tprDueYearType: form.tprDueYearType || null,
     tprFrequency: form.tprFrequency || null,
-    tirReviewPeriodStart: original?.tirReviewPeriodStart ?? null,
-    tirReviewPeriodEnd: original?.tirReviewPeriodEnd ?? null,
-    tirSubmission: original?.tirSubmission ?? null,
-    tirReview: original?.tirReview ?? null,
-    upcomingExamOrAuditYear: original?.upcomingExamOrAuditYear ?? null,
-    upcomingExamOrAuditType: original?.upcomingExamOrAuditType ?? null,
-    tirFrequency: original?.tirFrequency ?? null,
-    tirSemiAnnualReviewPeriodStart: original?.tirSemiAnnualReviewPeriodStart ?? null,
-    tirSemiAnnualReviewPeriodEnd: original?.tirSemiAnnualReviewPeriodEnd ?? null,
-    tirSemiAnnualSubmission: original?.tirSemiAnnualSubmission ?? null,
-    tirSemiAnnualReview: original?.tirSemiAnnualReview ?? null,
-    lastAuditFiscalYear: original?.lastAuditFiscalYear ?? null,
-    lastMonthlyReportReceived: original?.lastMonthlyReportReceived ?? null,
-    leaseExpiration: original?.leaseExpiration ?? null,
-    idExpiration: original?.idExpiration ?? null,
-    lastCompensationStudy: original?.lastCompensationStudy ?? null,
-    bondIssuedDate: original?.bondIssuedDate ?? null,
-    bondRenewalDate: original?.bondRenewalDate ?? null,
-    auditCompletionYear: original?.auditCompletionYear ?? null,
-    auditCompletionStatus: original?.auditCompletionStatus ?? null,
     tprCompletionYear: form.tprCompletionYear || null,
     tprCompletionStatus: form.tprCompletionStatus || null,
   };
@@ -290,57 +265,16 @@ export default function Chapter13StandingTrusteePerformanceReportForm() {
         onChange={(e) => setForm((prev) => ({ ...prev, pastTprSubmission: e.target.value }))}
         onValidationChange={(hasError) => registerFieldError('last-tpr-submitted', hasError)}
       />
-      <div className="tpr-completion-status-group">
-        <p className="usa-label tpr-completion-status-title">TPR Completion Status for Year</p>
-        <div className="tpr-completion-status-group__row">
-          <div className="usa-form-group">
-            <label className="usa-hint" htmlFor="tpr-completion-year">
-              Year
-            </label>
-            <select
-              className="usa-select"
-              id="tpr-completion-year"
-              data-testid="tpr-completion-year"
-              value={form.tprCompletionYear}
-              onChange={(e) => {
-                const val = e.target.value;
-                setForm((prev) => ({
-                  ...prev,
-                  tprCompletionYear: val ? Number(val) : '',
-                }));
-              }}
-            >
-              <option value=""></option>
-              {COMPLETION_YEAR_OPTIONS.map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="usa-form-group">
-            <label className="usa-hint" htmlFor="tpr-completion-status">
-              Status
-            </label>
-            <select
-              className="usa-select"
-              id="tpr-completion-status"
-              data-testid="tpr-completion-status"
-              value={form.tprCompletionStatus}
-              onChange={(e) =>
-                setForm((prev) => ({
-                  ...prev,
-                  tprCompletionStatus: e.target.value as 'Complete' | 'Incomplete' | '',
-                }))
-              }
-            >
-              <option value=""></option>
-              <option value="Complete">Complete</option>
-              <option value="Incomplete">Incomplete</option>
-            </select>
-          </div>
-        </div>
-      </div>
+      <CompletionStatusYearSelect
+        idPrefix="tpr-completion"
+        title="TPR Completion Status for Year"
+        year={form.tprCompletionYear}
+        status={form.tprCompletionStatus}
+        onYearChange={(tprCompletionYear) => setForm((prev) => ({ ...prev, tprCompletionYear }))}
+        onStatusChange={(tprCompletionStatus) =>
+          setForm((prev) => ({ ...prev, tprCompletionStatus }))
+        }
+      />
       <div className="usa-button-group">
         <Button
           id="save-chapter13-standing-tpr-key-dates"

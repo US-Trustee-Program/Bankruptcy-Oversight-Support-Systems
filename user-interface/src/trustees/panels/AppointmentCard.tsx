@@ -156,14 +156,44 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
     showsChpt13StandingUpcomingKeyDates ||
     showsChpt7ElectedKeyDatesCards;
 
-  const [keyDatesData, setKeyDatesData] = useState<TrusteeUpcomingKeyDates | null>(null);
-  const [isKeyDatesLoading, setIsKeyDatesLoading] = useState(shouldFetchKeyDates);
+  // Chapter 13 Standing appointments are rendered inside a collapsible accordion; every other
+  // variant renders its key-dates cards immediately, so it should fetch as soon as it mounts.
+  // The accordion's expanded state is tracked locally (rather than solely from props.expandedId)
+  // because Accordion's own visible state is driven by the onExpand/onCollapse click callbacks,
+  // which fire even when a parent isn't relaying expandedId back down (e.g. standalone usage).
+  const isAccordionGated = showsChpt13StandingUpcomingKeyDates;
+  const [isAccordionOpen, setIsAccordionOpen] = useState(
+    () => props.expandedId === props.appointment.id,
+  );
 
   useEffect(() => {
-    if (!shouldFetchKeyDates) {
+    if (props.expandedId !== undefined) {
+      setIsAccordionOpen(props.expandedId === props.appointment.id);
+    }
+  }, [props.expandedId, props.appointment.id]);
+
+  function handleAccordionExpand(id: string) {
+    setIsAccordionOpen(true);
+    props.onExpand?.(id);
+  }
+
+  function handleAccordionCollapse(id: string) {
+    setIsAccordionOpen(false);
+    props.onCollapse?.(id);
+  }
+
+  const shouldFetchNow = shouldFetchKeyDates && (!isAccordionGated || isAccordionOpen);
+
+  const [keyDatesData, setKeyDatesData] = useState<TrusteeUpcomingKeyDates | null>(null);
+  const [isFetchingKeyDates, setIsFetchingKeyDates] = useState(false);
+  const [hasFetchedKeyDates, setHasFetchedKeyDates] = useState(false);
+  const isKeyDatesLoading = shouldFetchNow && (!hasFetchedKeyDates || isFetchingKeyDates);
+
+  useEffect(() => {
+    if (!shouldFetchNow || hasFetchedKeyDates) {
       return;
     }
-    setIsKeyDatesLoading(true);
+    setIsFetchingKeyDates(true);
     Api2.getUpcomingKeyDates(props.appointment.trusteeId, props.appointment.id)
       .then((response) => {
         setKeyDatesData(response.data);
@@ -173,9 +203,10 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
         setKeyDatesData(null);
       })
       .finally(() => {
-        setIsKeyDatesLoading(false);
+        setIsFetchingKeyDates(false);
+        setHasFetchedKeyDates(true);
       });
-  }, [props.appointment.trusteeId, props.appointment.id, shouldFetchKeyDates]);
+  }, [props.appointment.trusteeId, props.appointment.id, shouldFetchNow, hasFetchedKeyDates]);
 
   if (showsChpt13StandingUpcomingKeyDates) {
     return (
@@ -184,8 +215,8 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
         keyDatesData={keyDatesData}
         isKeyDatesLoading={isKeyDatesLoading}
         expandedId={props.expandedId}
-        onExpand={props.onExpand}
-        onCollapse={props.onCollapse}
+        onExpand={handleAccordionExpand}
+        onCollapse={handleAccordionCollapse}
       />
     );
   }

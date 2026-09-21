@@ -1,12 +1,13 @@
-import { useNavigate } from 'react-router-dom';
 import { TrusteeUpcomingKeyDates, isoToMMDDYYYY } from '@common/cams/trustee-upcoming-key-dates';
 import Chapter13StandingKeyDatesCard from './Chapter13StandingKeyDatesCard';
 import { useCanManageTrustees } from './useCanManageTrustees';
+import { useOpenEditKeyDates } from './useOpenEditKeyDates';
 import CompletionStatusTag from './CompletionStatusTag';
 import {
   tprReviewPeriodField,
   tprFrequencyField,
   tprDueField,
+  NO_DATE,
 } from './upcomingKeyDatesFieldConfig';
 
 export interface Chapter13StandingTrusteePerformanceReportCardProps {
@@ -16,21 +17,17 @@ export interface Chapter13StandingTrusteePerformanceReportCardProps {
   data: TrusteeUpcomingKeyDates | null;
 }
 
-const NO_DATE = 'No date added';
-
 export default function Chapter13StandingTrusteePerformanceReportCard(
   props: Readonly<Chapter13StandingTrusteePerformanceReportCardProps>,
 ) {
   const { trusteeId, appointmentId, appointmentHeading, data } = props;
-  const navigate = useNavigate();
   const canManage = useCanManageTrustees();
-
-  function openEdit() {
-    navigate(
-      `/trustees/${trusteeId}/appointments/${appointmentId}/chapter13-standing-tpr-key-dates/edit`,
-      { state: { subHeading: appointmentHeading ?? '' } },
-    );
-  }
+  const openEdit = useOpenEditKeyDates(
+    trusteeId,
+    appointmentId,
+    'chapter13-standing-tpr-key-dates',
+    appointmentHeading,
+  );
 
   const tag =
     data?.tprCompletionYear && data?.tprCompletionStatus ? (

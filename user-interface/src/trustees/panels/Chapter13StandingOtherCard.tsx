@@ -1,4 +1,3 @@
-import { useNavigate } from 'react-router-dom';
 import {
   TrusteeUpcomingKeyDates,
   isoToMMDDYYYY,
@@ -6,7 +5,8 @@ import {
 } from '@common/cams/trustee-upcoming-key-dates';
 import Chapter13StandingKeyDatesCard from './Chapter13StandingKeyDatesCard';
 import { useCanManageTrustees } from './useCanManageTrustees';
-import { leaseExpirationField, idExpirationField } from './upcomingKeyDatesFieldConfig';
+import { useOpenEditKeyDates } from './useOpenEditKeyDates';
+import { leaseExpirationField, idExpirationField, NO_DATE } from './upcomingKeyDatesFieldConfig';
 
 export interface Chapter13StandingOtherCardProps {
   trusteeId: string;
@@ -15,21 +15,17 @@ export interface Chapter13StandingOtherCardProps {
   data: TrusteeUpcomingKeyDates | null;
 }
 
-const NO_DATE = 'No date added';
-
 export default function Chapter13StandingOtherCard(
   props: Readonly<Chapter13StandingOtherCardProps>,
 ) {
   const { trusteeId, appointmentId, appointmentHeading, data } = props;
-  const navigate = useNavigate();
   const canManage = useCanManageTrustees();
-
-  function openEdit() {
-    navigate(
-      `/trustees/${trusteeId}/appointments/${appointmentId}/chapter13-standing-other-key-dates/edit`,
-      { state: { subHeading: appointmentHeading ?? '' } },
-    );
-  }
+  const openEdit = useOpenEditKeyDates(
+    trusteeId,
+    appointmentId,
+    'chapter13-standing-other-key-dates',
+    appointmentHeading,
+  );
 
   const lease = leaseExpirationField(data);
   const idExp = idExpirationField(data);

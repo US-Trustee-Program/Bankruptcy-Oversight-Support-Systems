@@ -114,9 +114,14 @@ describe('Chapter13StandingAppointmentBody', () => {
     const onCollapse = vi.fn();
     renderComponent({ onExpand, onCollapse });
 
-    fireEvent.click(screen.getByTestId(`accordion-button-${appointment.id}`));
+    const button = screen.getByTestId(`accordion-button-${appointment.id}`);
 
+    fireEvent.click(button);
     expect(onExpand).toHaveBeenCalledWith(appointment.id);
+    expect(onCollapse).not.toHaveBeenCalled();
+
+    fireEvent.click(button);
     expect(onCollapse).toHaveBeenCalledWith(appointment.id);
+    expect(onExpand).toHaveBeenCalledTimes(1);
   });
 });
