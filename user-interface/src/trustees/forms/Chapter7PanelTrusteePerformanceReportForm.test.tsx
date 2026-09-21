@@ -10,6 +10,11 @@ import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { CamsRole } from '@common/cams/roles';
 import { GlobalAlertContext } from '@/App';
+import useFeatureFlags, { TPR_DISPLAY_UPDATES } from '@/lib/hooks/UseFeatureFlags';
+import { testFeatureFlags } from '@common/feature-flags';
+
+vi.mock('@/lib/hooks/UseFeatureFlags');
+const mockUseFeatureFlags = vi.mocked(useFeatureFlags);
 
 const mockUseNavigate = vi.hoisted(() => vi.fn());
 const mockUseParams = vi.hoisted(() =>
@@ -77,6 +82,7 @@ describe('Chapter7PanelTrusteePerformanceReportForm', () => {
     mockUseNavigate.mockReturnValue(mockNavigate);
     TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
     userEvent = TestingUtilities.setupUserEvent();
+    mockUseFeatureFlags.mockReturnValue(testFeatureFlags);
   });
 
   test('shows forbidden message when user lacks TrusteeAdmin role', async () => {
@@ -377,6 +383,51 @@ describe('Chapter7PanelTrusteePerformanceReportForm', () => {
     expect(putSpy).not.toHaveBeenCalled();
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');
   });
+
+  describe('when TPR_DISPLAY_UPDATES flag is off', () => {
+    beforeEach(() => {
+      mockUseFeatureFlags.mockReturnValue({ ...testFeatureFlags, [TPR_DISPLAY_UPDATES]: false });
+    });
+
+    test('shows MonthDayRangeSelector for period and hides DatePickers and frequency select', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-chapter7-panel-tpr')).toBeInTheDocument();
+      });
+      expect(screen.getByTestId('tpr-review-period-label')).toBeInTheDocument();
+      expect(screen.queryByTestId('tpr-review-period-start')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('tpr-review-period-end')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('tpr-frequency')).not.toBeInTheDocument();
+    });
+
+    test('save converts period fields to sentinel format and preserves tprFrequency', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+      const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-chapter7-panel-tpr')).toBeInTheDocument();
+      });
+
+      await userEvent.click(screen.getByTestId('button-save-chapter7-panel-tpr'));
+
+      await waitFor(() => {
+        expect(putSpy).toHaveBeenCalledWith(
+          'trustee-001',
+          'appointment-001',
+          expect.objectContaining({
+            tprReviewPeriodStart: '1900-04-01',
+            tprReviewPeriodEnd: '1900-03-31',
+            tprFrequency: 'ANNUAL',
+          }),
+        );
+      });
+    });
+  });
 });
 
 describe('buildTrusteePerformanceReportKeyDatesInput', () => {
@@ -535,5 +586,26 @@ describe('buildTrusteePerformanceReportKeyDatesInput', () => {
       bondIssuedDate: null,
       bondRenewalDate: null,
     });
+  });
+
+  test('converts period fields to sentinel format when tprDisplayUpdates is false', () => {
+    const result = buildTrusteePerformanceReportKeyDatesInput(
+      { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
+      null,
+      {
+        tprReviewPeriodStart: '2026-04-01',
+        tprReviewPeriodEnd: '2027-03-31',
+        tprFrequency: 'ANNUAL',
+        tprDue: '',
+        tprDueYearType: '',
+        lastTprSubmitted: '',
+        tprCompletionYear: '',
+        tprCompletionStatus: '',
+      },
+      false,
+    );
+
+    expect(result.tprReviewPeriodStart).toBe('1900-04-01');
+    expect(result.tprReviewPeriodEnd).toBe('1900-03-31');
   });
 });

@@ -1,11 +1,13 @@
 import './EditUpcomingKeyDates.scss';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import useFeatureFlags, { TPR_DISPLAY_UPDATES } from '@/lib/hooks/UseFeatureFlags';
 import {
   TrusteeUpcomingKeyDates,
   TrusteeUpcomingKeyDatesInput,
   validateTprDuePair,
   validateCompletionPairPresence,
+  isoToSentinel,
 } from '@common/cams/trustee-upcoming-key-dates';
 import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
@@ -13,6 +15,7 @@ import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import DatePicker from '@/lib/components/uswds/DatePicker';
 import MonthDaySelector from '@/lib/components/uswds/MonthDaySelector';
+import MonthDayRangeSelector from '@/lib/components/uswds/MonthDayRangeSelector';
 import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import { Stop } from '@/lib/components/Stop';
@@ -48,6 +51,7 @@ export function buildTrusteePerformanceReportKeyDatesInput(
   ids: { trusteeId: string; appointmentId: string },
   original: TrusteeUpcomingKeyDates | null,
   form: Chapter7PanelTrusteePerformanceReportFormState,
+  tprDisplayUpdates = true,
 ): TrusteeUpcomingKeyDatesInput {
   return {
     trusteeId: ids.trusteeId,
@@ -57,8 +61,16 @@ export function buildTrusteePerformanceReportKeyDatesInput(
     pastAudit: original?.pastAudit ?? null,
     pastTprSubmission: original?.pastTprSubmission ?? null,
     lastTprSubmitted: form.lastTprSubmitted || null,
-    tprReviewPeriodStart: form.tprReviewPeriodStart || null,
-    tprReviewPeriodEnd: form.tprReviewPeriodEnd || null,
+    tprReviewPeriodStart: tprDisplayUpdates
+      ? form.tprReviewPeriodStart || null
+      : form.tprReviewPeriodStart
+        ? isoToSentinel(form.tprReviewPeriodStart)
+        : null,
+    tprReviewPeriodEnd: tprDisplayUpdates
+      ? form.tprReviewPeriodEnd || null
+      : form.tprReviewPeriodEnd
+        ? isoToSentinel(form.tprReviewPeriodEnd)
+        : null,
     tprDue: form.tprDue || null,
     tprDueYearType: form.tprDueYearType || null,
     tprFrequency: form.tprFrequency || null,
@@ -97,11 +109,13 @@ export default function Chapter7PanelTrusteePerformanceReportForm() {
   const navigate = useNavigate();
   const globalAlert = useGlobalAlert();
   const canManage = useCanManageTrustees();
+  const tprDisplayUpdates = !!useFeatureFlags()[TPR_DISPLAY_UPDATES];
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [form, setForm] = useState<Chapter7PanelTrusteePerformanceReportFormState>(EMPTY_FORM);
   const [original, setOriginal] = useState<TrusteeUpcomingKeyDates | null>(null);
+  const [tprReviewPeriodValid, setTprReviewPeriodValid] = useState(true);
   const { registerFieldError, hasErrorAmong } = useDateFieldErrors();
 
   useEffect(() => {
@@ -138,6 +152,7 @@ export default function Chapter7PanelTrusteePerformanceReportForm() {
       { trusteeId: trusteeId!, appointmentId: appointmentId! },
       original,
       form,
+      tprDisplayUpdates,
     );
 
     try {
@@ -172,73 +187,95 @@ export default function Chapter7PanelTrusteePerformanceReportForm() {
   }
 
   const tprPeriodError =
+    tprDisplayUpdates &&
     form.tprReviewPeriodStart &&
     form.tprReviewPeriodEnd &&
     form.tprReviewPeriodStart > form.tprReviewPeriodEnd
       ? 'TPR Review Period Start must be before TPR Review Period End.'
       : '';
   const tprDuePairError = validateTprDuePair(form.tprDue, form.tprDueYearType);
-  const hasAnyDateError = hasErrorAmong([
-    'tpr-review-period-start',
-    'tpr-review-period-end',
-    'last-tpr-submitted',
-  ]);
+  const hasAnyDateError = tprDisplayUpdates
+    ? hasErrorAmong(['tpr-review-period-start', 'tpr-review-period-end', 'last-tpr-submitted'])
+    : hasErrorAmong(['last-tpr-submitted']);
   const completionPairError = validateCompletionPairPresence(
     form.tprCompletionYear,
     form.tprCompletionStatus,
     'Trustee Performance Review Completion Status',
   );
   const isSaveDisabled =
-    isSaving || hasAnyDateError || !!tprPeriodError || !!tprDuePairError || !!completionPairError;
+    isSaving ||
+    hasAnyDateError ||
+    !!tprPeriodError ||
+    !!tprDuePairError ||
+    !!completionPairError ||
+    (!tprDisplayUpdates && !tprReviewPeriodValid);
 
   return (
     <div className="edit-upcoming-key-dates" data-testid="edit-chapter7-panel-tpr">
       <h3>Edit Trustee Performance Report Key Dates</h3>
 
-      <DatePicker
-        id="tpr-review-period-start"
-        label="Trustee Performance Review Period Start"
-        value={form.tprReviewPeriodStart}
-        onChange={(e) => setForm((prev) => ({ ...prev, tprReviewPeriodStart: e.target.value }))}
-        onValidationChange={(hasError) => registerFieldError('tpr-review-period-start', hasError)}
-        disableMax
-      />
-      <DatePicker
-        id="tpr-review-period-end"
-        label="Trustee Performance Review Period End"
-        value={form.tprReviewPeriodEnd}
-        onChange={(e) => setForm((prev) => ({ ...prev, tprReviewPeriodEnd: e.target.value }))}
-        onValidationChange={(hasError) => registerFieldError('tpr-review-period-end', hasError)}
-        disableMax
-      />
-      {tprPeriodError && (
-        <span className="usa-error-message" data-testid="tpr-review-period-error">
-          {tprPeriodError}
-        </span>
+      {tprDisplayUpdates ? (
+        <>
+          <DatePicker
+            id="tpr-review-period-start"
+            label="Trustee Performance Review Period Start"
+            value={form.tprReviewPeriodStart}
+            onChange={(e) => setForm((prev) => ({ ...prev, tprReviewPeriodStart: e.target.value }))}
+            onValidationChange={(hasError) =>
+              registerFieldError('tpr-review-period-start', hasError)
+            }
+            disableMax
+          />
+          <DatePicker
+            id="tpr-review-period-end"
+            label="Trustee Performance Review Period End"
+            value={form.tprReviewPeriodEnd}
+            onChange={(e) => setForm((prev) => ({ ...prev, tprReviewPeriodEnd: e.target.value }))}
+            onValidationChange={(hasError) => registerFieldError('tpr-review-period-end', hasError)}
+            disableMax
+          />
+          {tprPeriodError && (
+            <span className="usa-error-message" data-testid="tpr-review-period-error">
+              {tprPeriodError}
+            </span>
+          )}
+        </>
+      ) : (
+        <MonthDayRangeSelector
+          id="tpr-review-period"
+          label="Trustee Performance Review (TPR) Period"
+          startValue={form.tprReviewPeriodStart}
+          endValue={form.tprReviewPeriodEnd}
+          onStartChange={(value) => setForm((prev) => ({ ...prev, tprReviewPeriodStart: value }))}
+          onEndChange={(value) => setForm((prev) => ({ ...prev, tprReviewPeriodEnd: value }))}
+          onValidationChange={(isValid) => setTprReviewPeriodValid(isValid)}
+        />
       )}
 
-      <div className="usa-form-group">
-        <label className="usa-label" htmlFor="tpr-frequency">
-          Trustee Performance Review Period Frequency
-        </label>
-        <select
-          className="usa-select"
-          id="tpr-frequency"
-          data-testid="tpr-frequency"
-          value={form.tprFrequency}
-          onChange={(e) =>
-            setForm((prev) => ({
-              ...prev,
-              tprFrequency: e.target.value as 'BIANNUAL' | 'ANNUAL' | 'SEMI_ANNUAL' | '',
-            }))
-          }
-        >
-          <option value="">- Select -</option>
-          <option value="BIANNUAL">Two years</option>
-          <option value="ANNUAL">One year</option>
-          <option value="SEMI_ANNUAL">6 months</option>
-        </select>
-      </div>
+      {tprDisplayUpdates && (
+        <div className="usa-form-group">
+          <label className="usa-label" htmlFor="tpr-frequency">
+            Trustee Performance Review Period Frequency
+          </label>
+          <select
+            className="usa-select"
+            id="tpr-frequency"
+            data-testid="tpr-frequency"
+            value={form.tprFrequency}
+            onChange={(e) =>
+              setForm((prev) => ({
+                ...prev,
+                tprFrequency: e.target.value as 'BIANNUAL' | 'ANNUAL' | 'SEMI_ANNUAL' | '',
+              }))
+            }
+          >
+            <option value="">- Select -</option>
+            <option value="BIANNUAL">Two years</option>
+            <option value="ANNUAL">One year</option>
+            <option value="SEMI_ANNUAL">6 months</option>
+          </select>
+        </div>
+      )}
 
       <div className="tpr-due-group">
         <div className="tpr-due-group__header">

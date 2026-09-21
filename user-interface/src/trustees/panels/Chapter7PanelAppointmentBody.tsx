@@ -7,6 +7,7 @@ import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import useFeatureFlags, {
   DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES,
+  TPR_DISPLAY_UPDATES,
 } from '@/lib/hooks/UseFeatureFlags';
 import { useUpcomingKeyDates } from './useUpcomingKeyDates';
 
@@ -23,6 +24,7 @@ export default function Chapter7PanelAppointmentBody(
   // guaranteed-to-fail request when the accordion flag is enabled on its own.
   const featureFlags = useFeatureFlags();
   const displayKeyDates = featureFlags[DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES] === true;
+  const tprDisplayUpdates = featureFlags[TPR_DISPLAY_UPDATES] === true;
   const {
     data: keyDates,
     isLoading: isKeyDatesLoading,
@@ -56,6 +58,7 @@ export default function Chapter7PanelAppointmentBody(
             appointmentId={appointment.id}
             data={keyDates}
             isLoading={isKeyDatesLoading}
+            tprDisplayUpdates={tprDisplayUpdates}
           />
           <Chapter7PanelTrusteeInterimReportCard
             trusteeId={appointment.trusteeId}
