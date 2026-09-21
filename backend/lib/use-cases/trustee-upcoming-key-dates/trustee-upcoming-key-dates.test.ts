@@ -185,88 +185,6 @@ describe('TrusteeUpcomingKeyDatesUseCase', () => {
       );
     });
 
-    test('new doc: saves both completion year/status pairs and records them in history', async () => {
-      vi.spyOn(MockMongoRepository.prototype, 'getByAppointmentId').mockResolvedValue(null);
-      const upsertSpy = vi
-        .spyOn(MockMongoRepository.prototype, 'upsert')
-        .mockResolvedValue(undefined);
-      const createHistorySpy = vi
-        .spyOn(MockMongoRepository.prototype, 'createHistory')
-        .mockResolvedValue(undefined);
-
-      const context = await createMockApplicationContext();
-      const useCase = new TrusteeUpcomingKeyDatesUseCase(context);
-      const input = buildMockInput({
-        tprCompletionYear: 2026,
-        tprCompletionStatus: 'Complete',
-        annualReportCompletionYear: 2025,
-        annualReportCompletionStatus: 'Incomplete',
-      });
-
-      await useCase.upsertUpcomingKeyDates(
-        'trustee-001',
-        'appointment-001',
-        input,
-        SYSTEM_USER_REFERENCE,
-      );
-
-      expect(upsertSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          tprCompletionYear: 2026,
-          tprCompletionStatus: 'Complete',
-          annualReportCompletionYear: 2025,
-          annualReportCompletionStatus: 'Incomplete',
-        }),
-      );
-      expect(createHistorySpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          after: expect.objectContaining({
-            tprCompletionYear: 2026,
-            annualReportCompletionYear: 2025,
-          }),
-        }),
-      );
-    });
-
-    test('existing doc, completion year changed: history records before and after years', async () => {
-      const existing = buildMockDocument({
-        annualReportCompletionYear: 2024,
-        annualReportCompletionStatus: 'Incomplete',
-      });
-      vi.spyOn(MockMongoRepository.prototype, 'getByAppointmentId').mockResolvedValue(existing);
-      vi.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue(undefined);
-      const createHistorySpy = vi
-        .spyOn(MockMongoRepository.prototype, 'createHistory')
-        .mockResolvedValue(undefined);
-
-      const context = await createMockApplicationContext();
-      const useCase = new TrusteeUpcomingKeyDatesUseCase(context);
-      const input = buildMockInput({
-        annualReportCompletionYear: 2025,
-        annualReportCompletionStatus: 'Complete',
-      });
-
-      await useCase.upsertUpcomingKeyDates(
-        'trustee-001',
-        'appointment-001',
-        input,
-        SYSTEM_USER_REFERENCE,
-      );
-
-      expect(createHistorySpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          before: expect.objectContaining({
-            annualReportCompletionYear: 2024,
-            annualReportCompletionStatus: 'Incomplete',
-          }),
-          after: expect.objectContaining({
-            annualReportCompletionYear: 2025,
-            annualReportCompletionStatus: 'Complete',
-          }),
-        }),
-      );
-    });
-
     test('existing doc, no fields changed: does not create history', async () => {
       const existing = buildMockDocument({ pastFieldExam: '2026-06-15' });
       vi.spyOn(MockMongoRepository.prototype, 'getByAppointmentId').mockResolvedValue(existing);
@@ -299,6 +217,10 @@ describe('TrusteeUpcomingKeyDatesUseCase', () => {
       ['tprFrequency', 'ANNUAL'],
       ['bondIssuedDate', '2023-06-01'],
       ['bondRenewalDate', '2026-06-01'],
+      ['tprCompletionYear', 2026],
+      ['tprCompletionStatus', 'Complete'],
+      ['annualReportCompletionYear', 2025],
+      ['annualReportCompletionStatus', 'Incomplete'],
     ])('saves %s when set', async (field, value) => {
       vi.spyOn(MockMongoRepository.prototype, 'getByAppointmentId').mockResolvedValue(null);
       const upsertSpy = vi
@@ -354,6 +276,10 @@ describe('TrusteeUpcomingKeyDatesUseCase', () => {
       ['tprFrequency', 'ANNUAL', 'BIANNUAL'],
       ['bondIssuedDate', '2022-06-01', '2023-06-01'],
       ['bondRenewalDate', '2025-06-01', '2026-06-01'],
+      ['tprCompletionYear', 2025, 2026],
+      ['tprCompletionStatus', 'Incomplete', 'Complete'],
+      ['annualReportCompletionYear', 2024, 2025],
+      ['annualReportCompletionStatus', 'Complete', 'Incomplete'],
     ])('%s change is captured in audit history', async (field, before, after) => {
       const existing = buildMockDocument({ [field]: before });
       vi.spyOn(MockMongoRepository.prototype, 'getByAppointmentId').mockResolvedValue(existing);
@@ -426,6 +352,16 @@ describe('TrusteeUpcomingKeyDatesUseCase', () => {
         'lastCompensationStudy',
         { lastCompensationStudy: '2024-06-01' },
         { lastCompensationStudy: null },
+      ],
+      [
+        'annualReportCompletionYear',
+        { annualReportCompletionYear: 2025 },
+        { annualReportCompletionYear: null },
+      ],
+      [
+        'tprCompletionStatus',
+        { tprCompletionStatus: 'Complete' as const },
+        { tprCompletionStatus: null },
       ],
     ])(
       'scalar field cleared (%s → null): history shows old value in before, absent from after',

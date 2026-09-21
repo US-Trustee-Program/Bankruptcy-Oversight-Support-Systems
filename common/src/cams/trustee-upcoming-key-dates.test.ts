@@ -870,6 +870,27 @@ describe('validateTrusteeUpcomingKeyDates', () => {
       'annualReportCompletionYear',
     ]);
   });
+
+  test('every input field is routed to a field list', () => {
+    // The use case builds the saved document and the audit diff by iterating
+    // these lists, so a field that reaches none of them is silently never
+    // persisted and never audited. Asserting the lists' exact contents only
+    // catches edits to the lists; asserting them against the input type
+    // catches the field that was added to the model and forgotten here.
+    const routed = new Set<string>([
+      ...DATE_FIELDS,
+      ...TEXT_FIELDS,
+      ...NUMBER_FIELDS,
+      'trusteeId',
+      'appointmentId',
+      // Carried explicitly by the use case rather than through a list.
+      'upcomingExamOrAuditType',
+    ]);
+
+    const unrouted = Object.keys(baseInput()).filter((field) => !routed.has(field));
+
+    expect(unrouted).toEqual([]);
+  });
 });
 
 describe('validateTprDuePair', () => {

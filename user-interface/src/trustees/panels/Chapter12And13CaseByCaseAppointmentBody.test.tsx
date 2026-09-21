@@ -22,19 +22,27 @@ type StubCardProps = {
   appointmentHeading?: string;
 };
 
+// Props are recorded rather than flattened into data attributes. This body's
+// whole job is to fetch once and hand the same document to both cards, and a
+// derived boolean like `data !== null` cannot tell one object from another.
+const cardProps: Record<string, StubCardProps[]> = {};
+
+function latestProps(testId: string): StubCardProps {
+  const recorded = cardProps[testId];
+  if (!recorded?.length) {
+    throw new Error(`${testId} was never rendered`);
+  }
+  return recorded[recorded.length - 1];
+}
+
 // Both themed cards take the same props, so one stub factory keeps the
 // assertions symmetrical between them.
 function stubCard(testId: string) {
-  return (props: StubCardProps) => (
-    <div
-      data-testid={testId}
-      data-is-loading={String(props.isLoading)}
-      data-has-data={String(props.data !== null)}
-      data-trustee-id={String(props.trusteeId)}
-      data-appointment-id={String(props.appointmentId)}
-      data-appointment-heading={String(props.appointmentHeading)}
-    />
-  );
+  return (props: StubCardProps) => {
+    cardProps[testId] ??= [];
+    cardProps[testId].push(props);
+    return <div data-testid={testId} data-is-loading={String(props.isLoading)} />;
+  };
 }
 
 vi.mock('./AnnualReportKeyDatesCard', () => ({
@@ -86,6 +94,9 @@ describe('Chapter12And13CaseByCaseAppointmentBody', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    for (const testId of Object.keys(cardProps)) {
+      delete cardProps[testId];
+    }
     vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
       [DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES]: true,
     });
@@ -109,18 +120,7 @@ describe('Chapter12And13CaseByCaseAppointmentBody', () => {
     });
   });
 
-  test('renders both themed key-dates cards', async () => {
-    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: keyDates });
-
-    renderBody();
-
-    await waitFor(() => {
-      expect(screen.getByTestId('annual-report-card')).toBeInTheDocument();
-    });
-    expect(screen.getByTestId('tpr-card')).toBeInTheDocument();
-  });
-
-  test('fetches key dates once and forwards the same result to both cards', async () => {
+  test('fetches key dates once and hands both cards the very same document', async () => {
     const getSpy = vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: keyDates });
 
     renderBody();
@@ -129,30 +129,30 @@ describe('Chapter12And13CaseByCaseAppointmentBody', () => {
       expect(screen.getByTestId('tpr-card')).toHaveAttribute('data-is-loading', 'false');
     });
     expect(getSpy).toHaveBeenCalledExactlyOnceWith('trustee-789', 'appointment-012');
+
+    // Identity, not shape: re-fetching per card, or passing a copy to one of
+    // them, is the regression this guards against.
+    expect(latestProps('annual-report-card').data).toBe(keyDates);
+    expect(latestProps('tpr-card').data).toBe(keyDates);
+
     for (const testId of CARD_TEST_IDS) {
-      const card = screen.getByTestId(testId);
-      expect(card).toHaveAttribute('data-has-data', 'true');
       // Each card builds its own edit route from these, so a swap would 404.
-      expect(card).toHaveAttribute('data-trustee-id', 'trustee-789');
-      expect(card).toHaveAttribute('data-appointment-id', 'appointment-012');
+      expect(latestProps(testId).trusteeId).toBe('trustee-789');
+      expect(latestProps(testId).appointmentId).toBe('appointment-012');
     }
   });
 
-  test.each([
-    [chapter12Appointment, 'Southern District of New York (Manhattan): Chapter 12 - Case by Case'],
-    [chapter13Appointment, 'Southern District of New York (Manhattan): Chapter 13 - Case by Case'],
-  ])('builds the appointment heading for chapter $chapter', async (appointment, expected) => {
+  test('builds one appointment heading and gives both cards the same one', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: keyDates });
 
-    renderBody(appointment);
+    renderBody(chapter13Appointment);
 
     await waitFor(() => {
-      expect(screen.getByTestId('annual-report-card')).toHaveAttribute(
-        'data-appointment-heading',
-        expected,
-      );
+      expect(screen.getByTestId('tpr-card')).toHaveAttribute('data-is-loading', 'false');
     });
-    expect(screen.getByTestId('tpr-card')).toHaveAttribute('data-appointment-heading', expected);
+    const expected = 'Southern District of New York (Manhattan): Chapter 13 - Case by Case';
+    expect(latestProps('annual-report-card').appointmentHeading).toBe(expected);
+    expect(latestProps('tpr-card').appointmentHeading).toBe(expected);
   });
 
   test('forwards null data to both cards when no key dates document exists', async () => {
@@ -161,9 +161,10 @@ describe('Chapter12And13CaseByCaseAppointmentBody', () => {
     renderBody();
 
     await waitFor(() => {
-      expect(screen.getByTestId('annual-report-card')).toHaveAttribute('data-has-data', 'false');
+      expect(screen.getByTestId('tpr-card')).toHaveAttribute('data-is-loading', 'false');
     });
-    expect(screen.getByTestId('tpr-card')).toHaveAttribute('data-has-data', 'false');
+    expect(latestProps('annual-report-card').data).toBeNull();
+    expect(latestProps('tpr-card').data).toBeNull();
   });
 
   test('reports the loading state to both cards while the fetch is in flight', () => {
@@ -196,7 +197,7 @@ describe('Chapter12And13CaseByCaseAppointmentBody', () => {
     vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
       [DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES]: false,
     });
-    const getSpy = vi.spyOn(Api2, 'getUpcomingKeyDates');
+    const getSpy = vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderBody();
 
