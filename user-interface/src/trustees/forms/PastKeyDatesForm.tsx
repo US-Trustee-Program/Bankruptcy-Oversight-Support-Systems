@@ -102,6 +102,10 @@ function buildUpcomingKeyDatesInput(
     lastCompensationStudy: dateValue('lastCompensationStudy'),
     bondIssuedDate: dateValue('bondIssuedDate'),
     bondRenewalDate: original?.bondRenewalDate ?? null,
+    tprCompletionYear: original?.tprCompletionYear ?? null,
+    tprCompletionStatus: original?.tprCompletionStatus ?? null,
+    annualReportCompletionYear: original?.annualReportCompletionYear ?? null,
+    annualReportCompletionStatus: original?.annualReportCompletionStatus ?? null,
   };
 }
 

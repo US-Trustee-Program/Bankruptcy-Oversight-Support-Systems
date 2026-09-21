@@ -206,6 +206,18 @@ const trusteeUpcomingKeyDatesSpec: ValidationSpec<TrusteeUpcomingKeyDatesInput> 
       'TIR Review Period 2 End',
     ),
     requirePair('tprDue', 'tprDueYearType', 'TPR Due', 'TPR Due Year Type'),
+    requirePair(
+      'tprCompletionYear',
+      'tprCompletionStatus',
+      'TPR Completion Year',
+      'TPR Completion Status',
+    ),
+    requirePair(
+      'annualReportCompletionYear',
+      'annualReportCompletionStatus',
+      'Annual Report Completion Year',
+      'Annual Report Completion Status',
+    ),
   ],
 };
 
@@ -233,6 +245,12 @@ export function validateTprDuePair(
   if (!tprDue && tprDueYearType) return validateMonthDay('1900--').reasons?.[0] ?? '';
   return '';
 }
+
+/**
+ * Completion status for a report in a given year, displayed as a tag on the
+ * appointment key-dates cards and set alongside its paired completion year.
+ */
+export type CompletionStatus = 'Complete' | 'Incomplete';
 
 export type TrusteeUpcomingKeyDates = Auditable &
   Identifiable & {
@@ -266,6 +284,10 @@ export type TrusteeUpcomingKeyDates = Auditable &
     lastCompensationStudy?: string;
     bondIssuedDate?: string;
     bondRenewalDate?: string;
+    tprCompletionYear?: number;
+    tprCompletionStatus?: CompletionStatus;
+    annualReportCompletionYear?: number;
+    annualReportCompletionStatus?: CompletionStatus;
   };
 
 export type TrusteeUpcomingKeyDatesInput = {
@@ -298,6 +320,10 @@ export type TrusteeUpcomingKeyDatesInput = {
   lastCompensationStudy: string | null;
   bondIssuedDate: string | null;
   bondRenewalDate: string | null;
+  tprCompletionYear: number | null;
+  tprCompletionStatus: CompletionStatus | null;
+  annualReportCompletionYear: number | null;
+  annualReportCompletionStatus: CompletionStatus | null;
 };
 
 export type TrusteeUpcomingKeyDatesHistory = AbstractTrusteeHistory<
@@ -355,9 +381,33 @@ export const DATE_FIELDS: DateField[] = [
   'bondRenewalDate',
 ];
 
-type TextField = 'tprDueYearType' | 'tprFrequency' | 'tirFrequency';
+type TextField =
+  | 'tprDueYearType'
+  | 'tprFrequency'
+  | 'tirFrequency'
+  | 'tprCompletionStatus'
+  | 'annualReportCompletionStatus';
 
-export const TEXT_FIELDS: TextField[] = ['tprDueYearType', 'tprFrequency', 'tirFrequency'];
+export const TEXT_FIELDS: TextField[] = [
+  'tprDueYearType',
+  'tprFrequency',
+  'tirFrequency',
+  'tprCompletionStatus',
+  'annualReportCompletionStatus',
+];
+
+type NumberField =
+  | 'upcomingExamOrAuditYear'
+  | 'lastAuditFiscalYear'
+  | 'tprCompletionYear'
+  | 'annualReportCompletionYear';
+
+export const NUMBER_FIELDS: NumberField[] = [
+  'upcomingExamOrAuditYear',
+  'lastAuditFiscalYear',
+  'tprCompletionYear',
+  'annualReportCompletionYear',
+];
 
 export function isoToMMDDYYYY(iso: string): string {
   const [year, month, day] = iso.split('-');

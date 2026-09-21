@@ -1290,6 +1290,10 @@ describe('UpcomingKeyDatesForm', () => {
       leaseExpiration: '2027-06-30',
       idExpiration: '2028-01-15',
       lastCompensationStudy: '2024-06-01',
+      tprCompletionYear: 2026,
+      tprCompletionStatus: 'Complete',
+      annualReportCompletionYear: 2025,
+      annualReportCompletionStatus: 'Incomplete',
     };
 
     test('deriveVariant returns chapter13-standing for chapter 13 standing appointment', async () => {
@@ -1378,6 +1382,33 @@ describe('UpcomingKeyDatesForm', () => {
           'trustee-001',
           'appointment-001',
           expect.objectContaining({ lastCompensationStudy: '2024-06-01' }),
+        ),
+      );
+    });
+
+    test('preserves completion year/status pairs in PUT payload when no UI control modifies them', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch13Appointment] });
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: ch13Document });
+      const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/Lease Expiration/i)).toBeInTheDocument();
+      });
+
+      await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+      await waitFor(() =>
+        expect(putSpy).toHaveBeenCalledWith(
+          'trustee-001',
+          'appointment-001',
+          expect.objectContaining({
+            tprCompletionYear: 2026,
+            tprCompletionStatus: 'Complete',
+            annualReportCompletionYear: 2025,
+            annualReportCompletionStatus: 'Incomplete',
+          }),
         ),
       );
     });

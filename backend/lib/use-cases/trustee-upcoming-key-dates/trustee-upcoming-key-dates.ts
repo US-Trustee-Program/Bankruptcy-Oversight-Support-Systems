@@ -3,6 +3,7 @@ import factory from '../../factory';
 import { TrusteeUpcomingKeyDatesRepository } from '../gateways.types';
 import {
   DATE_FIELDS,
+  NUMBER_FIELDS,
   TEXT_FIELDS,
   TrusteeUpcomingKeyDates,
   TrusteeUpcomingKeyDatesHistory,
@@ -19,11 +20,10 @@ function buildFields(input: TrusteeUpcomingKeyDatesInput): Partial<TrusteeUpcomi
       (fields as Record<string, string>)[field] = input[field]!;
     }
   }
-  if (input.lastAuditFiscalYear !== null) {
-    fields.lastAuditFiscalYear = input.lastAuditFiscalYear;
-  }
-  if (input.upcomingExamOrAuditYear !== null) {
-    fields.upcomingExamOrAuditYear = input.upcomingExamOrAuditYear;
+  for (const field of NUMBER_FIELDS) {
+    if (input[field] !== null) {
+      (fields as Record<string, number>)[field] = input[field]!;
+    }
   }
   if (input.upcomingExamOrAuditType !== null) {
     fields.upcomingExamOrAuditType = input.upcomingExamOrAuditType;
@@ -49,17 +49,17 @@ function diffFields(
       }
     }
   }
-  const existingFiscalYear = existing?.lastAuditFiscalYear ?? null;
-  const incomingFiscalYear = input.lastAuditFiscalYear ?? null;
-  if (existingFiscalYear !== incomingFiscalYear) {
-    if (existingFiscalYear !== null) before.lastAuditFiscalYear = existingFiscalYear;
-    if (incomingFiscalYear !== null) after.lastAuditFiscalYear = incomingFiscalYear;
-  }
-  const existingExamYear = existing?.upcomingExamOrAuditYear ?? null;
-  const incomingExamYear = input.upcomingExamOrAuditYear ?? null;
-  if (existingExamYear !== incomingExamYear) {
-    if (existingExamYear !== null) before.upcomingExamOrAuditYear = existingExamYear;
-    if (incomingExamYear !== null) after.upcomingExamOrAuditYear = incomingExamYear;
+  for (const field of NUMBER_FIELDS) {
+    const existingValue = existing?.[field] ?? null;
+    const incomingValue = input[field] ?? null;
+    if (existingValue !== incomingValue) {
+      if (existingValue !== null) {
+        (before as Record<string, number>)[field] = existingValue;
+      }
+      if (incomingValue !== null) {
+        (after as Record<string, number>)[field] = incomingValue;
+      }
+    }
   }
   const existingExamType = existing?.upcomingExamOrAuditType ?? null;
   const incomingExamType = input.upcomingExamOrAuditType ?? null;

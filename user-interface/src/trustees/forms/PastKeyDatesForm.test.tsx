@@ -123,6 +123,10 @@ function expectedPutPayload(
     lastCompensationStudy: doc.lastCompensationStudy ?? null,
     bondIssuedDate: doc.bondIssuedDate ?? null,
     bondRenewalDate: doc.bondRenewalDate ?? null,
+    tprCompletionYear: doc.tprCompletionYear ?? null,
+    tprCompletionStatus: doc.tprCompletionStatus ?? null,
+    annualReportCompletionYear: doc.annualReportCompletionYear ?? null,
+    annualReportCompletionStatus: doc.annualReportCompletionStatus ?? null,
   };
 }
 

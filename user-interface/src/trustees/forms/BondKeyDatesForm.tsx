@@ -59,6 +59,10 @@ export function buildBondKeyDatesInput(
     lastCompensationStudy: original?.lastCompensationStudy ?? null,
     bondIssuedDate: form.bondIssuedDate || null,
     bondRenewalDate: form.bondRenewalDate || null,
+    tprCompletionYear: original?.tprCompletionYear ?? null,
+    tprCompletionStatus: original?.tprCompletionStatus ?? null,
+    annualReportCompletionYear: original?.annualReportCompletionYear ?? null,
+    annualReportCompletionStatus: original?.annualReportCompletionStatus ?? null,
   };
 }
 

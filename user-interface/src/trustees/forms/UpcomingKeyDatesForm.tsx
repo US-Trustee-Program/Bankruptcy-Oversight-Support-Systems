@@ -206,6 +206,11 @@ type FormLoadResult = {
   variantAlert: string | null;
   formState: FormState | null;
   keyDatesAlert: string | null;
+  /**
+   * The loaded document, retained so fields this form has no control for are
+   * round-tripped on save instead of being cleared.
+   */
+  original: TrusteeUpcomingKeyDates | null;
 };
 
 function resolveFormLoadResult(
@@ -235,16 +240,18 @@ function resolveFormLoadResult(
 
   let formState: FormState | null = null;
   let keyDatesAlert: string | null = null;
+  let original: TrusteeUpcomingKeyDates | null = null;
   if (keyDatesResult.status === 'fulfilled') {
     const data = keyDatesResult.value.data;
     if (data) {
       formState = buildFormStateFromData(data);
+      original = data;
     }
   } else {
     keyDatesAlert = `Failed to load upcoming key dates: ${(keyDatesResult.reason as Error).message}`;
   }
 
-  return { variant, loadError, variantAlert, formState, keyDatesAlert };
+  return { variant, loadError, variantAlert, formState, keyDatesAlert, original };
 }
 
 export default function UpcomingKeyDatesForm({
@@ -269,6 +276,7 @@ export default function UpcomingKeyDatesForm({
   const [loadError, setLoadError] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [original, setOriginal] = useState<TrusteeUpcomingKeyDates | null>(null);
   const [errors, setErrors] = useState({
     tprReviewPeriodStart: '',
     tprReviewPeriodEnd: '',
@@ -333,6 +341,7 @@ export default function UpcomingKeyDatesForm({
       if (result.formState) {
         setForm(result.formState);
       }
+      setOriginal(result.original);
       if (result.keyDatesAlert) {
         globalAlert?.error(result.keyDatesAlert);
       }
@@ -455,6 +464,10 @@ export default function UpcomingKeyDatesForm({
       lastCompensationStudy: form.lastCompensationStudy || null,
       bondIssuedDate: form.bondIssuedDate || null,
       bondRenewalDate: form.bondRenewalDate || null,
+      tprCompletionYear: original?.tprCompletionYear ?? null,
+      tprCompletionStatus: original?.tprCompletionStatus ?? null,
+      annualReportCompletionYear: original?.annualReportCompletionYear ?? null,
+      annualReportCompletionStatus: original?.annualReportCompletionStatus ?? null,
     };
 
     if (!tprDisplayUpdates) {

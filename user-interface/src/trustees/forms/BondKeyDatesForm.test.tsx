@@ -250,6 +250,10 @@ describe('buildBondKeyDatesInput', () => {
     lastCompensationStudy: '2020-01-18',
     bondIssuedDate: '2020-01-19',
     bondRenewalDate: '2020-01-20',
+    tprCompletionYear: 2026,
+    tprCompletionStatus: 'Complete' as const,
+    annualReportCompletionYear: 2025,
+    annualReportCompletionStatus: 'Incomplete' as const,
   };
 
   test('preserves every non-bond field from the original document and overrides only the bond dates', () => {
@@ -289,6 +293,10 @@ describe('buildBondKeyDatesInput', () => {
       lastCompensationStudy: '2020-01-18',
       bondIssuedDate: '2023-06-01',
       bondRenewalDate: '2026-06-01',
+      tprCompletionYear: 2026,
+      tprCompletionStatus: 'Complete',
+      annualReportCompletionYear: 2025,
+      annualReportCompletionStatus: 'Incomplete',
     });
   });
 
@@ -329,6 +337,10 @@ describe('buildBondKeyDatesInput', () => {
       lastCompensationStudy: null,
       bondIssuedDate: null,
       bondRenewalDate: null,
+      tprCompletionYear: null,
+      tprCompletionStatus: null,
+      annualReportCompletionYear: null,
+      annualReportCompletionStatus: null,
     });
   });
 });

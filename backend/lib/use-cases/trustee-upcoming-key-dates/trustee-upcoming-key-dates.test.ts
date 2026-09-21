@@ -57,6 +57,10 @@ function buildMockInput(
     lastCompensationStudy: null,
     bondIssuedDate: null,
     bondRenewalDate: null,
+    tprCompletionYear: null,
+    tprCompletionStatus: null,
+    annualReportCompletionYear: null,
+    annualReportCompletionStatus: null,
     ...overrides,
   };
 }
@@ -177,6 +181,88 @@ describe('TrusteeUpcomingKeyDatesUseCase', () => {
         expect.objectContaining({
           documentType: 'AUDIT_UPCOMING_REPORT_DATES',
           after: expect.objectContaining({ lastMonthlyReportReceived: '2024-11-15' }),
+        }),
+      );
+    });
+
+    test('new doc: saves both completion year/status pairs and records them in history', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'getByAppointmentId').mockResolvedValue(null);
+      const upsertSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'upsert')
+        .mockResolvedValue(undefined);
+      const createHistorySpy = vi
+        .spyOn(MockMongoRepository.prototype, 'createHistory')
+        .mockResolvedValue(undefined);
+
+      const context = await createMockApplicationContext();
+      const useCase = new TrusteeUpcomingKeyDatesUseCase(context);
+      const input = buildMockInput({
+        tprCompletionYear: 2026,
+        tprCompletionStatus: 'Complete',
+        annualReportCompletionYear: 2025,
+        annualReportCompletionStatus: 'Incomplete',
+      });
+
+      await useCase.upsertUpcomingKeyDates(
+        'trustee-001',
+        'appointment-001',
+        input,
+        SYSTEM_USER_REFERENCE,
+      );
+
+      expect(upsertSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tprCompletionYear: 2026,
+          tprCompletionStatus: 'Complete',
+          annualReportCompletionYear: 2025,
+          annualReportCompletionStatus: 'Incomplete',
+        }),
+      );
+      expect(createHistorySpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          after: expect.objectContaining({
+            tprCompletionYear: 2026,
+            annualReportCompletionYear: 2025,
+          }),
+        }),
+      );
+    });
+
+    test('existing doc, completion year changed: history records before and after years', async () => {
+      const existing = buildMockDocument({
+        annualReportCompletionYear: 2024,
+        annualReportCompletionStatus: 'Incomplete',
+      });
+      vi.spyOn(MockMongoRepository.prototype, 'getByAppointmentId').mockResolvedValue(existing);
+      vi.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue(undefined);
+      const createHistorySpy = vi
+        .spyOn(MockMongoRepository.prototype, 'createHistory')
+        .mockResolvedValue(undefined);
+
+      const context = await createMockApplicationContext();
+      const useCase = new TrusteeUpcomingKeyDatesUseCase(context);
+      const input = buildMockInput({
+        annualReportCompletionYear: 2025,
+        annualReportCompletionStatus: 'Complete',
+      });
+
+      await useCase.upsertUpcomingKeyDates(
+        'trustee-001',
+        'appointment-001',
+        input,
+        SYSTEM_USER_REFERENCE,
+      );
+
+      expect(createHistorySpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          before: expect.objectContaining({
+            annualReportCompletionYear: 2024,
+            annualReportCompletionStatus: 'Incomplete',
+          }),
+          after: expect.objectContaining({
+            annualReportCompletionYear: 2025,
+            annualReportCompletionStatus: 'Complete',
+          }),
         }),
       );
     });

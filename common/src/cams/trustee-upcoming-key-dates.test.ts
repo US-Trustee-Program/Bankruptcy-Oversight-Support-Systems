@@ -23,6 +23,7 @@ import {
   validateTprDuePair,
   DATE_FIELDS,
   TEXT_FIELDS,
+  NUMBER_FIELDS,
 } from './trustee-upcoming-key-dates';
 import { VALID } from './validation';
 
@@ -377,11 +378,75 @@ describe('validateTrusteeUpcomingKeyDates', () => {
       lastCompensationStudy: null,
       bondIssuedDate: null,
       bondRenewalDate: null,
+      tprCompletionYear: null,
+      tprCompletionStatus: null,
+      annualReportCompletionYear: null,
+      annualReportCompletionStatus: null,
     };
   }
 
   test('returns VALID when all fields are null', () => {
     expect(validateTrusteeUpcomingKeyDates(baseInput())).toEqual(VALID);
+  });
+
+  test('returns error when tprCompletionYear is set but tprCompletionStatus is null', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      tprCompletionYear: 2026,
+      tprCompletionStatus: null,
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.tprCompletionStatus?.reasons?.[0]).toBe(
+      'TPR Completion Status is required.',
+    );
+  });
+
+  test('returns error when tprCompletionStatus is set but tprCompletionYear is null', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      tprCompletionYear: null,
+      tprCompletionStatus: 'Complete',
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.tprCompletionYear?.reasons?.[0]).toBe(
+      'TPR Completion Year is required.',
+    );
+  });
+
+  test('returns error when annualReportCompletionYear is set but annualReportCompletionStatus is null', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      annualReportCompletionYear: 2026,
+      annualReportCompletionStatus: null,
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.annualReportCompletionStatus?.reasons?.[0]).toBe(
+      'Annual Report Completion Status is required.',
+    );
+  });
+
+  test('returns error when annualReportCompletionStatus is set but annualReportCompletionYear is null', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      annualReportCompletionYear: null,
+      annualReportCompletionStatus: 'Incomplete',
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.annualReportCompletionYear?.reasons?.[0]).toBe(
+      'Annual Report Completion Year is required.',
+    );
+  });
+
+  test('returns VALID when both completion pairs are fully populated', () => {
+    expect(
+      validateTrusteeUpcomingKeyDates({
+        ...baseInput(),
+        tprCompletionYear: 2026,
+        tprCompletionStatus: 'Complete',
+        annualReportCompletionYear: 2025,
+        annualReportCompletionStatus: 'Incomplete',
+      }),
+    ).toEqual(VALID);
   });
 
   test('returns VALID when all fields are populated with valid values', () => {
@@ -788,7 +853,22 @@ describe('validateTrusteeUpcomingKeyDates', () => {
   });
 
   test('TEXT_FIELDS contains the exact set of expected fields', () => {
-    expect(TEXT_FIELDS).toEqual(['tprDueYearType', 'tprFrequency', 'tirFrequency']);
+    expect(TEXT_FIELDS).toEqual([
+      'tprDueYearType',
+      'tprFrequency',
+      'tirFrequency',
+      'tprCompletionStatus',
+      'annualReportCompletionStatus',
+    ]);
+  });
+
+  test('NUMBER_FIELDS contains the exact set of expected fields', () => {
+    expect(NUMBER_FIELDS).toEqual([
+      'upcomingExamOrAuditYear',
+      'lastAuditFiscalYear',
+      'tprCompletionYear',
+      'annualReportCompletionYear',
+    ]);
   });
 });
 
