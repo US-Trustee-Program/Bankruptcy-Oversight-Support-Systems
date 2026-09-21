@@ -369,4 +369,90 @@ describe('TrusteeAppointments', () => {
     // useAppointmentExpansion behavior, not specific to Chapter 7 Panel -- already covered
     // by AppointmentAccordion.test.tsx and useAppointmentExpansion.test.ts.
   });
+
+  describe('Chapter 11 Subchapter V accordion', () => {
+    const ch11SubVPoolActive = makeAppointment('ch11-subv-pool-active', {
+      chapter: '11-subchapter-v',
+      appointmentType: 'pool',
+      status: 'active',
+      courtName: 'Southern District of New York',
+    });
+    const ch11SubVOutOfPoolResigned = makeAppointment('ch11-subv-outofpool-resigned', {
+      chapter: '11-subchapter-v',
+      appointmentType: 'out-of-pool',
+      status: 'resigned',
+      courtName: 'Southern District of New York',
+    });
+
+    beforeEach(() => {
+      window.sessionStorage.clear();
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
+    });
+
+    test('renders Chapter 11 Subchapter V Pool via the accordion', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch11SubVPoolActive] });
+
+      renderComponent('trustee-123');
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId(`appointment-accordion-header-${ch11SubVPoolActive.id}`),
+        ).toBeInTheDocument();
+      });
+      expect(
+        screen.getByTestId(`appointment-accordion-body-${ch11SubVPoolActive.id}`),
+      ).toBeInTheDocument();
+      expect(getAppointmentCards()).toHaveLength(0);
+    });
+
+    test('renders Chapter 11 Subchapter V Out of Pool via the accordion', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({
+        data: [ch11SubVOutOfPoolResigned],
+      });
+
+      renderComponent('trustee-123');
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId(`appointment-accordion-header-${ch11SubVOutOfPoolResigned.id}`),
+        ).toBeInTheDocument();
+      });
+      expect(
+        screen.getByTestId(`appointment-accordion-body-${ch11SubVOutOfPoolResigned.id}`),
+      ).toBeInTheDocument();
+      expect(getAppointmentCards()).toHaveLength(0);
+    });
+
+    test('a Chapter 11 Subchapter V Pool appointment is collapsed by default', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch11SubVPoolActive] });
+
+      renderComponent('trustee-123');
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId(`appointment-accordion-header-${ch11SubVPoolActive.id}`),
+        ).toBeInTheDocument();
+      });
+      expect(
+        screen.getByTestId(`appointment-accordion-body-${ch11SubVPoolActive.id}`),
+      ).not.toBeVisible();
+    });
+
+    test('a Chapter 11 Subchapter V Out of Pool appointment is collapsed by default', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({
+        data: [ch11SubVOutOfPoolResigned],
+      });
+
+      renderComponent('trustee-123');
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId(`appointment-accordion-header-${ch11SubVOutOfPoolResigned.id}`),
+        ).toBeInTheDocument();
+      });
+      expect(
+        screen.getByTestId(`appointment-accordion-body-${ch11SubVOutOfPoolResigned.id}`),
+      ).not.toBeVisible();
+    });
+  });
 });

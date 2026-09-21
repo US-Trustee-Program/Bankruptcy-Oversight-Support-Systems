@@ -151,6 +151,18 @@ describe('PastKeyDatesForm', () => {
     expect(screen.getByTestId('past-tpr-submission')).toBeInTheDocument();
   });
 
+  test('renders "Edit Past Key Dates" as the heading', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('heading', { level: 3, name: 'Edit Past Key Dates' }),
+      ).toBeInTheDocument();
+    });
+  });
+
   test('disables Save when a date field has an invalid value, re-enables once corrected', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
 
@@ -750,6 +762,18 @@ describe('PastKeyDatesForm', () => {
 
       await waitFor(() => {
         expect(screen.getByText('Last Monthly Report Received')).toBeInTheDocument();
+      });
+    });
+
+    test('renders "Edit Other Key Dates" as the heading', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole('heading', { level: 3, name: 'Edit Other Key Dates' }),
+        ).toBeInTheDocument();
       });
     });
   });

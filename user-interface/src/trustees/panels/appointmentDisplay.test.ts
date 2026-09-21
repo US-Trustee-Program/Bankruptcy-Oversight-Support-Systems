@@ -45,6 +45,10 @@ describe('appointmentDisplay', () => {
     test('falls back to courtId when courtName is missing', () => {
       expect(buildDistrictDisplay({ courtId: '0208' })).toBe('Court 0208');
     });
+
+    test('renders "Court undefined" when both courtName and courtId are missing', () => {
+      expect(buildDistrictDisplay({})).toBe('Court undefined');
+    });
   });
 
   describe('buildAppointmentHeading', () => {
