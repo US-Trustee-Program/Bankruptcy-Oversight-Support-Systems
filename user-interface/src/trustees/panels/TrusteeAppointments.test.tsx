@@ -58,7 +58,9 @@ const getAppointmentCards = () =>
   Array.from(document.querySelectorAll('.appointment-card-container'));
 
 const getAppointmentHeading = (card: Element) =>
-  card.querySelector('.appointment-card-heading')?.textContent ?? '';
+  card.querySelector('.appointment-card-heading')?.textContent ??
+  card.querySelector('.chapter13-standing-accordion-header span')?.textContent ??
+  '';
 
 const parseAppointmentHeading = (heading: string) => {
   const stateMatch = heading.match(/District of ([A-Za-z ]+)/);
