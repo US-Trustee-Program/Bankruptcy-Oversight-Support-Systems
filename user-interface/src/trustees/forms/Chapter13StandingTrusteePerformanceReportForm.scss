@@ -1,4 +1,16 @@
 .edit-chapter13-standing-tpr-key-dates {
+  .date-picker .usa-date-picker {
+    max-width: 22rem;
+  }
+
+  .tpr-frequency-group {
+    max-width: 22rem;
+
+    .usa-select {
+      width: 100%;
+    }
+  }
+
   .tpr-review-period-group {
     .usa-form-group:not(:first-child) {
       margin-top: 2rem;
@@ -51,7 +63,7 @@
   }
 
   .usa-button-group {
-    margin-top: 1rem;
+    margin-top: 2rem;
 
     #cancel-chapter13-standing-tpr-key-dates {
       margin-left: 0.5rem;

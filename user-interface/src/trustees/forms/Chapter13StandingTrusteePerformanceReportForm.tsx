@@ -223,7 +223,7 @@ export default function Chapter13StandingTrusteePerformanceReportForm() {
           </span>
         )}
       </div>
-      <div className="usa-form-group">
+      <div className="usa-form-group tpr-frequency-group">
         <label className="usa-label" htmlFor="tpr-frequency">
           Trustee Performance Review (TPR) Period Frequency
         </label>
