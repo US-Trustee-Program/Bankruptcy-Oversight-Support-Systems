@@ -73,11 +73,11 @@ jobs:
       # does not need the custom msedge derivative image (unlike
       # reusable-accessibility.yml, whose UI Edge project IS active).
       # Digest reused from test/e2e/Dockerfile.playwright-msedge's FROM
-      # line, which resolves the same v1.62.1-noble tag. If the msedge
+      # line, which resolves the same v1.63.0-noble tag. If the msedge
       # project in test/e2e/playwright.config.ts is ever re-enabled,
       # switch this to the shared custom image (ghcr.io playwright-msedge
       # / Dockerfile.playwright-msedge) instead.
-      PLAYWRIGHT_IMAGE: mcr.microsoft.com/playwright@sha256:c091b21d9fae78c76e85cd4356431e9b018402f172a214fc7d7a5e9a7e29d8ac
+      PLAYWRIGHT_IMAGE: mcr.microsoft.com/playwright@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27
     steps:
       - name: Get source code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
