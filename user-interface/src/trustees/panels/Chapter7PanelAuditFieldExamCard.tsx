@@ -8,6 +8,7 @@ import {
   auditReqByField,
   formatDateOrDefault,
   NO_DATE,
+  buildCompletionTag,
 } from './upcomingKeyDatesFieldConfig';
 
 export interface Chapter7PanelAuditFieldExamCardProps {
@@ -41,14 +42,12 @@ export default function Chapter7PanelAuditFieldExamCard(
   const examOrAudit = examOrAuditField(data);
   const auditReqBy = auditReqByField(data);
 
-  const tag =
-    data?.auditCompletionYear !== undefined && data?.auditCompletionStatus !== undefined
-      ? {
-          label: `${data.auditCompletionStatus === 'CLOSED' ? 'Complete' : 'Incomplete'} for ${data.auditCompletionYear}`,
-          color: (data.auditCompletionStatus === 'CLOSED' ? 'green' : 'red') as 'green' | 'red',
-          id: `audit-completion-status-tag-${appointmentId}`,
-        }
-      : undefined;
+  const tag = buildCompletionTag(
+    data?.auditCompletionYear,
+    data?.auditCompletionStatus,
+    'CLOSED',
+    `audit-completion-status-tag-${appointmentId}`,
+  );
 
   return (
     <EditableTableCard

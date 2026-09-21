@@ -3,6 +3,9 @@ import {
   TrusteeUpcomingKeyDatesInput,
 } from '@common/cams/trustee-upcoming-key-dates';
 
+export const CURRENT_YEAR = new Date().getFullYear();
+export const FISCAL_YEAR_OPTIONS = Array.from({ length: 21 }, (_, i) => CURRENT_YEAR - i);
+
 /**
  * Builds a full TrusteeUpcomingKeyDatesInput by carrying all fields forward from
  * the original document (defaulting to null when absent) and applying only the

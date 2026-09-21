@@ -8,6 +8,7 @@ import {
   tirSubmissionField,
   tirReviewField,
   formatDateOrDefault,
+  buildCompletionTag,
 } from './upcomingKeyDatesFieldConfig';
 
 export interface Chapter7PanelTrusteeInterimReportCardProps {
@@ -32,14 +33,12 @@ export default function Chapter7PanelTrusteeInterimReportCard(
     return <LoadingSpinner id="chapter7-panel-tir-loading" />;
   }
 
-  const tag =
-    data?.tirCompletionYear !== undefined && data?.tirCompletionStatus !== undefined
-      ? {
-          label: `${data.tirCompletionStatus === 'COMPLETE' ? 'Complete' : 'Incomplete'} for ${data.tirCompletionYear}`,
-          color: (data.tirCompletionStatus === 'COMPLETE' ? 'green' : 'red') as 'green' | 'red',
-          id: `tir-completion-status-tag-${appointmentId}`,
-        }
-      : undefined;
+  const tag = buildCompletionTag(
+    data?.tirCompletionYear,
+    data?.tirCompletionStatus,
+    'COMPLETE',
+    `tir-completion-status-tag-${appointmentId}`,
+  );
 
   return (
     <EditableTableCard
@@ -60,7 +59,7 @@ export default function Chapter7PanelTrusteeInterimReportCard(
         // Column key/testId is 'tirDue'/'tir-review-row' because the underlying data field is
         // tirReview, but the domain calls this date "TIR Due" -- the header label is intentional.
         { key: 'tirDue', header: 'TIR Due', testId: 'tir-review-row' },
-        { key: 'tirLetter', header: 'Last TIR Letter', testId: 'past-tpr-submission-row' },
+        { key: 'tirLetter', header: 'Last TIR Letter', testId: 'last-tir-letter-row' },
       ]}
       values={{
         tirReviewPeriod: tirReviewPeriodField(data).value,

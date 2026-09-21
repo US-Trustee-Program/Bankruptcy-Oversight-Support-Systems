@@ -6,11 +6,29 @@ import {
   calculateAuditReqBy,
   calculateTprDueYear,
 } from '@common/cams/trustee-upcoming-key-dates';
+import {
+  EditableTableCardTag,
+  EditableTableCardTagColor,
+} from '@/lib/components/cams/EditableTableCard/EditableTableCard';
 
 export type UpcomingKeyDatesVariant =
   'chapter7-panel' | 'ch12-13-case-by-case' | 'chapter12-standing' | 'chapter13-standing';
 
 export const NO_DATE = 'No date added';
+
+export function buildCompletionTag(
+  year: number | undefined,
+  status: string | undefined,
+  closedValue: string,
+  id: string,
+): EditableTableCardTag | undefined {
+  if (year === undefined || status === undefined) return undefined;
+  return {
+    label: `${status === closedValue ? 'Complete' : 'Incomplete'} for ${year}`,
+    color: (status === closedValue ? 'green' : 'red') as EditableTableCardTagColor,
+    id,
+  };
+}
 
 export function formatDateOrDefault(isoDate: string | undefined): string {
   return isoDate ? isoToMMDDYYYY(isoDate) : NO_DATE;

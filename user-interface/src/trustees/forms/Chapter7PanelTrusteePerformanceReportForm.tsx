@@ -9,7 +9,7 @@ import {
   validateCompletionPairPresence,
   isoToSentinel,
 } from '@common/cams/trustee-upcoming-key-dates';
-import { mergeKeyDatesInput } from './chapter7PanelKeyDatesInput';
+import { mergeKeyDatesInput, FISCAL_YEAR_OPTIONS } from './chapter7PanelKeyDatesInput';
 import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
@@ -20,9 +20,6 @@ import MonthDayRangeSelector from '@/lib/components/uswds/MonthDayRangeSelector'
 import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import { Stop } from '@/lib/components/Stop';
-
-const CURRENT_YEAR = new Date().getFullYear();
-const FISCAL_YEAR_OPTIONS = Array.from({ length: 21 }, (_, i) => CURRENT_YEAR - i);
 
 type TprCompletionStatus = 'COMPLETE' | 'INCOMPLETE';
 

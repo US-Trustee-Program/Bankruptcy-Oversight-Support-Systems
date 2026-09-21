@@ -13,6 +13,7 @@ import {
   tprDueField,
   formatDateOrDefault,
   NO_DATE,
+  buildCompletionTag,
 } from './upcomingKeyDatesFieldConfig';
 
 export interface Chapter7PanelTrusteePerformanceReportCardProps {
@@ -38,14 +39,12 @@ export default function Chapter7PanelTrusteePerformanceReportCard(
     return <LoadingSpinner id="chapter7-panel-tpr-loading" />;
   }
 
-  const tag =
-    data?.tprCompletionYear !== undefined && data?.tprCompletionStatus !== undefined
-      ? {
-          label: `${data.tprCompletionStatus === 'COMPLETE' ? 'Complete' : 'Incomplete'} for ${data.tprCompletionYear}`,
-          color: (data.tprCompletionStatus === 'COMPLETE' ? 'green' : 'red') as 'green' | 'red',
-          id: `tpr-completion-status-tag-${appointmentId}`,
-        }
-      : undefined;
+  const tag = buildCompletionTag(
+    data?.tprCompletionYear,
+    data?.tprCompletionStatus,
+    'COMPLETE',
+    `tpr-completion-status-tag-${appointmentId}`,
+  );
 
   const columns = [
     { key: 'tprReviewPeriod', header: 'TPR Review Period', testId: 'tpr-review-period-row' },

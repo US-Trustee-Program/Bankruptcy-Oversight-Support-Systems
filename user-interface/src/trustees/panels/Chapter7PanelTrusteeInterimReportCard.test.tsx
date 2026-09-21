@@ -68,7 +68,7 @@ describe('Chapter7PanelTrusteeInterimReportCard', () => {
     expect(screen.getByTestId('tir-review-period-row')).toHaveTextContent('01/01 - 03/31');
     expect(screen.getByTestId('tir-submission-row')).toHaveTextContent('01/30');
     expect(screen.getByTestId('tir-review-row')).toHaveTextContent('03/30');
-    expect(screen.getByTestId('past-tpr-submission-row')).toHaveTextContent('06/06/2026');
+    expect(screen.getByTestId('last-tir-letter-row')).toHaveTextContent('06/06/2026');
   });
 
   test('shows "No date added" for all fields when there is no key dates document', () => {
@@ -77,7 +77,7 @@ describe('Chapter7PanelTrusteeInterimReportCard', () => {
     expect(screen.getByTestId('tir-review-period-row')).toHaveTextContent('No date added');
     expect(screen.getByTestId('tir-submission-row')).toHaveTextContent('No date added');
     expect(screen.getByTestId('tir-review-row')).toHaveTextContent('No date added');
-    expect(screen.getByTestId('past-tpr-submission-row')).toHaveTextContent('No date added');
+    expect(screen.getByTestId('last-tir-letter-row')).toHaveTextContent('No date added');
   });
 
   test('shows a loading spinner while loading', () => {

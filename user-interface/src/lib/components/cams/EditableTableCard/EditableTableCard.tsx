@@ -19,9 +19,9 @@ interface EditableTableCardColumn {
   testId?: string;
 }
 
-type EditableTableCardTagColor = 'red' | 'green';
+export type EditableTableCardTagColor = 'red' | 'green';
 
-interface EditableTableCardTag {
+export interface EditableTableCardTag {
   label: ReactNode;
   color: EditableTableCardTagColor;
   id?: string;
