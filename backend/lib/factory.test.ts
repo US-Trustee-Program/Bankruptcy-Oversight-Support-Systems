@@ -4,7 +4,7 @@ import { createMockApplicationContext } from './testing/testing-utilities';
 
 // Static imports are used only for type declarations.
 // Values are re-imported dynamically in each beforeEach after vi.resetModules()
-// because factory.ts holds module-level singletons that must be cleared between tests.
+// because factory.ts holds module-level singletons that must be cleared between tests. TEST TESTS TEST
 import type OktaGatewayType from './adapters/gateways/okta/okta-gateway';
 import type MockOpenIdConnectGatewayType from './testing/mock-gateways/mock-oauth2-gateway';
 import type { UserSessionUseCase as UserSessionUseCaseType } from './use-cases/user-session/user-session';
