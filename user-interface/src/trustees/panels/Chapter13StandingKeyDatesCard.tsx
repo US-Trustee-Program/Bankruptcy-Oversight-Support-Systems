@@ -3,7 +3,7 @@ import { type ReactNode } from 'react';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 
-export interface Chapter13StandingKeyDatesCardField {
+interface Chapter13StandingKeyDatesCardField {
   label: string;
   value: ReactNode;
   testId?: string;

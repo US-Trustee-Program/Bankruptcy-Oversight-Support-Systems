@@ -175,6 +175,10 @@ describe('TrusteeUpcomingKeyDatesController', () => {
         lastCompensationStudy: null,
         bondIssuedDate: null,
         bondRenewalDate: null,
+        auditCompletionYear: null,
+        auditCompletionStatus: null,
+        tprCompletionYear: null,
+        tprCompletionStatus: null,
         ...overrides,
       };
     }
