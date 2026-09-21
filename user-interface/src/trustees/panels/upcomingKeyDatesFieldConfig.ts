@@ -4,8 +4,8 @@ import {
   isoToMMDDYYYY,
   isoRangeToMMDD,
   calculateAuditReqBy,
-  calculateTprDueYear,
 } from '@common/cams/trustee-upcoming-key-dates';
+import { formatTprDue, formatTprFrequency, formatTprReviewPeriod } from './tprFieldFormatters';
 
 export type UpcomingKeyDatesVariant =
   'chapter7-panel' | 'ch12-13-case-by-case' | 'chapter12-standing' | 'chapter13-standing';
@@ -36,17 +36,9 @@ interface ComputedField {
 export type UpcomingKeyDatesFieldConfig = ConstantField | ComputedField;
 
 function tprFrequencyField(data: TrusteeUpcomingKeyDates | null): UpcomingKeyDatesDisplayField {
-  const frequencyLabels: Record<string, string> = {
-    BIANNUAL: 'Two years',
-    ANNUAL: 'One year',
-    SEMI_ANNUAL: '6 months',
-  };
-  const value = data?.tprFrequency
-    ? (frequencyLabels[data.tprFrequency] ?? 'No frequency selected')
-    : 'No frequency selected';
   return {
     label: 'TPR Review Period Frequency',
-    value,
+    value: formatTprFrequency(data),
     testId: 'tpr-review-period-frequency-row',
     stacked: true,
   };
@@ -56,24 +48,14 @@ function tprReviewPeriodField(
   data: TrusteeUpcomingKeyDates | null,
   label = 'Trustee Performance Review Period',
 ): UpcomingKeyDatesDisplayField {
-  const value =
-    data?.tprReviewPeriodStart && data?.tprReviewPeriodEnd
-      ? data.tprReviewPeriodStart.startsWith('1900-')
-        ? isoRangeToMMDD(data.tprReviewPeriodStart, data.tprReviewPeriodEnd)
-        : `${isoToMMDDYYYY(data.tprReviewPeriodStart)} - ${isoToMMDDYYYY(data.tprReviewPeriodEnd)}`
-      : NO_DATE;
-  return { label, value, testId: 'tpr-review-period-row' };
+  return { label, value: formatTprReviewPeriod(data), testId: 'tpr-review-period-row' };
 }
 
 function tprDueField(
   data: TrusteeUpcomingKeyDates | null,
   label = 'Trustee Performance Review Due',
 ): UpcomingKeyDatesDisplayField {
-  const value =
-    data?.tprDue && data?.tprDueYearType
-      ? `${isoToMMDD(data.tprDue)}/${calculateTprDueYear(data.tprDueYearType, new Date().getFullYear())}`
-      : NO_DATE;
-  return { label, value, testId: 'tpr-due-row' };
+  return { label, value: formatTprDue(data), testId: 'tpr-due-row' };
 }
 
 function leaseExpirationField(data: TrusteeUpcomingKeyDates | null): UpcomingKeyDatesDisplayField {

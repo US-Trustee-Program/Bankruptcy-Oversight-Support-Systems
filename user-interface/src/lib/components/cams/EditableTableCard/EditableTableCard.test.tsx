@@ -102,8 +102,10 @@ describe('EditableTableCard', () => {
   });
 
   test.each([
-    ['green', 'bg-success'],
-    ['red', 'bg-secondary'],
+    // green = #00a91c (USWDS success), red = #b50909 — the colors the trustee
+    // key-dates stories specify for completion status tags.
+    ['green', 'bg-success-vivid'],
+    ['red', 'bg-secondary-dark'],
   ] as const)('renders a %s tag with the %s style', (color, expectedClass) => {
     render(
       <EditableTableCard

@@ -6,10 +6,7 @@ import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import * as featureFlagsHook from '@/lib/hooks/UseFeatureFlags';
-import {
-  DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES,
-  TPR_DISPLAY_UPDATES,
-} from '@/lib/hooks/UseFeatureFlags';
+import { DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES } from '@/lib/hooks/UseFeatureFlags';
 
 vi.mock('./AppointmentBasicFields', () => ({
   default: (props: { appointment: TrusteeAppointment }) => (
@@ -17,27 +14,35 @@ vi.mock('./AppointmentBasicFields', () => ({
   ),
 }));
 
-vi.mock('./UpcomingKeyDates', () => ({
-  default: (props: {
-    variant?: string;
-    data: TrusteeUpcomingKeyDates | null;
-    isLoading: boolean;
-    trusteeId?: string;
-    appointmentId?: string;
-    appointmentHeading?: string;
-    tprDisplayUpdates?: boolean;
-  }) => (
+type StubCardProps = {
+  data: TrusteeUpcomingKeyDates | null;
+  isLoading: boolean;
+  trusteeId?: string;
+  appointmentId?: string;
+  appointmentHeading?: string;
+};
+
+// Both themed cards take the same props, so one stub factory keeps the
+// assertions symmetrical between them.
+function stubCard(testId: string) {
+  return (props: StubCardProps) => (
     <div
-      data-testid="upcoming-key-dates-card"
-      data-variant={String(props.variant)}
+      data-testid={testId}
       data-is-loading={String(props.isLoading)}
       data-has-data={String(props.data !== null)}
       data-trustee-id={String(props.trusteeId)}
       data-appointment-id={String(props.appointmentId)}
       data-appointment-heading={String(props.appointmentHeading)}
-      data-tpr-display-updates={String(props.tprDisplayUpdates)}
     />
-  ),
+  );
+}
+
+vi.mock('./AnnualReportKeyDatesCard', () => ({
+  default: stubCard('annual-report-card'),
+}));
+
+vi.mock('./TrusteePerformanceReportKeyDatesCard', () => ({
+  default: stubCard('tpr-card'),
 }));
 
 describe('Chapter12And13CaseByCaseAppointmentBody', () => {
@@ -77,11 +82,12 @@ describe('Chapter12And13CaseByCaseAppointmentBody', () => {
     tprReviewPeriodEnd: '1900-03-31',
   };
 
+  const CARD_TEST_IDS = ['annual-report-card', 'tpr-card'];
+
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
       [DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES]: true,
-      [TPR_DISPLAY_UPDATES]: true,
     });
   });
 
@@ -99,100 +105,78 @@ describe('Chapter12And13CaseByCaseAppointmentBody', () => {
       'appointment-012',
     );
     await waitFor(() => {
-      expect(screen.getByTestId('upcoming-key-dates-card')).toHaveAttribute(
-        'data-is-loading',
-        'false',
-      );
+      expect(screen.getByTestId('tpr-card')).toHaveAttribute('data-is-loading', 'false');
     });
   });
 
-  test('fetches key dates and forwards the result to the UpcomingKeyDates card', async () => {
+  test('renders both themed key-dates cards', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: keyDates });
+
+    renderBody();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('annual-report-card')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('tpr-card')).toBeInTheDocument();
+  });
+
+  test('fetches key dates once and forwards the same result to both cards', async () => {
     const getSpy = vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: keyDates });
 
     renderBody();
 
     await waitFor(() => {
-      expect(screen.getByTestId('upcoming-key-dates-card')).toHaveAttribute(
-        'data-is-loading',
-        'false',
-      );
+      expect(screen.getByTestId('tpr-card')).toHaveAttribute('data-is-loading', 'false');
     });
-    expect(getSpy).toHaveBeenCalledWith('trustee-789', 'appointment-012');
-    const card = screen.getByTestId('upcoming-key-dates-card');
-    expect(card).toHaveAttribute('data-variant', 'ch12-13-case-by-case');
-    expect(card).toHaveAttribute('data-has-data', 'true');
-    // The card builds its edit route from these, so a swap would 404 silently.
-    expect(card).toHaveAttribute('data-trustee-id', 'trustee-789');
-    expect(card).toHaveAttribute('data-appointment-id', 'appointment-012');
-  });
-
-  test.each([
-    ['enabled', true],
-    ['disabled', false],
-  ])(
-    'forwards the TPR_DISPLAY_UPDATES flag to the card when %s',
-    async (_label, tprDisplayUpdates) => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES]: true,
-        [TPR_DISPLAY_UPDATES]: tprDisplayUpdates,
-      });
-      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: keyDates });
-
-      renderBody();
-
-      await waitFor(() => {
-        expect(screen.getByTestId('upcoming-key-dates-card')).toHaveAttribute(
-          'data-tpr-display-updates',
-          String(tprDisplayUpdates),
-        );
-      });
-    },
-  );
-
-  test('reports the loading state to the card while the fetch is in flight', () => {
-    vi.spyOn(Api2, 'getUpcomingKeyDates').mockImplementation(() => new Promise(() => {}));
-
-    renderBody();
-
-    expect(screen.getByTestId('upcoming-key-dates-card')).toHaveAttribute(
-      'data-is-loading',
-      'true',
-    );
+    expect(getSpy).toHaveBeenCalledExactlyOnceWith('trustee-789', 'appointment-012');
+    for (const testId of CARD_TEST_IDS) {
+      const card = screen.getByTestId(testId);
+      expect(card).toHaveAttribute('data-has-data', 'true');
+      // Each card builds its own edit route from these, so a swap would 404.
+      expect(card).toHaveAttribute('data-trustee-id', 'trustee-789');
+      expect(card).toHaveAttribute('data-appointment-id', 'appointment-012');
+    }
   });
 
   test.each([
     [chapter12Appointment, 'Southern District of New York (Manhattan): Chapter 12 - Case by Case'],
     [chapter13Appointment, 'Southern District of New York (Manhattan): Chapter 13 - Case by Case'],
-  ])(
-    'builds the district/division/chapter appointment heading for $chapter',
-    async (appointment, expectedHeading) => {
-      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: keyDates });
+  ])('builds the appointment heading for chapter $chapter', async (appointment, expected) => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: keyDates });
 
-      renderBody(appointment);
+    renderBody(appointment);
 
-      await waitFor(() => {
-        expect(screen.getByTestId('upcoming-key-dates-card')).toHaveAttribute(
-          'data-appointment-heading',
-          expectedHeading,
-        );
-      });
-    },
-  );
+    await waitFor(() => {
+      expect(screen.getByTestId('annual-report-card')).toHaveAttribute(
+        'data-appointment-heading',
+        expected,
+      );
+    });
+    expect(screen.getByTestId('tpr-card')).toHaveAttribute('data-appointment-heading', expected);
+  });
 
-  test('forwards null data when no key dates document exists', async () => {
+  test('forwards null data to both cards when no key dates document exists', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderBody();
 
     await waitFor(() => {
-      expect(screen.getByTestId('upcoming-key-dates-card')).toHaveAttribute(
-        'data-has-data',
-        'false',
-      );
+      expect(screen.getByTestId('annual-report-card')).toHaveAttribute('data-has-data', 'false');
     });
+    expect(screen.getByTestId('tpr-card')).toHaveAttribute('data-has-data', 'false');
   });
 
-  test('shows an error alert instead of the card when the fetch fails', async () => {
+  test('reports the loading state to both cards while the fetch is in flight', () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockImplementation(() => new Promise(() => {}));
+
+    renderBody();
+
+    for (const testId of CARD_TEST_IDS) {
+      expect(screen.getByTestId(testId)).toHaveAttribute('data-is-loading', 'true');
+    }
+  });
+
+  test('shows an error alert instead of the cards when the fetch fails', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockRejectedValue(new Error('network error'));
 
@@ -203,10 +187,12 @@ describe('Chapter12And13CaseByCaseAppointmentBody', () => {
         screen.getByTestId(`alert-ch12-13-case-by-case-key-dates-error-${chapter12Appointment.id}`),
       ).toBeInTheDocument();
     });
-    expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
+    for (const testId of CARD_TEST_IDS) {
+      expect(screen.queryByTestId(testId)).not.toBeInTheDocument();
+    }
   });
 
-  test('does not fetch or render the card when the feature flag is disabled', () => {
+  test('does not fetch or render the cards when the feature flag is disabled', () => {
     vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
       [DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES]: false,
     });
@@ -215,7 +201,9 @@ describe('Chapter12And13CaseByCaseAppointmentBody', () => {
     renderBody();
 
     expect(getSpy).not.toHaveBeenCalled();
-    expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
+    for (const testId of CARD_TEST_IDS) {
+      expect(screen.queryByTestId(testId)).not.toBeInTheDocument();
+    }
     expect(screen.getByTestId('appointment-basic-fields')).toBeInTheDocument();
   });
 });

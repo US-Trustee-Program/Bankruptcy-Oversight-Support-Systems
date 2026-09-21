@@ -1,11 +1,12 @@
+import './Chapter12And13CaseByCaseAppointmentBody.scss';
 import AppointmentBasicFields from './AppointmentBasicFields';
-import UpcomingKeyDates from './UpcomingKeyDates';
+import AnnualReportKeyDatesCard from './AnnualReportKeyDatesCard';
+import TrusteePerformanceReportKeyDatesCard from './TrusteePerformanceReportKeyDatesCard';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { getAppointmentDetails } from '@common/cams/trustees';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import useFeatureFlags, {
   DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES,
-  TPR_DISPLAY_UPDATES,
 } from '@/lib/hooks/UseFeatureFlags';
 import { useUpcomingKeyDates } from './useUpcomingKeyDates';
 import { buildAppointmentHeading } from './appointmentDisplay';
@@ -22,7 +23,6 @@ export default function Chapter12And13CaseByCaseAppointmentBody(
   // must be gated on it to avoid a guaranteed-to-fail request.
   const featureFlags = useFeatureFlags();
   const displayKeyDates = featureFlags[DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES] === true;
-  const tprDisplayUpdates = !!featureFlags[TPR_DISPLAY_UPDATES];
   const {
     data: keyDates,
     isLoading: isKeyDatesLoading,
@@ -49,15 +49,25 @@ export default function Chapter12And13CaseByCaseAppointmentBody(
         </Alert>
       )}
       {displayKeyDates && !keyDatesLoadError && (
-        <UpcomingKeyDates
-          variant="ch12-13-case-by-case"
-          trusteeId={appointment.trusteeId}
-          appointmentId={appointment.id}
-          appointmentHeading={appointmentHeading}
-          data={keyDates}
-          isLoading={isKeyDatesLoading}
-          tprDisplayUpdates={tprDisplayUpdates}
-        />
+        <div
+          className="ch12-13-case-by-case-cards"
+          data-testid={`ch12-13-case-by-case-cards-${appointment.id}`}
+        >
+          <AnnualReportKeyDatesCard
+            trusteeId={appointment.trusteeId}
+            appointmentId={appointment.id}
+            appointmentHeading={appointmentHeading}
+            data={keyDates}
+            isLoading={isKeyDatesLoading}
+          />
+          <TrusteePerformanceReportKeyDatesCard
+            trusteeId={appointment.trusteeId}
+            appointmentId={appointment.id}
+            appointmentHeading={appointmentHeading}
+            data={keyDates}
+            isLoading={isKeyDatesLoading}
+          />
+        </div>
       )}
     </>
   );
