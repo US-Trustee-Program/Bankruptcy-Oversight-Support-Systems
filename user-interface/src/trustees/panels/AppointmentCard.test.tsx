@@ -12,7 +12,6 @@ import * as featureFlagsHook from '@/lib/hooks/UseFeatureFlags';
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import {
   DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES,
-  DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES,
   DISPLAY_CHPT12_STANDING_KEY_DATES,
   DISPLAY_CHPT13_STANDING_KEY_DATES,
   TPR_DISPLAY_UPDATES,
@@ -350,88 +349,24 @@ describe('AppointmentCard', () => {
     expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
   });
 
-  describe('Chapter 12/13 Case by Case upcoming key dates', () => {
-    const ch12CaseByCaseAppointment: TrusteeAppointment = {
+  // Chapter 12/13 Case by Case no longer reaches AppointmentCard — TrusteeAppointments
+  // routes it to Chapter12And13CaseByCaseAppointmentBody (CAMS-913). Heading construction
+  // is still AppointmentCard's job for the variants it does serve, covered here via
+  // Chapter 12 Standing.
+  describe('appointmentHeading construction', () => {
+    const ch12StandingAppointment: TrusteeAppointment = {
       ...mockAppointment,
       chapter: '12',
-      appointmentType: 'case-by-case',
+      appointmentType: 'standing',
     };
-
-    test('renders UpcomingKeyDates card for Ch12 case-by-case appointment when flag enabled', () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES]: true,
-      });
-
-      renderWithProps({ appointment: ch12CaseByCaseAppointment });
-
-      expect(screen.getByTestId('upcoming-key-dates-card')).toBeInTheDocument();
-    });
-
-    test('renders UpcomingKeyDates card for Ch13 case-by-case appointment when flag enabled', () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES]: true,
-      });
-
-      renderWithProps({
-        appointment: { ...ch12CaseByCaseAppointment, chapter: '13' },
-      });
-
-      expect(screen.getByTestId('upcoming-key-dates-card')).toBeInTheDocument();
-    });
-
-    test('does not render a PastKeyDates card for Ch12/13 case-by-case appointment', () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES]: true,
-      });
-
-      renderWithProps({ appointment: ch12CaseByCaseAppointment });
-
-      expect(screen.getByTestId('upcoming-key-dates-card')).toBeInTheDocument();
-      expect(screen.queryByTestId('past-key-dates-card')).not.toBeInTheDocument();
-    });
-
-    test('does not render UpcomingKeyDates card when flag is disabled', () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES]: false,
-      });
-
-      renderWithProps({ appointment: ch12CaseByCaseAppointment });
-
-      expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
-    });
-
-    test('does not render UpcomingKeyDates card for Ch12/13 Standing appointment type', () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES]: true,
-      });
-
-      renderWithProps({
-        appointment: { ...ch12CaseByCaseAppointment, appointmentType: 'standing' },
-      });
-
-      expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
-    });
-
-    // Unlike the Ch7 panel card (gated on canManage), Ch12/13 case-by-case key
-    // dates have no such gate — this locks in that behavior.
-    test('renders UpcomingKeyDates card for non-TrusteeAdmin user when flag enabled (no canManage gate)', () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES]: true,
-      });
-      TestingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
-
-      renderWithProps({ appointment: ch12CaseByCaseAppointment });
-
-      expect(screen.getByTestId('upcoming-key-dates-card')).toBeInTheDocument();
-    });
 
     test('includes courtDivisionName in the appointmentHeading passed to key-dates cards', () => {
       vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES]: true,
+        [DISPLAY_CHPT12_STANDING_KEY_DATES]: true,
       });
 
       renderWithProps({
-        appointment: { ...ch12CaseByCaseAppointment, courtDivisionName: 'Brooklyn' },
+        appointment: { ...ch12StandingAppointment, courtDivisionName: 'Brooklyn' },
       });
 
       const heading = screen
@@ -442,11 +377,11 @@ describe('AppointmentCard', () => {
 
     test('omits the division parenthetical from appointmentHeading when courtDivisionName is missing', () => {
       vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES]: true,
+        [DISPLAY_CHPT12_STANDING_KEY_DATES]: true,
       });
 
       renderWithProps({
-        appointment: { ...ch12CaseByCaseAppointment, courtDivisionName: undefined },
+        appointment: { ...ch12StandingAppointment, courtDivisionName: undefined },
       });
 
       const heading = screen

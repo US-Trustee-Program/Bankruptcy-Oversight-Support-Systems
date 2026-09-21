@@ -88,6 +88,9 @@ describe('TrusteeAppointments', () => {
     mockNavigate.mockClear();
     vi.mocked(useNavigate).mockReturnValue(mockNavigate);
     window.sessionStorage.clear();
+    // Accordion bodies fetch key dates on mount. Stub it here so tests about
+    // listing and routing don't fire unmocked requests that settle after they end.
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
   });
 
   test('should display loading spinner while fetching appointments', () => {
@@ -135,7 +138,10 @@ describe('TrusteeAppointments', () => {
       expect(
         screen.getByText(/Southern District of New York: Chapter 7 - Panel/i),
       ).toBeInTheDocument();
-      expect(screen.getByText(/Northern District of New York: Chapter 12/i)).toBeInTheDocument();
+      // Chapter 12 case-by-case renders through the accordion, not a flat card.
+      expect(screen.getByTestId('appointment-accordion-header-appointment-002')).toHaveTextContent(
+        /Northern District of New York/i,
+      );
     });
   });
 
@@ -282,7 +288,7 @@ describe('TrusteeAppointments', () => {
       renderComponent('trustee-123');
 
       await waitFor(() => {
-        expect(getAppointmentCards()).toHaveLength(2);
+        expect(getAppointmentCards()).toHaveLength(1);
       });
 
       expect(
@@ -290,11 +296,11 @@ describe('TrusteeAppointments', () => {
           /Southern District of New York/i,
         ),
       ).not.toHaveLength(0);
+      // Chapter 12 case-by-case renders through the accordion, which applies the
+      // same court-id fallback when courtName is absent.
       expect(
-        within(screen.getByTestId(`appointment-card-${appointments[1].id}`)).getAllByText(
-          /Court 999/i,
-        ),
-      ).not.toHaveLength(0);
+        screen.getByTestId(`appointment-accordion-header-${appointments[1].id}`),
+      ).toHaveTextContent(/Court 999/i);
     });
   });
 
@@ -536,6 +542,59 @@ describe('TrusteeAppointments', () => {
       expect(
         screen.getByTestId(`appointment-accordion-body-${ch11SubVOutOfPoolResigned.id}`),
       ).not.toBeVisible();
+    });
+  });
+
+  describe('Chapter 12 and 13 Case by Case accordion', () => {
+    const ch12CaseByCase = makeAppointment('ch12-cbc-active', {
+      chapter: '12',
+      appointmentType: 'case-by-case',
+      status: 'active',
+      courtName: 'Southern District of New York',
+    });
+    const ch13CaseByCase = makeAppointment('ch13-cbc-inactive', {
+      chapter: '13',
+      appointmentType: 'case-by-case',
+      status: 'inactive',
+      courtName: 'Southern District of New York',
+    });
+
+    test.each([
+      ['Chapter 12', ch12CaseByCase],
+      ['Chapter 13', ch13CaseByCase],
+    ])('renders a %s Case by Case appointment via the accordion', async (_label, appointment) => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [appointment] });
+
+      renderComponent('trustee-123');
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId(`appointment-accordion-header-${appointment.id}`),
+        ).toBeInTheDocument();
+      });
+      expect(
+        screen.getByTestId(`appointment-accordion-body-${appointment.id}`),
+      ).toBeInTheDocument();
+      expect(getAppointmentCards()).toHaveLength(0);
+    });
+
+    test('a Chapter 12 Standing appointment still renders as a flat card, not an accordion', async () => {
+      const ch12Standing = makeAppointment('ch12-standing-active', {
+        chapter: '12',
+        appointmentType: 'standing',
+        status: 'active',
+        courtName: 'Southern District of New York',
+      });
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch12Standing] });
+
+      renderComponent('trustee-123');
+
+      await waitFor(() => {
+        expect(getAppointmentCards()).toHaveLength(1);
+      });
+      expect(
+        screen.queryByTestId(`appointment-accordion-header-${ch12Standing.id}`),
+      ).not.toBeInTheDocument();
     });
   });
 });
