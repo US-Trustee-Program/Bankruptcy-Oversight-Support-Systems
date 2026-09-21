@@ -28,6 +28,8 @@ import EditTrusteeAppointment from './forms/EditTrusteeAppointment';
 import UpcomingKeyDatesForm from './forms/UpcomingKeyDatesForm';
 import PastKeyDatesForm from './forms/PastKeyDatesForm';
 import BondKeyDatesForm from './forms/BondKeyDatesForm';
+import AnnualReportKeyDatesForm from './forms/AnnualReportKeyDatesForm';
+import TrusteePerformanceReportKeyDatesForm from './forms/TrusteePerformanceReportKeyDatesForm';
 import TrusteeMeetingOfCreditorsInfoForm from './forms/TrusteeMeetingOfCreditorsInfoForm';
 import TrusteeNotes from '@/trustees/panels/trustee-notes/TrusteeNotes';
 import useFeatureFlags, {
@@ -294,6 +296,18 @@ export default function TrusteeDetailScreen() {
       disabled: !featureFlags[DISPLAY_CHPT7_ELECTED_KEY_DATES],
       subHeading: (location.state as { subHeading?: string } | null)?.subHeading ?? '',
       content: <BondKeyDatesForm />,
+    },
+    {
+      path: 'appointments/:appointmentId/annual-report-key-dates/edit',
+      disabled: !featureFlags[DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES],
+      subHeading: (location.state as { subHeading?: string } | null)?.subHeading ?? '',
+      content: <AnnualReportKeyDatesForm />,
+    },
+    {
+      path: 'appointments/:appointmentId/tpr-key-dates/edit',
+      disabled: !featureFlags[DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES],
+      subHeading: (location.state as { subHeading?: string } | null)?.subHeading ?? '',
+      content: <TrusteePerformanceReportKeyDatesForm />,
     },
     {
       path: 'assigned-staff',
