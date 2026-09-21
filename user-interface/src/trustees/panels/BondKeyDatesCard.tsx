@@ -1,4 +1,3 @@
-import './BondKeyDatesCard.scss';
 import { useNavigate } from 'react-router-dom';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import EditableTableCard from '@/lib/components/cams/EditableTableCard/EditableTableCard';
@@ -39,9 +38,7 @@ export default function BondKeyDatesCard(props: Readonly<BondKeyDatesCardProps>)
       id={`edit-bond-key-dates-${appointmentId}`}
       title="Bond"
       testId="bond-key-dates-card"
-      className="bond-key-dates-card"
       tableId={`bond-key-dates-table-${appointmentId}`}
-      tableClassName="bond-key-dates-table"
       tableAriaLabel="Bond key dates"
       onEdit={canManage ? openEdit : undefined}
       editAriaLabel="Edit bond key dates"
