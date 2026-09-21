@@ -280,6 +280,7 @@ describe('SearchResults component tests', () => {
 
       renderWithProps({
         searchPredicate: { caseNumber: '00-11111', offset: 0, limit: 25 },
+        trackResultClicks: true,
       });
 
       await waitFor(() => expect(getCaseTable()).toBeInTheDocument());
@@ -308,7 +309,7 @@ describe('SearchResults component tests', () => {
         data: casesWithoutMetadata,
       });
 
-      renderWithProps({ searchPredicate: debtorNamePredicate });
+      renderWithProps({ searchPredicate: debtorNamePredicate, trackResultClicks: true });
 
       await waitFor(() => expect(getCaseTable()).toBeInTheDocument());
 
@@ -336,7 +337,7 @@ describe('SearchResults component tests', () => {
         data: casesWithMetadata,
       });
 
-      renderWithProps({ searchPredicate: debtorNamePredicate });
+      renderWithProps({ searchPredicate: debtorNamePredicate, trackResultClicks: true });
 
       await waitFor(() => expect(getCaseTable()).toBeInTheDocument());
 
@@ -369,7 +370,7 @@ describe('SearchResults component tests', () => {
         data: casesWithMetadata,
       });
 
-      renderWithProps({ searchPredicate: debtorNamePredicate });
+      renderWithProps({ searchPredicate: debtorNamePredicate, trackResultClicks: true });
 
       await waitFor(() => expect(getCaseTable()).toBeInTheDocument());
 
@@ -391,7 +392,7 @@ describe('SearchResults component tests', () => {
         data: casesWithMetadata,
       });
 
-      renderWithProps({ searchPredicate: debtorNamePredicate });
+      renderWithProps({ searchPredicate: debtorNamePredicate, trackResultClicks: true });
 
       await waitFor(() => expect(getCaseTable()).toBeInTheDocument());
 
@@ -404,6 +405,27 @@ describe('SearchResults component tests', () => {
       expect(clickCall).toBeDefined();
       const higherRanked = JSON.parse(clickCall![0].properties?.higherRankedResults);
       expect(higherRanked).toHaveLength(5);
+    });
+
+    test('does not log searchResultClick when trackResultClicks is not enabled (e.g. My Cases, Staff Assignment)', async () => {
+      const casesWithMetadata = setupCaseListWithMetadata(3);
+      vi.spyOn(Api2, 'searchCases').mockResolvedValue({
+        meta: { self: 'self-link' },
+        pagination: { currentPage: 1, limit: 25, count: 3 },
+        data: casesWithMetadata,
+      });
+
+      renderWithProps({ searchPredicate: debtorNamePredicate });
+
+      await waitFor(() => expect(getCaseTable()).toBeInTheDocument());
+
+      const link = screen.getByTestId(`case-number-${casesWithMetadata[0].caseId}-link`);
+      await userEvent.click(link);
+
+      const clickCall = mockTrackEvent.mock.calls.find(
+        (call) => call[0]?.name === 'searchResultClick',
+      );
+      expect(clickCall).toBeUndefined();
     });
   });
 });

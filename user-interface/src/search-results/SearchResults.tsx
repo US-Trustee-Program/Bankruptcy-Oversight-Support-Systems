@@ -48,6 +48,7 @@ export type SearchResultsProps = {
   phoneticSearchEnabled?: boolean;
   showDebtorNameColumn?: boolean;
   showOpenClosedColumn?: boolean;
+  trackResultClicks?: boolean;
   onStartSearching?: () => void;
   onEndSearching?: () => void;
   onResultsChanged?: (hasResults: boolean, closedCasesCount?: number) => void;
@@ -63,6 +64,7 @@ function SearchResults(props: SearchResultsProps) {
     phoneticSearchEnabled = false,
     showDebtorNameColumn = false,
     showOpenClosedColumn = false,
+    trackResultClicks = false,
     onStartSearching,
     onEndSearching,
     onResultsChanged,
@@ -145,6 +147,8 @@ function SearchResults(props: SearchResultsProps) {
   }
 
   function handleCaseClick(bCase: SyncedCase, rank: number) {
+    if (!trackResultClicks) return;
+
     const debtorNameUsed = !!searchPredicate.debtorName;
 
     let primaryMatchType: string | undefined;
