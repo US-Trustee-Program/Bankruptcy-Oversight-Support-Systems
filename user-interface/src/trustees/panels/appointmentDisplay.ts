@@ -1,5 +1,10 @@
 import { formatDate } from '@/lib/utils/datetime';
-import { AppointmentStatus } from '@common/cams/trustees';
+import {
+  AppointmentChapterType,
+  AppointmentStatus,
+  AppointmentType,
+  getAppointmentDetails,
+} from '@common/cams/trustees';
 
 const UNIX_EPOCH = '1970-01-01';
 
@@ -34,13 +39,19 @@ export function buildDistrictDisplay(appointment: {
   return `Court ${appointment.courtId}`;
 }
 
-export function buildAppointmentHeading(
-  appointment: { courtName?: string; courtId?: string; courtDivisionName?: string },
-  chapterSuffix: string,
-): string {
+/**
+ * Single source of truth for the "district (division): Chapter X - Type" heading shown
+ * both on the accordion appointment bodies and on each key-dates edit form's subheading,
+ * so the two never drift out of sync.
+ */
+export function buildAppointmentHeading(appointment: {
+  courtName?: string;
+  courtId?: string;
+  courtDivisionName?: string;
+  chapter: AppointmentChapterType;
+  appointmentType: AppointmentType;
+}): string {
   const districtDisplay = buildDistrictDisplay(appointment);
-  const divisionDisplay = appointment.courtDivisionName
-    ? ` (${appointment.courtDivisionName})`
-    : '';
-  return `${districtDisplay}${divisionDisplay}: Chapter ${chapterSuffix}`;
+  const divisionSuffix = appointment.courtDivisionName ? ` (${appointment.courtDivisionName})` : '';
+  return `${districtDisplay}${divisionSuffix}: Chapter ${getAppointmentDetails(appointment.chapter, appointment.appointmentType)}`;
 }

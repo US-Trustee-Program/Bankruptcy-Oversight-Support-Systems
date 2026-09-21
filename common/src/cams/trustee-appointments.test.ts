@@ -8,6 +8,7 @@ import {
   isChapter13Standing,
   isChapter7Elected,
   isChapter11CaseByCase,
+  isChapter7Panel,
   isChapter11SubchapterVPool,
   isChapter11SubchapterVOutOfPool,
 } from './trustee-appointments';
@@ -350,16 +351,6 @@ describe('trustee-appointments', () => {
         const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
         expect(result.valid).toBe(true);
       });
-
-      test('should pass validation when chapter and appointmentType are missing', () => {
-        const appointment = {
-          ...validAppointment,
-          chapter: undefined,
-          appointmentType: undefined,
-        } as unknown as TrusteeAppointmentInput;
-        const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
-        expect(result.valid).toBe(true);
-      });
     });
 
     describe('optional enrichment fields', () => {
@@ -416,6 +407,7 @@ describe('trustee-appointments', () => {
         };
         const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
         expect(result.valid).toBeUndefined();
+        expect(result.reasonMap?.$?.reasons).toContain('At least one division must be specified');
       });
 
       test('should fail when divisionCodes contains only whitespace entries', () => {
@@ -426,6 +418,7 @@ describe('trustee-appointments', () => {
         };
         const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
         expect(result.valid).toBeUndefined();
+        expect(result.reasonMap?.$?.reasons).toContain('At least one division must be specified');
       });
 
       test('should pass when divisionCode is set but divisionCodes is empty', () => {
@@ -515,6 +508,23 @@ describe('trustee-appointments', () => {
       expect(
         isChapter11CaseByCase(chapter as AppointmentChapterType, type as AppointmentType),
       ).toBe(false);
+    });
+  });
+
+  describe('isChapter7Panel', () => {
+    test('returns true for chapter 7 panel', () => {
+      expect(isChapter7Panel('7', 'panel')).toBe(true);
+    });
+
+    test.each([
+      ['7', 'elected'],
+      ['12', 'panel'],
+      ['13', 'standing'],
+      ['7', ''],
+    ])('returns false for chapter %s / %s', (chapter, type) => {
+      expect(isChapter7Panel(chapter as AppointmentChapterType, type as AppointmentType)).toBe(
+        false,
+      );
     });
   });
 

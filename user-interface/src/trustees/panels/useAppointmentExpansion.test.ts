@@ -30,15 +30,11 @@ const makeAppointment = (
 });
 
 describe('useAppointmentExpansion', () => {
-  beforeEach(() => {
-    window.sessionStorage.clear();
-  });
-
   test.each([['active' as const], ['inactive' as const]])(
     'a %s appointment is collapsed by default',
     (status) => {
       const appointment = makeAppointment('appt-1', { status });
-      const { result } = renderHook(() => useAppointmentExpansion('trustee-123'));
+      const { result } = renderHook(() => useAppointmentExpansion());
 
       expect(result.current.isExpanded(appointment)).toBe(false);
     },
@@ -47,7 +43,7 @@ describe('useAppointmentExpansion', () => {
   test('toggling one appointment does not affect another appointment', () => {
     const active = makeAppointment('active-1', { status: 'active' });
     const inactive = makeAppointment('inactive-1', { status: 'inactive' });
-    const { result } = renderHook(() => useAppointmentExpansion('trustee-123'));
+    const { result } = renderHook(() => useAppointmentExpansion());
 
     act(() => {
       result.current.toggleExpanded(inactive.id);
@@ -59,7 +55,7 @@ describe('useAppointmentExpansion', () => {
 
   test('toggling a collapsed appointment expands it, toggling again collapses it', () => {
     const active = makeAppointment('active-1', { status: 'active' });
-    const { result } = renderHook(() => useAppointmentExpansion('trustee-123'));
+    const { result } = renderHook(() => useAppointmentExpansion());
 
     act(() => {
       result.current.toggleExpanded(active.id);
@@ -74,7 +70,7 @@ describe('useAppointmentExpansion', () => {
 
   test('an appointment stays expanded after its status changes', () => {
     const active = makeAppointment('appt-1', { status: 'active' });
-    const { result } = renderHook(() => useAppointmentExpansion('trustee-123'));
+    const { result } = renderHook(() => useAppointmentExpansion());
 
     act(() => {
       result.current.toggleExpanded(active.id);
@@ -85,11 +81,11 @@ describe('useAppointmentExpansion', () => {
     expect(result.current.isExpanded(inactive)).toBe(true);
   });
 
-  test('toggling an appointment persists its expand state across a simulated remount within the same session', () => {
+  test('an appointment expanded before navigating away is collapsed again on return', () => {
     const inactive = makeAppointment('appt-1', { status: 'inactive' });
 
     const { result: firstResult, unmount: unmountFirst } = renderHook(() =>
-      useAppointmentExpansion('trustee-123'),
+      useAppointmentExpansion(),
     );
     expect(firstResult.current.isExpanded(inactive)).toBe(false);
 
@@ -100,27 +96,14 @@ describe('useAppointmentExpansion', () => {
 
     unmountFirst();
 
-    const { result: secondResult } = renderHook(() => useAppointmentExpansion('trustee-123'));
-    expect(secondResult.current.isExpanded(inactive)).toBe(true);
-  });
-
-  test('expansion state is isolated per trusteeId', () => {
-    const appointment = makeAppointment('appt-1', { status: 'active' });
-
-    const { result: trusteeAResult } = renderHook(() => useAppointmentExpansion('trustee-A'));
-    act(() => {
-      trusteeAResult.current.toggleExpanded(appointment.id);
-    });
-    expect(trusteeAResult.current.isExpanded(appointment)).toBe(true);
-
-    const { result: trusteeBResult } = renderHook(() => useAppointmentExpansion('trustee-B'));
-    expect(trusteeBResult.current.isExpanded(appointment)).toBe(false);
+    const { result: secondResult } = renderHook(() => useAppointmentExpansion());
+    expect(secondResult.current.isExpanded(inactive)).toBe(false);
   });
 
   test('toggling two different appointments in the same update batch updates both independently', () => {
     const inactiveOne = makeAppointment('inactive-1', { status: 'inactive' });
     const inactiveTwo = makeAppointment('inactive-2', { status: 'inactive' });
-    const { result } = renderHook(() => useAppointmentExpansion('trustee-123'));
+    const { result } = renderHook(() => useAppointmentExpansion());
 
     // Fire both toggles within a single update batch so a closure-captured
     // (rather than functional) state update would drop one of them.

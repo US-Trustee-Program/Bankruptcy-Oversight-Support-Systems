@@ -6,6 +6,7 @@ import {
   TrusteeAppointment,
   isChapter11CaseByCase,
   isChapter7Elected,
+  isChapter7Panel,
   isChapter11SubchapterVPool,
   isChapter11SubchapterVOutOfPool,
 } from '@common/cams/trustee-appointments';
@@ -15,6 +16,7 @@ import AppointmentCard from './AppointmentCard';
 import AppointmentAccordion from './AppointmentAccordion';
 import Chapter11CaseByCaseAppointmentBody from './Chapter11CaseByCaseAppointmentBody';
 import Chapter7ElectedAppointmentBody from './Chapter7ElectedAppointmentBody';
+import Chapter7PanelAppointmentBody from './Chapter7PanelAppointmentBody';
 import Chapter11SubchapterVAppointmentBody from './Chapter11SubchapterVAppointmentBody';
 import Button from '@/lib/components/uswds/Button';
 import Icon from '@/lib/components/uswds/Icon';
@@ -32,6 +34,9 @@ function resolveAccordionBody(appointment: TrusteeAppointment): ReactNode | unde
   if (isChapter7Elected(appointment.chapter, appointment.appointmentType)) {
     return <Chapter7ElectedAppointmentBody appointment={appointment} />;
   }
+  if (isChapter7Panel(appointment.chapter, appointment.appointmentType)) {
+    return <Chapter7PanelAppointmentBody appointment={appointment} />;
+  }
   if (
     isChapter11SubchapterVPool(appointment.chapter, appointment.appointmentType) ||
     isChapter11SubchapterVOutOfPool(appointment.chapter, appointment.appointmentType)
@@ -47,7 +52,7 @@ export default function TrusteeAppointments(props: Readonly<TrusteeAppointmentsP
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
-  const { isExpanded, toggleExpanded } = useAppointmentExpansion(trusteeId);
+  const { isExpanded, toggleExpanded } = useAppointmentExpansion();
 
   useEffect(() => {
     const loadAppointments = async () => {
