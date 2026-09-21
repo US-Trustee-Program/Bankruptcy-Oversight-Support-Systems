@@ -9,6 +9,7 @@ import {
   validateCompletionPairPresence,
   isoToSentinel,
 } from '@common/cams/trustee-upcoming-key-dates';
+import { mergeKeyDatesInput } from './chapter7PanelKeyDatesInput';
 import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
@@ -53,13 +54,7 @@ export function buildTrusteePerformanceReportKeyDatesInput(
   form: Chapter7PanelTrusteePerformanceReportFormState,
   tprDisplayUpdates = true,
 ): TrusteeUpcomingKeyDatesInput {
-  return {
-    trusteeId: ids.trusteeId,
-    appointmentId: ids.appointmentId,
-    pastBackgroundQuestion: original?.pastBackgroundQuestion ?? null,
-    pastFieldExam: original?.pastFieldExam ?? null,
-    pastAudit: original?.pastAudit ?? null,
-    pastTprSubmission: original?.pastTprSubmission ?? null,
+  return mergeKeyDatesInput(ids, original, {
     lastTprSubmitted: form.lastTprSubmitted || null,
     tprReviewPeriodStart: tprDisplayUpdates
       ? form.tprReviewPeriodStart || null
@@ -74,31 +69,9 @@ export function buildTrusteePerformanceReportKeyDatesInput(
     tprDue: form.tprDue || null,
     tprDueYearType: form.tprDueYearType || null,
     tprFrequency: form.tprFrequency || null,
-    tirReviewPeriodStart: original?.tirReviewPeriodStart ?? null,
-    tirReviewPeriodEnd: original?.tirReviewPeriodEnd ?? null,
-    tirSubmission: original?.tirSubmission ?? null,
-    tirReview: original?.tirReview ?? null,
-    upcomingExamOrAuditYear: original?.upcomingExamOrAuditYear ?? null,
-    upcomingExamOrAuditType: original?.upcomingExamOrAuditType ?? null,
-    tirFrequency: original?.tirFrequency ?? null,
-    tirSemiAnnualReviewPeriodStart: original?.tirSemiAnnualReviewPeriodStart ?? null,
-    tirSemiAnnualReviewPeriodEnd: original?.tirSemiAnnualReviewPeriodEnd ?? null,
-    tirSemiAnnualSubmission: original?.tirSemiAnnualSubmission ?? null,
-    tirSemiAnnualReview: original?.tirSemiAnnualReview ?? null,
-    lastAuditFiscalYear: original?.lastAuditFiscalYear ?? null,
-    auditCompletionYear: original?.auditCompletionYear ?? null,
-    auditCompletionStatus: original?.auditCompletionStatus ?? null,
     tprCompletionYear: form.tprCompletionYear !== '' ? form.tprCompletionYear : null,
     tprCompletionStatus: form.tprCompletionStatus || null,
-    tirCompletionYear: original?.tirCompletionYear ?? null,
-    tirCompletionStatus: original?.tirCompletionStatus ?? null,
-    lastMonthlyReportReceived: original?.lastMonthlyReportReceived ?? null,
-    leaseExpiration: original?.leaseExpiration ?? null,
-    idExpiration: original?.idExpiration ?? null,
-    lastCompensationStudy: original?.lastCompensationStudy ?? null,
-    bondIssuedDate: original?.bondIssuedDate ?? null,
-    bondRenewalDate: original?.bondRenewalDate ?? null,
-  };
+  });
 }
 
 export default function Chapter7PanelTrusteePerformanceReportForm() {

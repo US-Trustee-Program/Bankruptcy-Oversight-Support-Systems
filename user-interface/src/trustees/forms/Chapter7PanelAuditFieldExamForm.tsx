@@ -6,6 +6,7 @@ import {
   TrusteeUpcomingKeyDatesInput,
   validateCompletionPairPresence,
 } from '@common/cams/trustee-upcoming-key-dates';
+import { mergeKeyDatesInput } from './chapter7PanelKeyDatesInput';
 import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
@@ -46,45 +47,16 @@ export function buildAuditFieldExamKeyDatesInput(
   original: TrusteeUpcomingKeyDates | null,
   form: Chapter7PanelAuditFieldExamFormState,
 ): TrusteeUpcomingKeyDatesInput {
-  return {
-    trusteeId: ids.trusteeId,
-    appointmentId: ids.appointmentId,
-    pastBackgroundQuestion: original?.pastBackgroundQuestion ?? null,
+  return mergeKeyDatesInput(ids, original, {
     pastFieldExam: form.pastFieldExam || null,
     pastAudit: form.pastAudit || null,
-    pastTprSubmission: original?.pastTprSubmission ?? null,
-    lastTprSubmitted: original?.lastTprSubmitted ?? null,
-    tprReviewPeriodStart: original?.tprReviewPeriodStart ?? null,
-    tprReviewPeriodEnd: original?.tprReviewPeriodEnd ?? null,
-    tprDue: original?.tprDue ?? null,
-    tprDueYearType: original?.tprDueYearType ?? null,
-    tprFrequency: original?.tprFrequency ?? null,
-    tirReviewPeriodStart: original?.tirReviewPeriodStart ?? null,
-    tirReviewPeriodEnd: original?.tirReviewPeriodEnd ?? null,
-    tirSubmission: original?.tirSubmission ?? null,
-    tirReview: original?.tirReview ?? null,
     upcomingExamOrAuditYear:
       form.upcomingExamOrAuditYear !== '' ? form.upcomingExamOrAuditYear : null,
     upcomingExamOrAuditType: form.upcomingExamOrAuditType || null,
-    tirFrequency: original?.tirFrequency ?? null,
-    tirSemiAnnualReviewPeriodStart: original?.tirSemiAnnualReviewPeriodStart ?? null,
-    tirSemiAnnualReviewPeriodEnd: original?.tirSemiAnnualReviewPeriodEnd ?? null,
-    tirSemiAnnualSubmission: original?.tirSemiAnnualSubmission ?? null,
-    tirSemiAnnualReview: original?.tirSemiAnnualReview ?? null,
     lastAuditFiscalYear: form.lastAuditFiscalYear !== '' ? form.lastAuditFiscalYear : null,
     auditCompletionYear: form.auditCompletionYear !== '' ? form.auditCompletionYear : null,
     auditCompletionStatus: form.auditCompletionStatus || null,
-    tprCompletionYear: original?.tprCompletionYear ?? null,
-    tprCompletionStatus: original?.tprCompletionStatus ?? null,
-    tirCompletionYear: original?.tirCompletionYear ?? null,
-    tirCompletionStatus: original?.tirCompletionStatus ?? null,
-    lastMonthlyReportReceived: original?.lastMonthlyReportReceived ?? null,
-    leaseExpiration: original?.leaseExpiration ?? null,
-    idExpiration: original?.idExpiration ?? null,
-    lastCompensationStudy: original?.lastCompensationStudy ?? null,
-    bondIssuedDate: original?.bondIssuedDate ?? null,
-    bondRenewalDate: original?.bondRenewalDate ?? null,
-  };
+  });
 }
 
 export default function Chapter7PanelAuditFieldExamForm() {
