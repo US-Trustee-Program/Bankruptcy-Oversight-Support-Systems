@@ -136,7 +136,9 @@ describe('Chapter7PanelAppointmentBody', () => {
     renderBody();
 
     await waitFor(() => {
-      expect(screen.getByTestId('alert-chapter7-panel-key-dates-error')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('alert-chapter7-panel-key-dates-error-appointment-003'),
+      ).toBeInTheDocument();
     });
     expect(screen.queryByTestId('chapter7-panel-audit-field-exam-card')).not.toBeInTheDocument();
   });
@@ -151,6 +153,8 @@ describe('Chapter7PanelAppointmentBody', () => {
 
     expect(getSpy).not.toHaveBeenCalled();
     expect(screen.queryByTestId('chapter7-panel-audit-field-exam-card')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('alert-chapter7-panel-key-dates-error')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('alert-chapter7-panel-key-dates-error-appointment-003'),
+    ).not.toBeInTheDocument();
   });
 });
