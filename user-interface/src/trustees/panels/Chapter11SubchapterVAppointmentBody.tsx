@@ -1,5 +1,5 @@
 import AppointmentBasicFields from './AppointmentBasicFields';
-import PastKeyDates from './PastKeyDates';
+import Chapter11SubVOtherKeyDatesCard from './Chapter11SubVOtherKeyDatesCard';
 import KeyDatesGate from './KeyDatesGate';
 import { isChapter11SubchapterVPool, TrusteeAppointment } from '@common/cams/trustee-appointments';
 import useFeatureFlags, { DISPLAY_CHPT11_SUBV_PAST_KEY_DATES } from '@/lib/hooks/UseFeatureFlags';
@@ -31,8 +31,7 @@ export default function Chapter11SubchapterVAppointmentBody(
         errorMessage="Failed to load past key dates. Please refresh and try again."
       >
         {(data, isLoading) => (
-          <PastKeyDates
-            variant="subv-pool"
+          <Chapter11SubVOtherKeyDatesCard
             trusteeId={appointment.trusteeId}
             appointmentId={appointment.id}
             appointmentHeading={appointmentHeading}
