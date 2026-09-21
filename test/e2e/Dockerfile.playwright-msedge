@@ -19,6 +19,6 @@
 # in test/e2e/package.json and user-interface/package.json — Renovate
 # updates this tag and the matching one in build-playwright-msedge-image.yml
 # together whenever @playwright/test bumps.
-FROM mcr.microsoft.com/playwright:v1.62.1-noble
+FROM mcr.microsoft.com/playwright:v1.63.0-noble
 
 RUN npx playwright install msedge --with-deps
