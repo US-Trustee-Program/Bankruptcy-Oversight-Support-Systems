@@ -250,126 +250,28 @@ describe('TrusteeUpcomingKeyDatesController', () => {
       });
     });
 
-    test('PUT with tprReviewPeriodStart set but tprReviewPeriodEnd null returns 400', async () => {
+    // validateTrusteeUpcomingKeyDates() covers all per-rule combinations exhaustively in
+    // common/src/cams/trustee-upcoming-key-dates.test.ts. One representative case per validation
+    // category is enough here to confirm the controller surfaces the 400 — mirroring the rationale
+    // at trustee-upcoming-key-dates.test.ts:213-218.
+    test.each([
+      {
+        name: 'pair validation: tprReviewPeriodStart set without tprReviewPeriodEnd',
+        overrides: { tprReviewPeriodStart: '2026-03-01', tprReviewPeriodEnd: null },
+      },
+      {
+        name: 'chronological-order validation: tprReviewPeriodStart after tprReviewPeriodEnd',
+        overrides: { tprReviewPeriodStart: '2026-06-01', tprReviewPeriodEnd: '2026-01-01' },
+      },
+      {
+        name: 'completion pair validation: auditCompletionYear set without auditCompletionStatus',
+        overrides: { auditCompletionYear: 2026, auditCompletionStatus: null },
+      },
+    ])('PUT with $name returns 400', async ({ overrides }) => {
       context.request = mockCamsHttpRequest({
         method: 'PUT',
         params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
-        body: buildValidInput({ tprReviewPeriodStart: '2026-03-01', tprReviewPeriodEnd: null }),
-      });
-
-      const controller = new TrusteeUpcomingKeyDatesController(context);
-
-      await expect(controller.handleRequest(context)).rejects.toMatchObject({
-        status: 400,
-      });
-    });
-
-    test('PUT with tprReviewPeriodEnd set but tprReviewPeriodStart null returns 400', async () => {
-      context.request = mockCamsHttpRequest({
-        method: 'PUT',
-        params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
-        body: buildValidInput({ tprReviewPeriodStart: null, tprReviewPeriodEnd: '2026-03-01' }),
-      });
-
-      const controller = new TrusteeUpcomingKeyDatesController(context);
-
-      await expect(controller.handleRequest(context)).rejects.toMatchObject({
-        status: 400,
-      });
-    });
-
-    test('PUT with tprReviewPeriodStart after tprReviewPeriodEnd (real dates) returns 400', async () => {
-      context.request = mockCamsHttpRequest({
-        method: 'PUT',
-        params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
-        body: buildValidInput({
-          tprReviewPeriodStart: '2026-06-01',
-          tprReviewPeriodEnd: '2026-01-01',
-        }),
-      });
-
-      const controller = new TrusteeUpcomingKeyDatesController(context);
-
-      await expect(controller.handleRequest(context)).rejects.toMatchObject({
-        status: 400,
-      });
-    });
-
-    test('PUT with auditCompletionYear set but auditCompletionStatus null returns 400', async () => {
-      context.request = mockCamsHttpRequest({
-        method: 'PUT',
-        params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
-        body: buildValidInput({ auditCompletionYear: 2026, auditCompletionStatus: null }),
-      });
-
-      const controller = new TrusteeUpcomingKeyDatesController(context);
-
-      await expect(controller.handleRequest(context)).rejects.toMatchObject({
-        status: 400,
-      });
-    });
-
-    test('PUT with auditCompletionStatus set but auditCompletionYear null returns 400', async () => {
-      context.request = mockCamsHttpRequest({
-        method: 'PUT',
-        params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
-        body: buildValidInput({ auditCompletionYear: null, auditCompletionStatus: 'CLOSED' }),
-      });
-
-      const controller = new TrusteeUpcomingKeyDatesController(context);
-
-      await expect(controller.handleRequest(context)).rejects.toMatchObject({
-        status: 400,
-      });
-    });
-
-    test('PUT with tprCompletionYear set but tprCompletionStatus null returns 400', async () => {
-      context.request = mockCamsHttpRequest({
-        method: 'PUT',
-        params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
-        body: buildValidInput({ tprCompletionYear: 2026, tprCompletionStatus: null }),
-      });
-
-      const controller = new TrusteeUpcomingKeyDatesController(context);
-
-      await expect(controller.handleRequest(context)).rejects.toMatchObject({
-        status: 400,
-      });
-    });
-
-    test('PUT with tprCompletionStatus set but tprCompletionYear null returns 400', async () => {
-      context.request = mockCamsHttpRequest({
-        method: 'PUT',
-        params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
-        body: buildValidInput({ tprCompletionYear: null, tprCompletionStatus: 'COMPLETE' }),
-      });
-
-      const controller = new TrusteeUpcomingKeyDatesController(context);
-
-      await expect(controller.handleRequest(context)).rejects.toMatchObject({
-        status: 400,
-      });
-    });
-
-    test('PUT with tirCompletionYear set but tirCompletionStatus null returns 400', async () => {
-      context.request = mockCamsHttpRequest({
-        method: 'PUT',
-        params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
-        body: buildValidInput({ tirCompletionYear: 2026, tirCompletionStatus: null }),
-      });
-
-      const controller = new TrusteeUpcomingKeyDatesController(context);
-
-      await expect(controller.handleRequest(context)).rejects.toMatchObject({
-        status: 400,
-      });
-    });
-
-    test('PUT with tirCompletionStatus set but tirCompletionYear null returns 400', async () => {
-      context.request = mockCamsHttpRequest({
-        method: 'PUT',
-        params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
-        body: buildValidInput({ tirCompletionYear: null, tirCompletionStatus: 'COMPLETE' }),
+        body: buildValidInput(overrides),
       });
 
       const controller = new TrusteeUpcomingKeyDatesController(context);
