@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, test, expect, vi, beforeEach } from 'vitest';
+import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
 import userEvent from '@testing-library/user-event';
 import TrusteePerformanceReportKeyDatesCard from './TrusteePerformanceReportKeyDatesCard';
@@ -20,7 +20,6 @@ vi.mock('react-router-dom', async () => {
 
 describe('TrusteePerformanceReportKeyDatesCard', () => {
   let mockNavigate: ReturnType<typeof vi.fn>;
-  const currentYear = new Date().getFullYear();
 
   const keyDates: TrusteeUpcomingKeyDates = {
     id: 'key-dates-001',
@@ -43,9 +42,15 @@ describe('TrusteePerformanceReportKeyDatesCard', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date('2025-06-15T00:00:00.000Z'));
     mockNavigate = vi.fn();
     mockUseNavigate.mockReturnValue(mockNavigate);
     TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   function renderCard(
@@ -103,11 +108,14 @@ describe('TrusteePerformanceReportKeyDatesCard', () => {
     expect(screen.getByTestId('tpr-frequency')).toHaveTextContent('One year');
   });
 
-  test('resolves the TPR due year from the due year type', () => {
+  test('renders the resolved TPR due date', () => {
+    // The due-year rule itself is covered in tprFieldFormatters.test.ts; this
+    // only checks the card surfaces the formatted value.
+    vi.setSystemTime(new Date('2025-06-15T00:00:00.000Z'));
+
     renderCard();
 
-    const expectedYear = currentYear % 2 === 0 ? currentYear : currentYear + 1;
-    expect(screen.getByTestId('tpr-due')).toHaveTextContent(`09/15/${expectedYear}`);
+    expect(screen.getByTestId('tpr-due')).toHaveTextContent('09/15/2026');
   });
 
   test('formats the last submitted date', () => {
@@ -161,6 +169,17 @@ describe('TrusteePerformanceReportKeyDatesCard', () => {
     expect(mockNavigate).toHaveBeenCalledWith(
       '/trustees/trustee-123/appointments/appointment-001/tpr-key-dates/edit',
       { state: { subHeading: 'Southern District of New York (Manhattan): Chapter 12' } },
+    );
+  });
+
+  test('navigates with an empty subHeading when no appointment heading is supplied', async () => {
+    renderCard();
+
+    await userEvent.click(screen.getByRole('button', { name: /edit trustee performance report/i }));
+
+    expect(mockNavigate).toHaveBeenCalledWith(
+      '/trustees/trustee-123/appointments/appointment-001/tpr-key-dates/edit',
+      { state: { subHeading: '' } },
     );
   });
 

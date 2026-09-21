@@ -40,7 +40,7 @@ describe('TrusteePerformanceReportKeyDatesForm', () => {
   let userEvent: CamsUserEvent;
   const currentYear = new Date().getFullYear();
 
-  const document: TrusteeUpcomingKeyDates = {
+  const storedDocument: TrusteeUpcomingKeyDates = {
     id: 'doc-001',
     documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
     trusteeId: 'trustee-001',
@@ -92,7 +92,7 @@ describe('TrusteePerformanceReportKeyDatesForm', () => {
   });
 
   test('pre-populates every editable field from the stored document', async () => {
-    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: document });
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: storedDocument });
 
     renderForm();
 
@@ -120,7 +120,7 @@ describe('TrusteePerformanceReportKeyDatesForm', () => {
   });
 
   test('saves edits and preserves fields owned by the Annual Report card', async () => {
-    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: document });
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: storedDocument });
     const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderForm();
@@ -171,7 +171,7 @@ describe('TrusteePerformanceReportKeyDatesForm', () => {
 
   test('rejects a TPR due date without a year type and does not save', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({
-      data: { ...document, tprDueYearType: undefined },
+      data: { ...storedDocument, tprDueYearType: undefined },
     });
     const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
 
@@ -183,12 +183,14 @@ describe('TrusteePerformanceReportKeyDatesForm', () => {
 
     await userEvent.click(screen.getByTestId('button-save-tpr-key-dates'));
 
-    expect(await screen.findByTestId('alert-tpr-completion-error')).toBeInTheDocument();
+    expect(await screen.findByTestId('alert-tpr-completion-error')).toHaveTextContent(
+      'TPR Due Year Type is required.',
+    );
     expect(putSpy).not.toHaveBeenCalled();
   });
 
   test('returns to the appointments list on cancel without saving', async () => {
-    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: document });
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: storedDocument });
     const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderForm();
@@ -215,7 +217,7 @@ describe('TrusteePerformanceReportKeyDatesForm', () => {
   });
 
   test('surfaces a save failure through the global alert and stays on the page', async () => {
-    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: document });
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: storedDocument });
     vi.spyOn(Api2, 'putUpcomingKeyDates').mockRejectedValue(new Error('Save boom'));
 
     renderForm();

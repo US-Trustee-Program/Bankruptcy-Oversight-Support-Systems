@@ -103,17 +103,22 @@ describe('AnnualReportKeyDatesCard', () => {
     expect(tag).toHaveClass('bg-secondary-dark');
   });
 
+  // The year and status are a pair; half of one says nothing, so no tag shows.
   test.each([
-    ['the year is missing', { annualReportCompletionYear: undefined }],
-    ['the status is missing', { annualReportCompletionStatus: undefined }],
-    ['both are missing', {}],
+    [
+      'the year is missing',
+      { annualReportCompletionYear: undefined, annualReportCompletionStatus: 'Complete' as const },
+    ],
+    [
+      'the status is missing',
+      { annualReportCompletionYear: 2024, annualReportCompletionStatus: undefined },
+    ],
+    [
+      'both are missing',
+      { annualReportCompletionYear: undefined, annualReportCompletionStatus: undefined },
+    ],
   ])('renders no completion tag when %s', (_label, overrides) => {
-    renderCard({
-      ...keyDates,
-      annualReportCompletionYear: undefined,
-      annualReportCompletionStatus: undefined,
-      ...overrides,
-    });
+    renderCard({ ...keyDates, ...overrides });
 
     expect(
       screen.queryByTestId('tag-annual-report-completion-status-appointment-001'),
@@ -128,6 +133,17 @@ describe('AnnualReportKeyDatesCard', () => {
     expect(mockNavigate).toHaveBeenCalledWith(
       '/trustees/trustee-123/appointments/appointment-001/annual-report-key-dates/edit',
       { state: { subHeading: 'Southern District of New York (Manhattan): Chapter 12' } },
+    );
+  });
+
+  test('navigates with an empty subHeading when no appointment heading is supplied', async () => {
+    renderCard();
+
+    await userEvent.click(screen.getByRole('button', { name: /edit annual report/i }));
+
+    expect(mockNavigate).toHaveBeenCalledWith(
+      '/trustees/trustee-123/appointments/appointment-001/annual-report-key-dates/edit',
+      { state: { subHeading: '' } },
     );
   });
 
