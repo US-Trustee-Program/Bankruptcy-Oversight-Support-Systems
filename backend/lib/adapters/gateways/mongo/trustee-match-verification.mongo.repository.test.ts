@@ -316,7 +316,6 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
             'resolvedTrusteeName',
             'taskType',
             'taskDate',
-            'reason',
             'inactiveAppointmentStatus',
             'fingerprint',
             'variant',

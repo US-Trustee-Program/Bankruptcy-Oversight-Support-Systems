@@ -9,13 +9,13 @@
   },
   "dependencies": {
     "express": "5.2.1",
-    "jose": "6.2.10",
+    "jose": "6.2.12",
     "mongodb": "7.6.0"
   },
   "devDependencies": {
     "@types/express": "5.0.6",
     "@types/node": "24.13.3",
-    "tsx": "4.23.12",
+    "tsx": "4.23.13",
     "typescript": "6.0.3"
   }
 }

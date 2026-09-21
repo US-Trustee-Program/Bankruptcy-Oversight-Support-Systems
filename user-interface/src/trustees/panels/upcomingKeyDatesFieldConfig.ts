@@ -8,7 +8,11 @@ import {
 } from '@common/cams/trustee-upcoming-key-dates';
 
 export type UpcomingKeyDatesVariant =
-  'chapter7-panel' | 'ch12-13-case-by-case' | 'chapter12-standing' | 'chapter13-standing';
+  | 'chapter7-panel'
+  | 'ch12-13-case-by-case'
+  | 'chapter12-standing'
+  | 'chapter13-standing'
+  | 'chapter7-elected';
 
 const NO_DATE = 'No date added';
 
@@ -84,6 +88,11 @@ function leaseExpirationField(data: TrusteeUpcomingKeyDates | null): UpcomingKey
 function idExpirationField(data: TrusteeUpcomingKeyDates | null): UpcomingKeyDatesDisplayField {
   const value = data?.idExpiration ? isoToMMDDYYYY(data.idExpiration) : NO_DATE;
   return { label: 'ID Expiration', value, testId: 'id-expiration-row' };
+}
+
+function bondRenewalDateField(data: TrusteeUpcomingKeyDates | null): UpcomingKeyDatesDisplayField {
+  const value = data?.bondRenewalDate ? isoToMMDDYYYY(data.bondRenewalDate) : NO_DATE;
+  return { label: 'Bond Renewal', value, testId: 'bond-renewal-date-row' };
 }
 
 export const UPCOMING_KEY_DATES_FIELD_CONFIG: Record<
@@ -307,6 +316,13 @@ export const UPCOMING_KEY_DATES_FIELD_CONFIG: Record<
       kind: 'computed',
       key: 'idExpiration',
       buildField: idExpirationField,
+    },
+  ],
+  'chapter7-elected': [
+    {
+      kind: 'computed',
+      key: 'bondRenewalDate',
+      buildField: bondRenewalDateField,
     },
   ],
 };

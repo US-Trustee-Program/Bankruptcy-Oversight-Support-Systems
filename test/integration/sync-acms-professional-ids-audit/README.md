@@ -62,6 +62,40 @@ all — the largest single outcome bucket. This is not a matcher gap:
   in the matching algorithm; if this population needs addressing, it would be a separate
   active/inactive-trustee-data question, not a `sync-acms-professional-ids` change.
 
+## Known finding: `ambiguous` false negatives are corroboration-policy, not a data or fuzzy-match gap (2026-09-14 export)
+
+A 6392-record export (3658 linked, 2734 errored: 2456 `ambiguous`, 278 `no-match`) found 1566
+notable misses (best-candidate nameScore ≥ 60 on a record production did NOT auto-link) —
+**every one of them is on an `ambiguous`-disposition record; zero of the 278 `no-match` records
+have a notable-scoring candidate at all.** Genuine no-matches are, in this export, genuinely
+unmatchable — the entire opportunity for tightening lives in the ambiguous bucket.
+
+Cross-referencing each notable miss against its persisted `error.trustees` candidate-id list
+(`sync-acms-professional-ids.ts:287-297`, `processNameMatch`) splits that bucket into two
+different phenomena:
+
+- **509 of 1566 (32%) already carry exactly one candidate trusteeId.** Production's own
+  `resolveCandidatesByCorroboration` (contact corroboration, then duplicate-name resolution) had
+  already run against that single candidate before persisting `ambiguous` and still didn't trust
+  it enough to auto-link — despite this harness's independent scoring often showing name=100 and
+  phone=100 against that same candidate (857 of 1566 notable misses score phone=100). This is a
+  corroboration-policy question, not a missing-data or fuzzy-matching gap: the right trustee is
+  already the sole candidate on file.
+- **The remaining 1057 (68%) carry genuinely multiple candidates** — median list size 3, but with a
+  long tail (23 records list 100+ candidates, one lists 909). These are a large-scale ACMS-alias
+  pattern: the same real trustee is filed under many `acmsProfessionalId` codes (one per
+  district/chapter/spelling variant — e.g. "MARK M SHARF", "MARK M SHARF (TR)", "MARK M SHARF
+  (TR)SA" all resolve to the same "Mark Sharf" trustee). A single ambiguous name apparently matches
+  broadly enough across the trustees collection that `matchTrusteeByName` returns a large raw
+  candidate set before corroboration ever narrows it — worth checking whether the initial
+  name-candidate query itself is too permissive for common surnames, independent of the
+  corroboration step that follows it.
+
+Not evaluated here: whether loosening corroboration for the single-candidate bucket, or tightening
+the initial candidate query for the multi-candidate bucket, is the right lever — that requires
+judgment about acceptable false-positive risk this fixture-only harness can't supply. This finding
+only establishes where the opportunity is concentrated.
+
 ## Why `fixtures/` is never committed
 
 `fixtures/` contains real trustee PII (names, addresses, phone numbers, emails, ACMS professional

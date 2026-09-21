@@ -74,6 +74,16 @@ export const TRUSTEE_MATCH_VERIFICATION_REMAP_DLQ = output.storageQueue({
   connection,
 });
 
+export const HEAL_SENTINEL_CASE_APPOINTMENTS_QUEUE = output.storageQueue({
+  queueName: buildQueueName(ModuleNames.HEAL_SENTINEL_CASE_APPOINTMENTS),
+  connection,
+});
+
+export const HEAL_SENTINEL_CASE_APPOINTMENTS_DLQ = output.storageQueue({
+  queueName: buildQueueName(ModuleNames.HEAL_SENTINEL_CASE_APPOINTMENTS, 'DLQ'),
+  connection,
+});
+
 export const STAFF_ASSIGNMENT_DOWNSTREAM_DLQ = output.storageQueue({
   queueName: buildQueueName(ModuleNames.STAFF_ASSIGNMENT_DOWNSTREAM, 'DLQ'),
   connection,

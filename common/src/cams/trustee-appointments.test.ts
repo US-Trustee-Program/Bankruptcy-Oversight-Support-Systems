@@ -4,10 +4,9 @@ import {
   chapterAppointmentTypeMap,
   TRUSTEE_APPOINTMENTS_INTERNAL_SPEC,
   TrusteeAppointmentInput,
-  CaseTrusteeAppointmentHistory,
-  CaseAppointment,
   isChapter12Standing,
   isChapter13Standing,
+  isChapter7Elected,
 } from './trustee-appointments';
 import { AppointmentChapterType, AppointmentType, AppointmentStatus } from './trustees';
 import { validateObject } from './validation';
@@ -449,67 +448,6 @@ describe('trustee-appointments', () => {
     });
   });
 
-  describe('CaseTrusteeAppointmentHistory', () => {
-    test('should have current as CaseAppointment or null', () => {
-      const history: CaseTrusteeAppointmentHistory = {
-        current: {
-          id: 'ca-1',
-          caseId: '111-24-00001',
-          trusteeId: 'trustee-123',
-          assignedOn: '2024-01-01T00:00:00Z',
-          createdOn: '2024-01-01T00:00:00Z',
-          createdBy: { id: 'system', name: 'System' },
-          updatedOn: '2024-01-01T00:00:00Z',
-          updatedBy: { id: 'system', name: 'System' },
-        },
-        history: [],
-      };
-
-      expect(history.current).toBeDefined();
-      expect(history.current?.trusteeId).toBe('trustee-123');
-    });
-
-    test('should allow current to be null', () => {
-      const history: CaseTrusteeAppointmentHistory = {
-        current: null,
-        history: [],
-      };
-
-      expect(history.current).toBeNull();
-    });
-
-    test('should have history as array of CaseAppointments', () => {
-      const past: CaseAppointment = {
-        id: 'ca-old',
-        caseId: '111-24-00001',
-        trusteeId: 'trustee-xyz',
-        assignedOn: '2024-01-01T00:00:00Z',
-        unassignedOn: '2025-01-01T00:00:00Z',
-        createdOn: '2024-01-01T00:00:00Z',
-        createdBy: { id: 'system', name: 'System' },
-        updatedOn: '2025-01-01T00:00:00Z',
-        updatedBy: { id: 'system', name: 'System' },
-      };
-
-      const history: CaseTrusteeAppointmentHistory = {
-        current: null,
-        history: [past],
-      };
-
-      expect(history.history).toHaveLength(1);
-      expect(history.history[0].unassignedOn).toBe('2025-01-01T00:00:00Z');
-    });
-
-    test('should allow empty history array', () => {
-      const history: CaseTrusteeAppointmentHistory = {
-        current: null,
-        history: [],
-      };
-
-      expect(history.history).toEqual([]);
-    });
-  });
-
   describe('isChapter12Standing', () => {
     test('returns true for chapter 12 standing', () => {
       expect(isChapter12Standing('12', 'standing')).toBe(true);
@@ -521,7 +459,9 @@ describe('trustee-appointments', () => {
       ['7', 'panel'],
       ['12', ''],
     ])('returns false for chapter %s / %s', (chapter, type) => {
-      expect(isChapter12Standing(chapter, type)).toBe(false);
+      expect(isChapter12Standing(chapter as AppointmentChapterType, type as AppointmentType)).toBe(
+        false,
+      );
     });
   });
 
@@ -536,7 +476,26 @@ describe('trustee-appointments', () => {
       ['7', 'panel'],
       ['13', ''],
     ])('returns false for chapter %s / %s', (chapter, type) => {
-      expect(isChapter13Standing(chapter, type)).toBe(false);
+      expect(isChapter13Standing(chapter as AppointmentChapterType, type as AppointmentType)).toBe(
+        false,
+      );
+    });
+  });
+
+  describe('isChapter7Elected', () => {
+    test('returns true for chapter 7 elected', () => {
+      expect(isChapter7Elected('7', 'elected')).toBe(true);
+    });
+
+    test.each([
+      ['7', 'panel'],
+      ['12', 'elected'],
+      ['13', 'standing'],
+      ['7', ''],
+    ])('returns false for chapter %s / %s', (chapter, type) => {
+      expect(isChapter7Elected(chapter as AppointmentChapterType, type as AppointmentType)).toBe(
+        false,
+      );
     });
   });
 });

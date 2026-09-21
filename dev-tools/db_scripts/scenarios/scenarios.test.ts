@@ -352,11 +352,11 @@ describe('trustee-data scenario', () => {
     return generateTrusteeData(singleIdContext(CASE_IDS));
   }
 
-  test('returns 8 operations: 2 DXTR and 6 Cosmos', async () => {
+  test('returns 9 operations: 2 DXTR and 7 Cosmos', async () => {
     const ops = await operations();
-    expect(ops).toHaveLength(8);
+    expect(ops).toHaveLength(9);
     expect(ops.filter((o) => o.db === 'dxtr')).toHaveLength(2);
-    expect(ops.filter((o) => o.db === 'cams')).toHaveLength(6);
+    expect(ops.filter((o) => o.db === 'cams')).toHaveLength(7);
   });
 
   test('DXTR operations use compound primary keys and insertOnly flag', async () => {
@@ -394,7 +394,7 @@ describe('trustee-data scenario', () => {
     const ops = await operations();
     const trustees = ops.filter((o) => o.collectionOrTable === 'trustees');
 
-    expect(trustees).toHaveLength(2);
+    expect(trustees).toHaveLength(3);
     const active = trustees.find((o) => o.data[0]?.id === 'seed-trustee-active-001');
     expect(active?.data[0]).toMatchObject({
       documentType: 'TRUSTEE',
@@ -414,6 +414,25 @@ describe('trustee-data scenario', () => {
       status: 'inactive',
       name: 'Pat Seedtrustee',
     });
+  });
+
+  test('no-email trustee document is active with no email in the trustees collection', async () => {
+    const ops = await operations();
+    const noEmail = ops
+      .filter((o) => o.collectionOrTable === 'trustees')
+      .find((o) => o.data[0]?.id === 'seed-trustee-nocontact-001');
+
+    expect(noEmail?.data[0]).toMatchObject({
+      documentType: 'TRUSTEE',
+      status: 'active',
+      name: 'Nolan Nocontact',
+    });
+    expect((noEmail?.data[0] as Record<string, unknown>)?.public).toMatchObject({
+      phone: { number: '212-555-0400' },
+    });
+    expect(
+      ((noEmail?.data[0] as Record<string, unknown>)?.public as Record<string, unknown>)?.email,
+    ).toBeUndefined();
   });
 
   test('matched appointment has active status in the trustee-appointments collection', async () => {

@@ -1,0 +1,70 @@
+name: DORA Metrics
+
+on:
+  schedule:
+    - cron: '0 12 * * 1' # Weekly on Monday at 12:00 UTC
+  workflow_dispatch:
+
+permissions: read-all
+
+jobs:
+  deployment-frequency:
+    name: Report deployment frequency
+    permissions:
+      contents: read
+      actions: read
+    uses: ./.github/workflows/reusable-dora-metrics-report.yml
+    with:
+      npm-script: report:deployment-frequency
+      artifact-name: dora-metrics-deployment-frequency
+      artifact-path: dora-metrics/data/deployment-frequency.csv
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  lead-time:
+    name: Report lead time for changes
+    permissions:
+      contents: read
+      actions: read
+      issues: read
+    uses: ./.github/workflows/reusable-dora-metrics-report.yml
+    with:
+      npm-script: report:lead-time
+      artifact-name: dora-metrics-lead-time
+      artifact-path: |
+        dora-metrics/data/lead-time-detail.csv
+        dora-metrics/data/lead-time-by-period.csv
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  change-failure-rate:
+    name: Report change failure rate
+    permissions:
+      contents: read
+      actions: read
+      issues: read
+    uses: ./.github/workflows/reusable-dora-metrics-report.yml
+    with:
+      npm-script: report:change-failure-rate
+      artifact-name: dora-metrics-change-failure-rate
+      artifact-path: |
+        dora-metrics/data/change-failure-detail.csv
+        dora-metrics/data/change-failure-rate-by-period.csv
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  mttr:
+    name: Report mean time to restore
+    permissions:
+      contents: read
+      actions: read
+      issues: read
+    uses: ./.github/workflows/reusable-dora-metrics-report.yml
+    with:
+      npm-script: report:mttr
+      artifact-name: dora-metrics-mttr
+      artifact-path: |
+        dora-metrics/data/mttr-detail.csv
+        dora-metrics/data/mttr-by-period.csv
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}

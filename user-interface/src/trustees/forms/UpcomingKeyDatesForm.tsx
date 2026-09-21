@@ -14,7 +14,9 @@ import {
   TrusteeAppointment,
   isChapter12Standing,
   isChapter13Standing,
+  isChapter7Elected,
 } from '@common/cams/trustee-appointments';
+import { AppointmentChapterType, AppointmentType } from '@common/cams/trustees';
 import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
@@ -120,6 +122,8 @@ type FormState = {
   leaseExpiration: string;
   idExpiration: string;
   lastCompensationStudy: string;
+  bondIssuedDate: string;
+  bondRenewalDate: string;
 };
 
 const EMPTY_FORM: FormState = {
@@ -145,12 +149,17 @@ const EMPTY_FORM: FormState = {
   leaseExpiration: '',
   idExpiration: '',
   lastCompensationStudy: '',
+  bondIssuedDate: '',
+  bondRenewalDate: '',
 };
 
 const currentYear = new Date().getFullYear();
 const YEAR_OPTIONS = Array.from({ length: 11 }, (_, i) => currentYear + i);
 
-function deriveVariant(chapter: string, appointmentType: string): UpcomingKeyDatesVariant {
+function deriveVariant(
+  chapter: AppointmentChapterType,
+  appointmentType: AppointmentType,
+): UpcomingKeyDatesVariant {
   if ((chapter === '12' || chapter === '13') && appointmentType === 'case-by-case') {
     return 'ch12-13-case-by-case';
   }
@@ -159,6 +168,9 @@ function deriveVariant(chapter: string, appointmentType: string): UpcomingKeyDat
   }
   if (isChapter13Standing(chapter, appointmentType)) {
     return 'chapter13-standing';
+  }
+  if (isChapter7Elected(chapter, appointmentType)) {
+    return 'chapter7-elected';
   }
   return 'chapter7-panel';
 }
@@ -188,6 +200,8 @@ function buildFormStateFromData(data: TrusteeUpcomingKeyDates): FormState {
     leaseExpiration: data.leaseExpiration ?? '',
     idExpiration: data.idExpiration ?? '',
     lastCompensationStudy: data.lastCompensationStudy ?? '',
+    bondIssuedDate: data.bondIssuedDate ?? '',
+    bondRenewalDate: data.bondRenewalDate ?? '',
   };
 }
 
@@ -227,10 +241,7 @@ function resolveFormLoadResult(
   let formState: FormState | null = null;
   let keyDatesAlert: string | null = null;
   if (keyDatesResult.status === 'fulfilled') {
-    const data =
-      !variantFromState && appointmentsResult.status === 'rejected'
-        ? null
-        : keyDatesResult.value.data;
+    const data = keyDatesResult.value.data;
     if (data) {
       formState = buildFormStateFromData(data);
     }
@@ -447,6 +458,8 @@ export default function UpcomingKeyDatesForm({
       leaseExpiration: form.leaseExpiration || null,
       idExpiration: form.idExpiration || null,
       lastCompensationStudy: form.lastCompensationStudy || null,
+      bondIssuedDate: form.bondIssuedDate || null,
+      bondRenewalDate: form.bondRenewalDate || null,
     };
 
     if (!tprDisplayUpdates) {

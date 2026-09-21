@@ -442,28 +442,6 @@ describe('Consolidation UseCase tests', () => {
     expect(associations).toEqual(data);
   });
 
-  test.skip('should throw if lead case is already a lead for the other type of consolidation', () => {
-    const caseId = '120-23-12345';
-    const documentType = 'CONSOLIDATION_FROM';
-    const consolidationType = 'substantive';
-    const data = MockData.buildArray(
-      () =>
-        MockData.getConsolidation({
-          override: {
-            caseId,
-            consolidationType,
-            documentType,
-          },
-        }),
-      3,
-    );
-    const response: ResponseBody<Consolidation[]> =
-      MockData.getNonPaginatedResponseBody<Consolidation[]>(data);
-
-    store.setConsolidationType('administrative');
-    expect(() => useCase.handleCaseAssociationResponse(response, caseId)).toThrow(Error);
-  });
-
   const params = [
     { message: '404 Not Found', expected: `We couldn't find a case with that number.` },
     { message: '', expected: 'Cannot verify case number.' },

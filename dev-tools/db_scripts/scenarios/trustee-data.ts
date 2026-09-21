@@ -18,9 +18,11 @@ import type { SeedContext, SeedOperation } from '../../runner.js';
 import { ensureDxtrCase } from '../lib/ensure-dxtr-case.js';
 import { createDebtor, createTrusteeBase } from '../lib/test-data-utils.js';
 import { computeFingerprint } from '../lib/compute-fingerprint.js';
+import { generateSearchTokens } from '../lib/phonetic-tokens.js';
 
 const ACTIVE_TRUSTEE_ID = 'seed-trustee-active-001';
 const INACTIVE_TRUSTEE_ID = 'seed-trustee-inactive-001';
+const NO_EMAIL_TRUSTEE_ID = 'seed-trustee-nocontact-001';
 
 // Existing DXTR case in Buffalo (091)
 const CASE_ID = '091-99-87899';
@@ -115,6 +117,39 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
           phone: '212-555-0300',
           email: 'pat.seedtrustee@example.com',
         }),
+      ],
+    },
+
+    // ── Cosmos: active trustee missing email (constructed literally, not via  ──
+    // createTrusteeBase, since that helper always faker-fills phone/email) ────
+    // Exercises TrusteeSearchModal's "Email not provided" placeholder for the
+    // selected-trustee side (the court side's missing-contact case is already
+    // covered by the pending trustee-match-verification fixture below, which has
+    // no DXTR legacy address/phone/email at all).
+    {
+      db: 'cams',
+      collectionOrTable: 'trustees',
+      data: [
+        {
+          id: NO_EMAIL_TRUSTEE_ID,
+          documentType: 'TRUSTEE',
+          trusteeId: NO_EMAIL_TRUSTEE_ID,
+          name: 'Nolan Nocontact',
+          phoneticTokens: generateSearchTokens('Nolan Nocontact'),
+          firstName: 'Nolan',
+          lastName: 'Nocontact',
+          status: 'active',
+          public: {
+            address: {
+              address1: '400 Trustee Way',
+              city: 'New York',
+              state: 'NY',
+              zipCode: '10004',
+              countryCode: 'US',
+            },
+            phone: { number: '212-555-0400' },
+          },
+        },
       ],
     },
 

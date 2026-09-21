@@ -11,15 +11,13 @@ import {
 import { CandidateScore } from '@common/cams/dataflow-events';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { formatDate } from '@/lib/utils/datetime';
+import { formatPhoneWithExtension } from '@/lib/utils/phone-extension.utils';
 import { formatAppointmentStatus } from '@common/cams/trustee-appointments';
 import { formatChapterType } from '@common/cams/trustees';
 import { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { TrusteeAppointmentSyncErrorCode } from '@common/cams/dataflow-events';
 import { getCaseNumber, getCaseIdParts } from '@common/cams/cases';
 import Api2 from '@/lib/models/api2';
-import TrusteeMatchRejectionModal, {
-  TrusteeMatchRejectionModalImperative,
-} from './TrusteeMatchRejectionModal';
 import TrusteeMatchConfirmationModal, {
   TrusteeMatchConfirmationModalImperative,
 } from './TrusteeMatchConfirmationModal';
@@ -224,9 +222,7 @@ function TrusteeCandidateRow({ candidate, onApprove, isProcessing }: TrusteeCand
           : 'Not Provided'}
       </div>
       <div className="trustee-data-cell grid-col-1" data-cell="Phone">
-        {candidate.phone
-          ? `${candidate.phone.number}${candidate.phone.extension ? ` x${candidate.phone.extension}` : ''}`
-          : 'Not Provided'}
+        {formatPhoneWithExtension(candidate.phone) ?? 'Not Provided'}
       </div>
       <div className="trustee-data-cell grid-col-2" data-cell="Email">
         {candidate.email ?? 'Not Provided'}
@@ -396,7 +392,6 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [detailLoadError, setDetailLoadError] = useState(false);
   const OTHER_MATCHES_PAGE_SIZE = 5;
-  const rejectionModalRef = useRef<TrusteeMatchRejectionModalImperative>(null);
   const confirmationModalRef = useRef<TrusteeMatchConfirmationModalImperative>(null);
   const searchModalRef = useRef<TrusteeSearchModalImperative>(null);
   // isProcessing (state) drives the disabled/spinner UI but only takes effect once React commits
@@ -546,28 +541,6 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
       );
     } finally {
       confirmationModalRef.current?.hide();
-      setIsProcessing(false);
-      isSubmittingRef.current = false;
-    }
-  }
-
-  async function handleReject(reason: string) {
-    if (isSubmittingRef.current) return;
-    isSubmittingRef.current = true;
-    setIsProcessing(true);
-    try {
-      await Api2.patchTrusteeVerificationOrderRejection(order.id, reason);
-      onOrderUpdate(
-        { message: 'Trustee match rejected.', type: UswdsAlertStyle.Warning, timeOut: 8 },
-        { ...order, status: 'rejected', reason },
-      );
-    } catch {
-      onOrderUpdate(
-        { message: 'Failed to reject trustee match.', type: UswdsAlertStyle.Error, timeOut: 8 },
-        order,
-      );
-    } finally {
-      rejectionModalRef.current?.hide();
       setIsProcessing(false);
       isSubmittingRef.current = false;
     }
@@ -977,7 +950,6 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
           )}
         </section>
       </Accordion>
-      <TrusteeMatchRejectionModal ref={rejectionModalRef} id={order.id} onConfirm={handleReject} />
       <TrusteeMatchConfirmationModal
         ref={confirmationModalRef}
         id={order.id}
@@ -988,6 +960,9 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
         ref={searchModalRef}
         id={order.id}
         dxtrTrusteeName={order.dxtrTrustee.fullName}
+        dxtrTrusteeAddressLines={addressLines}
+        dxtrTrusteePhone={legacy?.phone}
+        dxtrTrusteeEmail={legacy?.email}
         courtId={courtDetails?.courtId ?? order.courtId}
         onConfirm={handleManualMatch}
         isProcessing={isProcessing}

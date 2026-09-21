@@ -159,6 +159,37 @@ describe('TrusteeStaffUseCase', () => {
       ).rejects.toThrow();
     });
 
+    test('should throw error when input is not a valid object', async () => {
+      const actualError = await getTheThrownError(() =>
+        trusteeStaffUseCase.createStaffMember(
+          context,
+          trusteeId,
+          null as unknown as TrusteeStaffInput,
+        ),
+      );
+
+      expect(actualError.isCamsError).toBe(true);
+      expect(actualError.message).toContain('Staff validation failed');
+    });
+
+    test('should not track a Phone Number Added event when the created staff member has no contact info', async () => {
+      const staffWithoutContact = { ...createdStaffMember, contact: undefined };
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'createStaffMember').mockResolvedValue(
+        staffWithoutContact,
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue(undefined);
+      const completeTraceSpy = vi.spyOn(context.observability, 'completeTrace');
+
+      const result = await trusteeStaffUseCase.createStaffMember(context, trusteeId, validInput);
+
+      expect(result).toEqual(staffWithoutContact);
+      const phoneAddedCalls = completeTraceSpy.mock.calls.filter(
+        (call) => call[1] === 'Phone Number Added',
+      );
+      expect(phoneAddedCalls).toHaveLength(0);
+    });
+
     test('should create audit history record after creating staff member', async () => {
       vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
       vi.spyOn(MockMongoRepository.prototype, 'createStaffMember').mockResolvedValue(
@@ -396,6 +427,28 @@ describe('TrusteeStaffUseCase', () => {
           expect.objectContaining({ success: true, properties: { contactType: 'staff' } }),
         );
       });
+    });
+
+    test('should not track a Phone Number Added event when staff members have no contact info', async () => {
+      const mockTrustee = { id: trusteeId, name: 'Test Trustee' };
+      const existingWithoutContact = { ...existingStaffMember, contact: undefined };
+      const updatedWithoutContact = { ...updatedStaffMember, contact: undefined };
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'readStaffMember').mockResolvedValue(
+        existingWithoutContact,
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'updateStaffMember').mockResolvedValue(
+        updatedWithoutContact,
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue(undefined);
+      const completeTraceSpy = vi.spyOn(context.observability, 'completeTrace');
+
+      await trusteeStaffUseCase.updateStaffMember(context, trusteeId, staffId, updateInput);
+
+      const phoneAddedCalls = completeTraceSpy.mock.calls.filter(
+        (call) => call[1] === 'Phone Number Added',
+      );
+      expect(phoneAddedCalls).toHaveLength(0);
     });
 
     test('should not track a Phone Number Added event when phones are removed', async () => {

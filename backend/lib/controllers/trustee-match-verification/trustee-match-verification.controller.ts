@@ -89,7 +89,6 @@ export class TrusteeMatchVerificationController {
       action?: string;
       resolvedTrusteeId?: string;
       resolvedTrusteeName?: string;
-      reason?: string;
     };
     const useCase = new TrusteeMatchVerificationUseCase();
 
@@ -103,9 +102,6 @@ export class TrusteeMatchVerificationController {
         body.resolvedTrusteeId,
         body.resolvedTrusteeName,
       );
-      return httpSuccess({ statusCode: HttpStatusCodes.NO_CONTENT });
-    } else if (body?.action === 'reject') {
-      await useCase.rejectVerification(context, id, body.reason);
       return httpSuccess({ statusCode: HttpStatusCodes.NO_CONTENT });
     }
 
