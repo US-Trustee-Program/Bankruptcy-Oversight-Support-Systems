@@ -192,7 +192,7 @@ export default function Chapter7PanelTrusteePerformanceReportForm() {
 
   return (
     <div className="edit-upcoming-key-dates" data-testid="edit-chapter7-panel-tpr">
-      <h3>Edit Trustee Performance Report Key Dates</h3>
+      <h3>Edit Trustee Performance Report (TPR) Key Dates</h3>
 
       {tprDisplayUpdates ? (
         <div
@@ -217,7 +217,7 @@ export default function Chapter7PanelTrusteePerformanceReportForm() {
         >
           <DatePicker
             id="tpr-review-period-start"
-            label="Trustee Performance Review (TPR) Period Start"
+            label="TPR Period Start"
             value={form.tprReviewPeriodStart}
             onChange={(e) => {
               setForm((prev) => ({ ...prev, tprReviewPeriodStart: e.target.value }));
@@ -231,7 +231,7 @@ export default function Chapter7PanelTrusteePerformanceReportForm() {
           />
           <DatePicker
             id="tpr-review-period-end"
-            label="Trustee Performance Review (TPR) Period End"
+            label="TPR Period End"
             value={form.tprReviewPeriodEnd}
             onChange={(e) => {
               setForm((prev) => ({ ...prev, tprReviewPeriodEnd: e.target.value }));
@@ -250,7 +250,7 @@ export default function Chapter7PanelTrusteePerformanceReportForm() {
       ) : (
         <MonthDayRangeSelector
           id="tpr-review-period"
-          label="Trustee Performance Review (TPR) Period"
+          label="TPR Period"
           startValue={form.tprReviewPeriodStart}
           endValue={form.tprReviewPeriodEnd}
           onStartChange={(value) => setForm((prev) => ({ ...prev, tprReviewPeriodStart: value }))}
@@ -262,7 +262,7 @@ export default function Chapter7PanelTrusteePerformanceReportForm() {
       {tprDisplayUpdates && (
         <div className="usa-form-group">
           <label className="usa-label" htmlFor="tpr-frequency">
-            Trustee Performance Review Period Frequency
+            TPR Period Frequency
           </label>
           <select
             className="usa-select"
@@ -287,7 +287,7 @@ export default function Chapter7PanelTrusteePerformanceReportForm() {
       <div className="tpr-due-group">
         <div className="tpr-due-group__header">
           <label className="usa-label" htmlFor="tpr-due">
-            Trustee Performance Review (TPR) Due
+            TPR Due
           </label>
         </div>
         <div className="tpr-due-group__row">
@@ -328,7 +328,7 @@ export default function Chapter7PanelTrusteePerformanceReportForm() {
 
       <DatePicker
         id="last-tpr-submitted"
-        label="Last Trustee Performance Review Submitted"
+        label="Last TPR Submitted"
         value={form.lastTprSubmitted}
         onChange={(e) => setForm((prev) => ({ ...prev, lastTprSubmitted: e.target.value }))}
         onValidationChange={(hasError) => registerFieldError('last-tpr-submitted', hasError)}
