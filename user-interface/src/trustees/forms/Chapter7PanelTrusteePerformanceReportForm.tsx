@@ -1,4 +1,5 @@
 import './EditUpcomingKeyDates.scss';
+import '@/lib/components/uswds/forms.scss';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import useFeatureFlags, { TPR_DISPLAY_UPDATES } from '@/lib/hooks/UseFeatureFlags';
@@ -241,7 +242,7 @@ export default function Chapter7PanelTrusteePerformanceReportForm() {
             disableMax
           />
           {tprPeriodError && (
-            <span className="usa-error-message" data-testid="tpr-review-period-error">
+            <span className="usa-input__error-message" data-testid="tpr-review-period-error">
               {tprPeriodError}
             </span>
           )}
@@ -319,7 +320,7 @@ export default function Chapter7PanelTrusteePerformanceReportForm() {
           </div>
         </div>
         {tprDuePairError && (
-          <span className="usa-error-message" data-testid="tpr-due-error">
+          <span className="usa-input__error-message" data-testid="tpr-due-error">
             {tprDuePairError}
           </span>
         )}
@@ -342,7 +343,7 @@ export default function Chapter7PanelTrusteePerformanceReportForm() {
               Year
             </label>
             <select
-              className="usa-select"
+              className={`usa-select${completionPairError ? ' usa-input--error' : ''}`}
               id="tpr-completion-status-year"
               data-testid="tpr-completion-status-year"
               value={form.tprCompletionYear}
@@ -367,7 +368,7 @@ export default function Chapter7PanelTrusteePerformanceReportForm() {
               Status
             </label>
             <select
-              className="usa-select"
+              className={`usa-select${completionPairError ? ' usa-input--error' : ''}`}
               id="tpr-completion-status-status"
               data-testid="tpr-completion-status-status"
               value={form.tprCompletionStatus}
@@ -385,7 +386,7 @@ export default function Chapter7PanelTrusteePerformanceReportForm() {
           </div>
         </div>
         {completionPairError && (
-          <span className="usa-error-message" data-testid="tpr-completion-status-error">
+          <span className="usa-input__error-message" data-testid="tpr-completion-status-error">
             {completionPairError}
           </span>
         )}

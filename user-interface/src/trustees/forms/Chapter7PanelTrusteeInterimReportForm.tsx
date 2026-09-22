@@ -1,4 +1,5 @@
 import './EditUpcomingKeyDates.scss';
+import '@/lib/components/uswds/forms.scss';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
@@ -286,7 +287,7 @@ export default function Chapter7PanelTrusteeInterimReportForm() {
           </div>
         </div>
         {tirPeriodPairError && (
-          <span className="usa-error-message" data-testid="tir-period-pair-error">
+          <span className="usa-input__error-message" data-testid="tir-period-pair-error">
             {tirPeriodPairError}
           </span>
         )}
@@ -352,7 +353,7 @@ export default function Chapter7PanelTrusteeInterimReportForm() {
           </div>
         </div>
         {completionPairError && (
-          <span className="usa-error-message" data-testid="tir-completion-status-error">
+          <span className="usa-input__error-message" data-testid="tir-completion-status-error">
             {completionPairError}
           </span>
         )}
