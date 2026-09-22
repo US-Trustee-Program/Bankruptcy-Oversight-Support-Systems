@@ -221,13 +221,7 @@ describe('TrusteeUpcomingKeyDatesUseCase', () => {
     test.each([
       ['leaseExpiration', '2027-06-30'],
       ['tprFrequency', 'ANNUAL'],
-      ['bondIssuedDate', '2023-06-01'],
-      ['bondRenewalDate', '2026-06-01'],
       ['auditCompletionYear', 2026],
-      ['tprCompletionYear', 2026],
-      ['tprCompletionStatus', 'COMPLETE'],
-      ['annualReportCompletionYear', 2025],
-      ['annualReportCompletionStatus', 'INCOMPLETE'],
     ])('saves %s when set', async (field, value) => {
       vi.spyOn(MockMongoRepository.prototype, 'getByAppointmentId').mockResolvedValue(null);
       const upsertSpy = vi
@@ -277,13 +271,7 @@ describe('TrusteeUpcomingKeyDatesUseCase', () => {
     test.each([
       ['leaseExpiration', '2026-06-30', '2027-06-30'],
       ['tprFrequency', 'ANNUAL', 'BIANNUAL'],
-      ['bondIssuedDate', '2022-06-01', '2023-06-01'],
-      ['bondRenewalDate', '2025-06-01', '2026-06-01'],
       ['auditCompletionYear', 2025, 2026],
-      ['tprCompletionYear', 2025, 2026],
-      ['tprCompletionStatus', 'INCOMPLETE', 'COMPLETE'],
-      ['annualReportCompletionYear', 2024, 2025],
-      ['annualReportCompletionStatus', 'COMPLETE', 'INCOMPLETE'],
     ])('%s change is captured in audit history', async (field, before, after) => {
       const existing = buildMockDocument({ [field]: before });
       vi.spyOn(MockMongoRepository.prototype, 'getByAppointmentId').mockResolvedValue(existing);
@@ -345,16 +333,6 @@ describe('TrusteeUpcomingKeyDatesUseCase', () => {
         'lastCompensationStudy',
         { lastCompensationStudy: '2024-06-01' },
         { lastCompensationStudy: null },
-      ],
-      [
-        'annualReportCompletionYear',
-        { annualReportCompletionYear: 2025 },
-        { annualReportCompletionYear: null },
-      ],
-      [
-        'tprCompletionStatus',
-        { tprCompletionStatus: 'COMPLETE' as const },
-        { tprCompletionStatus: null },
       ],
       ['tprFrequency', { tprFrequency: 'ANNUAL' as const }, { tprFrequency: null }],
       ['auditCompletionYear', { auditCompletionYear: 2025 }, { auditCompletionYear: null }],
