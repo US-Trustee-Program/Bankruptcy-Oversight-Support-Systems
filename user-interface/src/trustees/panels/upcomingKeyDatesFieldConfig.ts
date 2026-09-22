@@ -16,13 +16,24 @@ export type UpcomingKeyDatesVariant =
 
 export const NO_DATE = 'No date added';
 
+/**
+ * The completion year and status are stored as a pair, so a tag is only
+ * meaningful when both are present.
+ *
+ * `null` counts as absent, not as a value. The document type declares these
+ * fields optional while the input type declares them nullable, and the values
+ * come from stored data, so both shapes reach here. Checking only for
+ * `undefined` rendered 'Incomplete for null' for a null year, and a null status
+ * rendered a confident 'Incomplete for <year>' for a report whose status was
+ * simply unset.
+ */
 export function buildCompletionTag(
-  year: number | undefined,
-  status: string | undefined,
+  year: number | null | undefined,
+  status: string | null | undefined,
   closedValue: string,
   id: string,
 ): EditableTableCardTag | undefined {
-  if (year === undefined || status === undefined) return undefined;
+  if (year == null || status == null) return undefined;
   return {
     label: `${status === closedValue ? 'Complete' : 'Incomplete'} for ${year}`,
     color: (status === closedValue ? 'green' : 'red') as EditableTableCardTagColor,

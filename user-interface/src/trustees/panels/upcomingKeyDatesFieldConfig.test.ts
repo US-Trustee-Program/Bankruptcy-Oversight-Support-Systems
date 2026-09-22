@@ -2,6 +2,7 @@ import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   UPCOMING_KEY_DATES_FIELD_CONFIG,
   getUpcomingKeyDatesFieldConfig,
+  buildCompletionTag,
 } from './upcomingKeyDatesFieldConfig';
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
@@ -586,4 +587,38 @@ describe('getUpcomingKeyDatesFieldConfig — flag OFF (tprDisplayUpdates=false)'
       }
     },
   );
+});
+
+describe('buildCompletionTag', () => {
+  test('renders a green tag when the status matches the closed value', () => {
+    expect(buildCompletionTag(2025, 'COMPLETE', 'COMPLETE', 'tag-id')).toEqual({
+      label: 'Complete for 2025',
+      color: 'green',
+      id: 'tag-id',
+    });
+  });
+
+  test('renders a red tag when the status does not match the closed value', () => {
+    expect(buildCompletionTag(2024, 'INCOMPLETE', 'COMPLETE', 'tag-id')).toEqual({
+      label: 'Incomplete for 2024',
+      color: 'red',
+      id: 'tag-id',
+    });
+  });
+
+  // The year and status are stored as a pair; half a pair reports nothing. The
+  // document type declares these optional, but the input type declares them
+  // nullable and the values ultimately come from stored data, so null has to be
+  // treated the same as absent. Letting null through rendered 'Incomplete for
+  // null', and worse, a null status rendered a confident 'Incomplete for <year>'
+  // for a report whose status was simply unset.
+  test.each([
+    ['the year is undefined', undefined, 'COMPLETE'],
+    ['the year is null', null, 'COMPLETE'],
+    ['the status is undefined', 2025, undefined],
+    ['the status is null', 2025, null],
+    ['both are null', null, null],
+  ])('renders no tag when %s', (_label, year, status) => {
+    expect(buildCompletionTag(year, status, 'COMPLETE', 'tag-id')).toBeUndefined();
+  });
 });
