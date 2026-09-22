@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import EditableTableCard from '@/lib/components/cams/EditableTableCard/EditableTableCard';
 import {
@@ -5,6 +6,7 @@ import {
   isoToMMDD,
   isoRangeToMMDD,
 } from '@common/cams/trustee-upcoming-key-dates';
+import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import {
   tprReviewPeriodField,
   tprFrequencyField,
@@ -25,7 +27,15 @@ export interface Chapter12StandingTrusteePerformanceReportCardProps {
 export default function Chapter12StandingTrusteePerformanceReportCard(
   props: Readonly<Chapter12StandingTrusteePerformanceReportCardProps>,
 ) {
-  const { appointmentId, data, isLoading, tprDisplayUpdates } = props;
+  const { trusteeId, appointmentId, data, isLoading, tprDisplayUpdates } = props;
+  const navigate = useNavigate();
+  const canManage = useCanManageTrustees();
+
+  function openEdit() {
+    navigate(
+      `/trustees/${trusteeId}/appointments/${appointmentId}/chapter12-standing-tpr-key-dates/edit`,
+    );
+  }
 
   if (isLoading) {
     return <LoadingSpinner id="chapter12-standing-tpr-loading" />;
@@ -78,7 +88,7 @@ export default function Chapter12StandingTrusteePerformanceReportCard(
 
   return (
     <EditableTableCard
-      id={`chapter12-standing-tpr-${appointmentId}`}
+      id={`edit-chapter12-standing-tpr-${appointmentId}`}
       title="Trustee Performance Report"
       testId="chapter12-standing-tpr-card"
       className="chapter12-standing-tpr-card"
@@ -86,6 +96,9 @@ export default function Chapter12StandingTrusteePerformanceReportCard(
       tableClassName="chapter12-standing-tpr-table"
       tableAriaLabel="Trustee Performance Report key dates"
       tag={tag}
+      onEdit={canManage ? openEdit : undefined}
+      editAriaLabel="Edit Trustee Performance Report key dates"
+      editTitle="Edit Trustee Performance Report key dates"
       columns={columns}
       values={values}
     />
