@@ -8,6 +8,7 @@ import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { CamsRole } from '@common/cams/roles';
 import { GlobalAlertContext } from '@/App';
+import { FISCAL_YEAR_OPTIONS } from './chapter7PanelKeyDatesInput';
 
 const mockUseNavigate = vi.hoisted(() => vi.fn());
 const mockUseParams = vi.hoisted(() =>
@@ -101,7 +102,7 @@ describe('AnnualReportKeyDatesForm', () => {
     expect(screen.getByTestId('annual-report-completion-status')).toHaveValue('INCOMPLETE');
   });
 
-  test('offers the current year and the ten years before it', async () => {
+  test('offers the shared fiscal-year lookback range', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderForm();
@@ -113,9 +114,9 @@ describe('AnnualReportKeyDatesForm', () => {
     const values = Array.from(select.options)
       .map((o) => o.value)
       .filter((v) => v !== '');
-    expect(values).toHaveLength(11);
+    // Same range the Chapter 7 Panel completion-year dropdowns offer.
+    expect(values).toEqual(FISCAL_YEAR_OPTIONS.map(String));
     expect(values[0]).toBe(String(currentYear));
-    expect(values[10]).toBe(String(currentYear - 10));
   });
 
   test('offers only Complete and Incomplete as statuses', async () => {

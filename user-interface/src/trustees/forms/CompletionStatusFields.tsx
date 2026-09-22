@@ -1,3 +1,5 @@
+import { FISCAL_YEAR_OPTIONS } from './chapter7PanelKeyDatesInput';
+
 /** Matches the COMPLETE/INCOMPLETE enum the key-dates model stores. */
 type CompletionStatus = 'COMPLETE' | 'INCOMPLETE';
 
@@ -13,17 +15,11 @@ export interface CompletionStatusFieldsProps {
   onChange: (value: CompletionStatusValue) => void;
 }
 
-/**
- * A completion year is always one that has begun, so the options run from the
- * current year backwards rather than forwards like the upcoming-date pickers.
- */
-function buildCompletionYearOptions(currentYear = new Date().getFullYear()): number[] {
-  return Array.from({ length: 11 }, (_, i) => currentYear - i);
-}
-
 export default function CompletionStatusFields(props: Readonly<CompletionStatusFieldsProps>) {
   const { idPrefix, legend, value, onChange } = props;
-  const yearOptions = buildCompletionYearOptions();
+  // Shared with the Chapter 7 Panel completion-year dropdowns so the lookback
+  // range stays the same for every appointment type.
+  const yearOptions = FISCAL_YEAR_OPTIONS;
 
   return (
     <fieldset className="usa-fieldset completion-status-fields">
