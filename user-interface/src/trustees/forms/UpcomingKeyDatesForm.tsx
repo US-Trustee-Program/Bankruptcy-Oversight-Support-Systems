@@ -12,6 +12,7 @@ import {
 } from '@common/cams/trustee-upcoming-key-dates';
 import {
   TrusteeAppointment,
+  isChapter12Or13CaseByCase,
   isChapter12Standing,
   isChapter13Standing,
 } from '@common/cams/trustee-appointments';
@@ -119,9 +120,6 @@ function deriveVariant(
   chapter: AppointmentChapterType,
   appointmentType: AppointmentType,
 ): UpcomingKeyDatesVariant {
-  if ((chapter === '12' || chapter === '13') && appointmentType === 'case-by-case') {
-    return 'ch12-13-case-by-case';
-  }
   if (isChapter12Standing(chapter, appointmentType)) {
     return 'chapter12-standing';
   }
@@ -176,6 +174,13 @@ type FormLoadResult = {
   variantAlert: string | null;
   formState: FormState | null;
   keyDatesAlert: string | null;
+  /**
+   * Chapter 12/13 Case by Case appointments have their own dedicated edit pages
+   * (CAMS-913). This generic form can still be reached for them by a stale or
+   * typed URL, where it would offer a second, narrower editor writing the same
+   * fields, so the form sends the user to the appointments list instead.
+   */
+  movedToDedicatedForm: boolean;
 };
 
 function resolveFormLoadResult(
@@ -187,13 +192,19 @@ function resolveFormLoadResult(
   let variant: UpcomingKeyDatesVariant = variantFromState ?? 'chapter7-panel';
   let loadError = false;
   let variantAlert: string | null = null;
+  let movedToDedicatedForm = false;
 
   if (!variantFromState) {
     if (appointmentsResult.status === 'fulfilled') {
       const appointment = (appointmentsResult.value?.data ?? []).find(
         (a) => a.id === appointmentId,
       );
-      if (appointment) {
+      if (
+        appointment &&
+        isChapter12Or13CaseByCase(appointment.chapter, appointment.appointmentType)
+      ) {
+        movedToDedicatedForm = true;
+      } else if (appointment) {
         variant = deriveVariant(appointment.chapter, appointment.appointmentType);
       } else {
         variantAlert = 'Could not determine appointment type; showing default fields.';
@@ -214,7 +225,7 @@ function resolveFormLoadResult(
     keyDatesAlert = `Failed to load upcoming key dates: ${(keyDatesResult.reason as Error).message}`;
   }
 
-  return { variant, loadError, variantAlert, formState, keyDatesAlert };
+  return { variant, loadError, variantAlert, formState, keyDatesAlert, movedToDedicatedForm };
 }
 
 export default function UpcomingKeyDatesForm({
@@ -291,6 +302,10 @@ export default function UpcomingKeyDatesForm({
         keyDatesResult,
       );
 
+      if (result.movedToDedicatedForm) {
+        navigate(`/trustees/${trusteeId}/appointments`, { replace: true });
+        return;
+      }
       if (!variantFromState) {
         setVariant(result.variant);
       }

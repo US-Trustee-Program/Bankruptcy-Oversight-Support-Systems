@@ -12,7 +12,7 @@ import {
 } from '@/lib/components/cams/EditableTableCard/EditableTableCard';
 
 export type UpcomingKeyDatesVariant =
-  'chapter7-panel' | 'ch12-13-case-by-case' | 'chapter12-standing' | 'chapter13-standing';
+  'chapter7-panel' | 'chapter12-standing' | 'chapter13-standing';
 
 export const NO_DATE = 'No date added';
 
@@ -222,37 +222,6 @@ export const UPCOMING_KEY_DATES_FIELD_CONFIG: Record<
       kind: 'computed',
       key: 'tirReview',
       buildField: tirReviewField,
-    },
-  ],
-  'ch12-13-case-by-case': [
-    {
-      kind: 'constant',
-      key: 'annualReportSubmission',
-      displayLabel: 'Annual Report Submission',
-      value: '09/01',
-      testId: 'annual-report-submission-row',
-    },
-    {
-      kind: 'constant',
-      key: 'annualReportDueToOO',
-      displayLabel: 'Annual Report Due to OO',
-      value: '09/15',
-      testId: 'annual-report-due-oo-row',
-    },
-    {
-      kind: 'computed',
-      key: 'tprReviewPeriod',
-      buildField: tprReviewPeriodField,
-    },
-    {
-      kind: 'computed',
-      key: 'tprFrequency',
-      buildField: tprFrequencyField,
-    },
-    {
-      kind: 'computed',
-      key: 'tprDue',
-      buildField: tprDueField,
     },
   ],
   'chapter12-standing': [
