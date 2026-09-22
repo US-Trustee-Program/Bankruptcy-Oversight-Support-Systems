@@ -368,6 +368,23 @@ describe('Chapter7PanelTrusteePerformanceReportForm', () => {
     });
   });
 
+  test('Save button is disabled and shows a message when TPR Due Year Type is set without a TPR Due date', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-chapter7-panel-tpr')).toBeInTheDocument();
+    });
+
+    await userEvent.selectOptions(screen.getByTestId('tpr-due-year-type'), 'EVEN');
+
+    await waitFor(() => {
+      expect(screen.getByTestId('tpr-due-error')).toBeInTheDocument();
+      expect(screen.getByTestId('button-save-chapter7-panel-tpr')).toBeDisabled();
+    });
+  });
+
   test('cancel navigates back to the appointments page without saving', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
     const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
@@ -395,7 +412,7 @@ describe('Chapter7PanelTrusteePerformanceReportForm', () => {
         expect(screen.getByTestId('edit-chapter7-panel-tpr')).toBeInTheDocument();
       });
 
-      fireEvent.change(document.getElementById('tpr-review-period-start') as HTMLInputElement, {
+      fireEvent.change(screen.getByTestId('tpr-review-period-start'), {
         target: { value: '2025-04-01' },
       });
       await userEvent.click(screen.getByTestId('button-save-chapter7-panel-tpr'));
@@ -416,7 +433,7 @@ describe('Chapter7PanelTrusteePerformanceReportForm', () => {
         expect(screen.getByTestId('edit-chapter7-panel-tpr')).toBeInTheDocument();
       });
 
-      fireEvent.change(document.getElementById('tpr-review-period-end') as HTMLInputElement, {
+      fireEvent.change(screen.getByTestId('tpr-review-period-end'), {
         target: { value: '2026-03-31' },
       });
       await userEvent.click(screen.getByTestId('button-save-chapter7-panel-tpr'));
@@ -436,8 +453,8 @@ describe('Chapter7PanelTrusteePerformanceReportForm', () => {
         expect(screen.getByTestId('edit-chapter7-panel-tpr')).toBeInTheDocument();
       });
 
-      const startInput = document.getElementById('tpr-review-period-start') as HTMLInputElement;
-      const endInput = document.getElementById('tpr-review-period-end') as HTMLInputElement;
+      const startInput = screen.getByTestId('tpr-review-period-start');
+      const endInput = screen.getByTestId('tpr-review-period-end');
 
       fireEvent.change(startInput, { target: { value: '2025-04-01' } });
       await userEvent.click(screen.getByTestId('button-save-chapter7-panel-tpr'));
@@ -462,8 +479,8 @@ describe('Chapter7PanelTrusteePerformanceReportForm', () => {
         expect(screen.getByTestId('edit-chapter7-panel-tpr')).toBeInTheDocument();
       });
 
-      const startInput = document.getElementById('tpr-review-period-start') as HTMLInputElement;
-      const endInput = document.getElementById('tpr-review-period-end') as HTMLInputElement;
+      const startInput = screen.getByTestId('tpr-review-period-start');
+      const endInput = screen.getByTestId('tpr-review-period-end');
 
       fireEvent.change(endInput, { target: { value: '2026-03-31' } });
       await userEvent.click(screen.getByTestId('button-save-chapter7-panel-tpr'));
@@ -488,8 +505,8 @@ describe('Chapter7PanelTrusteePerformanceReportForm', () => {
         expect(screen.getByTestId('edit-chapter7-panel-tpr')).toBeInTheDocument();
       });
 
-      const startInput = document.getElementById('tpr-review-period-start') as HTMLInputElement;
-      const endInput = document.getElementById('tpr-review-period-end') as HTMLInputElement;
+      const startInput = screen.getByTestId('tpr-review-period-start');
+      const endInput = screen.getByTestId('tpr-review-period-end');
 
       fireEvent.change(startInput, { target: { value: '2026-12-31' } });
       fireEvent.change(endInput, { target: { value: '2025-01-01' } });
@@ -516,8 +533,8 @@ describe('Chapter7PanelTrusteePerformanceReportForm', () => {
         expect(screen.getByTestId('edit-chapter7-panel-tpr')).toBeInTheDocument();
       });
 
-      const startInput = document.getElementById('tpr-review-period-start') as HTMLInputElement;
-      const endInput = document.getElementById('tpr-review-period-end') as HTMLInputElement;
+      const startInput = screen.getByTestId('tpr-review-period-start');
+      const endInput = screen.getByTestId('tpr-review-period-end');
 
       fireEvent.change(startInput, { target: { value: '2026-12-31' } });
       fireEvent.change(endInput, { target: { value: '2025-01-01' } });
@@ -548,17 +565,17 @@ describe('Chapter7PanelTrusteePerformanceReportForm', () => {
         expect(screen.getByTestId('edit-chapter7-panel-tpr')).toBeInTheDocument();
       });
 
-      const startInput = document.getElementById('tpr-review-period-start') as HTMLInputElement;
-      const endInput = document.getElementById('tpr-review-period-end') as HTMLInputElement;
+      const startInput = screen.getByTestId('tpr-review-period-start');
+      const endInput = screen.getByTestId('tpr-review-period-end');
 
       fireEvent.change(startInput, { target: { value: '2026-12-31' } });
       fireEvent.change(endInput, { target: { value: '2025-01-01' } });
       fireEvent.blur(endInput, { relatedTarget: null });
 
       await waitFor(() => {
-        expect(
-          screen.getByText('TPR Review Period End must be after TPR Review Period Start.'),
-        ).toBeInTheDocument();
+        expect(document.getElementById('tpr-review-period-end-error')).toHaveTextContent(
+          'TPR Review Period End must be after TPR Review Period Start.',
+        );
       });
 
       fireEvent.change(endInput, { target: { value: '2027-01-01' } });
