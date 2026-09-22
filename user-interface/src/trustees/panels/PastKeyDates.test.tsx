@@ -18,7 +18,7 @@ vi.mock('react-router-dom', async () => {
 });
 
 const defaultProps: PastKeyDatesProps = {
-  variant: 'chapter7-panel',
+  variant: 'chapter12-standing',
   trusteeId: 'trustee-001',
   appointmentId: 'appointment-001',
   appointmentHeading: 'Southern District of New York (Manhattan) - Chapter 7 Panel',
@@ -71,38 +71,35 @@ describe('PastKeyDates', () => {
     renderComponent();
 
     const noDateElements = screen.getAllByText('No date added');
-    expect(noDateElements.length).toBe(5);
+    expect(noDateElements.length).toBe(3);
   });
 
   test('renders all field labels', () => {
     renderComponent();
 
     expect(screen.getByText('Last Update to Background Questionnaire:')).toBeInTheDocument();
-    expect(screen.getByText('Field Exam Report Date:')).toBeInTheDocument();
-    expect(screen.getByText('Audit Report Date:')).toBeInTheDocument();
+    expect(screen.getByText('Audit Report:')).toBeInTheDocument();
     expect(screen.getByText("Last Audit's Fiscal Year:")).toBeInTheDocument();
-    expect(screen.getByText('TIR Letter:')).toBeInTheDocument();
   });
 
   test('renders correctly formatted values when populated document is provided', () => {
     renderComponent({ data: populatedDocument });
 
     expect(screen.getByTestId('past-background-question-row')).toHaveTextContent('05/10/2022');
-    expect(screen.getByTestId('past-field-exam-row')).toHaveTextContent('02/21/2024');
     expect(screen.getByTestId('past-audit-row')).toHaveTextContent('02/22/2023');
-    expect(screen.getByTestId('past-tpr-submission-row')).toHaveTextContent('11/03/2025');
+    expect(screen.getByTestId('past-last-audit-fiscal-year-row')).toHaveTextContent('2022');
   });
 
-  test('renders "No date added" for background question and tpr submission when absent', () => {
-    const docWithoutNewFields: TrusteeUpcomingKeyDates = {
+  test('renders "No date added" for background question and audit when absent', () => {
+    const docWithoutFields: TrusteeUpcomingKeyDates = {
       ...populatedDocument,
       pastBackgroundQuestion: undefined,
-      pastTprSubmission: undefined,
+      pastAudit: undefined,
     };
-    renderComponent({ data: docWithoutNewFields });
+    renderComponent({ data: docWithoutFields });
 
     expect(screen.getByTestId('past-background-question-row')).toHaveTextContent('No date added');
-    expect(screen.getByTestId('past-tpr-submission-row')).toHaveTextContent('No date added');
+    expect(screen.getByTestId('past-audit-row')).toHaveTextContent('No date added');
   });
 
   test('renders fields in correct order', () => {
@@ -114,10 +111,8 @@ describe('PastKeyDates', () => {
     // contract), rather than assuming InfoCard renders each row as an <li>.
     const expectedOrder = [
       'past-background-question-row',
-      'past-field-exam-row',
       'past-audit-row',
       'past-last-audit-fiscal-year-row',
-      'past-tpr-submission-row',
     ];
     const rows = expectedOrder.map((testId) => screen.getByTestId(testId));
     for (let i = 0; i < rows.length - 1; i++) {
@@ -175,7 +170,7 @@ describe('PastKeyDates', () => {
 
     expect(mockNavigate).toHaveBeenCalledWith(
       `/trustees/${defaultProps.trusteeId}/appointments/${defaultProps.appointmentId}/past-key-dates/edit`,
-      { state: { subHeading: defaultProps.appointmentHeading, variant: 'chapter7-panel' } },
+      { state: { subHeading: defaultProps.appointmentHeading, variant: 'chapter12-standing' } },
     );
   });
 
@@ -186,7 +181,7 @@ describe('PastKeyDates', () => {
 
     expect(mockNavigate).toHaveBeenCalledWith(
       `/trustees/${defaultProps.trusteeId}/appointments/${defaultProps.appointmentId}/past-key-dates/edit`,
-      { state: { subHeading: '', variant: 'chapter7-panel' } },
+      { state: { subHeading: '', variant: 'chapter12-standing' } },
     );
   });
 
@@ -306,7 +301,7 @@ describe('PastKeyDates', () => {
       renderComponent(subVProps);
 
       // Assert via PastKeyDates' own testId contract (which fields it renders),
-      // not InfoCard's internal markup — none of the chapter7-panel-only rows
+      // not InfoCard's internal markup — none of the chapter12-standing rows
       // should be present alongside the single subv-pool row.
       expect(screen.getByTestId('past-last-monthly-report-received-row')).toBeInTheDocument();
       expect(screen.queryByTestId('past-background-question-row')).not.toBeInTheDocument();

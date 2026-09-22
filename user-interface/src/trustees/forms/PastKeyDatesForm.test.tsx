@@ -118,7 +118,7 @@ describe('PastKeyDatesForm', () => {
     mockGlobalAlertRef.current.error.mockClear();
     mockUseNavigate.mockReturnValue(mockNavigate);
     TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
-    vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [chapter7Appointment] });
+    vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch12StandingAppointment] });
     userEvent = TestingUtilities.setupUserEvent();
   });
 
@@ -136,7 +136,7 @@ describe('PastKeyDatesForm', () => {
     );
   });
 
-  test('renders all date picker inputs', async () => {
+  test('renders date picker inputs for chapter12-standing fields', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderComponent();
@@ -146,9 +146,10 @@ describe('PastKeyDatesForm', () => {
     });
 
     expect(screen.getByTestId('past-background-question')).toBeInTheDocument();
-    expect(screen.getByTestId('past-field-exam')).toBeInTheDocument();
     expect(screen.getByTestId('past-audit')).toBeInTheDocument();
-    expect(screen.getByTestId('past-tpr-submission')).toBeInTheDocument();
+    expect(screen.getByTestId('last-audit-fiscal-year')).toBeInTheDocument();
+    expect(screen.queryByTestId('past-field-exam')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('past-tpr-submission')).not.toBeInTheDocument();
   });
 
   test('renders "Edit Past Key Dates" as the heading', async () => {
@@ -168,19 +169,19 @@ describe('PastKeyDatesForm', () => {
 
     renderComponent();
 
-    await waitFor(() => expect(screen.getByTestId('past-field-exam')).toHaveValue('2024-02-21'));
+    await waitFor(() => expect(screen.getByTestId('past-audit')).toHaveValue('2023-08-01'));
 
     const saveButton = screen.getByTestId('button-save-past-key-dates');
     expect(saveButton).toBeEnabled();
 
-    const fieldExamInput = screen.getByTestId('past-field-exam');
-    fireEvent.change(fieldExamInput, { target: { value: '1900-01-01' } });
+    const auditInput = screen.getByTestId('past-audit');
+    fireEvent.change(auditInput, { target: { value: '1900-01-01' } });
 
     await waitFor(() => {
       expect(saveButton).toBeDisabled();
     });
 
-    fireEvent.change(fieldExamInput, { target: { value: '2024-03-01' } });
+    fireEvent.change(auditInput, { target: { value: '2024-03-01' } });
 
     await waitFor(() => {
       expect(saveButton).toBeEnabled();
@@ -192,20 +193,20 @@ describe('PastKeyDatesForm', () => {
 
     renderComponent();
 
-    await waitFor(() => expect(screen.getByTestId('past-field-exam')).toHaveValue('2024-02-21'));
+    await waitFor(() => expect(screen.getByTestId('past-audit')).toHaveValue('2023-08-01'));
 
     const saveButton = screen.getByTestId('button-save-past-key-dates');
-    const fieldExamInput = screen.getByTestId('past-field-exam');
+    const backgroundInput = screen.getByTestId('past-background-question');
     const auditInput = screen.getByTestId('past-audit');
 
-    fireEvent.change(fieldExamInput, { target: { value: '1900-01-01' } });
+    fireEvent.change(backgroundInput, { target: { value: '1900-01-01' } });
     fireEvent.change(auditInput, { target: { value: '1900-01-01' } });
 
     await waitFor(() => {
       expect(saveButton).toBeDisabled();
     });
 
-    fireEvent.change(fieldExamInput, { target: { value: '2024-03-01' } });
+    fireEvent.change(backgroundInput, { target: { value: '2024-03-01' } });
 
     await waitFor(() => {
       expect(saveButton).toBeDisabled();
@@ -227,9 +228,8 @@ describe('PastKeyDatesForm', () => {
       expect(screen.getByTestId('past-background-question')).toHaveValue('2022-05-10');
     });
 
-    expect(screen.getByTestId('past-field-exam')).toHaveValue('2024-02-21');
     expect(screen.getByTestId('past-audit')).toHaveValue('2023-08-01');
-    expect(screen.getByTestId('past-tpr-submission')).toHaveValue('2025-11-03');
+    expect(screen.getByTestId('last-audit-fiscal-year')).toHaveValue('2022');
   });
 
   test('shows empty inputs when API returns null', async () => {
@@ -241,9 +241,8 @@ describe('PastKeyDatesForm', () => {
       expect(screen.getByTestId('past-background-question')).toHaveValue('');
     });
 
-    expect(screen.getByTestId('past-field-exam')).toHaveValue('');
     expect(screen.getByTestId('past-audit')).toHaveValue('');
-    expect(screen.getByTestId('past-tpr-submission')).toHaveValue('');
+    expect(screen.getByTestId('last-audit-fiscal-year')).toHaveValue('');
   });
 
   test('shows loading spinner while fetching', () => {
@@ -261,7 +260,7 @@ describe('PastKeyDatesForm', () => {
 
     renderComponent();
 
-    await waitFor(() => expect(screen.getByTestId('past-field-exam')).toHaveValue('2024-02-21'));
+    await waitFor(() => expect(screen.getByTestId('past-audit')).toHaveValue('2023-08-01'));
 
     await userEvent.click(screen.getByTestId('button-save-past-key-dates'));
 
@@ -334,17 +333,15 @@ describe('PastKeyDatesForm', () => {
     );
   });
 
-  test('changing tpr submission saves updated value', async () => {
+  test('changing audit date saves updated value', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
     const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderComponent();
 
-    await waitFor(() =>
-      expect(screen.getByTestId('past-tpr-submission')).toHaveValue('2025-11-03'),
-    );
+    await waitFor(() => expect(screen.getByTestId('past-audit')).toHaveValue('2023-08-01'));
 
-    fireEvent.change(screen.getByTestId('past-tpr-submission'), {
+    fireEvent.change(screen.getByTestId('past-audit'), {
       target: { value: '2019-06-30' },
     });
     await userEvent.click(screen.getByTestId('button-save-past-key-dates'));
@@ -353,7 +350,7 @@ describe('PastKeyDatesForm', () => {
       expect(putSpy).toHaveBeenCalledWith(
         'trustee-001',
         'appointment-001',
-        expect.objectContaining({ pastTprSubmission: '2019-06-30' }),
+        expect.objectContaining({ pastAudit: '2019-06-30' }),
       ),
     );
   });
@@ -521,9 +518,7 @@ describe('PastKeyDatesForm', () => {
         'appointment-001',
         expect.objectContaining({
           pastBackgroundQuestion: null,
-          pastFieldExam: null,
           pastAudit: null,
-          pastTprSubmission: null,
         }),
       ),
     );
@@ -531,9 +526,7 @@ describe('PastKeyDatesForm', () => {
 
   test.each([
     ['Background Question', 'Last Update to Background Questionnaire'],
-    ['Field Exam', 'Field Exam Report Date'],
     ['Audit', 'Audit Report Date'],
-    ['TPR Submission', 'Trustee Interim Report Letter Date'],
     ['Last Audit Fiscal Year', "Last Audit's Fiscal Year"],
   ])('renders updated label for %s', async (_desc, expectedLabel) => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
@@ -543,18 +536,6 @@ describe('PastKeyDatesForm', () => {
     await waitFor(() => {
       expect(screen.getByText(expectedLabel)).toBeInTheDocument();
     });
-  });
-
-  test('renders audit-year hint text for chapter7-panel', async () => {
-    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
-
-    renderComponent();
-
-    await waitFor(() => {
-      expect(screen.getByTestId('edit-past-key-dates')).toBeInTheDocument();
-    });
-
-    expect(screen.getByText('The fiscal year of the TIR data audited')).toBeInTheDocument();
   });
 
   test('Cancel navigates without calling PUT', async () => {
@@ -573,7 +554,7 @@ describe('PastKeyDatesForm', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');
   });
 
-  test('falls back to chapter7-panel fields when appointment is not found', async () => {
+  test('falls back to chapter12-standing fields when appointment is not found', async () => {
     vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [] });
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 

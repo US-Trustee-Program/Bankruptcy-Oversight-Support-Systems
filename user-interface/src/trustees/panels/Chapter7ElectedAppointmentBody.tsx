@@ -1,9 +1,8 @@
 import AppointmentBasicFields from './AppointmentBasicFields';
 import BondKeyDatesCard from './BondKeyDatesCard';
+import KeyDatesGate from './KeyDatesGate';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
-import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import useFeatureFlags, { DISPLAY_CHPT7_ELECTED_KEY_DATES } from '@/lib/hooks/UseFeatureFlags';
-import { useUpcomingKeyDates } from './useUpcomingKeyDates';
 import { buildAppointmentHeading } from './appointmentDisplay';
 
 export interface Chapter7ElectedAppointmentBodyProps {
@@ -19,37 +18,29 @@ export default function Chapter7ElectedAppointmentBody(
   // guaranteed-to-fail request when the accordion flag is enabled on its own.
   const featureFlags = useFeatureFlags();
   const displayKeyDates = featureFlags[DISPLAY_CHPT7_ELECTED_KEY_DATES] === true;
-  const {
-    data: keyDates,
-    isLoading: isKeyDatesLoading,
-    error: keyDatesLoadError,
-  } = useUpcomingKeyDates(appointment.trusteeId, appointment.id, displayKeyDates);
 
   const appointmentHeading = buildAppointmentHeading(appointment);
 
   return (
     <>
       <AppointmentBasicFields appointment={appointment} />
-      {displayKeyDates && keyDatesLoadError && (
-        <Alert
-          id="bond-key-dates-error"
-          type={UswdsAlertStyle.Error}
-          inline={true}
-          show={true}
-          slim
-        >
-          Failed to load bond key dates. Please refresh and try again.
-        </Alert>
-      )}
-      {displayKeyDates && !keyDatesLoadError && (
-        <BondKeyDatesCard
-          trusteeId={appointment.trusteeId}
-          appointmentId={appointment.id}
-          appointmentHeading={appointmentHeading}
-          data={keyDates}
-          isLoading={isKeyDatesLoading}
-        />
-      )}
+      <KeyDatesGate
+        trusteeId={appointment.trusteeId}
+        appointmentId={appointment.id}
+        shouldFetch={displayKeyDates}
+        errorId={`bond-key-dates-error-${appointment.id}`}
+        errorMessage="Failed to load bond key dates. Please refresh and try again."
+      >
+        {(data, isLoading) => (
+          <BondKeyDatesCard
+            trusteeId={appointment.trusteeId}
+            appointmentId={appointment.id}
+            appointmentHeading={appointmentHeading}
+            data={data}
+            isLoading={isLoading}
+          />
+        )}
+      </KeyDatesGate>
     </>
   );
 }

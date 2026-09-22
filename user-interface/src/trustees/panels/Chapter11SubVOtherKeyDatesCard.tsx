@@ -4,7 +4,7 @@ import EditableTableCard from '@/lib/components/cams/EditableTableCard/EditableT
 import { TrusteeUpcomingKeyDates, isoToMMDDYYYY } from '@common/cams/trustee-upcoming-key-dates';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 
-export interface BondKeyDatesCardProps {
+export interface Chapter11SubVOtherKeyDatesCardProps {
   trusteeId: string;
   appointmentId: string;
   appointmentHeading?: string;
@@ -18,38 +18,42 @@ function formatDateOrDefault(isoDate: string | undefined): string {
   return isoDate ? isoToMMDDYYYY(isoDate) : NO_DATE;
 }
 
-export default function BondKeyDatesCard(props: Readonly<BondKeyDatesCardProps>) {
+export default function Chapter11SubVOtherKeyDatesCard(
+  props: Readonly<Chapter11SubVOtherKeyDatesCardProps>,
+) {
   const { trusteeId, appointmentId, appointmentHeading, data, isLoading } = props;
   const navigate = useNavigate();
   const canManage = useCanManageTrustees();
 
   function openEdit() {
-    navigate(`/trustees/${trusteeId}/appointments/${appointmentId}/bond-key-dates/edit`, {
-      state: { subHeading: appointmentHeading ?? '' },
+    navigate(`/trustees/${trusteeId}/appointments/${appointmentId}/past-key-dates/edit`, {
+      state: { subHeading: appointmentHeading ?? '', variant: 'subv-pool' },
     });
   }
 
   if (isLoading) {
-    return <LoadingSpinner id="bond-key-dates-loading" />;
+    return <LoadingSpinner id="subv-other-key-dates-loading" />;
   }
 
   return (
     <EditableTableCard
-      id={`edit-bond-key-dates-${appointmentId}`}
-      title="Bond"
-      testId="bond-key-dates-card"
-      tableId={`bond-key-dates-table-${appointmentId}`}
-      tableAriaLabel="Bond key dates"
+      id={`edit-subv-other-key-dates-${appointmentId}`}
+      title="Other"
+      testId="subv-other-key-dates-card"
+      tableId={`subv-other-key-dates-table-${appointmentId}`}
+      tableAriaLabel="Other key dates"
       onEdit={canManage ? openEdit : undefined}
-      editAriaLabel="Edit bond key dates"
-      editTitle="Edit bond key dates"
+      editAriaLabel="Edit Other Key Dates"
+      editTitle="Edit Other Key Dates"
       columns={[
-        { key: 'bondRenewalDate', header: 'Bond Renewal', testId: 'bond-renewal-date' },
-        { key: 'bondIssuedDate', header: 'Bond Issued', testId: 'bond-issued-date' },
+        {
+          key: 'lastMonthlyReportReceived',
+          header: 'Last Monthly Report Received',
+          testId: 'past-last-monthly-report-received-row',
+        },
       ]}
       values={{
-        bondRenewalDate: formatDateOrDefault(data?.bondRenewalDate),
-        bondIssuedDate: formatDateOrDefault(data?.bondIssuedDate),
+        lastMonthlyReportReceived: formatDateOrDefault(data?.lastMonthlyReportReceived),
       }}
     />
   );

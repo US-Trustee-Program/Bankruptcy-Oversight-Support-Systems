@@ -3,13 +3,12 @@ import Chapter7PanelAuditFieldExamCard from './Chapter7PanelAuditFieldExamCard';
 import Chapter7PanelTrusteePerformanceReportCard from './Chapter7PanelTrusteePerformanceReportCard';
 import Chapter7PanelTrusteeInterimReportCard from './Chapter7PanelTrusteeInterimReportCard';
 import Chapter7PanelOtherKeyDatesCard from './Chapter7PanelOtherKeyDatesCard';
+import KeyDatesGate from './KeyDatesGate';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
-import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import useFeatureFlags, {
   DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES,
   TPR_DISPLAY_UPDATES,
 } from '@/lib/hooks/UseFeatureFlags';
-import { useUpcomingKeyDates } from './useUpcomingKeyDates';
 
 export interface Chapter7PanelAppointmentBodyProps {
   appointment: TrusteeAppointment;
@@ -25,55 +24,47 @@ export default function Chapter7PanelAppointmentBody(
   const featureFlags = useFeatureFlags();
   const displayKeyDates = featureFlags[DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES] === true;
   const tprDisplayUpdates = featureFlags[TPR_DISPLAY_UPDATES] === true;
-  const {
-    data: keyDates,
-    isLoading: isKeyDatesLoading,
-    error: keyDatesLoadError,
-  } = useUpcomingKeyDates(appointment.trusteeId, appointment.id, displayKeyDates);
 
   return (
     <>
       <AppointmentBasicFields appointment={appointment} />
-      {displayKeyDates && keyDatesLoadError && (
-        <Alert
-          id="chapter7-panel-key-dates-error"
-          type={UswdsAlertStyle.Error}
-          inline={true}
-          show={true}
-          slim
-        >
-          Failed to load Chapter 7 Panel key dates. Please refresh and try again.
-        </Alert>
-      )}
-      {displayKeyDates && !keyDatesLoadError && (
-        <>
-          <Chapter7PanelAuditFieldExamCard
-            trusteeId={appointment.trusteeId}
-            appointmentId={appointment.id}
-            data={keyDates}
-            isLoading={isKeyDatesLoading}
-          />
-          <Chapter7PanelTrusteePerformanceReportCard
-            trusteeId={appointment.trusteeId}
-            appointmentId={appointment.id}
-            data={keyDates}
-            isLoading={isKeyDatesLoading}
-            tprDisplayUpdates={tprDisplayUpdates}
-          />
-          <Chapter7PanelTrusteeInterimReportCard
-            trusteeId={appointment.trusteeId}
-            appointmentId={appointment.id}
-            data={keyDates}
-            isLoading={isKeyDatesLoading}
-          />
-          <Chapter7PanelOtherKeyDatesCard
-            trusteeId={appointment.trusteeId}
-            appointmentId={appointment.id}
-            data={keyDates}
-            isLoading={isKeyDatesLoading}
-          />
-        </>
-      )}
+      <KeyDatesGate
+        trusteeId={appointment.trusteeId}
+        appointmentId={appointment.id}
+        shouldFetch={displayKeyDates}
+        errorId={`chapter7-panel-key-dates-error-${appointment.id}`}
+        errorMessage="Failed to load Chapter 7 Panel key dates. Please refresh and try again."
+      >
+        {(data, isLoading) => (
+          <>
+            <Chapter7PanelAuditFieldExamCard
+              trusteeId={appointment.trusteeId}
+              appointmentId={appointment.id}
+              data={data}
+              isLoading={isLoading}
+            />
+            <Chapter7PanelTrusteePerformanceReportCard
+              trusteeId={appointment.trusteeId}
+              appointmentId={appointment.id}
+              data={data}
+              isLoading={isLoading}
+              tprDisplayUpdates={tprDisplayUpdates}
+            />
+            <Chapter7PanelTrusteeInterimReportCard
+              trusteeId={appointment.trusteeId}
+              appointmentId={appointment.id}
+              data={data}
+              isLoading={isLoading}
+            />
+            <Chapter7PanelOtherKeyDatesCard
+              trusteeId={appointment.trusteeId}
+              appointmentId={appointment.id}
+              data={data}
+              isLoading={isLoading}
+            />
+          </>
+        )}
+      </KeyDatesGate>
     </>
   );
 }

@@ -188,7 +188,7 @@ export default function Chapter7PanelTrusteePerformanceReportForm() {
         <>
           <DatePicker
             id="tpr-review-period-start"
-            label="Trustee Performance Review Period Start"
+            label="Trustee Performance Review (TPR) Period Start"
             value={form.tprReviewPeriodStart}
             onChange={(e) => setForm((prev) => ({ ...prev, tprReviewPeriodStart: e.target.value }))}
             onValidationChange={(hasError) =>
@@ -198,7 +198,7 @@ export default function Chapter7PanelTrusteePerformanceReportForm() {
           />
           <DatePicker
             id="tpr-review-period-end"
-            label="Trustee Performance Review Period End"
+            label="Trustee Performance Review (TPR) Period End"
             value={form.tprReviewPeriodEnd}
             onChange={(e) => setForm((prev) => ({ ...prev, tprReviewPeriodEnd: e.target.value }))}
             onValidationChange={(hasError) => registerFieldError('tpr-review-period-end', hasError)}
@@ -291,7 +291,7 @@ export default function Chapter7PanelTrusteePerformanceReportForm() {
 
       <DatePicker
         id="last-tpr-submitted"
-        label="Last TPR Submitted"
+        label="Last Trustee Performance Review Submitted"
         value={form.lastTprSubmitted}
         onChange={(e) => setForm((prev) => ({ ...prev, lastTprSubmitted: e.target.value }))}
         onValidationChange={(hasError) => registerFieldError('last-tpr-submitted', hasError)}

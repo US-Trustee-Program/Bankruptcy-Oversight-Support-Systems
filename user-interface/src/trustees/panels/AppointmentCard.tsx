@@ -6,7 +6,6 @@ import { TrusteeAppointment, formatAppointmentStatus } from '@common/cams/truste
 import { formatChapterType, formatAppointmentType } from '@common/cams/trustees';
 import useEditTrusteeAppointment from '@/lib/hooks/UseEditTrusteeAppointment';
 import useFeatureFlags, {
-  DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES,
   DISPLAY_CHPT12_STANDING_KEY_DATES,
   DISPLAY_CHPT13_STANDING_KEY_DATES,
   TPR_DISPLAY_UPDATES,
@@ -25,8 +24,6 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
   const { canManage, openEditTrustee } = useEditTrusteeAppointment(props.appointment);
 
   const featureFlags = useFeatureFlags();
-  const displayChpt7PanelUpcomingKeyDates =
-    featureFlags[DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES] === true;
   const displayChpt12StandingKeyDates = featureFlags[DISPLAY_CHPT12_STANDING_KEY_DATES] === true;
   const displayChpt13StandingKeyDates = featureFlags[DISPLAY_CHPT13_STANDING_KEY_DATES] === true;
   const tprDisplayUpdates = !!featureFlags[TPR_DISPLAY_UPDATES];
@@ -57,23 +54,18 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
   }
   appointmentHeading += ` - Chapter ${formattedChapter} ${formattedAppointmentType}`;
 
-  const isPanelChapter7 =
-    props.appointment.chapter === '7' && props.appointment.appointmentType === 'panel';
   const isChapter12StandingAppointment = isChapter12Standing(
     props.appointment.chapter,
     props.appointment.appointmentType,
   );
   const isChapter13StandingAppointment = isChapter13Standing(chapter, appointmentType);
 
-  const showsChpt7KeyDatesCards = displayChpt7PanelUpcomingKeyDates && isPanelChapter7 && canManage;
   const showsChpt12StandingKeyDatesCards =
     displayChpt12StandingKeyDates && isChapter12StandingAppointment;
   const showsChpt13StandingUpcomingKeyDates =
     displayChpt13StandingKeyDates && isChapter13StandingAppointment;
   const shouldFetchKeyDates =
-    showsChpt7KeyDatesCards ||
-    showsChpt12StandingKeyDatesCards ||
-    showsChpt13StandingUpcomingKeyDates;
+    showsChpt12StandingKeyDatesCards || showsChpt13StandingUpcomingKeyDates;
 
   const { data: keyDatesData, isLoading: isKeyDatesLoading } = useUpcomingKeyDates(
     props.appointment.trusteeId,
@@ -104,26 +96,6 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
             { label: 'Status Effective', value: formattedEffectiveDate },
           ]}
         />
-        {showsChpt7KeyDatesCards && (
-          <>
-            <UpcomingKeyDates
-              trusteeId={props.appointment.trusteeId}
-              appointmentId={props.appointment.id}
-              appointmentHeading={appointmentHeading}
-              data={keyDatesData}
-              isLoading={isKeyDatesLoading}
-              tprDisplayUpdates={tprDisplayUpdates}
-            />
-            <PastKeyDates
-              variant="chapter7-panel"
-              trusteeId={props.appointment.trusteeId}
-              appointmentId={props.appointment.id}
-              appointmentHeading={appointmentHeading}
-              data={keyDatesData}
-              isLoading={isKeyDatesLoading}
-            />
-          </>
-        )}
         {showsChpt12StandingKeyDatesCards && (
           <>
             <UpcomingKeyDates

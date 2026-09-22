@@ -299,6 +299,42 @@ describe('Chapter7PanelAuditFieldExamForm', () => {
     });
   });
 
+  test('Save button is disabled and shows a message when only the exam/audit year is cleared', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+
+    renderComponent();
+
+    await waitFor(() => expect(screen.getByTestId('upcoming-exam-audit-year')).toHaveValue('2026'));
+
+    await userEvent.selectOptions(screen.getByTestId('upcoming-exam-audit-year'), '');
+
+    await waitFor(() => {
+      expect(screen.getByTestId('exam-audit-pair-error')).toHaveTextContent(
+        'Field Exam or Audit Year and Type must both be set.',
+      );
+      expect(screen.getByTestId('button-save-chapter7-panel-audit-field-exam')).toBeDisabled();
+    });
+  });
+
+  test('Save button is disabled and shows a message when only the exam/audit type is cleared', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+
+    renderComponent();
+
+    await waitFor(() =>
+      expect(screen.getByTestId('upcoming-exam-audit-type')).toHaveValue('Audit'),
+    );
+
+    await userEvent.selectOptions(screen.getByTestId('upcoming-exam-audit-type'), '');
+
+    await waitFor(() => {
+      expect(screen.getByTestId('exam-audit-pair-error')).toHaveTextContent(
+        'Field Exam or Audit Year and Type must both be set.',
+      );
+      expect(screen.getByTestId('button-save-chapter7-panel-audit-field-exam')).toBeDisabled();
+    });
+  });
+
   test('resetting both completion status fields back to blank clears them from the save payload', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
     const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });

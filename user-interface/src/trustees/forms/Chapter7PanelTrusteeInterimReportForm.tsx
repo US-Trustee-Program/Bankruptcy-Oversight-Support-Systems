@@ -6,7 +6,6 @@ import {
   TrusteeUpcomingKeyDatesInput,
   calculateTirSubmission,
   calculateTirReview,
-  isoToMMDD,
   validateCompletionPairPresence,
 } from '@common/cams/trustee-upcoming-key-dates';
 import { mergeKeyDatesInput, FISCAL_YEAR_OPTIONS } from './chapter7PanelKeyDatesInput';
@@ -20,10 +19,10 @@ import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
+import DatePicker from '@/lib/components/uswds/DatePicker';
+import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import { Stop } from '@/lib/components/Stop';
-
-const NO_DATE = 'No date added';
 
 type TirCompletionStatus = 'COMPLETE' | 'INCOMPLETE';
 
@@ -36,6 +35,7 @@ type Chapter7PanelTrusteeInterimReportFormState = {
   tirSemiAnnualReviewPeriodEnd: string;
   tirCompletionYear: number | '';
   tirCompletionStatus: TirCompletionStatus | '';
+  pastTprSubmission: string;
 };
 
 const EMPTY_FORM: Chapter7PanelTrusteeInterimReportFormState = {
@@ -47,6 +47,7 @@ const EMPTY_FORM: Chapter7PanelTrusteeInterimReportFormState = {
   tirSemiAnnualReviewPeriodEnd: '',
   tirCompletionYear: '',
   tirCompletionStatus: '',
+  pastTprSubmission: '',
 };
 
 function calculateSubmissionAndReview(form: Chapter7PanelTrusteeInterimReportFormState) {
@@ -90,12 +91,8 @@ export function buildTrusteeInterimReportKeyDatesInput(
     tirSemiAnnualReview,
     tirCompletionYear: form.tirCompletionYear !== '' ? form.tirCompletionYear : null,
     tirCompletionStatus: form.tirCompletionStatus || null,
+    pastTprSubmission: form.pastTprSubmission || null,
   });
-}
-
-function formatCalculatedDate(primary: string | null, secondary: string | null): string {
-  if (!primary) return NO_DATE;
-  return secondary ? `${isoToMMDD(primary)} & ${isoToMMDD(secondary)}` : isoToMMDD(primary);
 }
 
 export default function Chapter7PanelTrusteeInterimReportForm() {
@@ -111,6 +108,7 @@ export default function Chapter7PanelTrusteeInterimReportForm() {
   const [isSaving, setIsSaving] = useState(false);
   const [form, setForm] = useState<Chapter7PanelTrusteeInterimReportFormState>(EMPTY_FORM);
   const [original, setOriginal] = useState<TrusteeUpcomingKeyDates | null>(null);
+  const { registerFieldError, hasErrorAmong } = useDateFieldErrors();
 
   useEffect(() => {
     Api2.getUpcomingKeyDates(trusteeId!, appointmentId!)
@@ -132,6 +130,7 @@ export default function Chapter7PanelTrusteeInterimReportForm() {
             tirSemiAnnualReviewPeriodEnd: data.tirSemiAnnualReviewPeriodEnd ?? '',
             tirCompletionYear: data.tirCompletionYear ?? '',
             tirCompletionStatus: data.tirCompletionStatus ?? '',
+            pastTprSubmission: data.pastTprSubmission ?? '',
           });
         }
       })
@@ -230,8 +229,12 @@ export default function Chapter7PanelTrusteeInterimReportForm() {
   }
 
   const periodOptions = form.tirFrequency === 'ANNUAL' ? ANNUAL_OPTIONS : SEMI_ANNUAL_OPTIONS;
-  const { tirSubmission, tirReview, tirSemiAnnualSubmission, tirSemiAnnualReview } =
-    calculateSubmissionAndReview(form);
+  const tirPeriodPairError = validateCompletionPairPresence(
+    form.tirFrequency,
+    form.tirPeriodKey,
+    'Trustee Interim Report (TIR) Period',
+    { first: 'Frequency', second: 'Period' },
+  );
   const completionPairError = validateCompletionPairPresence(
     form.tirCompletionYear,
     form.tirCompletionStatus,
@@ -282,23 +285,21 @@ export default function Chapter7PanelTrusteeInterimReportForm() {
             </select>
           </div>
         </div>
+        {tirPeriodPairError && (
+          <span className="usa-error-message" data-testid="tir-period-pair-error">
+            {tirPeriodPairError}
+          </span>
+        )}
       </div>
 
-      <div className="usa-form-group">
-        <p className="usa-label" id="tir-submission-preview-label">
-          TIR Submission
-        </p>
-        <p data-testid="tir-submission-preview">
-          {formatCalculatedDate(tirSubmission, tirSemiAnnualSubmission)}
-        </p>
-      </div>
-
-      <div className="usa-form-group">
-        <p className="usa-label" id="tir-due-preview-label">
-          TIR Due
-        </p>
-        <p data-testid="tir-due-preview">{formatCalculatedDate(tirReview, tirSemiAnnualReview)}</p>
-      </div>
+      <DatePicker
+        id="past-tpr-submission"
+        label="Last Trustee Interim Report Letter"
+        value={form.pastTprSubmission}
+        onChange={(e) => setForm((prev) => ({ ...prev, pastTprSubmission: e.target.value }))}
+        onValidationChange={(hasError) => registerFieldError('past-tpr-submission', hasError)}
+        disableMax
+      />
 
       <div className="exam-audit-group">
         <p className="usa-label">TIR Completion Status for Year</p>
@@ -362,7 +363,12 @@ export default function Chapter7PanelTrusteeInterimReportForm() {
           id="save-chapter7-panel-tir"
           data-testid="button-save-chapter7-panel-tir"
           onClick={handleSave}
-          disabled={isSaving || !!completionPairError}
+          disabled={
+            isSaving ||
+            !!tirPeriodPairError ||
+            !!completionPairError ||
+            hasErrorAmong(['past-tpr-submission'])
+          }
         >
           {isSaving ? 'Saving...' : 'Save'}
         </Button>
