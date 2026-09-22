@@ -3125,7 +3125,7 @@ async function getUpcomingKeyDates(
       tprDue: '1900-09-15',
       tprDueYearType: 'EVEN',
       tprFrequency: 'ANNUAL',
-      pastTprSubmission: '2025-09-10',
+      lastTprSubmitted: '2025-09-10',
       tprCompletionYear: 2025,
       tprCompletionStatus: 'COMPLETE',
       annualReportCompletionYear: 2025,
