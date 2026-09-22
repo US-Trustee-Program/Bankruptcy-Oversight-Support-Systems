@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
 import TrusteePerformanceReportKeyDatesForm from './TrusteePerformanceReportKeyDatesForm';
@@ -233,5 +233,46 @@ describe('TrusteePerformanceReportKeyDatesForm', () => {
       );
     });
     expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  // saveDisabled has three disjuncts; collapsing it to `isSaving` alone used to
+  // leave every test in this file passing.
+  describe('Save button disabling', () => {
+    test('disables Save when the review period is left incomplete', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: storedDocument });
+
+      renderForm();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('button-save-tpr-key-dates')).not.toBeDisabled();
+      });
+
+      // Clearing the day leaves a month with no day, which is incomplete.
+      fireEvent.change(document.getElementById('tpr-review-period-start-day')!, {
+        target: { value: '' },
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('button-save-tpr-key-dates')).toBeDisabled();
+      });
+    });
+
+    test('disables Save when Last TPR Submitted holds an invalid date', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: storedDocument });
+
+      renderForm();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('button-save-tpr-key-dates')).not.toBeDisabled();
+      });
+
+      fireEvent.change(screen.getByTestId('last-tpr-submitted'), {
+        target: { value: '1900-01-01' },
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('button-save-tpr-key-dates')).toBeDisabled();
+      });
+    });
   });
 });
