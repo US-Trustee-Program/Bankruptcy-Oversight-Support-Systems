@@ -7,6 +7,7 @@ import {
   TrusteeUpcomingKeyDatesInput,
   validateTprDuePair,
   validateCompletionPairPresence,
+  validateTrusteeUpcomingKeyDates,
   isoToSentinel,
 } from '@common/cams/trustee-upcoming-key-dates';
 import { mergeKeyDatesInput, FISCAL_YEAR_OPTIONS } from './chapter7PanelKeyDatesInput';
@@ -86,6 +87,7 @@ export default function Chapter7PanelTrusteePerformanceReportForm() {
   const [form, setForm] = useState<Chapter7PanelTrusteePerformanceReportFormState>(EMPTY_FORM);
   const [original, setOriginal] = useState<TrusteeUpcomingKeyDates | null>(null);
   const [tprReviewPeriodValid, setTprReviewPeriodValid] = useState(true);
+  const [errors, setErrors] = useState({ tprReviewPeriodStart: '', tprReviewPeriodEnd: '' });
   const { registerFieldError, hasErrorAmong } = useDateFieldErrors();
 
   useEffect(() => {
@@ -117,7 +119,6 @@ export default function Chapter7PanelTrusteePerformanceReportForm() {
   }, [trusteeId, appointmentId]);
 
   async function handleSave() {
-    setIsSaving(true);
     const input = buildTrusteePerformanceReportKeyDatesInput(
       { trusteeId: trusteeId!, appointmentId: appointmentId! },
       original,
@@ -125,6 +126,14 @@ export default function Chapter7PanelTrusteePerformanceReportForm() {
       tprDisplayUpdates,
     );
 
+    const result = validateTrusteeUpcomingKeyDates(input);
+    setErrors({
+      tprReviewPeriodStart: result.reasonMap?.tprReviewPeriodStart?.reasons?.[0] ?? '',
+      tprReviewPeriodEnd: result.reasonMap?.tprReviewPeriodEnd?.reasons?.[0] ?? '',
+    });
+    if ((!tprDisplayUpdates && !tprReviewPeriodValid) || !result.valid) return;
+
+    setIsSaving(true);
     try {
       await Api2.putUpcomingKeyDates(trusteeId!, appointmentId!, input);
       navigate(`/trustees/${trusteeId}/appointments`);
@@ -185,23 +194,50 @@ export default function Chapter7PanelTrusteePerformanceReportForm() {
       <h3>Edit Trustee Performance Report Key Dates</h3>
 
       {tprDisplayUpdates ? (
-        <>
+        <div
+          onFocus={(e) => {
+            const id = (e.target as HTMLElement).id;
+            if (id === 'tpr-review-period-start') {
+              setErrors((prev) => ({ ...prev, tprReviewPeriodStart: '' }));
+            } else if (id === 'tpr-review-period-end') {
+              setErrors((prev) => ({ ...prev, tprReviewPeriodEnd: '' }));
+            }
+          }}
+          onBlur={(e) => {
+            if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+            const { tprReviewPeriodStart: start, tprReviewPeriodEnd: end } = form;
+            if (!start || !end || start <= end) return;
+            setErrors((prev) => ({
+              ...prev,
+              tprReviewPeriodStart: 'TPR Review Period Start must be before TPR Review Period End.',
+              tprReviewPeriodEnd: 'TPR Review Period End must be after TPR Review Period Start.',
+            }));
+          }}
+        >
           <DatePicker
             id="tpr-review-period-start"
             label="Trustee Performance Review (TPR) Period Start"
             value={form.tprReviewPeriodStart}
-            onChange={(e) => setForm((prev) => ({ ...prev, tprReviewPeriodStart: e.target.value }))}
+            onChange={(e) => {
+              setForm((prev) => ({ ...prev, tprReviewPeriodStart: e.target.value }));
+              setErrors((prev) => ({ ...prev, tprReviewPeriodStart: '', tprReviewPeriodEnd: '' }));
+            }}
             onValidationChange={(hasError) =>
               registerFieldError('tpr-review-period-start', hasError)
             }
+            customErrorMessage={errors.tprReviewPeriodStart}
             disableMax
           />
           <DatePicker
             id="tpr-review-period-end"
             label="Trustee Performance Review (TPR) Period End"
             value={form.tprReviewPeriodEnd}
-            onChange={(e) => setForm((prev) => ({ ...prev, tprReviewPeriodEnd: e.target.value }))}
+            onChange={(e) => {
+              setForm((prev) => ({ ...prev, tprReviewPeriodEnd: e.target.value }));
+              setErrors((prev) => ({ ...prev, tprReviewPeriodStart: '', tprReviewPeriodEnd: '' }));
+            }}
             onValidationChange={(hasError) => registerFieldError('tpr-review-period-end', hasError)}
+            customErrorMessage={errors.tprReviewPeriodEnd}
             disableMax
           />
           {tprPeriodError && (
@@ -209,7 +245,7 @@ export default function Chapter7PanelTrusteePerformanceReportForm() {
               {tprPeriodError}
             </span>
           )}
-        </>
+        </div>
       ) : (
         <MonthDayRangeSelector
           id="tpr-review-period"
