@@ -643,6 +643,11 @@ describe('validateTrusteeUpcomingKeyDates', () => {
       'PENDING',
       'Trustee Interim Report Completion Status must be one of: COMPLETE, INCOMPLETE.',
     ],
+    [
+      'annualReportCompletionStatus',
+      'PENDING',
+      'Annual Report Completion Status must be one of: COMPLETE, INCOMPLETE.',
+    ],
   ])('returns error when %s is set to %s (outside its enum)', (field, value, expectedMessage) => {
     const result = validateTrusteeUpcomingKeyDates({
       ...baseInput(),
@@ -659,6 +664,8 @@ describe('validateTrusteeUpcomingKeyDates', () => {
     ['tprCompletionStatus', 'INCOMPLETE'],
     ['tirCompletionStatus', 'COMPLETE'],
     ['tirCompletionStatus', 'INCOMPLETE'],
+    ['annualReportCompletionStatus', 'COMPLETE'],
+    ['annualReportCompletionStatus', 'INCOMPLETE'],
   ])('returns VALID when %s is set to %s', (field, value) => {
     const yearField = field.replace('Status', 'Year');
     const result = validateTrusteeUpcomingKeyDates({
