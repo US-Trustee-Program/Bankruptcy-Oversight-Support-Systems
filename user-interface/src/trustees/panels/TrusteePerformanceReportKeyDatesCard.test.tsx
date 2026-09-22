@@ -57,6 +57,7 @@ describe('TrusteePerformanceReportKeyDatesCard', () => {
     data: TrusteeUpcomingKeyDates | null = keyDates,
     isLoading = false,
     appointmentHeading?: string,
+    tprDisplayUpdates = true,
   ) {
     return render(
       <BrowserRouter>
@@ -66,6 +67,7 @@ describe('TrusteePerformanceReportKeyDatesCard', () => {
           appointmentHeading={appointmentHeading}
           data={data}
           isLoading={isLoading}
+          tprDisplayUpdates={tprDisplayUpdates}
         />
       </BrowserRouter>,
     );
@@ -198,5 +200,46 @@ describe('TrusteePerformanceReportKeyDatesCard', () => {
 
     expect(screen.getByTestId('tpr-key-dates-loading-appointment-001')).toBeInTheDocument();
     expect(screen.queryByTestId('tpr-review-period')).not.toBeInTheDocument();
+  });
+
+  // The Chapter 7 Panel card gates these on the same flag; the rollout has to
+  // look the same for both appointment types on the same page.
+  describe('with TPR_DISPLAY_UPDATES disabled', () => {
+    function renderWithFlagOff(data: TrusteeUpcomingKeyDates | null = keyDates) {
+      return renderCard(data, false, undefined, false);
+    }
+
+    test('hides the frequency column', () => {
+      renderWithFlagOff();
+
+      expect(screen.queryByText('TPR Review Period Frequency')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('tpr-frequency')).not.toBeInTheDocument();
+    });
+
+    test('renders the review period in the legacy month/day format', () => {
+      renderWithFlagOff();
+
+      expect(screen.getByTestId('tpr-review-period')).toHaveTextContent('04/01 - 03/31');
+    });
+
+    test('renders the due date in the legacy date-plus-year-type format', () => {
+      renderWithFlagOff();
+
+      expect(screen.getByTestId('tpr-due')).toHaveTextContent('09/15 EVEN');
+    });
+
+    test('still renders the columns the flag does not gate', () => {
+      renderWithFlagOff();
+
+      expect(screen.getByTestId('last-tpr-submitted')).toHaveTextContent('09/10/2025');
+      expect(screen.getByTestId('tag-tpr-completion-status-appointment-001')).toBeInTheDocument();
+    });
+
+    test('falls back to the placeholder when the legacy fields are absent', () => {
+      renderWithFlagOff(null);
+
+      expect(screen.getByTestId('tpr-review-period')).toHaveTextContent('No date added');
+      expect(screen.getByTestId('tpr-due')).toHaveTextContent('No date added');
+    });
   });
 });

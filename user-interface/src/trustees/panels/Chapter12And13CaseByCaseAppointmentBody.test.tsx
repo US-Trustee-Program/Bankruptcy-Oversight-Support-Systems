@@ -6,7 +6,10 @@ import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import * as featureFlagsHook from '@/lib/hooks/UseFeatureFlags';
-import { DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES } from '@/lib/hooks/UseFeatureFlags';
+import {
+  DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES,
+  TPR_DISPLAY_UPDATES,
+} from '@/lib/hooks/UseFeatureFlags';
 
 vi.mock('./AppointmentBasicFields', () => ({
   default: (props: { appointment: TrusteeAppointment }) => (
@@ -20,6 +23,7 @@ type StubCardProps = {
   trusteeId?: string;
   appointmentId?: string;
   appointmentHeading?: string;
+  tprDisplayUpdates?: boolean;
 };
 
 // Props are recorded rather than flattened into data attributes. This body's
@@ -92,14 +96,20 @@ describe('Chapter12And13CaseByCaseAppointmentBody', () => {
 
   const CARD_TEST_IDS = ['annual-report-card', 'tpr-card'];
 
+  function mockFlags(overrides: Record<string, boolean> = {}) {
+    vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+      [DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES]: true,
+      [TPR_DISPLAY_UPDATES]: true,
+      ...overrides,
+    });
+  }
+
   beforeEach(() => {
     vi.restoreAllMocks();
     for (const testId of Object.keys(cardProps)) {
       delete cardProps[testId];
     }
-    vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-      [DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES]: true,
-    });
+    mockFlags();
   });
 
   function renderBody(appointment: TrusteeAppointment = chapter12Appointment) {
@@ -206,5 +216,23 @@ describe('Chapter12And13CaseByCaseAppointmentBody', () => {
       expect(screen.queryByTestId(testId)).not.toBeInTheDocument();
     }
     expect(screen.getByTestId('appointment-basic-fields')).toBeInTheDocument();
+  });
+
+  // This forwarding was dropped once already during an epic merge, which left
+  // the Ch12/13 card showing the updated TPR treatment while the Chapter 7
+  // Panel card on the same page still honoured the flag.
+  test.each([
+    ['enabled', true],
+    ['disabled', false],
+  ])('forwards TPR_DISPLAY_UPDATES to the TPR card when %s', async (_label, flagValue) => {
+    mockFlags({ [TPR_DISPLAY_UPDATES]: flagValue });
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: keyDates });
+
+    renderBody();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('tpr-card')).toHaveAttribute('data-is-loading', 'false');
+    });
+    expect(latestProps('tpr-card').tprDisplayUpdates).toBe(flagValue);
   });
 });

@@ -6,10 +6,12 @@ import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import {
   buildCompletionTag,
   formatDateOrDefault,
+  NO_DATE,
   tprDueField,
   tprFrequencyField,
   tprReviewPeriodField,
 } from './upcomingKeyDatesFieldConfig';
+import { isoToMMDD, isoRangeToMMDD } from '@common/cams/trustee-upcoming-key-dates';
 
 export interface TrusteePerformanceReportKeyDatesCardProps {
   trusteeId: string;
@@ -17,12 +19,14 @@ export interface TrusteePerformanceReportKeyDatesCardProps {
   appointmentHeading?: string;
   data: TrusteeUpcomingKeyDates | null;
   isLoading: boolean;
+  tprDisplayUpdates: boolean;
 }
 
 export default function TrusteePerformanceReportKeyDatesCard(
   props: Readonly<TrusteePerformanceReportKeyDatesCardProps>,
 ) {
-  const { trusteeId, appointmentId, appointmentHeading, data, isLoading } = props;
+  const { trusteeId, appointmentId, appointmentHeading, data, isLoading, tprDisplayUpdates } =
+    props;
   const navigate = useNavigate();
   const canManage = useCanManageTrustees();
 
@@ -35,6 +39,41 @@ export default function TrusteePerformanceReportKeyDatesCard(
   if (isLoading) {
     return <LoadingSpinner id={`tpr-key-dates-loading-${appointmentId}`} />;
   }
+
+  // Mirrors Chapter7PanelTrusteePerformanceReportCard: with the flag off the
+  // frequency column is hidden and the period and due date use the legacy
+  // formats, so the rollout stays consistent across appointment types.
+  const columns = [
+    { key: 'tprReviewPeriod', header: 'TPR Review Period', testId: 'tpr-review-period' },
+    ...(tprDisplayUpdates
+      ? [
+          {
+            key: 'tprFrequency',
+            header: 'TPR Review Period Frequency',
+            testId: 'tpr-frequency',
+          },
+        ]
+      : []),
+    { key: 'tprDue', header: 'TPR Due', testId: 'tpr-due' },
+    { key: 'lastTprSubmitted', header: 'Last TPR Submitted', testId: 'last-tpr-submitted' },
+  ];
+
+  const values = {
+    tprReviewPeriod: tprDisplayUpdates
+      ? tprReviewPeriodField(data).value
+      : data?.tprReviewPeriodStart && data?.tprReviewPeriodEnd
+        ? isoRangeToMMDD(data.tprReviewPeriodStart, data.tprReviewPeriodEnd)
+        : NO_DATE,
+    ...(tprDisplayUpdates ? { tprFrequency: tprFrequencyField(data).value } : {}),
+    tprDue: tprDisplayUpdates
+      ? tprDueField(data).value
+      : data?.tprDue && data?.tprDueYearType
+        ? `${isoToMMDD(data.tprDue)} ${data.tprDueYearType}`
+        : NO_DATE,
+    // CAMS-912 added lastTprSubmitted as a field distinct from the
+    // pastTprSubmission used by the Chapter 7 Panel past-dates card.
+    lastTprSubmitted: formatDateOrDefault(data?.lastTprSubmitted),
+  };
 
   return (
     <EditableTableCard
@@ -54,20 +93,8 @@ export default function TrusteePerformanceReportKeyDatesCard(
       onEdit={canManage ? openEdit : undefined}
       editAriaLabel="Edit Trustee Performance Report key dates"
       editTitle="Edit Trustee Performance Report key dates"
-      columns={[
-        { key: 'tprReviewPeriod', header: 'TPR Review Period', testId: 'tpr-review-period' },
-        { key: 'tprFrequency', header: 'TPR Review Period Frequency', testId: 'tpr-frequency' },
-        { key: 'tprDue', header: 'TPR Due', testId: 'tpr-due' },
-        { key: 'lastTprSubmitted', header: 'Last TPR Submitted', testId: 'last-tpr-submitted' },
-      ]}
-      values={{
-        tprReviewPeriod: tprReviewPeriodField(data).value,
-        tprFrequency: tprFrequencyField(data).value,
-        tprDue: tprDueField(data).value,
-        // CAMS-912 added lastTprSubmitted as a field distinct from the
-        // pastTprSubmission used by the Chapter 7 Panel past-dates card.
-        lastTprSubmitted: formatDateOrDefault(data?.lastTprSubmitted),
-      }}
+      columns={columns}
+      values={values}
     />
   );
 }

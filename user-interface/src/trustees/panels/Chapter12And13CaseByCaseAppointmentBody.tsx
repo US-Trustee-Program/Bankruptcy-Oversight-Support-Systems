@@ -6,6 +6,7 @@ import KeyDatesGate from './KeyDatesGate';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import useFeatureFlags, {
   DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES,
+  TPR_DISPLAY_UPDATES,
 } from '@/lib/hooks/UseFeatureFlags';
 import { buildAppointmentHeading } from './appointmentDisplay';
 
@@ -21,6 +22,7 @@ export default function Chapter12And13CaseByCaseAppointmentBody(
   // must be gated on it to avoid a guaranteed-to-fail request.
   const featureFlags = useFeatureFlags();
   const displayKeyDates = featureFlags[DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES] === true;
+  const tprDisplayUpdates = !!featureFlags[TPR_DISPLAY_UPDATES];
 
   const appointmentHeading = buildAppointmentHeading(appointment);
 
@@ -52,6 +54,7 @@ export default function Chapter12And13CaseByCaseAppointmentBody(
               appointmentHeading={appointmentHeading}
               data={data}
               isLoading={isLoading}
+              tprDisplayUpdates={tprDisplayUpdates}
             />
           </div>
         )}
