@@ -1,6 +1,8 @@
+import { useNavigate } from 'react-router-dom';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import EditableTableCard from '@/lib/components/cams/EditableTableCard/EditableTableCard';
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
+import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import {
   auditReqByField,
   formatDateOrDefault,
@@ -22,7 +24,13 @@ function formatYearOrDefault(year: number | undefined): string {
 export default function Chapter12StandingAuditCard(
   props: Readonly<Chapter12StandingAuditCardProps>,
 ) {
-  const { appointmentId, data, isLoading } = props;
+  const { trusteeId, appointmentId, data, isLoading } = props;
+  const navigate = useNavigate();
+  const canManage = useCanManageTrustees();
+
+  function openEdit() {
+    navigate(`/trustees/${trusteeId}/appointments/${appointmentId}/audit-key-dates/edit`);
+  }
 
   if (isLoading) {
     return <LoadingSpinner id="chapter12-standing-audit-loading" />;
@@ -38,7 +46,7 @@ export default function Chapter12StandingAuditCard(
 
   return (
     <EditableTableCard
-      id={`chapter12-standing-audit-${appointmentId}`}
+      id={`edit-chapter12-standing-audit-${appointmentId}`}
       title="Audit"
       testId="chapter12-standing-audit-card"
       className="chapter12-standing-audit-card"
@@ -46,6 +54,9 @@ export default function Chapter12StandingAuditCard(
       tableClassName="chapter12-standing-audit-table"
       tableAriaLabel="Audit key dates"
       tag={tag}
+      onEdit={canManage ? openEdit : undefined}
+      editAriaLabel="Edit Audit key dates"
+      editTitle="Edit Audit key dates"
       columns={[
         {
           key: 'auditReqBy',

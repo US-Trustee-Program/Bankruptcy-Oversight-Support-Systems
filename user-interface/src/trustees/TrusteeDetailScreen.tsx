@@ -34,6 +34,7 @@ import Chapter7PanelAuditFieldExamForm from './forms/Chapter7PanelAuditFieldExam
 import Chapter7PanelTrusteePerformanceReportForm from './forms/Chapter7PanelTrusteePerformanceReportForm';
 import Chapter7PanelTrusteeInterimReportForm from './forms/Chapter7PanelTrusteeInterimReportForm';
 import Chapter7PanelOtherKeyDatesForm from './forms/Chapter7PanelOtherKeyDatesForm';
+import Chapter12StandingAuditForm from './forms/Chapter12StandingAuditForm';
 import TrusteeMeetingOfCreditorsInfoForm from './forms/TrusteeMeetingOfCreditorsInfoForm';
 import TrusteeNotes from '@/trustees/panels/trustee-notes/TrusteeNotes';
 import useFeatureFlags, {
@@ -361,6 +362,12 @@ export default function TrusteeDetailScreen() {
       disabled: !featureFlags[DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES],
       subHeading: appointmentHeading,
       content: <Chapter7PanelOtherKeyDatesForm />,
+    },
+    {
+      path: 'appointments/:appointmentId/audit-key-dates/edit',
+      disabled: !featureFlags[DISPLAY_CHPT12_STANDING_KEY_DATES],
+      subHeading: appointmentHeading,
+      content: <Chapter12StandingAuditForm />,
     },
     {
       path: 'assigned-staff',
