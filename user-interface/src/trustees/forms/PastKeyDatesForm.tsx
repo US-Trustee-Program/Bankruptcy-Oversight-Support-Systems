@@ -16,11 +16,7 @@ import {
 const CURRENT_YEAR = new Date().getFullYear();
 const FISCAL_YEAR_OPTIONS = Array.from({ length: 21 }, (_, i) => CURRENT_YEAR - i);
 import Api2 from '@/lib/models/api2';
-import {
-  isChapter11SubchapterVPool,
-  isChapter12Standing,
-  isChapter13Standing,
-} from '@common/cams/trustee-appointments';
+import { isChapter11SubchapterVPool, isChapter13Standing } from '@common/cams/trustee-appointments';
 import { AppointmentChapterType, AppointmentType } from '@common/cams/trustees';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
@@ -118,8 +114,7 @@ function deriveVariant(
 ): PastKeyDatesVariant {
   if (isChapter11SubchapterVPool(chapter, appointmentType)) return 'subv-pool';
   if (isChapter13Standing(chapter, appointmentType)) return 'chapter13-standing';
-  if (isChapter12Standing(chapter, appointmentType)) return 'chapter12-standing';
-  return 'chapter7-panel';
+  return 'chapter12-standing';
 }
 
 export default function PastKeyDatesForm() {
@@ -133,7 +128,7 @@ export default function PastKeyDatesForm() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [variant, setVariant] = useState<PastKeyDatesVariant>('chapter7-panel');
+  const [variant, setVariant] = useState<PastKeyDatesVariant>('chapter12-standing');
   const [form, setForm] = useState<PastKeyDatesFormState>(EMPTY_FORM);
   const [original, setOriginal] = useState<TrusteeUpcomingKeyDates | null>(null);
   const { registerFieldError, hasErrorAmong } = useDateFieldErrors();
