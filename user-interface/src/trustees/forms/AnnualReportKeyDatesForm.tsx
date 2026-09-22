@@ -14,8 +14,13 @@ import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import { Stop } from '@/lib/components/Stop';
 import { mergeKeyDatesInput } from './chapter7PanelKeyDatesInput';
 import CompletionStatusFields, { CompletionStatusValue } from './CompletionStatusFields';
+import { resolveKeyDatesSaveError } from './keyDatesSaveError';
 
 const EMPTY_COMPLETION: CompletionStatusValue = { year: '', status: '' };
+
+// The validator checks the whole merged document, so save errors have to be
+// sorted into this form's fields and everything else.
+const OWNED_FIELDS = ['annualReportCompletionYear', 'annualReportCompletionStatus'] as const;
 
 export default function AnnualReportKeyDatesForm() {
   const { trusteeId, appointmentId } = useParams<{
@@ -63,11 +68,7 @@ export default function AnnualReportKeyDatesForm() {
     const input = buildInput();
     const result = validateTrusteeUpcomingKeyDates(input);
     if (!result.valid) {
-      setError(
-        result.reasonMap?.annualReportCompletionYear?.reasons?.[0] ??
-          result.reasonMap?.annualReportCompletionStatus?.reasons?.[0] ??
-          'Please correct the highlighted fields.',
-      );
+      setError(resolveKeyDatesSaveError(result.reasonMap, OWNED_FIELDS));
       return;
     }
 

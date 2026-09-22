@@ -285,4 +285,26 @@ describe('AnnualReportKeyDatesForm', () => {
     });
     expect(mockNavigate).not.toHaveBeenCalled();
   });
+
+  // The validator checks the whole merged document. A stale value on a field
+  // this form cannot display used to be swallowed into a generic message with
+  // nothing highlighted, leaving Save blocked with no explanation.
+  test('explains a validation failure on a field this form does not render', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({
+      data: { ...storedDocument, tirCompletionYear: 2025, tirCompletionStatus: undefined },
+    });
+    const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
+
+    renderForm();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('annual-report-completion-year')).toBeInTheDocument();
+    });
+    await userEvent.click(screen.getByTestId('button-save-annual-report-key-dates'));
+
+    const alert = await screen.findByTestId('alert-annual-report-completion-error');
+    expect(alert).toHaveTextContent('another section');
+    expect(alert).toHaveTextContent('Trustee Interim Report Completion Status is required.');
+    expect(putSpy).not.toHaveBeenCalled();
+  });
 });

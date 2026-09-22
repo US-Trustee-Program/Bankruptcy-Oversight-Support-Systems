@@ -275,4 +275,28 @@ describe('TrusteePerformanceReportKeyDatesForm', () => {
       });
     });
   });
+
+  // This form used to surface a foreign field's message verbatim, so the user
+  // saw a specific-looking error naming a control that is not on screen.
+  test('does not present another section’s error as though it belonged here', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({
+      data: {
+        ...storedDocument,
+        annualReportCompletionYear: 2025,
+        annualReportCompletionStatus: undefined,
+      },
+    });
+    const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
+
+    renderForm();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('tpr-frequency')).toBeInTheDocument();
+    });
+    await userEvent.click(screen.getByTestId('button-save-tpr-key-dates'));
+
+    const alert = await screen.findByTestId('alert-tpr-completion-error');
+    expect(alert).toHaveTextContent('another section');
+    expect(putSpy).not.toHaveBeenCalled();
+  });
 });

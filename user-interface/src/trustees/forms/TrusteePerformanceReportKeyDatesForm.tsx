@@ -18,6 +18,7 @@ import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
 import { Stop } from '@/lib/components/Stop';
 import { mergeKeyDatesInput } from './chapter7PanelKeyDatesInput';
 import CompletionStatusFields, { CompletionStatusValue } from './CompletionStatusFields';
+import { resolveKeyDatesSaveError } from './keyDatesSaveError';
 
 type TprFormState = {
   tprReviewPeriodStart: string;
@@ -36,6 +37,19 @@ const EMPTY_FORM: TprFormState = {
   tprDueYearType: '',
   lastTprSubmitted: '',
 };
+
+// The validator checks the whole merged document, so save errors have to be
+// sorted into this form's fields and everything else.
+const OWNED_FIELDS = [
+  'tprReviewPeriodStart',
+  'tprReviewPeriodEnd',
+  'tprFrequency',
+  'tprDue',
+  'tprDueYearType',
+  'lastTprSubmitted',
+  'tprCompletionYear',
+  'tprCompletionStatus',
+] as const;
 
 const FREQUENCY_OPTIONS: { value: TprFormState['tprFrequency']; label: string }[] = [
   { value: 'SEMI_ANNUAL', label: '6 months' },
@@ -108,11 +122,7 @@ export default function TrusteePerformanceReportKeyDatesForm() {
     const input = buildInput();
     const result = validateTrusteeUpcomingKeyDates(input);
     if (!result.valid) {
-      const reasons = result.reasonMap ?? {};
-      const firstReason = Object.values(reasons)
-        .map((entry) => entry?.reasons?.[0])
-        .find((reason) => !!reason);
-      setError(firstReason ?? 'Please correct the highlighted fields.');
+      setError(resolveKeyDatesSaveError(result.reasonMap, OWNED_FIELDS));
       return;
     }
 
