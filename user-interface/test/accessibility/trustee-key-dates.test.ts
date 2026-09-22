@@ -199,13 +199,16 @@ test.describe('Chapter 12/13 Case by Case Key Dates', () => {
       trusteeProfilePage.locator('[data-testid="edit-annual-report-key-dates"]'),
     ).toBeVisible();
 
-    // A year with no status is the pair validation the form rejects.
-    await trusteeProfilePage.locator('#annual-report-completion-year').selectOption({ index: 1 });
+    // Half a completion pair fails validation. The error shows inline as soon
+    // as the year is picked, and Save is disabled, so there is nothing to click.
     await trusteeProfilePage.locator('#annual-report-completion-status').selectOption('');
-    await trusteeProfilePage.locator('#save-annual-report-key-dates').click({ force: true });
+    await trusteeProfilePage.locator('#annual-report-completion-year').selectOption({ index: 1 });
     await expect(
-      trusteeProfilePage.locator('[data-testid="alert-annual-report-completion-error"]'),
+      trusteeProfilePage.locator('[data-testid="annual-report-completion-error"]'),
     ).toBeVisible();
+    await expect(
+      trusteeProfilePage.locator('[data-testid="button-save-annual-report-key-dates"]'),
+    ).toBeDisabled();
 
     await trusteeProfilePage.waitForTimeout(ANALYZE_DELAY);
     const accessibilityScanResults = await createAxeBuilder(trusteeProfilePage).analyze();
