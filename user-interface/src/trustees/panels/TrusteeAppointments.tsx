@@ -1,19 +1,52 @@
 import './TrusteeAppointments.scss';
-import { useEffect, useState } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import Api2 from '@/lib/models/api2';
 import { sortByCourtLocation } from '@/lib/utils/court-utils';
-import { isChapter13Standing, TrusteeAppointment } from '@common/cams/trustee-appointments';
+import {
+  TrusteeAppointment,
+  isChapter13Standing,
+  isChapter11CaseByCase,
+  isChapter7Elected,
+  isChapter7Panel,
+  isChapter11SubchapterVPool,
+  isChapter11SubchapterVOutOfPool,
+} from '@common/cams/trustee-appointments';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import AppointmentCard from './AppointmentCard';
 import { AccordionGroup } from '@/lib/components/uswds/Accordion';
+import AppointmentAccordion from './AppointmentAccordion';
+import Chapter11CaseByCaseAppointmentBody from './Chapter11CaseByCaseAppointmentBody';
+import Chapter7ElectedAppointmentBody from './Chapter7ElectedAppointmentBody';
+import Chapter7PanelAppointmentBody from './Chapter7PanelAppointmentBody';
+import Chapter11SubchapterVAppointmentBody from './Chapter11SubchapterVAppointmentBody';
 import Button from '@/lib/components/uswds/Button';
 import Icon from '@/lib/components/uswds/Icon';
 import { useNavigate } from 'react-router-dom';
 import { useSessionState } from '@/lib/hooks/UseSessionState';
+import { useAppointmentExpansion } from './useAppointmentExpansion';
 
 interface TrusteeAppointmentsProps {
   trusteeId: string;
+}
+
+function resolveAccordionBody(appointment: TrusteeAppointment): ReactNode | undefined {
+  if (isChapter11CaseByCase(appointment.chapter, appointment.appointmentType)) {
+    return <Chapter11CaseByCaseAppointmentBody appointment={appointment} />;
+  }
+  if (isChapter7Elected(appointment.chapter, appointment.appointmentType)) {
+    return <Chapter7ElectedAppointmentBody appointment={appointment} />;
+  }
+  if (isChapter7Panel(appointment.chapter, appointment.appointmentType)) {
+    return <Chapter7PanelAppointmentBody appointment={appointment} />;
+  }
+  if (
+    isChapter11SubchapterVPool(appointment.chapter, appointment.appointmentType) ||
+    isChapter11SubchapterVOutOfPool(appointment.chapter, appointment.appointmentType)
+  ) {
+    return <Chapter11SubchapterVAppointmentBody appointment={appointment} />;
+  }
+  return undefined;
 }
 
 export default function TrusteeAppointments(props: Readonly<TrusteeAppointmentsProps>) {
@@ -26,6 +59,7 @@ export default function TrusteeAppointments(props: Readonly<TrusteeAppointmentsP
     '',
   );
   const navigate = useNavigate();
+  const { isExpanded, toggleExpanded } = useAppointmentExpansion();
 
   useEffect(() => {
     const loadAppointments = async () => {
@@ -107,14 +141,26 @@ export default function TrusteeAppointments(props: Readonly<TrusteeAppointmentsP
       </div>
       <div className="appointments-list">
         <AccordionGroup initialExpandedId={initialExpandedId}>
-          {sortedAppointments.map((appointment) => (
-            <AppointmentCard
-              key={appointment.id}
-              appointment={appointment}
-              onExpand={setPersistedExpandedId}
-              onCollapse={() => setPersistedExpandedId('')}
-            />
-          ))}
+          {sortedAppointments.map((appointment) => {
+            const accordionBody = resolveAccordionBody(appointment);
+            return accordionBody ? (
+              <AppointmentAccordion
+                key={appointment.id}
+                appointment={appointment}
+                expanded={isExpanded(appointment)}
+                onToggle={toggleExpanded}
+              >
+                {accordionBody}
+              </AppointmentAccordion>
+            ) : (
+              <AppointmentCard
+                key={appointment.id}
+                appointment={appointment}
+                onExpand={setPersistedExpandedId}
+                onCollapse={() => setPersistedExpandedId('')}
+              />
+            );
+          })}
         </AccordionGroup>
       </div>
     </div>

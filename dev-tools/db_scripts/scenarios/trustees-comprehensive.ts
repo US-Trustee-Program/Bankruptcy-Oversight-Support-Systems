@@ -2,19 +2,20 @@
  * Scenario: trustees-comprehensive
  * Database: cams only
  *
- * Seeds 32 trustees with comprehensive coverage for testing trustee filtering and multi-division support:
+ * Seeds 35 trustees with comprehensive coverage for testing trustee filtering and multi-division support:
  *
  * Geographic Distribution:
- *   - New York (081 Manhattan/Southern, 091 Buffalo/Western): 32 trustees
+ *   - New York: 35 trustees, using only division codes 081 (Southern District,
+ *     Manhattan, courtId 0208) and 091 (Western District, Buffalo, courtId 0209)
  *     - Uses only division codes 081 and 091 (confirmed in DXTR)
  *     - These are the only codes guaranteed to resolve to proper division names
  *
  * Chapter Coverage:
- *   - Chapter 7 (panel): 11 trustees
- *   - Chapter 11 (panel): 6 trustees
- *   - Chapter 12 (standing): 3 trustees
- *   - Chapter 13 (standing): 9 trustees
- *   - Chapter 11 Subchapter V (pool): 3 trustees
+ *   - Chapter 7 (panel/elected): 15 appointments
+ *   - Chapter 11 (panel/case-by-case): 9 appointments
+ *   - Chapter 12 (standing/case-by-case): 4 appointments
+ *   - Chapter 13 (standing/case-by-case): 10 appointments
+ *   - Chapter 11 Subchapter V (pool/out-of-pool): 5 appointments
  *
  * Multi-Division Support (CAMS-740):
  *   - Single-division appointments (29 trustees)
@@ -29,6 +30,7 @@
  */
 
 import type { SeedContext, SeedOperation } from '../../runner.js';
+import type { AppointmentStatus } from '@common/cams/trustees.js';
 import { faker } from '@faker-js/faker';
 import { generateSearchTokens } from '../lib/phonetic-tokens.js';
 import { fakeUsPhoneNumber } from '../lib/test-data-utils.js';
@@ -95,7 +97,7 @@ function createTrustee(opts: {
   }
 
   // Include banks and software if provided
-  if (opts.banks && opts.banks.length > 0) {
+  if (opts.banks) {
     trustee.banks = opts.banks;
   }
   if (opts.softwareId) {
@@ -110,12 +112,15 @@ function createAppointment(opts: {
   id: string;
   trusteeId: string;
   chapter: string;
-  appointmentType: 'panel' | 'standing' | 'off-panel' | 'case-by-case' | 'pool';
+  appointmentType:
+    'panel' | 'standing' | 'off-panel' | 'case-by-case' | 'pool' | 'out-of-pool' | 'elected';
   courtId: string;
   divisionCodes: string[];
   courtName: string;
   courtDivisionName: string;
-  status: 'active' | 'inactive';
+  status: AppointmentStatus;
+  appointedDate?: string;
+  effectiveDate?: string;
 }) {
   const appointment: Record<string, unknown> = {
     id: opts.id,
@@ -125,9 +130,9 @@ function createAppointment(opts: {
     appointmentType: opts.appointmentType,
     courtId: opts.courtId,
     divisionCodes: opts.divisionCodes,
-    appointedDate: '2020-01-01',
+    appointedDate: opts.appointedDate ?? '2020-01-01',
     status: opts.status,
-    effectiveDate: '2020-01-01',
+    effectiveDate: opts.effectiveDate ?? '2020-01-01',
     courtName: opts.courtName,
     courtDivisionName: opts.courtDivisionName,
     updatedOn: '2025-03-01T00:00:00.000Z',
@@ -274,6 +279,126 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       courtName: 'U.S. Bankruptcy Court Southern District of New York',
       courtDivisionName: 'Manhattan',
       status: 'active',
+    }),
+  );
+
+  // Additional-25: Ch11 Case by Case, Active (091) + Inactive (081) - exercises the appointment
+  // accordion's green-tag (active) and gray-tag (inactive) status tags on the same trustee, with
+  // the inactive appointment's dates distinct from the common 2020-01-01 default
+  trustees.push(
+    createTrustee({
+      id: 'seed-trustee-add-025',
+      firstName: 'Olivia',
+      lastName: 'Ashworth',
+      status: 'active',
+      state: 'NY',
+      city: 'New York',
+    }),
+  );
+  appointments.push(
+    createAppointment({
+      id: 'seed-appt-add-025-ch11-active',
+      trusteeId: 'seed-trustee-add-025',
+      chapter: '11',
+      appointmentType: 'case-by-case',
+      courtId: '0209',
+      divisionCodes: ['091'],
+      courtName: 'U.S. Bankruptcy Court Southern District of New York',
+      courtDivisionName: 'Manhattan',
+      status: 'active',
+    }),
+    createAppointment({
+      id: 'seed-appt-add-025-ch11-casebycase',
+      trusteeId: 'seed-trustee-add-025',
+      chapter: '11',
+      appointmentType: 'case-by-case',
+      courtId: '0208',
+      divisionCodes: ['081'],
+      courtName: 'U.S. Bankruptcy Court Southern District of New York',
+      courtDivisionName: 'Manhattan',
+      status: 'inactive',
+      appointedDate: '2022-03-15',
+      effectiveDate: '2023-09-01',
+    }),
+  );
+
+  // Additional-26: Ch7 Elected, Active (091) + Inactive (081) - exercises the appointment
+  // accordion's green-tag (active) and gray-tag (inactive) status tags on the same trustee, with
+  // the inactive appointment's dates distinct from the common 2020-01-01 default
+  trustees.push(
+    createTrustee({
+      id: 'seed-trustee-add-026',
+      firstName: 'Marcus',
+      lastName: 'Whitfield',
+      status: 'active',
+      state: 'NY',
+      city: 'New York',
+    }),
+  );
+  appointments.push(
+    createAppointment({
+      id: 'seed-appt-add-026-ch7-elected-active',
+      trusteeId: 'seed-trustee-add-026',
+      chapter: '7',
+      appointmentType: 'elected',
+      courtId: '0209',
+      divisionCodes: ['091'],
+      courtName: 'U.S. Bankruptcy Court Southern District of New York',
+      courtDivisionName: 'Manhattan',
+      status: 'active',
+    }),
+    createAppointment({
+      id: 'seed-appt-add-026-ch7-elected-inactive',
+      trusteeId: 'seed-trustee-add-026',
+      chapter: '7',
+      appointmentType: 'elected',
+      courtId: '0208',
+      divisionCodes: ['081'],
+      courtName: 'U.S. Bankruptcy Court Southern District of New York',
+      courtDivisionName: 'Manhattan',
+      status: 'inactive',
+      appointedDate: '2022-03-15',
+      effectiveDate: '2023-09-01',
+    }),
+  );
+
+  // Additional-27: Ch11 Subchapter V, Pool (091) + Out of Pool (081) - exercises the appointment
+  // accordion's Pool and Out of Pool bodies on the same trustee, with the Out of Pool appointment's
+  // dates distinct from the common 2020-01-01 default
+  trustees.push(
+    createTrustee({
+      id: 'seed-trustee-add-027',
+      firstName: 'Derek',
+      lastName: 'Pemberton',
+      status: 'active',
+      state: 'NY',
+      city: 'New York',
+    }),
+  );
+  appointments.push(
+    createAppointment({
+      id: 'seed-appt-add-027-subv-pool',
+      trusteeId: 'seed-trustee-add-027',
+      chapter: '11-subchapter-v',
+      appointmentType: 'pool',
+      courtId: '0209',
+      divisionCodes: ['091'],
+      courtName: 'U.S. Bankruptcy Court Southern District of New York',
+      courtDivisionName: 'Manhattan',
+      status: 'active',
+    }),
+    createAppointment({
+      id: 'seed-appt-add-027-subv-outofpool',
+      trusteeId: 'seed-trustee-add-027',
+      chapter: '11-subchapter-v',
+      appointmentType: 'out-of-pool',
+      courtId: '0208',
+      divisionCodes: ['081'],
+      courtName: 'U.S. Bankruptcy Court Southern District of New York',
+      courtDivisionName: 'Manhattan',
+      status: 'resigned',
+      appointedDate: '2022-03-15',
+      effectiveDate: '2023-09-01',
     }),
   );
 

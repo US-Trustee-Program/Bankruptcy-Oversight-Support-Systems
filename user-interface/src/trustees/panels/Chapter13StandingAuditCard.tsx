@@ -1,6 +1,6 @@
 import { TrusteeUpcomingKeyDates, isoToMMDDYYYY } from '@common/cams/trustee-upcoming-key-dates';
 import Chapter13StandingKeyDatesCard from './Chapter13StandingKeyDatesCard';
-import { useCanManageTrustees } from './useCanManageTrustees';
+import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import { useOpenEditKeyDates } from './useOpenEditKeyDates';
 import CompletionStatusTag from './CompletionStatusTag';
 import { NO_DATE } from './upcomingKeyDatesFieldConfig';
@@ -27,11 +27,11 @@ export default function Chapter13StandingAuditCard(
   );
 
   const tag =
-    data?.auditCompletionYear && data?.auditCompletionStatus ? (
+    data?.ch13AuditCompletionYear && data?.ch13AuditCompletionStatus ? (
       <CompletionStatusTag
         id="audit-completion-status"
-        status={data.auditCompletionStatus}
-        year={data.auditCompletionYear}
+        status={data.ch13AuditCompletionStatus}
+        year={data.ch13AuditCompletionYear}
       />
     ) : undefined;
 

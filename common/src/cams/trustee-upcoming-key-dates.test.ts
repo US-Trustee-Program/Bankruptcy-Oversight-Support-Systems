@@ -21,7 +21,9 @@ import {
   validateMonthDayRange,
   validateTrusteeUpcomingKeyDates,
   validateTprDuePair,
+  validateCompletionPairPresence,
   DATE_FIELDS,
+  SCALAR_FIELDS,
   TEXT_FIELDS,
 } from './trustee-upcoming-key-dates';
 import { VALID } from './validation';
@@ -354,6 +356,7 @@ describe('validateTrusteeUpcomingKeyDates', () => {
       pastFieldExam: null,
       pastAudit: null,
       pastTprSubmission: null,
+      lastTprSubmitted: null,
       tprReviewPeriodStart: null,
       tprReviewPeriodEnd: null,
       tprDue: null,
@@ -371,16 +374,22 @@ describe('validateTrusteeUpcomingKeyDates', () => {
       tirSemiAnnualSubmission: null,
       tirSemiAnnualReview: null,
       lastAuditFiscalYear: null,
+      auditCompletionYear: null,
+      auditCompletionStatus: null,
+      tprCompletionYear: null,
+      tprCompletionStatus: null,
+      tirCompletionYear: null,
+      tirCompletionStatus: null,
       lastMonthlyReportReceived: null,
       leaseExpiration: null,
       idExpiration: null,
       lastCompensationStudy: null,
       bondIssuedDate: null,
       bondRenewalDate: null,
-      auditCompletionYear: null,
-      auditCompletionStatus: null,
-      tprCompletionYear: null,
-      tprCompletionStatus: null,
+      ch13AuditCompletionYear: null,
+      ch13AuditCompletionStatus: null,
+      ch13TprCompletionYear: null,
+      ch13TprCompletionStatus: null,
     };
   }
 
@@ -532,7 +541,7 @@ describe('validateTrusteeUpcomingKeyDates', () => {
     });
     expect(result.valid).toBeFalsy();
     expect(result.reasonMap?.auditCompletionStatus?.reasons?.[0]).toBe(
-      'Audit Completion Status is required.',
+      'Field Exam/Audit Completion Status is required.',
     );
   });
 
@@ -540,22 +549,12 @@ describe('validateTrusteeUpcomingKeyDates', () => {
     const result = validateTrusteeUpcomingKeyDates({
       ...baseInput(),
       auditCompletionYear: null,
-      auditCompletionStatus: 'Complete',
+      auditCompletionStatus: 'CLOSED',
     });
     expect(result.valid).toBeFalsy();
     expect(result.reasonMap?.auditCompletionYear?.reasons?.[0]).toBe(
-      'Audit Completion Year is required.',
+      'Field Exam/Audit Completion Status Year is required.',
     );
-  });
-
-  test('returns VALID when auditCompletionYear and auditCompletionStatus are both set', () => {
-    expect(
-      validateTrusteeUpcomingKeyDates({
-        ...baseInput(),
-        auditCompletionYear: 2026,
-        auditCompletionStatus: 'Incomplete',
-      }),
-    ).toEqual(VALID);
   });
 
   test('returns error when tprCompletionYear is set but tprCompletionStatus is null', () => {
@@ -566,7 +565,7 @@ describe('validateTrusteeUpcomingKeyDates', () => {
     });
     expect(result.valid).toBeFalsy();
     expect(result.reasonMap?.tprCompletionStatus?.reasons?.[0]).toBe(
-      'TPR Completion Status is required.',
+      'Trustee Performance Review Completion Status is required.',
     );
   });
 
@@ -574,27 +573,151 @@ describe('validateTrusteeUpcomingKeyDates', () => {
     const result = validateTrusteeUpcomingKeyDates({
       ...baseInput(),
       tprCompletionYear: null,
-      tprCompletionStatus: 'Complete',
+      tprCompletionStatus: 'COMPLETE',
     });
     expect(result.valid).toBeFalsy();
     expect(result.reasonMap?.tprCompletionYear?.reasons?.[0]).toBe(
+      'Trustee Performance Review Completion Status Year is required.',
+    );
+  });
+
+  test('returns error when tirCompletionYear is set but tirCompletionStatus is null', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      tirCompletionYear: 2026,
+      tirCompletionStatus: null,
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.tirCompletionStatus?.reasons?.[0]).toBe(
+      'Trustee Interim Report Completion Status is required.',
+    );
+  });
+
+  test('returns error when tirCompletionStatus is set but tirCompletionYear is null', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      tirCompletionYear: null,
+      tirCompletionStatus: 'COMPLETE',
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.tirCompletionYear?.reasons?.[0]).toBe(
+      'Trustee Interim Report Completion Status Year is required.',
+    );
+  });
+
+  test.each([
+    [
+      'auditCompletionStatus',
+      'PENDING',
+      'Field Exam/Audit Completion Status must be one of: CLOSED, NOT_CLOSED.',
+    ],
+    [
+      'tprCompletionStatus',
+      'PENDING',
+      'Trustee Performance Review Completion Status must be one of: COMPLETE, INCOMPLETE.',
+    ],
+    [
+      'tirCompletionStatus',
+      'PENDING',
+      'Trustee Interim Report Completion Status must be one of: COMPLETE, INCOMPLETE.',
+    ],
+  ])('returns error when %s is set to %s (outside its enum)', (field, value, expectedMessage) => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      [field]: value,
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.[field]?.reasons?.[0]).toBe(expectedMessage);
+  });
+
+  test.each([
+    ['auditCompletionStatus', 'CLOSED'],
+    ['auditCompletionStatus', 'NOT_CLOSED'],
+    ['tprCompletionStatus', 'COMPLETE'],
+    ['tprCompletionStatus', 'INCOMPLETE'],
+    ['tirCompletionStatus', 'COMPLETE'],
+    ['tirCompletionStatus', 'INCOMPLETE'],
+  ])('returns VALID when %s is set to %s', (field, value) => {
+    const yearField = field.replace('Status', 'Year');
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      [yearField]: 2026,
+      [field]: value,
+    });
+    expect(result).toEqual(VALID);
+  });
+
+  test('returns error when ch13AuditCompletionYear is set but ch13AuditCompletionStatus is null', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      ch13AuditCompletionYear: 2026,
+      ch13AuditCompletionStatus: null,
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.ch13AuditCompletionStatus?.reasons?.[0]).toBe(
+      'Audit Completion Status is required.',
+    );
+  });
+
+  test('returns error when ch13AuditCompletionStatus is set but ch13AuditCompletionYear is null', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      ch13AuditCompletionYear: null,
+      ch13AuditCompletionStatus: 'Complete',
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.ch13AuditCompletionYear?.reasons?.[0]).toBe(
+      'Audit Completion Year is required.',
+    );
+  });
+
+  test('returns VALID when ch13AuditCompletionYear and ch13AuditCompletionStatus are both set', () => {
+    expect(
+      validateTrusteeUpcomingKeyDates({
+        ...baseInput(),
+        ch13AuditCompletionYear: 2026,
+        ch13AuditCompletionStatus: 'Incomplete',
+      }),
+    ).toEqual(VALID);
+  });
+
+  test('returns error when ch13TprCompletionYear is set but ch13TprCompletionStatus is null', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      ch13TprCompletionYear: 2026,
+      ch13TprCompletionStatus: null,
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.ch13TprCompletionStatus?.reasons?.[0]).toBe(
+      'TPR Completion Status is required.',
+    );
+  });
+
+  test('returns error when ch13TprCompletionStatus is set but ch13TprCompletionYear is null', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      ch13TprCompletionYear: null,
+      ch13TprCompletionStatus: 'Complete',
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.ch13TprCompletionYear?.reasons?.[0]).toBe(
       'TPR Completion Year is required.',
     );
   });
 
-  test('returns VALID when tprCompletionYear and tprCompletionStatus are both set', () => {
+  test('returns VALID when ch13TprCompletionYear and ch13TprCompletionStatus are both set', () => {
     expect(
       validateTrusteeUpcomingKeyDates({
         ...baseInput(),
-        tprCompletionYear: 2026,
-        tprCompletionStatus: 'Incomplete',
+        ch13TprCompletionYear: 2026,
+        ch13TprCompletionStatus: 'Incomplete',
       }),
     ).toEqual(VALID);
   });
 
   test.each([
-    ['auditCompletionStatus' as const, 'Audit Completion Status'],
-    ['tprCompletionStatus' as const, 'TPR Completion Status'],
+    ['ch13AuditCompletionStatus' as const, 'Audit Completion Status'],
+    ['ch13TprCompletionStatus' as const, 'TPR Completion Status'],
   ])('returns error when %s contains a value outside the allowed enum', (field, label) => {
     const result = validateTrusteeUpcomingKeyDates({
       ...baseInput(),
@@ -607,13 +730,13 @@ describe('validateTrusteeUpcomingKeyDates', () => {
   });
 
   test.each([
-    ['auditCompletionStatus' as const, 'Complete'],
-    ['auditCompletionStatus' as const, 'Incomplete'],
-    ['tprCompletionStatus' as const, 'Complete'],
-    ['tprCompletionStatus' as const, 'Incomplete'],
+    ['ch13AuditCompletionStatus' as const, 'Complete'],
+    ['ch13AuditCompletionStatus' as const, 'Incomplete'],
+    ['ch13TprCompletionStatus' as const, 'Complete'],
+    ['ch13TprCompletionStatus' as const, 'Incomplete'],
   ])('returns VALID when %s is %s', (field, value) => {
     const yearField =
-      field === 'auditCompletionStatus' ? 'auditCompletionYear' : 'tprCompletionYear';
+      field === 'ch13AuditCompletionStatus' ? 'ch13AuditCompletionYear' : 'ch13TprCompletionYear';
     expect(
       validateTrusteeUpcomingKeyDates({
         ...baseInput(),
@@ -624,11 +747,11 @@ describe('validateTrusteeUpcomingKeyDates', () => {
   });
 
   test.each([
-    ['auditCompletionYear' as const, 'Audit Completion Year'],
-    ['tprCompletionYear' as const, 'TPR Completion Year'],
+    ['ch13AuditCompletionYear' as const, 'Audit Completion Year'],
+    ['ch13TprCompletionYear' as const, 'TPR Completion Year'],
   ])('returns error when %s is below the allowed range', (field, label) => {
     const statusField =
-      field === 'auditCompletionYear' ? 'auditCompletionStatus' : 'tprCompletionStatus';
+      field === 'ch13AuditCompletionYear' ? 'ch13AuditCompletionStatus' : 'ch13TprCompletionStatus';
     const result = validateTrusteeUpcomingKeyDates({
       ...baseInput(),
       [field]: 1899,
@@ -641,11 +764,11 @@ describe('validateTrusteeUpcomingKeyDates', () => {
   });
 
   test.each([
-    ['auditCompletionYear' as const, 'Audit Completion Year'],
-    ['tprCompletionYear' as const, 'TPR Completion Year'],
+    ['ch13AuditCompletionYear' as const, 'Audit Completion Year'],
+    ['ch13TprCompletionYear' as const, 'TPR Completion Year'],
   ])('returns error when %s is above the allowed range', (field, label) => {
     const statusField =
-      field === 'auditCompletionYear' ? 'auditCompletionStatus' : 'tprCompletionStatus';
+      field === 'ch13AuditCompletionYear' ? 'ch13AuditCompletionStatus' : 'ch13TprCompletionStatus';
     const result = validateTrusteeUpcomingKeyDates({
       ...baseInput(),
       [field]: 2101,
@@ -658,11 +781,11 @@ describe('validateTrusteeUpcomingKeyDates', () => {
   });
 
   test.each([
-    ['auditCompletionYear' as const, 'Audit Completion Year'],
-    ['tprCompletionYear' as const, 'TPR Completion Year'],
+    ['ch13AuditCompletionYear' as const, 'Audit Completion Year'],
+    ['ch13TprCompletionYear' as const, 'TPR Completion Year'],
   ])('returns error when %s is not an integer', (field, label) => {
     const statusField =
-      field === 'auditCompletionYear' ? 'auditCompletionStatus' : 'tprCompletionStatus';
+      field === 'ch13AuditCompletionYear' ? 'ch13AuditCompletionStatus' : 'ch13TprCompletionStatus';
     const result = validateTrusteeUpcomingKeyDates({
       ...baseInput(),
       [field]: 2025.5,
@@ -674,7 +797,7 @@ describe('validateTrusteeUpcomingKeyDates', () => {
     );
   });
 
-  test.each([['auditCompletionYear' as const], ['tprCompletionYear' as const]])(
+  test.each([['ch13AuditCompletionYear' as const], ['ch13TprCompletionYear' as const]])(
     'returns VALID when %s is null',
     (field) => {
       expect(
@@ -711,17 +834,19 @@ describe('validateTrusteeUpcomingKeyDates', () => {
     expect(result.reasonMap?.[field]?.reasons?.[0]).toBe('Must be a valid date mm/dd.');
   });
 
-  test.each([['pastFieldExam'], ['tprReviewPeriodStart'], ['tprReviewPeriodEnd']])(
-    'returns error when %s (full date field) contains an invalid ISO date',
-    (field) => {
-      const result = validateTrusteeUpcomingKeyDates({
-        ...baseInput(),
-        [field]: '2026-13-01',
-      });
-      expect(result.valid).toBeFalsy();
-      expect(result.reasonMap?.[field]?.reasons?.[0]).toBe('Must be a valid date mm/dd/yyyy.');
-    },
-  );
+  test.each([
+    ['pastFieldExam'],
+    ['tprReviewPeriodStart'],
+    ['tprReviewPeriodEnd'],
+    ['lastTprSubmitted'],
+  ])('returns error when %s (full date field) contains an invalid ISO date', (field) => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      [field]: '2026-13-01',
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.[field]?.reasons?.[0]).toBe('Must be a valid date mm/dd/yyyy.');
+  });
 
   test('returns VALID when pastBackgroundQuestion is a valid full date', () => {
     expect(
@@ -743,6 +868,12 @@ describe('validateTrusteeUpcomingKeyDates', () => {
   test('returns VALID when pastTprSubmission is a valid full date', () => {
     expect(
       validateTrusteeUpcomingKeyDates({ ...baseInput(), pastTprSubmission: '2023-04-10' }),
+    ).toEqual(VALID);
+  });
+
+  test('returns VALID when lastTprSubmitted is a valid full date', () => {
+    expect(
+      validateTrusteeUpcomingKeyDates({ ...baseInput(), lastTprSubmitted: '2023-04-10' }),
     ).toEqual(VALID);
   });
 
@@ -933,6 +1064,7 @@ describe('validateTrusteeUpcomingKeyDates', () => {
       'pastFieldExam',
       'pastAudit',
       'pastTprSubmission',
+      'lastTprSubmitted',
       'tprReviewPeriodStart',
       'tprReviewPeriodEnd',
       'tprDue',
@@ -960,6 +1092,22 @@ describe('validateTrusteeUpcomingKeyDates', () => {
       'tirFrequency',
       'auditCompletionStatus',
       'tprCompletionStatus',
+      'tirCompletionStatus',
+      'ch13AuditCompletionStatus',
+      'ch13TprCompletionStatus',
+    ]);
+  });
+
+  test('SCALAR_FIELDS contains the exact set of expected fields', () => {
+    expect(SCALAR_FIELDS).toEqual([
+      'lastAuditFiscalYear',
+      'upcomingExamOrAuditYear',
+      'upcomingExamOrAuditType',
+      'auditCompletionYear',
+      'tprCompletionYear',
+      'tirCompletionYear',
+      'ch13AuditCompletionYear',
+      'ch13TprCompletionYear',
     ]);
   });
 });
@@ -986,6 +1134,54 @@ describe('validateTprDuePair', () => {
   test('returns date error when tprDueYearType is set but tprDue is absent', () => {
     const result = validateTprDuePair('', 'EVEN');
     expect(result).toBe('Must be a valid date mm/dd.');
+  });
+});
+
+describe('validateCompletionPairPresence', () => {
+  test('returns empty string when both year and status are set', () => {
+    expect(validateCompletionPairPresence(2026, 'COMPLETE', 'Some Label')).toBe('');
+  });
+
+  test('returns empty string when both are empty strings', () => {
+    expect(validateCompletionPairPresence('', '', 'Some Label')).toBe('');
+  });
+
+  test('returns empty string when both are null', () => {
+    expect(validateCompletionPairPresence(null, null, 'Some Label')).toBe('');
+  });
+
+  test('returns empty string when both are undefined', () => {
+    expect(validateCompletionPairPresence(undefined, undefined, 'Some Label')).toBe('');
+  });
+
+  test('returns an error when year is set but status is blank', () => {
+    expect(validateCompletionPairPresence(2026, '', 'Some Label')).toBe(
+      'Some Label Year and Status must both be set.',
+    );
+  });
+
+  test('returns an error when status is set but year is blank', () => {
+    expect(validateCompletionPairPresence('', 'COMPLETE', 'Some Label')).toBe(
+      'Some Label Year and Status must both be set.',
+    );
+  });
+
+  test('uses custom field names in the error message when provided', () => {
+    expect(
+      validateCompletionPairPresence(2026, '', 'Field Exam or Audit', {
+        first: 'Year',
+        second: 'Type',
+      }),
+    ).toBe('Field Exam or Audit Year and Type must both be set.');
+  });
+
+  test('supports string values for the first field with custom field names', () => {
+    expect(
+      validateCompletionPairPresence('ANNUAL', '', 'Trustee Interim Report (TIR) Period', {
+        first: 'Frequency',
+        second: 'Period',
+      }),
+    ).toBe('Trustee Interim Report (TIR) Period Frequency and Period must both be set.');
   });
 });
 

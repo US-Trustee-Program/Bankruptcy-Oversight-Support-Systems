@@ -126,59 +126,86 @@ function requireChronologicalOrder(
   };
 }
 
-const COMPLETION_STATUS_VALUES = ['Complete', 'Incomplete'] as const;
-const MIN_COMPLETION_YEAR = 1900;
-const MAX_COMPLETION_YEAR = 2100;
+const CH13_COMPLETION_STATUS_VALUES = ['Complete', 'Incomplete'] as const;
+const CH13_MIN_COMPLETION_YEAR = 1900;
+const CH13_MAX_COMPLETION_YEAR = 2100;
 
-function validateCompletionStatus(value: unknown, label: string): ValidatorResult {
+function validateCh13CompletionStatus(value: unknown, label: string): ValidatorResult {
   if (value === null || value === undefined) return VALID;
-  if (!COMPLETION_STATUS_VALUES.includes(value as (typeof COMPLETION_STATUS_VALUES)[number])) {
-    return { reasons: [`${label} must be one of: ${COMPLETION_STATUS_VALUES.join(', ')}.`] };
+  if (
+    !CH13_COMPLETION_STATUS_VALUES.includes(value as (typeof CH13_COMPLETION_STATUS_VALUES)[number])
+  ) {
+    return { reasons: [`${label} must be one of: ${CH13_COMPLETION_STATUS_VALUES.join(', ')}.`] };
   }
   return VALID;
 }
 
-function validateCompletionYear(value: unknown, label: string): ValidatorResult {
+function validateCh13CompletionYear(value: unknown, label: string): ValidatorResult {
   if (value === null || value === undefined) return VALID;
   const isValidYear =
     typeof value === 'number' &&
     Number.isInteger(value) &&
-    value >= MIN_COMPLETION_YEAR &&
-    value <= MAX_COMPLETION_YEAR;
+    value >= CH13_MIN_COMPLETION_YEAR &&
+    value <= CH13_MAX_COMPLETION_YEAR;
   if (!isValidYear) {
     return {
       reasons: [
-        `${label} must be a whole number between ${MIN_COMPLETION_YEAR} and ${MAX_COMPLETION_YEAR}.`,
+        `${label} must be a whole number between ${CH13_MIN_COMPLETION_YEAR} and ${CH13_MAX_COMPLETION_YEAR}.`,
       ],
     };
   }
   return VALID;
 }
 
-function validateCompletionFields(): ValidatorFunction {
+function validateCh13CompletionFields(): ValidatorFunction {
   return (obj: unknown): ValidatorResult => {
     const input = obj as TrusteeUpcomingKeyDatesInput;
     const reasonMap: ValidatorReasonMap = {};
 
-    const statusResult = validateCompletionStatus(
-      input.auditCompletionStatus,
+    const statusResult = validateCh13CompletionStatus(
+      input.ch13AuditCompletionStatus,
       'Audit Completion Status',
     );
-    if (!statusResult.valid) reasonMap.auditCompletionStatus = statusResult;
+    if (!statusResult.valid) reasonMap.ch13AuditCompletionStatus = statusResult;
 
-    const tprStatusResult = validateCompletionStatus(
-      input.tprCompletionStatus,
+    const tprStatusResult = validateCh13CompletionStatus(
+      input.ch13TprCompletionStatus,
       'TPR Completion Status',
     );
-    if (!tprStatusResult.valid) reasonMap.tprCompletionStatus = tprStatusResult;
+    if (!tprStatusResult.valid) reasonMap.ch13TprCompletionStatus = tprStatusResult;
 
-    const yearResult = validateCompletionYear(input.auditCompletionYear, 'Audit Completion Year');
-    if (!yearResult.valid) reasonMap.auditCompletionYear = yearResult;
+    const yearResult = validateCh13CompletionYear(
+      input.ch13AuditCompletionYear,
+      'Audit Completion Year',
+    );
+    if (!yearResult.valid) reasonMap.ch13AuditCompletionYear = yearResult;
 
-    const tprYearResult = validateCompletionYear(input.tprCompletionYear, 'TPR Completion Year');
-    if (!tprYearResult.valid) reasonMap.tprCompletionYear = tprYearResult;
+    const tprYearResult = validateCh13CompletionYear(
+      input.ch13TprCompletionYear,
+      'TPR Completion Year',
+    );
+    if (!tprYearResult.valid) reasonMap.ch13TprCompletionYear = tprYearResult;
 
     return Object.keys(reasonMap).length > 0 ? { reasonMap } : VALID;
+  };
+}
+
+function requireValidEnum(
+  field: keyof TrusteeUpcomingKeyDatesInput,
+  validValues: readonly string[],
+  label: string,
+): ValidatorFunction {
+  return (obj: unknown): ValidatorResult => {
+    const input = obj as TrusteeUpcomingKeyDatesInput;
+    const value = input[field];
+    if (value !== null && !validValues.includes(value as string)) {
+      return {
+        reasonMap: {
+          [field as string]: { reasons: [`${label} must be one of: ${validValues.join(', ')}.`] },
+        },
+      };
+    }
+    return VALID;
   };
 }
 
@@ -213,6 +240,7 @@ function validateDateFields(): ValidatorFunction {
       'pastFieldExam',
       'pastAudit',
       'pastTprSubmission',
+      'lastTprSubmitted',
       'tprReviewPeriodStart',
       'tprReviewPeriodEnd',
       'lastMonthlyReportReceived',
@@ -237,7 +265,7 @@ function validateDateFields(): ValidatorFunction {
 const trusteeUpcomingKeyDatesSpec: ValidationSpec<TrusteeUpcomingKeyDatesInput> = {
   $: [
     validateDateFields(),
-    validateCompletionFields(),
+    validateCh13CompletionFields(),
     requirePair(
       'tprReviewPeriodStart',
       'tprReviewPeriodEnd',
@@ -266,14 +294,47 @@ const trusteeUpcomingKeyDatesSpec: ValidationSpec<TrusteeUpcomingKeyDatesInput> 
     requirePair(
       'auditCompletionYear',
       'auditCompletionStatus',
-      'Audit Completion Year',
-      'Audit Completion Status',
+      'Field Exam/Audit Completion Status Year',
+      'Field Exam/Audit Completion Status',
     ),
     requirePair(
       'tprCompletionYear',
       'tprCompletionStatus',
+      'Trustee Performance Review Completion Status Year',
+      'Trustee Performance Review Completion Status',
+    ),
+    requirePair(
+      'tirCompletionYear',
+      'tirCompletionStatus',
+      'Trustee Interim Report Completion Status Year',
+      'Trustee Interim Report Completion Status',
+    ),
+    requirePair(
+      'ch13AuditCompletionYear',
+      'ch13AuditCompletionStatus',
+      'Audit Completion Year',
+      'Audit Completion Status',
+    ),
+    requirePair(
+      'ch13TprCompletionYear',
+      'ch13TprCompletionStatus',
       'TPR Completion Year',
       'TPR Completion Status',
+    ),
+    requireValidEnum(
+      'auditCompletionStatus',
+      ['CLOSED', 'NOT_CLOSED'],
+      'Field Exam/Audit Completion Status',
+    ),
+    requireValidEnum(
+      'tprCompletionStatus',
+      ['COMPLETE', 'INCOMPLETE'],
+      'Trustee Performance Review Completion Status',
+    ),
+    requireValidEnum(
+      'tirCompletionStatus',
+      ['COMPLETE', 'INCOMPLETE'],
+      'Trustee Interim Report Completion Status',
     ),
   ],
 };
@@ -303,6 +364,24 @@ export function validateTprDuePair(
   return '';
 }
 
+/**
+ * Validates that a two-field pair is either both set or both blank, for direct
+ * per-render use on a card's dedicated edit form (mirrors validateTprDuePair's
+ * blur-time-feedback role, but for any Year+Status-shaped pair -- completion
+ * status, exam/audit year+type, or frequency+period).
+ */
+export function validateCompletionPairPresence(
+  first: number | string | '' | null | undefined,
+  second: number | string | '' | null | undefined,
+  label: string,
+  fieldNames: { first: string; second: string } = { first: 'Year', second: 'Status' },
+): string {
+  const firstSet = first !== '' && first !== null && first !== undefined;
+  const secondSet = second !== '' && second !== null && second !== undefined;
+  if (firstSet === secondSet) return '';
+  return `${label} ${fieldNames.first} and ${fieldNames.second} must both be set.`;
+}
+
 export type TrusteeUpcomingKeyDates = Auditable &
   Identifiable & {
     documentType: 'TRUSTEE_UPCOMING_REPORT_DATES';
@@ -312,6 +391,7 @@ export type TrusteeUpcomingKeyDates = Auditable &
     pastFieldExam?: string;
     pastAudit?: string;
     pastTprSubmission?: string;
+    lastTprSubmitted?: string;
     tprReviewPeriodStart?: string;
     tprReviewPeriodEnd?: string;
     tprDue?: string;
@@ -329,16 +409,22 @@ export type TrusteeUpcomingKeyDates = Auditable &
     tirSemiAnnualSubmission?: string;
     tirSemiAnnualReview?: string;
     lastAuditFiscalYear?: number;
+    auditCompletionYear?: number;
+    auditCompletionStatus?: 'CLOSED' | 'NOT_CLOSED';
+    tprCompletionYear?: number;
+    tprCompletionStatus?: 'COMPLETE' | 'INCOMPLETE';
+    tirCompletionYear?: number;
+    tirCompletionStatus?: 'COMPLETE' | 'INCOMPLETE';
     lastMonthlyReportReceived?: string;
     leaseExpiration?: string;
     idExpiration?: string;
     lastCompensationStudy?: string;
     bondIssuedDate?: string;
     bondRenewalDate?: string;
-    auditCompletionYear?: number;
-    auditCompletionStatus?: 'Complete' | 'Incomplete';
-    tprCompletionYear?: number;
-    tprCompletionStatus?: 'Complete' | 'Incomplete';
+    ch13AuditCompletionYear?: number;
+    ch13AuditCompletionStatus?: 'Complete' | 'Incomplete';
+    ch13TprCompletionYear?: number;
+    ch13TprCompletionStatus?: 'Complete' | 'Incomplete';
   };
 
 export type TrusteeUpcomingKeyDatesInput = {
@@ -348,6 +434,7 @@ export type TrusteeUpcomingKeyDatesInput = {
   pastFieldExam: string | null;
   pastAudit: string | null;
   pastTprSubmission: string | null;
+  lastTprSubmitted: string | null;
   tprReviewPeriodStart: string | null;
   tprReviewPeriodEnd: string | null;
   tprDue: string | null;
@@ -365,16 +452,22 @@ export type TrusteeUpcomingKeyDatesInput = {
   tirSemiAnnualSubmission: string | null;
   tirSemiAnnualReview: string | null;
   lastAuditFiscalYear: number | null;
+  auditCompletionYear: number | null;
+  auditCompletionStatus: 'CLOSED' | 'NOT_CLOSED' | null;
+  tprCompletionYear: number | null;
+  tprCompletionStatus: 'COMPLETE' | 'INCOMPLETE' | null;
+  tirCompletionYear: number | null;
+  tirCompletionStatus: 'COMPLETE' | 'INCOMPLETE' | null;
   lastMonthlyReportReceived: string | null;
   leaseExpiration: string | null;
   idExpiration: string | null;
   lastCompensationStudy: string | null;
   bondIssuedDate: string | null;
   bondRenewalDate: string | null;
-  auditCompletionYear: number | null;
-  auditCompletionStatus: 'Complete' | 'Incomplete' | null;
-  tprCompletionYear: number | null;
-  tprCompletionStatus: 'Complete' | 'Incomplete' | null;
+  ch13AuditCompletionYear: number | null;
+  ch13AuditCompletionStatus: 'Complete' | 'Incomplete' | null;
+  ch13TprCompletionYear: number | null;
+  ch13TprCompletionStatus: 'Complete' | 'Incomplete' | null;
 };
 
 export type TrusteeUpcomingKeyDatesHistory = AbstractTrusteeHistory<
@@ -390,6 +483,7 @@ type DateField =
   | 'pastFieldExam'
   | 'pastAudit'
   | 'pastTprSubmission'
+  | 'lastTprSubmitted'
   | 'tprReviewPeriodStart'
   | 'tprReviewPeriodEnd'
   | 'tprDue'
@@ -413,6 +507,7 @@ export const DATE_FIELDS: DateField[] = [
   'pastFieldExam',
   'pastAudit',
   'pastTprSubmission',
+  'lastTprSubmitted',
   'tprReviewPeriodStart',
   'tprReviewPeriodEnd',
   'tprDue',
@@ -437,7 +532,10 @@ type TextField =
   | 'tprFrequency'
   | 'tirFrequency'
   | 'auditCompletionStatus'
-  | 'tprCompletionStatus';
+  | 'tprCompletionStatus'
+  | 'tirCompletionStatus'
+  | 'ch13AuditCompletionStatus'
+  | 'ch13TprCompletionStatus';
 
 export const TEXT_FIELDS: TextField[] = [
   'tprDueYearType',
@@ -445,6 +543,35 @@ export const TEXT_FIELDS: TextField[] = [
   'tirFrequency',
   'auditCompletionStatus',
   'tprCompletionStatus',
+  'tirCompletionStatus',
+  'ch13AuditCompletionStatus',
+  'ch13TprCompletionStatus',
+];
+
+/**
+ * Fields whose values are neither ISO date strings (DATE_FIELDS) nor short enum
+ * strings (TEXT_FIELDS), but still only need `!== null` truthiness to copy/diff --
+ * a mix of numbers and the one non-enum-named string field, upcomingExamOrAuditType.
+ */
+type ScalarField =
+  | 'lastAuditFiscalYear'
+  | 'upcomingExamOrAuditYear'
+  | 'upcomingExamOrAuditType'
+  | 'auditCompletionYear'
+  | 'tprCompletionYear'
+  | 'tirCompletionYear'
+  | 'ch13AuditCompletionYear'
+  | 'ch13TprCompletionYear';
+
+export const SCALAR_FIELDS: ScalarField[] = [
+  'lastAuditFiscalYear',
+  'upcomingExamOrAuditYear',
+  'upcomingExamOrAuditType',
+  'auditCompletionYear',
+  'tprCompletionYear',
+  'tirCompletionYear',
+  'ch13AuditCompletionYear',
+  'ch13TprCompletionYear',
 ];
 
 export function isoToMMDDYYYY(iso: string): string {

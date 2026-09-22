@@ -26,8 +26,8 @@ type FormState = {
   tprDue: string;
   tprDueYearType: 'EVEN' | 'ODD' | '';
   pastTprSubmission: string;
-  tprCompletionYear: number | '';
-  tprCompletionStatus: 'Complete' | 'Incomplete' | '';
+  ch13TprCompletionYear: number | '';
+  ch13TprCompletionStatus: 'Complete' | 'Incomplete' | '';
 };
 
 const EMPTY_FORM: FormState = {
@@ -37,8 +37,8 @@ const EMPTY_FORM: FormState = {
   tprDue: '',
   tprDueYearType: '',
   pastTprSubmission: '',
-  tprCompletionYear: '',
-  tprCompletionStatus: '',
+  ch13TprCompletionYear: '',
+  ch13TprCompletionStatus: '',
 };
 
 function buildFormStateFromData(data: TrusteeUpcomingKeyDates): FormState {
@@ -49,8 +49,8 @@ function buildFormStateFromData(data: TrusteeUpcomingKeyDates): FormState {
     tprDue: data.tprDue ?? '',
     tprDueYearType: data.tprDueYearType ?? '',
     pastTprSubmission: data.pastTprSubmission ?? '',
-    tprCompletionYear: data.tprCompletionYear ?? '',
-    tprCompletionStatus: data.tprCompletionStatus ?? '',
+    ch13TprCompletionYear: data.ch13TprCompletionYear ?? '',
+    ch13TprCompletionStatus: data.ch13TprCompletionStatus ?? '',
   };
 }
 
@@ -68,8 +68,8 @@ function buildInput(
     tprDue: form.tprDue || null,
     tprDueYearType: form.tprDueYearType || null,
     tprFrequency: form.tprFrequency || null,
-    tprCompletionYear: form.tprCompletionYear || null,
-    tprCompletionStatus: form.tprCompletionStatus || null,
+    ch13TprCompletionYear: form.ch13TprCompletionYear || null,
+    ch13TprCompletionStatus: form.ch13TprCompletionStatus || null,
   };
 }
 
@@ -153,8 +153,8 @@ export default function Chapter13StandingTrusteePerformanceReportForm() {
   const tprDueBlurError = validateTprDuePair(form.tprDue, form.tprDueYearType);
 
   const isCompletionPairIncomplete =
-    (!!form.tprCompletionYear && !form.tprCompletionStatus) ||
-    (!form.tprCompletionYear && !!form.tprCompletionStatus);
+    (!!form.ch13TprCompletionYear && !form.ch13TprCompletionStatus) ||
+    (!form.ch13TprCompletionYear && !!form.ch13TprCompletionStatus);
 
   const isSaveDisabled =
     isSaving ||
@@ -268,11 +268,13 @@ export default function Chapter13StandingTrusteePerformanceReportForm() {
       <CompletionStatusYearSelect
         idPrefix="tpr-completion"
         title="TPR Completion Status for Year"
-        year={form.tprCompletionYear}
-        status={form.tprCompletionStatus}
-        onYearChange={(tprCompletionYear) => setForm((prev) => ({ ...prev, tprCompletionYear }))}
-        onStatusChange={(tprCompletionStatus) =>
-          setForm((prev) => ({ ...prev, tprCompletionStatus }))
+        year={form.ch13TprCompletionYear}
+        status={form.ch13TprCompletionStatus}
+        onYearChange={(ch13TprCompletionYear) =>
+          setForm((prev) => ({ ...prev, ch13TprCompletionYear }))
+        }
+        onStatusChange={(ch13TprCompletionStatus) =>
+          setForm((prev) => ({ ...prev, ch13TprCompletionStatus }))
         }
       />
       <div className="usa-button-group">

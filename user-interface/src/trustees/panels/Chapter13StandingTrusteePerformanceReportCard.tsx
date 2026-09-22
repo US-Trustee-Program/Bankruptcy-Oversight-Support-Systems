@@ -1,6 +1,6 @@
 import { TrusteeUpcomingKeyDates, isoToMMDDYYYY } from '@common/cams/trustee-upcoming-key-dates';
 import Chapter13StandingKeyDatesCard from './Chapter13StandingKeyDatesCard';
-import { useCanManageTrustees } from './useCanManageTrustees';
+import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import { useOpenEditKeyDates } from './useOpenEditKeyDates';
 import CompletionStatusTag from './CompletionStatusTag';
 import {
@@ -30,11 +30,11 @@ export default function Chapter13StandingTrusteePerformanceReportCard(
   );
 
   const tag =
-    data?.tprCompletionYear && data?.tprCompletionStatus ? (
+    data?.ch13TprCompletionYear && data?.ch13TprCompletionStatus ? (
       <CompletionStatusTag
         id="tpr-completion-status"
-        status={data.tprCompletionStatus}
-        year={data.tprCompletionYear}
+        status={data.ch13TprCompletionStatus}
+        year={data.ch13TprCompletionYear}
       />
     ) : undefined;
 

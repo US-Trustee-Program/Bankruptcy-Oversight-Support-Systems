@@ -118,7 +118,7 @@ describe('PastKeyDatesForm', () => {
     mockGlobalAlertRef.current.error.mockClear();
     mockUseNavigate.mockReturnValue(mockNavigate);
     TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
-    vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [chapter7Appointment] });
+    vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch12StandingAppointment] });
     userEvent = TestingUtilities.setupUserEvent();
   });
 
@@ -136,7 +136,7 @@ describe('PastKeyDatesForm', () => {
     );
   });
 
-  test('renders all date picker inputs', async () => {
+  test('renders date picker inputs for chapter12-standing fields', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderComponent();
@@ -146,9 +146,22 @@ describe('PastKeyDatesForm', () => {
     });
 
     expect(screen.getByTestId('past-background-question')).toBeInTheDocument();
-    expect(screen.getByTestId('past-field-exam')).toBeInTheDocument();
     expect(screen.getByTestId('past-audit')).toBeInTheDocument();
-    expect(screen.getByTestId('past-tpr-submission')).toBeInTheDocument();
+    expect(screen.getByTestId('last-audit-fiscal-year')).toBeInTheDocument();
+    expect(screen.queryByTestId('past-field-exam')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('past-tpr-submission')).not.toBeInTheDocument();
+  });
+
+  test('renders "Edit Past Key Dates" as the heading', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('heading', { level: 3, name: 'Edit Past Key Dates' }),
+      ).toBeInTheDocument();
+    });
   });
 
   test('disables Save when a date field has an invalid value, re-enables once corrected', async () => {
@@ -156,19 +169,19 @@ describe('PastKeyDatesForm', () => {
 
     renderComponent();
 
-    await waitFor(() => expect(screen.getByTestId('past-field-exam')).toHaveValue('2024-02-21'));
+    await waitFor(() => expect(screen.getByTestId('past-audit')).toHaveValue('2023-08-01'));
 
     const saveButton = screen.getByTestId('button-save-past-key-dates');
     expect(saveButton).toBeEnabled();
 
-    const fieldExamInput = screen.getByTestId('past-field-exam');
-    fireEvent.change(fieldExamInput, { target: { value: '1900-01-01' } });
+    const auditInput = screen.getByTestId('past-audit');
+    fireEvent.change(auditInput, { target: { value: '1900-01-01' } });
 
     await waitFor(() => {
       expect(saveButton).toBeDisabled();
     });
 
-    fireEvent.change(fieldExamInput, { target: { value: '2024-03-01' } });
+    fireEvent.change(auditInput, { target: { value: '2024-03-01' } });
 
     await waitFor(() => {
       expect(saveButton).toBeEnabled();
@@ -180,20 +193,20 @@ describe('PastKeyDatesForm', () => {
 
     renderComponent();
 
-    await waitFor(() => expect(screen.getByTestId('past-field-exam')).toHaveValue('2024-02-21'));
+    await waitFor(() => expect(screen.getByTestId('past-audit')).toHaveValue('2023-08-01'));
 
     const saveButton = screen.getByTestId('button-save-past-key-dates');
-    const fieldExamInput = screen.getByTestId('past-field-exam');
+    const backgroundInput = screen.getByTestId('past-background-question');
     const auditInput = screen.getByTestId('past-audit');
 
-    fireEvent.change(fieldExamInput, { target: { value: '1900-01-01' } });
+    fireEvent.change(backgroundInput, { target: { value: '1900-01-01' } });
     fireEvent.change(auditInput, { target: { value: '1900-01-01' } });
 
     await waitFor(() => {
       expect(saveButton).toBeDisabled();
     });
 
-    fireEvent.change(fieldExamInput, { target: { value: '2024-03-01' } });
+    fireEvent.change(backgroundInput, { target: { value: '2024-03-01' } });
 
     await waitFor(() => {
       expect(saveButton).toBeDisabled();
@@ -215,9 +228,8 @@ describe('PastKeyDatesForm', () => {
       expect(screen.getByTestId('past-background-question')).toHaveValue('2022-05-10');
     });
 
-    expect(screen.getByTestId('past-field-exam')).toHaveValue('2024-02-21');
     expect(screen.getByTestId('past-audit')).toHaveValue('2023-08-01');
-    expect(screen.getByTestId('past-tpr-submission')).toHaveValue('2025-11-03');
+    expect(screen.getByTestId('last-audit-fiscal-year')).toHaveValue('2022');
   });
 
   test('shows empty inputs when API returns null', async () => {
@@ -229,9 +241,8 @@ describe('PastKeyDatesForm', () => {
       expect(screen.getByTestId('past-background-question')).toHaveValue('');
     });
 
-    expect(screen.getByTestId('past-field-exam')).toHaveValue('');
     expect(screen.getByTestId('past-audit')).toHaveValue('');
-    expect(screen.getByTestId('past-tpr-submission')).toHaveValue('');
+    expect(screen.getByTestId('last-audit-fiscal-year')).toHaveValue('');
   });
 
   test('shows loading spinner while fetching', () => {
@@ -249,7 +260,7 @@ describe('PastKeyDatesForm', () => {
 
     renderComponent();
 
-    await waitFor(() => expect(screen.getByTestId('past-field-exam')).toHaveValue('2024-02-21'));
+    await waitFor(() => expect(screen.getByTestId('past-audit')).toHaveValue('2023-08-01'));
 
     await userEvent.click(screen.getByTestId('button-save-past-key-dates'));
 
@@ -261,8 +272,15 @@ describe('PastKeyDatesForm', () => {
         pastFieldExam: '2024-02-21',
         pastAudit: '2023-08-01',
         pastTprSubmission: '2025-11-03',
+        lastTprSubmitted: null,
         lastMonthlyReportReceived: null,
         lastAuditFiscalYear: 2022,
+        auditCompletionYear: null,
+        auditCompletionStatus: null,
+        tprCompletionYear: null,
+        tprCompletionStatus: null,
+        tirCompletionYear: null,
+        tirCompletionStatus: null,
         tprReviewPeriodStart: '2025-04-01',
         tprReviewPeriodEnd: '1900-03-31',
         tprDue: '1900-09-15',
@@ -284,10 +302,10 @@ describe('PastKeyDatesForm', () => {
         lastCompensationStudy: null,
         bondIssuedDate: null,
         bondRenewalDate: null,
-        auditCompletionYear: null,
-        auditCompletionStatus: null,
-        tprCompletionYear: null,
-        tprCompletionStatus: null,
+        ch13AuditCompletionYear: null,
+        ch13AuditCompletionStatus: null,
+        ch13TprCompletionYear: null,
+        ch13TprCompletionStatus: null,
       }),
     );
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');
@@ -317,17 +335,15 @@ describe('PastKeyDatesForm', () => {
     );
   });
 
-  test('changing tpr submission saves updated value', async () => {
+  test('changing audit date saves updated value', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
     const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderComponent();
 
-    await waitFor(() =>
-      expect(screen.getByTestId('past-tpr-submission')).toHaveValue('2025-11-03'),
-    );
+    await waitFor(() => expect(screen.getByTestId('past-audit')).toHaveValue('2023-08-01'));
 
-    fireEvent.change(screen.getByTestId('past-tpr-submission'), {
+    fireEvent.change(screen.getByTestId('past-audit'), {
       target: { value: '2019-06-30' },
     });
     await userEvent.click(screen.getByTestId('button-save-past-key-dates'));
@@ -336,7 +352,7 @@ describe('PastKeyDatesForm', () => {
       expect(putSpy).toHaveBeenCalledWith(
         'trustee-001',
         'appointment-001',
-        expect.objectContaining({ pastTprSubmission: '2019-06-30' }),
+        expect.objectContaining({ pastAudit: '2019-06-30' }),
       ),
     );
   });
@@ -486,11 +502,33 @@ describe('PastKeyDatesForm', () => {
     );
   });
 
+  test('save sends null for active plain date fields left blank', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+    const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-past-key-dates')).toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getByTestId('button-save-past-key-dates'));
+
+    await waitFor(() =>
+      expect(putSpy).toHaveBeenCalledWith(
+        'trustee-001',
+        'appointment-001',
+        expect.objectContaining({
+          pastBackgroundQuestion: null,
+          pastAudit: null,
+        }),
+      ),
+    );
+  });
+
   test.each([
     ['Background Question', 'Last Update to Background Questionnaire'],
-    ['Field Exam', 'Field Exam Report Date'],
     ['Audit', 'Audit Report Date'],
-    ['TPR Submission', 'Trustee Interim Report Letter Date'],
     ['Last Audit Fiscal Year', "Last Audit's Fiscal Year"],
   ])('renders updated label for %s', async (_desc, expectedLabel) => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
@@ -500,18 +538,6 @@ describe('PastKeyDatesForm', () => {
     await waitFor(() => {
       expect(screen.getByText(expectedLabel)).toBeInTheDocument();
     });
-  });
-
-  test('renders audit-year hint text for chapter7-panel', async () => {
-    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
-
-    renderComponent();
-
-    await waitFor(() => {
-      expect(screen.getByTestId('edit-past-key-dates')).toBeInTheDocument();
-    });
-
-    expect(screen.getByText('The fiscal year of the TIR data audited')).toBeInTheDocument();
   });
 
   test('Cancel navigates without calling PUT', async () => {
@@ -530,7 +556,7 @@ describe('PastKeyDatesForm', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');
   });
 
-  test('falls back to chapter7-panel fields when appointment is not found', async () => {
+  test('falls back to chapter12-standing fields when appointment is not found', async () => {
     vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [] });
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
@@ -723,6 +749,18 @@ describe('PastKeyDatesForm', () => {
         expect(screen.getByText('Last Monthly Report Received')).toBeInTheDocument();
       });
     });
+
+    test('renders "Edit Other Key Dates" as the heading', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole('heading', { level: 3, name: 'Edit Other Key Dates' }),
+        ).toBeInTheDocument();
+      });
+    });
   });
 
   describe('when appointment is Chapter 13 Standing', () => {
@@ -873,136 +911,6 @@ describe('PastKeyDatesForm', () => {
             pastTprSubmission: populatedDocument.pastTprSubmission,
             lastAuditFiscalYear: populatedDocument.lastAuditFiscalYear,
           }),
-        ),
-      );
-    });
-  });
-
-  describe('chapter7-elected variant', () => {
-    const electedAppointment: TrusteeAppointment = {
-      ...chapter7Appointment,
-      chapter: '7',
-      appointmentType: 'elected',
-    };
-
-    const electedDocument: TrusteeUpcomingKeyDates = {
-      id: 'doc-elected-001',
-      documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
-      trusteeId: 'trustee-001',
-      appointmentId: 'appointment-001',
-      createdBy: SYSTEM_USER_REFERENCE,
-      createdOn: '2026-01-01T00:00:00.000Z',
-      updatedBy: SYSTEM_USER_REFERENCE,
-      updatedOn: '2026-01-01T00:00:00.000Z',
-      bondIssuedDate: '2023-06-01',
-      bondRenewalDate: '2026-06-01',
-    };
-
-    test('deriveVariant renders Bond Issued Date field for chapter 7 elected appointment', async () => {
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [electedAppointment] });
-      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
-
-      renderComponent();
-
-      await waitFor(() => {
-        expect(screen.getByTestId('bond-issued-date')).toBeInTheDocument();
-      });
-      expect(screen.getByText('Bond Issued Date')).toBeInTheDocument();
-    });
-
-    test('renders exactly 1 date input: Bond Issued Date', async () => {
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [electedAppointment] });
-      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
-
-      renderComponent();
-
-      await waitFor(() => {
-        expect(screen.getByTestId('bond-issued-date')).toBeInTheDocument();
-      });
-
-      expect(screen.queryByTestId('past-background-question')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('past-field-exam')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('past-audit')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('past-tpr-submission')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('last-audit-fiscal-year')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('last-compensation-study-month')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('last-compensation-study-year')).not.toBeInTheDocument();
-    });
-
-    test('shows empty bond-issued-date input and sends null when API returns null', async () => {
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [electedAppointment] });
-      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
-      const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
-
-      renderComponent();
-
-      await waitFor(() => {
-        expect(screen.getByTestId('bond-issued-date')).toHaveValue('');
-      });
-
-      await userEvent.click(screen.getByTestId('button-save-past-key-dates'));
-
-      await waitFor(() =>
-        expect(putSpy).toHaveBeenCalledWith(
-          'trustee-001',
-          'appointment-001',
-          expect.objectContaining({ bondIssuedDate: null }),
-        ),
-      );
-    });
-
-    test('pre-populates bondIssuedDate from existing key dates', async () => {
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [electedAppointment] });
-      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: electedDocument });
-
-      renderComponent();
-
-      await waitFor(() => {
-        const input = screen.getByTestId('bond-issued-date') as HTMLInputElement;
-        expect(input.value).toBe('2023-06-01');
-      });
-    });
-
-    test('on save, includes bondIssuedDate in PUT payload', async () => {
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [electedAppointment] });
-      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: electedDocument });
-      const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
-
-      renderComponent();
-
-      await waitFor(() => {
-        expect(screen.getByTestId('bond-issued-date')).toBeInTheDocument();
-      });
-
-      await userEvent.click(screen.getByTestId('button-save-past-key-dates'));
-
-      await waitFor(() =>
-        expect(putSpy).toHaveBeenCalledWith(
-          'trustee-001',
-          'appointment-001',
-          expect.objectContaining({ bondIssuedDate: '2023-06-01' }),
-        ),
-      );
-    });
-
-    test('save preserves bondRenewalDate from original doc unchanged', async () => {
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [electedAppointment] });
-      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: electedDocument });
-      const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
-
-      renderComponent();
-
-      await waitFor(() => {
-        expect(screen.getByTestId('bond-issued-date')).toBeInTheDocument();
-      });
-
-      await userEvent.click(screen.getByTestId('button-save-past-key-dates'));
-
-      await waitFor(() =>
-        expect(putSpy).toHaveBeenCalledWith(
-          'trustee-001',
-          'appointment-001',
-          expect.objectContaining({ bondRenewalDate: '2026-06-01' }),
         ),
       );
     });

@@ -13,6 +13,8 @@
  *     card's TPR Period/Due fields: one populated, one empty
  *   - Two Chapter 7 Elected trustees to exercise the Bond Issued Date (Past) /
  *     Bond Renewal Date (Upcoming) fields: one populated, one empty
+ *   - One Chapter 7 Elected trustee with an inactive appointment to exercise the
+ *     accordion's default-collapsed/inactive-status-tag behavior
  *
  * NOTE: Key dates are separate documents with documentType='TRUSTEE_UPCOMING_REPORT_DATES'.
  */
@@ -103,6 +105,24 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           // Calculated next exam (3 years from most recent, quarter-aligned)
           upcomingExamOrAuditYear: 2025,
           upcomingExamOrAuditType: 'Field Exam',
+          // TPR dates, so the Chapter 7 Panel accordion's Trustee Performance
+          // Report card has non-blank demo data alongside the fields above
+          tprReviewPeriodStart: '1900-04-01',
+          tprReviewPeriodEnd: '1900-09-30',
+          tprFrequency: 'ANNUAL',
+          tprDue: '1900-10-15',
+          tprDueYearType: 'EVEN',
+          lastTprSubmitted: '2024-10-11',
+          pastBackgroundQuestion: '2023-06-03',
+          // Completion status for the Audit/Field Exam card's tag (CAMS-912 Slice 2)
+          auditCompletionYear: 2020,
+          auditCompletionStatus: 'CLOSED',
+          // Completion status for the Trustee Performance Report card's tag (CAMS-912 Slice 3)
+          tprCompletionYear: 2024,
+          tprCompletionStatus: 'COMPLETE',
+          // Completion status for the Trustee Interim Report card's tag (CAMS-912 Slice 4)
+          tirCompletionYear: 2024,
+          tirCompletionStatus: 'COMPLETE',
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
         },
@@ -777,6 +797,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
     // ── Cosmos: Chapter 13 Standing Trustee with fully populated key dates ──
     // Active appointment: all four accordion cards render real data, both
     // completion-status tags show (CAMS-915).
+    // ── Cosmos: Chapter 7 Elected Trustee with an inactive appointment ───────
     {
       db: 'cams',
       collectionOrTable: 'trustees',
@@ -793,6 +814,16 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
             zipCode: '10008',
             phone: '212-555-1800',
             email: 'felicia.keydates@example.com',
+            id: 'seed-trustee-keydates-elected-inactive',
+            firstName: 'Owen',
+            lastName: 'Inactivekeydates',
+            status: 'active',
+            address1: '1100 Key Dates Way',
+            city: 'New York',
+            state: 'NY',
+            zipCode: '10011',
+            phone: '212-555-1800',
+            email: 'owen.inactivekeydates@example.com',
           }),
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
@@ -834,8 +865,8 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           appointmentId: 'seed-appointment-keydates-ch13-standing-001',
           // Audit card
           pastAudit: '2025-06-30',
-          auditCompletionYear: 2025,
-          auditCompletionStatus: 'Complete',
+          ch13AuditCompletionYear: 2025,
+          ch13AuditCompletionStatus: 'Complete',
           // Trustee Performance Report card
           tprReviewPeriodStart: '2025-04-01',
           tprReviewPeriodEnd: '2025-09-30',
@@ -843,8 +874,8 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           tprDue: '1900-09-15',
           tprDueYearType: 'EVEN',
           pastTprSubmission: '2025-10-01',
-          tprCompletionYear: 2025,
-          tprCompletionStatus: 'Complete',
+          ch13TprCompletionYear: 2025,
+          ch13TprCompletionStatus: 'Complete',
           // Budget card fields are fixed constants, no data needed
           // Other card
           leaseExpiration: '2027-06-30',
@@ -896,6 +927,14 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           courtId: '0208',
           divisionCodes: ['081'],
           appointedDate: '2019-01-01',
+          id: 'seed-appointment-keydates-elected-inactive',
+          documentType: 'TRUSTEE_APPOINTMENT',
+          trusteeId: 'seed-trustee-keydates-elected-inactive',
+          chapter: '7',
+          appointmentType: 'elected',
+          courtId: '0208',
+          divisionCodes: ['081'],
+          appointedDate: '2022-01-01',
           status: 'inactive',
           effectiveDate: '2024-01-01',
           courtName: 'U.S. Bankruptcy Court Southern District of New York',
@@ -916,6 +955,12 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           trusteeId: 'seed-trustee-keydates-ch13-standing-empty',
           appointmentId: 'seed-appointment-keydates-ch13-standing-empty',
           // All optional fields omitted - tests "No date added" placeholder state
+          id: 'seed-key-dates-elected-inactive',
+          documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
+          trusteeId: 'seed-trustee-keydates-elected-inactive',
+          appointmentId: 'seed-appointment-keydates-elected-inactive',
+          bondIssuedDate: '2022-06-01',
+          bondRenewalDate: '2025-06-01',
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
         },

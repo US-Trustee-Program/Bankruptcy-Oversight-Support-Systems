@@ -139,8 +139,8 @@ describe('Chapter13StandingTrusteePerformanceReportForm', () => {
           tprDue: '1900-09-15',
           tprDueYearType: 'EVEN',
           pastTprSubmission: '2025-10-01',
-          tprCompletionYear: 2026,
-          tprCompletionStatus: 'Complete',
+          ch13TprCompletionYear: 2026,
+          ch13TprCompletionStatus: 'Complete',
           leaseExpiration: '2027-06-30',
         }),
       );

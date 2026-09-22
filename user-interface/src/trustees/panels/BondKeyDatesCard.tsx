@@ -1,0 +1,56 @@
+import { useNavigate } from 'react-router-dom';
+import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
+import EditableTableCard from '@/lib/components/cams/EditableTableCard/EditableTableCard';
+import { TrusteeUpcomingKeyDates, isoToMMDDYYYY } from '@common/cams/trustee-upcoming-key-dates';
+import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
+
+export interface BondKeyDatesCardProps {
+  trusteeId: string;
+  appointmentId: string;
+  appointmentHeading?: string;
+  data: TrusteeUpcomingKeyDates | null;
+  isLoading: boolean;
+}
+
+const NO_DATE = 'No date added';
+
+function formatDateOrDefault(isoDate: string | undefined): string {
+  return isoDate ? isoToMMDDYYYY(isoDate) : NO_DATE;
+}
+
+export default function BondKeyDatesCard(props: Readonly<BondKeyDatesCardProps>) {
+  const { trusteeId, appointmentId, appointmentHeading, data, isLoading } = props;
+  const navigate = useNavigate();
+  const canManage = useCanManageTrustees();
+
+  function openEdit() {
+    navigate(`/trustees/${trusteeId}/appointments/${appointmentId}/bond-key-dates/edit`, {
+      state: { subHeading: appointmentHeading ?? '' },
+    });
+  }
+
+  if (isLoading) {
+    return <LoadingSpinner id="bond-key-dates-loading" />;
+  }
+
+  return (
+    <EditableTableCard
+      id={`edit-bond-key-dates-${appointmentId}`}
+      title="Bond"
+      testId="bond-key-dates-card"
+      tableId={`bond-key-dates-table-${appointmentId}`}
+      tableAriaLabel="Bond key dates"
+      onEdit={canManage ? openEdit : undefined}
+      editAriaLabel="Edit bond key dates"
+      editTitle="Edit bond key dates"
+      columns={[
+        { key: 'bondRenewalDate', header: 'Bond Renewal', testId: 'bond-renewal-date' },
+        { key: 'bondIssuedDate', header: 'Bond Issued', testId: 'bond-issued-date' },
+      ]}
+      values={{
+        bondRenewalDate: formatDateOrDefault(data?.bondRenewalDate),
+        bondIssuedDate: formatDateOrDefault(data?.bondIssuedDate),
+      }}
+    />
+  );
+}

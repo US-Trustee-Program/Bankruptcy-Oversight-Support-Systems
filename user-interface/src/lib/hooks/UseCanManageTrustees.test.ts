@@ -1,15 +1,15 @@
 import { renderHook } from '@testing-library/react';
-import { describe, test, expect, beforeEach } from 'vitest';
-import { useCanManageTrustees } from './useCanManageTrustees';
-import TestingUtilities from '@/lib/testing/testing-utilities';
+import useCanManageTrustees from './UseCanManageTrustees';
 import { CamsRole } from '@common/cams/roles';
+import TestingUtilities from '@/lib/testing/testing-utilities';
+import LocalStorage from '@/lib/utils/local-storage';
 
 describe('useCanManageTrustees', () => {
   beforeEach(() => {
-    localStorage.clear();
+    LocalStorage.removeSession();
   });
 
-  test('returns true when the current user has the TrusteeAdmin role', () => {
+  test('returns true when the user has the TrusteeAdmin role', () => {
     TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
 
     const { result } = renderHook(() => useCanManageTrustees());
@@ -17,7 +17,7 @@ describe('useCanManageTrustees', () => {
     expect(result.current).toBe(true);
   });
 
-  test('returns false when the current user does not have the TrusteeAdmin role', () => {
+  test('returns false when the user lacks the TrusteeAdmin role', () => {
     TestingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
 
     const { result } = renderHook(() => useCanManageTrustees());

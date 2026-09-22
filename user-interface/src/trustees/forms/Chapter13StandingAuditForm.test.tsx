@@ -140,8 +140,8 @@ describe('Chapter13StandingAuditForm', () => {
         'appointment-001',
         expect.objectContaining({
           pastAudit: '2025-06-30',
-          auditCompletionYear: 2026,
-          auditCompletionStatus: 'Complete',
+          ch13AuditCompletionYear: 2026,
+          ch13AuditCompletionStatus: 'Complete',
           leaseExpiration: '2027-06-30',
           tprFrequency: 'ANNUAL',
         }),

@@ -45,6 +45,34 @@ export function isChapter7Elected(
   return chapter === '7' && appointmentType === 'elected';
 }
 
+export function isChapter11CaseByCase(
+  chapter: AppointmentChapterType,
+  appointmentType: AppointmentType,
+): boolean {
+  return chapter === '11' && appointmentType === 'case-by-case';
+}
+
+export function isChapter7Panel(
+  chapter: AppointmentChapterType,
+  appointmentType: AppointmentType,
+): boolean {
+  return chapter === '7' && appointmentType === 'panel';
+}
+
+export function isChapter11SubchapterVPool(
+  chapter: AppointmentChapterType,
+  appointmentType: AppointmentType,
+): boolean {
+  return chapter === '11-subchapter-v' && appointmentType === 'pool';
+}
+
+export function isChapter11SubchapterVOutOfPool(
+  chapter: AppointmentChapterType,
+  appointmentType: AppointmentType,
+): boolean {
+  return chapter === '11-subchapter-v' && appointmentType === 'out-of-pool';
+}
+
 export function formatAppointmentStatus(status: AppointmentStatus): string {
   const statusLabels: Record<AppointmentStatus, string> = {
     active: 'Active',
@@ -92,7 +120,6 @@ export function getStatusOptions(
   appointmentType: AppointmentType,
 ): readonly AppointmentStatus[] {
   const defaultStatusOptions: AppointmentStatus[] = ['active', 'inactive'];
-  if (!statusOptionsConfig[chapter]) return defaultStatusOptions;
   return statusOptionsConfig[chapter][appointmentType] || defaultStatusOptions;
 }
 

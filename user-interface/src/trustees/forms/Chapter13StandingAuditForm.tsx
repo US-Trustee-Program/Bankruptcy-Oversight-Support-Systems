@@ -19,21 +19,21 @@ import CompletionStatusYearSelect from './CompletionStatusYearSelect';
 
 type FormState = {
   pastAudit: string;
-  auditCompletionYear: number | '';
-  auditCompletionStatus: 'Complete' | 'Incomplete' | '';
+  ch13AuditCompletionYear: number | '';
+  ch13AuditCompletionStatus: 'Complete' | 'Incomplete' | '';
 };
 
 const EMPTY_FORM: FormState = {
   pastAudit: '',
-  auditCompletionYear: '',
-  auditCompletionStatus: '',
+  ch13AuditCompletionYear: '',
+  ch13AuditCompletionStatus: '',
 };
 
 function buildFormStateFromData(data: TrusteeUpcomingKeyDates): FormState {
   return {
     pastAudit: data.pastAudit ?? '',
-    auditCompletionYear: data.auditCompletionYear ?? '',
-    auditCompletionStatus: data.auditCompletionStatus ?? '',
+    ch13AuditCompletionYear: data.ch13AuditCompletionYear ?? '',
+    ch13AuditCompletionStatus: data.ch13AuditCompletionStatus ?? '',
   };
 }
 
@@ -46,8 +46,8 @@ function buildInput(
   return {
     ...buildKeyDatesInputFromOriginal(trusteeId, appointmentId, original),
     pastAudit: form.pastAudit || null,
-    auditCompletionYear: form.auditCompletionYear || null,
-    auditCompletionStatus: form.auditCompletionStatus || null,
+    ch13AuditCompletionYear: form.ch13AuditCompletionYear || null,
+    ch13AuditCompletionStatus: form.ch13AuditCompletionStatus || null,
   };
 }
 
@@ -116,8 +116,8 @@ export default function Chapter13StandingAuditForm() {
   }
 
   const isCompletionPairIncomplete =
-    (!!form.auditCompletionYear && !form.auditCompletionStatus) ||
-    (!form.auditCompletionYear && !!form.auditCompletionStatus);
+    (!!form.ch13AuditCompletionYear && !form.ch13AuditCompletionStatus) ||
+    (!form.ch13AuditCompletionYear && !!form.ch13AuditCompletionStatus);
 
   const isSaveDisabled = isSaving || hasErrorAmong(['past-audit']) || isCompletionPairIncomplete;
 
@@ -138,13 +138,13 @@ export default function Chapter13StandingAuditForm() {
       <CompletionStatusYearSelect
         idPrefix="audit-completion"
         title="Audit Completion Status for Year"
-        year={form.auditCompletionYear}
-        status={form.auditCompletionStatus}
-        onYearChange={(auditCompletionYear) =>
-          setForm((prev) => ({ ...prev, auditCompletionYear }))
+        year={form.ch13AuditCompletionYear}
+        status={form.ch13AuditCompletionStatus}
+        onYearChange={(ch13AuditCompletionYear) =>
+          setForm((prev) => ({ ...prev, ch13AuditCompletionYear }))
         }
-        onStatusChange={(auditCompletionStatus) =>
-          setForm((prev) => ({ ...prev, auditCompletionStatus }))
+        onStatusChange={(ch13AuditCompletionStatus) =>
+          setForm((prev) => ({ ...prev, ch13AuditCompletionStatus }))
         }
       />
       <div className="usa-button-group">

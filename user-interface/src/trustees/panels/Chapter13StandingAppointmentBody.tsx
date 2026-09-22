@@ -11,7 +11,7 @@ import Chapter13StandingOtherCard from './Chapter13StandingOtherCard';
 import { TrusteeAppointment, formatAppointmentStatus } from '@common/cams/trustee-appointments';
 import { formatChapterType, formatAppointmentType } from '@common/cams/trustees';
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
-import { formatAppointmentDate } from './appointmentDateFormat';
+import { formatAppointmentDate } from './appointmentDisplay';
 
 export interface Chapter13StandingAppointmentBodyProps {
   appointment: TrusteeAppointment;

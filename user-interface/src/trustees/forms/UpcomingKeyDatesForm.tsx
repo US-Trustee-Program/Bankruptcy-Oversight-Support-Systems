@@ -14,7 +14,6 @@ import {
   TrusteeAppointment,
   isChapter12Standing,
   isChapter13Standing,
-  isChapter7Elected,
 } from '@common/cams/trustee-appointments';
 import { AppointmentChapterType, AppointmentType } from '@common/cams/trustees';
 import Api2 from '@/lib/models/api2';
@@ -26,8 +25,7 @@ import MonthDayRangeSelector from '@/lib/components/uswds/MonthDayRangeSelector'
 import DatePicker from '@/lib/components/uswds/DatePicker';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
-import LocalStorage from '@/lib/utils/local-storage';
-import { CamsRole } from '@common/cams/roles';
+import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import { Stop } from '@/lib/components/Stop';
 import { UpcomingKeyDatesVariant } from '@/trustees/panels/upcomingKeyDatesFieldConfig';
 import {
@@ -35,75 +33,19 @@ import {
   DatePickerFieldDescriptor,
   UpcomingFormFieldDescriptor,
 } from './upcomingKeyDatesFormFieldConfig';
-
-type TirFrequency = 'ANNUAL' | 'SEMI_ANNUAL' | '';
-
-type TirPeriodOption = {
-  key: string;
-  label: string;
-  start: string;
-  end: string;
-  start2?: string;
-  end2?: string;
-};
-
-const ANNUAL_OPTIONS: TirPeriodOption[] = [
-  { key: '01/01-12/31', label: '01/01-12/31', start: '1900-01-01', end: '1900-12-31' },
-  { key: '04/01-03/31', label: '04/01-03/31', start: '1900-04-01', end: '1900-03-31' },
-  { key: '07/01-06/30', label: '07/01-06/30', start: '1900-07-01', end: '1900-06-30' },
-  { key: '10/01-09/30', label: '10/01-09/30', start: '1900-10-01', end: '1900-09-30' },
-];
-
-const SEMI_ANNUAL_OPTIONS: TirPeriodOption[] = [
-  {
-    key: '01/01-06/30 & 07/01-12/31',
-    label: '01/01-06/30 & 07/01-12/31',
-    start: '1900-01-01',
-    end: '1900-06-30',
-    start2: '1900-07-01',
-    end2: '1900-12-31',
-  },
-  {
-    key: '04/01-09/30 & 10/01-03/31',
-    label: '04/01-09/30 & 10/01-03/31',
-    start: '1900-04-01',
-    end: '1900-09-30',
-    start2: '1900-10-01',
-    end2: '1900-03-31',
-  },
-  {
-    key: '07/01-12/31 & 01/01-06/30',
-    label: '07/01-12/31 & 01/01-06/30',
-    start: '1900-07-01',
-    end: '1900-12-31',
-    start2: '1900-01-01',
-    end2: '1900-06-30',
-  },
-  {
-    key: '10/01-03/31 & 04/01-09/30',
-    label: '10/01-03/31 & 04/01-09/30',
-    start: '1900-10-01',
-    end: '1900-03-31',
-    start2: '1900-04-01',
-    end2: '1900-09-30',
-  },
-];
-
-function findPeriodKey(
-  start: string | undefined,
-  end: string | undefined,
-  frequency: TirFrequency,
-): string {
-  if (!start || !end) return '';
-  const options = frequency === 'ANNUAL' ? ANNUAL_OPTIONS : SEMI_ANNUAL_OPTIONS;
-  return options.find((o) => o.start === start && o.end === end)?.key ?? '';
-}
+import {
+  TirFrequency,
+  ANNUAL_OPTIONS,
+  SEMI_ANNUAL_OPTIONS,
+  findPeriodKey,
+} from './tirPeriodOptions';
 
 type FormState = {
   pastBackgroundQuestion: string;
   pastFieldExam: string;
   pastAudit: string;
   pastTprSubmission: string;
+  lastTprSubmitted: string;
   tprReviewPeriodStart: string;
   tprReviewPeriodEnd: string;
   tprDue: string;
@@ -118,16 +60,22 @@ type FormState = {
   tirSemiAnnualReviewPeriodStart: string;
   tirSemiAnnualReviewPeriodEnd: string;
   lastAuditFiscalYear: number | null;
+  auditCompletionYear: number | null;
+  auditCompletionStatus: 'CLOSED' | 'NOT_CLOSED' | null;
+  tprCompletionYear: number | null;
+  tprCompletionStatus: 'COMPLETE' | 'INCOMPLETE' | null;
+  tirCompletionYear: number | null;
+  tirCompletionStatus: 'COMPLETE' | 'INCOMPLETE' | null;
   lastMonthlyReportReceived: string;
   leaseExpiration: string;
   idExpiration: string;
   lastCompensationStudy: string;
   bondIssuedDate: string;
   bondRenewalDate: string;
-  auditCompletionYear: number | null;
-  auditCompletionStatus: 'Complete' | 'Incomplete' | '';
-  tprCompletionYear: number | null;
-  tprCompletionStatus: 'Complete' | 'Incomplete' | '';
+  ch13AuditCompletionYear: number | null;
+  ch13AuditCompletionStatus: 'Complete' | 'Incomplete' | '';
+  ch13TprCompletionYear: number | null;
+  ch13TprCompletionStatus: 'Complete' | 'Incomplete' | '';
 };
 
 const EMPTY_FORM: FormState = {
@@ -135,6 +83,7 @@ const EMPTY_FORM: FormState = {
   pastFieldExam: '',
   pastAudit: '',
   pastTprSubmission: '',
+  lastTprSubmitted: '',
   tprReviewPeriodStart: '',
   tprReviewPeriodEnd: '',
   tprDue: '',
@@ -149,16 +98,22 @@ const EMPTY_FORM: FormState = {
   tirSemiAnnualReviewPeriodStart: '',
   tirSemiAnnualReviewPeriodEnd: '',
   lastAuditFiscalYear: null,
+  auditCompletionYear: null,
+  auditCompletionStatus: null,
+  tprCompletionYear: null,
+  tprCompletionStatus: null,
+  tirCompletionYear: null,
+  tirCompletionStatus: null,
   lastMonthlyReportReceived: '',
   leaseExpiration: '',
   idExpiration: '',
   lastCompensationStudy: '',
   bondIssuedDate: '',
   bondRenewalDate: '',
-  auditCompletionYear: null,
-  auditCompletionStatus: '',
-  tprCompletionYear: null,
-  tprCompletionStatus: '',
+  ch13AuditCompletionYear: null,
+  ch13AuditCompletionStatus: '',
+  ch13TprCompletionYear: null,
+  ch13TprCompletionStatus: '',
 };
 
 const currentYear = new Date().getFullYear();
@@ -177,9 +132,6 @@ function deriveVariant(
   if (isChapter13Standing(chapter, appointmentType)) {
     return 'chapter13-standing';
   }
-  if (isChapter7Elected(chapter, appointmentType)) {
-    return 'chapter7-elected';
-  }
   return 'chapter7-panel';
 }
 
@@ -190,6 +142,7 @@ function buildFormStateFromData(data: TrusteeUpcomingKeyDates): FormState {
     pastFieldExam: data.pastFieldExam ?? '',
     pastAudit: data.pastAudit ?? '',
     pastTprSubmission: data.pastTprSubmission ?? '',
+    lastTprSubmitted: data.lastTprSubmitted ?? '',
     tprReviewPeriodStart: data.tprReviewPeriodStart ?? '',
     tprReviewPeriodEnd: data.tprReviewPeriodEnd ?? '',
     tprDue: data.tprDue ?? '',
@@ -204,16 +157,22 @@ function buildFormStateFromData(data: TrusteeUpcomingKeyDates): FormState {
     tirSemiAnnualReviewPeriodStart: data.tirSemiAnnualReviewPeriodStart ?? '',
     tirSemiAnnualReviewPeriodEnd: data.tirSemiAnnualReviewPeriodEnd ?? '',
     lastAuditFiscalYear: data.lastAuditFiscalYear ?? null,
+    auditCompletionYear: data.auditCompletionYear ?? null,
+    auditCompletionStatus: data.auditCompletionStatus ?? null,
+    tprCompletionYear: data.tprCompletionYear ?? null,
+    tprCompletionStatus: data.tprCompletionStatus ?? null,
+    tirCompletionYear: data.tirCompletionYear ?? null,
+    tirCompletionStatus: data.tirCompletionStatus ?? null,
     lastMonthlyReportReceived: data.lastMonthlyReportReceived ?? '',
     leaseExpiration: data.leaseExpiration ?? '',
     idExpiration: data.idExpiration ?? '',
     lastCompensationStudy: data.lastCompensationStudy ?? '',
     bondIssuedDate: data.bondIssuedDate ?? '',
     bondRenewalDate: data.bondRenewalDate ?? '',
-    auditCompletionYear: data.auditCompletionYear ?? null,
-    auditCompletionStatus: data.auditCompletionStatus ?? '',
-    tprCompletionYear: data.tprCompletionYear ?? null,
-    tprCompletionStatus: data.tprCompletionStatus ?? '',
+    ch13AuditCompletionYear: data.ch13AuditCompletionYear ?? null,
+    ch13AuditCompletionStatus: data.ch13AuditCompletionStatus ?? '',
+    ch13TprCompletionYear: data.ch13TprCompletionYear ?? null,
+    ch13TprCompletionStatus: data.ch13TprCompletionStatus ?? '',
   };
 }
 
@@ -276,7 +235,7 @@ export default function UpcomingKeyDatesForm({
   const navigate = useNavigate();
   const location = useLocation();
   const globalAlert = useGlobalAlert();
-  const canManage = !!LocalStorage.getSession()?.user?.roles?.includes(CamsRole.TrusteeAdmin);
+  const canManage = useCanManageTrustees();
 
   const variantFromState = (location.state as { variant?: UpcomingKeyDatesVariant } | null)
     ?.variant;
@@ -438,6 +397,7 @@ export default function UpcomingKeyDatesForm({
       pastFieldExam: form.pastFieldExam || null,
       pastAudit: form.pastAudit || null,
       pastTprSubmission: form.pastTprSubmission || null,
+      lastTprSubmitted: form.lastTprSubmitted || null,
       tprReviewPeriodStart: tprDisplayUpdates
         ? form.tprReviewPeriodStart || null
         : form.tprReviewPeriodStart
@@ -466,16 +426,22 @@ export default function UpcomingKeyDatesForm({
       tirSemiAnnualSubmission,
       tirSemiAnnualReview,
       lastAuditFiscalYear: form.lastAuditFiscalYear,
+      auditCompletionYear: form.auditCompletionYear,
+      auditCompletionStatus: form.auditCompletionStatus,
+      tprCompletionYear: form.tprCompletionYear,
+      tprCompletionStatus: form.tprCompletionStatus,
+      tirCompletionYear: form.tirCompletionYear,
+      tirCompletionStatus: form.tirCompletionStatus,
       lastMonthlyReportReceived: form.lastMonthlyReportReceived || null,
       leaseExpiration: form.leaseExpiration || null,
       idExpiration: form.idExpiration || null,
       lastCompensationStudy: form.lastCompensationStudy || null,
       bondIssuedDate: form.bondIssuedDate || null,
       bondRenewalDate: form.bondRenewalDate || null,
-      auditCompletionYear: form.auditCompletionYear,
-      auditCompletionStatus: form.auditCompletionStatus || null,
-      tprCompletionYear: form.tprCompletionYear,
-      tprCompletionStatus: form.tprCompletionStatus || null,
+      ch13AuditCompletionYear: form.ch13AuditCompletionYear,
+      ch13AuditCompletionStatus: form.ch13AuditCompletionStatus || null,
+      ch13TprCompletionYear: form.ch13TprCompletionYear,
+      ch13TprCompletionStatus: form.ch13TprCompletionStatus || null,
     };
 
     if (!tprDisplayUpdates) {

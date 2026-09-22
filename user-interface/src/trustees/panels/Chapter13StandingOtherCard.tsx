@@ -4,7 +4,7 @@ import {
   isoToMMYYYY,
 } from '@common/cams/trustee-upcoming-key-dates';
 import Chapter13StandingKeyDatesCard from './Chapter13StandingKeyDatesCard';
-import { useCanManageTrustees } from './useCanManageTrustees';
+import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import { useOpenEditKeyDates } from './useOpenEditKeyDates';
 import { leaseExpirationField, idExpirationField, NO_DATE } from './upcomingKeyDatesFieldConfig';
 

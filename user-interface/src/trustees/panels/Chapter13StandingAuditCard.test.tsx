@@ -70,23 +70,31 @@ describe('Chapter13StandingAuditCard', () => {
     expect(screen.getByTestId('past-audit-row')).toHaveTextContent('06/30/2025');
   });
 
-  test('renders no completion-status tag when auditCompletionYear/Status are unset', () => {
+  test('renders no completion-status tag when ch13AuditCompletionYear/Status are unset', () => {
     renderComponent();
     expect(screen.queryByTestId('tag-audit-completion-status')).not.toBeInTheDocument();
   });
 
-  test('renders a green "Complete for {year}" tag when auditCompletionStatus is Complete', () => {
+  test('renders a green "Complete for {year}" tag when ch13AuditCompletionStatus is Complete', () => {
     renderComponent({
-      data: { ...baseDocument, auditCompletionYear: 2026, auditCompletionStatus: 'Complete' },
+      data: {
+        ...baseDocument,
+        ch13AuditCompletionYear: 2026,
+        ch13AuditCompletionStatus: 'Complete',
+      },
     });
     const tag = screen.getByTestId('tag-audit-completion-status');
     expect(tag).toHaveTextContent('Complete for 2026');
     expect(tag.className).toContain('bg-success');
   });
 
-  test('renders a red "Incomplete for {year}" tag when auditCompletionStatus is Incomplete', () => {
+  test('renders a red "Incomplete for {year}" tag when ch13AuditCompletionStatus is Incomplete', () => {
     renderComponent({
-      data: { ...baseDocument, auditCompletionYear: 2026, auditCompletionStatus: 'Incomplete' },
+      data: {
+        ...baseDocument,
+        ch13AuditCompletionYear: 2026,
+        ch13AuditCompletionStatus: 'Incomplete',
+      },
     });
     const tag = screen.getByTestId('tag-audit-completion-status');
     expect(tag).toHaveTextContent('Incomplete for 2026');
