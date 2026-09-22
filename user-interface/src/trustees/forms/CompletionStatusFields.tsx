@@ -1,7 +1,5 @@
+import { CompletionStatus } from '@common/cams/trustee-upcoming-key-dates';
 import { FISCAL_YEAR_OPTIONS } from './chapter7PanelKeyDatesInput';
-
-/** Matches the COMPLETE/INCOMPLETE enum the key-dates model stores. */
-type CompletionStatus = 'COMPLETE' | 'INCOMPLETE';
 
 export interface CompletionStatusValue {
   year: number | '';

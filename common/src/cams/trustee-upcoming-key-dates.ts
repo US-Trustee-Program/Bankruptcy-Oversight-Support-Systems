@@ -316,6 +316,12 @@ export function validateCompletionPairPresence(
   return `${label} ${fieldNames.first} and ${fieldNames.second} must both be set.`;
 }
 
+/**
+ * Completion status for a report in a given year, stored alongside its paired
+ * completion year.
+ */
+export type CompletionStatus = 'COMPLETE' | 'INCOMPLETE';
+
 export type TrusteeUpcomingKeyDates = Auditable &
   Identifiable & {
     documentType: 'TRUSTEE_UPCOMING_REPORT_DATES';
@@ -346,11 +352,11 @@ export type TrusteeUpcomingKeyDates = Auditable &
     auditCompletionYear?: number;
     auditCompletionStatus?: 'CLOSED' | 'NOT_CLOSED';
     tprCompletionYear?: number;
-    tprCompletionStatus?: 'COMPLETE' | 'INCOMPLETE';
+    tprCompletionStatus?: CompletionStatus;
     tirCompletionYear?: number;
-    tirCompletionStatus?: 'COMPLETE' | 'INCOMPLETE';
+    tirCompletionStatus?: CompletionStatus;
     annualReportCompletionYear?: number;
-    annualReportCompletionStatus?: 'COMPLETE' | 'INCOMPLETE';
+    annualReportCompletionStatus?: CompletionStatus;
     lastMonthlyReportReceived?: string;
     leaseExpiration?: string;
     idExpiration?: string;
@@ -387,11 +393,11 @@ export type TrusteeUpcomingKeyDatesInput = {
   auditCompletionYear: number | null;
   auditCompletionStatus: 'CLOSED' | 'NOT_CLOSED' | null;
   tprCompletionYear: number | null;
-  tprCompletionStatus: 'COMPLETE' | 'INCOMPLETE' | null;
+  tprCompletionStatus: CompletionStatus | null;
   tirCompletionYear: number | null;
-  tirCompletionStatus: 'COMPLETE' | 'INCOMPLETE' | null;
+  tirCompletionStatus: CompletionStatus | null;
   annualReportCompletionYear: number | null;
-  annualReportCompletionStatus: 'COMPLETE' | 'INCOMPLETE' | null;
+  annualReportCompletionStatus: CompletionStatus | null;
   lastMonthlyReportReceived: string | null;
   leaseExpiration: string | null;
   idExpiration: string | null;
