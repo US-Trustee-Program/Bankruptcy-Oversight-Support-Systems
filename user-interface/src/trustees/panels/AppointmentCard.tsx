@@ -6,14 +6,14 @@ import { TrusteeAppointment, formatAppointmentStatus } from '@common/cams/truste
 import { formatChapterType, formatAppointmentType } from '@common/cams/trustees';
 import useEditTrusteeAppointment from '@/lib/hooks/UseEditTrusteeAppointment';
 import useFeatureFlags, {
-  DISPLAY_CHPT12_STANDING_KEY_DATES,
+  DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES,
   DISPLAY_CHPT13_STANDING_KEY_DATES,
   TPR_DISPLAY_UPDATES,
 } from '@/lib/hooks/UseFeatureFlags';
 import useCourts from '@/lib/hooks/UseCourts';
 import { buildDivisionsDisplay } from '@/lib/utils/court-utils';
 import { useUpcomingKeyDates } from './useUpcomingKeyDates';
-import { isChapter12Standing, isChapter13Standing } from '@common/cams/trustee-appointments';
+import { isChapter13Standing } from '@common/cams/trustee-appointments';
 import { formatAppointmentDate, buildDistrictDisplay } from './appointmentDisplay';
 
 export interface AppointmentCardProps {
@@ -24,7 +24,8 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
   const { canManage, openEditTrustee } = useEditTrusteeAppointment(props.appointment);
 
   const featureFlags = useFeatureFlags();
-  const displayChpt12StandingKeyDates = featureFlags[DISPLAY_CHPT12_STANDING_KEY_DATES] === true;
+  const displayChpt1213CaseByCaseUpcomingKeyDates =
+    featureFlags[DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES] === true;
   const displayChpt13StandingKeyDates = featureFlags[DISPLAY_CHPT13_STANDING_KEY_DATES] === true;
   const tprDisplayUpdates = !!featureFlags[TPR_DISPLAY_UPDATES];
   const { chapter, appointmentType } = props.appointment;
@@ -54,18 +55,17 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
   }
   appointmentHeading += ` - Chapter ${formattedChapter} ${formattedAppointmentType}`;
 
-  const isChapter12StandingAppointment = isChapter12Standing(
-    props.appointment.chapter,
-    props.appointment.appointmentType,
-  );
+  const isCh1213CaseByCase =
+    (props.appointment.chapter === '12' || props.appointment.chapter === '13') &&
+    props.appointment.appointmentType === 'case-by-case';
   const isChapter13StandingAppointment = isChapter13Standing(chapter, appointmentType);
 
-  const showsChpt12StandingKeyDatesCards =
-    displayChpt12StandingKeyDates && isChapter12StandingAppointment;
+  const showsCh1213UpcomingKeyDatesCard =
+    displayChpt1213CaseByCaseUpcomingKeyDates && isCh1213CaseByCase;
   const showsChpt13StandingUpcomingKeyDates =
     displayChpt13StandingKeyDates && isChapter13StandingAppointment;
   const shouldFetchKeyDates =
-    showsChpt12StandingKeyDatesCards || showsChpt13StandingUpcomingKeyDates;
+    showsCh1213UpcomingKeyDatesCard || showsChpt13StandingUpcomingKeyDates;
 
   const { data: keyDatesData, isLoading: isKeyDatesLoading } = useUpcomingKeyDates(
     props.appointment.trusteeId,
@@ -96,26 +96,16 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
             { label: 'Status Effective', value: formattedEffectiveDate },
           ]}
         />
-        {showsChpt12StandingKeyDatesCards && (
-          <>
-            <UpcomingKeyDates
-              variant="chapter12-standing"
-              trusteeId={props.appointment.trusteeId}
-              appointmentId={props.appointment.id}
-              appointmentHeading={appointmentHeading}
-              data={keyDatesData}
-              isLoading={isKeyDatesLoading}
-              tprDisplayUpdates={tprDisplayUpdates}
-            />
-            <PastKeyDates
-              variant="chapter12-standing"
-              trusteeId={props.appointment.trusteeId}
-              appointmentId={props.appointment.id}
-              appointmentHeading={appointmentHeading}
-              data={keyDatesData}
-              isLoading={isKeyDatesLoading}
-            />
-          </>
+        {showsCh1213UpcomingKeyDatesCard && (
+          <UpcomingKeyDates
+            variant="ch12-13-case-by-case"
+            trusteeId={props.appointment.trusteeId}
+            appointmentId={props.appointment.id}
+            appointmentHeading={appointmentHeading}
+            data={keyDatesData}
+            isLoading={isKeyDatesLoading}
+            tprDisplayUpdates={tprDisplayUpdates}
+          />
         )}
         {showsChpt13StandingUpcomingKeyDates && (
           <>

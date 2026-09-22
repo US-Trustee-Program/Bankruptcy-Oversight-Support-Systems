@@ -1,10 +1,26 @@
 import { render, screen } from '@testing-library/react';
-import { describe, test, expect } from 'vitest';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
+import { BrowserRouter } from 'react-router-dom';
+import userEvent from '@testing-library/user-event';
 import Chapter12StandingOtherKeyDatesCard from './Chapter12StandingOtherKeyDatesCard';
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
+import { CamsRole } from '@common/cams/roles';
+import TestingUtilities from '@/lib/testing/testing-utilities';
+
+const mockUseNavigate = vi.hoisted(() => vi.fn());
+
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: mockUseNavigate,
+  };
+});
 
 describe('Chapter12StandingOtherKeyDatesCard', () => {
+  let mockNavigate: ReturnType<typeof vi.fn>;
+
   const keyDates: TrusteeUpcomingKeyDates = {
     id: 'key-dates-003',
     documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
@@ -19,14 +35,23 @@ describe('Chapter12StandingOtherKeyDatesCard', () => {
     idExpiration: '2023-06-03',
   };
 
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    mockNavigate = vi.fn();
+    mockUseNavigate.mockReturnValue(mockNavigate);
+    TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
+  });
+
   function renderCard(data: TrusteeUpcomingKeyDates | null = keyDates, isLoading = false) {
     return render(
-      <Chapter12StandingOtherKeyDatesCard
-        trusteeId="trustee-123"
-        appointmentId="appointment-001"
-        data={data}
-        isLoading={isLoading}
-      />,
+      <BrowserRouter>
+        <Chapter12StandingOtherKeyDatesCard
+          trusteeId="trustee-123"
+          appointmentId="appointment-001"
+          data={data}
+          isLoading={isLoading}
+        />
+      </BrowserRouter>,
     );
   }
 
@@ -65,10 +90,40 @@ describe('Chapter12StandingOtherKeyDatesCard', () => {
     expect(screen.queryByText('Other')).not.toBeInTheDocument();
   });
 
-  test('never renders a completion-status tag or an edit button', () => {
+  test('never renders a completion-status tag', () => {
     renderCard();
 
     expect(screen.queryAllByTestId(/^tag-/)).toHaveLength(0);
-    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  test('renders an Edit button when user has TrusteeAdmin role', () => {
+    renderCard();
+
+    expect(
+      screen.getByTestId('button-edit-chapter12-standing-other-key-dates-appointment-001'),
+    ).toBeInTheDocument();
+  });
+
+  test('does not render an Edit button when user lacks TrusteeAdmin role', () => {
+    TestingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
+
+    renderCard();
+
+    expect(
+      screen.queryByTestId('button-edit-chapter12-standing-other-key-dates-appointment-001'),
+    ).not.toBeInTheDocument();
+  });
+
+  test('navigates to the Other key dates edit form', async () => {
+    const user = userEvent.setup();
+    renderCard();
+
+    await user.click(
+      screen.getByTestId('button-edit-chapter12-standing-other-key-dates-appointment-001'),
+    );
+
+    expect(mockNavigate).toHaveBeenCalledWith(
+      '/trustees/trustee-123/appointments/appointment-001/chapter12-standing-other-key-dates/edit',
+    );
   });
 });
