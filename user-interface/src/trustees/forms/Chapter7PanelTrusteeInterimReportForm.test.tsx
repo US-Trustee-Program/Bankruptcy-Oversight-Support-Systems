@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
 import Chapter7PanelTrusteeInterimReportForm, {
@@ -41,6 +41,7 @@ const populatedDocument: TrusteeUpcomingKeyDates = {
   tirReview: '1900-03-30',
   tirCompletionYear: 2025,
   tirCompletionStatus: 'COMPLETE',
+  pastTprSubmission: '2024-04-15',
 };
 
 const mockGlobalAlertRef = {
@@ -110,10 +111,9 @@ describe('Chapter7PanelTrusteeInterimReportForm', () => {
       expect(screen.getByTestId('tir-frequency')).toHaveValue('ANNUAL');
     });
     expect(screen.getByTestId('tir-period')).toHaveValue('01/01-12/31');
-    expect(screen.getByTestId('tir-submission-preview')).toHaveTextContent('01/30');
-    expect(screen.getByTestId('tir-due-preview')).toHaveTextContent('03/30');
     expect(screen.getByTestId('tir-completion-status-year')).toHaveValue('2025');
     expect(screen.getByTestId('tir-completion-status-status')).toHaveValue('COMPLETE');
+    expect(screen.getByTestId('past-tpr-submission')).toHaveValue('2024-04-15');
   });
 
   test('pre-populates form from API response for a SEMI_ANNUAL period', async () => {
@@ -138,11 +138,9 @@ describe('Chapter7PanelTrusteeInterimReportForm', () => {
       expect(screen.getByTestId('tir-frequency')).toHaveValue('SEMI_ANNUAL');
     });
     expect(screen.getByTestId('tir-period')).toHaveValue('01/01-06/30 & 07/01-12/31');
-    expect(screen.getByTestId('tir-submission-preview')).toHaveTextContent('07/30 & 01/30');
-    expect(screen.getByTestId('tir-due-preview')).toHaveTextContent('09/28 & 03/30');
   });
 
-  test('shows empty inputs and "No date added" previews when API returns null', async () => {
+  test('shows empty inputs when API returns null', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderComponent();
@@ -153,13 +151,12 @@ describe('Chapter7PanelTrusteeInterimReportForm', () => {
     expect(screen.getByTestId('tir-frequency')).toHaveValue('');
     expect(screen.getByTestId('tir-period')).toHaveValue('');
     expect(screen.getByTestId('tir-period')).toBeDisabled();
-    expect(screen.getByTestId('tir-submission-preview')).toHaveTextContent('No date added');
-    expect(screen.getByTestId('tir-due-preview')).toHaveTextContent('No date added');
     expect(screen.getByTestId('tir-completion-status-year')).toHaveValue('');
     expect(screen.getByTestId('tir-completion-status-status')).toHaveValue('');
+    expect(screen.getByTestId('past-tpr-submission')).toHaveValue('');
   });
 
-  test('choosing a Frequency then Period updates the live calculated preview', async () => {
+  test('choosing a Frequency enables the Period select', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderComponent();
@@ -171,11 +168,10 @@ describe('Chapter7PanelTrusteeInterimReportForm', () => {
 
     await userEvent.selectOptions(screen.getByTestId('tir-period'), '04/01-03/31');
 
-    expect(screen.getByTestId('tir-submission-preview')).toHaveTextContent('04/30');
-    expect(screen.getByTestId('tir-due-preview')).toHaveTextContent('06/29');
+    expect(screen.getByTestId('tir-period')).toHaveValue('04/01-03/31');
   });
 
-  test('changing Frequency clears the previously selected Period and preview', async () => {
+  test('changing Frequency clears the previously selected Period', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
 
     renderComponent();
@@ -185,11 +181,9 @@ describe('Chapter7PanelTrusteeInterimReportForm', () => {
     await userEvent.selectOptions(screen.getByTestId('tir-frequency'), 'SEMI_ANNUAL');
 
     expect(screen.getByTestId('tir-period')).toHaveValue('');
-    expect(screen.getByTestId('tir-submission-preview')).toHaveTextContent('No date added');
-    expect(screen.getByTestId('tir-due-preview')).toHaveTextContent('No date added');
   });
 
-  test('resetting Period back to the placeholder clears the period and preview without touching Frequency', async () => {
+  test('resetting Period back to the placeholder clears the period without touching Frequency', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
 
     renderComponent();
@@ -200,8 +194,6 @@ describe('Chapter7PanelTrusteeInterimReportForm', () => {
 
     expect(screen.getByTestId('tir-frequency')).toHaveValue('ANNUAL');
     expect(screen.getByTestId('tir-period')).toHaveValue('');
-    expect(screen.getByTestId('tir-submission-preview')).toHaveTextContent('No date added');
-    expect(screen.getByTestId('tir-due-preview')).toHaveTextContent('No date added');
   });
 
   test('pre-populates with an empty Period select when the stored period matches no known option', async () => {
@@ -231,6 +223,9 @@ describe('Chapter7PanelTrusteeInterimReportForm', () => {
     await userEvent.selectOptions(screen.getByTestId('tir-period'), '04/01-03/31');
     await userEvent.selectOptions(screen.getByTestId('tir-completion-status-year'), '2024');
     await userEvent.selectOptions(screen.getByTestId('tir-completion-status-status'), 'INCOMPLETE');
+    fireEvent.change(screen.getByTestId('past-tpr-submission'), {
+      target: { value: '2024-05-20' },
+    });
 
     await userEvent.click(screen.getByTestId('button-save-chapter7-panel-tir'));
 
@@ -252,6 +247,7 @@ describe('Chapter7PanelTrusteeInterimReportForm', () => {
           tirSemiAnnualReview: null,
           tirCompletionYear: 2024,
           tirCompletionStatus: 'INCOMPLETE',
+          pastTprSubmission: '2024-05-20',
         }),
       );
     });
@@ -325,6 +321,40 @@ describe('Chapter7PanelTrusteeInterimReportForm', () => {
     await waitFor(() => {
       expect(screen.getByTestId('tir-completion-status-error')).toHaveTextContent(
         'Trustee Interim Report Completion Status Year and Status must both be set.',
+      );
+      expect(screen.getByTestId('button-save-chapter7-panel-tir')).toBeDisabled();
+    });
+  });
+
+  test('Save button is disabled and shows a message when Frequency is chosen but Period is left blank', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+    renderComponent();
+
+    await screen.findByTestId('tir-frequency');
+
+    await userEvent.selectOptions(screen.getByTestId('tir-frequency'), 'ANNUAL');
+
+    await waitFor(() => {
+      expect(screen.getByTestId('tir-period-pair-error')).toHaveTextContent(
+        'Trustee Interim Report (TIR) Period Frequency and Period must both be set.',
+      );
+      expect(screen.getByTestId('button-save-chapter7-panel-tir')).toBeDisabled();
+    });
+  });
+
+  test('Save button is disabled and shows a message when Period is cleared back to the placeholder', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+
+    renderComponent();
+
+    await waitFor(() => expect(screen.getByTestId('tir-period')).toHaveValue('01/01-12/31'));
+
+    await userEvent.selectOptions(screen.getByTestId('tir-period'), '');
+
+    await waitFor(() => {
+      expect(screen.getByTestId('tir-period-pair-error')).toHaveTextContent(
+        'Trustee Interim Report (TIR) Period Frequency and Period must both be set.',
       );
       expect(screen.getByTestId('button-save-chapter7-panel-tir')).toBeDisabled();
     });
@@ -428,6 +458,7 @@ describe('buildTrusteeInterimReportKeyDatesInput', () => {
         tirSemiAnnualReviewPeriodEnd: '',
         tirCompletionYear: 2025,
         tirCompletionStatus: 'COMPLETE',
+        pastTprSubmission: '1900-05-05',
       },
     );
 
@@ -437,7 +468,7 @@ describe('buildTrusteeInterimReportKeyDatesInput', () => {
       pastBackgroundQuestion: '2020-01-01',
       pastFieldExam: '2020-01-02',
       pastAudit: '2020-01-03',
-      pastTprSubmission: '2020-01-04',
+      pastTprSubmission: '1900-05-05',
       lastTprSubmitted: '2020-01-22',
       tprReviewPeriodStart: '2020-01-05',
       tprReviewPeriodEnd: '2020-01-06',
@@ -484,6 +515,7 @@ describe('buildTrusteeInterimReportKeyDatesInput', () => {
         tirSemiAnnualReviewPeriodEnd: '1900-12-31',
         tirCompletionYear: 2025,
         tirCompletionStatus: 'COMPLETE',
+        pastTprSubmission: '',
       },
     );
 
@@ -515,6 +547,7 @@ describe('buildTrusteeInterimReportKeyDatesInput', () => {
         tirSemiAnnualReviewPeriodEnd: '',
         tirCompletionYear: '',
         tirCompletionStatus: '',
+        pastTprSubmission: '',
       },
     );
 

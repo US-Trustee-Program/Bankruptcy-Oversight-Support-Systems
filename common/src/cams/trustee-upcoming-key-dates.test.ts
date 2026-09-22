@@ -995,6 +995,24 @@ describe('validateCompletionPairPresence', () => {
       'Some Label Year and Status must both be set.',
     );
   });
+
+  test('uses custom field names in the error message when provided', () => {
+    expect(
+      validateCompletionPairPresence(2026, '', 'Field Exam or Audit', {
+        first: 'Year',
+        second: 'Type',
+      }),
+    ).toBe('Field Exam or Audit Year and Type must both be set.');
+  });
+
+  test('supports string values for the first field with custom field names', () => {
+    expect(
+      validateCompletionPairPresence('ANNUAL', '', 'Trustee Interim Report (TIR) Period', {
+        first: 'Frequency',
+        second: 'Period',
+      }),
+    ).toBe('Trustee Interim Report (TIR) Period Frequency and Period must both be set.');
+  });
 });
 
 describe('calculateAuditReqBy', () => {

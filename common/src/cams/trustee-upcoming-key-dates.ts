@@ -288,19 +288,21 @@ export function validateTprDuePair(
 }
 
 /**
- * Validates that a completion-status year/status pair is either both set or both blank,
- * for direct per-render use on a card's dedicated edit form (mirrors validateTprDuePair's
- * blur-time-feedback role, but for the Year+Status completion-status groups).
+ * Validates that a two-field pair is either both set or both blank, for direct
+ * per-render use on a card's dedicated edit form (mirrors validateTprDuePair's
+ * blur-time-feedback role, but for any Year+Status-shaped pair -- completion
+ * status, exam/audit year+type, or frequency+period).
  */
 export function validateCompletionPairPresence(
-  year: number | '' | null | undefined,
-  status: string | '' | null | undefined,
+  first: number | string | '' | null | undefined,
+  second: number | string | '' | null | undefined,
   label: string,
+  fieldNames: { first: string; second: string } = { first: 'Year', second: 'Status' },
 ): string {
-  const yearSet = year !== '' && year !== null && year !== undefined;
-  const statusSet = status !== '' && status !== null && status !== undefined;
-  if (yearSet === statusSet) return '';
-  return `${label} Year and Status must both be set.`;
+  const firstSet = first !== '' && first !== null && first !== undefined;
+  const secondSet = second !== '' && second !== null && second !== undefined;
+  if (firstSet === secondSet) return '';
+  return `${label} ${fieldNames.first} and ${fieldNames.second} must both be set.`;
 }
 
 export type TrusteeUpcomingKeyDates = Auditable &

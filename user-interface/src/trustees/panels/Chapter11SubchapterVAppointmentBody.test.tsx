@@ -16,9 +16,8 @@ vi.mock('./AppointmentBasicFields', () => ({
   ),
 }));
 
-vi.mock('./PastKeyDates', () => ({
+vi.mock('./Chapter11SubVOtherKeyDatesCard', () => ({
   default: (props: {
-    variant?: string;
     data: TrusteeUpcomingKeyDates | null;
     isLoading: boolean;
     trusteeId?: string;
@@ -26,8 +25,7 @@ vi.mock('./PastKeyDates', () => ({
     appointmentHeading?: string;
   }) => (
     <div
-      data-testid="past-key-dates-card"
-      data-variant={String(props.variant)}
+      data-testid="subv-other-key-dates-card"
       data-is-loading={String(props.isLoading)}
       data-has-data={String(props.data !== null)}
       data-trustee-id={String(props.trusteeId)}
@@ -95,58 +93,69 @@ describe('Chapter11SubchapterVAppointmentBody', () => {
       'appointment-003',
     );
     await waitFor(() => {
-      expect(screen.getByTestId('past-key-dates-card')).toHaveAttribute('data-is-loading', 'false');
+      expect(screen.getByTestId('subv-other-key-dates-card')).toHaveAttribute(
+        'data-is-loading',
+        'false',
+      );
     });
   });
 
-  test('fetches key dates for a pool appointment and forwards the result to PastKeyDates', async () => {
+  test('fetches key dates for a pool appointment and forwards the result to Chapter11SubVOtherKeyDatesCard', async () => {
     const getSpy = vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: keyDates });
 
     renderBody();
 
     await waitFor(() => {
-      expect(screen.getByTestId('past-key-dates-card')).toHaveAttribute('data-is-loading', 'false');
+      expect(screen.getByTestId('subv-other-key-dates-card')).toHaveAttribute(
+        'data-is-loading',
+        'false',
+      );
     });
     expect(getSpy).toHaveBeenCalledWith('trustee-789', 'appointment-003');
-    expect(screen.getByTestId('past-key-dates-card')).toHaveAttribute('data-variant', 'subv-pool');
-    expect(screen.getByTestId('past-key-dates-card')).toHaveAttribute('data-has-data', 'true');
+    expect(screen.getByTestId('subv-other-key-dates-card')).toHaveAttribute(
+      'data-has-data',
+      'true',
+    );
   });
 
-  test('renders the PastKeyDates card for a non-TrusteeAdmin user when the flag is enabled (no canManage gate)', async () => {
+  test('renders the Chapter11SubVOtherKeyDatesCard for a non-TrusteeAdmin user when the flag is enabled (no canManage gate)', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: keyDates });
     TestingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
 
     renderBody();
 
     await waitFor(() => {
-      expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
+      expect(screen.getByTestId('subv-other-key-dates-card')).toBeInTheDocument();
     });
   });
 
-  test('builds the district/division/chapter/type appointment heading for PastKeyDates', async () => {
+  test('builds the district/division/chapter/type appointment heading for Chapter11SubVOtherKeyDatesCard', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: keyDates });
 
     renderBody();
 
     await waitFor(() => {
-      expect(screen.getByTestId('past-key-dates-card')).toHaveAttribute(
+      expect(screen.getByTestId('subv-other-key-dates-card')).toHaveAttribute(
         'data-appointment-heading',
         'Southern District of New York (Manhattan): Chapter 11 Subchapter V - Pool',
       );
     });
   });
 
-  test('forwards null data to PastKeyDates when no key dates document exists', async () => {
+  test('forwards null data to Chapter11SubVOtherKeyDatesCard when no key dates document exists', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderBody();
 
     await waitFor(() => {
-      expect(screen.getByTestId('past-key-dates-card')).toHaveAttribute('data-has-data', 'false');
+      expect(screen.getByTestId('subv-other-key-dates-card')).toHaveAttribute(
+        'data-has-data',
+        'false',
+      );
     });
   });
 
-  test('shows an error alert instead of the PastKeyDates card when the fetch fails', async () => {
+  test('shows an error alert instead of the Chapter11SubVOtherKeyDatesCard when the fetch fails', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockRejectedValue(new Error('network error'));
 
@@ -157,10 +166,10 @@ describe('Chapter11SubchapterVAppointmentBody', () => {
         screen.getByTestId(`alert-subv-past-key-dates-error-${mockPoolAppointment.id}`),
       ).toBeInTheDocument();
     });
-    expect(screen.queryByTestId('past-key-dates-card')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('subv-other-key-dates-card')).not.toBeInTheDocument();
   });
 
-  test('does not fetch or render the PastKeyDates card when DISPLAY_CHPT11_SUBV_PAST_KEY_DATES is disabled', () => {
+  test('does not fetch or render the Chapter11SubVOtherKeyDatesCard when DISPLAY_CHPT11_SUBV_PAST_KEY_DATES is disabled', () => {
     vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
       [DISPLAY_CHPT11_SUBV_PAST_KEY_DATES]: false,
     });
@@ -169,19 +178,19 @@ describe('Chapter11SubchapterVAppointmentBody', () => {
     renderBody();
 
     expect(getSpy).not.toHaveBeenCalled();
-    expect(screen.queryByTestId('past-key-dates-card')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('subv-other-key-dates-card')).not.toBeInTheDocument();
     expect(
       screen.queryByTestId(`alert-subv-past-key-dates-error-${mockPoolAppointment.id}`),
     ).not.toBeInTheDocument();
   });
 
-  test('does not fetch or render the PastKeyDates card for an out-of-pool appointment, even when the flag is enabled', () => {
+  test('does not fetch or render the Chapter11SubVOtherKeyDatesCard for an out-of-pool appointment, even when the flag is enabled', () => {
     const getSpy = vi.spyOn(Api2, 'getUpcomingKeyDates');
 
     renderBody(mockOutOfPoolAppointment);
 
     expect(getSpy).not.toHaveBeenCalled();
-    expect(screen.queryByTestId('past-key-dates-card')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('subv-other-key-dates-card')).not.toBeInTheDocument();
     expect(
       screen.queryByTestId(`alert-subv-past-key-dates-error-${mockOutOfPoolAppointment.id}`),
     ).not.toBeInTheDocument();

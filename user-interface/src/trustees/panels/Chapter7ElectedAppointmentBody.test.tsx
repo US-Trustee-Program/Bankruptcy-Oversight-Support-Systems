@@ -138,7 +138,7 @@ describe('Chapter7ElectedAppointmentBody', () => {
     renderBody();
 
     await waitFor(() => {
-      expect(screen.getByTestId('alert-bond-key-dates-error')).toBeInTheDocument();
+      expect(screen.getByTestId('alert-bond-key-dates-error-appointment-002')).toBeInTheDocument();
     });
     expect(screen.queryByTestId('bond-key-dates-card')).not.toBeInTheDocument();
     expect(consoleErrorSpy).toHaveBeenCalledWith('Could not load upcoming key dates', fetchError);
@@ -154,6 +154,8 @@ describe('Chapter7ElectedAppointmentBody', () => {
 
     expect(getSpy).not.toHaveBeenCalled();
     expect(screen.queryByTestId('bond-key-dates-card')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('alert-bond-key-dates-error')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('alert-bond-key-dates-error-appointment-002'),
+    ).not.toBeInTheDocument();
   });
 });

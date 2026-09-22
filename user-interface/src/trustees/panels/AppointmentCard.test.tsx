@@ -11,7 +11,6 @@ import { CamsRole } from '@common/cams/roles';
 import * as featureFlagsHook from '@/lib/hooks/UseFeatureFlags';
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import {
-  DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES,
   DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES,
   DISPLAY_CHPT12_STANDING_KEY_DATES,
   DISPLAY_CHPT13_STANDING_KEY_DATES,
@@ -261,95 +260,6 @@ describe('AppointmentCard', () => {
     expect(editButton).not.toBeInTheDocument();
   });
 
-  describe('when DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES flag is enabled', () => {
-    beforeEach(() => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES]: true,
-      });
-    });
-
-    test('renders UpcomingKeyDates card for panel Ch7 appointment with TrusteeAdmin role', () => {
-      renderWithProps({
-        appointment: { ...mockAppointment, chapter: '7', appointmentType: 'panel' },
-      });
-
-      expect(screen.getByTestId('upcoming-key-dates-card')).toBeInTheDocument();
-    });
-
-    test('renders PastKeyDates card for panel Ch7 appointment with TrusteeAdmin role', () => {
-      renderWithProps({
-        appointment: { ...mockAppointment, chapter: '7', appointmentType: 'panel' },
-      });
-
-      expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
-    });
-
-    test('forwards tprDisplayUpdates derived from the TPR_DISPLAY_UPDATES flag', () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES]: true,
-        [TPR_DISPLAY_UPDATES]: true,
-      });
-
-      renderWithProps({
-        appointment: { ...mockAppointment, chapter: '7', appointmentType: 'panel' },
-      });
-
-      expect(screen.getByTestId('upcoming-key-dates-card')).toHaveAttribute(
-        'data-tpr-display-updates',
-        'true',
-      );
-    });
-
-    test('forwards tprDisplayUpdates as false when the TPR_DISPLAY_UPDATES flag is disabled', () => {
-      renderWithProps({
-        appointment: { ...mockAppointment, chapter: '7', appointmentType: 'panel' },
-      });
-
-      expect(screen.getByTestId('upcoming-key-dates-card')).toHaveAttribute(
-        'data-tpr-display-updates',
-        'false',
-      );
-    });
-  });
-
-  test('does not render UpcomingKeyDates for non-panel appointment', () => {
-    renderWithProps({
-      appointment: { ...mockAppointment, chapter: '7', appointmentType: 'converted-case' },
-    });
-
-    expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
-  });
-
-  test('does not render UpcomingKeyDates for non-Ch7 appointment', () => {
-    renderWithProps({
-      appointment: { ...mockAppointment, chapter: '13', appointmentType: 'panel' },
-    });
-
-    expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
-  });
-
-  test('does not render UpcomingKeyDates for non-TrusteeAdmin user', () => {
-    TestingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
-
-    renderWithProps({
-      appointment: { ...mockAppointment, chapter: '7', appointmentType: 'panel' },
-    });
-
-    expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
-  });
-
-  test('does not render UpcomingKeyDates when DISPLAY_CHPT7_PANEL_UPCOMING_REPORT_DATES flag is disabled', () => {
-    vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-      [DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES]: false,
-    });
-
-    renderWithProps({
-      appointment: { ...mockAppointment, chapter: '7', appointmentType: 'panel' },
-    });
-
-    expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
-  });
-
   describe('Chapter 12/13 Case by Case upcoming key dates', () => {
     const ch12CaseByCaseAppointment: TrusteeAppointment = {
       ...mockAppointment,
@@ -377,6 +287,33 @@ describe('AppointmentCard', () => {
       });
 
       expect(screen.getByTestId('upcoming-key-dates-card')).toBeInTheDocument();
+    });
+
+    test('forwards tprDisplayUpdates derived from the TPR_DISPLAY_UPDATES flag', () => {
+      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+        [DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES]: true,
+        [TPR_DISPLAY_UPDATES]: true,
+      });
+
+      renderWithProps({ appointment: ch12CaseByCaseAppointment });
+
+      expect(screen.getByTestId('upcoming-key-dates-card')).toHaveAttribute(
+        'data-tpr-display-updates',
+        'true',
+      );
+    });
+
+    test('forwards tprDisplayUpdates as false when the TPR_DISPLAY_UPDATES flag is disabled', () => {
+      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+        [DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES]: true,
+      });
+
+      renderWithProps({ appointment: ch12CaseByCaseAppointment });
+
+      expect(screen.getByTestId('upcoming-key-dates-card')).toHaveAttribute(
+        'data-tpr-display-updates',
+        'false',
+      );
     });
 
     test('does not render a PastKeyDates card for Ch12/13 case-by-case appointment', () => {
@@ -412,8 +349,8 @@ describe('AppointmentCard', () => {
       expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
     });
 
-    // Unlike the Ch7 panel card (gated on canManage), Ch12/13 case-by-case key
-    // dates have no such gate — this locks in that behavior.
+    // Ch12/13 case-by-case key dates have no canManage gate — this locks in
+    // that behavior.
     test('renders UpcomingKeyDates card for non-TrusteeAdmin user when flag enabled (no canManage gate)', () => {
       vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
         [DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES]: true,
@@ -464,13 +401,15 @@ describe('AppointmentCard', () => {
 
     test('fetches key dates once and forwards the same data/isLoading to UpcomingKeyDates and PastKeyDates', async () => {
       vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES]: true,
+        [DISPLAY_CHPT12_STANDING_KEY_DATES]: true,
       });
       const getUpcomingKeyDatesSpy = vi
         .spyOn(Api2, 'getUpcomingKeyDates')
         .mockResolvedValue({ data: mockKeyDatesData });
 
-      renderWithProps();
+      renderWithProps({
+        appointment: { ...mockAppointment, chapter: '12', appointmentType: 'standing' },
+      });
 
       await waitFor(() => {
         expect(screen.getByTestId('upcoming-key-dates-card')).toHaveAttribute(
@@ -492,12 +431,14 @@ describe('AppointmentCard', () => {
 
     test('sets isLoading false and data null when the fetch rejects', async () => {
       vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES]: true,
+        [DISPLAY_CHPT12_STANDING_KEY_DATES]: true,
       });
       vi.spyOn(console, 'error').mockImplementation(() => {});
       vi.spyOn(Api2, 'getUpcomingKeyDates').mockRejectedValue(new Error('failed to load'));
 
-      renderWithProps();
+      renderWithProps({
+        appointment: { ...mockAppointment, chapter: '12', appointmentType: 'standing' },
+      });
 
       await waitFor(() => {
         expect(screen.getByTestId('upcoming-key-dates-card')).toHaveAttribute(
@@ -592,8 +533,8 @@ describe('AppointmentCard', () => {
       expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
     });
 
-    // Unlike the Ch7 panel card (gated on canManage), Ch12 standing key dates
-    // have no such gate — this locks in that behavior.
+    // Ch12 standing key dates have no canManage gate — this locks in that
+    // behavior.
     test('renders cards for non-TrusteeAdmin user when flag enabled (no canManage gate)', () => {
       vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
         [DISPLAY_CHPT12_STANDING_KEY_DATES]: true,
@@ -683,8 +624,8 @@ describe('AppointmentCard', () => {
       );
     });
 
-    // Unlike the Ch7 panel card (gated on canManage), Ch13 standing key dates
-    // have no such gate — this locks in that behavior.
+    // Ch13 standing key dates have no canManage gate — this locks in that
+    // behavior.
     test('renders cards for non-TrusteeAdmin user when flag enabled (no canManage gate)', () => {
       vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
         [DISPLAY_CHPT13_STANDING_KEY_DATES]: true,

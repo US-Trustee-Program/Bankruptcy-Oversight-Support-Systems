@@ -145,6 +145,12 @@ export default function Chapter7PanelAuditFieldExamForm() {
   }
 
   const hasAnyDateError = hasErrorAmong(['past-audit', 'past-field-exam']);
+  const examOrAuditPairError = validateCompletionPairPresence(
+    form.upcomingExamOrAuditYear,
+    form.upcomingExamOrAuditType,
+    'Field Exam or Audit',
+    { first: 'Year', second: 'Type' },
+  );
   const completionPairError = validateCompletionPairPresence(
     form.auditCompletionYear,
     form.auditCompletionStatus,
@@ -205,6 +211,11 @@ export default function Chapter7PanelAuditFieldExamForm() {
             </select>
           </div>
         </div>
+        {examOrAuditPairError && (
+          <span className="usa-error-message" data-testid="exam-audit-pair-error">
+            {examOrAuditPairError}
+          </span>
+        )}
       </div>
 
       <DatePicker
@@ -311,7 +322,7 @@ export default function Chapter7PanelAuditFieldExamForm() {
           id="save-chapter7-panel-audit-field-exam"
           data-testid="button-save-chapter7-panel-audit-field-exam"
           onClick={handleSave}
-          disabled={isSaving || hasAnyDateError || !!completionPairError}
+          disabled={isSaving || hasAnyDateError || !!examOrAuditPairError || !!completionPairError}
         >
           {isSaving ? 'Saving...' : 'Save'}
         </Button>
