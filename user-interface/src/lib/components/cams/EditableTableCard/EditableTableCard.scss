@@ -59,9 +59,12 @@
     }
 
     .cams-table__cell {
+      // padding is intentionally not redeclared here -- CamsTable's own tablet-breakpoint
+      // rule already sets the identical 0.5rem 1rem value, and this selector's higher
+      // specificity (.editable-table-card-table.cams-table--responsive) would just shadow
+      // it with the same value.
       display: table-cell;
       white-space: nowrap;
-      padding: 0.5rem 1rem;
     }
 
     // In the (default) separate-borders table model, only table-cell boxes
