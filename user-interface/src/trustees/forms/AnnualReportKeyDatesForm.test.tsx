@@ -185,11 +185,13 @@ describe('AnnualReportKeyDatesForm', () => {
       screen.getByTestId('annual-report-completion-year'),
       String(currentYear),
     );
-    await userEvent.click(screen.getByTestId('button-save-annual-report-key-dates'));
 
-    expect(await screen.findByTestId('alert-annual-report-completion-error')).toHaveTextContent(
-      'Annual Report Completion Status is required.',
+    // The pair error shows inline as the field is edited, and Save stays
+    // disabled, rather than waiting for a submit to fail.
+    expect(await screen.findByTestId('annual-report-completion-error')).toHaveTextContent(
+      'Annual Report Completion Status Year and Status must both be set.',
     );
+    expect(screen.getByTestId('button-save-annual-report-key-dates')).toBeDisabled();
     expect(putSpy).not.toHaveBeenCalled();
   });
 
@@ -207,11 +209,11 @@ describe('AnnualReportKeyDatesForm', () => {
       screen.getByTestId('annual-report-completion-status'),
       'COMPLETE',
     );
-    await userEvent.click(screen.getByTestId('button-save-annual-report-key-dates'));
 
-    expect(await screen.findByTestId('alert-annual-report-completion-error')).toHaveTextContent(
-      'Annual Report Completion Status Year is required.',
+    expect(await screen.findByTestId('annual-report-completion-error')).toHaveTextContent(
+      'Annual Report Completion Status Year and Status must both be set.',
     );
+    expect(screen.getByTestId('button-save-annual-report-key-dates')).toBeDisabled();
     expect(putSpy).not.toHaveBeenCalled();
   });
 

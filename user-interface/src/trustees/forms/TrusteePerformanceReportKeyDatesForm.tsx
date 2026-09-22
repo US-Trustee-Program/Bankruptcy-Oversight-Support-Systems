@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   TrusteeUpcomingKeyDates,
+  validateCompletionPairPresence,
   validateTrusteeUpcomingKeyDates,
 } from '@common/cams/trustee-upcoming-key-dates';
 import Api2 from '@/lib/models/api2';
@@ -159,7 +160,16 @@ export default function TrusteePerformanceReportKeyDatesForm() {
     );
   }
 
-  const saveDisabled = isSaving || !reviewPeriodValid || hasErrorAmong(['last-tpr-submitted']);
+  const completionPairError = validateCompletionPairPresence(
+    completion.year,
+    completion.status,
+    'Trustee Performance Review Completion Status',
+  );
+  const saveDisabled =
+    isSaving ||
+    !reviewPeriodValid ||
+    hasErrorAmong(['last-tpr-submitted']) ||
+    !!completionPairError;
 
   return (
     <div className="edit-upcoming-key-dates" data-testid="edit-tpr-key-dates">
@@ -238,6 +248,7 @@ export default function TrusteePerformanceReportKeyDatesForm() {
         legend="TPR Completion"
         value={completion}
         onChange={setCompletion}
+        errorLabel="Trustee Performance Review Completion Status"
       />
       <div className="usa-button-group">
         <Button

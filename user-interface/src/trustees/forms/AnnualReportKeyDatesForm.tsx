@@ -15,6 +15,7 @@ import { Stop } from '@/lib/components/Stop';
 import { mergeKeyDatesInput } from './chapter7PanelKeyDatesInput';
 import CompletionStatusFields, { CompletionStatusValue } from './CompletionStatusFields';
 import { resolveKeyDatesSaveError } from './keyDatesSaveError';
+import { validateCompletionPairPresence } from '@common/cams/trustee-upcoming-key-dates';
 
 const EMPTY_COMPLETION: CompletionStatusValue = { year: '', status: '' };
 
@@ -103,6 +104,12 @@ export default function AnnualReportKeyDatesForm() {
     );
   }
 
+  const completionPairError = validateCompletionPairPresence(
+    completion.year,
+    completion.status,
+    'Annual Report Completion Status',
+  );
+
   return (
     <div className="edit-upcoming-key-dates" data-testid="edit-annual-report-key-dates">
       <h3>Edit Annual Report</h3>
@@ -120,13 +127,14 @@ export default function AnnualReportKeyDatesForm() {
         legend="Annual Report Completion"
         value={completion}
         onChange={setCompletion}
+        errorLabel="Annual Report Completion Status"
       />
       <div className="usa-button-group">
         <Button
           id="save-annual-report-key-dates"
           data-testid="button-save-annual-report-key-dates"
           onClick={handleSave}
-          disabled={isSaving}
+          disabled={isSaving || !!completionPairError}
         >
           {isSaving ? 'Saving...' : 'Save'}
         </Button>

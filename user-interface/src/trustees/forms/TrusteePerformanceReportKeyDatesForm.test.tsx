@@ -161,11 +161,13 @@ describe('TrusteePerformanceReportKeyDatesForm', () => {
     });
 
     await userEvent.selectOptions(screen.getByTestId('tpr-completion-status'), 'COMPLETE');
-    await userEvent.click(screen.getByTestId('button-save-tpr-key-dates'));
 
-    expect(await screen.findByTestId('alert-tpr-completion-error')).toHaveTextContent(
-      'Trustee Performance Review Completion Status Year is required.',
+    // Shown inline as the pair is edited, with Save disabled, matching the
+    // Chapter 7 Panel forms.
+    expect(await screen.findByTestId('tpr-completion-error')).toHaveTextContent(
+      'Trustee Performance Review Completion Status Year and Status must both be set.',
     );
+    expect(screen.getByTestId('button-save-tpr-key-dates')).toBeDisabled();
     expect(putSpy).not.toHaveBeenCalled();
   });
 
