@@ -309,9 +309,9 @@ describe('Chapter7PanelTrusteePerformanceReportForm', () => {
   });
 
   test.each([
-    ['last-tpr-submitted', 'Last TPR Submitted'],
-    ['tpr-review-period-start', 'TPR Review Period Start'],
-    ['tpr-review-period-end', 'TPR Review Period End'],
+    ['last-tpr-submitted', 'Last Trustee Performance Review Submitted'],
+    ['tpr-review-period-start', 'Trustee Performance Review (TPR) Period Start'],
+    ['tpr-review-period-end', 'Trustee Performance Review (TPR) Period End'],
   ])('Save button is disabled when %s has an invalid date', async (testId) => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
 
