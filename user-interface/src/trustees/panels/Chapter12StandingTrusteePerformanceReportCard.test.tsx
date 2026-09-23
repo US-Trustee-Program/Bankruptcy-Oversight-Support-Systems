@@ -67,7 +67,9 @@ describe('Chapter12StandingTrusteePerformanceReportCard', () => {
     renderCard();
 
     expect(screen.getByText('Trustee Performance Report')).toBeInTheDocument();
-    expect(screen.getByTestId('tpr-review-period-row')).toBeInTheDocument();
+    expect(screen.getByTestId('tpr-review-period-row')).toHaveTextContent(
+      '04/01/2026 - 03/31/2027',
+    );
     expect(screen.getByTestId('tpr-review-period-frequency-row')).toHaveTextContent('One year');
     expect(screen.getByTestId('tpr-due-row')).toBeInTheDocument();
     expect(screen.getByTestId('last-tpr-submitted-row')).toHaveTextContent('10/03/2024');

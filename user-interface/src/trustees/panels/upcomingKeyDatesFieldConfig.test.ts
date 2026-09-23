@@ -3,6 +3,8 @@ import {
   UPCOMING_KEY_DATES_FIELD_CONFIG,
   getUpcomingKeyDatesFieldConfig,
   buildCompletionTag,
+  formatDateOrDefault,
+  NO_DATE,
 } from './upcomingKeyDatesFieldConfig';
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
@@ -17,6 +19,16 @@ const baseDoc: TrusteeUpcomingKeyDates = {
   updatedBy: SYSTEM_USER_REFERENCE,
   updatedOn: '2026-01-01T00:00:00.000Z',
 };
+
+describe('formatDateOrDefault', () => {
+  test('formats a defined ISO date as MM/DD/YYYY', () => {
+    expect(formatDateOrDefault('2023-06-03')).toBe('06/03/2023');
+  });
+
+  test('returns NO_DATE when the date is undefined', () => {
+    expect(formatDateOrDefault(undefined)).toBe(NO_DATE);
+  });
+});
 
 describe('buildCompletionTag', () => {
   test('defaults to "Complete"/"Incomplete" labels when none are given', () => {

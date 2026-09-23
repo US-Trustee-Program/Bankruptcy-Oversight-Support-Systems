@@ -318,6 +318,27 @@ describe('Chapter12StandingAuditForm', () => {
     });
   });
 
+  test('clearing last audit fiscal year back to blank clears it from the save payload', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+    const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
+
+    renderComponent();
+
+    await waitFor(() => expect(screen.getByTestId('last-audit-fiscal-year')).toHaveValue('2023'));
+
+    await userEvent.selectOptions(screen.getByTestId('last-audit-fiscal-year'), '');
+
+    await userEvent.click(screen.getByTestId('button-save-chapter12-standing-audit'));
+
+    await waitFor(() => {
+      expect(putSpy).toHaveBeenCalledWith(
+        'trustee-001',
+        'appointment-001',
+        expect.objectContaining({ lastAuditFiscalYear: null }),
+      );
+    });
+  });
+
   test('cancel navigates back to the appointments page without saving', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
     const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });

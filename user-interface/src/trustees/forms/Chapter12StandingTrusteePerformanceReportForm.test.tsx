@@ -440,6 +440,27 @@ describe('Chapter12StandingTrusteePerformanceReportForm', () => {
         );
       });
     });
+
+    test('shows "Start date is required." and disables Save when review period start is cleared', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('tpr-review-period-label')).toBeInTheDocument();
+      });
+
+      const startMonthSelect = document.getElementById('tpr-review-period-start-month')!;
+      await userEvent.selectOptions(startMonthSelect, '');
+      await userEvent.click(screen.getByText('Edit Trustee Performance Report Key Dates'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('tpr-review-period-error')).toHaveTextContent(
+          'Start date is required.',
+        );
+        expect(screen.getByTestId('button-save-chapter12-standing-tpr')).toBeDisabled();
+      });
+    });
   });
 });
 
