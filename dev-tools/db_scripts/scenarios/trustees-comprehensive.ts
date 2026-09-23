@@ -9,6 +9,12 @@
  *     Manhattan, courtId 0208) and 091 (Western District, Buffalo, courtId 0209)
  *     - Uses only division codes 081 and 091 (confirmed in DXTR)
  *     - These are the only codes guaranteed to resolve to proper division names
+ *     - NOTE: 081 and 091 belong to two different courts (courtId 0208 vs 0209),
+ *       not two divisions of a single court, so every appointment in this file
+ *       currently has exactly one divisionCode. There is no true single-appointment
+ *       multi-division (`divisionCodes.length > 1`) example here yet — that would
+ *       require a second confirmed-in-DXTR division code belonging to the *same*
+ *       courtId as an existing one.
  *
  * Chapter Coverage:
  *   - Chapter 7 (panel/elected): 15 appointments
@@ -18,20 +24,15 @@
  *   - Chapter 11 Subchapter V (pool/out-of-pool): 5 appointments
  *
  * Multi-Court Support (CAMS-740):
- *   - Every appointment created here has exactly one divisionCode (081 or 091);
- *     081 and 091 belong to two different courts (0208 vs 0209), not two
- *     divisions of a single court, so there is no single-appointment
- *     multi-division (`divisionCodes.length > 1`) example in this file.
- *   - Multi-court trustee (1 trustee): Patricia Manhattan holds separate
- *     single-division appointments in both 081 and 091
- *   - William T Statewide and Patricia Ann Statewide each hold one
- *     single-division appointment (081 and 091 respectively), added as a pair
- *     so both known-good division codes are represented in the "additional"
- *     seed batch
+ *   - Single-court trustees (32 trustees, one single-division appointment each
+ *     in either 081 or 091; William T Statewide (081) and Patricia Ann Statewide
+ *     (091) are one such pair, added specifically so both division codes are
+ *     represented in this "additional" batch)
+ *   - Multi-court trustee (1 trustee): Patricia Manhattan holds 6 separate
+ *     single-division appointments across NY, CA, ID, and IA courts
  *   - Mix of active and inactive statuses
  *
  * NOTE: Uses CAMS-only seeding pattern - no DXTR seeding required.
- * NOTE: All trustees use Manhattan (NY) divisions 081/091 since these are known valid codes.
  */
 
 import type { SeedContext, SeedOperation } from '../../runner.js';
@@ -211,7 +212,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
     }),
   );
 
-  // Additional-3: Ch11 Panel, Single Division (081)
+  // Additional-3: Ch11 Case by Case, Single Division (081)
   trustees.push(
     createTrustee({
       id: 'seed-trustee-add-003',
@@ -228,7 +229,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       id: 'seed-appt-add-003-ch11',
       trusteeId: 'seed-trustee-add-003',
       chapter: '11',
-      appointmentType: 'panel',
+      appointmentType: 'case-by-case',
       courtId: '0208',
       divisionCodes: ['081'],
       courtName: 'U.S. Bankruptcy Court Southern District of New York',
@@ -549,7 +550,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
     }),
   );
 
-  // NY-3: Ch11 Panel, Single Division (091)
+  // NY-3: Ch11 Case by Case, Single Division (091)
   trustees.push(
     createTrustee({
       id: 'seed-trustee-ny-003',
@@ -565,7 +566,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       id: 'seed-appt-ny-003-ch11',
       trusteeId: 'seed-trustee-ny-003',
       chapter: '11',
-      appointmentType: 'panel',
+      appointmentType: 'case-by-case',
       courtId: '0209',
       divisionCodes: ['091'],
       courtName: 'U.S. Bankruptcy Court Southern District of New York',
@@ -675,7 +676,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
     }),
   );
 
-  // NY-8: Ch11 Panel
+  // NY-8: Ch11 Case by Case
   trustees.push(
     createTrustee({
       id: 'seed-trustee-ny-008',
@@ -691,7 +692,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       id: 'seed-appt-ny-008-ch11',
       trusteeId: 'seed-trustee-ny-008',
       chapter: '11',
-      appointmentType: 'panel',
+      appointmentType: 'case-by-case',
       courtId: '0209',
       divisionCodes: ['091'],
       courtName: 'U.S. Bankruptcy Court Southern District of New York',
@@ -755,7 +756,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
     }),
   );
 
-  // Additional-8: Ch11 Panel (081)
+  // Additional-8: Ch11 Case by Case (081)
   trustees.push(
     createTrustee({
       id: 'seed-trustee-add-008',
@@ -771,7 +772,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       id: 'seed-appt-add-008-ch11',
       trusteeId: 'seed-trustee-add-008',
       chapter: '11',
-      appointmentType: 'panel',
+      appointmentType: 'case-by-case',
       courtId: '0208',
       divisionCodes: ['081'],
       courtName: 'U.S. Bankruptcy Court Southern District of New York',
@@ -910,7 +911,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
     }),
   );
 
-  // Additional-14: Ch11 Panel (081)
+  // Additional-14: Ch11 Case by Case (081)
   trustees.push(
     createTrustee({
       id: 'seed-trustee-add-014',
@@ -926,7 +927,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       id: 'seed-appt-add-014-ch11',
       trusteeId: 'seed-trustee-add-014',
       chapter: '11',
-      appointmentType: 'panel',
+      appointmentType: 'case-by-case',
       courtId: '0208',
       divisionCodes: ['081'],
       courtName: 'U.S. Bankruptcy Court Southern District of New York',
@@ -1065,7 +1066,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
     }),
   );
 
-  // Additional-20: Ch11 Panel (081)
+  // Additional-20: Ch11 Case by Case (081)
   trustees.push(
     createTrustee({
       id: 'seed-trustee-add-020',
@@ -1081,7 +1082,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       id: 'seed-appt-add-020-ch11',
       trusteeId: 'seed-trustee-add-020',
       chapter: '11',
-      appointmentType: 'panel',
+      appointmentType: 'case-by-case',
       courtId: '0208',
       divisionCodes: ['081'],
       courtName: 'U.S. Bankruptcy Court Southern District of New York',

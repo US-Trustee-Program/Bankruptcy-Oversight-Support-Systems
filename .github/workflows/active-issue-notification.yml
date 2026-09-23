@@ -19,9 +19,23 @@ jobs:
           SOWORK_API_TOKEN: ${{ secrets.SOWORK_API_TOKEN }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
           ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_LABELS: ${{ toJSON(github.event.issue.labels.*.name) }}
+          ISSUE_ASSIGNEE_LOGINS: ${{ toJSON(github.event.issue.assignees.*.login) }}
+          ACTOR_LOGIN: ${{ github.event.sender.login }}
         run: |
-          # SoWork gong text is capped at 100 characters
-          text=$(printf '#%s active: %s' "$ISSUE_NUMBER" "$ISSUE_TITLE" | cut -c1-100)
+          cams_label=$(echo "$ISSUE_LABELS" | jq -r '.[] | select(test("^CAMS-[0-9]+$"))' | head -1)
+          if [ -n "$cams_label" ]; then
+            issue_ref="${cams_label} (#${ISSUE_NUMBER})"
+          else
+            issue_ref="#${ISSUE_NUMBER}"
+          fi
+
+          name=$(echo "$ISSUE_ASSIGNEE_LOGINS" | jq -r '.[0] // empty')
+          [ -z "$name" ] && name="$ACTOR_LOGIN"
+
+          # SoWork gong text is capped at 100 characters; put the name right after
+          # the issue ref so a long title can't truncate it away
+          text=$(printf '%s [%s] active: %s' "$issue_ref" "$name" "$ISSUE_TITLE" | cut -c1-100)
 
           curl --fail --silent --show-error --request POST \
             --max-time 15 --retry 2 --retry-delay 2 --retry-all-errors \
@@ -32,27 +46,45 @@ jobs:
 
       - name: Post Slack notification
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_ACTIVE_ISSUE_WEBHOOK_URL }}
           SLACK_USER_MAPPING: ${{ secrets.SLACK_USER_MAPPING }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_URL: ${{ github.event.issue.html_url }}
+          ISSUE_LABELS: ${{ toJSON(github.event.issue.labels.*.name) }}
           ISSUE_ASSIGNEE_LOGINS: ${{ toJSON(github.event.issue.assignees.*.login) }}
+          ACTOR_LOGIN: ${{ github.event.sender.login }}
         run: |
-          message="*Issue moved to active:* #${ISSUE_NUMBER} 🧵"
+          slack_mention() {
+            local login="$1"
+            local slack_id
+            slack_id=$(echo "$SLACK_USER_MAPPING" | jq -r --arg username "$login" \
+              '.[] | select(.github == $username) | .slack // empty' | head -1)
+            if [ -n "$slack_id" ]; then
+              echo "<@${slack_id}>"
+            else
+              echo "$login"
+            fi
+          }
+
+          cams_label=$(echo "$ISSUE_LABELS" | jq -r '.[] | select(test("^CAMS-[0-9]+$"))' | head -1)
+          if [ -n "$cams_label" ]; then
+            issue_ref="<${ISSUE_URL}|${cams_label} (#${ISSUE_NUMBER})>"
+          else
+            issue_ref="<${ISSUE_URL}|#${ISSUE_NUMBER}>"
+          fi
+
+          message="*Issue moved to active:* ${issue_ref} 🧵"
 
           mentions=""
           while IFS= read -r login; do
             [ -z "$login" ] && continue
-            slack_id=$(echo "$SLACK_USER_MAPPING" | jq -r --arg username "$login" \
-              '.[] | select(.github == $username) | .slack // empty' | head -1)
-            if [ -n "$slack_id" ]; then
-              mentions="${mentions:+$mentions, }<@${slack_id}>"
-            else
-              mentions="${mentions:+$mentions, }${login}"
-            fi
+            mentions="${mentions:+$mentions, }$(slack_mention "$login")"
           done < <(echo "$ISSUE_ASSIGNEE_LOGINS" | jq -r '.[]')
 
           if [ -n "$mentions" ]; then
             message="${message}"$'\n'"• *Assignee:* ${mentions}"
+          elif [ -n "$ACTOR_LOGIN" ]; then
+            message="${message}"$'\n'"• *No assignee — labeled active by:* $(slack_mention "$ACTOR_LOGIN")"
           fi
 
           curl --fail --silent --show-error --request POST \

@@ -271,6 +271,8 @@ describe('buildBondKeyDatesInput', () => {
     lastCompensationStudy: '2020-01-18',
     bondIssuedDate: '2020-01-19',
     bondRenewalDate: '2020-01-20',
+    annualReportCompletionYear: 2025,
+    annualReportCompletionStatus: 'INCOMPLETE' as const,
   };
 
   test('preserves every non-bond field from the original document and overrides only the bond dates', () => {
@@ -317,6 +319,8 @@ describe('buildBondKeyDatesInput', () => {
       lastCompensationStudy: '2020-01-18',
       bondIssuedDate: '2023-06-01',
       bondRenewalDate: '2026-06-01',
+      annualReportCompletionYear: 2025,
+      annualReportCompletionStatus: 'INCOMPLETE',
       ch13AuditCompletionYear: null,
       ch13AuditCompletionStatus: null,
       ch13TprCompletionYear: null,
@@ -368,6 +372,8 @@ describe('buildBondKeyDatesInput', () => {
       lastCompensationStudy: null,
       bondIssuedDate: null,
       bondRenewalDate: null,
+      annualReportCompletionYear: null,
+      annualReportCompletionStatus: null,
       ch13AuditCompletionYear: null,
       ch13AuditCompletionStatus: null,
       ch13TprCompletionYear: null,

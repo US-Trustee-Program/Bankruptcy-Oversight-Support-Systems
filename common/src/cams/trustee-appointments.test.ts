@@ -8,6 +8,7 @@ import {
   isChapter13Standing,
   isChapter7Elected,
   isChapter11CaseByCase,
+  isChapter12Or13CaseByCase,
   isChapter7Panel,
   isChapter11SubchapterVPool,
   isChapter11SubchapterVOutOfPool,
@@ -507,6 +508,27 @@ describe('trustee-appointments', () => {
     ])('returns false for chapter %s / %s', (chapter, type) => {
       expect(
         isChapter11CaseByCase(chapter as AppointmentChapterType, type as AppointmentType),
+      ).toBe(false);
+    });
+  });
+
+  describe('isChapter12Or13CaseByCase', () => {
+    test.each([
+      ['12', 'case-by-case'],
+      ['13', 'case-by-case'],
+    ])('returns true for chapter %s / %s', (chapter, type) => {
+      expect(
+        isChapter12Or13CaseByCase(chapter as AppointmentChapterType, type as AppointmentType),
+      ).toBe(true);
+    });
+
+    test.each([
+      ['12', 'standing'],
+      ['13', 'standing'],
+      ['11', 'case-by-case'],
+    ])('returns false for chapter %s / %s', (chapter, type) => {
+      expect(
+        isChapter12Or13CaseByCase(chapter as AppointmentChapterType, type as AppointmentType),
       ).toBe(false);
     });
   });

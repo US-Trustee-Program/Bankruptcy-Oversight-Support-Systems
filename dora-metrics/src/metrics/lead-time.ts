@@ -1,7 +1,6 @@
 import { WorkflowRun } from './deployment-frequency.js';
 import { resolvePeriodWindows } from './period-window.js';
-
-const MS_PER_HOUR = 60 * 60 * 1000;
+import { mean, median, MS_PER_HOUR } from './stats.js';
 
 export type CompletedIssue = {
   number: number;
@@ -33,13 +32,6 @@ export type ComputeLeadTimeResult = {
   perIssue: IssueLeadTime[];
   byPeriod: LeadTimeBucket[];
 };
-
-function median(values: number[]): number {
-  if (values.length === 0) return 0;
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
-}
 
 export function computeLeadTime(
   issues: CompletedIssue[],
@@ -83,10 +75,7 @@ export function computeLeadTime(
       periodStart,
       periodEnd,
       issueCount: bucketLeadTimes.length,
-      meanLeadTimeHours:
-        bucketLeadTimes.length > 0
-          ? bucketLeadTimes.reduce((sum, v) => sum + v, 0) / bucketLeadTimes.length
-          : 0,
+      meanLeadTimeHours: mean(bucketLeadTimes),
       medianLeadTimeHours: median(bucketLeadTimes),
     };
   });

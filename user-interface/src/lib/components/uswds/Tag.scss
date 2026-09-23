@@ -3,7 +3,7 @@
 .usa-tag {
   white-space: nowrap;
 
-  .bg-success {
+  &.bg-success {
     background-color: colors.$success;
   }
 

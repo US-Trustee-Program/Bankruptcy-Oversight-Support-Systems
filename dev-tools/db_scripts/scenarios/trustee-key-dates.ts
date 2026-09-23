@@ -9,8 +9,10 @@
  *     alignment, and a mix of quarter-boundary and mid-quarter dates
  *   - Two Chapter 11 Subchapter V (Pool) trustees to exercise the Last Monthly Report
  *     Received past key date: one populated, one empty
- *   - Two Chapter 12/13 Case by Case trustees to exercise the Upcoming Key Dates
- *     card's TPR Period/Due fields: one populated, one empty
+ *   - Two Chapter 12/13 Case by Case trustees to exercise the Annual Report and
+ *     Trustee Performance Report cards: one populated, including a Complete and
+ *     an Incomplete completion pair so both tag colours are reachable, and one
+ *     empty
  *   - Two Chapter 7 Elected trustees to exercise the Bond Issued Date (Past) /
  *     Bond Renewal Date (Upcoming) fields: one populated, one empty
  *   - One Chapter 7 Elected trustee with an inactive appointment to exercise the
@@ -525,6 +527,14 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           tprReviewPeriodEnd: '1900-09-30',
           tprDue: '1900-10-15',
           tprDueYearType: 'EVEN',
+          tprFrequency: 'ANNUAL',
+          lastTprSubmitted: '2025-09-10',
+          // One completion pair in each state, so both the green and the red
+          // tag on the Ch12/13 Case by Case cards are reachable from seed data.
+          tprCompletionYear: 2025,
+          tprCompletionStatus: 'COMPLETE',
+          annualReportCompletionYear: 2024,
+          annualReportCompletionStatus: 'INCOMPLETE',
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
         },

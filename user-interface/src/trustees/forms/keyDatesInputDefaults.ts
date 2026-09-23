@@ -11,13 +11,14 @@ export const COMPLETION_YEAR_OPTIONS = Array.from({ length: 11 }, (_, i) => curr
  * Each Chapter 13 Standing key-dates form spreads this and then overrides only the
  * handful of fields it owns with its own form state.
  *
- * auditCompletionYear/Status, tprCompletionYear/Status, and tirCompletionYear/Status
- * belong to the Chapter 7 Panel domain (different value sets than Ch13's own
- * ch13AuditCompletionStatus/ch13TprCompletionStatus) and a Chapter 13 Standing
- * appointment never legitimately owns them, so they're hard-nulled here rather than
- * carried forward from `original` -- passing through stale/foreign values would fail
- * validation and, since upsert does a full document replace, this also self-heals any
- * document that already has legacy data in those fields.
+ * auditCompletionYear/Status, tprCompletionYear/Status, tirCompletionYear/Status, and
+ * annualReportCompletionYear/Status belong to other appointment domains (Chapter 7
+ * Panel, and Chapter 12/13 Case by Case, respectively -- different value sets than
+ * Ch13's own ch13AuditCompletionStatus/ch13TprCompletionStatus) and a Chapter 13
+ * Standing appointment never legitimately owns them, so they're hard-nulled here
+ * rather than carried forward from `original` -- passing through stale/foreign values
+ * would fail validation and, since upsert does a full document replace, this also
+ * self-heals any document that already has legacy data in those fields.
  */
 export function buildKeyDatesInputFromOriginal(
   trusteeId: string,
@@ -61,6 +62,8 @@ export function buildKeyDatesInputFromOriginal(
     tprCompletionStatus: null,
     tirCompletionYear: null,
     tirCompletionStatus: null,
+    annualReportCompletionYear: null,
+    annualReportCompletionStatus: null,
     ch13AuditCompletionYear: original?.ch13AuditCompletionYear ?? null,
     ch13AuditCompletionStatus: original?.ch13AuditCompletionStatus ?? null,
     ch13TprCompletionYear: original?.ch13TprCompletionYear ?? null,

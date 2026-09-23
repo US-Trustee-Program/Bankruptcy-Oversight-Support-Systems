@@ -64,6 +64,8 @@ function buildMockInput(
     lastCompensationStudy: null,
     bondIssuedDate: null,
     bondRenewalDate: null,
+    annualReportCompletionYear: null,
+    annualReportCompletionStatus: null,
     ch13AuditCompletionYear: null,
     ch13AuditCompletionStatus: null,
     ch13TprCompletionYear: null,
@@ -347,13 +349,13 @@ describe('TrusteeUpcomingKeyDatesUseCase', () => {
         { lastCompensationStudy: '2024-06-01' },
         { lastCompensationStudy: null },
       ],
+      ['tprFrequency', { tprFrequency: 'ANNUAL' as const }, { tprFrequency: null }],
       ['auditCompletionYear', { auditCompletionYear: 2025 }, { auditCompletionYear: null }],
       [
         'ch13AuditCompletionYear',
         { ch13AuditCompletionYear: 2026 },
         { ch13AuditCompletionYear: null },
       ],
-      ['tprFrequency', { tprFrequency: 'ANNUAL' as const }, { tprFrequency: null }],
     ])(
       'field cleared (%s → null): history shows old value in before, absent from after',
       async (_field, existingOverride, inputOverride) => {

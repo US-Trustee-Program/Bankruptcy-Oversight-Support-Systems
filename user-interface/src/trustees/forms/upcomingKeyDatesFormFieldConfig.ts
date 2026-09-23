@@ -23,7 +23,6 @@ const UPCOMING_KEY_DATES_FORM_CONFIG: Record<
     'tpr-due',
     'tir-period',
   ],
-  'ch12-13-case-by-case': ['tpr-review-period', 'tpr-frequency', 'tpr-due'],
   'chapter12-standing': [
     'tpr-review-period',
     'tpr-frequency',

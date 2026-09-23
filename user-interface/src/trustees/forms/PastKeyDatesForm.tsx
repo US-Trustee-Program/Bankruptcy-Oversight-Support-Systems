@@ -100,6 +100,8 @@ function buildUpcomingKeyDatesInput(
     tprCompletionStatus: original?.tprCompletionStatus ?? null,
     tirCompletionYear: original?.tirCompletionYear ?? null,
     tirCompletionStatus: original?.tirCompletionStatus ?? null,
+    annualReportCompletionYear: original?.annualReportCompletionYear ?? null,
+    annualReportCompletionStatus: original?.annualReportCompletionStatus ?? null,
     leaseExpiration: original?.leaseExpiration ?? null,
     idExpiration: original?.idExpiration ?? null,
     lastCompensationStudy: dateValue('lastCompensationStudy'),

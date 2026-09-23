@@ -31,6 +31,8 @@ import Chapter13StandingAuditForm from './forms/Chapter13StandingAuditForm';
 import Chapter13StandingTrusteePerformanceReportForm from './forms/Chapter13StandingTrusteePerformanceReportForm';
 import Chapter13StandingOtherForm from './forms/Chapter13StandingOtherForm';
 import BondKeyDatesForm from './forms/BondKeyDatesForm';
+import AnnualReportKeyDatesForm from './forms/AnnualReportKeyDatesForm';
+import TrusteePerformanceReportKeyDatesForm from './forms/TrusteePerformanceReportKeyDatesForm';
 import Chapter7PanelAuditFieldExamForm from './forms/Chapter7PanelAuditFieldExamForm';
 import Chapter7PanelTrusteePerformanceReportForm from './forms/Chapter7PanelTrusteePerformanceReportForm';
 import Chapter7PanelTrusteeInterimReportForm from './forms/Chapter7PanelTrusteeInterimReportForm';
@@ -280,7 +282,7 @@ export default function TrusteeDetailScreen() {
             <TrusteeDetailNavigation trusteeId={trusteeId} initiallySelectedNavLink={navState} />
           </div>
           <div className="main-content-area">
-            <TrusteeAppointments trusteeId={trusteeId} />
+            <TrusteeAppointments key={trusteeId} trusteeId={trusteeId} />
           </div>
         </div>
       ),
@@ -340,6 +342,22 @@ export default function TrusteeDetailScreen() {
       disabled: !featureFlags[DISPLAY_CHPT7_ELECTED_KEY_DATES],
       subHeading: appointmentHeading,
       content: <BondKeyDatesForm />,
+    },
+    {
+      // Namespaced by variant: CAMS-912 already owns the unqualified
+      // tpr-key-dates/edit path for Chapter 7 Panel, and routes are keyed only
+      // by appointmentId, so an unqualified path here would shadow it. See the
+      // epic-wide route collision issue before adding more variants.
+      path: 'appointments/:appointmentId/ch12-13-annual-report-key-dates/edit',
+      disabled: !featureFlags[DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES],
+      subHeading: appointmentHeading,
+      content: <AnnualReportKeyDatesForm />,
+    },
+    {
+      path: 'appointments/:appointmentId/ch12-13-tpr-key-dates/edit',
+      disabled: !featureFlags[DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES],
+      subHeading: appointmentHeading,
+      content: <TrusteePerformanceReportKeyDatesForm />,
     },
     {
       path: 'appointments/:appointmentId/audit-field-exam-key-dates/edit',

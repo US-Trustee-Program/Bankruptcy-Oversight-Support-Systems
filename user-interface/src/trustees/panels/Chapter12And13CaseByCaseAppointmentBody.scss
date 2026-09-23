@@ -1,0 +1,22 @@
+@use '@/lib/components/cams/CamsTable/cams-table-mixins' as cams-table;
+@use 'styles/abstracts/device-screens';
+
+.ch12-13-case-by-case-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+
+  .annual-report-key-dates-card,
+  .tpr-key-dates-card {
+    width: 100%;
+    margin-bottom: 0;
+  }
+
+  // Below this width the columns no longer fit side by side, so each cell
+  // becomes its own "Header: value" line and the header row is hidden.
+  .cams-table--responsive {
+    @media screen and (max-width: #{device-screens.$tablet-screen-small}) {
+      @include cams-table.cams-table-stacked;
+    }
+  }
+}

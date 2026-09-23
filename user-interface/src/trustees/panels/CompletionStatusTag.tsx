@@ -14,7 +14,7 @@ export default function CompletionStatusTag(props: Readonly<CompletionStatusTagP
   const { id, status, year } = props;
 
   return status === 'Complete' ? (
-    <Tag id={id} uswdsStyle={UswdsTagStyle.Green}>
+    <Tag id={id} uswdsStyle={UswdsTagStyle.Success}>
       Complete for {year}
     </Tag>
   ) : (
