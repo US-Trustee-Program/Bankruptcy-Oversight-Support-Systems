@@ -794,10 +794,73 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       ],
     },
 
+    // ── Cosmos: Chapter 7 Elected Trustee with an inactive appointment ───────
+    {
+      db: 'cams',
+      collectionOrTable: 'trustees',
+      data: [
+        {
+          ...createTrusteeBase({
+            id: 'seed-trustee-keydates-elected-inactive',
+            firstName: 'Owen',
+            lastName: 'Inactivekeydates',
+            status: 'active',
+            address1: '1100 Key Dates Way',
+            city: 'New York',
+            state: 'NY',
+            zipCode: '10011',
+            phone: '212-555-1800',
+            email: 'owen.inactivekeydates@example.com',
+          }),
+          updatedOn: '2025-03-01T00:00:00.000Z',
+          updatedBy: SEEDER,
+        },
+      ],
+    },
+
+    {
+      db: 'cams',
+      collectionOrTable: 'trustee-appointments',
+      data: [
+        {
+          id: 'seed-appointment-keydates-elected-inactive',
+          documentType: 'TRUSTEE_APPOINTMENT',
+          trusteeId: 'seed-trustee-keydates-elected-inactive',
+          chapter: '7',
+          appointmentType: 'elected',
+          courtId: '0208',
+          divisionCodes: ['081'],
+          appointedDate: '2022-01-01',
+          status: 'inactive',
+          effectiveDate: '2024-01-01',
+          courtName: 'U.S. Bankruptcy Court Southern District of New York',
+          courtDivisionName: 'Manhattan',
+          updatedOn: '2025-03-01T00:00:00.000Z',
+          updatedBy: SEEDER,
+        },
+      ],
+    },
+
+    {
+      db: 'cams',
+      collectionOrTable: 'trustees',
+      data: [
+        {
+          id: 'seed-key-dates-elected-inactive',
+          documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
+          trusteeId: 'seed-trustee-keydates-elected-inactive',
+          appointmentId: 'seed-appointment-keydates-elected-inactive',
+          bondIssuedDate: '2022-06-01',
+          bondRenewalDate: '2025-06-01',
+          updatedOn: '2025-03-01T00:00:00.000Z',
+          updatedBy: SEEDER,
+        },
+      ],
+    },
+
     // ── Cosmos: Chapter 13 Standing Trustee with fully populated key dates ──
     // Active appointment: all four accordion cards render real data, both
     // completion-status tags show (CAMS-915).
-    // ── Cosmos: Chapter 7 Elected Trustee with an inactive appointment ───────
     {
       db: 'cams',
       collectionOrTable: 'trustees',
@@ -814,16 +877,6 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
             zipCode: '10008',
             phone: '212-555-1800',
             email: 'felicia.keydates@example.com',
-            id: 'seed-trustee-keydates-elected-inactive',
-            firstName: 'Owen',
-            lastName: 'Inactivekeydates',
-            status: 'active',
-            address1: '1100 Key Dates Way',
-            city: 'New York',
-            state: 'NY',
-            zipCode: '10011',
-            phone: '212-555-1800',
-            email: 'owen.inactivekeydates@example.com',
           }),
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
@@ -927,14 +980,6 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           courtId: '0208',
           divisionCodes: ['081'],
           appointedDate: '2019-01-01',
-          id: 'seed-appointment-keydates-elected-inactive',
-          documentType: 'TRUSTEE_APPOINTMENT',
-          trusteeId: 'seed-trustee-keydates-elected-inactive',
-          chapter: '7',
-          appointmentType: 'elected',
-          courtId: '0208',
-          divisionCodes: ['081'],
-          appointedDate: '2022-01-01',
           status: 'inactive',
           effectiveDate: '2024-01-01',
           courtName: 'U.S. Bankruptcy Court Southern District of New York',
@@ -955,12 +1000,6 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           trusteeId: 'seed-trustee-keydates-ch13-standing-empty',
           appointmentId: 'seed-appointment-keydates-ch13-standing-empty',
           // All optional fields omitted - tests "No date added" placeholder state
-          id: 'seed-key-dates-elected-inactive',
-          documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
-          trusteeId: 'seed-trustee-keydates-elected-inactive',
-          appointmentId: 'seed-appointment-keydates-elected-inactive',
-          bondIssuedDate: '2022-06-01',
-          bondRenewalDate: '2025-06-01',
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
         },
