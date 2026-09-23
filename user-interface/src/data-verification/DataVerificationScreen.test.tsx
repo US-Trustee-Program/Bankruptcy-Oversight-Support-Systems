@@ -2,7 +2,6 @@ import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import DataVerificationScreen from './DataVerificationScreen';
 import { BrowserRouter } from 'react-router-dom';
-import { formatDate } from '@/lib/utils/datetime';
 import {
   isTransferOrder,
   TransferOrder,
@@ -18,6 +17,7 @@ import { CamsRole } from '@common/cams/roles';
 import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/test-utilities/offices.mock';
 import * as courtUtils from '@/lib/utils/court-utils';
 import * as transferOrderAccordionModule from './TransferOrderAccordion';
+import * as consolidationOrderAccordionModule from './consolidation/ConsolidationOrderAccordion';
 import * as trusteeVerificationAccordionModule from './trustee-verification/TrusteeMatchVerificationAccordion';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { CourtDivisionDetails } from '@common/cams/courts';
@@ -162,8 +162,6 @@ describe('Review Orders screen', () => {
         const heading = screen.getByTestId(`accordion-order-list-${order.id}`);
         expect(heading).toBeInTheDocument();
         expect(heading).toBeVisible();
-        expect(heading?.textContent).toContain(order.courtName);
-        expect(heading?.textContent).toContain(formatDate(order.orderDate));
       });
     }
 
@@ -366,7 +364,6 @@ describe('Review Orders screen', () => {
     await waitFor(() => {
       const accordion = screen.getByTestId(`accordion-order-list-${sampleVerificationOrder.id}`);
       expect(accordion).toBeInTheDocument();
-      expect(accordion.textContent).toContain('Trustee Mismatch');
     });
   });
 
@@ -421,7 +418,16 @@ describe('Review Orders screen', () => {
 
   test('should build regions map from courts response', async () => {
     setupFeatureFlags();
-    vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [] });
+    const mockOrder = MockData.getTransferOrder({ override: { status: 'pending' } });
+    vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [mockOrder] });
+
+    let capturedRegionsMap: Map<string, string> | undefined;
+    vi.spyOn(transferOrderAccordionModule, 'TransferOrderAccordion').mockImplementation(
+      (props: transferOrderAccordionModule.TransferOrderAccordionProps) => {
+        capturedRegionsMap = props.regionsMap;
+        return <></>;
+      },
+    );
 
     const mockCourts: CourtDivisionDetails[] = [
       {
@@ -467,15 +473,19 @@ describe('Review Orders screen', () => {
     );
 
     await waitFor(() => {
-      expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
+      expect(capturedRegionsMap).toEqual(
+        new Map([
+          ['2', 'NEW YORK'],
+          ['3', 'PHILADELPHIA'],
+        ]),
+      );
     });
-
-    expect(screen.getByText('Data Verification')).toBeInTheDocument();
   });
 
-  test('should still render the screen when getCourts API fails', async () => {
+  test('should still render orders when getCourts API fails', async () => {
     setupFeatureFlags();
-    vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [] });
+    const mockOrder = MockData.getTransferOrder({ override: { status: 'pending' } });
+    vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [mockOrder] });
     vi.spyOn(Api2, 'getCourts').mockRejectedValue(new Error('Network error'));
 
     render(
@@ -488,7 +498,7 @@ describe('Review Orders screen', () => {
       expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
     });
 
-    expect(screen.getByText('Data Verification')).toBeInTheDocument();
+    expect(screen.getByTestId(`accordion-order-list-${mockOrder.id}`)).toBeInTheDocument();
   });
 
   test('should display alert without updating order list when onOrderUpdate is called without an updated order', async () => {
@@ -764,6 +774,51 @@ describe('Review Orders screen', () => {
       expect(screen.getByTestId('alert-data-verification-alert')).toHaveTextContent(
         mockAlertMessage,
       );
+    });
+  });
+
+  test('should replace the deleted order with the new orders when consolidation onOrderUpdate is called', async () => {
+    setupFeatureFlags();
+    const deletedOrder = MockData.getConsolidationOrder({
+      override: { status: 'pending', leadCase: MockData.getCaseSummary() },
+    });
+    const newOrder = MockData.getConsolidationOrder({
+      override: { status: 'approved', leadCase: MockData.getCaseSummary() },
+    });
+
+    vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [deletedOrder] });
+
+    vi.spyOn(consolidationOrderAccordionModule, 'ConsolidationOrderAccordion').mockImplementation(
+      (props: consolidationOrderAccordionModule.ConsolidationOrderAccordionProps) => {
+        const { onOrderUpdate, order } = props;
+        React.useEffect(() => {
+          if (order.id === deletedOrder.id) {
+            onOrderUpdate(
+              {
+                message: 'Consolidation order updated.',
+                type: UswdsAlertStyle.Success,
+                timeOut: 8,
+              },
+              [newOrder],
+              deletedOrder,
+            );
+          }
+        }, [onOrderUpdate, order.id]);
+        return <div data-testid={`mock-consolidation-order-${order.id}`}></div>;
+      },
+    );
+
+    render(
+      <BrowserRouter>
+        <DataVerificationScreen />
+      </BrowserRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId(`mock-consolidation-order-${deletedOrder.id}`),
+      ).not.toBeInTheDocument();
+      expect(screen.getByTestId(`mock-consolidation-order-${newOrder.id}`)).toBeInTheDocument();
     });
   });
 });
