@@ -118,13 +118,14 @@ normalized value, and apply any wanted strictness to the other side of the compa
 does decline a transform names which one, and why, in its own code; the default is otherwise
 indistinguishable from an oversight.
 
-The one sanctioned instance: `isExactLastNameMatch`, gating three sole-candidate RESOLVE stages,
-strips administrative markers on both the source and candidate lastName but declines the final
-token-reduction transform, symmetrically, on both sides. Reducing both sides collapses a genuinely
-different, unrelated surname truncated to its first hyphen segment ("Schwartz-Albright") into the
-same candidate as an unrelated "Schwartz" — the sole-candidate gate these stages depend on requires
-that collision to never happen. This is not reading `sourceRaw` — it reads the marker-stripped
-value, which stops one transform short of the full normalized form.
+The one sanctioned instance: `isExactLastNameMatch` strips administrative markers on both the
+source and candidate lastName but declines the final token-reduction transform, symmetrically, on
+both sides. Reducing both sides collapses a genuinely different, unrelated surname truncated to
+its first hyphen segment ("Schwartz-Albright") into the same candidate as an unrelated "Schwartz"
+— every caller of this comparison depends on that collision never happening, whether the caller
+itself is a sole-candidate RESOLVE stage or a private helper narrowing a same-surname pool down to
+one candidate for a RESOLVE stage to act on. This is not reading `sourceRaw` — it reads the
+marker-stripped value, which stops one transform short of the full normalized form.
 
 Testing obligation: state built directly, without running NORMALIZE, leaves raw and normalized
 identical, and a comparison reading the wrong one passes. Any stage comparing names needs at least
@@ -244,39 +245,57 @@ claims it (see "Resolving on thin evidence").
 Neither is INCOMPARABLE, which is not about deficient data at all: it is reached only when the
 record names no person to match.
 
-Two rules follow from requiring corroboration for a MATCH. First, a name-only source is never run
-through the fuzzy or otherwise expensive retrieval tiers: with no corroborating data available, a
-fuzzy name match cannot be confirmed and only manufactures false positives. Second, a sole
-exact-name candidate is not, on its own, a MATCH. CAMS is an open population — the identity a source
-refers to may be a trustee not yet recorded in it — so the absence of other same-name candidates is
-not evidence that the one present is correct. Corroborating evidence beyond the name is what earns a
-MATCH, so a source carrying only a name does not reach MATCH through any ordinary resolving stage:
-every one of them treats a source with no comparable contact data as an automatic exclusion,
-regardless of how strong the name match is.
+Two rules follow from requiring corroboration for a MATCH. First, a name-only source can still be
+retrieved through the fuzzy or otherwise expensive tiers — retrieval is not gated on source
+comparability — but it can never RESOLVE through any of them: every ordinary resolving stage
+treats a source with no comparable contact data as an automatic exclusion, regardless of how
+strong the name match is, so a fuzzy retrieval spent on a name-only source can surface a candidate
+but never confirm one. What gates the cost of running those tiers at all is cheaper and earlier:
+a record resolved by a high-precision discovery tier short-circuits before any later, more
+expensive tier is ever reached (see "Discovery tiers and the combined pool" and "Cost-gated
+ordering"), so a fuzzy tier is only reached — and its cost only paid — once nothing cheaper has
+already resolved the record. Second, a sole exact-name candidate is not, on its own, a MATCH. CAMS
+is an open population — the identity a source refers to may be a trustee not yet recorded in it —
+so the absence of other same-name candidates is not evidence that the one present is correct.
+Corroborating evidence beyond the name is what earns a MATCH, so a source carrying only a name
+does not reach MATCH through any ordinary resolving stage.
 
 ### Resolving on thin evidence
 
-One population falls outside that rule: a source record naming an actual person, matching exactly
-one candidate on name, with no corroborating data on the source side at all — not missing one field,
-but structurally uncomparable (no address, a sentinel in place of the phone). Requiring one more
-corroborating signal is not available here; there is nothing left to ask for.
+Two populations fall outside the ordinary corroboration rule, both structurally uncomparable on
+the source side (no address, a sentinel in place of the phone — not merely a missing field):
 
-These resolve, through a small set of last-resort stages constrained as follows:
+- A source matching exactly one candidate on name, whether that name match is exact or a plausible
+  fuzzy match.
+- A source matching several same-surname candidates, when disqualifying evidence (a strong,
+  multi-field address disagreement) narrows that pool down to one candidate to check a fuzzy
+  first-name match against.
 
-- **They run last, as a group.** Nothing in the group runs until nothing outside it could resolve
-  the record. Every ordinary resolving stage already excludes this candidate shape, so ordering the
-  group last forfeits nothing.
+Requiring one more corroborating signal is not available for either population; there is nothing
+left to ask for.
+
+These resolve through a small set of last-resort stages, composed as their own ordered
+sub-pipeline and appended as one stage at the end of the shared RESOLVE sequence, constrained as
+follows:
+
+- **Nothing in the group runs until nothing else in that same RESOLVE sequence could resolve the
+  record.** The RESOLVE sequence is shared and runs once per candidate pool — once per discovery
+  tier's own nested attempt, and once more over the final combined pool (see "Discovery tiers and
+  the combined pool") — so this guarantee holds within each of those resolve passes: every
+  richer-evidence stage in that same pass gets first attempt at a candidate before a last-resort
+  stage ever sees it. It does not mean a last-resort stage only runs after every discovery tier has
+  been tried; a last-resort stage can resolve a candidate discovered by the very first tier, in
+  that tier's own resolve pass, if no richer stage claims it first.
 - **They are collected in one list, not interleaved.** "What does this pipeline trust on thin
   evidence?" has one place to read. Adding, removing, or reordering one leaves the main sequence's
   validated ordering untouched.
 - **They are internally ordered by decreasing evidence strength**, as the main sequence is.
-- **Each names, in its own code, the risk it accepts and the backtest population behind it** —
-  including the residual risk no available signal can catch: an exact name match belonging to a
-  different real person.
+- **Each names, in its own code, the risk it accepts** — including the residual risk no available
+  signal can catch: an exact or fuzzy name match belonging to a different real person.
 
-The trade-off: a small, measured number of links rest on name evidence alone, against leaving a
-known and reviewable population permanently unresolved. Any change to this group is validated
-against the backtest population before landing.
+The trade-off: a small, measured number of links rest on name evidence alone (in one case, further
+narrowed by ruling out disqualified candidates rather than starting from a pool already sole),
+against leaving a known and reviewable population permanently unresolved.
 
 ### Disqualifiers
 
