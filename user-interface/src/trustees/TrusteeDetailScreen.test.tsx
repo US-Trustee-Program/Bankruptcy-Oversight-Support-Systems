@@ -676,6 +676,19 @@ describe('TrusteeDetailScreen', () => {
         expect(screen.queryByTestId('edit-upcoming-key-dates')).not.toBeInTheDocument();
       });
     });
+
+    test('should redirect home when only DISPLAY_CHPT12_STANDING_KEY_DATES is enabled (retired legacy path)', async () => {
+      mockUseFeatureFlags.mockReturnValue({
+        ...testFeatureFlags,
+        'display-chpt12-standing-key-dates': true,
+      });
+
+      renderWithRouter(['/trustees/123/appointments/appt-1/upcoming-key-dates/edit']);
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('edit-upcoming-key-dates')).not.toBeInTheDocument();
+      });
+    });
   });
 
   describe('past-key-dates/edit route flag gate', () => {
@@ -710,6 +723,19 @@ describe('TrusteeDetailScreen', () => {
           expect(screen.queryByTestId('edit-past-key-dates')).not.toBeInTheDocument();
         });
       }
+    });
+
+    test('should redirect home when only DISPLAY_CHPT12_STANDING_KEY_DATES is enabled (retired legacy path)', async () => {
+      mockUseFeatureFlags.mockReturnValue({
+        ...testFeatureFlags,
+        'display-chpt12-standing-key-dates': true,
+      });
+
+      renderWithRouter(['/trustees/123/appointments/appt-1/past-key-dates/edit']);
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('edit-past-key-dates')).not.toBeInTheDocument();
+      });
     });
   });
 

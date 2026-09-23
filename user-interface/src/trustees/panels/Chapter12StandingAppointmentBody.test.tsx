@@ -6,7 +6,10 @@ import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import * as featureFlagsHook from '@/lib/hooks/UseFeatureFlags';
-import { DISPLAY_CHPT12_STANDING_KEY_DATES } from '@/lib/hooks/UseFeatureFlags';
+import {
+  DISPLAY_CHPT12_STANDING_KEY_DATES,
+  TPR_DISPLAY_UPDATES,
+} from '@/lib/hooks/UseFeatureFlags';
 
 vi.mock('./AppointmentBasicFields', () => ({
   default: (props: { appointment: TrusteeAppointment }) => (
@@ -15,11 +18,16 @@ vi.mock('./AppointmentBasicFields', () => ({
 }));
 
 function mockCard(testId: string) {
-  return (props: { data: TrusteeUpcomingKeyDates | null; isLoading: boolean }) => (
+  return (props: {
+    data: TrusteeUpcomingKeyDates | null;
+    isLoading: boolean;
+    tprDisplayUpdates?: boolean;
+  }) => (
     <div
       data-testid={testId}
       data-is-loading={String(props.isLoading)}
       data-has-data={String(props.data !== null)}
+      data-tpr-display-updates={String(props.tprDisplayUpdates)}
     />
   );
 }
@@ -110,6 +118,36 @@ describe('Chapter12StandingAppointmentBody', () => {
       expect(screen.getByTestId(testId)).toHaveAttribute('data-has-data', 'true');
     }
     expect(screen.getByTestId('chapter12-standing-budget-card')).toBeInTheDocument();
+  });
+
+  test('forwards tprDisplayUpdates derived from the TPR_DISPLAY_UPDATES flag', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: keyDates });
+    vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+      [DISPLAY_CHPT12_STANDING_KEY_DATES]: true,
+      [TPR_DISPLAY_UPDATES]: true,
+    });
+
+    renderBody();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('chapter12-standing-tpr-card')).toHaveAttribute(
+        'data-tpr-display-updates',
+        'true',
+      );
+    });
+  });
+
+  test('forwards tprDisplayUpdates as false when the TPR_DISPLAY_UPDATES flag is disabled', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: keyDates });
+
+    renderBody();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('chapter12-standing-tpr-card')).toHaveAttribute(
+        'data-tpr-display-updates',
+        'false',
+      );
+    });
   });
 
   test('forwards null data to all data-driven cards when no key dates document exists', async () => {

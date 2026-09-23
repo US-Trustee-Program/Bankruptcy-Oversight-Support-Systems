@@ -50,6 +50,7 @@ export default function Chapter12StandingOtherKeyDatesForm() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [form, setForm] = useState<Chapter12StandingOtherKeyDatesFormState>(EMPTY_FORM);
   const [original, setOriginal] = useState<TrusteeUpcomingKeyDates | null>(null);
   const { registerFieldError, hasErrorAmong } = useDateFieldErrors();
@@ -68,6 +69,10 @@ export default function Chapter12StandingOtherKeyDatesForm() {
         }
       })
       .catch((err) => {
+        // A failed GET must block Save: `original` stays null here, same as the
+        // legitimate "no document yet" case, but saving would wipe every
+        // unrelated key-date field on the shared document via mergeKeyDatesInput.
+        setLoadFailed(true);
         globalAlert?.error(`Failed to load Other key dates: ${(err as Error).message}`);
       })
       .finally(() => {
@@ -119,7 +124,9 @@ export default function Chapter12StandingOtherKeyDatesForm() {
   }
 
   const isSaveDisabled =
-    isSaving || hasErrorAmong(['lease-expiration', 'past-background-question', 'id-expiration']);
+    isSaving ||
+    loadFailed ||
+    hasErrorAmong(['lease-expiration', 'past-background-question', 'id-expiration']);
 
   return (
     <div className="edit-upcoming-key-dates" data-testid="edit-chapter12-standing-other">

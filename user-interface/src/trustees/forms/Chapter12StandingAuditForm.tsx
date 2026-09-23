@@ -57,6 +57,7 @@ export default function Chapter12StandingAuditForm() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [form, setForm] = useState<Chapter12StandingAuditFormState>(EMPTY_FORM);
   const [original, setOriginal] = useState<TrusteeUpcomingKeyDates | null>(null);
   const { registerFieldError, hasErrorAmong } = useDateFieldErrors();
@@ -76,6 +77,10 @@ export default function Chapter12StandingAuditForm() {
         }
       })
       .catch((err) => {
+        // A failed GET must block Save: `original` stays null here, same as the
+        // legitimate "no document yet" case, but saving would wipe every
+        // unrelated key-date field on the shared document via mergeKeyDatesInput.
+        setLoadFailed(true);
         globalAlert?.error(`Failed to load Audit key dates: ${(err as Error).message}`);
       })
       .finally(() => {
@@ -210,7 +215,7 @@ export default function Chapter12StandingAuditForm() {
           id="save-chapter12-standing-audit"
           data-testid="button-save-chapter12-standing-audit"
           onClick={handleSave}
-          disabled={isSaving || hasAnyDateError || !!completionPairError}
+          disabled={isSaving || loadFailed || hasAnyDateError || !!completionPairError}
         >
           {isSaving ? 'Saving...' : 'Save'}
         </Button>

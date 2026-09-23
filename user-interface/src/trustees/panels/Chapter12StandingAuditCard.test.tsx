@@ -60,9 +60,11 @@ describe('Chapter12StandingAuditCard', () => {
     renderCard();
 
     expect(screen.getByText('Audit')).toBeInTheDocument();
-    expect(screen.getByTestId('audit-req-by-row')).toHaveTextContent('2026');
-    expect(screen.getByTestId('past-audit-row')).toHaveTextContent('02/04/2023');
-    expect(screen.getByTestId('past-last-audit-fiscal-year-row')).toHaveTextContent('2023');
+    expect(screen.getByTestId('chapter12-standing-audit-req-by-row')).toHaveTextContent('2026');
+    expect(screen.getByTestId('chapter12-standing-past-audit-row')).toHaveTextContent('02/04/2023');
+    expect(
+      screen.getByTestId('chapter12-standing-past-last-audit-fiscal-year-row'),
+    ).toHaveTextContent('2023');
   });
 
   test('shows a "Closed for {year}" tag when the appointment is closed for that year', () => {
@@ -96,11 +98,15 @@ describe('Chapter12StandingAuditCard', () => {
   test('shows "No date added" defaults when there is no key dates document', () => {
     renderCard(null);
 
-    expect(screen.getByTestId('audit-req-by-row')).toHaveTextContent('No date added');
-    expect(screen.getByTestId('past-audit-row')).toHaveTextContent('No date added');
-    expect(screen.getByTestId('past-last-audit-fiscal-year-row')).toHaveTextContent(
+    expect(screen.getByTestId('chapter12-standing-audit-req-by-row')).toHaveTextContent(
       'No date added',
     );
+    expect(screen.getByTestId('chapter12-standing-past-audit-row')).toHaveTextContent(
+      'No date added',
+    );
+    expect(
+      screen.getByTestId('chapter12-standing-past-last-audit-fiscal-year-row'),
+    ).toHaveTextContent('No date added');
   });
 
   test('shows a loading spinner while loading', () => {

@@ -285,6 +285,16 @@ describe('Chapter7PanelTrusteePerformanceReportForm', () => {
     );
   });
 
+  test('disables Save when key dates fail to load, so a save cannot null out the shared document', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockRejectedValue(new Error('Network error'));
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('button-save-chapter7-panel-tpr')).toBeDisabled();
+    });
+  });
+
   test('shows error alert when save fails and re-enables save button', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
     vi.spyOn(Api2, 'putUpcomingKeyDates').mockRejectedValue(new Error('Server error'));

@@ -122,35 +122,42 @@ describe('Chapter12StandingOtherKeyDatesForm', () => {
     expect(screen.getByTestId('id-expiration')).toHaveValue('');
   });
 
-  test('save calls PUT with all owned fields while preserving other fields, then navigates', async () => {
-    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
-    const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
+  test.each([
+    ['lease-expiration', 'leaseExpiration', '2029-03-01'],
+    ['past-background-question', 'pastBackgroundQuestion', '2024-01-15'],
+    ['id-expiration', 'idExpiration', '2030-07-04'],
+  ])(
+    'save calls PUT with the changed %s while preserving other fields, then navigates',
+    async (testId, field, newValue) => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+      const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
 
-    renderComponent();
+      renderComponent();
 
-    await waitFor(() => expect(screen.getByTestId('lease-expiration')).toHaveValue('2027-06-30'));
+      await waitFor(() => expect(screen.getByTestId('lease-expiration')).toHaveValue('2027-06-30'));
 
-    fireEvent.change(screen.getByTestId('past-background-question'), {
-      target: { value: '2024-01-15' },
-    });
+      fireEvent.change(screen.getByTestId(testId), {
+        target: { value: newValue },
+      });
 
-    await userEvent.click(screen.getByTestId('button-save-chapter12-standing-other'));
+      await userEvent.click(screen.getByTestId('button-save-chapter12-standing-other'));
 
-    await waitFor(() => {
-      expect(putSpy).toHaveBeenCalledWith(
-        'trustee-001',
-        'appointment-001',
-        expect.objectContaining({
-          trusteeId: 'trustee-001',
-          appointmentId: 'appointment-001',
-          leaseExpiration: '2027-06-30',
-          pastBackgroundQuestion: '2024-01-15',
-          idExpiration: '2028-01-15',
-        }),
-      );
-    });
-    expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');
-  });
+      await waitFor(() => {
+        expect(putSpy).toHaveBeenCalledWith(
+          'trustee-001',
+          'appointment-001',
+          expect.objectContaining({
+            trusteeId: 'trustee-001',
+            appointmentId: 'appointment-001',
+            leaseExpiration: field === 'leaseExpiration' ? newValue : '2027-06-30',
+            pastBackgroundQuestion: field === 'pastBackgroundQuestion' ? newValue : '2023-06-03',
+            idExpiration: field === 'idExpiration' ? newValue : '2028-01-15',
+          }),
+        );
+      });
+      expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');
+    },
+  );
 
   test('disables the Save button and shows "Saving..." while the save request is in flight', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
@@ -180,6 +187,16 @@ describe('Chapter12StandingOtherKeyDatesForm', () => {
     expect(mockGlobalAlertRef.current.error).toHaveBeenCalledWith(
       'Failed to load Other key dates: Network error',
     );
+  });
+
+  test('disables Save when key dates fail to load, so a save cannot null out the shared document', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockRejectedValue(new Error('Network error'));
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('button-save-chapter12-standing-other')).toBeDisabled();
+    });
   });
 
   test('shows error alert when save fails and re-enables save button', async () => {
@@ -277,6 +294,8 @@ describe('buildOtherKeyDatesInput', () => {
     tprCompletionStatus: 'INCOMPLETE',
     tirCompletionYear: 2023,
     tirCompletionStatus: 'COMPLETE',
+    annualReportCompletionYear: 2024,
+    annualReportCompletionStatus: 'COMPLETE',
     lastMonthlyReportReceived: '2020-01-16',
     leaseExpiration: '2020-01-17',
     idExpiration: '2020-01-18',
@@ -327,6 +346,8 @@ describe('buildOtherKeyDatesInput', () => {
       tprCompletionStatus: 'INCOMPLETE',
       tirCompletionYear: 2023,
       tirCompletionStatus: 'COMPLETE',
+      annualReportCompletionYear: 2024,
+      annualReportCompletionStatus: 'COMPLETE',
       lastMonthlyReportReceived: '2020-01-16',
       leaseExpiration: '2029-05-01',
       idExpiration: '2030-03-20',
@@ -374,6 +395,8 @@ describe('buildOtherKeyDatesInput', () => {
       tprCompletionStatus: null,
       tirCompletionYear: null,
       tirCompletionStatus: null,
+      annualReportCompletionYear: null,
+      annualReportCompletionStatus: null,
       lastMonthlyReportReceived: null,
       leaseExpiration: null,
       idExpiration: null,

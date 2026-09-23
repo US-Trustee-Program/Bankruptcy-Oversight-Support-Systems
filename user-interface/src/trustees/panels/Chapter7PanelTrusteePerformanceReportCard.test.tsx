@@ -67,21 +67,29 @@ describe('Chapter7PanelTrusteePerformanceReportCard', () => {
     renderCard();
 
     expect(screen.getByText('Trustee Performance Report')).toBeInTheDocument();
-    expect(screen.getByTestId('tpr-review-period-row')).toBeInTheDocument();
-    expect(screen.getByTestId('tpr-review-period-frequency-row')).toHaveTextContent('One year');
-    expect(screen.getByTestId('tpr-due-row')).toBeInTheDocument();
-    expect(screen.getByTestId('last-tpr-submitted-row')).toHaveTextContent('10/03/2025');
+    expect(screen.getByTestId('chapter7-panel-tpr-review-period-row')).toBeInTheDocument();
+    expect(screen.getByTestId('chapter7-panel-tpr-review-period-frequency-row')).toHaveTextContent(
+      'One year',
+    );
+    expect(screen.getByTestId('chapter7-panel-tpr-due-row')).toBeInTheDocument();
+    expect(screen.getByTestId('chapter7-panel-last-tpr-submitted-row')).toHaveTextContent(
+      '10/03/2025',
+    );
   });
 
   test('shows "No date added" / "No frequency selected" when there is no key dates document', () => {
     renderCard(null);
 
-    expect(screen.getByTestId('tpr-review-period-row')).toHaveTextContent('No date added');
-    expect(screen.getByTestId('tpr-review-period-frequency-row')).toHaveTextContent(
+    expect(screen.getByTestId('chapter7-panel-tpr-review-period-row')).toHaveTextContent(
+      'No date added',
+    );
+    expect(screen.getByTestId('chapter7-panel-tpr-review-period-frequency-row')).toHaveTextContent(
       'No frequency selected',
     );
-    expect(screen.getByTestId('tpr-due-row')).toHaveTextContent('No date added');
-    expect(screen.getByTestId('last-tpr-submitted-row')).toHaveTextContent('No date added');
+    expect(screen.getByTestId('chapter7-panel-tpr-due-row')).toHaveTextContent('No date added');
+    expect(screen.getByTestId('chapter7-panel-last-tpr-submitted-row')).toHaveTextContent(
+      'No date added',
+    );
   });
 
   test('shows a loading spinner while loading', () => {
@@ -156,25 +164,29 @@ describe('Chapter7PanelTrusteePerformanceReportCard', () => {
     test('hides the frequency row', () => {
       renderCard(keyDates, false, false);
 
-      expect(screen.queryByTestId('tpr-review-period-frequency-row')).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('chapter7-panel-tpr-review-period-frequency-row'),
+      ).not.toBeInTheDocument();
     });
 
     test('shows MM/DD + year-type for tprDue instead of calculated year', () => {
       renderCard(keyDates, false, false);
 
-      expect(screen.getByTestId('tpr-due-row')).toHaveTextContent('10/06 EVEN');
+      expect(screen.getByTestId('chapter7-panel-tpr-due-row')).toHaveTextContent('10/06 EVEN');
     });
 
     test('shows MM/DD range for tprReviewPeriod instead of full YYYY range', () => {
       renderCard(keyDates, false, false);
 
-      expect(screen.getByTestId('tpr-review-period-row')).toHaveTextContent('04/01 - 03/31');
+      expect(screen.getByTestId('chapter7-panel-tpr-review-period-row')).toHaveTextContent(
+        '04/01 - 03/31',
+      );
     });
 
     test('shows "No date added" for tprDue when data is null', () => {
       renderCard(null, false, false);
 
-      expect(screen.getByTestId('tpr-due-row')).toHaveTextContent('No date added');
+      expect(screen.getByTestId('chapter7-panel-tpr-due-row')).toHaveTextContent('No date added');
     });
   });
 });

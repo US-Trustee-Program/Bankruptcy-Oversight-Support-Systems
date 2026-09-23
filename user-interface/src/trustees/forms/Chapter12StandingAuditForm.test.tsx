@@ -214,6 +214,16 @@ describe('Chapter12StandingAuditForm', () => {
     );
   });
 
+  test('disables Save when key dates fail to load, so a save cannot null out the shared document', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockRejectedValue(new Error('Network error'));
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('button-save-chapter12-standing-audit')).toBeDisabled();
+    });
+  });
+
   test('shows error alert when save fails and re-enables save button', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
     vi.spyOn(Api2, 'putUpcomingKeyDates').mockRejectedValue(new Error('Server error'));
@@ -392,6 +402,8 @@ describe('buildAuditKeyDatesInput', () => {
     tprCompletionStatus: 'INCOMPLETE',
     tirCompletionYear: 2023,
     tirCompletionStatus: 'COMPLETE',
+    annualReportCompletionYear: 2024,
+    annualReportCompletionStatus: 'COMPLETE',
     lastMonthlyReportReceived: '2020-01-16',
     leaseExpiration: '2020-01-17',
     idExpiration: '2020-01-18',
@@ -443,6 +455,8 @@ describe('buildAuditKeyDatesInput', () => {
       tprCompletionStatus: 'INCOMPLETE',
       tirCompletionYear: 2023,
       tirCompletionStatus: 'COMPLETE',
+      annualReportCompletionYear: 2024,
+      annualReportCompletionStatus: 'COMPLETE',
       lastMonthlyReportReceived: '2020-01-16',
       leaseExpiration: '2020-01-17',
       idExpiration: '2020-01-18',
@@ -495,6 +509,8 @@ describe('buildAuditKeyDatesInput', () => {
       tprCompletionStatus: null,
       tirCompletionYear: null,
       tirCompletionStatus: null,
+      annualReportCompletionYear: null,
+      annualReportCompletionStatus: null,
       lastMonthlyReportReceived: null,
       leaseExpiration: null,
       idExpiration: null,

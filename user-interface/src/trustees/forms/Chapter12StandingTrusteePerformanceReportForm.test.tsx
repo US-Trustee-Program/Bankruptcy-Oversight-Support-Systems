@@ -298,6 +298,16 @@ describe('Chapter12StandingTrusteePerformanceReportForm', () => {
     );
   });
 
+  test('disables Save when key dates fail to load, so a save cannot null out the shared document', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockRejectedValue(new Error('Network error'));
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('button-save-chapter12-standing-tpr')).toBeDisabled();
+    });
+  });
+
   test('shows error alert when save fails and re-enables save button', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
     vi.spyOn(Api2, 'putUpcomingKeyDates').mockRejectedValue(new Error('Server error'));
@@ -352,12 +362,12 @@ describe('Chapter12StandingTrusteePerformanceReportForm', () => {
       expect(screen.getByTestId('tpr-review-period-start')).toHaveValue('2026-04-01'),
     );
 
-    fireEvent.change(screen.getByTestId('tpr-review-period-start'), {
-      target: { value: '2027-04-01' },
-    });
+    const startInput = screen.getByTestId('tpr-review-period-start');
+    fireEvent.change(startInput, { target: { value: '2027-04-01' } });
+    fireEvent.blur(startInput, { relatedTarget: null });
 
     await waitFor(() => {
-      expect(screen.getByTestId('tpr-review-period-error')).toHaveTextContent(
+      expect(document.getElementById('tpr-review-period-start-error')).toHaveTextContent(
         'TPR Review Period Start must be before TPR Review Period End.',
       );
       expect(screen.getByTestId('button-save-chapter12-standing-tpr')).toBeDisabled();
@@ -452,7 +462,7 @@ describe('Chapter12StandingTrusteePerformanceReportForm', () => {
 
       const startMonthSelect = document.getElementById('tpr-review-period-start-month')!;
       await userEvent.selectOptions(startMonthSelect, '');
-      await userEvent.click(screen.getByText('Edit Trustee Performance Report Key Dates'));
+      await userEvent.click(screen.getByText('Edit Trustee Performance Report (TPR) Key Dates'));
 
       await waitFor(() => {
         expect(screen.getByTestId('tpr-review-period-error')).toHaveTextContent(
@@ -502,6 +512,8 @@ describe('buildTrusteePerformanceReportKeyDatesInput', () => {
     tprCompletionStatus: 'INCOMPLETE',
     tirCompletionYear: 2023,
     tirCompletionStatus: 'COMPLETE',
+    annualReportCompletionYear: 2024,
+    annualReportCompletionStatus: 'COMPLETE',
     lastMonthlyReportReceived: '2020-01-16',
     leaseExpiration: '2020-01-17',
     idExpiration: '2020-01-18',
@@ -557,6 +569,8 @@ describe('buildTrusteePerformanceReportKeyDatesInput', () => {
       tprCompletionStatus: 'COMPLETE',
       tirCompletionYear: 2023,
       tirCompletionStatus: 'COMPLETE',
+      annualReportCompletionYear: 2024,
+      annualReportCompletionStatus: 'COMPLETE',
       lastMonthlyReportReceived: '2020-01-16',
       leaseExpiration: '2020-01-17',
       idExpiration: '2020-01-18',
@@ -613,6 +627,8 @@ describe('buildTrusteePerformanceReportKeyDatesInput', () => {
       tprCompletionStatus: null,
       tirCompletionYear: null,
       tirCompletionStatus: null,
+      annualReportCompletionYear: null,
+      annualReportCompletionStatus: null,
       lastMonthlyReportReceived: null,
       leaseExpiration: null,
       idExpiration: null,

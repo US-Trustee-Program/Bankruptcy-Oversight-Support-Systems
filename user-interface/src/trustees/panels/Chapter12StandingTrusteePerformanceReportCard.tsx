@@ -1,20 +1,5 @@
-import { useNavigate } from 'react-router-dom';
-import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
-import EditableTableCard from '@/lib/components/cams/EditableTableCard/EditableTableCard';
-import {
-  TrusteeUpcomingKeyDates,
-  isoToMMDD,
-  isoRangeToMMDD,
-} from '@common/cams/trustee-upcoming-key-dates';
-import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
-import {
-  tprReviewPeriodField,
-  tprFrequencyField,
-  tprDueField,
-  formatDateOrDefault,
-  NO_DATE,
-  buildCompletionTag,
-} from './upcomingKeyDatesFieldConfig';
+import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
+import TrusteePerformanceReportCard from './TrusteePerformanceReportCard';
 
 export interface Chapter12StandingTrusteePerformanceReportCardProps {
   trusteeId: string;
@@ -27,80 +12,5 @@ export interface Chapter12StandingTrusteePerformanceReportCardProps {
 export default function Chapter12StandingTrusteePerformanceReportCard(
   props: Readonly<Chapter12StandingTrusteePerformanceReportCardProps>,
 ) {
-  const { trusteeId, appointmentId, data, isLoading, tprDisplayUpdates } = props;
-  const navigate = useNavigate();
-  const canManage = useCanManageTrustees();
-
-  function openEdit() {
-    navigate(
-      `/trustees/${trusteeId}/appointments/${appointmentId}/chapter12-standing-tpr-key-dates/edit`,
-    );
-  }
-
-  if (isLoading) {
-    return <LoadingSpinner id="chapter12-standing-tpr-loading" />;
-  }
-
-  const tag = buildCompletionTag(
-    data?.tprCompletionYear,
-    data?.tprCompletionStatus,
-    'COMPLETE',
-    `tpr-completion-status-tag-${appointmentId}`,
-  );
-
-  const columns = [
-    { key: 'tprReviewPeriod', header: 'TPR Review Period', testId: 'tpr-review-period-row' },
-    ...(tprDisplayUpdates
-      ? [
-          {
-            key: 'tprFrequency',
-            header: 'TPR Review Period Frequency',
-            testId: 'tpr-review-period-frequency-row',
-          },
-        ]
-      : []),
-    { key: 'tprDue', header: 'TPR Due', testId: 'tpr-due-row' },
-    {
-      key: 'lastTprSubmitted',
-      header: 'Last TPR Submitted',
-      testId: 'last-tpr-submitted-row',
-    },
-  ];
-
-  const tprReviewPeriodValue = tprDisplayUpdates
-    ? tprReviewPeriodField(data).value
-    : data?.tprReviewPeriodStart && data?.tprReviewPeriodEnd
-      ? isoRangeToMMDD(data.tprReviewPeriodStart, data.tprReviewPeriodEnd)
-      : NO_DATE;
-
-  const tprDueValue = tprDisplayUpdates
-    ? tprDueField(data).value
-    : data?.tprDue && data?.tprDueYearType
-      ? `${isoToMMDD(data.tprDue)} ${data.tprDueYearType}`
-      : NO_DATE;
-
-  const values = {
-    tprReviewPeriod: tprReviewPeriodValue,
-    ...(tprDisplayUpdates ? { tprFrequency: tprFrequencyField(data).value } : {}),
-    tprDue: tprDueValue,
-    lastTprSubmitted: formatDateOrDefault(data?.lastTprSubmitted),
-  };
-
-  return (
-    <EditableTableCard
-      id={`edit-chapter12-standing-tpr-${appointmentId}`}
-      title="Trustee Performance Report"
-      testId="chapter12-standing-tpr-card"
-      className="chapter12-standing-tpr-card"
-      tableId={`chapter12-standing-tpr-table-${appointmentId}`}
-      tableClassName="chapter12-standing-tpr-table"
-      tableAriaLabel="Trustee Performance Report key dates"
-      tag={tag}
-      onEdit={canManage ? openEdit : undefined}
-      editAriaLabel="Edit Trustee Performance Report key dates"
-      editTitle="Edit Trustee Performance Report key dates"
-      columns={columns}
-      values={values}
-    />
-  );
+  return <TrusteePerformanceReportCard {...props} variant="chapter12-standing" />;
 }
