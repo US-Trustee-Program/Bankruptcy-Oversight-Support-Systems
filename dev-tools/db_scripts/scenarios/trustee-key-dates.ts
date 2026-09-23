@@ -669,8 +669,15 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           tprReviewPeriodEnd: '1900-12-31',
           tprDue: '1900-03-15',
           tprDueYearType: 'ODD',
+          lastTprSubmitted: '2024-10-03',
           leaseExpiration: '2027-06-30',
           idExpiration: '2028-01-15',
+          // Completion status (accordion cards, CAMS-914) -- deliberately one closed/complete
+          // and one not, so the demo shows both tag colors
+          auditCompletionYear: 2026,
+          auditCompletionStatus: 'CLOSED',
+          tprCompletionYear: 2026,
+          tprCompletionStatus: 'INCOMPLETE',
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
         },

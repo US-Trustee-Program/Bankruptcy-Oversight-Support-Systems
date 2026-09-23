@@ -19,12 +19,13 @@ vi.mock('react-router-dom', async () => {
 // Test Utilities: Appointment Factory
 // ============================================================================
 
-// Chapter 12 Standing is used as the "generic, still-flat AppointmentCard" fixture
+// Chapter 13 Standing is used as the "generic, still-flat AppointmentCard" fixture
 // throughout this file because it has no dedicated accordion body (unlike Chapter 7
-// Panel, which is covered by its own "Chapter 7 Panel accordion" describe block below).
+// Panel, Chapter 11 Case-by-Case/SubV, Chapter 7 Elected, and Chapter 12 Standing, each
+// covered by their own accordion describe block below).
 const baseAppointment: Omit<TrusteeAppointment, 'id'> = {
   trusteeId: 'trustee-123',
-  chapter: '12',
+  chapter: '13',
   appointmentType: 'standing',
   courtId: '081',
   courtDivisionName: undefined,
@@ -134,17 +135,25 @@ describe('TrusteeAppointments', () => {
   });
 
   test('should display appointments when API call succeeds', async () => {
-    // One rendering per appointment returned by the API. Chapter 12 Standing still
-    // uses the flat AppointmentCard; Chapter 12 Case by Case routes to the accordion
-    // (CAMS-913), so the two appointments render through different components.
+    // One rendering per appointment returned by the API. Both Chapter 12 Standing
+    // (CAMS-914) and Chapter 12 Case by Case (CAMS-913) now route to their own
+    // accordion body, so neither mock appointment falls through to the legacy
+    // flat AppointmentCard.
+    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
     vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: mockAppointments });
 
     renderComponent('trustee-123');
 
     await waitFor(() => {
-      expect(getAppointmentCards()).toHaveLength(1);
+      expect(
+        screen.getByTestId(`appointment-accordion-header-${mockAppointments[0].id}`),
+      ).toBeInTheDocument();
     });
-    expect(screen.getByTestId('appointment-accordion-header-appointment-002')).toBeInTheDocument();
+    expect(
+      screen.getByTestId(`appointment-accordion-header-${mockAppointments[1].id}`),
+    ).toBeInTheDocument();
+    expect(getAppointmentCards()).toHaveLength(0);
   });
 
   test('should display add button when appointments exist', async () => {
@@ -493,24 +502,38 @@ describe('TrusteeAppointments', () => {
       ).toBeInTheDocument();
       expect(getAppointmentCards()).toHaveLength(0);
     });
+  });
 
-    test('a Chapter 12 Standing appointment still renders as a flat card, not an accordion', async () => {
-      const ch12Standing = makeAppointment('ch12-standing-active', {
-        chapter: '12',
-        appointmentType: 'standing',
-        status: 'active',
-        courtName: 'Southern District of New York',
-      });
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch12Standing] });
+  describe('Chapter 12 Standing accordion', () => {
+    const ch12StandingActive = makeAppointment('ch12-standing-active', {
+      chapter: '12',
+      appointmentType: 'standing',
+      status: 'active',
+      courtName: 'Southern District of New York',
+    });
+    beforeEach(() => {
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
+    });
+
+    test('renders Chapter 12 Standing via the accordion', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch12StandingActive] });
 
       renderComponent('trustee-123');
 
       await waitFor(() => {
-        expect(getAppointmentCards()).toHaveLength(1);
+        expect(
+          screen.getByTestId(`appointment-accordion-header-${ch12StandingActive.id}`),
+        ).toBeInTheDocument();
       });
       expect(
-        screen.queryByTestId(`appointment-accordion-header-${ch12Standing.id}`),
-      ).not.toBeInTheDocument();
+        screen.getByTestId(`appointment-accordion-body-${ch12StandingActive.id}`),
+      ).toBeInTheDocument();
+      expect(getAppointmentCards()).toHaveLength(0);
     });
+
+    // Default-collapsed rendering and toggle mechanics are generic AppointmentAccordion/
+    // useAppointmentExpansion behavior, not specific to Chapter 12 Standing -- already
+    // covered by AppointmentAccordion.test.tsx and useAppointmentExpansion.test.ts.
   });
 });

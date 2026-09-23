@@ -16,6 +16,16 @@ export type UpcomingKeyDatesVariant =
 
 export const NO_DATE = 'No date added';
 
+export interface CompletionTagLabels {
+  closed: string;
+  notClosed: string;
+}
+
+const DEFAULT_COMPLETION_TAG_LABELS: CompletionTagLabels = {
+  closed: 'Complete',
+  notClosed: 'Incomplete',
+};
+
 /**
  * The completion year and status are stored as a pair, so a tag is only
  * meaningful when both are present.
@@ -32,11 +42,13 @@ export function buildCompletionTag(
   status: string | null | undefined,
   closedValue: string,
   id: string,
+  labels: CompletionTagLabels = DEFAULT_COMPLETION_TAG_LABELS,
 ): EditableTableCardTag | undefined {
   if (year == null || status == null) return undefined;
+  const isClosed = status === closedValue;
   return {
-    label: `${status === closedValue ? 'Complete' : 'Incomplete'} for ${year}`,
-    color: (status === closedValue ? 'green' : 'red') as EditableTableCardTagColor,
+    label: `${isClosed ? labels.closed : labels.notClosed} for ${year}`,
+    color: (isClosed ? 'green' : 'red') as EditableTableCardTagColor,
     id,
   };
 }
@@ -111,12 +123,16 @@ export function tprDueField(
   return { label, value, testId: 'tpr-due-row' };
 }
 
-function leaseExpirationField(data: TrusteeUpcomingKeyDates | null): UpcomingKeyDatesDisplayField {
+export function leaseExpirationField(
+  data: TrusteeUpcomingKeyDates | null,
+): UpcomingKeyDatesDisplayField {
   const value = data?.leaseExpiration ? isoToMMDDYYYY(data.leaseExpiration) : NO_DATE;
   return { label: 'Lease Expiration', value, testId: 'lease-expiration-row' };
 }
 
-function idExpirationField(data: TrusteeUpcomingKeyDates | null): UpcomingKeyDatesDisplayField {
+export function idExpirationField(
+  data: TrusteeUpcomingKeyDates | null,
+): UpcomingKeyDatesDisplayField {
   const value = data?.idExpiration ? isoToMMDDYYYY(data.idExpiration) : NO_DATE;
   return { label: 'ID Expiration', value, testId: 'id-expiration-row' };
 }

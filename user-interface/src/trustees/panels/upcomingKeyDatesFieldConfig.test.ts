@@ -3,6 +3,8 @@ import {
   UPCOMING_KEY_DATES_FIELD_CONFIG,
   getUpcomingKeyDatesFieldConfig,
   buildCompletionTag,
+  formatDateOrDefault,
+  NO_DATE,
 } from './upcomingKeyDatesFieldConfig';
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
@@ -17,6 +19,51 @@ const baseDoc: TrusteeUpcomingKeyDates = {
   updatedBy: SYSTEM_USER_REFERENCE,
   updatedOn: '2026-01-01T00:00:00.000Z',
 };
+
+describe('formatDateOrDefault', () => {
+  test('formats a defined ISO date as MM/DD/YYYY', () => {
+    expect(formatDateOrDefault('2023-06-03')).toBe('06/03/2023');
+  });
+
+  test('returns NO_DATE when the date is undefined', () => {
+    expect(formatDateOrDefault(undefined)).toBe(NO_DATE);
+  });
+});
+
+describe('buildCompletionTag', () => {
+  test('defaults to "Complete"/"Incomplete" labels when none are given', () => {
+    expect(buildCompletionTag(2026, 'CLOSED', 'CLOSED', 'my-tag')).toEqual({
+      label: 'Complete for 2026',
+      color: 'green',
+      id: 'my-tag',
+    });
+    expect(buildCompletionTag(2026, 'NOT_CLOSED', 'CLOSED', 'my-tag')).toEqual({
+      label: 'Incomplete for 2026',
+      color: 'red',
+      id: 'my-tag',
+    });
+  });
+
+  test('uses custom labels when given', () => {
+    const labels = { closed: 'Closed', notClosed: 'Not Closed' };
+
+    expect(buildCompletionTag(2026, 'CLOSED', 'CLOSED', 'my-tag', labels)).toEqual({
+      label: 'Closed for 2026',
+      color: 'green',
+      id: 'my-tag',
+    });
+    expect(buildCompletionTag(2026, 'NOT_CLOSED', 'CLOSED', 'my-tag', labels)).toEqual({
+      label: 'Not Closed for 2026',
+      color: 'red',
+      id: 'my-tag',
+    });
+  });
+
+  test('returns undefined when year or status is unset', () => {
+    expect(buildCompletionTag(undefined, 'CLOSED', 'CLOSED', 'my-tag')).toBeUndefined();
+    expect(buildCompletionTag(2026, undefined, 'CLOSED', 'my-tag')).toBeUndefined();
+  });
+});
 
 describe('UPCOMING_KEY_DATES_FIELD_CONFIG chapter13-standing variant', () => {
   const config = UPCOMING_KEY_DATES_FIELD_CONFIG['chapter13-standing'];

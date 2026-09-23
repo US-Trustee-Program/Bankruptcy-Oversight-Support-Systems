@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
 import userEvent from '@testing-library/user-event';
-import Chapter7PanelTrusteePerformanceReportCard from './Chapter7PanelTrusteePerformanceReportCard';
+import Chapter12StandingTrusteePerformanceReportCard from './Chapter12StandingTrusteePerformanceReportCard';
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { CamsRole } from '@common/cams/roles';
@@ -18,11 +18,11 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
-describe('Chapter7PanelTrusteePerformanceReportCard', () => {
+describe('Chapter12StandingTrusteePerformanceReportCard', () => {
   let mockNavigate: ReturnType<typeof vi.fn>;
 
   const keyDates: TrusteeUpcomingKeyDates = {
-    id: 'key-dates-004',
+    id: 'key-dates-002',
     documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
     trusteeId: 'trustee-123',
     appointmentId: 'appointment-001',
@@ -35,7 +35,7 @@ describe('Chapter7PanelTrusteePerformanceReportCard', () => {
     tprFrequency: 'ANNUAL',
     tprDue: '1900-10-06',
     tprDueYearType: 'EVEN',
-    lastTprSubmitted: '2025-10-03',
+    lastTprSubmitted: '2024-10-03',
   };
 
   beforeEach(() => {
@@ -52,7 +52,7 @@ describe('Chapter7PanelTrusteePerformanceReportCard', () => {
   ) {
     return render(
       <BrowserRouter>
-        <Chapter7PanelTrusteePerformanceReportCard
+        <Chapter12StandingTrusteePerformanceReportCard
           trusteeId="trustee-123"
           appointmentId="appointment-001"
           data={data}
@@ -67,27 +67,29 @@ describe('Chapter7PanelTrusteePerformanceReportCard', () => {
     renderCard();
 
     expect(screen.getByText('Trustee Performance Report')).toBeInTheDocument();
-    expect(screen.getByTestId('chapter7-panel-tpr-review-period-row')).toBeInTheDocument();
-    expect(screen.getByTestId('chapter7-panel-tpr-review-period-frequency-row')).toHaveTextContent(
-      'One year',
+    expect(screen.getByTestId('chapter12-standing-tpr-review-period-row')).toHaveTextContent(
+      '04/01/2026 - 03/31/2027',
     );
-    expect(screen.getByTestId('chapter7-panel-tpr-due-row')).toBeInTheDocument();
-    expect(screen.getByTestId('chapter7-panel-last-tpr-submitted-row')).toHaveTextContent(
-      '10/03/2025',
+    expect(
+      screen.getByTestId('chapter12-standing-tpr-review-period-frequency-row'),
+    ).toHaveTextContent('One year');
+    expect(screen.getByTestId('chapter12-standing-tpr-due-row')).toBeInTheDocument();
+    expect(screen.getByTestId('chapter12-standing-last-tpr-submitted-row')).toHaveTextContent(
+      '10/03/2024',
     );
   });
 
   test('shows "No date added" / "No frequency selected" when there is no key dates document', () => {
     renderCard(null);
 
-    expect(screen.getByTestId('chapter7-panel-tpr-review-period-row')).toHaveTextContent(
+    expect(screen.getByTestId('chapter12-standing-tpr-review-period-row')).toHaveTextContent(
       'No date added',
     );
-    expect(screen.getByTestId('chapter7-panel-tpr-review-period-frequency-row')).toHaveTextContent(
-      'No frequency selected',
-    );
-    expect(screen.getByTestId('chapter7-panel-tpr-due-row')).toHaveTextContent('No date added');
-    expect(screen.getByTestId('chapter7-panel-last-tpr-submitted-row')).toHaveTextContent(
+    expect(
+      screen.getByTestId('chapter12-standing-tpr-review-period-frequency-row'),
+    ).toHaveTextContent('No frequency selected');
+    expect(screen.getByTestId('chapter12-standing-tpr-due-row')).toHaveTextContent('No date added');
+    expect(screen.getByTestId('chapter12-standing-last-tpr-submitted-row')).toHaveTextContent(
       'No date added',
     );
   });
@@ -103,7 +105,7 @@ describe('Chapter7PanelTrusteePerformanceReportCard', () => {
     renderCard();
 
     expect(
-      screen.getByTestId('button-edit-chapter7-panel-tpr-appointment-001'),
+      screen.getByTestId('button-edit-chapter12-standing-tpr-appointment-001'),
     ).toBeInTheDocument();
   });
 
@@ -113,7 +115,7 @@ describe('Chapter7PanelTrusteePerformanceReportCard', () => {
     renderCard();
 
     expect(
-      screen.queryByTestId('button-edit-chapter7-panel-tpr-appointment-001'),
+      screen.queryByTestId('button-edit-chapter12-standing-tpr-appointment-001'),
     ).not.toBeInTheDocument();
   });
 
@@ -121,10 +123,10 @@ describe('Chapter7PanelTrusteePerformanceReportCard', () => {
     const user = userEvent.setup();
     renderCard();
 
-    await user.click(screen.getByTestId('button-edit-chapter7-panel-tpr-appointment-001'));
+    await user.click(screen.getByTestId('button-edit-chapter12-standing-tpr-appointment-001'));
 
     expect(mockNavigate).toHaveBeenCalledWith(
-      '/trustees/trustee-123/appointments/appointment-001/tpr-key-dates/edit',
+      '/trustees/trustee-123/appointments/appointment-001/chapter12-standing-tpr-key-dates/edit',
     );
   });
 
@@ -137,10 +139,10 @@ describe('Chapter7PanelTrusteePerformanceReportCard', () => {
   });
 
   test('shows an "Incomplete for <year>" tag when tprCompletionStatus is INCOMPLETE', () => {
-    renderCard({ ...keyDates, tprCompletionYear: 2024, tprCompletionStatus: 'INCOMPLETE' });
+    renderCard({ ...keyDates, tprCompletionYear: 2026, tprCompletionStatus: 'INCOMPLETE' });
 
     expect(screen.getByTestId('tag-tpr-completion-status-tag-appointment-001')).toHaveTextContent(
-      'Incomplete for 2024',
+      'Incomplete for 2026',
     );
   });
 
@@ -152,41 +154,38 @@ describe('Chapter7PanelTrusteePerformanceReportCard', () => {
     ).not.toBeInTheDocument();
   });
 
-  test('shows no tag when only the year is set', () => {
-    renderCard({ ...keyDates, tprCompletionYear: 2025, tprCompletionStatus: undefined });
-
-    expect(
-      screen.queryByTestId('tag-tpr-completion-status-tag-appointment-001'),
-    ).not.toBeInTheDocument();
-  });
-
   describe('when TPR_DISPLAY_UPDATES flag is off', () => {
     test('hides the frequency row', () => {
       renderCard(keyDates, false, false);
 
       expect(
-        screen.queryByTestId('chapter7-panel-tpr-review-period-frequency-row'),
+        screen.queryByTestId('chapter12-standing-tpr-review-period-frequency-row'),
       ).not.toBeInTheDocument();
     });
 
     test('shows MM/DD + year-type for tprDue instead of calculated year', () => {
       renderCard(keyDates, false, false);
 
-      expect(screen.getByTestId('chapter7-panel-tpr-due-row')).toHaveTextContent('10/06 EVEN');
+      expect(screen.getByTestId('chapter12-standing-tpr-due-row')).toHaveTextContent('10/06 EVEN');
     });
 
     test('shows MM/DD range for tprReviewPeriod instead of full YYYY range', () => {
       renderCard(keyDates, false, false);
 
-      expect(screen.getByTestId('chapter7-panel-tpr-review-period-row')).toHaveTextContent(
+      expect(screen.getByTestId('chapter12-standing-tpr-review-period-row')).toHaveTextContent(
         '04/01 - 03/31',
       );
     });
 
-    test('shows "No date added" for tprDue when data is null', () => {
+    test('shows "No date added" for tprDue and tprReviewPeriod when data is null', () => {
       renderCard(null, false, false);
 
-      expect(screen.getByTestId('chapter7-panel-tpr-due-row')).toHaveTextContent('No date added');
+      expect(screen.getByTestId('chapter12-standing-tpr-due-row')).toHaveTextContent(
+        'No date added',
+      );
+      expect(screen.getByTestId('chapter12-standing-tpr-review-period-row')).toHaveTextContent(
+        'No date added',
+      );
     });
   });
 });

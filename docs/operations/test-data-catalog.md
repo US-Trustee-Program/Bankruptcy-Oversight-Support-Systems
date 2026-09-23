@@ -88,7 +88,9 @@ Ethan Nostaff, Ava Nostaff
 
 **Trustees:** Marcus Keydates, Diana Keydates, Samuel Keydates, Emily Nokeydates, Priya Keydates
 (Chapter 11 Subchapter V Pool, Last Monthly Report Received populated), Priya Nokeydates (Chapter 11
-Subchapter V Pool, no key dates)
+Subchapter V Pool, no key dates), Catherine Keydates (Chapter 12 Standing; audit/TPR completion
+status and Last TPR Submitted populated for the accordion's Audit and Trustee Performance Report
+cards)
 
 ### 341 Meeting Info
 
