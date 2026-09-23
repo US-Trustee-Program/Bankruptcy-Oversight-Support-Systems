@@ -143,11 +143,10 @@ async function runNestedTier(
  *
  * Neither of these blocks the other, or any later tier, from running just because it discovered
  * SOME candidates - only an actual RESOLUTION short-circuits. A same-surname candidate that never
- * corroborates (e.g. "Aldric K. Vossey" for ACMS "Marcus L Vossey") is real evidence of nothing on its
- * own and must not prevent broader tiers from ever getting a chance - a large share of
- * zero-candidate no-match records have this exact shape: a surname-exact hit that never resolved,
- * silently blocking matchTrusteeByName's ambiguous pool, which independently found real
- * corroborated candidates for the same record.
+ * corroborates (e.g. "Aldric K. Vossey" for ACMS "Marcus L Vossey") is real evidence of nothing on
+ * its own and must not prevent broader tiers from ever getting a chance: a surname-exact hit that
+ * never resolves would otherwise silently block matchTrusteeByName's ambiguous pool, which
+ * independently finds real corroborated candidates for the same record.
  *
  * If neither fast path resolves, every remaining discovery tier's candidates
  * (recallByNameThenResolveExact's ambiguous pool, recallByTokenIntersection,
