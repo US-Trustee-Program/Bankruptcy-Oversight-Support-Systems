@@ -7,7 +7,7 @@ import ApplicationContextCreator from '../azure/application-context-creator';
 import { createMockApplicationContext } from '../../lib/testing/testing-utilities';
 import factory from '../../lib/factory';
 import { CaseAppointment } from '@common/cams/trustee-appointments';
-import { TrusteeProfessionalId } from '@common/cams/trustee-professional-ids';
+import { TrusteeProfessionalId } from '../../lib/use-cases/dataflows/trustee-professional-ids.types';
 import { HealSentinelCaseAppointmentsMessage } from '@common/cams/dataflow-events';
 import { MockMongoRepository } from '../../lib/testing/mock-gateways/mock-mongo.repository';
 import { SENTINEL_TRUSTEE_ID } from '../../lib/use-cases/dataflows/migrate-case-appointments-constants';

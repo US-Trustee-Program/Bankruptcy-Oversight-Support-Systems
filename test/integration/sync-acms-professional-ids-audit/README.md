@@ -84,8 +84,8 @@ different phenomena:
 - **The remaining 1057 (68%) carry genuinely multiple candidates** — median list size 3, but with a
   long tail (23 records list 100+ candidates, one lists 909). These are a large-scale ACMS-alias
   pattern: the same real trustee is filed under many `acmsProfessionalId` codes (one per
-  district/chapter/spelling variant — e.g. "MARK M SHARF", "MARK M SHARF (TR)", "MARK M SHARF
-  (TR)SA" all resolve to the same "Mark Sharf" trustee). A single ambiguous name apparently matches
+  district/chapter/spelling variant — e.g. "NAME (TR)", "NAME (TR)SA" and similar suffixed variants
+  of the same base name all resolve to the same one real trustee). A single ambiguous name apparently matches
   broadly enough across the trustees collection that `matchTrusteeByName` returns a large raw
   candidate set before corroboration ever narrows it — worth checking whether the initial
   name-candidate query itself is too permissive for common surnames, independent of the
@@ -95,6 +95,89 @@ Not evaluated here: whether loosening corroboration for the single-candidate buc
 the initial candidate query for the multi-candidate bucket, is the right lever — that requires
 judgment about acceptable false-positive risk this fixture-only harness can't supply. This finding
 only establishes where the opportunity is concentrated.
+
+## Known finding: replaying the 2026-09-14 export's error population through current `main` (2026-09-17)
+
+`pipeline-replay-backtest.ts` replays every error-disposition (`no-match`/`ambiguous`) record from
+the same 2026-09-14 export through the actual, unmodified current-branch matching pipeline
+(`runTrusteeMatchPipeline`) — not a reimplementation. Run after this session's CAMS-876 work
+(SCORE/RESOLVE decoupling, `isCorroboratedByGeoOrContact`, the `parseCityStateZip` right-to-left
+fix, middle-initial full credit, and everything else committed on
+`CAMS-876-tighten-professional-id-matching` as of 2026-09-17):
+
+  resolved      1583  (57.9%)
+  ambiguous      537  (19.6%)
+  no-match       606  (22.2%)
+  skipped          8  (0.3%)
+
+**A full purge + re-sync against current `main` would recover 1583 of this export's 2734
+error-disposition records (57.9%) without any further matcher code change** — this branch's
+accumulated CAMS-876 changes, applied retroactively to the same fixture population the
+2026-09-14 finding above was measured against, already resolve the majority of what was
+previously `ambiguous`/`no-match`. Of the 4585 total candidates scored across all replayed
+records, 1583 resolved, 2611 were rejected on name, 252 on corroboration, and 139 as an
+ambiguous group.
+
+Not yet re-run: an updated version of the `ambiguous`-bucket breakdown from the finding above
+(single-candidate vs. multi-candidate split) against this new, smaller 537-record `ambiguous`
+population — worth doing before concluding which of cams-6gver/cams-k6la0/cams-4nayq would move
+the number further.
+
+## Known finding: `resolveBySoleCandidateStateOnly` recovers 154 more records (2026-09-17)
+
+An AI-screening pass (2026-09-16, `data/ai-review-unresolved-shard-*.csv`, since deleted as
+regenerable/stale — see cams-4nayq) found a large population of sole-candidate, strong-name-match
+records where the ACMS and CAMS addresses disagree on city/zip but agree on state — genuine
+metro-area or office-relocation variance (e.g. a same-name ACMS/CAMS pair in Anchorage AK vs.
+Eagle River AK, or Gig Harbor WA vs. Puyallup WA), not a different person. `isCorroboratedByGeoOrContact`/`resolveByConsensus` deliberately never resolves
+on state agreement alone (see that function's doc comment and cams-6gver) — but that gap was
+scoped to a candidate with otherwise-thin evidence; a re-check against the fresh
+2026-09-17 backtest found 283 unresolved records with `doesNameMatch >= 85` AND
+`contactCorroborationAddress < 60`, of which 123 are true sole-candidate cases with no one else
+to be ambiguous against.
+
+Per Brian's direction, added `resolveBySoleCandidateStateOnly` (a new, narrowly-scoped RESOLVE
+stage, distinct from and running strictly after `resolveByConsensus`): a sole name-qualifying
+candidate resolves on state agreement alone when there is no second candidate in the pool to
+weigh it against. Re-running the same 2026-09-14 export through the updated pipeline:
+
+  resolved      1737  (63.5%, up from 1583/57.9% before this stage)
+  ambiguous      383  (14.0%, down from 537/19.6%)
+  no-match       606  (22.2%, unchanged)
+  skipped          8  (0.3%, unchanged)
+
+`no-match` held exactly constant — every recovered record moved from `ambiguous` to `resolved`;
+nothing that previously resolved or correctly no-matched changed.
+
+Per further direction from Brian, `resolveByExactNameAndState` was split into two clearly-named
+stages and its exact-match rule relaxed further: `resolveBySoleExactNameMatch` (a SOLE exact-name
+candidate resolves immediately, no state/city/zip check needed at all - stronger than the prior
+"state + a second city/zip signal" requirement) and `resolveBySoleExactNameMatchByStateThenGeo`
+(2+ exact-name candidates: narrow by state, then by city-or-zip, as discriminators rather than
+requirements). Re-running the same 2026-09-14 export again after this refactor:
+
+  resolved      1796  (65.7%, up from 1737/63.5% after resolveBySoleFuzzyNameMatchAndState alone)
+  ambiguous      324  (11.9%)
+  no-match       606  (22.2%, unchanged)
+  skipped          8  (0.3%, unchanged)
+
+`no-match` again held exactly constant.
+
+## Known finding: extended the ACMS placeholder-name filter (2026-09-17)
+
+The same AI-screening pass found 13 records in the unresolved population (2026-09-17 fresh
+backtest) carrying placeholder/junk ACMS names the existing `PROF_LAST_NAME NOT LIKE
+'%NO TRUSTEE%'`/`'%DECEASED%'` filter (`acms.gateway.ts`'s `getTrusteeProfessionalRecordsPage`)
+does not catch: `REOPENED_CASE`/`RE OPENED (JACKSON)`/`REOPENED CASE`, `NO TRRUSTEE` (a
+misspelling `LIKE '%NO TRUSTEE%'` misses), `NO TR APT`, `I.M. FAKE`/`I M FAKE`/`FAKE`, `PRO SE`,
+and `TRUSTEE_UNASSIGNED`. None of these carry a real person's identity — no matcher tuning could
+ever resolve them — so they were excluded at the source query rather than tolerated downstream.
+This is a small population (13 of 1143 unresolved records, 1.1%) — not the 37.9%-of-all-2029-rows
+figure the original stale 2026-09-16 AI-screening CSVs suggested, which was inflated by noise
+since resolved by `resolveBySoleCandidateStateOnly` above and the fuzzy-lastname corroboration
+work earlier this session. Not independently backtestable via `pipeline-replay-backtest.ts` (it
+replays an already-exported fixture; this fix only takes effect on the next live ACMS sync/export)
+— verified instead via `acms.gateway.test.ts`'s SQL-clause assertions.
 
 ## Why `fixtures/` is never committed
 

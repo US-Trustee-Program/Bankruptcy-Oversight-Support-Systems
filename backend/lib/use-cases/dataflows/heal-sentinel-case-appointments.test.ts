@@ -7,7 +7,7 @@ import { GatewayTimeoutError } from '../../common-errors/gateway-timeout';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CaseAppointment } from '@common/cams/trustee-appointments';
-import { TrusteeProfessionalId } from '@common/cams/trustee-professional-ids';
+import { TrusteeProfessionalId } from './trustee-professional-ids.types';
 import { SENTINEL_TRUSTEE_ID } from './migrate-case-appointments-constants';
 
 type SentinelAppointment = CaseAppointment & {

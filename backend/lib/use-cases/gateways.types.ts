@@ -79,8 +79,8 @@ import {
 } from '@common/cams/bankruptcy-software';
 import {
   TrusteeProfessionalId,
-  TrusteeProfessionalIdError,
-} from '@common/cams/trustee-professional-ids';
+  TrusteeProfessionalIdSummary,
+} from './dataflows/trustee-professional-ids.types';
 import { TrusteeVariation } from '@common/cams/trustee-variation';
 import {
   Notification,
@@ -216,7 +216,7 @@ export interface ArchivedCasesRepository extends Releasable {
 }
 
 export interface RuntimeStateRepository<T extends RuntimeState = RuntimeState>
-  extends Reads<T>, Upserts<T, T> {
+  extends Reads<T>, Upserts<T, T>, Deletes {
   atomicDecrement(
     documentType: RuntimeStateDocumentType,
     field: keyof T & string,
@@ -601,6 +601,7 @@ export interface TrusteesRepository extends Reads<Trustee>, Releasable {
   listTrustees(): Promise<Trustee[]>;
   findTrusteeByLegacyTruId(truId: string): Promise<Trustee | null>;
   findTrusteesByName(name: string): Promise<Trustee[]>;
+  findTrusteesByIds(trusteeIds: string[]): Promise<Trustee[]>;
   searchTrusteesByName(name: string): Promise<Trustee[]>;
   searchTrusteesByPhoneticTokens(tokens: string[]): Promise<Trustee[]>;
   searchTrusteesByNameScored(name: string): Promise<Trustee[]>;
@@ -1023,35 +1024,34 @@ export interface UserGroupsRepository extends Releasable {
 }
 
 export interface TrusteeProfessionalIdsRepository extends Releasable {
-  createProfessionalId(
-    camsTrusteeId: string,
-    acmsProfessionalId: string,
+  /**
+   * Writes a TrusteeProfessionalId for any pipeline outcome (auto-linked, no-match, ambiguous,
+   * skipped, error, or conflict) - camsTrusteeId is the resolved trusteeId on an auto-linked
+   * disposition, or the ACMS variant's fingerprint otherwise, so every outcome lands in this
+   * collection keyed for lookup/healing. Does not enforce uniqueness on (camsTrusteeId,
+   * acmsProfessionalId): the same ACMS id can accumulate multiple non-auto-linked records across
+   * sync runs as its fingerprint or disposition changes.
+   */
+  upsertProfessionalId(
+    document: Omit<TrusteeProfessionalId, keyof Auditable | keyof Identifiable>,
     user: CamsUserReference,
   ): Promise<TrusteeProfessionalId>;
   /**
-   * Writes a professional ID record for an ACMS professional that could not be auto-linked to a
-   * CAMS trustee — keyed by `fingerprint` in place of a real trusteeId, decorated with `variant`
-   * and `error` so it can be found and healed later. Unlike createProfessionalId, this does not
-   * enforce or check any uniqueness — the same ACMS ID can accumulate multiple errored records
-   * across sync runs (e.g. a fingerprint changes, or the disposition changes from ambiguous to
-   * conflict).
+   * The following finders only return an auto-linked, non-conflicting disposition - callers
+   * resolving real trustee<->ACMS links should never see a placeholder record keyed by
+   * fingerprint. A dedicated finder for other dispositions will be added when a healing workflow
+   * needs one.
+   *
+   * All three return TrusteeProfessionalIdSummary, not the full TrusteeProfessionalId - the
+   * `evidence` property (a full serialized pipeline state, one per candidate considered) is
+   * excluded at the query level, not merely by TypeScript's type, so its payload never crosses the
+   * wire for the common case of resolving or listing links. A caller that genuinely needs the
+   * evidence for one specific record should read it directly (mongosh/Compass today; a dedicated
+   * getEvidence-style method can be added once a real caller needs one - see cams-204uj).
    */
-  createErroredProfessionalId(
-    fingerprint: string,
-    acmsProfessionalId: string,
-    variant: string,
-    error: TrusteeProfessionalIdError,
-    user: CamsUserReference,
-  ): Promise<TrusteeProfessionalId>;
-  /**
-   * The following finders exclude documents carrying an `error` (unmatched placeholder records
-   * keyed by fingerprint, not a real trusteeId) — callers resolving real trustee<->ACMS links
-   * should never see them. A dedicated finder for errored records will be added when a healing
-   * workflow needs one.
-   */
-  findAll(): Promise<TrusteeProfessionalId[]>;
-  findByCamsTrusteeId(camsTrusteeId: string): Promise<TrusteeProfessionalId[]>;
-  findByAcmsProfessionalId(acmsProfessionalId: string): Promise<TrusteeProfessionalId[]>;
+  findAll(): Promise<TrusteeProfessionalIdSummary[]>;
+  findByCamsTrusteeId(camsTrusteeId: string): Promise<TrusteeProfessionalIdSummary[]>;
+  findByAcmsProfessionalId(acmsProfessionalId: string): Promise<TrusteeProfessionalIdSummary[]>;
   deleteByCamsTrusteeId(camsTrusteeId: string): Promise<number>;
   deleteAll(): Promise<number>;
 }
