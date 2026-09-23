@@ -70,6 +70,9 @@ describe('Consolidation UseCase tests', () => {
 
   beforeEach(async () => {
     vi.restoreAllMocks();
+    // restoreAllMocks() only restores spyOn-wrapped mocks; onExpand/onOrderUpdateSpy are bare
+    // vi.fn() with no original to restore to, so their call history needs clearing separately.
+    vi.clearAllMocks();
     vi.stubEnv('CAMS_USE_FAKE_API', 'true');
     vi.resetModules();
     await import('@/lib/models/api2');
