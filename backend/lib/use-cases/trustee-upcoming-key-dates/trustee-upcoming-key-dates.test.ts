@@ -64,6 +64,8 @@ function buildMockInput(
     lastCompensationStudy: null,
     bondIssuedDate: null,
     bondRenewalDate: null,
+    annualReportCompletionYear: null,
+    annualReportCompletionStatus: null,
     ...overrides,
   };
 }
@@ -326,6 +328,12 @@ describe('TrusteeUpcomingKeyDatesUseCase', () => {
 
     test.each([
       ['leaseExpiration', { leaseExpiration: '2027-06-30' }, { leaseExpiration: null }],
+      ['idExpiration', { idExpiration: '2028-01-15' }, { idExpiration: null }],
+      [
+        'lastCompensationStudy',
+        { lastCompensationStudy: '2024-06-01' },
+        { lastCompensationStudy: null },
+      ],
       ['tprFrequency', { tprFrequency: 'ANNUAL' as const }, { tprFrequency: null }],
       ['auditCompletionYear', { auditCompletionYear: 2025 }, { auditCompletionYear: null }],
     ])(

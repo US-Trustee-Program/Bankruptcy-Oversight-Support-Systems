@@ -91,6 +91,10 @@ describe('TrusteeAppointments', () => {
     vi.restoreAllMocks();
     mockNavigate.mockClear();
     vi.mocked(useNavigate).mockReturnValue(mockNavigate);
+    window.sessionStorage.clear();
+    // Accordion bodies fetch key dates on mount. Stub it here so tests about
+    // listing and routing don't fire unmocked requests that settle after they end.
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
   });
 
   test('should display loading spinner while fetching appointments', () => {
@@ -130,16 +134,17 @@ describe('TrusteeAppointments', () => {
   });
 
   test('should display appointments when API call succeeds', async () => {
-    // The exact heading text format (district/division/chapter/type) is AppointmentCard's
-    // own contract, covered by AppointmentCard.test.tsx -- this only confirms the screen
-    // renders one card per appointment returned by the API.
+    // One rendering per appointment returned by the API. Chapter 12 Standing still
+    // uses the flat AppointmentCard; Chapter 12 Case by Case routes to the accordion
+    // (CAMS-913), so the two appointments render through different components.
     vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: mockAppointments });
 
     renderComponent('trustee-123');
 
     await waitFor(() => {
-      expect(getAppointmentCards()).toHaveLength(2);
+      expect(getAppointmentCards()).toHaveLength(1);
     });
+    expect(screen.getByTestId('appointment-accordion-header-appointment-002')).toBeInTheDocument();
   });
 
   test('should display add button when appointments exist', async () => {
@@ -453,6 +458,59 @@ describe('TrusteeAppointments', () => {
       expect(
         screen.getByTestId(`appointment-accordion-body-${ch11SubVOutOfPoolResigned.id}`),
       ).not.toBeVisible();
+    });
+  });
+
+  describe('Chapter 12 and 13 Case by Case accordion', () => {
+    const ch12CaseByCase = makeAppointment('ch12-cbc-active', {
+      chapter: '12',
+      appointmentType: 'case-by-case',
+      status: 'active',
+      courtName: 'Southern District of New York',
+    });
+    const ch13CaseByCase = makeAppointment('ch13-cbc-inactive', {
+      chapter: '13',
+      appointmentType: 'case-by-case',
+      status: 'inactive',
+      courtName: 'Southern District of New York',
+    });
+
+    test.each([
+      ['Chapter 12', ch12CaseByCase],
+      ['Chapter 13', ch13CaseByCase],
+    ])('renders a %s Case by Case appointment via the accordion', async (_label, appointment) => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [appointment] });
+
+      renderComponent('trustee-123');
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId(`appointment-accordion-header-${appointment.id}`),
+        ).toBeInTheDocument();
+      });
+      expect(
+        screen.getByTestId(`appointment-accordion-body-${appointment.id}`),
+      ).toBeInTheDocument();
+      expect(getAppointmentCards()).toHaveLength(0);
+    });
+
+    test('a Chapter 12 Standing appointment still renders as a flat card, not an accordion', async () => {
+      const ch12Standing = makeAppointment('ch12-standing-active', {
+        chapter: '12',
+        appointmentType: 'standing',
+        status: 'active',
+        courtName: 'Southern District of New York',
+      });
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch12Standing] });
+
+      renderComponent('trustee-123');
+
+      await waitFor(() => {
+        expect(getAppointmentCards()).toHaveLength(1);
+      });
+      expect(
+        screen.queryByTestId(`appointment-accordion-header-${ch12Standing.id}`),
+      ).not.toBeInTheDocument();
     });
   });
 });

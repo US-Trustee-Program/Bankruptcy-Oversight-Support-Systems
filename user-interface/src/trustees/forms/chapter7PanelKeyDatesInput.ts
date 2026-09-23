@@ -49,6 +49,8 @@ export function mergeKeyDatesInput(
     tprCompletionStatus: original?.tprCompletionStatus ?? null,
     tirCompletionYear: original?.tirCompletionYear ?? null,
     tirCompletionStatus: original?.tirCompletionStatus ?? null,
+    annualReportCompletionYear: original?.annualReportCompletionYear ?? null,
+    annualReportCompletionStatus: original?.annualReportCompletionStatus ?? null,
     lastMonthlyReportReceived: original?.lastMonthlyReportReceived ?? null,
     leaseExpiration: original?.leaseExpiration ?? null,
     idExpiration: original?.idExpiration ?? null,

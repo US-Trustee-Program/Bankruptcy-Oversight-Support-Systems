@@ -387,11 +387,37 @@ describe('validateTrusteeUpcomingKeyDates', () => {
       lastCompensationStudy: null,
       bondIssuedDate: null,
       bondRenewalDate: null,
+      annualReportCompletionYear: null,
+      annualReportCompletionStatus: null,
     };
   }
 
   test('returns VALID when all fields are null', () => {
     expect(validateTrusteeUpcomingKeyDates(baseInput())).toEqual(VALID);
+  });
+
+  test('returns error when annualReportCompletionYear is set but annualReportCompletionStatus is null', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      annualReportCompletionYear: 2026,
+      annualReportCompletionStatus: null,
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.annualReportCompletionStatus?.reasons?.[0]).toBe(
+      'Annual Report Completion Status is required.',
+    );
+  });
+
+  test('returns error when annualReportCompletionStatus is set but annualReportCompletionYear is null', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      annualReportCompletionYear: null,
+      annualReportCompletionStatus: 'INCOMPLETE',
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.annualReportCompletionYear?.reasons?.[0]).toBe(
+      'Annual Report Completion Status Year is required.',
+    );
   });
 
   test('returns VALID when all fields are populated with valid values', () => {
@@ -618,6 +644,11 @@ describe('validateTrusteeUpcomingKeyDates', () => {
       'PENDING',
       'Trustee Interim Report Completion Status must be one of: COMPLETE, INCOMPLETE.',
     ],
+    [
+      'annualReportCompletionStatus',
+      'PENDING',
+      'Annual Report Completion Status must be one of: COMPLETE, INCOMPLETE.',
+    ],
   ])('returns error when %s is set to %s (outside its enum)', (field, value, expectedMessage) => {
     const result = validateTrusteeUpcomingKeyDates({
       ...baseInput(),
@@ -634,6 +665,8 @@ describe('validateTrusteeUpcomingKeyDates', () => {
     ['tprCompletionStatus', 'INCOMPLETE'],
     ['tirCompletionStatus', 'COMPLETE'],
     ['tirCompletionStatus', 'INCOMPLETE'],
+    ['annualReportCompletionStatus', 'COMPLETE'],
+    ['annualReportCompletionStatus', 'INCOMPLETE'],
   ])('returns VALID when %s is set to %s', (field, value) => {
     const yearField = field.replace('Status', 'Year');
     const result = validateTrusteeUpcomingKeyDates({
@@ -928,6 +961,7 @@ describe('validateTrusteeUpcomingKeyDates', () => {
       'auditCompletionStatus',
       'tprCompletionStatus',
       'tirCompletionStatus',
+      'annualReportCompletionStatus',
     ]);
   });
 
@@ -939,7 +973,23 @@ describe('validateTrusteeUpcomingKeyDates', () => {
       'auditCompletionYear',
       'tprCompletionYear',
       'tirCompletionYear',
+      'annualReportCompletionYear',
     ]);
+  });
+
+  test('every input field is routed to a field list', () => {
+    // The use case builds the saved document and the audit diff by iterating
+    // these lists, so a field that reaches none of them is silently never
+    // persisted and never audited. Asserting the lists' exact contents only
+    // catches edits to the lists; asserting them against the input type
+    // catches the field that was added to the model and forgotten here.
+    const routed = new Set<string>([...DATE_FIELDS, ...TEXT_FIELDS, ...SCALAR_FIELDS]);
+
+    const unrouted = Object.keys(baseInput()).filter(
+      (field) => field !== 'trusteeId' && field !== 'appointmentId' && !routed.has(field),
+    );
+
+    expect(unrouted).toEqual([]);
   });
 });
 

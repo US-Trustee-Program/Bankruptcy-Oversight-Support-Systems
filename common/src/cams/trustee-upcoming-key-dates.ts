@@ -262,6 +262,17 @@ const trusteeUpcomingKeyDatesSpec: ValidationSpec<TrusteeUpcomingKeyDatesInput> 
       ['COMPLETE', 'INCOMPLETE'],
       'Trustee Interim Report Completion Status',
     ),
+    requirePair(
+      'annualReportCompletionYear',
+      'annualReportCompletionStatus',
+      'Annual Report Completion Status Year',
+      'Annual Report Completion Status',
+    ),
+    requireValidEnum(
+      'annualReportCompletionStatus',
+      ['COMPLETE', 'INCOMPLETE'],
+      'Annual Report Completion Status',
+    ),
   ],
 };
 
@@ -309,6 +320,12 @@ export function validateCompletionPairPresence(
 }
 
 /**
+ * Completion status for a report in a given year, stored alongside its paired
+ * completion year.
+ */
+export type CompletionStatus = 'COMPLETE' | 'INCOMPLETE';
+
+/**
  * Validates chronological order for the TPR review period start/end pair,
  * for blur-time and per-render use (mirrors validateTprDuePair's role).
  * Returns per-field errors when start comes after end, null when valid.
@@ -354,9 +371,11 @@ export type TrusteeUpcomingKeyDates = Auditable &
     auditCompletionYear?: number;
     auditCompletionStatus?: 'CLOSED' | 'NOT_CLOSED';
     tprCompletionYear?: number;
-    tprCompletionStatus?: 'COMPLETE' | 'INCOMPLETE';
+    tprCompletionStatus?: CompletionStatus;
     tirCompletionYear?: number;
-    tirCompletionStatus?: 'COMPLETE' | 'INCOMPLETE';
+    tirCompletionStatus?: CompletionStatus;
+    annualReportCompletionYear?: number;
+    annualReportCompletionStatus?: CompletionStatus;
     lastMonthlyReportReceived?: string;
     leaseExpiration?: string;
     idExpiration?: string;
@@ -393,9 +412,11 @@ export type TrusteeUpcomingKeyDatesInput = {
   auditCompletionYear: number | null;
   auditCompletionStatus: 'CLOSED' | 'NOT_CLOSED' | null;
   tprCompletionYear: number | null;
-  tprCompletionStatus: 'COMPLETE' | 'INCOMPLETE' | null;
+  tprCompletionStatus: CompletionStatus | null;
   tirCompletionYear: number | null;
-  tirCompletionStatus: 'COMPLETE' | 'INCOMPLETE' | null;
+  tirCompletionStatus: CompletionStatus | null;
+  annualReportCompletionYear: number | null;
+  annualReportCompletionStatus: CompletionStatus | null;
   lastMonthlyReportReceived: string | null;
   leaseExpiration: string | null;
   idExpiration: string | null;
@@ -467,7 +488,8 @@ type TextField =
   | 'tirFrequency'
   | 'auditCompletionStatus'
   | 'tprCompletionStatus'
-  | 'tirCompletionStatus';
+  | 'tirCompletionStatus'
+  | 'annualReportCompletionStatus';
 
 export const TEXT_FIELDS: TextField[] = [
   'tprDueYearType',
@@ -476,6 +498,7 @@ export const TEXT_FIELDS: TextField[] = [
   'auditCompletionStatus',
   'tprCompletionStatus',
   'tirCompletionStatus',
+  'annualReportCompletionStatus',
 ];
 
 /**
@@ -489,7 +512,8 @@ type ScalarField =
   | 'upcomingExamOrAuditType'
   | 'auditCompletionYear'
   | 'tprCompletionYear'
-  | 'tirCompletionYear';
+  | 'tirCompletionYear'
+  | 'annualReportCompletionYear';
 
 export const SCALAR_FIELDS: ScalarField[] = [
   'lastAuditFiscalYear',
@@ -498,6 +522,7 @@ export const SCALAR_FIELDS: ScalarField[] = [
   'auditCompletionYear',
   'tprCompletionYear',
   'tirCompletionYear',
+  'annualReportCompletionYear',
 ];
 
 export function isoToMMDDYYYY(iso: string): string {

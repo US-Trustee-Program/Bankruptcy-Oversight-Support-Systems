@@ -12,6 +12,7 @@ import {
 } from '@common/cams/trustee-upcoming-key-dates';
 import {
   TrusteeAppointment,
+  isChapter12Or13CaseByCase,
   isChapter12Standing,
   isChapter13Standing,
 } from '@common/cams/trustee-appointments';
@@ -27,7 +28,10 @@ import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import { Stop } from '@/lib/components/Stop';
-import { UpcomingKeyDatesVariant } from '@/trustees/panels/upcomingKeyDatesFieldConfig';
+import {
+  UPCOMING_KEY_DATES_FIELD_CONFIG,
+  UpcomingKeyDatesVariant,
+} from '@/trustees/panels/upcomingKeyDatesFieldConfig';
 import {
   getUpcomingKeyDatesFormConfig,
   DatePickerFieldDescriptor,
@@ -66,6 +70,8 @@ type FormState = {
   tprCompletionStatus: 'COMPLETE' | 'INCOMPLETE' | null;
   tirCompletionYear: number | null;
   tirCompletionStatus: 'COMPLETE' | 'INCOMPLETE' | null;
+  annualReportCompletionYear: number | null;
+  annualReportCompletionStatus: 'COMPLETE' | 'INCOMPLETE' | null;
   lastMonthlyReportReceived: string;
   leaseExpiration: string;
   idExpiration: string;
@@ -100,6 +106,8 @@ const EMPTY_FORM: FormState = {
   tprCompletionStatus: null,
   tirCompletionYear: null,
   tirCompletionStatus: null,
+  annualReportCompletionYear: null,
+  annualReportCompletionStatus: null,
   lastMonthlyReportReceived: '',
   leaseExpiration: '',
   idExpiration: '',
@@ -115,9 +123,6 @@ function deriveVariant(
   chapter: AppointmentChapterType,
   appointmentType: AppointmentType,
 ): UpcomingKeyDatesVariant {
-  if ((chapter === '12' || chapter === '13') && appointmentType === 'case-by-case') {
-    return 'ch12-13-case-by-case';
-  }
   if (isChapter12Standing(chapter, appointmentType)) {
     return 'chapter12-standing';
   }
@@ -155,6 +160,8 @@ function buildFormStateFromData(data: TrusteeUpcomingKeyDates): FormState {
     tprCompletionStatus: data.tprCompletionStatus ?? null,
     tirCompletionYear: data.tirCompletionYear ?? null,
     tirCompletionStatus: data.tirCompletionStatus ?? null,
+    annualReportCompletionYear: data.annualReportCompletionYear ?? null,
+    annualReportCompletionStatus: data.annualReportCompletionStatus ?? null,
     lastMonthlyReportReceived: data.lastMonthlyReportReceived ?? '',
     leaseExpiration: data.leaseExpiration ?? '',
     idExpiration: data.idExpiration ?? '',
@@ -170,6 +177,13 @@ type FormLoadResult = {
   variantAlert: string | null;
   formState: FormState | null;
   keyDatesAlert: string | null;
+  /**
+   * Chapter 12/13 Case by Case appointments have their own dedicated edit pages
+   * (CAMS-913). This generic form can still be reached for them by a stale or
+   * typed URL, where it would offer a second, narrower editor writing the same
+   * fields, so the form sends the user to the appointments list instead.
+   */
+  movedToDedicatedForm: boolean;
 };
 
 function resolveFormLoadResult(
@@ -181,13 +195,19 @@ function resolveFormLoadResult(
   let variant: UpcomingKeyDatesVariant = variantFromState ?? 'chapter7-panel';
   let loadError = false;
   let variantAlert: string | null = null;
+  let movedToDedicatedForm = false;
 
   if (!variantFromState) {
     if (appointmentsResult.status === 'fulfilled') {
       const appointment = (appointmentsResult.value?.data ?? []).find(
         (a) => a.id === appointmentId,
       );
-      if (appointment) {
+      if (
+        appointment &&
+        isChapter12Or13CaseByCase(appointment.chapter, appointment.appointmentType)
+      ) {
+        movedToDedicatedForm = true;
+      } else if (appointment) {
         variant = deriveVariant(appointment.chapter, appointment.appointmentType);
       } else {
         variantAlert = 'Could not determine appointment type; showing default fields.';
@@ -208,7 +228,7 @@ function resolveFormLoadResult(
     keyDatesAlert = `Failed to load upcoming key dates: ${(keyDatesResult.reason as Error).message}`;
   }
 
-  return { variant, loadError, variantAlert, formState, keyDatesAlert };
+  return { variant, loadError, variantAlert, formState, keyDatesAlert, movedToDedicatedForm };
 }
 
 export default function UpcomingKeyDatesForm({
@@ -225,8 +245,16 @@ export default function UpcomingKeyDatesForm({
   const globalAlert = useGlobalAlert();
   const canManage = useCanManageTrustees();
 
-  const variantFromState = (location.state as { variant?: UpcomingKeyDatesVariant } | null)
-    ?.variant;
+  // Router state survives a reload and outlives a deploy, so it can still name
+  // a variant this form no longer serves -- a Chapter 12/13 Case by Case entry
+  // created before those moved to their own pages, for instance. An unknown
+  // name is treated as absent so the appointment is fetched and resolved
+  // normally, which is also what triggers the redirect for the moved variant.
+  const rawVariantFromState = (location.state as { variant?: string } | null)?.variant;
+  const variantFromState =
+    rawVariantFromState && rawVariantFromState in UPCOMING_KEY_DATES_FIELD_CONFIG
+      ? (rawVariantFromState as UpcomingKeyDatesVariant)
+      : undefined;
 
   const [variant, setVariant] = useState<UpcomingKeyDatesVariant | undefined>(variantFromState);
   const [isLoading, setIsLoading] = useState(true);
@@ -285,6 +313,10 @@ export default function UpcomingKeyDatesForm({
         keyDatesResult,
       );
 
+      if (result.movedToDedicatedForm) {
+        navigate(`/trustees/${trusteeId}/appointments`, { replace: true });
+        return;
+      }
       if (!variantFromState) {
         setVariant(result.variant);
       }
@@ -420,6 +452,8 @@ export default function UpcomingKeyDatesForm({
       tprCompletionStatus: form.tprCompletionStatus,
       tirCompletionYear: form.tirCompletionYear,
       tirCompletionStatus: form.tirCompletionStatus,
+      annualReportCompletionYear: form.annualReportCompletionYear,
+      annualReportCompletionStatus: form.annualReportCompletionStatus,
       lastMonthlyReportReceived: form.lastMonthlyReportReceived || null,
       leaseExpiration: form.leaseExpiration || null,
       idExpiration: form.idExpiration || null,
