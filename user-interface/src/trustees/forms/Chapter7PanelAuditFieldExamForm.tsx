@@ -153,6 +153,7 @@ export default function Chapter7PanelAuditFieldExamForm() {
     'Field Exam or Audit',
     { first: 'Year', second: 'Type' },
   );
+  const examOrAuditPairErrorId = 'exam-audit-pair-error';
   const completionPairError = validateCompletionPairPresence(
     form.auditCompletionYear,
     form.auditCompletionStatus,
@@ -171,6 +172,8 @@ export default function Chapter7PanelAuditFieldExamForm() {
             id="upcoming-exam-audit-year"
             label="Year"
             compactLabel
+            hasError={!!examOrAuditPairError}
+            ariaDescribedBy={examOrAuditPairError ? examOrAuditPairErrorId : undefined}
             placeholder="- Select -"
             options={UPCOMING_YEAR_OPTIONS.map((y) => ({ value: String(y), label: String(y) }))}
             value={form.upcomingExamOrAuditYear === '' ? '' : String(form.upcomingExamOrAuditYear)}
@@ -186,6 +189,8 @@ export default function Chapter7PanelAuditFieldExamForm() {
             id="upcoming-exam-audit-type"
             label="Type"
             compactLabel
+            hasError={!!examOrAuditPairError}
+            ariaDescribedBy={examOrAuditPairError ? examOrAuditPairErrorId : undefined}
             placeholder="- Select -"
             options={[
               { value: 'Field Exam', label: 'Field Exam' },
@@ -201,7 +206,11 @@ export default function Chapter7PanelAuditFieldExamForm() {
           />
         </div>
         {examOrAuditPairError && (
-          <span className="cams-field-error-message" data-testid="exam-audit-pair-error">
+          <span
+            className="cams-field-error-message"
+            id={examOrAuditPairErrorId}
+            data-testid={examOrAuditPairErrorId}
+          >
             {examOrAuditPairError}
           </span>
         )}

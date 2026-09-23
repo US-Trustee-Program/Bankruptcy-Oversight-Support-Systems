@@ -237,6 +237,7 @@ export default function Chapter7PanelTrusteeInterimReportForm() {
     'Trustee Interim Report (TIR) Period',
     { first: 'Frequency', second: 'Period' },
   );
+  const tirPeriodPairErrorId = 'tir-period-pair-error';
   const completionPairError = validateCompletionPairPresence(
     form.tirCompletionYear,
     form.tirCompletionStatus,
@@ -255,6 +256,8 @@ export default function Chapter7PanelTrusteeInterimReportForm() {
             id="tir-frequency"
             label="Frequency"
             compactLabel
+            hasError={!!tirPeriodPairError}
+            ariaDescribedBy={tirPeriodPairError ? tirPeriodPairErrorId : undefined}
             placeholder="- Select -"
             options={[
               { value: 'ANNUAL', label: 'Annual' },
@@ -267,6 +270,8 @@ export default function Chapter7PanelTrusteeInterimReportForm() {
             id="tir-period"
             label="Period"
             compactLabel
+            hasError={!!tirPeriodPairError}
+            ariaDescribedBy={tirPeriodPairError ? tirPeriodPairErrorId : undefined}
             placeholder="- Select -"
             options={periodOptions.map((o) => ({ value: o.key, label: o.label }))}
             value={form.tirPeriodKey}
@@ -275,7 +280,11 @@ export default function Chapter7PanelTrusteeInterimReportForm() {
           />
         </div>
         {tirPeriodPairError && (
-          <span className="cams-field-error-message" data-testid="tir-period-pair-error">
+          <span
+            className="cams-field-error-message"
+            id={tirPeriodPairErrorId}
+            data-testid={tirPeriodPairErrorId}
+          >
             {tirPeriodPairError}
           </span>
         )}

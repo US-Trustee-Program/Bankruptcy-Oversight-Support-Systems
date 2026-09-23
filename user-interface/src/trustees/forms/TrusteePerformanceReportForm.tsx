@@ -310,6 +310,7 @@ export default function TrusteePerformanceReportForm(
             label="Year Type"
             compactLabel
             className="year-type-selector"
+            hasError={!!tprDuePairError}
             ariaDescribedBy={tprDuePairError ? tprDuePairErrorId : undefined}
             placeholder="- Select -"
             options={[
