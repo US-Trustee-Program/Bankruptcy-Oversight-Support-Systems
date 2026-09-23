@@ -22,7 +22,7 @@ function TextArea_(props: TextAreaProps, ref: React.Ref<TextAreaRef>) {
   const { id, label, ariaDescription, errorMessage, required, ...otherProps } = props;
   const labelId = `textarea-label-${id}`;
   const textAreaId = `textarea-${id}`;
-  const errorMessageId = `${textAreaId}-error-message`;
+  const errorMessageId = `${textAreaId}-field-error-message`;
 
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
