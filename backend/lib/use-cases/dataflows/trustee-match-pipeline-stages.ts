@@ -1212,10 +1212,10 @@ const NO_CONTRADICTION_ADDRESS_FLOOR = 30;
  * - pipelineAddressScore also returns 0 when the ACMS address doesn't parse at all - NOT a genuine
  *   disagreement. Reading contactCorroborationAddress's raw value alone, without checking whether
  *   the address even parsed, would misclassify a real same-person match as "contradicted."
- * - Against a real export, 91% of candidates that clear the name threshold but not the main
- *   corroboration bar have an actively contradicting phone number and are correctly excluded here;
- *   the rest hand-verified as genuine matches (e.g. an ACMS name carrying a stray "INACTIVE"
- *   marker that still resolves to the correct, active CAMS trustee).
+ * - Most candidates that clear the name threshold but not the main corroboration bar have an
+ *   actively contradicting phone number and are correctly excluded here. The exceptions are
+ *   genuine matches, typically an ACMS name carrying a stray marker (e.g. "INACTIVE") that still
+ *   resolves to the correct, active CAMS trustee.
  */
 function isNoContradictionMatch(state: PipelineState, candidate: PipelineCandidate): boolean {
   const scores = mergedScore(candidate);
@@ -1726,8 +1726,8 @@ export function resolveBySoleExactNameMatchByStateThenGeo(): Stage {
  *   exception, and only because no second signal is possible here - state, city, zip, phone, and
  *   email are structurally uncomparable, not merely mismatched.
  * - Residual risk: an exact name match is not proof of identity - a common name could belong to a
- *   different real person, and nothing here could catch that. Population is 46 records, every one
- *   with ACMS legacy.phone === '0' (the sentinel - see isBlankAcmsValue) and no address at all.
+ *   different real person, and nothing here could catch that. The population this reaches carries
+ *   an ACMS legacy.phone === '0' sentinel (see isBlankAcmsValue) and no address at all.
  * - Gate is "exactly one candidate scores doesNameMatch === 100", NOT "pool size === 1" - other
  *   candidates already correctly rejected on name are not evidence against the survivor.
  * - Runs dead last: every other RESOLVE stage already excludes no-ACMS-contact-data candidates, so
