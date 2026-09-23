@@ -1,7 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { formatDate } from '@/lib/utils/datetime';
-import { getCaseNumber } from '@common/cams/cases';
 import { TransferOrderAccordion, TransferOrderAccordionProps } from './TransferOrderAccordion';
 import { describe } from 'vitest';
 import { taskType, orderStatusType } from '@/lib/utils/labels';
@@ -108,13 +107,10 @@ describe('TransferOrderAccordion', () => {
   }
 
   beforeEach(async () => {
+    vi.restoreAllMocks();
     vi.stubEnv('CAMS_USE_FAKE_API', 'true');
     order = MockData.getTransferOrder();
     userEvent = TestingUtilities.setupUserEvent();
-  });
-
-  afterEach(() => {
-    vi.clearAllMocks();
   });
 
   test('should render an order', async () => {
@@ -122,20 +118,77 @@ describe('TransferOrderAccordion', () => {
 
     const heading = findAccordionHeading(order.id);
     expect(heading.textContent).toContain(order.courtName);
-    expect(heading.textContent).toContain(formatDate(order.orderDate));
+    expect(heading.textContent).toContain(formatDate(order.taskDate));
+    expect(heading.textContent).toContain(taskType.get(order.taskType));
+    expect(heading.textContent).toContain(orderStatusType.get(order.status));
 
-    const content = findAccordionContent(order.id, false);
+    findAccordionContent(order.id, false);
 
     await userEvent.click(heading);
 
-    expect(content?.textContent).toContain(order.docketEntries[0]?.summaryText);
-    expect(content?.textContent).toContain(order.docketEntries[0]?.fullText);
-
+    // PendingTransferOrder owns no testid of its own; order-form is the
+    // nearest stable marker (from its child SuggestedTransferCases) that the
+    // pending-status branch rendered. The docket entry text this section
+    // shows is a FromCaseSummary/PendingTransferOrder behavior, verified in
+    // their own test files instead of here.
     const form = screen.getByTestId(`order-form-${order.id}`);
     expect(form).toBeInTheDocument();
   });
 
-  test('should expand and show order reject details with reason undefined when a rejected header is clicked if rejection does not have a reason.', async () => {
+  test('renders hidden when the hidden prop is set', () => {
+    renderWithProps({ hidden: true });
+
+    const heading = screen.getByTestId(`accordion-heading-${order.id}`);
+    expect(heading).not.toBeVisible();
+  });
+
+  test('shows a Collapse aria-label when expanded and Expand when not', () => {
+    const { rerender } = render(
+      <BrowserRouter>
+        <TransferOrderAccordion
+          order={order}
+          courts={testOffices}
+          taskType={taskType}
+          statusType={orderStatusType}
+          onOrderUpdate={() => {}}
+          regionsMap={regionMap}
+          fieldHeaders={accordionFieldHeaders}
+        />
+      </BrowserRouter>,
+    );
+
+    const heading = findAccordionHeading(order.id);
+    expect(heading.querySelector('.expand-aria-label')).toHaveAttribute(
+      'aria-label',
+      'Click to Expand.',
+    );
+
+    rerender(
+      <BrowserRouter>
+        <TransferOrderAccordion
+          order={order}
+          courts={testOffices}
+          taskType={taskType}
+          statusType={orderStatusType}
+          onOrderUpdate={() => {}}
+          regionsMap={regionMap}
+          fieldHeaders={accordionFieldHeaders}
+          expandedId={`order-list-${order.id}`}
+        />
+      </BrowserRouter>,
+    );
+
+    expect(heading.querySelector('.expand-aria-label')).toHaveAttribute(
+      'aria-label',
+      'Click to Collapse.',
+    );
+  });
+
+  // Exact wording for rejected/approved content is owned by
+  // RejectedTransferOrder/ApprovedTransferOrder and verified in their own
+  // test files. This accordion only needs to confirm the right branch
+  // rendered for the order's status.
+  test('should expand and show rejected order content when a rejected header is clicked', async () => {
     let heading;
     const rejectedOrder: TransferOrder = { ...order, reason: '', status: 'rejected' };
 
@@ -152,36 +205,11 @@ describe('TransferOrderAccordion', () => {
     }
 
     await waitFor(async () => {
-      const content = findAccordionContent(order.id, true);
-      expect(content).toHaveTextContent(`Rejected transfer of ${getCaseNumber(order.caseId)}.`);
+      findAccordionContent(order.id, true);
     });
   });
 
-  test('should expand and show order reject details with reason when a rejected header is clicked that does have a reason defined', async () => {
-    let heading;
-    const rejectedOrder: TransferOrder = { ...order, reason: 'order is bad', status: 'rejected' };
-
-    renderWithProps({
-      order: rejectedOrder,
-    });
-
-    await waitFor(async () => {
-      heading = findAccordionHeading(order.id);
-    });
-
-    if (heading) {
-      await userEvent.click(heading);
-    }
-
-    await waitFor(async () => {
-      const content = findAccordionContent(order.id, true);
-      expect(content).toHaveTextContent(
-        `Rejected transfer of ${getCaseNumber(order.caseId)} for the following reason:order is bad`,
-      );
-    });
-  });
-
-  test('should expand and show order transfer information when an order has been approved', async () => {
+  test('should expand and show approved order content when an approved header is clicked', async () => {
     let heading;
 
     const mockedApprovedOrder: TransferOrder = MockData.getTransferOrder({
@@ -203,14 +231,14 @@ describe('TransferOrderAccordion', () => {
     }
 
     await waitFor(async () => {
-      const actionText = findActionText(mockedApprovedOrder.id, true);
-      expect(actionText).toHaveTextContent(
-        `Transferred ${getCaseNumber(mockedApprovedOrder.caseId)} from ${mockedApprovedOrder.courtName} (${mockedApprovedOrder.courtDivisionName}) to ${getCaseNumber(mockedApprovedOrder.newCase?.caseId)} and court ${mockedApprovedOrder.newCase?.courtName} (${mockedApprovedOrder.newCase?.courtDivisionName}).`,
-      );
+      findActionText(mockedApprovedOrder.id, true);
     });
   });
 
-  test('toggles closed when the header is clicked a second time inside an AccordionGroup', async () => {
+  test('toggles closed when the header is clicked a second time inside an AccordionGroup, notifying onExpand/onCollapse', async () => {
+    const onExpand = vi.fn();
+    const onCollapse = vi.fn();
+
     render(
       <BrowserRouter>
         <AccordionGroup>
@@ -220,6 +248,8 @@ describe('TransferOrderAccordion', () => {
             taskType={taskType}
             statusType={orderStatusType}
             onOrderUpdate={() => {}}
+            onExpand={onExpand}
+            onCollapse={onCollapse}
             regionsMap={regionMap}
             fieldHeaders={accordionFieldHeaders}
           />
@@ -231,8 +261,10 @@ describe('TransferOrderAccordion', () => {
 
     await userEvent.click(heading);
     findAccordionContent(order.id, true);
+    expect(onExpand).toHaveBeenCalledWith(`order-list-${order.id}`);
 
     await userEvent.click(heading);
     findAccordionContent(order.id, false);
+    expect(onCollapse).toHaveBeenCalledWith(`order-list-${order.id}`);
   });
 });

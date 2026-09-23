@@ -56,6 +56,10 @@ describe('ConsolidationOrderAccordion tests', () => {
   let userEvent: CamsUserEvent;
 
   beforeEach(async () => {
+    // Restore/unstub here (start of beforeEach), not in afterEach — a failing test skips
+    // afterEach, which would leak un-restored spies/stubs into the next test's setup.
+    vi.restoreAllMocks();
+    vi.unstubAllEnvs();
     vi.stubEnv('CAMS_USE_FAKE_API', 'true');
 
     mockFeatureFlags = {
@@ -71,11 +75,6 @@ describe('ConsolidationOrderAccordion tests', () => {
       '404 Case associations not found for the case ID.',
     );
     vi.spyOn(Api2, 'getCaseSummary').mockResolvedValue({ data: MockData.getCaseSummary() });
-  });
-
-  afterEach(() => {
-    vi.unstubAllEnvs();
-    vi.resetAllMocks();
   });
 
   const accordionFieldHeaders = ['Court District', 'Order Filed', 'Task Type', 'Task Status'];
@@ -198,18 +197,17 @@ describe('ConsolidationOrderAccordion tests', () => {
   test('should display pending order content', () => {
     const pendingOrder = MockData.getConsolidationOrder();
     renderWithProps({ order: pendingOrder });
-    const content = findAccordionContent(pendingOrder.id!, false);
+    findAccordionContent(pendingOrder.id!, false);
 
     const memberCaseTable = screen.getByTestId(`case-list-${pendingOrder.id}`);
     expect(memberCaseTable).toBeInTheDocument();
 
-    pendingOrder.memberCases.forEach((memberCase) => {
-      expect(content?.textContent).toContain(memberCase.caseTitle);
-      expect(content?.textContent).toContain(formatDate(memberCase.dateFiled));
-      memberCase.docketEntries.forEach((de) => {
-        expect(content?.textContent).toContain(de.summaryText);
-        expect(content?.textContent).toContain(de.fullText);
-      });
+    // The per-row content (case title, docket entry summary/full text) is rendered by
+    // ConsolidationCasesTable and is covered there. Here we only verify the correct number
+    // of member case rows were handed off to that child component.
+    pendingOrder.memberCases.forEach((_memberCase, idx) => {
+      const tableRow = screen.getByTestId(`case-list-${pendingOrder.id}-row-${idx}-case-info`);
+      expect(tableRow).toBeInTheDocument();
     });
   });
 
@@ -221,10 +219,12 @@ describe('ConsolidationOrderAccordion tests', () => {
     const leadCaseLink = screen.queryByTestId(`lead-case-number-link`);
     expect(leadCaseLink).toBeInTheDocument();
 
-    order.memberCases.forEach((bCase, idx) => {
+    // The per-row content (case title) is rendered by CaseTable and is covered there. Here
+    // we only verify the correct number of member case rows were handed off to that child
+    // component.
+    order.memberCases.forEach((_bCase, idx) => {
       const tableRow = screen.queryByTestId(`order-${order.id}-member-cases-row-${idx}`);
       expect(tableRow).toBeInTheDocument();
-      expect(tableRow?.textContent).toContain(bCase.caseTitle);
     });
   });
 
@@ -239,10 +239,12 @@ describe('ConsolidationOrderAccordion tests', () => {
       expect(blockQuote?.textContent).toContain(order.reason);
     }
 
-    order.memberCases.forEach((bCase, idx) => {
+    // The per-row content (case title) is rendered by ConsolidationCasesTable and is covered
+    // there. Here we only verify the correct number of member case rows were handed off to
+    // that child component.
+    order.memberCases.forEach((_bCase, idx) => {
       const tableRow = screen.queryByTestId(`${order.id}-case-list-row-${idx}-case-info`);
       expect(tableRow).toBeInTheDocument();
-      expect(tableRow?.textContent).toContain(bCase.caseTitle);
     });
   });
 
@@ -255,7 +257,7 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     await selectConsolidationType();
 
-    clickCaseCheckbox(order.id!, 0);
+    await clickCaseCheckbox(order.id!, 0);
     await waitFor(() => {
       expect(rejectButton).toBeEnabled();
     });
@@ -289,7 +291,7 @@ describe('ConsolidationOrderAccordion tests', () => {
     ) as HTMLButtonElement;
     expect(rejectButton).not.toBeEnabled();
 
-    clickCaseCheckbox(order.id!, 0);
+    await clickCaseCheckbox(order.id!, 0);
 
     await selectConsolidationType();
 
@@ -344,7 +346,7 @@ describe('ConsolidationOrderAccordion tests', () => {
     ) as HTMLButtonElement;
     expect(rejectButton).not.toBeEnabled();
 
-    clickCaseCheckbox(order.id!, 0);
+    await clickCaseCheckbox(order.id!, 0);
 
     await selectConsolidationType();
 
@@ -382,62 +384,118 @@ describe('ConsolidationOrderAccordion tests', () => {
     });
   });
 
-  test('should correctly enable/disable buttons when selecting consolidated cases and lead case from order case list table', async () => {
+  test('disables both approve and reject buttons before any case or lead case is selected', async () => {
     vi.spyOn(Api2, 'getCaseAssociations').mockResolvedValue({
       data: [],
     });
     renderWithProps();
 
-    // Initial button state
     await waitFor(() => {
       expect(findApproveButton(order.id!)).toBeDisabled();
     });
     expect(findRejectButton(order.id!)).toBeDisabled();
+  });
 
+  test('disables approve button but not reject button when only the lead case remains selected', async () => {
+    vi.spyOn(Api2, 'getCaseAssociations').mockResolvedValue({
+      data: [],
+    });
+    renderWithProps();
+    const { approveButton, rejectButton } = await fillInFormToEnableVerifyButton();
+
+    await clickCaseCheckbox(order.id!, 1);
+
+    await waitFor(() => {
+      expect(approveButton).toBeDisabled();
+    });
+    expect(rejectButton).toBeEnabled();
+  });
+
+  test('keeps approve button disabled after clearing the lead case while a case is still selected', async () => {
+    vi.spyOn(Api2, 'getCaseAssociations').mockResolvedValue({
+      data: [],
+    });
+    renderWithProps();
+    const { approveButton, rejectButton } = await fillInFormToEnableVerifyButton();
+
+    await clickCaseCheckbox(order.id!, 1);
+    await waitFor(() => {
+      expect(approveButton).toBeDisabled();
+    });
+
+    await clearLeadCase(0);
+
+    await waitFor(() => {
+      expect(approveButton).not.toBeEnabled();
+    });
+    expect(rejectButton).toBeEnabled();
+  });
+
+  test('disables approve button again after re-marking the lead case on a single selected case', async () => {
+    vi.spyOn(Api2, 'getCaseAssociations').mockResolvedValue({
+      data: [],
+    });
+    renderWithProps();
+    const { approveButton, rejectButton } = await fillInFormToEnableVerifyButton();
+
+    await clickCaseCheckbox(order.id!, 1);
+    await clearLeadCase(0);
+
+    await setLeadCase(0);
+
+    await waitFor(() => {
+      expect(approveButton).toBeDisabled();
+    });
+    expect(rejectButton).toBeEnabled();
+  });
+
+  test('disables both approve and reject buttons when all cases are deselected', async () => {
+    vi.spyOn(Api2, 'getCaseAssociations').mockResolvedValue({
+      data: [],
+    });
+    renderWithProps();
+    const { approveButton, rejectButton } = await fillInFormToEnableVerifyButton();
+
+    await clickCaseCheckbox(order.id!, 1);
+    await clickCaseCheckbox(order.id!, 0);
+
+    await waitFor(() => {
+      expect(rejectButton).not.toBeEnabled();
+    });
+    expect(approveButton).not.toBeEnabled();
+  });
+
+  test('disables both approve and reject buttons when Include All checkbox is toggled off', async () => {
+    vi.spyOn(Api2, 'getCaseAssociations').mockResolvedValue({
+      data: [],
+    });
+    renderWithProps();
     const { approveButton, rejectButton } = await fillInFormToEnableVerifyButton();
     const includeAllCheckbox = document.querySelector(
       `#checkbox-case-list-${order.id}-checkbox-toggle-click-target`,
     );
 
-    await clickCaseCheckbox(order.id!, 1);
-
-    await waitFor(() => {
-      expect(approveButton).toBeDisabled();
-    });
-    expect(rejectButton).toBeEnabled();
-
-    await clearLeadCase(0);
-    await waitFor(() => {
-      expect(approveButton).not.toBeEnabled();
-    });
-    expect(rejectButton).toBeEnabled();
-
-    await setLeadCase(0);
-    await waitFor(() => {
-      expect(approveButton).toBeDisabled();
-    });
-    expect(rejectButton).toBeEnabled();
-
-    await clickCaseCheckbox(order.id!, 0);
-    await waitFor(() => {
-      expect(rejectButton).not.toBeEnabled();
-    });
-    expect(approveButton).not.toBeEnabled();
-
     await userEvent.click(includeAllCheckbox!);
-    await waitFor(() => {
-      expect(approveButton).toBeEnabled();
-    });
-    expect(rejectButton).toBeEnabled();
 
-    await userEvent.click(includeAllCheckbox!);
     await waitFor(() => {
       expect(approveButton).not.toBeEnabled();
     });
     expect(rejectButton).not.toBeEnabled();
+  });
+
+  test('re-enables both approve and reject buttons when cases are individually reselected after clearing', async () => {
+    vi.spyOn(Api2, 'getCaseAssociations').mockResolvedValue({
+      data: [],
+    });
+    renderWithProps();
+    const { approveButton, rejectButton } = await fillInFormToEnableVerifyButton();
+
+    await clickCaseCheckbox(order.id!, 1);
+    await clickCaseCheckbox(order.id!, 0);
 
     await clickCaseCheckbox(order.id!, 0);
     await clickCaseCheckbox(order.id!, 1);
+
     await waitFor(() => {
       expect(approveButton).toBeEnabled();
     });
@@ -474,9 +532,6 @@ describe('ConsolidationOrderAccordion tests', () => {
     });
     vi.spyOn(Api2, 'putConsolidationOrderApproval').mockResolvedValue({
       data: [expectedOrderApproved],
-    });
-    vi.spyOn(Api2, 'searchCases').mockResolvedValue({
-      data: MockData.buildArray(MockData.getSyncedCase, 5),
     });
 
     renderWithProps();
@@ -664,6 +719,39 @@ describe('ConsolidationOrderAccordion tests', () => {
       }
       expect(approveButton).toBeEnabled();
     });
+  });
+
+  test('should call onExpand with the accordion id when the accordion is expanded', async () => {
+    renderWithProps();
+
+    await openAccordion(order.id!);
+
+    expect(onExpandMockFunc).toHaveBeenCalledWith(`order-list-${order.id}`);
+  });
+
+  test('should render without throwing when getCaseAssignments fails for a member case', async () => {
+    vi.spyOn(Api2, 'getCaseAssignments').mockRejectedValue(new Error('assignment lookup failed'));
+    renderWithProps();
+
+    await openAccordion(order.id!);
+
+    await waitFor(() => {
+      const memberCaseTable = screen.getByTestId(`case-list-${order.id}`);
+      expect(memberCaseTable).toBeInTheDocument();
+    });
+  });
+
+  test('should hide the accordion heading when hidden prop is true', () => {
+    renderWithProps({ hidden: true });
+
+    const heading = screen.getByTestId(`accordion-order-list-${order.id}`);
+    expect(heading).toHaveAttribute('hidden');
+  });
+
+  test('should render content expanded when expandedId prop matches the order', () => {
+    renderWithProps({ expandedId: `order-list-${order.id}` });
+
+    findAccordionContent(order.id!, true);
   });
 
   test('toggles closed when the header is clicked a second time inside an AccordionGroup', async () => {

@@ -128,7 +128,6 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
           </>
         )}
       </section>
-      )
     </Accordion>
   );
 }
