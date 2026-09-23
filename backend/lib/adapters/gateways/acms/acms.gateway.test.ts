@@ -765,10 +765,6 @@ describe('ACMS gateway tests', () => {
         "PROF_LAST_NAME NOT LIKE '%NO TRUSTEE%'",
       ],
       [
-        'should exclude "DECEASED"-pattern placeholder records',
-        "PROF_LAST_NAME NOT LIKE '%DECEASED%'",
-      ],
-      [
         'should exclude "NO TRRUSTEE"-misspelling placeholder records',
         "PROF_LAST_NAME NOT LIKE '%NO TRRUSTEE%'",
       ],
@@ -807,6 +803,25 @@ describe('ACMS gateway tests', () => {
 
       const query = spy.mock.calls[0][1] as string;
       expect(query).toContain(expectedClause);
+    });
+
+    // A "DECEASED" marker on PROF_LAST_NAME (e.g. "DECEASED - ROE, JR.") is a status prefix on a
+    // real surname, not a pure placeholder - ADMINISTRATIVE_MARKER_PHRASES
+    // (sync-acms-professional-ids.ts) strips it and matches the real identity underneath.
+    // Filtering it out here would make that TS-side handling unreachable.
+    test('should not exclude "DECEASED"-pattern records - a real identity may still be present', async () => {
+      const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: [] },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      await gateway.getTrusteeProfessionalRecordsPage(context, 'NY', 0, 500);
+
+      const query = spy.mock.calls[0][1] as string;
+      expect(query).not.toContain('DECEASED');
     });
 
     test.each([

@@ -116,16 +116,15 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
     const acmsProfessionalId = 'NY-00063';
 
     test('should write an auto-linked professional ID mapping successfully', async () => {
-      const upsertSpy = vi
-        .spyOn(MongoCollectionAdapter.prototype, 'upsertOne')
-        .mockResolvedValue(undefined);
       const written: TrusteeProfessionalIdDocument = {
         ...sampleProfessionalId,
         id: 'new-prof-id',
         camsTrusteeId,
         acmsProfessionalId,
       };
-      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([written]);
+      const findOneAndUpdateSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'findOneAndUpdate')
+        .mockResolvedValue(written);
 
       const document = withoutAuditOrId({
         ...sampleProfessionalId,
@@ -134,7 +133,7 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
       });
       const result = await repository.upsertProfessionalId(document, mockUser);
 
-      expect(upsertSpy).toHaveBeenCalled();
+      expect(findOneAndUpdateSpy).toHaveBeenCalled();
       expect(result.id).toBe('new-prof-id');
       expect(result.camsTrusteeId).toBe(camsTrusteeId);
       expect(result.acmsProfessionalId).toBe(acmsProfessionalId);
@@ -142,12 +141,9 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
     });
 
     test('should key the upsert query by camsTrusteeId, acmsProfessionalId, and documentType', async () => {
-      const upsertSpy = vi
-        .spyOn(MongoCollectionAdapter.prototype, 'upsertOne')
-        .mockResolvedValue(undefined);
-      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([
-        { ...sampleProfessionalId, camsTrusteeId, acmsProfessionalId },
-      ]);
+      const findOneAndUpdateSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'findOneAndUpdate')
+        .mockResolvedValue({ ...sampleProfessionalId, camsTrusteeId, acmsProfessionalId });
 
       const document = withoutAuditOrId({
         ...sampleProfessionalId,
@@ -156,7 +152,7 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
       });
       await repository.upsertProfessionalId(document, mockUser);
 
-      expect(upsertSpy).toHaveBeenCalledWith(
+      expect(findOneAndUpdateSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           values: expect.arrayContaining([
             expect.objectContaining({
@@ -174,19 +170,16 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
           ]),
         }),
         expect.anything(),
-        expect.anything(),
+        expect.objectContaining({ upsert: true, returnDocument: 'after' }),
       );
     });
 
     // createdOn/createdBy must only ever be applied on the INSERT branch (via $setOnInsert), so a
     // retry that overwrites an existing document never resets when it was first created.
     test('should pass createdOn/createdBy as insert-only fields, never in setFields', async () => {
-      const upsertSpy = vi
-        .spyOn(MongoCollectionAdapter.prototype, 'upsertOne')
-        .mockResolvedValue(undefined);
-      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([
-        { ...sampleProfessionalId, camsTrusteeId, acmsProfessionalId },
-      ]);
+      const findOneAndUpdateSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'findOneAndUpdate')
+        .mockResolvedValue({ ...sampleProfessionalId, camsTrusteeId, acmsProfessionalId });
 
       const document = withoutAuditOrId({
         ...sampleProfessionalId,
@@ -195,19 +188,21 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
       });
       await repository.upsertProfessionalId(document, mockUser);
 
-      const [, setFields, insertOnlyFields] = upsertSpy.mock.calls[0];
+      const [, update] = findOneAndUpdateSpy.mock.calls[0];
+      const { $set: setFields, $setOnInsert: insertOnlyFields } = update as {
+        $set: Record<string, unknown>;
+        $setOnInsert: Record<string, unknown>;
+      };
       expect(setFields).not.toHaveProperty('createdOn');
       expect(setFields).not.toHaveProperty('createdBy');
       expect(insertOnlyFields).toHaveProperty('createdOn');
       expect(insertOnlyFields).toHaveProperty('createdBy');
+      expect(insertOnlyFields).toHaveProperty('id');
     });
 
     // A retry with a richer evidence graph, or one that escalates to 'conflict', must actually
     // overwrite what an earlier attempt wrote for the same key - this is the cams-q6ml5 fix.
     test('should overwrite an existing document rather than preserving the first write', async () => {
-      const upsertSpy = vi
-        .spyOn(MongoCollectionAdapter.prototype, 'upsertOne')
-        .mockResolvedValue(undefined);
       const updatedDocument: TrusteeProfessionalIdDocument = {
         ...sampleProfessionalId,
         camsTrusteeId,
@@ -215,22 +210,41 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
         disposition: 'conflict',
         evidence: { ...sampleProfessionalId.evidence, conflictingTrusteeId: 'other-trustee' },
       };
-      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([updatedDocument]);
+      const findOneAndUpdateSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'findOneAndUpdate')
+        .mockResolvedValue(updatedDocument);
 
       const document = withoutAuditOrId(updatedDocument);
       const result = await repository.upsertProfessionalId(document, mockUser);
 
-      expect(upsertSpy).toHaveBeenCalledWith(
+      expect(findOneAndUpdateSpy).toHaveBeenCalledWith(
         expect.anything(),
-        expect.objectContaining({ disposition: 'conflict' }),
+        expect.objectContaining({ $set: expect.objectContaining({ disposition: 'conflict' }) }),
         expect.anything(),
       );
       expect(result.disposition).toBe('conflict');
     });
 
+    // A read-after-write race (or any other reason findOneAndUpdate returns null despite
+    // upsert: true) must surface as an explicit error, never a silently undefined result typed as
+    // a guaranteed TrusteeProfessionalId.
+    test('should throw when findOneAndUpdate returns no document despite upsert: true', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOneAndUpdate').mockResolvedValue(null);
+
+      const document = withoutAuditOrId({
+        ...sampleProfessionalId,
+        camsTrusteeId,
+        acmsProfessionalId,
+      });
+
+      await expect(repository.upsertProfessionalId(document, mockUser)).rejects.toThrow(
+        `upsertProfessionalId returned no document for trustee ${camsTrusteeId} and ACMS ID ${acmsProfessionalId}.`,
+      );
+    });
+
     test('should handle database errors during upsert', async () => {
       const error = new Error('Database connection failed');
-      vi.spyOn(MongoCollectionAdapter.prototype, 'upsertOne').mockRejectedValue(error);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOneAndUpdate').mockRejectedValue(error);
 
       const document = withoutAuditOrId({
         ...sampleProfessionalId,
@@ -434,6 +448,61 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
         fields: ['evidence'],
         mode: 'EXCLUDE',
       });
+    });
+  });
+
+  describe('hasConflictByAcmsProfessionalId', () => {
+    const acmsProfessionalId = 'AK-01414';
+    const expectedQuery = {
+      conjunction: 'AND',
+      values: [
+        {
+          condition: 'EQUALS',
+          leftOperand: { name: 'acmsProfessionalId' },
+          rightOperand: acmsProfessionalId,
+        },
+        {
+          condition: 'EQUALS',
+          leftOperand: { name: 'disposition' },
+          rightOperand: 'conflict',
+        },
+      ],
+    };
+
+    test('should return true when a conflict record exists for this ACMS ID', async () => {
+      const findSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([
+        {
+          ...sampleProfessionalId,
+          id: 'prof-id-1',
+          acmsProfessionalId,
+          disposition: 'conflict',
+        },
+      ]);
+
+      const result = await repository.hasConflictByAcmsProfessionalId(acmsProfessionalId);
+
+      expect(findSpy).toHaveBeenCalledWith(expectedQuery, undefined, undefined, {
+        fields: ['evidence'],
+        mode: 'EXCLUDE',
+      });
+      expect(result).toBe(true);
+    });
+
+    test('should return false when no conflict record exists for this ACMS ID', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+
+      const result = await repository.hasConflictByAcmsProfessionalId(acmsProfessionalId);
+
+      expect(result).toBe(false);
+    });
+
+    test('should handle database errors', async () => {
+      const error = new Error('Database connection failed');
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(error);
+
+      await expect(repository.hasConflictByAcmsProfessionalId(acmsProfessionalId)).rejects.toThrow(
+        `Failed to check for a conflict record with ACMS professional ID ${acmsProfessionalId}.`,
+      );
     });
   });
 

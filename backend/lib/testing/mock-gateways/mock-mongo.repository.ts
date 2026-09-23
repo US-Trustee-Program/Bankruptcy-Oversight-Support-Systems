@@ -736,6 +736,14 @@ export class MockMongoRepository
     );
   }
 
+  hasConflictByAcmsProfessionalId(acmsProfessionalId: string): Promise<boolean> {
+    return Promise.resolve(
+      Array.from(this.professionalIds.values()).some(
+        (m) => m.acmsProfessionalId === acmsProfessionalId && m.disposition === 'conflict',
+      ),
+    );
+  }
+
   deleteByCamsTrusteeId(camsTrusteeId: string): Promise<number> {
     let count = 0;
     for (const [key, mapping] of this.professionalIds) {

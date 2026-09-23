@@ -1039,8 +1039,8 @@ export interface TrusteeProfessionalIdsRepository extends Releasable {
   /**
    * The following finders only return an auto-linked, non-conflicting disposition - callers
    * resolving real trustee<->ACMS links should never see a placeholder record keyed by
-   * fingerprint. A dedicated finder for other dispositions will be added when a healing workflow
-   * needs one.
+   * fingerprint. See hasConflictByAcmsProfessionalId for the one caller that specifically needs to
+   * know about a 'conflict'-disposition record instead.
    *
    * All three return TrusteeProfessionalIdSummary, not the full TrusteeProfessionalId - the
    * `evidence` property (a full serialized pipeline state, one per candidate considered) is
@@ -1052,6 +1052,13 @@ export interface TrusteeProfessionalIdsRepository extends Releasable {
   findAll(): Promise<TrusteeProfessionalIdSummary[]>;
   findByCamsTrusteeId(camsTrusteeId: string): Promise<TrusteeProfessionalIdSummary[]>;
   findByAcmsProfessionalId(acmsProfessionalId: string): Promise<TrusteeProfessionalIdSummary[]>;
+  /**
+   * Whether this ACMS professional ID has a 'conflict'-disposition record - the one exception to
+   * the "auto-linked, non-conflicting only" rule above, for a caller (heal-sentinel-case-
+   * appointments.ts) that needs to distinguish "never linked" from "flagged as a data-integrity
+   * conflict" rather than treating both as the same "left in place for the next attempt" outcome.
+   */
+  hasConflictByAcmsProfessionalId(acmsProfessionalId: string): Promise<boolean>;
   deleteByCamsTrusteeId(camsTrusteeId: string): Promise<number>;
   deleteAll(): Promise<number>;
 }

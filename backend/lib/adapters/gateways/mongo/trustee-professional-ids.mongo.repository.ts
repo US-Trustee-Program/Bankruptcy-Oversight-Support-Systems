@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { ApplicationContext } from '../../types/basic';
 import { getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { TrusteeProfessionalIdsRepository } from '../../../use-cases/gateways.types';
@@ -11,6 +12,7 @@ import { Auditable, createAuditRecord } from '@common/cams/auditable';
 import { Identifiable } from '@common/cams/document';
 import { CamsUserReference } from '@common/cams/users';
 import { Creatable } from '@common/cams/creatable';
+import { UnknownError } from '../../../common-errors/unknown-error';
 
 const MODULE_NAME = 'TRUSTEE-PROFESSIONAL-IDS-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'trustee-professional-ids';
@@ -98,10 +100,17 @@ export class TrusteeProfessionalIdsMongoRepository
         doc('acmsProfessionalId').equals(acmsProfessionalId),
       );
       const adapter = this.getAdapter<TrusteeProfessionalIdDocument>();
-      await adapter.upsertOne(query, setFields, { createdOn, createdBy });
-
-      const written = await adapter.find(query);
-      return written[0];
+      const written = await adapter.findOneAndUpdate(
+        query,
+        { $set: setFields, $setOnInsert: { createdOn, createdBy, id: randomUUID() } },
+        { upsert: true, returnDocument: 'after' },
+      );
+      if (!written) {
+        throw new UnknownError(MODULE_NAME, {
+          message: `upsertProfessionalId returned no document for trustee ${camsTrusteeId} and ACMS ID ${acmsProfessionalId}.`,
+        });
+      }
+      return written;
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: `Failed to write professional ID record for trustee ${camsTrusteeId} and ACMS ID ${acmsProfessionalId}.`,
@@ -158,6 +167,34 @@ export class TrusteeProfessionalIdsMongoRepository
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: `Failed to find trustees with ACMS professional ID ${acmsProfessionalId}.`,
+      });
+    }
+  }
+
+  /**
+   * Whether this ACMS professional ID has a 'conflict'-disposition record - deliberately separate
+   * from findByAcmsProfessionalId, which excludes conflict records entirely (see isRealLink). A
+   * caller that only needs "should I treat this as unresolvable-forever rather than
+   * not-yet-linked" (see heal-sentinel-case-appointments.ts) reads this instead of reaching into
+   * the excluded-by-design population.
+   */
+  async hasConflictByAcmsProfessionalId(acmsProfessionalId: string): Promise<boolean> {
+    try {
+      const doc = using<TrusteeProfessionalIdDocument>();
+      const query = and(
+        doc('acmsProfessionalId').equals(acmsProfessionalId),
+        doc('disposition').equals('conflict'),
+      );
+      const matches = await this.getAdapter<TrusteeProfessionalIdDocument>().find(
+        query,
+        undefined,
+        undefined,
+        SUMMARY_PROJECTION,
+      );
+      return matches.length > 0;
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to check for a conflict record with ACMS professional ID ${acmsProfessionalId}.`,
       });
     }
   }

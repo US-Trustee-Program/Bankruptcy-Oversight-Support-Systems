@@ -50,6 +50,7 @@ describe('HealSentinelCaseAppointmentsUseCase', () => {
   let useCase: HealSentinelCaseAppointmentsUseCase;
   let mockFindSentinelAppointments: ReturnType<typeof vi.fn>;
   let mockFindByAcmsProfessionalId: ReturnType<typeof vi.fn>;
+  let mockHasConflictByAcmsProfessionalId: ReturnType<typeof vi.fn>;
   let mockUpsert: ReturnType<typeof vi.fn>;
   let mockDelete: ReturnType<typeof vi.fn>;
 
@@ -59,6 +60,7 @@ describe('HealSentinelCaseAppointmentsUseCase', () => {
 
     mockFindSentinelAppointments = vi.fn().mockResolvedValue([]);
     mockFindByAcmsProfessionalId = vi.fn().mockResolvedValue([]);
+    mockHasConflictByAcmsProfessionalId = vi.fn().mockResolvedValue(false);
     mockUpsert = vi.fn().mockResolvedValue({});
     mockDelete = vi.fn().mockResolvedValue(undefined);
 
@@ -72,6 +74,7 @@ describe('HealSentinelCaseAppointmentsUseCase', () => {
     vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue(
       Object.assign(new MockMongoRepository(), {
         findByAcmsProfessionalId: mockFindByAcmsProfessionalId,
+        hasConflictByAcmsProfessionalId: mockHasConflictByAcmsProfessionalId,
       }),
     );
 
@@ -167,6 +170,42 @@ describe('HealSentinelCaseAppointmentsUseCase', () => {
       pageSize: 1,
       nextLastId: sentinel._id,
     });
+  });
+
+  // findByAcmsProfessionalId never surfaces a 'conflict'-disposition record (see isRealLink), so
+  // this ACMS ID's conflict looks identical to "never linked" without the separate
+  // hasConflictByAcmsProfessionalId check - a conflicted sentinel would otherwise retry forever
+  // with the same generic log message as an ordinary unresolved one.
+  test('conflict record exists for this ACMS ID: leaves the sentinel in place and logs it distinctly from an ordinary no-match', async () => {
+    const sentinel = makeSentinel();
+    mockFindSentinelAppointments.mockResolvedValue([sentinel]);
+    mockFindByAcmsProfessionalId.mockResolvedValue([]);
+    mockHasConflictByAcmsProfessionalId.mockResolvedValue(true);
+    const warnSpy = vi.spyOn(context.logger, 'warn');
+
+    const result = await useCase.healPage(null, 25);
+
+    expect(mockHasConflictByAcmsProfessionalId).toHaveBeenCalledWith(sentinel.acmsProfessionalId);
+    expect(mockUpsert).not.toHaveBeenCalled();
+    expect(mockDelete).not.toHaveBeenCalled();
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.stringContaining('data-integrity conflict'),
+    );
+    expect(result.documentsWritten).toBe(0);
+  });
+
+  test('no match, no conflict: does not check for a conflict record or log a warning', async () => {
+    const sentinel = makeSentinel();
+    mockFindSentinelAppointments.mockResolvedValue([sentinel]);
+    mockFindByAcmsProfessionalId.mockResolvedValue([]);
+    mockHasConflictByAcmsProfessionalId.mockResolvedValue(false);
+    const warnSpy = vi.spyOn(context.logger, 'warn');
+
+    await useCase.healPage(null, 25);
+
+    expect(mockHasConflictByAcmsProfessionalId).toHaveBeenCalledWith(sentinel.acmsProfessionalId);
+    expect(warnSpy).not.toHaveBeenCalled();
   });
 
   test('ambiguous match (more than one professional-id record): leaves the sentinel in place', async () => {

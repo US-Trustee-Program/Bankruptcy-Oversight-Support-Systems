@@ -348,11 +348,10 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
     // real professionals (e.g. "NO TRUSTEE", "NO TRUSTEE ASSIGNED", "CASE STRICKEN: NO TRUSTEE"),
     // always carried in PROF_LAST_NAME with PROF_FIRST_NAME empty.
     //
-    // PROF_LAST_NAME NOT LIKE '%DECEASED%' excludes a similar placeholder shape found via a
-    // staging backtest (e.g. "DECEASED - THISTLETHWAITE, JR."): a status marker prepended to the
-    // real surname rather than replacing it outright, which defeats matching regardless (a
-    // trustee-match.helpers.ts candidate-discovery tier would need to strip the marker text
-    // itself, not just tolerate it, to find the real person underneath).
+    // A "DECEASED" marker is deliberately NOT excluded here, unlike the placeholder shapes below -
+    // it is a status marker prepended to a real surname (e.g. "DECEASED - ROE, JR."), and
+    // ADMINISTRATIVE_MARKER_PHRASES (sync-acms-professional-ids.ts) strips it before matching so
+    // the real identity underneath still resolves, rather than being discarded at the source.
     //
     // The REOPENED/TRUSTEE/FAKE/PRO SE clauses below extend the same placeholder-filtering
     // rationale, found via a CAMS-876 backtest of the still-unresolved population (see
@@ -389,7 +388,6 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
         AND ACMS.DELETE_CODE != 'D'
         AND ACMS.PROF_LAST_NAME NOT LIKE '%NO TRUSTEE%'
         AND ACMS.PROF_LAST_NAME NOT LIKE '%NO TRRUSTEE%'
-        AND ACMS.PROF_LAST_NAME NOT LIKE '%DECEASED%'
         AND ACMS.PROF_LAST_NAME NOT LIKE '%REOPENED%'
         AND ACMS.PROF_LAST_NAME NOT LIKE '%RE OPENED%'
         AND ACMS.PROF_LAST_NAME NOT LIKE '%TRUSTEE_UNASSIGNED%'

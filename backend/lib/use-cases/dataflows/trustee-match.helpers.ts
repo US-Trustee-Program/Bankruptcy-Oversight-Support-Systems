@@ -1481,6 +1481,16 @@ function lastNameTokenSearchCandidates(lastName?: string): string[] {
  * FIRST_NAME_NICKNAME_JARO_WINKLER_THRESHOLD, kept as its own named constant since it governs a
  * different field (lastName, not firstName) and the two are free to diverge if evidence ever
  * calls for it.
+ *
+ * findLastNameTokenMatches is shared with the DXTR trustee-appointment dataflow (called via
+ * matchTrusteeByName's third-pass fallback, itself called from sync-trustee-case-appointments.ts)
+ * - this floor did not exist before this threshold was added, so its effect on DXTR outcomes was
+ * verified directly: replaying test/integration/trustee-match-normalization's real ground-truth
+ * DXTR/CAMS pairs through matchTrusteeByName with and without this floor showed zero DXTR records
+ * losing their only matching candidate either way (false-no-match stayed 0), and the floor
+ * strictly improved outcomes - single-candidate-relaxed-match rose from 10 to 17 while
+ * false-ambiguous fell from 28 to 21, since it now suppresses same-token candidates whose full
+ * lastName isn't actually a plausible match.
  */
 const LAST_NAME_TOKEN_DISCOVERY_JARO_WINKLER_THRESHOLD = 0.8;
 
