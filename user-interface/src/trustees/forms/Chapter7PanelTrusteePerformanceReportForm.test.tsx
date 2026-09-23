@@ -330,7 +330,7 @@ describe('Chapter7PanelTrusteePerformanceReportForm', () => {
     });
   });
 
-  test('Save button is disabled and shows a message when TPR Review Period is out of order', async () => {
+  test('Save button is disabled when TPR Review Period is out of order', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
 
     renderComponent();
@@ -344,9 +344,6 @@ describe('Chapter7PanelTrusteePerformanceReportForm', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('tpr-review-period-error')).toHaveTextContent(
-        'TPR Review Period Start must be before TPR Review Period End.',
-      );
       expect(screen.getByTestId('button-save-chapter7-panel-tpr')).toBeDisabled();
     });
   });
@@ -513,11 +510,9 @@ describe('Chapter7PanelTrusteePerformanceReportForm', () => {
       fireEvent.blur(endInput, { relatedTarget: null });
 
       await waitFor(() => {
-        // tprPeriodError span shows the start-field message (computed from state)
-        expect(screen.getByTestId('tpr-review-period-error')).toHaveTextContent(
+        expect(document.getElementById('tpr-review-period-start-error')).toHaveTextContent(
           'TPR Review Period Start must be before TPR Review Period End.',
         );
-        // end DatePicker customErrorMessage set by the onBlur handler
         expect(document.getElementById('tpr-review-period-end-error')).toHaveTextContent(
           'TPR Review Period End must be after TPR Review Period Start.',
         );
@@ -549,7 +544,9 @@ describe('Chapter7PanelTrusteePerformanceReportForm', () => {
       fireEvent.change(startInput, { target: { value: '2024-01-01' } });
 
       await waitFor(() => {
-        expect(screen.queryByTestId('tpr-review-period-error')).not.toBeInTheDocument();
+        expect(
+          screen.queryByText('TPR Review Period Start must be before TPR Review Period End.'),
+        ).not.toBeInTheDocument();
         expect(
           screen.queryByText('TPR Review Period End must be after TPR Review Period Start.'),
         ).not.toBeInTheDocument();

@@ -7,6 +7,7 @@ import {
   TrusteeUpcomingKeyDates,
   TrusteeUpcomingKeyDatesInput,
   validateTprDuePair,
+  validateTprReviewPeriodOrder,
   validateCompletionPairPresence,
   validateTrusteeUpcomingKeyDates,
   isoToSentinel,
@@ -166,13 +167,9 @@ export default function Chapter7PanelTrusteePerformanceReportForm() {
     );
   }
 
-  const tprPeriodError =
-    tprDisplayUpdates &&
-    form.tprReviewPeriodStart &&
-    form.tprReviewPeriodEnd &&
-    form.tprReviewPeriodStart > form.tprReviewPeriodEnd
-      ? 'TPR Review Period Start must be before TPR Review Period End.'
-      : '';
+  const tprPeriodOrder = tprDisplayUpdates
+    ? validateTprReviewPeriodOrder(form.tprReviewPeriodStart, form.tprReviewPeriodEnd)
+    : null;
   const tprDuePairError = validateTprDuePair(form.tprDue, form.tprDueYearType);
   const hasAnyDateError = tprDisplayUpdates
     ? hasErrorAmong(['tpr-review-period-start', 'tpr-review-period-end', 'last-tpr-submitted'])
@@ -185,7 +182,7 @@ export default function Chapter7PanelTrusteePerformanceReportForm() {
   const isSaveDisabled =
     isSaving ||
     hasAnyDateError ||
-    !!tprPeriodError ||
+    !!tprPeriodOrder ||
     !!tprDuePairError ||
     !!completionPairError ||
     (!tprDisplayUpdates && !tprReviewPeriodValid);
@@ -206,12 +203,15 @@ export default function Chapter7PanelTrusteePerformanceReportForm() {
           }}
           onBlur={(e) => {
             if (e.currentTarget.contains(e.relatedTarget as Node)) return;
-            const { tprReviewPeriodStart: start, tprReviewPeriodEnd: end } = form;
-            if (!start || !end || start <= end) return;
+            const order = validateTprReviewPeriodOrder(
+              form.tprReviewPeriodStart,
+              form.tprReviewPeriodEnd,
+            );
+            if (!order) return;
             setErrors((prev) => ({
               ...prev,
-              tprReviewPeriodStart: 'TPR Review Period Start must be before TPR Review Period End.',
-              tprReviewPeriodEnd: 'TPR Review Period End must be after TPR Review Period Start.',
+              tprReviewPeriodStart: order.startError,
+              tprReviewPeriodEnd: order.endError,
             }));
           }}
         >
@@ -241,11 +241,6 @@ export default function Chapter7PanelTrusteePerformanceReportForm() {
             customErrorMessage={errors.tprReviewPeriodEnd}
             disableMax
           />
-          {tprPeriodError && (
-            <span className="usa-input__error-message" data-testid="tpr-review-period-error">
-              {tprPeriodError}
-            </span>
-          )}
         </div>
       ) : (
         <MonthDayRangeSelector
