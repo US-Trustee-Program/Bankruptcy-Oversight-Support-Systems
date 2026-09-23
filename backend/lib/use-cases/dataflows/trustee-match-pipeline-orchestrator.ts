@@ -256,6 +256,12 @@ export async function runTrusteeMatchPipeline(
     // resolved in isolation, tier by tier.
     const combinedResult = await runPipeline(outerState, resolveStages());
     outerState.match = combinedResult.match;
+    // Every RECALL tier above is fully error-checked before this point, so combinedResult.error
+    // is never actually set today - but resolveStages() is a shared list runNestedTier's own
+    // nested runs also use, and a future stage added to it that performs I/O would set it here.
+    // Copying it through (not just .match) keeps that failure mode from silently discarding an
+    // error the caller needs to rethrow or persist.
+    outerState.error = combinedResult.error;
     return outerState;
   } catch (originalError) {
     outerState.error = getCamsErrorWithStack(originalError, MODULE_NAME, {

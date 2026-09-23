@@ -2580,7 +2580,7 @@ describe('resolveBySoleExactNameMatch', () => {
     expect(result.match).toBeNull();
   });
 
-  test('does not resolve a candidate excluded by doesCamsTrusteeHaveAddressAndPhone', async () => {
+  test('does not resolve a candidate excluded by hasComparableContactData', async () => {
     const state = createInitialState(acmsRecord);
     const candidate = addCandidate(
       state,
@@ -2588,11 +2588,11 @@ describe('resolveBySoleExactNameMatch', () => {
       'test',
     );
     addScore(candidate, 'doesNameMatch', { value: 100, threshold: 85, pass: true });
-    addScore(candidate, 'doesCamsTrusteeHaveAddressAndPhone', {
-      value: 0,
-      threshold: 100,
-      pass: false,
-    });
+    // hasComparableContactData is the derived score every non-inverted RESOLVE stage reads,
+    // computed from doesCamsTrusteeHaveAddressAndPhone/doesAcmsTrusteeHaveAddressAndPhone by
+    // scoreHasComparableContactData - set directly here since this test exercises the RESOLVE
+    // stage in isolation, without running the full CANDIDATE_SCORERS pipeline.
+    addScore(candidate, 'hasComparableContactData', { value: 0, threshold: 100, pass: false });
 
     const result = await resolveBySoleExactNameMatch()(state);
 
@@ -2607,11 +2607,7 @@ describe('resolveBySoleExactNameMatch', () => {
       'test',
     );
     addScore(candidate, 'doesNameMatch', { value: 100, threshold: 85, pass: true });
-    addScore(candidate, 'doesAcmsTrusteeHaveAddressAndPhone', {
-      value: 0,
-      threshold: 100,
-      pass: false,
-    });
+    addScore(candidate, 'hasComparableContactData', { value: 0, threshold: 100, pass: false });
 
     const result = await resolveBySoleExactNameMatch()(state);
 

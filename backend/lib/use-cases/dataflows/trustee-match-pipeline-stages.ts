@@ -958,6 +958,38 @@ function scoreAcmsHasAddressAndPhone(
 }
 
 /**
+ * Whether BOTH sides have comparable contact data - the qualifying gate every RESOLVE stage in
+ * this file requires before a candidate is eligible to resolve at all, collapsed into ONE score
+ * so it appears in the pipeline's persisted evidence graph rather than only living as a repeated
+ * inline predicate. Combines doesCamsTrusteeHaveAddressAndPhone/doesAcmsTrusteeHaveAddressAndPhone
+ * (both already scored above) rather than recomputing either side. Runs after both, since it
+ * reads their output.
+ *
+ * `pass` mirrors the shared gate's exact semantics (`!== false`, not `=== true`) - a candidate
+ * neither scorer above ever ran against (its own key absent from scores) is treated as eligible,
+ * same as every RESOLVE stage's existing inline check. The two "NoAcmsData" stages
+ * (resolveBySoleExactNameMatchNoAcmsData, resolveBySoleFuzzyFirstNameMatchNoAcmsData) deliberately
+ * do NOT read this score - they require the inverse (ACMS side has NO contact data) and keep that
+ * inversion explicit at their own call sites rather than folding a second, opposite-polarity
+ * reading into this one.
+ */
+function scoreHasComparableContactData(
+  _sourceNormalized: NormalizedTrustee,
+  candidate: PipelineCandidate,
+): PipelineCandidate {
+  const scores = mergedScore(candidate);
+  const eligible =
+    scores.doesCamsTrusteeHaveAddressAndPhone?.pass !== false &&
+    scores.doesAcmsTrusteeHaveAddressAndPhone?.pass !== false;
+  addScore(candidate, 'hasComparableContactData', {
+    value: eligible ? 100 : 0,
+    threshold: 100,
+    pass: eligible,
+  });
+  return candidate;
+}
+
+/**
  * Computes and caches parseCityStateZip's result for the ACMS record directly onto
  * sourceNormalized.address (see NormalizedTrustee - reuses ProjectedTrustee['address']'s own field
  * name/shape) rather than through the memo mechanism - sourceNormalized is invariant for the whole
@@ -1337,8 +1369,7 @@ export function resolveByComparativeCorroboration(): Stage {
     const qualifying = [...state.candidates.values()].filter(
       (candidate) =>
         mergedScore(candidate).doesNameMatch?.pass === true &&
-        mergedScore(candidate).doesCamsTrusteeHaveAddressAndPhone?.pass !== false &&
-        mergedScore(candidate).doesAcmsTrusteeHaveAddressAndPhone?.pass !== false,
+        mergedScore(candidate).hasComparableContactData?.pass !== false,
     );
     if (qualifying.length < 2) return state;
 
@@ -1481,6 +1512,7 @@ const CANDIDATE_SCORERS: CandidateScorer[] = [
   normalizeCandidateNameFields,
   scoreHasAddressAndPhone,
   scoreAcmsHasAddressAndPhone,
+  scoreHasComparableContactData, // reads both scores above - must run after them
   scoreStateNotConflicting,
   scoreNameMatch,
   scoreNameDisqualifiers, // reads scoreNameMatch's doesNameMatch - must run after it
@@ -1563,8 +1595,7 @@ export function resolveByPhoneTypoTolerance(): Stage {
     const qualifying = [...state.candidates.values()].filter(
       (candidate) =>
         mergedScore(candidate).doesNameMatch?.pass === true &&
-        mergedScore(candidate).doesCamsTrusteeHaveAddressAndPhone?.pass !== false &&
-        mergedScore(candidate).doesAcmsTrusteeHaveAddressAndPhone?.pass !== false,
+        mergedScore(candidate).hasComparableContactData?.pass !== false,
     );
     if (qualifying.length !== 1) return state;
 
@@ -1642,8 +1673,7 @@ function exactNameMatchCandidates(state: PipelineState): PipelineCandidate[] {
   return [...state.candidates.values()].filter(
     (candidate) =>
       mergedScore(candidate).doesNameMatch?.value === 100 &&
-      mergedScore(candidate).doesCamsTrusteeHaveAddressAndPhone?.pass !== false &&
-      mergedScore(candidate).doesAcmsTrusteeHaveAddressAndPhone?.pass !== false,
+      mergedScore(candidate).hasComparableContactData?.pass !== false,
   );
 }
 
@@ -1817,8 +1847,7 @@ export function resolveBySoleFuzzyFirstNameMatchAfterAddressNarrowing(): Stage {
     const sameLastName = [...state.candidates.values()].filter(
       (candidate) =>
         mergedScore(candidate).doesNameMatch?.value === 0 &&
-        mergedScore(candidate).doesCamsTrusteeHaveAddressAndPhone?.pass !== false &&
-        mergedScore(candidate).doesAcmsTrusteeHaveAddressAndPhone?.pass !== false &&
+        mergedScore(candidate).hasComparableContactData?.pass !== false &&
         isExactLastNameMatch(
           state.sourceNormalized.lastNameUnreduced ?? state.sourceRaw.lastName ?? '',
           candidate.camsRaw.lastName ?? '',
@@ -1890,8 +1919,7 @@ export function resolveByConsensus(): Stage {
     const qualifying = [...state.candidates.values()].filter(
       (candidate) =>
         mergedScore(candidate).doesNameMatch?.pass === true &&
-        mergedScore(candidate).doesCamsTrusteeHaveAddressAndPhone?.pass !== false &&
-        mergedScore(candidate).doesAcmsTrusteeHaveAddressAndPhone?.pass !== false,
+        mergedScore(candidate).hasComparableContactData?.pass !== false,
     );
     if (qualifying.length !== 1) return state;
 
@@ -1935,8 +1963,7 @@ export function resolveBySoleFuzzyNameMatchAndState(): Stage {
       (candidate) =>
         mergedScore(candidate).doesNameMatch?.pass === true &&
         mergedScore(candidate).doesNameMatch?.value !== 100 &&
-        mergedScore(candidate).doesCamsTrusteeHaveAddressAndPhone?.pass !== false &&
-        mergedScore(candidate).doesAcmsTrusteeHaveAddressAndPhone?.pass !== false,
+        mergedScore(candidate).hasComparableContactData?.pass !== false,
     );
     if (qualifying.length !== 1) return state;
 
@@ -1990,8 +2017,7 @@ function findSoleZeroNameScoreCandidateWithMatchingLastName(
   const qualifying = [...state.candidates.values()].filter(
     (candidate) =>
       mergedScore(candidate).doesNameMatch?.value === 0 &&
-      mergedScore(candidate).doesCamsTrusteeHaveAddressAndPhone?.pass !== false &&
-      mergedScore(candidate).doesAcmsTrusteeHaveAddressAndPhone?.pass !== false &&
+      mergedScore(candidate).hasComparableContactData?.pass !== false &&
       isExactLastNameMatch(
         state.sourceNormalized.lastNameUnreduced ?? state.sourceRaw.lastName ?? '',
         candidate.camsRaw.lastName ?? '',
@@ -2089,8 +2115,7 @@ function findSoleZeroNameScoreCandidateWithFuzzyLastNameMatch(
         camsFirst &&
         camsLast &&
         mergedScore(candidate).doesNameMatch?.value === 0 &&
-        mergedScore(candidate).doesCamsTrusteeHaveAddressAndPhone?.pass !== false &&
-        mergedScore(candidate).doesAcmsTrusteeHaveAddressAndPhone?.pass !== false &&
+        mergedScore(candidate).hasComparableContactData?.pass !== false &&
         acmsFirst === camsFirst &&
         acmsLast !== camsLast &&
         memoizedIsFuzzyNamePartMatch(memo, acmsLast, camsLast),
