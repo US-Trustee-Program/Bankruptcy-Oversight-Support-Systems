@@ -310,13 +310,13 @@ export function normalizeAcmsSourceName(): Stage {
 }
 
 /**
- * RECALL-only: the record the discovery-tier helpers (findSurnameExactCandidates,
- * matchTrusteeByName, tokenizeNameForIntersection, etc.) should search against, in place of
+ * RECALL-only: the record the discovery-tier helpers that call into this projection
+ * (matchTrusteeByName, tokenizeNameForIntersection) should search against, in place of
  * state.sourceRaw directly. This is the ONLY place a translation back to the raw shape happens -
  * every SCORE/RESOLVE function reads state.sourceNormalized/candidate.camsNormalized directly
  * instead, so a scorer never needs to know this translation exists.
  *
- * - Those helpers are shared with the DXTR trustee-appointment dataflow and take a
+ * - Those two helpers are shared with the DXTR trustee-appointment dataflow and take a
  *   DxtrTrusteeParty-shaped argument, so they can't be repointed to read NormalizedTrustee
  *   directly without breaking that unrelated call path or duplicating them ACMS-side.
  * - state.sourceRaw's firstName/middleName/lastName/fullName are unmodified CMMPR values - wrong
@@ -380,14 +380,12 @@ export function skipAdministrativePlaceholder(): Stage {
 }
 
 /**
- * ACMS-pipeline-only reimplementation of findSurnameExactCandidates' discovery logic, sourced
- * directly from state.sourceNormalized.lastName + lastNameAlternates (see NormalizedTrustee's own
- * doc comment on that convention) instead of a single raw-ish string findSurnameExactCandidates
- * would have to re-reduce itself via its own internal lastNameSurnameCandidates call. A second,
- * ACMS-only implementation of the same discovery idea, not a repointing of the shared one, for the
- * same DXTR-isolation reason recallByAnchoredLevenshtein/recallByTokenIntersection already
- * reimplement their own discovery logic directly against the repository rather than calling a
- * DXTR-shared helper.
+ * ACMS-pipeline-only surname-exact discovery, sourced directly from
+ * state.sourceNormalized.lastName + lastNameAlternates (see NormalizedTrustee's own doc comment on
+ * that convention) rather than a single raw-ish string a DXTR-shared equivalent would have to
+ * re-reduce itself via its own internal lastNameSurnameCandidates call - the ACMS pipeline already
+ * has the reduced, recovered form on hand, so re-deriving it from scratch would be redundant work
+ * repeating what normalizeAcmsSourceName already did.
  */
 async function findSurnameExactCandidatesForAcms(
   context: ApplicationContext,
@@ -1223,10 +1221,10 @@ export function scoreNameDisqualifiers(
 /**
  * Below this contactCorroborationAddress value, a PARSEABLE ACMS address means both sides had a
  * real address to compare and it disagreed - a genuine contradiction, never relaxed by
- * isNoContradictionMatch's fallback below. Mirrors trustee-match.helpers.ts's own
- * NO_CONTRADICTION_ADDRESS_FLOOR (kept local per the same DXTR-isolation convention as
- * pipelineAddressScore/pipelinePhoneScore/pipelineEmailScore - this fallback is a pure reader of
- * pipeline-computed scores now, not the shared helper's CandidateScore shape).
+ * isNoContradictionMatch's fallback below. ACMS-pipeline-only: there is no DXTR-side equivalent of
+ * this fallback to mirror or diverge from - isNoContradictionMatch is a pure reader of
+ * pipeline-computed scores (contactCorroborationAddress, contactCorroborationPhone/Email), a shape
+ * that only exists once a candidate has passed through this pipeline's own scoring stages.
  */
 const NO_CONTRADICTION_ADDRESS_FLOOR = 30;
 
