@@ -32,7 +32,7 @@ import {
   shouldSkipAsNotAPerson,
   splitCompoundFirstName,
   stripAdministrativeMarkers,
-} from './sync-acms-professional-ids';
+} from './acms-name-normalization.helpers';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import { CamsError } from '../../common-errors/cams-error';
 import {

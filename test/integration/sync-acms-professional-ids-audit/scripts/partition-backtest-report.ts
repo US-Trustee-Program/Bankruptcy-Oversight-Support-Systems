@@ -181,12 +181,10 @@ async function main(): Promise<void> {
     throw new Error(`${jsonlPath} does not exist. Run pipeline-replay-backtest.ts first.`);
   }
 
-  const { deriveDisposition, deriveSuspectDuplicateCamsTrustee } = await import(
-    '../../../../backend/lib/use-cases/dataflows/trustee-professional-ids.types'
-  );
-  const { shouldSkipAsNotAPerson, isRecordDisavowed } = await import(
-    '../../../../backend/lib/use-cases/dataflows/sync-acms-professional-ids'
-  );
+  const { deriveDisposition, deriveSuspectDuplicateCamsTrustee } =
+    await import('../../../../backend/lib/use-cases/dataflows/trustee-professional-ids.types');
+  const { shouldSkipAsNotAPerson, isRecordDisavowed } =
+    await import('../../../../backend/lib/use-cases/dataflows/acms-name-normalization.helpers');
 
   const noMatchRows: Record<(typeof CSV_COLUMNS)[number], string>[] = [];
   const ambiguousRows: CandidateCsvRow[] = [];

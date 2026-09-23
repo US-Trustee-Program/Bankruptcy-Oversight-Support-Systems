@@ -17,9 +17,9 @@
  * AcmsTrusteeProfessionalDetailRecord before calling toAcmsTrusteeProfessional - that shape is no
  * longer what staging exports produce.)
  *
- * Calls the real, exported shouldSkipAsNotAPerson/isRecordDisavowed (sync-acms-professional-ids.ts)
- * and the real runTrusteeMatchPipeline directly - there is no separate reimplementation of
- * matching logic to keep in sync with production.
+ * Calls the real, exported shouldSkipAsNotAPerson/isRecordDisavowed
+ * (acms-name-normalization.helpers.ts) and the real runTrusteeMatchPipeline directly - there is
+ * no separate reimplementation of matching logic to keep in sync with production.
  *
  * Requires a REAL local MongoDB (not the mocked in-memory adapter) — searchTrusteesByNameScored's
  * phonetic-token matching is a Mongo aggregation pipeline stage that cannot be faithfully
@@ -219,7 +219,7 @@ async function run() {
 
   const context = await buildRealApplicationContext();
   const { shouldSkipAsNotAPerson, isRecordDisavowed } =
-    await import('../../../../backend/lib/use-cases/dataflows/sync-acms-professional-ids');
+    await import('../../../../backend/lib/use-cases/dataflows/acms-name-normalization.helpers');
   const { runTrusteeMatchPipeline } =
     await import('../../../../backend/lib/use-cases/dataflows/trustee-match-pipeline-orchestrator');
   const { serializeState } =
@@ -277,7 +277,11 @@ async function run() {
     // this script's reported counts match what sync-acms-professional-ids.ts would actually persist.
     const disposition = deriveDisposition(serialized);
     const finalOutcome: 'resolved' | 'ambiguous' | 'no-match' =
-      disposition === 'auto-linked' ? 'resolved' : disposition === 'ambiguous' ? 'ambiguous' : 'no-match';
+      disposition === 'auto-linked'
+        ? 'resolved'
+        : disposition === 'ambiguous'
+          ? 'ambiguous'
+          : 'no-match';
     outcomeCounts[finalOutcome]++;
     if (disposition === 'ambiguous' && deriveSuspectDuplicateCamsTrustee(serialized)) {
       suspectDuplicateCamsTrusteeCount++;
@@ -294,7 +298,8 @@ async function run() {
     // perspective, just an older persisted shape.
     const normalizedStagingDisposition =
       record.disposition === 'ambiguous-duplication' ? 'ambiguous' : record.disposition;
-    const currentTrusteeId = disposition === 'auto-linked' ? state.match?.trusteeId ?? null : null;
+    const currentTrusteeId =
+      disposition === 'auto-linked' ? (state.match?.trusteeId ?? null) : null;
     const dispositionsDiffer = disposition !== normalizedStagingDisposition;
     const sameDispositionDifferentTrustee =
       disposition === 'auto-linked' &&
@@ -349,9 +354,7 @@ async function run() {
     console.log(`  ${k.padEnd(28)} ${v}`);
   }
 
-  const falsePositiveCandidates = divergences.filter(
-    (d) => d.stagingDisposition === 'auto-linked',
-  );
+  const falsePositiveCandidates = divergences.filter((d) => d.stagingDisposition === 'auto-linked');
   console.log(
     `\n=== Divergences: staging vs. current pipeline (${divergences.length} of ${errored.length}) ===\n`,
   );
