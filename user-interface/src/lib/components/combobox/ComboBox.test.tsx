@@ -1318,7 +1318,7 @@ describe('ComboBox', () => {
       const input = screen.getByRole('combobox');
       expect(input).toHaveAttribute(
         'aria-describedby',
-        `${comboboxId}-filter-input-aria-description ${comboboxId}-input__error-message`,
+        `${comboboxId}-filter-input-aria-description ${comboboxId}-field-error-message`,
       );
     });
 
@@ -1331,14 +1331,14 @@ describe('ComboBox', () => {
       const input = screen.getByRole('combobox');
       expect(input).toHaveAttribute(
         'aria-describedby',
-        `${comboboxId}-filter-input-aria-description ${comboboxId}-hint ${comboboxId}-input__error-message`,
+        `${comboboxId}-filter-input-aria-description ${comboboxId}-hint ${comboboxId}-field-error-message`,
       );
     });
 
     test('should set aria-live="polite" on the error message element', () => {
       renderWithProps({ errorMessage: 'This field is required' });
 
-      const errorElement = document.querySelector(`#${comboboxId}-input__error-message`);
+      const errorElement = document.querySelector(`#${comboboxId}-field-error-message`);
       expect(errorElement).toHaveAttribute('aria-live', 'polite');
     });
 
@@ -1635,16 +1635,16 @@ describe('ComboBox', () => {
       const errorMessage = 'This field is required';
       renderWithProps({ errorMessage });
 
-      const errorElement = document.querySelector(`#${comboboxId}-input__error-message`);
+      const errorElement = document.querySelector(`#${comboboxId}-field-error-message`);
       expect(errorElement).toBeInTheDocument();
       expect(errorElement).toHaveTextContent(errorMessage);
-      expect(errorElement).toHaveClass('usa-input__error-message');
+      expect(errorElement).toHaveClass('cams-field-error-message');
     });
 
     test('should not render error message when errorMessage is empty string', async () => {
       renderWithProps({ errorMessage: '' });
 
-      const errorElement = document.querySelector(`#${comboboxId}-input__error-message`);
+      const errorElement = document.querySelector(`#${comboboxId}-field-error-message`);
       expect(errorElement).not.toBeInTheDocument();
     });
 

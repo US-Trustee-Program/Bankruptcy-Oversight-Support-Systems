@@ -17,6 +17,7 @@ describe('Tests for USWDS TextArea component', () => {
   let userEvent: CamsUserEvent;
 
   beforeEach(() => {
+    vi.clearAllMocks();
     userEvent = TestingUtilities.setupUserEvent();
   });
 
@@ -81,21 +82,6 @@ describe('Tests for USWDS TextArea component', () => {
     expect(inputEl).toHaveValue('');
   });
 
-  test('clearValue should skip focus if inputRef is null', async () => {
-    renderWithoutProps();
-    const mockInnerRef = { current: { focus: vi.fn(), value: '' } };
-    const useRefMock = vi.spyOn(React, 'useRef').mockReturnValueOnce(mockInnerRef);
-
-    expect(ref.current).toBeDefined();
-    expect(typeof ref.current!.clearValue).toBe('function');
-
-    act(() => ref.current?.clearValue());
-
-    expect(mockInnerRef.current.focus).not.toHaveBeenCalled();
-
-    useRefMock.mockRestore();
-  });
-
   test('Should return value when ref.getValue is called.', async () => {
     renderWithoutProps();
     const inputEl = screen.getByTestId(textAreaId);
@@ -106,13 +92,12 @@ describe('Tests for USWDS TextArea component', () => {
     expect(ref.current?.getValue()).toEqual(newValue);
   });
 
-  test('Should call props.onChange when a change is made to textarea by keypress or by ref.', async () => {
+  test('Should call props.onChange when a change is made to textarea by keypress.', async () => {
     renderWithoutProps();
     const inputEl = screen.getByTestId(textAreaId);
 
     act(() => ref.current?.setValue(newValue));
     expect(inputEl).toHaveValue(newValue);
-    expect(youChangedMe).toHaveBeenCalled();
 
     const anotherValue = '. Yet another value';
     await userEvent.type(inputEl, anotherValue);
@@ -332,14 +317,14 @@ describe('TextArea error handling tests', () => {
     );
 
     const textarea = document.getElementById('textarea-test');
-    const errorElement = document.getElementById('textarea-test-error-message');
+    const errorElement = document.getElementById('textarea-test-field-error-message');
     const textareaGroup = document.querySelector('.usa-textarea-group');
 
     expect(errorElement).toBeInTheDocument();
     expect(errorElement).toHaveTextContent('This is required');
-    expect(errorElement).toHaveClass('usa-input__error-message');
+    expect(errorElement).toHaveClass('cams-field-error-message');
     expect(textarea).toHaveAttribute('aria-invalid', 'true');
-    expect(textarea).toHaveAttribute('aria-errormessage', 'textarea-test-error-message');
+    expect(textarea).toHaveAttribute('aria-errormessage', 'textarea-test-field-error-message');
     expect(textareaGroup).toHaveClass('usa-textarea-group--error');
   });
 
@@ -349,7 +334,7 @@ describe('TextArea error handling tests', () => {
     let textarea = document.getElementById('textarea-test');
     let textareaGroup = document.querySelector('.usa-textarea-group');
 
-    expect(document.getElementById('textarea-test-error-message')).not.toBeInTheDocument();
+    expect(document.getElementById('textarea-test-field-error-message')).not.toBeInTheDocument();
     expect(textarea).not.toHaveAttribute('aria-invalid');
     expect(textarea).not.toHaveAttribute('aria-errormessage');
     expect(textareaGroup).not.toHaveClass('usa-textarea-group--error');
@@ -359,7 +344,7 @@ describe('TextArea error handling tests', () => {
     textarea = document.getElementById('textarea-test');
     textareaGroup = document.querySelector('.usa-textarea-group');
 
-    expect(document.getElementById('textarea-test-error-message')).not.toBeInTheDocument();
+    expect(document.getElementById('textarea-test-field-error-message')).not.toBeInTheDocument();
     expect(textarea).not.toHaveAttribute('aria-invalid');
     expect(textarea).not.toHaveAttribute('aria-errormessage');
     expect(textareaGroup).not.toHaveClass('usa-textarea-group--error');

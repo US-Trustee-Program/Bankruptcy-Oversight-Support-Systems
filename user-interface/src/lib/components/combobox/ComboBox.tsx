@@ -213,7 +213,7 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
       ids.push(`${comboBoxId}-hint`);
     }
     if (errorMessage && errorMessage.length > 0) {
-      ids.push(`${comboBoxId}-input__error-message`);
+      ids.push(`${comboBoxId}-field-error-message`);
     }
     return ids.join(' ');
   }
@@ -717,8 +717,8 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
       </div>
       {errorMessage && errorMessage.length > 0 && (
         <div
-          id={`${comboBoxId}-input__error-message`}
-          className="usa-input__error-message"
+          id={`${comboBoxId}-field-error-message`}
+          className="cams-field-error-message"
           aria-live="polite"
         >
           {errorMessage}
