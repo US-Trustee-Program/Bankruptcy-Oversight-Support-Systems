@@ -21,7 +21,7 @@
     "@azure/cosmos": "4.10.0",
     "@azure/identity": "4.13.2",
     "@faker-js/faker": "10.5.0",
-    "@types/node": "24.13.3",
+    "@types/node": "24.13.4",
     "mongodb": "7.6.0",
     "mssql": "12.7.1",
     "tsx": "4.23.13"
