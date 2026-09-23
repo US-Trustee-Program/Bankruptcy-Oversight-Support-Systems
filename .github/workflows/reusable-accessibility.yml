@@ -25,7 +25,7 @@ jobs:
       # published to ghcr.io by build-playwright-msedge-image.yml from
       # test/e2e/Dockerfile.playwright-msedge. Digest-pinned per this
       # repo's SHA-pinning convention for external references.
-      image: ghcr.io/us-trustee-program/bankruptcy-oversight-support-systems/playwright-msedge@sha256:d11e1afb951e497f8439f054426f5f731362225fa6f0eb921a1cd875423ac545 # v1.62.1-noble + msedge, from run https://github.com/US-Trustee-Program/Bankruptcy-Oversight-Support-Systems/actions/runs/32315510801
+      image: ghcr.io/us-trustee-program/bankruptcy-oversight-support-systems/playwright-msedge@sha256:906819d16367ddd8c6779f80b62a7e58b7a4a88beaceeb410d1c22cfd138e14b # v1.63.0-noble + msedge, from run https://github.com/US-Trustee-Program/Bankruptcy-Oversight-Support-Systems/actions/runs/35628743925
       # Docker/podman default /dev/shm to 64MB, which commonly causes
       # headless Chromium to crash or become unresponsive under repeated
       # page loads - matches the --shm-size=1g added to reusable-e2e.yml's

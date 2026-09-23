@@ -29,6 +29,39 @@ Run it with the same `TARGET` and `AZ_*_RG` variables as
 `setup-deploy-federated-credential.sh`. See
 [Branch Deploy RBAC Cutover](/operations/branch-deploy-rbac-cutover.md).
 
+### audit-orphaned-gha-secrets.sh
+
+Reports repository-scope GitHub Actions secrets and variables that nothing references.
+Read-only and permanently so — it never deletes and never emits a deletion command.
+This is the durable counterpart to the one-time CAMS-760 gate below: that script checks
+references against a frozen list, this one enumerates live scope and asks what has gone
+stale. Orphans accumulate quietly — 31 built up here over years because nothing watched.
+
+**Silent by default.** Known-and-accepted orphans live in
+`ops/scripts/utility/gha-orphan-secrets.baseline`; the script speaks only when the set
+changes, and exits 0 with no output otherwise. This is deliberate: a report that lists
+the same standing orphans every run gets muted, and a muted check is worse than none
+because it reads as coverage. `-u` accepts the current set into the baseline, `-a`
+reports everything including baselined entries. A baseline entry for an object that no
+longer exists is inert, so deletions need no cleanup.
+
+**References are checked across active branches, not just the current ref.** A secret
+added by an in-flight branch is absent from `main` by definition, so a `main`-only check
+would report a colleague's new secret as an orphan — and acting on that deletes their
+work. Branches with commits in the last `ACTIVE_DAYS` (default 90) are included. All
+references are gathered in one pass per ref using a single alternation; the naive
+per-name-per-branch form is roughly a thousand `git grep` invocations and takes minutes.
+
+It refuses to report on a clone that is behind the remote. The active-branch check
+reads local refs, so a clone that has not fetched cannot see recent branches, and a
+secret in use on one would be reported as an orphan; rather than guess, it compares
+against `git ls-remote` and exits 3 telling you to fetch.
+
+Requires a token with repository admin — listing secrets needs it and `GITHUB_TOKEN` in
+Actions does not have it, which is why this is run on demand rather than on a schedule.
+Only names are read, never values. Exit codes: `0` no new orphans, `1` new orphans, `2`
+usage, `3` inconclusive.
+
 ### az-cosmos-add-user.sh
 
 To simplify Cosmosdb administration, this script assigns a role to a principal for a target Cosmos Db account.

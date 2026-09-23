@@ -1,9 +1,9 @@
 # GitHub Actions Workflow Analysis
 
 ## Summary
-- **Total Workflows**: 33
-- **Main Workflows**: 15
-- **Reusable Workflows**: 18
+- **Total Workflows**: 36
+- **Main Workflows**: 17
+- **Reusable Workflows**: 19
 
 ## Legend
 
@@ -477,6 +477,7 @@ flowchart LR
 
 Workflows triggered by `schedule`:
 - **Build Playwright msedge Image** (`build-playwright-msedge-image.yml`)
+- **DORA Metrics** (`dora-metrics.yml`)
 - **Clean up Flexion Azure Resources** (`azure-remove-branch.yml`)
 - **Prune E2E Image Cache** (`prune-e2e-image-cache.yml`)
 - **Refresh E2E Base Image Cache** (`refresh-e2e-base-images.yml`)
@@ -489,6 +490,13 @@ flowchart LR
     trigger_schedule(["schedule"])
     build_playwright_msedge_image_yml["Build Playwright msedge Image"]
     build_playwright_msedge_image_yml_build_and_push["build-and-push"]
+    dora_metrics_yml["DORA Metrics"]
+    dora_metrics_yml_deployment_frequency["Report deployment frequency"]
+    reusable_dora_metrics_report_yml["reusable-dora-metrics-report.yml"]
+    reusable_dora_metrics_report_yml_report["report"]
+    dora_metrics_yml_lead_time["Report lead time for changes"]
+    dora_metrics_yml_change_failure_rate["Report change failure rate"]
+    dora_metrics_yml_mttr["Report mean time to restore"]
     azure_remove_branch_yml["Clean up Flexion Azure Resources"]
     azure_remove_branch_yml_list["list"]
     azure_remove_branch_yml_check["check"]
@@ -512,6 +520,16 @@ flowchart LR
 
     trigger_schedule --> build_playwright_msedge_image_yml
     build_playwright_msedge_image_yml --> build_playwright_msedge_image_yml_build_and_push
+    trigger_schedule --> dora_metrics_yml
+    dora_metrics_yml --> dora_metrics_yml_deployment_frequency
+    reusable_dora_metrics_report_yml --> reusable_dora_metrics_report_yml_report
+    dora_metrics_yml_deployment_frequency --> reusable_dora_metrics_report_yml
+    dora_metrics_yml --> dora_metrics_yml_lead_time
+    dora_metrics_yml_lead_time --> reusable_dora_metrics_report_yml
+    dora_metrics_yml --> dora_metrics_yml_change_failure_rate
+    dora_metrics_yml_change_failure_rate --> reusable_dora_metrics_report_yml
+    dora_metrics_yml --> dora_metrics_yml_mttr
+    dora_metrics_yml_mttr --> reusable_dora_metrics_report_yml
     trigger_schedule --> azure_remove_branch_yml
     azure_remove_branch_yml --> azure_remove_branch_yml_list
     azure_remove_branch_yml --> azure_remove_branch_yml_check
@@ -541,6 +559,13 @@ flowchart LR
     class trigger_schedule trigger
     class build_playwright_msedge_image_yml mainWorkflow
     class build_playwright_msedge_image_yml_build_and_push job
+    class dora_metrics_yml mainWorkflow
+    class dora_metrics_yml_deployment_frequency job
+    class reusable_dora_metrics_report_yml reusable
+    class reusable_dora_metrics_report_yml_report job
+    class dora_metrics_yml_lead_time job
+    class dora_metrics_yml_change_failure_rate job
+    class dora_metrics_yml_mttr job
     class azure_remove_branch_yml mainWorkflow
     class azure_remove_branch_yml_list job
     class azure_remove_branch_yml_check job
@@ -1132,6 +1157,47 @@ flowchart LR
     class deploy_sql_hub_yml_deploy_sql_hub job
 ```
 
+#### DORA Metrics
+
+Manual execution of `dora-metrics.yml`
+
+```mermaid
+flowchart LR
+    trigger_workflow_dispatch(["workflow_dispatch"])
+    dora_metrics_yml["DORA Metrics"]
+    dora_metrics_yml_deployment_frequency["Report deployment frequency"]
+    reusable_dora_metrics_report_yml["reusable-dora-metrics-report.yml"]
+    reusable_dora_metrics_report_yml_report["report"]
+    dora_metrics_yml_lead_time["Report lead time for changes"]
+    dora_metrics_yml_change_failure_rate["Report change failure rate"]
+    dora_metrics_yml_mttr["Report mean time to restore"]
+
+    trigger_workflow_dispatch --> dora_metrics_yml
+    dora_metrics_yml --> dora_metrics_yml_deployment_frequency
+    reusable_dora_metrics_report_yml --> reusable_dora_metrics_report_yml_report
+    dora_metrics_yml_deployment_frequency --> reusable_dora_metrics_report_yml
+    dora_metrics_yml --> dora_metrics_yml_lead_time
+    dora_metrics_yml_lead_time --> reusable_dora_metrics_report_yml
+    dora_metrics_yml --> dora_metrics_yml_change_failure_rate
+    dora_metrics_yml_change_failure_rate --> reusable_dora_metrics_report_yml
+    dora_metrics_yml --> dora_metrics_yml_mttr
+    dora_metrics_yml_mttr --> reusable_dora_metrics_report_yml
+
+    classDef reusable fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000000
+    classDef mainWorkflow fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000000
+    classDef trigger fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000000
+    classDef job fill:#f1f8e9,stroke:#33691e,stroke-width:1px,color:#000000
+
+    class trigger_workflow_dispatch trigger
+    class dora_metrics_yml mainWorkflow
+    class dora_metrics_yml_deployment_frequency job
+    class reusable_dora_metrics_report_yml reusable
+    class reusable_dora_metrics_report_yml_report job
+    class dora_metrics_yml_lead_time job
+    class dora_metrics_yml_change_failure_rate job
+    class dora_metrics_yml_mttr job
+```
+
 #### Stand Alone E2E Test Runs
 
 Manual execution of `e2e-test.yml`
@@ -1294,6 +1360,7 @@ flowchart LR
     deploy_sql_hub_yml["Deploy SQL Private Link Hub"]
     build_playwright_msedge_image_yml["Build Playwright msedge Image"]
     deploy_security_scan_storage_yml["Deploy Security Scan Storage"]
+    dora_metrics_yml["DORA Metrics"]
     deploy_pages_yml["Deploy GitHub Pages"]
     e2e_test_yml["Stand Alone E2E Test Runs"]
     azure_remove_branch_yml["Clean up Flexion Azure Resources"]
@@ -1307,6 +1374,7 @@ flowchart LR
     update_dependencies_yml["NPM Package Updates"]
     trigger_schedule(["schedule"])
     build_playwright_msedge_image_yml["Build Playwright msedge Image"]
+    dora_metrics_yml["DORA Metrics"]
     azure_remove_branch_yml["Clean up Flexion Azure Resources"]
     prune_e2e_image_cache_yml["Prune E2E Image Cache"]
     refresh_e2e_base_images_yml["Refresh E2E Base Image Cache"]
@@ -1327,6 +1395,7 @@ flowchart LR
     trigger_workflow_dispatch --> deploy_sql_hub_yml
     trigger_workflow_dispatch --> build_playwright_msedge_image_yml
     trigger_workflow_dispatch --> deploy_security_scan_storage_yml
+    trigger_workflow_dispatch --> dora_metrics_yml
     trigger_workflow_dispatch --> deploy_pages_yml
     trigger_workflow_dispatch --> e2e_test_yml
     trigger_workflow_dispatch --> azure_remove_branch_yml
@@ -1339,6 +1408,7 @@ flowchart LR
     trigger_workflow_dispatch --> dast_scan_yml
     trigger_workflow_dispatch --> update_dependencies_yml
     trigger_schedule --> build_playwright_msedge_image_yml
+    trigger_schedule --> dora_metrics_yml
     trigger_schedule --> azure_remove_branch_yml
     trigger_schedule --> prune_e2e_image_cache_yml
     trigger_schedule --> refresh_e2e_base_images_yml
@@ -1364,6 +1434,8 @@ flowchart LR
     class deploy_sql_hub_yml mainWorkflow
     class build_playwright_msedge_image_yml mainWorkflow
     class deploy_security_scan_storage_yml mainWorkflow
+    class dora_metrics_yml mainWorkflow
+    class active_issue_notification_yml mainWorkflow
     class deploy_pages_yml mainWorkflow
     class e2e_test_yml mainWorkflow
     class azure_remove_branch_yml mainWorkflow
@@ -1389,6 +1461,11 @@ flowchart LR
   - Jobs: 1
 - **Deploy Security Scan Storage** (`deploy-security-scan-storage.yml`)
   - Triggers: workflow_dispatch
+  - Jobs: 1
+- **DORA Metrics** (`dora-metrics.yml`)
+  - Triggers: schedule, workflow_dispatch
+  - Jobs: 4
+- **Active Issue Notification** (`active-issue-notification.yml`)
   - Jobs: 1
 - **Deploy GitHub Pages** (`deploy-pages.yml`)
   - Triggers: push, workflow_dispatch
@@ -1428,6 +1505,8 @@ flowchart LR
   - Jobs: 1
 
 ### Reusable Workflows
+- **Reusable DORA metrics report** (`reusable-dora-metrics-report.yml`)
+  - Jobs: 1
 - **Provision and Configure Cloud Resources** (`sub-deploy.yml`)
   - Jobs: 4
 - **Verify Bundle Dependencies** (`reusable-verify-bundle-deps.yml`)

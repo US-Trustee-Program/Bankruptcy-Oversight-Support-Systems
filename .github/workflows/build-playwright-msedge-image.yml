@@ -48,7 +48,7 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.REPO }}/playwright-msedge
           tags: |
-            type=raw,value=v1.62.1-noble
+            type=raw,value=v1.63.0-noble
             type=raw,value=latest
             type=sha,prefix={{branch}}-
 
