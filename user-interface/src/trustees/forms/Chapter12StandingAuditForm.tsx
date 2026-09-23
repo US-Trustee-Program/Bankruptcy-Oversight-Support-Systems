@@ -12,6 +12,7 @@ import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import DatePicker from '@/lib/components/uswds/DatePicker';
+import Select from '@/lib/components/uswds/Select';
 import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import { Stop } from '@/lib/components/Stop';
@@ -143,84 +144,64 @@ export default function Chapter12StandingAuditForm() {
         disableMax
       />
 
-      <div className="usa-form-group">
-        <label className="usa-label" htmlFor="last-audit-fiscal-year">
-          Last Audit&apos;s Fiscal Year
-        </label>
-        <span className="usa-hint">The fiscal year of the TIR data audited</span>
-        <select
-          className="usa-select"
-          id="last-audit-fiscal-year"
-          data-testid="last-audit-fiscal-year"
-          value={form.lastAuditFiscalYear}
-          onChange={(ev) => {
-            const val = ev.target.value;
-            setForm((prev) => ({ ...prev, lastAuditFiscalYear: val ? Number(val) : '' }));
-          }}
-        >
-          <option value="">- Select -</option>
-          {FISCAL_YEAR_OPTIONS.map((year) => (
-            <option key={year} value={year}>
-              {year}
-            </option>
-          ))}
-        </select>
-      </div>
+      <Select
+        id="last-audit-fiscal-year"
+        label="Last Audit's Fiscal Year"
+        ariaDescription="The fiscal year of the TIR data audited"
+        placeholder="- Select -"
+        options={FISCAL_YEAR_OPTIONS.map((year) => ({ value: String(year), label: String(year) }))}
+        value={form.lastAuditFiscalYear === '' ? '' : String(form.lastAuditFiscalYear)}
+        onChange={(ev) => {
+          const val = ev.target.value;
+          setForm((prev) => ({ ...prev, lastAuditFiscalYear: val ? Number(val) : '' }));
+        }}
+      />
 
       <div className="exam-audit-group">
         <p className="usa-label">Audit Completion Status for Year</p>
         <div className="exam-audit-group__row">
-          <div className="usa-form-group">
-            <label className="usa-hint" htmlFor="audit-completion-status-year">
-              Year
-            </label>
-            <select
-              className="usa-select"
-              id="audit-completion-status-year"
-              data-testid="audit-completion-status-year"
-              value={form.auditCompletionYear}
-              onChange={(e) => {
-                const val = e.target.value;
-                setForm((prev) => ({
-                  ...prev,
-                  auditCompletionYear: val ? Number(val) : '',
-                }));
-              }}
-            >
-              <option value="">- Select -</option>
-              {FISCAL_YEAR_OPTIONS.map((year) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="usa-form-group">
-            <label className="usa-hint" htmlFor="audit-completion-status-status">
-              Status
-            </label>
-            <select
-              className="usa-select"
-              id="audit-completion-status-status"
-              data-testid="audit-completion-status-status"
-              value={form.auditCompletionStatus}
-              onChange={(e) => {
-                setForm((prev) => ({
-                  ...prev,
-                  auditCompletionStatus: e.target.value as AuditCompletionStatus | '',
-                }));
-              }}
-            >
-              <option value="">- Select -</option>
-              <option value="CLOSED">Closed</option>
-              <option value="NOT_CLOSED">Not Closed</option>
-            </select>
-          </div>
+          <Select
+            id="audit-completion-status-year"
+            label="Year"
+            compactLabel
+            hasError={!!completionPairError}
+            placeholder="- Select -"
+            options={FISCAL_YEAR_OPTIONS.map((year) => ({
+              value: String(year),
+              label: String(year),
+            }))}
+            value={form.auditCompletionYear === '' ? '' : String(form.auditCompletionYear)}
+            onChange={(e) => {
+              const val = e.target.value;
+              setForm((prev) => ({
+                ...prev,
+                auditCompletionYear: val ? Number(val) : '',
+              }));
+            }}
+          />
+          <Select
+            id="audit-completion-status-status"
+            label="Status"
+            compactLabel
+            hasError={!!completionPairError}
+            placeholder="- Select -"
+            options={[
+              { value: 'CLOSED', label: 'Closed' },
+              { value: 'NOT_CLOSED', label: 'Not Closed' },
+            ]}
+            value={form.auditCompletionStatus}
+            onChange={(e) => {
+              setForm((prev) => ({
+                ...prev,
+                auditCompletionStatus: e.target.value as AuditCompletionStatus | '',
+              }));
+            }}
+          />
         </div>
         {completionPairError && (
-          <span className="usa-error-message" data-testid="audit-completion-status-error">
+          <div className="usa-input__error-message" data-testid="audit-completion-status-error">
             {completionPairError}
-          </span>
+          </div>
         )}
       </div>
 

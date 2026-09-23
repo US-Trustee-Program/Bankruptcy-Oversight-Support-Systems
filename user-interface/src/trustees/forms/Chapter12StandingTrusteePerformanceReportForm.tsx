@@ -15,6 +15,7 @@ import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import DatePicker from '@/lib/components/uswds/DatePicker';
+import Select from '@/lib/components/uswds/Select';
 import MonthDaySelector from '@/lib/components/uswds/MonthDaySelector';
 import MonthDayRangeSelector from '@/lib/components/uswds/MonthDayRangeSelector';
 import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
@@ -223,28 +224,23 @@ export default function Chapter12StandingTrusteePerformanceReportForm() {
       )}
 
       {tprDisplayUpdates && (
-        <div className="usa-form-group">
-          <label className="usa-label" htmlFor="tpr-frequency">
-            Trustee Performance Review Period Frequency
-          </label>
-          <select
-            className="usa-select"
-            id="tpr-frequency"
-            data-testid="tpr-frequency"
-            value={form.tprFrequency}
-            onChange={(e) =>
-              setForm((prev) => ({
-                ...prev,
-                tprFrequency: e.target.value as 'BIANNUAL' | 'ANNUAL' | 'SEMI_ANNUAL' | '',
-              }))
-            }
-          >
-            <option value="">- Select -</option>
-            <option value="BIANNUAL">Two years</option>
-            <option value="ANNUAL">One year</option>
-            <option value="SEMI_ANNUAL">6 months</option>
-          </select>
-        </div>
+        <Select
+          id="tpr-frequency"
+          label="Trustee Performance Review Period Frequency"
+          placeholder="- Select -"
+          options={[
+            { value: 'BIANNUAL', label: 'Two years' },
+            { value: 'ANNUAL', label: 'One year' },
+            { value: 'SEMI_ANNUAL', label: '6 months' },
+          ]}
+          value={form.tprFrequency}
+          onChange={(e) =>
+            setForm((prev) => ({
+              ...prev,
+              tprFrequency: e.target.value as 'BIANNUAL' | 'ANNUAL' | 'SEMI_ANNUAL' | '',
+            }))
+          }
+        />
       )}
 
       <div className="tpr-due-group">
@@ -260,27 +256,24 @@ export default function Chapter12StandingTrusteePerformanceReportForm() {
             onChange={(value) => setForm((prev) => ({ ...prev, tprDue: value }))}
             hasError={!!tprDuePairError}
           />
-          <div className="usa-form-group year-type-selector">
-            <label htmlFor="tpr-due-year-type" className="usa-hint">
-              Year Type
-            </label>
-            <select
-              className="usa-select"
-              id="tpr-due-year-type"
-              data-testid="tpr-due-year-type"
-              value={form.tprDueYearType}
-              onChange={(e) =>
-                setForm((prev) => ({
-                  ...prev,
-                  tprDueYearType: e.target.value as 'EVEN' | 'ODD' | '',
-                }))
-              }
-            >
-              <option value="">- Select -</option>
-              <option value="EVEN">EVEN</option>
-              <option value="ODD">ODD</option>
-            </select>
-          </div>
+          <Select
+            id="tpr-due-year-type"
+            label="Year Type"
+            compactLabel
+            className="year-type-selector"
+            placeholder="- Select -"
+            options={[
+              { value: 'EVEN', label: 'EVEN' },
+              { value: 'ODD', label: 'ODD' },
+            ]}
+            value={form.tprDueYearType}
+            onChange={(e) =>
+              setForm((prev) => ({
+                ...prev,
+                tprDueYearType: e.target.value as 'EVEN' | 'ODD' | '',
+              }))
+            }
+          />
         </div>
         {tprDuePairError && (
           <span className="usa-error-message" data-testid="tpr-due-error">
@@ -301,57 +294,48 @@ export default function Chapter12StandingTrusteePerformanceReportForm() {
       <div className="exam-audit-group">
         <p className="usa-label">TPR Completion Status for Year</p>
         <div className="exam-audit-group__row">
-          <div className="usa-form-group">
-            <label className="usa-hint" htmlFor="tpr-completion-status-year">
-              Year
-            </label>
-            <select
-              className="usa-select"
-              id="tpr-completion-status-year"
-              data-testid="tpr-completion-status-year"
-              value={form.tprCompletionYear}
-              onChange={(e) => {
-                const val = e.target.value;
-                setForm((prev) => ({
-                  ...prev,
-                  tprCompletionYear: val ? Number(val) : '',
-                }));
-              }}
-            >
-              <option value="">- Select -</option>
-              {FISCAL_YEAR_OPTIONS.map((year) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="usa-form-group">
-            <label className="usa-hint" htmlFor="tpr-completion-status-status">
-              Status
-            </label>
-            <select
-              className="usa-select"
-              id="tpr-completion-status-status"
-              data-testid="tpr-completion-status-status"
-              value={form.tprCompletionStatus}
-              onChange={(e) => {
-                setForm((prev) => ({
-                  ...prev,
-                  tprCompletionStatus: e.target.value as TprCompletionStatus | '',
-                }));
-              }}
-            >
-              <option value="">- Select -</option>
-              <option value="COMPLETE">Complete</option>
-              <option value="INCOMPLETE">Incomplete</option>
-            </select>
-          </div>
+          <Select
+            id="tpr-completion-status-year"
+            label="Year"
+            compactLabel
+            hasError={!!completionPairError}
+            placeholder="- Select -"
+            options={FISCAL_YEAR_OPTIONS.map((year) => ({
+              value: String(year),
+              label: String(year),
+            }))}
+            value={form.tprCompletionYear === '' ? '' : String(form.tprCompletionYear)}
+            onChange={(e) => {
+              const val = e.target.value;
+              setForm((prev) => ({
+                ...prev,
+                tprCompletionYear: val ? Number(val) : '',
+              }));
+            }}
+          />
+          <Select
+            id="tpr-completion-status-status"
+            label="Status"
+            compactLabel
+            hasError={!!completionPairError}
+            placeholder="- Select -"
+            options={[
+              { value: 'COMPLETE', label: 'Complete' },
+              { value: 'INCOMPLETE', label: 'Incomplete' },
+            ]}
+            value={form.tprCompletionStatus}
+            onChange={(e) => {
+              setForm((prev) => ({
+                ...prev,
+                tprCompletionStatus: e.target.value as TprCompletionStatus | '',
+              }));
+            }}
+          />
         </div>
         {completionPairError && (
-          <span className="usa-error-message" data-testid="tpr-completion-status-error">
+          <div className="usa-input__error-message" data-testid="tpr-completion-status-error">
             {completionPairError}
-          </span>
+          </div>
         )}
       </div>
 
