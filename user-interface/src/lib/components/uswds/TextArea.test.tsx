@@ -337,7 +337,7 @@ describe('TextArea error handling tests', () => {
 
     expect(errorElement).toBeInTheDocument();
     expect(errorElement).toHaveTextContent('This is required');
-    expect(errorElement).toHaveClass('usa-input__error-message');
+    expect(errorElement).toHaveClass('cams-field-error-message');
     expect(textarea).toHaveAttribute('aria-invalid', 'true');
     expect(textarea).toHaveAttribute('aria-errormessage', 'textarea-test-error-message');
     expect(textareaGroup).toHaveClass('usa-textarea-group--error');

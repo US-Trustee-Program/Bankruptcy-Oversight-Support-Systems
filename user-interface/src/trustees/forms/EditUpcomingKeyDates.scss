@@ -23,7 +23,7 @@ $input-max-width: 20.75rem;
     max-width: calc($input-max-width / 2 - 16px);
   }
 
-  .tir-date-group .usa-error-message {
+  .tir-date-group .cams-field-error-message {
     font-weight: normal;
     padding-top: 0.5rem;
   }
@@ -97,7 +97,7 @@ $input-max-width: 20.75rem;
       }
     }
 
-    + .usa-error-message {
+    + .cams-field-error-message {
       font-weight: normal;
       padding-top: 0.5rem;
     }
