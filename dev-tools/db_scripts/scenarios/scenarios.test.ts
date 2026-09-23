@@ -1,5 +1,9 @@
-import { describe, test, expect, vi, beforeAll } from 'vitest';
+import { describe, test, expect, vi, beforeAll, beforeEach } from 'vitest';
 import type { SeedContext, GeneratedCaseId, SeedOperation } from '../../runner.js';
+
+beforeEach(() => {
+  vi.restoreAllMocks();
+});
 
 // Prevent ensureDxtrCase from opening a real SQL connection during tests.
 // Returning an empty recordset tells the helper the case doesn't exist,
@@ -668,18 +672,79 @@ describe('trustee-case-list scenario', () => {
     expect(paginatedAppointments).toHaveLength(60);
   });
 
-  test('cases at index 2, 7, 63, and 64 have closedDate set; all others do not', () => {
+  test('cases have closedDate set exactly when their appointment reports caseStatus CLOSED', () => {
     const casesOp = seedOps.find((o) => o.collectionOrTable === 'cases');
+    const apptOp = seedOps.find((o) => o.collectionOrTable === 'trustee-case-appointments');
     expect(casesOp).toBeDefined();
-    const cases = casesOp!.data;
-    const closedIndices = new Set([2, 7, 63, 64]);
-    for (const i of closedIndices) {
-      expect(cases[i].closedDate).toBeDefined();
+    expect(apptOp).toBeDefined();
+
+    const closedCaseIds = new Set(
+      apptOp!.data.filter((a) => a.caseStatus === 'CLOSED').map((a) => a.caseId as string),
+    );
+    expect(closedCaseIds.size).toBe(4);
+
+    const closedCases = casesOp!.data.filter((c) => closedCaseIds.has(c.caseId as string));
+    const openCases = casesOp!.data.filter((c) => !closedCaseIds.has(c.caseId as string));
+    for (const c of closedCases) {
+      expect(c.closedDate).toBeDefined();
     }
-    const openCases = cases.filter((_, i) => !closedIndices.has(i));
     for (const c of openCases) {
       expect(c.closedDate).toBeUndefined();
     }
+  });
+
+  test('single-division trustee appointments share one division; division-closed trustee appointments are all closed in one division', () => {
+    const apptOp = seedOps.find((o) => o.collectionOrTable === 'trustee-case-appointments');
+    expect(apptOp).toBeDefined();
+
+    const singleDivisionAppts = apptOp!.data.filter(
+      (a) => a.trusteeId === 'cams-814-single-division',
+    );
+    expect(singleDivisionAppts).toHaveLength(3);
+    for (const a of singleDivisionAppts) {
+      expect(a.courtDivisionCode).toBe('081');
+    }
+
+    const divisionClosedAppts = apptOp!.data.filter(
+      (a) => a.trusteeId === 'cams-814-division-closed',
+    );
+    expect(divisionClosedAppts).toHaveLength(2);
+    for (const a of divisionClosedAppts) {
+      expect(a.courtDivisionCode).toBe('393');
+      expect(a.caseStatus).toBe('CLOSED');
+      expect(a.closedDate).toBeDefined();
+    }
+  });
+
+  test('case-trustee-appointments dual-write matches trustee-case-appointments exactly', () => {
+    const caseTrusteeOp = seedOps.find((o) => o.collectionOrTable === 'case-trustee-appointments');
+    const trusteeCaseOp = seedOps.find((o) => o.collectionOrTable === 'trustee-case-appointments');
+    expect(caseTrusteeOp).toBeDefined();
+    expect(trusteeCaseOp).toBeDefined();
+    expect(caseTrusteeOp?.data).toEqual(trusteeCaseOp?.data);
+  });
+
+  test('trustee-appointments batch marks all three active trustees active with matching division codes', () => {
+    const trusteeApptOp = seedOps.find((o) => o.collectionOrTable === 'trustee-appointments');
+    expect(trusteeApptOp).toBeDefined();
+    expect(trusteeApptOp?.db).toBe('cams');
+    expect(trusteeApptOp?.data).toHaveLength(3);
+
+    for (const doc of trusteeApptOp!.data) {
+      expect(doc.documentType).toBe('TRUSTEE_APPOINTMENT');
+      expect(doc.status).toBe('active');
+    }
+    const byTrustee = new Map(trusteeApptOp!.data.map((d) => [d.trusteeId as string, d]));
+    expect(byTrustee.get('cams-593-paginated')?.divisionCodes).toEqual(['081']);
+    expect(byTrustee.get('cams-814-single-division')?.divisionCodes).toEqual(['081']);
+    expect(byTrustee.get('cams-814-division-closed')?.divisionCodes).toEqual(['393']);
+  });
+
+  test('empty trustee has zero appointments', () => {
+    const apptOp = seedOps.find((o) => o.collectionOrTable === 'trustee-case-appointments');
+    expect(apptOp).toBeDefined();
+    const emptyTrusteeAppointments = apptOp!.data.filter((a) => a.trusteeId === 'cams-593-empty');
+    expect(emptyTrusteeAppointments).toHaveLength(0);
   });
 
   test('each paginated-trustee appointment has distinct appointedDate (15th) vs dateFiled in its SYNCED_CASE (1st)', () => {

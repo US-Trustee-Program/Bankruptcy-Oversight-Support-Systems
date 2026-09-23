@@ -58,9 +58,10 @@ function isThrottlingError(error: unknown): boolean {
   return err['code'] === THROTTLE_ERROR_CODE || err['code'] === String(THROTTLE_ERROR_CODE);
 }
 
-function getRetryAfterMs(error: unknown): number | undefined {
-  if (!(error instanceof Object)) return undefined;
-  const retryAfterMs = (error as Record<string, unknown>)['RetryAfterMs'];
+// Only called after isThrottlingError(error) has confirmed error is an Object, so no
+// redundant guard is needed here.
+function getRetryAfterMs(error: Record<string, unknown>): number | undefined {
+  const retryAfterMs = error['RetryAfterMs'];
   return typeof retryAfterMs === 'number' && retryAfterMs > 0 ? retryAfterMs : undefined;
 }
 
@@ -76,7 +77,8 @@ export async function withThrottleRetry<T>(operation: () => Promise<T>, label: s
         throw error;
       }
       const delayMs =
-        getRetryAfterMs(error) ?? Math.min(BASE_BACKOFF_MS * 2 ** attempt, MAX_BACKOFF_MS);
+        getRetryAfterMs(error as Record<string, unknown>) ??
+        Math.min(BASE_BACKOFF_MS * 2 ** attempt, MAX_BACKOFF_MS);
       attempt += 1;
       console.log(
         `[${MODULE_NAME}] Throttled (16500) on ${label}, retrying in ${delayMs}ms (attempt ${attempt}/${MAX_THROTTLE_RETRIES})`,

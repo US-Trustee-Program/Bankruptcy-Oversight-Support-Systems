@@ -1,11 +1,11 @@
-import { describe, test, expect, vi, afterEach } from 'vitest';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { withThrottleRetry, deleteInChunks, ThrottleRetryableCollection } from './unseed.js';
 
 function throttleError(overrides: Record<string, unknown> = {}): Error {
   return Object.assign(new Error('Batch write error.'), { code: 16500, ...overrides });
 }
 
-afterEach(() => {
+beforeEach(() => {
   vi.useRealTimers();
 });
 
@@ -50,6 +50,69 @@ describe('withThrottleRetry', () => {
     expect(operation).toHaveBeenCalledTimes(1);
   });
 
+  test('rethrows immediately when a non-object value is thrown, without retrying', async () => {
+    const operation = vi.fn().mockRejectedValue('boom');
+    await expect(withThrottleRetry(operation, 'test')).rejects.toBe('boom');
+    expect(operation).toHaveBeenCalledTimes(1);
+  });
+
+  test('retries when the throttling error code is a string ("16500") rather than a number', async () => {
+    vi.useFakeTimers();
+    const operation = vi
+      .fn()
+      .mockRejectedValueOnce(throttleError({ code: '16500' }))
+      .mockResolvedValueOnce('ok');
+
+    const promise = withThrottleRetry(operation, 'test');
+    await vi.runAllTimersAsync();
+
+    await expect(promise).resolves.toBe('ok');
+    expect(operation).toHaveBeenCalledTimes(2);
+  });
+
+  test('falls back to computed backoff when RetryAfterMs is not positive', async () => {
+    vi.useFakeTimers();
+    const operation = vi
+      .fn()
+      .mockRejectedValueOnce(throttleError({ RetryAfterMs: 0 }))
+      .mockResolvedValueOnce('ok');
+
+    const promise = withThrottleRetry(operation, 'test');
+    await vi.advanceTimersByTimeAsync(499);
+    expect(operation).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(1);
+    await expect(promise).resolves.toBe('ok');
+    expect(operation).toHaveBeenCalledTimes(2);
+  });
+
+  test('caps the computed backoff delay at MAX_BACKOFF_MS on later retries', async () => {
+    vi.useFakeTimers();
+    const operation = vi
+      .fn()
+      .mockRejectedValueOnce(throttleError())
+      .mockRejectedValueOnce(throttleError())
+      .mockRejectedValueOnce(throttleError())
+      .mockRejectedValueOnce(throttleError())
+      .mockRejectedValueOnce(throttleError())
+      .mockRejectedValueOnce(throttleError())
+      .mockResolvedValueOnce('ok');
+
+    const promise = withThrottleRetry(operation, 'test');
+
+    // Attempts 0-4 use uncapped backoff (500, 1000, 2000, 4000, 8000ms) - fast-forward through them.
+    await vi.advanceTimersByTimeAsync(500 + 1000 + 2000 + 4000 + 8000);
+    expect(operation).toHaveBeenCalledTimes(6);
+
+    // The 6th retry (attempt 5) would compute 500 * 2^5 = 16000ms, capped to MAX_BACKOFF_MS (15000ms).
+    await vi.advanceTimersByTimeAsync(14999);
+    expect(operation).toHaveBeenCalledTimes(6);
+
+    await vi.advanceTimersByTimeAsync(1);
+    await expect(promise).resolves.toBe('ok');
+    expect(operation).toHaveBeenCalledTimes(7);
+  });
+
   test('rethrows the throttling error once retries are exhausted', async () => {
     vi.useFakeTimers();
     const error = throttleError();
@@ -90,6 +153,10 @@ describe('deleteInChunks', () => {
     expect(collection.deleteMany).toHaveBeenCalledTimes(2);
     expect(collection.deleteMany).toHaveBeenNthCalledWith(1, { _id: { $in: ['a', 'b'] } });
     expect(collection.deleteMany).toHaveBeenNthCalledWith(2, { _id: { $in: ['c'] } });
+    expect(collection.find).toHaveBeenCalledWith(
+      { id: { $regex: '^seed-' } },
+      { projection: { _id: 1 } },
+    );
   });
 
   test('returns 0 without issuing a delete when nothing matches', async () => {
@@ -112,5 +179,29 @@ describe('deleteInChunks', () => {
 
     await expect(promise).resolves.toBe(1);
     expect(collection.deleteMany).toHaveBeenCalledTimes(2);
+  });
+
+  test('retries a throttled find and still makes progress', async () => {
+    vi.useFakeTimers();
+    let findCall = 0;
+    const collection: ThrottleRetryableCollection = {
+      find: vi.fn().mockImplementation(() => ({
+        limit: () => ({
+          toArray: async () => {
+            findCall += 1;
+            if (findCall === 1) throw throttleError();
+            return findCall === 2 ? [{ _id: 'a' }] : [];
+          },
+        }),
+      })),
+      deleteMany: vi.fn().mockResolvedValue({ deletedCount: 1 }),
+    };
+
+    const promise = deleteInChunks(collection, {}, 'cases');
+    await vi.runAllTimersAsync();
+
+    await expect(promise).resolves.toBe(1);
+    expect(collection.find).toHaveBeenCalledTimes(3);
+    expect(collection.deleteMany).toHaveBeenCalledTimes(1);
   });
 });
