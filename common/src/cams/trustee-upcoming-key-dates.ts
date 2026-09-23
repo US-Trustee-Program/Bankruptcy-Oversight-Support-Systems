@@ -100,6 +100,15 @@ function requirePair(
   };
 }
 
+// Returns true when start and end are both present, non-sentinel, and out of order.
+function isPeriodOutOfOrder(start: string | null, end: string | null): boolean {
+  if (!start || !end) return false;
+  // Sentinel dates (1900-MM-DD) represent month/day only and may intentionally cross
+  // a year boundary (e.g. Apr 1 – Mar 31), so skip chronological check for them.
+  if (start.startsWith('1900-') || end.startsWith('1900-')) return false;
+  return start > end;
+}
+
 function requireChronologicalOrder(
   startField: keyof TrusteeUpcomingKeyDatesInput,
   endField: keyof TrusteeUpcomingKeyDatesInput,
@@ -110,19 +119,13 @@ function requireChronologicalOrder(
     const input = obj as TrusteeUpcomingKeyDatesInput;
     const start = input[startField] as string | null;
     const end = input[endField] as string | null;
-    if (!start || !end) return VALID;
-    // Sentinel dates (1900-MM-DD) represent month/day only and may intentionally cross
-    // a year boundary (e.g. Apr 1 – Mar 31), so skip chronological check for them.
-    if (start.startsWith('1900-') || end.startsWith('1900-')) return VALID;
-    if (start > end) {
-      return {
-        reasonMap: {
-          [startField as string]: { reasons: [`${startLabel} must be before ${endLabel}.`] },
-          [endField as string]: { reasons: [`${endLabel} must be after ${startLabel}.`] },
-        },
-      };
-    }
-    return VALID;
+    if (!isPeriodOutOfOrder(start, end)) return VALID;
+    return {
+      reasonMap: {
+        [startField as string]: { reasons: [`${startLabel} must be before ${endLabel}.`] },
+        [endField as string]: { reasons: [`${endLabel} must be after ${startLabel}.`] },
+      },
+    };
   };
 }
 
@@ -321,6 +324,22 @@ export function validateCompletionPairPresence(
  * completion year.
  */
 export type CompletionStatus = 'COMPLETE' | 'INCOMPLETE';
+
+/**
+ * Validates chronological order for the TPR review period start/end pair,
+ * for blur-time and per-render use (mirrors validateTprDuePair's role).
+ * Returns per-field errors when start comes after end, null when valid.
+ */
+export function validateTprReviewPeriodOrder(
+  start: string | null | undefined,
+  end: string | null | undefined,
+): { startError: string; endError: string } | null {
+  if (!isPeriodOutOfOrder(start ?? null, end ?? null)) return null;
+  return {
+    startError: 'TPR Review Period Start must be before TPR Review Period End.',
+    endError: 'TPR Review Period End must be after TPR Review Period Start.',
+  };
+}
 
 export type TrusteeUpcomingKeyDates = Auditable &
   Identifiable & {

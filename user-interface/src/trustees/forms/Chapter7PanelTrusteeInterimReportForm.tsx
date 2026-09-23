@@ -1,4 +1,5 @@
 import './EditUpcomingKeyDates.scss';
+import '@/lib/components/uswds/forms.scss';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
@@ -243,10 +244,10 @@ export default function Chapter7PanelTrusteeInterimReportForm() {
 
   return (
     <div className="edit-upcoming-key-dates" data-testid="edit-chapter7-panel-tir">
-      <h3>Edit Trustee Interim Report Key Dates</h3>
+      <h3>Edit Trustee Interim Report (TIR) Key Dates</h3>
 
       <div className="tir-period-group">
-        <p className="usa-label">Trustee Interim Report (TIR) Period</p>
+        <p className="usa-label">TIR Period</p>
         <div className="tir-period-group__row">
           <div className="usa-form-group">
             <label className="usa-hint" htmlFor="tir-frequency">
@@ -286,7 +287,7 @@ export default function Chapter7PanelTrusteeInterimReportForm() {
           </div>
         </div>
         {tirPeriodPairError && (
-          <span className="usa-error-message" data-testid="tir-period-pair-error">
+          <span className="usa-input__error-message" data-testid="tir-period-pair-error">
             {tirPeriodPairError}
           </span>
         )}
@@ -294,7 +295,7 @@ export default function Chapter7PanelTrusteeInterimReportForm() {
 
       <DatePicker
         id="past-tpr-submission"
-        label="Last Trustee Interim Report Letter"
+        label="Last TIR Letter"
         value={form.pastTprSubmission}
         onChange={(e) => setForm((prev) => ({ ...prev, pastTprSubmission: e.target.value }))}
         onValidationChange={(hasError) => registerFieldError('past-tpr-submission', hasError)}
@@ -352,7 +353,7 @@ export default function Chapter7PanelTrusteeInterimReportForm() {
           </div>
         </div>
         {completionPairError && (
-          <span className="usa-error-message" data-testid="tir-completion-status-error">
+          <span className="usa-input__error-message" data-testid="tir-completion-status-error">
             {completionPairError}
           </span>
         )}

@@ -309,9 +309,9 @@ describe('Chapter7PanelTrusteePerformanceReportForm', () => {
   });
 
   test.each([
-    ['last-tpr-submitted', 'Last Trustee Performance Review Submitted'],
-    ['tpr-review-period-start', 'Trustee Performance Review (TPR) Period Start'],
-    ['tpr-review-period-end', 'Trustee Performance Review (TPR) Period End'],
+    ['last-tpr-submitted', 'Last TPR Submitted'],
+    ['tpr-review-period-start', 'TPR Period Start'],
+    ['tpr-review-period-end', 'TPR Period End'],
   ])('Save button is disabled when %s has an invalid date', async (testId) => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
 
@@ -330,7 +330,7 @@ describe('Chapter7PanelTrusteePerformanceReportForm', () => {
     });
   });
 
-  test('Save button is disabled and shows a message when TPR Review Period is out of order', async () => {
+  test('Save button is disabled when TPR Review Period is out of order', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
 
     renderComponent();
@@ -344,9 +344,6 @@ describe('Chapter7PanelTrusteePerformanceReportForm', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('tpr-review-period-error')).toHaveTextContent(
-        'TPR Review Period Start must be before TPR Review Period End.',
-      );
       expect(screen.getByTestId('button-save-chapter7-panel-tpr')).toBeDisabled();
     });
   });
@@ -368,6 +365,23 @@ describe('Chapter7PanelTrusteePerformanceReportForm', () => {
     });
   });
 
+  test('Save button is disabled and shows a message when TPR Due Year Type is set without a TPR Due date', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-chapter7-panel-tpr')).toBeInTheDocument();
+    });
+
+    await userEvent.selectOptions(screen.getByTestId('tpr-due-year-type'), 'EVEN');
+
+    await waitFor(() => {
+      expect(screen.getByTestId('tpr-due-error')).toBeInTheDocument();
+      expect(screen.getByTestId('button-save-chapter7-panel-tpr')).toBeDisabled();
+    });
+  });
+
   test('cancel navigates back to the appointments page without saving', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
     const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
@@ -382,6 +396,196 @@ describe('Chapter7PanelTrusteePerformanceReportForm', () => {
 
     expect(putSpy).not.toHaveBeenCalled();
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');
+  });
+
+  describe('TPR Review Period pair validation', () => {
+    test('shows error and blocks save when review period start is set without end', async () => {
+      const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-chapter7-panel-tpr')).toBeInTheDocument();
+      });
+
+      fireEvent.change(screen.getByTestId('tpr-review-period-start'), {
+        target: { value: '2025-04-01' },
+      });
+      await userEvent.click(screen.getByTestId('button-save-chapter7-panel-tpr'));
+
+      await waitFor(() => {
+        expect(screen.getByText('TPR Review Period End is required.')).toBeInTheDocument();
+      });
+      expect(putSpy).not.toHaveBeenCalled();
+    });
+
+    test('shows error and blocks save when review period end is set without start', async () => {
+      const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-chapter7-panel-tpr')).toBeInTheDocument();
+      });
+
+      fireEvent.change(screen.getByTestId('tpr-review-period-end'), {
+        target: { value: '2026-03-31' },
+      });
+      await userEvent.click(screen.getByTestId('button-save-chapter7-panel-tpr'));
+
+      await waitFor(() => {
+        expect(screen.getByText('TPR Review Period Start is required.')).toBeInTheDocument();
+      });
+      expect(putSpy).not.toHaveBeenCalled();
+    });
+
+    test('clears required error on end field when user focuses it', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-chapter7-panel-tpr')).toBeInTheDocument();
+      });
+
+      const startInput = screen.getByTestId('tpr-review-period-start');
+      const endInput = screen.getByTestId('tpr-review-period-end');
+
+      fireEvent.change(startInput, { target: { value: '2025-04-01' } });
+      await userEvent.click(screen.getByTestId('button-save-chapter7-panel-tpr'));
+
+      await waitFor(() => {
+        expect(screen.getByText('TPR Review Period End is required.')).toBeInTheDocument();
+      });
+
+      fireEvent.focus(endInput);
+
+      await waitFor(() => {
+        expect(screen.queryByText('TPR Review Period End is required.')).not.toBeInTheDocument();
+      });
+    });
+
+    test('clears required error on start field when user focuses it', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-chapter7-panel-tpr')).toBeInTheDocument();
+      });
+
+      const startInput = screen.getByTestId('tpr-review-period-start');
+      const endInput = screen.getByTestId('tpr-review-period-end');
+
+      fireEvent.change(endInput, { target: { value: '2026-03-31' } });
+      await userEvent.click(screen.getByTestId('button-save-chapter7-panel-tpr'));
+
+      await waitFor(() => {
+        expect(screen.getByText('TPR Review Period Start is required.')).toBeInTheDocument();
+      });
+
+      fireEvent.focus(startInput);
+
+      await waitFor(() => {
+        expect(screen.queryByText('TPR Review Period Start is required.')).not.toBeInTheDocument();
+      });
+    });
+
+    test('shows chronological errors on both fields when focus leaves the group with start after end', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-chapter7-panel-tpr')).toBeInTheDocument();
+      });
+
+      const startInput = screen.getByTestId('tpr-review-period-start');
+      const endInput = screen.getByTestId('tpr-review-period-end');
+
+      fireEvent.change(startInput, { target: { value: '2026-12-31' } });
+      fireEvent.change(endInput, { target: { value: '2025-01-01' } });
+      fireEvent.blur(endInput, { relatedTarget: null });
+
+      await waitFor(() => {
+        expect(document.getElementById('tpr-review-period-start-error')).toHaveTextContent(
+          'TPR Review Period Start must be before TPR Review Period End.',
+        );
+        expect(document.getElementById('tpr-review-period-end-error')).toHaveTextContent(
+          'TPR Review Period End must be after TPR Review Period Start.',
+        );
+      });
+    });
+
+    test('clears chronological errors on both fields when start date is corrected', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-chapter7-panel-tpr')).toBeInTheDocument();
+      });
+
+      const startInput = screen.getByTestId('tpr-review-period-start');
+      const endInput = screen.getByTestId('tpr-review-period-end');
+
+      fireEvent.change(startInput, { target: { value: '2026-12-31' } });
+      fireEvent.change(endInput, { target: { value: '2025-01-01' } });
+      fireEvent.blur(endInput, { relatedTarget: null });
+
+      await waitFor(() => {
+        expect(document.getElementById('tpr-review-period-end-error')).toHaveTextContent(
+          'TPR Review Period End must be after TPR Review Period Start.',
+        );
+      });
+
+      fireEvent.change(startInput, { target: { value: '2024-01-01' } });
+
+      await waitFor(() => {
+        expect(
+          screen.queryByText('TPR Review Period Start must be before TPR Review Period End.'),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.queryByText('TPR Review Period End must be after TPR Review Period Start.'),
+        ).not.toBeInTheDocument();
+      });
+    });
+
+    test('clears chronological errors on both fields when end date is corrected', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-chapter7-panel-tpr')).toBeInTheDocument();
+      });
+
+      const startInput = screen.getByTestId('tpr-review-period-start');
+      const endInput = screen.getByTestId('tpr-review-period-end');
+
+      fireEvent.change(startInput, { target: { value: '2026-12-31' } });
+      fireEvent.change(endInput, { target: { value: '2025-01-01' } });
+      fireEvent.blur(endInput, { relatedTarget: null });
+
+      await waitFor(() => {
+        expect(document.getElementById('tpr-review-period-end-error')).toHaveTextContent(
+          'TPR Review Period End must be after TPR Review Period Start.',
+        );
+      });
+
+      fireEvent.change(endInput, { target: { value: '2027-01-01' } });
+
+      await waitFor(() => {
+        expect(
+          screen.queryByText('TPR Review Period Start must be before TPR Review Period End.'),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.queryByText('TPR Review Period End must be after TPR Review Period Start.'),
+        ).not.toBeInTheDocument();
+      });
+    });
   });
 
   describe('when TPR_DISPLAY_UPDATES flag is off', () => {

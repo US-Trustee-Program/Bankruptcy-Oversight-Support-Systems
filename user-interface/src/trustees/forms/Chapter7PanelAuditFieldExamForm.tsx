@@ -1,4 +1,5 @@
 import './EditUpcomingKeyDates.scss';
+import '@/lib/components/uswds/forms.scss';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
@@ -212,7 +213,7 @@ export default function Chapter7PanelAuditFieldExamForm() {
           </div>
         </div>
         {examOrAuditPairError && (
-          <span className="usa-error-message" data-testid="exam-audit-pair-error">
+          <span className="usa-input__error-message" data-testid="exam-audit-pair-error">
             {examOrAuditPairError}
           </span>
         )}
@@ -311,7 +312,7 @@ export default function Chapter7PanelAuditFieldExamForm() {
           </div>
         </div>
         {completionPairError && (
-          <span className="usa-error-message" data-testid="audit-completion-status-error">
+          <span className="usa-input__error-message" data-testid="audit-completion-status-error">
             {completionPairError}
           </span>
         )}

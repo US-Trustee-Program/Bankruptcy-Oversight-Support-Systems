@@ -21,6 +21,7 @@ import {
   validateMonthDayRange,
   validateTrusteeUpcomingKeyDates,
   validateTprDuePair,
+  validateTprReviewPeriodOrder,
   validateCompletionPairPresence,
   DATE_FIELDS,
   SCALAR_FIELDS,
@@ -1062,6 +1063,39 @@ describe('validateCompletionPairPresence', () => {
         second: 'Period',
       }),
     ).toBe('Trustee Interim Report (TIR) Period Frequency and Period must both be set.');
+  });
+});
+
+describe('validateTprReviewPeriodOrder', () => {
+  test('returns null when both values are empty', () => {
+    expect(validateTprReviewPeriodOrder('', '')).toBeNull();
+  });
+
+  test('returns null when start is empty', () => {
+    expect(validateTprReviewPeriodOrder('', '2026-06-30')).toBeNull();
+  });
+
+  test('returns null when end is empty', () => {
+    expect(validateTprReviewPeriodOrder('2026-01-01', '')).toBeNull();
+  });
+
+  test('returns null when start equals end', () => {
+    expect(validateTprReviewPeriodOrder('2026-01-01', '2026-01-01')).toBeNull();
+  });
+
+  test('returns null when start is before end', () => {
+    expect(validateTprReviewPeriodOrder('2026-01-01', '2026-12-31')).toBeNull();
+  });
+
+  test('returns null for sentinel dates regardless of order', () => {
+    expect(validateTprReviewPeriodOrder('1900-12-01', '1900-03-31')).toBeNull();
+  });
+
+  test('returns per-field errors when start is after end', () => {
+    expect(validateTprReviewPeriodOrder('2026-12-31', '2026-01-01')).toEqual({
+      startError: 'TPR Review Period Start must be before TPR Review Period End.',
+      endError: 'TPR Review Period End must be after TPR Review Period Start.',
+    });
   });
 });
 

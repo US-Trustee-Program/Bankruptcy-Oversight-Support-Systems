@@ -1,4 +1,5 @@
 import './EditUpcomingKeyDates.scss';
+import '@/lib/components/uswds/forms.scss';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import useFeatureFlags, { TPR_DISPLAY_UPDATES } from '@/lib/hooks/UseFeatureFlags';
@@ -6,7 +7,9 @@ import {
   TrusteeUpcomingKeyDates,
   TrusteeUpcomingKeyDatesInput,
   validateTprDuePair,
+  validateTprReviewPeriodOrder,
   validateCompletionPairPresence,
+  validateTrusteeUpcomingKeyDates,
   isoToSentinel,
 } from '@common/cams/trustee-upcoming-key-dates';
 import { mergeKeyDatesInput, FISCAL_YEAR_OPTIONS } from './chapter7PanelKeyDatesInput';
@@ -86,6 +89,7 @@ export default function Chapter7PanelTrusteePerformanceReportForm() {
   const [form, setForm] = useState<Chapter7PanelTrusteePerformanceReportFormState>(EMPTY_FORM);
   const [original, setOriginal] = useState<TrusteeUpcomingKeyDates | null>(null);
   const [tprReviewPeriodValid, setTprReviewPeriodValid] = useState(true);
+  const [errors, setErrors] = useState({ tprReviewPeriodStart: '', tprReviewPeriodEnd: '' });
   const { registerFieldError, hasErrorAmong } = useDateFieldErrors();
 
   useEffect(() => {
@@ -117,7 +121,6 @@ export default function Chapter7PanelTrusteePerformanceReportForm() {
   }, [trusteeId, appointmentId]);
 
   async function handleSave() {
-    setIsSaving(true);
     const input = buildTrusteePerformanceReportKeyDatesInput(
       { trusteeId: trusteeId!, appointmentId: appointmentId! },
       original,
@@ -125,6 +128,14 @@ export default function Chapter7PanelTrusteePerformanceReportForm() {
       tprDisplayUpdates,
     );
 
+    const result = validateTrusteeUpcomingKeyDates(input);
+    setErrors({
+      tprReviewPeriodStart: result.reasonMap?.tprReviewPeriodStart?.reasons?.[0] ?? '',
+      tprReviewPeriodEnd: result.reasonMap?.tprReviewPeriodEnd?.reasons?.[0] ?? '',
+    });
+    if ((!tprDisplayUpdates && !tprReviewPeriodValid) || !result.valid) return;
+
+    setIsSaving(true);
     try {
       await Api2.putUpcomingKeyDates(trusteeId!, appointmentId!, input);
       navigate(`/trustees/${trusteeId}/appointments`);
@@ -156,13 +167,9 @@ export default function Chapter7PanelTrusteePerformanceReportForm() {
     );
   }
 
-  const tprPeriodError =
-    tprDisplayUpdates &&
-    form.tprReviewPeriodStart &&
-    form.tprReviewPeriodEnd &&
-    form.tprReviewPeriodStart > form.tprReviewPeriodEnd
-      ? 'TPR Review Period Start must be before TPR Review Period End.'
-      : '';
+  const tprPeriodOrder = tprDisplayUpdates
+    ? validateTprReviewPeriodOrder(form.tprReviewPeriodStart, form.tprReviewPeriodEnd)
+    : null;
   const tprDuePairError = validateTprDuePair(form.tprDue, form.tprDueYearType);
   const hasAnyDateError = tprDisplayUpdates
     ? hasErrorAmong(['tpr-review-period-start', 'tpr-review-period-end', 'last-tpr-submitted'])
@@ -175,45 +182,70 @@ export default function Chapter7PanelTrusteePerformanceReportForm() {
   const isSaveDisabled =
     isSaving ||
     hasAnyDateError ||
-    !!tprPeriodError ||
+    !!tprPeriodOrder ||
     !!tprDuePairError ||
     !!completionPairError ||
     (!tprDisplayUpdates && !tprReviewPeriodValid);
 
   return (
     <div className="edit-upcoming-key-dates" data-testid="edit-chapter7-panel-tpr">
-      <h3>Edit Trustee Performance Report Key Dates</h3>
+      <h3>Edit Trustee Performance Report (TPR) Key Dates</h3>
 
       {tprDisplayUpdates ? (
-        <>
+        <div
+          onFocus={(e) => {
+            const id = (e.target as HTMLElement).id;
+            if (id === 'tpr-review-period-start') {
+              setErrors((prev) => ({ ...prev, tprReviewPeriodStart: '' }));
+            } else if (id === 'tpr-review-period-end') {
+              setErrors((prev) => ({ ...prev, tprReviewPeriodEnd: '' }));
+            }
+          }}
+          onBlur={(e) => {
+            if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+            const order = validateTprReviewPeriodOrder(
+              form.tprReviewPeriodStart,
+              form.tprReviewPeriodEnd,
+            );
+            if (!order) return;
+            setErrors((prev) => ({
+              ...prev,
+              tprReviewPeriodStart: order.startError,
+              tprReviewPeriodEnd: order.endError,
+            }));
+          }}
+        >
           <DatePicker
             id="tpr-review-period-start"
-            label="Trustee Performance Review (TPR) Period Start"
+            label="TPR Period Start"
             value={form.tprReviewPeriodStart}
-            onChange={(e) => setForm((prev) => ({ ...prev, tprReviewPeriodStart: e.target.value }))}
+            onChange={(e) => {
+              setForm((prev) => ({ ...prev, tprReviewPeriodStart: e.target.value }));
+              setErrors((prev) => ({ ...prev, tprReviewPeriodStart: '', tprReviewPeriodEnd: '' }));
+            }}
             onValidationChange={(hasError) =>
               registerFieldError('tpr-review-period-start', hasError)
             }
+            customErrorMessage={errors.tprReviewPeriodStart}
             disableMax
           />
           <DatePicker
             id="tpr-review-period-end"
-            label="Trustee Performance Review (TPR) Period End"
+            label="TPR Period End"
             value={form.tprReviewPeriodEnd}
-            onChange={(e) => setForm((prev) => ({ ...prev, tprReviewPeriodEnd: e.target.value }))}
+            onChange={(e) => {
+              setForm((prev) => ({ ...prev, tprReviewPeriodEnd: e.target.value }));
+              setErrors((prev) => ({ ...prev, tprReviewPeriodStart: '', tprReviewPeriodEnd: '' }));
+            }}
             onValidationChange={(hasError) => registerFieldError('tpr-review-period-end', hasError)}
+            customErrorMessage={errors.tprReviewPeriodEnd}
             disableMax
           />
-          {tprPeriodError && (
-            <span className="usa-error-message" data-testid="tpr-review-period-error">
-              {tprPeriodError}
-            </span>
-          )}
-        </>
+        </div>
       ) : (
         <MonthDayRangeSelector
           id="tpr-review-period"
-          label="Trustee Performance Review (TPR) Period"
+          label="TPR Period"
           startValue={form.tprReviewPeriodStart}
           endValue={form.tprReviewPeriodEnd}
           onStartChange={(value) => setForm((prev) => ({ ...prev, tprReviewPeriodStart: value }))}
@@ -225,7 +257,7 @@ export default function Chapter7PanelTrusteePerformanceReportForm() {
       {tprDisplayUpdates && (
         <div className="usa-form-group">
           <label className="usa-label" htmlFor="tpr-frequency">
-            Trustee Performance Review Period Frequency
+            TPR Period Frequency
           </label>
           <select
             className="usa-select"
@@ -250,7 +282,7 @@ export default function Chapter7PanelTrusteePerformanceReportForm() {
       <div className="tpr-due-group">
         <div className="tpr-due-group__header">
           <label className="usa-label" htmlFor="tpr-due">
-            Trustee Performance Review (TPR) Due
+            TPR Due
           </label>
         </div>
         <div className="tpr-due-group__row">
@@ -283,7 +315,7 @@ export default function Chapter7PanelTrusteePerformanceReportForm() {
           </div>
         </div>
         {tprDuePairError && (
-          <span className="usa-error-message" data-testid="tpr-due-error">
+          <span className="usa-input__error-message" data-testid="tpr-due-error">
             {tprDuePairError}
           </span>
         )}
@@ -291,7 +323,7 @@ export default function Chapter7PanelTrusteePerformanceReportForm() {
 
       <DatePicker
         id="last-tpr-submitted"
-        label="Last Trustee Performance Review Submitted"
+        label="Last TPR Submitted"
         value={form.lastTprSubmitted}
         onChange={(e) => setForm((prev) => ({ ...prev, lastTprSubmitted: e.target.value }))}
         onValidationChange={(hasError) => registerFieldError('last-tpr-submitted', hasError)}
@@ -306,7 +338,7 @@ export default function Chapter7PanelTrusteePerformanceReportForm() {
               Year
             </label>
             <select
-              className="usa-select"
+              className={`usa-select${completionPairError ? ' usa-input--error' : ''}`}
               id="tpr-completion-status-year"
               data-testid="tpr-completion-status-year"
               value={form.tprCompletionYear}
@@ -331,7 +363,7 @@ export default function Chapter7PanelTrusteePerformanceReportForm() {
               Status
             </label>
             <select
-              className="usa-select"
+              className={`usa-select${completionPairError ? ' usa-input--error' : ''}`}
               id="tpr-completion-status-status"
               data-testid="tpr-completion-status-status"
               value={form.tprCompletionStatus}
@@ -349,7 +381,7 @@ export default function Chapter7PanelTrusteePerformanceReportForm() {
           </div>
         </div>
         {completionPairError && (
-          <span className="usa-error-message" data-testid="tpr-completion-status-error">
+          <span className="usa-input__error-message" data-testid="tpr-completion-status-error">
             {completionPairError}
           </span>
         )}
