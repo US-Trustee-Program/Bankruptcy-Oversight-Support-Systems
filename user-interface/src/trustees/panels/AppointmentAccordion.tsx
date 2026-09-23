@@ -43,7 +43,7 @@ export default function AppointmentAccordion(props: Readonly<AppointmentAccordio
           data-testid={`appointment-accordion-header-${appointment.id}`}
         >
           <span className="appointment-accordion-heading-text">
-            {districtDisplay} ({divisionsDisplay}) - Chapter{' '}
+            {districtDisplay} ({divisionsDisplay}): Chapter{' '}
             {getAppointmentDetails(appointment.chapter, appointment.appointmentType)}
           </span>
           <Tag

@@ -98,7 +98,8 @@ Ethan Nostaff, Ava Nostaff
 Subchapter V Pool, no key dates), Felicia Keydates (Chapter 13 Standing, active, all four accordion
 cards populated including Audit and TPR completion-status tags), Gregory Nokeydates (Chapter 13
 Standing, inactive appointment, no key dates — tests "No date added" defaults and default-closed
-accordion state)
+accordion state), Catherine Keydates (Chapter 12 Standing; audit/TPR completion status and Last TPR
+Submitted populated for the accordion's Audit and Trustee Performance Report cards)
 
 ### 341 Meeting Info
 

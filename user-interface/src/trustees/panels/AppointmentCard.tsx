@@ -1,21 +1,15 @@
 import './AppointmentCard.scss';
 import { useEffect, useState } from 'react';
-import UpcomingKeyDates from './UpcomingKeyDates';
-import PastKeyDates from './PastKeyDates';
 import InfoCard from './InfoCard';
 import Chapter13StandingAppointmentBody from './Chapter13StandingAppointmentBody';
 import { TrusteeAppointment, formatAppointmentStatus } from '@common/cams/trustee-appointments';
 import { formatChapterType, formatAppointmentType } from '@common/cams/trustees';
 import useEditTrusteeAppointment from '@/lib/hooks/UseEditTrusteeAppointment';
-import useFeatureFlags, {
-  DISPLAY_CHPT12_STANDING_KEY_DATES,
-  DISPLAY_CHPT13_STANDING_KEY_DATES,
-  TPR_DISPLAY_UPDATES,
-} from '@/lib/hooks/UseFeatureFlags';
+import useFeatureFlags, { DISPLAY_CHPT13_STANDING_KEY_DATES } from '@/lib/hooks/UseFeatureFlags';
 import useCourts from '@/lib/hooks/UseCourts';
 import { buildDivisionsDisplay } from '@/lib/utils/court-utils';
 import { useUpcomingKeyDates } from './useUpcomingKeyDates';
-import { isChapter12Standing, isChapter13Standing } from '@common/cams/trustee-appointments';
+import { isChapter13Standing } from '@common/cams/trustee-appointments';
 import { formatAppointmentDate, buildDistrictDisplay } from './appointmentDisplay';
 
 export interface AppointmentCardProps {
@@ -30,9 +24,7 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
   const { canManage, openEditTrustee } = useEditTrusteeAppointment(props.appointment);
 
   const featureFlags = useFeatureFlags();
-  const displayChpt12StandingKeyDates = featureFlags[DISPLAY_CHPT12_STANDING_KEY_DATES] === true;
   const displayChpt13StandingKeyDates = featureFlags[DISPLAY_CHPT13_STANDING_KEY_DATES] === true;
-  const tprDisplayUpdates = !!featureFlags[TPR_DISPLAY_UPDATES];
   const { chapter, appointmentType } = props.appointment;
   const formattedChapter = formatChapterType(chapter);
   const formattedAppointmentType = formatAppointmentType(appointmentType);
@@ -54,24 +46,11 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
 
   const appointmentCardHeaderText = `${districtDisplay}: Chapter ${formattedChapter} - ${formattedAppointmentType}`;
 
-  let appointmentHeading = districtDisplay;
-  if (props.appointment.courtDivisionName) {
-    appointmentHeading += ` (${props.appointment.courtDivisionName})`;
-  }
-  appointmentHeading += ` - Chapter ${formattedChapter} ${formattedAppointmentType}`;
-
-  const isChapter12StandingAppointment = isChapter12Standing(
-    props.appointment.chapter,
-    props.appointment.appointmentType,
-  );
   const isChapter13StandingAppointment = isChapter13Standing(chapter, appointmentType);
 
-  const showsChpt12StandingKeyDatesCards =
-    displayChpt12StandingKeyDates && isChapter12StandingAppointment;
   const showsChpt13StandingUpcomingKeyDates =
     displayChpt13StandingKeyDates && isChapter13StandingAppointment;
-  const shouldFetchKeyDates =
-    showsChpt12StandingKeyDatesCards || showsChpt13StandingUpcomingKeyDates;
+  const shouldFetchKeyDates = showsChpt13StandingUpcomingKeyDates;
 
   // Chapter 13 Standing appointments are rendered inside a collapsible accordion; every other
   // variant renders its key-dates cards immediately, so it should fetch as soon as it mounts.
@@ -143,27 +122,6 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
             { label: 'Status Effective', value: formattedEffectiveDate },
           ]}
         />
-        {showsChpt12StandingKeyDatesCards && (
-          <>
-            <UpcomingKeyDates
-              variant="chapter12-standing"
-              trusteeId={props.appointment.trusteeId}
-              appointmentId={props.appointment.id}
-              appointmentHeading={appointmentHeading}
-              data={keyDatesData}
-              isLoading={isKeyDatesLoading}
-              tprDisplayUpdates={tprDisplayUpdates}
-            />
-            <PastKeyDates
-              variant="chapter12-standing"
-              trusteeId={props.appointment.trusteeId}
-              appointmentId={props.appointment.id}
-              appointmentHeading={appointmentHeading}
-              data={keyDatesData}
-              isLoading={isKeyDatesLoading}
-            />
-          </>
-        )}
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import TrusteePerformanceReportCard from './TrusteePerformanceReportCard';
 
-export interface Chapter7PanelTrusteePerformanceReportCardProps {
+export interface Chapter12StandingTrusteePerformanceReportCardProps {
   trusteeId: string;
   appointmentId: string;
   data: TrusteeUpcomingKeyDates | null;
@@ -9,8 +9,8 @@ export interface Chapter7PanelTrusteePerformanceReportCardProps {
   tprDisplayUpdates: boolean;
 }
 
-export default function Chapter7PanelTrusteePerformanceReportCard(
-  props: Readonly<Chapter7PanelTrusteePerformanceReportCardProps>,
+export default function Chapter12StandingTrusteePerformanceReportCard(
+  props: Readonly<Chapter12StandingTrusteePerformanceReportCardProps>,
 ) {
-  return <TrusteePerformanceReportCard {...props} variant="chapter7-panel" />;
+  return <TrusteePerformanceReportCard {...props} variant="chapter12-standing" />;
 }

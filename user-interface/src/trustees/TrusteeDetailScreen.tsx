@@ -37,6 +37,9 @@ import Chapter7PanelAuditFieldExamForm from './forms/Chapter7PanelAuditFieldExam
 import Chapter7PanelTrusteePerformanceReportForm from './forms/Chapter7PanelTrusteePerformanceReportForm';
 import Chapter7PanelTrusteeInterimReportForm from './forms/Chapter7PanelTrusteeInterimReportForm';
 import Chapter7PanelOtherKeyDatesForm from './forms/Chapter7PanelOtherKeyDatesForm';
+import Chapter12StandingAuditForm from './forms/Chapter12StandingAuditForm';
+import Chapter12StandingTrusteePerformanceReportForm from './forms/Chapter12StandingTrusteePerformanceReportForm';
+import Chapter12StandingOtherKeyDatesForm from './forms/Chapter12StandingOtherKeyDatesForm';
 import TrusteeMeetingOfCreditorsInfoForm from './forms/TrusteeMeetingOfCreditorsInfoForm';
 import TrusteeNotes from '@/trustees/panels/trustee-notes/TrusteeNotes';
 import useFeatureFlags, {
@@ -302,7 +305,6 @@ export default function TrusteeDetailScreen() {
       disabled: !(
         featureFlags[DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES] ||
         featureFlags[DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES] ||
-        featureFlags[DISPLAY_CHPT12_STANDING_KEY_DATES] ||
         featureFlags[DISPLAY_CHPT13_STANDING_KEY_DATES]
       ),
       subHeading: appointmentHeading,
@@ -313,7 +315,6 @@ export default function TrusteeDetailScreen() {
       disabled: !(
         featureFlags[DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES] ||
         featureFlags[DISPLAY_CHPT11_SUBV_PAST_KEY_DATES] ||
-        featureFlags[DISPLAY_CHPT12_STANDING_KEY_DATES] ||
         featureFlags[DISPLAY_CHPT13_STANDING_KEY_DATES]
       ),
       subHeading: appointmentHeading,
@@ -382,6 +383,24 @@ export default function TrusteeDetailScreen() {
       disabled: !featureFlags[DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES],
       subHeading: appointmentHeading,
       content: <Chapter7PanelOtherKeyDatesForm />,
+    },
+    {
+      path: 'appointments/:appointmentId/audit-key-dates/edit',
+      disabled: !featureFlags[DISPLAY_CHPT12_STANDING_KEY_DATES],
+      subHeading: appointmentHeading,
+      content: <Chapter12StandingAuditForm />,
+    },
+    {
+      path: 'appointments/:appointmentId/chapter12-standing-tpr-key-dates/edit',
+      disabled: !featureFlags[DISPLAY_CHPT12_STANDING_KEY_DATES],
+      subHeading: appointmentHeading,
+      content: <Chapter12StandingTrusteePerformanceReportForm />,
+    },
+    {
+      path: 'appointments/:appointmentId/chapter12-standing-other-key-dates/edit',
+      disabled: !featureFlags[DISPLAY_CHPT12_STANDING_KEY_DATES],
+      subHeading: appointmentHeading,
+      content: <Chapter12StandingOtherKeyDatesForm />,
     },
     {
       path: 'assigned-staff',
