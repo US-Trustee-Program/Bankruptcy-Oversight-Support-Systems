@@ -171,24 +171,27 @@ describe('TrusteePerformanceReportKeyDatesForm', () => {
     expect(putSpy).not.toHaveBeenCalled();
   });
 
-  test('rejects a TPR due date without a year type and does not save', async () => {
+  // The API validates the whole document and rejects it; the message reaches the
+  // user through the global alert, as it does on the Chapter 7 Panel forms.
+  test('surfaces an API rejection of the merged document', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({
       data: { ...storedDocument, tprDueYearType: undefined },
     });
-    const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
+    vi.spyOn(Api2, 'putUpcomingKeyDates').mockRejectedValue(
+      new Error('TPR Due Year Type is required.'),
+    );
 
     renderForm();
 
-    await waitFor(() => {
-      expect(screen.getByTestId('tpr-due-year-type')).toHaveValue('');
-    });
-
+    await waitFor(() => expect(screen.getByTestId('tpr-due-year-type')).toHaveValue(''));
     await userEvent.click(screen.getByTestId('button-save-tpr-key-dates'));
 
-    expect(await screen.findByTestId('alert-tpr-completion-error')).toHaveTextContent(
-      'TPR Due Year Type is required.',
-    );
-    expect(putSpy).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(mockGlobalAlertRef.current.error).toHaveBeenCalledWith(
+        expect.stringMatching(/TPR Due Year Type is required/),
+      );
+    });
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 
   test('returns to the appointments list on cancel without saving', async () => {
@@ -280,7 +283,7 @@ describe('TrusteePerformanceReportKeyDatesForm', () => {
 
   // This form used to surface a foreign field's message verbatim, so the user
   // saw a specific-looking error naming a control that is not on screen.
-  test('does not present another section’s error as though it belonged here', async () => {
+  test('saves even when another section of the document is invalid', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({
       data: {
         ...storedDocument,
@@ -292,13 +295,9 @@ describe('TrusteePerformanceReportKeyDatesForm', () => {
 
     renderForm();
 
-    await waitFor(() => {
-      expect(screen.getByTestId('tpr-frequency')).toBeInTheDocument();
-    });
+    expect(await screen.findByTestId('tpr-frequency')).toBeInTheDocument();
     await userEvent.click(screen.getByTestId('button-save-tpr-key-dates'));
 
-    const alert = await screen.findByTestId('alert-tpr-completion-error');
-    expect(alert).toHaveTextContent('another section');
-    expect(putSpy).not.toHaveBeenCalled();
+    await waitFor(() => expect(putSpy).toHaveBeenCalled());
   });
 });

@@ -4,12 +4,10 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   TrusteeUpcomingKeyDates,
   validateCompletionPairPresence,
-  validateTrusteeUpcomingKeyDates,
 } from '@common/cams/trustee-upcoming-key-dates';
 import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
-import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import MonthDaySelector from '@/lib/components/uswds/MonthDaySelector';
 import MonthDayRangeSelector from '@/lib/components/uswds/MonthDayRangeSelector';
 import DatePicker from '@/lib/components/uswds/DatePicker';
@@ -19,7 +17,6 @@ import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
 import { Stop } from '@/lib/components/Stop';
 import { mergeKeyDatesInput } from './chapter7PanelKeyDatesInput';
 import CompletionStatusFields, { CompletionStatusValue } from './CompletionStatusFields';
-import { resolveKeyDatesSaveError } from './keyDatesSaveError';
 
 type TprFormState = {
   tprReviewPeriodStart: string;
@@ -38,19 +35,6 @@ const EMPTY_FORM: TprFormState = {
   tprDueYearType: '',
   lastTprSubmitted: '',
 };
-
-// The validator checks the whole merged document, so save errors have to be
-// sorted into this form's fields and everything else.
-const OWNED_FIELDS = [
-  'tprReviewPeriodStart',
-  'tprReviewPeriodEnd',
-  'tprFrequency',
-  'tprDue',
-  'tprDueYearType',
-  'lastTprSubmitted',
-  'tprCompletionYear',
-  'tprCompletionStatus',
-] as const;
 
 const FREQUENCY_OPTIONS: { value: TprFormState['tprFrequency']; label: string }[] = [
   { value: 'SEMI_ANNUAL', label: '6 months' },
@@ -73,7 +57,6 @@ export default function TrusteePerformanceReportKeyDatesForm() {
   const [form, setForm] = useState<TprFormState>(EMPTY_FORM);
   const [completion, setCompletion] = useState<CompletionStatusValue>({ year: '', status: '' });
   const [original, setOriginal] = useState<TrusteeUpcomingKeyDates | null>(null);
-  const [error, setError] = useState('');
   const [reviewPeriodValid, setReviewPeriodValid] = useState(true);
 
   useEffect(() => {
@@ -120,17 +103,13 @@ export default function TrusteePerformanceReportKeyDatesForm() {
   }
 
   async function handleSave() {
-    const input = buildInput();
-    const result = validateTrusteeUpcomingKeyDates(input);
-    if (!result.valid) {
-      setError(resolveKeyDatesSaveError(result.reasonMap, OWNED_FIELDS));
-      return;
-    }
-
-    setError('');
+    // No whole-document validation here. The fields this form owns are checked
+    // inline, and the API validates the rest; the four Chapter 7 Panel forms
+    // work the same way. Validating the merged document client-side blocked
+    // saves on fields this form cannot display, with no way to fix them.
     setIsSaving(true);
     try {
-      await Api2.putUpcomingKeyDates(trusteeId!, appointmentId!, input);
+      await Api2.putUpcomingKeyDates(trusteeId!, appointmentId!, buildInput());
       navigate(`/trustees/${trusteeId}/appointments`);
     } catch (err) {
       globalAlert?.error(
@@ -174,11 +153,6 @@ export default function TrusteePerformanceReportKeyDatesForm() {
   return (
     <div className="edit-upcoming-key-dates" data-testid="edit-tpr-key-dates">
       <h3>Edit Trustee Performance Report</h3>
-      {error && (
-        <Alert id="tpr-completion-error" type={UswdsAlertStyle.Error} inline show slim>
-          {error}
-        </Alert>
-      )}
       <MonthDayRangeSelector
         id="tpr-review-period"
         label="TPR Review Period"

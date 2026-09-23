@@ -1,27 +1,18 @@
 import './EditUpcomingKeyDates.scss';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import {
-  TrusteeUpcomingKeyDates,
-  validateTrusteeUpcomingKeyDates,
-} from '@common/cams/trustee-upcoming-key-dates';
+import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
-import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import { Stop } from '@/lib/components/Stop';
 import { mergeKeyDatesInput } from './chapter7PanelKeyDatesInput';
 import CompletionStatusFields, { CompletionStatusValue } from './CompletionStatusFields';
-import { resolveKeyDatesSaveError } from './keyDatesSaveError';
 import { validateCompletionPairPresence } from '@common/cams/trustee-upcoming-key-dates';
 
 const EMPTY_COMPLETION: CompletionStatusValue = { year: '', status: '' };
-
-// The validator checks the whole merged document, so save errors have to be
-// sorted into this form's fields and everything else.
-const OWNED_FIELDS = ['annualReportCompletionYear', 'annualReportCompletionStatus'] as const;
 
 export default function AnnualReportKeyDatesForm() {
   const { trusteeId, appointmentId } = useParams<{
@@ -36,7 +27,6 @@ export default function AnnualReportKeyDatesForm() {
   const [isSaving, setIsSaving] = useState(false);
   const [completion, setCompletion] = useState<CompletionStatusValue>(EMPTY_COMPLETION);
   const [original, setOriginal] = useState<TrusteeUpcomingKeyDates | null>(null);
-  const [error, setError] = useState('');
 
   useEffect(() => {
     Api2.getUpcomingKeyDates(trusteeId!, appointmentId!)
@@ -66,17 +56,13 @@ export default function AnnualReportKeyDatesForm() {
   }
 
   async function handleSave() {
-    const input = buildInput();
-    const result = validateTrusteeUpcomingKeyDates(input);
-    if (!result.valid) {
-      setError(resolveKeyDatesSaveError(result.reasonMap, OWNED_FIELDS));
-      return;
-    }
-
-    setError('');
+    // No whole-document validation here. The field this form owns is checked
+    // inline, and the API validates the rest; the four Chapter 7 Panel forms
+    // work the same way. Validating the merged document client-side blocked
+    // saves on fields this form cannot display, with no way to fix them.
     setIsSaving(true);
     try {
-      await Api2.putUpcomingKeyDates(trusteeId!, appointmentId!, input);
+      await Api2.putUpcomingKeyDates(trusteeId!, appointmentId!, buildInput());
       navigate(`/trustees/${trusteeId}/appointments`);
     } catch (err) {
       globalAlert?.error(`Failed to save annual report key dates: ${(err as Error).message}`);
@@ -117,11 +103,6 @@ export default function AnnualReportKeyDatesForm() {
         Annual Report Submission and Annual Report Due to OO are fixed for Chapter 12 and 13 Case by
         Case appointments and cannot be edited.
       </p>
-      {error && (
-        <Alert id="annual-report-completion-error" type={UswdsAlertStyle.Error} inline show slim>
-          {error}
-        </Alert>
-      )}
       <CompletionStatusFields
         idPrefix="annual-report-completion"
         legend="Annual Report Completion"

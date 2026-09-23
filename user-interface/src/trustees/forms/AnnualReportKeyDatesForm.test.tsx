@@ -292,7 +292,9 @@ describe('AnnualReportKeyDatesForm', () => {
   // The validator checks the whole merged document. A stale value on a field
   // this form cannot display used to be swallowed into a generic message with
   // nothing highlighted, leaving Save blocked with no explanation.
-  test('explains a validation failure on a field this form does not render', async () => {
+  // Stale data elsewhere in the document used to block this form with no way to
+  // fix it from here. The fields this form owns are valid, so the save goes.
+  test('saves even when another section of the document is invalid', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({
       data: { ...storedDocument, tirCompletionYear: 2025, tirCompletionStatus: undefined },
     });
@@ -305,9 +307,7 @@ describe('AnnualReportKeyDatesForm', () => {
     });
     await userEvent.click(screen.getByTestId('button-save-annual-report-key-dates'));
 
-    const alert = await screen.findByTestId('alert-annual-report-completion-error');
-    expect(alert).toHaveTextContent('another section');
-    expect(alert).toHaveTextContent('Trustee Interim Report Completion Status is required.');
-    expect(putSpy).not.toHaveBeenCalled();
+    await waitFor(() => expect(putSpy).toHaveBeenCalled());
+    expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');
   });
 });
