@@ -122,6 +122,9 @@ describe('TrusteeUpcomingKeyDatesUseCase', () => {
       expect(upsertSpy).toHaveBeenCalledWith(
         expect.objectContaining({ pastFieldExam: '2026-06-15' }),
       );
+      const savedDoc = upsertSpy.mock.calls[0][0];
+      expect(savedDoc.id).toEqual(expect.any(String));
+      expect(savedDoc.id.length).toBeGreaterThan(0);
       expect(createHistorySpy).toHaveBeenCalledWith(
         expect.objectContaining({
           documentType: 'AUDIT_UPCOMING_REPORT_DATES',

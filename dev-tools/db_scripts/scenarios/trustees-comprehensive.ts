@@ -17,12 +17,17 @@
  *   - Chapter 13 (standing/case-by-case): 10 appointments
  *   - Chapter 11 Subchapter V (pool/out-of-pool): 5 appointments
  *
- * Multi-Division Support (CAMS-740):
- *   - Single-division appointments (29 trustees)
- *   - Multi-division appointments (3 trustees):
- *     - Patricia Manhattan: divisions 081, 091
- *     - William T Statewide: divisions 081, 091
- *     - Patricia Ann Statewide: divisions 081, 091
+ * Multi-Court Support (CAMS-740):
+ *   - Every appointment created here has exactly one divisionCode (081 or 091);
+ *     081 and 091 belong to two different courts (0208 vs 0209), not two
+ *     divisions of a single court, so there is no single-appointment
+ *     multi-division (`divisionCodes.length > 1`) example in this file.
+ *   - Multi-court trustee (1 trustee): Patricia Manhattan holds separate
+ *     single-division appointments in both 081 and 091
+ *   - William T Statewide and Patricia Ann Statewide each hold one
+ *     single-division appointment (081 and 091 respectively), added as a pair
+ *     so both known-good division codes are represented in the "additional"
+ *     seed batch
  *   - Mix of active and inactive statuses
  *
  * NOTE: Uses CAMS-only seeding pattern - no DXTR seeding required.
@@ -1136,13 +1141,16 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
   );
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // Additional Multi-Division Examples (CAMS-740 testing)
+  // Additional Division-Coverage Examples (CAMS-740 testing)
   // ═══════════════════════════════════════════════════════════════════════════
 
-  // Note: Patricia Manhattan (NY-2) already has multi-division (081, 091)
-  // Adding 2 more multi-division examples
+  // Note: these two trustees are single-division appointments (081 and 091
+  // respectively), added as a pair so both known-good division codes are
+  // represented in this "additional" batch. Patricia Manhattan (NY-2) is the
+  // one trustee in this file with multiple appointments, but each of hers is
+  // still single-division (spread across separate out-of-state courts).
 
-  // Additional-23: Ch7 Panel across Manhattan divisions (081, 091)
+  // Additional-23: Ch7 Panel, single division (081)
   trustees.push(
     createTrustee({
       id: 'seed-trustee-add-023',
@@ -1168,7 +1176,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
     }),
   );
 
-  // Additional-24: Ch13 Standing across Manhattan divisions (081, 091)
+  // Additional-24: Ch13 Standing, single division (091)
   trustees.push(
     createTrustee({
       id: 'seed-trustee-add-024',

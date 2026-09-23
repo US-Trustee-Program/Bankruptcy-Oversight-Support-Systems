@@ -61,6 +61,26 @@ describe('Chapter13StandingTrusteePerformanceReportCard', () => {
     expect(screen.getByTestId('tpr-due-row')).toBeInTheDocument();
   });
 
+  // The exhaustive date/frequency formatting logic for these fields is covered by
+  // upcomingKeyDatesFieldConfig.test.ts; this only confirms this card forwards `data`
+  // to them rather than always passing null.
+  test('renders TPR Review Period, Frequency, and Due values from data', () => {
+    renderComponent({
+      data: {
+        ...baseDocument,
+        tprReviewPeriodStart: '2025-04-01',
+        tprReviewPeriodEnd: '2025-09-30',
+        tprFrequency: 'ANNUAL',
+        tprDue: '1900-09-15',
+        tprDueYearType: 'EVEN',
+      },
+    });
+    expect(screen.getByTestId('tpr-review-period-row')).toHaveTextContent('04/01/2025');
+    expect(screen.getByTestId('tpr-review-period-row')).toHaveTextContent('09/30/2025');
+    expect(screen.getByTestId('tpr-review-period-frequency-row')).toHaveTextContent('One year');
+    expect(screen.getByTestId('tpr-due-row')).not.toHaveTextContent('No date added');
+  });
+
   test('renders "No date added" for Last TPR Submitted when data is null', () => {
     renderComponent();
     expect(screen.getByTestId('last-tpr-submitted-row')).toHaveTextContent('No date added');
@@ -76,22 +96,31 @@ describe('Chapter13StandingTrusteePerformanceReportCard', () => {
     expect(screen.queryByTestId('tag-tpr-completion-status')).not.toBeInTheDocument();
   });
 
-  test('renders a green "Complete for {year}" tag when ch13TprCompletionStatus is Complete', () => {
+  test.each([
+    ['ch13TprCompletionYear only', { ch13TprCompletionYear: 2026 }],
+    ['ch13TprCompletionStatus only', { ch13TprCompletionStatus: 'Complete' as const }],
+  ])('renders no completion-status tag when only %s is set', (_label, partialData) => {
+    renderComponent({ data: { ...baseDocument, ...partialData } });
+    expect(screen.queryByTestId('tag-tpr-completion-status')).not.toBeInTheDocument();
+  });
+
+  // CompletionStatusTag's own color/style output (bg-success vs. bg-secondary-dark) is
+  // covered by CompletionStatusTag.test.tsx; these tests only verify this card passes
+  // the right status/year through to it.
+  test('renders a "Complete for {year}" tag when ch13TprCompletionStatus is Complete', () => {
     renderComponent({
       data: { ...baseDocument, ch13TprCompletionYear: 2026, ch13TprCompletionStatus: 'Complete' },
     });
-    const tag = screen.getByTestId('tag-tpr-completion-status');
-    expect(tag).toHaveTextContent('Complete for 2026');
-    expect(tag.className).toContain('bg-success');
+    expect(screen.getByTestId('tag-tpr-completion-status')).toHaveTextContent('Complete for 2026');
   });
 
-  test('renders a red "Incomplete for {year}" tag when ch13TprCompletionStatus is Incomplete', () => {
+  test('renders an "Incomplete for {year}" tag when ch13TprCompletionStatus is Incomplete', () => {
     renderComponent({
       data: { ...baseDocument, ch13TprCompletionYear: 2026, ch13TprCompletionStatus: 'Incomplete' },
     });
-    const tag = screen.getByTestId('tag-tpr-completion-status');
-    expect(tag).toHaveTextContent('Incomplete for 2026');
-    expect(tag.className).toContain('bg-secondary-dark');
+    expect(screen.getByTestId('tag-tpr-completion-status')).toHaveTextContent(
+      'Incomplete for 2026',
+    );
   });
 
   test('Edit pencil navigates to the dedicated TPR edit route when canManage', () => {

@@ -261,6 +261,32 @@ describe('Chapter7PanelAuditFieldExamForm', () => {
     },
   );
 
+  test('Save button re-enables once an invalid date is corrected', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('past-audit')).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByTestId('past-audit'), {
+      target: { value: '1900-01-01' },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('button-save-chapter7-panel-audit-field-exam')).toBeDisabled();
+    });
+
+    fireEvent.change(screen.getByTestId('past-audit'), {
+      target: { value: '2024-06-01' },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('button-save-chapter7-panel-audit-field-exam')).not.toBeDisabled();
+    });
+  });
+
   test('Save button is disabled and shows a message when only the completion status year is cleared', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
 

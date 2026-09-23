@@ -75,7 +75,18 @@ describe('Chapter13StandingAuditCard', () => {
     expect(screen.queryByTestId('tag-audit-completion-status')).not.toBeInTheDocument();
   });
 
-  test('renders a green "Complete for {year}" tag when ch13AuditCompletionStatus is Complete', () => {
+  test.each([
+    ['ch13AuditCompletionYear only', { ch13AuditCompletionYear: 2026 }],
+    ['ch13AuditCompletionStatus only', { ch13AuditCompletionStatus: 'Complete' as const }],
+  ])('renders no completion-status tag when only %s is set', (_label, partialData) => {
+    renderComponent({ data: { ...baseDocument, ...partialData } });
+    expect(screen.queryByTestId('tag-audit-completion-status')).not.toBeInTheDocument();
+  });
+
+  // CompletionStatusTag's own color/style output (bg-success vs. bg-secondary-dark) is
+  // covered by CompletionStatusTag.test.tsx; these tests only verify this card passes
+  // the right status/year through to it.
+  test('renders a "Complete for {year}" tag when ch13AuditCompletionStatus is Complete', () => {
     renderComponent({
       data: {
         ...baseDocument,
@@ -83,12 +94,12 @@ describe('Chapter13StandingAuditCard', () => {
         ch13AuditCompletionStatus: 'Complete',
       },
     });
-    const tag = screen.getByTestId('tag-audit-completion-status');
-    expect(tag).toHaveTextContent('Complete for 2026');
-    expect(tag.className).toContain('bg-success');
+    expect(screen.getByTestId('tag-audit-completion-status')).toHaveTextContent(
+      'Complete for 2026',
+    );
   });
 
-  test('renders a red "Incomplete for {year}" tag when ch13AuditCompletionStatus is Incomplete', () => {
+  test('renders an "Incomplete for {year}" tag when ch13AuditCompletionStatus is Incomplete', () => {
     renderComponent({
       data: {
         ...baseDocument,
@@ -96,9 +107,9 @@ describe('Chapter13StandingAuditCard', () => {
         ch13AuditCompletionStatus: 'Incomplete',
       },
     });
-    const tag = screen.getByTestId('tag-audit-completion-status');
-    expect(tag).toHaveTextContent('Incomplete for 2026');
-    expect(tag.className).toContain('bg-secondary-dark');
+    expect(screen.getByTestId('tag-audit-completion-status')).toHaveTextContent(
+      'Incomplete for 2026',
+    );
   });
 
   test('Edit pencil navigates to the dedicated Audit edit route when canManage', () => {
@@ -107,6 +118,15 @@ describe('Chapter13StandingAuditCard', () => {
     expect(mockNavigate).toHaveBeenCalledWith(
       '/trustees/trustee-001/appointments/appointment-001/chapter13-standing-audit-key-dates/edit',
       { state: { subHeading: '' } },
+    );
+  });
+
+  test('threads appointmentHeading through to the edit route subHeading', () => {
+    renderComponent({ appointmentHeading: 'Southern District of New York: Chapter 13' });
+    screen.getByRole('button', { name: /edit audit key dates/i }).click();
+    expect(mockNavigate).toHaveBeenCalledWith(
+      '/trustees/trustee-001/appointments/appointment-001/chapter13-standing-audit-key-dates/edit',
+      { state: { subHeading: 'Southern District of New York: Chapter 13' } },
     );
   });
 

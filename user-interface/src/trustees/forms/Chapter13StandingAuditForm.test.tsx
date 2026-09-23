@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import userEvent from '@testing-library/user-event';
@@ -94,6 +94,31 @@ describe('Chapter13StandingAuditForm', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('past-audit')).toHaveValue('2025-06-30');
+    });
+  });
+
+  test('renders an empty form when the appointment has no existing key-dates document', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('past-audit')).toHaveValue('');
+    });
+    expect(screen.getByTestId('audit-completion-year')).toHaveValue('');
+    expect(screen.getByTestId('audit-completion-status')).toHaveValue('');
+  });
+
+  test('Save button is disabled when past-audit has an invalid date', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: existingDocument });
+    renderComponent();
+
+    await screen.findByTestId('past-audit');
+
+    fireEvent.change(screen.getByTestId('past-audit'), { target: { value: '1900-01-01' } });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('button-save-chapter13-standing-audit-key-dates')).toBeDisabled();
     });
   });
 

@@ -6,7 +6,6 @@ import Api2 from '@/lib/models/api2';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import userEvent from '@testing-library/user-event';
-import * as courtUtils from '@/lib/utils/court-utils';
 import * as featureFlagsHook from '@/lib/hooks/UseFeatureFlags';
 import { DISPLAY_CHPT13_STANDING_KEY_DATES } from '@/lib/hooks/UseFeatureFlags';
 import TestingUtilities from '@/lib/testing/testing-utilities';
@@ -252,19 +251,8 @@ describe('TrusteeAppointments', () => {
 
   describe('Appointment Grouping and Sorting', () => {
     // Detailed state/district/chapter/appointment-type ordering rules are unit-tested
-    // directly against sortByCourtLocation in court-utils.test.ts; these tests only
-    // confirm TrusteeAppointments wires appointments through that sort.
-    test('should call sortByCourtLocation with includeAppointmentDetails option', async () => {
-      const sortSpy = vi.spyOn(courtUtils, 'sortByCourtLocation');
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: mockAppointments });
-
-      renderComponent('trustee-123');
-
-      await waitFor(() => {
-        expect(sortSpy).toHaveBeenCalledWith(mockAppointments, { includeAppointmentDetails: true });
-      });
-    });
-
+    // directly against sortByCourtLocation in court-utils.test.ts; this only confirms
+    // TrusteeAppointments actually renders appointments in that sorted order.
     test('renders appointments sorted by court location', async () => {
       // No `state` is set on either appointment, so sortByCourtLocation falls
       // through to comparing courtName alphabetically: "Eastern" sorts before
@@ -444,37 +432,9 @@ describe('TrusteeAppointments', () => {
       expect(getAppointmentCards()).toHaveLength(0);
     });
 
-    test('a Chapter 11 Subchapter V Pool appointment is collapsed by default', async () => {
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch11SubVPoolActive] });
-
-      renderComponent('trustee-123');
-
-      await waitFor(() => {
-        expect(
-          screen.getByTestId(`appointment-accordion-header-${ch11SubVPoolActive.id}`),
-        ).toBeInTheDocument();
-      });
-      expect(
-        screen.getByTestId(`appointment-accordion-body-${ch11SubVPoolActive.id}`),
-      ).not.toBeVisible();
-    });
-
-    test('a Chapter 11 Subchapter V Out of Pool appointment is collapsed by default', async () => {
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({
-        data: [ch11SubVOutOfPoolResigned],
-      });
-
-      renderComponent('trustee-123');
-
-      await waitFor(() => {
-        expect(
-          screen.getByTestId(`appointment-accordion-header-${ch11SubVOutOfPoolResigned.id}`),
-        ).toBeInTheDocument();
-      });
-      expect(
-        screen.getByTestId(`appointment-accordion-body-${ch11SubVOutOfPoolResigned.id}`),
-      ).not.toBeVisible();
-    });
+    // Default-collapsed rendering and toggle mechanics are generic AppointmentAccordion/
+    // useAppointmentExpansion behavior, not specific to Chapter 11 Subchapter V -- already
+    // covered by AppointmentAccordion.test.tsx and useAppointmentExpansion.test.ts.
   });
 
   describe('Chapter 13 Standing accordion default-open/closed and persistence', () => {

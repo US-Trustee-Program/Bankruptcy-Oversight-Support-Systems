@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import userEvent from '@testing-library/user-event';
@@ -102,6 +102,58 @@ describe('Chapter13StandingTrusteePerformanceReportForm', () => {
     expect(screen.getByTestId('tpr-review-period-end')).toHaveValue('2025-09-30');
     expect(screen.getByTestId('tpr-frequency')).toHaveValue('ANNUAL');
     expect(screen.getByTestId('last-tpr-submitted')).toHaveValue('2025-10-01');
+  });
+
+  test('renders an empty form when the appointment has no existing key-dates document', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('tpr-review-period-start')).toHaveValue('');
+    });
+    expect(screen.getByTestId('tpr-review-period-end')).toHaveValue('');
+    expect(screen.getByTestId('last-tpr-submitted')).toHaveValue('');
+  });
+
+  test('shows a review-period error and disables Save when Start is after End', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: existingDocument });
+    renderComponent();
+    await screen.findByTestId('tpr-review-period-start');
+
+    fireEvent.change(screen.getByTestId('tpr-review-period-start'), {
+      target: { value: '2025-10-01' },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('tpr-review-period-error')).toHaveTextContent(
+        'TPR Review Period Start must be before TPR Review Period End.',
+      );
+    });
+    expect(screen.getByTestId('button-save-chapter13-standing-tpr-key-dates')).toBeDisabled();
+
+    fireEvent.change(screen.getByTestId('tpr-review-period-start'), {
+      target: { value: '2025-04-01' },
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('tpr-review-period-error')).not.toBeInTheDocument();
+    });
+  });
+
+  test('shows a TPR Due error and disables Save when Year Type is set without a TPR Due date', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({
+      data: { ...existingDocument, tprDue: undefined, tprDueYearType: undefined },
+    });
+    renderComponent();
+    await screen.findByTestId('tpr-review-period-start');
+
+    await userEvent.selectOptions(screen.getByTestId('tpr-due-year-type'), 'EVEN');
+
+    await waitFor(() => {
+      expect(screen.getByTestId('tpr-due-error')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('button-save-chapter13-standing-tpr-key-dates')).toBeDisabled();
   });
 
   test('Save button is disabled when only completion year is set', async () => {

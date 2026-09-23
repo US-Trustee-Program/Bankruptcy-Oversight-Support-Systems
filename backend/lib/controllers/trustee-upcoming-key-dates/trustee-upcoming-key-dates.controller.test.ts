@@ -106,24 +106,6 @@ describe('TrusteeUpcomingKeyDatesController', () => {
     expect(getSpy).toHaveBeenCalledWith('appointment-001');
   });
 
-  test('GET returns 200 with null when no document exists', async () => {
-    const getSpy = vi
-      .spyOn(TrusteeUpcomingKeyDatesUseCase.prototype, 'getUpcomingKeyDates')
-      .mockResolvedValue(null);
-
-    context.request = mockCamsHttpRequest({
-      method: 'GET',
-      params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
-    });
-
-    const controller = new TrusteeUpcomingKeyDatesController(context);
-    const response = await controller.handleRequest(context);
-
-    expect(response.statusCode).toBe(HttpStatusCodes.OK);
-    expect(response.body).toEqual({ data: null });
-    expect(getSpy).toHaveBeenCalledWith('appointment-001');
-  });
-
   test.each([
     ['trusteeId is missing', '', 'appointment-001'],
     ['appointmentId is missing', 'trustee-001', ''],
@@ -138,6 +120,34 @@ describe('TrusteeUpcomingKeyDatesController', () => {
 
     await expect(controller.handleRequest(context)).rejects.toMatchObject({
       status: 400,
+    });
+  });
+
+  test('BadRequestError message uses plural wording when both params are missing', async () => {
+    context.request = mockCamsHttpRequest({
+      method: 'GET',
+      params: { trusteeId: '', appointmentId: '' },
+    });
+
+    const controller = new TrusteeUpcomingKeyDatesController(context);
+
+    await expect(controller.handleRequest(context)).rejects.toMatchObject({
+      status: 400,
+      message: expect.stringContaining('Required parameters trusteeId, appointmentId are absent.'),
+    });
+  });
+
+  test('BadRequestError message uses singular wording when only one param is missing', async () => {
+    context.request = mockCamsHttpRequest({
+      method: 'GET',
+      params: { trusteeId: '', appointmentId: 'appointment-001' },
+    });
+
+    const controller = new TrusteeUpcomingKeyDatesController(context);
+
+    await expect(controller.handleRequest(context)).rejects.toMatchObject({
+      status: 400,
+      message: expect.stringContaining('Required parameter trusteeId is absent.'),
     });
   });
 

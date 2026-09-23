@@ -474,6 +474,25 @@ describe('validateTrusteeUpcomingKeyDates', () => {
     ).toEqual(VALID);
   });
 
+  test('returns VALID when only one side of tprReviewPeriod is a sentinel date (mixed sentinel/full-ISO)', () => {
+    // requireChronologicalOrder skips the check when *either* side starts with '1900-',
+    // not just when both do -- exercise each side independently.
+    expect(
+      validateTrusteeUpcomingKeyDates({
+        ...baseInput(),
+        tprReviewPeriodStart: '1900-09-15',
+        tprReviewPeriodEnd: '2025-01-01',
+      }),
+    ).toEqual(VALID);
+    expect(
+      validateTrusteeUpcomingKeyDates({
+        ...baseInput(),
+        tprReviewPeriodStart: '2025-01-01',
+        tprReviewPeriodEnd: '1900-03-31',
+      }),
+    ).toEqual(VALID);
+  });
+
   test('returns error on both fields when tprReviewPeriodStart is after tprReviewPeriodEnd', () => {
     const result = validateTrusteeUpcomingKeyDates({
       ...baseInput(),
@@ -791,6 +810,23 @@ describe('validateTrusteeUpcomingKeyDates', () => {
       [field]: 2025.5,
       [statusField]: 'Complete',
     });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.[field]?.reasons?.[0]).toBe(
+      `${label} must be a whole number between 1900 and 2100.`,
+    );
+  });
+
+  test.each([
+    ['ch13AuditCompletionYear' as const, 'Audit Completion Year'],
+    ['ch13TprCompletionYear' as const, 'TPR Completion Year'],
+  ])('returns error when %s is a non-number value (defensive type guard)', (field, label) => {
+    const statusField =
+      field === 'ch13AuditCompletionYear' ? 'ch13AuditCompletionStatus' : 'ch13TprCompletionStatus';
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      [field]: 'garbage',
+      [statusField]: 'Complete',
+    } as unknown as ReturnType<typeof baseInput>);
     expect(result.valid).toBeFalsy();
     expect(result.reasonMap?.[field]?.reasons?.[0]).toBe(
       `${label} must be a whole number between 1900 and 2100.`,

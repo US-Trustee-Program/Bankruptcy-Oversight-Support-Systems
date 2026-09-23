@@ -26,7 +26,7 @@ export type PastDateFieldKey =
 interface PastKeyDatesFieldConfigBase {
   /** Label shown on the read-only Past Key Dates display card. */
   displayLabel: string;
-  /** Label shown on the Edit Past Key Dates form. Differs from displayLabel for pastTprSubmission. */
+  /** Label shown on the Edit Past Key Dates form. Differs from displayLabel for pastAudit. */
   formLabel: string;
   hint?: string;
   /** Note shown below the value on the read-only Past Key Dates display card. */

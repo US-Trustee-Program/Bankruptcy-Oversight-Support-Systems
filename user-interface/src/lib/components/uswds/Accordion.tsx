@@ -22,8 +22,11 @@ export const AccordionGroup: FunctionComponent<AccordionGroupProps> = (props) =>
     setExpandedAccordion(accordionId);
   }
 
-  function collapseAccordion(accordionId: string) {
-    setExpandedAccordion((prev) => (prev === accordionId ? '' : prev));
+  // Always called with the id of the accordion that was expanded (Accordion only fires
+  // onCollapse for itself when toggling off its own controlled expandedId), so there's
+  // no need to guard against collapsing a different accordion than the one that's open.
+  function collapseAccordion() {
+    setExpandedAccordion('');
   }
 
   const renderChildren = () => {
@@ -38,7 +41,7 @@ export const AccordionGroup: FunctionComponent<AccordionGroupProps> = (props) =>
           if (childOnExpand) childOnExpand(id);
         },
         onCollapse: (id: string) => {
-          collapseAccordion(id);
+          collapseAccordion();
           if (childOnCollapse) childOnCollapse(id);
         },
         expandedId: expandedAccordion,

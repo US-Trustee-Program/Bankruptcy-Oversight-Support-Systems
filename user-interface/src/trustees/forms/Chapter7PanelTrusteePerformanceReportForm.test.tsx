@@ -368,6 +368,21 @@ describe('Chapter7PanelTrusteePerformanceReportForm', () => {
     });
   });
 
+  test('Save button is disabled and shows a message when TPR Due is cleared while a Year Type remains set', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+
+    renderComponent();
+
+    await waitFor(() => expect(screen.getByTestId('tpr-due-year-type')).toHaveValue('EVEN'));
+
+    fireEvent.change(document.getElementById('tpr-due-month')!, { target: { value: '' } });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('tpr-due-error')).toBeInTheDocument();
+      expect(screen.getByTestId('button-save-chapter7-panel-tpr')).toBeDisabled();
+    });
+  });
+
   test('cancel navigates back to the appointments page without saving', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
     const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
@@ -401,6 +416,28 @@ describe('Chapter7PanelTrusteePerformanceReportForm', () => {
       expect(screen.queryByTestId('tpr-review-period-start')).not.toBeInTheDocument();
       expect(screen.queryByTestId('tpr-review-period-end')).not.toBeInTheDocument();
       expect(screen.queryByTestId('tpr-frequency')).not.toBeInTheDocument();
+    });
+
+    test('Save button is disabled when the MonthDayRangeSelector reports an invalid (incomplete) period', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-chapter7-panel-tpr')).toBeInTheDocument();
+      });
+      expect(screen.getByTestId('button-save-chapter7-panel-tpr')).not.toBeDisabled();
+
+      fireEvent.change(document.getElementById('tpr-review-period-end-month')!, {
+        target: { value: '' },
+      });
+      fireEvent.change(document.getElementById('tpr-review-period-end-day')!, {
+        target: { value: '' },
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('button-save-chapter7-panel-tpr')).toBeDisabled();
+      });
     });
 
     test('save converts period fields to sentinel format and preserves tprFrequency', async () => {
