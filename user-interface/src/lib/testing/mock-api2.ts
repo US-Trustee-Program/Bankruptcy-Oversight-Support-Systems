@@ -2684,6 +2684,12 @@ async function getTrusteeHistory(_ignore: string): Promise<ResponseBody<TrusteeH
   };
 }
 
+// Mirrors the trustee-key-dates seed scenario: a populated Ch12 Case by Case
+// appointment and an empty Ch13 one, so the accordion variants can be exercised
+// against the fake API without standing up the database.
+const MOCK_CH12_CASE_BY_CASE_APPOINTMENT_ID = 'appointment-ch12-cbc';
+const MOCK_CH13_CASE_BY_CASE_APPOINTMENT_ID = 'appointment-ch13-cbc';
+
 async function getTrusteeAppointments(trusteeId: string) {
   return {
     data: [
@@ -2698,6 +2704,36 @@ async function getTrusteeAppointments(trusteeId: string) {
         status: 'active' as const,
         effectiveDate: '2023-01-01T00:00:00Z',
         updatedOn: '2023-01-01T00:00:00Z',
+        updatedBy: { id: 'user-1', name: 'Mock User' },
+      },
+      {
+        id: MOCK_CH12_CASE_BY_CASE_APPOINTMENT_ID,
+        trusteeId,
+        chapter: '12' as const,
+        appointmentType: 'case-by-case' as const,
+        courtId: '0208',
+        courtName: 'Southern District of New York',
+        courtDivisionName: 'Manhattan',
+        divisionCode: '081',
+        appointedDate: '2023-02-01T00:00:00Z',
+        status: 'active' as const,
+        effectiveDate: '2023-02-01T00:00:00Z',
+        updatedOn: '2023-02-01T00:00:00Z',
+        updatedBy: { id: 'user-1', name: 'Mock User' },
+      },
+      {
+        id: MOCK_CH13_CASE_BY_CASE_APPOINTMENT_ID,
+        trusteeId,
+        chapter: '13' as const,
+        appointmentType: 'case-by-case' as const,
+        courtId: '0208',
+        courtName: 'Southern District of New York',
+        courtDivisionName: 'Brooklyn',
+        divisionCode: '091',
+        appointedDate: '2022-05-01T00:00:00Z',
+        status: 'inactive' as const,
+        effectiveDate: '2024-01-01T00:00:00Z',
+        updatedOn: '2024-01-01T00:00:00Z',
         updatedBy: { id: 'user-1', name: 'Mock User' },
       },
     ],
@@ -3070,10 +3106,36 @@ async function getCaseTrusteeAppointment(
 }
 
 async function getUpcomingKeyDates(
-  _trusteeId: string,
-  _appointmentId: string,
+  trusteeId: string,
+  appointmentId: string,
 ): Promise<ResponseBody<TrusteeUpcomingKeyDates | null>> {
-  return { data: null };
+  // Only the Ch12 Case by Case appointment is populated; the Ch13 one is left
+  // empty so the "no date added" rendering stays reachable in the fake API.
+  if (appointmentId !== MOCK_CH12_CASE_BY_CASE_APPOINTMENT_ID) {
+    return { data: null };
+  }
+  return {
+    data: {
+      id: 'key-dates-ch12-cbc',
+      documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
+      trusteeId,
+      appointmentId,
+      tprReviewPeriodStart: '1900-04-01',
+      tprReviewPeriodEnd: '1900-03-31',
+      tprDue: '1900-09-15',
+      tprDueYearType: 'EVEN',
+      tprFrequency: 'ANNUAL',
+      lastTprSubmitted: '2025-09-10',
+      tprCompletionYear: 2025,
+      tprCompletionStatus: 'COMPLETE',
+      annualReportCompletionYear: 2025,
+      annualReportCompletionStatus: 'INCOMPLETE',
+      createdBy: { id: 'user-1', name: 'Mock User' },
+      createdOn: '2023-02-01T00:00:00Z',
+      updatedBy: { id: 'user-1', name: 'Mock User' },
+      updatedOn: '2023-02-01T00:00:00Z',
+    },
+  };
 }
 
 async function putUpcomingKeyDates(

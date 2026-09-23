@@ -91,6 +91,8 @@ describe('mergeKeyDatesInput', () => {
       lastCompensationStudy: '2020-01-19',
       bondIssuedDate: '2020-01-20',
       bondRenewalDate: '2020-01-21',
+      annualReportCompletionYear: null,
+      annualReportCompletionStatus: null,
     });
   });
 
