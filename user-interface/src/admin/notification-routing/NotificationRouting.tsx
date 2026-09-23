@@ -1,3 +1,4 @@
+import '@/lib/components/uswds/forms.scss';
 import { useEffect, useState } from 'react';
 import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
@@ -159,7 +160,10 @@ export function NotificationRouting() {
       {isLoaded && !loadError && (
         <>
           {apiError && (
-            <div className="usa-error-message margin-bottom-2" data-testid="routing-form-errors">
+            <div
+              className="cams-field-error-message margin-bottom-2"
+              data-testid="routing-form-errors"
+            >
               <p>{apiError}</p>
             </div>
           )}
@@ -208,7 +212,7 @@ export function NotificationRouting() {
                     />
                     {hasError && (
                       <span
-                        className="usa-error-message"
+                        className="cams-field-error-message"
                         id={errorId}
                         data-testid={errorId}
                         role="alert"

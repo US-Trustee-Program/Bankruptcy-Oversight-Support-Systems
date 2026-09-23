@@ -493,27 +493,25 @@ describe('TrusteeContactForm Tests', () => {
 
     renderWithProps({ cancelTo: '/trustees', trusteeId: 'abc', trustee: startingState });
 
-    expect(
-      document.getElementById('trustee-address1-input__error-message'),
-    ).not.toBeInTheDocument();
-    expect(document.getElementById('trustee-city-input__error-message')).not.toBeInTheDocument();
-    expect(document.getElementById('trustee-state-input__error-message')).not.toBeInTheDocument();
-    expect(document.getElementById('trustee-zip-input__error-message')).not.toBeInTheDocument();
+    expect(document.getElementById('trustee-address1-field-error-message')).not.toBeInTheDocument();
+    expect(document.getElementById('trustee-city-field-error-message')).not.toBeInTheDocument();
+    expect(document.getElementById('trustee-state-field-error-message')).not.toBeInTheDocument();
+    expect(document.getElementById('trustee-zip-field-error-message')).not.toBeInTheDocument();
 
     const addr2 = screen.getByTestId('trustee-address2');
     await userEvent.type(addr2, 'suite 101');
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
-    const address1Error = document.getElementById('trustee-address1-input__error-message');
+    const address1Error = document.getElementById('trustee-address1-field-error-message');
     expect(address1Error).toBeInTheDocument();
     expect(address1Error).toHaveTextContent(ADDRESS_REQUIRED_ERROR_REASON);
-    const cityError = document.getElementById('trustee-city-input__error-message');
+    const cityError = document.getElementById('trustee-city-field-error-message');
     expect(cityError).toBeInTheDocument();
     expect(cityError).toHaveTextContent(CITY_REQUIRED_ERROR_REASON);
-    const stateError = document.getElementById('trustee-state-input__error-message');
+    const stateError = document.getElementById('trustee-state-field-error-message');
     expect(stateError).toBeInTheDocument();
     expect(stateError).toHaveTextContent(STATE_REQUIRED_ERROR_REASON);
-    const zipError = document.getElementById('trustee-zip-input__error-message');
+    const zipError = document.getElementById('trustee-zip-field-error-message');
     expect(zipError).toBeInTheDocument();
     expect(zipError).toHaveTextContent(ZIP_CODE_REQUIRED_ERROR_REASON);
 
@@ -522,12 +520,12 @@ describe('TrusteeContactForm Tests', () => {
 
     await waitFor(() => {
       expect(
-        document.getElementById('trustee-address1-input__error-message'),
+        document.getElementById('trustee-address1-field-error-message'),
       ).not.toBeInTheDocument();
     });
-    expect(document.getElementById('trustee-city-input__error-message')).not.toBeInTheDocument();
-    expect(document.getElementById('trustee-state-input__error-message')).not.toBeInTheDocument();
-    expect(document.getElementById('trustee-zip-input__error-message')).not.toBeInTheDocument();
+    expect(document.getElementById('trustee-city-field-error-message')).not.toBeInTheDocument();
+    expect(document.getElementById('trustee-state-field-error-message')).not.toBeInTheDocument();
+    expect(document.getElementById('trustee-zip-field-error-message')).not.toBeInTheDocument();
   });
 
   test('should display partial address alert on save when address is incomplete', async () => {
@@ -558,41 +556,39 @@ describe('TrusteeContactForm Tests', () => {
 
     // Per-field validation doesn't show group-level errors immediately
     // Address field is optional, so no error appears until submit
-    expect(
-      document.getElementById('trustee-address1-input__error-message'),
-    ).not.toBeInTheDocument();
+    expect(document.getElementById('trustee-address1-field-error-message')).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     // On submit, full form validation runs and shows partial address error
     expect(screen.queryByText(PARTIAL_ADDRESS_ERROR_REASON)).toBeInTheDocument();
-    const address1Error = document.getElementById('trustee-address1-input__error-message');
+    const address1Error = document.getElementById('trustee-address1-field-error-message');
     expect(address1Error).toBeInTheDocument();
     expect(address1Error).toHaveTextContent(ADDRESS_REQUIRED_ERROR_REASON);
 
     await userEvent.clear(city);
 
     // Per-field validation doesn't show group-level errors immediately
-    expect(document.getElementById('trustee-city-input__error-message')).not.toBeInTheDocument();
+    expect(document.getElementById('trustee-city-field-error-message')).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
-    const cityError = document.getElementById('trustee-city-input__error-message');
+    const cityError = document.getElementById('trustee-city-field-error-message');
     expect(cityError).toBeInTheDocument();
     expect(cityError).toHaveTextContent(CITY_REQUIRED_ERROR_REASON);
-    expect(document.getElementById('trustee-zip-input__error-message')).not.toBeInTheDocument();
+    expect(document.getElementById('trustee-zip-field-error-message')).not.toBeInTheDocument();
 
     await userEvent.clear(zip);
 
     // Per-field validation doesn't show group-level errors immediately
-    expect(document.getElementById('trustee-zip-input__error-message')).not.toBeInTheDocument();
+    expect(document.getElementById('trustee-zip-field-error-message')).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
-    const zipError = document.getElementById('trustee-zip-input__error-message');
+    const zipError = document.getElementById('trustee-zip-field-error-message');
     expect(zipError).toBeInTheDocument();
     expect(zipError).toHaveTextContent(ZIP_CODE_REQUIRED_ERROR_REASON);
-    expect(document.getElementById('trustee-state-input__error-message')).not.toBeInTheDocument();
+    expect(document.getElementById('trustee-state-field-error-message')).not.toBeInTheDocument();
 
     await TestingUtilities.clearComboBoxSelection('trustee-state');
 
@@ -601,12 +597,10 @@ describe('TrusteeContactForm Tests', () => {
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     // Now that all address fields are empty (valid state), errors should clear
-    expect(
-      document.getElementById('trustee-address1-input__error-message'),
-    ).not.toBeInTheDocument();
-    expect(document.getElementById('trustee-city-input__error-message')).not.toBeInTheDocument();
-    expect(document.getElementById('trustee-state-input__error-message')).not.toBeInTheDocument();
-    expect(document.getElementById('trustee-zip-input__error-message')).not.toBeInTheDocument();
+    expect(document.getElementById('trustee-address1-field-error-message')).not.toBeInTheDocument();
+    expect(document.getElementById('trustee-city-field-error-message')).not.toBeInTheDocument();
+    expect(document.getElementById('trustee-state-field-error-message')).not.toBeInTheDocument();
+    expect(document.getElementById('trustee-zip-field-error-message')).not.toBeInTheDocument();
   });
 
   test('edit internal should send null for optional fields when deleted', async () => {
@@ -679,7 +673,7 @@ describe('TrusteeContactForm Tests', () => {
     await userEvent.type(addr1, 'x');
 
     await waitFor(() => {
-      const errorElement = document.getElementById('trustee-address1-input__error-message');
+      const errorElement = document.getElementById('trustee-address1-field-error-message');
       expect(errorElement).toBeInTheDocument();
       expect(errorElement).toHaveTextContent('bad');
     });
@@ -689,7 +683,7 @@ describe('TrusteeContactForm Tests', () => {
 
     await waitFor(() => {
       expect(
-        document.getElementById('trustee-address1-input__error-message'),
+        document.getElementById('trustee-address1-field-error-message'),
       ).not.toBeInTheDocument();
     });
 
@@ -760,10 +754,10 @@ describe('TrusteeContactForm Tests', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
-    const address2Error = document.getElementById('trustee-address2-input__error-message');
+    const address2Error = document.getElementById('trustee-address2-field-error-message');
     expect(address2Error).toBeInTheDocument();
     expect(address2Error).toHaveTextContent('addr2 error');
-    const emailError = document.getElementById('trustee-email-input__error-message');
+    const emailError = document.getElementById('trustee-email-field-error-message');
     expect(emailError).toBeInTheDocument();
     expect(emailError).toHaveTextContent('email error');
   });
