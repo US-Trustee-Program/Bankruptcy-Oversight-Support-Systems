@@ -22,11 +22,110 @@ import { MongoClient } from 'mongodb';
 import { createRequire } from 'module';
 import { buildSqlConfig } from './db_scripts/lib/sql-config.js';
 
+// Guards against running the script as a side effect of import (e.g. from unseed.test.ts),
+// which would otherwise attempt real Mongo/SQL connections and call process.exit during tests.
+const isMainModule =
+  process.argv[1] !== undefined && import.meta.url === `file://${process.argv[1]}`;
+
 const _require = createRequire(import.meta.url);
 
 const sql = _require('mssql') as typeof import('mssql');
 
 const MODULE_NAME = 'UNSEED';
+
+// ─── Throttle retry ──────────────────────────────────────────────────────────
+
+const THROTTLE_ERROR_CODE = 16500;
+const MAX_THROTTLE_RETRIES = 8;
+const BASE_BACKOFF_MS = 500;
+const MAX_BACKOFF_MS = 15_000;
+
+// Bounds each find+delete request to this many documents at a time, so an unindexed
+// cross-partition scan can't accumulate enough RU cost in one request to blow the
+// account's provisioned RU/s and trip throttling (see deleteInChunks below).
+const DELETE_BATCH_SIZE = 200;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Cosmos DB's Mongo-API compatibility layer signals RU throttling via error code 16500
+// (~HTTP 429), optionally with a RetryAfterMs hint. The raw MongoDB driver has no built-in
+// retry for this error class, so a single throttled request aborts the whole script.
+function isThrottlingError(error: unknown): boolean {
+  if (!(error instanceof Object)) return false;
+  const err = error as Record<string, unknown>;
+  return err['code'] === THROTTLE_ERROR_CODE || err['code'] === String(THROTTLE_ERROR_CODE);
+}
+
+function getRetryAfterMs(error: unknown): number | undefined {
+  if (!(error instanceof Object)) return undefined;
+  const retryAfterMs = (error as Record<string, unknown>)['RetryAfterMs'];
+  return typeof retryAfterMs === 'number' && retryAfterMs > 0 ? retryAfterMs : undefined;
+}
+
+// Retries an operation on Cosmos throttling (error 16500) with exponential backoff,
+// honoring the server's RetryAfterMs hint when present instead of the computed backoff.
+export async function withThrottleRetry<T>(operation: () => Promise<T>, label: string): Promise<T> {
+  let attempt = 0;
+  for (;;) {
+    try {
+      return await operation();
+    } catch (error) {
+      if (!isThrottlingError(error) || attempt >= MAX_THROTTLE_RETRIES) {
+        throw error;
+      }
+      const delayMs =
+        getRetryAfterMs(error) ?? Math.min(BASE_BACKOFF_MS * 2 ** attempt, MAX_BACKOFF_MS);
+      attempt += 1;
+      console.log(
+        `[${MODULE_NAME}] Throttled (16500) on ${label}, retrying in ${delayMs}ms (attempt ${attempt}/${MAX_THROTTLE_RETRIES})`,
+      );
+      await sleep(delayMs);
+    }
+  }
+}
+
+// Minimal shape needed from a MongoDB collection to chunk-delete by filter. Kept narrow
+// (rather than importing mongodb's Collection type) so tests can pass simple fakes.
+export interface ThrottleRetryableCollection {
+  find(
+    filter: Record<string, unknown>,
+    options: { projection: Record<string, unknown> },
+  ): { limit(n: number): { toArray(): Promise<{ _id: unknown }[]> } };
+  deleteMany(filter: Record<string, unknown>): Promise<{ deletedCount: number }>;
+}
+
+// Deletes documents matching `filter` in bounded batches instead of one unindexed
+// cross-partition deleteMany. Each iteration finds up to DELETE_BATCH_SIZE matching _ids
+// (bounding scan cost) and deletes just that batch by _id (an indexed, cheap delete),
+// making forward progress even if a given batch has to retry after throttling.
+export async function deleteInChunks(
+  collection: ThrottleRetryableCollection,
+  filter: Record<string, unknown>,
+  label: string,
+): Promise<number> {
+  let totalDeleted = 0;
+  for (;;) {
+    const batch = await withThrottleRetry(
+      () =>
+        collection
+          .find(filter, { projection: { _id: 1 } })
+          .limit(DELETE_BATCH_SIZE)
+          .toArray(),
+      `${label} (find batch)`,
+    );
+    if (batch.length === 0) break;
+
+    const ids = batch.map((doc) => doc._id);
+    const result = await withThrottleRetry(
+      () => collection.deleteMany({ _id: { $in: ids } }),
+      `${label} (delete batch)`,
+    );
+    totalDeleted += result.deletedCount;
+  }
+  return totalDeleted;
+}
 
 // ─── Cosmos ──────────────────────────────────────────────────────────────────
 
@@ -65,13 +164,14 @@ async function unseedCosmos(): Promise<void> {
   try {
     await client.connect();
 
-    const variationResult = await client
-      .db(TRUSTEE_VARIATION_COLLECTION.db)
-      .collection(TRUSTEE_VARIATION_COLLECTION.name)
-      .deleteMany({});
-    if (variationResult.deletedCount > 0) {
+    const variationDeleted = await deleteInChunks(
+      client.db(TRUSTEE_VARIATION_COLLECTION.db).collection(TRUSTEE_VARIATION_COLLECTION.name),
+      {},
+      TRUSTEE_VARIATION_COLLECTION.name,
+    );
+    if (variationDeleted > 0) {
       console.log(
-        `[${MODULE_NAME}] Deleted ${variationResult.deletedCount} doc(s) from ${TRUSTEE_VARIATION_COLLECTION.name}`,
+        `[${MODULE_NAME}] Deleted ${variationDeleted} doc(s) from ${TRUSTEE_VARIATION_COLLECTION.name}`,
       );
     }
 
@@ -87,12 +187,10 @@ async function unseedCosmos(): Promise<void> {
       if (TRUSTEE_MATCH_POLLUTED_COLLECTIONS.has(collectionName)) {
         conditions.push({ trusteeId: { $regex: '^seed-trustee-match-' } });
       }
-      const result = await collection.deleteMany({ $or: conditions });
+      const deletedCount = await deleteInChunks(collection, { $or: conditions }, collectionName);
 
-      if (result.deletedCount > 0) {
-        console.log(
-          `[${MODULE_NAME}] Deleted ${result.deletedCount} doc(s) from ${collectionName}`,
-        );
+      if (deletedCount > 0) {
+        console.log(`[${MODULE_NAME}] Deleted ${deletedCount} doc(s) from ${collectionName}`);
       }
     }
   } finally {
@@ -182,4 +280,6 @@ async function main() {
   }
 }
 
-main();
+if (isMainModule) {
+  main();
+}
