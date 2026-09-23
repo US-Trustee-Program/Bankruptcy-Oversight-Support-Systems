@@ -125,6 +125,26 @@ describe('Select', () => {
     expect(selectEl).toHaveAttribute('aria-describedby', 'select-1-field-error-message');
   });
 
+  test('includes an externally rendered error id in aria-describedby via ariaDescribedBy', () => {
+    render(
+      <Select
+        id="select-1"
+        options={OPTIONS}
+        ariaDescription="A hint"
+        hasError
+        ariaDescribedBy="shared-pair-error"
+      />,
+    );
+
+    const selectEl = screen.getByTestId('select-1');
+    expect(selectEl).toHaveAttribute('aria-describedby', 'select-1-hint shared-pair-error');
+    expect(selectEl).toHaveAttribute('aria-invalid', 'true');
+
+    // The externally-referenced id isn't rendered by Select itself -- only the
+    // reference is added, so the shared error text isn't duplicated here.
+    expect(document.getElementById('select-1-field-error-message')).not.toHaveTextContent(/.+/);
+  });
+
   test('hasError flags the select as invalid without rendering its own error text', () => {
     render(<Select id="select-1" options={OPTIONS} hasError />);
 

@@ -158,6 +158,7 @@ export default function Chapter7PanelAuditFieldExamForm() {
     form.auditCompletionStatus,
     'Field Exam/Audit Completion Status',
   );
+  const completionPairErrorId = 'audit-completion-status-error';
 
   return (
     <div className="edit-upcoming-key-dates" data-testid="edit-chapter7-panel-audit-field-exam">
@@ -245,6 +246,7 @@ export default function Chapter7PanelAuditFieldExamForm() {
             label="Year"
             compactLabel
             hasError={!!completionPairError}
+            ariaDescribedBy={completionPairError ? completionPairErrorId : undefined}
             placeholder="- Select -"
             options={FISCAL_YEAR_OPTIONS.map((year) => ({
               value: String(year),
@@ -264,6 +266,7 @@ export default function Chapter7PanelAuditFieldExamForm() {
             label="Status"
             compactLabel
             hasError={!!completionPairError}
+            ariaDescribedBy={completionPairError ? completionPairErrorId : undefined}
             placeholder="- Select -"
             options={[
               { value: 'CLOSED', label: 'Complete' },
@@ -279,7 +282,11 @@ export default function Chapter7PanelAuditFieldExamForm() {
           />
         </div>
         {completionPairError && (
-          <span className="cams-field-error-message" data-testid="audit-completion-status-error">
+          <span
+            className="cams-field-error-message"
+            id={completionPairErrorId}
+            data-testid={completionPairErrorId}
+          >
             {completionPairError}
           </span>
         )}

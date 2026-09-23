@@ -186,6 +186,7 @@ export default function TrusteePerformanceReportForm(
     ? validateTprReviewPeriodOrder(form.tprReviewPeriodStart, form.tprReviewPeriodEnd)
     : null;
   const tprDuePairError = validateTprDuePair(form.tprDue, form.tprDueYearType);
+  const tprDuePairErrorId = 'tpr-due-error';
   const hasAnyDateError = tprDisplayUpdates
     ? hasErrorAmong(['tpr-review-period-start', 'tpr-review-period-end', 'last-tpr-submitted'])
     : hasErrorAmong(['last-tpr-submitted']);
@@ -194,6 +195,7 @@ export default function TrusteePerformanceReportForm(
     form.tprCompletionStatus,
     'Trustee Performance Review Completion Status',
   );
+  const completionPairErrorId = 'tpr-completion-status-error';
   const isSaveDisabled =
     isSaving ||
     loadFailed ||
@@ -308,6 +310,7 @@ export default function TrusteePerformanceReportForm(
             label="Year Type"
             compactLabel
             className="year-type-selector"
+            ariaDescribedBy={tprDuePairError ? tprDuePairErrorId : undefined}
             placeholder="- Select -"
             options={[
               { value: 'EVEN', label: 'EVEN' },
@@ -323,7 +326,11 @@ export default function TrusteePerformanceReportForm(
           />
         </div>
         {tprDuePairError && (
-          <span className="cams-field-error-message" data-testid="tpr-due-error">
+          <span
+            className="cams-field-error-message"
+            id={tprDuePairErrorId}
+            data-testid={tprDuePairErrorId}
+          >
             {tprDuePairError}
           </span>
         )}
@@ -346,6 +353,7 @@ export default function TrusteePerformanceReportForm(
             label="Year"
             compactLabel
             hasError={!!completionPairError}
+            ariaDescribedBy={completionPairError ? completionPairErrorId : undefined}
             placeholder="- Select -"
             options={FISCAL_YEAR_OPTIONS.map((year) => ({
               value: String(year),
@@ -365,6 +373,7 @@ export default function TrusteePerformanceReportForm(
             label="Status"
             compactLabel
             hasError={!!completionPairError}
+            ariaDescribedBy={completionPairError ? completionPairErrorId : undefined}
             placeholder="- Select -"
             options={[
               { value: 'COMPLETE', label: 'Complete' },
@@ -380,7 +389,11 @@ export default function TrusteePerformanceReportForm(
           />
         </div>
         {completionPairError && (
-          <div className="cams-field-error-message" data-testid="tpr-completion-status-error">
+          <div
+            className="cams-field-error-message"
+            id={completionPairErrorId}
+            data-testid={completionPairErrorId}
+          >
             {completionPairError}
           </div>
         )}

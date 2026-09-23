@@ -758,6 +758,11 @@ export default function UpcomingKeyDatesForm({
                 label="Year Type"
                 compactLabel
                 hasError={!!errors.tprDueYearType || !!tprDueYearTypeBlurError}
+                ariaDescribedBy={
+                  tprDueBlurError || errors.tprDue || errors.tprDueYearType
+                    ? 'tpr-due-error'
+                    : undefined
+                }
                 placeholder="- Select -"
                 options={[
                   { value: 'EVEN', label: 'EVEN' },
@@ -769,7 +774,11 @@ export default function UpcomingKeyDatesForm({
               />
             </div>
             {(tprDueBlurError || errors.tprDue || errors.tprDueYearType) && (
-              <span className="cams-field-error-message" data-testid="tpr-due-error">
+              <span
+                className="cams-field-error-message"
+                id="tpr-due-error"
+                data-testid="tpr-due-error"
+              >
                 {tprDueBlurError || errors.tprDue || errors.tprDueYearType}
               </span>
             )}

@@ -242,6 +242,7 @@ export default function Chapter7PanelTrusteeInterimReportForm() {
     form.tirCompletionStatus,
     'Trustee Interim Report Completion Status',
   );
+  const completionPairErrorId = 'tir-completion-status-error';
 
   return (
     <div className="edit-upcoming-key-dates" data-testid="edit-chapter7-panel-tir">
@@ -297,6 +298,7 @@ export default function Chapter7PanelTrusteeInterimReportForm() {
             label="Year"
             compactLabel
             hasError={!!completionPairError}
+            ariaDescribedBy={completionPairError ? completionPairErrorId : undefined}
             placeholder="- Select -"
             options={FISCAL_YEAR_OPTIONS.map((year) => ({
               value: String(year),
@@ -316,6 +318,7 @@ export default function Chapter7PanelTrusteeInterimReportForm() {
             label="Status"
             compactLabel
             hasError={!!completionPairError}
+            ariaDescribedBy={completionPairError ? completionPairErrorId : undefined}
             placeholder="- Select -"
             options={[
               { value: 'COMPLETE', label: 'Complete' },
@@ -331,7 +334,11 @@ export default function Chapter7PanelTrusteeInterimReportForm() {
           />
         </div>
         {completionPairError && (
-          <span className="cams-field-error-message" data-testid="tir-completion-status-error">
+          <span
+            className="cams-field-error-message"
+            id={completionPairErrorId}
+            data-testid={completionPairErrorId}
+          >
             {completionPairError}
           </span>
         )}

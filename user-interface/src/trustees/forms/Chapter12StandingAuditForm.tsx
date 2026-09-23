@@ -135,6 +135,7 @@ export default function Chapter12StandingAuditForm() {
     form.auditCompletionStatus,
     'Audit Completion Status',
   );
+  const completionPairErrorId = 'audit-completion-status-error';
 
   return (
     <div className="edit-upcoming-key-dates" data-testid="edit-chapter12-standing-audit">
@@ -170,6 +171,7 @@ export default function Chapter12StandingAuditForm() {
             label="Year"
             compactLabel
             hasError={!!completionPairError}
+            ariaDescribedBy={completionPairError ? completionPairErrorId : undefined}
             placeholder="- Select -"
             options={FISCAL_YEAR_OPTIONS.map((year) => ({
               value: String(year),
@@ -189,6 +191,7 @@ export default function Chapter12StandingAuditForm() {
             label="Status"
             compactLabel
             hasError={!!completionPairError}
+            ariaDescribedBy={completionPairError ? completionPairErrorId : undefined}
             placeholder="- Select -"
             options={[
               { value: 'CLOSED', label: 'Closed' },
@@ -204,7 +207,11 @@ export default function Chapter12StandingAuditForm() {
           />
         </div>
         {completionPairError && (
-          <div className="cams-field-error-message" data-testid="audit-completion-status-error">
+          <div
+            className="cams-field-error-message"
+            id={completionPairErrorId}
+            data-testid={completionPairErrorId}
+          >
             {completionPairError}
           </div>
         )}

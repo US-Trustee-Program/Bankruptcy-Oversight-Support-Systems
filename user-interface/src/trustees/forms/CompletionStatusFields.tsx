@@ -27,6 +27,7 @@ export default function CompletionStatusFields(props: Readonly<CompletionStatusF
   // The Chapter 7 Panel forms show this inline as the pair is edited rather
   // than waiting for a save to fail.
   const pairError = validateCompletionPairPresence(value.year, value.status, errorLabel);
+  const pairErrorId = `${idPrefix}-error`;
 
   return (
     <fieldset className="usa-fieldset completion-status-fields">
@@ -37,6 +38,7 @@ export default function CompletionStatusFields(props: Readonly<CompletionStatusF
           label="Year"
           compactLabel
           hasError={!!pairError}
+          ariaDescribedBy={pairError ? pairErrorId : undefined}
           placeholder="- Select -"
           options={yearOptions.map((year) => ({ value: String(year), label: String(year) }))}
           value={value.year === '' ? '' : String(value.year)}
@@ -49,6 +51,7 @@ export default function CompletionStatusFields(props: Readonly<CompletionStatusF
           label="Status"
           compactLabel
           hasError={!!pairError}
+          ariaDescribedBy={pairError ? pairErrorId : undefined}
           placeholder="- Select -"
           options={[
             { value: 'COMPLETE', label: 'Complete' },
@@ -61,7 +64,11 @@ export default function CompletionStatusFields(props: Readonly<CompletionStatusF
         />
       </div>
       {pairError && (
-        <span className="cams-field-error-message" data-testid={`${idPrefix}-error`}>
+        <span
+          className="cams-field-error-message"
+          id={pairErrorId}
+          data-testid={`${idPrefix}-error`}
+        >
           {pairError}
         </span>
       )}

@@ -27,6 +27,10 @@ type SelectProps = Omit<JSX.IntrinsicElements['select'], 'value'> & {
   // by a parent (e.g. a Year/Status pair with one combined message below both).
   // Mirrors MonthDaySelector's `hasError` prop for the same use case.
   hasError?: boolean;
+  // Id of an externally rendered error message (e.g. the parent's shared
+  // Year/Status pair error) to include in aria-describedby, so assistive tech
+  // announces it even though Select isn't the one rendering that text.
+  ariaDescribedBy?: string;
   // Renders the label in the lighter `usa-hint` style instead of `usa-label`,
   // for sub-fields grouped under a shared heading (e.g. a Year/Status pair).
   compactLabel?: boolean;
@@ -40,6 +44,7 @@ function Select_(props: SelectProps, ref: React.Ref<SelectRef>) {
     ariaDescription,
     errorMessage,
     hasError,
+    ariaDescribedBy,
     required,
     className,
     compactLabel,
@@ -111,6 +116,9 @@ function Select_(props: SelectProps, ref: React.Ref<SelectRef>) {
     }
     if (errorMessage) {
       ids.push(errorId);
+    }
+    if (ariaDescribedBy) {
+      ids.push(ariaDescribedBy);
     }
     return ids.length > 0 ? ids.join(' ') : undefined;
   }
