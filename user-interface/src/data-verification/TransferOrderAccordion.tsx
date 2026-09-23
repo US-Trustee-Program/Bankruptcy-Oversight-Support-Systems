@@ -19,19 +19,31 @@ export interface TransferOrderAccordionProps {
   regionsMap: Map<string, string>;
   onOrderUpdate: (alertDetails: AlertDetails, order?: TransferOrder) => void;
   onExpand?: (id: string) => void;
+  onCollapse?: (id: string) => void;
   expandedId?: string;
   fieldHeaders: string[];
   hidden?: boolean;
 }
 
 export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
-  const { order, hidden, statusType, taskType, courts, expandedId, onExpand, fieldHeaders } = props;
+  const {
+    order,
+    hidden,
+    statusType,
+    taskType,
+    courts,
+    expandedId,
+    onExpand,
+    onCollapse,
+    fieldHeaders,
+  } = props;
   const [expanded, setExpanded] = useState<boolean>(false);
 
   const pendingTransferOrderRef = useRef<PendingTransferOrderImperative>(null);
 
-  function onCollapse() {
+  function handleOnCollapse(collapsedId: string) {
     pendingTransferOrderRef?.current?.cancel();
+    if (onCollapse) onCollapse(collapsedId);
   }
 
   function handleOnExpand(expandedId: string) {
@@ -50,7 +62,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
       id={`order-list-${order.id}`}
       expandedId={expandedId}
       onExpand={handleOnExpand}
-      onCollapse={onCollapse}
+      onCollapse={handleOnCollapse}
       hidden={hidden}
     >
       <section

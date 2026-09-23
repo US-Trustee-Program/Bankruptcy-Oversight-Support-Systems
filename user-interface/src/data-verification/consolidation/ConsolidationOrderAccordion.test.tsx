@@ -15,6 +15,7 @@ import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { FeatureFlagSet } from '@common/feature-flags';
 import Api2 from '@/lib/models/api2';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
+import { AccordionGroup } from '@/lib/components/uswds/Accordion';
 
 const userEvent = TestingUtilities.setupUserEvent();
 
@@ -663,5 +664,31 @@ describe('ConsolidationOrderAccordion tests', () => {
       }
       expect(approveButton).toBeEnabled();
     });
+  });
+
+  test('toggles closed when the header is clicked a second time inside an AccordionGroup', async () => {
+    render(
+      <BrowserRouter>
+        <AccordionGroup>
+          <ConsolidationOrderAccordion
+            order={order}
+            courts={offices}
+            taskType={taskType}
+            statusType={orderStatusType}
+            onOrderUpdate={onOrderUpdateMockFunc}
+            regionsMap={regionMap}
+            fieldHeaders={accordionFieldHeaders}
+          />
+        </AccordionGroup>
+      </BrowserRouter>,
+    );
+
+    const heading = findAccordionHeading(order.id!);
+
+    await userEvent.click(heading);
+    findAccordionContent(order.id!, true);
+
+    await userEvent.click(heading);
+    findAccordionContent(order.id!, false);
   });
 });

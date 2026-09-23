@@ -24,6 +24,7 @@ export interface ConsolidationOrderAccordionProps {
   regionsMap: Map<string, string>;
   onOrderUpdate: OnOrderUpdate;
   onExpand?: (id: string) => void;
+  onCollapse?: (id: string) => void;
   expandedId?: string;
   fieldHeaders: string[];
   hidden?: boolean;
@@ -37,6 +38,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     consolidationControls,
     props.onOrderUpdate,
     props.onExpand,
+    props.onCollapse,
   );
 
   const { hidden, statusType, taskType, expandedId, fieldHeaders } = props;
@@ -86,6 +88,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     handleConfirmAction: useCase.handleConfirmAction,
     handleIncludeCase: useCase.handleIncludeCase,
     handleMarkLeadCase: useCase.handleMarkLeadCase,
+    handleOnCollapse: useCase.handleOnCollapse,
     handleOnExpand: useCase.handleOnExpand,
     handleRejectButtonClick: useCase.handleRejectButtonClick,
     handleSelectConsolidationType: useCase.handleSelectConsolidationType,

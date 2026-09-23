@@ -9,6 +9,7 @@ import MockData from '@common/cams/test-utilities/mock-data';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { TransferOrder } from '@common/cams/orders';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
+import { AccordionGroup } from '@/lib/components/uswds/Accordion';
 
 function findAccordionHeading(id: string) {
   const heading = screen.getByTestId(`accordion-heading-${id}`);
@@ -207,5 +208,31 @@ describe('TransferOrderAccordion', () => {
         `Transferred ${getCaseNumber(mockedApprovedOrder.caseId)} from ${mockedApprovedOrder.courtName} (${mockedApprovedOrder.courtDivisionName}) to ${getCaseNumber(mockedApprovedOrder.newCase?.caseId)} and court ${mockedApprovedOrder.newCase?.courtName} (${mockedApprovedOrder.newCase?.courtDivisionName}).`,
       );
     });
+  });
+
+  test('toggles closed when the header is clicked a second time inside an AccordionGroup', async () => {
+    render(
+      <BrowserRouter>
+        <AccordionGroup>
+          <TransferOrderAccordion
+            order={order}
+            courts={testOffices}
+            taskType={taskType}
+            statusType={orderStatusType}
+            onOrderUpdate={() => {}}
+            regionsMap={regionMap}
+            fieldHeaders={accordionFieldHeaders}
+          />
+        </AccordionGroup>
+      </BrowserRouter>,
+    );
+
+    const heading = findAccordionHeading(order.id);
+
+    await userEvent.click(heading);
+    findAccordionContent(order.id, true);
+
+    await userEvent.click(heading);
+    findAccordionContent(order.id, false);
   });
 });

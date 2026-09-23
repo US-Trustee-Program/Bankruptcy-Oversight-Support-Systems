@@ -21,6 +21,7 @@ describe('Consolidation UseCase tests', () => {
   let controls: ConsolidationControls;
   let useCase: ConsolidationsUseCase;
   const onExpand = vi.fn();
+  const onCollapse = vi.fn();
 
   const mockAddCase = MockData.getConsolidatedOrderCase();
   const mockOrder = MockData.getConsolidationOrder();
@@ -60,12 +61,19 @@ describe('Consolidation UseCase tests', () => {
       fieldHeaders: accordionFieldHeaders,
       onOrderUpdate: onOrderUpdateSpy,
       onExpand,
+      onCollapse,
     };
 
     store = new ConsolidationStoreMock(props, []);
     controls = useConsolidationControlsMock();
 
-    useCase = consolidationUseCase(store, controls, props.onOrderUpdate, props.onExpand);
+    useCase = consolidationUseCase(
+      store,
+      controls,
+      props.onOrderUpdate,
+      props.onExpand,
+      props.onCollapse,
+    );
   };
 
   beforeEach(async () => {
@@ -93,6 +101,16 @@ describe('Consolidation UseCase tests', () => {
     expectClearLeadCase();
     expect(clearAllCheckBoxesSpy).toHaveBeenCalled();
     expect(unsetConsolidationTypeSpy).toHaveBeenCalled();
+  });
+
+  test('handleOnCollapse should clear inputs and notify the onCollapse callback', () => {
+    setupAddCase();
+    store.setFoundValidCaseNumber(true);
+
+    useCase.handleOnCollapse(`order-list-${mockOrder.id}`);
+
+    expectClearLeadCase();
+    expect(onCollapse).toHaveBeenCalledWith(`order-list-${mockOrder.id}`);
   });
 
   test('should call approveConsolidation when approve button is clicked', () => {
