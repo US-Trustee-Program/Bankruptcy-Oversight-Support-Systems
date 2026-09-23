@@ -2,7 +2,6 @@ import * as natural from 'natural';
 import { getNameVariations } from 'name-match/src/name-normalizer';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { Trustee } from '@common/cams/trustees';
-import { DxtrTrusteeParty } from '@common/cams/dataflow-events';
 import { Address, PhoneNumber } from '@common/cams/contact';
 import factory from '../../factory';
 import {
@@ -177,32 +176,33 @@ function pipelineNameScore(
 /**
  * ACMS-pipeline-only reimplementation of calculatePhoneScore - fully self-contained (no shared
  * helper dependencies at all), so this is a plain copy rather than an orchestration of atomic
- * pieces. Never calls calculatePhoneScore directly, for the same DXTR-isolation reason
- * pipelineNameScore exists (see its doc comment).
+ * pieces. Never calls calculatePhoneScore directly - this pipeline forked from the DXTR path so
+ * ACMS-specific tuning can move independently (see pipelineNameScore's own doc comment).
  */
 function pipelinePhoneScore(
-  dxtrPhone: string | undefined,
+  sourcePhone: string | undefined,
   camsPhone: PhoneNumber | undefined,
 ): number | null {
-  const dxtrDigits = (dxtrPhone ?? '').replace(/\D/g, '');
+  const sourceDigits = (sourcePhone ?? '').replace(/\D/g, '');
   const camsDigits = (camsPhone?.number ?? '').replace(/\D/g, '');
 
-  if (dxtrDigits.length < 10 || camsDigits.length < 10) return null;
+  if (sourceDigits.length < 10 || camsDigits.length < 10) return null;
 
-  return dxtrDigits.slice(-10) === camsDigits.slice(-10) ? 100 : 0;
+  return sourceDigits.slice(-10) === camsDigits.slice(-10) ? 100 : 0;
 }
 
 /**
  * ACMS-pipeline-only orchestration of calculateAddressScore's exact scoring logic, built from the
  * same atomic, exported pieces (parseCityStateZip, normalizeAddressLine, padSingleDigitNumericToken,
  * calculateNumericTokenScore, jaccardSimilarity, generateBigrams) rather than calling
- * calculateAddressScore directly - same DXTR-isolation reason as pipelineNameScore.
+ * calculateAddressScore directly - this pipeline forked from the DXTR path so ACMS-specific tuning
+ * can move independently, same reason as pipelineNameScore.
  */
 function pipelineAddressScore(
-  dxtrAddress: DxtrTrusteeParty['legacy'],
+  sourceLegacy: NormalizedTrustee['legacy'],
   camsAddress: Address,
 ): number {
-  const parsed = parseCityStateZip(dxtrAddress?.cityStateZipCountry);
+  const parsed = parseCityStateZip(sourceLegacy?.cityStateZipCountry);
   if (!parsed) return 0;
 
   const zip5 = (zip: string) => zip.trim().split('-')[0].toLowerCase();
@@ -216,47 +216,48 @@ function pipelineAddressScore(
       .filter((line): line is string => !!line && line.trim().length > 0)
       .join(' ');
 
-  const dxtrAddressLines = normalizeAddressLine(joinAddressLines(dxtrAddress));
+  const sourceAddressLines = normalizeAddressLine(joinAddressLines(sourceLegacy));
   const camsAddressLines = normalizeAddressLine(joinAddressLines(camsAddress));
 
   const padForBigrams = (line: string) => line.split(' ').map(padSingleDigitNumericToken).join(' ');
   const bigramScore = jaccardSimilarity(
-    generateBigrams(padForBigrams(dxtrAddressLines)),
+    generateBigrams(padForBigrams(sourceAddressLines)),
     generateBigrams(padForBigrams(camsAddressLines)),
   );
 
-  const numericTokenScore = calculateNumericTokenScore(dxtrAddressLines, camsAddressLines);
+  const numericTokenScore = calculateNumericTokenScore(sourceAddressLines, camsAddressLines);
   const addressLinesScore =
     numericTokenScore === null ? bigramScore : bigramScore * 0.5 + numericTokenScore * 0.5;
 
-  const dxtrCityState = normalizeAddressLine(`${parsed.city} ${parsed.state ?? ''}`);
+  const sourceCityState = normalizeAddressLine(`${parsed.city} ${parsed.state ?? ''}`);
   const camsCityState = normalizeAddressLine(`${camsAddress.city} ${camsAddress.state}`);
   const cityStateScore = jaccardSimilarity(
-    generateBigrams(dxtrCityState),
+    generateBigrams(sourceCityState),
     generateBigrams(camsCityState),
   );
 
-  const dxtrZip = zip5(parsed.zipCode);
+  const sourceZip = zip5(parsed.zipCode);
   const camsZip = zip5(camsAddress.zipCode);
-  const zipScore = dxtrZip && camsZip && dxtrZip === camsZip ? 100 : 0;
+  const zipScore = sourceZip && camsZip && sourceZip === camsZip ? 100 : 0;
 
   return Math.round(addressLinesScore * 0.5 + zipScore * 0.3 + cityStateScore * 0.2);
 }
 
 /**
  * ACMS-pipeline-only reimplementation of calculateEmailScore - a plain trim+lowercase+equality
- * comparison, same DXTR-isolation reason as pipelineNameScore/pipelinePhoneScore/pipelineAddressScore.
- * Returns null (not comparable) when either side has no email at all, same convention as
- * pipelinePhoneScore - a missing email is not evidence of a mismatch.
+ * comparison, forked from the DXTR path for the same reason as pipelineNameScore/
+ * pipelinePhoneScore/pipelineAddressScore. Returns null (not comparable) when either side has no
+ * email at all, same convention as pipelinePhoneScore - a missing email is not evidence of a
+ * mismatch.
  */
 function pipelineEmailScore(
-  dxtrEmail: string | undefined,
+  sourceEmail: string | undefined,
   camsEmail: string | undefined,
 ): number | null {
-  const dxtrNormalized = (dxtrEmail ?? '').trim().toLowerCase();
+  const sourceNormalized = (sourceEmail ?? '').trim().toLowerCase();
   const camsNormalized = (camsEmail ?? '').trim().toLowerCase();
-  if (!dxtrNormalized || !camsNormalized) return null;
-  return dxtrNormalized === camsNormalized ? 100 : 0;
+  if (!sourceNormalized || !camsNormalized) return null;
+  return sourceNormalized === camsNormalized ? 100 : 0;
 }
 
 /**
