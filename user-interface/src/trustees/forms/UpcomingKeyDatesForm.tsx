@@ -24,6 +24,7 @@ import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import MonthDaySelector from '@/lib/components/uswds/MonthDaySelector';
 import MonthDayRangeSelector from '@/lib/components/uswds/MonthDayRangeSelector';
 import DatePicker from '@/lib/components/uswds/DatePicker';
+import Select from '@/lib/components/uswds/Select';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
@@ -574,52 +575,40 @@ export default function UpcomingKeyDatesForm({
           <div key="exam-audit-group" className="exam-audit-group">
             <p className="usa-label">Field Exam or Audit</p>
             <div className="exam-audit-group__row">
-              <div className="usa-form-group">
-                <label className="usa-hint" htmlFor="upcoming-exam-audit-year">
-                  Year
-                </label>
-                <select
-                  className="usa-select"
-                  id="upcoming-exam-audit-year"
-                  data-testid="upcoming-exam-audit-year"
-                  value={form.upcomingExamOrAuditYear}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setForm((prev) => ({
-                      ...prev,
-                      upcomingExamOrAuditYear: val ? Number(val) : '',
-                    }));
-                  }}
-                >
-                  <option value="">- Select -</option>
-                  {YEAR_OPTIONS.map((y) => (
-                    <option key={y} value={y}>
-                      {y}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="usa-form-group">
-                <label className="usa-hint" htmlFor="upcoming-exam-audit-type">
-                  Type
-                </label>
-                <select
-                  className="usa-select"
-                  id="upcoming-exam-audit-type"
-                  data-testid="upcoming-exam-audit-type"
-                  value={form.upcomingExamOrAuditType}
-                  onChange={(e) => {
-                    setForm((prev) => ({
-                      ...prev,
-                      upcomingExamOrAuditType: e.target.value as 'Field Exam' | 'Audit' | '',
-                    }));
-                  }}
-                >
-                  <option value="">- Select -</option>
-                  <option value="Field Exam">Field Exam</option>
-                  <option value="Audit">Audit</option>
-                </select>
-              </div>
+              <Select
+                id="upcoming-exam-audit-year"
+                label="Year"
+                compactLabel
+                placeholder="- Select -"
+                options={YEAR_OPTIONS.map((y) => ({ value: String(y), label: String(y) }))}
+                value={
+                  form.upcomingExamOrAuditYear === '' ? '' : String(form.upcomingExamOrAuditYear)
+                }
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setForm((prev) => ({
+                    ...prev,
+                    upcomingExamOrAuditYear: val ? Number(val) : '',
+                  }));
+                }}
+              />
+              <Select
+                id="upcoming-exam-audit-type"
+                label="Type"
+                compactLabel
+                placeholder="- Select -"
+                options={[
+                  { value: 'Field Exam', label: 'Field Exam' },
+                  { value: 'Audit', label: 'Audit' },
+                ]}
+                value={form.upcomingExamOrAuditType}
+                onChange={(e) => {
+                  setForm((prev) => ({
+                    ...prev,
+                    upcomingExamOrAuditType: e.target.value as 'Field Exam' | 'Audit' | '',
+                  }));
+                }}
+              />
             </div>
           </div>
         );
@@ -725,28 +714,24 @@ export default function UpcomingKeyDatesForm({
 
       case 'tpr-frequency':
         return (
-          <div key="tpr-frequency" className="usa-form-group">
-            <label className="usa-label" htmlFor="tpr-frequency">
-              Trustee Performance Review Period Frequency
-            </label>
-            <select
-              className="usa-select"
-              id="tpr-frequency"
-              data-testid="tpr-frequency"
-              value={form.tprFrequency}
-              onChange={(e) =>
-                setForm((prev) => ({
-                  ...prev,
-                  tprFrequency: e.target.value as 'BIANNUAL' | 'ANNUAL' | 'SEMI_ANNUAL' | '',
-                }))
-              }
-            >
-              <option value="">- Select -</option>
-              <option value="BIANNUAL">Two years</option>
-              <option value="ANNUAL">One year</option>
-              <option value="SEMI_ANNUAL">6 months</option>
-            </select>
-          </div>
+          <Select
+            key="tpr-frequency"
+            id="tpr-frequency"
+            label="Trustee Performance Review Period Frequency"
+            placeholder="- Select -"
+            options={[
+              { value: 'BIANNUAL', label: 'Two years' },
+              { value: 'ANNUAL', label: 'One year' },
+              { value: 'SEMI_ANNUAL', label: '6 months' },
+            ]}
+            value={form.tprFrequency}
+            onChange={(e) =>
+              setForm((prev) => ({
+                ...prev,
+                tprFrequency: e.target.value as 'BIANNUAL' | 'ANNUAL' | 'SEMI_ANNUAL' | '',
+              }))
+            }
+          />
         );
 
       case 'tpr-due':
@@ -768,23 +753,20 @@ export default function UpcomingKeyDatesForm({
                 onChange={handleTprDueChange}
                 hasError={!!errors.tprDue || (!tprDueDateComplete && !!tprDueBlurError)}
               />
-              <div className="usa-form-group year-type-selector">
-                <label htmlFor="tpr-due-year-type" className="usa-hint">
-                  Year Type
-                </label>
-                <select
-                  className={`usa-select${errors.tprDueYearType || tprDueYearTypeBlurError ? ' usa-input--error' : ''}`}
-                  id="tpr-due-year-type"
-                  data-testid="tpr-due-year-type"
-                  value={form.tprDueYearType}
-                  onChange={handleYearTypeChange}
-                  aria-invalid={errors.tprDueYearType ? 'true' : undefined}
-                >
-                  <option value="">- Select -</option>
-                  <option value="EVEN">EVEN</option>
-                  <option value="ODD">ODD</option>
-                </select>
-              </div>
+              <Select
+                id="tpr-due-year-type"
+                label="Year Type"
+                compactLabel
+                hasError={!!errors.tprDueYearType || !!tprDueYearTypeBlurError}
+                placeholder="- Select -"
+                options={[
+                  { value: 'EVEN', label: 'EVEN' },
+                  { value: 'ODD', label: 'ODD' },
+                ]}
+                value={form.tprDueYearType}
+                onChange={handleYearTypeChange}
+                className="year-type-selector"
+              />
             </div>
             {(tprDueBlurError || errors.tprDue || errors.tprDueYearType) && (
               <span className="cams-field-error-message" data-testid="tpr-due-error">
@@ -799,42 +781,28 @@ export default function UpcomingKeyDatesForm({
           <div key="tir-period" className="tir-period-group">
             <p className="usa-label">Trustee Interim Report (TIR) Period</p>
             <div className="tir-period-group__row">
-              <div className="usa-form-group">
-                <label className="usa-hint" htmlFor="tir-frequency">
-                  Frequency
-                </label>
-                <select
-                  className="usa-select"
-                  id="tir-frequency"
-                  data-testid="tir-frequency"
-                  value={form.tirFrequency}
-                  onChange={handleFrequencyChange}
-                >
-                  <option value="">- Select -</option>
-                  <option value="ANNUAL">Annual</option>
-                  <option value="SEMI_ANNUAL">Semi-Annual</option>
-                </select>
-              </div>
-              <div className="usa-form-group">
-                <label className="usa-hint" htmlFor="tir-period">
-                  Period
-                </label>
-                <select
-                  className="usa-select"
-                  id="tir-period"
-                  data-testid="tir-period"
-                  value={form.tirPeriodKey}
-                  onChange={handlePeriodChange}
-                  disabled={!form.tirFrequency}
-                >
-                  <option value="">- Select -</option>
-                  {periodOptions.map((o) => (
-                    <option key={o.key} value={o.key}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <Select
+                id="tir-frequency"
+                label="Frequency"
+                compactLabel
+                placeholder="- Select -"
+                options={[
+                  { value: 'ANNUAL', label: 'Annual' },
+                  { value: 'SEMI_ANNUAL', label: 'Semi-Annual' },
+                ]}
+                value={form.tirFrequency}
+                onChange={handleFrequencyChange}
+              />
+              <Select
+                id="tir-period"
+                label="Period"
+                compactLabel
+                placeholder="- Select -"
+                options={periodOptions.map((o) => ({ value: o.key, label: o.label }))}
+                value={form.tirPeriodKey}
+                onChange={handlePeriodChange}
+                disabled={!form.tirFrequency}
+              />
             </div>
           </div>
         );

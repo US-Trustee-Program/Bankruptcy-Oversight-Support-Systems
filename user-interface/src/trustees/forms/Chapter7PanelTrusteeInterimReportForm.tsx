@@ -21,6 +21,7 @@ import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import DatePicker from '@/lib/components/uswds/DatePicker';
+import Select from '@/lib/components/uswds/Select';
 import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import { Stop } from '@/lib/components/Stop';
@@ -249,42 +250,28 @@ export default function Chapter7PanelTrusteeInterimReportForm() {
       <div className="tir-period-group">
         <p className="usa-label">TIR Period</p>
         <div className="tir-period-group__row">
-          <div className="usa-form-group">
-            <label className="usa-hint" htmlFor="tir-frequency">
-              Frequency
-            </label>
-            <select
-              className="usa-select"
-              id="tir-frequency"
-              data-testid="tir-frequency"
-              value={form.tirFrequency}
-              onChange={handleFrequencyChange}
-            >
-              <option value="">- Select -</option>
-              <option value="ANNUAL">Annual</option>
-              <option value="SEMI_ANNUAL">Semi-Annual</option>
-            </select>
-          </div>
-          <div className="usa-form-group">
-            <label className="usa-hint" htmlFor="tir-period">
-              Period
-            </label>
-            <select
-              className="usa-select"
-              id="tir-period"
-              data-testid="tir-period"
-              value={form.tirPeriodKey}
-              onChange={handlePeriodChange}
-              disabled={!form.tirFrequency}
-            >
-              <option value="">- Select -</option>
-              {periodOptions.map((o) => (
-                <option key={o.key} value={o.key}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          <Select
+            id="tir-frequency"
+            label="Frequency"
+            compactLabel
+            placeholder="- Select -"
+            options={[
+              { value: 'ANNUAL', label: 'Annual' },
+              { value: 'SEMI_ANNUAL', label: 'Semi-Annual' },
+            ]}
+            value={form.tirFrequency}
+            onChange={handleFrequencyChange}
+          />
+          <Select
+            id="tir-period"
+            label="Period"
+            compactLabel
+            placeholder="- Select -"
+            options={periodOptions.map((o) => ({ value: o.key, label: o.label }))}
+            value={form.tirPeriodKey}
+            onChange={handlePeriodChange}
+            disabled={!form.tirFrequency}
+          />
         </div>
         {tirPeriodPairError && (
           <span className="usa-input__error-message" data-testid="tir-period-pair-error">
@@ -305,52 +292,43 @@ export default function Chapter7PanelTrusteeInterimReportForm() {
       <div className="exam-audit-group">
         <p className="usa-label">TIR Completion Status for Year</p>
         <div className="exam-audit-group__row">
-          <div className="usa-form-group">
-            <label className="usa-hint" htmlFor="tir-completion-status-year">
-              Year
-            </label>
-            <select
-              className="usa-select"
-              id="tir-completion-status-year"
-              data-testid="tir-completion-status-year"
-              value={form.tirCompletionYear}
-              onChange={(e) => {
-                const val = e.target.value;
-                setForm((prev) => ({
-                  ...prev,
-                  tirCompletionYear: val ? Number(val) : '',
-                }));
-              }}
-            >
-              <option value="">- Select -</option>
-              {FISCAL_YEAR_OPTIONS.map((year) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="usa-form-group">
-            <label className="usa-hint" htmlFor="tir-completion-status-status">
-              Status
-            </label>
-            <select
-              className="usa-select"
-              id="tir-completion-status-status"
-              data-testid="tir-completion-status-status"
-              value={form.tirCompletionStatus}
-              onChange={(e) => {
-                setForm((prev) => ({
-                  ...prev,
-                  tirCompletionStatus: e.target.value as TirCompletionStatus | '',
-                }));
-              }}
-            >
-              <option value="">- Select -</option>
-              <option value="COMPLETE">Complete</option>
-              <option value="INCOMPLETE">Incomplete</option>
-            </select>
-          </div>
+          <Select
+            id="tir-completion-status-year"
+            label="Year"
+            compactLabel
+            hasError={!!completionPairError}
+            placeholder="- Select -"
+            options={FISCAL_YEAR_OPTIONS.map((year) => ({
+              value: String(year),
+              label: String(year),
+            }))}
+            value={form.tirCompletionYear === '' ? '' : String(form.tirCompletionYear)}
+            onChange={(e) => {
+              const val = e.target.value;
+              setForm((prev) => ({
+                ...prev,
+                tirCompletionYear: val ? Number(val) : '',
+              }));
+            }}
+          />
+          <Select
+            id="tir-completion-status-status"
+            label="Status"
+            compactLabel
+            hasError={!!completionPairError}
+            placeholder="- Select -"
+            options={[
+              { value: 'COMPLETE', label: 'Complete' },
+              { value: 'INCOMPLETE', label: 'Incomplete' },
+            ]}
+            value={form.tirCompletionStatus}
+            onChange={(e) => {
+              setForm((prev) => ({
+                ...prev,
+                tirCompletionStatus: e.target.value as TirCompletionStatus | '',
+              }));
+            }}
+          />
         </div>
         {completionPairError && (
           <span className="usa-input__error-message" data-testid="tir-completion-status-error">
