@@ -61,7 +61,7 @@ export default function CompletionStatusFields(props: Readonly<CompletionStatusF
         />
       </div>
       {pairError && (
-        <span className="usa-error-message" data-testid={`${idPrefix}-error`}>
+        <span className="cams-field-error-message" data-testid={`${idPrefix}-error`}>
           {pairError}
         </span>
       )}

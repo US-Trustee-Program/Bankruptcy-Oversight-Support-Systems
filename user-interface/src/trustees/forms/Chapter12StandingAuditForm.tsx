@@ -204,7 +204,7 @@ export default function Chapter12StandingAuditForm() {
           />
         </div>
         {completionPairError && (
-          <div className="usa-input__error-message" data-testid="audit-completion-status-error">
+          <div className="cams-field-error-message" data-testid="audit-completion-status-error">
             {completionPairError}
           </div>
         )}

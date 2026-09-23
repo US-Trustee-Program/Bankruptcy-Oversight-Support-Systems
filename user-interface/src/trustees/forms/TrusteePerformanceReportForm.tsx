@@ -323,7 +323,7 @@ export default function TrusteePerformanceReportForm(
           />
         </div>
         {tprDuePairError && (
-          <span className="usa-input__error-message" data-testid="tpr-due-error">
+          <span className="cams-field-error-message" data-testid="tpr-due-error">
             {tprDuePairError}
           </span>
         )}
@@ -380,7 +380,7 @@ export default function TrusteePerformanceReportForm(
           />
         </div>
         {completionPairError && (
-          <div className="usa-input__error-message" data-testid="tpr-completion-status-error">
+          <div className="cams-field-error-message" data-testid="tpr-completion-status-error">
             {completionPairError}
           </div>
         )}

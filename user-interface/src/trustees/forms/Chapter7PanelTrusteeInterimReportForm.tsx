@@ -274,7 +274,7 @@ export default function Chapter7PanelTrusteeInterimReportForm() {
           />
         </div>
         {tirPeriodPairError && (
-          <span className="usa-input__error-message" data-testid="tir-period-pair-error">
+          <span className="cams-field-error-message" data-testid="tir-period-pair-error">
             {tirPeriodPairError}
           </span>
         )}
@@ -331,7 +331,7 @@ export default function Chapter7PanelTrusteeInterimReportForm() {
           />
         </div>
         {completionPairError && (
-          <span className="usa-input__error-message" data-testid="tir-completion-status-error">
+          <span className="cams-field-error-message" data-testid="tir-completion-status-error">
             {completionPairError}
           </span>
         )}

@@ -86,23 +86,26 @@ describe('Select', () => {
       <Select id="select-1" options={OPTIONS} ariaDescription="A hint" errorMessage="Required" />,
     );
 
-    expect(selectEl).toHaveAttribute('aria-describedby', 'select-1-hint select-1-error-message');
+    expect(selectEl).toHaveAttribute(
+      'aria-describedby',
+      'select-1-hint select-1-field-error-message',
+    );
     expect(selectEl).toHaveAttribute('aria-invalid', 'true');
     expect(selectEl).toHaveClass('usa-input--error');
 
-    const errorEl = document.getElementById('select-1-error-message');
+    const errorEl = document.getElementById('select-1-field-error-message');
     expect(errorEl).toHaveTextContent('Required');
     expect(errorEl).toHaveAttribute('aria-live', 'polite');
     // Matches Input/ComboBox's non-bold error text style, not the bold real-USWDS usa-error-message.
-    expect(errorEl).toHaveClass('usa-input__error-message');
+    expect(errorEl).toHaveClass('cams-field-error-message');
   });
 
   test('keeps the error message container mounted with no error present', () => {
     render(<Select id="select-1" options={OPTIONS} />);
 
-    const errorEl = document.getElementById('select-1-error-message');
+    const errorEl = document.getElementById('select-1-field-error-message');
     expect(errorEl).toBeInTheDocument();
-    expect(errorEl).not.toHaveClass('usa-input__error-message');
+    expect(errorEl).not.toHaveClass('cams-field-error-message');
     expect(errorEl).toHaveTextContent('');
   });
 
@@ -114,8 +117,8 @@ describe('Select', () => {
     expect(selectEl).toHaveAttribute('aria-invalid', 'true');
     expect(selectEl).not.toHaveAttribute('aria-describedby');
 
-    const errorEl = document.getElementById('select-1-error-message');
-    expect(errorEl).not.toHaveClass('usa-input__error-message');
+    const errorEl = document.getElementById('select-1-field-error-message');
+    expect(errorEl).not.toHaveClass('cams-field-error-message');
     expect(errorEl).toHaveTextContent('');
   });
 

@@ -55,7 +55,7 @@ function Select_(props: SelectProps, ref: React.Ref<SelectRef>) {
   const generatedId = useId();
   const baseId = props.id ?? generatedId;
   const hintId = `${baseId}-hint`;
-  const errorId = `${baseId}-error-message`;
+  const errorId = `${baseId}-field-error-message`;
 
   useEffect(() => {
     setSelectValue(props.value ?? '');
@@ -153,10 +153,10 @@ function Select_(props: SelectProps, ref: React.Ref<SelectRef>) {
       </select>
       {/* Kept mounted (rather than conditionally rendered) so the polite live region
           is registered with assistive tech before its text content changes.
-          Uses the app's usa-input__error-message style (non-bold) to match Input/ComboBox. */}
+          Uses the app's cams-field-error-message style (non-bold) to match Input/ComboBox. */}
       <div
         id={errorId}
-        className={errorMessage ? 'usa-input__error-message' : undefined}
+        className={errorMessage ? 'cams-field-error-message' : undefined}
         aria-live="polite"
       >
         {errorMessage}
