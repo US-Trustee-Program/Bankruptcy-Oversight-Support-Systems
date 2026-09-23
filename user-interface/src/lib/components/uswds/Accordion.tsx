@@ -32,6 +32,14 @@ export const AccordionGroup: FunctionComponent<AccordionGroupProps> = (props) =>
   const renderChildren = () => {
     if (!props.children) return;
     return Children.map(props.children, (child) => {
+      // Components that manage their own independent expand/collapse state (rather than
+      // participating in this group's single-open behavior) opt out by setting this static
+      // flag, so AccordionGroup doesn't clone in expandedId/onExpand/onCollapse props they
+      // don't declare and would otherwise silently ignore.
+      const excludesFromGroup = (child.type as { excludeFromAccordionGroup?: boolean })
+        ?.excludeFromAccordionGroup;
+      if (excludesFromGroup) return child;
+
       const childOnExpand = child.props.onExpand;
       const childOnCollapse = child.props.onCollapse;
       return cloneElement(child, {

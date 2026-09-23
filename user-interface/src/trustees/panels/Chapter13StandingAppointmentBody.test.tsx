@@ -61,10 +61,10 @@ describe('Chapter13StandingAppointmentBody', () => {
     TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
   });
 
-  test('renders the header text matching the mockup format', () => {
+  test('renders the header text using the shared buildAppointmentHeading format', () => {
     renderComponent();
     expect(
-      screen.getByText('Southern District of New York (Manhattan) - Chapter 13 - Standing'),
+      screen.getByText('Southern District of New York (Manhattan): Chapter 13 - Standing'),
     ).toBeInTheDocument();
   });
 

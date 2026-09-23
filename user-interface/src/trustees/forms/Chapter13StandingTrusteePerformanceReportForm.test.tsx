@@ -222,6 +222,16 @@ describe('Chapter13StandingTrusteePerformanceReportForm', () => {
     });
   });
 
+  test('Save button stays disabled when the initial load fails', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockRejectedValue(new Error('network error'));
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('button-save-chapter13-standing-tpr-key-dates')).toBeDisabled();
+    });
+  });
+
   test('shows an error alert when save fails', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: existingDocument });
     vi.spyOn(Api2, 'putUpcomingKeyDates').mockRejectedValue(new Error('network error'));

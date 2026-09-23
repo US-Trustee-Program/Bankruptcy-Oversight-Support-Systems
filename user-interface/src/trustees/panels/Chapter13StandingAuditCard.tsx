@@ -8,7 +8,6 @@ import { NO_DATE } from './upcomingKeyDatesFieldConfig';
 export interface Chapter13StandingAuditCardProps {
   trusteeId: string;
   appointmentId: string;
-  appointmentHeading?: string;
   data: TrusteeUpcomingKeyDates | null;
 }
 
@@ -17,13 +16,12 @@ const ANNUAL_AUDIT_PERIOD = '10/01 - 09/30';
 export default function Chapter13StandingAuditCard(
   props: Readonly<Chapter13StandingAuditCardProps>,
 ) {
-  const { trusteeId, appointmentId, appointmentHeading, data } = props;
+  const { trusteeId, appointmentId, data } = props;
   const canManage = useCanManageTrustees();
   const openEdit = useOpenEditKeyDates(
     trusteeId,
     appointmentId,
     'chapter13-standing-audit-key-dates',
-    appointmentHeading,
   );
 
   const tag =

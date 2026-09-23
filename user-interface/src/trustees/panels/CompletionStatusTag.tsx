@@ -1,8 +1,9 @@
 import Tag, { UswdsTagStyle } from '@/lib/components/uswds/Tag';
+import { Ch13CompletionStatus } from '@common/cams/trustee-upcoming-key-dates';
 
 export interface CompletionStatusTagProps {
   id: string;
-  status: 'Complete' | 'Incomplete';
+  status: Ch13CompletionStatus;
   year: number;
 }
 

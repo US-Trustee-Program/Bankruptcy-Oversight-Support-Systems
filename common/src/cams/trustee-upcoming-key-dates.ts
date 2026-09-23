@@ -133,16 +133,6 @@ const CH13_COMPLETION_STATUS_VALUES = ['Complete', 'Incomplete'] as const;
 const CH13_MIN_COMPLETION_YEAR = 1900;
 const CH13_MAX_COMPLETION_YEAR = 2100;
 
-function validateCh13CompletionStatus(value: unknown, label: string): ValidatorResult {
-  if (value === null || value === undefined) return VALID;
-  if (
-    !CH13_COMPLETION_STATUS_VALUES.includes(value as (typeof CH13_COMPLETION_STATUS_VALUES)[number])
-  ) {
-    return { reasons: [`${label} must be one of: ${CH13_COMPLETION_STATUS_VALUES.join(', ')}.`] };
-  }
-  return VALID;
-}
-
 function validateCh13CompletionYear(value: unknown, label: string): ValidatorResult {
   if (value === null || value === undefined) return VALID;
   const isValidYear =
@@ -160,22 +150,10 @@ function validateCh13CompletionYear(value: unknown, label: string): ValidatorRes
   return VALID;
 }
 
-function validateCh13CompletionFields(): ValidatorFunction {
+function validateCh13CompletionYears(): ValidatorFunction {
   return (obj: unknown): ValidatorResult => {
     const input = obj as TrusteeUpcomingKeyDatesInput;
     const reasonMap: ValidatorReasonMap = {};
-
-    const statusResult = validateCh13CompletionStatus(
-      input.ch13AuditCompletionStatus,
-      'Audit Completion Status',
-    );
-    if (!statusResult.valid) reasonMap.ch13AuditCompletionStatus = statusResult;
-
-    const tprStatusResult = validateCh13CompletionStatus(
-      input.ch13TprCompletionStatus,
-      'TPR Completion Status',
-    );
-    if (!tprStatusResult.valid) reasonMap.ch13TprCompletionStatus = tprStatusResult;
 
     const yearResult = validateCh13CompletionYear(
       input.ch13AuditCompletionYear,
@@ -268,7 +246,7 @@ function validateDateFields(): ValidatorFunction {
 const trusteeUpcomingKeyDatesSpec: ValidationSpec<TrusteeUpcomingKeyDatesInput> = {
   $: [
     validateDateFields(),
-    validateCh13CompletionFields(),
+    validateCh13CompletionYears(),
     requirePair(
       'tprReviewPeriodStart',
       'tprReviewPeriodEnd',
@@ -350,6 +328,16 @@ const trusteeUpcomingKeyDatesSpec: ValidationSpec<TrusteeUpcomingKeyDatesInput> 
       ['COMPLETE', 'INCOMPLETE'],
       'Annual Report Completion Status',
     ),
+    requireValidEnum(
+      'ch13AuditCompletionStatus',
+      CH13_COMPLETION_STATUS_VALUES,
+      'Audit Completion Status',
+    ),
+    requireValidEnum(
+      'ch13TprCompletionStatus',
+      CH13_COMPLETION_STATUS_VALUES,
+      'TPR Completion Status',
+    ),
   ],
 };
 
@@ -401,6 +389,7 @@ export function validateCompletionPairPresence(
  * completion year.
  */
 export type CompletionStatus = 'COMPLETE' | 'INCOMPLETE';
+export type Ch13CompletionStatus = 'Complete' | 'Incomplete';
 
 /**
  * Validates chronological order for the TPR review period start/end pair,
@@ -460,9 +449,9 @@ export type TrusteeUpcomingKeyDates = Auditable &
     bondIssuedDate?: string;
     bondRenewalDate?: string;
     ch13AuditCompletionYear?: number;
-    ch13AuditCompletionStatus?: 'Complete' | 'Incomplete';
+    ch13AuditCompletionStatus?: Ch13CompletionStatus;
     ch13TprCompletionYear?: number;
-    ch13TprCompletionStatus?: 'Complete' | 'Incomplete';
+    ch13TprCompletionStatus?: Ch13CompletionStatus;
   };
 
 export type TrusteeUpcomingKeyDatesInput = {
@@ -505,9 +494,9 @@ export type TrusteeUpcomingKeyDatesInput = {
   bondIssuedDate: string | null;
   bondRenewalDate: string | null;
   ch13AuditCompletionYear: number | null;
-  ch13AuditCompletionStatus: 'Complete' | 'Incomplete' | null;
+  ch13AuditCompletionStatus: Ch13CompletionStatus | null;
   ch13TprCompletionYear: number | null;
-  ch13TprCompletionStatus: 'Complete' | 'Incomplete' | null;
+  ch13TprCompletionStatus: Ch13CompletionStatus | null;
 };
 
 export type TrusteeUpcomingKeyDatesHistory = AbstractTrusteeHistory<

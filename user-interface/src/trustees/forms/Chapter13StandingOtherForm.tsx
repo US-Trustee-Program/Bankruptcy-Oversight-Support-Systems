@@ -12,8 +12,7 @@ import DatePicker from '@/lib/components/uswds/DatePicker';
 import MonthYearSelector from '@/lib/components/uswds/MonthYearSelector';
 import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
-import LocalStorage from '@/lib/utils/local-storage';
-import { CamsRole } from '@common/cams/roles';
+import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import { Stop } from '@/lib/components/Stop';
 import { buildKeyDatesInputFromOriginal } from './keyDatesInputDefaults';
 
@@ -62,11 +61,12 @@ export default function Chapter13StandingOtherForm() {
   }>();
   const navigate = useNavigate();
   const globalAlert = useGlobalAlert();
-  const canManage = !!LocalStorage.getSession()?.user?.roles?.includes(CamsRole.TrusteeAdmin);
+  const canManage = useCanManageTrustees();
   const { registerFieldError, hasErrorAmong } = useDateFieldErrors();
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [original, setOriginal] = useState<TrusteeUpcomingKeyDates | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
 
@@ -79,6 +79,7 @@ export default function Chapter13StandingOtherForm() {
         }
       })
       .catch((err) => {
+        setLoadFailed(true);
         globalAlert?.error(`Failed to load Other key dates: ${(err as Error).message}`);
       })
       .finally(() => {
@@ -120,7 +121,14 @@ export default function Chapter13StandingOtherForm() {
   }
 
   const isSaveDisabled =
-    isSaving || hasErrorAmong(['lease-expiration', 'past-background-question', 'id-expiration']);
+    isSaving ||
+    loadFailed ||
+    hasErrorAmong([
+      'lease-expiration',
+      'past-background-question',
+      'id-expiration',
+      'last-compensation-study',
+    ]);
 
   return (
     <div

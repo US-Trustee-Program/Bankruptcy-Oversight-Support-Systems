@@ -2,6 +2,7 @@ import './Chapter13StandingTrusteePerformanceReportForm.scss';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
+  Ch13CompletionStatus,
   TrusteeUpcomingKeyDates,
   TrusteeUpcomingKeyDatesInput,
   validateTprDuePair,
@@ -13,8 +14,7 @@ import DatePicker from '@/lib/components/uswds/DatePicker';
 import MonthDaySelector from '@/lib/components/uswds/MonthDaySelector';
 import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
-import LocalStorage from '@/lib/utils/local-storage';
-import { CamsRole } from '@common/cams/roles';
+import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import { Stop } from '@/lib/components/Stop';
 import { buildKeyDatesInputFromOriginal } from './keyDatesInputDefaults';
 import CompletionStatusYearSelect from './CompletionStatusYearSelect';
@@ -27,7 +27,7 @@ type FormState = {
   tprDueYearType: 'EVEN' | 'ODD' | '';
   pastTprSubmission: string;
   ch13TprCompletionYear: number | '';
-  ch13TprCompletionStatus: 'Complete' | 'Incomplete' | '';
+  ch13TprCompletionStatus: Ch13CompletionStatus | '';
 };
 
 const EMPTY_FORM: FormState = {
@@ -80,11 +80,12 @@ export default function Chapter13StandingTrusteePerformanceReportForm() {
   }>();
   const navigate = useNavigate();
   const globalAlert = useGlobalAlert();
-  const canManage = !!LocalStorage.getSession()?.user?.roles?.includes(CamsRole.TrusteeAdmin);
+  const canManage = useCanManageTrustees();
   const { registerFieldError, hasErrorAmong } = useDateFieldErrors();
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [original, setOriginal] = useState<TrusteeUpcomingKeyDates | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [reviewPeriodError, setReviewPeriodError] = useState('');
@@ -98,6 +99,7 @@ export default function Chapter13StandingTrusteePerformanceReportForm() {
         }
       })
       .catch((err) => {
+        setLoadFailed(true);
         globalAlert?.error(
           `Failed to load Trustee Performance Report key dates: ${(err as Error).message}`,
         );
@@ -158,6 +160,7 @@ export default function Chapter13StandingTrusteePerformanceReportForm() {
 
   const isSaveDisabled =
     isSaving ||
+    loadFailed ||
     !!reviewPeriodError ||
     !!tprDueBlurError ||
     hasErrorAmong(['tpr-review-period-start', 'tpr-review-period-end', 'last-tpr-submitted']) ||

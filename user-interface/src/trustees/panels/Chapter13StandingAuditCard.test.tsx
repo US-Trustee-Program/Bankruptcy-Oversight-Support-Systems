@@ -117,16 +117,6 @@ describe('Chapter13StandingAuditCard', () => {
     screen.getByRole('button', { name: /edit audit key dates/i }).click();
     expect(mockNavigate).toHaveBeenCalledWith(
       '/trustees/trustee-001/appointments/appointment-001/chapter13-standing-audit-key-dates/edit',
-      { state: { subHeading: '' } },
-    );
-  });
-
-  test('threads appointmentHeading through to the edit route subHeading', () => {
-    renderComponent({ appointmentHeading: 'Southern District of New York: Chapter 13' });
-    screen.getByRole('button', { name: /edit audit key dates/i }).click();
-    expect(mockNavigate).toHaveBeenCalledWith(
-      '/trustees/trustee-001/appointments/appointment-001/chapter13-standing-audit-key-dates/edit',
-      { state: { subHeading: 'Southern District of New York: Chapter 13' } },
     );
   });
 

@@ -13,20 +13,18 @@ import {
 export interface Chapter13StandingTrusteePerformanceReportCardProps {
   trusteeId: string;
   appointmentId: string;
-  appointmentHeading?: string;
   data: TrusteeUpcomingKeyDates | null;
 }
 
 export default function Chapter13StandingTrusteePerformanceReportCard(
   props: Readonly<Chapter13StandingTrusteePerformanceReportCardProps>,
 ) {
-  const { trusteeId, appointmentId, appointmentHeading, data } = props;
+  const { trusteeId, appointmentId, data } = props;
   const canManage = useCanManageTrustees();
   const openEdit = useOpenEditKeyDates(
     trusteeId,
     appointmentId,
     'chapter13-standing-tpr-key-dates',
-    appointmentHeading,
   );
 
   const tag =

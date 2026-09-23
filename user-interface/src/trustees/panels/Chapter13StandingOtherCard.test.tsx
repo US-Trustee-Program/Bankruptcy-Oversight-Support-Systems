@@ -88,7 +88,6 @@ describe('Chapter13StandingOtherCard', () => {
     screen.getByRole('button', { name: /edit other key dates/i }).click();
     expect(mockNavigate).toHaveBeenCalledWith(
       '/trustees/trustee-001/appointments/appointment-001/chapter13-standing-other-key-dates/edit',
-      { state: { subHeading: '' } },
     );
   });
 

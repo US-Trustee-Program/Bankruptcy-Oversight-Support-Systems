@@ -1,6 +1,7 @@
+import { Ch13CompletionStatus } from '@common/cams/trustee-upcoming-key-dates';
 import { COMPLETION_YEAR_OPTIONS } from './keyDatesInputDefaults';
 
-type CompletionStatus = 'Complete' | 'Incomplete' | '';
+type CompletionStatus = Ch13CompletionStatus | '';
 
 export interface CompletionStatusYearSelectProps {
   /** Prefix used for ids, test ids, and class names, e.g. 'audit-completion' or 'tpr-completion'. */

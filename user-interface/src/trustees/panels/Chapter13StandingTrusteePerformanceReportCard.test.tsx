@@ -128,7 +128,6 @@ describe('Chapter13StandingTrusteePerformanceReportCard', () => {
     screen.getByRole('button', { name: /edit trustee performance report key dates/i }).click();
     expect(mockNavigate).toHaveBeenCalledWith(
       '/trustees/trustee-001/appointments/appointment-001/chapter13-standing-tpr-key-dates/edit',
-      { state: { subHeading: '' } },
     );
   });
 

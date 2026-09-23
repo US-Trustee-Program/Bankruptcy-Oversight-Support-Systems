@@ -322,19 +322,19 @@ export default function TrusteeDetailScreen() {
     {
       path: 'appointments/:appointmentId/chapter13-standing-audit-key-dates/edit',
       disabled: !featureFlags[DISPLAY_CHPT13_STANDING_KEY_DATES],
-      subHeading: (location.state as { subHeading?: string } | null)?.subHeading ?? '',
+      subHeading: appointmentHeading,
       content: <Chapter13StandingAuditForm />,
     },
     {
       path: 'appointments/:appointmentId/chapter13-standing-tpr-key-dates/edit',
       disabled: !featureFlags[DISPLAY_CHPT13_STANDING_KEY_DATES],
-      subHeading: (location.state as { subHeading?: string } | null)?.subHeading ?? '',
+      subHeading: appointmentHeading,
       content: <Chapter13StandingTrusteePerformanceReportForm />,
     },
     {
       path: 'appointments/:appointmentId/chapter13-standing-other-key-dates/edit',
       disabled: !featureFlags[DISPLAY_CHPT13_STANDING_KEY_DATES],
-      subHeading: (location.state as { subHeading?: string } | null)?.subHeading ?? '',
+      subHeading: appointmentHeading,
       content: <Chapter13StandingOtherForm />,
     },
     {

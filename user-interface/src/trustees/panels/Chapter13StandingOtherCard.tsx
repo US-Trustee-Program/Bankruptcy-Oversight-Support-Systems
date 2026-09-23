@@ -11,20 +11,18 @@ import { leaseExpirationField, idExpirationField, NO_DATE } from './upcomingKeyD
 export interface Chapter13StandingOtherCardProps {
   trusteeId: string;
   appointmentId: string;
-  appointmentHeading?: string;
   data: TrusteeUpcomingKeyDates | null;
 }
 
 export default function Chapter13StandingOtherCard(
   props: Readonly<Chapter13StandingOtherCardProps>,
 ) {
-  const { trusteeId, appointmentId, appointmentHeading, data } = props;
+  const { trusteeId, appointmentId, data } = props;
   const canManage = useCanManageTrustees();
   const openEdit = useOpenEditKeyDates(
     trusteeId,
     appointmentId,
     'chapter13-standing-other-key-dates',
-    appointmentHeading,
   );
 
   const lease = leaseExpirationField(data);

@@ -800,6 +800,21 @@ describe('validateTrusteeUpcomingKeyDates', () => {
   });
 
   test.each([
+    ['ch13AuditCompletionYear' as const, 'ch13AuditCompletionStatus' as const, 1900],
+    ['ch13AuditCompletionYear' as const, 'ch13AuditCompletionStatus' as const, 2100],
+    ['ch13TprCompletionYear' as const, 'ch13TprCompletionStatus' as const, 1900],
+    ['ch13TprCompletionYear' as const, 'ch13TprCompletionStatus' as const, 2100],
+  ])('returns VALID when %s is the inclusive boundary value %i', (field, statusField, year) => {
+    expect(
+      validateTrusteeUpcomingKeyDates({
+        ...baseInput(),
+        [field]: year,
+        [statusField]: 'Complete',
+      }),
+    ).toEqual(VALID);
+  });
+
+  test.each([
     ['ch13AuditCompletionYear' as const, 'Audit Completion Year'],
     ['ch13TprCompletionYear' as const, 'TPR Completion Year'],
   ])('returns error when %s is below the allowed range', (field, label) => {

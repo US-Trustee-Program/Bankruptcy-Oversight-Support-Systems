@@ -2,6 +2,7 @@ import './Chapter13StandingAuditForm.scss';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
+  Ch13CompletionStatus,
   TrusteeUpcomingKeyDates,
   TrusteeUpcomingKeyDatesInput,
 } from '@common/cams/trustee-upcoming-key-dates';
@@ -11,8 +12,7 @@ import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import DatePicker from '@/lib/components/uswds/DatePicker';
 import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
-import LocalStorage from '@/lib/utils/local-storage';
-import { CamsRole } from '@common/cams/roles';
+import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import { Stop } from '@/lib/components/Stop';
 import { buildKeyDatesInputFromOriginal } from './keyDatesInputDefaults';
 import CompletionStatusYearSelect from './CompletionStatusYearSelect';
@@ -20,7 +20,7 @@ import CompletionStatusYearSelect from './CompletionStatusYearSelect';
 type FormState = {
   pastAudit: string;
   ch13AuditCompletionYear: number | '';
-  ch13AuditCompletionStatus: 'Complete' | 'Incomplete' | '';
+  ch13AuditCompletionStatus: Ch13CompletionStatus | '';
 };
 
 const EMPTY_FORM: FormState = {
@@ -58,11 +58,12 @@ export default function Chapter13StandingAuditForm() {
   }>();
   const navigate = useNavigate();
   const globalAlert = useGlobalAlert();
-  const canManage = !!LocalStorage.getSession()?.user?.roles?.includes(CamsRole.TrusteeAdmin);
+  const canManage = useCanManageTrustees();
   const { registerFieldError, hasErrorAmong } = useDateFieldErrors();
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [original, setOriginal] = useState<TrusteeUpcomingKeyDates | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
 
@@ -75,6 +76,7 @@ export default function Chapter13StandingAuditForm() {
         }
       })
       .catch((err) => {
+        setLoadFailed(true);
         globalAlert?.error(`Failed to load Audit key dates: ${(err as Error).message}`);
       })
       .finally(() => {
@@ -119,7 +121,8 @@ export default function Chapter13StandingAuditForm() {
     (!!form.ch13AuditCompletionYear && !form.ch13AuditCompletionStatus) ||
     (!form.ch13AuditCompletionYear && !!form.ch13AuditCompletionStatus);
 
-  const isSaveDisabled = isSaving || hasErrorAmong(['past-audit']) || isCompletionPairIncomplete;
+  const isSaveDisabled =
+    isSaving || loadFailed || hasErrorAmong(['past-audit']) || isCompletionPairIncomplete;
 
   return (
     <div

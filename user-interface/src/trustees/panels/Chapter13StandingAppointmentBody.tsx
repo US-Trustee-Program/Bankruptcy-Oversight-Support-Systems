@@ -9,9 +9,8 @@ import Chapter13StandingTrusteePerformanceReportCard from './Chapter13StandingTr
 import Chapter13StandingBudgetCard from './Chapter13StandingBudgetCard';
 import Chapter13StandingOtherCard from './Chapter13StandingOtherCard';
 import { TrusteeAppointment, formatAppointmentStatus } from '@common/cams/trustee-appointments';
-import { formatChapterType, formatAppointmentType } from '@common/cams/trustees';
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
-import { formatAppointmentDate } from './appointmentDisplay';
+import { buildAppointmentHeading, formatAppointmentDate } from './appointmentDisplay';
 
 export interface Chapter13StandingAppointmentBodyProps {
   appointment: TrusteeAppointment;
@@ -34,20 +33,11 @@ export default function Chapter13StandingAppointmentBody(
   const { appointment, keyDatesData, isKeyDatesLoading, expandedId, onExpand, onCollapse } = props;
   const navigate = useNavigate();
 
-  const districtDisplay = appointment.courtName
-    ? appointment.courtName
-    : appointment.courtId
-      ? `Court ${appointment.courtId}`
-      : 'Court information not available';
-  const formattedChapter = formatChapterType(appointment.chapter);
-  const formattedAppointmentType = formatAppointmentType(appointment.appointmentType);
   const formattedStatus = formatAppointmentStatus(appointment.status);
   const formattedAppointedDate = formatAppointmentDate(appointment.appointedDate);
   const formattedEffectiveDate = formatAppointmentDate(appointment.effectiveDate);
 
-  const headerText = `${districtDisplay}${
-    appointment.courtDivisionName ? ` (${appointment.courtDivisionName})` : ''
-  } - Chapter ${formattedChapter} - ${formattedAppointmentType}`;
+  const headerText = buildAppointmentHeading(appointment);
 
   function openEditTrustee() {
     navigate(`/trustees/${appointment.trusteeId}/appointments/${appointment.id}/edit`);
@@ -56,7 +46,6 @@ export default function Chapter13StandingAppointmentBody(
   const commonCardProps = {
     trusteeId: appointment.trusteeId,
     appointmentId: appointment.id,
-    appointmentHeading: headerText,
     data: keyDatesData,
   };
 
