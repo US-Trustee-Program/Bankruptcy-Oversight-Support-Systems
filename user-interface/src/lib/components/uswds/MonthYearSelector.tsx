@@ -145,7 +145,7 @@ export default function MonthYearSelector(props: Readonly<MonthYearSelectorProps
         </div>
       </div>
       {!isFocused && errorMessage && (
-        <div className="date-error usa-input__error-message" aria-live="polite">
+        <div className="date-error cams-field-error-message" aria-live="polite">
           {errorMessage}
         </div>
       )}

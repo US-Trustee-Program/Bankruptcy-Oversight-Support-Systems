@@ -70,7 +70,11 @@ export default function PhoneEntryList(props: Readonly<PhoneEntryListProps>) {
                   Phone Type
                 </label>
                 {rowErrors?.type && (
-                  <span className="usa-error-message" id={`${rowId}-type-error`} role="alert">
+                  <span
+                    className="cams-field-error-message"
+                    id={`${rowId}-type-error`}
+                    role="alert"
+                  >
                     {rowErrors.type.join(' ')}
                   </span>
                 )}

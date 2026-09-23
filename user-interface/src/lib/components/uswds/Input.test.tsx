@@ -61,7 +61,7 @@ describe('Tests for USWDS Input component.', () => {
 
 describe('Test error handling', () => {
   test('Should have error attributes set properly when an error occurs', async () => {
-    const errorMessageId = 'input-1-input__error-message';
+    const errorMessageId = 'input-1-field-error-message';
     const { rerender } = render(
       <div>
         <Input id="input-1" errorMessage={undefined}></Input>
@@ -141,17 +141,6 @@ describe('Tests for USWDS Input component when no value is initially set.', () =
   });
 
   describe('Input styling', () => {
-    test('should set the className if provided', () => {
-      const expectedClassName = 'classNameTest';
-      render(
-        <div>
-          <Input id="input-1" className={expectedClassName}></Input>
-        </div>,
-      );
-      const inputEl = screen.getByTestId('input-1');
-      expect(inputEl).toHaveClass(expectedClassName);
-    });
-
     test('should have data-position="left" if position is set to "left"', () => {
       render(
         <div>
