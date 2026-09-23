@@ -580,29 +580,29 @@ describe('TrusteePublicContactForm Tests', () => {
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     await waitFor(() => {
-      const firstNameError = document.getElementById('trustee-first-name-input__error-message');
+      const firstNameError = document.getElementById('trustee-first-name-field-error-message');
       expect(firstNameError).toBeInTheDocument();
     });
 
-    const lastNameError = document.getElementById('trustee-last-name-input__error-message');
+    const lastNameError = document.getElementById('trustee-last-name-field-error-message');
     expect(lastNameError).toBeInTheDocument();
 
-    const address1Error = document.getElementById('trustee-address1-input__error-message');
+    const address1Error = document.getElementById('trustee-address1-field-error-message');
     expect(address1Error).toBeInTheDocument();
 
-    const cityError = document.getElementById('trustee-city-input__error-message');
+    const cityError = document.getElementById('trustee-city-field-error-message');
     expect(cityError).toBeInTheDocument();
 
-    const stateError = document.getElementById('trustee-state-input__error-message');
+    const stateError = document.getElementById('trustee-state-field-error-message');
     expect(stateError).toBeInTheDocument();
 
-    const zipError = document.getElementById('trustee-zip-input__error-message');
+    const zipError = document.getElementById('trustee-zip-field-error-message');
     expect(zipError).toBeInTheDocument();
 
-    const phoneError = document.getElementById('trustee-phone-input__error-message');
+    const phoneError = document.getElementById('trustee-phone-field-error-message');
     expect(phoneError).toBeInTheDocument();
 
-    const emailError = document.getElementById('trustee-email-input__error-message');
+    const emailError = document.getElementById('trustee-email-field-error-message');
     expect(emailError).toBeInTheDocument();
   });
 

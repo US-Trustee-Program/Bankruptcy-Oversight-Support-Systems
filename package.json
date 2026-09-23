@@ -58,7 +58,7 @@
     "@azure/storage-queue": "12.31.0",
     "@eslint-react/eslint-plugin": "5.19.0",
     "@eslint/js": "10.0.0",
-    "@types/node": "24.13.3",
+    "@types/node": "24.13.4",
     "@typescript-eslint/eslint-plugin": "8.70.0",
     "@typescript-eslint/parser": "8.70.0",
     "@vitest/eslint-plugin": "1.6.27",
@@ -73,7 +73,7 @@
     "mongodb": "7.6.0",
     "mssql": "12.7.1",
     "prettier": "3.9.6",
-    "react": "19.2.8",
+    "react": "19.3.0",
     "typescript": "6.0.3",
     "typescript-eslint": "8.70.0"
   },

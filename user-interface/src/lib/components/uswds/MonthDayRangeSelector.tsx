@@ -85,7 +85,7 @@ export default function MonthDayRangeSelector(props: MonthDayRangeSelectorProps)
       </div>
       {hasError && (
         <div
-          className="date-error usa-input__error-message"
+          className="date-error cams-field-error-message"
           aria-live="polite"
           data-testid={`${id}-error`}
         >
