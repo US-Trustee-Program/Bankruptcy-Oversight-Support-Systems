@@ -28,7 +28,10 @@ import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import { Stop } from '@/lib/components/Stop';
-import { UpcomingKeyDatesVariant } from '@/trustees/panels/upcomingKeyDatesFieldConfig';
+import {
+  UPCOMING_KEY_DATES_FIELD_CONFIG,
+  UpcomingKeyDatesVariant,
+} from '@/trustees/panels/upcomingKeyDatesFieldConfig';
 import {
   getUpcomingKeyDatesFormConfig,
   DatePickerFieldDescriptor,
@@ -242,8 +245,16 @@ export default function UpcomingKeyDatesForm({
   const globalAlert = useGlobalAlert();
   const canManage = useCanManageTrustees();
 
-  const variantFromState = (location.state as { variant?: UpcomingKeyDatesVariant } | null)
-    ?.variant;
+  // Router state survives a reload and outlives a deploy, so it can still name
+  // a variant this form no longer serves -- a Chapter 12/13 Case by Case entry
+  // created before those moved to their own pages, for instance. An unknown
+  // name is treated as absent so the appointment is fetched and resolved
+  // normally, which is also what triggers the redirect for the moved variant.
+  const rawVariantFromState = (location.state as { variant?: string } | null)?.variant;
+  const variantFromState =
+    rawVariantFromState && rawVariantFromState in UPCOMING_KEY_DATES_FIELD_CONFIG
+      ? (rawVariantFromState as UpcomingKeyDatesVariant)
+      : undefined;
 
   const [variant, setVariant] = useState<UpcomingKeyDatesVariant | undefined>(variantFromState);
   const [isLoading, setIsLoading] = useState(true);

@@ -1541,4 +1541,40 @@ describe('UpcomingKeyDatesForm', () => {
       });
     });
   });
+
+  // Router state persists across a reload and outlives a deploy, so an entry
+  // created before Chapter 12/13 Case by Case moved to its own pages can still
+  // arrive naming the removed variant. Unknown names used to reach the field
+  // config as an undefined lookup and take the page down.
+  describe('stale variant in router state', () => {
+    test('falls back to deriving the variant instead of failing to render', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [chapter7Appointment] });
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderWithRouteState({ variant: 'no-such-variant' as never });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+      });
+    });
+
+    test('still redirects a Ch12/13 Case by Case appointment carrying the removed variant', async () => {
+      const ch1213 = {
+        ...chapter7Appointment,
+        chapter: '12' as const,
+        appointmentType: 'case-by-case' as const,
+      };
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch1213] });
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderWithRouteState({ variant: 'ch12-13-case-by-case' as never });
+
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments', {
+          replace: true,
+        });
+      });
+      expect(screen.queryByTestId('edit-upcoming-key-dates')).not.toBeInTheDocument();
+    });
+  });
 });

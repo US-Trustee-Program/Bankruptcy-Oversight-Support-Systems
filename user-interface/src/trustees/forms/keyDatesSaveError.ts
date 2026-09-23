@@ -22,7 +22,12 @@ export function resolveKeyDatesSaveError(
   }
 
   const flattened = Object.entries(flattenReasonMap(reasonMap)).map(([jsonPath, reasons]) => ({
-    // flattenReasonMap emits '$.fieldName'; the leading segment is the document root.
+    // flattenReasonMap emits '$.fieldName'; the leading segment is the document
+    // root. Every validator in the key-dates spec reports against a field, and
+    // validateObject hoists those keys to the top level, so a field name is
+    // always present. A future validator reporting at the root instead would
+    // yield '$' here, match no owned field, and be described as belonging to
+    // another section -- add it to the owned list if that ever happens.
     field: jsonPath.split('.')[1] ?? '',
     reason: reasons[0],
   }));
