@@ -761,32 +761,6 @@ describe('ACMS gateway tests', () => {
     test.each([
       ['should exclude soft-deleted professional records', "DELETE_CODE != 'D'"],
       [
-        'should exclude "NO TRUSTEE"-pattern placeholder records',
-        "PROF_LAST_NAME NOT LIKE '%NO TRUSTEE%'",
-      ],
-      [
-        'should exclude "NO TRRUSTEE"-misspelling placeholder records',
-        "PROF_LAST_NAME NOT LIKE '%NO TRRUSTEE%'",
-      ],
-      [
-        'should exclude "REOPENED"-pattern placeholder records',
-        "PROF_LAST_NAME NOT LIKE '%REOPENED%'",
-      ],
-      [
-        'should exclude "RE OPENED"-pattern placeholder records',
-        "PROF_LAST_NAME NOT LIKE '%RE OPENED%'",
-      ],
-      [
-        'should exclude "TRUSTEE_UNASSIGNED"-pattern placeholder records',
-        "PROF_LAST_NAME NOT LIKE '%TRUSTEE_UNASSIGNED%'",
-      ],
-      [
-        'should exclude "NO TR APT"-pattern placeholder records',
-        "PROF_LAST_NAME NOT LIKE '%NO TR APT%'",
-      ],
-      ['should exclude "FAKE"-pattern placeholder records', "PROF_LAST_NAME NOT LIKE '%FAKE%'"],
-      ['should exclude "PRO SE"-pattern placeholder records', "PROF_LAST_NAME NOT LIKE '%PRO SE%'"],
-      [
         'should exclude ACMS reserved sentinel/dummy trustee codes (>= 98000)',
         'ACMS.UST_PROF_CODE < 98000',
       ],
@@ -805,11 +779,11 @@ describe('ACMS gateway tests', () => {
       expect(query).toContain(expectedClause);
     });
 
-    // A "DECEASED" marker on PROF_LAST_NAME (e.g. "DECEASED - ROE, JR.") is a status prefix on a
-    // real surname, not a pure placeholder - ADMINISTRATIVE_MARKER_PHRASES
-    // (sync-acms-professional-ids.ts) strips it and matches the real identity underneath.
-    // Filtering it out here would make that TS-side handling unreachable.
-    test('should not exclude "DECEASED"-pattern records - a real identity may still be present', async () => {
+    // No PROF_LAST_NAME placeholder-name filtering (DECEASED, NO TRUSTEE, FAKE, PRO SE, etc.)
+    // happens in this gateway - shouldSkipAsNotAPerson (sync-acms-professional-ids.ts) is the
+    // single source of truth for which records name no real trustee, so this query only excludes
+    // concerns a data-access layer actually owns (soft-delete, sentinel codes).
+    test('should not filter on PROF_LAST_NAME at all - placeholder detection lives in the TS layer', async () => {
       const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
         success: true,
         results: { recordset: [] },
@@ -821,7 +795,7 @@ describe('ACMS gateway tests', () => {
       await gateway.getTrusteeProfessionalRecordsPage(context, 'NY', 0, 500);
 
       const query = spy.mock.calls[0][1] as string;
-      expect(query).not.toContain('DECEASED');
+      expect(query).not.toContain('PROF_LAST_NAME NOT LIKE');
     });
 
     test.each([

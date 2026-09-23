@@ -412,7 +412,9 @@ export function isRecordDisavowed(fullName: string): boolean {
  * "INVOLUNTARY [TRUSTEE|PETITION]", "NONE ASSIGNED (DEBTOR IN POSS)", and "OFFICE OF THE [U.S.
  * TRUSTEE]" (via office/of/the/united/states/trustee together, since u.s. trustee is itself
  * stripped by ADMINISTRATIVE_MARKER_PHRASES first). Also catches case-status placeholders like
- * "TRUSTEE UNASSIGNED", "TRANSFER CASE", "MISSING TRUSTEE", and "TRUSTEE ASSIGNMENT IN PROGRESS". */
+ * "TRUSTEE UNASSIGNED", "TRANSFER CASE", "MISSING TRUSTEE", "TRUSTEE ASSIGNMENT IN PROGRESS", "CASE STRICKEN: NO TRUSTEE" (see
+ * stripAdministrativeMarkers' own colon-stripping note), and "PRO SE" (a litigant representing
+ * themselves, not a trustee). */
 const NON_PERSON_ONLY_WORDS = new Set([
   'trustee',
   'trustees',
@@ -450,6 +452,9 @@ const NON_PERSON_ONLY_WORDS = new Set([
   'trinvol',
   'pre2004pendingcases',
   'chapter13upload',
+  'stricken',
+  'pro',
+  'se',
 ]);
 
 /**
@@ -465,12 +470,13 @@ const NON_PERSON_ONLY_WORDS = new Set([
  * inside (e.g. "(DEBTOR IN POSS)") should still lose its parens before the word-by-word
  * isLikelyNotAPerson check runs - otherwise "(debtor"/"poss)" never match the bare words
  * "debtor"/"poss" in NON_PERSON_ONLY_WORDS at all ("NONE ASSIGNED (DEBTOR IN POSS)" was wrongly
- * left unmatched before this was added).
+ * left unmatched before this was added). A colon is stripped for the same reason ("CASE STRICKEN:
+ * NO TRUSTEE" would otherwise leave "stricken:" un-matchable against the bare word "stricken").
  */
 export function stripAdministrativeMarkers(value: string): string {
   return value
     .replace(ADMINISTRATIVE_MARKER_PATTERN, ' ')
-    .replace(/[-/*.,()_]+/g, ' ')
+    .replace(/[-/*.,():_]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }
