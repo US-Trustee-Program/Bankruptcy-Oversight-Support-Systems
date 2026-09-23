@@ -15,7 +15,6 @@ import MockData from '@common/cams/test-utilities/mock-data';
 import testingUtilities from '@/lib/testing/testing-utilities';
 import { CamsRole } from '@common/cams/roles';
 import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/test-utilities/offices.mock';
-import * as courtUtils from '@/lib/utils/court-utils';
 import * as transferOrderAccordionModule from './TransferOrderAccordion';
 import * as consolidationOrderAccordionModule from './consolidation/ConsolidationOrderAccordion';
 import * as trusteeVerificationAccordionModule from './trustee-verification/TrusteeMatchVerificationAccordion';
@@ -47,10 +46,45 @@ describe('Review Orders screen', () => {
     sessionStorage.clear();
   });
 
-  test('should call sortByCourtLocation when loading courts', async () => {
+  test('should sort courts by state and court before passing them to child components', async () => {
     setupFeatureFlags();
-    vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [] });
-    const sortSpy = vi.spyOn(courtUtils, 'sortByCourtLocation');
+    const mockOrder = MockData.getTransferOrder({ override: { status: 'pending' } });
+    vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [mockOrder] });
+
+    const seattle: CourtDivisionDetails = {
+      officeName: 'Seattle',
+      officeCode: 'USTP_CAMS_Region_18_Office_Seattle',
+      courtId: '0981',
+      courtName: 'Western District of Washington',
+      courtDivisionCode: '981',
+      courtDivisionName: 'Seattle',
+      groupDesignator: 'WA',
+      regionId: '18',
+      regionName: 'SEATTLE',
+      state: 'WA',
+    };
+    const montgomery: CourtDivisionDetails = {
+      officeName: 'Montgomery',
+      officeCode: 'USTP_CAMS_Region_7_Office_Montgomery',
+      courtId: '0512',
+      courtName: 'Middle District of Alabama',
+      courtDivisionCode: '512',
+      courtDivisionName: 'Montgomery',
+      groupDesignator: 'AL',
+      regionId: '7',
+      regionName: 'ATLANTA',
+      state: 'AL',
+    };
+    // Intentionally out of order (Washington before Alabama) to prove real sorting occurs.
+    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [seattle, montgomery] });
+
+    let capturedCourts: CourtDivisionDetails[] | undefined;
+    vi.spyOn(transferOrderAccordionModule, 'TransferOrderAccordion').mockImplementation(
+      (props: transferOrderAccordionModule.TransferOrderAccordionProps) => {
+        capturedCourts = props.courts;
+        return <></>;
+      },
+    );
 
     render(
       <BrowserRouter>
@@ -59,12 +93,8 @@ describe('Review Orders screen', () => {
     );
 
     await waitFor(() => {
-      expect(sortSpy).toHaveBeenCalled();
+      expect(capturedCourts).toEqual([montgomery, seattle]);
     });
-
-    // Verify it was called with court data
-    const callArgs = sortSpy.mock.calls[0];
-    expect(callArgs[0]).toBeInstanceOf(Array);
   });
 
   test('should filter on status when clicking status filter', async () => {

@@ -100,10 +100,6 @@ describe('Login', () => {
   });
 
   test('should check for an existing mock login and skip if a session exists', async () => {
-    // Login.tsx reads api configuration once at module scope, so mocking config after
-    // the module is already loaded has no effect — the module must be reloaded fresh.
-    vi.resetModules();
-    const { mockConfiguration } = await import('@/lib/testing/mock-configuration');
     mockConfiguration({
       loginProvider: 'mock',
       serverHostName: 'fake.issuer.com',
@@ -112,12 +108,7 @@ describe('Login', () => {
       basePath: '',
     });
 
-    const localStorageModule = await import('@/lib/utils/local-storage');
-    const LocalStorage = localStorageModule.default;
-    const { Login } = await import('./Login');
-    const sessionModule = await import('./Session');
-
-    const getSession = vi.spyOn(LocalStorage, 'getSession').mockReturnValue({
+    getSession.mockReturnValue({
       accessToken: MockData.getJwt(),
       provider: 'mock',
       issuer,
@@ -127,8 +118,6 @@ describe('Login', () => {
       },
       expires: Number.MAX_SAFE_INTEGER,
     });
-    const removeSession = vi.spyOn(LocalStorage, 'removeSession');
-    const sessionComponent = vi.spyOn(sessionModule, 'Session');
 
     render(
       <BrowserRouter>

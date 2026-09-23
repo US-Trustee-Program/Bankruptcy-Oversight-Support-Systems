@@ -526,7 +526,7 @@ describe('Consolidation UseCase tests', () => {
     store.setConsolidationType('administrative');
     store.setSelectedCases([leadCase]);
     useCase.updateSubmitButtonsState();
-    expect(disableButtonSpy).toHaveBeenCalled();
+    expect(disableButtonSpy).toHaveBeenCalledWith(true);
   });
 
   test('should disable the verify button if a selected member case is a lead case for another consolidation', async () => {
@@ -538,7 +538,7 @@ describe('Consolidation UseCase tests', () => {
     selectedCases[0].associations?.push(MockData.getConsolidationFrom());
     store.setSelectedCases(selectedCases);
     useCase.updateSubmitButtonsState();
-    expect(disableButtonSpy).toHaveBeenCalled();
+    expect(disableButtonSpy).toHaveBeenCalledWith(true);
   });
 
   test('should disable the verify button if a selected member case is already a part of another consolidation', async () => {
@@ -549,10 +549,11 @@ describe('Consolidation UseCase tests', () => {
     store.setConsolidationType('administrative');
     store.setIsDataEnhanced(true);
     const selectedCases = MockData.buildArray(MockData.getConsolidatedOrderCase, 4);
-    selectedCases[0].associations?.push(MockData.getConsolidationTo());
+    // areAnySelectedCasesConsolidated() reads the isMemberCase flag directly, not associations.
+    selectedCases[0].isMemberCase = true;
     store.setSelectedCases(selectedCases);
     useCase.updateSubmitButtonsState();
-    expect(disableButtonSpy).toHaveBeenCalled();
+    expect(disableButtonSpy).toHaveBeenCalledWith(true);
   });
 
   const approvalAlerts = [{ success: true }, { success: false }];
