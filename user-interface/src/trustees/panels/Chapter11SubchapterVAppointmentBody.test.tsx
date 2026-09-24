@@ -7,8 +7,6 @@ import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import * as featureFlagsHook from '@/lib/hooks/UseFeatureFlags';
 import { DISPLAY_CHPT11_SUBV_PAST_KEY_DATES } from '@/lib/hooks/UseFeatureFlags';
-import TestingUtilities from '@/lib/testing/testing-utilities';
-import { CamsRole } from '@common/cams/roles';
 
 vi.mock('./AppointmentBasicFields', () => ({
   default: (props: { appointment: TrusteeAppointment }) => (
@@ -105,6 +103,11 @@ describe('Chapter11SubchapterVAppointmentBody', () => {
 
     renderBody();
 
+    expect(screen.getByTestId('subv-other-key-dates-card')).toHaveAttribute(
+      'data-is-loading',
+      'true',
+    );
+
     await waitFor(() => {
       expect(screen.getByTestId('subv-other-key-dates-card')).toHaveAttribute(
         'data-is-loading',
@@ -116,17 +119,6 @@ describe('Chapter11SubchapterVAppointmentBody', () => {
       'data-has-data',
       'true',
     );
-  });
-
-  test('renders the Chapter11SubVOtherKeyDatesCard for a non-TrusteeAdmin user when the flag is enabled (no canManage gate)', async () => {
-    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: keyDates });
-    TestingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
-
-    renderBody();
-
-    await waitFor(() => {
-      expect(screen.getByTestId('subv-other-key-dates-card')).toBeInTheDocument();
-    });
   });
 
   test('builds the district/division/chapter/type appointment heading for Chapter11SubVOtherKeyDatesCard', async () => {

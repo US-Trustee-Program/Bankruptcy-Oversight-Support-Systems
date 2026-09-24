@@ -70,13 +70,17 @@ describe('Chapter11SubVOtherKeyDatesCard', () => {
   test('shows "No date added" when the date is missing', () => {
     renderCard({ ...keyDates, lastMonthlyReportReceived: undefined });
 
-    expect(screen.getByText('No date added')).toBeInTheDocument();
+    expect(screen.getByTestId('past-last-monthly-report-received-row')).toHaveTextContent(
+      'No date added',
+    );
   });
 
   test('shows "No date added" when there is no key dates document', () => {
     renderCard(null);
 
-    expect(screen.getByText('No date added')).toBeInTheDocument();
+    expect(screen.getByTestId('past-last-monthly-report-received-row')).toHaveTextContent(
+      'No date added',
+    );
   });
 
   test('shows a loading spinner while loading', () => {
