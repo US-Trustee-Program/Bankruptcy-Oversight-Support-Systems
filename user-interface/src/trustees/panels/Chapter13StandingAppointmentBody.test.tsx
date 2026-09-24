@@ -1,127 +1,159 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import { BrowserRouter } from 'react-router-dom';
-import Chapter13StandingAppointmentBody, {
-  Chapter13StandingAppointmentBodyProps,
-} from './Chapter13StandingAppointmentBody';
-import TestingUtilities from '@/lib/testing/testing-utilities';
-import { CamsRole } from '@common/cams/roles';
+import Chapter13StandingAppointmentBody from './Chapter13StandingAppointmentBody';
+import Api2 from '@/lib/models/api2';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
+import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
+import * as featureFlagsHook from '@/lib/hooks/UseFeatureFlags';
+import { DISPLAY_CHPT13_STANDING_KEY_DATES } from '@/lib/hooks/UseFeatureFlags';
 
-const mockUseNavigate = vi.hoisted(() => vi.fn());
+vi.mock('./AppointmentBasicFields', () => ({
+  default: (props: { appointment: TrusteeAppointment }) => (
+    <div data-testid="appointment-basic-fields" data-appointment-id={props.appointment.id} />
+  ),
+}));
 
-vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual('react-router-dom');
-  return {
-    ...actual,
-    useNavigate: mockUseNavigate,
-  };
-});
-
-const appointment: TrusteeAppointment = {
-  id: 'appointment-001',
-  trusteeId: 'trustee-123',
-  chapter: '13',
-  appointmentType: 'standing',
-  courtDivisionName: 'Manhattan',
-  courtId: '0208',
-  courtName: 'Southern District of New York',
-  divisionCode: '081',
-  status: 'active',
-  appointedDate: '2020-01-15T00:00:00.000Z',
-  effectiveDate: '2020-01-15T00:00:00.000Z',
-  createdOn: '2020-01-10T14:30:00.000Z',
-  createdBy: SYSTEM_USER_REFERENCE,
-  updatedOn: '2020-01-10T14:30:00.000Z',
-  updatedBy: SYSTEM_USER_REFERENCE,
-};
-
-const defaultProps: Chapter13StandingAppointmentBodyProps = {
-  appointment,
-  keyDatesData: null,
-  isKeyDatesLoading: false,
-};
-
-function renderComponent(props?: Partial<Chapter13StandingAppointmentBodyProps>) {
-  return render(
-    <BrowserRouter>
-      <Chapter13StandingAppointmentBody {...defaultProps} {...props} />
-    </BrowserRouter>,
+function mockCard(testId: string) {
+  return (props: { data: TrusteeUpcomingKeyDates | null }) => (
+    <div data-testid={testId} data-has-data={String(props.data !== null)} />
   );
 }
 
+vi.mock('./Chapter13StandingAuditCard', () => ({
+  default: mockCard('chapter13-standing-audit-card'),
+}));
+vi.mock('./Chapter13StandingTrusteePerformanceReportCard', () => ({
+  default: mockCard('chapter13-standing-tpr-card'),
+}));
+vi.mock('./Chapter13StandingBudgetCard', () => ({
+  default: () => <div data-testid="chapter13-standing-budget-card" />,
+}));
+vi.mock('./Chapter13StandingOtherCard', () => ({
+  default: mockCard('chapter13-standing-other-card'),
+}));
+
 describe('Chapter13StandingAppointmentBody', () => {
-  const mockNavigate = vi.fn();
+  const mockAppointment: TrusteeAppointment = {
+    id: 'appointment-001',
+    trusteeId: 'trustee-123',
+    chapter: '13',
+    appointmentType: 'standing',
+    courtDivisionName: 'Manhattan',
+    courtId: '0208',
+    courtName: 'Southern District of New York',
+    divisionCode: '081',
+    status: 'active',
+    appointedDate: '2020-01-15T00:00:00.000Z',
+    effectiveDate: '2020-01-15T00:00:00.000Z',
+    createdOn: '2020-01-10T14:30:00.000Z',
+    createdBy: SYSTEM_USER_REFERENCE,
+    updatedOn: '2020-01-10T14:30:00.000Z',
+    updatedBy: SYSTEM_USER_REFERENCE,
+  };
+
+  const keyDates: TrusteeUpcomingKeyDates = {
+    id: 'key-dates-001',
+    documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
+    trusteeId: 'trustee-123',
+    appointmentId: 'appointment-001',
+    createdOn: '2020-01-10T14:30:00.000Z',
+    createdBy: SYSTEM_USER_REFERENCE,
+    updatedOn: '2020-01-10T14:30:00.000Z',
+    updatedBy: SYSTEM_USER_REFERENCE,
+    pastAudit: '2023-02-04',
+  };
 
   beforeEach(() => {
     vi.restoreAllMocks();
-    mockNavigate.mockClear();
-    mockUseNavigate.mockReturnValue(mockNavigate);
-    TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
+    vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+      [DISPLAY_CHPT13_STANDING_KEY_DATES]: true,
+    });
   });
 
-  test('renders the header text using the shared buildAppointmentHeading format', () => {
-    renderComponent();
-    expect(
-      screen.getByText('Southern District of New York (Manhattan): Chapter 13 - Standing'),
-    ).toBeInTheDocument();
-  });
+  function renderBody(appointment: TrusteeAppointment = mockAppointment) {
+    return render(<Chapter13StandingAppointmentBody appointment={appointment} />);
+  }
 
-  test('renders a green Active tag for an active appointment', () => {
-    renderComponent();
-    const tag = screen.getByTestId('tag-appointment-status');
-    expect(tag).toHaveTextContent('Active');
-    expect(tag.className).toContain('bg-success');
-  });
+  test('forwards the appointment prop to AppointmentBasicFields', () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
-  test('renders a gray status tag with the specific label for a non-active appointment', () => {
-    renderComponent({ appointment: { ...appointment, status: 'inactive' } });
-    const tag = screen.getByTestId('tag-appointment-status');
-    expect(tag).toHaveTextContent('Inactive');
-    expect(tag.className).toContain('bg-base');
+    renderBody();
+
+    expect(screen.getByTestId('appointment-basic-fields')).toHaveAttribute(
+      'data-appointment-id',
+      'appointment-001',
+    );
   });
 
   test('shows a loading spinner instead of the cards while key dates are loading', () => {
-    renderComponent({ isKeyDatesLoading: true });
-    fireEvent.click(screen.getByTestId(`accordion-button-${appointment.id}`));
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockImplementation(() => new Promise(() => {}));
+
+    renderBody();
+
     expect(screen.getByTestId('chapter13-standing-key-dates-loading')).toBeInTheDocument();
     expect(screen.queryByTestId('chapter13-standing-cards-stack')).not.toBeInTheDocument();
   });
 
-  test('renders the four themed cards once loaded', () => {
-    renderComponent();
-    fireEvent.click(screen.getByTestId(`accordion-button-${appointment.id}`));
-    const stack = screen.getByTestId('chapter13-standing-cards-stack');
-    expect(stack).toContainElement(screen.getByTestId('chapter13-standing-audit-card'));
-    expect(stack).toContainElement(screen.getByTestId('chapter13-standing-tpr-card'));
-    expect(stack).toContainElement(screen.getByTestId('chapter13-standing-budget-card'));
-    expect(stack).toContainElement(screen.getByTestId('chapter13-standing-other-card'));
+  test('fetches key dates once and forwards the result to all data-driven cards', async () => {
+    const getSpy = vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: keyDates });
+
+    renderBody();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('chapter13-standing-cards-stack')).toBeInTheDocument();
+    });
+    expect(getSpy).toHaveBeenCalledWith('trustee-123', 'appointment-001');
+    expect(getSpy).toHaveBeenCalledTimes(1);
+    for (const testId of [
+      'chapter13-standing-audit-card',
+      'chapter13-standing-tpr-card',
+      'chapter13-standing-other-card',
+    ]) {
+      expect(screen.getByTestId(testId)).toHaveAttribute('data-has-data', 'true');
+    }
+    expect(screen.getByTestId('chapter13-standing-budget-card')).toBeInTheDocument();
   });
 
-  test('Edit Appointment button navigates to the edit appointment route', () => {
-    renderComponent();
-    fireEvent.click(screen.getByTestId(`accordion-button-${appointment.id}`));
-    fireEvent.click(screen.getByRole('button', { name: /edit appointment/i }));
+  test('forwards null data to all data-driven cards when no key dates document exists', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
-    expect(mockNavigate).toHaveBeenCalledWith(
-      `/trustees/${appointment.trusteeId}/appointments/${appointment.id}/edit`,
-    );
+    renderBody();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('chapter13-standing-other-card')).toHaveAttribute(
+        'data-has-data',
+        'false',
+      );
+    });
   });
 
-  test('accordion expand state is controlled by expandedId/onExpand/onCollapse props', () => {
-    const onExpand = vi.fn();
-    const onCollapse = vi.fn();
-    renderComponent({ onExpand, onCollapse });
+  test('shows an error alert instead of the cards when the fetch fails', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockRejectedValue(new Error('network error'));
 
-    const button = screen.getByTestId(`accordion-button-${appointment.id}`);
+    renderBody();
 
-    fireEvent.click(button);
-    expect(onExpand).toHaveBeenCalledWith(appointment.id);
-    expect(onCollapse).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('alert-chapter13-standing-key-dates-error-appointment-001'),
+      ).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('chapter13-standing-audit-card')).not.toBeInTheDocument();
+  });
 
-    fireEvent.click(button);
-    expect(onCollapse).toHaveBeenCalledWith(appointment.id);
-    expect(onExpand).toHaveBeenCalledTimes(1);
+  test('does not fetch or render any card when DISPLAY_CHPT13_STANDING_KEY_DATES is disabled', () => {
+    vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+      [DISPLAY_CHPT13_STANDING_KEY_DATES]: false,
+    });
+    const getSpy = vi.spyOn(Api2, 'getUpcomingKeyDates');
+
+    renderBody();
+
+    expect(getSpy).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('chapter13-standing-audit-card')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('alert-chapter13-standing-key-dates-error-appointment-001'),
+    ).not.toBeInTheDocument();
   });
 });

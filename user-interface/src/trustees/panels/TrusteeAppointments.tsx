@@ -11,6 +11,7 @@ import {
   isChapter11SubchapterVOutOfPool,
   isChapter12Or13CaseByCase,
   isChapter12Standing,
+  isChapter13Standing,
 } from '@common/cams/trustee-appointments';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
@@ -23,6 +24,7 @@ import Chapter7PanelAppointmentBody from './Chapter7PanelAppointmentBody';
 import Chapter11SubchapterVAppointmentBody from './Chapter11SubchapterVAppointmentBody';
 import Chapter12And13CaseByCaseAppointmentBody from './Chapter12And13CaseByCaseAppointmentBody';
 import Chapter12StandingAppointmentBody from './Chapter12StandingAppointmentBody';
+import Chapter13StandingAppointmentBody from './Chapter13StandingAppointmentBody';
 import Button from '@/lib/components/uswds/Button';
 import Icon from '@/lib/components/uswds/Icon';
 import { useNavigate } from 'react-router-dom';
@@ -53,6 +55,9 @@ function resolveAccordionBody(appointment: TrusteeAppointment): ReactNode | unde
   }
   if (isChapter12Standing(appointment.chapter, appointment.appointmentType)) {
     return <Chapter12StandingAppointmentBody appointment={appointment} />;
+  }
+  if (isChapter13Standing(appointment.chapter, appointment.appointmentType)) {
+    return <Chapter13StandingAppointmentBody appointment={appointment} />;
   }
   return undefined;
 }
