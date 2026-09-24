@@ -299,10 +299,12 @@ test.describe('Chapter 12/13 Case by Case Key Dates', () => {
       trusteeProfilePage.locator('[data-testid="edit-annual-report-key-dates"]'),
     ).toBeVisible();
 
-    // Half a completion pair fails validation. The error shows inline as soon
-    // as the year is picked, and Save is disabled, so there is nothing to click.
+    // Half a completion pair fails validation. Save disables immediately, but the
+    // error text waits until focus leaves the Year/Status row (see UseGroupBlur.ts),
+    // so click elsewhere in the form to trigger that blur before asserting it shows.
     await trusteeProfilePage.locator('#annual-report-completion-status').selectOption('');
     await trusteeProfilePage.locator('#annual-report-completion-year').selectOption({ index: 1 });
+    await trusteeProfilePage.locator('[data-testid="edit-annual-report-key-dates"] h3').click();
     await expect(
       trusteeProfilePage.locator('[data-testid="annual-report-completion-error"]'),
     ).toBeVisible();
