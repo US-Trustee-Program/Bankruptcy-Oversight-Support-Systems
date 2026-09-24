@@ -184,19 +184,27 @@ describe('Chapter11SubchapterVAppointmentBody', () => {
     ).not.toBeInTheDocument();
   });
 
-  test('does not fetch or render the Chapter11SubVOtherKeyDatesCard for an out-of-pool appointment, even when the flag is enabled', () => {
-    const getSpy = vi.spyOn(Api2, 'getUpcomingKeyDates');
+  test('fetches and renders the Chapter11SubVOtherKeyDatesCard for an out-of-pool appointment when the flag is enabled', async () => {
+    const getSpy = vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: keyDates });
 
     renderBody(mockOutOfPoolAppointment);
 
-    expect(getSpy).not.toHaveBeenCalled();
-    expect(screen.queryByTestId('subv-other-key-dates-card')).not.toBeInTheDocument();
-    expect(
-      screen.queryByTestId(`alert-subv-past-key-dates-error-${mockOutOfPoolAppointment.id}`),
-    ).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByTestId('subv-other-key-dates-card')).toHaveAttribute(
+        'data-is-loading',
+        'false',
+      );
+    });
+    expect(getSpy).toHaveBeenCalledWith('trustee-789', 'appointment-004');
+    expect(screen.getByTestId('subv-other-key-dates-card')).toHaveAttribute(
+      'data-has-data',
+      'true',
+    );
   });
 
   test('still renders AppointmentBasicFields for an out-of-pool appointment', () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
     renderBody(mockOutOfPoolAppointment);
 
     expect(screen.getByTestId('appointment-basic-fields')).toHaveAttribute(

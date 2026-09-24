@@ -104,18 +104,18 @@ describe('Chapter11SubVOtherKeyDatesCard', () => {
     ).not.toBeInTheDocument();
   });
 
-  test('navigates to the past key dates edit form with the subv-pool variant and appointment heading as subHeading', async () => {
+  test('navigates to the chapter11-subv other key dates edit form with the chapter11-subv variant and appointment heading as subHeading', async () => {
     const user = userEvent.setup();
     renderCard(keyDates, false, 'District of Alaska (All): Chapter 11 Subchapter V - Pool');
 
     await user.click(screen.getByTestId('button-edit-subv-other-key-dates-appointment-003'));
 
     expect(mockNavigate).toHaveBeenCalledWith(
-      '/trustees/trustee-789/appointments/appointment-003/past-key-dates/edit',
+      '/trustees/trustee-789/appointments/appointment-003/chapter11-subv-other-key-dates/edit',
       {
         state: {
           subHeading: 'District of Alaska (All): Chapter 11 Subchapter V - Pool',
-          variant: 'subv-pool',
+          variant: 'chapter11-subv',
         },
       },
     );
@@ -128,8 +128,8 @@ describe('Chapter11SubVOtherKeyDatesCard', () => {
     await user.click(screen.getByTestId('button-edit-subv-other-key-dates-appointment-003'));
 
     expect(mockNavigate).toHaveBeenCalledWith(
-      '/trustees/trustee-789/appointments/appointment-003/past-key-dates/edit',
-      { state: { subHeading: '', variant: 'subv-pool' } },
+      '/trustees/trustee-789/appointments/appointment-003/chapter11-subv-other-key-dates/edit',
+      { state: { subHeading: '', variant: 'chapter11-subv' } },
     );
   });
 });
