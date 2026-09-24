@@ -60,6 +60,7 @@ interface ConsolidationViewModel {
   handleConfirmAction: (action: ConfirmActionResults) => void;
   handleIncludeCase: (bCase: ConsolidationOrderCase) => void;
   handleMarkLeadCase: (bCase: ConsolidationOrderCase) => void;
+  handleOnCollapse: (id: string) => void;
   handleOnExpand: () => void;
   handleRejectButtonClick: () => void;
   handleSelectConsolidationType: (value: string) => void;

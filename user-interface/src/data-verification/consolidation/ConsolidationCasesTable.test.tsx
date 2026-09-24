@@ -214,6 +214,24 @@ describe('test ConsolidationCasesTable component', () => {
     );
   });
 
+  test('should render the case title and docket entry summary/full text for each case row', () => {
+    const cases = MockData.buildArray(() => MockData.getConsolidatedOrderCase(), 2);
+    const props = { cases };
+
+    renderWithProps(props);
+
+    cases.forEach((bCase, idx) => {
+      const caseInfoRow = screen.getByTestId(`${tableId}-row-${idx}-case-info`);
+      expect(caseInfoRow).toHaveTextContent(bCase.caseTitle);
+
+      const docketEntryRow = screen.getByTestId(`${tableId}-row-${idx}-docket-entry`);
+      bCase.docketEntries!.forEach((de) => {
+        expect(docketEntryRow).toHaveTextContent(de.summaryText);
+        expect(docketEntryRow).toHaveTextContent(de.fullText);
+      });
+    });
+  });
+
   test('Should not display alert if the case not a part of another consolidation', async () => {
     const props = {
       cases: [
