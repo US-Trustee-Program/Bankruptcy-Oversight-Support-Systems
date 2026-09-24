@@ -1,0 +1,74 @@
+@use 'styles/abstracts/colors' as colors;
+
+.edit-chapter13-standing-tpr-key-dates {
+  .date-picker .usa-date-picker {
+    max-width: 22rem;
+  }
+
+  .tpr-frequency-group {
+    max-width: 22rem;
+
+    .usa-select {
+      width: 100%;
+    }
+  }
+
+  .tpr-review-period-group {
+    .usa-form-group:not(:first-child) {
+      margin-top: 2rem;
+    }
+  }
+
+  .tpr-frequency-placeholder {
+    color: colors.$gray-cool-50;
+  }
+
+  .tpr-completion-status-title,
+  .tpr-due-title {
+    white-space: nowrap;
+    margin-bottom: 0;
+  }
+
+  .tpr-due-group,
+  .tpr-completion-status-group {
+    margin-top: 2rem;
+    margin-bottom: 0;
+
+    &__row {
+      display: flex;
+      align-items: flex-end;
+      gap: 1.5rem;
+      margin-top: 0;
+
+      .usa-form-group:not(.month-day-selector) {
+        width: 10rem;
+        margin-top: 0;
+        margin-bottom: 0;
+
+        .usa-select {
+          width: 100%;
+        }
+      }
+
+      .usa-form-group.month-day-selector {
+        width: auto;
+        flex: 0 0 auto;
+        margin-top: 0;
+        margin-bottom: 0;
+
+        .month-day-selector__column {
+          flex: 0 0 auto;
+          width: 4.5rem;
+        }
+      }
+    }
+  }
+
+  .usa-button-group {
+    margin-top: 2rem;
+
+    #cancel-chapter13-standing-tpr-key-dates {
+      margin-left: 0.5rem;
+    }
+  }
+}

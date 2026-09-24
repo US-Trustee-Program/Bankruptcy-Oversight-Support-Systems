@@ -1,0 +1,128 @@
+import { render, screen } from '@testing-library/react';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
+import { BrowserRouter } from 'react-router-dom';
+import Chapter13StandingAuditCard, {
+  Chapter13StandingAuditCardProps,
+} from './Chapter13StandingAuditCard';
+import TestingUtilities from '@/lib/testing/testing-utilities';
+import { CamsRole } from '@common/cams/roles';
+import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
+import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
+
+const mockUseNavigate = vi.hoisted(() => vi.fn());
+
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: mockUseNavigate,
+  };
+});
+
+const defaultProps: Chapter13StandingAuditCardProps = {
+  trusteeId: 'trustee-001',
+  appointmentId: 'appointment-001',
+  data: null,
+};
+
+const baseDocument: TrusteeUpcomingKeyDates = {
+  id: 'doc-001',
+  documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
+  trusteeId: 'trustee-001',
+  appointmentId: 'appointment-001',
+  createdBy: SYSTEM_USER_REFERENCE,
+  createdOn: '2026-01-01T00:00:00.000Z',
+  updatedBy: SYSTEM_USER_REFERENCE,
+  updatedOn: '2026-01-01T00:00:00.000Z',
+};
+
+function renderComponent(props?: Partial<Chapter13StandingAuditCardProps>) {
+  return render(
+    <BrowserRouter>
+      <Chapter13StandingAuditCard {...defaultProps} {...props} />
+    </BrowserRouter>,
+  );
+}
+
+describe('Chapter13StandingAuditCard', () => {
+  const mockNavigate = vi.fn();
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    mockNavigate.mockClear();
+    mockUseNavigate.mockReturnValue(mockNavigate);
+    TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
+  });
+
+  test('renders the Annual Audit Period constant', () => {
+    renderComponent();
+    expect(screen.getByTestId('annual-audit-period-row')).toHaveTextContent('Annual Audit Period');
+    expect(screen.getByTestId('annual-audit-period-row')).toHaveTextContent('10/01 - 09/30');
+  });
+
+  test('renders "No date added" for Last Audit Report when data is null', () => {
+    renderComponent();
+    expect(screen.getByTestId('past-audit-row')).toHaveTextContent('No date added');
+  });
+
+  test('renders formatted Last Audit Report when pastAudit is set', () => {
+    renderComponent({ data: { ...baseDocument, pastAudit: '2025-06-30' } });
+    expect(screen.getByTestId('past-audit-row')).toHaveTextContent('06/30/2025');
+  });
+
+  test('renders no completion-status tag when ch13AuditCompletionYear/Status are unset', () => {
+    renderComponent();
+    expect(screen.queryByTestId('tag-audit-completion-status')).not.toBeInTheDocument();
+  });
+
+  test.each([
+    ['ch13AuditCompletionYear only', { ch13AuditCompletionYear: 2026 }],
+    ['ch13AuditCompletionStatus only', { ch13AuditCompletionStatus: 'Complete' as const }],
+  ])('renders no completion-status tag when only %s is set', (_label, partialData) => {
+    renderComponent({ data: { ...baseDocument, ...partialData } });
+    expect(screen.queryByTestId('tag-audit-completion-status')).not.toBeInTheDocument();
+  });
+
+  // CompletionStatusTag's own color/style output (bg-success vs. bg-secondary-dark) is
+  // covered by CompletionStatusTag.test.tsx; these tests only verify this card passes
+  // the right status/year through to it.
+  test('renders a "Complete for {year}" tag when ch13AuditCompletionStatus is Complete', () => {
+    renderComponent({
+      data: {
+        ...baseDocument,
+        ch13AuditCompletionYear: 2026,
+        ch13AuditCompletionStatus: 'Complete',
+      },
+    });
+    expect(screen.getByTestId('tag-audit-completion-status')).toHaveTextContent(
+      'Complete for 2026',
+    );
+  });
+
+  test('renders an "Incomplete for {year}" tag when ch13AuditCompletionStatus is Incomplete', () => {
+    renderComponent({
+      data: {
+        ...baseDocument,
+        ch13AuditCompletionYear: 2026,
+        ch13AuditCompletionStatus: 'Incomplete',
+      },
+    });
+    expect(screen.getByTestId('tag-audit-completion-status')).toHaveTextContent(
+      'Incomplete for 2026',
+    );
+  });
+
+  test('Edit pencil navigates to the dedicated Audit edit route when canManage', () => {
+    renderComponent();
+    screen.getByRole('button', { name: /edit audit key dates/i }).click();
+    expect(mockNavigate).toHaveBeenCalledWith(
+      '/trustees/trustee-001/appointments/appointment-001/chapter13-standing-audit-key-dates/edit',
+    );
+  });
+
+  test('does not render an edit button when user cannot manage trustees', () => {
+    TestingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
+    renderComponent();
+    expect(screen.queryByRole('button', { name: /edit audit key dates/i })).not.toBeInTheDocument();
+  });
+});

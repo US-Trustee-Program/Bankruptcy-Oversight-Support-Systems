@@ -91,6 +91,106 @@ test.describe('Trustee Key Dates', () => {
       expect(accessibilityScanResults.violations).toEqual([]);
     });
   }
+
+  // Chapter 13 Standing accordion + four themed cards (CAMS-915). The accordion may
+  // render closed by default (inactive appointment), so expand it via its own
+  // accordion button before scanning, rather than relying on plain visibility.
+  async function expandChapter13StandingAccordionIfPresent() {
+    const card = trusteeProfilePage
+      .locator('[data-testid="chapter13-standing-audit-card"]')
+      .first();
+    if ((await card.count()) === 0) {
+      return false;
+    }
+    if (await card.isVisible().catch(() => false)) {
+      return true;
+    }
+    const content = trusteeProfilePage
+      .locator('[data-testid^="accordion-content-"]')
+      .filter({ has: card })
+      .first();
+    const testId = await content.getAttribute('data-testid');
+    const accordionId = testId?.replace('accordion-content-', '');
+    if (!accordionId) {
+      return false;
+    }
+    await trusteeProfilePage.locator(`[data-testid="accordion-button-${accordionId}"]`).click();
+    return card.isVisible().catch(() => false);
+  }
+
+  test('Chapter 13 Standing accordion cards should not have accessibility issues', async () => {
+    test.setTimeout(COMPLEX_TEST_TIMEOUT);
+
+    const isVisible = await expandChapter13StandingAccordionIfPresent();
+    if (!isVisible) {
+      test.skip();
+      return;
+    }
+
+    await trusteeProfilePage.waitForTimeout(ANALYZE_DELAY);
+    const accessibilityScanResults = await createAxeBuilder(trusteeProfilePage).analyze();
+    expect(accessibilityScanResults.violations).toEqual([]);
+  });
+
+  test('Chapter 13 Standing Audit edit form should not have accessibility issues', async () => {
+    test.setTimeout(COMPLEX_TEST_TIMEOUT);
+
+    const isVisible = await expandChapter13StandingAccordionIfPresent();
+    if (!isVisible) {
+      test.skip();
+      return;
+    }
+
+    const editButton = trusteeProfilePage.locator('#edit-chapter13-standing-audit-key-dates');
+    await editButton.click();
+    await expect(
+      trusteeProfilePage.locator('[data-testid="edit-chapter13-standing-audit-key-dates"]'),
+    ).toBeVisible();
+
+    await trusteeProfilePage.waitForTimeout(ANALYZE_DELAY);
+    const accessibilityScanResults = await createAxeBuilder(trusteeProfilePage).analyze();
+    expect(accessibilityScanResults.violations).toEqual([]);
+  });
+
+  test('Chapter 13 Standing Trustee Performance Report edit form should not have accessibility issues', async () => {
+    test.setTimeout(COMPLEX_TEST_TIMEOUT);
+
+    const isVisible = await expandChapter13StandingAccordionIfPresent();
+    if (!isVisible) {
+      test.skip();
+      return;
+    }
+
+    const editButton = trusteeProfilePage.locator('#edit-chapter13-standing-tpr-key-dates');
+    await editButton.click();
+    await expect(
+      trusteeProfilePage.locator('[data-testid="edit-chapter13-standing-tpr-key-dates"]'),
+    ).toBeVisible();
+
+    await trusteeProfilePage.waitForTimeout(ANALYZE_DELAY);
+    const accessibilityScanResults = await createAxeBuilder(trusteeProfilePage).analyze();
+    expect(accessibilityScanResults.violations).toEqual([]);
+  });
+
+  test('Chapter 13 Standing Other edit form should not have accessibility issues', async () => {
+    test.setTimeout(COMPLEX_TEST_TIMEOUT);
+
+    const isVisible = await expandChapter13StandingAccordionIfPresent();
+    if (!isVisible) {
+      test.skip();
+      return;
+    }
+
+    const editButton = trusteeProfilePage.locator('#edit-chapter13-standing-other-key-dates');
+    await editButton.click();
+    await expect(
+      trusteeProfilePage.locator('[data-testid="edit-chapter13-standing-other-key-dates"]'),
+    ).toBeVisible();
+
+    await trusteeProfilePage.waitForTimeout(ANALYZE_DELAY);
+    const accessibilityScanResults = await createAxeBuilder(trusteeProfilePage).analyze();
+    expect(accessibilityScanResults.violations).toEqual([]);
+  });
 });
 
 test.describe('Chapter 12/13 Case by Case Key Dates', () => {

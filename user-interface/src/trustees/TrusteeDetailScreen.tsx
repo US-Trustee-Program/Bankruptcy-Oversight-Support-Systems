@@ -27,6 +27,9 @@ import TrusteeAppointmentForm from './forms/TrusteeAppointmentForm';
 import EditTrusteeAppointment from './forms/EditTrusteeAppointment';
 import UpcomingKeyDatesForm from './forms/UpcomingKeyDatesForm';
 import PastKeyDatesForm from './forms/PastKeyDatesForm';
+import Chapter13StandingAuditForm from './forms/Chapter13StandingAuditForm';
+import Chapter13StandingTrusteePerformanceReportForm from './forms/Chapter13StandingTrusteePerformanceReportForm';
+import Chapter13StandingOtherForm from './forms/Chapter13StandingOtherForm';
 import BondKeyDatesForm from './forms/BondKeyDatesForm';
 import AnnualReportKeyDatesForm from './forms/AnnualReportKeyDatesForm';
 import TrusteePerformanceReportKeyDatesForm from './forms/TrusteePerformanceReportKeyDatesForm';
@@ -316,6 +319,24 @@ export default function TrusteeDetailScreen() {
       ),
       subHeading: appointmentHeading,
       content: <PastKeyDatesForm />,
+    },
+    {
+      path: 'appointments/:appointmentId/chapter13-standing-audit-key-dates/edit',
+      disabled: !featureFlags[DISPLAY_CHPT13_STANDING_KEY_DATES],
+      subHeading: appointmentHeading,
+      content: <Chapter13StandingAuditForm />,
+    },
+    {
+      path: 'appointments/:appointmentId/chapter13-standing-tpr-key-dates/edit',
+      disabled: !featureFlags[DISPLAY_CHPT13_STANDING_KEY_DATES],
+      subHeading: appointmentHeading,
+      content: <Chapter13StandingTrusteePerformanceReportForm />,
+    },
+    {
+      path: 'appointments/:appointmentId/chapter13-standing-other-key-dates/edit',
+      disabled: !featureFlags[DISPLAY_CHPT13_STANDING_KEY_DATES],
+      subHeading: appointmentHeading,
+      content: <Chapter13StandingOtherForm />,
     },
     {
       path: 'appointments/:appointmentId/bond-key-dates/edit',

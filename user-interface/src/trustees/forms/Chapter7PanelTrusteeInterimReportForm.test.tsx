@@ -288,6 +288,37 @@ describe('Chapter7PanelTrusteeInterimReportForm', () => {
     );
   });
 
+  test('Save button shows Saving... and is disabled while the save request is in flight', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+    vi.spyOn(Api2, 'putUpcomingKeyDates').mockImplementation(() => new Promise<never>(() => {}));
+
+    renderComponent();
+    await waitFor(() => expect(screen.getByTestId('tir-period')).toHaveValue('01/01-12/31'));
+
+    await userEvent.click(screen.getByTestId('button-save-chapter7-panel-tir'));
+
+    await waitFor(() => {
+      const saveButton = screen.getByTestId('button-save-chapter7-panel-tir');
+      expect(saveButton).toBeDisabled();
+      expect(saveButton).toHaveTextContent('Saving...');
+    });
+  });
+
+  test('Save button is disabled when past-tpr-submission has an invalid date', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+
+    renderComponent();
+    await screen.findByTestId('past-tpr-submission');
+
+    fireEvent.change(screen.getByTestId('past-tpr-submission'), {
+      target: { value: '1900-01-01' },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('button-save-chapter7-panel-tir')).toBeDisabled();
+    });
+  });
+
   test('Save button is disabled and shows a message when only the completion status year is cleared', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
 
@@ -501,6 +532,10 @@ describe('buildTrusteeInterimReportKeyDatesInput', () => {
       bondRenewalDate: '2020-01-21',
       annualReportCompletionYear: null,
       annualReportCompletionStatus: null,
+      ch13AuditCompletionYear: null,
+      ch13AuditCompletionStatus: null,
+      ch13TprCompletionYear: null,
+      ch13TprCompletionStatus: null,
     });
   });
 
@@ -592,6 +627,10 @@ describe('buildTrusteeInterimReportKeyDatesInput', () => {
       bondRenewalDate: null,
       annualReportCompletionYear: null,
       annualReportCompletionStatus: null,
+      ch13AuditCompletionYear: null,
+      ch13AuditCompletionStatus: null,
+      ch13TprCompletionYear: null,
+      ch13TprCompletionStatus: null,
     });
   });
 });

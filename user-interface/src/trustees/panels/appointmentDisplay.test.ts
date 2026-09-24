@@ -46,8 +46,8 @@ describe('appointmentDisplay', () => {
       expect(buildDistrictDisplay({ courtId: '0208' })).toBe('Court 0208');
     });
 
-    test('renders "Court undefined" when both courtName and courtId are missing', () => {
-      expect(buildDistrictDisplay({})).toBe('Court undefined');
+    test('renders "Court information not available" when both courtName and courtId are missing', () => {
+      expect(buildDistrictDisplay({})).toBe('Court information not available');
     });
   });
 
@@ -83,7 +83,7 @@ describe('appointmentDisplay', () => {
       ).toBe('Court 0208: Chapter 11 Subchapter V - Pool');
     });
 
-    test('falls back to "Court undefined" when neither courtName nor courtId is present', () => {
+    test('falls back to "Court information not available" when neither courtName nor courtId is present', () => {
       // Documents buildDistrictDisplay's existing fallback for legacy/malformed
       // ATS-migration data missing both fields -- see appointmentDisplay.ts's
       // comment on buildDistrictDisplay.
@@ -92,7 +92,7 @@ describe('appointmentDisplay', () => {
           chapter: '7',
           appointmentType: 'panel',
         }),
-      ).toBe('Court undefined: Chapter 7 - Panel');
+      ).toBe('Court information not available: Chapter 7 - Panel');
     });
   });
 });

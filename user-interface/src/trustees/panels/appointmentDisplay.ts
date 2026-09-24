@@ -36,7 +36,10 @@ export function buildDistrictDisplay(appointment: {
   if (appointment.courtName) {
     return appointment.courtName;
   }
-  return `Court ${appointment.courtId}`;
+  if (appointment.courtId) {
+    return `Court ${appointment.courtId}`;
+  }
+  return 'Court information not available';
 }
 
 /**

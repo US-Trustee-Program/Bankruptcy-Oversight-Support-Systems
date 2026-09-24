@@ -11,22 +11,35 @@ import './Accordion.scss';
 interface AccordionGroupProps extends PropsWithChildren {
   /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
   children?: ReactElement<any> | Array<ReactElement<any>>;
+  /** Id of the child Accordion to expand on first render. Has no effect after mount. */
+  initialExpandedId?: string;
 }
 
 export const AccordionGroup: FunctionComponent<AccordionGroupProps> = (props) => {
-  const [expandedAccordion, setExpandedAccordion] = useState<string>('');
+  const [expandedAccordion, setExpandedAccordion] = useState<string>(props.initialExpandedId ?? '');
 
   function expandAccordion(accordionId: string) {
     setExpandedAccordion(accordionId);
   }
 
-  function collapseAccordion(accordionId: string) {
-    setExpandedAccordion((prev) => (prev === accordionId ? '' : prev));
+  // Always called with the id of the accordion that was expanded (Accordion only fires
+  // onCollapse for itself when toggling off its own controlled expandedId), so there's
+  // no need to guard against collapsing a different accordion than the one that's open.
+  function collapseAccordion() {
+    setExpandedAccordion('');
   }
 
   const renderChildren = () => {
     if (!props.children) return;
     return Children.map(props.children, (child) => {
+      // Components that manage their own independent expand/collapse state (rather than
+      // participating in this group's single-open behavior) opt out by setting this static
+      // flag, so AccordionGroup doesn't clone in expandedId/onExpand/onCollapse props they
+      // don't declare and would otherwise silently ignore.
+      const excludesFromGroup = (child.type as { excludeFromAccordionGroup?: boolean })
+        ?.excludeFromAccordionGroup;
+      if (excludesFromGroup) return child;
+
       const childOnExpand = child.props.onExpand;
       const childOnCollapse = child.props.onCollapse;
       return cloneElement(child, {
@@ -36,7 +49,7 @@ export const AccordionGroup: FunctionComponent<AccordionGroupProps> = (props) =>
           if (childOnExpand) childOnExpand(id);
         },
         onCollapse: (id: string) => {
-          collapseAccordion(id);
+          collapseAccordion();
           if (childOnCollapse) childOnCollapse(id);
         },
         expandedId: expandedAccordion,

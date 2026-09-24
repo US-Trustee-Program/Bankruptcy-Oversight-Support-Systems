@@ -33,6 +33,7 @@ Quick reference for available test data scenarios. For detailed setup instructio
 | **Comprehensive Trustee Set**    | `trustees-comprehensive.ts`                                | 24+ trustees with varied chapters, districts, and appointment types for pagination/filtering tests                                                                                                                                                                                                                                                                                                |
 | **Trustee Case List**            | `trustee-case-list.ts`                                     | Paginated trustee with 60 active case appointments (pages of 25/25/10) across chapters 7, 11, 13 with varied dateFiled dates (2020–2024). Empty trustee for empty-state testing. Cases seeded in both DXTR (AO_CS, AO_PY, AO_DE) and Cosmos (SYNCED_CASE) so case detail and docket tabs render completely when following links.                                                                  |
 | **Missing Email Trustee**        | `trustee-data.ts`                                          | **Nolan Nocontact** (seed-trustee-nocontact-001) - active, searchable trustee with an address and phone but no email, for exercising the "Email not provided" placeholder in `TrusteeSearchModal`'s selected-trustee comparison column                                                                                                                                                            |
+| **Ch13 Standing Key Dates**      | `trustee-key-dates.ts`                                     | **Felicia Keydates** (seed-trustee-keydates-ch13-standing-001) - active appointment with fully populated key dates across all four Ch13 Standing accordion cards, and **Gregory Nokeydates** (seed-trustee-keydates-ch13-standing-empty) - inactive appointment with no key dates, for testing the "No date added" placeholder state and the accordion's default-closed behavior               |
 
 ### Administrative Data
 
@@ -66,6 +67,12 @@ division 091) and inactive Ch7 Elected appointment (Manhattan, division 081, dat
 appointment (Manhattan, division 091) and resigned Out of Pool appointment (Manhattan, division 081,
 dates distinct from the 2020-01-01 default)
 
+### Ch13 Standing Key Dates
+
+**Trustees:** Felicia Keydates (`seed-trustee-keydates-ch13-standing-001`) — active appointment with
+fully populated key dates across all four Ch13 Standing accordion cards; Gregory Nokeydates
+(`seed-trustee-keydates-ch13-standing-empty`) — inactive appointment with no key dates
+
 ### Historical Trustee Changes
 
 **Cases:** `091-99-86706`, `091-99-87899`, `091-99-99943`, `091-99-97816`, `091-99-98483`
@@ -88,9 +95,11 @@ Ethan Nostaff, Ava Nostaff
 
 **Trustees:** Marcus Keydates, Diana Keydates, Samuel Keydates, Emily Nokeydates, Priya Keydates
 (Chapter 11 Subchapter V Pool, Last Monthly Report Received populated), Priya Nokeydates (Chapter 11
-Subchapter V Pool, no key dates), Catherine Keydates (Chapter 12 Standing; audit/TPR completion
-status and Last TPR Submitted populated for the accordion's Audit and Trustee Performance Report
-cards)
+Subchapter V Pool, no key dates), Felicia Keydates (Chapter 13 Standing, active, all four accordion
+cards populated including Audit and TPR completion-status tags), Gregory Nokeydates (Chapter 13
+Standing, inactive appointment, no key dates — tests "No date added" defaults and default-closed
+accordion state), Catherine Keydates (Chapter 12 Standing; audit/TPR completion status and Last TPR
+Submitted populated for the accordion's Audit and Trustee Performance Report cards)
 
 ### 341 Meeting Info
 

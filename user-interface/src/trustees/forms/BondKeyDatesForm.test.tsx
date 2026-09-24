@@ -106,6 +106,20 @@ describe('BondKeyDatesForm', () => {
     expect(screen.getByTestId('bond-renewal-date')).toHaveValue('2026-06-01');
   });
 
+  test('shows empty inputs when the existing document has no bond dates set', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({
+      data: { ...populatedDocument, bondIssuedDate: undefined, bondRenewalDate: undefined },
+    });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-bond-key-dates')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('bond-issued-date')).toHaveValue('');
+    expect(screen.getByTestId('bond-renewal-date')).toHaveValue('');
+  });
+
   test('shows empty inputs when API returns null', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
@@ -307,6 +321,10 @@ describe('buildBondKeyDatesInput', () => {
       bondRenewalDate: '2026-06-01',
       annualReportCompletionYear: 2025,
       annualReportCompletionStatus: 'INCOMPLETE',
+      ch13AuditCompletionYear: null,
+      ch13AuditCompletionStatus: null,
+      ch13TprCompletionYear: null,
+      ch13TprCompletionStatus: null,
     });
   });
 
@@ -356,6 +374,23 @@ describe('buildBondKeyDatesInput', () => {
       bondRenewalDate: null,
       annualReportCompletionYear: null,
       annualReportCompletionStatus: null,
+      ch13AuditCompletionYear: null,
+      ch13AuditCompletionStatus: null,
+      ch13TprCompletionYear: null,
+      ch13TprCompletionStatus: null,
     });
+  });
+
+  test('applies bondIssuedDate and bondRenewalDate independently rather than as an all-or-nothing pair', () => {
+    const result = buildBondKeyDatesInput(
+      { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
+      fullOriginal,
+      { bondIssuedDate: '2023-06-01', bondRenewalDate: '' },
+    );
+
+    expect(result.bondIssuedDate).toBe('2023-06-01');
+    expect(result.bondRenewalDate).toBeNull();
+    // Every other field should still be carried forward from the original, unaffected.
+    expect(result.pastFieldExam).toBe(fullOriginal.pastFieldExam);
   });
 });

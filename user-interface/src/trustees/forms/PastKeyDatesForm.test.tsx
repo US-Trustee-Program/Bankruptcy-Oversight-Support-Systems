@@ -304,6 +304,10 @@ describe('PastKeyDatesForm', () => {
         bondRenewalDate: null,
         annualReportCompletionYear: null,
         annualReportCompletionStatus: null,
+        ch13AuditCompletionYear: null,
+        ch13AuditCompletionStatus: null,
+        ch13TprCompletionYear: null,
+        ch13TprCompletionStatus: null,
       }),
     );
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');
@@ -774,7 +778,7 @@ describe('PastKeyDatesForm', () => {
       });
     });
 
-    test('renders 2 date inputs and a MonthYear selector for last compensation study', async () => {
+    test('renders 3 date inputs, a MonthYear selector for last compensation study, and Last TPR Submitted', async () => {
       vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
       renderComponent();
@@ -787,8 +791,8 @@ describe('PastKeyDatesForm', () => {
       expect(screen.getByTestId('past-audit')).toBeInTheDocument();
       expect(screen.getByTestId('last-compensation-study-month')).toBeInTheDocument();
       expect(screen.getByTestId('last-compensation-study-year')).toBeInTheDocument();
+      expect(screen.getByTestId('last-tpr-submitted')).toBeInTheDocument();
       expect(screen.queryByTestId('past-field-exam')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('past-tpr-submission')).not.toBeInTheDocument();
       expect(screen.queryByTestId('last-audit-fiscal-year')).not.toBeInTheDocument();
     });
 
@@ -803,6 +807,36 @@ describe('PastKeyDatesForm', () => {
 
       expect(screen.getByText('Audit Report Date')).toBeInTheDocument();
       expect(screen.getByText('Last Compensation Study')).toBeInTheDocument();
+      expect(screen.getByText('Last TPR Submitted')).toBeInTheDocument();
+    });
+
+    test('pre-populates Last TPR Submitted from API response and includes edits in the PUT payload', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({
+        data: { ...populatedDocument, pastTprSubmission: '2025-11-03' },
+      });
+      const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('last-tpr-submitted')).toHaveValue('2025-11-03');
+      });
+
+      fireEvent.change(screen.getByTestId('last-tpr-submitted'), {
+        target: { value: '2026-01-15' },
+      });
+
+      await userEvent.click(screen.getByTestId('button-save-past-key-dates'));
+
+      await waitFor(() =>
+        expect(putSpy).toHaveBeenCalledWith(
+          'trustee-001',
+          'appointment-001',
+          expect.objectContaining({
+            pastTprSubmission: '2026-01-15',
+          }),
+        ),
+      );
     });
 
     test('Save is disabled when MonthYearSelector has partial entry', async () => {

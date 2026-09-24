@@ -26,7 +26,7 @@ export type PastDateFieldKey =
 interface PastKeyDatesFieldConfigBase {
   /** Label shown on the read-only Past Key Dates display card. */
   displayLabel: string;
-  /** Label shown on the Edit Past Key Dates form. Differs from displayLabel for pastTprSubmission. */
+  /** Label shown on the Edit Past Key Dates form. Differs from displayLabel for pastAudit. */
   formLabel: string;
   hint?: string;
   /** Note shown below the value on the read-only Past Key Dates display card. */
@@ -117,6 +117,14 @@ export const PAST_KEY_DATES_FIELD_CONFIG: Record<PastKeyDatesVariant, PastKeyDat
       testId: 'last-compensation-study-row',
       inputId: 'last-compensation-study',
       kind: 'month-year',
+    },
+    {
+      key: 'pastTprSubmission',
+      displayLabel: 'Last TPR Submitted',
+      formLabel: 'Last TPR Submitted',
+      testId: 'last-tpr-submitted-row',
+      inputId: 'last-tpr-submitted',
+      kind: 'date',
     },
   ],
 };

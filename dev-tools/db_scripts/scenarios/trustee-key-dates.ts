@@ -874,5 +874,153 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
         },
       ],
     },
+
+    // ── Cosmos: Chapter 13 Standing Trustee with fully populated key dates ──
+    // Active appointment: all four accordion cards render real data, both
+    // completion-status tags show (CAMS-915).
+    {
+      db: 'cams',
+      collectionOrTable: 'trustees',
+      data: [
+        {
+          ...createTrusteeBase({
+            id: 'seed-trustee-keydates-ch13-standing-001',
+            firstName: 'Felicia',
+            lastName: 'Keydates',
+            status: 'active',
+            address1: '1300 Standing Blvd',
+            city: 'New York',
+            state: 'NY',
+            zipCode: '10008',
+            phone: '212-555-1800',
+            email: 'felicia.keydates@example.com',
+          }),
+          updatedOn: '2025-03-01T00:00:00.000Z',
+          updatedBy: SEEDER,
+        },
+      ],
+    },
+
+    {
+      db: 'cams',
+      collectionOrTable: 'trustee-appointments',
+      data: [
+        {
+          id: 'seed-appointment-keydates-ch13-standing-001',
+          documentType: 'TRUSTEE_APPOINTMENT',
+          trusteeId: 'seed-trustee-keydates-ch13-standing-001',
+          chapter: '13',
+          appointmentType: 'standing',
+          courtId: '0208',
+          divisionCodes: ['081'],
+          appointedDate: '2021-06-01',
+          status: 'active',
+          effectiveDate: '2021-06-01',
+          courtName: 'U.S. Bankruptcy Court Southern District of New York',
+          courtDivisionName: 'Manhattan',
+          updatedOn: '2025-03-01T00:00:00.000Z',
+          updatedBy: SEEDER,
+        },
+      ],
+    },
+
+    {
+      db: 'cams',
+      collectionOrTable: 'trustees',
+      data: [
+        {
+          id: 'seed-key-dates-ch13-standing-001',
+          documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
+          trusteeId: 'seed-trustee-keydates-ch13-standing-001',
+          appointmentId: 'seed-appointment-keydates-ch13-standing-001',
+          // Audit card
+          pastAudit: '2025-06-30',
+          ch13AuditCompletionYear: 2025,
+          ch13AuditCompletionStatus: 'Complete',
+          // Trustee Performance Report card
+          tprReviewPeriodStart: '2025-04-01',
+          tprReviewPeriodEnd: '2025-09-30',
+          tprFrequency: 'ANNUAL',
+          tprDue: '1900-09-15',
+          tprDueYearType: 'EVEN',
+          pastTprSubmission: '2025-10-01',
+          ch13TprCompletionYear: 2025,
+          ch13TprCompletionStatus: 'Complete',
+          // Budget card fields are fixed constants, no data needed
+          // Other card
+          leaseExpiration: '2027-06-30',
+          pastBackgroundQuestion: '2025-01-15',
+          idExpiration: '2028-01-15',
+          lastCompensationStudy: '2024-06-01',
+          updatedOn: '2025-03-01T00:00:00.000Z',
+          updatedBy: SEEDER,
+        },
+      ],
+    },
+
+    // ── Cosmos: Chapter 13 Standing Trustee, inactive appointment, no key dates ──
+    // Exercises "No date added" defaults, the gray status tag, and the
+    // accordion's default-closed behavior for a non-active appointment (CAMS-915).
+    {
+      db: 'cams',
+      collectionOrTable: 'trustees',
+      data: [
+        {
+          ...createTrusteeBase({
+            id: 'seed-trustee-keydates-ch13-standing-empty',
+            firstName: 'Gregory',
+            lastName: 'Nokeydates',
+            status: 'active',
+            address1: '1301 Standing Blvd',
+            city: 'New York',
+            state: 'NY',
+            zipCode: '10008',
+            phone: '212-555-1801',
+            email: 'gregory.nokeydates@example.com',
+          }),
+          updatedOn: '2025-03-01T00:00:00.000Z',
+          updatedBy: SEEDER,
+        },
+      ],
+    },
+
+    {
+      db: 'cams',
+      collectionOrTable: 'trustee-appointments',
+      data: [
+        {
+          id: 'seed-appointment-keydates-ch13-standing-empty',
+          documentType: 'TRUSTEE_APPOINTMENT',
+          trusteeId: 'seed-trustee-keydates-ch13-standing-empty',
+          chapter: '13',
+          appointmentType: 'standing',
+          courtId: '0208',
+          divisionCodes: ['081'],
+          appointedDate: '2019-01-01',
+          status: 'inactive',
+          effectiveDate: '2024-01-01',
+          courtName: 'U.S. Bankruptcy Court Southern District of New York',
+          courtDivisionName: 'Manhattan',
+          updatedOn: '2025-03-01T00:00:00.000Z',
+          updatedBy: SEEDER,
+        },
+      ],
+    },
+
+    {
+      db: 'cams',
+      collectionOrTable: 'trustees',
+      data: [
+        {
+          id: 'seed-key-dates-ch13-standing-empty',
+          documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
+          trusteeId: 'seed-trustee-keydates-ch13-standing-empty',
+          appointmentId: 'seed-appointment-keydates-ch13-standing-empty',
+          // All optional fields omitted - tests "No date added" placeholder state
+          updatedOn: '2025-03-01T00:00:00.000Z',
+          updatedBy: SEEDER,
+        },
+      ],
+    },
   ];
 }

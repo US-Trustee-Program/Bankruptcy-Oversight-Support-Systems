@@ -129,6 +129,48 @@ function requireChronologicalOrder(
   };
 }
 
+const CH13_COMPLETION_STATUS_VALUES = ['Complete', 'Incomplete'] as const;
+const CH13_MIN_COMPLETION_YEAR = 1900;
+const CH13_MAX_COMPLETION_YEAR = 2100;
+
+function validateCh13CompletionYear(value: unknown, label: string): ValidatorResult {
+  if (value === null || value === undefined) return VALID;
+  const isValidYear =
+    typeof value === 'number' &&
+    Number.isInteger(value) &&
+    value >= CH13_MIN_COMPLETION_YEAR &&
+    value <= CH13_MAX_COMPLETION_YEAR;
+  if (!isValidYear) {
+    return {
+      reasons: [
+        `${label} must be a whole number between ${CH13_MIN_COMPLETION_YEAR} and ${CH13_MAX_COMPLETION_YEAR}.`,
+      ],
+    };
+  }
+  return VALID;
+}
+
+function validateCh13CompletionYears(): ValidatorFunction {
+  return (obj: unknown): ValidatorResult => {
+    const input = obj as TrusteeUpcomingKeyDatesInput;
+    const reasonMap: ValidatorReasonMap = {};
+
+    const yearResult = validateCh13CompletionYear(
+      input.ch13AuditCompletionYear,
+      'Audit Completion Year',
+    );
+    if (!yearResult.valid) reasonMap.ch13AuditCompletionYear = yearResult;
+
+    const tprYearResult = validateCh13CompletionYear(
+      input.ch13TprCompletionYear,
+      'TPR Completion Year',
+    );
+    if (!tprYearResult.valid) reasonMap.ch13TprCompletionYear = tprYearResult;
+
+    return Object.keys(reasonMap).length > 0 ? { reasonMap } : VALID;
+  };
+}
+
 function requireValidEnum(
   field: keyof TrusteeUpcomingKeyDatesInput,
   validValues: readonly string[],
@@ -204,6 +246,7 @@ function validateDateFields(): ValidatorFunction {
 const trusteeUpcomingKeyDatesSpec: ValidationSpec<TrusteeUpcomingKeyDatesInput> = {
   $: [
     validateDateFields(),
+    validateCh13CompletionYears(),
     requirePair(
       'tprReviewPeriodStart',
       'tprReviewPeriodEnd',
@@ -247,6 +290,18 @@ const trusteeUpcomingKeyDatesSpec: ValidationSpec<TrusteeUpcomingKeyDatesInput> 
       'Trustee Interim Report Completion Status Year',
       'Trustee Interim Report Completion Status',
     ),
+    requirePair(
+      'ch13AuditCompletionYear',
+      'ch13AuditCompletionStatus',
+      'Audit Completion Year',
+      'Audit Completion Status',
+    ),
+    requirePair(
+      'ch13TprCompletionYear',
+      'ch13TprCompletionStatus',
+      'TPR Completion Year',
+      'TPR Completion Status',
+    ),
     requireValidEnum(
       'auditCompletionStatus',
       ['CLOSED', 'NOT_CLOSED'],
@@ -272,6 +327,16 @@ const trusteeUpcomingKeyDatesSpec: ValidationSpec<TrusteeUpcomingKeyDatesInput> 
       'annualReportCompletionStatus',
       ['COMPLETE', 'INCOMPLETE'],
       'Annual Report Completion Status',
+    ),
+    requireValidEnum(
+      'ch13AuditCompletionStatus',
+      CH13_COMPLETION_STATUS_VALUES,
+      'Audit Completion Status',
+    ),
+    requireValidEnum(
+      'ch13TprCompletionStatus',
+      CH13_COMPLETION_STATUS_VALUES,
+      'TPR Completion Status',
     ),
   ],
 };
@@ -324,6 +389,7 @@ export function validateCompletionPairPresence(
  * completion year.
  */
 export type CompletionStatus = 'COMPLETE' | 'INCOMPLETE';
+export type Ch13CompletionStatus = 'Complete' | 'Incomplete';
 
 /**
  * Validates chronological order for the TPR review period start/end pair,
@@ -382,6 +448,10 @@ export type TrusteeUpcomingKeyDates = Auditable &
     lastCompensationStudy?: string;
     bondIssuedDate?: string;
     bondRenewalDate?: string;
+    ch13AuditCompletionYear?: number;
+    ch13AuditCompletionStatus?: Ch13CompletionStatus;
+    ch13TprCompletionYear?: number;
+    ch13TprCompletionStatus?: Ch13CompletionStatus;
   };
 
 export type TrusteeUpcomingKeyDatesInput = {
@@ -423,6 +493,10 @@ export type TrusteeUpcomingKeyDatesInput = {
   lastCompensationStudy: string | null;
   bondIssuedDate: string | null;
   bondRenewalDate: string | null;
+  ch13AuditCompletionYear: number | null;
+  ch13AuditCompletionStatus: Ch13CompletionStatus | null;
+  ch13TprCompletionYear: number | null;
+  ch13TprCompletionStatus: Ch13CompletionStatus | null;
 };
 
 export type TrusteeUpcomingKeyDatesHistory = AbstractTrusteeHistory<
@@ -489,7 +563,9 @@ type TextField =
   | 'auditCompletionStatus'
   | 'tprCompletionStatus'
   | 'tirCompletionStatus'
-  | 'annualReportCompletionStatus';
+  | 'annualReportCompletionStatus'
+  | 'ch13AuditCompletionStatus'
+  | 'ch13TprCompletionStatus';
 
 export const TEXT_FIELDS: TextField[] = [
   'tprDueYearType',
@@ -499,6 +575,8 @@ export const TEXT_FIELDS: TextField[] = [
   'tprCompletionStatus',
   'tirCompletionStatus',
   'annualReportCompletionStatus',
+  'ch13AuditCompletionStatus',
+  'ch13TprCompletionStatus',
 ];
 
 /**
@@ -513,7 +591,9 @@ type ScalarField =
   | 'auditCompletionYear'
   | 'tprCompletionYear'
   | 'tirCompletionYear'
-  | 'annualReportCompletionYear';
+  | 'annualReportCompletionYear'
+  | 'ch13AuditCompletionYear'
+  | 'ch13TprCompletionYear';
 
 export const SCALAR_FIELDS: ScalarField[] = [
   'lastAuditFiscalYear',
@@ -523,6 +603,8 @@ export const SCALAR_FIELDS: ScalarField[] = [
   'tprCompletionYear',
   'tirCompletionYear',
   'annualReportCompletionYear',
+  'ch13AuditCompletionYear',
+  'ch13TprCompletionYear',
 ];
 
 export function isoToMMDDYYYY(iso: string): string {

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Accordion, AccordionGroup } from './Accordion';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { vi } from 'vitest';
 
 describe('Accordion tests', () => {
   test('Should expand accordion when clicking on expand button and collapse when clicking again and when accordion is used without an accordion group', async () => {
@@ -48,6 +49,36 @@ describe('Accordion tests', () => {
     });
   });
 
+  test('Should call onExpand when opened and onCollapse when closed, never both on the same click', async () => {
+    const accordionId = 'accordion1';
+    const onExpand = vi.fn();
+    const onCollapse = vi.fn();
+    render(
+      <React.StrictMode>
+        <Accordion id={accordionId} onExpand={onExpand} onCollapse={onCollapse}>
+          <span>Title of accordion</span>
+          <span>Content of accordion</span>
+        </Accordion>
+      </React.StrictMode>,
+    );
+
+    const button = screen.getByTestId(`accordion-button-${accordionId}`);
+
+    fireEvent.click(button);
+    await waitFor(() => {
+      expect(onExpand).toHaveBeenCalledWith(accordionId);
+      expect(onExpand).toHaveBeenCalledTimes(1);
+      expect(onCollapse).not.toHaveBeenCalled();
+    });
+
+    fireEvent.click(button);
+    await waitFor(() => {
+      expect(onCollapse).toHaveBeenCalledWith(accordionId);
+      expect(onCollapse).toHaveBeenCalledTimes(1);
+      expect(onExpand).toHaveBeenCalledTimes(1);
+    });
+  });
+
   test('Should toggle standalone accordion instances independently when not grouped in an accordion group', async () => {
     const onExpandA = vi.fn();
     const onCollapseA = vi.fn();
@@ -66,9 +97,9 @@ describe('Accordion tests', () => {
       </React.StrictMode>,
     );
 
+    const buttonA = screen.getByTestId('accordion-button-standalone-a');
     const contentA = screen.getByTestId('accordion-content-standalone-a');
     const contentB = screen.getByTestId('accordion-content-standalone-b');
-    const buttonA = screen.getByTestId('accordion-button-standalone-a');
 
     expect(contentA).not.toBeVisible();
     expect(contentB).not.toBeVisible();
@@ -197,5 +228,40 @@ describe('Accordion tests', () => {
     expect(contentA1).not.toBeVisible();
     expect(contentA2).not.toBeVisible();
     expect(contentA4).not.toBeVisible();
+  });
+
+  test('Should expand the accordion matching initialExpandedId on first render', () => {
+    render(
+      <React.StrictMode>
+        <AccordionGroup initialExpandedId="a2">
+          <Accordion id="a1">
+            <span>Title of accordion a1</span>
+            <span>Content of accordion a1</span>
+          </Accordion>
+          <Accordion id="a2">
+            <span>Title of accordion a2</span>
+            <span>Content of accordion a2</span>
+          </Accordion>
+        </AccordionGroup>
+      </React.StrictMode>,
+    );
+
+    expect(screen.getByTestId('accordion-content-a1')).not.toBeVisible();
+    expect(screen.getByTestId('accordion-content-a2')).toBeVisible();
+  });
+
+  test('Without initialExpandedId, no accordion is expanded by default (regression check)', () => {
+    render(
+      <React.StrictMode>
+        <AccordionGroup>
+          <Accordion id="a1">
+            <span>Title of accordion a1</span>
+            <span>Content of accordion a1</span>
+          </Accordion>
+        </AccordionGroup>
+      </React.StrictMode>,
+    );
+
+    expect(screen.getByTestId('accordion-content-a1')).not.toBeVisible();
   });
 });

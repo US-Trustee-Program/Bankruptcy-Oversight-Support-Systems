@@ -8,8 +8,14 @@
 
   .usa-date-picker {
     position: relative;
-    display: inline-block;
+    display: block;
     width: 100%;
+    max-width: 30rem;
+    margin-top: 0.5rem;
+
+    input[type='date'] {
+      margin-top: 0;
+    }
 
     // Hide the native calendar picker indicator
     input[type='date']::-webkit-calendar-picker-indicator {
@@ -20,7 +26,8 @@
     .calendar-picker-button {
       position: absolute;
       right: 0.5rem;
-      top: 1rem;
+      top: 50%;
+      transform: translateY(-50%);
       background: transparent;
       border: none;
       cursor: pointer;

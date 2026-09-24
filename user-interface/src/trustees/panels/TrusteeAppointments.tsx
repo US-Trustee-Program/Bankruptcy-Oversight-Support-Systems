@@ -4,6 +4,7 @@ import Api2 from '@/lib/models/api2';
 import { sortByCourtLocation } from '@/lib/utils/court-utils';
 import {
   TrusteeAppointment,
+  isChapter13Standing,
   isChapter11CaseByCase,
   isChapter7Elected,
   isChapter7Panel,
@@ -15,6 +16,7 @@ import {
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import AppointmentCard from './AppointmentCard';
+import { AccordionGroup } from '@/lib/components/uswds/Accordion';
 import AppointmentAccordion from './AppointmentAccordion';
 import Chapter11CaseByCaseAppointmentBody from './Chapter11CaseByCaseAppointmentBody';
 import Chapter7ElectedAppointmentBody from './Chapter7ElectedAppointmentBody';
@@ -25,6 +27,7 @@ import Chapter12StandingAppointmentBody from './Chapter12StandingAppointmentBody
 import Button from '@/lib/components/uswds/Button';
 import Icon from '@/lib/components/uswds/Icon';
 import { useNavigate } from 'react-router-dom';
+import { useSessionState } from '@/lib/hooks/UseSessionState';
 import { useAppointmentExpansion } from './useAppointmentExpansion';
 
 interface TrusteeAppointmentsProps {
@@ -61,6 +64,10 @@ export default function TrusteeAppointments(props: Readonly<TrusteeAppointmentsP
   const [appointments, setAppointments] = useState<TrusteeAppointment[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [persistedExpandedId, setPersistedExpandedId] = useSessionState<string>(
+    `ch13-standing-expanded-${trusteeId}`,
+    '',
+  );
   const navigate = useNavigate();
   const { isExpanded, toggleExpanded } = useAppointmentExpansion();
 
@@ -124,6 +131,16 @@ export default function TrusteeAppointments(props: Readonly<TrusteeAppointmentsP
 
   const sortedAppointments = sortByCourtLocation(appointments, { includeAppointmentDetails: true });
 
+  const ch13StandingIds = sortedAppointments
+    .filter((a) => isChapter13Standing(a.chapter, a.appointmentType))
+    .map((a) => a.id);
+  const validPersistedId = ch13StandingIds.includes(persistedExpandedId) ? persistedExpandedId : '';
+  const firstActiveCh13Id =
+    sortedAppointments.find(
+      (a) => isChapter13Standing(a.chapter, a.appointmentType) && a.status === 'active',
+    )?.id ?? '';
+  const initialExpandedId = validPersistedId || firstActiveCh13Id;
+
   return (
     <div className="trustee-appointments-list">
       <div className="toolbar">
@@ -133,21 +150,28 @@ export default function TrusteeAppointments(props: Readonly<TrusteeAppointmentsP
         </Button>
       </div>
       <div className="appointments-list">
-        {sortedAppointments.map((appointment) => {
-          const accordionBody = resolveAccordionBody(appointment);
-          return accordionBody ? (
-            <AppointmentAccordion
-              key={appointment.id}
-              appointment={appointment}
-              expanded={isExpanded(appointment)}
-              onToggle={toggleExpanded}
-            >
-              {accordionBody}
-            </AppointmentAccordion>
-          ) : (
-            <AppointmentCard key={appointment.id} appointment={appointment} />
-          );
-        })}
+        <AccordionGroup initialExpandedId={initialExpandedId}>
+          {sortedAppointments.map((appointment) => {
+            const accordionBody = resolveAccordionBody(appointment);
+            return accordionBody ? (
+              <AppointmentAccordion
+                key={appointment.id}
+                appointment={appointment}
+                expanded={isExpanded(appointment)}
+                onToggle={toggleExpanded}
+              >
+                {accordionBody}
+              </AppointmentAccordion>
+            ) : (
+              <AppointmentCard
+                key={appointment.id}
+                appointment={appointment}
+                onExpand={setPersistedExpandedId}
+                onCollapse={() => setPersistedExpandedId('')}
+              />
+            );
+          })}
+        </AccordionGroup>
       </div>
     </div>
   );

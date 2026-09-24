@@ -195,12 +195,13 @@ describe('PastKeyDates', () => {
       isLoading: false,
     };
 
-    test('renders exactly 3 rows: Background Questionnaire, Audit Report, Last Compensation Study', () => {
+    test('renders exactly 4 rows: Background Questionnaire, Audit Report, Last Compensation Study, Last TPR Submitted', () => {
       renderComponent(ch13Props);
 
       expect(screen.getByTestId('past-background-question-row')).toBeInTheDocument();
       expect(screen.getByTestId('past-audit-row')).toBeInTheDocument();
       expect(screen.getByTestId('last-compensation-study-row')).toBeInTheDocument();
+      expect(screen.getByTestId('last-tpr-submitted-row')).toBeInTheDocument();
       expect(screen.queryByTestId('past-field-exam-row')).not.toBeInTheDocument();
       expect(screen.queryByTestId('past-last-audit-fiscal-year-row')).not.toBeInTheDocument();
     });
@@ -215,7 +216,7 @@ describe('PastKeyDates', () => {
       renderComponent(ch13Props);
 
       const noDateElements = screen.getAllByText('No date added');
-      expect(noDateElements.length).toBe(3);
+      expect(noDateElements.length).toBe(4);
     });
 
     test('displays lastCompensationStudy as MM/YYYY when set', () => {

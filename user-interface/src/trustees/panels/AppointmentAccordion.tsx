@@ -58,3 +58,7 @@ export default function AppointmentAccordion(props: Readonly<AppointmentAccordio
     </div>
   );
 }
+
+// Manages its own independent expand/collapse state via useAppointmentExpansion, so it
+// opts out of AccordionGroup's shared single-open behavior. See Accordion.tsx.
+AppointmentAccordion.excludeFromAccordionGroup = true;

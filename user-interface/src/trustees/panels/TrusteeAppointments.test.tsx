@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { vi, describe, test, expect, beforeEach } from 'vitest';
 import { MemoryRouter, useNavigate } from 'react-router-dom';
 import TrusteeAppointments from './TrusteeAppointments';
@@ -6,6 +6,10 @@ import Api2 from '@/lib/models/api2';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import userEvent from '@testing-library/user-event';
+import * as featureFlagsHook from '@/lib/hooks/UseFeatureFlags';
+import { DISPLAY_CHPT13_STANDING_KEY_DATES } from '@/lib/hooks/UseFeatureFlags';
+import TestingUtilities from '@/lib/testing/testing-utilities';
+import { CamsRole } from '@common/cams/roles';
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');
@@ -92,7 +96,8 @@ describe('TrusteeAppointments', () => {
     vi.restoreAllMocks();
     mockNavigate.mockClear();
     vi.mocked(useNavigate).mockReturnValue(mockNavigate);
-    window.sessionStorage.clear();
+    sessionStorage.clear();
+    TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
     // Accordion bodies fetch key dates on mount. Stub it here so tests about
     // listing and routing don't fire unmocked requests that settle after they end.
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
@@ -258,6 +263,9 @@ describe('TrusteeAppointments', () => {
   });
 
   describe('Appointment Grouping and Sorting', () => {
+    // Detailed state/district/chapter/appointment-type ordering rules are unit-tested
+    // directly against sortByCourtLocation in court-utils.test.ts; this only confirms
+    // TrusteeAppointments actually renders appointments in that sorted order.
     test('renders appointments sorted by court location', async () => {
       // No `state` is set on either appointment, so sortByCourtLocation falls
       // through to comparing courtName alphabetically: "Eastern" sorts before
@@ -437,36 +445,207 @@ describe('TrusteeAppointments', () => {
       expect(getAppointmentCards()).toHaveLength(0);
     });
 
-    test('a Chapter 11 Subchapter V Pool appointment is collapsed by default', async () => {
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch11SubVPoolActive] });
+    // Default-collapsed rendering and toggle mechanics are generic AppointmentAccordion/
+    // useAppointmentExpansion behavior, not specific to Chapter 11 Subchapter V -- already
+    // covered by AppointmentAccordion.test.tsx and useAppointmentExpansion.test.ts.
+  });
 
-      renderComponent('trustee-123');
-
-      await waitFor(() => {
-        expect(
-          screen.getByTestId(`appointment-accordion-header-${ch11SubVPoolActive.id}`),
-        ).toBeInTheDocument();
+  describe('Chapter 13 Standing accordion default-open/closed and persistence', () => {
+    beforeEach(() => {
+      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+        [DISPLAY_CHPT13_STANDING_KEY_DATES]: true,
       });
-      expect(
-        screen.getByTestId(`appointment-accordion-body-${ch11SubVPoolActive.id}`),
-      ).not.toBeVisible();
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
     });
 
-    test('a Chapter 11 Subchapter V Out of Pool appointment is collapsed by default', async () => {
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({
-        data: [ch11SubVOutOfPoolResigned],
+    test('an active Chapter 13 Standing appointment defaults open', async () => {
+      const activeCh13: TrusteeAppointment = makeAppointment('ch13-active', {
+        chapter: '13',
+        appointmentType: 'standing',
+        status: 'active',
+        courtName: 'Southern District of New York',
       });
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [activeCh13] });
+
+      renderComponent('trustee-123');
+
+      await waitFor(() => {
+        expect(screen.getByTestId('accordion-content-ch13-active')).toBeVisible();
+      });
+    });
+
+    test('a non-active Chapter 13 Standing appointment defaults closed', async () => {
+      const inactiveCh13: TrusteeAppointment = makeAppointment('ch13-inactive', {
+        chapter: '13',
+        appointmentType: 'standing',
+        status: 'inactive',
+        courtName: 'Southern District of New York',
+      });
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [inactiveCh13] });
+
+      renderComponent('trustee-123');
+
+      await waitFor(() => {
+        expect(screen.getByTestId(`accordion-button-${inactiveCh13.id}`)).toBeInTheDocument();
+      });
+      expect(screen.getByTestId('accordion-content-ch13-inactive')).not.toBeVisible();
+    });
+
+    test('opening one Chapter 13 Standing accordion collapses another open one', async () => {
+      const appt1 = makeAppointment('ch13-001', {
+        chapter: '13',
+        appointmentType: 'standing',
+        status: 'active',
+        courtName: 'Southern District of New York',
+      });
+      const appt2 = makeAppointment('ch13-002', {
+        chapter: '13',
+        appointmentType: 'standing',
+        status: 'active',
+        courtId: '082',
+        courtName: 'Eastern District of New York',
+      });
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [appt1, appt2] });
+
+      renderComponent('trustee-123');
+
+      await waitFor(() => {
+        expect(screen.getByTestId('accordion-content-ch13-002')).toBeVisible();
+      });
+
+      fireEvent.click(screen.getByTestId('accordion-button-ch13-001'));
+
+      expect(screen.getByTestId('accordion-content-ch13-001')).toBeVisible();
+      expect(screen.getByTestId('accordion-content-ch13-002')).not.toBeVisible();
+    });
+
+    test('preserves sort order interleaving Chapter 13 Standing with other appointment types', async () => {
+      const appointments: TrusteeAppointment[] = [
+        makeAppointment('appointment-001', {
+          chapter: '13',
+          appointmentType: 'standing',
+          courtId: '082',
+          courtName: 'Eastern District of New York',
+        }),
+        makeAppointment('appointment-002', {
+          chapter: '12',
+          appointmentType: 'standing',
+          courtName: 'Southern District of New York',
+        }),
+        makeAppointment('appointment-005', {
+          chapter: '12',
+          appointmentType: 'case-by-case',
+          courtId: '082',
+          courtName: 'Eastern District of New York',
+        }),
+      ];
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: appointments });
 
       renderComponent('trustee-123');
 
       await waitFor(() => {
         expect(
-          screen.getByTestId(`appointment-accordion-header-${ch11SubVOutOfPoolResigned.id}`),
-        ).toBeInTheDocument();
+          document.querySelectorAll(
+            '[data-testid="accordion-group"] > .appointment-card-container, [data-testid="accordion-group"] > .appointment-accordion',
+          ),
+        ).toHaveLength(3);
       });
-      expect(
-        screen.getByTestId(`appointment-accordion-body-${ch11SubVOutOfPoolResigned.id}`),
-      ).not.toBeVisible();
+
+      // Chapter 12/13 Case by Case renders via the generic AppointmentAccordion (no
+      // `.appointment-card-container`), while Chapter 13 Standing and the still-flat
+      // Chapter 12 Standing both use `.appointment-card-container`, so combine both
+      // markups to verify interleaved DOM order directly.
+      const items = document.querySelectorAll(
+        '[data-testid="accordion-group"] > .appointment-card-container, [data-testid="accordion-group"] > .appointment-accordion',
+      );
+      const headingTexts = Array.from(items).map(
+        (item) =>
+          item.querySelector('.appointment-card-heading')?.textContent ??
+          item.querySelector('.chapter13-standing-accordion-header')?.textContent ??
+          item.querySelector('.appointment-accordion-header')?.textContent ??
+          '',
+      );
+      expect(headingTexts[0]).toContain('Eastern District of New York');
+      expect(headingTexts[0]).toContain('Chapter 12');
+      expect(headingTexts[1]).toContain('Eastern District of New York');
+      expect(headingTexts[1]).toContain('Chapter 13');
+      expect(headingTexts[2]).toContain('Southern District of New York');
+      expect(headingTexts[2]).toContain('Chapter 12');
+    });
+
+    test('persists the expanded appointment across a remount (session storage)', async () => {
+      const appt1 = makeAppointment('ch13-persist-001', {
+        chapter: '13',
+        appointmentType: 'standing',
+        status: 'inactive',
+        courtName: 'Southern District of New York',
+      });
+      const appt2 = makeAppointment('ch13-persist-002', {
+        chapter: '13',
+        appointmentType: 'standing',
+        status: 'inactive',
+        courtId: '082',
+        courtName: 'Eastern District of New York',
+      });
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({
+        data: [appt1, appt2],
+      });
+
+      const { unmount } = renderComponent('trustee-123');
+
+      await waitFor(() => {
+        expect(screen.getByTestId('accordion-button-ch13-persist-001')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId('accordion-button-ch13-persist-002'));
+      expect(screen.getByTestId('accordion-content-ch13-persist-002')).toBeVisible();
+
+      unmount();
+      renderComponent('trustee-123');
+
+      await waitFor(() => {
+        expect(screen.getByTestId('accordion-content-ch13-persist-002')).toBeVisible();
+      });
+      expect(screen.getByTestId('accordion-content-ch13-persist-001')).not.toBeVisible();
+    });
+
+    test('clears the persisted expanded appointment when collapsed, and stays collapsed across a remount', async () => {
+      const appt1 = makeAppointment('ch13-collapse-001', {
+        chapter: '13',
+        appointmentType: 'standing',
+        status: 'inactive',
+        courtName: 'Southern District of New York',
+      });
+      const appt2 = makeAppointment('ch13-collapse-002', {
+        chapter: '13',
+        appointmentType: 'standing',
+        status: 'inactive',
+        courtId: '082',
+        courtName: 'Eastern District of New York',
+      });
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({
+        data: [appt1, appt2],
+      });
+
+      const { unmount } = renderComponent('trustee-123');
+
+      await waitFor(() => {
+        expect(screen.getByTestId('accordion-button-ch13-collapse-001')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId('accordion-button-ch13-collapse-002'));
+      expect(screen.getByTestId('accordion-content-ch13-collapse-002')).toBeVisible();
+
+      fireEvent.click(screen.getByTestId('accordion-button-ch13-collapse-002'));
+      expect(screen.getByTestId('accordion-content-ch13-collapse-002')).not.toBeVisible();
+
+      unmount();
+      renderComponent('trustee-123');
+
+      await waitFor(() => {
+        expect(screen.getByTestId('accordion-button-ch13-collapse-001')).toBeInTheDocument();
+      });
+      expect(screen.getByTestId('accordion-content-ch13-collapse-002')).not.toBeVisible();
     });
   });
 

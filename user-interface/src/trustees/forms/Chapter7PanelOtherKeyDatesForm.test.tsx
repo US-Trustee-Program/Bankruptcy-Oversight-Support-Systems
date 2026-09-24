@@ -282,101 +282,40 @@ describe('buildOtherKeyDatesInput', () => {
     bondRenewalDate: '2020-01-21',
   };
 
-  test('preserves every non-owned field from the original document and overrides only pastBackgroundQuestion', () => {
+  // Full field pass-through/defaulting behavior belongs to mergeKeyDatesInput and is
+  // exhaustively tested in chapter7PanelKeyDatesInput.test.ts. These tests only verify
+  // the behavior unique to buildOtherKeyDatesInput: overriding pastBackgroundQuestion
+  // and converting an empty form value to null, while delegating everything else.
+  test('overrides pastBackgroundQuestion with the form value and delegates other fields', () => {
     const result = buildOtherKeyDatesInput(
       { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
       fullOriginal,
       { pastBackgroundQuestion: '2025-06-15' },
     );
 
-    expect(result).toEqual({
-      trusteeId: 'trustee-001',
-      appointmentId: 'appointment-001',
-      pastBackgroundQuestion: '2025-06-15',
-      pastFieldExam: '2020-01-02',
-      pastAudit: '2020-01-03',
-      pastTprSubmission: '2020-01-04',
-      lastTprSubmitted: '2020-01-22',
-      tprReviewPeriodStart: '2020-01-05',
-      tprReviewPeriodEnd: '2020-01-06',
-      tprDue: '2020-01-07',
-      tprDueYearType: 'EVEN',
-      tprFrequency: 'ANNUAL',
-      tirReviewPeriodStart: '2020-01-08',
-      tirReviewPeriodEnd: '2020-01-09',
-      tirSubmission: '2020-01-10',
-      tirReview: '2020-01-11',
-      upcomingExamOrAuditYear: 2024,
-      upcomingExamOrAuditType: 'Field Exam',
-      tirFrequency: 'SEMI_ANNUAL',
-      tirSemiAnnualReviewPeriodStart: '2020-01-12',
-      tirSemiAnnualReviewPeriodEnd: '2020-01-13',
-      tirSemiAnnualSubmission: '2020-01-14',
-      tirSemiAnnualReview: '2020-01-15',
-      lastAuditFiscalYear: 2021,
-      auditCompletionYear: 2021,
-      auditCompletionStatus: 'NOT_CLOSED',
-      tprCompletionYear: 2022,
-      tprCompletionStatus: 'INCOMPLETE',
-      tirCompletionYear: 2023,
-      tirCompletionStatus: 'COMPLETE',
-      lastMonthlyReportReceived: '2020-01-16',
-      leaseExpiration: '2020-01-17',
-      idExpiration: '2020-01-18',
-      lastCompensationStudy: '2020-01-19',
-      bondIssuedDate: '2020-01-20',
-      bondRenewalDate: '2020-01-21',
-      annualReportCompletionYear: null,
-      annualReportCompletionStatus: null,
-    });
+    expect(result.pastBackgroundQuestion).toBe('2025-06-15');
+    expect(result.pastFieldExam).toBe(fullOriginal.pastFieldExam);
+    expect(result.bondRenewalDate).toBe(fullOriginal.bondRenewalDate);
   });
 
-  test('defaults every field to null when there is no original document and the form is empty', () => {
+  test('converts an empty form value to null', () => {
+    const result = buildOtherKeyDatesInput(
+      { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
+      fullOriginal,
+      { pastBackgroundQuestion: '' },
+    );
+
+    expect(result.pastBackgroundQuestion).toBeNull();
+  });
+
+  test('defaults pastBackgroundQuestion to null when there is no original document', () => {
     const result = buildOtherKeyDatesInput(
       { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
       null,
       { pastBackgroundQuestion: '' },
     );
 
-    expect(result).toEqual({
-      trusteeId: 'trustee-001',
-      appointmentId: 'appointment-001',
-      pastBackgroundQuestion: null,
-      pastFieldExam: null,
-      pastAudit: null,
-      pastTprSubmission: null,
-      lastTprSubmitted: null,
-      tprReviewPeriodStart: null,
-      tprReviewPeriodEnd: null,
-      tprDue: null,
-      tprDueYearType: null,
-      tprFrequency: null,
-      tirReviewPeriodStart: null,
-      tirReviewPeriodEnd: null,
-      tirSubmission: null,
-      tirReview: null,
-      upcomingExamOrAuditYear: null,
-      upcomingExamOrAuditType: null,
-      tirFrequency: null,
-      tirSemiAnnualReviewPeriodStart: null,
-      tirSemiAnnualReviewPeriodEnd: null,
-      tirSemiAnnualSubmission: null,
-      tirSemiAnnualReview: null,
-      lastAuditFiscalYear: null,
-      auditCompletionYear: null,
-      auditCompletionStatus: null,
-      tprCompletionYear: null,
-      tprCompletionStatus: null,
-      tirCompletionYear: null,
-      tirCompletionStatus: null,
-      lastMonthlyReportReceived: null,
-      leaseExpiration: null,
-      idExpiration: null,
-      lastCompensationStudy: null,
-      bondIssuedDate: null,
-      bondRenewalDate: null,
-      annualReportCompletionYear: null,
-      annualReportCompletionStatus: null,
-    });
+    expect(result.pastBackgroundQuestion).toBeNull();
+    expect(result.pastFieldExam).toBeNull();
   });
 });
