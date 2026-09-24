@@ -197,9 +197,9 @@ export default function Chapter13StandingTrusteePerformanceReportForm() {
           onValidationChange={(hasError) => registerFieldError('tpr-review-period-end', hasError)}
         />
         {reviewPeriodError && (
-          <span className="cams-field-error-message" data-testid="tpr-review-period-error">
+          <div className="cams-field-error-message" data-testid="tpr-review-period-error">
             {reviewPeriodError}
-          </span>
+          </div>
         )}
       </div>
       <Select
@@ -248,9 +248,9 @@ export default function Chapter13StandingTrusteePerformanceReportForm() {
           />
         </div>
         {tprDueBlurError && (
-          <span className="cams-field-error-message" data-testid="tpr-due-error">
+          <div className="cams-field-error-message" data-testid="tpr-due-error">
             {tprDueBlurError}
-          </span>
+          </div>
         )}
       </div>
       <DatePicker

@@ -774,13 +774,13 @@ export default function UpcomingKeyDatesForm({
               />
             </div>
             {(tprDueBlurError || errors.tprDue || errors.tprDueYearType) && (
-              <span
+              <div
                 className="cams-field-error-message"
                 id="tpr-due-error"
                 data-testid="tpr-due-error"
               >
                 {tprDueBlurError || errors.tprDue || errors.tprDueYearType}
-              </span>
+              </div>
             )}
           </div>
         );

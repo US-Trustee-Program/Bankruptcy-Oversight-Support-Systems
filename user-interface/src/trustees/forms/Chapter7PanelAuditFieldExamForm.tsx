@@ -206,13 +206,13 @@ export default function Chapter7PanelAuditFieldExamForm() {
           />
         </div>
         {examOrAuditPairError && (
-          <span
+          <div
             className="cams-field-error-message"
             id={examOrAuditPairErrorId}
             data-testid={examOrAuditPairErrorId}
           >
             {examOrAuditPairError}
-          </span>
+          </div>
         )}
       </div>
 
@@ -291,13 +291,13 @@ export default function Chapter7PanelAuditFieldExamForm() {
           />
         </div>
         {completionPairError && (
-          <span
+          <div
             className="cams-field-error-message"
             id={completionPairErrorId}
             data-testid={completionPairErrorId}
           >
             {completionPairError}
-          </span>
+          </div>
         )}
       </div>
 

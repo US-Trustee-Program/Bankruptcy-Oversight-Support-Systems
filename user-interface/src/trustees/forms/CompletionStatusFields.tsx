@@ -64,13 +64,13 @@ export default function CompletionStatusFields(props: Readonly<CompletionStatusF
         />
       </div>
       {pairError && (
-        <span
+        <div
           className="cams-field-error-message"
           id={pairErrorId}
           data-testid={`${idPrefix}-error`}
         >
           {pairError}
-        </span>
+        </div>
       )}
     </fieldset>
   );

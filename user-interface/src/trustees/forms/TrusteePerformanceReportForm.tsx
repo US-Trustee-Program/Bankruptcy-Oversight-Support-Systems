@@ -327,13 +327,13 @@ export default function TrusteePerformanceReportForm(
           />
         </div>
         {tprDuePairError && (
-          <span
+          <div
             className="cams-field-error-message"
             id={tprDuePairErrorId}
             data-testid={tprDuePairErrorId}
           >
             {tprDuePairError}
-          </span>
+          </div>
         )}
       </div>
 
