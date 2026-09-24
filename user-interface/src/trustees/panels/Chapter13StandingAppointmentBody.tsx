@@ -50,7 +50,10 @@ export default function Chapter13StandingAppointmentBody(
   };
 
   return (
-    <div className="appointment-card-container chapter13-standing-appointment-card">
+    <div
+      className="appointment-card-container chapter13-standing-appointment-card"
+      data-testid={`appointment-card-${appointment.id}`}
+    >
       <Accordion
         id={appointment.id}
         expandedId={expandedId}
