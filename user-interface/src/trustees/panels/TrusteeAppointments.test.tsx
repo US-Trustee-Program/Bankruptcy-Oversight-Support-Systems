@@ -450,7 +450,7 @@ describe('TrusteeAppointments', () => {
     // covered by AppointmentAccordion.test.tsx and useAppointmentExpansion.test.ts.
   });
 
-  describe('Chapter 13 Standing accordion default-open/closed and persistence', () => {
+  describe('Chapter 13 Standing accordion default-closed behavior', () => {
     beforeEach(() => {
       vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
         [DISPLAY_CHPT13_STANDING_KEY_DATES]: true,
@@ -458,7 +458,7 @@ describe('TrusteeAppointments', () => {
       vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
     });
 
-    test('an active Chapter 13 Standing appointment defaults open', async () => {
+    test('an active Chapter 13 Standing appointment defaults closed', async () => {
       const activeCh13: TrusteeAppointment = makeAppointment('ch13-active', {
         chapter: '13',
         appointmentType: 'standing',
@@ -470,8 +470,9 @@ describe('TrusteeAppointments', () => {
       renderComponent('trustee-123');
 
       await waitFor(() => {
-        expect(screen.getByTestId('accordion-content-ch13-active')).toBeVisible();
+        expect(screen.getByTestId(`accordion-button-${activeCh13.id}`)).toBeInTheDocument();
       });
+      expect(screen.getByTestId('accordion-content-ch13-active')).not.toBeVisible();
     });
 
     test('a non-active Chapter 13 Standing appointment defaults closed', async () => {
@@ -510,13 +511,55 @@ describe('TrusteeAppointments', () => {
       renderComponent('trustee-123');
 
       await waitFor(() => {
-        expect(screen.getByTestId('accordion-content-ch13-002')).toBeVisible();
+        expect(screen.getByTestId('accordion-button-ch13-002')).toBeInTheDocument();
       });
+      expect(screen.getByTestId('accordion-content-ch13-001')).not.toBeVisible();
+      expect(screen.getByTestId('accordion-content-ch13-002')).not.toBeVisible();
+
+      fireEvent.click(screen.getByTestId('accordion-button-ch13-002'));
+      expect(screen.getByTestId('accordion-content-ch13-002')).toBeVisible();
 
       fireEvent.click(screen.getByTestId('accordion-button-ch13-001'));
 
       expect(screen.getByTestId('accordion-content-ch13-001')).toBeVisible();
       expect(screen.getByTestId('accordion-content-ch13-002')).not.toBeVisible();
+    });
+
+    test('does not persist the expanded appointment across a remount', async () => {
+      const appt1 = makeAppointment('ch13-persist-001', {
+        chapter: '13',
+        appointmentType: 'standing',
+        status: 'inactive',
+        courtName: 'Southern District of New York',
+      });
+      const appt2 = makeAppointment('ch13-persist-002', {
+        chapter: '13',
+        appointmentType: 'standing',
+        status: 'inactive',
+        courtId: '082',
+        courtName: 'Eastern District of New York',
+      });
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({
+        data: [appt1, appt2],
+      });
+
+      const { unmount } = renderComponent('trustee-123');
+
+      await waitFor(() => {
+        expect(screen.getByTestId('accordion-button-ch13-persist-001')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId('accordion-button-ch13-persist-002'));
+      expect(screen.getByTestId('accordion-content-ch13-persist-002')).toBeVisible();
+
+      unmount();
+      renderComponent('trustee-123');
+
+      await waitFor(() => {
+        expect(screen.getByTestId('accordion-button-ch13-persist-001')).toBeInTheDocument();
+      });
+      expect(screen.getByTestId('accordion-content-ch13-persist-001')).not.toBeVisible();
+      expect(screen.getByTestId('accordion-content-ch13-persist-002')).not.toBeVisible();
     });
 
     test('preserves sort order interleaving Chapter 13 Standing with other appointment types', async () => {
@@ -571,81 +614,6 @@ describe('TrusteeAppointments', () => {
       expect(headingTexts[1]).toContain('Chapter 13');
       expect(headingTexts[2]).toContain('Southern District of New York');
       expect(headingTexts[2]).toContain('Chapter 12');
-    });
-
-    test('persists the expanded appointment across a remount (session storage)', async () => {
-      const appt1 = makeAppointment('ch13-persist-001', {
-        chapter: '13',
-        appointmentType: 'standing',
-        status: 'inactive',
-        courtName: 'Southern District of New York',
-      });
-      const appt2 = makeAppointment('ch13-persist-002', {
-        chapter: '13',
-        appointmentType: 'standing',
-        status: 'inactive',
-        courtId: '082',
-        courtName: 'Eastern District of New York',
-      });
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({
-        data: [appt1, appt2],
-      });
-
-      const { unmount } = renderComponent('trustee-123');
-
-      await waitFor(() => {
-        expect(screen.getByTestId('accordion-button-ch13-persist-001')).toBeInTheDocument();
-      });
-
-      fireEvent.click(screen.getByTestId('accordion-button-ch13-persist-002'));
-      expect(screen.getByTestId('accordion-content-ch13-persist-002')).toBeVisible();
-
-      unmount();
-      renderComponent('trustee-123');
-
-      await waitFor(() => {
-        expect(screen.getByTestId('accordion-content-ch13-persist-002')).toBeVisible();
-      });
-      expect(screen.getByTestId('accordion-content-ch13-persist-001')).not.toBeVisible();
-    });
-
-    test('clears the persisted expanded appointment when collapsed, and stays collapsed across a remount', async () => {
-      const appt1 = makeAppointment('ch13-collapse-001', {
-        chapter: '13',
-        appointmentType: 'standing',
-        status: 'inactive',
-        courtName: 'Southern District of New York',
-      });
-      const appt2 = makeAppointment('ch13-collapse-002', {
-        chapter: '13',
-        appointmentType: 'standing',
-        status: 'inactive',
-        courtId: '082',
-        courtName: 'Eastern District of New York',
-      });
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({
-        data: [appt1, appt2],
-      });
-
-      const { unmount } = renderComponent('trustee-123');
-
-      await waitFor(() => {
-        expect(screen.getByTestId('accordion-button-ch13-collapse-001')).toBeInTheDocument();
-      });
-
-      fireEvent.click(screen.getByTestId('accordion-button-ch13-collapse-002'));
-      expect(screen.getByTestId('accordion-content-ch13-collapse-002')).toBeVisible();
-
-      fireEvent.click(screen.getByTestId('accordion-button-ch13-collapse-002'));
-      expect(screen.getByTestId('accordion-content-ch13-collapse-002')).not.toBeVisible();
-
-      unmount();
-      renderComponent('trustee-123');
-
-      await waitFor(() => {
-        expect(screen.getByTestId('accordion-button-ch13-collapse-001')).toBeInTheDocument();
-      });
-      expect(screen.getByTestId('accordion-content-ch13-collapse-002')).not.toBeVisible();
     });
   });
 
