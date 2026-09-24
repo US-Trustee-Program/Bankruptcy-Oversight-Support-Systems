@@ -300,10 +300,13 @@ test.describe('Chapter 12/13 Case by Case Key Dates', () => {
     ).toBeVisible();
 
     // Half a completion pair fails validation. Save disables immediately, but the
-    // error text waits until focus leaves the Year/Status row (see UseGroupBlur.ts),
-    // so click elsewhere in the form to trigger that blur before asserting it shows.
+    // error text waits until the Year/Status row is focused and then blurred (see
+    // UseGroupBlur.ts) -- selectOption() doesn't reliably dispatch a focus event on
+    // its own, so focus the field explicitly before clicking elsewhere to blur it.
     await trusteeProfilePage.locator('#annual-report-completion-status').selectOption('');
-    await trusteeProfilePage.locator('#annual-report-completion-year').selectOption({ index: 1 });
+    const yearSelect = trusteeProfilePage.locator('#annual-report-completion-year');
+    await yearSelect.selectOption({ index: 1 });
+    await yearSelect.focus();
     await trusteeProfilePage.locator('[data-testid="edit-annual-report-key-dates"] h3').click();
     await expect(
       trusteeProfilePage.locator('[data-testid="annual-report-completion-error"]'),
