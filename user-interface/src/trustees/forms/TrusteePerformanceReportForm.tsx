@@ -22,7 +22,7 @@ import Select from '@/lib/components/uswds/Select';
 import MonthDaySelector from '@/lib/components/uswds/MonthDaySelector';
 import MonthDayRangeSelector from '@/lib/components/uswds/MonthDayRangeSelector';
 import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
-import useGroupBlur from '@/lib/hooks/UseGroupBlur';
+import PairFieldGroup from './PairFieldGroup';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import { Stop } from '@/lib/components/Stop';
 
@@ -103,8 +103,6 @@ export default function TrusteePerformanceReportForm(
   const [tprReviewPeriodValid, setTprReviewPeriodValid] = useState(true);
   const [errors, setErrors] = useState({ tprReviewPeriodStart: '', tprReviewPeriodEnd: '' });
   const { registerFieldError, hasErrorAmong } = useDateFieldErrors();
-  const tprDueGroup = useGroupBlur();
-  const completionGroup = useGroupBlur();
 
   useEffect(() => {
     Api2.getUpcomingKeyDates(trusteeId!, appointmentId!)
@@ -189,7 +187,6 @@ export default function TrusteePerformanceReportForm(
     ? validateTprReviewPeriodOrder(form.tprReviewPeriodStart, form.tprReviewPeriodEnd)
     : null;
   const tprDuePairError = validateTprDuePair(form.tprDue, form.tprDueYearType);
-  const tprDuePairErrorId = 'tpr-due-error';
   const hasAnyDateError = tprDisplayUpdates
     ? hasErrorAmong(['tpr-review-period-start', 'tpr-review-period-end', 'last-tpr-submitted'])
     : hasErrorAmong(['last-tpr-submitted']);
@@ -198,7 +195,6 @@ export default function TrusteePerformanceReportForm(
     form.tprCompletionStatus,
     'Trustee Performance Review Completion Status',
   );
-  const completionPairErrorId = 'tpr-completion-status-error';
   const isSaveDisabled =
     isSaving ||
     loadFailed ||
@@ -295,54 +291,50 @@ export default function TrusteePerformanceReportForm(
         />
       )}
 
-      <div className="tpr-due-group">
-        <div className="tpr-due-group__header">
-          <label className="usa-label" htmlFor="tpr-due">
-            TPR Due
-          </label>
-        </div>
-        <div
-          className="tpr-due-group__row"
-          onFocus={tprDueGroup.handleFocus}
-          onBlur={tprDueGroup.handleBlur}
-        >
-          <MonthDaySelector
-            id="tpr-due"
-            value={form.tprDue}
-            onChange={(value) => setForm((prev) => ({ ...prev, tprDue: value }))}
-            hasError={tprDueGroup.touched && !!tprDuePairError}
-          />
-          <Select
-            id="tpr-due-year-type"
-            label="Year Type"
-            compactLabel
-            className="year-type-selector"
-            hasError={tprDueGroup.touched && !!tprDuePairError}
-            ariaDescribedBy={tprDueGroup.touched && tprDuePairError ? tprDuePairErrorId : undefined}
-            placeholder="- Select -"
-            options={[
-              { value: 'EVEN', label: 'EVEN' },
-              { value: 'ODD', label: 'ODD' },
-            ]}
-            value={form.tprDueYearType}
-            onChange={(e) =>
-              setForm((prev) => ({
-                ...prev,
-                tprDueYearType: e.target.value as 'EVEN' | 'ODD' | '',
-              }))
-            }
-          />
-        </div>
-        {tprDueGroup.touched && tprDuePairError && (
-          <div
-            className="cams-field-error-message"
-            id={tprDuePairErrorId}
-            data-testid={tprDuePairErrorId}
-          >
-            {tprDuePairError}
+      <PairFieldGroup
+        idPrefix="tpr-due"
+        groupClassName="tpr-due-group"
+        rowClassName="tpr-due-group__row"
+        header={
+          <div className="tpr-due-group__header">
+            <label className="usa-label" htmlFor="tpr-due">
+              TPR Due
+            </label>
           </div>
+        }
+        error={tprDuePairError}
+      >
+        {({ hasError, ariaDescribedBy }) => (
+          <>
+            <MonthDaySelector
+              id="tpr-due"
+              value={form.tprDue}
+              onChange={(value) => setForm((prev) => ({ ...prev, tprDue: value }))}
+              hasError={hasError}
+            />
+            <Select
+              id="tpr-due-year-type"
+              label="Year Type"
+              compactLabel
+              className="year-type-selector"
+              hasError={hasError}
+              ariaDescribedBy={ariaDescribedBy}
+              placeholder="- Select -"
+              options={[
+                { value: 'EVEN', label: 'EVEN' },
+                { value: 'ODD', label: 'ODD' },
+              ]}
+              value={form.tprDueYearType}
+              onChange={(e) =>
+                setForm((prev) => ({
+                  ...prev,
+                  tprDueYearType: e.target.value as 'EVEN' | 'ODD' | '',
+                }))
+              }
+            />
+          </>
         )}
-      </div>
+      </PairFieldGroup>
 
       <DatePicker
         id="last-tpr-submitted"
@@ -353,67 +345,57 @@ export default function TrusteePerformanceReportForm(
         disableMax
       />
 
-      <div className="exam-audit-group">
-        <p className="usa-label">TPR Completion Status for Year</p>
-        <div
-          className="exam-audit-group__row"
-          onFocus={completionGroup.handleFocus}
-          onBlur={completionGroup.handleBlur}
-        >
-          <Select
-            id="tpr-completion-status-year"
-            label="Year"
-            compactLabel
-            hasError={completionGroup.touched && !!completionPairError}
-            ariaDescribedBy={
-              completionGroup.touched && completionPairError ? completionPairErrorId : undefined
-            }
-            placeholder="- Select -"
-            options={FISCAL_YEAR_OPTIONS.map((year) => ({
-              value: String(year),
-              label: String(year),
-            }))}
-            value={form.tprCompletionYear === '' ? '' : String(form.tprCompletionYear)}
-            onChange={(e) => {
-              const val = e.target.value;
-              setForm((prev) => ({
-                ...prev,
-                tprCompletionYear: val ? Number(val) : '',
-              }));
-            }}
-          />
-          <Select
-            id="tpr-completion-status-status"
-            label="Status"
-            compactLabel
-            hasError={completionGroup.touched && !!completionPairError}
-            ariaDescribedBy={
-              completionGroup.touched && completionPairError ? completionPairErrorId : undefined
-            }
-            placeholder="- Select -"
-            options={[
-              { value: 'COMPLETE', label: 'Complete' },
-              { value: 'INCOMPLETE', label: 'Incomplete' },
-            ]}
-            value={form.tprCompletionStatus}
-            onChange={(e) => {
-              setForm((prev) => ({
-                ...prev,
-                tprCompletionStatus: e.target.value as TprCompletionStatus | '',
-              }));
-            }}
-          />
-        </div>
-        {completionGroup.touched && completionPairError && (
-          <div
-            className="cams-field-error-message"
-            id={completionPairErrorId}
-            data-testid={completionPairErrorId}
-          >
-            {completionPairError}
-          </div>
+      <PairFieldGroup
+        idPrefix="tpr-completion-status"
+        groupClassName="exam-audit-group"
+        rowClassName="exam-audit-group__row"
+        title="TPR Completion Status for Year"
+        error={completionPairError}
+      >
+        {({ hasError, ariaDescribedBy }) => (
+          <>
+            <Select
+              id="tpr-completion-status-year"
+              label="Year"
+              compactLabel
+              hasError={hasError}
+              ariaDescribedBy={ariaDescribedBy}
+              placeholder="- Select -"
+              options={FISCAL_YEAR_OPTIONS.map((year) => ({
+                value: String(year),
+                label: String(year),
+              }))}
+              value={form.tprCompletionYear === '' ? '' : String(form.tprCompletionYear)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setForm((prev) => ({
+                  ...prev,
+                  tprCompletionYear: val ? Number(val) : '',
+                }));
+              }}
+            />
+            <Select
+              id="tpr-completion-status-status"
+              label="Status"
+              compactLabel
+              hasError={hasError}
+              ariaDescribedBy={ariaDescribedBy}
+              placeholder="- Select -"
+              options={[
+                { value: 'COMPLETE', label: 'Complete' },
+                { value: 'INCOMPLETE', label: 'Incomplete' },
+              ]}
+              value={form.tprCompletionStatus}
+              onChange={(e) => {
+                setForm((prev) => ({
+                  ...prev,
+                  tprCompletionStatus: e.target.value as TprCompletionStatus | '',
+                }));
+              }}
+            />
+          </>
         )}
-      </div>
+      </PairFieldGroup>
 
       <div className="usa-button-group">
         <Button
