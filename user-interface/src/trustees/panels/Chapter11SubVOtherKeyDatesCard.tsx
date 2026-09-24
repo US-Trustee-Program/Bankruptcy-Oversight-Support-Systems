@@ -26,12 +26,9 @@ export default function Chapter11SubVOtherKeyDatesCard(
   const canManage = useCanManageTrustees();
 
   function openEdit() {
-    navigate(
-      `/trustees/${trusteeId}/appointments/${appointmentId}/chapter11-subv-other-key-dates/edit`,
-      {
-        state: { subHeading: appointmentHeading ?? '', variant: 'chapter11-subv' },
-      },
-    );
+    navigate(`/trustees/${trusteeId}/appointments/${appointmentId}/past-key-dates/edit`, {
+      state: { subHeading: appointmentHeading ?? '', variant: 'subv-pool' },
+    });
   }
 
   if (isLoading) {

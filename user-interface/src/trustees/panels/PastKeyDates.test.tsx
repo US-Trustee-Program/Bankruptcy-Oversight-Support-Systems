@@ -287,9 +287,9 @@ describe('PastKeyDates', () => {
     });
   });
 
-  describe('chapter11-subv variant', () => {
+  describe('subv-pool variant', () => {
     const subVProps: PastKeyDatesProps = {
-      variant: 'chapter11-subv',
+      variant: 'subv-pool',
       trusteeId: 'trustee-001',
       appointmentId: 'appointment-001',
       appointmentHeading:
@@ -303,7 +303,7 @@ describe('PastKeyDates', () => {
 
       // Assert via PastKeyDates' own testId contract (which fields it renders),
       // not InfoCard's internal markup — none of the chapter12-standing rows
-      // should be present alongside the single chapter11-subv row.
+      // should be present alongside the single subv-pool row.
       expect(screen.getByTestId('past-last-monthly-report-received-row')).toBeInTheDocument();
       expect(screen.queryByTestId('past-background-question-row')).not.toBeInTheDocument();
       expect(screen.queryByTestId('past-field-exam-row')).not.toBeInTheDocument();
@@ -365,7 +365,7 @@ describe('PastKeyDates', () => {
       ).not.toBeInTheDocument();
     });
 
-    test('Edit button navigates with chapter11-subv variant', () => {
+    test('Edit button navigates with subv-pool variant', () => {
       renderComponent(subVProps);
 
       screen.getByRole('button', { name: /edit other key dates/i }).click();
@@ -375,7 +375,7 @@ describe('PastKeyDates', () => {
         {
           state: {
             subHeading: subVProps.appointmentHeading,
-            variant: 'chapter11-subv',
+            variant: 'subv-pool',
           },
         },
       );

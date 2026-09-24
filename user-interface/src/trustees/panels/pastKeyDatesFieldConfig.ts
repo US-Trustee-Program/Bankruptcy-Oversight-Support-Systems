@@ -1,4 +1,4 @@
-export type PastKeyDatesVariant = 'chapter11-subv' | 'chapter12-standing' | 'chapter13-standing';
+export type PastKeyDatesVariant = 'subv-pool' | 'chapter12-standing' | 'chapter13-standing';
 
 const DEFAULT_PAST_KEY_DATES_LABELS = {
   cardTitle: 'Past Key Dates',
@@ -9,7 +9,7 @@ export const PAST_KEY_DATES_VARIANT_LABELS: Record<
   PastKeyDatesVariant,
   { cardTitle: string; editHeading: string }
 > = {
-  'chapter11-subv': { cardTitle: 'Other', editHeading: 'Edit Other Key Dates' },
+  'subv-pool': { cardTitle: 'Other', editHeading: 'Edit Other Key Dates' },
   'chapter12-standing': DEFAULT_PAST_KEY_DATES_LABELS,
   'chapter13-standing': DEFAULT_PAST_KEY_DATES_LABELS,
 };
@@ -81,7 +81,7 @@ export const PAST_KEY_DATES_FIELD_CONFIG: Record<PastKeyDatesVariant, PastKeyDat
       kind: 'year',
     },
   ],
-  'chapter11-subv': [
+  'subv-pool': [
     {
       key: 'lastMonthlyReportReceived',
       displayLabel: 'Last Monthly Report Received',

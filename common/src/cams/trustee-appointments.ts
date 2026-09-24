@@ -66,13 +66,18 @@ export function isChapter7Panel(
   return chapter === '7' && appointmentType === 'panel';
 }
 
-export function isChapter11SubchapterV(
+export function isChapter11SubchapterVPool(
   chapter: AppointmentChapterType,
   appointmentType: AppointmentType,
 ): boolean {
-  return (
-    chapter === '11-subchapter-v' && chapterAppointmentTypeMap[chapter].includes(appointmentType)
-  );
+  return chapter === '11-subchapter-v' && appointmentType === 'pool';
+}
+
+export function isChapter11SubchapterVOutOfPool(
+  chapter: AppointmentChapterType,
+  appointmentType: AppointmentType,
+): boolean {
+  return chapter === '11-subchapter-v' && appointmentType === 'out-of-pool';
 }
 
 export function formatAppointmentStatus(status: AppointmentStatus): string {

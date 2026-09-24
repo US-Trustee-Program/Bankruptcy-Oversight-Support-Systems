@@ -321,12 +321,6 @@ export default function TrusteeDetailScreen() {
       content: <PastKeyDatesForm />,
     },
     {
-      path: 'appointments/:appointmentId/chapter11-subv-other-key-dates/edit',
-      disabled: !featureFlags[DISPLAY_CHPT11_SUBV_PAST_KEY_DATES],
-      subHeading: appointmentHeading,
-      content: <PastKeyDatesForm />,
-    },
-    {
       path: 'appointments/:appointmentId/chapter13-standing-audit-key-dates/edit',
       disabled: !featureFlags[DISPLAY_CHPT13_STANDING_KEY_DATES],
       subHeading: appointmentHeading,

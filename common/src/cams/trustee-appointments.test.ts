@@ -8,9 +8,10 @@ import {
   isChapter13Standing,
   isChapter7Elected,
   isChapter11CaseByCase,
-  isChapter11SubchapterV,
   isChapter12Or13CaseByCase,
   isChapter7Panel,
+  isChapter11SubchapterVPool,
+  isChapter11SubchapterVOutOfPool,
 } from './trustee-appointments';
 import { AppointmentChapterType, AppointmentType, AppointmentStatus } from './trustees';
 import { validateObject } from './validation';
@@ -549,22 +550,36 @@ describe('trustee-appointments', () => {
     });
   });
 
-  describe('isChapter11SubchapterV', () => {
-    test.each([['pool'], ['out-of-pool']])(
-      'returns true for chapter 11-subchapter-v %s',
-      (type) => {
-        expect(isChapter11SubchapterV('11-subchapter-v', type as AppointmentType)).toBe(true);
-      },
-    );
+  describe('isChapter11SubchapterVPool', () => {
+    test('returns true for chapter 11-subchapter-v pool', () => {
+      expect(isChapter11SubchapterVPool('11-subchapter-v', 'pool')).toBe(true);
+    });
 
     test.each([
+      ['11-subchapter-v', 'out-of-pool'],
       ['11', 'pool'],
+      ['13', 'standing'],
+      ['11-subchapter-v', ''],
+    ])('returns false for chapter %s / %s', (chapter, type) => {
+      expect(
+        isChapter11SubchapterVPool(chapter as AppointmentChapterType, type as AppointmentType),
+      ).toBe(false);
+    });
+  });
+
+  describe('isChapter11SubchapterVOutOfPool', () => {
+    test('returns true for chapter 11-subchapter-v out-of-pool', () => {
+      expect(isChapter11SubchapterVOutOfPool('11-subchapter-v', 'out-of-pool')).toBe(true);
+    });
+
+    test.each([
+      ['11-subchapter-v', 'pool'],
       ['11', 'out-of-pool'],
       ['13', 'standing'],
       ['11-subchapter-v', ''],
     ])('returns false for chapter %s / %s', (chapter, type) => {
       expect(
-        isChapter11SubchapterV(chapter as AppointmentChapterType, type as AppointmentType),
+        isChapter11SubchapterVOutOfPool(chapter as AppointmentChapterType, type as AppointmentType),
       ).toBe(false);
     });
   });
