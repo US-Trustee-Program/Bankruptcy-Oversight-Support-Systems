@@ -131,6 +131,15 @@ describe('Chapter13StandingAuditForm', () => {
     await userEvent.selectOptions(screen.getByTestId('audit-completion-year'), '2026');
 
     expect(screen.getByTestId('button-save-chapter13-standing-audit-key-dates')).toBeDisabled();
+    expect(screen.queryByTestId('audit-completion-error')).not.toBeInTheDocument();
+
+    fireEvent.blur(screen.getByTestId('audit-completion-year'), { relatedTarget: null });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('audit-completion-error')).toHaveTextContent(
+        'Audit Completion Status Year and Status must both be set.',
+      );
+    });
   });
 
   test('Save button is disabled when only completion status is set', async () => {
@@ -142,6 +151,15 @@ describe('Chapter13StandingAuditForm', () => {
     await userEvent.selectOptions(screen.getByTestId('audit-completion-status'), 'Complete');
 
     expect(screen.getByTestId('button-save-chapter13-standing-audit-key-dates')).toBeDisabled();
+    expect(screen.queryByTestId('audit-completion-error')).not.toBeInTheDocument();
+
+    fireEvent.blur(screen.getByTestId('audit-completion-status'), { relatedTarget: null });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('audit-completion-error')).toHaveTextContent(
+        'Audit Completion Status Year and Status must both be set.',
+      );
+    });
   });
 
   test('Save button is enabled when both completion fields are set, and saves a merged input preserving other fields', async () => {

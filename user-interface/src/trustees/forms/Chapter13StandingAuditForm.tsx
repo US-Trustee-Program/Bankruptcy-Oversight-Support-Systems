@@ -141,6 +141,7 @@ export default function Chapter13StandingAuditForm() {
       <CompletionStatusYearSelect
         idPrefix="audit-completion"
         title="Audit Completion Status for Year"
+        errorLabel="Audit Completion Status"
         year={form.ch13AuditCompletionYear}
         status={form.ch13AuditCompletionStatus}
         onYearChange={(ch13AuditCompletionYear) =>

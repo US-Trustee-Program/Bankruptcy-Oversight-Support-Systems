@@ -267,6 +267,7 @@ export default function Chapter13StandingTrusteePerformanceReportForm() {
       <CompletionStatusYearSelect
         idPrefix="tpr-completion"
         title="TPR Completion Status for Year"
+        errorLabel="Trustee Performance Review Completion Status"
         year={form.ch13TprCompletionYear}
         status={form.ch13TprCompletionStatus}
         onYearChange={(ch13TprCompletionYear) =>

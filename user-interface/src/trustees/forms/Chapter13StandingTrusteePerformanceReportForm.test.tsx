@@ -187,6 +187,15 @@ describe('Chapter13StandingTrusteePerformanceReportForm', () => {
     await userEvent.selectOptions(screen.getByTestId('tpr-completion-year'), '2026');
 
     expect(screen.getByTestId('button-save-chapter13-standing-tpr-key-dates')).toBeDisabled();
+    expect(screen.queryByTestId('tpr-completion-error')).not.toBeInTheDocument();
+
+    fireEvent.blur(screen.getByTestId('tpr-completion-year'), { relatedTarget: null });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('tpr-completion-error')).toHaveTextContent(
+        'Trustee Performance Review Completion Status Year and Status must both be set.',
+      );
+    });
   });
 
   test('Save button is enabled when both completion fields are set, and saves a merged input preserving other fields', async () => {
