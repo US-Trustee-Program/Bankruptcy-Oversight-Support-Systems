@@ -259,6 +259,9 @@ const consolidationUseCase = (
   const rejectConsolidation = (action: ConfirmActionResults) => {
     const genericErrorMessage =
       'An unknown error has occurred and has been logged.  Please try again later.';
+    // Unreachable: rejectConsolidation is only invoked from handleConfirmAction's 'rejected'
+    // switch case, passing the same action object, so status is always 'rejected' here.
+    /* v8 ignore next */
     if (action.status === 'rejected') {
       const data: ConsolidationOrderActionRejection = {
         consolidationId: store.order.consolidationId,
