@@ -330,6 +330,10 @@ describe('Chapter7PanelTrusteeInterimReportForm', () => {
 
     await userEvent.selectOptions(screen.getByTestId('tir-completion-status-year'), '');
 
+    expect(screen.queryByTestId('tir-completion-status-error')).not.toBeInTheDocument();
+
+    fireEvent.blur(screen.getByTestId('tir-completion-status-year'), { relatedTarget: null });
+
     await waitFor(() => {
       expect(screen.getByTestId('tir-completion-status-error')).toHaveTextContent(
         'Trustee Interim Report Completion Status Year and Status must both be set.',
@@ -349,6 +353,10 @@ describe('Chapter7PanelTrusteeInterimReportForm', () => {
 
     await userEvent.selectOptions(screen.getByTestId('tir-completion-status-status'), '');
 
+    expect(screen.queryByTestId('tir-completion-status-error')).not.toBeInTheDocument();
+
+    fireEvent.blur(screen.getByTestId('tir-completion-status-status'), { relatedTarget: null });
+
     await waitFor(() => {
       expect(screen.getByTestId('tir-completion-status-error')).toHaveTextContent(
         'Trustee Interim Report Completion Status Year and Status must both be set.',
@@ -366,6 +374,10 @@ describe('Chapter7PanelTrusteeInterimReportForm', () => {
 
     await userEvent.selectOptions(screen.getByTestId('tir-frequency'), 'ANNUAL');
 
+    expect(screen.queryByTestId('tir-period-pair-error')).not.toBeInTheDocument();
+
+    fireEvent.blur(screen.getByTestId('tir-frequency'), { relatedTarget: null });
+
     await waitFor(() => {
       expect(screen.getByTestId('tir-period-pair-error')).toHaveTextContent(
         'Trustee Interim Report (TIR) Period Frequency and Period must both be set.',
@@ -382,6 +394,10 @@ describe('Chapter7PanelTrusteeInterimReportForm', () => {
     await waitFor(() => expect(screen.getByTestId('tir-period')).toHaveValue('01/01-12/31'));
 
     await userEvent.selectOptions(screen.getByTestId('tir-period'), '');
+
+    expect(screen.queryByTestId('tir-period-pair-error')).not.toBeInTheDocument();
+
+    fireEvent.blur(screen.getByTestId('tir-period'), { relatedTarget: null });
 
     await waitFor(() => {
       expect(screen.getByTestId('tir-period-pair-error')).toHaveTextContent(

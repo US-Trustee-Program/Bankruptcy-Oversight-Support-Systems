@@ -23,6 +23,7 @@ import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import DatePicker from '@/lib/components/uswds/DatePicker';
 import Select from '@/lib/components/uswds/Select';
 import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
+import useGroupBlur from '@/lib/hooks/UseGroupBlur';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import { Stop } from '@/lib/components/Stop';
 
@@ -111,6 +112,8 @@ export default function Chapter7PanelTrusteeInterimReportForm() {
   const [form, setForm] = useState<Chapter7PanelTrusteeInterimReportFormState>(EMPTY_FORM);
   const [original, setOriginal] = useState<TrusteeUpcomingKeyDates | null>(null);
   const { registerFieldError, hasErrorAmong } = useDateFieldErrors();
+  const tirPeriodGroup = useGroupBlur();
+  const completionGroup = useGroupBlur();
 
   useEffect(() => {
     Api2.getUpcomingKeyDates(trusteeId!, appointmentId!)
@@ -251,13 +254,19 @@ export default function Chapter7PanelTrusteeInterimReportForm() {
 
       <div className="tir-period-group">
         <p className="usa-label">TIR Period</p>
-        <div className="tir-period-group__row">
+        <div
+          className="tir-period-group__row"
+          onFocus={tirPeriodGroup.handleFocus}
+          onBlur={tirPeriodGroup.handleBlur}
+        >
           <Select
             id="tir-frequency"
             label="Frequency"
             compactLabel
-            hasError={!!tirPeriodPairError}
-            ariaDescribedBy={tirPeriodPairError ? tirPeriodPairErrorId : undefined}
+            hasError={tirPeriodGroup.touched && !!tirPeriodPairError}
+            ariaDescribedBy={
+              tirPeriodGroup.touched && tirPeriodPairError ? tirPeriodPairErrorId : undefined
+            }
             placeholder="- Select -"
             options={[
               { value: 'ANNUAL', label: 'Annual' },
@@ -270,8 +279,10 @@ export default function Chapter7PanelTrusteeInterimReportForm() {
             id="tir-period"
             label="Period"
             compactLabel
-            hasError={!!tirPeriodPairError}
-            ariaDescribedBy={tirPeriodPairError ? tirPeriodPairErrorId : undefined}
+            hasError={tirPeriodGroup.touched && !!tirPeriodPairError}
+            ariaDescribedBy={
+              tirPeriodGroup.touched && tirPeriodPairError ? tirPeriodPairErrorId : undefined
+            }
             placeholder="- Select -"
             options={periodOptions.map((o) => ({ value: o.key, label: o.label }))}
             value={form.tirPeriodKey}
@@ -279,7 +290,7 @@ export default function Chapter7PanelTrusteeInterimReportForm() {
             disabled={!form.tirFrequency}
           />
         </div>
-        {tirPeriodPairError && (
+        {tirPeriodGroup.touched && tirPeriodPairError && (
           <div
             className="cams-field-error-message"
             id={tirPeriodPairErrorId}
@@ -301,13 +312,19 @@ export default function Chapter7PanelTrusteeInterimReportForm() {
 
       <div className="exam-audit-group">
         <p className="usa-label">TIR Completion Status for Year</p>
-        <div className="exam-audit-group__row">
+        <div
+          className="exam-audit-group__row"
+          onFocus={completionGroup.handleFocus}
+          onBlur={completionGroup.handleBlur}
+        >
           <Select
             id="tir-completion-status-year"
             label="Year"
             compactLabel
-            hasError={!!completionPairError}
-            ariaDescribedBy={completionPairError ? completionPairErrorId : undefined}
+            hasError={completionGroup.touched && !!completionPairError}
+            ariaDescribedBy={
+              completionGroup.touched && completionPairError ? completionPairErrorId : undefined
+            }
             placeholder="- Select -"
             options={FISCAL_YEAR_OPTIONS.map((year) => ({
               value: String(year),
@@ -326,8 +343,10 @@ export default function Chapter7PanelTrusteeInterimReportForm() {
             id="tir-completion-status-status"
             label="Status"
             compactLabel
-            hasError={!!completionPairError}
-            ariaDescribedBy={completionPairError ? completionPairErrorId : undefined}
+            hasError={completionGroup.touched && !!completionPairError}
+            ariaDescribedBy={
+              completionGroup.touched && completionPairError ? completionPairErrorId : undefined
+            }
             placeholder="- Select -"
             options={[
               { value: 'COMPLETE', label: 'Complete' },
@@ -342,7 +361,7 @@ export default function Chapter7PanelTrusteeInterimReportForm() {
             }}
           />
         </div>
-        {completionPairError && (
+        {completionGroup.touched && completionPairError && (
           <div
             className="cams-field-error-message"
             id={completionPairErrorId}

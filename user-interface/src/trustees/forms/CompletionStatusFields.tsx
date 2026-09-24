@@ -4,6 +4,7 @@ import {
 } from '@common/cams/trustee-upcoming-key-dates';
 import { FISCAL_YEAR_OPTIONS } from './chapter7PanelKeyDatesInput';
 import Select from '@/lib/components/uswds/Select';
+import useGroupBlur from '@/lib/hooks/UseGroupBlur';
 
 export interface CompletionStatusValue {
   year: number | '';
@@ -28,17 +29,22 @@ export default function CompletionStatusFields(props: Readonly<CompletionStatusF
   // than waiting for a save to fail.
   const pairError = validateCompletionPairPresence(value.year, value.status, errorLabel);
   const pairErrorId = `${idPrefix}-error`;
+  const group = useGroupBlur();
 
   return (
     <fieldset className="usa-fieldset completion-status-fields">
       <legend className="usa-legend">{legend}</legend>
-      <div className="completion-status-fields__row">
+      <div
+        className="completion-status-fields__row"
+        onFocus={group.handleFocus}
+        onBlur={group.handleBlur}
+      >
         <Select
           id={`${idPrefix}-year`}
           label="Year"
           compactLabel
-          hasError={!!pairError}
-          ariaDescribedBy={pairError ? pairErrorId : undefined}
+          hasError={group.touched && !!pairError}
+          ariaDescribedBy={group.touched && pairError ? pairErrorId : undefined}
           placeholder="- Select -"
           options={yearOptions.map((year) => ({ value: String(year), label: String(year) }))}
           value={value.year === '' ? '' : String(value.year)}
@@ -50,8 +56,8 @@ export default function CompletionStatusFields(props: Readonly<CompletionStatusF
           id={`${idPrefix}-status`}
           label="Status"
           compactLabel
-          hasError={!!pairError}
-          ariaDescribedBy={pairError ? pairErrorId : undefined}
+          hasError={group.touched && !!pairError}
+          ariaDescribedBy={group.touched && pairError ? pairErrorId : undefined}
           placeholder="- Select -"
           options={[
             { value: 'COMPLETE', label: 'Complete' },
@@ -63,7 +69,7 @@ export default function CompletionStatusFields(props: Readonly<CompletionStatusF
           }
         />
       </div>
-      {pairError && (
+      {group.touched && pairError && (
         <div
           className="cams-field-error-message"
           id={pairErrorId}

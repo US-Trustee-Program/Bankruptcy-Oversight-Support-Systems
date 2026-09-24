@@ -298,6 +298,10 @@ describe('Chapter7PanelAuditFieldExamForm', () => {
 
     await userEvent.selectOptions(screen.getByTestId('audit-completion-status-year'), '');
 
+    expect(screen.queryByTestId('audit-completion-status-error')).not.toBeInTheDocument();
+
+    fireEvent.blur(screen.getByTestId('audit-completion-status-year'), { relatedTarget: null });
+
     await waitFor(() => {
       expect(screen.getByTestId('audit-completion-status-error')).toHaveTextContent(
         'Field Exam/Audit Completion Status Year and Status must both be set.',
@@ -317,6 +321,10 @@ describe('Chapter7PanelAuditFieldExamForm', () => {
 
     await userEvent.selectOptions(screen.getByTestId('audit-completion-status-status'), '');
 
+    expect(screen.queryByTestId('audit-completion-status-error')).not.toBeInTheDocument();
+
+    fireEvent.blur(screen.getByTestId('audit-completion-status-status'), { relatedTarget: null });
+
     await waitFor(() => {
       expect(screen.getByTestId('audit-completion-status-error')).toHaveTextContent(
         'Field Exam/Audit Completion Status Year and Status must both be set.',
@@ -333,6 +341,10 @@ describe('Chapter7PanelAuditFieldExamForm', () => {
     await waitFor(() => expect(screen.getByTestId('upcoming-exam-audit-year')).toHaveValue('2026'));
 
     await userEvent.selectOptions(screen.getByTestId('upcoming-exam-audit-year'), '');
+
+    expect(screen.queryByTestId('exam-audit-pair-error')).not.toBeInTheDocument();
+
+    fireEvent.blur(screen.getByTestId('upcoming-exam-audit-year'), { relatedTarget: null });
 
     await waitFor(() => {
       expect(screen.getByTestId('exam-audit-pair-error')).toHaveTextContent(
@@ -353,12 +365,31 @@ describe('Chapter7PanelAuditFieldExamForm', () => {
 
     await userEvent.selectOptions(screen.getByTestId('upcoming-exam-audit-type'), '');
 
+    expect(screen.queryByTestId('exam-audit-pair-error')).not.toBeInTheDocument();
+
+    fireEvent.blur(screen.getByTestId('upcoming-exam-audit-type'), { relatedTarget: null });
+
     await waitFor(() => {
       expect(screen.getByTestId('exam-audit-pair-error')).toHaveTextContent(
         'Field Exam or Audit Year and Type must both be set.',
       );
       expect(screen.getByTestId('button-save-chapter7-panel-audit-field-exam')).toBeDisabled();
     });
+  });
+
+  test('exam/audit pair error does not appear while focus remains within the group', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+
+    renderComponent();
+
+    await waitFor(() => expect(screen.getByTestId('upcoming-exam-audit-year')).toHaveValue('2026'));
+
+    const yearSelect = screen.getByTestId('upcoming-exam-audit-year');
+    const typeSelect = screen.getByTestId('upcoming-exam-audit-type');
+    await userEvent.selectOptions(yearSelect, '');
+    fireEvent.blur(yearSelect, { relatedTarget: typeSelect });
+
+    expect(screen.queryByTestId('exam-audit-pair-error')).not.toBeInTheDocument();
   });
 
   test('resetting both completion status fields back to blank clears them from the save payload', async () => {

@@ -19,6 +19,7 @@ import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import DatePicker from '@/lib/components/uswds/DatePicker';
 import Select from '@/lib/components/uswds/Select';
 import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
+import useGroupBlur from '@/lib/hooks/UseGroupBlur';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import { Stop } from '@/lib/components/Stop';
 
@@ -77,6 +78,8 @@ export default function Chapter7PanelAuditFieldExamForm() {
   const [form, setForm] = useState<Chapter7PanelAuditFieldExamFormState>(EMPTY_FORM);
   const [original, setOriginal] = useState<TrusteeUpcomingKeyDates | null>(null);
   const { registerFieldError, hasErrorAmong } = useDateFieldErrors();
+  const examAuditGroup = useGroupBlur();
+  const completionGroup = useGroupBlur();
 
   useEffect(() => {
     Api2.getUpcomingKeyDates(trusteeId!, appointmentId!)
@@ -167,13 +170,19 @@ export default function Chapter7PanelAuditFieldExamForm() {
 
       <div className="exam-audit-group">
         <p className="usa-label">Field Exam or Audit</p>
-        <div className="exam-audit-group__row">
+        <div
+          className="exam-audit-group__row"
+          onFocus={examAuditGroup.handleFocus}
+          onBlur={examAuditGroup.handleBlur}
+        >
           <Select
             id="upcoming-exam-audit-year"
             label="Year"
             compactLabel
-            hasError={!!examOrAuditPairError}
-            ariaDescribedBy={examOrAuditPairError ? examOrAuditPairErrorId : undefined}
+            hasError={examAuditGroup.touched && !!examOrAuditPairError}
+            ariaDescribedBy={
+              examAuditGroup.touched && examOrAuditPairError ? examOrAuditPairErrorId : undefined
+            }
             placeholder="- Select -"
             options={UPCOMING_YEAR_OPTIONS.map((y) => ({ value: String(y), label: String(y) }))}
             value={form.upcomingExamOrAuditYear === '' ? '' : String(form.upcomingExamOrAuditYear)}
@@ -189,8 +198,10 @@ export default function Chapter7PanelAuditFieldExamForm() {
             id="upcoming-exam-audit-type"
             label="Type"
             compactLabel
-            hasError={!!examOrAuditPairError}
-            ariaDescribedBy={examOrAuditPairError ? examOrAuditPairErrorId : undefined}
+            hasError={examAuditGroup.touched && !!examOrAuditPairError}
+            ariaDescribedBy={
+              examAuditGroup.touched && examOrAuditPairError ? examOrAuditPairErrorId : undefined
+            }
             placeholder="- Select -"
             options={[
               { value: 'Field Exam', label: 'Field Exam' },
@@ -205,7 +216,7 @@ export default function Chapter7PanelAuditFieldExamForm() {
             }}
           />
         </div>
-        {examOrAuditPairError && (
+        {examAuditGroup.touched && examOrAuditPairError && (
           <div
             className="cams-field-error-message"
             id={examOrAuditPairErrorId}
@@ -249,13 +260,19 @@ export default function Chapter7PanelAuditFieldExamForm() {
 
       <div className="exam-audit-group">
         <p className="usa-label">Field Exam/Audit Completion Status for Year</p>
-        <div className="exam-audit-group__row">
+        <div
+          className="exam-audit-group__row"
+          onFocus={completionGroup.handleFocus}
+          onBlur={completionGroup.handleBlur}
+        >
           <Select
             id="audit-completion-status-year"
             label="Year"
             compactLabel
-            hasError={!!completionPairError}
-            ariaDescribedBy={completionPairError ? completionPairErrorId : undefined}
+            hasError={completionGroup.touched && !!completionPairError}
+            ariaDescribedBy={
+              completionGroup.touched && completionPairError ? completionPairErrorId : undefined
+            }
             placeholder="- Select -"
             options={FISCAL_YEAR_OPTIONS.map((year) => ({
               value: String(year),
@@ -274,8 +291,10 @@ export default function Chapter7PanelAuditFieldExamForm() {
             id="audit-completion-status-status"
             label="Status"
             compactLabel
-            hasError={!!completionPairError}
-            ariaDescribedBy={completionPairError ? completionPairErrorId : undefined}
+            hasError={completionGroup.touched && !!completionPairError}
+            ariaDescribedBy={
+              completionGroup.touched && completionPairError ? completionPairErrorId : undefined
+            }
             placeholder="- Select -"
             options={[
               { value: 'CLOSED', label: 'Complete' },
@@ -290,7 +309,7 @@ export default function Chapter7PanelAuditFieldExamForm() {
             }}
           />
         </div>
-        {completionPairError && (
+        {completionGroup.touched && completionPairError && (
           <div
             className="cams-field-error-message"
             id={completionPairErrorId}

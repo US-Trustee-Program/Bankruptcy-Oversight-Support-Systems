@@ -121,9 +121,14 @@ describe('Chapter13StandingTrusteePerformanceReportForm', () => {
     renderComponent();
     await screen.findByTestId('tpr-review-period-start');
 
+    fireEvent.focus(screen.getByTestId('tpr-review-period-start'));
     fireEvent.change(screen.getByTestId('tpr-review-period-start'), {
       target: { value: '2025-10-01' },
     });
+
+    expect(screen.queryByTestId('tpr-review-period-error')).not.toBeInTheDocument();
+
+    fireEvent.blur(screen.getByTestId('tpr-review-period-start'), { relatedTarget: null });
 
     await waitFor(() => {
       expect(screen.getByTestId('tpr-review-period-error')).toHaveTextContent(
@@ -141,6 +146,20 @@ describe('Chapter13StandingTrusteePerformanceReportForm', () => {
     });
   });
 
+  test('review-period error does not appear while focus remains within the group', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: existingDocument });
+    renderComponent();
+    await screen.findByTestId('tpr-review-period-start');
+
+    const startInput = screen.getByTestId('tpr-review-period-start');
+    const endInput = screen.getByTestId('tpr-review-period-end');
+    fireEvent.focus(startInput);
+    fireEvent.change(startInput, { target: { value: '2025-10-01' } });
+    fireEvent.blur(startInput, { relatedTarget: endInput });
+
+    expect(screen.queryByTestId('tpr-review-period-error')).not.toBeInTheDocument();
+  });
+
   test('shows a TPR Due error and disables Save when Year Type is set without a TPR Due date', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({
       data: { ...existingDocument, tprDue: undefined, tprDueYearType: undefined },
@@ -149,6 +168,10 @@ describe('Chapter13StandingTrusteePerformanceReportForm', () => {
     await screen.findByTestId('tpr-review-period-start');
 
     await userEvent.selectOptions(screen.getByTestId('tpr-due-year-type'), 'EVEN');
+
+    expect(screen.queryByTestId('tpr-due-error')).not.toBeInTheDocument();
+
+    fireEvent.blur(screen.getByTestId('tpr-due-year-type'), { relatedTarget: null });
 
     await waitFor(() => {
       expect(screen.getByTestId('tpr-due-error')).toBeInTheDocument();

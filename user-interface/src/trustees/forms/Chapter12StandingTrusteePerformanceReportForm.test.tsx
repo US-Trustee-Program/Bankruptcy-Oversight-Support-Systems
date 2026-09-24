@@ -258,6 +258,10 @@ describe('Chapter12StandingTrusteePerformanceReportForm', () => {
 
     await userEvent.selectOptions(screen.getByTestId('tpr-completion-status-year'), '');
 
+    expect(screen.queryByTestId('tpr-completion-status-error')).not.toBeInTheDocument();
+
+    fireEvent.blur(screen.getByTestId('tpr-completion-status-year'), { relatedTarget: null });
+
     await waitFor(() => {
       expect(screen.getByTestId('tpr-completion-status-error')).toHaveTextContent(
         'Trustee Performance Review Completion Status Year and Status must both be set.',
@@ -276,6 +280,10 @@ describe('Chapter12StandingTrusteePerformanceReportForm', () => {
     );
 
     await userEvent.selectOptions(screen.getByTestId('tpr-completion-status-status'), '');
+
+    expect(screen.queryByTestId('tpr-completion-status-error')).not.toBeInTheDocument();
+
+    fireEvent.blur(screen.getByTestId('tpr-completion-status-status'), { relatedTarget: null });
 
     await waitFor(() => {
       expect(screen.getByTestId('tpr-completion-status-error')).toHaveTextContent(
@@ -382,6 +390,10 @@ describe('Chapter12StandingTrusteePerformanceReportForm', () => {
     await waitFor(() => expect(screen.getByTestId('tpr-due-year-type')).toHaveValue('EVEN'));
 
     await userEvent.selectOptions(screen.getByTestId('tpr-due-year-type'), '');
+
+    expect(screen.queryByTestId('tpr-due-error')).not.toBeInTheDocument();
+
+    fireEvent.blur(screen.getByTestId('tpr-due-year-type'), { relatedTarget: null });
 
     await waitFor(() => {
       expect(screen.getByTestId('tpr-due-error')).toHaveTextContent(

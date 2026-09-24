@@ -22,6 +22,7 @@ import Select from '@/lib/components/uswds/Select';
 import MonthDaySelector from '@/lib/components/uswds/MonthDaySelector';
 import MonthDayRangeSelector from '@/lib/components/uswds/MonthDayRangeSelector';
 import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
+import useGroupBlur from '@/lib/hooks/UseGroupBlur';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import { Stop } from '@/lib/components/Stop';
 
@@ -102,6 +103,8 @@ export default function TrusteePerformanceReportForm(
   const [tprReviewPeriodValid, setTprReviewPeriodValid] = useState(true);
   const [errors, setErrors] = useState({ tprReviewPeriodStart: '', tprReviewPeriodEnd: '' });
   const { registerFieldError, hasErrorAmong } = useDateFieldErrors();
+  const tprDueGroup = useGroupBlur();
+  const completionGroup = useGroupBlur();
 
   useEffect(() => {
     Api2.getUpcomingKeyDates(trusteeId!, appointmentId!)
@@ -298,20 +301,24 @@ export default function TrusteePerformanceReportForm(
             TPR Due
           </label>
         </div>
-        <div className="tpr-due-group__row">
+        <div
+          className="tpr-due-group__row"
+          onFocus={tprDueGroup.handleFocus}
+          onBlur={tprDueGroup.handleBlur}
+        >
           <MonthDaySelector
             id="tpr-due"
             value={form.tprDue}
             onChange={(value) => setForm((prev) => ({ ...prev, tprDue: value }))}
-            hasError={!!tprDuePairError}
+            hasError={tprDueGroup.touched && !!tprDuePairError}
           />
           <Select
             id="tpr-due-year-type"
             label="Year Type"
             compactLabel
             className="year-type-selector"
-            hasError={!!tprDuePairError}
-            ariaDescribedBy={tprDuePairError ? tprDuePairErrorId : undefined}
+            hasError={tprDueGroup.touched && !!tprDuePairError}
+            ariaDescribedBy={tprDueGroup.touched && tprDuePairError ? tprDuePairErrorId : undefined}
             placeholder="- Select -"
             options={[
               { value: 'EVEN', label: 'EVEN' },
@@ -326,7 +333,7 @@ export default function TrusteePerformanceReportForm(
             }
           />
         </div>
-        {tprDuePairError && (
+        {tprDueGroup.touched && tprDuePairError && (
           <div
             className="cams-field-error-message"
             id={tprDuePairErrorId}
@@ -348,13 +355,19 @@ export default function TrusteePerformanceReportForm(
 
       <div className="exam-audit-group">
         <p className="usa-label">TPR Completion Status for Year</p>
-        <div className="exam-audit-group__row">
+        <div
+          className="exam-audit-group__row"
+          onFocus={completionGroup.handleFocus}
+          onBlur={completionGroup.handleBlur}
+        >
           <Select
             id="tpr-completion-status-year"
             label="Year"
             compactLabel
-            hasError={!!completionPairError}
-            ariaDescribedBy={completionPairError ? completionPairErrorId : undefined}
+            hasError={completionGroup.touched && !!completionPairError}
+            ariaDescribedBy={
+              completionGroup.touched && completionPairError ? completionPairErrorId : undefined
+            }
             placeholder="- Select -"
             options={FISCAL_YEAR_OPTIONS.map((year) => ({
               value: String(year),
@@ -373,8 +386,10 @@ export default function TrusteePerformanceReportForm(
             id="tpr-completion-status-status"
             label="Status"
             compactLabel
-            hasError={!!completionPairError}
-            ariaDescribedBy={completionPairError ? completionPairErrorId : undefined}
+            hasError={completionGroup.touched && !!completionPairError}
+            ariaDescribedBy={
+              completionGroup.touched && completionPairError ? completionPairErrorId : undefined
+            }
             placeholder="- Select -"
             options={[
               { value: 'COMPLETE', label: 'Complete' },
@@ -389,7 +404,7 @@ export default function TrusteePerformanceReportForm(
             }}
           />
         </div>
-        {completionPairError && (
+        {completionGroup.touched && completionPairError && (
           <div
             className="cams-field-error-message"
             id={completionPairErrorId}

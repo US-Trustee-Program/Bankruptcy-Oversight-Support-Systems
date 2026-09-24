@@ -14,6 +14,7 @@ import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import DatePicker from '@/lib/components/uswds/DatePicker';
 import Select from '@/lib/components/uswds/Select';
 import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
+import useGroupBlur from '@/lib/hooks/UseGroupBlur';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import { Stop } from '@/lib/components/Stop';
 
@@ -61,6 +62,7 @@ export default function Chapter12StandingAuditForm() {
   const [form, setForm] = useState<Chapter12StandingAuditFormState>(EMPTY_FORM);
   const [original, setOriginal] = useState<TrusteeUpcomingKeyDates | null>(null);
   const { registerFieldError, hasErrorAmong } = useDateFieldErrors();
+  const completionGroup = useGroupBlur();
 
   useEffect(() => {
     Api2.getUpcomingKeyDates(trusteeId!, appointmentId!)
@@ -165,13 +167,19 @@ export default function Chapter12StandingAuditForm() {
 
       <div className="exam-audit-group">
         <p className="usa-label">Audit Completion Status for Year</p>
-        <div className="exam-audit-group__row">
+        <div
+          className="exam-audit-group__row"
+          onFocus={completionGroup.handleFocus}
+          onBlur={completionGroup.handleBlur}
+        >
           <Select
             id="audit-completion-status-year"
             label="Year"
             compactLabel
-            hasError={!!completionPairError}
-            ariaDescribedBy={completionPairError ? completionPairErrorId : undefined}
+            hasError={completionGroup.touched && !!completionPairError}
+            ariaDescribedBy={
+              completionGroup.touched && completionPairError ? completionPairErrorId : undefined
+            }
             placeholder="- Select -"
             options={FISCAL_YEAR_OPTIONS.map((year) => ({
               value: String(year),
@@ -190,8 +198,10 @@ export default function Chapter12StandingAuditForm() {
             id="audit-completion-status-status"
             label="Status"
             compactLabel
-            hasError={!!completionPairError}
-            ariaDescribedBy={completionPairError ? completionPairErrorId : undefined}
+            hasError={completionGroup.touched && !!completionPairError}
+            ariaDescribedBy={
+              completionGroup.touched && completionPairError ? completionPairErrorId : undefined
+            }
             placeholder="- Select -"
             options={[
               { value: 'CLOSED', label: 'Closed' },
@@ -206,7 +216,7 @@ export default function Chapter12StandingAuditForm() {
             }}
           />
         </div>
-        {completionPairError && (
+        {completionGroup.touched && completionPairError && (
           <div
             className="cams-field-error-message"
             id={completionPairErrorId}

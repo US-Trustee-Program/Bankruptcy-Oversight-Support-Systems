@@ -6,6 +6,7 @@ import {
   TrusteeUpcomingKeyDates,
   TrusteeUpcomingKeyDatesInput,
   validateTprDuePair,
+  validateTprReviewPeriodOrder,
 } from '@common/cams/trustee-upcoming-key-dates';
 import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
@@ -14,6 +15,7 @@ import DatePicker from '@/lib/components/uswds/DatePicker';
 import MonthDaySelector from '@/lib/components/uswds/MonthDaySelector';
 import Select from '@/lib/components/uswds/Select';
 import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
+import useGroupBlur from '@/lib/hooks/UseGroupBlur';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import { Stop } from '@/lib/components/Stop';
@@ -83,13 +85,14 @@ export default function Chapter13StandingTrusteePerformanceReportForm() {
   const globalAlert = useGlobalAlert();
   const canManage = useCanManageTrustees();
   const { registerFieldError, hasErrorAmong } = useDateFieldErrors();
+  const reviewPeriodGroup = useGroupBlur();
+  const tprDueGroup = useGroupBlur();
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
   const [original, setOriginal] = useState<TrusteeUpcomingKeyDates | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
-  const [reviewPeriodError, setReviewPeriodError] = useState('');
 
   useEffect(() => {
     Api2.getUpcomingKeyDates(trusteeId!, appointmentId!)
@@ -113,14 +116,6 @@ export default function Chapter13StandingTrusteePerformanceReportForm() {
 
   function handleCancel() {
     navigate(`/trustees/${trusteeId}/appointments`);
-  }
-
-  function checkReviewPeriodOrder(start: string, end: string) {
-    if (start && end && start > end) {
-      setReviewPeriodError('TPR Review Period Start must be before TPR Review Period End.');
-    } else {
-      setReviewPeriodError('');
-    }
   }
 
   async function handleSave() {
@@ -153,6 +148,10 @@ export default function Chapter13StandingTrusteePerformanceReportForm() {
     );
   }
 
+  const reviewPeriodOrderError = validateTprReviewPeriodOrder(
+    form.tprReviewPeriodStart,
+    form.tprReviewPeriodEnd,
+  );
   const tprDueBlurError = validateTprDuePair(form.tprDue, form.tprDueYearType);
 
   const isCompletionPairIncomplete =
@@ -162,7 +161,7 @@ export default function Chapter13StandingTrusteePerformanceReportForm() {
   const isSaveDisabled =
     isSaving ||
     loadFailed ||
-    !!reviewPeriodError ||
+    !!reviewPeriodOrderError ||
     !!tprDueBlurError ||
     hasErrorAmong(['tpr-review-period-start', 'tpr-review-period-end', 'last-tpr-submitted']) ||
     isCompletionPairIncomplete;
@@ -173,16 +172,17 @@ export default function Chapter13StandingTrusteePerformanceReportForm() {
       data-testid="edit-chapter13-standing-tpr-key-dates"
     >
       <h3>Edit Trustee Performance Report Key Dates</h3>
-      <div className="tpr-review-period-group">
+      <div
+        className="tpr-review-period-group"
+        onFocus={reviewPeriodGroup.handleFocus}
+        onBlur={reviewPeriodGroup.handleBlur}
+      >
         <DatePicker
           id="tpr-review-period-start"
           label="Trustee Performance Review (TPR) Period Start"
           value={form.tprReviewPeriodStart}
           disableMax
-          onChange={(e) => {
-            setForm((prev) => ({ ...prev, tprReviewPeriodStart: e.target.value }));
-            checkReviewPeriodOrder(e.target.value, form.tprReviewPeriodEnd);
-          }}
+          onChange={(e) => setForm((prev) => ({ ...prev, tprReviewPeriodStart: e.target.value }))}
           onValidationChange={(hasError) => registerFieldError('tpr-review-period-start', hasError)}
         />
         <DatePicker
@@ -190,15 +190,12 @@ export default function Chapter13StandingTrusteePerformanceReportForm() {
           label="Trustee Performance Review (TPR) Period End"
           value={form.tprReviewPeriodEnd}
           disableMax
-          onChange={(e) => {
-            setForm((prev) => ({ ...prev, tprReviewPeriodEnd: e.target.value }));
-            checkReviewPeriodOrder(form.tprReviewPeriodStart, e.target.value);
-          }}
+          onChange={(e) => setForm((prev) => ({ ...prev, tprReviewPeriodEnd: e.target.value }))}
           onValidationChange={(hasError) => registerFieldError('tpr-review-period-end', hasError)}
         />
-        {reviewPeriodError && (
+        {reviewPeriodGroup.touched && reviewPeriodOrderError && (
           <div className="cams-field-error-message" data-testid="tpr-review-period-error">
-            {reviewPeriodError}
+            {reviewPeriodOrderError.startError}
           </div>
         )}
       </div>
@@ -222,17 +219,23 @@ export default function Chapter13StandingTrusteePerformanceReportForm() {
       />
       <div className="tpr-due-group">
         <p className="usa-label tpr-due-title">Trustee Performance Review (TPR) Due</p>
-        <div className="tpr-due-group__row">
+        <div
+          className="tpr-due-group__row"
+          onFocus={tprDueGroup.handleFocus}
+          onBlur={tprDueGroup.handleBlur}
+        >
           <MonthDaySelector
             id="tpr-due"
             value={form.tprDue}
             onChange={(value) => setForm((prev) => ({ ...prev, tprDue: value }))}
+            hasError={tprDueGroup.touched && !!tprDueBlurError}
             dayAlwaysEnabled
           />
           <Select
             id="tpr-due-year-type"
             label="Year Type"
             compactLabel
+            hasError={tprDueGroup.touched && !!tprDueBlurError}
             placeholder="- Select -"
             options={[
               { value: 'EVEN', label: 'EVEN' },
@@ -247,7 +250,7 @@ export default function Chapter13StandingTrusteePerformanceReportForm() {
             }
           />
         </div>
-        {tprDueBlurError && (
+        {tprDueGroup.touched && tprDueBlurError && (
           <div className="cams-field-error-message" data-testid="tpr-due-error">
             {tprDueBlurError}
           </div>
