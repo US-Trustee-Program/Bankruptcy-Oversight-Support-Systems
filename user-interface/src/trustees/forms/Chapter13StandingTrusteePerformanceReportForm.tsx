@@ -12,6 +12,7 @@ import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import DatePicker from '@/lib/components/uswds/DatePicker';
 import MonthDaySelector from '@/lib/components/uswds/MonthDaySelector';
+import Select from '@/lib/components/uswds/Select';
 import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
@@ -196,33 +197,29 @@ export default function Chapter13StandingTrusteePerformanceReportForm() {
           onValidationChange={(hasError) => registerFieldError('tpr-review-period-end', hasError)}
         />
         {reviewPeriodError && (
-          <span className="usa-error-message" data-testid="tpr-review-period-error">
+          <span className="cams-field-error-message" data-testid="tpr-review-period-error">
             {reviewPeriodError}
           </span>
         )}
       </div>
-      <div className="usa-form-group tpr-frequency-group">
-        <label className="usa-label" htmlFor="tpr-frequency">
-          Trustee Performance Review (TPR) Period Frequency
-        </label>
-        <select
-          className={`usa-select${form.tprFrequency === '' ? ' tpr-frequency-placeholder' : ''}`}
-          id="tpr-frequency"
-          data-testid="tpr-frequency"
-          value={form.tprFrequency}
-          onChange={(e) =>
-            setForm((prev) => ({
-              ...prev,
-              tprFrequency: e.target.value as 'BIANNUAL' | 'ANNUAL' | 'SEMI_ANNUAL' | '',
-            }))
-          }
-        >
-          <option value="">- Select -</option>
-          <option value="BIANNUAL">Two years</option>
-          <option value="ANNUAL">One year</option>
-          <option value="SEMI_ANNUAL">6 months</option>
-        </select>
-      </div>
+      <Select
+        id="tpr-frequency"
+        label="Trustee Performance Review (TPR) Period Frequency"
+        className={`tpr-frequency-group${form.tprFrequency === '' ? ' tpr-frequency-placeholder' : ''}`}
+        placeholder="- Select -"
+        options={[
+          { value: 'BIANNUAL', label: 'Two years' },
+          { value: 'ANNUAL', label: 'One year' },
+          { value: 'SEMI_ANNUAL', label: '6 months' },
+        ]}
+        value={form.tprFrequency}
+        onChange={(e) =>
+          setForm((prev) => ({
+            ...prev,
+            tprFrequency: e.target.value as 'BIANNUAL' | 'ANNUAL' | 'SEMI_ANNUAL' | '',
+          }))
+        }
+      />
       <div className="tpr-due-group">
         <p className="usa-label tpr-due-title">Trustee Performance Review (TPR) Due</p>
         <div className="tpr-due-group__row">
@@ -232,30 +229,26 @@ export default function Chapter13StandingTrusteePerformanceReportForm() {
             onChange={(value) => setForm((prev) => ({ ...prev, tprDue: value }))}
             dayAlwaysEnabled
           />
-          <div className="usa-form-group">
-            <label className="usa-hint" htmlFor="tpr-due-year-type">
-              Year Type
-            </label>
-            <select
-              className="usa-select"
-              id="tpr-due-year-type"
-              data-testid="tpr-due-year-type"
-              value={form.tprDueYearType}
-              onChange={(e) =>
-                setForm((prev) => ({
-                  ...prev,
-                  tprDueYearType: e.target.value as 'EVEN' | 'ODD' | '',
-                }))
-              }
-            >
-              <option value=""></option>
-              <option value="EVEN">EVEN</option>
-              <option value="ODD">ODD</option>
-            </select>
-          </div>
+          <Select
+            id="tpr-due-year-type"
+            label="Year Type"
+            compactLabel
+            placeholder="- Select -"
+            options={[
+              { value: 'EVEN', label: 'EVEN' },
+              { value: 'ODD', label: 'ODD' },
+            ]}
+            value={form.tprDueYearType}
+            onChange={(e) =>
+              setForm((prev) => ({
+                ...prev,
+                tprDueYearType: e.target.value as 'EVEN' | 'ODD' | '',
+              }))
+            }
+          />
         </div>
         {tprDueBlurError && (
-          <span className="usa-error-message" data-testid="tpr-due-error">
+          <span className="cams-field-error-message" data-testid="tpr-due-error">
             {tprDueBlurError}
           </span>
         )}
