@@ -64,7 +64,7 @@ export default function Chapter13StandingAppointmentBody(
           <div key="header" className="chapter13-standing-accordion-header">
             <span>{headerText}</span>
             {formattedStatus === 'Active' ? (
-              <Tag id="appointment-status" uswdsStyle={UswdsTagStyle.Green}>
+              <Tag id="appointment-status" uswdsStyle={UswdsTagStyle.Success}>
                 Active
               </Tag>
             ) : (
