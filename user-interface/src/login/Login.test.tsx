@@ -8,14 +8,15 @@ import * as badConfigurationModule from './BadConfiguration';
 import * as libraryModule from '@/login/login-library';
 import * as mockLoginModule from './providers/mock/MockLogin';
 import * as sessionModule from './Session';
+import * as logoutModule from './Logout';
 import { Login } from './Login';
 import LocalStorage from '@/lib/utils/local-storage';
 import MockData from '@common/cams/test-utilities/mock-data';
-import { randomUUID } from 'node:crypto';
 import { CamsSession } from '@common/cams/session';
 import { JSX } from 'react/jsx-runtime';
-import { blankConfiguration } from '@/lib/testing/mock-configuration';
+import { mockConfiguration } from '@/lib/testing/mock-configuration';
 import TestingUtilities from '@/lib/testing/testing-utilities';
+import DateHelper from '@common/date-helper';
 
 describe('Login', () => {
   const testId = 'child-div';
@@ -33,6 +34,7 @@ describe('Login', () => {
   let badConfigurationComponent: MockInstance<
     (props: badConfigurationModule.BadConfigurationProps) => JSX.Element
   >;
+  let logoutComponent: MockInstance<() => JSX.Element>;
 
   let getSession: MockInstance<() => CamsSession | null>;
   let removeSession: MockInstance<() => void>;
@@ -41,12 +43,14 @@ describe('Login', () => {
   let getLoginProviderFromEnv: MockInstance<() => string>;
 
   beforeEach(() => {
+    vi.restoreAllMocks();
     oktaProviderComponent = vi.spyOn(oktaProviderModule, 'OktaProvider');
     oktaLoginComponent = vi.spyOn(oktaLoginModule, 'OktaLogin');
     mockLoginComponent = vi.spyOn(mockLoginModule, 'MockLogin');
 
     sessionComponent = vi.spyOn(sessionModule, 'Session');
     badConfigurationComponent = vi.spyOn(badConfigurationModule, 'BadConfiguration');
+    logoutComponent = vi.spyOn(logoutModule, 'Logout');
 
     getSession = vi.spyOn(LocalStorage, 'getSession');
     removeSession = vi.spyOn(LocalStorage, 'removeSession');
@@ -63,34 +67,16 @@ describe('Login', () => {
     mockLoginComponent.mockImplementation((props: PropsWithChildren) => {
       return <> {props.children}</>;
     });
+    logoutComponent.mockImplementation(() => {
+      return <></>;
+    });
     getSession.mockReturnValue(null);
     removeSession.mockImplementation(vi.fn());
     vi.spyOn(LocalStorage, 'getAck').mockReturnValueOnce(true);
-    vi.spyOn(libraryModule, 'getLoginConfiguration').mockReturnValue({
-      issuer,
-      clientId: randomUUID(),
-    });
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   test('should load provider from environment vars', async () => {
-    vi.doMock('@/configuration/appConfiguration', async () => {
-      return {
-        default: () => ({
-          ...blankConfiguration,
-          loginProvider: 'okta',
-          loginProviderConfig: '{"issuer": "${issuer}", "clientId": "000000000000"}',
-        }),
-      };
-    });
-
-    vi.resetModules();
-    const { Login } = await import('./Login');
-    const libraryModule = await import('@/login/login-library');
-    const getLoginProviderFromEnv = vi.spyOn(libraryModule, 'getLoginProvider');
+    mockConfiguration({ loginProvider: 'okta' });
 
     render(
       <BrowserRouter>
@@ -98,7 +84,7 @@ describe('Login', () => {
       </BrowserRouter>,
     );
     expect(getLoginProviderFromEnv).toHaveBeenCalled();
-    vi.unstubAllEnvs();
+    expect(oktaProviderComponent).toHaveBeenCalled();
   });
 
   test('should check for an existing login and continue if a session does not exist', () => {
@@ -114,28 +100,15 @@ describe('Login', () => {
   });
 
   test('should check for an existing mock login and skip if a session exists', async () => {
-    vi.doMock('@/configuration/appConfiguration', async () => {
-      return {
-        default: () => ({
-          ...blankConfiguration,
-          loginProvider: 'mock',
-          loginProviderConfig: '',
-          serverHostName: 'fake.issuer.com',
-          serverPort: '',
-          serverProtocol: 'https',
-          basePath: '',
-        }),
-      };
+    mockConfiguration({
+      loginProvider: 'mock',
+      serverHostName: 'fake.issuer.com',
+      serverPort: '',
+      serverProtocol: 'https',
+      basePath: '',
     });
 
-    vi.resetModules();
-    await import('@/login/login-library');
-    const localStorageModule = await import('@/lib/utils/local-storage');
-    const LocalStorage = localStorageModule.default;
-    const { Login } = await import('./Login');
-    const sessionModule = await import('./Session');
-
-    const getSession = vi.spyOn(LocalStorage, 'getSession').mockReturnValue({
+    getSession.mockReturnValue({
       accessToken: MockData.getJwt(),
       provider: 'mock',
       issuer,
@@ -145,7 +118,6 @@ describe('Login', () => {
       },
       expires: Number.MAX_SAFE_INTEGER,
     });
-    const sessionComponent = vi.spyOn(sessionModule, 'Session');
 
     render(
       <BrowserRouter>
@@ -230,6 +202,27 @@ describe('Login', () => {
     expect(sessionComponent).not.toHaveBeenCalled();
   });
 
+  test('should render Logout when the existing session has expired', () => {
+    getLoginProviderFromEnv.mockReturnValue('mock');
+    getSession.mockReturnValue({
+      accessToken: MockData.getJwt(),
+      provider: 'mock',
+      issuer,
+      user: {
+        id: 'mockId',
+        name: 'Mock User',
+      },
+      expires: DateHelper.nowInSeconds() - 100,
+    });
+    render(
+      <BrowserRouter>
+        <Login>{children}</Login>
+      </BrowserRouter>,
+    );
+    expect(logoutComponent).toHaveBeenCalled();
+    expect(sessionComponent).not.toHaveBeenCalled();
+  });
+
   test('should show privacy warning if not acknowledged', async () => {
     getLoginProviderFromEnv.mockReturnValue('mock');
     vi.spyOn(LocalStorage, 'getAck').mockReset().mockReturnValueOnce(false);
@@ -241,6 +234,20 @@ describe('Login', () => {
     await waitFor(() => {
       expect(screen.getByTestId('button-auo-confirm')).toBeInTheDocument();
     });
+  });
+
+  test('should skip the privacy warning when skipAuthorizedUseOnly prop is true', async () => {
+    getLoginProviderFromEnv.mockReturnValue('mock');
+    vi.spyOn(LocalStorage, 'getAck').mockReset().mockReturnValueOnce(false);
+    render(
+      <BrowserRouter>
+        <Login skipAuthorizedUseOnly={true}>{children}</Login>
+      </BrowserRouter>,
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId(testId)).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('button-auo-confirm')).not.toBeInTheDocument();
   });
 
   test('should render OktaProvider for okta provider type', async () => {
