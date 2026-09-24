@@ -63,6 +63,14 @@ class HealSentinelCaseAppointmentsUseCase {
    *
    * Returns false when no CAMS trustee mapping exists yet for this sentinel's acmsProfessionalId
    * — the sentinel is left in place for a future run once trustee-professional-ids improves.
+   *
+   * findByAcmsProfessionalId only ever returns an auto-linked, non-conflicting disposition (see
+   * isRealLink) - a 'conflict'-disposition record for this ACMS ID is invisible to it, so
+   * matches.length !== 1 alone cannot distinguish "never linked" from "flagged as a data-integrity
+   * conflict." Both currently leave the sentinel in place either way, but the conflict case is
+   * logged distinctly (via hasConflictByAcmsProfessionalId) so an operator scanning logs can tell
+   * a genuinely stuck case (needs manual conflict resolution, will never self-heal) from an
+   * ordinary not-yet-linked one (will self-heal once trustee-professional-ids catches up).
    */
   private async healSentinelAppointment(
     sentinel: SentinelAppointment,
@@ -75,6 +83,17 @@ class HealSentinelCaseAppointmentsUseCase {
       sentinel.acmsProfessionalId,
     );
     if (matches.length !== 1) {
+      if (matches.length === 0) {
+        const hasConflict = await this.professionalIdsRepo.hasConflictByAcmsProfessionalId(
+          sentinel.acmsProfessionalId,
+        );
+        if (hasConflict) {
+          this.context.logger.warn(
+            MODULE_NAME,
+            `Sentinel appointment for case ${sentinel.caseId} left in place: ACMS professional ID ${sentinel.acmsProfessionalId} is flagged as a data-integrity conflict and will not self-heal without manual resolution.`,
+          );
+        }
+      }
       return { healed: false };
     }
 

@@ -7,7 +7,6 @@ import SyncTrusteeCaseAppointments, {
   createNewAppointment,
   closeExistingAppointment,
   softCloseExistingAppointment,
-  isTransientInfraError,
   handleClassifiedMismatch,
 } from './sync-trustee-case-appointments';
 import factory from '../../factory';
@@ -4593,22 +4592,6 @@ describe('softCloseExistingAppointment', () => {
     );
 
     expect(queueTrusteeAppointmentEvent).not.toHaveBeenCalled();
-  });
-});
-
-describe('isTransientInfraError', () => {
-  test('returns true for a TooManyRequestsError', () => {
-    expect(isTransientInfraError(new TooManyRequestsError('COSMOS'))).toBe(true);
-  });
-
-  test('returns true for a GatewayTimeoutError', () => {
-    expect(isTransientInfraError(new GatewayTimeoutError('COSMOS'))).toBe(true);
-  });
-
-  test('returns false for a non-transient error', () => {
-    expect(isTransientInfraError(new CamsError('TEST', { message: 'permanent failure' }))).toBe(
-      false,
-    );
   });
 });
 

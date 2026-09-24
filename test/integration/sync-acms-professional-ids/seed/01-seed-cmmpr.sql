@@ -2,7 +2,7 @@
 -- integration tests. Every row is GROUP_DESIGNATOR='NY' except one 'UT' row
 -- used to prove the harness correctly pages/tracks bookmarks per group.
 --
--- CMMPR rows (all PROF_TYPE='TR'):
+-- CMMPR rows (all PROF_TYPE='TR' unless noted):
 --   UST_PROF_CODE 63:  fingerprint match  — demographics equal the
 --                      TRUSTEE_VARIATION fixture seeded in Cosmos for
 --                      INTEGRATION-TRUSTEE-FINGERPRINT
@@ -19,6 +19,17 @@
 --                      NUMERIC(9,0) storage) proves formatAcmsZip zero-pads to 9 digits before
 --                      splitting 5+4 ("06511-0000"), not just re-dashing a value assumed to
 --                      already be 9 digits wide
+--   UST_PROF_CODE 72:  ambiguous, active   — name matches TWO CAMS trustees
+--                      (INTEGRATION-TRUSTEE-AMBIGUOUS-A/B) with identical names; no
+--                      address/phone on either trustee corroborates this ACMS record, so
+--                      the pipeline cannot pick a winner -> disposition=ambiguous
+--   UST_PROF_CODE 73:  administrative placeholder — PROF_FIRST_NAME/PROF_LAST_NAME name no
+--                      real person ("NOT ASSIGNED") -> disposition=skipped, no matching
+--                      attempted at all
+--   UST_PROF_CODE 74:  conflict — name matches CAMS trustee INTEGRATION-TRUSTEE-NAME (the
+--                      same trustee UST_PROF_CODE 64 already links to), but this fixture's
+--                      acmsProfessionalId is separately pre-linked (by the harness, before
+--                      enqueuing) to a DIFFERENT trustee -> disposition=conflict
 --
 -- Run against ACMS_INT database after seed-schema has been applied.
 
@@ -90,6 +101,39 @@ VALUES
    '400 Elm St', '', 'New Haven', 'CT', 65110000, 0, 2035550800);
 GO
 
+-- Record 5c: ambiguous — name matches TWO CAMS trustees with identical names, active
+-- appointment present. Deliberately no address/phone on this CMMPR row (blank/zero) so
+-- neither trustee's contact data can corroborate a winner.
+INSERT INTO dbo.CMMPR
+  (GROUP_DESIGNATOR, UST_PROF_CODE, DELETE_CODE, PROF_TYPE, PROF_LAST_NAME, PROF_FIRST_NAME, PROF_MI,
+   PROF_ADDRESS1, PROF_ADDRESS2, PROF_CITY, PROF_STATE, PROF_ZIP, PROF_FAX_NBR, PROF_COMMERCIAL_PHONE_NBR)
+VALUES
+  ('NY', 72, ' ', 'TR', 'Ambiguous', 'Chris', 'M',
+   '', '', '', '', 0, 0, 0);
+GO
+
+-- Record 5d: administrative placeholder — no real person's name, must be skipped before
+-- any matching is attempted.
+INSERT INTO dbo.CMMPR
+  (GROUP_DESIGNATOR, UST_PROF_CODE, DELETE_CODE, PROF_TYPE, PROF_LAST_NAME, PROF_FIRST_NAME, PROF_MI,
+   PROF_ADDRESS1, PROF_ADDRESS2, PROF_CITY, PROF_STATE, PROF_ZIP, PROF_FAX_NBR, PROF_COMMERCIAL_PHONE_NBR)
+VALUES
+  ('NY', 73, ' ', 'TR', 'NOT ASSIGNED', '', ' ',
+   '', '', '', '', 0, 0, 0);
+GO
+
+-- Record 5e: conflict — name matches CAMS trustee INTEGRATION-TRUSTEE-NAME (the same
+-- trustee UST_PROF_CODE 64 resolves to). The harness pre-links this record's
+-- acmsProfessionalId to a DIFFERENT trustee before enqueuing, so the pipeline's resolved
+-- match collides with that existing link.
+INSERT INTO dbo.CMMPR
+  (GROUP_DESIGNATOR, UST_PROF_CODE, DELETE_CODE, PROF_TYPE, PROF_LAST_NAME, PROF_FIRST_NAME, PROF_MI,
+   PROF_ADDRESS1, PROF_ADDRESS2, PROF_CITY, PROF_STATE, PROF_ZIP, PROF_FAX_NBR, PROF_COMMERCIAL_PHONE_NBR)
+VALUES
+  ('NY', 74, ' ', 'TR', 'Namematch', 'Norman', 'N',
+   '600 Unique Ave', '', 'Albany', 'NY', 122070000, 0, 5185550200);
+GO
+
 -- Record 6: soft-deleted — must NOT be paged (DELETE_CODE='D')
 INSERT INTO dbo.CMMPR
   (GROUP_DESIGNATOR, UST_PROF_CODE, DELETE_CODE, PROF_TYPE, PROF_LAST_NAME, PROF_FIRST_NAME, PROF_MI,
@@ -108,7 +152,7 @@ VALUES
    '1000 Legal Way', '', 'Syracuse', 'NY', 132020000, 0, 3155550700);
 GO
 
-PRINT 'CMMPR seeded: 8 rows (6 TR/active + 1 deleted + 1 non-TR filtered)';
+PRINT 'CMMPR seeded: 11 rows (9 TR/active + 1 deleted + 1 non-TR filtered)';
 GO
 
 -- ── CMMDB rows (one per case referenced by CMMAP below) ─────────────────────
@@ -126,6 +170,25 @@ VALUES
   (1, 81, 24, 50001, 'NY', 65, 20230101, 0, ' ', 'Y', 'TR');
 GO
 
-PRINT 'CMMAP seeded: 1 row (active appointment for UST_PROF_CODE 65)';
+-- UST_PROF_CODE 72 (ambiguous) also has one active appointment -> gate passes, so the
+-- ambiguous disposition is actually written rather than silently skipped.
+INSERT INTO dbo.CMMAP
+  (RECORD_SEQ_NBR, CASE_DIV, CASE_YEAR, CASE_NUMBER, GROUP_DESIGNATOR, PROF_CODE, APPT_DATE, DISP_DATE, DELETE_CODE, APPTEE_ACTIVE, APPT_TYPE)
+VALUES
+  (2, 81, 24, 50001, 'NY', 72, 20230101, 0, ' ', 'Y', 'TR');
+GO
+
+-- UST_PROF_CODE 73 (administrative placeholder) also has one active appointment -> gate
+-- passes, so the skipped disposition is actually written rather than silently dropped like
+-- the zero-active-appointments no-match case (UST_PROF_CODE 66) - applyActiveAppointmentGate
+-- gates every non-conflict outcome uniformly by active-appointment presence, regardless of
+-- disposition, so this fixture needs its own active appointment to prove skipped persists.
+INSERT INTO dbo.CMMAP
+  (RECORD_SEQ_NBR, CASE_DIV, CASE_YEAR, CASE_NUMBER, GROUP_DESIGNATOR, PROF_CODE, APPT_DATE, DISP_DATE, DELETE_CODE, APPTEE_ACTIVE, APPT_TYPE)
+VALUES
+  (3, 81, 24, 50001, 'NY', 73, 20230101, 0, ' ', 'Y', 'TR');
+GO
+
+PRINT 'CMMAP seeded: 3 rows (active appointments for UST_PROF_CODE 65, 72, 73)';
 PRINT 'CMMDB seeded: 1 row';
 GO
