@@ -333,7 +333,10 @@ describe('Consolidation UseCase tests', () => {
   });
 
   test('should initialize store.order.memberCases when handleAddCaseAction is called and memberCases is not already an array', async () => {
-    store.order = { ...MockData.getConsolidationOrder(), memberCases: undefined };
+    store.order = {
+      ...MockData.getConsolidationOrder(),
+      memberCases: undefined as unknown as ConsolidationOrderCase[],
+    };
     store.setCaseToAdd(mockAddCase);
 
     useCase.handleAddCaseAction();
