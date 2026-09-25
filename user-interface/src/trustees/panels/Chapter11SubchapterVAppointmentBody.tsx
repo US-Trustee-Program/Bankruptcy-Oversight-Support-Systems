@@ -26,7 +26,7 @@ export default function Chapter11SubchapterVAppointmentBody(
         appointmentId={appointment.id}
         shouldFetch={shouldShowOtherKeyDates}
         errorId={`subv-past-key-dates-error-${appointment.id}`}
-        errorMessage="Failed to load past key dates. Please refresh and try again."
+        errorMessage="Failed to load other key dates. Please refresh and try again."
       >
         {(data, isLoading) => (
           <Chapter11SubVOtherKeyDatesCard
