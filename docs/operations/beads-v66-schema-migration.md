@@ -56,8 +56,8 @@ The remote ref SHA is the **rollback anchor**. Do not lose it.
 | 4 | Dry run | `bd migrate --dry-run`, `bd migrate --inspect` | No | Yes — read only | ☑ Done (see caveat) |
 | 5 | Migrate **locally** | `bd migrate schema --force --json` | **No** | Yes — restore Phase 2 copy | ☑ Done (26s) |
 | 6 | Verify before publishing | `bd count`, `bd ready`, spot-check issues | No | Yes — last easy exit | ☑ Passed |
-| 7 | Publish | `bd dolt push` | **Yes** | Only by force-push to anchor | ☐ |
-| 8 | Unblock the team | _(teammates upgrade + `bd bootstrap`)_ | No | n/a | ☐ |
+| 7 | Publish | `bd dolt push` | **Yes** | Only by force-push to anchor | ☑ Done (28s) |
+| 8 | Unblock the team | _(teammates upgrade + `bd bootstrap`)_ | No | n/a | ☐ In progress |
 
 The hard boundary is **between Phase 6 and Phase 7**. Everything before it is a
 local change to one laptop; the remote stays pristine v32 the whole time.
@@ -221,6 +221,38 @@ git ls-remote https://github.com/flexion/flexion-doj-cams-issues.git refs/dolt/d
 ```
 
 The ref must have moved off `f34f86c04e680ef27864735ded9156f95b82970a`.
+
+**Verifying your own clone is not enough.** It proves your laptop is healthy,
+not that what landed on the remote is. Clone the published database fresh and
+check it against the Phase 2 backup before telling anyone to bootstrap:
+
+```bash
+mkdir /tmp/bd-verify && cd /tmp/bd-verify && git init
+git remote add origin https://github.com/flexion/flexion-doj-cams-issues.git
+bd bootstrap --yes          # must succeed with NO migration-gate error
+bd count                    # must match baseline
+bd export --all -o /tmp/published.jsonl
+# then diff id sets + fields against the Phase 2 export
+```
+
+A clean `bd bootstrap` is itself the proof the remote is at v66 — at v32 it
+fails with `needs 34 schema migrations`.
+
+### Phase 7 results, 2026-09-25
+
+| Check | Result |
+| --- | --- |
+| Push duration | 28s |
+| `refs/dolt/data` | `f34f86c…` → `1d35cdde…` ✓ |
+| Anchor ref | still at `f34f86c…` ✓ |
+| Local vs remote-tracking | both `k08hjr41dfnl1smgf88bqd5t06ttgcar` ✓ |
+| Fresh clone bootstrap | succeeded, no gate error ✓ |
+| Published schema | `66 / 66` ✓ |
+| Published vs Phase 2 backup | 1403 ids, zero lost, zero appeared ✓ |
+| Field diff | 1 — the expected `cams-gqf6k` defer wake ✓ |
+
+A new ref `refs/heads/__dolt_remote_info__` appears after the first 1.3.0 push.
+That is expected bd/dolt bookkeeping, not a stray branch.
 
 ### Phase 8 — Unblock the team
 
