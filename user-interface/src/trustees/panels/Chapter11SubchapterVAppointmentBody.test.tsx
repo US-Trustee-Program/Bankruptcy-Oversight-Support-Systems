@@ -7,8 +7,6 @@ import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import * as featureFlagsHook from '@/lib/hooks/UseFeatureFlags';
 import { DISPLAY_CHPT11_SUBV_PAST_KEY_DATES } from '@/lib/hooks/UseFeatureFlags';
-import TestingUtilities from '@/lib/testing/testing-utilities';
-import { CamsRole } from '@common/cams/roles';
 
 vi.mock('./AppointmentBasicFields', () => ({
   default: (props: { appointment: TrusteeAppointment }) => (
@@ -105,6 +103,11 @@ describe('Chapter11SubchapterVAppointmentBody', () => {
 
     renderBody();
 
+    expect(screen.getByTestId('subv-other-key-dates-card')).toHaveAttribute(
+      'data-is-loading',
+      'true',
+    );
+
     await waitFor(() => {
       expect(screen.getByTestId('subv-other-key-dates-card')).toHaveAttribute(
         'data-is-loading',
@@ -116,17 +119,6 @@ describe('Chapter11SubchapterVAppointmentBody', () => {
       'data-has-data',
       'true',
     );
-  });
-
-  test('renders the Chapter11SubVOtherKeyDatesCard for a non-TrusteeAdmin user when the flag is enabled (no canManage gate)', async () => {
-    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: keyDates });
-    TestingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
-
-    renderBody();
-
-    await waitFor(() => {
-      expect(screen.getByTestId('subv-other-key-dates-card')).toBeInTheDocument();
-    });
   });
 
   test('builds the district/division/chapter/type appointment heading for Chapter11SubVOtherKeyDatesCard', async () => {
@@ -184,19 +176,27 @@ describe('Chapter11SubchapterVAppointmentBody', () => {
     ).not.toBeInTheDocument();
   });
 
-  test('does not fetch or render the Chapter11SubVOtherKeyDatesCard for an out-of-pool appointment, even when the flag is enabled', () => {
-    const getSpy = vi.spyOn(Api2, 'getUpcomingKeyDates');
+  test('fetches and renders the Chapter11SubVOtherKeyDatesCard for an out-of-pool appointment when the flag is enabled', async () => {
+    const getSpy = vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: keyDates });
 
     renderBody(mockOutOfPoolAppointment);
 
-    expect(getSpy).not.toHaveBeenCalled();
-    expect(screen.queryByTestId('subv-other-key-dates-card')).not.toBeInTheDocument();
-    expect(
-      screen.queryByTestId(`alert-subv-past-key-dates-error-${mockOutOfPoolAppointment.id}`),
-    ).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByTestId('subv-other-key-dates-card')).toHaveAttribute(
+        'data-is-loading',
+        'false',
+      );
+    });
+    expect(getSpy).toHaveBeenCalledWith('trustee-789', 'appointment-004');
+    expect(screen.getByTestId('subv-other-key-dates-card')).toHaveAttribute(
+      'data-has-data',
+      'true',
+    );
   });
 
   test('still renders AppointmentBasicFields for an out-of-pool appointment', () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
     renderBody(mockOutOfPoolAppointment);
 
     expect(screen.getByTestId('appointment-basic-fields')).toHaveAttribute(

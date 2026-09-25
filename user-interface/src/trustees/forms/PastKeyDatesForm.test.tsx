@@ -46,6 +46,12 @@ const subvAppointment: TrusteeAppointment = {
   appointmentType: 'pool',
 };
 
+const subvOutOfPoolAppointment: TrusteeAppointment = {
+  ...chapter7Appointment,
+  chapter: '11-subchapter-v',
+  appointmentType: 'out-of-pool',
+};
+
 const ch12StandingAppointment: TrusteeAppointment = {
   ...chapter7Appointment,
   chapter: '12',
@@ -750,6 +756,43 @@ describe('PastKeyDatesForm', () => {
       await waitFor(() => {
         expect(screen.getByText('Last Monthly Report Received')).toBeInTheDocument();
       });
+    });
+
+    test('renders "Edit Other Key Dates" as the heading', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole('heading', { level: 3, name: 'Edit Other Key Dates' }),
+        ).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('when appointment is Sub-V Out-of-Pool', () => {
+    beforeEach(() => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({
+        data: [subvOutOfPoolAppointment],
+      });
+    });
+
+    test('renders exactly one date input: Last Monthly Report Received', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-past-key-dates')).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('past-last-monthly-report-received')).toBeInTheDocument();
+      expect(screen.queryByTestId('past-background-question')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('past-field-exam')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('past-audit')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('past-tpr-submission')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('last-audit-fiscal-year')).not.toBeInTheDocument();
     });
 
     test('renders "Edit Other Key Dates" as the heading', async () => {
