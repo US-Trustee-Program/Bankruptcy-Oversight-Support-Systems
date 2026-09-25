@@ -62,8 +62,6 @@ const MOCK_SUPERUSER: CamsUser = {
   offices: MOCKED_USTP_OFFICES_ARRAY,
 };
 
-const config = getApiConfiguration();
-
 export function Login(props: LoginProps): React.ReactNode {
   const provider = props.provider?.toString().toLowerCase() ?? getLoginProvider();
   let issuer;
@@ -91,7 +89,7 @@ export function Login(props: LoginProps): React.ReactNode {
     if (provider == 'okta') {
       issuer = getAuthIssuer();
     } else if (provider === 'mock') {
-      const { protocol, server, port, basePath } = config;
+      const { protocol, server, port, basePath } = getApiConfiguration();
       const portString = port ? ':' + port : '';
       issuer = protocol + '://' + server + portString + basePath + '/oauth2/default';
     }

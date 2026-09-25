@@ -245,6 +245,37 @@ describe('Runtime State Repo', () => {
     });
   });
 
+  describe('delete', () => {
+    // Uses deleteMany, not the adapter's own deleteOne - deleteOne throws NotFoundError when
+    // nothing matches, which is the wrong contract for an idempotent purge (see the method's own
+    // doc comment): a documentType with no persisted state yet, or already deleted by a prior
+    // purge, must be a harmless no-op, not an error.
+    test('should delete the runtime state document via deleteMany', async () => {
+      const deleteManySpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'deleteMany')
+        .mockResolvedValue(1);
+
+      await repo.delete('ORDERS_SYNC_STATE');
+
+      expect(deleteManySpy).toHaveBeenCalled();
+    });
+
+    test('should not throw when no document matches (already deleted, or never existed)', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'deleteMany').mockResolvedValue(0);
+
+      await expect(repo.delete('ORDERS_SYNC_STATE')).resolves.toBeUndefined();
+    });
+
+    test('should rewrap driver errors via getCamsError', async () => {
+      const driverError = new Error('driver-failure');
+      vi.spyOn(MongoCollectionAdapter.prototype, 'deleteMany').mockRejectedValue(driverError);
+
+      await expect(repo.delete('ORDERS_SYNC_STATE')).rejects.toThrow(
+        expect.objectContaining({ isCamsError: true }),
+      );
+    });
+  });
+
   describe('setField', () => {
     test('should atomically $set the given dotted path via a single findOneAndUpdate, upserting if absent', async () => {
       const findOneAndUpdateSpy = vi

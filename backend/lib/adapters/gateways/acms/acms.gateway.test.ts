@@ -761,10 +761,6 @@ describe('ACMS gateway tests', () => {
     test.each([
       ['should exclude soft-deleted professional records', "DELETE_CODE != 'D'"],
       [
-        'should exclude "NO TRUSTEE"-pattern placeholder records',
-        "PROF_LAST_NAME NOT LIKE '%NO TRUSTEE%'",
-      ],
-      [
         'should exclude ACMS reserved sentinel/dummy trustee codes (>= 98000)',
         'ACMS.UST_PROF_CODE < 98000',
       ],
@@ -781,6 +777,25 @@ describe('ACMS gateway tests', () => {
 
       const query = spy.mock.calls[0][1] as string;
       expect(query).toContain(expectedClause);
+    });
+
+    // No PROF_LAST_NAME placeholder-name filtering (DECEASED, NO TRUSTEE, FAKE, PRO SE, etc.)
+    // happens in this gateway - shouldSkipAsNotAPerson (sync-acms-professional-ids.ts) is the
+    // single source of truth for which records name no real trustee, so this query only excludes
+    // concerns a data-access layer actually owns (soft-delete, sentinel codes).
+    test('should not filter on PROF_LAST_NAME at all - placeholder detection lives in the TS layer', async () => {
+      const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: [] },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      await gateway.getTrusteeProfessionalRecordsPage(context, 'NY', 0, 500);
+
+      const query = spy.mock.calls[0][1] as string;
+      expect(query).not.toContain('PROF_LAST_NAME NOT LIKE');
     });
 
     test.each([

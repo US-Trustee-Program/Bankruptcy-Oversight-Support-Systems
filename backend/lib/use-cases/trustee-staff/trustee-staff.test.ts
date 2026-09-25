@@ -84,14 +84,7 @@ describe('TrusteeStaffUseCase', () => {
 
   describe('createStaffMember', () => {
     const trusteeId = 'trustee-123';
-    const mockTrustee = {
-      id: trusteeId,
-      name: 'John Doe',
-      trusteeId: '123',
-      public: {},
-      updatedBy: SYSTEM_USER_REFERENCE,
-      updatedOn: '2024-01-01T00:00:00Z',
-    };
+    const mockTrustee = MockData.getTrustee({ trusteeId });
 
     const validInput: TrusteeStaffInput = {
       name: 'Jane Staff',
@@ -144,9 +137,12 @@ describe('TrusteeStaffUseCase', () => {
         new UnknownError(MODULE_NAME, { message: 'Trustee not found' }),
       );
 
-      await expect(
+      const actualError = await getTheThrownError(() =>
         trusteeStaffUseCase.createStaffMember(context, trusteeId, validInput),
-      ).rejects.toThrow();
+      );
+
+      expect(actualError.isCamsError).toBe(true);
+      expect(actualError.message).toBe('Trustee not found');
     });
 
     test('should throw error when name is missing', async () => {
@@ -154,9 +150,12 @@ describe('TrusteeStaffUseCase', () => {
 
       const invalidInput = { ...validInput, name: '' };
 
-      await expect(
+      const actualError = await getTheThrownError(() =>
         trusteeStaffUseCase.createStaffMember(context, trusteeId, invalidInput),
-      ).rejects.toThrow();
+      );
+
+      expect(actualError.isCamsError).toBe(true);
+      expect(actualError.message).toContain('Staff validation failed');
     });
 
     test('should throw error when input is not a valid object', async () => {
@@ -268,6 +267,7 @@ describe('TrusteeStaffUseCase', () => {
   describe('updateStaffMember', () => {
     const trusteeId = 'trustee-123';
     const staffId = 'staff-456';
+    const mockTrustee = MockData.getTrustee({ trusteeId });
     const existingStaffMember = MockData.getTrusteeStaff({
       id: staffId,
       trusteeId,
@@ -304,7 +304,6 @@ describe('TrusteeStaffUseCase', () => {
     };
 
     test('should update a staff member with valid input', async () => {
-      const mockTrustee = { id: trusteeId, name: 'Test Trustee' };
       vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
       vi.spyOn(MockMongoRepository.prototype, 'readStaffMember').mockResolvedValue(
         existingStaffMember,
@@ -335,36 +334,41 @@ describe('TrusteeStaffUseCase', () => {
         new UnknownError(MODULE_NAME, { message: 'Trustee not found' }),
       );
 
-      await expect(
+      const actualError = await getTheThrownError(() =>
         trusteeStaffUseCase.updateStaffMember(context, trusteeId, staffId, updateInput),
-      ).rejects.toThrow();
+      );
+
+      expect(actualError.isCamsError).toBe(true);
+      expect(actualError.message).toBe('Trustee not found');
     });
 
     test('should throw error when staff member does not exist', async () => {
-      const mockTrustee = { id: trusteeId, name: 'Test Trustee' };
       vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
       vi.spyOn(MockMongoRepository.prototype, 'readStaffMember').mockRejectedValue(
         new Error('Staff member not found'),
       );
 
-      await expect(
+      const actualError = await getTheThrownError(() =>
         trusteeStaffUseCase.updateStaffMember(context, trusteeId, staffId, updateInput),
-      ).rejects.toThrow();
+      );
+
+      expect(actualError.isCamsError).toBe(true);
     });
 
     test('should throw error when name is missing', async () => {
-      const mockTrustee = { id: trusteeId, name: 'Test Trustee' };
       vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
 
       const invalidInput = { ...updateInput, name: '' };
 
-      await expect(
+      const actualError = await getTheThrownError(() =>
         trusteeStaffUseCase.updateStaffMember(context, trusteeId, staffId, invalidInput),
-      ).rejects.toThrow();
+      );
+
+      expect(actualError.isCamsError).toBe(true);
+      expect(actualError.message).toContain('Staff validation failed');
     });
 
     test('should create audit history record after updating staff member', async () => {
-      const mockTrustee = { id: trusteeId, name: 'Test Trustee' };
       vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
       vi.spyOn(MockMongoRepository.prototype, 'readStaffMember').mockResolvedValue(
         existingStaffMember,
@@ -389,7 +393,6 @@ describe('TrusteeStaffUseCase', () => {
     });
 
     test('should track a Phone Number Added event for each phone added to the staff member', async () => {
-      const mockTrustee = { id: trusteeId, name: 'Test Trustee' };
       const staffWithOnePhone = MockData.getTrusteeStaff({
         id: staffId,
         trusteeId,
@@ -430,7 +433,6 @@ describe('TrusteeStaffUseCase', () => {
     });
 
     test('should not track a Phone Number Added event when staff members have no contact info', async () => {
-      const mockTrustee = { id: trusteeId, name: 'Test Trustee' };
       const existingWithoutContact = { ...existingStaffMember, contact: undefined };
       const updatedWithoutContact = { ...updatedStaffMember, contact: undefined };
       vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
@@ -452,7 +454,6 @@ describe('TrusteeStaffUseCase', () => {
     });
 
     test('should not track a Phone Number Added event when phones are removed', async () => {
-      const mockTrustee = { id: trusteeId, name: 'Test Trustee' };
       const staffWithTwoPhones = MockData.getTrusteeStaff({
         id: staffId,
         trusteeId,

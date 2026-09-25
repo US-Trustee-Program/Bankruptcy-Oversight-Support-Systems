@@ -33,6 +33,12 @@ type PageMessage = {
   // Groups still to be synced after this one, processed one at a time via
   // self-requeue — see handlePage's continuation logic below.
   remainingGroups: string[];
+  // Carried forward from the original start message so EVERY group's bookmark gets reset, not
+  // just the first one handleStart resolves directly — see handlePage's own resolveSyncState
+  // call below. Without this, a purge only ever reset firstGroup; every later group in
+  // remainingGroups read its still-persisted (stale) bookmark from a prior real sync, silently
+  // returning zero new records instead of backfilling.
+  purge?: boolean;
   retryCount?: number;
   firstAttemptAt?: string;
 };
@@ -105,6 +111,7 @@ async function handleStart(
         groupDesignator: firstGroup,
         lastUstProfCode: state.lastUstProfCodeByGroup[firstGroup] ?? 0,
         remainingGroups,
+        purge: startMessage.purge,
       };
       invocationContext.extraOutputs.set(PAGE, pageMessage);
     }
@@ -179,16 +186,22 @@ async function handlePage(message: PageMessage, invocationContext: InvocationCon
         groupDesignator,
         lastUstProfCode,
         remainingGroups,
+        purge: message.purge,
       };
       invocationContext.extraOutputs.set(PAGE, nextPageMessage);
     } else {
       const [nextGroup, ...restGroups] = remainingGroups;
       if (nextGroup) {
-        const state = await SyncAcmsProfessionalIds.resolveSyncState(deps, nextGroup);
+        const state = await SyncAcmsProfessionalIds.resolveSyncState(
+          deps,
+          nextGroup,
+          message.purge,
+        );
         const nextGroupMessage: PageMessage = {
           groupDesignator: nextGroup,
           lastUstProfCode: state.lastUstProfCodeByGroup[nextGroup] ?? 0,
           remainingGroups: restGroups,
+          purge: message.purge,
         };
         invocationContext.extraOutputs.set(PAGE, nextGroupMessage);
       }
@@ -313,7 +326,7 @@ function setup() {
   });
 }
 
-export { handleStart, handlePage, timerTrigger, PAGE_SIZE };
+export { handlePage };
 export default {
   MODULE_NAME,
   setup,

@@ -521,6 +521,44 @@ describe('TrusteeDetailScreen', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/staff/create');
   });
 
+  test('should navigate to staff edit route when an existing staff member edit button is clicked', async () => {
+    const trusteeWithStaff = {
+      ...mockTrustee,
+      staff: [
+        {
+          id: 'staff-1',
+          trusteeId: '123',
+          name: 'Jane Smith',
+          contact: {
+            email: 'jane.smith@example.com',
+            phone: { number: '555-987-6543' },
+            address: {
+              address1: '456 Oak St',
+              city: 'Springfield',
+              state: 'IL',
+              zipCode: '62701',
+              countryCode: 'US' as const,
+            },
+          },
+          updatedBy: { id: 'user-1', name: 'Admin User' },
+          updatedOn: '2024-01-01T00:00:00Z',
+        },
+      ],
+    };
+    vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: trusteeWithStaff });
+    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
+
+    renderWithRouter();
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe');
+    });
+
+    const editStaffButton = screen.getByTestId('button-edit-staff-0');
+    editStaffButton.click();
+    expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/staff/edit/staff-1');
+  });
+
   test('runs the fetched trustee through sortTrusteePhoneNumbers before rendering', async () => {
     // Sort-order correctness (type, then number, then extension, across every
     // staff member) is sortTrusteePhoneNumbers's own contract, covered by

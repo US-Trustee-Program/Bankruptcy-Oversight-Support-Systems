@@ -196,6 +196,11 @@ describe('calculation helpers', () => {
       ['1900-12-31', '1900-01-30', 'December 31, wrapping to next month'],
       ['1900-01-15', '1900-02-14', 'crossing a month boundary'],
       ['1900-04-01', '1900-05-01', 'day is zero-padded when result day is single digit'],
+      [
+        '1900-01-30',
+        '1900-02-29',
+        'crosses Feb 29 using the leap-year ARITHMETIC_YEAR, not the non-leap SENTINEL_YEAR',
+      ],
     ])('adds 30 days to %s -> %s (%s)', (input, expected) => {
       expect(calculateTirSubmission(input)).toBe(expected);
     });
@@ -207,6 +212,7 @@ describe('calculation helpers', () => {
       ['1900-07-30', '1900-09-28'],
       ['1900-10-30', '1900-12-29'],
       ['1900-11-30', '1900-01-29'],
+      ['1900-01-01', '1900-03-01'],
     ])('adds 60 days to %s -> %s', (input, expected) => {
       expect(calculateTirReview(input)).toBe(expected);
     });

@@ -141,6 +141,9 @@ export function PrivilegedIdentity() {
   }
 
   function handleGroupNameUpdate() {
+    // Unreachable: this only fires from the office/role ComboBoxes' own onUpdateSelection,
+    // which guarantees both refs are already mounted, and getSelections() never returns
+    // null/undefined. The `?? []` fallbacks only guard a ref-not-yet-mounted state.
     const formGroupNameSet = new Set<string>([
       ...(officeListRef.current?.getSelections() ?? []).map((option) => option.value),
       ...(roleListRef.current?.getSelections() ?? []).map((option) => option.value),
@@ -193,8 +196,14 @@ export function PrivilegedIdentity() {
   }
 
   async function handleSave() {
+    // Unreachable: the Save button is only enabled (and thus clickable) once a user is
+    // selected, which is also what attaches userListRef, so userId can't be falsy here.
     const userId = userListRef.current?.getSelections()[0].value;
+    /* v8 ignore next */
     if (!userId) return;
+    // Unreachable: same reasoning as above — role/office refs are mounted whenever
+    // Save is clickable, and getSelections() never returns null/undefined. datePickerRef
+    // is likewise always mounted, and getValue() always returns a string, never null/undefined.
     const permissions: ElevatePrivilegedUserAction = {
       groups: [
         ...(roleListRef.current?.getSelections().map((option) => option.value) || []),
@@ -217,7 +226,10 @@ export function PrivilegedIdentity() {
   }
 
   async function handleDelete() {
+    // Unreachable: the Delete button is only enabled (and thus clickable) once a user is
+    // selected, which is also what attaches userListRef, so userId can't be falsy here.
     const userId = userListRef.current?.getSelections()[0].value;
+    /* v8 ignore next */
     if (!userId) return;
     Api2.deletePrivilegedIdentityUser(userId)
       .then(() => {

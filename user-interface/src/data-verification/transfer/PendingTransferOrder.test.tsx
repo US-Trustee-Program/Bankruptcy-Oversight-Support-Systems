@@ -167,6 +167,34 @@ describe('PendingTransferOrder component', () => {
       });
     });
 
+    test('should disable the approve button when "Case not listed" is selected after a suggested case', async () => {
+      renderWithProps();
+
+      let case0;
+      await waitFor(() => {
+        case0 = screen.getByTestId('button-radio-suggested-cases-checkbox-0-click-target');
+        expect(case0).toBeInTheDocument();
+      });
+
+      const approveButton = screen.getByTestId(`button-accordion-approve-button-${order.id}`);
+      expect(approveButton).toBeDisabled();
+
+      await userEvent.click(case0!);
+
+      await waitFor(() => {
+        expect(approveButton).toBeEnabled();
+      });
+
+      const notListedRadio = screen.getByTestId(
+        'button-radio-case-not-listed-radio-button-click-target',
+      );
+      await userEvent.click(notListedRadio);
+
+      await waitFor(() => {
+        expect(approveButton).toBeDisabled();
+      });
+    });
+
     test('should clear radio button selection when the cancel button is pressed', async () => {
       renderWithProps();
 

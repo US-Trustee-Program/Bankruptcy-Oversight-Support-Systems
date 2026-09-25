@@ -85,14 +85,17 @@ cd test/integration/sync-acms-professional-ids/scripts
 | Assertion                                                                                           | What it verifies                                                                                                                                                                |
 | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `NY-00063` linked to `INTEGRATION-TRUSTEE-FINGERPRINT`                                              | Demographic-fingerprint matching auto-links a CMMPR record to its CAMS trustee via `TRUSTEE_VARIATION`                                                                          |
-| `NY-00064` linked to `INTEGRATION-TRUSTEE-NAME`                                                     | A fingerprint miss falls through to fuzzy name matching and auto-links                                                                                                          |
-| `NY-00065` has an errored `trustee-professional-ids` record with `error.disposition === 'no-match'` | No match + an active CMMAP appointment → an errored record (keyed by fingerprint) is written for later healing                                                                  |
-| `NY-00065`'s errored record has a non-empty `variant`                                               | The raw demographic variant is persisted on the record, not re-queried later                                                                                                    |
-| `NY-00066` has no record at all                                                                     | No match + zero active appointments → silently skipped (no review noise)                                                                                                        |
+| `NY-00064` linked to `INTEGRATION-TRUSTEE-NAME`                                                     | A fingerprint miss falls through to the real `runTrusteeMatchPipeline` and auto-links                                                                                           |
+| `NY-00065` has a `trustee-professional-ids` record with `disposition === 'no-match'`                | No match + an active CMMAP appointment → a record (keyed by fingerprint) is written for later healing, with full pipeline evidence attached                                    |
+| `NY-00065`'s record has a non-empty `variant`, plus `sourceRaw`/`candidates` evidence                | The raw demographic variant and the pipeline's full evaluation history are persisted, not re-queried later                                                                       |
+| `NY-00066` has no record at all                                                                     | No match + zero active appointments → silently skipped (no review noise) — the only outcome that still writes nothing                                                          |
 | `UT-00070` linked to `INTEGRATION-TRUSTEE-UT`                                                       | A second `GROUP_DESIGNATOR` is paged and processed independently of `NY`                                                                                                        |
 | `NY-00071` linked to `INTEGRATION-TRUSTEE-LEADINGZERO`                                              | A PROF_ZIP value that lost its leading zero in NUMERIC(9,0) storage still fingerprint-matches, proving `formatAcmsZip` zero-pads to 9 digits before splitting into `NNNNN-NNNN` |
+| `NY-00072` has `disposition === 'ambiguous'` with both same-named candidates in `candidates`        | Two CAMS trustees sharing an identical name, with no corroborating contact data on this ACMS record, resolve to a genuine ambiguous state — not silently picking one            |
+| `NY-00073` has `disposition === 'skipped'`                                                          | An administrative placeholder name ("NOT ASSIGNED") is detected and skipped before any matching is attempted, and that skip is persisted rather than dropped                    |
+| `NY-00074` has a second record with `disposition === 'conflict'` and `conflictingTrusteeId` set     | A resolved match that collides with an ACMS id already linked to a different trustee is reported as a data-integrity conflict, not silently overwritten                          |
 | `NY-00067` (deleted) and `NY-00068` (non-trustee) are never synced                                  | `DELETE_CODE='D'` and non-`'TR'` `PROF_TYPE` rows are filtered by the ACMS gateway query                                                                                        |
-| `runtime-state` bookmark reaches `NY >= 71` and `UT >= 70`                                          | Per-group cursor tracking advances correctly across the full CMMPR fixture set                                                                                                  |
+| `runtime-state` bookmark reaches `NY >= 74` and `UT >= 70`                                          | Per-group cursor tracking advances correctly across the full CMMPR fixture set                                                                                                  |
 
 ### `run-purge`
 
@@ -101,10 +104,15 @@ cd test/integration/sync-acms-professional-ids/scripts
 | Runs the happy path first, then re-enqueues `{ purge: true }` | A `purge` StartMessage flag is honored on a subsequent run, not just the first                                            |
 | The same 4 professional-id links reappear after the purge     | `deleteAll` wipes `trustee-professional-ids` entirely, then the full CMMPR set reloads from scratch (not stale survivors) |
 
+Deliberately not re-asserted here: the ambiguous/skipped/conflict scenarios. `deleteAll` also
+wipes the conflict scenario's pre-linked seed record, and `run-purge` doesn't re-run `seedCosmos`
+after the purge, so `NY-00074` would resolve as a clean auto-link on this pass, not reproduce the
+conflict — that's a property of purge's reload semantics, not something worth asserting here.
+
 ### `run-retry-idempotency`
 
-Calls the real `TrusteeProfessionalIdsMongoRepository.createErroredProfessionalId` directly
-(bypassing the queue/function app) against this container's MongoDB, after creating the same
+Calls the real `TrusteeProfessionalIdsMongoRepository.upsertProfessionalId` directly (bypassing
+the queue/function app) against this container's MongoDB, after creating the same
 `(camsTrusteeId, acmsProfessionalId, documentType)` unique index real Cosmos enforces via
 `cosmos-collections.bicep` (this container's plain MongoDB has no indexes applied otherwise).
 
