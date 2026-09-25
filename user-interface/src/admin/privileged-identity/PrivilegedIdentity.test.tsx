@@ -130,6 +130,41 @@ describe('Privileged Identity screen tests', () => {
     expect(sortUserList(userA, { id: '2', name: 'user A' })).toEqual(0);
   });
 
+  test('should display an error alert when initial data fails to load', async () => {
+    const errorMessage = 'some server error';
+    vi.spyOn(Api2, 'getRoleAndOfficeGroupNames').mockRejectedValue(new Error(errorMessage));
+    const globalAlertSpy = TestingUtilities.spyOnGlobalAlert();
+
+    renderWithoutProps();
+
+    await waitFor(() => {
+      expect(globalAlertSpy.error).toHaveBeenCalledWith(
+        `Failed to load Privileged Identity data. ${errorMessage}`,
+      );
+    });
+  });
+
+  test('should clear the form when the selected user is deselected', async () => {
+    vi.spyOn(Api2, 'getPrivilegedIdentityUser').mockResolvedValue({ data: mockUserRecord });
+
+    renderWithoutProps();
+
+    await waitFor(() => {
+      expect(document.querySelector('.loading-spinner-caption')).not.toBeInTheDocument();
+    });
+
+    const userItem = screen.getByTestId('user-list-option-item-0');
+    await userEvent.click(userItem);
+
+    await expectItemToBeEnabled(`#delete-button`);
+
+    // Clicking the already-selected item again deselects it (single-select toggle).
+    await userEvent.click(userItem);
+
+    await expectItemToBeDisabled(`#delete-button`);
+    await expectItemToBeDisabled(`#save-button`);
+  });
+
   test('should show alert if feature flag is not set', async () => {
     const mockFeatureFlags = {
       'privileged-identity-management': false,

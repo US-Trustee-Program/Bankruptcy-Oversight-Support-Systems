@@ -50,6 +50,9 @@ export const EditBankAssociationStatusModal = forwardRef<
   }
 
   function handleCancel() {
+    // Unreachable: Modal's cancelBtnClick already returns early when cancelButton.disabled
+    // is true, and disabled is set to isPending, so onClick never fires while pending.
+    /* v8 ignore next */
     if (isPending) return;
     modalRef.current?.hide();
   }

@@ -32,6 +32,9 @@ function useStateAndActions() {
   const handleRoleSelection = (sub: string) => {
     const newState = { ...state };
     const role = MockUsers.find((role) => role.sub === sub);
+    // Unreachable: sub always comes from a Radio rendered from this same MockUsers array,
+    // so a matching role is guaranteed to be found.
+    /* v8 ignore next */
     if (role) {
       newState.selectedRole = role;
       newState.form.submitDisabled = false;
@@ -43,6 +46,9 @@ function useStateAndActions() {
     const newState = { ...state };
 
     const { protocol, server, port, basePath } = config;
+    // Unreachable: the Login button is natively disabled until a role is selected, which
+    // blocks the click event entirely, so this guard can never actually fire.
+    /* v8 ignore next 3 */
     if (!state.selectedRole) {
       return;
     }
@@ -95,6 +101,9 @@ export function MockLogin(props: MockLoginProps) {
   const modalId = 'login-modal';
 
   useEffect(() => {
+    // Unreachable: state.session always initializes to null, and this effect has an empty
+    // dependency array (runs once, on mount), so state.session can never be truthy here.
+    /* v8 ignore next */
     if (!state.session) {
       modalRef.current?.show({});
     }
