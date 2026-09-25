@@ -45,11 +45,27 @@ test.describe('Trustee Key Dates', () => {
     trusteeProfilePage = await openFirstTrusteeProfileInNewTab(page, context);
 
     await trusteeProfilePage.locator('[data-testid="trustee-appointments-nav-link"]').click();
-    await trusteeProfilePage
+    // Active appointments render their accordion expanded by default, so only
+    // click to open it when it isn't already expanded. Read aria-expanded off
+    // the accordion's own button rather than racing on card visibility, since
+    // the accordion list may not have rendered yet the instant after
+    // navigation. appointment-accordion-header-{id} renders inside the
+    // accordion button, not around it, so the button has to be located
+    // separately via accordion-button-{id}.
+    const chapter7Header = trusteeProfilePage
       .locator('[data-testid^="appointment-accordion-header-"]')
       .filter({ hasText: /Chapter 7 - Panel/ })
-      .first()
-      .click();
+      .first();
+    await chapter7Header.waitFor({ state: 'visible' });
+    const headerTestId = await chapter7Header.getAttribute('data-testid');
+    const accordionId = headerTestId?.replace('appointment-accordion-header-', '');
+    const chapter7Button = trusteeProfilePage.locator(
+      `[data-testid="accordion-button-${accordionId}"]`,
+    );
+    const isExpanded = (await chapter7Button.getAttribute('aria-expanded')) === 'true';
+    if (!isExpanded) {
+      await chapter7Button.click();
+    }
     await trusteeProfilePage.waitForSelector(
       '[data-testid="chapter7-panel-audit-field-exam-card"]',
       {
