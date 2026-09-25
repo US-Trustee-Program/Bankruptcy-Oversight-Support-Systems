@@ -330,7 +330,7 @@ describe('Chapter7PanelTrusteeInterimReportForm', () => {
 
     await userEvent.selectOptions(screen.getByTestId('tir-completion-status-year'), '');
 
-    expect(screen.queryByTestId('tir-completion-status-error')).not.toBeInTheDocument();
+    expect(screen.getByTestId('tir-completion-status-error')).toHaveTextContent('');
 
     fireEvent.blur(screen.getByTestId('tir-completion-status-year'), { relatedTarget: null });
 
@@ -353,7 +353,7 @@ describe('Chapter7PanelTrusteeInterimReportForm', () => {
 
     await userEvent.selectOptions(screen.getByTestId('tir-completion-status-status'), '');
 
-    expect(screen.queryByTestId('tir-completion-status-error')).not.toBeInTheDocument();
+    expect(screen.getByTestId('tir-completion-status-error')).toHaveTextContent('');
 
     fireEvent.blur(screen.getByTestId('tir-completion-status-status'), { relatedTarget: null });
 
@@ -374,7 +374,7 @@ describe('Chapter7PanelTrusteeInterimReportForm', () => {
 
     await userEvent.selectOptions(screen.getByTestId('tir-frequency'), 'ANNUAL');
 
-    expect(screen.queryByTestId('tir-period-pair-error')).not.toBeInTheDocument();
+    expect(screen.getByTestId('tir-period-pair-error')).toHaveTextContent('');
 
     fireEvent.blur(screen.getByTestId('tir-frequency'), { relatedTarget: null });
 
@@ -395,7 +395,7 @@ describe('Chapter7PanelTrusteeInterimReportForm', () => {
 
     await userEvent.selectOptions(screen.getByTestId('tir-period'), '');
 
-    expect(screen.queryByTestId('tir-period-pair-error')).not.toBeInTheDocument();
+    expect(screen.getByTestId('tir-period-pair-error')).toHaveTextContent('');
 
     fireEvent.blur(screen.getByTestId('tir-period'), { relatedTarget: null });
 

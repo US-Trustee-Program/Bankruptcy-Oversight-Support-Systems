@@ -298,7 +298,7 @@ describe('Chapter7PanelAuditFieldExamForm', () => {
 
     await userEvent.selectOptions(screen.getByTestId('audit-completion-status-year'), '');
 
-    expect(screen.queryByTestId('audit-completion-status-error')).not.toBeInTheDocument();
+    expect(screen.getByTestId('audit-completion-status-error')).toHaveTextContent('');
 
     fireEvent.blur(screen.getByTestId('audit-completion-status-year'), { relatedTarget: null });
 
@@ -321,7 +321,7 @@ describe('Chapter7PanelAuditFieldExamForm', () => {
 
     await userEvent.selectOptions(screen.getByTestId('audit-completion-status-status'), '');
 
-    expect(screen.queryByTestId('audit-completion-status-error')).not.toBeInTheDocument();
+    expect(screen.getByTestId('audit-completion-status-error')).toHaveTextContent('');
 
     fireEvent.blur(screen.getByTestId('audit-completion-status-status'), { relatedTarget: null });
 
@@ -342,7 +342,7 @@ describe('Chapter7PanelAuditFieldExamForm', () => {
 
     await userEvent.selectOptions(screen.getByTestId('upcoming-exam-audit-year'), '');
 
-    expect(screen.queryByTestId('exam-audit-pair-error')).not.toBeInTheDocument();
+    expect(screen.getByTestId('exam-audit-pair-error')).toHaveTextContent('');
 
     fireEvent.blur(screen.getByTestId('upcoming-exam-audit-year'), { relatedTarget: null });
 
@@ -365,7 +365,7 @@ describe('Chapter7PanelAuditFieldExamForm', () => {
 
     await userEvent.selectOptions(screen.getByTestId('upcoming-exam-audit-type'), '');
 
-    expect(screen.queryByTestId('exam-audit-pair-error')).not.toBeInTheDocument();
+    expect(screen.getByTestId('exam-audit-pair-error')).toHaveTextContent('');
 
     fireEvent.blur(screen.getByTestId('upcoming-exam-audit-type'), { relatedTarget: null });
 
@@ -389,7 +389,7 @@ describe('Chapter7PanelAuditFieldExamForm', () => {
     await userEvent.selectOptions(yearSelect, '');
     fireEvent.blur(yearSelect, { relatedTarget: typeSelect });
 
-    expect(screen.queryByTestId('exam-audit-pair-error')).not.toBeInTheDocument();
+    expect(screen.getByTestId('exam-audit-pair-error')).toHaveTextContent('');
   });
 
   test('resetting both completion status fields back to blank clears them from the save payload', async () => {

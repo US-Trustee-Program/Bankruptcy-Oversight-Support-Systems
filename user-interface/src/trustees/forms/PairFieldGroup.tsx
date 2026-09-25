@@ -40,11 +40,17 @@ export default function PairFieldGroup(props: Readonly<PairFieldGroupProps>) {
       <div className={rowClassName} onFocus={group.handleFocus} onBlur={group.handleBlur}>
         {children({ hasError: showsError, ariaDescribedBy: showsError ? errorId : undefined })}
       </div>
-      {showsError && (
-        <div className="cams-field-error-message" id={errorId} data-testid={errorId}>
-          {error}
-        </div>
-      )}
+      {/* Kept mounted (rather than conditionally rendered) so the polite live region
+          is registered with assistive tech before its text content changes,
+          mirroring Select.tsx's own error message element. */}
+      <div
+        className={showsError ? 'cams-field-error-message' : undefined}
+        id={errorId}
+        data-testid={errorId}
+        aria-live="polite"
+      >
+        {showsError ? error : ''}
+      </div>
     </div>
   );
 }

@@ -274,7 +274,7 @@ describe('Chapter12StandingAuditForm', () => {
 
     await userEvent.selectOptions(screen.getByTestId('audit-completion-status-year'), '');
 
-    expect(screen.queryByTestId('audit-completion-status-error')).not.toBeInTheDocument();
+    expect(screen.getByTestId('audit-completion-status-error')).toHaveTextContent('');
 
     fireEvent.blur(screen.getByTestId('audit-completion-status-year'), { relatedTarget: null });
 
@@ -297,7 +297,7 @@ describe('Chapter12StandingAuditForm', () => {
 
     await userEvent.selectOptions(screen.getByTestId('audit-completion-status-status'), '');
 
-    expect(screen.queryByTestId('audit-completion-status-error')).not.toBeInTheDocument();
+    expect(screen.getByTestId('audit-completion-status-error')).toHaveTextContent('');
 
     fireEvent.blur(screen.getByTestId('audit-completion-status-status'), { relatedTarget: null });
 

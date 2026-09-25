@@ -58,9 +58,15 @@ describe('PairFieldGroup', () => {
 
   test('does not show the error before the group is blurred', () => {
     renderGroup('Year and Status must both be set.');
-    expect(screen.queryByTestId('test-pair-error')).not.toBeInTheDocument();
+    expect(screen.getByTestId('test-pair-error')).toHaveTextContent('');
     expect(screen.getByTestId('field-a')).toHaveAttribute('aria-invalid', 'false');
     expect(screen.getByTestId('field-a')).not.toHaveAttribute('aria-describedby');
+  });
+
+  test('keeps the error live region mounted at all times', () => {
+    renderGroup('');
+    expect(screen.getByTestId('test-pair-error')).toBeInTheDocument();
+    expect(screen.getByTestId('test-pair-error')).toHaveAttribute('aria-live', 'polite');
   });
 
   test('shows the error once focus leaves the row while invalid', () => {
@@ -82,7 +88,7 @@ describe('PairFieldGroup', () => {
     fireEvent.focus(screen.getByTestId('field-a'));
     fireEvent.blur(screen.getByTestId('field-a'), { relatedTarget: null });
 
-    expect(screen.queryByTestId('test-pair-error')).not.toBeInTheDocument();
+    expect(screen.getByTestId('test-pair-error')).toHaveTextContent('');
   });
 
   test('hides the error again when the group regains focus', () => {
@@ -93,7 +99,7 @@ describe('PairFieldGroup', () => {
     expect(screen.getByTestId('test-pair-error')).toBeInTheDocument();
 
     fireEvent.focus(screen.getByTestId('field-b'));
-    expect(screen.queryByTestId('test-pair-error')).not.toBeInTheDocument();
+    expect(screen.getByTestId('test-pair-error')).toHaveTextContent('');
   });
 
   test('does not move focus between the two fields within the group', () => {
@@ -102,6 +108,6 @@ describe('PairFieldGroup', () => {
     fireEvent.focus(screen.getByTestId('field-a'));
     fireEvent.blur(screen.getByTestId('field-a'), { relatedTarget: screen.getByTestId('field-b') });
 
-    expect(screen.queryByTestId('test-pair-error')).not.toBeInTheDocument();
+    expect(screen.getByTestId('test-pair-error')).toHaveTextContent('');
   });
 });
