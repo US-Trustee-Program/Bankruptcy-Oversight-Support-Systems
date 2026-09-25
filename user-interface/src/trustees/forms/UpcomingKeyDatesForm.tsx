@@ -125,9 +125,6 @@ const EMPTY_FORM: FormState = {
   ch13TprCompletionStatus: '',
 };
 
-const currentYear = new Date().getFullYear();
-const YEAR_OPTIONS = Array.from({ length: 11 }, (_, i) => currentYear + i);
-
 function deriveVariant(
   chapter: AppointmentChapterType,
   appointmentType: AppointmentType,
@@ -249,6 +246,9 @@ export default function UpcomingKeyDatesForm({
 }: {
   tprDisplayUpdates?: boolean;
 } = {}) {
+  const currentYear = new Date().getFullYear();
+  const yearOptions = Array.from({ length: 11 }, (_, i) => currentYear + i);
+
   const { trusteeId, appointmentId } = useParams<{
     trusteeId: string;
     appointmentId: string;
@@ -580,7 +580,7 @@ export default function UpcomingKeyDatesForm({
                 label="Year"
                 compactLabel
                 placeholder="- Select -"
-                options={YEAR_OPTIONS.map((y) => ({ value: String(y), label: String(y) }))}
+                options={yearOptions.map((y) => ({ value: String(y), label: String(y) }))}
                 value={
                   form.upcomingExamOrAuditYear === '' ? '' : String(form.upcomingExamOrAuditYear)
                 }

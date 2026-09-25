@@ -4,7 +4,7 @@ import {
 } from '@common/cams/trustee-upcoming-key-dates';
 import Select from '@/lib/components/uswds/Select';
 import PairFieldGroup from './PairFieldGroup';
-import { COMPLETION_YEAR_OPTIONS } from './keyDatesInputDefaults';
+import { getCompletionYearOptions } from './keyDatesInputDefaults';
 
 type CompletionStatus = Ch13CompletionStatus | '';
 
@@ -43,7 +43,10 @@ export default function CompletionStatusYearSelect(
             hasError={hasError}
             ariaDescribedBy={ariaDescribedBy}
             placeholder="- Select -"
-            options={COMPLETION_YEAR_OPTIONS.map((y) => ({ value: String(y), label: String(y) }))}
+            options={getCompletionYearOptions().map((y) => ({
+              value: String(y),
+              label: String(y),
+            }))}
             value={year === '' ? '' : String(year)}
             onChange={(e) => {
               const val = e.target.value;

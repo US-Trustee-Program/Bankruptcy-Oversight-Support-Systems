@@ -12,9 +12,6 @@ import {
   PastDateFieldKey,
   PastKeyDatesVariant,
 } from '@/trustees/panels/pastKeyDatesFieldConfig';
-
-const CURRENT_YEAR = new Date().getFullYear();
-const FISCAL_YEAR_OPTIONS = Array.from({ length: 21 }, (_, i) => CURRENT_YEAR - i);
 import Api2 from '@/lib/models/api2';
 import { isChapter11SubchapterV, isChapter13Standing } from '@common/cams/trustee-appointments';
 import { AppointmentChapterType, AppointmentType } from '@common/cams/trustees';
@@ -127,6 +124,9 @@ function deriveVariant(
 }
 
 export default function PastKeyDatesForm() {
+  const currentYear = new Date().getFullYear();
+  const fiscalYearOptions = Array.from({ length: 21 }, (_, i) => currentYear - i);
+
   const { trusteeId, appointmentId } = useParams<{
     trusteeId: string;
     appointmentId: string;
@@ -242,7 +242,7 @@ export default function PastKeyDatesForm() {
             label={field.formLabel}
             ariaDescription={field.hint}
             placeholder="- Select -"
-            options={FISCAL_YEAR_OPTIONS.map((year) => ({
+            options={fiscalYearOptions.map((year) => ({
               value: String(year),
               label: String(year),
             }))}

@@ -9,7 +9,7 @@ import {
   calculateTirReview,
   validateCompletionPairPresence,
 } from '@common/cams/trustee-upcoming-key-dates';
-import { mergeKeyDatesInput, FISCAL_YEAR_OPTIONS } from './chapter7PanelKeyDatesInput';
+import { mergeKeyDatesInput, getFiscalYearOptions } from './chapter7PanelKeyDatesInput';
 import {
   TirFrequency,
   ANNUAL_OPTIONS,
@@ -312,7 +312,7 @@ export default function Chapter7PanelTrusteeInterimReportForm() {
               hasError={hasError}
               ariaDescribedBy={ariaDescribedBy}
               placeholder="- Select -"
-              options={FISCAL_YEAR_OPTIONS.map((year) => ({
+              options={getFiscalYearOptions().map((year) => ({
                 value: String(year),
                 label: String(year),
               }))}

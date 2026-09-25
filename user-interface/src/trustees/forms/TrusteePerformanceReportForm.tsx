@@ -12,7 +12,7 @@ import {
   validateTrusteeUpcomingKeyDates,
   isoToSentinel,
 } from '@common/cams/trustee-upcoming-key-dates';
-import { mergeKeyDatesInput, FISCAL_YEAR_OPTIONS } from './chapter7PanelKeyDatesInput';
+import { mergeKeyDatesInput, getFiscalYearOptions } from './chapter7PanelKeyDatesInput';
 import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
@@ -361,7 +361,7 @@ export default function TrusteePerformanceReportForm(
               hasError={hasError}
               ariaDescribedBy={ariaDescribedBy}
               placeholder="- Select -"
-              options={FISCAL_YEAR_OPTIONS.map((year) => ({
+              options={getFiscalYearOptions().map((year) => ({
                 value: String(year),
                 label: String(year),
               }))}

@@ -9,8 +9,8 @@ import {
 } from '@common/cams/trustee-upcoming-key-dates';
 import {
   mergeKeyDatesInput,
-  CURRENT_YEAR,
-  FISCAL_YEAR_OPTIONS,
+  getCurrentYear,
+  getFiscalYearOptions,
 } from './chapter7PanelKeyDatesInput';
 import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
@@ -22,8 +22,6 @@ import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
 import PairFieldGroup from './PairFieldGroup';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import { Stop } from '@/lib/components/Stop';
-
-const UPCOMING_YEAR_OPTIONS = Array.from({ length: 11 }, (_, i) => CURRENT_YEAR + i);
 
 type AuditCompletionStatus = 'CLOSED' | 'NOT_CLOSED';
 
@@ -65,6 +63,8 @@ export function buildAuditFieldExamKeyDatesInput(
 }
 
 export default function Chapter7PanelAuditFieldExamForm() {
+  const upcomingYearOptions = Array.from({ length: 11 }, (_, i) => getCurrentYear() + i);
+
   const { trusteeId, appointmentId } = useParams<{
     trusteeId: string;
     appointmentId: string;
@@ -180,7 +180,7 @@ export default function Chapter7PanelAuditFieldExamForm() {
               hasError={hasError}
               ariaDescribedBy={ariaDescribedBy}
               placeholder="- Select -"
-              options={UPCOMING_YEAR_OPTIONS.map((y) => ({ value: String(y), label: String(y) }))}
+              options={upcomingYearOptions.map((y) => ({ value: String(y), label: String(y) }))}
               value={
                 form.upcomingExamOrAuditYear === '' ? '' : String(form.upcomingExamOrAuditYear)
               }
@@ -229,7 +229,10 @@ export default function Chapter7PanelAuditFieldExamForm() {
         label="Last Audit's Fiscal Year"
         ariaDescription="The fiscal year of the TIR data audited"
         placeholder="- Select -"
-        options={FISCAL_YEAR_OPTIONS.map((year) => ({ value: String(year), label: String(year) }))}
+        options={getFiscalYearOptions().map((year) => ({
+          value: String(year),
+          label: String(year),
+        }))}
         value={form.lastAuditFiscalYear === '' ? '' : String(form.lastAuditFiscalYear)}
         onChange={(ev) => {
           const val = ev.target.value;
@@ -262,7 +265,7 @@ export default function Chapter7PanelAuditFieldExamForm() {
               hasError={hasError}
               ariaDescribedBy={ariaDescribedBy}
               placeholder="- Select -"
-              options={FISCAL_YEAR_OPTIONS.map((year) => ({
+              options={getFiscalYearOptions().map((year) => ({
                 value: String(year),
                 label: String(year),
               }))}

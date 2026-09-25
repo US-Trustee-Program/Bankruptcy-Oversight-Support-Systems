@@ -4,8 +4,10 @@ import {
 } from '@common/cams/trustee-upcoming-key-dates';
 import { mergeKeyDatesInput } from './chapter7PanelKeyDatesInput';
 
-const currentYear = new Date().getFullYear();
-export const COMPLETION_YEAR_OPTIONS = Array.from({ length: 11 }, (_, i) => currentYear - i);
+export function getCompletionYearOptions(): number[] {
+  const currentYear = new Date().getFullYear();
+  return Array.from({ length: 11 }, (_, i) => currentYear - i);
+}
 
 /**
  * Defaults every field of TrusteeUpcomingKeyDatesInput from the previously-saved record.

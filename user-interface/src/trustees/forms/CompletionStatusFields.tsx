@@ -2,7 +2,7 @@ import {
   CompletionStatus,
   validateCompletionPairPresence,
 } from '@common/cams/trustee-upcoming-key-dates';
-import { FISCAL_YEAR_OPTIONS } from './chapter7PanelKeyDatesInput';
+import { getFiscalYearOptions } from './chapter7PanelKeyDatesInput';
 import Select from '@/lib/components/uswds/Select';
 import PairFieldGroup from './PairFieldGroup';
 
@@ -24,7 +24,7 @@ export default function CompletionStatusFields(props: Readonly<CompletionStatusF
   const { idPrefix, legend, value, onChange, errorLabel } = props;
   // Shared with the Chapter 7 Panel completion-year dropdowns so the lookback
   // range stays the same for every appointment type.
-  const yearOptions = FISCAL_YEAR_OPTIONS;
+  const yearOptions = getFiscalYearOptions();
   // The Chapter 7 Panel forms show this inline as the pair is edited rather
   // than waiting for a save to fail.
   const pairError = validateCompletionPairPresence(value.year, value.status, errorLabel);

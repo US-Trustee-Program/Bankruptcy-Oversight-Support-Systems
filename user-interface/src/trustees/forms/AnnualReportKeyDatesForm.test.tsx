@@ -8,7 +8,7 @@ import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { CamsRole } from '@common/cams/roles';
 import { GlobalAlertContext } from '@/App';
-import { FISCAL_YEAR_OPTIONS } from './chapter7PanelKeyDatesInput';
+import { getFiscalYearOptions } from './chapter7PanelKeyDatesInput';
 
 const mockUseNavigate = vi.hoisted(() => vi.fn());
 const mockUseParams = vi.hoisted(() =>
@@ -115,7 +115,7 @@ describe('AnnualReportKeyDatesForm', () => {
       .map((o) => o.value)
       .filter((v) => v !== '');
     // Same range the Chapter 7 Panel completion-year dropdowns offer.
-    expect(values).toEqual(FISCAL_YEAR_OPTIONS.map(String));
+    expect(values).toEqual(getFiscalYearOptions().map(String));
     expect(values[0]).toBe(String(currentYear));
   });
 
