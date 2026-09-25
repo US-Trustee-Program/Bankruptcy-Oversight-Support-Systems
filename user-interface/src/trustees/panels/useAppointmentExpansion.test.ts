@@ -30,86 +30,112 @@ const makeAppointment = (
 });
 
 describe('useAppointmentExpansion', () => {
-  test.each([['active' as const], ['inactive' as const]])(
-    'a %s appointment is collapsed by default',
-    (status) => {
-      const appointment = makeAppointment('appt-1', { status });
-      const { result } = renderHook(() => useAppointmentExpansion());
+  beforeEach(() => {
+    sessionStorage.clear();
+  });
 
-      expect(result.current.isExpanded(appointment)).toBe(false);
-    },
-  );
+  test('an active appointment is expanded by default', () => {
+    const appointment = makeAppointment('appt-1', { status: 'active' });
+    const { result } = renderHook(() => useAppointmentExpansion('trustee-123'));
+
+    expect(result.current.isExpanded(appointment)).toBe(true);
+  });
+
+  test('an inactive appointment is collapsed by default', () => {
+    const appointment = makeAppointment('appt-1', { status: 'inactive' });
+    const { result } = renderHook(() => useAppointmentExpansion('trustee-123'));
+
+    expect(result.current.isExpanded(appointment)).toBe(false);
+  });
 
   test('toggling one appointment does not affect another appointment', () => {
     const active = makeAppointment('active-1', { status: 'active' });
     const inactive = makeAppointment('inactive-1', { status: 'inactive' });
-    const { result } = renderHook(() => useAppointmentExpansion());
+    const { result } = renderHook(() => useAppointmentExpansion('trustee-123'));
 
     act(() => {
-      result.current.toggleExpanded(inactive.id);
+      result.current.toggleExpanded(inactive);
     });
 
-    expect(result.current.isExpanded(active)).toBe(false);
+    expect(result.current.isExpanded(active)).toBe(true);
     expect(result.current.isExpanded(inactive)).toBe(true);
   });
 
-  test('toggling a collapsed appointment expands it, toggling again collapses it', () => {
+  test('toggling an expanded appointment collapses it, toggling again expands it', () => {
     const active = makeAppointment('active-1', { status: 'active' });
-    const { result } = renderHook(() => useAppointmentExpansion());
+    const { result } = renderHook(() => useAppointmentExpansion('trustee-123'));
 
-    act(() => {
-      result.current.toggleExpanded(active.id);
-    });
     expect(result.current.isExpanded(active)).toBe(true);
 
     act(() => {
-      result.current.toggleExpanded(active.id);
+      result.current.toggleExpanded(active);
     });
     expect(result.current.isExpanded(active)).toBe(false);
-  });
-
-  test('an appointment stays expanded after its status changes', () => {
-    const active = makeAppointment('appt-1', { status: 'active' });
-    const { result } = renderHook(() => useAppointmentExpansion());
 
     act(() => {
-      result.current.toggleExpanded(active.id);
+      result.current.toggleExpanded(active);
     });
     expect(result.current.isExpanded(active)).toBe(true);
-
-    const inactive = { ...active, status: 'inactive' as const };
-    expect(result.current.isExpanded(inactive)).toBe(true);
   });
 
-  test('an appointment expanded before navigating away is collapsed again on return', () => {
+  test('an appointment stays expanded after its status changes once explicitly toggled', () => {
+    const inactive = makeAppointment('appt-1', { status: 'inactive' });
+    const { result } = renderHook(() => useAppointmentExpansion('trustee-123'));
+
+    act(() => {
+      result.current.toggleExpanded(inactive);
+    });
+    expect(result.current.isExpanded(inactive)).toBe(true);
+
+    const nowActive = { ...inactive, status: 'active' as const };
+    expect(result.current.isExpanded(nowActive)).toBe(true);
+  });
+
+  test('an appointment expanded/collapsed before navigating away keeps that state on return', () => {
     const inactive = makeAppointment('appt-1', { status: 'inactive' });
 
     const { result: firstResult, unmount: unmountFirst } = renderHook(() =>
-      useAppointmentExpansion(),
+      useAppointmentExpansion('trustee-123'),
     );
     expect(firstResult.current.isExpanded(inactive)).toBe(false);
 
     act(() => {
-      firstResult.current.toggleExpanded(inactive.id);
+      firstResult.current.toggleExpanded(inactive);
     });
     expect(firstResult.current.isExpanded(inactive)).toBe(true);
 
     unmountFirst();
 
-    const { result: secondResult } = renderHook(() => useAppointmentExpansion());
-    expect(secondResult.current.isExpanded(inactive)).toBe(false);
+    const { result: secondResult } = renderHook(() => useAppointmentExpansion('trustee-123'));
+    expect(secondResult.current.isExpanded(inactive)).toBe(true);
+  });
+
+  test('persisted expansion state does not leak across different trustees', () => {
+    const inactive = makeAppointment('appt-1', { status: 'inactive' });
+
+    const { result: trusteeAResult, unmount: unmountTrusteeA } = renderHook(() =>
+      useAppointmentExpansion('trustee-a'),
+    );
+    act(() => {
+      trusteeAResult.current.toggleExpanded(inactive);
+    });
+    expect(trusteeAResult.current.isExpanded(inactive)).toBe(true);
+    unmountTrusteeA();
+
+    const { result: trusteeBResult } = renderHook(() => useAppointmentExpansion('trustee-b'));
+    expect(trusteeBResult.current.isExpanded(inactive)).toBe(false);
   });
 
   test('toggling two different appointments in the same update batch updates both independently', () => {
     const inactiveOne = makeAppointment('inactive-1', { status: 'inactive' });
     const inactiveTwo = makeAppointment('inactive-2', { status: 'inactive' });
-    const { result } = renderHook(() => useAppointmentExpansion());
+    const { result } = renderHook(() => useAppointmentExpansion('trustee-123'));
 
     // Fire both toggles within a single update batch so a closure-captured
     // (rather than functional) state update would drop one of them.
     act(() => {
-      result.current.toggleExpanded(inactiveOne.id);
-      result.current.toggleExpanded(inactiveTwo.id);
+      result.current.toggleExpanded(inactiveOne);
+      result.current.toggleExpanded(inactiveTwo);
     });
 
     expect(result.current.isExpanded(inactiveOne)).toBe(true);

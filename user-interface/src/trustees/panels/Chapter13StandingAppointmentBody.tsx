@@ -44,7 +44,7 @@ export default function Chapter13StandingAppointmentBody(
             >
               <Chapter13StandingAuditCard {...commonCardProps} data={data} />
               <Chapter13StandingTrusteePerformanceReportCard {...commonCardProps} data={data} />
-              <Chapter13StandingBudgetCard />
+              <Chapter13StandingBudgetCard appointmentId={appointment.id} />
               <Chapter13StandingOtherCard {...commonCardProps} data={data} />
             </div>
           )

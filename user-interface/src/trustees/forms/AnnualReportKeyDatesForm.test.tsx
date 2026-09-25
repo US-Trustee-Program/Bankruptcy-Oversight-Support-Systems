@@ -189,7 +189,7 @@ describe('AnnualReportKeyDatesForm', () => {
     // Save stays disabled immediately, but the pair error text waits until
     // focus leaves the Year/Status row so it doesn't flash mid-edit.
     expect(screen.getByTestId('button-save-annual-report-key-dates')).toBeDisabled();
-    expect(screen.queryByTestId('annual-report-completion-error')).not.toBeInTheDocument();
+    expect(screen.getByTestId('annual-report-completion-error')).toHaveTextContent('');
 
     fireEvent.blur(screen.getByTestId('annual-report-completion-year'), { relatedTarget: null });
 
@@ -214,7 +214,7 @@ describe('AnnualReportKeyDatesForm', () => {
       'COMPLETE',
     );
 
-    expect(screen.queryByTestId('annual-report-completion-error')).not.toBeInTheDocument();
+    expect(screen.getByTestId('annual-report-completion-error')).toHaveTextContent('');
 
     fireEvent.blur(screen.getByTestId('annual-report-completion-status'), { relatedTarget: null });
 

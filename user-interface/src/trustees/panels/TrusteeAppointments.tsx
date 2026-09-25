@@ -64,7 +64,7 @@ export default function TrusteeAppointments(props: Readonly<TrusteeAppointmentsP
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
-  const { isExpanded, toggleExpanded } = useAppointmentExpansion();
+  const { isExpanded, toggleExpanded } = useAppointmentExpansion(trusteeId);
 
   useEffect(() => {
     const loadAppointments = async () => {
@@ -143,7 +143,7 @@ export default function TrusteeAppointments(props: Readonly<TrusteeAppointmentsP
                 key={appointment.id}
                 appointment={appointment}
                 expanded={isExpanded(appointment)}
-                onToggle={toggleExpanded}
+                onToggle={() => toggleExpanded(appointment)}
               >
                 {accordionBody}
               </AppointmentAccordion>

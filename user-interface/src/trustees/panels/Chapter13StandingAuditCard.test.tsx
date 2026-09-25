@@ -73,7 +73,9 @@ describe('Chapter13StandingAuditCard', () => {
 
   test('renders no completion-status tag when ch13AuditCompletionYear/Status are unset', () => {
     renderComponent();
-    expect(screen.queryByTestId('tag-audit-completion-status')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('tag-audit-completion-status-appointment-001'),
+    ).not.toBeInTheDocument();
   });
 
   test.each([
@@ -81,7 +83,9 @@ describe('Chapter13StandingAuditCard', () => {
     ['ch13AuditCompletionStatus only', { ch13AuditCompletionStatus: 'Complete' as const }],
   ])('renders no completion-status tag when only %s is set', (_label, partialData) => {
     renderComponent({ data: { ...baseDocument, ...partialData } });
-    expect(screen.queryByTestId('tag-audit-completion-status')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('tag-audit-completion-status-appointment-001'),
+    ).not.toBeInTheDocument();
   });
 
   test('renders a "Complete for {year}" tag when ch13AuditCompletionStatus is Complete', () => {
@@ -92,7 +96,7 @@ describe('Chapter13StandingAuditCard', () => {
         ch13AuditCompletionStatus: 'Complete',
       },
     });
-    expect(screen.getByTestId('tag-audit-completion-status')).toHaveTextContent(
+    expect(screen.getByTestId('tag-audit-completion-status-appointment-001')).toHaveTextContent(
       'Complete for 2026',
     );
   });
@@ -105,7 +109,7 @@ describe('Chapter13StandingAuditCard', () => {
         ch13AuditCompletionStatus: 'Incomplete',
       },
     });
-    expect(screen.getByTestId('tag-audit-completion-status')).toHaveTextContent(
+    expect(screen.getByTestId('tag-audit-completion-status-appointment-001')).toHaveTextContent(
       'Incomplete for 2026',
     );
   });

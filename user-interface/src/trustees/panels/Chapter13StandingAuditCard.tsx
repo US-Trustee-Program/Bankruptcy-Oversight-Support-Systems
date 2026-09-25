@@ -27,7 +27,7 @@ export default function Chapter13StandingAuditCard(
     data?.ch13AuditCompletionYear,
     data?.ch13AuditCompletionStatus,
     'Complete',
-    'audit-completion-status',
+    `audit-completion-status-${appointmentId}`,
   );
 
   return (

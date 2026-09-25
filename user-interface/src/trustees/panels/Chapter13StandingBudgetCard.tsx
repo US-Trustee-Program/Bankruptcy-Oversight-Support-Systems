@@ -4,14 +4,22 @@ import EditableTableCard from '@/lib/components/cams/EditableTableCard/EditableT
 const BUDGET_SUBMISSION_DUE = '07/01';
 const BUDGET_DUE_TO_OO = '08/15';
 
-export default function Chapter13StandingBudgetCard() {
+export interface Chapter13StandingBudgetCardProps {
+  appointmentId: string;
+}
+
+export default function Chapter13StandingBudgetCard(
+  props: Readonly<Chapter13StandingBudgetCardProps>,
+) {
+  const { appointmentId } = props;
+
   return (
     <EditableTableCard
-      id="chapter13-standing-budget"
+      id={`chapter13-standing-budget-${appointmentId}`}
       title="Budget"
       testId="chapter13-standing-budget-card"
       className="chapter13-standing-budget-card"
-      tableId="chapter13-standing-budget-table"
+      tableId={`chapter13-standing-budget-table-${appointmentId}`}
       tableClassName="chapter13-standing-budget-table"
       tableAriaLabel="Budget key dates"
       columns={[

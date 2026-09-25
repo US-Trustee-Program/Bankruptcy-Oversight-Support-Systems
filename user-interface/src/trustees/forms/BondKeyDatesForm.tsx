@@ -5,6 +5,7 @@ import {
   TrusteeUpcomingKeyDates,
   TrusteeUpcomingKeyDatesInput,
 } from '@common/cams/trustee-upcoming-key-dates';
+import { mergeKeyDatesInput } from './chapter7PanelKeyDatesInput';
 import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
@@ -29,50 +30,10 @@ export function buildBondKeyDatesInput(
   original: TrusteeUpcomingKeyDates | null,
   form: BondKeyDatesFormState,
 ): TrusteeUpcomingKeyDatesInput {
-  return {
-    trusteeId: ids.trusteeId,
-    appointmentId: ids.appointmentId,
-    pastBackgroundQuestion: original?.pastBackgroundQuestion ?? null,
-    pastFieldExam: original?.pastFieldExam ?? null,
-    pastAudit: original?.pastAudit ?? null,
-    pastTprSubmission: original?.pastTprSubmission ?? null,
-    lastTprSubmitted: original?.lastTprSubmitted ?? null,
-    tprReviewPeriodStart: original?.tprReviewPeriodStart ?? null,
-    tprReviewPeriodEnd: original?.tprReviewPeriodEnd ?? null,
-    tprDue: original?.tprDue ?? null,
-    tprDueYearType: original?.tprDueYearType ?? null,
-    tprFrequency: original?.tprFrequency ?? null,
-    tirReviewPeriodStart: original?.tirReviewPeriodStart ?? null,
-    tirReviewPeriodEnd: original?.tirReviewPeriodEnd ?? null,
-    tirSubmission: original?.tirSubmission ?? null,
-    tirReview: original?.tirReview ?? null,
-    upcomingExamOrAuditYear: original?.upcomingExamOrAuditYear ?? null,
-    upcomingExamOrAuditType: original?.upcomingExamOrAuditType ?? null,
-    tirFrequency: original?.tirFrequency ?? null,
-    tirSemiAnnualReviewPeriodStart: original?.tirSemiAnnualReviewPeriodStart ?? null,
-    tirSemiAnnualReviewPeriodEnd: original?.tirSemiAnnualReviewPeriodEnd ?? null,
-    tirSemiAnnualSubmission: original?.tirSemiAnnualSubmission ?? null,
-    tirSemiAnnualReview: original?.tirSemiAnnualReview ?? null,
-    lastAuditFiscalYear: original?.lastAuditFiscalYear ?? null,
-    auditCompletionYear: original?.auditCompletionYear ?? null,
-    auditCompletionStatus: original?.auditCompletionStatus ?? null,
-    tprCompletionYear: original?.tprCompletionYear ?? null,
-    tprCompletionStatus: original?.tprCompletionStatus ?? null,
-    tirCompletionYear: original?.tirCompletionYear ?? null,
-    tirCompletionStatus: original?.tirCompletionStatus ?? null,
-    annualReportCompletionYear: original?.annualReportCompletionYear ?? null,
-    annualReportCompletionStatus: original?.annualReportCompletionStatus ?? null,
-    lastMonthlyReportReceived: original?.lastMonthlyReportReceived ?? null,
-    leaseExpiration: original?.leaseExpiration ?? null,
-    idExpiration: original?.idExpiration ?? null,
-    lastCompensationStudy: original?.lastCompensationStudy ?? null,
+  return mergeKeyDatesInput(ids, original, {
     bondIssuedDate: form.bondIssuedDate || null,
     bondRenewalDate: form.bondRenewalDate || null,
-    ch13AuditCompletionYear: original?.ch13AuditCompletionYear ?? null,
-    ch13AuditCompletionStatus: original?.ch13AuditCompletionStatus ?? null,
-    ch13TprCompletionYear: original?.ch13TprCompletionYear ?? null,
-    ch13TprCompletionStatus: original?.ch13TprCompletionStatus ?? null,
-  };
+  });
 }
 
 export default function BondKeyDatesForm() {

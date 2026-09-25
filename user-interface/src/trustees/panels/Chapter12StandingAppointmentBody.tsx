@@ -47,7 +47,7 @@ export default function Chapter12StandingAppointmentBody(
               isLoading={isLoading}
               tprDisplayUpdates={tprDisplayUpdates}
             />
-            <Chapter12StandingBudgetCard />
+            <Chapter12StandingBudgetCard appointmentId={appointment.id} />
             <Chapter12StandingOtherKeyDatesCard
               trusteeId={appointment.trusteeId}
               appointmentId={appointment.id}

@@ -131,7 +131,7 @@ describe('Chapter13StandingAuditForm', () => {
     await userEvent.selectOptions(screen.getByTestId('audit-completion-year'), '2026');
 
     expect(screen.getByTestId('button-save-chapter13-standing-audit-key-dates')).toBeDisabled();
-    expect(screen.queryByTestId('audit-completion-error')).not.toBeInTheDocument();
+    expect(screen.getByTestId('audit-completion-error')).toHaveTextContent('');
 
     fireEvent.blur(screen.getByTestId('audit-completion-year'), { relatedTarget: null });
 
@@ -151,7 +151,7 @@ describe('Chapter13StandingAuditForm', () => {
     await userEvent.selectOptions(screen.getByTestId('audit-completion-status'), 'Complete');
 
     expect(screen.getByTestId('button-save-chapter13-standing-audit-key-dates')).toBeDisabled();
-    expect(screen.queryByTestId('audit-completion-error')).not.toBeInTheDocument();
+    expect(screen.getByTestId('audit-completion-error')).toHaveTextContent('');
 
     fireEvent.blur(screen.getByTestId('audit-completion-status'), { relatedTarget: null });
 

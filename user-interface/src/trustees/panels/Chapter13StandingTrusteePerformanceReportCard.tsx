@@ -31,7 +31,7 @@ export default function Chapter13StandingTrusteePerformanceReportCard(
     data?.ch13TprCompletionYear,
     data?.ch13TprCompletionStatus,
     'Complete',
-    'tpr-completion-status',
+    `tpr-completion-status-${appointmentId}`,
   );
 
   return (

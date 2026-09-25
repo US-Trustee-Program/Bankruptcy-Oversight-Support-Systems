@@ -322,7 +322,7 @@ describe('TrusteeAppointments', () => {
       expect(getAppointmentCards()).toHaveLength(1);
     });
 
-    // Default-collapsed rendering and toggle mechanics are generic AppointmentAccordion/
+    // Default-expansion (active-expanded/inactive-collapsed) and toggle mechanics are generic AppointmentAccordion/
     // useAppointmentExpansion behavior, not specific to Chapter 11 -- already covered by
     // AppointmentAccordion.test.tsx and useAppointmentExpansion.test.ts.
   });
@@ -354,7 +354,7 @@ describe('TrusteeAppointments', () => {
       expect(getAppointmentCards()).toHaveLength(0);
     });
 
-    // Default-collapsed rendering and toggle mechanics are generic AppointmentAccordion/
+    // Default-expansion (active-expanded/inactive-collapsed) and toggle mechanics are generic AppointmentAccordion/
     // useAppointmentExpansion behavior, not specific to Chapter 7 Elected -- already covered
     // by AppointmentAccordion.test.tsx and useAppointmentExpansion.test.ts.
   });
@@ -387,7 +387,7 @@ describe('TrusteeAppointments', () => {
       expect(getAppointmentCards()).toHaveLength(0);
     });
 
-    // Default-collapsed rendering and toggle mechanics are generic AppointmentAccordion/
+    // Default-expansion (active-expanded/inactive-collapsed) and toggle mechanics are generic AppointmentAccordion/
     // useAppointmentExpansion behavior, not specific to Chapter 7 Panel -- already covered
     // by AppointmentAccordion.test.tsx and useAppointmentExpansion.test.ts.
   });
@@ -445,7 +445,7 @@ describe('TrusteeAppointments', () => {
       expect(getAppointmentCards()).toHaveLength(0);
     });
 
-    // Default-collapsed rendering and toggle mechanics are generic AppointmentAccordion/
+    // Default-expansion (active-expanded/inactive-collapsed) and toggle mechanics are generic AppointmentAccordion/
     // useAppointmentExpansion behavior, not specific to Chapter 11 Subchapter V -- already
     // covered by AppointmentAccordion.test.tsx and useAppointmentExpansion.test.ts.
   });
@@ -482,7 +482,7 @@ describe('TrusteeAppointments', () => {
       expect(getAppointmentCards()).toHaveLength(0);
     });
 
-    // Default-collapsed rendering and toggle mechanics are generic AppointmentAccordion/
+    // Default-expansion (active-expanded/inactive-collapsed) and toggle mechanics are generic AppointmentAccordion/
     // useAppointmentExpansion behavior, not specific to Chapter 13 Standing -- already
     // covered by AppointmentAccordion.test.tsx and useAppointmentExpansion.test.ts.
 
@@ -593,7 +593,7 @@ describe('TrusteeAppointments', () => {
       expect(getAppointmentCards()).toHaveLength(0);
     });
 
-    // Default-collapsed rendering and toggle mechanics are generic AppointmentAccordion/
+    // Default-expansion (active-expanded/inactive-collapsed) and toggle mechanics are generic AppointmentAccordion/
     // useAppointmentExpansion behavior, not specific to Chapter 12 Standing -- already
     // covered by AppointmentAccordion.test.tsx and useAppointmentExpansion.test.ts.
   });
