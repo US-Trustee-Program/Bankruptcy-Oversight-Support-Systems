@@ -125,25 +125,13 @@ describe('AnnualReportKeyDatesCard', () => {
     ).not.toBeInTheDocument();
   });
 
-  test('navigates to the annual report edit page with the appointment heading', async () => {
-    renderCard(keyDates, false, 'Southern District of New York (Manhattan): Chapter 12');
-
-    await userEvent.click(screen.getByRole('button', { name: /edit annual report/i }));
-
-    expect(mockNavigate).toHaveBeenCalledWith(
-      '/trustees/trustee-123/appointments/appointment-001/ch12-13-annual-report-key-dates/edit',
-      { state: { subHeading: 'Southern District of New York (Manhattan): Chapter 12' } },
-    );
-  });
-
-  test('navigates with an empty subHeading when no appointment heading is supplied', async () => {
+  test('navigates to the annual report edit page', async () => {
     renderCard();
 
     await userEvent.click(screen.getByRole('button', { name: /edit annual report/i }));
 
     expect(mockNavigate).toHaveBeenCalledWith(
       '/trustees/trustee-123/appointments/appointment-001/ch12-13-annual-report-key-dates/edit',
-      { state: { subHeading: '' } },
     );
   });
 

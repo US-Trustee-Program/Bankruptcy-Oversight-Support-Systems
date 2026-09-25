@@ -1,8 +1,8 @@
-import { useNavigate } from 'react-router-dom';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import EditableTableCard from '@/lib/components/cams/EditableTableCard/EditableTableCard';
 import { TrusteeUpcomingKeyDates, isoToMMDDYYYY } from '@common/cams/trustee-upcoming-key-dates';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
+import { useOpenEditKeyDates } from './useOpenEditKeyDates';
 
 export interface BondKeyDatesCardProps {
   trusteeId: string;
@@ -19,15 +19,9 @@ function formatDateOrDefault(isoDate: string | undefined): string {
 }
 
 export default function BondKeyDatesCard(props: Readonly<BondKeyDatesCardProps>) {
-  const { trusteeId, appointmentId, appointmentHeading, data, isLoading } = props;
-  const navigate = useNavigate();
+  const { trusteeId, appointmentId, data, isLoading } = props;
   const canManage = useCanManageTrustees();
-
-  function openEdit() {
-    navigate(`/trustees/${trusteeId}/appointments/${appointmentId}/bond-key-dates/edit`, {
-      state: { subHeading: appointmentHeading ?? '' },
-    });
-  }
+  const openEdit = useOpenEditKeyDates(trusteeId, appointmentId, 'bond-key-dates');
 
   if (isLoading) {
     return <LoadingSpinner id="bond-key-dates-loading" />;

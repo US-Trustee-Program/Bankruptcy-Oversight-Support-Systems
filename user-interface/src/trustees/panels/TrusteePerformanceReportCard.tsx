@@ -1,4 +1,3 @@
-import { useNavigate } from 'react-router-dom';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import EditableTableCard from '@/lib/components/cams/EditableTableCard/EditableTableCard';
 import {
@@ -7,6 +6,7 @@ import {
   isoRangeToMMDD,
 } from '@common/cams/trustee-upcoming-key-dates';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
+import { useOpenEditKeyDates } from './useOpenEditKeyDates';
 import {
   tprReviewPeriodField,
   tprFrequencyField,
@@ -36,14 +36,8 @@ export default function TrusteePerformanceReportCard(
   props: Readonly<TrusteePerformanceReportCardProps>,
 ) {
   const { trusteeId, appointmentId, data, isLoading, tprDisplayUpdates, variant } = props;
-  const navigate = useNavigate();
   const canManage = useCanManageTrustees();
-
-  function openEdit() {
-    navigate(
-      `/trustees/${trusteeId}/appointments/${appointmentId}/${EDIT_ROUTE_SEGMENT[variant]}/edit`,
-    );
-  }
+  const openEdit = useOpenEditKeyDates(trusteeId, appointmentId, EDIT_ROUTE_SEGMENT[variant]);
 
   if (isLoading) {
     return <LoadingSpinner id={`${variant}-tpr-loading`} />;

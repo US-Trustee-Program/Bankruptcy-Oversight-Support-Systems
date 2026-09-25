@@ -1,8 +1,8 @@
-import { useNavigate } from 'react-router-dom';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import EditableTableCard from '@/lib/components/cams/EditableTableCard/EditableTableCard';
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
+import { useOpenEditKeyDates } from './useOpenEditKeyDates';
 import { buildCompletionTag } from './upcomingKeyDatesFieldConfig';
 
 export interface AnnualReportKeyDatesCardProps {
@@ -18,18 +18,9 @@ const ANNUAL_REPORT_SUBMISSION = '09/01';
 const ANNUAL_REPORT_DUE_TO_OO = '09/15';
 
 export default function AnnualReportKeyDatesCard(props: Readonly<AnnualReportKeyDatesCardProps>) {
-  const { trusteeId, appointmentId, appointmentHeading, data, isLoading } = props;
-  const navigate = useNavigate();
+  const { trusteeId, appointmentId, data, isLoading } = props;
   const canManage = useCanManageTrustees();
-
-  function openEdit() {
-    navigate(
-      `/trustees/${trusteeId}/appointments/${appointmentId}/ch12-13-annual-report-key-dates/edit`,
-      {
-        state: { subHeading: appointmentHeading ?? '' },
-      },
-    );
-  }
+  const openEdit = useOpenEditKeyDates(trusteeId, appointmentId, 'ch12-13-annual-report-key-dates');
 
   if (isLoading) {
     return <LoadingSpinner id={`annual-report-key-dates-loading-${appointmentId}`} />;

@@ -1,8 +1,8 @@
-import { useNavigate } from 'react-router-dom';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import EditableTableCard from '@/lib/components/cams/EditableTableCard/EditableTableCard';
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
+import { useOpenEditKeyDates } from './useOpenEditKeyDates';
 import {
   examOrAuditField,
   auditReqByField,
@@ -26,14 +26,8 @@ export default function Chapter7PanelAuditFieldExamCard(
   props: Readonly<Chapter7PanelAuditFieldExamCardProps>,
 ) {
   const { trusteeId, appointmentId, data, isLoading } = props;
-  const navigate = useNavigate();
   const canManage = useCanManageTrustees();
-
-  function openEdit() {
-    navigate(
-      `/trustees/${trusteeId}/appointments/${appointmentId}/audit-field-exam-key-dates/edit`,
-    );
-  }
+  const openEdit = useOpenEditKeyDates(trusteeId, appointmentId, 'audit-field-exam-key-dates');
 
   if (isLoading) {
     return <LoadingSpinner id="chapter7-panel-audit-field-exam-loading" />;

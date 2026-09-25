@@ -1,8 +1,8 @@
-import { useNavigate } from 'react-router-dom';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import EditableTableCard from '@/lib/components/cams/EditableTableCard/EditableTableCard';
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
+import { useOpenEditKeyDates } from './useOpenEditKeyDates';
 import {
   buildCompletionTag,
   formatDateOrDefault,
@@ -25,16 +25,9 @@ export interface TrusteePerformanceReportKeyDatesCardProps {
 export default function TrusteePerformanceReportKeyDatesCard(
   props: Readonly<TrusteePerformanceReportKeyDatesCardProps>,
 ) {
-  const { trusteeId, appointmentId, appointmentHeading, data, isLoading, tprDisplayUpdates } =
-    props;
-  const navigate = useNavigate();
+  const { trusteeId, appointmentId, data, isLoading, tprDisplayUpdates } = props;
   const canManage = useCanManageTrustees();
-
-  function openEdit() {
-    navigate(`/trustees/${trusteeId}/appointments/${appointmentId}/ch12-13-tpr-key-dates/edit`, {
-      state: { subHeading: appointmentHeading ?? '' },
-    });
-  }
+  const openEdit = useOpenEditKeyDates(trusteeId, appointmentId, 'ch12-13-tpr-key-dates');
 
   if (isLoading) {
     return <LoadingSpinner id={`tpr-key-dates-loading-${appointmentId}`} />;

@@ -1,8 +1,8 @@
-import { useNavigate } from 'react-router-dom';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import EditableTableCard from '@/lib/components/cams/EditableTableCard/EditableTableCard';
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
+import { useOpenEditKeyDates } from './useOpenEditKeyDates';
 import {
   auditReqByField,
   formatDateOrDefault,
@@ -25,12 +25,8 @@ export default function Chapter12StandingAuditCard(
   props: Readonly<Chapter12StandingAuditCardProps>,
 ) {
   const { trusteeId, appointmentId, data, isLoading } = props;
-  const navigate = useNavigate();
   const canManage = useCanManageTrustees();
-
-  function openEdit() {
-    navigate(`/trustees/${trusteeId}/appointments/${appointmentId}/audit-key-dates/edit`);
-  }
+  const openEdit = useOpenEditKeyDates(trusteeId, appointmentId, 'audit-key-dates');
 
   if (isLoading) {
     return <LoadingSpinner id="chapter12-standing-audit-loading" />;

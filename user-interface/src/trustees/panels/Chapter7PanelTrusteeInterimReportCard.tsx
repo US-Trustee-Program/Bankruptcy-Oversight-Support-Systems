@@ -1,8 +1,8 @@
-import { useNavigate } from 'react-router-dom';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import EditableTableCard from '@/lib/components/cams/EditableTableCard/EditableTableCard';
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
+import { useOpenEditKeyDates } from './useOpenEditKeyDates';
 import {
   tirReviewPeriodField,
   tirSubmissionField,
@@ -22,12 +22,8 @@ export default function Chapter7PanelTrusteeInterimReportCard(
   props: Readonly<Chapter7PanelTrusteeInterimReportCardProps>,
 ) {
   const { trusteeId, appointmentId, data, isLoading } = props;
-  const navigate = useNavigate();
   const canManage = useCanManageTrustees();
-
-  function openEdit() {
-    navigate(`/trustees/${trusteeId}/appointments/${appointmentId}/tir-key-dates/edit`);
-  }
+  const openEdit = useOpenEditKeyDates(trusteeId, appointmentId, 'tir-key-dates');
 
   if (isLoading) {
     return <LoadingSpinner id="chapter7-panel-tir-loading" />;

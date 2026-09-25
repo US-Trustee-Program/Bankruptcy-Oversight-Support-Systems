@@ -1,8 +1,8 @@
-import { useNavigate } from 'react-router-dom';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import EditableTableCard from '@/lib/components/cams/EditableTableCard/EditableTableCard';
 import { TrusteeUpcomingKeyDates, isoToMMDDYYYY } from '@common/cams/trustee-upcoming-key-dates';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
+import { useOpenEditKeyDates } from './useOpenEditKeyDates';
 
 export interface Chapter11SubVOtherKeyDatesCardProps {
   trusteeId: string;
@@ -21,18 +21,9 @@ function formatDateOrDefault(isoDate: string | undefined): string {
 export default function Chapter11SubVOtherKeyDatesCard(
   props: Readonly<Chapter11SubVOtherKeyDatesCardProps>,
 ) {
-  const { trusteeId, appointmentId, appointmentHeading, data, isLoading } = props;
-  const navigate = useNavigate();
+  const { trusteeId, appointmentId, data, isLoading } = props;
   const canManage = useCanManageTrustees();
-
-  function openEdit() {
-    navigate(
-      `/trustees/${trusteeId}/appointments/${appointmentId}/chapter11-subv-other-key-dates/edit`,
-      {
-        state: { subHeading: appointmentHeading ?? '', variant: 'chapter11-subv' },
-      },
-    );
-  }
+  const openEdit = useOpenEditKeyDates(trusteeId, appointmentId, 'chapter11-subv-other-key-dates');
 
   if (isLoading) {
     return <LoadingSpinner id="subv-other-key-dates-loading" />;

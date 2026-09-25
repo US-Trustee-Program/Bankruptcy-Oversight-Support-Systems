@@ -1,8 +1,8 @@
-import { useNavigate } from 'react-router-dom';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import EditableTableCard from '@/lib/components/cams/EditableTableCard/EditableTableCard';
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
+import { useOpenEditKeyDates } from './useOpenEditKeyDates';
 import { formatDateOrDefault } from './upcomingKeyDatesFieldConfig';
 
 export interface Chapter7PanelOtherKeyDatesCardProps {
@@ -16,12 +16,8 @@ export default function Chapter7PanelOtherKeyDatesCard(
   props: Readonly<Chapter7PanelOtherKeyDatesCardProps>,
 ) {
   const { trusteeId, appointmentId, data, isLoading } = props;
-  const navigate = useNavigate();
   const canManage = useCanManageTrustees();
-
-  function openEdit() {
-    navigate(`/trustees/${trusteeId}/appointments/${appointmentId}/other-key-dates/edit`);
-  }
+  const openEdit = useOpenEditKeyDates(trusteeId, appointmentId, 'other-key-dates');
 
   if (isLoading) {
     return <LoadingSpinner id="chapter7-panel-other-key-dates-loading" />;
