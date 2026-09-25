@@ -64,7 +64,7 @@
       "entry": ["**/*.ts"],
       "project": ["**/*.ts"],
       "ignore": [],
-      "ignoreDependencies": ["dotenv", "@azure/functions"]
+      "ignoreDependencies": ["dotenv", "@azure/functions", "natural"]
     }
   },
   "ignoreBinaries": ["pushd", "popd", "dot", "podman", "podman-compose"],
