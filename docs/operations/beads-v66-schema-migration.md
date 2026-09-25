@@ -308,6 +308,10 @@ protection. Nothing blocks a force-push to `refs/dolt/data`.
   benign and pre-existing — `.beads/` is gitignored (`.gitignore:134`), so bd's
   attempt to stage `.beads/issues.jsonl` is correctly rejected. Issues live in
   the Dolt remote, not in this repo.
+- bd 1.3.0 writes a `.beads.gate.lock` file in the repo root on **every run**.
+  It is not a stale lock and deleting it accomplishes nothing — it reappears on
+  the next command. It is gitignored as of the commit that accompanies this
+  document. Expect to see it once you upgrade.
 - Homebrew is in API mode with no local formula checkout, so `brew extract` is
   not a practical way to obtain old bd versions. Release binaries from
   `gastownhall/beads` (verified against `checksums.txt`) are the workable path.
