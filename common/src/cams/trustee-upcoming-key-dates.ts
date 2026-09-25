@@ -362,7 +362,7 @@ export function validateTprDuePair(
   // Priority 2: complete date but no year type
   if (tprDue && !tprDueYearType) return 'TPR Due Year Type is required.';
   // Priority 3: year type set but no date
-  if (!tprDue && tprDueYearType) return validateMonthDay('1900--').reasons?.[0] ?? '';
+  if (!tprDue && tprDueYearType) return 'Must be a valid date mm/dd.';
   return '';
 }
 
