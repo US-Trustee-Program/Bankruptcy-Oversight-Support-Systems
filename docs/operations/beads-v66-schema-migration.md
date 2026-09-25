@@ -256,15 +256,52 @@ That is expected bd/dolt bookkeeping, not a stray branch.
 
 ### Phase 8 — Unblock the team
 
-Each teammate:
+> **`bd bootstrap` on its own does not work here.** bd's gate message tells
+> other clones to "run `bd bootstrap`", but on a machine that already has a
+> database it reports `✓ Database already exists ... Nothing to do.` and exits
+> without adopting the migrated schema. Verified 2026-09-25 by simulating a
+> teammate's workspace (v32 database + v66 remote). The old database must be
+> moved aside **first**.
+
+Each teammate runs, from the repo root:
 
 ```bash
-brew upgrade beads   # or install bd 1.3.0 by their preferred method
-bd bootstrap
+# 1. Save anything not yet pushed. Do this BEFORE touching anything else.
+bd dolt push                                   # should be a no-op after Phase 0
+bd export --all -o ~/beads-safety-$(date +%Y%m%d).jsonl
+
+# 2. Upgrade the binary
+brew upgrade beads
+bd version                                     # must read 1.3.0
+
+# 3. Move the old v32 database aside (do NOT delete it yet)
+mv .beads .beads-old-v32
+
+# 4. Adopt the migrated database
+bd bootstrap --yes                             # takes a few minutes; ~67k chunks
+chmod 700 .beads                               # bd warns at the default 0750
+
+# 5. Verify
+bd count                                       # matches the team's current count
+bd ready                                       # queue returns
 ```
 
-Re-state that `bd bootstrap` replaces the local database — harmless only
-because they pushed in Phase 0.
+Only after step 5 passes: `rm -rf .beads-old-v32`.
+
+Not on Homebrew? Download the release binary instead, verifying the checksum:
+
+```bash
+gh release download v1.3.0 --repo gastownhall/beads \
+  --pattern 'beads_1.3.0_darwin_arm64.tar.gz' --pattern 'checksums.txt'
+shasum -a 256 -c checksums.txt --ignore-missing
+tar xzf beads_1.3.0_darwin_arm64.tar.gz && mv bd ~/.local/bin/bd
+```
+
+Two harmless warnings appear on first run after bootstrap:
+
+- `.beads has permissions 0750 (recommended: 0700)` — fixed by the `chmod` above.
+- `beads.role not configured (GH#2950)` — set with
+  `git config beads.role maintainer` (or `contributor`).
 
 ## Rollback
 
