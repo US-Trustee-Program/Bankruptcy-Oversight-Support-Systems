@@ -270,7 +270,7 @@ describe('SearchResults component tests', () => {
       mockTrackEvent.mockReset();
     });
 
-    test('does not log searchResultClick when debtorName is absent', async () => {
+    test('logs searchResultClick with debtorNameUsed false and no phonetic fields when debtorName is absent', async () => {
       const casesWithMetadata = setupCaseListWithMetadata(3);
       vi.spyOn(Api2, 'searchCases').mockResolvedValue({
         meta: { self: 'self-link' },
@@ -280,6 +280,7 @@ describe('SearchResults component tests', () => {
 
       renderWithProps({
         searchPredicate: { caseNumber: '00-11111', offset: 0, limit: 25 },
+        trackResultClicks: true,
       });
 
       await waitFor(() => expect(getCaseTable()).toBeInTheDocument());
@@ -287,13 +288,20 @@ describe('SearchResults component tests', () => {
       const link = screen.getByTestId(`case-number-${casesWithMetadata[0].caseId}-link`);
       await userEvent.click(link);
 
-      const clickEvents = mockTrackEvent.mock.calls.filter(
+      const clickCall = mockTrackEvent.mock.calls.find(
         (call) => call[0]?.name === 'searchResultClick',
       );
-      expect(clickEvents).toHaveLength(0);
+      expect(clickCall).toBeDefined();
+      const [event] = clickCall!;
+      expect(event.properties?.debtorNameUsed).toBe(false);
+      expect(event.properties?.primaryMatchType).toBeUndefined();
+      expect(event.properties?.scoreBreakdown).toBeUndefined();
+      expect(event.properties?.higherRankedResults).toBeUndefined();
+      expect(event.measurements?.matchScore).toBeUndefined();
+      expect(event.measurements?.rank).toBe(1);
     });
 
-    test('does not log searchResultClick when searchMetadata is absent', async () => {
+    test('logs searchResultClick with debtorNameUsed true and no phonetic fields when searchMetadata is absent', async () => {
       const casesWithoutMetadata = MockData.buildArray(MockData.getSyncedCase, 3);
       vi.spyOn(Api2, 'searchCases').mockResolvedValue({
         meta: { self: 'self-link' },
@@ -301,17 +309,24 @@ describe('SearchResults component tests', () => {
         data: casesWithoutMetadata,
       });
 
-      renderWithProps({ searchPredicate: debtorNamePredicate });
+      renderWithProps({ searchPredicate: debtorNamePredicate, trackResultClicks: true });
 
       await waitFor(() => expect(getCaseTable()).toBeInTheDocument());
 
       const link = screen.getByTestId(`case-number-${casesWithoutMetadata[0].caseId}-link`);
       await userEvent.click(link);
 
-      const clickEvents = mockTrackEvent.mock.calls.filter(
+      const clickCall = mockTrackEvent.mock.calls.find(
         (call) => call[0]?.name === 'searchResultClick',
       );
-      expect(clickEvents).toHaveLength(0);
+      expect(clickCall).toBeDefined();
+      const [event] = clickCall!;
+      expect(event.properties?.debtorNameUsed).toBe(true);
+      expect(event.properties?.primaryMatchType).toBeUndefined();
+      expect(event.properties?.scoreBreakdown).toBeUndefined();
+      expect(event.properties?.higherRankedResults).toBeUndefined();
+      expect(event.measurements?.matchScore).toBeUndefined();
+      expect(event.measurements?.rank).toBe(1);
     });
 
     test('logs searchResultClick with correct payload when clicking rank 3', async () => {
@@ -322,7 +337,7 @@ describe('SearchResults component tests', () => {
         data: casesWithMetadata,
       });
 
-      renderWithProps({ searchPredicate: debtorNamePredicate });
+      renderWithProps({ searchPredicate: debtorNamePredicate, trackResultClicks: true });
 
       await waitFor(() => expect(getCaseTable()).toBeInTheDocument());
 
@@ -355,7 +370,7 @@ describe('SearchResults component tests', () => {
         data: casesWithMetadata,
       });
 
-      renderWithProps({ searchPredicate: debtorNamePredicate });
+      renderWithProps({ searchPredicate: debtorNamePredicate, trackResultClicks: true });
 
       await waitFor(() => expect(getCaseTable()).toBeInTheDocument());
 
@@ -377,7 +392,7 @@ describe('SearchResults component tests', () => {
         data: casesWithMetadata,
       });
 
-      renderWithProps({ searchPredicate: debtorNamePredicate });
+      renderWithProps({ searchPredicate: debtorNamePredicate, trackResultClicks: true });
 
       await waitFor(() => expect(getCaseTable()).toBeInTheDocument());
 
@@ -390,6 +405,27 @@ describe('SearchResults component tests', () => {
       expect(clickCall).toBeDefined();
       const higherRanked = JSON.parse(clickCall![0].properties?.higherRankedResults);
       expect(higherRanked).toHaveLength(5);
+    });
+
+    test('does not log searchResultClick when trackResultClicks is not enabled (e.g. My Cases, Staff Assignment)', async () => {
+      const casesWithMetadata = setupCaseListWithMetadata(3);
+      vi.spyOn(Api2, 'searchCases').mockResolvedValue({
+        meta: { self: 'self-link' },
+        pagination: { currentPage: 1, limit: 25, count: 3 },
+        data: casesWithMetadata,
+      });
+
+      renderWithProps({ searchPredicate: debtorNamePredicate });
+
+      await waitFor(() => expect(getCaseTable()).toBeInTheDocument());
+
+      const link = screen.getByTestId(`case-number-${casesWithMetadata[0].caseId}-link`);
+      await userEvent.click(link);
+
+      const clickCall = mockTrackEvent.mock.calls.find(
+        (call) => call[0]?.name === 'searchResultClick',
+      );
+      expect(clickCall).toBeUndefined();
     });
   });
 });
