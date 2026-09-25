@@ -3,7 +3,7 @@ import {
   isoToMMDDYYYY,
   isoToMMYYYY,
 } from '@common/cams/trustee-upcoming-key-dates';
-import Chapter13StandingKeyDatesCard from './Chapter13StandingKeyDatesCard';
+import EditableTableCard from '@/lib/components/cams/EditableTableCard/EditableTableCard';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import { useOpenEditKeyDates } from './useOpenEditKeyDates';
 import { leaseExpirationField, idExpirationField, NO_DATE } from './upcomingKeyDatesFieldConfig';
@@ -25,32 +25,42 @@ export default function Chapter13StandingOtherCard(
     'chapter13-standing-other-key-dates',
   );
 
-  const lease = leaseExpirationField(data);
-  const idExp = idExpirationField(data);
-
   return (
-    <Chapter13StandingKeyDatesCard
+    <EditableTableCard
+      id={`edit-chapter13-standing-other-key-dates-${appointmentId}`}
       title="Other"
+      testId="chapter13-standing-other-card"
+      className="chapter13-standing-other-card"
+      tableId={`chapter13-standing-other-table-${appointmentId}`}
+      tableClassName="chapter13-standing-other-table"
+      tableAriaLabel="Other key dates"
       onEdit={canManage ? openEdit : undefined}
       editAriaLabel="Edit Other key dates"
       editTitle="Edit Other key dates"
-      testId="chapter13-standing-other-card"
-      fields={[
-        { label: lease.label, value: lease.value, testId: lease.testId },
+      columns={[
+        { key: 'leaseExpiration', header: 'Lease Expiration', testId: 'lease-expiration-row' },
         {
-          label: 'Last Update to Background Questionnaire',
-          value: data?.pastBackgroundQuestion
-            ? isoToMMDDYYYY(data.pastBackgroundQuestion)
-            : NO_DATE,
+          key: 'lastBackgroundQuestionnaire',
+          header: 'Last Update to Background Questionnaire',
           testId: 'past-background-question-row',
         },
-        { label: idExp.label, value: idExp.value, testId: idExp.testId },
+        { key: 'idExpiration', header: 'ID Expiration', testId: 'id-expiration-row' },
         {
-          label: 'Last Compensation Study',
-          value: data?.lastCompensationStudy ? isoToMMYYYY(data.lastCompensationStudy) : NO_DATE,
+          key: 'lastCompensationStudy',
+          header: 'Last Compensation Study',
           testId: 'last-compensation-study-row',
         },
       ]}
+      values={{
+        leaseExpiration: leaseExpirationField(data).value,
+        lastBackgroundQuestionnaire: data?.pastBackgroundQuestion
+          ? isoToMMDDYYYY(data.pastBackgroundQuestion)
+          : NO_DATE,
+        idExpiration: idExpirationField(data).value,
+        lastCompensationStudy: data?.lastCompensationStudy
+          ? isoToMMYYYY(data.lastCompensationStudy)
+          : NO_DATE,
+      }}
     />
   );
 }

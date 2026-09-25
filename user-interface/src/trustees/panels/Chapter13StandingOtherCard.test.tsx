@@ -54,8 +54,9 @@ describe('Chapter13StandingOtherCard', () => {
     TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
   });
 
-  test('renders all four fields with "No date added" when data is null', () => {
+  test('renders the Other title and all four fields with "No date added" when data is null', () => {
     renderComponent();
+    expect(screen.getByText('Other')).toBeInTheDocument();
     expect(screen.getByTestId('lease-expiration-row')).toHaveTextContent('No date added');
     expect(screen.getByTestId('past-background-question-row')).toHaveTextContent('No date added');
     expect(screen.getByTestId('id-expiration-row')).toHaveTextContent('No date added');
@@ -80,7 +81,7 @@ describe('Chapter13StandingOtherCard', () => {
 
   test('renders no completion-status tag', () => {
     renderComponent();
-    expect(screen.queryByTestId(/tag-/)).not.toBeInTheDocument();
+    expect(screen.queryByTestId(/^tag-/)).not.toBeInTheDocument();
   });
 
   test('Edit pencil navigates to the dedicated Other edit route when canManage', () => {
