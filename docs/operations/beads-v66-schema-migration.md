@@ -54,8 +54,8 @@ The remote ref SHA is the **rollback anchor**. Do not lose it.
 | 2 | Back up | `bd export --all -o <file>`, `cp -R .beads/embeddeddolt <dir>` | No | n/a | ☑ Done |
 | 3 | Swap to bd 1.3.0 | `mv ~/.local/bin/bd ~/.local/bin/bd-1.0.3` | No | Yes — move it back | ☑ Done |
 | 4 | Dry run | `bd migrate --dry-run`, `bd migrate --inspect` | No | Yes — read only | ☑ Done (see caveat) |
-| 5 | Migrate **locally** | `bd migrate schema --force --json` | **No** | Yes — restore Phase 2 copy | ☐ |
-| 6 | Verify before publishing | `bd count`, `bd ready`, spot-check issues | No | Yes — last easy exit | ☐ |
+| 5 | Migrate **locally** | `bd migrate schema --force --json` | **No** | Yes — restore Phase 2 copy | ☑ Done (26s) |
+| 6 | Verify before publishing | `bd count`, `bd ready`, spot-check issues | No | Yes — last easy exit | ☑ Passed |
 | 7 | Publish | `bd dolt push` | **Yes** | Only by force-push to anchor | ☐ |
 | 8 | Unblock the team | _(teammates upgrade + `bd bootstrap`)_ | No | n/a | ☐ |
 
@@ -179,6 +179,39 @@ Two notes on the command choice:
 | Spot-check known issues | `bd show <id>` | Fields intact, no truncation |
 
 Stop here if anything looks off. This is the last exit that costs nothing.
+
+A count check alone is weak — it cannot detect issues being swapped or
+corrupted. Diff the pre- and post-migration exports instead:
+
+```bash
+bd export --all -o /tmp/beads-post-v66.jsonl
+# compare id sets, then title/status/priority/issue_type/assignee per id
+```
+
+### Phase 6 results, 2026-09-25
+
+| Check | Result |
+| --- | --- |
+| `schema_migrations` | `66 / 66` ✓ (from `32 / 32`) |
+| `bd count` | `1403` ✓ |
+| `bd ready` | P0/P1 queue returned ✓ |
+| Export parity | `1403 issues and 9 memories` ✓ |
+| Issue ID set diff | zero lost, zero appeared ✓ |
+| Field diff across 1403 records | **1** mismatch — see below |
+
+The single field change was legitimate, not migration damage:
+
+- `cams-gqf6k` moved `deferred` → `open`, and `defer_until` disappeared from
+  the export (it was the only deferred record).
+- That issue was deferred until `2026-09-09`, already past. The defer-wake
+  sweep had been failing under v32 against the 1.3.0 binary with
+  `defer-wake sweep skipped: ... column "row_lock" could not be found`.
+  Post-migration the sweep succeeded and woke the issue, which is correct
+  behaviour.
+
+Expect this class of finding: a migration can legitimately *unblock* repairs
+that the old schema was silently failing. Confirm the cause before treating a
+diff as corruption — and before dismissing one.
 
 ### Phase 7 — Publish
 
