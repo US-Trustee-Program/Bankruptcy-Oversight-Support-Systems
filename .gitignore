@@ -134,6 +134,8 @@ vitest.config.js.map
 .beads/
 .dolt/
 .beads-credential-key
+# Runtime lock written on every bd run (bd 1.3.0+)
+.beads.gate.lock
 
 # Beads / Dolt files (added by bd init)
 *.db
