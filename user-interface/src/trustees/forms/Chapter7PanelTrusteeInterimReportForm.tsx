@@ -21,7 +21,9 @@ import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import DatePicker from '@/lib/components/uswds/DatePicker';
+import Select from '@/lib/components/uswds/Select';
 import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
+import PairFieldGroup from './PairFieldGroup';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import { Stop } from '@/lib/components/Stop';
 
@@ -246,52 +248,44 @@ export default function Chapter7PanelTrusteeInterimReportForm() {
     <div className="edit-upcoming-key-dates" data-testid="edit-chapter7-panel-tir">
       <h3>Edit Trustee Interim Report (TIR) Key Dates</h3>
 
-      <div className="tir-period-group">
-        <p className="usa-label">TIR Period</p>
-        <div className="tir-period-group__row">
-          <div className="usa-form-group">
-            <label className="usa-hint" htmlFor="tir-frequency">
-              Frequency
-            </label>
-            <select
-              className="usa-select"
+      <PairFieldGroup
+        idPrefix="tir-period-pair"
+        groupClassName="tir-period-group"
+        rowClassName="tir-period-group__row"
+        title="TIR Period"
+        error={tirPeriodPairError}
+      >
+        {({ hasError, ariaDescribedBy }) => (
+          <>
+            <Select
               id="tir-frequency"
-              data-testid="tir-frequency"
+              label="Frequency"
+              compactLabel
+              hasError={hasError}
+              ariaDescribedBy={ariaDescribedBy}
+              placeholder="- Select -"
+              options={[
+                { value: 'ANNUAL', label: 'Annual' },
+                { value: 'SEMI_ANNUAL', label: 'Semi-Annual' },
+              ]}
               value={form.tirFrequency}
               onChange={handleFrequencyChange}
-            >
-              <option value="">- Select -</option>
-              <option value="ANNUAL">Annual</option>
-              <option value="SEMI_ANNUAL">Semi-Annual</option>
-            </select>
-          </div>
-          <div className="usa-form-group">
-            <label className="usa-hint" htmlFor="tir-period">
-              Period
-            </label>
-            <select
-              className="usa-select"
+            />
+            <Select
               id="tir-period"
-              data-testid="tir-period"
+              label="Period"
+              compactLabel
+              hasError={hasError}
+              ariaDescribedBy={ariaDescribedBy}
+              placeholder="- Select -"
+              options={periodOptions.map((o) => ({ value: o.key, label: o.label }))}
               value={form.tirPeriodKey}
               onChange={handlePeriodChange}
               disabled={!form.tirFrequency}
-            >
-              <option value="">- Select -</option>
-              {periodOptions.map((o) => (
-                <option key={o.key} value={o.key}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-        {tirPeriodPairError && (
-          <span className="usa-input__error-message" data-testid="tir-period-pair-error">
-            {tirPeriodPairError}
-          </span>
+            />
+          </>
         )}
-      </div>
+      </PairFieldGroup>
 
       <DatePicker
         id="past-tpr-submission"
@@ -302,18 +296,27 @@ export default function Chapter7PanelTrusteeInterimReportForm() {
         disableMax
       />
 
-      <div className="exam-audit-group">
-        <p className="usa-label">TIR Completion Status for Year</p>
-        <div className="exam-audit-group__row">
-          <div className="usa-form-group">
-            <label className="usa-hint" htmlFor="tir-completion-status-year">
-              Year
-            </label>
-            <select
-              className="usa-select"
+      <PairFieldGroup
+        idPrefix="tir-completion-status"
+        groupClassName="exam-audit-group"
+        rowClassName="exam-audit-group__row"
+        title="TIR Completion Status for Year"
+        error={completionPairError}
+      >
+        {({ hasError, ariaDescribedBy }) => (
+          <>
+            <Select
               id="tir-completion-status-year"
-              data-testid="tir-completion-status-year"
-              value={form.tirCompletionYear}
+              label="Year"
+              compactLabel
+              hasError={hasError}
+              ariaDescribedBy={ariaDescribedBy}
+              placeholder="- Select -"
+              options={FISCAL_YEAR_OPTIONS.map((year) => ({
+                value: String(year),
+                label: String(year),
+              }))}
+              value={form.tirCompletionYear === '' ? '' : String(form.tirCompletionYear)}
               onChange={(e) => {
                 const val = e.target.value;
                 setForm((prev) => ({
@@ -321,23 +324,18 @@ export default function Chapter7PanelTrusteeInterimReportForm() {
                   tirCompletionYear: val ? Number(val) : '',
                 }));
               }}
-            >
-              <option value="">- Select -</option>
-              {FISCAL_YEAR_OPTIONS.map((year) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="usa-form-group">
-            <label className="usa-hint" htmlFor="tir-completion-status-status">
-              Status
-            </label>
-            <select
-              className="usa-select"
+            />
+            <Select
               id="tir-completion-status-status"
-              data-testid="tir-completion-status-status"
+              label="Status"
+              compactLabel
+              hasError={hasError}
+              ariaDescribedBy={ariaDescribedBy}
+              placeholder="- Select -"
+              options={[
+                { value: 'COMPLETE', label: 'Complete' },
+                { value: 'INCOMPLETE', label: 'Incomplete' },
+              ]}
               value={form.tirCompletionStatus}
               onChange={(e) => {
                 setForm((prev) => ({
@@ -345,19 +343,10 @@ export default function Chapter7PanelTrusteeInterimReportForm() {
                   tirCompletionStatus: e.target.value as TirCompletionStatus | '',
                 }));
               }}
-            >
-              <option value="">- Select -</option>
-              <option value="COMPLETE">Complete</option>
-              <option value="INCOMPLETE">Incomplete</option>
-            </select>
-          </div>
-        </div>
-        {completionPairError && (
-          <span className="usa-input__error-message" data-testid="tir-completion-status-error">
-            {completionPairError}
-          </span>
+            />
+          </>
         )}
-      </div>
+      </PairFieldGroup>
 
       <div className="usa-button-group">
         <Button

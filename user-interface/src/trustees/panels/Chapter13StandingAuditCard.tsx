@@ -1,9 +1,8 @@
-import { TrusteeUpcomingKeyDates, isoToMMDDYYYY } from '@common/cams/trustee-upcoming-key-dates';
-import Chapter13StandingKeyDatesCard from './Chapter13StandingKeyDatesCard';
+import EditableTableCard from '@/lib/components/cams/EditableTableCard/EditableTableCard';
+import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import { useOpenEditKeyDates } from './useOpenEditKeyDates';
-import CompletionStatusTag from './CompletionStatusTag';
-import { NO_DATE } from './upcomingKeyDatesFieldConfig';
+import { buildCompletionTag, formatDateOrDefault } from './upcomingKeyDatesFieldConfig';
 
 export interface Chapter13StandingAuditCardProps {
   trusteeId: string;
@@ -24,35 +23,38 @@ export default function Chapter13StandingAuditCard(
     'chapter13-standing-audit-key-dates',
   );
 
-  const tag =
-    data?.ch13AuditCompletionYear && data?.ch13AuditCompletionStatus ? (
-      <CompletionStatusTag
-        id="audit-completion-status"
-        status={data.ch13AuditCompletionStatus}
-        year={data.ch13AuditCompletionYear}
-      />
-    ) : undefined;
+  const tag = buildCompletionTag(
+    data?.ch13AuditCompletionYear,
+    data?.ch13AuditCompletionStatus,
+    'Complete',
+    'audit-completion-status',
+  );
 
   return (
-    <Chapter13StandingKeyDatesCard
+    <EditableTableCard
+      id={`edit-chapter13-standing-audit-${appointmentId}`}
       title="Audit"
+      testId="chapter13-standing-audit-card"
+      className="chapter13-standing-audit-card"
+      tableId={`chapter13-standing-audit-table-${appointmentId}`}
+      tableClassName="chapter13-standing-audit-table"
+      tableAriaLabel="Audit key dates"
       tag={tag}
       onEdit={canManage ? openEdit : undefined}
       editAriaLabel="Edit Audit key dates"
       editTitle="Edit Audit key dates"
-      testId="chapter13-standing-audit-card"
-      fields={[
+      columns={[
         {
-          label: 'Annual Audit Period',
-          value: ANNUAL_AUDIT_PERIOD,
+          key: 'annualAuditPeriod',
+          header: 'Annual Audit Period',
           testId: 'annual-audit-period-row',
         },
-        {
-          label: 'Last Audit Report',
-          value: data?.pastAudit ? isoToMMDDYYYY(data.pastAudit) : NO_DATE,
-          testId: 'past-audit-row',
-        },
+        { key: 'lastAuditReport', header: 'Last Audit Report', testId: 'past-audit-row' },
       ]}
+      values={{
+        annualAuditPeriod: ANNUAL_AUDIT_PERIOD,
+        lastAuditReport: formatDateOrDefault(data?.pastAudit),
+      }}
     />
   );
 }

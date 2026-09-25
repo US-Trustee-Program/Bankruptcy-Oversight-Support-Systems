@@ -3,6 +3,8 @@ import {
   validateCompletionPairPresence,
 } from '@common/cams/trustee-upcoming-key-dates';
 import { FISCAL_YEAR_OPTIONS } from './chapter7PanelKeyDatesInput';
+import Select from '@/lib/components/uswds/Select';
+import useGroupBlur from '@/lib/hooks/UseGroupBlur';
 
 export interface CompletionStatusValue {
   year: number | '';
@@ -26,55 +28,55 @@ export default function CompletionStatusFields(props: Readonly<CompletionStatusF
   // The Chapter 7 Panel forms show this inline as the pair is edited rather
   // than waiting for a save to fail.
   const pairError = validateCompletionPairPresence(value.year, value.status, errorLabel);
+  const pairErrorId = `${idPrefix}-error`;
+  const group = useGroupBlur();
 
   return (
     <fieldset className="usa-fieldset completion-status-fields">
       <legend className="usa-legend">{legend}</legend>
-      <div className="completion-status-fields__row">
-        <div className="usa-form-group">
-          <label className="usa-hint" htmlFor={`${idPrefix}-year`}>
-            Year
-          </label>
-          <select
-            className="usa-select"
-            id={`${idPrefix}-year`}
-            data-testid={`${idPrefix}-year`}
-            value={value.year}
-            onChange={(ev) =>
-              onChange({ ...value, year: ev.target.value ? Number(ev.target.value) : '' })
-            }
-          >
-            <option value="">- Select -</option>
-            {yearOptions.map((year) => (
-              <option key={year} value={year}>
-                {year}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="usa-form-group">
-          <label className="usa-hint" htmlFor={`${idPrefix}-status`}>
-            Status
-          </label>
-          <select
-            className="usa-select"
-            id={`${idPrefix}-status`}
-            data-testid={`${idPrefix}-status`}
-            value={value.status}
-            onChange={(ev) =>
-              onChange({ ...value, status: ev.target.value as CompletionStatus | '' })
-            }
-          >
-            <option value="">- Select -</option>
-            <option value="COMPLETE">Complete</option>
-            <option value="INCOMPLETE">Incomplete</option>
-          </select>
-        </div>
+      <div
+        className="completion-status-fields__row"
+        onFocus={group.handleFocus}
+        onBlur={group.handleBlur}
+      >
+        <Select
+          id={`${idPrefix}-year`}
+          label="Year"
+          compactLabel
+          hasError={group.touched && !!pairError}
+          ariaDescribedBy={group.touched && pairError ? pairErrorId : undefined}
+          placeholder="- Select -"
+          options={yearOptions.map((year) => ({ value: String(year), label: String(year) }))}
+          value={value.year === '' ? '' : String(value.year)}
+          onChange={(ev) =>
+            onChange({ ...value, year: ev.target.value ? Number(ev.target.value) : '' })
+          }
+        />
+        <Select
+          id={`${idPrefix}-status`}
+          label="Status"
+          compactLabel
+          hasError={group.touched && !!pairError}
+          ariaDescribedBy={group.touched && pairError ? pairErrorId : undefined}
+          placeholder="- Select -"
+          options={[
+            { value: 'COMPLETE', label: 'Complete' },
+            { value: 'INCOMPLETE', label: 'Incomplete' },
+          ]}
+          value={value.status}
+          onChange={(ev) =>
+            onChange({ ...value, status: ev.target.value as CompletionStatus | '' })
+          }
+        />
       </div>
-      {pairError && (
-        <span className="usa-error-message" data-testid={`${idPrefix}-error`}>
+      {group.touched && pairError && (
+        <div
+          className="cams-field-error-message"
+          id={pairErrorId}
+          data-testid={`${idPrefix}-error`}
+        >
           {pairError}
-        </span>
+        </div>
       )}
     </fieldset>
   );

@@ -1,9 +1,9 @@
+import EditableTableCard from '@/lib/components/cams/EditableTableCard/EditableTableCard';
 import { TrusteeUpcomingKeyDates, isoToMMDDYYYY } from '@common/cams/trustee-upcoming-key-dates';
-import Chapter13StandingKeyDatesCard from './Chapter13StandingKeyDatesCard';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import { useOpenEditKeyDates } from './useOpenEditKeyDates';
-import CompletionStatusTag from './CompletionStatusTag';
 import {
+  buildCompletionTag,
   tprReviewPeriodField,
   tprFrequencyField,
   tprDueField,
@@ -27,37 +27,46 @@ export default function Chapter13StandingTrusteePerformanceReportCard(
     'chapter13-standing-tpr-key-dates',
   );
 
-  const tag =
-    data?.ch13TprCompletionYear && data?.ch13TprCompletionStatus ? (
-      <CompletionStatusTag
-        id="tpr-completion-status"
-        status={data.ch13TprCompletionStatus}
-        year={data.ch13TprCompletionYear}
-      />
-    ) : undefined;
-
-  const reviewPeriod = tprReviewPeriodField(data, 'TPR Review Period');
-  const frequency = tprFrequencyField(data);
-  const due = tprDueField(data, 'TPR Due');
+  const tag = buildCompletionTag(
+    data?.ch13TprCompletionYear,
+    data?.ch13TprCompletionStatus,
+    'Complete',
+    'tpr-completion-status',
+  );
 
   return (
-    <Chapter13StandingKeyDatesCard
+    <EditableTableCard
+      id={`edit-chapter13-standing-tpr-${appointmentId}`}
       title="Trustee Performance Report"
+      testId="chapter13-standing-tpr-card"
+      className="chapter13-standing-tpr-card"
+      tableId={`chapter13-standing-tpr-table-${appointmentId}`}
+      tableClassName="chapter13-standing-tpr-table"
+      tableAriaLabel="Trustee Performance Report key dates"
       tag={tag}
       onEdit={canManage ? openEdit : undefined}
       editAriaLabel="Edit Trustee Performance Report key dates"
       editTitle="Edit Trustee Performance Report key dates"
-      testId="chapter13-standing-tpr-card"
-      fields={[
-        { label: reviewPeriod.label, value: reviewPeriod.value, testId: reviewPeriod.testId },
-        { label: frequency.label, value: frequency.value, testId: frequency.testId },
-        { label: due.label, value: due.value, testId: due.testId },
+      columns={[
+        { key: 'tprReviewPeriod', header: 'TPR Review Period', testId: 'tpr-review-period-row' },
         {
-          label: 'Last TPR Submitted',
-          value: data?.pastTprSubmission ? isoToMMDDYYYY(data.pastTprSubmission) : NO_DATE,
+          key: 'tprFrequency',
+          header: 'TPR Review Period Frequency',
+          testId: 'tpr-review-period-frequency-row',
+        },
+        { key: 'tprDue', header: 'TPR Due', testId: 'tpr-due-row' },
+        {
+          key: 'lastTprSubmitted',
+          header: 'Last TPR Submitted',
           testId: 'last-tpr-submitted-row',
         },
       ]}
+      values={{
+        tprReviewPeriod: tprReviewPeriodField(data, 'TPR Review Period').value,
+        tprFrequency: tprFrequencyField(data).value,
+        tprDue: tprDueField(data, 'TPR Due').value,
+        lastTprSubmitted: data?.pastTprSubmission ? isoToMMDDYYYY(data.pastTprSubmission) : NO_DATE,
+      }}
     />
   );
 }

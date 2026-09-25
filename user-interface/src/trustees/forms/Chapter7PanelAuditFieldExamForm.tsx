@@ -17,7 +17,9 @@ import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import DatePicker from '@/lib/components/uswds/DatePicker';
+import Select from '@/lib/components/uswds/Select';
 import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
+import PairFieldGroup from './PairFieldGroup';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import { Stop } from '@/lib/components/Stop';
 
@@ -162,18 +164,26 @@ export default function Chapter7PanelAuditFieldExamForm() {
     <div className="edit-upcoming-key-dates" data-testid="edit-chapter7-panel-audit-field-exam">
       <h3>Edit Audit/Field Exam Key Dates</h3>
 
-      <div className="exam-audit-group">
-        <p className="usa-label">Field Exam or Audit</p>
-        <div className="exam-audit-group__row">
-          <div className="usa-form-group">
-            <label className="usa-hint" htmlFor="upcoming-exam-audit-year">
-              Year
-            </label>
-            <select
-              className="usa-select"
+      <PairFieldGroup
+        idPrefix="exam-audit-pair"
+        groupClassName="exam-audit-group"
+        rowClassName="exam-audit-group__row"
+        title="Field Exam or Audit"
+        error={examOrAuditPairError}
+      >
+        {({ hasError, ariaDescribedBy }) => (
+          <>
+            <Select
               id="upcoming-exam-audit-year"
-              data-testid="upcoming-exam-audit-year"
-              value={form.upcomingExamOrAuditYear}
+              label="Year"
+              compactLabel
+              hasError={hasError}
+              ariaDescribedBy={ariaDescribedBy}
+              placeholder="- Select -"
+              options={UPCOMING_YEAR_OPTIONS.map((y) => ({ value: String(y), label: String(y) }))}
+              value={
+                form.upcomingExamOrAuditYear === '' ? '' : String(form.upcomingExamOrAuditYear)
+              }
               onChange={(e) => {
                 const val = e.target.value;
                 setForm((prev) => ({
@@ -181,23 +191,18 @@ export default function Chapter7PanelAuditFieldExamForm() {
                   upcomingExamOrAuditYear: val ? Number(val) : '',
                 }));
               }}
-            >
-              <option value="">- Select -</option>
-              {UPCOMING_YEAR_OPTIONS.map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="usa-form-group">
-            <label className="usa-hint" htmlFor="upcoming-exam-audit-type">
-              Type
-            </label>
-            <select
-              className="usa-select"
+            />
+            <Select
               id="upcoming-exam-audit-type"
-              data-testid="upcoming-exam-audit-type"
+              label="Type"
+              compactLabel
+              hasError={hasError}
+              ariaDescribedBy={ariaDescribedBy}
+              placeholder="- Select -"
+              options={[
+                { value: 'Field Exam', label: 'Field Exam' },
+                { value: 'Audit', label: 'Audit' },
+              ]}
               value={form.upcomingExamOrAuditType}
               onChange={(e) => {
                 setForm((prev) => ({
@@ -205,19 +210,10 @@ export default function Chapter7PanelAuditFieldExamForm() {
                   upcomingExamOrAuditType: e.target.value as 'Field Exam' | 'Audit' | '',
                 }));
               }}
-            >
-              <option value="">- Select -</option>
-              <option value="Field Exam">Field Exam</option>
-              <option value="Audit">Audit</option>
-            </select>
-          </div>
-        </div>
-        {examOrAuditPairError && (
-          <span className="usa-input__error-message" data-testid="exam-audit-pair-error">
-            {examOrAuditPairError}
-          </span>
+            />
+          </>
         )}
-      </div>
+      </PairFieldGroup>
 
       <DatePicker
         id="past-audit"
@@ -228,29 +224,18 @@ export default function Chapter7PanelAuditFieldExamForm() {
         disableMax
       />
 
-      <div className="usa-form-group">
-        <label className="usa-label" htmlFor="last-audit-fiscal-year">
-          Last Audit&apos;s Fiscal Year
-        </label>
-        <span className="usa-hint">The fiscal year of the TIR data audited</span>
-        <select
-          className="usa-select"
-          id="last-audit-fiscal-year"
-          data-testid="last-audit-fiscal-year"
-          value={form.lastAuditFiscalYear}
-          onChange={(ev) => {
-            const val = ev.target.value;
-            setForm((prev) => ({ ...prev, lastAuditFiscalYear: val ? Number(val) : '' }));
-          }}
-        >
-          <option value="">- Select -</option>
-          {FISCAL_YEAR_OPTIONS.map((year) => (
-            <option key={year} value={year}>
-              {year}
-            </option>
-          ))}
-        </select>
-      </div>
+      <Select
+        id="last-audit-fiscal-year"
+        label="Last Audit's Fiscal Year"
+        ariaDescription="The fiscal year of the TIR data audited"
+        placeholder="- Select -"
+        options={FISCAL_YEAR_OPTIONS.map((year) => ({ value: String(year), label: String(year) }))}
+        value={form.lastAuditFiscalYear === '' ? '' : String(form.lastAuditFiscalYear)}
+        onChange={(ev) => {
+          const val = ev.target.value;
+          setForm((prev) => ({ ...prev, lastAuditFiscalYear: val ? Number(val) : '' }));
+        }}
+      />
 
       <DatePicker
         id="past-field-exam"
@@ -261,18 +246,27 @@ export default function Chapter7PanelAuditFieldExamForm() {
         disableMax
       />
 
-      <div className="exam-audit-group">
-        <p className="usa-label">Field Exam/Audit Completion Status for Year</p>
-        <div className="exam-audit-group__row">
-          <div className="usa-form-group">
-            <label className="usa-hint" htmlFor="audit-completion-status-year">
-              Year
-            </label>
-            <select
-              className="usa-select"
+      <PairFieldGroup
+        idPrefix="audit-completion-status"
+        groupClassName="exam-audit-group"
+        rowClassName="exam-audit-group__row"
+        title="Field Exam/Audit Completion Status for Year"
+        error={completionPairError}
+      >
+        {({ hasError, ariaDescribedBy }) => (
+          <>
+            <Select
               id="audit-completion-status-year"
-              data-testid="audit-completion-status-year"
-              value={form.auditCompletionYear}
+              label="Year"
+              compactLabel
+              hasError={hasError}
+              ariaDescribedBy={ariaDescribedBy}
+              placeholder="- Select -"
+              options={FISCAL_YEAR_OPTIONS.map((year) => ({
+                value: String(year),
+                label: String(year),
+              }))}
+              value={form.auditCompletionYear === '' ? '' : String(form.auditCompletionYear)}
               onChange={(e) => {
                 const val = e.target.value;
                 setForm((prev) => ({
@@ -280,23 +274,18 @@ export default function Chapter7PanelAuditFieldExamForm() {
                   auditCompletionYear: val ? Number(val) : '',
                 }));
               }}
-            >
-              <option value="">- Select -</option>
-              {FISCAL_YEAR_OPTIONS.map((year) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="usa-form-group">
-            <label className="usa-hint" htmlFor="audit-completion-status-status">
-              Status
-            </label>
-            <select
-              className="usa-select"
+            />
+            <Select
               id="audit-completion-status-status"
-              data-testid="audit-completion-status-status"
+              label="Status"
+              compactLabel
+              hasError={hasError}
+              ariaDescribedBy={ariaDescribedBy}
+              placeholder="- Select -"
+              options={[
+                { value: 'CLOSED', label: 'Complete' },
+                { value: 'NOT_CLOSED', label: 'Incomplete' },
+              ]}
               value={form.auditCompletionStatus}
               onChange={(e) => {
                 setForm((prev) => ({
@@ -304,19 +293,10 @@ export default function Chapter7PanelAuditFieldExamForm() {
                   auditCompletionStatus: e.target.value as AuditCompletionStatus | '',
                 }));
               }}
-            >
-              <option value="">- Select -</option>
-              <option value="CLOSED">Complete</option>
-              <option value="NOT_CLOSED">Incomplete</option>
-            </select>
-          </div>
-        </div>
-        {completionPairError && (
-          <span className="usa-input__error-message" data-testid="audit-completion-status-error">
-            {completionPairError}
-          </span>
+            />
+          </>
         )}
-      </div>
+      </PairFieldGroup>
 
       <div className="usa-button-group">
         <Button

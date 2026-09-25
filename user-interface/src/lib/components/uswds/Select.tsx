@@ -27,6 +27,10 @@ type SelectProps = Omit<JSX.IntrinsicElements['select'], 'value'> & {
   // by a parent (e.g. a Year/Status pair with one combined message below both).
   // Mirrors MonthDaySelector's `hasError` prop for the same use case.
   hasError?: boolean;
+  // Id of an externally rendered error message (e.g. the parent's shared
+  // Year/Status pair error) to include in aria-describedby, so assistive tech
+  // announces it even though Select isn't the one rendering that text.
+  ariaDescribedBy?: string;
   // Renders the label in the lighter `usa-hint` style instead of `usa-label`,
   // for sub-fields grouped under a shared heading (e.g. a Year/Status pair).
   compactLabel?: boolean;
@@ -40,6 +44,7 @@ function Select_(props: SelectProps, ref: React.Ref<SelectRef>) {
     ariaDescription,
     errorMessage,
     hasError,
+    ariaDescribedBy,
     required,
     className,
     compactLabel,
@@ -55,7 +60,7 @@ function Select_(props: SelectProps, ref: React.Ref<SelectRef>) {
   const generatedId = useId();
   const baseId = props.id ?? generatedId;
   const hintId = `${baseId}-hint`;
-  const errorId = `${baseId}-error-message`;
+  const errorId = `${baseId}-field-error-message`;
 
   useEffect(() => {
     setSelectValue(props.value ?? '');
@@ -112,6 +117,9 @@ function Select_(props: SelectProps, ref: React.Ref<SelectRef>) {
     if (errorMessage) {
       ids.push(errorId);
     }
+    if (ariaDescribedBy) {
+      ids.push(ariaDescribedBy);
+    }
     return ids.length > 0 ? ids.join(' ') : undefined;
   }
 
@@ -153,10 +161,10 @@ function Select_(props: SelectProps, ref: React.Ref<SelectRef>) {
       </select>
       {/* Kept mounted (rather than conditionally rendered) so the polite live region
           is registered with assistive tech before its text content changes.
-          Uses the app's usa-input__error-message style (non-bold) to match Input/ComboBox. */}
+          Uses the app's cams-field-error-message style (non-bold) to match Input/ComboBox. */}
       <div
         id={errorId}
-        className={errorMessage ? 'usa-input__error-message' : undefined}
+        className={errorMessage ? 'cams-field-error-message' : undefined}
         aria-live="polite"
       >
         {errorMessage}

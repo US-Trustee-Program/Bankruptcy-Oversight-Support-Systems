@@ -54,8 +54,9 @@ describe('Chapter13StandingTrusteePerformanceReportCard', () => {
     TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
   });
 
-  test('renders TPR Review Period, Frequency, and Due rows', () => {
+  test('renders the Trustee Performance Report title and TPR Review Period, Frequency, and Due rows', () => {
     renderComponent();
+    expect(screen.getByText('Trustee Performance Report')).toBeInTheDocument();
     expect(screen.getByTestId('tpr-review-period-row')).toBeInTheDocument();
     expect(screen.getByTestId('tpr-review-period-frequency-row')).toBeInTheDocument();
     expect(screen.getByTestId('tpr-due-row')).toBeInTheDocument();
@@ -104,9 +105,6 @@ describe('Chapter13StandingTrusteePerformanceReportCard', () => {
     expect(screen.queryByTestId('tag-tpr-completion-status')).not.toBeInTheDocument();
   });
 
-  // CompletionStatusTag's own color/style output (bg-success vs. bg-secondary-dark) is
-  // covered by CompletionStatusTag.test.tsx; these tests only verify this card passes
-  // the right status/year through to it.
   test('renders a "Complete for {year}" tag when ch13TprCompletionStatus is Complete', () => {
     renderComponent({
       data: { ...baseDocument, ch13TprCompletionYear: 2026, ch13TprCompletionStatus: 'Complete' },

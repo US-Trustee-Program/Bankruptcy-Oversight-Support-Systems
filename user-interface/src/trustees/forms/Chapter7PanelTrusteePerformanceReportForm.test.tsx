@@ -245,6 +245,10 @@ describe('Chapter7PanelTrusteePerformanceReportForm', () => {
 
     await userEvent.selectOptions(screen.getByTestId('tpr-completion-status-year'), '');
 
+    expect(screen.getByTestId('tpr-completion-status-error')).toHaveTextContent('');
+
+    fireEvent.blur(screen.getByTestId('tpr-completion-status-year'), { relatedTarget: null });
+
     await waitFor(() => {
       expect(screen.getByTestId('tpr-completion-status-error')).toHaveTextContent(
         'Trustee Performance Review Completion Status Year and Status must both be set.',
@@ -263,6 +267,10 @@ describe('Chapter7PanelTrusteePerformanceReportForm', () => {
     );
 
     await userEvent.selectOptions(screen.getByTestId('tpr-completion-status-status'), '');
+
+    expect(screen.getByTestId('tpr-completion-status-error')).toHaveTextContent('');
+
+    fireEvent.blur(screen.getByTestId('tpr-completion-status-status'), { relatedTarget: null });
 
     await waitFor(() => {
       expect(screen.getByTestId('tpr-completion-status-error')).toHaveTextContent(
@@ -367,6 +375,10 @@ describe('Chapter7PanelTrusteePerformanceReportForm', () => {
 
     await userEvent.selectOptions(screen.getByTestId('tpr-due-year-type'), '');
 
+    expect(screen.getByTestId('tpr-due-error')).toHaveTextContent('');
+
+    fireEvent.blur(screen.getByTestId('tpr-due-year-type'), { relatedTarget: null });
+
     await waitFor(() => {
       expect(screen.getByTestId('tpr-due-error')).toHaveTextContent(
         'TPR Due Year Type is required.',
@@ -382,7 +394,9 @@ describe('Chapter7PanelTrusteePerformanceReportForm', () => {
 
     await waitFor(() => expect(screen.getByTestId('tpr-due-year-type')).toHaveValue('EVEN'));
 
+    fireEvent.focus(document.getElementById('tpr-due-month')!);
     fireEvent.change(document.getElementById('tpr-due-month')!, { target: { value: '' } });
+    fireEvent.blur(document.getElementById('tpr-due-month')!, { relatedTarget: null });
 
     await waitFor(() => {
       expect(screen.getByTestId('tpr-due-error')).toBeInTheDocument();
@@ -400,6 +414,10 @@ describe('Chapter7PanelTrusteePerformanceReportForm', () => {
     });
 
     await userEvent.selectOptions(screen.getByTestId('tpr-due-year-type'), 'EVEN');
+
+    expect(screen.getByTestId('tpr-due-error')).toHaveTextContent('');
+
+    fireEvent.blur(screen.getByTestId('tpr-due-year-type'), { relatedTarget: null });
 
     await waitFor(() => {
       expect(screen.getByTestId('tpr-due-error')).toBeInTheDocument();

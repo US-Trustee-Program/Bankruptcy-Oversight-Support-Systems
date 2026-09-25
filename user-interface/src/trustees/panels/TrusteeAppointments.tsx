@@ -4,13 +4,13 @@ import Api2 from '@/lib/models/api2';
 import { sortByCourtLocation } from '@/lib/utils/court-utils';
 import {
   TrusteeAppointment,
-  isChapter13Standing,
   isChapter11CaseByCase,
   isChapter11SubchapterV,
   isChapter7Elected,
   isChapter7Panel,
   isChapter12Or13CaseByCase,
   isChapter12Standing,
+  isChapter13Standing,
 } from '@common/cams/trustee-appointments';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
@@ -23,10 +23,10 @@ import Chapter7PanelAppointmentBody from './Chapter7PanelAppointmentBody';
 import Chapter11SubchapterVAppointmentBody from './Chapter11SubchapterVAppointmentBody';
 import Chapter12And13CaseByCaseAppointmentBody from './Chapter12And13CaseByCaseAppointmentBody';
 import Chapter12StandingAppointmentBody from './Chapter12StandingAppointmentBody';
+import Chapter13StandingAppointmentBody from './Chapter13StandingAppointmentBody';
 import Button from '@/lib/components/uswds/Button';
 import Icon from '@/lib/components/uswds/Icon';
 import { useNavigate } from 'react-router-dom';
-import { useSessionState } from '@/lib/hooks/UseSessionState';
 import { useAppointmentExpansion } from './useAppointmentExpansion';
 
 interface TrusteeAppointmentsProps {
@@ -52,6 +52,9 @@ function resolveAccordionBody(appointment: TrusteeAppointment): ReactNode | unde
   if (isChapter12Standing(appointment.chapter, appointment.appointmentType)) {
     return <Chapter12StandingAppointmentBody appointment={appointment} />;
   }
+  if (isChapter13Standing(appointment.chapter, appointment.appointmentType)) {
+    return <Chapter13StandingAppointmentBody appointment={appointment} />;
+  }
   return undefined;
 }
 
@@ -60,10 +63,6 @@ export default function TrusteeAppointments(props: Readonly<TrusteeAppointmentsP
   const [appointments, setAppointments] = useState<TrusteeAppointment[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [persistedExpandedId, setPersistedExpandedId] = useSessionState<string>(
-    `ch13-standing-expanded-${trusteeId}`,
-    '',
-  );
   const navigate = useNavigate();
   const { isExpanded, toggleExpanded } = useAppointmentExpansion();
 
@@ -127,16 +126,6 @@ export default function TrusteeAppointments(props: Readonly<TrusteeAppointmentsP
 
   const sortedAppointments = sortByCourtLocation(appointments, { includeAppointmentDetails: true });
 
-  const ch13StandingIds = sortedAppointments
-    .filter((a) => isChapter13Standing(a.chapter, a.appointmentType))
-    .map((a) => a.id);
-  const validPersistedId = ch13StandingIds.includes(persistedExpandedId) ? persistedExpandedId : '';
-  const firstActiveCh13Id =
-    sortedAppointments.find(
-      (a) => isChapter13Standing(a.chapter, a.appointmentType) && a.status === 'active',
-    )?.id ?? '';
-  const initialExpandedId = validPersistedId || firstActiveCh13Id;
-
   return (
     <div className="trustee-appointments-list">
       <div className="toolbar">
@@ -146,7 +135,7 @@ export default function TrusteeAppointments(props: Readonly<TrusteeAppointmentsP
         </Button>
       </div>
       <div className="appointments-list">
-        <AccordionGroup initialExpandedId={initialExpandedId}>
+        <AccordionGroup>
           {sortedAppointments.map((appointment) => {
             const accordionBody = resolveAccordionBody(appointment);
             return accordionBody ? (
@@ -159,12 +148,7 @@ export default function TrusteeAppointments(props: Readonly<TrusteeAppointmentsP
                 {accordionBody}
               </AppointmentAccordion>
             ) : (
-              <AppointmentCard
-                key={appointment.id}
-                appointment={appointment}
-                onExpand={setPersistedExpandedId}
-                onCollapse={() => setPersistedExpandedId('')}
-              />
+              <AppointmentCard key={appointment.id} appointment={appointment} />
             );
           })}
         </AccordionGroup>

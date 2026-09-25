@@ -11,6 +11,7 @@ import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import MonthDaySelector from '@/lib/components/uswds/MonthDaySelector';
 import MonthDayRangeSelector from '@/lib/components/uswds/MonthDayRangeSelector';
 import DatePicker from '@/lib/components/uswds/DatePicker';
+import Select from '@/lib/components/uswds/Select';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
@@ -162,30 +163,22 @@ export default function TrusteePerformanceReportKeyDatesForm() {
         onEndChange={(value) => setForm((prev) => ({ ...prev, tprReviewPeriodEnd: value }))}
         onValidationChange={setReviewPeriodValid}
       />
-      <div className="usa-form-group">
-        <label className="usa-label" htmlFor="tpr-frequency">
-          TPR Review Period Frequency
-        </label>
-        <select
-          className="usa-select"
-          id="tpr-frequency"
-          data-testid="tpr-frequency"
-          value={form.tprFrequency}
-          onChange={(ev) =>
-            setForm((prev) => ({
-              ...prev,
-              tprFrequency: ev.target.value as TprFormState['tprFrequency'],
-            }))
-          }
-        >
-          <option value="">- Select -</option>
-          {FREQUENCY_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </div>
+      <Select
+        id="tpr-frequency"
+        label="TPR Review Period Frequency"
+        placeholder="- Select -"
+        options={FREQUENCY_OPTIONS.map((option) => ({
+          value: option.value,
+          label: option.label,
+        }))}
+        value={form.tprFrequency}
+        onChange={(ev) =>
+          setForm((prev) => ({
+            ...prev,
+            tprFrequency: ev.target.value as TprFormState['tprFrequency'],
+          }))
+        }
+      />
       <div className="usa-form-group">
         <p className="usa-label">TPR Due</p>
         <MonthDaySelector
@@ -193,22 +186,19 @@ export default function TrusteePerformanceReportKeyDatesForm() {
           value={form.tprDue}
           onChange={(value) => setForm((prev) => ({ ...prev, tprDue: value }))}
         />
-        <div className="usa-form-group year-type-selector">
-          <label className="usa-hint" htmlFor="tpr-due-year-type">
-            Year Type
-          </label>
-          <select
-            className="usa-select"
-            id="tpr-due-year-type"
-            data-testid="tpr-due-year-type"
-            value={form.tprDueYearType}
-            onChange={(ev) => setForm((prev) => ({ ...prev, tprDueYearType: ev.target.value }))}
-          >
-            <option value="">- Select -</option>
-            <option value="EVEN">EVEN</option>
-            <option value="ODD">ODD</option>
-          </select>
-        </div>
+        <Select
+          id="tpr-due-year-type"
+          label="Year Type"
+          compactLabel
+          placeholder="- Select -"
+          options={[
+            { value: 'EVEN', label: 'EVEN' },
+            { value: 'ODD', label: 'ODD' },
+          ]}
+          value={form.tprDueYearType}
+          onChange={(ev) => setForm((prev) => ({ ...prev, tprDueYearType: ev.target.value }))}
+          className="year-type-selector"
+        />
       </div>
       <DatePicker
         id="last-tpr-submitted"

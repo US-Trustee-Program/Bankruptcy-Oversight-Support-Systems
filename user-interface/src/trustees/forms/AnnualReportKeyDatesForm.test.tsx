@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
 import AnnualReportKeyDatesForm from './AnnualReportKeyDatesForm';
@@ -186,12 +186,16 @@ describe('AnnualReportKeyDatesForm', () => {
       String(currentYear),
     );
 
-    // The pair error shows inline as the field is edited, and Save stays
-    // disabled, rather than waiting for a submit to fail.
+    // Save stays disabled immediately, but the pair error text waits until
+    // focus leaves the Year/Status row so it doesn't flash mid-edit.
+    expect(screen.getByTestId('button-save-annual-report-key-dates')).toBeDisabled();
+    expect(screen.queryByTestId('annual-report-completion-error')).not.toBeInTheDocument();
+
+    fireEvent.blur(screen.getByTestId('annual-report-completion-year'), { relatedTarget: null });
+
     expect(await screen.findByTestId('annual-report-completion-error')).toHaveTextContent(
       'Annual Report Completion Status Year and Status must both be set.',
     );
-    expect(screen.getByTestId('button-save-annual-report-key-dates')).toBeDisabled();
     expect(putSpy).not.toHaveBeenCalled();
   });
 
@@ -209,6 +213,10 @@ describe('AnnualReportKeyDatesForm', () => {
       screen.getByTestId('annual-report-completion-status'),
       'COMPLETE',
     );
+
+    expect(screen.queryByTestId('annual-report-completion-error')).not.toBeInTheDocument();
+
+    fireEvent.blur(screen.getByTestId('annual-report-completion-status'), { relatedTarget: null });
 
     expect(await screen.findByTestId('annual-report-completion-error')).toHaveTextContent(
       'Annual Report Completion Status Year and Status must both be set.',

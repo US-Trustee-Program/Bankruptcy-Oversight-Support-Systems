@@ -23,6 +23,7 @@ import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import DatePicker from '@/lib/components/uswds/DatePicker';
 import MonthYearSelector from '@/lib/components/uswds/MonthYearSelector';
+import Select from '@/lib/components/uswds/Select';
 import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import { Stop } from '@/lib/components/Stop';
@@ -235,29 +236,22 @@ export default function PastKeyDatesForm() {
       <h3>{PAST_KEY_DATES_VARIANT_LABELS[variant].editHeading}</h3>
       {PAST_KEY_DATES_FIELD_CONFIG[variant].map((field) =>
         field.kind === 'year' ? (
-          <div className="usa-form-group" key={field.inputId}>
-            <label className="usa-label" htmlFor={field.inputId}>
-              {field.formLabel}
-            </label>
-            {field.hint && <span className="usa-hint">{field.hint}</span>}
-            <select
-              className="usa-select"
-              id={field.inputId}
-              data-testid={field.inputId}
-              value={form.lastAuditFiscalYear}
-              onChange={(ev) => {
-                const val = ev.target.value;
-                setForm((prev) => ({ ...prev, lastAuditFiscalYear: val ? Number(val) : '' }));
-              }}
-            >
-              <option value="">- Select -</option>
-              {FISCAL_YEAR_OPTIONS.map((year) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
-          </div>
+          <Select
+            key={field.inputId}
+            id={field.inputId}
+            label={field.formLabel}
+            ariaDescription={field.hint}
+            placeholder="- Select -"
+            options={FISCAL_YEAR_OPTIONS.map((year) => ({
+              value: String(year),
+              label: String(year),
+            }))}
+            value={form.lastAuditFiscalYear === '' ? '' : String(form.lastAuditFiscalYear)}
+            onChange={(ev) => {
+              const val = ev.target.value;
+              setForm((prev) => ({ ...prev, lastAuditFiscalYear: val ? Number(val) : '' }));
+            }}
+          />
         ) : field.kind === 'month-year' ? (
           <MonthYearSelector
             key={field.inputId}

@@ -1,16 +1,12 @@
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
 import AppointmentCard, { AppointmentCardProps } from './AppointmentCard';
-import Api2 from '@/lib/models/api2';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import userEvent from '@testing-library/user-event';
 import TestingUtilities from '@/lib/testing/testing-utilities';
 import { CamsRole } from '@common/cams/roles';
-import * as featureFlagsHook from '@/lib/hooks/UseFeatureFlags';
-import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
-import { DISPLAY_CHPT13_STANDING_KEY_DATES } from '@/lib/hooks/UseFeatureFlags';
 
 const mockUseNavigate = vi.hoisted(() => vi.fn());
 const mockUseCourts = vi.hoisted(() => vi.fn());
@@ -27,86 +23,6 @@ vi.mock('@/lib/hooks/UseCourts', () => ({
   default: mockUseCourts,
 }));
 
-vi.mock('./UpcomingKeyDates', () => ({
-  default: (props: {
-    data: unknown;
-    isLoading: boolean;
-    variant?: string;
-    tprDisplayUpdates?: boolean;
-    trusteeId?: string;
-    appointmentId?: string;
-    appointmentHeading?: string;
-  }) => (
-    <div
-      data-testid="upcoming-key-dates-card"
-      data-is-loading={String(props.isLoading)}
-      data-has-data={String(props.data !== null)}
-      data-variant={String(props.variant)}
-      data-tpr-display-updates={String(props.tprDisplayUpdates)}
-      data-trustee-id={String(props.trusteeId)}
-      data-appointment-id={String(props.appointmentId)}
-      data-appointment-heading={String(props.appointmentHeading)}
-    />
-  ),
-}));
-vi.mock('./PastKeyDates', () => ({
-  default: (props: {
-    data: unknown;
-    isLoading: boolean;
-    variant?: string;
-    trusteeId?: string;
-    appointmentId?: string;
-    appointmentHeading?: string;
-  }) => (
-    <div
-      data-testid="past-key-dates-card"
-      data-is-loading={String(props.isLoading)}
-      data-has-data={String(props.data !== null)}
-      data-variant={String(props.variant)}
-      data-trustee-id={String(props.trusteeId)}
-      data-appointment-id={String(props.appointmentId)}
-      data-appointment-heading={String(props.appointmentHeading)}
-    />
-  ),
-}));
-
-// Chapter13StandingAppointmentBody's own internals (header text, status tag color,
-// the four themed cards, Edit Appointment navigation) are covered by
-// Chapter13StandingAppointmentBody.test.tsx. AppointmentCard's job for this branch is
-// just deciding to render this component and forwarding the right props -- that's all
-// this stub needs to expose.
-vi.mock('./Chapter13StandingAppointmentBody', () => ({
-  default: (props: {
-    appointment: TrusteeAppointment;
-    keyDatesData: unknown;
-    isKeyDatesLoading: boolean;
-    expandedId?: string;
-    onExpand?: (id: string) => void;
-    onCollapse?: (id: string) => void;
-  }) => (
-    <div
-      data-testid="chapter13-standing-appointment-body"
-      data-appointment-id={props.appointment.id}
-      data-has-key-dates-data={String(props.keyDatesData !== null)}
-      data-is-key-dates-loading={String(props.isKeyDatesLoading)}
-      data-expanded-id={String(props.expandedId)}
-    >
-      <button
-        data-testid={`accordion-button-${props.appointment.id}`}
-        onClick={() => props.onExpand?.(props.appointment.id)}
-      >
-        Expand
-      </button>
-      <button
-        data-testid={`accordion-collapse-button-${props.appointment.id}`}
-        onClick={() => props.onCollapse?.(props.appointment.id)}
-      >
-        Collapse
-      </button>
-    </div>
-  ),
-}));
-
 describe('AppointmentCard', () => {
   const mockNavigate = vi.fn();
 
@@ -115,7 +31,6 @@ describe('AppointmentCard', () => {
     mockUseNavigate.mockReturnValue(mockNavigate);
     mockUseCourts.mockReturnValue({ courts: [], loading: false, error: null });
     TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
-    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
   });
 
   const mockAppointment: TrusteeAppointment = {
@@ -321,154 +236,10 @@ describe('AppointmentCard', () => {
   });
 
   // Chapter 12/13 Case by Case no longer reaches AppointmentCard -- TrusteeAppointments
-  // routes it to Chapter12And13CaseByCaseAppointmentBody (CAMS-913), so the tests for
-  // that path moved with the code. Heading construction is still covered by the
-  // Chapter 12/13 Standing describes below.
-
-  describe('when DISPLAY_CHPT13_STANDING_KEY_DATES flag is enabled', () => {
-    const ch13StandingAppointment: TrusteeAppointment = {
-      ...mockAppointment,
-      chapter: '13',
-      appointmentType: 'standing',
-    };
-
-    // Chapter13StandingAppointmentBody's own rendering (header text, status tag color,
-    // the four themed cards, Edit Appointment navigation, no-canManage-gate behavior) is
-    // covered by Chapter13StandingAppointmentBody.test.tsx. These tests only verify
-    // AppointmentCard's own responsibility: deciding to render that component instead of
-    // the generic flat card, gating the key-dates fetch on accordion expansion, and
-    // forwarding the right props.
-
-    test('renders Chapter13StandingAppointmentBody instead of the generic Key Information card', () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT13_STANDING_KEY_DATES]: true,
-      });
-
-      renderWithProps({ appointment: ch13StandingAppointment });
-
-      expect(screen.getByTestId('chapter13-standing-appointment-body')).toBeInTheDocument();
-      expect(screen.queryByText('Key Information')).not.toBeInTheDocument();
-      expect(
-        screen.queryByRole('button', { name: /edit trustee appointment/i }),
-      ).not.toBeInTheDocument();
-      expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('past-key-dates-card')).not.toBeInTheDocument();
-    });
-
-    test('does not render Chapter13StandingAppointmentBody when flag is disabled', () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT13_STANDING_KEY_DATES]: false,
-      });
-
-      renderWithProps({ appointment: ch13StandingAppointment });
-
-      expect(screen.queryByTestId('chapter13-standing-appointment-body')).not.toBeInTheDocument();
-    });
-
-    test('does not render Chapter13StandingAppointmentBody for a ch12 standing appointment', () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT13_STANDING_KEY_DATES]: true,
-      });
-      const ch12StandingAppointment: TrusteeAppointment = {
-        ...mockAppointment,
-        chapter: '12',
-        appointmentType: 'standing',
-      };
-
-      renderWithProps({ appointment: ch12StandingAppointment });
-
-      expect(screen.queryByTestId('chapter13-standing-appointment-body')).not.toBeInTheDocument();
-    });
-
-    test('passes the appointment through to Chapter13StandingAppointmentBody', () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT13_STANDING_KEY_DATES]: true,
-      });
-
-      renderWithProps({ appointment: ch13StandingAppointment });
-
-      expect(screen.getByTestId('chapter13-standing-appointment-body')).toHaveAttribute(
-        'data-appointment-id',
-        ch13StandingAppointment.id,
-      );
-    });
-
-    test('does not fetch key dates until the accordion is expanded, then passes the fetched data down', async () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT13_STANDING_KEY_DATES]: true,
-      });
-      const getUpcomingKeyDatesSpy = vi
-        .spyOn(Api2, 'getUpcomingKeyDates')
-        .mockResolvedValue({ data: {} as TrusteeUpcomingKeyDates });
-
-      renderWithProps({ appointment: ch13StandingAppointment });
-
-      expect(getUpcomingKeyDatesSpy).not.toHaveBeenCalled();
-      expect(screen.getByTestId('chapter13-standing-appointment-body')).toHaveAttribute(
-        'data-has-key-dates-data',
-        'false',
-      );
-
-      fireEvent.click(screen.getByTestId(`accordion-button-${ch13StandingAppointment.id}`));
-
-      await waitFor(() => {
-        expect(getUpcomingKeyDatesSpy).toHaveBeenCalledTimes(1);
-      });
-      expect(getUpcomingKeyDatesSpy).toHaveBeenCalledWith(
-        ch13StandingAppointment.trusteeId,
-        ch13StandingAppointment.id,
-      );
-      await waitFor(() => {
-        expect(screen.getByTestId('chapter13-standing-appointment-body')).toHaveAttribute(
-          'data-has-key-dates-data',
-          'true',
-        );
-      });
-    });
-
-    test('accordion expand state is controlled by expandedId/onExpand/onCollapse props', () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT13_STANDING_KEY_DATES]: true,
-      });
-      const onExpand = vi.fn();
-      const onCollapse = vi.fn();
-
-      render(
-        <BrowserRouter>
-          <AppointmentCard
-            appointment={ch13StandingAppointment}
-            onExpand={onExpand}
-            onCollapse={onCollapse}
-          />
-        </BrowserRouter>,
-      );
-
-      const button = screen.getByTestId(`accordion-button-${ch13StandingAppointment.id}`);
-
-      fireEvent.click(button);
-      expect(onExpand).toHaveBeenCalledWith(ch13StandingAppointment.id);
-      expect(onCollapse).not.toHaveBeenCalled();
-
-      fireEvent.click(
-        screen.getByTestId(`accordion-collapse-button-${ch13StandingAppointment.id}`),
-      );
-      expect(onCollapse).toHaveBeenCalledWith(ch13StandingAppointment.id);
-      expect(onExpand).toHaveBeenCalledTimes(1);
-    });
-
-    // Ch13 standing key dates have no canManage gate — this locks in that
-    // behavior at the point AppointmentCard decides whether to render the branch at all.
-    test('renders Chapter13StandingAppointmentBody for non-TrusteeAdmin user when flag enabled (no canManage gate)', () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT13_STANDING_KEY_DATES]: true,
-      });
-      TestingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
-
-      renderWithProps({ appointment: ch13StandingAppointment });
-
-      expect(screen.getByTestId('chapter13-standing-appointment-body')).toBeInTheDocument();
-    });
-  });
+  // routes it to Chapter12And13CaseByCaseAppointmentBody (CAMS-913), and Chapter 13
+  // Standing no longer reaches it either -- TrusteeAppointments now routes it to
+  // Chapter13StandingAppointmentBody via the shared AppointmentAccordion (CAMS-909/915),
+  // covered by Chapter13StandingAppointmentBody.test.tsx and TrusteeAppointments.test.tsx.
 
   test('still renders when courts fail to load', () => {
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});

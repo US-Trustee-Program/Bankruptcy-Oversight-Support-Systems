@@ -54,6 +54,15 @@ describe('Select', () => {
     expect(screen.getAllByRole('option')).toHaveLength(2);
   });
 
+  test('applies a custom className to the wrapping form group', () => {
+    const { container } = render(
+      <Select id="select-1" options={OPTIONS} className="custom-select" />,
+    );
+
+    const wrapper = container.querySelector('.usa-form-group');
+    expect(wrapper).toHaveClass('usa-form-group', 'custom-select');
+  });
+
   test('renders the required asterisk and sets the required attribute', () => {
     render(<Select id="select-1" label="Choose one" options={OPTIONS} required />);
 
@@ -86,24 +95,54 @@ describe('Select', () => {
       <Select id="select-1" options={OPTIONS} ariaDescription="A hint" errorMessage="Required" />,
     );
 
-    expect(selectEl).toHaveAttribute('aria-describedby', 'select-1-hint select-1-error-message');
+    expect(selectEl).toHaveAttribute(
+      'aria-describedby',
+      'select-1-hint select-1-field-error-message',
+    );
     expect(selectEl).toHaveAttribute('aria-invalid', 'true');
     expect(selectEl).toHaveClass('usa-input--error');
 
-    const errorEl = document.getElementById('select-1-error-message');
+    const errorEl = document.getElementById('select-1-field-error-message');
     expect(errorEl).toHaveTextContent('Required');
     expect(errorEl).toHaveAttribute('aria-live', 'polite');
     // Matches Input/ComboBox's non-bold error text style, not the bold real-USWDS usa-error-message.
-    expect(errorEl).toHaveClass('usa-input__error-message');
+    expect(errorEl).toHaveClass('cams-field-error-message');
   });
 
   test('keeps the error message container mounted with no error present', () => {
     render(<Select id="select-1" options={OPTIONS} />);
 
-    const errorEl = document.getElementById('select-1-error-message');
+    const errorEl = document.getElementById('select-1-field-error-message');
     expect(errorEl).toBeInTheDocument();
-    expect(errorEl).not.toHaveClass('usa-input__error-message');
+    expect(errorEl).not.toHaveClass('cams-field-error-message');
     expect(errorEl).toHaveTextContent('');
+  });
+
+  test('associates only the error message via aria-describedby when no hint is present', () => {
+    render(<Select id="select-1" options={OPTIONS} errorMessage="Required" />);
+
+    const selectEl = screen.getByTestId('select-1');
+    expect(selectEl).toHaveAttribute('aria-describedby', 'select-1-field-error-message');
+  });
+
+  test('includes an externally rendered error id in aria-describedby via ariaDescribedBy', () => {
+    render(
+      <Select
+        id="select-1"
+        options={OPTIONS}
+        ariaDescription="A hint"
+        hasError
+        ariaDescribedBy="shared-pair-error"
+      />,
+    );
+
+    const selectEl = screen.getByTestId('select-1');
+    expect(selectEl).toHaveAttribute('aria-describedby', 'select-1-hint shared-pair-error');
+    expect(selectEl).toHaveAttribute('aria-invalid', 'true');
+
+    // The externally-referenced id isn't rendered by Select itself -- only the
+    // reference is added, so the shared error text isn't duplicated here.
+    expect(document.getElementById('select-1-field-error-message')).not.toHaveTextContent(/.+/);
   });
 
   test('hasError flags the select as invalid without rendering its own error text', () => {
@@ -114,15 +153,27 @@ describe('Select', () => {
     expect(selectEl).toHaveAttribute('aria-invalid', 'true');
     expect(selectEl).not.toHaveAttribute('aria-describedby');
 
-    const errorEl = document.getElementById('select-1-error-message');
-    expect(errorEl).not.toHaveClass('usa-input__error-message');
+    const errorEl = document.getElementById('select-1-field-error-message');
+    expect(errorEl).not.toHaveClass('cams-field-error-message');
     expect(errorEl).toHaveTextContent('');
   });
 
-  describe('imperative ref API', () => {
-    const ref = React.createRef<SelectRef>();
+  test('syncs the displayed value and disabled state when the value/disabled props change', () => {
+    const { rerender } = render(<Select id="select-1" options={OPTIONS} value="a" />);
 
+    const selectEl = screen.getByTestId('select-1') as HTMLSelectElement;
+    expect(selectEl.value).toBe('a');
+    expect(selectEl).not.toBeDisabled();
+
+    rerender(<Select id="select-1" options={OPTIONS} value="b" disabled />);
+
+    expect(selectEl.value).toBe('b');
+    expect(selectEl).toBeDisabled();
+  });
+
+  describe('imperative ref API', () => {
     test('getValue/setValue/resetValue/clearValue/disable/focus behave as expected', () => {
+      const ref = React.createRef<SelectRef>();
       render(
         <Select ref={ref} id="select-1" options={OPTIONS} placeholder="- Select -" value="a" />,
       );
@@ -147,6 +198,29 @@ describe('Select', () => {
 
       act(() => ref.current?.focus());
       expect(selectEl).toHaveFocus();
+    });
+
+    test('clearValue notifies onChange with an empty value', () => {
+      const ref = React.createRef<SelectRef>();
+      const handleChange = vi.fn();
+      render(
+        <Select
+          ref={ref}
+          id="select-1"
+          options={OPTIONS}
+          placeholder="- Select -"
+          value="a"
+          onChange={handleChange}
+        />,
+      );
+      const selectEl = screen.getByTestId('select-1') as HTMLSelectElement;
+
+      act(() => ref.current?.clearValue());
+
+      expect(selectEl.value).toBe('');
+      expect(handleChange).toHaveBeenCalledWith(
+        expect.objectContaining({ target: expect.objectContaining({ value: '' }) }),
+      );
     });
   });
 });

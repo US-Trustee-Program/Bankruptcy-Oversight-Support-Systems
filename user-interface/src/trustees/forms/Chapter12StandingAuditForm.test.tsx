@@ -274,6 +274,10 @@ describe('Chapter12StandingAuditForm', () => {
 
     await userEvent.selectOptions(screen.getByTestId('audit-completion-status-year'), '');
 
+    expect(screen.getByTestId('audit-completion-status-error')).toHaveTextContent('');
+
+    fireEvent.blur(screen.getByTestId('audit-completion-status-year'), { relatedTarget: null });
+
     await waitFor(() => {
       expect(screen.getByTestId('audit-completion-status-error')).toHaveTextContent(
         'Audit Completion Status Year and Status must both be set.',
@@ -292,6 +296,10 @@ describe('Chapter12StandingAuditForm', () => {
     );
 
     await userEvent.selectOptions(screen.getByTestId('audit-completion-status-status'), '');
+
+    expect(screen.getByTestId('audit-completion-status-error')).toHaveTextContent('');
+
+    fireEvent.blur(screen.getByTestId('audit-completion-status-status'), { relatedTarget: null });
 
     await waitFor(() => {
       expect(screen.getByTestId('audit-completion-status-error')).toHaveTextContent(

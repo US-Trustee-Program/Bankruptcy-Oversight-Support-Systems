@@ -14,6 +14,7 @@ import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import DatePicker from '@/lib/components/uswds/DatePicker';
 import Select from '@/lib/components/uswds/Select';
 import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
+import PairFieldGroup from './PairFieldGroup';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import { Stop } from '@/lib/components/Stop';
 
@@ -162,53 +163,57 @@ export default function Chapter12StandingAuditForm() {
         }}
       />
 
-      <div className="exam-audit-group">
-        <p className="usa-label">Audit Completion Status for Year</p>
-        <div className="exam-audit-group__row">
-          <Select
-            id="audit-completion-status-year"
-            label="Year"
-            compactLabel
-            hasError={!!completionPairError}
-            placeholder="- Select -"
-            options={FISCAL_YEAR_OPTIONS.map((year) => ({
-              value: String(year),
-              label: String(year),
-            }))}
-            value={form.auditCompletionYear === '' ? '' : String(form.auditCompletionYear)}
-            onChange={(e) => {
-              const val = e.target.value;
-              setForm((prev) => ({
-                ...prev,
-                auditCompletionYear: val ? Number(val) : '',
-              }));
-            }}
-          />
-          <Select
-            id="audit-completion-status-status"
-            label="Status"
-            compactLabel
-            hasError={!!completionPairError}
-            placeholder="- Select -"
-            options={[
-              { value: 'CLOSED', label: 'Closed' },
-              { value: 'NOT_CLOSED', label: 'Not Closed' },
-            ]}
-            value={form.auditCompletionStatus}
-            onChange={(e) => {
-              setForm((prev) => ({
-                ...prev,
-                auditCompletionStatus: e.target.value as AuditCompletionStatus | '',
-              }));
-            }}
-          />
-        </div>
-        {completionPairError && (
-          <div className="usa-input__error-message" data-testid="audit-completion-status-error">
-            {completionPairError}
-          </div>
+      <PairFieldGroup
+        idPrefix="audit-completion-status"
+        groupClassName="exam-audit-group"
+        rowClassName="exam-audit-group__row"
+        title="Audit Completion Status for Year"
+        error={completionPairError}
+      >
+        {({ hasError, ariaDescribedBy }) => (
+          <>
+            <Select
+              id="audit-completion-status-year"
+              label="Year"
+              compactLabel
+              hasError={hasError}
+              ariaDescribedBy={ariaDescribedBy}
+              placeholder="- Select -"
+              options={FISCAL_YEAR_OPTIONS.map((year) => ({
+                value: String(year),
+                label: String(year),
+              }))}
+              value={form.auditCompletionYear === '' ? '' : String(form.auditCompletionYear)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setForm((prev) => ({
+                  ...prev,
+                  auditCompletionYear: val ? Number(val) : '',
+                }));
+              }}
+            />
+            <Select
+              id="audit-completion-status-status"
+              label="Status"
+              compactLabel
+              hasError={hasError}
+              ariaDescribedBy={ariaDescribedBy}
+              placeholder="- Select -"
+              options={[
+                { value: 'CLOSED', label: 'Closed' },
+                { value: 'NOT_CLOSED', label: 'Not Closed' },
+              ]}
+              value={form.auditCompletionStatus}
+              onChange={(e) => {
+                setForm((prev) => ({
+                  ...prev,
+                  auditCompletionStatus: e.target.value as AuditCompletionStatus | '',
+                }));
+              }}
+            />
+          </>
         )}
-      </div>
+      </PairFieldGroup>
 
       <div className="usa-button-group">
         <Button

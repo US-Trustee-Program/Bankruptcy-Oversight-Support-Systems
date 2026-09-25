@@ -54,9 +54,10 @@ describe('Chapter13StandingAuditCard', () => {
     TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
   });
 
-  test('renders the Annual Audit Period constant', () => {
+  test('renders the Audit title and the Annual Audit Period constant', () => {
     renderComponent();
-    expect(screen.getByTestId('annual-audit-period-row')).toHaveTextContent('Annual Audit Period');
+    expect(screen.getByText('Audit')).toBeInTheDocument();
+    expect(screen.getByText('Annual Audit Period')).toBeInTheDocument();
     expect(screen.getByTestId('annual-audit-period-row')).toHaveTextContent('10/01 - 09/30');
   });
 
@@ -83,9 +84,6 @@ describe('Chapter13StandingAuditCard', () => {
     expect(screen.queryByTestId('tag-audit-completion-status')).not.toBeInTheDocument();
   });
 
-  // CompletionStatusTag's own color/style output (bg-success vs. bg-secondary-dark) is
-  // covered by CompletionStatusTag.test.tsx; these tests only verify this card passes
-  // the right status/year through to it.
   test('renders a "Complete for {year}" tag when ch13AuditCompletionStatus is Complete', () => {
     renderComponent({
       data: {

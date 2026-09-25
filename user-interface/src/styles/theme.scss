@@ -81,3 +81,17 @@ h6 {
     margin-right: 1rem;
   }
 }
+
+// Base .usa-button-group stacks full-width on mobile (flex-direction: column) with no gap
+// between direct children, so a Save/Cancel pair sits flush together with Cancel's unstyled
+// button text stretched to the container width and left-aligned. `gap` spaces the buttons in
+// either flex direction, and centering just the unstyled (Cancel-style) button keeps Save's
+// own width/alignment untouched. Excludes the segmented variant, which relies on buttons
+// staying flush against each other with shared borders.
+.usa-button-group:not(.usa-button-group--segmented) {
+  gap: 1rem;
+
+  .usa-button--unstyled {
+    align-self: center;
+  }
+}
