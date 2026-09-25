@@ -240,7 +240,35 @@ because they pushed in Phase 0.
 | --- | --- |
 | Before Phase 5 | Move `~/.local/bin/bd-1.0.3` back; nothing was changed |
 | After Phase 5, before Phase 7 | Restore `~/beads-embeddeddolt-pre-v66` over `.beads/embeddeddolt`, re-shadow 1.0.3. Or simply re-clone: the remote is still v32 |
-| After Phase 7 | Force-push `refs/dolt/data` back to `f34f86c04e680ef27864735ded9156f95b82970a`, then every clone re-bootstraps |
+| After Phase 7 | Force-push `refs/dolt/data` back to `refs/dolt/pre-v66-anchor-20260925` (= `f34f86c04e680ef27864735ded9156f95b82970a`), then every clone re-bootstraps |
+
+### The anchor ref
+
+Before Phase 7, pin the pre-migration commit to a second server-side ref so it
+survives `refs/dolt/data` being overwritten or garbage collected:
+
+```bash
+gh api repos/flexion/flexion-doj-cams-issues/git/refs \
+  -f ref=refs/dolt/pre-v66-anchor-$(date +%Y%m%d) \
+  -f sha=<current refs/dolt/data SHA>
+```
+
+This is purely additive — it does not touch `refs/dolt/data`. It also doubles
+as an empirical test of write access to the `refs/dolt/*` namespace, which is
+better than inferring it from the permissions API.
+
+Delete it once the migration has been stable for a while.
+
+### Confirming rollback rights (do this before Phase 7)
+
+```bash
+gh api repos/flexion/flexion-doj-cams-issues --jq '.permissions'
+gh api repos/flexion/flexion-doj-cams-issues/rulesets
+gh api repos/flexion/flexion-doj-cams-issues/branches/main/protection
+```
+
+Verified 2026-09-25 for `bityogi`: `admin: true`, rulesets `[]`, no branch
+protection. Nothing blocks a force-push to `refs/dolt/data`.
 
 ## Notes
 
