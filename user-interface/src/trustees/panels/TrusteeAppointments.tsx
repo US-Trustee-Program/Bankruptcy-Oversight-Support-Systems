@@ -5,10 +5,9 @@ import { sortByCourtLocation } from '@/lib/utils/court-utils';
 import {
   TrusteeAppointment,
   isChapter11CaseByCase,
+  isChapter11SubchapterV,
   isChapter7Elected,
   isChapter7Panel,
-  isChapter11SubchapterVPool,
-  isChapter11SubchapterVOutOfPool,
   isChapter12Or13CaseByCase,
   isChapter12Standing,
   isChapter13Standing,
@@ -44,10 +43,7 @@ function resolveAccordionBody(appointment: TrusteeAppointment): ReactNode | unde
   if (isChapter7Panel(appointment.chapter, appointment.appointmentType)) {
     return <Chapter7PanelAppointmentBody appointment={appointment} />;
   }
-  if (
-    isChapter11SubchapterVPool(appointment.chapter, appointment.appointmentType) ||
-    isChapter11SubchapterVOutOfPool(appointment.chapter, appointment.appointmentType)
-  ) {
+  if (isChapter11SubchapterV(appointment.chapter, appointment.appointmentType)) {
     return <Chapter11SubchapterVAppointmentBody appointment={appointment} />;
   }
   if (isChapter12Or13CaseByCase(appointment.chapter, appointment.appointmentType)) {

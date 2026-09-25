@@ -46,8 +46,8 @@ describe('PAST_KEY_DATES_FIELD_CONFIG chapter12-standing variant', () => {
   });
 });
 
-describe('PAST_KEY_DATES_FIELD_CONFIG subv-pool variant', () => {
-  const config = PAST_KEY_DATES_FIELD_CONFIG['subv-pool'];
+describe('PAST_KEY_DATES_FIELD_CONFIG chapter11-subv variant', () => {
+  const config = PAST_KEY_DATES_FIELD_CONFIG['chapter11-subv'];
 
   test('contains exactly the expected fields', () => {
     expect(config.map((f) => f.key)).toEqual(['lastMonthlyReportReceived']);
@@ -122,8 +122,8 @@ describe('PAST_KEY_DATES_FIELD_CONFIG chapter13-standing variant', () => {
 });
 
 describe('PAST_KEY_DATES_VARIANT_LABELS', () => {
-  test('subv-pool uses an "Other" card title', () => {
-    expect(PAST_KEY_DATES_VARIANT_LABELS['subv-pool']).toEqual({
+  test('chapter11-subv uses an "Other" card title', () => {
+    expect(PAST_KEY_DATES_VARIANT_LABELS['chapter11-subv']).toEqual({
       cardTitle: 'Other',
       editHeading: 'Edit Other Key Dates',
     });
