@@ -344,9 +344,15 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
     // Keyset-paginated by UST_PROF_CODE, scoped to a single GROUP_DESIGNATOR — the
     // code is only monotonically increasing within a group, never globally.
     //
-    // PROF_LAST_NAME NOT LIKE '%NO TRUSTEE%' excludes ACMS sentinel/placeholder rows that are not
-    // real professionals (e.g. "NO TRUSTEE", "NO TRUSTEE ASSIGNED", "CASE STRICKEN: NO TRUSTEE"),
-    // always carried in PROF_LAST_NAME with PROF_FIRST_NAME empty.
+    // No PROF_LAST_NAME placeholder filtering happens here (e.g. "NO TRUSTEE", "DECEASED - ROE,
+    // JR.", "I M FAKE", "PRO SE") - this gateway is a plain data-access layer, not a business-rule
+    // boundary. shouldSkipAsNotAPerson (sync-acms-professional-ids.ts) is the single source of
+    // truth for which ACMS records name no real trustee, so every excludable shape is recognized
+    // in exactly one place instead of being partially re-implemented as a parallel SQL LIKE clause
+    // that can drift from it (a divergence James' PR #3045 review caught: this gateway's own
+    // former `PROF_LAST_NAME NOT LIKE '%FAKE%'` clause was broader than shouldSkipAsNotAPerson's
+    // deliberately-anchored "I M FAKE" check, and would have silently dropped a real trustee
+    // surnamed Fake at the source, with no count/log/DLQ entry to reveal it).
     //
     // UST_PROF_CODE < 98000 excludes ACMS's reserved sentinel/dummy trustee code range (known
     // values include 99999 and 98000). These rows must never reach the keyset cursor: since
@@ -370,7 +376,6 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
       FROM [dbo].[CMMPR] AS ACMS
       WHERE ACMS.PROF_TYPE = 'TR'
         AND ACMS.DELETE_CODE != 'D'
-        AND ACMS.PROF_LAST_NAME NOT LIKE '%NO TRUSTEE%'
         AND ACMS.UST_PROF_CODE < 98000
         AND ACMS.GROUP_DESIGNATOR = @groupDesignator
         AND ACMS.UST_PROF_CODE > @lastUstProfCode

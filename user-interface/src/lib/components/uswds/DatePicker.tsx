@@ -348,7 +348,7 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
         </span>
       )}
       {displayErrorMessage && (
-        <div id={`${id}-error`} className="date-error usa-input__error-message" aria-live="polite">
+        <div id={`${id}-error`} className="date-error cams-field-error-message" aria-live="polite">
           {displayErrorMessage}
         </div>
       )}

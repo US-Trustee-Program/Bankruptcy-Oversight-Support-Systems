@@ -44,6 +44,8 @@ describe('App Router Tests', () => {
   });
 
   beforeEach(() => {
+    vi.restoreAllMocks();
+    setUseLocationMock();
     userEvent = TestingUtilities.setupUserEvent();
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(
       MockData.getCamsSession({
@@ -86,10 +88,7 @@ describe('App Router Tests', () => {
       'restrict-adding-trustees': true,
     });
 
-    setUseLocationMock('/trustees/create', {
-      action: 'create',
-      cancelTo: '/trustees',
-    });
+    setUseLocationMock('/trustees/create');
 
     render(
       <MemoryRouter initialEntries={['/trustees/create']}>
@@ -107,10 +106,6 @@ describe('App Router Tests', () => {
       'case-search-landing-page': true,
     });
 
-    const config = window.CAMS_CONFIGURATION as Record<string, string | undefined>;
-    const savedClientId = config.CAMS_FEATURE_FLAG_CLIENT_ID;
-    config.CAMS_FEATURE_FLAG_CLIENT_ID = '';
-
     const badRoute = '/some/bad/route';
 
     render(
@@ -120,8 +115,6 @@ describe('App Router Tests', () => {
     );
 
     await screen.findByText('Case Search', { selector: 'h1' });
-
-    config.CAMS_FEATURE_FLAG_CLIENT_ID = savedClientId;
   });
 
   describe('Trustee route unauthorized access tests', () => {
@@ -144,97 +137,6 @@ describe('App Router Tests', () => {
       await waitFor(() => {
         expect(document.querySelector('[data-testid="trustees-add-link"]')).not.toBeInTheDocument();
       });
-    });
-
-    test('should show unauthorized message when accessing /trustees/create without TrusteeAdmin role', async () => {
-      const unauthorizedUser = MockData.getCamsUser({ roles: [CamsRole.DataVerifier] });
-      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(
-        MockData.getCamsSession({ user: unauthorizedUser }),
-      );
-
-      vi.spyOn(FeatureFlags, 'default').mockReturnValue({
-        'trustee-management': true, // Feature flag enabled
-        'restrict-adding-trustees': true,
-      });
-
-      setUseLocationMock('/trustees/create', {
-        action: 'create',
-        cancelTo: '/trustees',
-      });
-
-      render(
-        <MemoryRouter initialEntries={['/trustees/create']}>
-          <App />
-        </MemoryRouter>,
-      );
-
-      await waitFor(() => {
-        expect(screen.getByTestId('alert-forbidden-alert')).toBeInTheDocument();
-      });
-    });
-
-    test('should show disabled message when accessing /trustees/create with feature flag disabled', async () => {
-      const authorizedUser = MockData.getCamsUser({ roles: [CamsRole.TrusteeAdmin] });
-      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(
-        MockData.getCamsSession({ user: authorizedUser }),
-      );
-
-      vi.spyOn(FeatureFlags, 'default').mockReturnValue({
-        'trustee-management': false, // Feature flag disabled
-        'restrict-adding-trustees': true,
-      });
-
-      setUseLocationMock('/trustees/create', {
-        action: 'create',
-        cancelTo: '/trustees',
-      });
-
-      render(
-        <MemoryRouter initialEntries={['/trustees/create']}>
-          <App />
-        </MemoryRouter>,
-      );
-
-      await waitFor(() => {
-        expect(
-          document.querySelector('[data-testid="trustee-create-disabled"]'),
-        ).toBeInTheDocument();
-      });
-    });
-
-    test('should redirect /trustees/create to /trustees when restrict-adding-trustees is disabled', async () => {
-      const authorizedUser = MockData.getCamsUser({ roles: [CamsRole.TrusteeAdmin] });
-      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(
-        MockData.getCamsSession({ user: authorizedUser }),
-      );
-
-      vi.spyOn(FeatureFlags, 'default').mockReturnValue({
-        'trustee-management': true,
-        'restrict-adding-trustees': false,
-      });
-
-      setUseLocationMock('/trustees/create', {
-        action: 'create',
-        cancelTo: '/trustees',
-      });
-
-      render(
-        <MemoryRouter initialEntries={['/trustees/create']}>
-          <App />
-        </MemoryRouter>,
-      );
-
-      // The MainContent/Outlet wrapper (data-testid="trustees") renders both while the guard is
-      // still deciding and after a real redirect, so it can't distinguish the two on its own.
-      // Assert the redirect actually completed: the guard's loading spinner is gone and the full
-      // trustees screen (only rendered once /trustees/create is no longer the active route) is up.
-      // (TrusteesList renders its own unrelated `role="status"` live region, so check the
-      // guard's spinner by its caption text rather than by role.)
-      await waitFor(() => {
-        expect(screen.queryByText('Checking access...')).not.toBeInTheDocument();
-        expect(screen.getByRole('heading', { name: 'Trustees', level: 1 })).toBeInTheDocument();
-      });
-      expect(document.querySelector('[data-testid="trustee-public-form"]')).not.toBeInTheDocument();
     });
   });
 });

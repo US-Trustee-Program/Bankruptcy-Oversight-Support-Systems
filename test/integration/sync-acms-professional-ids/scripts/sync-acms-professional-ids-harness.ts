@@ -127,6 +127,9 @@ const FINGERPRINT_TRUSTEE_ID = 'INTEGRATION-TRUSTEE-FINGERPRINT';
 const NAME_TRUSTEE_ID = 'INTEGRATION-TRUSTEE-NAME';
 const UT_TRUSTEE_ID = 'INTEGRATION-TRUSTEE-UT';
 const LEADING_ZERO_TRUSTEE_ID = 'INTEGRATION-TRUSTEE-LEADINGZERO';
+const AMBIGUOUS_TRUSTEE_ID_A = 'INTEGRATION-TRUSTEE-AMBIGUOUS-A';
+const AMBIGUOUS_TRUSTEE_ID_B = 'INTEGRATION-TRUSTEE-AMBIGUOUS-B';
+const CONFLICT_EXISTING_TRUSTEE_ID = 'INTEGRATION-TRUSTEE-CONFLICT-EXISTING';
 
 const FINGERPRINT_ACMS_ID = 'NY-00063';
 const NAME_MATCH_ACMS_ID = 'NY-00064';
@@ -134,6 +137,9 @@ const ACTIVE_NO_MATCH_ACMS_ID = 'NY-00065';
 const INACTIVE_NO_MATCH_ACMS_ID = 'NY-00066';
 const UT_ACMS_ID = 'UT-00070';
 const LEADING_ZERO_ACMS_ID = 'NY-00071';
+const AMBIGUOUS_ACMS_ID = 'NY-00072';
+const SKIPPED_ACMS_ID = 'NY-00073';
+const CONFLICT_ACMS_ID = 'NY-00074';
 
 // ---------------------------------------------------------------------------
 // Pass / fail / info helpers (matches canonical harness pattern)
@@ -421,6 +427,14 @@ async function ensureDatabase(
 // ---------------------------------------------------------------------------
 
 async function seedSql() {
+  if (!IS_LOCAL) {
+    console.error(
+      'seed-sql is only for local container runs. It truncates 8 tables ' +
+        '(CMMPR/CMMAP/CMMDB/AO_CS_DIV/AO_OFFICE/AO_COURT/AO_GRP_DES/AO_REGION) - never point it ' +
+        'at a shared Azure database.',
+    );
+    process.exit(1);
+  }
   console.log('\nSeeding CMMPR/CMMAP/CMMDB into ACMS_INT and offices into DXTR_INT...\n');
 
   const acmsDatabase = process.env.ACMS_MSSQL_DATABASE || 'ACMS_INT';
@@ -611,6 +625,74 @@ async function seedCosmos() {
       { upsert: true },
     );
     pass(`Seeded TRUSTEE_VARIATION for ${LEADING_ZERO_TRUSTEE_ID}`);
+
+    // Two CAMS trustees sharing the EXACT same name, for the ambiguous scenario
+    // (UST_PROF_CODE 72) — CMMPR's fixture row has no address/phone at all, so neither
+    // trustee's contact data can corroborate a winner and the pipeline must end ambiguous.
+    for (const trusteeId of [AMBIGUOUS_TRUSTEE_ID_A, AMBIGUOUS_TRUSTEE_ID_B]) {
+      await db.collection('trustees').updateOne(
+        { documentType: 'TRUSTEE', trusteeId },
+        {
+          $set: {
+            documentType: 'TRUSTEE',
+            trusteeId,
+            name: 'Chris M Ambiguous',
+            status: 'active',
+            public: {},
+            updatedOn: now,
+          },
+          $setOnInsert: { createdOn: now },
+        },
+        { upsert: true },
+      );
+    }
+    pass(
+      `Seeded two identically-named trustee profiles for the ambiguous scenario (${AMBIGUOUS_TRUSTEE_ID_A}, ${AMBIGUOUS_TRUSTEE_ID_B})`,
+    );
+
+    // A trustee already linked to CONFLICT_ACMS_ID before this run, so the pipeline's
+    // resolved match for UST_PROF_CODE 74 (which shares NAME_TRUSTEE_ID's demographics)
+    // collides with this existing, different link.
+    await db.collection('trustees').updateOne(
+      { documentType: 'TRUSTEE', trusteeId: CONFLICT_EXISTING_TRUSTEE_ID },
+      {
+        $set: {
+          documentType: 'TRUSTEE',
+          trusteeId: CONFLICT_EXISTING_TRUSTEE_ID,
+          name: 'Priorly Linked Trustee',
+          status: 'active',
+          public: {},
+          updatedOn: now,
+        },
+        $setOnInsert: { createdOn: now },
+      },
+      { upsert: true },
+    );
+    await db.collection('trustee-professional-ids').updateOne(
+      { documentType: 'TRUSTEE_PROFESSIONAL_ID', camsTrusteeId: CONFLICT_EXISTING_TRUSTEE_ID, acmsProfessionalId: CONFLICT_ACMS_ID },
+      {
+        $set: {
+          documentType: 'TRUSTEE_PROFESSIONAL_ID',
+          camsTrusteeId: CONFLICT_EXISTING_TRUSTEE_ID,
+          acmsProfessionalId: CONFLICT_ACMS_ID,
+          disposition: 'auto-linked',
+          sourceRaw: { fullName: 'Norman N Namematch' },
+          sourceNormalized: {},
+          memo: {},
+          candidates: [],
+          match: { trusteeId: CONFLICT_EXISTING_TRUSTEE_ID, score: {} },
+          skip: false,
+          error: null,
+          updatedOn: now,
+          updatedBy: { id: 'HARNESS', name: 'HARNESS' },
+        },
+        $setOnInsert: { createdOn: now, createdBy: { id: 'HARNESS', name: 'HARNESS' } },
+      },
+      { upsert: true },
+    );
+    pass(
+      `Pre-linked ${CONFLICT_ACMS_ID} to ${CONFLICT_EXISTING_TRUSTEE_ID} for the conflict scenario`,
+    );
   } finally {
     await client.close();
   }
@@ -634,6 +716,9 @@ async function clean() {
           INACTIVE_NO_MATCH_ACMS_ID,
           UT_ACMS_ID,
           LEADING_ZERO_ACMS_ID,
+          AMBIGUOUS_ACMS_ID,
+          SKIPPED_ACMS_ID,
+          CONFLICT_ACMS_ID,
         ],
       },
     });
@@ -646,7 +731,15 @@ async function clean() {
 
     const r4 = await db.collection('trustees').deleteMany({
       trusteeId: {
-        $in: [FINGERPRINT_TRUSTEE_ID, NAME_TRUSTEE_ID, UT_TRUSTEE_ID, LEADING_ZERO_TRUSTEE_ID],
+        $in: [
+          FINGERPRINT_TRUSTEE_ID,
+          NAME_TRUSTEE_ID,
+          UT_TRUSTEE_ID,
+          LEADING_ZERO_TRUSTEE_ID,
+          AMBIGUOUS_TRUSTEE_ID_A,
+          AMBIGUOUS_TRUSTEE_ID_B,
+          CONFLICT_EXISTING_TRUSTEE_ID,
+        ],
       },
     });
     pass(`Deleted ${r4.deletedCount} trustee profile doc(s)`);
@@ -718,21 +811,26 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
   const activeErrored = await db
     .collection('trustee-professional-ids')
     .findOne({ acmsProfessionalId: ACTIVE_NO_MATCH_ACMS_ID });
-  if (activeErrored?.error?.disposition === 'no-match') {
-    pass(`Active no-match: errored professional-id record written for ${ACTIVE_NO_MATCH_ACMS_ID}`);
+  if (activeErrored?.disposition === 'no-match') {
+    pass(`Active no-match: no-match professional-id record written for ${ACTIVE_NO_MATCH_ACMS_ID}`);
     if (typeof activeErrored.variant === 'string' && activeErrored.variant.length > 0) {
-      pass('Active no-match: variant populated on the errored record');
+      pass('Active no-match: variant populated on the record');
     } else {
-      fail('Active no-match: variant missing/empty on the errored record');
+      fail('Active no-match: variant missing/empty on the record');
     }
     if (activeErrored.camsTrusteeId && activeErrored.camsTrusteeId !== FINGERPRINT_TRUSTEE_ID) {
       pass('Active no-match: camsTrusteeId set to a fingerprint placeholder, not a real trustee');
     } else {
       fail(`Active no-match: unexpected camsTrusteeId ${activeErrored.camsTrusteeId}`);
     }
+    if (activeErrored.sourceRaw && activeErrored.candidates) {
+      pass('Active no-match: full pipeline evidence (sourceRaw/candidates) persisted');
+    } else {
+      fail('Active no-match: expected sourceRaw/candidates pipeline evidence on the record');
+    }
   } else {
     fail(
-      `Active no-match: expected an errored (disposition=no-match) record for ${ACTIVE_NO_MATCH_ACMS_ID}, got ${JSON.stringify(activeErrored)}`,
+      `Active no-match: expected a disposition=no-match record for ${ACTIVE_NO_MATCH_ACMS_ID}, got ${JSON.stringify(activeErrored)}`,
     );
   }
 
@@ -761,6 +859,63 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
     );
   }
 
+  // Scenario 6: ambiguous — two identically-named CAMS trustees, neither corroborated by
+  // this ACMS record's (blank) contact fields. The pipeline must resolve neither, writing a
+  // disposition=ambiguous record with both candidates present in the evidence graph.
+  const ambiguousRecord = await db
+    .collection('trustee-professional-ids')
+    .findOne({ acmsProfessionalId: AMBIGUOUS_ACMS_ID });
+  if (ambiguousRecord?.disposition === 'ambiguous') {
+    pass(`Ambiguous: ${AMBIGUOUS_ACMS_ID} written with disposition=ambiguous`);
+    const candidateTrusteeIds = (ambiguousRecord.candidates ?? []).map(
+      (c: { camsRaw?: { trusteeId?: string } }) => c.camsRaw?.trusteeId,
+    );
+    if (
+      candidateTrusteeIds.includes(AMBIGUOUS_TRUSTEE_ID_A) &&
+      candidateTrusteeIds.includes(AMBIGUOUS_TRUSTEE_ID_B)
+    ) {
+      pass('Ambiguous: both same-named candidates present in the persisted evidence graph');
+    } else {
+      fail(
+        `Ambiguous: expected both ${AMBIGUOUS_TRUSTEE_ID_A} and ${AMBIGUOUS_TRUSTEE_ID_B} among candidates, got ${JSON.stringify(candidateTrusteeIds)}`,
+      );
+    }
+  } else {
+    fail(
+      `Ambiguous: expected a disposition=ambiguous record for ${AMBIGUOUS_ACMS_ID}, got ${JSON.stringify(ambiguousRecord)}`,
+    );
+  }
+
+  // Scenario 7: administrative placeholder — a record naming no real person ("NOT
+  // ASSIGNED") must be skipped before any matching is attempted, with disposition=skipped
+  // persisted (not silently dropped like the zero-active-appointments no-match case).
+  const skippedRecord = await db
+    .collection('trustee-professional-ids')
+    .findOne({ acmsProfessionalId: SKIPPED_ACMS_ID });
+  if (skippedRecord?.disposition === 'skipped') {
+    pass(`Skipped: ${SKIPPED_ACMS_ID} written with disposition=skipped`);
+  } else {
+    fail(
+      `Skipped: expected a disposition=skipped record for ${SKIPPED_ACMS_ID}, got ${JSON.stringify(skippedRecord)}`,
+    );
+  }
+
+  // Scenario 8: conflict — this ACMS id was already linked to a different trustee before
+  // this run; the pipeline's resolved match (to NAME_TRUSTEE_ID, via identical demographics
+  // to UST_PROF_CODE 64) collides with that existing link.
+  const conflictRecord = await db
+    .collection('trustee-professional-ids')
+    .findOne({ acmsProfessionalId: CONFLICT_ACMS_ID, disposition: 'conflict' });
+  if (conflictRecord?.conflictingTrusteeId === CONFLICT_EXISTING_TRUSTEE_ID) {
+    pass(
+      `Conflict: ${CONFLICT_ACMS_ID} written with disposition=conflict, conflictingTrusteeId=${CONFLICT_EXISTING_TRUSTEE_ID}`,
+    );
+  } else {
+    fail(
+      `Conflict: expected a disposition=conflict record for ${CONFLICT_ACMS_ID} with conflictingTrusteeId=${CONFLICT_EXISTING_TRUSTEE_ID}, got ${JSON.stringify(conflictRecord)}`,
+    );
+  }
+
   // Deleted/non-trustee records must never be synced.
   const deletedLink = await db
     .collection('trustee-professional-ids')
@@ -781,7 +936,7 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
     .collection('runtime-state')
     .findOne({ documentType: 'ACMS_PROFESSIONAL_ID_SYNC_STATE' });
   const byGroup = stateDoc?.lastUstProfCodeByGroup ?? {};
-  if (byGroup.NY >= 71 && byGroup.UT >= 70) {
+  if (byGroup.NY >= 74 && byGroup.UT >= 70) {
     pass(`Sync bookmark advanced correctly: ${JSON.stringify(byGroup)}`);
   } else {
     fail(`Sync bookmark did not advance as expected: ${JSON.stringify(byGroup)}`);
@@ -845,6 +1000,24 @@ async function run() {
       fail('Timed out waiting for the active-no-match errored professional-id record');
       return;
     }
+
+    // The ambiguous/skipped/conflict scenarios also gate behind the active-appointment check
+    // (ambiguous, conflict) or the upfront not-a-person check (skipped) - wait for all three
+    // before asserting, same as the active-no-match record above.
+    const newScenariosVerified = await pollUntil(async () => {
+      const [ambiguousDoc, skippedDoc, conflictDoc] = await Promise.all([
+        db.collection('trustee-professional-ids').findOne({ acmsProfessionalId: AMBIGUOUS_ACMS_ID }),
+        db.collection('trustee-professional-ids').findOne({ acmsProfessionalId: SKIPPED_ACMS_ID }),
+        db
+          .collection('trustee-professional-ids')
+          .findOne({ acmsProfessionalId: CONFLICT_ACMS_ID, disposition: 'conflict' }),
+      ]);
+      return ambiguousDoc != null && skippedDoc != null && conflictDoc != null;
+    });
+    if (!newScenariosVerified) {
+      fail('Timed out waiting for the ambiguous/skipped/conflict professional-id records');
+      return;
+    }
     console.log('');
 
     await assertHappyPath(db);
@@ -858,6 +1031,13 @@ async function run() {
 // ---------------------------------------------------------------------------
 
 async function runPurge() {
+  if (!IS_LOCAL) {
+    console.error(
+      'run-purge is only for local container runs. It triggers deleteAll() on the real ' +
+        'trustee-professional-ids collection - never point it at a shared Azure environment.',
+    );
+    process.exit(1);
+  }
   console.log('\nRunning sync-acms-professional-ids purge test...\n');
 
   console.log('Step 0: Run the happy path first so there is data to purge');
@@ -877,7 +1057,11 @@ async function runPurge() {
   const { client, db } = await getMongoDb();
   try {
     // After a purge, the same 4 links must exist again (freshly reloaded, not
-    // stale survivors — deleteAll wipes trustee-professional-ids entirely).
+    // stale survivors — deleteAll wipes trustee-professional-ids entirely). Deliberately not
+    // re-asserting the ambiguous/skipped/conflict scenarios here: deleteAll also wipes the
+    // conflict scenario's pre-linked seed record, so a post-purge pass would resolve that ACMS
+    // id as a clean auto-link rather than reproduce the conflict - a purge, unlike a normal
+    // sync, doesn't re-run seedCosmos to restore that pre-existing state.
     const satisfied = await pollUntil(async () => {
       const count = await db.collection('trustee-professional-ids').countDocuments({
         acmsProfessionalId: {
@@ -923,7 +1107,7 @@ async function buildRealApplicationContext() {
 
 async function runRetryIdempotency() {
   console.log(
-    '\nProving createErroredProfessionalId is idempotent against a real Mongo unique-index violation...\n',
+    '\nProving upsertProfessionalId is idempotent against a real Mongo unique-index violation...\n',
   );
 
   const context = await buildRealApplicationContext();
@@ -933,8 +1117,21 @@ async function runRetryIdempotency() {
   const fingerprint = `retry-idempotency-fingerprint-${Date.now()}`;
   const acmsProfessionalId = 'NY-RETRY-TEST';
   const variant = '{"firstName":"Retry","lastName":"Test"}';
-  const error = { disposition: 'no-match' as const };
   const user = { id: 'HARNESS', name: 'HARNESS' };
+  const document = {
+    documentType: 'TRUSTEE_PROFESSIONAL_ID' as const,
+    camsTrusteeId: fingerprint,
+    acmsProfessionalId,
+    variant,
+    disposition: 'no-match' as const,
+    sourceRaw: { fullName: 'Retry Test' },
+    sourceNormalized: {},
+    memo: {},
+    candidates: [],
+    match: null,
+    skip: false,
+    error: null,
+  };
 
   // This harness's plain MongoDB container has no indexes applied (unlike real Cosmos, whose
   // unique index comes from cosmos-collections.bicep) — create the same
@@ -957,13 +1154,7 @@ async function runRetryIdempotency() {
   try {
     // First call: the original (successful) write handlePage made before hitting a transient
     // error later in the same page.
-    const first = await repo.createErroredProfessionalId(
-      fingerprint,
-      acmsProfessionalId,
-      variant,
-      error,
-      user,
-    );
+    const first = await repo.upsertProfessionalId(document, user);
     pass(`First write succeeded: ${first.id}`);
 
     // Second call with IDENTICAL inputs: simulates handlePage's retry-from-original-bookmark
@@ -971,13 +1162,7 @@ async function runRetryIdempotency() {
     // fix, this threw E11000 (not classified as rate-limited, so handlePage rethrew and the
     // message redelivered until it dead-lettered). After the fix, it must return the existing
     // document instead of throwing.
-    const second = await repo.createErroredProfessionalId(
-      fingerprint,
-      acmsProfessionalId,
-      variant,
-      error,
-      user,
-    );
+    const second = await repo.upsertProfessionalId(document, user);
 
     if (second.id === first.id) {
       pass(`Retry returned the existing document (${second.id}) instead of throwing E11000`);

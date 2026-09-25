@@ -4,7 +4,7 @@ import {
   TrusteeProfessionalIdsMongoRepository,
   TrusteeProfessionalIdDocument,
 } from './trustee-professional-ids.mongo.repository';
-import { TrusteeProfessionalId } from '@common/cams/trustee-professional-ids';
+import { TrusteeProfessionalId } from '../../../use-cases/dataflows/trustee-professional-ids.types';
 import { CamsUserReference } from '@common/cams/users';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
@@ -24,17 +24,41 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
     camsTrusteeId: 'trustee-1',
     acmsProfessionalId: 'NY-00063',
     documentType: 'TRUSTEE_PROFESSIONAL_ID',
+    disposition: 'auto-linked',
+    evidence: {
+      sourceRaw: { fullName: 'John Doe' },
+      sourceNormalized: {},
+      memo: {},
+      candidates: [],
+      match: { trusteeId: 'trustee-1', score: {} },
+      skip: false,
+      error: null,
+    },
     createdOn: '2024-01-15T10:00:00Z',
     createdBy: mockUser,
     updatedOn: '2024-01-15T10:00:00Z',
     updatedBy: mockUser,
   };
 
-  const notErroredCondition = {
-    condition: 'EXISTS',
-    leftOperand: { name: 'error' },
-    rightOperand: false,
+  const isRealLinkCondition = {
+    condition: 'EQUALS',
+    leftOperand: { name: 'disposition' },
+    rightOperand: 'auto-linked',
   };
+
+  function withoutAuditOrId(
+    document: TrusteeProfessionalId,
+  ): Omit<TrusteeProfessionalId, 'id' | 'createdOn' | 'createdBy' | 'updatedOn' | 'updatedBy'> {
+    const {
+      id: _id,
+      createdOn: _createdOn,
+      createdBy: _createdBy,
+      updatedOn: _updatedOn,
+      updatedBy: _updatedBy,
+      ...rest
+    } = document;
+    return rest;
+  }
 
   beforeEach(async () => {
     process.env.MONGO_CONNECTION_STRING = 'mongodb://localhost:27017';
@@ -87,226 +111,149 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
     });
   });
 
-  describe('createProfessionalId', () => {
+  describe('upsertProfessionalId', () => {
     const camsTrusteeId = 'trustee-123';
     const acmsProfessionalId = 'NY-00063';
 
-    test('should create a new professional ID mapping successfully', async () => {
-      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
-      const insertOneSpy = vi
-        .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
-        .mockResolvedValue('new-prof-id');
-
-      const result = await repository.createProfessionalId(
+    test('should write an auto-linked professional ID mapping successfully', async () => {
+      const written: TrusteeProfessionalIdDocument = {
+        ...sampleProfessionalId,
+        id: 'new-prof-id',
         camsTrusteeId,
         acmsProfessionalId,
-        mockUser,
-      );
+      };
+      const findOneAndUpdateSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'findOneAndUpdate')
+        .mockResolvedValue(written);
 
-      expect(insertOneSpy).toHaveBeenCalled();
+      const document = withoutAuditOrId({
+        ...sampleProfessionalId,
+        camsTrusteeId,
+        acmsProfessionalId,
+      });
+      const result = await repository.upsertProfessionalId(document, mockUser);
+
+      expect(findOneAndUpdateSpy).toHaveBeenCalled();
       expect(result.id).toBe('new-prof-id');
       expect(result.camsTrusteeId).toBe(camsTrusteeId);
       expect(result.acmsProfessionalId).toBe(acmsProfessionalId);
       expect(result.documentType).toBe('TRUSTEE_PROFESSIONAL_ID');
     });
 
-    test('should return the existing mapping idempotently when the exact same pair already exists', async () => {
-      const existingMapping: TrusteeProfessionalIdDocument = {
+    test('should key the upsert query by camsTrusteeId, acmsProfessionalId, and documentType', async () => {
+      const findOneAndUpdateSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'findOneAndUpdate')
+        .mockResolvedValue({ ...sampleProfessionalId, camsTrusteeId, acmsProfessionalId });
+
+      const document = withoutAuditOrId({
         ...sampleProfessionalId,
-        id: 'existing-prof-id',
         camsTrusteeId,
         acmsProfessionalId,
-      };
-      const findSpy = vi
-        .spyOn(MongoCollectionAdapter.prototype, 'find')
-        .mockResolvedValue([existingMapping]);
-      const insertOneSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne');
-
-      const result = await repository.createProfessionalId(
-        camsTrusteeId,
-        acmsProfessionalId,
-        mockUser,
-      );
-
-      expect(findSpy).toHaveBeenCalledWith({
-        conjunction: 'AND',
-        values: [
-          {
-            condition: 'EQUALS',
-            leftOperand: { name: 'documentType' },
-            rightOperand: 'TRUSTEE_PROFESSIONAL_ID',
-          },
-          {
-            condition: 'EQUALS',
-            leftOperand: { name: 'camsTrusteeId' },
-            rightOperand: camsTrusteeId,
-          },
-          {
-            condition: 'EQUALS',
-            leftOperand: { name: 'acmsProfessionalId' },
-            rightOperand: acmsProfessionalId,
-          },
-        ],
       });
-      expect(insertOneSpy).not.toHaveBeenCalled();
-      expect(result).toEqual(existingMapping);
-    });
+      await repository.upsertProfessionalId(document, mockUser);
 
-    test('should allow the same ACMS ID mapped to a different trustee (many-to-one)', async () => {
-      const differentTrusteeId = 'different-trustee-456';
-
-      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
-      vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockResolvedValue('new-prof-id-2');
-
-      const result = await repository.createProfessionalId(
-        differentTrusteeId,
-        acmsProfessionalId,
-        mockUser,
-      );
-
-      expect(result.camsTrusteeId).toBe(differentTrusteeId);
-      expect(result.acmsProfessionalId).toBe(acmsProfessionalId);
-    });
-
-    test('should handle database errors during creation', async () => {
-      const error = new Error('Database connection failed');
-
-      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
-      vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockRejectedValue(error);
-
-      await expect(
-        repository.createProfessionalId(camsTrusteeId, acmsProfessionalId, mockUser),
-      ).rejects.toThrow(
-        `Failed to create professional ID mapping for trustee ${camsTrusteeId} and ACMS ID ${acmsProfessionalId}.`,
-      );
-    });
-  });
-
-  describe('createErroredProfessionalId', () => {
-    const fingerprint = 'the-fingerprint';
-    const acmsProfessionalId = 'NY-00063';
-    const variant = 'the-variant-string';
-
-    test('should create a record keyed by fingerprint, decorated with variant and error', async () => {
-      const insertOneSpy = vi
-        .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
-        .mockResolvedValue('errored-prof-id');
-
-      const result = await repository.createErroredProfessionalId(
-        fingerprint,
-        acmsProfessionalId,
-        variant,
-        { disposition: 'no-match' },
-        mockUser,
-      );
-
-      expect(insertOneSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          documentType: 'TRUSTEE_PROFESSIONAL_ID',
-          camsTrusteeId: fingerprint,
-          acmsProfessionalId,
-          variant,
-          error: { disposition: 'no-match' },
-        }),
-      );
-      expect(result.id).toBe('errored-prof-id');
-      expect(result.camsTrusteeId).toBe(fingerprint);
-      expect(result.error).toEqual({ disposition: 'no-match' });
-    });
-
-    test('should not check for an existing record before inserting (always creates a new one)', async () => {
-      const findSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'find');
-      vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockResolvedValue('errored-prof-id');
-
-      await repository.createErroredProfessionalId(
-        fingerprint,
-        acmsProfessionalId,
-        variant,
-        { disposition: 'ambiguous', trustees: ['t1', 't2'] },
-        mockUser,
-      );
-
-      expect(findSpy).not.toHaveBeenCalled();
-    });
-
-    test('should wrap and throw on database errors', async () => {
-      vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockRejectedValue(
-        new Error('Write failed'),
-      );
-
-      await expect(
-        repository.createErroredProfessionalId(
-          fingerprint,
-          acmsProfessionalId,
-          variant,
-          { disposition: 'no-match' },
-          mockUser,
-        ),
-      ).rejects.toThrow(
-        `Failed to create errored professional ID record for ACMS ID ${acmsProfessionalId}.`,
-      );
-    });
-
-    test('should return the existing document and warn when a retry replays an already-written record', async () => {
-      // handlePage retries an entire page from its original bookmark on a transient error, so a
-      // record whose errored professional ID was already written earlier in the same invocation
-      // gets reprocessed and hits the (camsTrusteeId, acmsProfessionalId, documentType) unique
-      // index a second time — not a race between two different callers.
-      const duplicateKeyError = new Error(
-        'E11000 duplicate key error collection: trustee-professional-ids index: camsTrusteeId_1_acmsProfessionalId_1_documentType_1',
-      );
-      const existingDocument: TrusteeProfessionalIdDocument = {
-        ...sampleProfessionalId,
-        id: 'errored-prof-id',
-        camsTrusteeId: fingerprint,
-        acmsProfessionalId,
-        variant,
-        error: { disposition: 'no-match' },
-      };
-      vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockRejectedValue(duplicateKeyError);
-      const findSpy = vi
-        .spyOn(MongoCollectionAdapter.prototype, 'find')
-        .mockResolvedValue([existingDocument]);
-      const warnSpy = vi.spyOn(context.logger, 'warn');
-
-      const result = await repository.createErroredProfessionalId(
-        fingerprint,
-        acmsProfessionalId,
-        variant,
-        { disposition: 'no-match' },
-        mockUser,
-      );
-
-      expect(result).toEqual(existingDocument);
-      expect(findSpy).toHaveBeenCalledWith(
+      expect(findOneAndUpdateSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           values: expect.arrayContaining([
-            expect.objectContaining({ rightOperand: fingerprint }),
-            expect.objectContaining({ rightOperand: acmsProfessionalId }),
+            expect.objectContaining({
+              leftOperand: { name: 'documentType' },
+              rightOperand: 'TRUSTEE_PROFESSIONAL_ID',
+            }),
+            expect.objectContaining({
+              leftOperand: { name: 'camsTrusteeId' },
+              rightOperand: camsTrusteeId,
+            }),
+            expect.objectContaining({
+              leftOperand: { name: 'acmsProfessionalId' },
+              rightOperand: acmsProfessionalId,
+            }),
           ]),
         }),
-      );
-      expect(warnSpy).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.stringContaining(acmsProfessionalId),
+        expect.anything(),
+        expect.objectContaining({ upsert: true, returnDocument: 'after' }),
       );
     });
 
-    test('should still throw when a duplicate-key error is caught but no matching document is found', async () => {
-      const duplicateKeyError = new Error('E11000 duplicate key error');
-      vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockRejectedValue(duplicateKeyError);
-      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+    // createdOn/createdBy must only ever be applied on the INSERT branch (via $setOnInsert), so a
+    // retry that overwrites an existing document never resets when it was first created.
+    test('should pass createdOn/createdBy as insert-only fields, never in setFields', async () => {
+      const findOneAndUpdateSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'findOneAndUpdate')
+        .mockResolvedValue({ ...sampleProfessionalId, camsTrusteeId, acmsProfessionalId });
 
-      await expect(
-        repository.createErroredProfessionalId(
-          fingerprint,
-          acmsProfessionalId,
-          variant,
-          { disposition: 'no-match' },
-          mockUser,
-        ),
-      ).rejects.toThrow(
-        `Failed to create errored professional ID record for ACMS ID ${acmsProfessionalId}.`,
+      const document = withoutAuditOrId({
+        ...sampleProfessionalId,
+        camsTrusteeId,
+        acmsProfessionalId,
+      });
+      await repository.upsertProfessionalId(document, mockUser);
+
+      const [, update] = findOneAndUpdateSpy.mock.calls[0];
+      const { $set: setFields, $setOnInsert: insertOnlyFields } = update as {
+        $set: Record<string, unknown>;
+        $setOnInsert: Record<string, unknown>;
+      };
+      expect(setFields).not.toHaveProperty('createdOn');
+      expect(setFields).not.toHaveProperty('createdBy');
+      expect(insertOnlyFields).toHaveProperty('createdOn');
+      expect(insertOnlyFields).toHaveProperty('createdBy');
+      expect(insertOnlyFields).toHaveProperty('id');
+    });
+
+    // A retry with a richer evidence graph, or one that escalates to 'conflict', must actually
+    // overwrite what an earlier attempt wrote for the same key - this is the cams-q6ml5 fix.
+    test('should overwrite an existing document rather than preserving the first write', async () => {
+      const updatedDocument: TrusteeProfessionalIdDocument = {
+        ...sampleProfessionalId,
+        camsTrusteeId,
+        acmsProfessionalId,
+        disposition: 'conflict',
+        evidence: { ...sampleProfessionalId.evidence, conflictingTrusteeId: 'other-trustee' },
+      };
+      const findOneAndUpdateSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'findOneAndUpdate')
+        .mockResolvedValue(updatedDocument);
+
+      const document = withoutAuditOrId(updatedDocument);
+      const result = await repository.upsertProfessionalId(document, mockUser);
+
+      expect(findOneAndUpdateSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ $set: expect.objectContaining({ disposition: 'conflict' }) }),
+        expect.anything(),
+      );
+      expect(result.disposition).toBe('conflict');
+    });
+
+    // A read-after-write race (or any other reason findOneAndUpdate returns null despite
+    // upsert: true) must surface as an explicit error, never a silently undefined result typed as
+    // a guaranteed TrusteeProfessionalId.
+    test('should throw when findOneAndUpdate returns no document despite upsert: true', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOneAndUpdate').mockResolvedValue(null);
+
+      const document = withoutAuditOrId({
+        ...sampleProfessionalId,
+        camsTrusteeId,
+        acmsProfessionalId,
+      });
+
+      await expect(repository.upsertProfessionalId(document, mockUser)).rejects.toThrow(
+        `upsertProfessionalId returned no document for trustee ${camsTrusteeId} and ACMS ID ${acmsProfessionalId}.`,
+      );
+    });
+
+    test('should handle database errors during upsert', async () => {
+      const error = new Error('Database connection failed');
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOneAndUpdate').mockRejectedValue(error);
+
+      const document = withoutAuditOrId({
+        ...sampleProfessionalId,
+        camsTrusteeId,
+        acmsProfessionalId,
+      });
+
+      await expect(repository.upsertProfessionalId(document, mockUser)).rejects.toThrow(
+        `Failed to write professional ID record for trustee ${camsTrusteeId} and ACMS ID ${acmsProfessionalId}.`,
       );
     });
   });
@@ -321,7 +268,7 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
           leftOperand: { name: 'camsTrusteeId' },
           rightOperand: camsTrusteeId,
         },
-        notErroredCondition,
+        isRealLinkCondition,
       ],
     };
 
@@ -348,7 +295,10 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
 
       const result = await repository.findByCamsTrusteeId(camsTrusteeId);
 
-      expect(findSpy).toHaveBeenCalledWith(expectedQuery);
+      expect(findSpy).toHaveBeenCalledWith(expectedQuery, undefined, undefined, {
+        fields: ['evidence'],
+        mode: 'EXCLUDE',
+      });
       expect(result).toHaveLength(2);
       expect(result[0].acmsProfessionalId).toBe('NY-00063');
       expect(result[1].acmsProfessionalId).toBe('UT-05321');
@@ -361,17 +311,22 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
 
       const result = await repository.findByCamsTrusteeId('trustee-unknown');
 
-      expect(findSpy).toHaveBeenCalledWith({
-        conjunction: 'AND',
-        values: [
-          {
-            condition: 'EQUALS',
-            leftOperand: { name: 'camsTrusteeId' },
-            rightOperand: 'trustee-unknown',
-          },
-          notErroredCondition,
-        ],
-      });
+      expect(findSpy).toHaveBeenCalledWith(
+        {
+          conjunction: 'AND',
+          values: [
+            {
+              condition: 'EQUALS',
+              leftOperand: { name: 'camsTrusteeId' },
+              rightOperand: 'trustee-unknown',
+            },
+            isRealLinkCondition,
+          ],
+        },
+        undefined,
+        undefined,
+        { fields: ['evidence'], mode: 'EXCLUDE' },
+      );
       expect(result).toHaveLength(0);
     });
 
@@ -382,7 +337,10 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
       await expect(repository.findByCamsTrusteeId(camsTrusteeId)).rejects.toThrow(
         `Failed to find professional IDs for trustee ${camsTrusteeId}.`,
       );
-      expect(findSpy).toHaveBeenCalledWith(expectedQuery);
+      expect(findSpy).toHaveBeenCalledWith(expectedQuery, undefined, undefined, {
+        fields: ['evidence'],
+        mode: 'EXCLUDE',
+      });
     });
   });
 
@@ -396,7 +354,7 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
           leftOperand: { name: 'acmsProfessionalId' },
           rightOperand: acmsProfessionalId,
         },
-        notErroredCondition,
+        isRealLinkCondition,
       ],
     };
 
@@ -423,7 +381,10 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
 
       const result = await repository.findByAcmsProfessionalId(acmsProfessionalId);
 
-      expect(findSpy).toHaveBeenCalledWith(expectedQuery);
+      expect(findSpy).toHaveBeenCalledWith(expectedQuery, undefined, undefined, {
+        fields: ['evidence'],
+        mode: 'EXCLUDE',
+      });
       expect(result).toHaveLength(2);
       expect(result[0].camsTrusteeId).toBe('trustee-11092');
       expect(result[1].camsTrusteeId).toBe('trustee-13340');
@@ -443,7 +404,10 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
 
       const result = await repository.findByAcmsProfessionalId(acmsProfessionalId);
 
-      expect(findSpy).toHaveBeenCalledWith(expectedQuery);
+      expect(findSpy).toHaveBeenCalledWith(expectedQuery, undefined, undefined, {
+        fields: ['evidence'],
+        mode: 'EXCLUDE',
+      });
       expect(result).toHaveLength(1);
       expect(result[0].camsTrusteeId).toBe('trustee-11092');
       expect(result[0].acmsProfessionalId).toBe(acmsProfessionalId);
@@ -454,17 +418,22 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
 
       const result = await repository.findByAcmsProfessionalId('XX-99999');
 
-      expect(findSpy).toHaveBeenCalledWith({
-        conjunction: 'AND',
-        values: [
-          {
-            condition: 'EQUALS',
-            leftOperand: { name: 'acmsProfessionalId' },
-            rightOperand: 'XX-99999',
-          },
-          notErroredCondition,
-        ],
-      });
+      expect(findSpy).toHaveBeenCalledWith(
+        {
+          conjunction: 'AND',
+          values: [
+            {
+              condition: 'EQUALS',
+              leftOperand: { name: 'acmsProfessionalId' },
+              rightOperand: 'XX-99999',
+            },
+            isRealLinkCondition,
+          ],
+        },
+        undefined,
+        undefined,
+        { fields: ['evidence'], mode: 'EXCLUDE' },
+      );
       expect(result).toHaveLength(0);
     });
 
@@ -475,7 +444,65 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
       await expect(repository.findByAcmsProfessionalId(acmsProfessionalId)).rejects.toThrow(
         `Failed to find trustees with ACMS professional ID ${acmsProfessionalId}.`,
       );
-      expect(findSpy).toHaveBeenCalledWith(expectedQuery);
+      expect(findSpy).toHaveBeenCalledWith(expectedQuery, undefined, undefined, {
+        fields: ['evidence'],
+        mode: 'EXCLUDE',
+      });
+    });
+  });
+
+  describe('hasConflictByAcmsProfessionalId', () => {
+    const acmsProfessionalId = 'AK-01414';
+    const expectedQuery = {
+      conjunction: 'AND',
+      values: [
+        {
+          condition: 'EQUALS',
+          leftOperand: { name: 'acmsProfessionalId' },
+          rightOperand: acmsProfessionalId,
+        },
+        {
+          condition: 'EQUALS',
+          leftOperand: { name: 'disposition' },
+          rightOperand: 'conflict',
+        },
+      ],
+    };
+
+    test('should return true when a conflict record exists for this ACMS ID', async () => {
+      const findSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([
+        {
+          ...sampleProfessionalId,
+          id: 'prof-id-1',
+          acmsProfessionalId,
+          disposition: 'conflict',
+        },
+      ]);
+
+      const result = await repository.hasConflictByAcmsProfessionalId(acmsProfessionalId);
+
+      expect(findSpy).toHaveBeenCalledWith(expectedQuery, undefined, undefined, {
+        fields: ['evidence'],
+        mode: 'EXCLUDE',
+      });
+      expect(result).toBe(true);
+    });
+
+    test('should return false when no conflict record exists for this ACMS ID', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+
+      const result = await repository.hasConflictByAcmsProfessionalId(acmsProfessionalId);
+
+      expect(result).toBe(false);
+    });
+
+    test('should handle database errors', async () => {
+      const error = new Error('Database connection failed');
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(error);
+
+      await expect(repository.hasConflictByAcmsProfessionalId(acmsProfessionalId)).rejects.toThrow(
+        `Failed to check for a conflict record with ACMS professional ID ${acmsProfessionalId}.`,
+      );
     });
   });
 
@@ -587,7 +614,7 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
   });
 
   describe('findAll', () => {
-    test('should return all non-errored professional ID mappings', async () => {
+    test('should return all auto-linked professional ID mappings', async () => {
       const allMappings: TrusteeProfessionalId[] = [
         { ...sampleProfessionalId, id: 'p1', camsTrusteeId: 't1', acmsProfessionalId: 'NY-00063' },
         { ...sampleProfessionalId, id: 'p2', camsTrusteeId: 't2', acmsProfessionalId: 'UT-05321' },
@@ -598,17 +625,22 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
 
       const result = await repository.findAll();
 
-      expect(findSpy).toHaveBeenCalledWith({
-        conjunction: 'AND',
-        values: [
-          {
-            condition: 'EQUALS',
-            leftOperand: { name: 'documentType' },
-            rightOperand: 'TRUSTEE_PROFESSIONAL_ID',
-          },
-          notErroredCondition,
-        ],
-      });
+      expect(findSpy).toHaveBeenCalledWith(
+        {
+          conjunction: 'AND',
+          values: [
+            {
+              condition: 'EQUALS',
+              leftOperand: { name: 'documentType' },
+              rightOperand: 'TRUSTEE_PROFESSIONAL_ID',
+            },
+            isRealLinkCondition,
+          ],
+        },
+        undefined,
+        undefined,
+        { fields: ['evidence'], mode: 'EXCLUDE' },
+      );
       expect(result).toHaveLength(2);
     });
 

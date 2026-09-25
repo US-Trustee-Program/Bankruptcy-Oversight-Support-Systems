@@ -151,3 +151,6 @@ __blobstorage__/
 
 # Local scratch images
 img/
+
+# Local data exports (real trustee PII from staging investigations) - never committed
+data/

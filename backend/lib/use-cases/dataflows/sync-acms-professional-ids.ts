@@ -8,17 +8,19 @@ import {
 } from '../gateways.types';
 import { TrusteeVariation } from '@common/cams/trustee-variation';
 import { ACMS_SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
-import {
-  matchTrusteeByName,
-  resolveByContactCorroboration,
-  resolveDuplicateNameCandidates,
-  findTokenIntersectionCandidates,
-  findAnchoredLevenshteinCandidates,
-} from './trustee-match.helpers';
-import { buildAcmsVariant } from './acms-trustee-variant.helpers';
+import { buildAcmsVariant, formatAcmsZip } from './acms-trustee-variant.helpers';
+import { formatCityStateZipCountry } from '../../adapters/utils/string-helper';
 import { computeFingerprint } from './trustee-variant.helpers';
-import { AcmsTrusteeProfessional, CandidateScore } from '@common/cams/dataflow-events';
-import { TrusteeProfessionalIdError } from '@common/cams/trustee-professional-ids';
+import { AcmsTrusteeProfessional } from '@common/cams/dataflow-events';
+import { isTransientInfraError } from '../../common-errors/transient-infra-error';
+import { runTrusteeMatchPipeline } from './trustee-match-pipeline-orchestrator';
+import { serializeState, TrusteeSerializedState } from './trustee-match-pipeline';
+import {
+  createLinkedStateWithoutEvidence,
+  deriveDisposition,
+  deriveSuspectDuplicateCamsTrustee,
+  TrusteeProfessionalId,
+} from './trustee-professional-ids.types';
 
 const ACMS_PROFESSIONAL_ID_SYNC_STATE = 'ACMS_PROFESSIONAL_ID_SYNC_STATE' as const;
 
@@ -117,39 +119,15 @@ type LinkOutcome = { kind: 'auto-linked'; trusteeId: string };
 
 type FingerprintMatchResult = { kind: 'no-match' } | LinkOutcome;
 
-type NameMatchResult =
-  { kind: 'no-match' } | { kind: 'ambiguous'; matchCandidates: CandidateScore[] } | LinkOutcome;
-
 function findByVariant<T extends { variant: string }>(bucket: T[], variant: string): T | undefined {
   return bucket.find((v) => v.variant === variant);
 }
 
 /**
- * Links the ACMS professional ID to the given trustee via TrusteeProfessionalIdsMongoRepository.
- * acmsProfessionalId -> camsTrusteeId is no longer enforced as globally unique (that would reject
- * a second CAMS trustee resolving to the same ACMS id, which is a conflict to report, not an
- * error to throw) — the caller checks for an existing, differently-owned link itself via
- * findExistingConflict before calling this.
- */
-async function linkTrustee(
-  deps: SyncAcmsProfessionalIdsDeps,
-  trusteeId: string,
-  acmsProfessionalId: string,
-): Promise<LinkOutcome> {
-  await deps.professionalIdsRepo.createProfessionalId(
-    trusteeId,
-    acmsProfessionalId,
-    ACMS_SYSTEM_USER_REFERENCE,
-  );
-  return { kind: 'auto-linked', trusteeId };
-}
-
-/**
- * A genuine conflict is a different CAMS trustee already holding this ACMS professional ID —
- * looked up directly rather than inferred from a unique-index violation, since
- * acmsProfessionalId -> camsTrusteeId is no longer enforced as globally unique at the database
- * layer (see linkTrustee). Ignores any existing errored (unmatched) records for this ACMS id —
- * only a real, previously-resolved link counts as a conflict.
+ * A genuine conflict is a different CAMS trustee already holding this ACMS professional ID -
+ * looked up directly against prior writes rather than inferred from a unique-index violation,
+ * since acmsProfessionalId -> camsTrusteeId is not enforced as globally unique at the database
+ * layer. Only a prior auto-linked (non-conflicting) record counts.
  */
 async function findExistingConflict(
   deps: SyncAcmsProfessionalIdsDeps,
@@ -157,9 +135,7 @@ async function findExistingConflict(
   candidateTrusteeId: string,
 ): Promise<string | undefined> {
   const existing = await deps.professionalIdsRepo.findByAcmsProfessionalId(acmsProfessionalId);
-  const conflicting = existing.find(
-    (link) => !link.error && link.camsTrusteeId !== candidateTrusteeId,
-  );
+  const conflicting = existing.find((link) => link.camsTrusteeId !== candidateTrusteeId);
   return conflicting?.camsTrusteeId;
 }
 
@@ -182,152 +158,88 @@ async function processFingerprintMatch(
 }
 
 /**
- * Splits a compound PROF_FIRST_NAME (e.g. "CAROLINE RENEE") into its first token and the
- * remainder, but ONLY when PROF_MI is empty — CMMPR sometimes carries a middle name inside
- * PROF_FIRST_NAME instead of using PROF_MI, and calculateNameScore's exact-match-or-initial
- * firstName comparison has no tolerance for an unsplit compound value, so this normalizes it to
- * the same firstName/middleName split DXTR already produces before it ever reaches the shared
- * matcher. Left untouched whenever PROF_MI is already populated, since a compound firstName
- * alongside a real middle initial is a different (and much rarer) shape not addressed here.
+ * Composes the legacy (ACMS-side address/phone/fax) block the same way
+ * cases.dxtr.gateway.ts's dxtrTrustee construction composes DXTR's equivalent - reusing the same
+ * formatCityStateZipCountry/formatAcmsZip helpers buildAcmsVariant already uses for the persisted
+ * variant string, so this stays in sync with that composition rather than drifting from it.
+ * Returns undefined (not an all-undefined object) when the record has no address/phone/fax data
+ * at all, mirroring AcmsTrusteeProfessional.legacy's own optionality.
  */
-function splitCompoundFirstName(
-  firstName: string | undefined,
-  middleInitial: string | undefined,
-): { firstName: string | undefined; middleName: string | undefined } {
-  if (middleInitial || !firstName) return { firstName, middleName: middleInitial };
-
-  const tokens = firstName.trim().split(/\s+/);
-  if (tokens.length < 2) return { firstName, middleName: middleInitial };
-
-  return { firstName: tokens[0], middleName: tokens.slice(1).join(' ') };
-}
-
-function toAcmsTrusteeProfessional(
+function toAcmsLegacy(
   record: AcmsTrusteeProfessionalDetailRecord,
-): AcmsTrusteeProfessional {
-  const { firstName, middleName } = splitCompoundFirstName(record.firstName, record.middleInitial);
-  const fullName = [record.firstName, record.middleInitial, record.lastName]
-    .filter(Boolean)
-    .join(' ');
+): AcmsTrusteeProfessional['legacy'] {
+  const cityStateZipCountry = formatCityStateZipCountry(
+    record.city,
+    record.state,
+    formatAcmsZip(record.zip),
+    undefined,
+  );
+  if (
+    !record.address1 &&
+    !record.address2 &&
+    !cityStateZipCountry &&
+    !record.phone &&
+    !record.fax
+  ) {
+    return undefined;
+  }
   return {
-    firstName,
-    middleName,
-    lastName: record.lastName,
-    fullName,
+    address1: record.address1,
+    address2: record.address2,
+    cityStateZipCountry,
+    phone: record.phone,
+    fax: record.fax,
   };
 }
 
 /**
- * Attempts to resolve a raw candidate trusteeId list via the two shared, non-appointment-gated
- * corroboration primitives, in order: resolveByContactCorroboration first (exactly one candidate
- * clears the name bar, corroborated by address/phone/email or the no-contradiction fallback), then
- * resolveDuplicateNameCandidates only if that leaves MULTIPLE candidates (checks whether they're
- * likely the same real person recorded twice in the trustees collection). Extracted so both
- * matchTrusteeByName's 'ambiguous' result and findTokenIntersectionCandidates' raw candidate list
- * can share the exact same resolution sequence rather than duplicating it.
+ * Faithful, near-1:1 projection of a CMMPR record - deliberately does NOT recover/strip/split
+ * anything (see normalizeAcmsSourceName in trustee-match-pipeline-stages.ts for that logic).
+ * firstName/middleName/lastName here are CMMPR's raw PROF_FIRST_NAME/PROF_MI/PROF_LAST_NAME
+ * values, exactly as ACMS recorded them, including any administrative markers or data-quality
+ * corruption - the pipeline's NORMALIZE stage is the only place that recovers a usable name from
+ * them, writing its result to state.sourceNormalized so both the raw and normalized forms stay
+ * independently visible in the persisted state graph, rather than the recovered name silently
+ * becoming the only name any later stage or reviewer can see.
  */
-async function resolveCandidatesByCorroboration(
-  context: SyncAcmsProfessionalIdsDeps['context'],
-  acmsTrusteeProfessional: AcmsTrusteeProfessional,
-  candidateTrusteeIds: string[],
-): Promise<string | null> {
-  if (candidateTrusteeIds.length === 0) return null;
-
-  const corroboration = await resolveByContactCorroboration(
-    context,
-    acmsTrusteeProfessional,
-    candidateTrusteeIds,
-  );
-  if (corroboration.kind === 'resolved') {
-    return corroboration.trusteeId;
-  }
-
-  const duplicateResolution = await resolveDuplicateNameCandidates(
-    context,
-    acmsTrusteeProfessional,
-    candidateTrusteeIds,
-  );
-  if (duplicateResolution.kind === 'resolved-duplicate') {
-    return duplicateResolution.trusteeId;
-  }
-
-  return null;
+function toAcmsTrusteeProfessional(
+  record: AcmsTrusteeProfessionalDetailRecord,
+): AcmsTrusteeProfessional {
+  const fullName = [record.firstName, record.middleInitial, record.lastName]
+    .filter(Boolean)
+    .join(' ');
+  return {
+    firstName: record.firstName,
+    middleName: record.middleInitial,
+    lastName: record.lastName,
+    fullName,
+    legacy: toAcmsLegacy(record),
+  };
 }
 
 /**
- * Falls through from a fingerprint miss to CAMS's existing name-matching logic
- * (matchTrusteeByName), reused as-is with the same thresholds as the DXTR sync.
- *
- * Unlike sync-trustee-case-appointments.ts, an ambiguous match here is NOT further resolved via
- * resolveNameCollisionByScoring: that function hard-requires a case-appointment event
- * (caseId/courtId/courtDivisionCode/chapter) to score candidates against active appointments,
- * none of which exist for a standalone ACMS professional record. Instead, both the 'ambiguous' and
- * 'no-match' outcomes are given more chances via shared, non-appointment-gated primitives before
- * falling back to their default disposition for human/automated review:
- *   - 'ambiguous': routed through resolveCandidatesByCorroboration directly against
- *     matchTrusteeByName's own raw candidates.
- *   - 'no-match': two LAST-RESORT candidate-discovery steps are tried in sequence, each only after
- *     the previous one found nothing, before also routing through resolveCandidatesByCorroboration:
- *     1. findTokenIntersectionCandidates - name-part REORDERING (e.g. going by a middle name, a
- *        lastName with an internal space).
- *     2. findAnchoredLevenshteinCandidates - genuine SPELLING errors (a typo or transposition in
- *        either name part) - a different failure shape token-intersection's exact-substring
- *        requirement cannot catch.
- *     Both are deliberately gated behind matchTrusteeByName (and each other) already returning
- *     nothing — each issues its own extra query per attempt and must never run speculatively
- *     alongside the cheaper tiers.
+ * Runs the ACMS-sourced record through runTrusteeMatchPipeline, the same pipeline instantiation
+ * DXTR trustee-appointment matching uses (see trustee-match-pipeline-orchestrator.ts). A transient
+ * pipeline error (state.error set to a TooManyRequestsError/GatewayTimeoutError) is rethrown here
+ * rather than absorbed - the caller (processOneRecord, then handlePage) needs the throw to reach
+ * its existing page-level retry-from-original-bookmark handling, since nothing about this record
+ * caused the failure and a retry with a fresh pipeline run may well succeed. Any other outcome
+ * (a resolved match, a skip, a terminal error, or an unresolved candidate pool) returns normally -
+ * the caller reads state.match/state.skip/state.error/state.candidates directly rather than a
+ * separate summary type.
  */
 async function processNameMatch(
   deps: SyncAcmsProfessionalIdsDeps,
   record: AcmsTrusteeProfessionalDetailRecord,
-): Promise<NameMatchResult> {
+): Promise<TrusteeSerializedState> {
   const acmsTrusteeProfessional = toAcmsTrusteeProfessional(record);
-  const result = await matchTrusteeByName(deps.context, acmsTrusteeProfessional);
+  const state = await runTrusteeMatchPipeline(deps.context, acmsTrusteeProfessional);
 
-  if (result.kind === 'ambiguous') {
-    const candidateTrusteeIds = result.matchCandidates.map((c) => c.trusteeId);
-    const resolvedTrusteeId = await resolveCandidatesByCorroboration(
-      deps.context,
-      acmsTrusteeProfessional,
-      candidateTrusteeIds,
-    );
-    if (resolvedTrusteeId) {
-      return { kind: 'auto-linked', trusteeId: resolvedTrusteeId };
-    }
-    return { kind: 'ambiguous', matchCandidates: result.matchCandidates };
+  if (state.error && isTransientInfraError(state.error)) {
+    throw state.error;
   }
 
-  if (result.kind === 'no-match') {
-    const tokenIntersectionCandidates = await findTokenIntersectionCandidates(
-      deps.context,
-      acmsTrusteeProfessional,
-    );
-    const tokenIntersectionResolvedTrusteeId = await resolveCandidatesByCorroboration(
-      deps.context,
-      acmsTrusteeProfessional,
-      tokenIntersectionCandidates.map((t) => t.trusteeId),
-    );
-    if (tokenIntersectionResolvedTrusteeId) {
-      return { kind: 'auto-linked', trusteeId: tokenIntersectionResolvedTrusteeId };
-    }
-
-    const anchoredLevenshteinCandidates = await findAnchoredLevenshteinCandidates(
-      deps.context,
-      acmsTrusteeProfessional,
-    );
-    const anchoredLevenshteinResolvedTrusteeId = await resolveCandidatesByCorroboration(
-      deps.context,
-      acmsTrusteeProfessional,
-      anchoredLevenshteinCandidates.map((t) => t.trusteeId),
-    );
-    if (anchoredLevenshteinResolvedTrusteeId) {
-      return { kind: 'auto-linked', trusteeId: anchoredLevenshteinResolvedTrusteeId };
-    }
-
-    return { kind: 'no-match' };
-  }
-
-  return { kind: 'auto-linked', trusteeId: result.trusteeId };
+  return serializeState(state);
 }
 
 /**
@@ -351,46 +263,72 @@ async function hasActiveAppointments(
 }
 
 /**
- * Writes the unmatched/ambiguous/conflicting outcome as a TrusteeProfessionalId record keyed by
- * the ACMS variant's fingerprint in place of a real trusteeId, decorated with the raw variant and
- * an `error` disposition so it can be found and healed later — see
- * TrusteeProfessionalIdsRepository.createErroredProfessionalId.
+ * Writes one TrusteeProfessionalId, composed directly from a TrusteeSerializedState, keyed by
+ * camsTrusteeId - the resolved trusteeId on an auto-linked disposition, or the ACMS variant's
+ * fingerprint otherwise. conflictingTrusteeId/disposition override, when set, replace the
+ * state-derived disposition (see findExistingConflict's caller): a match that collides with an
+ * existing, differently-owned link is a data-integrity problem, not a clean auto-link.
+ * suspectDuplicateCamsTrustee is independent of disposition - see its own doc comment on
+ * TrusteeProfessionalId.
  */
-async function writeErroredProfessionalId(
+async function writeProfessionalId(
   deps: SyncAcmsProfessionalIdsDeps,
   record: AcmsTrusteeProfessionalDetailRecord,
   fingerprint: string,
   variant: string,
-  error: TrusteeProfessionalIdError,
-): Promise<void> {
-  await deps.professionalIdsRepo.createErroredProfessionalId(
-    fingerprint,
-    record.acmsProfessionalId,
-    variant,
-    error,
+  state: TrusteeSerializedState,
+  conflictingTrusteeId?: string,
+): Promise<TrusteeProfessionalId> {
+  const disposition = conflictingTrusteeId ? 'conflict' : deriveDisposition(state);
+  const camsTrusteeId = state.match?.trusteeId ?? fingerprint;
+
+  return deps.professionalIdsRepo.upsertProfessionalId(
+    {
+      documentType: 'TRUSTEE_PROFESSIONAL_ID',
+      camsTrusteeId,
+      acmsProfessionalId: record.acmsProfessionalId,
+      disposition,
+      suspectDuplicateCamsTrustee:
+        disposition === 'ambiguous' ? deriveSuspectDuplicateCamsTrustee(state) : undefined,
+      evidence: { ...state, variant, conflictingTrusteeId },
+    },
     ACMS_SYSTEM_USER_REFERENCE,
   );
 }
 
-/** Wipes all existing professional ID mappings — used by the purge StartMessage flag. */
+/**
+ * Wipes all existing professional ID mappings AND deletes the sync bookmark document — used by
+ * the purge StartMessage flag for a genuine full reset. Deleting the bookmark, rather than merely
+ * bypassing it (see resolveSyncState's own purge parameter, which still needs its own separate
+ * per-group propagation — see PageMessage.purge in the function app), means there is nothing
+ * stale left in the runtime-state collection for a later, non-purge run to accidentally read.
+ */
 async function purgeAll(deps: SyncAcmsProfessionalIdsDeps): Promise<void> {
   await deps.professionalIdsRepo.deleteAll();
+  await deps.runtimeStateRepo.delete(ACMS_PROFESSIONAL_ID_SYNC_STATE);
 }
 
-type GateOutcome = 'skipped' | 'error-written';
+type GateOutcome = 'skipped' | 'written';
 
 type ProcessOneRecordOutcome =
   | { kind: 'auto-linked'; via: 'fingerprint' | 'name' }
   | { kind: 'conflict'; via: 'fingerprint' | 'name' }
-  | { kind: 'no-match' | 'ambiguous'; gated: GateOutcome };
+  | {
+      kind: 'no-match' | 'ambiguous' | 'error' | 'skipped-not-a-person';
+      gated: GateOutcome;
+    };
 
 /**
- * The full per-record decision tree: fingerprint match first (cheapest, most confident); on a
- * miss, fall through to name matching. A resolved match (either path) that collides with a
- * different trustee already holding this ACMS id is reported as a conflict, always written
- * (bypassing the active-appointment gate — a data-integrity problem is always worth recording).
- * Any other non-auto-link outcome (no-match, ambiguous) routes through the active-appointment
- * gate. Returns a summary outcome so the caller (handlePage) can aggregate per-page telemetry.
+ * The full per-record decision tree: fingerprint match first (cheapest real lookup, most
+ * confident), then on a miss, the real matching pipeline - which itself detects an
+ * administrative placeholder (see skipAdministrativePlaceholder in
+ * trustee-match-pipeline-stages.ts) as its own first stage, rather than this function checking
+ * for one beforehand. A resolved match that collides with a different trustee already holding
+ * this ACMS id is reported as a conflict, always written (bypassing the active-appointment gate -
+ * a data-integrity problem is always worth recording). Every other outcome (no-match, ambiguous,
+ * skipped, terminal error) routes through the active-appointment gate identically, so each
+ * carries the same evidence-persistence guarantee. Returns a summary outcome so the caller
+ * (handlePage) can aggregate per-page telemetry.
  */
 async function processOneRecord(
   deps: SyncAcmsProfessionalIdsDeps,
@@ -401,74 +339,92 @@ async function processOneRecord(
 
   const fingerprintResult = await processFingerprintMatch(deps, fingerprint, variant);
   if (fingerprintResult.kind === 'auto-linked') {
-    return processResolvedMatch(
-      deps,
-      record,
-      fingerprint,
-      variant,
-      fingerprintResult,
-      'fingerprint',
-    );
+    return processResolvedFingerprintMatch(deps, record, fingerprint, variant, fingerprintResult);
   }
 
-  const nameResult = await processNameMatch(deps, record);
-  if (nameResult.kind === 'auto-linked') {
-    return processResolvedMatch(deps, record, fingerprint, variant, nameResult, 'name');
+  const state = await processNameMatch(deps, record);
+
+  if (state.match) {
+    return processResolvedNameMatch(deps, record, fingerprint, variant, state);
   }
 
-  if (nameResult.kind === 'ambiguous') {
-    const gated = await applyActiveAppointmentGate(deps, record, fingerprint, variant, {
-      disposition: 'ambiguous',
-      trustees: nameResult.matchCandidates.map((c) => c.trusteeId),
-    });
+  const gated = await applyActiveAppointmentGate(deps, record, fingerprint, variant, state);
+
+  if (state.skip) {
+    return { kind: 'skipped-not-a-person', gated };
+  }
+  if (state.error) {
+    return { kind: 'error', gated };
+  }
+  const disposition = deriveDisposition(state);
+  if (disposition === 'ambiguous') {
     return { kind: 'ambiguous', gated };
   }
-
-  const gated = await applyActiveAppointmentGate(deps, record, fingerprint, variant, {
-    disposition: 'no-match',
-  });
   return { kind: 'no-match', gated };
 }
 
-async function processResolvedMatch(
+async function processResolvedFingerprintMatch(
   deps: SyncAcmsProfessionalIdsDeps,
   record: AcmsTrusteeProfessionalDetailRecord,
   fingerprint: string,
   variant: string,
-  match: LinkOutcome,
-  via: 'fingerprint' | 'name',
+  fingerprintResult: LinkOutcome,
 ): Promise<ProcessOneRecordOutcome> {
   const existingTrusteeId = await findExistingConflict(
     deps,
     record.acmsProfessionalId,
-    match.trusteeId,
+    fingerprintResult.trusteeId,
+  );
+  const emptyState = createLinkedStateWithoutEvidence(
+    toAcmsTrusteeProfessional(record),
+    fingerprintResult.trusteeId,
   );
   if (existingTrusteeId) {
-    await writeErroredProfessionalId(deps, record, fingerprint, variant, {
-      disposition: 'conflict',
-      trustees: [existingTrusteeId, match.trusteeId],
-    });
-    return { kind: 'conflict', via };
+    await writeProfessionalId(deps, record, fingerprint, variant, emptyState, existingTrusteeId);
+    return { kind: 'conflict', via: 'fingerprint' };
   }
 
-  await linkTrustee(deps, match.trusteeId, record.acmsProfessionalId);
-  return { kind: 'auto-linked', via };
+  await writeProfessionalId(deps, record, fingerprint, variant, emptyState);
+  return { kind: 'auto-linked', via: 'fingerprint' };
 }
 
+async function processResolvedNameMatch(
+  deps: SyncAcmsProfessionalIdsDeps,
+  record: AcmsTrusteeProfessionalDetailRecord,
+  fingerprint: string,
+  variant: string,
+  state: TrusteeSerializedState,
+): Promise<ProcessOneRecordOutcome> {
+  const trusteeId = state.match!.trusteeId;
+  const existingTrusteeId = await findExistingConflict(deps, record.acmsProfessionalId, trusteeId);
+  if (existingTrusteeId) {
+    await writeProfessionalId(deps, record, fingerprint, variant, state, existingTrusteeId);
+    return { kind: 'conflict', via: 'name' };
+  }
+
+  await writeProfessionalId(deps, record, fingerprint, variant, state);
+  return { kind: 'auto-linked', via: 'name' };
+}
+
+/**
+ * Zero active CMMAP appointments for this professional means there's no urgency to resolve their
+ * identity right now, so nothing is written; one or more means the pipeline's evidence is always
+ * written, regardless of outcome (no-match, ambiguous, or a terminal pipeline error).
+ */
 async function applyActiveAppointmentGate(
   deps: SyncAcmsProfessionalIdsDeps,
   record: AcmsTrusteeProfessionalDetailRecord,
   fingerprint: string,
   variant: string,
-  error: TrusteeProfessionalIdError,
+  state: TrusteeSerializedState,
 ): Promise<GateOutcome> {
   const groupDesignator = record.acmsProfessionalId.split('-')[0];
   const active = await hasActiveAppointments(deps, groupDesignator, record.ustProfCode);
   if (!active) {
     return 'skipped';
   }
-  await writeErroredProfessionalId(deps, record, fingerprint, variant, error);
-  return 'error-written';
+  await writeProfessionalId(deps, record, fingerprint, variant, state);
+  return 'written';
 }
 
 const SyncAcmsProfessionalIds = {

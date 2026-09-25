@@ -180,7 +180,7 @@ function Input_(props: InputProps, ref: React.Ref<InputRef>) {
           className={`usa-input usa-tooltip ${props.className ?? ''}`}
           aria-invalid={errorMessage && errorMessage.length > 0 ? 'true' : undefined}
           aria-errormessage={
-            errorMessage && errorMessage.length > 0 ? `${baseId}-input__error-message` : undefined
+            errorMessage && errorMessage.length > 0 ? `${baseId}-field-error-message` : undefined
           }
           data-position={props.position ?? 'right'}
           onChange={handleOnChange}
@@ -211,7 +211,7 @@ function Input_(props: InputProps, ref: React.Ref<InputRef>) {
         )}
       </div>
       {errorMessage && errorMessage.length > 0 && (
-        <div id={`${baseId}-input__error-message`} className="usa-input__error-message">
+        <div id={`${baseId}-field-error-message`} className="cams-field-error-message">
           {errorMessage}
         </div>
       )}

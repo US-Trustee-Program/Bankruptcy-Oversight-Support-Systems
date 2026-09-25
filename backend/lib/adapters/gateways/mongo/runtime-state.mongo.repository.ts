@@ -33,6 +33,25 @@ export class RuntimeStateMongoRepository<T extends RuntimeState>
     }
   }
 
+  /**
+   * Deletes the single runtime-state document for this documentType, if one exists - used by a
+   * dataflow's own "purge" intent (e.g. sync-acms-professional-ids.ts's full-reset backfill) to
+   * genuinely remove stale progress rather than merely bypass reading it. Uses deleteMany rather
+   * than the adapter's deleteOne so a purge run against a documentType with no persisted state
+   * yet (first run ever, or already deleted by a prior purge) is a harmless no-op instead of a
+   * thrown NotFoundError - deleteOne's own contract treats "nothing matched" as an error, which is
+   * the wrong semantic for an idempotent purge.
+   */
+  async delete(id: RuntimeStateDocumentType): Promise<void> {
+    try {
+      const adapter = this.getAdapter<T>();
+      const query = doc('documentType').equals(id);
+      await adapter.deleteMany(query);
+    } catch (e) {
+      throw getCamsError(e, MODULE_NAME);
+    }
+  }
+
   async upsert(data: T): Promise<T> {
     try {
       const query = doc('documentType').equals(data.documentType);
