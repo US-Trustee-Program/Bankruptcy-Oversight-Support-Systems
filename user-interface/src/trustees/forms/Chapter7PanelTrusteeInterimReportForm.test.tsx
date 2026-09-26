@@ -254,6 +254,34 @@ describe('Chapter7PanelTrusteeInterimReportForm', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');
   });
 
+  test('selecting a SEMI_ANNUAL period through user interaction populates both review windows on save', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+    const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
+
+    renderComponent();
+    await screen.findByTestId('tir-frequency');
+
+    await userEvent.selectOptions(screen.getByTestId('tir-frequency'), 'SEMI_ANNUAL');
+    await userEvent.selectOptions(screen.getByTestId('tir-period'), '01/01-06/30 & 07/01-12/31');
+    await userEvent.click(screen.getByTestId('button-save-chapter7-panel-tir'));
+
+    await waitFor(() => {
+      expect(putSpy).toHaveBeenCalledWith(
+        'trustee-001',
+        'appointment-001',
+        expect.objectContaining({
+          tirFrequency: 'SEMI_ANNUAL',
+          tirReviewPeriodStart: '1900-01-01',
+          tirReviewPeriodEnd: '1900-06-30',
+          tirSemiAnnualReviewPeriodStart: '1900-07-01',
+          tirSemiAnnualReviewPeriodEnd: '1900-12-31',
+          tirSemiAnnualSubmission: '1900-01-30',
+          tirSemiAnnualReview: '1900-03-30',
+        }),
+      );
+    });
+  });
+
   test('shows inline error alert when key dates fail to load', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockRejectedValue(new Error('Network error'));
 
@@ -319,51 +347,32 @@ describe('Chapter7PanelTrusteeInterimReportForm', () => {
     });
   });
 
-  test('Save button is disabled and shows a message when only the completion status year is cleared', async () => {
-    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+  test.each([
+    ['tir-completion-status-year', '2025'],
+    ['tir-completion-status-status', 'COMPLETE'],
+  ])(
+    'Save button is disabled and shows a message when only %s is cleared',
+    async (testId, populatedValue) => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
 
-    renderComponent();
+      renderComponent();
 
-    await waitFor(() =>
-      expect(screen.getByTestId('tir-completion-status-year')).toHaveValue('2025'),
-    );
+      await waitFor(() => expect(screen.getByTestId(testId)).toHaveValue(populatedValue));
 
-    await userEvent.selectOptions(screen.getByTestId('tir-completion-status-year'), '');
+      await userEvent.selectOptions(screen.getByTestId(testId), '');
 
-    expect(screen.getByTestId('tir-completion-status-error')).toHaveTextContent('');
+      expect(screen.getByTestId('tir-completion-status-error')).toHaveTextContent('');
 
-    fireEvent.blur(screen.getByTestId('tir-completion-status-year'), { relatedTarget: null });
+      fireEvent.blur(screen.getByTestId(testId), { relatedTarget: null });
 
-    await waitFor(() => {
-      expect(screen.getByTestId('tir-completion-status-error')).toHaveTextContent(
-        'Trustee Interim Report Completion Status Year and Status must both be set.',
-      );
-      expect(screen.getByTestId('button-save-chapter7-panel-tir')).toBeDisabled();
-    });
-  });
-
-  test('Save button is disabled and shows a message when only the completion status status is cleared', async () => {
-    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
-
-    renderComponent();
-
-    await waitFor(() =>
-      expect(screen.getByTestId('tir-completion-status-status')).toHaveValue('COMPLETE'),
-    );
-
-    await userEvent.selectOptions(screen.getByTestId('tir-completion-status-status'), '');
-
-    expect(screen.getByTestId('tir-completion-status-error')).toHaveTextContent('');
-
-    fireEvent.blur(screen.getByTestId('tir-completion-status-status'), { relatedTarget: null });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('tir-completion-status-error')).toHaveTextContent(
-        'Trustee Interim Report Completion Status Year and Status must both be set.',
-      );
-      expect(screen.getByTestId('button-save-chapter7-panel-tir')).toBeDisabled();
-    });
-  });
+      await waitFor(() => {
+        expect(screen.getByTestId('tir-completion-status-error')).toHaveTextContent(
+          'Trustee Interim Report Completion Status Year and Status must both be set.',
+        );
+        expect(screen.getByTestId('button-save-chapter7-panel-tir')).toBeDisabled();
+      });
+    },
+  );
 
   test('Save button is disabled and shows a message when Frequency is chosen but Period is left blank', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });

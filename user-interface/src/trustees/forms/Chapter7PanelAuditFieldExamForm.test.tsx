@@ -240,6 +240,23 @@ describe('Chapter7PanelAuditFieldExamForm', () => {
     );
   });
 
+  test('Save button shows Saving... and is disabled while the save request is in flight', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+    vi.spyOn(Api2, 'putUpcomingKeyDates').mockImplementation(() => new Promise<never>(() => {}));
+
+    renderComponent();
+
+    await waitFor(() => expect(screen.getByTestId('past-audit')).toHaveValue('2023-02-04'));
+
+    await userEvent.click(screen.getByTestId('button-save-chapter7-panel-audit-field-exam'));
+
+    await waitFor(() => {
+      const saveButton = screen.getByTestId('button-save-chapter7-panel-audit-field-exam');
+      expect(saveButton).toBeDisabled();
+      expect(saveButton).toHaveTextContent('Saving...');
+    });
+  });
+
   test.each(['past-audit', 'past-field-exam'])(
     'Save button is disabled when %s has an invalid date',
     async (testId) => {
@@ -287,51 +304,32 @@ describe('Chapter7PanelAuditFieldExamForm', () => {
     });
   });
 
-  test('Save button is disabled and shows a message when only the completion status year is cleared', async () => {
-    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+  test.each([
+    ['audit-completion-status-year', '2023'],
+    ['audit-completion-status-status', 'CLOSED'],
+  ])(
+    'Save button is disabled and shows a message when only %s is cleared',
+    async (testId, populatedValue) => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
 
-    renderComponent();
+      renderComponent();
 
-    await waitFor(() =>
-      expect(screen.getByTestId('audit-completion-status-year')).toHaveValue('2023'),
-    );
+      await waitFor(() => expect(screen.getByTestId(testId)).toHaveValue(populatedValue));
 
-    await userEvent.selectOptions(screen.getByTestId('audit-completion-status-year'), '');
+      await userEvent.selectOptions(screen.getByTestId(testId), '');
 
-    expect(screen.getByTestId('audit-completion-status-error')).toHaveTextContent('');
+      expect(screen.getByTestId('audit-completion-status-error')).toHaveTextContent('');
 
-    fireEvent.blur(screen.getByTestId('audit-completion-status-year'), { relatedTarget: null });
+      fireEvent.blur(screen.getByTestId(testId), { relatedTarget: null });
 
-    await waitFor(() => {
-      expect(screen.getByTestId('audit-completion-status-error')).toHaveTextContent(
-        'Field Exam/Audit Completion Status Year and Status must both be set.',
-      );
-      expect(screen.getByTestId('button-save-chapter7-panel-audit-field-exam')).toBeDisabled();
-    });
-  });
-
-  test('Save button is disabled and shows a message when only the completion status status is cleared', async () => {
-    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
-
-    renderComponent();
-
-    await waitFor(() =>
-      expect(screen.getByTestId('audit-completion-status-status')).toHaveValue('CLOSED'),
-    );
-
-    await userEvent.selectOptions(screen.getByTestId('audit-completion-status-status'), '');
-
-    expect(screen.getByTestId('audit-completion-status-error')).toHaveTextContent('');
-
-    fireEvent.blur(screen.getByTestId('audit-completion-status-status'), { relatedTarget: null });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('audit-completion-status-error')).toHaveTextContent(
-        'Field Exam/Audit Completion Status Year and Status must both be set.',
-      );
-      expect(screen.getByTestId('button-save-chapter7-panel-audit-field-exam')).toBeDisabled();
-    });
-  });
+      await waitFor(() => {
+        expect(screen.getByTestId('audit-completion-status-error')).toHaveTextContent(
+          'Field Exam/Audit Completion Status Year and Status must both be set.',
+        );
+        expect(screen.getByTestId('button-save-chapter7-panel-audit-field-exam')).toBeDisabled();
+      });
+    },
+  );
 
   test('Save button is disabled and shows a message when only the exam/audit year is cleared', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
