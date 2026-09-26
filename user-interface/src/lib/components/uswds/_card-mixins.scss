@@ -1,0 +1,14 @@
+// Flex header row for a card title alongside a trailing action (e.g. an Edit button).
+// A mixin-only partial (no standalone CSS output) so importing it never duplicates
+// compiled rules across the multiple stylesheets that share this layout.
+@mixin card-header-with-action {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.65rem;
+
+  h4 {
+    margin: 0;
+    font-weight: bold;
+  }
+}

@@ -1,23 +1,12 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
 import AppointmentCard, { AppointmentCardProps } from './AppointmentCard';
-import Api2 from '@/lib/models/api2';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import userEvent from '@testing-library/user-event';
 import TestingUtilities from '@/lib/testing/testing-utilities';
 import { CamsRole } from '@common/cams/roles';
-import * as featureFlagsHook from '@/lib/hooks/UseFeatureFlags';
-import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
-import {
-  DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES,
-  DISPLAY_CHPT11_SUBV_PAST_KEY_DATES,
-  DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES,
-  DISPLAY_CHPT12_STANDING_KEY_DATES,
-  DISPLAY_CHPT13_STANDING_KEY_DATES,
-  DISPLAY_CHPT7_ELECTED_KEY_DATES,
-} from '@/lib/hooks/UseFeatureFlags';
 
 const mockUseNavigate = vi.hoisted(() => vi.fn());
 const mockUseCourts = vi.hoisted(() => vi.fn());
@@ -34,27 +23,6 @@ vi.mock('@/lib/hooks/UseCourts', () => ({
   default: mockUseCourts,
 }));
 
-vi.mock('./UpcomingKeyDates', () => ({
-  default: (props: { data: unknown; isLoading: boolean; variant?: string }) => (
-    <div
-      data-testid="upcoming-key-dates-card"
-      data-is-loading={String(props.isLoading)}
-      data-has-data={String(props.data !== null)}
-      data-variant={String(props.variant)}
-    />
-  ),
-}));
-vi.mock('./PastKeyDates', () => ({
-  default: (props: { data: unknown; isLoading: boolean; variant?: string }) => (
-    <div
-      data-testid="past-key-dates-card"
-      data-is-loading={String(props.isLoading)}
-      data-has-data={String(props.data !== null)}
-      data-variant={String(props.variant)}
-    />
-  ),
-}));
-
 describe('AppointmentCard', () => {
   const mockNavigate = vi.fn();
 
@@ -63,7 +31,6 @@ describe('AppointmentCard', () => {
     mockUseNavigate.mockReturnValue(mockNavigate);
     mockUseCourts.mockReturnValue({ courts: [], loading: false, error: null });
     TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
-    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
   });
 
   const mockAppointment: TrusteeAppointment = {
@@ -128,49 +95,15 @@ describe('AppointmentCard', () => {
     expect(screen.getAllByText(/01\/15\/2020/).length).toBe(2);
   });
 
-  test('should format chapter 11 correctly', () => {
-    const appointment11: TrusteeAppointment = {
-      ...mockAppointment,
-      chapter: '11',
-    };
+  test.each([
+    ['11', 'panel', /Chapter 11/i],
+    ['13', 'panel', /Chapter 13/i],
+    ['11-subchapter-v', 'panel', /Chapter 11 Subchapter V/i],
+    ['7', 'off-panel', /Chapter 7 - Off Panel/i],
+  ] as const)('should format chapter %s / %s correctly', (chapter, appointmentType, expected) => {
+    renderWithProps({ appointment: { ...mockAppointment, chapter, appointmentType } });
 
-    renderWithProps({ appointment: appointment11 });
-
-    expect(screen.getByText(/Chapter 11/i)).toBeInTheDocument();
-  });
-
-  test('should format chapter 13 correctly', () => {
-    const appointment13: TrusteeAppointment = {
-      ...mockAppointment,
-      chapter: '13',
-    };
-
-    renderWithProps({ appointment: appointment13 });
-
-    expect(screen.getByText(/Chapter 13/i)).toBeInTheDocument();
-  });
-
-  test('should format chapter 11-subchapter-v correctly', () => {
-    const appointment11v: TrusteeAppointment = {
-      ...mockAppointment,
-      chapter: '11-subchapter-v',
-    };
-
-    renderWithProps({ appointment: appointment11v });
-
-    expect(screen.getByText(/Chapter 11 Subchapter V/i)).toBeInTheDocument();
-  });
-
-  test('should format chapter 7 off-panel correctly', () => {
-    const appointment7OffPanel: TrusteeAppointment = {
-      ...mockAppointment,
-      chapter: '7',
-      appointmentType: 'off-panel',
-    };
-
-    renderWithProps({ appointment: appointment7OffPanel });
-
-    expect(screen.getByText(/Chapter 7 - Off Panel/i)).toBeInTheDocument();
+    expect(screen.getByText(expected)).toBeInTheDocument();
   });
 
   test('should display inactive status correctly', () => {
@@ -188,28 +121,16 @@ describe('AppointmentCard', () => {
     expect(screen.getByText(/06\/01\/2018/)).toBeInTheDocument();
   });
 
-  test('should display voluntarily suspended status correctly', () => {
-    renderWithProps({
-      appointment: { ...mockAppointment, status: 'voluntarily-suspended' },
-    });
+  test.each([
+    ['voluntarily-suspended', 'Voluntarily Suspended'],
+    ['involuntarily-suspended', 'Involuntarily Suspended'],
+    ['terminated', 'Terminated'],
+  ] as const)('should display %s status correctly', (status, expectedLabel) => {
+    renderWithProps({ appointment: { ...mockAppointment, status } });
 
-    expect(screen.getByText(/^Voluntarily Suspended$/, { selector: 'li' })).toBeInTheDocument();
-  });
-
-  test('should display involuntarily suspended status correctly', () => {
-    renderWithProps({
-      appointment: { ...mockAppointment, status: 'involuntarily-suspended' },
-    });
-
-    expect(screen.getByText(/^Involuntarily Suspended$/, { selector: 'li' })).toBeInTheDocument();
-  });
-
-  test('should display terminated status correctly', () => {
-    renderWithProps({
-      appointment: { ...mockAppointment, status: 'terminated' },
-    });
-
-    expect(screen.getByText(/^Terminated$/, { selector: 'li' })).toBeInTheDocument();
+    expect(
+      screen.getByText(new RegExp(`^${expectedLabel}$`), { selector: 'li' }),
+    ).toBeInTheDocument();
   });
 
   test('should display appointedDate with standardized mm/dd/yyyy formatting', () => {
@@ -281,7 +202,7 @@ describe('AppointmentCard', () => {
 
     const editButton = screen.getByRole('button', { name: /edit trustee appointment/i });
     expect(editButton).toBeInTheDocument();
-    expect(editButton).toHaveAttribute('id', 'edit-trustee-appointment');
+    expect(editButton).toHaveAttribute('id', `edit-trustee-appointment-${mockAppointment.id}`);
   });
 
   test('should navigate to edit page when Edit button is clicked', async () => {
@@ -314,421 +235,25 @@ describe('AppointmentCard', () => {
     expect(editButton).not.toBeInTheDocument();
   });
 
-  describe('when DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES flag is enabled', () => {
-    beforeEach(() => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES]: true,
-      });
-    });
-
-    test('renders UpcomingKeyDates card for panel Ch7 appointment with TrusteeAdmin role', () => {
-      renderWithProps({
-        appointment: { ...mockAppointment, chapter: '7', appointmentType: 'panel' },
-      });
-
-      expect(screen.getByTestId('upcoming-key-dates-card')).toBeInTheDocument();
-    });
-
-    test('renders PastKeyDates card for panel Ch7 appointment with TrusteeAdmin role', () => {
-      renderWithProps({
-        appointment: { ...mockAppointment, chapter: '7', appointmentType: 'panel' },
-      });
-
-      expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
-    });
-  });
-
-  test('does not render UpcomingKeyDates for non-panel appointment', () => {
-    renderWithProps({
-      appointment: { ...mockAppointment, chapter: '7', appointmentType: 'converted-case' },
-    });
-
-    expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
-  });
-
-  test('does not render UpcomingKeyDates for non-Ch7 appointment', () => {
-    renderWithProps({
-      appointment: { ...mockAppointment, chapter: '13', appointmentType: 'panel' },
-    });
-
-    expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
-  });
-
-  test('does not render UpcomingKeyDates for non-TrusteeAdmin user', () => {
-    TestingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
-
-    renderWithProps({
-      appointment: { ...mockAppointment, chapter: '7', appointmentType: 'panel' },
-    });
-
-    expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
-  });
-
-  test('does not render UpcomingKeyDates when DISPLAY_CHPT7_PANEL_UPCOMING_REPORT_DATES flag is disabled', () => {
-    vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-      [DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES]: false,
-    });
-
-    renderWithProps({
-      appointment: { ...mockAppointment, chapter: '7', appointmentType: 'panel' },
-    });
-
-    expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
-  });
-
-  describe('Chapter 11 Subchapter V Pool past key dates', () => {
-    const subVAppointment: TrusteeAppointment = {
-      ...mockAppointment,
-      chapter: '11-subchapter-v',
-      appointmentType: 'pool',
-    };
-
-    // AppointmentCard's own concern is whether the PastKeyDates card renders
-    // at all (the flag/chapter/appointmentType gate) — NOT whether its Edit
-    // button shows for a given role. That role-based visibility is
-    // PastKeyDates' own contract and is covered in PastKeyDates.test.tsx.
-    test('renders PastKeyDates card for non-TrusteeAdmin user when flag enabled (no canManage gate)', () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT11_SUBV_PAST_KEY_DATES]: true,
-      });
-      TestingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
-
-      renderWithProps({ appointment: subVAppointment });
-
-      expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
-    });
-
-    test('renders PastKeyDates card for TrusteeAdmin when flag enabled', () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT11_SUBV_PAST_KEY_DATES]: true,
-      });
-
-      renderWithProps({ appointment: subVAppointment });
-
-      expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
-    });
-
-    test('does not render UpcomingKeyDates card for Ch11-SubV appointment', () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT11_SUBV_PAST_KEY_DATES]: true,
-      });
-
-      renderWithProps({ appointment: subVAppointment });
-
-      expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
-      expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
-    });
-
-    test('does not render PastKeyDates card when flag is disabled', () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT11_SUBV_PAST_KEY_DATES]: false,
-      });
-
-      renderWithProps({ appointment: subVAppointment });
-
-      expect(screen.queryByTestId('past-key-dates-card')).not.toBeInTheDocument();
-    });
-
-    test('does not render PastKeyDates card for a non-pool Ch11-SubV appointment type', () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT11_SUBV_PAST_KEY_DATES]: true,
-      });
-
-      renderWithProps({
-        appointment: { ...mockAppointment, chapter: '11-subchapter-v', appointmentType: 'panel' },
-      });
-
-      expect(screen.queryByTestId('past-key-dates-card')).not.toBeInTheDocument();
-    });
-  });
-
-  describe('Chapter 12/13 Case by Case upcoming key dates', () => {
-    const ch12CaseByCaseAppointment: TrusteeAppointment = {
-      ...mockAppointment,
-      chapter: '12',
-      appointmentType: 'case-by-case',
-    };
-
-    test('renders UpcomingKeyDates card for Ch12 case-by-case appointment when flag enabled', () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES]: true,
-      });
-
-      renderWithProps({ appointment: ch12CaseByCaseAppointment });
-
-      expect(screen.getByTestId('upcoming-key-dates-card')).toBeInTheDocument();
-    });
-
-    test('renders UpcomingKeyDates card for Ch13 case-by-case appointment when flag enabled', () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES]: true,
-      });
-
-      renderWithProps({
-        appointment: { ...ch12CaseByCaseAppointment, chapter: '13' },
-      });
-
-      expect(screen.getByTestId('upcoming-key-dates-card')).toBeInTheDocument();
-    });
-
-    test('does not render a PastKeyDates card for Ch12/13 case-by-case appointment', () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES]: true,
-      });
-
-      renderWithProps({ appointment: ch12CaseByCaseAppointment });
-
-      expect(screen.getByTestId('upcoming-key-dates-card')).toBeInTheDocument();
-      expect(screen.queryByTestId('past-key-dates-card')).not.toBeInTheDocument();
-    });
-
-    test('does not render UpcomingKeyDates card when flag is disabled', () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES]: false,
-      });
-
-      renderWithProps({ appointment: ch12CaseByCaseAppointment });
-
-      expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
-    });
-
-    test('does not render UpcomingKeyDates card for Ch12/13 Standing appointment type', () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES]: true,
-      });
-
-      renderWithProps({
-        appointment: { ...ch12CaseByCaseAppointment, appointmentType: 'standing' },
-      });
-
-      expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
-    });
-  });
-
-  describe('shared upcoming key dates fetch', () => {
-    const mockKeyDatesData: TrusteeUpcomingKeyDates = {
-      trusteeId: 'trustee-123',
-      appointmentId: 'appointment-001',
-    } as TrusteeUpcomingKeyDates;
-
-    test('fetches key dates once and forwards the same data/isLoading to UpcomingKeyDates and PastKeyDates', async () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES]: true,
-      });
-      const getUpcomingKeyDatesSpy = vi
-        .spyOn(Api2, 'getUpcomingKeyDates')
-        .mockResolvedValue({ data: mockKeyDatesData });
-
-      renderWithProps();
-
-      await waitFor(() => {
-        expect(screen.getByTestId('upcoming-key-dates-card')).toHaveAttribute(
-          'data-is-loading',
-          'false',
-        );
-      });
-
-      expect(getUpcomingKeyDatesSpy).toHaveBeenCalledTimes(1);
-      expect(getUpcomingKeyDatesSpy).toHaveBeenCalledWith('trustee-123', 'appointment-001');
-
-      const upcomingCard = screen.getByTestId('upcoming-key-dates-card');
-      const pastCard = screen.getByTestId('past-key-dates-card');
-      expect(upcomingCard).toHaveAttribute('data-has-data', 'true');
-      expect(pastCard).toHaveAttribute('data-has-data', 'true');
-      expect(upcomingCard).toHaveAttribute('data-is-loading', 'false');
-      expect(pastCard).toHaveAttribute('data-is-loading', 'false');
-    });
-
-    test('sets isLoading false and data null when the fetch rejects', async () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES]: true,
-      });
-      vi.spyOn(console, 'error').mockImplementation(() => {});
-      vi.spyOn(Api2, 'getUpcomingKeyDates').mockRejectedValue(new Error('failed to load'));
-
-      renderWithProps();
-
-      await waitFor(() => {
-        expect(screen.getByTestId('upcoming-key-dates-card')).toHaveAttribute(
-          'data-is-loading',
-          'false',
-        );
-      });
-
-      expect(screen.getByTestId('upcoming-key-dates-card')).toHaveAttribute(
-        'data-has-data',
-        'false',
-      );
-      expect(screen.getByTestId('past-key-dates-card')).toHaveAttribute('data-has-data', 'false');
-    });
-  });
-
-  describe('when DISPLAY_CHPT12_STANDING_KEY_DATES flag is enabled', () => {
-    const ch12StandingAppointment: TrusteeAppointment = {
-      ...mockAppointment,
-      chapter: '12',
-      appointmentType: 'standing',
-    };
-
-    test('renders PastKeyDates card for chapter 12 standing appointment', () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT12_STANDING_KEY_DATES]: true,
-      });
-
-      renderWithProps({ appointment: ch12StandingAppointment });
-
-      expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
-    });
-
-    test('does not render PastKeyDates card when flag is disabled', () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT12_STANDING_KEY_DATES]: false,
-      });
-
-      renderWithProps({ appointment: ch12StandingAppointment });
-
-      expect(screen.queryByTestId('past-key-dates-card')).not.toBeInTheDocument();
-    });
-
-    test('renders both UpcomingKeyDates and PastKeyDates cards for chapter 12 standing appointment', () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT12_STANDING_KEY_DATES]: true,
-      });
-
-      renderWithProps({ appointment: ch12StandingAppointment });
-
-      expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
-      expect(screen.getByTestId('upcoming-key-dates-card')).toBeInTheDocument();
-    });
-
-    test('does not render UpcomingKeyDates card when flag is disabled', () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT12_STANDING_KEY_DATES]: false,
-      });
-
-      renderWithProps({ appointment: ch12StandingAppointment });
-
-      expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
-    });
-
-    test('does not render Ch12 card for chapter 12 case-by-case appointment', () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT12_STANDING_KEY_DATES]: true,
-      });
-      const ch12CaseByCaseAppointment: TrusteeAppointment = {
-        ...mockAppointment,
-        chapter: '12',
-        appointmentType: 'case-by-case',
-      };
-
-      renderWithProps({ appointment: ch12CaseByCaseAppointment });
-
-      expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
-    });
-
-    test('does not render Ch12 card for chapter 13 standing appointment', () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT12_STANDING_KEY_DATES]: true,
-      });
-      const ch13StandingAppointment: TrusteeAppointment = {
-        ...mockAppointment,
-        chapter: '13',
-        appointmentType: 'standing',
-      };
-
-      renderWithProps({ appointment: ch13StandingAppointment });
-
-      expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
-    });
-  });
-
-  describe('when DISPLAY_CHPT13_STANDING_KEY_DATES flag is enabled', () => {
-    const ch13StandingAppointment: TrusteeAppointment = {
-      ...mockAppointment,
-      chapter: '13',
-      appointmentType: 'standing',
-    };
-
-    test('renders UpcomingKeyDates card with variant chapter13-standing when flag is enabled', () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT13_STANDING_KEY_DATES]: true,
-      });
-
-      renderWithProps({ appointment: ch13StandingAppointment });
-
-      expect(screen.getByTestId('upcoming-key-dates-card')).toBeInTheDocument();
-      expect(screen.getByTestId('upcoming-key-dates-card')).toHaveAttribute(
-        'data-variant',
-        'chapter13-standing',
-      );
-    });
-
-    test('does not render UpcomingKeyDates card for ch13 standing when flag is disabled', () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT13_STANDING_KEY_DATES]: false,
-      });
-
-      renderWithProps({ appointment: ch13StandingAppointment });
-
-      expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
-    });
-
-    test('does not render ch12 standing card for ch13 standing appointment', () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT13_STANDING_KEY_DATES]: true,
-        [DISPLAY_CHPT12_STANDING_KEY_DATES]: true,
-      });
-
-      renderWithProps({ appointment: ch13StandingAppointment });
-
-      expect(screen.getAllByTestId('upcoming-key-dates-card')).toHaveLength(1);
-    });
-
-    test('does not render ch13 standing card for ch12 standing appointment', () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT13_STANDING_KEY_DATES]: true,
-      });
-      const ch12StandingAppointment: TrusteeAppointment = {
-        ...mockAppointment,
-        chapter: '12',
-        appointmentType: 'standing',
-      };
-
-      renderWithProps({ appointment: ch12StandingAppointment });
-
-      expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
-    });
-
-    test('renders PastKeyDates card alongside UpcomingKeyDates when flag is enabled', () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT13_STANDING_KEY_DATES]: true,
-      });
-
-      renderWithProps({ appointment: ch13StandingAppointment });
-
-      expect(screen.getByTestId('upcoming-key-dates-card')).toBeInTheDocument();
-      expect(screen.getByTestId('upcoming-key-dates-card')).toHaveAttribute(
-        'data-variant',
-        'chapter13-standing',
-      );
-      expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
-      expect(screen.getByTestId('past-key-dates-card')).toHaveAttribute(
-        'data-variant',
-        'chapter13-standing',
-      );
-    });
-  });
+  // Chapter 12/13 Case by Case no longer reaches AppointmentCard -- TrusteeAppointments
+  // routes it to Chapter12And13CaseByCaseAppointmentBody (CAMS-913), and Chapter 13
+  // Standing no longer reaches it either -- TrusteeAppointments now routes it to
+  // Chapter13StandingAppointmentBody via the shared AppointmentAccordion (CAMS-909/915),
+  // covered by Chapter13StandingAppointmentBody.test.tsx and TrusteeAppointments.test.tsx.
 
   test('still renders when courts fail to load', () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const courtsError = new Error('courts unavailable');
     mockUseCourts.mockReturnValue({
       courts: [],
       loading: false,
-      error: new Error('courts unavailable'),
+      error: courtsError,
     });
 
     renderWithProps();
 
     expect(screen.getByText(/District:/i)).toBeInTheDocument();
+    expect(consoleErrorSpy).toHaveBeenCalled();
   });
 
   test('Divisions field resolves a division code to its name using loaded courts', () => {
@@ -774,64 +299,5 @@ describe('AppointmentCard', () => {
     });
 
     expect(screen.getByText('081', { selector: 'li' })).toBeInTheDocument();
-  });
-
-  describe('when DISPLAY_CHPT7_ELECTED_KEY_DATES flag is enabled', () => {
-    const electedAppointment: TrusteeAppointment = {
-      ...mockAppointment,
-      chapter: '7',
-      appointmentType: 'elected',
-    };
-
-    test('renders both UpcomingKeyDates and PastKeyDates cards with chapter7-elected variant', () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT7_ELECTED_KEY_DATES]: true,
-      });
-
-      renderWithProps({ appointment: electedAppointment });
-
-      expect(screen.getByTestId('upcoming-key-dates-card')).toHaveAttribute(
-        'data-variant',
-        'chapter7-elected',
-      );
-      expect(screen.getByTestId('past-key-dates-card')).toHaveAttribute(
-        'data-variant',
-        'chapter7-elected',
-      );
-    });
-
-    test('does not render cards when flag is disabled', () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT7_ELECTED_KEY_DATES]: false,
-      });
-
-      renderWithProps({ appointment: electedAppointment });
-
-      expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('past-key-dates-card')).not.toBeInTheDocument();
-    });
-
-    test('does not render cards for chapter 7 panel appointment even when flag is enabled', () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT7_ELECTED_KEY_DATES]: true,
-      });
-
-      renderWithProps({ appointment: mockAppointment });
-
-      expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('past-key-dates-card')).not.toBeInTheDocument();
-    });
-
-    test('renders cards for users without TrusteeAdmin role', () => {
-      TestingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT7_ELECTED_KEY_DATES]: true,
-      });
-
-      renderWithProps({ appointment: electedAppointment });
-
-      expect(screen.getByTestId('upcoming-key-dates-card')).toBeInTheDocument();
-      expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
-    });
   });
 });

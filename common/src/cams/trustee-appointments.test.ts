@@ -7,6 +7,10 @@ import {
   isChapter12Standing,
   isChapter13Standing,
   isChapter7Elected,
+  isChapter11CaseByCase,
+  isChapter11SubchapterV,
+  isChapter12Or13CaseByCase,
+  isChapter7Panel,
 } from './trustee-appointments';
 import { AppointmentChapterType, AppointmentType, AppointmentStatus } from './trustees';
 import { validateObject } from './validation';
@@ -93,8 +97,7 @@ describe('trustee-appointments', () => {
       });
     });
 
-    test('should return default fallback for unknown combinations', () => {
-      // This tests the fallback case
+    test('should return default fallback when appointmentType has no configured statuses', () => {
       const result = getStatusOptions('7' as AppointmentChapterType, 'standing' as AppointmentType);
       expect(result).toEqual(['active', 'inactive']);
     });
@@ -348,16 +351,6 @@ describe('trustee-appointments', () => {
         const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
         expect(result.valid).toBe(true);
       });
-
-      test('should pass validation when chapter and appointmentType are missing', () => {
-        const appointment = {
-          ...validAppointment,
-          chapter: undefined,
-          appointmentType: undefined,
-        } as unknown as TrusteeAppointmentInput;
-        const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
-        expect(result.valid).toBe(true);
-      });
     });
 
     describe('optional enrichment fields', () => {
@@ -414,6 +407,7 @@ describe('trustee-appointments', () => {
         };
         const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
         expect(result.valid).toBeUndefined();
+        expect(result.reasonMap?.$?.reasons).toContain('At least one division must be specified');
       });
 
       test('should fail when divisionCodes contains only whitespace entries', () => {
@@ -424,6 +418,7 @@ describe('trustee-appointments', () => {
         };
         const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
         expect(result.valid).toBeUndefined();
+        expect(result.reasonMap?.$?.reasons).toContain('At least one division must be specified');
       });
 
       test('should pass when divisionCode is set but divisionCodes is empty', () => {
@@ -496,6 +491,81 @@ describe('trustee-appointments', () => {
       expect(isChapter7Elected(chapter as AppointmentChapterType, type as AppointmentType)).toBe(
         false,
       );
+    });
+  });
+
+  describe('isChapter11CaseByCase', () => {
+    test('returns true for chapter 11 case-by-case', () => {
+      expect(isChapter11CaseByCase('11', 'case-by-case')).toBe(true);
+    });
+
+    test.each([
+      ['11', 'panel'],
+      ['12', 'case-by-case'],
+      ['13', 'panel'],
+      ['11', ''],
+    ])('returns false for chapter %s / %s', (chapter, type) => {
+      expect(
+        isChapter11CaseByCase(chapter as AppointmentChapterType, type as AppointmentType),
+      ).toBe(false);
+    });
+  });
+
+  describe('isChapter12Or13CaseByCase', () => {
+    test.each([
+      ['12', 'case-by-case'],
+      ['13', 'case-by-case'],
+    ])('returns true for chapter %s / %s', (chapter, type) => {
+      expect(
+        isChapter12Or13CaseByCase(chapter as AppointmentChapterType, type as AppointmentType),
+      ).toBe(true);
+    });
+
+    test.each([
+      ['12', 'standing'],
+      ['13', 'standing'],
+      ['11', 'case-by-case'],
+    ])('returns false for chapter %s / %s', (chapter, type) => {
+      expect(
+        isChapter12Or13CaseByCase(chapter as AppointmentChapterType, type as AppointmentType),
+      ).toBe(false);
+    });
+  });
+
+  describe('isChapter7Panel', () => {
+    test('returns true for chapter 7 panel', () => {
+      expect(isChapter7Panel('7', 'panel')).toBe(true);
+    });
+
+    test.each([
+      ['7', 'elected'],
+      ['12', 'panel'],
+      ['13', 'standing'],
+      ['7', ''],
+    ])('returns false for chapter %s / %s', (chapter, type) => {
+      expect(isChapter7Panel(chapter as AppointmentChapterType, type as AppointmentType)).toBe(
+        false,
+      );
+    });
+  });
+
+  describe('isChapter11SubchapterV', () => {
+    test.each([['pool'], ['out-of-pool']])(
+      'returns true for chapter 11-subchapter-v %s',
+      (type) => {
+        expect(isChapter11SubchapterV('11-subchapter-v', type as AppointmentType)).toBe(true);
+      },
+    );
+
+    test.each([
+      ['11', 'pool'],
+      ['11', 'out-of-pool'],
+      ['13', 'standing'],
+      ['11-subchapter-v', ''],
+    ])('returns false for chapter %s / %s', (chapter, type) => {
+      expect(
+        isChapter11SubchapterV(chapter as AppointmentChapterType, type as AppointmentType),
+      ).toBe(false);
     });
   });
 });

@@ -1,0 +1,79 @@
+@use 'styles/abstracts/device-screens' as device-screens;
+@use 'styles/abstracts/colors' as colors;
+@import '@/lib/components/uswds/card-mixins';
+
+.editable-table-card {
+  width: fit-content;
+  min-width: 19.25rem;
+  max-width: 100%;
+
+  .editable-table-card-header {
+    @include card-header-with-action;
+
+    .editable-table-card-heading {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+  }
+}
+
+// EditableTableCard always renders exactly one header row and one data row, and
+// needs the two to line up column-by-column. CamsTable's default flex-row layout
+// (see cams-table-mixins.scss) can't guarantee that: the header row and data row
+// are separate flex containers, so flexbox has no way to share column-width tracks
+// between them — a header cell and its data cell only line up when their text
+// happens to render the same width. Real CSS table layout doesn't have that
+// problem: it computes each column's width from every cell in that column
+// position across both rowgroups, so header/data alignment is guaranteed rather
+// than coincidental. Using display: table/table-row-group/table-row/table-cell on
+// the existing role="table"/"rowgroup"/"row"/"cell" divs (rather than display:
+// contents + CSS Grid) keeps every element's own box intact, avoiding the known
+// risk of display: contents dropping ARIA row/cell semantics from the
+// accessibility tree in some browsers.
+.editable-table-card-table.cams-table--responsive {
+  margin-top: 0.5rem;
+
+  // EditableTableCard's body only ever has one data row, so there is nothing
+  // below it to visually separate from — the underline CamsTable applies by
+  // default for multi-row separation is never appropriate here, at any
+  // breakpoint (the mobile stacked layout inherits this rule from CamsTable's
+  // base styles too).
+  .cams-table__body .cams-table__row {
+    border-bottom: none;
+  }
+
+  @media screen and (min-width: #{device-screens.$tablet-screen-extra-small + 1}) {
+    [role='table'] {
+      display: table;
+    }
+
+    .cams-table__header-group,
+    .cams-table__body {
+      display: table-row-group;
+    }
+
+    .cams-table__header-row,
+    .cams-table__row {
+      display: table-row;
+    }
+
+    .cams-table__cell {
+      // padding is intentionally not redeclared here -- CamsTable's own tablet-breakpoint
+      // rule already sets the identical 0.5rem 1rem value, and this selector's higher
+      // specificity (.editable-table-card-table.cams-table--responsive) would just shadow
+      // it with the same value.
+      display: table-cell;
+      white-space: nowrap;
+    }
+
+    // In the (default) separate-borders table model, only table-cell boxes
+    // paint their own borders — a border-bottom on the table-row-group or
+    // table-row itself (as CamsTable's base header-group rule relies on for
+    // the flex-row layout) is not rendered once these are display: table-*.
+    // Apply the header/data divider to the header cells directly instead.
+    .cams-table__header-row .cams-table__cell {
+      border-bottom: 1px solid colors.$ink;
+    }
+  }
+}

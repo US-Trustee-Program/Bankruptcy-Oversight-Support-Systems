@@ -12,9 +12,9 @@ import {
 } from '@common/cams/trustee-upcoming-key-dates';
 import {
   TrusteeAppointment,
+  isChapter12Or13CaseByCase,
   isChapter12Standing,
   isChapter13Standing,
-  isChapter7Elected,
 } from '@common/cams/trustee-appointments';
 import { AppointmentChapterType, AppointmentType } from '@common/cams/trustees';
 import Api2 from '@/lib/models/api2';
@@ -24,86 +24,33 @@ import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import MonthDaySelector from '@/lib/components/uswds/MonthDaySelector';
 import MonthDayRangeSelector from '@/lib/components/uswds/MonthDayRangeSelector';
 import DatePicker from '@/lib/components/uswds/DatePicker';
+import Select from '@/lib/components/uswds/Select';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
-import LocalStorage from '@/lib/utils/local-storage';
-import { CamsRole } from '@common/cams/roles';
+import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import { Stop } from '@/lib/components/Stop';
-import { UpcomingKeyDatesVariant } from '@/trustees/panels/upcomingKeyDatesFieldConfig';
+import {
+  UPCOMING_KEY_DATES_VARIANTS,
+  UpcomingKeyDatesVariant,
+} from '@/trustees/panels/upcomingKeyDatesFieldConfig';
 import {
   getUpcomingKeyDatesFormConfig,
   DatePickerFieldDescriptor,
   UpcomingFormFieldDescriptor,
 } from './upcomingKeyDatesFormFieldConfig';
-
-type TirFrequency = 'ANNUAL' | 'SEMI_ANNUAL' | '';
-
-type TirPeriodOption = {
-  key: string;
-  label: string;
-  start: string;
-  end: string;
-  start2?: string;
-  end2?: string;
-};
-
-const ANNUAL_OPTIONS: TirPeriodOption[] = [
-  { key: '01/01-12/31', label: '01/01-12/31', start: '1900-01-01', end: '1900-12-31' },
-  { key: '04/01-03/31', label: '04/01-03/31', start: '1900-04-01', end: '1900-03-31' },
-  { key: '07/01-06/30', label: '07/01-06/30', start: '1900-07-01', end: '1900-06-30' },
-  { key: '10/01-09/30', label: '10/01-09/30', start: '1900-10-01', end: '1900-09-30' },
-];
-
-const SEMI_ANNUAL_OPTIONS: TirPeriodOption[] = [
-  {
-    key: '01/01-06/30 & 07/01-12/31',
-    label: '01/01-06/30 & 07/01-12/31',
-    start: '1900-01-01',
-    end: '1900-06-30',
-    start2: '1900-07-01',
-    end2: '1900-12-31',
-  },
-  {
-    key: '04/01-09/30 & 10/01-03/31',
-    label: '04/01-09/30 & 10/01-03/31',
-    start: '1900-04-01',
-    end: '1900-09-30',
-    start2: '1900-10-01',
-    end2: '1900-03-31',
-  },
-  {
-    key: '07/01-12/31 & 01/01-06/30',
-    label: '07/01-12/31 & 01/01-06/30',
-    start: '1900-07-01',
-    end: '1900-12-31',
-    start2: '1900-01-01',
-    end2: '1900-06-30',
-  },
-  {
-    key: '10/01-03/31 & 04/01-09/30',
-    label: '10/01-03/31 & 04/01-09/30',
-    start: '1900-10-01',
-    end: '1900-03-31',
-    start2: '1900-04-01',
-    end2: '1900-09-30',
-  },
-];
-
-function findPeriodKey(
-  start: string | undefined,
-  end: string | undefined,
-  frequency: TirFrequency,
-): string {
-  if (!start || !end) return '';
-  const options = frequency === 'ANNUAL' ? ANNUAL_OPTIONS : SEMI_ANNUAL_OPTIONS;
-  return options.find((o) => o.start === start && o.end === end)?.key ?? '';
-}
+import {
+  TirFrequency,
+  ANNUAL_OPTIONS,
+  SEMI_ANNUAL_OPTIONS,
+  findPeriodKey,
+} from './tirPeriodOptions';
 
 type FormState = {
   pastBackgroundQuestion: string;
   pastFieldExam: string;
   pastAudit: string;
   pastTprSubmission: string;
+  lastTprSubmitted: string;
   tprReviewPeriodStart: string;
   tprReviewPeriodEnd: string;
   tprDue: string;
@@ -118,12 +65,24 @@ type FormState = {
   tirSemiAnnualReviewPeriodStart: string;
   tirSemiAnnualReviewPeriodEnd: string;
   lastAuditFiscalYear: number | null;
+  auditCompletionYear: number | null;
+  auditCompletionStatus: 'CLOSED' | 'NOT_CLOSED' | null;
+  tprCompletionYear: number | null;
+  tprCompletionStatus: 'COMPLETE' | 'INCOMPLETE' | null;
+  tirCompletionYear: number | null;
+  tirCompletionStatus: 'COMPLETE' | 'INCOMPLETE' | null;
+  annualReportCompletionYear: number | null;
+  annualReportCompletionStatus: 'COMPLETE' | 'INCOMPLETE' | null;
   lastMonthlyReportReceived: string;
   leaseExpiration: string;
   idExpiration: string;
   lastCompensationStudy: string;
   bondIssuedDate: string;
   bondRenewalDate: string;
+  ch13AuditCompletionYear: number | null;
+  ch13AuditCompletionStatus: 'Complete' | 'Incomplete' | '';
+  ch13TprCompletionYear: number | null;
+  ch13TprCompletionStatus: 'Complete' | 'Incomplete' | '';
 };
 
 const EMPTY_FORM: FormState = {
@@ -131,6 +90,7 @@ const EMPTY_FORM: FormState = {
   pastFieldExam: '',
   pastAudit: '',
   pastTprSubmission: '',
+  lastTprSubmitted: '',
   tprReviewPeriodStart: '',
   tprReviewPeriodEnd: '',
   tprDue: '',
@@ -145,32 +105,35 @@ const EMPTY_FORM: FormState = {
   tirSemiAnnualReviewPeriodStart: '',
   tirSemiAnnualReviewPeriodEnd: '',
   lastAuditFiscalYear: null,
+  auditCompletionYear: null,
+  auditCompletionStatus: null,
+  tprCompletionYear: null,
+  tprCompletionStatus: null,
+  tirCompletionYear: null,
+  tirCompletionStatus: null,
+  annualReportCompletionYear: null,
+  annualReportCompletionStatus: null,
   lastMonthlyReportReceived: '',
   leaseExpiration: '',
   idExpiration: '',
   lastCompensationStudy: '',
   bondIssuedDate: '',
   bondRenewalDate: '',
+  ch13AuditCompletionYear: null,
+  ch13AuditCompletionStatus: '',
+  ch13TprCompletionYear: null,
+  ch13TprCompletionStatus: '',
 };
-
-const currentYear = new Date().getFullYear();
-const YEAR_OPTIONS = Array.from({ length: 11 }, (_, i) => currentYear + i);
 
 function deriveVariant(
   chapter: AppointmentChapterType,
   appointmentType: AppointmentType,
 ): UpcomingKeyDatesVariant {
-  if ((chapter === '12' || chapter === '13') && appointmentType === 'case-by-case') {
-    return 'ch12-13-case-by-case';
-  }
   if (isChapter12Standing(chapter, appointmentType)) {
     return 'chapter12-standing';
   }
   if (isChapter13Standing(chapter, appointmentType)) {
     return 'chapter13-standing';
-  }
-  if (isChapter7Elected(chapter, appointmentType)) {
-    return 'chapter7-elected';
   }
   return 'chapter7-panel';
 }
@@ -182,6 +145,7 @@ function buildFormStateFromData(data: TrusteeUpcomingKeyDates): FormState {
     pastFieldExam: data.pastFieldExam ?? '',
     pastAudit: data.pastAudit ?? '',
     pastTprSubmission: data.pastTprSubmission ?? '',
+    lastTprSubmitted: data.lastTprSubmitted ?? '',
     tprReviewPeriodStart: data.tprReviewPeriodStart ?? '',
     tprReviewPeriodEnd: data.tprReviewPeriodEnd ?? '',
     tprDue: data.tprDue ?? '',
@@ -196,12 +160,24 @@ function buildFormStateFromData(data: TrusteeUpcomingKeyDates): FormState {
     tirSemiAnnualReviewPeriodStart: data.tirSemiAnnualReviewPeriodStart ?? '',
     tirSemiAnnualReviewPeriodEnd: data.tirSemiAnnualReviewPeriodEnd ?? '',
     lastAuditFiscalYear: data.lastAuditFiscalYear ?? null,
+    auditCompletionYear: data.auditCompletionYear ?? null,
+    auditCompletionStatus: data.auditCompletionStatus ?? null,
+    tprCompletionYear: data.tprCompletionYear ?? null,
+    tprCompletionStatus: data.tprCompletionStatus ?? null,
+    tirCompletionYear: data.tirCompletionYear ?? null,
+    tirCompletionStatus: data.tirCompletionStatus ?? null,
+    annualReportCompletionYear: data.annualReportCompletionYear ?? null,
+    annualReportCompletionStatus: data.annualReportCompletionStatus ?? null,
     lastMonthlyReportReceived: data.lastMonthlyReportReceived ?? '',
     leaseExpiration: data.leaseExpiration ?? '',
     idExpiration: data.idExpiration ?? '',
     lastCompensationStudy: data.lastCompensationStudy ?? '',
     bondIssuedDate: data.bondIssuedDate ?? '',
     bondRenewalDate: data.bondRenewalDate ?? '',
+    ch13AuditCompletionYear: data.ch13AuditCompletionYear ?? null,
+    ch13AuditCompletionStatus: data.ch13AuditCompletionStatus ?? '',
+    ch13TprCompletionYear: data.ch13TprCompletionYear ?? null,
+    ch13TprCompletionStatus: data.ch13TprCompletionStatus ?? '',
   };
 }
 
@@ -211,6 +187,13 @@ type FormLoadResult = {
   variantAlert: string | null;
   formState: FormState | null;
   keyDatesAlert: string | null;
+  /**
+   * Chapter 12/13 Case by Case appointments have their own dedicated edit pages
+   * (CAMS-913). This generic form can still be reached for them by a stale or
+   * typed URL, where it would offer a second, narrower editor writing the same
+   * fields, so the form sends the user to the appointments list instead.
+   */
+  movedToDedicatedForm: boolean;
 };
 
 function resolveFormLoadResult(
@@ -222,13 +205,19 @@ function resolveFormLoadResult(
   let variant: UpcomingKeyDatesVariant = variantFromState ?? 'chapter7-panel';
   let loadError = false;
   let variantAlert: string | null = null;
+  let movedToDedicatedForm = false;
 
   if (!variantFromState) {
     if (appointmentsResult.status === 'fulfilled') {
       const appointment = (appointmentsResult.value?.data ?? []).find(
         (a) => a.id === appointmentId,
       );
-      if (appointment) {
+      if (
+        appointment &&
+        isChapter12Or13CaseByCase(appointment.chapter, appointment.appointmentType)
+      ) {
+        movedToDedicatedForm = true;
+      } else if (appointment) {
         variant = deriveVariant(appointment.chapter, appointment.appointmentType);
       } else {
         variantAlert = 'Could not determine appointment type; showing default fields.';
@@ -249,7 +238,7 @@ function resolveFormLoadResult(
     keyDatesAlert = `Failed to load upcoming key dates: ${(keyDatesResult.reason as Error).message}`;
   }
 
-  return { variant, loadError, variantAlert, formState, keyDatesAlert };
+  return { variant, loadError, variantAlert, formState, keyDatesAlert, movedToDedicatedForm };
 }
 
 export default function UpcomingKeyDatesForm({
@@ -257,6 +246,9 @@ export default function UpcomingKeyDatesForm({
 }: {
   tprDisplayUpdates?: boolean;
 } = {}) {
+  const currentYear = new Date().getFullYear();
+  const yearOptions = Array.from({ length: 11 }, (_, i) => currentYear + i);
+
   const { trusteeId, appointmentId } = useParams<{
     trusteeId: string;
     appointmentId: string;
@@ -264,10 +256,19 @@ export default function UpcomingKeyDatesForm({
   const navigate = useNavigate();
   const location = useLocation();
   const globalAlert = useGlobalAlert();
-  const canManage = !!LocalStorage.getSession()?.user?.roles?.includes(CamsRole.TrusteeAdmin);
+  const canManage = useCanManageTrustees();
 
-  const variantFromState = (location.state as { variant?: UpcomingKeyDatesVariant } | null)
-    ?.variant;
+  // Router state survives a reload and outlives a deploy, so it can still name
+  // a variant this form no longer serves -- a Chapter 12/13 Case by Case entry
+  // created before those moved to their own pages, for instance. An unknown
+  // name is treated as absent so the appointment is fetched and resolved
+  // normally, which is also what triggers the redirect for the moved variant.
+  const rawVariantFromState = (location.state as { variant?: string } | null)?.variant;
+  const variantFromState =
+    rawVariantFromState &&
+    UPCOMING_KEY_DATES_VARIANTS.includes(rawVariantFromState as UpcomingKeyDatesVariant)
+      ? (rawVariantFromState as UpcomingKeyDatesVariant)
+      : undefined;
 
   const [variant, setVariant] = useState<UpcomingKeyDatesVariant | undefined>(variantFromState);
   const [isLoading, setIsLoading] = useState(true);
@@ -326,6 +327,10 @@ export default function UpcomingKeyDatesForm({
         keyDatesResult,
       );
 
+      if (result.movedToDedicatedForm) {
+        navigate(`/trustees/${trusteeId}/appointments`, { replace: true });
+        return;
+      }
       if (!variantFromState) {
         setVariant(result.variant);
       }
@@ -426,6 +431,7 @@ export default function UpcomingKeyDatesForm({
       pastFieldExam: form.pastFieldExam || null,
       pastAudit: form.pastAudit || null,
       pastTprSubmission: form.pastTprSubmission || null,
+      lastTprSubmitted: form.lastTprSubmitted || null,
       tprReviewPeriodStart: tprDisplayUpdates
         ? form.tprReviewPeriodStart || null
         : form.tprReviewPeriodStart
@@ -454,12 +460,24 @@ export default function UpcomingKeyDatesForm({
       tirSemiAnnualSubmission,
       tirSemiAnnualReview,
       lastAuditFiscalYear: form.lastAuditFiscalYear,
+      auditCompletionYear: form.auditCompletionYear,
+      auditCompletionStatus: form.auditCompletionStatus,
+      tprCompletionYear: form.tprCompletionYear,
+      tprCompletionStatus: form.tprCompletionStatus,
+      tirCompletionYear: form.tirCompletionYear,
+      tirCompletionStatus: form.tirCompletionStatus,
+      annualReportCompletionYear: form.annualReportCompletionYear,
+      annualReportCompletionStatus: form.annualReportCompletionStatus,
       lastMonthlyReportReceived: form.lastMonthlyReportReceived || null,
       leaseExpiration: form.leaseExpiration || null,
       idExpiration: form.idExpiration || null,
       lastCompensationStudy: form.lastCompensationStudy || null,
       bondIssuedDate: form.bondIssuedDate || null,
       bondRenewalDate: form.bondRenewalDate || null,
+      ch13AuditCompletionYear: form.ch13AuditCompletionYear,
+      ch13AuditCompletionStatus: form.ch13AuditCompletionStatus || null,
+      ch13TprCompletionYear: form.ch13TprCompletionYear,
+      ch13TprCompletionStatus: form.ch13TprCompletionStatus || null,
     };
 
     if (!tprDisplayUpdates) {
@@ -558,52 +576,40 @@ export default function UpcomingKeyDatesForm({
           <div key="exam-audit-group" className="exam-audit-group">
             <p className="usa-label">Field Exam or Audit</p>
             <div className="exam-audit-group__row">
-              <div className="usa-form-group">
-                <label className="usa-hint" htmlFor="upcoming-exam-audit-year">
-                  Year
-                </label>
-                <select
-                  className="usa-select"
-                  id="upcoming-exam-audit-year"
-                  data-testid="upcoming-exam-audit-year"
-                  value={form.upcomingExamOrAuditYear}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setForm((prev) => ({
-                      ...prev,
-                      upcomingExamOrAuditYear: val ? Number(val) : '',
-                    }));
-                  }}
-                >
-                  <option value="">- Select -</option>
-                  {YEAR_OPTIONS.map((y) => (
-                    <option key={y} value={y}>
-                      {y}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="usa-form-group">
-                <label className="usa-hint" htmlFor="upcoming-exam-audit-type">
-                  Type
-                </label>
-                <select
-                  className="usa-select"
-                  id="upcoming-exam-audit-type"
-                  data-testid="upcoming-exam-audit-type"
-                  value={form.upcomingExamOrAuditType}
-                  onChange={(e) => {
-                    setForm((prev) => ({
-                      ...prev,
-                      upcomingExamOrAuditType: e.target.value as 'Field Exam' | 'Audit' | '',
-                    }));
-                  }}
-                >
-                  <option value="">- Select -</option>
-                  <option value="Field Exam">Field Exam</option>
-                  <option value="Audit">Audit</option>
-                </select>
-              </div>
+              <Select
+                id="upcoming-exam-audit-year"
+                label="Year"
+                compactLabel
+                placeholder="- Select -"
+                options={yearOptions.map((y) => ({ value: String(y), label: String(y) }))}
+                value={
+                  form.upcomingExamOrAuditYear === '' ? '' : String(form.upcomingExamOrAuditYear)
+                }
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setForm((prev) => ({
+                    ...prev,
+                    upcomingExamOrAuditYear: val ? Number(val) : '',
+                  }));
+                }}
+              />
+              <Select
+                id="upcoming-exam-audit-type"
+                label="Type"
+                compactLabel
+                placeholder="- Select -"
+                options={[
+                  { value: 'Field Exam', label: 'Field Exam' },
+                  { value: 'Audit', label: 'Audit' },
+                ]}
+                value={form.upcomingExamOrAuditType}
+                onChange={(e) => {
+                  setForm((prev) => ({
+                    ...prev,
+                    upcomingExamOrAuditType: e.target.value as 'Field Exam' | 'Audit' | '',
+                  }));
+                }}
+              />
             </div>
           </div>
         );
@@ -709,28 +715,24 @@ export default function UpcomingKeyDatesForm({
 
       case 'tpr-frequency':
         return (
-          <div key="tpr-frequency" className="usa-form-group">
-            <label className="usa-label" htmlFor="tpr-frequency">
-              Trustee Performance Review Period Frequency
-            </label>
-            <select
-              className="usa-select"
-              id="tpr-frequency"
-              data-testid="tpr-frequency"
-              value={form.tprFrequency}
-              onChange={(e) =>
-                setForm((prev) => ({
-                  ...prev,
-                  tprFrequency: e.target.value as 'BIANNUAL' | 'ANNUAL' | 'SEMI_ANNUAL' | '',
-                }))
-              }
-            >
-              <option value="">- Select -</option>
-              <option value="BIANNUAL">Two years</option>
-              <option value="ANNUAL">One year</option>
-              <option value="SEMI_ANNUAL">6 months</option>
-            </select>
-          </div>
+          <Select
+            key="tpr-frequency"
+            id="tpr-frequency"
+            label="Trustee Performance Review Period Frequency"
+            placeholder="- Select -"
+            options={[
+              { value: 'BIANNUAL', label: 'Two years' },
+              { value: 'ANNUAL', label: 'One year' },
+              { value: 'SEMI_ANNUAL', label: '6 months' },
+            ]}
+            value={form.tprFrequency}
+            onChange={(e) =>
+              setForm((prev) => ({
+                ...prev,
+                tprFrequency: e.target.value as 'BIANNUAL' | 'ANNUAL' | 'SEMI_ANNUAL' | '',
+              }))
+            }
+          />
         );
 
       case 'tpr-due':
@@ -752,28 +754,34 @@ export default function UpcomingKeyDatesForm({
                 onChange={handleTprDueChange}
                 hasError={!!errors.tprDue || (!tprDueDateComplete && !!tprDueBlurError)}
               />
-              <div className="usa-form-group year-type-selector">
-                <label htmlFor="tpr-due-year-type" className="usa-hint">
-                  Year Type
-                </label>
-                <select
-                  className={`usa-select${errors.tprDueYearType || tprDueYearTypeBlurError ? ' usa-input--error' : ''}`}
-                  id="tpr-due-year-type"
-                  data-testid="tpr-due-year-type"
-                  value={form.tprDueYearType}
-                  onChange={handleYearTypeChange}
-                  aria-invalid={errors.tprDueYearType ? 'true' : undefined}
-                >
-                  <option value="">- Select -</option>
-                  <option value="EVEN">EVEN</option>
-                  <option value="ODD">ODD</option>
-                </select>
-              </div>
+              <Select
+                id="tpr-due-year-type"
+                label="Year Type"
+                compactLabel
+                hasError={!!errors.tprDueYearType || !!tprDueYearTypeBlurError}
+                ariaDescribedBy={
+                  tprDueBlurError || errors.tprDue || errors.tprDueYearType
+                    ? 'tpr-due-error'
+                    : undefined
+                }
+                placeholder="- Select -"
+                options={[
+                  { value: 'EVEN', label: 'EVEN' },
+                  { value: 'ODD', label: 'ODD' },
+                ]}
+                value={form.tprDueYearType}
+                onChange={handleYearTypeChange}
+                className="year-type-selector"
+              />
             </div>
             {(tprDueBlurError || errors.tprDue || errors.tprDueYearType) && (
-              <span className="cams-field-error-message" data-testid="tpr-due-error">
+              <div
+                className="cams-field-error-message"
+                id="tpr-due-error"
+                data-testid="tpr-due-error"
+              >
                 {tprDueBlurError || errors.tprDue || errors.tprDueYearType}
-              </span>
+              </div>
             )}
           </div>
         );
@@ -783,42 +791,28 @@ export default function UpcomingKeyDatesForm({
           <div key="tir-period" className="tir-period-group">
             <p className="usa-label">Trustee Interim Report (TIR) Period</p>
             <div className="tir-period-group__row">
-              <div className="usa-form-group">
-                <label className="usa-hint" htmlFor="tir-frequency">
-                  Frequency
-                </label>
-                <select
-                  className="usa-select"
-                  id="tir-frequency"
-                  data-testid="tir-frequency"
-                  value={form.tirFrequency}
-                  onChange={handleFrequencyChange}
-                >
-                  <option value="">- Select -</option>
-                  <option value="ANNUAL">Annual</option>
-                  <option value="SEMI_ANNUAL">Semi-Annual</option>
-                </select>
-              </div>
-              <div className="usa-form-group">
-                <label className="usa-hint" htmlFor="tir-period">
-                  Period
-                </label>
-                <select
-                  className="usa-select"
-                  id="tir-period"
-                  data-testid="tir-period"
-                  value={form.tirPeriodKey}
-                  onChange={handlePeriodChange}
-                  disabled={!form.tirFrequency}
-                >
-                  <option value="">- Select -</option>
-                  {periodOptions.map((o) => (
-                    <option key={o.key} value={o.key}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <Select
+                id="tir-frequency"
+                label="Frequency"
+                compactLabel
+                placeholder="- Select -"
+                options={[
+                  { value: 'ANNUAL', label: 'Annual' },
+                  { value: 'SEMI_ANNUAL', label: 'Semi-Annual' },
+                ]}
+                value={form.tirFrequency}
+                onChange={handleFrequencyChange}
+              />
+              <Select
+                id="tir-period"
+                label="Period"
+                compactLabel
+                placeholder="- Select -"
+                options={periodOptions.map((o) => ({ value: o.key, label: o.label }))}
+                value={form.tirPeriodKey}
+                onChange={handlePeriodChange}
+                disabled={!form.tirFrequency}
+              />
             </div>
           </div>
         );

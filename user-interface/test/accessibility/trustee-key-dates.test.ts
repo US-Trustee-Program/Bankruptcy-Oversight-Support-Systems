@@ -2,6 +2,40 @@ import test, { expect } from '@playwright/test';
 import { ANALYZE_DELAY, COMPLEX_TEST_TIMEOUT, createAxeBuilder } from './test-constants';
 import { openFirstTrusteeProfileInNewTab } from './trustee-common';
 
+const CARD_CASES = [
+  { label: 'audit/field exam', cardTestId: 'chapter7-panel-audit-field-exam-card' },
+  { label: 'trustee performance report', cardTestId: 'chapter7-panel-tpr-card' },
+  { label: 'trustee interim report', cardTestId: 'chapter7-panel-tir-card' },
+  { label: 'other key dates', cardTestId: 'chapter7-panel-other-key-dates-card' },
+];
+
+const EDIT_FORM_CASES = [
+  {
+    label: 'audit/field exam',
+    editButtonPrefix: 'button-edit-chapter7-panel-audit-field-exam-',
+    formTestId: 'edit-chapter7-panel-audit-field-exam',
+  },
+  {
+    label: 'trustee performance report',
+    editButtonPrefix: 'button-edit-chapter7-panel-tpr-',
+    formTestId: 'edit-chapter7-panel-tpr',
+  },
+  {
+    label: 'trustee interim report',
+    editButtonPrefix: 'button-edit-chapter7-panel-tir-',
+    formTestId: 'edit-chapter7-panel-tir',
+  },
+  {
+    label: 'other key dates',
+    editButtonPrefix: 'button-edit-chapter7-panel-other-key-dates-',
+    formTestId: 'edit-chapter7-panel-other',
+  },
+];
+
+// The fake API (see MockApi2.getTrusteeAppointments) seeds a Chapter 7 - Panel
+// appointment plus a Chapter 12 and a Chapter 13 Case by Case appointment, so each
+// suite below opens the accordion it cares about by heading text rather than by
+// position.
 test.describe('Trustee Key Dates', () => {
   test.describe.configure({ retries: 0, mode: 'serial' });
 
@@ -11,15 +45,99 @@ test.describe('Trustee Key Dates', () => {
     trusteeProfilePage = await openFirstTrusteeProfileInNewTab(page, context);
 
     await trusteeProfilePage.locator('[data-testid="trustee-appointments-nav-link"]').click();
-    await trusteeProfilePage.waitForSelector('.appointment-card-container', { state: 'visible' });
+    // Active appointments render their accordion expanded by default, so only
+    // click to open it when it isn't already expanded. Read aria-expanded off
+    // the accordion's own button rather than racing on card visibility, since
+    // the accordion list may not have rendered yet the instant after
+    // navigation. appointment-accordion-header-{id} renders inside the
+    // accordion button, not around it, so the button has to be located
+    // separately via accordion-button-{id}.
+    const chapter7Header = trusteeProfilePage
+      .locator('[data-testid^="appointment-accordion-header-"]')
+      .filter({ hasText: /Chapter 7 - Panel/ })
+      .first();
+    await chapter7Header.waitFor({ state: 'visible' });
+    const headerTestId = await chapter7Header.getAttribute('data-testid');
+    const accordionId = headerTestId?.replace('appointment-accordion-header-', '');
+    const chapter7Button = trusteeProfilePage.locator(
+      `[data-testid="accordion-button-${accordionId}"]`,
+    );
+    const isExpanded = (await chapter7Button.getAttribute('aria-expanded')) === 'true';
+    if (!isExpanded) {
+      await chapter7Button.click();
+    }
+    await trusteeProfilePage.waitForSelector(
+      '[data-testid="chapter7-panel-audit-field-exam-card"]',
+      {
+        state: 'visible',
+      },
+    );
   });
 
-  test('past key dates card should not have accessibility issues', async () => {
+  for (const { label, cardTestId } of CARD_CASES) {
+    test(`${label} card should not have accessibility issues`, async () => {
+      test.setTimeout(COMPLEX_TEST_TIMEOUT);
+
+      const card = trusteeProfilePage.locator(`[data-testid="${cardTestId}"]`).first();
+      await expect(card).toBeVisible();
+
+      await trusteeProfilePage.waitForTimeout(ANALYZE_DELAY);
+      const accessibilityScanResults = await createAxeBuilder(trusteeProfilePage).analyze();
+      expect(accessibilityScanResults.violations).toEqual([]);
+    });
+  }
+
+  for (const { label, editButtonPrefix, formTestId } of EDIT_FORM_CASES) {
+    test(`${label} edit form should not have accessibility issues`, async () => {
+      test.setTimeout(COMPLEX_TEST_TIMEOUT);
+
+      const editButton = trusteeProfilePage.locator(`[data-testid^="${editButtonPrefix}"]`).first();
+      const isVisible = await editButton.isVisible().catch(() => false);
+
+      if (!isVisible) {
+        test.skip();
+        return;
+      }
+
+      await editButton.click();
+      await expect(trusteeProfilePage.locator(`[data-testid="${formTestId}"]`)).toBeVisible();
+
+      await trusteeProfilePage.waitForTimeout(ANALYZE_DELAY);
+      const accessibilityScanResults = await createAxeBuilder(trusteeProfilePage).analyze();
+      expect(accessibilityScanResults.violations).toEqual([]);
+    });
+  }
+
+  // Chapter 13 Standing accordion + four themed cards (CAMS-915). The accordion may
+  // render closed by default (inactive appointment), so expand it via its own
+  // accordion button before scanning, rather than relying on plain visibility.
+  async function expandChapter13StandingAccordionIfPresent() {
+    const card = trusteeProfilePage
+      .locator('[data-testid="chapter13-standing-audit-card"]')
+      .first();
+    if ((await card.count()) === 0) {
+      return false;
+    }
+    if (await card.isVisible().catch(() => false)) {
+      return true;
+    }
+    const content = trusteeProfilePage
+      .locator('[data-testid^="accordion-content-"]')
+      .filter({ has: card })
+      .first();
+    const testId = await content.getAttribute('data-testid');
+    const accordionId = testId?.replace('accordion-content-', '');
+    if (!accordionId) {
+      return false;
+    }
+    await trusteeProfilePage.locator(`[data-testid="accordion-button-${accordionId}"]`).click();
+    return card.isVisible().catch(() => false);
+  }
+
+  test('Chapter 13 Standing accordion cards should not have accessibility issues', async () => {
     test.setTimeout(COMPLEX_TEST_TIMEOUT);
 
-    const card = trusteeProfilePage.locator('[data-testid="past-key-dates-card"]').first();
-    const isVisible = await card.isVisible().catch(() => false);
-
+    const isVisible = await expandChapter13StandingAccordionIfPresent();
     if (!isVisible) {
       test.skip();
       return;
@@ -30,55 +148,19 @@ test.describe('Trustee Key Dates', () => {
     expect(accessibilityScanResults.violations).toEqual([]);
   });
 
-  test('past key dates form should not have accessibility issues', async () => {
+  test('Chapter 13 Standing Audit edit form should not have accessibility issues', async () => {
     test.setTimeout(COMPLEX_TEST_TIMEOUT);
 
-    const editButton = trusteeProfilePage.locator('#edit-past-key-dates').first();
-    const isVisible = await editButton.isVisible().catch(() => false);
-
+    const isVisible = await expandChapter13StandingAccordionIfPresent();
     if (!isVisible) {
       test.skip();
       return;
     }
 
-    await editButton.click();
-    await expect(trusteeProfilePage.locator('[data-testid="edit-past-key-dates"]')).toBeVisible();
-
-    await trusteeProfilePage.waitForTimeout(ANALYZE_DELAY);
-    const accessibilityScanResults = await createAxeBuilder(trusteeProfilePage).analyze();
-    expect(accessibilityScanResults.violations).toEqual([]);
-  });
-
-  test('upcoming key dates card should not have accessibility issues', async () => {
-    test.setTimeout(COMPLEX_TEST_TIMEOUT);
-
-    const card = trusteeProfilePage.locator('[data-testid="upcoming-key-dates-card"]').first();
-    const isVisible = await card.isVisible().catch(() => false);
-
-    if (!isVisible) {
-      test.skip();
-      return;
-    }
-
-    await trusteeProfilePage.waitForTimeout(ANALYZE_DELAY);
-    const accessibilityScanResults = await createAxeBuilder(trusteeProfilePage).analyze();
-    expect(accessibilityScanResults.violations).toEqual([]);
-  });
-
-  test('upcoming key dates form should not have accessibility issues', async () => {
-    test.setTimeout(COMPLEX_TEST_TIMEOUT);
-
-    const editButton = trusteeProfilePage.locator('#edit-upcoming-key-dates').first();
-    const isVisible = await editButton.isVisible().catch(() => false);
-
-    if (!isVisible) {
-      test.skip();
-      return;
-    }
-
+    const editButton = trusteeProfilePage.locator('#edit-chapter13-standing-audit-key-dates');
     await editButton.click();
     await expect(
-      trusteeProfilePage.locator('[data-testid="edit-upcoming-key-dates"]'),
+      trusteeProfilePage.locator('[data-testid="edit-chapter13-standing-audit-key-dates"]'),
     ).toBeVisible();
 
     await trusteeProfilePage.waitForTimeout(ANALYZE_DELAY);
@@ -86,24 +168,168 @@ test.describe('Trustee Key Dates', () => {
     expect(accessibilityScanResults.violations).toEqual([]);
   });
 
-  test('upcoming key dates form with validation errors should not have accessibility issues', async () => {
+  test('Chapter 13 Standing Trustee Performance Report edit form should not have accessibility issues', async () => {
     test.setTimeout(COMPLEX_TEST_TIMEOUT);
 
-    const editButton = trusteeProfilePage.locator('#edit-upcoming-key-dates').first();
-    const isVisible = await editButton.isVisible().catch(() => false);
-
+    const isVisible = await expandChapter13StandingAccordionIfPresent();
     if (!isVisible) {
       test.skip();
       return;
     }
 
+    const editButton = trusteeProfilePage.locator('#edit-chapter13-standing-tpr-key-dates');
     await editButton.click();
     await expect(
-      trusteeProfilePage.locator('[data-testid="edit-upcoming-key-dates"]'),
+      trusteeProfilePage.locator('[data-testid="edit-chapter13-standing-tpr-key-dates"]'),
     ).toBeVisible();
 
-    await trusteeProfilePage.locator('#tpr-review-period-start').fill('2025-04-01');
-    await trusteeProfilePage.locator('#save-upcoming-key-dates').click({ force: true });
+    await trusteeProfilePage.waitForTimeout(ANALYZE_DELAY);
+    const accessibilityScanResults = await createAxeBuilder(trusteeProfilePage).analyze();
+    expect(accessibilityScanResults.violations).toEqual([]);
+  });
+
+  test('Chapter 13 Standing Other edit form should not have accessibility issues', async () => {
+    test.setTimeout(COMPLEX_TEST_TIMEOUT);
+
+    const isVisible = await expandChapter13StandingAccordionIfPresent();
+    if (!isVisible) {
+      test.skip();
+      return;
+    }
+
+    const editButton = trusteeProfilePage.locator('#edit-chapter13-standing-other-key-dates');
+    await editButton.click();
+    await expect(
+      trusteeProfilePage.locator('[data-testid="edit-chapter13-standing-other-key-dates"]'),
+    ).toBeVisible();
+
+    await trusteeProfilePage.waitForTimeout(ANALYZE_DELAY);
+    const accessibilityScanResults = await createAxeBuilder(trusteeProfilePage).analyze();
+    expect(accessibilityScanResults.violations).toEqual([]);
+  });
+});
+
+test.describe('Chapter 12/13 Case by Case Key Dates', () => {
+  test.describe.configure({ retries: 0, mode: 'serial' });
+
+  let trusteeProfilePage;
+
+  /**
+   * These appointments render as accordions collapsed by default, so the cards
+   * have to be revealed before axe can see them. Returns false when the trustee
+   * under test has no such appointment, which lets a test skip rather than fail.
+   */
+  async function expandCaseByCaseAccordion(): Promise<boolean> {
+    const header = trusteeProfilePage
+      .locator('[data-testid^="appointment-accordion-header-"]')
+      .filter({ hasText: /Chapter 1[23] - Case by Case/ })
+      .first();
+
+    if (!(await header.isVisible().catch(() => false))) {
+      return false;
+    }
+
+    await header.click();
+    await trusteeProfilePage
+      .locator('[data-testid^="annual-report-key-dates-card-"]:visible')
+      .first()
+      .waitFor({ state: 'visible' });
+    return true;
+  }
+
+  test.beforeEach(async ({ page, context }) => {
+    trusteeProfilePage = await openFirstTrusteeProfileInNewTab(page, context);
+    await trusteeProfilePage.locator('[data-testid="trustee-appointments-nav-link"]').click();
+    await trusteeProfilePage.waitForSelector('[data-testid^="appointment-accordion-header-"]', {
+      state: 'visible',
+    });
+  });
+
+  test('key dates cards should not have accessibility issues', async () => {
+    test.setTimeout(COMPLEX_TEST_TIMEOUT);
+
+    if (!(await expandCaseByCaseAccordion())) {
+      test.skip();
+      return;
+    }
+
+    await expect(
+      trusteeProfilePage.locator('[data-testid^="tpr-key-dates-card-"]:visible').first(),
+    ).toBeVisible();
+
+    await trusteeProfilePage.waitForTimeout(ANALYZE_DELAY);
+    const accessibilityScanResults = await createAxeBuilder(trusteeProfilePage).analyze();
+    expect(accessibilityScanResults.violations).toEqual([]);
+  });
+
+  test('annual report edit form should not have accessibility issues', async () => {
+    test.setTimeout(COMPLEX_TEST_TIMEOUT);
+
+    if (!(await expandCaseByCaseAccordion())) {
+      test.skip();
+      return;
+    }
+
+    await trusteeProfilePage
+      .locator('[id^="edit-annual-report-key-dates-"]:visible')
+      .first()
+      .click();
+    await expect(
+      trusteeProfilePage.locator('[data-testid="edit-annual-report-key-dates"]'),
+    ).toBeVisible();
+
+    await trusteeProfilePage.waitForTimeout(ANALYZE_DELAY);
+    const accessibilityScanResults = await createAxeBuilder(trusteeProfilePage).analyze();
+    expect(accessibilityScanResults.violations).toEqual([]);
+  });
+
+  test('trustee performance report edit form should not have accessibility issues', async () => {
+    test.setTimeout(COMPLEX_TEST_TIMEOUT);
+
+    if (!(await expandCaseByCaseAccordion())) {
+      test.skip();
+      return;
+    }
+
+    await trusteeProfilePage.locator('[id^="edit-tpr-key-dates-"]:visible').first().click();
+    await expect(trusteeProfilePage.locator('[data-testid="edit-tpr-key-dates"]')).toBeVisible();
+
+    await trusteeProfilePage.waitForTimeout(ANALYZE_DELAY);
+    const accessibilityScanResults = await createAxeBuilder(trusteeProfilePage).analyze();
+    expect(accessibilityScanResults.violations).toEqual([]);
+  });
+
+  test('completion status validation error should not have accessibility issues', async () => {
+    test.setTimeout(COMPLEX_TEST_TIMEOUT);
+
+    if (!(await expandCaseByCaseAccordion())) {
+      test.skip();
+      return;
+    }
+
+    await trusteeProfilePage
+      .locator('[id^="edit-annual-report-key-dates-"]:visible')
+      .first()
+      .click();
+    await expect(
+      trusteeProfilePage.locator('[data-testid="edit-annual-report-key-dates"]'),
+    ).toBeVisible();
+
+    // Half a completion pair fails validation. Save disables immediately, but the
+    // error text waits until the Year/Status row is focused and then blurred (see
+    // UseGroupBlur.ts) -- selectOption() doesn't reliably dispatch a focus event on
+    // its own, so focus the field explicitly before clicking elsewhere to blur it.
+    await trusteeProfilePage.locator('#annual-report-completion-status').selectOption('');
+    const yearSelect = trusteeProfilePage.locator('#annual-report-completion-year');
+    await yearSelect.selectOption({ index: 1 });
+    await yearSelect.focus();
+    await trusteeProfilePage.locator('[data-testid="edit-annual-report-key-dates"] h3').click();
+    await expect(
+      trusteeProfilePage.locator('[data-testid="annual-report-completion-error"]'),
+    ).toBeVisible();
+    await expect(
+      trusteeProfilePage.locator('[data-testid="button-save-annual-report-key-dates"]'),
+    ).toBeDisabled();
 
     await trusteeProfilePage.waitForTimeout(ANALYZE_DELAY);
     const accessibilityScanResults = await createAxeBuilder(trusteeProfilePage).analyze();

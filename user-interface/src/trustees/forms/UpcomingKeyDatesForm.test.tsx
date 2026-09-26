@@ -4,10 +4,7 @@ import { BrowserRouter, MemoryRouter, Route, Routes } from 'react-router-dom';
 import UpcomingKeyDatesForm from './UpcomingKeyDatesForm';
 import Api2 from '@/lib/models/api2';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
-import {
-  TrusteeUpcomingKeyDates,
-  TrusteeUpcomingKeyDatesInput,
-} from '@common/cams/trustee-upcoming-key-dates';
+import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { UpcomingKeyDatesVariant } from '@/trustees/panels/upcomingKeyDatesFieldConfig';
@@ -55,8 +52,11 @@ const populatedDocument: TrusteeUpcomingKeyDates = {
   createdOn: '2026-01-01T00:00:00.000Z',
   updatedBy: SYSTEM_USER_REFERENCE,
   updatedOn: '2026-01-01T00:00:00.000Z',
+  pastBackgroundQuestion: '2022-05-10',
   pastFieldExam: '2026-06-15',
   pastAudit: '2026-08-01',
+  pastTprSubmission: '2025-11-03',
+  lastMonthlyReportReceived: '2026-02-01',
   upcomingExamOrAuditYear: currentYear + 3,
   upcomingExamOrAuditType: 'Field Exam',
   tirFrequency: 'ANNUAL',
@@ -69,6 +69,8 @@ const populatedDocument: TrusteeUpcomingKeyDates = {
   tprDue: '1900-09-15',
   tprDueYearType: 'ODD',
   lastAuditFiscalYear: 2024,
+  bondIssuedDate: '2023-06-01',
+  bondRenewalDate: '2026-06-01',
 };
 
 const mockGlobalAlertRef = {
@@ -489,6 +491,36 @@ describe('UpcomingKeyDatesForm', () => {
       );
     });
 
+    test('shows "Saving..." and disables the button while the save request is in flight', async () => {
+      let resolvePut: (value: { data: null }) => void;
+      vi.spyOn(Api2, 'putUpcomingKeyDates').mockImplementation(
+        () =>
+          new Promise<{ data: null }>((resolve) => {
+            resolvePut = resolve;
+          }),
+      );
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+      });
+
+      await userEvent.click(screen.getByTestId('button-save-upcoming-key-dates'));
+
+      await waitFor(() => {
+        const saveButton = screen.getByTestId('button-save-upcoming-key-dates');
+        expect(saveButton).toBeDisabled();
+        expect(saveButton).toHaveTextContent('Saving...');
+      });
+
+      resolvePut!({ data: null });
+
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalled();
+      });
+    });
+
     test('shows inline error alert when appointments API fails on load', async () => {
       vi.spyOn(Api2, 'getTrusteeAppointments').mockRejectedValue(new Error('Appointments error'));
 
@@ -529,7 +561,6 @@ describe('UpcomingKeyDatesForm', () => {
     });
 
     test.each([
-      ['ch12-13-case-by-case', { chapter: '12', appointmentType: 'case-by-case' }],
       ['chapter12-standing', { chapter: '12', appointmentType: 'standing' }],
       ['chapter13-standing', { chapter: '13', appointmentType: 'standing' }],
     ] as const)('renders tpr-frequency select for %s variant', async (_, apptOverride) => {
@@ -546,7 +577,6 @@ describe('UpcomingKeyDatesForm', () => {
     });
 
     test.each([
-      ['ch12-13-case-by-case', { chapter: '12', appointmentType: 'case-by-case' }],
       ['chapter12-standing', { chapter: '12', appointmentType: 'standing' }],
       ['chapter13-standing', { chapter: '13', appointmentType: 'standing' }],
     ] as const)(
@@ -817,15 +847,37 @@ describe('UpcomingKeyDatesForm', () => {
     });
   });
 
-  describe('ch12-13-case-by-case variant', () => {
+  describe('Chapter 12/13 Case by Case appointments', () => {
     const ch1213Appointment: TrusteeAppointment = {
       ...chapter7Appointment,
       chapter: '12',
       appointmentType: 'case-by-case',
     };
 
-    test('does not render Field Exam/Audit group or TIR Period group', async () => {
+    // These appointments have dedicated Annual Report and TPR edit pages
+    // (CAMS-913). This generic form stayed reachable by a stale or typed URL,
+    // where it offered a second, narrower editor writing the same fields.
+    test('redirects to the appointments list instead of offering a second editor', async () => {
       vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch1213Appointment] });
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments', {
+          replace: true,
+        });
+      });
+      expect(screen.queryByTestId('edit-upcoming-key-dates')).not.toBeInTheDocument();
+    });
+
+    test('does not redirect appointment types that still use this form', async () => {
+      const standing = {
+        ...chapter7Appointment,
+        chapter: '12' as const,
+        appointmentType: 'standing' as const,
+      };
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [standing] });
       vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
       renderComponent();
@@ -833,45 +885,7 @@ describe('UpcomingKeyDatesForm', () => {
       await waitFor(() => {
         expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
       });
-
-      expect(screen.queryByTestId('upcoming-exam-audit-year')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('tir-frequency')).not.toBeInTheDocument();
-    });
-
-    test('still renders TPR Period and TPR Due groups', async () => {
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch1213Appointment] });
-      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
-
-      renderComponent();
-
-      await waitFor(() => {
-        expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
-      });
-
-      expect(document.getElementById('tpr-review-period-start')).toBeInTheDocument();
-      expect(document.getElementById('tpr-due-month')).toBeInTheDocument();
-    });
-
-    test('save passes through fields other than TPR from the original record unchanged', async () => {
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch1213Appointment] });
-      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
-      const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
-
-      renderComponent();
-
-      await waitFor(() => {
-        expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
-      });
-
-      await userEvent.click(screen.getByTestId('button-save-upcoming-key-dates'));
-
-      await waitFor(() => expect(putSpy).toHaveBeenCalled());
-      const payload = putSpy.mock.calls[0][2] as TrusteeUpcomingKeyDatesInput;
-      expect(payload.pastFieldExam).toBe(populatedDocument.pastFieldExam);
-      expect(payload.pastAudit).toBe(populatedDocument.pastAudit);
-      expect(payload.upcomingExamOrAuditYear).toBe(populatedDocument.upcomingExamOrAuditYear);
-      expect(payload.tprReviewPeriodStart).toBe('2025-04-01');
-      expect(payload.tprDue).toBe(populatedDocument.tprDue);
+      expect(mockNavigate).not.toHaveBeenCalled();
     });
   });
 
@@ -880,7 +894,7 @@ describe('UpcomingKeyDatesForm', () => {
       const getTrusteeAppointmentsSpy = vi.spyOn(Api2, 'getTrusteeAppointments');
       vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
-      renderWithRouteState({ variant: 'ch12-13-case-by-case' });
+      renderWithRouteState({ variant: 'chapter12-standing' });
 
       await waitFor(() => {
         expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
@@ -901,8 +915,10 @@ describe('UpcomingKeyDatesForm', () => {
       });
     });
 
-    test('shows the load-error alert when the appointment fetch fails', async () => {
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockRejectedValue(new Error('Network error'));
+    test('shows the load-error alert when the fallback appointment fetch fails', async () => {
+      const getTrusteeAppointmentsSpy = vi
+        .spyOn(Api2, 'getTrusteeAppointments')
+        .mockRejectedValue(new Error('Network error'));
       vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
       renderWithRouteState();
@@ -911,6 +927,10 @@ describe('UpcomingKeyDatesForm', () => {
         expect(screen.getByText('Something went wrong')).toBeInTheDocument();
       });
 
+      // No variant was supplied in route state, so this confirms the error
+      // came from the fallback fetch path (see the sibling "falls back to
+      // fetching" test above), not from a variant-supplied render skipping it.
+      expect(getTrusteeAppointmentsSpy).toHaveBeenCalled();
       expect(screen.queryByTestId('edit-upcoming-key-dates')).not.toBeInTheDocument();
     });
 
@@ -1244,6 +1264,10 @@ describe('UpcomingKeyDatesForm', () => {
       leaseExpiration: '2027-06-30',
       idExpiration: '2028-01-15',
       lastCompensationStudy: '2024-06-01',
+      tprCompletionYear: 2026,
+      tprCompletionStatus: 'COMPLETE',
+      annualReportCompletionYear: 2025,
+      annualReportCompletionStatus: 'INCOMPLETE',
     };
 
     test('deriveVariant returns chapter13-standing for chapter 13 standing appointment', async () => {
@@ -1332,6 +1356,33 @@ describe('UpcomingKeyDatesForm', () => {
           'trustee-001',
           'appointment-001',
           expect.objectContaining({ lastCompensationStudy: '2024-06-01' }),
+        ),
+      );
+    });
+
+    test('preserves completion year/status pairs in PUT payload when no UI control modifies them', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch13Appointment] });
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: ch13Document });
+      const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/Lease Expiration/i)).toBeInTheDocument();
+      });
+
+      await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+      await waitFor(() =>
+        expect(putSpy).toHaveBeenCalledWith(
+          'trustee-001',
+          'appointment-001',
+          expect.objectContaining({
+            tprCompletionYear: 2026,
+            tprCompletionStatus: 'COMPLETE',
+            annualReportCompletionYear: 2025,
+            annualReportCompletionStatus: 'INCOMPLETE',
+          }),
         ),
       );
     });
@@ -1434,6 +1485,25 @@ describe('UpcomingKeyDatesForm', () => {
       ).not.toBeInTheDocument();
     });
 
+    test('Save button is disabled when TPR Review Period is incomplete and focus leaves the group', async () => {
+      renderFlagOff();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+      });
+
+      const startMonth = document.getElementById(
+        'tpr-review-period-start-month',
+      ) as HTMLSelectElement;
+
+      fireEvent.change(startMonth, { target: { value: '04' } });
+      fireEvent.blur(startMonth, { relatedTarget: null });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('button-save-upcoming-key-dates')).toBeDisabled();
+      });
+    });
+
     test('save payload uses sentinel format for tprReviewPeriod when flag is OFF', async () => {
       vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({
         data: {
@@ -1472,129 +1542,39 @@ describe('UpcomingKeyDatesForm', () => {
     });
   });
 
-  describe('chapter7-elected variant', () => {
-    const electedAppointment: TrusteeAppointment = {
-      id: 'appointment-001',
-      trusteeId: 'trustee-001',
-      chapter: '7',
-      appointmentType: 'elected',
-      courtId: '0208',
-      courtName: 'Southern District of New York',
-      appointedDate: '2021-03-15',
-      status: 'active',
-      effectiveDate: '2021-03-15',
-      updatedOn: '2026-01-01T00:00:00.000Z',
-      updatedBy: SYSTEM_USER_REFERENCE,
-    };
+  // Router state persists across a reload and outlives a deploy, so an entry
+  // created before Chapter 12/13 Case by Case moved to its own pages can still
+  // arrive naming the removed variant. Unknown names used to reach the field
+  // config as an undefined lookup and take the page down.
+  describe('stale variant in router state', () => {
+    test('falls back to deriving the variant instead of failing to render', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [chapter7Appointment] });
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
-    const electedDocument: TrusteeUpcomingKeyDates = {
-      id: 'doc-elected-001',
-      documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
-      trusteeId: 'trustee-001',
-      appointmentId: 'appointment-001',
-      createdBy: SYSTEM_USER_REFERENCE,
-      createdOn: '2026-01-01T00:00:00.000Z',
-      updatedBy: SYSTEM_USER_REFERENCE,
-      updatedOn: '2026-01-01T00:00:00.000Z',
-      bondIssuedDate: '2023-06-01',
-      bondRenewalDate: '2026-06-01',
-    };
-
-    test('deriveVariant renders Bond Renewal Date field for chapter 7 elected appointment', async () => {
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [electedAppointment] });
-
-      renderComponent();
+      renderWithRouteState({ variant: 'no-such-variant' as never });
 
       await waitFor(() => {
-        expect(screen.getByLabelText(/Bond Renewal Date/i)).toBeInTheDocument();
+        expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
       });
     });
 
-    test('does not render Field Exam / Audit or TPR/TIR sections', async () => {
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [electedAppointment] });
+    test('still redirects a Ch12/13 Case by Case appointment carrying the removed variant', async () => {
+      const ch1213 = {
+        ...chapter7Appointment,
+        chapter: '12' as const,
+        appointmentType: 'case-by-case' as const,
+      };
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch1213] });
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
-      renderComponent();
-
-      await waitFor(() => {
-        expect(screen.getByLabelText(/Bond Renewal Date/i)).toBeInTheDocument();
-      });
-      expect(screen.queryByText(/Field Exam or Audit/i)).not.toBeInTheDocument();
-      expect(screen.queryByTestId('tpr-due-year-type')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('tpr-frequency')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('tir-frequency')).not.toBeInTheDocument();
-    });
-
-    test('pre-populates bondRenewalDate from existing key dates', async () => {
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [electedAppointment] });
-      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: electedDocument });
-
-      renderComponent();
+      renderWithRouteState({ variant: 'ch12-13-case-by-case' as never });
 
       await waitFor(() => {
-        const bondRenewalInput = screen.getByLabelText(/Bond Renewal Date/i) as HTMLInputElement;
-        expect(bondRenewalInput.value).toBe('2026-06-01');
+        expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments', {
+          replace: true,
+        });
       });
-    });
-
-    test('on save, includes bondRenewalDate in PUT payload', async () => {
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [electedAppointment] });
-      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: electedDocument });
-      const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
-
-      renderComponent();
-
-      await waitFor(() => {
-        expect(screen.getByLabelText(/Bond Renewal Date/i)).toBeInTheDocument();
-      });
-
-      await userEvent.click(screen.getByRole('button', { name: /save/i }));
-
-      await waitFor(() =>
-        expect(putSpy).toHaveBeenCalledWith(
-          'trustee-001',
-          'appointment-001',
-          expect.objectContaining({ bondRenewalDate: '2026-06-01' }),
-        ),
-      );
-    });
-
-    test('preserves bondIssuedDate in PUT payload when no UI control modifies it', async () => {
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [electedAppointment] });
-      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: electedDocument });
-      const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
-
-      renderComponent();
-
-      await waitFor(() => {
-        expect(screen.getByLabelText(/Bond Renewal Date/i)).toBeInTheDocument();
-      });
-
-      await userEvent.click(screen.getByRole('button', { name: /save/i }));
-
-      await waitFor(() =>
-        expect(putSpy).toHaveBeenCalledWith(
-          'trustee-001',
-          'appointment-001',
-          expect.objectContaining({ bondIssuedDate: '2023-06-01' }),
-        ),
-      );
-    });
-
-    test('Save button is disabled when bond renewal date has an invalid date', async () => {
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [electedAppointment] });
-
-      renderComponent();
-
-      await waitFor(() => {
-        expect(screen.getByLabelText(/Bond Renewal Date/i)).toBeInTheDocument();
-      });
-
-      const bondRenewalInput = screen.getByLabelText(/Bond Renewal Date/i) as HTMLInputElement;
-      fireEvent.change(bondRenewalInput, { target: { value: '1900-01-01' } });
-
-      await waitFor(() => {
-        expect(screen.getByRole('button', { name: /save/i })).toBeDisabled();
-      });
+      expect(screen.queryByTestId('edit-upcoming-key-dates')).not.toBeInTheDocument();
     });
   });
 });

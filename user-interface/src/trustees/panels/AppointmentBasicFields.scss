@@ -1,0 +1,18 @@
+.appointment-basic-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1.5rem;
+  padding-bottom: 1.5rem;
+
+  .appointment-body-label {
+    font-weight: 600;
+  }
+
+  // Button.scss nudges .cams-icon-label up by -0.3rem to align it against a bold
+  // h4 heading in card headers; there's no such heading here, so undo that nudge
+  // to keep "Edit Appointment" level with the plain-text fields beside it.
+  .usa-button .cams-icon-label {
+    top: 0;
+  }
+}

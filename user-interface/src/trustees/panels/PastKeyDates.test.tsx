@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
 import PastKeyDates, { PastKeyDatesProps } from './PastKeyDates';
@@ -18,7 +18,7 @@ vi.mock('react-router-dom', async () => {
 });
 
 const defaultProps: PastKeyDatesProps = {
-  variant: 'chapter7-panel',
+  variant: 'chapter12-standing',
   trusteeId: 'trustee-001',
   appointmentId: 'appointment-001',
   appointmentHeading: 'Southern District of New York (Manhattan) - Chapter 7 Panel',
@@ -71,38 +71,35 @@ describe('PastKeyDates', () => {
     renderComponent();
 
     const noDateElements = screen.getAllByText('No date added');
-    expect(noDateElements.length).toBe(5);
+    expect(noDateElements.length).toBe(3);
   });
 
   test('renders all field labels', () => {
     renderComponent();
 
     expect(screen.getByText('Last Update to Background Questionnaire:')).toBeInTheDocument();
-    expect(screen.getByText('Field Exam Report Date:')).toBeInTheDocument();
-    expect(screen.getByText('Audit Report Date:')).toBeInTheDocument();
+    expect(screen.getByText('Audit Report:')).toBeInTheDocument();
     expect(screen.getByText("Last Audit's Fiscal Year:")).toBeInTheDocument();
-    expect(screen.getByText('TIR Letter:')).toBeInTheDocument();
   });
 
   test('renders correctly formatted values when populated document is provided', () => {
     renderComponent({ data: populatedDocument });
 
     expect(screen.getByTestId('past-background-question-row')).toHaveTextContent('05/10/2022');
-    expect(screen.getByTestId('past-field-exam-row')).toHaveTextContent('02/21/2024');
     expect(screen.getByTestId('past-audit-row')).toHaveTextContent('02/22/2023');
-    expect(screen.getByTestId('past-tpr-submission-row')).toHaveTextContent('11/03/2025');
+    expect(screen.getByTestId('past-last-audit-fiscal-year-row')).toHaveTextContent('2022');
   });
 
-  test('renders "No date added" for background question and tpr submission when absent', () => {
-    const docWithoutNewFields: TrusteeUpcomingKeyDates = {
+  test('renders "No date added" for background question and audit when absent', () => {
+    const docWithoutFields: TrusteeUpcomingKeyDates = {
       ...populatedDocument,
       pastBackgroundQuestion: undefined,
-      pastTprSubmission: undefined,
+      pastAudit: undefined,
     };
-    renderComponent({ data: docWithoutNewFields });
+    renderComponent({ data: docWithoutFields });
 
     expect(screen.getByTestId('past-background-question-row')).toHaveTextContent('No date added');
-    expect(screen.getByTestId('past-tpr-submission-row')).toHaveTextContent('No date added');
+    expect(screen.getByTestId('past-audit-row')).toHaveTextContent('No date added');
   });
 
   test('renders fields in correct order', () => {
@@ -114,10 +111,8 @@ describe('PastKeyDates', () => {
     // contract), rather than assuming InfoCard renders each row as an <li>.
     const expectedOrder = [
       'past-background-question-row',
-      'past-field-exam-row',
       'past-audit-row',
       'past-last-audit-fiscal-year-row',
-      'past-tpr-submission-row',
     ];
     const rows = expectedOrder.map((testId) => screen.getByTestId(testId));
     for (let i = 0; i < rows.length - 1; i++) {
@@ -131,6 +126,12 @@ describe('PastKeyDates', () => {
     renderComponent();
 
     expect(screen.getByRole('button', { name: /edit past key dates/i })).toBeInTheDocument();
+  });
+
+  test('renders "Past Key Dates" as the card title', () => {
+    renderComponent();
+
+    expect(screen.getByRole('heading', { level: 4, name: 'Past Key Dates' })).toBeInTheDocument();
   });
 
   test('Edit button is not visible for non-TrusteeAdmin users', () => {
@@ -169,7 +170,7 @@ describe('PastKeyDates', () => {
 
     expect(mockNavigate).toHaveBeenCalledWith(
       `/trustees/${defaultProps.trusteeId}/appointments/${defaultProps.appointmentId}/past-key-dates/edit`,
-      { state: { subHeading: defaultProps.appointmentHeading, variant: 'chapter7-panel' } },
+      { state: { subHeading: defaultProps.appointmentHeading, variant: 'chapter12-standing' } },
     );
   });
 
@@ -180,7 +181,7 @@ describe('PastKeyDates', () => {
 
     expect(mockNavigate).toHaveBeenCalledWith(
       `/trustees/${defaultProps.trusteeId}/appointments/${defaultProps.appointmentId}/past-key-dates/edit`,
-      { state: { subHeading: '', variant: 'chapter7-panel' } },
+      { state: { subHeading: '', variant: 'chapter12-standing' } },
     );
   });
 
@@ -194,12 +195,13 @@ describe('PastKeyDates', () => {
       isLoading: false,
     };
 
-    test('renders exactly 3 rows: Background Questionnaire, Audit Report, Last Compensation Study', () => {
+    test('renders exactly 4 rows: Background Questionnaire, Audit Report, Last Compensation Study, Last TPR Submitted', () => {
       renderComponent(ch13Props);
 
       expect(screen.getByTestId('past-background-question-row')).toBeInTheDocument();
       expect(screen.getByTestId('past-audit-row')).toBeInTheDocument();
       expect(screen.getByTestId('last-compensation-study-row')).toBeInTheDocument();
+      expect(screen.getByTestId('last-tpr-submitted-row')).toBeInTheDocument();
       expect(screen.queryByTestId('past-field-exam-row')).not.toBeInTheDocument();
       expect(screen.queryByTestId('past-last-audit-fiscal-year-row')).not.toBeInTheDocument();
     });
@@ -214,7 +216,7 @@ describe('PastKeyDates', () => {
       renderComponent(ch13Props);
 
       const noDateElements = screen.getAllByText('No date added');
-      expect(noDateElements.length).toBe(3);
+      expect(noDateElements.length).toBe(4);
     });
 
     test('displays lastCompensationStudy as MM/YYYY when set', () => {
@@ -277,11 +279,17 @@ describe('PastKeyDates', () => {
         },
       );
     });
+
+    test('renders "Past Key Dates" as the card title', () => {
+      renderComponent(ch13Props);
+
+      expect(screen.getByRole('heading', { level: 4, name: 'Past Key Dates' })).toBeInTheDocument();
+    });
   });
 
-  describe('subv-pool variant', () => {
+  describe('chapter11-subv variant', () => {
     const subVProps: PastKeyDatesProps = {
-      variant: 'subv-pool',
+      variant: 'chapter11-subv',
       trusteeId: 'trustee-001',
       appointmentId: 'appointment-001',
       appointmentHeading:
@@ -294,8 +302,8 @@ describe('PastKeyDates', () => {
       renderComponent(subVProps);
 
       // Assert via PastKeyDates' own testId contract (which fields it renders),
-      // not InfoCard's internal markup — none of the chapter7-panel-only rows
-      // should be present alongside the single subv-pool row.
+      // not InfoCard's internal markup — none of the chapter12-standing rows
+      // should be present alongside the single chapter11-subv row.
       expect(screen.getByTestId('past-last-monthly-report-received-row')).toBeInTheDocument();
       expect(screen.queryByTestId('past-background-question-row')).not.toBeInTheDocument();
       expect(screen.queryByTestId('past-field-exam-row')).not.toBeInTheDocument();
@@ -303,15 +311,6 @@ describe('PastKeyDates', () => {
       expect(screen.queryByTestId('past-last-audit-fiscal-year-row')).not.toBeInTheDocument();
       expect(screen.queryByTestId('past-tpr-submission-row')).not.toBeInTheDocument();
       expect(screen.getByText('Last Monthly Report Received:')).toBeInTheDocument();
-    });
-
-    test('renders Last Monthly Report Received value stacked below its label', () => {
-      renderComponent(subVProps);
-
-      const row = screen.getByTestId('past-last-monthly-report-received-row');
-      const { getByText } = within(row);
-      const valueNode = getByText('No date added');
-      expect(valueNode.closest('.info-card-value-stacked')).not.toBeNull();
     });
 
     test('renders "No date added" when lastMonthlyReportReceived is absent', () => {
@@ -341,20 +340,42 @@ describe('PastKeyDates', () => {
       expect(screen.getByTestId('past-last-monthly-report-received-row')).toBeInTheDocument();
     });
 
-    test('Edit button navigates with subv-pool variant', () => {
+    test('Edit button shown for TrusteeAdmin', () => {
       renderComponent(subVProps);
 
-      screen.getByRole('button', { name: /edit past key dates/i }).click();
+      expect(screen.getByRole('button', { name: /edit other key dates/i })).toBeInTheDocument();
+    });
+
+    test('Edit button hidden for non-TrusteeAdmin', () => {
+      TestingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
+
+      renderComponent(subVProps);
+
+      expect(
+        screen.queryByRole('button', { name: /edit other key dates/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    test('Edit button navigates with chapter11-subv variant', () => {
+      renderComponent(subVProps);
+
+      screen.getByRole('button', { name: /edit other key dates/i }).click();
 
       expect(mockNavigate).toHaveBeenCalledWith(
         `/trustees/${subVProps.trusteeId}/appointments/${subVProps.appointmentId}/past-key-dates/edit`,
         {
           state: {
             subHeading: subVProps.appointmentHeading,
-            variant: 'subv-pool',
+            variant: 'chapter11-subv',
           },
         },
       );
+    });
+
+    test('renders "Other" as the card title', () => {
+      renderComponent(subVProps);
+
+      expect(screen.getByRole('heading', { level: 4, name: 'Other' })).toBeInTheDocument();
     });
   });
 
@@ -407,6 +428,22 @@ describe('PastKeyDates', () => {
       expect(screen.getByTestId('past-last-audit-fiscal-year-row')).toHaveTextContent('2023');
     });
 
+    test('Edit button shown for TrusteeAdmin', () => {
+      renderComponent(ch12StandingProps);
+
+      expect(screen.getByRole('button', { name: /edit past key dates/i })).toBeInTheDocument();
+    });
+
+    test('Edit button hidden for non-TrusteeAdmin', () => {
+      TestingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
+
+      renderComponent(ch12StandingProps);
+
+      expect(
+        screen.queryByRole('button', { name: /edit past key dates/i }),
+      ).not.toBeInTheDocument();
+    });
+
     test('Edit button navigates with chapter12-standing variant', () => {
       renderComponent(ch12StandingProps);
 
@@ -422,68 +459,11 @@ describe('PastKeyDates', () => {
         },
       );
     });
-  });
 
-  describe('chapter7-elected variant', () => {
-    const ch7ElectedProps: PastKeyDatesProps = {
-      variant: 'chapter7-elected',
-      trusteeId: 'trustee-ch7-elected-001',
-      appointmentId: 'appointment-ch7-elected-001',
-      appointmentHeading: 'Southern District of New York (Manhattan) - Chapter 7 Elected',
-      data: null,
-      isLoading: false,
-    };
+    test('renders "Past Key Dates" as the card title', () => {
+      renderComponent(ch12StandingProps);
 
-    test('renders exactly one row: Bond Issued', () => {
-      renderComponent(ch7ElectedProps);
-
-      expect(screen.getByTestId('bond-issued-date-row')).toBeInTheDocument();
-      expect(screen.getByText('Bond Issued:')).toBeInTheDocument();
-      expect(screen.queryByTestId('past-background-question-row')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('past-field-exam-row')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('past-audit-row')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('past-last-audit-fiscal-year-row')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('past-tpr-submission-row')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('last-compensation-study-row')).not.toBeInTheDocument();
-    });
-
-    test('renders "No date added" when bondIssuedDate is absent', () => {
-      renderComponent(ch7ElectedProps);
-
-      expect(screen.getByTestId('bond-issued-date-row')).toHaveTextContent('No date added');
-    });
-
-    test('renders the saved date when bondIssuedDate is present', () => {
-      renderComponent({
-        ...ch7ElectedProps,
-        data: { ...populatedDocument, bondIssuedDate: '2023-06-01' },
-      });
-
-      expect(screen.getByTestId('bond-issued-date-row')).toHaveTextContent('06/01/2023');
-    });
-
-    test('row still renders when user cannot manage', () => {
-      TestingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
-
-      renderComponent(ch7ElectedProps);
-
-      expect(screen.getByTestId('bond-issued-date-row')).toBeInTheDocument();
-    });
-
-    test('Edit button navigates with chapter7-elected variant', () => {
-      renderComponent(ch7ElectedProps);
-
-      screen.getByRole('button', { name: /edit past key dates/i }).click();
-
-      expect(mockNavigate).toHaveBeenCalledWith(
-        `/trustees/${ch7ElectedProps.trusteeId}/appointments/${ch7ElectedProps.appointmentId}/past-key-dates/edit`,
-        {
-          state: {
-            subHeading: ch7ElectedProps.appointmentHeading,
-            variant: 'chapter7-elected',
-          },
-        },
-      );
+      expect(screen.getByRole('heading', { level: 4, name: 'Past Key Dates' })).toBeInTheDocument();
     });
   });
 });

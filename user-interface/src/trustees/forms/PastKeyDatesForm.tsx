@@ -8,27 +8,21 @@ import {
 } from '@common/cams/trustee-upcoming-key-dates';
 import {
   PAST_KEY_DATES_FIELD_CONFIG,
+  PAST_KEY_DATES_VARIANT_LABELS,
   PastDateFieldKey,
   PastKeyDatesVariant,
 } from '@/trustees/panels/pastKeyDatesFieldConfig';
-
-const CURRENT_YEAR = new Date().getFullYear();
-const FISCAL_YEAR_OPTIONS = Array.from({ length: 21 }, (_, i) => CURRENT_YEAR - i);
 import Api2 from '@/lib/models/api2';
-import {
-  isChapter12Standing,
-  isChapter13Standing,
-  isChapter7Elected,
-} from '@common/cams/trustee-appointments';
+import { isChapter11SubchapterV, isChapter13Standing } from '@common/cams/trustee-appointments';
 import { AppointmentChapterType, AppointmentType } from '@common/cams/trustees';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import DatePicker from '@/lib/components/uswds/DatePicker';
 import MonthYearSelector from '@/lib/components/uswds/MonthYearSelector';
+import Select from '@/lib/components/uswds/Select';
 import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
-import LocalStorage from '@/lib/utils/local-storage';
-import { CamsRole } from '@common/cams/roles';
+import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import { Stop } from '@/lib/components/Stop';
 
 type PastKeyDatesFormState = Record<PastDateFieldKey, string> & {
@@ -65,6 +59,7 @@ function buildUpcomingKeyDatesInput(
     pastFieldExam: dateValue('pastFieldExam'),
     pastAudit: dateValue('pastAudit'),
     pastTprSubmission: dateValue('pastTprSubmission'),
+    lastTprSubmitted: original?.lastTprSubmitted ?? null,
     lastMonthlyReportReceived: dateValue('lastMonthlyReportReceived'),
     tprReviewPeriodStart: original?.tprReviewPeriodStart ?? null,
     tprReviewPeriodEnd: original?.tprReviewPeriodEnd ?? null,
@@ -97,11 +92,23 @@ function buildUpcomingKeyDatesInput(
     lastAuditFiscalYear: hasYearField
       ? form.lastAuditFiscalYear || null
       : (original?.lastAuditFiscalYear ?? null),
+    auditCompletionYear: original?.auditCompletionYear ?? null,
+    auditCompletionStatus: original?.auditCompletionStatus ?? null,
+    tprCompletionYear: original?.tprCompletionYear ?? null,
+    tprCompletionStatus: original?.tprCompletionStatus ?? null,
+    tirCompletionYear: original?.tirCompletionYear ?? null,
+    tirCompletionStatus: original?.tirCompletionStatus ?? null,
+    annualReportCompletionYear: original?.annualReportCompletionYear ?? null,
+    annualReportCompletionStatus: original?.annualReportCompletionStatus ?? null,
     leaseExpiration: original?.leaseExpiration ?? null,
     idExpiration: original?.idExpiration ?? null,
     lastCompensationStudy: dateValue('lastCompensationStudy'),
     bondIssuedDate: dateValue('bondIssuedDate'),
     bondRenewalDate: original?.bondRenewalDate ?? null,
+    ch13AuditCompletionYear: original?.ch13AuditCompletionYear ?? null,
+    ch13AuditCompletionStatus: original?.ch13AuditCompletionStatus ?? null,
+    ch13TprCompletionYear: original?.ch13TprCompletionYear ?? null,
+    ch13TprCompletionStatus: original?.ch13TprCompletionStatus ?? null,
   };
 }
 
@@ -109,25 +116,28 @@ function deriveVariant(
   chapter: AppointmentChapterType,
   appointmentType: AppointmentType,
 ): PastKeyDatesVariant {
-  if (chapter === '11-subchapter-v' && appointmentType === 'pool') return 'subv-pool';
+  if (isChapter11SubchapterV(chapter, appointmentType)) {
+    return 'chapter11-subv';
+  }
   if (isChapter13Standing(chapter, appointmentType)) return 'chapter13-standing';
-  if (isChapter12Standing(chapter, appointmentType)) return 'chapter12-standing';
-  if (isChapter7Elected(chapter, appointmentType)) return 'chapter7-elected';
-  return 'chapter7-panel';
+  return 'chapter12-standing';
 }
 
 export default function PastKeyDatesForm() {
+  const currentYear = new Date().getFullYear();
+  const fiscalYearOptions = Array.from({ length: 21 }, (_, i) => currentYear - i);
+
   const { trusteeId, appointmentId } = useParams<{
     trusteeId: string;
     appointmentId: string;
   }>();
   const navigate = useNavigate();
   const globalAlert = useGlobalAlert();
-  const canManage = !!LocalStorage.getSession()?.user?.roles?.includes(CamsRole.TrusteeAdmin);
+  const canManage = useCanManageTrustees();
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [variant, setVariant] = useState<PastKeyDatesVariant>('chapter7-panel');
+  const [variant, setVariant] = useState<PastKeyDatesVariant>('chapter12-standing');
   const [form, setForm] = useState<PastKeyDatesFormState>(EMPTY_FORM);
   const [original, setOriginal] = useState<TrusteeUpcomingKeyDates | null>(null);
   const { registerFieldError, hasErrorAmong } = useDateFieldErrors();
@@ -223,32 +233,25 @@ export default function PastKeyDatesForm() {
 
   return (
     <div className="edit-upcoming-key-dates" data-testid="edit-past-key-dates">
-      <h3>Edit Past Key Dates</h3>
+      <h3>{PAST_KEY_DATES_VARIANT_LABELS[variant].editHeading}</h3>
       {PAST_KEY_DATES_FIELD_CONFIG[variant].map((field) =>
         field.kind === 'year' ? (
-          <div className="usa-form-group" key={field.inputId}>
-            <label className="usa-label" htmlFor={field.inputId}>
-              {field.formLabel}
-            </label>
-            {field.hint && <span className="usa-hint">{field.hint}</span>}
-            <select
-              className="usa-select"
-              id={field.inputId}
-              data-testid={field.inputId}
-              value={form.lastAuditFiscalYear}
-              onChange={(ev) => {
-                const val = ev.target.value;
-                setForm((prev) => ({ ...prev, lastAuditFiscalYear: val ? Number(val) : '' }));
-              }}
-            >
-              <option value="">- Select -</option>
-              {FISCAL_YEAR_OPTIONS.map((year) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
-          </div>
+          <Select
+            key={field.inputId}
+            id={field.inputId}
+            label={field.formLabel}
+            ariaDescription={field.hint}
+            placeholder="- Select -"
+            options={fiscalYearOptions.map((year) => ({
+              value: String(year),
+              label: String(year),
+            }))}
+            value={form.lastAuditFiscalYear === '' ? '' : String(form.lastAuditFiscalYear)}
+            onChange={(ev) => {
+              const val = ev.target.value;
+              setForm((prev) => ({ ...prev, lastAuditFiscalYear: val ? Number(val) : '' }));
+            }}
+          />
         ) : field.kind === 'month-year' ? (
           <MonthYearSelector
             key={field.inputId}

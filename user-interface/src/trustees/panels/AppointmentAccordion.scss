@@ -1,0 +1,15 @@
+.appointment-accordion {
+  margin-bottom: 1.5rem;
+
+  .usa-accordion__content {
+    padding-top: 1rem;
+  }
+}
+
+.appointment-accordion-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 1rem;
+  width: 100%;
+}

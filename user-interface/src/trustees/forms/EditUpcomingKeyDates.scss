@@ -132,6 +132,10 @@ $input-max-width: 20.75rem;
         }
       }
     }
+
+    &__row + .cams-field-error-message {
+      padding-top: 0.5rem;
+    }
   }
 
   .tir-period-group {

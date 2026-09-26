@@ -1,477 +1,81 @@
-import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
-import {
-  UPCOMING_KEY_DATES_FIELD_CONFIG,
-  getUpcomingKeyDatesFieldConfig,
-} from './upcomingKeyDatesFieldConfig';
-import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
-import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
+import { describe, test, expect } from 'vitest';
+import { buildCompletionTag, formatDateOrDefault, NO_DATE } from './upcomingKeyDatesFieldConfig';
 
-const baseDoc: TrusteeUpcomingKeyDates = {
-  id: 'doc-1',
-  documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
-  trusteeId: 'trustee-1',
-  appointmentId: 'appt-1',
-  createdBy: SYSTEM_USER_REFERENCE,
-  createdOn: '2026-01-01T00:00:00.000Z',
-  updatedBy: SYSTEM_USER_REFERENCE,
-  updatedOn: '2026-01-01T00:00:00.000Z',
-};
-
-describe('UPCOMING_KEY_DATES_FIELD_CONFIG chapter13-standing variant', () => {
-  const config = UPCOMING_KEY_DATES_FIELD_CONFIG['chapter13-standing'];
-
-  beforeEach(() => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-01-15'));
+describe('formatDateOrDefault', () => {
+  test('formats a defined ISO date as MM/DD/YYYY', () => {
+    expect(formatDateOrDefault('2023-06-03')).toBe('06/03/2023');
   });
 
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  test('first field is Annual Audit Review Period constant 10/01 - 09/30', () => {
-    const field = config.find((f) => f.key === 'annualAuditReviewPeriod');
-    expect(field?.kind).toBe('constant');
-    if (field?.kind === 'constant') {
-      expect(field.displayLabel).toBe('Annual Audit Review Period');
-      expect(field.value).toBe('10/01 - 09/30');
-      expect(field.testId).toBe('annual-audit-review-period-row');
-    }
-  });
-
-  test('Budget Submission Due constant is 07/01', () => {
-    const field = config.find((f) => f.key === 'budgetSubmissionDue');
-    expect(field?.kind).toBe('constant');
-    if (field?.kind === 'constant') {
-      expect(field.displayLabel).toBe('Budget Submission Due');
-      expect(field.value).toBe('07/01');
-    }
-  });
-
-  test('Budget Due to OO constant is 08/15', () => {
-    const field = config.find((f) => f.key === 'budgetReviewToOO');
-    expect(field?.kind).toBe('constant');
-    if (field?.kind === 'constant') {
-      expect(field.displayLabel).toBe('Budget Due to OO');
-      expect(field.value).toBe('08/15');
-    }
-  });
-
-  test.each([
-    ['tprDue', 'TPR Due', { tprDue: '1900-06-15', tprDueYearType: 'EVEN' }, '06/15/2026'],
-  ])(
-    '%s computed field has label "%s" and correct null/value output',
-    (key, expectedLabel, dataOverride, expectedValue) => {
-      const field = config.find((f) => f.key === key);
-      expect(field?.kind).toBe('computed');
-      if (field?.kind === 'computed') {
-        const nullResult = field.buildField(null);
-        expect(nullResult.label).toBe(expectedLabel);
-        expect(nullResult.value).toBe('No date added');
-
-        const valueResult = field.buildField({ ...baseDoc, ...(dataOverride as object) });
-        expect(valueResult.label).toBe(expectedLabel);
-        expect(valueResult.value).toBe(expectedValue);
-      }
-    },
-  );
-
-  test('leaseExpiration computed shows No date added when data is null', () => {
-    const field = config.find((f) => f.key === 'leaseExpiration');
-    expect(field?.kind).toBe('computed');
-    if (field?.kind === 'computed') {
-      const result = field.buildField(null);
-      expect(result.label).toBe('Lease Expiration');
-      expect(result.value).toBe('No date added');
-    }
-  });
-
-  test('leaseExpiration computed shows MM/DD/YYYY when data is set', () => {
-    const field = config.find((f) => f.key === 'leaseExpiration');
-    expect(field?.kind).toBe('computed');
-    if (field?.kind === 'computed') {
-      const result = field.buildField({ ...baseDoc, leaseExpiration: '2027-06-30' });
-      expect(result.value).toBe('06/30/2027');
-    }
-  });
-
-  test('idExpiration computed shows No date added when data is null', () => {
-    const field = config.find((f) => f.key === 'idExpiration');
-    expect(field?.kind).toBe('computed');
-    if (field?.kind === 'computed') {
-      const result = field.buildField(null);
-      expect(result.label).toBe('ID Expiration');
-      expect(result.value).toBe('No date added');
-    }
-  });
-
-  test('idExpiration computed shows MM/DD/YYYY when data is set', () => {
-    const field = config.find((f) => f.key === 'idExpiration');
-    expect(field?.kind).toBe('computed');
-    if (field?.kind === 'computed') {
-      const result = field.buildField({ ...baseDoc, idExpiration: '2028-12-31' });
-      expect(result.value).toBe('12/31/2028');
-    }
-  });
-
-  test('tprDue shows year+1 when year type is ODD and current year is even (2026)', () => {
-    const field = config.find((f) => f.key === 'tprDue');
-    expect(field?.kind).toBe('computed');
-    if (field?.kind === 'computed') {
-      const result = field.buildField({ ...baseDoc, tprDue: '1900-06-15', tprDueYearType: 'ODD' });
-      expect(result.value).toBe('06/15/2027');
-    }
+  test('returns NO_DATE when the date is undefined', () => {
+    expect(formatDateOrDefault(undefined)).toBe(NO_DATE);
   });
 });
 
-describe('UPCOMING_KEY_DATES_FIELD_CONFIG tprDue across variants — pinned to 2026 (even)', () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-01-15'));
+describe('buildCompletionTag', () => {
+  test('defaults to "Complete"/"Incomplete" labels when none are given', () => {
+    expect(buildCompletionTag(2026, 'CLOSED', 'CLOSED', 'my-tag')).toEqual({
+      label: 'Complete for 2026',
+      color: 'green',
+      id: 'my-tag',
+    });
+    expect(buildCompletionTag(2026, 'NOT_CLOSED', 'CLOSED', 'my-tag')).toEqual({
+      label: 'Incomplete for 2026',
+      color: 'red',
+      id: 'my-tag',
+    });
   });
 
-  afterEach(() => {
-    vi.useRealTimers();
+  test('uses custom labels when given', () => {
+    const labels = { closed: 'Closed', notClosed: 'Not Closed' };
+
+    expect(buildCompletionTag(2026, 'CLOSED', 'CLOSED', 'my-tag', labels)).toEqual({
+      label: 'Closed for 2026',
+      color: 'green',
+      id: 'my-tag',
+    });
+    expect(buildCompletionTag(2026, 'NOT_CLOSED', 'CLOSED', 'my-tag', labels)).toEqual({
+      label: 'Not Closed for 2026',
+      color: 'red',
+      id: 'my-tag',
+    });
   });
 
-  test.each([
-    ['chapter7-panel', 'Trustee Performance Review Due'],
-    ['ch12-13-case-by-case', 'Trustee Performance Review Due'],
-    ['chapter12-standing', 'Trustee Performance Review Due'],
-  ] as const)('%s tprDue shows mm/dd/yyyy (EVEN type in 2026 → 2026)', (variant, expectedLabel) => {
-    const config = UPCOMING_KEY_DATES_FIELD_CONFIG[variant];
-    const field = config.find((f) => f.key === 'tprDue');
-    expect(field?.kind).toBe('computed');
-    if (field?.kind === 'computed') {
-      const nullResult = field.buildField(null);
-      expect(nullResult.label).toBe(expectedLabel);
-      expect(nullResult.value).toBe('No date added');
-
-      const valueResult = field.buildField({
-        ...baseDoc,
-        tprDue: '1900-06-15',
-        tprDueYearType: 'EVEN',
-      });
-      expect(valueResult.value).toBe('06/15/2026');
-
-      const oddResult = field.buildField({
-        ...baseDoc,
-        tprDue: '1900-06-15',
-        tprDueYearType: 'ODD',
-      });
-      expect(oddResult.value).toBe('06/15/2027');
-    }
+  test('returns undefined when year or status is unset', () => {
+    expect(buildCompletionTag(undefined, 'CLOSED', 'CLOSED', 'my-tag')).toBeUndefined();
+    expect(buildCompletionTag(2026, undefined, 'CLOSED', 'my-tag')).toBeUndefined();
   });
 });
 
-describe('UPCOMING_KEY_DATES_FIELD_CONFIG tprReviewPeriod display format across variants', () => {
+describe('buildCompletionTag', () => {
+  test('renders a green tag when the status matches the closed value', () => {
+    expect(buildCompletionTag(2025, 'COMPLETE', 'COMPLETE', 'tag-id')).toEqual({
+      label: 'Complete for 2025',
+      color: 'green',
+      id: 'tag-id',
+    });
+  });
+
+  test('renders a red tag when the status does not match the closed value', () => {
+    expect(buildCompletionTag(2024, 'INCOMPLETE', 'COMPLETE', 'tag-id')).toEqual({
+      label: 'Incomplete for 2024',
+      color: 'red',
+      id: 'tag-id',
+    });
+  });
+
+  // The year and status are stored as a pair; half a pair reports nothing. The
+  // document type declares these optional, but the input type declares them
+  // nullable and the values ultimately come from stored data, so null has to be
+  // treated the same as absent. Letting null through rendered 'Incomplete for
+  // null', and worse, a null status rendered a confident 'Incomplete for <year>'
+  // for a report whose status was simply unset.
   test.each([
-    ['chapter7-panel', 'Trustee Performance Review Period'],
-    ['ch12-13-case-by-case', 'Trustee Performance Review Period'],
-    ['chapter12-standing', 'Trustee Performance Review Period'],
-    ['chapter13-standing', 'TPR Review Period'],
-  ] as const)(
-    '%s sentinel dates (1900) show mm/dd - mm/dd legacy format',
-    (variant, expectedLabel) => {
-      const config = UPCOMING_KEY_DATES_FIELD_CONFIG[variant];
-      const field = config.find((f) => f.key === 'tprReviewPeriod');
-      expect(field?.kind).toBe('computed');
-      if (field?.kind === 'computed') {
-        const result = field.buildField({
-          ...baseDoc,
-          tprReviewPeriodStart: '1900-04-01',
-          tprReviewPeriodEnd: '1900-03-31',
-        });
-        expect(result.label).toBe(expectedLabel);
-        expect(result.value).toBe('04/01 - 03/31');
-      }
-    },
-  );
-
-  test.each([
-    ['chapter7-panel', 'Trustee Performance Review Period'],
-    ['ch12-13-case-by-case', 'Trustee Performance Review Period'],
-    ['chapter12-standing', 'Trustee Performance Review Period'],
-    ['chapter13-standing', 'TPR Review Period'],
-  ] as const)(
-    '%s full-year dates show mm/dd/yyyy - mm/dd/yyyy format',
-    (variant, expectedLabel) => {
-      const config = UPCOMING_KEY_DATES_FIELD_CONFIG[variant];
-      const field = config.find((f) => f.key === 'tprReviewPeriod');
-      expect(field?.kind).toBe('computed');
-      if (field?.kind === 'computed') {
-        const result = field.buildField({
-          ...baseDoc,
-          tprReviewPeriodStart: '2025-04-01',
-          tprReviewPeriodEnd: '2026-03-31',
-        });
-        expect(result.label).toBe(expectedLabel);
-        expect(result.value).toBe('04/01/2025 - 03/31/2026');
-      }
-    },
-  );
-
-  test.each([
-    ['chapter7-panel'],
-    ['ch12-13-case-by-case'],
-    ['chapter12-standing'],
-    ['chapter13-standing'],
-  ] as const)('%s shows No date added when both dates are absent', (variant) => {
-    const config = UPCOMING_KEY_DATES_FIELD_CONFIG[variant];
-    const field = config.find((f) => f.key === 'tprReviewPeriod');
-    expect(field?.kind).toBe('computed');
-    if (field?.kind === 'computed') {
-      const result = field.buildField({ ...baseDoc });
-      expect(result.value).toBe('No date added');
-    }
-  });
-});
-
-describe('UPCOMING_KEY_DATES_FIELD_CONFIG tprFrequency computed field', () => {
-  test.each([
-    ['chapter7-panel'],
-    ['ch12-13-case-by-case'],
-    ['chapter12-standing'],
-    ['chapter13-standing'],
-  ] as const)('%s: null data → "No frequency selected"', (variant) => {
-    const config = UPCOMING_KEY_DATES_FIELD_CONFIG[variant];
-    const field = config.find((f) => f.key === 'tprFrequency');
-    expect(field?.kind).toBe('computed');
-    if (field?.kind === 'computed') {
-      const result = field.buildField(null);
-      expect(result.label).toBe('TPR Review Period Frequency');
-      expect(result.value).toBe('No frequency selected');
-      expect(result.testId).toBe('tpr-review-period-frequency-row');
-    }
-  });
-
-  test.each([
-    ['chapter7-panel'],
-    ['ch12-13-case-by-case'],
-    ['chapter12-standing'],
-    ['chapter13-standing'],
-  ] as const)('%s: BIANNUAL → "Two years"', (variant) => {
-    const config = UPCOMING_KEY_DATES_FIELD_CONFIG[variant];
-    const field = config.find((f) => f.key === 'tprFrequency');
-    expect(field?.kind).toBe('computed');
-    if (field?.kind === 'computed') {
-      const result = field.buildField({ ...baseDoc, tprFrequency: 'BIANNUAL' });
-      expect(result.value).toBe('Two years');
-    }
-  });
-
-  test.each([
-    ['chapter7-panel'],
-    ['ch12-13-case-by-case'],
-    ['chapter12-standing'],
-    ['chapter13-standing'],
-  ] as const)('%s: ANNUAL → "One year"', (variant) => {
-    const config = UPCOMING_KEY_DATES_FIELD_CONFIG[variant];
-    const field = config.find((f) => f.key === 'tprFrequency');
-    expect(field?.kind).toBe('computed');
-    if (field?.kind === 'computed') {
-      const result = field.buildField({ ...baseDoc, tprFrequency: 'ANNUAL' });
-      expect(result.value).toBe('One year');
-    }
-  });
-
-  test.each([
-    ['chapter7-panel'],
-    ['ch12-13-case-by-case'],
-    ['chapter12-standing'],
-    ['chapter13-standing'],
-  ] as const)('%s: SEMI_ANNUAL → "6 months"', (variant) => {
-    const config = UPCOMING_KEY_DATES_FIELD_CONFIG[variant];
-    const field = config.find((f) => f.key === 'tprFrequency');
-    expect(field?.kind).toBe('computed');
-    if (field?.kind === 'computed') {
-      const result = field.buildField({ ...baseDoc, tprFrequency: 'SEMI_ANNUAL' });
-      expect(result.value).toBe('6 months');
-    }
-  });
-
-  test('unrecognized tprFrequency value falls back to "No frequency selected"', () => {
-    const config = UPCOMING_KEY_DATES_FIELD_CONFIG['chapter7-panel'];
-    const field = config.find((f) => f.key === 'tprFrequency');
-    expect(field?.kind).toBe('computed');
-    if (field?.kind === 'computed') {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const result = field.buildField({ ...baseDoc, tprFrequency: 'BOGUS' as any });
-      expect(result.value).toBe('No frequency selected');
-    }
-  });
-});
-
-describe('UPCOMING_KEY_DATES_FIELD_CONFIG tprDue — pinned to 2027 (odd)', () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2027-01-15'));
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  test('chapter13-standing tprDue: ODD type in 2027 → 2027', () => {
-    const config = UPCOMING_KEY_DATES_FIELD_CONFIG['chapter13-standing'];
-    const field = config.find((f) => f.key === 'tprDue');
-    expect(field?.kind).toBe('computed');
-    if (field?.kind === 'computed') {
-      const result = field.buildField({ ...baseDoc, tprDue: '1900-03-01', tprDueYearType: 'ODD' });
-      expect(result.value).toBe('03/01/2027');
-    }
-  });
-
-  test('chapter13-standing tprDue: EVEN type in 2027 → 2028', () => {
-    const config = UPCOMING_KEY_DATES_FIELD_CONFIG['chapter13-standing'];
-    const field = config.find((f) => f.key === 'tprDue');
-    expect(field?.kind).toBe('computed');
-    if (field?.kind === 'computed') {
-      const result = field.buildField({
-        ...baseDoc,
-        tprDue: '1900-03-01',
-        tprDueYearType: 'EVEN',
-      });
-      expect(result.value).toBe('03/01/2028');
-    }
-  });
-});
-
-describe('getUpcomingKeyDatesFieldConfig — flag OFF (tprDisplayUpdates=false)', () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-01-15'));
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  test.each([
-    ['chapter7-panel'],
-    ['ch12-13-case-by-case'],
-    ['chapter12-standing'],
-    ['chapter13-standing'],
-  ] as const)('%s: tprFrequency field is excluded', (variant) => {
-    const config = getUpcomingKeyDatesFieldConfig(variant, false);
-    expect(config.find((f) => f.key === 'tprFrequency')).toBeUndefined();
-  });
-
-  test.each([
-    ['chapter7-panel'],
-    ['ch12-13-case-by-case'],
-    ['chapter12-standing'],
-    ['chapter13-standing'],
-  ] as const)('%s: tprDue shows "mm/dd YEARTYPE" format (not calculated year)', (variant) => {
-    const config = getUpcomingKeyDatesFieldConfig(variant, false);
-    const field = config.find((f) => f.key === 'tprDue');
-    expect(field?.kind).toBe('computed');
-    if (field?.kind === 'computed') {
-      const result = field.buildField({ ...baseDoc, tprDue: '1900-06-15', tprDueYearType: 'EVEN' });
-      expect(result.value).toBe('06/15 EVEN');
-    }
-  });
-
-  test.each([
-    ['chapter7-panel'],
-    ['ch12-13-case-by-case'],
-    ['chapter12-standing'],
-    ['chapter13-standing'],
-  ] as const)(
-    '%s: tprReviewPeriod always shows mm/dd - mm/dd (even for full-year dates)',
-    (variant) => {
-      const config = getUpcomingKeyDatesFieldConfig(variant, false);
-      const field = config.find((f) => f.key === 'tprReviewPeriod');
-      expect(field?.kind).toBe('computed');
-      if (field?.kind === 'computed') {
-        const result = field.buildField({
-          ...baseDoc,
-          tprReviewPeriodStart: '2025-04-01',
-          tprReviewPeriodEnd: '2026-03-31',
-        });
-        expect(result.value).toBe('04/01 - 03/31');
-      }
-    },
-  );
-
-  test('chapter13-standing: tprDue preserves "TPR Due" label', () => {
-    const config = getUpcomingKeyDatesFieldConfig('chapter13-standing', false);
-    const field = config.find((f) => f.key === 'tprDue');
-    expect(field?.kind).toBe('computed');
-    if (field?.kind === 'computed') {
-      expect(field.buildField(null).label).toBe('TPR Due');
-    }
-  });
-
-  test('chapter13-standing: tprReviewPeriod preserves "TPR Review Period" label', () => {
-    const config = getUpcomingKeyDatesFieldConfig('chapter13-standing', false);
-    const field = config.find((f) => f.key === 'tprReviewPeriod');
-    expect(field?.kind).toBe('computed');
-    if (field?.kind === 'computed') {
-      expect(field.buildField(null).label).toBe('TPR Review Period');
-    }
-  });
-
-  test.each([
-    ['chapter7-panel'],
-    ['ch12-13-case-by-case'],
-    ['chapter12-standing'],
-    ['chapter13-standing'],
-    ['chapter7-elected'],
-  ] as const)('%s: flag ON returns same config as UPCOMING_KEY_DATES_FIELD_CONFIG', (variant) => {
-    const flagOn = getUpcomingKeyDatesFieldConfig(variant, true);
-    expect(flagOn).toBe(UPCOMING_KEY_DATES_FIELD_CONFIG[variant]);
-  });
-
-  test.each([
-    ['chapter7-panel'],
-    ['ch12-13-case-by-case'],
-    ['chapter12-standing'],
-    ['chapter13-standing'],
-  ] as const)('%s: tprDue shows "mm/dd YEARTYPE" for ODD year type', (variant) => {
-    const config = getUpcomingKeyDatesFieldConfig(variant, false);
-    const field = config.find((f) => f.key === 'tprDue');
-    expect(field?.kind).toBe('computed');
-    if (field?.kind === 'computed') {
-      const result = field.buildField({ ...baseDoc, tprDue: '1900-06-15', tprDueYearType: 'ODD' });
-      expect(result.value).toBe('06/15 ODD');
-    }
-  });
-
-  test.each([['chapter12-standing'], ['chapter13-standing']] as const)(
-    '%s: non-TPR computed fields (leaseExpiration) pass through unchanged when flag is OFF',
-    (variant) => {
-      const config = getUpcomingKeyDatesFieldConfig(variant, false);
-      const field = config.find((f) => f.key === 'leaseExpiration');
-      expect(field?.kind).toBe('computed');
-      if (field?.kind === 'computed') {
-        const result = field.buildField({ ...baseDoc, leaseExpiration: '2027-06-30' });
-        expect(result.value).toBe('06/30/2027');
-      }
-    },
-  );
-});
-
-describe('UPCOMING_KEY_DATES_FIELD_CONFIG chapter7-elected variant', () => {
-  const config = UPCOMING_KEY_DATES_FIELD_CONFIG['chapter7-elected'];
-
-  test('bondRenewalDate computed shows No date added when data is null', () => {
-    const field = config.find((f) => f.key === 'bondRenewalDate');
-    expect(field?.kind).toBe('computed');
-    if (field?.kind === 'computed') {
-      const result = field.buildField(null);
-      expect(result.label).toBe('Bond Renewal');
-      expect(result.value).toBe('No date added');
-      expect(result.testId).toBe('bond-renewal-date-row');
-    }
-  });
-
-  test('bondRenewalDate computed shows MM/DD/YYYY when data is set', () => {
-    const field = config.find((f) => f.key === 'bondRenewalDate');
-    expect(field?.kind).toBe('computed');
-    if (field?.kind === 'computed') {
-      const result = field.buildField({ ...baseDoc, bondRenewalDate: '2026-06-01' });
-      expect(result.value).toBe('06/01/2026');
-    }
+    ['the year is undefined', undefined, 'COMPLETE'],
+    ['the year is null', null, 'COMPLETE'],
+    ['the status is undefined', 2025, undefined],
+    ['the status is null', 2025, null],
+    ['both are null', null, null],
+  ])('renders no tag when %s', (_label, year, status) => {
+    expect(buildCompletionTag(year, status, 'COMPLETE', 'tag-id')).toBeUndefined();
   });
 });

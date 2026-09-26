@@ -7,7 +7,7 @@ export interface DatePickerFieldDescriptor {
   kind: 'date-picker';
   id: string;
   label: string;
-  formKey: 'leaseExpiration' | 'idExpiration' | 'bondRenewalDate';
+  formKey: 'leaseExpiration' | 'idExpiration';
 }
 
 export type UpcomingFormFieldDescriptor = StaticFieldKind | DatePickerFieldDescriptor;
@@ -23,7 +23,6 @@ const UPCOMING_KEY_DATES_FORM_CONFIG: Record<
     'tpr-due',
     'tir-period',
   ],
-  'ch12-13-case-by-case': ['tpr-review-period', 'tpr-frequency', 'tpr-due'],
   'chapter12-standing': [
     'tpr-review-period',
     'tpr-frequency',
@@ -56,14 +55,6 @@ const UPCOMING_KEY_DATES_FORM_CONFIG: Record<
       id: 'id-expiration',
       label: 'ID Expiration',
       formKey: 'idExpiration',
-    },
-  ],
-  'chapter7-elected': [
-    {
-      kind: 'date-picker',
-      id: 'bond-renewal-date',
-      label: 'Bond Renewal Date',
-      formKey: 'bondRenewalDate',
     },
   ],
 };

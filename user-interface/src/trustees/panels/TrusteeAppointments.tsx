@@ -1,17 +1,61 @@
 import './TrusteeAppointments.scss';
-import { useEffect, useState } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import Api2 from '@/lib/models/api2';
 import { sortByCourtLocation } from '@/lib/utils/court-utils';
-import { TrusteeAppointment } from '@common/cams/trustee-appointments';
+import {
+  TrusteeAppointment,
+  isChapter11CaseByCase,
+  isChapter11SubchapterV,
+  isChapter7Elected,
+  isChapter7Panel,
+  isChapter12Or13CaseByCase,
+  isChapter12Standing,
+  isChapter13Standing,
+} from '@common/cams/trustee-appointments';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import AppointmentCard from './AppointmentCard';
+import { AccordionGroup } from '@/lib/components/uswds/Accordion';
+import AppointmentAccordion from './AppointmentAccordion';
+import Chapter11CaseByCaseAppointmentBody from './Chapter11CaseByCaseAppointmentBody';
+import Chapter7ElectedAppointmentBody from './Chapter7ElectedAppointmentBody';
+import Chapter7PanelAppointmentBody from './Chapter7PanelAppointmentBody';
+import Chapter11SubchapterVAppointmentBody from './Chapter11SubchapterVAppointmentBody';
+import Chapter12And13CaseByCaseAppointmentBody from './Chapter12And13CaseByCaseAppointmentBody';
+import Chapter12StandingAppointmentBody from './Chapter12StandingAppointmentBody';
+import Chapter13StandingAppointmentBody from './Chapter13StandingAppointmentBody';
 import Button from '@/lib/components/uswds/Button';
 import Icon from '@/lib/components/uswds/Icon';
 import { useNavigate } from 'react-router-dom';
+import { useAppointmentExpansion } from './useAppointmentExpansion';
 
 interface TrusteeAppointmentsProps {
   trusteeId: string;
+}
+
+function resolveAccordionBody(appointment: TrusteeAppointment): ReactNode | undefined {
+  if (isChapter11CaseByCase(appointment.chapter, appointment.appointmentType)) {
+    return <Chapter11CaseByCaseAppointmentBody appointment={appointment} />;
+  }
+  if (isChapter7Elected(appointment.chapter, appointment.appointmentType)) {
+    return <Chapter7ElectedAppointmentBody appointment={appointment} />;
+  }
+  if (isChapter7Panel(appointment.chapter, appointment.appointmentType)) {
+    return <Chapter7PanelAppointmentBody appointment={appointment} />;
+  }
+  if (isChapter11SubchapterV(appointment.chapter, appointment.appointmentType)) {
+    return <Chapter11SubchapterVAppointmentBody appointment={appointment} />;
+  }
+  if (isChapter12Or13CaseByCase(appointment.chapter, appointment.appointmentType)) {
+    return <Chapter12And13CaseByCaseAppointmentBody appointment={appointment} />;
+  }
+  if (isChapter12Standing(appointment.chapter, appointment.appointmentType)) {
+    return <Chapter12StandingAppointmentBody appointment={appointment} />;
+  }
+  if (isChapter13Standing(appointment.chapter, appointment.appointmentType)) {
+    return <Chapter13StandingAppointmentBody appointment={appointment} />;
+  }
+  return undefined;
 }
 
 export default function TrusteeAppointments(props: Readonly<TrusteeAppointmentsProps>) {
@@ -20,6 +64,7 @@ export default function TrusteeAppointments(props: Readonly<TrusteeAppointmentsP
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { isExpanded, toggleExpanded } = useAppointmentExpansion(trusteeId);
 
   useEffect(() => {
     const loadAppointments = async () => {
@@ -90,9 +135,23 @@ export default function TrusteeAppointments(props: Readonly<TrusteeAppointmentsP
         </Button>
       </div>
       <div className="appointments-list">
-        {sortedAppointments.map((appointment) => (
-          <AppointmentCard key={appointment.id} appointment={appointment} />
-        ))}
+        <AccordionGroup>
+          {sortedAppointments.map((appointment) => {
+            const accordionBody = resolveAccordionBody(appointment);
+            return accordionBody ? (
+              <AppointmentAccordion
+                key={appointment.id}
+                appointment={appointment}
+                expanded={isExpanded(appointment)}
+                onToggle={() => toggleExpanded(appointment)}
+              >
+                {accordionBody}
+              </AppointmentAccordion>
+            ) : (
+              <AppointmentCard key={appointment.id} appointment={appointment} />
+            );
+          })}
+        </AccordionGroup>
       </div>
     </div>
   );

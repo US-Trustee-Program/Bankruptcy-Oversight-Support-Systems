@@ -12,6 +12,7 @@ import Api2 from '@/lib/models/api2';
 import useFeatureFlags from '@/lib/hooks/UseFeatureFlags';
 import { testFeatureFlags } from '@common/feature-flags';
 import * as LaunchDarkly from 'launchdarkly-react-client-sdk';
+import { buildAppointmentHeading } from './panels/appointmentDisplay';
 
 vi.mock('@/lib/hooks/UseFeatureFlags');
 vi.mock('launchdarkly-react-client-sdk', () => ({
@@ -616,6 +617,68 @@ describe('TrusteeDetailScreen', () => {
     });
   });
 
+  describe('key-dates edit route subheading', () => {
+    beforeEach(() => {
+      TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
+      vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+      mockUseFeatureFlags.mockReturnValue({
+        ...testFeatureFlags,
+        'display-chpt7-panel-upcoming-key-dates': true,
+      });
+    });
+
+    test('derives the district/chapter subheading from the appointment, not router state', async () => {
+      const appointment = MockData.getTrusteeAppointment({
+        id: 'appt-1',
+        courtName: 'Southern District of New York',
+        courtDivisionName: 'Manhattan',
+        chapter: '7',
+        appointmentType: 'panel',
+      });
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [appointment] });
+
+      // No location.state is provided here -- this is the scenario that previously
+      // left the subheading blank (direct link, refresh, or back/forward navigation).
+      renderWithRouter(['/trustees/123/appointments/appt-1/tpr-key-dates/edit']);
+
+      // The exact formatted string is buildAppointmentHeading's own contract,
+      // covered by appointmentDisplay.test.ts. This only confirms the screen
+      // fetches the appointment and wires its computed heading through.
+      await waitFor(() => {
+        expect(
+          screen.getByRole('heading', {
+            level: 2,
+            name: buildAppointmentHeading(appointment),
+          }),
+        ).toBeInTheDocument();
+      });
+    });
+
+    test('shows no subheading when the appointment cannot be found', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [] });
+
+      renderWithRouter(['/trustees/123/appointments/appt-missing/tpr-key-dates/edit']);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-chapter7-panel-tpr')).toBeInTheDocument();
+      });
+      expect(screen.queryByRole('heading', { level: 2 })).not.toBeInTheDocument();
+    });
+
+    test('shows no subheading when the appointment fetch fails', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockRejectedValue(new Error('boom'));
+
+      renderWithRouter(['/trustees/123/appointments/appt-1/tpr-key-dates/edit']);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-chapter7-panel-tpr')).toBeInTheDocument();
+      });
+      expect(screen.queryByRole('heading', { level: 2 })).not.toBeInTheDocument();
+    });
+  });
+
   describe('upcoming-key-dates/edit route', () => {
     beforeEach(() => {
       TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
@@ -648,6 +711,19 @@ describe('TrusteeDetailScreen', () => {
 
       await waitFor(() => {
         // When feature flag is disabled, GoHome is rendered instead of the edit form
+        expect(screen.queryByTestId('edit-upcoming-key-dates')).not.toBeInTheDocument();
+      });
+    });
+
+    test('should redirect home when only DISPLAY_CHPT12_STANDING_KEY_DATES is enabled (retired legacy path)', async () => {
+      mockUseFeatureFlags.mockReturnValue({
+        ...testFeatureFlags,
+        'display-chpt12-standing-key-dates': true,
+      });
+
+      renderWithRouter(['/trustees/123/appointments/appt-1/upcoming-key-dates/edit']);
+
+      await waitFor(() => {
         expect(screen.queryByTestId('edit-upcoming-key-dates')).not.toBeInTheDocument();
       });
     });
@@ -685,6 +761,19 @@ describe('TrusteeDetailScreen', () => {
           expect(screen.queryByTestId('edit-past-key-dates')).not.toBeInTheDocument();
         });
       }
+    });
+
+    test('should redirect home when only DISPLAY_CHPT12_STANDING_KEY_DATES is enabled (retired legacy path)', async () => {
+      mockUseFeatureFlags.mockReturnValue({
+        ...testFeatureFlags,
+        'display-chpt12-standing-key-dates': true,
+      });
+
+      renderWithRouter(['/trustees/123/appointments/appt-1/past-key-dates/edit']);
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('edit-past-key-dates')).not.toBeInTheDocument();
+      });
     });
   });
 

@@ -6,10 +6,13 @@ import {
   isoToMMYYYY,
 } from '@common/cams/trustee-upcoming-key-dates';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
-import LocalStorage from '@/lib/utils/local-storage';
-import { CamsRole } from '@common/cams/roles';
+import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import InfoCard from './InfoCard';
-import { PAST_KEY_DATES_FIELD_CONFIG, PastKeyDatesVariant } from './pastKeyDatesFieldConfig';
+import {
+  PAST_KEY_DATES_FIELD_CONFIG,
+  PAST_KEY_DATES_VARIANT_LABELS,
+  PastKeyDatesVariant,
+} from './pastKeyDatesFieldConfig';
 
 export interface PastKeyDatesProps {
   variant: PastKeyDatesVariant;
@@ -33,8 +36,7 @@ function formatMonthYearOrDefault(isoDate: string | undefined): string {
 export default function PastKeyDates(props: Readonly<PastKeyDatesProps>) {
   const { variant, trusteeId, appointmentId, appointmentHeading, data, isLoading } = props;
   const navigate = useNavigate();
-  const session = LocalStorage.getSession();
-  const canManage = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
+  const canManage = useCanManageTrustees();
 
   function openEdit() {
     navigate(`/trustees/${trusteeId}/appointments/${appointmentId}/past-key-dates/edit`, {
@@ -69,13 +71,15 @@ export default function PastKeyDates(props: Readonly<PastKeyDatesProps>) {
     };
   });
 
+  const { cardTitle, editHeading } = PAST_KEY_DATES_VARIANT_LABELS[variant];
+
   return (
     <InfoCard
       id="edit-past-key-dates"
-      title="Past Key Dates"
+      title={cardTitle}
       onEdit={canManage ? openEdit : undefined}
-      editAriaLabel="Edit past key dates"
-      editTitle="Edit past key dates"
+      editAriaLabel={editHeading}
+      editTitle={editHeading}
       testId="past-key-dates-card"
       listTestId="past-key-dates-list"
       fields={fields}
