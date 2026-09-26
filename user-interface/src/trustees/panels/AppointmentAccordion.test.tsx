@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import AppointmentAccordion from './AppointmentAccordion';
@@ -57,6 +57,14 @@ describe('AppointmentAccordion', () => {
     };
   }
 
+  function getHeader(appointmentId: string = mockAppointment.id) {
+    return within(screen.getByTestId(`appointment-accordion-header-${appointmentId}`));
+  }
+
+  function getStatusTag(appointmentId: string = mockAppointment.id) {
+    return screen.getByTestId(`tag-appointment-status-tag-${appointmentId}`);
+  }
+
   test('still renders when courts fail to load', () => {
     mockUseCourts.mockReturnValue({
       courts: [],
@@ -67,32 +75,34 @@ describe('AppointmentAccordion', () => {
 
     renderAccordion();
 
-    expect(screen.getByText(/Southern District of New York/i)).toBeInTheDocument();
+    expect(getHeader().getByText(/Southern District of New York/i)).toBeInTheDocument();
   });
 
   test('renders the district and division in the header', () => {
     renderAccordion();
 
-    expect(screen.getByText(/Southern District of New York.*Manhattan/i)).toBeInTheDocument();
+    expect(getHeader().getByText(/Southern District of New York.*Manhattan/i)).toBeInTheDocument();
   });
 
   test('renders the chapter and appointment type in the header', () => {
     renderAccordion();
 
-    expect(screen.getByText(/Chapter 11 - Case by Case/i)).toBeInTheDocument();
+    expect(getHeader().getByText(/Chapter 11 - Case by Case/i)).toBeInTheDocument();
   });
 
   test('shows a Success tag with text "Active" when status is active', () => {
     renderAccordion({ appointment: { ...mockAppointment, status: 'active' } });
 
-    const tag = screen.getByText('Active');
+    const tag = getStatusTag();
+    expect(tag).toHaveTextContent('Active');
     expect(tag).toHaveClass('bg-success-vivid');
   });
 
   test('shows an InactiveGray tag with the formatted status when status is not active', () => {
     renderAccordion({ appointment: { ...mockAppointment, status: 'terminated' } });
 
-    const tag = screen.getByText('Terminated');
+    const tag = getStatusTag();
+    expect(tag).toHaveTextContent('Terminated');
     expect(tag).toHaveClass('bg-gray-cool-50');
   });
 
