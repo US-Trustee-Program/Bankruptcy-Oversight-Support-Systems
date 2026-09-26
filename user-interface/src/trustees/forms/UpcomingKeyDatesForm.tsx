@@ -30,7 +30,7 @@ import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import { Stop } from '@/lib/components/Stop';
 import {
-  UPCOMING_KEY_DATES_FIELD_CONFIG,
+  UPCOMING_KEY_DATES_VARIANTS,
   UpcomingKeyDatesVariant,
 } from '@/trustees/panels/upcomingKeyDatesFieldConfig';
 import {
@@ -265,7 +265,8 @@ export default function UpcomingKeyDatesForm({
   // normally, which is also what triggers the redirect for the moved variant.
   const rawVariantFromState = (location.state as { variant?: string } | null)?.variant;
   const variantFromState =
-    rawVariantFromState && rawVariantFromState in UPCOMING_KEY_DATES_FIELD_CONFIG
+    rawVariantFromState &&
+    UPCOMING_KEY_DATES_VARIANTS.includes(rawVariantFromState as UpcomingKeyDatesVariant)
       ? (rawVariantFromState as UpcomingKeyDatesVariant)
       : undefined;
 
