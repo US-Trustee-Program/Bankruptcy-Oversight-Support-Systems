@@ -234,51 +234,32 @@ describe('Chapter7PanelTrusteePerformanceReportForm', () => {
     });
   });
 
-  test('Save button is disabled and shows a message when only the completion status year is cleared', async () => {
-    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+  test.each([
+    ['tpr-completion-status-year', '2025'],
+    ['tpr-completion-status-status', 'COMPLETE'],
+  ])(
+    'Save button is disabled and shows a message when only %s is cleared',
+    async (testId, populatedValue) => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
 
-    renderComponent();
+      renderComponent();
 
-    await waitFor(() =>
-      expect(screen.getByTestId('tpr-completion-status-year')).toHaveValue('2025'),
-    );
+      await waitFor(() => expect(screen.getByTestId(testId)).toHaveValue(populatedValue));
 
-    await userEvent.selectOptions(screen.getByTestId('tpr-completion-status-year'), '');
+      await userEvent.selectOptions(screen.getByTestId(testId), '');
 
-    expect(screen.getByTestId('tpr-completion-status-error')).toHaveTextContent('');
+      expect(screen.getByTestId('tpr-completion-status-error')).toHaveTextContent('');
 
-    fireEvent.blur(screen.getByTestId('tpr-completion-status-year'), { relatedTarget: null });
+      fireEvent.blur(screen.getByTestId(testId), { relatedTarget: null });
 
-    await waitFor(() => {
-      expect(screen.getByTestId('tpr-completion-status-error')).toHaveTextContent(
-        'Trustee Performance Review Completion Status Year and Status must both be set.',
-      );
-      expect(screen.getByTestId('button-save-chapter7-panel-tpr')).toBeDisabled();
-    });
-  });
-
-  test('Save button is disabled and shows a message when only the completion status status is cleared', async () => {
-    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
-
-    renderComponent();
-
-    await waitFor(() =>
-      expect(screen.getByTestId('tpr-completion-status-status')).toHaveValue('COMPLETE'),
-    );
-
-    await userEvent.selectOptions(screen.getByTestId('tpr-completion-status-status'), '');
-
-    expect(screen.getByTestId('tpr-completion-status-error')).toHaveTextContent('');
-
-    fireEvent.blur(screen.getByTestId('tpr-completion-status-status'), { relatedTarget: null });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('tpr-completion-status-error')).toHaveTextContent(
-        'Trustee Performance Review Completion Status Year and Status must both be set.',
-      );
-      expect(screen.getByTestId('button-save-chapter7-panel-tpr')).toBeDisabled();
-    });
-  });
+      await waitFor(() => {
+        expect(screen.getByTestId('tpr-completion-status-error')).toHaveTextContent(
+          'Trustee Performance Review Completion Status Year and Status must both be set.',
+        );
+        expect(screen.getByTestId('button-save-chapter7-panel-tpr')).toBeDisabled();
+      });
+    },
+  );
 
   test('shows inline error alert when key dates fail to load', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockRejectedValue(new Error('Network error'));
@@ -324,6 +305,50 @@ describe('Chapter7PanelTrusteePerformanceReportForm', () => {
     expect(mockGlobalAlertRef.current.error).toHaveBeenCalledWith(
       'Failed to save Trustee Performance Report key dates: Server error',
     );
+  });
+
+  test('Save button shows Saving... and is disabled while the save request is in flight', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+    vi.spyOn(Api2, 'putUpcomingKeyDates').mockImplementation(() => new Promise<never>(() => {}));
+
+    renderComponent();
+
+    await waitFor(() =>
+      expect(screen.getByTestId('tpr-review-period-start')).toHaveValue('2026-04-01'),
+    );
+
+    await userEvent.click(screen.getByTestId('button-save-chapter7-panel-tpr'));
+
+    await waitFor(() => {
+      const saveButton = screen.getByTestId('button-save-chapter7-panel-tpr');
+      expect(saveButton).toBeDisabled();
+      expect(saveButton).toHaveTextContent('Saving...');
+    });
+  });
+
+  test('selecting a Month and Day for TPR Due through user interaction is captured in the save payload', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+    const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
+
+    renderComponent();
+
+    await waitFor(() =>
+      expect(screen.getByTestId('tpr-review-period-start')).toHaveValue('2026-04-01'),
+    );
+
+    await userEvent.selectOptions(document.getElementById('tpr-due-month')!, '03');
+    await userEvent.selectOptions(document.getElementById('tpr-due-day')!, '15');
+    await userEvent.click(screen.getByTestId('button-save-chapter7-panel-tpr'));
+
+    await waitFor(() => {
+      expect(putSpy).toHaveBeenCalledWith(
+        'trustee-001',
+        'appointment-001',
+        expect.objectContaining({
+          tprDue: '1900-03-15',
+        }),
+      );
+    });
   });
 
   test.each([
