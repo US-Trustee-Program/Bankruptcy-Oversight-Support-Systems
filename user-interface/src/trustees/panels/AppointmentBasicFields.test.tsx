@@ -1,25 +1,15 @@
 import { render, screen, within } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import { BrowserRouter } from 'react-router-dom';
 import userEvent from '@testing-library/user-event';
 import AppointmentBasicFields from './AppointmentBasicFields';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
-import { CamsRole } from '@common/cams/roles';
-import TestingUtilities from '@/lib/testing/testing-utilities';
+import useEditTrusteeAppointment from '@/lib/hooks/UseEditTrusteeAppointment';
 
-const mockUseNavigate = vi.hoisted(() => vi.fn());
-
-vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual('react-router-dom');
-  return {
-    ...actual,
-    useNavigate: mockUseNavigate,
-  };
-});
+vi.mock('@/lib/hooks/UseEditTrusteeAppointment');
 
 describe('AppointmentBasicFields', () => {
-  const mockNavigate = vi.fn();
+  const mockOpenEditTrustee = vi.fn();
 
   const mockAppointment: TrusteeAppointment = {
     id: 'appointment-001',
@@ -39,17 +29,14 @@ describe('AppointmentBasicFields', () => {
   };
 
   beforeEach(() => {
-    vi.restoreAllMocks();
-    mockUseNavigate.mockReturnValue(mockNavigate);
-    TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
+    vi.mocked(useEditTrusteeAppointment).mockReturnValue({
+      canManage: true,
+      openEditTrustee: mockOpenEditTrustee,
+    });
   });
 
   function renderBody(appointment: TrusteeAppointment = mockAppointment) {
-    return render(
-      <BrowserRouter>
-        <AppointmentBasicFields appointment={appointment} />
-      </BrowserRouter>,
-    );
+    return render(<AppointmentBasicFields appointment={appointment} />);
   }
 
   test('renders the appointed date in the appointed date field', () => {
@@ -78,7 +65,7 @@ describe('AppointmentBasicFields', () => {
     expect(screen.getAllByText('Not Specified')).toHaveLength(2);
   });
 
-  test('renders an Edit button when user has TrusteeAdmin role', () => {
+  test('renders an Edit button when the hook reports canManage', () => {
     renderBody();
 
     expect(
@@ -86,19 +73,20 @@ describe('AppointmentBasicFields', () => {
     ).toBeInTheDocument();
   });
 
-  test('navigates to the edit page when Edit is clicked', async () => {
+  test('calls openEditTrustee when Edit is clicked', async () => {
     const user = userEvent.setup();
     renderBody();
 
     await user.click(screen.getByTestId(`button-edit-trustee-appointment-${mockAppointment.id}`));
 
-    expect(mockNavigate).toHaveBeenCalledWith(
-      `/trustees/${mockAppointment.trusteeId}/appointments/${mockAppointment.id}/edit`,
-    );
+    expect(mockOpenEditTrustee).toHaveBeenCalled();
   });
 
-  test('does not render an Edit button when user lacks TrusteeAdmin role', () => {
-    TestingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
+  test('does not render an Edit button when the hook reports canManage as false', () => {
+    vi.mocked(useEditTrusteeAppointment).mockReturnValue({
+      canManage: false,
+      openEditTrustee: mockOpenEditTrustee,
+    });
 
     renderBody();
 
