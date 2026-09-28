@@ -18,7 +18,7 @@
   },
   "author": "",
   "dependencies": {
-    "@azure/cosmos": "4.10.0",
+    "@azure/cosmos": "4.10.1",
     "@azure/identity": "4.13.2",
     "@faker-js/faker": "10.5.0",
     "@types/node": "24.13.4",
