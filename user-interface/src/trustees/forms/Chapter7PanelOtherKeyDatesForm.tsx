@@ -44,6 +44,7 @@ export default function Chapter7PanelOtherKeyDatesForm() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [form, setForm] = useState<Chapter7PanelOtherKeyDatesFormState>(EMPTY_FORM);
   const [original, setOriginal] = useState<TrusteeUpcomingKeyDates | null>(null);
   const { registerFieldError, hasErrorAmong } = useDateFieldErrors();
@@ -60,6 +61,7 @@ export default function Chapter7PanelOtherKeyDatesForm() {
         }
       })
       .catch((err) => {
+        setLoadFailed(true);
         globalAlert?.error(`Failed to load Other key dates: ${(err as Error).message}`);
       })
       .finally(() => {
@@ -104,7 +106,7 @@ export default function Chapter7PanelOtherKeyDatesForm() {
     );
   }
 
-  const isSaveDisabled = isSaving || hasErrorAmong(['past-background-question']);
+  const isSaveDisabled = isSaving || loadFailed || hasErrorAmong(['past-background-question']);
 
   return (
     <div className="edit-upcoming-key-dates" data-testid="edit-chapter7-panel-other">

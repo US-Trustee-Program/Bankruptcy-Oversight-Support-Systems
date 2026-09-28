@@ -8,6 +8,16 @@ import { getCompletionYearOptions } from './keyDatesInputDefaults';
 
 type CompletionStatus = Ch13CompletionStatus | '';
 
+interface CompletionStatusYearSelectLabels {
+  complete: string;
+  incomplete: string;
+}
+
+const DEFAULT_STATUS_LABELS: CompletionStatusYearSelectLabels = {
+  complete: 'Complete',
+  incomplete: 'Incomplete',
+};
+
 export interface CompletionStatusYearSelectProps {
   /** Prefix used for ids, test ids, and class names, e.g. 'audit-completion' or 'tpr-completion'. */
   idPrefix: string;
@@ -18,12 +28,23 @@ export interface CompletionStatusYearSelectProps {
   onStatusChange: (status: CompletionStatus) => void;
   /** Label the pair error is phrased around, e.g. 'Audit Completion Status'. */
   errorLabel: string;
+  /** Overrides the Status dropdown's displayed labels without changing the stored 'Complete'/'Incomplete' values. */
+  statusLabels?: CompletionStatusYearSelectLabels;
 }
 
 export default function CompletionStatusYearSelect(
   props: Readonly<CompletionStatusYearSelectProps>,
 ) {
-  const { idPrefix, title, year, status, onYearChange, onStatusChange, errorLabel } = props;
+  const {
+    idPrefix,
+    title,
+    year,
+    status,
+    onYearChange,
+    onStatusChange,
+    errorLabel,
+    statusLabels = DEFAULT_STATUS_LABELS,
+  } = props;
   const pairError = validateCompletionPairPresence(year, status, errorLabel);
 
   return (
@@ -61,8 +82,8 @@ export default function CompletionStatusYearSelect(
             ariaDescribedBy={ariaDescribedBy}
             placeholder="- Select -"
             options={[
-              { value: 'Complete', label: 'Complete' },
-              { value: 'Incomplete', label: 'Incomplete' },
+              { value: 'Complete', label: statusLabels.complete },
+              { value: 'Incomplete', label: statusLabels.incomplete },
             ]}
             value={status}
             onChange={(e) => onStatusChange(e.target.value as CompletionStatus)}

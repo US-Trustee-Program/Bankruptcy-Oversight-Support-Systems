@@ -286,8 +286,8 @@ export default function Chapter7PanelAuditFieldExamForm() {
               ariaDescribedBy={ariaDescribedBy}
               placeholder="- Select -"
               options={[
-                { value: 'CLOSED', label: 'Complete' },
-                { value: 'NOT_CLOSED', label: 'Incomplete' },
+                { value: 'CLOSED', label: 'Closed' },
+                { value: 'NOT_CLOSED', label: 'Not Closed' },
               ]}
               value={form.auditCompletionStatus}
               onChange={(e) => {

@@ -88,7 +88,7 @@ describe('Chapter13StandingAuditCard', () => {
     ).not.toBeInTheDocument();
   });
 
-  test('renders a "Complete for {year}" tag when ch13AuditCompletionStatus is Complete', () => {
+  test('renders a "Closed for {year}" tag when ch13AuditCompletionStatus is Complete', () => {
     renderComponent({
       data: {
         ...baseDocument,
@@ -97,11 +97,11 @@ describe('Chapter13StandingAuditCard', () => {
       },
     });
     expect(screen.getByTestId('tag-audit-completion-status-appointment-001')).toHaveTextContent(
-      'Complete for 2026',
+      'Closed for 2026',
     );
   });
 
-  test('renders an "Incomplete for {year}" tag when ch13AuditCompletionStatus is Incomplete', () => {
+  test('renders a "Not Closed for {year}" tag when ch13AuditCompletionStatus is Incomplete', () => {
     renderComponent({
       data: {
         ...baseDocument,
@@ -110,7 +110,7 @@ describe('Chapter13StandingAuditCard', () => {
       },
     });
     expect(screen.getByTestId('tag-audit-completion-status-appointment-001')).toHaveTextContent(
-      'Incomplete for 2026',
+      'Not Closed for 2026',
     );
   });
 

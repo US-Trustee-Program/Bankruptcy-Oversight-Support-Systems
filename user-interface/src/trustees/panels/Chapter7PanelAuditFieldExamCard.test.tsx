@@ -135,19 +135,19 @@ describe('Chapter7PanelAuditFieldExamCard', () => {
     );
   });
 
-  test('shows a "Complete for <year>" tag when completion status is CLOSED', () => {
+  test('shows a "Closed for <year>" tag when completion status is CLOSED', () => {
     renderCard({ ...keyDates, auditCompletionYear: 2023, auditCompletionStatus: 'CLOSED' });
 
     expect(screen.getByTestId('tag-audit-completion-status-tag-appointment-001')).toHaveTextContent(
-      'Complete for 2023',
+      'Closed for 2023',
     );
   });
 
-  test('shows an "Incomplete for <year>" tag when completion status is NOT_CLOSED', () => {
+  test('shows a "Not Closed for <year>" tag when completion status is NOT_CLOSED', () => {
     renderCard({ ...keyDates, auditCompletionYear: 2024, auditCompletionStatus: 'NOT_CLOSED' });
 
     expect(screen.getByTestId('tag-audit-completion-status-tag-appointment-001')).toHaveTextContent(
-      'Incomplete for 2024',
+      'Not Closed for 2024',
     );
   });
 

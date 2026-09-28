@@ -41,6 +41,7 @@ export default function Chapter7PanelAuditFieldExamCard(
     data?.auditCompletionStatus,
     'CLOSED',
     `audit-completion-status-tag-${appointmentId}`,
+    { closed: 'Closed', notClosed: 'Not Closed' },
   );
 
   return (

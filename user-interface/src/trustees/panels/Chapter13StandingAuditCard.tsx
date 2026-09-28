@@ -28,6 +28,7 @@ export default function Chapter13StandingAuditCard(
     data?.ch13AuditCompletionStatus,
     'Complete',
     `audit-completion-status-${appointmentId}`,
+    { closed: 'Closed', notClosed: 'Not Closed' },
   );
 
   return (
