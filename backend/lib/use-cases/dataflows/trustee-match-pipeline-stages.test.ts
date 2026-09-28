@@ -1039,6 +1039,33 @@ describe('scoreCandidate - name-match facet', () => {
       doesNameMatch: { value: 85, pass: true },
     });
   });
+
+  // The other real population with no bare-initial token: a non-person role placeholder (e.g.
+  // real CAMS records literally stored as "Chapter 13"/lastName "Standing Trustee") rather than a
+  // compound given name. splitCamsInitialPlusGivenName's own doc comment names this as the second
+  // of the two populations the bare-initial check must never touch - without a test pinning this
+  // down directly, a future change to the bare-initial heuristic could start splitting a
+  // placeholder string with nothing here to catch it.
+  test('does NOT split a two-token role placeholder with no bare-initial token', async () => {
+    const state = await normalizeAcmsSourceName()(
+      createInitialState(
+        makeDxtrTrustee({ firstName: 'Interim', middleName: 'Trustee', lastName: 'Placeholder' }),
+      ),
+    );
+    const candidate = addCandidate(
+      state,
+      projectTrustee(
+        makeTrustee({ trusteeId: 't1', firstName: 'Interim Trustee', lastName: 'Placeholder' }),
+      ),
+      'test',
+    );
+
+    scoreCandidate(state.sourceNormalized, candidate);
+
+    expect(mergedScore(candidate)).toMatchObject({
+      doesNameMatch: { value: 85, pass: true },
+    });
+  });
 });
 
 describe('scoreCandidate - similarity-diagnostics facet', () => {
