@@ -110,6 +110,11 @@
       "groupName": "typescript-eslint"
     },
     {
+      "description": "Hold TypeScript at 6.x. typescript-eslint 8.70.x declares peer typescript '>=4.8.4 <6.1.0'. TypeScript 7, the native port, falls outside that range, so every workspace fails npm ci with ERESOLVE before any lint or test runs — observed in PR #2799, Actions run 36444567885. Grouping typescript with typescript-eslint does not prevent this: separateMajorMinor splits the TypeScript major away from the typescript-eslint patch, so they land in different branches and never travel together. No published typescript-eslint release widens the peer range, including the 8.70.2-alpha canary, so no version pair resolves. Lift this cap only when typescript-eslint publishes a release whose typescript peer range admits 7.x.",
+      "matchPackageNames": ["typescript"],
+      "allowedVersions": "6.x"
+    },
+    {
       "description": "Pin ESLint package until full support of V10",
       "matchPackageNames": ["@eslint/js"],
       "groupName": "typescript-eslint",
