@@ -3,7 +3,7 @@ import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ApplicationContext } from '../../adapters/types/basic';
 import {
   TrusteeUpcomingKeyDatesController,
-  KEY_DATE_FEATURE_FLAGS,
+  KEY_DATE_FEATURE_FLAG,
 } from './trustee-upcoming-key-dates.controller';
 import { TrusteeUpcomingKeyDatesUseCase } from '../../use-cases/trustee-upcoming-key-dates/trustee-upcoming-key-dates';
 import { mockCamsHttpRequest } from '../../testing/mock-data/cams-http-request-helper';
@@ -36,25 +36,12 @@ describe('TrusteeUpcomingKeyDatesController', () => {
   beforeEach(async () => {
     vi.restoreAllMocks();
     context = await createMockApplicationContext();
-    context.featureFlags['display-chpt7-panel-upcoming-key-dates'] = true;
+    context.featureFlags[KEY_DATE_FEATURE_FLAG] = true;
     context.session.user.roles = [CamsRole.TrusteeAdmin];
   });
 
-  test('KEY_DATE_FEATURE_FLAGS contains the exact set of expected flags', () => {
-    expect(KEY_DATE_FEATURE_FLAGS).toEqual([
-      'display-chpt7-panel-upcoming-key-dates',
-      'display-chpt11-subv-past-key-dates',
-      'display-chpt12-13-case-by-case-upcoming-key-dates',
-      'display-chpt12-standing-key-dates',
-      'display-chpt13-standing-key-dates',
-      'display-chpt7-elected-key-dates',
-    ]);
-  });
-
-  test('throws NotFoundError when all key-dates flags are disabled', async () => {
-    KEY_DATE_FEATURE_FLAGS.forEach((f) => {
-      context.featureFlags[f] = false;
-    });
+  test('throws NotFoundError when the key-dates flag is disabled', async () => {
+    context.featureFlags[KEY_DATE_FEATURE_FLAG] = false;
     context.request = mockCamsHttpRequest({
       method: 'GET',
       params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
@@ -67,11 +54,8 @@ describe('TrusteeUpcomingKeyDatesController', () => {
     );
   });
 
-  test.each(KEY_DATE_FEATURE_FLAGS)('GET succeeds when only %s flag is enabled', async (flag) => {
-    KEY_DATE_FEATURE_FLAGS.forEach((f) => {
-      context.featureFlags[f] = false;
-    });
-    context.featureFlags[flag] = true;
+  test('GET succeeds when the key-dates flag is enabled', async () => {
+    context.featureFlags[KEY_DATE_FEATURE_FLAG] = true;
     vi.spyOn(TrusteeUpcomingKeyDatesUseCase.prototype, 'getUpcomingKeyDates').mockResolvedValue(
       null,
     );
@@ -196,8 +180,6 @@ describe('TrusteeUpcomingKeyDatesController', () => {
         annualReportCompletionStatus: null,
         ch13AuditCompletionYear: null,
         ch13AuditCompletionStatus: null,
-        ch13TprCompletionYear: null,
-        ch13TprCompletionStatus: null,
         ...overrides,
       };
     }

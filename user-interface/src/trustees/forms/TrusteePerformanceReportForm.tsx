@@ -2,14 +2,14 @@ import './EditUpcomingKeyDates.scss';
 import '@/lib/components/uswds/forms.scss';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import useFeatureFlags, { TPR_DISPLAY_UPDATES } from '@/lib/hooks/UseFeatureFlags';
+import useFeatureFlags, { TRUSTEE_APPOINTMENT_ACCORDIONS } from '@/lib/hooks/UseFeatureFlags';
 import {
   TrusteeUpcomingKeyDates,
   TrusteeUpcomingKeyDatesInput,
   validateTprDuePair,
   validateTprReviewPeriodOrder,
+  validateTprReviewPeriodPresence,
   validateCompletionPairPresence,
-  validateTrusteeUpcomingKeyDates,
   isoToSentinel,
 } from '@common/cams/trustee-upcoming-key-dates';
 import { mergeKeyDatesInput, getFiscalYearOptions } from './chapter7PanelKeyDatesInput';
@@ -26,7 +26,8 @@ import PairFieldGroup from './PairFieldGroup';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import { Stop } from '@/lib/components/Stop';
 
-type TrusteePerformanceReportFormVariant = 'chapter7-panel' | 'chapter12-standing';
+type TrusteePerformanceReportFormVariant =
+  'chapter7-panel' | 'chapter12-standing' | 'chapter12-13-case-by-case' | 'chapter13-standing';
 
 type TprCompletionStatus = 'COMPLETE' | 'INCOMPLETE';
 
@@ -93,7 +94,7 @@ export default function TrusteePerformanceReportForm(
   const navigate = useNavigate();
   const globalAlert = useGlobalAlert();
   const canManage = useCanManageTrustees();
-  const tprDisplayUpdates = !!useFeatureFlags()[TPR_DISPLAY_UPDATES];
+  const tprDisplayUpdates = !!useFeatureFlags()[TRUSTEE_APPOINTMENT_ACCORDIONS];
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -144,12 +145,26 @@ export default function TrusteePerformanceReportForm(
       tprDisplayUpdates,
     );
 
-    const result = validateTrusteeUpcomingKeyDates(input);
-    setErrors({
-      tprReviewPeriodStart: result.reasonMap?.tprReviewPeriodStart?.reasons?.[0] ?? '',
-      tprReviewPeriodEnd: result.reasonMap?.tprReviewPeriodEnd?.reasons?.[0] ?? '',
-    });
-    if ((!tprDisplayUpdates && !tprReviewPeriodValid) || !result.valid) return;
+    // No whole-document validation here. The fields this form owns are checked
+    // inline, and the API validates the rest; validating the merged document
+    // client-side blocked saves on fields this form cannot display, with no
+    // way to fix them (see TrusteePerformanceReportKeyDatesForm's history).
+    // The review period pair has no isSaveDisabled term of its own (unlike the
+    // due/completion pairs), so it's still checked here at click-time.
+    if (tprDisplayUpdates) {
+      const presence = validateTprReviewPeriodPresence(
+        form.tprReviewPeriodStart,
+        form.tprReviewPeriodEnd,
+      );
+      if (presence) {
+        setErrors((prev) => ({
+          ...prev,
+          tprReviewPeriodStart: presence.startError,
+          tprReviewPeriodEnd: presence.endError,
+        }));
+        return;
+      }
+    }
 
     setIsSaving(true);
     try {
@@ -220,15 +235,14 @@ export default function TrusteePerformanceReportForm(
           }}
           onBlur={(e) => {
             if (e.currentTarget.contains(e.relatedTarget as Node)) return;
-            const order = validateTprReviewPeriodOrder(
-              form.tprReviewPeriodStart,
-              form.tprReviewPeriodEnd,
-            );
-            if (!order) return;
+            const result =
+              validateTprReviewPeriodOrder(form.tprReviewPeriodStart, form.tprReviewPeriodEnd) ??
+              validateTprReviewPeriodPresence(form.tprReviewPeriodStart, form.tprReviewPeriodEnd);
+            if (!result) return;
             setErrors((prev) => ({
               ...prev,
-              tprReviewPeriodStart: order.startError,
-              tprReviewPeriodEnd: order.endError,
+              tprReviewPeriodStart: result.startError,
+              tprReviewPeriodEnd: result.endError,
             }));
           }}
         >

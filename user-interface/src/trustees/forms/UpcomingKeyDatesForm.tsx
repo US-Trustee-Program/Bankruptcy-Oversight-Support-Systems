@@ -81,8 +81,6 @@ type FormState = {
   bondRenewalDate: string;
   ch13AuditCompletionYear: number | null;
   ch13AuditCompletionStatus: 'Complete' | 'Incomplete' | '';
-  ch13TprCompletionYear: number | null;
-  ch13TprCompletionStatus: 'Complete' | 'Incomplete' | '';
 };
 
 const EMPTY_FORM: FormState = {
@@ -121,8 +119,6 @@ const EMPTY_FORM: FormState = {
   bondRenewalDate: '',
   ch13AuditCompletionYear: null,
   ch13AuditCompletionStatus: '',
-  ch13TprCompletionYear: null,
-  ch13TprCompletionStatus: '',
 };
 
 function deriveVariant(
@@ -176,8 +172,6 @@ function buildFormStateFromData(data: TrusteeUpcomingKeyDates): FormState {
     bondRenewalDate: data.bondRenewalDate ?? '',
     ch13AuditCompletionYear: data.ch13AuditCompletionYear ?? null,
     ch13AuditCompletionStatus: data.ch13AuditCompletionStatus ?? '',
-    ch13TprCompletionYear: data.ch13TprCompletionYear ?? null,
-    ch13TprCompletionStatus: data.ch13TprCompletionStatus ?? '',
   };
 }
 
@@ -476,8 +470,6 @@ export default function UpcomingKeyDatesForm({
       bondRenewalDate: form.bondRenewalDate || null,
       ch13AuditCompletionYear: form.ch13AuditCompletionYear,
       ch13AuditCompletionStatus: form.ch13AuditCompletionStatus || null,
-      ch13TprCompletionYear: form.ch13TprCompletionYear,
-      ch13TprCompletionStatus: form.ch13TprCompletionStatus || null,
     };
 
     if (!tprDisplayUpdates) {

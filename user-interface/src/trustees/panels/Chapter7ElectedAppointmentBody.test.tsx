@@ -6,7 +6,7 @@ import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import * as featureFlagsHook from '@/lib/hooks/UseFeatureFlags';
-import { DISPLAY_CHPT7_ELECTED_KEY_DATES } from '@/lib/hooks/UseFeatureFlags';
+import { TRUSTEE_APPOINTMENT_ACCORDIONS } from '@/lib/hooks/UseFeatureFlags';
 
 vi.mock('./AppointmentBasicFields', () => ({
   default: (props: { appointment: TrusteeAppointment }) => (
@@ -63,7 +63,7 @@ describe('Chapter7ElectedAppointmentBody', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-      [DISPLAY_CHPT7_ELECTED_KEY_DATES]: true,
+      [TRUSTEE_APPOINTMENT_ACCORDIONS]: true,
     });
   });
 
@@ -144,9 +144,9 @@ describe('Chapter7ElectedAppointmentBody', () => {
     expect(consoleErrorSpy).toHaveBeenCalledWith('Could not load upcoming key dates', fetchError);
   });
 
-  test('does not fetch or render the Bond card when DISPLAY_CHPT7_ELECTED_KEY_DATES is disabled', () => {
+  test('does not fetch or render the Bond card when TRUSTEE_APPOINTMENT_ACCORDIONS is disabled', () => {
     vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-      [DISPLAY_CHPT7_ELECTED_KEY_DATES]: false,
+      [TRUSTEE_APPOINTMENT_ACCORDIONS]: false,
     });
     const getSpy = vi.spyOn(Api2, 'getUpcomingKeyDates');
 

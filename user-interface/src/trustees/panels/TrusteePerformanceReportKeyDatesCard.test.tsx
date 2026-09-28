@@ -192,7 +192,7 @@ describe('TrusteePerformanceReportKeyDatesCard', () => {
 
   // The Chapter 7 Panel card gates these on the same flag; the rollout has to
   // look the same for both appointment types on the same page.
-  describe('with TPR_DISPLAY_UPDATES disabled', () => {
+  describe('with tprDisplayUpdates prop false', () => {
     function renderWithFlagOff(data: TrusteeUpcomingKeyDates | null = keyDates) {
       return renderCard(data, false, undefined, false);
     }

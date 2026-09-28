@@ -87,12 +87,12 @@ describe('Chapter13StandingTrusteePerformanceReportCard', () => {
     expect(screen.getByTestId('last-tpr-submitted-row')).toHaveTextContent('No date added');
   });
 
-  test('renders formatted Last TPR Submitted when pastTprSubmission is set', () => {
-    renderComponent({ data: { ...baseDocument, pastTprSubmission: '2025-06-30' } });
+  test('renders formatted Last TPR Submitted when lastTprSubmitted is set', () => {
+    renderComponent({ data: { ...baseDocument, lastTprSubmitted: '2025-06-30' } });
     expect(screen.getByTestId('last-tpr-submitted-row')).toHaveTextContent('06/30/2025');
   });
 
-  test('renders no completion-status tag when ch13TprCompletionYear/Status are unset', () => {
+  test('renders no completion-status tag when tprCompletionYear/Status are unset', () => {
     renderComponent();
     expect(
       screen.queryByTestId('tag-tpr-completion-status-appointment-001'),
@@ -100,8 +100,8 @@ describe('Chapter13StandingTrusteePerformanceReportCard', () => {
   });
 
   test.each([
-    ['ch13TprCompletionYear only', { ch13TprCompletionYear: 2026 }],
-    ['ch13TprCompletionStatus only', { ch13TprCompletionStatus: 'Complete' as const }],
+    ['tprCompletionYear only', { tprCompletionYear: 2026 }],
+    ['tprCompletionStatus only', { tprCompletionStatus: 'COMPLETE' as const }],
   ])('renders no completion-status tag when only %s is set', (_label, partialData) => {
     renderComponent({ data: { ...baseDocument, ...partialData } });
     expect(
@@ -109,18 +109,18 @@ describe('Chapter13StandingTrusteePerformanceReportCard', () => {
     ).not.toBeInTheDocument();
   });
 
-  test('renders a "Complete for {year}" tag when ch13TprCompletionStatus is Complete', () => {
+  test('renders a "Complete for {year}" tag when tprCompletionStatus is COMPLETE', () => {
     renderComponent({
-      data: { ...baseDocument, ch13TprCompletionYear: 2026, ch13TprCompletionStatus: 'Complete' },
+      data: { ...baseDocument, tprCompletionYear: 2026, tprCompletionStatus: 'COMPLETE' },
     });
     expect(screen.getByTestId('tag-tpr-completion-status-appointment-001')).toHaveTextContent(
       'Complete for 2026',
     );
   });
 
-  test('renders an "Incomplete for {year}" tag when ch13TprCompletionStatus is Incomplete', () => {
+  test('renders an "Incomplete for {year}" tag when tprCompletionStatus is INCOMPLETE', () => {
     renderComponent({
-      data: { ...baseDocument, ch13TprCompletionYear: 2026, ch13TprCompletionStatus: 'Incomplete' },
+      data: { ...baseDocument, tprCompletionYear: 2026, tprCompletionStatus: 'INCOMPLETE' },
     });
     expect(screen.getByTestId('tag-tpr-completion-status-appointment-001')).toHaveTextContent(
       'Incomplete for 2026',

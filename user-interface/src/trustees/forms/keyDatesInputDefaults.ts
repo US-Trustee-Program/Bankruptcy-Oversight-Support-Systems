@@ -11,17 +11,19 @@ export function getCompletionYearOptions(): number[] {
 
 /**
  * Defaults every field of TrusteeUpcomingKeyDatesInput from the previously-saved record.
- * Each Chapter 13 Standing key-dates form spreads this and then overrides only the
- * handful of fields it owns with its own form state.
+ * Each Chapter 13 Standing key-dates form (Audit, Other) spreads this and then
+ * overrides only the handful of fields it owns with its own form state.
  *
- * auditCompletionYear/Status, tprCompletionYear/Status, tirCompletionYear/Status, and
- * annualReportCompletionYear/Status belong to other appointment domains (Chapter 7
- * Panel, and Chapter 12/13 Case by Case, respectively -- different value sets than
- * Ch13's own ch13AuditCompletionStatus/ch13TprCompletionStatus) and a Chapter 13
- * Standing appointment never legitimately owns them, so they're hard-nulled here
- * rather than carried forward from `original` -- passing through stale/foreign values
- * would fail validation and, since upsert does a full document replace, this also
- * self-heals any document that already has legacy data in those fields.
+ * auditCompletionYear/Status, tirCompletionYear/Status, and annualReportCompletionYear/Status
+ * belong to other appointment domains (Chapter 7 Panel, and Chapter 12/13 Case by Case,
+ * respectively) and a Chapter 13 Standing appointment never legitimately owns them, so
+ * they're hard-nulled here rather than carried forward from `original` -- passing through
+ * stale/foreign values would fail validation and, since upsert does a full document
+ * replace, this also self-heals any document that already has legacy data in those fields.
+ *
+ * tprCompletionYear/Status is NOT hard-nulled here: Chapter 13 Standing's own TPR form
+ * (TrusteePerformanceReportForm with variant="chapter13-standing") writes to these same
+ * fields, so Audit/Other saves must carry them forward untouched.
  */
 export function buildKeyDatesInputFromOriginal(
   trusteeId: string,
@@ -31,8 +33,6 @@ export function buildKeyDatesInputFromOriginal(
   return mergeKeyDatesInput({ trusteeId, appointmentId }, original, {
     auditCompletionYear: null,
     auditCompletionStatus: null,
-    tprCompletionYear: null,
-    tprCompletionStatus: null,
     tirCompletionYear: null,
     tirCompletionStatus: null,
     annualReportCompletionYear: null,

@@ -397,8 +397,6 @@ describe('validateTrusteeUpcomingKeyDates', () => {
       annualReportCompletionStatus: null,
       ch13AuditCompletionYear: null,
       ch13AuditCompletionStatus: null,
-      ch13TprCompletionYear: null,
-      ch13TprCompletionStatus: null,
     };
   }
 
@@ -740,165 +738,79 @@ describe('validateTrusteeUpcomingKeyDates', () => {
     ).toEqual(VALID);
   });
 
-  test('returns error when ch13TprCompletionYear is set but ch13TprCompletionStatus is null', () => {
+  test('returns error when ch13AuditCompletionStatus contains a value outside the allowed enum', () => {
     const result = validateTrusteeUpcomingKeyDates({
       ...baseInput(),
-      ch13TprCompletionYear: 2026,
-      ch13TprCompletionStatus: null,
-    });
-    expect(result.valid).toBeFalsy();
-    expect(result.reasonMap?.ch13TprCompletionStatus?.reasons?.[0]).toBe(
-      'TPR Completion Status is required.',
-    );
-  });
-
-  test('returns error when ch13TprCompletionStatus is set but ch13TprCompletionYear is null', () => {
-    const result = validateTrusteeUpcomingKeyDates({
-      ...baseInput(),
-      ch13TprCompletionYear: null,
-      ch13TprCompletionStatus: 'Complete',
-    });
-    expect(result.valid).toBeFalsy();
-    expect(result.reasonMap?.ch13TprCompletionYear?.reasons?.[0]).toBe(
-      'TPR Completion Year is required.',
-    );
-  });
-
-  test('returns VALID when ch13TprCompletionYear and ch13TprCompletionStatus are both set', () => {
-    expect(
-      validateTrusteeUpcomingKeyDates({
-        ...baseInput(),
-        ch13TprCompletionYear: 2026,
-        ch13TprCompletionStatus: 'Incomplete',
-      }),
-    ).toEqual(VALID);
-  });
-
-  test.each([
-    ['ch13AuditCompletionStatus' as const, 'Audit Completion Status'],
-    ['ch13TprCompletionStatus' as const, 'TPR Completion Status'],
-  ])('returns error when %s contains a value outside the allowed enum', (field, label) => {
-    const result = validateTrusteeUpcomingKeyDates({
-      ...baseInput(),
-      [field]: 'garbage',
+      ch13AuditCompletionStatus: 'garbage',
     } as unknown as ReturnType<typeof baseInput>);
     expect(result.valid).toBeFalsy();
-    expect(result.reasonMap?.[field]?.reasons?.[0]).toBe(
-      `${label} must be one of: Complete, Incomplete.`,
+    expect(result.reasonMap?.ch13AuditCompletionStatus?.reasons?.[0]).toBe(
+      'Audit Completion Status must be one of: Complete, Incomplete.',
     );
   });
 
-  test.each([
-    ['ch13AuditCompletionStatus' as const, 'Complete'],
-    ['ch13AuditCompletionStatus' as const, 'Incomplete'],
-    ['ch13TprCompletionStatus' as const, 'Complete'],
-    ['ch13TprCompletionStatus' as const, 'Incomplete'],
-  ])('returns VALID when %s is %s', (field, value) => {
-    const yearField =
-      field === 'ch13AuditCompletionStatus' ? 'ch13AuditCompletionYear' : 'ch13TprCompletionYear';
-    expect(
-      validateTrusteeUpcomingKeyDates({
-        ...baseInput(),
-        [field]: value,
-        [yearField]: 2026,
-      }),
-    ).toEqual(VALID);
-  });
-
-  test.each([
-    ['ch13AuditCompletionYear' as const, 'ch13AuditCompletionStatus' as const, 1900],
-    ['ch13AuditCompletionYear' as const, 'ch13AuditCompletionStatus' as const, 2100],
-    ['ch13TprCompletionYear' as const, 'ch13TprCompletionStatus' as const, 1900],
-    ['ch13TprCompletionYear' as const, 'ch13TprCompletionStatus' as const, 2100],
-  ])('returns VALID when %s is the inclusive boundary value %i', (field, statusField, year) => {
-    expect(
-      validateTrusteeUpcomingKeyDates({
-        ...baseInput(),
-        [field]: year,
-        [statusField]: 'Complete',
-      }),
-    ).toEqual(VALID);
-  });
-
-  test.each([
-    ['ch13AuditCompletionYear' as const, 'Audit Completion Year'],
-    ['ch13TprCompletionYear' as const, 'TPR Completion Year'],
-  ])('returns error when %s is below the allowed range', (field, label) => {
-    const statusField =
-      field === 'ch13AuditCompletionYear' ? 'ch13AuditCompletionStatus' : 'ch13TprCompletionStatus';
-    const result = validateTrusteeUpcomingKeyDates({
-      ...baseInput(),
-      [field]: 1899,
-      [statusField]: 'Complete',
-    });
-    expect(result.valid).toBeFalsy();
-    expect(result.reasonMap?.[field]?.reasons?.[0]).toBe(
-      `${label} must be a whole number between 1900 and 2100.`,
-    );
-  });
-
-  test.each([
-    ['ch13AuditCompletionYear' as const, 'Audit Completion Year'],
-    ['ch13TprCompletionYear' as const, 'TPR Completion Year'],
-  ])('returns error when %s is above the allowed range', (field, label) => {
-    const statusField =
-      field === 'ch13AuditCompletionYear' ? 'ch13AuditCompletionStatus' : 'ch13TprCompletionStatus';
-    const result = validateTrusteeUpcomingKeyDates({
-      ...baseInput(),
-      [field]: 2101,
-      [statusField]: 'Complete',
-    });
-    expect(result.valid).toBeFalsy();
-    expect(result.reasonMap?.[field]?.reasons?.[0]).toBe(
-      `${label} must be a whole number between 1900 and 2100.`,
-    );
-  });
-
-  test.each([
-    ['ch13AuditCompletionYear' as const, 'Audit Completion Year'],
-    ['ch13TprCompletionYear' as const, 'TPR Completion Year'],
-  ])('returns error when %s is not an integer', (field, label) => {
-    const statusField =
-      field === 'ch13AuditCompletionYear' ? 'ch13AuditCompletionStatus' : 'ch13TprCompletionStatus';
-    const result = validateTrusteeUpcomingKeyDates({
-      ...baseInput(),
-      [field]: 2025.5,
-      [statusField]: 'Complete',
-    });
-    expect(result.valid).toBeFalsy();
-    expect(result.reasonMap?.[field]?.reasons?.[0]).toBe(
-      `${label} must be a whole number between 1900 and 2100.`,
-    );
-  });
-
-  test.each([
-    ['ch13AuditCompletionYear' as const, 'Audit Completion Year'],
-    ['ch13TprCompletionYear' as const, 'TPR Completion Year'],
-  ])('returns error when %s is a non-number value (defensive type guard)', (field, label) => {
-    const statusField =
-      field === 'ch13AuditCompletionYear' ? 'ch13AuditCompletionStatus' : 'ch13TprCompletionStatus';
-    const result = validateTrusteeUpcomingKeyDates({
-      ...baseInput(),
-      [field]: 'garbage',
-      [statusField]: 'Complete',
-    } as unknown as ReturnType<typeof baseInput>);
-    expect(result.valid).toBeFalsy();
-    expect(result.reasonMap?.[field]?.reasons?.[0]).toBe(
-      `${label} must be a whole number between 1900 and 2100.`,
-    );
-  });
-
-  test.each([['ch13AuditCompletionYear' as const], ['ch13TprCompletionYear' as const]])(
-    'returns VALID when %s is null',
-    (field) => {
+  test.each([['Complete' as const], ['Incomplete' as const]])(
+    'returns VALID when ch13AuditCompletionStatus is %s',
+    (value) => {
       expect(
         validateTrusteeUpcomingKeyDates({
           ...baseInput(),
-          [field]: null,
+          ch13AuditCompletionStatus: value,
+          ch13AuditCompletionYear: 2026,
         }),
       ).toEqual(VALID);
     },
   );
+
+  test.each([[1900], [2100]])(
+    'returns VALID when ch13AuditCompletionYear is the inclusive boundary value %i',
+    (year) => {
+      expect(
+        validateTrusteeUpcomingKeyDates({
+          ...baseInput(),
+          ch13AuditCompletionYear: year,
+          ch13AuditCompletionStatus: 'Complete',
+        }),
+      ).toEqual(VALID);
+    },
+  );
+
+  test.each([
+    ['below the allowed range', 1899],
+    ['above the allowed range', 2101],
+    ['not an integer', 2025.5],
+  ])('returns error when ch13AuditCompletionYear is %s', (_label, year) => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      ch13AuditCompletionYear: year,
+      ch13AuditCompletionStatus: 'Complete',
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.ch13AuditCompletionYear?.reasons?.[0]).toBe(
+      'Audit Completion Year must be a whole number between 1900 and 2100.',
+    );
+  });
+
+  test('returns error when ch13AuditCompletionYear is a non-number value (defensive type guard)', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      ch13AuditCompletionYear: 'garbage',
+      ch13AuditCompletionStatus: 'Complete',
+    } as unknown as ReturnType<typeof baseInput>);
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.ch13AuditCompletionYear?.reasons?.[0]).toBe(
+      'Audit Completion Year must be a whole number between 1900 and 2100.',
+    );
+  });
+
+  test('returns VALID when ch13AuditCompletionYear is null', () => {
+    expect(
+      validateTrusteeUpcomingKeyDates({
+        ...baseInput(),
+        ch13AuditCompletionYear: null,
+      }),
+    ).toEqual(VALID);
+  });
 
   test('returns error when a sentinel date field contains an invalid ISO date', () => {
     const result = validateTrusteeUpcomingKeyDates({
@@ -1186,7 +1098,6 @@ describe('validateTrusteeUpcomingKeyDates', () => {
       'tirCompletionStatus',
       'annualReportCompletionStatus',
       'ch13AuditCompletionStatus',
-      'ch13TprCompletionStatus',
     ]);
   });
 
@@ -1200,7 +1111,6 @@ describe('validateTrusteeUpcomingKeyDates', () => {
       'tirCompletionYear',
       'annualReportCompletionYear',
       'ch13AuditCompletionYear',
-      'ch13TprCompletionYear',
     ]);
   });
 

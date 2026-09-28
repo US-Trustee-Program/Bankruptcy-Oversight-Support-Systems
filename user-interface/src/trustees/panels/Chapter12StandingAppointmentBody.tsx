@@ -5,10 +5,7 @@ import Chapter12StandingBudgetCard from './Chapter12StandingBudgetCard';
 import Chapter12StandingOtherKeyDatesCard from './Chapter12StandingOtherKeyDatesCard';
 import KeyDatesGate from './KeyDatesGate';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
-import useFeatureFlags, {
-  DISPLAY_CHPT12_STANDING_KEY_DATES,
-  TPR_DISPLAY_UPDATES,
-} from '@/lib/hooks/UseFeatureFlags';
+import useFeatureFlags, { TRUSTEE_APPOINTMENT_ACCORDIONS } from '@/lib/hooks/UseFeatureFlags';
 
 export interface Chapter12StandingAppointmentBodyProps {
   appointment: TrusteeAppointment;
@@ -19,8 +16,8 @@ export default function Chapter12StandingAppointmentBody(
 ) {
   const { appointment } = props;
   const featureFlags = useFeatureFlags();
-  const displayKeyDates = featureFlags[DISPLAY_CHPT12_STANDING_KEY_DATES] === true;
-  const tprDisplayUpdates = featureFlags[TPR_DISPLAY_UPDATES] === true;
+  const displayKeyDates = featureFlags[TRUSTEE_APPOINTMENT_ACCORDIONS] === true;
+  const tprDisplayUpdates = displayKeyDates;
 
   return (
     <>

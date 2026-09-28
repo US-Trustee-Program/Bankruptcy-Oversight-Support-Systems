@@ -65,8 +65,6 @@ export function mergeKeyDatesInput(
     bondRenewalDate: original?.bondRenewalDate ?? null,
     ch13AuditCompletionYear: original?.ch13AuditCompletionYear ?? null,
     ch13AuditCompletionStatus: original?.ch13AuditCompletionStatus ?? null,
-    ch13TprCompletionYear: original?.ch13TprCompletionYear ?? null,
-    ch13TprCompletionStatus: original?.ch13TprCompletionStatus ?? null,
     ...overrides,
   };
 }

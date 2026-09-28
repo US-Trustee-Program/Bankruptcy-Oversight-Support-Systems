@@ -43,10 +43,11 @@ describe('buildKeyDatesInputFromOriginal', () => {
     lastCompensationStudy: '2024-06-01',
     bondIssuedDate: '2022-06-01',
     bondRenewalDate: '2025-06-01',
-    // Chapter 7 Panel-domain fields: a Ch13 Standing document should never
-    // legitimately have these set, but a document could still carry stale
-    // values (e.g. from before the ch13 field rename); buildKeyDatesInputFromOriginal
-    // must hard-null them regardless of what's present here.
+    // Chapter 7 Panel/Case-by-Case-domain fields: a Ch13 Standing document
+    // should never legitimately have these set, but a document could still
+    // carry stale values; buildKeyDatesInputFromOriginal must hard-null them
+    // regardless of what's present here. tprCompletionYear/Status is NOT in
+    // this group -- it's owned by Ch13 Standing's own TPR form.
     auditCompletionYear: 2020,
     auditCompletionStatus: 'CLOSED',
     tprCompletionYear: 2021,
@@ -55,11 +56,9 @@ describe('buildKeyDatesInputFromOriginal', () => {
     tirCompletionStatus: 'INCOMPLETE',
     ch13AuditCompletionYear: 2026,
     ch13AuditCompletionStatus: 'Complete',
-    ch13TprCompletionYear: 2026,
-    ch13TprCompletionStatus: 'Incomplete',
   };
 
-  test('carries every non-Chapter-7-Panel field forward from the original document', () => {
+  test('carries every Chapter 13 Standing-owned field forward from the original document', () => {
     const result = buildKeyDatesInputFromOriginal(ids.trusteeId, ids.appointmentId, fullOriginal);
 
     expect(result).toEqual({
@@ -95,28 +94,31 @@ describe('buildKeyDatesInputFromOriginal', () => {
       bondRenewalDate: '2025-06-01',
       auditCompletionYear: null,
       auditCompletionStatus: null,
-      tprCompletionYear: null,
-      tprCompletionStatus: null,
+      tprCompletionYear: 2021,
+      tprCompletionStatus: 'COMPLETE',
       tirCompletionYear: null,
       tirCompletionStatus: null,
       annualReportCompletionYear: null,
       annualReportCompletionStatus: null,
       ch13AuditCompletionYear: 2026,
       ch13AuditCompletionStatus: 'Complete',
-      ch13TprCompletionYear: 2026,
-      ch13TprCompletionStatus: 'Incomplete',
     });
   });
 
-  test('hard-nulls Chapter 7 Panel-domain completion fields even when the original document has stale values', () => {
+  test('hard-nulls Chapter 7 Panel/Case-by-Case-domain completion fields even when the original document has stale values', () => {
     const result = buildKeyDatesInputFromOriginal(ids.trusteeId, ids.appointmentId, fullOriginal);
 
     expect(result.auditCompletionYear).toBeNull();
     expect(result.auditCompletionStatus).toBeNull();
-    expect(result.tprCompletionYear).toBeNull();
-    expect(result.tprCompletionStatus).toBeNull();
     expect(result.tirCompletionYear).toBeNull();
     expect(result.tirCompletionStatus).toBeNull();
+  });
+
+  test('carries tprCompletionYear/Status forward, since Chapter 13 Standing owns these via its own TPR form', () => {
+    const result = buildKeyDatesInputFromOriginal(ids.trusteeId, ids.appointmentId, fullOriginal);
+
+    expect(result.tprCompletionYear).toBe(2021);
+    expect(result.tprCompletionStatus).toBe('COMPLETE');
   });
 
   test('defaults every field to null when there is no original document', () => {
@@ -163,8 +165,6 @@ describe('buildKeyDatesInputFromOriginal', () => {
       annualReportCompletionStatus: null,
       ch13AuditCompletionYear: null,
       ch13AuditCompletionStatus: null,
-      ch13TprCompletionYear: null,
-      ch13TprCompletionStatus: null,
     });
   });
 });

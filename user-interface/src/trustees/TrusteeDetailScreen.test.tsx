@@ -625,7 +625,7 @@ describe('TrusteeDetailScreen', () => {
       vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
       mockUseFeatureFlags.mockReturnValue({
         ...testFeatureFlags,
-        'display-chpt7-panel-upcoming-key-dates': true,
+        'trustee-appointment-accordions': true,
       });
     });
 
@@ -686,10 +686,10 @@ describe('TrusteeDetailScreen', () => {
       vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
     });
 
-    test('should render UpcomingKeyDatesForm when DISPLAY_CHPT7_PANEL_UPCOMING_REPORT_DATES flag is enabled', async () => {
+    test('should render UpcomingKeyDatesForm when TRUSTEE_APPOINTMENT_ACCORDIONS flag is enabled', async () => {
       mockUseFeatureFlags.mockReturnValue({
         ...testFeatureFlags,
-        'display-chpt7-panel-upcoming-key-dates': true,
+        'trustee-appointment-accordions': true,
       });
       vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [] });
       vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
@@ -701,29 +701,16 @@ describe('TrusteeDetailScreen', () => {
       });
     });
 
-    test('should redirect home when DISPLAY_CHPT7_PANEL_UPCOMING_REPORT_DATES flag is disabled', async () => {
+    test('should redirect home when TRUSTEE_APPOINTMENT_ACCORDIONS flag is disabled', async () => {
       mockUseFeatureFlags.mockReturnValue({
         ...testFeatureFlags,
-        'display-chpt7-panel-upcoming-key-dates': false,
+        'trustee-appointment-accordions': false,
       });
 
       renderWithRouter(['/trustees/123/appointments/appt-1/upcoming-key-dates/edit']);
 
       await waitFor(() => {
         // When feature flag is disabled, GoHome is rendered instead of the edit form
-        expect(screen.queryByTestId('edit-upcoming-key-dates')).not.toBeInTheDocument();
-      });
-    });
-
-    test('should redirect home when only DISPLAY_CHPT12_STANDING_KEY_DATES is enabled (retired legacy path)', async () => {
-      mockUseFeatureFlags.mockReturnValue({
-        ...testFeatureFlags,
-        'display-chpt12-standing-key-dates': true,
-      });
-
-      renderWithRouter(['/trustees/123/appointments/appt-1/upcoming-key-dates/edit']);
-
-      await waitFor(() => {
         expect(screen.queryByTestId('edit-upcoming-key-dates')).not.toBeInTheDocument();
       });
     });
@@ -739,15 +726,12 @@ describe('TrusteeDetailScreen', () => {
     });
 
     test.each([
-      [true, true, true],
-      [true, false, true],
-      [false, true, true],
-      [false, false, false],
-    ])('ch7=%s subv=%s → route enabled=%s', async (ch7Flag, subvFlag, expectEnabled) => {
+      [true, true],
+      [false, false],
+    ])('accordions flag=%s → route enabled=%s', async (accordionsFlag, expectEnabled) => {
       mockUseFeatureFlags.mockReturnValue({
         ...testFeatureFlags,
-        'display-chpt7-panel-upcoming-key-dates': ch7Flag,
-        'display-chpt11-subv-past-key-dates': subvFlag,
+        'trustee-appointment-accordions': accordionsFlag,
       });
 
       renderWithRouter(['/trustees/123/appointments/appt-1/past-key-dates/edit']);
@@ -761,19 +745,6 @@ describe('TrusteeDetailScreen', () => {
           expect(screen.queryByTestId('edit-past-key-dates')).not.toBeInTheDocument();
         });
       }
-    });
-
-    test('should redirect home when only DISPLAY_CHPT12_STANDING_KEY_DATES is enabled (retired legacy path)', async () => {
-      mockUseFeatureFlags.mockReturnValue({
-        ...testFeatureFlags,
-        'display-chpt12-standing-key-dates': true,
-      });
-
-      renderWithRouter(['/trustees/123/appointments/appt-1/past-key-dates/edit']);
-
-      await waitFor(() => {
-        expect(screen.queryByTestId('edit-past-key-dates')).not.toBeInTheDocument();
-      });
     });
   });
 
@@ -845,7 +816,7 @@ describe('TrusteeDetailScreen', () => {
   });
 
   describe('assigned-staff route', () => {
-    test('should render TrusteeAssignedStaff when trustee-assigned-staff-enabled flag is enabled', async () => {
+    test('should render TrusteeAssignedStaff when trustee-appointment-accordions flag is enabled', async () => {
       vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
       vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
 
@@ -856,10 +827,10 @@ describe('TrusteeDetailScreen', () => {
       });
     });
 
-    test('should redirect home when trustee-assigned-staff-enabled flag is disabled', async () => {
+    test('should redirect home when trustee-appointment-accordions flag is disabled', async () => {
       mockUseFeatureFlags.mockReturnValue({
         ...testFeatureFlags,
-        'trustee-assigned-staff-enabled': false,
+        'trustee-appointment-accordions': false,
       });
       vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
       vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
@@ -874,7 +845,7 @@ describe('TrusteeDetailScreen', () => {
   });
 
   describe('cases route', () => {
-    test('should render TrusteeCaseList when trustee-case-list flag is enabled', async () => {
+    test('should render TrusteeCaseList when trustee-appointment-accordions flag is enabled', async () => {
       vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
       vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
       vi.spyOn(Api2, 'getTrusteeCases').mockResolvedValue({
@@ -889,10 +860,10 @@ describe('TrusteeDetailScreen', () => {
       });
     });
 
-    test('should redirect home when trustee-case-list flag is disabled', async () => {
+    test('should redirect home when trustee-appointment-accordions flag is disabled', async () => {
       mockUseFeatureFlags.mockReturnValue({
         ...testFeatureFlags,
-        'trustee-case-list': false,
+        'trustee-appointment-accordions': false,
       });
       vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
       vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });

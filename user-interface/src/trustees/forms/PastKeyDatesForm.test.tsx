@@ -312,8 +312,6 @@ describe('PastKeyDatesForm', () => {
         annualReportCompletionStatus: null,
         ch13AuditCompletionYear: null,
         ch13AuditCompletionStatus: null,
-        ch13TprCompletionYear: null,
-        ch13TprCompletionStatus: null,
       }),
     );
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');

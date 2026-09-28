@@ -6,10 +6,7 @@ import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import * as featureFlagsHook from '@/lib/hooks/UseFeatureFlags';
-import {
-  DISPLAY_CHPT12_STANDING_KEY_DATES,
-  TPR_DISPLAY_UPDATES,
-} from '@/lib/hooks/UseFeatureFlags';
+import { TRUSTEE_APPOINTMENT_ACCORDIONS } from '@/lib/hooks/UseFeatureFlags';
 
 vi.mock('./AppointmentBasicFields', () => ({
   default: (props: { appointment: TrusteeAppointment }) => (
@@ -78,7 +75,7 @@ describe('Chapter12StandingAppointmentBody', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-      [DISPLAY_CHPT12_STANDING_KEY_DATES]: true,
+      [TRUSTEE_APPOINTMENT_ACCORDIONS]: true,
     });
   });
 
@@ -120,12 +117,11 @@ describe('Chapter12StandingAppointmentBody', () => {
     expect(screen.getByTestId('chapter12-standing-budget-card')).toBeInTheDocument();
   });
 
-  test('forwards tprDisplayUpdates derived from the TPR_DISPLAY_UPDATES flag', async () => {
+  // tprDisplayUpdates and the key-dates fetch are both derived from the single
+  // TRUSTEE_APPOINTMENT_ACCORDIONS flag now, so there's no "fetch enabled but
+  // TPR display off" combination left to test independently.
+  test('forwards tprDisplayUpdates as true, derived from the accordions flag', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: keyDates });
-    vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-      [DISPLAY_CHPT12_STANDING_KEY_DATES]: true,
-      [TPR_DISPLAY_UPDATES]: true,
-    });
 
     renderBody();
 
@@ -133,19 +129,6 @@ describe('Chapter12StandingAppointmentBody', () => {
       expect(screen.getByTestId('chapter12-standing-tpr-card')).toHaveAttribute(
         'data-tpr-display-updates',
         'true',
-      );
-    });
-  });
-
-  test('forwards tprDisplayUpdates as false when the TPR_DISPLAY_UPDATES flag is disabled', async () => {
-    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: keyDates });
-
-    renderBody();
-
-    await waitFor(() => {
-      expect(screen.getByTestId('chapter12-standing-tpr-card')).toHaveAttribute(
-        'data-tpr-display-updates',
-        'false',
       );
     });
   });
@@ -180,9 +163,9 @@ describe('Chapter12StandingAppointmentBody', () => {
     expect(screen.queryByTestId('chapter12-standing-audit-card')).not.toBeInTheDocument();
   });
 
-  test('does not fetch or render any card when DISPLAY_CHPT12_STANDING_KEY_DATES is disabled', () => {
+  test('does not fetch or render any card when TRUSTEE_APPOINTMENT_ACCORDIONS is disabled', () => {
     vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-      [DISPLAY_CHPT12_STANDING_KEY_DATES]: false,
+      [TRUSTEE_APPOINTMENT_ACCORDIONS]: false,
     });
     const getSpy = vi.spyOn(Api2, 'getUpcomingKeyDates');
 

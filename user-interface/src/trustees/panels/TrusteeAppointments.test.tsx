@@ -7,7 +7,7 @@ import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import userEvent from '@testing-library/user-event';
 import * as featureFlagsHook from '@/lib/hooks/UseFeatureFlags';
-import { DISPLAY_CHPT13_STANDING_KEY_DATES } from '@/lib/hooks/UseFeatureFlags';
+import { TRUSTEE_APPOINTMENT_ACCORDIONS } from '@/lib/hooks/UseFeatureFlags';
 import TestingUtilities from '@/lib/testing/testing-utilities';
 import { CamsRole } from '@common/cams/roles';
 
@@ -460,7 +460,7 @@ describe('TrusteeAppointments', () => {
 
     beforeEach(() => {
       vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT13_STANDING_KEY_DATES]: true,
+        [TRUSTEE_APPOINTMENT_ACCORDIONS]: true,
       });
       vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
       vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });

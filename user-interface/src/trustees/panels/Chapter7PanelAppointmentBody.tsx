@@ -5,10 +5,7 @@ import Chapter7PanelTrusteeInterimReportCard from './Chapter7PanelTrusteeInterim
 import Chapter7PanelOtherKeyDatesCard from './Chapter7PanelOtherKeyDatesCard';
 import KeyDatesGate from './KeyDatesGate';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
-import useFeatureFlags, {
-  DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES,
-  TPR_DISPLAY_UPDATES,
-} from '@/lib/hooks/UseFeatureFlags';
+import useFeatureFlags, { TRUSTEE_APPOINTMENT_ACCORDIONS } from '@/lib/hooks/UseFeatureFlags';
 
 export interface Chapter7PanelAppointmentBodyProps {
   appointment: TrusteeAppointment;
@@ -18,12 +15,11 @@ export default function Chapter7PanelAppointmentBody(
   props: Readonly<Chapter7PanelAppointmentBodyProps>,
 ) {
   const { appointment } = props;
-  // The backend key-dates endpoint authorizes on DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES,
-  // not the accordion flag, so the fetch must also be gated on it to avoid a
-  // guaranteed-to-fail request when the accordion flag is enabled on its own.
+  // The backend key-dates endpoint authorizes on this same flag, so the fetch
+  // must be gated on it to avoid a guaranteed-to-fail request.
   const featureFlags = useFeatureFlags();
-  const displayKeyDates = featureFlags[DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES] === true;
-  const tprDisplayUpdates = featureFlags[TPR_DISPLAY_UPDATES] === true;
+  const displayKeyDates = featureFlags[TRUSTEE_APPOINTMENT_ACCORDIONS] === true;
+  const tprDisplayUpdates = displayKeyDates;
 
   return (
     <>

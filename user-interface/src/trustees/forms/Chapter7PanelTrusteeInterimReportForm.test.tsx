@@ -559,8 +559,6 @@ describe('buildTrusteeInterimReportKeyDatesInput', () => {
       annualReportCompletionStatus: null,
       ch13AuditCompletionYear: null,
       ch13AuditCompletionStatus: null,
-      ch13TprCompletionYear: null,
-      ch13TprCompletionStatus: null,
     });
   });
 
@@ -654,8 +652,6 @@ describe('buildTrusteeInterimReportKeyDatesInput', () => {
       annualReportCompletionStatus: null,
       ch13AuditCompletionYear: null,
       ch13AuditCompletionStatus: null,
-      ch13TprCompletionYear: null,
-      ch13TprCompletionStatus: null,
     });
   });
 });

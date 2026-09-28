@@ -1,10 +1,7 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { setCurrentNav, createNavStateMapper } from '@/lib/utils/navigation';
-import useFeatureFlags, {
-  TRUSTEE_ASSIGNED_STAFF_ENABLED,
-  TRUSTEE_CASE_LIST,
-} from '@/lib/hooks/UseFeatureFlags';
+import useFeatureFlags, { TRUSTEE_APPOINTMENT_ACCORDIONS } from '@/lib/hooks/UseFeatureFlags';
 
 export enum TrusteeNavState {
   TRUSTEE_PROFILE,
@@ -39,8 +36,8 @@ export default function TrusteeDetailNavigation({
 }: TrusteeDetailNavigationProps) {
   const [activeNav, setActiveNav] = useState<TrusteeNavState>(initiallySelectedNavLink);
   const flags = useFeatureFlags();
-  const showAssignedStaff = !!flags[TRUSTEE_ASSIGNED_STAFF_ENABLED];
-  const showCaseList = !!flags[TRUSTEE_CASE_LIST];
+  const showAssignedStaff = !!flags[TRUSTEE_APPOINTMENT_ACCORDIONS];
+  const showCaseList = !!flags[TRUSTEE_APPOINTMENT_ACCORDIONS];
 
   return (
     <>

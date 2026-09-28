@@ -1,13 +1,13 @@
 import EditableTableCard from '@/lib/components/cams/EditableTableCard/EditableTableCard';
-import { TrusteeUpcomingKeyDates, isoToMMDDYYYY } from '@common/cams/trustee-upcoming-key-dates';
+import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import { useOpenEditKeyDates } from './useOpenEditKeyDates';
 import {
   buildCompletionTag,
+  formatDateOrDefault,
   tprReviewPeriodField,
   tprFrequencyField,
   tprDueField,
-  NO_DATE,
 } from './upcomingKeyDatesFieldConfig';
 
 export interface Chapter13StandingTrusteePerformanceReportCardProps {
@@ -28,9 +28,9 @@ export default function Chapter13StandingTrusteePerformanceReportCard(
   );
 
   const tag = buildCompletionTag(
-    data?.ch13TprCompletionYear,
-    data?.ch13TprCompletionStatus,
-    'Complete',
+    data?.tprCompletionYear,
+    data?.tprCompletionStatus,
+    'COMPLETE',
     `tpr-completion-status-${appointmentId}`,
   );
 
@@ -65,7 +65,7 @@ export default function Chapter13StandingTrusteePerformanceReportCard(
         tprReviewPeriod: tprReviewPeriodField(data, 'TPR Review Period').value,
         tprFrequency: tprFrequencyField(data).value,
         tprDue: tprDueField(data, 'TPR Due').value,
-        lastTprSubmitted: data?.pastTprSubmission ? isoToMMDDYYYY(data.pastTprSubmission) : NO_DATE,
+        lastTprSubmitted: formatDateOrDefault(data?.lastTprSubmitted),
       }}
     />
   );

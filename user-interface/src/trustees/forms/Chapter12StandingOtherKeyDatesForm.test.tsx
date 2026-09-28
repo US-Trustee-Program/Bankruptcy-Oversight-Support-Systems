@@ -356,8 +356,6 @@ describe('buildOtherKeyDatesInput', () => {
       bondRenewalDate: '2020-01-21',
       ch13AuditCompletionYear: null,
       ch13AuditCompletionStatus: null,
-      ch13TprCompletionYear: null,
-      ch13TprCompletionStatus: null,
     });
   });
 
@@ -409,8 +407,6 @@ describe('buildOtherKeyDatesInput', () => {
       bondRenewalDate: null,
       ch13AuditCompletionYear: null,
       ch13AuditCompletionStatus: null,
-      ch13TprCompletionYear: null,
-      ch13TprCompletionStatus: null,
     });
   });
 });

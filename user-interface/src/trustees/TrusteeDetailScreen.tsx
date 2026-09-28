@@ -28,31 +28,20 @@ import EditTrusteeAppointment from './forms/EditTrusteeAppointment';
 import UpcomingKeyDatesForm from './forms/UpcomingKeyDatesForm';
 import PastKeyDatesForm from './forms/PastKeyDatesForm';
 import Chapter13StandingAuditForm from './forms/Chapter13StandingAuditForm';
-import Chapter13StandingTrusteePerformanceReportForm from './forms/Chapter13StandingTrusteePerformanceReportForm';
+import TrusteePerformanceReportForm from './forms/TrusteePerformanceReportForm';
 import Chapter13StandingOtherForm from './forms/Chapter13StandingOtherForm';
 import BondKeyDatesForm from './forms/BondKeyDatesForm';
 import AnnualReportKeyDatesForm from './forms/AnnualReportKeyDatesForm';
-import TrusteePerformanceReportKeyDatesForm from './forms/TrusteePerformanceReportKeyDatesForm';
 import Chapter7PanelAuditFieldExamForm from './forms/Chapter7PanelAuditFieldExamForm';
-import Chapter7PanelTrusteePerformanceReportForm from './forms/Chapter7PanelTrusteePerformanceReportForm';
 import Chapter7PanelTrusteeInterimReportForm from './forms/Chapter7PanelTrusteeInterimReportForm';
 import Chapter7PanelOtherKeyDatesForm from './forms/Chapter7PanelOtherKeyDatesForm';
 import Chapter12StandingAuditForm from './forms/Chapter12StandingAuditForm';
-import Chapter12StandingTrusteePerformanceReportForm from './forms/Chapter12StandingTrusteePerformanceReportForm';
 import Chapter12StandingOtherKeyDatesForm from './forms/Chapter12StandingOtherKeyDatesForm';
 import TrusteeMeetingOfCreditorsInfoForm from './forms/TrusteeMeetingOfCreditorsInfoForm';
 import TrusteeNotes from '@/trustees/panels/trustee-notes/TrusteeNotes';
 import useFeatureFlags, {
-  DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES,
-  DISPLAY_CHPT11_SUBV_PAST_KEY_DATES,
-  DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES,
-  DISPLAY_CHPT12_STANDING_KEY_DATES,
-  DISPLAY_CHPT13_STANDING_KEY_DATES,
-  DISPLAY_CHPT7_ELECTED_KEY_DATES,
+  TRUSTEE_APPOINTMENT_ACCORDIONS,
   TRUSTEE_SOFTWARE_BANK_DISPLAY,
-  TRUSTEE_ASSIGNED_STAFF_ENABLED,
-  TRUSTEE_CASE_LIST,
-  TPR_DISPLAY_UPDATES,
 } from '@/lib/hooks/UseFeatureFlags';
 import TrusteeCaseList from '@/trustees/panels/TrusteeCaseList';
 import { TrusteeCaseListFilterValue } from '@/trustees/panels/filters/trusteeCaseListFilter.types';
@@ -96,7 +85,7 @@ export default function TrusteeDetailScreen() {
   const globalAlert = useGlobalAlert();
   const featureFlags = useFeatureFlags();
   const showSoftwareBankInfo = !!featureFlags[TRUSTEE_SOFTWARE_BANK_DISPLAY];
-  const tprDisplayUpdates = !!featureFlags[TPR_DISPLAY_UPDATES];
+  const tprDisplayUpdates = !!featureFlags[TRUSTEE_APPOINTMENT_ACCORDIONS];
   const [caseListFilter, setCaseListFilter] = useSessionState<TrusteeCaseListFilterValue>(
     `cams:trustee-case-list-filter:${trusteeId}`,
     { caseStatus: 'OPEN', chapters: [] },
@@ -302,51 +291,43 @@ export default function TrusteeDetailScreen() {
     },
     {
       path: 'appointments/:appointmentId/upcoming-key-dates/edit',
-      disabled: !(
-        featureFlags[DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES] ||
-        featureFlags[DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES] ||
-        featureFlags[DISPLAY_CHPT13_STANDING_KEY_DATES]
-      ),
+      disabled: !featureFlags[TRUSTEE_APPOINTMENT_ACCORDIONS],
       subHeading: appointmentHeading,
       content: <UpcomingKeyDatesForm tprDisplayUpdates={tprDisplayUpdates} />,
     },
     {
       path: 'appointments/:appointmentId/past-key-dates/edit',
-      disabled: !(
-        featureFlags[DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES] ||
-        featureFlags[DISPLAY_CHPT11_SUBV_PAST_KEY_DATES] ||
-        featureFlags[DISPLAY_CHPT13_STANDING_KEY_DATES]
-      ),
+      disabled: !featureFlags[TRUSTEE_APPOINTMENT_ACCORDIONS],
       subHeading: appointmentHeading,
       content: <PastKeyDatesForm />,
     },
     {
       path: 'appointments/:appointmentId/chapter11-subv-other-key-dates/edit',
-      disabled: !featureFlags[DISPLAY_CHPT11_SUBV_PAST_KEY_DATES],
+      disabled: !featureFlags[TRUSTEE_APPOINTMENT_ACCORDIONS],
       subHeading: appointmentHeading,
       content: <PastKeyDatesForm />,
     },
     {
       path: 'appointments/:appointmentId/chapter13-standing-audit-key-dates/edit',
-      disabled: !featureFlags[DISPLAY_CHPT13_STANDING_KEY_DATES],
+      disabled: !featureFlags[TRUSTEE_APPOINTMENT_ACCORDIONS],
       subHeading: appointmentHeading,
       content: <Chapter13StandingAuditForm />,
     },
     {
       path: 'appointments/:appointmentId/chapter13-standing-tpr-key-dates/edit',
-      disabled: !featureFlags[DISPLAY_CHPT13_STANDING_KEY_DATES],
+      disabled: !featureFlags[TRUSTEE_APPOINTMENT_ACCORDIONS],
       subHeading: appointmentHeading,
-      content: <Chapter13StandingTrusteePerformanceReportForm />,
+      content: <TrusteePerformanceReportForm variant="chapter13-standing" />,
     },
     {
       path: 'appointments/:appointmentId/chapter13-standing-other-key-dates/edit',
-      disabled: !featureFlags[DISPLAY_CHPT13_STANDING_KEY_DATES],
+      disabled: !featureFlags[TRUSTEE_APPOINTMENT_ACCORDIONS],
       subHeading: appointmentHeading,
       content: <Chapter13StandingOtherForm />,
     },
     {
       path: 'appointments/:appointmentId/bond-key-dates/edit',
-      disabled: !featureFlags[DISPLAY_CHPT7_ELECTED_KEY_DATES],
+      disabled: !featureFlags[TRUSTEE_APPOINTMENT_ACCORDIONS],
       subHeading: appointmentHeading,
       content: <BondKeyDatesForm />,
     },
@@ -356,61 +337,61 @@ export default function TrusteeDetailScreen() {
       // by appointmentId, so an unqualified path here would shadow it. See the
       // epic-wide route collision issue before adding more variants.
       path: 'appointments/:appointmentId/ch12-13-annual-report-key-dates/edit',
-      disabled: !featureFlags[DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES],
+      disabled: !featureFlags[TRUSTEE_APPOINTMENT_ACCORDIONS],
       subHeading: appointmentHeading,
       content: <AnnualReportKeyDatesForm />,
     },
     {
       path: 'appointments/:appointmentId/ch12-13-tpr-key-dates/edit',
-      disabled: !featureFlags[DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES],
+      disabled: !featureFlags[TRUSTEE_APPOINTMENT_ACCORDIONS],
       subHeading: appointmentHeading,
-      content: <TrusteePerformanceReportKeyDatesForm />,
+      content: <TrusteePerformanceReportForm variant="chapter12-13-case-by-case" />,
     },
     {
       path: 'appointments/:appointmentId/audit-field-exam-key-dates/edit',
-      disabled: !featureFlags[DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES],
+      disabled: !featureFlags[TRUSTEE_APPOINTMENT_ACCORDIONS],
       subHeading: appointmentHeading,
       content: <Chapter7PanelAuditFieldExamForm />,
     },
     {
       path: 'appointments/:appointmentId/tpr-key-dates/edit',
-      disabled: !featureFlags[DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES],
+      disabled: !featureFlags[TRUSTEE_APPOINTMENT_ACCORDIONS],
       subHeading: appointmentHeading,
-      content: <Chapter7PanelTrusteePerformanceReportForm />,
+      content: <TrusteePerformanceReportForm variant="chapter7-panel" />,
     },
     {
       path: 'appointments/:appointmentId/tir-key-dates/edit',
-      disabled: !featureFlags[DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES],
+      disabled: !featureFlags[TRUSTEE_APPOINTMENT_ACCORDIONS],
       subHeading: appointmentHeading,
       content: <Chapter7PanelTrusteeInterimReportForm />,
     },
     {
       path: 'appointments/:appointmentId/other-key-dates/edit',
-      disabled: !featureFlags[DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES],
+      disabled: !featureFlags[TRUSTEE_APPOINTMENT_ACCORDIONS],
       subHeading: appointmentHeading,
       content: <Chapter7PanelOtherKeyDatesForm />,
     },
     {
       path: 'appointments/:appointmentId/audit-key-dates/edit',
-      disabled: !featureFlags[DISPLAY_CHPT12_STANDING_KEY_DATES],
+      disabled: !featureFlags[TRUSTEE_APPOINTMENT_ACCORDIONS],
       subHeading: appointmentHeading,
       content: <Chapter12StandingAuditForm />,
     },
     {
       path: 'appointments/:appointmentId/chapter12-standing-tpr-key-dates/edit',
-      disabled: !featureFlags[DISPLAY_CHPT12_STANDING_KEY_DATES],
+      disabled: !featureFlags[TRUSTEE_APPOINTMENT_ACCORDIONS],
       subHeading: appointmentHeading,
-      content: <Chapter12StandingTrusteePerformanceReportForm />,
+      content: <TrusteePerformanceReportForm variant="chapter12-standing" />,
     },
     {
       path: 'appointments/:appointmentId/chapter12-standing-other-key-dates/edit',
-      disabled: !featureFlags[DISPLAY_CHPT12_STANDING_KEY_DATES],
+      disabled: !featureFlags[TRUSTEE_APPOINTMENT_ACCORDIONS],
       subHeading: appointmentHeading,
       content: <Chapter12StandingOtherKeyDatesForm />,
     },
     {
       path: 'assigned-staff',
-      disabled: !featureFlags[TRUSTEE_ASSIGNED_STAFF_ENABLED],
+      disabled: !featureFlags[TRUSTEE_APPOINTMENT_ACCORDIONS],
       subHeading: 'Trustee',
       content: (
         <div className="trustee-detail-screen-info-container">
@@ -425,7 +406,7 @@ export default function TrusteeDetailScreen() {
     },
     {
       path: 'cases',
-      disabled: !featureFlags[TRUSTEE_CASE_LIST],
+      disabled: !featureFlags[TRUSTEE_APPOINTMENT_ACCORDIONS],
       subHeading: 'Trustee',
       content: (
         <div className="trustee-detail-screen-info-container">

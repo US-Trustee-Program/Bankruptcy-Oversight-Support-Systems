@@ -943,9 +943,9 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           tprFrequency: 'ANNUAL',
           tprDue: '1900-09-15',
           tprDueYearType: 'EVEN',
-          pastTprSubmission: '2025-10-01',
-          ch13TprCompletionYear: 2025,
-          ch13TprCompletionStatus: 'Complete',
+          lastTprSubmitted: '2025-10-01',
+          tprCompletionYear: 2025,
+          tprCompletionStatus: 'COMPLETE',
           // Budget card fields are fixed constants, no data needed
           // Other card
           leaseExpiration: '2027-06-30',

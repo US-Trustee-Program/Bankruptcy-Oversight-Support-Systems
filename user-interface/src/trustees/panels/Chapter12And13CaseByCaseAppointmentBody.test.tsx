@@ -6,10 +6,7 @@ import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import * as featureFlagsHook from '@/lib/hooks/UseFeatureFlags';
-import {
-  DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES,
-  TPR_DISPLAY_UPDATES,
-} from '@/lib/hooks/UseFeatureFlags';
+import { TRUSTEE_APPOINTMENT_ACCORDIONS } from '@/lib/hooks/UseFeatureFlags';
 
 vi.mock('./AppointmentBasicFields', () => ({
   default: (props: { appointment: TrusteeAppointment }) => (
@@ -98,8 +95,7 @@ describe('Chapter12And13CaseByCaseAppointmentBody', () => {
 
   function mockFlags(overrides: Record<string, boolean> = {}) {
     vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-      [DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES]: true,
-      [TPR_DISPLAY_UPDATES]: true,
+      [TRUSTEE_APPOINTMENT_ACCORDIONS]: true,
       ...overrides,
     });
   }
@@ -205,7 +201,7 @@ describe('Chapter12And13CaseByCaseAppointmentBody', () => {
 
   test('does not fetch or render the cards when the feature flag is disabled', () => {
     vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-      [DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES]: false,
+      [TRUSTEE_APPOINTMENT_ACCORDIONS]: false,
     });
     const getSpy = vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
@@ -220,12 +216,11 @@ describe('Chapter12And13CaseByCaseAppointmentBody', () => {
 
   // This forwarding was dropped once already during an epic merge, which left
   // the Ch12/13 card showing the updated TPR treatment while the Chapter 7
-  // Panel card on the same page still honoured the flag.
-  test.each([
-    ['enabled', true],
-    ['disabled', false],
-  ])('forwards TPR_DISPLAY_UPDATES to the TPR card when %s', async (_label, flagValue) => {
-    mockFlags({ [TPR_DISPLAY_UPDATES]: flagValue });
+  // Panel card on the same page still honoured the flag. tprDisplayUpdates and
+  // the key-dates fetch are both derived from the single
+  // TRUSTEE_APPOINTMENT_ACCORDIONS flag now, so there's no "fetch enabled but
+  // TPR display off" combination left to test independently.
+  test('forwards tprDisplayUpdates as true to the TPR card, derived from the accordions flag', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: keyDates });
 
     renderBody();
@@ -233,6 +228,6 @@ describe('Chapter12And13CaseByCaseAppointmentBody', () => {
     await waitFor(() => {
       expect(screen.getByTestId('tpr-card')).toHaveAttribute('data-is-loading', 'false');
     });
-    expect(latestProps('tpr-card').tprDisplayUpdates).toBe(flagValue);
+    expect(latestProps('tpr-card').tprDisplayUpdates).toBe(true);
   });
 });

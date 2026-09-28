@@ -2,7 +2,7 @@ import AppointmentBasicFields from './AppointmentBasicFields';
 import Chapter11SubVOtherKeyDatesCard from './Chapter11SubVOtherKeyDatesCard';
 import KeyDatesGate from './KeyDatesGate';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
-import useFeatureFlags, { DISPLAY_CHPT11_SUBV_PAST_KEY_DATES } from '@/lib/hooks/UseFeatureFlags';
+import useFeatureFlags, { TRUSTEE_APPOINTMENT_ACCORDIONS } from '@/lib/hooks/UseFeatureFlags';
 import { buildAppointmentHeading } from './appointmentDisplay';
 
 export interface Chapter11SubchapterVAppointmentBodyProps {
@@ -14,7 +14,7 @@ export default function Chapter11SubchapterVAppointmentBody(
 ) {
   const { appointment } = props;
   const featureFlags = useFeatureFlags();
-  const shouldShowOtherKeyDates = featureFlags[DISPLAY_CHPT11_SUBV_PAST_KEY_DATES] === true;
+  const shouldShowOtherKeyDates = featureFlags[TRUSTEE_APPOINTMENT_ACCORDIONS] === true;
 
   const appointmentHeading = buildAppointmentHeading(appointment);
 

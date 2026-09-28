@@ -1,7 +1,7 @@
 import * as sdk from 'launchdarkly-react-client-sdk';
 import { FeatureFlagSet, testFeatureFlags } from '@common/feature-flags';
 import * as config from '../../configuration/featureFlagConfiguration';
-import useFeatureFlags, { DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES } from './UseFeatureFlags';
+import useFeatureFlags, { TRUSTEE_APPOINTMENT_ACCORDIONS } from './UseFeatureFlags';
 import { mockConfiguration } from '../testing/mock-configuration';
 import { renderHook } from '@testing-library/react';
 
@@ -66,7 +66,7 @@ describe('useFeatureFlag hook', () => {
     expect(result.current).toEqual(testFeatureFlags);
   });
 
-  test('testFeatureFlags includes DISPLAY_CHPT7_PANEL_UPCOMING_REPORT_DATES as true', () => {
-    expect(testFeatureFlags[DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES]).toBe(true);
+  test('testFeatureFlags includes TRUSTEE_APPOINTMENT_ACCORDIONS as true', () => {
+    expect(testFeatureFlags[TRUSTEE_APPOINTMENT_ACCORDIONS]).toBe(true);
   });
 });

@@ -180,7 +180,7 @@ test.describe('Trustee Key Dates', () => {
     const editButton = trusteeProfilePage.locator('#edit-chapter13-standing-tpr-key-dates');
     await editButton.click();
     await expect(
-      trusteeProfilePage.locator('[data-testid="edit-chapter13-standing-tpr-key-dates"]'),
+      trusteeProfilePage.locator('[data-testid="edit-chapter13-standing-tpr"]'),
     ).toBeVisible();
 
     await trusteeProfilePage.waitForTimeout(ANALYZE_DELAY);
@@ -292,7 +292,9 @@ test.describe('Chapter 12/13 Case by Case Key Dates', () => {
     }
 
     await trusteeProfilePage.locator('[id^="edit-tpr-key-dates-"]:visible').first().click();
-    await expect(trusteeProfilePage.locator('[data-testid="edit-tpr-key-dates"]')).toBeVisible();
+    await expect(
+      trusteeProfilePage.locator('[data-testid="edit-chapter12-13-case-by-case-tpr"]'),
+    ).toBeVisible();
 
     await trusteeProfilePage.waitForTimeout(ANALYZE_DELAY);
     const accessibilityScanResults = await createAxeBuilder(trusteeProfilePage).analyze();

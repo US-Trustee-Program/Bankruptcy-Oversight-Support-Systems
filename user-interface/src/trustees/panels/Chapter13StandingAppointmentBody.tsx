@@ -6,7 +6,7 @@ import Chapter13StandingOtherCard from './Chapter13StandingOtherCard';
 import KeyDatesGate from './KeyDatesGate';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
-import useFeatureFlags, { DISPLAY_CHPT13_STANDING_KEY_DATES } from '@/lib/hooks/UseFeatureFlags';
+import useFeatureFlags, { TRUSTEE_APPOINTMENT_ACCORDIONS } from '@/lib/hooks/UseFeatureFlags';
 
 export interface Chapter13StandingAppointmentBodyProps {
   appointment: TrusteeAppointment;
@@ -17,7 +17,7 @@ export default function Chapter13StandingAppointmentBody(
 ) {
   const { appointment } = props;
   const featureFlags = useFeatureFlags();
-  const displayKeyDates = featureFlags[DISPLAY_CHPT13_STANDING_KEY_DATES] === true;
+  const displayKeyDates = featureFlags[TRUSTEE_APPOINTMENT_ACCORDIONS] === true;
 
   const commonCardProps = {
     trusteeId: appointment.trusteeId,

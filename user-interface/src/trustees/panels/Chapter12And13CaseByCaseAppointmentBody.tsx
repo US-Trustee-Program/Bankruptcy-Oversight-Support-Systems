@@ -4,10 +4,7 @@ import AnnualReportKeyDatesCard from './AnnualReportKeyDatesCard';
 import TrusteePerformanceReportKeyDatesCard from './TrusteePerformanceReportKeyDatesCard';
 import KeyDatesGate from './KeyDatesGate';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
-import useFeatureFlags, {
-  DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES,
-  TPR_DISPLAY_UPDATES,
-} from '@/lib/hooks/UseFeatureFlags';
+import useFeatureFlags, { TRUSTEE_APPOINTMENT_ACCORDIONS } from '@/lib/hooks/UseFeatureFlags';
 import { buildAppointmentHeading } from './appointmentDisplay';
 
 export interface Chapter12And13CaseByCaseAppointmentBodyProps {
@@ -21,8 +18,8 @@ export default function Chapter12And13CaseByCaseAppointmentBody(
   // The backend key-dates endpoint authorizes on this same flag, so the fetch
   // must be gated on it to avoid a guaranteed-to-fail request.
   const featureFlags = useFeatureFlags();
-  const displayKeyDates = featureFlags[DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES] === true;
-  const tprDisplayUpdates = !!featureFlags[TPR_DISPLAY_UPDATES];
+  const displayKeyDates = featureFlags[TRUSTEE_APPOINTMENT_ACCORDIONS] === true;
+  const tprDisplayUpdates = displayKeyDates;
 
   const appointmentHeading = buildAppointmentHeading(appointment);
 

@@ -7,13 +7,12 @@ export const CASE_SEARCH_LANDING_PAGE = 'case-search-landing-page';
 export const CHAPTER_ELEVEN_ENABLED = 'chapter-eleven-enabled';
 export const CHAPTER_TWELVE_ENABLED = 'chapter-twelve-enabled';
 export const CONSOLIDATIONS_ENABLED = 'consolidations-enabled';
-export const DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES = 'display-chpt7-panel-upcoming-key-dates';
-export const DISPLAY_CHPT7_ELECTED_KEY_DATES = 'display-chpt7-elected-key-dates';
-export const DISPLAY_CHPT11_SUBV_PAST_KEY_DATES = 'display-chpt11-subv-past-key-dates';
-export const DISPLAY_CHPT12_13_CASE_BY_CASE_UPCOMING_KEY_DATES =
-  'display-chpt12-13-case-by-case-upcoming-key-dates';
-export const DISPLAY_CHPT12_STANDING_KEY_DATES = 'display-chpt12-standing-key-dates';
-export const DISPLAY_CHPT13_STANDING_KEY_DATES = 'display-chpt13-standing-key-dates';
+// Single flag covering the trustee appointments accordion redesign: the
+// accordion list, its per-chapter key-dates cards, the consolidated
+// TrusteePerformanceReportForm, the assigned-staff tab, and the case list tab.
+// Replaced the per-chapter DISPLAY_CHPT*_KEY_DATES flags, TRUSTEE_ASSIGNED_STAFF_ENABLED,
+// TRUSTEE_CASE_LIST, and TPR_DISPLAY_UPDATES now that all of this ships in one release.
+export const TRUSTEE_APPOINTMENT_ACCORDIONS = 'trustee-appointment-accordions';
 export const PHONETIC_SEARCH_ENABLED = 'phonetic-search-enabled';
 export const PRIVILEGED_IDENTITY_MANAGEMENT = 'privileged-identity-management';
 export const SHOW_DEBTOR_NAME_COLUMN = 'show-debtor-name-column';
@@ -26,13 +25,10 @@ export const TRUSTEE_MANAGEMENT = 'trustee-management';
 export const RESTRICT_ADDING_TRUSTEES = 'restrict-adding-trustees';
 export const TRUSTEE_VERIFICATION_ENABLED = 'trustee-verification-enabled';
 export const TRUSTEE_SOFTWARE_BANK_DISPLAY = 'trustee-software-bank-display';
-export const TRUSTEE_ASSIGNED_STAFF_ENABLED = 'trustee-assigned-staff-enabled';
 export const TRUSTEE_APPOINTMENT_HISTORY_ENABLED = 'trustee-appointment-history-enabled';
-export const TRUSTEE_CASE_LIST = 'trustee-case-list';
 export const TRUSTEE_CHANGE_NOTIFICATIONS = 'trustee-change-notification-enabled';
 export const TRUSTEE_TYPED_PHONES = 'trustee-typed-phones';
 export const SOFTWARE_VENDOR_TYPED_PHONES = 'software-vendor-typed-phones';
-export const TPR_DISPLAY_UPDATES = 'tpr-display-updates';
 
 export function isFlagEnabled(flags: FeatureFlagSet, flag: string): boolean {
   return flags[flag] === true;

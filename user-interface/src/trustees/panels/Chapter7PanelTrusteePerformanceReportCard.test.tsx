@@ -160,7 +160,7 @@ describe('Chapter7PanelTrusteePerformanceReportCard', () => {
     ).not.toBeInTheDocument();
   });
 
-  describe('when TPR_DISPLAY_UPDATES flag is off', () => {
+  describe('when tprDisplayUpdates prop is false', () => {
     test('hides the frequency row', () => {
       renderCard(keyDates, false, false);
 
