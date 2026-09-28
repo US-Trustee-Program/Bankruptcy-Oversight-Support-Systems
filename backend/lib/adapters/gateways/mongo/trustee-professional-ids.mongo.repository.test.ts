@@ -30,7 +30,7 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
       sourceNormalized: {},
       memo: {},
       candidates: [],
-      match: { trusteeId: 'trustee-1', score: {} },
+      match: { trusteeId: 'trustee-1', score: {}, resolvedBy: 'test' },
       skip: false,
       error: null,
     },

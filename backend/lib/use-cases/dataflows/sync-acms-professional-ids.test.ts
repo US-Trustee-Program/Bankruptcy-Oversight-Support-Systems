@@ -378,7 +378,7 @@ describe('SyncAcmsProfessionalIds', () => {
         sourceNormalized: {},
         memo: {},
         candidates: [],
-        match: { trusteeId: 'trustee-1', score: {} },
+        match: { trusteeId: 'trustee-1', score: {}, resolvedBy: 'test' },
         skip: false,
         error: null,
       },
@@ -540,6 +540,58 @@ describe('SyncAcmsProfessionalIds', () => {
       await SyncAcmsProfessionalIds.processOneRecord(deps, record);
 
       expect(pipelineSpy).toHaveBeenCalled();
+    });
+
+    // Records a matched variant's fingerprint so a FUTURE sync (this dataflow re-running, or
+    // sync-trustee-case-appointments.ts reading the same shared fingerprint bucket - see
+    // processFingerprintMatch's own doc comment) can short-circuit straight to auto-link instead
+    // of re-running the full matching/scoring pipeline for a demographic shape already resolved
+    // once. Mirrors sync-trustee-case-appointments.ts's autoLinkTrustee, which does the same thing
+    // for a DXTR-sourced match.
+    test('should record a TrusteeVariation when the name-matching pipeline resolves a match', async () => {
+      vi.spyOn(deps.variationRepo, 'findByFingerprint').mockResolvedValue([]);
+      const matchedPipelineState = {
+        ...noMatchPipelineState,
+        match: { trusteeId: 'trustee-1', score: {}, resolvedBy: 'resolveBySoleExactNameMatch' },
+      };
+      vi.spyOn(trusteeMatchPipelineOrchestrator, 'runTrusteeMatchPipeline').mockResolvedValue(
+        matchedPipelineState as never,
+      );
+      const createVariationSpy = vi
+        .spyOn(deps.variationRepo, 'createVariation')
+        .mockResolvedValue({} as TrusteeVariation);
+
+      const outcome = await SyncAcmsProfessionalIds.processOneRecord(deps, record);
+
+      expect(createVariationSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          documentType: 'TRUSTEE_VARIATION',
+          trusteeId: 'trustee-1',
+          variant: buildAcmsVariant(record),
+          createdBy: expect.objectContaining({ id: 'ACMS' }),
+        }),
+      );
+      expect(outcome).toEqual({ kind: 'auto-linked', via: 'name' });
+    });
+
+    test('should NOT record a TrusteeVariation when the name-matching pipeline resolves a conflict', async () => {
+      vi.spyOn(deps.variationRepo, 'findByFingerprint').mockResolvedValue([]);
+      vi.spyOn(deps.professionalIdsRepo, 'findByAcmsProfessionalId').mockResolvedValue([
+        linkedProfessionalId({ camsTrusteeId: 'trustee-existing' }),
+      ]);
+      const matchedPipelineState = {
+        ...noMatchPipelineState,
+        match: { trusteeId: 'trustee-1', score: {}, resolvedBy: 'resolveBySoleExactNameMatch' },
+      };
+      vi.spyOn(trusteeMatchPipelineOrchestrator, 'runTrusteeMatchPipeline').mockResolvedValue(
+        matchedPipelineState as never,
+      );
+      const createVariationSpy = vi.spyOn(deps.variationRepo, 'createVariation');
+
+      const outcome = await SyncAcmsProfessionalIds.processOneRecord(deps, record);
+
+      expect(createVariationSpy).not.toHaveBeenCalled();
+      expect(outcome).toEqual({ kind: 'conflict', via: 'name' });
     });
 
     test('should apply the active-appointment gate and skip writing when both fingerprint and name matching fail with zero active appointments', async () => {

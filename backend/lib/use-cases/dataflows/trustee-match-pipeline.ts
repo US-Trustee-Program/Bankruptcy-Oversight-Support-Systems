@@ -152,10 +152,14 @@ type NameOnlyMatchScore = {
 };
 
 /** A confirmed match, carrying the score that justified it so a consumer never needs to re-scan
- * the candidate's score history to answer "why was this the match." */
+ * the candidate's score history to answer "why was this the match," and resolvedBy (the RESOLVE
+ * stage's own function name) so a reviewer can tell, e.g., resolveBySoleExactNameMatch apart from
+ * resolveBySoleContactMatch or resolveRisky's inner sub-stages without reverse-engineering it from
+ * score shape alone. */
 type PipelineMatch = {
   trusteeId: string;
   score: CandidateScore | NameOnlyMatchScore | ScoreByScorer | Record<string, never>;
+  resolvedBy: string;
 };
 
 /**
