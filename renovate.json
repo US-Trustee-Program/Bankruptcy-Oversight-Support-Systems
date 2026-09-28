@@ -22,6 +22,17 @@
   ],
   "packageRules": [
     {
+      "description": "Default grouping by update type. Renovate applies packageRules in order and later rules win, so these two generic defaults are declared FIRST and every package-specific groupName below deliberately overrides them. Declaring them last would silently flatten every package group into these two buckets.",
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "groupName": "all non-major dependencies",
+      "groupSlug": "all-minor-patch"
+    },
+    {
+      "description": "Default for major updates: one PR per package, unless a package-specific rule below regroups it.",
+      "matchUpdateTypes": ["major"],
+      "groupName": null
+    },
+    {
       "description": "Group React packages that must have matching versions",
       "matchPackageNames": ["react", "react-dom"],
       "groupName": "react"
@@ -89,8 +100,13 @@
       "groupName": "vitest"
     },
     {
-      "description": "Group TypeScript ESLint packages",
-      "matchPackageNames": ["typescript-eslint", "@typescript-eslint/eslint-plugin", "@typescript-eslint/parser"],
+      "description": "Group the TypeScript compiler with the ESLint packages that parse it. typescript-eslint declares an upper bound on its typescript peer dependency, so a compiler bump that outruns the linter breaks npm resolution for every workspace. Grouping them makes both move in one branch.",
+      "matchPackageNames": [
+        "typescript",
+        "typescript-eslint",
+        "@typescript-eslint/eslint-plugin",
+        "@typescript-eslint/parser"
+      ],
       "groupName": "typescript-eslint"
     },
     {
@@ -108,17 +124,6 @@
       "description": "Require 30-day wait for major versions",
       "matchUpdateTypes": ["major"],
       "minimumReleaseAge": "30 days"
-    },
-    {
-      "description": "Group non-major updates into a single PR",
-      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
-      "groupName": "all non-major dependencies",
-      "groupSlug": "all-minor-patch"
-    },
-    {
-      "description": "Create separate PRs for each major update",
-      "matchUpdateTypes": ["major"],
-      "groupName": null
     },
     {
       "description": "Group all Bicep resource definition updates into a single PR",
