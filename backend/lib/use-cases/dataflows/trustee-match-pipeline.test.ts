@@ -408,7 +408,11 @@ describe('runPipeline', () => {
     const state = createInitialState(makeDxtrTrustee());
     const matchingStage: Stage = async (s) => ({
       ...s,
-      match: { trusteeId: 't1', score: { nameScore: 100, nameMatchQuality: 'exact' } },
+      match: {
+        trusteeId: 't1',
+        score: { nameScore: 100, nameMatchQuality: 'exact' },
+        resolvedBy: 'matchingStage',
+      },
     });
     const laterStage = vi.fn(async (s) => ({
       ...s,
@@ -421,6 +425,7 @@ describe('runPipeline', () => {
     expect(result.match).toEqual({
       trusteeId: 't1',
       score: { nameScore: 100, nameMatchQuality: 'exact' },
+      resolvedBy: 'matchingStage',
     });
     expect(result.error).toBeNull();
   });
@@ -520,7 +525,11 @@ describe('serializeState', () => {
   test('serializes a resolved match and its score', () => {
     const state: PipelineState = {
       ...createInitialState(makeDxtrTrustee()),
-      match: { trusteeId: 't1', score: { nameScore: 100, nameMatchQuality: 'exact' } },
+      match: {
+        trusteeId: 't1',
+        score: { nameScore: 100, nameMatchQuality: 'exact' },
+        resolvedBy: 'recallByNameThenResolveExact',
+      },
     };
 
     const serialized = serializeState(state);
@@ -528,6 +537,7 @@ describe('serializeState', () => {
     expect(serialized.match).toEqual({
       trusteeId: 't1',
       score: { nameScore: 100, nameMatchQuality: 'exact' },
+      resolvedBy: 'recallByNameThenResolveExact',
     });
   });
 

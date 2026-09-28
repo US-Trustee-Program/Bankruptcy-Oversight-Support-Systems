@@ -47,7 +47,9 @@ describe('deriveDisposition', () => {
   });
 
   test('returns auto-linked when state.match is set', () => {
-    const state = makeState({ match: { trusteeId: 't1', score: {} } });
+    const state = makeState({
+      match: { trusteeId: 't1', score: {}, resolvedBy: 'test' },
+    });
     expect(deriveDisposition(state)).toBe('auto-linked');
   });
 
@@ -149,7 +151,7 @@ describe('deriveDisposition', () => {
     const state = makeState({
       error: new CamsError('TEST', { message: 'boom' }),
       skip: true,
-      match: { trusteeId: 't1', score: {} },
+      match: { trusteeId: 't1', score: {}, resolvedBy: 'test' },
     });
     expect(deriveDisposition(state)).toBe('error');
   });
@@ -157,7 +159,7 @@ describe('deriveDisposition', () => {
   test('precedence: skip takes priority over match/candidates', () => {
     const state = makeState({
       skip: true,
-      match: { trusteeId: 't1', score: {} },
+      match: { trusteeId: 't1', score: {}, resolvedBy: 'test' },
     });
     expect(deriveDisposition(state)).toBe('skipped');
   });

@@ -110,6 +110,31 @@ export function recoverSoloPracticeName(
 }
 
 /**
+ * Recovers a real name from a "LAST, FIRST" shape landing entirely in lastName, when firstName
+ * carries nothing but role-phrase noise (e.g. firstName "LIQUIDATING TRUSTEE", lastName
+ * "[Surname], [GivenName]" -> firstName "[GivenName]", lastName "[Surname]"). Only attempted when
+ * firstName is genuinely NOT a person's name at all (isLikelyNotAPerson, same word-list check
+ * shouldSkipAsNotAPerson uses for the whole record) AND lastName contains a comma - a comma alone
+ * (e.g. a generational suffix, "[Surname], Jr.") is not evidence of this shape when firstName
+ * already holds a real name; only the COMBINATION of role-phrase-only firstName and a comma in
+ * lastName indicates ACMS filed the entire "LAST, FIRST" identity into the one field. Left
+ * untouched otherwise - a real firstName is what CMMPR normally records, so there is no recovery
+ * to perform.
+ */
+export function recoverLastFirstRoleSwap(
+  firstName: string,
+  lastName: string,
+): { firstName: string; lastName: string } {
+  if (!firstName || !isLikelyNotAPerson(firstName)) return { firstName, lastName };
+  if (!lastName.includes(',')) return { firstName, lastName };
+
+  const [last, first] = lastName.split(',').map((part) => part.trim());
+  if (!last || !first) return { firstName, lastName };
+
+  return { firstName: first, lastName: last };
+}
+
+/**
  * Known administrative/placeholder phrases ACMS records carry instead of, or alongside, a real
  * trustee name - a "this professional-id code is deprecated/superseded" marker, not part of
  * anyone's real name. Deliberately excludes standalone role words like "trustee"/"office"/
@@ -153,6 +178,7 @@ const ADMINISTRATIVE_MARKER_PHRASES = [
   'chapter\\s*\\d+',
   'ch\\.?\\s*\\d+',
   'ust',
+  'liq\\s*tr',
 ];
 
 /**
@@ -164,6 +190,19 @@ const ADMINISTRATIVE_MARKER_PATTERN = new RegExp(
   `\\(?\\s*\\b(${ADMINISTRATIVE_MARKER_PHRASES.join('|')})\\b\\s*\\)?`,
   'gi',
 );
+
+/**
+ * A chapter marker glued directly onto a surname with no separating space or punctuation (e.g.
+ * "DOYLECH13", "TACOMACH13") - real records where ACMS ran the marker straight into the name
+ * token, leaving no word boundary before "ch"/"chapter" for ADMINISTRATIVE_MARKER_PATTERN's \b
+ * anchor to find. Requires a trailing \b after the digits (not merely "one or more digits") so a
+ * real placeholder word that happens to end in "ch" followed by digits mid-word is never
+ * mis-split - e.g. NON_PERSON_ONLY_WORDS' own "chapter13upload" keeps its digits immediately
+ * followed by more letters, so \b never matches there and this pattern correctly leaves it alone.
+ * Runs BEFORE ADMINISTRATIVE_MARKER_PATTERN (which would otherwise never reach the glued "ch13"
+ * portion at all, since it isn't its own word-bounded token) rather than after.
+ */
+const GLUED_CHAPTER_MARKER_PATTERN = /(chapter|ch)\d+\b/gi;
 
 /**
  * "I. M. FAKE" is a well-known synthetic/test ACMS record - appears across multiple ACMS regions,
@@ -305,6 +344,12 @@ const NON_PERSON_ONLY_WORDS = new Set([
   'stricken',
   'pro',
   'se',
+  'liquidating',
+  'appointed',
+  'petn',
+  'possession',
+  'admin',
+  'purpose',
 ]);
 
 /**
@@ -325,6 +370,7 @@ const NON_PERSON_ONLY_WORDS = new Set([
  */
 export function stripAdministrativeMarkers(value: string): string {
   return value
+    .replace(GLUED_CHAPTER_MARKER_PATTERN, '')
     .replace(ADMINISTRATIVE_MARKER_PATTERN, ' ')
     .replace(/[-/*.,():_]+/g, ' ')
     .replace(/\s+/g, ' ')

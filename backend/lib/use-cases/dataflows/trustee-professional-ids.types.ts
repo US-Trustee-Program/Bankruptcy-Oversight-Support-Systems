@@ -161,7 +161,7 @@ export function createLinkedStateWithoutEvidence(
     sourceNormalized: {},
     memo: {},
     candidates: [],
-    match: { trusteeId, score: {} },
+    match: { trusteeId, score: {}, resolvedBy: 'linkedWithoutPipelineEvidence' },
     skip: false,
     error: null,
   };
