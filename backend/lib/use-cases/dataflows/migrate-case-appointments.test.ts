@@ -66,7 +66,7 @@ function makeProfessionalId(override: Partial<TrusteeProfessionalId> = {}): Trus
       sourceNormalized: {},
       memo: {},
       candidates: [],
-      match: { trusteeId: 'trustee-001', score: {} },
+      match: { trusteeId: 'trustee-001', score: {}, resolvedBy: 'test' },
       skip: false,
       error: null,
     },

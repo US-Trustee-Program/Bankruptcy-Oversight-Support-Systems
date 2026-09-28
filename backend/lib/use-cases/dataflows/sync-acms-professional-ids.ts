@@ -6,8 +6,8 @@ import {
   AcmsProfessionalIdSyncState,
   AcmsTrusteeProfessionalDetailRecord,
 } from '../gateways.types';
-import { TrusteeVariation } from '@common/cams/trustee-variation';
-import { ACMS_SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
+import { TRUSTEE_VARIATION_DOCUMENT_TYPE, TrusteeVariation } from '@common/cams/trustee-variation';
+import { ACMS_SYSTEM_USER_REFERENCE, createAuditRecord } from '@common/cams/auditable';
 import { buildAcmsVariant, formatAcmsZip } from './acms-trustee-variant.helpers';
 import { formatCityStateZipCountry } from '../../adapters/utils/string-helper';
 import { computeFingerprint } from './trustee-variant.helpers';
@@ -401,6 +401,27 @@ async function processResolvedNameMatch(
     await writeProfessionalId(deps, record, fingerprint, variant, state, existingTrusteeId);
     return { kind: 'conflict', via: 'name' };
   }
+
+  // Records this variant's fingerprint as "encountered" so a FUTURE sync carrying the exact same
+  // demographic shape (this dataflow re-running, or sync-trustee-case-appointments.ts reading the
+  // same shared TRUSTEE_VARIATION fingerprint bucket - see processFingerprintMatch's own doc
+  // comment) can short-circuit straight to auto-link instead of re-running the full matching/
+  // scoring pipeline. Only reached on a fingerprint MISS (processOneRecord's own control flow -
+  // this function never runs when processFingerprintMatch already found a bucket hit), so there is
+  // no existing variation for this exact fingerprint+variant pair to duplicate. Mirrors
+  // sync-trustee-case-appointments.ts's autoLinkTrustee, which does the same thing for a
+  // DXTR-sourced match.
+  await deps.variationRepo.createVariation(
+    createAuditRecord(
+      {
+        documentType: TRUSTEE_VARIATION_DOCUMENT_TYPE,
+        fingerprint,
+        variant,
+        trusteeId,
+      },
+      ACMS_SYSTEM_USER_REFERENCE,
+    ),
+  );
 
   await writeProfessionalId(deps, record, fingerprint, variant, state);
   return { kind: 'auto-linked', via: 'name' };

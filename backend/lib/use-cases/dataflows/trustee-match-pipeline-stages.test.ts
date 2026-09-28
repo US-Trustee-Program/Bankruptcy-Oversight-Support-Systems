@@ -192,6 +192,10 @@ describe('skipAdministrativePlaceholder', () => {
     'I. M. FAKE',
     'I.M. FAKE',
     'NONE ASSIGNED (DEBTOR IN POSS)',
+    'NO TRUSTEE APPOINTED',
+    'INVOLUNTARY PETN. - NO TRUSTEE',
+    'DEBTOR IN POSSESSION NO TRUSTEE',
+    'NO TRUSTEE/ADMIN PURPOSE',
   ])('sets state.skip for administrative placeholder "%s"', async (fullName) => {
     const state = createInitialState(makeDxtrTrustee({ fullName }));
 
@@ -302,6 +306,79 @@ describe('skipAdministrativePlaceholder', () => {
 
     expect(result.skip).toBe(false);
   });
+
+  // From prompt-cams-876-matching-fixes.md, Problem 3: real ACMS shapes with no CAMS counterpart
+  // (correctly no-match) that must still normalize cleanly - not skipped, not crashing, not
+  // corrupted into some other wrong identity, even though there is no real link to find for them.
+  // Names synthesized from the real staging-export shapes.
+  test.each([
+    'TIMOTHY ASHFORD (ACTING CH. 13 TRUSTEE)',
+    'CLAUDIA Z MERIWETHER (CH 11)',
+    'DAVID OKONKWO (LIQ TR)',
+    'TACOMACH13 K. MICHAEL DRUMMOND',
+  ])(
+    'does not skip a real no-CAMS-record name with a chapter/role annotation "%s"',
+    async (fullName) => {
+      const state = createInitialState(makeDxtrTrustee({ fullName }));
+
+      const result = await skipAdministrativePlaceholder()(state);
+
+      expect(result.skip).toBe(false);
+    },
+  );
+});
+
+describe('normalizeAcmsSourceName', () => {
+  // Real shape (2026-09-25 staging export, name synthesized): a parenthetical ACMS office/region
+  // code landing mid-firstName, not part of the name. Before this fix, stripAdministrativeMarkers
+  // only stripped the PARENTHESES themselves ([-/*.,():_]+), leaving the code's text as a bare
+  // surviving word - "WINONA (BALT) SPENCER" reduced to "WINONA BALT SPENCER" (3 words), which
+  // splitCompoundFirstName then wrongly split into firstName="Winona", middleName="Balt Spencer"
+  // instead of the correct middleName="Spencer" alone.
+  test('strips a parenthetical office/region code from firstName, recovering the real compound given name', async () => {
+    const state = await normalizeAcmsSourceName()(
+      createInitialState(
+        makeDxtrTrustee({
+          firstName: 'WINONA (BALT) SPENCER',
+          middleName: '',
+          lastName: 'HOLLOWAY',
+        }),
+      ),
+    );
+
+    expect(state.sourceNormalized.firstName).toBe('winona');
+    expect(state.sourceNormalized.middleName).toBe('spencer');
+  });
+
+  test('leaves a real name with no parenthetical unchanged', async () => {
+    const state = await normalizeAcmsSourceName()(
+      createInitialState(
+        makeDxtrTrustee({ firstName: 'Jordan', middleName: 'T', lastName: 'Doe' }),
+      ),
+    );
+
+    expect(state.sourceNormalized.firstName).toBe('jordan');
+    expect(state.sourceNormalized.middleName).toBe('t');
+  });
+
+  // Real shape (2026-09-25 staging export, name synthesized): firstName "LIQUIDATING TRUSTEE",
+  // lastName "PELLETIER, DEVIN" - the whole real identity landed in lastName, LAST, FIRST order,
+  // because firstName carries only role-phrase noise. Must run BEFORE stripAdministrativeMarkers'
+  // own comma-stripping, which would otherwise destroy the comma this recovery depends on.
+  test('recovers a LAST, FIRST identity out of lastName when firstName is pure role-phrase noise', async () => {
+    const state = await normalizeAcmsSourceName()(
+      createInitialState(
+        makeDxtrTrustee({
+          firstName: 'LIQUIDATING TRUSTEE',
+          middleName: '',
+          lastName: 'PELLETIER, DEVIN',
+        }),
+      ),
+    );
+
+    expect(state.sourceNormalized.firstName).toBe('devin');
+    expect(state.sourceNormalized.lastName).toBe('pelletier');
+  });
 });
 
 describe('recallBySurnameExact', () => {
@@ -391,8 +468,65 @@ describe('recallByNameThenResolveExact', () => {
     expect(result.match).toEqual({
       trusteeId: 't1',
       score: { nameScore: 100, nameMatchQuality: 'exact' },
+      resolvedBy: 'recallByNameThenResolveExact',
     });
     expect(result.candidates.size).toBe(0);
+  });
+
+  // Real gap (Jon's review of the 2026-09-25 staging export, CAMS-876 follow-up): 34 auto-linked
+  // records with nameMatchQuality 'fuzzy' (matchTrusteeByName's normalizeNameForMatching bridging
+  // a punctuation gap - e.g. an apostrophe surname) persisted with evidence.candidates === [],
+  // since this stage wrote state.match directly for ANY 'resolved' outcome without ever fetching
+  // or scoring the winning trustee - unlike 'exact', which the doc comment above correctly notes
+  // has nothing left to score (matchTrusteeByName's literal string match already IS the full
+  // evidence), 'fuzzy' resolved via a real trustee record that was never added to state.candidates
+  // at all, leaving a reviewer with no way to audit what corroborated the link.
+  test('adds and scores the winning candidate when matchTrusteeByName resolves a FUZZY unique match, then resolves on it', async () => {
+    vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({
+      kind: 'resolved',
+      trusteeId: 't1',
+      nameScore: 100,
+      nameMatchQuality: 'fuzzy',
+    });
+    vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByIds').mockResolvedValue([
+      makeTrustee({ trusteeId: 't1', name: "Jordan O'Doe" }),
+    ]);
+
+    const state = createInitialState(makeDxtrTrustee({ fullName: 'Jordan ODoe' }));
+
+    const result = await recallByNameThenResolveExact(context)(state);
+
+    expect(result.candidates.has('t1')).toBe(true);
+    expect(result.candidates.get('t1')?.scores.doesNameMatch).toBeDefined();
+    expect(result.match).toEqual({
+      trusteeId: 't1',
+      score: result.candidates.get('t1')?.scores,
+      resolvedBy: 'recallByNameThenResolveExact',
+    });
+  });
+
+  test('records a findTrusteesByIds failure (fuzzy refetch) on state.error, rather than throwing', async () => {
+    vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({
+      kind: 'resolved',
+      trusteeId: 't1',
+      nameScore: 100,
+      nameMatchQuality: 'fuzzy',
+    });
+    vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByIds').mockRejectedValue(
+      new Error('Mongo timeout'),
+    );
+
+    const state = createInitialState(makeDxtrTrustee());
+
+    const result = await recallByNameThenResolveExact(context)(state);
+
+    expect(result.error).toMatchObject({
+      isCamsError: true,
+      camsStack: [
+        { message: 'recallByNameThenResolveExact failed refetching fuzzy-matched candidate' },
+      ],
+    });
+    expect(result.match).toBeNull();
   });
 
   test('adds every candidate from an ambiguous result to the pipeline state, without resolving', async () => {
@@ -651,45 +785,119 @@ describe('scoreCandidate - name-match facet', () => {
     expect(mergedScore(t2)).toMatchObject({ doesNameMatch: { value: 0, pass: false } });
   });
 
-  test.each([
-    {
-      description: 'a bare middle initial disagrees with the other side (neutral, not a conflict)',
-      dxtrMiddle: 'T',
-      camsMiddle: 'B',
-    },
-    {
-      description: "a bare middle initial doesn't match the other side's leading character",
-      dxtrMiddle: 'T',
-      camsMiddle: 'Bruce',
-    },
-  ])(
-    'treats $description as full nameScore, not a 15-point penalty',
-    async ({ dxtrMiddle, camsMiddle }) => {
-      const state = await normalizeAcmsSourceName()(
-        createInitialState(
-          makeDxtrTrustee({ firstName: 'John', middleName: dxtrMiddle, lastName: 'Doe' }),
-        ),
-      );
-      const candidate = addCandidate(
-        state,
-        projectTrustee(
-          makeTrustee({
-            trusteeId: 't1',
-            firstName: 'John',
-            middleName: camsMiddle,
-            lastName: 'Doe',
-          }),
-        ),
-        'test',
-      );
+  test("treats a bare middle initial that doesn't match the other side's leading character as neutral, not a conflict", async () => {
+    const state = await normalizeAcmsSourceName()(
+      createInitialState(makeDxtrTrustee({ firstName: 'John', middleName: 'T', lastName: 'Doe' })),
+    );
+    const candidate = addCandidate(
+      state,
+      projectTrustee(
+        makeTrustee({ trusteeId: 't1', firstName: 'John', middleName: 'Bruce', lastName: 'Doe' }),
+      ),
+      'test',
+    );
 
-      scoreCandidate(state.sourceNormalized, candidate);
+    scoreCandidate(state.sourceNormalized, candidate);
 
-      expect(mergedScore(candidate)).toMatchObject({
-        doesNameMatch: { value: 100, pass: true },
-      });
-    },
-  );
+    expect(mergedScore(candidate)).toMatchObject({
+      doesNameMatch: { value: 100, pass: true },
+    });
+  });
+
+  // Real regression shape (Jon's review of the 2026-09-25 staging export, CAMS-876 follow-up,
+  // name synthesized): ACMS "Michael P Wexford" (middleName "P") auto-linked to CAMS "Michael E.
+  // Wexford" (middleName "E.") - two DIFFERENT bare initials on both sides were scored as a
+  // neutral 100 (isBareInitial checked
+  // only length, not whether either side's initial actually matches the other's leading
+  // character), the same treatment correctly reserved for the ASYMMETRIC case above (one side
+  // bare, the other a full name it could plausibly be short for). Two disagreeing initials on
+  // BOTH sides is real, if weak, evidence of a conflict - scored the same flat 15 as two disagreeing
+  // full middle names, not laundered into a false 100.
+  test('treats two DIFFERENT bare middle initials on both sides as a genuine 15-point conflict', async () => {
+    const state = await normalizeAcmsSourceName()(
+      createInitialState(
+        makeDxtrTrustee({ firstName: 'Michael', middleName: 'P', lastName: 'Wexford' }),
+      ),
+    );
+    const candidate = addCandidate(
+      state,
+      projectTrustee(
+        makeTrustee({
+          trusteeId: 't1',
+          firstName: 'Michael',
+          middleName: 'E',
+          lastName: 'Wexford',
+        }),
+      ),
+      'test',
+    );
+
+    scoreCandidate(state.sourceNormalized, candidate);
+
+    expect(mergedScore(candidate)).toMatchObject({
+      doesNameMatch: { value: 15, pass: false },
+    });
+  });
+
+  test('treats two matching bare middle initials on both sides as a full match', async () => {
+    const state = await normalizeAcmsSourceName()(
+      createInitialState(
+        makeDxtrTrustee({ firstName: 'Michael', middleName: 'P', lastName: 'Wexford' }),
+      ),
+    );
+    const candidate = addCandidate(
+      state,
+      projectTrustee(
+        makeTrustee({
+          trusteeId: 't1',
+          firstName: 'Michael',
+          middleName: 'P',
+          lastName: 'Wexford',
+        }),
+      ),
+      'test',
+    );
+
+    scoreCandidate(state.sourceNormalized, candidate);
+
+    expect(mergedScore(candidate)).toMatchObject({
+      doesNameMatch: { value: 100, pass: true },
+    });
+  });
+
+  // Real shape (2026-09-25 staging export, names synthesized; confirmed via
+  // pipeline-replay-backtest.ts to still resolve at nameScore=85 after the bare-initial fix
+  // above): a genuine first/middle swap - ACMS records the legal first/middle order, CAMS has the
+  // trustee's own preferred name first (the crossed pair: ACMS first's leading letter matches
+  // CAMS's middle, AND ACMS middle's leading letter matches CAMS's first). This must still resolve
+  // via isFirstMiddleSwap's crossed-pair check, never reaching pipelineMiddleNameScore's
+  // (now-stricter) bare-initial-conflict check - that branch only applies once first names already
+  // agree positionally, so a genuine swap (firstScore===0 positionally) cannot regress here.
+  test('still credits a genuine first/middle swap as 85, unaffected by the bare-initial-conflict fix', async () => {
+    const state = await normalizeAcmsSourceName()(
+      createInitialState(
+        makeDxtrTrustee({ firstName: 'Dominic', middleName: 'S', lastName: 'Beaumont' }),
+      ),
+    );
+    const candidate = addCandidate(
+      state,
+      projectTrustee(
+        makeTrustee({
+          trusteeId: 't1',
+          firstName: 'Sylvain',
+          middleName: 'D',
+          lastName: 'Beaumont',
+        }),
+      ),
+      'test',
+    );
+
+    scoreCandidate(state.sourceNormalized, candidate);
+
+    expect(mergedScore(candidate)).toMatchObject({
+      doesNameMatch: { value: 85, pass: true },
+    });
+  });
 
   test('scores two full middle names that are a plausible spelling variant as 85, not a flat 15', async () => {
     const state = await normalizeAcmsSourceName()(
@@ -735,6 +943,100 @@ describe('scoreCandidate - name-match facet', () => {
 
     expect(mergedScore(candidate)).toMatchObject({
       doesNameMatch: { value: 15, pass: false },
+    });
+  });
+
+  // Real shape (2026-09-25 staging export, names synthesized): CAMS trustee stored as
+  // firstName="G. Theo" (a single un-split field, no middleName) - the leading "G." is an
+  // initial, "Theo" the real given name. Before this fix, normalizeCandidateNameFields ran
+  // normalizeNamePart directly on the raw "G. Theo" string, which strips ALL non-alphanumeric
+  // characters INCLUDING the space between tokens, gluing them into "gtheo" - unrecognizable as
+  // either "gerald" or "theodore" against any ACMS variant, so doesNameMatch scored 0 for several
+  // real ACMS records that are clearly the same person (same office address/phone across them).
+  test('splits a CAMS firstName with a leading bare initial before scoring (full ACMS first name, no ACMS middle)', async () => {
+    const state = await normalizeAcmsSourceName()(
+      createInitialState(
+        makeDxtrTrustee({ firstName: 'Gerald', middleName: 'Theodore', lastName: 'Whitfield' }),
+      ),
+    );
+    const candidate = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', firstName: 'G. Theo', lastName: 'Whitfield' })),
+      'test',
+    );
+
+    scoreCandidate(state.sourceNormalized, candidate);
+
+    expect(mergedScore(candidate)).toMatchObject({
+      doesNameMatch: { value: 85, pass: true },
+    });
+  });
+
+  test('splits a CAMS firstName with a leading bare initial before scoring (ACMS middle initial present)', async () => {
+    const state = await normalizeAcmsSourceName()(
+      createInitialState(
+        makeDxtrTrustee({ firstName: 'Gerald', middleName: 'T', lastName: 'Whitfield' }),
+      ),
+    );
+    const candidate = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', firstName: 'G. Theo', lastName: 'Whitfield' })),
+      'test',
+    );
+
+    scoreCandidate(state.sourceNormalized, candidate);
+
+    expect(mergedScore(candidate)).toMatchObject({
+      doesNameMatch: { value: 85, pass: true },
+    });
+  });
+
+  test('splits a CAMS firstName with a trailing bare initial before scoring', async () => {
+    const state = await normalizeAcmsSourceName()(
+      createInitialState(
+        makeDxtrTrustee({ firstName: 'Walter', middleName: 'Reid', lastName: 'Abernathy' }),
+      ),
+    );
+    const candidate = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', firstName: 'W. Reid', lastName: 'Abernathy' })),
+      'test',
+    );
+
+    scoreCandidate(state.sourceNormalized, candidate);
+
+    expect(mergedScore(candidate)).toMatchObject({
+      doesNameMatch: { value: 85, pass: true },
+    });
+  });
+
+  // Real CAMS records with NO bare-initial token anywhere in a multi-token firstName must NEVER
+  // be split - several real trustees carry a compound GIVEN name shape like "Lee Ann"/"Mary Jo"
+  // (one person's whole first name), not an initial-plus-given-name shape. Splitting a name like
+  // "Lee Ann" into firstName="Lee"/middleName="Ann" would silently corrupt a real trustee's name.
+  // Uses makeDxtrTrustee's already-split firstName/middleName fields directly (bypassing
+  // normalizeAcmsSourceName's OWN, separate splitCompoundFirstName call on the ACMS side, which is
+  // not under test here) so this test isolates ONLY the CAMS-side splitting decision: an ACMS
+  // record already carrying firstName="Robin", middleName="Ann" must still match a CAMS
+  // firstName="Robin Ann" left correctly whole, not corrupted into some other split.
+  test('does NOT split a compound given name with no bare-initial token', async () => {
+    const state = await normalizeAcmsSourceName()(
+      createInitialState(
+        makeDxtrTrustee({ firstName: 'Robin', middleName: 'Ann', lastName: 'Castellano' }),
+      ),
+    );
+    const candidate = addCandidate(
+      state,
+      projectTrustee(
+        makeTrustee({ trusteeId: 't1', firstName: 'Robin Ann', lastName: 'Castellano' }),
+      ),
+      'test',
+    );
+
+    scoreCandidate(state.sourceNormalized, candidate);
+
+    expect(mergedScore(candidate)).toMatchObject({
+      doesNameMatch: { value: 85, pass: true },
     });
   });
 });
@@ -852,12 +1154,14 @@ describe('scoreCandidate - state/city/zip/contact-presence facets', () => {
 
   test('does NOT mark a state-mismatched candidate as mismatched when its nameScore would be >= 85', async () => {
     const state = createInitialState(dxtrInWashington);
+    // middleName omitted (dxtrInWashington's own 'A' is left uncompared, not turned into a
+    // conflict) - this test's own point is the nameScore>=85 state override, not middle-name
+    // scoring, and an omitted CAMS middle name is neutral by design either way.
     const candidate = addSomeoneMoon(state, {
       trusteeId: 'trustee-fl-name',
       firstName: 'Aldric',
-      middleName: 'A',
       lastName: 'Moon',
-      name: 'Aldric A. Moon',
+      name: 'Aldric Moon',
       public: {
         address: {
           address1: '1 Elm St',
@@ -1610,7 +1914,11 @@ describe('resolveBySoleFuzzyFirstNameMatchAfterAddressNarrowing', () => {
 
     const result = await resolveBySoleFuzzyFirstNameMatchAfterAddressNarrowing()(state);
 
-    expect(result.match).toEqual({ trusteeId: 't1', score: survivor.scores });
+    expect(result.match).toEqual({
+      trusteeId: 't1',
+      score: survivor.scores,
+      resolvedBy: 'resolveBySoleFuzzyFirstNameMatchAfterAddressNarrowing',
+    });
   });
 
   test("does not resolve when only a sole same-surname candidate exists - not this stage's job", async () => {
@@ -1687,7 +1995,11 @@ describe('resolveBySoleContactMatch', () => {
 
     const result = await resolveBySoleContactMatch()(state);
 
-    expect(result.match).toEqual({ trusteeId: 't1', score: candidate.scores });
+    expect(result.match).toEqual({
+      trusteeId: 't1',
+      score: candidate.scores,
+      resolvedBy: 'resolveBySoleContactMatch',
+    });
   });
 
   test('resolves via the no-contradiction fallback when there is no comparable phone/email and the ACMS address does not contradict', async () => {
@@ -1704,7 +2016,11 @@ describe('resolveBySoleContactMatch', () => {
 
     const result = await resolveBySoleContactMatch()(state);
 
-    expect(result.match).toEqual({ trusteeId: 't1', score: candidate.scores });
+    expect(result.match).toEqual({
+      trusteeId: 't1',
+      score: candidate.scores,
+      resolvedBy: 'resolveBySoleContactMatch',
+    });
   });
 
   test('refuses the no-contradiction fallback when the ACMS record has no real contact data at all', async () => {
@@ -1738,7 +2054,11 @@ describe('resolveBySoleContactMatch', () => {
 
     const result = await resolveBySoleContactMatch()(state);
 
-    expect(result.match).toEqual({ trusteeId: 't1', score: candidate.scores });
+    expect(result.match).toEqual({
+      trusteeId: 't1',
+      score: candidate.scores,
+      resolvedBy: 'resolveBySoleContactMatch',
+    });
   });
 
   test('refuses the no-contradiction fallback when the ACMS address actively contradicts a low addressScore', async () => {
@@ -1870,6 +2190,7 @@ describe('resolveByComparativeCorroboration', () => {
       score: expect.objectContaining({
         contactCorroborationPhone: expect.objectContaining({ value: 100, pass: true }),
       }),
+      resolvedBy: 'resolveByComparativeCorroboration',
     });
   });
 
@@ -2063,6 +2384,7 @@ describe('resolveByComparativeCorroboration', () => {
     expect(result.match).toEqual({
       trusteeId: 'full-geo-agreement',
       score: fullGeoAgreement.scores,
+      resolvedBy: 'resolveByComparativeCorroboration',
     });
   });
 
@@ -2180,6 +2502,7 @@ describe('resolveByComparativeCorroboration', () => {
       score: expect.objectContaining({
         contactCorroborationPhone: expect.objectContaining({ value: 100, pass: true }),
       }),
+      resolvedBy: 'resolveByComparativeCorroboration',
     });
   });
 });
@@ -2430,6 +2753,7 @@ describe('resolveByPhoneTypoTolerance', () => {
       score: expect.objectContaining({
         phoneTypoToleranceScore: expect.objectContaining({ phoneDigitDistance: 1 }),
       }),
+      resolvedBy: 'resolveByPhoneTypoTolerance',
     });
   });
 
@@ -2500,7 +2824,38 @@ describe('resolveByPhoneTypoTolerance', () => {
 describe('resolveBySoleExactNameMatch', () => {
   const acmsRecord = makeDxtrTrustee({ fullName: 'Ronald Larkin' });
 
-  test('resolves a sole exact-name candidate with no state/city/zip evidence at all', async () => {
+  // Real-world regression shape (name synthesized): ACMS "Michael P Wexford" (Wilmington DE)
+  // auto-linked to CAMS "Michael Wexford" (Wheeling WV, no middle name on file) with zero contact
+  // corroboration and a genuine state conflict, because this stage skipped the same
+  // isStateNotConflicting check every other RESOLVE stage (resolveBySoleContactMatch,
+  // resolveByConsensus) already applies. A sole exact name match is strong evidence the person
+  // exists, but not that THIS CAMS record is them, once isStateNotConflicting has annotated a
+  // real, un-overridden conflict (scoreStateNotConflicting already accounts for a corroborating
+  // phone match or a high enough nameScore override - see STATE_OVERRIDE_MIN_NAME_SCORE - before
+  // ever setting this to false). The "office relocation" and "never annotated" cases confirm this
+  // stage still resolves confidently whenever there is no real, un-overridden conflict on record.
+  test.each([
+    {
+      description: 'no state/city/zip evidence at all',
+      scores: {},
+    },
+    {
+      description: 'an office-relocation case: state and zip corroborate even though city differs',
+      scores: {
+        doesStateMatch: { value: 100, threshold: 100, pass: true },
+        doesCityMatch: { value: 0, threshold: 100, pass: false },
+        doesZipCodeMatch: { value: 100, threshold: 100, pass: true },
+      },
+    },
+    {
+      description: 'doesStateMatch failed but isStateNotConflicting was never annotated false',
+      scores: { doesStateMatch: { value: 0, threshold: 100, pass: false } },
+    },
+    {
+      description: 'isStateNotConflicting was explicitly annotated true',
+      scores: { isStateNotConflicting: { value: 100, threshold: 100, pass: true } },
+    },
+  ])('resolves a sole exact-name candidate: $description', async ({ scores }) => {
     const state = createInitialState(acmsRecord);
     const candidate = addCandidate(
       state,
@@ -2508,52 +2863,50 @@ describe('resolveBySoleExactNameMatch', () => {
       'test',
     );
     addScore(candidate, 'doesNameMatch', { value: 100, threshold: 85, pass: true });
+    for (const [scorer, score] of Object.entries(scores)) {
+      addScore(candidate, scorer, score);
+    }
 
     const result = await resolveBySoleExactNameMatch()(state);
 
-    expect(result.match).toEqual({ trusteeId: 't1', score: candidate.scores });
+    expect(result.match).toEqual({
+      trusteeId: 't1',
+      score: candidate.scores,
+      resolvedBy: 'resolveBySoleExactNameMatch',
+    });
   });
 
-  test('resolves an office-relocation case: state and zip corroborate even though city differs', async () => {
+  test.each([
+    {
+      description: 'isStateNotConflicting was explicitly annotated false',
+      nameMatchScore: { value: 100, threshold: 85, pass: true },
+      extraScores: { isStateNotConflicting: { value: 0, threshold: 100, pass: false } },
+    },
+    {
+      description: 'a fuzzy (non-exact) 85 name score',
+      nameMatchScore: { value: 85, threshold: 85, pass: true },
+      extraScores: {},
+    },
+    {
+      description: 'a candidate excluded by hasComparableContactData',
+      nameMatchScore: { value: 100, threshold: 85, pass: true },
+      // hasComparableContactData is the derived score every non-inverted RESOLVE stage reads,
+      // computed from doesCamsTrusteeHaveAddressAndPhone/doesAcmsTrusteeHaveAddressAndPhone by
+      // scoreHasComparableContactData - set directly here since this test exercises the RESOLVE
+      // stage in isolation, without running the full CANDIDATE_SCORERS pipeline.
+      extraScores: { hasComparableContactData: { value: 0, threshold: 100, pass: false } },
+    },
+  ])('does not resolve when $description', async ({ nameMatchScore, extraScores }) => {
     const state = createInitialState(acmsRecord);
     const candidate = addCandidate(
       state,
       projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Ronald L. Larkin' })),
       'test',
     );
-    addScore(candidate, 'doesNameMatch', { value: 100, threshold: 85, pass: true });
-    addScore(candidate, 'doesStateMatch', { value: 100, threshold: 100, pass: true });
-    addScore(candidate, 'doesCityMatch', { value: 0, threshold: 100, pass: false });
-    addScore(candidate, 'doesZipCodeMatch', { value: 100, threshold: 100, pass: true });
-
-    const result = await resolveBySoleExactNameMatch()(state);
-
-    expect(result.match).toEqual({ trusteeId: 't1', score: candidate.scores });
-  });
-
-  test('resolves even when state disagrees - name alone is enough for a sole candidate', async () => {
-    const state = createInitialState(acmsRecord);
-    const candidate = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Ronald L. Larkin' })),
-      'test',
-    );
-    addScore(candidate, 'doesNameMatch', { value: 100, threshold: 85, pass: true });
-    addScore(candidate, 'doesStateMatch', { value: 0, threshold: 100, pass: false });
-
-    const result = await resolveBySoleExactNameMatch()(state);
-
-    expect(result.match).toEqual({ trusteeId: 't1', score: candidate.scores });
-  });
-
-  test('does not resolve a fuzzy (non-exact) 85 name score', async () => {
-    const state = createInitialState(acmsRecord);
-    const candidate = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Ronald L. Larkin' })),
-      'test',
-    );
-    addScore(candidate, 'doesNameMatch', { value: 85, threshold: 85, pass: true });
+    addScore(candidate, 'doesNameMatch', nameMatchScore);
+    for (const [scorer, score] of Object.entries(extraScores)) {
+      addScore(candidate, scorer, score);
+    }
 
     const result = await resolveBySoleExactNameMatch()(state);
 
@@ -2574,25 +2927,6 @@ describe('resolveBySoleExactNameMatch', () => {
       'test',
     );
     addScore(second, 'doesNameMatch', { value: 100, threshold: 85, pass: true });
-
-    const result = await resolveBySoleExactNameMatch()(state);
-
-    expect(result.match).toBeNull();
-  });
-
-  test('does not resolve a candidate excluded by hasComparableContactData', async () => {
-    const state = createInitialState(acmsRecord);
-    const candidate = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Ronald L. Larkin' })),
-      'test',
-    );
-    addScore(candidate, 'doesNameMatch', { value: 100, threshold: 85, pass: true });
-    // hasComparableContactData is the derived score every non-inverted RESOLVE stage reads,
-    // computed from doesCamsTrusteeHaveAddressAndPhone/doesAcmsTrusteeHaveAddressAndPhone by
-    // scoreHasComparableContactData - set directly here since this test exercises the RESOLVE
-    // stage in isolation, without running the full CANDIDATE_SCORERS pipeline.
-    addScore(candidate, 'hasComparableContactData', { value: 0, threshold: 100, pass: false });
 
     const result = await resolveBySoleExactNameMatch()(state);
 
@@ -2634,7 +2968,11 @@ describe('resolveBySoleExactNameMatchNoAcmsData', () => {
 
     const result = await resolveBySoleExactNameMatchNoAcmsData()(state);
 
-    expect(result.match).toEqual({ trusteeId: 't1', score: candidate.scores });
+    expect(result.match).toEqual({
+      trusteeId: 't1',
+      score: candidate.scores,
+      resolvedBy: 'resolveBySoleExactNameMatchNoAcmsData',
+    });
   });
 
   test('resolves the sole exact-name survivor even alongside many correctly-rejected candidates', async () => {
@@ -2669,7 +3007,11 @@ describe('resolveBySoleExactNameMatchNoAcmsData', () => {
 
     const result = await resolveBySoleExactNameMatchNoAcmsData()(state);
 
-    expect(result.match).toEqual({ trusteeId: 't1', score: winner.scores });
+    expect(result.match).toEqual({
+      trusteeId: 't1',
+      score: winner.scores,
+      resolvedBy: 'resolveBySoleExactNameMatchNoAcmsData',
+    });
   });
 
   test("does not resolve when ACMS has real contact data - that is resolveBySoleExactNameMatch's job", async () => {
@@ -2802,7 +3144,11 @@ describe('resolveBySoleFuzzyFirstNameMatchNoAcmsData', () => {
 
     const result = await resolveBySoleFuzzyFirstNameMatchNoAcmsData()(state);
 
-    expect(result.match).toEqual({ trusteeId: 't1', score: candidate.scores });
+    expect(result.match).toEqual({
+      trusteeId: 't1',
+      score: candidate.scores,
+      resolvedBy: 'resolveBySoleFuzzyFirstNameMatchNoAcmsData',
+    });
   });
 
   test('does not resolve when the first name is not a plausible fuzzy match', async () => {
@@ -2957,7 +3303,11 @@ describe('resolveRisky', () => {
 
     const result = await resolveRisky()(state);
 
-    expect(result.match).toEqual({ trusteeId: 't1', score: candidate.scores });
+    expect(result.match).toEqual({
+      trusteeId: 't1',
+      score: candidate.scores,
+      resolvedBy: 'resolveBySoleExactNameMatchNoAcmsData',
+    });
   });
 
   test('resolves via the fuzzy-first-name-no-ACMS-data sub-stage when the exact-match sub-stage does not apply', async () => {
@@ -2978,7 +3328,11 @@ describe('resolveRisky', () => {
 
     const result = await resolveRisky()(state);
 
-    expect(result.match).toEqual({ trusteeId: 't1', score: candidate.scores });
+    expect(result.match).toEqual({
+      trusteeId: 't1',
+      score: candidate.scores,
+      resolvedBy: 'resolveBySoleFuzzyFirstNameMatchNoAcmsData',
+    });
   });
 
   test('does not resolve when neither risky sub-stage applies', async () => {
@@ -3032,7 +3386,11 @@ describe('resolveBySoleExactNameMatchByStateThenGeo', () => {
 
     const result = await resolveBySoleExactNameMatchByStateThenGeo()(state);
 
-    expect(result.match).toEqual({ trusteeId: 't1', score: winner.scores });
+    expect(result.match).toEqual({
+      trusteeId: 't1',
+      score: winner.scores,
+      resolvedBy: 'resolveBySoleExactNameMatchByStateThenGeo',
+    });
   });
 
   test('narrows by city-or-zip when two candidates still agree on state', async () => {
@@ -3046,7 +3404,11 @@ describe('resolveBySoleExactNameMatchByStateThenGeo', () => {
 
     const result = await resolveBySoleExactNameMatchByStateThenGeo()(state);
 
-    expect(result.match).toEqual({ trusteeId: 't1', score: winner.scores });
+    expect(result.match).toEqual({
+      trusteeId: 't1',
+      score: winner.scores,
+      resolvedBy: 'resolveBySoleExactNameMatchByStateThenGeo',
+    });
   });
 
   test('does not resolve when no candidate has a matching state', async () => {
@@ -3098,6 +3460,7 @@ describe('resolveByConsensus', () => {
       score: expect.objectContaining({
         resolveByConsensus: expect.objectContaining({ pass: true }),
       }),
+      resolvedBy: 'resolveByConsensus',
     });
   });
 
@@ -3144,6 +3507,7 @@ describe('resolveByConsensus', () => {
       score: expect.objectContaining({
         resolveByConsensus: expect.objectContaining({ pass: true }),
       }),
+      resolvedBy: 'resolveByConsensus',
     });
   });
 
@@ -3244,6 +3608,7 @@ describe('resolveBySoleFuzzyNameMatchAndState', () => {
       score: expect.objectContaining({
         resolveBySoleFuzzyNameMatchAndState: expect.objectContaining({ pass: true }),
       }),
+      resolvedBy: 'resolveBySoleFuzzyNameMatchAndState',
     });
   });
 
@@ -3362,6 +3727,7 @@ describe('resolveByFuzzyLastNameMatch', () => {
       score: expect.objectContaining({
         resolveByFuzzyLastNameMatch: expect.objectContaining({ pass: true }),
       }),
+      resolvedBy: 'resolveByFuzzyLastNameMatch',
     });
   });
 
@@ -3524,6 +3890,7 @@ describe('resolveByLastNameOnlyConsensus', () => {
       score: expect.objectContaining({
         resolveByLastNameOnlyConsensus: expect.objectContaining({ pass: true }),
       }),
+      resolvedBy: 'resolveByLastNameOnlyConsensus',
     });
   });
 
@@ -3584,6 +3951,138 @@ describe('resolveByLastNameOnlyConsensus', () => {
     const result = await resolveByLastNameOnlyConsensus()(state);
 
     expect(mergedScore(candidate)).toMatchObject({ doesFuzzyFirstNameMatch: { pass: true } });
+    expect(result.match).toBeNull();
+  });
+
+  // Real shape (2026-09-25 staging export, name synthesized): ACMS "Nikki [Surname]" against CAMS
+  // "Nichole B. [Surname]" - a genuine nickname pair with real phonetic divergence that fails every
+  // general string-similarity check (JaroWinkler 0.65, no SoundEx/Metaphone/DoubleMetaphone
+  // overlap - confirmed against natural's algorithms before writing this fix). Both first names
+  // share the same leading letter ("N"), and the record has FULL corroboration: city, state, AND
+  // zip all agree, AND phone corroborates exactly - stronger than isCorroboratedByGeoOrContact's
+  // existing "geo OR contact" bar every other consensus path accepts.
+  test('resolves on a shared first initial plus exact lastName when BOTH geo and contact fully corroborate', async () => {
+    const state = createInitialState(
+      makeDxtrTrustee({ fullName: 'Nikki Ashworth', firstName: 'Nikki', lastName: 'Ashworth' }),
+    );
+    const candidate = addCandidate(
+      state,
+      projectTrustee(
+        makeTrustee({
+          trusteeId: 't1',
+          firstName: 'Nichole',
+          middleName: 'B',
+          lastName: 'Ashworth',
+        }),
+      ),
+      'test',
+    );
+    addScore(candidate, 'doesNameMatch', { value: 0, threshold: 85, pass: false });
+    addScore(candidate, 'doesStateMatch', { value: 100, threshold: 100, pass: true });
+    addScore(candidate, 'doesCityMatch', { value: 100, threshold: 100, pass: true });
+    addScore(candidate, 'doesZipCodeMatch', { value: 100, threshold: 100, pass: true });
+    addScore(candidate, 'contactCorroborationPhone', { value: 100, threshold: 100, pass: true });
+
+    const result = await resolveByLastNameOnlyConsensus()(state);
+
+    expect(mergedScore(candidate)).toMatchObject({ doesFuzzyFirstNameMatch: { pass: false } });
+    expect(result.match).toEqual({
+      trusteeId: 't1',
+      score: expect.objectContaining({
+        resolveByLastNameOnlyConsensus: expect.objectContaining({ pass: true }),
+      }),
+      resolvedBy: 'resolveByLastNameOnlyConsensus',
+    });
+  });
+
+  // Same shape, geo-only variant, name synthesized: "Hank [Surname]" -> "Henry [Surname]" (also a
+  // real 2026-09-25 record shape - a well-known nickname pair, but exercised here via the
+  // first-initial path specifically since isFuzzyNamePartMatch's SoundEx/Metaphone step may or may
+  // not already catch Hank/Henry - this test only needs the first-initial path to independently
+  // hold regardless).
+  test('resolves on a shared first initial plus exact lastName when contact (not geo) fully corroborates', async () => {
+    const state = createInitialState(
+      makeDxtrTrustee({ fullName: 'Hank Delacroix', firstName: 'Hank', lastName: 'Delacroix' }),
+    );
+    const candidate = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', firstName: 'Henry', lastName: 'Delacroix' })),
+      'test',
+    );
+    addScore(candidate, 'doesNameMatch', { value: 0, threshold: 85, pass: false });
+    addScore(candidate, 'doesStateMatch', { value: 100, threshold: 100, pass: true });
+    addScore(candidate, 'doesCityMatch', { value: 100, threshold: 100, pass: true });
+    addScore(candidate, 'contactCorroborationAddress', { value: 89, threshold: 80, pass: true });
+
+    const result = await resolveByLastNameOnlyConsensus()(state);
+
+    expect(result.match).toEqual({
+      trusteeId: 't1',
+      score: expect.objectContaining({
+        resolveByLastNameOnlyConsensus: expect.objectContaining({ pass: true }),
+      }),
+      resolvedBy: 'resolveByLastNameOnlyConsensus',
+    });
+  });
+
+  // The exact risk the "both required" bar exists for - confirmed against real data (a 42-
+  // candidate survey of every same-first-initial, exact-lastName pair with a total name-score
+  // failure in the 2026-09-25 export, names synthesized here): most are genuine same-surname-
+  // different-person collisions with WEAK evidence, sharing a surname and state but nothing else.
+  // Geo agreement ALONE (no contact signal at all) must NOT be enough, even with a shared first
+  // initial - this is what actually distinguishes B3 from a blanket "drop the name check under any
+  // one signal" rule.
+  test('does NOT resolve on a shared first initial with geo agreement alone (no contact corroboration)', async () => {
+    const state = createInitialState(
+      makeDxtrTrustee({ fullName: 'Ray Prescott', firstName: 'Ray', lastName: 'Prescott' }),
+    );
+    const candidate = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', firstName: 'Roland', lastName: 'Prescott' })),
+      'test',
+    );
+    addScore(candidate, 'doesNameMatch', { value: 0, threshold: 85, pass: false });
+    addScore(candidate, 'doesStateMatch', { value: 100, threshold: 100, pass: true });
+
+    const result = await resolveByLastNameOnlyConsensus()(state);
+
+    expect(result.match).toBeNull();
+  });
+
+  // Same risk, mirrored: contact agreement alone (no geo signal at all) must also not be enough.
+  test('does NOT resolve on a shared first initial with contact agreement alone (no geo corroboration)', async () => {
+    const state = createInitialState(
+      makeDxtrTrustee({ fullName: 'Ray Prescott', firstName: 'Ray', lastName: 'Prescott' }),
+    );
+    const candidate = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', firstName: 'Roland', lastName: 'Prescott' })),
+      'test',
+    );
+    addScore(candidate, 'doesNameMatch', { value: 0, threshold: 85, pass: false });
+    addScore(candidate, 'contactCorroborationPhone', { value: 100, threshold: 100, pass: true });
+
+    const result = await resolveByLastNameOnlyConsensus()(state);
+
+    expect(result.match).toBeNull();
+  });
+
+  test('does NOT resolve when first initials disagree, even with full geo and contact corroboration', async () => {
+    const state = createInitialState(
+      makeDxtrTrustee({ fullName: 'William Doe', firstName: 'William', lastName: 'Doe' }),
+    );
+    const candidate = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', firstName: 'Larry', lastName: 'Doe' })),
+      'test',
+    );
+    addScore(candidate, 'doesNameMatch', { value: 0, threshold: 85, pass: false });
+    addScore(candidate, 'doesStateMatch', { value: 100, threshold: 100, pass: true });
+    addScore(candidate, 'doesCityMatch', { value: 100, threshold: 100, pass: true });
+    addScore(candidate, 'contactCorroborationPhone', { value: 100, threshold: 100, pass: true });
+
+    const result = await resolveByLastNameOnlyConsensus()(state);
+
     expect(result.match).toBeNull();
   });
 
@@ -3670,6 +4169,7 @@ describe('resolveByLastNameOnlyConsensus', () => {
       score: expect.objectContaining({
         resolveByLastNameOnlyConsensus: expect.objectContaining({ pass: true }),
       }),
+      resolvedBy: 'resolveByLastNameOnlyConsensus',
     });
   });
 
@@ -3730,6 +4230,7 @@ describe('resolveByLastNameOnlyConsensus', () => {
       score: expect.objectContaining({
         resolveByLastNameOnlyConsensus: expect.objectContaining({ pass: true }),
       }),
+      resolvedBy: 'resolveByLastNameOnlyConsensus',
     });
   });
 
@@ -3763,6 +4264,7 @@ describe('resolveByLastNameOnlyConsensus', () => {
       score: expect.objectContaining({
         resolveByLastNameOnlyConsensus: expect.objectContaining({ pass: true }),
       }),
+      resolvedBy: 'resolveByLastNameOnlyConsensus',
     });
   });
 });

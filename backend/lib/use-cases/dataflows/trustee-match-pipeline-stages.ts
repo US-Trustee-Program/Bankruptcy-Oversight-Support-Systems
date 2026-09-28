@@ -21,6 +21,7 @@ import {
   padSingleDigitNumericToken,
   parseCityStateZip,
   scoreFirstNamePart,
+  stripParentheticalAnnotations,
   STATE_OVERRIDE_MIN_NAME_SCORE,
   tokenizeNameForIntersection,
 } from './trustee-match.helpers';
@@ -28,6 +29,7 @@ import { generateBigrams } from '../../adapters/utils/phonetic-helper';
 import {
   isRecordDisavowed,
   recoverCorruptedFirstName,
+  recoverLastFirstRoleSwap,
   recoverSoloPracticeName,
   shouldSkipAsNotAPerson,
   splitCompoundFirstName,
@@ -111,8 +113,15 @@ function isBareInitial(namePart: string): boolean {
  *
  * Two relaxations, both still scored (never an automatic pass) so resolveByLastNameOnlyConsensus's
  * vote can weigh them alongside independent contact corroboration:
- *   - Either side a BARE INITIAL that doesn't match the other's leading character: NEUTRAL (100),
- *     not a conflict - too little information to call it a disagreement.
+ *   - Exactly ONE side a BARE INITIAL that doesn't match the other's leading character: NEUTRAL
+ *     (100), not a conflict - too little information to call it a disagreement (the other side's
+ *     full middle name could still plausibly start with that letter; the record simply never
+ *     spelled it out). Deliberately does NOT extend this to BOTH sides being bare initials - two
+ *     actual initials that disagree (e.g. ACMS "P" vs CAMS "E") is real, if weak, evidence of a
+ *     conflict, not an information gap; real regression shape (name synthesized): ACMS
+ *     "Michael P [Surname]" auto-linked to CAMS "Michael E. [Surname]" on name alone,
+ *     isBareInitial's length-only check having laundered a genuine two-initial disagreement into a
+ *     neutral 100 the same as the true information-gap case below.
  *   - Both sides a FULL (non-initial) middle name that differs: scored via isFuzzyNamePartMatch
  *     (85 if plausibly the same name, 15 if not) instead of an automatic 15.
  * Exact match and either-side-missing still behave exactly like scoreMiddleNamePart (100 in both
@@ -125,6 +134,8 @@ function pipelineMiddleNameScore(
 ): number {
   if (!dxtrMiddle || !camsMiddle) return 100;
   if (dxtrMiddle === camsMiddle) return 100;
+  if (isInitialOf(dxtrMiddle, camsMiddle) || isInitialOf(camsMiddle, dxtrMiddle)) return 100;
+  if (isBareInitial(dxtrMiddle) && isBareInitial(camsMiddle)) return 15;
   if (isBareInitial(dxtrMiddle) || isBareInitial(camsMiddle)) return 100;
   return memoizedIsFuzzyNamePartMatch(memo, dxtrMiddle, camsMiddle) ? 85 : 15;
 }
@@ -280,13 +291,40 @@ function pipelineEmailScore(
  */
 export function normalizeAcmsSourceName(): Stage {
   return async (state: PipelineState): Promise<PipelineState> => {
-    const strippedFirstName = stripAdministrativeMarkers(state.sourceRaw.firstName ?? '');
-    const strippedLastName = stripAdministrativeMarkers(state.sourceRaw.lastName ?? '');
-    const corruptionRecovered = recoverCorruptedFirstName(strippedFirstName, strippedLastName);
-    const soloPracticeRecovered = recoverSoloPracticeName(
-      corruptionRecovered.firstName,
-      corruptionRecovered.lastName,
+    // recoverLastFirstRoleSwap runs FIRST, against the RAW fields - stripAdministrativeMarkers'
+    // own comma-stripping ([-/*.,():_]+) would otherwise destroy the "LAST, FIRST" comma this
+    // recovery depends on before it ever ran.
+    const roleSwapRecovered = recoverLastFirstRoleSwap(
+      state.sourceRaw.firstName ?? '',
+      state.sourceRaw.lastName ?? '',
     );
+    // recoverCorruptedFirstName ALSO runs against the RAW (pre-stripAdministrativeMarkers)
+    // firstName - its whole-name recovery is gated on firstName containing a digit (see its own
+    // doc comment, "TACOMACH13" shape), and stripAdministrativeMarkers' glued-chapter-marker
+    // stripping (GLUED_CHAPTER_MARKER_PATTERN) would otherwise remove that digit first
+    // ("TACOMACH13" -> "TACOMA", no digit left), silently disarming recoverCorruptedFirstName's
+    // own gate before it ever got a chance to run - confirmed as a real regression via
+    // pipeline-replay-backtest.ts against the 2026-09-25 export (a real "TACOMACH13 [name]" record
+    // that previously recovered its whole real name from lastName stopped doing so once
+    // stripAdministrativeMarkers ran first).
+    const corruptionRecovered = recoverCorruptedFirstName(
+      roleSwapRecovered.firstName,
+      roleSwapRecovered.lastName,
+    );
+    // stripParentheticalAnnotations runs BEFORE stripAdministrativeMarkers, and ONLY on
+    // firstName - lastName's parenthetical content is deliberately preserved for
+    // lastNameSurnameCandidates to consider as a surname alternate (a real alias/maiden name can
+    // land there); firstName has no such alternate-surname use for its own parenthetical content,
+    // which is reliably office/region-code noise.
+    // stripAdministrativeMarkers's own paren-stripping only removes the PARENTHESES themselves
+    // ([-/*.,():_]+), not their contents - a bare marker phrase inside still gets recognized and
+    // stripped afterward, but non-marker content would otherwise survive as a bare extra word and
+    // corrupt splitCompoundFirstName's token count.
+    const strippedFirstName = stripAdministrativeMarkers(
+      stripParentheticalAnnotations(corruptionRecovered.firstName),
+    );
+    const strippedLastName = stripAdministrativeMarkers(corruptionRecovered.lastName);
+    const soloPracticeRecovered = recoverSoloPracticeName(strippedFirstName, strippedLastName);
     const { firstName, middleName } = splitCompoundFirstName(
       soloPracticeRecovered.firstName,
       state.sourceRaw.middleName,
@@ -469,12 +507,53 @@ export function recallByNameThenResolveExact(context: ApplicationContext): Stage
       };
     }
 
-    if (result.kind === 'resolved') {
+    if (result.kind === 'resolved' && result.nameMatchQuality === 'exact') {
       return {
         ...state,
         match: {
           trusteeId: result.trusteeId,
           score: { nameScore: result.nameScore, nameMatchQuality: result.nameMatchQuality },
+          resolvedBy: 'recallByNameThenResolveExact',
+        },
+      };
+    }
+
+    // A 'fuzzy'-quality resolved outcome (normalizeNameForMatching bridged a punctuation gap -
+    // e.g. an apostrophe surname) has a REAL trustee record behind it, unlike 'exact' (a literal
+    // string match with nothing left to score) - fetch and score it through the normal
+    // addAndScoreCandidate path so the winning candidate's full score history is preserved in
+    // evidence.candidates for later audit, instead of resolving on a synthetic
+    // {nameScore, nameMatchQuality} score object with no candidate behind it at all.
+    if (result.kind === 'resolved' && result.nameMatchQuality === 'fuzzy') {
+      const trusteesRepo = factory.getTrusteesRepository(context);
+      let rawTrustees;
+      try {
+        rawTrustees = await trusteesRepo.findTrusteesByIds([result.trusteeId]);
+      } catch (originalError) {
+        return {
+          ...state,
+          error: getCamsErrorWithStack(originalError, MODULE_NAME, {
+            camsStackInfo: {
+              module: MODULE_NAME,
+              message: 'recallByNameThenResolveExact failed refetching fuzzy-matched candidate',
+            },
+          }),
+        };
+      }
+      const [trustee] = rawTrustees;
+      const candidate = addAndScoreCandidate(
+        state,
+        projectTrustee(trustee),
+        'recallByNameThenResolveExact',
+      );
+      if (state.error) return state;
+
+      return {
+        ...state,
+        match: {
+          trusteeId: candidate.camsRaw.trusteeId,
+          score: candidate.scores,
+          resolvedBy: 'recallByNameThenResolveExact',
         },
       };
     }
@@ -692,6 +771,45 @@ export function recallByAnchoredLevenshtein(context: ApplicationContext): Stage 
 }
 
 /**
+ * Splits a two-token CAMS firstName ("G. Matt", "R. Todd", "Duke C.") into its bare-initial token
+ * and the real given-name token, but ONLY when the CAMS record has no middleName of its own AND
+ * EXACTLY ONE of the two tokens is a bare initial - normalizeNamePart's blanket
+ * punctuation-stripping otherwise glues "G. Matt" into "gmatt" (unrecognizable as either "george"
+ * or "matthew"), which tanked doesNameMatch to 0 for three real ACMS records that are clearly the
+ * same person (same office address/phone across OM-02157/KC-04603/WI-16708 in the 2026-09-25
+ * staging export).
+ *
+ * Deliberately NOT a blanket "first token is firstName, rest is middleName" split (unlike
+ * splitCompoundFirstName's ACMS-side rule, which assumes CMMPR's PROF_FIRST_NAME/PROF_MI shape) -
+ * a CAMS firstName field carries a materially different population: real COMPOUND given names
+ * ("Lee Ann", "Mary Jo", "Beth Ann", "Nancy Jo" - one person's whole first name, not
+ * initial-plus-given-name) and non-person role placeholders ("Chapter 13 Standing Trustee")
+ * coexist in the same field alongside the initial-plus-name shape this function targets.
+ * Surveyed the full 2026-09-25 trustees export: every multi-token firstName with NO bare-initial
+ * token anywhere is one of those two other shapes, and every one WITH a bare-initial token is a
+ * genuine initial-plus-given-name - the bare-initial check is a clean, reliable discriminator
+ * between them, confirmed empirically rather than assumed.
+ */
+function splitCamsInitialPlusGivenName(
+  firstName: string | undefined,
+  middleName: string | undefined,
+): { firstName: string | undefined; middleName: string | undefined } {
+  if (middleName || !firstName) return { firstName, middleName };
+
+  const tokens = firstName.trim().split(/\s+/);
+  if (tokens.length !== 2) return { firstName, middleName };
+
+  const [first, second] = tokens;
+  const firstIsInitial = isBareInitial(first.replace(/\.$/, ''));
+  const secondIsInitial = isBareInitial(second.replace(/\.$/, ''));
+  if (firstIsInitial === secondIsInitial) return { firstName, middleName };
+
+  return firstIsInitial
+    ? { firstName: first, middleName: second }
+    : { firstName: second, middleName: first };
+}
+
+/**
  * NORMALIZE-CAMS candidate stage: applies the same comparison-ready reduction
  * normalizeAcmsSourceName applies to the source side (firstLastNameToken for the surname,
  * normalizeNamePart for first/middle) to this ONE candidate's camsNormalized, overwriting the
@@ -706,8 +824,12 @@ function normalizeCandidateNameFields(
   _sourceNormalized: NormalizedTrustee,
   candidate: PipelineCandidate,
 ): PipelineCandidate {
-  candidate.camsNormalized.firstName = normalizeNamePart(candidate.camsRaw.firstName);
-  candidate.camsNormalized.middleName = normalizeNamePart(candidate.camsRaw.middleName);
+  const { firstName, middleName } = splitCamsInitialPlusGivenName(
+    candidate.camsRaw.firstName,
+    candidate.camsRaw.middleName,
+  );
+  candidate.camsNormalized.firstName = normalizeNamePart(firstName);
+  candidate.camsNormalized.middleName = normalizeNamePart(middleName);
   candidate.camsNormalized.lastName = firstLastNameToken(candidate.camsRaw.lastName);
   return candidate;
 }
@@ -1303,7 +1425,10 @@ export function resolveBySoleContactMatch(): Stage {
         scores.contactCorroborationEmail?.pass === true;
 
       if (corroborated || isNoContradictionMatch(state, candidate)) {
-        return { ...state, match: { trusteeId, score: candidate.scores } };
+        return {
+          ...state,
+          match: { trusteeId, score: candidate.scores, resolvedBy: 'resolveBySoleContactMatch' },
+        };
       }
     }
 
@@ -1406,7 +1531,11 @@ export function resolveByComparativeCorroboration(): Stage {
     const winner = strong[0];
     return {
       ...state,
-      match: { trusteeId: winner.candidate.camsRaw.trusteeId, score: winner.score },
+      match: {
+        trusteeId: winner.candidate.camsRaw.trusteeId,
+        score: winner.score,
+        resolvedBy: 'resolveByComparativeCorroboration',
+      },
     };
   };
 }
@@ -1606,7 +1735,11 @@ export function resolveByPhoneTypoTolerance(): Stage {
 
     return {
       ...state,
-      match: { trusteeId: candidate.camsRaw.trusteeId, score: candidate.scores },
+      match: {
+        trusteeId: candidate.camsRaw.trusteeId,
+        score: candidate.scores,
+        resolvedBy: 'resolveByPhoneTypoTolerance',
+      },
     };
   };
 }
@@ -1628,7 +1761,10 @@ export function resolveByPhoneTypoTolerance(): Stage {
  * isolation, with nothing else to weigh it against. Accepted as a small, known gap: a
  * single-vote resolution is deliberately not preserved via a special-cased fallback.
  */
-function isCorroboratedByGeoOrContact(candidate: PipelineCandidate): boolean {
+function geoAndContactAgreement(candidate: PipelineCandidate): {
+  geoAgrees: boolean;
+  contactAgrees: boolean;
+} {
   const scores = mergedScore(candidate);
   const stateOk = scores.doesStateMatch?.pass === true;
   const cityOk = scores.doesCityMatch?.pass === true;
@@ -1640,7 +1776,25 @@ function isCorroboratedByGeoOrContact(candidate: PipelineCandidate): boolean {
     scores.contactCorroborationPhone?.pass === true ||
     scores.contactCorroborationEmail?.pass === true;
 
+  return { geoAgrees, contactAgrees };
+}
+
+function isCorroboratedByGeoOrContact(candidate: PipelineCandidate): boolean {
+  const { geoAgrees, contactAgrees } = geoAndContactAgreement(candidate);
   return geoAgrees || contactAgrees;
+}
+
+/**
+ * Stricter than isCorroboratedByGeoOrContact - requires geography AND independent contact
+ * evidence to BOTH agree, not either alone. Used only by resolveByLastNameOnlyConsensus's
+ * first-initial path (see FIRST_INITIAL_NAME_MISMATCH doc comment there): dropping the fuzzy
+ * first-name requirement entirely needs materially stronger corroboration than the geography-or-
+ * contact bar every other consensus stage accepts, since nothing about the name itself is being
+ * checked anymore beyond the leading initial.
+ */
+function isFullyCorroboratedByGeoAndContact(candidate: PipelineCandidate): boolean {
+  const { geoAgrees, contactAgrees } = geoAndContactAgreement(candidate);
+  return geoAgrees && contactAgrees;
 }
 
 /**
@@ -1676,23 +1830,42 @@ function exactNameMatchCandidates(state: PipelineState): PipelineCandidate[] {
   );
 }
 
-function resolveOnCandidate(state: PipelineState, candidate: PipelineCandidate): PipelineState {
-  return { ...state, match: { trusteeId: candidate.camsRaw.trusteeId, score: candidate.scores } };
+function resolveOnCandidate(
+  state: PipelineState,
+  candidate: PipelineCandidate,
+  resolvedBy: string,
+): PipelineState {
+  return {
+    ...state,
+    match: { trusteeId: candidate.camsRaw.trusteeId, score: candidate.scores, resolvedBy },
+  };
 }
 
 /**
- * Resolves a SOLE exact name match (calculateNameScore === 100) with no state/city/zip check at
- * all - there is nothing else in the pool it could be confused with, so an exact name match is
- * already sufficient evidence on its own. Its own small stage rather than folded into
- * isCorroboratedByGeoOrContact, since a 100 nameScore is categorically stronger evidence than an
- * 85 fuzzy match (last AND first name both matched exactly, see calculateNameScore) and deserves
- * its own simple, readable rule. Runs BEFORE resolveByConsensus (runPipeline makes it a no-op once
- * this resolves) so an exact-name candidate never has to clear the general geography-or-contact
- * bar the fuzzier match tiers require.
+ * Resolves a SOLE exact name match (calculateNameScore === 100) with no city/zip check required -
+ * an exact name match is strong enough evidence on its own that it does not need geography to
+ * corroborate it. Its own small stage rather than folded into isCorroboratedByGeoOrContact, since
+ * a 100 nameScore is categorically stronger evidence than an 85 fuzzy match (last AND first name
+ * both matched exactly, see calculateNameScore) and deserves its own simple, readable rule. Runs
+ * BEFORE resolveByConsensus (runPipeline makes it a no-op once this resolves) so an exact-name
+ * candidate never has to clear the general geography-or-contact bar the fuzzier match tiers
+ * require.
  *
  * Recovers the "office relocated within the state" shape - a real example had a candidate's ACMS
  * and CAMS addresses roughly 150 miles apart, same state, same real person, with no other
  * state/city/zip signal to fall back on.
+ *
+ * DOES still exclude a candidate isStateNotConflicting has annotated false, same as
+ * resolveBySoleContactMatch/resolveByConsensus - calculateNameScore's 100 can be reached with a
+ * middle name that never actually agreed (scoreMiddleNamePart scores an absent middle name on
+ * either side as a neutral 100, not "confirmed matching" - see its own doc comment), so a sole
+ * "exact" name match is not proof this is the same person once a real, un-overridden state
+ * conflict is on record. scoreStateNotConflicting already accounts for a corroborating phone match
+ * or a high enough nameScore override (STATE_OVERRIDE_MIN_NAME_SCORE) before ever annotating this
+ * false, so this exclusion only removes candidates with a genuine, unexplained state conflict -
+ * real regression shape (name synthesized): ACMS "Michael P [Surname]" (Wilmington DE)
+ * auto-linked to CAMS "Michael [Surname]" (Wheeling WV, no middle name on file) on name alone,
+ * with no corroborating evidence at all.
  *
  * Runs before resolveBySoleExactNameMatchByStateThenGeo, which only ever sees what this stage
  * left behind (2+ exact-name candidates) - the two stages' gates are mutually exclusive by pool
@@ -1700,10 +1873,12 @@ function resolveOnCandidate(state: PipelineState, candidate: PipelineCandidate):
  */
 export function resolveBySoleExactNameMatch(): Stage {
   return async (state: PipelineState): Promise<PipelineState> => {
-    const exactMatches = exactNameMatchCandidates(state);
+    const exactMatches = exactNameMatchCandidates(state).filter(
+      (candidate) => mergedScore(candidate).isStateNotConflicting?.pass !== false,
+    );
     if (exactMatches.length !== 1) return state;
 
-    return resolveOnCandidate(state, exactMatches[0]);
+    return resolveOnCandidate(state, exactMatches[0], 'resolveBySoleExactNameMatch');
   };
 }
 
@@ -1732,7 +1907,13 @@ export function resolveBySoleExactNameMatchByStateThenGeo(): Stage {
     const stateNarrowed = exactMatches.filter(
       (candidate) => mergedScore(candidate).doesStateMatch?.pass === true,
     );
-    if (stateNarrowed.length === 1) return resolveOnCandidate(state, stateNarrowed[0]);
+    if (stateNarrowed.length === 1) {
+      return resolveOnCandidate(
+        state,
+        stateNarrowed[0],
+        'resolveBySoleExactNameMatchByStateThenGeo',
+      );
+    }
     if (stateNarrowed.length < 2) return state;
 
     const addressNarrowed = stateNarrowed.filter(
@@ -1740,7 +1921,13 @@ export function resolveBySoleExactNameMatchByStateThenGeo(): Stage {
         mergedScore(candidate).doesCityMatch?.pass === true ||
         mergedScore(candidate).doesZipCodeMatch?.pass === true,
     );
-    if (addressNarrowed.length === 1) return resolveOnCandidate(state, addressNarrowed[0]);
+    if (addressNarrowed.length === 1) {
+      return resolveOnCandidate(
+        state,
+        addressNarrowed[0],
+        'resolveBySoleExactNameMatchByStateThenGeo',
+      );
+    }
 
     return state;
   };
@@ -1772,7 +1959,7 @@ export function resolveBySoleExactNameMatchNoAcmsData(): Stage {
     );
     if (exactMatches.length !== 1) return state;
 
-    return resolveOnCandidate(state, exactMatches[0]);
+    return resolveOnCandidate(state, exactMatches[0], 'resolveBySoleExactNameMatchNoAcmsData');
   };
 }
 
@@ -1814,7 +2001,7 @@ export function resolveBySoleFuzzyFirstNameMatchNoAcmsData(): Stage {
     if (!acmsFirst || !camsFirst) return state;
     if (!isFuzzyNamePartMatch(acmsFirst.toLowerCase(), camsFirst.toLowerCase())) return state;
 
-    return resolveOnCandidate(state, candidate);
+    return resolveOnCandidate(state, candidate, 'resolveBySoleFuzzyFirstNameMatchNoAcmsData');
   };
 }
 
@@ -1871,7 +2058,11 @@ export function resolveBySoleFuzzyFirstNameMatchAfterAddressNarrowing(): Stage {
     if (!acmsFirst || !camsFirst) return state;
     if (!isFuzzyNamePartMatch(acmsFirst.toLowerCase(), camsFirst.toLowerCase())) return state;
 
-    return resolveOnCandidate(state, candidate);
+    return resolveOnCandidate(
+      state,
+      candidate,
+      'resolveBySoleFuzzyFirstNameMatchAfterAddressNarrowing',
+    );
   };
 }
 
@@ -1935,7 +2126,11 @@ export function resolveByConsensus(): Stage {
 
     return {
       ...state,
-      match: { trusteeId: candidate.camsRaw.trusteeId, score: candidate.scores },
+      match: {
+        trusteeId: candidate.camsRaw.trusteeId,
+        score: candidate.scores,
+        resolvedBy: 'resolveByConsensus',
+      },
     };
   };
 }
@@ -1977,7 +2172,11 @@ export function resolveBySoleFuzzyNameMatchAndState(): Stage {
 
     return {
       ...state,
-      match: { trusteeId: candidate.camsRaw.trusteeId, score: candidate.scores },
+      match: {
+        trusteeId: candidate.camsRaw.trusteeId,
+        score: candidate.scores,
+        resolvedBy: 'resolveBySoleFuzzyNameMatchAndState',
+      },
     };
   };
 }
@@ -2031,6 +2230,16 @@ function findSoleZeroNameScoreCandidateWithMatchingLastName(
 }
 
 /**
+ * Whether two full first names share the same leading letter - a weaker signal than
+ * isFuzzyNamePartMatch (it says nothing about the REST of the name, e.g. "Nikki" and "Nichole"
+ * share only "N"), so this is never trusted alone - see FIRST_INITIAL_MATCH's only caller,
+ * resolveByLastNameOnlyConsensus, for the much stronger corroboration bar it requires instead.
+ */
+function shareFirstInitial(acmsFirst: string, camsFirst: string): boolean {
+  return !!acmsFirst && !!camsFirst && acmsFirst[0] === camsFirst[0];
+}
+
+/**
  * The complementary gate to resolveByConsensus: resolves a sole candidate whose lastName matches
  * exactly but whose OVERALL nameScore was 0.
  *
@@ -2044,6 +2253,20 @@ function findSoleZeroNameScoreCandidateWithMatchingLastName(
  * - Never runs for a candidate resolveByConsensus already covers: that stage's gate is
  *   doesNameMatch.pass===true, this stage's gate is doesNameMatch.value===0 - the two are
  *   mutually exclusive, since calculateNameScore never returns a value strictly between them.
+ *
+ * SECOND, independent path (added for a real regression shape, name synthesized: ACMS "Nikki
+ * [Surname]" vs CAMS "Nichole B. [Surname]" - a genuine nickname pair with real phonetic
+ * divergence that fails JaroWinkler, SoundEx, Metaphone, AND DoubleMetaphone alike; no general
+ * string-similarity signal closes this gap): a sole exact-lastName candidate whose first names
+ * merely share a leading letter (shareFirstInitial - much weaker than isFuzzyNamePartMatch, since
+ * it says nothing about the rest of either name) can still resolve, but ONLY when
+ * isFullyCorroboratedByGeoAndContact holds - geography AND independent contact evidence BOTH
+ * agree, not isCorroboratedByGeoOrContact's weaker "either" bar. Confirmed against the real
+ * 2026-09-25 export before adding this: of 42 real same-first-initial, total-name-mismatch
+ * candidate pairs, only 2 (this shape, and a genuine "Hank"/"Henry [Surname]" nickname pair) clear
+ * the both-required bar; the other 40 are real same-surname-different-person collisions (sharing a
+ * surname and state but no other evidence) that the weaker "either" bar would have wrongly
+ * resolved.
  */
 export function resolveByLastNameOnlyConsensus(): Stage {
   return async (state: PipelineState): Promise<PipelineState> => {
@@ -2064,7 +2287,13 @@ export function resolveByLastNameOnlyConsensus(): Stage {
     // lastName token match plus mere city/state agreement (isCorroboratedByGeoOrContact's
     // weakest, geography-only path) could resolve two different people who happen to share a
     // surname and live in the same state (e.g. ACMS "William Doe" -> CAMS "Larry D. Doe").
-    const corroborated = fuzzyFirstNameMatches && isCorroboratedByGeoOrContact(candidate);
+    const corroboratedByFuzzyName =
+      fuzzyFirstNameMatches && isCorroboratedByGeoOrContact(candidate);
+    const corroboratedByInitialAlone =
+      !fuzzyFirstNameMatches &&
+      shareFirstInitial(acmsFirst, camsFirst) &&
+      isFullyCorroboratedByGeoAndContact(candidate);
+    const corroborated = corroboratedByFuzzyName || corroboratedByInitialAlone;
     addScore(candidate, 'resolveByLastNameOnlyConsensus', {
       value: corroborated ? 100 : 0,
       threshold: 100,
@@ -2074,7 +2303,11 @@ export function resolveByLastNameOnlyConsensus(): Stage {
 
     return {
       ...state,
-      match: { trusteeId: candidate.camsRaw.trusteeId, score: candidate.scores },
+      match: {
+        trusteeId: candidate.camsRaw.trusteeId,
+        score: candidate.scores,
+        resolvedBy: 'resolveByLastNameOnlyConsensus',
+      },
     };
   };
 }
@@ -2162,7 +2395,11 @@ export function resolveByFuzzyLastNameMatch(): Stage {
 
     return {
       ...state,
-      match: { trusteeId: candidate.camsRaw.trusteeId, score: candidate.scores },
+      match: {
+        trusteeId: candidate.camsRaw.trusteeId,
+        score: candidate.scores,
+        resolvedBy: 'resolveByFuzzyLastNameMatch',
+      },
     };
   };
 }
