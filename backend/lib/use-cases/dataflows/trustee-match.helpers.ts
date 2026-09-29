@@ -149,8 +149,24 @@ export function normalizeNameForMatching(name: string): string {
  * record's city/zip evidence entirely.
  * Symmetrically, some ACMS records omit the city entirely (e.g. "TX 79417-0000") - city: '' is
  * returned rather than discarding the whole parse, so a real state+zip match still corroborates.
- * Returns null only when no zip-like token exists at all, or when neither a city nor a state
- * precedes it - a bare zip alone, with nothing else to anchor it, is too weak to trust.
+ *
+ * Real bug, confirmed via pipeline-replay-backtest.ts against the 2026-09-25 export: a record with
+ * NO zip token at all (e.g. "SAN DIEGO CA" - no zip ever recorded for this ACMS professional) used
+ * to return null unconditionally the instant no zip-like token was found (the OLD first check
+ * below), discarding a genuine, comparable city+state pair sitting right there in the string. 71
+ * real records share this exact shape - a real city+state match this genuine, with the ACMS side
+ * carrying no other comparable data (no street address, "0" phone sentinel), previously produced
+ * ZERO city/state/zip/address evidence anywhere in the pipeline, even though a human reviewer can
+ * see the match immediately (a real shape, name synthesized: ACMS "Jordan Roe", "San Diego CA" - no
+ * zip - vs. the sole CAMS candidate "Jordan A. Roe" whose own address is also San Diego, CA).
+ * zipIndex === -1 now falls back to treating the trailing token as a potential state (same
+ * STATE_TOKEN/VALID_STATE_CODES check the zip-anchored path already uses) and everything before it
+ * as the city, with zipCode: '' (never null - every real caller already treats a
+ * shorter-than-5-digit zip as "not comparable," so an empty string flows through safely to the same
+ * "no record when data unavailable" outcome the zip-comparison scorers already produce for a
+ * genuinely absent zip - see scoreZipCodeMatch/pipelineAddressScore's own zip5 helpers). Only when
+ * NEITHER a zip token NOR a recognizable trailing state token exists does this return null - the
+ * same "too weak to trust" bar the zip-anchored path already enforces below.
  */
 const STATE_TOKEN = /^[A-Za-z]{2}$/;
 const ZIP_TOKEN = /^\d{5}(?:-\d{4})?$/;
@@ -174,7 +190,18 @@ export function parseCityStateZip(cityStateZipCountry?: string): {
       break;
     }
   }
-  if (zipIndex === -1) return null;
+
+  if (zipIndex === -1) {
+    const trailingToken = tokens[tokens.length - 1];
+    const trailingIsState =
+      trailingToken !== undefined &&
+      STATE_TOKEN.test(trailingToken) &&
+      VALID_STATE_CODES.has(trailingToken.toUpperCase());
+    if (!trailingIsState) return null;
+    const city = tokens.slice(0, tokens.length - 1).join(' ');
+    if (!city) return null;
+    return { city, state: trailingToken, zipCode: '' };
+  }
 
   // A literal "-0000" +4 suffix is a placeholder, not a real ZIP+4 extension - the vast majority
   // of ACMS addresses carry it, far too common to be genuine +4 data for that many distinct

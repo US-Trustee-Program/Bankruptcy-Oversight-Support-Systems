@@ -831,8 +831,37 @@ describe('parseCityStateZip', () => {
     });
   });
 
-  test('returns null when no zip-like token exists at all', () => {
-    expect(parseCityStateZip('Corinth MS')).toBeNull();
+  // Real bug, confirmed via pipeline-replay-backtest.ts against the 2026-09-25 export: this used to
+  // return null unconditionally the instant no zip-like token was found, discarding a genuine,
+  // comparable city+state pair - 71 real records share this exact shape (a real shape, name
+  // synthesized: ACMS "Jordan Roe", "San Diego CA" - no zip ever recorded - matched a real CAMS
+  // candidate also in San Diego, CA, but scored ZERO city/state evidence because the address never
+  // parsed at all). zipCode: '' (never a fabricated value) - every real caller already treats a
+  // shorter-than-5-digit zip as "not comparable" (see scoreZipCodeMatch/pipelineAddressScore's own
+  // zip5 helpers), so this flows through safely to the same "no record when data unavailable"
+  // outcome a genuinely absent zip already produces, while still recovering the real city/state.
+  test('recovers city and state with an empty zip when no zip-like token exists at all', () => {
+    expect(parseCityStateZip('Corinth MS')).toEqual({
+      city: 'Corinth',
+      state: 'MS',
+      zipCode: '',
+    });
+  });
+
+  test('recovers a multi-word city with an empty zip when no zip-like token exists', () => {
+    expect(parseCityStateZip('San Diego CA')).toEqual({
+      city: 'San Diego',
+      state: 'CA',
+      zipCode: '',
+    });
+  });
+
+  test('returns null when the trailing token is not a real state code and no zip exists', () => {
+    expect(parseCityStateZip('Corinth Mississippi')).toBeNull();
+  });
+
+  test('returns null when the string is only a bare state code with no city and no zip', () => {
+    expect(parseCityStateZip('CA')).toBeNull();
   });
 
   test('returns null when the string is only a zip with no city', () => {
