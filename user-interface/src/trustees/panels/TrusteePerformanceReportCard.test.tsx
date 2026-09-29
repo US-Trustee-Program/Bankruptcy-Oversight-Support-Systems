@@ -55,7 +55,7 @@ describe('TrusteePerformanceReportCard', () => {
   function renderCard(
     data: TrusteeUpcomingKeyDates | null = keyDates,
     isLoading = false,
-    variant: 'chapter7-panel' | 'chapter12-standing' = 'chapter7-panel',
+    variant: 'chapter7-panel' | 'chapter12-standing' | 'chapter13-standing' = 'chapter7-panel',
   ) {
     return render(
       <BrowserRouter>
@@ -129,11 +129,14 @@ describe('TrusteePerformanceReportCard', () => {
     expect(tag).toHaveTextContent('Incomplete for 2024');
   });
 
-  test.each<[Partial<TrusteeUpcomingKeyDates>]>([
-    [{ tprCompletionYear: undefined, tprCompletionStatus: 'COMPLETE' }],
-    [{ tprCompletionYear: 2025, tprCompletionStatus: undefined }],
-    [{ tprCompletionYear: undefined, tprCompletionStatus: undefined }],
-  ])('renders no completion tag when only one of year/status is set', (overrides) => {
+  test.each([
+    { label: 'only the completion year is set', overrides: { tprCompletionStatus: undefined } },
+    { label: 'only the completion status is set', overrides: { tprCompletionYear: undefined } },
+    {
+      label: 'neither year nor status is set',
+      overrides: { tprCompletionYear: undefined, tprCompletionStatus: undefined },
+    },
+  ])('renders no completion tag when $label', ({ overrides }) => {
     renderCard({
       ...keyDates,
       ...overrides,
@@ -177,6 +180,10 @@ describe('TrusteePerformanceReportCard', () => {
     [
       'chapter12-standing' as const,
       '/trustees/trustee-123/appointments/appointment-001/chapter12-standing-tpr-key-dates/edit',
+    ],
+    [
+      'chapter13-standing' as const,
+      '/trustees/trustee-123/appointments/appointment-001/chapter13-standing-tpr-key-dates/edit',
     ],
   ])('navigates to the edit route for %s variant', async (variant, expectedRoute) => {
     renderCard(keyDates, false, variant);

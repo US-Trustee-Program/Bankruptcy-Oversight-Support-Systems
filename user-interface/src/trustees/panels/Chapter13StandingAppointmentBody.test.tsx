@@ -23,8 +23,18 @@ function mockCard(testId: string) {
 vi.mock('./Chapter13StandingAuditCard', () => ({
   default: mockCard('chapter13-standing-audit-card'),
 }));
-vi.mock('./Chapter13StandingTrusteePerformanceReportCard', () => ({
-  default: mockCard('chapter13-standing-tpr-card'),
+vi.mock('./TrusteePerformanceReportCard', () => ({
+  default: (props: {
+    data: TrusteeUpcomingKeyDates | null;
+    isLoading: boolean;
+    variant: string;
+  }) => (
+    <div
+      data-testid="chapter13-standing-tpr-card"
+      data-has-data={String(props.data !== null)}
+      data-variant={props.variant}
+    />
+  ),
 }));
 vi.mock('./Chapter13StandingBudgetCard', () => ({
   default: () => <div data-testid="chapter13-standing-budget-card" />,
@@ -65,7 +75,6 @@ describe('Chapter13StandingAppointmentBody', () => {
   };
 
   beforeEach(() => {
-    vi.restoreAllMocks();
     vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
       [TRUSTEE_APPOINTMENT_ACCORDIONS]: true,
     });
@@ -113,6 +122,10 @@ describe('Chapter13StandingAppointmentBody', () => {
       expect(screen.getByTestId(testId)).toHaveAttribute('data-has-data', 'true');
     }
     expect(screen.getByTestId('chapter13-standing-budget-card')).toBeInTheDocument();
+    expect(screen.getByTestId('chapter13-standing-tpr-card')).toHaveAttribute(
+      'data-variant',
+      'chapter13-standing',
+    );
   });
 
   test('forwards null data to all data-driven cards when no key dates document exists', async () => {

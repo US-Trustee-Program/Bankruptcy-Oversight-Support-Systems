@@ -1,6 +1,6 @@
 import AppointmentBasicFields from './AppointmentBasicFields';
 import Chapter13StandingAuditCard from './Chapter13StandingAuditCard';
-import Chapter13StandingTrusteePerformanceReportCard from './Chapter13StandingTrusteePerformanceReportCard';
+import TrusteePerformanceReportCard from './TrusteePerformanceReportCard';
 import Chapter13StandingBudgetCard from './Chapter13StandingBudgetCard';
 import Chapter13StandingOtherCard from './Chapter13StandingOtherCard';
 import KeyDatesGate from './KeyDatesGate';
@@ -43,7 +43,14 @@ export default function Chapter13StandingAppointmentBody(
               data-testid="chapter13-standing-cards-stack"
             >
               <Chapter13StandingAuditCard {...commonCardProps} data={data} />
-              <Chapter13StandingTrusteePerformanceReportCard {...commonCardProps} data={data} />
+              <TrusteePerformanceReportCard
+                {...commonCardProps}
+                data={data}
+                isLoading={isLoading}
+                // The card's own spinner is unreachable while the body-level short-circuit above
+                // exists, but this prop is kept forward-compatible for when that short-circuit is removed.
+                variant="chapter13-standing"
+              />
               <Chapter13StandingBudgetCard appointmentId={appointment.id} />
               <Chapter13StandingOtherCard {...commonCardProps} data={data} />
             </div>
