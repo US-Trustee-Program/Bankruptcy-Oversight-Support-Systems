@@ -1,11 +1,7 @@
 import * as sdk from 'launchdarkly-react-client-sdk';
 import { FeatureFlagSet, testFeatureFlags } from '@common/feature-flags';
 import * as config from '../../configuration/featureFlagConfiguration';
-import useFeatureFlags, {
-  TRUSTEE_APPOINTMENT_ACCORDIONS,
-  TRUSTEE_ASSIGNED_STAFF_ENABLED,
-  TRUSTEE_CASE_LIST,
-} from './UseFeatureFlags';
+import useFeatureFlags, * as FeatureFlags from './UseFeatureFlags';
 import { mockConfiguration } from '../testing/mock-configuration';
 import { renderHook } from '@testing-library/react';
 
@@ -70,15 +66,28 @@ describe('useFeatureFlag hook', () => {
     expect(result.current).toEqual(testFeatureFlags);
   });
 
-  test('testFeatureFlags includes TRUSTEE_APPOINTMENT_ACCORDIONS as true', () => {
-    expect(testFeatureFlags[TRUSTEE_APPOINTMENT_ACCORDIONS]).toBe(true);
+  // Flag-name constants are UseFeatureFlags' string-valued exports; its other
+  // exports (the hook and its two helper functions) are functions. Filtering
+  // on type isolates every flag automatically, so a newly added flag is
+  // covered here without editing this file.
+  const flagConstants = Object.values(FeatureFlags).filter(
+    (value) => typeof value === 'string',
+  ) as string[];
+
+  // system-maintenance-banner carries the banner's message text rather than a
+  // boolean (Header.tsx renders its raw value), so omitting it from
+  // testFeatureFlags -- same as every real environment where no maintenance
+  // is scheduled -- is the correct default, not a gap. It's excluded here
+  // rather than left to silently fail the loop below.
+  const booleanFlagConstants = flagConstants.filter(
+    (flag) => flag !== FeatureFlags.SYSTEM_MAINTENANCE_BANNER,
+  );
+
+  test.each(booleanFlagConstants)('testFeatureFlags includes %s as true', (flag) => {
+    expect(testFeatureFlags[flag]).toBe(true);
   });
 
-  test('testFeatureFlags includes TRUSTEE_ASSIGNED_STAFF_ENABLED as true', () => {
-    expect(testFeatureFlags[TRUSTEE_ASSIGNED_STAFF_ENABLED]).toBe(true);
-  });
-
-  test('testFeatureFlags includes TRUSTEE_CASE_LIST as true', () => {
-    expect(testFeatureFlags[TRUSTEE_CASE_LIST]).toBe(true);
+  test('testFeatureFlags intentionally omits system-maintenance-banner', () => {
+    expect(FeatureFlags.SYSTEM_MAINTENANCE_BANNER in testFeatureFlags).toBe(false);
   });
 });
