@@ -1369,6 +1369,22 @@ const NO_CONTRADICTION_ADDRESS_FLOOR = 30;
  *   actively contradicting phone number and are correctly excluded here. The exceptions are
  *   genuine matches, typically an ACMS name carrying a stray marker (e.g. "INACTIVE") that still
  *   resolves to the correct, active CAMS trustee.
+ * - hasParseableAcmsAddress calls memoizedParseAcmsAddress directly rather than reading
+ *   state.sourceNormalized.address, despite that field existing as exactly this cache (see
+ *   memoizedParseAcmsAddress's own doc comment). Confirmed via pipeline-replay-backtest.ts against
+ *   the 2026-09-25 export as a real bug, not a hypothetical: resolveBySoleContactMatch's outer-pool
+ *   candidates (runTrusteeMatchPipeline's combined resolve pass) are scored inside a runNestedTier's
+ *   OWN nested state, a distinct sourceNormalized object from outerState.sourceNormalized -
+ *   promoteCandidate carries the candidate's already-computed scores into outerState, but nothing
+ *   copies the nested tier's cached address parse back onto outerState.sourceNormalized. Reading the
+ *   field directly here always saw it as unset for every outer-pool candidate, regardless of whether
+ *   the ACMS address genuinely parsed - silently disabling the address-contradiction check this
+ *   function exists to enforce, for 10 real records in the 2026-09-25 export (e.g. "3711 KENNETT
+ *   PIKE, SUITE 220" / "WILMINGTON DE 19807-2102", a real parseable address that scored 5/100
+ *   against the matched CAMS candidate's address - a genuine contradiction this function was
+ *   supposed to catch and didn't). Calling memoizedParseAcmsAddress here is correct regardless of
+ *   cache state - a cache hit if some earlier scorer in this same tier already populated it, a cheap
+ *   recompute otherwise.
  */
 function isNoContradictionMatch(state: PipelineState, candidate: PipelineCandidate): boolean {
   const scores = mergedScore(candidate);
@@ -1381,7 +1397,7 @@ function isNoContradictionMatch(state: PipelineState, candidate: PipelineCandida
 
   if (scores.doesAcmsTrusteeHaveAddressAndPhone?.pass === false) return false;
 
-  const hasParseableAcmsAddress = state.sourceNormalized.address !== undefined;
+  const hasParseableAcmsAddress = memoizedParseAcmsAddress(state.sourceNormalized) !== null;
   const addressScore = scores.contactCorroborationAddress;
   const hasContradictingAddress =
     hasParseableAcmsAddress &&
