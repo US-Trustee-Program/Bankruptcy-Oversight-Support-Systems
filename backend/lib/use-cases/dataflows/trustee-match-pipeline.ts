@@ -29,6 +29,41 @@ export function projectTrustee(trustee: Trustee): ProjectedTrustee {
 }
 
 /**
+ * Three-valued (Kleene K3) logic: true = agrees, false = genuinely conflicts, null = neutral/no
+ * evidence either way (not merely "unknown" in the sense of "not yet computed" - a function
+ * returning this type has definitely considered the question and concluded there is nothing to
+ * compare, e.g. one side has no data at all). Named so a signature or a ScoreRecord field says what
+ * `null` means on its own, without a reader having to open the function's doc comment - a bare
+ * `boolean | null` return type carries the same three values but no name for them, which is exactly
+ * what let calculateNameScore-family functions collapse a genuine three-way fact (match/conflict/
+ * no-evidence) into a same-scale sentinel NUMBER instead (see MIDDLE_NAME_ONLY_CONFLICT_SCORE in
+ * trustee-match-pipeline-stages.ts for the real bug that caused).
+ */
+export type KleeneBoolean = boolean | null;
+
+/**
+ * The gotcha KleeneBoolean exists to prevent: `false` (genuinely conflicts) is falsy in JS/TS,
+ * exactly like `null` (neutral) is - `if (!someKleeneBoolean)` silently treats a real, recorded
+ * conflict the same as "nothing to compare," which is never correct. foldKleene is the preferred
+ * guard: the value itself selects which lambda runs, so there is no separate boolean condition to
+ * write backwards the way a bare `if (!someKleeneBoolean)`/`=== null` check still could be.
+ * Collapses a KleeneBoolean into a single value by running exactly one of three lambdas - most
+ * scorers following the "no record when data unavailable" convention (see doesStateMatch/
+ * doesCityMatch/doesMiddleNameMatch's own doc comments) reduce to exactly this shape - onNeutral
+ * returns the candidate unchanged, onAgreement/onConflict each call addScore with the appropriate
+ * ScoreRecord - so a scorer's body becomes one expression instead of an early-return `if`.
+ */
+export function foldKleene<T>(
+  value: KleeneBoolean,
+  onNeutral: () => T,
+  onAgreement: () => T,
+  onConflict: () => T,
+): T {
+  if (value === null) return onNeutral();
+  return value ? onAgreement() : onConflict();
+}
+
+/**
  * One scorer's contribution to a candidate's evaluation history. `value` is always
  * "higher is better" on a 0-100 scale - a scorer whose natural signal runs the other way (e.g.
  * phoneDigitDistance) converts to this convention. `threshold` is the cutoff active when this
@@ -41,9 +76,23 @@ export type ScoreRecord = {
   pass: boolean;
 } & Record<string, unknown>;
 
-/** A candidate's full evaluation history, keyed by scorer name (see addScore). A scorer with more
+/**
+ * A candidate's full evaluation history, keyed by scorer name (see addScore). A scorer with more
  * than one independent signal (e.g. address and phone) uses multiple keys rather than bundling
- * unrelated value/threshold/pass triples into one entry. */
+ * unrelated value/threshold/pass triples into one entry.
+ *
+ * THE CANONICAL STATEMENT of a convention several individual scorers each explain only in their
+ * own doc comment (doesStateMatch/doesCityMatch/doesZipCodeMatch/doesMiddleNameMatch, cross-
+ * referencing each other rather than one shared source): a scorer whose comparison is a
+ * KleeneBoolean represents NEUTRAL by never calling addScore for that key at all, not by writing a
+ * ScoreRecord with some neutral-flavored value. The key's ABSENCE from this map, not any field
+ * inside a present ScoreRecord, is what carries the neutral state - `scores.doesFooMatch` is
+ * `undefined` for neutral, a real ScoreRecord (pass: true or pass: false) only for a genuine,
+ * actually-performed comparison. `ScoreRecord.pass` itself stays a plain, non-nullable `boolean`
+ * specifically BECAUSE this convention exists: a scorer with nothing to compare never constructs a
+ * ScoreRecord in the first place, so `pass` is never asked to represent "unknown" - if it needs to
+ * express that, don't write the record; check for its absence.
+ */
 export type ScoreByScorer = Record<string, ScoreRecord>;
 
 /**

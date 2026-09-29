@@ -42,6 +42,8 @@ import {
   addCandidate,
   addDisqualifier,
   addScore,
+  foldKleene,
+  KleeneBoolean,
   mergedScore,
   normalize,
   NormalizedMemo,
@@ -74,6 +76,81 @@ const MODULE_NAME = 'TRUSTEE-MATCH-PIPELINE-STAGES';
  * nearest miss - accepted, since no-match for manual review beats a false-positive auto-link).
  */
 const FUZZY_NAME_PART_JARO_WINKLER_THRESHOLD = 0.88;
+
+/**
+ * The only two values pipelineNameScore returns for a candidate whose last name matches exactly
+ * (isExactLastNameMatch) but whose first/middle name comparison contributes real doubt rather than
+ * confidence:
+ *   - 0: firstScore itself was 0 (scoreFirstNamePart found no plausible relationship at all between
+ *     the two first names - not even a nickname/initial).
+ *   - 15: firstScore cleared 85 (a genuine match, nickname, or initial relationship), but
+ *     pipelineMiddleNameScore found a real middle-name conflict (two bare initials that disagree,
+ *     or two full middle names that fail isFuzzyNamePartMatch) - Math.min(firstScore, middleScore)
+ *     collapses to middleScore's 15 despite the strong first-name agreement underneath it.
+ * Both values are otherwise unreachable by any RESOLVE stage in resolveStages() (see its own doc
+ * comment on stage order): every stage from resolveBySoleContactMatch through
+ * resolveBySoleFuzzyNameMatchAndState gates on doesNameMatch.pass (>= 85), and 15 clears neither
+ * that bar nor the exact-0 gate findSoleZeroNameScoreCandidateWithMatchingLastName used to have. A
+ * candidate stuck at 15 fell into a real dead zone no resolver covered - confirmed via
+ * pipeline-replay-backtest.ts against the 2026-09-25 export: 33 unresolved records (a real shape,
+ * name synthesized: ACMS "Jordan S [Surname]" -> CAMS "Jordan A. [Surname]", both address AND phone
+ * independently corroborating).
+ *
+ * Used by findSoleZeroNameScoreCandidateWithMatchingLastName's own gate, restoring RESOLVE-stage
+ * visibility for a candidate that already reached the outer pool. Deliberately NOT also used by
+ * shouldEvictFromDiscovery's exception (a real state conflict still evicts a nameScore=15
+ * candidate during discovery) - see that function's own doc comment for why a bare nameScore
+ * equality check there is unsafe: it readmits every candidate sharing the ACMS record's exact
+ * first+last name pattern, which multiple different, unrelated real people can do at once for a
+ * common name, not just the one genuine match this constant exists to rescue.
+ */
+const MIDDLE_NAME_ONLY_CONFLICT_SCORE = 15;
+
+/**
+ * Named readers of an already-computed doesNameMatch ScoreRecord (see scoreNameMatch/
+ * pipelineNameScore - scored ONCE per candidate at discovery time, never recomputed here) - every
+ * RESOLVE stage that gates on doesNameMatch reads one of these instead of retyping the literal
+ * value/pass comparison inline. Purely a naming/consistency refactor over the exact same stored
+ * values every one of these call sites already read; no behavior change, no new computation.
+ *
+ * - isExactNameMatch: value === 100, the highest-trust tier (resolveBySoleExactNameMatch and
+ *   friends) - both sides matched with no relaxation at all (no initial, nickname, or swap).
+ * - isNameMatchCorroborated: pass === true (value >= 85) - the general "good enough to try
+ *   resolving on" bar every fuzzy-tier resolver (resolveBySoleContactMatch, resolveByConsensus,
+ *   etc.) requires before considering independent corroboration.
+ * - isFuzzyNameMatch: pass === true but value !== 100 - corroborated, but via some relaxation
+ *   (initial, nickname, or swap) rather than an exact match; distinguishes resolvers that need to
+ *   treat "exact" and "merely corroborated" differently (see resolveBySoleFuzzyNameMatchAndState's
+ *   own gate).
+ * - hasNoNameMatchEvidence: value === 0 - pipelineNameScore found no plausible relationship at all,
+ *   the gate resolveByConsensus's complementary fuzzy-first-name-vote stages
+ *   (resolveByLastNameOnlyConsensus, resolveByFuzzyLastNameMatch) require before even trying a
+ *   weaker, name-independent corroboration path.
+ * - isInMiddleNameOnlyDeadZone: value === 0 or MIDDLE_NAME_ONLY_CONFLICT_SCORE - see that
+ *   constant's own doc comment; the two values findSoleZeroNameScoreCandidateWithMatchingLastName's
+ *   gate accepts.
+ */
+function isExactNameMatch(candidate: PipelineCandidate): boolean {
+  return mergedScore(candidate).doesNameMatch?.value === 100;
+}
+
+function isNameMatchCorroborated(candidate: PipelineCandidate): boolean {
+  return mergedScore(candidate).doesNameMatch?.pass === true;
+}
+
+function isFuzzyNameMatch(candidate: PipelineCandidate): boolean {
+  const nameMatch = mergedScore(candidate).doesNameMatch;
+  return nameMatch?.pass === true && nameMatch.value !== 100;
+}
+
+function hasNoNameMatchEvidence(candidate: PipelineCandidate): boolean {
+  return mergedScore(candidate).doesNameMatch?.value === 0;
+}
+
+function isInMiddleNameOnlyDeadZone(candidate: PipelineCandidate): boolean {
+  const nameScore = mergedScore(candidate).doesNameMatch?.value;
+  return nameScore === 0 || nameScore === MIDDLE_NAME_ONLY_CONFLICT_SCORE;
+}
 
 function isFuzzyNamePartMatch(acmsNamePart: string, camsNamePart: string): boolean {
   const a = acmsNamePart.toLowerCase();
@@ -139,6 +216,41 @@ function pipelineMiddleNameScore(
   if (isBareInitial(dxtrMiddle) && isBareInitial(camsMiddle)) return 15;
   if (isBareInitial(dxtrMiddle) || isBareInitial(camsMiddle)) return 100;
   return memoizedIsFuzzyNamePartMatch(memo, dxtrMiddle, camsMiddle) ? 85 : 15;
+}
+
+/**
+ * The same decision pipelineMiddleNameScore makes, reported as its own tri-state FACT
+ * (null = neutral/no-evidence, true = agrees, false = genuinely conflicts) instead of folded into
+ * a single collapsed number sharing pipelineNameScore's 0-100 scale. Exists because that collapse
+ * is what created MIDDLE_NAME_ONLY_CONFLICT_SCORE (15) in the first place - a sentinel VALUE
+ * standing in for a categorical fact, reachable only because nothing else on that scale happens to
+ * also land on 15 today. A resolver gating on `nameScore === 15` is one unrelated future scoring
+ * change away from silently matching a different case entirely; a resolver reading
+ * doesMiddleNameMatch directly never has that risk, because the fact is recorded under its own
+ * name instead of multiplexed through a shared numeric channel.
+ *
+ * - null (neutral, no ScoreRecord written - see scoreMiddleNameMatch): either side has no middle
+ *   name at all - nothing to compare, not real evidence either way.
+ * - true (agrees): exact match, OR one side a bare initial that matches the other's leading
+ *   character after collapsing the full name down to its initial (isInitialOf either direction) -
+ *   a real, positive agreement, not merely an information gap: an initial genuinely consistent
+ *   with the other side's full name IS corroborating evidence, just weaker than an exact match.
+ * - false (genuinely conflicts): both sides bare initials that disagree (real, if weak, evidence -
+ *   see pipelineMiddleNameScore's own doc comment on the "Michael P/Michael E" regression this
+ *   guards against), or both sides full middle names that fail isFuzzyNamePartMatch's
+ *   distance/similarity threshold.
+ */
+function pipelineMiddleNameMatch(
+  memo: NormalizedMemo,
+  dxtrMiddle: string,
+  camsMiddle: string,
+): KleeneBoolean {
+  if (!dxtrMiddle || !camsMiddle) return null;
+  if (dxtrMiddle === camsMiddle) return true;
+  if (isInitialOf(dxtrMiddle, camsMiddle) || isInitialOf(camsMiddle, dxtrMiddle)) return true;
+  if (isBareInitial(dxtrMiddle) && isBareInitial(camsMiddle)) return false;
+  if (isBareInitial(dxtrMiddle) || isBareInitial(camsMiddle)) return null;
+  return memoizedIsFuzzyNamePartMatch(memo, dxtrMiddle, camsMiddle);
 }
 
 /**
@@ -870,6 +982,44 @@ function scoreNameMatch(
   return candidate;
 }
 
+/**
+ * Records pipelineMiddleNameMatch's tri-state fact as its own named ScoreRecord
+ * (doesMiddleNameMatch), independent of doesNameMatch's collapsed overall score - see
+ * pipelineMiddleNameMatch's own doc comment for why this exists as a separate signal rather than
+ * only feeding into that collapse. Follows the same "no record when neutral" convention as
+ * doesStateMatch/doesCityMatch/doesZipCodeMatch (see their own doc comments): a null result (no
+ * middle name to compare on one or both sides) writes nothing at all, so a resolver checking
+ * `scores.doesMiddleNameMatch === undefined` reliably means "no evidence," never confusable with a
+ * real, recorded conflict (pass: false).
+ *
+ * Deliberately NOT yet read by any RESOLVE stage - pipelineNameScore/doesNameMatch remain the only
+ * gate every existing resolver uses, so adding this scorer is a pure, zero-behavior-change
+ * observation added to the evidence graph (visible in pipeline-replay-backtest.ts's JSONL output
+ * and the CSV partitions) ahead of any resolver being changed to read it.
+ */
+function scoreMiddleNameMatch(
+  sourceNormalized: NormalizedTrustee,
+  candidate: PipelineCandidate,
+): PipelineCandidate {
+  const middleNameMatch = pipelineMiddleNameMatch(
+    candidate.memo,
+    sourceNormalized.middleName ?? '',
+    candidate.camsNormalized.middleName ?? '',
+  );
+  return foldKleene(
+    middleNameMatch,
+    () => candidate,
+    () => {
+      addScore(candidate, 'doesMiddleNameMatch', boolMatchRecord(true));
+      return candidate;
+    },
+    () => {
+      addScore(candidate, 'doesMiddleNameMatch', boolMatchRecord(false));
+      return candidate;
+    },
+  );
+}
+
 function normalizeForSimilarity(name: string): string {
   return name.toLowerCase().replaceAll("'", '').replace(/[.,-]/g, ' ').replace(/\s+/g, ' ').trim();
 }
@@ -991,6 +1141,19 @@ function recordSimilarityDiagnostics(
  * mirrors pass (100/0) purely so it conforms to ScoreRecord's shared vocabulary. */
 function stateMatchRecord(stateMatch: boolean): ScoreRecord {
   return { value: stateMatch ? 100 : 0, threshold: 100, pass: stateMatch };
+}
+
+/**
+ * Converts a KleeneBoolean field-comparison result into the ScoreRecord shape addScore expects -
+ * shared by every scorer that follows the "no record when data unavailable" convention (see
+ * doesStateMatch/doesCityMatch/doesZipCodeMatch/doesMiddleNameMatch's own doc comments): the caller
+ * computes null when either side has nothing comparable, true/false only when a real comparison
+ * happened, and this function is never even called for the null case - the ScoreRecord itself has
+ * no way to represent "no evidence" (value/threshold/pass are all required), so null must be
+ * filtered out by the caller before reaching here, not encoded into the record.
+ */
+function boolMatchRecord(match: boolean): ScoreRecord {
+  return { value: match ? 100 : 0, threshold: 100, pass: match };
 }
 
 /**
@@ -1192,20 +1355,40 @@ function scoreStateNotConflicting(
  * doesCityMatch/doesZipCodeMatch - no override paths, no defaults, only a genuine state comparison
  * counts as a vote at all.
  */
+/** The KleeneBoolean fact scoreStateMatch records - null when either side has no comparable
+ * state, true/false only for a genuine comparison. Factored out so the "compute the fact" and
+ * "decide whether to record it" steps are as explicit as pipelineMiddleNameMatch's own shape. */
+function stateMatch(
+  sourceNormalized: NormalizedTrustee,
+  candidate: PipelineCandidate,
+): KleeneBoolean {
+  const parsedAcmsAddress = memoizedParseAcmsAddress(sourceNormalized);
+  const acmsState = parsedAcmsAddress?.state?.toLowerCase();
+  if (!acmsState) return null;
+
+  const camsState = candidate.camsRaw.address?.state?.toLowerCase();
+  if (!camsState) return null;
+
+  return camsState === acmsState;
+}
+
 function scoreStateMatch(
   sourceNormalized: NormalizedTrustee,
   candidate: PipelineCandidate,
 ): PipelineCandidate {
-  const parsedAcmsAddress = memoizedParseAcmsAddress(sourceNormalized);
-  const acmsState = parsedAcmsAddress?.state?.toLowerCase();
-  if (!acmsState) return candidate;
-
-  const camsState = candidate.camsRaw.address?.state?.toLowerCase();
-  if (!camsState) return candidate;
-
-  const pass = camsState === acmsState;
-  addScore(candidate, 'doesStateMatch', { value: pass ? 100 : 0, threshold: 100, pass });
-  return candidate;
+  const match = stateMatch(sourceNormalized, candidate);
+  return foldKleene(
+    match,
+    () => candidate,
+    () => {
+      addScore(candidate, 'doesStateMatch', boolMatchRecord(true));
+      return candidate;
+    },
+    () => {
+      addScore(candidate, 'doesStateMatch', boolMatchRecord(false));
+      return candidate;
+    },
+  );
 }
 
 /**
@@ -1220,20 +1403,39 @@ function scoreStateMatch(
  * not evidence either way, so it should not count as a vote (see resolveByConsensus's
  * "scorers that actually ran" framing).
  */
+/** The KleeneBoolean fact scoreCityMatch records - see stateMatch's own doc comment for why this
+ * is factored out as its own named step. */
+function cityMatch(
+  sourceNormalized: NormalizedTrustee,
+  candidate: PipelineCandidate,
+): KleeneBoolean {
+  const parsedAcmsAddress = memoizedParseAcmsAddress(sourceNormalized);
+  const acmsCity = parsedAcmsAddress?.city.toLowerCase();
+  if (!acmsCity) return null;
+
+  const camsCity = candidate.camsRaw.address?.city?.toLowerCase();
+  if (!camsCity) return null;
+
+  return camsCity === acmsCity;
+}
+
 function scoreCityMatch(
   sourceNormalized: NormalizedTrustee,
   candidate: PipelineCandidate,
 ): PipelineCandidate {
-  const parsedAcmsAddress = memoizedParseAcmsAddress(sourceNormalized);
-  const acmsCity = parsedAcmsAddress?.city.toLowerCase();
-  if (!acmsCity) return candidate;
-
-  const camsCity = candidate.camsRaw.address?.city?.toLowerCase();
-  if (!camsCity) return candidate;
-
-  const pass = camsCity === acmsCity;
-  addScore(candidate, 'doesCityMatch', { value: pass ? 100 : 0, threshold: 100, pass });
-  return candidate;
+  const match = cityMatch(sourceNormalized, candidate);
+  return foldKleene(
+    match,
+    () => candidate,
+    () => {
+      addScore(candidate, 'doesCityMatch', boolMatchRecord(true));
+      return candidate;
+    },
+    () => {
+      addScore(candidate, 'doesCityMatch', boolMatchRecord(false));
+      return candidate;
+    },
+  );
 }
 
 /**
@@ -1244,20 +1446,39 @@ function scoreCityMatch(
  * added when either side has fewer than 5 digits to compare (unparseable ACMS address, or a
  * candidate with no/blank zipCode) - same "absence is not evidence" rule as doesCityMatch.
  */
+/** The KleeneBoolean fact scoreZipCodeMatch records - see stateMatch's own doc comment for why
+ * this is factored out as its own named step. */
+function zipCodeMatch(
+  sourceNormalized: NormalizedTrustee,
+  candidate: PipelineCandidate,
+): KleeneBoolean {
+  const parsedAcmsAddress = memoizedParseAcmsAddress(sourceNormalized);
+  const acmsZip5 = parsedAcmsAddress?.zipCode.slice(0, 5);
+  if (!acmsZip5 || acmsZip5.length < 5) return null;
+
+  const camsZip5 = candidate.camsRaw.address?.zipCode?.slice(0, 5);
+  if (!camsZip5 || camsZip5.length < 5) return null;
+
+  return camsZip5 === acmsZip5;
+}
+
 function scoreZipCodeMatch(
   sourceNormalized: NormalizedTrustee,
   candidate: PipelineCandidate,
 ): PipelineCandidate {
-  const parsedAcmsAddress = memoizedParseAcmsAddress(sourceNormalized);
-  const acmsZip5 = parsedAcmsAddress?.zipCode.slice(0, 5);
-  if (!acmsZip5 || acmsZip5.length < 5) return candidate;
-
-  const camsZip5 = candidate.camsRaw.address?.zipCode?.slice(0, 5);
-  if (!camsZip5 || camsZip5.length < 5) return candidate;
-
-  const pass = camsZip5 === acmsZip5;
-  addScore(candidate, 'doesZipCodeMatch', { value: pass ? 100 : 0, threshold: 100, pass });
-  return candidate;
+  const match = zipCodeMatch(sourceNormalized, candidate);
+  return foldKleene(
+    match,
+    () => candidate,
+    () => {
+      addScore(candidate, 'doesZipCodeMatch', boolMatchRecord(true));
+      return candidate;
+    },
+    () => {
+      addScore(candidate, 'doesZipCodeMatch', boolMatchRecord(false));
+      return candidate;
+    },
+  );
 }
 
 /**
@@ -1320,7 +1541,7 @@ export function scoreNameDisqualifiers(
   sourceNormalized: NormalizedTrustee,
   candidate: PipelineCandidate,
 ): PipelineCandidate {
-  if (mergedScore(candidate).doesNameMatch?.value !== 0) return candidate;
+  if (!hasNoNameMatchEvidence(candidate)) return candidate;
 
   const acmsFirst = sourceNormalized.firstName ?? '';
   const camsFirst = candidate.camsNormalized.firstName ?? '';
@@ -1396,7 +1617,7 @@ const NO_CONTRADICTION_ADDRESS_FLOOR = 30;
  */
 function isNoContradictionMatch(state: PipelineState, candidate: PipelineCandidate): boolean {
   const scores = mergedScore(candidate);
-  if (scores.doesNameMatch?.value !== 100) return false;
+  if (!isExactNameMatch(candidate)) return false;
 
   const hasNoComparablePhoneOrEmail =
     scores.contactCorroborationPhone === undefined &&
@@ -1437,9 +1658,7 @@ export function resolveBySoleContactMatch(): Stage {
     );
     if (candidates.length === 0) return state;
 
-    const qualifying = candidates.filter(
-      ([, candidate]) => mergedScore(candidate).doesNameMatch?.pass === true,
-    );
+    const qualifying = candidates.filter(([, candidate]) => isNameMatchCorroborated(candidate));
     if (qualifying.length === 1) {
       const [trusteeId, candidate] = qualifying[0];
       const scores = mergedScore(candidate);
@@ -1516,7 +1735,7 @@ export function resolveByComparativeCorroboration(): Stage {
   return async (state: PipelineState): Promise<PipelineState> => {
     const qualifying = [...state.candidates.values()].filter(
       (candidate) =>
-        mergedScore(candidate).doesNameMatch?.pass === true &&
+        isNameMatchCorroborated(candidate) &&
         mergedScore(candidate).hasComparableContactData?.pass !== false,
     );
     if (qualifying.length < 2) return state;
@@ -1616,7 +1835,7 @@ function scorePhoneTypoTolerance(
   sourceNormalized: NormalizedTrustee,
   candidate: PipelineCandidate,
 ): PipelineCandidate {
-  if (mergedScore(candidate).doesNameMatch?.value !== 100) return candidate;
+  if (!isExactNameMatch(candidate)) return candidate;
 
   const distance = phoneDigitDistance(
     sourceNormalized.legacy?.phone,
@@ -1667,6 +1886,7 @@ const CANDIDATE_SCORERS: CandidateScorer[] = [
   scoreHasComparableContactData, // reads both scores above - must run after them
   scoreStateNotConflicting,
   scoreNameMatch,
+  scoreMiddleNameMatch,
   scoreNameDisqualifiers, // reads scoreNameMatch's doesNameMatch - must run after it
   recordSimilarityDiagnostics,
   scoreCityMatch,
@@ -1704,9 +1924,73 @@ export function scoreCandidate(
 }
 
 /**
+ * Whether a freshly-scored candidate should be evicted from state.candidates before any RESOLVE
+ * stage, or any later discovery tier, ever sees it - a real, comparable state disagreement
+ * (doesStateMatch?.pass === false, set only when BOTH sides have comparable state data - see
+ * scoreStateMatch's own "no record when data unavailable" convention) with no real name evidence to
+ * counterbalance it (doesNameMatch?.pass !== true). Deliberately does NOT read
+ * isStateNotConflicting - that field's override condition (nameScore >= 85, the exact same
+ * pipelineNameScore call already used for doesNameMatch) is self-referential for any candidate
+ * whose own gate already requires a comparable name score, the exact defect
+ * resolveBySoleExactNameMatch/resolveBySoleContactMatch both had to work around (see their own doc
+ * comments) - reusing it here would silently readmit the same false positives those fixes removed.
+ *
+ * Reads doesNameMatch directly rather than reimplementing first/last-name plausibility here - an
+ * earlier version of this function called isExactLastNameMatch + a fresh isFuzzyNamePartMatch call,
+ * which is a NARROWER, less capable duplicate of what pipelineNameScore already does (it doesn't
+ * know about isFirstMiddleSwap/isOneSidedMiddleNameMatch's swap handling) - confirmed as a real
+ * regression via pipeline-replay-backtest.ts against the 2026-09-25 export: a candidate with
+ * doesNameMatch=85/pass:true (a genuine first-name-as-middle-name swap) AND an exact phone-number
+ * match was wrongly evicted, because its ACMS first name ("Ryan") only fuzzy-matched against the
+ * CAMS side's leading initial ("F."), not its real given name recorded as the middle position. The
+ * real, already-computed doesNameMatch score already knows about this shape; re-deriving a narrower
+ * version of the same judgment here can only ever be equally correct or worse.
+ *
+ * An even narrower exact-last-name-only exception (tested and rejected before this version) was
+ * TOO permissive in the opposite direction: last name alone matches dozens of unrelated candidates
+ * for a common surname (e.g. "Smith") - confirmed via the same backtest (2158 records regained a
+ * candidate pool they had zero or one candidate in before, purely from unrelated same-surname
+ * trustees). doesNameMatch.pass required BOTH a real last-name match and a real first-name
+ * relationship (exact, nickname, initial, or swap) to ever reach true, so it closes both failure
+ * modes at once without any additional logic here.
+ *
+ * This is the fix for the "hundreds of low-quality candidates for a common surname" volume problem
+ * at its real source: recallBySurnameExact/recallByTokenIntersection/recallByAnchoredLevenshtein's
+ * own discovery, not a later reduce over an already-bloated state.candidates. A candidate this
+ * function evicts never occupies a Map entry, is never iterated by resolveStages(), and is never a
+ * promotion candidate for runNestedTier to consider - the outer pipeline's state graph never sees
+ * it at all. A real state conflict with a genuine name match still has every later RESOLVE-stage
+ * safeguard (isCorroboratedByGeoOrContact, isFullyCorroboratedByGeoAndContact, etc.) protecting it
+ * from a false auto-link - eviction here is a coarse, cheap, EARLY cut for candidates with no
+ * plausible relationship at all, not a final verdict.
+ *
+ * Deliberately does NOT also exempt MIDDLE_NAME_ONLY_CONFLICT_SCORE (15) - tried and reverted:
+ * unlike doesNameMatch.pass===true (which requires a real, specific first-name relationship -
+ * exact, nickname, initial, or swap - to a SPECIFIC candidate), a bare nameScore===15 check has no
+ * such specificity requirement and readmits every candidate sharing the ACMS record's last name AND
+ * clearing scoreFirstNamePart's >=85 bar, which multiple genuinely different, unrelated real people
+ * can do at once for a common first+last name pair - confirmed via pipeline-replay-backtest.ts
+ * against the 2026-09-25 export: a real record synthesized here as ACMS "Robert [Surname]" had
+ * THREE distinct CAMS candidates - "Robert [Surname]", "Robert E. [Surname]", and two
+ * "Robert S. [Surname]" variants - all independently scoring nameScore=15 against different,
+ * unrelated middle names/generational suffixes, none of them the same person. The 12-record
+ * zero-candidate population this would have helped (see MIDDLE_NAME_ONLY_CONFLICT_SCORE's own doc
+ * comment for the shape) needs a fix that also confirms uniqueness among same-nameScore candidates,
+ * not just this function's own coarse pre-filter - left as a separate, not-yet-implemented
+ * follow-up rather than risking readmitting real collisions here.
+ */
+function shouldEvictFromDiscovery(candidate: PipelineCandidate): boolean {
+  if (candidate.scores.doesStateMatch?.pass !== false) return false;
+  return !isNameMatchCorroborated(candidate);
+}
+
+/**
  * addCandidate, plus an immediate full scoreCandidate pass - the ONLY way a new candidate should
  * enter the pipeline going forward. `origin` is the calling RECALL stage's own name (e.g.
- * "recallBySurnameExact").
+ * "recallBySurnameExact"). A candidate shouldEvictFromDiscovery flags is removed from
+ * state.candidates before this function returns - see that function's own doc comment for why
+ * eviction belongs here, at the single real entry point, rather than duplicated per RECALL stage
+ * or deferred to a later reduce over an already-bloated pool.
  *
  * - Every CandidateScorer is expected to be pure and should never throw in practice - this
  *   try/catch is a safety net for a genuine, unanticipated runtime error, not a primary code path.
@@ -1718,6 +2002,10 @@ export function scoreCandidate(
  * - Assigns state.error in place, consistent with addCandidate's own in-place mutation of
  *   state.candidates - runPipeline checks state.error before invoking the next stage, so a failure
  *   here still halts the pipeline exactly like a RECALL stage's own caught failure would.
+ * - Returns the (possibly now-evicted) candidate either way - a caller like
+ *   recallByTokenIntersection that immediately calls addScore on the return value is mutating an
+ *   already-detached object in that case, which is harmless (nothing reads it again) but avoids
+ *   every call site needing its own null-check.
  */
 export function addAndScoreCandidate(
   state: PipelineState,
@@ -1726,7 +2014,11 @@ export function addAndScoreCandidate(
 ): PipelineCandidate {
   const candidate = addCandidate(state, camsRaw, origin);
   try {
-    return scoreCandidate(state.sourceNormalized, candidate);
+    const scored = scoreCandidate(state.sourceNormalized, candidate);
+    if (shouldEvictFromDiscovery(scored)) {
+      state.candidates.delete(camsRaw.trusteeId);
+    }
+    return scored;
   } catch (originalError) {
     state.error = getCamsErrorWithStack(originalError, MODULE_NAME, {
       camsStackInfo: { module: MODULE_NAME, message: 'addAndScoreCandidate failed' },
@@ -1746,13 +2038,13 @@ export function resolveByPhoneTypoTolerance(): Stage {
   return async (state: PipelineState): Promise<PipelineState> => {
     const qualifying = [...state.candidates.values()].filter(
       (candidate) =>
-        mergedScore(candidate).doesNameMatch?.pass === true &&
+        isNameMatchCorroborated(candidate) &&
         mergedScore(candidate).hasComparableContactData?.pass !== false,
     );
     if (qualifying.length !== 1) return state;
 
     const candidate = qualifying[0];
-    if (mergedScore(candidate).doesNameMatch?.value !== 100) return state;
+    if (!isExactNameMatch(candidate)) return state;
 
     const score = mergedScore(candidate).phoneTypoToleranceScore;
     if (!score?.pass) return state;
@@ -1849,7 +2141,7 @@ function hasAnyCorroboratingEvidence(candidate: PipelineCandidate): boolean {
 function exactNameMatchCandidates(state: PipelineState): PipelineCandidate[] {
   return [...state.candidates.values()].filter(
     (candidate) =>
-      mergedScore(candidate).doesNameMatch?.value === 100 &&
+      isExactNameMatch(candidate) &&
       mergedScore(candidate).hasComparableContactData?.pass !== false,
   );
 }
@@ -1989,7 +2281,7 @@ export function resolveBySoleExactNameMatchNoAcmsData(): Stage {
   return async (state: PipelineState): Promise<PipelineState> => {
     const exactMatches = [...state.candidates.values()].filter(
       (candidate) =>
-        mergedScore(candidate).doesNameMatch?.value === 100 &&
+        isExactNameMatch(candidate) &&
         mergedScore(candidate).doesCamsTrusteeHaveAddressAndPhone?.pass !== false &&
         mergedScore(candidate).doesAcmsTrusteeHaveAddressAndPhone?.pass === false,
     );
@@ -2021,7 +2313,7 @@ export function resolveBySoleFuzzyFirstNameMatchNoAcmsData(): Stage {
   return async (state: PipelineState): Promise<PipelineState> => {
     const qualifying = [...state.candidates.values()].filter(
       (candidate) =>
-        mergedScore(candidate).doesNameMatch?.value === 0 &&
+        hasNoNameMatchEvidence(candidate) &&
         mergedScore(candidate).doesCamsTrusteeHaveAddressAndPhone?.pass !== false &&
         mergedScore(candidate).doesAcmsTrusteeHaveAddressAndPhone?.pass === false &&
         isExactLastNameMatch(
@@ -2068,7 +2360,7 @@ export function resolveBySoleFuzzyFirstNameMatchAfterAddressNarrowing(): Stage {
   return async (state: PipelineState): Promise<PipelineState> => {
     const sameLastName = [...state.candidates.values()].filter(
       (candidate) =>
-        mergedScore(candidate).doesNameMatch?.value === 0 &&
+        hasNoNameMatchEvidence(candidate) &&
         mergedScore(candidate).hasComparableContactData?.pass !== false &&
         isExactLastNameMatch(
           state.sourceNormalized.lastNameUnreduced ?? state.sourceRaw.lastName ?? '',
@@ -2144,7 +2436,7 @@ export function resolveByConsensus(): Stage {
   return async (state: PipelineState): Promise<PipelineState> => {
     const qualifying = [...state.candidates.values()].filter(
       (candidate) =>
-        mergedScore(candidate).doesNameMatch?.pass === true &&
+        isNameMatchCorroborated(candidate) &&
         mergedScore(candidate).hasComparableContactData?.pass !== false,
     );
     if (qualifying.length !== 1) return state;
@@ -2191,8 +2483,7 @@ export function resolveBySoleFuzzyNameMatchAndState(): Stage {
   return async (state: PipelineState): Promise<PipelineState> => {
     const qualifying = [...state.candidates.values()].filter(
       (candidate) =>
-        mergedScore(candidate).doesNameMatch?.pass === true &&
-        mergedScore(candidate).doesNameMatch?.value !== 100 &&
+        isFuzzyNameMatch(candidate) &&
         mergedScore(candidate).hasComparableContactData?.pass !== false,
     );
     if (qualifying.length !== 1) return state;
@@ -2240,30 +2531,6 @@ function isExactLastNameMatch(acmsLastName: string, camsLastName: string): boole
   return acmsLast.length > 0 && acmsLast === camsLast;
 }
 
-/**
- * The only two values pipelineNameScore returns for a candidate whose last name matches exactly
- * (isExactLastNameMatch) but whose first/middle name comparison contributes real doubt rather than
- * confidence:
- *   - 0: firstScore itself was 0 (scoreFirstNamePart found no plausible relationship at all between
- *     the two first names - not even a nickname/initial).
- *   - 15: firstScore cleared 85 (a genuine match, nickname, or initial relationship), but
- *     pipelineMiddleNameScore found a real middle-name conflict (two bare initials that disagree,
- *     or two full middle names that fail isFuzzyNamePartMatch) - Math.min(firstScore, middleScore)
- *     collapses to middleScore's 15 despite the strong first-name agreement underneath it.
- * Both values are otherwise unreachable by any RESOLVE stage above this one in resolveStages() (see
- * its own doc comment on stage order): every stage from resolveBySoleContactMatch through
- * resolveBySoleFuzzyNameMatchAndState gates on doesNameMatch.pass (>= 85), and 15 clears neither
- * that bar nor the exact-0 gate this constant used to be. A candidate stuck at 15 fell into a real
- * dead zone no resolver covered - confirmed via pipeline-replay-backtest.ts against the 2026-09-25
- * export: 33 unresolved records (a real shape, name synthesized: ACMS "Jordan S [Surname]" -> CAMS
- * "Jordan A. [Surname]", both address AND phone independently corroborating) plus 13 more where the
- * SAME nameScore=15 also failed isStateNotConflicting's override (see that function's own doc
- * comment), silently dropping the candidate during promoteCandidate before any RESOLVE stage ever
- * saw it - that second population needs its own, separate fix; this one only restores resolver visibility
- * for a candidate that DID reach the outer pool.
- */
-const MIDDLE_NAME_ONLY_CONFLICT_SCORE = 15;
-
 /** The sole candidate eligible for a fuzzy first-name vote - a real lastName match (see
  * isExactLastNameMatch) whose overall nameScore was tanked to 0 or MIDDLE_NAME_ONLY_CONFLICT_SCORE
  * (see that constant's own doc comment for why those are the only two reachable values here), with
@@ -2274,9 +2541,8 @@ function findSoleZeroNameScoreCandidateWithMatchingLastName(
   state: PipelineState,
 ): PipelineCandidate | undefined {
   const qualifying = [...state.candidates.values()].filter((candidate) => {
-    const nameScore = mergedScore(candidate).doesNameMatch?.value;
     return (
-      (nameScore === 0 || nameScore === MIDDLE_NAME_ONLY_CONFLICT_SCORE) &&
+      isInMiddleNameOnlyDeadZone(candidate) &&
       mergedScore(candidate).hasComparableContactData?.pass !== false &&
       isExactLastNameMatch(
         state.sourceNormalized.lastNameUnreduced ?? state.sourceRaw.lastName ?? '',
@@ -2437,7 +2703,7 @@ function findSoleZeroNameScoreCandidateWithFuzzyLastNameMatch(
       ({ candidate, camsFirst, camsLast }) =>
         camsFirst &&
         camsLast &&
-        mergedScore(candidate).doesNameMatch?.value === 0 &&
+        hasNoNameMatchEvidence(candidate) &&
         mergedScore(candidate).hasComparableContactData?.pass !== false &&
         acmsFirst === camsFirst &&
         acmsLast !== camsLast &&
