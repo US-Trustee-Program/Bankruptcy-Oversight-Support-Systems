@@ -9,7 +9,7 @@ import {
 } from '@common/cams/trustee-upcoming-key-dates';
 import {
   mergeKeyDatesInput,
-  getCurrentYear,
+  buildYearOptions,
   getFiscalYearOptions,
 } from './chapter7PanelKeyDatesInput';
 import Api2 from '@/lib/models/api2';
@@ -63,7 +63,7 @@ export function buildAuditFieldExamKeyDatesInput(
 }
 
 export default function Chapter7PanelAuditFieldExamForm() {
-  const upcomingYearOptions = Array.from({ length: 11 }, (_, i) => getCurrentYear() + i);
+  const upcomingYearOptions = buildYearOptions('forward', 11);
 
   const { trusteeId, appointmentId } = useParams<{
     trusteeId: string;

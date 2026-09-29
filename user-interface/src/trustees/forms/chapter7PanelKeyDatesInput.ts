@@ -3,13 +3,20 @@ import {
   TrusteeUpcomingKeyDatesInput,
 } from '@common/cams/trustee-upcoming-key-dates';
 
-export function getCurrentYear(): number {
+function getCurrentYear(): number {
   return new Date().getFullYear();
 }
 
-export function getFiscalYearOptions(): number[] {
+export type YearRangeDirection = 'forward' | 'backward';
+
+export function buildYearOptions(direction: YearRangeDirection, span: number): number[] {
   const currentYear = getCurrentYear();
-  return Array.from({ length: 21 }, (_, i) => currentYear - i);
+  const sign = direction === 'forward' ? 1 : -1;
+  return Array.from({ length: span }, (_, i) => currentYear + sign * i);
+}
+
+export function getFiscalYearOptions(): number[] {
+  return buildYearOptions('backward', 21);
 }
 
 /**

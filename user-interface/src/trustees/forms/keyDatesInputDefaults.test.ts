@@ -1,7 +1,24 @@
-import { describe, test, expect } from 'vitest';
+import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
-import { buildKeyDatesInputFromOriginal } from './keyDatesInputDefaults';
+import { buildKeyDatesInputFromOriginal, getCompletionYearOptions } from './keyDatesInputDefaults';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
+
+describe('getCompletionYearOptions', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-06-15T00:00:00.000Z'));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  test('is an 11-year backward range starting at the current year', () => {
+    expect(getCompletionYearOptions()).toEqual([
+      2026, 2025, 2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017, 2016,
+    ]);
+  });
+});
 
 describe('buildKeyDatesInputFromOriginal', () => {
   const ids = { trusteeId: 'trustee-001', appointmentId: 'appointment-001' };

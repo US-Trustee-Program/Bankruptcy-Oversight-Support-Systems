@@ -38,6 +38,7 @@ import {
   DatePickerFieldDescriptor,
   UpcomingFormFieldDescriptor,
 } from './upcomingKeyDatesFormFieldConfig';
+import { buildYearOptions } from './chapter7PanelKeyDatesInput';
 import {
   TirFrequency,
   ANNUAL_OPTIONS,
@@ -240,8 +241,7 @@ export default function UpcomingKeyDatesForm({
 }: {
   tprDisplayUpdates?: boolean;
 } = {}) {
-  const currentYear = new Date().getFullYear();
-  const yearOptions = Array.from({ length: 11 }, (_, i) => currentYear + i);
+  const yearOptions = buildYearOptions('forward', 11);
 
   const { trusteeId, appointmentId } = useParams<{
     trusteeId: string;

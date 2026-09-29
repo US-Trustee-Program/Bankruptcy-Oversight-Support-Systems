@@ -18,6 +18,7 @@ import { AppointmentChapterType, AppointmentType } from '@common/cams/trustees';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
+import { buildYearOptions } from './chapter7PanelKeyDatesInput';
 import DatePicker from '@/lib/components/uswds/DatePicker';
 import MonthYearSelector from '@/lib/components/uswds/MonthYearSelector';
 import Select from '@/lib/components/uswds/Select';
@@ -122,8 +123,7 @@ function deriveVariant(
 }
 
 export default function PastKeyDatesForm() {
-  const currentYear = new Date().getFullYear();
-  const fiscalYearOptions = Array.from({ length: 21 }, (_, i) => currentYear - i);
+  const fiscalYearOptions = buildYearOptions('backward', 21);
 
   const { trusteeId, appointmentId } = useParams<{
     trusteeId: string;

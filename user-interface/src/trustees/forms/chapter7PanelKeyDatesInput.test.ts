@@ -1,7 +1,56 @@
-import { describe, test, expect } from 'vitest';
-import { mergeKeyDatesInput } from './chapter7PanelKeyDatesInput';
+import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
+import {
+  mergeKeyDatesInput,
+  buildYearOptions,
+  getFiscalYearOptions,
+} from './chapter7PanelKeyDatesInput';
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
+
+describe('buildYearOptions', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-06-15T00:00:00.000Z'));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  test('builds a forward range starting at the current year', () => {
+    expect(buildYearOptions('forward', 11)).toEqual([
+      2026, 2027, 2028, 2029, 2030, 2031, 2032, 2033, 2034, 2035, 2036,
+    ]);
+  });
+
+  test('builds a backward range starting at the current year', () => {
+    expect(buildYearOptions('backward', 11)).toEqual([
+      2026, 2025, 2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017, 2016,
+    ]);
+  });
+
+  test('honors an arbitrary span', () => {
+    expect(buildYearOptions('backward', 21)).toHaveLength(21);
+    expect(buildYearOptions('backward', 21)[20]).toBe(2006);
+  });
+});
+
+describe('getFiscalYearOptions', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-06-15T00:00:00.000Z'));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  test('is a 21-year backward range starting at the current year', () => {
+    expect(getFiscalYearOptions()).toEqual(buildYearOptions('backward', 21));
+    expect(getFiscalYearOptions()[0]).toBe(2026);
+    expect(getFiscalYearOptions()).toHaveLength(21);
+  });
+});
 
 const ids = { trusteeId: 'trustee-001', appointmentId: 'appointment-001' };
 
