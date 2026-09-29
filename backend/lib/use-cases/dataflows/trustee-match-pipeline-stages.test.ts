@@ -204,17 +204,24 @@ describe('skipAdministrativePlaceholder', () => {
     expect(result.skip).toBe(true);
   });
 
-  // Real shapes from the same backtest survey: a real trustee's surname with an appended role or
-  // status suffix ("- U S TRUSTEE") is NOT skip-worthy - the marker strips away, and a real name
-  // remains underneath (see ADMINISTRATIVE_MARKER_PHRASES's own doc comment on this distinction
-  // from a bare placeholder with no name at all).
-  test('leaves state unchanged for a real name with a role suffix', async () => {
-    const state = createInitialState(makeDxtrTrustee({ fullName: 'JORDAN R DOE - U S TRUSTEE' }));
+  // Brian's correction (2026-09-29), reversing a previous, now-known-wrong assumption: a UST (U.S.
+  // Trustee office staff, appointed by the USTP program, leadership over the "private" trustees) is
+  // a real person but is NEVER a CAMS trustee record - not in CAMS at all, even though they
+  // sometimes step in and work cases directly. A "- U S TRUSTEE"/"(UST)" annotation is therefore an
+  // early, unconditional skip signal, not a strip-then-recover-a-real-name shape like "(CHAPTER 12)"
+  // or "(TR)" - there is structurally nothing in CAMS to ever match it to, no matter how real the
+  // accompanying name looks. This test previously asserted skip===false for this exact shape; see
+  // shouldSkipAsUstStaff's own doc comment for the dedicated UST-keywords list this now runs through.
+  test.each(['JORDAN R DOE - U S TRUSTEE', 'JUDY ROBBINS (UST)', 'JOHN R STONITSCH - U S TRUSTEE'])(
+    'sets state.skip for a UST-annotated name "%s"',
+    async (fullName) => {
+      const state = createInitialState(makeDxtrTrustee({ fullName }));
 
-    const result = await skipAdministrativePlaceholder()(state);
+      const result = await skipAdministrativePlaceholder()(state);
 
-    expect(result.skip).toBe(false);
-  });
+      expect(result.skip).toBe(true);
+    },
+  );
 
   // Real shapes from a staging backtest: ACMS explicitly disavowing a specific professional-code
   // RECORD ("DO NOT USE", "DUPLICATE", "CANCELLED", "DELETE") is skip-worthy even when a real
@@ -292,12 +299,12 @@ describe('skipAdministrativePlaceholder', () => {
   });
 
   // Same backtest spot-check: a real trustee's name with an appended chapter/role parenthetical
-  // is NOT skip-worthy - the marker strips away, and a real name remains underneath.
+  // is NOT skip-worthy - the marker strips away, and a real name remains underneath. "(UST)" is
+  // deliberately NOT in this group - see the UST-annotation test above for why that shape skips
+  // unconditionally instead, unlike a chapter/acting-trustee-role suffix.
   test.each([
     "JORDAN W O'DOE (CHAPTER 12)",
     'TAYLOR Z ROE (CH 11)',
-    'JAMIE DOE (UST)',
-    'MORGAN W ROE    (UST)',
     "JORDAN O'DOE (ACTING CH. 13 TRUSTEE)",
   ])('leaves state unchanged for a real name with a chapter/role suffix "%s"', async (fullName) => {
     const state = createInitialState(makeDxtrTrustee({ fullName }));
@@ -4257,15 +4264,18 @@ describe('resolveByLastNameOnlyConsensus', () => {
     expect(result.match).toBeNull();
   });
 
-  // Regression: isExactLastNameMatch must strip ACMS administrative markers (e.g. "(UST)")
-  // before comparing, so a marker-bearing ACMS surname like "DOE (UST)" still qualifies against
-  // a clean CAMS "Doe". This shape models a real backtest finding.
+  // Regression: isExactLastNameMatch must strip ACMS administrative markers (e.g. "(NP)")
+  // before comparing, so a marker-bearing ACMS surname like "DOE (NP)" still qualifies against
+  // a clean CAMS "Doe". This shape models a real backtest finding. Uses "(NP)" rather than "(UST)"
+  // deliberately - "(UST)" is now caught by the dedicated early-skip prefilter (see
+  // shouldSkipAsUstStaff) before a record ever reaches this resolver, so it no longer exercises
+  // this marker-stripping path in the real pipeline.
   test('qualifies a sole exact-lastName candidate even when the ACMS surname carries a marker suffix', async () => {
     const state = createInitialState(
       makeDxtrTrustee({
-        fullName: 'Xiomara Doe (UST)',
+        fullName: 'Xiomara Doe (NP)',
         firstName: 'Xiomara',
-        lastName: 'Doe (UST)',
+        lastName: 'Doe (NP)',
       }),
     );
     const candidate = addCandidate(
