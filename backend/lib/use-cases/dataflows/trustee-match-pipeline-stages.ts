@@ -321,13 +321,27 @@ function pipelinePhoneScore(
  * calculateNumericTokenScore, jaccardSimilarity, generateBigrams) rather than calling
  * calculateAddressScore directly - this pipeline forked from the DXTR path so ACMS-specific tuning
  * can move independently, same reason as pipelineNameScore.
+ *
+ * Real bug, confirmed via pipeline-replay-backtest.ts against the 2026-09-25 export: this used to
+ * return a plain `number`, with an unparseable ACMS address (line below) represented by returning
+ * 0 - the exact same magic-number-as-sentinel shape MIDDLE_NAME_ONLY_CONFLICT_SCORE was introduced
+ * to fix elsewhere, just not yet caught here. scoreContactCorroboration wrote that 0 as a REAL,
+ * present contactCorroborationAddress ScoreRecord (pass: false) unconditionally - claiming a
+ * genuine address disagreement for a candidate whose ACMS address was never compared at all.
+ * Confirmed live: 2 real records (synthesized analog "SE-07032"/"SE-07120" shape - ACMS
+ * cityStateZipCountry genuinely empty, CAMS side a real, comparable address) carried a fabricated
+ * contactCorroborationAddress: {value: 0, pass: false} indistinguishable from an actual mismatch.
+ * Now null, matching pipelinePhoneScore/pipelineEmailScore's own "not comparable" convention -
+ * scoreContactCorroboration correspondingly skips addScore entirely for this case (see its own
+ * updated doc comment), same "no record when data unavailable" convention as doesStateMatch/
+ * doesCityMatch/doesZipCodeMatch/doesMiddleNameMatch.
  */
 function pipelineAddressScore(
   sourceLegacy: NormalizedTrustee['legacy'],
   camsAddress: Address,
-): number {
+): number | null {
   const parsed = parseCityStateZip(sourceLegacy?.cityStateZipCountry);
-  if (!parsed) return 0;
+  if (!parsed) return null;
 
   const zip5 = (zip: string) => zip.trim().split('-')[0].toLowerCase();
 
@@ -1591,31 +1605,22 @@ const NO_CONTRADICTION_ADDRESS_FLOOR = 30;
  * - A "0" phone/fax/email sentinel never registers as a comparable score, so this reads
  *   contactCorroborationPhone/Email's mere ABSENCE the same way the pipeline's own scores already
  *   represent "nothing to compare."
- * - pipelineAddressScore also returns 0 when the ACMS address doesn't parse at all - NOT a genuine
- *   disagreement. Reading contactCorroborationAddress's raw value alone, without checking whether
- *   the address even parsed, would misclassify a real same-person match as "contradicted."
+ * - contactCorroborationAddress's mere ABSENCE (addressScore === undefined below) is read the same
+ *   way - pipelineAddressScore now returns null, not a fabricated 0, when the ACMS address doesn't
+ *   parse at all (real bug, confirmed via pipeline-replay-backtest.ts against the 2026-09-25 export:
+ *   scoreContactCorroboration used to write a REAL contactCorroborationAddress ScoreRecord with
+ *   value:0/pass:false even when the ACMS address was never compared at all, indistinguishable from
+ *   a genuine disagreement - 2+ real records with a genuinely unparseable ACMS address carried this
+ *   fabricated "conflict"). This function previously worked around that bug with its own separate
+ *   memoizedParseAcmsAddress check (hasParseableAcmsAddress) - removed now that
+ *   contactCorroborationAddress's own presence/absence is reliable again, the same "no record when
+ *   data unavailable" convention every other score here already follows.
  * - Most candidates that clear the name threshold but not the main corroboration bar have an
  *   actively contradicting phone number and are correctly excluded here. The exceptions are
  *   genuine matches, typically an ACMS name carrying a stray marker (e.g. "INACTIVE") that still
  *   resolves to the correct, active CAMS trustee.
- * - hasParseableAcmsAddress calls memoizedParseAcmsAddress directly rather than reading
- *   state.sourceNormalized.address, despite that field existing as exactly this cache (see
- *   memoizedParseAcmsAddress's own doc comment). Confirmed via pipeline-replay-backtest.ts against
- *   the 2026-09-25 export as a real bug, not a hypothetical: resolveBySoleContactMatch's outer-pool
- *   candidates (runTrusteeMatchPipeline's combined resolve pass) are scored inside a runNestedTier's
- *   OWN nested state, a distinct sourceNormalized object from outerState.sourceNormalized -
- *   promoteCandidate carries the candidate's already-computed scores into outerState, but nothing
- *   copies the nested tier's cached address parse back onto outerState.sourceNormalized. Reading the
- *   field directly here always saw it as unset for every outer-pool candidate, regardless of whether
- *   the ACMS address genuinely parsed - silently disabling the address-contradiction check this
- *   function exists to enforce, for 10 real records in the 2026-09-25 export (e.g. "3711 KENNETT
- *   PIKE, SUITE 220" / "WILMINGTON DE 19807-2102", a real parseable address that scored 5/100
- *   against the matched CAMS candidate's address - a genuine contradiction this function was
- *   supposed to catch and didn't). Calling memoizedParseAcmsAddress here is correct regardless of
- *   cache state - a cache hit if some earlier scorer in this same tier already populated it, a cheap
- *   recompute otherwise.
  */
-function isNoContradictionMatch(state: PipelineState, candidate: PipelineCandidate): boolean {
+function isNoContradictionMatch(candidate: PipelineCandidate): boolean {
   const scores = mergedScore(candidate);
   if (!isExactNameMatch(candidate)) return false;
 
@@ -1626,12 +1631,9 @@ function isNoContradictionMatch(state: PipelineState, candidate: PipelineCandida
 
   if (scores.doesAcmsTrusteeHaveAddressAndPhone?.pass === false) return false;
 
-  const hasParseableAcmsAddress = memoizedParseAcmsAddress(state.sourceNormalized) !== null;
   const addressScore = scores.contactCorroborationAddress;
   const hasContradictingAddress =
-    hasParseableAcmsAddress &&
-    addressScore !== undefined &&
-    addressScore.value < NO_CONTRADICTION_ADDRESS_FLOOR;
+    addressScore !== undefined && addressScore.value < NO_CONTRADICTION_ADDRESS_FLOOR;
   return !hasContradictingAddress;
 }
 
@@ -1667,7 +1669,7 @@ export function resolveBySoleContactMatch(): Stage {
         scores.contactCorroborationPhone?.pass === true ||
         scores.contactCorroborationEmail?.pass === true;
 
-      if (corroborated || isNoContradictionMatch(state, candidate)) {
+      if (corroborated || isNoContradictionMatch(candidate)) {
         return {
           ...state,
           match: { trusteeId, score: candidate.scores, resolvedBy: 'resolveBySoleContactMatch' },
@@ -1694,11 +1696,13 @@ function scoreContactCorroboration(
   candidate: PipelineCandidate,
 ): PipelineCandidate {
   const addressScore = pipelineAddressScore(sourceNormalized.legacy, candidate.camsRaw.address);
-  addScore(candidate, 'contactCorroborationAddress', {
-    value: addressScore,
-    threshold: CONTACT_CORROBORATION_ADDRESS_THRESHOLD,
-    pass: addressScore >= CONTACT_CORROBORATION_ADDRESS_THRESHOLD,
-  });
+  if (addressScore !== null) {
+    addScore(candidate, 'contactCorroborationAddress', {
+      value: addressScore,
+      threshold: CONTACT_CORROBORATION_ADDRESS_THRESHOLD,
+      pass: addressScore >= CONTACT_CORROBORATION_ADDRESS_THRESHOLD,
+    });
+  }
 
   const phoneScore = pipelinePhoneScore(sourceNormalized.legacy?.phone, candidate.camsRaw.phone);
   if (phoneScore !== null) {

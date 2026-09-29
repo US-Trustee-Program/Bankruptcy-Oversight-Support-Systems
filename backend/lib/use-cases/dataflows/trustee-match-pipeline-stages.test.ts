@@ -1664,6 +1664,45 @@ describe('scoreCandidate - state/city/zip/contact-presence facets', () => {
 
     expect(candidate.scores.doesZipCodeMatch).toBeUndefined();
   });
+
+  // Real bug, confirmed via pipeline-replay-backtest.ts against the 2026-09-25 export:
+  // pipelineAddressScore used to return a plain 0 (not null) when the ACMS address didn't parse at
+  // all, and scoreContactCorroboration wrote that 0 as a REAL, present contactCorroborationAddress
+  // ScoreRecord (value:0, pass:false) unconditionally - a fabricated "genuine disagreement"
+  // indistinguishable from an actual address mismatch, for a candidate whose address was never
+  // compared at all. 2+ real records (a genuinely empty ACMS cityStateZipCountry, a real comparable
+  // CAMS address) carried this fabricated conflict. Fixed to follow the same "no record when data
+  // unavailable" convention as doesStateMatch/doesCityMatch/doesZipCodeMatch/doesMiddleNameMatch -
+  // contactCorroborationAddress must be entirely absent, not a low recorded score, for this shape.
+  test('leaves contactCorroborationAddress unset when the ACMS address is unparseable, not fabricated as a low score', async () => {
+    const state = createInitialState(
+      makeDxtrTrustee({
+        fullName: 'Aldric T Moon',
+        firstName: 'Aldric',
+        middleName: 'A',
+        lastName: 'Moon',
+        legacy: { cityStateZipCountry: '' } as never,
+      }),
+    );
+    const candidate = addSomeoneMoon(state, {
+      trusteeId: 'trustee-wa',
+      firstName: 'Aldric',
+      name: 'Aldric Moon',
+      public: {
+        address: {
+          address1: '123 Main St',
+          city: 'Tacoma',
+          state: 'WA',
+          zipCode: '98402',
+          countryCode: 'US',
+        },
+      },
+    } as never);
+
+    scoreCandidate(state.sourceNormalized, candidate);
+
+    expect(candidate.scores.contactCorroborationAddress).toBeUndefined();
+  });
 });
 
 describe('scoreAddressDisqualifiers', () => {
@@ -2075,16 +2114,18 @@ describe('resolveBySoleContactMatch', () => {
   });
 
   // Models a real backtest regression (e.g. ACMS "DIANE WEIL (TR)", cityStateZipCountry
-  // "WOODLAND HILLS 91367-0000" with no state token at all): pipelineAddressScore also returns 0
-  // immediately when the ACMS address doesn't parse - a low contactCorroborationAddress score here
-  // means "unparseable," not "genuinely disagrees," so it must not block the no-contradiction
-  // fallback the way an actually-parsed, actually-disagreeing address does.
-  test('resolves via the no-contradiction fallback when a low addressScore reflects an unparseable ACMS address, not a genuine disagreement', async () => {
+  // "WOODLAND HILLS 91367-0000" with no state token at all): pipelineAddressScore now returns null
+  // (not a fabricated 0) when the ACMS address doesn't parse, so scoreContactCorroboration never
+  // writes a contactCorroborationAddress ScoreRecord at all for this shape - absence, not a low
+  // recorded score, means "unparseable," so it must not block the no-contradiction fallback the way
+  // an actually-parsed, actually-disagreeing address does. contactCorroborationAddress is
+  // deliberately left unset here (not hand-added with value:0) to model exactly what
+  // scoreContactCorroboration now produces for an unparseable ACMS address, per the real fix.
+  test('resolves via the no-contradiction fallback when the ACMS address is unparseable, not a genuine disagreement', async () => {
     const state = createInitialState(makeDxtrTrustee());
     const candidate = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })), 'test');
     addScore(candidate, 'doesNameMatch', { value: 100, threshold: 85, pass: true });
-    addScore(candidate, 'contactCorroborationAddress', { value: 0, threshold: 80, pass: false });
-    // state.sourceNormalized.address deliberately left unset - the ACMS address never parsed.
+    // contactCorroborationAddress deliberately absent - the ACMS address never parsed.
 
     const result = await resolveBySoleContactMatch()(state);
 
