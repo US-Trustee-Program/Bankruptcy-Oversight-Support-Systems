@@ -11,7 +11,6 @@ test.describe('Associated Cases', () => {
   test('should not have accessibility issues', async ({ page }) => {
     await expect(page.locator('.associated-cases')).toBeVisible();
 
-    await page.waitForLoadState('networkidle');
     const accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
   });

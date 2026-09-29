@@ -10,7 +10,7 @@ describe('AccessDenied', () => {
         <AccessDenied></AccessDenied>
       </BrowserRouter>,
     );
-    expect(screen.queryByTestId('alert-container')).toBeInTheDocument();
+    expect(screen.getByTestId('alert-container')).toBeInTheDocument();
     const loginButton = screen.getByTestId('button-return-to-login');
     expect(loginButton).toBeVisible();
     fireEvent.click(loginButton);
