@@ -561,7 +561,7 @@ describe('TrusteeContactForm Tests', () => {
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     // On submit, full form validation runs and shows partial address error
-    expect(screen.queryByText(PARTIAL_ADDRESS_ERROR_REASON)).toBeInTheDocument();
+    expect(screen.getByText(PARTIAL_ADDRESS_ERROR_REASON)).toBeInTheDocument();
     const address1Error = document.getElementById('trustee-address1-field-error-message');
     expect(address1Error).toBeInTheDocument();
     expect(address1Error).toHaveTextContent(ADDRESS_REQUIRED_ERROR_REASON);

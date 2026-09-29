@@ -75,7 +75,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",
-    "@eslint-react/eslint-plugin": "5.19.0",
+    "@eslint-react/eslint-plugin": "5.19.1",
     "@eslint/js": "10.0.0",
     "@playwright/test": "1.63.0",
     "@rolldown/plugin-babel": "0.2.4",
@@ -87,7 +87,7 @@
     "@vitest/coverage-v8": "4.1.11",
     "@vitest/eslint-plugin": "1.6.27",
     "babel-plugin-react-compiler": "1.0.0",
-    "dependency-cruiser": "18.3.0",
+    "dependency-cruiser": "18.3.1",
     "esbuild": "0.28.2",
     "eslint": "10.10.0",
     "eslint-config-prettier": "10.1.8",

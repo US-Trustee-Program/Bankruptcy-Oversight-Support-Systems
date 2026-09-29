@@ -51,9 +51,11 @@ test.describe('Data Verification', () => {
     await page
       .locator('[data-testid="button-confirm-modal-confirmation-modal-guid-0-cancel-button"]')
       .click();
+    await expect(
+      page.locator('[data-testid="button-confirm-modal-confirmation-modal-guid-0-cancel-button"]'),
+    ).toBeHidden();
 
     // Check accessibility for first accordion
-    await page.waitForLoadState('networkidle');
     let accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
 
@@ -63,7 +65,6 @@ test.describe('Data Verification', () => {
     await expect(page.locator('[data-testid="accordion-content-guid-1"]')).toBeVisible();
 
     // Check accessibility for second accordion
-    await page.waitForLoadState('networkidle');
     accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
 
@@ -73,7 +74,6 @@ test.describe('Data Verification', () => {
     await expect(page.locator('[data-testid="accordion-content-guid-2"]')).toBeVisible();
 
     // Check accessibility for third accordion
-    await page.waitForLoadState('networkidle');
     accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
 
@@ -89,7 +89,6 @@ test.describe('Data Verification', () => {
     await expect(page.locator('[data-testid="accordion-content-guid-3"]')).toBeVisible();
 
     // Check accessibility for fourth accordion
-    await page.waitForLoadState('networkidle');
     accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
 
@@ -99,7 +98,6 @@ test.describe('Data Verification', () => {
     await expect(page.locator('[data-testid="accordion-content-guid-4"]')).toBeVisible();
 
     // Check accessibility for fifth accordion
-    await page.waitForLoadState('networkidle');
     accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
 
@@ -109,7 +107,6 @@ test.describe('Data Verification', () => {
     await expect(page.locator('[data-testid="accordion-content-guid-5"]')).toBeVisible();
 
     // Check accessibility for sixth accordion
-    await page.waitForLoadState('networkidle');
     accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
   });

@@ -13,7 +13,6 @@ test.describe('Case Details', () => {
   test('case overview should not have accessibility issues', async ({ page }) => {
     await expect(page.locator(CASE_NUMBER_SELECTOR)).toBeVisible();
 
-    await page.waitForLoadState('networkidle');
     const accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
   });
@@ -26,7 +25,6 @@ test.describe('Case Details', () => {
       .locator('[data-testid="case-trustee-and-assigned-staff-link"]')
       .waitFor({ state: 'visible' });
 
-    await page.waitForLoadState('networkidle');
     const accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
   });
@@ -37,7 +35,6 @@ test.describe('Case Details', () => {
     await page.locator('[data-testid="case-trustee-info-link"]').click();
     await page.locator('[data-testid="case-detail-trustee-panel"]').waitFor({ state: 'visible' });
 
-    await page.waitForLoadState('networkidle');
     const accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
   });

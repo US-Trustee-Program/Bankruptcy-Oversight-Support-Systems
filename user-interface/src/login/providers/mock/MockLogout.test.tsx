@@ -10,6 +10,6 @@ describe('MockLogout', () => {
         <MockLogout></MockLogout>
       </BrowserRouter>,
     );
-    expect(screen.queryByTestId('alert-container')).toBeInTheDocument();
+    expect(screen.getByTestId('alert-container')).toBeInTheDocument();
   });
 });
