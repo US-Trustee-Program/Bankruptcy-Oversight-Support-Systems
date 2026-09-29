@@ -124,20 +124,32 @@ function isGenuineAmbiguousEvidence(candidate: SerializedCandidate<unknown>): bo
 }
 
 /** Derives a TrusteeProfessionalIdDisposition from a TrusteeSerializedState - the single place
- * this mapping is made. 'ambiguous' requires at least one candidate with genuine competing
- * evidence (see isGenuineAmbiguousEvidence) - a pool where every candidate either failed name
- * matching outright, or only qualified via name-shape coincidence with no corroboration ever
- * possible, is zero real evidence, not competing candidates, so it derives 'no-match' instead. */
+ * this mapping is made. 'ambiguous' requires at least TWO candidates each independently carrying
+ * genuine competing evidence (see isGenuineAmbiguousEvidence) - "ambiguous" means a genuine choice
+ * between real, competing identities, which is structurally impossible with 0 or 1 candidates. A
+ * pool with exactly one genuinely-qualifying candidate is not a choice between anything - it is one
+ * candidate no resolver was confident enough to auto-link, which is 'no-match' (real evidence, just
+ * not enough of it), not 'ambiguous' (real evidence, but for MULTIPLE plausible answers). Before
+ * this fix, a bare single-candidate exact-name-match with a real, disagreeing state and near-zero
+ * contact corroboration (a real shape, name synthesized: ACMS "Jordan Roe" in one state vs. the
+ * sole CAMS candidate "Jordan A. Roe" in a different state - no address/phone agreement at all) was
+ * classified 'ambiguous' purely because isGenuineAmbiguousEvidence's exact-name-match branch never
+ * checked whether anything else in the pool - the pool SIZE itself - supported an "ambiguous
+ * choice" framing at all. Confirmed via pipeline-replay-backtest.ts against the 2026-09-25 export:
+ * 56 of 72 previously-'ambiguous' records had 0 or 1 genuinely-qualifying candidates (50 with
+ * exactly one candidate total, 6 more with 2+ candidates but only one carrying genuine evidence) -
+ * all 56 move to 'no-match' under this fix; only the remaining 16, each with 2+ candidates
+ * independently carrying genuine competing evidence, are genuinely 'ambiguous'. */
 export function deriveDisposition(
   state: Pick<TrusteeSerializedState, 'match' | 'skip' | 'error' | 'candidates'>,
 ): Exclude<TrusteeProfessionalIdDisposition, 'conflict'> {
   if (state.error) return 'error';
   if (state.skip) return 'skipped';
   if (state.match) return 'auto-linked';
-  const hasGenuineAmbiguousCandidate = state.candidates.some(
+  const genuinelyQualifyingCount = state.candidates.filter(
     (c) => c.scores.doesNameMatch?.pass && isGenuineAmbiguousEvidence(c),
-  );
-  return hasGenuineAmbiguousCandidate ? 'ambiguous' : 'no-match';
+  ).length;
+  return genuinelyQualifyingCount >= 2 ? 'ambiguous' : 'no-match';
 }
 
 /** Whether an 'ambiguous' record's own candidate pool looks like a CAMS data-quality issue - see
