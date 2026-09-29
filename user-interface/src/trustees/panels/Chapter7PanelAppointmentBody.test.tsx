@@ -27,8 +27,19 @@ function mockCard(testId: string) {
 vi.mock('./Chapter7PanelAuditFieldExamCard', () => ({
   default: mockCard('chapter7-panel-audit-field-exam-card'),
 }));
-vi.mock('./Chapter7PanelTrusteePerformanceReportCard', () => ({
-  default: mockCard('chapter7-panel-tpr-card'),
+vi.mock('./TrusteePerformanceReportCard', () => ({
+  default: (props: {
+    data: TrusteeUpcomingKeyDates | null;
+    isLoading: boolean;
+    variant: string;
+  }) => (
+    <div
+      data-testid="chapter7-panel-tpr-card"
+      data-is-loading={String(props.isLoading)}
+      data-has-data={String(props.data !== null)}
+      data-variant={props.variant}
+    />
+  ),
 }));
 vi.mock('./Chapter7PanelTrusteeInterimReportCard', () => ({
   default: mockCard('chapter7-panel-tir-card'),
@@ -69,7 +80,6 @@ describe('Chapter7PanelAppointmentBody', () => {
   };
 
   beforeEach(() => {
-    vi.restoreAllMocks();
     vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
       [TRUSTEE_APPOINTMENT_ACCORDIONS]: true,
     });
@@ -111,6 +121,10 @@ describe('Chapter7PanelAppointmentBody', () => {
     ]) {
       expect(screen.getByTestId(testId)).toHaveAttribute('data-has-data', 'true');
     }
+    expect(screen.getByTestId('chapter7-panel-tpr-card')).toHaveAttribute(
+      'data-variant',
+      'chapter7-panel',
+    );
   });
 
   test('forwards null data to all four cards when no key dates document exists', async () => {

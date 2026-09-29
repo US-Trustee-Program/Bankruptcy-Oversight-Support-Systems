@@ -132,6 +132,7 @@ describe('TrusteePerformanceReportCard', () => {
   test.each<[Partial<TrusteeUpcomingKeyDates>]>([
     [{ tprCompletionYear: undefined, tprCompletionStatus: 'COMPLETE' }],
     [{ tprCompletionYear: 2025, tprCompletionStatus: undefined }],
+    [{ tprCompletionYear: undefined, tprCompletionStatus: undefined }],
   ])('renders no completion tag when only one of year/status is set', (overrides) => {
     renderCard({
       ...keyDates,

@@ -1,5 +1,11 @@
 import { describe, test, expect } from 'vitest';
-import { buildCompletionTag, formatDateOrDefault, NO_DATE } from './upcomingKeyDatesFieldConfig';
+import {
+  buildCompletionTag,
+  formatDateOrDefault,
+  NO_DATE,
+  tprReviewPeriodField,
+} from './upcomingKeyDatesFieldConfig';
+import type { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 
 describe('formatDateOrDefault', () => {
   test('formats a defined ISO date as MM/DD/YYYY', () => {
@@ -44,9 +50,7 @@ describe('buildCompletionTag', () => {
     expect(buildCompletionTag(undefined, 'CLOSED', 'CLOSED', 'my-tag')).toBeUndefined();
     expect(buildCompletionTag(2026, undefined, 'CLOSED', 'my-tag')).toBeUndefined();
   });
-});
 
-describe('buildCompletionTag', () => {
   test('renders a green tag when the status matches the closed value', () => {
     expect(buildCompletionTag(2025, 'COMPLETE', 'COMPLETE', 'tag-id')).toEqual({
       label: 'Complete for 2025',
@@ -77,5 +81,45 @@ describe('buildCompletionTag', () => {
     ['both are null', null, null],
   ])('renders no tag when %s', (_label, year, status) => {
     expect(buildCompletionTag(year, status, 'COMPLETE', 'tag-id')).toBeUndefined();
+  });
+});
+
+describe('tprReviewPeriodField', () => {
+  test('renders month/day range when start date has sentinel year (1900)', () => {
+    const data: Partial<TrusteeUpcomingKeyDates> = {
+      tprReviewPeriodStart: '1900-04-01',
+      tprReviewPeriodEnd: '1900-03-31',
+    };
+
+    const result = tprReviewPeriodField(data as TrusteeUpcomingKeyDates);
+
+    expect(result.value).toBe('04/01 - 03/31');
+  });
+
+  test('renders full dates when start and end have real years', () => {
+    const data: Partial<TrusteeUpcomingKeyDates> = {
+      tprReviewPeriodStart: '2025-01-01',
+      tprReviewPeriodEnd: '2025-12-31',
+    };
+
+    const result = tprReviewPeriodField(data as TrusteeUpcomingKeyDates);
+
+    expect(result.value).toBe('01/01/2025 - 12/31/2025');
+  });
+
+  test.each([
+    [
+      'the start date is missing',
+      { tprReviewPeriodStart: undefined, tprReviewPeriodEnd: '2025-12-31' },
+    ],
+    [
+      'the end date is missing',
+      { tprReviewPeriodStart: '2025-01-01', tprReviewPeriodEnd: undefined },
+    ],
+    ['there is no key dates document', null],
+  ])('returns NO_DATE when %s', (_label, data) => {
+    const result = tprReviewPeriodField(data as TrusteeUpcomingKeyDates | null);
+
+    expect(result.value).toBe(NO_DATE);
   });
 });

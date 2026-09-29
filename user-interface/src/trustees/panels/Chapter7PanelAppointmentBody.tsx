@@ -1,6 +1,6 @@
 import AppointmentBasicFields from './AppointmentBasicFields';
 import Chapter7PanelAuditFieldExamCard from './Chapter7PanelAuditFieldExamCard';
-import Chapter7PanelTrusteePerformanceReportCard from './Chapter7PanelTrusteePerformanceReportCard';
+import TrusteePerformanceReportCard from './TrusteePerformanceReportCard';
 import Chapter7PanelTrusteeInterimReportCard from './Chapter7PanelTrusteeInterimReportCard';
 import Chapter7PanelOtherKeyDatesCard from './Chapter7PanelOtherKeyDatesCard';
 import KeyDatesGate from './KeyDatesGate';
@@ -38,11 +38,12 @@ export default function Chapter7PanelAppointmentBody(
               data={data}
               isLoading={isLoading}
             />
-            <Chapter7PanelTrusteePerformanceReportCard
+            <TrusteePerformanceReportCard
               trusteeId={appointment.trusteeId}
               appointmentId={appointment.id}
               data={data}
               isLoading={isLoading}
+              variant="chapter7-panel"
             />
             <Chapter7PanelTrusteeInterimReportCard
               trusteeId={appointment.trusteeId}
