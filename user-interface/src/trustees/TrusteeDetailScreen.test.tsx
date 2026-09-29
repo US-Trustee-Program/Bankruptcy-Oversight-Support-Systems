@@ -819,7 +819,7 @@ describe('TrusteeDetailScreen', () => {
       renderWithRouter(['/trustees/123/assigned-staff']);
 
       await waitFor(() => {
-        expect(document.querySelector('.trustee-assigned-staff-container')).toBeInTheDocument();
+        expect(screen.getByTestId('trustee-assigned-staff-container')).toBeInTheDocument();
       });
     });
 
@@ -835,7 +835,7 @@ describe('TrusteeDetailScreen', () => {
 
       await waitFor(() => {
         // When feature flag is disabled, GoHome is rendered instead of the assigned staff component
-        expect(document.querySelector('.trustee-assigned-staff-container')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('trustee-assigned-staff-container')).not.toBeInTheDocument();
       });
     });
   });
