@@ -14,9 +14,14 @@ import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import DatePicker from '@/lib/components/uswds/DatePicker';
 import Select from '@/lib/components/uswds/Select';
 import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
-import PairFieldGroup from './PairFieldGroup';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import { Stop } from '@/lib/components/Stop';
+import CompletionStatusYearSelect from './CompletionStatusYearSelect';
+
+const AUDIT_COMPLETION_STATUS_OPTIONS = [
+  { value: 'CLOSED', label: 'Closed' },
+  { value: 'NOT_CLOSED', label: 'Not Closed' },
+] as const;
 
 type AuditCompletionStatus = 'CLOSED' | 'NOT_CLOSED';
 
@@ -166,57 +171,23 @@ export default function Chapter12StandingAuditForm() {
         }}
       />
 
-      <PairFieldGroup
+      <CompletionStatusYearSelect
         idPrefix="audit-completion-status"
         groupClassName="exam-audit-group"
         rowClassName="exam-audit-group__row"
         title="Audit Completion Status for Year"
-        error={completionPairError}
-      >
-        {({ hasError, ariaDescribedBy }) => (
-          <>
-            <Select
-              id="audit-completion-status-year"
-              label="Year"
-              compactLabel
-              hasError={hasError}
-              ariaDescribedBy={ariaDescribedBy}
-              placeholder="- Select -"
-              options={getFiscalYearOptions().map((year) => ({
-                value: String(year),
-                label: String(year),
-              }))}
-              value={form.auditCompletionYear === '' ? '' : String(form.auditCompletionYear)}
-              onChange={(e) => {
-                const val = e.target.value;
-                setForm((prev) => ({
-                  ...prev,
-                  auditCompletionYear: val ? Number(val) : '',
-                }));
-              }}
-            />
-            <Select
-              id="audit-completion-status-status"
-              label="Status"
-              compactLabel
-              hasError={hasError}
-              ariaDescribedBy={ariaDescribedBy}
-              placeholder="- Select -"
-              options={[
-                { value: 'CLOSED', label: 'Closed' },
-                { value: 'NOT_CLOSED', label: 'Not Closed' },
-              ]}
-              value={form.auditCompletionStatus}
-              onChange={(e) => {
-                setForm((prev) => ({
-                  ...prev,
-                  auditCompletionStatus: e.target.value as AuditCompletionStatus | '',
-                }));
-              }}
-            />
-          </>
-        )}
-      </PairFieldGroup>
+        errorLabel="Audit Completion Status"
+        yearOptions={getFiscalYearOptions()}
+        statusOptions={AUDIT_COMPLETION_STATUS_OPTIONS}
+        year={form.auditCompletionYear}
+        status={form.auditCompletionStatus}
+        onYearChange={(auditCompletionYear) =>
+          setForm((prev) => ({ ...prev, auditCompletionYear }))
+        }
+        onStatusChange={(auditCompletionStatus) =>
+          setForm((prev) => ({ ...prev, auditCompletionStatus }))
+        }
+      />
 
       <div className="usa-button-group">
         <Button

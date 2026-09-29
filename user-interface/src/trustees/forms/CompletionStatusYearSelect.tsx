@@ -1,39 +1,34 @@
-import {
-  CompletionStatus as SharedCompletionStatus,
-  validateCompletionPairPresence,
-} from '@common/cams/trustee-upcoming-key-dates';
+import { validateCompletionPairPresence } from '@common/cams/trustee-upcoming-key-dates';
 import Select from '@/lib/components/uswds/Select';
 import PairFieldGroup from './PairFieldGroup';
-import { getCompletionYearOptions } from './keyDatesInputDefaults';
 
-type CompletionStatus = SharedCompletionStatus | '';
-
-interface CompletionStatusYearSelectLabels {
-  complete: string;
-  incomplete: string;
+interface CompletionStatusOption<T extends string> {
+  value: T;
+  label: string;
 }
 
-const DEFAULT_STATUS_LABELS: CompletionStatusYearSelectLabels = {
-  complete: 'Complete',
-  incomplete: 'Incomplete',
-};
-
-export interface CompletionStatusYearSelectProps {
-  /** Prefix used for ids, test ids, and class names, e.g. 'audit-completion' or 'tpr-completion'. */
+export interface CompletionStatusYearSelectProps<T extends string> {
+  /** Prefix used for ids, test ids, and (by default) class names, e.g. 'audit-completion' or 'tpr-completion'. */
   idPrefix: string;
   title: string;
   year: number | '';
-  status: CompletionStatus;
+  status: T | '';
   onYearChange: (year: number | '') => void;
-  onStatusChange: (status: CompletionStatus) => void;
+  onStatusChange: (status: T | '') => void;
   /** Label the pair error is phrased around, e.g. 'Audit Completion Status'. */
   errorLabel: string;
-  /** Overrides the Status dropdown's displayed labels without changing the stored 'COMPLETE'/'INCOMPLETE' values. */
-  statusLabels?: CompletionStatusYearSelectLabels;
+  /** The year dropdown's options, e.g. getCompletionYearOptions() or getFiscalYearOptions(). */
+  yearOptions: number[];
+  /** The status dropdown's stored values and displayed labels, e.g. COMPLETE/INCOMPLETE or CLOSED/NOT_CLOSED. */
+  statusOptions: readonly CompletionStatusOption<T>[];
+  /** Defaults to `${idPrefix}-status-group`; override to match a caller's own stylesheet. */
+  groupClassName?: string;
+  /** Defaults to `${idPrefix}-status-group__row`; override to match a caller's own stylesheet. */
+  rowClassName?: string;
 }
 
-export default function CompletionStatusYearSelect(
-  props: Readonly<CompletionStatusYearSelectProps>,
+export default function CompletionStatusYearSelect<T extends string>(
+  props: Readonly<CompletionStatusYearSelectProps<T>>,
 ) {
   const {
     idPrefix,
@@ -43,15 +38,18 @@ export default function CompletionStatusYearSelect(
     onYearChange,
     onStatusChange,
     errorLabel,
-    statusLabels = DEFAULT_STATUS_LABELS,
+    yearOptions,
+    statusOptions,
+    groupClassName = `${idPrefix}-status-group`,
+    rowClassName = `${idPrefix}-status-group__row`,
   } = props;
   const pairError = validateCompletionPairPresence(year, status, errorLabel);
 
   return (
     <PairFieldGroup
       idPrefix={idPrefix}
-      groupClassName={`${idPrefix}-status-group`}
-      rowClassName={`${idPrefix}-status-group__row`}
+      groupClassName={groupClassName}
+      rowClassName={rowClassName}
       header={<p className={`usa-label ${idPrefix}-status-title`}>{title}</p>}
       error={pairError}
     >
@@ -64,7 +62,7 @@ export default function CompletionStatusYearSelect(
             hasError={hasError}
             ariaDescribedBy={ariaDescribedBy}
             placeholder="- Select -"
-            options={getCompletionYearOptions().map((y) => ({
+            options={yearOptions.map((y) => ({
               value: String(y),
               label: String(y),
             }))}
@@ -81,12 +79,9 @@ export default function CompletionStatusYearSelect(
             hasError={hasError}
             ariaDescribedBy={ariaDescribedBy}
             placeholder="- Select -"
-            options={[
-              { value: 'COMPLETE', label: statusLabels.complete },
-              { value: 'INCOMPLETE', label: statusLabels.incomplete },
-            ]}
+            options={[...statusOptions]}
             value={status}
-            onChange={(e) => onStatusChange(e.target.value as CompletionStatus)}
+            onChange={(e) => onStatusChange(e.target.value as T)}
           />
         </>
       )}

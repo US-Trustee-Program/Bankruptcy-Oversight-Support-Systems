@@ -14,8 +14,13 @@ import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import { Stop } from '@/lib/components/Stop';
-import { buildKeyDatesInputFromOriginal } from './keyDatesInputDefaults';
+import { buildKeyDatesInputFromOriginal, getCompletionYearOptions } from './keyDatesInputDefaults';
 import CompletionStatusYearSelect from './CompletionStatusYearSelect';
+
+const CH13_AUDIT_STATUS_OPTIONS = [
+  { value: 'COMPLETE', label: 'Closed' },
+  { value: 'INCOMPLETE', label: 'Not Closed' },
+] as const;
 
 type FormState = {
   pastAudit: string;
@@ -142,7 +147,8 @@ export default function Chapter13StandingAuditForm() {
         idPrefix="audit-completion"
         title="Audit Completion Status for Year"
         errorLabel="Audit Completion Status"
-        statusLabels={{ complete: 'Closed', incomplete: 'Not Closed' }}
+        yearOptions={getCompletionYearOptions()}
+        statusOptions={CH13_AUDIT_STATUS_OPTIONS}
         year={form.ch13AuditCompletionYear}
         status={form.ch13AuditCompletionStatus}
         onYearChange={(ch13AuditCompletionYear) =>
