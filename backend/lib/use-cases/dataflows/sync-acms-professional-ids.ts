@@ -24,6 +24,33 @@ import {
 
 const ACMS_PROFESSIONAL_ID_SYNC_STATE = 'ACMS_PROFESSIONAL_ID_SYNC_STATE' as const;
 
+/**
+ * TEMPORARY kill switch for processResolvedNameMatch's TrusteeVariation write-back - static, not
+ * a runtime/LaunchDarkly flag, since this is expected to come back out soon once the two problems
+ * below are fixed, not stay configurable long-term.
+ *
+ * An adversarial review of the PR that introduced the write-back found it unconditionally correct
+ * only in isolation - two real problems surfaced when checked against the real 2026-09-25 staging
+ * export:
+ *   1. 405 distinct variant strings in that export are shared by 2+ auto-linked ACMS professional
+ *      IDs (the same trustee filed under multiple group/office codes - a documented real ACMS
+ *      pattern). Within a single sync run, the second ID sharing a variant would hit the
+ *      variation the first just wrote (processFingerprintMatch, checked BEFORE the matching
+ *      pipeline runs) and resolve via createLinkedStateWithoutEvidence - no candidates, no score,
+ *      resolvedBy: 'linkedWithoutPipelineEvidence' - silently losing the exact evidence graph
+ *      this write-back was meant to preserve, for 452 records in that export alone.
+ *   2. purgeAll deletes trustee-professional-ids and the sync bookmark, but never touches the
+ *      variation collection. A future fix to the matching/scoring pipeline, applied via a purge +
+ *      full re-sync, would have every previously name-matched record short-circuit on its stale
+ *      variation instead of being re-evaluated against the fixed logic - permanently locking in
+ *      whatever the pipeline decided under the old, buggy version.
+ *
+ * The write-back itself is still wanted (see processResolvedNameMatch's own doc comment) - this
+ * flag exists to keep the code path unreachable until both problems are fixed, not to revert the
+ * feature.
+ */
+const WRITE_ACMS_TRUSTEE_VARIATIONS = false;
+
 function createDeps(context: ApplicationContext) {
   return {
     context,
@@ -411,17 +438,23 @@ async function processResolvedNameMatch(
   // no existing variation for this exact fingerprint+variant pair to duplicate. Mirrors
   // sync-trustee-case-appointments.ts's autoLinkTrustee, which does the same thing for a
   // DXTR-sourced match.
-  await deps.variationRepo.createVariation(
-    createAuditRecord(
-      {
-        documentType: TRUSTEE_VARIATION_DOCUMENT_TYPE,
-        fingerprint,
-        variant,
-        trusteeId,
-      },
-      ACMS_SYSTEM_USER_REFERENCE,
-    ),
-  );
+  //
+  // Gated by WRITE_ACMS_TRUSTEE_VARIATIONS (see its own doc comment) - disabled by default until
+  // the within-run duplicate-variant and purgeAll-never-clears-ACMS-variations problems it names
+  // are fixed.
+  if (WRITE_ACMS_TRUSTEE_VARIATIONS) {
+    await deps.variationRepo.createVariation(
+      createAuditRecord(
+        {
+          documentType: TRUSTEE_VARIATION_DOCUMENT_TYPE,
+          fingerprint,
+          variant,
+          trusteeId,
+        },
+        ACMS_SYSTEM_USER_REFERENCE,
+      ),
+    );
+  }
 
   await writeProfessionalId(deps, record, fingerprint, variant, state);
   return { kind: 'auto-linked', via: 'name' };
