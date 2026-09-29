@@ -524,9 +524,11 @@ function projectNormalizedSourceForRecall(state: PipelineState): PipelineState['
  * - shouldSkipAsNotAPerson: does this record name no real person at all - "NOT ASSIGNED", an office
  *   name, a well-known synthetic test record.
  * - isRecordDisavowed: did ACMS explicitly say not to use this specific record - "DO NOT USE",
- *   "DUPLICATE", "CANCELLED", "DELETE" - independent of whether a real name is also present. A
- *   real person's name on a disavowed record still skips: the record itself is stale/superseded,
- *   so matching against it is the wrong move even though the name is real.
+ *   "DUPLICATE", "CANCELLED", "DELETE" - checked against fullName AND the concatenated legacy
+ *   address fields (a real record carried "DO NOT USE" in address1 instead of the name field - see
+ *   isRecordDisavowed's own doc comment for that regression), independent of whether a real name is
+ *   also present. A real person's name on a disavowed record still skips: the record itself is
+ *   stale/superseded, so matching against it is the wrong move even though the name is real.
  * - shouldSkipAsUstStaff: does this record carry a "(UST)"/"U S TRUSTEE" annotation - a UST is a
  *   real person, but structurally never a CAMS trustee record, so there is nothing to match even
  *   when a real-looking name accompanies the annotation (unlike a chapter/role suffix, which
@@ -534,8 +536,9 @@ function projectNormalizedSourceForRecall(state: PipelineState): PipelineState['
  * - Any one check alone is sufficient to skip; all three reused as-is from
  *   sync-acms-professional-ids.ts rather than reimplemented, so this stage can never drift from
  *   their detection logic.
- * - Reads sourceRaw.fullName, not sourceNormalized - normalization redistributes name parts and
- *   makes a signal split across fields, or embedded mid-field, unpredictable to find afterward.
+ * - Reads sourceRaw.fullName (and, for isRecordDisavowed, sourceRaw.legacy), not sourceNormalized -
+ *   normalization redistributes name parts and makes a signal split across fields, or embedded
+ *   mid-field, unpredictable to find afterward.
  * - Sets state.skip, not state.match - "no real identity to match at all" is a valid outcome, not
  *   an error.
  */
@@ -544,7 +547,7 @@ export function skipAdministrativePlaceholder(): Stage {
     const fullName = state.sourceRaw.fullName;
     const shouldSkip =
       shouldSkipAsNotAPerson(fullName) ||
-      isRecordDisavowed(fullName) ||
+      isRecordDisavowed(state.sourceRaw) ||
       shouldSkipAsUstStaff(fullName);
     if (!shouldSkip) return state;
     return { ...state, skip: true };
