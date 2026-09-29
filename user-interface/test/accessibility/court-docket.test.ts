@@ -33,9 +33,9 @@ test.describe('Court Docket - Complex Interactions', () => {
     let accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
 
-    // Test date range picker - opens calendar with new HTML
+    // Test date range picker - focuses the native date input
     await page.locator('#docket-date-range-date-start').click();
-    await expect(page.locator('.usa-date-picker__calendar').first()).toBeVisible();
+    await expect(page.locator('#docket-date-range-date-start')).toBeFocused();
 
     // Check accessibility with date picker open
     accessibilityScanResults = await createAxeBuilder(page).analyze();
