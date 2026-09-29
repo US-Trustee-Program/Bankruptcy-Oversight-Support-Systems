@@ -320,7 +320,7 @@ async function main(): Promise<void> {
     const acmsTrusteeProfessional = record.evidence.sourceRaw;
     if (
       shouldSkipAsNotAPerson(acmsTrusteeProfessional.fullName) ||
-      isRecordDisavowed(acmsTrusteeProfessional.fullName) ||
+      isRecordDisavowed(acmsTrusteeProfessional) ||
       shouldSkipAsUstStaff(acmsTrusteeProfessional.fullName)
     ) {
       const staging = stagingByAcmsId.get(record.acmsProfessionalId);

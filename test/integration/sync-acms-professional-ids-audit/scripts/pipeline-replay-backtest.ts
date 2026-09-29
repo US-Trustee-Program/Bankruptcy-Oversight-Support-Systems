@@ -424,7 +424,7 @@ async function run() {
 
     if (
       shouldSkipAsNotAPerson(acmsTrusteeProfessional.fullName) ||
-      isRecordDisavowed(acmsTrusteeProfessional.fullName)
+      isRecordDisavowed(acmsTrusteeProfessional)
     ) {
       outcomeCounts.skipped++;
       if (record.disposition !== 'skipped') {
