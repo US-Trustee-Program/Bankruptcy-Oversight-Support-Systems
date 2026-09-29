@@ -32,6 +32,7 @@ import {
   recoverLastFirstRoleSwap,
   recoverSoloPracticeName,
   shouldSkipAsNotAPerson,
+  shouldSkipAsUstStaff,
   splitCompoundFirstName,
   stripAdministrativeMarkers,
 } from './acms-name-normalization.helpers';
@@ -394,13 +395,17 @@ function projectNormalizedSourceForRecall(state: PipelineState): PipelineState['
  * Cheapest possible gate in the whole pipeline, deliberately FIRST to run - before
  * normalizeAcmsSourceName, not after.
  *
- * - shouldSkipAsNotAPerson: does this record name no real person at all - "NOT ASSIGNED", "US
- *   TRUSTEE", an office name, a well-known synthetic test record.
+ * - shouldSkipAsNotAPerson: does this record name no real person at all - "NOT ASSIGNED", an office
+ *   name, a well-known synthetic test record.
  * - isRecordDisavowed: did ACMS explicitly say not to use this specific record - "DO NOT USE",
  *   "DUPLICATE", "CANCELLED", "DELETE" - independent of whether a real name is also present. A
  *   real person's name on a disavowed record still skips: the record itself is stale/superseded,
  *   so matching against it is the wrong move even though the name is real.
- * - Either check alone is sufficient to skip; both reused as-is from
+ * - shouldSkipAsUstStaff: does this record carry a "(UST)"/"U S TRUSTEE" annotation - a UST is a
+ *   real person, but structurally never a CAMS trustee record, so there is nothing to match even
+ *   when a real-looking name accompanies the annotation (unlike a chapter/role suffix, which
+ *   ADMINISTRATIVE_MARKER_PHRASES strips to recover a real, matchable name underneath).
+ * - Any one check alone is sufficient to skip; all three reused as-is from
  *   sync-acms-professional-ids.ts rather than reimplemented, so this stage can never drift from
  *   their detection logic.
  * - Reads sourceRaw.fullName, not sourceNormalized - normalization redistributes name parts and
@@ -411,7 +416,10 @@ function projectNormalizedSourceForRecall(state: PipelineState): PipelineState['
 export function skipAdministrativePlaceholder(): Stage {
   return async (state: PipelineState): Promise<PipelineState> => {
     const fullName = state.sourceRaw.fullName;
-    const shouldSkip = shouldSkipAsNotAPerson(fullName) || isRecordDisavowed(fullName);
+    const shouldSkip =
+      shouldSkipAsNotAPerson(fullName) ||
+      isRecordDisavowed(fullName) ||
+      shouldSkipAsUstStaff(fullName);
     if (!shouldSkip) return state;
     return { ...state, skip: true };
   };
