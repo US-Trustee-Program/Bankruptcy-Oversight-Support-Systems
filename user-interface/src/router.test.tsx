@@ -1,6 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter, MemoryRouter } from 'react-router-dom';
-import * as ReactRouterDOM from 'react-router-dom';
 import App from './App';
 import { vi } from 'vitest';
 import LocalStorage from './lib/utils/local-storage';
@@ -12,32 +11,8 @@ import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities
 
 vi.mock('@/lib/hooks/UseFeatureFlagReadiness');
 
-vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual('react-router-dom');
-  return {
-    ...(actual as typeof actual),
-    useLocation: vi.fn().mockReturnValue({
-      pathname: '/',
-      search: '',
-      hash: '',
-      state: null,
-      key: 'default',
-    }),
-  };
-});
-
 describe('App Router Tests', () => {
   let userEvent: CamsUserEvent;
-
-  const setUseLocationMock = (pathname: string = '/', state: object | undefined = undefined) => {
-    vi.mocked(ReactRouterDOM.useLocation).mockReturnValue({
-      pathname,
-      search: '',
-      hash: '',
-      state,
-      key: 'default',
-    } as ReturnType<typeof ReactRouterDOM.useLocation>);
-  };
 
   beforeAll(async () => {
     vi.stubEnv('CAMS_USE_FAKE_API', 'true');
@@ -45,7 +20,6 @@ describe('App Router Tests', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
-    setUseLocationMock();
     userEvent = TestingUtilities.setupUserEvent();
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(
       MockData.getCamsSession({
@@ -88,8 +62,6 @@ describe('App Router Tests', () => {
       'restrict-adding-trustees': true,
     });
 
-    setUseLocationMock('/trustees/create');
-
     render(
       <MemoryRouter initialEntries={['/trustees/create']}>
         <App />
@@ -117,8 +89,28 @@ describe('App Router Tests', () => {
     await screen.findByText('Case Search', { selector: 'h1' });
   });
 
+  test.each([
+    { path: '/my-cases', testId: 'case-list-heading' },
+    { path: '/staff-assignment', testId: 'case-list-heading' },
+    { path: '/search/081-24-12345', testId: 'search' },
+    { path: '/case-detail/081-24-12345', testId: 'case-detail' },
+    { path: '/data-verification', testId: 'data-verification-screen' },
+    { path: '/admin', testId: 'admin-screen' },
+    { path: '/trustees/some-trustee-id', testId: 'record-detail' },
+  ])('should route $path to a screen rendering data-testid=$testId', async ({ path, testId }) => {
+    render(
+      <MemoryRouter initialEntries={[path]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId(testId)).toBeInTheDocument();
+    });
+  });
+
   describe('Trustee route unauthorized access tests', () => {
-    test('should show unauthorized message when accessing /trustees without TrusteeAdmin role', async () => {
+    test('should not show the Add New Trustee link when accessing /trustees without TrusteeAdmin role', async () => {
       const unauthorizedUser = MockData.getCamsUser({ roles: [CamsRole.CaseAssignmentManager] });
       vi.spyOn(LocalStorage, 'getSession').mockReturnValue(
         MockData.getCamsSession({ user: unauthorizedUser }),
@@ -135,7 +127,33 @@ describe('App Router Tests', () => {
       );
 
       await waitFor(() => {
-        expect(document.querySelector('[data-testid="trustees-add-link"]')).not.toBeInTheDocument();
+        // TrusteesScreen returns null entirely for an unauthorized user -- there is no
+        // "unauthorized" message to render, so confirm the whole screen is absent.
+        expect(screen.queryByTestId('trustees')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('trustees-add-link')).not.toBeInTheDocument();
+      });
+    });
+
+    test('should show the Add New Trustee link when accessing /trustees with TrusteeAdmin role', async () => {
+      const authorizedUser = MockData.getCamsUser({ roles: [CamsRole.TrusteeAdmin] });
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(
+        MockData.getCamsSession({ user: authorizedUser }),
+      );
+
+      vi.spyOn(FeatureFlags, 'default').mockReturnValue({
+        'trustee-management': true,
+        'restrict-adding-trustees': true,
+      });
+
+      render(
+        <MemoryRouter initialEntries={['/trustees']}>
+          <App />
+        </MemoryRouter>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustees')).toBeInTheDocument();
+        expect(screen.getByTestId('trustees-add-link')).toBeInTheDocument();
       });
     });
   });
