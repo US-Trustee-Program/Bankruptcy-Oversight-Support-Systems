@@ -8,10 +8,10 @@ export const CHAPTER_ELEVEN_ENABLED = 'chapter-eleven-enabled';
 export const CHAPTER_TWELVE_ENABLED = 'chapter-twelve-enabled';
 export const CONSOLIDATIONS_ENABLED = 'consolidations-enabled';
 // Single flag covering the trustee appointments accordion redesign: the
-// accordion list, its per-chapter key-dates cards, the consolidated
-// TrusteePerformanceReportForm, the assigned-staff tab, and the case list tab.
-// Replaced the per-chapter DISPLAY_CHPT*_KEY_DATES flags, TRUSTEE_ASSIGNED_STAFF_ENABLED,
-// TRUSTEE_CASE_LIST, and TPR_DISPLAY_UPDATES now that all of this ships in one release.
+// accordion list, its per-chapter key-dates cards, and the consolidated
+// TrusteePerformanceReportForm. Replaces the six per-chapter
+// DISPLAY_CHPT*_KEY_DATES flags and TPR_DISPLAY_UPDATES, which all ship together
+// in one release.
 export const TRUSTEE_APPOINTMENT_ACCORDIONS = 'trustee-appointment-accordions';
 export const PHONETIC_SEARCH_ENABLED = 'phonetic-search-enabled';
 export const PRIVILEGED_IDENTITY_MANAGEMENT = 'privileged-identity-management';
@@ -26,6 +26,8 @@ export const RESTRICT_ADDING_TRUSTEES = 'restrict-adding-trustees';
 export const TRUSTEE_VERIFICATION_ENABLED = 'trustee-verification-enabled';
 export const TRUSTEE_SOFTWARE_BANK_DISPLAY = 'trustee-software-bank-display';
 export const TRUSTEE_APPOINTMENT_HISTORY_ENABLED = 'trustee-appointment-history-enabled';
+export const TRUSTEE_ASSIGNED_STAFF_ENABLED = 'trustee-assigned-staff-enabled';
+export const TRUSTEE_CASE_LIST = 'trustee-case-list';
 export const TRUSTEE_CHANGE_NOTIFICATIONS = 'trustee-change-notification-enabled';
 export const TRUSTEE_TYPED_PHONES = 'trustee-typed-phones';
 export const SOFTWARE_VENDOR_TYPED_PHONES = 'software-vendor-typed-phones';

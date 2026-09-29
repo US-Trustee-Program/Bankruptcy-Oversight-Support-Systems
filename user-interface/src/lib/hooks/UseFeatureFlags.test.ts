@@ -1,7 +1,11 @@
 import * as sdk from 'launchdarkly-react-client-sdk';
 import { FeatureFlagSet, testFeatureFlags } from '@common/feature-flags';
 import * as config from '../../configuration/featureFlagConfiguration';
-import useFeatureFlags, { TRUSTEE_APPOINTMENT_ACCORDIONS } from './UseFeatureFlags';
+import useFeatureFlags, {
+  TRUSTEE_APPOINTMENT_ACCORDIONS,
+  TRUSTEE_ASSIGNED_STAFF_ENABLED,
+  TRUSTEE_CASE_LIST,
+} from './UseFeatureFlags';
 import { mockConfiguration } from '../testing/mock-configuration';
 import { renderHook } from '@testing-library/react';
 
@@ -68,5 +72,13 @@ describe('useFeatureFlag hook', () => {
 
   test('testFeatureFlags includes TRUSTEE_APPOINTMENT_ACCORDIONS as true', () => {
     expect(testFeatureFlags[TRUSTEE_APPOINTMENT_ACCORDIONS]).toBe(true);
+  });
+
+  test('testFeatureFlags includes TRUSTEE_ASSIGNED_STAFF_ENABLED as true', () => {
+    expect(testFeatureFlags[TRUSTEE_ASSIGNED_STAFF_ENABLED]).toBe(true);
+  });
+
+  test('testFeatureFlags includes TRUSTEE_CASE_LIST as true', () => {
+    expect(testFeatureFlags[TRUSTEE_CASE_LIST]).toBe(true);
   });
 });
