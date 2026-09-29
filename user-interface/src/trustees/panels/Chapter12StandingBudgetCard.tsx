@@ -1,5 +1,9 @@
 import EditableTableCard from '@/lib/components/cams/EditableTableCard/EditableTableCard';
 
+// Confirmed by mstankey@flexion.us, 2026-09-29 (cams-plwwz.7).
+const BUDGET_SUBMISSION_DUE = '05/01';
+const BUDGET_REVIEW_TO_OO = '06/01';
+
 export interface Chapter12StandingBudgetCardProps {
   appointmentId: string;
 }
@@ -26,13 +30,13 @@ export default function Chapter12StandingBudgetCard(
         },
         {
           key: 'budgetReviewToOO',
-          header: 'Budget Due to OO',
+          header: 'Budget Review to OO',
           testId: 'budget-review-to-oo-row',
         },
       ]}
       values={{
-        budgetSubmissionDue: '05/01',
-        budgetReviewToOO: '06/01',
+        budgetSubmissionDue: BUDGET_SUBMISSION_DUE,
+        budgetReviewToOO: BUDGET_REVIEW_TO_OO,
       }}
     />
   );

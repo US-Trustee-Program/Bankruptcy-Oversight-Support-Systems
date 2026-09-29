@@ -3,7 +3,7 @@ import { describe, test, expect } from 'vitest';
 import Chapter13StandingBudgetCard from './Chapter13StandingBudgetCard';
 
 describe('Chapter13StandingBudgetCard', () => {
-  test('renders Budget Submission Due and Budget Due to OO constants', () => {
+  test('renders Budget Submission Due and Budget Review to OO constants', () => {
     render(<Chapter13StandingBudgetCard appointmentId="appointment-1" />);
     expect(screen.getByTestId('budget-submission-due-row')).toHaveTextContent('07/01');
     expect(screen.getByTestId('budget-review-to-oo-row')).toHaveTextContent('08/15');
