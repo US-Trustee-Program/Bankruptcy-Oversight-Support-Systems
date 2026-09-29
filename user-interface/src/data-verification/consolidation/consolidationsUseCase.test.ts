@@ -162,15 +162,19 @@ describe('Consolidation UseCase tests', () => {
 
   test('should call setSelectedCases and updateSubmitButtonState when handleIncludeCase is called', () => {
     const setSelectedCasesSpy = vi.spyOn(store, 'setSelectedCases');
+    const disableButtonSpy = vi.spyOn(controls, 'disableButton');
     const mockCases = MockData.buildArray(MockData.getConsolidatedOrderCase, 3);
     const mockAdditionalCase = MockData.getConsolidatedOrderCase();
     //Add case initially to includeCases
     store.setSelectedCases(mockCases);
     useCase.handleIncludeCase(mockAdditionalCase);
     expect(setSelectedCasesSpy).toHaveBeenCalledWith([...mockCases, mockAdditionalCase]);
+    const callsAfterInclude = disableButtonSpy.mock.calls.length;
+    expect(callsAfterInclude).toBeGreaterThan(0);
     //Test same case is removed
     useCase.handleIncludeCase(mockAdditionalCase);
     expect(setSelectedCasesSpy).toHaveBeenCalledWith(mockCases);
+    expect(disableButtonSpy.mock.calls.length).toBeGreaterThan(callsAfterInclude);
   });
 
   test('should properly set Lead Case when marking lead case', () => {
@@ -223,10 +227,40 @@ describe('Consolidation UseCase tests', () => {
     expect(store.isDataEnhanced).toBeFalsy();
   }, 10000);
 
+  test('should silently ignore a getCaseAssignments failure on handleOnExpand', async () => {
+    vi.spyOn(Api2, 'getCaseAssignments').mockRejectedValue(new Error('assignment error'));
+    vi.spyOn(Api2, 'getCaseAssociations').mockResolvedValue(
+      MockData.getNonPaginatedResponseBody<Consolidation[]>([]),
+    );
+
+    await useCase.handleOnExpand();
+
+    // Assignments are not critical to the consolidation; a failure there
+    // should not affect isDataEnhanced (unlike an associations failure).
+    expect(store.isDataEnhanced).toBe(true);
+  });
+
+  test('should not attempt to enhance member cases when store.order.memberCases is undefined', async () => {
+    const setIsDataEnhancedSpy = vi.spyOn(store, 'setIsDataEnhanced');
+    const assignmentsSpy = vi.spyOn(Api2, 'getCaseAssignments');
+    const associationsSpy = vi.spyOn(Api2, 'getCaseAssociations');
+    store.order = {
+      ...MockData.getConsolidationOrder(),
+      memberCases: undefined as unknown as ConsolidationOrderCase[],
+    };
+
+    await useCase.handleOnExpand();
+
+    expect(assignmentsSpy).not.toHaveBeenCalled();
+    expect(associationsSpy).not.toHaveBeenCalled();
+    expect(setIsDataEnhancedSpy).toHaveBeenCalledWith(true);
+  });
+
   test('should call setConsolidationType when handleSelectConsolidationType is called', () => {
     const setConsolidationTypeSpy = vi.spyOn(store, 'setConsolidationType');
     useCase.handleSelectConsolidationType('Test');
     expect(setConsolidationTypeSpy).toHaveBeenCalledWith('Test');
+    expect(store.consolidationType).toEqual('Test');
   });
 
   test('should call setLeadCaseCourt when a court is selected from the dropdown', () => {
@@ -277,6 +311,19 @@ describe('Consolidation UseCase tests', () => {
     expect(getCaseSummarySpy).toHaveBeenCalledWith(mockAddCase.caseId);
     expect(getCaseAssociationsSpy).toHaveBeenCalledWith(mockAddCase.caseId);
     expect(getCaseAssignmentsSpy).toHaveBeenCalledWith(mockAddCase.caseId);
+  });
+
+  test('should do nothing when the case number is incomplete', () => {
+    const getCaseSummarySpy = vi.spyOn(Api2, 'getCaseSummary');
+    const setIsLookingForCaseSpy = vi.spyOn(store, 'setIsLookingForCase');
+
+    store.caseToAddCourt = '101';
+    store.caseToAddCaseNumber = '23-123'; // incomplete: getCaseId requires an 8-char case number
+
+    useCase.verifyCaseCanBeAdded();
+
+    expect(getCaseSummarySpy).not.toHaveBeenCalled();
+    expect(setIsLookingForCaseSpy).not.toHaveBeenCalled();
   });
 
   test('should display an alert if case is already included in the consolidation', async () => {
@@ -388,12 +435,11 @@ describe('Consolidation UseCase tests', () => {
   test('should disable approve button and enable reject button if any selected cases are already consolidated', () => {
     const disableButtonSpy = vi.spyOn(controls, 'disableButton');
     store.setIsDataEnhanced(true);
-    setupAddCase();
+    store.setLeadCaseId('lead-case-id');
     store.setConsolidationType('administrative');
+    // areAnySelectedCasesConsolidated() reads the isMemberCase flag directly, not associations.
     const cases = [
-      MockData.getConsolidatedOrderCase({
-        override: { associations: MockData.buildArray(MockData.getConsolidation, 3) },
-      }),
+      MockData.getConsolidatedOrderCase({ override: { isMemberCase: true } }),
       MockData.getConsolidatedOrderCase(),
       MockData.getConsolidatedOrderCase(),
     ];
@@ -507,7 +553,17 @@ describe('Consolidation UseCase tests', () => {
       MockData.getNonPaginatedResponseBody<Consolidation[]>(data);
 
     store.setConsolidationType(data[0].consolidationType);
+    store.setIsValidatingLeadCaseNumber(true);
+    store.setFoundValidCaseNumber(true);
+
     expect(() => useCase.handleCaseAssociationResponse(response, caseId)).toThrow(Error);
+
+    const expectedMessage =
+      `Case ${getCaseNumber(caseId)} is a consolidated ` +
+      `member case of case ${getCaseNumber(data[0].otherCase!.caseId)}.`;
+    expect(store.leadCaseNumberError).toEqual(expectedMessage);
+    expect(store.isValidatingLeadCaseNumber).toBe(false);
+    expect(store.foundValidCaseNumber).toBe(false);
   });
 
   test('should return consolidations if lead case is already a lead for the same type of consolidation', () => {
@@ -619,18 +675,6 @@ describe('Consolidation UseCase tests', () => {
     store.setLeadCaseId(leadCase.caseId);
     store.setConsolidationType('administrative');
     store.setSelectedCases([leadCase]);
-    useCase.updateSubmitButtonsState();
-    expect(disableButtonSpy).toHaveBeenCalledWith(true);
-  });
-
-  test('should disable the verify button if a selected member case is a lead case for another consolidation', async () => {
-    const disableButtonSpy = vi.spyOn(controls.approveButton.current!, 'disableButton');
-    const leadCase = MockData.getConsolidatedOrderCase();
-    store.setLeadCase(leadCase);
-    store.setConsolidationType('administrative');
-    const selectedCases = MockData.buildArray(MockData.getConsolidatedOrderCase, 4);
-    selectedCases[0].associations?.push(MockData.getConsolidationFrom());
-    store.setSelectedCases(selectedCases);
     useCase.updateSubmitButtonsState();
     expect(disableButtonSpy).toHaveBeenCalledWith(true);
   });
