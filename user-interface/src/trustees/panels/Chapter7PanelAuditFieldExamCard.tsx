@@ -5,6 +5,7 @@ import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import { useOpenEditKeyDates } from './useOpenEditKeyDates';
 import {
   examOrAuditField,
+  examOrAuditLabel,
   auditReqByField,
   formatDateOrDefault,
   NO_DATE,
@@ -58,7 +59,7 @@ export default function Chapter7PanelAuditFieldExamCard(
       editAriaLabel="Edit Audit/Field Exam key dates"
       editTitle="Edit Audit/Field Exam key dates"
       columns={[
-        { key: 'examOrAudit', header: 'Audit', testId: 'upcoming-exam-audit-row' },
+        { key: 'examOrAudit', header: examOrAuditLabel(data), testId: 'upcoming-exam-audit-row' },
         { key: 'auditReqBy', header: 'Audit Req by', testId: 'audit-req-by-row' },
         {
           key: 'lastAuditFiscalYear',

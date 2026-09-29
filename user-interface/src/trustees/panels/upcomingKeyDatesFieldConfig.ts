@@ -58,9 +58,7 @@ export function formatDateOrDefault(isoDate: string | undefined): string {
 }
 
 interface UpcomingKeyDatesDisplayField {
-  label: string;
   value: string;
-  testId: string;
   stacked?: boolean;
 }
 
@@ -75,12 +73,7 @@ export function tprFrequencyField(
   const value = data?.tprFrequency
     ? (frequencyLabels[data.tprFrequency] ?? 'No frequency selected')
     : 'No frequency selected';
-  return {
-    label: 'TPR Review Period Frequency',
-    value,
-    testId: 'tpr-review-period-frequency-row',
-    stacked: true,
-  };
+  return { value, stacked: true };
 }
 
 export function tprReviewPeriodField(
@@ -92,7 +85,7 @@ export function tprReviewPeriodField(
         ? isoRangeToMMDD(data.tprReviewPeriodStart, data.tprReviewPeriodEnd)
         : `${isoToMMDDYYYY(data.tprReviewPeriodStart)} - ${isoToMMDDYYYY(data.tprReviewPeriodEnd)}`
       : NO_DATE;
-  return { label: 'Trustee Performance Review Period', value, testId: 'tpr-review-period-row' };
+  return { value };
 }
 
 export function tprDueField(data: TrusteeUpcomingKeyDates | null): UpcomingKeyDatesDisplayField {
@@ -100,29 +93,32 @@ export function tprDueField(data: TrusteeUpcomingKeyDates | null): UpcomingKeyDa
     data?.tprDue && data?.tprDueYearType
       ? `${isoToMMDD(data.tprDue)}/${calculateTprDueYear(data.tprDueYearType, new Date().getFullYear())}`
       : NO_DATE;
-  return { label: 'Trustee Performance Review Due', value, testId: 'tpr-due-row' };
+  return { value };
 }
 
 export function leaseExpirationField(
   data: TrusteeUpcomingKeyDates | null,
 ): UpcomingKeyDatesDisplayField {
   const value = data?.leaseExpiration ? isoToMMDDYYYY(data.leaseExpiration) : NO_DATE;
-  return { label: 'Lease Expiration', value, testId: 'lease-expiration-row' };
+  return { value };
 }
 
 export function idExpirationField(
   data: TrusteeUpcomingKeyDates | null,
 ): UpcomingKeyDatesDisplayField {
   const value = data?.idExpiration ? isoToMMDDYYYY(data.idExpiration) : NO_DATE;
-  return { label: 'ID Expiration', value, testId: 'id-expiration-row' };
+  return { value };
+}
+
+export function examOrAuditLabel(data: TrusteeUpcomingKeyDates | null): string {
+  return data?.upcomingExamOrAuditType ?? 'Field Exam / Audit';
 }
 
 export function examOrAuditField(
   data: TrusteeUpcomingKeyDates | null,
 ): UpcomingKeyDatesDisplayField {
-  const label = data?.upcomingExamOrAuditType ?? 'Field Exam / Audit';
   const value = data?.upcomingExamOrAuditYear ? String(data.upcomingExamOrAuditYear) : NO_DATE;
-  return { label, value, testId: 'upcoming-exam-audit-row' };
+  return { value };
 }
 
 export function auditReqByField(
@@ -130,7 +126,7 @@ export function auditReqByField(
 ): UpcomingKeyDatesDisplayField {
   const auditReqByYear = calculateAuditReqBy(data?.lastAuditFiscalYear);
   const value = auditReqByYear !== null ? String(auditReqByYear) : NO_DATE;
-  return { label: 'Audit Required by', value, testId: 'audit-req-by-row' };
+  return { value };
 }
 
 export function tirReviewPeriodField(
@@ -149,7 +145,7 @@ export function tirReviewPeriodField(
       value = period1;
     }
   }
-  return { label: 'TIR Review Period', value, testId: 'tir-review-period-row' };
+  return { value };
 }
 
 export function tirSubmissionField(
@@ -161,7 +157,7 @@ export function tirSubmissionField(
       ? `${isoToMMDD(data.tirSubmission)} & ${isoToMMDD(data.tirSemiAnnualSubmission)}`
       : isoToMMDD(data.tirSubmission);
   }
-  return { label: 'TIR Submission', value, testId: 'tir-submission-row' };
+  return { value };
 }
 
 export function tirReviewField(data: TrusteeUpcomingKeyDates | null): UpcomingKeyDatesDisplayField {
@@ -171,7 +167,7 @@ export function tirReviewField(data: TrusteeUpcomingKeyDates | null): UpcomingKe
       ? `${isoToMMDD(data.tirReview)} & ${isoToMMDD(data.tirSemiAnnualReview)}`
       : isoToMMDD(data.tirReview);
   }
-  return { label: 'TIR Due', value, testId: 'tir-review-row' };
+  return { value };
 }
 
 // The only remaining production consumer (UpcomingKeyDatesForm.tsx) just

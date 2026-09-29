@@ -68,12 +68,16 @@ describe('Chapter7PanelAuditFieldExamCard', () => {
     expect(screen.getByTestId('past-field-exam-row')).toHaveTextContent('04/12/2025');
   });
 
-  test.each([['Audit'], ['Field Exam'], [undefined]] as const)(
-    'always labels the first column "Audit", regardless of upcomingExamOrAuditType %s',
-    (upcomingExamOrAuditType) => {
+  test.each([
+    ['Audit', 'Audit'],
+    ['Field Exam', 'Field Exam'],
+    [undefined, 'Field Exam / Audit'],
+  ] as const)(
+    'labels the first column %s when upcomingExamOrAuditType is %s',
+    (upcomingExamOrAuditType, expectedLabel) => {
       renderCard({ ...keyDates, upcomingExamOrAuditType });
 
-      expect(screen.getByText('Audit')).toBeInTheDocument();
+      expect(screen.getByText(expectedLabel)).toBeInTheDocument();
     },
   );
 

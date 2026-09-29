@@ -122,16 +122,4 @@ describe('tprReviewPeriodField', () => {
 
     expect(result.value).toBe(NO_DATE);
   });
-
-  test('returns an object with label and testId', () => {
-    const data: Partial<TrusteeUpcomingKeyDates> = {
-      tprReviewPeriodStart: '1900-04-01',
-      tprReviewPeriodEnd: '1900-03-31',
-    };
-
-    const result = tprReviewPeriodField(data as TrusteeUpcomingKeyDates);
-
-    expect(result).toHaveProperty('label', 'Trustee Performance Review Period');
-    expect(result).toHaveProperty('testId', 'tpr-review-period-row');
-  });
 });
