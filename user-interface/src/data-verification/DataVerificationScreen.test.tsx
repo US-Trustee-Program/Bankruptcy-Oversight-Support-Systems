@@ -444,6 +444,35 @@ describe('Review Orders screen', () => {
     expect(verificationSpy).toHaveBeenCalledWith({ status: 'pending,approved,rejected' });
   });
 
+  test('should call getTrusteeMatchVerifications with status: undefined when all status filters are deselected', async () => {
+    setupFeatureFlags({ 'trustee-verification-enabled': true });
+    vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [] });
+    const verificationSpy = vi.spyOn(Api2, 'getTrusteeMatchVerifications').mockResolvedValue({
+      data: [],
+    });
+
+    render(
+      <BrowserRouter>
+        <DataVerificationScreen />
+      </BrowserRouter>,
+    );
+
+    await waitFor(() => {
+      expect(verificationSpy).toHaveBeenCalledWith({ status: 'pending,approved,rejected' });
+    });
+
+    const statusExpandBtn = document.getElementById('task-status-filter-expand');
+    expect(statusExpandBtn).not.toBeNull();
+    fireEvent.click(statusExpandBtn!);
+    fireEvent.click(screen.getByTestId('task-status-filter-option-item-0'));
+    fireEvent.click(screen.getByTestId('task-status-filter-option-item-1'));
+    fireEvent.click(screen.getByTestId('task-status-filter-option-item-2'));
+
+    await waitFor(() => {
+      expect(verificationSpy).toHaveBeenCalledWith({ status: undefined });
+    });
+  });
+
   test('should still render orders when getTrusteeMatchVerifications API fails', async () => {
     setupFeatureFlags({ 'trustee-verification-enabled': true });
     const mockOrder = MockData.getTransferOrder({ override: { status: 'pending' } });
@@ -645,6 +674,45 @@ describe('Review Orders screen', () => {
     });
   });
 
+  test('should leave other orders untouched when transfer onOrderUpdate is called with an updated order', async () => {
+    setupFeatureFlags();
+    const mockOrder = MockData.getTransferOrder({ override: { status: 'pending' } });
+    const otherOrder = MockData.getTransferOrder({ override: { status: 'pending' } });
+    const updatedOrder = { ...mockOrder, status: 'approved' as const };
+
+    vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [mockOrder, otherOrder] });
+
+    vi.spyOn(transferOrderAccordionModule, 'TransferOrderAccordion').mockImplementation(
+      (props: transferOrderAccordionModule.TransferOrderAccordionProps) => {
+        const { onOrderUpdate, order } = props;
+        React.useEffect(() => {
+          if (order.id === mockOrder.id && order.status === 'pending') {
+            onOrderUpdate(
+              { message: 'Transfer order updated.', type: UswdsAlertStyle.Success, timeOut: 8 },
+              updatedOrder,
+            );
+          }
+        }, [onOrderUpdate, order.id, order.status]);
+        return <div data-testid={`mock-transfer-order-${order.id}-${order.status}`}></div>;
+      },
+    );
+
+    render(
+      <BrowserRouter>
+        <DataVerificationScreen />
+      </BrowserRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId(`mock-transfer-order-${updatedOrder.id}-approved`),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId(`mock-transfer-order-${otherOrder.id}-pending`),
+      ).toBeInTheDocument();
+    });
+  });
+
   test('should render permission invalid error when DataVerifier is not found in user roles', async () => {
     testingUtilities.setUserWithRoles([]);
     render(
@@ -752,7 +820,7 @@ describe('Review Orders screen', () => {
 
   test('should not render a list if an API error is encountered', async () => {
     const mock = vi.spyOn(Api2, 'getOrders');
-    mock.mockRejectedValue({});
+    mock.mockRejectedValue(new Error('Network error'));
 
     render(
       <BrowserRouter>
@@ -881,6 +949,61 @@ describe('Review Orders screen', () => {
     expect(
       screen.getByTestId(`mock-trustee-verification-${sampleVerificationOrder.id}-approved`),
     ).toBeInTheDocument();
+  });
+
+  test('should leave other trustee verifications untouched when onOrderUpdate is called', async () => {
+    setupFeatureFlags({ 'trustee-verification-enabled': true });
+    const otherVerification: TrusteeMatchVerificationListItem = {
+      ...sampleVerificationOrder,
+      id: 'case-002:janedoe',
+    };
+    const updatedOrder: TrusteeMatchVerificationListItem = {
+      ...sampleVerificationOrder,
+      status: 'approved',
+    };
+
+    vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [] });
+    vi.spyOn(Api2, 'getTrusteeMatchVerifications').mockResolvedValue({
+      data: [sampleVerificationOrder, otherVerification],
+    });
+
+    vi.spyOn(
+      trusteeVerificationAccordionModule,
+      'TrusteeMatchVerificationAccordion',
+    ).mockImplementation(
+      (props: trusteeVerificationAccordionModule.TrusteeMatchVerificationAccordionProps) => {
+        const { onOrderUpdate, order } = props;
+        React.useEffect(() => {
+          if (order.id === sampleVerificationOrder.id) {
+            onOrderUpdate(
+              { message: 'Trustee match confirmed.', type: UswdsAlertStyle.Success, timeOut: 8 },
+              updatedOrder,
+            );
+          }
+        }, [onOrderUpdate, order.id]);
+        return <div data-testid={`mock-trustee-verification-${order.id}-${order.status}`}></div>;
+      },
+    );
+
+    sessionStorage.setItem(
+      TYPE_FILTER_SESSION_KEY,
+      JSON.stringify([{ value: 'trustee-match', label: 'Trustee Mismatch' }]),
+    );
+
+    render(
+      <BrowserRouter>
+        <DataVerificationScreen />
+      </BrowserRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId(`mock-trustee-verification-${sampleVerificationOrder.id}-approved`),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId(`mock-trustee-verification-${otherVerification.id}-pending`),
+      ).toBeInTheDocument();
+    });
   });
 
   test('should replace the deleted order with the new orders when consolidation onOrderUpdate is called', async () => {

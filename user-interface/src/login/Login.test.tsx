@@ -1,9 +1,10 @@
 import { PropsWithChildren } from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { describe, MockInstance } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import * as oktaProviderModule from './providers/okta/OktaProvider';
 import * as oktaLoginModule from './providers/okta/OktaLogin';
+import * as authorizedUseOnlyModule from './AuthorizedUseOnly';
 import * as badConfigurationModule from './BadConfiguration';
 import * as libraryModule from '@/login/login-library';
 import * as mockLoginModule from './providers/mock/MockLogin';
@@ -30,6 +31,9 @@ describe('Login', () => {
   >;
   let oktaLoginComponent: MockInstance<() => JSX.Element>;
   let mockLoginComponent: MockInstance<(props: mockLoginModule.MockLoginProps) => JSX.Element>;
+  let authorizedUseOnlyComponent: MockInstance<
+    (props: PropsWithChildren<{ skip?: boolean }>) => JSX.Element
+  >;
 
   let sessionComponent: MockInstance<(props: sessionModule.SessionProps) => JSX.Element>;
   let badConfigurationComponent: MockInstance<
@@ -48,6 +52,7 @@ describe('Login', () => {
     oktaProviderComponent = vi.spyOn(oktaProviderModule, 'OktaProvider');
     oktaLoginComponent = vi.spyOn(oktaLoginModule, 'OktaLogin');
     mockLoginComponent = vi.spyOn(mockLoginModule, 'MockLogin');
+    authorizedUseOnlyComponent = vi.spyOn(authorizedUseOnlyModule, 'AuthorizedUseOnly');
 
     sessionComponent = vi.spyOn(sessionModule, 'Session');
     badConfigurationComponent = vi.spyOn(badConfigurationModule, 'BadConfiguration');
@@ -77,12 +82,11 @@ describe('Login', () => {
     badConfigurationComponent.mockImplementation(() => {
       return <></>;
     });
+    authorizedUseOnlyComponent.mockImplementation((props) => {
+      return <>{props.children}</>;
+    });
     getSession.mockReturnValue(null);
     removeSession.mockImplementation(vi.fn());
-    // Acknowledged by default so most tests don't need to think about the privacy warning.
-    // The 2 privacy-warning tests below need mockReset() first to clear this queued value
-    // before queuing their own false -- mockReturnValueOnce() stacks rather than replaces.
-    vi.spyOn(LocalStorage, 'getAck').mockReturnValueOnce(true);
   });
 
   test('should load provider from environment vars', () => {
@@ -138,6 +142,7 @@ describe('Login', () => {
     expect(getSession).toHaveBeenCalled();
     expect(removeSession).not.toHaveBeenCalled();
     expect(sessionComponent).toHaveBeenCalledWith(expect.objectContaining(mockSession), undefined);
+    expect(oktaProviderComponent).not.toHaveBeenCalled();
   });
 
   test('should check for an existing okta login and skip if a session exists', async () => {
@@ -165,6 +170,7 @@ describe('Login', () => {
     expect(getAuthIssuerFromEnv).toHaveBeenCalled();
     expect(removeSession).not.toHaveBeenCalled();
     expect(sessionComponent).toHaveBeenCalledWith(expect.objectContaining(mockSession), undefined);
+    expect(oktaProviderComponent).toHaveBeenCalled();
   });
 
   test.each([
@@ -229,31 +235,30 @@ describe('Login', () => {
     expect(sessionComponent).not.toHaveBeenCalled();
   });
 
-  test('should show privacy warning if not acknowledged', async () => {
+  test('should render AuthorizedUseOnly with skip=false when not explicitly skipped', () => {
     getLoginProviderFromEnv.mockReturnValue('mock');
-    vi.spyOn(LocalStorage, 'getAck').mockReset().mockReturnValueOnce(false);
     render(
       <BrowserRouter>
         <Login>{children}</Login>
       </BrowserRouter>,
     );
-    await waitFor(() => {
-      expect(screen.getByTestId('button-auo-confirm')).toBeInTheDocument();
-    });
+    expect(authorizedUseOnlyComponent).toHaveBeenCalledWith(
+      expect.objectContaining({ skip: false }),
+      undefined,
+    );
   });
 
-  test('should skip the privacy warning when skipAuthorizedUseOnly prop is true', async () => {
+  test('should render AuthorizedUseOnly with skip=true when skipAuthorizedUseOnly prop is true', () => {
     getLoginProviderFromEnv.mockReturnValue('mock');
-    vi.spyOn(LocalStorage, 'getAck').mockReset().mockReturnValueOnce(false);
     render(
       <BrowserRouter>
         <Login skipAuthorizedUseOnly={true}>{children}</Login>
       </BrowserRouter>,
     );
-    await waitFor(() => {
-      expect(screen.getByTestId(testId)).toBeInTheDocument();
-    });
-    expect(screen.queryByTestId('button-auo-confirm')).not.toBeInTheDocument();
+    expect(authorizedUseOnlyComponent).toHaveBeenCalledWith(
+      expect.objectContaining({ skip: true }),
+      undefined,
+    );
   });
 
   test('should render OktaProvider for okta provider type', () => {
@@ -327,6 +332,32 @@ describe('Login', () => {
 
     expect(sessionComponent).toHaveBeenCalledWith(
       expect.objectContaining({ user: explicitUser }),
+      undefined,
+    );
+  });
+
+  test('should always rebuild the session for a persisted none-provider session', async () => {
+    getLoginProviderFromEnv.mockReturnValue('none');
+    getSession.mockReturnValue({
+      accessToken: MockData.getJwt(),
+      provider: 'none',
+      issuer: '',
+      user: {
+        id: 'mockId',
+        name: 'Mock User',
+      },
+      expires: Number.MAX_SAFE_INTEGER,
+    });
+    render(
+      <BrowserRouter>
+        <Login>{children}</Login>
+      </BrowserRouter>,
+    );
+    await TestingUtilities.waitForDocumentBody();
+
+    expect(removeSession).toHaveBeenCalled();
+    expect(sessionComponent).toHaveBeenCalledWith(
+      expect.objectContaining({ provider: 'none' }),
       undefined,
     );
   });

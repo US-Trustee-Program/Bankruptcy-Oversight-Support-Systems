@@ -585,59 +585,22 @@ describe('validateTrusteeUpcomingKeyDates', () => {
     },
   );
 
-  test('returns VALID when pastBackgroundQuestion is a valid full date', () => {
-    expect(
-      validateTrusteeUpcomingKeyDates({ ...baseInput(), pastBackgroundQuestion: '2023-04-10' }),
-    ).toEqual(VALID);
-  });
+  test.each([
+    ['pastBackgroundQuestion', '2023-04-10', '2026-13-01'],
+    ['pastTprSubmission', '2023-04-10', '2026-13-01'],
+    ['lastMonthlyReportReceived', '2024-11-15', '2024-13-01'],
+  ] as const)(
+    'returns VALID/error for %s full date validation',
+    (field, validValue, invalidValue) => {
+      expect(validateTrusteeUpcomingKeyDates({ ...baseInput(), [field]: validValue })).toEqual(
+        VALID,
+      );
 
-  test('returns error when pastBackgroundQuestion contains an invalid ISO date', () => {
-    const result = validateTrusteeUpcomingKeyDates({
-      ...baseInput(),
-      pastBackgroundQuestion: '2026-13-01',
-    });
-    expect(result.valid).toBeFalsy();
-    expect(result.reasonMap?.pastBackgroundQuestion?.reasons?.[0]).toBe(
-      'Must be a valid date mm/dd/yyyy.',
-    );
-  });
-
-  test('returns VALID when pastTprSubmission is a valid full date', () => {
-    expect(
-      validateTrusteeUpcomingKeyDates({ ...baseInput(), pastTprSubmission: '2023-04-10' }),
-    ).toEqual(VALID);
-  });
-
-  test('returns error when pastTprSubmission contains an invalid ISO date', () => {
-    const result = validateTrusteeUpcomingKeyDates({
-      ...baseInput(),
-      pastTprSubmission: '2026-13-01',
-    });
-    expect(result.valid).toBeFalsy();
-    expect(result.reasonMap?.pastTprSubmission?.reasons?.[0]).toBe(
-      'Must be a valid date mm/dd/yyyy.',
-    );
-  });
-
-  test('returns VALID when lastMonthlyReportReceived is a valid full date', () => {
-    expect(
-      validateTrusteeUpcomingKeyDates({
-        ...baseInput(),
-        lastMonthlyReportReceived: '2024-11-15',
-      }),
-    ).toEqual(VALID);
-  });
-
-  test('returns error when lastMonthlyReportReceived contains an invalid ISO date', () => {
-    const result = validateTrusteeUpcomingKeyDates({
-      ...baseInput(),
-      lastMonthlyReportReceived: '2024-13-01',
-    });
-    expect(result.valid).toBeFalsy();
-    expect(result.reasonMap?.lastMonthlyReportReceived?.reasons?.[0]).toBe(
-      'Must be a valid date mm/dd/yyyy.',
-    );
-  });
+      const result = validateTrusteeUpcomingKeyDates({ ...baseInput(), [field]: invalidValue });
+      expect(result.valid).toBeFalsy();
+      expect(result.reasonMap?.[field]?.reasons?.[0]).toBe('Must be a valid date mm/dd/yyyy.');
+    },
+  );
 
   test('returns VALID when tirSemiAnnualReviewPeriodStart and tirSemiAnnualReviewPeriodEnd are both set', () => {
     expect(
@@ -669,101 +632,25 @@ describe('validateTrusteeUpcomingKeyDates', () => {
     expect(result.reasonMap?.tirSemiAnnualReview?.reasons?.[0]).toBe('Must be a valid date mm/dd.');
   });
 
-  test('returns VALID when leaseExpiration is a valid full date', () => {
-    expect(
-      validateTrusteeUpcomingKeyDates({ ...baseInput(), leaseExpiration: '2027-06-30' }),
-    ).toEqual(VALID);
-  });
+  test.each([
+    ['leaseExpiration', '2027-06-30', '2027-13-01'],
+    ['idExpiration', '2028-01-15', '2028-00-15'],
+    ['pastAudit', '2024-03-15', '2024-13-01'],
+    ['lastCompensationStudy', '2024-06-01', '2024-13-01'],
+    ['bondIssuedDate', '2023-06-01', '2023-13-01'],
+    ['bondRenewalDate', '2026-06-01', '2026-00-01'],
+  ] as const)(
+    'returns VALID/error for %s full date validation',
+    (field, validValue, invalidValue) => {
+      expect(validateTrusteeUpcomingKeyDates({ ...baseInput(), [field]: validValue })).toEqual(
+        VALID,
+      );
 
-  test('returns error when leaseExpiration contains an invalid ISO date', () => {
-    const result = validateTrusteeUpcomingKeyDates({
-      ...baseInput(),
-      leaseExpiration: '2027-13-01',
-    });
-    expect(result.valid).toBeFalsy();
-    expect(result.reasonMap?.leaseExpiration?.reasons?.[0]).toBe(
-      'Must be a valid date mm/dd/yyyy.',
-    );
-  });
-
-  test('returns VALID when idExpiration is a valid full date', () => {
-    expect(validateTrusteeUpcomingKeyDates({ ...baseInput(), idExpiration: '2028-01-15' })).toEqual(
-      VALID,
-    );
-  });
-
-  test('returns error when idExpiration contains an invalid ISO date', () => {
-    const result = validateTrusteeUpcomingKeyDates({
-      ...baseInput(),
-      idExpiration: '2028-00-15',
-    });
-    expect(result.valid).toBeFalsy();
-    expect(result.reasonMap?.idExpiration?.reasons?.[0]).toBe('Must be a valid date mm/dd/yyyy.');
-  });
-
-  test('returns VALID when pastAudit is a valid full date', () => {
-    expect(validateTrusteeUpcomingKeyDates({ ...baseInput(), pastAudit: '2024-03-15' })).toEqual(
-      VALID,
-    );
-  });
-
-  test('returns error when pastAudit contains an invalid ISO date', () => {
-    const result = validateTrusteeUpcomingKeyDates({
-      ...baseInput(),
-      pastAudit: '2024-13-01',
-    });
-    expect(result.valid).toBeFalsy();
-    expect(result.reasonMap?.pastAudit?.reasons?.[0]).toBe('Must be a valid date mm/dd/yyyy.');
-  });
-
-  test('returns VALID when lastCompensationStudy is a valid full date', () => {
-    expect(
-      validateTrusteeUpcomingKeyDates({ ...baseInput(), lastCompensationStudy: '2024-06-01' }),
-    ).toEqual(VALID);
-  });
-
-  test('returns error when lastCompensationStudy contains an invalid ISO date', () => {
-    const result = validateTrusteeUpcomingKeyDates({
-      ...baseInput(),
-      lastCompensationStudy: '2024-13-01',
-    });
-    expect(result.valid).toBeFalsy();
-    expect(result.reasonMap?.lastCompensationStudy?.reasons?.[0]).toBe(
-      'Must be a valid date mm/dd/yyyy.',
-    );
-  });
-
-  test('returns VALID when bondIssuedDate is a valid full date', () => {
-    expect(
-      validateTrusteeUpcomingKeyDates({ ...baseInput(), bondIssuedDate: '2023-06-01' }),
-    ).toEqual(VALID);
-  });
-
-  test('returns error when bondIssuedDate contains an invalid ISO date', () => {
-    const result = validateTrusteeUpcomingKeyDates({
-      ...baseInput(),
-      bondIssuedDate: '2023-13-01',
-    });
-    expect(result.valid).toBeFalsy();
-    expect(result.reasonMap?.bondIssuedDate?.reasons?.[0]).toBe('Must be a valid date mm/dd/yyyy.');
-  });
-
-  test('returns VALID when bondRenewalDate is a valid full date', () => {
-    expect(
-      validateTrusteeUpcomingKeyDates({ ...baseInput(), bondRenewalDate: '2026-06-01' }),
-    ).toEqual(VALID);
-  });
-
-  test('returns error when bondRenewalDate contains an invalid ISO date', () => {
-    const result = validateTrusteeUpcomingKeyDates({
-      ...baseInput(),
-      bondRenewalDate: '2026-00-01',
-    });
-    expect(result.valid).toBeFalsy();
-    expect(result.reasonMap?.bondRenewalDate?.reasons?.[0]).toBe(
-      'Must be a valid date mm/dd/yyyy.',
-    );
-  });
+      const result = validateTrusteeUpcomingKeyDates({ ...baseInput(), [field]: invalidValue });
+      expect(result.valid).toBeFalsy();
+      expect(result.reasonMap?.[field]?.reasons?.[0]).toBe('Must be a valid date mm/dd/yyyy.');
+    },
+  );
 
   test('DATE_FIELDS contains the exact set of expected fields', () => {
     // Order is not semantically meaningful to either consumer (both iterate/filter without

@@ -131,6 +131,17 @@ describe('Consolidation UseCase tests', () => {
     expect(putSpy).not.toHaveBeenCalled();
   });
 
+  test('should do nothing when handleConfirmAction is called with a pending status', () => {
+    const approvalSpy = vi.spyOn(Api2, 'putConsolidationOrderApproval');
+    const rejectionSpy = vi.spyOn(Api2, 'putConsolidationOrderRejection');
+
+    useCase.handleConfirmAction({ status: 'pending' });
+
+    expect(approvalSpy).not.toHaveBeenCalled();
+    expect(rejectionSpy).not.toHaveBeenCalled();
+    expect(onOrderUpdateSpy).not.toHaveBeenCalled();
+  });
+
   test('should show alert when rejectConsolidation api call throws an error', async () => {
     const putSpy = vi
       .spyOn(Api2, 'putConsolidationOrderRejection')
@@ -291,6 +302,13 @@ describe('Consolidation UseCase tests', () => {
     useCase.handleSelectLeadCaseCourt(newLeadCaseCourt);
     expect(setLeadCaseCourtSpy).toHaveBeenCalledWith('test value');
     expect(store.leadCaseCourt).toEqual('test value');
+  });
+
+  test('should clear setLeadCaseCourt when no court is selected from the dropdown', () => {
+    const setLeadCaseCourtSpy = vi.spyOn(store, 'setLeadCaseCourt');
+    useCase.handleSelectLeadCaseCourt([]);
+    expect(setLeadCaseCourtSpy).toHaveBeenCalledWith('');
+    expect(store.leadCaseCourt).toEqual('');
   });
 
   test('should populate caseToAdd with enhanced case data when case is not already consolidated and is not a member of another consolidation', async () => {
@@ -767,7 +785,7 @@ describe('Consolidation UseCase tests', () => {
     expect(store.foundValidCaseNumber).toBe(false);
   });
 
-  test('should disable the verify button if a lead case and at least one member case are not selected', async () => {
+  test('should disable the approve button if a lead case and at least one member case are not selected', async () => {
     const disableButtonSpy = vi.spyOn(controls.approveButton.current!, 'disableButton');
     const leadCase = MockData.getConsolidatedOrderCase();
     store.setLeadCase(leadCase);
@@ -778,7 +796,7 @@ describe('Consolidation UseCase tests', () => {
     expect(disableButtonSpy).toHaveBeenCalledWith(true);
   });
 
-  test('should disable the verify button if a selected member case is already a part of another consolidation', async () => {
+  test('should disable the approve button if a selected member case is already a part of another consolidation', async () => {
     const disableButtonSpy = vi.spyOn(controls.approveButton.current!, 'disableButton');
     const leadCase = MockData.getConsolidatedOrderCase();
     store.setLeadCase(leadCase);

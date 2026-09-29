@@ -71,7 +71,7 @@ describe('App Router Tests', () => {
     );
 
     await waitFor(() => {
-      expect(document.querySelector('[data-testid="trustee-public-form"]')).toBeInTheDocument();
+      expect(screen.getByTestId('trustee-public-form')).toBeInTheDocument();
     });
   });
 
@@ -92,6 +92,7 @@ describe('App Router Tests', () => {
   });
 
   test.each([
+    { path: '/', testId: 'search', heading: undefined },
     { path: '/my-cases', testId: 'case-list-heading', heading: 'My Cases' },
     { path: '/staff-assignment', testId: 'case-list-heading', heading: 'Staff Assignment' },
     { path: '/search/081-24-12345', testId: 'search', heading: undefined },
