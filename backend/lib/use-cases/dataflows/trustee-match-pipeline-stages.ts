@@ -1855,17 +1855,29 @@ function resolveOnCandidate(
  * and CAMS addresses roughly 150 miles apart, same state, same real person, with no other
  * state/city/zip signal to fall back on.
  *
- * DOES still exclude a candidate isStateNotConflicting has annotated false, same as
- * resolveBySoleContactMatch/resolveByConsensus - calculateNameScore's 100 can be reached with a
- * middle name that never actually agreed (scoreMiddleNamePart scores an absent middle name on
- * either side as a neutral 100, not "confirmed matching" - see its own doc comment), so a sole
- * "exact" name match is not proof this is the same person once a real, un-overridden state
- * conflict is on record. scoreStateNotConflicting already accounts for a corroborating phone match
- * or a high enough nameScore override (STATE_OVERRIDE_MIN_NAME_SCORE) before ever annotating this
- * false, so this exclusion only removes candidates with a genuine, unexplained state conflict -
- * real regression shape (name synthesized): ACMS "Michael P [Surname]" (Wilmington DE)
- * auto-linked to CAMS "Michael [Surname]" (Wheeling WV, no middle name on file) on name alone,
- * with no corroborating evidence at all.
+ * DOES still exclude a candidate with a GENUINE, comparable state disagreement (doesStateMatch,
+ * not isStateNotConflicting - see below) - calculateNameScore's 100 can be reached with a middle
+ * name that never actually agreed (scoreMiddleNamePart scores an absent middle name on either
+ * side as a neutral 100, not "confirmed matching" - see its own doc comment), so a sole "exact"
+ * name match is not proof this is the same person once a real, comparable state conflict is on
+ * record.
+ *
+ * Deliberately gates on doesStateMatch, NOT isStateNotConflicting (an adversarial review of an
+ * earlier version of this stage, 2026-09-29, found isStateNotConflicting was a no-op here in
+ * practice): scoreStateNotConflicting's override condition is `nameScore >=
+ * STATE_OVERRIDE_MIN_NAME_SCORE` (85), computed via the EXACT SAME pipelineNameScore call already
+ * used for doesNameMatch - and this stage's own gate (exactNameMatchCandidates) already requires
+ * doesNameMatch === 100, which always clears 85. So isStateNotConflicting was mathematically
+ * guaranteed true for every candidate reaching this stage, regardless of any real state conflict.
+ * doesStateMatch has no such override and is only ever recorded when BOTH sides have a comparable
+ * state (scoreStateMatch's own "no record when data is unavailable" convention, matching
+ * doesCityMatch/doesZipCodeMatch) - so `doesStateMatch?.pass !== false` correctly excludes ONLY a
+ * genuine, comparable state disagreement, and correctly ignores a "no state data available" case
+ * (doesStateMatch stays undefined, not false) rather than wrongly treating missing data as a
+ * conflict. Confirmed via a live probe before fixing: ACMS "Robert A [Surname]" (CA) vs CAMS
+ * "Robert A. [Surname]" (NY), matching middle initials, zero contact data - doesNameMatch=100,
+ * doesStateMatch=false, isStateNotConflicting=true (the override self-certifying), record still
+ * resolved under the old isStateNotConflicting-based gate.
  *
  * Runs before resolveBySoleExactNameMatchByStateThenGeo, which only ever sees what this stage
  * left behind (2+ exact-name candidates) - the two stages' gates are mutually exclusive by pool
@@ -1874,7 +1886,7 @@ function resolveOnCandidate(
 export function resolveBySoleExactNameMatch(): Stage {
   return async (state: PipelineState): Promise<PipelineState> => {
     const exactMatches = exactNameMatchCandidates(state).filter(
-      (candidate) => mergedScore(candidate).isStateNotConflicting?.pass !== false,
+      (candidate) => mergedScore(candidate).doesStateMatch?.pass !== false,
     );
     if (exactMatches.length !== 1) return state;
 

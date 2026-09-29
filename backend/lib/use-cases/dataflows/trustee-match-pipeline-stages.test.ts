@@ -2851,48 +2851,39 @@ describe('resolveByPhoneTypoTolerance', () => {
 describe('resolveBySoleExactNameMatch', () => {
   const acmsRecord = makeDxtrTrustee({ fullName: 'Ronald Larkin' });
 
-  // Real-world regression shape (name synthesized): ACMS "Michael P Wexford" (Wilmington DE)
-  // auto-linked to CAMS "Michael Wexford" (Wheeling WV, no middle name on file) with zero contact
-  // corroboration and a genuine state conflict, because this stage skipped the same
-  // isStateNotConflicting check every other RESOLVE stage (resolveBySoleContactMatch,
-  // resolveByConsensus) already applies. A sole exact name match is strong evidence the person
-  // exists, but not that THIS CAMS record is them, once isStateNotConflicting has annotated a
-  // real, un-overridden conflict (scoreStateNotConflicting already accounts for a corroborating
-  // phone match or a high enough nameScore override - see STATE_OVERRIDE_MIN_NAME_SCORE - before
-  // ever setting this to false). The "office relocation" and "never annotated" cases confirm this
-  // stage still resolves confidently whenever there is no real, un-overridden conflict on record.
-  test.each([
-    {
-      description: 'no state/city/zip evidence at all',
-      scores: {},
-    },
-    {
-      description: 'an office-relocation case: state and zip corroborate even though city differs',
-      scores: {
-        doesStateMatch: { value: 100, threshold: 100, pass: true },
-        doesCityMatch: { value: 0, threshold: 100, pass: false },
-        doesZipCodeMatch: { value: 100, threshold: 100, pass: true },
-      },
-    },
-    {
-      description: 'doesStateMatch failed but isStateNotConflicting was never annotated false',
-      scores: { doesStateMatch: { value: 0, threshold: 100, pass: false } },
-    },
-    {
-      description: 'isStateNotConflicting was explicitly annotated true',
-      scores: { isStateNotConflicting: { value: 100, threshold: 100, pass: true } },
-    },
-  ])('resolves a sole exact-name candidate: $description', async ({ scores }) => {
-    const state = createInitialState(acmsRecord);
+  // Real regression shapes, run through REAL end-to-end scoring (normalizeAcmsSourceName ->
+  // addCandidate -> scoreCandidate), not hand-injected score objects. An adversarial review of
+  // an earlier version of this stage (2026-09-29) found the isStateNotConflicting-based filter
+  // that used to gate this stage was a no-op in practice: scoreStateNotConflicting's override
+  // (nameScore >= STATE_OVERRIDE_MIN_NAME_SCORE) recomputes the EXACT SAME pipelineNameScore
+  // call already used for doesNameMatch, and this stage's own gate already requires
+  // doesNameMatch === 100 - which always clears the 85-point override. So isStateNotConflicting
+  // was mathematically guaranteed true for every candidate this stage ever considered, and the
+  // tests below (which injected isStateNotConflicting: false by hand) never caught it, since real
+  // scoring can't actually produce that combination. Confirmed via a live probe: ACMS "Robert A
+  // Fisher" (CA) vs CAMS "Robert A. Fisher" (NY), matching middle initials, zero contact data -
+  // doesNameMatch=100, doesStateMatch=false, isStateNotConflicting=true (the override
+  // self-certifying), record still resolved.
+  //
+  // Fixed by gating on doesStateMatch directly instead: unlike isStateNotConflicting, doesStateMatch
+  // is only ever recorded when BOTH sides have a comparable state (scoreStateMatch's own "no
+  // record when data is unavailable" convention - see doesCityMatch/doesZipCodeMatch) - so
+  // `doesStateMatch?.pass !== false` correctly excludes ONLY a genuine, comparable state
+  // disagreement, never a "no state data available" case, with no override to defeat it.
+  test('resolves a sole exact-name candidate with no state/city/zip evidence at all', async () => {
+    // A phone number (but no address) on the ACMS side keeps doesAcmsTrusteeHaveAddressAndPhone
+    // true - this test is specifically about the ABSENCE of state/city/zip data, not the
+    // absence of all ACMS contact data (a different, already-covered gate - see
+    // 'does not resolve when the ACMS record itself has no contact data' below).
+    const state = await normalizeAcmsSourceName()(
+      createInitialState({ ...acmsRecord, legacy: { phone: '2075551234' } }),
+    );
     const candidate = addCandidate(
       state,
       projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Ronald L. Larkin' })),
       'test',
     );
-    addScore(candidate, 'doesNameMatch', { value: 100, threshold: 85, pass: true });
-    for (const [scorer, score] of Object.entries(scores)) {
-      addScore(candidate, scorer, score);
-    }
+    scoreCandidate(state.sourceNormalized, candidate);
 
     const result = await resolveBySoleExactNameMatch()(state);
 
@@ -2903,12 +2894,74 @@ describe('resolveBySoleExactNameMatch', () => {
     });
   });
 
+  test('resolves an office-relocation case: state matches even though city differs', async () => {
+    const state = await normalizeAcmsSourceName()(
+      createInitialState({ ...acmsRecord, legacy: { cityStateZipCountry: 'Bangor ME 04401' } }),
+    );
+    const candidate = addCandidate(
+      state,
+      projectTrustee(
+        makeTrustee({
+          trusteeId: 't1',
+          name: 'Ronald L. Larkin',
+          public: {
+            address: {
+              address1: '1 Main St',
+              state: 'ME',
+              city: 'Portland',
+              zipCode: '04101',
+              countryCode: 'US',
+            },
+          },
+        }),
+      ),
+      'test',
+    );
+    scoreCandidate(state.sourceNormalized, candidate);
+
+    const result = await resolveBySoleExactNameMatch()(state);
+
+    expect(result.match).toEqual({
+      trusteeId: 't1',
+      score: candidate.scores,
+      resolvedBy: 'resolveBySoleExactNameMatch',
+    });
+  });
+
+  // The real regression this stage must now catch: an exact name match with a GENUINE, comparable
+  // state disagreement and no contact corroboration. Previously auto-linked; must now be left for
+  // ambiguous/no-match instead.
+  test('does NOT resolve a sole exact-name candidate with a real, comparable state conflict and no contact corroboration', async () => {
+    const state = await normalizeAcmsSourceName()(
+      createInitialState({ ...acmsRecord, legacy: { cityStateZipCountry: 'Wilmington DE 19801' } }),
+    );
+    const candidate = addCandidate(
+      state,
+      projectTrustee(
+        makeTrustee({
+          trusteeId: 't1',
+          name: 'Ronald L. Larkin',
+          public: {
+            address: {
+              address1: '1 Main St',
+              state: 'WV',
+              city: 'Wheeling',
+              zipCode: '26003',
+              countryCode: 'US',
+            },
+          },
+        }),
+      ),
+      'test',
+    );
+    scoreCandidate(state.sourceNormalized, candidate);
+
+    const result = await resolveBySoleExactNameMatch()(state);
+
+    expect(result.match).toBeNull();
+  });
+
   test.each([
-    {
-      description: 'isStateNotConflicting was explicitly annotated false',
-      nameMatchScore: { value: 100, threshold: 85, pass: true },
-      extraScores: { isStateNotConflicting: { value: 0, threshold: 100, pass: false } },
-    },
     {
       description: 'a fuzzy (non-exact) 85 name score',
       nameMatchScore: { value: 85, threshold: 85, pass: true },
