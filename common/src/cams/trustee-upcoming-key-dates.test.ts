@@ -467,6 +467,18 @@ describe('validateTrusteeUpcomingKeyDates', () => {
     ).toEqual(VALID);
   });
 
+  test('returns VALID when only one of tprReviewPeriodStart/End is sentinel-format', () => {
+    // Either side being sentinel-format skips the chronological check entirely, even
+    // when the other side is a full ISO date that would otherwise fail the comparison.
+    expect(
+      validateTrusteeUpcomingKeyDates({
+        ...baseInput(),
+        tprReviewPeriodStart: '1900-04-01',
+        tprReviewPeriodEnd: '2025-03-31',
+      }),
+    ).toEqual(VALID);
+  });
+
   test('returns error on both fields when tprReviewPeriodStart is after tprReviewPeriodEnd', () => {
     const result = validateTrusteeUpcomingKeyDates({
       ...baseInput(),
