@@ -7,7 +7,12 @@
  * previously-unresolved population, AND false-positive detection among what staging already
  * trusted: an auto-linked record current code would now resolve to a DIFFERENT trusteeId, or not
  * auto-link at all, is written to data/replay-backtest-divergences.csv alongside every other
- * staging-vs-current disagreement.
+ * staging-vs-current disagreement. Each divergence row carries the ACMS source's own address/phone,
+ * staging's trustee's address/phone (looked up from the trustees fixture independently of whether
+ * that trustee is even a candidate in the current record's pool), and the current pipeline's
+ * trustee's address/phone (when disposition is 'auto-linked' - blank for 'ambiguous'/'no-match',
+ * which have no single winning trustee) - a reviewer can see WHY a transition happened without
+ * opening replay-backtest-report.jsonl for every row.
  *
  * Reads record.evidence.sourceRaw directly as the pipeline's input - CanonicalTrusteeSource/
  * DxtrTrusteeParty/AcmsTrusteeProfessional are the same type (dataflow-events.ts), so the exact
@@ -135,11 +140,82 @@ type CandidateOutcome =
  */
 type Divergence = {
   acmsProfessionalId: string;
+  acmsFullName: string;
+  acmsAddress: string;
+  acmsPhone: string;
   stagingDisposition: string;
   stagingTrusteeId: string | null;
+  stagingTrusteeAddress: string;
+  stagingTrusteePhone: string;
   currentDisposition: string;
   currentTrusteeId: string | null;
+  currentTrusteeAddress: string;
+  currentTrusteePhone: string;
+  /** Compact summary of the score facet(s) that actually drove the transition - which candidate
+   * the current pipeline considered (staging's trusteeId if still present in the pool, otherwise
+   * whichever candidate has the highest doesNameMatch score) and its doesNameMatch/doesStateMatch/
+   * resolvedBy values, so a reviewer can see WHY without re-opening the full JSONL for every row. */
+  keySignal: string;
 };
+
+function csvEscape(value: string | number | null | undefined): string {
+  const s = value === null || value === undefined ? '' : String(value);
+  if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+    return `"${s.replaceAll('"', '""')}"`;
+  }
+  return s;
+}
+
+/** Shared by the ACMS source record (legacy address fields), the staging trustee lookup (a raw
+ * Trustee's public.address), and the current pipeline's key candidate (ProjectedTrustee.address) -
+ * all three carry the same city/state/zip shape, just under different field names one level up. */
+function acmsAddressString(legacy: SerializedState['sourceRaw']['legacy']): string {
+  if (!legacy) return '';
+  return [legacy.address1, legacy.cityStateZipCountry].filter(Boolean).join(', ');
+}
+
+function trusteeAddressString(address: Trustee['public']['address'] | undefined): string {
+  if (!address) return '';
+  return [address.address1, [address.city, address.state, address.zipCode].filter(Boolean).join(' ')]
+    .filter(Boolean)
+    .join(', ');
+}
+
+/** Picks the one candidate, out of a divergent record's full pool, most relevant to explaining the
+ * transition: the candidate matching stagingTrusteeId/currentTrusteeId if either is present in the
+ * pool (the two sides' own chosen identity), otherwise the highest doesNameMatch-scoring candidate
+ * (the one a reviewer would look at first). Returns undefined only when the record has no
+ * candidates at all (e.g. skipped). */
+function pickKeyCandidate(
+  candidates: SerializedState['candidates'],
+  stagingTrusteeId: string | null,
+  currentTrusteeId: string | null,
+): SerializedState['candidates'][number] | undefined {
+  if (candidates.length === 0) return undefined;
+  const byId = (id: string | null) =>
+    id ? candidates.find((c) => c.camsRaw.trusteeId === id) : undefined;
+  return (
+    byId(currentTrusteeId) ??
+    byId(stagingTrusteeId) ??
+    [...candidates].sort(
+      (a, b) => (b.scores.doesNameMatch?.value ?? 0) - (a.scores.doesNameMatch?.value ?? 0),
+    )[0]
+  );
+}
+
+function summarizeKeySignal(candidate: SerializedState['candidates'][number] | undefined): string {
+  if (!candidate) return 'no candidates';
+  const s = candidate.scores;
+  const parts = [
+    `name=${s.doesNameMatch?.value ?? '-'}(${s.doesNameMatch?.pass ?? '-'})`,
+    `state=${s.doesStateMatch?.value ?? '-'}(${s.doesStateMatch?.pass ?? '-'})`,
+    `stateNotConflicting=${s.isStateNotConflicting?.pass ?? '-'}`,
+    `contactAddr=${s.contactCorroborationAddress?.pass ?? '-'}`,
+    `contactPhone=${s.contactCorroborationPhone?.pass ?? '-'}`,
+    `contactEmail=${s.contactCorroborationEmail?.pass ?? '-'}`,
+  ];
+  return parts.join(' ');
+}
 
 /** Streams the JSONL report one record at a time - a record's candidate pool can range from 0 to
  * several hundred, so buffering every record across the whole population before writing risks
@@ -208,6 +284,7 @@ async function run() {
 
   const records = loadProfessionalIds();
   const trustees = loadTrustees();
+  const trusteeById = new Map(trustees.map((t) => [t.trusteeId, t]));
   const errored = records.filter((r) => r.evidence?.sourceRaw);
   console.log(`${errored.length} records to replay (all dispositions, including auto-linked).\n`);
 
@@ -257,12 +334,21 @@ async function run() {
     ) {
       outcomeCounts.skipped++;
       if (record.disposition !== 'skipped') {
+        const stagingTrustee = stagingTrusteeId ? trusteeById.get(stagingTrusteeId) : undefined;
         divergences.push({
           acmsProfessionalId: record.acmsProfessionalId,
+          acmsFullName: acmsTrusteeProfessional.fullName,
+          acmsAddress: acmsAddressString(acmsTrusteeProfessional.legacy),
+          acmsPhone: acmsTrusteeProfessional.legacy?.phone ?? '',
           stagingDisposition: record.disposition,
           stagingTrusteeId,
+          stagingTrusteeAddress: trusteeAddressString(stagingTrustee?.public?.address),
+          stagingTrusteePhone: stagingTrustee?.public?.phone?.number ?? '',
           currentDisposition: 'skipped',
           currentTrusteeId: null,
+          currentTrusteeAddress: '',
+          currentTrusteePhone: '',
+          keySignal: 'shouldSkipAsNotAPerson/isRecordDisavowed (no candidates - never reached matching)',
         });
       }
       continue;
@@ -306,12 +392,28 @@ async function run() {
       normalizedStagingDisposition === 'auto-linked' &&
       currentTrusteeId !== stagingTrusteeId;
     if (dispositionsDiffer || sameDispositionDifferentTrustee) {
+      const keyCandidate = pickKeyCandidate(serialized.candidates, stagingTrusteeId, currentTrusteeId);
+      const resolvedBy = state.match?.resolvedBy;
+      const stagingTrustee = stagingTrusteeId ? trusteeById.get(stagingTrusteeId) : undefined;
+      const currentCandidate = currentTrusteeId
+        ? serialized.candidates.find((c) => c.camsRaw.trusteeId === currentTrusteeId)
+        : undefined;
       divergences.push({
         acmsProfessionalId: record.acmsProfessionalId,
+        acmsFullName: acmsTrusteeProfessional.fullName,
+        acmsAddress: acmsAddressString(acmsTrusteeProfessional.legacy),
+        acmsPhone: acmsTrusteeProfessional.legacy?.phone ?? '',
         stagingDisposition: record.disposition,
         stagingTrusteeId,
+        stagingTrusteeAddress: trusteeAddressString(stagingTrustee?.public?.address),
+        stagingTrusteePhone: stagingTrustee?.public?.phone?.number ?? '',
         currentDisposition: disposition,
         currentTrusteeId,
+        currentTrusteeAddress: trusteeAddressString(currentCandidate?.camsRaw.address),
+        currentTrusteePhone: currentCandidate?.camsRaw.phone?.number ?? '',
+        keySignal: resolvedBy
+          ? `resolvedBy=${resolvedBy} ${summarizeKeySignal(keyCandidate)}`
+          : summarizeKeySignal(keyCandidate),
       });
     }
 
@@ -368,22 +470,45 @@ async function run() {
   );
 
   if (divergences.length > 0) {
+    const trusteeNameById = new Map(trustees.map((t) => [t.trusteeId, t.name]));
     const divergenceCsvPath = path.join(DATA_DIR, 'replay-backtest-divergences.csv');
     const header = [
       'acmsProfessionalId',
+      'acmsFullName',
+      'acmsAddress',
+      'acmsPhone',
       'stagingDisposition',
       'stagingTrusteeId',
+      'stagingTrusteeName',
+      'stagingTrusteeAddress',
+      'stagingTrusteePhone',
       'currentDisposition',
       'currentTrusteeId',
+      'currentTrusteeName',
+      'currentTrusteeAddress',
+      'currentTrusteePhone',
+      'keySignal',
     ];
     const rows = divergences.map((d) =>
       [
         d.acmsProfessionalId,
+        d.acmsFullName,
+        d.acmsAddress,
+        d.acmsPhone,
         d.stagingDisposition,
         d.stagingTrusteeId ?? '',
+        (d.stagingTrusteeId && trusteeNameById.get(d.stagingTrusteeId)) ?? '',
+        d.stagingTrusteeAddress,
+        d.stagingTrusteePhone,
         d.currentDisposition,
         d.currentTrusteeId ?? '',
-      ].join(','),
+        (d.currentTrusteeId && trusteeNameById.get(d.currentTrusteeId)) ?? '',
+        d.currentTrusteeAddress,
+        d.currentTrusteePhone,
+        d.keySignal,
+      ]
+        .map(csvEscape)
+        .join(','),
     );
     fs.writeFileSync(divergenceCsvPath, [header.join(','), ...rows].join('\n') + '\n', 'utf-8');
     console.log(`\nWrote ${divergences.length} divergence rows to ${divergenceCsvPath}`);
