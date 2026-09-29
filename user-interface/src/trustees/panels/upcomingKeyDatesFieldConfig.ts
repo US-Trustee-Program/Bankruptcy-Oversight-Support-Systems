@@ -85,7 +85,6 @@ export function tprFrequencyField(
 
 export function tprReviewPeriodField(
   data: TrusteeUpcomingKeyDates | null,
-  label = 'Trustee Performance Review Period',
 ): UpcomingKeyDatesDisplayField {
   const value =
     data?.tprReviewPeriodStart && data?.tprReviewPeriodEnd
@@ -93,18 +92,15 @@ export function tprReviewPeriodField(
         ? isoRangeToMMDD(data.tprReviewPeriodStart, data.tprReviewPeriodEnd)
         : `${isoToMMDDYYYY(data.tprReviewPeriodStart)} - ${isoToMMDDYYYY(data.tprReviewPeriodEnd)}`
       : NO_DATE;
-  return { label, value, testId: 'tpr-review-period-row' };
+  return { label: 'Trustee Performance Review Period', value, testId: 'tpr-review-period-row' };
 }
 
-export function tprDueField(
-  data: TrusteeUpcomingKeyDates | null,
-  label = 'Trustee Performance Review Due',
-): UpcomingKeyDatesDisplayField {
+export function tprDueField(data: TrusteeUpcomingKeyDates | null): UpcomingKeyDatesDisplayField {
   const value =
     data?.tprDue && data?.tprDueYearType
       ? `${isoToMMDD(data.tprDue)}/${calculateTprDueYear(data.tprDueYearType, new Date().getFullYear())}`
       : NO_DATE;
-  return { label, value, testId: 'tpr-due-row' };
+  return { label: 'Trustee Performance Review Due', value, testId: 'tpr-due-row' };
 }
 
 export function leaseExpirationField(

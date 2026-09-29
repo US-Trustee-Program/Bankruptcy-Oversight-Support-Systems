@@ -55,7 +55,11 @@ describe('TrusteePerformanceReportCard', () => {
   function renderCard(
     data: TrusteeUpcomingKeyDates | null = keyDates,
     isLoading = false,
-    variant: 'chapter7-panel' | 'chapter12-standing' | 'chapter13-standing' = 'chapter7-panel',
+    variant:
+      | 'chapter7-panel'
+      | 'chapter12-standing'
+      | 'chapter13-standing'
+      | 'chapter12-13-case-by-case' = 'chapter7-panel',
   ) {
     return render(
       <BrowserRouter>
@@ -184,6 +188,10 @@ describe('TrusteePerformanceReportCard', () => {
     [
       'chapter13-standing' as const,
       '/trustees/trustee-123/appointments/appointment-001/chapter13-standing-tpr-key-dates/edit',
+    ],
+    [
+      'chapter12-13-case-by-case' as const,
+      '/trustees/trustee-123/appointments/appointment-001/ch12-13-tpr-key-dates/edit',
     ],
   ])('navigates to the edit route for %s variant', async (variant, expectedRoute) => {
     renderCard(keyDates, false, variant);

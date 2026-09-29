@@ -12,12 +12,13 @@ import {
 } from './upcomingKeyDatesFieldConfig';
 
 type TrusteePerformanceReportCardVariant =
-  'chapter7-panel' | 'chapter12-standing' | 'chapter13-standing';
+  'chapter7-panel' | 'chapter12-standing' | 'chapter13-standing' | 'chapter12-13-case-by-case';
 
 const EDIT_ROUTE_SEGMENT: Record<TrusteePerformanceReportCardVariant, string> = {
   'chapter7-panel': 'tpr-key-dates',
   'chapter12-standing': 'chapter12-standing-tpr-key-dates',
   'chapter13-standing': 'chapter13-standing-tpr-key-dates',
+  'chapter12-13-case-by-case': 'ch12-13-tpr-key-dates',
 };
 
 export interface TrusteePerformanceReportCardProps {

@@ -46,9 +46,9 @@ export default function Chapter13StandingAppointmentBody(
               <TrusteePerformanceReportCard
                 {...commonCardProps}
                 data={data}
-                isLoading={isLoading}
                 // The card's own spinner is unreachable while the body-level short-circuit above
                 // exists, but this prop is kept forward-compatible for when that short-circuit is removed.
+                isLoading={isLoading}
                 variant="chapter13-standing"
               />
               <Chapter13StandingBudgetCard appointmentId={appointment.id} />

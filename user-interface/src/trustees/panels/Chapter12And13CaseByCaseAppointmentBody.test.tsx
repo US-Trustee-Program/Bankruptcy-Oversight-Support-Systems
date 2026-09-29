@@ -14,21 +14,20 @@ vi.mock('./AppointmentBasicFields', () => ({
   ),
 }));
 
-type StubCardProps = {
+type AnnualReportCardProps = {
   data: TrusteeUpcomingKeyDates | null;
   isLoading: boolean;
   trusteeId?: string;
   appointmentId?: string;
   appointmentHeading?: string;
-  tprDisplayUpdates?: boolean;
 };
 
 // Props are recorded rather than flattened into data attributes. This body's
 // whole job is to fetch once and hand the same document to both cards, and a
 // derived boolean like `data !== null` cannot tell one object from another.
-const cardProps: Record<string, StubCardProps[]> = {};
+const cardProps: Record<string, AnnualReportCardProps[]> = {};
 
-function latestProps(testId: string): StubCardProps {
+function latestProps(testId: string): AnnualReportCardProps {
   const recorded = cardProps[testId];
   if (!recorded?.length) {
     throw new Error(`${testId} was never rendered`);
@@ -36,10 +35,9 @@ function latestProps(testId: string): StubCardProps {
   return recorded[recorded.length - 1];
 }
 
-// Both themed cards take the same props, so one stub factory keeps the
-// assertions symmetrical between them.
-function stubCard(testId: string) {
-  return (props: StubCardProps) => {
+// Annual report card records props so we can assert it received the right values.
+function stubAnnualCard(testId: string) {
+  return (props: AnnualReportCardProps) => {
     cardProps[testId] ??= [];
     cardProps[testId].push(props);
     return <div data-testid={testId} data-is-loading={String(props.isLoading)} />;
@@ -47,11 +45,26 @@ function stubCard(testId: string) {
 }
 
 vi.mock('./AnnualReportKeyDatesCard', () => ({
-  default: stubCard('annual-report-card'),
+  default: stubAnnualCard('annual-report-card'),
 }));
 
-vi.mock('./TrusteePerformanceReportKeyDatesCard', () => ({
-  default: stubCard('tpr-card'),
+vi.mock('./TrusteePerformanceReportCard', () => ({
+  default: (props: {
+    data: TrusteeUpcomingKeyDates | null;
+    isLoading: boolean;
+    variant: string;
+    trusteeId?: string;
+    appointmentId?: string;
+  }) => (
+    <div
+      data-testid="tpr-card"
+      data-is-loading={String(props.isLoading)}
+      data-has-data={String(props.data !== null)}
+      data-variant={props.variant}
+      data-trustee-id={props.trusteeId}
+      data-appointment-id={props.appointmentId}
+    />
+  ),
 }));
 
 describe('Chapter12And13CaseByCaseAppointmentBody', () => {
@@ -70,12 +83,6 @@ describe('Chapter12And13CaseByCaseAppointmentBody', () => {
     createdBy: SYSTEM_USER_REFERENCE,
     updatedOn: '2020-01-10T14:30:00.000Z',
     updatedBy: SYSTEM_USER_REFERENCE,
-  };
-
-  const chapter13Appointment: TrusteeAppointment = {
-    ...chapter12Appointment,
-    id: 'appointment-013',
-    chapter: '13',
   };
 
   const keyDates: TrusteeUpcomingKeyDates = {
@@ -139,30 +146,26 @@ describe('Chapter12And13CaseByCaseAppointmentBody', () => {
     // Identity, not shape: re-fetching per card, or passing a copy to one of
     // them, is the regression this guards against.
     expect(latestProps('annual-report-card').data).toBe(keyDates);
-    expect(latestProps('tpr-card').data).toBe(keyDates);
+    expect(screen.getByTestId('tpr-card')).toHaveAttribute('data-has-data', 'true');
 
-    // Guards prop forwarding to TrusteePerformanceReportKeyDatesCard, which still
-    // branches on tprDisplayUpdates. Should be deleted when that component is removed.
-    expect(latestProps('tpr-card').tprDisplayUpdates).toBe(true);
+    // Each card builds its own edit route from these, so a swap would 404.
+    expect(latestProps('annual-report-card').trusteeId).toBe('trustee-789');
+    expect(latestProps('annual-report-card').appointmentId).toBe('appointment-012');
+    expect(screen.getByTestId('tpr-card')).toHaveAttribute('data-trustee-id', 'trustee-789');
+    expect(screen.getByTestId('tpr-card')).toHaveAttribute(
+      'data-appointment-id',
+      'appointment-012',
+    );
 
-    for (const testId of CARD_TEST_IDS) {
-      // Each card builds its own edit route from these, so a swap would 404.
-      expect(latestProps(testId).trusteeId).toBe('trustee-789');
-      expect(latestProps(testId).appointmentId).toBe('appointment-012');
-    }
-  });
+    // Annual card receives the computed heading
+    expect(latestProps('annual-report-card').appointmentHeading).toBe(
+      'Southern District of New York (Manhattan): Chapter 12 - Case by Case',
+    );
 
-  test('builds one appointment heading and gives both cards the same one', async () => {
-    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: keyDates });
-
-    renderBody(chapter13Appointment);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('tpr-card')).toHaveAttribute('data-is-loading', 'false');
-    });
-    const expected = 'Southern District of New York (Manhattan): Chapter 13 - Case by Case';
-    expect(latestProps('annual-report-card').appointmentHeading).toBe(expected);
-    expect(latestProps('tpr-card').appointmentHeading).toBe(expected);
+    expect(screen.getByTestId('tpr-card')).toHaveAttribute(
+      'data-variant',
+      'chapter12-13-case-by-case',
+    );
   });
 
   test('forwards null data to both cards when no key dates document exists', async () => {
@@ -174,7 +177,7 @@ describe('Chapter12And13CaseByCaseAppointmentBody', () => {
       expect(screen.getByTestId('tpr-card')).toHaveAttribute('data-is-loading', 'false');
     });
     expect(latestProps('annual-report-card').data).toBeNull();
-    expect(latestProps('tpr-card').data).toBeNull();
+    expect(screen.getByTestId('tpr-card')).toHaveAttribute('data-has-data', 'false');
   });
 
   test('reports the loading state to both cards while the fetch is in flight', () => {

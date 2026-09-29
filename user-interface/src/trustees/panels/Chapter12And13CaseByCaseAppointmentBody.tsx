@@ -1,7 +1,7 @@
 import './Chapter12And13CaseByCaseAppointmentBody.scss';
 import AppointmentBasicFields from './AppointmentBasicFields';
 import AnnualReportKeyDatesCard from './AnnualReportKeyDatesCard';
-import TrusteePerformanceReportKeyDatesCard from './TrusteePerformanceReportKeyDatesCard';
+import TrusteePerformanceReportCard from './TrusteePerformanceReportCard';
 import KeyDatesGate from './KeyDatesGate';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import useFeatureFlags, { TRUSTEE_APPOINTMENT_ACCORDIONS } from '@/lib/hooks/UseFeatureFlags';
@@ -44,13 +44,12 @@ export default function Chapter12And13CaseByCaseAppointmentBody(
               data={data}
               isLoading={isLoading}
             />
-            <TrusteePerformanceReportKeyDatesCard
+            <TrusteePerformanceReportCard
               trusteeId={appointment.trusteeId}
               appointmentId={appointment.id}
-              appointmentHeading={appointmentHeading}
               data={data}
               isLoading={isLoading}
-              tprDisplayUpdates={displayKeyDates}
+              variant="chapter12-13-case-by-case"
             />
           </div>
         )}
