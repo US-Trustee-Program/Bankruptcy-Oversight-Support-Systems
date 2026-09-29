@@ -6,6 +6,12 @@
 // created an import cycle (stages -> sync-acms-professional-ids -> trustee-match-pipeline-
 // orchestrator -> stages) that pointed the general pipeline-stages module at one specific caller's
 // dataflow; this module is the neutral home both sides can depend on instead.
+//
+// CanonicalTrusteeSource (common/src/cams/dataflow-events.ts) is the one exception to "no
+// dependency" above - a pure shared TYPE, not a dataflow/gateway/repository, and the exact shape
+// every function in this file already implicitly operates on (a raw ACMS/DXTR professional record).
+
+import { CanonicalTrusteeSource } from '@common/cams/dataflow-events';
 
 /**
  * Splits a compound PROF_FIRST_NAME (e.g. "CAROLINE RENEE") into its first token and the
@@ -270,16 +276,42 @@ const DISAVOWED_RECORD_PATTERN = new RegExp(`\\b(${DISAVOWED_RECORD_PHRASES.join
 
 /**
  * Whether ACMS has explicitly disavowed this specific record (see DISAVOWED_RECORD_PHRASES) -
- * checked against the RAW fullName, unconditionally, independent of whether a real person's name
- * is also present. This is a second, structurally separate prefilter from shouldSkipAsNotAPerson
- * (see that function's own doc comment): both run before normalizeAcmsSourceName and both can set
+ * checked against the RAW fullName AND the concatenated legacy address fields (address1, address2,
+ * cityStateZipCountry), unconditionally, independent of whether a real person's name is also
+ * present. This is a second, structurally separate prefilter from shouldSkipAsNotAPerson (see that
+ * function's own doc comment): both run before normalizeAcmsSourceName and both can set
  * state.skip, but they answer different questions - "does this name no one" versus "did ACMS say
  * not to use this record, name or no name" - and a record can trip either one independently of
  * the other's reasoning. Never strips anything first: stripping IS the wrong move here (see
- * DISAVOWED_RECORD_PHRASES's own doc comment), so this checks the untouched fullName directly.
+ * DISAVOWED_RECORD_PHRASES's own doc comment), so this checks the untouched fullName/address
+ * fields directly.
+ *
+ * Takes the whole raw professional record (CanonicalTrusteeSource) rather than fullName/legacy as
+ * separate parameters - every call site already has this object on hand (it's the pipeline's own
+ * sourceRaw), so passing it whole avoids a second, narrower parameter list to keep in sync if this
+ * check ever needs another field.
+ *
+ * Real bug, confirmed via pipeline-replay-backtest.ts against the 2026-09-25 export: this used to
+ * check fullName only. A real record (a real shape, name synthesized: ACMS "Jordan Roe", a genuine
+ * person's name with no disavowal phrase anywhere in it) had "DO NOT USE" placed in legacy.address1
+ * instead of the name field - a real disavowal signal this check was structurally blind to, since
+ * it never looked at the address fields at all. The record auto-linked anyway (a real name match,
+ * with no other corroborating evidence to weigh against it, resolved via resolveBySoleContactMatch's
+ * no-contradiction fallback - see that stage's own doc comment) despite ACMS explicitly saying not
+ * to use it. Checking the concatenated address fields too closes this gap without weakening the
+ * name-field check at all - both are independent OR conditions, exactly like
+ * shouldSkipAsNotAPerson/shouldSkipAsUstStaff already are in skipAdministrativePlaceholder.
  */
-export function isRecordDisavowed(fullName: string): boolean {
-  return DISAVOWED_RECORD_PATTERN.test(fullName);
+export function isRecordDisavowed(professional: CanonicalTrusteeSource): boolean {
+  if (DISAVOWED_RECORD_PATTERN.test(professional.fullName)) return true;
+  const addressFields = [
+    professional.legacy?.address1,
+    professional.legacy?.address2,
+    professional.legacy?.cityStateZipCountry,
+  ]
+    .filter(Boolean)
+    .join(' ');
+  return DISAVOWED_RECORD_PATTERN.test(addressFields);
 }
 
 /**

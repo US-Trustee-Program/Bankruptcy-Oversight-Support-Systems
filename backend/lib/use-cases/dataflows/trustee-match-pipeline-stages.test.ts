@@ -244,6 +244,42 @@ describe('skipAdministrativePlaceholder', () => {
     expect(result.skip).toBe(true);
   });
 
+  // Real bug, confirmed via pipeline-replay-backtest.ts against the 2026-09-25 export:
+  // isRecordDisavowed used to check fullName only. A real record (a real shape, name synthesized:
+  // ACMS "Jordan Roe" - a genuine person's name, no disavowal phrase in it at all) had "DO NOT USE"
+  // placed in legacy.address1 instead of the name field, and auto-linked anyway - a real disavowal
+  // signal this check was structurally blind to. Now also checks the concatenated legacy address
+  // fields (address1/address2/cityStateZipCountry), independent of the fullName check.
+  test('sets state.skip for a disavowed record when "DO NOT USE" is in the address instead of the name', async () => {
+    const state = createInitialState(
+      makeDxtrTrustee({
+        fullName: 'Jordan Roe',
+        firstName: 'Jordan',
+        lastName: 'Roe',
+        legacy: { address1: 'DO NOT USE' } as never,
+      }),
+    );
+
+    const result = await skipAdministrativePlaceholder()(state);
+
+    expect(result.skip).toBe(true);
+  });
+
+  test('leaves state unchanged for a real name with a real address containing no disavowal phrase', async () => {
+    const state = createInitialState(
+      makeDxtrTrustee({
+        fullName: 'Jordan Roe',
+        firstName: 'Jordan',
+        lastName: 'Roe',
+        legacy: { address1: '123 Main St', cityStateZipCountry: 'Anytown CA 90001' } as never,
+      }),
+    );
+
+    const result = await skipAdministrativePlaceholder()(state);
+
+    expect(result.skip).toBe(false);
+  });
+
   // "inactive" and "deceased" are deliberately NOT disavowal signals (see
   // DISAVOWED_RECORD_PHRASES's own doc comment): an inactive trustee can still have open cases
   // that must stay correctly attributed until reassignment, and a deceased trustee's past cases
