@@ -15,8 +15,12 @@ vi.mock('./AppointmentBasicFields', () => ({
 }));
 
 function mockCard(testId: string) {
-  return (props: { data: TrusteeUpcomingKeyDates | null }) => (
-    <div data-testid={testId} data-has-data={String(props.data !== null)} />
+  return (props: { data: TrusteeUpcomingKeyDates | null; isLoading: boolean }) => (
+    <div
+      data-testid={testId}
+      data-is-loading={String(props.isLoading)}
+      data-has-data={String(props.data !== null)}
+    />
   );
 }
 
@@ -31,6 +35,7 @@ vi.mock('./TrusteePerformanceReportCard', () => ({
   }) => (
     <div
       data-testid="chapter13-standing-tpr-card"
+      data-is-loading={String(props.isLoading)}
       data-has-data={String(props.data !== null)}
       data-variant={props.variant}
     />
@@ -95,13 +100,19 @@ describe('Chapter13StandingAppointmentBody', () => {
     );
   });
 
-  test('shows a loading spinner instead of the cards while key dates are loading', () => {
+  test('passes isLoading through to each data-driven card while key dates are loading', () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockImplementation(() => new Promise(() => {}));
 
     renderBody();
 
-    expect(screen.getByTestId('chapter13-standing-key-dates-loading')).toBeInTheDocument();
-    expect(screen.queryByTestId('chapter13-standing-cards-stack')).not.toBeInTheDocument();
+    expect(screen.getByTestId('chapter13-standing-cards-stack')).toBeInTheDocument();
+    for (const testId of [
+      'chapter13-standing-audit-card',
+      'chapter13-standing-tpr-card',
+      'chapter13-standing-other-card',
+    ]) {
+      expect(screen.getByTestId(testId)).toHaveAttribute('data-is-loading', 'true');
+    }
   });
 
   test('fetches key dates once and forwards the result to all data-driven cards', async () => {
@@ -110,7 +121,10 @@ describe('Chapter13StandingAppointmentBody', () => {
     renderBody();
 
     await waitFor(() => {
-      expect(screen.getByTestId('chapter13-standing-cards-stack')).toBeInTheDocument();
+      expect(screen.getByTestId('chapter13-standing-audit-card')).toHaveAttribute(
+        'data-is-loading',
+        'false',
+      );
     });
     expect(getSpy).toHaveBeenCalledWith('trustee-123', 'appointment-001');
     expect(getSpy).toHaveBeenCalledTimes(1);

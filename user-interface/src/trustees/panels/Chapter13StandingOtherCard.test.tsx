@@ -23,6 +23,7 @@ const defaultProps: Chapter13StandingOtherCardProps = {
   trusteeId: 'trustee-001',
   appointmentId: 'appointment-001',
   data: null,
+  isLoading: false,
 };
 
 const baseDocument: TrusteeUpcomingKeyDates = {
@@ -82,6 +83,13 @@ describe('Chapter13StandingOtherCard', () => {
   test('renders no completion-status tag', () => {
     renderComponent();
     expect(screen.queryByTestId(/^tag-/)).not.toBeInTheDocument();
+  });
+
+  test('shows a loading spinner while loading', () => {
+    renderComponent({ isLoading: true });
+
+    expect(screen.getByRole('status')).toBeInTheDocument();
+    expect(screen.queryByText('Other')).not.toBeInTheDocument();
   });
 
   test('Edit pencil navigates to the dedicated Other edit route when canManage', () => {

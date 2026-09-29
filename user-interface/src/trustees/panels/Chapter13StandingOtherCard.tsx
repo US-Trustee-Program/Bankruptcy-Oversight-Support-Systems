@@ -3,6 +3,7 @@ import {
   isoToMMDDYYYY,
   isoToMMYYYY,
 } from '@common/cams/trustee-upcoming-key-dates';
+import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import EditableTableCard from '@/lib/components/cams/EditableTableCard/EditableTableCard';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import { useOpenEditKeyDates } from './useOpenEditKeyDates';
@@ -12,18 +13,23 @@ export interface Chapter13StandingOtherCardProps {
   trusteeId: string;
   appointmentId: string;
   data: TrusteeUpcomingKeyDates | null;
+  isLoading: boolean;
 }
 
 export default function Chapter13StandingOtherCard(
   props: Readonly<Chapter13StandingOtherCardProps>,
 ) {
-  const { trusteeId, appointmentId, data } = props;
+  const { trusteeId, appointmentId, data, isLoading } = props;
   const canManage = useCanManageTrustees();
   const openEdit = useOpenEditKeyDates(
     trusteeId,
     appointmentId,
     'chapter13-standing-other-key-dates',
   );
+
+  if (isLoading) {
+    return <LoadingSpinner id="chapter13-standing-other-key-dates-loading" />;
+  }
 
   return (
     <EditableTableCard

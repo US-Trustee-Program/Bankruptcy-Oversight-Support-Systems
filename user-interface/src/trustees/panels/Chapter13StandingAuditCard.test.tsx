@@ -23,6 +23,7 @@ const defaultProps: Chapter13StandingAuditCardProps = {
   trusteeId: 'trustee-001',
   appointmentId: 'appointment-001',
   data: null,
+  isLoading: false,
 };
 
 const baseDocument: TrusteeUpcomingKeyDates = {
@@ -112,6 +113,13 @@ describe('Chapter13StandingAuditCard', () => {
     expect(screen.getByTestId('tag-audit-completion-status-appointment-001')).toHaveTextContent(
       'Not Closed for 2026',
     );
+  });
+
+  test('shows a loading spinner while loading', () => {
+    renderComponent({ isLoading: true });
+
+    expect(screen.getByRole('status')).toBeInTheDocument();
+    expect(screen.queryByText('Audit')).not.toBeInTheDocument();
   });
 
   test('Edit pencil navigates to the dedicated Audit edit route when canManage', () => {

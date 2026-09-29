@@ -4,7 +4,6 @@ import TrusteePerformanceReportCard from './TrusteePerformanceReportCard';
 import Chapter13StandingBudgetCard from './Chapter13StandingBudgetCard';
 import Chapter13StandingOtherCard from './Chapter13StandingOtherCard';
 import KeyDatesGate from './KeyDatesGate';
-import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import useFeatureFlags, { TRUSTEE_APPOINTMENT_ACCORDIONS } from '@/lib/hooks/UseFeatureFlags';
 
@@ -34,28 +33,22 @@ export default function Chapter13StandingAppointmentBody(
         errorId={`chapter13-standing-key-dates-error-${appointment.id}`}
         errorMessage="Failed to load Chapter 13 Standing key dates. Please refresh and try again."
       >
-        {(data, isLoading) =>
-          isLoading ? (
-            <LoadingSpinner id="chapter13-standing-key-dates-loading" />
-          ) : (
-            <div
-              className="chapter13-standing-cards-stack"
-              data-testid="chapter13-standing-cards-stack"
-            >
-              <Chapter13StandingAuditCard {...commonCardProps} data={data} />
-              <TrusteePerformanceReportCard
-                {...commonCardProps}
-                data={data}
-                // The card's own spinner is unreachable while the body-level short-circuit above
-                // exists, but this prop is kept forward-compatible for when that short-circuit is removed.
-                isLoading={isLoading}
-                variant="chapter13-standing"
-              />
-              <Chapter13StandingBudgetCard appointmentId={appointment.id} />
-              <Chapter13StandingOtherCard {...commonCardProps} data={data} />
-            </div>
-          )
-        }
+        {(data, isLoading) => (
+          <div
+            className="chapter13-standing-cards-stack"
+            data-testid="chapter13-standing-cards-stack"
+          >
+            <Chapter13StandingAuditCard {...commonCardProps} data={data} isLoading={isLoading} />
+            <TrusteePerformanceReportCard
+              {...commonCardProps}
+              data={data}
+              isLoading={isLoading}
+              variant="chapter13-standing"
+            />
+            <Chapter13StandingBudgetCard appointmentId={appointment.id} />
+            <Chapter13StandingOtherCard {...commonCardProps} data={data} isLoading={isLoading} />
+          </div>
+        )}
       </KeyDatesGate>
     </>
   );

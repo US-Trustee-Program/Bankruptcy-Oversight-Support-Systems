@@ -1,3 +1,4 @@
+import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import EditableTableCard from '@/lib/components/cams/EditableTableCard/EditableTableCard';
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
@@ -8,6 +9,7 @@ export interface Chapter13StandingAuditCardProps {
   trusteeId: string;
   appointmentId: string;
   data: TrusteeUpcomingKeyDates | null;
+  isLoading: boolean;
 }
 
 const ANNUAL_AUDIT_PERIOD = '10/01 - 09/30';
@@ -15,13 +17,17 @@ const ANNUAL_AUDIT_PERIOD = '10/01 - 09/30';
 export default function Chapter13StandingAuditCard(
   props: Readonly<Chapter13StandingAuditCardProps>,
 ) {
-  const { trusteeId, appointmentId, data } = props;
+  const { trusteeId, appointmentId, data, isLoading } = props;
   const canManage = useCanManageTrustees();
   const openEdit = useOpenEditKeyDates(
     trusteeId,
     appointmentId,
     'chapter13-standing-audit-key-dates',
   );
+
+  if (isLoading) {
+    return <LoadingSpinner id="chapter13-standing-audit-loading" />;
+  }
 
   const tag = buildCompletionTag(
     data?.ch13AuditCompletionYear,
