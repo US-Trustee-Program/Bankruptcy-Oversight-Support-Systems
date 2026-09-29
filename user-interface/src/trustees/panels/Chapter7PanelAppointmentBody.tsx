@@ -19,7 +19,6 @@ export default function Chapter7PanelAppointmentBody(
   // must be gated on it to avoid a guaranteed-to-fail request.
   const featureFlags = useFeatureFlags();
   const displayKeyDates = featureFlags[TRUSTEE_APPOINTMENT_ACCORDIONS] === true;
-  const tprDisplayUpdates = displayKeyDates;
 
   return (
     <>
@@ -44,7 +43,6 @@ export default function Chapter7PanelAppointmentBody(
               appointmentId={appointment.id}
               data={data}
               isLoading={isLoading}
-              tprDisplayUpdates={tprDisplayUpdates}
             />
             <Chapter7PanelTrusteeInterimReportCard
               trusteeId={appointment.trusteeId}

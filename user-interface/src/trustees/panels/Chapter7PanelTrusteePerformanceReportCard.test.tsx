@@ -45,11 +45,7 @@ describe('Chapter7PanelTrusteePerformanceReportCard', () => {
     TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
   });
 
-  function renderCard(
-    data: TrusteeUpcomingKeyDates | null = keyDates,
-    isLoading = false,
-    tprDisplayUpdates = true,
-  ) {
+  function renderCard(data: TrusteeUpcomingKeyDates | null = keyDates, isLoading = false) {
     return render(
       <BrowserRouter>
         <Chapter7PanelTrusteePerformanceReportCard
@@ -57,7 +53,6 @@ describe('Chapter7PanelTrusteePerformanceReportCard', () => {
           appointmentId="appointment-001"
           data={data}
           isLoading={isLoading}
-          tprDisplayUpdates={tprDisplayUpdates}
         />
       </BrowserRouter>,
     );
@@ -158,35 +153,5 @@ describe('Chapter7PanelTrusteePerformanceReportCard', () => {
     expect(
       screen.queryByTestId('tag-tpr-completion-status-tag-appointment-001'),
     ).not.toBeInTheDocument();
-  });
-
-  describe('when tprDisplayUpdates prop is false', () => {
-    test('hides the frequency row', () => {
-      renderCard(keyDates, false, false);
-
-      expect(
-        screen.queryByTestId('chapter7-panel-tpr-review-period-frequency-row'),
-      ).not.toBeInTheDocument();
-    });
-
-    test('shows MM/DD + year-type for tprDue instead of calculated year', () => {
-      renderCard(keyDates, false, false);
-
-      expect(screen.getByTestId('chapter7-panel-tpr-due-row')).toHaveTextContent('10/06 EVEN');
-    });
-
-    test('shows MM/DD range for tprReviewPeriod instead of full YYYY range', () => {
-      renderCard(keyDates, false, false);
-
-      expect(screen.getByTestId('chapter7-panel-tpr-review-period-row')).toHaveTextContent(
-        '04/01 - 03/31',
-      );
-    });
-
-    test('shows "No date added" for tprDue when data is null', () => {
-      renderCard(null, false, false);
-
-      expect(screen.getByTestId('chapter7-panel-tpr-due-row')).toHaveTextContent('No date added');
-    });
   });
 });

@@ -1,10 +1,6 @@
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import EditableTableCard from '@/lib/components/cams/EditableTableCard/EditableTableCard';
-import {
-  TrusteeUpcomingKeyDates,
-  isoToMMDD,
-  isoRangeToMMDD,
-} from '@common/cams/trustee-upcoming-key-dates';
+import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import { useOpenEditKeyDates } from './useOpenEditKeyDates';
 import {
@@ -12,7 +8,6 @@ import {
   tprFrequencyField,
   tprDueField,
   formatDateOrDefault,
-  NO_DATE,
   buildCompletionTag,
 } from './upcomingKeyDatesFieldConfig';
 
@@ -28,14 +23,13 @@ export interface TrusteePerformanceReportCardProps {
   appointmentId: string;
   data: TrusteeUpcomingKeyDates | null;
   isLoading: boolean;
-  tprDisplayUpdates: boolean;
   variant: TrusteePerformanceReportCardVariant;
 }
 
 export default function TrusteePerformanceReportCard(
   props: Readonly<TrusteePerformanceReportCardProps>,
 ) {
-  const { trusteeId, appointmentId, data, isLoading, tprDisplayUpdates, variant } = props;
+  const { trusteeId, appointmentId, data, isLoading, variant } = props;
   const canManage = useCanManageTrustees();
   const openEdit = useOpenEditKeyDates(trusteeId, appointmentId, EDIT_ROUTE_SEGMENT[variant]);
 
@@ -56,15 +50,11 @@ export default function TrusteePerformanceReportCard(
       header: 'TPR Review Period',
       testId: `${variant}-tpr-review-period-row`,
     },
-    ...(tprDisplayUpdates
-      ? [
-          {
-            key: 'tprFrequency',
-            header: 'TPR Review Period Frequency',
-            testId: `${variant}-tpr-review-period-frequency-row`,
-          },
-        ]
-      : []),
+    {
+      key: 'tprFrequency',
+      header: 'TPR Review Period Frequency',
+      testId: `${variant}-tpr-review-period-frequency-row`,
+    },
     { key: 'tprDue', header: 'TPR Due', testId: `${variant}-tpr-due-row` },
     {
       key: 'lastTprSubmitted',
@@ -73,22 +63,10 @@ export default function TrusteePerformanceReportCard(
     },
   ];
 
-  const tprReviewPeriodValue = tprDisplayUpdates
-    ? tprReviewPeriodField(data).value
-    : data?.tprReviewPeriodStart && data?.tprReviewPeriodEnd
-      ? isoRangeToMMDD(data.tprReviewPeriodStart, data.tprReviewPeriodEnd)
-      : NO_DATE;
-
-  const tprDueValue = tprDisplayUpdates
-    ? tprDueField(data).value
-    : data?.tprDue && data?.tprDueYearType
-      ? `${isoToMMDD(data.tprDue)} ${data.tprDueYearType}`
-      : NO_DATE;
-
   const values = {
-    tprReviewPeriod: tprReviewPeriodValue,
-    ...(tprDisplayUpdates ? { tprFrequency: tprFrequencyField(data).value } : {}),
-    tprDue: tprDueValue,
+    tprReviewPeriod: tprReviewPeriodField(data).value,
+    tprFrequency: tprFrequencyField(data).value,
+    tprDue: tprDueField(data).value,
     lastTprSubmitted: formatDateOrDefault(data?.lastTprSubmitted),
   };
 

@@ -15,16 +15,11 @@ vi.mock('./AppointmentBasicFields', () => ({
 }));
 
 function mockCard(testId: string) {
-  return (props: {
-    data: TrusteeUpcomingKeyDates | null;
-    isLoading: boolean;
-    tprDisplayUpdates?: boolean;
-  }) => (
+  return (props: { data: TrusteeUpcomingKeyDates | null; isLoading: boolean }) => (
     <div
       data-testid={testId}
       data-is-loading={String(props.isLoading)}
       data-has-data={String(props.data !== null)}
-      data-tpr-display-updates={String(props.tprDisplayUpdates)}
     />
   );
 }
@@ -115,22 +110,6 @@ describe('Chapter12StandingAppointmentBody', () => {
       expect(screen.getByTestId(testId)).toHaveAttribute('data-has-data', 'true');
     }
     expect(screen.getByTestId('chapter12-standing-budget-card')).toBeInTheDocument();
-  });
-
-  // tprDisplayUpdates and the key-dates fetch are both derived from the single
-  // TRUSTEE_APPOINTMENT_ACCORDIONS flag now, so there's no "fetch enabled but
-  // TPR display off" combination left to test independently.
-  test('forwards tprDisplayUpdates as true, derived from the accordions flag', async () => {
-    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: keyDates });
-
-    renderBody();
-
-    await waitFor(() => {
-      expect(screen.getByTestId('chapter12-standing-tpr-card')).toHaveAttribute(
-        'data-tpr-display-updates',
-        'true',
-      );
-    });
   });
 
   test('forwards null data to all data-driven cards when no key dates document exists', async () => {

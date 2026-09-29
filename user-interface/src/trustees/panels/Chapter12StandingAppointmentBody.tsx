@@ -17,7 +17,6 @@ export default function Chapter12StandingAppointmentBody(
   const { appointment } = props;
   const featureFlags = useFeatureFlags();
   const displayKeyDates = featureFlags[TRUSTEE_APPOINTMENT_ACCORDIONS] === true;
-  const tprDisplayUpdates = displayKeyDates;
 
   return (
     <>
@@ -42,7 +41,6 @@ export default function Chapter12StandingAppointmentBody(
               appointmentId={appointment.id}
               data={data}
               isLoading={isLoading}
-              tprDisplayUpdates={tprDisplayUpdates}
             />
             <Chapter12StandingBudgetCard appointmentId={appointment.id} />
             <Chapter12StandingOtherKeyDatesCard

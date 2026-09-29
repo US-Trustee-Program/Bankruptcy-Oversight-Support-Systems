@@ -19,7 +19,6 @@ export default function Chapter12And13CaseByCaseAppointmentBody(
   // must be gated on it to avoid a guaranteed-to-fail request.
   const featureFlags = useFeatureFlags();
   const displayKeyDates = featureFlags[TRUSTEE_APPOINTMENT_ACCORDIONS] === true;
-  const tprDisplayUpdates = displayKeyDates;
 
   const appointmentHeading = buildAppointmentHeading(appointment);
 
@@ -51,7 +50,7 @@ export default function Chapter12And13CaseByCaseAppointmentBody(
               appointmentHeading={appointmentHeading}
               data={data}
               isLoading={isLoading}
-              tprDisplayUpdates={tprDisplayUpdates}
+              tprDisplayUpdates={displayKeyDates}
             />
           </div>
         )}

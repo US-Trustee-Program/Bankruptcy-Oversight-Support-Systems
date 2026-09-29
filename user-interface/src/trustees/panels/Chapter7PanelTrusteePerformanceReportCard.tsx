@@ -6,7 +6,6 @@ export interface Chapter7PanelTrusteePerformanceReportCardProps {
   appointmentId: string;
   data: TrusteeUpcomingKeyDates | null;
   isLoading: boolean;
-  tprDisplayUpdates: boolean;
 }
 
 export default function Chapter7PanelTrusteePerformanceReportCard(

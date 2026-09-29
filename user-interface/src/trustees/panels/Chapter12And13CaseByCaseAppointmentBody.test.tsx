@@ -141,6 +141,10 @@ describe('Chapter12And13CaseByCaseAppointmentBody', () => {
     expect(latestProps('annual-report-card').data).toBe(keyDates);
     expect(latestProps('tpr-card').data).toBe(keyDates);
 
+    // Guards prop forwarding to TrusteePerformanceReportKeyDatesCard, which still
+    // branches on tprDisplayUpdates. Should be deleted when that component is removed.
+    expect(latestProps('tpr-card').tprDisplayUpdates).toBe(true);
+
     for (const testId of CARD_TEST_IDS) {
       // Each card builds its own edit route from these, so a swap would 404.
       expect(latestProps(testId).trusteeId).toBe('trustee-789');
@@ -212,22 +216,5 @@ describe('Chapter12And13CaseByCaseAppointmentBody', () => {
       expect(screen.queryByTestId(testId)).not.toBeInTheDocument();
     }
     expect(screen.getByTestId('appointment-basic-fields')).toBeInTheDocument();
-  });
-
-  // This forwarding was dropped once already during an epic merge, which left
-  // the Ch12/13 card showing the updated TPR treatment while the Chapter 7
-  // Panel card on the same page still honoured the flag. tprDisplayUpdates and
-  // the key-dates fetch are both derived from the single
-  // TRUSTEE_APPOINTMENT_ACCORDIONS flag now, so there's no "fetch enabled but
-  // TPR display off" combination left to test independently.
-  test('forwards tprDisplayUpdates as true to the TPR card, derived from the accordions flag', async () => {
-    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: keyDates });
-
-    renderBody();
-
-    await waitFor(() => {
-      expect(screen.getByTestId('tpr-card')).toHaveAttribute('data-is-loading', 'false');
-    });
-    expect(latestProps('tpr-card').tprDisplayUpdates).toBe(true);
   });
 });
