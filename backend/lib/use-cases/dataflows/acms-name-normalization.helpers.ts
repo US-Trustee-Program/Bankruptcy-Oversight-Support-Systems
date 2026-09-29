@@ -147,16 +147,20 @@ export function recoverLastFirstRoleSwap(
  * phrases, a bare 2-letter token needs ADMINISTRATIVE_MARKER_PATTERN's word-boundary anchoring to
  * avoid matching as a substring inside a real name (e.g. a surname like "STANPACK").
  *
- * "u\.?\s*s\.?\s*trustee" and "deceased" are both real-name-plus-role/status-suffix shapes, not
- * pure placeholders - e.g. lastName "DOE - U S TRUSTEE" or "DECEASED - ROE, JR.". Stripping the
- * marker recovers the real surname underneath ("DOE", "ROE, JR.") so matching proceeds against it,
- * rather than either failing to match the un-stripped text or (worse) being misclassified as
- * not-a-person and skipped outright - a real trustee identity here, unlike a bare "US TRUSTEE"
- * placeholder with no name at all (that case is instead caught by NON_PERSON_ONLY_WORDS, once
- * every word of it is a known non-person word).
+ * "deceased" is a real-name-plus-status-suffix shape, not a pure placeholder - e.g. lastName
+ * "DECEASED - ROE, JR.". Stripping the marker recovers the real surname underneath ("ROE, JR.") so
+ * matching proceeds against it, rather than either failing to match the un-stripped text or (worse)
+ * being misclassified as not-a-person and skipped outright - a real trustee identity here.
  *
- * "chapter\d+"/"ch\.?\d+"/"ust"/"acting ch\.?\d+ trustee" are the same real-name-plus-suffix shape -
- * e.g. "JORDAN W ROE (CHAPTER 12)", "TAYLOR DOE (UST)" - stripping recovers the real name.
+ * "chapter\d+"/"ch\.?\d+"/"acting ch\.?\d+ trustee" are the same real-name-plus-suffix shape - e.g.
+ * "JORDAN W ROE (CHAPTER 12)" - stripping recovers the real name.
+ *
+ * Deliberately excludes "u\.?\s*s\.?\s*trustee" and "ust" - a UST (U.S. Trustee office staff,
+ * appointed by the USTP program) is a real person but is NEVER a CAMS trustee record, structurally
+ * absent from CAMS even though they sometimes step in and work cases directly. Unlike "(CHAPTER
+ * 12)"/"(TR)"/"deceased", stripping a UST annotation and matching what's left is never correct -
+ * there is nothing in CAMS for a recovered name to ever match. See UST_STAFF_KEYWORDS/
+ * shouldSkipAsUstStaff below for the dedicated early, unconditional skip this shape gets instead.
  */
 const ADMINISTRATIVE_MARKER_PHRASES = [
   'do not use this code',
@@ -172,12 +176,10 @@ const ADMINISTRATIVE_MARKER_PHRASES = [
   'reopening pending',
   'pending',
   'np',
-  'u\\.?\\s*s\\.?\\s*trustee',
   'deceased',
   'acting\\s*ch\\.?\\s*\\d+\\s*trustee',
   'chapter\\s*\\d+',
   'ch\\.?\\s*\\d+',
-  'ust',
   'liq\\s*tr',
 ];
 
@@ -280,27 +282,57 @@ export function isRecordDisavowed(fullName: string): boolean {
   return DISAVOWED_RECORD_PATTERN.test(fullName);
 }
 
+/**
+ * Annotations marking an ACMS record as a UST (U.S. Trustee office staff - Assistant U.S.
+ * Trustees, etc., appointed by the USTP program, leadership over the "private" trustees), not a
+ * regular trustee - Brian's direction (2026-09-29), reversing a previous, now-known-wrong
+ * assumption that a UST-annotated name could be a real trustee who merely also carries UST status.
+ * A UST is a real person, but is structurally never a CAMS trustee record - even though they
+ * sometimes step in and work cases directly, they are not in CAMS at all. Kept as its own list,
+ * separate from ADMINISTRATIVE_MARKER_PHRASES (which strips-then-recovers a real name underneath)
+ * and NON_PERSON_ONLY_WORDS (which only fires when every word in a name is non-person) - neither
+ * treatment is right here: there is nothing in CAMS for a recovered name to ever match, regardless
+ * of how real the accompanying name looks. Both shapes below are cited in Jon's original review
+ * (Problem 4) and confirmed present in the 2026-09-25 staging export.
+ */
+const UST_STAFF_PATTERN = /\(?\s*\bu\.?\s*s\.?\s*trustee\b\s*\)?|\(\s*ust\s*\)/i;
+
+/**
+ * Whether an ACMS record's RAW, un-atomized fullName carries a UST-office annotation (see
+ * UST_STAFF_PATTERN) - checked unconditionally, independent of whether a real-looking name is also
+ * present, and BEFORE any marker-stripping runs (stripping would only ever discard this signal, the
+ * same reasoning as isRecordDisavowed). A third, structurally separate prefilter alongside
+ * shouldSkipAsNotAPerson/isRecordDisavowed (see skipAdministrativePlaceholder in
+ * trustee-match-pipeline-stages.ts, this function's sole real caller): "does this name no one",
+ * "did ACMS say not to use this record", and "is this USTP office staff, never present in CAMS" are
+ * three independent questions, each capable of setting state.skip on its own.
+ */
+export function shouldSkipAsUstStaff(fullName: string): boolean {
+  return UST_STAFF_PATTERN.test(fullName);
+}
+
 /** Bare words that, once every ADMINISTRATIVE_MARKER_PHRASES marker is stripped, indicate
  * whatever is left is STILL administrative text describing a role/case rather than a person's
  * name (e.g. "UNITED STATES TRUSTEE" -> stripped to itself, unchanged, since none of its words
  * are markers - but "trustee" alone is not a surname). Used only by isLikelyNotAPerson's
  * word-by-word check, never to strip text from a name that will proceed to matching.
  *
- * Deliberately contains no single-character entries: "US TRUSTEE"/"U.S. TRUSTEE" is instead
- * caught by ADMINISTRATIVE_MARKER_PHRASES' own "u\.?\s*s\.?\s*trustee" entry, which only strips
- * when "trustee" follows, never as a bare initials pair that could also match a real company/
- * entity name's first word once split on periods (a real business name like "U.S. AGGREGATES" was
- * wrongly flagged as not-a-person by an earlier, single-character-inclusive version of this set).
- * Likewise excludes "fake" - a real surname - see FAKE_IDENTITY_PATTERN above for how "I. M. FAKE"
- * is caught instead, as one whole-identity phrase. The entries below were checked against the full
- * matched+ambiguous+no-match population, against the RAW fullName this function actually runs on,
- * with zero false positives - isLikelyNotAPerson requires EVERY word in fullName to be in this
- * set, so a real name with even one genuine name-shaped word (e.g. "R. Jordan Doe") never matches
- * regardless of how many short/common words sit alongside it. Catches "REOPENED CASE", "OLD
- * CASE/NO TR ASSIGNED",
+ * Deliberately contains no single-character entries: "US TRUSTEE"/"U.S. TRUSTEE" is instead caught
+ * by shouldSkipAsUstStaff's own UST_STAFF_PATTERN (a separate, dedicated prefilter - see its own
+ * doc comment), which only fires when "trustee" follows "u.?s.?", never as a bare initials pair
+ * that could also match a real company/entity name's first word once split on periods (a real
+ * business name like "U.S. AGGREGATES" was wrongly flagged as not-a-person by an earlier,
+ * single-character-inclusive version of this set). Likewise excludes "fake" - a real surname - see
+ * FAKE_IDENTITY_PATTERN above for how "I. M. FAKE" is caught instead, as one whole-identity phrase.
+ * The entries below were checked against the full matched+ambiguous+no-match population, against
+ * the RAW fullName this function actually runs on, with zero false positives - isLikelyNotAPerson
+ * requires EVERY word in fullName to be in this set, so a real name with even one genuine
+ * name-shaped word (e.g. "R. Jordan Doe") never matches regardless of how many short/common words
+ * sit alongside it. Catches "REOPENED CASE", "OLD CASE/NO TR ASSIGNED",
  * "INVOLUNTARY [TRUSTEE|PETITION]", "NONE ASSIGNED (DEBTOR IN POSS)", and "OFFICE OF THE [U.S.
- * TRUSTEE]" (via office/of/the/united/states/trustee together, since u.s. trustee is itself
- * stripped by ADMINISTRATIVE_MARKER_PHRASES first). Also catches case-status placeholders like
+ * TRUSTEE]" (via office/of/the/united/states/trustee together - shouldSkipAsUstStaff's own pattern
+ * also independently catches this same shape, since "trustee" follows "u.s."; either check alone
+ * is sufficient, so the overlap is harmless). Also catches case-status placeholders like
  * "TRUSTEE UNASSIGNED", "TRANSFER CASE", "MISSING TRUSTEE", "TRUSTEE ASSIGNMENT IN PROGRESS", "CASE STRICKEN: NO TRUSTEE" (see
  * stripAdministrativeMarkers' own colon-stripping note), and "PRO SE" (a litigant representing
  * themselves, not a trustee). */
