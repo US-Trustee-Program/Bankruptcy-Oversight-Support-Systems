@@ -118,14 +118,14 @@ describe('TrusteePerformanceReportCard', () => {
   test('renders a green "Complete for <year>" tag when completion status is COMPLETE', () => {
     renderCard();
 
-    const tag = screen.getByTestId('tag-tpr-completion-status-tag-appointment-001');
+    const tag = screen.getByTestId('tag-tpr-completion-status-appointment-001');
     expect(tag).toHaveTextContent('Complete for 2025');
   });
 
   test('renders a red "Incomplete for <year>" tag when completion status is INCOMPLETE', () => {
     renderCard({ ...keyDates, tprCompletionYear: 2024, tprCompletionStatus: 'INCOMPLETE' });
 
-    const tag = screen.getByTestId('tag-tpr-completion-status-tag-appointment-001');
+    const tag = screen.getByTestId('tag-tpr-completion-status-appointment-001');
     expect(tag).toHaveTextContent('Incomplete for 2024');
   });
 
@@ -139,7 +139,7 @@ describe('TrusteePerformanceReportCard', () => {
     });
 
     expect(
-      screen.queryByTestId('tag-tpr-completion-status-tag-appointment-001'),
+      screen.queryByTestId('tag-tpr-completion-status-appointment-001'),
     ).not.toBeInTheDocument();
   });
 

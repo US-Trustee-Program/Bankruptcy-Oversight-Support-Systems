@@ -126,7 +126,7 @@ describe('Chapter7PanelTrusteePerformanceReportCard', () => {
   test('shows a "Complete for <year>" tag when tprCompletionStatus is COMPLETE', () => {
     renderCard({ ...keyDates, tprCompletionYear: 2025, tprCompletionStatus: 'COMPLETE' });
 
-    expect(screen.getByTestId('tag-tpr-completion-status-tag-appointment-001')).toHaveTextContent(
+    expect(screen.getByTestId('tag-tpr-completion-status-appointment-001')).toHaveTextContent(
       'Complete for 2025',
     );
   });
@@ -134,7 +134,7 @@ describe('Chapter7PanelTrusteePerformanceReportCard', () => {
   test('shows an "Incomplete for <year>" tag when tprCompletionStatus is INCOMPLETE', () => {
     renderCard({ ...keyDates, tprCompletionYear: 2024, tprCompletionStatus: 'INCOMPLETE' });
 
-    expect(screen.getByTestId('tag-tpr-completion-status-tag-appointment-001')).toHaveTextContent(
+    expect(screen.getByTestId('tag-tpr-completion-status-appointment-001')).toHaveTextContent(
       'Incomplete for 2024',
     );
   });
@@ -143,7 +143,7 @@ describe('Chapter7PanelTrusteePerformanceReportCard', () => {
     renderCard({ ...keyDates, tprCompletionYear: undefined, tprCompletionStatus: undefined });
 
     expect(
-      screen.queryByTestId('tag-tpr-completion-status-tag-appointment-001'),
+      screen.queryByTestId('tag-tpr-completion-status-appointment-001'),
     ).not.toBeInTheDocument();
   });
 
@@ -151,7 +151,7 @@ describe('Chapter7PanelTrusteePerformanceReportCard', () => {
     renderCard({ ...keyDates, tprCompletionYear: 2025, tprCompletionStatus: undefined });
 
     expect(
-      screen.queryByTestId('tag-tpr-completion-status-tag-appointment-001'),
+      screen.queryByTestId('tag-tpr-completion-status-appointment-001'),
     ).not.toBeInTheDocument();
   });
 });

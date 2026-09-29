@@ -41,7 +41,7 @@ export default function TrusteePerformanceReportCard(
     data?.tprCompletionYear,
     data?.tprCompletionStatus,
     'COMPLETE',
-    `tpr-completion-status-tag-${appointmentId}`,
+    `tpr-completion-status-${appointmentId}`,
   );
 
   const columns = [
