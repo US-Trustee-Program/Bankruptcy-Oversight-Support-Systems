@@ -2279,6 +2279,29 @@ function shareFirstInitial(acmsFirst: string, camsFirst: string): boolean {
  * the both-required bar; the other 40 are real same-surname-different-person collisions (sharing a
  * surname and state but no other evidence) that the weaker "either" bar would have wrongly
  * resolved.
+ *
+ * REVIEWED CORNER CASE, deliberately left as-is (cams-y2dml, 2026-09-29): shareFirstInitial is a
+ * bare leading-character comparison with no real relation to name similarity - in isolation, this
+ * COULD auto-link two different trustees who merely share a surname, a business address, and a
+ * first initial (e.g. two unrelated professionals at the same firm - NOT a household/family
+ * relationship; this is about shared BUSINESS addresses in the USTP program). Investigated by
+ * surveying every real CAMS surname with 2+ trustees at the same city/state in the 2026-09-25
+ * export (genuine shared-business-address shapes: Cohen x3 city groups, Brown, Davis, Goodman,
+ * Johnson x3 groups). Result: findSoleZeroNameScoreCandidateWithMatchingLastName's OWN
+ * "exactly one qualifying candidate" gate already excludes every one of them from ever reaching
+ * this path at all - a real collision (e.g. one real ACMS record against 15 different real CAMS
+ * Cohens) surfaces 2+ candidates, this function returns undefined, and
+ * resolveByLastNameOnlyConsensus never runs shareFirstInitial in the first place. Confirmed
+ * directly against the persisted fixture (not just the replay) that this shape's disposition is
+ * 'ambiguous', not a silent no-match or a wrong auto-link - deriveDisposition independently picks
+ * up a higher-scoring candidate elsewhere in that same collision pool. Across the WHOLE export,
+ * only 3 records ever reach "sole candidate + first-initial match + full geo-and-contact
+ * corroboration": the two genuine cases above, plus one more found during this investigation
+ * (Zhu). Zero false positives exist in real data - decision was to leave this stage unchanged
+ * rather than add an unvalidated defensive rule against a purely theoretical shape with nothing
+ * real to test it against or confirm it wouldn't regress Nikki/Nichole, Hank/Henry, or Zhu. If a
+ * real false positive of this shape is ever found, re-open with that record's own evidence rather
+ * than reasoning from a synthetic probe alone.
  */
 export function resolveByLastNameOnlyConsensus(): Stage {
   return async (state: PipelineState): Promise<PipelineState> => {
