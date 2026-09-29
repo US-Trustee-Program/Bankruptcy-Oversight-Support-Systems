@@ -73,14 +73,19 @@ describe('deriveDisposition', () => {
     expect(deriveDisposition(state)).toBe('no-match');
   });
 
-  test('returns ambiguous when at least one candidate cleared doesNameMatch', () => {
+  // 'ambiguous' means a genuine CHOICE between 2+ real, competing identities - structurally
+  // impossible when only one candidate in the pool actually qualifies. A pool with exactly one
+  // genuinely-qualifying candidate (here, the second one - the first fails doesNameMatch outright)
+  // is 'no-match': real evidence, just not enough of it to auto-link, not a choice between
+  // multiple plausible answers.
+  test('returns no-match when only one candidate cleared doesNameMatch, even with a second candidate present', () => {
     const state = makeState({
       candidates: [
         makeCandidate({ doesNameMatch: { value: 0, threshold: 85, pass: false } }),
         makeCandidate({ doesNameMatch: { value: 100, threshold: 85, pass: true } }),
       ],
     });
-    expect(deriveDisposition(state)).toBe('ambiguous');
+    expect(deriveDisposition(state)).toBe('no-match');
   });
 
   test('returns plain ambiguous when qualifying candidates share neither phone nor email', () => {
@@ -88,19 +93,6 @@ describe('deriveDisposition', () => {
       candidates: [
         makeCandidate(passingNameMatch, { phone: { number: '702-262-9322' } }),
         makeCandidate(passingNameMatch, { phone: { number: '212-555-0100' } }),
-      ],
-    });
-    expect(deriveDisposition(state)).toBe('ambiguous');
-  });
-
-  test('does not treat a shared phone/email on a NON-qualifying candidate as a duplication signal', () => {
-    const state = makeState({
-      candidates: [
-        makeCandidate(passingNameMatch, { phone: { number: '702-262-9322' } }),
-        makeCandidate(
-          { doesNameMatch: { value: 0, threshold: 85, pass: false } },
-          { phone: { number: '702-262-9322' } },
-        ),
       ],
     });
     expect(deriveDisposition(state)).toBe('ambiguous');
@@ -123,7 +115,29 @@ describe('deriveDisposition', () => {
     expect(deriveDisposition(state)).toBe('no-match');
   });
 
-  test('returns ambiguous when an 85-scored candidate has ACMS contact data to corroborate against, even if it disagreed', () => {
+  // 'ambiguous' requires 2+ genuinely-qualifying candidates (a real CHOICE between competing
+  // identities) - a lone candidate, however strong its own evidence, is 'no-match': real evidence,
+  // just not enough of it to auto-link, never a choice between multiple plausible answers. This is
+  // the exact real regression this rule fixes (a real shape, name synthesized): ACMS "Jordan Roe"
+  // in one state exact-name-matched a sole CAMS candidate "Jordan A. Roe" in a different state, with
+  // a real, disagreeing state and near-zero address/phone corroboration - isGenuineAmbiguousEvidence's
+  // exact-name-match branch alone used to be enough to call this 'ambiguous', even though there was
+  // no second candidate to be ambiguous WITH. Confirmed via pipeline-replay-backtest.ts against the
+  // 2026-09-25 export: 56 of 72 previously-'ambiguous' records had 0 or 1 genuinely-qualifying
+  // candidates: this exact shape.
+  test('returns no-match, not ambiguous, when only one candidate has an exact (100) name match with no ACMS contact data', () => {
+    const state = makeState({
+      candidates: [
+        makeCandidate({
+          doesNameMatch: { value: 100, threshold: 85, pass: true },
+          doesAcmsTrusteeHaveAddressAndPhone: { value: 0, threshold: 100, pass: false },
+        }),
+      ],
+    });
+    expect(deriveDisposition(state)).toBe('no-match');
+  });
+
+  test('returns no-match, not ambiguous, when only one 85-scored candidate has ACMS contact data to corroborate against', () => {
     const weakMatchWithComparableAcmsData = {
       doesNameMatch: { value: 85, threshold: 85, pass: true },
       doesAcmsTrusteeHaveAddressAndPhone: { value: 100, threshold: 100, pass: true },
@@ -132,17 +146,21 @@ describe('deriveDisposition', () => {
     const state = makeState({
       candidates: [makeCandidate(weakMatchWithComparableAcmsData)],
     });
-    expect(deriveDisposition(state)).toBe('ambiguous');
+    expect(deriveDisposition(state)).toBe('no-match');
   });
 
-  test('returns ambiguous when a candidate has an exact (100) name match even with no ACMS contact data', () => {
+  test('returns ambiguous when TWO candidates each independently carry genuine competing evidence', () => {
+    const exactMatch = {
+      doesNameMatch: { value: 100, threshold: 85, pass: true },
+      doesAcmsTrusteeHaveAddressAndPhone: { value: 0, threshold: 100, pass: false },
+    };
+    const weakMatchWithComparableAcmsData = {
+      doesNameMatch: { value: 85, threshold: 85, pass: true },
+      doesAcmsTrusteeHaveAddressAndPhone: { value: 100, threshold: 100, pass: true },
+      contactCorroborationAddress: { value: 10, threshold: 80, pass: false },
+    };
     const state = makeState({
-      candidates: [
-        makeCandidate({
-          doesNameMatch: { value: 100, threshold: 85, pass: true },
-          doesAcmsTrusteeHaveAddressAndPhone: { value: 0, threshold: 100, pass: false },
-        }),
-      ],
+      candidates: [makeCandidate(exactMatch), makeCandidate(weakMatchWithComparableAcmsData)],
     });
     expect(deriveDisposition(state)).toBe('ambiguous');
   });
