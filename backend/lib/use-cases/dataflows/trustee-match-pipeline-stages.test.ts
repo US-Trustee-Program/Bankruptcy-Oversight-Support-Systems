@@ -2104,6 +2104,43 @@ describe('resolveBySoleContactMatch', () => {
     expect(result.match).toBeNull();
   });
 
+  // Real bug, confirmed via pipeline-replay-backtest.ts against the 2026-09-25 export (10 affected
+  // records) before this test existed: isNoContradictionMatch used to read
+  // state.sourceNormalized.address directly rather than calling memoizedParseAcmsAddress. In
+  // runTrusteeMatchPipeline's actual outer-pool resolve pass, the ACMS address is parsed and
+  // cached onto a runNestedTier's OWN nested sourceNormalized object during candidate discovery,
+  // never onto outerState.sourceNormalized - so this field reads as unset for every outer-pool
+  // candidate regardless of whether the ACMS address genuinely parses. The prior test above
+  // (hand-setting state.sourceNormalized.address) never caught this, since it bypassed the parse
+  // path entirely. This test instead supplies a real, well-formed cityStateZipCountry and leaves
+  // state.sourceNormalized.address unset, exactly mirroring the outer-pool condition.
+  test('refuses the no-contradiction fallback when a real cityStateZipCountry parses and contradicts, even with state.sourceNormalized.address unset', async () => {
+    const state = createInitialState(
+      makeDxtrTrustee({
+        legacy: { cityStateZipCountry: 'WILMINGTON DE 19807-2102' } as never,
+      }),
+    );
+    const candidate = addCandidate(
+      state,
+      projectTrustee(
+        makeTrustee({ trusteeId: 't1', public: { address: { state: 'PA' } } as never }),
+      ),
+      'test',
+    );
+    addScore(candidate, 'doesNameMatch', { value: 100, threshold: 85, pass: true });
+    addScore(candidate, 'doesAcmsTrusteeHaveAddressAndPhone', {
+      value: 100,
+      threshold: 100,
+      pass: true,
+    });
+    addScore(candidate, 'contactCorroborationAddress', { value: 5, threshold: 80, pass: false });
+    expect(state.sourceNormalized.address).toBeUndefined();
+
+    const result = await resolveBySoleContactMatch()(state);
+
+    expect(result.match).toBeNull();
+  });
+
   // resolveBySoleContactMatch deliberately never auto-links a multi-candidate, same-name pool via
   // a candidate-vs-candidate comparison - the premise that two same-name candidates are likely the
   // same real person filed twice was checked against a real trustees export and found false for
