@@ -41,6 +41,8 @@ import TrusteeMeetingOfCreditorsInfoForm from './forms/TrusteeMeetingOfCreditors
 import TrusteeNotes from '@/trustees/panels/trustee-notes/TrusteeNotes';
 import useFeatureFlags, {
   TRUSTEE_APPOINTMENT_ACCORDIONS,
+  TRUSTEE_ASSIGNED_STAFF_ENABLED,
+  TRUSTEE_CASE_LIST,
   TRUSTEE_SOFTWARE_BANK_DISPLAY,
 } from '@/lib/hooks/UseFeatureFlags';
 import TrusteeCaseList from '@/trustees/panels/TrusteeCaseList';
@@ -391,7 +393,7 @@ export default function TrusteeDetailScreen() {
     },
     {
       path: 'assigned-staff',
-      disabled: !featureFlags[TRUSTEE_APPOINTMENT_ACCORDIONS],
+      disabled: !featureFlags[TRUSTEE_ASSIGNED_STAFF_ENABLED],
       subHeading: 'Trustee',
       content: (
         <div className="trustee-detail-screen-info-container">
@@ -406,7 +408,7 @@ export default function TrusteeDetailScreen() {
     },
     {
       path: 'cases',
-      disabled: !featureFlags[TRUSTEE_APPOINTMENT_ACCORDIONS],
+      disabled: !featureFlags[TRUSTEE_CASE_LIST],
       subHeading: 'Trustee',
       content: (
         <div className="trustee-detail-screen-info-container">

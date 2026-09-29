@@ -816,7 +816,7 @@ describe('TrusteeDetailScreen', () => {
   });
 
   describe('assigned-staff route', () => {
-    test('should render TrusteeAssignedStaff when trustee-appointment-accordions flag is enabled', async () => {
+    test('should render TrusteeAssignedStaff when trustee-assigned-staff-enabled flag is enabled', async () => {
       vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
       vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
 
@@ -827,10 +827,10 @@ describe('TrusteeDetailScreen', () => {
       });
     });
 
-    test('should redirect home when trustee-appointment-accordions flag is disabled', async () => {
+    test('should redirect home when trustee-assigned-staff-enabled flag is disabled', async () => {
       mockUseFeatureFlags.mockReturnValue({
         ...testFeatureFlags,
-        'trustee-appointment-accordions': false,
+        'trustee-assigned-staff-enabled': false,
       });
       vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
       vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
@@ -839,13 +839,13 @@ describe('TrusteeDetailScreen', () => {
 
       await waitFor(() => {
         // When feature flag is disabled, GoHome is rendered instead of the assigned staff component
-        expect(screen.queryByTestId('trustee-assigned-staff-container')).not.toBeInTheDocument();
+        expect(document.querySelector('.trustee-assigned-staff-container')).not.toBeInTheDocument();
       });
     });
   });
 
   describe('cases route', () => {
-    test('should render TrusteeCaseList when trustee-appointment-accordions flag is enabled', async () => {
+    test('should render TrusteeCaseList when trustee-case-list flag is enabled', async () => {
       vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
       vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
       vi.spyOn(Api2, 'getTrusteeCases').mockResolvedValue({
@@ -860,10 +860,10 @@ describe('TrusteeDetailScreen', () => {
       });
     });
 
-    test('should redirect home when trustee-appointment-accordions flag is disabled', async () => {
+    test('should redirect home when trustee-case-list flag is disabled', async () => {
       mockUseFeatureFlags.mockReturnValue({
         ...testFeatureFlags,
-        'trustee-appointment-accordions': false,
+        'trustee-case-list': false,
       });
       vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
       vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });

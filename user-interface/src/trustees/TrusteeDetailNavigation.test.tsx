@@ -172,31 +172,25 @@ describe('TrusteeDetailNavigation', () => {
     });
   });
 
-  // Assigned Staff and Case List are both gated on the single
-  // TRUSTEE_APPOINTMENT_ACCORDIONS flag now, so there's no "disable just one"
-  // combination left to test independently -- they always toggle together.
-  describe('TRUSTEE_APPOINTMENT_ACCORDIONS flag is disabled', () => {
+  describe('trustee-assigned-staff-enabled flag is disabled', () => {
     beforeEach(() => {
       mockUseFeatureFlags.mockReturnValue({
         ...testFeatureFlags,
-        'trustee-appointment-accordions': false,
+        'trustee-assigned-staff-enabled': false,
       });
     });
 
-    test('should render 4 nav items', () => {
-      renderWithRouter(defaultProps);
-
-      const listItems = screen.getAllByRole('listitem');
-      expect(listItems).toHaveLength(4);
-    });
-
-    test('should not show Assigned Staff or Case List nav links', () => {
+    test('should not show Assigned Staff nav link', () => {
       renderWithRouter(defaultProps);
 
       expect(screen.queryByTestId('trustee-assigned-staff-nav-link')).not.toBeInTheDocument();
       expect(screen.queryByText('Assigned Staff')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('trustee-case-list-nav-link')).not.toBeInTheDocument();
-      expect(screen.queryByText('Case List')).not.toBeInTheDocument();
+    });
+
+    test('should keep Case List visible when only the assigned-staff flag is off', () => {
+      renderWithRouter(defaultProps);
+
+      expect(screen.getByTestId('trustee-case-list-nav-link')).toBeInTheDocument();
     });
 
     test('should still show all other nav links', () => {
@@ -206,6 +200,60 @@ describe('TrusteeDetailNavigation', () => {
       expect(screen.getByTestId('trustee-appointments-nav-link')).toBeInTheDocument();
       expect(screen.getByTestId('trustee-notes-nav-link')).toBeInTheDocument();
       expect(screen.getByTestId('trustee-audit-history-nav-link')).toBeInTheDocument();
+    });
+  });
+
+  describe('trustee-case-list flag is disabled', () => {
+    beforeEach(() => {
+      mockUseFeatureFlags.mockReturnValue({
+        ...testFeatureFlags,
+        'trustee-case-list': false,
+      });
+    });
+
+    test('should not show Case List nav link', () => {
+      renderWithRouter(defaultProps);
+
+      expect(screen.queryByTestId('trustee-case-list-nav-link')).not.toBeInTheDocument();
+      expect(screen.queryByText('Case List')).not.toBeInTheDocument();
+    });
+
+    test('should keep Assigned Staff visible when only the case-list flag is off', () => {
+      renderWithRouter(defaultProps);
+
+      expect(screen.getByTestId('trustee-assigned-staff-nav-link')).toBeInTheDocument();
+    });
+
+    test('should still show all other nav links', () => {
+      renderWithRouter(defaultProps);
+
+      expect(screen.getByTestId('trustee-profile-nav-link')).toBeInTheDocument();
+      expect(screen.getByTestId('trustee-appointments-nav-link')).toBeInTheDocument();
+      expect(screen.getByTestId('trustee-notes-nav-link')).toBeInTheDocument();
+      expect(screen.getByTestId('trustee-audit-history-nav-link')).toBeInTheDocument();
+    });
+  });
+
+  describe('both trustee-assigned-staff-enabled and trustee-case-list flags are disabled', () => {
+    beforeEach(() => {
+      mockUseFeatureFlags.mockReturnValue({
+        ...testFeatureFlags,
+        'trustee-assigned-staff-enabled': false,
+        'trustee-case-list': false,
+      });
+    });
+
+    test('should not show Assigned Staff or Case List nav links', () => {
+      renderWithRouter(defaultProps);
+
+      expect(screen.queryByTestId('trustee-assigned-staff-nav-link')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('trustee-case-list-nav-link')).not.toBeInTheDocument();
+    });
+
+    test('should render only the four ungated nav items', () => {
+      renderWithRouter(defaultProps);
+
+      expect(screen.getAllByRole('listitem')).toHaveLength(4);
     });
   });
 });
