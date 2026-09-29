@@ -30,7 +30,7 @@ export class TrusteeCasesController implements CamsController {
       return { statusCode: 404 };
     }
 
-    if (!context.featureFlags['trustee-appointment-accordions']) {
+    if (!context.featureFlags['trustee-case-list']) {
       return { statusCode: 404 };
     }
 

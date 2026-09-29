@@ -14,7 +14,7 @@ describe('TrusteeCaseDivisionsController', () => {
     context.session.user = { id: 'user1', name: 'Test User', roles: [CamsRole.TrusteeAdmin] };
     context.featureFlags = {
       'trustee-management': true,
-      'trustee-appointment-accordions': true,
+      'trustee-case-list': true,
     };
     context.request.method = 'GET';
     context.request.params = { trusteeId: 'trustee-123' };
@@ -34,8 +34,8 @@ describe('TrusteeCaseDivisionsController', () => {
       expect(result.statusCode).toBe(404);
     });
 
-    test('returns 404 when trustee-appointment-accordions flag is off', async () => {
-      context.featureFlags['trustee-appointment-accordions'] = false;
+    test('returns 404 when trustee-case-list flag is off', async () => {
+      context.featureFlags['trustee-case-list'] = false;
       const result = await controller.handleRequest(context);
       expect(result.statusCode).toBe(404);
     });
