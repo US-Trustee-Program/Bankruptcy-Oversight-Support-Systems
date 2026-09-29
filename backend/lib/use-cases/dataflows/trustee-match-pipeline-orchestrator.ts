@@ -3,7 +3,6 @@ import { DxtrTrusteeParty } from '@common/cams/dataflow-events';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import {
   createTrusteeInitialState as createInitialState,
-  mergedScore,
   TrusteePipelineState as PipelineState,
   promoteCandidate,
   runPipeline,
@@ -86,12 +85,28 @@ function resolveStages(): Stage[] {
 
 /**
  * Runs one discovery stage's candidates through the shared resolve pipeline, in its OWN nested
- * state (see docs/architecture/decision-records/TrusteeMatchingPipeline.md on nesting) - an
- * oversized internal candidate pool (500+ candidates for a common surname fragment) never becomes
- * top-level pipeline state, only genuinely relevant survivors (mergedScore(c).isStateNotConflicting?.pass
- * !== false) do. Returns the nested result so the caller can inspect whether this tier resolved,
- * and separately, whether its non-resolving candidates are worth merging into a broader pool (see
- * runTrusteeMatchPipeline).
+ * state (see docs/architecture/decision-records/TrusteeMatchingPipeline.md on nesting). Returns the
+ * nested result so the caller can inspect whether this tier resolved, and separately, whether its
+ * non-resolving candidates are worth merging into a broader pool (see runTrusteeMatchPipeline).
+ *
+ * Every candidate promoted here already survived discovery-time eviction (see
+ * addAndScoreCandidate/shouldEvictFromDiscovery in trustee-match-pipeline-stages.ts) - an oversized
+ * candidate pool for a common surname fragment (hundreds of candidates from
+ * recallByTokenIntersection/recallByAnchoredLevenshtein's own fuzzy discovery) is cut down to
+ * genuinely relevant survivors AT THE MOMENT each candidate is scored, before it ever occupies a
+ * Map entry in nestedState.candidates, rather than filtered here after the fact. This function used
+ * to re-check mergedScore(c).isStateNotConflicting?.pass here as its own promotion filter - removed
+ * because it was strictly weaker AND less correct than what addAndScoreCandidate now guarantees:
+ * isStateNotConflicting's override condition (nameScore >= 85, the exact same pipelineNameScore call
+ * already used for doesNameMatch) is self-referential for any candidate whose own gate already
+ * requires a comparable name score - the exact defect resolveBySoleExactNameMatch/
+ * resolveBySoleContactMatch both had to work around (see their own doc comments) - while
+ * shouldEvictFromDiscovery reads doesStateMatch directly (only ever set when both sides have real
+ * comparable state data, never self-referential) plus a real, already-computed name-match exception
+ * (isNameMatchCorroborated - see shouldEvictFromDiscovery's own doc comment for why a narrower,
+ * hand-rolled first/last-name check was tried and reverted in favor of reusing that real score).
+ * Every candidate remaining in nestedResult.candidates by the time this loop runs is therefore
+ * already known-relevant; promotion here is unconditional.
  */
 async function runNestedTier(
   acmsRaw: DxtrTrusteeParty,
@@ -120,7 +135,6 @@ async function runNestedTier(
   ]);
 
   for (const candidate of nestedResult.candidates.values()) {
-    if (mergedScore(candidate).isStateNotConflicting?.pass === false) continue;
     promoteCandidate(outerState, candidate);
   }
 
