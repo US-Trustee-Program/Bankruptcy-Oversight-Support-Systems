@@ -1,7 +1,7 @@
 import AppointmentBasicFields from './AppointmentBasicFields';
 import Chapter12StandingAuditCard from './Chapter12StandingAuditCard';
 import TrusteePerformanceReportCard from './TrusteePerformanceReportCard';
-import Chapter12StandingBudgetCard from './Chapter12StandingBudgetCard';
+import StandingBudgetCard from './StandingBudgetCard';
 import Chapter12StandingOtherKeyDatesCard from './Chapter12StandingOtherKeyDatesCard';
 import KeyDatesGate from './KeyDatesGate';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
@@ -43,7 +43,7 @@ export default function Chapter12StandingAppointmentBody(
               isLoading={isLoading}
               variant="chapter12-standing"
             />
-            <Chapter12StandingBudgetCard appointmentId={appointment.id} />
+            <StandingBudgetCard appointmentId={appointment.id} variant="chapter12-standing" />
             <Chapter12StandingOtherKeyDatesCard
               trusteeId={appointment.trusteeId}
               appointmentId={appointment.id}

@@ -41,8 +41,10 @@ vi.mock('./TrusteePerformanceReportCard', () => ({
     />
   ),
 }));
-vi.mock('./Chapter13StandingBudgetCard', () => ({
-  default: () => <div data-testid="chapter13-standing-budget-card" />,
+vi.mock('./StandingBudgetCard', () => ({
+  default: (props: { variant: string }) => (
+    <div data-testid="chapter13-standing-budget-card" data-variant={props.variant} />
+  ),
 }));
 vi.mock('./Chapter13StandingOtherCard', () => ({
   default: mockCard('chapter13-standing-other-card'),
@@ -135,7 +137,10 @@ describe('Chapter13StandingAppointmentBody', () => {
     ]) {
       expect(screen.getByTestId(testId)).toHaveAttribute('data-has-data', 'true');
     }
-    expect(screen.getByTestId('chapter13-standing-budget-card')).toBeInTheDocument();
+    expect(screen.getByTestId('chapter13-standing-budget-card')).toHaveAttribute(
+      'data-variant',
+      'chapter13-standing',
+    );
     expect(screen.getByTestId('chapter13-standing-tpr-card')).toHaveAttribute(
       'data-variant',
       'chapter13-standing',
