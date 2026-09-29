@@ -542,13 +542,16 @@ describe('SyncAcmsProfessionalIds', () => {
       expect(pipelineSpy).toHaveBeenCalled();
     });
 
-    // Records a matched variant's fingerprint so a FUTURE sync (this dataflow re-running, or
-    // sync-trustee-case-appointments.ts reading the same shared fingerprint bucket - see
-    // processFingerprintMatch's own doc comment) can short-circuit straight to auto-link instead
-    // of re-running the full matching/scoring pipeline for a demographic shape already resolved
-    // once. Mirrors sync-trustee-case-appointments.ts's autoLinkTrustee, which does the same thing
-    // for a DXTR-sourced match.
-    test('should record a TrusteeVariation when the name-matching pipeline resolves a match', async () => {
+    // TrusteeVariation write-back is gated off by default (WRITE_ACMS_TRUSTEE_VARIATIONS) -
+    // an adversarial review of this PR found two real correctness problems with writing it
+    // unconditionally: (1) many ACMS professional IDs share an identical demographic variant
+    // (the same trustee filed under multiple group/office codes), so a second ID in the same
+    // sync run would short-circuit on the variation the first just wrote and lose its own
+    // evidence; (2) purgeAll never clears ACMS-written variations, so a later full re-run after
+    // a matching-logic fix would short-circuit on stale variations instead of re-evaluating them.
+    // Gated off (not reverted) since the write-back itself is still wanted once those two
+    // problems are fixed - see WRITE_ACMS_TRUSTEE_VARIATIONS's own doc comment.
+    test('should NOT record a TrusteeVariation while WRITE_ACMS_TRUSTEE_VARIATIONS is disabled', async () => {
       vi.spyOn(deps.variationRepo, 'findByFingerprint').mockResolvedValue([]);
       const matchedPipelineState = {
         ...noMatchPipelineState,
@@ -557,20 +560,11 @@ describe('SyncAcmsProfessionalIds', () => {
       vi.spyOn(trusteeMatchPipelineOrchestrator, 'runTrusteeMatchPipeline').mockResolvedValue(
         matchedPipelineState as never,
       );
-      const createVariationSpy = vi
-        .spyOn(deps.variationRepo, 'createVariation')
-        .mockResolvedValue({} as TrusteeVariation);
+      const createVariationSpy = vi.spyOn(deps.variationRepo, 'createVariation');
 
       const outcome = await SyncAcmsProfessionalIds.processOneRecord(deps, record);
 
-      expect(createVariationSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          documentType: 'TRUSTEE_VARIATION',
-          trusteeId: 'trustee-1',
-          variant: buildAcmsVariant(record),
-          createdBy: expect.objectContaining({ id: 'ACMS' }),
-        }),
-      );
+      expect(createVariationSpy).not.toHaveBeenCalled();
       expect(outcome).toEqual({ kind: 'auto-linked', via: 'name' });
     });
 
