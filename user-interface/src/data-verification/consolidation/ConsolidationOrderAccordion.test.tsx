@@ -47,7 +47,6 @@ describe('ConsolidationOrderAccordion tests', () => {
   });
 
   const offices: CourtDivisionDetails[] = MockData.getCourts();
-  const regionMap = new Map();
 
   const onOrderUpdateMockFunc = vi.fn();
   const onExpandMockFunc = vi.fn();
@@ -87,7 +86,6 @@ describe('ConsolidationOrderAccordion tests', () => {
       statusType: orderStatusType,
       onOrderUpdate: onOrderUpdateMockFunc,
       onExpand: onExpandMockFunc,
-      regionsMap: regionMap,
       fieldHeaders: accordionFieldHeaders,
     };
 

@@ -49,7 +49,6 @@ export default function DataVerificationScreen() {
   );
   const typeFilter = typeSelections.map((s) => s.value as DataVerificationItemType);
   const statusFilter = statusSelections.map((s) => s.value as OrderStatus);
-  const [regionsMap, setRegionsMap] = useState<Map<string, string>>(new Map());
   const [courts, setCourts] = useState<Array<CourtDivisionDetails>>([]);
   const [isOrderListLoading, setIsOrderListLoading] = useState(true);
   const alertRef = useRef<AlertRefType>(null);
@@ -153,14 +152,6 @@ export default function DataVerificationScreen() {
         if (cancelled) return;
         const courtList = (courtsResponse as ResponseBody<CourtDivisionDetails[]>).data;
         setCourts(sortByCourtLocation(courtList));
-        setRegionsMap(
-          courtList.reduce((regionsMap, court) => {
-            if (!regionsMap.has(court.regionId)) {
-              regionsMap.set(court.regionId, court.regionName);
-            }
-            return regionsMap;
-          }, new Map()),
-        );
       } catch {
         // courts failure — orders still display, court names fall back to court IDs
       }
@@ -263,7 +254,6 @@ export default function DataVerificationScreen() {
           <TransferOrderAccordion
             key={`accordion-${order.id}`}
             order={order}
-            regionsMap={regionsMap}
             courts={courts}
             taskType={taskType}
             statusType={orderStatusType}
@@ -290,7 +280,6 @@ export default function DataVerificationScreen() {
           <ConsolidationOrderAccordion
             key={`accordion-${order.id}`}
             order={order}
-            regionsMap={regionsMap}
             courts={courts}
             taskType={taskType}
             statusType={orderStatusType}

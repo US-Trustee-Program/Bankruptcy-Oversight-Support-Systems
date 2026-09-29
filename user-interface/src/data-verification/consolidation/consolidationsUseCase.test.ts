@@ -56,7 +56,6 @@ describe('Consolidation UseCase tests', () => {
       statusType: orderStatusType,
       taskType: taskType,
       courts: MockData.getCourts(),
-      regionsMap: new Map(),
       fieldHeaders: accordionFieldHeaders,
       onOrderUpdate: onOrderUpdateSpy,
       onExpand,
@@ -98,7 +97,7 @@ describe('Consolidation UseCase tests', () => {
     expect(unsetConsolidationTypeSpy).toHaveBeenCalled();
   });
 
-  test('should call approveConsolidation when approve button is clicked', () => {
+  test('should show confirmation modal for approval when approve button is clicked', () => {
     const controlSpy = vi.spyOn(controls, 'showConfirmationModal');
     const mockCases = MockData.buildArray(MockData.getConsolidatedOrderCase, 3);
     includeCases(mockCases);
@@ -106,7 +105,7 @@ describe('Consolidation UseCase tests', () => {
     expect(controlSpy).toHaveBeenCalledWith(mockCases, mockCases[1], 'approved', 'administrative');
   });
 
-  test('should call rejectConsolidation when reject button is clicked', () => {
+  test('should show confirmation modal for rejection when reject button is clicked', () => {
     const controlSpy = vi.spyOn(controls, 'showConfirmationModal');
     const mockCases = MockData.buildArray(MockData.getConsolidatedOrderCase, 3);
     includeCases(mockCases);
@@ -160,21 +159,26 @@ describe('Consolidation UseCase tests', () => {
     });
   });
 
-  test('should call setSelectedCases and updateSubmitButtonState when handleIncludeCase is called', () => {
+  test('should call setSelectedCases and update button state when handleIncludeCase is called', () => {
     const setSelectedCasesSpy = vi.spyOn(store, 'setSelectedCases');
     const disableButtonSpy = vi.spyOn(controls, 'disableButton');
     const mockCases = MockData.buildArray(MockData.getConsolidatedOrderCase, 3);
     const mockAdditionalCase = MockData.getConsolidatedOrderCase();
     //Add case initially to includeCases
     store.setSelectedCases(mockCases);
+
     useCase.handleIncludeCase(mockAdditionalCase);
     expect(setSelectedCasesSpy).toHaveBeenCalledWith([...mockCases, mockAdditionalCase]);
-    const callsAfterInclude = disableButtonSpy.mock.calls.length;
-    expect(callsAfterInclude).toBeGreaterThan(0);
+    // Not yet data-enhanced, so approve stays disabled regardless of selection count.
+    expect(disableButtonSpy).toHaveBeenCalledWith(controls.approveButton, true);
+    expect(disableButtonSpy).toHaveBeenCalledWith(controls.rejectButton, false);
+
     //Test same case is removed
+    disableButtonSpy.mockClear();
     useCase.handleIncludeCase(mockAdditionalCase);
     expect(setSelectedCasesSpy).toHaveBeenCalledWith(mockCases);
-    expect(disableButtonSpy.mock.calls.length).toBeGreaterThan(callsAfterInclude);
+    expect(disableButtonSpy).toHaveBeenCalledWith(controls.approveButton, true);
+    expect(disableButtonSpy).toHaveBeenCalledWith(controls.rejectButton, false);
   });
 
   test('should properly set Lead Case when marking lead case', () => {
@@ -206,11 +210,11 @@ describe('Consolidation UseCase tests', () => {
     const associationsSpy = vi.spyOn(Api2, 'getCaseAssociations');
 
     await useCase.handleOnExpand();
-    expect(onExpand.mock.calls[0][0]).toEqual(`order-list-${mockOrder.id}`);
-    expect(assignmentsSpy.mock.calls[0][0]).toEqual(mockOrder.memberCases[0].caseId);
-    expect(assignmentsSpy.mock.calls[1][0]).toEqual(mockOrder.memberCases[1].caseId);
-    expect(associationsSpy.mock.calls[0][0]).toEqual(mockOrder.memberCases[0].caseId);
-    expect(associationsSpy.mock.calls[1][0]).toEqual(mockOrder.memberCases[1].caseId);
+    expect(onExpand).toHaveBeenNthCalledWith(1, `order-list-${mockOrder.id}`);
+    expect(assignmentsSpy).toHaveBeenNthCalledWith(1, mockOrder.memberCases[0].caseId);
+    expect(assignmentsSpy).toHaveBeenNthCalledWith(2, mockOrder.memberCases[1].caseId);
+    expect(associationsSpy).toHaveBeenNthCalledWith(1, mockOrder.memberCases[0].caseId);
+    expect(associationsSpy).toHaveBeenNthCalledWith(2, mockOrder.memberCases[1].caseId);
     expect(setIsDataEnhancedSpy).toHaveBeenCalledWith(true);
   }, 10000);
 
@@ -219,11 +223,11 @@ describe('Consolidation UseCase tests', () => {
     const associationsSpy = vi.spyOn(Api2, 'getCaseAssociations').mockRejectedValue(new Error());
 
     await useCase.handleOnExpand();
-    expect(onExpand.mock.calls[0][0]).toEqual(`order-list-${mockOrder.id}`);
-    expect(assignmentsSpy.mock.calls[0][0]).toEqual(mockOrder.memberCases[0].caseId);
-    expect(assignmentsSpy.mock.calls[1][0]).toEqual(mockOrder.memberCases[1].caseId);
-    expect(associationsSpy.mock.calls[0][0]).toEqual(mockOrder.memberCases[0].caseId);
-    expect(associationsSpy.mock.calls[1][0]).toEqual(mockOrder.memberCases[1].caseId);
+    expect(onExpand).toHaveBeenNthCalledWith(1, `order-list-${mockOrder.id}`);
+    expect(assignmentsSpy).toHaveBeenNthCalledWith(1, mockOrder.memberCases[0].caseId);
+    expect(assignmentsSpy).toHaveBeenNthCalledWith(2, mockOrder.memberCases[1].caseId);
+    expect(associationsSpy).toHaveBeenNthCalledWith(1, mockOrder.memberCases[0].caseId);
+    expect(associationsSpy).toHaveBeenNthCalledWith(2, mockOrder.memberCases[1].caseId);
     expect(store.isDataEnhanced).toBeFalsy();
   }, 10000);
 
@@ -238,6 +242,26 @@ describe('Consolidation UseCase tests', () => {
     // Assignments are not critical to the consolidation; a failure there
     // should not affect isDataEnhanced (unlike an associations failure).
     expect(store.isDataEnhanced).toBe(true);
+  });
+
+  test('should skip re-fetching member case data when already data-enhanced', async () => {
+    const assignmentsSpy = vi.spyOn(Api2, 'getCaseAssignments');
+    const associationsSpy = vi.spyOn(Api2, 'getCaseAssociations');
+    store.setIsDataEnhanced(true);
+
+    await useCase.handleOnExpand();
+
+    expect(assignmentsSpy).not.toHaveBeenCalled();
+    expect(associationsSpy).not.toHaveBeenCalled();
+  });
+
+  test('should not throw when handleOnExpand is called without an onExpand callback', async () => {
+    const useCaseWithoutOnExpand = consolidationUseCase(store, controls, onOrderUpdateSpy);
+    const assignmentsSpy = vi.spyOn(Api2, 'getCaseAssignments');
+
+    await useCaseWithoutOnExpand.handleOnExpand();
+
+    expect(assignmentsSpy).toHaveBeenCalled();
   });
 
   test('should not attempt to enhance member cases when store.order.memberCases is undefined', async () => {
@@ -265,9 +289,10 @@ describe('Consolidation UseCase tests', () => {
 
   test('should call setLeadCaseCourt when a court is selected from the dropdown', () => {
     const setLeadCaseCourtSpy = vi.spyOn(store, 'setLeadCaseCourt');
-    const newLeadCaseCourt = { label: 'test', value: 'test value' };
+    const newLeadCaseCourt = [{ label: 'test', value: 'test value' }];
     useCase.handleSelectLeadCaseCourt(newLeadCaseCourt);
-    expect(setLeadCaseCourtSpy).toHaveBeenCalled();
+    expect(setLeadCaseCourtSpy).toHaveBeenCalledWith('test value');
+    expect(store.leadCaseCourt).toEqual('test value');
   });
 
   test('should populate caseToAdd with enhanced case data when case is not already consolidated and is not a member of another consolidation', async () => {
@@ -311,6 +336,36 @@ describe('Consolidation UseCase tests', () => {
     expect(getCaseSummarySpy).toHaveBeenCalledWith(mockAddCase.caseId);
     expect(getCaseAssociationsSpy).toHaveBeenCalledWith(mockAddCase.caseId);
     expect(getCaseAssignmentsSpy).toHaveBeenCalledWith(mockAddCase.caseId);
+  });
+
+  test('should restore focus to the active input after verifyCaseCanBeAdded completes', async () => {
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    input.focus();
+    const focusSpy = vi.spyOn(input, 'focus');
+
+    vi.spyOn(Api2, 'getCaseSummary').mockResolvedValue(
+      MockData.getNonPaginatedResponseBody<CaseSummary>(MockData.getCaseSummary()),
+    );
+    vi.spyOn(Api2, 'getCaseAssociations').mockResolvedValue(
+      MockData.getNonPaginatedResponseBody<Consolidation[]>([]),
+    );
+    vi.spyOn(Api2, 'getCaseAssignments').mockResolvedValue(
+      MockData.getNonPaginatedResponseBody<CaseAssignment[]>([]),
+    );
+
+    setupAddCase();
+
+    vi.useFakeTimers();
+    try {
+      useCase.verifyCaseCanBeAdded();
+      await vi.advanceTimersByTimeAsync(100);
+    } finally {
+      vi.useRealTimers();
+      document.body.removeChild(input);
+    }
+
+    expect(focusSpy).toHaveBeenCalled();
   });
 
   test('should do nothing when the case number is incomplete', () => {
@@ -369,6 +424,18 @@ describe('Consolidation UseCase tests', () => {
 
     expect(store.caseToAdd?.isLeadCase).toBe(true);
     expect(store.caseToAdd?.isMemberCase).toBe(true);
+  });
+
+  test('should not modify memberCases when handleAddCaseAction is called with no case staged', () => {
+    const originalMemberCases = [...store.order.memberCases];
+    const resetCaseNumberSpy = vi.spyOn(store, 'setCaseToAddCaseNumber');
+    expect(store.caseToAdd).toBeNull();
+
+    useCase.handleAddCaseAction();
+
+    expect(store.order.memberCases).toEqual(originalMemberCases);
+    // handleAddCaseReset() still runs regardless of whether a case was staged.
+    expect(resetCaseNumberSpy).toHaveBeenCalledWith('');
   });
 
   test('should add case to store.order.memberCases when handleAddCaseAction is called an store.caseToAdd is set', async () => {
@@ -593,7 +660,7 @@ describe('Consolidation UseCase tests', () => {
   ];
 
   test.each(params)(
-    'should display alert when case summary can not be retrieved',
+    'should display alert when case summary can not be retrieved (message=$message)',
     async (params) => {
       const associationResponse: ResponseBody<Consolidation[]> =
         MockData.getNonPaginatedResponseBody<Consolidation[]>([]);
@@ -695,101 +762,107 @@ describe('Consolidation UseCase tests', () => {
   });
 
   const approvalAlerts = [{ success: true }, { success: false }];
-  test.each(approvalAlerts)('should process approved consolidation', async ({ success }) => {
-    const action: ConfirmActionResults = {
-      status: 'approved',
-    };
-    const leadCase = MockData.getConsolidatedOrderCase();
-    store.setLeadCase(leadCase);
-    store.setConsolidationType('administrative');
-    store.setSelectedCases(MockData.buildArray(MockData.getConsolidatedOrderCase, 4));
-    const consolidationOrders = [
-      MockData.getConsolidationOrder({ override: { leadCase, status: 'approved' } }),
-    ];
-    const order = MockData.getConsolidationOrder();
-    store.setOrder(order);
-    let putSpy;
-    if (success) {
-      putSpy = vi
-        .spyOn(Api2, 'putConsolidationOrderApproval')
-        .mockResolvedValue({ data: consolidationOrders });
-    } else {
-      putSpy = vi
-        .spyOn(Api2, 'putConsolidationOrderApproval')
-        .mockRejectedValue('some server error');
-    }
-    const expectedSuccessfulAlert = {
-      message: `Consolidation to lead case ${getCaseNumber(leadCase.caseId)} in ${
-        leadCase.courtName
-      } (${leadCase.courtDivisionName}) was successful.`,
-      type: UswdsAlertStyle.Success,
-      timeOut: 8,
-    };
-    const expectedFailureAlert = {
-      message: 'An unknown error has occurred and has been logged.  Please try again later.',
-      type: UswdsAlertStyle.Error,
-      timeOut: 8,
-    };
+  test.each(approvalAlerts)(
+    'should process approved consolidation (success=$success)',
+    async ({ success }) => {
+      const action: ConfirmActionResults = {
+        status: 'approved',
+      };
+      const leadCase = MockData.getConsolidatedOrderCase();
+      store.setLeadCase(leadCase);
+      store.setConsolidationType('administrative');
+      store.setSelectedCases(MockData.buildArray(MockData.getConsolidatedOrderCase, 4));
+      const consolidationOrders = [
+        MockData.getConsolidationOrder({ override: { leadCase, status: 'approved' } }),
+      ];
+      const order = MockData.getConsolidationOrder();
+      store.setOrder(order);
+      let putSpy;
+      if (success) {
+        putSpy = vi
+          .spyOn(Api2, 'putConsolidationOrderApproval')
+          .mockResolvedValue({ data: consolidationOrders });
+      } else {
+        putSpy = vi
+          .spyOn(Api2, 'putConsolidationOrderApproval')
+          .mockRejectedValue('some server error');
+      }
+      const expectedSuccessfulAlert = {
+        message: `Consolidation to lead case ${getCaseNumber(leadCase.caseId)} in ${
+          leadCase.courtName
+        } (${leadCase.courtDivisionName}) was successful.`,
+        type: UswdsAlertStyle.Success,
+        timeOut: 8,
+      };
+      const expectedFailureAlert = {
+        message: 'An unknown error has occurred and has been logged.  Please try again later.',
+        type: UswdsAlertStyle.Error,
+        timeOut: 8,
+      };
 
-    const expectedAlert = success ? expectedSuccessfulAlert : expectedFailureAlert;
-    useCase.handleConfirmAction(action);
+      const expectedAlert = success ? expectedSuccessfulAlert : expectedFailureAlert;
+      useCase.handleConfirmAction(action);
 
-    expect(putSpy).toHaveBeenCalled();
+      expect(putSpy).toHaveBeenCalled();
 
-    await nonReactWaitFor(() => {
-      return onOrderUpdateSpy.mock.calls.length > 0;
-    });
-    if (success) {
-      expect(onOrderUpdateSpy).toHaveBeenCalledWith(expectedAlert, consolidationOrders, order);
-    } else {
-      expect(onOrderUpdateSpy).toHaveBeenCalledWith(expectedAlert);
-    }
-  });
+      await nonReactWaitFor(() => {
+        return onOrderUpdateSpy.mock.calls.length > 0;
+      });
+      if (success) {
+        expect(onOrderUpdateSpy).toHaveBeenCalledWith(expectedAlert, consolidationOrders, order);
+      } else {
+        expect(onOrderUpdateSpy).toHaveBeenCalledWith(expectedAlert);
+      }
+    },
+  );
 
   const rejectedAlerts = [{ success: true }, { success: false }];
-  test.each(rejectedAlerts)('should process rejected consolidation', async ({ success }) => {
-    const action: ConfirmActionResults = {
-      status: 'rejected',
-    };
-    store.setSelectedCases(MockData.buildArray(MockData.getConsolidatedOrderCase, 4));
-    const consolidationOrders = [
-      MockData.getConsolidationOrder({ override: { status: 'rejected' } }),
-    ];
-    const order = MockData.getConsolidationOrder();
-    store.setOrder(order);
-    let putSpy;
-    if (success) {
-      putSpy = vi
-        .spyOn(Api2, 'putConsolidationOrderRejection')
-        .mockResolvedValue({ data: consolidationOrders });
-    } else {
-      putSpy = vi
-        .spyOn(Api2, 'putConsolidationOrderRejection')
-        .mockRejectedValue('some server error');
-    }
-    const expectedSuccessfulAlert = {
-      message: `Rejection of consolidation order was successful.`,
-      type: UswdsAlertStyle.Success,
-      timeOut: 8,
-    };
-    const expectedFailureAlert = {
-      message: 'An unknown error has occurred and has been logged.  Please try again later.',
-      type: UswdsAlertStyle.Error,
-      timeOut: 8,
-    };
+  test.each(rejectedAlerts)(
+    'should process rejected consolidation (success=$success)',
+    async ({ success }) => {
+      const action: ConfirmActionResults = {
+        status: 'rejected',
+      };
+      store.setSelectedCases(MockData.buildArray(MockData.getConsolidatedOrderCase, 4));
+      const consolidationOrders = [
+        MockData.getConsolidationOrder({ override: { status: 'rejected' } }),
+      ];
+      const order = MockData.getConsolidationOrder();
+      store.setOrder(order);
+      let putSpy;
+      if (success) {
+        putSpy = vi
+          .spyOn(Api2, 'putConsolidationOrderRejection')
+          .mockResolvedValue({ data: consolidationOrders });
+      } else {
+        putSpy = vi
+          .spyOn(Api2, 'putConsolidationOrderRejection')
+          .mockRejectedValue('some server error');
+      }
+      const expectedSuccessfulAlert = {
+        message: `Rejection of consolidation order was successful.`,
+        type: UswdsAlertStyle.Success,
+        timeOut: 8,
+      };
+      const expectedFailureAlert = {
+        message: 'An unknown error has occurred and has been logged.  Please try again later.',
+        type: UswdsAlertStyle.Error,
+        timeOut: 8,
+      };
 
-    const expectedAlert = success ? expectedSuccessfulAlert : expectedFailureAlert;
-    useCase.handleConfirmAction(action);
+      const expectedAlert = success ? expectedSuccessfulAlert : expectedFailureAlert;
+      useCase.handleConfirmAction(action);
 
-    expect(putSpy).toHaveBeenCalled();
+      expect(putSpy).toHaveBeenCalled();
 
-    await nonReactWaitFor(() => {
-      return onOrderUpdateSpy.mock.calls.length > 0;
-    });
-    if (success) {
-      expect(onOrderUpdateSpy).toHaveBeenCalledWith(expectedAlert, consolidationOrders, order);
-    } else {
-      expect(onOrderUpdateSpy).toHaveBeenCalledWith(expectedAlert);
-    }
-  });
+      await nonReactWaitFor(() => {
+        return onOrderUpdateSpy.mock.calls.length > 0;
+      });
+      if (success) {
+        expect(onOrderUpdateSpy).toHaveBeenCalledWith(expectedAlert, consolidationOrders, order);
+      } else {
+        expect(onOrderUpdateSpy).toHaveBeenCalledWith(expectedAlert);
+      }
+    },
+  );
 });

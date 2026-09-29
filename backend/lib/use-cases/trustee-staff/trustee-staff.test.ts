@@ -181,6 +181,35 @@ describe('TrusteeStaffUseCase', () => {
       expect(actualError.message).toContain('Staff validation failed');
     });
 
+    test('should throw error when repository create fails', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'createStaffMember').mockRejectedValue(
+        new Error('Database error'),
+      );
+
+      const actualError = await getTheThrownError(() =>
+        trusteeStaffUseCase.createStaffMember(context, trusteeId, validInput),
+      );
+
+      expect(actualError.isCamsError).toBe(true);
+    });
+
+    test('should throw error when history creation fails during create', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'createStaffMember').mockResolvedValue(
+        createdStaffMember,
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockRejectedValue(
+        new Error('History creation failed'),
+      );
+
+      const actualError = await getTheThrownError(() =>
+        trusteeStaffUseCase.createStaffMember(context, trusteeId, validInput),
+      );
+
+      expect(actualError.isCamsError).toBe(true);
+    });
+
     test('should not track a Phone Number Added event when the created staff member has no contact info', async () => {
       const staffWithoutContact = { ...createdStaffMember, contact: undefined };
       vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
@@ -344,7 +373,7 @@ describe('TrusteeStaffUseCase', () => {
     test('should throw error when staff member does not exist', async () => {
       vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
       vi.spyOn(MockMongoRepository.prototype, 'readStaffMember').mockRejectedValue(
-        new Error('Staff member not found'),
+        new UnknownError(MODULE_NAME, { message: 'Staff member not found' }),
       );
 
       const actualError = await getTheThrownError(() =>
@@ -352,6 +381,7 @@ describe('TrusteeStaffUseCase', () => {
       );
 
       expect(actualError.isCamsError).toBe(true);
+      expect(actualError.message).toBe('Staff member not found');
     });
 
     test('should throw error when name is missing', async () => {
@@ -379,6 +409,41 @@ describe('TrusteeStaffUseCase', () => {
 
       expect(actualError.isCamsError).toBe(true);
       expect(actualError.message).toContain('Staff validation failed');
+    });
+
+    test('should throw error when repository update fails', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'readStaffMember').mockResolvedValue(
+        existingStaffMember,
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'updateStaffMember').mockRejectedValue(
+        new Error('Database error'),
+      );
+
+      const actualError = await getTheThrownError(() =>
+        trusteeStaffUseCase.updateStaffMember(context, trusteeId, staffId, updateInput),
+      );
+
+      expect(actualError.isCamsError).toBe(true);
+    });
+
+    test('should throw error when history creation fails during update', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'readStaffMember').mockResolvedValue(
+        existingStaffMember,
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'updateStaffMember').mockResolvedValue(
+        updatedStaffMember,
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockRejectedValue(
+        new Error('History creation failed'),
+      );
+
+      const actualError = await getTheThrownError(() =>
+        trusteeStaffUseCase.updateStaffMember(context, trusteeId, staffId, updateInput),
+      );
+
+      expect(actualError.isCamsError).toBe(true);
     });
 
     test('should create audit history record after updating staff member', async () => {
@@ -542,7 +607,7 @@ describe('TrusteeStaffUseCase', () => {
       const mockTrustee = MockData.getTrustee({ trusteeId });
       vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
       vi.spyOn(MockMongoRepository.prototype, 'readStaffMember').mockRejectedValue(
-        new Error('Staff member not found'),
+        new UnknownError(MODULE_NAME, { message: 'Staff member not found' }),
       );
 
       const actualError = await getTheThrownError(() =>
@@ -550,6 +615,7 @@ describe('TrusteeStaffUseCase', () => {
       );
 
       expect(actualError.isCamsError).toBe(true);
+      expect(actualError.message).toBe('Staff member not found');
     });
 
     test('should throw error when repository delete fails', async () => {

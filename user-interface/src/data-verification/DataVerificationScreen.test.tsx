@@ -547,72 +547,6 @@ describe('Review Orders screen', () => {
     });
   });
 
-  test('should build regions map from courts response', async () => {
-    setupFeatureFlags();
-    const mockOrder = MockData.getTransferOrder({ override: { status: 'pending' } });
-    vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [mockOrder] });
-
-    let capturedRegionsMap: Map<string, string> | undefined;
-    vi.spyOn(transferOrderAccordionModule, 'TransferOrderAccordion').mockImplementation(
-      (props: transferOrderAccordionModule.TransferOrderAccordionProps) => {
-        capturedRegionsMap = props.regionsMap;
-        return <></>;
-      },
-    );
-
-    const mockCourts: CourtDivisionDetails[] = [
-      {
-        officeName: 'Manhattan',
-        officeCode: 'USTP_CAMS_Region_2_Office_Manhattan',
-        courtId: '0208',
-        courtName: 'Southern District of New York',
-        courtDivisionCode: '081',
-        courtDivisionName: 'Manhattan',
-        groupDesignator: 'NY',
-        regionId: '2',
-        regionName: 'NEW YORK',
-      },
-      {
-        officeName: 'White Plains',
-        officeCode: 'USTP_CAMS_Region_2_Office_Manhattan',
-        courtId: '0208',
-        courtName: 'Southern District of New York',
-        courtDivisionCode: '087',
-        courtDivisionName: 'White Plains',
-        groupDesignator: 'NY',
-        regionId: '2',
-        regionName: 'NEW YORK',
-      },
-      {
-        officeName: 'Wilmington',
-        officeCode: 'USTP_CAMS_Region_3_Office_Wilmington',
-        courtId: '0311',
-        courtName: 'District of Delaware',
-        courtDivisionCode: '111',
-        courtDivisionName: 'Delaware',
-        groupDesignator: 'WL',
-        regionId: '3',
-        regionName: 'PHILADELPHIA',
-      },
-    ];
-    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
-
-    render(
-      <BrowserRouter>
-        <DataVerificationScreen />
-      </BrowserRouter>,
-    );
-
-    await waitFor(() => {
-      expect(capturedRegionsMap).toEqual(
-        new Map([
-          ['2', 'NEW YORK'],
-          ['3', 'PHILADELPHIA'],
-        ]),
-      );
-    });
-  });
-
   test('should still render orders when getCourts API fails', async () => {
     setupFeatureFlags();
     const mockOrder = MockData.getTransferOrder({ override: { status: 'pending' } });
@@ -833,11 +767,9 @@ describe('Review Orders screen', () => {
       const alertContainer = document.querySelector('.usa-alert-container');
       expect(alertContainer).toBeInTheDocument();
     });
-
-    mock.mockRestore();
   });
 
-  test('Should filter on type when clicking type filter', async () => {
+  test('should filter on type when clicking type filter', async () => {
     setupFeatureFlags();
     const ordersResponse = {
       data: MockData.getSortedOrders(15),
@@ -997,5 +929,48 @@ describe('Review Orders screen', () => {
       ).not.toBeInTheDocument();
       expect(screen.getByTestId(`mock-consolidation-order-${newOrder.id}`)).toBeInTheDocument();
     });
+  });
+
+  test('should display alert without updating order list when consolidation onOrderUpdate is called with only alert details', async () => {
+    setupFeatureFlags();
+    const existingOrder = MockData.getConsolidationOrder({
+      override: { status: 'pending', leadCase: MockData.getCaseSummary() },
+    });
+    const mockAlertMessage = 'An error occurred processing the consolidation.';
+
+    vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [existingOrder] });
+
+    vi.spyOn(consolidationOrderAccordionModule, 'ConsolidationOrderAccordion').mockImplementation(
+      (props: consolidationOrderAccordionModule.ConsolidationOrderAccordionProps) => {
+        const { onOrderUpdate, order } = props;
+        React.useEffect(() => {
+          onOrderUpdate({
+            message: mockAlertMessage,
+            type: UswdsAlertStyle.Error,
+            timeOut: 8,
+          });
+        }, [onOrderUpdate]);
+        return <div data-testid={`mock-consolidation-order-${order.id}-${order.status}`}></div>;
+      },
+    );
+
+    render(
+      <BrowserRouter>
+        <DataVerificationScreen />
+      </BrowserRouter>,
+    );
+
+    await waitFor(() => {
+      const alertContainer = screen.getByTestId('alert-container-data-verification-alert');
+      expect(alertContainer).toHaveClass('visible');
+      expect(screen.getByTestId('alert-data-verification-alert')).toHaveTextContent(
+        mockAlertMessage,
+      );
+    });
+
+    // Order list is untouched: the same order, in its original status, still renders.
+    expect(
+      screen.getByTestId(`mock-consolidation-order-${existingOrder.id}-pending`),
+    ).toBeInTheDocument();
   });
 });

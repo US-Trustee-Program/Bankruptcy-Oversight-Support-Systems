@@ -6,10 +6,8 @@ import LocalStorage from './lib/utils/local-storage';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { CamsRole } from '@common/cams/roles';
 import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
-import useFeatureFlagReadiness from '@/lib/hooks/UseFeatureFlagReadiness';
+import * as UseFeatureFlagReadinessModule from '@/lib/hooks/UseFeatureFlagReadiness';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
-
-vi.mock('@/lib/hooks/UseFeatureFlagReadiness');
 
 describe('App Router Tests', () => {
   let userEvent: CamsUserEvent;
@@ -30,7 +28,7 @@ describe('App Router Tests', () => {
     );
     // Resolved by default so AddTrusteeRouteGuard decides deterministically from the mocked
     // flags above instead of racing the real LaunchDarkly SDK (waitForInitialization()).
-    vi.mocked(useFeatureFlagReadiness).mockReturnValue({
+    vi.spyOn(UseFeatureFlagReadinessModule, 'default').mockReturnValue({
       isReady: true,
       hasTimedOut: true,
       hasIdentified: true,
@@ -49,7 +47,7 @@ describe('App Router Tests', () => {
     await userEvent.click(screen.getByTestId('header-search-link'));
 
     await waitFor(() => {
-      expect(document.querySelector('main.search-screen')).toBeInTheDocument();
+      expect(screen.getByTestId('search')).toBeInTheDocument();
     });
   });
 
@@ -90,24 +88,33 @@ describe('App Router Tests', () => {
   });
 
   test.each([
-    { path: '/my-cases', testId: 'case-list-heading' },
-    { path: '/staff-assignment', testId: 'case-list-heading' },
-    { path: '/search/081-24-12345', testId: 'search' },
-    { path: '/case-detail/081-24-12345', testId: 'case-detail' },
-    { path: '/data-verification', testId: 'data-verification-screen' },
-    { path: '/admin', testId: 'admin-screen' },
-    { path: '/trustees/some-trustee-id', testId: 'record-detail' },
-  ])('should route $path to a screen rendering data-testid=$testId', async ({ path, testId }) => {
-    render(
-      <MemoryRouter initialEntries={[path]}>
-        <App />
-      </MemoryRouter>,
-    );
+    { path: '/my-cases', testId: 'case-list-heading', heading: 'My Cases' },
+    { path: '/staff-assignment', testId: 'case-list-heading', heading: 'Staff Assignment' },
+    { path: '/search/081-24-12345', testId: 'search', heading: undefined },
+    { path: '/case-detail/081-24-12345', testId: 'case-detail', heading: undefined },
+    { path: '/data-verification', testId: 'data-verification-screen', heading: undefined },
+    { path: '/admin', testId: 'admin-screen', heading: undefined },
+    { path: '/trustees/some-trustee-id', testId: 'record-detail', heading: undefined },
+  ])(
+    'should route $path to a screen rendering data-testid=$testId',
+    async ({ path, testId, heading }) => {
+      render(
+        <MemoryRouter initialEntries={[path]}>
+          <App />
+        </MemoryRouter>,
+      );
 
-    await waitFor(() => {
-      expect(screen.getByTestId(testId)).toBeInTheDocument();
-    });
-  });
+      await waitFor(() => {
+        const element = screen.getByTestId(testId);
+        expect(element).toBeInTheDocument();
+        // /my-cases and /staff-assignment render the same shared testid, so a route-swap
+        // bug between the two would otherwise pass undetected -- check the heading text too.
+        if (heading) {
+          expect(element).toHaveTextContent(heading);
+        }
+      });
+    },
+  );
 
   describe('Trustee route unauthorized access tests', () => {
     test('should not show the Add New Trustee link when accessing /trustees without TrusteeAdmin role', async () => {
