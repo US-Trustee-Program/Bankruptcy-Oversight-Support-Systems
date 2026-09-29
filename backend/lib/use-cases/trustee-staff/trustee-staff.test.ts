@@ -1,4 +1,4 @@
-import { vi } from 'vitest';
+import { vi, MockInstance } from 'vitest';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext, getTheThrownError } from '../../testing/testing-utilities';
 import MockData from '@common/cams/test-utilities/mock-data';
@@ -11,6 +11,22 @@ import { getCamsUserReference } from '@common/cams/session';
 
 const MODULE_NAME = 'TRUSTEE-STAFF-USE-CASE';
 
+// trackPhoneNumbersAdded's completeTrace call is the only one in this use case,
+// so every call is guaranteed to be a 'Phone Number Added' event.
+function expectPhoneAddedEvents(spy: MockInstance, count: number, contactType: string) {
+  expect(spy).toHaveBeenCalledTimes(count);
+  for (let i = 1; i <= count; i++) {
+    expect(spy).toHaveBeenNthCalledWith(
+      i,
+      expect.anything(),
+      'Phone Number Added',
+      expect.objectContaining({ success: true, properties: { contactType } }),
+      undefined,
+      expect.anything(),
+    );
+  }
+}
+
 describe('TrusteeStaffUseCase', () => {
   let context: ApplicationContext;
   let trusteeStaffUseCase: TrusteeStaffUseCase;
@@ -22,13 +38,18 @@ describe('TrusteeStaffUseCase', () => {
   });
 
   describe('getTrusteeStaff', () => {
-    test('should return list of staff for a trustee', async () => {
+    test.each([
+      {
+        description: 'a populated staff list',
+        mockStaff: [
+          MockData.getTrusteeStaff({ trusteeId: 'trustee-123' }),
+          MockData.getTrusteeStaff({ trusteeId: 'trustee-123' }),
+        ],
+      },
+      { description: 'an empty staff list', mockStaff: [] },
+    ])('should return $description for a trustee', async ({ mockStaff }) => {
       const trusteeId = 'trustee-123';
       const mockTrustee = MockData.getTrustee({ trusteeId });
-      const mockStaff = [
-        MockData.getTrusteeStaff({ trusteeId }),
-        MockData.getTrusteeStaff({ trusteeId }),
-      ];
 
       vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
       vi.spyOn(MockMongoRepository.prototype, 'getTrusteeStaff').mockResolvedValue(mockStaff);
@@ -40,30 +61,19 @@ describe('TrusteeStaffUseCase', () => {
       expect(MockMongoRepository.prototype.getTrusteeStaff).toHaveBeenCalledWith(trusteeId);
     });
 
-    test('should return empty array when trustee has no staff', async () => {
-      const trusteeId = 'trustee-456';
-      const mockTrustee = MockData.getTrustee({ trusteeId });
-
-      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
-      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeStaff').mockResolvedValue([]);
-
-      const result = await trusteeStaffUseCase.getTrusteeStaff(context, trusteeId);
-
-      expect(result).toEqual([]);
-      expect(MockMongoRepository.prototype.read).toHaveBeenCalledWith(trusteeId);
-    });
-
     test('should throw error when trustee does not exist', async () => {
       const trusteeId = 'non-existent-trustee';
-      const repositoryError = new Error('Trustee not found');
 
-      vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(repositoryError);
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(
+        new UnknownError(MODULE_NAME, { message: 'Trustee not found' }),
+      );
 
       const actualError = await getTheThrownError(() =>
         trusteeStaffUseCase.getTrusteeStaff(context, trusteeId),
       );
 
       expect(actualError.isCamsError).toBe(true);
+      expect(actualError.message).toBe('Trustee not found');
     });
 
     test('should handle repository error during staff retrieval', async () => {
@@ -183,10 +193,7 @@ describe('TrusteeStaffUseCase', () => {
       const result = await trusteeStaffUseCase.createStaffMember(context, trusteeId, validInput);
 
       expect(result).toEqual(staffWithoutContact);
-      const phoneAddedCalls = completeTraceSpy.mock.calls.filter(
-        (call) => call[1] === 'Phone Number Added',
-      );
-      expect(phoneAddedCalls).toHaveLength(0);
+      expectPhoneAddedEvents(completeTraceSpy, 0, 'staff');
     });
 
     test('should create audit history record after creating staff member', async () => {
@@ -220,15 +227,7 @@ describe('TrusteeStaffUseCase', () => {
 
       await trusteeStaffUseCase.createStaffMember(context, trusteeId, validInput);
 
-      const phoneAddedCalls = completeTraceSpy.mock.calls.filter(
-        (call) => call[1] === 'Phone Number Added',
-      );
-      expect(phoneAddedCalls).toHaveLength(validInput.contact!.phones!.length);
-      phoneAddedCalls.forEach((call) => {
-        expect(call[2]).toEqual(
-          expect.objectContaining({ success: true, properties: { contactType: 'staff' } }),
-        );
-      });
+      expectPhoneAddedEvents(completeTraceSpy, validInput.contact!.phones!.length, 'staff');
     });
   });
 
@@ -368,6 +367,20 @@ describe('TrusteeStaffUseCase', () => {
       expect(actualError.message).toContain('Staff validation failed');
     });
 
+    test('should throw error when input is not a valid object', async () => {
+      const actualError = await getTheThrownError(() =>
+        trusteeStaffUseCase.updateStaffMember(
+          context,
+          trusteeId,
+          staffId,
+          null as unknown as TrusteeStaffInput,
+        ),
+      );
+
+      expect(actualError.isCamsError).toBe(true);
+      expect(actualError.message).toContain('Staff validation failed');
+    });
+
     test('should create audit history record after updating staff member', async () => {
       vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
       vi.spyOn(MockMongoRepository.prototype, 'readStaffMember').mockResolvedValue(
@@ -421,15 +434,7 @@ describe('TrusteeStaffUseCase', () => {
 
       await trusteeStaffUseCase.updateStaffMember(context, trusteeId, staffId, updateInput);
 
-      const phoneAddedCalls = completeTraceSpy.mock.calls.filter(
-        (call) => call[1] === 'Phone Number Added',
-      );
-      expect(phoneAddedCalls).toHaveLength(2);
-      phoneAddedCalls.forEach((call) => {
-        expect(call[2]).toEqual(
-          expect.objectContaining({ success: true, properties: { contactType: 'staff' } }),
-        );
-      });
+      expectPhoneAddedEvents(completeTraceSpy, 2, 'staff');
     });
 
     test('should not track a Phone Number Added event when staff members have no contact info', async () => {
@@ -447,10 +452,7 @@ describe('TrusteeStaffUseCase', () => {
 
       await trusteeStaffUseCase.updateStaffMember(context, trusteeId, staffId, updateInput);
 
-      const phoneAddedCalls = completeTraceSpy.mock.calls.filter(
-        (call) => call[1] === 'Phone Number Added',
-      );
-      expect(phoneAddedCalls).toHaveLength(0);
+      expectPhoneAddedEvents(completeTraceSpy, 0, 'staff');
     });
 
     test('should not track a Phone Number Added event when phones are removed', async () => {
@@ -483,10 +485,7 @@ describe('TrusteeStaffUseCase', () => {
 
       await trusteeStaffUseCase.updateStaffMember(context, trusteeId, staffId, updateInput);
 
-      const phoneAddedCalls = completeTraceSpy.mock.calls.filter(
-        (call) => call[1] === 'Phone Number Added',
-      );
-      expect(phoneAddedCalls).toHaveLength(0);
+      expectPhoneAddedEvents(completeTraceSpy, 0, 'staff');
     });
   });
 
@@ -536,6 +535,7 @@ describe('TrusteeStaffUseCase', () => {
       );
 
       expect(actualError.isCamsError).toBe(true);
+      expect(actualError.message).toBe('Trustee not found');
     });
 
     test('should throw error when staff member does not exist', async () => {

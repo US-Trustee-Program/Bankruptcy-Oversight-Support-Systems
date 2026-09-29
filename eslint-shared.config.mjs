@@ -136,7 +136,9 @@ export const eslintTestConfig = tsEslint.config(
       'vitest/valid-title': 'off', // Disabled to avoid type-checking requirement
       'vitest/expect-expect': [
         'error',
-        { assertFunctionNames: ['expect', 'assertExtraOutputsRegistered'] },
+        {
+          assertFunctionNames: ['expect', 'assertExtraOutputsRegistered', 'expectPhoneAddedEvents'],
+        },
       ],
     },
   },
