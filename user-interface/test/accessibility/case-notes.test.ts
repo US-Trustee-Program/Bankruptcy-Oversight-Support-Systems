@@ -43,7 +43,7 @@ test.describe('Case Notes', () => {
     await page.locator('[data-testid="open-modal-button_case-note-add-button"]').click();
     await expect(page.locator('[data-testid="modal-content-case-note-modal"]')).toBeVisible();
     await page.locator('[data-testid="rich-text-bold-button"]').click();
-    await page.waitForLoadState('networkidle');
+    await expect(page.locator('[data-testid="rich-text-bold-button"]')).toBeFocused();
 
     const accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);

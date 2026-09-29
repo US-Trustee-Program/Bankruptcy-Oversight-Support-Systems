@@ -95,6 +95,8 @@
     "@opentelemetry/propagator-jaeger": "2.9.0",
     "protobufjs": "7.6.5",
     "immutable": "5.1.9",
-    "mongoose": "9.7.2"
+    "mongoose": "9.7.2",
+    "@grpc/grpc-js": "1.14.5",
+    "proxy-addr": "2.0.8"
   }
 }

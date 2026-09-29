@@ -27,17 +27,17 @@ test.describe('Court Docket - Complex Interactions', () => {
     // Test facet multi-select interactions - opens dropdown with new HTML
     await page.locator('#facet-multi-select-expand').click();
     await page.locator('#facet-multi-select-combo-box-input').click();
+    await expect(page.locator('#facet-multi-select-item-list-container')).toBeVisible();
 
     // Check accessibility with facet dropdown open
-    await page.waitForLoadState('networkidle');
     let accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
 
     // Test date range picker - opens calendar with new HTML
     await page.locator('#docket-date-range-date-start').click();
+    await expect(page.locator('.usa-date-picker__calendar').first()).toBeVisible();
 
     // Check accessibility with date picker open
-    await page.waitForLoadState('networkidle');
     accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
   });
