@@ -79,6 +79,9 @@ describe('Login', () => {
     });
     getSession.mockReturnValue(null);
     removeSession.mockImplementation(vi.fn());
+    // Acknowledged by default so most tests don't need to think about the privacy warning.
+    // The 2 privacy-warning tests below need mockReset() first to clear this queued value
+    // before queuing their own false -- mockReturnValueOnce() stacks rather than replaces.
     vi.spyOn(LocalStorage, 'getAck').mockReturnValueOnce(true);
   });
 
@@ -164,52 +167,46 @@ describe('Login', () => {
     expect(sessionComponent).toHaveBeenCalledWith(expect.objectContaining(mockSession), undefined);
   });
 
-  test('should clear an existing session if the provider changed', () => {
-    getAuthIssuerFromEnv.mockReturnValue(issuer);
-    getLoginProviderFromEnv.mockReturnValue('okta');
-    getSession.mockReturnValue({
-      accessToken: MockData.getJwt(),
-      provider: 'mock',
-      issuer,
-      user: {
-        id: 'mockId',
-        name: 'Mock User',
-      },
-      expires: Number.MAX_SAFE_INTEGER,
-    });
-    render(
-      <BrowserRouter>
-        <Login>{children}</Login>
-      </BrowserRouter>,
-    );
-    expect(getSession).toHaveBeenCalled();
-    expect(removeSession).toHaveBeenCalled();
-    expect(sessionComponent).not.toHaveBeenCalled();
-  });
-
-  test('should clear an existing session if the issuer changed', () => {
-    getLoginProviderFromEnv.mockReturnValue('okta');
-    getAuthIssuerFromEnv.mockReturnValue('http://bogus.issuer.com/oauth/default');
-
-    getSession.mockReturnValue({
-      accessToken: MockData.getJwt(),
-      provider: 'okta',
-      issuer: 'http://different.issuer.com/oauth/default',
-      user: {
-        id: 'mockId',
-        name: 'Mock User',
-      },
-      expires: Number.MAX_SAFE_INTEGER,
-    });
-    render(
-      <BrowserRouter>
-        <Login>{children}</Login>
-      </BrowserRouter>,
-    );
-    expect(getSession).toHaveBeenCalled();
-    expect(removeSession).toHaveBeenCalled();
-    expect(sessionComponent).not.toHaveBeenCalled();
-  });
+  test.each([
+    {
+      scenario: 'the provider changed',
+      envProvider: 'okta',
+      envIssuer: issuer,
+      sessionProvider: 'mock',
+      sessionIssuer: issuer,
+    },
+    {
+      scenario: 'the issuer changed',
+      envProvider: 'okta',
+      envIssuer: 'http://bogus.issuer.com/oauth/default',
+      sessionProvider: 'okta',
+      sessionIssuer: 'http://different.issuer.com/oauth/default',
+    },
+  ])(
+    'should clear an existing session if $scenario',
+    ({ envProvider, envIssuer, sessionProvider, sessionIssuer }) => {
+      getLoginProviderFromEnv.mockReturnValue(envProvider);
+      getAuthIssuerFromEnv.mockReturnValue(envIssuer);
+      getSession.mockReturnValue({
+        accessToken: MockData.getJwt(),
+        provider: sessionProvider,
+        issuer: sessionIssuer,
+        user: {
+          id: 'mockId',
+          name: 'Mock User',
+        },
+        expires: Number.MAX_SAFE_INTEGER,
+      });
+      render(
+        <BrowserRouter>
+          <Login>{children}</Login>
+        </BrowserRouter>,
+      );
+      expect(getSession).toHaveBeenCalled();
+      expect(removeSession).toHaveBeenCalled();
+      expect(sessionComponent).not.toHaveBeenCalled();
+    },
+  );
 
   test('should render Logout when the existing session has expired', () => {
     getLoginProviderFromEnv.mockReturnValue('mock');
@@ -261,7 +258,6 @@ describe('Login', () => {
 
   test('should render OktaProvider for okta provider type', () => {
     getLoginProviderFromEnv.mockReturnValue('okta');
-    vi.spyOn(LocalStorage, 'getAck').mockReturnValueOnce(true);
     render(
       <BrowserRouter>
         <Login>{children}</Login>

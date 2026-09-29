@@ -645,7 +645,7 @@ describe('Review Orders screen', () => {
     });
   });
 
-  test('should render permission invalid error when CaseAssignmentManager is not found in user roles', async () => {
+  test('should render permission invalid error when DataVerifier is not found in user roles', async () => {
     testingUtilities.setUserWithRoles([]);
     render(
       <BrowserRouter>

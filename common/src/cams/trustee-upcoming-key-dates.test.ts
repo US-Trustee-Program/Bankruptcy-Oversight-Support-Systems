@@ -408,29 +408,54 @@ describe('validateTrusteeUpcomingKeyDates', () => {
     ).toEqual(VALID);
   });
 
-  test('returns error when tprReviewPeriodStart is set but tprReviewPeriodEnd is null', () => {
-    const result = validateTrusteeUpcomingKeyDates({
-      ...baseInput(),
-      tprReviewPeriodStart: '1900-04-01',
-      tprReviewPeriodEnd: null,
-    });
-    expect(result.valid).toBeFalsy();
-    expect(result.reasonMap?.tprReviewPeriodEnd?.reasons?.[0]).toBe(
-      'TPR Review Period End is required.',
-    );
-  });
+  test.each([
+    {
+      label: 'tprReviewPeriod',
+      startField: 'tprReviewPeriodStart' as const,
+      endField: 'tprReviewPeriodEnd' as const,
+      startValue: '1900-04-01',
+      endValue: '1900-03-31',
+      startLabel: 'TPR Review Period Start',
+      endLabel: 'TPR Review Period End',
+    },
+    {
+      label: 'tirReviewPeriod',
+      startField: 'tirReviewPeriodStart' as const,
+      endField: 'tirReviewPeriodEnd' as const,
+      startValue: '1900-07-01',
+      endValue: '1900-06-30',
+      startLabel: 'TIR Review Period Start',
+      endLabel: 'TIR Review Period End',
+    },
+    {
+      label: 'tirSemiAnnualReviewPeriod',
+      startField: 'tirSemiAnnualReviewPeriodStart' as const,
+      endField: 'tirSemiAnnualReviewPeriodEnd' as const,
+      startValue: '1900-07-01',
+      endValue: '1900-12-31',
+      startLabel: 'TIR Review Period 2 Start',
+      endLabel: 'TIR Review Period 2 End',
+    },
+  ])(
+    'returns error when only one side of $label is set (the missing side is required)',
+    ({ startField, endField, startValue, endValue, startLabel, endLabel }) => {
+      const startOnly = validateTrusteeUpcomingKeyDates({
+        ...baseInput(),
+        [startField]: startValue,
+        [endField]: null,
+      });
+      expect(startOnly.valid).toBeFalsy();
+      expect(startOnly.reasonMap?.[endField]?.reasons?.[0]).toBe(`${endLabel} is required.`);
 
-  test('returns error when tprReviewPeriodEnd is set but tprReviewPeriodStart is null', () => {
-    const result = validateTrusteeUpcomingKeyDates({
-      ...baseInput(),
-      tprReviewPeriodStart: null,
-      tprReviewPeriodEnd: '1900-03-31',
-    });
-    expect(result.valid).toBeFalsy();
-    expect(result.reasonMap?.tprReviewPeriodStart?.reasons?.[0]).toBe(
-      'TPR Review Period Start is required.',
-    );
-  });
+      const endOnly = validateTrusteeUpcomingKeyDates({
+        ...baseInput(),
+        [startField]: null,
+        [endField]: endValue,
+      });
+      expect(endOnly.valid).toBeFalsy();
+      expect(endOnly.reasonMap?.[startField]?.reasons?.[0]).toBe(`${startLabel} is required.`);
+    },
+  );
 
   test('returns VALID when tprReviewPeriodStart is before tprReviewPeriodEnd (full ISO dates)', () => {
     expect(
@@ -500,30 +525,6 @@ describe('validateTrusteeUpcomingKeyDates', () => {
     );
     expect(result.reasonMap?.tprReviewPeriodEnd?.reasons?.[0]).toBe(
       'TPR Review Period End must be after TPR Review Period Start.',
-    );
-  });
-
-  test('returns error when tirReviewPeriodStart is set but tirReviewPeriodEnd is null', () => {
-    const result = validateTrusteeUpcomingKeyDates({
-      ...baseInput(),
-      tirReviewPeriodStart: '1900-07-01',
-      tirReviewPeriodEnd: null,
-    });
-    expect(result.valid).toBeFalsy();
-    expect(result.reasonMap?.tirReviewPeriodEnd?.reasons?.[0]).toBe(
-      'TIR Review Period End is required.',
-    );
-  });
-
-  test('returns error when tirReviewPeriodEnd is set but tirReviewPeriodStart is null', () => {
-    const result = validateTrusteeUpcomingKeyDates({
-      ...baseInput(),
-      tirReviewPeriodStart: null,
-      tirReviewPeriodEnd: '1900-06-30',
-    });
-    expect(result.valid).toBeFalsy();
-    expect(result.reasonMap?.tirReviewPeriodStart?.reasons?.[0]).toBe(
-      'TIR Review Period Start is required.',
     );
   });
 
@@ -648,30 +649,6 @@ describe('validateTrusteeUpcomingKeyDates', () => {
     ).toEqual(VALID);
   });
 
-  test('returns error when tirSemiAnnualReviewPeriodStart set but tirSemiAnnualReviewPeriodEnd is null', () => {
-    const result = validateTrusteeUpcomingKeyDates({
-      ...baseInput(),
-      tirSemiAnnualReviewPeriodStart: '1900-07-01',
-      tirSemiAnnualReviewPeriodEnd: null,
-    });
-    expect(result.valid).toBeFalsy();
-    expect(result.reasonMap?.tirSemiAnnualReviewPeriodEnd?.reasons?.[0]).toBe(
-      'TIR Review Period 2 End is required.',
-    );
-  });
-
-  test('returns error when tirSemiAnnualReviewPeriodEnd set but tirSemiAnnualReviewPeriodStart is null', () => {
-    const result = validateTrusteeUpcomingKeyDates({
-      ...baseInput(),
-      tirSemiAnnualReviewPeriodStart: null,
-      tirSemiAnnualReviewPeriodEnd: '1900-12-31',
-    });
-    expect(result.valid).toBeFalsy();
-    expect(result.reasonMap?.tirSemiAnnualReviewPeriodStart?.reasons?.[0]).toBe(
-      'TIR Review Period 2 Start is required.',
-    );
-  });
-
   test('returns error when tirSemiAnnualSubmission is an invalid sentinel date', () => {
     const result = validateTrusteeUpcomingKeyDates({
       ...baseInput(),
@@ -789,33 +766,41 @@ describe('validateTrusteeUpcomingKeyDates', () => {
   });
 
   test('DATE_FIELDS contains the exact set of expected fields', () => {
-    expect(DATE_FIELDS).toEqual([
-      'pastBackgroundQuestion',
-      'pastFieldExam',
-      'pastAudit',
-      'pastTprSubmission',
-      'tprReviewPeriodStart',
-      'tprReviewPeriodEnd',
-      'tprDue',
-      'tirReviewPeriodStart',
-      'tirReviewPeriodEnd',
-      'tirSubmission',
-      'tirReview',
-      'tirSemiAnnualReviewPeriodStart',
-      'tirSemiAnnualReviewPeriodEnd',
-      'tirSemiAnnualSubmission',
-      'tirSemiAnnualReview',
-      'lastMonthlyReportReceived',
-      'leaseExpiration',
-      'idExpiration',
-      'lastCompensationStudy',
-      'bondIssuedDate',
-      'bondRenewalDate',
-    ]);
+    // Order is not semantically meaningful to either consumer (both iterate/filter without
+    // relying on position), so compare as sets rather than locking in array order.
+    expect(new Set(DATE_FIELDS)).toEqual(
+      new Set([
+        'pastBackgroundQuestion',
+        'pastFieldExam',
+        'pastAudit',
+        'pastTprSubmission',
+        'tprReviewPeriodStart',
+        'tprReviewPeriodEnd',
+        'tprDue',
+        'tirReviewPeriodStart',
+        'tirReviewPeriodEnd',
+        'tirSubmission',
+        'tirReview',
+        'tirSemiAnnualReviewPeriodStart',
+        'tirSemiAnnualReviewPeriodEnd',
+        'tirSemiAnnualSubmission',
+        'tirSemiAnnualReview',
+        'lastMonthlyReportReceived',
+        'leaseExpiration',
+        'idExpiration',
+        'lastCompensationStudy',
+        'bondIssuedDate',
+        'bondRenewalDate',
+      ]),
+    );
+    expect(DATE_FIELDS).toHaveLength(21);
   });
 
   test('TEXT_FIELDS contains the exact set of expected fields', () => {
-    expect(TEXT_FIELDS).toEqual(['tprDueYearType', 'tprFrequency', 'tirFrequency']);
+    expect(new Set(TEXT_FIELDS)).toEqual(
+      new Set(['tprDueYearType', 'tprFrequency', 'tirFrequency']),
+    );
+    expect(TEXT_FIELDS).toHaveLength(3);
   });
 });
 

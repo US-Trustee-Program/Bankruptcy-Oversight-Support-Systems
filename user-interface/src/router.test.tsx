@@ -16,6 +16,10 @@ describe('App Router Tests', () => {
     vi.stubEnv('CAMS_USE_FAKE_API', 'true');
   });
 
+  afterAll(() => {
+    vi.unstubAllEnvs();
+  });
+
   beforeEach(() => {
     vi.restoreAllMocks();
     userEvent = TestingUtilities.setupUserEvent();
