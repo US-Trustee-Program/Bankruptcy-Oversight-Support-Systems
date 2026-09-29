@@ -11,7 +11,6 @@ test.describe('Court Docket - Error Scenario', () => {
   test('should not have accessibility issues when error alert is displayed', async ({ page }) => {
     await expect(page.locator('[data-testid="alert-message"]')).toBeVisible();
 
-    await page.waitForLoadState('networkidle');
     const accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
   });

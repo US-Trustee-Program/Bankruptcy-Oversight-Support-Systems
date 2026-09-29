@@ -82,10 +82,16 @@ function loadVariants(): TrusteeVariationRecord[] {
 
 function loadTrusteesById(): Map<string, Trustee> {
   const trusteesPath = path.join(FIXTURES_DIR, '2026-08-18-trustees.json');
-  const raw: (Trustee & { _id?: MongoExtendedId })[] = JSON.parse(
+  const raw: (Record<string, unknown> & { _id?: MongoExtendedId })[] = JSON.parse(
     fs.readFileSync(trusteesPath, 'utf-8'),
   );
-  return new Map(raw.map((doc) => [doc.trusteeId, stripMongoId(doc) as Trustee]));
+  // A raw trustees-collection export also contains sibling document types sharing the same
+  // trusteeId partition (AUDIT_PUBLIC_CONTACT, AUDIT_STAFF, TRUSTEE_STAFF, ...) — only
+  // documentType: 'TRUSTEE' docs carry the public/internal shape this harness scores against.
+  const trustees = raw.filter((doc) => doc.documentType === 'TRUSTEE');
+  return new Map(
+    trustees.map((doc) => [doc.trusteeId as string, stripMongoId(doc) as unknown as Trustee]),
+  );
 }
 
 /**

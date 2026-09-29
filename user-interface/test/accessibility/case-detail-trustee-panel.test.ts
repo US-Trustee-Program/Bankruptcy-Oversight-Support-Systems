@@ -16,7 +16,6 @@ test.describe('Case Detail Trustee Panel', () => {
     test.setTimeout(COMPLEX_TEST_TIMEOUT);
 
     await expect(page.getByTestId('case-detail-trustee-panel-heading')).toBeVisible();
-    await page.waitForLoadState('networkidle');
 
     const accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
@@ -26,7 +25,6 @@ test.describe('Case Detail Trustee Panel', () => {
     test.setTimeout(COMPLEX_TEST_TIMEOUT);
 
     await expect(page.getByTestId('past-trustees-section')).toBeVisible();
-    await page.waitForLoadState('networkidle');
 
     const accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);

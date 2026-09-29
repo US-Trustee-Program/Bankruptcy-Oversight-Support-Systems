@@ -4,25 +4,25 @@
  *
  * Investigation only — makes NO changes to any collection or to the as-built matching logic.
  * Each TRUSTEE_PROFESSIONAL_ID document (../fixtures/<export>.json, a raw export of the
- * trustee-professional-ids collection) either carries a real camsTrusteeId (auto-linked) or an
- * `error` object (no-match/ambiguous/conflict, with camsTrusteeId set to the ACMS variant's
- * fingerprint instead of a real trustee — see TrusteeProfessionalIdError in
- * common/src/cams/trustee-professional-ids.ts). This harness decodes every record's `variant`
- * (same JSON shape buildAcmsVariant/buildVariant produce — see
- * backend/lib/use-cases/dataflows/acms-trustee-variant.helpers.ts) and scores it against CAMS
- * trustees using the SAME scoring functions production matching uses (calculateNameScore,
- * calculateAddressScore, calculatePhoneScore, calculateEmailScore from
- * trustee-match.helpers.ts) — not a new, separately-tuned comparison. Two passes:
+ * trustee-professional-ids collection) carries a top-level `disposition`
+ * (TrusteeProfessionalIdDisposition — see trustee-professional-ids.types.ts) and an `evidence`
+ * object (the pipeline's serialized state — sourceRaw, candidates, match, skip, error). When
+ * disposition is not 'auto-linked', `camsTrusteeId` is set to the ACMS variant's fingerprint
+ * instead of a real trustee. This harness scores each record's `evidence.sourceRaw` (already a
+ * CanonicalTrusteeSource/DxtrTrusteeParty — no decoding needed) against CAMS trustees using the
+ * SAME scoring functions production matching uses (calculateNameScore, calculateAddressScore,
+ * calculatePhoneScore, calculateEmailScore from trustee-match.helpers.ts) — not a new,
+ * separately-tuned comparison. Two passes:
  *
- *   1. Linked records: score the variant against the trustee it was actually linked to, to
- *      surface a past auto-link that looks like a poor match (false positive) — same approach as
- *      trustee-variation-audit, applied to the professional-id fast path instead of the
- *      trustee-variation fast path.
- *   2. Error records (no-match/ambiguous): score the variant against EVERY trustee in the export
- *      and report the best-scoring candidate, to surface a real match production's matcher
- *      missed (false negative) — this pass has no live-repository equivalent to call directly
- *      (matchTrusteeByName requires a database-backed ApplicationContext), so it re-implements
- *      the same name-then-corroborate logic as a plain in-memory scan instead.
+ *   1. Linked records (disposition === 'auto-linked'): score sourceRaw against the trustee it was
+ *      actually linked to, to surface a past auto-link that looks like a poor match (false
+ *      positive) — same approach as trustee-variation-audit, applied to the professional-id fast
+ *      path instead of the trustee-variation fast path.
+ *   2. Non-linked records (no-match/ambiguous/skipped/error/conflict): score sourceRaw against
+ *      EVERY trustee in the export and report the best-scoring candidate, to surface a real match
+ *      production's matcher missed (false negative) — this pass has no live-repository equivalent
+ *      to call directly (matchTrusteeByName requires a database-backed ApplicationContext), so it
+ *      re-implements the same name-then-corroborate logic as a plain in-memory scan instead.
  *
  * This is a one-shot script - NOT a Vitest test. No database is used; both fixture files are read
  * directly and compared in memory.
@@ -54,9 +54,9 @@ import { TrusteeProfessionalId } from '../../../../backend/lib/use-cases/dataflo
 
 const FIXTURES_DIR = path.resolve(__dirname, '../fixtures');
 
-// A best-candidate score below this is not worth reporting for a no-match/ambiguous record — it
-// just means nothing in the trustees export looks remotely like this variant, which is the
-// expected (uninteresting) case for most genuine no-matches.
+// A best-candidate score below this is not worth reporting for a non-linked record — it just
+// means nothing in the trustees export looks remotely like this variant, which is the expected
+// (uninteresting) case for most genuine no-matches.
 const NOTABLE_MISS_THRESHOLD = 60;
 
 // Mirrors trustee-variation-audit's NAME_MISMATCH_THRESHOLD rationale: a linked record's own
@@ -68,20 +68,6 @@ const NAME_MISMATCH_THRESHOLD = 85;
 // ---------------------------------------------------------------------------
 
 type MongoExtendedId = { $oid?: string } | string | undefined;
-
-type DecodedVariant = {
-  firstName: string;
-  middleName: string;
-  lastName: string;
-  generation: string;
-  address1: string;
-  address2: string;
-  address3: string;
-  cityStateZipCountry: string;
-  phone: string;
-  fax: string;
-  email: string;
-};
 
 function stripMongoId<T extends { _id?: MongoExtendedId }>(doc: T): Omit<T, '_id'> {
   const { _id, ...rest } = doc;
@@ -124,33 +110,6 @@ function loadTrustees(): Trustee[] {
     `Trustees fixture: ${path.basename(file)} (${trustees.length} of ${raw.length} docs are TRUSTEE)\n`,
   );
   return trustees.map((doc) => stripMongoId(doc) as Trustee);
-}
-
-/**
- * Decodes a variant's JSON string (see buildAcmsVariant/buildVariant) and reshapes it into a
- * DxtrTrusteeParty so this harness can call the exact same scoring functions production matching
- * uses, unmodified.
- */
-function toAcmsTrusteeParty(variant: DecodedVariant): DxtrTrusteeParty {
-  const fullName = [variant.firstName, variant.middleName, variant.lastName]
-    .filter(Boolean)
-    .join(' ');
-  return {
-    fullName,
-    firstName: variant.firstName || undefined,
-    middleName: variant.middleName || undefined,
-    lastName: variant.lastName || undefined,
-    generation: variant.generation || undefined,
-    legacy: {
-      address1: variant.address1 || undefined,
-      address2: variant.address2 || undefined,
-      address3: variant.address3 || undefined,
-      cityStateZipCountry: variant.cityStateZipCountry || undefined,
-      phone: variant.phone || undefined,
-      fax: variant.fax || undefined,
-      email: variant.email || undefined,
-    },
-  };
 }
 
 // ---------------------------------------------------------------------------
@@ -197,8 +156,7 @@ function auditLinkedRecord(
   record: TrusteeProfessionalId,
   trusteesById: Map<string, Trustee>,
 ): LinkedAuditResult {
-  const decoded: DecodedVariant | null = record.variant ? JSON.parse(record.variant) : null;
-  const acmsTrustee = decoded ? toAcmsTrusteeParty(decoded) : { fullName: '(no variant)' };
+  const acmsTrustee = record.evidence.sourceRaw;
   const trustee = trusteesById.get(record.camsTrusteeId);
 
   if (!trustee) {
@@ -212,7 +170,7 @@ function auditLinkedRecord(
     };
   }
 
-  const scores = decoded ? scoreAgainst(acmsTrustee, trustee) : undefined;
+  const scores = scoreAgainst(acmsTrustee, trustee);
 
   return {
     recordId: record.id,
@@ -222,7 +180,7 @@ function auditLinkedRecord(
     acmsFullName: acmsTrustee.fullName,
     camsName: trustee.name,
     scores,
-    concern: scores ? classifyLinkedConcern(scores.nameScore, scores.addressScore) : 'none',
+    concern: classifyLinkedConcern(scores.nameScore, scores.addressScore),
   };
 }
 
@@ -260,26 +218,21 @@ function findBestCandidate(
   return { trusteeId: best.trustee.trusteeId, trusteeName: best.trustee.name, scores: best.scores };
 }
 
-function auditErrorRecord(
-  record: TrusteeProfessionalId,
-  trustees: Trustee[],
-): MissedMatchResult | null {
-  if (!record.variant) return null;
-  const decoded: DecodedVariant = JSON.parse(record.variant);
-  const acmsTrustee = toAcmsTrusteeParty(decoded);
+function auditNonLinkedRecord(record: TrusteeProfessionalId, trustees: Trustee[]): MissedMatchResult {
+  const acmsTrustee = record.evidence.sourceRaw;
   const best = findBestCandidate(acmsTrustee, trustees);
 
   return {
     recordId: record.id,
     acmsProfessionalId: record.acmsProfessionalId,
-    disposition: record.error?.disposition ?? 'unknown',
+    disposition: record.disposition,
     acmsFullName: acmsTrustee.fullName,
     // calculateAddressScore returns 0 outright when this fails to parse (see
     // parseCityStateZip's doc comment) — a record with an unparseable zip had NO address
     // corroboration available at all, regardless of how well the raw address text might
     // otherwise line up. Surfaced separately so a "notable miss" isn't misread as evidence the
     // matcher ignored good address data; it may mean address data was structurally unusable.
-    zipParseable: parseCityStateZip(decoded.cityStateZipCountry) !== null,
+    zipParseable: parseCityStateZip(acmsTrustee.legacy?.cityStateZipCountry) !== null,
     bestCandidate: best ?? undefined,
   };
 }
@@ -295,12 +248,12 @@ function run() {
   const trustees = loadTrustees();
   const trusteesById = new Map(trustees.map((t) => [t.trusteeId, t]));
 
-  const linked = records.filter((r) => !r.error);
-  const errored = records.filter((r) => r.error);
+  const linked = records.filter((r) => r.disposition === 'auto-linked');
+  const nonLinked = records.filter((r) => r.disposition !== 'auto-linked');
 
   console.log(
     `Loaded ${records.length} professional-id records (${linked.length} linked, ` +
-      `${errored.length} errored), ${trustees.length} trustees.\n`,
+      `${nonLinked.length} non-linked), ${trustees.length} trustees.\n`,
   );
 
   // --- Pass 1: linked records -------------------------------------------------
@@ -348,22 +301,20 @@ function run() {
     );
   }
 
-  // --- Pass 2: error records ---------------------------------------------------
-  const errorResults = errored
-    .map((r) => auditErrorRecord(r, trustees))
-    .filter((r): r is MissedMatchResult => r !== null);
+  // --- Pass 2: non-linked records -----------------------------------------------
+  const nonLinkedResults = nonLinked.map((r) => auditNonLinkedRecord(r, trustees));
 
   const byDisposition: Record<string, number> = {};
-  for (const r of errorResults)
+  for (const r of nonLinkedResults)
     byDisposition[r.disposition] = (byDisposition[r.disposition] ?? 0) + 1;
 
-  const notableMisses = errorResults.filter(
+  const notableMisses = nonLinkedResults.filter(
     (r) => r.bestCandidate && r.bestCandidate.scores.nameScore >= NOTABLE_MISS_THRESHOLD,
   );
 
-  const unparseableZipCount = errorResults.filter((r) => !r.zipParseable).length;
+  const unparseableZipCount = nonLinkedResults.filter((r) => !r.zipParseable).length;
 
-  console.log('\n=== Pass 2: error records (checking for false negatives) ===\n');
+  console.log('\n=== Pass 2: non-linked records (checking for false negatives) ===\n');
   console.log('Disposition summary:');
   for (const [disposition, count] of Object.entries(byDisposition)) {
     console.log(`  ${disposition.padEnd(20)} ${count}`);
@@ -371,8 +322,8 @@ function run() {
 
   console.log(
     `\nUnparseable zip (parseCityStateZip returned null -> addressScore forced to 0, no address ` +
-      `corroboration possible): ${unparseableZipCount} of ${errorResults.length} error records ` +
-      `(${((unparseableZipCount / errorResults.length) * 100).toFixed(1)}%)`,
+      `corroboration possible): ${unparseableZipCount} of ${nonLinkedResults.length} non-linked ` +
+      `records (${((unparseableZipCount / nonLinkedResults.length) * 100).toFixed(1)}%)`,
   );
 
   console.log(
@@ -389,12 +340,12 @@ function run() {
     );
   }
   console.log(
-    `\n  (${notableMisses.length} of ${errorResults.length} error records are notable misses)`,
+    `\n  (${notableMisses.length} of ${nonLinkedResults.length} non-linked records are notable misses)`,
   );
 
   console.log(
     `\nReplayed ${records.length} professional-id records ` +
-      `(${linkedResults.length} linked, ${errorResults.length} errored).\n`,
+      `(${linkedResults.length} linked, ${nonLinkedResults.length} non-linked).\n`,
   );
 }
 
