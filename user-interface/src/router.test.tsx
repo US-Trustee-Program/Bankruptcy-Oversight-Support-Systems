@@ -135,9 +135,10 @@ describe('App Router Tests', () => {
 
       await waitFor(() => {
         // TrusteesScreen returns null entirely for an unauthorized user -- there is no
-        // "unauthorized" message to render, so confirm the whole screen is absent.
+        // "unauthorized" message to render, so confirm the whole screen is absent. The
+        // role/flag-driven add-link visibility itself is TrusteesScreen's own concern,
+        // already covered exhaustively in TrusteesScreen.test.tsx.
         expect(screen.queryByTestId('trustees')).not.toBeInTheDocument();
-        expect(screen.queryByTestId('trustees-add-link')).not.toBeInTheDocument();
       });
     });
 
@@ -159,8 +160,9 @@ describe('App Router Tests', () => {
       );
 
       await waitFor(() => {
+        // The add-link's own visibility rules are TrusteesScreen's concern (covered in
+        // TrusteesScreen.test.tsx); this just confirms the router mounted that screen.
         expect(screen.getByTestId('trustees')).toBeInTheDocument();
-        expect(screen.getByTestId('trustees-add-link')).toBeInTheDocument();
       });
     });
   });

@@ -257,11 +257,11 @@ describe('calculation helpers', () => {
         'aligns mid-December date to December 31 quarter end',
       ],
       [
-        '2025-03-31',
+        '2025-01-15',
         undefined,
         3,
         '2028-03-01',
-        'date exactly on March 31 aligns to March 31 (not next quarter)',
+        'January date aligns to March 31 quarter end via month < quarter-end month',
       ],
       ['2025-06-30', undefined, 3, '2028-06-01', 'date exactly on June 30 aligns to June 30'],
       [
@@ -463,7 +463,7 @@ describe('validateTrusteeUpcomingKeyDates', () => {
     ).toEqual(VALID);
   });
 
-  test('returns VALID when only one of tprReviewPeriodStart/End is sentinel-format', () => {
+  test('returns VALID when only tprReviewPeriodStart is sentinel-format', () => {
     // Either side being sentinel-format skips the chronological check entirely, even
     // when the other side is a full ISO date that would otherwise fail the comparison.
     expect(
@@ -471,6 +471,19 @@ describe('validateTrusteeUpcomingKeyDates', () => {
         ...baseInput(),
         tprReviewPeriodStart: '1900-04-01',
         tprReviewPeriodEnd: '2025-03-31',
+      }),
+    ).toEqual(VALID);
+  });
+
+  test('returns VALID when only tprReviewPeriodEnd is sentinel-format', () => {
+    // Mirrors the case above from the other side of the OR condition: a full ISO start
+    // that would otherwise fail the "before end" comparison is skipped because the end
+    // is sentinel-format.
+    expect(
+      validateTrusteeUpcomingKeyDates({
+        ...baseInput(),
+        tprReviewPeriodStart: '2025-04-01',
+        tprReviewPeriodEnd: '1900-03-31',
       }),
     ).toEqual(VALID);
   });

@@ -1,6 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import DataVerificationScreen from './DataVerificationScreen';
+import DataVerificationScreen, { TYPE_FILTER_SESSION_KEY } from './DataVerificationScreen';
 import { BrowserRouter } from 'react-router-dom';
 import {
   isTransferOrder,
@@ -33,17 +33,14 @@ describe('Review Orders screen', () => {
 
   beforeEach(async () => {
     vi.restoreAllMocks();
+    vi.unstubAllEnvs();
+    sessionStorage.clear();
     testingUtilities.setUser({
       roles: [CamsRole.DataVerifier],
       offices: MOCKED_USTP_OFFICES_ARRAY,
     });
     vi.stubEnv('CAMS_USE_FAKE_API', 'true');
     vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
-  });
-
-  afterEach(() => {
-    vi.unstubAllEnvs();
-    sessionStorage.clear();
   });
 
   test('should sort courts by state and court before passing them to child components', async () => {
@@ -588,7 +585,7 @@ describe('Review Orders screen', () => {
     );
 
     sessionStorage.setItem(
-      'cams:filter:data-verification:type',
+      TYPE_FILTER_SESSION_KEY,
       JSON.stringify([{ value: 'transfer', label: 'Transfer' }]),
     );
 
@@ -862,7 +859,7 @@ describe('Review Orders screen', () => {
     );
 
     sessionStorage.setItem(
-      'cams:filter:data-verification:type',
+      TYPE_FILTER_SESSION_KEY,
       JSON.stringify([{ value: 'trustee-match', label: 'Trustee Mismatch' }]),
     );
 

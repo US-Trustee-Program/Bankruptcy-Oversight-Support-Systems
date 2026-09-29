@@ -156,8 +156,8 @@ describe('TrusteeStaffUseCase', () => {
     });
 
     test('should throw error when name is missing', async () => {
-      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
-
+      // checkValidation throws before trusteesRepository.read is ever reached, so no
+      // repository spy is needed here.
       const invalidInput = { ...validInput, name: '' };
 
       const actualError = await getTheThrownError(() =>
@@ -385,8 +385,8 @@ describe('TrusteeStaffUseCase', () => {
     });
 
     test('should throw error when name is missing', async () => {
-      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
-
+      // checkValidation throws before trusteesRepository.read is ever reached, so no
+      // repository spy is needed here.
       const invalidInput = { ...updateInput, name: '' };
 
       const actualError = await getTheThrownError(() =>
