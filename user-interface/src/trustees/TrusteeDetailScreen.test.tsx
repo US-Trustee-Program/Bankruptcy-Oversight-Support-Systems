@@ -102,10 +102,6 @@ describe('TrusteeDetailScreen', () => {
     } as unknown as ReturnType<typeof LaunchDarkly.useLDClient>);
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
   test('should set browser tab title to generic label while loading', async () => {
     vi.spyOn(Api2, 'getTrustee').mockImplementation(() => new Promise(() => {}));
 

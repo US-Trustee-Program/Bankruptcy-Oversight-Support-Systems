@@ -37,10 +37,6 @@ describe('TrusteeCasesController', () => {
     controller = new TrusteeCasesController(context);
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
   describe('Feature flag protection', () => {
     test('returns 404 when trustee-management flag is off', async () => {
       context.featureFlags['trustee-management'] = false;
