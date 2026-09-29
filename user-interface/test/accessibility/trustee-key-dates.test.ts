@@ -254,7 +254,9 @@ test.describe('Chapter 12/13 Case by Case Key Dates', () => {
     }
 
     await expect(
-      trusteeProfilePage.locator('[data-testid^="tpr-key-dates-card-"]:visible').first(),
+      trusteeProfilePage
+        .locator('[data-testid="chapter12-13-case-by-case-tpr-card"]:visible')
+        .first(),
     ).toBeVisible();
 
     await trusteeProfilePage.waitForTimeout(ANALYZE_DELAY);
@@ -291,7 +293,10 @@ test.describe('Chapter 12/13 Case by Case Key Dates', () => {
       return;
     }
 
-    await trusteeProfilePage.locator('[id^="edit-tpr-key-dates-"]:visible').first().click();
+    await trusteeProfilePage
+      .locator('[id^="edit-chapter12-13-case-by-case-tpr-"]:visible')
+      .first()
+      .click();
     await expect(
       trusteeProfilePage.locator('[data-testid="edit-chapter12-13-case-by-case-tpr"]'),
     ).toBeVisible();
