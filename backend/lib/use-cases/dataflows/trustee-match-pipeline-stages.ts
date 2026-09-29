@@ -2240,23 +2240,50 @@ function isExactLastNameMatch(acmsLastName: string, camsLastName: string): boole
   return acmsLast.length > 0 && acmsLast === camsLast;
 }
 
+/**
+ * The only two values pipelineNameScore returns for a candidate whose last name matches exactly
+ * (isExactLastNameMatch) but whose first/middle name comparison contributes real doubt rather than
+ * confidence:
+ *   - 0: firstScore itself was 0 (scoreFirstNamePart found no plausible relationship at all between
+ *     the two first names - not even a nickname/initial).
+ *   - 15: firstScore cleared 85 (a genuine match, nickname, or initial relationship), but
+ *     pipelineMiddleNameScore found a real middle-name conflict (two bare initials that disagree,
+ *     or two full middle names that fail isFuzzyNamePartMatch) - Math.min(firstScore, middleScore)
+ *     collapses to middleScore's 15 despite the strong first-name agreement underneath it.
+ * Both values are otherwise unreachable by any RESOLVE stage above this one in resolveStages() (see
+ * its own doc comment on stage order): every stage from resolveBySoleContactMatch through
+ * resolveBySoleFuzzyNameMatchAndState gates on doesNameMatch.pass (>= 85), and 15 clears neither
+ * that bar nor the exact-0 gate this constant used to be. A candidate stuck at 15 fell into a real
+ * dead zone no resolver covered - confirmed via pipeline-replay-backtest.ts against the 2026-09-25
+ * export: 33 unresolved records (a real shape, name synthesized: ACMS "Jordan S [Surname]" -> CAMS
+ * "Jordan A. [Surname]", both address AND phone independently corroborating) plus 13 more where the
+ * SAME nameScore=15 also failed isStateNotConflicting's override (see that function's own doc
+ * comment), silently dropping the candidate during promoteCandidate before any RESOLVE stage ever
+ * saw it - that second population needs its own, separate fix; this one only restores resolver visibility
+ * for a candidate that DID reach the outer pool.
+ */
+const MIDDLE_NAME_ONLY_CONFLICT_SCORE = 15;
+
 /** The sole candidate eligible for a fuzzy first-name vote - a real lastName match (see
- * isExactLastNameMatch) whose overall nameScore was tanked to 0, with both sides having a first
- * name to actually compare. Returns undefined when zero or multiple candidates qualify, or when
- * either side has no first name to compare - resolveByLastNameOnlyConsensus's own inline fuzzy
- * first-name scoring no-ops in every such case. */
+ * isExactLastNameMatch) whose overall nameScore was tanked to 0 or MIDDLE_NAME_ONLY_CONFLICT_SCORE
+ * (see that constant's own doc comment for why those are the only two reachable values here), with
+ * both sides having a first name to actually compare. Returns undefined when zero or multiple
+ * candidates qualify, or when either side has no first name to compare -
+ * resolveByLastNameOnlyConsensus's own inline fuzzy first-name scoring no-ops in every such case. */
 function findSoleZeroNameScoreCandidateWithMatchingLastName(
   state: PipelineState,
 ): PipelineCandidate | undefined {
-  const qualifying = [...state.candidates.values()].filter(
-    (candidate) =>
-      mergedScore(candidate).doesNameMatch?.value === 0 &&
+  const qualifying = [...state.candidates.values()].filter((candidate) => {
+    const nameScore = mergedScore(candidate).doesNameMatch?.value;
+    return (
+      (nameScore === 0 || nameScore === MIDDLE_NAME_ONLY_CONFLICT_SCORE) &&
       mergedScore(candidate).hasComparableContactData?.pass !== false &&
       isExactLastNameMatch(
         state.sourceNormalized.lastNameUnreduced ?? state.sourceRaw.lastName ?? '',
         candidate.camsRaw.lastName ?? '',
-      ),
-  );
+      )
+    );
+  });
   if (qualifying.length !== 1) return undefined;
 
   const candidate = qualifying[0];
@@ -2277,7 +2304,8 @@ function shareFirstInitial(acmsFirst: string, camsFirst: string): boolean {
 
 /**
  * The complementary gate to resolveByConsensus: resolves a sole candidate whose lastName matches
- * exactly but whose OVERALL nameScore was 0.
+ * exactly but whose OVERALL nameScore was 0 or MIDDLE_NAME_ONLY_CONFLICT_SCORE (15) - see that
+ * constant's own doc comment for why those are the only two values reachable here.
  *
  * - findSoleZeroNameScoreCandidateWithMatchingLastName's "exactly one qualifies" narrowing is
  *   itself RESOLVE-role reasoning, not a SCORE-stage filter, so it belongs composed into this one
@@ -2287,8 +2315,12 @@ function shareFirstInitial(acmsFirst: string, camsFirst: string): boolean {
  *   every other consensus stage does - a candidate reaching this point still needs INDEPENDENT
  *   evidence beyond the name match to resolve.
  * - Never runs for a candidate resolveByConsensus already covers: that stage's gate is
- *   doesNameMatch.pass===true, this stage's gate is doesNameMatch.value===0 - the two are
- *   mutually exclusive, since calculateNameScore never returns a value strictly between them.
+ *   doesNameMatch.pass===true (nameScore >= 85), this stage's gate is nameScore === 0 or === 15 -
+ *   still mutually exclusive with resolveByConsensus's gate (15 < 85), even though a stale earlier
+ *   version of this comment claimed 0 was the ONLY value pipelineNameScore could return below 85 -
+ *   see MIDDLE_NAME_ONLY_CONFLICT_SCORE's own doc comment for the real, confirmed exception
+ *   (pipelineMiddleNameScore's ACMS-only middle-name-conflict case) that comment never accounted
+ *   for, found via pipeline-replay-backtest.ts against the 2026-09-25 export.
  *
  * SECOND, independent path (added for a real regression shape, name synthesized: ACMS "Nikki
  * [Surname]" vs CAMS "Nichole B. [Surname]" - a genuine nickname pair with real phonetic
