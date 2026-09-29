@@ -936,7 +936,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           // Audit card
           pastAudit: '2025-06-30',
           ch13AuditCompletionYear: 2025,
-          ch13AuditCompletionStatus: 'Complete',
+          ch13AuditCompletionStatus: 'COMPLETE',
           // Trustee Performance Report card
           tprReviewPeriodStart: '2025-04-01',
           tprReviewPeriodEnd: '2025-09-30',

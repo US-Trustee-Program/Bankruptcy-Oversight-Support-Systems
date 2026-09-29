@@ -148,7 +148,7 @@ describe('Chapter13StandingAuditForm', () => {
 
     await screen.findByTestId('past-audit');
 
-    await userEvent.selectOptions(screen.getByTestId('audit-completion-status'), 'Complete');
+    await userEvent.selectOptions(screen.getByTestId('audit-completion-status'), 'COMPLETE');
 
     expect(screen.getByTestId('button-save-chapter13-standing-audit-key-dates')).toBeDisabled();
     expect(screen.getByTestId('audit-completion-error')).toHaveTextContent('');
@@ -171,7 +171,7 @@ describe('Chapter13StandingAuditForm', () => {
     await screen.findByTestId('past-audit');
 
     await userEvent.selectOptions(screen.getByTestId('audit-completion-year'), '2026');
-    await userEvent.selectOptions(screen.getByTestId('audit-completion-status'), 'Complete');
+    await userEvent.selectOptions(screen.getByTestId('audit-completion-status'), 'COMPLETE');
 
     const saveButton = screen.getByTestId('button-save-chapter13-standing-audit-key-dates');
     expect(saveButton).not.toBeDisabled();
@@ -184,7 +184,7 @@ describe('Chapter13StandingAuditForm', () => {
         expect.objectContaining({
           pastAudit: '2025-06-30',
           ch13AuditCompletionYear: 2026,
-          ch13AuditCompletionStatus: 'Complete',
+          ch13AuditCompletionStatus: 'COMPLETE',
           leaseExpiration: '2027-06-30',
           tprFrequency: 'ANNUAL',
         }),
@@ -223,7 +223,7 @@ describe('Chapter13StandingAuditForm', () => {
     await screen.findByTestId('past-audit');
 
     await userEvent.selectOptions(screen.getByTestId('audit-completion-year'), '2026');
-    await userEvent.selectOptions(screen.getByTestId('audit-completion-status'), 'Complete');
+    await userEvent.selectOptions(screen.getByTestId('audit-completion-status'), 'COMPLETE');
 
     expect(screen.getByTestId('button-save-chapter13-standing-audit-key-dates')).toBeDisabled();
   });
@@ -236,7 +236,7 @@ describe('Chapter13StandingAuditForm', () => {
     await screen.findByTestId('past-audit');
 
     await userEvent.selectOptions(screen.getByTestId('audit-completion-year'), '2026');
-    await userEvent.selectOptions(screen.getByTestId('audit-completion-status'), 'Complete');
+    await userEvent.selectOptions(screen.getByTestId('audit-completion-status'), 'COMPLETE');
     await userEvent.click(screen.getByTestId('button-save-chapter13-standing-audit-key-dates'));
 
     await waitFor(() => {

@@ -26,7 +26,7 @@ export default function Chapter13StandingAuditCard(
   const tag = buildCompletionTag(
     data?.ch13AuditCompletionYear,
     data?.ch13AuditCompletionStatus,
-    'Complete',
+    'COMPLETE',
     `audit-completion-status-${appointmentId}`,
     { closed: 'Closed', notClosed: 'Not Closed' },
   );

@@ -80,7 +80,7 @@ type FormState = {
   bondIssuedDate: string;
   bondRenewalDate: string;
   ch13AuditCompletionYear: number | null;
-  ch13AuditCompletionStatus: 'Complete' | 'Incomplete' | '';
+  ch13AuditCompletionStatus: 'COMPLETE' | 'INCOMPLETE' | '';
 };
 
 const EMPTY_FORM: FormState = {

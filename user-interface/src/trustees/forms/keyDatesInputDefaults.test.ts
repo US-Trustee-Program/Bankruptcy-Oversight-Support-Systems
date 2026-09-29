@@ -55,7 +55,7 @@ describe('buildKeyDatesInputFromOriginal', () => {
     tirCompletionYear: 2022,
     tirCompletionStatus: 'INCOMPLETE',
     ch13AuditCompletionYear: 2026,
-    ch13AuditCompletionStatus: 'Complete',
+    ch13AuditCompletionStatus: 'COMPLETE',
   };
 
   test('carries every Chapter 13 Standing-owned field forward from the original document', () => {
@@ -101,7 +101,7 @@ describe('buildKeyDatesInputFromOriginal', () => {
       annualReportCompletionYear: null,
       annualReportCompletionStatus: null,
       ch13AuditCompletionYear: 2026,
-      ch13AuditCompletionStatus: 'Complete',
+      ch13AuditCompletionStatus: 'COMPLETE',
     });
   });
 

@@ -720,7 +720,7 @@ describe('validateTrusteeUpcomingKeyDates', () => {
     const result = validateTrusteeUpcomingKeyDates({
       ...baseInput(),
       ch13AuditCompletionYear: null,
-      ch13AuditCompletionStatus: 'Complete',
+      ch13AuditCompletionStatus: 'COMPLETE',
     });
     expect(result.valid).toBeFalsy();
     expect(result.reasonMap?.ch13AuditCompletionYear?.reasons?.[0]).toBe(
@@ -733,7 +733,7 @@ describe('validateTrusteeUpcomingKeyDates', () => {
       validateTrusteeUpcomingKeyDates({
         ...baseInput(),
         ch13AuditCompletionYear: 2026,
-        ch13AuditCompletionStatus: 'Incomplete',
+        ch13AuditCompletionStatus: 'INCOMPLETE',
       }),
     ).toEqual(VALID);
   });
@@ -745,11 +745,11 @@ describe('validateTrusteeUpcomingKeyDates', () => {
     } as unknown as ReturnType<typeof baseInput>);
     expect(result.valid).toBeFalsy();
     expect(result.reasonMap?.ch13AuditCompletionStatus?.reasons?.[0]).toBe(
-      'Audit Completion Status must be one of: Complete, Incomplete.',
+      'Audit Completion Status must be one of: COMPLETE, INCOMPLETE.',
     );
   });
 
-  test.each([['Complete' as const], ['Incomplete' as const]])(
+  test.each([['COMPLETE' as const], ['INCOMPLETE' as const]])(
     'returns VALID when ch13AuditCompletionStatus is %s',
     (value) => {
       expect(
@@ -769,7 +769,7 @@ describe('validateTrusteeUpcomingKeyDates', () => {
         validateTrusteeUpcomingKeyDates({
           ...baseInput(),
           ch13AuditCompletionYear: year,
-          ch13AuditCompletionStatus: 'Complete',
+          ch13AuditCompletionStatus: 'COMPLETE',
         }),
       ).toEqual(VALID);
     },
@@ -783,7 +783,7 @@ describe('validateTrusteeUpcomingKeyDates', () => {
     const result = validateTrusteeUpcomingKeyDates({
       ...baseInput(),
       ch13AuditCompletionYear: year,
-      ch13AuditCompletionStatus: 'Complete',
+      ch13AuditCompletionStatus: 'COMPLETE',
     });
     expect(result.valid).toBeFalsy();
     expect(result.reasonMap?.ch13AuditCompletionYear?.reasons?.[0]).toBe(
@@ -795,7 +795,7 @@ describe('validateTrusteeUpcomingKeyDates', () => {
     const result = validateTrusteeUpcomingKeyDates({
       ...baseInput(),
       ch13AuditCompletionYear: 'garbage',
-      ch13AuditCompletionStatus: 'Complete',
+      ch13AuditCompletionStatus: 'COMPLETE',
     } as unknown as ReturnType<typeof baseInput>);
     expect(result.valid).toBeFalsy();
     expect(result.reasonMap?.ch13AuditCompletionYear?.reasons?.[0]).toBe(

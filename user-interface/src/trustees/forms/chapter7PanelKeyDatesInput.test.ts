@@ -49,7 +49,7 @@ const fullOriginal: TrusteeUpcomingKeyDates = {
   bondIssuedDate: '2020-01-20',
   bondRenewalDate: '2020-01-21',
   ch13AuditCompletionYear: 2025,
-  ch13AuditCompletionStatus: 'Complete',
+  ch13AuditCompletionStatus: 'COMPLETE',
 };
 
 describe('mergeKeyDatesInput', () => {
@@ -96,7 +96,7 @@ describe('mergeKeyDatesInput', () => {
       annualReportCompletionYear: null,
       annualReportCompletionStatus: null,
       ch13AuditCompletionYear: 2025,
-      ch13AuditCompletionStatus: 'Complete',
+      ch13AuditCompletionStatus: 'COMPLETE',
     });
   });
 

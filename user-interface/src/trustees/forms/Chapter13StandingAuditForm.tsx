@@ -2,7 +2,7 @@ import './Chapter13StandingAuditForm.scss';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
-  Ch13CompletionStatus,
+  CompletionStatus,
   TrusteeUpcomingKeyDates,
   TrusteeUpcomingKeyDatesInput,
 } from '@common/cams/trustee-upcoming-key-dates';
@@ -20,7 +20,7 @@ import CompletionStatusYearSelect from './CompletionStatusYearSelect';
 type FormState = {
   pastAudit: string;
   ch13AuditCompletionYear: number | '';
-  ch13AuditCompletionStatus: Ch13CompletionStatus | '';
+  ch13AuditCompletionStatus: CompletionStatus | '';
 };
 
 const EMPTY_FORM: FormState = {

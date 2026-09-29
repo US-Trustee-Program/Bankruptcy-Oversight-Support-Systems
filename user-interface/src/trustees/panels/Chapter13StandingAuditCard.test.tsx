@@ -80,7 +80,7 @@ describe('Chapter13StandingAuditCard', () => {
 
   test.each([
     ['ch13AuditCompletionYear only', { ch13AuditCompletionYear: 2026 }],
-    ['ch13AuditCompletionStatus only', { ch13AuditCompletionStatus: 'Complete' as const }],
+    ['ch13AuditCompletionStatus only', { ch13AuditCompletionStatus: 'COMPLETE' as const }],
   ])('renders no completion-status tag when only %s is set', (_label, partialData) => {
     renderComponent({ data: { ...baseDocument, ...partialData } });
     expect(
@@ -93,7 +93,7 @@ describe('Chapter13StandingAuditCard', () => {
       data: {
         ...baseDocument,
         ch13AuditCompletionYear: 2026,
-        ch13AuditCompletionStatus: 'Complete',
+        ch13AuditCompletionStatus: 'COMPLETE',
       },
     });
     expect(screen.getByTestId('tag-audit-completion-status-appointment-001')).toHaveTextContent(
@@ -106,7 +106,7 @@ describe('Chapter13StandingAuditCard', () => {
       data: {
         ...baseDocument,
         ch13AuditCompletionYear: 2026,
-        ch13AuditCompletionStatus: 'Incomplete',
+        ch13AuditCompletionStatus: 'INCOMPLETE',
       },
     });
     expect(screen.getByTestId('tag-audit-completion-status-appointment-001')).toHaveTextContent(

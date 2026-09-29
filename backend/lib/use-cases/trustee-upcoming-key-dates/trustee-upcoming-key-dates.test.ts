@@ -228,7 +228,7 @@ describe('TrusteeUpcomingKeyDatesUseCase', () => {
       ['tprFrequency', 'ANNUAL'],
       ['auditCompletionYear', 2026],
       ['ch13AuditCompletionYear', 2026],
-      ['ch13AuditCompletionStatus', 'Complete'],
+      ['ch13AuditCompletionStatus', 'COMPLETE'],
     ])('saves %s when set', async (field, value) => {
       vi.spyOn(MockMongoRepository.prototype, 'getByAppointmentId').mockResolvedValue(null);
       const upsertSpy = vi

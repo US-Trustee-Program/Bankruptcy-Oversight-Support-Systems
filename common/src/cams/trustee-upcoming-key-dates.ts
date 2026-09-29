@@ -129,7 +129,6 @@ function requireChronologicalOrder(
   };
 }
 
-const CH13_COMPLETION_STATUS_VALUES = ['Complete', 'Incomplete'] as const;
 const CH13_MIN_COMPLETION_YEAR = 1900;
 const CH13_MAX_COMPLETION_YEAR = 2100;
 
@@ -318,7 +317,7 @@ const trusteeUpcomingKeyDatesSpec: ValidationSpec<TrusteeUpcomingKeyDatesInput> 
     ),
     requireValidEnum(
       'ch13AuditCompletionStatus',
-      CH13_COMPLETION_STATUS_VALUES,
+      ['COMPLETE', 'INCOMPLETE'],
       'Audit Completion Status',
     ),
   ],
@@ -372,7 +371,6 @@ export function validateCompletionPairPresence(
  * completion year.
  */
 export type CompletionStatus = 'COMPLETE' | 'INCOMPLETE';
-export type Ch13CompletionStatus = 'Complete' | 'Incomplete';
 
 /**
  * Validates chronological order for the TPR review period start/end pair,
@@ -450,7 +448,7 @@ export type TrusteeUpcomingKeyDates = Auditable &
     bondIssuedDate?: string;
     bondRenewalDate?: string;
     ch13AuditCompletionYear?: number;
-    ch13AuditCompletionStatus?: Ch13CompletionStatus;
+    ch13AuditCompletionStatus?: CompletionStatus;
   };
 
 export type TrusteeUpcomingKeyDatesInput = {
@@ -493,7 +491,7 @@ export type TrusteeUpcomingKeyDatesInput = {
   bondIssuedDate: string | null;
   bondRenewalDate: string | null;
   ch13AuditCompletionYear: number | null;
-  ch13AuditCompletionStatus: Ch13CompletionStatus | null;
+  ch13AuditCompletionStatus: CompletionStatus | null;
 };
 
 export type TrusteeUpcomingKeyDatesHistory = AbstractTrusteeHistory<

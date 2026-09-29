@@ -1,12 +1,12 @@
 import {
-  Ch13CompletionStatus,
+  CompletionStatus as SharedCompletionStatus,
   validateCompletionPairPresence,
 } from '@common/cams/trustee-upcoming-key-dates';
 import Select from '@/lib/components/uswds/Select';
 import PairFieldGroup from './PairFieldGroup';
 import { getCompletionYearOptions } from './keyDatesInputDefaults';
 
-type CompletionStatus = Ch13CompletionStatus | '';
+type CompletionStatus = SharedCompletionStatus | '';
 
 interface CompletionStatusYearSelectLabels {
   complete: string;
@@ -28,7 +28,7 @@ export interface CompletionStatusYearSelectProps {
   onStatusChange: (status: CompletionStatus) => void;
   /** Label the pair error is phrased around, e.g. 'Audit Completion Status'. */
   errorLabel: string;
-  /** Overrides the Status dropdown's displayed labels without changing the stored 'Complete'/'Incomplete' values. */
+  /** Overrides the Status dropdown's displayed labels without changing the stored 'COMPLETE'/'INCOMPLETE' values. */
   statusLabels?: CompletionStatusYearSelectLabels;
 }
 
@@ -82,8 +82,8 @@ export default function CompletionStatusYearSelect(
             ariaDescribedBy={ariaDescribedBy}
             placeholder="- Select -"
             options={[
-              { value: 'Complete', label: statusLabels.complete },
-              { value: 'Incomplete', label: statusLabels.incomplete },
+              { value: 'COMPLETE', label: statusLabels.complete },
+              { value: 'INCOMPLETE', label: statusLabels.incomplete },
             ]}
             value={status}
             onChange={(e) => onStatusChange(e.target.value as CompletionStatus)}

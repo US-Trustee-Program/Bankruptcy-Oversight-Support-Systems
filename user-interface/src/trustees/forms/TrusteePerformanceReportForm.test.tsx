@@ -875,7 +875,7 @@ describe('buildTrusteePerformanceReportKeyDatesInput', () => {
     bondIssuedDate: '2020-01-20',
     bondRenewalDate: '2020-01-21',
     ch13AuditCompletionYear: 2021,
-    ch13AuditCompletionStatus: 'Complete',
+    ch13AuditCompletionStatus: 'COMPLETE',
   };
 
   test('preserves every non-owned field from the original document and overrides only this card fields', () => {
@@ -934,7 +934,7 @@ describe('buildTrusteePerformanceReportKeyDatesInput', () => {
       bondIssuedDate: '2020-01-20',
       bondRenewalDate: '2020-01-21',
       ch13AuditCompletionYear: 2021,
-      ch13AuditCompletionStatus: 'Complete',
+      ch13AuditCompletionStatus: 'COMPLETE',
     });
   });
 
