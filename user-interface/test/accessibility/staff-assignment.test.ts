@@ -12,8 +12,8 @@ test.describe('Staff Assignment', () => {
     await expect(page.locator('[data-testid="open-modal-button_0"]')).toBeVisible();
 
     await page.locator('[data-testid="open-modal-button_0"]').click();
+    await expect(page.getByRole('dialog')).toBeVisible();
 
-    await page.waitForLoadState('networkidle');
     const accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
   });
