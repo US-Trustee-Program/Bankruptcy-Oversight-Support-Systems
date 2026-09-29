@@ -4018,6 +4018,56 @@ describe('resolveByLastNameOnlyConsensus', () => {
     });
   });
 
+  // Real regression, root-caused via pipeline-replay-backtest.ts against the 2026-09-25 export: a
+  // candidate whose first AND last name both match, but whose two middle initials genuinely
+  // disagree (pipelineMiddleNameScore's own 15-point conflict, not scoreMiddleNamePart's - see
+  // MIDDLE_NAME_ONLY_CONFLICT_SCORE's own doc comment), previously fell into a dead zone no
+  // resolver covered - too high to reach this stage's old exact-0 gate, too low to clear
+  // doesNameMatch.pass (>= 85) for resolveBySoleContactMatch/resolveByConsensus. 33 real records
+  // had exactly this shape, several with independent address/phone corroboration the pipeline
+  // never got to check.
+  test('resolves a sole exact-lastName candidate whose nameScore was capped at 15 by a genuine middle-initial conflict, given corroboration', async () => {
+    const state = createInitialState(acmsGeoffRoeburn);
+    const candidate = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', firstName: 'Geoff', lastName: 'Roeburn' })),
+      'test',
+    );
+    addScore(candidate, 'doesNameMatch', { value: 15, threshold: 85, pass: false });
+    addScore(candidate, 'isStateNotConflicting', { value: 100, threshold: 100, pass: true });
+    addScore(candidate, 'doesStateMatch', { value: 100, threshold: 100, pass: true });
+    addScore(candidate, 'doesCityMatch', { value: 100, threshold: 100, pass: true });
+
+    const result = await resolveByLastNameOnlyConsensus()(state);
+
+    expect(mergedScore(candidate)).toMatchObject({ doesFuzzyFirstNameMatch: { pass: true } });
+    expect(result.match).toEqual({
+      trusteeId: 't1',
+      score: expect.objectContaining({
+        resolveByLastNameOnlyConsensus: expect.objectContaining({ pass: true }),
+      }),
+      resolvedBy: 'resolveByLastNameOnlyConsensus',
+    });
+  });
+
+  test('leaves state.match null for a nameScore=15 candidate without independent corroboration', async () => {
+    const state = createInitialState(acmsGeoffRoeburn);
+    const candidate = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', firstName: 'Geoff', lastName: 'Roeburn' })),
+      'test',
+    );
+    addScore(candidate, 'doesNameMatch', { value: 15, threshold: 85, pass: false });
+    addScore(candidate, 'isStateNotConflicting', { value: 0, threshold: 100, pass: false });
+    addScore(candidate, 'doesCityMatch', { value: 0, threshold: 100, pass: false });
+    addScore(candidate, 'doesZipCodeMatch', { value: 0, threshold: 100, pass: false });
+
+    const result = await resolveByLastNameOnlyConsensus()(state);
+
+    expect(mergedScore(candidate)).toMatchObject({ doesFuzzyFirstNameMatch: { pass: true } });
+    expect(result.match).toBeNull();
+  });
+
   test('records a failing fuzzy first-name vote and does not resolve when the first name is not plausibly related', async () => {
     const state = createInitialState(
       makeDxtrTrustee({ fullName: 'Harry Wardell', firstName: 'Harry', lastName: 'Wardell' }),
