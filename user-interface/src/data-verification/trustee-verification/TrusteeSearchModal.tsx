@@ -132,6 +132,11 @@ function TrusteeSearchModal_(
 
   function handleSelection(options: ComboOption[]) {
     if (options.length > 0) {
+      // ComboBox only ever emits a value drawn from the options list this component itself
+      // gave it (comboOptions, built from searchResults), so `selected` should never
+      // actually be undefined here in practice. The `?? null` is a defensive fallback for
+      // that "shouldn't happen" case (e.g. searchResults changing between render and this
+      // callback firing) rather than a reachable behavior to drive from a test.
       const selected = searchResults.find((r) => r.trusteeId === options[0].value);
       setSelectedTrustee(selected ?? null);
     } else {

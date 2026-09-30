@@ -25,12 +25,13 @@ describe('TrusteeAppointmentsUseCase tests', () => {
 
   describe('getTrusteeAppointments', () => {
     beforeEach(async () => {
+      vi.restoreAllMocks();
+      // Re-established here because this describe's own vi.restoreAllMocks() above wipes
+      // the outer default (see the top-level beforeEach) before this describe's own
+      // beforeEach finishes running.
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([]);
       context = await createMockApplicationContext();
       trusteeAppointmentsUseCase = new TrusteeAppointmentsUseCase(context);
-    });
-
-    afterEach(() => {
-      vi.restoreAllMocks();
     });
 
     test('should return list of appointments for a trustee', async () => {
@@ -115,12 +116,13 @@ describe('TrusteeAppointmentsUseCase tests', () => {
     };
 
     beforeEach(async () => {
+      vi.restoreAllMocks();
+      // Re-established here because this describe's own vi.restoreAllMocks() above wipes
+      // the outer default (see the top-level beforeEach) before this describe's own
+      // beforeEach finishes running.
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([]);
       context = await createMockApplicationContext();
       trusteeAppointmentsUseCase = new TrusteeAppointmentsUseCase(context);
-    });
-
-    afterEach(() => {
-      vi.restoreAllMocks();
     });
 
     test('should create a new appointment for a trustee', async () => {
@@ -136,7 +138,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         mockCreatedAppointment,
       );
       vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
-      vi.spyOn(trusteeAppointmentsUseCase['courtsUseCase'], 'getCourts').mockResolvedValue([]);
+      vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([]);
 
       const result = await trusteeAppointmentsUseCase.createAppointment(
         context,
@@ -204,99 +206,55 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         mockCreatedAppointment,
       );
       vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
-      vi.spyOn(trusteeAppointmentsUseCase['courtsUseCase'], 'getCourts').mockResolvedValue([]);
+      vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([]);
 
       await trusteeAppointmentsUseCase.createAppointment(context, trusteeId, appointmentInput);
 
+      // Pins the module tag and that the created appointment's id is referenced, not the
+      // exact wording -- a copy-edit to the log line shouldn't break this test.
       expect(logSpy).toHaveBeenCalledWith(
         'TRUSTEE-APPOINTMENTS-USE-CASE',
-        `Created appointment ${mockCreatedAppointment.id} for trustee ${trusteeId}`,
+        expect.stringContaining(mockCreatedAppointment.id),
       );
     });
 
-    test('should throw error when appointmentType is invalid for chapter', async () => {
-      const trusteeId = 'trustee-123';
-      const mockTrustee = MockData.getTrustee({ trusteeId });
-      const invalidAppointmentInput: TrusteeAppointmentInput = {
-        chapter: '7',
+    test.each([
+      {
+        name: 'appointmentType invalid for chapter',
         appointmentType: 'standing' as unknown as AppointmentType,
-        courtId: '081',
-        divisionCode: '1',
-        appointedDate: '2024-01-15',
-        status: 'active',
-        effectiveDate: '2024-01-15T00:00:00.000Z',
-      };
-
-      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
-
-      const actualError = await getTheThrownError(() =>
-        trusteeAppointmentsUseCase.createAppointment(context, trusteeId, invalidAppointmentInput),
-      );
-
-      expect(actualError.isCamsError).toBe(true);
-      expect(actualError.message).toContain(
-        'Appointment type "standing" is not valid for chapter 7',
-      );
-    });
-
-    test('should throw error when status is invalid for chapter and appointmentType', async () => {
-      const trusteeId = 'trustee-123';
-      const mockTrustee = MockData.getTrustee({ trusteeId });
-      const invalidAppointmentInput: TrusteeAppointmentInput = {
-        chapter: '7',
-        appointmentType: 'panel',
-        courtId: '081',
-        divisionCode: '1',
-        appointedDate: '2024-01-15',
-        status: 'deceased',
-        effectiveDate: '2024-01-15T00:00:00.000Z',
-      };
-
-      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
-
-      const actualError = await getTheThrownError(() =>
-        trusteeAppointmentsUseCase.createAppointment(context, trusteeId, invalidAppointmentInput),
-      );
-
-      expect(actualError.isCamsError).toBe(true);
-      expect(actualError.message).toContain(
-        'Status "deceased" is not valid for chapter 7 with appointment type "panel"',
-      );
-    });
-
-    test('should throw error when appointmentType is pool for Chapter 7', async () => {
-      const trusteeId = 'trustee-123';
-      const mockTrustee = MockData.getTrustee({ trusteeId });
-      const invalidAppointmentInput: TrusteeAppointmentInput = {
-        chapter: '7',
+        status: 'active' as const,
+        expectedMessage: 'Appointment type "standing" is not valid for chapter 7',
+      },
+      {
+        name: 'status invalid for chapter and appointmentType',
+        appointmentType: 'panel' as const,
+        status: 'deceased' as const,
+        expectedMessage:
+          'Status "deceased" is not valid for chapter 7 with appointment type "panel"',
+      },
+      {
+        name: 'appointmentType pool for Chapter 7',
         appointmentType: 'pool' as unknown as AppointmentType,
-        courtId: '081',
-        divisionCode: '1',
-        appointedDate: '2024-01-15',
-        status: 'active',
-        effectiveDate: '2024-01-15T00:00:00.000Z',
-      };
-
-      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
-
-      const actualError = await getTheThrownError(() =>
-        trusteeAppointmentsUseCase.createAppointment(context, trusteeId, invalidAppointmentInput),
-      );
-
-      expect(actualError.isCamsError).toBe(true);
-      expect(actualError.message).toContain('Appointment type "pool" is not valid for chapter 7');
-    });
-
-    test('should throw error when status is active for Chapter 7 off-panel', async () => {
+        status: 'active' as const,
+        expectedMessage: 'Appointment type "pool" is not valid for chapter 7',
+      },
+      {
+        name: 'status active for Chapter 7 off-panel',
+        appointmentType: 'off-panel' as const,
+        status: 'active' as const,
+        expectedMessage:
+          'Status "active" is not valid for chapter 7 with appointment type "off-panel"',
+      },
+    ])('should throw error when $name', async ({ appointmentType, status, expectedMessage }) => {
       const trusteeId = 'trustee-123';
       const mockTrustee = MockData.getTrustee({ trusteeId });
       const invalidAppointmentInput: TrusteeAppointmentInput = {
         chapter: '7',
-        appointmentType: 'off-panel',
+        appointmentType,
         courtId: '081',
         divisionCode: '1',
         appointedDate: '2024-01-15',
-        status: 'active',
+        status,
         effectiveDate: '2024-01-15T00:00:00.000Z',
       };
 
@@ -307,9 +265,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       );
 
       expect(actualError.isCamsError).toBe(true);
-      expect(actualError.message).toContain(
-        'Status "active" is not valid for chapter 7 with appointment type "off-panel"',
-      );
+      expect(actualError.message).toContain(expectedMessage);
     });
   });
 
@@ -327,12 +283,13 @@ describe('TrusteeAppointmentsUseCase tests', () => {
     };
 
     beforeEach(async () => {
+      vi.restoreAllMocks();
+      // Re-established here because this describe's own vi.restoreAllMocks() above wipes
+      // the outer default (see the top-level beforeEach) before this describe's own
+      // beforeEach finishes running.
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([]);
       context = await createMockApplicationContext();
       trusteeAppointmentsUseCase = new TrusteeAppointmentsUseCase(context);
-    });
-
-    afterEach(() => {
-      vi.restoreAllMocks();
     });
 
     test('should update an appointment successfully', async () => {
@@ -350,7 +307,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         mockUpdatedAppointment,
       );
       vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
-      vi.spyOn(trusteeAppointmentsUseCase['courtsUseCase'], 'getCourts').mockResolvedValue([]);
+      vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([]);
 
       const result = await trusteeAppointmentsUseCase.updateAppointment(
         context,
@@ -374,12 +331,13 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       );
     });
 
-    test('should throw error when appointment does not exist', async () => {
+    test('should wrap a repository error raised while reading the existing appointment', async () => {
+      // updateAppointment reads the existing appointment (for the before/after diff) before
+      // it ever reaches repo.updateAppointment -- this exercises that earlier failure path,
+      // distinct from the case below where the read succeeds but the write fails.
       const repositoryError = new Error('Trustee appointment not found');
 
-      vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockRejectedValue(
-        repositoryError,
-      );
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(repositoryError);
 
       const actualError = await getTheThrownError(() =>
         trusteeAppointmentsUseCase.updateAppointment(
@@ -399,9 +357,14 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       ]);
     });
 
-    test('should handle repository error during update', async () => {
+    test('should wrap a repository error raised while writing the update', async () => {
+      const mockExistingAppointment = MockData.getTrusteeAppointment({
+        id: appointmentId,
+        trusteeId,
+      });
       const repositoryError = new Error('Database error');
 
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockExistingAppointment);
       vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockRejectedValue(
         repositoryError,
       );
@@ -434,7 +397,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         mockUpdatedAppointment,
       );
       vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
-      vi.spyOn(trusteeAppointmentsUseCase['courtsUseCase'], 'getCourts').mockResolvedValue([]);
+      vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([]);
 
       await trusteeAppointmentsUseCase.updateAppointment(
         context,
@@ -443,9 +406,10 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         appointmentUpdate,
       );
 
+      // Pins the module tag and that the appointment id is referenced, not the exact wording.
       expect(logSpy).toHaveBeenCalledWith(
         'TRUSTEE-APPOINTMENTS-USE-CASE',
-        `Updated appointment ${appointmentId}`,
+        expect.stringContaining(appointmentId),
       );
     });
 
@@ -507,9 +471,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(
         mockUpdatedAppointment,
       );
-      vi.spyOn(trusteeAppointmentsUseCase['courtsUseCase'], 'getCourts').mockResolvedValue(
-        mockCourts,
-      );
+      vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue(mockCourts);
 
       await trusteeAppointmentsUseCase.updateAppointment(
         context,
@@ -555,7 +517,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(
         unchangedAppointment,
       );
-      vi.spyOn(trusteeAppointmentsUseCase['courtsUseCase'], 'getCourts').mockResolvedValue([]);
+      vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([]);
 
       await trusteeAppointmentsUseCase.updateAppointment(
         context,
@@ -567,121 +529,74 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       expect(historyUpdateSpy).not.toHaveBeenCalled();
     });
 
-    test('should throw error when appointmentType is invalid for chapter', async () => {
-      const invalidAppointmentUpdate: TrusteeAppointmentInput = {
-        chapter: '7',
+    test.each([
+      {
+        name: 'appointmentType invalid for chapter',
+        chapter: '7' as const,
         appointmentType: 'standing' as unknown as AppointmentType,
-        courtId: '081',
-        divisionCode: '1',
-        appointedDate: '2024-01-15',
-        status: 'active',
-        effectiveDate: '2024-01-15T00:00:00.000Z',
-      };
-
-      const actualError = await getTheThrownError(() =>
-        trusteeAppointmentsUseCase.updateAppointment(
-          context,
-          trusteeId,
-          appointmentId,
-          invalidAppointmentUpdate,
-        ),
-      );
-
-      expect(actualError.isCamsError).toBe(true);
-      expect(actualError.message).toContain(
-        'Appointment type "standing" is not valid for chapter 7',
-      );
-    });
-
-    test('should throw error when status is invalid for chapter and appointmentType', async () => {
-      const invalidAppointmentUpdate: TrusteeAppointmentInput = {
-        chapter: '7',
-        appointmentType: 'panel',
-        courtId: '081',
-        divisionCode: '1',
-        appointedDate: '2024-01-15',
-        status: 'deceased',
-        effectiveDate: '2024-01-15T00:00:00.000Z',
-      };
-
-      const actualError = await getTheThrownError(() =>
-        trusteeAppointmentsUseCase.updateAppointment(
-          context,
-          trusteeId,
-          appointmentId,
-          invalidAppointmentUpdate,
-        ),
-      );
-
-      expect(actualError.isCamsError).toBe(true);
-      expect(actualError.message).toContain(
-        'Status "deceased" is not valid for chapter 7 with appointment type "panel"',
-      );
-    });
-
-    test('should throw error when updating to pool appointmentType for Chapter 7', async () => {
-      const invalidAppointmentUpdate: TrusteeAppointmentInput = {
-        chapter: '7',
+        status: 'active' as const,
+        expectedMessage: 'Appointment type "standing" is not valid for chapter 7',
+      },
+      {
+        name: 'status invalid for chapter and appointmentType',
+        chapter: '7' as const,
+        appointmentType: 'panel' as const,
+        status: 'deceased' as const,
+        expectedMessage:
+          'Status "deceased" is not valid for chapter 7 with appointment type "panel"',
+      },
+      {
+        name: 'updating to pool appointmentType for Chapter 7',
+        chapter: '7' as const,
         appointmentType: 'pool' as unknown as AppointmentType,
-        courtId: '081',
-        divisionCode: '1',
-        appointedDate: '2024-01-15',
-        status: 'active',
-        effectiveDate: '2024-01-15T00:00:00.000Z',
-      };
+        status: 'active' as const,
+        expectedMessage: 'Appointment type "pool" is not valid for chapter 7',
+      },
+      {
+        name: 'updating status to deceased for Chapter 11 Subchapter V pool',
+        chapter: '11-subchapter-v' as const,
+        appointmentType: 'pool' as const,
+        status: 'deceased' as const,
+        expectedMessage:
+          'Status "deceased" is not valid for chapter 11-subchapter-v with appointment type "pool"',
+      },
+    ])(
+      'should throw error when $name',
+      async ({ chapter, appointmentType, status, expectedMessage }) => {
+        const invalidAppointmentUpdate: TrusteeAppointmentInput = {
+          chapter,
+          appointmentType,
+          courtId: '081',
+          divisionCode: '1',
+          appointedDate: '2024-01-15',
+          status,
+          effectiveDate: '2024-01-15T00:00:00.000Z',
+        };
 
-      const actualError = await getTheThrownError(() =>
-        trusteeAppointmentsUseCase.updateAppointment(
-          context,
-          trusteeId,
-          appointmentId,
-          invalidAppointmentUpdate,
-        ),
-      );
+        const actualError = await getTheThrownError(() =>
+          trusteeAppointmentsUseCase.updateAppointment(
+            context,
+            trusteeId,
+            appointmentId,
+            invalidAppointmentUpdate,
+          ),
+        );
 
-      expect(actualError.isCamsError).toBe(true);
-      expect(actualError.message).toContain('Appointment type "pool" is not valid for chapter 7');
-    });
-
-    test('should throw error when updating status to deceased for Chapter 11 Subchapter V pool', async () => {
-      const invalidAppointmentUpdate: TrusteeAppointmentInput = {
-        chapter: '11-subchapter-v',
-        appointmentType: 'pool',
-        courtId: '081',
-        divisionCode: '1',
-        appointedDate: '2024-01-15',
-        status: 'deceased',
-        effectiveDate: '2024-01-15T00:00:00.000Z',
-      };
-
-      const actualError = await getTheThrownError(() =>
-        trusteeAppointmentsUseCase.updateAppointment(
-          context,
-          trusteeId,
-          appointmentId,
-          invalidAppointmentUpdate,
-        ),
-      );
-
-      expect(actualError.isCamsError).toBe(true);
-      expect(actualError.message).toContain(
-        'Status "deceased" is not valid for chapter 11-subchapter-v with appointment type "pool"',
-      );
-    });
+        expect(actualError.isCamsError).toBe(true);
+        expect(actualError.message).toContain(expectedMessage);
+      },
+    );
   });
 
   describe('merge enforcement', () => {
     const trusteeId = 'trustee-merge-test';
 
     beforeEach(async () => {
+      vi.restoreAllMocks();
       context = await createMockApplicationContext();
       trusteeAppointmentsUseCase = new TrusteeAppointmentsUseCase(context);
       vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
-      vi.spyOn(trusteeAppointmentsUseCase['courtsUseCase'], 'getCourts').mockResolvedValue([]);
-    });
-
-    afterEach(() => {
-      vi.restoreAllMocks();
+      vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([]);
     });
 
     describe('createAppointment', () => {
@@ -981,12 +896,13 @@ describe('TrusteeAppointmentsUseCase tests', () => {
     };
 
     beforeEach(async () => {
+      vi.restoreAllMocks();
+      // Re-established here because this describe's own vi.restoreAllMocks() above wipes
+      // the outer default (see the top-level beforeEach) before this describe's own
+      // beforeEach finishes running.
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([]);
       context = await createMockApplicationContext();
       trusteeAppointmentsUseCase = new TrusteeAppointmentsUseCase(context);
-    });
-
-    afterEach(() => {
-      vi.restoreAllMocks();
     });
 
     test('should create audit history when appointment is created', async () => {
@@ -1018,9 +934,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       vi.spyOn(MockMongoRepository.prototype, 'createAppointment').mockResolvedValue(
         mockCreatedAppointment,
       );
-      vi.spyOn(trusteeAppointmentsUseCase['courtsUseCase'], 'getCourts').mockResolvedValue(
-        mockCourts,
-      );
+      vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue(mockCourts);
 
       await trusteeAppointmentsUseCase.createAppointment(context, trusteeId, appointmentInput);
 
@@ -1045,12 +959,13 @@ describe('TrusteeAppointmentsUseCase tests', () => {
 
   describe('hasAppointmentChanged with divisionCodes', () => {
     beforeEach(async () => {
+      vi.restoreAllMocks();
+      // Re-established here because this describe's own vi.restoreAllMocks() above wipes
+      // the outer default (see the top-level beforeEach) before this describe's own
+      // beforeEach finishes running.
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([]);
       context = await createMockApplicationContext();
       trusteeAppointmentsUseCase = new TrusteeAppointmentsUseCase(context);
-    });
-
-    afterEach(() => {
-      vi.restoreAllMocks();
     });
 
     test('should detect division addition as change', async () => {
@@ -1086,7 +1001,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         .mockResolvedValue();
       vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockExisting);
       vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(mockUpdated);
-      vi.spyOn(trusteeAppointmentsUseCase['courtsUseCase'], 'getCourts').mockResolvedValue([]);
+      vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([]);
 
       await trusteeAppointmentsUseCase.updateAppointment(context, trusteeId, appointmentId, {
         chapter: '7',
@@ -1135,7 +1050,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         .mockResolvedValue();
       vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockExisting);
       vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(mockUpdated);
-      vi.spyOn(trusteeAppointmentsUseCase['courtsUseCase'], 'getCourts').mockResolvedValue([]);
+      vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([]);
 
       await trusteeAppointmentsUseCase.updateAppointment(context, trusteeId, appointmentId, {
         chapter: '7',
@@ -1184,7 +1099,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         .mockResolvedValue();
       vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockExisting);
       vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(mockUpdated);
-      vi.spyOn(trusteeAppointmentsUseCase['courtsUseCase'], 'getCourts').mockResolvedValue([]);
+      vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([]);
 
       await trusteeAppointmentsUseCase.updateAppointment(context, trusteeId, appointmentId, {
         chapter: '7',
@@ -1236,7 +1151,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         .mockResolvedValue();
       vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockExisting);
       vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(mockUpdated);
-      vi.spyOn(trusteeAppointmentsUseCase['courtsUseCase'], 'getCourts').mockResolvedValue([]);
+      vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([]);
 
       await trusteeAppointmentsUseCase.updateAppointment(context, trusteeId, appointmentId, {
         chapter: '7',
@@ -1285,7 +1200,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         .mockResolvedValue();
       vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockExisting);
       vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(mockUpdated);
-      vi.spyOn(trusteeAppointmentsUseCase['courtsUseCase'], 'getCourts').mockResolvedValue([]);
+      vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([]);
 
       await trusteeAppointmentsUseCase.updateAppointment(context, trusteeId, appointmentId, {
         chapter: '7',
@@ -1304,12 +1219,13 @@ describe('TrusteeAppointmentsUseCase tests', () => {
 
   describe('multi-division support', () => {
     beforeEach(async () => {
+      vi.restoreAllMocks();
+      // Re-established here because this describe's own vi.restoreAllMocks() above wipes
+      // the outer default (see the top-level beforeEach) before this describe's own
+      // beforeEach finishes running.
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([]);
       context = await createMockApplicationContext();
       trusteeAppointmentsUseCase = new TrusteeAppointmentsUseCase(context);
-    });
-
-    afterEach(() => {
-      vi.restoreAllMocks();
     });
 
     test('should accept divisionCodes array and normalize to both formats', async () => {

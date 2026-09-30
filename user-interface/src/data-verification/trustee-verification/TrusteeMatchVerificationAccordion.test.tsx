@@ -698,7 +698,12 @@ describe('TrusteeMatchVerificationAccordion', () => {
     });
   });
 
-  test('keeps the confirmation modal open with a spinner while approval is in flight', async () => {
+  test('threads isProcessing=true into the confirmation modal while approval is in flight', async () => {
+    // Scoped to wiring only: does the Accordion set isProcessing=true on the modal while its
+    // own approveTrustee call is pending? The modal's own rendering in response to
+    // isProcessing (spinner text, is-visible/is-hidden CSS classes) is already covered in
+    // isolation by TrusteeMatchConfirmationModal.test.tsx and isn't re-asserted here, so this
+    // test doesn't break on a refactor to that component's internals.
     let resolveApproval: () => void = () => {};
     vi.spyOn(Api2, 'patchTrusteeVerificationOrderApproval').mockImplementation(
       () => new Promise<void>((resolve) => (resolveApproval = () => resolve())),
@@ -712,21 +717,14 @@ describe('TrusteeMatchVerificationAccordion', () => {
     );
     fireEvent.click(modalSubmit!);
 
-    const wrapper = document.getElementById(
-      `trustee-confirmation-modal-${sampleOrderWithCandidates.id}-wrapper`,
-    );
     await waitFor(() => {
-      expect(wrapper).toHaveClass('is-visible');
-      expect(
-        within(wrapper as HTMLElement).getByText('Confirming appointment...'),
-      ).toBeInTheDocument();
       expect(modalSubmit).toBeDisabled();
     });
 
     resolveApproval();
 
     await waitFor(() => {
-      expect(wrapper).toHaveClass('is-hidden');
+      expect(modalSubmit).not.toBeDisabled();
     });
   });
 
@@ -1359,6 +1357,35 @@ describe('TrusteeMatchVerificationAccordion', () => {
           sampleOrder,
         );
       });
+    });
+
+    test('threads the resolved case chapter into the search call for division-aware filtering', async () => {
+      vi.spyOn(Api2, 'getCaseSummary').mockResolvedValue({
+        data: MockData.getCaseSummary({ override: { chapter: '7' } }),
+      });
+      const searchSpy = vi
+        .spyOn(Api2, 'searchTrustees')
+        .mockResolvedValue({ data: manualSearchMockData });
+      renderWithProps();
+
+      await searchAndSelectTrustee();
+
+      const [, , divisionCode, chapter] = searchSpy.mock.calls[0];
+      expect(divisionCode).toBe('081');
+      expect(chapter).toBe('7');
+    });
+
+    test('falls back to district-only filtering (chapter stays undefined) when the case-summary fetch fails', async () => {
+      vi.spyOn(Api2, 'getCaseSummary').mockRejectedValue(new Error('not found'));
+      const searchSpy = vi
+        .spyOn(Api2, 'searchTrustees')
+        .mockResolvedValue({ data: manualSearchMockData });
+      renderWithProps();
+
+      await searchAndSelectTrustee();
+
+      const [, , , chapter] = searchSpy.mock.calls[0];
+      expect(chapter).toBeUndefined();
     });
   });
 

@@ -132,7 +132,12 @@ const validateAppointmentTypeForChapter: ValidatorFunction = (obj: unknown): Val
     return VALID;
   }
 
-  const validAppointmentTypes = chapterAppointmentTypeMap[chapter];
+  // chapter is typed as the closed AppointmentChapterType union, but this validator runs
+  // against untrusted input cast from an HTTP request body -- an unrecognized string value
+  // would make this an undefined lookup. Defaults to an empty list (matching
+  // getStatusOptions' existing guard below) so an out-of-range chapter fails validation
+  // cleanly instead of throwing a TypeError.
+  const validAppointmentTypes = chapterAppointmentTypeMap[chapter] ?? [];
   if (!validAppointmentTypes.includes(appointmentType)) {
     return {
       reasonMap: {
@@ -231,14 +236,14 @@ export function findMergeTarget(
   );
 }
 
-export type MergePayloadResult =
-  | {
-      type: 'merged';
-      targetId: string;
-      payload: TrusteeAppointmentInput;
-      addedDivisionCodes: string[];
-    }
-  | { type: 'created' };
+export type MergedPayloadResult = {
+  type: 'merged';
+  targetId: string;
+  payload: TrusteeAppointmentInput;
+  addedDivisionCodes: string[];
+};
+
+export type MergePayloadResult = MergedPayloadResult | { type: 'created' };
 
 /**
  * Computes the merged payload for a duplicate appointment (union of division codes), or
@@ -248,6 +253,19 @@ export type MergePayloadResult =
  * backend. Frontend callers wrap this to add display names on top; see
  * user-interface/src/trustees/forms/appointmentMergeHelpers.ts.
  */
+// Overloaded so a caller that already knows it has a defined mergeTarget (e.g. inside its own
+// `if (mergeTarget)` check) gets the narrowed MergedPayloadResult type directly, rather than
+// needing a second, structurally-unreachable `if (result.type === 'merged')` check purely to
+// satisfy the discriminated union -- see backend/lib/use-cases/trustee-appointments.ts's
+// createAppointment/updateAppointment for that call pattern.
+export function buildMergePayload(
+  mergeTarget: TrusteeAppointment,
+  payload: TrusteeAppointmentInput,
+): MergedPayloadResult;
+export function buildMergePayload(
+  mergeTarget: TrusteeAppointment | undefined,
+  payload: TrusteeAppointmentInput,
+): MergePayloadResult;
 export function buildMergePayload(
   mergeTarget: TrusteeAppointment | undefined,
   payload: TrusteeAppointmentInput,

@@ -133,6 +133,14 @@ describe('trustee-appointments', () => {
       const result = getStatusOptions('7' as AppointmentChapterType, 'standing' as AppointmentType);
       expect(result).toEqual(['active', 'inactive']);
     });
+
+    test('should return default fallback for an unrecognized chapter, not throw', () => {
+      // AppointmentChapterType is a closed union at compile time, but this runs against
+      // untrusted input cast from an HTTP request body at runtime -- an out-of-range chapter
+      // must fail safely, not throw on an undefined lookup.
+      const result = getStatusOptions('99' as AppointmentChapterType, 'panel');
+      expect(result).toEqual(['active', 'inactive']);
+    });
   });
 
   describe('chapterAppointmentTypeMap', () => {
@@ -208,10 +216,22 @@ describe('trustee-appointments', () => {
           status: 'active',
         };
         const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
-        expect(result.valid).not.toBe(true);
+        expect(result.valid).toBeUndefined();
         expect(result.reasonMap?.$?.reasons).toContain(
           'Appointment type "standing" is not valid for chapter 7',
         );
+      });
+
+      test('should fail validation cleanly (not throw) when chapter is not a recognized value', () => {
+        const appointment: TrusteeAppointmentInput = {
+          ...validAppointment,
+          chapter: '99' as AppointmentChapterType,
+          appointmentType: 'panel',
+          status: 'active',
+        };
+        expect(() => validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment)).not.toThrow();
+        const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
+        expect(result.valid).toBeUndefined();
       });
 
       test('should fail validation when appointmentType pool is used for Chapter 7', () => {
@@ -222,7 +242,7 @@ describe('trustee-appointments', () => {
           status: 'active',
         };
         const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
-        expect(result.valid).not.toBe(true);
+        expect(result.valid).toBeUndefined();
         expect(result.reasonMap?.$?.reasons).toContain(
           'Appointment type "pool" is not valid for chapter 7',
         );
@@ -295,7 +315,7 @@ describe('trustee-appointments', () => {
             status: status as AppointmentStatus,
           };
           const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
-          expect(result.valid).not.toBe(true);
+          expect(result.valid).toBeUndefined();
           expect(result.reasonMap?.$?.reasons).toContain(expectedMessage);
         },
       );
@@ -308,7 +328,7 @@ describe('trustee-appointments', () => {
           status: 'removed',
         };
         const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
-        expect(result.valid).not.toBe(true);
+        expect(result.valid).toBeUndefined();
         expect(result.reasonMap?.$?.reasons).toContain(
           'Status "removed" is not valid for chapter 7 with appointment type "panel"',
         );
@@ -324,7 +344,7 @@ describe('trustee-appointments', () => {
           status: 'removed',
         };
         const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
-        expect(result.valid).not.toBe(true);
+        expect(result.valid).toBeUndefined();
         expect(result.reasonMap?.$?.reasons).toContain(
           'Appointment type "standing" is not valid for chapter 7',
         );
@@ -555,13 +575,14 @@ describe('trustee-appointments', () => {
       expect(findMergeTarget(BASE_COURT_ID, '7', 'panel', [inactive, active])).toBe(active);
     });
 
-    test('excludes a specific appointment id when the caller filters it out first', () => {
-      // findMergeTarget itself has no notion of "the appointment being updated" -- an update
-      // path must filter that appointment out of existingAppointments before calling this,
-      // or it would spuriously match itself. Confirms the function has no built-in exception.
+    test('has no built-in self-exclusion -- a caller must filter out the appointment being updated itself', () => {
+      // findMergeTarget itself has no notion of "the appointment being updated": passed its
+      // own unfiltered active appointment, it matches itself. An update path must exclude
+      // that appointment from existingAppointments before calling this, or it would
+      // spuriously detect a self-duplicate -- this test proves the exclusion is the caller's
+      // responsibility, not something this function does for you.
       const self = makeAppointment({ id: 'self' });
-      const filtered = [self].filter((a) => a.id !== 'self');
-      expect(findMergeTarget(BASE_COURT_ID, '7', 'panel', filtered)).toBeUndefined();
+      expect(findMergeTarget(BASE_COURT_ID, '7', 'panel', [self])).toBe(self);
     });
   });
 

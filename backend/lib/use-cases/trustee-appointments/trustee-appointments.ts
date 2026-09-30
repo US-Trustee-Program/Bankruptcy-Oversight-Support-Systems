@@ -268,20 +268,18 @@ export class TrusteeAppointmentsUseCase {
 
       if (mergeTarget) {
         const merged = buildMergePayload(mergeTarget, normalizedData);
-        if (merged.type === 'merged') {
-          context.logger.info(
-            MODULE_NAME,
-            `Create for trustee ${trusteeId} merged into existing appointment ${mergeTarget.id} instead of creating a new record.`,
-          );
-          return this.performUpdate(
-            context,
-            trusteeId,
-            mergeTarget.id,
-            merged.payload,
-            userReference,
-            mergeTarget,
-          );
-        }
+        context.logger.info(
+          MODULE_NAME,
+          `Create for trustee ${trusteeId} merged into existing appointment ${mergeTarget.id} instead of creating a new record.`,
+        );
+        return await this.performUpdate(
+          context,
+          trusteeId,
+          mergeTarget.id,
+          merged.payload,
+          userReference,
+          mergeTarget,
+        );
       }
 
       const createdAppointment = await this.trusteeAppointmentsRepository.createAppointment(
@@ -375,23 +373,21 @@ export class TrusteeAppointmentsUseCase {
         // identity when one already exists. See this slice's implementation notes for why
         // this contract was chosen over deleting or otherwise mutating the original record.
         const merged = buildMergePayload(mergeTarget, normalizedData);
-        if (merged.type === 'merged') {
-          context.logger.info(
-            MODULE_NAME,
-            `Update to appointment ${appointmentId} for trustee ${trusteeId} redirected: merged into existing appointment ${mergeTarget.id} instead.`,
-          );
-          return this.performUpdate(
-            context,
-            trusteeId,
-            mergeTarget.id,
-            merged.payload,
-            userReference,
-            mergeTarget,
-          );
-        }
+        context.logger.info(
+          MODULE_NAME,
+          `Update to appointment ${appointmentId} for trustee ${trusteeId} redirected: merged into existing appointment ${mergeTarget.id} instead.`,
+        );
+        return await this.performUpdate(
+          context,
+          trusteeId,
+          mergeTarget.id,
+          merged.payload,
+          userReference,
+          mergeTarget,
+        );
       }
 
-      return this.performUpdate(
+      return await this.performUpdate(
         context,
         trusteeId,
         appointmentId,

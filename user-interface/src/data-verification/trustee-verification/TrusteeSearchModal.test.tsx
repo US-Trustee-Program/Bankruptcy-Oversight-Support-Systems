@@ -314,7 +314,11 @@ describe('TrusteeSearchModal', () => {
     expect(searchSpy).not.toHaveBeenCalled();
   });
 
-  test('shows only the trustee name for phonetic matches in dropdown, without a "similar name" label', async () => {
+  test('dropdown lists each search result by name only, regardless of matchType', async () => {
+    // matchType is present on TrusteeSearchResult but is never read by this component --
+    // there is no "(similar name)" or other matchType-driven label anywhere in the dropdown.
+    // This only proves the dropdown renders plain names; it's not evidence of any
+    // matchType-specific behavior, since none exists to test.
     vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: sampleResults });
 
     renderWithProps();
@@ -326,7 +330,6 @@ describe('TrusteeSearchModal', () => {
       const listItems = document.querySelectorAll(`#${comboBoxId}-item-list li`);
       expect(listItems.length).toBe(2);
       expect(listItems[0].textContent).toBe('John Smith');
-      // Second result is a phonetic match — no "(similar name)" suffix
       expect(listItems[1].textContent).toBe('Jane Smithson');
     });
   });
@@ -653,6 +656,39 @@ describe('TrusteeSearchModal', () => {
     await waitFor(() => {
       const details = document.querySelector('.trustee-details');
       expect(details?.textContent).toContain('no-such-court');
+    });
+  });
+
+  test('omits the division parenthetical when the appointment has no courtDivisionName', async () => {
+    const resultWithAppointment: TrusteeSearchResult = {
+      trusteeId: 'trustee-appt',
+      name: 'Appt Trustee',
+      appointments: [
+        {
+          ...MockData.getTrusteeAppointment({ chapter: '7' }),
+          courtId: '0208',
+          courtDivisionName: undefined,
+        },
+      ],
+      matchType: 'exact',
+    };
+    vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: [resultWithAppointment] });
+
+    renderWithProps();
+    act(() => modalRef.current?.show());
+
+    await expandComboBoxAndType('appt');
+
+    await waitFor(() => {
+      expect(screen.getByTestId(`${comboBoxId}-option-item-0`)).toBeVisible();
+    });
+    await userEvent.click(screen.getByTestId(`${comboBoxId}-option-item-0`));
+
+    await waitFor(() => {
+      const details = document.querySelector('.trustee-details');
+      // No "(...)" division suffix anywhere in the appointment line -- just "<court>: Chap ..."
+      expect(details?.textContent).toMatch(/Southern District of New York: Chap/);
+      expect(details?.textContent).not.toMatch(/Southern District of New York \(/);
     });
   });
 

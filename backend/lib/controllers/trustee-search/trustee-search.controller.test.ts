@@ -1,4 +1,4 @@
-import { vi, describe, test, expect, beforeEach, afterEach } from 'vitest';
+import { vi, describe, test, expect, beforeEach } from 'vitest';
 import { TrusteeSearchController } from './trustee-search.controller';
 import { TrusteeSearchUseCase } from '../../use-cases/trustees/trustee-search.use-case';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
@@ -8,6 +8,7 @@ import { TrusteeSearchResult } from '@common/cams/trustee-search';
 
 describe('TrusteeSearchController', () => {
   let context: ApplicationContext;
+  let controller: TrusteeSearchController;
 
   const mockSearchResults: TrusteeSearchResult[] = [
     {
@@ -28,70 +29,45 @@ describe('TrusteeSearchController', () => {
   ];
 
   beforeEach(async () => {
+    vi.restoreAllMocks();
     context = await createMockApplicationContext();
     context.request.method = 'GET';
     context.request.query = { name: 'smith' };
     context.session.user.roles = [CamsRole.DataVerifier];
+    controller = new TrusteeSearchController();
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  test('should return search results for a valid name query', async () => {
+  test.each([
+    {
+      name: 'no filters',
+      query: { name: 'smith' },
+      expectedArgs: ['smith', undefined, undefined, undefined],
+    },
+    {
+      name: 'courtId only',
+      query: { name: 'smith', courtId: '081' },
+      expectedArgs: ['smith', '081', undefined, undefined],
+    },
+    {
+      name: 'courtId, divisionCode, and chapter',
+      query: { name: 'smith', courtId: '081', divisionCode: '081', chapter: '7' },
+      expectedArgs: ['smith', '081', '081', '7'],
+    },
+  ])('passes $name through to searchTrustees', async ({ query, expectedArgs }) => {
+    context.request.query = query;
     vi.spyOn(TrusteeSearchUseCase.prototype, 'searchTrustees').mockResolvedValue(mockSearchResults);
 
-    const controller = new TrusteeSearchController();
     const response = await controller.handleRequest(context);
 
     expect(TrusteeSearchUseCase.prototype.searchTrustees).toHaveBeenCalledWith(
       context,
-      'smith',
-      undefined,
-      undefined,
-      undefined,
-    );
-    expect(response.body.data).toEqual(mockSearchResults);
-  });
-
-  test('should pass courtId to use case when provided', async () => {
-    context.request.query = { name: 'smith', courtId: '081' };
-    vi.spyOn(TrusteeSearchUseCase.prototype, 'searchTrustees').mockResolvedValue(mockSearchResults);
-
-    const controller = new TrusteeSearchController();
-    const response = await controller.handleRequest(context);
-
-    expect(TrusteeSearchUseCase.prototype.searchTrustees).toHaveBeenCalledWith(
-      context,
-      'smith',
-      '081',
-      undefined,
-      undefined,
-    );
-    expect(response.body.data).toEqual(mockSearchResults);
-  });
-
-  test('should pass divisionCode and chapter to use case when provided', async () => {
-    context.request.query = { name: 'smith', courtId: '081', divisionCode: '081', chapter: '7' };
-    vi.spyOn(TrusteeSearchUseCase.prototype, 'searchTrustees').mockResolvedValue(mockSearchResults);
-
-    const controller = new TrusteeSearchController();
-    const response = await controller.handleRequest(context);
-
-    expect(TrusteeSearchUseCase.prototype.searchTrustees).toHaveBeenCalledWith(
-      context,
-      'smith',
-      '081',
-      '081',
-      '7',
+      ...expectedArgs,
     );
     expect(response.body.data).toEqual(mockSearchResults);
   });
 
   test('should return 401 when user does not have DataVerifier role', async () => {
     context.session.user.roles = [];
-
-    const controller = new TrusteeSearchController();
 
     await expect(controller.handleRequest(context)).rejects.toThrow('Unauthorized');
   });
@@ -100,7 +76,6 @@ describe('TrusteeSearchController', () => {
     context.session.user.roles = [CamsRole.TrusteeAdmin];
     vi.spyOn(TrusteeSearchUseCase.prototype, 'searchTrustees').mockResolvedValue(mockSearchResults);
 
-    const controller = new TrusteeSearchController();
     const response = await controller.handleRequest(context);
 
     expect(response.body.data).toEqual(mockSearchResults);
@@ -108,8 +83,6 @@ describe('TrusteeSearchController', () => {
 
   test('should return 400 when name query parameter is missing', async () => {
     context.request.query = {};
-
-    const controller = new TrusteeSearchController();
 
     await expect(controller.handleRequest(context)).rejects.toThrow(
       'Missing required query parameter: name',
@@ -119,8 +92,6 @@ describe('TrusteeSearchController', () => {
   test('should return 400 when name query parameter is too short', async () => {
     context.request.query = { name: 'a' };
 
-    const controller = new TrusteeSearchController();
-
     await expect(controller.handleRequest(context)).rejects.toThrow(
       'Name query must be at least 2 characters',
     );
@@ -129,8 +100,6 @@ describe('TrusteeSearchController', () => {
   test('should throw BadRequestError for unsupported method', async () => {
     context.request.method = 'POST';
 
-    const controller = new TrusteeSearchController();
-
     await expect(controller.handleRequest(context)).rejects.toThrow('Unsupported method.');
   });
 
@@ -138,8 +107,6 @@ describe('TrusteeSearchController', () => {
     vi.spyOn(TrusteeSearchUseCase.prototype, 'searchTrustees').mockRejectedValue(
       new Error('Database failure'),
     );
-
-    const controller = new TrusteeSearchController();
 
     await expect(controller.handleRequest(context)).rejects.toThrow(
       expect.objectContaining({ isCamsError: true }),

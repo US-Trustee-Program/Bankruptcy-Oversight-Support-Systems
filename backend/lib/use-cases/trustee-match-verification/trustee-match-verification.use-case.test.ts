@@ -130,28 +130,31 @@ describe('TrusteeMatchVerificationUseCase', () => {
       vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([]);
     });
 
-    test('defaults to pending status when no statusParam provided', async () => {
-      await useCase.getVerifications(context, {});
+    test.each([
+      {
+        name: 'defaults to pending status when no statusParam provided',
+        statusParam: undefined,
+        expectedStatus: ['pending'],
+      },
+      {
+        name: 'parses comma-separated statuses from statusParam',
+        statusParam: 'pending,approved',
+        expectedStatus: ['pending', 'approved'],
+      },
+      {
+        name: 'filters out rejected from statusParam since it is no longer a valid status',
+        statusParam: 'approved,rejected',
+        expectedStatus: ['approved'],
+      },
+      {
+        name: 'drops rejected but keeps pending and approved when all three are selected (default UI filter state)',
+        statusParam: 'pending,approved,rejected',
+        expectedStatus: ['pending', 'approved'],
+      },
+    ])('$name', async ({ statusParam, expectedStatus }) => {
+      await useCase.getVerifications(context, { statusParam });
 
-      expect(mockSearch).toHaveBeenCalledWith({ status: ['pending'] });
-    });
-
-    test('parses comma-separated statuses from statusParam', async () => {
-      await useCase.getVerifications(context, { statusParam: 'pending,approved' });
-
-      expect(mockSearch).toHaveBeenCalledWith({ status: ['pending', 'approved'] });
-    });
-
-    test('filters out rejected from statusParam since it is no longer a valid status', async () => {
-      await useCase.getVerifications(context, { statusParam: 'approved,rejected' });
-
-      expect(mockSearch).toHaveBeenCalledWith({ status: ['approved'] });
-    });
-
-    test('drops rejected but keeps pending and approved when all three are selected (default UI filter state)', async () => {
-      await useCase.getVerifications(context, { statusParam: 'pending,approved,rejected' });
-
-      expect(mockSearch).toHaveBeenCalledWith({ status: ['pending', 'approved'] });
+      expect(mockSearch).toHaveBeenCalledWith({ status: expectedStatus });
     });
 
     test('returns no results without querying when statusParam is entirely invalid statuses', async () => {
@@ -237,6 +240,29 @@ describe('TrusteeMatchVerificationUseCase', () => {
       expect(result[0].courtName).toBe('Test Court - Other Division');
     });
 
+    test('falls back to verification.courtName when caseId parses but no court matches by division or courtId', async () => {
+      mockSearch.mockResolvedValue([
+        { ...sampleVerification, caseId: '081-24-12345', courtId: '081', courtName: undefined },
+      ]);
+      vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([
+        {
+          officeName: 'Office',
+          officeCode: '999',
+          courtId: '999',
+          courtName: 'Unrelated Court',
+          courtDivisionCode: '999',
+          courtDivisionName: 'Unrelated Division',
+          groupDesignator: 'NY',
+          regionId: '1',
+          regionName: 'Region 1',
+        },
+      ]);
+
+      const result = await useCase.getVerifications(context, {});
+
+      expect(result[0].courtName).toBeUndefined();
+    });
+
     test('selects the highest-scoring candidate as preselectedCandidate for AmbiguousMatchUnresolved', async () => {
       mockSearch.mockResolvedValue([
         { ...sampleVerification, mismatchReason: 'AMBIGUOUS_MATCH_UNRESOLVED' },
@@ -295,6 +321,37 @@ describe('TrusteeMatchVerificationUseCase', () => {
       expect(result[0].preselectedCandidate).toEqual({
         trusteeId: 'trustee-a',
         trusteeName: 'Alice',
+      });
+    });
+
+    // getVerifications' resolvePreselectedCandidate and approveVerification's own
+    // preselectedTrusteeId computation (used for the wasPreselectedConfirmed telemetry
+    // field) are DIFFERENT functions with different rules: this one picks the first
+    // candidate for any non-ambiguous mismatch reason; approveVerification always picks the
+    // highest-scoring one regardless of mismatch reason (see the mutation-guard test
+    // "resolves wasPreselectedConfirmed against the highest-scoring candidate..." in the
+    // approveVerification describe below). For a non-ambiguous mismatch whose candidates
+    // are NOT already in score order, these two computations disagree on which candidate is
+    // "preselected" -- this test documents that current behavior explicitly, since sampleVerification's
+    // own candidate order (already highest-first) doesn't surface the divergence above. Whether
+    // this divergence is intentional or a latent bug needs a product/design decision, not a
+    // silent test-only fix -- flagging here rather than unifying the two behaviors.
+    test('documents a real divergence: preselects the FIRST (not highest-scoring) candidate for a non-ambiguous mismatch reason when candidates are out of score order', async () => {
+      mockSearch.mockResolvedValue([
+        {
+          ...sampleVerification,
+          mismatchReason: 'IMPERFECT_MATCH',
+          matchCandidates: [...sampleVerification.matchCandidates].reverse(),
+        },
+      ]);
+
+      const result = await useCase.getVerifications(context, {});
+
+      // Bob (lower score) is first in the reversed array; resolvePreselectedCandidate
+      // returns him for a non-ambiguous reason even though Alice scores higher.
+      expect(result[0].preselectedCandidate).toEqual({
+        trusteeId: 'trustee-b',
+        trusteeName: 'Bob',
       });
     });
 
