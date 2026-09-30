@@ -638,7 +638,9 @@ describe('SyncAcmsProfessionalIds', () => {
               camsRaw: { trusteeId: 't1' },
               camsNormalized: {},
               memo: new Map(),
-              scores: { doesNameMatch: { value: 100, threshold: 85, pass: true } },
+              scores: {
+                doesNameMatch: { value: 100, threshold: 85, pass: true, quality: 'exact' },
+              },
               disqualifiers: [],
               origin: 'test',
             },
@@ -649,7 +651,9 @@ describe('SyncAcmsProfessionalIds', () => {
               camsRaw: { trusteeId: 't2' },
               camsNormalized: {},
               memo: new Map(),
-              scores: { doesNameMatch: { value: 100, threshold: 85, pass: true } },
+              scores: {
+                doesNameMatch: { value: 100, threshold: 85, pass: true, quality: 'exact' },
+              },
               disqualifiers: [],
               origin: 'test',
             },

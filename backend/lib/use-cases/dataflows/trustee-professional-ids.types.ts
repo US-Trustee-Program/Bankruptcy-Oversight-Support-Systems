@@ -110,16 +110,17 @@ function hasSuspectDuplicateCamsTrustee<
 }
 
 /** Whether a name-qualifying candidate represents genuine competing evidence rather than
- * name-shape coincidence: either the name match itself is exact (100, not merely the weakest
- * 85-scored relaxation - an initial, a crossed middle name, a nickname), or the ACMS source
+ * name-shape coincidence: either the name match itself is exact (not merely a relaxation - an
+ * initial, a crossed middle name, a nickname), or the ACMS source
  * actually had comparable address/phone data for corroboration to have a chance to run against
- * (regardless of whether it agreed). A candidate that qualified ONLY via an 85-scored relaxation,
+ * (regardless of whether it agreed). A candidate that qualified ONLY via a relaxation,
  * with nothing on the ACMS side to ever corroborate against, is not real evidence this candidate
  * is the ACMS person - it is indistinguishable from a coincidence across an entire surname pool
  * (this shows up as, e.g., an ACMS "Jordan Roe" bare-initial-qualifying against three distinct,
  * unrelated "J. Roe" trustees, none reachable any other way). */
 function isGenuineAmbiguousEvidence(candidate: SerializedCandidate<unknown>): boolean {
-  if (candidate.scores.doesNameMatch?.value === 100) return true;
+  const nameMatch = candidate.scores.doesNameMatch;
+  if (nameMatch?.pass === true && nameMatch.quality === 'exact') return true;
   return candidate.scores.doesAcmsTrusteeHaveAddressAndPhone?.pass !== false;
 }
 
