@@ -291,6 +291,12 @@ export default function TrusteeDetailScreen() {
       subHeading: 'Edit Trustee Appointment',
       content: <EditTrusteeAppointment />,
     },
+    // Key-dates edit routes below are keyed only by appointmentId, not by
+    // chapter/appointment type, so every variant's path must be unique
+    // across this whole list or React Router will silently match whichever
+    // is declared first (see CAMS-w1sba). Namespace each new variant's path
+    // with its chapter/appointment-type prefix; TrusteeDetailScreen.test.tsx
+    // asserts uniqueness as a regression guard.
     {
       path: 'appointments/:appointmentId/upcoming-key-dates/edit',
       disabled: !featureFlags[TRUSTEE_APPOINTMENT_ACCORDIONS],
@@ -334,10 +340,8 @@ export default function TrusteeDetailScreen() {
       content: <BondKeyDatesForm />,
     },
     {
-      // Namespaced by variant: CAMS-912 already owns the unqualified
-      // tpr-key-dates/edit path for Chapter 7 Panel, and routes are keyed only
-      // by appointmentId, so an unqualified path here would shadow it. See the
-      // epic-wide route collision issue before adding more variants.
+      // Namespaced: 'tpr-key-dates/edit' below is already used by the
+      // Chapter 7 Panel variant.
       path: 'appointments/:appointmentId/ch12-13-annual-report-key-dates/edit',
       disabled: !featureFlags[TRUSTEE_APPOINTMENT_ACCORDIONS],
       subHeading: appointmentHeading,

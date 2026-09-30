@@ -888,3 +888,15 @@ describe('TrusteeDetailScreen', () => {
     });
   });
 });
+
+describe('TrusteeDetailScreen route path uniqueness', () => {
+  test('every routeConfigs path is unique', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { join } = await import('node:path');
+    const source = readFileSync(join(__dirname, 'TrusteeDetailScreen.tsx'), 'utf-8');
+    const paths = [...source.matchAll(/path:\s*'([^']+)'/g)].map((match) => match[1]);
+
+    expect(paths.length).toBeGreaterThan(0);
+    expect(new Set(paths).size).toBe(paths.length);
+  });
+});
