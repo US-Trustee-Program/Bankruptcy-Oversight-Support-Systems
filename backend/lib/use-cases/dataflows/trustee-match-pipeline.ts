@@ -117,9 +117,11 @@ type Disqualifier = { scorer: string; reason: string; evidence: Record<string, u
  * RECALL/SCORE function that only ever needs the single best-guess reduction reads `lastName`
  * exactly as before and never has to know alternates exist; one that specifically wants to try
  * every plausible variant (e.g. findSurnameExactCandidates's discovery-time fallback) reads
- * `lastNameAlternates.length > 0` as its gate. Not specific to lastName in principle - any other
- * NormalizedTrustee field a future normalizer produces multiple plausible variants for could add
- * its own equivalent `<field>Alternates` array following this same shape.
+ * `lastNameAlternates.length > 0` as its gate.
+ *
+ * firstNameAlternates is the same shape for the given name, holding a parenthetical ACMS records
+ * in PROF_FIRST_NAME. No keyword list separates a real alias from an office code - a code never
+ * matches anything on the other side.
  *
  * lastNameUnreduced holds the ACMS lastName AFTER name-recovery (recoverCorruptedFirstName/
  * recoverSoloPracticeName) but BEFORE lastNameSurnameCandidates' token reduction - distinct from
@@ -131,6 +133,7 @@ type Disqualifier = { scorer: string; reason: string; evidence: Record<string, u
  */
 type NormalizedTrusteeFields = Partial<Omit<ProjectedTrustee, 'trusteeId' | 'address'>> & {
   address?: Partial<NonNullable<ProjectedTrustee['address']>>;
+  firstNameAlternates?: string[];
   lastNameAlternates?: string[];
   lastNameUnreduced?: string;
 };

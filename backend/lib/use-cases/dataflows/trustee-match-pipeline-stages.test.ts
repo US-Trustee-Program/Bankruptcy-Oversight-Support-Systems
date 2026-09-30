@@ -1061,6 +1061,42 @@ describe('scoreCandidate - name-match facet', () => {
     });
   });
 
+  test("matches a parenthetical alias against the other side's first name", async () => {
+    const state = await normalizeAcmsSourceName()(
+      createInitialState(makeDxtrTrustee({ firstName: 'RM (RAYMOND)', lastName: 'Ashgrove' })),
+    );
+    const candidate = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', firstName: 'Raymond', lastName: 'Ashgrove' })),
+      'test',
+    );
+
+    scoreCandidate(state.sourceNormalized, candidate);
+
+    expect(mergedScore(candidate)).toMatchObject({
+      doesNameMatch: { value: 85, pass: true },
+    });
+  });
+
+  test('does not match on a parenthetical office code', async () => {
+    const state = await normalizeAcmsSourceName()(
+      createInitialState(makeDxtrTrustee({ firstName: 'Wendell (TR)', lastName: 'Ashgrove' })),
+    );
+    const candidate = addCandidate(
+      state,
+      projectTrustee(
+        makeTrustee({ trusteeId: 't1', firstName: 'Marguerite', lastName: 'Ashgrove' }),
+      ),
+      'test',
+    );
+
+    scoreCandidate(state.sourceNormalized, candidate);
+
+    expect(mergedScore(candidate)).toMatchObject({
+      doesNameMatch: { value: 0, pass: false },
+    });
+  });
+
   test('drops a generational suffix rather than reading it as a middle name', async () => {
     const state = await normalizeAcmsSourceName()(
       createInitialState(
