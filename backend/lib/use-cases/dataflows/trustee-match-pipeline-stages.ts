@@ -2022,18 +2022,6 @@ function hasAnyCorroboratingEvidence(candidate: PipelineCandidate): boolean {
   );
 }
 
-/** The pool of candidates an exact-name-match RESOLVE stage considers: calculateNameScore === 100
- * (not merely >= 85 - see each calling stage's own doc comment for why exact match gets its own,
- * more permissive rules than the general fuzzy-match tiers), with comparable contact data on both
- * sides (a candidate a FILTER stage already flagged as having none is never a legitimate winner). */
-function exactNameMatchCandidates(state: PipelineState): PipelineCandidate[] {
-  return [...state.candidates.values()].filter(
-    (candidate) =>
-      mergedScore(candidate).doesNameMatch?.value === 100 &&
-      mergedScore(candidate).hasComparableContactData?.pass !== false,
-  );
-}
-
 function resolveOnCandidate(
   state: PipelineState,
   candidate: PipelineCandidate,
@@ -2056,6 +2044,13 @@ function resolveOnCandidate(
  * "pool size === 1" - other candidates already correctly rejected on name are not evidence
  * against the survivor.
  *
+ * Deliberately does NOT require hasComparableContactData: an ACMS record with an empty address
+ * and a phone of "0" has nothing to corroborate WITH, which is a different fact from corroboration
+ * having been available and failed. Since this stage runs last, a record reaching it has already
+ * been declined by every resolver that could weigh real evidence. The CAMS side must still carry
+ * contact data of its own - a thin record on that side is its own risk, unrelated to what ACMS
+ * happens to know.
+ *
  * Also excludes a candidate with a GENUINE, comparable state disagreement: doesStateMatch is only
  * ever recorded when both sides have a comparable state (scoreStateMatch's "no record when data is
  * unavailable" convention, matching doesCityMatch/doesZipCodeMatch), so `doesStateMatch?.pass !==
@@ -2064,8 +2059,11 @@ function resolveOnCandidate(
  */
 export function resolveByExactNameOnly(): Stage {
   return async (state: PipelineState): Promise<PipelineState> => {
-    const exactMatches = exactNameMatchCandidates(state).filter(
-      (candidate) => mergedScore(candidate).doesStateMatch?.pass !== false,
+    const exactMatches = [...state.candidates.values()].filter(
+      (candidate) =>
+        mergedScore(candidate).doesNameMatch?.value === 100 &&
+        mergedScore(candidate).doesCamsTrusteeHaveAddressAndPhone?.pass !== false &&
+        mergedScore(candidate).doesStateMatch?.pass !== false,
     );
     if (exactMatches.length !== 1) return state;
 
