@@ -2069,13 +2069,14 @@ function resolveOnCandidate(
  * contact data of its own - a thin record on that side is its own risk, unrelated to what ACMS
  * happens to know.
  *
- * Also excludes a candidate with a GENUINE, comparable state disagreement: doesStateMatch is only
- * ever recorded when both sides have a comparable state (scoreStateMatch's "no record when data is
- * unavailable" convention, matching doesCityMatch/doesZipCodeMatch), so `doesStateMatch?.pass !==
- * false` excludes only a real disagreement and ignores "no state data available" rather than
- * treating missing data as a conflict.
+ * "InState" means only that the state does not CONTRADICT: doesStateMatch is recorded only when
+ * both sides have a comparable state (scoreStateMatch's "no record when data is unavailable"
+ * convention), so `?.pass !== false` rejects a real disagreement while letting a record with no
+ * state data through. That filter is load-bearing - it is what separates two same-named trustees
+ * in different states, which is the only reason this stage sees a sole candidate for names like
+ * Smith or Brown.
  */
-export function resolveByExactNameOnly(): Stage {
+export function resolveBySoleExactNameInState(): Stage {
   return async (state: PipelineState): Promise<PipelineState> => {
     const exactMatches = candidatePool(state).filter(
       (candidate) =>
@@ -2085,7 +2086,7 @@ export function resolveByExactNameOnly(): Stage {
     );
     if (exactMatches.length !== 1) return state;
 
-    return resolveOnCandidate(state, exactMatches[0], 'resolveByExactNameOnly');
+    return resolveOnCandidate(state, exactMatches[0], 'resolveBySoleExactNameInState');
   };
 }
 
@@ -2192,7 +2193,7 @@ export function resolveByEmailAddress(): Stage {
 
 /**
  * Resolves a SOLE fuzzy name match (doesNameMatch.pass === true but value < 100 - an exact 100
- * match is resolveByExactNameOnly's job, run earlier) on state agreement alone, with no
+ * match is resolveBySoleExactNameInState's job, run earlier) on state agreement alone, with no
  * city/zip/contact corroboration at all - the one shape the five atomic corroboration stages above
  * deliberately refuse (a single vote - state alone - is too weak in isolation, see
  * resolveSoleQualifyingOn's own doc comment). Narrower than reopening that question: this stage

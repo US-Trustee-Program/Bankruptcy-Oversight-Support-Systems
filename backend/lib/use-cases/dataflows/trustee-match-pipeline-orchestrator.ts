@@ -12,7 +12,7 @@ import {
   recallByAnchoredLevenshtein,
   resolveByComparativeCorroboration,
   resolveBySoleContactMatch,
-  resolveByExactNameOnly,
+  resolveBySoleExactNameInState,
   resolveBySoleFuzzyNameMatchAndState,
   recallByNameThenResolveMatch,
   resolveByPhoneTypoTolerance,
@@ -79,10 +79,10 @@ function resolveStages(): Stage[] {
     // above's corroboration gates, so it must run after them - it only ever catches what those
     // already declined for lack of city/zip/contact corroboration.
     resolveBySoleFuzzyNameMatchAndState(),
-    // Deliberately LAST-RESORT - see resolveByExactNameOnly's own doc comment. Every other
+    // Deliberately LAST-RESORT - see resolveBySoleExactNameInState's own doc comment. Every other
     // resolver above (including the weaker fuzzy-tier ones) gets first attempt at a candidate
     // before a unique exact-name match with no other corroborating evidence at all is trusted.
-    resolveByExactNameOnly(),
+    resolveBySoleExactNameInState(),
   ];
 }
 
