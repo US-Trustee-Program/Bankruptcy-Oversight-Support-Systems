@@ -235,11 +235,11 @@ describe('mergedScore', () => {
     const candidate = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })), 'test');
 
     addScore(candidate, 'doesNameMatch', { value: 100, threshold: 85, pass: true });
-    addScore(candidate, 'isStateNotConflicting', { value: 0, threshold: 100, pass: false });
+    addScore(candidate, 'doesStateMatch', { value: 0, threshold: 100, pass: false });
 
     expect(mergedScore(candidate)).toEqual({
       doesNameMatch: { value: 100, threshold: 85, pass: true },
-      isStateNotConflicting: { value: 0, threshold: 100, pass: false },
+      doesStateMatch: { value: 0, threshold: 100, pass: false },
     });
   });
 

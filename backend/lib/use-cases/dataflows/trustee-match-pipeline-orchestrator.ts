@@ -37,7 +37,7 @@ const MODULE_NAME = 'TRUSTEE-MATCH-PIPELINE-ORCHESTRATOR';
  * resolution rules belong in exactly one place.
  *
  * Deliberately contains NO separate FILTER/SCORE stages - every candidate is already fully scored
- * (isStateNotConflicting, doesNameMatch, doesCityMatch/doesStateMatch/doesZipCodeMatch,
+ * (doesNameMatch, doesCityMatch/doesStateMatch/doesZipCodeMatch,
  * addressDisqualifiers/nameDisqualifiers, contact corroboration, phone-typo tolerance, and every
  * other per-candidate score) the instant it's discovered, via addAndScoreCandidate in
  * trustee-match-pipeline-stages.ts - not a separate later pass. promoteCandidate (see
@@ -97,17 +97,10 @@ function resolveStages(): Stage[] {
  * candidate pool for a common surname fragment (hundreds of candidates from
  * recallByTokenIntersection/recallByAnchoredLevenshtein's own fuzzy discovery) is cut down to
  * genuinely relevant survivors AT THE MOMENT each candidate is scored, before it ever occupies a
- * Map entry in nestedState.candidates, rather than filtered here after the fact. This function used
- * to re-check mergedScore(c).isStateNotConflicting?.pass here as its own promotion filter - removed
- * because it was strictly weaker AND less correct than what addAndScoreCandidate now guarantees:
- * isStateNotConflicting's override condition (nameScore >= 85, the exact same pipelineNameScore call
- * already used for doesNameMatch) is self-referential for any candidate whose own gate already
- * requires a comparable name score - the exact defect resolveByExactNameOnly/
- * resolveBySoleContactMatch both had to work around (see their own doc comments) - while
- * shouldEvictFromDiscovery reads doesStateMatch directly (only ever set when both sides have real
- * comparable state data, never self-referential) plus a real, already-computed name-match exception
- * (isNameMatchCorroborated - see shouldEvictFromDiscovery's own doc comment for why a narrower,
- * hand-rolled first/last-name check was tried and reverted in favor of reusing that real score).
+ * Map entry in nestedState.candidates, rather than filtered here after the fact. No promotion
+ * filter is needed here: shouldEvictFromDiscovery already reads doesStateMatch directly (only ever
+ * set when both sides have real comparable state data) plus the already-computed doesNameMatch as
+ * its counterbalancing exception.
  * Every candidate remaining in nestedResult.candidates by the time this loop runs is therefore
  * already known-relevant; promotion here is unconditional.
  */

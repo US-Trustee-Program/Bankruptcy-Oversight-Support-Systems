@@ -1070,25 +1070,6 @@ function recordSimilarityDiagnostics(
 }
 
 /**
- * Records state agreement as an ANNOTATION (isStateNotConflicting), never a filter - the
- * candidate list is append-only, so a mismatch is noise a later stage weighs, not grounds for
- * removal.
- *
- * - Runs on every candidate regardless of pool size - a state mismatch is real noise whether the
- *   pool is large or small.
- * - A candidate this stage never evaluates is left with no isStateNotConflicting key at all,
- *   rather than a fabricated true - it reads as undefined, not a false claim the check ran and
- *   passed.
- * - Operates on ProjectedTrustee's flattened address/phone fields directly, rather than Trustee's
- *   nested shape, since a cast between the two would compile but read undefined at runtime.
- */
-/** isStateNotConflicting's stateMatch is a pure pass/fail with no natural numeric magnitude - value
- * mirrors pass (100/0) purely so it conforms to ScoreRecord's shared vocabulary. */
-function stateMatchRecord(stateMatch: boolean): ScoreRecord {
-  return { value: stateMatch ? 100 : 0, threshold: 100, pass: stateMatch };
-}
-
-/**
  * Converts a KleeneBoolean field-comparison result into the ScoreRecord shape addScore expects -
  * shared by every scorer that follows the "no record when data unavailable" convention (see
  * doesStateMatch/doesCityMatch/doesZipCodeMatch/doesMiddleNameMatch's own doc comments): the caller
@@ -1105,7 +1086,7 @@ function boolMatchRecord(match: boolean): ScoreRecord {
  * Whether a candidate/ACMS side has ANY usable contact data at all - address1, city, state, zip,
  * or phone. Deliberately does NOT treat a missing address1/phone alone as insufficient (a real
  * city+state correlation, even with no street address or phone on file, is still a strong,
- * legitimate signal - see doesCityMatch/isStateNotConflicting) - only fires when literally every one
+ * legitimate signal - see doesCityMatch/doesStateMatch) - only fires when literally every one
  * of these fields is blank, since that is the one shape that carries zero real evidence either
  * way. A "thin candidate" population defined any looser than this (e.g. no address1/zip/phone but
  * a real city+state) sweeps in candidates with genuine, checkable evidence, which would be unsafe
@@ -1226,9 +1207,9 @@ function scoreHasComparableContactData(
  * Computes and caches parseCityStateZip's result for the ACMS record directly onto
  * sourceNormalized.address (see NormalizedTrustee - reuses ProjectedTrustee['address']'s own field
  * name/shape) rather than through the memo mechanism - sourceNormalized is invariant for the whole
- * record, so there is no distinct input to fingerprint, but isStateNotConflicting, doesStateMatch,
- * doesCityMatch, and doesZipCodeMatch each independently re-parsed the same cityStateZipCountry
- * string every time they ran before this cache existed. A `null`/undefined parse result
+ * record, so there is no distinct input to fingerprint, but doesStateMatch, doesCityMatch, and
+ * doesZipCodeMatch would otherwise each independently re-parse the same cityStateZipCountry
+ * string every time they run. A `null`/undefined parse result
  * (unparseable address) is intentionally NOT cached as a sentinel - re-parsing an unparseable
  * string is cheap, and caching "there is no result" would need its own distinct-from-undefined
  * representation. Reads sourceNormalized.legacy.cityStateZipCountry directly rather than taking it
@@ -1245,49 +1226,11 @@ function memoizedParseAcmsAddress(
   return sourceNormalized.address as ReturnType<typeof parseCityStateZip>;
 }
 
-function scoreStateNotConflicting(
-  sourceNormalized: NormalizedTrustee,
-  candidate: PipelineCandidate,
-): PipelineCandidate {
-  const parsedAcmsAddress = memoizedParseAcmsAddress(sourceNormalized);
-  if (!parsedAcmsAddress?.state) {
-    addScore(candidate, 'isStateNotConflicting', stateMatchRecord(true));
-    return candidate;
-  }
-
-  const acmsState = parsedAcmsAddress.state.toLowerCase();
-  const camsState = candidate.camsRaw.address?.state?.toLowerCase();
-  if (!camsState || camsState === acmsState) {
-    addScore(candidate, 'isStateNotConflicting', stateMatchRecord(true));
-    return candidate;
-  }
-
-  const phoneScore = pipelinePhoneScore(sourceNormalized.legacy?.phone, candidate.camsRaw.phone);
-  if (phoneScore === 100) {
-    addScore(candidate, 'isStateNotConflicting', stateMatchRecord(true));
-    return candidate;
-  }
-
-  const verdict = matchName(candidate.memo, sourceNormalized, candidate.camsNormalized);
-  addScore(candidate, 'isStateNotConflicting', stateMatchRecord(verdict.pass));
-  return candidate;
-}
-
 /**
- * Independent state-agreement scorer, for the sole-candidate consensus vote (see
- * resolveName*) - distinct from isStateNotConflicting's own stateMatch annotation,
- * which is deliberately an ELIMINATION-style filter, not a corroborating vote: isStateNotConflicting
- * defaults to pass:true whenever a real comparison isn't possible (unparseable ACMS address, or a
- * candidate with no state on file) or an override applies (exact phone match, high nameScore) -
- * those defaults are correct for "don't wrongly exclude this candidate" but WRONG as "real
- * evidence this candidate's state agrees", since a candidate that was never actually checked
- * shouldn't out-vote a candidate that was. Real example: an ACMS record with only a phone:'0'
- * sentinel (no address at all) and 4 same-surname candidates resolved via resolveName*'s
- * consensus tally counting isStateNotConflicting's
- * unconditional true (ACMS address unparseable) as its ONLY vote, a false 100% consensus built on
- * zero real corroboration. Same "no record when data is unavailable" convention as
- * doesCityMatch/doesZipCodeMatch - no override paths, no defaults, only a genuine state comparison
- * counts as a vote at all.
+ * The state-agreement scorer every RESOLVE stage reads. Follows the same "no record when data is
+ * unavailable" convention as doesCityMatch/doesZipCodeMatch - no override paths, no defaults: the
+ * key is absent unless both sides had a state to compare, so a candidate that was never actually
+ * checked can never be mistaken for one whose state genuinely agrees.
  */
 /** The KleeneBoolean fact scoreStateMatch records - null when either side has no comparable
  * state, true/false only for a genuine comparison. Factored out so the "compute the fact" and
@@ -1570,10 +1513,8 @@ function isNoContradictionMatch(candidate: PipelineCandidate): boolean {
  *   answer is worse than an honest unresolved one - such a pool falls through to whatever later
  *   RESOLVE stage (or an 'ambiguous' disposition) the pipeline reaches next.
  * - Excludes any candidate with doesStateMatch: false (a genuine, comparable state disagreement),
- *   without removing it from state.candidates. Gates on doesStateMatch rather than
- *   isStateNotConflicting, which self-overrides whenever nameScore clears 85 - always true here,
- *   since isNoContradictionMatch already requires an exact (100) name match. doesStateMatch has no
- *   such override and is only ever recorded when both sides have a comparable state.
+ *   without removing it from state.candidates. doesStateMatch is only ever recorded when both
+ *   sides have a comparable state, so this never mistakes missing data for a conflict.
  *   isNoContradictionMatch's own address-contradiction check independently screens out most real
  *   state conflicts too, since a different state usually also yields a low address score - this
  *   gate closes the remaining gap where a coincidentally matching zip (30% of the address score's
@@ -1805,10 +1746,10 @@ type CandidateScorer = (
  * deliberately per-candidate). Every candidate is fully scored the instant it exists; RESOLVE
  * stages are pure readers of mergedScore(candidate) and never compute a new score themselves.
  *
- * Order matters past scoreNameMatch: every scorer after it reads doesNameMatch (directly,
- * or via a gate like "nameScore===100"), so it must run first. The FILTER-labeled annotations
- * (state/address/phone presence) run first only to mirror this list's own historical reading
- * order - none of THEM has a real dependency on being first.
+ * Order matters past scoreNameMatch: every scorer after it reads doesNameMatch (directly, or via a
+ * gate like "nameScore===100"), so it must run first. The address/phone presence annotations run
+ * first only to mirror this list's own reading order - none of THEM has a real dependency on
+ * being first.
  */
 const CANDIDATE_SCORERS: CandidateScorer[] = [
   // NORMALIZE CAMS - must run before any scorer below reads candidate.camsNormalized.
@@ -1816,7 +1757,6 @@ const CANDIDATE_SCORERS: CandidateScorer[] = [
   scoreHasAddressAndPhone,
   scoreAcmsHasAddressAndPhone,
   scoreHasComparableContactData, // reads both scores above - must run after them
-  scoreStateNotConflicting,
   scoreNameMatch,
   scoreNameDisqualifiers, // reads scoreNameMatch's doesNameMatch - must run after it
   recordSimilarityDiagnostics,
@@ -1859,13 +1799,7 @@ export function scoreCandidate(
  * stage, or any later discovery tier, ever sees it - a real, comparable state disagreement
  * (doesStateMatch?.pass === false, set only when BOTH sides have comparable state data - see
  * scoreStateMatch's own "no record when data unavailable" convention) with no real name evidence to
- * counterbalance it (doesNameMatch?.pass !== true). Deliberately does NOT read
- * isStateNotConflicting - that field's override condition (nameScore >= 85, the exact same
- * pipelineNameScore call already used for doesNameMatch) is self-referential for any candidate
- * whose own gate already requires a comparable name score, the exact defect
- * resolveByExactNameOnly/resolveBySoleContactMatch both had to work around (see their
- * own doc comments) - reusing it here would silently readmit the same false positives those fixes
- * removed.
+ * counterbalance it (doesNameMatch?.pass !== true).
  *
  * Reads doesNameMatch directly rather than reimplementing first/last-name plausibility here - an
  * earlier version of this function called isExactLastNameMatch + a fresh isFuzzyNamePartMatch call,
@@ -2097,12 +2031,11 @@ function resolveOnCandidate(
  * "pool size === 1" - other candidates already correctly rejected on name are not evidence
  * against the survivor.
  *
- * Also excludes a candidate with a GENUINE, comparable state disagreement (doesStateMatch, not
- * isStateNotConflicting): doesStateMatch is only ever recorded when both sides have a comparable
- * state (scoreStateMatch's "no record when data is unavailable" convention, matching
- * doesCityMatch/doesZipCodeMatch), so `doesStateMatch?.pass !== false` excludes only a genuine,
- * comparable disagreement and ignores "no state data available" rather than treating missing data
- * as a conflict.
+ * Also excludes a candidate with a GENUINE, comparable state disagreement: doesStateMatch is only
+ * ever recorded when both sides have a comparable state (scoreStateMatch's "no record when data is
+ * unavailable" convention, matching doesCityMatch/doesZipCodeMatch), so `doesStateMatch?.pass !==
+ * false` excludes only a real disagreement and ignores "no state data available" rather than
+ * treating missing data as a conflict.
  */
 export function resolveByExactNameOnly(): Stage {
   return async (state: PipelineState): Promise<PipelineState> => {
