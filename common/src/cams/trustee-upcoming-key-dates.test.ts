@@ -21,6 +21,7 @@ import {
   validateMonthDayRange,
   validateTrusteeUpcomingKeyDates,
   validateTrusteeUpcomingKeyDatesForSave,
+  normalizeTrusteeUpcomingKeyDates,
   TrusteeUpcomingKeyDates,
   validateTprDuePair,
   validateTprReviewPeriodOrder,
@@ -1198,6 +1199,52 @@ describe('validateTrusteeUpcomingKeyDates', () => {
         'Trustee Interim Report Completion Status is required.',
       );
     });
+  });
+});
+
+describe('normalizeTrusteeUpcomingKeyDates', () => {
+  function buildDoc(overrides: Partial<TrusteeUpcomingKeyDates> = {}): TrusteeUpcomingKeyDates {
+    return {
+      id: 'id-001',
+      documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
+      trusteeId: 'trustee-001',
+      appointmentId: 'appointment-001',
+      createdBy: { id: 'user-1', name: 'Test User' },
+      createdOn: '2026-01-01T00:00:00.000Z',
+      updatedBy: { id: 'user-1', name: 'Test User' },
+      updatedOn: '2026-01-01T00:00:00.000Z',
+      ...overrides,
+    };
+  }
+
+  test('returns null unchanged', () => {
+    expect(normalizeTrusteeUpcomingKeyDates(null)).toBeNull();
+  });
+
+  test('strips an explicit null on a generic field to undefined (absent key)', () => {
+    const doc = buildDoc({ tirCompletionYear: 2024 });
+    (doc as Record<string, unknown>).tirCompletionStatus = null;
+
+    const result = normalizeTrusteeUpcomingKeyDates(doc);
+
+    expect(result?.tirCompletionYear).toBe(2024);
+    expect('tirCompletionStatus' in (result as object)).toBe(false);
+  });
+
+  test('leaves a document with no nulls unchanged', () => {
+    const doc = buildDoc({
+      tirCompletionYear: 2024,
+      tirCompletionStatus: 'COMPLETE',
+      pastFieldExam: '2026-06-15',
+    });
+
+    expect(normalizeTrusteeUpcomingKeyDates(doc)).toEqual(doc);
+  });
+
+  test('leaves non-generic fields (id, trusteeId, etc.) untouched', () => {
+    const doc = buildDoc();
+    const result = normalizeTrusteeUpcomingKeyDates(doc);
+    expect(result).toEqual(doc);
   });
 });
 

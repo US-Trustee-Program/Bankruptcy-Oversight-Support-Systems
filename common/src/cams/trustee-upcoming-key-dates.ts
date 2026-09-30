@@ -650,6 +650,29 @@ export const SCALAR_FIELDS: ScalarField[] = [
   'ch13AuditCompletionYear',
 ];
 
+/**
+ * TrusteeUpcomingKeyDates declares its generic fields optional (absence =
+ * undefined), but some stored documents -- written before the current
+ * write path's null-skipping guarantee existed, or via migration/seed --
+ * can still carry an explicit null. Consumers that check `!== undefined`
+ * mishandle that null (see cams-2upxm). Normalizing at the fetch boundary
+ * (Api2.getUpcomingKeyDates) means every consumer downstream of the fetch
+ * can trust the documented optional shape without checking `== null`
+ * everywhere individually.
+ */
+export function normalizeTrusteeUpcomingKeyDates(
+  doc: TrusteeUpcomingKeyDates | null,
+): TrusteeUpcomingKeyDates | null {
+  if (!doc) return doc;
+  const normalized = { ...doc } as Record<string, unknown>;
+  for (const field of [...DATE_FIELDS, ...TEXT_FIELDS, ...SCALAR_FIELDS]) {
+    if (normalized[field] === null) {
+      delete normalized[field];
+    }
+  }
+  return normalized as TrusteeUpcomingKeyDates;
+}
+
 export function isoToMMDDYYYY(iso: string): string {
   const [year, month, day] = iso.split('-');
   return `${month}/${day}/${year}`;
