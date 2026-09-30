@@ -191,17 +191,7 @@ export function parseCityStateZip(cityStateZipCountry?: string): {
     }
   }
 
-  if (zipIndex === -1) {
-    const trailingToken = tokens[tokens.length - 1];
-    const trailingIsState =
-      trailingToken !== undefined &&
-      STATE_TOKEN.test(trailingToken) &&
-      VALID_STATE_CODES.has(trailingToken.toUpperCase());
-    if (!trailingIsState) return null;
-    const city = tokens.slice(0, tokens.length - 1).join(' ');
-    if (!city) return null;
-    return { city, state: trailingToken, zipCode: '' };
-  }
+  if (zipIndex === -1) return null;
 
   // A literal "-0000" +4 suffix is a placeholder, not a real ZIP+4 extension - the vast majority
   // of ACMS addresses carry it, far too common to be genuine +4 data for that many distinct

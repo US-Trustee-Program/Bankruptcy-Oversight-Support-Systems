@@ -1218,6 +1218,70 @@ describe('scoreCandidate - state/city/zip/contact-presence facets', () => {
     legacy: { cityStateZipCountry: 'Tacoma, WA 98402' },
   });
 
+  // Real bug, confirmed via pipeline-replay-backtest.ts against the 2026-09-25 export: an ACMS
+  // address with no zip token at all never parsed, so a genuine, comparable city+state pair
+  // scored ZERO city/state evidence - 71 real records share this shape (a real shape, name
+  // synthesized: ACMS "Jordan Roe", "San Diego CA" with no zip ever recorded, matched a real CAMS
+  // candidate also in San Diego, CA). parseAcmsCityStateZip recovers it ACMS-side only; the
+  // shared parser the DXTR paths use is unchanged.
+  test('scores city and state from an ACMS address carrying no zip at all', async () => {
+    const state = createInitialState(
+      makeDxtrTrustee({
+        fullName: 'Aldric T Moon',
+        firstName: 'Aldric',
+        lastName: 'Moon',
+        legacy: { cityStateZipCountry: 'San Diego CA' },
+      }),
+    );
+    const candidate = addSomeoneMoon(state, {
+      trusteeId: 'trustee-sd',
+      public: {
+        address: {
+          address1: '1 Elm St',
+          city: 'San Diego',
+          state: 'CA',
+          zipCode: '92101',
+          countryCode: 'US',
+        },
+      },
+    });
+
+    scoreCandidate(state.sourceNormalized, candidate);
+
+    expect(mergedScore(candidate)).toMatchObject({
+      doesCityMatch: { pass: true },
+      doesStateMatch: { pass: true },
+    });
+  });
+
+  test('records no city/state scores when a zip-less ACMS address has no real state code', async () => {
+    const state = createInitialState(
+      makeDxtrTrustee({
+        fullName: 'Aldric T Moon',
+        firstName: 'Aldric',
+        lastName: 'Moon',
+        legacy: { cityStateZipCountry: 'Corinth Mississippi' },
+      }),
+    );
+    const candidate = addSomeoneMoon(state, {
+      trusteeId: 'trustee-ms',
+      public: {
+        address: {
+          address1: '1 Elm St',
+          city: 'Corinth',
+          state: 'MS',
+          zipCode: '38834',
+          countryCode: 'US',
+        },
+      },
+    });
+
+    scoreCandidate(state.sourceNormalized, candidate);
+
+    expect(mergedScore(candidate).doesStateMatch).toBeUndefined();
+    expect(mergedScore(candidate).doesCityMatch).toBeUndefined();
+  });
+
   test('records doesStateMatch:false for a state-mismatched candidate', async () => {
     const state = createInitialState(dxtrInWashington);
     const candidate = addSomeoneMoon(state, {
