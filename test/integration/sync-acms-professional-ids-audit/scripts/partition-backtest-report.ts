@@ -21,7 +21,7 @@
  * from any candidate row - staging's trustee is often not even a candidate in the current record's
  * pool) and currentDisposition (which of these four files this row belongs to, restated as a column
  * so a reviewer filtering/sorting a single exported CSV doesn't lose that context) - so the
- * staging-vs-current picture is visible without cross-referencing replay-backtest-divergences.csv.
+ * staging-vs-current picture is visible without opening another file.
  *
  * skipped records never reach the pipeline (skipAdministrativePlaceholder short-circuits before any
  * candidate discovery runs, and pipeline-replay-backtest.ts does not write them to the JSONL at
