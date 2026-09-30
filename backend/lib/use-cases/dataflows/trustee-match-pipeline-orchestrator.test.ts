@@ -104,7 +104,7 @@ describe('runTrusteeMatchPipeline', () => {
     expect(result.match).toEqual({
       trusteeId: 't1',
       score: { nameScore: 100, nameMatchQuality: 'exact' },
-      resolvedBy: 'recallByNameThenResolveExact',
+      resolvedBy: 'recallByNameThenResolveMatch',
     });
   });
 

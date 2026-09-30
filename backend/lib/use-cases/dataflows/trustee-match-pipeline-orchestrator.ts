@@ -15,12 +15,25 @@ import {
   resolveBySoleExactNameMatch,
   resolveBySoleExactNameMatchByStateThenGeo,
   resolveRisky,
-  resolveByLastNameOnlyConsensus,
-  resolveByFuzzyLastNameMatch,
+  resolveFuzzyFirstExactLastNameStateAndCityOrZip,
+  resolveFuzzyFirstExactLastNameCityAndZip,
+  resolveFuzzyFirstExactLastNameAddress,
+  resolveFuzzyFirstExactLastNamePhone,
+  resolveFuzzyFirstExactLastNameEmail,
+  resolveFuzzyFirstExactLastNameFullCorroboration,
+  resolveExactFirstFuzzyLastNameStateAndCityOrZip,
+  resolveExactFirstFuzzyLastNameCityAndZip,
+  resolveExactFirstFuzzyLastNameAddress,
+  resolveExactFirstFuzzyLastNamePhone,
+  resolveExactFirstFuzzyLastNameEmail,
   resolveBySoleFuzzyNameMatchAndState,
-  recallByNameThenResolveExact,
+  recallByNameThenResolveMatch,
   resolveByPhoneTypoTolerance,
-  resolveByConsensus,
+  resolveNameStateAndCityOrZip,
+  resolveNameCityAndZip,
+  resolveNameAddress,
+  resolveNamePhone,
+  resolveNameEmail,
   normalizeAcmsSourceName,
   skipAdministrativePlaceholder,
   recallBySurnameExact,
@@ -51,9 +64,9 @@ function resolveStages(): Stage[] {
     // decision, not just sequencing, and must not be reshuffled without a backtest confirming
     // outcomes hold. Swapping resolveBySoleContactMatch/resolveByComparativeCorroboration/
     // resolveByPhoneTypoTolerance/resolveBySoleExactNameMatch against each other (the only 4 of
-    // these stages with no read dependency on one another - see resolveByConsensus/
-    // resolveByLastNameOnlyConsensus/resolveByFuzzyLastNameMatch's own comments for why THEY can't
-    // be reordered at all) held the outcome identical to this order EXCEPT moving
+    // these stages with no read dependency on one another - the atomic corroboration families
+    // below have their own strict ordering requirements) held the outcome identical to this order
+    // EXCEPT moving
     // resolveByComparativeCorroboration before resolveBySoleContactMatch, which cost real
     // resolutions - once the weaker (multi-candidate arbitration) stage resolves or fails to,
     // runPipeline never lets the other run. This order is "richest evidence first," not arbitrary.
@@ -68,14 +81,38 @@ function resolveStages(): Stage[] {
     // after resolveByComparativeCorroboration since that stage's contact/full-geo signal is
     // richer than this one's state/city/zip narrowing.
     resolveBySoleExactNameMatchByStateThenGeo(),
-    resolveByConsensus(),
-    // resolveBySoleFuzzyNameMatchAndState's state-only bar is strictly weaker than
-    // resolveByConsensus's isCorroboratedByGeoOrContact gate, so it must run after it, not
-    // reordered alongside the four stages above - it only ever catches what resolveByConsensus
+    // Five atomic stages, one per corroboration signal (address/phone/email each independently
+    // sufficient; the two geo shapes each require 2 fields together) - see
+    // isCorroboratedByGeoOrContact's own doc comment for why these five, not six single-field
+    // stages. Order among them doesn't change outcomes today (real records satisfying one
+    // typically satisfy several), but address/phone/email run first as the stronger evidence class.
+    resolveNameAddress(),
+    resolveNamePhone(),
+    resolveNameEmail(),
+    resolveNameStateAndCityOrZip(),
+    resolveNameCityAndZip(),
+    // resolveBySoleFuzzyNameMatchAndState's state-only bar is strictly weaker than the five stages
+    // above's isCorroboratedByGeoOrContact-equivalent gate, so it must run after them, not
+    // reordered alongside the four stages before them - it only ever catches what those five
     // already declined for lack of city/zip/contact corroboration.
     resolveBySoleFuzzyNameMatchAndState(),
-    resolveByLastNameOnlyConsensus(), // composed narrow-then-score-then-resolve, see its own doc comment
-    resolveByFuzzyLastNameMatch(), // composed score-then-resolve, see its own doc comment
+    // Six stages for the exact-lastName/fuzzy-or-initial-firstName shape (composed
+    // narrow-then-score-then-resolve, see each one's own doc comment) - five atomic corroboration
+    // stages for the fuzzy-first-name path, then the compound full-corroboration stage for the
+    // weaker bare-initial path.
+    resolveFuzzyFirstExactLastNameAddress(),
+    resolveFuzzyFirstExactLastNamePhone(),
+    resolveFuzzyFirstExactLastNameEmail(),
+    resolveFuzzyFirstExactLastNameStateAndCityOrZip(),
+    resolveFuzzyFirstExactLastNameCityAndZip(),
+    resolveFuzzyFirstExactLastNameFullCorroboration(),
+    // Five atomic stages for the exact-firstName/fuzzy-lastName shape (composed
+    // score-then-resolve, see each one's own doc comment) - the mirror image of the family above.
+    resolveExactFirstFuzzyLastNameAddress(),
+    resolveExactFirstFuzzyLastNamePhone(),
+    resolveExactFirstFuzzyLastNameEmail(),
+    resolveExactFirstFuzzyLastNameStateAndCityOrZip(),
+    resolveExactFirstFuzzyLastNameCityAndZip(),
     // HIGH-RISK, deliberately LAST-RESORT - see resolveRisky's own doc comment (and each composed
     // sub-stage's own "!!! HIGH-RISK" comment). Every richer-evidence stage above gets first
     // attempt at any candidate resolveRisky's sub-stages would also consider.
@@ -152,7 +189,7 @@ async function runNestedTier(
  *
  * 1. surnameExact: cheap (single indexed query), and correct often enough to be worth trying
  *    before any fuzzier/costlier search.
- * 2. matchTrusteeByName's own internal exact-match pass (part of recallByNameThenResolveExact,
+ * 2. matchTrusteeByName's own internal exact-match pass (part of recallByNameThenResolveMatch,
  *    see its doc comment) - a fully-normalized name match against a UNIQUE CAMS trustee.
  *
  * Neither of these blocks the other, or any later tier, from running just because it discovered
@@ -163,7 +200,7 @@ async function runNestedTier(
  * independently finds real corroborated candidates for the same record.
  *
  * If neither fast path resolves, every remaining discovery tier's candidates
- * (recallByNameThenResolveExact's ambiguous pool, recallByTokenIntersection,
+ * (recallByNameThenResolveMatch's ambiguous pool, recallByTokenIntersection,
  * recallByAnchoredLevenshtein) are pooled into ONE combined candidate set and resolved
  * together via the shared resolveStages list - a real corroborated candidate found by one tier is
  * never crowded out or hidden by an uncorroborated one found by another; every candidate from
@@ -233,7 +270,7 @@ export async function runTrusteeMatchPipeline(
     const matchByNameResult = await runNestedTier(
       acmsRaw,
       outerState,
-      recallByNameThenResolveExact(context),
+      recallByNameThenResolveMatch(context),
     );
     if (matchByNameResult.error) {
       outerState.error = matchByNameResult.error;
