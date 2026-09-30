@@ -58,6 +58,7 @@ flowchart LR
     azure_remove_branch_yml_relay["relay"]
     azure_remove_branch_yml_notify["notify"]
     azure_remove_branch_yml_clean_up["clean-up"]
+    azure_remove_branch_yml_assert_clean_state["assert-clean-state"]
 
     trigger_delete --> azure_remove_branch_yml
     azure_remove_branch_yml --> azure_remove_branch_yml_list
@@ -65,6 +66,7 @@ flowchart LR
     azure_remove_branch_yml --> azure_remove_branch_yml_relay
     azure_remove_branch_yml --> azure_remove_branch_yml_notify
     azure_remove_branch_yml --> azure_remove_branch_yml_clean_up
+    azure_remove_branch_yml --> azure_remove_branch_yml_assert_clean_state
 
     classDef reusable fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000000
     classDef mainWorkflow fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000000
@@ -78,6 +80,7 @@ flowchart LR
     class azure_remove_branch_yml_relay job
     class azure_remove_branch_yml_notify job
     class azure_remove_branch_yml_clean_up job
+    class azure_remove_branch_yml_assert_clean_state job
 ```
 
 ### Pull_request Triggered Workflows
@@ -506,6 +509,7 @@ flowchart LR
     azure_remove_branch_yml_relay["relay"]
     azure_remove_branch_yml_notify["notify"]
     azure_remove_branch_yml_clean_up["clean-up"]
+    azure_remove_branch_yml_assert_clean_state["assert-clean-state"]
     prune_e2e_image_cache_yml["Prune E2E Image Cache"]
     prune_e2e_image_cache_yml_prune["Delete e2e-deps images older than 30 days"]
     refresh_e2e_base_images_yml["Refresh E2E Base Image Cache"]
@@ -540,6 +544,7 @@ flowchart LR
     azure_remove_branch_yml --> azure_remove_branch_yml_relay
     azure_remove_branch_yml --> azure_remove_branch_yml_notify
     azure_remove_branch_yml --> azure_remove_branch_yml_clean_up
+    azure_remove_branch_yml --> azure_remove_branch_yml_assert_clean_state
     trigger_schedule --> prune_e2e_image_cache_yml
     prune_e2e_image_cache_yml --> prune_e2e_image_cache_yml_prune
     trigger_schedule --> refresh_e2e_base_images_yml
@@ -577,6 +582,7 @@ flowchart LR
     class azure_remove_branch_yml_relay job
     class azure_remove_branch_yml_notify job
     class azure_remove_branch_yml_clean_up job
+    class azure_remove_branch_yml_assert_clean_state job
     class prune_e2e_image_cache_yml mainWorkflow
     class prune_e2e_image_cache_yml_prune job
     class refresh_e2e_base_images_yml mainWorkflow
@@ -611,6 +617,7 @@ flowchart LR
     azure_remove_branch_yml_relay["relay"]
     azure_remove_branch_yml_notify["notify"]
     azure_remove_branch_yml_clean_up["clean-up"]
+    azure_remove_branch_yml_assert_clean_state["assert-clean-state"]
 
     trigger_workflow_dispatch --> azure_remove_branch_yml
     azure_remove_branch_yml --> azure_remove_branch_yml_list
@@ -618,6 +625,7 @@ flowchart LR
     azure_remove_branch_yml --> azure_remove_branch_yml_relay
     azure_remove_branch_yml --> azure_remove_branch_yml_notify
     azure_remove_branch_yml --> azure_remove_branch_yml_clean_up
+    azure_remove_branch_yml --> azure_remove_branch_yml_assert_clean_state
 
     classDef reusable fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000000
     classDef mainWorkflow fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000000
@@ -631,6 +639,7 @@ flowchart LR
     class azure_remove_branch_yml_relay job
     class azure_remove_branch_yml_notify job
     class azure_remove_branch_yml_clean_up job
+    class azure_remove_branch_yml_assert_clean_state job
 ```
 
 #### Build Custom Azure CLI Runner Image
@@ -1484,7 +1493,7 @@ flowchart LR
   - Jobs: 2
 - **Clean up Flexion Azure Resources** (`azure-remove-branch.yml`)
   - Triggers: delete, schedule, workflow_dispatch
-  - Jobs: 5
+  - Jobs: 6
 - **Prune E2E Image Cache** (`prune-e2e-image-cache.yml`)
   - Triggers: schedule, workflow_dispatch
   - Jobs: 1

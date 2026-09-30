@@ -491,3 +491,93 @@ jobs:
             --stack-name="${STACK_NAME}" \
             --short-hash="${SHORT_HASH}" \
             --unmanage-action=deleteResources
+
+  # Checks the OUTCOME, not the mechanism: re-verifies that every hash this
+  # run asked `clean-up` to delete is actually gone from Azure, rather than
+  # trusting `clean-up`'s reported success as a proxy for that. Scoped to
+  # this run's own target list (from `relay`, not an independent full
+  # re-scan of every branch resource against every live branch) -- this
+  # catches a `clean-up` actuation failure (the CAMS-884 bug shape) but not
+  # a bug in `check`'s own discovery query, which is a separate concern.
+  #
+  # Uses azure/login like `check`/`clean-up` -- unlike `relay`, this job
+  # does NOT need to be secret-free, because nothing downstream reads its
+  # outputs via a fromJSON matrix.
+  #
+  # The 2-consecutive-run debounce (via actions/cache) exists because Azure
+  # stack deletion is eventually consistent: a delete call can report
+  # success before the resources are fully gone. A hash is only treated as
+  # a confirmed leak if it's still present on two runs that included it in
+  # their target list, not on its first sighting.
+  assert-clean-state:
+    runs-on: ubuntu-latest
+    needs: [check, relay, clean-up]
+    if: always() && needs.check.outputs.executeCleanup == 'true'
+    environment: 'remove-branch'
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: azure/login@7ddb5af1ef8758cf1353cf3b42f940aee27ba21c # v3.0.2
+        with:
+          client-id: ${{ secrets.AZ_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZ_TENANT_ID }}
+          subscription-id: ${{ secrets.AZ_SUBSCRIPTION_ID }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Fetch RG config from Key Vault
+        run: |
+          set -euo pipefail
+          # shellcheck source=ops/scripts/pipeline/_kv-to-env.sh
+          source ops/scripts/pipeline/_kv-to-env.sh
+          KV="kv-ustp-cams-dev"
+          kv_get networkRgBase "$KV" AZ-NETWORK-RG
+          kv_get appRgBase "$KV" AZ-APP-RG
+          echo "AZ_NETWORK_RG_BASE=${networkRgBase}" >> "$GITHUB_ENV"
+          echo "AZ_APP_RG_BASE=${appRgBase}" >> "$GITHUB_ENV"
+      - name: Restore previous unresolved-orphan state
+        # actions/cache keys are immutable once written, so `save` below
+        # uses a unique key per run (github.run_id) -- it would otherwise
+        # silently no-op on every run after the first, since the cache
+        # service refuses to overwrite an existing key. `restore-keys` is a
+        # prefix match that falls through to the most recently-created
+        # cache matching it, i.e. whatever the previous run saved.
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: unresolved-orphans.json
+          key: cams-branch-cleanup-unresolved-orphans-${{ github.run_id }}
+          restore-keys: |
+            cams-branch-cleanup-unresolved-orphans-
+      - name: Re-check each target hash and apply debounce
+        id: check-state
+        env:
+          TARGET_HASH_IDS: ${{ needs.relay.outputs.targetBranchHashIds }}
+        run: |
+          set -euo pipefail
+          [[ -f unresolved-orphans.json ]] || echo '[]' > unresolved-orphans.json
+          stillPresent='[]'
+          while IFS= read -r hash; do
+            networkMatch=$(az stack group list -g "${AZ_NETWORK_RG_BASE}" --query "[?tags.isBranchDeployment == 'true' && tags.branchHashId == '${hash}'].name" -o json)
+            appMatch=$(az stack group list -g "${AZ_APP_RG_BASE}" --query "[?tags.isBranchDeployment == 'true' && tags.branchHashId == '${hash}'].name" -o json)
+            count=$(jq -n --argjson n "${networkMatch}" --argjson a "${appMatch}" '($n + $a) | length')
+            if [[ "${count}" -gt 0 ]]; then
+              echo "Hash ${hash}: resources still present after clean-up (network: ${networkMatch}, app: ${appMatch})."
+              stillPresent=$(jq -c --arg h "${hash}" '. + [$h]' <<<"${stillPresent}")
+            fi
+          done < <(jq -r '.[]' <<<"${TARGET_HASH_IDS}")
+
+          confirmed=$(jq -n --argjson today "${stillPresent}" --slurpfile cached unresolved-orphans.json \
+            '$today - ($today - ($cached[0] // []))')
+          echo "${stillPresent}" > unresolved-orphans.json
+          echo "confirmedLeaks=${confirmed}" >> "$GITHUB_OUTPUT"
+      - name: Save unresolved-orphan state for next run
+        if: always()
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: unresolved-orphans.json
+          key: cams-branch-cleanup-unresolved-orphans-${{ github.run_id }}
+      - name: Fail loudly on confirmed leaks
+        if: steps.check-state.outputs.confirmedLeaks != '[]'
+        run: |
+          echo "::error::Branch cleanup left resources behind for 2 consecutive runs: ${{ steps.check-state.outputs.confirmedLeaks }}"
+          exit 1
