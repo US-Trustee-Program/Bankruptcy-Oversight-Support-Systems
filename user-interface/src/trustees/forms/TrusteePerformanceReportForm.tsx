@@ -291,9 +291,9 @@ export default function TrusteePerformanceReportForm(
           label="TPR Period Frequency"
           placeholder="- Select -"
           options={[
-            { value: 'BIANNUAL', label: 'Two years' },
+            { value: 'SEMI_ANNUAL', label: 'Six Months' },
             { value: 'ANNUAL', label: 'One year' },
-            { value: 'SEMI_ANNUAL', label: '6 months' },
+            { value: 'BIANNUAL', label: 'Two years' },
           ]}
           value={form.tprFrequency}
           onChange={(e) =>

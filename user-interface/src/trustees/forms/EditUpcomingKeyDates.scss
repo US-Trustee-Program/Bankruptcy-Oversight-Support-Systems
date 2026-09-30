@@ -138,6 +138,41 @@ $input-max-width: 20.75rem;
     }
   }
 
+  .completion-status-fields {
+    max-width: $input-max-width;
+    margin-top: 1.5rem;
+
+    > .usa-label {
+      margin-bottom: 0;
+      margin-top: 0;
+    }
+
+    &__row {
+      display: flex;
+      gap: 1rem;
+      align-items: flex-end;
+
+      .usa-form-group {
+        flex: 1;
+        min-width: 0;
+        max-width: none;
+        margin-top: 0;
+
+        select {
+          width: 100%;
+        }
+
+        .usa-hint {
+          padding-bottom: 0.5rem;
+        }
+      }
+    }
+
+    &__row + .cams-field-error-message {
+      padding-top: 0.5rem;
+    }
+  }
+
   .tir-period-group {
     max-width: $input-max-width;
     margin-top: 1.5rem;

@@ -34,11 +34,11 @@ describe('useAppointmentExpansion', () => {
     sessionStorage.clear();
   });
 
-  test('an active appointment is expanded by default', () => {
+  test('an active appointment is collapsed by default', () => {
     const appointment = makeAppointment('appt-1', { status: 'active' });
     const { result } = renderHook(() => useAppointmentExpansion('trustee-123'));
 
-    expect(result.current.isExpanded(appointment)).toBe(true);
+    expect(result.current.isExpanded(appointment)).toBe(false);
   });
 
   test('an inactive appointment is collapsed by default', () => {
@@ -57,25 +57,25 @@ describe('useAppointmentExpansion', () => {
       result.current.toggleExpanded(inactive);
     });
 
-    expect(result.current.isExpanded(active)).toBe(true);
+    expect(result.current.isExpanded(active)).toBe(false);
     expect(result.current.isExpanded(inactive)).toBe(true);
   });
 
-  test('toggling an expanded appointment collapses it, toggling again expands it', () => {
+  test('toggling a collapsed appointment expands it, toggling again collapses it', () => {
     const active = makeAppointment('active-1', { status: 'active' });
     const { result } = renderHook(() => useAppointmentExpansion('trustee-123'));
 
-    expect(result.current.isExpanded(active)).toBe(true);
-
-    act(() => {
-      result.current.toggleExpanded(active);
-    });
     expect(result.current.isExpanded(active)).toBe(false);
 
     act(() => {
       result.current.toggleExpanded(active);
     });
     expect(result.current.isExpanded(active)).toBe(true);
+
+    act(() => {
+      result.current.toggleExpanded(active);
+    });
+    expect(result.current.isExpanded(active)).toBe(false);
   });
 
   test('an appointment stays expanded after its status changes once explicitly toggled', () => {

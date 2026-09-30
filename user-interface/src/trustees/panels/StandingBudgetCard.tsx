@@ -7,7 +7,11 @@ interface BudgetDates {
   budgetReviewToOO: string;
 }
 
-// Confirmed by mstankey@flexion.us, 2026-09-29 (cams-plwwz.7).
+// Dates confirmed by mstankey@flexion.us, 2026-09-29 (cams-plwwz.7). That confirmation also
+// established the underlying field is a review date, not a due date, which is why the field/key
+// stays budgetReviewToOO -- but the card header reads "Budget Due to OO" per product direction
+// for this read-only summary view (2026-09-30, CAMS-909 QA pass). Any future edit form for this
+// field should use "review" language to stay consistent with the confirmed semantics.
 const BUDGET_DATES: Record<StandingBudgetCardVariant, BudgetDates> = {
   'chapter12-standing': { budgetSubmissionDue: '05/01', budgetReviewToOO: '06/01' },
   'chapter13-standing': { budgetSubmissionDue: '07/01', budgetReviewToOO: '08/15' },
@@ -39,7 +43,7 @@ export default function StandingBudgetCard(props: Readonly<StandingBudgetCardPro
         },
         {
           key: 'budgetReviewToOO',
-          header: 'Budget Review to OO',
+          header: 'Budget Due to OO',
           testId: 'budget-review-to-oo-row',
         },
       ]}

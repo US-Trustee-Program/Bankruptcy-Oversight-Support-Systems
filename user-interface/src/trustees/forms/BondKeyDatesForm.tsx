@@ -118,7 +118,7 @@ export default function BondKeyDatesForm() {
 
   return (
     <div className="edit-upcoming-key-dates" data-testid="edit-bond-key-dates">
-      <h3>Edit Key Dates</h3>
+      <h3>Edit Bond Key Dates</h3>
       <DatePicker
         id="bond-renewal-date"
         label="Bond Renewal Date"
