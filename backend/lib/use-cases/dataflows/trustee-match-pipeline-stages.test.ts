@@ -949,7 +949,49 @@ describe('scoreCandidate - name-match facet', () => {
   // via isFirstMiddleSwap's crossed-pair check, never reaching pipelineMiddleNameScore's
   // (now-stricter) bare-initial-conflict check - that branch only applies once first names already
   // agree positionally, so a genuine swap (firstScore===0 positionally) cannot regress here.
+  // The ORIGINAL fixture here (ACMS "Dominic S" vs CAMS "Sylvain D") was itself a latent false
+  // positive, not a genuine swap: neither crossed pair is a real match - "Dominic" and "D" (CAMS's
+  // middle) only relate via isInitialOf, and "S" (ACMS's middle) and "Sylvain" only relate via
+  // isInitialOf too. It only passed because isCrossedNamePartMatch's isPlausibleNicknameByDistance
+  // fallback was silently readmitting bare-initial relationships for short names (see that
+  // function's own doc comment on the real "Al"/"A" regression that exposed this) - "s"/"sylvain"
+  // and "d"/"dominic" both clear the nickname-distance threshold purely because a short string is
+  // highly Jaro-Winkler-similar to its own leading letter. A genuine swap needs the SAME name token
+  // reordered, not two independently-coincidental initials - see isFirstMiddleSwap's own doc
+  // comment for the real-data classification this fixture now reflects.
   test('still credits a genuine first/middle swap as 85, unaffected by the bare-initial-conflict fix', async () => {
+    const state = await normalizeAcmsSourceName()(
+      createInitialState(
+        makeDxtrTrustee({ firstName: 'Dominic', middleName: 'S', lastName: 'Beaumont' }),
+      ),
+    );
+    const candidate = addCandidate(
+      state,
+      projectTrustee(
+        makeTrustee({
+          trusteeId: 't1',
+          firstName: 's',
+          middleName: 'Dominic',
+          lastName: 'Beaumont',
+        }),
+      ),
+      'test',
+    );
+
+    scoreCandidate(state.sourceNormalized, candidate);
+
+    expect(mergedScore(candidate)).toMatchObject({
+      doesNameMatch: { value: 85, pass: true },
+    });
+  });
+
+  // Real regression shape (name synthesized, PR #3072): ACMS "Dominic S" vs CAMS "Sylvain D" -
+  // the ORIGINAL (incorrect) fixture for the test above. Neither crossed pair is a real match:
+  // "Dominic" vs CAMS's bare middle "D" and ACMS's bare middle "S" vs "Sylvain" are each ONLY an
+  // isInitialOf relationship, coincidentally crossing in both directions. This must NOT resolve as
+  // a swap - it is indistinguishable, on name alone, from two unrelated people who happen to share
+  // a surname and whose first names' leading letters happen to cross-match.
+  test('does not credit two independently-coincidental bare initials as a first/middle swap', async () => {
     const state = await normalizeAcmsSourceName()(
       createInitialState(
         makeDxtrTrustee({ firstName: 'Dominic', middleName: 'S', lastName: 'Beaumont' }),
@@ -971,7 +1013,7 @@ describe('scoreCandidate - name-match facet', () => {
     scoreCandidate(state.sourceNormalized, candidate);
 
     expect(mergedScore(candidate)).toMatchObject({
-      doesNameMatch: { value: 85, pass: true },
+      doesNameMatch: { value: 0, pass: false },
     });
   });
 
