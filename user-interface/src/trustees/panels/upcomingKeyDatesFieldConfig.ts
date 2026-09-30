@@ -11,9 +11,6 @@ import {
   EditableTableCardTagColor,
 } from '@/lib/components/cams/EditableTableCard/EditableTableCard';
 
-export type UpcomingKeyDatesVariant =
-  'chapter7-panel' | 'chapter12-standing' | 'chapter13-standing';
-
 export const NO_DATE = 'No date added';
 
 export interface CompletionTagLabels {
@@ -169,13 +166,3 @@ export function tirReviewField(data: TrusteeUpcomingKeyDates | null): UpcomingKe
   }
   return { value };
 }
-
-// The only remaining production consumer (UpcomingKeyDatesForm.tsx) just
-// validates a variant name from router state against this list -- it never
-// reads per-field wiring, which every card already builds directly from the
-// field functions above.
-export const UPCOMING_KEY_DATES_VARIANTS: readonly UpcomingKeyDatesVariant[] = [
-  'chapter7-panel',
-  'chapter12-standing',
-  'chapter13-standing',
-];

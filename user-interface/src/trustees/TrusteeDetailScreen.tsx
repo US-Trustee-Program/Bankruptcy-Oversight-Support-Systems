@@ -25,7 +25,6 @@ import TrusteeContactForm from './forms/TrusteeContactForm';
 import TrusteeStaffForm from './forms/TrusteeStaffForm';
 import TrusteeAppointmentForm from './forms/TrusteeAppointmentForm';
 import EditTrusteeAppointment from './forms/EditTrusteeAppointment';
-import UpcomingKeyDatesForm from './forms/UpcomingKeyDatesForm';
 import PastKeyDatesForm from './forms/PastKeyDatesForm';
 import Chapter13StandingAuditForm from './forms/Chapter13StandingAuditForm';
 import TrusteePerformanceReportForm from './forms/TrusteePerformanceReportForm';
@@ -87,7 +86,6 @@ export default function TrusteeDetailScreen() {
   const globalAlert = useGlobalAlert();
   const featureFlags = useFeatureFlags();
   const showSoftwareBankInfo = !!featureFlags[TRUSTEE_SOFTWARE_BANK_DISPLAY];
-  const tprDisplayUpdates = !!featureFlags[TRUSTEE_APPOINTMENT_ACCORDIONS];
   const [caseListFilter, setCaseListFilter] = useSessionState<TrusteeCaseListFilterValue>(
     `cams:trustee-case-list-filter:${trusteeId}`,
     { caseStatus: 'OPEN', chapters: [] },
@@ -297,12 +295,6 @@ export default function TrusteeDetailScreen() {
     // is declared first (see CAMS-w1sba). Namespace each new variant's path
     // with its chapter/appointment-type prefix; TrusteeDetailScreen.test.tsx
     // asserts uniqueness as a regression guard.
-    {
-      path: 'appointments/:appointmentId/upcoming-key-dates/edit',
-      disabled: !featureFlags[TRUSTEE_APPOINTMENT_ACCORDIONS],
-      subHeading: appointmentHeading,
-      content: <UpcomingKeyDatesForm tprDisplayUpdates={tprDisplayUpdates} />,
-    },
     {
       path: 'appointments/:appointmentId/past-key-dates/edit',
       disabled: !featureFlags[TRUSTEE_APPOINTMENT_ACCORDIONS],

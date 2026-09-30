@@ -12,6 +12,9 @@ type MonthDaySelectorProps = {
   disabled?: boolean;
   required?: boolean;
   hasError?: boolean;
+  // Id of the externally rendered error message (e.g. a PairFieldGroup's shared
+  // error div) to include in aria-describedby. Mirrors Select's ariaDescribedBy prop.
+  ariaDescribedBy?: string;
   className?: string;
   onFocus?: () => void;
   onBlur?: (e: FocusEvent<HTMLDivElement>) => void;
@@ -70,6 +73,7 @@ export default function MonthDaySelector(props: MonthDaySelectorProps) {
     disabled,
     required,
     hasError,
+    ariaDescribedBy,
     className,
     onFocus,
     onBlur,
@@ -144,7 +148,7 @@ export default function MonthDaySelector(props: MonthDaySelectorProps) {
           required={required}
           aria-labelledby={label ? `${id}-label ${id}-month-label` : undefined}
           aria-label={!label && contextLabel ? `${contextLabel} Month` : undefined}
-          aria-describedby={hasError ? `${id}-error` : undefined}
+          aria-describedby={hasError ? (ariaDescribedBy ?? `${id}-error`) : undefined}
           aria-invalid={hasError ? 'true' : undefined}
         >
           <option value=""></option>
@@ -172,7 +176,7 @@ export default function MonthDaySelector(props: MonthDaySelectorProps) {
           required={required}
           aria-labelledby={label ? `${id}-label ${id}-day-label` : undefined}
           aria-label={!label && contextLabel ? `${contextLabel} Day` : undefined}
-          aria-describedby={hasError ? `${id}-error` : undefined}
+          aria-describedby={hasError ? (ariaDescribedBy ?? `${id}-error`) : undefined}
           aria-invalid={hasError ? 'true' : undefined}
         >
           <option value=""></option>

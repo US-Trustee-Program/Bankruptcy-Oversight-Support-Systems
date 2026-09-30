@@ -23,11 +23,6 @@ $input-max-width: 20.75rem;
     max-width: calc($input-max-width / 2 - 16px);
   }
 
-  .tir-date-group .cams-field-error-message {
-    font-weight: normal;
-    padding-top: 0.5rem;
-  }
-
   .review-period-group,
   .tpr-due-group {
     max-width: $input-max-width;
@@ -100,6 +95,7 @@ $input-max-width: 20.75rem;
     + .cams-field-error-message {
       font-weight: normal;
       padding-top: 0.5rem;
+      padding-bottom: 0;
     }
   }
 
@@ -135,6 +131,7 @@ $input-max-width: 20.75rem;
 
     &__row + .cams-field-error-message {
       padding-top: 0.5rem;
+      padding-bottom: 0;
     }
   }
 
@@ -170,6 +167,7 @@ $input-max-width: 20.75rem;
 
     &__row + .cams-field-error-message {
       padding-top: 0.5rem;
+      padding-bottom: 0;
     }
   }
 

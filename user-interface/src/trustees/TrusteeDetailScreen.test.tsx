@@ -675,46 +675,6 @@ describe('TrusteeDetailScreen', () => {
     });
   });
 
-  describe('upcoming-key-dates/edit route', () => {
-    beforeEach(() => {
-      TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
-      vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
-      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
-    });
-
-    test('should render UpcomingKeyDatesForm when TRUSTEE_APPOINTMENT_ACCORDIONS flag is enabled', async () => {
-      mockUseFeatureFlags.mockReturnValue({
-        ...testFeatureFlags,
-        'trustee-appointment-accordions': true,
-      });
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [] });
-      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
-
-      renderWithRouter(['/trustees/123/appointments/appt-1/upcoming-key-dates/edit']);
-
-      await waitFor(() => {
-        expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
-      });
-    });
-
-    test('should redirect home when TRUSTEE_APPOINTMENT_ACCORDIONS flag is disabled', async () => {
-      mockUseFeatureFlags.mockReturnValue({
-        ...testFeatureFlags,
-        'trustee-appointment-accordions': false,
-      });
-
-      renderWithRouter(['/trustees/123/appointments/appt-1/upcoming-key-dates/edit']);
-
-      await waitFor(() => {
-        // When feature flag is disabled, GoHome is rendered instead of the edit form
-        expect(screen.queryByTestId('edit-upcoming-key-dates')).not.toBeInTheDocument();
-      });
-      await waitFor(() => {
-        expect(mockNavigate).toHaveBeenCalledWith('/search');
-      });
-    });
-  });
-
   describe('past-key-dates/edit route flag gate', () => {
     beforeEach(() => {
       TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);

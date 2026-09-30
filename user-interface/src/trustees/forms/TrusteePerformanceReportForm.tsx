@@ -325,6 +325,7 @@ export default function TrusteePerformanceReportForm(
               value={form.tprDue}
               onChange={(value) => setForm((prev) => ({ ...prev, tprDue: value }))}
               hasError={hasError}
+              ariaDescribedBy={ariaDescribedBy}
             />
             <Select
               id="tpr-due-year-type"
