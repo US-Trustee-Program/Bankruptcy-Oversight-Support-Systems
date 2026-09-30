@@ -3138,32 +3138,14 @@ describe('resolveByExactNameOnly', () => {
     expect(result.match).toBeNull();
   });
 
-  test.each([
-    {
-      description: 'a fuzzy (non-exact) 85 name score',
-      nameMatchScore: { value: 85, threshold: 85, pass: true },
-      extraScores: {},
-    },
-    {
-      description: 'a candidate excluded by hasComparableContactData',
-      nameMatchScore: { value: 100, threshold: 85, pass: true },
-      // hasComparableContactData is the derived score every non-inverted RESOLVE stage reads,
-      // computed from doesCamsTrusteeHaveAddressAndPhone/doesAcmsTrusteeHaveAddressAndPhone by
-      // scoreHasComparableContactData - set directly here since this test exercises the RESOLVE
-      // stage in isolation, without running the full CANDIDATE_SCORERS pipeline.
-      extraScores: { hasComparableContactData: { value: 0, threshold: 100, pass: false } },
-    },
-  ])('does not resolve when $description', async ({ nameMatchScore, extraScores }) => {
+  test('does not resolve on a fuzzy (non-exact) 85 name score', async () => {
     const state = createInitialState(acmsRecord);
     const candidate = addCandidate(
       state,
       projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Ronald L. Larkin' })),
       'test',
     );
-    addScore(candidate, 'doesNameMatch', nameMatchScore);
-    for (const [scorer, score] of Object.entries(extraScores)) {
-      addScore(candidate, scorer, score);
-    }
+    addScore(candidate, 'doesNameMatch', { value: 85, threshold: 85, pass: true });
 
     const result = await resolveByExactNameOnly()(state);
 
@@ -3190,7 +3172,31 @@ describe('resolveByExactNameOnly', () => {
     expect(result.match).toBeNull();
   });
 
-  test('does not resolve when the ACMS record itself has no contact data, even with an exact name match', async () => {
+  // A real shape (name synthesized): the ACMS record carries an empty address and a "0" phone
+  // sentinel, so there is nothing to corroborate WITH - distinct from corroboration having been
+  // available and failed. Since this stage runs last, every resolver that could weigh real
+  // evidence has already declined.
+  test('resolves when the ACMS record has no contact data at all to corroborate with', async () => {
+    const state = await normalizeAcmsSourceName()(
+      createInitialState({ ...acmsRecord, legacy: { address1: '', phone: '0', fax: '0' } }),
+    );
+    const candidate = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Ronald L. Larkin' })),
+      'test',
+    );
+    scoreCandidate(state.sourceNormalized, candidate);
+
+    const result = await resolveByExactNameOnly()(state);
+
+    expect(result.match).toEqual({
+      trusteeId: 't1',
+      score: candidate.scores,
+      resolvedBy: 'resolveByExactNameOnly',
+    });
+  });
+
+  test('does not resolve when the CAMS trustee itself has no contact data', async () => {
     const state = createInitialState(acmsRecord);
     const candidate = addCandidate(
       state,
@@ -3198,7 +3204,11 @@ describe('resolveByExactNameOnly', () => {
       'test',
     );
     addScore(candidate, 'doesNameMatch', { value: 100, threshold: 85, pass: true });
-    addScore(candidate, 'hasComparableContactData', { value: 0, threshold: 100, pass: false });
+    addScore(candidate, 'doesCamsTrusteeHaveAddressAndPhone', {
+      value: 0,
+      threshold: 100,
+      pass: false,
+    });
 
     const result = await resolveByExactNameOnly()(state);
 
