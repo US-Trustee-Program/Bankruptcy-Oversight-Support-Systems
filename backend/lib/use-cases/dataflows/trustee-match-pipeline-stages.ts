@@ -43,6 +43,7 @@ import {
   addScore,
   foldKleene,
   KleeneBoolean,
+  candidatePool,
   mergedScore,
   normalize,
   NormalizedMemo,
@@ -967,27 +968,48 @@ function normalizeCandidateNameFields(
 }
 
 /**
+ * matchName's verdict as it is stored on a candidate. `pass` and `quality` are the verdict itself
+ * and the only two fields anything branches on; value/threshold exist because ScoreRecord requires
+ * them and a reviewer reading persisted evidence expects the same shape every other score has.
+ */
+type NameMatchScore = ScoreRecord & { quality: NameMatchVerdict['quality'] };
+
+/**
+ * A candidate's name verdict. Never absent where this is called: scoreNameMatch runs for every
+ * candidate the instant it is created (see addAndScoreCandidate), ahead of every scorer below it
+ * in CANDIDATE_SCORERS and long before any RESOLVE stage. A candidate whose scoring threw is
+ * returned unscored but sets state.error, which halts runPipeline before RESOLVE - so only
+ * shouldEvictFromDiscovery, which runs on that same failure path, has to tolerate its absence.
+ */
+function nameMatch(candidate: PipelineCandidate): NameMatchScore {
+  return mergedScore(candidate).doesNameMatch as NameMatchScore;
+}
+
+/** Both name parts matched literally - no initial, nickname, phonetic, or swap relaxation
+ * anywhere. The bar every stage that trusts a name on its own requires. */
+function isExactNameMatch(candidate: PipelineCandidate): boolean {
+  const score = nameMatch(candidate);
+  return score.pass && score.quality === 'exact';
+}
+
+/**
  * Scoring stage wrapping matchName. Reads sourceNormalized/camsNormalized exclusively (see
  * normalizeAcmsSourceName/normalizeCandidateNameFields, both of which must run first - see
  * CANDIDATE_SCORERS' ordering) rather than sourceRaw/camsRaw directly, so this function never
  * needs its own awareness of which normalizer produced the comparable name.
- *
- * value is 100 for an 'exact' verdict, 85 for 'strong', 0 for no match - preserved alongside the
- * richer quality field so existing numeric-threshold readers (CONTACT_CORROBORATION_NAME_THRESHOLD)
- * keep working unchanged.
  */
 function scoreNameMatch(
   sourceNormalized: NormalizedTrustee,
   candidate: PipelineCandidate,
 ): PipelineCandidate {
   const verdict = matchName(candidate.memo, sourceNormalized, candidate.camsNormalized);
-  const value = !verdict.pass ? 0 : verdict.quality === 'exact' ? 100 : 85;
-  addScore(candidate, 'doesNameMatch', {
-    value,
+  const score: NameMatchScore = {
+    value: !verdict.pass ? 0 : verdict.quality === 'exact' ? 100 : 85,
     threshold: CONTACT_CORROBORATION_NAME_THRESHOLD,
     pass: verdict.pass,
     quality: verdict.quality,
-  });
+  };
+  addScore(candidate, 'doesNameMatch', score);
   return candidate;
 }
 
@@ -1443,7 +1465,7 @@ export function scoreNameDisqualifiers(
   sourceNormalized: NormalizedTrustee,
   candidate: PipelineCandidate,
 ): PipelineCandidate {
-  if (mergedScore(candidate).doesNameMatch?.value !== 0) return candidate;
+  if (nameMatch(candidate).pass) return candidate;
 
   const acmsFirst = sourceNormalized.firstName ?? '';
   const camsFirst = candidate.camsNormalized.firstName ?? '';
@@ -1510,7 +1532,7 @@ const NO_CONTRADICTION_ADDRESS_FLOOR = 30;
  */
 function isNoContradictionMatch(candidate: PipelineCandidate): boolean {
   const scores = mergedScore(candidate);
-  if (scores.doesNameMatch?.value !== 100) return false;
+  if (!isExactNameMatch(candidate)) return false;
 
   const hasNoComparablePhoneOrEmail =
     scores.contactCorroborationPhone === undefined &&
@@ -1547,31 +1569,21 @@ function isNoContradictionMatch(candidate: PipelineCandidate): boolean {
  */
 export function resolveBySoleContactMatch(): Stage {
   return async (state: PipelineState): Promise<PipelineState> => {
-    const candidates = [...state.candidates.entries()].filter(
-      ([, candidate]) => mergedScore(candidate).doesStateMatch?.pass !== false,
+    const qualifying = candidatePool(state).filter(
+      (candidate) =>
+        mergedScore(candidate).doesStateMatch?.pass !== false && nameMatch(candidate).pass,
     );
-    if (candidates.length === 0) return state;
+    if (qualifying.length !== 1) return state;
 
-    const qualifying = candidates.filter(
-      ([, candidate]) => mergedScore(candidate).doesNameMatch?.pass === true,
-    );
-    if (qualifying.length === 1) {
-      const [trusteeId, candidate] = qualifying[0];
-      const scores = mergedScore(candidate);
-      const corroborated =
-        scores.contactCorroborationAddress?.pass === true ||
-        scores.contactCorroborationPhone?.pass === true ||
-        scores.contactCorroborationEmail?.pass === true;
+    const candidate = qualifying[0];
+    const scores = mergedScore(candidate);
+    const corroborated =
+      scores.contactCorroborationAddress?.pass === true ||
+      scores.contactCorroborationPhone?.pass === true ||
+      scores.contactCorroborationEmail?.pass === true;
+    if (!corroborated && !isNoContradictionMatch(candidate)) return state;
 
-      if (corroborated || isNoContradictionMatch(candidate)) {
-        return {
-          ...state,
-          match: { trusteeId, score: candidate.scores, resolvedBy: 'resolveBySoleContactMatch' },
-        };
-      }
-    }
-
-    return state;
+    return resolveOnCandidate(state, candidate, 'resolveBySoleContactMatch');
   };
 }
 
@@ -1631,9 +1643,9 @@ function scoreContactCorroboration(
  */
 export function resolveByComparativeCorroboration(): Stage {
   return async (state: PipelineState): Promise<PipelineState> => {
-    const qualifying = [...state.candidates.values()].filter(
+    const qualifying = candidatePool(state).filter(
       (candidate) =>
-        mergedScore(candidate).doesNameMatch?.pass === true &&
+        nameMatch(candidate).pass &&
         mergedScore(candidate).hasComparableContactData?.pass !== false,
     );
     if (qualifying.length < 2) return state;
@@ -1733,7 +1745,7 @@ function scorePhoneTypoTolerance(
   sourceNormalized: NormalizedTrustee,
   candidate: PipelineCandidate,
 ): PipelineCandidate {
-  if (mergedScore(candidate).doesNameMatch?.value !== 100) return candidate;
+  if (!isExactNameMatch(candidate)) return candidate;
 
   const distance = phoneDigitDistance(
     sourceNormalized.legacy?.phone,
@@ -1927,15 +1939,15 @@ export function addAndScoreCandidate(
  */
 export function resolveByPhoneTypoTolerance(): Stage {
   return async (state: PipelineState): Promise<PipelineState> => {
-    const qualifying = [...state.candidates.values()].filter(
+    const qualifying = candidatePool(state).filter(
       (candidate) =>
-        mergedScore(candidate).doesNameMatch?.pass === true &&
+        nameMatch(candidate).pass &&
         mergedScore(candidate).hasComparableContactData?.pass !== false,
     );
     if (qualifying.length !== 1) return state;
 
     const candidate = qualifying[0];
-    if (mergedScore(candidate).doesNameMatch?.value !== 100) return state;
+    if (!isExactNameMatch(candidate)) return state;
 
     const score = mergedScore(candidate).phoneTypoToleranceScore;
     if (!score?.pass) return state;
@@ -2059,9 +2071,9 @@ function resolveOnCandidate(
  */
 export function resolveByExactNameOnly(): Stage {
   return async (state: PipelineState): Promise<PipelineState> => {
-    const exactMatches = [...state.candidates.values()].filter(
+    const exactMatches = candidatePool(state).filter(
       (candidate) =>
-        mergedScore(candidate).doesNameMatch?.value === 100 &&
+        isExactNameMatch(candidate) &&
         mergedScore(candidate).doesCamsTrusteeHaveAddressAndPhone?.pass !== false &&
         mergedScore(candidate).doesStateMatch?.pass !== false,
     );
@@ -2071,22 +2083,18 @@ export function resolveByExactNameOnly(): Stage {
   };
 }
 
-/**
- * Both name-quality tiers a geo-corroboration resolver checks, richest first - see
- * resolveByStateAndCity/resolveByZipCode's own doc comments. Expressed as doesNameMatch.value
- * (100/85), not the richer .quality field, since .value is the one part of that ScoreRecord with a
- * real, checked type today - .quality lives in ScoreRecord's untyped catch-all (see matchName's own
- * doc comment) and would need an unsafe cast to read back.
- */
-const NAME_MATCH_QUALITY_TIERS = [100, 85] as const;
+/** Both name-match qualities a geo-corroboration resolver checks, richest evidence first - see
+ * resolveByStateAndCity/resolveByZipCode's own doc comments. */
+const NAME_MATCH_QUALITY_TIERS = ['exact', 'strong'] as const;
 
-function exactOrStrongNameMatchCandidates(
+function nameMatchCandidatesAt(
   state: PipelineState,
-  nameMatchValue: number,
+  quality: NameMatchVerdict['quality'],
 ): PipelineCandidate[] {
-  return [...state.candidates.values()].filter(
-    (candidate) => mergedScore(candidate).doesNameMatch?.value === nameMatchValue,
-  );
+  return candidatePool(state).filter((candidate) => {
+    const score = nameMatch(candidate);
+    return score.pass && score.quality === quality;
+  });
 }
 
 /**
@@ -2101,7 +2109,7 @@ function resolveSoleQualifyingOn(
   resolvedBy: string,
 ): Stage {
   return async (state: PipelineState): Promise<PipelineState> => {
-    const qualifying = [...state.candidates.values()].filter(
+    const qualifying = candidatePool(state).filter(
       (candidate) =>
         mergedScore(candidate).doesNameMatch?.pass === true &&
         mergedScore(candidate).hasComparableContactData?.pass !== false,
@@ -2126,9 +2134,9 @@ function resolveSoleQualifyingOn(
  */
 export function resolveByStateAndCity(): Stage {
   return async (state: PipelineState): Promise<PipelineState> => {
-    for (const nameMatchValue of NAME_MATCH_QUALITY_TIERS) {
-      const qualifying = exactOrStrongNameMatchCandidates(state, nameMatchValue).filter(
-        (candidate) => stateAndCity(candidate),
+    for (const quality of NAME_MATCH_QUALITY_TIERS) {
+      const qualifying = nameMatchCandidatesAt(state, quality).filter((candidate) =>
+        stateAndCity(candidate),
       );
       if (qualifying.length === 0) continue;
       if (qualifying.length === 1) {
@@ -2146,9 +2154,9 @@ export function resolveByStateAndCity(): Stage {
  */
 export function resolveByZipCode(): Stage {
   return async (state: PipelineState): Promise<PipelineState> => {
-    for (const nameMatchValue of NAME_MATCH_QUALITY_TIERS) {
-      const qualifying = exactOrStrongNameMatchCandidates(state, nameMatchValue).filter(
-        (candidate) => zipCodeMatches(candidate),
+    for (const quality of NAME_MATCH_QUALITY_TIERS) {
+      const qualifying = nameMatchCandidatesAt(state, quality).filter((candidate) =>
+        zipCodeMatches(candidate),
       );
       if (qualifying.length === 0) continue;
       if (qualifying.length === 1) {
@@ -2195,7 +2203,7 @@ export function resolveByEmailAddress(): Stage {
  */
 export function resolveBySoleFuzzyNameMatchAndState(): Stage {
   return async (state: PipelineState): Promise<PipelineState> => {
-    const qualifying = [...state.candidates.values()].filter((candidate) => {
+    const qualifying = candidatePool(state).filter((candidate) => {
       const nameMatch = mergedScore(candidate).doesNameMatch;
       return (
         nameMatch?.pass === true &&

@@ -21,7 +21,9 @@ function makeCandidate(
   };
 }
 
-const passingNameMatch = { doesNameMatch: { value: 100, threshold: 85, pass: true } };
+const passingNameMatch = {
+  doesNameMatch: { value: 100, threshold: 85, pass: true, quality: 'exact' },
+};
 
 function makeState(
   overrides: Partial<Pick<TrusteeSerializedState, 'match' | 'skip' | 'error' | 'candidates'>>,
@@ -61,7 +63,9 @@ describe('deriveDisposition', () => {
   test('returns no-match when every candidate failed doesNameMatch', () => {
     const state = makeState({
       candidates: [
-        makeCandidate({ doesNameMatch: { value: 0, threshold: 85, pass: false } }),
+        makeCandidate({
+          doesNameMatch: { value: 0, threshold: 85, pass: false, quality: 'strong' },
+        }),
         makeCandidate({ doesNameMatch: { value: 42, threshold: 85, pass: false } }),
       ],
     });
@@ -81,8 +85,12 @@ describe('deriveDisposition', () => {
   test('returns no-match when only one candidate cleared doesNameMatch, even with a second candidate present', () => {
     const state = makeState({
       candidates: [
-        makeCandidate({ doesNameMatch: { value: 0, threshold: 85, pass: false } }),
-        makeCandidate({ doesNameMatch: { value: 100, threshold: 85, pass: true } }),
+        makeCandidate({
+          doesNameMatch: { value: 0, threshold: 85, pass: false, quality: 'strong' },
+        }),
+        makeCandidate({
+          doesNameMatch: { value: 100, threshold: 85, pass: true, quality: 'exact' },
+        }),
       ],
     });
     expect(deriveDisposition(state)).toBe('no-match');
@@ -106,7 +114,7 @@ describe('deriveDisposition', () => {
   // people in a big pool."
   test('returns no-match when every 85-scored candidate has no ACMS contact data to corroborate against', () => {
     const weakMatch = {
-      doesNameMatch: { value: 85, threshold: 85, pass: true },
+      doesNameMatch: { value: 85, threshold: 85, pass: true, quality: 'strong' },
       doesAcmsTrusteeHaveAddressAndPhone: { value: 0, threshold: 100, pass: false },
     };
     const state = makeState({
@@ -129,7 +137,7 @@ describe('deriveDisposition', () => {
     const state = makeState({
       candidates: [
         makeCandidate({
-          doesNameMatch: { value: 100, threshold: 85, pass: true },
+          doesNameMatch: { value: 100, threshold: 85, pass: true, quality: 'exact' },
           doesAcmsTrusteeHaveAddressAndPhone: { value: 0, threshold: 100, pass: false },
         }),
       ],
@@ -139,7 +147,7 @@ describe('deriveDisposition', () => {
 
   test('returns no-match, not ambiguous, when only one 85-scored candidate has ACMS contact data to corroborate against', () => {
     const weakMatchWithComparableAcmsData = {
-      doesNameMatch: { value: 85, threshold: 85, pass: true },
+      doesNameMatch: { value: 85, threshold: 85, pass: true, quality: 'strong' },
       doesAcmsTrusteeHaveAddressAndPhone: { value: 100, threshold: 100, pass: true },
       contactCorroborationAddress: { value: 10, threshold: 80, pass: false },
     };
@@ -151,11 +159,11 @@ describe('deriveDisposition', () => {
 
   test('returns ambiguous when TWO candidates each independently carry genuine competing evidence', () => {
     const exactMatch = {
-      doesNameMatch: { value: 100, threshold: 85, pass: true },
+      doesNameMatch: { value: 100, threshold: 85, pass: true, quality: 'exact' },
       doesAcmsTrusteeHaveAddressAndPhone: { value: 0, threshold: 100, pass: false },
     };
     const weakMatchWithComparableAcmsData = {
-      doesNameMatch: { value: 85, threshold: 85, pass: true },
+      doesNameMatch: { value: 85, threshold: 85, pass: true, quality: 'strong' },
       doesAcmsTrusteeHaveAddressAndPhone: { value: 100, threshold: 100, pass: true },
       contactCorroborationAddress: { value: 10, threshold: 80, pass: false },
     };
@@ -271,7 +279,7 @@ describe('deriveSuspectDuplicateCamsTrustee', () => {
       candidates: [
         makeCandidate(passingNameMatch, { phone: { number: '702-262-9322' } }),
         makeCandidate(
-          { doesNameMatch: { value: 0, threshold: 85, pass: false } },
+          { doesNameMatch: { value: 0, threshold: 85, pass: false, quality: 'strong' } },
           { phone: { number: '702-262-9322' } },
         ),
       ],
