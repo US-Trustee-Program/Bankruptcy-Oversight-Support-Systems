@@ -528,7 +528,7 @@ describe('serializeState', () => {
       match: {
         trusteeId: 't1',
         score: { nameScore: 100, nameMatchQuality: 'exact' },
-        resolvedBy: 'recallByNameThenResolveExact',
+        resolvedBy: 'recallByNameThenResolveMatch',
       },
     };
 
@@ -537,7 +537,7 @@ describe('serializeState', () => {
     expect(serialized.match).toEqual({
       trusteeId: 't1',
       score: { nameScore: 100, nameMatchQuality: 'exact' },
-      resolvedBy: 'recallByNameThenResolveExact',
+      resolvedBy: 'recallByNameThenResolveMatch',
     });
   });
 
