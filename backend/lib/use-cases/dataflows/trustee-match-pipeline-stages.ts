@@ -2209,10 +2209,13 @@ export function resolveByEmailAddress(): Stage {
  */
 export function resolveBySoleFuzzyNameMatchAndState(): Stage {
   return async (state: PipelineState): Promise<PipelineState> => {
+    // A better candidate anywhere in the pool means this stage has nothing to say: it trusts state
+    // agreement alone, which must never outrank an exact name sitting right beside it.
+    if (candidatePool(state).some(isExactNameMatch)) return state;
+
     const qualifying = candidatePool(state).filter(
       (candidate) =>
         nameMatch(candidate).pass &&
-        !isExactNameMatch(candidate) &&
         mergedScore(candidate).hasComparableContactData?.pass !== false,
     );
     if (qualifying.length !== 1) return state;
