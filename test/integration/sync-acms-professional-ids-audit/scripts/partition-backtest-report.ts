@@ -80,7 +80,9 @@ function loadTrustees(): Trustee[] {
   const raw: (Record<string, unknown> & { _id?: MongoExtendedId })[] = JSON.parse(
     fs.readFileSync(file, 'utf-8'),
   );
-  return raw.filter((doc) => doc.documentType === 'TRUSTEE').map((doc) => stripMongoId(doc) as Trustee);
+  return raw
+    .filter((doc) => doc.documentType === 'TRUSTEE')
+    .map((doc) => stripMongoId(doc) as Trustee);
 }
 
 const CSV_COLUMNS = [
@@ -174,7 +176,10 @@ function writeCandidateCsv(filePath: string, rows: CandidateCsvRow[]): void {
  * contact.ts), so one formatter covers either source without a ProjectedTrustee conversion step. */
 function addressString(address: ProjectedTrustee['address']): string {
   if (!address) return '';
-  return [address.address1, [address.city, address.state, address.zipCode].filter(Boolean).join(' ')]
+  return [
+    address.address1,
+    [address.city, address.state, address.zipCode].filter(Boolean).join(' '),
+  ]
     .filter(Boolean)
     .join(', ');
 }
@@ -246,7 +251,7 @@ function candidateCsvRows(
       camsAddress: addressString(candidate.camsRaw.address),
       camsPhone: candidate.camsRaw.phone?.number ?? '',
       introductionStage: introductionStageOf(candidate.scores),
-      nameScore: String(merged.doesNameMatch?.value ?? 0),
+      nameQuality: String(merged.doesNameMatch?.quality ?? ''),
       addressScore: String(merged.contactCorroborationAddress?.value ?? ''),
       phoneScore: String(merged.contactCorroborationPhone?.value ?? ''),
       stateMatch: String(merged.doesStateMatch?.pass ?? true),
@@ -262,15 +267,15 @@ async function main(): Promise<void> {
 
   const { deriveDisposition, deriveSuspectDuplicateCamsTrustee } =
     await import('../../../../backend/lib/use-cases/dataflows/trustee-professional-ids.types');
-  const { shouldSkipAsNotAPerson, isRecordDisavowed, shouldSkipAsUstStaff } = await import(
-    '../../../../backend/lib/use-cases/dataflows/acms-name-normalization.helpers'
-  );
+  const { shouldSkipAsNotAPerson, isRecordDisavowed, shouldSkipAsUstStaff } =
+    await import('../../../../backend/lib/use-cases/dataflows/acms-name-normalization.helpers');
 
   const records = loadProfessionalIds();
   const trusteeById = new Map(loadTrustees().map((t) => [t.trusteeId, t]));
   const stagingByAcmsId = new Map(
     records.map((r) => {
-      const trustee = r.disposition === 'auto-linked' ? trusteeById.get(r.camsTrusteeId) : undefined;
+      const trustee =
+        r.disposition === 'auto-linked' ? trusteeById.get(r.camsTrusteeId) : undefined;
       const staging: StagingInfo = {
         disposition: r.disposition,
         trusteeId: r.disposition === 'auto-linked' ? r.camsTrusteeId : null,
@@ -326,7 +331,12 @@ async function main(): Promise<void> {
       const staging = stagingByAcmsId.get(record.acmsProfessionalId);
       skippedRows.push(
         ...candidateCsvRows(
-          { acmsProfessionalId: record.acmsProfessionalId, sourceRaw: acmsTrusteeProfessional, candidates: [], match: null },
+          {
+            acmsProfessionalId: record.acmsProfessionalId,
+            sourceRaw: acmsTrusteeProfessional,
+            candidates: [],
+            match: null,
+          },
           'skipped',
           false,
           staging,

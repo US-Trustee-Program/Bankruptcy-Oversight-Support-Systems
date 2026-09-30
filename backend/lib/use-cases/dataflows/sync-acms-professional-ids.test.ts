@@ -639,7 +639,7 @@ describe('SyncAcmsProfessionalIds', () => {
               camsNormalized: {},
               memo: new Map(),
               scores: {
-                doesNameMatch: { value: 100, threshold: 85, pass: true, quality: 'exact' },
+                doesNameMatch: { pass: true, quality: 'exact' },
               },
               disqualifiers: [],
               origin: 'test',
@@ -652,7 +652,7 @@ describe('SyncAcmsProfessionalIds', () => {
               camsNormalized: {},
               memo: new Map(),
               scores: {
-                doesNameMatch: { value: 100, threshold: 85, pass: true, quality: 'exact' },
+                doesNameMatch: { pass: true, quality: 'exact' },
               },
               disqualifiers: [],
               origin: 'test',

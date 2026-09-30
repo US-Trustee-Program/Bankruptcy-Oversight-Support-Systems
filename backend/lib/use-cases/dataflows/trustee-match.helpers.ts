@@ -1397,15 +1397,6 @@ export async function resolveNameCollisionByScoring(
 }
 
 /**
- * Minimum nameScore (see calculateNameScore) for a candidate to qualify as name-corroborated in
- * the ACMS pipeline's contact-corroboration stage (trustee-match-pipeline-stages.ts). Below this,
- * a name difference is too weak a starting point for contact-field corroboration to rescue,
- * regardless of how well address/phone/email line up. Tuned via
- * test/integration/sync-acms-professional-ids-audit/scripts/auto-link-threshold-backtest.ts.
- */
-export const CONTACT_CORROBORATION_NAME_THRESHOLD = 85;
-
-/**
  * Minimum addressScore for address alone to count as strong corroboration in the ACMS pipeline's
  * contact-corroboration stage. Phone/email instead use their scale's max (100, an exact match)
  * since both are short, structured values where a partial match isn't meaningfully distinguishable

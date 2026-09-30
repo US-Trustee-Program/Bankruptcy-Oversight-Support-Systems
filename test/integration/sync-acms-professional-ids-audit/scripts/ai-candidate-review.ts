@@ -130,7 +130,7 @@ const REPORT_COLUMNS = [
   'acmsFullName',
   'camsName',
   'stateMatch',
-  'nameScore',
+  'nameQuality',
   'fullNameSimilarity',
   'tokenNameMatchRate',
   'acmsAddress',
@@ -218,7 +218,9 @@ function parseCliArgs(argv: string[]): CliArgs {
 }
 
 function acmsAddressString(sourceRaw: DxtrTrusteeParty): string {
-  return [sourceRaw.legacy?.address1, sourceRaw.legacy?.cityStateZipCountry].filter(Boolean).join(', ');
+  return [sourceRaw.legacy?.address1, sourceRaw.legacy?.cityStateZipCountry]
+    .filter(Boolean)
+    .join(', ');
 }
 
 function camsAddressString(candidate: ProjectedTrustee): string {
@@ -252,7 +254,7 @@ function latestMemoValue(memo: Record<string, MemoEntry[]>, functionName: string
  * pipeline-replay-backtest.ts does, since that score is never written through addScore onto
  * candidate.scores itself. Each scorer's contribution is now a ScoreRecord keyed by scorer name
  * (see trustee-match-pipeline.ts) rather than a bundle of bespoke fields - this reads the specific
- * keys this CSV has always displayed (nameScore/addressScore/phoneScore/stateMatch), tolerating
+ * keys this CSV displays (nameQuality/addressScore/phoneScore/stateMatch), tolerating
  * either the address or phone corroboration key being absent (not every candidate reaches
  * comparativeCorroborationStage). */
 function deriveCandidateFields(
@@ -262,9 +264,9 @@ function deriveCandidateFields(
   const isWinner = candidate.camsRaw.trusteeId === record.match?.trusteeId;
   const winnerScores = isWinner ? (record.match?.score as ScoreByScorer | undefined) : undefined;
   const merged: ScoreByScorer = { ...candidate.scores, ...winnerScores };
-  const nameScore = merged.doesNameMatch?.value ?? 0;
-  const addressScore = merged.contactCorroborationAddress?.value ?? null;
-  const phoneScore = merged.contactCorroborationPhone?.value ?? null;
+  const nameQuality = merged.doesNameMatch?.pass ? String(merged.doesNameMatch.quality) : 'none';
+  const addressScore = (merged.contactCorroborationAddress?.value as number | undefined) ?? null;
+  const phoneScore = (merged.contactCorroborationPhone?.value as number | undefined) ?? null;
   // Absent means the states were never comparable, not that they agree - doesStateMatch is only
   // recorded when both sides have a state (see scoreStateMatch).
   const stateMatch = merged.doesStateMatch?.pass ?? true;
@@ -274,7 +276,7 @@ function deriveCandidateFields(
   const tokenNameMatchRate = typeof rawTokenNameMatchRate === 'number' ? rawTokenNameMatchRate : 0;
   return {
     introductionStage: introductionStageOf(candidate.scores),
-    nameScore,
+    nameQuality,
     addressScore,
     phoneScore,
     stateMatch,
@@ -311,7 +313,7 @@ class ShardReportWriter {
           record.sourceRaw.fullName,
           candidate.camsRaw.name,
           fields.stateMatch,
-          fields.nameScore,
+          fields.nameQuality,
           fields.fullNameSimilarity,
           fields.tokenNameMatchRate,
           fields.acmsAddress,
@@ -355,7 +357,7 @@ function formatCandidate(
     `Name: ${candidate.camsRaw.name || '(blank)'}`,
     `Address: ${fields.camsAddress || '(blank)'}`,
     `Phone: ${fields.camsPhone || '(blank)'}`,
-    `Structured signals: nameScore=${fields.nameScore}, fullNameSimilarity=${fields.fullNameSimilarity}, ` +
+    `Structured signals: nameQuality=${fields.nameQuality}, fullNameSimilarity=${fields.fullNameSimilarity}, ` +
       `tokenNameMatchRate=${fields.tokenNameMatchRate}, stateMatch=${fields.stateMatch}, ` +
       `addressScore=${fields.addressScore}, phoneScore=${fields.phoneScore}`,
     `introductionStage: ${fields.introductionStage}`,

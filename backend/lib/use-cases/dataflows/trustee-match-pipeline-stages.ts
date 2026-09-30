@@ -8,7 +8,6 @@ import factory from '../../factory';
 import {
   calculateNumericTokenScore,
   CONTACT_CORROBORATION_ADDRESS_THRESHOLD,
-  CONTACT_CORROBORATION_NAME_THRESHOLD,
   firstLastNameToken,
   isBlankAcmsValue,
   isFirstMiddleSwap,
@@ -51,6 +50,7 @@ import {
   ProjectedTrustee,
   projectTrustee,
   ScoreByScorer,
+  MeasuredScore,
   ScoreRecord,
   TrusteePipelineCandidate as PipelineCandidate,
   TrusteePipelineState as PipelineState,
@@ -153,18 +153,17 @@ function matchNamePart(memo: NormalizedMemo, source: string, cams: string): Name
  * RESOLVE stages that consume this verdict, not here).
  *   - pass: last name matched AND first+middle together clear the corroboration-eligible bar - the
  *     one field every RESOLVE stage gates on before considering independent corroboration.
- *   - quality, ranked: 'exact' when every compared field matched literally; 'strong' when the
- *     surname matched but a given name was relaxed (initial, nickname, swap); 'weak' when the
- *     SURNAME itself only matched fuzzily. A weak match must never resolve on name alone - two
- *     surnames a typo apart belong to different people often enough that it needs independent
- *     corroboration to stand.
+ *   - quality, ranked, and present only when pass is true: 'exact' when every compared field
+ *     matched literally; 'strong' when the surname matched but a given name was relaxed (initial,
+ *     nickname, swap); 'weak' when the SURNAME itself only matched fuzzily. A weak match must
+ *     never resolve on name alone - two surnames a typo apart belong to different people often
+ *     enough that it needs independent corroboration to stand.
  */
-type NameMatchVerdict = {
-  pass: boolean;
-  quality: 'exact' | 'strong' | 'weak';
-};
+type NameMatchQuality = 'exact' | 'strong' | 'weak';
 
-const NO_MATCH: NameMatchVerdict = { pass: false, quality: 'weak' };
+type NameMatchVerdict = { pass: true; quality: NameMatchQuality } | { pass: false };
+
+const NO_MATCH: NameMatchVerdict = { pass: false };
 
 /**
  * Orchestrates every atomic name-comparison primitive (lastNameTokensMatch, matchNamePart,
@@ -988,12 +987,9 @@ function normalizeCandidateNameFields(
   return candidate;
 }
 
-/**
- * matchName's verdict as it is stored on a candidate. `pass` and `quality` are the verdict itself
- * and the only two fields anything branches on; value/threshold exist because ScoreRecord requires
- * them and a reviewer reading persisted evidence expects the same shape every other score has.
- */
-type NameMatchScore = ScoreRecord & { quality: NameMatchVerdict['quality'] };
+/** matchName's verdict as it is stored on a candidate - quality is present only on a pass, so a
+ * reader cannot mistake a failed match's quality for a real one. */
+type NameMatchScore = (ScoreRecord & { pass: true; quality: NameMatchQuality }) | { pass: false };
 
 /**
  * A candidate's name verdict. Never absent where this is called: scoreNameMatch runs for every
@@ -1031,13 +1027,7 @@ function scoreNameMatch(
   candidate: PipelineCandidate,
 ): PipelineCandidate {
   const verdict = matchName(candidate.memo, sourceNormalized, candidate.camsNormalized);
-  const score: NameMatchScore = {
-    value: !verdict.pass ? 0 : verdict.quality === 'exact' ? 100 : 85,
-    threshold: CONTACT_CORROBORATION_NAME_THRESHOLD,
-    pass: verdict.pass,
-    quality: verdict.quality,
-  };
-  addScore(candidate, 'doesNameMatch', score);
+  addScore(candidate, 'doesNameMatch', verdict);
   return candidate;
 }
 
@@ -1154,7 +1144,7 @@ function recordSimilarityDiagnostics(
  * ScoreByScorer).
  */
 function boolMatchRecord(match: boolean): ScoreRecord {
-  return { value: match ? 100 : 0, threshold: 100, pass: match };
+  return { pass: match };
 }
 
 /**
@@ -1198,11 +1188,7 @@ function scoreHasAddressAndPhone(
     zipCode: candidate.camsRaw.address?.zipCode,
     phone: candidate.camsRaw.phone?.number,
   });
-  addScore(candidate, 'doesCamsTrusteeHaveAddressAndPhone', {
-    value: noContactData ? 0 : 100,
-    threshold: 100,
-    pass: !noContactData,
-  });
+  addScore(candidate, 'doesCamsTrusteeHaveAddressAndPhone', { pass: !noContactData });
   return candidate;
 }
 
@@ -1242,11 +1228,7 @@ function scoreAcmsHasAddressAndPhone(
   candidate: PipelineCandidate,
 ): PipelineCandidate {
   const acmsHasNoContactData = memoizedAcmsHasNoContactData(sourceNormalized);
-  addScore(candidate, 'doesAcmsTrusteeHaveAddressAndPhone', {
-    value: acmsHasNoContactData ? 0 : 100,
-    threshold: 100,
-    pass: !acmsHasNoContactData,
-  });
+  addScore(candidate, 'doesAcmsTrusteeHaveAddressAndPhone', { pass: !acmsHasNoContactData });
   return candidate;
 }
 
@@ -1270,11 +1252,7 @@ function scoreHasComparableContactData(
   const eligible =
     scores.doesCamsTrusteeHaveAddressAndPhone?.pass !== false &&
     scores.doesAcmsTrusteeHaveAddressAndPhone?.pass !== false;
-  addScore(candidate, 'hasComparableContactData', {
-    value: eligible ? 100 : 0,
-    threshold: 100,
-    pass: eligible,
-  });
+  addScore(candidate, 'hasComparableContactData', { pass: eligible });
   return candidate;
 }
 
@@ -1569,7 +1547,7 @@ function isNoContradictionMatch(candidate: PipelineCandidate): boolean {
 
   if (scores.doesAcmsTrusteeHaveAddressAndPhone?.pass === false) return false;
 
-  const addressScore = scores.contactCorroborationAddress;
+  const addressScore = scores.contactCorroborationAddress as MeasuredScore | undefined;
   const hasContradictingAddress =
     addressScore !== undefined && addressScore.value < NO_CONTRADICTION_ADDRESS_FLOOR;
   return !hasContradictingAddress;
@@ -2117,7 +2095,7 @@ const NAME_MATCH_QUALITY_TIERS = ['exact', 'strong', 'weak'] as const;
 
 function nameMatchCandidatesAt(
   state: PipelineState,
-  quality: NameMatchVerdict['quality'],
+  quality: NameMatchQuality,
 ): PipelineCandidate[] {
   return candidatePool(state).filter((candidate) => {
     const score = nameMatch(candidate);
@@ -2231,14 +2209,12 @@ export function resolveByEmailAddress(): Stage {
  */
 export function resolveBySoleFuzzyNameMatchAndState(): Stage {
   return async (state: PipelineState): Promise<PipelineState> => {
-    const qualifying = candidatePool(state).filter((candidate) => {
-      const nameMatch = mergedScore(candidate).doesNameMatch;
-      return (
-        nameMatch?.pass === true &&
-        nameMatch.value !== 100 &&
-        mergedScore(candidate).hasComparableContactData?.pass !== false
-      );
-    });
+    const qualifying = candidatePool(state).filter(
+      (candidate) =>
+        nameMatch(candidate).pass &&
+        !isExactNameMatch(candidate) &&
+        mergedScore(candidate).hasComparableContactData?.pass !== false,
+    );
     if (qualifying.length !== 1) return state;
 
     const candidate = qualifying[0];

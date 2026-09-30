@@ -170,8 +170,7 @@ function main(): void {
   let considered = 0;
   for (const record of records) {
     const evidence = record.evidence as
-      | { sourceRaw?: { firstName?: string; middleName?: string; fullName?: string } }
-      | undefined;
+      { sourceRaw?: { firstName?: string; middleName?: string; fullName?: string } } | undefined;
     const match = (record.evidence as { match?: { trusteeId: string } } | undefined)?.match;
     if (!match?.trusteeId || !evidence?.sourceRaw) continue;
     const trustee = trusteeById.get(match.trusteeId);
@@ -232,7 +231,9 @@ function main(): void {
       v.cams,
     ),
   );
-  console.log(`\nCompound-given-name / placeholder CAMS records in the matched set: ${compound.length}`);
+  console.log(
+    `\nCompound-given-name / placeholder CAMS records in the matched set: ${compound.length}`,
+  );
   for (const v of compound) {
     console.log(
       `  ${v.id.padEnd(10)} ${v.src}  ||  ${v.cams}   current=${v.result.current} pipeline=${v.result.pipeline}`,

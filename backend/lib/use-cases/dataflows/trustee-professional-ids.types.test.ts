@@ -22,7 +22,7 @@ function makeCandidate(
 }
 
 const passingNameMatch = {
-  doesNameMatch: { value: 100, threshold: 85, pass: true, quality: 'exact' },
+  doesNameMatch: { pass: true, quality: 'exact' },
 };
 
 function makeState(
@@ -64,9 +64,9 @@ describe('deriveDisposition', () => {
     const state = makeState({
       candidates: [
         makeCandidate({
-          doesNameMatch: { value: 0, threshold: 85, pass: false, quality: 'strong' },
+          doesNameMatch: { pass: false, quality: 'strong' },
         }),
-        makeCandidate({ doesNameMatch: { value: 42, threshold: 85, pass: false } }),
+        makeCandidate({ doesNameMatch: { pass: false } }),
       ],
     });
     expect(deriveDisposition(state)).toBe('no-match');
@@ -86,10 +86,10 @@ describe('deriveDisposition', () => {
     const state = makeState({
       candidates: [
         makeCandidate({
-          doesNameMatch: { value: 0, threshold: 85, pass: false, quality: 'strong' },
+          doesNameMatch: { pass: false, quality: 'strong' },
         }),
         makeCandidate({
-          doesNameMatch: { value: 100, threshold: 85, pass: true, quality: 'exact' },
+          doesNameMatch: { pass: true, quality: 'exact' },
         }),
       ],
     });
@@ -114,8 +114,8 @@ describe('deriveDisposition', () => {
   // people in a big pool."
   test('returns no-match when every 85-scored candidate has no ACMS contact data to corroborate against', () => {
     const weakMatch = {
-      doesNameMatch: { value: 85, threshold: 85, pass: true, quality: 'strong' },
-      doesAcmsTrusteeHaveAddressAndPhone: { value: 0, threshold: 100, pass: false },
+      doesNameMatch: { pass: true, quality: 'strong' },
+      doesAcmsTrusteeHaveAddressAndPhone: { pass: false },
     };
     const state = makeState({
       candidates: [makeCandidate(weakMatch), makeCandidate(weakMatch), makeCandidate(weakMatch)],
@@ -137,8 +137,8 @@ describe('deriveDisposition', () => {
     const state = makeState({
       candidates: [
         makeCandidate({
-          doesNameMatch: { value: 100, threshold: 85, pass: true, quality: 'exact' },
-          doesAcmsTrusteeHaveAddressAndPhone: { value: 0, threshold: 100, pass: false },
+          doesNameMatch: { pass: true, quality: 'exact' },
+          doesAcmsTrusteeHaveAddressAndPhone: { pass: false },
         }),
       ],
     });
@@ -147,9 +147,9 @@ describe('deriveDisposition', () => {
 
   test('returns no-match, not ambiguous, when only one 85-scored candidate has ACMS contact data to corroborate against', () => {
     const weakMatchWithComparableAcmsData = {
-      doesNameMatch: { value: 85, threshold: 85, pass: true, quality: 'strong' },
-      doesAcmsTrusteeHaveAddressAndPhone: { value: 100, threshold: 100, pass: true },
-      contactCorroborationAddress: { value: 10, threshold: 80, pass: false },
+      doesNameMatch: { pass: true, quality: 'strong' },
+      doesAcmsTrusteeHaveAddressAndPhone: { pass: true },
+      contactCorroborationAddress: { pass: false },
     };
     const state = makeState({
       candidates: [makeCandidate(weakMatchWithComparableAcmsData)],
@@ -159,13 +159,13 @@ describe('deriveDisposition', () => {
 
   test('returns ambiguous when TWO candidates each independently carry genuine competing evidence', () => {
     const exactMatch = {
-      doesNameMatch: { value: 100, threshold: 85, pass: true, quality: 'exact' },
-      doesAcmsTrusteeHaveAddressAndPhone: { value: 0, threshold: 100, pass: false },
+      doesNameMatch: { pass: true, quality: 'exact' },
+      doesAcmsTrusteeHaveAddressAndPhone: { pass: false },
     };
     const weakMatchWithComparableAcmsData = {
-      doesNameMatch: { value: 85, threshold: 85, pass: true, quality: 'strong' },
-      doesAcmsTrusteeHaveAddressAndPhone: { value: 100, threshold: 100, pass: true },
-      contactCorroborationAddress: { value: 10, threshold: 80, pass: false },
+      doesNameMatch: { pass: true, quality: 'strong' },
+      doesAcmsTrusteeHaveAddressAndPhone: { pass: true },
+      contactCorroborationAddress: { pass: false },
     };
     const state = makeState({
       candidates: [makeCandidate(exactMatch), makeCandidate(weakMatchWithComparableAcmsData)],
@@ -279,7 +279,7 @@ describe('deriveSuspectDuplicateCamsTrustee', () => {
       candidates: [
         makeCandidate(passingNameMatch, { phone: { number: '702-262-9322' } }),
         makeCandidate(
-          { doesNameMatch: { value: 0, threshold: 85, pass: false, quality: 'strong' } },
+          { doesNameMatch: { pass: false, quality: 'strong' } },
           { phone: { number: '702-262-9322' } },
         ),
       ],

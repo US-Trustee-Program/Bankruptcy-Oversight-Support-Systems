@@ -437,12 +437,12 @@ describe('recallBySurnameExact', () => {
       makeDxtrTrustee({ fullName: 'Aldric T Voss', lastName: 'Voss' }),
     );
     const existingCandidate = addCandidate(state, projectTrustee(jordanVoss), 'test');
-    addScore(existingCandidate, 'doesNameMatch', { value: 42, threshold: 85, pass: false });
+    addScore(existingCandidate, 'doesNameMatch', { pass: false, quality: 'weak' });
 
     const result = await recallBySurnameExact(context)(state);
 
     expect(result.candidates.get('t1')!.scores).toEqual({
-      doesNameMatch: { value: 42, threshold: 85, pass: false },
+      doesNameMatch: { pass: false, quality: 'weak' },
     });
   });
 
@@ -823,8 +823,8 @@ describe('scoreCandidate - name-match facet', () => {
     scoreCandidate(state.sourceNormalized, t1);
     scoreCandidate(state.sourceNormalized, t2);
 
-    expect(mergedScore(t1)).toMatchObject({ doesNameMatch: { value: 100, pass: true } });
-    expect(mergedScore(t2)).toMatchObject({ doesNameMatch: { value: 0, pass: false } });
+    expect(mergedScore(t1)).toMatchObject({ doesNameMatch: { pass: true, quality: 'exact' } });
+    expect(mergedScore(t2)).toMatchObject({ doesNameMatch: { pass: false } });
   });
 
   test("downgrades to 85 when a bare middle initial doesn't match the other side's leading character", async () => {
@@ -842,7 +842,7 @@ describe('scoreCandidate - name-match facet', () => {
     scoreCandidate(state.sourceNormalized, candidate);
 
     expect(mergedScore(candidate)).toMatchObject({
-      doesNameMatch: { value: 85, pass: true },
+      doesNameMatch: { pass: true, quality: 'strong' },
     });
   });
 
@@ -871,7 +871,7 @@ describe('scoreCandidate - name-match facet', () => {
     scoreCandidate(state.sourceNormalized, candidate);
 
     expect(mergedScore(candidate)).toMatchObject({
-      doesNameMatch: { value: 85, pass: true },
+      doesNameMatch: { pass: true, quality: 'strong' },
     });
   });
 
@@ -897,7 +897,7 @@ describe('scoreCandidate - name-match facet', () => {
     scoreCandidate(state.sourceNormalized, candidate);
 
     expect(mergedScore(candidate)).toMatchObject({
-      doesNameMatch: { value: 0, pass: false },
+      doesNameMatch: { pass: false },
     });
   });
 
@@ -923,7 +923,7 @@ describe('scoreCandidate - name-match facet', () => {
     scoreCandidate(state.sourceNormalized, candidate);
 
     expect(mergedScore(candidate)).toMatchObject({
-      doesNameMatch: { value: 100, pass: true },
+      doesNameMatch: { pass: true, quality: 'exact' },
     });
   });
 
@@ -951,7 +951,7 @@ describe('scoreCandidate - name-match facet', () => {
     scoreCandidate(state.sourceNormalized, candidate);
 
     expect(mergedScore(candidate)).toMatchObject({
-      doesNameMatch: { value: 85, pass: true },
+      doesNameMatch: { pass: true, quality: 'strong' },
     });
   });
 
@@ -979,7 +979,7 @@ describe('scoreCandidate - name-match facet', () => {
     scoreCandidate(state.sourceNormalized, candidate);
 
     expect(mergedScore(candidate)).toMatchObject({
-      doesNameMatch: { value: 0, pass: false },
+      doesNameMatch: { pass: false },
     });
   });
 
@@ -1005,7 +1005,7 @@ describe('scoreCandidate - name-match facet', () => {
     scoreCandidate(state.sourceNormalized, candidate);
 
     expect(mergedScore(candidate)).toMatchObject({
-      doesNameMatch: { value: 85, pass: true },
+      doesNameMatch: { pass: true, quality: 'strong' },
     });
   });
 
@@ -1026,7 +1026,7 @@ describe('scoreCandidate - name-match facet', () => {
     scoreCandidate(state.sourceNormalized, candidate);
 
     expect(mergedScore(candidate)).toMatchObject({
-      doesNameMatch: { value: 85, pass: true },
+      doesNameMatch: { pass: true, quality: 'strong' },
     });
   });
 
@@ -1057,7 +1057,7 @@ describe('scoreCandidate - name-match facet', () => {
     scoreCandidate(state.sourceNormalized, candidate);
 
     expect(mergedScore(candidate)).toMatchObject({
-      doesNameMatch: { value: 85, pass: true },
+      doesNameMatch: { pass: true, quality: 'strong' },
     });
   });
 
@@ -1074,7 +1074,7 @@ describe('scoreCandidate - name-match facet', () => {
     scoreCandidate(state.sourceNormalized, candidate);
 
     expect(mergedScore(candidate)).toMatchObject({
-      doesNameMatch: { value: 85, pass: true },
+      doesNameMatch: { pass: true, quality: 'strong' },
     });
   });
 
@@ -1093,7 +1093,7 @@ describe('scoreCandidate - name-match facet', () => {
     scoreCandidate(state.sourceNormalized, candidate);
 
     expect(mergedScore(candidate)).toMatchObject({
-      doesNameMatch: { value: 0, pass: false },
+      doesNameMatch: { pass: false },
     });
   });
 
@@ -1120,7 +1120,9 @@ describe('scoreCandidate - name-match facet', () => {
 
     // Joining the fields exposes "JR." where a per-field split kept it hidden; without the
     // suffix filter it would become a middle token and conflict with "f".
-    expect(mergedScore(candidate)).toMatchObject({ doesNameMatch: { value: 100, pass: true } });
+    expect(mergedScore(candidate)).toMatchObject({
+      doesNameMatch: { pass: true, quality: 'exact' },
+    });
   });
 
   test('credits a fuzzy (spelling-variant) last name alongside an exact first name', async () => {
@@ -1136,7 +1138,7 @@ describe('scoreCandidate - name-match facet', () => {
     scoreCandidate(state.sourceNormalized, candidate);
 
     expect(mergedScore(candidate)).toMatchObject({
-      doesNameMatch: { value: 85, pass: true, quality: 'weak' },
+      doesNameMatch: { pass: true, quality: 'weak' },
     });
   });
 
@@ -1153,7 +1155,7 @@ describe('scoreCandidate - name-match facet', () => {
     scoreCandidate(state.sourceNormalized, candidate);
 
     expect(mergedScore(candidate)).toMatchObject({
-      doesNameMatch: { value: 0, pass: false },
+      doesNameMatch: { pass: false },
     });
   });
 
@@ -1179,7 +1181,7 @@ describe('scoreCandidate - name-match facet', () => {
     scoreCandidate(state.sourceNormalized, candidate);
 
     expect(mergedScore(candidate)).toMatchObject({
-      doesNameMatch: { value: 85, pass: true },
+      doesNameMatch: { pass: true, quality: 'strong' },
     });
   });
 
@@ -1198,7 +1200,7 @@ describe('scoreCandidate - name-match facet', () => {
     scoreCandidate(state.sourceNormalized, candidate);
 
     expect(mergedScore(candidate)).toMatchObject({
-      doesNameMatch: { value: 85, pass: true },
+      doesNameMatch: { pass: true, quality: 'strong' },
     });
   });
 
@@ -1217,7 +1219,7 @@ describe('scoreCandidate - name-match facet', () => {
     scoreCandidate(state.sourceNormalized, candidate);
 
     expect(mergedScore(candidate)).toMatchObject({
-      doesNameMatch: { value: 85, pass: true },
+      doesNameMatch: { pass: true, quality: 'strong' },
     });
   });
 
@@ -1249,7 +1251,7 @@ describe('scoreCandidate - name-match facet', () => {
     scoreCandidate(state.sourceNormalized, candidate);
 
     expect(mergedScore(candidate)).toMatchObject({
-      doesNameMatch: { value: 100, pass: true },
+      doesNameMatch: { pass: true, quality: 'exact' },
     });
   });
 
@@ -1273,7 +1275,7 @@ describe('scoreCandidate - name-match facet', () => {
     scoreCandidate(state.sourceNormalized, candidate);
 
     expect(mergedScore(candidate)).toMatchObject({
-      doesNameMatch: { value: 100, pass: true },
+      doesNameMatch: { pass: true, quality: 'exact' },
     });
   });
 });
@@ -1628,7 +1630,7 @@ describe('scoreCandidate - state/city/zip/contact-presence facets', () => {
     scoreCandidate(state.sourceNormalized, candidate);
 
     expect(mergedScore(candidate)).toMatchObject({
-      doesStateMatch: { value: 100, threshold: 100, pass: true },
+      doesStateMatch: { pass: true },
     });
   });
 
@@ -1727,7 +1729,7 @@ describe('scoreCandidate - state/city/zip/contact-presence facets', () => {
     scoreCandidate(state.sourceNormalized, candidate);
 
     expect(mergedScore(candidate)).toMatchObject({
-      doesCityMatch: { value: 100, threshold: 100, pass: true },
+      doesCityMatch: { pass: true },
     });
   });
 
@@ -1820,7 +1822,7 @@ describe('scoreCandidate - state/city/zip/contact-presence facets', () => {
     scoreCandidate(state.sourceNormalized, candidate);
 
     expect(mergedScore(candidate)).toMatchObject({
-      doesZipCodeMatch: { value: 100, threshold: 100, pass: true },
+      doesZipCodeMatch: { pass: true },
     });
   });
 
@@ -1920,9 +1922,9 @@ describe('scoreAddressDisqualifiers', () => {
   test('records ONE combined disqualifier when city, state, AND zip all actively disagree', () => {
     const state = createInitialState(makeDxtrTrustee({ fullName: GENERIC_ACMS_FULL_NAME }));
     const candidate = addSomeoneMoon(state, { trusteeId: 't1' });
-    addScore(candidate, 'doesCityMatch', { value: 0, threshold: 100, pass: false });
-    addScore(candidate, 'doesStateMatch', { value: 0, threshold: 100, pass: false });
-    addScore(candidate, 'doesZipCodeMatch', { value: 0, threshold: 100, pass: false });
+    addScore(candidate, 'doesCityMatch', { pass: false });
+    addScore(candidate, 'doesStateMatch', { pass: false });
+    addScore(candidate, 'doesZipCodeMatch', { pass: false });
 
     scoreAddressDisqualifiers(state.sourceNormalized, candidate);
 
@@ -1965,8 +1967,8 @@ describe('scoreAddressDisqualifiers', () => {
   test('does not disqualify when only some fields were even comparable, even if all compared ones disagree', () => {
     const state = createInitialState(makeDxtrTrustee({ fullName: GENERIC_ACMS_FULL_NAME }));
     const candidate = addSomeoneMoon(state, { trusteeId: 't1' });
-    addScore(candidate, 'doesCityMatch', { value: 0, threshold: 100, pass: false });
-    addScore(candidate, 'doesStateMatch', { value: 0, threshold: 100, pass: false });
+    addScore(candidate, 'doesCityMatch', { pass: false });
+    addScore(candidate, 'doesStateMatch', { pass: false });
     // doesZipCodeMatch never ran at all (e.g. no zip on file) - absence, not disagreement.
 
     scoreAddressDisqualifiers(state.sourceNormalized, candidate);
@@ -1986,9 +1988,9 @@ describe('scoreAddressDisqualifiers', () => {
   test('records no disqualifier when city/state/zip all agree', () => {
     const state = createInitialState(makeDxtrTrustee({ fullName: GENERIC_ACMS_FULL_NAME }));
     const candidate = addSomeoneMoon(state, { trusteeId: 't1' });
-    addScore(candidate, 'doesCityMatch', { value: 100, threshold: 100, pass: true });
-    addScore(candidate, 'doesStateMatch', { value: 100, threshold: 100, pass: true });
-    addScore(candidate, 'doesZipCodeMatch', { value: 100, threshold: 100, pass: true });
+    addScore(candidate, 'doesCityMatch', { pass: true });
+    addScore(candidate, 'doesStateMatch', { pass: true });
+    addScore(candidate, 'doesZipCodeMatch', { pass: true });
 
     scoreAddressDisqualifiers(state.sourceNormalized, candidate);
 
@@ -2016,12 +2018,7 @@ describe('scoreNameDisqualifiers', () => {
       ),
       'test',
     );
-    addScore(candidate, 'doesNameMatch', {
-      value: 0,
-      threshold: 85,
-      pass: false,
-      quality: 'strong',
-    });
+    addScore(candidate, 'doesNameMatch', { pass: false });
 
     scoreNameDisqualifiers(state.sourceNormalized, candidate);
 
@@ -2049,12 +2046,7 @@ describe('scoreNameDisqualifiers', () => {
       ),
       'test',
     );
-    addScore(candidate, 'doesNameMatch', {
-      value: 0,
-      threshold: 85,
-      pass: false,
-      quality: 'strong',
-    });
+    addScore(candidate, 'doesNameMatch', { pass: false });
 
     scoreNameDisqualifiers(state.sourceNormalized, candidate);
 
@@ -2080,12 +2072,7 @@ describe('scoreNameDisqualifiers', () => {
       ),
       'test',
     );
-    addScore(candidate, 'doesNameMatch', {
-      value: 0,
-      threshold: 85,
-      pass: false,
-      quality: 'strong',
-    });
+    addScore(candidate, 'doesNameMatch', { pass: false });
 
     scoreNameDisqualifiers(state.sourceNormalized, candidate);
 
@@ -2111,12 +2098,7 @@ describe('scoreNameDisqualifiers', () => {
       ),
       'test',
     );
-    addScore(candidate, 'doesNameMatch', {
-      value: 0,
-      threshold: 85,
-      pass: false,
-      quality: 'strong',
-    });
+    addScore(candidate, 'doesNameMatch', { pass: false });
 
     scoreNameDisqualifiers(state.sourceNormalized, candidate);
 
@@ -2142,12 +2124,7 @@ describe('scoreNameDisqualifiers', () => {
       ),
       'test',
     );
-    addScore(candidate, 'doesNameMatch', {
-      value: 85,
-      threshold: 85,
-      pass: true,
-      quality: 'strong',
-    });
+    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'strong' });
 
     scoreNameDisqualifiers(state.sourceNormalized, candidate);
 
@@ -2173,12 +2150,7 @@ describe('scoreNameDisqualifiers', () => {
       ),
       'test',
     );
-    addScore(candidate, 'doesNameMatch', {
-      value: 0,
-      threshold: 85,
-      pass: false,
-      quality: 'strong',
-    });
+    addScore(candidate, 'doesNameMatch', { pass: false });
 
     scoreNameDisqualifiers(state.sourceNormalized, candidate);
 
@@ -2194,12 +2166,7 @@ describe('resolveBySoleContactMatch', () => {
   test('resolves the sole name-qualifying candidate when its already-computed contact score corroborates', async () => {
     const state = createInitialState(makeDxtrTrustee());
     const candidate = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })), 'test');
-    addScore(candidate, 'doesNameMatch', {
-      value: 100,
-      threshold: 85,
-      pass: true,
-      quality: 'exact',
-    });
+    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'exact' });
     addScore(candidate, 'contactCorroborationPhone', { value: 100, threshold: 100, pass: true });
 
     const result = await resolveBySoleContactMatch()(state);
@@ -2214,17 +2181,8 @@ describe('resolveBySoleContactMatch', () => {
   test('resolves via the no-contradiction fallback when there is no comparable phone/email and the ACMS address does not contradict', async () => {
     const state = createInitialState(makeDxtrTrustee());
     const candidate = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })), 'test');
-    addScore(candidate, 'doesNameMatch', {
-      value: 100,
-      threshold: 85,
-      pass: true,
-      quality: 'exact',
-    });
-    addScore(candidate, 'doesAcmsTrusteeHaveAddressAndPhone', {
-      value: 100,
-      threshold: 100,
-      pass: true,
-    });
+    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'exact' });
+    addScore(candidate, 'doesAcmsTrusteeHaveAddressAndPhone', { pass: true });
     // No contactCorroborationPhone/Email at all (uncomparable), and no
     // contactCorroborationAddress recorded either (nothing to contradict).
 
@@ -2242,17 +2200,8 @@ describe('resolveBySoleContactMatch', () => {
       makeDxtrTrustee({ legacy: { phone: '0', fax: '0' } as never }),
     );
     const candidate = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })), 'test');
-    addScore(candidate, 'doesNameMatch', {
-      value: 100,
-      threshold: 85,
-      pass: true,
-      quality: 'exact',
-    });
-    addScore(candidate, 'doesAcmsTrusteeHaveAddressAndPhone', {
-      value: 0,
-      threshold: 100,
-      pass: false,
-    });
+    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'exact' });
+    addScore(candidate, 'doesAcmsTrusteeHaveAddressAndPhone', { pass: false });
 
     const result = await resolveBySoleContactMatch()(state);
 
@@ -2270,12 +2219,7 @@ describe('resolveBySoleContactMatch', () => {
   test('resolves via the no-contradiction fallback when the ACMS address is unparseable, not a genuine disagreement', async () => {
     const state = createInitialState(makeDxtrTrustee());
     const candidate = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })), 'test');
-    addScore(candidate, 'doesNameMatch', {
-      value: 100,
-      threshold: 85,
-      pass: true,
-      quality: 'exact',
-    });
+    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'exact' });
     // contactCorroborationAddress deliberately absent - the ACMS address never parsed.
 
     const result = await resolveBySoleContactMatch()(state);
@@ -2320,7 +2264,7 @@ describe('resolveBySoleContactMatch', () => {
     );
     scoreCandidate(state.sourceNormalized, candidate);
     expect(mergedScore(candidate)).toMatchObject({
-      doesStateMatch: { value: 0, pass: false },
+      doesStateMatch: { pass: false },
       contactCorroborationAddress: { pass: false },
     });
 
@@ -2337,12 +2281,7 @@ describe('resolveBySoleContactMatch', () => {
     // (see isNoContradictionMatch's own doc comment for the real regression this distinction fixes).
     state.sourceNormalized.address = { city: 'Anytown', state: 'CA', zipCode: '90001' };
     const candidate = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })), 'test');
-    addScore(candidate, 'doesNameMatch', {
-      value: 100,
-      threshold: 85,
-      pass: true,
-      quality: 'exact',
-    });
+    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'exact' });
     addScore(candidate, 'contactCorroborationAddress', { value: 5, threshold: 80, pass: false });
 
     const result = await resolveBySoleContactMatch()(state);
@@ -2373,17 +2312,8 @@ describe('resolveBySoleContactMatch', () => {
       ),
       'test',
     );
-    addScore(candidate, 'doesNameMatch', {
-      value: 100,
-      threshold: 85,
-      pass: true,
-      quality: 'exact',
-    });
-    addScore(candidate, 'doesAcmsTrusteeHaveAddressAndPhone', {
-      value: 100,
-      threshold: 100,
-      pass: true,
-    });
+    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'exact' });
+    addScore(candidate, 'doesAcmsTrusteeHaveAddressAndPhone', { pass: true });
     addScore(candidate, 'contactCorroborationAddress', { value: 5, threshold: 80, pass: false });
     expect(state.sourceNormalized.address).toBeUndefined();
 
@@ -2400,9 +2330,9 @@ describe('resolveBySoleContactMatch', () => {
   test('leaves state.match null when 2+ candidates qualify on name, never guessing between them', async () => {
     const state = createInitialState(makeDxtrTrustee());
     const first = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })), 'test');
-    addScore(first, 'doesNameMatch', { value: 85, threshold: 85, pass: true, quality: 'strong' });
+    addScore(first, 'doesNameMatch', { pass: true, quality: 'strong' });
     const second = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't2' })), 'test');
-    addScore(second, 'doesNameMatch', { value: 85, threshold: 85, pass: true, quality: 'strong' });
+    addScore(second, 'doesNameMatch', { pass: true, quality: 'strong' });
 
     const result = await resolveBySoleContactMatch()(state);
 
@@ -2412,17 +2342,8 @@ describe('resolveBySoleContactMatch', () => {
   test('leaves state.match null when the sole name-qualifying candidate has no corroboration and real contact data to contradict it', async () => {
     const state = createInitialState(makeDxtrTrustee());
     const candidate = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })), 'test');
-    addScore(candidate, 'doesNameMatch', {
-      value: 85,
-      threshold: 85,
-      pass: true,
-      quality: 'strong',
-    });
-    addScore(candidate, 'doesAcmsTrusteeHaveAddressAndPhone', {
-      value: 100,
-      threshold: 100,
-      pass: true,
-    });
+    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'strong' });
+    addScore(candidate, 'doesAcmsTrusteeHaveAddressAndPhone', { pass: true });
     addScore(candidate, 'contactCorroborationAddress', { value: 5, threshold: 80, pass: false });
 
     const result = await resolveBySoleContactMatch()(state);
@@ -2475,12 +2396,7 @@ describe('resolveByComparativeCorroboration', () => {
       ),
       'test',
     );
-    addScore(bruceHalden, 'doesNameMatch', {
-      value: 85,
-      threshold: 85,
-      pass: true,
-      quality: 'strong',
-    });
+    addScore(bruceHalden, 'doesNameMatch', { pass: true, quality: 'strong' });
     addScore(bruceHalden, 'contactCorroborationPhone', { value: 0, threshold: 100, pass: false });
     const marcusFeld = addCandidate(
       state,
@@ -2505,12 +2421,7 @@ describe('resolveByComparativeCorroboration', () => {
       ),
       'test',
     );
-    addScore(marcusFeld, 'doesNameMatch', {
-      value: 85,
-      threshold: 85,
-      pass: true,
-      quality: 'strong',
-    });
+    addScore(marcusFeld, 'doesNameMatch', { pass: true, quality: 'strong' });
     addScore(marcusFeld, 'contactCorroborationPhone', { value: 100, threshold: 100, pass: true });
 
     const result = await resolveByComparativeCorroboration()(state);
@@ -2546,7 +2457,7 @@ describe('resolveByComparativeCorroboration', () => {
       ),
       'test',
     );
-    addScore(first, 'doesNameMatch', { value: 85, threshold: 85, pass: true, quality: 'strong' });
+    addScore(first, 'doesNameMatch', { pass: true, quality: 'strong' });
     const second = addCandidate(
       state,
       projectTrustee(
@@ -2567,7 +2478,7 @@ describe('resolveByComparativeCorroboration', () => {
       ),
       'test',
     );
-    addScore(second, 'doesNameMatch', { value: 85, threshold: 85, pass: true, quality: 'strong' });
+    addScore(second, 'doesNameMatch', { pass: true, quality: 'strong' });
 
     const result = await resolveByComparativeCorroboration()(state);
 
@@ -2596,7 +2507,7 @@ describe('resolveByComparativeCorroboration', () => {
       ),
       'test',
     );
-    addScore(first, 'doesNameMatch', { value: 85, threshold: 85, pass: true, quality: 'strong' });
+    addScore(first, 'doesNameMatch', { pass: true, quality: 'strong' });
     const second = addCandidate(
       state,
       projectTrustee(
@@ -2617,7 +2528,7 @@ describe('resolveByComparativeCorroboration', () => {
       ),
       'test',
     );
-    addScore(second, 'doesNameMatch', { value: 85, threshold: 85, pass: true, quality: 'strong' });
+    addScore(second, 'doesNameMatch', { pass: true, quality: 'strong' });
 
     const result = await resolveByComparativeCorroboration()(state);
 
@@ -2646,12 +2557,7 @@ describe('resolveByComparativeCorroboration', () => {
       ),
       'test',
     );
-    addScore(nameNoMatch, 'doesNameMatch', {
-      value: 0,
-      threshold: 85,
-      pass: false,
-      quality: 'strong',
-    });
+    addScore(nameNoMatch, 'doesNameMatch', { pass: false });
 
     const result = await resolveByComparativeCorroboration()(state);
 
@@ -2684,15 +2590,10 @@ describe('resolveByComparativeCorroboration', () => {
       ),
       'test',
     );
-    addScore(noGeoAgreement, 'doesNameMatch', {
-      value: 85,
-      threshold: 85,
-      pass: true,
-      quality: 'strong',
-    });
-    addScore(noGeoAgreement, 'doesCityMatch', { value: 0, threshold: 100, pass: false });
-    addScore(noGeoAgreement, 'doesStateMatch', { value: 0, threshold: 100, pass: false });
-    addScore(noGeoAgreement, 'doesZipCodeMatch', { value: 0, threshold: 100, pass: false });
+    addScore(noGeoAgreement, 'doesNameMatch', { pass: true, quality: 'strong' });
+    addScore(noGeoAgreement, 'doesCityMatch', { pass: false });
+    addScore(noGeoAgreement, 'doesStateMatch', { pass: false });
+    addScore(noGeoAgreement, 'doesZipCodeMatch', { pass: false });
 
     const fullGeoAgreement = addCandidate(
       state,
@@ -2714,15 +2615,10 @@ describe('resolveByComparativeCorroboration', () => {
       ),
       'test',
     );
-    addScore(fullGeoAgreement, 'doesNameMatch', {
-      value: 85,
-      threshold: 85,
-      pass: true,
-      quality: 'strong',
-    });
-    addScore(fullGeoAgreement, 'doesCityMatch', { value: 100, threshold: 100, pass: true });
-    addScore(fullGeoAgreement, 'doesStateMatch', { value: 100, threshold: 100, pass: true });
-    addScore(fullGeoAgreement, 'doesZipCodeMatch', { value: 100, threshold: 100, pass: true });
+    addScore(fullGeoAgreement, 'doesNameMatch', { pass: true, quality: 'strong' });
+    addScore(fullGeoAgreement, 'doesCityMatch', { pass: true });
+    addScore(fullGeoAgreement, 'doesStateMatch', { pass: true });
+    addScore(fullGeoAgreement, 'doesZipCodeMatch', { pass: true });
 
     const result = await resolveByComparativeCorroboration()(state);
 
@@ -2755,10 +2651,10 @@ describe('resolveByComparativeCorroboration', () => {
       ),
       'test',
     );
-    addScore(first, 'doesNameMatch', { value: 85, threshold: 85, pass: true, quality: 'strong' });
-    addScore(first, 'doesCityMatch', { value: 100, threshold: 100, pass: true });
-    addScore(first, 'doesStateMatch', { value: 100, threshold: 100, pass: true });
-    addScore(first, 'doesZipCodeMatch', { value: 100, threshold: 100, pass: true });
+    addScore(first, 'doesNameMatch', { pass: true, quality: 'strong' });
+    addScore(first, 'doesCityMatch', { pass: true });
+    addScore(first, 'doesStateMatch', { pass: true });
+    addScore(first, 'doesZipCodeMatch', { pass: true });
 
     const second = addCandidate(
       state,
@@ -2780,10 +2676,10 @@ describe('resolveByComparativeCorroboration', () => {
       ),
       'test',
     );
-    addScore(second, 'doesNameMatch', { value: 85, threshold: 85, pass: true, quality: 'strong' });
-    addScore(second, 'doesCityMatch', { value: 100, threshold: 100, pass: true });
-    addScore(second, 'doesStateMatch', { value: 100, threshold: 100, pass: true });
-    addScore(second, 'doesZipCodeMatch', { value: 100, threshold: 100, pass: true });
+    addScore(second, 'doesNameMatch', { pass: true, quality: 'strong' });
+    addScore(second, 'doesCityMatch', { pass: true });
+    addScore(second, 'doesStateMatch', { pass: true });
+    addScore(second, 'doesZipCodeMatch', { pass: true });
 
     const result = await resolveByComparativeCorroboration()(state);
 
@@ -2812,10 +2708,10 @@ describe('resolveByComparativeCorroboration', () => {
       ),
       'test',
     );
-    addScore(geoOnly, 'doesNameMatch', { value: 85, threshold: 85, pass: true, quality: 'strong' });
-    addScore(geoOnly, 'doesCityMatch', { value: 100, threshold: 100, pass: true });
-    addScore(geoOnly, 'doesStateMatch', { value: 100, threshold: 100, pass: true });
-    addScore(geoOnly, 'doesZipCodeMatch', { value: 100, threshold: 100, pass: true });
+    addScore(geoOnly, 'doesNameMatch', { pass: true, quality: 'strong' });
+    addScore(geoOnly, 'doesCityMatch', { pass: true });
+    addScore(geoOnly, 'doesStateMatch', { pass: true });
+    addScore(geoOnly, 'doesZipCodeMatch', { pass: true });
 
     const exactPhone = addCandidate(
       state,
@@ -2837,12 +2733,7 @@ describe('resolveByComparativeCorroboration', () => {
       ),
       'test',
     );
-    addScore(exactPhone, 'doesNameMatch', {
-      value: 85,
-      threshold: 85,
-      pass: true,
-      quality: 'strong',
-    });
+    addScore(exactPhone, 'doesNameMatch', { pass: true, quality: 'strong' });
     addScore(exactPhone, 'contactCorroborationPhone', { value: 100, threshold: 100, pass: true });
 
     const result = await resolveByComparativeCorroboration()(state);
@@ -3088,12 +2979,7 @@ describe('resolveByPhoneTypoTolerance', () => {
       projectTrustee(makeTrustee({ trusteeId: 'terrence-j-boyle', name: 'Terrence J. Boyle' })),
       'test',
     );
-    addScore(candidate, 'doesNameMatch', {
-      value: 100,
-      threshold: 85,
-      pass: true,
-      quality: 'exact',
-    });
+    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'exact' });
     addScore(candidate, 'phoneTypoToleranceScore', {
       value: 9,
       threshold: 8,
@@ -3150,7 +3036,7 @@ describe('resolveByPhoneTypoTolerance', () => {
       projectTrustee(makeTrustee({ trusteeId: 'candidate-1', name: 'Marisol Quade' })),
       'test',
     );
-    addScore(first, 'doesNameMatch', { value: 100, threshold: 85, pass: true, quality: 'exact' });
+    addScore(first, 'doesNameMatch', { pass: true, quality: 'exact' });
     addScore(first, 'phoneTypoToleranceScore', {
       value: 9,
       threshold: 8,
@@ -3162,7 +3048,7 @@ describe('resolveByPhoneTypoTolerance', () => {
       projectTrustee(makeTrustee({ trusteeId: 'candidate-2', name: 'Marisol R. Quade' })),
       'test',
     );
-    addScore(second, 'doesNameMatch', { value: 100, threshold: 85, pass: true, quality: 'exact' });
+    addScore(second, 'doesNameMatch', { pass: true, quality: 'exact' });
     addScore(second, 'phoneTypoToleranceScore', {
       value: 9,
       threshold: 8,
@@ -3284,12 +3170,7 @@ describe('resolveByExactNameOnly', () => {
       projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Ronald L. Larkin' })),
       'test',
     );
-    addScore(candidate, 'doesNameMatch', {
-      value: 85,
-      threshold: 85,
-      pass: true,
-      quality: 'strong',
-    });
+    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'strong' });
 
     const result = await resolveByExactNameOnly()(state);
 
@@ -3307,12 +3188,7 @@ describe('resolveByExactNameOnly', () => {
       projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Ronald L. Larkin' })),
       'test',
     );
-    addScore(candidate, 'doesNameMatch', {
-      value: 85,
-      threshold: 85,
-      pass: true,
-      quality: 'weak',
-    });
+    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'weak' });
 
     const result = await resolveByExactNameOnly()(state);
 
@@ -3326,13 +3202,13 @@ describe('resolveByExactNameOnly', () => {
       projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Ronald L. Larkin' })),
       'test',
     );
-    addScore(first, 'doesNameMatch', { value: 100, threshold: 85, pass: true, quality: 'exact' });
+    addScore(first, 'doesNameMatch', { pass: true, quality: 'exact' });
     const second = addCandidate(
       state,
       projectTrustee(makeTrustee({ trusteeId: 't2', name: 'Ronald L. Larkin' })),
       'test',
     );
-    addScore(second, 'doesNameMatch', { value: 100, threshold: 85, pass: true, quality: 'exact' });
+    addScore(second, 'doesNameMatch', { pass: true, quality: 'exact' });
 
     const result = await resolveByExactNameOnly()(state);
 
@@ -3370,17 +3246,8 @@ describe('resolveByExactNameOnly', () => {
       projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Ronald L. Larkin' })),
       'test',
     );
-    addScore(candidate, 'doesNameMatch', {
-      value: 100,
-      threshold: 85,
-      pass: true,
-      quality: 'exact',
-    });
-    addScore(candidate, 'doesCamsTrusteeHaveAddressAndPhone', {
-      value: 0,
-      threshold: 100,
-      pass: false,
-    });
+    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'exact' });
+    addScore(candidate, 'doesCamsTrusteeHaveAddressAndPhone', { pass: false });
 
     const result = await resolveByExactNameOnly()(state);
 
@@ -3398,14 +3265,9 @@ describe('resolveByCityAndZipCode', () => {
       projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Moon' })),
       'test',
     );
-    addScore(candidate, 'doesNameMatch', {
-      value: 85,
-      threshold: 85,
-      pass: true,
-      quality: 'strong',
-    });
-    addScore(candidate, 'doesCityMatch', { value: 100, threshold: 100, pass: true });
-    addScore(candidate, 'doesZipCodeMatch', { value: 100, threshold: 100, pass: true });
+    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'strong' });
+    addScore(candidate, 'doesCityMatch', { pass: true });
+    addScore(candidate, 'doesZipCodeMatch', { pass: true });
 
     const result = await resolveByCityAndZipCode()(state);
 
@@ -3423,13 +3285,8 @@ describe('resolveByCityAndZipCode', () => {
       projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Moon' })),
       'test',
     );
-    addScore(candidate, 'doesNameMatch', {
-      value: 85,
-      threshold: 85,
-      pass: true,
-      quality: 'strong',
-    });
-    addScore(candidate, 'doesCityMatch', { value: 0, threshold: 100, pass: false });
+    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'strong' });
+    addScore(candidate, 'doesCityMatch', { pass: false });
     addScore(candidate, 'contactCorroborationAddress', { value: 3, threshold: 80, pass: false });
 
     const result = await resolveByCityAndZipCode()(state);
@@ -3446,15 +3303,10 @@ describe('resolveByCityAndZipCode', () => {
       projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Moon' })),
       'test',
     );
-    addScore(candidate, 'doesNameMatch', {
-      value: 85,
-      threshold: 85,
-      pass: true,
-      quality: 'strong',
-    });
-    addScore(candidate, 'doesStateMatch', { value: 0, threshold: 100, pass: false });
-    addScore(candidate, 'doesCityMatch', { value: 100, threshold: 100, pass: true });
-    addScore(candidate, 'doesZipCodeMatch', { value: 100, threshold: 100, pass: true });
+    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'strong' });
+    addScore(candidate, 'doesStateMatch', { pass: false });
+    addScore(candidate, 'doesCityMatch', { pass: true });
+    addScore(candidate, 'doesZipCodeMatch', { pass: true });
 
     const result = await resolveByCityAndZipCode()(state);
 
@@ -3472,12 +3324,7 @@ describe('resolveByCityAndZipCode', () => {
       projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Moon' })),
       'test',
     );
-    addScore(candidate, 'doesNameMatch', {
-      value: 85,
-      threshold: 85,
-      pass: true,
-      quality: 'strong',
-    });
+    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'strong' });
 
     const result = await resolveByCityAndZipCode()(state);
 
@@ -3492,14 +3339,9 @@ describe('resolveByCityAndZipCode', () => {
       projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Else' })),
       'test',
     );
-    addScore(candidate, 'doesNameMatch', {
-      value: 0,
-      threshold: 85,
-      pass: false,
-      quality: 'strong',
-    });
-    addScore(candidate, 'doesCityMatch', { value: 100, threshold: 100, pass: true });
-    addScore(candidate, 'doesZipCodeMatch', { value: 100, threshold: 100, pass: true });
+    addScore(candidate, 'doesNameMatch', { pass: false });
+    addScore(candidate, 'doesCityMatch', { pass: true });
+    addScore(candidate, 'doesZipCodeMatch', { pass: true });
 
     const result = await resolveByCityAndZipCode()(state);
 
@@ -3513,17 +3355,17 @@ describe('resolveByCityAndZipCode', () => {
       projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Moon' })),
       'test',
     );
-    addScore(first, 'doesNameMatch', { value: 85, threshold: 85, pass: true, quality: 'strong' });
-    addScore(first, 'doesCityMatch', { value: 100, threshold: 100, pass: true });
-    addScore(first, 'doesZipCodeMatch', { value: 100, threshold: 100, pass: true });
+    addScore(first, 'doesNameMatch', { pass: true, quality: 'strong' });
+    addScore(first, 'doesCityMatch', { pass: true });
+    addScore(first, 'doesZipCodeMatch', { pass: true });
     const second = addCandidate(
       state,
       projectTrustee(makeTrustee({ trusteeId: 't2', name: 'Someone Else Moon' })),
       'test',
     );
-    addScore(second, 'doesNameMatch', { value: 85, threshold: 85, pass: true, quality: 'strong' });
-    addScore(second, 'doesCityMatch', { value: 100, threshold: 100, pass: true });
-    addScore(second, 'doesZipCodeMatch', { value: 100, threshold: 100, pass: true });
+    addScore(second, 'doesNameMatch', { pass: true, quality: 'strong' });
+    addScore(second, 'doesCityMatch', { pass: true });
+    addScore(second, 'doesZipCodeMatch', { pass: true });
 
     const result = await resolveByCityAndZipCode()(state);
 
@@ -3541,14 +3383,9 @@ describe('resolveByStateAndCity', () => {
       projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Moon' })),
       'test',
     );
-    addScore(candidate, 'doesNameMatch', {
-      value: 85,
-      threshold: 85,
-      pass: true,
-      quality: 'strong',
-    });
-    addScore(candidate, 'doesStateMatch', { value: 100, threshold: 100, pass: true });
-    addScore(candidate, 'doesCityMatch', { value: 100, threshold: 100, pass: true });
+    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'strong' });
+    addScore(candidate, 'doesStateMatch', { pass: true });
+    addScore(candidate, 'doesCityMatch', { pass: true });
 
     const result = await resolveByStateAndCity()(state);
 
@@ -3568,13 +3405,8 @@ describe('resolveByStateAndCity', () => {
       projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Moon' })),
       'test',
     );
-    addScore(candidate, 'doesNameMatch', {
-      value: 85,
-      threshold: 85,
-      pass: true,
-      quality: 'strong',
-    });
-    addScore(candidate, 'doesStateMatch', { value: 100, threshold: 100, pass: true });
+    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'strong' });
+    addScore(candidate, 'doesStateMatch', { pass: true });
 
     const result = await resolveByStateAndCity()(state);
 
@@ -3588,14 +3420,9 @@ describe('resolveByStateAndCity', () => {
       projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Else' })),
       'test',
     );
-    addScore(candidate, 'doesNameMatch', {
-      value: 0,
-      threshold: 85,
-      pass: false,
-      quality: 'strong',
-    });
-    addScore(candidate, 'doesStateMatch', { value: 100, threshold: 100, pass: true });
-    addScore(candidate, 'doesCityMatch', { value: 100, threshold: 100, pass: true });
+    addScore(candidate, 'doesNameMatch', { pass: false });
+    addScore(candidate, 'doesStateMatch', { pass: true });
+    addScore(candidate, 'doesCityMatch', { pass: true });
 
     const result = await resolveByStateAndCity()(state);
 
@@ -3609,17 +3436,17 @@ describe('resolveByStateAndCity', () => {
       projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Moon' })),
       'test',
     );
-    addScore(first, 'doesNameMatch', { value: 85, threshold: 85, pass: true, quality: 'strong' });
-    addScore(first, 'doesStateMatch', { value: 100, threshold: 100, pass: true });
-    addScore(first, 'doesCityMatch', { value: 100, threshold: 100, pass: true });
+    addScore(first, 'doesNameMatch', { pass: true, quality: 'strong' });
+    addScore(first, 'doesStateMatch', { pass: true });
+    addScore(first, 'doesCityMatch', { pass: true });
     const second = addCandidate(
       state,
       projectTrustee(makeTrustee({ trusteeId: 't2', name: 'Someone Else Moon' })),
       'test',
     );
-    addScore(second, 'doesNameMatch', { value: 85, threshold: 85, pass: true, quality: 'strong' });
-    addScore(second, 'doesStateMatch', { value: 100, threshold: 100, pass: true });
-    addScore(second, 'doesCityMatch', { value: 100, threshold: 100, pass: true });
+    addScore(second, 'doesNameMatch', { pass: true, quality: 'strong' });
+    addScore(second, 'doesStateMatch', { pass: true });
+    addScore(second, 'doesCityMatch', { pass: true });
 
     const result = await resolveByStateAndCity()(state);
 
@@ -3637,13 +3464,8 @@ describe('resolveByZipCode', () => {
       projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Moon' })),
       'test',
     );
-    addScore(candidate, 'doesNameMatch', {
-      value: 85,
-      threshold: 85,
-      pass: true,
-      quality: 'strong',
-    });
-    addScore(candidate, 'doesZipCodeMatch', { value: 100, threshold: 100, pass: true });
+    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'strong' });
+    addScore(candidate, 'doesZipCodeMatch', { pass: true });
 
     const result = await resolveByZipCode()(state);
 
@@ -3663,14 +3485,9 @@ describe('resolveByZipCode', () => {
       projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Moon' })),
       'test',
     );
-    addScore(candidate, 'doesNameMatch', {
-      value: 85,
-      threshold: 85,
-      pass: true,
-      quality: 'strong',
-    });
-    addScore(candidate, 'doesStateMatch', { value: 0, threshold: 100, pass: false });
-    addScore(candidate, 'doesZipCodeMatch', { value: 100, threshold: 100, pass: true });
+    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'strong' });
+    addScore(candidate, 'doesStateMatch', { pass: false });
+    addScore(candidate, 'doesZipCodeMatch', { pass: true });
 
     const result = await resolveByZipCode()(state);
 
@@ -3688,13 +3505,8 @@ describe('resolveByZipCode', () => {
       projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Moon' })),
       'test',
     );
-    addScore(candidate, 'doesNameMatch', {
-      value: 85,
-      threshold: 85,
-      pass: true,
-      quality: 'strong',
-    });
-    addScore(candidate, 'doesZipCodeMatch', { value: 0, threshold: 100, pass: false });
+    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'strong' });
+    addScore(candidate, 'doesZipCodeMatch', { pass: false });
 
     const result = await resolveByZipCode()(state);
 
@@ -3708,13 +3520,8 @@ describe('resolveByZipCode', () => {
       projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Else' })),
       'test',
     );
-    addScore(candidate, 'doesNameMatch', {
-      value: 0,
-      threshold: 85,
-      pass: false,
-      quality: 'strong',
-    });
-    addScore(candidate, 'doesZipCodeMatch', { value: 100, threshold: 100, pass: true });
+    addScore(candidate, 'doesNameMatch', { pass: false });
+    addScore(candidate, 'doesZipCodeMatch', { pass: true });
 
     const result = await resolveByZipCode()(state);
 
@@ -3728,15 +3535,15 @@ describe('resolveByZipCode', () => {
       projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Moon' })),
       'test',
     );
-    addScore(first, 'doesNameMatch', { value: 85, threshold: 85, pass: true, quality: 'strong' });
-    addScore(first, 'doesZipCodeMatch', { value: 100, threshold: 100, pass: true });
+    addScore(first, 'doesNameMatch', { pass: true, quality: 'strong' });
+    addScore(first, 'doesZipCodeMatch', { pass: true });
     const second = addCandidate(
       state,
       projectTrustee(makeTrustee({ trusteeId: 't2', name: 'Someone Else Moon' })),
       'test',
     );
-    addScore(second, 'doesNameMatch', { value: 85, threshold: 85, pass: true, quality: 'strong' });
-    addScore(second, 'doesZipCodeMatch', { value: 100, threshold: 100, pass: true });
+    addScore(second, 'doesNameMatch', { pass: true, quality: 'strong' });
+    addScore(second, 'doesZipCodeMatch', { pass: true });
 
     const result = await resolveByZipCode()(state);
 
@@ -3754,12 +3561,7 @@ describe('resolveByAddress', () => {
       projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Moon' })),
       'test',
     );
-    addScore(candidate, 'doesNameMatch', {
-      value: 85,
-      threshold: 85,
-      pass: true,
-      quality: 'strong',
-    });
+    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'strong' });
     addScore(candidate, 'contactCorroborationAddress', { value: 90, threshold: 80, pass: true });
 
     const result = await resolveByAddress()(state);
@@ -3778,12 +3580,7 @@ describe('resolveByAddress', () => {
       projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Moon' })),
       'test',
     );
-    addScore(candidate, 'doesNameMatch', {
-      value: 85,
-      threshold: 85,
-      pass: true,
-      quality: 'strong',
-    });
+    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'strong' });
     addScore(candidate, 'contactCorroborationAddress', { value: 3, threshold: 80, pass: false });
 
     const result = await resolveByAddress()(state);
@@ -3802,12 +3599,7 @@ describe('resolveByPhone', () => {
       projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Moon' })),
       'test',
     );
-    addScore(candidate, 'doesNameMatch', {
-      value: 85,
-      threshold: 85,
-      pass: true,
-      quality: 'strong',
-    });
+    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'strong' });
     addScore(candidate, 'contactCorroborationPhone', { value: 100, threshold: 100, pass: true });
 
     const result = await resolveByPhone()(state);
@@ -3826,12 +3618,7 @@ describe('resolveByPhone', () => {
       projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Moon' })),
       'test',
     );
-    addScore(candidate, 'doesNameMatch', {
-      value: 85,
-      threshold: 85,
-      pass: true,
-      quality: 'strong',
-    });
+    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'strong' });
     addScore(candidate, 'contactCorroborationPhone', { value: 0, threshold: 100, pass: false });
 
     const result = await resolveByPhone()(state);
@@ -3850,12 +3637,7 @@ describe('resolveByEmailAddress', () => {
       projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Moon' })),
       'test',
     );
-    addScore(candidate, 'doesNameMatch', {
-      value: 85,
-      threshold: 85,
-      pass: true,
-      quality: 'strong',
-    });
+    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'strong' });
     addScore(candidate, 'contactCorroborationEmail', { value: 100, threshold: 100, pass: true });
 
     const result = await resolveByEmailAddress()(state);
@@ -3874,12 +3656,7 @@ describe('resolveByEmailAddress', () => {
       projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Moon' })),
       'test',
     );
-    addScore(candidate, 'doesNameMatch', {
-      value: 85,
-      threshold: 85,
-      pass: true,
-      quality: 'strong',
-    });
+    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'strong' });
     addScore(candidate, 'contactCorroborationEmail', { value: 0, threshold: 100, pass: false });
 
     const result = await resolveByEmailAddress()(state);
@@ -3898,15 +3675,10 @@ describe('resolveBySoleFuzzyNameMatchAndState', () => {
       projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Moon' })),
       'test',
     );
-    addScore(candidate, 'doesNameMatch', {
-      value: 85,
-      threshold: 85,
-      pass: true,
-      quality: 'strong',
-    });
-    addScore(candidate, 'doesStateMatch', { value: 100, threshold: 100, pass: true });
-    addScore(candidate, 'doesCityMatch', { value: 0, threshold: 100, pass: false });
-    addScore(candidate, 'doesZipCodeMatch', { value: 0, threshold: 100, pass: false });
+    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'strong' });
+    addScore(candidate, 'doesStateMatch', { pass: true });
+    addScore(candidate, 'doesCityMatch', { pass: false });
+    addScore(candidate, 'doesZipCodeMatch', { pass: false });
 
     const result = await resolveBySoleFuzzyNameMatchAndState()(state);
 
@@ -3924,13 +3696,8 @@ describe('resolveBySoleFuzzyNameMatchAndState', () => {
       projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Aldric A. Moon' })),
       'test',
     );
-    addScore(candidate, 'doesNameMatch', {
-      value: 100,
-      threshold: 85,
-      pass: true,
-      quality: 'exact',
-    });
-    addScore(candidate, 'doesStateMatch', { value: 100, threshold: 100, pass: true });
+    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'exact' });
+    addScore(candidate, 'doesStateMatch', { pass: true });
 
     const result = await resolveBySoleFuzzyNameMatchAndState()(state);
 
@@ -3944,13 +3711,8 @@ describe('resolveBySoleFuzzyNameMatchAndState', () => {
       projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Moon' })),
       'test',
     );
-    addScore(candidate, 'doesNameMatch', {
-      value: 85,
-      threshold: 85,
-      pass: true,
-      quality: 'strong',
-    });
-    addScore(candidate, 'doesStateMatch', { value: 0, threshold: 100, pass: false });
+    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'strong' });
+    addScore(candidate, 'doesStateMatch', { pass: false });
 
     const result = await resolveBySoleFuzzyNameMatchAndState()(state);
 
@@ -3964,12 +3726,7 @@ describe('resolveBySoleFuzzyNameMatchAndState', () => {
       projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Moon' })),
       'test',
     );
-    addScore(candidate, 'doesNameMatch', {
-      value: 85,
-      threshold: 85,
-      pass: true,
-      quality: 'strong',
-    });
+    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'strong' });
 
     const result = await resolveBySoleFuzzyNameMatchAndState()(state);
 
@@ -3983,13 +3740,8 @@ describe('resolveBySoleFuzzyNameMatchAndState', () => {
       projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Else' })),
       'test',
     );
-    addScore(candidate, 'doesNameMatch', {
-      value: 0,
-      threshold: 85,
-      pass: false,
-      quality: 'strong',
-    });
-    addScore(candidate, 'doesStateMatch', { value: 100, threshold: 100, pass: true });
+    addScore(candidate, 'doesNameMatch', { pass: false });
+    addScore(candidate, 'doesStateMatch', { pass: true });
 
     const result = await resolveBySoleFuzzyNameMatchAndState()(state);
 
@@ -4003,15 +3755,15 @@ describe('resolveBySoleFuzzyNameMatchAndState', () => {
       projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Moon' })),
       'test',
     );
-    addScore(first, 'doesNameMatch', { value: 85, threshold: 85, pass: true, quality: 'strong' });
-    addScore(first, 'doesStateMatch', { value: 100, threshold: 100, pass: true });
+    addScore(first, 'doesNameMatch', { pass: true, quality: 'strong' });
+    addScore(first, 'doesStateMatch', { pass: true });
     const second = addCandidate(
       state,
       projectTrustee(makeTrustee({ trusteeId: 't2', name: 'Someone Else Moon' })),
       'test',
     );
-    addScore(second, 'doesNameMatch', { value: 85, threshold: 85, pass: true, quality: 'strong' });
-    addScore(second, 'doesStateMatch', { value: 100, threshold: 100, pass: true });
+    addScore(second, 'doesNameMatch', { pass: true, quality: 'strong' });
+    addScore(second, 'doesStateMatch', { pass: true });
 
     const result = await resolveBySoleFuzzyNameMatchAndState()(state);
 
