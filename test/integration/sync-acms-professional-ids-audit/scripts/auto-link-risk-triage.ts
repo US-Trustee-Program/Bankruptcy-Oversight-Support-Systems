@@ -59,20 +59,7 @@ type ReplayRecord = {
   }[];
 };
 
-const RISKY_RESOLVERS = [
-  'resolveBySoleFuzzyNameMatchAndState',
-  'resolveFuzzyFirstExactLastNameStateAndCityOrZip',
-  'resolveFuzzyFirstExactLastNameCityAndZip',
-  'resolveFuzzyFirstExactLastNameAddress',
-  'resolveFuzzyFirstExactLastNamePhone',
-  'resolveFuzzyFirstExactLastNameEmail',
-  'resolveFuzzyFirstExactLastNameFullCorroboration',
-  'resolveExactFirstFuzzyLastNameStateAndCityOrZip',
-  'resolveExactFirstFuzzyLastNameCityAndZip',
-  'resolveExactFirstFuzzyLastNameAddress',
-  'resolveExactFirstFuzzyLastNamePhone',
-  'resolveExactFirstFuzzyLastNameEmail',
-] as const;
+const RISKY_RESOLVERS = ['resolveBySoleFuzzyNameMatchAndState'] as const;
 
 type RiskTier =
   | 'A-zero-name-score'
@@ -148,17 +135,6 @@ function main(): void {
     'A-zero-name-score': 0,
     'B-no-discrete-name-score': 0,
     'C-risky-resolver:resolveBySoleFuzzyNameMatchAndState': 0,
-    'C-risky-resolver:resolveFuzzyFirstExactLastNameStateAndCityOrZip': 0,
-    'C-risky-resolver:resolveFuzzyFirstExactLastNameCityAndZip': 0,
-    'C-risky-resolver:resolveFuzzyFirstExactLastNameAddress': 0,
-    'C-risky-resolver:resolveFuzzyFirstExactLastNamePhone': 0,
-    'C-risky-resolver:resolveFuzzyFirstExactLastNameEmail': 0,
-    'C-risky-resolver:resolveFuzzyFirstExactLastNameFullCorroboration': 0,
-    'C-risky-resolver:resolveExactFirstFuzzyLastNameStateAndCityOrZip': 0,
-    'C-risky-resolver:resolveExactFirstFuzzyLastNameCityAndZip': 0,
-    'C-risky-resolver:resolveExactFirstFuzzyLastNameAddress': 0,
-    'C-risky-resolver:resolveExactFirstFuzzyLastNamePhone': 0,
-    'C-risky-resolver:resolveExactFirstFuzzyLastNameEmail': 0,
     'D-name-score-85-threshold': 0,
     'E-no-phone-corroboration': 0,
     'F-strong': 0,

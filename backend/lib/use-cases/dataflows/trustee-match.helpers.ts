@@ -870,9 +870,12 @@ export function lastNameSurnameCandidates(namePart?: string): string[] {
  *
  * dxtrLast/camsLast are expected to already be firstLastNameToken results (this function's two
  * historical callers both pass that), so the particle-split check above still runs first and
- * unchanged. lastNameSurnameCandidates' RAW-field fallback tokens are checked only afterward, and
- * only when the caller supplies the corresponding raw field (sourceRawLastName/
- * candidateRawLastName) - both optional so every existing call site keeps working unchanged.
+ * unchanged. The fallback candidate lists are checked only afterward, and only when the caller
+ * supplies at least one (sourceCandidates/candidateCandidates) - both optional so every existing
+ * call site keeps working unchanged. Each list is expected to already be a
+ * lastNameSurnameCandidates result (primary token first, any alternates after) - see
+ * NormalizedTrustee.lastNameAlternates, which a NORMALIZE stage populates once so this comparison
+ * never has to re-derive candidates from a raw string itself.
  *
  * The fallback additionally requires ONE side to be a bare, single-token surname (exactly one
  * candidate token - no prepended/hyphenated compound of its own) before trusting a shared token
@@ -887,8 +890,8 @@ export function lastNameSurnameCandidates(namePart?: string): string[] {
 export function lastNameTokensMatch(
   dxtrLast: string,
   camsLast: string,
-  sourceRawLastName?: string,
-  candidateRawLastName?: string,
+  sourceCandidates?: string[],
+  candidateCandidates?: string[],
 ): boolean {
   if (!dxtrLast || !camsLast) return false;
   if (dxtrLast === camsLast) return true;
@@ -899,15 +902,13 @@ export function lastNameTokensMatch(
   const camsSplit = particleSplitVariant(camsLast);
   if (camsSplit === dxtrLast) return true;
 
-  if (sourceRawLastName === undefined && candidateRawLastName === undefined) return false;
+  if (sourceCandidates === undefined && candidateCandidates === undefined) return false;
 
-  const sourceCandidates = lastNameSurnameCandidates(sourceRawLastName);
-  const candidateCandidates = lastNameSurnameCandidates(candidateRawLastName);
   const eitherSideIsBareSingleToken =
-    sourceCandidates.length === 1 || candidateCandidates.length === 1;
+    (sourceCandidates?.length ?? 0) === 1 || (candidateCandidates?.length ?? 0) === 1;
   if (!eitherSideIsBareSingleToken) return false;
 
-  return sourceCandidates.some((token) => candidateCandidates.includes(token));
+  return (sourceCandidates ?? []).some((token) => (candidateCandidates ?? []).includes(token));
 }
 
 const isInitialOf = (initial: string, full: string): boolean =>
@@ -951,7 +952,7 @@ export function isKnownNicknamePair(a: string, b: string): boolean {
  */
 const FIRST_NAME_NICKNAME_JARO_WINKLER_THRESHOLD = 0.8;
 
-function isPlausibleNicknameByDistance(a: string, b: string): boolean {
+export function isPlausibleNicknameByDistance(a: string, b: string): boolean {
   return natural.JaroWinklerDistance(a, b) >= FIRST_NAME_NICKNAME_JARO_WINKLER_THRESHOLD;
 }
 
@@ -1706,17 +1707,3 @@ export function tokenizeNameForIntersection(fullName: string): string[] {
     (t) => t.length >= TOKEN_INTERSECTION_MIN_TOKEN_LENGTH && !TOKEN_INTERSECTION_STOPWORDS.has(t),
   );
 }
-
-/**
- * Minimum calculateNameScore a state-mismatched candidate needs to survive this filter anyway -
- * the same "initial/nickname/swap" ceiling calculateNameScore itself uses throughout (see
- * NAME_SWAP_MIN_PART_SCORE), reused here rather than inventing a new threshold.
- *
- * Equal to CONTACT_CORROBORATION_NAME_THRESHOLD by construction: scoreStateNotConflicting and
- * scoreNameMatch both call pipelineNameScore with identical arguments, so
- * isStateNotConflicting?.pass === false strictly implies doesNameMatch?.pass === false - this is
- * why the resolvers that gate on doesNameMatch don't ALSO need an explicit state check; the check
- * would be redundant there. Changing either constant independently breaks that implication and
- * opens a gap in any stage that gates on doesNameMatch.value === 0 without its own state check.
- */
-export const STATE_OVERRIDE_MIN_NAME_SCORE = 85;
