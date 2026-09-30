@@ -48,8 +48,8 @@ const makeDxtrTrustee = (overrides: Partial<DxtrTrusteeParty> = {}): DxtrTrustee
 const makeTrustee = (overrides: Partial<Trustee> = {}): Trustee =>
   MockData.getTrustee({ firstName: 'John', lastName: 'Doe', ...overrides });
 
-/** Shared "Someone Moon" candidate fixture used across isStateNotConflicting/doesCityMatch/
- * doesZipCodeMatch's describe blocks - a generic, deliberately-unrelated-to-the-ACMS-record surname
+/** Shared "Someone Moon" candidate fixture used across the doesStateMatch/doesCityMatch/
+ * doesZipCodeMatch describe blocks - a generic, deliberately-unrelated-to-the-ACMS-record surname
  * collision, not a specific name under test. */
 const addSomeoneMoon = (state: PipelineState, overrides: Partial<Trustee> = {}) =>
   addCandidate(
@@ -1218,7 +1218,7 @@ describe('scoreCandidate - state/city/zip/contact-presence facets', () => {
     legacy: { cityStateZipCountry: 'Tacoma, WA 98402' },
   });
 
-  test('annotates a state-mismatched candidate as isStateNotConflicting:false', async () => {
+  test('records doesStateMatch:false for a state-mismatched candidate', async () => {
     const state = createInitialState(dxtrInWashington);
     const candidate = addSomeoneMoon(state, {
       trusteeId: 'trustee-fl',
@@ -1238,68 +1238,11 @@ describe('scoreCandidate - state/city/zip/contact-presence facets', () => {
     scoreCandidate(state.sourceNormalized, candidate);
 
     expect(mergedScore(candidate)).toMatchObject({
-      isStateNotConflicting: { pass: false },
+      doesStateMatch: { pass: false },
     });
   });
 
-  test('does NOT mark a state-mismatched candidate as mismatched when it has an exact phone match', async () => {
-    const state = createInitialState({
-      ...dxtrInWashington,
-      legacy: { ...dxtrInWashington.legacy, phone: '2065551212' },
-    });
-    const candidate = addSomeoneMoon(state, {
-      trusteeId: 'trustee-fl-phone',
-      public: {
-        address: {
-          address1: '1 Elm St',
-          city: 'Miami',
-          state: 'FL',
-          zipCode: '33101',
-          countryCode: 'US',
-        },
-        phone: { number: '206-555-1212' },
-      },
-    });
-
-    scoreCandidate(state.sourceNormalized, candidate);
-
-    expect(mergedScore(candidate)).toMatchObject({
-      isStateNotConflicting: { pass: true },
-    });
-  });
-
-  test('does NOT mark a state-mismatched candidate as mismatched when its nameScore would be >= 85', async () => {
-    // Runs normalizeAcmsSourceName first, matching real pipeline stage ordering - this test's own
-    // point is the nameScore>=85 state override, which needs a real doesNameMatch pass, not the
-    // raw, unreduced-case sourceNormalized.lastName a bare createInitialState leaves behind.
-    const state = await normalizeAcmsSourceName()(createInitialState(dxtrInWashington));
-    // middleName omitted (dxtrInWashington's own 'A' is left uncompared, not turned into a
-    // conflict) - this test's own point is the nameScore>=85 state override, not middle-name
-    // scoring, and an omitted CAMS middle name is neutral by design either way.
-    const candidate = addSomeoneMoon(state, {
-      trusteeId: 'trustee-fl-name',
-      firstName: 'Aldric',
-      lastName: 'Moon',
-      name: 'Aldric Moon',
-      public: {
-        address: {
-          address1: '1 Elm St',
-          city: 'Miami',
-          state: 'FL',
-          zipCode: '33101',
-          countryCode: 'US',
-        },
-      },
-    });
-
-    scoreCandidate(state.sourceNormalized, candidate);
-
-    expect(mergedScore(candidate)).toMatchObject({
-      isStateNotConflicting: { pass: true },
-    });
-  });
-
-  test('does not mark anything mismatched when the ACMS address has no parseable state', async () => {
+  test('records no doesStateMatch at all when the ACMS address has no parseable state', async () => {
     const state = createInitialState({
       ...dxtrInWashington,
       legacy: { cityStateZipCountry: undefined },
@@ -1319,10 +1262,10 @@ describe('scoreCandidate - state/city/zip/contact-presence facets', () => {
 
     scoreCandidate(state.sourceNormalized, candidate);
 
-    expect(mergedScore(candidate)).toMatchObject({ isStateNotConflicting: { pass: true } });
+    expect(mergedScore(candidate).doesStateMatch).toBeUndefined();
   });
 
-  test('does not mark a candidate with no CAMS state as mismatched', async () => {
+  test('records no doesStateMatch at all for a candidate with no CAMS state', async () => {
     const state = createInitialState(dxtrInWashington);
     const candidate = addSomeoneMoon(state, {
       trusteeId: 'trustee-no-state',
@@ -1339,9 +1282,7 @@ describe('scoreCandidate - state/city/zip/contact-presence facets', () => {
 
     scoreCandidate(state.sourceNormalized, candidate);
 
-    expect(mergedScore(candidate)).toMatchObject({
-      isStateNotConflicting: { pass: true },
-    });
+    expect(mergedScore(candidate).doesStateMatch).toBeUndefined();
   });
 
   test('fails doesCamsTrusteeHaveAddressAndPhone for a candidate with NO address1, city, state, zip, or phone at all', async () => {
@@ -2953,25 +2894,10 @@ describe('resolveByPhoneTypoTolerance', () => {
 describe('resolveByExactNameOnly', () => {
   const acmsRecord = makeDxtrTrustee({ fullName: 'Ronald Larkin' });
 
-  // Real regression shapes, run through REAL end-to-end scoring (normalizeAcmsSourceName ->
-  // addCandidate -> scoreCandidate), not hand-injected score objects. An adversarial review of
-  // an earlier version of this stage (2026-09-29) found the isStateNotConflicting-based filter
-  // that used to gate this stage was a no-op in practice: scoreStateNotConflicting's override
-  // (nameScore >= STATE_OVERRIDE_MIN_NAME_SCORE) recomputes the EXACT SAME pipelineNameScore
-  // call already used for doesNameMatch, and this stage's own gate already requires
-  // doesNameMatch === 100 - which always clears the 85-point override. So isStateNotConflicting
-  // was mathematically guaranteed true for every candidate this stage ever considered, and the
-  // tests below (which injected isStateNotConflicting: false by hand) never caught it, since real
-  // scoring can't actually produce that combination. Confirmed via a live probe: ACMS "Robert A
-  // Fisher" (CA) vs CAMS "Robert A. Fisher" (NY), matching middle initials, zero contact data -
-  // doesNameMatch=100, doesStateMatch=false, isStateNotConflicting=true (the override
-  // self-certifying), record still resolved.
-  //
-  // Fixed by gating on doesStateMatch directly instead: unlike isStateNotConflicting, doesStateMatch
-  // is only ever recorded when BOTH sides have a comparable state (scoreStateMatch's own "no
-  // record when data is unavailable" convention - see doesCityMatch/doesZipCodeMatch) - so
-  // `doesStateMatch?.pass !== false` correctly excludes ONLY a genuine, comparable state
-  // disagreement, never a "no state data available" case, with no override to defeat it.
+  // Run through REAL end-to-end scoring (normalizeAcmsSourceName -> addCandidate ->
+  // scoreCandidate), not hand-injected score objects: this stage gates on doesStateMatch, which
+  // is only ever recorded when BOTH sides have a comparable state, so hand-injecting it can
+  // produce combinations real scoring never would.
   test('resolves a sole exact-name candidate with no state/city/zip evidence at all', async () => {
     // A phone number (but no address) on the ACMS side keeps doesAcmsTrusteeHaveAddressAndPhone
     // true - this test is specifically about the ABSENCE of state/city/zip data, not the

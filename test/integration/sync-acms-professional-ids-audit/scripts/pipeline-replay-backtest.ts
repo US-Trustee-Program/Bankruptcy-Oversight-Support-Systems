@@ -301,7 +301,6 @@ function summarizeKeySignal(candidate: SerializedState['candidates'][number] | u
   const parts = [
     `name=${s.doesNameMatch?.value ?? '-'}(${s.doesNameMatch?.pass ?? '-'})`,
     `state=${s.doesStateMatch?.value ?? '-'}(${s.doesStateMatch?.pass ?? '-'})`,
-    `stateNotConflicting=${s.isStateNotConflicting?.pass ?? '-'}`,
     `contactAddr=${s.contactCorroborationAddress?.pass ?? '-'}`,
     `contactPhone=${s.contactCorroborationPhone?.pass ?? '-'}`,
     `contactEmail=${s.contactCorroborationEmail?.pass ?? '-'}`,
