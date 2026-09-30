@@ -11,7 +11,9 @@ import {
   firstLastNameToken,
   isBlankAcmsValue,
   isFirstMiddleSwap,
+  isKnownNicknamePair,
   isOneSidedMiddleNameMatch,
+  isPlausibleNicknameByDistance,
   jaccardSimilarity,
   lastNameSurnameCandidates,
   lastNameTokensMatch,
@@ -20,9 +22,7 @@ import {
   normalizeNamePart,
   padSingleDigitNumericToken,
   parseCityStateZip,
-  scoreFirstNamePart,
   stripParentheticalAnnotations,
-  STATE_OVERRIDE_MIN_NAME_SCORE,
   tokenizeNameForIntersection,
 } from './trustee-match.helpers';
 import { generateBigrams } from '../../adapters/utils/phonetic-helper';
@@ -78,57 +78,22 @@ const MODULE_NAME = 'TRUSTEE-MATCH-PIPELINE-STAGES';
 const FUZZY_NAME_PART_JARO_WINKLER_THRESHOLD = 0.88;
 
 /**
- * The only two values pipelineNameScore returns for a candidate whose last name matches exactly
- * (isExactLastNameMatch) but whose first/middle name comparison contributes real doubt rather than
- * confidence:
- *   - 0: firstScore itself was 0 (scoreFirstNamePart found no plausible relationship at all between
- *     the two first names - not even a nickname/initial).
- *   - 15: firstScore cleared 85 (a genuine match, nickname, or initial relationship), but
- *     pipelineMiddleNameScore found a real middle-name conflict (two bare initials that disagree,
- *     or two full middle names that fail isFuzzyNamePartMatch) - Math.min(firstScore, middleScore)
- *     collapses to middleScore's 15 despite the strong first-name agreement underneath it.
- * Both values are otherwise unreachable by any RESOLVE stage in resolveStages() (see its own doc
- * comment on stage order): every stage from resolveBySoleContactMatch through
- * resolveBySoleFuzzyNameMatchAndState gates on doesNameMatch.pass (>= 85), and 15 clears neither
- * that bar nor the exact-0 gate findSoleZeroNameScoreCandidateWithMatchingLastName used to have. A
- * candidate stuck at 15 fell into a real dead zone no resolver covered - confirmed via
- * pipeline-replay-backtest.ts against the 2026-09-25 export: 33 unresolved records (a real shape,
- * name synthesized: ACMS "Jordan S [Surname]" -> CAMS "Jordan A. [Surname]", both address AND phone
- * independently corroborating).
+ * Named readers of an already-computed doesNameMatch ScoreRecord (see scoreNameMatch/matchName -
+ * scored ONCE per candidate at discovery time, never recomputed here) - every RESOLVE stage that
+ * gates on doesNameMatch reads one of these instead of retyping the literal value/pass comparison
+ * inline.
  *
- * Used by findSoleZeroNameScoreCandidateWithMatchingLastName's own gate, restoring RESOLVE-stage
- * visibility for a candidate that already reached the outer pool. Deliberately NOT also used by
- * shouldEvictFromDiscovery's exception (a real state conflict still evicts a nameScore=15
- * candidate during discovery) - see that function's own doc comment for why a bare nameScore
- * equality check there is unsafe: it readmits every candidate sharing the ACMS record's exact
- * first+last name pattern, which multiple different, unrelated real people can do at once for a
- * common name, not just the one genuine match this constant exists to rescue.
- */
-const MIDDLE_NAME_ONLY_CONFLICT_SCORE = 15;
-
-/**
- * Named readers of an already-computed doesNameMatch ScoreRecord (see scoreNameMatch/
- * pipelineNameScore - scored ONCE per candidate at discovery time, never recomputed here) - every
- * RESOLVE stage that gates on doesNameMatch reads one of these instead of retyping the literal
- * value/pass comparison inline. Purely a naming/consistency refactor over the exact same stored
- * values every one of these call sites already read; no behavior change, no new computation.
- *
- * - isExactNameMatch: value === 100, the highest-trust tier (resolveBySoleExactNameMatch and
- *   friends) - both sides matched with no relaxation at all (no initial, nickname, or swap).
+ * - isExactNameMatch: value === 100 (matchName's 'exact' quality) - both sides matched with no
+ *   relaxation at all (no initial, nickname, phonetic, or swap relaxation on any field).
  * - isNameMatchCorroborated: pass === true (value >= 85) - the general "good enough to try
- *   resolving on" bar every fuzzy-tier resolver (resolveBySoleContactMatch, resolveName*,
- *   etc.) requires before considering independent corroboration.
- * - isFuzzyNameMatch: pass === true but value !== 100 - corroborated, but via some relaxation
- *   (initial, nickname, or swap) rather than an exact match; distinguishes resolvers that need to
- *   treat "exact" and "merely corroborated" differently (see resolveBySoleFuzzyNameMatchAndState's
- *   own gate).
- * - hasNoNameMatchEvidence: value === 0 - pipelineNameScore found no plausible relationship at all,
- *   the gate resolveName*'s complementary fuzzy-first-name-vote stages
- *   (resolveFuzzyFirstExactLastName*, resolveExactFirstFuzzyLastName*) require before even trying a
- *   weaker, name-independent corroboration path.
- * - isInMiddleNameOnlyDeadZone: value === 0 or MIDDLE_NAME_ONLY_CONFLICT_SCORE - see that
- *   constant's own doc comment; the two values findSoleZeroNameScoreCandidateWithMatchingLastName's
- *   gate accepts.
+ *   resolving on" bar every fuzzy-tier resolver (resolveBySoleContactMatch, resolveName*, etc.)
+ *   requires before considering independent corroboration.
+ * - isFuzzyNameMatch: pass === true but value !== 100 (matchName's 'strong' quality) -
+ *   corroborated, but via some relaxation rather than an exact match; distinguishes resolvers that
+ *   need to treat "exact" and "merely corroborated" differently (see
+ *   resolveBySoleFuzzyNameMatchAndState's own gate).
+ * - hasNoNameMatchEvidence: value === 0 - matchName found no plausible relationship at all
+ *   (last name failed to match, or first/middle failed with no swap/one-sided-match fallback).
  */
 function isExactNameMatch(candidate: PipelineCandidate): boolean {
   return mergedScore(candidate).doesNameMatch?.value === 100;
@@ -147,11 +112,6 @@ function hasNoNameMatchEvidence(candidate: PipelineCandidate): boolean {
   return mergedScore(candidate).doesNameMatch?.value === 0;
 }
 
-function isInMiddleNameOnlyDeadZone(candidate: PipelineCandidate): boolean {
-  const nameScore = mergedScore(candidate).doesNameMatch?.value;
-  return nameScore === 0 || nameScore === MIDDLE_NAME_ONLY_CONFLICT_SCORE;
-}
-
 function isFuzzyNamePartMatch(acmsNamePart: string, camsNamePart: string): boolean {
   const a = acmsNamePart.toLowerCase();
   const b = camsNamePart.toLowerCase();
@@ -163,11 +123,9 @@ function isFuzzyNamePartMatch(acmsNamePart: string, camsNamePart: string): boole
 }
 
 /**
- * Memoizes isFuzzyNamePartMatch per candidate (see normalize/NormalizedMemo) - a candidate can be
- * scored more than once across nested pipeline tiers (see
- * docs/architecture/decision-records/TrusteeMatchingPipeline.md on nesting) against the SAME
- * ACMS record, and JaroWinklerDistance plus two phonetic algorithms is real work worth not
- * repeating for an identical (acms, cams) name-part pair.
+ * Memoizes isFuzzyNamePartMatch per candidate (see normalize/NormalizedMemo) - also the persisted
+ * evidence trail: a reviewer inspecting a real synced record's memo can see exactly which last-name
+ * pairs were compared this way and what each JaroWinkler+SoundEx+Metaphone check concluded.
  */
 function memoizedIsFuzzyNamePartMatch(
   memo: NormalizedMemo,
@@ -179,115 +137,146 @@ function memoizedIsFuzzyNamePartMatch(
   );
 }
 
+/** Memoizes isPlausibleNicknameByDistance per candidate - same evidence-retention purpose as
+ * memoizedIsFuzzyNamePartMatch, for matchNamePart's first/middle name comparisons. */
+function memoizedIsPlausibleNicknameByDistance(
+  memo: NormalizedMemo,
+  source: string,
+  cams: string,
+): boolean {
+  return normalize(memo, 'isPlausibleNicknameByDistance', `${source}|${cams}`, () =>
+    isPlausibleNicknameByDistance(source, cams),
+  );
+}
+
 function isBareInitial(namePart: string): boolean {
   return namePart.length === 1;
 }
 
 /**
- * ACMS-pipeline-only middle-name scorer for the sole-candidate consensus path.
- * calculateNameScore's scoreMiddleNamePart treats two POPULATED, DIFFERING middle names as a flat
- * 15-point conflict regardless of why they differ - a spelling typo (Jeffery/Jeffrey) scores the
- * same as a genuinely conflicting initial (T vs B), tanking real matches to nameScore=15.
+ * A single name PART's (first or middle) match quality - the one scale matchName's field-by-field
+ * reasoning is built from:
+ *   - 'exact': identical strings.
+ *   - 'strong': a certain-but-not-literal relationship (one side a bare initial consistent with the
+ *     other's leading character) or a plausible-same-name relationship (a known nickname/formal-name
+ *     pair, or a JaroWinkler-distance spelling variant - see isPlausibleNicknameByDistance's own doc
+ *     comment for why this stays distance-only, no phonetic check, for a first/middle name part).
+ *   - 'none': no relationship, OR one/both sides empty (absence is never evidence for a REQUIRED
+ *     field like first name - see matchName's own middle-name handling, where absence is
+ *     deliberately treated as neutral rather than a conflict).
  *
- * One relaxation, still scored (never an automatic pass) so resolveFuzzyFirstExactLastName*'s vote
- * can weigh it alongside independent contact corroboration: both sides a FULL (non-initial) middle
- * name that differs is scored via isFuzzyNamePartMatch (85 if plausibly the same name, 15 if not)
- * instead of an automatic 15. Exact match and either-side-missing still behave exactly like
- * scoreMiddleNamePart (100 in both cases - absence isn't evidence, agreement is full credit).
- *
- * EITHER side a bare initial that does not match the other's leading character (isInitialOf
- * already covers the case where it DOES match, above) is a genuine 15-point conflict, not neutral -
- * once isInitialOf has failed, the full name provably does not start with that letter.
+ * Bare-initial pairs are resolved BEFORE the nickname/distance fallback, not folded into it: a
+ * short string is highly JaroWinkler-similar to its own leading letter by construction (e.g. "al"
+ * vs "a" scores 0.85) - so without this explicit branch, a genuinely conflicting bare initial (e.g.
+ * "P" vs "E") could still slip through as a coincidental distance match whenever the OTHER side
+ * happened to be short. Once isInitialOf has been checked and failed for a bare-initial side, the
+ * full name provably does not start with that letter - a real, if weak, conflict, not neutral.
  */
-function pipelineMiddleNameScore(
-  memo: NormalizedMemo,
-  dxtrMiddle: string,
-  camsMiddle: string,
-): number {
-  if (!dxtrMiddle || !camsMiddle) return 100;
-  if (dxtrMiddle === camsMiddle) return 100;
-  if (isInitialOf(dxtrMiddle, camsMiddle) || isInitialOf(camsMiddle, dxtrMiddle)) return 100;
-  if (isBareInitial(dxtrMiddle) || isBareInitial(camsMiddle)) return 15;
-  return memoizedIsFuzzyNamePartMatch(memo, dxtrMiddle, camsMiddle) ? 85 : 15;
+type NamePartQuality = 'exact' | 'strong' | 'none';
+
+function matchNamePart(memo: NormalizedMemo, source: string, cams: string): NamePartQuality {
+  if (!source || !cams) return 'none';
+  if (source === cams) return 'exact';
+  if (isInitialOf(source, cams) || isInitialOf(cams, source)) return 'strong';
+  if (isBareInitial(source) || isBareInitial(cams)) return 'none';
+  if (isKnownNicknamePair(source, cams)) return 'strong';
+  return memoizedIsPlausibleNicknameByDistance(memo, source, cams) ? 'strong' : 'none';
 }
 
 /**
- * The same decision pipelineMiddleNameScore makes, reported as its own tri-state FACT
- * (null = neutral/no-evidence, true = agrees, false = genuinely conflicts) instead of folded into
- * a single collapsed number sharing pipelineNameScore's 0-100 scale. Exists because that collapse
- * is what created MIDDLE_NAME_ONLY_CONFLICT_SCORE (15) in the first place - a sentinel VALUE
- * standing in for a categorical fact, reachable only because nothing else on that scale happens to
- * also land on 15 today. A resolver gating on `nameScore === 15` is one unrelated future scoring
- * change away from silently matching a different case entirely; a resolver reading
- * doesMiddleNameMatch directly never has that risk, because the fact is recorded under its own
- * name instead of multiplexed through a shared numeric channel.
- *
- * - null (neutral, no ScoreRecord written - see scoreMiddleNameMatch): either side has no middle
- *   name at all - nothing to compare, not real evidence either way.
- * - true (agrees): exact match, OR one side a bare initial that matches the other's leading
- *   character after collapsing the full name down to its initial (isInitialOf either direction) -
- *   a real, positive agreement, not merely an information gap: an initial genuinely consistent
- *   with the other side's full name IS corroborating evidence, just weaker than an exact match.
- * - false (genuinely conflicts): both sides bare initials that disagree (real, if weak, evidence -
- *   see pipelineMiddleNameScore's own doc comment on the "Michael P/Michael E" regression this
- *   guards against), or both sides full middle names that fail isFuzzyNamePartMatch's
- *   distance/similarity threshold.
+ * The overall name-match verdict matchName produces - a pure fact about two name records, with no
+ * awareness of geography or contact corroboration (that composition belongs entirely to the
+ * RESOLVE stages that consume this verdict, not here).
+ *   - pass: last name matched AND first+middle together clear the corroboration-eligible bar - the
+ *     one field every RESOLVE stage gates on before considering independent corroboration.
+ *   - quality: 'exact' only when every field that was compared matched literally (no initial,
+ *     nickname, phonetic, or swap relaxation anywhere); 'strong' otherwise, whenever pass is true.
  */
-function pipelineMiddleNameMatch(
-  memo: NormalizedMemo,
-  dxtrMiddle: string,
-  camsMiddle: string,
-): KleeneBoolean {
-  if (!dxtrMiddle || !camsMiddle) return null;
-  if (dxtrMiddle === camsMiddle) return true;
-  if (isInitialOf(dxtrMiddle, camsMiddle) || isInitialOf(camsMiddle, dxtrMiddle)) return true;
-  if (isBareInitial(dxtrMiddle) && isBareInitial(camsMiddle)) return false;
-  if (isBareInitial(dxtrMiddle) || isBareInitial(camsMiddle)) return null;
-  return memoizedIsFuzzyNamePartMatch(memo, dxtrMiddle, camsMiddle);
-}
+type NameMatchVerdict = {
+  pass: boolean;
+  quality: 'exact' | 'strong';
+};
+
+const NO_MATCH: NameMatchVerdict = { pass: false, quality: 'strong' };
 
 /**
- * ACMS-pipeline-only orchestration of calculateNameScore's exact scoring logic, built from the
- * same atomic, exported pieces (lastNameTokensMatch, scoreFirstNamePart, isFirstMiddleSwap,
- * isOneSidedMiddleNameMatch) rather than calling calculateNameScore directly - that function is
- * shared with the DXTR trustee-appointment dataflow, so an ACMS-only tuning change can never
- * ripple into that unrelated call path. Diverges in exactly one place: middle-name scoring uses
- * pipelineMiddleNameScore instead of the shared scoreMiddleNamePart, for the same reason.
+ * Orchestrates every atomic name-comparison primitive (lastNameTokensMatch, matchNamePart,
+ * isFirstMiddleSwap, isOneSidedMiddleNameMatch) into the one verdict every RESOLVE stage reads,
+ * replacing three previously-separate code paths (an exact-tier pass and two narrower "dead zone
+ * recovery" passes) that each independently decided which fields to compare and how - middle name
+ * in particular is now always evaluated, closing a real gap where a swap/one-sided-match verdict
+ * could previously credit a candidate without ever checking whether middle name conflicted.
  *
- * Takes sourceNormalized/camsNormalized directly, not DxtrTrusteeParty/Trustee -
- * firstLastNameToken/normalizeNamePart already ran once (see CANDIDATE_SCORERS' ordering), so this
- * function reads already-comparable values rather than re-deriving them. The one exception:
- * lastNameTokensMatch's raw-field fallback needs the UNREDUCED lastName strings to try the
- * prepended-surname/hyphenated-compound recovery, which only sourceRaw/camsRaw hold.
+ * Two different fuzzy thresholds, each kept to its own validated job: first/middle name uses
+ * isPlausibleNicknameByDistance (0.8 JaroWinkler, e.g. "Cathy"/"Catherine"); last name uses
+ * isFuzzyNamePartMatch (0.88 + SoundEx/Metaphone, e.g. "Stromp"/"Strump") gated on an exact first
+ * name, since fuzzing both parts at once on an otherwise-unrelated pair is too permissive.
+ *
+ * Takes sourceNormalized/camsNormalized directly - both sides' NORMALIZE stage already ran (see
+ * CANDIDATE_SCORERS' ordering), including populating lastNameAlternates (see
+ * NormalizedTrustee's own doc comment), so lastNameTokensMatch's fallback reads each side's
+ * already-derived candidate list straight off the normalized record instead of re-deriving it from
+ * a raw string itself.
+ *
+ * Takes memo to pass through to matchNamePart/the fuzzy last-name check - both memoize on it, so
+ * each atomic comparison's fingerprint/result is preserved in the candidate's serialized evidence
+ * (see SerializedCandidate.memo), not just cached for this run.
  */
-function pipelineNameScore(
+function matchName(
   memo: NormalizedMemo,
   sourceNormalized: NormalizedTrustee,
   camsNormalized: NormalizedTrustee,
-  sourceRawLastName?: string,
-  camsRawLastName?: string,
-): number {
-  const dxtrLast = sourceNormalized.lastName ?? '';
+): NameMatchVerdict {
+  const sourceLast = sourceNormalized.lastName ?? '';
   const camsLast = camsNormalized.lastName ?? '';
+  const sourceFirst = sourceNormalized.firstName ?? '';
+  const camsFirst = camsNormalized.firstName ?? '';
 
-  if (!lastNameTokensMatch(dxtrLast, camsLast, sourceRawLastName, camsRawLastName)) {
-    return 0;
+  const sourceLastCandidates = sourceLast
+    ? [sourceLast, ...(sourceNormalized.lastNameAlternates ?? [])]
+    : undefined;
+  const camsLastCandidates = camsLast
+    ? [camsLast, ...(camsNormalized.lastNameAlternates ?? [])]
+    : undefined;
+
+  if (!lastNameTokensMatch(sourceLast, camsLast, sourceLastCandidates, camsLastCandidates)) {
+    // A real spelling-variant/typo surname (e.g. "Stromp"/"Strump") only counts alongside an EXACT
+    // first name - fuzzing both name parts at once on an otherwise-unrelated pair would be too
+    // permissive to trust.
+    if (
+      sourceFirst &&
+      sourceFirst === camsFirst &&
+      memoizedIsFuzzyNamePartMatch(memo, sourceLast, camsLast)
+    ) {
+      return { pass: true, quality: 'strong' };
+    }
+    return NO_MATCH;
   }
 
-  const dxtrFirst = sourceNormalized.firstName ?? '';
-  const camsFirst = camsNormalized.firstName ?? '';
-  const dxtrMiddle = sourceNormalized.middleName ?? '';
+  const sourceMiddle = sourceNormalized.middleName ?? '';
   const camsMiddle = camsNormalized.middleName ?? '';
 
-  const firstScore = scoreFirstNamePart(dxtrFirst, camsFirst);
-  if (firstScore === 0) {
-    if (isFirstMiddleSwap(dxtrFirst, dxtrMiddle, camsFirst, camsMiddle)) return 85;
-    if (isOneSidedMiddleNameMatch(dxtrFirst, dxtrMiddle, camsFirst, camsMiddle)) return 85;
-    return 0;
+  const firstQuality = matchNamePart(memo, sourceFirst, camsFirst);
+  if (firstQuality === 'none') {
+    if (
+      isFirstMiddleSwap(sourceFirst, sourceMiddle, camsFirst, camsMiddle) ||
+      isOneSidedMiddleNameMatch(sourceFirst, sourceMiddle, camsFirst, camsMiddle)
+    ) {
+      return { pass: true, quality: 'strong' };
+    }
+    return NO_MATCH;
   }
 
-  const middleScore = pipelineMiddleNameScore(memo, dxtrMiddle, camsMiddle);
-  return Math.min(firstScore, middleScore);
+  const middleQuality = matchNamePart(memo, sourceMiddle, camsMiddle);
+  if (middleQuality === 'none' && sourceMiddle && camsMiddle) {
+    // BOTH sides had a middle name to compare (not merely one, which matchNamePart already treats
+    // as neutral absence) and it genuinely conflicted - a strong first/last match is not proof of
+    // identity once a real, comparable middle-name conflict is on record.
+    return NO_MATCH;
+  }
+
+  const exact = firstQuality === 'exact' && middleQuality !== 'strong';
+  return { pass: true, quality: exact ? 'exact' : 'strong' };
 }
 
 /**
@@ -961,13 +950,14 @@ function splitCamsInitialPlusGivenName(
 
 /**
  * NORMALIZE-CAMS candidate stage: applies the same comparison-ready reduction
- * normalizeAcmsSourceName applies to the source side (firstLastNameToken for the surname,
- * normalizeNamePart for first/middle) to this ONE candidate's camsNormalized, overwriting the
- * plain clone addCandidate seeded it with (see cloneNormalizableFields - a raw passthrough, not
- * yet reduced for comparison). Runs first in CANDIDATE_SCORERS, before any SCORE function reads
+ * normalizeAcmsSourceName applies to the source side (lastNameSurnameCandidates for the surname -
+ * primary token plus any alternates, see NormalizedTrustee.lastNameAlternates - normalizeNamePart
+ * for first/middle) to this ONE candidate's camsNormalized, overwriting the plain clone
+ * addCandidate seeded it with (see cloneNormalizableFields - a raw passthrough, not yet reduced
+ * for comparison). Runs first in CANDIDATE_SCORERS, before any SCORE function reads
  * camsNormalized, so every scorer after it can read camsNormalized directly and never needs to
- * know this step ran, call firstLastNameToken/normalizeNamePart itself, or care whether some
- * other normalizer already did - the SOURCE -> NORMALIZE ACMS -> RECALL -> NORMALIZE CAMS ->
+ * know this step ran, call lastNameSurnameCandidates/normalizeNamePart itself, or care whether
+ * some other normalizer already did - the SOURCE -> NORMALIZE ACMS -> RECALL -> NORMALIZE CAMS ->
  * SCORE -> RESOLVE progression the pipeline's ADR describes.
  */
 function normalizeCandidateNameFields(
@@ -978,76 +968,37 @@ function normalizeCandidateNameFields(
     candidate.camsRaw.firstName,
     candidate.camsRaw.middleName,
   );
+  const [lastName, ...lastNameAlternates] = lastNameSurnameCandidates(candidate.camsRaw.lastName);
   candidate.camsNormalized.firstName = normalizeNamePart(firstName);
   candidate.camsNormalized.middleName = normalizeNamePart(middleName);
-  candidate.camsNormalized.lastName = firstLastNameToken(candidate.camsRaw.lastName);
+  candidate.camsNormalized.lastName = lastName;
+  candidate.camsNormalized.lastNameAlternates = lastNameAlternates;
   return candidate;
 }
 
 /**
- * Scoring stage wrapping the existing calculateNameScore unchanged. Reads sourceNormalized/
- * camsNormalized exclusively (see normalizeAcmsSourceName/normalizeCandidateNameFields, both of which
- * must run first - see CANDIDATE_SCORERS' ordering) rather than sourceRaw/camsRaw directly, so
- * this function never needs its own awareness of which normalizer produced the comparable name.
- * sourceNormalized.legacyLastName is the one exception - lastNameTokensMatch's own raw-string
- * fallback needs the UN-reduced lastName, not sourceNormalized.lastName's already-reduced form
- * (see NormalizedTrustee's own doc comment on legacyLastName).
+ * Scoring stage wrapping matchName. Reads sourceNormalized/camsNormalized exclusively (see
+ * normalizeAcmsSourceName/normalizeCandidateNameFields, both of which must run first - see
+ * CANDIDATE_SCORERS' ordering) rather than sourceRaw/camsRaw directly, so this function never
+ * needs its own awareness of which normalizer produced the comparable name.
+ *
+ * value is 100 for an 'exact' verdict, 85 for 'strong', 0 for no match - preserved alongside the
+ * richer quality field so existing numeric-threshold readers (CONTACT_CORROBORATION_NAME_THRESHOLD)
+ * keep working unchanged.
  */
 function scoreNameMatch(
   sourceNormalized: NormalizedTrustee,
   candidate: PipelineCandidate,
 ): PipelineCandidate {
-  const nameScore = pipelineNameScore(
-    candidate.memo,
-    sourceNormalized,
-    candidate.camsNormalized,
-    sourceNormalized.legacyLastName,
-    candidate.camsRaw.lastName,
-  );
+  const verdict = matchName(candidate.memo, sourceNormalized, candidate.camsNormalized);
+  const value = !verdict.pass ? 0 : verdict.quality === 'exact' ? 100 : 85;
   addScore(candidate, 'doesNameMatch', {
-    value: nameScore,
+    value,
     threshold: CONTACT_CORROBORATION_NAME_THRESHOLD,
-    pass: nameScore >= CONTACT_CORROBORATION_NAME_THRESHOLD,
+    pass: verdict.pass,
+    quality: verdict.quality,
   });
   return candidate;
-}
-
-/**
- * Records pipelineMiddleNameMatch's tri-state fact as its own named ScoreRecord
- * (doesMiddleNameMatch), independent of doesNameMatch's collapsed overall score - see
- * pipelineMiddleNameMatch's own doc comment for why this exists as a separate signal rather than
- * only feeding into that collapse. Follows the same "no record when neutral" convention as
- * doesStateMatch/doesCityMatch/doesZipCodeMatch (see their own doc comments): a null result (no
- * middle name to compare on one or both sides) writes nothing at all, so a resolver checking
- * `scores.doesMiddleNameMatch === undefined` reliably means "no evidence," never confusable with a
- * real, recorded conflict (pass: false).
- *
- * Deliberately NOT yet read by any RESOLVE stage - pipelineNameScore/doesNameMatch remain the only
- * gate every existing resolver uses, so adding this scorer is a pure, zero-behavior-change
- * observation added to the evidence graph (visible in pipeline-replay-backtest.ts's JSONL output
- * and the CSV partitions) ahead of any resolver being changed to read it.
- */
-function scoreMiddleNameMatch(
-  sourceNormalized: NormalizedTrustee,
-  candidate: PipelineCandidate,
-): PipelineCandidate {
-  const middleNameMatch = pipelineMiddleNameMatch(
-    candidate.memo,
-    sourceNormalized.middleName ?? '',
-    candidate.camsNormalized.middleName ?? '',
-  );
-  return foldKleene(
-    middleNameMatch,
-    () => candidate,
-    () => {
-      addScore(candidate, 'doesMiddleNameMatch', boolMatchRecord(true));
-      return candidate;
-    },
-    () => {
-      addScore(candidate, 'doesMiddleNameMatch', boolMatchRecord(false));
-      return candidate;
-    },
-  );
 }
 
 function normalizeForSimilarity(name: string): string {
@@ -1357,15 +1308,8 @@ function scoreStateNotConflicting(
     return candidate;
   }
 
-  const nameScore = pipelineNameScore(
-    candidate.memo,
-    sourceNormalized,
-    candidate.camsNormalized,
-    sourceNormalized.legacyLastName,
-    candidate.camsRaw.lastName,
-  );
-  const stateMatch = nameScore >= STATE_OVERRIDE_MIN_NAME_SCORE;
-  addScore(candidate, 'isStateNotConflicting', stateMatchRecord(stateMatch));
+  const verdict = matchName(candidate.memo, sourceNormalized, candidate.camsNormalized);
+  addScore(candidate, 'isStateNotConflicting', stateMatchRecord(verdict.pass));
   return candidate;
 }
 
@@ -1912,7 +1856,6 @@ const CANDIDATE_SCORERS: CandidateScorer[] = [
   scoreHasComparableContactData, // reads both scores above - must run after them
   scoreStateNotConflicting,
   scoreNameMatch,
-  scoreMiddleNameMatch,
   scoreNameDisqualifiers, // reads scoreNameMatch's doesNameMatch - must run after it
   recordSimilarityDiagnostics,
   scoreCityMatch,
@@ -2131,20 +2074,6 @@ function phoneCorroborates(candidate: PipelineCandidate): boolean {
 
 function emailCorroborates(candidate: PipelineCandidate): boolean {
   return mergedScore(candidate).contactCorroborationEmail?.pass === true;
-}
-
-/**
- * Requires at least one geography signal AND at least one contact signal to BOTH agree, not either
- * alone. Used only by resolveFuzzyFirstExactLastNameFullCorroboration (see its own doc comment):
- * dropping the fuzzy first-name requirement entirely needs materially stronger corroboration than
- * the five atomic signals' either-alone bar every other stage accepts, since nothing about the name
- * itself is being checked anymore beyond the leading initial.
- */
-function isFullyCorroboratedByGeoAndContact(candidate: PipelineCandidate): boolean {
-  const geoAgrees = stateAndCityOrZip(candidate) || cityAndZip(candidate);
-  const contactAgrees =
-    addressCorroborates(candidate) || phoneCorroborates(candidate) || emailCorroborates(candidate);
-  return geoAgrees && contactAgrees;
 }
 
 /**
@@ -2590,323 +2519,4 @@ function isExactLastNameMatch(acmsLastName: string, camsLastName: string): boole
   const acmsLast = stripAdministrativeMarkers(acmsLastName).trim().toLowerCase();
   const camsLast = stripAdministrativeMarkers(camsLastName).trim().toLowerCase();
   return acmsLast.length > 0 && acmsLast === camsLast;
-}
-
-/** The sole candidate eligible for a fuzzy first-name vote - a real lastName match (see
- * isExactLastNameMatch) whose overall nameScore was tanked to 0 or MIDDLE_NAME_ONLY_CONFLICT_SCORE
- * (see that constant's own doc comment for why those are the only two reachable values here), with
- * both sides having a first name to actually compare. Returns undefined when zero or multiple
- * candidates qualify, or when either side has no first name to compare -
- * resolveFuzzyFirstExactLastName*'s own inline fuzzy first-name scoring no-ops in every such case. */
-function findSoleZeroNameScoreCandidateWithMatchingLastName(
-  state: PipelineState,
-): PipelineCandidate | undefined {
-  const qualifying = [...state.candidates.values()].filter((candidate) => {
-    return (
-      isInMiddleNameOnlyDeadZone(candidate) &&
-      mergedScore(candidate).hasComparableContactData?.pass !== false &&
-      isExactLastNameMatch(
-        state.sourceNormalized.lastNameUnreduced ?? state.sourceRaw.lastName ?? '',
-        candidate.camsRaw.lastName ?? '',
-      )
-    );
-  });
-  if (qualifying.length !== 1) return undefined;
-
-  const candidate = qualifying[0];
-  return state.sourceNormalized.firstName && candidate.camsNormalized.firstName
-    ? candidate
-    : undefined;
-}
-
-/**
- * Whether two full first names share the same leading letter - a weaker signal than
- * isFuzzyNamePartMatch (it says nothing about the REST of the name, e.g. "Nikki" and "Nichole"
- * share only "N"), so this is never trusted alone - see FIRST_INITIAL_MATCH's only caller,
- * resolveFuzzyFirstExactLastName*, for the much stronger corroboration bar it requires instead.
- */
-function shareFirstInitial(acmsFirst: string, camsFirst: string): boolean {
-  return !!acmsFirst && !!camsFirst && acmsFirst[0] === camsFirst[0];
-}
-
-/**
- * The complementary gate to resolveName*: resolves a sole candidate whose lastName matches
- * exactly but whose OVERALL nameScore was 0 or MIDDLE_NAME_ONLY_CONFLICT_SCORE (15) - see that
- * constant's own doc comment for why those are the only two values reachable here.
- *
- * - findSoleZeroNameScoreCandidateWithMatchingLastName's "exactly one qualifies" narrowing is
- *   itself RESOLVE-role reasoning, not a SCORE-stage filter, so it belongs composed into this one
- *   resolver rather than split across a separate "scores only" stage.
- * - Records the fuzzy first-name comparison as its own vote first (a real lastName match is the
- *   corroborating evidence this vote adds to), then requires the SAME geography-or-contact check
- *   every other consensus stage does - a candidate reaching this point still needs INDEPENDENT
- *   evidence beyond the name match to resolve.
- * - Never runs for a candidate resolveName* already covers: that stage's gate is
- *   doesNameMatch.pass===true (nameScore >= 85), this stage's gate is nameScore === 0 or === 15 -
- *   still mutually exclusive with resolveName*'s gate (15 < 85), even though a stale earlier
- *   version of this comment claimed 0 was the ONLY value pipelineNameScore could return below 85 -
- *   see MIDDLE_NAME_ONLY_CONFLICT_SCORE's own doc comment for the real, confirmed exception
- *   (pipelineMiddleNameScore's ACMS-only middle-name-conflict case) that comment never accounted
- *   for, found via pipeline-replay-backtest.ts against the 2026-09-25 export.
- *
- * SECOND, independent path (added for a real regression shape, name synthesized: ACMS "Nikki
- * [Surname]" vs CAMS "Nichole B. [Surname]" - a genuine nickname pair with real phonetic
- * divergence that fails JaroWinkler, SoundEx, Metaphone, AND DoubleMetaphone alike; no general
- * string-similarity signal closes this gap): a sole exact-lastName candidate whose first names
- * merely share a leading letter (shareFirstInitial - much weaker than isFuzzyNamePartMatch, since
- * it says nothing about the rest of either name) can still resolve, but ONLY when
- * isFullyCorroboratedByGeoAndContact holds - geography AND independent contact evidence BOTH
- * agree, not the atomic stages' weaker "either" bar. Confirmed against the real
- * 2026-09-25 export before adding this: of 42 real same-first-initial, total-name-mismatch
- * candidate pairs, only 2 (this shape, and a genuine "Hank"/"Henry [Surname]" nickname pair) clear
- * the both-required bar; the other 40 are real same-surname-different-person collisions (sharing a
- * surname and state but no other evidence) that the weaker "either" bar would have wrongly
- * resolved.
- *
- * REVIEWED CORNER CASE, deliberately left as-is (cams-y2dml, 2026-09-29): shareFirstInitial is a
- * bare leading-character comparison with no real relation to name similarity - in isolation, this
- * COULD auto-link two different trustees who merely share a surname, a business address, and a
- * first initial (e.g. two unrelated professionals at the same firm - NOT a household/family
- * relationship; this is about shared BUSINESS addresses in the USTP program). Investigated by
- * surveying every real CAMS surname with 2+ trustees at the same city/state in the 2026-09-25
- * export (genuine shared-business-address shapes: Cohen x3 city groups, Brown, Davis, Goodman,
- * Johnson x3 groups). Result: findSoleZeroNameScoreCandidateWithMatchingLastName's OWN
- * "exactly one qualifying candidate" gate already excludes every one of them from ever reaching
- * this path at all - a real collision (e.g. one real ACMS record against 15 different real CAMS
- * Cohens) surfaces 2+ candidates, this function returns undefined, and
- * resolveFuzzyFirstExactLastName* never runs shareFirstInitial in the first place. Confirmed
- * directly against the persisted fixture (not just the replay) that this shape's disposition is
- * 'ambiguous', not a silent no-match or a wrong auto-link - deriveDisposition independently picks
- * up a higher-scoring candidate elsewhere in that same collision pool. Across the WHOLE export,
- * only 3 records ever reach "sole candidate + first-initial match + full geo-and-contact
- * corroboration": the two genuine cases above, plus one more found during this investigation
- * (Zhu). Zero false positives exist in real data - decision was to leave this stage unchanged
- * rather than add an unvalidated defensive rule against a purely theoretical shape with nothing
- * real to test it against or confirm it wouldn't regress Nikki/Nichole, Hank/Henry, or Zhu. If a
- * real false positive of this shape is ever found, re-open with that record's own evidence rather
- * than reasoning from a synthetic probe alone.
- */
-/**
- * Records the fuzzy first-name vote (a real lastName match is corroborating evidence FOR a
- * plausible first name - nickname, initial, or spelling variant - not a substitute for one) and
- * returns the candidate to resolve on, or undefined if the fuzzy first-name vote itself fails.
- */
-function findFuzzyFirstExactLastCandidate(state: PipelineState): PipelineCandidate | undefined {
-  const candidate = findSoleZeroNameScoreCandidateWithMatchingLastName(state);
-  if (!candidate) return undefined;
-
-  const acmsFirst = (state.sourceNormalized.firstName ?? '').toLowerCase();
-  const camsFirst = (candidate.camsNormalized.firstName ?? '').toLowerCase();
-  const fuzzyFirstNameMatches = isFuzzyNamePartMatch(acmsFirst, camsFirst);
-  addScore(candidate, 'doesFuzzyFirstNameMatch', {
-    value: Math.round(natural.JaroWinklerDistance(acmsFirst, camsFirst) * 100),
-    threshold: Math.round(FUZZY_NAME_PART_JARO_WINKLER_THRESHOLD * 100),
-    pass: fuzzyFirstNameMatches,
-  });
-  return fuzzyFirstNameMatches ? candidate : undefined;
-}
-
-function resolveFuzzyFirstNameOn(
-  predicate: (candidate: PipelineCandidate) => boolean,
-  resolvedBy: string,
-): Stage {
-  return async (state: PipelineState): Promise<PipelineState> => {
-    const candidate = findFuzzyFirstExactLastCandidate(state);
-    if (!candidate) return state;
-
-    const corroborated = predicate(candidate);
-    addScore(candidate, resolvedBy, {
-      value: corroborated ? 100 : 0,
-      threshold: 100,
-      pass: corroborated,
-    });
-    if (!corroborated) return state;
-
-    return resolveOnCandidate(state, candidate, resolvedBy);
-  };
-}
-
-/**
- * Five atomic stages resolving a sole candidate with an exact lastName match and a plausible fuzzy
- * firstName match (nickname, initial, or spelling variant), on one atomic corroboration signal
- * each - the mirror image of resolveExactFirstFuzzyLastName*'s family for the opposite name-part
- * shape.
- */
-export function resolveFuzzyFirstExactLastNameStateAndCityOrZip(): Stage {
-  return resolveFuzzyFirstNameOn(
-    stateAndCityOrZip,
-    'resolveFuzzyFirstExactLastNameStateAndCityOrZip',
-  );
-}
-
-export function resolveFuzzyFirstExactLastNameCityAndZip(): Stage {
-  return resolveFuzzyFirstNameOn(cityAndZip, 'resolveFuzzyFirstExactLastNameCityAndZip');
-}
-
-export function resolveFuzzyFirstExactLastNameAddress(): Stage {
-  return resolveFuzzyFirstNameOn(addressCorroborates, 'resolveFuzzyFirstExactLastNameAddress');
-}
-
-export function resolveFuzzyFirstExactLastNamePhone(): Stage {
-  return resolveFuzzyFirstNameOn(phoneCorroborates, 'resolveFuzzyFirstExactLastNamePhone');
-}
-
-export function resolveFuzzyFirstExactLastNameEmail(): Stage {
-  return resolveFuzzyFirstNameOn(emailCorroborates, 'resolveFuzzyFirstExactLastNameEmail');
-}
-
-/**
- * A sole exact-lastName candidate whose first names merely share a leading letter (shareFirstInitial
- * - much weaker than a fuzzy first-name match, since it says nothing about the rest of either name)
- * resolves only when geography AND independent contact evidence BOTH agree - isCorroboratedByGeoOrContact's
- * weaker "either" bar is not enough once the first-name signal itself has been dropped to a bare
- * initial. Kept as one compound stage rather than split further: this path fires on a handful of real
- * records total, and the both-required bar is itself the atomic claim being tested here, not a
- * bundle of independently-sufficient signals (see isFullyCorroboratedByGeoAndContact).
- */
-export function resolveFuzzyFirstExactLastNameFullCorroboration(): Stage {
-  return async (state: PipelineState): Promise<PipelineState> => {
-    const candidate = findSoleZeroNameScoreCandidateWithMatchingLastName(state);
-    if (!candidate) return state;
-
-    const acmsFirst = (state.sourceNormalized.firstName ?? '').toLowerCase();
-    const camsFirst = (candidate.camsNormalized.firstName ?? '').toLowerCase();
-    const fuzzyFirstNameMatches = isFuzzyNamePartMatch(acmsFirst, camsFirst);
-    addScore(candidate, 'doesFuzzyFirstNameMatch', {
-      value: Math.round(natural.JaroWinklerDistance(acmsFirst, camsFirst) * 100),
-      threshold: Math.round(FUZZY_NAME_PART_JARO_WINKLER_THRESHOLD * 100),
-      pass: fuzzyFirstNameMatches,
-    });
-    if (fuzzyFirstNameMatches) return state;
-    if (!shareFirstInitial(acmsFirst, camsFirst)) return state;
-
-    const corroborated = isFullyCorroboratedByGeoAndContact(candidate);
-    const resolvedBy = 'resolveFuzzyFirstExactLastNameFullCorroboration';
-    addScore(candidate, resolvedBy, {
-      value: corroborated ? 100 : 0,
-      threshold: 100,
-      pass: corroborated,
-    });
-    if (!corroborated) return state;
-
-    return resolveOnCandidate(state, candidate, resolvedBy);
-  };
-}
-
-/** The sole candidate eligible for a fuzzy last-name vote, paired with both sides' already-computed
- * last-name tokens (so a caller never has to call firstLastNameToken on the same inputs twice) - a
- * real firstName match (exact) whose overall nameScore was tanked to 0 by a LAST name that doesn't
- * token-match exactly (a spelling variant, typo, or nickname - e.g. ACMS "GIPSON" vs CAMS "Gibson",
- * "GOLBERG" vs "Goldberg"). The mirror image of findSoleZeroNameScoreCandidateWithMatchingLastName:
- * that helper requires an EXACT lastName match with a fuzzy firstName; this one requires an EXACT
- * firstName match with a fuzzy lastName. A candidate whose firstName does NOT match exactly is
- * left alone entirely - fuzzing both name parts at once on a nameScore=0 candidate would be too
- * permissive to trust even behind contact corroboration.
- *
- * Compares via firstLastNameToken (not a raw trim/lowercase) for two reasons: it reduces a
- * legal-entity-style ACMS lastName field ("DOE & ROE, P.A.") down to its identifying word before
- * any fuzzy comparison runs, and isFuzzyNamePartMatch's SoundEx step throws on a raw string
- * containing punctuation the algorithm doesn't expect - a real crash on exactly this shape.
- * @returns undefined when zero or multiple candidates qualify, when either side has no lastName
- * to compare, or when the lastName pair isn't even a plausible fuzzy match at all. */
-function findSoleZeroNameScoreCandidateWithFuzzyLastNameMatch(
-  memo: NormalizedMemo,
-  state: PipelineState,
-): { candidate: PipelineCandidate; acmsLast: string; camsLast: string } | undefined {
-  const acmsFirst = state.sourceNormalized.firstName ?? '';
-  const acmsLast = state.sourceNormalized.lastName ?? '';
-  if (!acmsFirst || !acmsLast) return undefined;
-
-  const qualifying = [...state.candidates.values()]
-    .map((candidate) => ({
-      candidate,
-      camsFirst: candidate.camsNormalized.firstName ?? '',
-      camsLast: candidate.camsNormalized.lastName ?? '',
-    }))
-    .filter(
-      ({ candidate, camsFirst, camsLast }) =>
-        camsFirst &&
-        camsLast &&
-        hasNoNameMatchEvidence(candidate) &&
-        mergedScore(candidate).hasComparableContactData?.pass !== false &&
-        acmsFirst === camsFirst &&
-        acmsLast !== camsLast &&
-        memoizedIsFuzzyNamePartMatch(memo, acmsLast, camsLast),
-    );
-  if (qualifying.length !== 1) return undefined;
-
-  const { candidate, camsLast } = qualifying[0];
-  return { candidate, acmsLast, camsLast };
-}
-
-/**
- * Orchestrates the fuzzy-last-name RESOLVE sequence as one composed stage - scores the fuzzy
- * last-name comparison as its own vote, then immediately checks the same geography-or-contact
- * corroboration every other consensus stage requires. The mirror image of the fuzzy first-name
- * scoring + corroboration resolveFuzzyFirstExactLastName* itself composes, for the opposite
- * name-part shape: an exact first name with a spelling-variant/typo/nickname last name.
- *
- * - Real sole-candidate records with this exact shape (nameScore=0, exact first name, fuzzy last
- *   name) commonly ALSO have an exact 10-digit phone match and state agreement (e.g. a one-letter
- *   surname typo like "Gipson"/"Gibson" or "Golberg"/"Goldberg") - never resolved on the fuzzy
- *   last-name vote alone; independent corroboration is still required.
- * - Never runs for a candidate resolveName* or resolveFuzzyFirstExactLastName* already
- *   covers - this stage's gate requires an EXACT firstName match, so no candidate is ever
- *   double-counted across stages.
- */
-function resolveFuzzyLastNameOn(
-  predicate: (candidate: PipelineCandidate) => boolean,
-  resolvedBy: string,
-): Stage {
-  return async (state: PipelineState): Promise<PipelineState> => {
-    const found = findSoleZeroNameScoreCandidateWithFuzzyLastNameMatch(state.memo, state);
-    if (!found) return state;
-
-    const { candidate, acmsLast, camsLast } = found;
-    addScore(candidate, 'doesFuzzyLastNameMatch', {
-      value: Math.round(natural.JaroWinklerDistance(acmsLast, camsLast) * 100),
-      threshold: Math.round(FUZZY_NAME_PART_JARO_WINKLER_THRESHOLD * 100),
-      pass: true, // findSoleZeroNameScoreCandidateWithFuzzyLastNameMatch already required a fuzzy match to select this candidate
-    });
-
-    const corroborated = predicate(candidate);
-    addScore(candidate, resolvedBy, {
-      value: corroborated ? 100 : 0,
-      threshold: 100,
-      pass: corroborated,
-    });
-    if (!corroborated) return state;
-
-    return resolveOnCandidate(state, candidate, resolvedBy);
-  };
-}
-
-/**
- * Five atomic stages, the mirror image of resolveNameStateAndCityOrZip/resolveNameCityAndZip/
- * resolveNameAddress/resolveNamePhone/resolveNameEmail for the opposite name-part shape: an exact
- * first name with a fuzzy (spelling-variant/typo/nickname) last name. Never runs for a candidate
- * the exact-name-tier or fuzzy-first-name-tier stages already cover - this family's own finder
- * requires an EXACT firstName match, so no candidate is ever double-counted across stages.
- */
-export function resolveExactFirstFuzzyLastNameStateAndCityOrZip(): Stage {
-  return resolveFuzzyLastNameOn(
-    stateAndCityOrZip,
-    'resolveExactFirstFuzzyLastNameStateAndCityOrZip',
-  );
-}
-
-export function resolveExactFirstFuzzyLastNameCityAndZip(): Stage {
-  return resolveFuzzyLastNameOn(cityAndZip, 'resolveExactFirstFuzzyLastNameCityAndZip');
-}
-
-export function resolveExactFirstFuzzyLastNameAddress(): Stage {
-  return resolveFuzzyLastNameOn(addressCorroborates, 'resolveExactFirstFuzzyLastNameAddress');
-}
-
-export function resolveExactFirstFuzzyLastNamePhone(): Stage {
-  return resolveFuzzyLastNameOn(phoneCorroborates, 'resolveExactFirstFuzzyLastNamePhone');
-}
-
-export function resolveExactFirstFuzzyLastNameEmail(): Stage {
-  return resolveFuzzyLastNameOn(emailCorroborates, 'resolveExactFirstFuzzyLastNameEmail');
 }

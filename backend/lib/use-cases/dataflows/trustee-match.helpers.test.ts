@@ -1872,9 +1872,9 @@ describe('lastNameTokensMatch', () => {
   // Real-world false negatives from a staging backtest: firstLastNameToken always treats the
   // FIRST token as the surname, which is wrong for a prepended maiden/second surname (real
   // surname last, not first) and for a hyphenated compound surname carried inconsistently across
-  // systems. Only activates when the caller supplies the raw (pre-firstLastNameToken) lastName
-  // fields.
-  describe('raw-field fallback', () => {
+  // systems. Only activates when the caller supplies each side's lastNameSurnameCandidates result
+  // (primary token plus alternates - see NormalizedTrustee.lastNameAlternates).
+  describe('candidate-list fallback', () => {
     test.each([
       ['DE DUNWOODY HALLSTROM', 'Hallstrom'],
       ['Anderson Oakley', 'Oakley'],
@@ -1887,8 +1887,8 @@ describe('lastNameTokensMatch', () => {
           lastNameTokensMatch(
             firstLastNameToken(compound),
             firstLastNameToken(real),
-            compound,
-            real,
+            lastNameSurnameCandidates(compound),
+            lastNameSurnameCandidates(real),
           ),
         ).toBe(true);
       },
@@ -1906,8 +1906,8 @@ describe('lastNameTokensMatch', () => {
           lastNameTokensMatch(
             firstLastNameToken(compound),
             firstLastNameToken(real),
-            compound,
-            real,
+            lastNameSurnameCandidates(compound),
+            lastNameSurnameCandidates(real),
           ),
         ).toBe(true);
       },
@@ -1920,16 +1920,16 @@ describe('lastNameTokensMatch', () => {
         lastNameTokensMatch(
           firstLastNameToken('Smith Jones'),
           firstLastNameToken('Jones Wilson'),
-          'Smith Jones',
-          'Jones Wilson',
+          lastNameSurnameCandidates('Smith Jones'),
+          lastNameSurnameCandidates('Jones Wilson'),
         ),
       ).toBe(false);
     });
 
-    test('should NOT apply the fallback when neither raw field is supplied', () => {
+    test('should NOT apply the fallback when neither candidate list is supplied', () => {
       // Same firstLastNameToken inputs as the first parameterized case above, but without the
-      // raw fields - existing callers that never pass them must see unchanged behavior, not a
-      // silent new match.
+      // candidate lists - existing callers that never pass them must see unchanged behavior, not
+      // a silent new match.
       expect(
         lastNameTokensMatch(
           firstLastNameToken('DE DUNWOODY HALLSTROM'),
