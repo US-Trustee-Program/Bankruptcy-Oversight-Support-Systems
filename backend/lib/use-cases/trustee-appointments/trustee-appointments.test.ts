@@ -727,6 +727,49 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         expect(updateSpy).not.toHaveBeenCalled();
         expect(result).toEqual(createdAppointment);
       });
+
+      test('does not merge when the incoming appointment itself is not active, even if a matching active duplicate exists', async () => {
+        const mockTrustee = MockData.getTrustee({ trusteeId });
+        const existingActive = MockData.getTrusteeAppointment({
+          id: 'existing-appointment-1',
+          trusteeId,
+          chapter: '7',
+          appointmentType: 'panel',
+          courtId: '081',
+          divisionCodes: ['001'],
+          status: 'active',
+        });
+        const suspendedInput: TrusteeAppointmentInput = {
+          ...newAppointmentInput,
+          status: 'voluntarily-suspended',
+        };
+        const createdAppointment = MockData.getTrusteeAppointment({
+          id: 'new-appointment',
+          trusteeId,
+          ...suspendedInput,
+        });
+
+        vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
+        vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([
+          existingActive,
+        ]);
+        vi.spyOn(MockMongoRepository.prototype, 'createAppointment').mockResolvedValue(
+          createdAppointment,
+        );
+        const updateSpy = vi.spyOn(MockMongoRepository.prototype, 'updateAppointment');
+
+        const result = await trusteeAppointmentsUseCase.createAppointment(
+          context,
+          trusteeId,
+          suspendedInput,
+        );
+
+        // existingActive is a same court+chapter+type duplicate, but the incoming appointment
+        // is not active -- merging would silently overwrite the existing active record with
+        // suspended data, so this must create its own record instead.
+        expect(updateSpy).not.toHaveBeenCalled();
+        expect(result).toEqual(createdAppointment);
+      });
     });
 
     describe('updateAppointment', () => {
@@ -878,6 +921,63 @@ describe('TrusteeAppointmentsUseCase tests', () => {
           appointmentId,
           expect.anything(),
           expect.any(Object),
+        );
+        expect(result).toEqual(updated);
+      });
+
+      test('does not redirect to merge when the incoming update itself is not active, even if a matching active duplicate exists', async () => {
+        const original = MockData.getTrusteeAppointment({
+          id: appointmentId,
+          trusteeId,
+          chapter: '13',
+          appointmentType: 'standing',
+          courtId: '081',
+          divisionCodes: ['005'],
+          status: 'active',
+        });
+        const otherActive = MockData.getTrusteeAppointment({
+          id: 'other-appointment',
+          trusteeId,
+          chapter: '7',
+          appointmentType: 'panel',
+          courtId: '081',
+          divisionCodes: ['001'],
+          status: 'active',
+        });
+        const suspendedPayload: TrusteeAppointmentInput = {
+          ...updatePayload,
+          status: 'voluntarily-suspended',
+        };
+        const updated = { ...original, ...suspendedPayload };
+
+        vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(original);
+        vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([
+          original,
+          otherActive,
+        ]);
+        vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(updated);
+
+        const result = await trusteeAppointmentsUseCase.updateAppointment(
+          context,
+          trusteeId,
+          appointmentId,
+          suspendedPayload,
+        );
+
+        // otherActive is a same court+chapter+type duplicate, but the incoming update itself
+        // is not active -- this must update the requested appointment directly rather than
+        // redirecting into (and overwriting) otherActive's active record.
+        expect(MockMongoRepository.prototype.updateAppointment).toHaveBeenCalledWith(
+          trusteeId,
+          appointmentId,
+          expect.anything(),
+          expect.any(Object),
+        );
+        expect(MockMongoRepository.prototype.updateAppointment).not.toHaveBeenCalledWith(
+          trusteeId,
+          'other-appointment',
+          expect.anything(),
+          expect.anything(),
         );
         expect(result).toEqual(updated);
       });

@@ -84,45 +84,51 @@ function makePayload(overrides: Partial<TrusteeAppointmentInput> = {}): TrusteeA
 
 describe('findMergeTarget', () => {
   test('returns undefined when the list is empty', () => {
-    const result = findMergeTarget(BASE_COURT_ID, '7', 'panel', []);
+    const result = findMergeTarget(BASE_COURT_ID, '7', 'panel', 'active', []);
     expect(result).toBeUndefined();
   });
 
   test('returns undefined when no appointment matches the courtId', () => {
     const appt = makeAppointment({ courtId: '097-' });
-    const result = findMergeTarget(BASE_COURT_ID, '7', 'panel', [appt]);
+    const result = findMergeTarget(BASE_COURT_ID, '7', 'panel', 'active', [appt]);
     expect(result).toBeUndefined();
   });
 
   test('returns undefined when no appointment matches the chapter', () => {
     const appt = makeAppointment({ chapter: '13' });
-    const result = findMergeTarget(BASE_COURT_ID, '7', 'panel', [appt]);
+    const result = findMergeTarget(BASE_COURT_ID, '7', 'panel', 'active', [appt]);
     expect(result).toBeUndefined();
   });
 
   test('returns undefined when no appointment matches the appointmentType', () => {
     const appt = makeAppointment({ appointmentType: 'off-panel' });
-    const result = findMergeTarget(BASE_COURT_ID, '7', 'panel', [appt]);
+    const result = findMergeTarget(BASE_COURT_ID, '7', 'panel', 'active', [appt]);
     expect(result).toBeUndefined();
   });
 
   test('returns undefined when matching appointment is not active', () => {
     const appt = makeAppointment({ status: 'inactive' });
-    const result = findMergeTarget(BASE_COURT_ID, '7', 'panel', [appt]);
+    const result = findMergeTarget(BASE_COURT_ID, '7', 'panel', 'active', [appt]);
     expect(result).toBeUndefined();
   });
 
   test('returns the matching active appointment', () => {
     const appt = makeAppointment();
-    const result = findMergeTarget(BASE_COURT_ID, '7', 'panel', [appt]);
+    const result = findMergeTarget(BASE_COURT_ID, '7', 'panel', 'active', [appt]);
     expect(result).toBe(appt);
   });
 
   test('skips inactive appointments and finds the active one', () => {
     const inactive = makeAppointment({ id: 'appt-inactive', status: 'inactive' });
     const active = makeAppointment({ id: 'appt-active' });
-    const result = findMergeTarget(BASE_COURT_ID, '7', 'panel', [inactive, active]);
+    const result = findMergeTarget(BASE_COURT_ID, '7', 'panel', 'active', [inactive, active]);
     expect(result).toBe(active);
+  });
+
+  test('returns undefined when the incoming status is not active, even if a matching active appointment exists', () => {
+    const active = makeAppointment();
+    const result = findMergeTarget(BASE_COURT_ID, '7', 'panel', 'inactive', [active]);
+    expect(result).toBeUndefined();
   });
 });
 

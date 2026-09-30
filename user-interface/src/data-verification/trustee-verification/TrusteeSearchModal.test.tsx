@@ -166,6 +166,50 @@ describe('TrusteeSearchModal', () => {
     });
   });
 
+  test('drops divisionCode and chapter once the user switches away from the originating court', async () => {
+    const searchSpy = vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: [] });
+
+    render(
+      <BrowserRouter>
+        <TrusteeSearchModal
+          ref={modalRef}
+          id={modalId}
+          dxtrTrusteeName="DOE, JOHN"
+          courtId="0208"
+          divisionCode="0208"
+          chapter="7"
+          onConfirm={vi.fn()}
+        />
+      </BrowserRouter>,
+    );
+    act(() => modalRef.current?.show());
+
+    // Switch the district dropdown away from the originating court (0208) to a different one.
+    const districtExpandButton = document.querySelector(`#${districtComboBoxId}-expand`);
+    await userEvent.click(districtExpandButton!);
+    const districtInput = document.querySelector(
+      `#${districtComboBoxId}-combo-box-input`,
+    ) as HTMLInputElement;
+    // courtId="0208" pre-selects "Southern District of New York" as the input's starting
+    // value, so it must be cleared before typing or "Alaska" would just append to it.
+    await userEvent.clear(districtInput);
+    await userEvent.type(districtInput, 'Alaska');
+    await waitFor(() => {
+      const firstOption = screen.getByTestId(`${districtComboBoxId}-option-item-0`);
+      expect(firstOption).toBeVisible();
+    });
+    await userEvent.click(screen.getByTestId(`${districtComboBoxId}-option-item-0`));
+
+    await expandComboBoxAndType('sm');
+
+    await waitFor(() => {
+      const alaskaCourtId = COURT_DIVISIONS.find(
+        (c) => c.courtName === 'District of Alaska',
+      )?.courtId;
+      expect(searchSpy).toHaveBeenCalledWith('sm', alaskaCourtId, undefined, undefined);
+    });
+  });
+
   test('normalizes courtDivisionCode to courtId when searching', async () => {
     const searchSpy = vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: sampleResults });
 

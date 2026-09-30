@@ -110,13 +110,21 @@ function TrusteeSearchModal_(
       setSearchResults([]);
       return;
     }
+    // divisionCode/chapter describe the case that opened this modal, which is only a valid
+    // filter while the search is still scoped to that case's own court. If the user has
+    // switched the "Trustee District" dropdown away from the court this modal was opened
+    // with, divisionCode belongs to a different court than the one now being searched --
+    // applying it would filter search results against the wrong court's divisions. Falling
+    // back to district-only filtering here is safe: it can only ever show MORE candidates,
+    // never admit one the backend's own approval check would reject.
+    const isOriginatingCourt = selectedCourtId === courtId;
     debounce(async () => {
       try {
         const response = await Api2.searchTrustees(
           value,
           selectedCourtEntry?.courtId,
-          divisionCode,
-          chapter,
+          isOriginatingCourt ? divisionCode : undefined,
+          isOriginatingCourt ? chapter : undefined,
         );
         setSearchResults(response.data);
       } catch {

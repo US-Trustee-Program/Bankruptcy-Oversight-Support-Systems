@@ -216,6 +216,11 @@ export const TRUSTEE_APPOINTMENTS_INTERNAL_SPEC: Readonly<ValidationSpec<Trustee
  * same court+chapter+type, not requiring division overlap; merging is what reconciles
  * divisions (by union), not a check that they already overlap.
  *
+ * Only applies when the incoming appointment itself is active: merging a non-active
+ * create/update into an existing active appointment would silently overwrite that active
+ * record's data with the incoming (non-active) values instead of leaving it alone, which is
+ * never the intent of a status-changing create/update.
+ *
  * Shared between the frontend form (pre-merge UX feedback before ever calling the API) and
  * the backend (the authoritative enforcement point for direct API callers and for update,
  * which the frontend does not check at all). Keeping this in one place means both can never
@@ -225,8 +230,12 @@ export function findMergeTarget(
   courtId: string,
   chapter: AppointmentChapterType | string,
   appointmentType: AppointmentType | string,
+  incomingStatus: AppointmentStatus | string,
   existingAppointments: TrusteeAppointment[],
 ): TrusteeAppointment | undefined {
+  if (incomingStatus !== 'active') {
+    return undefined;
+  }
   return existingAppointments.find(
     (appt) =>
       appt.courtId === courtId &&

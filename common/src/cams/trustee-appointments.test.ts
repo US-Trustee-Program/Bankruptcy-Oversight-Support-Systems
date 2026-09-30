@@ -556,23 +556,25 @@ describe('trustee-appointments', () => {
 
   describe('findMergeTarget', () => {
     test('returns undefined when the list is empty', () => {
-      expect(findMergeTarget(BASE_COURT_ID, '7', 'panel', [])).toBeUndefined();
+      expect(findMergeTarget(BASE_COURT_ID, '7', 'panel', 'active', [])).toBeUndefined();
     });
 
     test('returns undefined when no appointment matches court/chapter/type', () => {
       const appt = makeAppointment({ courtId: '097-' });
-      expect(findMergeTarget(BASE_COURT_ID, '7', 'panel', [appt])).toBeUndefined();
+      expect(findMergeTarget(BASE_COURT_ID, '7', 'panel', 'active', [appt])).toBeUndefined();
     });
 
     test('returns undefined when the matching appointment is not active', () => {
       const appt = makeAppointment({ status: 'inactive' });
-      expect(findMergeTarget(BASE_COURT_ID, '7', 'panel', [appt])).toBeUndefined();
+      expect(findMergeTarget(BASE_COURT_ID, '7', 'panel', 'active', [appt])).toBeUndefined();
     });
 
     test('returns the matching active appointment, skipping inactive ones', () => {
       const inactive = makeAppointment({ id: 'appt-inactive', status: 'inactive' });
       const active = makeAppointment({ id: 'appt-active' });
-      expect(findMergeTarget(BASE_COURT_ID, '7', 'panel', [inactive, active])).toBe(active);
+      expect(findMergeTarget(BASE_COURT_ID, '7', 'panel', 'active', [inactive, active])).toBe(
+        active,
+      );
     });
 
     test('has no built-in self-exclusion -- a caller must filter out the appointment being updated itself', () => {
@@ -582,8 +584,18 @@ describe('trustee-appointments', () => {
       // spuriously detect a self-duplicate -- this test proves the exclusion is the caller's
       // responsibility, not something this function does for you.
       const self = makeAppointment({ id: 'self' });
-      expect(findMergeTarget(BASE_COURT_ID, '7', 'panel', [self])).toBe(self);
+      expect(findMergeTarget(BASE_COURT_ID, '7', 'panel', 'active', [self])).toBe(self);
     });
+
+    test.each(['inactive', 'voluntarily-suspended', 'deceased', 'resigned'] as AppointmentStatus[])(
+      'returns undefined when the incoming status is %s, even if a matching active appointment exists',
+      (incomingStatus) => {
+        const active = makeAppointment({ id: 'appt-active' });
+        expect(
+          findMergeTarget(BASE_COURT_ID, '7', 'panel', incomingStatus, [active]),
+        ).toBeUndefined();
+      },
+    );
   });
 
   describe('buildMergePayload', () => {

@@ -263,6 +263,7 @@ export class TrusteeAppointmentsUseCase {
         normalizedData.courtId,
         normalizedData.chapter,
         normalizedData.appointmentType,
+        normalizedData.status,
         existingAppointments,
       );
 
@@ -360,6 +361,7 @@ export class TrusteeAppointmentsUseCase {
         normalizedData.courtId,
         normalizedData.chapter,
         normalizedData.appointmentType,
+        normalizedData.status,
         otherAppointments,
       );
 
