@@ -2701,12 +2701,7 @@ describe('isFirstMiddleSwap', () => {
       camsMiddle: 'douglas',
       expected: false,
     },
-    // Real regression shape (name synthesized, PR #3072, Jon's review): two DIFFERENT first names
-    // that each happen to share a leading letter with the OTHER record's bare middle initial -
-    // "michael"/"p" crossed against "philip"/"m" both look like isInitialOf relationships (p is an
-    // initial of philip, m is an initial of michael), but "michael" and "philip" share no real
-    // relationship at all. Both crossed pairs must be PLAUSIBLE for isFirstMiddleSwap to even
-    // consider this a swap, but plausible alone is not enough - see the next case below.
+    // Two different first names that each coincidentally cross-match via bare initials only.
     {
       description: 'two different first names that merely cross-match via bare initials',
       dxtrFirst: 'michael',
@@ -2715,12 +2710,7 @@ describe('isFirstMiddleSwap', () => {
       camsMiddle: 'm',
       expected: false,
     },
-    // Real regression shape (name synthesized, PR #3072): a genuine swap where the SAME token is
-    // spelled out on one side and abbreviated to a bare initial on the other - "francis"/"j"
-    // crossed against "j"/"francis". One crossed pair ("francis" vs "francis") is an EXACT match,
-    // satisfying isCrossedNamePartMatch's "at least one genuine, non-initial-only" requirement even
-    // though the other crossed pair ("j" vs "j") is also exact - this is what distinguishes a real
-    // swap from the coincidental-initials case above.
+    // A genuine swap: one crossed pair is an exact match ("francis" vs "francis").
     {
       description: 'a genuine swap where one crossed pair is an exact match',
       dxtrFirst: 'francis',
@@ -2779,16 +2769,9 @@ describe('isOneSidedMiddleNameMatch', () => {
       camsMiddle: 'm',
       expected: false,
     },
-    // Real regression shape (name synthesized, PR #3072): a SHORT first name against a bare
-    // initial matching its own leading letter must still be refused, even though this shape
-    // previously slipped through via isPlausibleNicknameByDistance - JaroWinklerDistance rates a
-    // short string highly similar to its own leading character by construction ("al" vs "a" scores
-    // 0.85, well past the nickname-distance threshold), silently readmitting the exact bare-initial
-    // relationship the "michael"/"m" case above already refuses. This produced a real false
-    // positive in the 2026-09-25 export: ACMS "Al [Surname]" (no middle name) auto-linked to an
-    // unrelated CAMS trustee sharing only a surname and a middle initial "A" that is merely "Al"'s
-    // own leading letter, while the CAMS trustee with AL's actual matching phone number was
-    // rejected outright on name and never considered.
+    // A short first name against a bare initial matching its own leading letter must still be
+    // refused - JaroWinklerDistance rates a short string highly similar to its own leading
+    // character ("al" vs "a" scores 0.85), which would otherwise readmit a bare-initial match.
     {
       description:
         'a short first name against a bare initial matching its own leading letter (still refused)',

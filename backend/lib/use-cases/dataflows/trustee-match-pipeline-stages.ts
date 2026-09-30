@@ -196,16 +196,8 @@ function isBareInitial(namePart: string): boolean {
  * scoreMiddleNamePart (100 in both cases - absence isn't evidence, agreement is full credit).
  *
  * EITHER side a bare initial that does not match the other's leading character (isInitialOf
- * already covers the case where it DOES match, above) is a genuine 15-point conflict, not a
- * neutral 100 - once isInitialOf has already been checked and failed, there is nothing left to be
- * neutral about: the full name provably does NOT start with that letter. This used to return 100
- * unconditionally whenever exactly one side was a bare initial ("too little information", treating
- * the already-ruled-out "could still plausibly start with that letter" case as if it were still
- * open) while separately, correctly, treating two disagreeing bare initials as a conflict - an
- * inconsistency an adversarial review (PR #3072) caught with a live probe: ACMS "Michael P
- * [Surname]" (Wilmington DE, no contact data) still auto-linked to CAMS "Michael Edward [Surname]"
- * (Wheeling WV) after the two-bare-initials fix landed, since "P" vs "Edward" hits this
- * one-side-bare-initial branch instead, which had never been corrected to match.
+ * already covers the case where it DOES match, above) is a genuine 15-point conflict, not neutral -
+ * once isInitialOf has failed, the full name provably does not start with that letter.
  */
 function pipelineMiddleNameScore(
   memo: NormalizedMemo,
@@ -1673,14 +1665,20 @@ function isNoContradictionMatch(candidate: PipelineCandidate): boolean {
  *   "Jordan [A./B./C.] Johnson" records are three different real trustees. A confident wrong
  *   answer is worse than an honest unresolved one - such a pool falls through to whatever later
  *   RESOLVE stage (or an 'ambiguous' disposition) the pipeline reaches next.
- * - Only considers candidates whose merged score does NOT have isStateNotConflicting: false - a
- *   candidate a state-filter annotated as noise is excluded from consideration, without ever being
- *   removed from state.candidates itself.
+ * - Excludes any candidate with doesStateMatch: false (a genuine, comparable state disagreement),
+ *   without removing it from state.candidates. Gates on doesStateMatch rather than
+ *   isStateNotConflicting, which self-overrides whenever nameScore clears 85 - always true here,
+ *   since isNoContradictionMatch already requires an exact (100) name match. doesStateMatch has no
+ *   such override and is only ever recorded when both sides have a comparable state.
+ *   isNoContradictionMatch's own address-contradiction check independently screens out most real
+ *   state conflicts too, since a different state usually also yields a low address score - this
+ *   gate closes the remaining gap where a coincidentally matching zip (30% of the address score's
+ *   weight) pushes the score up to exactly NO_CONTRADICTION_ADDRESS_FLOOR.
  */
 export function resolveBySoleContactMatch(): Stage {
   return async (state: PipelineState): Promise<PipelineState> => {
     const candidates = [...state.candidates.entries()].filter(
-      ([, candidate]) => mergedScore(candidate).isStateNotConflicting?.pass !== false,
+      ([, candidate]) => mergedScore(candidate).doesStateMatch?.pass !== false,
     );
     if (candidates.length === 0) return state;
 
