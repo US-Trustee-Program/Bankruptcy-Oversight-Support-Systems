@@ -55,12 +55,14 @@ flowchart LR
     azure_remove_branch_yml["Clean up Flexion Azure Resources"]
     azure_remove_branch_yml_list["list"]
     azure_remove_branch_yml_check["check"]
+    azure_remove_branch_yml_relay["relay"]
     azure_remove_branch_yml_notify["notify"]
     azure_remove_branch_yml_clean_up["clean-up"]
 
     trigger_delete --> azure_remove_branch_yml
     azure_remove_branch_yml --> azure_remove_branch_yml_list
     azure_remove_branch_yml --> azure_remove_branch_yml_check
+    azure_remove_branch_yml --> azure_remove_branch_yml_relay
     azure_remove_branch_yml --> azure_remove_branch_yml_notify
     azure_remove_branch_yml --> azure_remove_branch_yml_clean_up
 
@@ -73,6 +75,7 @@ flowchart LR
     class azure_remove_branch_yml mainWorkflow
     class azure_remove_branch_yml_list job
     class azure_remove_branch_yml_check job
+    class azure_remove_branch_yml_relay job
     class azure_remove_branch_yml_notify job
     class azure_remove_branch_yml_clean_up job
 ```
@@ -500,6 +503,7 @@ flowchart LR
     azure_remove_branch_yml["Clean up Flexion Azure Resources"]
     azure_remove_branch_yml_list["list"]
     azure_remove_branch_yml_check["check"]
+    azure_remove_branch_yml_relay["relay"]
     azure_remove_branch_yml_notify["notify"]
     azure_remove_branch_yml_clean_up["clean-up"]
     prune_e2e_image_cache_yml["Prune E2E Image Cache"]
@@ -533,6 +537,7 @@ flowchart LR
     trigger_schedule --> azure_remove_branch_yml
     azure_remove_branch_yml --> azure_remove_branch_yml_list
     azure_remove_branch_yml --> azure_remove_branch_yml_check
+    azure_remove_branch_yml --> azure_remove_branch_yml_relay
     azure_remove_branch_yml --> azure_remove_branch_yml_notify
     azure_remove_branch_yml --> azure_remove_branch_yml_clean_up
     trigger_schedule --> prune_e2e_image_cache_yml
@@ -569,6 +574,7 @@ flowchart LR
     class azure_remove_branch_yml mainWorkflow
     class azure_remove_branch_yml_list job
     class azure_remove_branch_yml_check job
+    class azure_remove_branch_yml_relay job
     class azure_remove_branch_yml_notify job
     class azure_remove_branch_yml_clean_up job
     class prune_e2e_image_cache_yml mainWorkflow
@@ -602,12 +608,14 @@ flowchart LR
     azure_remove_branch_yml["Clean up Flexion Azure Resources"]
     azure_remove_branch_yml_list["list"]
     azure_remove_branch_yml_check["check"]
+    azure_remove_branch_yml_relay["relay"]
     azure_remove_branch_yml_notify["notify"]
     azure_remove_branch_yml_clean_up["clean-up"]
 
     trigger_workflow_dispatch --> azure_remove_branch_yml
     azure_remove_branch_yml --> azure_remove_branch_yml_list
     azure_remove_branch_yml --> azure_remove_branch_yml_check
+    azure_remove_branch_yml --> azure_remove_branch_yml_relay
     azure_remove_branch_yml --> azure_remove_branch_yml_notify
     azure_remove_branch_yml --> azure_remove_branch_yml_clean_up
 
@@ -620,6 +628,7 @@ flowchart LR
     class azure_remove_branch_yml mainWorkflow
     class azure_remove_branch_yml_list job
     class azure_remove_branch_yml_check job
+    class azure_remove_branch_yml_relay job
     class azure_remove_branch_yml_notify job
     class azure_remove_branch_yml_clean_up job
 ```
@@ -1475,7 +1484,7 @@ flowchart LR
   - Jobs: 2
 - **Clean up Flexion Azure Resources** (`azure-remove-branch.yml`)
   - Triggers: delete, schedule, workflow_dispatch
-  - Jobs: 4
+  - Jobs: 5
 - **Prune E2E Image Cache** (`prune-e2e-image-cache.yml`)
   - Triggers: schedule, workflow_dispatch
   - Jobs: 1
