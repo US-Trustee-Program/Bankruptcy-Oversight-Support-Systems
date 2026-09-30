@@ -20,7 +20,6 @@ import {
   lastNameTokensMatch,
   matchTrusteeByName,
   normalizeAddressLine,
-  normalizeNamePart,
   padSingleDigitNumericToken,
   parseCityStateZip,
   stripParentheticalAnnotations,
@@ -34,7 +33,6 @@ import {
   recoverSoloPracticeName,
   shouldSkipAsNotAPerson,
   shouldSkipAsUstStaff,
-  splitCompoundFirstName,
   stripAdministrativeMarkers,
 } from './acms-name-normalization.helpers';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
@@ -423,7 +421,7 @@ export function normalizeAcmsSourceName(): Stage {
     );
     const strippedLastName = stripAdministrativeMarkers(corruptionRecovered.lastName);
     const soloPracticeRecovered = recoverSoloPracticeName(strippedFirstName, strippedLastName);
-    const { firstName, middleName } = splitCompoundFirstName(
+    const { firstName, middleName } = splitGivenName(
       soloPracticeRecovered.firstName,
       state.sourceRaw.middleName,
     );
@@ -435,8 +433,8 @@ export function normalizeAcmsSourceName(): Stage {
       ...state,
       sourceNormalized: {
         ...state.sourceNormalized,
-        firstName: normalizeNamePart(firstName),
-        middleName: normalizeNamePart(middleName),
+        firstName,
+        middleName,
         lastName,
         lastNameAlternates,
         lastNameUnreduced: soloPracticeRecovered.lastName,
@@ -899,42 +897,45 @@ export function recallByAnchoredLevenshtein(context: ApplicationContext): Stage 
 }
 
 /**
- * Splits a two-token CAMS firstName ("G. Matt", "R. Todd", "Duke C.") into its bare-initial token
- * and the real given-name token, but ONLY when the CAMS record has no middleName of its own AND
- * EXACTLY ONE of the two tokens is a bare initial - normalizeNamePart's blanket
- * punctuation-stripping otherwise glues "G. Matt" into "gmatt" (unrecognizable as either "george"
- * or "matthew"), which tanked doesNameMatch to 0 for three real ACMS records that are clearly the
- * same person (same office address/phone across OM-02157/KC-04603/WI-16708 in the 2026-09-25
- * staging export).
- *
- * Deliberately NOT a blanket "first token is firstName, rest is middleName" split (unlike
- * splitCompoundFirstName's ACMS-side rule, which assumes CMMPR's PROF_FIRST_NAME/PROF_MI shape) -
- * a CAMS firstName field carries a materially different population: real COMPOUND given names
- * ("Lee Ann", "Mary Jo", "Beth Ann", "Nancy Jo" - one person's whole first name, not
- * initial-plus-given-name) and non-person role placeholders ("Chapter 13 Standing Trustee")
- * coexist in the same field alongside the initial-plus-name shape this function targets.
- * Surveyed the full 2026-09-25 trustees export: every multi-token firstName with NO bare-initial
- * token anywhere is one of those two other shapes, and every one WITH a bare-initial token is a
- * genuine initial-plus-given-name - the bare-initial check is a clean, reliable discriminator
- * between them, confirmed empirically rather than assumed.
+ * Generational suffixes and ACMS placeholder junk are not given-name tokens. They only become
+ * visible once the firstName and middleName fields are joined - a per-field split leaves them
+ * attached to whichever field happened to carry them.
  */
-function splitCamsInitialPlusGivenName(
+const NON_GIVEN_NAME_TOKENS = new Set(['jr', 'sr', 'ii', 'iii', 'iv', 'x']);
+
+/**
+ * Re-derives firstName/middleName from the two fields JOINED, rather than trusting how the source
+ * system happened to divide them. Applied identically to both sides, so the division itself can
+ * never be what makes two records differ.
+ *
+ * Each source divides a compound given name on its own rules and stops dividing once its side
+ * already carries a middle name, so "C. David Butler" arrives as firstName="C. DAVID" middleName="L"
+ * from ACMS and firstName="C. David" with no middle from CAMS. normalizeNamePart then strips
+ * whitespace along with punctuation, gluing the first into "cdavid" while the second becomes
+ * "c"/"david" - the same person, compared as a first-name mismatch.
+ *
+ * Punctuation becomes a token boundary but whitespace is preserved as one: the space between an
+ * initial and an adjacent given name carries real structure ("G. Matt" is an initial plus a name,
+ * not "gmatt"). The first token is the first name and the remainder is the middle.
+ *
+ * A real compound given name ("Lee Ann", "Mary Jo") divides the same way on both sides and so
+ * still matches itself; verified against the 2026-09-25 export, where all 7 such matched records
+ * hold.
+ */
+function splitGivenName(
   firstName: string | undefined,
   middleName: string | undefined,
-): { firstName: string | undefined; middleName: string | undefined } {
-  if (middleName || !firstName) return { firstName, middleName };
+): { firstName: string; middleName: string } {
+  const tokens = [firstName ?? '', middleName ?? '']
+    .join(' ')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .split(' ')
+    .filter(Boolean)
+    .filter((token) => !NON_GIVEN_NAME_TOKENS.has(token));
 
-  const tokens = firstName.trim().split(/\s+/);
-  if (tokens.length !== 2) return { firstName, middleName };
-
-  const [first, second] = tokens;
-  const firstIsInitial = isBareInitial(first.replace(/\.$/, ''));
-  const secondIsInitial = isBareInitial(second.replace(/\.$/, ''));
-  if (firstIsInitial === secondIsInitial) return { firstName, middleName };
-
-  return firstIsInitial
-    ? { firstName: first, middleName: second }
-    : { firstName: second, middleName: first };
+  return { firstName: tokens[0] ?? '', middleName: tokens.slice(1).join('') };
 }
 
 /**
@@ -953,13 +954,13 @@ function normalizeCandidateNameFields(
   _sourceNormalized: NormalizedTrustee,
   candidate: PipelineCandidate,
 ): PipelineCandidate {
-  const { firstName, middleName } = splitCamsInitialPlusGivenName(
+  const { firstName, middleName } = splitGivenName(
     candidate.camsRaw.firstName,
     candidate.camsRaw.middleName,
   );
   const [lastName, ...lastNameAlternates] = lastNameSurnameCandidates(candidate.camsRaw.lastName);
-  candidate.camsNormalized.firstName = normalizeNamePart(firstName);
-  candidate.camsNormalized.middleName = normalizeNamePart(middleName);
+  candidate.camsNormalized.firstName = firstName;
+  candidate.camsNormalized.middleName = middleName;
   candidate.camsNormalized.lastName = lastName;
   candidate.camsNormalized.lastNameAlternates = lastNameAlternates;
   return candidate;

@@ -1030,6 +1030,63 @@ describe('scoreCandidate - name-match facet', () => {
     });
   });
 
+  // The two sides split a compound given name on different rules, and each stops splitting once
+  // its own side already carries a middle name - so the same "C. David Butler" arrives as
+  // first="cdavid" middle="l" from one and first="c" middle="david" from the other.
+  test('matches the same given name divided differently between first and middle', async () => {
+    // Source keeps "C. Dabney" whole because it already has a middle initial; CAMS has no middle
+    // name, so it splits the same text into first="c" middle="dabney".
+    const state = await normalizeAcmsSourceName()(
+      createInitialState(
+        makeDxtrTrustee({ firstName: 'C. Dabney', middleName: 'L', lastName: 'Vandermoor' }),
+      ),
+    );
+    const candidate = addCandidate(
+      state,
+      projectTrustee(
+        makeTrustee({
+          trusteeId: 't1',
+          firstName: 'C. Dabney',
+          middleName: undefined,
+          lastName: 'Vandermoor',
+        }),
+      ),
+      'test',
+    );
+
+    scoreCandidate(state.sourceNormalized, candidate);
+
+    expect(mergedScore(candidate)).toMatchObject({
+      doesNameMatch: { value: 85, pass: true },
+    });
+  });
+
+  test('drops a generational suffix rather than reading it as a middle name', async () => {
+    const state = await normalizeAcmsSourceName()(
+      createInitialState(
+        makeDxtrTrustee({ firstName: 'Wendell JR.', middleName: 'F', lastName: 'Ashgrove' }),
+      ),
+    );
+    const candidate = addCandidate(
+      state,
+      projectTrustee(
+        makeTrustee({
+          trusteeId: 't1',
+          firstName: 'Wendell',
+          middleName: 'F.',
+          lastName: 'Ashgrove',
+        }),
+      ),
+      'test',
+    );
+
+    scoreCandidate(state.sourceNormalized, candidate);
+
+    // Joining the fields exposes "JR." where a per-field split kept it hidden; without the
+    // suffix filter it would become a middle token and conflict with "f".
+    expect(mergedScore(candidate)).toMatchObject({ doesNameMatch: { value: 100, pass: true } });
+  });
+
   test('credits a fuzzy (spelling-variant) last name alongside an exact first name', async () => {
     const state = await normalizeAcmsSourceName()(
       createInitialState(makeDxtrTrustee({ firstName: 'Gina', lastName: 'Stromp' })),
@@ -1137,7 +1194,9 @@ describe('scoreCandidate - name-match facet', () => {
   // not under test here) so this test isolates ONLY the CAMS-side splitting decision: an ACMS
   // record already carrying firstName="Robin", middleName="Ann" must still match a CAMS
   // firstName="Robin Ann" left correctly whole, not corrupted into some other split.
-  test('does NOT split a compound given name with no bare-initial token', async () => {
+  // A real compound given name divides the same way on both sides, so it still matches itself -
+  // exactly, since neither side is relaxed to get there.
+  test('matches a compound given name however the two sides divided it', async () => {
     const state = await normalizeAcmsSourceName()(
       createInitialState(
         makeDxtrTrustee({ firstName: 'Robin', middleName: 'Ann', lastName: 'Castellano' }),
@@ -1154,17 +1213,14 @@ describe('scoreCandidate - name-match facet', () => {
     scoreCandidate(state.sourceNormalized, candidate);
 
     expect(mergedScore(candidate)).toMatchObject({
-      doesNameMatch: { value: 85, pass: true },
+      doesNameMatch: { value: 100, pass: true },
     });
   });
 
-  // The other real population with no bare-initial token: a non-person role placeholder (e.g.
-  // real CAMS records literally stored as "Chapter 13"/lastName "Standing Trustee") rather than a
-  // compound given name. splitCamsInitialPlusGivenName's own doc comment names this as the second
-  // of the two populations the bare-initial check must never touch - without a test pinning this
-  // down directly, a future change to the bare-initial heuristic could start splitting a
-  // placeholder string with nothing here to catch it.
-  test('does NOT split a two-token role placeholder with no bare-initial token', async () => {
+  // A non-person role placeholder (real CAMS records are literally stored as "Chapter 13" with
+  // lastName "Standing Trustee") divides identically on both sides too, so it neither matches
+  // something it shouldn't nor stops matching itself.
+  test('matches a two-token role placeholder however the two sides divided it', async () => {
     const state = await normalizeAcmsSourceName()(
       createInitialState(
         makeDxtrTrustee({ firstName: 'Interim', middleName: 'Trustee', lastName: 'Placeholder' }),
@@ -1181,7 +1237,7 @@ describe('scoreCandidate - name-match facet', () => {
     scoreCandidate(state.sourceNormalized, candidate);
 
     expect(mergedScore(candidate)).toMatchObject({
-      doesNameMatch: { value: 85, pass: true },
+      doesNameMatch: { value: 100, pass: true },
     });
   });
 });
