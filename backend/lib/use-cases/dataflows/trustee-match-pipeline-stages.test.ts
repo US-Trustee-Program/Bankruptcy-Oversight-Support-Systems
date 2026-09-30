@@ -22,7 +22,7 @@ import {
   resolveBySoleContactMatch,
   resolveByComparativeCorroboration,
   resolveByPhoneTypoTolerance,
-  resolveByExactNameOnly,
+  resolveBySoleExactNameInState,
   scoreAddressDisqualifiers,
   scoreNameDisqualifiers,
   resolveByStateAndCity,
@@ -3062,7 +3062,7 @@ describe('resolveByPhoneTypoTolerance', () => {
   });
 });
 
-describe('resolveByExactNameOnly', () => {
+describe('resolveBySoleExactNameInState', () => {
   const acmsRecord = makeDxtrTrustee({ fullName: 'Ronald Larkin' });
 
   // Run through REAL end-to-end scoring (normalizeAcmsSourceName -> addCandidate ->
@@ -3084,12 +3084,12 @@ describe('resolveByExactNameOnly', () => {
     );
     scoreCandidate(state.sourceNormalized, candidate);
 
-    const result = await resolveByExactNameOnly()(state);
+    const result = await resolveBySoleExactNameInState()(state);
 
     expect(result.match).toEqual({
       trusteeId: 't1',
       score: candidate.scores,
-      resolvedBy: 'resolveByExactNameOnly',
+      resolvedBy: 'resolveBySoleExactNameInState',
     });
   });
 
@@ -3118,12 +3118,12 @@ describe('resolveByExactNameOnly', () => {
     );
     scoreCandidate(state.sourceNormalized, candidate);
 
-    const result = await resolveByExactNameOnly()(state);
+    const result = await resolveBySoleExactNameInState()(state);
 
     expect(result.match).toEqual({
       trusteeId: 't1',
       score: candidate.scores,
-      resolvedBy: 'resolveByExactNameOnly',
+      resolvedBy: 'resolveBySoleExactNameInState',
     });
   });
 
@@ -3155,7 +3155,7 @@ describe('resolveByExactNameOnly', () => {
     );
     scoreCandidate(state.sourceNormalized, candidate);
 
-    const result = await resolveByExactNameOnly()(state);
+    const result = await resolveBySoleExactNameInState()(state);
 
     expect(result.match).toBeNull();
   });
@@ -3172,12 +3172,12 @@ describe('resolveByExactNameOnly', () => {
     );
     addScore(candidate, 'doesNameMatch', { pass: true, quality: 'strong' });
 
-    const result = await resolveByExactNameOnly()(state);
+    const result = await resolveBySoleExactNameInState()(state);
 
     expect(result.match).toEqual({
       trusteeId: 't1',
       score: candidate.scores,
-      resolvedBy: 'resolveByExactNameOnly',
+      resolvedBy: 'resolveBySoleExactNameInState',
     });
   });
 
@@ -3190,7 +3190,7 @@ describe('resolveByExactNameOnly', () => {
     );
     addScore(candidate, 'doesNameMatch', { pass: true, quality: 'weak' });
 
-    const result = await resolveByExactNameOnly()(state);
+    const result = await resolveBySoleExactNameInState()(state);
 
     expect(result.match).toBeNull();
   });
@@ -3210,7 +3210,55 @@ describe('resolveByExactNameOnly', () => {
     );
     addScore(second, 'doesNameMatch', { pass: true, quality: 'exact' });
 
-    const result = await resolveByExactNameOnly()(state);
+    const result = await resolveBySoleExactNameInState()(state);
+
+    expect(result.match).toBeNull();
+  });
+
+  test('resolves the one exact-name candidate whose state does not contradict', async () => {
+    const state = createInitialState(acmsRecord);
+    const inState = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Ronald L. Larkin' })),
+      'test',
+    );
+    addScore(inState, 'doesNameMatch', { pass: true, quality: 'exact' });
+    addScore(inState, 'doesStateMatch', { pass: true });
+    const elsewhere = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't2', name: 'Ronald L. Larkin' })),
+      'test',
+    );
+    addScore(elsewhere, 'doesNameMatch', { pass: true, quality: 'exact' });
+    addScore(elsewhere, 'doesStateMatch', { pass: false });
+
+    const result = await resolveBySoleExactNameInState()(state);
+
+    expect(result.match).toEqual({
+      trusteeId: 't1',
+      score: inState.scores,
+      resolvedBy: 'resolveBySoleExactNameInState',
+    });
+  });
+
+  test('does not resolve when two exact-name candidates both sit in the state', async () => {
+    const state = createInitialState(acmsRecord);
+    const first = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Ronald L. Larkin' })),
+      'test',
+    );
+    addScore(first, 'doesNameMatch', { pass: true, quality: 'exact' });
+    addScore(first, 'doesStateMatch', { pass: true });
+    const second = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't2', name: 'Ronald L. Larkin' })),
+      'test',
+    );
+    addScore(second, 'doesNameMatch', { pass: true, quality: 'exact' });
+    addScore(second, 'doesStateMatch', { pass: true });
+
+    const result = await resolveBySoleExactNameInState()(state);
 
     expect(result.match).toBeNull();
   });
@@ -3230,12 +3278,12 @@ describe('resolveByExactNameOnly', () => {
     );
     scoreCandidate(state.sourceNormalized, candidate);
 
-    const result = await resolveByExactNameOnly()(state);
+    const result = await resolveBySoleExactNameInState()(state);
 
     expect(result.match).toEqual({
       trusteeId: 't1',
       score: candidate.scores,
-      resolvedBy: 'resolveByExactNameOnly',
+      resolvedBy: 'resolveBySoleExactNameInState',
     });
   });
 
@@ -3249,7 +3297,7 @@ describe('resolveByExactNameOnly', () => {
     addScore(candidate, 'doesNameMatch', { pass: true, quality: 'exact' });
     addScore(candidate, 'doesCamsTrusteeHaveAddressAndPhone', { pass: false });
 
-    const result = await resolveByExactNameOnly()(state);
+    const result = await resolveBySoleExactNameInState()(state);
 
     expect(result.match).toBeNull();
   });
@@ -3669,7 +3717,7 @@ describe('resolveBySoleFuzzyNameMatchAndState', () => {
   const acmsRecord = makeDxtrTrustee({ fullName: GENERIC_ACMS_FULL_NAME });
 
   // This stage trusts state agreement alone, so an exact-name candidate anywhere in the pool
-  // outranks anything it could conclude - resolveByExactNameOnly runs after it and would
+  // outranks anything it could conclude - resolveBySoleExactNameInState runs after it and would
   // otherwise never get the chance.
   test('declines when an exact-name candidate is in the pool', async () => {
     const state = createInitialState(acmsRecord);
@@ -3713,7 +3761,7 @@ describe('resolveBySoleFuzzyNameMatchAndState', () => {
     });
   });
 
-  test("does not resolve a sole exact-name candidate - that is resolveByExactNameOnly's job", async () => {
+  test("does not resolve a sole exact-name candidate - that is resolveBySoleExactNameInState's job", async () => {
     const state = createInitialState(acmsRecord);
     const candidate = addCandidate(
       state,

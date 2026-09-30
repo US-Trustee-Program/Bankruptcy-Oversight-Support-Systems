@@ -555,7 +555,7 @@ describe('SyncAcmsProfessionalIds', () => {
       vi.spyOn(deps.variationRepo, 'findByFingerprint').mockResolvedValue([]);
       const matchedPipelineState = {
         ...noMatchPipelineState,
-        match: { trusteeId: 'trustee-1', score: {}, resolvedBy: 'resolveByExactNameOnly' },
+        match: { trusteeId: 'trustee-1', score: {}, resolvedBy: 'resolveBySoleExactNameInState' },
       };
       vi.spyOn(trusteeMatchPipelineOrchestrator, 'runTrusteeMatchPipeline').mockResolvedValue(
         matchedPipelineState as never,
@@ -575,7 +575,7 @@ describe('SyncAcmsProfessionalIds', () => {
       ]);
       const matchedPipelineState = {
         ...noMatchPipelineState,
-        match: { trusteeId: 'trustee-1', score: {}, resolvedBy: 'resolveByExactNameOnly' },
+        match: { trusteeId: 'trustee-1', score: {}, resolvedBy: 'resolveBySoleExactNameInState' },
       };
       vi.spyOn(trusteeMatchPipelineOrchestrator, 'runTrusteeMatchPipeline').mockResolvedValue(
         matchedPipelineState as never,
