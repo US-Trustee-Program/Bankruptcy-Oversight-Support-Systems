@@ -126,12 +126,11 @@ type Disqualifier = { scorer: string; reason: string; evidence: Record<string, u
  *
  * lastNameUnreduced holds the ACMS lastName AFTER name-recovery (recoverCorruptedFirstName/
  * recoverSoloPracticeName) but BEFORE lastNameSurnameCandidates' token reduction - distinct from
- * both `lastName` (which is the REDUCED result) and `legacyLastName` (which is a passthrough of
- * the raw, pre-recovery value and never updated by normalizeAcmsSourceName). A caller that needs
- * an exact, unreduced surname comparison but still wants recovery's benefit (e.g.
- * isExactLastNameMatch's marker-stripping-only comparison) reads this field rather than
- * sourceRaw.lastName directly, so a corrupted/business-suffixed ACMS name that recovery already
- * fixed isn't silently re-broken by comparing the ORIGINAL, unrecovered text.
+ * `lastName` (which is the REDUCED result). A caller that needs an exact, unreduced surname
+ * comparison but still wants recovery's benefit (e.g. isExactLastNameMatch's
+ * marker-stripping-only comparison) reads this field rather than sourceRaw.lastName directly, so a
+ * corrupted/business-suffixed ACMS name that recovery already fixed isn't silently re-broken by
+ * comparing the ORIGINAL, unrecovered text.
  */
 type NormalizedTrusteeFields = Partial<Omit<ProjectedTrustee, 'trusteeId' | 'address'>> & {
   address?: Partial<NonNullable<ProjectedTrustee['address']>>;
@@ -148,20 +147,15 @@ type NormalizedTrusteeFields = Partial<Omit<ProjectedTrustee, 'trusteeId' | 'add
  * legacy holds a passthrough clone of sourceRaw.legacy (address1/cityStateZipCountry/phone/fax/
  * email) - plain scalars, not reshaped, unlike address/name, so cloning them here has none of the
  * "compute once" cache-breaking risk those two fields carry (see cloneNormalizableFields).
- * legacyLastName is a similar passthrough of the raw, un-reduced lastName exactly as it appeared
- * on sourceRaw, distinct from `lastName` (which holds normalizeAcmsSourceName's REDUCED output) -
- * needed because lastNameTokensMatch (trustee-match.helpers.ts) re-derives the full
- * prepended-surname/hyphenated-compound candidate set from the raw string itself, and that
- * function's public contract is out of scope to change here. fullName is the same passthrough
- * treatment for sourceRaw.fullName (CanonicalTrusteeSource-only, no ProjectedTrustee equivalent -
- * a candidate's own composed name lives in `name` instead), kept distinct from `name` (which
- * memoizedNormalizeName caches a SIMILARITY-normalized reduction into, not a raw passthrough).
- * acmsHasNoContactData caches memoizedAcmsHasNoContactData's result directly on this record, the
- * same "compute once" pattern memoizedParseAcmsAddress already uses for `address`.
+ * fullName is the same passthrough treatment for sourceRaw.fullName (CanonicalTrusteeSource-only,
+ * no ProjectedTrustee equivalent - a candidate's own composed name lives in `name` instead), kept
+ * distinct from `name` (which memoizedNormalizeName caches a SIMILARITY-normalized reduction into,
+ * not a raw passthrough). acmsHasNoContactData caches memoizedAcmsHasNoContactData's result
+ * directly on this record, the same "compute once" pattern memoizedParseAcmsAddress already uses
+ * for `address`.
  */
 type TrusteeNormalizationCache = {
   legacy?: NonNullable<CanonicalTrusteeSource['legacy']>;
-  legacyLastName?: string;
   fullName?: string;
   acmsHasNoContactData?: boolean;
 };
@@ -255,7 +249,6 @@ function cloneNormalizableFields<TRaw extends Partial<NormalizedTrustee>>(
     phone: raw.phone,
     email: raw.email,
     legacy: raw.legacy,
-    legacyLastName: raw.lastName,
     fullName: raw.fullName,
   };
 }

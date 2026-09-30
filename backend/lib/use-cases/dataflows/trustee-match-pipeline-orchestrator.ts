@@ -15,17 +15,6 @@ import {
   resolveBySoleExactNameMatch,
   resolveBySoleExactNameMatchByStateThenGeo,
   resolveRisky,
-  resolveFuzzyFirstExactLastNameStateAndCityOrZip,
-  resolveFuzzyFirstExactLastNameCityAndZip,
-  resolveFuzzyFirstExactLastNameAddress,
-  resolveFuzzyFirstExactLastNamePhone,
-  resolveFuzzyFirstExactLastNameEmail,
-  resolveFuzzyFirstExactLastNameFullCorroboration,
-  resolveExactFirstFuzzyLastNameStateAndCityOrZip,
-  resolveExactFirstFuzzyLastNameCityAndZip,
-  resolveExactFirstFuzzyLastNameAddress,
-  resolveExactFirstFuzzyLastNamePhone,
-  resolveExactFirstFuzzyLastNameEmail,
   resolveBySoleFuzzyNameMatchAndState,
   recallByNameThenResolveMatch,
   resolveByPhoneTypoTolerance,
@@ -96,23 +85,6 @@ function resolveStages(): Stage[] {
     // reordered alongside the four stages before them - it only ever catches what those five
     // already declined for lack of city/zip/contact corroboration.
     resolveBySoleFuzzyNameMatchAndState(),
-    // Six stages for the exact-lastName/fuzzy-or-initial-firstName shape (composed
-    // narrow-then-score-then-resolve, see each one's own doc comment) - five atomic corroboration
-    // stages for the fuzzy-first-name path, then the compound full-corroboration stage for the
-    // weaker bare-initial path.
-    resolveFuzzyFirstExactLastNameAddress(),
-    resolveFuzzyFirstExactLastNamePhone(),
-    resolveFuzzyFirstExactLastNameEmail(),
-    resolveFuzzyFirstExactLastNameStateAndCityOrZip(),
-    resolveFuzzyFirstExactLastNameCityAndZip(),
-    resolveFuzzyFirstExactLastNameFullCorroboration(),
-    // Five atomic stages for the exact-firstName/fuzzy-lastName shape (composed
-    // score-then-resolve, see each one's own doc comment) - the mirror image of the family above.
-    resolveExactFirstFuzzyLastNameAddress(),
-    resolveExactFirstFuzzyLastNamePhone(),
-    resolveExactFirstFuzzyLastNameEmail(),
-    resolveExactFirstFuzzyLastNameStateAndCityOrZip(),
-    resolveExactFirstFuzzyLastNameCityAndZip(),
     // HIGH-RISK, deliberately LAST-RESORT - see resolveRisky's own doc comment (and each composed
     // sub-stage's own "!!! HIGH-RISK" comment). Every richer-evidence stage above gets first
     // attempt at any candidate resolveRisky's sub-stages would also consider.

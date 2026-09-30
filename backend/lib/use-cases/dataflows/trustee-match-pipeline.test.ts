@@ -78,7 +78,6 @@ describe('createInitialState', () => {
       phone: undefined,
       email: undefined,
       legacy: sourceRaw.legacy,
-      legacyLastName: 'Doe',
       fullName: sourceRaw.fullName,
     });
   });
@@ -114,7 +113,6 @@ describe('addCandidate', () => {
       phone: projected.phone,
       email: projected.email,
       legacy: undefined,
-      legacyLastName: 'Smith',
       fullName: undefined,
     });
   });
@@ -494,7 +492,6 @@ describe('serializeState', () => {
       sourceNormalized: {
         firstName: 'John',
         lastName: 'Doe',
-        legacyLastName: 'Doe',
         fullName: 'John Doe',
         name: 'john doe',
       },
@@ -505,7 +502,6 @@ describe('serializeState', () => {
           camsNormalized: {
             firstName: 'John',
             lastName: 'Doe',
-            legacyLastName: 'Doe',
             email: candidate.camsRaw.email,
             phone: candidate.camsRaw.phone,
             name: 'john doe',
