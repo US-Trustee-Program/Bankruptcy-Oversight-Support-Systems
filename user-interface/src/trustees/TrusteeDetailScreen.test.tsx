@@ -709,6 +709,9 @@ describe('TrusteeDetailScreen', () => {
         // When feature flag is disabled, GoHome is rendered instead of the edit form
         expect(screen.queryByTestId('edit-upcoming-key-dates')).not.toBeInTheDocument();
       });
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledWith('/search');
+      });
     });
   });
 
@@ -739,6 +742,9 @@ describe('TrusteeDetailScreen', () => {
       } else {
         await waitFor(() => {
           expect(screen.queryByTestId('edit-past-key-dates')).not.toBeInTheDocument();
+        });
+        await waitFor(() => {
+          expect(mockNavigate).toHaveBeenCalledWith('/search');
         });
       }
     });
@@ -808,6 +814,9 @@ describe('TrusteeDetailScreen', () => {
           screen.queryByRole('heading', { level: 2, name: 'Edit Other Trustee Information' }),
         ).not.toBeInTheDocument();
       });
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledWith('/search');
+      });
     });
   });
 
@@ -836,6 +845,9 @@ describe('TrusteeDetailScreen', () => {
       await waitFor(() => {
         // When feature flag is disabled, GoHome is rendered instead of the assigned staff component
         expect(screen.queryByTestId('trustee-assigned-staff-container')).not.toBeInTheDocument();
+      });
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledWith('/search');
       });
     });
   });
@@ -869,6 +881,9 @@ describe('TrusteeDetailScreen', () => {
       await waitFor(() => {
         // When feature flag is disabled, GoHome is rendered instead of the case list
         expect(screen.queryByTestId('trustee-case-list')).not.toBeInTheDocument();
+      });
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledWith('/search');
       });
     });
   });
