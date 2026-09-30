@@ -3,6 +3,7 @@ import { getNameVariations } from 'name-match/src/name-normalizer';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { Trustee } from '@common/cams/trustees';
 import { Address, PhoneNumber } from '@common/cams/contact';
+import { usStates } from '@common/cams/us-states';
 import factory from '../../factory';
 import {
   calculateNumericTokenScore,
@@ -262,8 +263,37 @@ function pipelinePhoneScore(
 }
 
 /**
+ * ACMS-pipeline-only address parser: parseCityStateZip (shared with the DXTR paths) plus a
+ * recovery for a "CITY ST" address carrying no zip at all, which the shared parser rejects
+ * outright. ACMS commonly stores an address that way; DXTR does not, and widening the shared
+ * parser would change calculateAddressScore's behavior for sync-trustee-case-appointments.
+ *
+ * The recovered shape reports zipCode: '' - honest about a zip that was never present, rather
+ * than a placeholder a downstream zip comparison could read as real evidence.
+ */
+const VALID_STATE_CODES = new Set(usStates.map((s) => s.code));
+
+function parseAcmsCityStateZip(cityStateZipCountry?: string): ReturnType<typeof parseCityStateZip> {
+  const parsed = parseCityStateZip(cityStateZipCountry);
+  if (parsed) return parsed;
+  if (!cityStateZipCountry) return null;
+
+  const tokens = cityStateZipCountry.replaceAll(',', ' ').trim().split(/\s+/);
+  const trailingToken = tokens[tokens.length - 1];
+  const trailingIsState =
+    trailingToken !== undefined &&
+    /^[A-Za-z]{2}$/.test(trailingToken) &&
+    VALID_STATE_CODES.has(trailingToken.toUpperCase());
+  if (!trailingIsState) return null;
+
+  const city = tokens.slice(0, tokens.length - 1).join(' ');
+  if (!city) return null;
+  return { city, state: trailingToken, zipCode: '' };
+}
+
+/**
  * ACMS-pipeline-only orchestration of calculateAddressScore's exact scoring logic, built from the
- * same atomic, exported pieces (parseCityStateZip, normalizeAddressLine, padSingleDigitNumericToken,
+ * same atomic, exported pieces (parseAcmsCityStateZip, normalizeAddressLine, padSingleDigitNumericToken,
  * calculateNumericTokenScore, jaccardSimilarity, generateBigrams) rather than calling
  * calculateAddressScore directly - this pipeline forked from the DXTR path so ACMS-specific tuning
  * can move independently, same reason as pipelineNameScore.
@@ -286,7 +316,7 @@ function pipelineAddressScore(
   sourceLegacy: NormalizedTrustee['legacy'],
   camsAddress: Address,
 ): number | null {
-  const parsed = parseCityStateZip(sourceLegacy?.cityStateZipCountry);
+  const parsed = parseAcmsCityStateZip(sourceLegacy?.cityStateZipCountry);
   if (!parsed) return null;
 
   const zip5 = (zip: string) => zip.trim().split('-')[0].toLowerCase();
@@ -1219,7 +1249,7 @@ function memoizedParseAcmsAddress(
   sourceNormalized: NormalizedTrustee,
 ): ReturnType<typeof parseCityStateZip> {
   if (sourceNormalized.address === undefined) {
-    const parsed = parseCityStateZip(sourceNormalized.legacy?.cityStateZipCountry);
+    const parsed = parseAcmsCityStateZip(sourceNormalized.legacy?.cityStateZipCountry);
     if (!parsed) return parsed;
     sourceNormalized.address = parsed;
   }
