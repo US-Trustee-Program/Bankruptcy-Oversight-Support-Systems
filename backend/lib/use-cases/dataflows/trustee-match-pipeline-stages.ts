@@ -2213,9 +2213,11 @@ export function resolveBySoleFuzzyNameMatchAndState(): Stage {
     // agreement alone, which must never outrank an exact name sitting right beside it.
     if (candidatePool(state).some(isExactNameMatch)) return state;
 
+    // State agreement is a single weak vote, so the name has to carry the rest - a fuzzy surname
+    // needs address or phone behind it, which this stage never checks.
     const qualifying = candidatePool(state).filter(
       (candidate) =>
-        nameMatch(candidate).pass &&
+        hasExactSurnameMatch(candidate) &&
         mergedScore(candidate).hasComparableContactData?.pass !== false,
     );
     if (qualifying.length !== 1) return state;

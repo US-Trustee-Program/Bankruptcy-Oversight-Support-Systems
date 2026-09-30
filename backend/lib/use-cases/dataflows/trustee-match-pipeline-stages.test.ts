@@ -3713,7 +3713,7 @@ describe('resolveBySoleFuzzyNameMatchAndState', () => {
     });
   });
 
-  test("does not resolve a sole EXACT-name (100) candidate - that is resolveByExactNameOnly's job", async () => {
+  test("does not resolve a sole exact-name candidate - that is resolveByExactNameOnly's job", async () => {
     const state = createInitialState(acmsRecord);
     const candidate = addCandidate(
       state,
@@ -3721,6 +3721,21 @@ describe('resolveBySoleFuzzyNameMatchAndState', () => {
       'test',
     );
     addScore(candidate, 'doesNameMatch', { pass: true, quality: 'exact' });
+    addScore(candidate, 'doesStateMatch', { pass: true });
+
+    const result = await resolveBySoleFuzzyNameMatchAndState()(state);
+
+    expect(result.match).toBeNull();
+  });
+
+  test('does not resolve a weak-name candidate on state agreement alone', async () => {
+    const state = createInitialState(acmsRecord);
+    const candidate = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Aldric A. Moone' })),
+      'test',
+    );
+    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'weak' });
     addScore(candidate, 'doesStateMatch', { pass: true });
 
     const result = await resolveBySoleFuzzyNameMatchAndState()(state);
