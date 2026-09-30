@@ -233,14 +233,21 @@ function matchName(
   }
 
   const middleQuality = matchNamePart(memo, sourceMiddle, camsMiddle);
-  if (middleQuality === 'none' && sourceMiddle && camsMiddle) {
+  const middleConflicts = middleQuality === 'none' && !!sourceMiddle && !!camsMiddle;
+  if (middleConflicts && firstQuality !== 'exact') {
     // BOTH sides had a middle name to compare (not merely one, which matchNamePart already treats
-    // as neutral absence) and it genuinely conflicted - a strong first/last match is not proof of
-    // identity once a real, comparable middle-name conflict is on record.
+    // as neutral absence) and it genuinely conflicted. With the first name ALSO relaxed - an
+    // initial, a nickname, a spelling variant - the surname is the only part that matched
+    // literally, which is not enough to call this the same person.
     return NO_MATCH;
   }
 
-  const exact = firstQuality === 'exact' && middleQuality !== 'strong';
+  // An exact first name and a matching surname outweigh a conflicting middle name, which is the
+  // least reliable name part in this data: a middle initial is frequently absent, abbreviated,
+  // transcribed from a different source, or holds a maiden surname on one side only. The verdict
+  // drops to 'strong' so a resolver requiring an exact match still declines, while one weighing
+  // independent corroboration can still resolve.
+  const exact = firstQuality === 'exact' && middleQuality !== 'strong' && !middleConflicts;
   return { pass: true, quality: exact ? 'exact' : 'strong' };
 }
 
