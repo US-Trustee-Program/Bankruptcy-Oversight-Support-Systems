@@ -10,7 +10,7 @@ import {
   DATE_FIELDS,
   TrusteeUpcomingKeyDates,
   TrusteeUpcomingKeyDatesInput,
-  validateTrusteeUpcomingKeyDates,
+  validateTrusteeUpcomingKeyDatesForSave,
 } from '@common/cams/trustee-upcoming-key-dates';
 import Validators from '@common/cams/validators';
 import { NotFoundError } from '../../common-errors/not-found-error';
@@ -63,7 +63,8 @@ export class TrusteeUpcomingKeyDatesController implements CamsController {
             message: `Invalid ISO date in field(s): ${invalidFields.join(', ')}`,
           });
         }
-        const validationResult = validateTrusteeUpcomingKeyDates(input);
+        const existing = await useCase.getUpcomingKeyDates(appointmentId);
+        const validationResult = validateTrusteeUpcomingKeyDatesForSave(input, existing);
         if (!validationResult.valid) {
           const messages = Object.values(validationResult.reasonMap ?? {})
             .flatMap((r) => r.reasons)

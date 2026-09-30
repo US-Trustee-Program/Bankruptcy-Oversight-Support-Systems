@@ -136,6 +136,14 @@ describe('TrusteeUpcomingKeyDatesController', () => {
   });
 
   describe('PUT', () => {
+    beforeEach(() => {
+      // No pre-existing document by default; tests exercising the
+      // save-time pair-forgiveness behavior (cams-lw0kd) override this.
+      vi.spyOn(TrusteeUpcomingKeyDatesUseCase.prototype, 'getUpcomingKeyDates').mockResolvedValue(
+        null,
+      );
+    });
+
     function buildValidInput(
       overrides: Partial<TrusteeUpcomingKeyDatesInput> = {},
     ): TrusteeUpcomingKeyDatesInput {
@@ -276,6 +284,68 @@ describe('TrusteeUpcomingKeyDatesController', () => {
 
       await expect(controller.handleRequest(context)).rejects.toMatchObject({
         status: 400,
+      });
+    });
+
+    // cams-lw0kd: a stored document can carry a stale half-set pair on a field
+    // no card renders for a given appointment type. The save-time forgiveness
+    // in validateTrusteeUpcomingKeyDatesForSave should let saves that don't
+    // touch that pair through, while still catching a genuinely invalid pair
+    // the caller IS touching.
+    describe('stale untouched pair forgiveness', () => {
+      test('PUT succeeds when an untouched pair is stale on the stored document', async () => {
+        vi.spyOn(TrusteeUpcomingKeyDatesUseCase.prototype, 'getUpcomingKeyDates').mockResolvedValue(
+          { ...buildMockDocument(), tirCompletionYear: 2024 },
+        );
+        const putSpy = vi
+          .spyOn(TrusteeUpcomingKeyDatesUseCase.prototype, 'upsertUpcomingKeyDates')
+          .mockResolvedValue(undefined);
+
+        // Caller edits only the Annual Report pair; tirCompletionYear is
+        // carried forward unchanged from the stored document, still missing
+        // its tirCompletionStatus partner.
+        const body = buildValidInput({
+          tirCompletionYear: 2024,
+          annualReportCompletionYear: 2026,
+          annualReportCompletionStatus: 'COMPLETE',
+        });
+        context.request = mockCamsHttpRequest({
+          method: 'PUT',
+          params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
+          body,
+        });
+
+        const controller = new TrusteeUpcomingKeyDatesController(context);
+        const response = await controller.handleRequest(context);
+
+        expect(response.statusCode).toBe(HttpStatusCodes.OK);
+        expect(putSpy).toHaveBeenCalledWith(
+          'trustee-001',
+          'appointment-001',
+          body,
+          context.session.user,
+        );
+      });
+
+      test('PUT still returns 400 when the caller touches the invalid pair', async () => {
+        vi.spyOn(TrusteeUpcomingKeyDatesUseCase.prototype, 'getUpcomingKeyDates').mockResolvedValue(
+          { ...buildMockDocument(), tirCompletionYear: 2024 },
+        );
+
+        // Caller sets a different tirCompletionYear without ever setting
+        // tirCompletionStatus -- this pair IS being touched, so it must still
+        // be validated.
+        context.request = mockCamsHttpRequest({
+          method: 'PUT',
+          params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
+          body: buildValidInput({ tirCompletionYear: 2025 }),
+        });
+
+        const controller = new TrusteeUpcomingKeyDatesController(context);
+
+        await expect(controller.handleRequest(context)).rejects.toMatchObject({
+          status: 400,
+        });
       });
     });
 

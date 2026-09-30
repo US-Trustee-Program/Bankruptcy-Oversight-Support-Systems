@@ -329,6 +329,58 @@ export function validateTrusteeUpcomingKeyDates(
   return validateObject(trusteeUpcomingKeyDatesSpec, input);
 }
 
+// Every requirePair() pair declared in trusteeUpcomingKeyDatesSpec above, kept
+// in sync manually -- used only to forgive a pre-existing stale mismatch on a
+// pair a save isn't touching (see validateTrusteeUpcomingKeyDatesForSave).
+const SAVE_PAIR_FIELDS: Array<
+  [keyof TrusteeUpcomingKeyDatesInput, keyof TrusteeUpcomingKeyDatesInput]
+> = [
+  ['tprReviewPeriodStart', 'tprReviewPeriodEnd'],
+  ['tirReviewPeriodStart', 'tirReviewPeriodEnd'],
+  ['tirSemiAnnualReviewPeriodStart', 'tirSemiAnnualReviewPeriodEnd'],
+  ['tprDue', 'tprDueYearType'],
+  ['auditCompletionYear', 'auditCompletionStatus'],
+  ['tprCompletionYear', 'tprCompletionStatus'],
+  ['tirCompletionYear', 'tirCompletionStatus'],
+  ['ch13AuditCompletionYear', 'ch13AuditCompletionStatus'],
+  ['annualReportCompletionYear', 'annualReportCompletionStatus'],
+];
+
+/**
+ * Validates a save against the whole document, then forgives any error whose
+ * field belongs entirely to a pair the save isn't touching (both fields
+ * unchanged from the stored document). Without this, a stored half-set pair
+ * on a field no card renders for a given appointment type -- unreachable
+ * through normal app usage, but possible via migration/seed/direct write --
+ * would permanently block every save from every form (see cams-lw0kd).
+ */
+export function validateTrusteeUpcomingKeyDatesForSave(
+  input: TrusteeUpcomingKeyDatesInput,
+  existing: TrusteeUpcomingKeyDates | null,
+): ValidatorResult {
+  const result = validateTrusteeUpcomingKeyDates(input);
+  if (result.valid || !existing) {
+    return result;
+  }
+
+  // validateObject() (see validation.ts) flattens every per-field error to a
+  // top-level key AND leaves a redundant raw '$' entry duplicating the same
+  // errors; drop '$' since its content is already represented by the
+  // flattened per-field keys below.
+  const { $: _root, ...reasonMap } = result.reasonMap ?? {};
+  for (const [first, second] of SAVE_PAIR_FIELDS) {
+    const existingFirst = (existing[first] as string | number | undefined) ?? null;
+    const existingSecond = (existing[second] as string | number | undefined) ?? null;
+    const touched = input[first] !== existingFirst || input[second] !== existingSecond;
+    if (!touched) {
+      delete reasonMap[first as string];
+      delete reasonMap[second as string];
+    }
+  }
+
+  return Object.keys(reasonMap).length > 0 ? { reasonMap } : VALID;
+}
+
 /**
  * Validates the tprDue / tprDueYearType pair for blur-time feedback.
  * Returns the first applicable error message, or '' if valid.

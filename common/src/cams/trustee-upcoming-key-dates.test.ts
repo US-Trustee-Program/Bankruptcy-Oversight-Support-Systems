@@ -20,6 +20,8 @@ import {
   validateMonthDay,
   validateMonthDayRange,
   validateTrusteeUpcomingKeyDates,
+  validateTrusteeUpcomingKeyDatesForSave,
+  TrusteeUpcomingKeyDates,
   validateTprDuePair,
   validateTprReviewPeriodOrder,
   validateCompletionPairPresence,
@@ -1127,6 +1129,75 @@ describe('validateTrusteeUpcomingKeyDates', () => {
     );
 
     expect(unrouted).toEqual([]);
+  });
+
+  describe('validateTrusteeUpcomingKeyDatesForSave', () => {
+    function buildExisting(
+      overrides: Partial<TrusteeUpcomingKeyDates> = {},
+    ): TrusteeUpcomingKeyDates {
+      return {
+        id: 'id-001',
+        documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
+        trusteeId: 'trustee-001',
+        appointmentId: 'appointment-001',
+        createdBy: { id: 'user-1', name: 'Test User' },
+        createdOn: '2026-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'Test User' },
+        updatedOn: '2026-01-01T00:00:00.000Z',
+        ...overrides,
+      };
+    }
+
+    test('behaves exactly like validateTrusteeUpcomingKeyDates when there is no existing document', () => {
+      const input = { ...baseInput(), tirCompletionYear: 2024, tirCompletionStatus: null };
+      expect(validateTrusteeUpcomingKeyDatesForSave(input, null)).toEqual(
+        validateTrusteeUpcomingKeyDates(input),
+      );
+    });
+
+    test('forgives a stale pair the save does not touch', () => {
+      // Existing document carries an orphaned tirCompletionYear with no
+      // status -- a field no card renders for this appointment type. The
+      // save only touches the Annual Report pair.
+      const existing = buildExisting({ tirCompletionYear: 2024 });
+      const input = {
+        ...baseInput(),
+        tirCompletionYear: 2024,
+        tirCompletionStatus: null,
+        annualReportCompletionYear: 2026,
+        annualReportCompletionStatus: 'INCOMPLETE' as const,
+      };
+
+      expect(validateTrusteeUpcomingKeyDatesForSave(input, existing)).toEqual(VALID);
+    });
+
+    test('still reports an error when the save touches the invalid pair', () => {
+      const existing = buildExisting({ tirCompletionYear: 2024 });
+      const input = {
+        ...baseInput(),
+        tirCompletionYear: 2025, // caller is changing this field
+        tirCompletionStatus: null,
+      };
+
+      const result = validateTrusteeUpcomingKeyDatesForSave(input, existing);
+      expect(result.valid).toBeFalsy();
+      expect(result.reasonMap?.tirCompletionStatus?.reasons?.[0]).toBe(
+        'Trustee Interim Report Completion Status is required.',
+      );
+    });
+
+    test('still reports an error on an untouched pair if the other pair field is what changed', () => {
+      // Existing has the pair fully unset; save sets only the year half,
+      // leaving the pair genuinely broken by this very save.
+      const existing = buildExisting();
+      const input = { ...baseInput(), tirCompletionYear: 2025, tirCompletionStatus: null };
+
+      const result = validateTrusteeUpcomingKeyDatesForSave(input, existing);
+      expect(result.valid).toBeFalsy();
+      expect(result.reasonMap?.tirCompletionStatus?.reasons?.[0]).toBe(
+        'Trustee Interim Report Completion Status is required.',
+      );
+    });
   });
 });
 
