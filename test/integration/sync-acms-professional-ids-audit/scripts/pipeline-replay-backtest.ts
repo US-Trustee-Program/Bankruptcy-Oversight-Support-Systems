@@ -6,17 +6,14 @@
  * current code would now produce for the same population - both new resolutions among the
  * previously-unresolved population, AND false-positive detection among what staging already
  * trusted: an auto-linked record current code would now resolve to a DIFFERENT trusteeId, or not
- * auto-link at all, is written to data/replay-backtest-divergences.csv alongside every other
- * staging-vs-current disagreement. Each divergence row carries the ACMS source's own address/phone,
- * staging's trustee's address/phone (looked up from the trustees fixture independently of whether
- * that trustee is even a candidate in the current record's pool), and the current pipeline's
- * trustee's address/phone (when disposition is 'auto-linked' - blank for 'ambiguous'/'no-match',
- * which have no single winning trustee) - a reviewer can see WHY a transition happened without
- * opening replay-backtest-report.jsonl for every row. Also writes
- * data/replay-backtest-divergences-detail.csv - the SAME diverged records, but as a cartesian
- * product (one row per (diverged ACMS record, candidate) pair) instead of one pre-picked
- * "keySignal" summary row - a reviewer who needs to see EVERY candidate's own score detail behind a
- * divergence (not just the one keySignal chose to summarize) reads this file instead.
+ * auto-link at all, is written to data/replay-backtest-divergences-detail.csv alongside every other
+ * staging-vs-current disagreement, one row per (diverged ACMS record, candidate) pair. Each row
+ * carries the ACMS source's own address/phone, staging's trustee's address/phone (looked up from
+ * the trustees fixture independently of whether that trustee is even a candidate in the current
+ * record's pool), the current pipeline's trustee's address/phone (when disposition is
+ * 'auto-linked' - blank for 'ambiguous'/'no-match', which have no single winning trustee), and
+ * that candidate's own scores - so a reviewer can see WHY a transition happened, and what the
+ * record was choosing BETWEEN, without opening replay-backtest-report.jsonl for every row.
  *
  * Reads record.evidence.sourceRaw directly as the pipeline's input - CanonicalTrusteeSource/
  * DxtrTrusteeParty/AcmsTrusteeProfessional are the same type (dataflow-events.ts), so the exact
@@ -159,7 +156,6 @@ type Divergence = {
    * the current pipeline considered (staging's trusteeId if still present in the pool, otherwise
    * whichever candidate has the highest doesNameMatch score) and its doesNameMatch/doesStateMatch/
    * resolvedBy values, so a reviewer can see WHY without re-opening the full JSONL for every row. */
-  keySignal: string;
 };
 
 function csvEscape(value: string | number | null | undefined): string {
@@ -186,36 +182,6 @@ function trusteeAddressString(address: Trustee['public']['address'] | undefined)
   ]
     .filter(Boolean)
     .join(', ');
-}
-
-/** Picks the one candidate, out of a divergent record's full pool, most relevant to explaining the
- * transition: the candidate matching stagingTrusteeId/currentTrusteeId if either is present in the
- * pool (the two sides' own chosen identity), otherwise the highest doesNameMatch-scoring candidate
- * (the one a reviewer would look at first). Returns undefined only when the record has no
- * candidates at all (e.g. skipped). */
-function pickKeyCandidate(
-  candidates: SerializedState['candidates'],
-  stagingTrusteeId: string | null,
-  currentTrusteeId: string | null,
-): SerializedState['candidates'][number] | undefined {
-  if (candidates.length === 0) return undefined;
-  const byId = (id: string | null) =>
-    id ? candidates.find((c) => c.camsRaw.trusteeId === id) : undefined;
-  return (
-    byId(currentTrusteeId) ??
-    byId(stagingTrusteeId) ??
-    [...candidates].sort((a, b) => nameMatchRank(b) - nameMatchRank(a))[0]
-  );
-}
-
-/** Ranks a name verdict for "most likely the intended candidate" ordering - exact beats strong
- * beats weak, and a failed match ranks below all of them. */
-function nameMatchRank(candidate: {
-  scores: { doesNameMatch?: { pass: boolean; quality?: unknown } };
-}): number {
-  const score = candidate.scores.doesNameMatch;
-  if (!score?.pass) return 0;
-  return score.quality === 'exact' ? 3 : score.quality === 'strong' ? 2 : 1;
 }
 
 const DIVERGENCE_DETAIL_COLUMNS = [
@@ -249,14 +215,12 @@ const DIVERGENCE_DETAIL_COLUMNS = [
 ] as const;
 
 /**
- * The cartesian product replay-backtest-divergences.csv's own one-row-per-record keySignal summary
- * doesn't provide: one row per (diverged ACMS record, candidate) pair, so a reviewer can see EVERY
- * candidate's own score detail behind a divergence, not just a pre-picked "key candidate" summary
- * string. A record with zero candidates (e.g. skipped) still produces exactly one row, matching
- * candidateCsvRows's own convention in partition-backtest-report.ts, with every candidate-specific
- * column blank. Repeats the same ACMS/staging/current contact columns replay-backtest-divergences.csv
- * already shows once per row (this is a cartesian product, not a normalized join), so a reviewer
- * never has to cross-reference the summary CSV to see the ACMS source's own address/phone.
+ * One row per (diverged ACMS record, candidate) pair, so a reviewer can see EVERY candidate's own
+ * score detail behind a divergence and what the record was choosing between. A record with zero
+ * candidates (e.g. skipped) still produces exactly one row, matching candidateCsvRows's own
+ * convention in partition-backtest-report.ts, with every candidate-specific column blank. The
+ * ACMS/staging/current contact columns repeat on every row of a record (this is a cartesian
+ * product, not a normalized join), so no row needs to be read against another to be understood.
  */
 function divergenceCandidateRows(
   d: Divergence,
@@ -302,19 +266,6 @@ function divergenceCandidateRows(
       candidate.camsRaw.trusteeId === d.currentTrusteeId ? (resolvedBy ?? '') : '',
     ];
   });
-}
-
-function summarizeKeySignal(candidate: SerializedState['candidates'][number] | undefined): string {
-  if (!candidate) return 'no candidates';
-  const s = candidate.scores;
-  const parts = [
-    `name=${s.doesNameMatch?.quality ?? '-'}(${s.doesNameMatch?.pass ?? '-'})`,
-    `state=${s.doesStateMatch?.pass ?? '-'}`,
-    `contactAddr=${s.contactCorroborationAddress?.pass ?? '-'}`,
-    `contactPhone=${s.contactCorroborationPhone?.pass ?? '-'}`,
-    `contactEmail=${s.contactCorroborationEmail?.pass ?? '-'}`,
-  ];
-  return parts.join(' ');
 }
 
 /** Streams the JSONL report one record at a time - a record's candidate pool can range from 0 to
@@ -450,8 +401,6 @@ async function run() {
           currentTrusteeId: null,
           currentTrusteeAddress: '',
           currentTrusteePhone: '',
-          keySignal:
-            'shouldSkipAsNotAPerson/isRecordDisavowed (no candidates - never reached matching)',
         };
         divergences.push(divergence);
         divergenceDetailRows.push(
@@ -499,11 +448,6 @@ async function run() {
       normalizedStagingDisposition === 'auto-linked' &&
       currentTrusteeId !== stagingTrusteeId;
     if (dispositionsDiffer || sameDispositionDifferentTrustee) {
-      const keyCandidate = pickKeyCandidate(
-        serialized.candidates,
-        stagingTrusteeId,
-        currentTrusteeId,
-      );
       const resolvedBy = state.match?.resolvedBy;
       const stagingTrustee = stagingTrusteeId ? trusteeById.get(stagingTrusteeId) : undefined;
       const currentCandidate = currentTrusteeId
@@ -522,9 +466,6 @@ async function run() {
         currentTrusteeId,
         currentTrusteeAddress: trusteeAddressString(currentCandidate?.camsRaw.address),
         currentTrusteePhone: currentCandidate?.camsRaw.phone?.number ?? '',
-        keySignal: resolvedBy
-          ? `resolvedBy=${resolvedBy} ${summarizeKeySignal(keyCandidate)}`
-          : summarizeKeySignal(keyCandidate),
       };
       divergences.push(divergence);
       divergenceDetailRows.push(
@@ -584,48 +525,6 @@ async function run() {
   );
 
   if (divergences.length > 0) {
-    const divergenceCsvPath = path.join(DATA_DIR, 'replay-backtest-divergences.csv');
-    const header = [
-      'acmsProfessionalId',
-      'acmsFullName',
-      'acmsAddress',
-      'acmsPhone',
-      'stagingDisposition',
-      'stagingTrusteeId',
-      'stagingTrusteeName',
-      'stagingTrusteeAddress',
-      'stagingTrusteePhone',
-      'currentDisposition',
-      'currentTrusteeId',
-      'currentTrusteeName',
-      'currentTrusteeAddress',
-      'currentTrusteePhone',
-      'keySignal',
-    ];
-    const rows = divergences.map((d) =>
-      [
-        d.acmsProfessionalId,
-        d.acmsFullName,
-        d.acmsAddress,
-        d.acmsPhone,
-        d.stagingDisposition,
-        d.stagingTrusteeId ?? '',
-        (d.stagingTrusteeId && trusteeNameById.get(d.stagingTrusteeId)) ?? '',
-        d.stagingTrusteeAddress,
-        d.stagingTrusteePhone,
-        d.currentDisposition,
-        d.currentTrusteeId ?? '',
-        (d.currentTrusteeId && trusteeNameById.get(d.currentTrusteeId)) ?? '',
-        d.currentTrusteeAddress,
-        d.currentTrusteePhone,
-        d.keySignal,
-      ]
-        .map(csvEscape)
-        .join(','),
-    );
-    fs.writeFileSync(divergenceCsvPath, [header.join(','), ...rows].join('\n') + '\n', 'utf-8');
-    console.log(`\nWrote ${divergences.length} divergence rows to ${divergenceCsvPath}`);
-
     const divergenceDetailCsvPath = path.join(DATA_DIR, 'replay-backtest-divergences-detail.csv');
     const detailLines = [
       DIVERGENCE_DETAIL_COLUMNS.join(','),
@@ -633,8 +532,8 @@ async function run() {
     ];
     fs.writeFileSync(divergenceDetailCsvPath, detailLines.join('\n') + '\n', 'utf-8');
     console.log(
-      `Wrote ${divergenceDetailRows.length} divergence candidate-detail rows (cartesian product ` +
-        `over every candidate in each diverged record's pool) to ${divergenceDetailCsvPath}`,
+      `\nWrote ${divergenceDetailRows.length} divergence rows (one per candidate in each diverged ` +
+        `record's pool) to ${divergenceDetailCsvPath}`,
     );
   }
 
