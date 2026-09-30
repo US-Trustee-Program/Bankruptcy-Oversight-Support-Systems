@@ -180,7 +180,10 @@ function acmsAddressString(legacy: SerializedState['sourceRaw']['legacy']): stri
 
 function trusteeAddressString(address: Trustee['public']['address'] | undefined): string {
   if (!address) return '';
-  return [address.address1, [address.city, address.state, address.zipCode].filter(Boolean).join(' ')]
+  return [
+    address.address1,
+    [address.city, address.state, address.zipCode].filter(Boolean).join(' '),
+  ]
     .filter(Boolean)
     .join(', ');
 }
@@ -201,10 +204,18 @@ function pickKeyCandidate(
   return (
     byId(currentTrusteeId) ??
     byId(stagingTrusteeId) ??
-    [...candidates].sort(
-      (a, b) => (b.scores.doesNameMatch?.value ?? 0) - (a.scores.doesNameMatch?.value ?? 0),
-    )[0]
+    [...candidates].sort((a, b) => nameMatchRank(b) - nameMatchRank(a))[0]
   );
+}
+
+/** Ranks a name verdict for "most likely the intended candidate" ordering - exact beats strong
+ * beats weak, and a failed match ranks below all of them. */
+function nameMatchRank(candidate: {
+  scores: { doesNameMatch?: { pass: boolean; quality?: unknown } };
+}): number {
+  const score = candidate.scores.doesNameMatch;
+  if (!score?.pass) return 0;
+  return score.quality === 'exact' ? 3 : score.quality === 'strong' ? 2 : 1;
 }
 
 const DIVERGENCE_DETAIL_COLUMNS = [
@@ -227,9 +238,8 @@ const DIVERGENCE_DETAIL_COLUMNS = [
   'camsAddress',
   'camsPhone',
   'isWinner',
-  'nameScore',
+  'nameQuality',
   'namePass',
-  'stateScore',
   'statePass',
   'addressScore',
   'addressPass',
@@ -282,9 +292,8 @@ function divergenceCandidateRows(
       trusteeAddressString(candidate.camsRaw.address),
       candidate.camsRaw.phone?.number ?? '',
       String(candidate.camsRaw.trusteeId === d.currentTrusteeId),
-      String(s.doesNameMatch?.value ?? ''),
+      String(s.doesNameMatch?.quality ?? ''),
       String(s.doesNameMatch?.pass ?? ''),
-      String(s.doesStateMatch?.value ?? ''),
       String(s.doesStateMatch?.pass ?? ''),
       String(s.contactCorroborationAddress?.value ?? ''),
       String(s.contactCorroborationAddress?.pass ?? ''),
@@ -299,8 +308,8 @@ function summarizeKeySignal(candidate: SerializedState['candidates'][number] | u
   if (!candidate) return 'no candidates';
   const s = candidate.scores;
   const parts = [
-    `name=${s.doesNameMatch?.value ?? '-'}(${s.doesNameMatch?.pass ?? '-'})`,
-    `state=${s.doesStateMatch?.value ?? '-'}(${s.doesStateMatch?.pass ?? '-'})`,
+    `name=${s.doesNameMatch?.quality ?? '-'}(${s.doesNameMatch?.pass ?? '-'})`,
+    `state=${s.doesStateMatch?.pass ?? '-'}`,
     `contactAddr=${s.contactCorroborationAddress?.pass ?? '-'}`,
     `contactPhone=${s.contactCorroborationPhone?.pass ?? '-'}`,
     `contactEmail=${s.contactCorroborationEmail?.pass ?? '-'}`,
@@ -341,10 +350,10 @@ function classifyCandidate(
   trusteeId: string,
   resolvedTrusteeId: string | undefined,
   nameQualifyingCount: number,
-  candidateNameScore: number,
+  nameQualifies: boolean,
 ): CandidateOutcome {
   if (trusteeId === resolvedTrusteeId) return 'resolved';
-  if (candidateNameScore < 85) return 'rejected-name';
+  if (!nameQualifies) return 'rejected-name';
   return nameQualifyingCount === 1 ? 'rejected-corroboration' : 'rejected-ambiguous-group';
 }
 
@@ -441,7 +450,8 @@ async function run() {
           currentTrusteeId: null,
           currentTrusteeAddress: '',
           currentTrusteePhone: '',
-          keySignal: 'shouldSkipAsNotAPerson/isRecordDisavowed (no candidates - never reached matching)',
+          keySignal:
+            'shouldSkipAsNotAPerson/isRecordDisavowed (no candidates - never reached matching)',
         };
         divergences.push(divergence);
         divergenceDetailRows.push(
@@ -489,7 +499,11 @@ async function run() {
       normalizedStagingDisposition === 'auto-linked' &&
       currentTrusteeId !== stagingTrusteeId;
     if (dispositionsDiffer || sameDispositionDifferentTrustee) {
-      const keyCandidate = pickKeyCandidate(serialized.candidates, stagingTrusteeId, currentTrusteeId);
+      const keyCandidate = pickKeyCandidate(
+        serialized.candidates,
+        stagingTrusteeId,
+        currentTrusteeId,
+      );
       const resolvedBy = state.match?.resolvedBy;
       const stagingTrustee = stagingTrusteeId ? trusteeById.get(stagingTrusteeId) : undefined;
       const currentCandidate = currentTrusteeId
@@ -528,12 +542,11 @@ async function run() {
     ).length;
 
     for (const candidate of serialized.candidates) {
-      const nameScore = candidate.scores.doesNameMatch?.value ?? 0;
       const candidateOutcome = classifyCandidate(
         candidate.camsRaw.trusteeId,
         state.match?.trusteeId,
         nameQualifyingCount,
-        nameScore,
+        candidate.scores.doesNameMatch?.pass === true,
       );
       outcomeByCandidate[candidateOutcome]++;
       candidateRowCount++;

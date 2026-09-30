@@ -184,7 +184,8 @@ type Policy = { name: string; passes: (a: string, b: string, jw: number) => bool
 const POLICIES: Policy[] = [
   {
     name: 'current (JW>=0.88 OR SoundEx OR Metaphone)',
-    passes: (a, b, jw) => jw >= JARO_WINKLER_THRESHOLD || safeSoundexCompare(a, b) || safeMetaphoneCompare(a, b),
+    passes: (a, b, jw) =>
+      jw >= JARO_WINKLER_THRESHOLD || safeSoundexCompare(a, b) || safeMetaphoneCompare(a, b),
   },
   {
     name: 'drop SoundEx (JW>=0.88 OR Metaphone)',
@@ -208,7 +209,9 @@ const POLICIES: Policy[] = [
 // ---------------------------------------------------------------------------
 
 function run() {
-  console.log('\nBacktesting isFuzzyNamePartMatch policy variants against real candidate pools...\n');
+  console.log(
+    '\nBacktesting isFuzzyNamePartMatch policy variants against real candidate pools...\n',
+  );
 
   const records = loadProfessionalIds();
   const pairs = extractPairs(records);

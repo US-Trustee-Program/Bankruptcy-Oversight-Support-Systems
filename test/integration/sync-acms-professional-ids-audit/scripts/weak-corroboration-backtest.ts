@@ -154,7 +154,8 @@ function run() {
     if (qualifying.length !== 1) continue;
 
     const c = qualifying[0];
-    const corroborated = c.addressScore >= ADDRESS_THRESHOLD || c.phoneScore === 100 || c.emailScore === 100;
+    const corroborated =
+      c.addressScore >= ADDRESS_THRESHOLD || c.phoneScore === 100 || c.emailScore === 100;
     if (corroborated) continue;
 
     insufficientCorroboration.push({
@@ -171,8 +172,12 @@ function run() {
     });
   }
 
-  console.log(`Skipped (fully blank ACMS demographic - no address/phone/email at all): ${skippedBlankDemographic}`);
-  console.log(`name-only-insufficient-corroboration total (excluding blank demographics): ${insufficientCorroboration.length}\n`);
+  console.log(
+    `Skipped (fully blank ACMS demographic - no address/phone/email at all): ${skippedBlankDemographic}`,
+  );
+  console.log(
+    `name-only-insufficient-corroboration total (excluding blank demographics): ${insufficientCorroboration.length}\n`,
+  );
 
   const contradicting = insufficientCorroboration.filter(
     ({ c, acmsAddressParseable }) =>
@@ -215,7 +220,9 @@ function run() {
   // approach #2 in the bead considers whether ONLY the strictest name=100 tier is safe to relax.
   const name100 = absentOnly.filter(({ c }) => c.nameScore === 100);
   const name85 = absentOnly.filter(({ c }) => c.nameScore < 100);
-  console.log(`\nWithin "absent only": nameScore===100: ${name100.length}, nameScore<100 (85-99 tier): ${name85.length}`);
+  console.log(
+    `\nWithin "absent only": nameScore===100: ${name100.length}, nameScore<100 (85-99 tier): ${name85.length}`,
+  );
 }
 
 run();
