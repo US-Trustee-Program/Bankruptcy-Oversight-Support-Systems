@@ -114,7 +114,7 @@ describe('TrusteeSearchModal', () => {
     await expandComboBoxAndType('sm');
 
     await waitFor(() => {
-      expect(searchSpy).toHaveBeenCalledWith('sm', undefined);
+      expect(searchSpy).toHaveBeenCalledWith('sm', undefined, undefined, undefined);
     });
   });
 
@@ -137,7 +137,32 @@ describe('TrusteeSearchModal', () => {
     await expandComboBoxAndType('sm');
 
     await waitFor(() => {
-      expect(searchSpy).toHaveBeenCalledWith('sm', '0208');
+      expect(searchSpy).toHaveBeenCalledWith('sm', '0208', undefined, undefined);
+    });
+  });
+
+  test('passes divisionCode and chapter to searchTrustees API when provided', async () => {
+    const searchSpy = vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: sampleResults });
+
+    render(
+      <BrowserRouter>
+        <TrusteeSearchModal
+          ref={modalRef}
+          id={modalId}
+          dxtrTrusteeName="DOE, JOHN"
+          courtId="0208"
+          divisionCode="0208"
+          chapter="7"
+          onConfirm={vi.fn()}
+        />
+      </BrowserRouter>,
+    );
+    act(() => modalRef.current?.show());
+
+    await expandComboBoxAndType('sm');
+
+    await waitFor(() => {
+      expect(searchSpy).toHaveBeenCalledWith('sm', '0208', '0208', '7');
     });
   });
 
@@ -161,7 +186,7 @@ describe('TrusteeSearchModal', () => {
     await expandComboBoxAndType('sm');
 
     await waitFor(() => {
-      expect(searchSpy).toHaveBeenCalledWith('sm', '0206');
+      expect(searchSpy).toHaveBeenCalledWith('sm', '0206', undefined, undefined);
     });
   });
 
@@ -222,7 +247,7 @@ describe('TrusteeSearchModal', () => {
 
     await waitFor(() => {
       const courtId = COURT_DIVISIONS.find((c) => c.courtName === 'District of Alaska')?.courtId;
-      expect(searchSpy).toHaveBeenCalledWith('sm', courtId);
+      expect(searchSpy).toHaveBeenCalledWith('sm', courtId, undefined, undefined);
     });
   });
 
@@ -244,7 +269,7 @@ describe('TrusteeSearchModal', () => {
     await expandComboBoxAndType('sm');
 
     await waitFor(() => {
-      expect(searchSpy).toHaveBeenCalledWith('sm', undefined);
+      expect(searchSpy).toHaveBeenCalledWith('sm', undefined, undefined, undefined);
     });
   });
 
@@ -274,7 +299,7 @@ describe('TrusteeSearchModal', () => {
     await expandComboBoxAndType('sm');
 
     await waitFor(() => {
-      expect(searchSpy).toHaveBeenCalledWith('sm', undefined);
+      expect(searchSpy).toHaveBeenCalledWith('sm', undefined, undefined, undefined);
     });
   });
 
@@ -496,7 +521,7 @@ describe('TrusteeSearchModal', () => {
     await expandComboBoxAndType('sm');
 
     await waitFor(() => {
-      expect(searchSpy).toHaveBeenCalledWith('sm', undefined);
+      expect(searchSpy).toHaveBeenCalledWith('sm', undefined, undefined, undefined);
     });
   });
 

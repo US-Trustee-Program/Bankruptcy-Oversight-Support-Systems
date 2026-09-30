@@ -205,6 +205,77 @@ export const TRUSTEE_APPOINTMENTS_INTERNAL_SPEC: Readonly<ValidationSpec<Trustee
     ],
   };
 
+/**
+ * Find a merge target among a trustee's existing appointments. A merge target is an active
+ * appointment with the same courtId, chapter, and appointmentType -- "duplicate" here means
+ * same court+chapter+type, not requiring division overlap; merging is what reconciles
+ * divisions (by union), not a check that they already overlap.
+ *
+ * Shared between the frontend form (pre-merge UX feedback before ever calling the API) and
+ * the backend (the authoritative enforcement point for direct API callers and for update,
+ * which the frontend does not check at all). Keeping this in one place means both can never
+ * drift into disagreeing about what counts as a duplicate.
+ */
+export function findMergeTarget(
+  courtId: string,
+  chapter: AppointmentChapterType | string,
+  appointmentType: AppointmentType | string,
+  existingAppointments: TrusteeAppointment[],
+): TrusteeAppointment | undefined {
+  return existingAppointments.find(
+    (appt) =>
+      appt.courtId === courtId &&
+      appt.chapter === chapter &&
+      appt.appointmentType === appointmentType &&
+      appt.status === 'active',
+  );
+}
+
+export type MergePayloadResult =
+  | {
+      type: 'merged';
+      targetId: string;
+      payload: TrusteeAppointmentInput;
+      addedDivisionCodes: string[];
+    }
+  | { type: 'created' };
+
+/**
+ * Computes the merged payload for a duplicate appointment (union of division codes), or
+ * signals that no merge applies. Deliberately returns division *codes* only, not
+ * human-readable division *names* -- name resolution needs a district's full division list
+ * (getDivisionsForDistrict), which is a frontend-only concern with no equivalent need on the
+ * backend. Frontend callers wrap this to add display names on top; see
+ * user-interface/src/trustees/forms/appointmentMergeHelpers.ts.
+ */
+export function buildMergePayload(
+  mergeTarget: TrusteeAppointment | undefined,
+  payload: TrusteeAppointmentInput,
+): MergePayloadResult {
+  if (!mergeTarget) {
+    return { type: 'created' };
+  }
+
+  const existingDivisions = (mergeTarget.divisionCodes ?? [mergeTarget.divisionCode]).filter(
+    Boolean,
+  ) as string[];
+  const mergedDivisions = [...new Set([...existingDivisions, ...(payload.divisionCodes ?? [])])];
+  const addedDivisionCodes = (payload.divisionCodes ?? []).filter(
+    (code) => !existingDivisions.includes(code),
+  );
+
+  return {
+    type: 'merged',
+    targetId: mergeTarget.id,
+    payload: {
+      ...payload,
+      divisionCodes: mergedDivisions,
+      divisionCode: mergedDivisions[0],
+    },
+    addedDivisionCodes,
+  };
+}
+
 export type CaseAppointmentInput = {
   caseId: string;
   trusteeId: string;

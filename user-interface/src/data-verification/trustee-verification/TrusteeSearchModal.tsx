@@ -22,6 +22,13 @@ interface TrusteeSearchModalProps {
   dxtrTrusteePhone?: string;
   dxtrTrusteeEmail?: string;
   courtId?: string;
+  // When both are provided, search results are filtered server-side to trustees with an
+  // active appointment covering this court+chapter+division (isAppointmentMatch's rule) --
+  // so a user can't pick a trustee the backend would reject on approval anyway. Omitting
+  // either preserves the original district-only filtering, for any other caller of this
+  // same modal that doesn't have case context to provide.
+  divisionCode?: string;
+  chapter?: string;
   onConfirm: (result: TrusteeSearchResult) => void;
   onCancel?: () => void;
   isProcessing?: boolean;
@@ -47,6 +54,8 @@ function TrusteeSearchModal_(
     dxtrTrusteePhone,
     dxtrTrusteeEmail,
     courtId,
+    divisionCode,
+    chapter,
     onConfirm,
     onCancel,
     isProcessing,
@@ -103,7 +112,12 @@ function TrusteeSearchModal_(
     }
     debounce(async () => {
       try {
-        const response = await Api2.searchTrustees(value, selectedCourtEntry?.courtId);
+        const response = await Api2.searchTrustees(
+          value,
+          selectedCourtEntry?.courtId,
+          divisionCode,
+          chapter,
+        );
         setSearchResults(response.data);
       } catch {
         setSearchResults([]);

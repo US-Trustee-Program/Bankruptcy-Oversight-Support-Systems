@@ -4,12 +4,47 @@ import {
   chapterAppointmentTypeMap,
   TRUSTEE_APPOINTMENTS_INTERNAL_SPEC,
   TrusteeAppointmentInput,
+  TrusteeAppointment,
   isChapter12Standing,
   isChapter13Standing,
   isChapter7Elected,
+  findMergeTarget,
+  buildMergePayload,
 } from './trustee-appointments';
 import { AppointmentChapterType, AppointmentType, AppointmentStatus } from './trustees';
 import { validateObject } from './validation';
+
+const BASE_COURT_ID = '081-';
+
+function makeAppointment(overrides: Partial<TrusteeAppointment> = {}): TrusteeAppointment {
+  return {
+    id: 'appt-1',
+    trusteeId: 'trustee-1',
+    courtId: BASE_COURT_ID,
+    chapter: '7',
+    appointmentType: 'panel',
+    divisionCodes: ['301'],
+    appointedDate: '2020-01-01',
+    status: 'active',
+    effectiveDate: '2020-01-01',
+    updatedOn: '2020-01-01T00:00:00.000Z',
+    updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
+    ...overrides,
+  };
+}
+
+function makePayload(overrides: Partial<TrusteeAppointmentInput> = {}): TrusteeAppointmentInput {
+  return {
+    courtId: BASE_COURT_ID,
+    chapter: '7',
+    appointmentType: 'panel',
+    divisionCodes: ['303'],
+    appointedDate: '2021-01-01',
+    status: 'active',
+    effectiveDate: '2021-01-01',
+    ...overrides,
+  };
+}
 
 describe('trustee-appointments', () => {
   describe('formatAppointmentStatus', () => {
@@ -496,6 +531,96 @@ describe('trustee-appointments', () => {
       expect(isChapter7Elected(chapter as AppointmentChapterType, type as AppointmentType)).toBe(
         false,
       );
+    });
+  });
+
+  describe('findMergeTarget', () => {
+    test('returns undefined when the list is empty', () => {
+      expect(findMergeTarget(BASE_COURT_ID, '7', 'panel', [])).toBeUndefined();
+    });
+
+    test('returns undefined when no appointment matches court/chapter/type', () => {
+      const appt = makeAppointment({ courtId: '097-' });
+      expect(findMergeTarget(BASE_COURT_ID, '7', 'panel', [appt])).toBeUndefined();
+    });
+
+    test('returns undefined when the matching appointment is not active', () => {
+      const appt = makeAppointment({ status: 'inactive' });
+      expect(findMergeTarget(BASE_COURT_ID, '7', 'panel', [appt])).toBeUndefined();
+    });
+
+    test('returns the matching active appointment, skipping inactive ones', () => {
+      const inactive = makeAppointment({ id: 'appt-inactive', status: 'inactive' });
+      const active = makeAppointment({ id: 'appt-active' });
+      expect(findMergeTarget(BASE_COURT_ID, '7', 'panel', [inactive, active])).toBe(active);
+    });
+
+    test('excludes a specific appointment id when the caller filters it out first', () => {
+      // findMergeTarget itself has no notion of "the appointment being updated" -- an update
+      // path must filter that appointment out of existingAppointments before calling this,
+      // or it would spuriously match itself. Confirms the function has no built-in exception.
+      const self = makeAppointment({ id: 'self' });
+      const filtered = [self].filter((a) => a.id !== 'self');
+      expect(findMergeTarget(BASE_COURT_ID, '7', 'panel', filtered)).toBeUndefined();
+    });
+  });
+
+  describe('buildMergePayload', () => {
+    test('returns { type: "created" } when there is no merge target', () => {
+      expect(buildMergePayload(undefined, makePayload())).toEqual({ type: 'created' });
+    });
+
+    test('merges division codes and deduplicates them', () => {
+      const target = makeAppointment({ divisionCodes: ['301', '303'] });
+      const payload = makePayload({ divisionCodes: ['303', '310'] });
+      const result = buildMergePayload(target, payload);
+      if (result.type !== 'merged') throw new Error('expected merged');
+      expect(result.payload.divisionCodes).toHaveLength(3);
+      expect(result.payload.divisionCodes).toEqual(expect.arrayContaining(['301', '303', '310']));
+    });
+
+    test('sets divisionCode to the first element of the merged array', () => {
+      const target = makeAppointment({ divisionCodes: ['301'] });
+      const payload = makePayload({ divisionCodes: ['303'] });
+      const result = buildMergePayload(target, payload);
+      if (result.type !== 'merged') throw new Error('expected merged');
+      expect(result.payload.divisionCode).toBe(result.payload.divisionCodes![0]);
+    });
+
+    test('reports only the newly-added division codes, not codes already on the target', () => {
+      const target = makeAppointment({ divisionCodes: ['301', '303'] });
+      const payload = makePayload({ divisionCodes: ['303', '310'] });
+      const result = buildMergePayload(target, payload);
+      if (result.type !== 'merged') throw new Error('expected merged');
+      expect(result.addedDivisionCodes).toEqual(['310']);
+    });
+
+    test('uses legacy divisionCode when divisionCodes is absent on the target', () => {
+      const target = makeAppointment({ divisionCodes: undefined, divisionCode: '301' });
+      const payload = makePayload({ divisionCodes: ['303'] });
+      const result = buildMergePayload(target, payload);
+      if (result.type !== 'merged') throw new Error('expected merged');
+      expect(result.payload.divisionCodes).toEqual(expect.arrayContaining(['301', '303']));
+    });
+
+    test('includes the target id', () => {
+      const target = makeAppointment({ id: 'my-target-id' });
+      const result = buildMergePayload(target, makePayload());
+      if (result.type !== 'merged') throw new Error('expected merged');
+      expect(result.targetId).toBe('my-target-id');
+    });
+
+    test('spreads all other payload fields into the merged payload', () => {
+      const target = makeAppointment({ divisionCodes: ['301'] });
+      const payload = makePayload({
+        divisionCodes: ['303'],
+        appointedDate: '2022-06-15',
+        effectiveDate: '2022-07-01',
+      });
+      const result = buildMergePayload(target, payload);
+      if (result.type !== 'merged') throw new Error('expected merged');
+      expect(result.payload.appointedDate).toBe('2022-06-15');
+      expect(result.payload.effectiveDate).toBe('2022-07-01');
     });
   });
 });

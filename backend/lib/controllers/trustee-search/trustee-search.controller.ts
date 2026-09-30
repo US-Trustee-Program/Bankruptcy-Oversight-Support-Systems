@@ -40,9 +40,11 @@ export class TrusteeSearchController {
       }
 
       const courtId = context.request.query['courtId'] || undefined;
+      const divisionCode = context.request.query['divisionCode'] || undefined;
+      const chapter = context.request.query['chapter'] || undefined;
 
       const useCase = new TrusteeSearchUseCase();
-      const data = await useCase.searchTrustees(context, name, courtId);
+      const data = await useCase.searchTrustees(context, name, courtId, divisionCode, chapter);
 
       return httpSuccess({
         body: {

@@ -15,6 +15,14 @@ describe('TrusteeAppointmentsUseCase tests', () => {
   let context: ApplicationContext;
   let trusteeAppointmentsUseCase: TrusteeAppointmentsUseCase;
 
+  beforeEach(() => {
+    // Default for the merge-detection createAppointment/updateAppointment now perform: no
+    // other existing appointments, so findMergeTarget finds nothing and every test below that
+    // doesn't care about merging is unaffected. Tests exercising the merge path override this
+    // directly with real appointment fixtures.
+    vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([]);
+  });
+
   describe('getTrusteeAppointments', () => {
     beforeEach(async () => {
       context = await createMockApplicationContext();
@@ -662,6 +670,305 @@ describe('TrusteeAppointmentsUseCase tests', () => {
     });
   });
 
+  describe('merge enforcement', () => {
+    const trusteeId = 'trustee-merge-test';
+
+    beforeEach(async () => {
+      context = await createMockApplicationContext();
+      trusteeAppointmentsUseCase = new TrusteeAppointmentsUseCase(context);
+      vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
+      vi.spyOn(trusteeAppointmentsUseCase['courtsUseCase'], 'getCourts').mockResolvedValue([]);
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    describe('createAppointment', () => {
+      const newAppointmentInput: TrusteeAppointmentInput = {
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '081',
+        divisionCodes: ['002'],
+        appointedDate: '2024-03-01',
+        status: 'active',
+        effectiveDate: '2024-03-01',
+      };
+
+      test('merges into an existing active appointment at the same court+chapter+type instead of creating a new record, called directly bypassing any frontend logic', async () => {
+        const mockTrustee = MockData.getTrustee({ trusteeId });
+        const existingActive = MockData.getTrusteeAppointment({
+          id: 'existing-appointment-1',
+          trusteeId,
+          chapter: '7',
+          appointmentType: 'panel',
+          courtId: '081',
+          divisionCodes: ['001'],
+          status: 'active',
+        });
+        const mergedAppointment = {
+          ...existingActive,
+          divisionCodes: ['001', '002'],
+          divisionCode: '001',
+        };
+
+        vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
+        vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([
+          existingActive,
+        ]);
+        const createSpy = vi.spyOn(MockMongoRepository.prototype, 'createAppointment');
+        vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(
+          mergedAppointment,
+        );
+
+        const result = await trusteeAppointmentsUseCase.createAppointment(
+          context,
+          trusteeId,
+          newAppointmentInput,
+        );
+
+        // No new appointment record is created -- the request is redirected to an update of
+        // the existing active appointment instead.
+        expect(createSpy).not.toHaveBeenCalled();
+        expect(MockMongoRepository.prototype.updateAppointment).toHaveBeenCalledWith(
+          trusteeId,
+          'existing-appointment-1',
+          expect.objectContaining({ divisionCodes: ['001', '002'] }),
+          expect.any(Object),
+        );
+        expect(result).toEqual(mergedAppointment);
+      });
+
+      test('audit history reflects an update, not a creation, for the merge case', async () => {
+        const mockTrustee = MockData.getTrustee({ trusteeId });
+        const existingActive = MockData.getTrusteeAppointment({
+          id: 'existing-appointment-1',
+          trusteeId,
+          chapter: '7',
+          appointmentType: 'panel',
+          courtId: '081',
+          divisionCodes: ['001'],
+          status: 'active',
+        });
+        const mergedAppointment = {
+          ...existingActive,
+          divisionCodes: ['001', '002'],
+          divisionCode: '001',
+        };
+
+        vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
+        vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([
+          existingActive,
+        ]);
+        vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(
+          mergedAppointment,
+        );
+        const historySpy = vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory');
+
+        await trusteeAppointmentsUseCase.createAppointment(context, trusteeId, newAppointmentInput);
+
+        expect(historySpy).toHaveBeenCalledWith(
+          expect.objectContaining({
+            documentType: 'AUDIT_APPOINTMENT',
+            appointmentId: 'existing-appointment-1',
+            before: expect.objectContaining({ divisionCodes: ['001'] }),
+            after: expect.objectContaining({ divisionCodes: ['001', '002'] }),
+          }),
+        );
+      });
+
+      test('creates a new appointment as usual when no duplicate exists', async () => {
+        const mockTrustee = MockData.getTrustee({ trusteeId });
+        const otherAppointment = MockData.getTrusteeAppointment({
+          id: 'unrelated-appointment',
+          trusteeId,
+          chapter: '13',
+          appointmentType: 'standing',
+          courtId: '081',
+          divisionCodes: ['001'],
+          status: 'active',
+        });
+        const createdAppointment = MockData.getTrusteeAppointment({
+          id: 'new-appointment',
+          trusteeId,
+          ...newAppointmentInput,
+        });
+
+        vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
+        vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([
+          otherAppointment,
+        ]);
+        vi.spyOn(MockMongoRepository.prototype, 'createAppointment').mockResolvedValue(
+          createdAppointment,
+        );
+        const updateSpy = vi.spyOn(MockMongoRepository.prototype, 'updateAppointment');
+
+        const result = await trusteeAppointmentsUseCase.createAppointment(
+          context,
+          trusteeId,
+          newAppointmentInput,
+        );
+
+        expect(updateSpy).not.toHaveBeenCalled();
+        expect(result).toEqual(createdAppointment);
+      });
+    });
+
+    describe('updateAppointment', () => {
+      const appointmentId = 'appointment-being-updated';
+      const updatePayload: TrusteeAppointmentInput = {
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '081',
+        divisionCodes: ['002'],
+        appointedDate: '2024-03-01',
+        status: 'active',
+        effectiveDate: '2024-03-01',
+      };
+
+      test('redirects to merge into a different existing active appointment, leaving the original record untouched', async () => {
+        const original = MockData.getTrusteeAppointment({
+          id: appointmentId,
+          trusteeId,
+          chapter: '13',
+          appointmentType: 'standing',
+          courtId: '081',
+          divisionCodes: ['005'],
+          status: 'active',
+        });
+        const otherActive = MockData.getTrusteeAppointment({
+          id: 'other-appointment',
+          trusteeId,
+          chapter: '7',
+          appointmentType: 'panel',
+          courtId: '081',
+          divisionCodes: ['001'],
+          status: 'active',
+        });
+        const mergedAppointment = {
+          ...otherActive,
+          divisionCodes: ['001', '002'],
+          divisionCode: '001',
+        };
+
+        vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(original);
+        vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([
+          original,
+          otherActive,
+        ]);
+        vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(
+          mergedAppointment,
+        );
+
+        const result = await trusteeAppointmentsUseCase.updateAppointment(
+          context,
+          trusteeId,
+          appointmentId,
+          updatePayload,
+        );
+
+        // The write targets the OTHER appointment's id, not the one the caller asked to update.
+        expect(MockMongoRepository.prototype.updateAppointment).toHaveBeenCalledWith(
+          trusteeId,
+          'other-appointment',
+          expect.objectContaining({ divisionCodes: ['001', '002'] }),
+          expect.any(Object),
+        );
+        expect(MockMongoRepository.prototype.updateAppointment).not.toHaveBeenCalledWith(
+          trusteeId,
+          appointmentId,
+          expect.anything(),
+          expect.anything(),
+        );
+        expect(result).toEqual(mergedAppointment);
+      });
+
+      test('does not spuriously merge with its own pre-update state', async () => {
+        // The appointment being updated already happens to match updatePayload's
+        // court+chapter+type (e.g. only its status is changing) -- excluding it from its own
+        // candidate search must prevent this from looking like a self-duplicate.
+        const original = MockData.getTrusteeAppointment({
+          id: appointmentId,
+          trusteeId,
+          chapter: '7',
+          appointmentType: 'panel',
+          courtId: '081',
+          divisionCodes: ['002'],
+          status: 'active',
+        });
+        const updated = { ...original, status: 'voluntarily-suspended' as const };
+
+        vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(original);
+        vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([
+          original,
+        ]);
+        vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(updated);
+
+        const result = await trusteeAppointmentsUseCase.updateAppointment(
+          context,
+          trusteeId,
+          appointmentId,
+          {
+            ...updatePayload,
+            status: 'voluntarily-suspended',
+          },
+        );
+
+        expect(MockMongoRepository.prototype.updateAppointment).toHaveBeenCalledWith(
+          trusteeId,
+          appointmentId,
+          expect.anything(),
+          expect.any(Object),
+        );
+        expect(result).toEqual(updated);
+      });
+
+      test('updates normally when no duplicate exists among other appointments', async () => {
+        const original = MockData.getTrusteeAppointment({
+          id: appointmentId,
+          trusteeId,
+          chapter: '13',
+          appointmentType: 'standing',
+          courtId: '081',
+          divisionCodes: ['005'],
+          status: 'active',
+        });
+        const unrelated = MockData.getTrusteeAppointment({
+          id: 'unrelated',
+          trusteeId,
+          chapter: '11',
+          appointmentType: 'case-by-case',
+          courtId: '081',
+          divisionCodes: ['009'],
+          status: 'active',
+        });
+        const updated = { ...original, divisionCodes: ['002'], divisionCode: '002' };
+
+        vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(original);
+        vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([
+          original,
+          unrelated,
+        ]);
+        vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(updated);
+
+        const result = await trusteeAppointmentsUseCase.updateAppointment(
+          context,
+          trusteeId,
+          appointmentId,
+          updatePayload,
+        );
+
+        expect(MockMongoRepository.prototype.updateAppointment).toHaveBeenCalledWith(
+          trusteeId,
+          appointmentId,
+          expect.anything(),
+          expect.any(Object),
+        );
+        expect(result).toEqual(updated);
+      });
+    });
+  });
+
   describe('createAppointment audit history', () => {
     const appointmentInput: TrusteeAppointmentInput = {
       chapter: '7',
@@ -1173,6 +1480,9 @@ describe('TrusteeAppointmentsUseCase tests', () => {
 
       vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
       vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([]);
+      // Re-established here because this describe's own vi.restoreAllMocks() above wipes the
+      // outer default (see the top-level beforeEach) before these tests run.
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([]);
     });
 
     test('does not enqueue when feature flag is disabled', async () => {
@@ -1525,6 +1835,9 @@ describe('TrusteeAppointmentsUseCase tests', () => {
 
       vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
       vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([]);
+      // Re-established here because this describe's own vi.restoreAllMocks() above wipes the
+      // outer default (see the top-level beforeEach) before these tests run.
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([]);
     });
 
     test('does not enqueue when feature flag is disabled', async () => {

@@ -283,6 +283,85 @@ describe('TrusteeSearchUseCase', () => {
     );
   });
 
+  describe('division/chapter filtering', () => {
+    const mockAppointmentsDivision081: Partial<TrusteeAppointment>[] = [
+      {
+        id: 'appt-div-081',
+        trusteeId: 'trustee-001',
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '081',
+        status: 'active',
+        divisionCodes: ['081'],
+        appointedDate: '2020-01-01',
+        effectiveDate: '2020-01-01',
+      },
+    ];
+
+    const mockAppointmentsDivision082: Partial<TrusteeAppointment>[] = [
+      {
+        id: 'appt-div-082',
+        trusteeId: 'trustee-002',
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '081',
+        status: 'active',
+        divisionCodes: ['082'],
+        appointedDate: '2021-01-01',
+        effectiveDate: '2021-01-01',
+      },
+    ];
+
+    test('filters out a trustee whose appointment does not cover the requested division', async () => {
+      const appointments = new Map<string, Partial<TrusteeAppointment>[]>();
+      appointments.set('trustee-001', mockAppointmentsDivision081);
+      appointments.set('trustee-002', mockAppointmentsDivision082);
+
+      setupRepositories({
+        scoredResults: [mockTrustee1, mockTrustee2],
+        appointmentsByTrustee: appointments,
+      });
+
+      const useCase = new TrusteeSearchUseCase();
+      const results = await useCase.searchTrustees(context, 'smith', '081', '081', '7');
+
+      expect(results).toHaveLength(1);
+      expect(results[0].trusteeId).toBe('trustee-001');
+    });
+
+    test('filters out a trustee whose appointment covers the division but not the chapter', async () => {
+      const appointments = new Map<string, Partial<TrusteeAppointment>[]>();
+      appointments.set('trustee-001', mockAppointmentsDivision081);
+
+      setupRepositories({
+        scoredResults: [mockTrustee1],
+        appointmentsByTrustee: appointments,
+      });
+
+      const useCase = new TrusteeSearchUseCase();
+      const results = await useCase.searchTrustees(context, 'smith', '081', '081', '13');
+
+      expect(results).toHaveLength(0);
+    });
+
+    test('does not apply division/chapter filtering when either is omitted', async () => {
+      const appointments = new Map<string, Partial<TrusteeAppointment>[]>();
+      appointments.set('trustee-001', mockAppointmentsDivision081);
+      appointments.set('trustee-002', mockAppointmentsDivision082);
+
+      setupRepositories({
+        scoredResults: [mockTrustee1, mockTrustee2],
+        appointmentsByTrustee: appointments,
+      });
+
+      const useCase = new TrusteeSearchUseCase();
+      // courtId + divisionCode given, but no chapter -- filter must not apply.
+      const results = await useCase.searchTrustees(context, 'smith', '081', '081');
+
+      expect(results).toHaveLength(2);
+    });
+  });
+
   test('should fire TrusteeManualSearchPerformed with success false on error and propagate', async () => {
     vi.spyOn(factory, 'getTrusteesRepository').mockReturnValue(
       Object.assign(new MockMongoRepository(), {

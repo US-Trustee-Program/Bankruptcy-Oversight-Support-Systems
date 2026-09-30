@@ -16,7 +16,7 @@ import { formatAppointmentStatus } from '@common/cams/trustee-appointments';
 import { formatChapterType } from '@common/cams/trustees';
 import { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { TrusteeAppointmentSyncErrorCode } from '@common/cams/dataflow-events';
-import { getCaseNumber, getCaseIdParts } from '@common/cams/cases';
+import { getCaseNumber, getCaseIdParts, CaseSummary } from '@common/cams/cases';
 import Api2 from '@/lib/models/api2';
 import TrusteeMatchConfirmationModal, {
   TrusteeMatchConfirmationModalImperative,
@@ -391,6 +391,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   const [detail, setDetail] = useState<EnrichedTrusteeMatchVerification | null>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [detailLoadError, setDetailLoadError] = useState(false);
+  const [caseChapter, setCaseChapter] = useState<string | undefined>(undefined);
   const OTHER_MATCHES_PAGE_SIZE = 5;
   const confirmationModalRef = useRef<TrusteeMatchConfirmationModalImperative>(null);
   const searchModalRef = useRef<TrusteeSearchModalImperative>(null);
@@ -501,6 +502,27 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     setOtherMatchesPage(1);
   }, [order.id, otherMatchesCount]);
 
+  // Fetched only so the manual search modal can filter to division-eligible trustees
+  // (court+chapter+division, matching isAppointmentMatch's rule). Scoped to the originating
+  // case (order.caseId), same as courtDetails above -- a verification can affect multiple
+  // cases, but the search modal only narrows candidates plausibly; the backend's approval
+  // check remains the authoritative gate across every affected case regardless. If this
+  // fetch fails, chapter stays undefined and the search modal falls back to its original
+  // district-only filtering rather than blocking search entirely.
+  useEffect(() => {
+    let cancelled = false;
+    Api2.getCaseSummary(order.caseId)
+      .then((response) => {
+        if (!cancelled) setCaseChapter((response as ResponseBody<CaseSummary>).data.chapter);
+      })
+      .catch(() => {
+        // chapter is optional context for search filtering; search still works without it
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [order.caseId]);
+
   async function approveTrustee({
     trusteeId,
     trusteeName,
@@ -534,9 +556,13 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     setIsProcessing(true);
     try {
       await approveTrustee({ trusteeId: candidate.trusteeId, trusteeName: candidate.trusteeName });
-    } catch {
+    } catch (error) {
       onOrderUpdate(
-        { message: 'Failed to confirm trustee match.', type: UswdsAlertStyle.Error, timeOut: 8 },
+        {
+          message: error instanceof Error ? error.message : 'Failed to confirm trustee match.',
+          type: UswdsAlertStyle.Error,
+          timeOut: 8,
+        },
         order,
       );
     } finally {
@@ -560,9 +586,13 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     setIsProcessing(true);
     try {
       await approveTrustee({ trusteeId: result.trusteeId, trusteeName: result.name });
-    } catch {
+    } catch (error) {
       onOrderUpdate(
-        { message: 'Failed to confirm trustee match.', type: UswdsAlertStyle.Error, timeOut: 8 },
+        {
+          message: error instanceof Error ? error.message : 'Failed to confirm trustee match.',
+          type: UswdsAlertStyle.Error,
+          timeOut: 8,
+        },
         order,
       );
     } finally {
@@ -964,6 +994,8 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
         dxtrTrusteePhone={legacy?.phone}
         dxtrTrusteeEmail={legacy?.email}
         courtId={courtDetails?.courtId ?? order.courtId}
+        divisionCode={divisionCode}
+        chapter={caseChapter}
         onConfirm={handleManualMatch}
         isProcessing={isProcessing}
       />

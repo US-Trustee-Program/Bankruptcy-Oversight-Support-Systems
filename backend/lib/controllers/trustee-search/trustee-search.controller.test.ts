@@ -48,6 +48,8 @@ describe('TrusteeSearchController', () => {
       context,
       'smith',
       undefined,
+      undefined,
+      undefined,
     );
     expect(response.body.data).toEqual(mockSearchResults);
   });
@@ -63,6 +65,25 @@ describe('TrusteeSearchController', () => {
       context,
       'smith',
       '081',
+      undefined,
+      undefined,
+    );
+    expect(response.body.data).toEqual(mockSearchResults);
+  });
+
+  test('should pass divisionCode and chapter to use case when provided', async () => {
+    context.request.query = { name: 'smith', courtId: '081', divisionCode: '081', chapter: '7' };
+    vi.spyOn(TrusteeSearchUseCase.prototype, 'searchTrustees').mockResolvedValue(mockSearchResults);
+
+    const controller = new TrusteeSearchController();
+    const response = await controller.handleRequest(context);
+
+    expect(TrusteeSearchUseCase.prototype.searchTrustees).toHaveBeenCalledWith(
+      context,
+      'smith',
+      '081',
+      '081',
+      '7',
     );
     expect(response.body.data).toEqual(mockSearchResults);
   });

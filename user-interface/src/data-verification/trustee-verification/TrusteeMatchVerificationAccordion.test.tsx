@@ -778,10 +778,32 @@ describe('TrusteeMatchVerificationAccordion', () => {
     });
   });
 
-  test('calls onOrderUpdate with error alert on approve failure', async () => {
+  test('calls onOrderUpdate with the specific error message on approve failure', async () => {
+    // Surfacing the caught error's own message (rather than a generic fallback) is what lets a
+    // division-mismatch rejection from the backend show the user something actionable.
     vi.spyOn(Api2, 'patchTrusteeVerificationOrderApproval').mockRejectedValue(
       new Error('Network error'),
     );
+    const onOrderUpdate = vi.fn();
+    renderWithProps({ order: sampleOrderWithCandidates, onOrderUpdate });
+    await mockDetailAndExpand(sampleOrderWithCandidatesDetail);
+
+    fireEvent.click(screen.getByTestId('approve-candidate-trustee-1'));
+    const modalSubmit = document.getElementById(
+      `trustee-confirmation-modal-${sampleOrderWithCandidates.id}-submit-button`,
+    );
+    fireEvent.click(modalSubmit!);
+
+    await waitFor(() => {
+      expect(onOrderUpdate).toHaveBeenCalledWith(
+        { message: 'Network error', type: UswdsAlertStyle.Error, timeOut: 8 },
+        sampleOrderWithCandidates,
+      );
+    });
+  });
+
+  test('falls back to a generic message when the caught rejection is not an Error instance', async () => {
+    vi.spyOn(Api2, 'patchTrusteeVerificationOrderApproval').mockRejectedValue('not an Error');
     const onOrderUpdate = vi.fn();
     renderWithProps({ order: sampleOrderWithCandidates, onOrderUpdate });
     await mockDetailAndExpand(sampleOrderWithCandidatesDetail);
@@ -1321,7 +1343,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
     });
 
     // Integration test: exercises full search-to-approval error flow
-    test('manual search approval failure calls onOrderUpdate with error', async () => {
+    test('manual search approval failure calls onOrderUpdate with the specific error message', async () => {
       vi.spyOn(Api2, 'patchTrusteeVerificationOrderApproval').mockRejectedValue(
         new Error('Network error'),
       );
@@ -1333,7 +1355,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
 
       await waitFor(() => {
         expect(onOrderUpdate).toHaveBeenCalledWith(
-          expect.objectContaining({ type: UswdsAlertStyle.Error }),
+          expect.objectContaining({ type: UswdsAlertStyle.Error, message: 'Network error' }),
           sampleOrder,
         );
       });
