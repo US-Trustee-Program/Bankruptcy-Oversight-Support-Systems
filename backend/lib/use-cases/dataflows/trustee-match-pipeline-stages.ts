@@ -292,25 +292,13 @@ function parseAcmsCityStateZip(cityStateZipCountry?: string): ReturnType<typeof 
 }
 
 /**
- * ACMS-pipeline-only orchestration of calculateAddressScore's exact scoring logic, built from the
- * same atomic, exported pieces (parseAcmsCityStateZip, normalizeAddressLine, padSingleDigitNumericToken,
+ * ACMS-pipeline-only orchestration of calculateAddressScore's scoring logic, built from the same
+ * atomic exported pieces (normalizeAddressLine, padSingleDigitNumericToken,
  * calculateNumericTokenScore, jaccardSimilarity, generateBigrams) rather than calling
- * calculateAddressScore directly - this pipeline forked from the DXTR path so ACMS-specific tuning
- * can move independently, same reason as pipelineNameScore.
+ * calculateAddressScore directly, so ACMS-specific tuning can move independently of the DXTR path.
  *
- * Real bug, confirmed via pipeline-replay-backtest.ts against the 2026-09-25 export: this used to
- * return a plain `number`, with an unparseable ACMS address (line below) represented by returning
- * 0 - the exact same magic-number-as-sentinel shape MIDDLE_NAME_ONLY_CONFLICT_SCORE was introduced
- * to fix elsewhere, just not yet caught here. scoreContactCorroboration wrote that 0 as a REAL,
- * present contactCorroborationAddress ScoreRecord (pass: false) unconditionally - claiming a
- * genuine address disagreement for a candidate whose ACMS address was never compared at all.
- * Confirmed live: 2 real records (synthesized analog "SE-07032"/"SE-07120" shape - ACMS
- * cityStateZipCountry genuinely empty, CAMS side a real, comparable address) carried a fabricated
- * contactCorroborationAddress: {value: 0, pass: false} indistinguishable from an actual mismatch.
- * Now null, matching pipelinePhoneScore/pipelineEmailScore's own "not comparable" convention -
- * scoreContactCorroboration correspondingly skips addScore entirely for this case (see its own
- * updated doc comment), same "no record when data unavailable" convention as doesStateMatch/
- * doesCityMatch/doesZipCodeMatch/doesMiddleNameMatch.
+ * Returns null - never 0 - when the ACMS address doesn't parse at all, so a caller can tell "never
+ * compared" from a real disagreement (see ScoreByScorer).
  */
 function pipelineAddressScore(
   sourceLegacy: NormalizedTrustee['legacy'],
@@ -1100,13 +1088,12 @@ function recordSimilarityDiagnostics(
 }
 
 /**
- * Converts a KleeneBoolean field-comparison result into the ScoreRecord shape addScore expects -
- * shared by every scorer that follows the "no record when data unavailable" convention (see
- * doesStateMatch/doesCityMatch/doesZipCodeMatch/doesMiddleNameMatch's own doc comments): the caller
- * computes null when either side has nothing comparable, true/false only when a real comparison
- * happened, and this function is never even called for the null case - the ScoreRecord itself has
+ * Converts a KleeneBoolean field-comparison result into the ScoreRecord shape addScore expects.
+ * The caller computes null when either side has nothing comparable, true/false only when a real
+ * comparison happened, and this function is never even called for the null case - ScoreRecord has
  * no way to represent "no evidence" (value/threshold/pass are all required), so null must be
- * filtered out by the caller before reaching here, not encoded into the record.
+ * filtered out by the caller before reaching here, not encoded into the record (see
+ * ScoreByScorer).
  */
 function boolMatchRecord(match: boolean): ScoreRecord {
   return { value: match ? 100 : 0, threshold: 100, pass: match };

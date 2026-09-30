@@ -138,8 +138,7 @@ async function runNestedTier(
 }
 
 /**
- * Full discovery-then-resolve sequence, replicating processNameMatch's original behavior
- * (sync-acms-professional-ids.ts) via composable pipeline stages. Cheapest and most decisive check
+ * Full discovery-then-resolve sequence. Cheapest and most decisive check
  * first, before any tier runs at all: skipAdministrativePlaceholder detects an ACMS record that
  * names no real person (an administrative placeholder, not a trustee) and short-circuits the whole
  * pipeline with state.skip, since there is no identity here for any discovery tier to usefully
