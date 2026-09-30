@@ -184,6 +184,14 @@ export function mergedScore<TCandidate>(candidate: PipelineCandidate<TCandidate>
   return candidate.scores;
 }
 
+/** The candidate pool as a list. state.candidates is a Map keyed by trusteeId so a RECALL stage
+ * can dedupe by identity; every RESOLVE stage wants to filter over the values instead. */
+export function candidatePool<TSource, TCandidate>(
+  state: PipelineState<TSource, TCandidate>,
+): PipelineCandidate<TCandidate>[] {
+  return [...state.candidates.values()];
+}
+
 /** matchTrusteeByName's exact-resolved outcome (name alone, no contact corroboration) - see
  * trustee-match.helpers.ts's NameMatchResult 'resolved' case. */
 type NameOnlyMatchScore = {
