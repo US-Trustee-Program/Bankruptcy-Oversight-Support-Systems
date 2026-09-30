@@ -1136,7 +1136,7 @@ describe('scoreCandidate - name-match facet', () => {
     scoreCandidate(state.sourceNormalized, candidate);
 
     expect(mergedScore(candidate)).toMatchObject({
-      doesNameMatch: { value: 85, pass: true },
+      doesNameMatch: { value: 85, pass: true, quality: 'weak' },
     });
   });
 
@@ -3274,7 +3274,10 @@ describe('resolveByExactNameOnly', () => {
     expect(result.match).toBeNull();
   });
 
-  test('does not resolve on a fuzzy (non-exact) 85 name score', async () => {
+  // A relaxed given name over an exact surname still resolves here; only a fuzzy SURNAME is held
+  // back, since two surnames a typo apart belong to different people often enough to need
+  // corroboration.
+  test('resolves a relaxed given name over an exact surname', async () => {
     const state = createInitialState(acmsRecord);
     const candidate = addCandidate(
       state,
@@ -3286,6 +3289,29 @@ describe('resolveByExactNameOnly', () => {
       threshold: 85,
       pass: true,
       quality: 'strong',
+    });
+
+    const result = await resolveByExactNameOnly()(state);
+
+    expect(result.match).toEqual({
+      trusteeId: 't1',
+      score: candidate.scores,
+      resolvedBy: 'resolveByExactNameOnly',
+    });
+  });
+
+  test('does not resolve a fuzzy surname on name alone', async () => {
+    const state = createInitialState(acmsRecord);
+    const candidate = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Ronald L. Larkin' })),
+      'test',
+    );
+    addScore(candidate, 'doesNameMatch', {
+      value: 85,
+      threshold: 85,
+      pass: true,
+      quality: 'weak',
     });
 
     const result = await resolveByExactNameOnly()(state);
