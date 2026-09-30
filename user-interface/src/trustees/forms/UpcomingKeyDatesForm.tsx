@@ -38,7 +38,7 @@ import {
   DatePickerFieldDescriptor,
   UpcomingFormFieldDescriptor,
 } from './upcomingKeyDatesFormFieldConfig';
-import { buildYearOptions } from './chapter7PanelKeyDatesInput';
+import { buildYearOptions } from './keyDatesInput';
 import {
   TirFrequency,
   ANNUAL_OPTIONS,

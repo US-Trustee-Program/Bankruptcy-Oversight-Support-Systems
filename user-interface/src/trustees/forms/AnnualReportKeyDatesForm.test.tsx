@@ -8,7 +8,7 @@ import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { CamsRole } from '@common/cams/roles';
 import { GlobalAlertContext } from '@/App';
-import { getFiscalYearOptions } from './chapter7PanelKeyDatesInput';
+import { getFiscalYearOptions } from './keyDatesInput';
 
 const mockUseNavigate = vi.hoisted(() => vi.fn());
 const mockUseParams = vi.hoisted(() =>

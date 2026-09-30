@@ -18,7 +18,7 @@ import { AppointmentChapterType, AppointmentType } from '@common/cams/trustees';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
-import { buildYearOptions } from './chapter7PanelKeyDatesInput';
+import { buildYearOptions, mergeKeyDatesInput } from './keyDatesInput';
 import DatePicker from '@/lib/components/uswds/DatePicker';
 import MonthYearSelector from '@/lib/components/uswds/MonthYearSelector';
 import Select from '@/lib/components/uswds/Select';
@@ -53,62 +53,34 @@ function buildUpcomingKeyDatesInput(
     return activeDateKeys.has(key) ? form[key] || null : (original?.[key] ?? null);
   }
 
-  return {
-    trusteeId: ids.trusteeId,
-    appointmentId: ids.appointmentId,
+  // These fields aren't edited by this form, but unlike mergeKeyDatesInput's
+  // plain original?.field ?? null default, they still need ISO-to-sentinel
+  // normalization applied on every carry-forward save.
+  function sentinel(value: string | undefined): string | null {
+    return value ? isoToSentinel(value) : null;
+  }
+
+  return mergeKeyDatesInput(ids, original, {
     pastBackgroundQuestion: dateValue('pastBackgroundQuestion'),
     pastFieldExam: dateValue('pastFieldExam'),
     pastAudit: dateValue('pastAudit'),
     pastTprSubmission: dateValue('pastTprSubmission'),
-    lastTprSubmitted: original?.lastTprSubmitted ?? null,
     lastMonthlyReportReceived: dateValue('lastMonthlyReportReceived'),
-    tprReviewPeriodStart: original?.tprReviewPeriodStart ?? null,
-    tprReviewPeriodEnd: original?.tprReviewPeriodEnd ?? null,
-    tprDue: original?.tprDue ? isoToSentinel(original.tprDue) : null,
-    tprDueYearType: original?.tprDueYearType ?? null,
-    tprFrequency: original?.tprFrequency ?? null,
-    tirReviewPeriodStart: original?.tirReviewPeriodStart
-      ? isoToSentinel(original.tirReviewPeriodStart)
-      : null,
-    tirReviewPeriodEnd: original?.tirReviewPeriodEnd
-      ? isoToSentinel(original.tirReviewPeriodEnd)
-      : null,
-    tirSubmission: original?.tirSubmission ? isoToSentinel(original.tirSubmission) : null,
-    tirReview: original?.tirReview ? isoToSentinel(original.tirReview) : null,
-    tirSemiAnnualReviewPeriodStart: original?.tirSemiAnnualReviewPeriodStart
-      ? isoToSentinel(original.tirSemiAnnualReviewPeriodStart)
-      : null,
-    tirSemiAnnualReviewPeriodEnd: original?.tirSemiAnnualReviewPeriodEnd
-      ? isoToSentinel(original.tirSemiAnnualReviewPeriodEnd)
-      : null,
-    tirSemiAnnualSubmission: original?.tirSemiAnnualSubmission
-      ? isoToSentinel(original.tirSemiAnnualSubmission)
-      : null,
-    tirSemiAnnualReview: original?.tirSemiAnnualReview
-      ? isoToSentinel(original.tirSemiAnnualReview)
-      : null,
-    upcomingExamOrAuditYear: original?.upcomingExamOrAuditYear ?? null,
-    upcomingExamOrAuditType: original?.upcomingExamOrAuditType ?? null,
-    tirFrequency: original?.tirFrequency ?? null,
+    tprDue: sentinel(original?.tprDue),
+    tirReviewPeriodStart: sentinel(original?.tirReviewPeriodStart),
+    tirReviewPeriodEnd: sentinel(original?.tirReviewPeriodEnd),
+    tirSubmission: sentinel(original?.tirSubmission),
+    tirReview: sentinel(original?.tirReview),
+    tirSemiAnnualReviewPeriodStart: sentinel(original?.tirSemiAnnualReviewPeriodStart),
+    tirSemiAnnualReviewPeriodEnd: sentinel(original?.tirSemiAnnualReviewPeriodEnd),
+    tirSemiAnnualSubmission: sentinel(original?.tirSemiAnnualSubmission),
+    tirSemiAnnualReview: sentinel(original?.tirSemiAnnualReview),
     lastAuditFiscalYear: hasYearField
       ? form.lastAuditFiscalYear || null
       : (original?.lastAuditFiscalYear ?? null),
-    auditCompletionYear: original?.auditCompletionYear ?? null,
-    auditCompletionStatus: original?.auditCompletionStatus ?? null,
-    tprCompletionYear: original?.tprCompletionYear ?? null,
-    tprCompletionStatus: original?.tprCompletionStatus ?? null,
-    tirCompletionYear: original?.tirCompletionYear ?? null,
-    tirCompletionStatus: original?.tirCompletionStatus ?? null,
-    annualReportCompletionYear: original?.annualReportCompletionYear ?? null,
-    annualReportCompletionStatus: original?.annualReportCompletionStatus ?? null,
-    leaseExpiration: original?.leaseExpiration ?? null,
-    idExpiration: original?.idExpiration ?? null,
     lastCompensationStudy: dateValue('lastCompensationStudy'),
     bondIssuedDate: dateValue('bondIssuedDate'),
-    bondRenewalDate: original?.bondRenewalDate ?? null,
-    ch13AuditCompletionYear: original?.ch13AuditCompletionYear ?? null,
-    ch13AuditCompletionStatus: original?.ch13AuditCompletionStatus ?? null,
-  };
+  });
 }
 
 function deriveVariant(

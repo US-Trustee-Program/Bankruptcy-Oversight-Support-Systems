@@ -19,21 +19,18 @@ export function getFiscalYearOptions(): number[] {
   return buildYearOptions('backward', 21);
 }
 
+type GenericKeyDatesFields = Omit<TrusteeUpcomingKeyDatesInput, 'trusteeId' | 'appointmentId'>;
+
 /**
- * Builds a full TrusteeUpcomingKeyDatesInput by carrying all fields forward from
- * the original document (defaulting to null when absent) and applying only the
- * caller-owned fields via overrides. Each Chapter 7 Panel form owns a distinct
- * subset of fields; this helper prevents any single form from accidentally
- * zeroing out a field it doesn't own when it reconstructs the document for PUT.
+ * Carries every generic field forward from the original document, defaulting
+ * to null when absent. The return type annotation is a plain (non-Partial,
+ * non-spread) object type, so TypeScript rejects this function at compile
+ * time if a field is ever added to TrusteeUpcomingKeyDatesInput without being
+ * listed here -- the drift class that let CAMS-913's new completion-status
+ * fields go unnoticed until caught by inspection (see cams-cm6nc).
  */
-export function mergeKeyDatesInput(
-  ids: { trusteeId: string; appointmentId: string },
-  original: TrusteeUpcomingKeyDates | null,
-  overrides: Partial<Omit<TrusteeUpcomingKeyDatesInput, 'trusteeId' | 'appointmentId'>>,
-): TrusteeUpcomingKeyDatesInput {
+function defaultsFromOriginal(original: TrusteeUpcomingKeyDates | null): GenericKeyDatesFields {
   return {
-    trusteeId: ids.trusteeId,
-    appointmentId: ids.appointmentId,
     pastBackgroundQuestion: original?.pastBackgroundQuestion ?? null,
     pastFieldExam: original?.pastFieldExam ?? null,
     pastAudit: original?.pastAudit ?? null,
@@ -72,6 +69,25 @@ export function mergeKeyDatesInput(
     bondRenewalDate: original?.bondRenewalDate ?? null,
     ch13AuditCompletionYear: original?.ch13AuditCompletionYear ?? null,
     ch13AuditCompletionStatus: original?.ch13AuditCompletionStatus ?? null,
+  };
+}
+
+/**
+ * Builds a full TrusteeUpcomingKeyDatesInput by carrying all fields forward from
+ * the original document (defaulting to null when absent) and applying only the
+ * caller-owned fields via overrides. Each key-dates form owns a distinct subset
+ * of fields; this helper prevents any single form from accidentally zeroing out
+ * a field it doesn't own when it reconstructs the document for PUT.
+ */
+export function mergeKeyDatesInput(
+  ids: { trusteeId: string; appointmentId: string },
+  original: TrusteeUpcomingKeyDates | null,
+  overrides: Partial<GenericKeyDatesFields>,
+): TrusteeUpcomingKeyDatesInput {
+  return {
+    trusteeId: ids.trusteeId,
+    appointmentId: ids.appointmentId,
+    ...defaultsFromOriginal(original),
     ...overrides,
   };
 }

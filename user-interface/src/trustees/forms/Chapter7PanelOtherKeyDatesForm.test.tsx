@@ -283,7 +283,7 @@ describe('buildOtherKeyDatesInput', () => {
   };
 
   // Full field pass-through/defaulting behavior belongs to mergeKeyDatesInput and is
-  // exhaustively tested in chapter7PanelKeyDatesInput.test.ts. These tests only verify
+  // exhaustively tested in keyDatesInput.test.ts. These tests only verify
   // the behavior unique to buildOtherKeyDatesInput: overriding pastBackgroundQuestion
   // and converting an empty form value to null, while delegating everything else.
   test('overrides pastBackgroundQuestion with the form value and delegates other fields', () => {

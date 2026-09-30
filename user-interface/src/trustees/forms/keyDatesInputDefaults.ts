@@ -2,7 +2,7 @@ import {
   TrusteeUpcomingKeyDates,
   TrusteeUpcomingKeyDatesInput,
 } from '@common/cams/trustee-upcoming-key-dates';
-import { mergeKeyDatesInput, buildYearOptions } from './chapter7PanelKeyDatesInput';
+import { mergeKeyDatesInput, buildYearOptions } from './keyDatesInput';
 
 export function getCompletionYearOptions(): number[] {
   return buildYearOptions('backward', 11);

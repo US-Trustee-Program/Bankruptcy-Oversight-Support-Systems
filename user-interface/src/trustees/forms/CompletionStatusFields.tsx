@@ -2,7 +2,7 @@ import {
   CompletionStatus,
   validateCompletionPairPresence,
 } from '@common/cams/trustee-upcoming-key-dates';
-import { getFiscalYearOptions } from './chapter7PanelKeyDatesInput';
+import { getFiscalYearOptions } from './keyDatesInput';
 import Select from '@/lib/components/uswds/Select';
 import PairFieldGroup from './PairFieldGroup';
 

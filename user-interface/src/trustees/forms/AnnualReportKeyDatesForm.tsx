@@ -8,7 +8,7 @@ import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import { Stop } from '@/lib/components/Stop';
-import { mergeKeyDatesInput } from './chapter7PanelKeyDatesInput';
+import { mergeKeyDatesInput } from './keyDatesInput';
 import CompletionStatusFields, { CompletionStatusValue } from './CompletionStatusFields';
 import { validateCompletionPairPresence } from '@common/cams/trustee-upcoming-key-dates';
 

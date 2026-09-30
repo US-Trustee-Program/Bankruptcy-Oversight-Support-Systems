@@ -9,7 +9,7 @@ import {
   calculateTirReview,
   validateCompletionPairPresence,
 } from '@common/cams/trustee-upcoming-key-dates';
-import { mergeKeyDatesInput, getFiscalYearOptions } from './chapter7PanelKeyDatesInput';
+import { mergeKeyDatesInput, getFiscalYearOptions } from './keyDatesInput';
 import {
   TirFrequency,
   ANNUAL_OPTIONS,

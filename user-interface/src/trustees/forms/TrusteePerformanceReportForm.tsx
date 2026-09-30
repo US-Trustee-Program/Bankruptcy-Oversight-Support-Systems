@@ -12,7 +12,7 @@ import {
   validateCompletionPairPresence,
   isoToSentinel,
 } from '@common/cams/trustee-upcoming-key-dates';
-import { mergeKeyDatesInput, getFiscalYearOptions } from './chapter7PanelKeyDatesInput';
+import { mergeKeyDatesInput, getFiscalYearOptions } from './keyDatesInput';
 import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
