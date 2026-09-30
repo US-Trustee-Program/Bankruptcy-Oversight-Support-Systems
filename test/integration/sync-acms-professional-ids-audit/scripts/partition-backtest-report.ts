@@ -249,7 +249,7 @@ function candidateCsvRows(
       nameScore: String(merged.doesNameMatch?.value ?? 0),
       addressScore: String(merged.contactCorroborationAddress?.value ?? ''),
       phoneScore: String(merged.contactCorroborationPhone?.value ?? ''),
-      stateMatch: String(merged.isStateNotConflicting?.pass ?? true),
+      stateMatch: String(merged.doesStateMatch?.pass ?? true),
     };
   });
 }

@@ -265,7 +265,9 @@ function deriveCandidateFields(
   const nameScore = merged.doesNameMatch?.value ?? 0;
   const addressScore = merged.contactCorroborationAddress?.value ?? null;
   const phoneScore = merged.contactCorroborationPhone?.value ?? null;
-  const stateMatch = merged.isStateNotConflicting?.pass ?? true;
+  // Absent means the states were never comparable, not that they agree - doesStateMatch is only
+  // recorded when both sides have a state (see scoreStateMatch).
+  const stateMatch = merged.doesStateMatch?.pass ?? true;
   const rawFullNameSimilarity = latestMemoValue(candidate.memo, 'fullNameSimilarity');
   const fullNameSimilarity = typeof rawFullNameSimilarity === 'number' ? rawFullNameSimilarity : 0;
   const rawTokenNameMatchRate = latestMemoValue(candidate.memo, 'tokenNameMatchRate');
