@@ -12,17 +12,16 @@ import {
   recallByAnchoredLevenshtein,
   resolveByComparativeCorroboration,
   resolveBySoleContactMatch,
-  resolveBySoleExactNameMatch,
-  resolveBySoleExactNameMatchByStateThenGeo,
-  resolveRisky,
+  resolveByExactNameOnly,
   resolveBySoleFuzzyNameMatchAndState,
   recallByNameThenResolveMatch,
   resolveByPhoneTypoTolerance,
-  resolveNameStateAndCityOrZip,
-  resolveNameCityAndZip,
-  resolveNameAddress,
-  resolveNamePhone,
-  resolveNameEmail,
+  resolveByStateAndCity,
+  resolveByZipCode,
+  resolveByCityAndZipCode,
+  resolveByAddress,
+  resolveByPhone,
+  resolveByEmailAddress,
   normalizeAcmsSourceName,
   skipAdministrativePlaceholder,
   recallBySurnameExact,
@@ -52,10 +51,9 @@ function resolveStages(): Stage[] {
     // every later stage a no-op - see its own doc comment) - this order is a real behavioral
     // decision, not just sequencing, and must not be reshuffled without a backtest confirming
     // outcomes hold. Swapping resolveBySoleContactMatch/resolveByComparativeCorroboration/
-    // resolveByPhoneTypoTolerance/resolveBySoleExactNameMatch against each other (the only 4 of
-    // these stages with no read dependency on one another - the atomic corroboration families
-    // below have their own strict ordering requirements) held the outcome identical to this order
-    // EXCEPT moving
+    // resolveByPhoneTypoTolerance against each other (the only 3 of these stages with no read
+    // dependency on one another - the atomic corroboration families below have their own strict
+    // ordering requirements) held the outcome identical to this order EXCEPT moving
     // resolveByComparativeCorroboration before resolveBySoleContactMatch, which cost real
     // resolutions - once the weaker (multi-candidate arbitration) stage resolves or fails to,
     // runPipeline never lets the other run. This order is "richest evidence first," not arbitrary.
@@ -64,31 +62,27 @@ function resolveStages(): Stage[] {
     resolveBySoleContactMatch(),
     resolveByComparativeCorroboration(),
     resolveByPhoneTypoTolerance(),
-    resolveBySoleExactNameMatch(),
-    // resolveBySoleExactNameMatchByStateThenGeo only ever sees a 2+-candidate exact-name-match
-    // pool (resolveBySoleExactNameMatch's gate already claims the sole-candidate case), and runs
-    // after resolveByComparativeCorroboration since that stage's contact/full-geo signal is
-    // richer than this one's state/city/zip narrowing.
-    resolveBySoleExactNameMatchByStateThenGeo(),
-    // Five atomic stages, one per corroboration signal (address/phone/email each independently
-    // sufficient; the two geo shapes each require 2 fields together) - see
-    // isCorroboratedByGeoOrContact's own doc comment for why these five, not six single-field
-    // stages. Order among them doesn't change outcomes today (real records satisfying one
-    // typically satisfy several), but address/phone/email run first as the stronger evidence class.
-    resolveNameAddress(),
-    resolveNamePhone(),
-    resolveNameEmail(),
-    resolveNameStateAndCityOrZip(),
-    resolveNameCityAndZip(),
-    // resolveBySoleFuzzyNameMatchAndState's state-only bar is strictly weaker than the five stages
-    // above's isCorroboratedByGeoOrContact-equivalent gate, so it must run after them, not
-    // reordered alongside the four stages before them - it only ever catches what those five
+    // Atomic stages, one per corroboration signal - address/phone/email/zip each independently
+    // sufficient alone; state+city is the one pair that requires both fields together, since
+    // neither is trusted alone (see stateAndCity/zipCodeMatches' own doc comment).
+    // resolveByStateAndCity/resolveByZipCode each internally check the exact-name tier before the
+    // strong (fuzzy) tier, richest evidence first - see their own doc comments. Order among these
+    // stages doesn't change outcomes today (real records satisfying one typically satisfy
+    // several), but address/phone/email run first as the stronger evidence class.
+    resolveByAddress(),
+    resolveByPhone(),
+    resolveByEmailAddress(),
+    resolveByStateAndCity(),
+    resolveByZipCode(),
+    resolveByCityAndZipCode(),
+    // resolveBySoleFuzzyNameMatchAndState's state-only bar is strictly weaker than the stages
+    // above's corroboration gates, so it must run after them - it only ever catches what those
     // already declined for lack of city/zip/contact corroboration.
     resolveBySoleFuzzyNameMatchAndState(),
-    // HIGH-RISK, deliberately LAST-RESORT - see resolveRisky's own doc comment (and each composed
-    // sub-stage's own "!!! HIGH-RISK" comment). Every richer-evidence stage above gets first
-    // attempt at any candidate resolveRisky's sub-stages would also consider.
-    resolveRisky(),
+    // Deliberately LAST-RESORT - see resolveByExactNameOnly's own doc comment. Every other
+    // resolver above (including the weaker fuzzy-tier ones) gets first attempt at a candidate
+    // before a unique exact-name match with no other corroborating evidence at all is trusted.
+    resolveByExactNameOnly(),
   ];
 }
 
@@ -108,7 +102,7 @@ function resolveStages(): Stage[] {
  * because it was strictly weaker AND less correct than what addAndScoreCandidate now guarantees:
  * isStateNotConflicting's override condition (nameScore >= 85, the exact same pipelineNameScore call
  * already used for doesNameMatch) is self-referential for any candidate whose own gate already
- * requires a comparable name score - the exact defect resolveBySoleExactNameMatch/
+ * requires a comparable name score - the exact defect resolveByExactNameOnly/
  * resolveBySoleContactMatch both had to work around (see their own doc comments) - while
  * shouldEvictFromDiscovery reads doesStateMatch directly (only ever set when both sides have real
  * comparable state data, never self-referential) plus a real, already-computed name-match exception
