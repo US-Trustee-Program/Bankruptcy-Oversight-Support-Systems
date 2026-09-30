@@ -572,12 +572,8 @@ describe('recallByNameThenResolveExact', () => {
     expect(result.match).toBeNull();
   });
 
-  // Sourcery review (PR #3072): findTrusteesByIds resolving to an empty array is not a repository
-  // rejection, so the try/catch above never sees it - destructuring an empty array left trustee
-  // undefined and projectTrustee(undefined) threw uncaught instead of the pipeline recording a
-  // CamsError. CAMS never deletes trustee records, so this is a defensive guard against
-  // findTrusteesByIds returning fewer rows than requested for some other reason, not a documented
-  // real-world trigger.
+  // An empty array is not a repository rejection, so the try/catch above never sees it - guards
+  // against projectTrustee(undefined) throwing uncaught.
   test('records a CamsError, rather than throwing, when the fuzzy refetch returns no trustee', async () => {
     vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({
       kind: 'resolved',
@@ -856,14 +852,6 @@ describe('scoreCandidate - name-match facet', () => {
     expect(mergedScore(t2)).toMatchObject({ doesNameMatch: { value: 0, pass: false } });
   });
 
-  // Real regression shape (Jon's review of PR #3072, name synthesized): ACMS "Michael P Kelso"
-  // (middleName "P") still auto-linked to CAMS "Michael Edward Kelso" (middleName "Edward") after
-  // the two-bare-initials fix above landed, since "P" vs "Edward" hits the one-side-bare-initial
-  // branch, not the two-bare-initials branch that fix corrected - isInitialOf already rules out
-  // "Edward" plausibly being short for "P" before this case is reached, so there is nothing left
-  // to be neutral about; a bare initial that provably does not match the other side's leading
-  // character is a genuine, if weak, conflict, the same 15-point treatment two disagreeing bare
-  // initials or two disagreeing full middle names already get.
   test("treats a bare middle initial that doesn't match the other side's leading character as a genuine conflict", async () => {
     const state = await normalizeAcmsSourceName()(
       createInitialState(makeDxtrTrustee({ firstName: 'John', middleName: 'T', lastName: 'Doe' })),
@@ -883,12 +871,6 @@ describe('scoreCandidate - name-match facet', () => {
     });
   });
 
-  // Real regression shape (Jon's review of the 2026-09-25 staging export, CAMS-876 follow-up,
-  // name synthesized): ACMS "Michael P Wexford" (middleName "P") auto-linked to CAMS "Michael E.
-  // Wexford" (middleName "E.") - two DIFFERENT bare initials on both sides were scored as a
-  // neutral 100 (isBareInitial checked only length, not whether either side's initial actually
-  // matches the other's leading character). Now scored the same flat 15 as the asymmetric case
-  // above and two disagreeing full middle names, not laundered into a false 100.
   test('treats two DIFFERENT bare middle initials on both sides as a genuine 15-point conflict', async () => {
     const state = await normalizeAcmsSourceName()(
       createInitialState(
@@ -949,16 +931,8 @@ describe('scoreCandidate - name-match facet', () => {
   // via isFirstMiddleSwap's crossed-pair check, never reaching pipelineMiddleNameScore's
   // (now-stricter) bare-initial-conflict check - that branch only applies once first names already
   // agree positionally, so a genuine swap (firstScore===0 positionally) cannot regress here.
-  // The ORIGINAL fixture here (ACMS "Dominic S" vs CAMS "Sylvain D") was itself a latent false
-  // positive, not a genuine swap: neither crossed pair is a real match - "Dominic" and "D" (CAMS's
-  // middle) only relate via isInitialOf, and "S" (ACMS's middle) and "Sylvain" only relate via
-  // isInitialOf too. It only passed because isCrossedNamePartMatch's isPlausibleNicknameByDistance
-  // fallback was silently readmitting bare-initial relationships for short names (see that
-  // function's own doc comment on the real "Al"/"A" regression that exposed this) - "s"/"sylvain"
-  // and "d"/"dominic" both clear the nickname-distance threshold purely because a short string is
-  // highly Jaro-Winkler-similar to its own leading letter. A genuine swap needs the SAME name token
-  // reordered, not two independently-coincidental initials - see isFirstMiddleSwap's own doc
-  // comment for the real-data classification this fixture now reflects.
+  // A genuine swap: the same token ("dominic") is spelled out on one side and reduced to a bare
+  // initial on the other.
   test('still credits a genuine first/middle swap as 85, unaffected by the bare-initial-conflict fix', async () => {
     const state = await normalizeAcmsSourceName()(
       createInitialState(
@@ -985,12 +959,8 @@ describe('scoreCandidate - name-match facet', () => {
     });
   });
 
-  // Real regression shape (name synthesized, PR #3072): ACMS "Dominic S" vs CAMS "Sylvain D" -
-  // the ORIGINAL (incorrect) fixture for the test above. Neither crossed pair is a real match:
-  // "Dominic" vs CAMS's bare middle "D" and ACMS's bare middle "S" vs "Sylvain" are each ONLY an
-  // isInitialOf relationship, coincidentally crossing in both directions. This must NOT resolve as
-  // a swap - it is indistinguishable, on name alone, from two unrelated people who happen to share
-  // a surname and whose first names' leading letters happen to cross-match.
+  // Two unrelated first names ("Dominic"/"Sylvain") whose leading letters happen to cross-match
+  // each other's bare middle initial - coincidence, not a swap.
   test('does not credit two independently-coincidental bare initials as a first/middle swap', async () => {
     const state = await normalizeAcmsSourceName()(
       createInitialState(
@@ -2245,6 +2215,48 @@ describe('resolveBySoleContactMatch', () => {
       score: candidate.scores,
       resolvedBy: 'resolveBySoleContactMatch',
     });
+  });
+
+  // A coincidentally matching zip code can push a real state conflict's address score up to
+  // exactly NO_CONTRADICTION_ADDRESS_FLOOR, clearing isNoContradictionMatch's address check even
+  // though doesStateMatch genuinely disagrees.
+  test('does NOT resolve via the no-contradiction fallback when a coincidental zip match masks a real state conflict', async () => {
+    const state = await normalizeAcmsSourceName()(
+      createInitialState(
+        makeDxtrTrustee({
+          fullName: 'Ronald Larkin',
+          legacy: { cityStateZipCountry: 'Anytown DE 26003', phone: '2075551234' } as never,
+        }),
+      ),
+    );
+    const candidate = addCandidate(
+      state,
+      projectTrustee(
+        makeTrustee({
+          trusteeId: 't1',
+          name: 'Ronald L. Larkin',
+          public: {
+            address: {
+              address1: '1 Main St',
+              state: 'WV',
+              city: 'Wheeling',
+              zipCode: '26003',
+              countryCode: 'US',
+            },
+          },
+        }),
+      ),
+      'test',
+    );
+    scoreCandidate(state.sourceNormalized, candidate);
+    expect(mergedScore(candidate)).toMatchObject({
+      doesStateMatch: { value: 0, pass: false },
+      contactCorroborationAddress: { pass: false },
+    });
+
+    const result = await resolveBySoleContactMatch()(state);
+
+    expect(result.match).toBeNull();
   });
 
   test('refuses the no-contradiction fallback when the ACMS address actively contradicts a low addressScore', async () => {
