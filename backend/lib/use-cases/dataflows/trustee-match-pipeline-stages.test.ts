@@ -572,6 +572,34 @@ describe('recallByNameThenResolveExact', () => {
     expect(result.match).toBeNull();
   });
 
+  // Sourcery review (PR #3072): findTrusteesByIds resolving to an empty array is not a repository
+  // rejection, so the try/catch above never sees it - destructuring an empty array left trustee
+  // undefined and projectTrustee(undefined) threw uncaught instead of the pipeline recording a
+  // CamsError. CAMS never deletes trustee records, so this is a defensive guard against
+  // findTrusteesByIds returning fewer rows than requested for some other reason, not a documented
+  // real-world trigger.
+  test('records a CamsError, rather than throwing, when the fuzzy refetch returns no trustee', async () => {
+    vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({
+      kind: 'resolved',
+      trusteeId: 't1',
+      nameScore: 100,
+      nameMatchQuality: 'fuzzy',
+    });
+    vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByIds').mockResolvedValue([]);
+
+    const state = createInitialState(makeDxtrTrustee());
+
+    const result = await recallByNameThenResolveExact(context)(state);
+
+    expect(result.error).toMatchObject({
+      isCamsError: true,
+      camsStack: [
+        { message: 'recallByNameThenResolveExact failed refetching fuzzy-matched candidate' },
+      ],
+    });
+    expect(result.match).toBeNull();
+  });
+
   test('adds every candidate from an ambiguous result to the pipeline state, without resolving', async () => {
     vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({
       kind: 'ambiguous',
@@ -828,7 +856,15 @@ describe('scoreCandidate - name-match facet', () => {
     expect(mergedScore(t2)).toMatchObject({ doesNameMatch: { value: 0, pass: false } });
   });
 
-  test("treats a bare middle initial that doesn't match the other side's leading character as neutral, not a conflict", async () => {
+  // Real regression shape (Jon's review of PR #3072, name synthesized): ACMS "Michael P Kelso"
+  // (middleName "P") still auto-linked to CAMS "Michael Edward Kelso" (middleName "Edward") after
+  // the two-bare-initials fix above landed, since "P" vs "Edward" hits the one-side-bare-initial
+  // branch, not the two-bare-initials branch that fix corrected - isInitialOf already rules out
+  // "Edward" plausibly being short for "P" before this case is reached, so there is nothing left
+  // to be neutral about; a bare initial that provably does not match the other side's leading
+  // character is a genuine, if weak, conflict, the same 15-point treatment two disagreeing bare
+  // initials or two disagreeing full middle names already get.
+  test("treats a bare middle initial that doesn't match the other side's leading character as a genuine conflict", async () => {
     const state = await normalizeAcmsSourceName()(
       createInitialState(makeDxtrTrustee({ firstName: 'John', middleName: 'T', lastName: 'Doe' })),
     );
@@ -843,19 +879,16 @@ describe('scoreCandidate - name-match facet', () => {
     scoreCandidate(state.sourceNormalized, candidate);
 
     expect(mergedScore(candidate)).toMatchObject({
-      doesNameMatch: { value: 100, pass: true },
+      doesNameMatch: { value: 15, pass: false },
     });
   });
 
   // Real regression shape (Jon's review of the 2026-09-25 staging export, CAMS-876 follow-up,
   // name synthesized): ACMS "Michael P Wexford" (middleName "P") auto-linked to CAMS "Michael E.
   // Wexford" (middleName "E.") - two DIFFERENT bare initials on both sides were scored as a
-  // neutral 100 (isBareInitial checked
-  // only length, not whether either side's initial actually matches the other's leading
-  // character), the same treatment correctly reserved for the ASYMMETRIC case above (one side
-  // bare, the other a full name it could plausibly be short for). Two disagreeing initials on
-  // BOTH sides is real, if weak, evidence of a conflict - scored the same flat 15 as two disagreeing
-  // full middle names, not laundered into a false 100.
+  // neutral 100 (isBareInitial checked only length, not whether either side's initial actually
+  // matches the other's leading character). Now scored the same flat 15 as the asymmetric case
+  // above and two disagreeing full middle names, not laundered into a false 100.
   test('treats two DIFFERENT bare middle initials on both sides as a genuine 15-point conflict', async () => {
     const state = await normalizeAcmsSourceName()(
       createInitialState(
