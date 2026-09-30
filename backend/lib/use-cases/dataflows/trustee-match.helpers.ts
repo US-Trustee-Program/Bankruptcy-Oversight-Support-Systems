@@ -1013,22 +1013,13 @@ const NAME_SWAP_MIN_PART_SCORE = 85;
  * Requires an EXACT match OR a genuine nickname/formal-name pair (isKnownNicknamePair) OR a
  * close-by-distance spelling variant (isPlausibleNicknameByDistance) on a crossed name-part pair -
  * deliberately NOT isInitialOf, unlike scoreFirstNamePart's other two callers. A bare-initial
- * relationship is exactly the collision this check must refuse (see isOneSidedMiddleNameMatch's own
- * doc comment on the real "JORDAN VOSSEY" vs "Aldric J. Vossey" regression that motivated excluding
- * it there, and isFirstMiddleSwap's own doc comment on the equivalent two-sided regression).
+ * relationship is exactly the collision this check must refuse (see isOneSidedMiddleNameMatch and
+ * isFirstMiddleSwap's own doc comments).
  *
- * Both operands must be longer than a single character before either relaxation is even tried -
- * real regression (name synthesized, PR #3072): JaroWinklerDistance treats a short name against its
- * OWN leading letter as highly similar by construction (e.g. "al" vs "a" scores 0.85, "ed" vs "e"
- * scores 0.85, well past FIRST_NAME_NICKNAME_JARO_WINKLER_THRESHOLD), so isPlausibleNicknameByDistance
- * was silently readmitting the exact bare-initial relationship this function exists to refuse,
- * whenever the non-initial side happened to be short. Confirmed live in the 2026-09-25 export: ACMS
- * "Al [Surname]" (no middle name) auto-linked to a CAMS trustee sharing only a surname, city, and a
- * middle initial "A" that is merely "Al"'s own leading letter - while the CAMS trustee at the same
- * firm with AL's ACTUAL matching phone number was correctly rejected on name and never considered.
- * A single-character operand has no informative distance left for Jaro-Winkler or a nickname-
- * dictionary lookup to safely relax - it can only ever restate isInitialOf's own comparison, which
- * this function must not do.
+ * Both operands must be longer than a single character before either relaxation is tried: a short
+ * name is highly Jaro-Winkler-similar to its own leading letter by construction (e.g. "al" vs "a"
+ * scores 0.85), so isPlausibleNicknameByDistance would otherwise readmit the exact bare-initial
+ * relationship this function exists to refuse.
  */
 function isCrossedNamePartMatch(a: string, b: string): boolean {
   if (!a || !b) return false;
@@ -1043,27 +1034,15 @@ function isCrossedNamePartMatch(a: string, b: string): boolean {
  * first/middle order (ACMS PROF_FIRST_NAME "Douglas", PROF_MI "M"). Positional-only comparison
  * (scoreFirstNamePart alone) sees this as two unrelated first names.
  *
- * Requires BOTH crossed pairs (dxtr first vs cams middle, dxtr middle vs cams first) to be
- * PLAUSIBLE (isCrossedNamePartMatch OR a bare-initial relationship - the record placed the same
- * token as a bare initial on one side, an initial-vs-full relationship is still real signal here),
- * AND at least ONE of the two crossed pairs to be a GENUINE match (exact or nickname, never merely
- * initial-of) - not both merely initial-of. A real swap carries the same underlying name-token
- * pair reordered, so at least one side of the crossing has something more to verify against than a
- * single shared leading letter. Two bare initials that each happen to match the OTHER record's
- * unrelated first name's leading character is coincidence, not evidence of a swap: real regression
- * shape (name synthesized, PR #3072, Jon's review), ACMS "Michael P [Surname]" crossed against CAMS
- * "Philip M. [Surname]" - "p" (ACMS's middle) is an initial of "philip" (CAMS's first), and "m"
- * (CAMS's middle) is an initial of "michael" (ACMS's first), so BOTH crossed pairs cleared the old
- * initial-vs-full bar even though "Michael" and "Philip" share no real relationship at all. Requiring
- * at least one crossed pair to be a real match (as isOneSidedMiddleNameMatch's
- * isCrossedNamePartMatch already required for the one-sided case) closes this without losing a
- * single genuine swap in the 2026-09-25 export: every record where the SAME name token is spelled
- * out on one side and abbreviated on the other (e.g. ACMS "Francis J" vs CAMS "J. Francis") has that
- * token's own crossed pair score as an exact match, satisfying the new bar independent of the other,
- * possibly initial-only, pair.
+ * Requires both crossed pairs (dxtr-first/cams-middle, dxtr-middle/cams-first) to be plausible
+ * (isCrossedNamePartMatch or a bare-initial relationship), AND at least one crossed pair to be a
+ * genuine match (exact or nickname, never merely initial-of). Two bare initials that each happen to
+ * match the other record's unrelated first name's leading letter is coincidence, not a swap (e.g.
+ * ACMS "Michael P" vs CAMS "Philip M." - both crossed pairs are initial-of only, no real
+ * relationship between "Michael" and "Philip"); a genuine swap carries the same name token spelled
+ * out on one side (e.g. ACMS "Francis J" vs CAMS "J. Francis" - "francis" vs "francis" is exact).
  *
- * Capped at 85 (never 100) since a swap is still a real discrepancy in field placement, the same
- * treatment an initial-vs-full relationship gets in scoreFirstNamePart/scoreMiddleNamePart.
+ * Capped at 85 (never 100), the same treatment an initial-vs-full relationship gets elsewhere.
  */
 export function isFirstMiddleSwap(
   dxtrFirst: string,
