@@ -118,6 +118,10 @@ type Disqualifier = { scorer: string; reason: string; evidence: Record<string, u
  * in PROF_FIRST_NAME. No keyword list separates a real alias from an office code - a code never
  * matches anything on the other side.
  *
+ * middleNameAlternates holds the individual tokens of a multi-token middle name, which `middleName`
+ * itself stores glued together ("L. Pry" -> "lpry"). Populated only when there is more than one
+ * token, so a reader can treat a non-empty array as "this field held more than a single name."
+ *
  * lastNameUnreduced holds the ACMS lastName AFTER name-recovery (recoverCorruptedFirstName/
  * recoverSoloPracticeName) but BEFORE lastNameSurnameCandidates' token reduction - distinct from
  * `lastName` (which is the REDUCED result). A caller that needs an exact, unreduced surname
@@ -129,6 +133,7 @@ type Disqualifier = { scorer: string; reason: string; evidence: Record<string, u
 type NormalizedTrusteeFields = Partial<Omit<ProjectedTrustee, 'trusteeId' | 'address'>> & {
   address?: Partial<NonNullable<ProjectedTrustee['address']>>;
   firstNameAlternates?: string[];
+  middleNameAlternates?: string[];
   lastNameAlternates?: string[];
   lastNameUnreduced?: string;
 };

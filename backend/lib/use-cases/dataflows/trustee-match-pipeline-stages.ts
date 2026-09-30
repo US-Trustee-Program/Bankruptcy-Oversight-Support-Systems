@@ -214,6 +214,26 @@ function matchFirstName(
   return aliasMatches ? 'strong' : 'none';
 }
 
+/**
+ * A multi-token middle name glues into one token (see splitGivenName's own doc comment), so a
+ * source middle initial drawn from any token but the first would otherwise read as a conflict.
+ * middleNameAlternates carries those tokens individually; any one of them may answer for the field.
+ */
+function matchMiddleName(
+  memo: NormalizedMemo,
+  sourceMiddle: string,
+  camsNormalized: NormalizedTrustee,
+): NamePartQuality {
+  const camsMiddle = camsNormalized.middleName ?? '';
+  const direct = matchNamePart(memo, sourceMiddle, camsMiddle);
+  if (direct !== 'none' || !sourceMiddle) return direct;
+
+  const qualities = (camsNormalized.middleNameAlternates ?? []).map((token) =>
+    matchNamePart(memo, sourceMiddle, token),
+  );
+  return qualities.find((quality) => quality !== 'none') ?? 'none';
+}
+
 function matchName(
   memo: NormalizedMemo,
   sourceNormalized: NormalizedTrustee,
@@ -258,7 +278,7 @@ function matchName(
     return NO_MATCH;
   }
 
-  const middleQuality = matchNamePart(memo, sourceMiddle, camsMiddle);
+  const middleQuality = matchMiddleName(memo, sourceMiddle, camsNormalized);
   const middleConflicts = middleQuality === 'none' && !!sourceMiddle && !!camsMiddle;
   if (middleConflicts && firstQuality !== 'exact') {
     // BOTH sides had a middle name to compare (not merely one, which matchNamePart already treats
@@ -946,15 +966,22 @@ function givenNameTokens(text: string): string[] {
 function splitGivenName(
   firstName: string | undefined,
   middleName: string | undefined,
-): { firstName: string; middleName: string; firstNameAlternates: string[] } {
+): {
+  firstName: string;
+  middleName: string;
+  firstNameAlternates: string[];
+  middleNameAlternates: string[];
+} {
   const raw = firstName ?? '';
   const parenthetical = /\(([^)]+)\)/.exec(raw);
   const tokens = givenNameTokens([raw.replace(/ ?\([^)]*\)/g, ' '), middleName ?? ''].join(' '));
+  const middleTokens = tokens.slice(1);
 
   return {
     firstName: tokens[0] ?? '',
-    middleName: tokens.slice(1).join(''),
+    middleName: middleTokens.join(''),
     firstNameAlternates: parenthetical ? givenNameTokens(parenthetical[1]) : [],
+    middleNameAlternates: middleTokens.length > 1 ? middleTokens : [],
   };
 }
 
@@ -974,7 +1001,7 @@ function normalizeCandidateNameFields(
   _sourceNormalized: NormalizedTrustee,
   candidate: PipelineCandidate,
 ): PipelineCandidate {
-  const { firstName, middleName, firstNameAlternates } = splitGivenName(
+  const { firstName, middleName, firstNameAlternates, middleNameAlternates } = splitGivenName(
     candidate.camsRaw.firstName,
     candidate.camsRaw.middleName,
   );
@@ -982,6 +1009,7 @@ function normalizeCandidateNameFields(
   candidate.camsNormalized.firstName = firstName;
   candidate.camsNormalized.middleName = middleName;
   candidate.camsNormalized.firstNameAlternates = firstNameAlternates;
+  candidate.camsNormalized.middleNameAlternates = middleNameAlternates;
   candidate.camsNormalized.lastName = lastName;
   candidate.camsNormalized.lastNameAlternates = lastNameAlternates;
   return candidate;
