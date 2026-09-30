@@ -827,7 +827,7 @@ describe('scoreCandidate - name-match facet', () => {
     expect(mergedScore(t2)).toMatchObject({ doesNameMatch: { value: 0, pass: false } });
   });
 
-  test("treats a bare middle initial that doesn't match the other side's leading character as a genuine conflict", async () => {
+  test("downgrades to 85 when a bare middle initial doesn't match the other side's leading character", async () => {
     const state = await normalizeAcmsSourceName()(
       createInitialState(makeDxtrTrustee({ firstName: 'John', middleName: 'T', lastName: 'Doe' })),
     );
@@ -842,11 +842,14 @@ describe('scoreCandidate - name-match facet', () => {
     scoreCandidate(state.sourceNormalized, candidate);
 
     expect(mergedScore(candidate)).toMatchObject({
-      doesNameMatch: { value: 0, pass: false },
+      doesNameMatch: { value: 85, pass: true },
     });
   });
 
-  test('treats two DIFFERENT bare middle initials on both sides as a genuine conflict', async () => {
+  // An exact first name plus a matching surname outweighs a conflicting middle initial - the least
+  // reliable name part in this data. The match drops to 85 rather than failing outright, so a
+  // resolver needing corroboration can still use it while an exact-only resolver declines.
+  test('downgrades to 85 when two DIFFERENT bare middle initials appear on both sides', async () => {
     const state = await normalizeAcmsSourceName()(
       createInitialState(
         makeDxtrTrustee({ firstName: 'Michael', middleName: 'P', lastName: 'Wexford' }),
@@ -858,6 +861,32 @@ describe('scoreCandidate - name-match facet', () => {
         makeTrustee({
           trusteeId: 't1',
           firstName: 'Michael',
+          middleName: 'E',
+          lastName: 'Wexford',
+        }),
+      ),
+      'test',
+    );
+
+    scoreCandidate(state.sourceNormalized, candidate);
+
+    expect(mergedScore(candidate)).toMatchObject({
+      doesNameMatch: { value: 85, pass: true },
+    });
+  });
+
+  test('fails outright when a middle name conflicts AND the first name was only a nickname match', async () => {
+    const state = await normalizeAcmsSourceName()(
+      createInitialState(
+        makeDxtrTrustee({ firstName: 'Cathy', middleName: 'P', lastName: 'Wexford' }),
+      ),
+    );
+    const candidate = addCandidate(
+      state,
+      projectTrustee(
+        makeTrustee({
+          trusteeId: 't1',
+          firstName: 'Catherine',
           middleName: 'E',
           lastName: 'Wexford',
         }),
@@ -980,7 +1009,7 @@ describe('scoreCandidate - name-match facet', () => {
     });
   });
 
-  test('scores two full middle names that are NOT a plausible variant as a genuine conflict', async () => {
+  test('downgrades to 85 for two full middle names that are NOT a plausible variant', async () => {
     const state = await normalizeAcmsSourceName()(
       createInitialState(
         makeDxtrTrustee({ firstName: 'John', middleName: 'Alexander', lastName: 'Doe' }),
@@ -997,7 +1026,7 @@ describe('scoreCandidate - name-match facet', () => {
     scoreCandidate(state.sourceNormalized, candidate);
 
     expect(mergedScore(candidate)).toMatchObject({
-      doesNameMatch: { value: 0, pass: false },
+      doesNameMatch: { value: 85, pass: true },
     });
   });
 
