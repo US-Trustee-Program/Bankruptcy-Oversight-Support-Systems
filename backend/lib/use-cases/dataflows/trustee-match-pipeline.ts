@@ -48,10 +48,9 @@ export type KleeneBoolean = boolean | null;
  * guard: the value itself selects which lambda runs, so there is no separate boolean condition to
  * write backwards the way a bare `if (!someKleeneBoolean)`/`=== null` check still could be.
  * Collapses a KleeneBoolean into a single value by running exactly one of three lambdas - most
- * scorers following the "no record when data unavailable" convention (see doesStateMatch/
- * doesCityMatch/doesMiddleNameMatch's own doc comments) reduce to exactly this shape - onNeutral
- * returns the candidate unchanged, onAgreement/onConflict each call addScore with the appropriate
- * ScoreRecord - so a scorer's body becomes one expression instead of an early-return `if`.
+ * scorers reduce to exactly this shape: onNeutral returns the candidate unchanged,
+ * onAgreement/onConflict each call addScore with the appropriate ScoreRecord - so a scorer's body
+ * becomes one expression instead of an early-return `if`.
  */
 export function foldKleene<T>(
   value: KleeneBoolean,
@@ -81,9 +80,7 @@ export type ScoreRecord = {
  * than one independent signal (e.g. address and phone) uses multiple keys rather than bundling
  * unrelated value/threshold/pass triples into one entry.
  *
- * THE CANONICAL STATEMENT of a convention several individual scorers each explain only in their
- * own doc comment (doesStateMatch/doesCityMatch/doesZipCodeMatch/doesMiddleNameMatch, cross-
- * referencing each other rather than one shared source): a scorer whose comparison is a
+ * A scorer whose comparison is a
  * KleeneBoolean represents NEUTRAL by never calling addScore for that key at all, not by writing a
  * ScoreRecord with some neutral-flavored value. The key's ABSENCE from this map, not any field
  * inside a present ScoreRecord, is what carries the neutral state - `scores.doesFooMatch` is
