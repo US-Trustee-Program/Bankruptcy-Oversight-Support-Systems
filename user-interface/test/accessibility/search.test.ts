@@ -18,7 +18,6 @@ test.describe('Search', () => {
     await expect(page.locator('#search-results.cams-table')).toBeVisible();
 
     // Check accessibility for search results scenario
-    await page.waitForLoadState('networkidle');
     let accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
 
@@ -28,7 +27,6 @@ test.describe('Search', () => {
     await expect(page.locator('#no-results-alert')).toBeVisible();
 
     // Check accessibility for no results scenario
-    await page.waitForLoadState('networkidle');
     accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
 
@@ -38,7 +36,6 @@ test.describe('Search', () => {
     await expect(page.locator('#search-error-alert')).toBeVisible();
 
     // Check accessibility for error scenario
-    await page.waitForLoadState('networkidle');
     accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
   });

@@ -17,14 +17,13 @@ test.describe('My Cases', () => {
     await expect(page.locator('#info-modal-heading')).toBeVisible();
     await expect(page.locator('#info-modal-cancel-button')).toBeVisible();
 
-    await page.waitForLoadState('networkidle');
     let accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
 
     // Close modal and check accessibility with modal closed
     await page.locator('#info-modal-cancel-button').click();
+    await expect(page.locator('#info-modal-cancel-button')).toBeHidden();
 
-    await page.waitForLoadState('networkidle');
     accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
   });

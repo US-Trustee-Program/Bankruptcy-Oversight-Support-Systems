@@ -9,7 +9,7 @@ test.describe('Home Page', () => {
   });
 
   test('should not have accessibility issues', async ({ page }) => {
-    await page.waitForLoadState('networkidle');
+    await expect(page).toHaveURL(/\/(search|my-cases)/);
     const accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
   });

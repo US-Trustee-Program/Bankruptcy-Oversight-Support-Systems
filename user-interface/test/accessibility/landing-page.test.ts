@@ -13,7 +13,6 @@ test.describe('Landing Page - Case Search', () => {
 
   test('Case Search page loads without errors', async ({ page }) => {
     await page.goto(getUrl('/search'));
-    await page.waitForLoadState('networkidle');
 
     await expect(page).toHaveURL(/\/search/);
 
@@ -23,7 +22,7 @@ test.describe('Landing Page - Case Search', () => {
 
   test('Case Search page has no accessibility issues', async ({ page }) => {
     await page.goto(getUrl('/search'));
-    await page.waitForLoadState('networkidle');
+    await expect(page.locator('input[name="basic-search"]')).toBeVisible();
 
     const accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
@@ -31,7 +30,6 @@ test.describe('Landing Page - Case Search', () => {
 
   test('Can navigate from Case Search to My Cases using mouse', async ({ page }) => {
     await page.goto(getUrl('/search'));
-    await page.waitForLoadState('networkidle');
 
     const myCasesLink = page.locator('a[href="/my-cases"]').first();
     await expect(myCasesLink).toBeVisible();
@@ -42,12 +40,13 @@ test.describe('Landing Page - Case Search', () => {
 
   test('Can navigate from Case Search to My Cases using keyboard', async ({ page }) => {
     await page.goto(getUrl('/search'));
-    await page.waitForLoadState('networkidle');
+
+    const myCasesLink = page.locator('a[href="/my-cases"]').first();
+    await expect(myCasesLink).toBeVisible();
 
     await page.keyboard.press('Tab');
     await page.evaluate(() => document.activeElement?.tagName);
 
-    const myCasesLink = page.locator('a[href="/my-cases"]').first();
     await myCasesLink.focus();
 
     await page.keyboard.press('Enter');
@@ -61,7 +60,6 @@ test.describe('Landing Page - My Cases', () => {
 
   test('My Cases page loads without errors', async ({ page }) => {
     await page.goto(getUrl('/my-cases'));
-    await page.waitForLoadState('networkidle');
 
     await expect(page).toHaveURL(/\/my-cases/);
 
@@ -72,7 +70,7 @@ test.describe('Landing Page - My Cases', () => {
 
   test('My Cases page has no accessibility issues', async ({ page }) => {
     await page.goto(getUrl('/my-cases'));
-    await page.waitForLoadState('networkidle');
+    await expect(page.locator('h1:has-text("My Cases")')).toBeVisible();
 
     const accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
