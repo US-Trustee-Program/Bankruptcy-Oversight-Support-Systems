@@ -3668,6 +3668,30 @@ describe('resolveByEmailAddress', () => {
 describe('resolveBySoleFuzzyNameMatchAndState', () => {
   const acmsRecord = makeDxtrTrustee({ fullName: GENERIC_ACMS_FULL_NAME });
 
+  // This stage trusts state agreement alone, so an exact-name candidate anywhere in the pool
+  // outranks anything it could conclude - resolveByExactNameOnly runs after it and would
+  // otherwise never get the chance.
+  test('declines when an exact-name candidate is in the pool', async () => {
+    const state = createInitialState(acmsRecord);
+    const fuzzy = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Moon' })),
+      'test',
+    );
+    addScore(fuzzy, 'doesNameMatch', { pass: true, quality: 'strong' });
+    addScore(fuzzy, 'doesStateMatch', { pass: true });
+    const exact = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't2', name: 'Aldric A. Moon' })),
+      'test',
+    );
+    addScore(exact, 'doesNameMatch', { pass: true, quality: 'exact' });
+
+    const result = await resolveBySoleFuzzyNameMatchAndState()(state);
+
+    expect(result.match).toBeNull();
+  });
+
   test('resolves a sole strong-name candidate on state agreement alone, with no city/zip/contact evidence', async () => {
     const state = createInitialState(acmsRecord);
     const candidate = addCandidate(
