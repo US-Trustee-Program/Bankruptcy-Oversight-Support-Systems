@@ -20,9 +20,8 @@
  *       in the trustees fixture directly if the name is needed (manually verified clean for the
  *       2026-09-22 staging export: every record here is an exact or near-exact full-name string
  *       match).
- *   C - resolved via one of the fuzzy/last-resort RESOLVE stages (resolveBySoleFuzzyNameMatchAndState/
- *       resolveByLastNameOnlyConsensus/resolveByFuzzyLastNameMatch) - nickname/typo-tolerant
- *       matching, not an exact hit.
+ *   C - resolved via one of the fuzzy/last-resort RESOLVE stages (see RISKY_RESOLVERS below) -
+ *       nickname/typo-tolerant matching, not an exact hit.
  *   D - doesNameMatch scored exactly 85 - the pass/fail threshold boundary, weakest passing score.
  *   E - no contactCorroborationPhone signal at all - resolved on address alone.
  *   F - everything else (strong name + phone + address evidence) - not written to the suspect CSV.
@@ -62,8 +61,17 @@ type ReplayRecord = {
 
 const RISKY_RESOLVERS = [
   'resolveBySoleFuzzyNameMatchAndState',
-  'resolveByLastNameOnlyConsensus',
-  'resolveByFuzzyLastNameMatch',
+  'resolveFuzzyFirstExactLastNameStateAndCityOrZip',
+  'resolveFuzzyFirstExactLastNameCityAndZip',
+  'resolveFuzzyFirstExactLastNameAddress',
+  'resolveFuzzyFirstExactLastNamePhone',
+  'resolveFuzzyFirstExactLastNameEmail',
+  'resolveFuzzyFirstExactLastNameFullCorroboration',
+  'resolveExactFirstFuzzyLastNameStateAndCityOrZip',
+  'resolveExactFirstFuzzyLastNameCityAndZip',
+  'resolveExactFirstFuzzyLastNameAddress',
+  'resolveExactFirstFuzzyLastNamePhone',
+  'resolveExactFirstFuzzyLastNameEmail',
 ] as const;
 
 type RiskTier =
@@ -140,8 +148,17 @@ function main(): void {
     'A-zero-name-score': 0,
     'B-no-discrete-name-score': 0,
     'C-risky-resolver:resolveBySoleFuzzyNameMatchAndState': 0,
-    'C-risky-resolver:resolveByLastNameOnlyConsensus': 0,
-    'C-risky-resolver:resolveByFuzzyLastNameMatch': 0,
+    'C-risky-resolver:resolveFuzzyFirstExactLastNameStateAndCityOrZip': 0,
+    'C-risky-resolver:resolveFuzzyFirstExactLastNameCityAndZip': 0,
+    'C-risky-resolver:resolveFuzzyFirstExactLastNameAddress': 0,
+    'C-risky-resolver:resolveFuzzyFirstExactLastNamePhone': 0,
+    'C-risky-resolver:resolveFuzzyFirstExactLastNameEmail': 0,
+    'C-risky-resolver:resolveFuzzyFirstExactLastNameFullCorroboration': 0,
+    'C-risky-resolver:resolveExactFirstFuzzyLastNameStateAndCityOrZip': 0,
+    'C-risky-resolver:resolveExactFirstFuzzyLastNameCityAndZip': 0,
+    'C-risky-resolver:resolveExactFirstFuzzyLastNameAddress': 0,
+    'C-risky-resolver:resolveExactFirstFuzzyLastNamePhone': 0,
+    'C-risky-resolver:resolveExactFirstFuzzyLastNameEmail': 0,
     'D-name-score-85-threshold': 0,
     'E-no-phone-corroboration': 0,
     'F-strong': 0,
