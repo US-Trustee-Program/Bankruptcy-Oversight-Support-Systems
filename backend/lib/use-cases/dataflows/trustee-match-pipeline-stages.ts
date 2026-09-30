@@ -153,15 +153,18 @@ function matchNamePart(memo: NormalizedMemo, source: string, cams: string): Name
  * RESOLVE stages that consume this verdict, not here).
  *   - pass: last name matched AND first+middle together clear the corroboration-eligible bar - the
  *     one field every RESOLVE stage gates on before considering independent corroboration.
- *   - quality: 'exact' only when every field that was compared matched literally (no initial,
- *     nickname, phonetic, or swap relaxation anywhere); 'strong' otherwise, whenever pass is true.
+ *   - quality, ranked: 'exact' when every compared field matched literally; 'strong' when the
+ *     surname matched but a given name was relaxed (initial, nickname, swap); 'weak' when the
+ *     SURNAME itself only matched fuzzily. A weak match must never resolve on name alone - two
+ *     surnames a typo apart belong to different people often enough that it needs independent
+ *     corroboration to stand.
  */
 type NameMatchVerdict = {
   pass: boolean;
-  quality: 'exact' | 'strong';
+  quality: 'exact' | 'strong' | 'weak';
 };
 
-const NO_MATCH: NameMatchVerdict = { pass: false, quality: 'strong' };
+const NO_MATCH: NameMatchVerdict = { pass: false, quality: 'weak' };
 
 /**
  * Orchestrates every atomic name-comparison primitive (lastNameTokensMatch, matchNamePart,
@@ -230,15 +233,14 @@ function matchName(
     : undefined;
 
   if (!lastNameTokensMatch(sourceLast, camsLast, sourceLastCandidates, camsLastCandidates)) {
-    // A real spelling-variant/typo surname (e.g. "Stromp"/"Strump") only counts alongside an EXACT
-    // first name - fuzzing both name parts at once on an otherwise-unrelated pair would be too
-    // permissive to trust.
+    // A spelling-variant surname only counts alongside an EXACT first name - fuzzing both parts at
+    // once on an otherwise-unrelated pair would be too permissive to trust.
     if (
       sourceFirst &&
       sourceFirst === camsFirst &&
       memoizedIsFuzzyNamePartMatch(memo, sourceLast, camsLast)
     ) {
-      return { pass: true, quality: 'strong' };
+      return { pass: true, quality: 'weak' };
     }
     return NO_MATCH;
   }
@@ -1009,6 +1011,13 @@ function nameMatch(candidate: PipelineCandidate): NameMatchScore {
 function isExactNameMatch(candidate: PipelineCandidate): boolean {
   const score = nameMatch(candidate);
   return score.pass && score.quality === 'exact';
+}
+
+/** The surname matched outright, whatever was relaxed in the given name - so this is the same
+ * family, not a surname a typo away from one. */
+function hasExactSurnameMatch(candidate: PipelineCandidate): boolean {
+  const score = nameMatch(candidate);
+  return score.pass && score.quality !== 'weak';
 }
 
 /**
@@ -2092,7 +2101,7 @@ export function resolveByExactNameOnly(): Stage {
   return async (state: PipelineState): Promise<PipelineState> => {
     const exactMatches = candidatePool(state).filter(
       (candidate) =>
-        isExactNameMatch(candidate) &&
+        hasExactSurnameMatch(candidate) &&
         mergedScore(candidate).doesCamsTrusteeHaveAddressAndPhone?.pass !== false &&
         mergedScore(candidate).doesStateMatch?.pass !== false,
     );
@@ -2104,7 +2113,7 @@ export function resolveByExactNameOnly(): Stage {
 
 /** Both name-match qualities a geo-corroboration resolver checks, richest evidence first - see
  * resolveByStateAndCity/resolveByZipCode's own doc comments. */
-const NAME_MATCH_QUALITY_TIERS = ['exact', 'strong'] as const;
+const NAME_MATCH_QUALITY_TIERS = ['exact', 'strong', 'weak'] as const;
 
 function nameMatchCandidatesAt(
   state: PipelineState,
