@@ -189,21 +189,23 @@ function isBareInitial(namePart: string): boolean {
  * 15-point conflict regardless of why they differ - a spelling typo (Jeffery/Jeffrey) scores the
  * same as a genuinely conflicting initial (T vs B), tanking real matches to nameScore=15.
  *
- * Two relaxations, both still scored (never an automatic pass) so resolveByLastNameOnlyConsensus's
- * vote can weigh them alongside independent contact corroboration:
- *   - Exactly ONE side a BARE INITIAL that doesn't match the other's leading character: NEUTRAL
- *     (100), not a conflict - too little information to call it a disagreement (the other side's
- *     full middle name could still plausibly start with that letter; the record simply never
- *     spelled it out). Deliberately does NOT extend this to BOTH sides being bare initials - two
- *     actual initials that disagree (e.g. ACMS "P" vs CAMS "E") is real, if weak, evidence of a
- *     conflict, not an information gap; real regression shape (name synthesized): ACMS
- *     "Michael P [Surname]" auto-linked to CAMS "Michael E. [Surname]" on name alone,
- *     isBareInitial's length-only check having laundered a genuine two-initial disagreement into a
- *     neutral 100 the same as the true information-gap case below.
- *   - Both sides a FULL (non-initial) middle name that differs: scored via isFuzzyNamePartMatch
- *     (85 if plausibly the same name, 15 if not) instead of an automatic 15.
- * Exact match and either-side-missing still behave exactly like scoreMiddleNamePart (100 in both
- * cases - absence isn't evidence, agreement is full credit).
+ * One relaxation, still scored (never an automatic pass) so resolveByLastNameOnlyConsensus's vote
+ * can weigh it alongside independent contact corroboration: both sides a FULL (non-initial) middle
+ * name that differs is scored via isFuzzyNamePartMatch (85 if plausibly the same name, 15 if not)
+ * instead of an automatic 15. Exact match and either-side-missing still behave exactly like
+ * scoreMiddleNamePart (100 in both cases - absence isn't evidence, agreement is full credit).
+ *
+ * EITHER side a bare initial that does not match the other's leading character (isInitialOf
+ * already covers the case where it DOES match, above) is a genuine 15-point conflict, not a
+ * neutral 100 - once isInitialOf has already been checked and failed, there is nothing left to be
+ * neutral about: the full name provably does NOT start with that letter. This used to return 100
+ * unconditionally whenever exactly one side was a bare initial ("too little information", treating
+ * the already-ruled-out "could still plausibly start with that letter" case as if it were still
+ * open) while separately, correctly, treating two disagreeing bare initials as a conflict - an
+ * inconsistency an adversarial review (PR #3072) caught with a live probe: ACMS "Michael P
+ * [Surname]" (Wilmington DE, no contact data) still auto-linked to CAMS "Michael Edward [Surname]"
+ * (Wheeling WV) after the two-bare-initials fix landed, since "P" vs "Edward" hits this
+ * one-side-bare-initial branch instead, which had never been corrected to match.
  */
 function pipelineMiddleNameScore(
   memo: NormalizedMemo,
@@ -213,8 +215,7 @@ function pipelineMiddleNameScore(
   if (!dxtrMiddle || !camsMiddle) return 100;
   if (dxtrMiddle === camsMiddle) return 100;
   if (isInitialOf(dxtrMiddle, camsMiddle) || isInitialOf(camsMiddle, dxtrMiddle)) return 100;
-  if (isBareInitial(dxtrMiddle) && isBareInitial(camsMiddle)) return 15;
-  if (isBareInitial(dxtrMiddle) || isBareInitial(camsMiddle)) return 100;
+  if (isBareInitial(dxtrMiddle) || isBareInitial(camsMiddle)) return 15;
   return memoizedIsFuzzyNamePartMatch(memo, dxtrMiddle, camsMiddle) ? 85 : 15;
 }
 
@@ -677,7 +678,27 @@ export function recallByNameThenResolveExact(context: ApplicationContext): Stage
           }),
         };
       }
+      // A successful-but-empty refetch is not a repository rejection, so the try/catch above
+      // never sees it - without this guard, destructuring an empty array leaves trustee undefined
+      // and projectTrustee throws uncaught instead of the pipeline recording a CamsError. CAMS
+      // never deletes trustee records, so this trusteeId going missing between the name-match
+      // lookup and this refetch isn't the realistic trigger; treat this as a defensive guard
+      // against any other way findTrusteesByIds could return fewer rows than requested (a stale
+      // index, a mocked/misbehaving repository in tests), not a documented real-world scenario.
       const [trustee] = rawTrustees;
+      if (!trustee) {
+        return {
+          ...state,
+          error: new CamsError(MODULE_NAME, {
+            message:
+              'recallByNameThenResolveExact found no trustee refetching a fuzzy-matched candidate',
+            camsStackInfo: {
+              module: MODULE_NAME,
+              message: 'recallByNameThenResolveExact failed refetching fuzzy-matched candidate',
+            },
+          }),
+        };
+      }
       const candidate = addAndScoreCandidate(
         state,
         projectTrustee(trustee),
