@@ -50,7 +50,6 @@ import {
   NormalizedTrustee,
   ProjectedTrustee,
   projectTrustee,
-  runPipeline,
   ScoreByScorer,
   ScoreRecord,
   TrusteePipelineCandidate as PipelineCandidate,
@@ -76,41 +75,6 @@ const MODULE_NAME = 'TRUSTEE-MATCH-PIPELINE-STAGES';
  * nearest miss - accepted, since no-match for manual review beats a false-positive auto-link).
  */
 const FUZZY_NAME_PART_JARO_WINKLER_THRESHOLD = 0.88;
-
-/**
- * Named readers of an already-computed doesNameMatch ScoreRecord (see scoreNameMatch/matchName -
- * scored ONCE per candidate at discovery time, never recomputed here) - every RESOLVE stage that
- * gates on doesNameMatch reads one of these instead of retyping the literal value/pass comparison
- * inline.
- *
- * - isExactNameMatch: value === 100 (matchName's 'exact' quality) - both sides matched with no
- *   relaxation at all (no initial, nickname, phonetic, or swap relaxation on any field).
- * - isNameMatchCorroborated: pass === true (value >= 85) - the general "good enough to try
- *   resolving on" bar every fuzzy-tier resolver (resolveBySoleContactMatch, resolveName*, etc.)
- *   requires before considering independent corroboration.
- * - isFuzzyNameMatch: pass === true but value !== 100 (matchName's 'strong' quality) -
- *   corroborated, but via some relaxation rather than an exact match; distinguishes resolvers that
- *   need to treat "exact" and "merely corroborated" differently (see
- *   resolveBySoleFuzzyNameMatchAndState's own gate).
- * - hasNoNameMatchEvidence: value === 0 - matchName found no plausible relationship at all
- *   (last name failed to match, or first/middle failed with no swap/one-sided-match fallback).
- */
-function isExactNameMatch(candidate: PipelineCandidate): boolean {
-  return mergedScore(candidate).doesNameMatch?.value === 100;
-}
-
-function isNameMatchCorroborated(candidate: PipelineCandidate): boolean {
-  return mergedScore(candidate).doesNameMatch?.pass === true;
-}
-
-function isFuzzyNameMatch(candidate: PipelineCandidate): boolean {
-  const nameMatch = mergedScore(candidate).doesNameMatch;
-  return nameMatch?.pass === true && nameMatch.value !== 100;
-}
-
-function hasNoNameMatchEvidence(candidate: PipelineCandidate): boolean {
-  return mergedScore(candidate).doesNameMatch?.value === 0;
-}
 
 function isFuzzyNamePartMatch(acmsNamePart: string, camsNamePart: string): boolean {
   const a = acmsNamePart.toLowerCase();
@@ -1240,11 +1204,7 @@ function scoreAcmsHasAddressAndPhone(
  *
  * `pass` mirrors the shared gate's exact semantics (`!== false`, not `=== true`) - a candidate
  * neither scorer above ever ran against (its own key absent from scores) is treated as eligible,
- * same as every RESOLVE stage's existing inline check. The two "NoAcmsData" stages
- * (resolveBySoleExactNameMatchNoAcmsData, resolveBySoleFuzzyFirstNameMatchNoAcmsData) deliberately
- * do NOT read this score - they require the inverse (ACMS side has NO contact data) and keep that
- * inversion explicit at their own call sites rather than folding a second, opposite-polarity
- * reading into this one.
+ * same as every RESOLVE stage's existing inline check.
  */
 function scoreHasComparableContactData(
   _sourceNormalized: NormalizedTrustee,
@@ -1515,7 +1475,7 @@ export function scoreNameDisqualifiers(
   sourceNormalized: NormalizedTrustee,
   candidate: PipelineCandidate,
 ): PipelineCandidate {
-  if (!hasNoNameMatchEvidence(candidate)) return candidate;
+  if (mergedScore(candidate).doesNameMatch?.value !== 0) return candidate;
 
   const acmsFirst = sourceNormalized.firstName ?? '';
   const camsFirst = candidate.camsNormalized.firstName ?? '';
@@ -1582,7 +1542,7 @@ const NO_CONTRADICTION_ADDRESS_FLOOR = 30;
  */
 function isNoContradictionMatch(candidate: PipelineCandidate): boolean {
   const scores = mergedScore(candidate);
-  if (!isExactNameMatch(candidate)) return false;
+  if (scores.doesNameMatch?.value !== 100) return false;
 
   const hasNoComparablePhoneOrEmail =
     scores.contactCorroborationPhone === undefined &&
@@ -1626,7 +1586,9 @@ export function resolveBySoleContactMatch(): Stage {
     );
     if (candidates.length === 0) return state;
 
-    const qualifying = candidates.filter(([, candidate]) => isNameMatchCorroborated(candidate));
+    const qualifying = candidates.filter(
+      ([, candidate]) => mergedScore(candidate).doesNameMatch?.pass === true,
+    );
     if (qualifying.length === 1) {
       const [trusteeId, candidate] = qualifying[0];
       const scores = mergedScore(candidate);
@@ -1705,7 +1667,7 @@ export function resolveByComparativeCorroboration(): Stage {
   return async (state: PipelineState): Promise<PipelineState> => {
     const qualifying = [...state.candidates.values()].filter(
       (candidate) =>
-        isNameMatchCorroborated(candidate) &&
+        mergedScore(candidate).doesNameMatch?.pass === true &&
         mergedScore(candidate).hasComparableContactData?.pass !== false,
     );
     if (qualifying.length < 2) return state;
@@ -1805,7 +1767,7 @@ function scorePhoneTypoTolerance(
   sourceNormalized: NormalizedTrustee,
   candidate: PipelineCandidate,
 ): PipelineCandidate {
-  if (!isExactNameMatch(candidate)) return candidate;
+  if (mergedScore(candidate).doesNameMatch?.value !== 100) return candidate;
 
   const distance = phoneDigitDistance(
     sourceNormalized.legacy?.phone,
@@ -1901,8 +1863,9 @@ export function scoreCandidate(
  * isStateNotConflicting - that field's override condition (nameScore >= 85, the exact same
  * pipelineNameScore call already used for doesNameMatch) is self-referential for any candidate
  * whose own gate already requires a comparable name score, the exact defect
- * resolveBySoleExactNameMatch/resolveBySoleContactMatch both had to work around (see their own doc
- * comments) - reusing it here would silently readmit the same false positives those fixes removed.
+ * resolveByExactNameOnly/resolveBySoleContactMatch both had to work around (see their
+ * own doc comments) - reusing it here would silently readmit the same false positives those fixes
+ * removed.
  *
  * Reads doesNameMatch directly rather than reimplementing first/last-name plausibility here - an
  * earlier version of this function called isExactLastNameMatch + a fresh isFuzzyNamePartMatch call,
@@ -1950,7 +1913,7 @@ export function scoreCandidate(
  */
 function shouldEvictFromDiscovery(candidate: PipelineCandidate): boolean {
   if (candidate.scores.doesStateMatch?.pass !== false) return false;
-  return !isNameMatchCorroborated(candidate);
+  return candidate.scores.doesNameMatch?.pass !== true;
 }
 
 /**
@@ -2007,13 +1970,13 @@ export function resolveByPhoneTypoTolerance(): Stage {
   return async (state: PipelineState): Promise<PipelineState> => {
     const qualifying = [...state.candidates.values()].filter(
       (candidate) =>
-        isNameMatchCorroborated(candidate) &&
+        mergedScore(candidate).doesNameMatch?.pass === true &&
         mergedScore(candidate).hasComparableContactData?.pass !== false,
     );
     if (qualifying.length !== 1) return state;
 
     const candidate = qualifying[0];
-    if (!isExactNameMatch(candidate)) return state;
+    if (mergedScore(candidate).doesNameMatch?.value !== 100) return state;
 
     const score = mergedScore(candidate).phoneTypoToleranceScore;
     if (!score?.pass) return state;
@@ -2047,16 +2010,21 @@ export function resolveByPhoneTypoTolerance(): Stage {
  * single-vote resolution is deliberately not preserved via a special-cased fallback.
  */
 /**
- * The five atomic corroboration signals every sole-candidate RESOLVE stage draws from. Each is
- * independently sufficient on its own where used - state or city alone is deliberately NOT one of
- * these five, since neither is ever trusted alone (see stateAndCityOrZip/cityAndZip below).
+ * The atomic corroboration signals every sole-candidate RESOLVE stage draws from. Each is
+ * independently sufficient on its own where used - state or city ALONE is deliberately NOT one of
+ * these, since neither is ever trusted by itself (see stateAndCity below) - but a matching zip
+ * code IS trusted alone (see zipCodeMatches), since a 5-digit match is specific enough evidence on
+ * its own regardless of whether ACMS's state/city fields are present, absent, or even disagree
+ * (ACMS commonly has missing/unparseable city, state, or zip - see NormalizedTrustee's own address
+ * field being Partial).
  */
-function stateAndCityOrZip(candidate: PipelineCandidate): boolean {
+function stateAndCity(candidate: PipelineCandidate): boolean {
   const scores = mergedScore(candidate);
-  const stateOk = scores.doesStateMatch?.pass === true;
-  const cityOk = scores.doesCityMatch?.pass === true;
-  const zipOk = scores.doesZipCodeMatch?.pass === true;
-  return stateOk && (cityOk || zipOk);
+  return scores.doesStateMatch?.pass === true && scores.doesCityMatch?.pass === true;
+}
+
+function zipCodeMatches(candidate: PipelineCandidate): boolean {
+  return mergedScore(candidate).doesZipCodeMatch?.pass === true;
 }
 
 function cityAndZip(candidate: PipelineCandidate): boolean {
@@ -2102,7 +2070,7 @@ function hasAnyCorroboratingEvidence(candidate: PipelineCandidate): boolean {
 function exactNameMatchCandidates(state: PipelineState): PipelineCandidate[] {
   return [...state.candidates.values()].filter(
     (candidate) =>
-      isExactNameMatch(candidate) &&
+      mergedScore(candidate).doesNameMatch?.value === 100 &&
       mergedScore(candidate).hasComparableContactData?.pass !== false,
   );
 }
@@ -2119,342 +2087,142 @@ function resolveOnCandidate(
 }
 
 /**
- * Resolves a SOLE exact name match (calculateNameScore === 100) with no city/zip check required -
- * an exact name match is strong enough evidence on its own that it does not need geography to
- * corroborate it. Its own small stage rather than folded into the five atomic corroboration
- * stages, since a 100 nameScore is categorically stronger evidence than an 85 fuzzy match (last AND first name
- * both matched exactly, see calculateNameScore) and deserves its own simple, readable rule. Runs
- * BEFORE resolveName* (runPipeline makes it a no-op once this resolves) so an exact-name
- * candidate never has to clear the general geography-or-contact bar the fuzzier match tiers
- * require.
+ * Resolves a SOLE exact name match (doesNameMatch.value === 100) with no city/zip/contact
+ * corroboration required at all - the candidate list narrowing to exactly one unique exact-name
+ * match IS the corroborating signal. Runs dead LAST (see resolveStages() in
+ * trustee-match-pipeline-orchestrator.ts) - every other resolver gets first attempt at a
+ * candidate before this thin, single-signal evidence is trusted.
  *
- * Recovers the "office relocated within the state" shape - a real example had a candidate's ACMS
- * and CAMS addresses roughly 150 miles apart, same state, same real person, with no other
- * state/city/zip signal to fall back on.
+ * Gate is "exactly one candidate scores doesNameMatch === 100" (candidate list must be ==1), not
+ * "pool size === 1" - other candidates already correctly rejected on name are not evidence
+ * against the survivor.
  *
- * DOES still exclude a candidate with a GENUINE, comparable state disagreement (doesStateMatch,
- * not isStateNotConflicting - see below) - calculateNameScore's 100 can be reached with a middle
- * name that never actually agreed (scoreMiddleNamePart scores an absent middle name on either
- * side as a neutral 100, not "confirmed matching" - see its own doc comment), so a sole "exact"
- * name match is not proof this is the same person once a real, comparable state conflict is on
- * record.
- *
- * Deliberately gates on doesStateMatch, NOT isStateNotConflicting (an adversarial review of an
- * earlier version of this stage, 2026-09-29, found isStateNotConflicting was a no-op here in
- * practice): scoreStateNotConflicting's override condition is `nameScore >=
- * STATE_OVERRIDE_MIN_NAME_SCORE` (85), computed via the EXACT SAME pipelineNameScore call already
- * used for doesNameMatch - and this stage's own gate (exactNameMatchCandidates) already requires
- * doesNameMatch === 100, which always clears 85. So isStateNotConflicting was mathematically
- * guaranteed true for every candidate reaching this stage, regardless of any real state conflict.
- * doesStateMatch has no such override and is only ever recorded when BOTH sides have a comparable
- * state (scoreStateMatch's own "no record when data is unavailable" convention, matching
- * doesCityMatch/doesZipCodeMatch) - so `doesStateMatch?.pass !== false` correctly excludes ONLY a
- * genuine, comparable state disagreement, and correctly ignores a "no state data available" case
- * (doesStateMatch stays undefined, not false) rather than wrongly treating missing data as a
- * conflict. Confirmed via a live probe before fixing: ACMS "Robert A [Surname]" (CA) vs CAMS
- * "Robert A. [Surname]" (NY), matching middle initials, zero contact data - doesNameMatch=100,
- * doesStateMatch=false, isStateNotConflicting=true (the override self-certifying), record still
- * resolved under the old isStateNotConflicting-based gate.
- *
- * Runs before resolveBySoleExactNameMatchByStateThenGeo, which only ever sees what this stage
- * left behind (2+ exact-name candidates) - the two stages' gates are mutually exclusive by pool
- * size, so no candidate is ever considered by both.
+ * Also excludes a candidate with a GENUINE, comparable state disagreement (doesStateMatch, not
+ * isStateNotConflicting): doesStateMatch is only ever recorded when both sides have a comparable
+ * state (scoreStateMatch's "no record when data is unavailable" convention, matching
+ * doesCityMatch/doesZipCodeMatch), so `doesStateMatch?.pass !== false` excludes only a genuine,
+ * comparable disagreement and ignores "no state data available" rather than treating missing data
+ * as a conflict.
  */
-export function resolveBySoleExactNameMatch(): Stage {
+export function resolveByExactNameOnly(): Stage {
   return async (state: PipelineState): Promise<PipelineState> => {
     const exactMatches = exactNameMatchCandidates(state).filter(
       (candidate) => mergedScore(candidate).doesStateMatch?.pass !== false,
     );
     if (exactMatches.length !== 1) return state;
 
-    return resolveOnCandidate(state, exactMatches[0], 'resolveBySoleExactNameMatch');
+    return resolveOnCandidate(state, exactMatches[0], 'resolveByExactNameOnly');
   };
 }
 
 /**
- * Resolves an exact-name-match pool of TWO OR MORE candidates (resolveBySoleExactNameMatch's gate
- * already claims the sole-candidate case) by using state, then city-or-zip, as discriminators -
- * not requirements. The name alone cannot tell these candidates apart (the real "John Smith"
- * problem: two different real people can share both a name and, coincidentally, enough of a
- * candidate pool to co-occur here), so state agreement narrows the pool first: if exactly one
- * candidate's state agrees with the ACMS record, resolve on it. If two or more still agree on
- * state, narrow again by city-or-zip agreement; if exactly one survivor remains after THAT
- * narrowing, resolve on it. Otherwise (still ambiguous after narrowing, or narrowing eliminated
- * every candidate) this stage does not resolve, leaving the pool for resolveByComparativeCorroboration
- * to arbitrate.
- *
- * Runs after resolveByComparativeCorroboration (see resolveStages() in
- * trustee-match-pipeline-orchestrator.ts for the ordering rationale) - that stage's
- * contact-corroboration-or-full-geo-agreement signal is richer than the state/city/zip narrowing
- * here, so it gets first attempt at any pool this stage would also consider.
+ * Both name-quality tiers a geo-corroboration resolver checks, richest first - see
+ * resolveByStateAndCity/resolveByZipCode's own doc comments. Expressed as doesNameMatch.value
+ * (100/85), not the richer .quality field, since .value is the one part of that ScoreRecord with a
+ * real, checked type today - .quality lives in ScoreRecord's untyped catch-all (see matchName's own
+ * doc comment) and would need an unsafe cast to read back.
  */
-export function resolveBySoleExactNameMatchByStateThenGeo(): Stage {
-  return async (state: PipelineState): Promise<PipelineState> => {
-    const exactMatches = exactNameMatchCandidates(state);
-    if (exactMatches.length < 2) return state;
+const NAME_MATCH_QUALITY_TIERS = [100, 85] as const;
 
-    const stateNarrowed = exactMatches.filter(
-      (candidate) => mergedScore(candidate).doesStateMatch?.pass === true,
-    );
-    if (stateNarrowed.length === 1) {
-      return resolveOnCandidate(
-        state,
-        stateNarrowed[0],
-        'resolveBySoleExactNameMatchByStateThenGeo',
-      );
-    }
-    if (stateNarrowed.length < 2) return state;
-
-    const addressNarrowed = stateNarrowed.filter(
-      (candidate) =>
-        mergedScore(candidate).doesCityMatch?.pass === true ||
-        mergedScore(candidate).doesZipCodeMatch?.pass === true,
-    );
-    if (addressNarrowed.length === 1) {
-      return resolveOnCandidate(
-        state,
-        addressNarrowed[0],
-        'resolveBySoleExactNameMatchByStateThenGeo',
-      );
-    }
-
-    return state;
-  };
+function exactOrStrongNameMatchCandidates(
+  state: PipelineState,
+  nameMatchValue: number,
+): PipelineCandidate[] {
+  return [...state.candidates.values()].filter(
+    (candidate) => mergedScore(candidate).doesNameMatch?.value === nameMatchValue,
+  );
 }
 
 /**
- * !!! HIGH-RISK STAGE - resolves a SOLE exact name match (calculateNameScore === 100) even when the
- * ACMS source record has ZERO comparable contact data (doesAcmsTrusteeHaveAddressAndPhone === false
- * - no address, no city/state/zip, no real phone/email).
- *
- * - Every other RESOLVE stage excludes this population outright. This is the one deliberate
- *   exception, and only because no second signal is possible here - state, city, zip, phone, and
- *   email are structurally uncomparable, not merely mismatched.
- * - Residual risk: an exact name match is not proof of identity - a common name could belong to a
- *   different real person, and nothing here could catch that. The population this reaches carries
- *   an ACMS legacy.phone === '0' sentinel (see isBlankAcmsValue) and no address at all.
- * - Gate is "exactly one candidate scores doesNameMatch === 100", NOT "pool size === 1" - other
- *   candidates already correctly rejected on name are not evidence against the survivor.
- * - Runs dead last: every other RESOLVE stage already excludes no-ACMS-contact-data candidates, so
- *   placing this stage last costs no missed opportunity.
- */
-export function resolveBySoleExactNameMatchNoAcmsData(): Stage {
-  return async (state: PipelineState): Promise<PipelineState> => {
-    const exactMatches = [...state.candidates.values()].filter(
-      (candidate) =>
-        isExactNameMatch(candidate) &&
-        mergedScore(candidate).doesCamsTrusteeHaveAddressAndPhone?.pass !== false &&
-        mergedScore(candidate).doesAcmsTrusteeHaveAddressAndPhone?.pass === false,
-    );
-    if (exactMatches.length !== 1) return state;
-
-    return resolveOnCandidate(state, exactMatches[0], 'resolveBySoleExactNameMatchNoAcmsData');
-  };
-}
-
-/**
- * !!! HIGH-RISK STAGE - the fuzzy-name counterpart to resolveBySoleExactNameMatchNoAcmsData (read
- * that stage's doc comment first for the shared rationale). Resolves a SOLE candidate whose
- * lastName is an exact token match and whose firstName is a plausible fuzzy match (see
- * isFuzzyNamePartMatch - the SAME check resolveFuzzyFirstExactLastName*'s own inline fuzzy
- * first-name scoring uses), EVEN WHEN the ACMS source record has zero comparable contact data.
- *
- * - Root cause this stage closes: findSoleZeroNameScoreCandidateWithMatchingLastName's qualifying
- *   filter excludes a candidate whose ACMS side has no contact data at all, so a candidate this
- *   stage would resolve never even gets a fuzzy first-name score computed today - the JaroWinkler
- *   check is never reached, not merely failed.
- * - Excluded from this population, and nothing here should be relaxed for them: a plausible fuzzy
- *   first-name match where the ACMS record's real geo data actively disagrees (a genuine mismatch,
- *   not thin evidence); and a lastName common enough to have multiple same-surname candidates in
- *   the pool (correctly ambiguous on its own).
- * - Population is a handful of sole-candidate records, each with ACMS legacy.phone === '0' and no
- *   address at all.
- */
-export function resolveBySoleFuzzyFirstNameMatchNoAcmsData(): Stage {
-  return async (state: PipelineState): Promise<PipelineState> => {
-    const qualifying = [...state.candidates.values()].filter(
-      (candidate) =>
-        hasNoNameMatchEvidence(candidate) &&
-        mergedScore(candidate).doesCamsTrusteeHaveAddressAndPhone?.pass !== false &&
-        mergedScore(candidate).doesAcmsTrusteeHaveAddressAndPhone?.pass === false &&
-        isExactLastNameMatch(
-          state.sourceNormalized.lastNameUnreduced ?? state.sourceRaw.lastName ?? '',
-          candidate.camsRaw.lastName ?? '',
-        ),
-    );
-    if (qualifying.length !== 1) return state;
-
-    const candidate = qualifying[0];
-    const acmsFirst = state.sourceNormalized.firstName;
-    const camsFirst = candidate.camsNormalized.firstName;
-    if (!acmsFirst || !camsFirst) return state;
-    if (!isFuzzyNamePartMatch(acmsFirst.toLowerCase(), camsFirst.toLowerCase())) return state;
-
-    return resolveOnCandidate(state, candidate, 'resolveBySoleFuzzyFirstNameMatchNoAcmsData');
-  };
-}
-
-/**
- * !!! HIGH-RISK STAGE - the third and last-resort member of resolveRisky(), and the only one of
- * the three that reaches resolveOnCandidate with no state check and no corroboration check at
- * all.
- *
- * Rescues the common-surname shape findSoleZeroNameScoreCandidateWithMatchingLastName's OWN
- * "exactly one" gate structurally cannot reach: MULTIPLE candidates share the ACMS record's exact
- * lastName (so that gate never even fires), but addressDisqualifiers has already recorded a
- * STRONG whole-address disagreement (city AND state AND zip all actively disagree, never a
- * partial or merely-uncompared field - see scoreAddressDisqualifiers) for all but one of them.
- * Filtering those disqualified candidates out of the pool first can narrow a same-surname crowd
- * down to a single real candidate to check a fuzzy first-name match against.
- *
- * - Reads candidate.disqualifiers directly so the SPECIFIC disqualifying scorer this resolver
- *   treats as exclusionary is visible at the call site: the single combined 'addressDisqualifiers'
- *   scorer ONLY - a candidate disqualified for some other, future reason does NOT get excluded
- *   here, since that evidence has nothing to do with the address-narrowing this resolver performs.
- * - Residual risk: scoreAddressDisqualifiers only fires when city AND state AND zip ALL actively
- *   disagree - a candidate whose state conflicts but whose city and zip are blank or unparseable
- *   never gets the disqualifier, survives narrowing, and can win here on a fuzzy first name alone.
- */
-const ADDRESS_DISQUALIFYING_SCORER = 'addressDisqualifiers';
-
-export function resolveBySoleFuzzyFirstNameMatchAfterAddressNarrowing(): Stage {
-  return async (state: PipelineState): Promise<PipelineState> => {
-    const sameLastName = [...state.candidates.values()].filter(
-      (candidate) =>
-        hasNoNameMatchEvidence(candidate) &&
-        mergedScore(candidate).hasComparableContactData?.pass !== false &&
-        isExactLastNameMatch(
-          state.sourceNormalized.lastNameUnreduced ?? state.sourceRaw.lastName ?? '',
-          candidate.camsRaw.lastName ?? '',
-        ),
-    );
-    // A sole same-surname candidate is the prior gate's job, not this stage's.
-    if (sameLastName.length < 2) return state;
-
-    const addressNarrowed = sameLastName.filter(
-      (candidate) =>
-        candidate.disqualifiers.reduce(
-          (disqualifiedByAddress, d) =>
-            disqualifiedByAddress || d.scorer === ADDRESS_DISQUALIFYING_SCORER,
-          false,
-        ) === false,
-    );
-    if (addressNarrowed.length !== 1) return state;
-
-    const candidate = addressNarrowed[0];
-    const acmsFirst = state.sourceNormalized.firstName;
-    const camsFirst = candidate.camsNormalized.firstName;
-    if (!acmsFirst || !camsFirst) return state;
-    if (!isFuzzyNamePartMatch(acmsFirst.toLowerCase(), camsFirst.toLowerCase())) return state;
-
-    return resolveOnCandidate(
-      state,
-      candidate,
-      'resolveBySoleFuzzyFirstNameMatchAfterAddressNarrowing',
-    );
-  };
-}
-
-/**
- * Every RESOLVE stage too risky to run alongside the main sequence - each trusts evidence some
- * other stage deliberately treats as disqualifying (see each stage's own "!!! HIGH-RISK" doc
- * comment). Composed as their own ordered sub-pipeline (via runPipeline) and appended as ONE stage
- * at the very end of resolveStages() in trustee-match-pipeline-orchestrator.ts, not interleaved
- * with the main sequence:
- *   1. Every richer-evidence stage in the main sequence gets first attempt at any candidate a
- *      risky stage would also consider - NOTHING risky runs until NOTHING safe could resolve it.
- *   2. A reviewer auditing "what does this pipeline trust on thin evidence" has exactly one place
- *      to look.
- *   3. Adding, removing, or reordering a risky stage never touches resolveStages()' own ordering.
- * Ordered by DECREASING evidence strength internally: exact name match
- * (resolveBySoleExactNameMatchNoAcmsData) before fuzzy name match
- * (resolveBySoleFuzzyFirstNameMatchNoAcmsData), before geo-narrowed fuzzy name match
- * (resolveBySoleFuzzyFirstNameMatchAfterAddressNarrowing - weakest, since it trusts a pool
- * NARROWED by disqualifiers rather than a pool that was already sole to begin with).
- */
-export function resolveRisky(): Stage {
-  return async (state: PipelineState): Promise<PipelineState> => {
-    return runPipeline(state, [
-      resolveBySoleExactNameMatchNoAcmsData(),
-      resolveBySoleFuzzyFirstNameMatchNoAcmsData(),
-      resolveBySoleFuzzyFirstNameMatchAfterAddressNarrowing(),
-    ]);
-  };
-}
-
-/**
- * Builds a RESOLVE stage that finds the sole name-qualifying candidate (nameFilter selects which
- * name-quality tier: exact, fuzzy, or either) and resolves it on exactly one atomic corroboration
- * signal (predicate). Each stage built this way makes one narrow, legible claim - "this name tier
- * plus this one signal is sufficient" - instead of bundling several independently-sufficient
- * signals behind one compound name.
+ * Builds a RESOLVE stage that finds the sole name-qualifying candidate (doesNameMatch.pass ===
+ * true, either quality) and resolves it on exactly one atomic corroboration signal (predicate).
+ * Each stage built this way makes one narrow, legible claim - "a corroborated name plus this one
+ * signal is sufficient" - instead of bundling several independently-sufficient signals behind one
+ * compound name.
  */
 function resolveSoleQualifyingOn(
-  nameFilter: (candidate: PipelineCandidate) => boolean,
   predicate: (candidate: PipelineCandidate) => boolean,
   resolvedBy: string,
 ): Stage {
   return async (state: PipelineState): Promise<PipelineState> => {
     const qualifying = [...state.candidates.values()].filter(
       (candidate) =>
-        nameFilter(candidate) && mergedScore(candidate).hasComparableContactData?.pass !== false,
+        mergedScore(candidate).doesNameMatch?.pass === true &&
+        mergedScore(candidate).hasComparableContactData?.pass !== false,
     );
     if (qualifying.length !== 1) return state;
 
     const candidate = qualifying[0];
     if (!hasAnyCorroboratingEvidence(candidate)) return state;
-
-    const corroborated = predicate(candidate);
-    addScore(candidate, resolvedBy, {
-      value: corroborated ? 100 : 0,
-      threshold: 100,
-      pass: corroborated,
-    });
-    if (!corroborated) return state;
+    if (!predicate(candidate)) return state;
 
     return resolveOnCandidate(state, candidate, resolvedBy);
   };
 }
 
 /**
- * Five atomic stages, each resolving a sole name-qualifying candidate (nameScore >= 85, either
- * quality) on exactly one corroboration signal - split so each stage's own name states the
- * specific evidence it trusted, rather than "corroboration" in the abstract. Complements
- * resolveByComparativeCorroboration (multi-candidate) and resolveByPhoneTypoTolerance (narrower
- * phone-typo case): the general fallback for a sole, sub-100 name-qualifying candidate neither of
- * those two covers.
+ * Checks the exact-name tier first, then the strong (fuzzy) tier - richest evidence first, see
+ * NAME_MATCH_QUALITY_TIERS. At each tier: filter to candidates whose name matches at exactly that
+ * tier AND whose state and city both agree; if exactly one survives, resolve on it; if 2+ survive,
+ * the tier is genuinely ambiguous - stop entirely rather than falling through to the weaker tier,
+ * which could otherwise produce a false "unique" answer for the wrong reason (a WEAKER-tier
+ * candidate winning only because the real, stronger-tier collision was never re-examined).
  */
-export function resolveNameStateAndCityOrZip(): Stage {
-  return resolveSoleQualifyingOn(
-    isNameMatchCorroborated,
-    stateAndCityOrZip,
-    'resolveNameStateAndCityOrZip',
-  );
+export function resolveByStateAndCity(): Stage {
+  return async (state: PipelineState): Promise<PipelineState> => {
+    for (const nameMatchValue of NAME_MATCH_QUALITY_TIERS) {
+      const qualifying = exactOrStrongNameMatchCandidates(state, nameMatchValue).filter(
+        (candidate) => stateAndCity(candidate),
+      );
+      if (qualifying.length === 0) continue;
+      if (qualifying.length === 1) {
+        return resolveOnCandidate(state, qualifying[0], 'resolveByStateAndCity');
+      }
+      return state;
+    }
+    return state;
+  };
 }
 
-export function resolveNameCityAndZip(): Stage {
-  return resolveSoleQualifyingOn(isNameMatchCorroborated, cityAndZip, 'resolveNameCityAndZip');
+/**
+ * Same per-tier ambiguity check as resolveByStateAndCity, on the zip-alone signal instead - see
+ * that function's own doc comment for the tier-loop rationale.
+ */
+export function resolveByZipCode(): Stage {
+  return async (state: PipelineState): Promise<PipelineState> => {
+    for (const nameMatchValue of NAME_MATCH_QUALITY_TIERS) {
+      const qualifying = exactOrStrongNameMatchCandidates(state, nameMatchValue).filter(
+        (candidate) => zipCodeMatches(candidate),
+      );
+      if (qualifying.length === 0) continue;
+      if (qualifying.length === 1) {
+        return resolveOnCandidate(state, qualifying[0], 'resolveByZipCode');
+      }
+      return state;
+    }
+    return state;
+  };
 }
 
-export function resolveNameAddress(): Stage {
-  return resolveSoleQualifyingOn(
-    isNameMatchCorroborated,
-    addressCorroborates,
-    'resolveNameAddress',
-  );
+export function resolveByCityAndZipCode(): Stage {
+  return resolveSoleQualifyingOn(cityAndZip, 'resolveByCityAndZipCode');
 }
 
-export function resolveNamePhone(): Stage {
-  return resolveSoleQualifyingOn(isNameMatchCorroborated, phoneCorroborates, 'resolveNamePhone');
+export function resolveByAddress(): Stage {
+  return resolveSoleQualifyingOn(addressCorroborates, 'resolveByAddress');
 }
 
-export function resolveNameEmail(): Stage {
-  return resolveSoleQualifyingOn(isNameMatchCorroborated, emailCorroborates, 'resolveNameEmail');
+export function resolveByPhone(): Stage {
+  return resolveSoleQualifyingOn(phoneCorroborates, 'resolveByPhone');
+}
+
+export function resolveByEmailAddress(): Stage {
+  return resolveSoleQualifyingOn(emailCorroborates, 'resolveByEmailAddress');
 }
 
 /**
  * Resolves a SOLE fuzzy name match (doesNameMatch.pass === true but value < 100 - an exact 100
- * match is resolveBySoleExactNameMatch's job, run earlier) on state agreement alone, with no
+ * match is resolveByExactNameOnly's job, run earlier) on state agreement alone, with no
  * city/zip/contact corroboration at all - the one shape the five atomic corroboration stages above
  * deliberately refuse (a single vote - state alone - is too weak in isolation, see
  * resolveSoleQualifyingOn's own doc comment). Narrower than reopening that question: this stage
@@ -2471,20 +2239,18 @@ export function resolveNameEmail(): Stage {
  */
 export function resolveBySoleFuzzyNameMatchAndState(): Stage {
   return async (state: PipelineState): Promise<PipelineState> => {
-    const qualifying = [...state.candidates.values()].filter(
-      (candidate) =>
-        isFuzzyNameMatch(candidate) &&
-        mergedScore(candidate).hasComparableContactData?.pass !== false,
-    );
+    const qualifying = [...state.candidates.values()].filter((candidate) => {
+      const nameMatch = mergedScore(candidate).doesNameMatch;
+      return (
+        nameMatch?.pass === true &&
+        nameMatch.value !== 100 &&
+        mergedScore(candidate).hasComparableContactData?.pass !== false
+      );
+    });
     if (qualifying.length !== 1) return state;
 
     const candidate = qualifying[0];
     const stateOnly = mergedScore(candidate).doesStateMatch?.pass === true;
-    addScore(candidate, 'resolveBySoleFuzzyNameMatchAndState', {
-      value: stateOnly ? 100 : 0,
-      threshold: 100,
-      pass: stateOnly,
-    });
     if (!stateOnly) return state;
 
     return {
@@ -2496,27 +2262,4 @@ export function resolveBySoleFuzzyNameMatchAndState(): Stage {
       },
     };
   };
-}
-
-/**
- * Whether two lastName strings are the SAME surname, comparing marker-stripped (via
- * stripAdministrativeMarkers) but NOT firstLastNameToken-reduced text, symmetrically on both
- * sides.
- *
- * - Deliberately declines firstLastNameToken's token reduction: reducing both sides first makes
- *   "Smith" and "Smith-Jones" (a genuinely different, unrelated surname truncated to its first
- *   hyphen segment) collide as the SAME candidate - a real, structurally different surname must
- *   never be conflated with another just because they share a reduced token.
- * - Still applies marker-stripping so a marker-bearing ACMS surname (e.g. "DOE (UST)") clears the
- *   gate rather than being permanently excluded by administrative noise that was never part of
- *   anyone's real name.
- * - Applied to BOTH sides, not just the ACMS side, to keep the comparison symmetric - a CAMS-side
- *   lastName never legitimately carries these ACMS export markers, so stripping is a no-op there
- *   in practice, but the alternative (stripping only one side) would compare two
- *   differently-reduced strings.
- */
-function isExactLastNameMatch(acmsLastName: string, camsLastName: string): boolean {
-  const acmsLast = stripAdministrativeMarkers(acmsLastName).trim().toLowerCase();
-  const camsLast = stripAdministrativeMarkers(camsLastName).trim().toLowerCase();
-  return acmsLast.length > 0 && acmsLast === camsLast;
 }
