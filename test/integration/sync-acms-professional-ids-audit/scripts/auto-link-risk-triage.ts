@@ -14,12 +14,9 @@
  *       record resolved on non-name evidence alone).
  *   B - doesNameMatch missing entirely (resolved via matchTrusteeByName's exact/fuzzy tier
  *       instead, which never runs the discrete-field scorer - a different code path worth
- *       separate scrutiny). This path also never populates state.candidates (see
- *       trustee-match-pipeline-orchestrator.ts's resolveRisky no-ACMS-data carve-out), so this
- *       tier's camsName column is always blank in the suspect CSV - look the winning trusteeId up
- *       in the trustees fixture directly if the name is needed (manually verified clean for the
- *       2026-09-22 staging export: every record here is an exact or near-exact full-name string
- *       match).
+ *       separate scrutiny). This path never populates state.candidates, so this tier's camsName
+ *       column is always blank in the suspect CSV - look the winning trusteeId up in the trustees
+ *       fixture directly if the name is needed.
  *   C - resolved via one of the fuzzy/last-resort RESOLVE stages (see RISKY_RESOLVERS below) -
  *       nickname/typo-tolerant matching, not an exact hit.
  *   D - doesNameMatch scored exactly 85 - the pass/fail threshold boundary, weakest passing score.
@@ -48,7 +45,7 @@ type ReplayRecord = {
     fullName?: string;
     legacy?: { address1?: string; cityStateZipCountry?: string; phone?: string };
   };
-  match: { trusteeId: string; score: ScoreByScorer } | null;
+  match: { trusteeId: string; score: ScoreByScorer; resolvedBy: string } | null;
   candidates: {
     camsRaw: {
       trusteeId: string;
@@ -69,9 +66,9 @@ type RiskTier =
   | 'E-no-phone-corroboration'
   | 'F-strong';
 
-function riskTier(score: ScoreByScorer): RiskTier {
+function riskTier(score: ScoreByScorer, resolvedBy: string): RiskTier {
   const nameScore = score.doesNameMatch?.value;
-  const riskyResolver = RISKY_RESOLVERS.find((r) => r in score);
+  const riskyResolver = RISKY_RESOLVERS.find((r) => r === resolvedBy);
 
   if (nameScore === 0) return 'A-zero-name-score';
   if (nameScore === undefined) return 'B-no-discrete-name-score';
@@ -147,8 +144,8 @@ function main(): void {
     const rec: ReplayRecord = JSON.parse(line);
     if (!rec.match) continue;
 
-    const { score } = rec.match;
-    const tier = riskTier(score);
+    const { score, resolvedBy } = rec.match;
+    const tier = riskTier(score, resolvedBy);
     tierCounts[tier]++;
     if (tier === 'F-strong') continue;
 
