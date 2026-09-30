@@ -60,11 +60,12 @@ describe('buildKeyDatesInputFromOriginal', () => {
     lastCompensationStudy: '2024-06-01',
     bondIssuedDate: '2022-06-01',
     bondRenewalDate: '2025-06-01',
-    // Chapter 7 Panel/Case-by-Case-domain fields: a Ch13 Standing document
-    // should never legitimately have these set, but a document could still
-    // carry stale values; buildKeyDatesInputFromOriginal must hard-null them
-    // regardless of what's present here. tprCompletionYear/Status is NOT in
-    // this group -- it's owned by Ch13 Standing's own TPR form.
+    // Unowned-by-this-helper's-every-caller fields: buildKeyDatesInputFromOriginal must
+    // hard-null all of these regardless of what's present here, since only
+    // Chapter13StandingAuditForm owns ch13AuditCompletionYear/Status (and immediately
+    // overrides the nulled value after calling this helper), while the rest belong
+    // entirely to other appointment domains. tprCompletionYear/Status is NOT in this
+    // group -- it's owned by Ch13 Standing's own TPR form.
     auditCompletionYear: 2020,
     auditCompletionStatus: 'CLOSED',
     tprCompletionYear: 2021,
@@ -117,8 +118,8 @@ describe('buildKeyDatesInputFromOriginal', () => {
       tirCompletionStatus: null,
       annualReportCompletionYear: null,
       annualReportCompletionStatus: null,
-      ch13AuditCompletionYear: 2026,
-      ch13AuditCompletionStatus: 'COMPLETE',
+      ch13AuditCompletionYear: null,
+      ch13AuditCompletionStatus: null,
     });
   });
 
@@ -129,6 +130,13 @@ describe('buildKeyDatesInputFromOriginal', () => {
     expect(result.auditCompletionStatus).toBeNull();
     expect(result.tirCompletionYear).toBeNull();
     expect(result.tirCompletionStatus).toBeNull();
+  });
+
+  test('hard-nulls ch13AuditCompletionYear/Status by default, since only Chapter13StandingAuditForm owns it (see cams-og9ys.11)', () => {
+    const result = buildKeyDatesInputFromOriginal(ids.trusteeId, ids.appointmentId, fullOriginal);
+
+    expect(result.ch13AuditCompletionYear).toBeNull();
+    expect(result.ch13AuditCompletionStatus).toBeNull();
   });
 
   test('carries tprCompletionYear/Status forward, since Chapter 13 Standing owns these via its own TPR form', () => {

@@ -1246,6 +1246,29 @@ describe('normalizeTrusteeUpcomingKeyDates', () => {
     const result = normalizeTrusteeUpcomingKeyDates(doc);
     expect(result).toEqual(doc);
   });
+
+  test.each([
+    ['ch13AuditCompletionStatus', 'Complete', 'COMPLETE'],
+    ['ch13AuditCompletionStatus', 'Incomplete', 'INCOMPLETE'],
+    ['tprCompletionStatus', 'complete', 'COMPLETE'],
+    ['tirCompletionStatus', 'incomplete', 'INCOMPLETE'],
+    ['annualReportCompletionStatus', 'Complete', 'COMPLETE'],
+  ])('upper-cases a legacy-cased %s value (%s -> %s)', (field, stored, expected) => {
+    const doc = buildDoc({ [field]: stored } as Partial<TrusteeUpcomingKeyDates>);
+
+    const result = normalizeTrusteeUpcomingKeyDates(doc) as Record<string, unknown>;
+
+    expect(result[field]).toBe(expected);
+  });
+
+  test('does not touch auditCompletionStatus, a different (CLOSED/NOT_CLOSED) enum', () => {
+    const doc = buildDoc();
+    (doc as Record<string, unknown>).auditCompletionStatus = 'closed';
+
+    const result = normalizeTrusteeUpcomingKeyDates(doc) as Record<string, unknown>;
+
+    expect(result.auditCompletionStatus).toBe('closed');
+  });
 });
 
 describe('validateTprDuePair', () => {

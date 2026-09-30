@@ -651,6 +651,18 @@ export const SCALAR_FIELDS: ScalarField[] = [
 ];
 
 /**
+ * The four fields typed as CompletionStatus ('COMPLETE' | 'INCOMPLETE').
+ * auditCompletionStatus is deliberately excluded -- it's a different enum
+ * ('CLOSED' | 'NOT_CLOSED').
+ */
+const COMPLETION_STATUS_FIELDS = [
+  'tprCompletionStatus',
+  'tirCompletionStatus',
+  'annualReportCompletionStatus',
+  'ch13AuditCompletionStatus',
+] as const;
+
+/**
  * TrusteeUpcomingKeyDates declares its generic fields optional (absence =
  * undefined), but some stored documents -- written before the current
  * write path's null-skipping guarantee existed, or via migration/seed --
@@ -659,6 +671,14 @@ export const SCALAR_FIELDS: ScalarField[] = [
  * (Api2.getUpcomingKeyDates) means every consumer downstream of the fetch
  * can trust the documented optional shape without checking `== null`
  * everywhere individually.
+ *
+ * Also upper-cases any CompletionStatus field stored in a legacy casing
+ * (e.g. 'Complete'/'Incomplete', written before commit 296b5fd5e unified
+ * ch13AuditCompletionStatus on the 'COMPLETE'/'INCOMPLETE' casing everywhere
+ * else already used). Normalizing here means callers never need to worry
+ * about casing, and a pre-existing document with a stale-cased value
+ * self-heals into the canonical casing the moment it's fetched, without a
+ * one-time migration (see cams-og9ys.10).
  */
 export function normalizeTrusteeUpcomingKeyDates(
   doc: TrusteeUpcomingKeyDates | null,
@@ -668,6 +688,12 @@ export function normalizeTrusteeUpcomingKeyDates(
   for (const field of [...DATE_FIELDS, ...TEXT_FIELDS, ...SCALAR_FIELDS]) {
     if (normalized[field] === null) {
       delete normalized[field];
+    }
+  }
+  for (const field of COMPLETION_STATUS_FIELDS) {
+    const value = normalized[field];
+    if (typeof value === 'string' && value.toUpperCase() !== value) {
+      normalized[field] = value.toUpperCase();
     }
   }
   return normalized as TrusteeUpcomingKeyDates;
