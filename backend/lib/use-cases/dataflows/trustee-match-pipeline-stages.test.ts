@@ -827,7 +827,36 @@ describe('scoreCandidate - name-match facet', () => {
     expect(mergedScore(t2)).toMatchObject({ doesNameMatch: { pass: false } });
   });
 
-  test("downgrades to 85 when a bare middle initial doesn't match the other side's leading character", async () => {
+  // A CAMS middle name of more than one token glues into a single token, so a source middle
+  // initial taken from a later token has nothing to compare against unless the tokens are kept.
+  test('matches a middle initial against any token of a multi-token middle name', async () => {
+    const state = await normalizeAcmsSourceName()(
+      createInitialState(
+        makeDxtrTrustee({ firstName: 'Kathy', middleName: 'P', lastName: 'Coryell' }),
+      ),
+    );
+    const candidate = addCandidate(
+      state,
+      projectTrustee(
+        makeTrustee({
+          trusteeId: 't1',
+          firstName: 'Kathryn',
+          middleName: 'L. Pry',
+          lastName: 'Coryell',
+        }),
+      ),
+      'test',
+    );
+
+    scoreCandidate(state.sourceNormalized, candidate);
+
+    expect(candidate.camsNormalized.middleNameAlternates).toEqual(['l', 'pry']);
+    expect(mergedScore(candidate)).toMatchObject({
+      doesNameMatch: { pass: true, quality: 'strong' },
+    });
+  });
+
+  test("downgrades to strong when a bare middle initial doesn't match the other side's leading character", async () => {
     const state = await normalizeAcmsSourceName()(
       createInitialState(makeDxtrTrustee({ firstName: 'John', middleName: 'T', lastName: 'Doe' })),
     );
@@ -847,9 +876,9 @@ describe('scoreCandidate - name-match facet', () => {
   });
 
   // An exact first name plus a matching surname outweighs a conflicting middle initial - the least
-  // reliable name part in this data. The match drops to 85 rather than failing outright, so a
+  // reliable name part in this data. The match drops to 'strong' rather than failing outright, so a
   // resolver needing corroboration can still use it while an exact-only resolver declines.
-  test('downgrades to 85 when two DIFFERENT bare middle initials appear on both sides', async () => {
+  test('downgrades to strong when two DIFFERENT bare middle initials appear on both sides', async () => {
     const state = await normalizeAcmsSourceName()(
       createInitialState(
         makeDxtrTrustee({ firstName: 'Michael', middleName: 'P', lastName: 'Wexford' }),
