@@ -45,7 +45,14 @@ if [[ -z "$relayJobBlock" ]]; then
   exit 1
 fi
 
-if grep -q 'secrets\.' <<< "$relayJobBlock"; then
+# Also catches `github.token`, GitHub's ambient token context object -- a
+# second way to register a credential for this job's masking-guard scope
+# that doesn't use `secrets.*` syntax at all (flagged in PR review; matching
+# only `secrets\.` would miss it). Deliberately NOT a broader word-list
+# match (e.g. bare "token"/"secret"/"key") -- that would false-positive on
+# ordinary comments mentioning those words with no actual credential
+# reference, making the guard noisy enough to route around.
+if grep -Eqi 'secrets\.|github\.token' <<< "$relayJobBlock"; then
   echo "ERROR: azure-remove-branch.yml's 'relay' job now references a secret." >&2
   echo "This job's ENTIRE purpose is to have nothing registered for GitHub's" >&2
   echo "'may contain secret' output-masking guard to match against -- adding" >&2
