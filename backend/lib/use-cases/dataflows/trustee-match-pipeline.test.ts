@@ -122,12 +122,12 @@ describe('addCandidate', () => {
     const trustee = makeTrustee({ trusteeId: 't1' });
 
     const first = addCandidate(state, projectTrustee(trustee), 'test');
-    addScore(first, 'doesNameMatch', { value: 100, threshold: 85, pass: true, quality: 'exact' });
+    addScore(first, 'doesNameMatch', { pass: true, quality: 'exact' });
     const second = addCandidate(state, projectTrustee(trustee), 'test');
 
     expect(second).toBe(first);
     expect(second.scores).toEqual({
-      doesNameMatch: { value: 100, threshold: 85, pass: true, quality: 'exact' },
+      doesNameMatch: { pass: true, quality: 'exact' },
     });
     expect(state.candidates.size).toBe(1);
   });
@@ -155,19 +155,14 @@ describe('promoteCandidate', () => {
       projectTrustee(makeTrustee({ trusteeId: 't1' })),
       'test',
     );
-    addScore(innerCandidate, 'doesNameMatch', {
-      value: 100,
-      threshold: 85,
-      pass: true,
-      quality: 'exact',
-    });
+    addScore(innerCandidate, 'doesNameMatch', { pass: true, quality: 'exact' });
 
     const outerState = createInitialState(makeDxtrTrustee());
     const promoted = promoteCandidate(outerState, innerCandidate);
 
     expect(outerState.candidates.get('t1')).toBe(promoted);
     expect(promoted.scores).toEqual({
-      doesNameMatch: { value: 100, threshold: 85, pass: true, quality: 'exact' },
+      doesNameMatch: { pass: true, quality: 'exact' },
     });
   });
 
@@ -178,7 +173,7 @@ describe('promoteCandidate', () => {
       projectTrustee(makeTrustee({ trusteeId: 't1' })),
       'test',
     );
-    addScore(outerCandidate, 'doesNameMatch', { value: 50, threshold: 85, pass: false });
+    addScore(outerCandidate, 'doesNameMatch', { pass: false });
 
     const innerState = createInitialState(makeDxtrTrustee());
     const innerCandidate = addCandidate(
@@ -186,18 +181,13 @@ describe('promoteCandidate', () => {
       projectTrustee(makeTrustee({ trusteeId: 't1' })),
       'test',
     );
-    addScore(innerCandidate, 'doesNameMatch', {
-      value: 100,
-      threshold: 85,
-      pass: true,
-      quality: 'exact',
-    });
+    addScore(innerCandidate, 'doesNameMatch', { pass: true, quality: 'exact' });
 
     const result = promoteCandidate(outerState, innerCandidate);
 
     expect(result).toBe(outerCandidate);
     expect(result.scores).toEqual({
-      doesNameMatch: { value: 50, threshold: 85, pass: false },
+      doesNameMatch: { pass: false },
     });
   });
 
@@ -232,21 +222,11 @@ describe('mergedScore', () => {
     const state = createInitialState(makeDxtrTrustee());
     const candidate = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })), 'test');
 
-    addScore(candidate, 'doesNameMatch', {
-      value: 0,
-      threshold: 85,
-      pass: false,
-      quality: 'strong',
-    });
-    addScore(candidate, 'doesNameMatch', {
-      value: 100,
-      threshold: 85,
-      pass: true,
-      quality: 'exact',
-    });
+    addScore(candidate, 'doesNameMatch', { pass: false, quality: 'strong' });
+    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'exact' });
 
     expect(mergedScore(candidate)).toEqual({
-      doesNameMatch: { value: 100, threshold: 85, pass: true, quality: 'exact' },
+      doesNameMatch: { pass: true, quality: 'exact' },
     });
   });
 
@@ -254,34 +234,24 @@ describe('mergedScore', () => {
     const state = createInitialState(makeDxtrTrustee());
     const candidate = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })), 'test');
 
-    addScore(candidate, 'doesNameMatch', {
-      value: 100,
-      threshold: 85,
-      pass: true,
-      quality: 'exact',
-    });
-    addScore(candidate, 'doesStateMatch', { value: 0, threshold: 100, pass: false });
+    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'exact' });
+    addScore(candidate, 'doesStateMatch', { pass: false });
 
     expect(mergedScore(candidate)).toEqual({
-      doesNameMatch: { value: 100, threshold: 85, pass: true, quality: 'exact' },
-      doesStateMatch: { value: 0, threshold: 100, pass: false },
+      doesNameMatch: { pass: true, quality: 'exact' },
+      doesStateMatch: { pass: false },
     });
   });
 
   test('does not mutate the underlying scores map', () => {
     const state = createInitialState(makeDxtrTrustee());
     const candidate = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })), 'test');
-    addScore(candidate, 'doesNameMatch', {
-      value: 100,
-      threshold: 85,
-      pass: true,
-      quality: 'exact',
-    });
+    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'exact' });
 
     mergedScore(candidate);
 
     expect(candidate.scores).toEqual({
-      doesNameMatch: { value: 100, threshold: 85, pass: true, quality: 'exact' },
+      doesNameMatch: { pass: true, quality: 'exact' },
     });
   });
 });
@@ -512,12 +482,7 @@ describe('serializeState', () => {
     const candidate = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })), 'test');
     candidate.camsNormalized.name = 'john doe';
     normalize(candidate.memo, 'lastNameToken', 'John Doe', () => 'doe');
-    addScore(candidate, 'doesNameMatch', {
-      value: 100,
-      threshold: 85,
-      pass: true,
-      quality: 'exact',
-    });
+    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'exact' });
 
     const serialized = serializeState(state);
     const roundTripped = JSON.parse(JSON.stringify(serialized));
@@ -542,7 +507,7 @@ describe('serializeState', () => {
             name: 'john doe',
           },
           memo: { lastNameToken: [{ key: 'John Doe', value: 'doe' }] },
-          scores: { doesNameMatch: { value: 100, threshold: 85, pass: true, quality: 'exact' } },
+          scores: { doesNameMatch: { pass: true, quality: 'exact' } },
           disqualifiers: [],
           origin: 'test',
         },

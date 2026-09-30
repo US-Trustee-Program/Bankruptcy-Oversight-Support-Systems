@@ -218,7 +218,10 @@ function findBestCandidate(
   return { trusteeId: best.trustee.trusteeId, trusteeName: best.trustee.name, scores: best.scores };
 }
 
-function auditNonLinkedRecord(record: TrusteeProfessionalId, trustees: Trustee[]): MissedMatchResult {
+function auditNonLinkedRecord(
+  record: TrusteeProfessionalId,
+  trustees: Trustee[],
+): MissedMatchResult {
   const acmsTrustee = record.evidence.sourceRaw;
   const best = findBestCandidate(acmsTrustee, trustees);
 

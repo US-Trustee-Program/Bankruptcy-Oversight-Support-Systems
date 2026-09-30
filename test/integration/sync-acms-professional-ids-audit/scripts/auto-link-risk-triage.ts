@@ -59,21 +59,21 @@ type ReplayRecord = {
 const RISKY_RESOLVERS = ['resolveBySoleFuzzyNameMatchAndState'] as const;
 
 type RiskTier =
-  | 'A-zero-name-score'
+  | 'A-name-rejected'
   | 'B-no-discrete-name-score'
   | `C-risky-resolver:${(typeof RISKY_RESOLVERS)[number]}`
-  | 'D-name-score-85-threshold'
+  | 'D-weak-name-fuzzy-surname'
   | 'E-no-phone-corroboration'
   | 'F-strong';
 
 function riskTier(score: ScoreByScorer, resolvedBy: string): RiskTier {
-  const nameScore = score.doesNameMatch?.value;
+  const nameMatch = score.doesNameMatch;
   const riskyResolver = RISKY_RESOLVERS.find((r) => r === resolvedBy);
 
-  if (nameScore === 0) return 'A-zero-name-score';
-  if (nameScore === undefined) return 'B-no-discrete-name-score';
+  if (nameMatch === undefined) return 'B-no-discrete-name-score';
+  if (!nameMatch.pass) return 'A-name-rejected';
   if (riskyResolver) return `C-risky-resolver:${riskyResolver}`;
-  if (nameScore === 85) return 'D-name-score-85-threshold';
+  if (nameMatch.quality === 'weak') return 'D-weak-name-fuzzy-surname';
   if (!score.contactCorroborationPhone) return 'E-no-phone-corroboration';
   return 'F-strong';
 }
@@ -84,7 +84,8 @@ function riskTier(score: ScoreByScorer, resolvedBy: string): RiskTier {
  * contactAgrees, the shape most likely to be two different people sharing only a city/state. */
 function isGeoOnlyCorroboration(score: ScoreByScorer): boolean {
   const contactPass =
-    score.contactCorroborationAddress?.pass === true || score.contactCorroborationPhone?.pass === true;
+    score.contactCorroborationAddress?.pass === true ||
+    score.contactCorroborationPhone?.pass === true;
   const geoPass = score.doesCityMatch?.pass === true || score.doesZipCodeMatch?.pass === true;
   return geoPass && !contactPass;
 }
@@ -97,7 +98,11 @@ function csvEscape(value: string | number | undefined): string {
   return s;
 }
 
-function writeCsv(filePath: string, columns: string[], rows: Record<string, string | number | undefined>[]): void {
+function writeCsv(
+  filePath: string,
+  columns: string[],
+  rows: Record<string, string | number | undefined>[],
+): void {
   const lines = [columns.join(',')];
   for (const row of rows) {
     lines.push(columns.map((col) => csvEscape(row[col])).join(','));
@@ -113,7 +118,10 @@ function camsAddressString(address?: {
   zipCode?: string;
 }): string {
   if (!address) return '';
-  return [address.address1, [address.city, address.state, address.zipCode].filter(Boolean).join(' ')]
+  return [
+    address.address1,
+    [address.city, address.state, address.zipCode].filter(Boolean).join(' '),
+  ]
     .filter(Boolean)
     .join(', ');
 }
@@ -129,10 +137,10 @@ function main(): void {
     .filter((line) => line.trim().length > 0);
 
   const tierCounts: Record<RiskTier, number> = {
-    'A-zero-name-score': 0,
+    'A-name-rejected': 0,
     'B-no-discrete-name-score': 0,
     'C-risky-resolver:resolveBySoleFuzzyNameMatchAndState': 0,
-    'D-name-score-85-threshold': 0,
+    'D-weak-name-fuzzy-surname': 0,
     'E-no-phone-corroboration': 0,
     'F-strong': 0,
   };
@@ -159,9 +167,9 @@ function main(): void {
       trusteeId: rec.match.trusteeId,
       acmsFullName: rec.sourceRaw.fullName ?? '',
       camsName: camsRaw?.name ?? '',
-      nameScore: score.doesNameMatch?.value,
-      addressScore: score.contactCorroborationAddress?.value,
-      phoneScore: score.contactCorroborationPhone?.value,
+      nameQuality: score.doesNameMatch?.quality as string | undefined,
+      addressScore: score.contactCorroborationAddress?.value as number | undefined,
+      phoneScore: score.contactCorroborationPhone?.value as number | undefined,
       acmsAddress: legacy.address1 ?? '',
       acmsCityStateZip: legacy.cityStateZipCountry ?? '',
       acmsPhone: legacy.phone ?? '',
@@ -169,7 +177,7 @@ function main(): void {
       camsPhone: camsRaw?.phone?.number ?? '',
     });
 
-    if (tier === 'A-zero-name-score' && isGeoOnlyCorroboration(score)) {
+    if (tier === 'A-name-rejected' && isGeoOnlyCorroboration(score)) {
       geoOnlyRows.push({
         acmsProfessionalId: rec.acmsProfessionalId,
         trusteeId: rec.match.trusteeId,
@@ -183,8 +191,8 @@ function main(): void {
         camsState: camsRaw?.address?.state ?? '',
         camsZip: camsRaw?.address?.zipCode ?? '',
         camsPhone: camsRaw?.phone?.number ?? '',
-        addressScore: score.contactCorroborationAddress?.value,
-        phoneScore: score.contactCorroborationPhone?.value,
+        addressScore: score.contactCorroborationAddress?.value as number | undefined,
+        phoneScore: score.contactCorroborationPhone?.value as number | undefined,
       });
     }
   }
@@ -204,7 +212,7 @@ function main(): void {
       'trusteeId',
       'acmsFullName',
       'camsName',
-      'nameScore',
+      'nameQuality',
       'addressScore',
       'phoneScore',
       'acmsAddress',

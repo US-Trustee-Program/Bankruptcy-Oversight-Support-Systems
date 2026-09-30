@@ -28,7 +28,18 @@ const MIN_TOKEN_LENGTH = 3;
 
 // Common suffixes/role markers that shouldn't count as a discriminating name token.
 const STOPWORDS = new Set([
-  'jr', 'sr', 'ii', 'iii', 'iv', 'tr', 'trustee', 'inc', 'esq', 'not', 'use', 'do',
+  'jr',
+  'sr',
+  'ii',
+  'iii',
+  'iv',
+  'tr',
+  'trustee',
+  'inc',
+  'esq',
+  'not',
+  'use',
+  'do',
 ]);
 
 type DecodedVariant = {
@@ -93,9 +104,7 @@ function tokenize(fullName: string): string[] {
     .replace(/[-']/g, ' ')
     .split(/\s+/)
     .filter(Boolean);
-  return [...new Set(raw)].filter(
-    (t) => t.length >= MIN_TOKEN_LENGTH && !STOPWORDS.has(t),
-  );
+  return [...new Set(raw)].filter((t) => t.length >= MIN_TOKEN_LENGTH && !STOPWORDS.has(t));
 }
 
 function trusteeSearchableText(trustee: Trustee): string {
@@ -157,15 +166,15 @@ function run() {
 
     for (const token of tokens) {
       const matchingIds = new Set(
-        trustees
-          .filter((t) => trusteeSearchableText(t).includes(token))
-          .map((t) => t.trusteeId),
+        trustees.filter((t) => trusteeSearchableText(t).includes(token)).map((t) => t.trusteeId),
       );
       candidateSet = candidateSet === null ? matchingIds : intersect(candidateSet, matchingIds);
       if (candidateSet.size === 0) break; // no point continuing once intersection is empty
     }
 
-    const intersection = [...(candidateSet ?? [])].map((id) => trusteeById.get(id)!).filter(Boolean);
+    const intersection = [...(candidateSet ?? [])]
+      .map((id) => trusteeById.get(id)!)
+      .filter(Boolean);
     results.push({
       acmsFullName: acmsTrustee.fullName,
       acmsProfessionalId: record.acmsProfessionalId,
@@ -188,7 +197,9 @@ function run() {
   console.log();
 
   const exactlyOne = results.filter((r) => r.intersection.length === 1);
-  console.log(`=== Records where token intersection yields EXACTLY ONE candidate: ${exactlyOne.length} ===\n`);
+  console.log(
+    `=== Records where token intersection yields EXACTLY ONE candidate: ${exactlyOne.length} ===\n`,
+  );
   for (const r of exactlyOne.slice(0, 40)) {
     console.log(
       `  "${r.acmsFullName}" (${r.acmsProfessionalId}) tokens=[${r.tokens.join(', ')}] -> "${r.intersection[0].name}" (${r.intersection[0].trusteeId})`,
@@ -197,10 +208,14 @@ function run() {
   if (exactlyOne.length > 40) console.log(`  ... and ${exactlyOne.length - 40} more`);
 
   const smallSet = results.filter((r) => r.intersection.length >= 2 && r.intersection.length <= 4);
-  console.log(`\n=== Records with a SMALL (2-4) intersection - still narrower than nothing: ${smallSet.length} ===\n`);
+  console.log(
+    `\n=== Records with a SMALL (2-4) intersection - still narrower than nothing: ${smallSet.length} ===\n`,
+  );
   for (const r of smallSet.slice(0, 20)) {
     const names = r.intersection.map((t) => t.name).join(' | ');
-    console.log(`  "${r.acmsFullName}" (${r.acmsProfessionalId}) tokens=[${r.tokens.join(', ')}] -> ${names}`);
+    console.log(
+      `  "${r.acmsFullName}" (${r.acmsProfessionalId}) tokens=[${r.tokens.join(', ')}] -> ${names}`,
+    );
   }
   if (smallSet.length > 20) console.log(`  ... and ${smallSet.length - 20} more`);
 }

@@ -63,32 +63,27 @@ export function foldKleene<T>(
 }
 
 /**
- * One scorer's contribution to a candidate's evaluation history. `value` is always
- * "higher is better" on a 0-100 scale - a scorer whose natural signal runs the other way (e.g.
- * phoneDigitDistance) converts to this convention. `threshold` is the cutoff active when this
- * record was produced, persisted alongside it so a later threshold retune doesn't silently
- * reinterpret an old record. `pass` is `value >= threshold`, computed once at scoring time.
+ * One scorer's contribution to a candidate's evaluation history. `pass` is the whole record for a
+ * scorer whose comparison is a plain yes/no; one with more to say extends it (see MeasuredScore,
+ * and doesNameMatch's own quality field in trustee-match-pipeline-stages.ts).
  */
-export type ScoreRecord = {
-  value: number;
-  threshold: number;
-  pass: boolean;
-} & Record<string, unknown>;
+export type ScoreRecord = { pass: boolean } & Record<string, unknown>;
+
+/** A scorer comparing on a continuous scale rather than a yes/no. `value` is always "higher is
+ * better" - a signal that runs the other way (e.g. phoneDigitDistance) converts to this
+ * convention. `threshold` is the cutoff active when the record was produced, so a later retune
+ * cannot silently reinterpret it. */
+export type MeasuredScore = ScoreRecord & { value: number; threshold: number };
 
 /**
  * A candidate's full evaluation history, keyed by scorer name (see addScore). A scorer with more
  * than one independent signal (e.g. address and phone) uses multiple keys rather than bundling
- * unrelated value/threshold/pass triples into one entry.
+ * unrelated results into one entry.
  *
- * A scorer whose comparison is a
- * KleeneBoolean represents NEUTRAL by never calling addScore for that key at all, not by writing a
- * ScoreRecord with some neutral-flavored value. The key's ABSENCE from this map, not any field
- * inside a present ScoreRecord, is what carries the neutral state - `scores.doesFooMatch` is
- * `undefined` for neutral, a real ScoreRecord (pass: true or pass: false) only for a genuine,
- * actually-performed comparison. `ScoreRecord.pass` itself stays a plain, non-nullable `boolean`
- * specifically BECAUSE this convention exists: a scorer with nothing to compare never constructs a
- * ScoreRecord in the first place, so `pass` is never asked to represent "unknown" - if it needs to
- * express that, don't write the record; check for its absence.
+ * A scorer whose comparison is a KleeneBoolean represents NEUTRAL by never calling addScore for
+ * that key at all. The key's ABSENCE from this map, not any field inside a present record, is what
+ * carries the neutral state, which is why `pass` stays a plain non-nullable boolean: a scorer with
+ * nothing to compare never writes a record, so `pass` is never asked to mean "unknown".
  */
 export type ScoreByScorer = Record<string, ScoreRecord>;
 
