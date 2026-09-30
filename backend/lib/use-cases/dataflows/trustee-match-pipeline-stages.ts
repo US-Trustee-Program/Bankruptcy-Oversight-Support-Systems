@@ -186,6 +186,32 @@ const NO_MATCH: NameMatchVerdict = { pass: false, quality: 'strong' };
  * each atomic comparison's fingerprint/result is preserved in the candidate's serialized evidence
  * (see SerializedCandidate.memo), not just cached for this run.
  */
+/** The best quality any given-name variant reaches - firstName, or a parenthetical alias recorded
+ * alongside it (see NormalizedTrustee.firstNameAlternates). Only the primary can be 'exact'; an
+ * alias is corroborating evidence, not the name of record. */
+function matchFirstName(
+  memo: NormalizedMemo,
+  sourceNormalized: NormalizedTrustee,
+  camsNormalized: NormalizedTrustee,
+): NamePartQuality {
+  const primary = matchNamePart(
+    memo,
+    sourceNormalized.firstName ?? '',
+    camsNormalized.firstName ?? '',
+  );
+  if (primary !== 'none') return primary;
+
+  const sourceNames = [
+    sourceNormalized.firstName ?? '',
+    ...(sourceNormalized.firstNameAlternates ?? []),
+  ];
+  const camsNames = [camsNormalized.firstName ?? '', ...(camsNormalized.firstNameAlternates ?? [])];
+  const aliasMatches = sourceNames.some((source) =>
+    camsNames.some((cams) => matchNamePart(memo, source, cams) !== 'none'),
+  );
+  return aliasMatches ? 'strong' : 'none';
+}
+
 function matchName(
   memo: NormalizedMemo,
   sourceNormalized: NormalizedTrustee,
@@ -220,7 +246,7 @@ function matchName(
   const sourceMiddle = sourceNormalized.middleName ?? '';
   const camsMiddle = camsNormalized.middleName ?? '';
 
-  const firstQuality = matchNamePart(memo, sourceFirst, camsFirst);
+  const firstQuality = matchFirstName(memo, sourceNormalized, camsNormalized);
   if (firstQuality === 'none') {
     if (
       isFirstMiddleSwap(sourceFirst, sourceMiddle, camsFirst, camsMiddle) ||
@@ -408,15 +434,8 @@ export function normalizeAcmsSourceName(): Stage {
       roleSwapRecovered.firstName,
       roleSwapRecovered.lastName,
     );
-    // stripParentheticalAnnotations runs BEFORE stripAdministrativeMarkers, and ONLY on
-    // firstName - lastName's parenthetical content is deliberately preserved for
-    // lastNameSurnameCandidates to consider as a surname alternate (a real alias/maiden name can
-    // land there); firstName has no such alternate-surname use for its own parenthetical content,
-    // which is reliably office/region-code noise.
-    // stripAdministrativeMarkers's own paren-stripping only removes the PARENTHESES themselves
-    // ([-/*.,():_]+), not their contents - a bare marker phrase inside still gets recognized and
-    // stripped afterward, but non-marker content would otherwise survive as a bare extra word and
-    // corrupt splitCompoundFirstName's token count.
+    // splitGivenName reads the PRE-strip firstName below to keep the parenthetical as an
+    // alternate; stripping here only governs which tokens become the primary first/middle.
     const strippedFirstName = stripAdministrativeMarkers(
       stripParentheticalAnnotations(corruptionRecovered.firstName),
     );
@@ -426,6 +445,7 @@ export function normalizeAcmsSourceName(): Stage {
       soloPracticeRecovered.firstName,
       state.sourceRaw.middleName,
     );
+    const { firstNameAlternates } = splitGivenName(corruptionRecovered.firstName, undefined);
     const [lastName, ...lastNameAlternates] = lastNameSurnameCandidates(
       soloPracticeRecovered.lastName,
     );
@@ -436,6 +456,7 @@ export function normalizeAcmsSourceName(): Stage {
         ...state.sourceNormalized,
         firstName,
         middleName,
+        firstNameAlternates,
         lastName,
         lastNameAlternates,
         lastNameUnreduced: soloPracticeRecovered.lastName,
@@ -905,38 +926,35 @@ export function recallByAnchoredLevenshtein(context: ApplicationContext): Stage 
 const NON_GIVEN_NAME_TOKENS = new Set(['jr', 'sr', 'ii', 'iii', 'iv', 'x']);
 
 /**
- * Re-derives firstName/middleName from the two fields JOINED, rather than trusting how the source
- * system happened to divide them. Applied identically to both sides, so the division itself can
- * never be what makes two records differ.
- *
- * Each source divides a compound given name on its own rules and stops dividing once its side
- * already carries a middle name, so "C. David Butler" arrives as firstName="C. DAVID" middleName="L"
- * from ACMS and firstName="C. David" with no middle from CAMS. normalizeNamePart then strips
- * whitespace along with punctuation, gluing the first into "cdavid" while the second becomes
- * "c"/"david" - the same person, compared as a first-name mismatch.
- *
- * Punctuation becomes a token boundary but whitespace is preserved as one: the space between an
- * initial and an adjacent given name carries real structure ("G. Matt" is an initial plus a name,
- * not "gmatt"). The first token is the first name and the remainder is the middle.
- *
- * A real compound given name ("Lee Ann", "Mary Jo") divides the same way on both sides and so
- * still matches itself; verified against the 2026-09-25 export, where all 7 such matched records
- * hold.
+ * Re-derives firstName/middleName from the two fields JOINED, so how a source system divided them
+ * can never be what makes two records differ. Whitespace stays a token boundary - "G. Matt" is an
+ * initial plus a name, not "gmatt". A parenthetical becomes firstNameAlternates rather than part
+ * of the split: it names the same person as `firstName`, so folding it in would put it in the
+ * middle slot.
  */
-function splitGivenName(
-  firstName: string | undefined,
-  middleName: string | undefined,
-): { firstName: string; middleName: string } {
-  const tokens = [firstName ?? '', middleName ?? '']
-    .join(' ')
+function givenNameTokens(text: string): string[] {
+  return text
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, ' ')
     .trim()
     .split(' ')
     .filter(Boolean)
     .filter((token) => !NON_GIVEN_NAME_TOKENS.has(token));
+}
 
-  return { firstName: tokens[0] ?? '', middleName: tokens.slice(1).join('') };
+function splitGivenName(
+  firstName: string | undefined,
+  middleName: string | undefined,
+): { firstName: string; middleName: string; firstNameAlternates: string[] } {
+  const raw = firstName ?? '';
+  const parenthetical = /\(([^)]+)\)/.exec(raw);
+  const tokens = givenNameTokens([raw.replace(/ ?\([^)]*\)/g, ' '), middleName ?? ''].join(' '));
+
+  return {
+    firstName: tokens[0] ?? '',
+    middleName: tokens.slice(1).join(''),
+    firstNameAlternates: parenthetical ? givenNameTokens(parenthetical[1]) : [],
+  };
 }
 
 /**
@@ -955,13 +973,14 @@ function normalizeCandidateNameFields(
   _sourceNormalized: NormalizedTrustee,
   candidate: PipelineCandidate,
 ): PipelineCandidate {
-  const { firstName, middleName } = splitGivenName(
+  const { firstName, middleName, firstNameAlternates } = splitGivenName(
     candidate.camsRaw.firstName,
     candidate.camsRaw.middleName,
   );
   const [lastName, ...lastNameAlternates] = lastNameSurnameCandidates(candidate.camsRaw.lastName);
   candidate.camsNormalized.firstName = firstName;
   candidate.camsNormalized.middleName = middleName;
+  candidate.camsNormalized.firstNameAlternates = firstNameAlternates;
   candidate.camsNormalized.lastName = lastName;
   candidate.camsNormalized.lastNameAlternates = lastNameAlternates;
   return candidate;
