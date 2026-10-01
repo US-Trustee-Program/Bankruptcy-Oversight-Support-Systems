@@ -641,7 +641,6 @@ describe('SyncAcmsProfessionalIds', () => {
               scores: {
                 doesNameMatch: { pass: true, quality: 'exact' },
               },
-              disqualifiers: [],
               origin: 'test',
             },
           ],
@@ -654,7 +653,6 @@ describe('SyncAcmsProfessionalIds', () => {
               scores: {
                 doesNameMatch: { pass: true, quality: 'exact' },
               },
-              disqualifiers: [],
               origin: 'test',
             },
           ],

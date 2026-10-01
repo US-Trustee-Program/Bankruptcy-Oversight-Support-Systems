@@ -7,23 +7,21 @@
  * auto-linked population down to a much smaller suspect list worth a human or AI-assisted second
  * opinion, WITHOUT running that expensive review against everything.
  *
- * Reads each auto-linked record's own winning match.score (the actual corroboration evidence that
- * resolved it, not a re-run of scoring logic) and buckets by risk tier, cheapest/strongest signal
- * first:
- *   A - doesNameMatch scored 0 (the discrete name-field comparison found no match at all - this
- *       record resolved on non-name evidence alone).
- *   B - doesNameMatch missing entirely (resolved via matchTrusteeByName's exact/fuzzy tier
- *       instead, which never runs the discrete-field scorer - a different code path worth
- *       separate scrutiny). This path never populates state.candidates, so this tier's camsName
- *       column is always blank in the suspect CSV - look the winning trusteeId up in the trustees
- *       fixture directly if the name is needed.
- *   C - resolved via one of the fuzzy/last-resort RESOLVE stages (see RISKY_RESOLVERS below) -
+ * Reads the winning candidate's own scores from record.candidates (falling back to match.score
+ * only when the winner is missing from the pool) and buckets by risk tier, first match wins:
+ *   A - doesStateMatch failed: both sides carry a state and they disagree. Evidence AGAINST the
+ *       link, regardless of how good the name is.
+ *   B - doesNameMatch did not pass - this record resolved on non-name evidence alone.
+ *   C - no doesNameMatch score at all (the winner is missing from the candidate pool).
+ *   D - resolved via one of the fuzzy/last-resort RESOLVE stages (see RISKY_RESOLVERS below) -
  *       nickname/typo-tolerant matching, not an exact hit.
- *   D - doesNameMatch scored exactly 85 - the pass/fail threshold boundary, weakest passing score.
- *   E - no contactCorroborationPhone signal at all - resolved on address alone.
- *   F - everything else (strong name + phone + address evidence) - not written to the suspect CSV.
+ *   E - doesNameMatch quality 'weak' - the weakest passing name.
+ *   F - everything else - not written to the suspect CSV.
  *
- * Within tier A specifically, also writes a SEPARATE, sharper CSV
+ * A missing phone corroboration is not a risk tier: a phone match is strong evidence FOR a link,
+ * but no phone match is neutral, so it never moves a record out of F on its own.
+ *
+ * Among name-rejected records, also writes a SEPARATE, sharper CSV
  * (data/auto-link-top-suspects-geo-only.csv) for the narrowest, highest-priority cut: zero name
  * score AND resolved via city/state geography agreement alone, with BOTH contact-corroboration
  * checks (address, phone) failing outright. This is the shape most likely to be two different
@@ -47,6 +45,7 @@ type ReplayRecord = {
   };
   match: { trusteeId: string; score: ScoreByScorer; resolvedBy: string } | null;
   candidates: {
+    scores: ScoreByScorer;
     camsRaw: {
       trusteeId: string;
       name?: string;
@@ -59,22 +58,22 @@ type ReplayRecord = {
 const RISKY_RESOLVERS = ['resolveBySoleFuzzyNameMatchAndState'] as const;
 
 type RiskTier =
-  | 'A-name-rejected'
-  | 'B-no-discrete-name-score'
-  | `C-risky-resolver:${(typeof RISKY_RESOLVERS)[number]}`
-  | 'D-weak-name-fuzzy-surname'
-  | 'E-no-phone-corroboration'
+  | 'A-state-contradicts'
+  | 'B-name-rejected'
+  | 'C-no-name-score'
+  | `D-risky-resolver:${(typeof RISKY_RESOLVERS)[number]}`
+  | 'E-weak-name-fuzzy-surname'
   | 'F-strong';
 
 function riskTier(score: ScoreByScorer, resolvedBy: string): RiskTier {
   const nameMatch = score.doesNameMatch;
   const riskyResolver = RISKY_RESOLVERS.find((r) => r === resolvedBy);
 
-  if (nameMatch === undefined) return 'B-no-discrete-name-score';
-  if (!nameMatch.pass) return 'A-name-rejected';
-  if (riskyResolver) return `C-risky-resolver:${riskyResolver}`;
-  if (nameMatch.quality === 'weak') return 'D-weak-name-fuzzy-surname';
-  if (!score.contactCorroborationPhone) return 'E-no-phone-corroboration';
+  if (score.doesStateMatch?.pass === false) return 'A-state-contradicts';
+  if (nameMatch === undefined) return 'C-no-name-score';
+  if (!nameMatch.pass) return 'B-name-rejected';
+  if (riskyResolver) return `D-risky-resolver:${riskyResolver}`;
+  if (nameMatch.quality === 'weak') return 'E-weak-name-fuzzy-surname';
   return 'F-strong';
 }
 
@@ -84,8 +83,7 @@ function riskTier(score: ScoreByScorer, resolvedBy: string): RiskTier {
  * contactAgrees, the shape most likely to be two different people sharing only a city/state. */
 function isGeoOnlyCorroboration(score: ScoreByScorer): boolean {
   const contactPass =
-    score.contactCorroborationAddress?.pass === true ||
-    score.contactCorroborationPhone?.pass === true;
+    score.contactCorroborationAddress?.pass === true || score.doesPhoneMatch?.quality === 'exact';
   const geoPass = score.doesCityMatch?.pass === true || score.doesZipCodeMatch?.pass === true;
   return geoPass && !contactPass;
 }
@@ -137,11 +135,11 @@ function main(): void {
     .filter((line) => line.trim().length > 0);
 
   const tierCounts: Record<RiskTier, number> = {
-    'A-name-rejected': 0,
-    'B-no-discrete-name-score': 0,
-    'C-risky-resolver:resolveBySoleFuzzyNameMatchAndState': 0,
-    'D-weak-name-fuzzy-surname': 0,
-    'E-no-phone-corroboration': 0,
+    'A-state-contradicts': 0,
+    'B-name-rejected': 0,
+    'C-no-name-score': 0,
+    'D-risky-resolver:resolveBySoleFuzzyNameMatchAndState': 0,
+    'E-weak-name-fuzzy-surname': 0,
     'F-strong': 0,
   };
 
@@ -152,24 +150,26 @@ function main(): void {
     const rec: ReplayRecord = JSON.parse(line);
     if (!rec.match) continue;
 
-    const { score, resolvedBy } = rec.match;
+    const { resolvedBy } = rec.match;
+    const winner = rec.candidates.find((c) => c.camsRaw.trusteeId === rec.match!.trusteeId);
+    const score = winner?.scores ?? rec.match.score;
     const tier = riskTier(score, resolvedBy);
     tierCounts[tier]++;
     if (tier === 'F-strong') continue;
 
-    const winner = rec.candidates.find((c) => c.camsRaw.trusteeId === rec.match!.trusteeId);
     const legacy = rec.sourceRaw.legacy ?? {};
     const camsRaw = winner?.camsRaw;
 
     suspectRows.push({
       acmsProfessionalId: rec.acmsProfessionalId,
       tier,
+      resolvedBy,
       trusteeId: rec.match.trusteeId,
       acmsFullName: rec.sourceRaw.fullName ?? '',
       camsName: camsRaw?.name ?? '',
       nameQuality: score.doesNameMatch?.quality as string | undefined,
       addressScore: score.contactCorroborationAddress?.value as number | undefined,
-      phoneScore: score.contactCorroborationPhone?.value as number | undefined,
+      phoneMatch: score.doesPhoneMatch ? String(score.doesPhoneMatch.quality ?? 'no-match') : '',
       acmsAddress: legacy.address1 ?? '',
       acmsCityStateZip: legacy.cityStateZipCountry ?? '',
       acmsPhone: legacy.phone ?? '',
@@ -177,7 +177,7 @@ function main(): void {
       camsPhone: camsRaw?.phone?.number ?? '',
     });
 
-    if (tier === 'A-name-rejected' && isGeoOnlyCorroboration(score)) {
+    if (score.doesNameMatch?.pass === false && isGeoOnlyCorroboration(score)) {
       geoOnlyRows.push({
         acmsProfessionalId: rec.acmsProfessionalId,
         trusteeId: rec.match.trusteeId,
@@ -192,7 +192,7 @@ function main(): void {
         camsZip: camsRaw?.address?.zipCode ?? '',
         camsPhone: camsRaw?.phone?.number ?? '',
         addressScore: score.contactCorroborationAddress?.value as number | undefined,
-        phoneScore: score.contactCorroborationPhone?.value as number | undefined,
+        phoneMatch: score.doesPhoneMatch ? String(score.doesPhoneMatch.quality ?? 'no-match') : '',
       });
     }
   }
@@ -209,12 +209,13 @@ function main(): void {
     [
       'acmsProfessionalId',
       'tier',
+      'resolvedBy',
       'trusteeId',
       'acmsFullName',
       'camsName',
       'nameQuality',
       'addressScore',
-      'phoneScore',
+      'phoneMatch',
       'acmsAddress',
       'acmsCityStateZip',
       'acmsPhone',
@@ -240,7 +241,7 @@ function main(): void {
       'camsZip',
       'camsPhone',
       'addressScore',
-      'phoneScore',
+      'phoneMatch',
     ],
     geoOnlyRows,
   );

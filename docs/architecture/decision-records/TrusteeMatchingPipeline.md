@@ -73,27 +73,26 @@ from mutation no matter what a scorer does. A per-candidate scorer composes with
 scorers the same way pool-level stages do — as a plain ordered list, reduced left to right, each
 scorer's returned candidate feeding the next — mirroring the pool-level runner's own shape one level
 down, but without a terminal-outcome guard: no per-candidate scorer ever short-circuits the
-remaining scorers, because a candidate's disqualification is data recorded on it, not a control-flow
-signal the way the pipeline state's `match`/`skip`/`error` is at the pool level. Every candidate
-runs through the full per-candidate scorer sequence exactly once, at the moment it is discovered —
-not through a separate, later pool-wide SCORE pass — so by the time a candidate is visible to any
+remaining scorers, because a candidate's scores are data recorded on it, not a control-flow signal
+the way the pipeline state's `match`/`skip`/`error` is at the pool level. Every candidate runs
+through the full per-candidate scorer sequence exactly once, at the moment it is discovered — not
+through a separate, later pool-wide SCORE pass — so by the time a candidate is visible to any
 pool-level stage, it is already fully scored, and RESOLVE stages are pure readers of that history
 rather than triggers for new computation.
 
 Purity here means no I/O, no randomness, and no dependence on anything outside the function's own
 arguments — not the stricter sense of never mutating anything reachable from those arguments. A
 scorer records its findings by mutating the one candidate it was handed (via a shared accumulator,
-appending a score or a disqualifier to that candidate's own evaluation history) and then returns
-that same candidate, rather than deep-cloning the candidate and every nested structure on every
-single scorer call. This is a deliberate, narrow, and only sanctioned exception to full
-immutability: cloning a growing evaluation history on every one of dozens of per-candidate scorer
-calls, for every candidate, on every record, has real computation and memory costs that buy nothing
-here, since a candidate is never read by more than one logical owner at a time and its scoring
-history is additive, never revised. Full structural immutability was considered and rejected for
-this reason. What purity guarantees is determinism and the absence of I/O — given the same inputs, a
-scorer produces the same recorded evidence every time, and evaluating it never touches a database, a
-clock, or any other outside-the-arguments state — not that no object anywhere in memory is ever
-mutated in place.
+recording a score in that candidate's own evaluation history) and then returns that same candidate,
+rather than deep-cloning the candidate and every nested structure on every single scorer call. This
+is a deliberate, narrow, and only sanctioned exception to full immutability: cloning a growing
+evaluation history on every one of dozens of per-candidate scorer calls, for every candidate, on
+every record, has real computation and memory costs that buy nothing here, since a candidate is
+never read by more than one logical owner at a time and its scoring history is additive, never
+revised. Full structural immutability was considered and rejected for this reason. What purity
+guarantees is determinism and the absence of I/O — given the same inputs, a scorer produces the same
+recorded evidence every time, and evaluating it never touches a database, a clock, or any other
+outside-the-arguments state — not that no object anywhere in memory is ever mutated in place.
 
 ### Raw and normalized are both kept, and which one to read is a rule
 
@@ -118,14 +117,14 @@ normalized value, and apply any wanted strictness to the other side of the compa
 does decline a transform names which one, and why, in its own code; the default is otherwise
 indistinguishable from an oversight.
 
-The one sanctioned instance: `isExactLastNameMatch` strips administrative markers on both the
-source and candidate lastName but declines the final token-reduction transform, symmetrically, on
-both sides. Reducing both sides collapses a genuinely different, unrelated surname truncated to
-its first hyphen segment ("Schwartz-Albright") into the same candidate as an unrelated "Schwartz"
-— every caller of this comparison depends on that collision never happening, whether the caller
-itself is a sole-candidate RESOLVE stage or a private helper narrowing a same-surname pool down to
-one candidate for a RESOLVE stage to act on. This is not reading `sourceRaw` — it reads the
-marker-stripped value, which stops one transform short of the full normalized form.
+The one sanctioned instance: `isExactLastNameMatch` strips administrative markers on both the source
+and candidate lastName but declines the final token-reduction transform, symmetrically, on both
+sides. Reducing both sides collapses a genuinely different, unrelated surname truncated to its first
+hyphen segment ("Schwartz-Albright") into the same candidate as an unrelated "Schwartz" — every
+caller of this comparison depends on that collision never happening, whether the caller itself is a
+sole-candidate RESOLVE stage or a private helper narrowing a same-surname pool down to one candidate
+for a RESOLVE stage to act on. This is not reading `sourceRaw` — it reads the marker-stripped value,
+which stops one transform short of the full normalized form.
 
 Testing obligation: state built directly, without running NORMALIZE, leaves raw and normalized
 identical, and a comparison reading the wrong one passes. Any stage comparing names needs at least
@@ -247,36 +246,28 @@ record names no person to match.
 
 Two rules follow from requiring corroboration for a MATCH. First, a name-only source can still be
 retrieved through the fuzzy or otherwise expensive tiers — retrieval is not gated on source
-comparability — but it can never RESOLVE through any of them: every ordinary resolving stage
-treats a source with no comparable contact data as an automatic exclusion, regardless of how
-strong the name match is, so a fuzzy retrieval spent on a name-only source can surface a candidate
-but never confirm one. What gates the cost of running those tiers at all is cheaper and earlier:
-a record resolved by a high-precision discovery tier short-circuits before any later, more
-expensive tier is ever reached (see "Discovery tiers and the combined pool" and "Cost-gated
-ordering"), so a fuzzy tier is only reached — and its cost only paid — once nothing cheaper has
-already resolved the record. Second, a sole exact-name candidate is not, on its own, a MATCH. CAMS
-is an open population — the identity a source refers to may be a trustee not yet recorded in it —
-so the absence of other same-name candidates is not evidence that the one present is correct.
-Corroborating evidence beyond the name is what earns a MATCH, so a source carrying only a name
-does not reach MATCH through any ordinary resolving stage.
+comparability — but it can never RESOLVE through any of them: every ordinary resolving stage treats
+a source with no comparable contact data as an automatic exclusion, regardless of how strong the
+name match is, so a fuzzy retrieval spent on a name-only source can surface a candidate but never
+confirm one. What gates the cost of running those tiers at all is cheaper and earlier: a record
+resolved by a high-precision discovery tier short-circuits before any later, more expensive tier is
+ever reached (see "Discovery tiers and the combined pool" and "Cost-gated ordering"), so a fuzzy
+tier is only reached — and its cost only paid — once nothing cheaper has already resolved the
+record. Second, a sole exact-name candidate is not, on its own, a MATCH. CAMS is an open population
+— the identity a source refers to may be a trustee not yet recorded in it — so the absence of other
+same-name candidates is not evidence that the one present is correct. Corroborating evidence beyond
+the name is what earns a MATCH, so a source carrying only a name does not reach MATCH through any
+ordinary resolving stage.
 
 ### Resolving on thin evidence
 
-Two populations fall outside the ordinary corroboration rule, both structurally uncomparable on
-the source side (no address, a sentinel in place of the phone — not merely a missing field):
+One population falls outside the ordinary corroboration rule: a source that is structurally
+uncomparable (no address, a sentinel in place of the phone — not merely a missing field) and matches
+exactly one candidate on name, whether that name match is exact or a plausible fuzzy match.
+Requiring one more corroborating signal is not available for it; there is nothing left to ask for.
 
-- A source matching exactly one candidate on name, whether that name match is exact or a plausible
-  fuzzy match.
-- A source matching several same-surname candidates, when disqualifying evidence (a strong,
-  multi-field address disagreement) narrows that pool down to one candidate to check a fuzzy
-  first-name match against.
-
-Requiring one more corroborating signal is not available for either population; there is nothing
-left to ask for.
-
-These resolve through a small set of last-resort stages, composed as their own ordered
-sub-pipeline and appended as one stage at the end of the shared RESOLVE sequence, constrained as
-follows:
+These resolve through a small set of last-resort stages, composed as their own ordered sub-pipeline
+and appended as one stage at the end of the shared RESOLVE sequence, constrained as follows:
 
 - **Nothing in the group runs until nothing else in that same RESOLVE sequence could resolve the
   record.** The RESOLVE sequence is shared and runs once per candidate pool — once per discovery
@@ -284,8 +275,8 @@ follows:
   the combined pool") — so this guarantee holds within each of those resolve passes: every
   richer-evidence stage in that same pass gets first attempt at a candidate before a last-resort
   stage ever sees it. It does not mean a last-resort stage only runs after every discovery tier has
-  been tried; a last-resort stage can resolve a candidate discovered by the very first tier, in
-  that tier's own resolve pass, if no richer stage claims it first.
+  been tried; a last-resort stage can resolve a candidate discovered by the very first tier, in that
+  tier's own resolve pass, if no richer stage claims it first.
 - **They are collected in one list, not interleaved.** "What does this pipeline trust on thin
   evidence?" has one place to read. Adding, removing, or reordering one leaves the main sequence's
   validated ordering untouched.
@@ -293,37 +284,8 @@ follows:
 - **Each names, in its own code, the risk it accepts** — including the residual risk no available
   signal can catch: an exact or fuzzy name match belonging to a different real person.
 
-The trade-off: a small, measured number of links rest on name evidence alone (in one case, further
-narrowed by ruling out disqualified candidates rather than starting from a pool already sole),
-against leaving a known and reviewable population permanently unresolved.
-
-### Disqualifiers
-
-A SCORE stage's ordinary output — a value, a threshold, and a pass/fail — cannot distinguish
-"actively checked and found a conflict" from "never checked at all"; both simply fail to contribute
-a passing signal. A disqualifier is a distinct, affirmative unit of evidence a SCORE stage records
-only when it has positive proof against a candidate (for example, the source and candidate addresses
-were both present and specific, and disagreed on every one of city, state, and zip — not merely
-unparseable or uncompared). Recording this separately from an ordinary failed score lets a RESOLVE
-stage require "nothing found a reason to doubt this candidate" as an explicit precondition, rather
-than inferring it from the mere absence of a passing score.
-
-A disqualifier is deliberately reserved for a strong signal: multiple independent data points must
-simultaneously disagree, not one. A single mismatched field is ordinary negative evidence already
-carried by that field's own SCORE outcome; a disqualifier exists only when several fields that would
-each need an independent, coincidental data-entry error to explain away all disagree at once, making
-innocent explanations implausible. This bar is a subjective design-time judgment about what counts
-as strong enough, made explicit in each disqualifying stage's own reasoning rather than left to a
-shared formula, since what counts as "strong" differs by evidence type (for example, address
-disagreement across all three fields at once, versus first AND last name both falling below a
-fuzzy-match threshold at once).
-
-A disqualifier does not remove a candidate — the never-remove invariant still holds — but a RESOLVE
-stage may use it to narrow which candidates it is willing to treat as a sole survivor. A RESOLVE
-stage that filters this way must do so legibly: reading the specific disqualifiers it relies on (for
-example, via `.filter()`/`.reduce()` over a candidate's disqualifier list) rather than relying on an
-opaque scoring blend, so a reviewer can see exactly which disqualifying evidence the resolution
-depended on.
+The trade-off: a small, measured number of links rest on name evidence alone, against leaving a
+known and reviewable population permanently unresolved.
 
 ### These roles are semantic, not a rigid structure
 
@@ -501,7 +463,7 @@ candidate type, rather than hard-coded to trustee matching specifically. Trustee
 the only concrete instantiation of this graph — the parameterization exists so a second
 legacy-source-to-CAMS matching problem could reuse the same machinery without first proving out the
 abstraction against a use case that doesn't yet exist, not as a commitment that one will arrive.
-Every concept in this document (RECALL/NORMALIZE/SCORE/MEMOIZATION/RESOLVE, disqualifiers,
-processing failure) is described in trustee-matching terms because trustee matching is the only
-lived experience this decision is drawn from; a second use case, if one arrives, should be expected
-to reveal which of these decisions were trustee-specific and which were genuinely general.
+Every concept in this document (RECALL/NORMALIZE/SCORE/MEMOIZATION/RESOLVE, processing failure) is
+described in trustee-matching terms because trustee matching is the only lived experience this
+decision is drawn from; a second use case, if one arrives, should be expected to reveal which of
+these decisions were trustee-specific and which were genuinely general.

@@ -138,7 +138,7 @@ const REPORT_COLUMNS = [
   'addressScore',
   'acmsPhone',
   'camsPhone',
-  'phoneScore',
+  'phoneMatch',
   'camsTrusteeId',
 ] as const;
 
@@ -254,7 +254,7 @@ function latestMemoValue(memo: Record<string, MemoEntry[]>, functionName: string
  * pipeline-replay-backtest.ts does, since that score is never written through addScore onto
  * candidate.scores itself. Each scorer's contribution is now a ScoreRecord keyed by scorer name
  * (see trustee-match-pipeline.ts) rather than a bundle of bespoke fields - this reads the specific
- * keys this CSV displays (nameQuality/addressScore/phoneScore/stateMatch), tolerating
+ * keys this CSV displays (nameQuality/addressScore/phoneMatch/stateMatch), tolerating
  * either the address or phone corroboration key being absent (not every candidate reaches
  * comparativeCorroborationStage). */
 function deriveCandidateFields(
@@ -266,7 +266,8 @@ function deriveCandidateFields(
   const merged: ScoreByScorer = { ...candidate.scores, ...winnerScores };
   const nameQuality = merged.doesNameMatch?.pass ? String(merged.doesNameMatch.quality) : 'none';
   const addressScore = (merged.contactCorroborationAddress?.value as number | undefined) ?? null;
-  const phoneScore = (merged.contactCorroborationPhone?.value as number | undefined) ?? null;
+  const phoneMatch =
+    (merged.doesPhoneMatch ? String(merged.doesPhoneMatch.quality ?? 'no-match') : '') || null;
   // Absent means the states were never comparable, not that they agree - doesStateMatch is only
   // recorded when both sides have a state (see scoreStateMatch).
   const stateMatch = merged.doesStateMatch?.pass ?? true;
@@ -278,7 +279,7 @@ function deriveCandidateFields(
     introductionStage: introductionStageOf(candidate.scores),
     nameQuality,
     addressScore,
-    phoneScore,
+    phoneMatch,
     stateMatch,
     fullNameSimilarity,
     tokenNameMatchRate,
@@ -321,7 +322,7 @@ class ShardReportWriter {
           fields.addressScore,
           fields.acmsPhone,
           fields.camsPhone,
-          fields.phoneScore,
+          fields.phoneMatch,
           candidate.camsRaw.trusteeId,
           verdict?.verdict ?? '',
           verdict?.reason ?? '',
@@ -359,7 +360,7 @@ function formatCandidate(
     `Phone: ${fields.camsPhone || '(blank)'}`,
     `Structured signals: nameQuality=${fields.nameQuality}, fullNameSimilarity=${fields.fullNameSimilarity}, ` +
       `tokenNameMatchRate=${fields.tokenNameMatchRate}, stateMatch=${fields.stateMatch}, ` +
-      `addressScore=${fields.addressScore}, phoneScore=${fields.phoneScore}`,
+      `addressScore=${fields.addressScore}, phoneMatch=${fields.phoneMatch}`,
     `introductionStage: ${fields.introductionStage}`,
   ].join('\n');
 }

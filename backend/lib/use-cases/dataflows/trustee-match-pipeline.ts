@@ -1,6 +1,5 @@
-import { CandidateScore, CanonicalTrusteeSource } from '@common/cams/dataflow-events';
+import { CanonicalTrusteeSource } from '@common/cams/dataflow-events';
 import { Trustee } from '@common/cams/trustees';
-import { NameMatchQuality } from './trustee-match.helpers';
 import { CamsError } from '../../common-errors/cams-error';
 
 /** The only Trustee-shaped type pipeline internals read or write; projectTrustee is the sole
@@ -70,8 +69,7 @@ export function foldKleene<T>(
 export type ScoreRecord = { pass: boolean } & Record<string, unknown>;
 
 /** A scorer comparing on a continuous scale rather than a yes/no. `value` is always "higher is
- * better" - a signal that runs the other way (e.g. phoneDigitDistance) converts to this
- * convention. `threshold` is the cutoff active when the record was produced, so a later retune
+ * better" - a signal that runs the other way converts to this convention. `threshold` is the cutoff active when the record was produced, so a later retune
  * cannot silently reinterpret it. */
 export type MeasuredScore = ScoreRecord & { value: number; threshold: number };
 
@@ -86,16 +84,6 @@ export type MeasuredScore = ScoreRecord & { value: number; threshold: number };
  * nothing to compare never writes a record, so `pass` is never asked to mean "unknown".
  */
 export type ScoreByScorer = Record<string, ScoreRecord>;
-
-/**
- * A scorer's affirmative reason NOT to trust a candidate - distinct from a plain ScoreRecord's
- * `pass: false`, which conflates "actively checked and found a conflict" with "never checked at
- * all." Pushed only on POSITIVE evidence against a candidate (e.g. city/state actively disagree,
- * not merely unparseable), so a resolver can require `disqualifiers.length === 0` as an explicit
- * precondition rather than inferring it from the absence of a passing score. `evidence` carries
- * the actual compared values so a reviewer sees the conflict without re-deriving it.
- */
-type Disqualifier = { scorer: string; reason: string; evidence: Record<string, unknown> };
 
 /**
  * The canonical NORMALIZE-role shape (see docs/architecture/decision-records/
@@ -177,7 +165,6 @@ export type PipelineCandidate<TCandidate> = {
   camsNormalized: NormalizedTrustee;
   memo: NormalizedMemo;
   scores: ScoreByScorer;
-  disqualifiers: Disqualifier[];
   origin: string;
 };
 
@@ -195,20 +182,13 @@ export function candidatePool<TSource, TCandidate>(
   return [...state.candidates.values()];
 }
 
-/** matchTrusteeByName's exact-resolved outcome (name alone, no contact corroboration) - see
- * trustee-match.helpers.ts's NameMatchResult 'resolved' case. */
-type NameOnlyMatchScore = {
-  nameScore: number;
-  nameMatchQuality: NameMatchQuality;
-};
-
 /** A confirmed match, carrying the score that justified it so a consumer never needs to re-scan
  * the candidate's score history to answer "why was this the match," and resolvedBy (the RESOLVE
  * stage's own function name) so a reviewer can tell, e.g., resolveBySoleExactNameInState apart from
  * resolveBySoleContactMatch without reverse-engineering it from score shape alone. */
 type PipelineMatch = {
   trusteeId: string;
-  score: CandidateScore | NameOnlyMatchScore | ScoreByScorer | Record<string, never>;
+  score: ScoreByScorer;
   resolvedBy: string;
 };
 
@@ -290,7 +270,6 @@ export function addCandidate<TSource, TCandidate extends Partial<NormalizedTrust
     camsNormalized: cloneNormalizableFields(camsRaw),
     memo: new Map(),
     scores: {},
-    disqualifiers: [],
     origin,
   };
   state.candidates.set(camsRaw.trusteeId, candidate);
@@ -319,19 +298,6 @@ export function addScore<TCandidate>(
   score: ScoreRecord,
 ): void {
   candidate.scores[scorer] = score;
-}
-
-/** Records a scorer's affirmative reason not to trust a candidate - see Disqualifier. Appends
- * rather than overwriting: more than one scorer can independently disqualify the same candidate,
- * and each reason is worth keeping. Callers push only on genuinely new evidence, not on every
- * re-run over a growing candidate pool. */
-export function addDisqualifier<TCandidate>(
-  candidate: PipelineCandidate<TCandidate>,
-  scorer: string,
-  reason: string,
-  evidence: Record<string, unknown>,
-): void {
-  candidate.disqualifiers.push({ scorer, reason, evidence });
 }
 
 /** One cached normalizer call: `key` fingerprints its actual input(s) (e.g. `"John Doe"`, or
@@ -400,7 +366,6 @@ export type SerializedCandidate<TCandidate> = {
   camsNormalized: NormalizedTrustee;
   memo: Record<string, MemoEntry[]>;
   scores: ScoreByScorer;
-  disqualifiers: Disqualifier[];
   origin: string;
 };
 
@@ -429,7 +394,6 @@ export function serializeState<TSource, TCandidate>(
       camsNormalized: candidate.camsNormalized,
       memo: Object.fromEntries(candidate.memo),
       scores: candidate.scores,
-      disqualifiers: candidate.disqualifiers,
       origin: candidate.origin,
     })),
     match: state.match,

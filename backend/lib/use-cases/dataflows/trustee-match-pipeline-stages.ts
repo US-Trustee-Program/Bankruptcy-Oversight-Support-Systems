@@ -2,7 +2,7 @@ import * as natural from 'natural';
 import { getNameVariations } from 'name-match/src/name-normalizer';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { Trustee } from '@common/cams/trustees';
-import { Address, PhoneNumber } from '@common/cams/contact';
+import { Address } from '@common/cams/contact';
 import { usStates } from '@common/cams/us-states';
 import factory from '../../factory';
 import {
@@ -38,7 +38,6 @@ import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import { CamsError } from '../../common-errors/cams-error';
 import {
   addCandidate,
-  addDisqualifier,
   addScore,
   foldKleene,
   KleeneBoolean,
@@ -298,24 +297,6 @@ function matchName(
 }
 
 /**
- * ACMS-pipeline-only reimplementation of calculatePhoneScore - fully self-contained (no shared
- * helper dependencies at all), so this is a plain copy rather than an orchestration of atomic
- * pieces. Never calls calculatePhoneScore directly - this pipeline forked from the DXTR path so
- * ACMS-specific tuning can move independently (see pipelineNameScore's own doc comment).
- */
-function pipelinePhoneScore(
-  sourcePhone: string | undefined,
-  camsPhone: PhoneNumber | undefined,
-): number | null {
-  const sourceDigits = (sourcePhone ?? '').replace(/\D/g, '');
-  const camsDigits = (camsPhone?.number ?? '').replace(/\D/g, '');
-
-  if (sourceDigits.length < 10 || camsDigits.length < 10) return null;
-
-  return sourceDigits.slice(-10) === camsDigits.slice(-10) ? 100 : 0;
-}
-
-/**
  * ACMS-pipeline-only address parser: parseCityStateZip (shared with the DXTR paths) plus a
  * recovery for a "CITY ST" address carrying no zip at all, which the shared parser rejects
  * outright. ACMS commonly stores an address that way; DXTR does not, and widening the shared
@@ -399,20 +380,15 @@ function pipelineAddressScore(
 }
 
 /**
- * ACMS-pipeline-only reimplementation of calculateEmailScore - a plain trim+lowercase+equality
- * comparison, forked from the DXTR path for the same reason as pipelineNameScore/
- * pipelinePhoneScore/pipelineAddressScore. Returns null (not comparable) when either side has no
- * email at all, same convention as pipelinePhoneScore - a missing email is not evidence of a
- * mismatch.
+ * Whether both emails are equal after trim+lowercase - null when either side has no email, since a
+ * missing email is not evidence of a mismatch. Forked from the DXTR path's calculateEmailScore for
+ * the same reason as phoneMatch.
  */
-function pipelineEmailScore(
-  sourceEmail: string | undefined,
-  camsEmail: string | undefined,
-): number | null {
+function emailMatch(sourceEmail: string | undefined, camsEmail: string | undefined): KleeneBoolean {
   const sourceNormalized = (sourceEmail ?? '').trim().toLowerCase();
   const camsNormalized = (camsEmail ?? '').trim().toLowerCase();
   if (!sourceNormalized || !camsNormalized) return null;
-  return sourceNormalized === camsNormalized ? 100 : 0;
+  return sourceNormalized === camsNormalized;
 }
 
 /**
@@ -630,19 +606,13 @@ export function recallBySurnameExact(context: ApplicationContext): Stage {
 
 /**
  * Discovery stage wrapping matchTrusteeByName's three internal passes (exact match,
- * searchTrusteesByNameScored phonetic fallback, lastName-token search - see its own doc comment)
- * as a normal candidate source, rather than treating it as its own independent resolver with a
- * special-cased orchestrator branch. Its 'resolved' outcome (a single unambiguous exact-name
- * match) is trusted immediately, exactly as before - that path is already narrow and proven, so
- * this stage still resolves state.match directly rather than routing it through FILTER/SCORE
- * (there is nothing to score against; matchTrusteeByName already confirmed uniqueness). Its
- * 'ambiguous' outcome just adds every candidate to state.candidates like any other discovery
- * stage - the SAME shared FILTER/SCORE/RESOLVE stage list the caller runs once over the whole
- * combined pool then scores them, so a matchTrusteeByName candidate and (say) a
- * recallBySurnameExact candidate for the same record compete on equal footing instead of one
- * silently blocking the other from ever being tried. 'no-match' adds nothing.
+ * searchTrusteesByNameScored phonetic fallback, lastName-token search - see its own doc comment).
+ * Every outcome is recall only: a 'resolved' trustee and every 'ambiguous' candidate are added and
+ * scored like any other discovery stage's candidates, and the caller's resolve stages decide. A
+ * unique exact name is not corroboration on its own - it says nothing about whether the two
+ * records' addresses agree.
  */
-export function recallByNameThenResolveMatch(context: ApplicationContext): Stage {
+export function recallByName(context: ApplicationContext): Stage {
   return async (state: PipelineState): Promise<PipelineState> => {
     let result;
     try {
@@ -651,105 +621,36 @@ export function recallByNameThenResolveMatch(context: ApplicationContext): Stage
       return {
         ...state,
         error: getCamsErrorWithStack(originalError, MODULE_NAME, {
-          camsStackInfo: { module: MODULE_NAME, message: 'recallByNameThenResolveMatch failed' },
+          camsStackInfo: { module: MODULE_NAME, message: 'recallByName failed' },
         }),
       };
     }
 
-    if (result.kind === 'resolved' && result.nameMatchQuality === 'exact') {
+    const trusteeIds =
+      result.kind === 'resolved'
+        ? [result.trusteeId]
+        : result.kind === 'ambiguous'
+          ? result.matchCandidates.map((c) => c.trusteeId)
+          : [];
+    if (trusteeIds.length === 0) return state;
+
+    let rawTrustees;
+    try {
+      rawTrustees = await factory.getTrusteesRepository(context).findTrusteesByIds(trusteeIds);
+    } catch (originalError) {
       return {
         ...state,
-        match: {
-          trusteeId: result.trusteeId,
-          score: { nameScore: result.nameScore, nameMatchQuality: result.nameMatchQuality },
-          resolvedBy: 'recallByNameThenResolveMatch',
-        },
+        error: getCamsErrorWithStack(originalError, MODULE_NAME, {
+          camsStackInfo: {
+            module: MODULE_NAME,
+            message: 'recallByName failed refetching candidates',
+          },
+        }),
       };
     }
-
-    // A 'fuzzy'-quality resolved outcome (normalizeNameForMatching bridged a punctuation gap -
-    // e.g. an apostrophe surname) has a REAL trustee record behind it, unlike 'exact' (a literal
-    // string match with nothing left to score) - fetch and score it through the normal
-    // addAndScoreCandidate path so the winning candidate's full score history is preserved in
-    // evidence.candidates for later audit, instead of resolving on a synthetic
-    // {nameScore, nameMatchQuality} score object with no candidate behind it at all.
-    if (result.kind === 'resolved' && result.nameMatchQuality === 'fuzzy') {
-      const trusteesRepo = factory.getTrusteesRepository(context);
-      let rawTrustees;
-      try {
-        rawTrustees = await trusteesRepo.findTrusteesByIds([result.trusteeId]);
-      } catch (originalError) {
-        return {
-          ...state,
-          error: getCamsErrorWithStack(originalError, MODULE_NAME, {
-            camsStackInfo: {
-              module: MODULE_NAME,
-              message: 'recallByNameThenResolveMatch failed refetching fuzzy-matched candidate',
-            },
-          }),
-        };
-      }
-      // A successful-but-empty refetch is not a repository rejection, so the try/catch above
-      // never sees it - without this guard, destructuring an empty array leaves trustee undefined
-      // and projectTrustee throws uncaught instead of the pipeline recording a CamsError. CAMS
-      // never deletes trustee records, so this trusteeId going missing between the name-match
-      // lookup and this refetch isn't the realistic trigger; treat this as a defensive guard
-      // against any other way findTrusteesByIds could return fewer rows than requested (a stale
-      // index, a mocked/misbehaving repository in tests), not a documented real-world scenario.
-      const [trustee] = rawTrustees;
-      if (!trustee) {
-        return {
-          ...state,
-          error: new CamsError(MODULE_NAME, {
-            message:
-              'recallByNameThenResolveMatch found no trustee refetching a fuzzy-matched candidate',
-            camsStackInfo: {
-              module: MODULE_NAME,
-              message: 'recallByNameThenResolveMatch failed refetching fuzzy-matched candidate',
-            },
-          }),
-        };
-      }
-      const candidate = addAndScoreCandidate(
-        state,
-        projectTrustee(trustee),
-        'recallByNameThenResolveMatch',
-      );
-      if (state.error) return state;
-
-      return {
-        ...state,
-        match: {
-          trusteeId: candidate.camsRaw.trusteeId,
-          score: candidate.scores,
-          resolvedBy: 'recallByNameThenResolveMatch',
-        },
-      };
+    for (const trustee of rawTrustees) {
+      addAndScoreCandidate(state, projectTrustee(trustee), 'recallByName');
     }
-
-    if (result.kind === 'ambiguous') {
-      const trusteesRepo = factory.getTrusteesRepository(context);
-      let rawTrustees;
-      try {
-        rawTrustees = await trusteesRepo.findTrusteesByIds(
-          result.matchCandidates.map((c) => c.trusteeId),
-        );
-      } catch (originalError) {
-        return {
-          ...state,
-          error: getCamsErrorWithStack(originalError, MODULE_NAME, {
-            camsStackInfo: {
-              module: MODULE_NAME,
-              message: 'recallByNameThenResolveMatch failed refetching ambiguous candidates',
-            },
-          }),
-        };
-      }
-      for (const trustee of rawTrustees) {
-        addAndScoreCandidate(state, projectTrustee(trustee), 'recallByNameThenResolveMatch');
-      }
-    }
-
     return state;
   };
 }
@@ -1035,6 +936,16 @@ function nameMatch(candidate: PipelineCandidate): NameMatchScore {
 function isExactNameMatch(candidate: PipelineCandidate): boolean {
   const score = nameMatch(candidate);
   return score.pass && score.quality === 'exact';
+}
+
+type PhoneMatchScore =
+  | { pass: true; quality: 'exact' }
+  | { pass: true; quality: 'strong'; phoneDigitDistance: number }
+  | { pass: false; phoneDigitDistance: number };
+
+function isExactPhoneMatch(candidate: PipelineCandidate): boolean {
+  const score = mergedScore(candidate).doesPhoneMatch as PhoneMatchScore | undefined;
+  return score?.pass === true && score.quality === 'exact';
 }
 
 /** The surname matched outright, whatever was relaxed in the given name - so this is the same
@@ -1440,99 +1351,11 @@ function scoreZipCodeMatch(
 }
 
 /**
- * A Disqualifier is a STRONG signal, not a mirror of any single ScoreRecord's pass:false.
- *
- * - One mismatched field (city, OR state, OR zip alone) is common and tolerated (a P.O. Box, a
- *   recent office move, a second office); only when city AND state AND zip ALL actively score
- *   pass:false - never their mere absence - does this rise to a whole-address disqualification.
- * - Recorded as ONE Disqualifier, not three, because it is a single fact - "the whole address
- *   disagreed" - not three independent pieces of evidence.
- * - Records evidence only; a resolver may still ignore it when it has other reason to (e.g. a
- *   very strong name match plausibly explained by a multi-office trustee or a relocation).
- */
-export function scoreAddressDisqualifiers(
-  _sourceNormalized: NormalizedTrustee,
-  candidate: PipelineCandidate,
-): PipelineCandidate {
-  const scores = mergedScore(candidate);
-  const allThreeActivelyDisagree =
-    scores.doesCityMatch?.pass === false &&
-    scores.doesStateMatch?.pass === false &&
-    scores.doesZipCodeMatch?.pass === false;
-  if (!allThreeActivelyDisagree) return candidate;
-
-  addDisqualifier(candidate, 'addressDisqualifiers', 'city, state, and zip all actively disagree', {
-    camsCity: candidate.camsRaw.address?.city,
-    camsState: candidate.camsRaw.address?.state,
-    camsZipCode: candidate.camsRaw.address?.zipCode,
-  });
-  return candidate;
-}
-
-/**
- * Below this JaroWinklerDistance score, two name PARTS (first name, or last name) share so little
- * in common that no plausible nickname/typo/reordering relationship exists between them - well
- * below FUZZY_NAME_PART_JARO_WINKLER_THRESHOLD (0.88, the bar for "plausibly the SAME"), since
- * "not plausibly the same" and "grossly different" are not the same claim and deserve their own,
- * stricter bar (see NAME_DISQUALIFYING_JARO_WINKLER_THRESHOLD's own doc comment for why BOTH
- * first and last must clear this independently before disqualifying). Every genuinely
- * unrelated-name pair sampled from real no-match records scored below 0.46 on BOTH name parts
- * (e.g. "Irving"/"T" x "Artz"/"Chang", "Austin"/"Elizabeth" x "Parham"/"Austin", "Sheena"/"Carolyn"
- * x "Aebig"/"Chaney"), with a clean gap to the next-lowest pair at 0.483 - not an arbitrary round
- * number, a real boundary found in real data.
- */
-const NAME_DISQUALIFYING_JARO_WINKLER_THRESHOLD = 0.46;
-
-/**
- * A Disqualifier is a STRONG signal (see scoreAddressDisqualifiers' own doc comment on the same
- * principle for addresses) - mirrors its multiple-datapoints bar for names.
- *
- * - A dissimilar LAST name alone is not enough: an exact first-name match with a dissimilar
- *   surname (e.g. "Chad" both sides, JaroWinkler ~0.44) is a plausible data-entry surname error,
- *   not a different person. Only when BOTH first AND last fall below
- *   NAME_DISQUALIFYING_JARO_WINKLER_THRESHOLD does this disqualify.
- * - Only fires when doesNameMatch already scored 0 and both sides have a real first and last
- *   name - never on absence.
- * - Records evidence only; a resolver may still ignore it when it has other reason to.
- */
-export function scoreNameDisqualifiers(
-  sourceNormalized: NormalizedTrustee,
-  candidate: PipelineCandidate,
-): PipelineCandidate {
-  if (nameMatch(candidate).pass) return candidate;
-
-  const acmsFirst = sourceNormalized.firstName ?? '';
-  const camsFirst = candidate.camsNormalized.firstName ?? '';
-  if (!acmsFirst || !camsFirst) return candidate;
-
-  const acmsLast = sourceNormalized.lastName ?? '';
-  const camsLast = candidate.camsNormalized.lastName ?? '';
-  if (!acmsLast || !camsLast) return candidate;
-
-  const firstNameSimilarity = natural.JaroWinklerDistance(acmsFirst, camsFirst);
-  const lastNameSimilarity = natural.JaroWinklerDistance(acmsLast, camsLast);
-  const bothGrosslyDifferent =
-    firstNameSimilarity < NAME_DISQUALIFYING_JARO_WINKLER_THRESHOLD &&
-    lastNameSimilarity < NAME_DISQUALIFYING_JARO_WINKLER_THRESHOLD;
-  if (!bothGrosslyDifferent) return candidate;
-
-  addDisqualifier(candidate, 'nameDisqualifiers', 'first and last name both grossly disagree', {
-    acmsFirst,
-    camsFirst,
-    acmsLast,
-    camsLast,
-    firstNameSimilarity,
-    lastNameSimilarity,
-  });
-  return candidate;
-}
-
-/**
  * Below this contactCorroborationAddress value, a PARSEABLE ACMS address means both sides had a
  * real address to compare and it disagreed - a genuine contradiction, never relaxed by
  * isNoContradictionMatch's fallback below. ACMS-pipeline-only: there is no DXTR-side equivalent of
  * this fallback to mirror or diverge from - isNoContradictionMatch is a pure reader of
- * pipeline-computed scores (contactCorroborationAddress, contactCorroborationPhone/Email), a shape
+ * pipeline-computed scores (contactCorroborationAddress, doesPhoneMatch/Email), a shape
  * that only exists once a candidate has passed through this pipeline's own scoring stages.
  */
 const NO_CONTRADICTION_ADDRESS_FLOOR = 30;
@@ -1547,12 +1370,12 @@ const NO_CONTRADICTION_ADDRESS_FLOOR = 30;
  * - Requires doesNameMatch.value === 100, a materially higher bar than the main corroboration
  *   path, since this fallback has no other corroborating signal to lean on.
  * - A "0" phone/fax/email sentinel never registers as a comparable score, so this reads
- *   contactCorroborationPhone/Email's mere ABSENCE the same way the pipeline's own scores already
+ *   doesPhoneMatch/Email's mere ABSENCE the same way the pipeline's own scores already
  *   represent "nothing to compare."
  * - contactCorroborationAddress's mere ABSENCE (addressScore === undefined below) is read the same
  *   way - pipelineAddressScore now returns null, not a fabricated 0, when the ACMS address doesn't
  *   parse at all (real bug, confirmed via pipeline-replay-backtest.ts against the 2026-09-25 export:
- *   scoreContactCorroboration used to write a REAL contactCorroborationAddress ScoreRecord with
+ *   scoreAddressCorroboration used to write a REAL contactCorroborationAddress ScoreRecord with
  *   value:0/pass:false even when the ACMS address was never compared at all, indistinguishable from
  *   a genuine disagreement - 2+ real records with a genuinely unparseable ACMS address carried this
  *   fabricated "conflict"). This function previously worked around that bug with its own separate
@@ -1569,8 +1392,7 @@ function isNoContradictionMatch(candidate: PipelineCandidate): boolean {
   if (!isExactNameMatch(candidate)) return false;
 
   const hasNoComparablePhoneOrEmail =
-    scores.contactCorroborationPhone === undefined &&
-    scores.contactCorroborationEmail === undefined;
+    scores.doesPhoneMatch === undefined && scores.doesEmailMatch === undefined;
   if (!hasNoComparablePhoneOrEmail) return false;
 
   if (scores.doesAcmsTrusteeHaveAddressAndPhone?.pass === false) return false;
@@ -1613,8 +1435,8 @@ export function resolveBySoleContactMatch(): Stage {
     const scores = mergedScore(candidate);
     const corroborated =
       scores.contactCorroborationAddress?.pass === true ||
-      scores.contactCorroborationPhone?.pass === true ||
-      scores.contactCorroborationEmail?.pass === true;
+      isExactPhoneMatch(candidate) ||
+      scores.doesEmailMatch?.pass === true;
     if (!corroborated && !isNoContradictionMatch(candidate)) return state;
 
     return resolveOnCandidate(state, candidate, 'resolveBySoleContactMatch');
@@ -1622,16 +1444,10 @@ export function resolveBySoleContactMatch(): Stage {
 }
 
 /**
- * Computes address/phone/email corroboration between the ACMS record and one candidate,
- * unconditionally for every candidate (no pool-size gate - see scoreCandidate) rather than only
- * when resolveByComparativeCorroboration/the sole-contact-match resolve stage happen to need it.
- * These three scores are real, independent evidence any RESOLVE stage can read regardless of pool
- * shape - contactCorroborationAddress/contactCorroborationPhone/contactCorroborationEmail are real,
- * independent evidence any RESOLVE stage can read regardless of pool shape, without a repository
- * re-fetch (see resolveBySoleContactMatch's doc comment - only email is needed, which
- * ProjectedTrustee carries directly).
+ * Records address similarity for every candidate (no pool-size gate - see scoreCandidate). Unlike
+ * doesPhoneMatch/doesEmailMatch this is a real measured score against a threshold, not a yes/no.
  */
-function scoreContactCorroboration(
+function scoreAddressCorroboration(
   sourceNormalized: NormalizedTrustee,
   candidate: PipelineCandidate,
 ): PipelineCandidate {
@@ -1643,25 +1459,25 @@ function scoreContactCorroboration(
       pass: addressScore >= CONTACT_CORROBORATION_ADDRESS_THRESHOLD,
     });
   }
-
-  const phoneScore = pipelinePhoneScore(sourceNormalized.legacy?.phone, candidate.camsRaw.phone);
-  if (phoneScore !== null) {
-    addScore(candidate, 'contactCorroborationPhone', {
-      value: phoneScore,
-      threshold: 100,
-      pass: phoneScore === 100,
-    });
-  }
-
-  const emailScore = pipelineEmailScore(sourceNormalized.legacy?.email, candidate.camsRaw.email);
-  if (emailScore !== null) {
-    addScore(candidate, 'contactCorroborationEmail', {
-      value: emailScore,
-      threshold: 100,
-      pass: emailScore === 100,
-    });
-  }
   return candidate;
+}
+
+function scoreEmailMatch(
+  sourceNormalized: NormalizedTrustee,
+  candidate: PipelineCandidate,
+): PipelineCandidate {
+  return foldKleene(
+    emailMatch(sourceNormalized.legacy?.email, candidate.camsRaw.email),
+    () => candidate,
+    () => {
+      addScore(candidate, 'doesEmailMatch', boolMatchRecord(true));
+      return candidate;
+    },
+    () => {
+      addScore(candidate, 'doesEmailMatch', boolMatchRecord(false));
+      return candidate;
+    },
+  );
 }
 
 /**
@@ -1688,10 +1504,7 @@ export function resolveByComparativeCorroboration(): Stage {
     const fullGeoAgreement: PipelineCandidate[] = [];
     for (const candidate of qualifying) {
       const scores = mergedScore(candidate);
-      if (
-        scores.contactCorroborationAddress?.pass === true ||
-        scores.contactCorroborationPhone?.pass === true
-      ) {
+      if (scores.contactCorroborationAddress?.pass === true || isExactPhoneMatch(candidate)) {
         strong.push({ candidate, score: candidate.scores });
       } else if (
         scores.doesCityMatch?.pass === true &&
@@ -1756,44 +1569,28 @@ function phoneDigitDistance(
 }
 
 /**
- * Scores phone-typo tolerance for a candidate whose name is a PERFECT structured match (nameScore
- * 100, since there's no other corroborating evidence to lean on) but whose phone is a real,
- * comparable, MISMATCHED number - not missing, which is exactly what isNoContradictionMatch's
- * fallback declines to help (it only relaxes when phoneScore is uncomparable).
- * calculatePhoneScore's binary 100-or-0 makes no distinction between a one-digit transposition and
- * a totally different area code; phoneDigitDistance recovers the former specifically.
- *
- * - Computed unconditionally for every nameScore=100 candidate, not gated to the pool having
- *   exactly one qualifying candidate - the score itself is real evidence any RESOLVE stage can
- *   read regardless of pool shape (resolveByPhoneTypoTolerance still gates its own RESOLUTION
- *   decision to a sole qualifying candidate).
- * - Deliberately does NOT modify calculatePhoneScore or isNoContradictionMatch themselves - both
- *   are shared with the DXTR trustee-appointment dataflow, and a change tuned for ACMS's specific
- *   typo patterns has no business affecting that unrelated call path.
- * - phoneDigitDistance's raw units (lower is better) are the opposite polarity of every other
- *   ScoreRecord.value - converted to a same-polarity similarity (10 - distance) so `pass` stays
- *   computable the same way everywhere, with the raw digit distance kept alongside for a reviewer
- *   who wants the human-readable count.
+ * Grades the phone like doesNameMatch grades the name: identical numbers are an 'exact' match, a
+ * likely data-entry typo (see PHONE_TYPO_MAX_DIGIT_DISTANCE) is a 'strong' match, anything further
+ * apart is an explicit no-match. Nothing is recorded when either phone is not comparable - that is
+ * neutral, not a no-match.
  */
-function scorePhoneTypoTolerance(
+function scorePhoneMatch(
   sourceNormalized: NormalizedTrustee,
   candidate: PipelineCandidate,
 ): PipelineCandidate {
-  if (!isExactNameMatch(candidate)) return candidate;
-
   const distance = phoneDigitDistance(
     sourceNormalized.legacy?.phone,
     candidate.camsRaw.phone?.number,
   );
   if (distance === null) return candidate;
 
-  const similarityThreshold = 10 - PHONE_TYPO_MAX_DIGIT_DISTANCE;
-  addScore(candidate, 'phoneTypoToleranceScore', {
-    value: 10 - distance,
-    threshold: similarityThreshold,
-    pass: 10 - distance >= similarityThreshold,
-    phoneDigitDistance: distance,
-  });
+  const verdict: PhoneMatchScore =
+    distance === 0
+      ? { pass: true, quality: 'exact' }
+      : distance <= PHONE_TYPO_MAX_DIGIT_DISTANCE
+        ? { pass: true, quality: 'strong', phoneDigitDistance: distance }
+        : { pass: false, phoneDigitDistance: distance };
+  addScore(candidate, 'doesPhoneMatch', verdict);
   return candidate;
 }
 
@@ -1829,24 +1626,22 @@ const CANDIDATE_SCORERS: CandidateScorer[] = [
   scoreAcmsHasAddressAndPhone,
   scoreHasComparableContactData, // reads both scores above - must run after them
   scoreNameMatch,
-  scoreNameDisqualifiers, // reads scoreNameMatch's doesNameMatch - must run after it
   recordSimilarityDiagnostics,
   scoreCityMatch,
   scoreStateMatch,
   scoreZipCodeMatch,
-  // reads doesCityMatch/doesStateMatch/doesZipCodeMatch - must run after all three
-  scoreAddressDisqualifiers,
-  scoreContactCorroboration,
-  scorePhoneTypoTolerance,
+  scoreAddressCorroboration,
+  scorePhoneMatch,
+  scoreEmailMatch,
 ];
 
 /**
  * Runs CANDIDATE_SCORERS against ONE candidate, immediately - the per-candidate counterpart to
  * runPipeline (trustee-match-pipeline.ts): the same reduce-over-an-ordered-list shape, narrowed to
  * CandidateScorer's signature. Unlike runPipeline, no terminal-outcome guard is needed here - a
- * candidate's disqualification is data recorded ON it (see Disqualifier), not a control-flow
- * signal the way state.match/skip/error is at the pool level, so every scorer in CANDIDATE_SCORERS
- * always runs, in order, with no early exit.
+ * candidate's scores are data recorded ON it, not a control-flow signal the way
+ * state.match/skip/error is at the pool level, so every scorer in CANDIDATE_SCORERS always runs,
+ * in order, with no early exit.
  *
  * A candidate discovered by a second RECALL tier for the same trusteeId gets re-scored here
  * (addCandidate's own idempotency only prevents a SECOND PipelineCandidate object from being
@@ -1965,11 +1760,8 @@ export function addAndScoreCandidate(
 }
 
 /**
- * Rescues the complementary case to resolveByComparativeCorroboration: exactly ONE candidate
- * clears calculateNameScore's threshold with a PERFECT structured match, and a real, comparable
- * phone-typo-tolerance score (see scorePhoneTypoTolerance, computed at discovery time)
- * clears the typo-distance bar. Pure reader now - the resolution decision stays gated to a sole
- * qualifying candidate even though the underlying score is computed for every candidate.
+ * Resolves the sole name-qualifying candidate when its name is an exact match and its phone
+ * is an exact or strong match (see scorePhoneMatch).
  */
 export function resolveByPhoneTypoTolerance(): Stage {
   return async (state: PipelineState): Promise<PipelineState> => {
@@ -1983,8 +1775,7 @@ export function resolveByPhoneTypoTolerance(): Stage {
     const candidate = qualifying[0];
     if (!isExactNameMatch(candidate)) return state;
 
-    const score = mergedScore(candidate).phoneTypoToleranceScore;
-    if (!score?.pass) return state;
+    if (mergedScore(candidate).doesPhoneMatch?.pass !== true) return state;
 
     return {
       ...state,
@@ -2008,7 +1799,7 @@ export function resolveByPhoneTypoTolerance(): Stage {
  *   - Geography: state agrees AND (city or zip also agrees), OR city and zip both agree
  *     regardless of state (a state field can be wrong/stale while the more granular city+zip data
  *     is still trustworthy).
- *   - Contact: address, phone, or email corroborates (see scoreContactCorroboration).
+ *   - Contact: address, phone, or email corroborates (see scoreAddressCorroboration, scorePhoneMatch, scoreEmailMatch).
  * Deliberately does NOT fall back to state agreement ALONE (no city/zip/contact evidence at all) -
  * a single vote (state alone, or the fuzzy-name vote alone) passing is genuinely weak evidence in
  * isolation, with nothing else to weigh it against. Accepted as a small, known gap: a
@@ -2041,12 +1832,8 @@ function addressCorroborates(candidate: PipelineCandidate): boolean {
   return mergedScore(candidate).contactCorroborationAddress?.pass === true;
 }
 
-function phoneCorroborates(candidate: PipelineCandidate): boolean {
-  return mergedScore(candidate).contactCorroborationPhone?.pass === true;
-}
-
 function emailCorroborates(candidate: PipelineCandidate): boolean {
-  return mergedScore(candidate).contactCorroborationEmail?.pass === true;
+  return mergedScore(candidate).doesEmailMatch?.pass === true;
 }
 
 /**
@@ -2063,8 +1850,8 @@ function hasAnyCorroboratingEvidence(candidate: PipelineCandidate): boolean {
     scores.doesCityMatch !== undefined ||
     scores.doesZipCodeMatch !== undefined ||
     scores.contactCorroborationAddress !== undefined ||
-    scores.contactCorroborationPhone !== undefined ||
-    scores.contactCorroborationEmail !== undefined
+    scores.doesPhoneMatch !== undefined ||
+    scores.doesEmailMatch !== undefined
   );
 }
 
@@ -2212,7 +1999,7 @@ export function resolveByAddress(): Stage {
 }
 
 export function resolveByPhone(): Stage {
-  return resolveSoleQualifyingOn(phoneCorroborates, 'resolveByPhone');
+  return resolveSoleQualifyingOn(isExactPhoneMatch, 'resolveByPhone');
 }
 
 export function resolveByEmailAddress(): Stage {
