@@ -1,43 +1,16 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter, MemoryRouter } from 'react-router-dom';
-import * as ReactRouterDOM from 'react-router-dom';
 import App from './App';
 import { vi } from 'vitest';
 import LocalStorage from './lib/utils/local-storage';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { CamsRole } from '@common/cams/roles';
 import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
-import useFeatureFlagReadiness from '@/lib/hooks/UseFeatureFlagReadiness';
+import * as UseFeatureFlagReadinessModule from '@/lib/hooks/UseFeatureFlagReadiness';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
-
-vi.mock('@/lib/hooks/UseFeatureFlagReadiness');
-
-vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual('react-router-dom');
-  return {
-    ...(actual as typeof actual),
-    useLocation: vi.fn().mockReturnValue({
-      pathname: '/',
-      search: '',
-      hash: '',
-      state: null,
-      key: 'default',
-    }),
-  };
-});
 
 describe('App Router Tests', () => {
   let userEvent: CamsUserEvent;
-
-  const setUseLocationMock = (pathname: string = '/', state: object | undefined = undefined) => {
-    vi.mocked(ReactRouterDOM.useLocation).mockReturnValue({
-      pathname,
-      search: '',
-      hash: '',
-      state,
-      key: 'default',
-    } as ReturnType<typeof ReactRouterDOM.useLocation>);
-  };
 
   beforeAll(async () => {
     vi.stubEnv('CAMS_USE_FAKE_API', 'true');
@@ -45,7 +18,6 @@ describe('App Router Tests', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
-    setUseLocationMock();
     userEvent = TestingUtilities.setupUserEvent();
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(
       MockData.getCamsSession({
@@ -56,7 +28,7 @@ describe('App Router Tests', () => {
     );
     // Resolved by default so AddTrusteeRouteGuard decides deterministically from the mocked
     // flags above instead of racing the real LaunchDarkly SDK (waitForInitialization()).
-    vi.mocked(useFeatureFlagReadiness).mockReturnValue({
+    vi.spyOn(UseFeatureFlagReadinessModule, 'default').mockReturnValue({
       isReady: true,
       hasTimedOut: true,
       hasIdentified: true,
@@ -75,7 +47,7 @@ describe('App Router Tests', () => {
     await userEvent.click(screen.getByTestId('header-search-link'));
 
     await waitFor(() => {
-      expect(document.querySelector('main.search-screen')).toBeInTheDocument();
+      expect(screen.getByTestId('search')).toBeInTheDocument();
     });
   });
 
@@ -87,8 +59,6 @@ describe('App Router Tests', () => {
       'trustee-management': true,
       'restrict-adding-trustees': true,
     });
-
-    setUseLocationMock('/trustees/create');
 
     render(
       <MemoryRouter initialEntries={['/trustees/create']}>
@@ -117,8 +87,37 @@ describe('App Router Tests', () => {
     await screen.findByText('Case Search', { selector: 'h1' });
   });
 
+  test.each([
+    { path: '/my-cases', testId: 'case-list-heading', heading: 'My Cases' },
+    { path: '/staff-assignment', testId: 'case-list-heading', heading: 'Staff Assignment' },
+    { path: '/search/081-24-12345', testId: 'search', heading: undefined },
+    { path: '/case-detail/081-24-12345', testId: 'case-detail', heading: undefined },
+    { path: '/data-verification', testId: 'data-verification-screen', heading: undefined },
+    { path: '/admin', testId: 'admin-screen', heading: undefined },
+    { path: '/trustees/some-trustee-id', testId: 'record-detail', heading: undefined },
+  ])(
+    'should route $path to a screen rendering data-testid=$testId',
+    async ({ path, testId, heading }) => {
+      render(
+        <MemoryRouter initialEntries={[path]}>
+          <App />
+        </MemoryRouter>,
+      );
+
+      await waitFor(() => {
+        const element = screen.getByTestId(testId);
+        expect(element).toBeInTheDocument();
+        // /my-cases and /staff-assignment render the same shared testid, so a route-swap
+        // bug between the two would otherwise pass undetected -- check the heading text too.
+        if (heading) {
+          expect(element).toHaveTextContent(heading);
+        }
+      });
+    },
+  );
+
   describe('Trustee route unauthorized access tests', () => {
-    test('should show unauthorized message when accessing /trustees without TrusteeAdmin role', async () => {
+    test('should not show the Add New Trustee link when accessing /trustees without TrusteeAdmin role', async () => {
       const unauthorizedUser = MockData.getCamsUser({ roles: [CamsRole.CaseAssignmentManager] });
       vi.spyOn(LocalStorage, 'getSession').mockReturnValue(
         MockData.getCamsSession({ user: unauthorizedUser }),
@@ -135,7 +134,33 @@ describe('App Router Tests', () => {
       );
 
       await waitFor(() => {
-        expect(document.querySelector('[data-testid="trustees-add-link"]')).not.toBeInTheDocument();
+        // TrusteesScreen returns null entirely for an unauthorized user -- there is no
+        // "unauthorized" message to render, so confirm the whole screen is absent.
+        expect(screen.queryByTestId('trustees')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('trustees-add-link')).not.toBeInTheDocument();
+      });
+    });
+
+    test('should show the Add New Trustee link when accessing /trustees with TrusteeAdmin role', async () => {
+      const authorizedUser = MockData.getCamsUser({ roles: [CamsRole.TrusteeAdmin] });
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(
+        MockData.getCamsSession({ user: authorizedUser }),
+      );
+
+      vi.spyOn(FeatureFlags, 'default').mockReturnValue({
+        'trustee-management': true,
+        'restrict-adding-trustees': true,
+      });
+
+      render(
+        <MemoryRouter initialEntries={['/trustees']}>
+          <App />
+        </MemoryRouter>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustees')).toBeInTheDocument();
+        expect(screen.getByTestId('trustees-add-link')).toBeInTheDocument();
       });
     });
   });

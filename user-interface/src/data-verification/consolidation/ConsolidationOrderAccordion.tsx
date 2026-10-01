@@ -21,7 +21,6 @@ export interface ConsolidationOrderAccordionProps {
   statusType: Map<string, string>;
   taskType: Map<string, string>;
   courts: Array<CourtDivisionDetails>;
-  regionsMap: Map<string, string>;
   onOrderUpdate: OnOrderUpdate;
   onExpand?: (id: string) => void;
   expandedId?: string;
