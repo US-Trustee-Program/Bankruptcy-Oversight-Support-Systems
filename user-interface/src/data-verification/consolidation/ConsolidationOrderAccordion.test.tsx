@@ -762,7 +762,6 @@ describe('ConsolidationOrderAccordion tests', () => {
             taskType={taskType}
             statusType={orderStatusType}
             onOrderUpdate={onOrderUpdateMockFunc}
-            regionsMap={regionMap}
             fieldHeaders={accordionFieldHeaders}
           />
         </AccordionGroup>

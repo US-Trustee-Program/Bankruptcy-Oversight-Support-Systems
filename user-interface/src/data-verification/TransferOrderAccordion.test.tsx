@@ -148,7 +148,6 @@ describe('TransferOrderAccordion', () => {
           taskType={taskType}
           statusType={orderStatusType}
           onOrderUpdate={() => {}}
-          regionsMap={regionMap}
           fieldHeaders={accordionFieldHeaders}
         />
       </BrowserRouter>,
@@ -168,7 +167,6 @@ describe('TransferOrderAccordion', () => {
           taskType={taskType}
           statusType={orderStatusType}
           onOrderUpdate={() => {}}
-          regionsMap={regionMap}
           fieldHeaders={accordionFieldHeaders}
           expandedId={`order-list-${order.id}`}
         />
@@ -247,7 +245,6 @@ describe('TransferOrderAccordion', () => {
             onOrderUpdate={() => {}}
             onExpand={onExpand}
             onCollapse={onCollapse}
-            regionsMap={regionMap}
             fieldHeaders={accordionFieldHeaders}
           />
         </AccordionGroup>
