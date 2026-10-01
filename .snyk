@@ -49,39 +49,26 @@ ignore:
           signature-verification bypass, but our only reachable node-jose
           call is JWS.createSign for outbound DPoP proof signing
           (@okta/okta-sdk-nodejs/src/dpop.js) — JWS.createVerify is never
-          invoked anywhere in our usage. No fixed node-forge version
-          exists upstream as of 2026-09-07.
-        expires: 2026-10-07T00:00:00.000Z
+          invoked anywhere in our usage. Re-verified 2026-09-30: still no
+          fixed node-forge version on npm (latest remains 1.4.0). Upstream
+          fix PR #1151 was closed in favor of #1152
+          (digitalbazaar/forge#1152), which remains open/unmerged against
+          digitalbazaar/forge#1149. Shortened renewal window to 2 weeks
+          given active upstream PR churn.
+        expires: 2026-10-14T00:00:00.000Z
   SNYK-JS-REACTROUTER-18313151:
     - '*':
         reason: >-
-          Transitive dependency via user-interface's react-router-dom@7.18.1,
-          which pins react-router at an exact 7.18.1 (hoisted into
-          test/e2e and test/uswds). Fix requires react-router 8.3.0, but
-          react-router-dom has never published an 8.x release — v8 unifies
-          routing into the react-router package directly, so adopting the
-          fix means migrating frontend imports off react-router-dom
-          entirely (tracked separately, not a simple version bump). The
-          CVE is an RSC/server-actions CSRF bypass; CAMS is a client-only
-          SPA that uses neither RSC nor server actions, so exploitability
-          is low in the interim.
-        expires: 2026-09-10T00:00:00.000Z
-  SNYK-JS-PROXYADDR-19812342:
-    - '*':
-        reason: >-
-          Transitive dependency via express@5.2.1 > proxy-addr@2.0.7.
-          CVE-2026-90711 (User Impersonation) lets an attacker control
-          req.ip / req.ips via a crafted X-Forwarded-For header when
-          proxy-addr's subnet matching mishandles IPv4-mapped IPv6 trust
-          entries. Express is used ONLY by backend/express/server.ts, a
-          local development server (npm run start:express, tsx --watch);
-          it is not built, packaged, or deployed. The deployed backend is
-          Azure Functions (function-apps/api, function-apps/dataflows),
-          which never routes requests through express or proxy-addr, so
-          the vuln is not reachable in any deployed request path. Fixed in
-          proxy-addr@2.0.8, which satisfies express's ^2.0.7 range, but
-          2.0.8 was published 2026-09-15 — inside CAMS's 14-day minimum
-          release age window (renovate.json; patch update). This ignore
-          expires 2026-09-29, when 2.0.8 is 14 days old and Renovate can
-          bump the lockfile.
-        expires: 2026-09-29T00:00:00.000Z
+          Transitive dependency via user-interface's react-router-dom,
+          now at 7.18.4 (hoisted into test/e2e and test/uswds), which
+          still pins react-router below the 8.3.0 fix — react-router-dom
+          has never published an 8.x release; v8 unifies routing into
+          the react-router package directly. Migration off
+          react-router-dom to react-router v8 is tracked by CAMS-854 and
+          in progress (only a small fraction of imports converted so
+          far). Re-verified 2026-09-30: this ignore lapsed 2026-09-10
+          without renewal; renewing now. The CVE is an RSC/server-actions
+          CSRF bypass; CAMS is a client-only SPA that uses neither RSC
+          nor server actions, so exploitability remains low in the
+          interim.
+        expires: 2026-10-14T00:00:00.000Z
