@@ -77,7 +77,6 @@ jobs:
     outputs:
       executeCleanup: ${{ steps.check.outputs.executeCleanup }}
       stackName: ${{ steps.check.outputs.stackName }}
-      staleDaysThreshold: ${{ steps.check.outputs.staleDaysThreshold }}
     steps:
       - uses: azure/login@7ddb5af1ef8758cf1353cf3b42f940aee27ba21c # v3.0.2
         with:
@@ -118,6 +117,8 @@ jobs:
           set -euo pipefail
           # shellcheck source=ops/scripts/pipeline/_kv-to-env.sh
           source ops/scripts/pipeline/_kv-to-env.sh
+          # shellcheck source=ops/scripts/pipeline/_find-branch-stacks.sh
+          source ops/scripts/pipeline/_find-branch-stacks.sh
 
           if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
             KV="kv-ustp-cams"
@@ -152,10 +153,9 @@ jobs:
               exit 0
             fi
 
-            networkStacks=$(az stack group list -g "${networkRgBase}" --query "[?tags.isBranchDeployment == 'true' && tags.branchHashId != null].{name:name, branchName:tags.branchName, branchHashId:tags.branchHashId}" -o json)
-            appStacks=$(az stack group list -g "${appRgBase}" --query "[?tags.isBranchDeployment == 'true' && tags.branchHashId != null].{name:name, branchName:tags.branchName, branchHashId:tags.branchHashId}" -o json)
-            candidates=$(jq -c -n --argjson net "${networkStacks}" --argjson app "${appStacks}" '
-              ($net + $app)
+            find_branch_stacks taggedStacks "${networkRgBase}" "${appRgBase}"
+            candidates=$(jq -c -n --argjson stacks "${taggedStacks}" '
+              $stacks
               | [
                   .[]
                   | select(.branchHashId | test("^[0-9a-f]{6}$"))
@@ -178,7 +178,6 @@ jobs:
               echo "::warning::STALE_BRANCH_DAYS ('${staleDaysThreshold}') is not a valid non-negative integer; falling back to the default of 5."
               staleDaysThreshold=5
             fi
-            echo "staleDaysThreshold=${staleDaysThreshold}" >> "$GITHUB_OUTPUT"
             nowEpoch=$(date -u +%s)
             targets='[]'
             notices='[]'
@@ -257,8 +256,8 @@ jobs:
               notices=$(jq -c --argjson n "${notice}" '. + [$n]' <<<"${notices}")
             done < <(jq -c '.[]' <<<"${candidates}")
 
-            jq -n --argjson hashes "${targets}" --argjson notices "${notices}" \
-              '{targetBranchHashIds: $hashes, staleBranchNotices: $notices}' > relay-payload.json
+            jq -n --argjson hashes "${targets}" --argjson notices "${notices}" --arg staleDaysThreshold "${staleDaysThreshold}" \
+              '{targetBranchHashIds: $hashes, staleBranchNotices: $notices, staleDaysThreshold: $staleDaysThreshold}' > relay-payload.json
 
             targetCount=$(echo "${targets}" | jq length)
             if [[ "${targetCount}" -gt 0 ]]; then
@@ -278,10 +277,9 @@ jobs:
             fi
 
             echo "Do existing Azure branch resources with hash $target exist?"
-            networkStacks=$(az stack group list -g "${networkRgBase}" --query "[?tags.isBranchDeployment == 'true' && tags.branchHashId == '$target'].{name:name, branchName:tags.branchName, branchHashId:tags.branchHashId}" -o json)
-            appStacks=$(az stack group list -g "${appRgBase}" --query "[?tags.isBranchDeployment == 'true' && tags.branchHashId == '$target'].{name:name, branchName:tags.branchName, branchHashId:tags.branchHashId}" -o json)
-            count=$(jq -n --argjson net "${networkStacks}" --argjson app "${appStacks}" '
-              ($net + $app)
+            find_branch_stacks taggedStacks "${networkRgBase}" "${appRgBase}" "${target}"
+            count=$(jq -n --argjson stacks "${taggedStacks}" '
+              $stacks
               | [
                   .[]
                   | select(.branchHashId | test("^[0-9a-f]{6}$"))
@@ -313,9 +311,10 @@ jobs:
           path: relay-payload.json
           retention-days: 1
 
-  # This job's only purpose is to carry `targetBranchHashIds` and
-  # `staleBranchNotices` across the job boundary without exposing them to
-  # GitHub's "may contain secret" output-masking guard. `check` needs Azure
+  # This job's only purpose is to carry `targetBranchHashIds`,
+  # `staleBranchNotices`, and `staleDaysThreshold` across the job boundary
+  # without exposing them to GitHub's "may contain secret" output-masking
+  # guard. `check` needs Azure
   # credentials (via azure/login) and GITHUB_TOKEN to do its discovery work,
   # so its own job-level output for these two arrays is permanently exposed
   # to that guard — and it has been silently dropping `targetBranchHashIds`
@@ -336,11 +335,15 @@ jobs:
   relay:
     runs-on: ubuntu-latest
     needs: [check]
-    permissions:
-      contents: read
+    # download-artifact/upload-artifact authenticate via the runner's internal
+    # artifact-service token, not any `permissions:` scope -- `contents: read`
+    # here was an unused grant in a job whose whole point is minimal surface
+    # area.
+    permissions: {}
     outputs:
       targetBranchHashIds: ${{ steps.relay.outputs.targetBranchHashIds }}
       staleBranchNotices: ${{ steps.relay.outputs.staleBranchNotices }}
+      staleDaysThreshold: ${{ steps.relay.outputs.staleDaysThreshold }}
     steps:
       - name: Download target hash list
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
@@ -350,8 +353,19 @@ jobs:
         id: relay
         run: |
           set -euo pipefail
-          echo "targetBranchHashIds=$(jq -c '.targetBranchHashIds' relay-payload.json)" >> "$GITHUB_OUTPUT"
-          echo "staleBranchNotices=$(jq -c '.staleBranchNotices' relay-payload.json)" >> "$GITHUB_OUTPUT"
+          targetBranchHashIds=$(jq -c '.targetBranchHashIds // error("missing targetBranchHashIds")' relay-payload.json)
+          staleBranchNotices=$(jq -c '.staleBranchNotices // error("missing staleBranchNotices")' relay-payload.json)
+          # Unlike the two fields above, staleDaysThreshold is only ever
+          # written on the nightly-sweep path (it's meaningless on the
+          # single-target workflow_dispatch/delete path, which always emits
+          # staleBranchNotices: [] and so never reaches `notify`, the only
+          # consumer) -- absence here is expected, not a sign of a dropped
+          # field, so this defaults rather than erroring.
+          staleDaysThreshold=$(jq -r '.staleDaysThreshold // ""' relay-payload.json)
+          echo "targetBranchHashIds=${targetBranchHashIds}" >> "$GITHUB_OUTPUT"
+          echo "staleBranchNotices=${staleBranchNotices}" >> "$GITHUB_OUTPUT"
+          echo "staleDaysThreshold=${staleDaysThreshold}" >> "$GITHUB_OUTPUT"
+          echo "Relayed $(jq 'length' <<<"${targetBranchHashIds}") target hash(es) and $(jq 'length' <<<"${staleBranchNotices}") stale notice(s) to downstream jobs."
 
   # Separate from `check`: GitHub Actions registers every secret referenced
   # anywhere in a job as a masked value for the WHOLE job as soon as it
@@ -364,7 +378,9 @@ jobs:
   notify:
     runs-on: ubuntu-latest
     needs: [check, relay]
-    if: needs.relay.outputs.staleBranchNotices != '[]'
+    if:
+      needs.check.result == 'success' && needs.relay.result == 'success' &&
+      needs.relay.outputs.staleBranchNotices != '[]'
     environment: 'remove-branch'
     permissions:
       contents: read
@@ -377,7 +393,7 @@ jobs:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           SLACK_USER_MAPPING: ${{ secrets.SLACK_USER_MAPPING }}
           STALE_BRANCH_NOTICES: ${{ needs.relay.outputs.staleBranchNotices }}
-          STALE_DAYS_THRESHOLD: ${{ needs.check.outputs.staleDaysThreshold }}
+          STALE_DAYS_THRESHOLD: ${{ needs.relay.outputs.staleDaysThreshold }}
         run: |
           set -euo pipefail
           staleDaysThreshold="${STALE_DAYS_THRESHOLD}"
@@ -416,7 +432,9 @@ jobs:
   clean-up:
     runs-on: ubuntu-latest
     needs: [check, relay]
-    if: needs.check.outputs.executeCleanup == 'true'
+    if:
+      needs.check.result == 'success' && needs.relay.result == 'success' &&
+      needs.check.outputs.executeCleanup == 'true'
     strategy:
       fail-fast: false
       max-parallel: 1
@@ -504,11 +522,18 @@ jobs:
   # does NOT need to be secret-free, because nothing downstream reads its
   # outputs via a fromJSON matrix.
   #
-  # The 2-consecutive-run debounce (via actions/cache) exists because Azure
-  # stack deletion is eventually consistent: a delete call can report
-  # success before the resources are fully gone. A hash is only treated as
-  # a confirmed leak if it's still present on two runs that included it in
-  # their target list, not on its first sighting.
+  # Two layers catch Azure's eventual-consistency window (a delete call can
+  # report success before the resources are fully gone):
+  #   1. An in-run retry below re-checks a hash once after a short sleep,
+  #      catching the common seconds/minutes-scale lag within this same run.
+  #   2. A 2-consecutive-run debounce (via actions/cache) still backstops
+  #      slower cases: a hash is only a confirmed leak if it's present on
+  #      two runs that included it in their target list, not on its first
+  #      sighting. The cache is merged per-hash rather than overwritten
+  #      wholesale, so a run with a different target-hash set than the
+  #      previous one (e.g. a one-off branch-delete run vs. the nightly
+  #      sweep) can't clobber another run's in-progress debounce for hashes
+  #      it didn't check.
   assert-clean-state:
     runs-on: ubuntu-latest
     needs: [check, relay, clean-up]
@@ -517,6 +542,8 @@ jobs:
     permissions:
       contents: read
       id-token: write
+    env:
+      ORPHAN_CACHE_PREFIX: cams-branch-cleanup-unresolved-orphans-
     steps:
       - uses: azure/login@7ddb5af1ef8758cf1353cf3b42f940aee27ba21c # v3.0.2
         with:
@@ -536,48 +563,95 @@ jobs:
           echo "AZ_NETWORK_RG_BASE=${networkRgBase}" >> "$GITHUB_ENV"
           echo "AZ_APP_RG_BASE=${appRgBase}" >> "$GITHUB_ENV"
       - name: Restore previous unresolved-orphan state
+        id: restore-cache
         # actions/cache keys are immutable once written, so `save` below
         # uses a unique key per run (github.run_id) -- it would otherwise
         # silently no-op on every run after the first, since the cache
         # service refuses to overwrite an existing key. `restore-keys` is a
         # prefix match that falls through to the most recently-created
-        # cache matching it, i.e. whatever the previous run saved.
+        # cache matching it, i.e. whatever the previous run saved -- the
+        # debounce step below merges that state per-hash rather than
+        # trusting it wholesale, since "most recently saved" isn't
+        # necessarily "most recent run that checked this particular hash".
         uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: unresolved-orphans.json
-          key: cams-branch-cleanup-unresolved-orphans-${{ github.run_id }}
+          key: ${{ env.ORPHAN_CACHE_PREFIX }}${{ github.run_id }}
           restore-keys: |
-            cams-branch-cleanup-unresolved-orphans-
+            ${{ env.ORPHAN_CACHE_PREFIX }}
+      - name: Warn on missing debounce state
+        if: steps.restore-cache.outputs.cache-hit != 'true'
+        run: |
+          echo "::warning::No prior unresolved-orphan cache found (eviction, quota, or first run) -- this run's debounce state starts empty, so any genuinely leaked hash checked this run will need one additional confirming run before it's reported."
       - name: Re-check each target hash and apply debounce
         id: check-state
         env:
           TARGET_HASH_IDS: ${{ needs.relay.outputs.targetBranchHashIds }}
         run: |
           set -euo pipefail
+          # shellcheck source=ops/scripts/pipeline/_find-branch-stacks.sh
+          source ops/scripts/pipeline/_find-branch-stacks.sh
           [[ -f unresolved-orphans.json ]] || echo '[]' > unresolved-orphans.json
+
+          check_hash() {
+            local hash="$1" matches
+            find_branch_stacks matches "${AZ_NETWORK_RG_BASE}" "${AZ_APP_RG_BASE}" "${hash}"
+            jq 'length' <<<"${matches}"
+          }
+
           stillPresent='[]'
           while IFS= read -r hash; do
-            networkMatch=$(az stack group list -g "${AZ_NETWORK_RG_BASE}" --query "[?tags.isBranchDeployment == 'true' && tags.branchHashId == '${hash}'].name" -o json)
-            appMatch=$(az stack group list -g "${AZ_APP_RG_BASE}" --query "[?tags.isBranchDeployment == 'true' && tags.branchHashId == '${hash}'].name" -o json)
-            count=$(jq -n --argjson n "${networkMatch}" --argjson a "${appMatch}" '($n + $a) | length')
+            count=$(check_hash "${hash}")
             if [[ "${count}" -gt 0 ]]; then
-              echo "Hash ${hash}: resources still present after clean-up (network: ${networkMatch}, app: ${appMatch})."
+              # Azure stack deletion is eventually consistent on a
+              # seconds/minutes timescale -- one short retry here catches
+              # the common case in-run, instead of costing it a full extra
+              # run on the cross-run debounce below.
+              echo "Hash ${hash}: resources present on first check; retrying in 60s before recording."
+              sleep 60
+              count=$(check_hash "${hash}")
+            fi
+            if [[ "${count}" -gt 0 ]]; then
+              echo "Hash ${hash}: resources still present after clean-up and retry."
               stillPresent=$(jq -c --arg h "${hash}" '. + [$h]' <<<"${stillPresent}")
             fi
           done < <(jq -r '.[]' <<<"${TARGET_HASH_IDS}")
 
+          # A hash is a confirmed leak only if it was present on the last
+          # run that tracked it AND present again this run.
           confirmed=$(jq -n --argjson today "${stillPresent}" --slurpfile cached unresolved-orphans.json \
             '$today - ($today - ($cached[0] // []))')
-          echo "${stillPresent}" > unresolved-orphans.json
+
+          # Carry forward cached entries for hashes this run didn't check
+          # at all, so a run with a different target-hash set can't erase
+          # another run's in-progress debounce; only overwrite entries for
+          # hashes this run actually re-checked.
+          carriedForward=$(jq -c --argjson target "${TARGET_HASH_IDS}" --slurpfile cached unresolved-orphans.json \
+            '($cached[0] // []) - $target')
+          newState=$(jq -cn --argjson carried "${carriedForward}" --argjson today "${stillPresent}" \
+            '($carried + $today) | unique')
+          echo "${newState}" > unresolved-orphans.json
           echo "confirmedLeaks=${confirmed}" >> "$GITHUB_OUTPUT"
       - name: Save unresolved-orphan state for next run
         if: always()
         uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: unresolved-orphans.json
-          key: cams-branch-cleanup-unresolved-orphans-${{ github.run_id }}
-      - name: Fail loudly on confirmed leaks
+          key: ${{ env.ORPHAN_CACHE_PREFIX }}${{ github.run_id }}
+      - name: Alert on confirmed leaks
+        # A confirmed leak's remediation can't just be a normal red CI run --
+        # the incident this workflow exists to prevent was exactly that
+        # (a red teardown run going unactioned), so this reuses `notify`'s
+        # Slack-webhook pattern for a higher-urgency, ops-facing message
+        # rather than leaving detection as the only signal.
         if: steps.check-state.outputs.confirmedLeaks != '[]'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
+          set -euo pipefail
+          curl -X POST -H 'Content-type: application/json' \
+            --data "$(jq -n --arg text "🚨 Azure branch-cleanup leak confirmed for 2 consecutive runs: ${{ steps.check-state.outputs.confirmedLeaks }}. Manual teardown required." '{text: $text}')" \
+            "${SLACK_WEBHOOK_URL}" \
+            || echo "::warning::Failed to send Slack alert for confirmed leak(s); falling through to the error annotation below regardless."
           echo "::error::Branch cleanup left resources behind for 2 consecutive runs: ${{ steps.check-state.outputs.confirmedLeaks }}"
           exit 1
