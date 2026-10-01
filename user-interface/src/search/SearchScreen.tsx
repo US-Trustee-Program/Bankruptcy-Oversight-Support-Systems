@@ -598,6 +598,7 @@ export default function SearchScreen() {
                     phoneticSearchEnabled={phoneticSearchEnabled}
                     showDebtorNameColumn={showDebtorNameColumn}
                     showOpenClosedColumn={true}
+                    trackResultClicks={true}
                     onStartSearching={setStartSearching}
                     onEndSearching={setEndSearching}
                     onResultsChanged={handleResultsChanged}
