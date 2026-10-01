@@ -124,7 +124,7 @@ export function Login(props: LoginProps): React.ReactNode {
           accessToken={MOCK_JWT}
           user={props.user ?? MOCK_SUPERUSER}
           expires={Number.MAX_SAFE_INTEGER}
-          issuer={issuer ?? ''}
+          issuer={''}
         >
           {props.children}
         </Session>
