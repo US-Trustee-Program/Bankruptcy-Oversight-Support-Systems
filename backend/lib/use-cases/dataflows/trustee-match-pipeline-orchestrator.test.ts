@@ -91,20 +91,65 @@ describe('runTrusteeMatchPipeline', () => {
     expect(result.candidates.size).toBe(2);
   });
 
-  test('resolves directly via matchTrusteeByName when it returns resolved (exact-name short circuit)', async () => {
-    vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({
-      kind: 'resolved',
-      trusteeId: 't1',
-      nameScore: 100,
-      nameMatchQuality: 'exact',
+  describe('a sole exact-name match from matchTrusteeByName', () => {
+    const acmsKeyWest = makeDxtrTrustee({
+      legacy: {
+        address1: '1 Fictional Ave',
+        cityStateZipCountry: 'KEY WEST FL 33040-0000',
+        phone: '3055551000',
+      } as never,
+    });
+    const camsAddress = (city: string, state: string, zipCode: string) => ({
+      address1: '9 Other Rd',
+      city,
+      state,
+      zipCode,
+      countryCode: 'US' as const,
     });
 
-    const result = await runTrusteeMatchPipeline(context, makeDxtrTrustee());
+    beforeEach(() => {
+      vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({
+        kind: 'resolved',
+        trusteeId: 't1',
+        nameScore: 100,
+        nameMatchQuality: 'exact',
+      });
+    });
 
-    expect(result.match).toEqual({
-      trusteeId: 't1',
-      score: { nameScore: 100, nameMatchQuality: 'exact' },
-      resolvedBy: 'recallByNameThenResolveMatch',
+    test('does not resolve on name alone when address and phone both disagree', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByIds').mockResolvedValue([
+        makeTrustee({
+          trusteeId: 't1',
+          public: {
+            address: camsAddress('Longview', 'TX', '75601'),
+            phone: { number: '903-555-2000' },
+          },
+        }),
+      ]);
+
+      const result = await runTrusteeMatchPipeline(context, acmsKeyWest);
+
+      expect(result.match).toBeNull();
+      expect(result.candidates.has('t1')).toBe(true);
+    });
+
+    test('resolves through a resolve stage when contact data corroborates it', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByIds').mockResolvedValue([
+        makeTrustee({
+          trusteeId: 't1',
+          public: {
+            address: camsAddress('Key West', 'FL', '33040'),
+            phone: { number: '305-555-1000' },
+          },
+        }),
+      ]);
+
+      const result = await runTrusteeMatchPipeline(context, acmsKeyWest);
+
+      expect(result.match).toMatchObject({
+        trusteeId: 't1',
+        resolvedBy: 'resolveBySoleContactMatch',
+      });
     });
   });
 

@@ -5,7 +5,6 @@ import MockData from '@common/cams/test-utilities/mock-data';
 import { CamsError } from '../../common-errors/cams-error';
 import {
   addCandidate,
-  addDisqualifier,
   addScore,
   createTrusteeInitialState as createInitialState,
   mergedScore,
@@ -256,74 +255,6 @@ describe('mergedScore', () => {
   });
 });
 
-describe('addDisqualifier', () => {
-  test('a new candidate starts with no disqualifiers', () => {
-    const state = createInitialState(makeDxtrTrustee());
-    const candidate = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })), 'test');
-
-    expect(candidate.disqualifiers).toEqual([]);
-  });
-
-  test('records a scorer, reason, and the specific evidence compared', () => {
-    const state = createInitialState(makeDxtrTrustee());
-    const candidate = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })), 'test');
-
-    addDisqualifier(candidate, 'doesCityMatch', 'city actively disagrees', {
-      acmsCity: 'Sonoma',
-      camsCity: 'San Francisco',
-    });
-
-    expect(candidate.disqualifiers).toEqual([
-      {
-        scorer: 'doesCityMatch',
-        reason: 'city actively disagrees',
-        evidence: { acmsCity: 'Sonoma', camsCity: 'San Francisco' },
-      },
-    ]);
-  });
-
-  test('appends rather than overwrites - more than one scorer can disqualify the same candidate', () => {
-    const state = createInitialState(makeDxtrTrustee());
-    const candidate = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })), 'test');
-
-    addDisqualifier(candidate, 'doesCityMatch', 'city actively disagrees', {
-      acmsCity: 'Sonoma',
-      camsCity: 'San Francisco',
-    });
-    addDisqualifier(candidate, 'doesZipCodeMatch', 'zip actively disagrees', {
-      acmsZip: '95476',
-      camsZip: '94111',
-    });
-
-    expect(candidate.disqualifiers).toEqual([
-      {
-        scorer: 'doesCityMatch',
-        reason: 'city actively disagrees',
-        evidence: { acmsCity: 'Sonoma', camsCity: 'San Francisco' },
-      },
-      {
-        scorer: 'doesZipCodeMatch',
-        reason: 'zip actively disagrees',
-        evidence: { acmsZip: '95476', camsZip: '94111' },
-      },
-    ]);
-  });
-
-  test('does not affect a different candidate in the same state', () => {
-    const state = createInitialState(makeDxtrTrustee());
-    const disqualified = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 't1' })),
-      'test',
-    );
-    const untouched = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't2' })), 'test');
-
-    addDisqualifier(disqualified, 'doesCityMatch', 'city actively disagrees', {});
-
-    expect(untouched.disqualifiers).toEqual([]);
-  });
-});
-
 describe('normalize', () => {
   test('computes and caches a value under the given function name and fingerprint on first access', () => {
     const memo: NormalizedMemo = new Map();
@@ -408,7 +339,7 @@ describe('runPipeline', () => {
       ...s,
       match: {
         trusteeId: 't1',
-        score: { nameScore: 100, nameMatchQuality: 'exact' },
+        score: { doesNameMatch: { pass: true, quality: 'exact' } },
         resolvedBy: 'matchingStage',
       },
     });
@@ -422,7 +353,7 @@ describe('runPipeline', () => {
     expect(laterStage).not.toHaveBeenCalled();
     expect(result.match).toEqual({
       trusteeId: 't1',
-      score: { nameScore: 100, nameMatchQuality: 'exact' },
+      score: { doesNameMatch: { pass: true, quality: 'exact' } },
       resolvedBy: 'matchingStage',
     });
     expect(result.error).toBeNull();
@@ -508,7 +439,6 @@ describe('serializeState', () => {
           },
           memo: { lastNameToken: [{ key: 'John Doe', value: 'doe' }] },
           scores: { doesNameMatch: { pass: true, quality: 'exact' } },
-          disqualifiers: [],
           origin: 'test',
         },
       ],
@@ -523,8 +453,8 @@ describe('serializeState', () => {
       ...createInitialState(makeDxtrTrustee()),
       match: {
         trusteeId: 't1',
-        score: { nameScore: 100, nameMatchQuality: 'exact' },
-        resolvedBy: 'recallByNameThenResolveMatch',
+        score: { doesNameMatch: { pass: true, quality: 'exact' } },
+        resolvedBy: 'resolveBySoleExactNameInState',
       },
     };
 
@@ -532,8 +462,8 @@ describe('serializeState', () => {
 
     expect(serialized.match).toEqual({
       trusteeId: 't1',
-      score: { nameScore: 100, nameMatchQuality: 'exact' },
-      resolvedBy: 'recallByNameThenResolveMatch',
+      score: { doesNameMatch: { pass: true, quality: 'exact' } },
+      resolvedBy: 'resolveBySoleExactNameInState',
     });
   });
 

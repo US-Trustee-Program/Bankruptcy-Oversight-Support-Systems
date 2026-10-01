@@ -16,7 +16,6 @@ function makeCandidate(
     camsNormalized: {},
     memo: {},
     scores,
-    disqualifiers: [],
     origin: 'test',
   };
 }

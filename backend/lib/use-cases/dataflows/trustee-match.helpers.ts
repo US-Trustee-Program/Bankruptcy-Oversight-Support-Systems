@@ -1426,7 +1426,7 @@ export function isBlankAcmsValue(value: string | undefined): boolean {
  *    exactly one scored candidate. Both tiers share this label - neither is a more distinct
  *    category than the pipeline's other normalization steps, none of which get their own label.
  */
-export type NameMatchQuality = 'exact' | 'fuzzy';
+type NameMatchQuality = 'exact' | 'fuzzy';
 
 /**
  * Outcome of a name-lookup attempt (see matchTrusteeByName):
