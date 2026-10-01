@@ -1,24 +1,17 @@
 import './EditUpcomingKeyDates.scss';
 import '@/lib/components/uswds/forms.scss';
-import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
 import {
   TrusteeUpcomingKeyDates,
   TrusteeUpcomingKeyDatesInput,
   validateCompletionPairPresence,
 } from '@common/cams/trustee-upcoming-key-dates';
 import { mergeKeyDatesInput, buildYearOptions, getFiscalYearOptions } from './keyDatesInput';
-import Api2 from '@/lib/models/api2';
-import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
-import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
-import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import DatePicker from '@/lib/components/uswds/DatePicker';
 import Select from '@/lib/components/uswds/Select';
-import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
 import PairFieldGroup from './PairFieldGroup';
-import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
-import { Stop } from '@/lib/components/Stop';
 import CompletionStatusYearSelect from './CompletionStatusYearSelect';
+import { useKeyDatesFormShell } from './useKeyDatesFormShell';
+import { KeyDatesFormShell } from './KeyDatesFormShell';
 
 type AuditCompletionStatus = 'CLOSED' | 'NOT_CLOSED';
 
@@ -67,105 +60,55 @@ export function buildAuditFieldExamKeyDatesInput(
 export default function Chapter7PanelAuditFieldExamForm() {
   const upcomingYearOptions = buildYearOptions('forward', 11);
 
-  const { trusteeId, appointmentId } = useParams<{
-    trusteeId: string;
-    appointmentId: string;
-  }>();
-  const navigate = useNavigate();
-  const globalAlert = useGlobalAlert();
-  const canManage = useCanManageTrustees();
-
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [form, setForm] = useState<Chapter7PanelAuditFieldExamFormState>(EMPTY_FORM);
-  const [original, setOriginal] = useState<TrusteeUpcomingKeyDates | null>(null);
-  const { registerFieldError, hasErrorAmong } = useDateFieldErrors();
-
-  useEffect(() => {
-    Api2.getUpcomingKeyDates(trusteeId!, appointmentId!)
-      .then((response) => {
-        const data = response.data;
-        if (data) {
-          setOriginal(data);
-          setForm({
-            upcomingExamOrAuditYear: data.upcomingExamOrAuditYear ?? '',
-            upcomingExamOrAuditType: data.upcomingExamOrAuditType ?? '',
-            pastAudit: data.pastAudit ?? '',
-            lastAuditFiscalYear: data.lastAuditFiscalYear ?? '',
-            pastFieldExam: data.pastFieldExam ?? '',
-            auditCompletionYear: data.auditCompletionYear ?? '',
-            auditCompletionStatus: data.auditCompletionStatus ?? '',
-          });
-        }
-      })
-      .catch((err) => {
-        globalAlert?.error(`Failed to load Audit/Field Exam key dates: ${(err as Error).message}`);
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
-  }, [trusteeId, appointmentId]);
+  const shell = useKeyDatesFormShell<Chapter7PanelAuditFieldExamFormState>({
+    emptyForm: EMPTY_FORM,
+    mapDataToForm: (data) => ({
+      upcomingExamOrAuditYear: data.upcomingExamOrAuditYear ?? '',
+      upcomingExamOrAuditType: data.upcomingExamOrAuditType ?? '',
+      pastAudit: data.pastAudit ?? '',
+      lastAuditFiscalYear: data.lastAuditFiscalYear ?? '',
+      pastFieldExam: data.pastFieldExam ?? '',
+      auditCompletionYear: data.auditCompletionYear ?? '',
+      auditCompletionStatus: data.auditCompletionStatus ?? '',
+    }),
+    buildInput: buildAuditFieldExamKeyDatesInput,
+    errorLabel: 'Audit/Field Exam key dates',
+  });
 
   function handleDateChange(field: 'pastAudit' | 'pastFieldExam') {
     return (ev: React.ChangeEvent<HTMLInputElement>) => {
-      setForm((prev) => ({ ...prev, [field]: ev.target.value }));
+      shell.setForm((prev) => ({ ...prev, [field]: ev.target.value }));
     };
   }
 
-  async function handleSave() {
-    setIsSaving(true);
-    const input = buildAuditFieldExamKeyDatesInput(
-      { trusteeId: trusteeId!, appointmentId: appointmentId! },
-      original,
-      form,
-    );
-
-    try {
-      await Api2.putUpcomingKeyDates(trusteeId!, appointmentId!, input);
-      navigate(`/trustees/${trusteeId}/appointments`);
-    } catch (err) {
-      globalAlert?.error(`Failed to save Audit/Field Exam key dates: ${(err as Error).message}`);
-    } finally {
-      setIsSaving(false);
-    }
-  }
-
-  function handleCancel() {
-    navigate(`/trustees/${trusteeId}/appointments`);
-  }
-
-  if (isLoading) {
-    return <LoadingSpinner id="edit-chapter7-panel-audit-field-exam-loading" />;
-  }
-
-  if (!canManage) {
-    return (
-      <Stop
-        id="forbidden-alert"
-        title="Forbidden"
-        message="You do not have permission to manage Trustee Audit/Field Exam Key Dates"
-        asError
-      />
-    );
-  }
-
-  const hasAnyDateError = hasErrorAmong(['past-audit', 'past-field-exam']);
+  const hasAnyDateError = shell.hasErrorAmong(['past-audit', 'past-field-exam']);
   const examOrAuditPairError = validateCompletionPairPresence(
-    form.upcomingExamOrAuditYear,
-    form.upcomingExamOrAuditType,
+    shell.form.upcomingExamOrAuditYear,
+    shell.form.upcomingExamOrAuditType,
     'Field Exam or Audit',
     { first: 'Year', second: 'Type' },
   );
   const completionPairError = validateCompletionPairPresence(
-    form.auditCompletionYear,
-    form.auditCompletionStatus,
+    shell.form.auditCompletionYear,
+    shell.form.auditCompletionStatus,
     'Field Exam/Audit Completion Status',
   );
 
   return (
-    <div className="edit-upcoming-key-dates" data-testid="edit-chapter7-panel-audit-field-exam">
-      <h3>Edit Audit/Field Exam Key Dates</h3>
-
+    <KeyDatesFormShell
+      loadingId="edit-chapter7-panel-audit-field-exam-loading"
+      forbiddenMessage="You do not have permission to manage Trustee Audit/Field Exam Key Dates"
+      containerTestId="edit-chapter7-panel-audit-field-exam"
+      title="Edit Audit/Field Exam Key Dates"
+      idBase="chapter7-panel-audit-field-exam"
+      withTestIds
+      isLoading={shell.isLoading}
+      canManage={shell.canManage}
+      isSaving={shell.isSaving}
+      isSaveDisabled={hasAnyDateError || !!examOrAuditPairError || !!completionPairError}
+      onSave={shell.handleSave}
+      onCancel={shell.handleCancel}
+    >
       <PairFieldGroup
         idPrefix="exam-audit-pair"
         groupClassName="exam-audit-group"
@@ -184,11 +127,13 @@ export default function Chapter7PanelAuditFieldExamForm() {
               placeholder="- Select -"
               options={upcomingYearOptions.map((y) => ({ value: String(y), label: String(y) }))}
               value={
-                form.upcomingExamOrAuditYear === '' ? '' : String(form.upcomingExamOrAuditYear)
+                shell.form.upcomingExamOrAuditYear === ''
+                  ? ''
+                  : String(shell.form.upcomingExamOrAuditYear)
               }
               onChange={(e) => {
                 const val = e.target.value;
-                setForm((prev) => ({
+                shell.setForm((prev) => ({
                   ...prev,
                   upcomingExamOrAuditYear: val ? Number(val) : '',
                 }));
@@ -205,9 +150,9 @@ export default function Chapter7PanelAuditFieldExamForm() {
                 { value: 'Field Exam', label: 'Field Exam' },
                 { value: 'Audit', label: 'Audit' },
               ]}
-              value={form.upcomingExamOrAuditType}
+              value={shell.form.upcomingExamOrAuditType}
               onChange={(e) => {
-                setForm((prev) => ({
+                shell.setForm((prev) => ({
                   ...prev,
                   upcomingExamOrAuditType: e.target.value as 'Field Exam' | 'Audit' | '',
                 }));
@@ -220,9 +165,9 @@ export default function Chapter7PanelAuditFieldExamForm() {
       <DatePicker
         id="past-audit"
         label="Audit Report Date"
-        value={form.pastAudit}
+        value={shell.form.pastAudit}
         onChange={handleDateChange('pastAudit')}
-        onValidationChange={(hasError) => registerFieldError('past-audit', hasError)}
+        onValidationChange={(hasError) => shell.registerFieldError('past-audit', hasError)}
         disableMax
       />
 
@@ -235,19 +180,19 @@ export default function Chapter7PanelAuditFieldExamForm() {
           value: String(year),
           label: String(year),
         }))}
-        value={form.lastAuditFiscalYear === '' ? '' : String(form.lastAuditFiscalYear)}
+        value={shell.form.lastAuditFiscalYear === '' ? '' : String(shell.form.lastAuditFiscalYear)}
         onChange={(ev) => {
           const val = ev.target.value;
-          setForm((prev) => ({ ...prev, lastAuditFiscalYear: val ? Number(val) : '' }));
+          shell.setForm((prev) => ({ ...prev, lastAuditFiscalYear: val ? Number(val) : '' }));
         }}
       />
 
       <DatePicker
         id="past-field-exam"
         label="Field Exam Report Date"
-        value={form.pastFieldExam}
+        value={shell.form.pastFieldExam}
         onChange={handleDateChange('pastFieldExam')}
-        onValidationChange={(hasError) => registerFieldError('past-field-exam', hasError)}
+        onValidationChange={(hasError) => shell.registerFieldError('past-field-exam', hasError)}
         disableMax
       />
 
@@ -259,34 +204,15 @@ export default function Chapter7PanelAuditFieldExamForm() {
         errorLabel="Field Exam/Audit Completion Status"
         yearOptions={getFiscalYearOptions()}
         statusOptions={AUDIT_COMPLETION_STATUS_OPTIONS}
-        year={form.auditCompletionYear}
-        status={form.auditCompletionStatus}
+        year={shell.form.auditCompletionYear}
+        status={shell.form.auditCompletionStatus}
         onYearChange={(auditCompletionYear) =>
-          setForm((prev) => ({ ...prev, auditCompletionYear }))
+          shell.setForm((prev) => ({ ...prev, auditCompletionYear }))
         }
         onStatusChange={(auditCompletionStatus) =>
-          setForm((prev) => ({ ...prev, auditCompletionStatus }))
+          shell.setForm((prev) => ({ ...prev, auditCompletionStatus }))
         }
       />
-
-      <div className="usa-button-group">
-        <Button
-          id="save-chapter7-panel-audit-field-exam"
-          data-testid="button-save-chapter7-panel-audit-field-exam"
-          onClick={handleSave}
-          disabled={isSaving || hasAnyDateError || !!examOrAuditPairError || !!completionPairError}
-        >
-          {isSaving ? 'Saving...' : 'Save'}
-        </Button>
-        <Button
-          id="cancel-chapter7-panel-audit-field-exam"
-          data-testid="button-cancel-chapter7-panel-audit-field-exam"
-          uswdsStyle={UswdsButtonStyle.Unstyled}
-          onClick={handleCancel}
-        >
-          Cancel
-        </Button>
-      </div>
-    </div>
+    </KeyDatesFormShell>
   );
 }

@@ -1,7 +1,5 @@
 import './EditUpcomingKeyDates.scss';
 import '@/lib/components/uswds/forms.scss';
-import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
 import {
   TrusteeUpcomingKeyDates,
   TrusteeUpcomingKeyDatesInput,
@@ -16,16 +14,11 @@ import {
   SEMI_ANNUAL_OPTIONS,
   findPeriodKey,
 } from './tirPeriodOptions';
-import Api2 from '@/lib/models/api2';
-import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
-import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
-import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import DatePicker from '@/lib/components/uswds/DatePicker';
 import Select from '@/lib/components/uswds/Select';
-import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
 import PairFieldGroup from './PairFieldGroup';
-import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
-import { Stop } from '@/lib/components/Stop';
+import { useKeyDatesFormShell } from './useKeyDatesFormShell';
+import { KeyDatesFormShell } from './KeyDatesFormShell';
 
 type TirCompletionStatus = 'COMPLETE' | 'INCOMPLETE';
 
@@ -99,57 +92,33 @@ export function buildTrusteeInterimReportKeyDatesInput(
 }
 
 export default function Chapter7PanelTrusteeInterimReportForm() {
-  const { trusteeId, appointmentId } = useParams<{
-    trusteeId: string;
-    appointmentId: string;
-  }>();
-  const navigate = useNavigate();
-  const globalAlert = useGlobalAlert();
-  const canManage = useCanManageTrustees();
-
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [form, setForm] = useState<Chapter7PanelTrusteeInterimReportFormState>(EMPTY_FORM);
-  const [original, setOriginal] = useState<TrusteeUpcomingKeyDates | null>(null);
-  const { registerFieldError, hasErrorAmong } = useDateFieldErrors();
-
-  useEffect(() => {
-    Api2.getUpcomingKeyDates(trusteeId!, appointmentId!)
-      .then((response) => {
-        const data = response.data;
-        if (data) {
-          setOriginal(data);
-          const tirFrequency = data.tirFrequency ?? '';
-          setForm({
-            tirFrequency,
-            tirPeriodKey: findPeriodKey(
-              data.tirReviewPeriodStart,
-              data.tirReviewPeriodEnd,
-              tirFrequency,
-            ),
-            tirReviewPeriodStart: data.tirReviewPeriodStart ?? '',
-            tirReviewPeriodEnd: data.tirReviewPeriodEnd ?? '',
-            tirSemiAnnualReviewPeriodStart: data.tirSemiAnnualReviewPeriodStart ?? '',
-            tirSemiAnnualReviewPeriodEnd: data.tirSemiAnnualReviewPeriodEnd ?? '',
-            tirCompletionYear: data.tirCompletionYear ?? '',
-            tirCompletionStatus: data.tirCompletionStatus ?? '',
-            pastTprSubmission: data.pastTprSubmission ?? '',
-          });
-        }
-      })
-      .catch((err) => {
-        globalAlert?.error(
-          `Failed to load Trustee Interim Report key dates: ${(err as Error).message}`,
-        );
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
-  }, [trusteeId, appointmentId]);
+  const shell = useKeyDatesFormShell<Chapter7PanelTrusteeInterimReportFormState>({
+    emptyForm: EMPTY_FORM,
+    mapDataToForm: (data) => {
+      const tirFrequency = data.tirFrequency ?? '';
+      return {
+        tirFrequency,
+        tirPeriodKey: findPeriodKey(
+          data.tirReviewPeriodStart,
+          data.tirReviewPeriodEnd,
+          tirFrequency,
+        ),
+        tirReviewPeriodStart: data.tirReviewPeriodStart ?? '',
+        tirReviewPeriodEnd: data.tirReviewPeriodEnd ?? '',
+        tirSemiAnnualReviewPeriodStart: data.tirSemiAnnualReviewPeriodStart ?? '',
+        tirSemiAnnualReviewPeriodEnd: data.tirSemiAnnualReviewPeriodEnd ?? '',
+        tirCompletionYear: data.tirCompletionYear ?? '',
+        tirCompletionStatus: data.tirCompletionStatus ?? '',
+        pastTprSubmission: data.pastTprSubmission ?? '',
+      };
+    },
+    buildInput: buildTrusteeInterimReportKeyDatesInput,
+    errorLabel: 'Trustee Interim Report key dates',
+  });
 
   function handleFrequencyChange(ev: React.ChangeEvent<HTMLSelectElement>) {
     const freq = ev.target.value as TirFrequency;
-    setForm((prev) => ({
+    shell.setForm((prev) => ({
       ...prev,
       tirFrequency: freq,
       tirPeriodKey: '',
@@ -163,7 +132,7 @@ export default function Chapter7PanelTrusteeInterimReportForm() {
   function handlePeriodChange(ev: React.ChangeEvent<HTMLSelectElement>) {
     const key = ev.target.value;
     if (!key) {
-      setForm((prev) => ({
+      shell.setForm((prev) => ({
         ...prev,
         tirPeriodKey: '',
         tirReviewPeriodStart: '',
@@ -174,15 +143,15 @@ export default function Chapter7PanelTrusteeInterimReportForm() {
       return;
     }
     const allOptions =
-      form.tirFrequency === 'ANNUAL'
+      shell.form.tirFrequency === 'ANNUAL'
         ? ANNUAL_OPTIONS
-        : form.tirFrequency === 'SEMI_ANNUAL'
+        : shell.form.tirFrequency === 'SEMI_ANNUAL'
           ? SEMI_ANNUAL_OPTIONS
           : [];
     // The DOM's <option> elements are generated from allOptions, so key always
     // resolves to one of them -- there is no "not found" state to guard against.
     const option = allOptions.find((o) => o.key === key)!;
-    setForm((prev) => ({
+    shell.setForm((prev) => ({
       ...prev,
       tirPeriodKey: key,
       tirReviewPeriodStart: option.start,
@@ -192,62 +161,38 @@ export default function Chapter7PanelTrusteeInterimReportForm() {
     }));
   }
 
-  async function handleSave() {
-    setIsSaving(true);
-    const input = buildTrusteeInterimReportKeyDatesInput(
-      { trusteeId: trusteeId!, appointmentId: appointmentId! },
-      original,
-      form,
-    );
-
-    try {
-      await Api2.putUpcomingKeyDates(trusteeId!, appointmentId!, input);
-      navigate(`/trustees/${trusteeId}/appointments`);
-    } catch (err) {
-      globalAlert?.error(
-        `Failed to save Trustee Interim Report key dates: ${(err as Error).message}`,
-      );
-    } finally {
-      setIsSaving(false);
-    }
-  }
-
-  function handleCancel() {
-    navigate(`/trustees/${trusteeId}/appointments`);
-  }
-
-  if (isLoading) {
-    return <LoadingSpinner id="edit-chapter7-panel-tir-loading" />;
-  }
-
-  if (!canManage) {
-    return (
-      <Stop
-        id="forbidden-alert"
-        title="Forbidden"
-        message="You do not have permission to manage Trustee Interim Report Key Dates"
-        asError
-      />
-    );
-  }
-
-  const periodOptions = form.tirFrequency === 'ANNUAL' ? ANNUAL_OPTIONS : SEMI_ANNUAL_OPTIONS;
+  const periodOptions = shell.form.tirFrequency === 'ANNUAL' ? ANNUAL_OPTIONS : SEMI_ANNUAL_OPTIONS;
   const tirPeriodPairError = validateCompletionPairPresence(
-    form.tirFrequency,
-    form.tirPeriodKey,
+    shell.form.tirFrequency,
+    shell.form.tirPeriodKey,
     'Trustee Interim Report (TIR) Period',
     { first: 'Frequency', second: 'Period' },
   );
   const completionPairError = validateCompletionPairPresence(
-    form.tirCompletionYear,
-    form.tirCompletionStatus,
+    shell.form.tirCompletionYear,
+    shell.form.tirCompletionStatus,
     'Trustee Interim Report Completion Status',
   );
 
   return (
-    <div className="edit-upcoming-key-dates" data-testid="edit-chapter7-panel-tir">
-      <h3>Edit Trustee Interim Report (TIR) Key Dates</h3>
-
+    <KeyDatesFormShell
+      loadingId="edit-chapter7-panel-tir-loading"
+      forbiddenMessage="You do not have permission to manage Trustee Interim Report Key Dates"
+      containerTestId="edit-chapter7-panel-tir"
+      title="Edit Trustee Interim Report (TIR) Key Dates"
+      idBase="chapter7-panel-tir"
+      withTestIds
+      isLoading={shell.isLoading}
+      canManage={shell.canManage}
+      isSaving={shell.isSaving}
+      isSaveDisabled={
+        !!tirPeriodPairError ||
+        !!completionPairError ||
+        shell.hasErrorAmong(['past-tpr-submission'])
+      }
+      onSave={shell.handleSave}
+      onCancel={shell.handleCancel}
+    >
       <PairFieldGroup
         idPrefix="tir-period-pair"
         groupClassName="tir-period-group"
@@ -268,7 +213,7 @@ export default function Chapter7PanelTrusteeInterimReportForm() {
                 { value: 'ANNUAL', label: 'Annual' },
                 { value: 'SEMI_ANNUAL', label: 'Semi-Annual' },
               ]}
-              value={form.tirFrequency}
+              value={shell.form.tirFrequency}
               onChange={handleFrequencyChange}
             />
             <Select
@@ -279,9 +224,9 @@ export default function Chapter7PanelTrusteeInterimReportForm() {
               ariaDescribedBy={ariaDescribedBy}
               placeholder="- Select -"
               options={periodOptions.map((o) => ({ value: o.key, label: o.label }))}
-              value={form.tirPeriodKey}
+              value={shell.form.tirPeriodKey}
               onChange={handlePeriodChange}
-              disabled={!form.tirFrequency}
+              disabled={!shell.form.tirFrequency}
             />
           </>
         )}
@@ -290,9 +235,9 @@ export default function Chapter7PanelTrusteeInterimReportForm() {
       <DatePicker
         id="past-tpr-submission"
         label="Last TIR Letter"
-        value={form.pastTprSubmission}
-        onChange={(e) => setForm((prev) => ({ ...prev, pastTprSubmission: e.target.value }))}
-        onValidationChange={(hasError) => registerFieldError('past-tpr-submission', hasError)}
+        value={shell.form.pastTprSubmission}
+        onChange={(e) => shell.setForm((prev) => ({ ...prev, pastTprSubmission: e.target.value }))}
+        onValidationChange={(hasError) => shell.registerFieldError('past-tpr-submission', hasError)}
         disableMax
       />
 
@@ -316,10 +261,12 @@ export default function Chapter7PanelTrusteeInterimReportForm() {
                 value: String(year),
                 label: String(year),
               }))}
-              value={form.tirCompletionYear === '' ? '' : String(form.tirCompletionYear)}
+              value={
+                shell.form.tirCompletionYear === '' ? '' : String(shell.form.tirCompletionYear)
+              }
               onChange={(e) => {
                 const val = e.target.value;
-                setForm((prev) => ({
+                shell.setForm((prev) => ({
                   ...prev,
                   tirCompletionYear: val ? Number(val) : '',
                 }));
@@ -336,9 +283,9 @@ export default function Chapter7PanelTrusteeInterimReportForm() {
                 { value: 'COMPLETE', label: 'Complete' },
                 { value: 'INCOMPLETE', label: 'Incomplete' },
               ]}
-              value={form.tirCompletionStatus}
+              value={shell.form.tirCompletionStatus}
               onChange={(e) => {
-                setForm((prev) => ({
+                shell.setForm((prev) => ({
                   ...prev,
                   tirCompletionStatus: e.target.value as TirCompletionStatus | '',
                 }));
@@ -347,30 +294,6 @@ export default function Chapter7PanelTrusteeInterimReportForm() {
           </>
         )}
       </PairFieldGroup>
-
-      <div className="usa-button-group">
-        <Button
-          id="save-chapter7-panel-tir"
-          data-testid="button-save-chapter7-panel-tir"
-          onClick={handleSave}
-          disabled={
-            isSaving ||
-            !!tirPeriodPairError ||
-            !!completionPairError ||
-            hasErrorAmong(['past-tpr-submission'])
-          }
-        >
-          {isSaving ? 'Saving...' : 'Save'}
-        </Button>
-        <Button
-          id="cancel-chapter7-panel-tir"
-          data-testid="button-cancel-chapter7-panel-tir"
-          uswdsStyle={UswdsButtonStyle.Unstyled}
-          onClick={handleCancel}
-        >
-          Cancel
-        </Button>
-      </div>
-    </div>
+    </KeyDatesFormShell>
   );
 }

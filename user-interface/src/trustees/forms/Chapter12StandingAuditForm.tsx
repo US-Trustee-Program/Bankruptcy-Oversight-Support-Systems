@@ -1,22 +1,15 @@
 import './EditUpcomingKeyDates.scss';
-import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
 import {
   TrusteeUpcomingKeyDates,
   TrusteeUpcomingKeyDatesInput,
   validateCompletionPairPresence,
 } from '@common/cams/trustee-upcoming-key-dates';
 import { mergeKeyDatesInput, getFiscalYearOptions } from './keyDatesInput';
-import Api2 from '@/lib/models/api2';
-import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
-import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
-import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import DatePicker from '@/lib/components/uswds/DatePicker';
 import Select from '@/lib/components/uswds/Select';
-import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
-import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
-import { Stop } from '@/lib/components/Stop';
 import CompletionStatusYearSelect from './CompletionStatusYearSelect';
+import { useKeyDatesFormShell } from './useKeyDatesFormShell';
+import { KeyDatesFormShell } from './KeyDatesFormShell';
 
 const AUDIT_COMPLETION_STATUS_OPTIONS = [
   { value: 'CLOSED', label: 'Closed' },
@@ -53,105 +46,50 @@ export function buildAuditKeyDatesInput(
 }
 
 export default function Chapter12StandingAuditForm() {
-  const { trusteeId, appointmentId } = useParams<{
-    trusteeId: string;
-    appointmentId: string;
-  }>();
-  const navigate = useNavigate();
-  const globalAlert = useGlobalAlert();
-  const canManage = useCanManageTrustees();
-
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [loadFailed, setLoadFailed] = useState(false);
-  const [form, setForm] = useState<Chapter12StandingAuditFormState>(EMPTY_FORM);
-  const [original, setOriginal] = useState<TrusteeUpcomingKeyDates | null>(null);
-  const { registerFieldError, hasErrorAmong } = useDateFieldErrors();
-
-  useEffect(() => {
-    Api2.getUpcomingKeyDates(trusteeId!, appointmentId!)
-      .then((response) => {
-        const data = response.data;
-        if (data) {
-          setOriginal(data);
-          setForm({
-            pastAudit: data.pastAudit ?? '',
-            lastAuditFiscalYear: data.lastAuditFiscalYear ?? '',
-            auditCompletionYear: data.auditCompletionYear ?? '',
-            auditCompletionStatus: data.auditCompletionStatus ?? '',
-          });
-        }
-      })
-      .catch((err) => {
-        // A failed GET must block Save: `original` stays null here, same as the
-        // legitimate "no document yet" case, but saving would wipe every
-        // unrelated key-date field on the shared document via mergeKeyDatesInput.
-        setLoadFailed(true);
-        globalAlert?.error(`Failed to load Audit key dates: ${(err as Error).message}`);
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
-  }, [trusteeId, appointmentId]);
+  const shell = useKeyDatesFormShell<Chapter12StandingAuditFormState>({
+    emptyForm: EMPTY_FORM,
+    mapDataToForm: (data) => ({
+      pastAudit: data.pastAudit ?? '',
+      lastAuditFiscalYear: data.lastAuditFiscalYear ?? '',
+      auditCompletionYear: data.auditCompletionYear ?? '',
+      auditCompletionStatus: data.auditCompletionStatus ?? '',
+    }),
+    buildInput: buildAuditKeyDatesInput,
+    errorLabel: 'Audit key dates',
+  });
 
   function handleDateChange(ev: React.ChangeEvent<HTMLInputElement>) {
-    setForm((prev) => ({ ...prev, pastAudit: ev.target.value }));
+    shell.setForm((prev) => ({ ...prev, pastAudit: ev.target.value }));
   }
 
-  async function handleSave() {
-    setIsSaving(true);
-    const input = buildAuditKeyDatesInput(
-      { trusteeId: trusteeId!, appointmentId: appointmentId! },
-      original,
-      form,
-    );
-
-    try {
-      await Api2.putUpcomingKeyDates(trusteeId!, appointmentId!, input);
-      navigate(`/trustees/${trusteeId}/appointments`);
-    } catch (err) {
-      globalAlert?.error(`Failed to save Audit key dates: ${(err as Error).message}`);
-    } finally {
-      setIsSaving(false);
-    }
-  }
-
-  function handleCancel() {
-    navigate(`/trustees/${trusteeId}/appointments`);
-  }
-
-  if (isLoading) {
-    return <LoadingSpinner id="edit-chapter12-standing-audit-loading" />;
-  }
-
-  if (!canManage) {
-    return (
-      <Stop
-        id="forbidden-alert"
-        title="Forbidden"
-        message="You do not have permission to manage Trustee Audit Key Dates"
-        asError
-      />
-    );
-  }
-
-  const hasAnyDateError = hasErrorAmong(['past-audit']);
+  const hasAnyDateError = shell.hasErrorAmong(['past-audit']);
   const completionPairError = validateCompletionPairPresence(
-    form.auditCompletionYear,
-    form.auditCompletionStatus,
+    shell.form.auditCompletionYear,
+    shell.form.auditCompletionStatus,
     'Audit Completion Status',
   );
 
   return (
-    <div className="edit-upcoming-key-dates" data-testid="edit-chapter12-standing-audit">
-      <h3>Edit Audit Key Dates</h3>
-
+    <KeyDatesFormShell
+      loadingId="edit-chapter12-standing-audit-loading"
+      forbiddenMessage="You do not have permission to manage Trustee Audit Key Dates"
+      containerTestId="edit-chapter12-standing-audit"
+      title="Edit Audit Key Dates"
+      idBase="chapter12-standing-audit"
+      withTestIds
+      isLoading={shell.isLoading}
+      canManage={shell.canManage}
+      isSaving={shell.isSaving}
+      isSaveDisabled={shell.loadFailed || hasAnyDateError || !!completionPairError}
+      onSave={shell.handleSave}
+      onCancel={shell.handleCancel}
+    >
       <DatePicker
         id="past-audit"
         label="Audit Report Date"
-        value={form.pastAudit}
+        value={shell.form.pastAudit}
         onChange={handleDateChange}
-        onValidationChange={(hasError) => registerFieldError('past-audit', hasError)}
+        onValidationChange={(hasError) => shell.registerFieldError('past-audit', hasError)}
         disableMax
       />
 
@@ -164,10 +102,10 @@ export default function Chapter12StandingAuditForm() {
           value: String(year),
           label: String(year),
         }))}
-        value={form.lastAuditFiscalYear === '' ? '' : String(form.lastAuditFiscalYear)}
+        value={shell.form.lastAuditFiscalYear === '' ? '' : String(shell.form.lastAuditFiscalYear)}
         onChange={(ev) => {
           const val = ev.target.value;
-          setForm((prev) => ({ ...prev, lastAuditFiscalYear: val ? Number(val) : '' }));
+          shell.setForm((prev) => ({ ...prev, lastAuditFiscalYear: val ? Number(val) : '' }));
         }}
       />
 
@@ -179,34 +117,15 @@ export default function Chapter12StandingAuditForm() {
         errorLabel="Audit Completion Status"
         yearOptions={getFiscalYearOptions()}
         statusOptions={AUDIT_COMPLETION_STATUS_OPTIONS}
-        year={form.auditCompletionYear}
-        status={form.auditCompletionStatus}
+        year={shell.form.auditCompletionYear}
+        status={shell.form.auditCompletionStatus}
         onYearChange={(auditCompletionYear) =>
-          setForm((prev) => ({ ...prev, auditCompletionYear }))
+          shell.setForm((prev) => ({ ...prev, auditCompletionYear }))
         }
         onStatusChange={(auditCompletionStatus) =>
-          setForm((prev) => ({ ...prev, auditCompletionStatus }))
+          shell.setForm((prev) => ({ ...prev, auditCompletionStatus }))
         }
       />
-
-      <div className="usa-button-group">
-        <Button
-          id="save-chapter12-standing-audit"
-          data-testid="button-save-chapter12-standing-audit"
-          onClick={handleSave}
-          disabled={isSaving || loadFailed || hasAnyDateError || !!completionPairError}
-        >
-          {isSaving ? 'Saving...' : 'Save'}
-        </Button>
-        <Button
-          id="cancel-chapter12-standing-audit"
-          data-testid="button-cancel-chapter12-standing-audit"
-          uswdsStyle={UswdsButtonStyle.Unstyled}
-          onClick={handleCancel}
-        >
-          Cancel
-        </Button>
-      </div>
-    </div>
+    </KeyDatesFormShell>
   );
 }

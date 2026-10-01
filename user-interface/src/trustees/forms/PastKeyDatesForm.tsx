@@ -1,6 +1,6 @@
 import './EditUpcomingKeyDates.scss';
-import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useState } from 'react';
+import { useParams } from 'react-router-dom';
 import {
   TrusteeUpcomingKeyDates,
   TrusteeUpcomingKeyDatesInput,
@@ -15,16 +15,12 @@ import {
 import Api2 from '@/lib/models/api2';
 import { isChapter11SubchapterV, isChapter13Standing } from '@common/cams/trustee-appointments';
 import { AppointmentChapterType, AppointmentType } from '@common/cams/trustees';
-import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
-import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
-import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { buildYearOptions, mergeKeyDatesInput } from './keyDatesInput';
 import DatePicker from '@/lib/components/uswds/DatePicker';
 import MonthYearSelector from '@/lib/components/uswds/MonthYearSelector';
 import Select from '@/lib/components/uswds/Select';
-import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
-import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
-import { Stop } from '@/lib/components/Stop';
+import { useKeyDatesFormShell } from './useKeyDatesFormShell';
+import { KeyDatesFormShell } from './KeyDatesFormShell';
 
 type PastKeyDatesFormState = Record<PastDateFieldKey, string> & {
   lastAuditFiscalYear: number | '';
@@ -96,114 +92,71 @@ function deriveVariant(
 
 export default function PastKeyDatesForm() {
   const fiscalYearOptions = buildYearOptions('backward', 21);
-
   const { trusteeId, appointmentId } = useParams<{
     trusteeId: string;
     appointmentId: string;
   }>();
-  const navigate = useNavigate();
-  const globalAlert = useGlobalAlert();
-  const canManage = useCanManageTrustees();
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
   const [variant, setVariant] = useState<PastKeyDatesVariant>('chapter12-standing');
-  const [form, setForm] = useState<PastKeyDatesFormState>(EMPTY_FORM);
-  const [original, setOriginal] = useState<TrusteeUpcomingKeyDates | null>(null);
-  const { registerFieldError, hasErrorAmong } = useDateFieldErrors();
 
-  useEffect(() => {
-    Promise.all([
-      Api2.getUpcomingKeyDates(trusteeId!, appointmentId!),
-      Api2.getTrusteeAppointments(trusteeId!),
-    ])
-      .then(([keyDatesResponse, appointmentsResponse]) => {
-        const data = keyDatesResponse.data;
-        if (data) {
-          setOriginal(data);
-          setForm({
-            pastBackgroundQuestion: data.pastBackgroundQuestion ?? '',
-            pastFieldExam: data.pastFieldExam ?? '',
-            pastAudit: data.pastAudit ?? '',
-            pastTprSubmission: data.pastTprSubmission ?? '',
-            lastMonthlyReportReceived: data.lastMonthlyReportReceived ?? '',
-            lastCompensationStudy: data.lastCompensationStudy ?? '',
-            bondIssuedDate: data.bondIssuedDate ?? '',
-            lastAuditFiscalYear: data.lastAuditFiscalYear ?? '',
-          });
-        }
-        const appointment = appointmentsResponse.data?.find((a) => a.id === appointmentId);
+  const shell = useKeyDatesFormShell<PastKeyDatesFormState>({
+    emptyForm: EMPTY_FORM,
+    mapDataToForm: (data) => ({
+      pastBackgroundQuestion: data.pastBackgroundQuestion ?? '',
+      pastFieldExam: data.pastFieldExam ?? '',
+      pastAudit: data.pastAudit ?? '',
+      pastTprSubmission: data.pastTprSubmission ?? '',
+      lastMonthlyReportReceived: data.lastMonthlyReportReceived ?? '',
+      lastCompensationStudy: data.lastCompensationStudy ?? '',
+      bondIssuedDate: data.bondIssuedDate ?? '',
+      lastAuditFiscalYear: data.lastAuditFiscalYear ?? '',
+    }),
+    buildInput: (ids, original, form) => {
+      const activeFields = PAST_KEY_DATES_FIELD_CONFIG[variant];
+      const activeDateKeys = new Set(
+        activeFields
+          .filter((field) => field.kind === 'date' || field.kind === 'month-year')
+          .map((field) => field.key),
+      );
+      const hasYearField = activeFields.some((field) => field.kind === 'year');
+      return buildUpcomingKeyDatesInput(ids, original, form, { activeDateKeys, hasYearField });
+    },
+    errorLabel: 'past key dates',
+    extraLoad: () =>
+      Api2.getTrusteeAppointments(trusteeId!).then((response) => {
+        const appointment = response.data?.find((a) => a.id === appointmentId);
         if (appointment) {
           setVariant(deriveVariant(appointment.chapter, appointment.appointmentType));
         }
-      })
-      .catch((err) => {
-        globalAlert?.error(`Failed to load past key dates: ${(err as Error).message}`);
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
-  }, [trusteeId, appointmentId]);
+      }),
+  });
 
   function handleDateChange(field: PastDateFieldKey) {
     return (ev: React.ChangeEvent<HTMLInputElement>) => {
-      setForm((prev) => ({ ...prev, [field]: ev.target.value }));
+      shell.setForm((prev) => ({ ...prev, [field]: ev.target.value }));
     };
-  }
-
-  async function handleSave() {
-    setIsSaving(true);
-    const activeFields = PAST_KEY_DATES_FIELD_CONFIG[variant];
-    const activeDateKeys = new Set(
-      activeFields
-        .filter((field) => field.kind === 'date' || field.kind === 'month-year')
-        .map((field) => field.key),
-    );
-    const hasYearField = activeFields.some((field) => field.kind === 'year');
-    const isoInput = buildUpcomingKeyDatesInput(
-      { trusteeId: trusteeId!, appointmentId: appointmentId! },
-      original,
-      form,
-      { activeDateKeys, hasYearField },
-    );
-
-    try {
-      await Api2.putUpcomingKeyDates(trusteeId!, appointmentId!, isoInput);
-      navigate(`/trustees/${trusteeId}/appointments`);
-    } catch (err) {
-      globalAlert?.error(`Failed to save past key dates: ${(err as Error).message}`);
-    } finally {
-      setIsSaving(false);
-    }
-  }
-
-  function handleCancel() {
-    navigate(`/trustees/${trusteeId}/appointments`);
-  }
-
-  if (isLoading) {
-    return <LoadingSpinner id="edit-past-key-dates-loading" />;
-  }
-
-  if (!canManage) {
-    return (
-      <Stop
-        id="forbidden-alert"
-        title="Forbidden"
-        message="You do not have permission to manage Trustee Past Key Dates"
-        asError
-      />
-    );
   }
 
   const activeDateFieldIds = PAST_KEY_DATES_FIELD_CONFIG[variant]
     .filter((field) => field.kind === 'date' || field.kind === 'month-year')
     .map((field) => field.inputId);
-  const hasAnyDateError = hasErrorAmong(activeDateFieldIds);
+  const hasAnyDateError = shell.hasErrorAmong(activeDateFieldIds);
 
   return (
-    <div className="edit-upcoming-key-dates" data-testid="edit-past-key-dates">
-      <h3>{PAST_KEY_DATES_VARIANT_LABELS[variant].editHeading}</h3>
+    <KeyDatesFormShell
+      loadingId="edit-past-key-dates-loading"
+      forbiddenMessage="You do not have permission to manage Trustee Past Key Dates"
+      containerTestId="edit-past-key-dates"
+      title={PAST_KEY_DATES_VARIANT_LABELS[variant].editHeading}
+      idBase="past-key-dates"
+      withTestIds
+      isLoading={shell.isLoading}
+      canManage={shell.canManage}
+      isSaving={shell.isSaving}
+      isSaveDisabled={hasAnyDateError}
+      onSave={shell.handleSave}
+      onCancel={shell.handleCancel}
+    >
       {PAST_KEY_DATES_FIELD_CONFIG[variant].map((field) =>
         field.kind === 'year' ? (
           <Select
@@ -216,10 +169,12 @@ export default function PastKeyDatesForm() {
               value: String(year),
               label: String(year),
             }))}
-            value={form.lastAuditFiscalYear === '' ? '' : String(form.lastAuditFiscalYear)}
+            value={
+              shell.form.lastAuditFiscalYear === '' ? '' : String(shell.form.lastAuditFiscalYear)
+            }
             onChange={(ev) => {
               const val = ev.target.value;
-              setForm((prev) => ({ ...prev, lastAuditFiscalYear: val ? Number(val) : '' }));
+              shell.setForm((prev) => ({ ...prev, lastAuditFiscalYear: val ? Number(val) : '' }));
             }}
           />
         ) : field.kind === 'month-year' ? (
@@ -227,40 +182,22 @@ export default function PastKeyDatesForm() {
             key={field.inputId}
             id={field.inputId}
             label={field.formLabel}
-            value={form[field.key]}
-            onChange={(val) => setForm((prev) => ({ ...prev, [field.key]: val }))}
-            onValidationChange={(hasError) => registerFieldError(field.inputId, hasError)}
+            value={shell.form[field.key]}
+            onChange={(val) => shell.setForm((prev) => ({ ...prev, [field.key]: val }))}
+            onValidationChange={(hasError) => shell.registerFieldError(field.inputId, hasError)}
           />
         ) : (
           <DatePicker
             key={field.inputId}
             id={field.inputId}
             label={field.formLabel}
-            value={form[field.key]}
+            value={shell.form[field.key]}
             onChange={handleDateChange(field.key)}
-            onValidationChange={(hasError) => registerFieldError(field.inputId, hasError)}
+            onValidationChange={(hasError) => shell.registerFieldError(field.inputId, hasError)}
             disableMax
           />
         ),
       )}
-      <div className="usa-button-group">
-        <Button
-          id="save-past-key-dates"
-          data-testid="button-save-past-key-dates"
-          onClick={handleSave}
-          disabled={isSaving || hasAnyDateError}
-        >
-          {isSaving ? 'Saving...' : 'Save'}
-        </Button>
-        <Button
-          id="cancel-past-key-dates"
-          data-testid="button-cancel-past-key-dates"
-          uswdsStyle={UswdsButtonStyle.Unstyled}
-          onClick={handleCancel}
-        >
-          Cancel
-        </Button>
-      </div>
-    </div>
+    </KeyDatesFormShell>
   );
 }
