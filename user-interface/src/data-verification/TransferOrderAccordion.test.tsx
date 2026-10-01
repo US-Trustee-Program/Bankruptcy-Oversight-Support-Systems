@@ -43,8 +43,6 @@ describe('TransferOrderAccordion', () => {
   let order: TransferOrder;
   let userEvent: CamsUserEvent;
 
-  const regionMap = new Map<string, string>([['02', 'NEW YORK']]);
-
   const testOffices: CourtDivisionDetails[] = [
     {
       courtDivisionCode: '001',
@@ -94,7 +92,6 @@ describe('TransferOrderAccordion', () => {
       statusType: orderStatusType,
       onOrderUpdate: () => {},
       onExpand: () => {},
-      regionsMap: regionMap,
       fieldHeaders: accordionFieldHeaders,
     };
 

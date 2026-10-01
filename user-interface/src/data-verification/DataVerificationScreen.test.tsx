@@ -346,6 +346,52 @@ describe('Review Orders screen', () => {
     expect(consolidationOption).not.toBeInTheDocument();
   });
 
+  test('should not show transfer orders when transfer feature flag is false', async () => {
+    const ordersResponse = {
+      data: MockData.getSortedOrders(15),
+    };
+    vi.spyOn(Api2, 'getOrders').mockResolvedValue(ordersResponse);
+    const orders = ordersResponse.data;
+    const transferOrders = orders.filter((order) => isTransferOrder(order)) as TransferOrder[];
+    const consolidationOrders = orders.filter((order) =>
+      isConsolidationOrder(order),
+    ) as ConsolidationOrder[];
+
+    setupFeatureFlags({ 'transfer-orders-enabled': false });
+
+    render(
+      <BrowserRouter>
+        <DataVerificationScreen />
+      </BrowserRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('accordion-group')).toBeInTheDocument();
+    });
+
+    const expandBtn = document.querySelector('#task-type-filter-expand') as HTMLElement;
+    fireEvent.click(expandBtn);
+    fireEvent.click(screen.getByTestId('task-type-filter-option-item-0'));
+
+    for (const order of consolidationOrders) {
+      await waitFor(() => {
+        const heading = screen.getByTestId(`accordion-order-list-${order.id}`);
+        expect(heading).toBeInTheDocument();
+      });
+    }
+
+    transferOrders.forEach((order) => {
+      const heading = screen.queryByTestId(`accordion-order-list-${order.id}`);
+      expect(heading).not.toBeInTheDocument();
+    });
+
+    const consolidationOption = screen.queryByTestId('task-type-filter-option-item-0');
+    expect(consolidationOption).toBeInTheDocument();
+
+    const transferOption = screen.queryByTestId('task-type-filter-option-item-1');
+    expect(transferOption).not.toBeInTheDocument();
+  });
+
   const sampleVerificationOrder: TrusteeMatchVerificationListItem = {
     id: 'case-001:johndoe',
     documentType: 'TRUSTEE_MATCH_VERIFICATION',
@@ -381,7 +427,7 @@ describe('Review Orders screen', () => {
   test('should call getTrusteeMatchVerifications and render results when flag is on', async () => {
     setupFeatureFlags({ 'trustee-verification-enabled': true });
     vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [] });
-    vi.spyOn(Api2, 'getTrusteeMatchVerifications').mockResolvedValue({
+    const verificationSpy = vi.spyOn(Api2, 'getTrusteeMatchVerifications').mockResolvedValue({
       data: [sampleVerificationOrder],
     });
 
@@ -395,6 +441,29 @@ describe('Review Orders screen', () => {
       const accordion = screen.getByTestId(`accordion-order-list-${sampleVerificationOrder.id}`);
       expect(accordion).toBeInTheDocument();
     });
+
+    // Default status selections (Pending Review, Verified, Rejected) are joined
+    // into the query param the API call actually receives.
+    expect(verificationSpy).toHaveBeenCalledWith({ status: 'pending,approved,rejected' });
+  });
+
+  test('should still render orders when getTrusteeMatchVerifications API fails', async () => {
+    setupFeatureFlags({ 'trustee-verification-enabled': true });
+    const mockOrder = MockData.getTransferOrder({ override: { status: 'pending' } });
+    vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [mockOrder] });
+    vi.spyOn(Api2, 'getTrusteeMatchVerifications').mockRejectedValue(new Error('Network error'));
+
+    render(
+      <BrowserRouter>
+        <DataVerificationScreen />
+      </BrowserRouter>,
+    );
+
+    await waitFor(() => {
+      expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId(`accordion-order-list-${mockOrder.id}`)).toBeInTheDocument();
   });
 
   test('should show "Trustee Match Verification" filter toggle only when flag is on', async () => {
@@ -446,55 +515,12 @@ describe('Review Orders screen', () => {
     });
   });
 
-  test('should build regions map from courts response', async () => {
-    setupFeatureFlags();
-    const mockOrder = MockData.getTransferOrder({ override: { status: 'pending' } });
-    vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [mockOrder] });
-
-    let capturedRegionsMap: Map<string, string> | undefined;
-    vi.spyOn(transferOrderAccordionModule, 'TransferOrderAccordion').mockImplementation(
-      (props: transferOrderAccordionModule.TransferOrderAccordionProps) => {
-        capturedRegionsMap = props.regionsMap;
-        return <></>;
-      },
-    );
-
-    const mockCourts: CourtDivisionDetails[] = [
-      {
-        officeName: 'Manhattan',
-        officeCode: 'USTP_CAMS_Region_2_Office_Manhattan',
-        courtId: '0208',
-        courtName: 'Southern District of New York',
-        courtDivisionCode: '081',
-        courtDivisionName: 'Manhattan',
-        groupDesignator: 'NY',
-        regionId: '2',
-        regionName: 'NEW YORK',
-      },
-      {
-        officeName: 'White Plains',
-        officeCode: 'USTP_CAMS_Region_2_Office_Manhattan',
-        courtId: '0208',
-        courtName: 'Southern District of New York',
-        courtDivisionCode: '087',
-        courtDivisionName: 'White Plains',
-        groupDesignator: 'NY',
-        regionId: '2',
-        regionName: 'NEW YORK',
-      },
-      {
-        officeName: 'Wilmington',
-        officeCode: 'USTP_CAMS_Region_3_Office_Wilmington',
-        courtId: '0311',
-        courtName: 'District of Delaware',
-        courtDivisionCode: '111',
-        courtDivisionName: 'Delaware',
-        groupDesignator: 'WL',
-        regionId: '3',
-        regionName: 'PHILADELPHIA',
-      },
-    ];
-    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
+  test('should keep trustee verification items visible when the status filter excludes their status', async () => {
+    setupFeatureFlags({ 'trustee-verification-enabled': true });
+    vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [] });
+    vi.spyOn(Api2, 'getTrusteeMatchVerifications').mockResolvedValue({
+      data: [sampleVerificationOrder], // status: 'pending'
+    });
 
     render(
       <BrowserRouter>
@@ -503,12 +529,21 @@ describe('Review Orders screen', () => {
     );
 
     await waitFor(() => {
-      expect(capturedRegionsMap).toEqual(
-        new Map([
-          ['2', 'NEW YORK'],
-          ['3', 'PHILADELPHIA'],
-        ]),
-      );
+      expect(
+        screen.getByTestId(`accordion-order-list-${sampleVerificationOrder.id}`),
+      ).toBeVisible();
+    });
+
+    // Deselect 'Pending Review'. A normal order with status 'pending' would now be
+    // hidden by the status filter, but trustee-match-verification items are exempt.
+    const statusExpandBtn = document.getElementById('task-status-filter-expand');
+    fireEvent.click(statusExpandBtn!);
+    fireEvent.click(screen.getByTestId('task-status-filter-option-item-0'));
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId(`accordion-order-list-${sampleVerificationOrder.id}`),
+      ).toBeVisible();
     });
   });
 
@@ -540,7 +575,7 @@ describe('Review Orders screen', () => {
 
     vi.spyOn(transferOrderAccordionModule, 'TransferOrderAccordion').mockImplementation(
       (props: transferOrderAccordionModule.TransferOrderAccordionProps) => {
-        const { onOrderUpdate } = props;
+        const { onOrderUpdate, order } = props;
         React.useEffect(() => {
           onOrderUpdate({
             message: mockAlertMessage,
@@ -548,7 +583,7 @@ describe('Review Orders screen', () => {
             timeOut: 8,
           });
         }, [onOrderUpdate]);
-        return <></>;
+        return <div data-testid={`mock-transfer-order-${order.id}-${order.status}`}></div>;
       },
     );
 
@@ -569,6 +604,47 @@ describe('Review Orders screen', () => {
       expect(screen.getByTestId('alert-data-verification-alert')).toHaveTextContent(
         mockAlertMessage,
       );
+    });
+
+    // Order list is untouched: the same order, in its original status, still renders.
+    expect(screen.getByTestId(`mock-transfer-order-${mockOrder.id}-pending`)).toBeInTheDocument();
+  });
+
+  test('should replace the updated order in the list when transfer onOrderUpdate is called with an updated order', async () => {
+    setupFeatureFlags();
+    const mockOrder = MockData.getTransferOrder({ override: { status: 'pending' } });
+    const updatedOrder = { ...mockOrder, status: 'approved' as const };
+
+    vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [mockOrder] });
+
+    vi.spyOn(transferOrderAccordionModule, 'TransferOrderAccordion').mockImplementation(
+      (props: transferOrderAccordionModule.TransferOrderAccordionProps) => {
+        const { onOrderUpdate, order } = props;
+        React.useEffect(() => {
+          if (order.status === 'pending') {
+            onOrderUpdate(
+              { message: 'Transfer order updated.', type: UswdsAlertStyle.Success, timeOut: 8 },
+              updatedOrder,
+            );
+          }
+        }, [onOrderUpdate, order.status]);
+        return <div data-testid={`mock-transfer-order-${order.id}-${order.status}`}></div>;
+      },
+    );
+
+    render(
+      <BrowserRouter>
+        <DataVerificationScreen />
+      </BrowserRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId(`mock-transfer-order-${mockOrder.id}-pending`),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByTestId(`mock-transfer-order-${updatedOrder.id}-approved`),
+      ).toBeInTheDocument();
     });
   });
 
@@ -691,11 +767,9 @@ describe('Review Orders screen', () => {
       const alertContainer = document.querySelector('.usa-alert-container');
       expect(alertContainer).toBeInTheDocument();
     });
-
-    mock.mockRestore();
   });
 
-  test('Should filter on type when clicking type filter', async () => {
+  test('should filter on type when clicking type filter', async () => {
     setupFeatureFlags();
     const ordersResponse = {
       data: MockData.getSortedOrders(15),
@@ -776,14 +850,14 @@ describe('Review Orders screen', () => {
       'TrusteeMatchVerificationAccordion',
     ).mockImplementation(
       (props: trusteeVerificationAccordionModule.TrusteeMatchVerificationAccordionProps) => {
-        const { onOrderUpdate } = props;
+        const { onOrderUpdate, order } = props;
         React.useEffect(() => {
           onOrderUpdate(
             { message: mockAlertMessage, type: UswdsAlertStyle.Success, timeOut: 8 },
             updatedOrder,
           );
         }, [onOrderUpdate]);
-        return <></>;
+        return <div data-testid={`mock-trustee-verification-${order.id}-${order.status}`}></div>;
       },
     );
 
@@ -805,6 +879,11 @@ describe('Review Orders screen', () => {
         mockAlertMessage,
       );
     });
+
+    // Verification state actually updated, not just the alert fired.
+    expect(
+      screen.getByTestId(`mock-trustee-verification-${sampleVerificationOrder.id}-approved`),
+    ).toBeInTheDocument();
   });
 
   test('should replace the deleted order with the new orders when consolidation onOrderUpdate is called', async () => {
@@ -850,5 +929,48 @@ describe('Review Orders screen', () => {
       ).not.toBeInTheDocument();
       expect(screen.getByTestId(`mock-consolidation-order-${newOrder.id}`)).toBeInTheDocument();
     });
+  });
+
+  test('should display alert without updating order list when consolidation onOrderUpdate is called with only alert details', async () => {
+    setupFeatureFlags();
+    const existingOrder = MockData.getConsolidationOrder({
+      override: { status: 'pending', leadCase: MockData.getCaseSummary() },
+    });
+    const mockAlertMessage = 'An error occurred processing the consolidation.';
+
+    vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [existingOrder] });
+
+    vi.spyOn(consolidationOrderAccordionModule, 'ConsolidationOrderAccordion').mockImplementation(
+      (props: consolidationOrderAccordionModule.ConsolidationOrderAccordionProps) => {
+        const { onOrderUpdate, order } = props;
+        React.useEffect(() => {
+          onOrderUpdate({
+            message: mockAlertMessage,
+            type: UswdsAlertStyle.Error,
+            timeOut: 8,
+          });
+        }, [onOrderUpdate]);
+        return <div data-testid={`mock-consolidation-order-${order.id}-${order.status}`}></div>;
+      },
+    );
+
+    render(
+      <BrowserRouter>
+        <DataVerificationScreen />
+      </BrowserRouter>,
+    );
+
+    await waitFor(() => {
+      const alertContainer = screen.getByTestId('alert-container-data-verification-alert');
+      expect(alertContainer).toHaveClass('visible');
+      expect(screen.getByTestId('alert-data-verification-alert')).toHaveTextContent(
+        mockAlertMessage,
+      );
+    });
+
+    // Order list is untouched: the same order, in its original status, still renders.
+    expect(
+      screen.getByTestId(`mock-consolidation-order-${existingOrder.id}-pending`),
+    ).toBeInTheDocument();
   });
 });

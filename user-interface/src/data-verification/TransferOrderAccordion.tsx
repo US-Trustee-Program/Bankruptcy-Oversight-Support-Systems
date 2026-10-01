@@ -16,7 +16,6 @@ export interface TransferOrderAccordionProps {
   statusType: Map<string, string>;
   taskType: Map<string, string>;
   courts: Array<CourtDivisionDetails>;
-  regionsMap: Map<string, string>;
   onOrderUpdate: (alertDetails: AlertDetails, order?: TransferOrder) => void;
   onExpand?: (id: string) => void;
   onCollapse?: (id: string) => void;
