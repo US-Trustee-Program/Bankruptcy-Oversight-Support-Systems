@@ -1,6 +1,7 @@
 import { Auditable } from './auditable';
 import { Identifiable } from './document';
 import { AbstractTrusteeHistory } from './trustee-history-base';
+import { DEFAULT_MIN_DATE } from '../date-helper';
 import {
   VALID,
   ValidatorFunction,
@@ -81,6 +82,17 @@ function validateFullDate(value: string | null | undefined): ValidatorResult {
 // Internal validation functions for top-level form validation
 // ============================================================================
 
+// Returns true when exactly one of first/second is set -- i.e. the pair is
+// incomplete. '' counts as unset alongside null/undefined so this also covers
+// the form-layer representation used by validateCompletionPairPresence below;
+// the spec-layer fields requirePair checks are typed `T | null` and never
+// hold '', so the extra check is a no-op for that caller.
+function isPairIncomplete(first: unknown, second: unknown): boolean {
+  const firstSet = first !== null && first !== undefined && first !== '';
+  const secondSet = second !== null && second !== undefined && second !== '';
+  return firstSet !== secondSet;
+}
+
 function requirePair(
   startField: keyof TrusteeUpcomingKeyDatesInput,
   endField: keyof TrusteeUpcomingKeyDatesInput,
@@ -89,14 +101,12 @@ function requirePair(
 ): ValidatorFunction {
   return (obj: unknown): ValidatorResult => {
     const input = obj as TrusteeUpcomingKeyDatesInput;
-    const reasonMap: ValidatorReasonMap = {};
-    if (input[startField] !== null && input[endField] === null) {
-      reasonMap[endField as string] = { reasons: [`${endLabel} is required.`] };
-    }
-    if (input[endField] !== null && input[startField] === null) {
-      reasonMap[startField as string] = { reasons: [`${startLabel} is required.`] };
-    }
-    return Object.keys(reasonMap).length > 0 ? { reasonMap } : VALID;
+    if (!isPairIncomplete(input[startField], input[endField])) return VALID;
+    const reasonMap: ValidatorReasonMap =
+      input[startField] === null
+        ? { [startField as string]: { reasons: [`${startLabel} is required.`] } }
+        : { [endField as string]: { reasons: [`${endLabel} is required.`] } };
+    return { reasonMap };
   };
 }
 
@@ -129,38 +139,36 @@ function requireChronologicalOrder(
   };
 }
 
-const CH13_MIN_COMPLETION_YEAR = 1900;
-const CH13_MAX_COMPLETION_YEAR = 2100;
+// DEFAULT_MIN_DATE is October 1, 1979 -- the inception of the USTP trustee
+// program pilot -- so no completion year this document stores can predate it.
+const MIN_COMPLETION_YEAR = Number(DEFAULT_MIN_DATE.slice(0, 4));
 
-function validateCh13CompletionYear(value: unknown, label: string): ValidatorResult {
-  if (value === null || value === undefined) return VALID;
-  const isValidYear =
-    typeof value === 'number' &&
-    Number.isInteger(value) &&
-    value >= CH13_MIN_COMPLETION_YEAR &&
-    value <= CH13_MAX_COMPLETION_YEAR;
-  if (!isValidYear) {
-    return {
-      reasons: [
-        `${label} must be a whole number between ${CH13_MIN_COMPLETION_YEAR} and ${CH13_MAX_COMPLETION_YEAR}.`,
-      ],
-    };
-  }
-  return VALID;
-}
-
-function validateCh13CompletionYears(): ValidatorFunction {
+// Applies to every completion-year field below: auditCompletionYear,
+// tprCompletionYear, tirCompletionYear, annualReportCompletionYear, and
+// ch13AuditCompletionYear are structurally identical (a year paired with a
+// completion-status enum), so they share one range/integer check rather than
+// each form's save path risking drift the way ch13AuditCompletionYear's
+// one-off version did.
+function requireValidCompletionYear(
+  field: keyof TrusteeUpcomingKeyDatesInput,
+  label: string,
+): ValidatorFunction {
   return (obj: unknown): ValidatorResult => {
     const input = obj as TrusteeUpcomingKeyDatesInput;
-    const reasonMap: ValidatorReasonMap = {};
-
-    const yearResult = validateCh13CompletionYear(
-      input.ch13AuditCompletionYear,
-      'Audit Completion Year',
-    );
-    if (!yearResult.valid) reasonMap.ch13AuditCompletionYear = yearResult;
-
-    return Object.keys(reasonMap).length > 0 ? { reasonMap } : VALID;
+    const value = input[field];
+    if (value === null || value === undefined) return VALID;
+    const isValidYear =
+      typeof value === 'number' && Number.isInteger(value) && value >= MIN_COMPLETION_YEAR;
+    if (!isValidYear) {
+      return {
+        reasonMap: {
+          [field as string]: {
+            reasons: [`${label} must be a whole number no earlier than ${MIN_COMPLETION_YEAR}.`],
+          },
+        },
+      };
+    }
+    return VALID;
   };
 }
 
@@ -239,7 +247,6 @@ function validateDateFields(): ValidatorFunction {
 const trusteeUpcomingKeyDatesSpec: ValidationSpec<TrusteeUpcomingKeyDatesInput> = {
   $: [
     validateDateFields(),
-    validateCh13CompletionYears(),
     requirePair(
       'tprReviewPeriodStart',
       'tprReviewPeriodEnd',
@@ -271,11 +278,16 @@ const trusteeUpcomingKeyDatesSpec: ValidationSpec<TrusteeUpcomingKeyDatesInput> 
       'Field Exam/Audit Completion Status Year',
       'Field Exam/Audit Completion Status',
     ),
+    requireValidCompletionYear('auditCompletionYear', 'Field Exam/Audit Completion Status Year'),
     requirePair(
       'tprCompletionYear',
       'tprCompletionStatus',
       'Trustee Performance Review Completion Status Year',
       'Trustee Performance Review Completion Status',
+    ),
+    requireValidCompletionYear(
+      'tprCompletionYear',
+      'Trustee Performance Review Completion Status Year',
     ),
     requirePair(
       'tirCompletionYear',
@@ -283,12 +295,17 @@ const trusteeUpcomingKeyDatesSpec: ValidationSpec<TrusteeUpcomingKeyDatesInput> 
       'Trustee Interim Report Completion Status Year',
       'Trustee Interim Report Completion Status',
     ),
+    requireValidCompletionYear(
+      'tirCompletionYear',
+      'Trustee Interim Report Completion Status Year',
+    ),
     requirePair(
       'ch13AuditCompletionYear',
       'ch13AuditCompletionStatus',
       'Audit Completion Year',
       'Audit Completion Status',
     ),
+    requireValidCompletionYear('ch13AuditCompletionYear', 'Audit Completion Year'),
     requireValidEnum(
       'auditCompletionStatus',
       ['CLOSED', 'NOT_CLOSED'],
@@ -309,6 +326,10 @@ const trusteeUpcomingKeyDatesSpec: ValidationSpec<TrusteeUpcomingKeyDatesInput> 
       'annualReportCompletionStatus',
       'Annual Report Completion Status Year',
       'Annual Report Completion Status',
+    ),
+    requireValidCompletionYear(
+      'annualReportCompletionYear',
+      'Annual Report Completion Status Year',
     ),
     requireValidEnum(
       'annualReportCompletionStatus',
@@ -412,9 +433,7 @@ export function validateCompletionPairPresence(
   label: string,
   fieldNames: { first: string; second: string } = { first: 'Year', second: 'Status' },
 ): string {
-  const firstSet = first !== '' && first !== null && first !== undefined;
-  const secondSet = second !== '' && second !== null && second !== undefined;
-  if (firstSet === secondSet) return '';
+  if (!isPairIncomplete(first, second)) return '';
   return `${label} ${fieldNames.first} and ${fieldNames.second} must both be set.`;
 }
 

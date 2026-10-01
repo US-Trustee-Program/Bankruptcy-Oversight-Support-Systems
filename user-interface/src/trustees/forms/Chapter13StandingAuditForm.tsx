@@ -1,21 +1,14 @@
 import './Chapter13StandingAuditForm.scss';
-import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
 import {
   CompletionStatus,
   TrusteeUpcomingKeyDates,
   TrusteeUpcomingKeyDatesInput,
 } from '@common/cams/trustee-upcoming-key-dates';
-import Api2 from '@/lib/models/api2';
-import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
-import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import DatePicker from '@/lib/components/uswds/DatePicker';
-import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
-import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
-import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
-import { Stop } from '@/lib/components/Stop';
 import { buildKeyDatesInputFromOriginal, getCompletionYearOptions } from './keyDatesInputDefaults';
 import CompletionStatusYearSelect from './CompletionStatusYearSelect';
+import { useKeyDatesFormShell } from './useKeyDatesFormShell';
+import { KeyDatesFormShell } from './KeyDatesFormShell';
 
 const CH13_AUDIT_STATUS_OPTIONS = [
   { value: 'COMPLETE', label: 'Closed' },
@@ -43,13 +36,12 @@ function buildFormStateFromData(data: TrusteeUpcomingKeyDates): FormState {
 }
 
 function buildInput(
-  trusteeId: string,
-  appointmentId: string,
+  ids: { trusteeId: string; appointmentId: string },
   original: TrusteeUpcomingKeyDates | null,
   form: FormState,
 ): TrusteeUpcomingKeyDatesInput {
   return {
-    ...buildKeyDatesInputFromOriginal(trusteeId, appointmentId, original),
+    ...buildKeyDatesInputFromOriginal(ids.trusteeId, ids.appointmentId, original),
     pastAudit: form.pastAudit || null,
     ch13AuditCompletionYear: form.ch13AuditCompletionYear || null,
     ch13AuditCompletionStatus: form.ch13AuditCompletionStatus || null,
@@ -57,91 +49,42 @@ function buildInput(
 }
 
 export default function Chapter13StandingAuditForm() {
-  const { trusteeId, appointmentId } = useParams<{
-    trusteeId: string;
-    appointmentId: string;
-  }>();
-  const navigate = useNavigate();
-  const globalAlert = useGlobalAlert();
-  const canManage = useCanManageTrustees();
-  const { registerFieldError, hasErrorAmong } = useDateFieldErrors();
-
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [loadFailed, setLoadFailed] = useState(false);
-  const [original, setOriginal] = useState<TrusteeUpcomingKeyDates | null>(null);
-  const [form, setForm] = useState<FormState>(EMPTY_FORM);
-
-  useEffect(() => {
-    Api2.getUpcomingKeyDates(trusteeId!, appointmentId!)
-      .then((response) => {
-        setOriginal(response.data);
-        if (response.data) {
-          setForm(buildFormStateFromData(response.data));
-        }
-      })
-      .catch((err) => {
-        setLoadFailed(true);
-        globalAlert?.error(`Failed to load Audit key dates: ${(err as Error).message}`);
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [trusteeId, appointmentId]);
-
-  function handleCancel() {
-    navigate(`/trustees/${trusteeId}/appointments`);
-  }
-
-  async function handleSave() {
-    setIsSaving(true);
-    try {
-      const input = buildInput(trusteeId!, appointmentId!, original, form);
-      await Api2.putUpcomingKeyDates(trusteeId!, appointmentId!, input);
-      navigate(`/trustees/${trusteeId}/appointments`);
-    } catch (err) {
-      globalAlert?.error(`Failed to save Audit key dates: ${(err as Error).message}`);
-    } finally {
-      setIsSaving(false);
-    }
-  }
-
-  if (isLoading) {
-    return <LoadingSpinner id="edit-chapter13-standing-audit-key-dates-loading" />;
-  }
-
-  if (!canManage) {
-    return (
-      <Stop
-        id="forbidden-alert"
-        title="Forbidden"
-        message="You do not have permission to manage Trustee Upcoming Key Dates"
-        asError
-      />
-    );
-  }
+  const shell = useKeyDatesFormShell<FormState>({
+    emptyForm: EMPTY_FORM,
+    mapDataToForm: buildFormStateFromData,
+    buildInput,
+    errorLabel: 'Audit key dates',
+  });
 
   const isCompletionPairIncomplete =
-    (!!form.ch13AuditCompletionYear && !form.ch13AuditCompletionStatus) ||
-    (!form.ch13AuditCompletionYear && !!form.ch13AuditCompletionStatus);
+    (!!shell.form.ch13AuditCompletionYear && !shell.form.ch13AuditCompletionStatus) ||
+    (!shell.form.ch13AuditCompletionYear && !!shell.form.ch13AuditCompletionStatus);
 
   const isSaveDisabled =
-    isSaving || loadFailed || hasErrorAmong(['past-audit']) || isCompletionPairIncomplete;
+    shell.loadFailed || shell.hasErrorAmong(['past-audit']) || isCompletionPairIncomplete;
 
   return (
-    <div
-      className="edit-chapter13-standing-audit-key-dates"
-      data-testid="edit-chapter13-standing-audit-key-dates"
+    <KeyDatesFormShell
+      loadingId="edit-chapter13-standing-audit-key-dates-loading"
+      forbiddenMessage="You do not have permission to manage Trustee Upcoming Key Dates"
+      containerClassName="edit-chapter13-standing-audit-key-dates"
+      containerTestId="edit-chapter13-standing-audit-key-dates"
+      title="Edit Audit Key Dates"
+      idBase="chapter13-standing-audit-key-dates"
+      isLoading={shell.isLoading}
+      canManage={shell.canManage}
+      isSaving={shell.isSaving}
+      isSaveDisabled={isSaveDisabled}
+      onSave={shell.handleSave}
+      onCancel={shell.handleCancel}
     >
-      <h3>Edit Audit Key Dates</h3>
       <DatePicker
         id="past-audit"
         label="Audit Report Date"
-        value={form.pastAudit}
+        value={shell.form.pastAudit}
         disableMax
-        onChange={(e) => setForm((prev) => ({ ...prev, pastAudit: e.target.value }))}
-        onValidationChange={(hasError) => registerFieldError('past-audit', hasError)}
+        onChange={(e) => shell.setForm((prev) => ({ ...prev, pastAudit: e.target.value }))}
+        onValidationChange={(hasError) => shell.registerFieldError('past-audit', hasError)}
       />
       <CompletionStatusYearSelect
         idPrefix="audit-completion"
@@ -149,31 +92,15 @@ export default function Chapter13StandingAuditForm() {
         errorLabel="Audit Completion Status"
         yearOptions={getCompletionYearOptions()}
         statusOptions={CH13_AUDIT_STATUS_OPTIONS}
-        year={form.ch13AuditCompletionYear}
-        status={form.ch13AuditCompletionStatus}
+        year={shell.form.ch13AuditCompletionYear}
+        status={shell.form.ch13AuditCompletionStatus}
         onYearChange={(ch13AuditCompletionYear) =>
-          setForm((prev) => ({ ...prev, ch13AuditCompletionYear }))
+          shell.setForm((prev) => ({ ...prev, ch13AuditCompletionYear }))
         }
         onStatusChange={(ch13AuditCompletionStatus) =>
-          setForm((prev) => ({ ...prev, ch13AuditCompletionStatus }))
+          shell.setForm((prev) => ({ ...prev, ch13AuditCompletionStatus }))
         }
       />
-      <div className="usa-button-group">
-        <Button
-          id="save-chapter13-standing-audit-key-dates"
-          onClick={handleSave}
-          disabled={isSaveDisabled}
-        >
-          {isSaving ? 'Saving...' : 'Save'}
-        </Button>
-        <Button
-          id="cancel-chapter13-standing-audit-key-dates"
-          uswdsStyle={UswdsButtonStyle.Unstyled}
-          onClick={handleCancel}
-        >
-          Cancel
-        </Button>
-      </div>
-    </div>
+    </KeyDatesFormShell>
   );
 }

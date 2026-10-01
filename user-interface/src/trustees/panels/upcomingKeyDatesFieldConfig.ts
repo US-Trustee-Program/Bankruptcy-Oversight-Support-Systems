@@ -45,7 +45,7 @@ export function buildCompletionTag(
   const isClosed = status === closedValue;
   return {
     label: `${isClosed ? labels.closed : labels.notClosed} for ${year}`,
-    color: (isClosed ? 'green' : 'red') as EditableTableCardTagColor,
+    color: (isClosed ? 'positive' : 'negative') as EditableTableCardTagColor,
     id,
   };
 }

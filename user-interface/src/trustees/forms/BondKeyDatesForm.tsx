@@ -1,19 +1,12 @@
 import './EditUpcomingKeyDates.scss';
-import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
 import {
   TrusteeUpcomingKeyDates,
   TrusteeUpcomingKeyDatesInput,
 } from '@common/cams/trustee-upcoming-key-dates';
 import { mergeKeyDatesInput } from './keyDatesInput';
-import Api2 from '@/lib/models/api2';
-import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
-import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
-import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import DatePicker from '@/lib/components/uswds/DatePicker';
-import useDateFieldErrors from '@/lib/hooks/UseDateFieldErrors';
-import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
-import { Stop } from '@/lib/components/Stop';
+import { useKeyDatesFormShell } from './useKeyDatesFormShell';
+import { KeyDatesFormShell } from './KeyDatesFormShell';
 
 type BondKeyDatesFormState = {
   bondIssuedDate: string;
@@ -37,122 +30,55 @@ export function buildBondKeyDatesInput(
 }
 
 export default function BondKeyDatesForm() {
-  const { trusteeId, appointmentId } = useParams<{
-    trusteeId: string;
-    appointmentId: string;
-  }>();
-  const navigate = useNavigate();
-  const globalAlert = useGlobalAlert();
-  const canManage = useCanManageTrustees();
-
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [form, setForm] = useState<BondKeyDatesFormState>(EMPTY_FORM);
-  const [original, setOriginal] = useState<TrusteeUpcomingKeyDates | null>(null);
-  const { registerFieldError, hasErrorAmong } = useDateFieldErrors();
-
-  useEffect(() => {
-    Api2.getUpcomingKeyDates(trusteeId!, appointmentId!)
-      .then((response) => {
-        const data = response.data;
-        if (data) {
-          setOriginal(data);
-          setForm({
-            bondIssuedDate: data.bondIssuedDate ?? '',
-            bondRenewalDate: data.bondRenewalDate ?? '',
-          });
-        }
-      })
-      .catch((err) => {
-        globalAlert?.error(`Failed to load bond key dates: ${(err as Error).message}`);
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
-  }, [trusteeId, appointmentId]);
+  const shell = useKeyDatesFormShell<BondKeyDatesFormState>({
+    emptyForm: EMPTY_FORM,
+    mapDataToForm: (data) => ({
+      bondIssuedDate: data.bondIssuedDate ?? '',
+      bondRenewalDate: data.bondRenewalDate ?? '',
+    }),
+    buildInput: buildBondKeyDatesInput,
+    errorLabel: 'bond key dates',
+  });
 
   function handleDateChange(field: keyof BondKeyDatesFormState) {
     return (ev: React.ChangeEvent<HTMLInputElement>) => {
-      setForm((prev) => ({ ...prev, [field]: ev.target.value }));
+      shell.setForm((prev) => ({ ...prev, [field]: ev.target.value }));
     };
   }
 
-  async function handleSave() {
-    setIsSaving(true);
-    const input = buildBondKeyDatesInput(
-      { trusteeId: trusteeId!, appointmentId: appointmentId! },
-      original,
-      form,
-    );
-
-    try {
-      await Api2.putUpcomingKeyDates(trusteeId!, appointmentId!, input);
-      navigate(`/trustees/${trusteeId}/appointments`);
-    } catch (err) {
-      globalAlert?.error(`Failed to save bond key dates: ${(err as Error).message}`);
-    } finally {
-      setIsSaving(false);
-    }
-  }
-
-  function handleCancel() {
-    navigate(`/trustees/${trusteeId}/appointments`);
-  }
-
-  if (isLoading) {
-    return <LoadingSpinner id="edit-bond-key-dates-loading" />;
-  }
-
-  if (!canManage) {
-    return (
-      <Stop
-        id="forbidden-alert"
-        title="Forbidden"
-        message="You do not have permission to manage Trustee Bond Key Dates"
-        asError
-      />
-    );
-  }
-
-  const hasAnyDateError = hasErrorAmong(['bond-issued-date', 'bond-renewal-date']);
+  const hasAnyDateError = shell.hasErrorAmong(['bond-issued-date', 'bond-renewal-date']);
 
   return (
-    <div className="edit-upcoming-key-dates" data-testid="edit-bond-key-dates">
-      <h3>Edit Bond Key Dates</h3>
+    <KeyDatesFormShell
+      loadingId="edit-bond-key-dates-loading"
+      forbiddenMessage="You do not have permission to manage Trustee Bond Key Dates"
+      containerTestId="edit-bond-key-dates"
+      title="Edit Bond Key Dates"
+      idBase="bond-key-dates"
+      withTestIds
+      isLoading={shell.isLoading}
+      canManage={shell.canManage}
+      isSaving={shell.isSaving}
+      isSaveDisabled={hasAnyDateError}
+      onSave={shell.handleSave}
+      onCancel={shell.handleCancel}
+    >
       <DatePicker
         id="bond-renewal-date"
         label="Bond Renewal Date"
-        value={form.bondRenewalDate}
+        value={shell.form.bondRenewalDate}
         onChange={handleDateChange('bondRenewalDate')}
-        onValidationChange={(hasError) => registerFieldError('bond-renewal-date', hasError)}
+        onValidationChange={(hasError) => shell.registerFieldError('bond-renewal-date', hasError)}
         disableMax
       />
       <DatePicker
         id="bond-issued-date"
         label="Bond Issued Date"
-        value={form.bondIssuedDate}
+        value={shell.form.bondIssuedDate}
         onChange={handleDateChange('bondIssuedDate')}
-        onValidationChange={(hasError) => registerFieldError('bond-issued-date', hasError)}
+        onValidationChange={(hasError) => shell.registerFieldError('bond-issued-date', hasError)}
         disableMax
       />
-      <div className="usa-button-group">
-        <Button
-          id="save-bond-key-dates"
-          data-testid="button-save-bond-key-dates"
-          onClick={handleSave}
-          disabled={isSaving || hasAnyDateError}
-        >
-          {isSaving ? 'Saving...' : 'Save'}
-        </Button>
-        <Button
-          id="cancel-bond-key-dates"
-          data-testid="button-cancel-bond-key-dates"
-          uswdsStyle={UswdsButtonStyle.Unstyled}
-          onClick={handleCancel}
-        >
-          Cancel
-        </Button>
-      </div>
-    </div>
+    </KeyDatesFormShell>
   );
 }
