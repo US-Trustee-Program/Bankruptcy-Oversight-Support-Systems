@@ -138,7 +138,7 @@ const REPORT_COLUMNS = [
   'tokenNameMatchRate',
   'acmsAddress',
   'camsAddress',
-  'addressScore',
+  'addressMatch',
   'acmsPhone',
   'camsPhone',
   'phoneMatch',
@@ -261,7 +261,7 @@ function latestMemoValue(memo: Record<string, MemoEntry[]>, functionName: string
  * pipeline-replay-backtest.ts does, since that score is never written through addScore onto
  * candidate.scores itself. Each scorer's contribution is now a ScoreRecord keyed by scorer name
  * (see trustee-match-pipeline.ts) rather than a bundle of bespoke fields - this reads the specific
- * keys this CSV displays (nameQuality/addressScore/phoneMatch/stateMatch), tolerating
+ * keys this CSV displays (nameQuality/addressMatch/phoneMatch/stateMatch), tolerating
  * either the address or phone corroboration key being absent (not every candidate reaches
  * comparativeCorroborationStage). */
 function deriveCandidateFields(
@@ -272,7 +272,10 @@ function deriveCandidateFields(
   const winnerScores = isWinner ? (record.match?.score as ScoreByScorer | undefined) : undefined;
   const merged: ScoreByScorer = { ...candidate.scores, ...winnerScores };
   const nameQuality = merged.doesNameMatch?.pass ? String(merged.doesNameMatch.quality) : 'none';
-  const addressScore = (merged.contactCorroborationAddress?.value as number | undefined) ?? null;
+  const addressMatch =
+    (merged.doesAddressMatch
+      ? `${merged.doesAddressMatch.quality ?? 'no-match'} ${merged.doesAddressMatch.points}`
+      : '') || null;
   const phoneMatch =
     (merged.doesPhoneMatch ? String(merged.doesPhoneMatch.quality ?? 'no-match') : '') || null;
   // Absent means the states were never comparable, not that they agree - doesStateMatch is only
@@ -285,7 +288,7 @@ function deriveCandidateFields(
   return {
     introductionStage: introductionStageOf(candidate.scores),
     nameQuality,
-    addressScore,
+    addressMatch,
     phoneMatch,
     stateMatch,
     fullNameSimilarity,
@@ -326,7 +329,7 @@ class ShardReportWriter {
           fields.tokenNameMatchRate,
           fields.acmsAddress,
           fields.camsAddress,
-          fields.addressScore,
+          fields.addressMatch,
           fields.acmsPhone,
           fields.camsPhone,
           fields.phoneMatch,
@@ -367,7 +370,7 @@ function formatCandidate(
     `Phone: ${fields.camsPhone || '(blank)'}`,
     `Structured signals: nameQuality=${fields.nameQuality}, fullNameSimilarity=${fields.fullNameSimilarity}, ` +
       `tokenNameMatchRate=${fields.tokenNameMatchRate}, stateMatch=${fields.stateMatch}, ` +
-      `addressScore=${fields.addressScore}, phoneMatch=${fields.phoneMatch}`,
+      `addressMatch=${fields.addressMatch}, phoneMatch=${fields.phoneMatch}`,
     `introductionStage: ${fields.introductionStage}`,
   ].join('\n');
 }

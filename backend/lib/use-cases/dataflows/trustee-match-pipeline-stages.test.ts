@@ -24,9 +24,6 @@ import {
   resolveByEmailAddress,
   resolveByPhoneWithTypo,
   resolveByAddress,
-  resolveByCityAndZipCode,
-  resolveByStateAndCity,
-  resolveByZipCode,
   resolveByStateOnly,
   resolveByNameOnly,
   normalizeAcmsSourceName,
@@ -1798,44 +1795,128 @@ describe('scoreCandidate - state/city/zip/contact-presence facets', () => {
 
     expect(candidate.scores.doesZipCodeMatch).toBeUndefined();
   });
+});
 
-  // Real bug, confirmed via pipeline-replay-backtest.ts against the 2026-09-25 export:
-  // pipelineAddressScore used to return a plain 0 (not null) when the ACMS address didn't parse at
-  // all, and scoreContactCorroboration wrote that 0 as a REAL, present contactCorroborationAddress
-  // ScoreRecord (value:0, pass:false) unconditionally - a fabricated "genuine disagreement"
-  // indistinguishable from an actual address mismatch, for a candidate whose address was never
-  // compared at all. 2+ real records (a genuinely empty ACMS cityStateZipCountry, a real comparable
-  // CAMS address) carried this fabricated conflict. Fixed to follow the same "no record when data
-  // unavailable" convention as doesStateMatch/doesCityMatch/doesZipCodeMatch/doesMiddleNameMatch -
-  // contactCorroborationAddress must be entirely absent, not a low recorded score, for this shape.
-  test('leaves contactCorroborationAddress unset when the ACMS address is unparseable, not fabricated as a low score', async () => {
-    const state = createInitialState(
-      makeDxtrTrustee({
-        fullName: 'Aldric T Moon',
-        firstName: 'Aldric',
-        middleName: 'A',
-        lastName: 'Moon',
-        legacy: { cityStateZipCountry: '' } as never,
-      }),
+describe('scoreCandidate - address-match facet', () => {
+  const camsAddress = (address1: string, city: string, state: string, zipCode: string) => ({
+    address1,
+    city,
+    state,
+    zipCode,
+    countryCode: 'US' as const,
+  });
+
+  const scoresFor = async (
+    acms: { address1?: string; cityStateZipCountry: string },
+    cams: ReturnType<typeof camsAddress>,
+  ) => {
+    const state = await normalizeAcmsSourceName()(
+      createInitialState(makeDxtrTrustee({ legacy: acms as never })),
     );
-    const candidate = addSomeoneMoon(state, {
-      trusteeId: 'trustee-wa',
-      firstName: 'Aldric',
-      name: 'Aldric Moon',
-      public: {
-        address: {
-          address1: '123 Main St',
-          city: 'Tacoma',
-          state: 'WA',
-          zipCode: '98402',
-          countryCode: 'US',
-        },
-      },
-    } as never);
-
+    const candidate = addCandidate(
+      state,
+      projectTrustee(makeTrustee({ trusteeId: 't1', public: { address: cams } })),
+      'test',
+    );
     scoreCandidate(state.sourceNormalized, candidate);
+    return mergedScore(candidate);
+  };
 
-    expect(candidate.scores.contactCorroborationAddress).toBeUndefined();
+  test('grades identical street, city, state and zip as exact', async () => {
+    const scores = await scoresFor(
+      { address1: '123 Main St', cityStateZipCountry: 'TACOMA WA 98402' },
+      camsAddress('123 Main Street', 'Tacoma', 'WA', '98402'),
+    );
+
+    expect(scores.doesAddressMatch).toEqual({
+      pass: true,
+      quality: 'exact',
+      points: 6,
+      streetCloseness: 1,
+    });
+  });
+
+  test('grades a matching area with a near-identical street as strong', async () => {
+    const scores = await scoresFor(
+      { address1: '1601 Jackson St', cityStateZipCountry: 'FORT MYERS FL 33901' },
+      camsAddress('1601 Jackson St Suite 200', 'Fort Myers', 'FL', '33901'),
+    );
+
+    expect(scores.doesAddressMatch).toMatchObject({ pass: true, quality: 'strong' });
+  });
+
+  test('grades city and state agreement as moderate without a zip match', async () => {
+    const scores = await scoresFor(
+      { address1: '123 Main St', cityStateZipCountry: 'TACOMA WA 98402' },
+      camsAddress('PO Box 9', 'Tacoma', 'WA', '98499'),
+    );
+
+    expect(scores.doesAddressMatch).toMatchObject({ pass: true, quality: 'moderate', points: 3 });
+  });
+
+  test('grades a zip match as moderate even when the city name differs', async () => {
+    const scores = await scoresFor(
+      { cityStateZipCountry: 'NORTH HOLLYWOOD CA 91607' },
+      camsAddress('1 Other Rd', 'Los Angeles', 'CA', '91607'),
+    );
+
+    expect(scores.doesAddressMatch).toMatchObject({ pass: true, quality: 'moderate', points: 3 });
+  });
+
+  test('grades state agreement alone as weak', async () => {
+    const scores = await scoresFor(
+      { cityStateZipCountry: 'NEW YORK NY 10018' },
+      camsAddress('', '', 'NY', ''),
+    );
+
+    expect(scores.doesAddressMatch).toMatchObject({ pass: true, quality: 'weak', points: 1 });
+  });
+
+  test('grades a different city in the same state as a no-match', async () => {
+    const scores = await scoresFor(
+      { address1: '707 First Savings Bldg', cityStateZipCountry: 'SAN ANGELO TX 76903' },
+      camsAddress('3200 Allied Bank Tower', 'Dallas', 'TX', '75202'),
+    );
+
+    expect(scores.doesAddressMatch).toMatchObject({ pass: false, points: 0 });
+  });
+
+  test('compares house numbers exactly, not fuzzily', async () => {
+    const scores = await scoresFor(
+      { address1: '4210 Oak St', cityStateZipCountry: 'TACOMA WA 98402' },
+      camsAddress('4201 Oak Street', 'Tacoma', 'WA', '98402'),
+    );
+
+    expect(scores.doesAddressMatch?.streetCloseness).toBeCloseTo(2 / 3);
+  });
+
+  test('records nothing when the ACMS record has no address at all', async () => {
+    const scores = await scoresFor(
+      { cityStateZipCountry: '' },
+      camsAddress('123 Main Street', 'Tacoma', 'WA', '98402'),
+    );
+
+    expect(scores.doesAddressMatch).toBeUndefined();
+  });
+
+  test.each([
+    { acms: 'LASVEGAS NV 89101', cams: 'Las Vegas' },
+    { acms: 'SAN JUAN PR 00925', cams: 'Old San Juan' },
+    { acms: 'FT MYERS FL 33901', cams: 'Fort Myers' },
+    { acms: 'EAU CLAIRE WI 54701', cams: 'Eau Clair' },
+  ])('treats $acms and $cams as the same city', async ({ acms, cams }) => {
+    const scores = await scoresFor({ cityStateZipCountry: acms }, camsAddress('', cams, '', ''));
+
+    expect(scores.doesCityMatch).toEqual({ pass: true });
+  });
+
+  test('does not treat different cities as the same', async () => {
+    const scores = await scoresFor(
+      { cityStateZipCountry: 'KENMORE NY 14217' },
+      camsAddress('', 'Kenosha', '', ''),
+    );
+
+    expect(scores.doesCityMatch).toEqual({ pass: false });
   });
 });
 
@@ -2072,8 +2153,12 @@ describe('resolvers', () => {
     return state;
   };
 
-  const address = (value: number) => ({
-    contactCorroborationAddress: { value, threshold: 80, pass: value >= 80 },
+  const address = (points: number) => ({
+    doesAddressMatch: {
+      pass: points > 0,
+      quality: points >= 6 ? 'exact' : points > 3 ? 'strong' : points === 3 ? 'moderate' : 'weak',
+      points,
+    },
   });
 
   describe.each([
@@ -2087,22 +2172,7 @@ describe('resolvers', () => {
       name: 'resolveByEmailAddress',
       signal: { doesEmailMatch: { pass: true } },
     },
-    { resolver: resolveByAddress, name: 'resolveByAddress', signal: address(90) },
-    {
-      resolver: resolveByCityAndZipCode,
-      name: 'resolveByCityAndZipCode',
-      signal: { doesCityMatch: { pass: true }, doesZipCodeMatch: { pass: true } },
-    },
-    {
-      resolver: resolveByStateAndCity,
-      name: 'resolveByStateAndCity',
-      signal: { doesStateMatch: { pass: true }, doesCityMatch: { pass: true } },
-    },
-    {
-      resolver: resolveByZipCode,
-      name: 'resolveByZipCode',
-      signal: { doesZipCodeMatch: { pass: true } },
-    },
+    { resolver: resolveByAddress, name: 'resolveByAddress', signal: address(3) },
     {
       resolver: resolveByStateOnly,
       name: 'resolveByStateOnly',
@@ -2147,16 +2217,16 @@ describe('resolvers', () => {
   });
 
   describe('resolveByAddress', () => {
-    test('a higher address score outranks a better name', async () => {
+    test('a better address outranks a better name', async () => {
       const result = await resolveByAddress()(
-        poolOf({ ...EXACT_NAME, ...address(82) }, { ...STRONG_NAME, ...address(96) }),
+        poolOf({ ...EXACT_NAME, ...address(3.6) }, { ...STRONG_NAME, ...address(5.4) }),
       );
 
       expect(result.match).toMatchObject({ trusteeId: 't2' });
     });
 
-    test('does not resolve on an address score below the threshold', async () => {
-      const result = await resolveByAddress()(poolOf({ ...EXACT_NAME, ...address(79) }));
+    test('does not resolve on a weak address', async () => {
+      const result = await resolveByAddress()(poolOf({ ...EXACT_NAME, ...address(2) }));
 
       expect(result.match).toBeNull();
     });
@@ -2219,6 +2289,7 @@ describe('resolvers', () => {
         score: { doesPhoneMatch: { pass: false, phoneDigitDistance: 6 } },
       },
       { description: 'the email', score: { doesEmailMatch: { pass: false } } },
+      { description: 'the address', score: address(0) },
     ])(
       'still resolves when $description does not match - a missing strong signal, not a contradiction',
       async ({ score }) => {
@@ -2235,7 +2306,6 @@ describe('resolvers', () => {
         description: 'the state contradicts',
         pool: [{ ...EXACT_NAME, doesStateMatch: { pass: false } }],
       },
-      { description: 'the address contradicts', pool: [{ ...EXACT_NAME, ...address(10) }] },
       {
         description: 'the CAMS trustee has no address or phone',
         pool: [{ ...EXACT_NAME, doesCamsTrusteeHaveAddressAndPhone: { pass: false } }],

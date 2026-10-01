@@ -148,7 +148,7 @@ describe('deriveDisposition', () => {
     const weakMatchWithComparableAcmsData = {
       doesNameMatch: { pass: true, quality: 'strong' },
       doesAcmsTrusteeHaveAddressAndPhone: { pass: true },
-      contactCorroborationAddress: { pass: false },
+      doesAddressMatch: { pass: false, points: 0 },
     };
     const state = makeState({
       candidates: [makeCandidate(weakMatchWithComparableAcmsData)],
@@ -164,7 +164,7 @@ describe('deriveDisposition', () => {
     const weakMatchWithComparableAcmsData = {
       doesNameMatch: { pass: true, quality: 'strong' },
       doesAcmsTrusteeHaveAddressAndPhone: { pass: true },
-      contactCorroborationAddress: { pass: false },
+      doesAddressMatch: { pass: false, points: 0 },
     };
     const state = makeState({
       candidates: [makeCandidate(exactMatch), makeCandidate(weakMatchWithComparableAcmsData)],

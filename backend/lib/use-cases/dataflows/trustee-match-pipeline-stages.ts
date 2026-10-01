@@ -2,29 +2,23 @@ import * as natural from 'natural';
 import { getNameVariations } from 'name-match/src/name-normalizer';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { Trustee } from '@common/cams/trustees';
-import { Address } from '@common/cams/contact';
 import { usStates } from '@common/cams/us-states';
 import factory from '../../factory';
 import {
-  calculateNumericTokenScore,
-  CONTACT_CORROBORATION_ADDRESS_THRESHOLD,
   firstLastNameToken,
   isBlankAcmsValue,
   isFirstMiddleSwap,
   isKnownNicknamePair,
   isOneSidedMiddleNameMatch,
   isPlausibleNicknameByDistance,
-  jaccardSimilarity,
   lastNameSurnameCandidates,
   lastNameTokensMatch,
   matchTrusteeByName,
   normalizeAddressLine,
-  padSingleDigitNumericToken,
   parseCityStateZip,
   stripParentheticalAnnotations,
   tokenizeNameForIntersection,
 } from './trustee-match.helpers';
-import { generateBigrams } from '../../adapters/utils/phonetic-helper';
 import {
   isRecordDisavowed,
   recoverCorruptedFirstName,
@@ -48,7 +42,7 @@ import {
   NormalizedTrustee,
   ProjectedTrustee,
   projectTrustee,
-  MeasuredScore,
+  ScoreByScorer,
   ScoreRecord,
   TrusteePipelineCandidate as PipelineCandidate,
   TrusteePipelineState as PipelineState,
@@ -322,60 +316,6 @@ function parseAcmsCityStateZip(cityStateZipCountry?: string): ReturnType<typeof 
   const city = tokens.slice(0, tokens.length - 1).join(' ');
   if (!city) return null;
   return { city, state: trailingToken, zipCode: '' };
-}
-
-/**
- * ACMS-pipeline-only orchestration of calculateAddressScore's scoring logic, built from the same
- * atomic exported pieces (normalizeAddressLine, padSingleDigitNumericToken,
- * calculateNumericTokenScore, jaccardSimilarity, generateBigrams) rather than calling
- * calculateAddressScore directly, so ACMS-specific tuning can move independently of the DXTR path.
- *
- * Returns null - never 0 - when the ACMS address doesn't parse at all, so a caller can tell "never
- * compared" from a real disagreement (see ScoreByScorer).
- */
-function pipelineAddressScore(
-  sourceLegacy: NormalizedTrustee['legacy'],
-  camsAddress: Address,
-): number | null {
-  const parsed = parseAcmsCityStateZip(sourceLegacy?.cityStateZipCountry);
-  if (!parsed) return null;
-
-  const zip5 = (zip: string) => zip.trim().split('-')[0].toLowerCase();
-
-  const joinAddressLines = (address?: {
-    address1?: string;
-    address2?: string;
-    address3?: string;
-  }) =>
-    [address?.address1, address?.address2, address?.address3]
-      .filter((line): line is string => !!line && line.trim().length > 0)
-      .join(' ');
-
-  const sourceAddressLines = normalizeAddressLine(joinAddressLines(sourceLegacy));
-  const camsAddressLines = normalizeAddressLine(joinAddressLines(camsAddress));
-
-  const padForBigrams = (line: string) => line.split(' ').map(padSingleDigitNumericToken).join(' ');
-  const bigramScore = jaccardSimilarity(
-    generateBigrams(padForBigrams(sourceAddressLines)),
-    generateBigrams(padForBigrams(camsAddressLines)),
-  );
-
-  const numericTokenScore = calculateNumericTokenScore(sourceAddressLines, camsAddressLines);
-  const addressLinesScore =
-    numericTokenScore === null ? bigramScore : bigramScore * 0.5 + numericTokenScore * 0.5;
-
-  const sourceCityState = normalizeAddressLine(`${parsed.city} ${parsed.state ?? ''}`);
-  const camsCityState = normalizeAddressLine(`${camsAddress.city} ${camsAddress.state}`);
-  const cityStateScore = jaccardSimilarity(
-    generateBigrams(sourceCityState),
-    generateBigrams(camsCityState),
-  );
-
-  const sourceZip = zip5(parsed.zipCode);
-  const camsZip = zip5(camsAddress.zipCode);
-  const zipScore = sourceZip && camsZip && sourceZip === camsZip ? 100 : 0;
-
-  return Math.round(addressLinesScore * 0.5 + zipScore * 0.3 + cityStateScore * 0.2);
 }
 
 /**
@@ -1226,32 +1166,34 @@ function scoreStateMatch(
   );
 }
 
+const CITY_ABBREVIATIONS: Record<string, string> = { ft: 'fort', mt: 'mount', st: 'saint' };
+
+function cityTokens(city: string): string[] {
+  return city
+    .toLowerCase()
+    .replace(/[.,'-]/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((token) => CITY_ABBREVIATIONS[token] ?? token);
+}
+
 /**
- * Independent city-agreement scorer, for the sole-candidate consensus vote (see
- * resolveName*) - a new, cheap corroborating signal distinct from
- * calculateAddressScore's bigram-similarity comparison of the FULL address line.
- * Case-insensitive exact match on the parsed city name alone (not a fuzzy/bigram compare,
- * unlike calculateAddressScore - city names are short enough that a typo either round-trips
- * through parseCityStateZip's tokenization exactly or doesn't, and a partial-credit scheme adds
- * complexity with no evidence yet that it's needed). No record is added when either side's city
- * is unavailable (unparseable ACMS address, or a candidate with no address on file) - absence is
- * not evidence either way, so it should not count as a vote (see resolveName*'s
- * "scorers that actually ran" framing).
+ * Exact or fuzzy: equal once spaces are removed ("LasVegas"), or every word of the shorter name
+ * closely matches a word of the longer ("Old San Juan").
  */
-/** The KleeneBoolean fact scoreCityMatch records - see stateMatch's own doc comment for why this
- * is factored out as its own named step. */
 function cityMatch(
   sourceNormalized: NormalizedTrustee,
   candidate: PipelineCandidate,
 ): KleeneBoolean {
-  const parsedAcmsAddress = memoizedParseAcmsAddress(sourceNormalized);
-  const acmsCity = parsedAcmsAddress?.city.toLowerCase();
-  if (!acmsCity) return null;
+  const acms = cityTokens(memoizedParseAcmsAddress(sourceNormalized)?.city ?? '');
+  const cams = cityTokens(candidate.camsRaw.address?.city ?? '');
+  if (acms.length === 0 || cams.length === 0) return null;
 
-  const camsCity = candidate.camsRaw.address?.city?.toLowerCase();
-  if (!camsCity) return null;
-
-  return camsCity === acmsCity;
+  if (acms.join('') === cams.join('')) return true;
+  const [shorter, longer] = acms.length <= cams.length ? [acms, cams] : [cams, acms];
+  return shorter.every((word) =>
+    longer.some((other) => natural.JaroWinklerDistance(word, other) >= FUZZY_WORD_THRESHOLD),
+  );
 }
 
 function scoreCityMatch(
@@ -1316,28 +1258,6 @@ function scoreZipCodeMatch(
   );
 }
 
-/** Below this address score, both sides had an address and it disagreed. */
-const NO_CONTRADICTION_ADDRESS_FLOOR = 30;
-
-/**
- * Records address similarity for every candidate (no pool-size gate - see scoreCandidate). Unlike
- * doesPhoneMatch/doesEmailMatch this is a real measured score against a threshold, not a yes/no.
- */
-function scoreAddressCorroboration(
-  sourceNormalized: NormalizedTrustee,
-  candidate: PipelineCandidate,
-): PipelineCandidate {
-  const addressScore = pipelineAddressScore(sourceNormalized.legacy, candidate.camsRaw.address);
-  if (addressScore !== null) {
-    addScore(candidate, 'contactCorroborationAddress', {
-      value: addressScore,
-      threshold: CONTACT_CORROBORATION_ADDRESS_THRESHOLD,
-      pass: addressScore >= CONTACT_CORROBORATION_ADDRESS_THRESHOLD,
-    });
-  }
-  return candidate;
-}
-
 function scoreEmailMatch(
   sourceNormalized: NormalizedTrustee,
   candidate: PipelineCandidate,
@@ -1377,6 +1297,103 @@ function phoneDigitDistance(
     if (dxtrDigits[i] !== camsDigits[i]) distance++;
   }
   return distance;
+}
+
+const FUZZY_WORD_THRESHOLD = 0.9;
+
+/** Below this street closeness, the street line adds no points. */
+const STREET_CLOSENESS_FLOOR = 0.5;
+
+const STREET_POINTS = 3;
+const GEO_POINTS = 3;
+
+function streetTokens(lines: (string | undefined)[]): string[] {
+  return normalizeAddressLine(lines.filter(Boolean).join(' '))
+    .replace(/\bpo box\b/g, 'pobox')
+    .split(' ')
+    .filter(Boolean)
+    .map((token) => (/^\d+$/.test(token) ? token.replace(/^0+(?=\d)/, '') : token));
+}
+
+function tokenCloseness(a: string, b: string): number {
+  const aIsNumber = /^\d+$/.test(a);
+  const bIsNumber = /^\d+$/.test(b);
+  if (aIsNumber || bIsNumber) return a === b ? 1 : 0;
+  const similarity = natural.JaroWinklerDistance(a, b);
+  return similarity >= FUZZY_WORD_THRESHOLD ? similarity : 0;
+}
+
+function averageBestMatch(from: string[], to: string[]): number {
+  const total = from.reduce(
+    (sum, token) => sum + Math.max(...to.map((other) => tokenCloseness(token, other))),
+    0,
+  );
+  return total / from.length;
+}
+
+/** 0..1, averaged in both directions so extra tokens on either side lower it. */
+function streetCloseness(acms: string[], cams: string[]): number | null {
+  if (acms.length === 0 || cams.length === 0) return null;
+  return (averageBestMatch(acms, cams) + averageBestMatch(cams, acms)) / 2;
+}
+
+function geoPoints(scores: ScoreByScorer): number | null {
+  const city = scores.doesCityMatch?.pass;
+  const state = scores.doesStateMatch?.pass;
+  const zip = scores.doesZipCodeMatch?.pass;
+  if (city === undefined && state === undefined && zip === undefined) return null;
+
+  const dominant = (city === true && state === true) || zip === true;
+  const signed = (match: boolean | undefined) => (match === undefined ? 0 : match ? 1 : -1);
+  const components = signed(city) + signed(state) + (zip === true ? 1 : 0);
+  return Math.max(0, Math.min(GEO_POINTS, dominant ? GEO_POINTS : components));
+}
+
+type AddressMatchQuality = 'exact' | 'strong' | 'moderate' | 'weak';
+
+type AddressMatchScore =
+  | { pass: true; quality: AddressMatchQuality; points: number; streetCloseness?: number }
+  | { pass: false; points: number; streetCloseness?: number };
+
+function gradeAddress(points: number): AddressMatchQuality | undefined {
+  if (points >= GEO_POINTS + STREET_POINTS) return 'exact';
+  if (points > GEO_POINTS) return 'strong';
+  if (points === GEO_POINTS) return 'moderate';
+  if (points > 0) return 'weak';
+  return undefined;
+}
+
+/**
+ * Grades the address like doesNameMatch grades the name. Geography scores up to 3: city and state
+ * agreeing, or the zip agreeing, is worth 3 on its own; otherwise city and state each add 1 or
+ * subtract 1 and a zip match adds 1. The street line adds its closeness times 3. Nothing is
+ * recorded when no part of the address was comparable.
+ */
+function scoreAddressMatch(
+  sourceNormalized: NormalizedTrustee,
+  candidate: PipelineCandidate,
+): PipelineCandidate {
+  const geo = geoPoints(mergedScore(candidate));
+  const closeness = streetCloseness(
+    streetTokens([sourceNormalized.legacy?.address1, sourceNormalized.legacy?.address2]),
+    streetTokens([candidate.camsRaw.address?.address1, candidate.camsRaw.address?.address2]),
+  );
+  if (geo === null && closeness === null) return candidate;
+
+  const street =
+    closeness !== null && closeness >= STREET_CLOSENESS_FLOOR ? closeness * STREET_POINTS : 0;
+  const points = Math.round(((geo ?? 0) + street) * 100) / 100;
+  const quality = gradeAddress(points);
+  const detail = closeness === null ? {} : { streetCloseness: Math.round(closeness * 1000) / 1000 };
+  const verdict: AddressMatchScore = quality
+    ? { pass: true, quality, points, ...detail }
+    : { pass: false, points, ...detail };
+  addScore(candidate, 'doesAddressMatch', verdict);
+  return candidate;
+}
+
+function addressMatch(candidate: PipelineCandidate): AddressMatchScore | undefined {
+  return mergedScore(candidate).doesAddressMatch as AddressMatchScore | undefined;
 }
 
 /**
@@ -1440,7 +1457,7 @@ const CANDIDATE_SCORERS: CandidateScorer[] = [
   scoreCityMatch,
   scoreStateMatch,
   scoreZipCodeMatch,
-  scoreAddressCorroboration,
+  scoreAddressMatch, // reads doesCityMatch/doesStateMatch/doesZipCodeMatch - must run after them
   scorePhoneMatch,
   scoreEmailMatch,
 ];
@@ -1569,22 +1586,6 @@ export function addAndScoreCandidate(
   }
 }
 
-function stateAndCity(candidate: PipelineCandidate): boolean {
-  const scores = mergedScore(candidate);
-  return scores.doesStateMatch?.pass === true && scores.doesCityMatch?.pass === true;
-}
-
-function cityAndZip(candidate: PipelineCandidate): boolean {
-  const scores = mergedScore(candidate);
-  return scores.doesCityMatch?.pass === true && scores.doesZipCodeMatch?.pass === true;
-}
-
-function addressScore(candidate: PipelineCandidate): number {
-  return (
-    (mergedScore(candidate).contactCorroborationAddress as MeasuredScore | undefined)?.value ?? 0
-  );
-}
-
 const NAME_QUALITY_RANK: Record<NameMatchQuality, number> = { exact: 0, strong: 1, weak: 2 };
 
 function nameQualityRank(candidate: PipelineCandidate): number {
@@ -1596,8 +1597,8 @@ type Ranking = (a: PipelineCandidate, b: PipelineCandidate) => number;
 
 const byNameQuality: Ranking = (a, b) => nameQualityRank(a) - nameQualityRank(b);
 
-const byAddressScoreThenNameQuality: Ranking = (a, b) =>
-  addressScore(b) - addressScore(a) || byNameQuality(a, b);
+const byAddressPointsThenNameQuality: Ranking = (a, b) =>
+  (addressMatch(b)?.points ?? 0) - (addressMatch(a)?.points ?? 0) || byNameQuality(a, b);
 
 /** The single best-ranked survivor, or undefined when there are none or the top rank is a tie. */
 function uniqueBest(
@@ -1654,43 +1655,17 @@ export function resolveByPhoneWithTypo(): Stage {
   };
 }
 
+/** Moderate or better: the area agrees, by city and state or by zip, or the street line does. */
 export function resolveByAddress(): Stage {
   return async (state: PipelineState): Promise<PipelineState> => {
     const survivors = candidatePool(state).filter(
-      (c) => nameQualifies(c) && mergedScore(c).contactCorroborationAddress?.pass === true,
+      (c) => nameQualifies(c) && (addressMatch(c)?.points ?? 0) >= GEO_POINTS,
     );
     return resolveOnCandidate(
       state,
-      uniqueBest(survivors, byAddressScoreThenNameQuality),
+      uniqueBest(survivors, byAddressPointsThenNameQuality),
       'resolveByAddress',
     );
-  };
-}
-
-export function resolveByCityAndZipCode(): Stage {
-  return async (state: PipelineState): Promise<PipelineState> => {
-    const survivors = candidatePool(state).filter((c) => nameQualifies(c) && cityAndZip(c));
-    return resolveOnCandidate(
-      state,
-      uniqueBest(survivors, byNameQuality),
-      'resolveByCityAndZipCode',
-    );
-  };
-}
-
-export function resolveByStateAndCity(): Stage {
-  return async (state: PipelineState): Promise<PipelineState> => {
-    const survivors = candidatePool(state).filter((c) => nameQualifies(c) && stateAndCity(c));
-    return resolveOnCandidate(state, uniqueBest(survivors, byNameQuality), 'resolveByStateAndCity');
-  };
-}
-
-export function resolveByZipCode(): Stage {
-  return async (state: PipelineState): Promise<PipelineState> => {
-    const survivors = candidatePool(state).filter(
-      (c) => nameQualifies(c) && mergedScore(c).doesZipCodeMatch?.pass === true,
-    );
-    return resolveOnCandidate(state, uniqueBest(survivors, byNameQuality), 'resolveByZipCode');
   };
 }
 
@@ -1704,15 +1679,6 @@ export function resolveByStateOnly(): Stage {
   };
 }
 
-function hasContradictingEvidence(candidate: PipelineCandidate): boolean {
-  const scores = mergedScore(candidate);
-  const address = scores.contactCorroborationAddress as MeasuredScore | undefined;
-  return (
-    scores.doesStateMatch?.pass === false ||
-    (address !== undefined && address.value < NO_CONTRADICTION_ADDRESS_FLOOR)
-  );
-}
-
 /**
  * The only resolver that requires a single candidate: being the only name match is the signal.
  * Runs last.
@@ -1723,7 +1689,8 @@ export function resolveByNameOnly(): Stage {
     if (nameMatches.length !== 1) return state;
 
     const [candidate] = nameMatches;
-    if (!isExactNameMatch(candidate) || hasContradictingEvidence(candidate)) return state;
+    if (!isExactNameMatch(candidate)) return state;
+    if (mergedScore(candidate).doesStateMatch?.pass === false) return state;
     if (mergedScore(candidate).doesCamsTrusteeHaveAddressAndPhone?.pass === false) return state;
 
     return resolveOnCandidate(state, candidate, 'resolveByNameOnly');

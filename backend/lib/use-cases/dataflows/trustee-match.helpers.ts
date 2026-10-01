@@ -164,7 +164,7 @@ export function normalizeNameForMatching(name: string): string {
  * as the city, with zipCode: '' (never null - every real caller already treats a
  * shorter-than-5-digit zip as "not comparable," so an empty string flows through safely to the same
  * "no record when data unavailable" outcome the zip-comparison scorers already produce for a
- * genuinely absent zip - see scoreZipCodeMatch/pipelineAddressScore's own zip5 helpers). Only when
+ * genuinely absent zip - see scoreZipCodeMatch's own zip5 comparison). Only when
  * NEITHER a zip token NOR a recognizable trailing state token exists does this return null - the
  * same "too weak to trust" bar the zip-anchored path already enforces below.
  */
@@ -197,7 +197,7 @@ export function parseCityStateZip(cityStateZipCountry?: string): {
   // of ACMS addresses carry it, far too common to be genuine +4 data for that many distinct
   // addresses. Stripped here so the persisted evidence graph reports what ACMS actually knows (a
   // plain 5-digit zip), rather than a reviewer reading "-0000" as real +4 precision it never had.
-  // Zip-matching itself already truncates to 5 digits (see scoreZipCodeMatch/pipelineAddressScore's
+  // Zip-matching itself already truncates to 5 digits (see scoreZipCodeMatch's
   // own zip5 helpers), so this is a persisted-evidence clarity fix, not a scoring behavior change.
   const zipCode = tokens[zipIndex].replace(/-0000$/, '');
   const precedingToken = tokens[zipIndex - 1];
@@ -1395,14 +1395,6 @@ export async function resolveNameCollisionByScoring(
 
   return { kind: 'unresolved', candidateScores };
 }
-
-/**
- * Minimum addressScore for address alone to count as strong corroboration in the ACMS pipeline's
- * contact-corroboration stage. Phone/email instead use their scale's max (100, an exact match)
- * since both are short, structured values where a partial match isn't meaningfully distinguishable
- * from coincidence the way a fuzzy address bigram score is.
- */
-export const CONTACT_CORROBORATION_ADDRESS_THRESHOLD = 80;
 
 /**
  * ACMS's sentinel for "no real value recorded" on the legacy phone/fax/email fields is the STRING
