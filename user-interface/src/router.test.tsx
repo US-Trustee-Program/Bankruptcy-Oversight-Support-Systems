@@ -16,6 +16,10 @@ describe('App Router Tests', () => {
     vi.stubEnv('CAMS_USE_FAKE_API', 'true');
   });
 
+  afterAll(() => {
+    vi.unstubAllEnvs();
+  });
+
   beforeEach(() => {
     vi.restoreAllMocks();
     userEvent = TestingUtilities.setupUserEvent();
@@ -67,7 +71,7 @@ describe('App Router Tests', () => {
     );
 
     await waitFor(() => {
-      expect(document.querySelector('[data-testid="trustee-public-form"]')).toBeInTheDocument();
+      expect(screen.getByTestId('trustee-public-form')).toBeInTheDocument();
     });
   });
 
@@ -88,6 +92,7 @@ describe('App Router Tests', () => {
   });
 
   test.each([
+    { path: '/', testId: 'search', heading: undefined },
     { path: '/my-cases', testId: 'case-list-heading', heading: 'My Cases' },
     { path: '/staff-assignment', testId: 'case-list-heading', heading: 'Staff Assignment' },
     { path: '/search/081-24-12345', testId: 'search', heading: undefined },
@@ -135,9 +140,10 @@ describe('App Router Tests', () => {
 
       await waitFor(() => {
         // TrusteesScreen returns null entirely for an unauthorized user -- there is no
-        // "unauthorized" message to render, so confirm the whole screen is absent.
+        // "unauthorized" message to render, so confirm the whole screen is absent. The
+        // role/flag-driven add-link visibility itself is TrusteesScreen's own concern,
+        // already covered exhaustively in TrusteesScreen.test.tsx.
         expect(screen.queryByTestId('trustees')).not.toBeInTheDocument();
-        expect(screen.queryByTestId('trustees-add-link')).not.toBeInTheDocument();
       });
     });
 
@@ -159,8 +165,9 @@ describe('App Router Tests', () => {
       );
 
       await waitFor(() => {
+        // The add-link's own visibility rules are TrusteesScreen's concern (covered in
+        // TrusteesScreen.test.tsx); this just confirms the router mounted that screen.
         expect(screen.getByTestId('trustees')).toBeInTheDocument();
-        expect(screen.getByTestId('trustees-add-link')).toBeInTheDocument();
       });
     });
   });

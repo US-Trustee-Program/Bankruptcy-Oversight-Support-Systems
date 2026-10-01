@@ -257,11 +257,11 @@ describe('calculation helpers', () => {
         'aligns mid-December date to December 31 quarter end',
       ],
       [
-        '2025-03-31',
+        '2025-01-15',
         undefined,
         3,
         '2028-03-01',
-        'date exactly on March 31 aligns to March 31 (not next quarter)',
+        'January date aligns to March 31 quarter end via month < quarter-end month',
       ],
       ['2025-06-30', undefined, 3, '2028-06-01', 'date exactly on June 30 aligns to June 30'],
       [
@@ -408,29 +408,54 @@ describe('validateTrusteeUpcomingKeyDates', () => {
     ).toEqual(VALID);
   });
 
-  test('returns error when tprReviewPeriodStart is set but tprReviewPeriodEnd is null', () => {
-    const result = validateTrusteeUpcomingKeyDates({
-      ...baseInput(),
-      tprReviewPeriodStart: '1900-04-01',
-      tprReviewPeriodEnd: null,
-    });
-    expect(result.valid).toBeFalsy();
-    expect(result.reasonMap?.tprReviewPeriodEnd?.reasons?.[0]).toBe(
-      'TPR Review Period End is required.',
-    );
-  });
+  test.each([
+    {
+      label: 'tprReviewPeriod',
+      startField: 'tprReviewPeriodStart' as const,
+      endField: 'tprReviewPeriodEnd' as const,
+      startValue: '1900-04-01',
+      endValue: '1900-03-31',
+      startLabel: 'TPR Review Period Start',
+      endLabel: 'TPR Review Period End',
+    },
+    {
+      label: 'tirReviewPeriod',
+      startField: 'tirReviewPeriodStart' as const,
+      endField: 'tirReviewPeriodEnd' as const,
+      startValue: '1900-07-01',
+      endValue: '1900-06-30',
+      startLabel: 'TIR Review Period Start',
+      endLabel: 'TIR Review Period End',
+    },
+    {
+      label: 'tirSemiAnnualReviewPeriod',
+      startField: 'tirSemiAnnualReviewPeriodStart' as const,
+      endField: 'tirSemiAnnualReviewPeriodEnd' as const,
+      startValue: '1900-07-01',
+      endValue: '1900-12-31',
+      startLabel: 'TIR Review Period 2 Start',
+      endLabel: 'TIR Review Period 2 End',
+    },
+  ])(
+    'returns error when only one side of $label is set (the missing side is required)',
+    ({ startField, endField, startValue, endValue, startLabel, endLabel }) => {
+      const startOnly = validateTrusteeUpcomingKeyDates({
+        ...baseInput(),
+        [startField]: startValue,
+        [endField]: null,
+      });
+      expect(startOnly.valid).toBeFalsy();
+      expect(startOnly.reasonMap?.[endField]?.reasons?.[0]).toBe(`${endLabel} is required.`);
 
-  test('returns error when tprReviewPeriodEnd is set but tprReviewPeriodStart is null', () => {
-    const result = validateTrusteeUpcomingKeyDates({
-      ...baseInput(),
-      tprReviewPeriodStart: null,
-      tprReviewPeriodEnd: '1900-03-31',
-    });
-    expect(result.valid).toBeFalsy();
-    expect(result.reasonMap?.tprReviewPeriodStart?.reasons?.[0]).toBe(
-      'TPR Review Period Start is required.',
-    );
-  });
+      const endOnly = validateTrusteeUpcomingKeyDates({
+        ...baseInput(),
+        [startField]: null,
+        [endField]: endValue,
+      });
+      expect(endOnly.valid).toBeFalsy();
+      expect(endOnly.reasonMap?.[startField]?.reasons?.[0]).toBe(`${startLabel} is required.`);
+    },
+  );
 
   test('returns VALID when tprReviewPeriodStart is before tprReviewPeriodEnd (full ISO dates)', () => {
     expect(
@@ -463,7 +488,7 @@ describe('validateTrusteeUpcomingKeyDates', () => {
     ).toEqual(VALID);
   });
 
-  test('returns VALID when only one of tprReviewPeriodStart/End is sentinel-format', () => {
+  test('returns VALID when only tprReviewPeriodStart is sentinel-format', () => {
     // Either side being sentinel-format skips the chronological check entirely, even
     // when the other side is a full ISO date that would otherwise fail the comparison.
     expect(
@@ -471,6 +496,19 @@ describe('validateTrusteeUpcomingKeyDates', () => {
         ...baseInput(),
         tprReviewPeriodStart: '1900-04-01',
         tprReviewPeriodEnd: '2025-03-31',
+      }),
+    ).toEqual(VALID);
+  });
+
+  test('returns VALID when only tprReviewPeriodEnd is sentinel-format', () => {
+    // Mirrors the case above from the other side of the OR condition: a full ISO start
+    // that would otherwise fail the "before end" comparison is skipped because the end
+    // is sentinel-format.
+    expect(
+      validateTrusteeUpcomingKeyDates({
+        ...baseInput(),
+        tprReviewPeriodStart: '2025-04-01',
+        tprReviewPeriodEnd: '1900-03-31',
       }),
     ).toEqual(VALID);
   });
@@ -487,30 +525,6 @@ describe('validateTrusteeUpcomingKeyDates', () => {
     );
     expect(result.reasonMap?.tprReviewPeriodEnd?.reasons?.[0]).toBe(
       'TPR Review Period End must be after TPR Review Period Start.',
-    );
-  });
-
-  test('returns error when tirReviewPeriodStart is set but tirReviewPeriodEnd is null', () => {
-    const result = validateTrusteeUpcomingKeyDates({
-      ...baseInput(),
-      tirReviewPeriodStart: '1900-07-01',
-      tirReviewPeriodEnd: null,
-    });
-    expect(result.valid).toBeFalsy();
-    expect(result.reasonMap?.tirReviewPeriodEnd?.reasons?.[0]).toBe(
-      'TIR Review Period End is required.',
-    );
-  });
-
-  test('returns error when tirReviewPeriodEnd is set but tirReviewPeriodStart is null', () => {
-    const result = validateTrusteeUpcomingKeyDates({
-      ...baseInput(),
-      tirReviewPeriodStart: null,
-      tirReviewPeriodEnd: '1900-06-30',
-    });
-    expect(result.valid).toBeFalsy();
-    expect(result.reasonMap?.tirReviewPeriodStart?.reasons?.[0]).toBe(
-      'TIR Review Period Start is required.',
     );
   });
 
@@ -571,59 +585,22 @@ describe('validateTrusteeUpcomingKeyDates', () => {
     },
   );
 
-  test('returns VALID when pastBackgroundQuestion is a valid full date', () => {
-    expect(
-      validateTrusteeUpcomingKeyDates({ ...baseInput(), pastBackgroundQuestion: '2023-04-10' }),
-    ).toEqual(VALID);
-  });
+  test.each([
+    ['pastBackgroundQuestion', '2023-04-10', '2026-13-01'],
+    ['pastTprSubmission', '2023-04-10', '2026-13-01'],
+    ['lastMonthlyReportReceived', '2024-11-15', '2024-13-01'],
+  ] as const)(
+    'returns VALID/error for %s full date validation',
+    (field, validValue, invalidValue) => {
+      expect(validateTrusteeUpcomingKeyDates({ ...baseInput(), [field]: validValue })).toEqual(
+        VALID,
+      );
 
-  test('returns error when pastBackgroundQuestion contains an invalid ISO date', () => {
-    const result = validateTrusteeUpcomingKeyDates({
-      ...baseInput(),
-      pastBackgroundQuestion: '2026-13-01',
-    });
-    expect(result.valid).toBeFalsy();
-    expect(result.reasonMap?.pastBackgroundQuestion?.reasons?.[0]).toBe(
-      'Must be a valid date mm/dd/yyyy.',
-    );
-  });
-
-  test('returns VALID when pastTprSubmission is a valid full date', () => {
-    expect(
-      validateTrusteeUpcomingKeyDates({ ...baseInput(), pastTprSubmission: '2023-04-10' }),
-    ).toEqual(VALID);
-  });
-
-  test('returns error when pastTprSubmission contains an invalid ISO date', () => {
-    const result = validateTrusteeUpcomingKeyDates({
-      ...baseInput(),
-      pastTprSubmission: '2026-13-01',
-    });
-    expect(result.valid).toBeFalsy();
-    expect(result.reasonMap?.pastTprSubmission?.reasons?.[0]).toBe(
-      'Must be a valid date mm/dd/yyyy.',
-    );
-  });
-
-  test('returns VALID when lastMonthlyReportReceived is a valid full date', () => {
-    expect(
-      validateTrusteeUpcomingKeyDates({
-        ...baseInput(),
-        lastMonthlyReportReceived: '2024-11-15',
-      }),
-    ).toEqual(VALID);
-  });
-
-  test('returns error when lastMonthlyReportReceived contains an invalid ISO date', () => {
-    const result = validateTrusteeUpcomingKeyDates({
-      ...baseInput(),
-      lastMonthlyReportReceived: '2024-13-01',
-    });
-    expect(result.valid).toBeFalsy();
-    expect(result.reasonMap?.lastMonthlyReportReceived?.reasons?.[0]).toBe(
-      'Must be a valid date mm/dd/yyyy.',
-    );
-  });
+      const result = validateTrusteeUpcomingKeyDates({ ...baseInput(), [field]: invalidValue });
+      expect(result.valid).toBeFalsy();
+      expect(result.reasonMap?.[field]?.reasons?.[0]).toBe('Must be a valid date mm/dd/yyyy.');
+    },
+  );
 
   test('returns VALID when tirSemiAnnualReviewPeriodStart and tirSemiAnnualReviewPeriodEnd are both set', () => {
     expect(
@@ -633,30 +610,6 @@ describe('validateTrusteeUpcomingKeyDates', () => {
         tirSemiAnnualReviewPeriodEnd: '1900-12-31',
       }),
     ).toEqual(VALID);
-  });
-
-  test('returns error when tirSemiAnnualReviewPeriodStart set but tirSemiAnnualReviewPeriodEnd is null', () => {
-    const result = validateTrusteeUpcomingKeyDates({
-      ...baseInput(),
-      tirSemiAnnualReviewPeriodStart: '1900-07-01',
-      tirSemiAnnualReviewPeriodEnd: null,
-    });
-    expect(result.valid).toBeFalsy();
-    expect(result.reasonMap?.tirSemiAnnualReviewPeriodEnd?.reasons?.[0]).toBe(
-      'TIR Review Period 2 End is required.',
-    );
-  });
-
-  test('returns error when tirSemiAnnualReviewPeriodEnd set but tirSemiAnnualReviewPeriodStart is null', () => {
-    const result = validateTrusteeUpcomingKeyDates({
-      ...baseInput(),
-      tirSemiAnnualReviewPeriodStart: null,
-      tirSemiAnnualReviewPeriodEnd: '1900-12-31',
-    });
-    expect(result.valid).toBeFalsy();
-    expect(result.reasonMap?.tirSemiAnnualReviewPeriodStart?.reasons?.[0]).toBe(
-      'TIR Review Period 2 Start is required.',
-    );
   });
 
   test('returns error when tirSemiAnnualSubmission is an invalid sentinel date', () => {
@@ -679,130 +632,62 @@ describe('validateTrusteeUpcomingKeyDates', () => {
     expect(result.reasonMap?.tirSemiAnnualReview?.reasons?.[0]).toBe('Must be a valid date mm/dd.');
   });
 
-  test('returns VALID when leaseExpiration is a valid full date', () => {
-    expect(
-      validateTrusteeUpcomingKeyDates({ ...baseInput(), leaseExpiration: '2027-06-30' }),
-    ).toEqual(VALID);
-  });
+  test.each([
+    ['leaseExpiration', '2027-06-30', '2027-13-01'],
+    ['idExpiration', '2028-01-15', '2028-00-15'],
+    ['pastAudit', '2024-03-15', '2024-13-01'],
+    ['lastCompensationStudy', '2024-06-01', '2024-13-01'],
+    ['bondIssuedDate', '2023-06-01', '2023-13-01'],
+    ['bondRenewalDate', '2026-06-01', '2026-00-01'],
+  ] as const)(
+    'returns VALID/error for %s full date validation',
+    (field, validValue, invalidValue) => {
+      expect(validateTrusteeUpcomingKeyDates({ ...baseInput(), [field]: validValue })).toEqual(
+        VALID,
+      );
 
-  test('returns error when leaseExpiration contains an invalid ISO date', () => {
-    const result = validateTrusteeUpcomingKeyDates({
-      ...baseInput(),
-      leaseExpiration: '2027-13-01',
-    });
-    expect(result.valid).toBeFalsy();
-    expect(result.reasonMap?.leaseExpiration?.reasons?.[0]).toBe(
-      'Must be a valid date mm/dd/yyyy.',
-    );
-  });
-
-  test('returns VALID when idExpiration is a valid full date', () => {
-    expect(validateTrusteeUpcomingKeyDates({ ...baseInput(), idExpiration: '2028-01-15' })).toEqual(
-      VALID,
-    );
-  });
-
-  test('returns error when idExpiration contains an invalid ISO date', () => {
-    const result = validateTrusteeUpcomingKeyDates({
-      ...baseInput(),
-      idExpiration: '2028-00-15',
-    });
-    expect(result.valid).toBeFalsy();
-    expect(result.reasonMap?.idExpiration?.reasons?.[0]).toBe('Must be a valid date mm/dd/yyyy.');
-  });
-
-  test('returns VALID when pastAudit is a valid full date', () => {
-    expect(validateTrusteeUpcomingKeyDates({ ...baseInput(), pastAudit: '2024-03-15' })).toEqual(
-      VALID,
-    );
-  });
-
-  test('returns error when pastAudit contains an invalid ISO date', () => {
-    const result = validateTrusteeUpcomingKeyDates({
-      ...baseInput(),
-      pastAudit: '2024-13-01',
-    });
-    expect(result.valid).toBeFalsy();
-    expect(result.reasonMap?.pastAudit?.reasons?.[0]).toBe('Must be a valid date mm/dd/yyyy.');
-  });
-
-  test('returns VALID when lastCompensationStudy is a valid full date', () => {
-    expect(
-      validateTrusteeUpcomingKeyDates({ ...baseInput(), lastCompensationStudy: '2024-06-01' }),
-    ).toEqual(VALID);
-  });
-
-  test('returns error when lastCompensationStudy contains an invalid ISO date', () => {
-    const result = validateTrusteeUpcomingKeyDates({
-      ...baseInput(),
-      lastCompensationStudy: '2024-13-01',
-    });
-    expect(result.valid).toBeFalsy();
-    expect(result.reasonMap?.lastCompensationStudy?.reasons?.[0]).toBe(
-      'Must be a valid date mm/dd/yyyy.',
-    );
-  });
-
-  test('returns VALID when bondIssuedDate is a valid full date', () => {
-    expect(
-      validateTrusteeUpcomingKeyDates({ ...baseInput(), bondIssuedDate: '2023-06-01' }),
-    ).toEqual(VALID);
-  });
-
-  test('returns error when bondIssuedDate contains an invalid ISO date', () => {
-    const result = validateTrusteeUpcomingKeyDates({
-      ...baseInput(),
-      bondIssuedDate: '2023-13-01',
-    });
-    expect(result.valid).toBeFalsy();
-    expect(result.reasonMap?.bondIssuedDate?.reasons?.[0]).toBe('Must be a valid date mm/dd/yyyy.');
-  });
-
-  test('returns VALID when bondRenewalDate is a valid full date', () => {
-    expect(
-      validateTrusteeUpcomingKeyDates({ ...baseInput(), bondRenewalDate: '2026-06-01' }),
-    ).toEqual(VALID);
-  });
-
-  test('returns error when bondRenewalDate contains an invalid ISO date', () => {
-    const result = validateTrusteeUpcomingKeyDates({
-      ...baseInput(),
-      bondRenewalDate: '2026-00-01',
-    });
-    expect(result.valid).toBeFalsy();
-    expect(result.reasonMap?.bondRenewalDate?.reasons?.[0]).toBe(
-      'Must be a valid date mm/dd/yyyy.',
-    );
-  });
+      const result = validateTrusteeUpcomingKeyDates({ ...baseInput(), [field]: invalidValue });
+      expect(result.valid).toBeFalsy();
+      expect(result.reasonMap?.[field]?.reasons?.[0]).toBe('Must be a valid date mm/dd/yyyy.');
+    },
+  );
 
   test('DATE_FIELDS contains the exact set of expected fields', () => {
-    expect(DATE_FIELDS).toEqual([
-      'pastBackgroundQuestion',
-      'pastFieldExam',
-      'pastAudit',
-      'pastTprSubmission',
-      'tprReviewPeriodStart',
-      'tprReviewPeriodEnd',
-      'tprDue',
-      'tirReviewPeriodStart',
-      'tirReviewPeriodEnd',
-      'tirSubmission',
-      'tirReview',
-      'tirSemiAnnualReviewPeriodStart',
-      'tirSemiAnnualReviewPeriodEnd',
-      'tirSemiAnnualSubmission',
-      'tirSemiAnnualReview',
-      'lastMonthlyReportReceived',
-      'leaseExpiration',
-      'idExpiration',
-      'lastCompensationStudy',
-      'bondIssuedDate',
-      'bondRenewalDate',
-    ]);
+    // Order is not semantically meaningful to either consumer (both iterate/filter without
+    // relying on position), so compare as sets rather than locking in array order.
+    expect(new Set(DATE_FIELDS)).toEqual(
+      new Set([
+        'pastBackgroundQuestion',
+        'pastFieldExam',
+        'pastAudit',
+        'pastTprSubmission',
+        'tprReviewPeriodStart',
+        'tprReviewPeriodEnd',
+        'tprDue',
+        'tirReviewPeriodStart',
+        'tirReviewPeriodEnd',
+        'tirSubmission',
+        'tirReview',
+        'tirSemiAnnualReviewPeriodStart',
+        'tirSemiAnnualReviewPeriodEnd',
+        'tirSemiAnnualSubmission',
+        'tirSemiAnnualReview',
+        'lastMonthlyReportReceived',
+        'leaseExpiration',
+        'idExpiration',
+        'lastCompensationStudy',
+        'bondIssuedDate',
+        'bondRenewalDate',
+      ]),
+    );
+    expect(DATE_FIELDS).toHaveLength(21);
   });
 
   test('TEXT_FIELDS contains the exact set of expected fields', () => {
-    expect(TEXT_FIELDS).toEqual(['tprDueYearType', 'tprFrequency', 'tirFrequency']);
+    expect(new Set(TEXT_FIELDS)).toEqual(
+      new Set(['tprDueYearType', 'tprFrequency', 'tirFrequency']),
+    );
+    expect(TEXT_FIELDS).toHaveLength(3);
   });
 });
 

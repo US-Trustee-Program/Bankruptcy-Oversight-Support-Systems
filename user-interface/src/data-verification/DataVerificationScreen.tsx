@@ -33,10 +33,12 @@ import LocalStorage from '@/lib/utils/local-storage';
 import { sortByCourtLocation } from '@/lib/utils/court-utils';
 import { Stop } from '@/lib/components/Stop';
 
+export const TYPE_FILTER_SESSION_KEY = 'cams:filter:data-verification:type';
+
 export default function DataVerificationScreen() {
   const featureFlags = useFeatureFlags();
   const [typeSelections, setTypeSelections] = useSessionState<ComboOption[]>(
-    'cams:filter:data-verification:type',
+    TYPE_FILTER_SESSION_KEY,
     [],
   );
   const [statusSelections, setStatusSelections] = useSessionState<ComboOption[]>(
