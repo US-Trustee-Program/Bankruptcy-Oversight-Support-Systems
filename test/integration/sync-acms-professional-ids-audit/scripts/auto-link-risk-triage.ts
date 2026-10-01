@@ -4,22 +4,17 @@
  * script's staging-vs-current divergence check. That check only catches a link that CHANGED
  * relative to what staging persisted; it says nothing about a link that was thin evidence from
  * the start and current code still reproduces identically. This script narrows the ~5900
- * auto-linked population down to a much smaller suspect list worth a human or AI-assisted second
+ * auto-linked population down to a much smaller suspect list worth a human second
  * opinion, WITHOUT running that expensive review against everything.
  *
  * Reads the winning candidate's own scores from record.candidates (falling back to match.score
  * only when the winner is missing from the pool) and buckets by risk tier, first match wins:
- *   A - doesStateMatch failed: both sides carry a state and they disagree. Evidence AGAINST the
- *       link, regardless of how good the name is.
- *   B - doesNameMatch did not pass - this record resolved on non-name evidence alone.
- *   C - no doesNameMatch score at all (the winner is missing from the candidate pool).
- *   D - resolved via one of the fuzzy/last-resort RESOLVE stages (see RISKY_RESOLVERS below) -
- *       nickname/typo-tolerant matching, not an exact hit.
- *   E - doesNameMatch quality 'weak' - the weakest passing name.
- *   F - everything else - not written to the suspect CSV.
+ *   A - doesNameMatch did not pass - this record resolved on non-name evidence alone.
+ *   B - no doesNameMatch score at all (the winner is missing from the candidate pool).
+ *   C - resolved by resolveByStateOnly: state agreement is the only signal.
+ *   D - everything else - not written to the suspect CSV.
  *
- * A missing phone corroboration is not a risk tier: a phone match is strong evidence FOR a link,
- * but no phone match is neutral, so it never moves a record out of F on its own.
+ * A phone no-match is not a risk: it is the absence of a strong signal, not evidence against.
  *
  * Among name-rejected records, also writes a SEPARATE, sharper CSV
  * (data/auto-link-top-suspects-geo-only.csv) for the narrowest, highest-priority cut: zero name
@@ -55,26 +50,14 @@ type ReplayRecord = {
   }[];
 };
 
-const RISKY_RESOLVERS = ['resolveBySoleFuzzyNameMatchAndState'] as const;
-
-type RiskTier =
-  | 'A-state-contradicts'
-  | 'B-name-rejected'
-  | 'C-no-name-score'
-  | `D-risky-resolver:${(typeof RISKY_RESOLVERS)[number]}`
-  | 'E-weak-name-fuzzy-surname'
-  | 'F-strong';
+type RiskTier = 'A-name-rejected' | 'B-no-name-score' | 'C-state-only' | 'D-strong';
 
 function riskTier(score: ScoreByScorer, resolvedBy: string): RiskTier {
   const nameMatch = score.doesNameMatch;
-  const riskyResolver = RISKY_RESOLVERS.find((r) => r === resolvedBy);
-
-  if (score.doesStateMatch?.pass === false) return 'A-state-contradicts';
-  if (nameMatch === undefined) return 'C-no-name-score';
-  if (!nameMatch.pass) return 'B-name-rejected';
-  if (riskyResolver) return `D-risky-resolver:${riskyResolver}`;
-  if (nameMatch.quality === 'weak') return 'E-weak-name-fuzzy-surname';
-  return 'F-strong';
+  if (nameMatch === undefined) return 'B-no-name-score';
+  if (!nameMatch.pass) return 'A-name-rejected';
+  if (resolvedBy === 'resolveByStateOnly') return 'C-state-only';
+  return 'D-strong';
 }
 
 /** Resolved via city/state geography agreement alone - BOTH contact-corroboration checks
@@ -135,12 +118,10 @@ function main(): void {
     .filter((line) => line.trim().length > 0);
 
   const tierCounts: Record<RiskTier, number> = {
-    'A-state-contradicts': 0,
-    'B-name-rejected': 0,
-    'C-no-name-score': 0,
-    'D-risky-resolver:resolveBySoleFuzzyNameMatchAndState': 0,
-    'E-weak-name-fuzzy-surname': 0,
-    'F-strong': 0,
+    'A-name-rejected': 0,
+    'B-no-name-score': 0,
+    'C-state-only': 0,
+    'D-strong': 0,
   };
 
   const suspectRows: Record<string, string | number | undefined>[] = [];
@@ -155,7 +136,7 @@ function main(): void {
     const score = winner?.scores ?? rec.match.score;
     const tier = riskTier(score, resolvedBy);
     tierCounts[tier]++;
-    if (tier === 'F-strong') continue;
+    if (tier === 'D-strong') continue;
 
     const legacy = rec.sourceRaw.legacy ?? {};
     const camsRaw = winner?.camsRaw;
@@ -201,7 +182,7 @@ function main(): void {
   for (const [tier, count] of Object.entries(tierCounts)) {
     console.log(`  ${tier.padEnd(55)} ${count}`);
   }
-  console.log(`\nTotal suspects (non-F): ${suspectRows.length}`);
+  console.log(`\nTotal suspects (non-D): ${suspectRows.length}`);
   console.log(`Top-priority geo-only-corroboration suspects: ${geoOnlyRows.length}`);
 
   writeCsv(
