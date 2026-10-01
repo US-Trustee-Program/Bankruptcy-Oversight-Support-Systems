@@ -21,12 +21,12 @@ describe('buildCompletionTag', () => {
   test('defaults to "Complete"/"Incomplete" labels when none are given', () => {
     expect(buildCompletionTag(2026, 'CLOSED', 'CLOSED', 'my-tag')).toEqual({
       label: 'Complete for 2026',
-      color: 'green',
+      color: 'positive',
       id: 'my-tag',
     });
     expect(buildCompletionTag(2026, 'NOT_CLOSED', 'CLOSED', 'my-tag')).toEqual({
       label: 'Incomplete for 2026',
-      color: 'red',
+      color: 'negative',
       id: 'my-tag',
     });
   });
@@ -36,12 +36,12 @@ describe('buildCompletionTag', () => {
 
     expect(buildCompletionTag(2026, 'CLOSED', 'CLOSED', 'my-tag', labels)).toEqual({
       label: 'Closed for 2026',
-      color: 'green',
+      color: 'positive',
       id: 'my-tag',
     });
     expect(buildCompletionTag(2026, 'NOT_CLOSED', 'CLOSED', 'my-tag', labels)).toEqual({
       label: 'Not Closed for 2026',
-      color: 'red',
+      color: 'negative',
       id: 'my-tag',
     });
   });
@@ -51,18 +51,18 @@ describe('buildCompletionTag', () => {
     expect(buildCompletionTag(2026, undefined, 'CLOSED', 'my-tag')).toBeUndefined();
   });
 
-  test('renders a green tag when the status matches the closed value', () => {
+  test('renders a positive tag when the status matches the closed value', () => {
     expect(buildCompletionTag(2025, 'COMPLETE', 'COMPLETE', 'tag-id')).toEqual({
       label: 'Complete for 2025',
-      color: 'green',
+      color: 'positive',
       id: 'tag-id',
     });
   });
 
-  test('renders a red tag when the status does not match the closed value', () => {
+  test('renders a negative tag when the status does not match the closed value', () => {
     expect(buildCompletionTag(2024, 'INCOMPLETE', 'COMPLETE', 'tag-id')).toEqual({
       label: 'Incomplete for 2024',
-      color: 'red',
+      color: 'negative',
       id: 'tag-id',
     });
   });

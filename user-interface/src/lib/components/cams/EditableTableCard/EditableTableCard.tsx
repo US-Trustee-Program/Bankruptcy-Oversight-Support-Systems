@@ -19,7 +19,7 @@ interface EditableTableCardColumn {
   testId?: string;
 }
 
-export type EditableTableCardTagColor = 'red' | 'green';
+export type EditableTableCardTagColor = 'positive' | 'negative';
 
 export interface EditableTableCardTag {
   label: ReactNode;
@@ -27,11 +27,9 @@ export interface EditableTableCardTag {
   id?: string;
 }
 
-// Matches the colors the trustee key-dates stories specify: #00a91c for the
-// success state and #b50909 for the failure state.
 const TAG_COLOR_STYLES: Record<EditableTableCardTagColor, UswdsTagStyle> = {
-  green: UswdsTagStyle.Success,
-  red: UswdsTagStyle.SecondaryDark,
+  positive: UswdsTagStyle.Success,
+  negative: UswdsTagStyle.SecondaryDark,
 };
 
 interface EditableTableCardProps {
