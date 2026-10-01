@@ -14,7 +14,7 @@ import {
   resolveBySoleContactMatch,
   resolveBySoleExactNameInState,
   resolveBySoleFuzzyNameMatchAndState,
-  recallByNameThenResolveMatch,
+  recallByName,
   resolveByPhoneTypoTolerance,
   resolveByStateAndCity,
   resolveByZipCode,
@@ -37,9 +37,8 @@ const MODULE_NAME = 'TRUSTEE-MATCH-PIPELINE-ORCHESTRATOR';
  * resolution rules belong in exactly one place.
  *
  * Deliberately contains NO separate FILTER/SCORE stages - every candidate is already fully scored
- * (doesNameMatch, doesCityMatch/doesStateMatch/doesZipCodeMatch,
- * addressDisqualifiers/nameDisqualifiers, contact corroboration, phone-typo tolerance, and every
- * other per-candidate score) the instant it's discovered, via addAndScoreCandidate in
+ * (doesNameMatch, doesCityMatch/doesStateMatch/doesZipCodeMatch, address corroboration,
+ * doesPhoneMatch/doesEmailMatch, and every other per-candidate score) the instant it's discovered, via addAndScoreCandidate in
  * trustee-match-pipeline-stages.ts - not a separate later pass. promoteCandidate (see
  * runNestedTier below) carries that already-computed score history forward when a candidate moves
  * from a nested tier into the outer pool, so no candidate this list ever sees is unscored. A
@@ -57,8 +56,6 @@ function resolveStages(): Stage[] {
     // resolveByComparativeCorroboration before resolveBySoleContactMatch, which cost real
     // resolutions - once the weaker (multi-candidate arbitration) stage resolves or fails to,
     // runPipeline never lets the other run. This order is "richest evidence first," not arbitrary.
-    // resolveBySoleContactMatch is pure - see its own doc comment on why it deliberately never
-    // falls back to resolveDuplicateNameCandidates.
     resolveBySoleContactMatch(),
     resolveByComparativeCorroboration(),
     resolveByPhoneTypoTolerance(),
@@ -142,23 +139,23 @@ async function runNestedTier(
  * first, before any tier runs at all: skipAdministrativePlaceholder detects an ACMS record that
  * names no real person (an administrative placeholder, not a trustee) and short-circuits the whole
  * pipeline with state.skip, since there is no identity here for any discovery tier to usefully
- * search for. Past that gate, two genuinely fast, narrow, high-confidence paths are tried next and
- * short-circuit immediately if they resolve - most records never need anything past this point:
+ * search for. Past that gate, two cheap, narrow recall tiers are tried next, each followed by the
+ * shared resolveStages, and short-circuit immediately if they resolve - most records never need
+ * anything past this point:
  *
- * 1. surnameExact: cheap (single indexed query), and correct often enough to be worth trying
+ * 1. recallBySurnameExact: a single indexed query, correct often enough to be worth trying
  *    before any fuzzier/costlier search.
- * 2. matchTrusteeByName's own internal exact-match pass (part of recallByNameThenResolveMatch,
- *    see its doc comment) - a fully-normalized name match against a UNIQUE CAMS trustee.
+ * 2. recallByName: matchTrusteeByName's exact/phonetic/lastName-token passes.
  *
  * Neither of these blocks the other, or any later tier, from running just because it discovered
  * SOME candidates - only an actual RESOLUTION short-circuits. A same-surname candidate that never
  * corroborates (e.g. "Aldric K. Vossey" for ACMS "Marcus L Vossey") is real evidence of nothing on
  * its own and must not prevent broader tiers from ever getting a chance: a surname-exact hit that
- * never resolves would otherwise silently block matchTrusteeByName's ambiguous pool, which
- * independently finds real corroborated candidates for the same record.
+ * never resolves would otherwise silently block recallByName's candidates, which can
+ * independently corroborate for the same record.
  *
- * If neither fast path resolves, every remaining discovery tier's candidates
- * (recallByNameThenResolveMatch's ambiguous pool, recallByTokenIntersection,
+ * If neither tier resolves, every remaining discovery tier's candidates
+ * (recallByName's, recallByTokenIntersection,
  * recallByAnchoredLevenshtein) are pooled into ONE combined candidate set and resolved
  * together via the shared resolveStages list - a real corroborated candidate found by one tier is
  * never crowded out or hidden by an uncorroborated one found by another; every candidate from
@@ -225,11 +222,7 @@ export async function runTrusteeMatchPipeline(
       return outerState;
     }
 
-    const matchByNameResult = await runNestedTier(
-      acmsRaw,
-      outerState,
-      recallByNameThenResolveMatch(context),
-    );
+    const matchByNameResult = await runNestedTier(acmsRaw, outerState, recallByName(context));
     if (matchByNameResult.error) {
       outerState.error = matchByNameResult.error;
       return outerState;
@@ -260,7 +253,7 @@ export async function runTrusteeMatchPipeline(
     }
 
     // Combined pool: every candidate any tier above found and promoted (surname-exact,
-    // matchTrusteeByName's ambiguous pool, token-intersection, anchored-Levenshtein), scored and
+    // recallByName, token-intersection, anchored-Levenshtein), scored and
     // resolved together in one pass - see this function's doc comment for why they must not be
     // resolved in isolation, tier by tier.
     const combinedResult = await runPipeline(outerState, resolveStages());
