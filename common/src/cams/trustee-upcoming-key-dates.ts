@@ -81,6 +81,17 @@ function validateFullDate(value: string | null | undefined): ValidatorResult {
 // Internal validation functions for top-level form validation
 // ============================================================================
 
+// Returns true when exactly one of first/second is set -- i.e. the pair is
+// incomplete. '' counts as unset alongside null/undefined so this also covers
+// the form-layer representation used by validateCompletionPairPresence below;
+// the spec-layer fields requirePair checks are typed `T | null` and never
+// hold '', so the extra check is a no-op for that caller.
+function isPairIncomplete(first: unknown, second: unknown): boolean {
+  const firstSet = first !== null && first !== undefined && first !== '';
+  const secondSet = second !== null && second !== undefined && second !== '';
+  return firstSet !== secondSet;
+}
+
 function requirePair(
   startField: keyof TrusteeUpcomingKeyDatesInput,
   endField: keyof TrusteeUpcomingKeyDatesInput,
@@ -89,14 +100,12 @@ function requirePair(
 ): ValidatorFunction {
   return (obj: unknown): ValidatorResult => {
     const input = obj as TrusteeUpcomingKeyDatesInput;
-    const reasonMap: ValidatorReasonMap = {};
-    if (input[startField] !== null && input[endField] === null) {
-      reasonMap[endField as string] = { reasons: [`${endLabel} is required.`] };
-    }
-    if (input[endField] !== null && input[startField] === null) {
-      reasonMap[startField as string] = { reasons: [`${startLabel} is required.`] };
-    }
-    return Object.keys(reasonMap).length > 0 ? { reasonMap } : VALID;
+    if (!isPairIncomplete(input[startField], input[endField])) return VALID;
+    const reasonMap: ValidatorReasonMap =
+      input[startField] === null
+        ? { [startField as string]: { reasons: [`${startLabel} is required.`] } }
+        : { [endField as string]: { reasons: [`${endLabel} is required.`] } };
+    return { reasonMap };
   };
 }
 
@@ -412,9 +421,7 @@ export function validateCompletionPairPresence(
   label: string,
   fieldNames: { first: string; second: string } = { first: 'Year', second: 'Status' },
 ): string {
-  const firstSet = first !== '' && first !== null && first !== undefined;
-  const secondSet = second !== '' && second !== null && second !== undefined;
-  if (firstSet === secondSet) return '';
+  if (!isPairIncomplete(first, second)) return '';
   return `${label} ${fieldNames.first} and ${fieldNames.second} must both be set.`;
 }
 
