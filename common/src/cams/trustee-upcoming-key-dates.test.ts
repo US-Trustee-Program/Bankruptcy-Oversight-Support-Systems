@@ -761,52 +761,114 @@ describe('validateTrusteeUpcomingKeyDates', () => {
     },
   );
 
-  test.each([[1900], [2100]])(
-    'returns VALID when ch13AuditCompletionYear is the inclusive boundary value %i',
-    (year) => {
+  // The five completion-year fields are structurally identical (a year paired
+  // with a completion-status enum), so they share one range/integer check --
+  // parametrized here across all five rather than only ch13AuditCompletionYear,
+  // to guard against the uniform check regressing back to a one-off.
+  const COMPLETION_YEAR_FIELDS = [
+    [
+      'auditCompletionYear',
+      'auditCompletionStatus',
+      'CLOSED',
+      'Field Exam/Audit Completion Status Year',
+    ],
+    [
+      'tprCompletionYear',
+      'tprCompletionStatus',
+      'COMPLETE',
+      'Trustee Performance Review Completion Status Year',
+    ],
+    [
+      'tirCompletionYear',
+      'tirCompletionStatus',
+      'COMPLETE',
+      'Trustee Interim Report Completion Status Year',
+    ],
+    [
+      'annualReportCompletionYear',
+      'annualReportCompletionStatus',
+      'COMPLETE',
+      'Annual Report Completion Status Year',
+    ],
+    ['ch13AuditCompletionYear', 'ch13AuditCompletionStatus', 'COMPLETE', 'Audit Completion Year'],
+  ] as const;
+
+  test.each(COMPLETION_YEAR_FIELDS)(
+    'returns VALID when %s is the inclusive floor 1979',
+    (yearField, statusField, statusValue) => {
       expect(
         validateTrusteeUpcomingKeyDates({
           ...baseInput(),
-          ch13AuditCompletionYear: year,
-          ch13AuditCompletionStatus: 'COMPLETE',
+          [yearField]: 1979,
+          [statusField]: statusValue,
         }),
       ).toEqual(VALID);
     },
   );
 
-  test.each([
-    ['below the allowed range', 1899],
-    ['above the allowed range', 2101],
-    ['not an integer', 2025.5],
-  ])('returns error when ch13AuditCompletionYear is %s', (_label, year) => {
-    const result = validateTrusteeUpcomingKeyDates({
-      ...baseInput(),
-      ch13AuditCompletionYear: year,
-      ch13AuditCompletionStatus: 'COMPLETE',
-    });
-    expect(result.valid).toBeFalsy();
-    expect(result.reasonMap?.ch13AuditCompletionYear?.reasons?.[0]).toBe(
-      'Audit Completion Year must be a whole number between 1900 and 2100.',
-    );
-  });
+  test.each(COMPLETION_YEAR_FIELDS)(
+    'returns VALID when %s is a distant future year (no ceiling)',
+    (yearField, statusField, statusValue) => {
+      expect(
+        validateTrusteeUpcomingKeyDates({
+          ...baseInput(),
+          [yearField]: 9999,
+          [statusField]: statusValue,
+        }),
+      ).toEqual(VALID);
+    },
+  );
 
-  test('returns error when ch13AuditCompletionYear is a non-number value (defensive type guard)', () => {
-    const result = validateTrusteeUpcomingKeyDates({
-      ...baseInput(),
-      ch13AuditCompletionYear: 'garbage',
-      ch13AuditCompletionStatus: 'COMPLETE',
-    } as unknown as ReturnType<typeof baseInput>);
-    expect(result.valid).toBeFalsy();
-    expect(result.reasonMap?.ch13AuditCompletionYear?.reasons?.[0]).toBe(
-      'Audit Completion Year must be a whole number between 1900 and 2100.',
-    );
-  });
+  test.each(COMPLETION_YEAR_FIELDS)(
+    'returns error when %s predates 1979',
+    (yearField, statusField, statusValue, label) => {
+      const result = validateTrusteeUpcomingKeyDates({
+        ...baseInput(),
+        [yearField]: 1978,
+        [statusField]: statusValue,
+      });
+      expect(result.valid).toBeFalsy();
+      expect(result.reasonMap?.[yearField]?.reasons?.[0]).toBe(
+        `${label} must be a whole number no earlier than 1979.`,
+      );
+    },
+  );
 
-  test('returns VALID when ch13AuditCompletionYear is null', () => {
+  test.each(COMPLETION_YEAR_FIELDS)(
+    'returns error when %s is not an integer',
+    (yearField, statusField, statusValue, label) => {
+      const result = validateTrusteeUpcomingKeyDates({
+        ...baseInput(),
+        [yearField]: 2025.5,
+        [statusField]: statusValue,
+      });
+      expect(result.valid).toBeFalsy();
+      expect(result.reasonMap?.[yearField]?.reasons?.[0]).toBe(
+        `${label} must be a whole number no earlier than 1979.`,
+      );
+    },
+  );
+
+  test.each(COMPLETION_YEAR_FIELDS)(
+    'returns error when %s is a non-number value (defensive type guard)',
+    (yearField, statusField, statusValue, label) => {
+      const result = validateTrusteeUpcomingKeyDates({
+        ...baseInput(),
+        [yearField]: 'garbage',
+        [statusField]: statusValue,
+      } as unknown as ReturnType<typeof baseInput>);
+      expect(result.valid).toBeFalsy();
+      expect(result.reasonMap?.[yearField]?.reasons?.[0]).toBe(
+        `${label} must be a whole number no earlier than 1979.`,
+      );
+    },
+  );
+
+  test.each(COMPLETION_YEAR_FIELDS)('returns VALID when %s is null', (yearField) => {
     expect(
       validateTrusteeUpcomingKeyDates({
         ...baseInput(),
-        ch13AuditCompletionYear: null,
+        [yearField]: null,
       }),
     ).toEqual(VALID);
   });
