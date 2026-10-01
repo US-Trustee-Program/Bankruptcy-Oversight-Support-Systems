@@ -7,7 +7,7 @@ the SAME real person as the ACMS record ("match") or is a different person, or n
 enough match to call the same person ("no-match").
 
 Each candidate also carries some structured signals the automated matcher already computed:
-nameScore, fullNameSimilarity, tokenNameMatchRate, surnameExactMatch, addressScore, phoneMatch,
+nameScore, fullNameSimilarity, tokenNameMatchRate, surnameExactMatch, addressMatch, phoneMatch,
 introductionStage (which matching stage surfaced this candidate), and candidateOutcome (what the
 matcher ultimately decided about this candidate). Treat these as HINTS, not ground truth. Reason
 about the actual name, address, and phone similarity yourself rather than simply repeating back

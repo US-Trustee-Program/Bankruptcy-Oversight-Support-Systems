@@ -63,15 +63,10 @@ export function foldKleene<T>(
 
 /**
  * One scorer's contribution to a candidate's evaluation history. `pass` is the whole record for a
- * scorer whose comparison is a plain yes/no; one with more to say extends it (see MeasuredScore,
- * and doesNameMatch's own quality field in trustee-match-pipeline-stages.ts).
+ * scorer whose comparison is a plain yes/no; one with more to say extends it (e.g. doesNameMatch's
+ * quality, doesAddressMatch's points).
  */
 export type ScoreRecord = { pass: boolean } & Record<string, unknown>;
-
-/** A scorer comparing on a continuous scale rather than a yes/no. `value` is always "higher is
- * better" - a signal that runs the other way converts to this convention. `threshold` is the cutoff active when the record was produced, so a later retune
- * cannot silently reinterpret it. */
-export type MeasuredScore = ScoreRecord & { value: number; threshold: number };
 
 /**
  * A candidate's full evaluation history, keyed by scorer name (see addScore). A scorer with more

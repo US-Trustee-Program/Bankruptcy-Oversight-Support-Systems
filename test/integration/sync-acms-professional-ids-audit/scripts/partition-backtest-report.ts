@@ -125,7 +125,7 @@ function csvRowFromSourceRaw(
 /** Shared cartesian-product columns across all four output files (no-match, ambiguous,
  * ambiguous-duplication, skipped): every ACMS source field, the staging before-picture, this row's
  * currentDisposition, and - for a row with a real candidate - that candidate's own fields and the
- * same scores ai-candidate-review.ts displays (nameScore/addressScore/phoneMatch/stateMatch/
+ * same scores ai-candidate-review.ts displays (nameScore/addressMatch/phoneMatch/stateMatch/
  * introductionStage). A record with zero candidates (skipped, or a no-match/ambiguous record with
  * an empty pool) still produces exactly one row, with every candidate-specific column (camsTrusteeId
  * onward) blank - see candidateCsvRows's own doc comment.
@@ -155,7 +155,7 @@ const CANDIDATE_CSV_COLUMNS = [
   'camsPhone',
   'introductionStage',
   'nameScore',
-  'addressScore',
+  'addressMatch',
   'phoneMatch',
   'stateMatch',
 ] as const;
@@ -232,7 +232,7 @@ function candidateCsvRows(
         camsPhone: '',
         introductionStage: '',
         nameScore: '',
-        addressScore: '',
+        addressMatch: '',
         phoneMatch: '',
         stateMatch: '',
       },
@@ -252,7 +252,9 @@ function candidateCsvRows(
       camsPhone: candidate.camsRaw.phone?.number ?? '',
       introductionStage: introductionStageOf(candidate.scores),
       nameQuality: String(merged.doesNameMatch?.quality ?? ''),
-      addressScore: String(merged.contactCorroborationAddress?.value ?? ''),
+      addressMatch: merged.doesAddressMatch
+        ? `${merged.doesAddressMatch.quality ?? 'no-match'} ${merged.doesAddressMatch.points}`
+        : '',
       phoneMatch: merged.doesPhoneMatch ? String(merged.doesPhoneMatch.quality ?? 'no-match') : '',
       stateMatch: String(merged.doesStateMatch?.pass ?? true),
     };
