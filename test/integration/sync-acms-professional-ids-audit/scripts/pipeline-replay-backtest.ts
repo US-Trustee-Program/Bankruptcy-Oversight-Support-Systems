@@ -207,8 +207,7 @@ const DIVERGENCE_DETAIL_COLUMNS = [
   'nameQuality',
   'namePass',
   'statePass',
-  'addressScore',
-  'addressPass',
+  'addressMatch',
   'phoneMatch',
   'resolvedBy',
 ] as const;
@@ -258,8 +257,9 @@ function divergenceCandidateRows(
       String(s.doesNameMatch?.quality ?? ''),
       String(s.doesNameMatch?.pass ?? ''),
       String(s.doesStateMatch?.pass ?? ''),
-      String(s.contactCorroborationAddress?.value ?? ''),
-      String(s.contactCorroborationAddress?.pass ?? ''),
+      s.doesAddressMatch
+        ? `${s.doesAddressMatch.quality ?? 'no-match'} ${s.doesAddressMatch.points}`
+        : '',
       s.doesPhoneMatch ? String(s.doesPhoneMatch.quality ?? 'no-match') : '',
       candidate.camsRaw.trusteeId === d.currentTrusteeId ? (resolvedBy ?? '') : '',
     ];

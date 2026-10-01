@@ -16,12 +16,6 @@
  *
  * A phone no-match is not a risk: it is the absence of a strong signal, not evidence against.
  *
- * Among name-rejected records, also writes a SEPARATE, sharper CSV
- * (data/auto-link-top-suspects-geo-only.csv) for the narrowest, highest-priority cut: zero name
- * score AND resolved via city/state geography agreement alone, with BOTH contact-corroboration
- * checks (address, phone) failing outright. This is the shape most likely to be two different
- * people who merely share a city/state - review this file first.
- *
  * Usage (from test/integration/, after running pipeline-replay-backtest.ts):
  *   npx tsx --tsconfig ../../backend/tsconfig.json sync-acms-professional-ids-audit/scripts/auto-link-risk-triage.ts
  */
@@ -58,17 +52,6 @@ function riskTier(score: ScoreByScorer, resolvedBy: string): RiskTier {
   if (!nameMatch.pass) return 'A-name-rejected';
   if (resolvedBy === 'resolveByStateOnly') return 'C-state-only';
   return 'D-strong';
-}
-
-/** Resolved via city/state geography agreement alone - BOTH contact-corroboration checks
- * (address, phone) failed outright. See isCorroboratedByGeoOrContact
- * (trustee-match-pipeline-stages.ts) - this is the geoAgrees branch firing independently of
- * contactAgrees, the shape most likely to be two different people sharing only a city/state. */
-function isGeoOnlyCorroboration(score: ScoreByScorer): boolean {
-  const contactPass =
-    score.contactCorroborationAddress?.pass === true || score.doesPhoneMatch?.quality === 'exact';
-  const geoPass = score.doesCityMatch?.pass === true || score.doesZipCodeMatch?.pass === true;
-  return geoPass && !contactPass;
 }
 
 function csvEscape(value: string | number | undefined): string {
@@ -125,7 +108,6 @@ function main(): void {
   };
 
   const suspectRows: Record<string, string | number | undefined>[] = [];
-  const geoOnlyRows: Record<string, string | number | undefined>[] = [];
 
   for (const line of lines) {
     const rec: ReplayRecord = JSON.parse(line);
@@ -149,7 +131,9 @@ function main(): void {
       acmsFullName: rec.sourceRaw.fullName ?? '',
       camsName: camsRaw?.name ?? '',
       nameQuality: score.doesNameMatch?.quality as string | undefined,
-      addressScore: score.contactCorroborationAddress?.value as number | undefined,
+      addressMatch: score.doesAddressMatch
+        ? `${score.doesAddressMatch.quality ?? 'no-match'} ${score.doesAddressMatch.points}`
+        : '',
       phoneMatch: score.doesPhoneMatch ? String(score.doesPhoneMatch.quality ?? 'no-match') : '',
       acmsAddress: legacy.address1 ?? '',
       acmsCityStateZip: legacy.cityStateZipCountry ?? '',
@@ -157,25 +141,6 @@ function main(): void {
       camsAddress: camsAddressString(camsRaw?.address),
       camsPhone: camsRaw?.phone?.number ?? '',
     });
-
-    if (score.doesNameMatch?.pass === false && isGeoOnlyCorroboration(score)) {
-      geoOnlyRows.push({
-        acmsProfessionalId: rec.acmsProfessionalId,
-        trusteeId: rec.match.trusteeId,
-        acmsFullName: rec.sourceRaw.fullName ?? '',
-        camsName: camsRaw?.name ?? '',
-        acmsAddress: legacy.address1 ?? '',
-        acmsCityStateZip: legacy.cityStateZipCountry ?? '',
-        acmsPhone: legacy.phone ?? '',
-        camsAddress1: camsRaw?.address?.address1 ?? '',
-        camsCity: camsRaw?.address?.city ?? '',
-        camsState: camsRaw?.address?.state ?? '',
-        camsZip: camsRaw?.address?.zipCode ?? '',
-        camsPhone: camsRaw?.phone?.number ?? '',
-        addressScore: score.contactCorroborationAddress?.value as number | undefined,
-        phoneMatch: score.doesPhoneMatch ? String(score.doesPhoneMatch.quality ?? 'no-match') : '',
-      });
-    }
   }
 
   console.log('Risk tier counts (auto-linked records only):');
@@ -183,7 +148,6 @@ function main(): void {
     console.log(`  ${tier.padEnd(55)} ${count}`);
   }
   console.log(`\nTotal suspects (non-D): ${suspectRows.length}`);
-  console.log(`Top-priority geo-only-corroboration suspects: ${geoOnlyRows.length}`);
 
   writeCsv(
     path.join(DATA_DIR, 'auto-link-risk-suspects.csv'),
@@ -195,7 +159,7 @@ function main(): void {
       'acmsFullName',
       'camsName',
       'nameQuality',
-      'addressScore',
+      'addressMatch',
       'phoneMatch',
       'acmsAddress',
       'acmsCityStateZip',
@@ -204,27 +168,6 @@ function main(): void {
       'camsPhone',
     ],
     suspectRows.sort((a, b) => String(a.tier).localeCompare(String(b.tier))),
-  );
-
-  writeCsv(
-    path.join(DATA_DIR, 'auto-link-top-suspects-geo-only.csv'),
-    [
-      'acmsProfessionalId',
-      'trusteeId',
-      'acmsFullName',
-      'camsName',
-      'acmsAddress',
-      'acmsCityStateZip',
-      'acmsPhone',
-      'camsAddress1',
-      'camsCity',
-      'camsState',
-      'camsZip',
-      'camsPhone',
-      'addressScore',
-      'phoneMatch',
-    ],
-    geoOnlyRows,
   );
 }
 
