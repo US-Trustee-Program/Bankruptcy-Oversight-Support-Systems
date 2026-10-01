@@ -48,7 +48,6 @@ import {
   NormalizedTrustee,
   ProjectedTrustee,
   projectTrustee,
-  ScoreByScorer,
   MeasuredScore,
   ScoreRecord,
   TrusteePipelineCandidate as PipelineCandidate,
@@ -1106,16 +1105,7 @@ function hasNoContactData(fields: {
   return !fields.address1 && !fields.city && !fields.state && !fields.zipCode && !fields.phone;
 }
 
-/**
- * Annotates every candidate with whether it carries ANY usable contact data at all (see
- * hasNoContactData) - a candidate with NONE (no address1, city, state, zip, or phone) provides
- * zero real corroborating evidence either way, so every later qualifying-candidate filter (see
- * resolveByComparativeCorroboration, resolveName*, resolveFuzzyFirstExactLastName*) excludes
- * it from being counted as a genuine competing candidate - it can neither resolve a match on its
- * own nor create false ambiguity by "qualifying" alongside a real, data-backed candidate. This
- * shape is rare in practice (the strictest all-blank bar matches few real candidates) - this stage
- * exists as defensive correctness for whatever data the pipeline encounters next.
- */
+/** Whether the CAMS candidate carries any usable contact data at all (see hasNoContactData). */
 function scoreHasAddressAndPhone(
   _sourceNormalized: NormalizedTrustee,
   candidate: PipelineCandidate,
@@ -1168,30 +1158,6 @@ function scoreAcmsHasAddressAndPhone(
 ): PipelineCandidate {
   const acmsHasNoContactData = memoizedAcmsHasNoContactData(sourceNormalized);
   addScore(candidate, 'doesAcmsTrusteeHaveAddressAndPhone', { pass: !acmsHasNoContactData });
-  return candidate;
-}
-
-/**
- * Whether BOTH sides have comparable contact data - the qualifying gate every RESOLVE stage in
- * this file requires before a candidate is eligible to resolve at all, collapsed into ONE score
- * so it appears in the pipeline's persisted evidence graph rather than only living as a repeated
- * inline predicate. Combines doesCamsTrusteeHaveAddressAndPhone/doesAcmsTrusteeHaveAddressAndPhone
- * (both already scored above) rather than recomputing either side. Runs after both, since it
- * reads their output.
- *
- * `pass` mirrors the shared gate's exact semantics (`!== false`, not `=== true`) - a candidate
- * neither scorer above ever ran against (its own key absent from scores) is treated as eligible,
- * same as every RESOLVE stage's existing inline check.
- */
-function scoreHasComparableContactData(
-  _sourceNormalized: NormalizedTrustee,
-  candidate: PipelineCandidate,
-): PipelineCandidate {
-  const scores = mergedScore(candidate);
-  const eligible =
-    scores.doesCamsTrusteeHaveAddressAndPhone?.pass !== false &&
-    scores.doesAcmsTrusteeHaveAddressAndPhone?.pass !== false;
-  addScore(candidate, 'hasComparableContactData', { pass: eligible });
   return candidate;
 }
 
@@ -1350,98 +1316,8 @@ function scoreZipCodeMatch(
   );
 }
 
-/**
- * Below this contactCorroborationAddress value, a PARSEABLE ACMS address means both sides had a
- * real address to compare and it disagreed - a genuine contradiction, never relaxed by
- * isNoContradictionMatch's fallback below. ACMS-pipeline-only: there is no DXTR-side equivalent of
- * this fallback to mirror or diverge from - isNoContradictionMatch is a pure reader of
- * pipeline-computed scores (contactCorroborationAddress, doesPhoneMatch/Email), a shape
- * that only exists once a candidate has passed through this pipeline's own scoring stages.
- */
+/** Below this address score, both sides had an address and it disagreed. */
 const NO_CONTRADICTION_ADDRESS_FLOOR = 30;
-
-/**
- * Narrow fallback for a sole name-qualifying candidate that clears neither
- * CONTACT_CORROBORATION_ADDRESS_THRESHOLD nor an exact phone/email match, but where the
- * corroboration bar was never really failable - the ACMS record has no comparable phone or email
- * at all, and either has no PARSEABLE address to compare, or its address score - while below
- * threshold - doesn't represent a genuine disagreement (see NO_CONTRADICTION_ADDRESS_FLOOR).
- *
- * - Requires doesNameMatch.value === 100, a materially higher bar than the main corroboration
- *   path, since this fallback has no other corroborating signal to lean on.
- * - A "0" phone/fax/email sentinel never registers as a comparable score, so this reads
- *   doesPhoneMatch/Email's mere ABSENCE the same way the pipeline's own scores already
- *   represent "nothing to compare."
- * - contactCorroborationAddress's mere ABSENCE (addressScore === undefined below) is read the same
- *   way - pipelineAddressScore now returns null, not a fabricated 0, when the ACMS address doesn't
- *   parse at all (real bug, confirmed via pipeline-replay-backtest.ts against the 2026-09-25 export:
- *   scoreAddressCorroboration used to write a REAL contactCorroborationAddress ScoreRecord with
- *   value:0/pass:false even when the ACMS address was never compared at all, indistinguishable from
- *   a genuine disagreement - 2+ real records with a genuinely unparseable ACMS address carried this
- *   fabricated "conflict"). This function previously worked around that bug with its own separate
- *   memoizedParseAcmsAddress check (hasParseableAcmsAddress) - removed now that
- *   contactCorroborationAddress's own presence/absence is reliable again, the same "no record when
- *   data unavailable" convention every other score here already follows.
- * - Most candidates that clear the name threshold but not the main corroboration bar have an
- *   actively contradicting phone number and are correctly excluded here. The exceptions are
- *   genuine matches, typically an ACMS name carrying a stray marker (e.g. "INACTIVE") that still
- *   resolves to the correct, active CAMS trustee.
- */
-function isNoContradictionMatch(candidate: PipelineCandidate): boolean {
-  const scores = mergedScore(candidate);
-  if (!isExactNameMatch(candidate)) return false;
-
-  const hasNoComparablePhoneOrEmail =
-    scores.doesPhoneMatch === undefined && scores.doesEmailMatch === undefined;
-  if (!hasNoComparablePhoneOrEmail) return false;
-
-  if (scores.doesAcmsTrusteeHaveAddressAndPhone?.pass === false) return false;
-
-  const addressScore = scores.contactCorroborationAddress as MeasuredScore | undefined;
-  const hasContradictingAddress =
-    addressScore !== undefined && addressScore.value < NO_CONTRADICTION_ADDRESS_FLOOR;
-  return !hasContradictingAddress;
-}
-
-/**
- * Resolves the sole name-qualifying candidate when its address, phone, or email corroborates, or
- * when there's no real contact data to contradict it at all (see isNoContradictionMatch). Pure
- * reader - no repository re-fetch needed, only email, which ProjectedTrustee carries directly.
- *
- * - Deliberately does NOT resolve a same-name multi-candidate pool by picking whichever candidate
- *   has the better addressScore relative to the others. Similar names are not reliably one
- *   trustee recorded twice - real counterexamples: "Alex G. Smith" in one city and
- *   "Alexander G. Smith" in another are two different real trustees, and three
- *   "Jordan [A./B./C.] Johnson" records are three different real trustees. A confident wrong
- *   answer is worse than an honest unresolved one - such a pool falls through to whatever later
- *   RESOLVE stage (or an 'ambiguous' disposition) the pipeline reaches next.
- * - Excludes any candidate with doesStateMatch: false (a genuine, comparable state disagreement),
- *   without removing it from state.candidates. doesStateMatch is only ever recorded when both
- *   sides have a comparable state, so this never mistakes missing data for a conflict.
- *   isNoContradictionMatch's own address-contradiction check independently screens out most real
- *   state conflicts too, since a different state usually also yields a low address score - this
- *   gate closes the remaining gap where a coincidentally matching zip (30% of the address score's
- *   weight) pushes the score up to exactly NO_CONTRADICTION_ADDRESS_FLOOR.
- */
-export function resolveBySoleContactMatch(): Stage {
-  return async (state: PipelineState): Promise<PipelineState> => {
-    const qualifying = candidatePool(state).filter(
-      (candidate) =>
-        mergedScore(candidate).doesStateMatch?.pass !== false && nameMatch(candidate).pass,
-    );
-    if (qualifying.length !== 1) return state;
-
-    const candidate = qualifying[0];
-    const scores = mergedScore(candidate);
-    const corroborated =
-      scores.contactCorroborationAddress?.pass === true ||
-      isExactPhoneMatch(candidate) ||
-      scores.doesEmailMatch?.pass === true;
-    if (!corroborated && !isNoContradictionMatch(candidate)) return state;
-
-    return resolveOnCandidate(state, candidate, 'resolveBySoleContactMatch');
-  };
-}
 
 /**
  * Records address similarity for every candidate (no pool-size gate - see scoreCandidate). Unlike
@@ -1480,72 +1356,7 @@ function scoreEmailMatch(
   );
 }
 
-/**
- * Rescues the case resolveBySoleContactMatch refuses to arbitrate - MULTIPLE candidates clear the
- * name threshold so it bails, even when exactly one has decisive contact evidence and the others
- * have none.
- *
- * - That single-candidate rule exists to avoid guessing when no differentiating evidence exists,
- *   not to discard differentiating evidence that does.
- * - Resolves only when EXACTLY ONE name-qualifying candidate clears the address threshold or has
- *   an exact phone match and no other qualifying candidate does; full city+state+zip agreement is
- *   a weaker second signal used only when no candidate clears that bar.
- */
-export function resolveByComparativeCorroboration(): Stage {
-  return async (state: PipelineState): Promise<PipelineState> => {
-    const qualifying = candidatePool(state).filter(
-      (candidate) =>
-        nameMatch(candidate).pass &&
-        mergedScore(candidate).hasComparableContactData?.pass !== false,
-    );
-    if (qualifying.length < 2) return state;
-
-    const strong: { candidate: PipelineCandidate; score: ScoreByScorer }[] = [];
-    const fullGeoAgreement: PipelineCandidate[] = [];
-    for (const candidate of qualifying) {
-      const scores = mergedScore(candidate);
-      if (scores.contactCorroborationAddress?.pass === true || isExactPhoneMatch(candidate)) {
-        strong.push({ candidate, score: candidate.scores });
-      } else if (
-        scores.doesCityMatch?.pass === true &&
-        scores.doesStateMatch?.pass === true &&
-        scores.doesZipCodeMatch?.pass === true
-      ) {
-        fullGeoAgreement.push(candidate);
-      }
-    }
-
-    // A candidate with no strong address/phone corroboration can still be decisively favored over
-    // its rivals when it is the ONLY one with full city+state+zip agreement (see this stage's own
-    // doc comment on calculateAddressScore's 50% address-lines weighting structurally capping a
-    // full-geo-agreement candidate's blended addressScore around 50 - this shape shows up as, e.g.,
-    // "John P. Doe" vs. "John Doe" and "Jane Q. Roe" vs. "Jane Roe" in a shared metro area, where
-    // the runner-up shares nothing but the name). Two-or-more candidates both agreeing on geography
-    // is real, unresolvable ambiguity, not a signal to break the tie by.
-    if (strong.length === 0 && fullGeoAgreement.length === 1) {
-      strong.push({ candidate: fullGeoAgreement[0], score: fullGeoAgreement[0].scores });
-    }
-
-    if (strong.length !== 1) return state;
-
-    const winner = strong[0];
-    return {
-      ...state,
-      match: {
-        trusteeId: winner.candidate.camsRaw.trusteeId,
-        score: winner.score,
-        resolvedBy: 'resolveByComparativeCorroboration',
-      },
-    };
-  };
-}
-
-/** Maximum digit-hamming-distance (see phoneDigitDistance) between an ACMS and CAMS phone number
- * for resolveByPhoneTypoTolerance to treat the mismatch as a likely data-entry typo rather than a
- * genuinely different number. Backtested against a real 245-record population sharing this
- * stage's exact trigger shape (sole candidate, nameScore=100, a comparable-but-mismatched phone):
- * every number differing by 1-2 digits was confirmed the same real person by hand; every number
- * differing by 8+ digits was a genuinely different number. */
+/** Phones this many digits apart or fewer are a likely typo, graded a 'strong' match. */
 const PHONE_TYPO_MAX_DIGIT_DISTANCE = 2;
 
 /** Count of differing digit positions between the last 10 digits of two phone numbers (mirrors
@@ -1624,7 +1435,6 @@ const CANDIDATE_SCORERS: CandidateScorer[] = [
   normalizeCandidateNameFields,
   scoreHasAddressAndPhone,
   scoreAcmsHasAddressAndPhone,
-  scoreHasComparableContactData, // reads both scores above - must run after them
   scoreNameMatch,
   recordSimilarityDiagnostics,
   scoreCityMatch,
@@ -1759,68 +1569,9 @@ export function addAndScoreCandidate(
   }
 }
 
-/**
- * Resolves the sole name-qualifying candidate when its name is an exact match and its phone
- * is an exact or strong match (see scorePhoneMatch).
- */
-export function resolveByPhoneTypoTolerance(): Stage {
-  return async (state: PipelineState): Promise<PipelineState> => {
-    const qualifying = candidatePool(state).filter(
-      (candidate) =>
-        nameMatch(candidate).pass &&
-        mergedScore(candidate).hasComparableContactData?.pass !== false,
-    );
-    if (qualifying.length !== 1) return state;
-
-    const candidate = qualifying[0];
-    if (!isExactNameMatch(candidate)) return state;
-
-    if (mergedScore(candidate).doesPhoneMatch?.pass !== true) return state;
-
-    return {
-      ...state,
-      match: {
-        trusteeId: candidate.camsRaw.trusteeId,
-        score: candidate.scores,
-        resolvedBy: 'resolveByPhoneTypoTolerance',
-      },
-    };
-  };
-}
-
-/**
- * Whether a sole name-qualifying candidate has enough independent corroborating evidence to
- * resolve, checked as explicit named signals rather than a percentage/count of "whatever scorers
- * happened to run" - a count-based consensus silently changes behavior whenever a scorer's
- * availability changes (e.g. broadening a corroboration scorer to compute for every candidate,
- * rather than only when 2+ candidates existed, would newly add it as a vote here too, dragging
- * real resolutions down into ambiguous). Two independent paths to corroboration, either is
- * sufficient:
- *   - Geography: state agrees AND (city or zip also agrees), OR city and zip both agree
- *     regardless of state (a state field can be wrong/stale while the more granular city+zip data
- *     is still trustworthy).
- *   - Contact: address, phone, or email corroborates (see scoreAddressCorroboration, scorePhoneMatch, scoreEmailMatch).
- * Deliberately does NOT fall back to state agreement ALONE (no city/zip/contact evidence at all) -
- * a single vote (state alone, or the fuzzy-name vote alone) passing is genuinely weak evidence in
- * isolation, with nothing else to weigh it against. Accepted as a small, known gap: a
- * single-vote resolution is deliberately not preserved via a special-cased fallback.
- */
-/**
- * The atomic corroboration signals every sole-candidate RESOLVE stage draws from. Each is
- * independently sufficient on its own where used - state or city ALONE is deliberately NOT one of
- * these, since neither is ever trusted by itself (see stateAndCity below) - but a matching zip
- * code IS trusted alone (see zipCodeMatches), since a 5-digit match is specific enough evidence on
- * its own regardless of whether ACMS's state/city fields are present, absent, or even disagree
- * (ACMS commonly has missing/unparseable city, state, or zip - see NormalizedTrustee's own address
- * field being Partial).
- */
 function stateAndCity(candidate: PipelineCandidate): boolean {
   const scores = mergedScore(candidate);
   return scores.doesStateMatch?.pass === true && scores.doesCityMatch?.pass === true;
-}
-
-function zipCodeMatches(candidate: PipelineCandidate): boolean {
-  return mergedScore(candidate).doesZipCodeMatch?.pass === true;
 }
 
 function cityAndZip(candidate: PipelineCandidate): boolean {
@@ -1828,227 +1579,153 @@ function cityAndZip(candidate: PipelineCandidate): boolean {
   return scores.doesCityMatch?.pass === true && scores.doesZipCodeMatch?.pass === true;
 }
 
-function addressCorroborates(candidate: PipelineCandidate): boolean {
-  return mergedScore(candidate).contactCorroborationAddress?.pass === true;
-}
-
-function emailCorroborates(candidate: PipelineCandidate): boolean {
-  return mergedScore(candidate).doesEmailMatch?.pass === true;
-}
-
-/**
- * Whether ANY corroboration signal (state/city/zip/address/phone/email) was even checkable for
- * this candidate - distinct from whether it agreed. A candidate with zero comparable evidence of
- * any kind must never resolve, regardless of what the atomic corroboration predicates would
- * otherwise return (false either way, for a different reason) - this lets a caller skip recording a
- * misleading "checked and failed" result when nothing was actually checked.
- */
-function hasAnyCorroboratingEvidence(candidate: PipelineCandidate): boolean {
-  const scores = mergedScore(candidate);
+function addressScore(candidate: PipelineCandidate): number {
   return (
-    scores.doesStateMatch !== undefined ||
-    scores.doesCityMatch !== undefined ||
-    scores.doesZipCodeMatch !== undefined ||
-    scores.contactCorroborationAddress !== undefined ||
-    scores.doesPhoneMatch !== undefined ||
-    scores.doesEmailMatch !== undefined
+    (mergedScore(candidate).contactCorroborationAddress as MeasuredScore | undefined)?.value ?? 0
   );
+}
+
+const NAME_QUALITY_RANK: Record<NameMatchQuality, number> = { exact: 0, strong: 1, weak: 2 };
+
+function nameQualityRank(candidate: PipelineCandidate): number {
+  const score = nameMatch(candidate);
+  return score.pass ? NAME_QUALITY_RANK[score.quality] : Number.MAX_SAFE_INTEGER;
+}
+
+type Ranking = (a: PipelineCandidate, b: PipelineCandidate) => number;
+
+const byNameQuality: Ranking = (a, b) => nameQualityRank(a) - nameQualityRank(b);
+
+const byAddressScoreThenNameQuality: Ranking = (a, b) =>
+  addressScore(b) - addressScore(a) || byNameQuality(a, b);
+
+/** The single best-ranked survivor, or undefined when there are none or the top rank is a tie. */
+function uniqueBest(
+  survivors: PipelineCandidate[],
+  ranking: Ranking,
+): PipelineCandidate | undefined {
+  const [best, runnerUp] = [...survivors].sort(ranking);
+  if (!best || (runnerUp && ranking(best, runnerUp) === 0)) return undefined;
+  return best;
 }
 
 function resolveOnCandidate(
   state: PipelineState,
-  candidate: PipelineCandidate,
+  candidate: PipelineCandidate | undefined,
   resolvedBy: string,
 ): PipelineState {
+  if (!candidate) return state;
   return {
     ...state,
     match: { trusteeId: candidate.camsRaw.trusteeId, score: candidate.scores, resolvedBy },
   };
 }
 
-/**
- * Resolves a SOLE exact name match (doesNameMatch.value === 100) with no city/zip/contact
- * corroboration required at all - the candidate list narrowing to exactly one unique exact-name
- * match IS the corroborating signal. Runs dead LAST (see resolveStages() in
- * trustee-match-pipeline-orchestrator.ts) - every other resolver gets first attempt at a
- * candidate before this thin, single-signal evidence is trusted.
- *
- * Gate is "exactly one candidate scores doesNameMatch === 100" (candidate list must be ==1), not
- * "pool size === 1" - other candidates already correctly rejected on name are not evidence
- * against the survivor.
- *
- * Deliberately does NOT require hasComparableContactData: an ACMS record with an empty address
- * and a phone of "0" has nothing to corroborate WITH, which is a different fact from corroboration
- * having been available and failed. Since this stage runs last, a record reaching it has already
- * been declined by every resolver that could weigh real evidence. The CAMS side must still carry
- * contact data of its own - a thin record on that side is its own risk, unrelated to what ACMS
- * happens to know.
- *
- * "InState" means only that the state does not CONTRADICT: doesStateMatch is recorded only when
- * both sides have a comparable state (scoreStateMatch's "no record when data is unavailable"
- * convention), so `?.pass !== false` rejects a real disagreement while letting a record with no
- * state data through. That filter is load-bearing - it is what separates two same-named trustees
- * in different states, which is the only reason this stage sees a sole candidate for names like
- * Smith or Brown.
- */
-export function resolveBySoleExactNameInState(): Stage {
+function nameQualifies(candidate: PipelineCandidate): boolean {
+  return nameMatch(candidate).pass;
+}
+
+export function resolveByPhone(): Stage {
   return async (state: PipelineState): Promise<PipelineState> => {
-    const exactMatches = candidatePool(state).filter(
-      (candidate) =>
-        hasExactSurnameMatch(candidate) &&
-        mergedScore(candidate).doesCamsTrusteeHaveAddressAndPhone?.pass !== false &&
-        mergedScore(candidate).doesStateMatch?.pass !== false,
+    const survivors = candidatePool(state).filter((c) => nameQualifies(c) && isExactPhoneMatch(c));
+    return resolveOnCandidate(state, uniqueBest(survivors, byNameQuality), 'resolveByPhone');
+  };
+}
+
+export function resolveByEmailAddress(): Stage {
+  return async (state: PipelineState): Promise<PipelineState> => {
+    const survivors = candidatePool(state).filter(
+      (c) => nameQualifies(c) && mergedScore(c).doesEmailMatch?.pass === true,
     );
-    if (exactMatches.length !== 1) return state;
-
-    return resolveOnCandidate(state, exactMatches[0], 'resolveBySoleExactNameInState');
+    return resolveOnCandidate(state, uniqueBest(survivors, byNameQuality), 'resolveByEmailAddress');
   };
 }
 
-/** Both name-match qualities a geo-corroboration resolver checks, richest evidence first - see
- * resolveByStateAndCity/resolveByZipCode's own doc comments. */
-const NAME_MATCH_QUALITY_TIERS = ['exact', 'strong', 'weak'] as const;
-
-function nameMatchCandidatesAt(
-  state: PipelineState,
-  quality: NameMatchQuality,
-): PipelineCandidate[] {
-  return candidatePool(state).filter((candidate) => {
-    const score = nameMatch(candidate);
-    return score.pass && score.quality === quality;
-  });
-}
-
-/**
- * Builds a RESOLVE stage that finds the sole name-qualifying candidate (doesNameMatch.pass ===
- * true, either quality) and resolves it on exactly one atomic corroboration signal (predicate).
- * Each stage built this way makes one narrow, legible claim - "a corroborated name plus this one
- * signal is sufficient" - instead of bundling several independently-sufficient signals behind one
- * compound name.
- */
-function resolveSoleQualifyingOn(
-  predicate: (candidate: PipelineCandidate) => boolean,
-  resolvedBy: string,
-): Stage {
+export function resolveByPhoneWithTypo(): Stage {
   return async (state: PipelineState): Promise<PipelineState> => {
-    const qualifying = candidatePool(state).filter(
-      (candidate) =>
-        mergedScore(candidate).doesNameMatch?.pass === true &&
-        mergedScore(candidate).hasComparableContactData?.pass !== false,
+    const survivors = candidatePool(state).filter(
+      (c) => isExactNameMatch(c) && mergedScore(c).doesPhoneMatch?.quality === 'strong',
     );
-    if (qualifying.length !== 1) return state;
-
-    const candidate = qualifying[0];
-    if (!hasAnyCorroboratingEvidence(candidate)) return state;
-    if (!predicate(candidate)) return state;
-
-    return resolveOnCandidate(state, candidate, resolvedBy);
+    return resolveOnCandidate(
+      state,
+      uniqueBest(survivors, byNameQuality),
+      'resolveByPhoneWithTypo',
+    );
   };
 }
 
-/**
- * Checks the exact-name tier first, then the strong (fuzzy) tier - richest evidence first, see
- * NAME_MATCH_QUALITY_TIERS. At each tier: filter to candidates whose name matches at exactly that
- * tier AND whose state and city both agree; if exactly one survives, resolve on it; if 2+ survive,
- * the tier is genuinely ambiguous - stop entirely rather than falling through to the weaker tier,
- * which could otherwise produce a false "unique" answer for the wrong reason (a WEAKER-tier
- * candidate winning only because the real, stronger-tier collision was never re-examined).
- */
-export function resolveByStateAndCity(): Stage {
+export function resolveByAddress(): Stage {
   return async (state: PipelineState): Promise<PipelineState> => {
-    for (const quality of NAME_MATCH_QUALITY_TIERS) {
-      const qualifying = nameMatchCandidatesAt(state, quality).filter((candidate) =>
-        stateAndCity(candidate),
-      );
-      if (qualifying.length === 0) continue;
-      if (qualifying.length === 1) {
-        return resolveOnCandidate(state, qualifying[0], 'resolveByStateAndCity');
-      }
-      return state;
-    }
-    return state;
-  };
-}
-
-/**
- * Same per-tier ambiguity check as resolveByStateAndCity, on the zip-alone signal instead - see
- * that function's own doc comment for the tier-loop rationale.
- */
-export function resolveByZipCode(): Stage {
-  return async (state: PipelineState): Promise<PipelineState> => {
-    for (const quality of NAME_MATCH_QUALITY_TIERS) {
-      const qualifying = nameMatchCandidatesAt(state, quality).filter((candidate) =>
-        zipCodeMatches(candidate),
-      );
-      if (qualifying.length === 0) continue;
-      if (qualifying.length === 1) {
-        return resolveOnCandidate(state, qualifying[0], 'resolveByZipCode');
-      }
-      return state;
-    }
-    return state;
+    const survivors = candidatePool(state).filter(
+      (c) => nameQualifies(c) && mergedScore(c).contactCorroborationAddress?.pass === true,
+    );
+    return resolveOnCandidate(
+      state,
+      uniqueBest(survivors, byAddressScoreThenNameQuality),
+      'resolveByAddress',
+    );
   };
 }
 
 export function resolveByCityAndZipCode(): Stage {
-  return resolveSoleQualifyingOn(cityAndZip, 'resolveByCityAndZipCode');
+  return async (state: PipelineState): Promise<PipelineState> => {
+    const survivors = candidatePool(state).filter((c) => nameQualifies(c) && cityAndZip(c));
+    return resolveOnCandidate(
+      state,
+      uniqueBest(survivors, byNameQuality),
+      'resolveByCityAndZipCode',
+    );
+  };
 }
 
-export function resolveByAddress(): Stage {
-  return resolveSoleQualifyingOn(addressCorroborates, 'resolveByAddress');
+export function resolveByStateAndCity(): Stage {
+  return async (state: PipelineState): Promise<PipelineState> => {
+    const survivors = candidatePool(state).filter((c) => nameQualifies(c) && stateAndCity(c));
+    return resolveOnCandidate(state, uniqueBest(survivors, byNameQuality), 'resolveByStateAndCity');
+  };
 }
 
-export function resolveByPhone(): Stage {
-  return resolveSoleQualifyingOn(isExactPhoneMatch, 'resolveByPhone');
+export function resolveByZipCode(): Stage {
+  return async (state: PipelineState): Promise<PipelineState> => {
+    const survivors = candidatePool(state).filter(
+      (c) => nameQualifies(c) && mergedScore(c).doesZipCodeMatch?.pass === true,
+    );
+    return resolveOnCandidate(state, uniqueBest(survivors, byNameQuality), 'resolveByZipCode');
+  };
 }
 
-export function resolveByEmailAddress(): Stage {
-  return resolveSoleQualifyingOn(emailCorroborates, 'resolveByEmailAddress');
+/** State agreement is the only signal, so a weak name never survives. */
+export function resolveByStateOnly(): Stage {
+  return async (state: PipelineState): Promise<PipelineState> => {
+    const survivors = candidatePool(state).filter(
+      (c) => hasExactSurnameMatch(c) && mergedScore(c).doesStateMatch?.pass === true,
+    );
+    return resolveOnCandidate(state, uniqueBest(survivors, byNameQuality), 'resolveByStateOnly');
+  };
+}
+
+function hasContradictingEvidence(candidate: PipelineCandidate): boolean {
+  const scores = mergedScore(candidate);
+  const address = scores.contactCorroborationAddress as MeasuredScore | undefined;
+  return (
+    scores.doesStateMatch?.pass === false ||
+    (address !== undefined && address.value < NO_CONTRADICTION_ADDRESS_FLOOR)
+  );
 }
 
 /**
- * Resolves a SOLE fuzzy name match (doesNameMatch.pass === true but value < 100 - an exact 100
- * match is resolveBySoleExactNameInState's job, run earlier) on state agreement alone, with no
- * city/zip/contact corroboration at all - the one shape the five atomic corroboration stages above
- * deliberately refuse (a single vote - state alone - is too weak in isolation, see
- * resolveSoleQualifyingOn's own doc comment). Narrower than reopening that question: this stage
- * requires there to be exactly ONE candidate in the whole pool (nothing else to be ambiguous
- * against) AND a fuzzy-but-real name match, not merely that state was the only comparable signal
- * for an otherwise-thin candidate.
- *
- * Runs AFTER the five atomic corroboration stages above (richest evidence first) - this stage's
- * state-only bar is strictly weaker than any of theirs, so it must only ever catch what they
- * already declined. Population is sole-candidate, real-name (nameScore 85-100) records where the
- * ACMS and CAMS addresses are a genuine metro-area/relocation mismatch (e.g. Anchorage vs Eagle
- * River AK, Gig Harbor vs Puyallup WA) - same person, same state, an office or P.O. Box that
- * legitimately differs by city.
+ * The only resolver that requires a single candidate: being the only name match is the signal.
+ * Runs last.
  */
-export function resolveBySoleFuzzyNameMatchAndState(): Stage {
+export function resolveByNameOnly(): Stage {
   return async (state: PipelineState): Promise<PipelineState> => {
-    // A better candidate anywhere in the pool means this stage has nothing to say: it trusts state
-    // agreement alone, which must never outrank an exact name sitting right beside it.
-    if (candidatePool(state).some(isExactNameMatch)) return state;
+    const nameMatches = candidatePool(state).filter(nameQualifies);
+    if (nameMatches.length !== 1) return state;
 
-    // State agreement is a single weak vote, so the name has to carry the rest - a fuzzy surname
-    // needs address or phone behind it, which this stage never checks.
-    const qualifying = candidatePool(state).filter(
-      (candidate) =>
-        hasExactSurnameMatch(candidate) &&
-        mergedScore(candidate).hasComparableContactData?.pass !== false,
-    );
-    if (qualifying.length !== 1) return state;
+    const [candidate] = nameMatches;
+    if (!isExactNameMatch(candidate) || hasContradictingEvidence(candidate)) return state;
+    if (mergedScore(candidate).doesCamsTrusteeHaveAddressAndPhone?.pass === false) return state;
 
-    const candidate = qualifying[0];
-    const stateOnly = mergedScore(candidate).doesStateMatch?.pass === true;
-    if (!stateOnly) return state;
-
-    return {
-      ...state,
-      match: {
-        trusteeId: candidate.camsRaw.trusteeId,
-        score: candidate.scores,
-        resolvedBy: 'resolveBySoleFuzzyNameMatchAndState',
-      },
-    };
+    return resolveOnCandidate(state, candidate, 'resolveByNameOnly');
   };
 }

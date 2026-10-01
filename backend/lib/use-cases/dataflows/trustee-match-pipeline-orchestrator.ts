@@ -10,12 +10,10 @@ import {
 } from './trustee-match-pipeline';
 import {
   recallByAnchoredLevenshtein,
-  resolveByComparativeCorroboration,
-  resolveBySoleContactMatch,
-  resolveBySoleExactNameInState,
-  resolveBySoleFuzzyNameMatchAndState,
   recallByName,
-  resolveByPhoneTypoTolerance,
+  resolveByPhoneWithTypo,
+  resolveByStateOnly,
+  resolveByNameOnly,
   resolveByStateAndCity,
   resolveByZipCode,
   resolveByCityAndZipCode,
@@ -31,55 +29,21 @@ import {
 const MODULE_NAME = 'TRUSTEE-MATCH-PIPELINE-ORCHESTRATOR';
 
 /**
- * RESOLVE stages every discovery tier shares (see docs/architecture/decision-records/
- * TrusteeMatchingPipeline.md on the RESOLVE role). ONE shared list rather than one copy per
- * discovery tier - a candidate is resolved the same way no matter which tier discovered it, so the
- * resolution rules belong in exactly one place.
- *
- * Deliberately contains NO separate FILTER/SCORE stages - every candidate is already fully scored
- * (doesNameMatch, doesCityMatch/doesStateMatch/doesZipCodeMatch, address corroboration,
- * doesPhoneMatch/doesEmailMatch, and every other per-candidate score) the instant it's discovered, via addAndScoreCandidate in
- * trustee-match-pipeline-stages.ts - not a separate later pass. promoteCandidate (see
- * runNestedTier below) carries that already-computed score history forward when a candidate moves
- * from a nested tier into the outer pool, so no candidate this list ever sees is unscored. A
- * pool-wide re-scoring pass here would have nothing new to compute.
+ * RESOLVE stages every discovery tier shares, strongest signal first. Each evaluates every
+ * candidate: no survivor passes to the next stage, a unique best survivor is the match, and a tie
+ * passes to the next stage with the full pool.
  */
 function resolveStages(): Stage[] {
   return [
-    // RESOLVE - may set state.match, in PRIORITY order (once one resolves, runPipeline makes
-    // every later stage a no-op - see its own doc comment) - this order is a real behavioral
-    // decision, not just sequencing, and must not be reshuffled without a backtest confirming
-    // outcomes hold. Swapping resolveBySoleContactMatch/resolveByComparativeCorroboration/
-    // resolveByPhoneTypoTolerance against each other (the only 3 of these stages with no read
-    // dependency on one another - the atomic corroboration families below have their own strict
-    // ordering requirements) held the outcome identical to this order EXCEPT moving
-    // resolveByComparativeCorroboration before resolveBySoleContactMatch, which cost real
-    // resolutions - once the weaker (multi-candidate arbitration) stage resolves or fails to,
-    // runPipeline never lets the other run. This order is "richest evidence first," not arbitrary.
-    resolveBySoleContactMatch(),
-    resolveByComparativeCorroboration(),
-    resolveByPhoneTypoTolerance(),
-    // Atomic stages, one per corroboration signal - address/phone/email/zip each independently
-    // sufficient alone; state+city is the one pair that requires both fields together, since
-    // neither is trusted alone (see stateAndCity/zipCodeMatches' own doc comment).
-    // resolveByStateAndCity/resolveByZipCode each internally check the exact-name tier before the
-    // strong (fuzzy) tier, richest evidence first - see their own doc comments. Order among these
-    // stages doesn't change outcomes today (real records satisfying one typically satisfy
-    // several), but address/phone/email run first as the stronger evidence class.
-    resolveByAddress(),
     resolveByPhone(),
     resolveByEmailAddress(),
+    resolveByPhoneWithTypo(),
+    resolveByAddress(),
+    resolveByCityAndZipCode(),
     resolveByStateAndCity(),
     resolveByZipCode(),
-    resolveByCityAndZipCode(),
-    // resolveBySoleFuzzyNameMatchAndState's state-only bar is strictly weaker than the stages
-    // above's corroboration gates, so it must run after them - it only ever catches what those
-    // already declined for lack of city/zip/contact corroboration.
-    resolveBySoleFuzzyNameMatchAndState(),
-    // Deliberately LAST-RESORT - see resolveBySoleExactNameInState's own doc comment. Every other
-    // resolver above (including the weaker fuzzy-tier ones) gets first attempt at a candidate
-    // before a unique exact-name match with no other corroborating evidence at all is trusted.
-    resolveBySoleExactNameInState(),
+    resolveByStateOnly(),
+    resolveByNameOnly(),
   ];
 }
 

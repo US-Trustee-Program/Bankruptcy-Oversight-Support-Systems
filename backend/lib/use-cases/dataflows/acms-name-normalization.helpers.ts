@@ -296,8 +296,8 @@ const DISAVOWED_RECORD_PATTERN = new RegExp(`\\b(${DISAVOWED_RECORD_PHRASES.join
  * person's name with no disavowal phrase anywhere in it) had "DO NOT USE" placed in legacy.address1
  * instead of the name field - a real disavowal signal this check was structurally blind to, since
  * it never looked at the address fields at all. The record auto-linked anyway (a real name match,
- * with no other corroborating evidence to weigh against it, resolved via resolveBySoleContactMatch's
- * no-contradiction fallback - see that stage's own doc comment) despite ACMS explicitly saying not
+ * with no other corroborating evidence to weigh against it, resolved on name alone) despite ACMS
+ * explicitly saying not
  * to use it. Checking the concatenated address fields too closes this gap without weakening the
  * name-field check at all - both are independent OR conditions, exactly like
  * shouldSkipAsNotAPerson/shouldSkipAsUstStaff already are in skipAdministrativePlaceholder.
