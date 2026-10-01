@@ -148,7 +148,7 @@ describe('runTrusteeMatchPipeline', () => {
 
       expect(result.match).toMatchObject({
         trusteeId: 't1',
-        resolvedBy: 'resolveBySoleContactMatch',
+        resolvedBy: 'resolveByPhone',
       });
     });
   });
@@ -238,7 +238,7 @@ describe('runTrusteeMatchPipeline', () => {
     expect(result.match?.trusteeId).toBe('t1');
   });
 
-  test('scores nameScore for matchTrusteeByName ambiguous candidates, enabling resolveByPhoneTypoTolerance', async () => {
+  test('scores nameScore for matchTrusteeByName ambiguous candidates, enabling resolveByPhoneWithTypo', async () => {
     vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({
       kind: 'ambiguous',
       matchCandidates: [{ trusteeId: 't1' } as never],

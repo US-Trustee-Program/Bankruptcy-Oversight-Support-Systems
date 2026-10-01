@@ -184,8 +184,8 @@ export function candidatePool<TSource, TCandidate>(
 
 /** A confirmed match, carrying the score that justified it so a consumer never needs to re-scan
  * the candidate's score history to answer "why was this the match," and resolvedBy (the RESOLVE
- * stage's own function name) so a reviewer can tell, e.g., resolveBySoleExactNameInState apart from
- * resolveBySoleContactMatch without reverse-engineering it from score shape alone. */
+ * stage's own function name) so a reviewer can tell, e.g., resolveByStateOnly apart from
+ * resolveByPhone without reverse-engineering it from score shape alone. */
 type PipelineMatch = {
   trusteeId: string;
   score: ScoreByScorer;

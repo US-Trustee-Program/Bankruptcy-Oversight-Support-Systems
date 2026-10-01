@@ -46,6 +46,9 @@
  * (data/ai-review-unresolved-shard-{N}-of-{M}.csv vs. data/ai-review-full-shard-{N}-of-{M}.csv) so
  * they never collide or get resumed into each other by mistake.
  *
+ * Pass --ids-file=<path> (one acmsProfessionalId per line) to review exactly those records instead,
+ * writing data/ai-review-<file name>-shard-{N}-of-{M}.csv.
+ *
  * Override the input JSONL path with REPLAY_BACKTEST_REPORT_JSONL, following the same env-var
  * override convention pipeline-replay-backtest.ts uses for its own fixture paths. Override the
  * reviewing model with AI_REVIEW_MODEL (a full model name or CLI alias accepted by `claude
@@ -191,13 +194,17 @@ type CliArgs = {
   shard: number;
   of: number;
   unresolvedOnly: boolean;
+  idsFile?: string;
 };
 
 function parseCliArgs(argv: string[]): CliArgs {
   let shard: number | undefined;
   let of: number | undefined;
   let unresolvedOnly = true;
+  let idsFile: string | undefined;
   for (const arg of argv) {
+    const idsFileMatch = arg.match(/^--ids-file=(.+)$/);
+    if (idsFileMatch) idsFile = idsFileMatch[1];
     const shardMatch = arg.match(/^--shard=(\d+)$/);
     const ofMatch = arg.match(/^--of=(\d+)$/);
     const unresolvedOnlyMatch = arg.match(/^--unresolved-only=(true|false)$/);
@@ -214,7 +221,7 @@ function parseCliArgs(argv: string[]): CliArgs {
   if (shard < 1 || shard > of) {
     throw new Error(`--shard must satisfy 1 <= shard <= of (got --shard=${shard} --of=${of})`);
   }
-  return { shard, of, unresolvedOnly };
+  return { shard, of, unresolvedOnly, idsFile };
 }
 
 function acmsAddressString(sourceRaw: DxtrTrusteeParty): string {
@@ -458,7 +465,7 @@ async function runWithConcurrency<T>(
 }
 
 async function run(): Promise<void> {
-  const { shard, of, unresolvedOnly } = parseCliArgs(process.argv.slice(2));
+  const { shard, of, unresolvedOnly, idsFile } = parseCliArgs(process.argv.slice(2));
 
   const inputJsonlPath =
     process.env.REPLAY_BACKTEST_REPORT_JSONL ?? path.join(DATA_DIR, 'replay-backtest-report.jsonl');
@@ -476,15 +483,30 @@ async function run(): Promise<void> {
   // already auto-resolve (record.match === null) - screening the already-resolved population too
   // is a separate, more expensive false-positive sweep (see --unresolved-only=false), deliberately
   // NOT run by default since it re-confirms answers already trusted rather than surfacing new gaps.
-  const candidateRecords = unresolvedOnly ? allRecords.filter((r) => r.match === null) : allRecords;
+  const selectedIds = idsFile
+    ? new Set(
+        fs
+          .readFileSync(idsFile, 'utf-8')
+          .split('\n')
+          .map((id) => id.trim())
+          .filter(Boolean),
+      )
+    : undefined;
+  const candidateRecords = selectedIds
+    ? allRecords.filter((r) => selectedIds.has(r.acmsProfessionalId))
+    : unresolvedOnly
+      ? allRecords.filter((r) => r.match === null)
+      : allRecords;
   const recordsById = new Map(candidateRecords.map((r) => [r.acmsProfessionalId, r]));
   const allIds = [...recordsById.keys()];
   const shardIds = partitionIds(allIds, shard, of);
 
   fs.mkdirSync(DATA_DIR, { recursive: true });
-  const shardLabel = unresolvedOnly
-    ? `unresolved-shard-${shard}-of-${of}`
-    : `full-shard-${shard}-of-${of}`;
+  const shardLabel = idsFile
+    ? `${path.basename(idsFile, path.extname(idsFile))}-shard-${shard}-of-${of}`
+    : unresolvedOnly
+      ? `unresolved-shard-${shard}-of-${of}`
+      : `full-shard-${shard}-of-${of}`;
   const outputPath = path.join(DATA_DIR, `ai-review-${shardLabel}.csv`);
   const alreadyDone = alreadyReviewedIds(outputPath);
   const remainingIds = shardIds.filter((id) => !alreadyDone.has(id));

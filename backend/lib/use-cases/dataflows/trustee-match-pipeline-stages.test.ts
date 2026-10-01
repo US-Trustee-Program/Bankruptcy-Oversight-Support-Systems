@@ -8,6 +8,7 @@ import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repo
 import {
   addCandidate,
   addScore,
+  ScoreRecord,
   createTrusteeInitialState as createInitialState,
   mergedScore,
   TrusteePipelineState as PipelineState,
@@ -19,17 +20,15 @@ import {
   recallByName,
   recallByTokenIntersection,
   recallByAnchoredLevenshtein,
-  resolveBySoleContactMatch,
-  resolveByComparativeCorroboration,
-  resolveByPhoneTypoTolerance,
-  resolveBySoleExactNameInState,
-  resolveByStateAndCity,
-  resolveByZipCode,
-  resolveByCityAndZipCode,
-  resolveByAddress,
   resolveByPhone,
   resolveByEmailAddress,
-  resolveBySoleFuzzyNameMatchAndState,
+  resolveByPhoneWithTypo,
+  resolveByAddress,
+  resolveByCityAndZipCode,
+  resolveByStateAndCity,
+  resolveByZipCode,
+  resolveByStateOnly,
+  resolveByNameOnly,
   normalizeAcmsSourceName,
   skipAdministrativePlaceholder,
   scoreCandidate,
@@ -1840,607 +1839,6 @@ describe('scoreCandidate - state/city/zip/contact-presence facets', () => {
   });
 });
 
-describe('resolveBySoleContactMatch', () => {
-  beforeEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  test('resolves the sole name-qualifying candidate when its already-computed contact score corroborates', async () => {
-    const state = createInitialState(makeDxtrTrustee());
-    const candidate = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })), 'test');
-    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'exact' });
-    addScore(candidate, 'doesPhoneMatch', { pass: true, quality: 'exact' });
-
-    const result = await resolveBySoleContactMatch()(state);
-
-    expect(result.match).toEqual({
-      trusteeId: 't1',
-      score: candidate.scores,
-      resolvedBy: 'resolveBySoleContactMatch',
-    });
-  });
-
-  test('does not resolve on a strong (typo) phone match', async () => {
-    const state = createInitialState(makeDxtrTrustee());
-    const candidate = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })), 'test');
-    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'exact' });
-    addScore(candidate, 'doesPhoneMatch', { pass: true, quality: 'strong', phoneDigitDistance: 1 });
-
-    const result = await resolveBySoleContactMatch()(state);
-
-    expect(result.match).toBeNull();
-  });
-
-  test('resolves via the no-contradiction fallback when there is no comparable phone/email and the ACMS address does not contradict', async () => {
-    const state = createInitialState(makeDxtrTrustee());
-    const candidate = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })), 'test');
-    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'exact' });
-    addScore(candidate, 'doesAcmsTrusteeHaveAddressAndPhone', { pass: true });
-    // No doesPhoneMatch/doesEmailMatch at all (uncomparable), and no
-    // contactCorroborationAddress recorded either (nothing to contradict).
-
-    const result = await resolveBySoleContactMatch()(state);
-
-    expect(result.match).toEqual({
-      trusteeId: 't1',
-      score: candidate.scores,
-      resolvedBy: 'resolveBySoleContactMatch',
-    });
-  });
-
-  test('refuses the no-contradiction fallback when the ACMS record has no real contact data at all', async () => {
-    const state = createInitialState(
-      makeDxtrTrustee({ legacy: { phone: '0', fax: '0' } as never }),
-    );
-    const candidate = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })), 'test');
-    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'exact' });
-    addScore(candidate, 'doesAcmsTrusteeHaveAddressAndPhone', { pass: false });
-
-    const result = await resolveBySoleContactMatch()(state);
-
-    expect(result.match).toBeNull();
-  });
-
-  // Models a real backtest regression (e.g. ACMS "DIANE WEIL (TR)", cityStateZipCountry
-  // "WOODLAND HILLS 91367-0000" with no state token at all): pipelineAddressScore now returns null
-  // (not a fabricated 0) when the ACMS address doesn't parse, so scoreContactCorroboration never
-  // writes a contactCorroborationAddress ScoreRecord at all for this shape - absence, not a low
-  // recorded score, means "unparseable," so it must not block the no-contradiction fallback the way
-  // an actually-parsed, actually-disagreeing address does. contactCorroborationAddress is
-  // deliberately left unset here (not hand-added with value:0) to model exactly what
-  // scoreContactCorroboration now produces for an unparseable ACMS address, per the real fix.
-  test('resolves via the no-contradiction fallback when the ACMS address is unparseable, not a genuine disagreement', async () => {
-    const state = createInitialState(makeDxtrTrustee());
-    const candidate = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })), 'test');
-    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'exact' });
-    // contactCorroborationAddress deliberately absent - the ACMS address never parsed.
-
-    const result = await resolveBySoleContactMatch()(state);
-
-    expect(result.match).toEqual({
-      trusteeId: 't1',
-      score: candidate.scores,
-      resolvedBy: 'resolveBySoleContactMatch',
-    });
-  });
-
-  // A coincidentally matching zip code can push a real state conflict's address score up to
-  // exactly NO_CONTRADICTION_ADDRESS_FLOOR, clearing isNoContradictionMatch's address check even
-  // though doesStateMatch genuinely disagrees.
-  test('does NOT resolve via the no-contradiction fallback when a coincidental zip match masks a real state conflict', async () => {
-    const state = await normalizeAcmsSourceName()(
-      createInitialState(
-        makeDxtrTrustee({
-          fullName: 'Ronald Larkin',
-          legacy: { cityStateZipCountry: 'Anytown DE 26003', phone: '2075551234' } as never,
-        }),
-      ),
-    );
-    const candidate = addCandidate(
-      state,
-      projectTrustee(
-        makeTrustee({
-          trusteeId: 't1',
-          name: 'Ronald L. Larkin',
-          public: {
-            address: {
-              address1: '1 Main St',
-              state: 'WV',
-              city: 'Wheeling',
-              zipCode: '26003',
-              countryCode: 'US',
-            },
-          },
-        }),
-      ),
-      'test',
-    );
-    scoreCandidate(state.sourceNormalized, candidate);
-    expect(mergedScore(candidate)).toMatchObject({
-      doesStateMatch: { pass: false },
-      contactCorroborationAddress: { pass: false },
-    });
-
-    const result = await resolveBySoleContactMatch()(state);
-
-    expect(result.match).toBeNull();
-  });
-
-  test('refuses the no-contradiction fallback when the ACMS address actively contradicts a low addressScore', async () => {
-    const state = createInitialState(makeDxtrTrustee());
-    // A PARSEABLE ACMS address (state.sourceNormalized.address populated, mirroring what
-    // memoizedParseAcmsAddress would set for a real, well-formed cityStateZipCountry) - this is
-    // what distinguishes "the address genuinely disagrees" from "the address never parsed at all"
-    // (see isNoContradictionMatch's own doc comment for the real regression this distinction fixes).
-    state.sourceNormalized.address = { city: 'Anytown', state: 'CA', zipCode: '90001' };
-    const candidate = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })), 'test');
-    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'exact' });
-    addScore(candidate, 'contactCorroborationAddress', { value: 5, threshold: 80, pass: false });
-
-    const result = await resolveBySoleContactMatch()(state);
-
-    expect(result.match).toBeNull();
-  });
-
-  // Real bug, confirmed via pipeline-replay-backtest.ts against the 2026-09-25 export (10 affected
-  // records) before this test existed: isNoContradictionMatch used to read
-  // state.sourceNormalized.address directly rather than calling memoizedParseAcmsAddress. In
-  // runTrusteeMatchPipeline's actual outer-pool resolve pass, the ACMS address is parsed and
-  // cached onto a runNestedTier's OWN nested sourceNormalized object during candidate discovery,
-  // never onto outerState.sourceNormalized - so this field reads as unset for every outer-pool
-  // candidate regardless of whether the ACMS address genuinely parses. The prior test above
-  // (hand-setting state.sourceNormalized.address) never caught this, since it bypassed the parse
-  // path entirely. This test instead supplies a real, well-formed cityStateZipCountry and leaves
-  // state.sourceNormalized.address unset, exactly mirroring the outer-pool condition.
-  test('refuses the no-contradiction fallback when a real cityStateZipCountry parses and contradicts, even with state.sourceNormalized.address unset', async () => {
-    const state = createInitialState(
-      makeDxtrTrustee({
-        legacy: { cityStateZipCountry: 'WILMINGTON DE 19807-2102' } as never,
-      }),
-    );
-    const candidate = addCandidate(
-      state,
-      projectTrustee(
-        makeTrustee({ trusteeId: 't1', public: { address: { state: 'PA' } } as never }),
-      ),
-      'test',
-    );
-    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'exact' });
-    addScore(candidate, 'doesAcmsTrusteeHaveAddressAndPhone', { pass: true });
-    addScore(candidate, 'contactCorroborationAddress', { value: 5, threshold: 80, pass: false });
-    expect(state.sourceNormalized.address).toBeUndefined();
-
-    const result = await resolveBySoleContactMatch()(state);
-
-    expect(result.match).toBeNull();
-  });
-
-  // resolveBySoleContactMatch deliberately never auto-links a multi-candidate, same-name pool via
-  // a candidate-vs-candidate comparison - the premise that two same-name candidates are likely the
-  // same real person filed twice was checked against a real trustees export and found false for
-  // real counterexamples. Two name-qualifying candidates must stay unresolved here, regardless of
-  // which one might otherwise look more "complete."
-  test('leaves state.match null when 2+ candidates qualify on name, never guessing between them', async () => {
-    const state = createInitialState(makeDxtrTrustee());
-    const first = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })), 'test');
-    addScore(first, 'doesNameMatch', { pass: true, quality: 'strong' });
-    const second = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't2' })), 'test');
-    addScore(second, 'doesNameMatch', { pass: true, quality: 'strong' });
-
-    const result = await resolveBySoleContactMatch()(state);
-
-    expect(result.match).toBeNull();
-  });
-
-  test('leaves state.match null when the sole name-qualifying candidate has no corroboration and real contact data to contradict it', async () => {
-    const state = createInitialState(makeDxtrTrustee());
-    const candidate = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })), 'test');
-    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'strong' });
-    addScore(candidate, 'doesAcmsTrusteeHaveAddressAndPhone', { pass: true });
-    addScore(candidate, 'contactCorroborationAddress', { value: 5, threshold: 80, pass: false });
-
-    const result = await resolveBySoleContactMatch()(state);
-
-    expect(result.match).toBeNull();
-  });
-});
-
-describe('resolveByComparativeCorroboration', () => {
-  // Models a real backtest finding (anonymized): an ACMS record for "Marcus Feld" (Seattle WA
-  // area, a specific phone number) has two CAMS candidates that both clear calculateNameScore's
-  // 85 threshold - "A. Bruce Halden" (a different state, unrelated phone) and "J. Marcus Feld"
-  // (same Seattle WA area, an EXACT phone match). resolveBySoleContactMatch refuses to
-  // arbitrate between multiple name-qualifying candidates at all - this stage exists specifically
-  // to pick up that case when exactly one qualifying candidate has
-  // decisive contact evidence the others lack.
-  const acmsMarcusFeld = makeDxtrTrustee({
-    fullName: 'Marcus Feld',
-    firstName: 'Marcus',
-    lastName: 'Feld',
-    legacy: {
-      address1: 'PO Box 100',
-      cityStateZipCountry: 'Fictionville, WA 98999',
-      phone: '2065551000',
-    },
-  });
-
-  test('resolves to the sole candidate with an exact phone match among multiple name-qualifying candidates', async () => {
-    const state = createInitialState(acmsMarcusFeld);
-    const bruceHalden = addCandidate(
-      state,
-      projectTrustee(
-        makeTrustee({
-          trusteeId: 'bruce-wilson',
-          firstName: 'A.',
-          middleName: 'Bruce',
-          lastName: 'Feld',
-          name: 'A. Bruce Halden',
-          public: {
-            address: {
-              address1: '1300 S. University Dr. #308',
-              city: 'Fictionburg',
-              state: 'TX',
-              zipCode: '99999',
-              countryCode: 'US',
-            },
-            phone: { number: '555-555-2000' },
-          },
-        }),
-      ),
-      'test',
-    );
-    addScore(bruceHalden, 'doesNameMatch', { pass: true, quality: 'strong' });
-    addScore(bruceHalden, 'doesPhoneMatch', { pass: false, phoneDigitDistance: 4 });
-    const marcusFeld = addCandidate(
-      state,
-      projectTrustee(
-        makeTrustee({
-          trusteeId: 'j-marcus-feld',
-          firstName: 'J.',
-          middleName: 'Marcus',
-          lastName: 'Feld',
-          name: 'J. Marcus Feld',
-          public: {
-            address: {
-              address1: '1 Fictional Ave',
-              city: 'Fictionburg',
-              state: 'WA',
-              zipCode: '98999',
-              countryCode: 'US',
-            },
-            phone: { number: '206-555-1000' },
-          },
-        }),
-      ),
-      'test',
-    );
-    addScore(marcusFeld, 'doesNameMatch', { pass: true, quality: 'strong' });
-    addScore(marcusFeld, 'doesPhoneMatch', { pass: true, quality: 'exact' });
-
-    const result = await resolveByComparativeCorroboration()(state);
-
-    expect(result.match).toEqual({
-      trusteeId: 'j-marcus-feld',
-      score: expect.objectContaining({
-        doesPhoneMatch: { pass: true, quality: 'exact' },
-      }),
-      resolvedBy: 'resolveByComparativeCorroboration',
-    });
-  });
-
-  test('does not resolve when more than one qualifying candidate has strong corroboration', async () => {
-    const state = createInitialState(acmsMarcusFeld);
-    const first = addCandidate(
-      state,
-      projectTrustee(
-        makeTrustee({
-          trusteeId: 'candidate-1',
-          name: 'Marcus Feld',
-          public: {
-            address: {
-              address1: '1 Unrelated St',
-              city: 'Nowhere',
-              state: 'ZZ',
-              zipCode: '00000',
-              countryCode: 'US',
-            },
-            phone: { number: '206-555-1000' },
-          },
-        }),
-      ),
-      'test',
-    );
-    addScore(first, 'doesNameMatch', { pass: true, quality: 'strong' });
-    const second = addCandidate(
-      state,
-      projectTrustee(
-        makeTrustee({
-          trusteeId: 'candidate-2',
-          name: 'Marcus J. Feld',
-          public: {
-            address: {
-              address1: '1 Unrelated St',
-              city: 'Nowhere',
-              state: 'ZZ',
-              zipCode: '00000',
-              countryCode: 'US',
-            },
-            phone: { number: '206-555-1000' },
-          },
-        }),
-      ),
-      'test',
-    );
-    addScore(second, 'doesNameMatch', { pass: true, quality: 'strong' });
-
-    const result = await resolveByComparativeCorroboration()(state);
-
-    expect(result.match).toBeNull();
-  });
-
-  test('does not resolve when no qualifying candidate has strong corroboration', async () => {
-    const state = createInitialState(acmsMarcusFeld);
-    const first = addCandidate(
-      state,
-      projectTrustee(
-        makeTrustee({
-          trusteeId: 'candidate-1',
-          name: 'Marcus Feld',
-          public: {
-            address: {
-              address1: '1 Elm St',
-              city: 'Miami',
-              state: 'FL',
-              zipCode: '33101',
-              countryCode: 'US',
-            },
-            phone: { number: '305-555-1212' },
-          },
-        }),
-      ),
-      'test',
-    );
-    addScore(first, 'doesNameMatch', { pass: true, quality: 'strong' });
-    const second = addCandidate(
-      state,
-      projectTrustee(
-        makeTrustee({
-          trusteeId: 'candidate-2',
-          name: 'Marcus J. Feld',
-          public: {
-            address: {
-              address1: '1 Oak St',
-              city: 'Denver',
-              state: 'CO',
-              zipCode: '80202',
-              countryCode: 'US',
-            },
-            phone: { number: '303-555-1212' },
-          },
-        }),
-      ),
-      'test',
-    );
-    addScore(second, 'doesNameMatch', { pass: true, quality: 'strong' });
-
-    const result = await resolveByComparativeCorroboration()(state);
-
-    expect(result.match).toBeNull();
-  });
-
-  test('ignores candidates that never cleared the name-score threshold', async () => {
-    const state = createInitialState(acmsMarcusFeld);
-    const nameNoMatch = addCandidate(
-      state,
-      projectTrustee(
-        makeTrustee({
-          trusteeId: 'jason-wilson-aguilar',
-          name: 'Jason Feld-Aguilar',
-          public: {
-            address: {
-              address1: '1 Unrelated St',
-              city: 'Nowhere',
-              state: 'ZZ',
-              zipCode: '00000',
-              countryCode: 'US',
-            },
-            phone: { number: '206-555-1000' },
-          },
-        }),
-      ),
-      'test',
-    );
-    addScore(nameNoMatch, 'doesNameMatch', { pass: false });
-
-    const result = await resolveByComparativeCorroboration()(state);
-
-    expect(result.match).toBeNull();
-  });
-
-  // Models a real backtest finding (anonymized "Jan Johnson"/"Conway" shape): two name-qualifying
-  // candidates, neither clears CONTACT_CORROBORATION_ADDRESS_THRESHOLD (calculateAddressScore's
-  // 50% address-lines weighting keeps a full-geo-agreement candidate's blended score around 50),
-  // but exactly one has full city+state+zip agreement while the other shares nothing but the name.
-  test('resolves to the sole candidate with full city+state+zip agreement when no candidate clears the address/phone bar', async () => {
-    const state = createInitialState(acmsMarcusFeld);
-    const noGeoAgreement = addCandidate(
-      state,
-      projectTrustee(
-        makeTrustee({
-          trusteeId: 'no-geo-agreement',
-          name: 'Marcus Feld',
-          public: {
-            address: {
-              address1: '1 Unrelated St',
-              city: 'Nowhere',
-              state: 'ZZ',
-              zipCode: '00000',
-              countryCode: 'US',
-            },
-            phone: { number: '555-555-9999' },
-          },
-        }),
-      ),
-      'test',
-    );
-    addScore(noGeoAgreement, 'doesNameMatch', { pass: true, quality: 'strong' });
-    addScore(noGeoAgreement, 'doesCityMatch', { pass: false });
-    addScore(noGeoAgreement, 'doesStateMatch', { pass: false });
-    addScore(noGeoAgreement, 'doesZipCodeMatch', { pass: false });
-
-    const fullGeoAgreement = addCandidate(
-      state,
-      projectTrustee(
-        makeTrustee({
-          trusteeId: 'full-geo-agreement',
-          name: 'Marcus J. Feld',
-          public: {
-            address: {
-              address1: '1 Different Building, Suite 9',
-              city: 'Fictionville',
-              state: 'WA',
-              zipCode: '98999',
-              countryCode: 'US',
-            },
-            phone: { number: '555-555-8888' },
-          },
-        }),
-      ),
-      'test',
-    );
-    addScore(fullGeoAgreement, 'doesNameMatch', { pass: true, quality: 'strong' });
-    addScore(fullGeoAgreement, 'doesCityMatch', { pass: true });
-    addScore(fullGeoAgreement, 'doesStateMatch', { pass: true });
-    addScore(fullGeoAgreement, 'doesZipCodeMatch', { pass: true });
-
-    const result = await resolveByComparativeCorroboration()(state);
-
-    expect(result.match).toEqual({
-      trusteeId: 'full-geo-agreement',
-      score: fullGeoAgreement.scores,
-      resolvedBy: 'resolveByComparativeCorroboration',
-    });
-  });
-
-  test('does not resolve via full geo agreement when more than one qualifying candidate has it', async () => {
-    const state = createInitialState(acmsMarcusFeld);
-    const first = addCandidate(
-      state,
-      projectTrustee(
-        makeTrustee({
-          trusteeId: 'candidate-1',
-          name: 'Marcus Feld',
-          public: {
-            address: {
-              address1: '1 Building A',
-              city: 'Fictionville',
-              state: 'WA',
-              zipCode: '98999',
-              countryCode: 'US',
-            },
-            phone: { number: '555-555-1111' },
-          },
-        }),
-      ),
-      'test',
-    );
-    addScore(first, 'doesNameMatch', { pass: true, quality: 'strong' });
-    addScore(first, 'doesCityMatch', { pass: true });
-    addScore(first, 'doesStateMatch', { pass: true });
-    addScore(first, 'doesZipCodeMatch', { pass: true });
-
-    const second = addCandidate(
-      state,
-      projectTrustee(
-        makeTrustee({
-          trusteeId: 'candidate-2',
-          name: 'Marcus J. Feld',
-          public: {
-            address: {
-              address1: '1 Building B',
-              city: 'Fictionville',
-              state: 'WA',
-              zipCode: '98999',
-              countryCode: 'US',
-            },
-            phone: { number: '555-555-2222' },
-          },
-        }),
-      ),
-      'test',
-    );
-    addScore(second, 'doesNameMatch', { pass: true, quality: 'strong' });
-    addScore(second, 'doesCityMatch', { pass: true });
-    addScore(second, 'doesStateMatch', { pass: true });
-    addScore(second, 'doesZipCodeMatch', { pass: true });
-
-    const result = await resolveByComparativeCorroboration()(state);
-
-    expect(result.match).toBeNull();
-  });
-
-  test('prefers strong address/phone corroboration over full geo agreement when both exist', async () => {
-    const state = createInitialState(acmsMarcusFeld);
-    const geoOnly = addCandidate(
-      state,
-      projectTrustee(
-        makeTrustee({
-          trusteeId: 'geo-only',
-          name: 'Marcus Feld',
-          public: {
-            address: {
-              address1: '1 Different Building',
-              city: 'Fictionville',
-              state: 'WA',
-              zipCode: '98999',
-              countryCode: 'US',
-            },
-            phone: { number: '555-555-1111' },
-          },
-        }),
-      ),
-      'test',
-    );
-    addScore(geoOnly, 'doesNameMatch', { pass: true, quality: 'strong' });
-    addScore(geoOnly, 'doesCityMatch', { pass: true });
-    addScore(geoOnly, 'doesStateMatch', { pass: true });
-    addScore(geoOnly, 'doesZipCodeMatch', { pass: true });
-
-    const exactPhone = addCandidate(
-      state,
-      projectTrustee(
-        makeTrustee({
-          trusteeId: 'exact-phone',
-          name: 'J. Marcus Feld',
-          public: {
-            address: {
-              address1: '1 Fictional Ave',
-              city: 'Fictionburg',
-              state: 'WA',
-              zipCode: '98999',
-              countryCode: 'US',
-            },
-            phone: { number: '206-555-1000' },
-          },
-        }),
-      ),
-      'test',
-    );
-    addScore(exactPhone, 'doesNameMatch', { pass: true, quality: 'strong' });
-    addScore(exactPhone, 'doesPhoneMatch', { pass: true, quality: 'exact' });
-
-    const result = await resolveByComparativeCorroboration()(state);
-
-    expect(result.match).toEqual({
-      trusteeId: 'exact-phone',
-      score: expect.objectContaining({
-        doesPhoneMatch: { pass: true, quality: 'exact' },
-      }),
-      resolvedBy: 'resolveByComparativeCorroboration',
-    });
-  });
-});
-
 describe('scoreCandidate - contact-corroboration facet', () => {
   const acmsMarcusFeld = makeDxtrTrustee({
     fullName: 'Marcus Feld',
@@ -2655,909 +2053,197 @@ describe('scoreCandidate - phone-match quality facet', () => {
   });
 });
 
-describe('resolveByPhoneTypoTolerance', () => {
-  const acmsTerrenceBoyle = makeDxtrTrustee({ fullName: 'Terrence Boyle' });
+describe('resolvers', () => {
+  const EXACT_NAME = { doesNameMatch: { pass: true, quality: 'exact' } };
+  const STRONG_NAME = { doesNameMatch: { pass: true, quality: 'strong' } };
+  const WEAK_NAME = { doesNameMatch: { pass: true, quality: 'weak' } };
+  const NO_NAME = { doesNameMatch: { pass: false } };
 
-  test('resolves the sole exact-name candidate whose phone is a strong match', async () => {
-    const state = createInitialState(acmsTerrenceBoyle);
-    const candidate = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 'terrence-j-boyle', name: 'Terrence J. Boyle' })),
-      'test',
-    );
-    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'exact' });
-    addScore(candidate, 'doesPhoneMatch', { pass: true, quality: 'strong', phoneDigitDistance: 1 });
-
-    const result = await resolveByPhoneTypoTolerance()(state);
-
-    expect(result.match).toEqual({
-      trusteeId: 'terrence-j-boyle',
-      score: expect.objectContaining({
-        doesPhoneMatch: { pass: true, quality: 'strong', phoneDigitDistance: 1 },
-      }),
-      resolvedBy: 'resolveByPhoneTypoTolerance',
+  const poolOf = (...candidates: Record<string, ScoreRecord>[]) => {
+    const state = createInitialState(makeDxtrTrustee());
+    candidates.forEach((scores, i) => {
+      const candidate = addCandidate(
+        state,
+        projectTrustee(makeTrustee({ trusteeId: `t${i + 1}` })),
+        'test',
+      );
+      for (const [key, score] of Object.entries(scores)) addScore(candidate, key, score);
     });
+    return state;
+  };
+
+  const address = (value: number) => ({
+    contactCorroborationAddress: { value, threshold: 80, pass: value >= 80 },
   });
 
-  test('resolves the sole exact-name candidate whose phone matches exactly', async () => {
-    const state = createInitialState(acmsTerrenceBoyle);
-    const candidate = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 'terrence-j-boyle', name: 'Terrence J. Boyle' })),
-      'test',
-    );
-    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'exact' });
-    addScore(candidate, 'doesPhoneMatch', { pass: true, quality: 'exact' });
-
-    const result = await resolveByPhoneTypoTolerance()(state);
-
-    expect(result.match).toMatchObject({
-      trusteeId: 'terrence-j-boyle',
-      resolvedBy: 'resolveByPhoneTypoTolerance',
-    });
-  });
-
-  test.each([
+  describe.each([
     {
-      description: 'the phone does not match',
-      nameQuality: 'exact',
-      phoneScores: { doesPhoneMatch: { pass: false, phoneDigitDistance: 5 } },
+      resolver: resolveByPhone,
+      name: 'resolveByPhone',
+      signal: { doesPhoneMatch: { pass: true, quality: 'exact' } },
     },
     {
-      description: 'the name is not an exact match',
-      nameQuality: 'strong',
-      phoneScores: { doesPhoneMatch: { pass: true, quality: 'strong', phoneDigitDistance: 1 } },
+      resolver: resolveByEmailAddress,
+      name: 'resolveByEmailAddress',
+      signal: { doesEmailMatch: { pass: true } },
+    },
+    { resolver: resolveByAddress, name: 'resolveByAddress', signal: address(90) },
+    {
+      resolver: resolveByCityAndZipCode,
+      name: 'resolveByCityAndZipCode',
+      signal: { doesCityMatch: { pass: true }, doesZipCodeMatch: { pass: true } },
     },
     {
-      description: 'no phone was comparable',
-      nameQuality: 'exact',
-      phoneScores: {},
+      resolver: resolveByStateAndCity,
+      name: 'resolveByStateAndCity',
+      signal: { doesStateMatch: { pass: true }, doesCityMatch: { pass: true } },
     },
-  ])('does not resolve when $description', async ({ nameQuality, phoneScores }) => {
-    const state = createInitialState(acmsTerrenceBoyle);
-    const candidate = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 'terrence-j-boyle', name: 'Terrence J. Boyle' })),
-      'test',
-    );
-    addScore(candidate, 'doesNameMatch', { pass: true, quality: nameQuality });
-    for (const [key, score] of Object.entries(phoneScores)) addScore(candidate, key, score);
+    {
+      resolver: resolveByZipCode,
+      name: 'resolveByZipCode',
+      signal: { doesZipCodeMatch: { pass: true } },
+    },
+    {
+      resolver: resolveByStateOnly,
+      name: 'resolveByStateOnly',
+      signal: { doesStateMatch: { pass: true } },
+    },
+  ])('$name', ({ resolver, name, signal }) => {
+    test('does not resolve when no candidate has the signal', async () => {
+      const result = await resolver()(poolOf(EXACT_NAME, EXACT_NAME));
 
-    const result = await resolveByPhoneTypoTolerance()(state);
+      expect(result.match).toBeNull();
+    });
 
-    expect(result.match).toBeNull();
-  });
+    test('resolves the only candidate with the signal, whatever the pool size', async () => {
+      const result = await resolver()(
+        poolOf(EXACT_NAME, { ...EXACT_NAME, ...signal }, STRONG_NAME),
+      );
 
-  test("does not resolve when more than one candidate qualifies - not this stage's job", async () => {
-    const state = createInitialState(acmsTerrenceBoyle);
-    const first = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 'candidate-1', name: 'Marisol Quade' })),
-      'test',
-    );
-    addScore(first, 'doesNameMatch', { pass: true, quality: 'exact' });
-    addScore(first, 'doesPhoneMatch', { pass: true, quality: 'strong', phoneDigitDistance: 1 });
-    const second = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 'candidate-2', name: 'Marisol R. Quade' })),
-      'test',
-    );
-    addScore(second, 'doesNameMatch', { pass: true, quality: 'exact' });
-    addScore(second, 'doesPhoneMatch', { pass: true, quality: 'strong', phoneDigitDistance: 1 });
+      expect(result.match).toMatchObject({ trusteeId: 't2', resolvedBy: name });
+    });
 
-    const result = await resolveByPhoneTypoTolerance()(state);
+    test('does not resolve when two candidates tie on the signal and name', async () => {
+      const result = await resolver()(
+        poolOf({ ...EXACT_NAME, ...signal }, { ...EXACT_NAME, ...signal }),
+      );
 
-    expect(result.match).toBeNull();
-  });
-});
+      expect(result.match).toBeNull();
+    });
 
-describe('resolveBySoleExactNameInState', () => {
-  const acmsRecord = makeDxtrTrustee({ fullName: 'Ronald Larkin' });
+    test('resolves the better name when two candidates share the signal', async () => {
+      const result = await resolver()(
+        poolOf({ ...STRONG_NAME, ...signal }, { ...EXACT_NAME, ...signal }),
+      );
 
-  // Run through REAL end-to-end scoring (normalizeAcmsSourceName -> addCandidate ->
-  // scoreCandidate), not hand-injected score objects: this stage gates on doesStateMatch, which
-  // is only ever recorded when BOTH sides have a comparable state, so hand-injecting it can
-  // produce combinations real scoring never would.
-  test('resolves a sole exact-name candidate with no state/city/zip evidence at all', async () => {
-    // A phone number (but no address) on the ACMS side keeps doesAcmsTrusteeHaveAddressAndPhone
-    // true - this test is specifically about the ABSENCE of state/city/zip data, not the
-    // absence of all ACMS contact data (a different, already-covered gate - see
-    // 'does not resolve when the ACMS record itself has no contact data' below).
-    const state = await normalizeAcmsSourceName()(
-      createInitialState({ ...acmsRecord, legacy: { phone: '2075551234' } }),
-    );
-    const candidate = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Ronald L. Larkin' })),
-      'test',
-    );
-    scoreCandidate(state.sourceNormalized, candidate);
+      expect(result.match).toMatchObject({ trusteeId: 't2', resolvedBy: name });
+    });
 
-    const result = await resolveBySoleExactNameInState()(state);
+    test('never resolves a candidate whose name does not match', async () => {
+      const result = await resolver()(poolOf({ ...NO_NAME, ...signal }));
 
-    expect(result.match).toEqual({
-      trusteeId: 't1',
-      score: candidate.scores,
-      resolvedBy: 'resolveBySoleExactNameInState',
+      expect(result.match).toBeNull();
     });
   });
 
-  test('resolves an office-relocation case: state matches even though city differs', async () => {
-    const state = await normalizeAcmsSourceName()(
-      createInitialState({ ...acmsRecord, legacy: { cityStateZipCountry: 'Bangor ME 04401' } }),
-    );
-    const candidate = addCandidate(
-      state,
-      projectTrustee(
-        makeTrustee({
-          trusteeId: 't1',
-          name: 'Ronald L. Larkin',
-          public: {
-            address: {
-              address1: '1 Main St',
-              state: 'ME',
-              city: 'Portland',
-              zipCode: '04101',
-              countryCode: 'US',
-            },
-          },
-        }),
-      ),
-      'test',
-    );
-    scoreCandidate(state.sourceNormalized, candidate);
+  describe('resolveByAddress', () => {
+    test('a higher address score outranks a better name', async () => {
+      const result = await resolveByAddress()(
+        poolOf({ ...EXACT_NAME, ...address(82) }, { ...STRONG_NAME, ...address(96) }),
+      );
 
-    const result = await resolveBySoleExactNameInState()(state);
+      expect(result.match).toMatchObject({ trusteeId: 't2' });
+    });
 
-    expect(result.match).toEqual({
-      trusteeId: 't1',
-      score: candidate.scores,
-      resolvedBy: 'resolveBySoleExactNameInState',
+    test('does not resolve on an address score below the threshold', async () => {
+      const result = await resolveByAddress()(poolOf({ ...EXACT_NAME, ...address(79) }));
+
+      expect(result.match).toBeNull();
     });
   });
 
-  // The real regression this stage must now catch: an exact name match with a GENUINE, comparable
-  // state disagreement and no contact corroboration. Previously auto-linked; must now be left for
-  // ambiguous/no-match instead.
-  test('does NOT resolve a sole exact-name candidate with a real, comparable state conflict and no contact corroboration', async () => {
-    const state = await normalizeAcmsSourceName()(
-      createInitialState({ ...acmsRecord, legacy: { cityStateZipCountry: 'Wilmington DE 19801' } }),
-    );
-    const candidate = addCandidate(
-      state,
-      projectTrustee(
-        makeTrustee({
-          trusteeId: 't1',
-          name: 'Ronald L. Larkin',
-          public: {
-            address: {
-              address1: '1 Main St',
-              state: 'WV',
-              city: 'Wheeling',
-              zipCode: '26003',
-              countryCode: 'US',
-            },
-          },
-        }),
-      ),
-      'test',
-    );
-    scoreCandidate(state.sourceNormalized, candidate);
+  describe('resolveByPhoneWithTypo', () => {
+    const strongPhone = {
+      doesPhoneMatch: { pass: true, quality: 'strong', phoneDigitDistance: 1 },
+    };
 
-    const result = await resolveBySoleExactNameInState()(state);
+    test('resolves the only exact-name candidate whose phone is a typo away', async () => {
+      const result = await resolveByPhoneWithTypo()(
+        poolOf(EXACT_NAME, { ...EXACT_NAME, ...strongPhone }),
+      );
 
-    expect(result.match).toBeNull();
-  });
+      expect(result.match).toMatchObject({ trusteeId: 't2', resolvedBy: 'resolveByPhoneWithTypo' });
+    });
 
-  // A relaxed given name over an exact surname still resolves here; only a fuzzy SURNAME is held
-  // back, since two surnames a typo apart belong to different people often enough to need
-  // corroboration.
-  test('resolves a relaxed given name over an exact surname', async () => {
-    const state = createInitialState(acmsRecord);
-    const candidate = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Ronald L. Larkin' })),
-      'test',
-    );
-    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'strong' });
+    test('does not resolve a typo phone on a name that is not exact', async () => {
+      const result = await resolveByPhoneWithTypo()(poolOf({ ...STRONG_NAME, ...strongPhone }));
 
-    const result = await resolveBySoleExactNameInState()(state);
+      expect(result.match).toBeNull();
+    });
 
-    expect(result.match).toEqual({
-      trusteeId: 't1',
-      score: candidate.scores,
-      resolvedBy: 'resolveBySoleExactNameInState',
+    test('does not resolve when two exact-name candidates have a typo phone', async () => {
+      const result = await resolveByPhoneWithTypo()(
+        poolOf({ ...EXACT_NAME, ...strongPhone }, { ...EXACT_NAME, ...strongPhone }),
+      );
+
+      expect(result.match).toBeNull();
     });
   });
 
-  test('does not resolve a fuzzy surname on name alone', async () => {
-    const state = createInitialState(acmsRecord);
-    const candidate = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Ronald L. Larkin' })),
-      'test',
-    );
-    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'weak' });
+  describe('resolveByStateOnly', () => {
+    test('never resolves a weak name', async () => {
+      const result = await resolveByStateOnly()(
+        poolOf({ ...WEAK_NAME, doesStateMatch: { pass: true } }),
+      );
 
-    const result = await resolveBySoleExactNameInState()(state);
+      expect(result.match).toBeNull();
+    });
 
-    expect(result.match).toBeNull();
-  });
+    test('does not resolve when the state was never compared', async () => {
+      const result = await resolveByStateOnly()(poolOf(EXACT_NAME));
 
-  test('does not resolve when more than one candidate has an exact name match', async () => {
-    const state = createInitialState(acmsRecord);
-    const first = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Ronald L. Larkin' })),
-      'test',
-    );
-    addScore(first, 'doesNameMatch', { pass: true, quality: 'exact' });
-    const second = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 't2', name: 'Ronald L. Larkin' })),
-      'test',
-    );
-    addScore(second, 'doesNameMatch', { pass: true, quality: 'exact' });
-
-    const result = await resolveBySoleExactNameInState()(state);
-
-    expect(result.match).toBeNull();
-  });
-
-  test('resolves the one exact-name candidate whose state does not contradict', async () => {
-    const state = createInitialState(acmsRecord);
-    const inState = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Ronald L. Larkin' })),
-      'test',
-    );
-    addScore(inState, 'doesNameMatch', { pass: true, quality: 'exact' });
-    addScore(inState, 'doesStateMatch', { pass: true });
-    const elsewhere = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 't2', name: 'Ronald L. Larkin' })),
-      'test',
-    );
-    addScore(elsewhere, 'doesNameMatch', { pass: true, quality: 'exact' });
-    addScore(elsewhere, 'doesStateMatch', { pass: false });
-
-    const result = await resolveBySoleExactNameInState()(state);
-
-    expect(result.match).toEqual({
-      trusteeId: 't1',
-      score: inState.scores,
-      resolvedBy: 'resolveBySoleExactNameInState',
+      expect(result.match).toBeNull();
     });
   });
 
-  test('does not resolve when two exact-name candidates both sit in the state', async () => {
-    const state = createInitialState(acmsRecord);
-    const first = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Ronald L. Larkin' })),
-      'test',
-    );
-    addScore(first, 'doesNameMatch', { pass: true, quality: 'exact' });
-    addScore(first, 'doesStateMatch', { pass: true });
-    const second = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 't2', name: 'Ronald L. Larkin' })),
-      'test',
-    );
-    addScore(second, 'doesNameMatch', { pass: true, quality: 'exact' });
-    addScore(second, 'doesStateMatch', { pass: true });
+  describe('resolveByNameOnly', () => {
+    test('resolves the only name-qualifying candidate when its name is exact and nothing contradicts it', async () => {
+      const result = await resolveByNameOnly()(poolOf(EXACT_NAME, NO_NAME));
 
-    const result = await resolveBySoleExactNameInState()(state);
-
-    expect(result.match).toBeNull();
-  });
-
-  // A real shape (name synthesized): the ACMS record carries an empty address and a "0" phone
-  // sentinel, so there is nothing to corroborate WITH - distinct from corroboration having been
-  // available and failed. Since this stage runs last, every resolver that could weigh real
-  // evidence has already declined.
-  test('resolves when the ACMS record has no contact data at all to corroborate with', async () => {
-    const state = await normalizeAcmsSourceName()(
-      createInitialState({ ...acmsRecord, legacy: { address1: '', phone: '0', fax: '0' } }),
-    );
-    const candidate = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Ronald L. Larkin' })),
-      'test',
-    );
-    scoreCandidate(state.sourceNormalized, candidate);
-
-    const result = await resolveBySoleExactNameInState()(state);
-
-    expect(result.match).toEqual({
-      trusteeId: 't1',
-      score: candidate.scores,
-      resolvedBy: 'resolveBySoleExactNameInState',
+      expect(result.match).toMatchObject({ trusteeId: 't1', resolvedBy: 'resolveByNameOnly' });
     });
-  });
 
-  test('does not resolve when the CAMS trustee itself has no contact data', async () => {
-    const state = createInitialState(acmsRecord);
-    const candidate = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Ronald L. Larkin' })),
-      'test',
+    test.each([
+      {
+        description: 'the phone',
+        score: { doesPhoneMatch: { pass: false, phoneDigitDistance: 6 } },
+      },
+      { description: 'the email', score: { doesEmailMatch: { pass: false } } },
+    ])(
+      'still resolves when $description does not match - a missing strong signal, not a contradiction',
+      async ({ score }) => {
+        const result = await resolveByNameOnly()(poolOf({ ...EXACT_NAME, ...score }));
+
+        expect(result.match).toMatchObject({ trusteeId: 't1', resolvedBy: 'resolveByNameOnly' });
+      },
     );
-    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'exact' });
-    addScore(candidate, 'doesCamsTrusteeHaveAddressAndPhone', { pass: false });
 
-    const result = await resolveBySoleExactNameInState()(state);
+    test.each([
+      { description: 'a second candidate also matches on name', pool: [EXACT_NAME, WEAK_NAME] },
+      { description: 'the name is not exact', pool: [STRONG_NAME] },
+      {
+        description: 'the state contradicts',
+        pool: [{ ...EXACT_NAME, doesStateMatch: { pass: false } }],
+      },
+      { description: 'the address contradicts', pool: [{ ...EXACT_NAME, ...address(10) }] },
+      {
+        description: 'the CAMS trustee has no address or phone',
+        pool: [{ ...EXACT_NAME, doesCamsTrusteeHaveAddressAndPhone: { pass: false } }],
+      },
+    ])('does not resolve when $description', async ({ pool }) => {
+      const result = await resolveByNameOnly()(poolOf(...pool));
 
-    expect(result.match).toBeNull();
-  });
-});
-
-describe('resolveByCityAndZipCode', () => {
-  const acmsRecord = makeDxtrTrustee({ fullName: GENERIC_ACMS_FULL_NAME });
-
-  test('resolves a sole nameScore=85 candidate when city and zip both agree', async () => {
-    const state = createInitialState(acmsRecord);
-    const candidate = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Moon' })),
-      'test',
-    );
-    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'strong' });
-    addScore(candidate, 'doesCityMatch', { pass: true });
-    addScore(candidate, 'doesZipCodeMatch', { pass: true });
-
-    const result = await resolveByCityAndZipCode()(state);
-
-    expect(result.match).toEqual({
-      trusteeId: 't1',
-      score: candidate.scores,
-      resolvedBy: 'resolveByCityAndZipCode',
+      expect(result.match).toBeNull();
     });
-  });
-
-  test('does not resolve when only one of city/zip agrees', async () => {
-    const state = createInitialState(acmsRecord);
-    const candidate = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Moon' })),
-      'test',
-    );
-    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'strong' });
-    addScore(candidate, 'doesCityMatch', { pass: false });
-    addScore(candidate, 'contactCorroborationAddress', { value: 3, threshold: 80, pass: false });
-
-    const result = await resolveByCityAndZipCode()(state);
-
-    expect(result.match).toBeNull();
-  });
-
-  // Real backtest finding (anonymized MI-03298): city and zip both agree even though state does
-  // not (a stale state field, or a zip code straddling a state line).
-  test('resolves when city and zip both agree even though state does not', async () => {
-    const state = createInitialState(acmsRecord);
-    const candidate = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Moon' })),
-      'test',
-    );
-    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'strong' });
-    addScore(candidate, 'doesStateMatch', { pass: false });
-    addScore(candidate, 'doesCityMatch', { pass: true });
-    addScore(candidate, 'doesZipCodeMatch', { pass: true });
-
-    const result = await resolveByCityAndZipCode()(state);
-
-    expect(result.match).toEqual({
-      trusteeId: 't1',
-      score: candidate.scores,
-      resolvedBy: 'resolveByCityAndZipCode',
-    });
-  });
-
-  test('does not resolve when no corroborating scorer ran at all', async () => {
-    const state = createInitialState(acmsRecord);
-    const candidate = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Moon' })),
-      'test',
-    );
-    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'strong' });
-
-    const result = await resolveByCityAndZipCode()(state);
-
-    expect(result.match).toBeNull();
-    expect(candidate.scores.resolveByCityAndZipCode).toBeUndefined();
-  });
-
-  test('does not resolve when the candidate never cleared the name threshold', async () => {
-    const state = createInitialState(acmsRecord);
-    const candidate = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Else' })),
-      'test',
-    );
-    addScore(candidate, 'doesNameMatch', { pass: false });
-    addScore(candidate, 'doesCityMatch', { pass: true });
-    addScore(candidate, 'doesZipCodeMatch', { pass: true });
-
-    const result = await resolveByCityAndZipCode()(state);
-
-    expect(result.match).toBeNull();
-  });
-
-  test("does not resolve when more than one candidate qualifies - not this stage's job", async () => {
-    const state = createInitialState(acmsRecord);
-    const first = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Moon' })),
-      'test',
-    );
-    addScore(first, 'doesNameMatch', { pass: true, quality: 'strong' });
-    addScore(first, 'doesCityMatch', { pass: true });
-    addScore(first, 'doesZipCodeMatch', { pass: true });
-    const second = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 't2', name: 'Someone Else Moon' })),
-      'test',
-    );
-    addScore(second, 'doesNameMatch', { pass: true, quality: 'strong' });
-    addScore(second, 'doesCityMatch', { pass: true });
-    addScore(second, 'doesZipCodeMatch', { pass: true });
-
-    const result = await resolveByCityAndZipCode()(state);
-
-    expect(result.match).toBeNull();
-  });
-});
-
-describe('resolveByStateAndCity', () => {
-  const acmsRecord = makeDxtrTrustee({ fullName: GENERIC_ACMS_FULL_NAME });
-
-  test('resolves when state and city both agree', async () => {
-    const state = createInitialState(acmsRecord);
-    const candidate = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Moon' })),
-      'test',
-    );
-    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'strong' });
-    addScore(candidate, 'doesStateMatch', { pass: true });
-    addScore(candidate, 'doesCityMatch', { pass: true });
-
-    const result = await resolveByStateAndCity()(state);
-
-    expect(result.match).toEqual({
-      trusteeId: 't1',
-      score: candidate.scores,
-      resolvedBy: 'resolveByStateAndCity',
-    });
-  });
-
-  // State agreement alone, with no city/zip/contact evidence at all, is deliberately NOT enough -
-  // a single-vote dominance case (backtested as genuinely weak evidence).
-  test('does not resolve on state agreement alone, with no other evidence at all', async () => {
-    const state = createInitialState(acmsRecord);
-    const candidate = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Moon' })),
-      'test',
-    );
-    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'strong' });
-    addScore(candidate, 'doesStateMatch', { pass: true });
-
-    const result = await resolveByStateAndCity()(state);
-
-    expect(result.match).toBeNull();
-  });
-
-  test('does not resolve when the candidate never cleared the name threshold', async () => {
-    const state = createInitialState(acmsRecord);
-    const candidate = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Else' })),
-      'test',
-    );
-    addScore(candidate, 'doesNameMatch', { pass: false });
-    addScore(candidate, 'doesStateMatch', { pass: true });
-    addScore(candidate, 'doesCityMatch', { pass: true });
-
-    const result = await resolveByStateAndCity()(state);
-
-    expect(result.match).toBeNull();
-  });
-
-  test("does not resolve when more than one candidate qualifies - not this stage's job", async () => {
-    const state = createInitialState(acmsRecord);
-    const first = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Moon' })),
-      'test',
-    );
-    addScore(first, 'doesNameMatch', { pass: true, quality: 'strong' });
-    addScore(first, 'doesStateMatch', { pass: true });
-    addScore(first, 'doesCityMatch', { pass: true });
-    const second = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 't2', name: 'Someone Else Moon' })),
-      'test',
-    );
-    addScore(second, 'doesNameMatch', { pass: true, quality: 'strong' });
-    addScore(second, 'doesStateMatch', { pass: true });
-    addScore(second, 'doesCityMatch', { pass: true });
-
-    const result = await resolveByStateAndCity()(state);
-
-    expect(result.match).toBeNull();
-  });
-});
-
-describe('resolveByZipCode', () => {
-  const acmsRecord = makeDxtrTrustee({ fullName: GENERIC_ACMS_FULL_NAME });
-
-  test('resolves on a matching zip code alone, with no state/city evidence at all', async () => {
-    const state = createInitialState(acmsRecord);
-    const candidate = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Moon' })),
-      'test',
-    );
-    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'strong' });
-    addScore(candidate, 'doesZipCodeMatch', { pass: true });
-
-    const result = await resolveByZipCode()(state);
-
-    expect(result.match).toEqual({
-      trusteeId: 't1',
-      score: candidate.scores,
-      resolvedBy: 'resolveByZipCode',
-    });
-  });
-
-  // A matching zip is trusted alone even when state actively disagrees - ACMS commonly has a
-  // stale/incorrect state field while zip (sourced separately) is still accurate.
-  test('resolves on a matching zip code even when state disagrees', async () => {
-    const state = createInitialState(acmsRecord);
-    const candidate = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Moon' })),
-      'test',
-    );
-    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'strong' });
-    addScore(candidate, 'doesStateMatch', { pass: false });
-    addScore(candidate, 'doesZipCodeMatch', { pass: true });
-
-    const result = await resolveByZipCode()(state);
-
-    expect(result.match).toEqual({
-      trusteeId: 't1',
-      score: candidate.scores,
-      resolvedBy: 'resolveByZipCode',
-    });
-  });
-
-  test('does not resolve when zip does not match', async () => {
-    const state = createInitialState(acmsRecord);
-    const candidate = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Moon' })),
-      'test',
-    );
-    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'strong' });
-    addScore(candidate, 'doesZipCodeMatch', { pass: false });
-
-    const result = await resolveByZipCode()(state);
-
-    expect(result.match).toBeNull();
-  });
-
-  test('does not resolve when the candidate never cleared the name threshold', async () => {
-    const state = createInitialState(acmsRecord);
-    const candidate = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Else' })),
-      'test',
-    );
-    addScore(candidate, 'doesNameMatch', { pass: false });
-    addScore(candidate, 'doesZipCodeMatch', { pass: true });
-
-    const result = await resolveByZipCode()(state);
-
-    expect(result.match).toBeNull();
-  });
-
-  test("does not resolve when more than one candidate qualifies - not this stage's job", async () => {
-    const state = createInitialState(acmsRecord);
-    const first = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Moon' })),
-      'test',
-    );
-    addScore(first, 'doesNameMatch', { pass: true, quality: 'strong' });
-    addScore(first, 'doesZipCodeMatch', { pass: true });
-    const second = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 't2', name: 'Someone Else Moon' })),
-      'test',
-    );
-    addScore(second, 'doesNameMatch', { pass: true, quality: 'strong' });
-    addScore(second, 'doesZipCodeMatch', { pass: true });
-
-    const result = await resolveByZipCode()(state);
-
-    expect(result.match).toBeNull();
-  });
-});
-
-describe('resolveByAddress', () => {
-  const acmsRecord = makeDxtrTrustee({ fullName: GENERIC_ACMS_FULL_NAME });
-
-  test('resolves a sole nameScore=85 candidate when address corroborates', async () => {
-    const state = createInitialState(acmsRecord);
-    const candidate = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Moon' })),
-      'test',
-    );
-    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'strong' });
-    addScore(candidate, 'contactCorroborationAddress', { value: 90, threshold: 80, pass: true });
-
-    const result = await resolveByAddress()(state);
-
-    expect(result.match).toEqual({
-      trusteeId: 't1',
-      score: candidate.scores,
-      resolvedBy: 'resolveByAddress',
-    });
-  });
-
-  test('does not resolve when address does not corroborate', async () => {
-    const state = createInitialState(acmsRecord);
-    const candidate = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Moon' })),
-      'test',
-    );
-    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'strong' });
-    addScore(candidate, 'contactCorroborationAddress', { value: 3, threshold: 80, pass: false });
-
-    const result = await resolveByAddress()(state);
-
-    expect(result.match).toBeNull();
-  });
-});
-
-describe('resolveByPhone', () => {
-  const acmsRecord = makeDxtrTrustee({ fullName: GENERIC_ACMS_FULL_NAME });
-
-  test('resolves a sole nameScore=85 candidate when phone corroborates', async () => {
-    const state = createInitialState(acmsRecord);
-    const candidate = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Moon' })),
-      'test',
-    );
-    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'strong' });
-    addScore(candidate, 'doesPhoneMatch', { pass: true, quality: 'exact' });
-
-    const result = await resolveByPhone()(state);
-
-    expect(result.match).toEqual({
-      trusteeId: 't1',
-      score: candidate.scores,
-      resolvedBy: 'resolveByPhone',
-    });
-  });
-
-  test('does not resolve on a strong (typo) phone match', async () => {
-    const state = createInitialState(acmsRecord);
-    const candidate = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Moon' })),
-      'test',
-    );
-    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'strong' });
-    addScore(candidate, 'doesPhoneMatch', { pass: true, quality: 'strong', phoneDigitDistance: 1 });
-
-    const result = await resolveByPhone()(state);
-
-    expect(result.match).toBeNull();
-  });
-
-  test('does not resolve when phone does not corroborate', async () => {
-    const state = createInitialState(acmsRecord);
-    const candidate = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Moon' })),
-      'test',
-    );
-    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'strong' });
-    addScore(candidate, 'doesPhoneMatch', { pass: false, phoneDigitDistance: 4 });
-
-    const result = await resolveByPhone()(state);
-
-    expect(result.match).toBeNull();
-  });
-});
-
-describe('resolveByEmailAddress', () => {
-  const acmsRecord = makeDxtrTrustee({ fullName: GENERIC_ACMS_FULL_NAME });
-
-  test('resolves a sole nameScore=85 candidate when email corroborates', async () => {
-    const state = createInitialState(acmsRecord);
-    const candidate = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Moon' })),
-      'test',
-    );
-    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'strong' });
-    addScore(candidate, 'doesEmailMatch', { pass: true });
-
-    const result = await resolveByEmailAddress()(state);
-
-    expect(result.match).toEqual({
-      trusteeId: 't1',
-      score: candidate.scores,
-      resolvedBy: 'resolveByEmailAddress',
-    });
-  });
-
-  test('does not resolve when email does not corroborate', async () => {
-    const state = createInitialState(acmsRecord);
-    const candidate = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Moon' })),
-      'test',
-    );
-    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'strong' });
-    addScore(candidate, 'doesEmailMatch', { pass: false });
-
-    const result = await resolveByEmailAddress()(state);
-
-    expect(result.match).toBeNull();
-  });
-});
-
-describe('resolveBySoleFuzzyNameMatchAndState', () => {
-  const acmsRecord = makeDxtrTrustee({ fullName: GENERIC_ACMS_FULL_NAME });
-
-  // This stage trusts state agreement alone, so an exact-name candidate anywhere in the pool
-  // outranks anything it could conclude - resolveBySoleExactNameInState runs after it and would
-  // otherwise never get the chance.
-  test('declines when an exact-name candidate is in the pool', async () => {
-    const state = createInitialState(acmsRecord);
-    const fuzzy = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Moon' })),
-      'test',
-    );
-    addScore(fuzzy, 'doesNameMatch', { pass: true, quality: 'strong' });
-    addScore(fuzzy, 'doesStateMatch', { pass: true });
-    const exact = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 't2', name: 'Aldric A. Moon' })),
-      'test',
-    );
-    addScore(exact, 'doesNameMatch', { pass: true, quality: 'exact' });
-
-    const result = await resolveBySoleFuzzyNameMatchAndState()(state);
-
-    expect(result.match).toBeNull();
-  });
-
-  test('resolves a sole strong-name candidate on state agreement alone, with no city/zip/contact evidence', async () => {
-    const state = createInitialState(acmsRecord);
-    const candidate = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Moon' })),
-      'test',
-    );
-    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'strong' });
-    addScore(candidate, 'doesStateMatch', { pass: true });
-    addScore(candidate, 'doesCityMatch', { pass: false });
-    addScore(candidate, 'doesZipCodeMatch', { pass: false });
-
-    const result = await resolveBySoleFuzzyNameMatchAndState()(state);
-
-    expect(result.match).toEqual({
-      trusteeId: 't1',
-      score: candidate.scores,
-      resolvedBy: 'resolveBySoleFuzzyNameMatchAndState',
-    });
-  });
-
-  test("does not resolve a sole exact-name candidate - that is resolveBySoleExactNameInState's job", async () => {
-    const state = createInitialState(acmsRecord);
-    const candidate = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Aldric A. Moon' })),
-      'test',
-    );
-    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'exact' });
-    addScore(candidate, 'doesStateMatch', { pass: true });
-
-    const result = await resolveBySoleFuzzyNameMatchAndState()(state);
-
-    expect(result.match).toBeNull();
-  });
-
-  test('does not resolve a weak-name candidate on state agreement alone', async () => {
-    const state = createInitialState(acmsRecord);
-    const candidate = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Aldric A. Moone' })),
-      'test',
-    );
-    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'weak' });
-    addScore(candidate, 'doesStateMatch', { pass: true });
-
-    const result = await resolveBySoleFuzzyNameMatchAndState()(state);
-
-    expect(result.match).toBeNull();
-  });
-
-  test('does not resolve when state disagrees', async () => {
-    const state = createInitialState(acmsRecord);
-    const candidate = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Moon' })),
-      'test',
-    );
-    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'strong' });
-    addScore(candidate, 'doesStateMatch', { pass: false });
-
-    const result = await resolveBySoleFuzzyNameMatchAndState()(state);
-
-    expect(result.match).toBeNull();
-  });
-
-  test('does not resolve when state was never compared at all', async () => {
-    const state = createInitialState(acmsRecord);
-    const candidate = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Moon' })),
-      'test',
-    );
-    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'strong' });
-
-    const result = await resolveBySoleFuzzyNameMatchAndState()(state);
-
-    expect(result.match).toBeNull();
-  });
-
-  test('does not resolve when the candidate never cleared the name threshold', async () => {
-    const state = createInitialState(acmsRecord);
-    const candidate = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Else' })),
-      'test',
-    );
-    addScore(candidate, 'doesNameMatch', { pass: false });
-    addScore(candidate, 'doesStateMatch', { pass: true });
-
-    const result = await resolveBySoleFuzzyNameMatchAndState()(state);
-
-    expect(result.match).toBeNull();
-  });
-
-  test("does not resolve when more than one candidate qualifies - not this stage's job", async () => {
-    const state = createInitialState(acmsRecord);
-    const first = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Someone Moon' })),
-      'test',
-    );
-    addScore(first, 'doesNameMatch', { pass: true, quality: 'strong' });
-    addScore(first, 'doesStateMatch', { pass: true });
-    const second = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 't2', name: 'Someone Else Moon' })),
-      'test',
-    );
-    addScore(second, 'doesNameMatch', { pass: true, quality: 'strong' });
-    addScore(second, 'doesStateMatch', { pass: true });
-
-    const result = await resolveBySoleFuzzyNameMatchAndState()(state);
-
-    expect(result.match).toBeNull();
   });
 });
