@@ -62,7 +62,7 @@
     "@tiptap/pm": "3.31.3",
     "@tiptap/react": "3.31.3",
     "@types/jsdom": "30.0.0",
-    "@types/node": "24.13.4",
+    "@types/node": "24.13.5",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "@uswds/uswds": "3.14.0",
@@ -71,7 +71,7 @@
     "launchdarkly-react-client-sdk": "3.9.4",
     "react": "19.3.0",
     "react-dom": "19.3.0",
-    "react-router-dom": "7.18.3"
+    "react-router-dom": "7.18.4"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",
@@ -96,8 +96,8 @@
     "eslint-plugin-react-hooks": "7.1.1",
     "eslint-plugin-testing-library": "7.16.2",
     "jsdom": "30.0.1",
-    "prettier": "3.9.6",
-    "react-router": "8.3.1",
+    "prettier": "3.9.7",
+    "react-router": "8.4.0",
     "sass": "1.104.1",
     "sass-embedded": "1.104.1",
     "typescript": "6.0.3",
