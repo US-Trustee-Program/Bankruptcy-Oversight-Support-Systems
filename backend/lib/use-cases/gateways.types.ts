@@ -229,10 +229,9 @@ export interface RuntimeStateRepository<T extends RuntimeState = RuntimeState>
   ): Promise<number>;
   /**
    * Atomically sets a single field (dotted-path notation supported, e.g. 'someMap.someKey') via
-   * Mongo $set, upserting the document if it doesn't exist yet. Unlike a read-modify-write of
-   * the whole document, this is safe under concurrent writers that only ever touch distinct
-   * fields/keys of the same document (e.g. sync-acms-professional-ids.ts's per-group bookmark
-   * map, where each group only ever sets its own key).
+   * Mongo $set, upserting the document if it doesn't exist yet. Safe for writers that only touch
+   * distinct fields of the same document (e.g. sync-acms-professional-ids.ts's per-group bookmark
+   * map, where each group only ever sets its own group key).
    */
   setField(documentType: RuntimeStateDocumentType, path: string, value: unknown): Promise<void>;
 }
@@ -280,9 +279,9 @@ export type AcmsCaseAppointmentRawRecord = {
 
 /**
  * A single ACMS trustee professional record from CMMPR, keyed on the compound
- * `(GROUP_DESIGNATOR, PROF_CODE)` professional ID and carrying the name/state
+ * `(GROUP_DESIGNATOR, UST_PROF_CODE)` professional ID and carrying the name/state
  * fields needed to match the record back to a CAMS trustee. Used by the
- * inverse (ACMS → CAMS) professional-ID backfill pass.
+ * inverse (ACMS → CAMS) professional-ID backfill in migrate-trustees.ts.
  */
 export type AcmsTrusteeProfessionalRecord = {
   acmsProfessionalId: string;
@@ -295,9 +294,7 @@ export type AcmsTrusteeProfessionalRecord = {
  * A single ACMS trustee professional record from CMMPR carrying the full
  * demographic field set needed to build a fingerprint/variant comparable to a
  * DXTR-sourced trustee record (see `buildAcmsVariant` in
- * `acms-trustee-variant.helpers.ts`). Used by the CMMPR-driven professional-ID
- * sync (CAMS-876), distinct from `AcmsTrusteeProfessionalRecord`'s
- * name/state-only shape used by the ATS-driven backfill pass.
+ * `acms-trustee-variant.helpers.ts`). Used by sync-acms-professional-ids.ts.
  */
 export type AcmsTrusteeProfessionalDetailRecord = {
   acmsProfessionalId: string;
@@ -361,8 +358,8 @@ export interface AcmsGateway {
   /**
    * Return the full set of ACMS trustee professional records from CMMPR
    * (PROF_TYPE = 'TR'), independent of ATS, keyed on the compound
-   * `(GROUP_DESIGNATOR, PROF_CODE)` professional ID. Drives the inverse
-   * (ACMS → CAMS) professional-ID backfill pass.
+   * `(GROUP_DESIGNATOR, UST_PROF_CODE)` professional ID. Drives the inverse
+   * (ACMS → CAMS) professional-ID backfill in migrate-trustees.ts.
    */
   getAllTrusteeProfessionalRecords(
     context: ApplicationContext,
@@ -383,9 +380,8 @@ export interface AcmsGateway {
   /**
    * Return the distinct division+chapter combinations a single ACMS
    * professional currently holds an active (undisposed) CMMAP appointment
-   * in. Called on-demand for professionals that fail to auto-link, to decide
-   * whether a verification record is warranted — not part of the hot-path
-   * paged CMMPR query, since most professionals auto-link and never need it.
+   * in. Called only for unlinked outcomes, to decide whether to persist the
+   * TrusteeProfessionalId.
    */
   getActiveAppointmentsForProfessional(
     context: ApplicationContext,
@@ -889,10 +885,7 @@ export type TrusteePetitionSyncState = RuntimeState & {
 /**
  * Sync cursor for sync-acms-professional-ids.ts. UST_PROF_CODE is only monotonically
  * increasing WITHIN a GROUP_DESIGNATOR, never globally, so the bookmark is a per-group map
- * rather than a single value. Concurrent handlePage invocations for different groups only ever
- * touch their own key in this map — see RuntimeStateRepository.setField, which updates a single
- * dotted-path field atomically (Mongo $set) rather than a read-modify-write of the whole
- * document, so two groups finishing at the same time can never clobber each other's bookmark.
+ * rather than a single value. Each group's bookmark is written with RuntimeStateRepository.setField.
  */
 export type AcmsProfessionalIdSyncState = RuntimeState & {
   documentType: 'ACMS_PROFESSIONAL_ID_SYNC_STATE';
@@ -1026,37 +1019,26 @@ export interface UserGroupsRepository extends Releasable {
 export interface TrusteeProfessionalIdsRepository extends Releasable {
   /**
    * Writes a TrusteeProfessionalId for any pipeline outcome (linked, no-match, ambiguous,
-   * skipped, error, or conflict) - camsTrusteeId is the resolved trusteeId on a linked
-   * disposition, or the ACMS variant's fingerprint otherwise, so every outcome lands in this
-   * collection keyed for lookup/healing. Does not enforce uniqueness on (camsTrusteeId,
-   * acmsProfessionalId): the same ACMS id can accumulate multiple non-linked records across
-   * sync runs as its fingerprint or disposition changes.
+   * skipped, error, or conflict), keyed by (camsTrusteeId, acmsProfessionalId); the same ACMS id
+   * accumulates separate records when its camsTrusteeId (fingerprint or resolved trustee) changes
+   * between runs.
    */
   upsertProfessionalId(
     document: Omit<TrusteeProfessionalId, keyof Auditable | keyof Identifiable>,
     user: CamsUserReference,
   ): Promise<TrusteeProfessionalId>;
   /**
-   * The following finders only return a linked, non-conflicting disposition - callers
-   * resolving real trustee<->ACMS links should never see a placeholder record keyed by
-   * fingerprint. See hasConflictByAcmsProfessionalId for the one caller that specifically needs to
-   * know about a 'conflict'-disposition record instead.
+   * The following finders only return disposition 'linked'. See hasConflictByAcmsProfessionalId
+   * for the one caller that needs to know about a 'conflict'-disposition record instead.
    *
-   * All three return TrusteeProfessionalIdSummary, not the full TrusteeProfessionalId - the
-   * `evidence` property (a full serialized pipeline state, one per candidate considered) is
-   * excluded at the query level, not merely by TypeScript's type, so its payload never crosses the
-   * wire for the common case of resolving or listing links. A caller that genuinely needs the
-   * evidence for one specific record should read it directly (mongosh/Compass today; a dedicated
-   * getEvidence-style method can be added once a real caller needs one - see cams-204uj).
+   * All three return TrusteeProfessionalIdSummary: `evidence` is excluded at the query level.
    */
   findAll(): Promise<TrusteeProfessionalIdSummary[]>;
   findByCamsTrusteeId(camsTrusteeId: string): Promise<TrusteeProfessionalIdSummary[]>;
   findByAcmsProfessionalId(acmsProfessionalId: string): Promise<TrusteeProfessionalIdSummary[]>;
   /**
-   * Whether this ACMS professional ID has a 'conflict'-disposition record - the one exception to
-   * the "linked, non-conflicting only" rule above, for a caller (heal-sentinel-case-
-   * appointments.ts) that needs to distinguish "never linked" from "flagged as a data-integrity
-   * conflict" rather than treating both as the same "left in place for the next attempt" outcome.
+   * Whether this ACMS professional ID has a 'conflict'-disposition record, for a caller
+   * (heal-sentinel-case-appointments.ts) that distinguishes "never linked" from "conflict".
    */
   hasConflictByAcmsProfessionalId(acmsProfessionalId: string): Promise<boolean>;
   deleteByCamsTrusteeId(camsTrusteeId: string): Promise<number>;

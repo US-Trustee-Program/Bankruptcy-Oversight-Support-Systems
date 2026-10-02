@@ -26,29 +26,10 @@ import {
 const ACMS_PROFESSIONAL_ID_SYNC_STATE = 'ACMS_PROFESSIONAL_ID_SYNC_STATE' as const;
 
 /**
- * TEMPORARY kill switch for processResolvedNameMatch's TrusteeVariation write-back - static, not
- * a runtime/LaunchDarkly flag, since this is expected to come back out soon once the two problems
- * below are fixed, not stay configurable long-term.
- *
- * An adversarial review of the PR that introduced the write-back found it unconditionally correct
- * only in isolation - two real problems surfaced when checked against the real 2026-09-25 staging
- * export:
- *   1. 405 distinct variant strings in that export are shared by 2+ auto-linked ACMS professional
- *      IDs (the same trustee filed under multiple group/office codes - a documented real ACMS
- *      pattern). Within a single sync run, the second ID sharing a variant would hit the
- *      variation the first just wrote (processFingerprintMatch, checked BEFORE the matching
- *      pipeline runs) and resolve via createLinkedStateWithoutEvidence - no candidates, no score,
- *      resolvedBy: 'linkedWithoutPipelineEvidence' - silently losing the exact evidence graph
- *      this write-back was meant to preserve, for 452 records in that export alone.
- *   2. purgeAll deletes trustee-professional-ids and the sync bookmark, but never touches the
- *      variation collection. A future fix to the matching/scoring pipeline, applied via a purge +
- *      full re-sync, would have every previously name-matched record short-circuit on its stale
- *      variation instead of being re-evaluated against the fixed logic - permanently locking in
- *      whatever the pipeline decided under the old, buggy version.
- *
- * The write-back itself is still wanted (see processResolvedNameMatch's own doc comment) - this
- * flag exists to keep the code path unreachable until both problems are fixed, not to revert the
- * feature.
+ * Disabled: when true, processResolvedNameMatch writes a TrusteeVariation, which (1) makes a later
+ * ACMS id in the same run with the same variant short-circuit through processFingerprintMatch and
+ * lose its pipeline evidence, and (2) survives purgeAll, so a purge + re-sync short-circuits on
+ * variations written by earlier matching logic. Enable only after both are addressed.
  */
 const WRITE_ACMS_TRUSTEE_VARIATIONS = false;
 
@@ -67,10 +48,7 @@ function createDeps(context: ApplicationContext) {
 type SyncAcmsProfessionalIdsDeps = ReturnType<typeof createDeps>;
 
 /**
- * Enumerates every GROUP_DESIGNATOR the CMMPR paged query needs to be called for, by reusing
- * CAMS's existing offices data (UstpGroup.groupDesignator, sourced from DXTR's
- * AO_GRP_DES/AO_CS_DIV.GRP_DES — itself a live mirror of ACMS's CMMGD group list) rather than
- * adding a new ACMS query solely to enumerate groups.
+ * Lists the distinct group designators from the CAMS offices data, one CMMPR paged query per group.
  */
 async function getGroupDesignators(deps: SyncAcmsProfessionalIdsDeps): Promise<string[]> {
   const offices = await deps.officesGateway.getOffices(deps.context);
@@ -117,12 +95,8 @@ async function resolveSyncState(
 }
 
 /**
- * Best-effort bookmark persistence for a single group — errors are logged, not thrown,
- * mirroring sync-trustee-case-appointments.ts's storeRuntimeState (a failed bookmark advance
- * should not fail an otherwise-successful sync run; the next run simply resumes from the prior
- * bookmark). Uses an atomic dotted-path $set (RuntimeStateRepository.setField) rather than a
- * read-modify-write of the whole shared document, so two groups finishing concurrently can
- * never clobber each other's bookmark.
+ * Best-effort bookmark persistence for a single group: errors are logged, not thrown, so the next
+ * run resumes from the prior bookmark. Sets only this group's key via RuntimeStateRepository.setField.
  */
 async function storeRuntimeState(
   deps: SyncAcmsProfessionalIdsDeps,
@@ -152,10 +126,8 @@ function findByVariant<T extends { variant: string }>(bucket: T[], variant: stri
 }
 
 /**
- * A genuine conflict is a different CAMS trustee already holding this ACMS professional ID -
- * looked up directly against prior writes rather than inferred from a unique-index violation,
- * since acmsProfessionalId -> camsTrusteeId is not enforced as globally unique at the database
- * layer. Only a prior linked (non-conflicting) record counts.
+ * Returns the camsTrusteeId of an existing linked record for this ACMS id that belongs to a
+ * different trustee, if any.
  */
 async function findExistingConflict(
   deps: SyncAcmsProfessionalIdsDeps,
@@ -168,9 +140,7 @@ async function findExistingConflict(
 }
 
 /**
- * Checks the TRUSTEE_VARIATION fingerprint bucket for a match (the same bucket
- * sync-trustee-case-appointments.ts populates from DXTR trustee events — fingerprints computed
- * from equivalent demographic data collide regardless of source).
+ * Looks up the TrusteeVariation fingerprint bucket for an entry with this exact variant.
  */
 async function processFingerprintMatch(
   deps: SyncAcmsProfessionalIdsDeps,
@@ -186,12 +156,7 @@ async function processFingerprintMatch(
 }
 
 /**
- * Composes the legacy (ACMS-side address/phone/fax) block the same way
- * cases.dxtr.gateway.ts's dxtrTrustee construction composes DXTR's equivalent - reusing the same
- * formatCityStateZipCountry/formatAcmsZip helpers buildAcmsVariant already uses for the persisted
- * variant string, so this stays in sync with that composition rather than drifting from it.
- * Returns undefined (not an all-undefined object) when the record has no address/phone/fax data
- * at all, mirroring AcmsTrusteeProfessional.legacy's own optionality.
+ * Projects CMMPR address/phone/fax into AcmsTrusteeProfessional.legacy; undefined when all are empty.
  */
 function toAcmsLegacy(
   record: AcmsTrusteeProfessionalDetailRecord,
@@ -221,14 +186,8 @@ function toAcmsLegacy(
 }
 
 /**
- * Faithful, near-1:1 projection of a CMMPR record - deliberately does NOT recover/strip/split
- * anything (see normalizeAcmsSourceName in trustee-match-pipeline-stages.ts for that logic).
- * firstName/middleName/lastName here are CMMPR's raw PROF_FIRST_NAME/PROF_MI/PROF_LAST_NAME
- * values, exactly as ACMS recorded them, including any administrative markers or data-quality
- * corruption - the pipeline's NORMALIZE stage is the only place that recovers a usable name from
- * them, writing its result to state.sourceNormalized so both the raw and normalized forms stay
- * independently visible in the persisted state graph, rather than the recovered name silently
- * becoming the only name any later stage or reviewer can see.
+ * Projects raw CMMPR name fields unchanged; name recovery happens only in the pipeline's
+ * normalizeAcmsSourceName stage (written to sourceNormalized).
  */
 function toAcmsTrusteeProfessional(
   record: AcmsTrusteeProfessionalDetailRecord,
@@ -246,15 +205,8 @@ function toAcmsTrusteeProfessional(
 }
 
 /**
- * Runs the ACMS-sourced record through runTrusteeMatchPipeline, the same pipeline instantiation
- * DXTR trustee-appointment matching uses (see trustee-match-pipeline-orchestrator.ts). A transient
- * pipeline error (state.error set to a TooManyRequestsError/GatewayTimeoutError) is rethrown here
- * rather than absorbed - the caller (processOneRecord, then handlePage) needs the throw to reach
- * its existing page-level retry-from-original-bookmark handling, since nothing about this record
- * caused the failure and a retry with a fresh pipeline run may well succeed. Any other outcome
- * (a resolved match, a skip, a terminal error, or an unresolved candidate pool) returns normally -
- * the caller reads state.match/state.skip/state.error/state.candidates directly rather than a
- * separate summary type.
+ * Rethrows a transient pipeline error so handlePage's retry re-runs the page from its original
+ * bookmark; other outcomes return the serialized state.
  */
 async function processNameMatch(
   deps: SyncAcmsProfessionalIdsDeps,
@@ -271,10 +223,7 @@ async function processNameMatch(
 }
 
 /**
- * The active-appointment gate for the no-match/ambiguous outcomes (conflict always writes, see
- * writeErroredProfessionalId's caller). Zero active CMMAP appointments for this professional
- * means there's no urgency to resolve their identity right now, so nothing is written; one or
- * more means an errored professional-id record is always written.
+ * Whether the professional holds at least one active (undisposed) CMMAP appointment.
  */
 async function hasActiveAppointments(
   deps: SyncAcmsProfessionalIdsDeps,
@@ -291,13 +240,9 @@ async function hasActiveAppointments(
 }
 
 /**
- * Writes one TrusteeProfessionalId, composed directly from a TrusteeSerializedState, keyed by
- * camsTrusteeId - the resolved trusteeId on a linked disposition, or the ACMS variant's
- * fingerprint otherwise. conflictingTrusteeId/disposition override, when set, replace the
- * state-derived disposition (see findExistingConflict's caller): a match that collides with an
- * existing, differently-owned link is a data-integrity problem, not a clean auto-link.
- * suspectDuplicateCamsTrustee is independent of disposition - see its own doc comment on
- * TrusteeProfessionalId.
+ * Upserts one TrusteeProfessionalId keyed by the matched trusteeId, else the variant fingerprint.
+ * A non-empty conflictingTrusteeId forces disposition 'conflict'. suspectDuplicateCamsTrustee is
+ * computed only for 'ambiguous'.
  */
 async function writeProfessionalId(
   deps: SyncAcmsProfessionalIdsDeps,
@@ -327,11 +272,8 @@ async function writeProfessionalId(
 }
 
 /**
- * Wipes all existing professional ID mappings AND deletes the sync bookmark document — used by
- * the purge StartMessage flag for a genuine full reset. Deleting the bookmark, rather than merely
- * bypassing it (see resolveSyncState's own purge parameter, which still needs its own separate
- * per-group propagation — see PageMessage.purge in the function app), means there is nothing
- * stale left in the runtime-state collection for a later, non-purge run to accidentally read.
+ * Deletes all professional-id records and the sync bookmark document. Does not touch
+ * TrusteeVariation.
  */
 async function purgeAll(deps: SyncAcmsProfessionalIdsDeps): Promise<void> {
   await deps.professionalIdsRepo.deleteAll();
@@ -349,16 +291,9 @@ type ProcessOneRecordOutcome =
     };
 
 /**
- * The full per-record decision tree: fingerprint match first (cheapest real lookup, most
- * confident), then on a miss, the real matching pipeline - which itself detects an
- * administrative placeholder (see skipAdministrativePlaceholder in
- * trustee-match-pipeline-stages.ts) as its own first stage, rather than this function checking
- * for one beforehand. A resolved match that collides with a different trustee already holding
- * this ACMS id is reported as a conflict, always written (bypassing the active-appointment gate -
- * a data-integrity problem is always worth recording). Every other outcome (no-match, ambiguous,
- * skipped, terminal error) routes through the active-appointment gate identically, so each
- * carries the same evidence-persistence guarantee. Returns a summary outcome so the caller
- * (handlePage) can aggregate per-page telemetry.
+ * Per-record order: fingerprint match, then the matching pipeline, then a conflict check on any
+ * resolved match. A conflict bypasses the active-appointment gate; every other unlinked outcome goes
+ * through applyActiveAppointmentGate.
  */
 async function processOneRecord(
   deps: SyncAcmsProfessionalIdsDeps,
@@ -432,19 +367,7 @@ async function processResolvedNameMatch(
     return { kind: 'conflict', via: 'name' };
   }
 
-  // Records this variant's fingerprint as "encountered" so a FUTURE sync carrying the exact same
-  // demographic shape (this dataflow re-running, or sync-trustee-case-appointments.ts reading the
-  // same shared TRUSTEE_VARIATION fingerprint bucket - see processFingerprintMatch's own doc
-  // comment) can short-circuit straight to auto-link instead of re-running the full matching/
-  // scoring pipeline. Only reached on a fingerprint MISS (processOneRecord's own control flow -
-  // this function never runs when processFingerprintMatch already found a bucket hit), so there is
-  // no existing variation for this exact fingerprint+variant pair to duplicate. Mirrors
-  // sync-trustee-case-appointments.ts's autoLinkTrustee, which does the same thing for a
-  // DXTR-sourced match.
-  //
-  // Gated by WRITE_ACMS_TRUSTEE_VARIATIONS (see its own doc comment) - disabled by default until
-  // the within-run duplicate-variant and purgeAll-never-clears-ACMS-variations problems it names
-  // are fixed.
+  // See WRITE_ACMS_TRUSTEE_VARIATIONS.
   if (WRITE_ACMS_TRUSTEE_VARIATIONS) {
     await deps.variationRepo.createVariation(
       createAuditRecord(
@@ -464,9 +387,8 @@ async function processResolvedNameMatch(
 }
 
 /**
- * Zero active CMMAP appointments for this professional means there's no urgency to resolve their
- * identity right now, so nothing is written; one or more means the pipeline's evidence is always
- * written, regardless of outcome (no-match, ambiguous, or a terminal pipeline error).
+ * Writes the record only when the professional has an active CMMAP appointment; applies to
+ * no-match, ambiguous, skipped and error outcomes.
  */
 async function applyActiveAppointmentGate(
   deps: SyncAcmsProfessionalIdsDeps,
@@ -484,6 +406,7 @@ async function applyActiveAppointmentGate(
   return 'written';
 }
 
+/** Use-case operations for the ACMS professional-id sync dataflow. */
 const SyncAcmsProfessionalIds = {
   createDeps,
   getGroupDesignators,
