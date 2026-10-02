@@ -1,3 +1,5 @@
+@import '@/lib/components/uswds/card-mixins';
+
 @mixin trustee-card-styles {
   width: 19.25rem;
   margin-bottom: 0;
@@ -14,13 +16,5 @@
 }
 
 @mixin trustee-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 0.65rem;
-
-  h4 {
-    margin: 0;
-    font-weight: bold;
-  }
+  @include card-header-with-action;
 }

@@ -7,7 +7,7 @@ describe('trustees-comprehensive scenario', () => {
     generateCaseId: vi.fn(),
   };
 
-  test('generates 32 trustees and 37 appointments', async () => {
+  test('generates 35 trustees and 43 appointments', async () => {
     const ops = await generate(mockContext);
 
     expect(ops).toHaveLength(2);
@@ -16,12 +16,17 @@ describe('trustees-comprehensive scenario', () => {
     const appointmentsOp = ops.find((op) => op.collectionOrTable === 'trustee-appointments');
 
     expect(trusteesOp?.db).toBe('cams');
-    expect(trusteesOp?.data).toHaveLength(32);
+    expect(trusteesOp?.data).toHaveLength(35);
 
-    // 32 single-court trustees + Patricia Manhattan's 5 extra cross-court
-    // appointments (CA Eastern, CA Northern, ID, IA Northern, IA Southern) = 37.
+    // 35 single-court trustees + Patricia Manhattan's 5 extra cross-court
+    // appointments (CA Eastern, CA Northern, ID, IA Northern, IA Southern) +
+    // Olivia Ashworth's 1 extra appointment (active Ch11 case-by-case
+    // alongside her inactive one) + Marcus Whitfield's 1 extra appointment
+    // (active Ch7 Elected alongside his inactive one) + Derek Pemberton's 1
+    // extra appointment (Ch11 Subchapter V Pool alongside his Out of Pool
+    // one) = 43.
     expect(appointmentsOp?.db).toBe('cams');
-    expect(appointmentsOp?.data).toHaveLength(37);
+    expect(appointmentsOp?.data).toHaveLength(43);
   });
 
   test('all trustees have documentType TRUSTEE', async () => {
@@ -58,28 +63,29 @@ describe('trustees-comprehensive scenario', () => {
       expect(appt.documentType).toBe('TRUSTEE_APPOINTMENT');
       expect(appt.trusteeId).toBeTruthy();
       expect(appt.chapter).toBeTruthy();
-      expect(appt.appointmentType).toMatch(/^(panel|standing|off-panel|case-by-case|pool)$/);
+      expect(appt.appointmentType).toMatch(
+        /^(panel|standing|off-panel|case-by-case|pool|out-of-pool|elected)$/,
+      );
       expect(Array.isArray(appt.divisionCodes)).toBe(true);
       expect((appt.divisionCodes as unknown[]).length).toBeGreaterThan(0);
     });
   });
 
-  test('all trustees are based in New York', async () => {
+  test('all 35 trustees are based in New York', async () => {
     const ops = await generate(mockContext);
     const trustees = ops.find((op) => op.collectionOrTable === 'trustees')?.data || [];
-    const states = new Set(
-      trustees.map(
-        (t: Record<string, unknown>) =>
-          ((t.public as Record<string, unknown>).address as Record<string, unknown>)
-            .state as string,
-      ),
-    );
+
+    const byState = trustees.reduce((acc: Record<string, number>, t: Record<string, unknown>) => {
+      const state = ((t.public as Record<string, unknown>).address as Record<string, unknown>)
+        .state as string;
+      acc[state] = (acc[state] || 0) + 1;
+      return acc;
+    }, {});
 
     // All trustees are seeded with NY public addresses; Patricia Manhattan
     // (seed-trustee-ny-002) holds appointments in other states but the
     // trustee profile itself is NY.
-    expect(states.size).toBe(1);
-    expect(states).toContain('NY');
+    expect(byState).toEqual({ NY: 35 });
   });
 
   test('includes all chapter types', async () => {
@@ -95,7 +101,7 @@ describe('trustees-comprehensive scenario', () => {
     expect(chapters).toContain('11-subchapter-v');
   });
 
-  test('includes panel, standing, and pool appointment types', async () => {
+  test('includes panel, standing, pool, out-of-pool, off-panel, case-by-case, and elected appointment types', async () => {
     const ops = await generate(mockContext);
     const appointments =
       ops.find((op) => op.collectionOrTable === 'trustee-appointments')?.data || [];
@@ -104,6 +110,10 @@ describe('trustees-comprehensive scenario', () => {
     expect(types).toContain('panel');
     expect(types).toContain('standing');
     expect(types).toContain('pool');
+    expect(types).toContain('out-of-pool');
+    expect(types).toContain('off-panel');
+    expect(types).toContain('case-by-case');
+    expect(types).toContain('elected');
   });
 
   test('includes a trustee with appointments in multiple courts', async () => {
@@ -118,6 +128,27 @@ describe('trustees-comprehensive scenario', () => {
       (a: Record<string, unknown>) => a.trusteeId === 'seed-trustee-ny-002',
     );
     expect(ny002Appts.length).toBe(6);
+  });
+
+  test('includes a trustee with paired Pool and Out of Pool Ch11 Subchapter V appointments', async () => {
+    const ops = await generate(mockContext);
+    const appointments =
+      ops.find((op) => op.collectionOrTable === 'trustee-appointments')?.data || [];
+
+    // Derek Pemberton (seed-trustee-add-027) holds both a Pool and an Out of
+    // Pool appointment to exercise the appointment accordion's Pool and Out
+    // of Pool bodies on the same trustee.
+    const add027Appts = appointments.filter(
+      (a: Record<string, unknown>) => a.trusteeId === 'seed-trustee-add-027',
+    );
+    expect(add027Appts).toHaveLength(2);
+
+    const pool = add027Appts.find((a: Record<string, unknown>) => a.appointmentType === 'pool');
+    const outOfPool = add027Appts.find(
+      (a: Record<string, unknown>) => a.appointmentType === 'out-of-pool',
+    );
+    expect(pool?.status).toBe('active');
+    expect(outOfPool?.status).toBe('resigned');
   });
 
   test('includes both active and inactive statuses', async () => {
@@ -140,77 +171,72 @@ describe('trustees-comprehensive scenario', () => {
       appointments.map((a: Record<string, unknown>) => a.trusteeId),
     );
 
-    expect(trusteeIds.size).toBe(32);
-    expect(appointmentTrusteeIds.size).toBe(32);
-    expect([...trusteeIds]).toEqual([...appointmentTrusteeIds]);
+    expect(trusteeIds.size).toBe(35);
+    expect(appointmentTrusteeIds.size).toBe(35);
+    expect(trusteeIds).toEqual(appointmentTrusteeIds);
   });
 
-  test('all 32 trustees are from New York', async () => {
+  // Chapter 7: 11 single-court appointments + 2 from Patricia Manhattan (CA Eastern off-panel, CA Eastern panel) + Marcus Whitfield's active and inactive Ch7 Elected appointments (Additional-26)
+  // Chapter 11: 6 single-court appointments + 1 from Patricia Manhattan (CA Northern case-by-case) + Olivia Ashworth's active and inactive Ch11 case-by-case appointments (Additional-25)
+  // Chapter 12: 3 single-court appointments + 1 from Patricia Manhattan (ID standing)
+  // Chapter 13: 8 single-court appointments + 2 from Patricia Manhattan (IA Northern case-by-case, IA Southern standing)
+  // Chapter 11 Subchapter V: 3 single-court appointments + Derek Pemberton's Pool and Out of Pool appointments (Additional-27)
+  test.each([
+    ['7', 15],
+    ['11', 9],
+    ['12', 4],
+    ['13', 10],
+    ['11-subchapter-v', 5],
+  ])('chapter %s appointments have expected count of %i', async (chapter, expectedCount) => {
+    const ops = await generate(mockContext);
+    const appointments =
+      ops.find((op) => op.collectionOrTable === 'trustee-appointments')?.data || [];
+    const matching = appointments.filter((a: Record<string, unknown>) => a.chapter === chapter);
+
+    expect(matching).toHaveLength(expectedCount);
+  });
+
+  test('single-division appointments include the deprecated divisionCode field for backward compatibility', async () => {
+    const ops = await generate(mockContext);
+    const appointments =
+      ops.find((op) => op.collectionOrTable === 'trustee-appointments')?.data || [];
+
+    // Every appointment in this file currently has exactly one divisionCode
+    // (081 and 091 belong to two different courts, not two divisions of one
+    // court — see file header comment), so `divisionCode` should always be
+    // set to that single code.
+    appointments.forEach((appt: Record<string, unknown>) => {
+      const divisionCodes = appt.divisionCodes as string[];
+      expect(divisionCodes).toHaveLength(1);
+      expect(appt.divisionCode).toBe(divisionCodes[0]);
+    });
+  });
+
+  test('trustees with bank/software/zoomInfo/middleName data include those optional fields', async () => {
     const ops = await generate(mockContext);
     const trustees = ops.find((op) => op.collectionOrTable === 'trustees')?.data || [];
+    const byId = new Map(trustees.map((t: Record<string, unknown>) => [t.trusteeId, t]));
 
-    const byState = trustees.reduce((acc: Record<string, number>, t: Record<string, unknown>) => {
-      const state = ((t.public as Record<string, unknown>).address as Record<string, unknown>)
-        .state as string;
-      acc[state] = (acc[state] || 0) + 1;
-      return acc;
-    }, {});
+    const ny001 = byId.get('seed-trustee-ny-001') as Record<string, unknown>;
+    expect(ny001.banks).toEqual(['seed-bank-active-001']);
+    expect(ny001.softwareId).toBe('seed-software-active-001');
 
-    expect(byState['NY']).toBe(32); // All trustees from New York (Manhattan divisions)
-    expect(Object.keys(byState).length).toBe(1); // Only NY
+    const ny002 = byId.get('seed-trustee-ny-002') as Record<string, unknown>;
+    expect(ny002.zoomInfo).toBeDefined();
+
+    const withMiddleName = byId.get('seed-trustee-add-003') as Record<string, unknown>;
+    expect(withMiddleName.middleName).toBe('Lynn');
   });
 
-  test('Chapter 7 appointments have expected count', async () => {
+  test('trustees without bank/software/zoomInfo/middleName data omit those optional fields entirely', async () => {
     const ops = await generate(mockContext);
-    const appointments =
-      ops.find((op) => op.collectionOrTable === 'trustee-appointments')?.data || [];
-    const ch7 = appointments.filter((a: Record<string, unknown>) => a.chapter === '7');
+    const trustees = ops.find((op) => op.collectionOrTable === 'trustees')?.data || [];
+    const byId = new Map(trustees.map((t: Record<string, unknown>) => [t.trusteeId, t]));
 
-    // 11 single-court ch7 appointments + 2 from Patricia Manhattan
-    // (CA Eastern off-panel, CA Eastern panel)
-    expect(ch7.length).toBe(13);
-  });
-
-  test('Chapter 13 appointments have expected count', async () => {
-    const ops = await generate(mockContext);
-    const appointments =
-      ops.find((op) => op.collectionOrTable === 'trustee-appointments')?.data || [];
-    const ch13 = appointments.filter((a: Record<string, unknown>) => a.chapter === '13');
-
-    // 8 single-court ch13 appointments + 2 from Patricia Manhattan
-    // (IA Northern case-by-case, IA Southern standing)
-    expect(ch13.length).toBe(10);
-  });
-
-  test('Chapter 11 appointments have expected count', async () => {
-    const ops = await generate(mockContext);
-    const appointments =
-      ops.find((op) => op.collectionOrTable === 'trustee-appointments')?.data || [];
-    const ch11 = appointments.filter((a: Record<string, unknown>) => a.chapter === '11');
-
-    // 6 single-court ch11 appointments + 1 from Patricia Manhattan
-    // (CA Northern case-by-case)
-    expect(ch11.length).toBe(7);
-  });
-
-  test('Chapter 12 appointments have expected count', async () => {
-    const ops = await generate(mockContext);
-    const appointments =
-      ops.find((op) => op.collectionOrTable === 'trustee-appointments')?.data || [];
-    const ch12 = appointments.filter((a: Record<string, unknown>) => a.chapter === '12');
-
-    // 3 single-court ch12 appointments + 1 from Patricia Manhattan (ID standing)
-    expect(ch12.length).toBe(4);
-  });
-
-  test('Chapter 11 Subchapter V has expected count (3 trustees)', async () => {
-    const ops = await generate(mockContext);
-    const appointments =
-      ops.find((op) => op.collectionOrTable === 'trustee-appointments')?.data || [];
-    const ch11v = appointments.filter(
-      (a: Record<string, unknown>) => a.chapter === '11-subchapter-v',
-    );
-
-    expect(ch11v.length).toBe(3);
+    const withoutExtras = byId.get('seed-trustee-add-001') as Record<string, unknown>;
+    expect(withoutExtras).not.toHaveProperty('middleName');
+    expect(withoutExtras).not.toHaveProperty('zoomInfo');
+    expect(withoutExtras).not.toHaveProperty('banks');
+    expect(withoutExtras).not.toHaveProperty('softwareId');
   });
 });

@@ -338,7 +338,10 @@ describe('TrusteeCaseList', () => {
     await screen.findByRole('table');
     const apptDateCell = document.querySelector('[data-cell="Appt. Date"]');
     expect(apptDateCell).toBeInTheDocument();
-    expect(apptDateCell).toHaveTextContent('');
+    // When appointedDate is undefined, cell has only the label with no date value
+    expect(apptDateCell).toHaveTextContent('Appt. Date:');
+    // Verify no formatted date is present
+    expect(apptDateCell?.textContent).not.toMatch(/\d{2}\/\d{2}\/\d{4}/);
   });
 
   test('case count element is an aria-live polite region', async () => {
@@ -421,7 +424,10 @@ describe('TrusteeCaseList', () => {
     });
     renderComponent();
     await screen.findByRole('table');
-    const cells = screen.getAllByRole('cell');
-    cells.forEach((cell) => expect(cell).not.toHaveTextContent(/\(/));
+    // Verify that the case number cell does not have the conditional division text "()" in its content
+    // (The label "Case Number (Division): " is always present, but the conditional division value is not)
+    const caseNumberCell = document.querySelector('[data-cell="Case Number (Division)"]');
+    expect(caseNumberCell).toBeInTheDocument();
+    expect(caseNumberCell?.textContent).not.toMatch(/\(\s*\)/);
   });
 });
