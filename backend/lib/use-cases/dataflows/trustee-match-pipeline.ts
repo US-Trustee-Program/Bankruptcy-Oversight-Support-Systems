@@ -2,9 +2,8 @@ import { CanonicalTrusteeSource } from '@common/cams/dataflow-events';
 import { Trustee } from '@common/cams/trustees';
 import { CamsError } from '../../common-errors/cams-error';
 
-/** The only Trustee-shaped type pipeline internals read or write; projectTrustee is the sole
- * conversion point from a full Trustee. Pick rather than Omit so a new Trustee field doesn't
- * silently widen this back to the full shape. */
+/** The only Trustee-shaped type pipeline internals read or write. Pick rather than Omit so a new
+ * Trustee field doesn't silently widen this back to the full shape. */
 export type ProjectedTrustee = Pick<
   Trustee,
   'trusteeId' | 'firstName' | 'middleName' | 'lastName' | 'name'
@@ -14,6 +13,7 @@ export type ProjectedTrustee = Pick<
   email?: Trustee['public']['email'];
 };
 
+/** The sole conversion point from a full Trustee to a ProjectedTrustee. */
 export function projectTrustee(trustee: Trustee): ProjectedTrustee {
   return {
     trusteeId: trustee.trusteeId,
@@ -28,28 +28,14 @@ export function projectTrustee(trustee: Trustee): ProjectedTrustee {
 }
 
 /**
- * Three-valued (Kleene K3) logic: true = agrees, false = genuinely conflicts, null = neutral/no
- * evidence either way (not merely "unknown" in the sense of "not yet computed" - a function
- * returning this type has definitely considered the question and concluded there is nothing to
- * compare, e.g. one side has no data at all). Named so a signature or a ScoreRecord field says what
- * `null` means on its own, without a reader having to open the function's doc comment - a bare
- * `boolean | null` return type carries the same three values but no name for them, which is exactly
- * what let calculateNameScore-family functions collapse a genuine three-way fact (match/conflict/
- * no-evidence) into a same-scale sentinel NUMBER instead (see MIDDLE_NAME_ONLY_CONFLICT_SCORE in
- * trustee-match-pipeline-stages.ts for the real bug that caused).
+ * Three-valued (Kleene K3) logic: true = agrees, false = conflicts, null = neutral (the question
+ * was considered and there was nothing to compare, e.g. one side has no data).
  */
 export type KleeneBoolean = boolean | null;
 
 /**
- * The gotcha KleeneBoolean exists to prevent: `false` (genuinely conflicts) is falsy in JS/TS,
- * exactly like `null` (neutral) is - `if (!someKleeneBoolean)` silently treats a real, recorded
- * conflict the same as "nothing to compare," which is never correct. foldKleene is the preferred
- * guard: the value itself selects which lambda runs, so there is no separate boolean condition to
- * write backwards the way a bare `if (!someKleeneBoolean)`/`=== null` check still could be.
- * Collapses a KleeneBoolean into a single value by running exactly one of three lambdas - most
- * scorers reduce to exactly this shape: onNeutral returns the candidate unchanged,
- * onAgreement/onConflict each call addScore with the appropriate ScoreRecord - so a scorer's body
- * becomes one expression instead of an early-return `if`.
+ * Runs exactly one of three lambdas, selected by the value. Preferred over `if (!value)`, which
+ * treats a recorded conflict (`false`) the same as neutral (`null`).
  */
 export function foldKleene<T>(
   value: KleeneBoolean,
@@ -69,49 +55,24 @@ export function foldKleene<T>(
 export type ScoreRecord = { pass: boolean } & Record<string, unknown>;
 
 /**
- * A candidate's full evaluation history, keyed by scorer name (see addScore). A scorer with more
- * than one independent signal (e.g. address and phone) uses multiple keys rather than bundling
- * unrelated results into one entry.
- *
- * A scorer whose comparison is a KleeneBoolean represents NEUTRAL by never calling addScore for
- * that key at all. The key's ABSENCE from this map, not any field inside a present record, is what
- * carries the neutral state, which is why `pass` stays a plain non-nullable boolean: a scorer with
- * nothing to compare never writes a record, so `pass` is never asked to mean "unknown".
+ * A candidate's full evaluation history, keyed by scorer name (see addScore). A scorer whose
+ * comparison is neutral writes no record, so a missing key means neutral and `pass` never has to
+ * mean "unknown".
  */
 export type ScoreByScorer = Record<string, ScoreRecord>;
 
 /**
- * The canonical NORMALIZE-role shape (see docs/architecture/decision-records/
- * TrusteeMatchingPipeline.md) for either side of a match, under the same field names as
- * ProjectedTrustee. Partial since a normalizer only populates the fields it derives; omits
- * trusteeId since a source record has no CAMS identity. Distinct from `memo` (see
- * NormalizedMemo), which caches a computed comparison between two normalized records, not the
- * normalized record itself.
+ * The normalized shape of either side of a match, under ProjectedTrustee's field names. Partial
+ * since a normalizer populates only the fields it derives; omits trusteeId since a source record
+ * has no CAMS identity.
  *
- * lastNameAlternates holds any OTHER plausible surname derivative a normalizer produced beyond
- * the prime one already stored in `lastName` - e.g. a prepended-maiden-surname or hyphenated
- * compound can reduce to more than one reasonable token ("DE BRUCE WOLFF" -> prime "de bruce",
- * alternate "wolff" - see lastNameSurnameCandidates in trustee-match.helpers.ts). A downstream
- * RECALL/SCORE function that only ever needs the single best-guess reduction reads `lastName`
- * exactly as before and never has to know alternates exist; one that specifically wants to try
- * every plausible variant (e.g. findSurnameExactCandidates's discovery-time fallback) reads
- * `lastNameAlternates.length > 0` as its gate.
- *
- * firstNameAlternates is the same shape for the given name, holding a parenthetical ACMS records
- * in PROF_FIRST_NAME. No keyword list separates a real alias from an office code - a code never
- * matches anything on the other side.
- *
- * middleNameAlternates holds the individual tokens of a multi-token middle name, which `middleName`
- * itself stores glued together ("L. Pry" -> "lpry"). Populated only when there is more than one
- * token, so a reader can treat a non-empty array as "this field held more than a single name."
- *
- * lastNameUnreduced holds the ACMS lastName AFTER name-recovery (recoverCorruptedFirstName/
- * recoverSoloPracticeName) but BEFORE lastNameSurnameCandidates' token reduction - distinct from
- * `lastName` (which is the REDUCED result). A caller that needs an exact, unreduced surname
- * comparison but still wants recovery's benefit (e.g. isExactLastNameMatch's
- * marker-stripping-only comparison) reads this field rather than sourceRaw.lastName directly, so a
- * corrupted/business-suffixed ACMS name that recovery already fixed isn't silently re-broken by
- * comparing the ORIGINAL, unrecovered text.
+ * - lastNameAlternates: other plausible surname reductions beyond `lastName` ("DE BRUCE WOLFF" ->
+ *   "de bruce", alternate "wolff").
+ * - firstNameAlternates: a parenthetical recorded alongside the first name. An office code there is
+ *   harmless; it never matches anything on the other side.
+ * - middleNameAlternates: the individual tokens of a multi-token middle name, which `middleName`
+ *   stores glued together ("L. Pry" -> "lpry"). Empty unless there is more than one token.
+ * - lastNameUnreduced: the source surname after name recovery but before token reduction.
  */
 type NormalizedTrusteeFields = Partial<Omit<ProjectedTrustee, 'trusteeId' | 'address'>> & {
   address?: Partial<NonNullable<ProjectedTrustee['address']>>;
@@ -122,20 +83,9 @@ type NormalizedTrusteeFields = Partial<Omit<ProjectedTrustee, 'trusteeId' | 'add
 };
 
 /**
- * Pipeline processing state carried alongside a normalized record - NOT itself normalized output,
- * so kept as its own composed piece rather than folded into NormalizedTrusteeFields, whose fields
- * are all "what did normalization produce." Every field here is either a raw passthrough kept
- * around for a later stage, or a memoized computation result, not a normalization.
- *
- * legacy holds a passthrough clone of sourceRaw.legacy (address1/cityStateZipCountry/phone/fax/
- * email) - plain scalars, not reshaped, unlike address/name, so cloning them here has none of the
- * "compute once" cache-breaking risk those two fields carry (see cloneNormalizableFields).
- * fullName is the same passthrough treatment for sourceRaw.fullName (CanonicalTrusteeSource-only,
- * no ProjectedTrustee equivalent - a candidate's own composed name lives in `name` instead), kept
- * distinct from `name` (which memoizedNormalizeName caches a SIMILARITY-normalized reduction into,
- * not a raw passthrough). acmsHasNoContactData caches memoizedAcmsHasNoContactData's result
- * directly on this record, the same "compute once" pattern memoizedParseAcmsAddress already uses
- * for `address`.
+ * Processing state carried alongside a normalized record, not normalization output: raw
+ * passthroughs a later stage reads (legacy, fullName) and cached computations
+ * (acmsHasNoContactData).
  */
 type TrusteeNormalizationCache = {
   legacy?: NonNullable<CanonicalTrusteeSource['legacy']>;
@@ -143,17 +93,12 @@ type TrusteeNormalizationCache = {
   acmsHasNoContactData?: boolean;
 };
 
+/** Either side of a match after normalization, plus its processing cache. */
 export type NormalizedTrustee = NormalizedTrusteeFields & TrusteeNormalizationCache;
 
 /**
- * One candidate under consideration, plus its evaluation history. camsRaw is set once and never
- * changes. Generic on TCandidate (the candidate-side raw record shape) - see
- * TrusteePipelineCandidate for the concrete trustee instantiation. camsNormalized stays
- * trustee-shaped (NormalizedTrustee) rather than also becoming generic, since no other
- * entity-matching use case exists yet to shape a generic version against.
- *
- * origin is the name of the RECALL stage that first discovered this candidate, set once at
- * creation and never overwritten (see addCandidate).
+ * One candidate under consideration, plus its evaluation history. camsRaw never changes; origin is
+ * the RECALL stage that first discovered the candidate.
  */
 export type PipelineCandidate<TCandidate> = {
   camsRaw: TCandidate;
@@ -163,24 +108,20 @@ export type PipelineCandidate<TCandidate> = {
   origin: string;
 };
 
-/** Named accessor for a candidate's score history, rather than inlining `candidate.scores`, so a
- * future change to how scores are read has one place to change. */
+/** A candidate's score history. */
 export function mergedScore<TCandidate>(candidate: PipelineCandidate<TCandidate>): ScoreByScorer {
   return candidate.scores;
 }
 
-/** The candidate pool as a list. state.candidates is a Map keyed by trusteeId so a RECALL stage
- * can dedupe by identity; every RESOLVE stage wants to filter over the values instead. */
+/** The candidate pool as a list; state.candidates is a Map keyed by trusteeId for deduplication. */
 export function candidatePool<TSource, TCandidate>(
   state: PipelineState<TSource, TCandidate>,
 ): PipelineCandidate<TCandidate>[] {
   return [...state.candidates.values()];
 }
 
-/** A confirmed match, carrying the score that justified it so a consumer never needs to re-scan
- * the candidate's score history to answer "why was this the match," and resolvedBy (the RESOLVE
- * stage's own function name) so a reviewer can tell, e.g., resolveByStateOnly apart from
- * resolveByPhone without reverse-engineering it from score shape alone. */
+/** A confirmed match, with the matched candidate's scores and the name of the RESOLVE stage that
+ * chose it. */
 type PipelineMatch = {
   trusteeId: string;
   score: ScoreByScorer;
@@ -188,16 +129,10 @@ type PipelineMatch = {
 };
 
 /**
- * The shared state every pipeline stage reads and returns (see
+ * The state every pipeline stage reads and returns (see
  * docs/architecture/decision-records/TrusteeMatchingPipeline.md). Once `match`, `skip`, or `error`
- * is set, runPipeline stops invoking any later stage (see its own doc comment) - an individual
- * stage never needs to check this itself. `skip` is a valid, non-exceptional "no real identity to
- * match" outcome; `error` is always a real CamsError, never a bare `unknown`/string, with `null`
- * as the explicit "no error" value. sourceNormalized's composed name is stored under `name`, not
- * `fullName`, matching camsNormalized's own field name on the candidate side.
- *
- * Generic on TSource (see CanonicalTrusteeSource) and TCandidate (see PipelineCandidate) - see
- * TrusteePipelineState for the concrete trustee instantiation.
+ * is set, runPipeline invokes no later stage. `skip` means the source names no real identity to
+ * match; it is not an error.
  */
 export type PipelineState<TSource, TCandidate> = {
   sourceRaw: TSource;
@@ -210,16 +145,9 @@ export type PipelineState<TSource, TCandidate> = {
 };
 
 /**
- * Seeds sourceNormalized/camsNormalized as a clone of the scalar name/contact fields already
- * present on the raw record, rather than starting empty - so a normalizer stage mutates its own
- * dedicated copy in place (`normalized.firstName = recovered`) instead of spreading a fresh object
- * back onto state each time, and sourceRaw/camsRaw can never be accidentally mutated by code that
- * meant to write to "the normalized one." Deliberately excludes `address` and `name`: both are
- * RESHAPED, not passthrough, fields (address goes from ACMS's raw cityStateZipCountry string to a
- * parsed {city,state,zipCode} struct; name is a composed similarity-normalized string, not a raw
- * source field at all - see memoizedParseAcmsAddress/memoizedNormalizeName), so seeding either
- * with a non-undefined placeholder would break those functions' own `=== undefined`/`??=`
- * "compute once, cache" checks, silently skipping the real computation.
+ * Seeds a normalized record as a copy of the raw record's passthrough fields, so normalizers can
+ * mutate it without touching the raw record. Excludes `address` and `name`: both are computed and
+ * cached on first use, keyed on being undefined.
  */
 function cloneNormalizableFields<TRaw extends Partial<NormalizedTrustee>>(
   raw: TRaw,
@@ -249,9 +177,8 @@ function createInitialState<TSource extends Partial<NormalizedTrustee>, TCandida
   };
 }
 
-/** Adds a candidate to the pipeline state, or returns the existing entry unchanged if this
- * trusteeId is already present - idempotent, so a discovery stage that finds the same trustee
- * another stage already proposed never resets its accumulated score history or origin. */
+/** Adds a candidate to the pool, or returns the existing entry unchanged if its trusteeId is
+ * already present, preserving its score history and origin. */
 export function addCandidate<TSource, TCandidate extends Partial<NormalizedTrustee>>(
   state: PipelineState<TSource, TCandidate>,
   camsRaw: TCandidate & { trusteeId: string },
@@ -271,9 +198,8 @@ export function addCandidate<TSource, TCandidate extends Partial<NormalizedTrust
   return candidate;
 }
 
-/** Merges a candidate from a nested pipeline run (see
- * docs/architecture/decision-records/TrusteeMatchingPipeline.md on nesting) into the outer state,
- * preserving its inner score history. Idempotent like addCandidate. */
+/** Merges a candidate from a nested pipeline run into the outer state, preserving its score
+ * history. Idempotent like addCandidate. */
 export function promoteCandidate<TSource, TCandidate extends { trusteeId: string }>(
   state: PipelineState<TSource, TCandidate>,
   candidate: PipelineCandidate<TCandidate>,
@@ -285,8 +211,7 @@ export function promoteCandidate<TSource, TCandidate extends { trusteeId: string
   return candidate;
 }
 
-/** Records a scorer's contribution, keyed by scorer name - a stage that runs more than once
- * against the same candidate overwrites its own prior slot rather than accumulating duplicates. */
+/** Records a scorer's result under its name, overwriting any earlier result for that name. */
 export function addScore<TCandidate>(
   candidate: PipelineCandidate<TCandidate>,
   scorer: string,
@@ -295,18 +220,13 @@ export function addScore<TCandidate>(
   candidate.scores[scorer] = score;
 }
 
-/** One cached normalizer call: `key` fingerprints its actual input(s) (e.g. `"John Doe"`, or
- * `"John Doe|Jon Doe"` for a two-argument comparison) so two distinct-input calls to the same
- * normalizer are distinguishable, not just cached by function name alone. */
+/** One cached call; `key` fingerprints its input(s), e.g. `"John Doe|Jon Doe"`. */
 export type MemoEntry = { key: string; value: unknown };
 
-/** A per-side memo (source record or a specific candidate) of every normalizer call made against
- * it, keyed by function name so a downstream consumer can look up "this candidate's
- * fullNameSimilarity entries" without knowing what inputs produced them. */
+/** A per-side memo (source record or one candidate) of cached calls, keyed by function name. */
 export type NormalizedMemo = Map<string, MemoEntry[]>;
 
-/** Memoizes one normalizer call by function name and input fingerprint (see MemoEntry) - computed
- * once per distinct fingerprint regardless of which stage asks. */
+/** Computes a value once per function name and input fingerprint. */
 export function normalize<T>(
   memo: NormalizedMemo,
   functionName: string,
@@ -323,25 +243,14 @@ export function normalize<T>(
   return value;
 }
 
-/** Every pipeline function shares this one signature - no exceptions among the pool-level stages
- * (see docs/architecture/decision-records/TrusteeMatchingPipeline.md on the functional design).
- * A stage is a pure computation over its input state (deterministic, no I/O, no mutation of
- * sourceRaw/camsRaw) with exactly one sanctioned exception: a RECALL stage's own repository call,
- * whose failure lands on state.error rather than throwing (see recallBySurnameExact et al. in
- * trustee-match-pipeline-stages.ts) - RECALL is the sole boundary where non-determinism enters the
- * pipeline at all. */
+/** A pool-level pipeline stage. Pure, except that a RECALL stage queries the repository; a failed
+ * query lands on state.error rather than throwing. */
 export type Stage<TSource, TCandidate> = (
   state: PipelineState<TSource, TCandidate>,
 ) => Promise<PipelineState<TSource, TCandidate>>;
 
-/** Runs an ordered list of stages left to right, threading the same state through each, and is
- * the SOLE place that checks for a terminal outcome (a match, a skip, or an error) - once reached,
- * iteration stops and the final state is returned immediately, without calling any later stage.
- * Individual stages never perform this check themselves (see Stage's own doc comment); centralizing
- * it here means a stage can be written, read, and tested as a pure state -> state function with no
- * control-flow responsibility of its own. Stage order affects only how quickly the pipeline reaches
- * a terminal outcome, never which outcome it can reach (see
- * docs/architecture/decision-records/TrusteeMatchingPipeline.md). */
+/** Runs stages in order, stopping at the first match, skip, or error. The only place that checks
+ * for a terminal outcome, so individual stages never do. */
 export async function runPipeline<TSource, TCandidate>(
   initialState: PipelineState<TSource, TCandidate>,
   stages: Stage<TSource, TCandidate>[],
@@ -354,8 +263,7 @@ export async function runPipeline<TSource, TCandidate>(
   return state;
 }
 
-/** JSON-serializable projection of PipelineCandidate - Maps become plain objects/arrays (memo
- * becomes `{ functionName: MemoEntry[] }`); everything else passes through unchanged. */
+/** JSON-serializable PipelineCandidate: memo becomes a plain object. */
 export type SerializedCandidate<TCandidate> = {
   camsRaw: TCandidate;
   camsNormalized: NormalizedTrustee;
@@ -364,9 +272,8 @@ export type SerializedCandidate<TCandidate> = {
   origin: string;
 };
 
-/** JSON-serializable projection of PipelineState, for writing to a JSONL file or Mongo document
- * (see docs/architecture/decision-records/TrusteeMatchingPipeline.md on evidence retention).
- * candidates becomes an array in discovery order. */
+/** JSON-serializable PipelineState: memo becomes a plain object and candidates an array in
+ * discovery order. */
 export type SerializedState<TSource, TCandidate> = {
   sourceRaw: TSource;
   sourceNormalized: NormalizedTrustee;
@@ -377,6 +284,7 @@ export type SerializedState<TSource, TCandidate> = {
   error: CamsError | null;
 };
 
+/** Converts a PipelineState to its SerializedState. */
 export function serializeState<TSource, TCandidate>(
   state: PipelineState<TSource, TCandidate>,
 ): SerializedState<TSource, TCandidate> {
@@ -397,16 +305,13 @@ export function serializeState<TSource, TCandidate>(
   };
 }
 
-/** Concrete trustee-matching instantiations of the generic pipeline state graph, pinned to
- * CanonicalTrusteeSource (not DxtrTrusteeParty/AcmsTrusteeProfessional specifically) so a
- * DXTR-sourced and an ACMS-sourced record run through the identical pipeline instantiation. */
+/** Trustee-matching instantiations of the generic pipeline types. */
 export type TrusteePipelineCandidate = PipelineCandidate<ProjectedTrustee>;
 export type TrusteePipelineState = PipelineState<CanonicalTrusteeSource, ProjectedTrustee>;
 export type TrusteeStage = Stage<CanonicalTrusteeSource, ProjectedTrustee>;
 export type TrusteeSerializedState = SerializedState<CanonicalTrusteeSource, ProjectedTrustee>;
 
-/** Pins TCandidate to ProjectedTrustee explicitly - a bare `createInitialState(sourceRaw)` call
- * can't infer TCandidate from its single argument alone. */
+/** Creates the initial trustee pipeline state for one source record. */
 export function createTrusteeInitialState(sourceRaw: CanonicalTrusteeSource): TrusteePipelineState {
   return createInitialState<CanonicalTrusteeSource, ProjectedTrustee>(sourceRaw);
 }
