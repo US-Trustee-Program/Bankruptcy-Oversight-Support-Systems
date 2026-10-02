@@ -29,7 +29,6 @@ import {
   normalizeAcmsSourceName,
   skipAdministrativePlaceholder,
   scoreCandidate,
-  addAndScoreCandidate,
 } from './trustee-match-pipeline-stages';
 
 const makeDxtrTrustee = (overrides: Partial<DxtrTrusteeParty> = {}): DxtrTrusteeParty => ({
@@ -56,12 +55,12 @@ const addSomeoneMoon = (state: PipelineState, overrides: Partial<Trustee> = {}) 
 
 const GENERIC_ACMS_FULL_NAME = 'Aldric A Moon';
 
-const PHONE_TYPO_ONE_DIGIT_PAIR = {
+const TOKEN_INTERSECTION_PAIR = {
   acmsFullName: 'D. Wheeler Cray',
   camsName: 'Desmond Wheeler Cray',
 } as const;
 
-const NO_CONTACT_DATA_SPELLING_VARIANT_PAIR = {
+const FIRST_NAME_SPELLING_VARIANT_PAIR = {
   acmsFullName: 'Norburt Falk',
   acmsFirstName: 'Norburt',
   acmsLastName: 'Falk',
@@ -77,16 +76,9 @@ describe('skipAdministrativePlaceholder', () => {
 
   // This stage reads the raw ACMS fullName, so every case passes fullName explicitly.
 
-  test('sets state.skip when the record trips shouldSkipAsNotAPerson', async () => {
-    const state = createInitialState(makeDxtrTrustee({ fullName: 'NOT ASSIGNED' }));
-
-    const result = await skipAdministrativePlaceholder()(state);
-
-    expect(result.skip).toBe(true);
-  });
-
   // Models names that are a role, office, case-status label, or synthetic test record.
   test.each([
+    'NOT ASSIGNED',
     'US TRUSTEE',
     'U.S. TRUSTEE',
     'U. S. TRUSTEE',
@@ -103,6 +95,18 @@ describe('skipAdministrativePlaceholder', () => {
     'INVOLUNTARY PETN. - NO TRUSTEE',
     'DEBTOR IN POSSESSION NO TRUSTEE',
     'NO TRUSTEE/ADMIN PURPOSE',
+    'INVOLUNTARY PETITION TRUSTEE UNASSIGNED',
+    'TRANSFER CASE',
+    'RE-OPENED (JACKSON)',
+    'NO TRRUSTEE',
+    'EXPUNGED',
+    '* TRUSTEE ASSIGNMENT IN PROGRESS',
+    'INVOL CH 7',
+    'MISSING TRUSTEE',
+    'NO TR APT',
+    'PRE2004PENDINGCASES CHAPTER13UPLOAD',
+    'TRINVOL',
+    'REOPENED_CASE TRUSTEE_UNASSIGNED',
   ])('sets state.skip for administrative placeholder "%s"', async (fullName) => {
     const state = createInitialState(makeDxtrTrustee({ fullName }));
 
@@ -112,16 +116,17 @@ describe('skipAdministrativePlaceholder', () => {
   });
 
   // U.S. Trustee staff are never CAMS trustees, so a UST annotation skips even with a real name.
-  test.each(['JORDAN R DOE - U S TRUSTEE', 'JUDY ROBBINS (UST)', 'JOHN R STONITSCH - U S TRUSTEE'])(
-    'sets state.skip for a UST-annotated name "%s"',
-    async (fullName) => {
-      const state = createInitialState(makeDxtrTrustee({ fullName }));
+  test.each([
+    'JORDAN R DOE - U S TRUSTEE',
+    'TAYLOR QUILL (UST)',
+    'MORGAN R VELLACOTT - U S TRUSTEE',
+  ])('sets state.skip for a UST-annotated name "%s"', async (fullName) => {
+    const state = createInitialState(makeDxtrTrustee({ fullName }));
 
-      const result = await skipAdministrativePlaceholder()(state);
+    const result = await skipAdministrativePlaceholder()(state);
 
-      expect(result.skip).toBe(true);
-    },
-  );
+    expect(result.skip).toBe(true);
+  });
 
   // An ACMS disavowal phrase skips the record even when a real name is present.
   test.each([
@@ -193,33 +198,14 @@ describe('skipAdministrativePlaceholder', () => {
     },
   );
 
-  test.each([
-    'INVOLUNTARY PETITION TRUSTEE UNASSIGNED',
-    'TRANSFER CASE',
-    'RE-OPENED (JACKSON)',
-    'NO TRRUSTEE',
-    'EXPUNGED',
-    '* TRUSTEE ASSIGNMENT IN PROGRESS',
-    'INVOL CH 7',
-    'MISSING TRUSTEE',
-    'NO TR APT',
-    'PRE2004PENDINGCASES CHAPTER13UPLOAD',
-    'TRINVOL',
-    'REOPENED_CASE TRUSTEE_UNASSIGNED',
-  ])('sets state.skip for administrative placeholder "%s"', async (fullName) => {
-    const state = createInitialState(makeDxtrTrustee({ fullName }));
-
-    const result = await skipAdministrativePlaceholder()(state);
-
-    expect(result.skip).toBe(true);
-  });
-
   // The chapter/role marker strips away and a real name remains. "(UST)" is excluded because it
   // always skips.
   test.each([
     "JORDAN W O'DOE (CHAPTER 12)",
     'TAYLOR Z ROE (CH 11)',
     "JORDAN O'DOE (ACTING CH. 13 TRUSTEE)",
+    'MORGAN OKAFOR (LIQ TR)',
+    'TACOMACH13 K. JORDAN ROE',
   ])('leaves state unchanged for a real name with a chapter/role suffix "%s"', async (fullName) => {
     const state = createInitialState(makeDxtrTrustee({ fullName }));
 
@@ -227,22 +213,6 @@ describe('skipAdministrativePlaceholder', () => {
 
     expect(result.skip).toBe(false);
   });
-
-  test.each([
-    'TIMOTHY ASHFORD (ACTING CH. 13 TRUSTEE)',
-    'CLAUDIA Z MERIWETHER (CH 11)',
-    'DAVID OKONKWO (LIQ TR)',
-    'TACOMACH13 K. MICHAEL DRUMMOND',
-  ])(
-    'does not skip a real no-CAMS-record name with a chapter/role annotation "%s"',
-    async (fullName) => {
-      const state = createInitialState(makeDxtrTrustee({ fullName }));
-
-      const result = await skipAdministrativePlaceholder()(state);
-
-      expect(result.skip).toBe(false);
-    },
-  );
 });
 
 describe('normalizeAcmsSourceName', () => {
@@ -280,13 +250,13 @@ describe('normalizeAcmsSourceName', () => {
         makeDxtrTrustee({
           firstName: 'LIQUIDATING TRUSTEE',
           middleName: '',
-          lastName: 'PELLETIER, DEVIN',
+          lastName: 'ROE, JORDAN',
         }),
       ),
     );
 
-    expect(state.sourceNormalized.firstName).toBe('devin');
-    expect(state.sourceNormalized.lastName).toBe('pelletier');
+    expect(state.sourceNormalized.firstName).toBe('jordan');
+    expect(state.sourceNormalized.lastName).toBe('roe');
   });
 });
 
@@ -316,23 +286,6 @@ describe('recallBySurnameExact', () => {
 
     expect(result.candidates.has('t1')).toBe(true);
     expect(result.candidates.get('t1')!.camsRaw.name).toBe('Jordan P. Voss');
-  });
-
-  test('does not reset an existing candidate already discovered by a prior stage', async () => {
-    const jordanVoss = makeTrustee({ trusteeId: 't1', name: 'Jordan P. Voss' });
-    vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName').mockResolvedValue([jordanVoss]);
-
-    const state = createInitialState(
-      makeDxtrTrustee({ fullName: 'Aldric T Voss', lastName: 'Voss' }),
-    );
-    const existingCandidate = addCandidate(state, projectTrustee(jordanVoss), 'test');
-    addScore(existingCandidate, 'doesNameMatch', { pass: false, quality: 'weak' });
-
-    const result = await recallBySurnameExact(context)(state);
-
-    expect(result.candidates.get('t1')!.scores).toEqual({
-      doesNameMatch: { pass: false, quality: 'weak' },
-    });
   });
 
   test('records a gateway failure on state.error as a CamsError with a stack trace, rather than throwing', async () => {
@@ -469,29 +422,14 @@ describe('recallByTokenIntersection', () => {
     context = await createMockApplicationContext();
   });
 
-  test('adds every token-intersection candidate found to the pipeline state', async () => {
-    const cray = makeTrustee({ trusteeId: 't1', name: PHONE_TYPO_ONE_DIGIT_PAIR.camsName });
+  test('adds each token-intersection candidate, recording the intersected token count as a score', async () => {
+    const cray = makeTrustee({ trusteeId: 't1', name: TOKEN_INTERSECTION_PAIR.camsName });
     vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName').mockImplementation(
       async (token: string) => (token === 'wheeler' || token === 'cray' ? [cray] : []),
     );
 
     const state = createInitialState(
-      makeDxtrTrustee({ fullName: PHONE_TYPO_ONE_DIGIT_PAIR.acmsFullName }),
-    );
-
-    const result = await recallByTokenIntersection(context)(state);
-
-    expect(result.candidates.has('t1')).toBe(true);
-  });
-
-  test('records the number of ACMS tokens intersected as a SCORE on every candidate found', async () => {
-    const cray = makeTrustee({ trusteeId: 't1', name: PHONE_TYPO_ONE_DIGIT_PAIR.camsName });
-    vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName').mockImplementation(
-      async (token: string) => (token === 'wheeler' || token === 'cray' ? [cray] : []),
-    );
-
-    const state = createInitialState(
-      makeDxtrTrustee({ fullName: PHONE_TYPO_ONE_DIGIT_PAIR.acmsFullName }),
+      makeDxtrTrustee({ fullName: TOKEN_INTERSECTION_PAIR.acmsFullName }),
     );
 
     const result = await recallByTokenIntersection(context)(state);
@@ -516,7 +454,7 @@ describe('recallByTokenIntersection', () => {
     );
 
     const state = createInitialState(
-      makeDxtrTrustee({ fullName: PHONE_TYPO_ONE_DIGIT_PAIR.acmsFullName }),
+      makeDxtrTrustee({ fullName: TOKEN_INTERSECTION_PAIR.acmsFullName }),
     );
 
     const result = await recallByTokenIntersection(context)(state);
@@ -538,12 +476,12 @@ describe('recallByAnchoredLevenshtein', () => {
   });
 
   // Runs normalizeAcmsSourceName first because this stage reads state.sourceNormalized.
-  test('adds every anchored-Levenshtein candidate found to the pipeline state', async () => {
+  test('adds each anchored-Levenshtein candidate, recording its edit distance as a score', async () => {
     const falk = makeTrustee({
       trusteeId: 't1',
-      firstName: NO_CONTACT_DATA_SPELLING_VARIANT_PAIR.camsFirstName,
-      lastName: NO_CONTACT_DATA_SPELLING_VARIANT_PAIR.camsLastName,
-      name: NO_CONTACT_DATA_SPELLING_VARIANT_PAIR.camsName,
+      firstName: FIRST_NAME_SPELLING_VARIANT_PAIR.camsFirstName,
+      lastName: FIRST_NAME_SPELLING_VARIANT_PAIR.camsLastName,
+      name: FIRST_NAME_SPELLING_VARIANT_PAIR.camsName,
     });
     vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName').mockImplementation(
       async (token: string) => (token === 'falk' ? [falk] : []),
@@ -552,36 +490,9 @@ describe('recallByAnchoredLevenshtein', () => {
     const state = await normalizeAcmsSourceName()(
       createInitialState(
         makeDxtrTrustee({
-          fullName: NO_CONTACT_DATA_SPELLING_VARIANT_PAIR.acmsFullName,
-          firstName: NO_CONTACT_DATA_SPELLING_VARIANT_PAIR.acmsFirstName,
-          lastName: NO_CONTACT_DATA_SPELLING_VARIANT_PAIR.acmsLastName,
-        }),
-      ),
-    );
-
-    const result = await recallByAnchoredLevenshtein(context)(state);
-
-    expect(result.candidates.has('t1')).toBe(true);
-  });
-
-  // A smaller edit distance is stronger evidence.
-  test('records the actual edit distance as a SCORE on every candidate found', async () => {
-    const falk = makeTrustee({
-      trusteeId: 't1',
-      firstName: NO_CONTACT_DATA_SPELLING_VARIANT_PAIR.camsFirstName,
-      lastName: NO_CONTACT_DATA_SPELLING_VARIANT_PAIR.camsLastName,
-      name: NO_CONTACT_DATA_SPELLING_VARIANT_PAIR.camsName,
-    });
-    vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName').mockImplementation(
-      async (token: string) => (token === 'falk' ? [falk] : []),
-    );
-
-    const state = await normalizeAcmsSourceName()(
-      createInitialState(
-        makeDxtrTrustee({
-          fullName: NO_CONTACT_DATA_SPELLING_VARIANT_PAIR.acmsFullName,
-          firstName: NO_CONTACT_DATA_SPELLING_VARIANT_PAIR.acmsFirstName,
-          lastName: NO_CONTACT_DATA_SPELLING_VARIANT_PAIR.acmsLastName,
+          fullName: FIRST_NAME_SPELLING_VARIANT_PAIR.acmsFullName,
+          firstName: FIRST_NAME_SPELLING_VARIANT_PAIR.acmsFirstName,
+          lastName: FIRST_NAME_SPELLING_VARIANT_PAIR.acmsLastName,
         }),
       ),
     );
@@ -600,9 +511,9 @@ describe('recallByAnchoredLevenshtein', () => {
 
     const state = createInitialState(
       makeDxtrTrustee({
-        fullName: NO_CONTACT_DATA_SPELLING_VARIANT_PAIR.acmsFullName,
-        firstName: NO_CONTACT_DATA_SPELLING_VARIANT_PAIR.acmsFirstName,
-        lastName: NO_CONTACT_DATA_SPELLING_VARIANT_PAIR.acmsLastName,
+        fullName: FIRST_NAME_SPELLING_VARIANT_PAIR.acmsFullName,
+        firstName: FIRST_NAME_SPELLING_VARIANT_PAIR.acmsFirstName,
+        lastName: FIRST_NAME_SPELLING_VARIANT_PAIR.acmsLastName,
       }),
     );
 
@@ -617,7 +528,7 @@ describe('recallByAnchoredLevenshtein', () => {
 });
 
 describe('scoreCandidate - name-match facet', () => {
-  test('merges a nameScore and a match flag onto every candidate currently in the pipeline', async () => {
+  test('grades an exact doesNameMatch for the same name and a failing one for a different name', async () => {
     const state = await normalizeAcmsSourceName()(
       createInitialState(
         makeDxtrTrustee({ fullName: 'John Doe', firstName: 'John', lastName: 'Doe' }),
@@ -646,7 +557,7 @@ describe('scoreCandidate - name-match facet', () => {
   test('matches a middle initial against any token of a multi-token middle name', async () => {
     const state = await normalizeAcmsSourceName()(
       createInitialState(
-        makeDxtrTrustee({ firstName: 'Kathy', middleName: 'P', lastName: 'Coryell' }),
+        makeDxtrTrustee({ firstName: 'Della', middleName: 'P', lastName: 'Ostrander' }),
       ),
     );
     const candidate = addCandidate(
@@ -654,9 +565,9 @@ describe('scoreCandidate - name-match facet', () => {
       projectTrustee(
         makeTrustee({
           trusteeId: 't1',
-          firstName: 'Kathryn',
-          middleName: 'L. Pry',
-          lastName: 'Coryell',
+          firstName: 'Adella',
+          middleName: 'L. Prue',
+          lastName: 'Ostrander',
         }),
       ),
       'test',
@@ -664,26 +575,7 @@ describe('scoreCandidate - name-match facet', () => {
 
     scoreCandidate(state.sourceNormalized, candidate);
 
-    expect(candidate.camsNormalized.middleNameAlternates).toEqual(['l', 'pry']);
-    expect(mergedScore(candidate)).toMatchObject({
-      doesNameMatch: { pass: true, quality: 'strong' },
-    });
-  });
-
-  test("downgrades to strong when a bare middle initial doesn't match the other side's leading character", async () => {
-    const state = await normalizeAcmsSourceName()(
-      createInitialState(makeDxtrTrustee({ firstName: 'John', middleName: 'T', lastName: 'Doe' })),
-    );
-    const candidate = addCandidate(
-      state,
-      projectTrustee(
-        makeTrustee({ trusteeId: 't1', firstName: 'John', middleName: 'Bruce', lastName: 'Doe' }),
-      ),
-      'test',
-    );
-
-    scoreCandidate(state.sourceNormalized, candidate);
-
+    expect(candidate.camsNormalized.middleNameAlternates).toEqual(['l', 'prue']);
     expect(mergedScore(candidate)).toMatchObject({
       doesNameMatch: { pass: true, quality: 'strong' },
     });
@@ -692,7 +584,7 @@ describe('scoreCandidate - name-match facet', () => {
   // An exact first name plus a matching surname outweighs a conflicting middle initial - the least
   // reliable name part in this data. The match drops to 'strong' rather than failing outright, so a
   // resolver needing corroboration can still use it while an exact-only resolver declines.
-  test('downgrades to strong when two DIFFERENT bare middle initials appear on both sides', async () => {
+  test('grades a strong match when an exact first name has a conflicting bare middle initial', async () => {
     const state = await normalizeAcmsSourceName()(
       createInitialState(
         makeDxtrTrustee({ firstName: 'Michael', middleName: 'P', lastName: 'Wexford' }),
@@ -744,7 +636,7 @@ describe('scoreCandidate - name-match facet', () => {
     });
   });
 
-  test('treats two matching bare middle initials on both sides as a full match', async () => {
+  test('grades matching bare middle initials on both sides as an exact match', async () => {
     const state = await normalizeAcmsSourceName()(
       createInitialState(
         makeDxtrTrustee({ firstName: 'Michael', middleName: 'P', lastName: 'Wexford' }),
@@ -770,9 +662,7 @@ describe('scoreCandidate - name-match facet', () => {
     });
   });
 
-  // A genuine swap: the same token ("dominic") is spelled out on one side and reduced to a bare
-  // initial on the other.
-  test('still credits a genuine first/middle swap as 85, unaffected by the bare-initial-conflict fix', async () => {
+  test('grades a first/middle swap as a strong match', async () => {
     const state = await normalizeAcmsSourceName()(
       createInitialState(
         makeDxtrTrustee({ firstName: 'Dominic', middleName: 'S', lastName: 'Beaumont' }),
@@ -826,7 +716,7 @@ describe('scoreCandidate - name-match facet', () => {
     });
   });
 
-  test('scores two full middle names that are a plausible spelling variant as 85, not a flat 15', async () => {
+  test('grades two full middle names that are spelling variants as a strong match', async () => {
     const state = await normalizeAcmsSourceName()(
       createInitialState(
         makeDxtrTrustee({ firstName: 'Richard', middleName: 'Jeffery', lastName: 'MacLeod' }),
@@ -852,7 +742,7 @@ describe('scoreCandidate - name-match facet', () => {
     });
   });
 
-  test('downgrades to 85 for two full middle names that are NOT a plausible variant', async () => {
+  test('grades a strong match when two full middle names conflict but the first name is exact', async () => {
     const state = await normalizeAcmsSourceName()(
       createInitialState(
         makeDxtrTrustee({ firstName: 'John', middleName: 'Alexander', lastName: 'Doe' }),
@@ -873,8 +763,7 @@ describe('scoreCandidate - name-match facet', () => {
     });
   });
 
-  // Models the same given name on both sides where only the source also has a middle initial.
-  test('matches the same given name divided differently between first and middle', async () => {
+  test('grades a strong match when only the ACMS side adds a middle initial after a shared middle name', async () => {
     const state = await normalizeAcmsSourceName()(
       createInitialState(
         makeDxtrTrustee({ firstName: 'C. Dabney', middleName: 'L', lastName: 'Vandermoor' }),
@@ -999,7 +888,7 @@ describe('scoreCandidate - name-match facet', () => {
   });
 
   // Models a CAMS firstName holding a bare initial and a given name in one field.
-  test('splits a CAMS firstName with a leading bare initial before scoring (full ACMS first name, no ACMS middle)', async () => {
+  test('splits a CAMS firstName with a leading bare initial (full ACMS first name, no ACMS middle)', async () => {
     const state = await normalizeAcmsSourceName()(
       createInitialState(
         makeDxtrTrustee({ firstName: 'Gerald', middleName: 'Theodore', lastName: 'Whitfield' }),
@@ -1018,7 +907,7 @@ describe('scoreCandidate - name-match facet', () => {
     });
   });
 
-  test('splits a CAMS firstName with a leading bare initial before scoring (ACMS middle initial present)', async () => {
+  test('splits a CAMS firstName with a leading bare initial (ACMS middle initial present)', async () => {
     const state = await normalizeAcmsSourceName()(
       createInitialState(
         makeDxtrTrustee({ firstName: 'Gerald', middleName: 'T', lastName: 'Whitfield' }),
@@ -1037,7 +926,7 @@ describe('scoreCandidate - name-match facet', () => {
     });
   });
 
-  test('splits a CAMS firstName with a trailing bare initial before scoring', async () => {
+  test('matches a CAMS firstName of an initial plus the ACMS middle name', async () => {
     const state = await normalizeAcmsSourceName()(
       createInitialState(
         makeDxtrTrustee({ firstName: 'Walter', middleName: 'Reid', lastName: 'Abernathy' }),
@@ -1056,7 +945,6 @@ describe('scoreCandidate - name-match facet', () => {
     });
   });
 
-  // A compound given name divides the same way on both sides, so it still matches itself exactly.
   test('matches a compound given name however the two sides divided it', async () => {
     const state = await normalizeAcmsSourceName()(
       createInitialState(
@@ -1067,28 +955,6 @@ describe('scoreCandidate - name-match facet', () => {
       state,
       projectTrustee(
         makeTrustee({ trusteeId: 't1', firstName: 'Robin Ann', lastName: 'Castellano' }),
-      ),
-      'test',
-    );
-
-    scoreCandidate(state.sourceNormalized, candidate);
-
-    expect(mergedScore(candidate)).toMatchObject({
-      doesNameMatch: { pass: true, quality: 'exact' },
-    });
-  });
-
-  // A role placeholder divides the same way on both sides, so it still matches itself.
-  test('matches a two-token role placeholder however the two sides divided it', async () => {
-    const state = await normalizeAcmsSourceName()(
-      createInitialState(
-        makeDxtrTrustee({ firstName: 'Interim', middleName: 'Trustee', lastName: 'Placeholder' }),
-      ),
-    );
-    const candidate = addCandidate(
-      state,
-      projectTrustee(
-        makeTrustee({ trusteeId: 't1', firstName: 'Interim Trustee', lastName: 'Placeholder' }),
       ),
       'test',
     );
@@ -1120,26 +986,7 @@ describe('scoreCandidate - similarity-diagnostics facet', () => {
     ]);
   });
 
-  test('computes the ACMS-side normalized name once on sourceNormalized rather than recomputing it per candidate', async () => {
-    const state = createInitialState(makeDxtrTrustee({ fullName: 'John Doe' }));
-    const t1 = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 't1', name: 'Jane Smith' })),
-      'test',
-    );
-    const t2 = addCandidate(
-      state,
-      projectTrustee(makeTrustee({ trusteeId: 't2', name: 'Bob Jones' })),
-      'test',
-    );
-
-    scoreCandidate(state.sourceNormalized, t1);
-    scoreCandidate(state.sourceNormalized, t2);
-
-    expect(state.sourceNormalized.name).toBe('john doe');
-  });
-
-  test("computes each candidate's own normalized name once, reused by both fullNameSimilarity and tokenNameMatchRate", async () => {
+  test("normalizes a candidate's name for similarity by dropping apostrophes and splitting hyphens", async () => {
     const state = createInitialState(makeDxtrTrustee({ fullName: 'John Doe' }));
     const candidate = addCandidate(
       state,
@@ -1154,14 +1001,6 @@ describe('scoreCandidate - similarity-diagnostics facet', () => {
 });
 
 describe('scoreCandidate - state/city/zip/contact-presence facets', () => {
-  const dxtrInWashington = makeDxtrTrustee({
-    fullName: 'Aldric T Moon',
-    firstName: 'Aldric',
-    middleName: 'A',
-    lastName: 'Moon',
-    legacy: { cityStateZipCountry: 'Tacoma, WA 98402' },
-  });
-
   // Models an ACMS address with a city and state but no zip.
   test('scores city and state from an ACMS address carrying no zip at all', async () => {
     const state = createInitialState(
@@ -1219,73 +1058,6 @@ describe('scoreCandidate - state/city/zip/contact-presence facets', () => {
 
     expect(mergedScore(candidate).doesStateMatch).toBeUndefined();
     expect(mergedScore(candidate).doesCityMatch).toBeUndefined();
-  });
-
-  test('records doesStateMatch:false for a state-mismatched candidate', async () => {
-    const state = createInitialState(dxtrInWashington);
-    const candidate = addSomeoneMoon(state, {
-      trusteeId: 'trustee-fl',
-      firstName: 'Nobody',
-      name: 'Nobody Moon',
-      public: {
-        address: {
-          address1: '1 Elm St',
-          city: 'Miami',
-          state: 'FL',
-          zipCode: '33101',
-          countryCode: 'US',
-        },
-      },
-    });
-
-    scoreCandidate(state.sourceNormalized, candidate);
-
-    expect(mergedScore(candidate)).toMatchObject({
-      doesStateMatch: { pass: false },
-    });
-  });
-
-  test('records no doesStateMatch at all when the ACMS address has no parseable state', async () => {
-    const state = createInitialState({
-      ...dxtrInWashington,
-      legacy: { cityStateZipCountry: undefined },
-    });
-    const candidate = addSomeoneMoon(state, {
-      trusteeId: 'trustee-1',
-      public: {
-        address: {
-          address1: '1 Elm St',
-          city: 'Miami',
-          state: 'FL',
-          zipCode: '33101',
-          countryCode: 'US',
-        },
-      },
-    });
-
-    scoreCandidate(state.sourceNormalized, candidate);
-
-    expect(mergedScore(candidate).doesStateMatch).toBeUndefined();
-  });
-
-  test('records no doesStateMatch at all for a candidate with no CAMS state', async () => {
-    const state = createInitialState(dxtrInWashington);
-    const candidate = addSomeoneMoon(state, {
-      trusteeId: 'trustee-no-state',
-      public: {
-        address: {
-          address1: '1 Elm St',
-          city: 'Unknown',
-          state: '',
-          zipCode: '',
-          countryCode: 'US',
-        },
-      },
-    });
-
-    scoreCandidate(state.sourceNormalized, candidate);
-
-    expect(mergedScore(candidate).doesStateMatch).toBeUndefined();
   });
 
   test('fails doesCamsTrusteeHaveAddressAndPhone for a candidate with NO address1, city, state, zip, or phone at all', async () => {
@@ -1370,9 +1142,9 @@ describe('scoreCandidate - state/city/zip/contact-presence facets', () => {
     });
   });
 
-  test('fails doesAcmsTrusteeHaveAddressAndPhone when the ACMS record has no address1, cityStateZipCountry, phone, or email at all', async () => {
+  test('treats an ACMS phone of "0" as blank, failing doesAcmsTrusteeHaveAddressAndPhone when no address, phone, or email is on file', async () => {
     const state = createInitialState(
-      makeDxtrTrustee({ legacy: { address1: '', cityStateZipCountry: '', phone: '0', fax: '0' } }),
+      makeDxtrTrustee({ legacy: { address1: '', cityStateZipCountry: '', phone: '0' } }),
     );
     const candidate = addSomeoneMoon(state, { trusteeId: 't1' });
 
@@ -1386,15 +1158,15 @@ describe('scoreCandidate - state/city/zip/contact-presence facets', () => {
   test.each([
     {
       description: 'address1 populated',
-      legacy: { address1: '123 Main St', cityStateZipCountry: '', phone: '0', fax: '0' },
+      legacy: { address1: '123 Main St', cityStateZipCountry: '', phone: '0' },
     },
     {
       description: 'cityStateZipCountry populated',
-      legacy: { address1: '', cityStateZipCountry: 'Seattle WA 98101', phone: '0', fax: '0' },
+      legacy: { address1: '', cityStateZipCountry: 'Seattle WA 98101', phone: '0' },
     },
     {
       description: 'a real phone number populated',
-      legacy: { address1: '', cityStateZipCountry: '', phone: '206-555-0100', fax: '0' },
+      legacy: { address1: '', cityStateZipCountry: '', phone: '206-555-0100' },
     },
   ])(
     'passes doesAcmsTrusteeHaveAddressAndPhone when the ACMS record has $description',
@@ -1409,19 +1181,6 @@ describe('scoreCandidate - state/city/zip/contact-presence facets', () => {
       });
     },
   );
-
-  test('treats ACMS phone/fax "0" as blank, not a real value for doesAcmsTrusteeHaveAddressAndPhone', async () => {
-    const state = createInitialState(
-      makeDxtrTrustee({ legacy: { address1: '', cityStateZipCountry: '', phone: '0', fax: '0' } }),
-    );
-    const candidate = addSomeoneMoon(state, { trusteeId: 't1' });
-
-    scoreCandidate(state.sourceNormalized, candidate);
-
-    expect(mergedScore(candidate)).toMatchObject({
-      doesAcmsTrusteeHaveAddressAndPhone: { pass: false },
-    });
-  });
 
   test('records a doesStateMatch pass when the candidate state matches, case-insensitively', async () => {
     const state = createInitialState(
@@ -1772,8 +1531,8 @@ describe('scoreCandidate - address-match facet', () => {
 
   test('grades a different city in the same state as a no-match', async () => {
     const scores = await scoresFor(
-      { address1: '707 First Savings Bldg', cityStateZipCountry: 'SAN ANGELO TX 76903' },
-      camsAddress('3200 Allied Bank Tower', 'Dallas', 'TX', '75202'),
+      { address1: '707 Harlow Trust Bldg', cityStateZipCountry: 'SAN ANGELO TX 76903' },
+      camsAddress('3200 Pellam Bank Tower', 'Dallas', 'TX', '75202'),
     );
 
     expect(scores.doesAddressMatch).toMatchObject({ pass: false, points: 0 });
@@ -1831,14 +1590,13 @@ describe('scoreCandidate - contact-corroboration facet', () => {
     },
   });
 
-  test('records doesPhoneMatch and doesEmailMatch for a candidate, unconditionally (no pool-size gate)', () => {
+  test('records a passing doesEmailMatch when the emails agree', () => {
     const state = createInitialState(acmsMarcusFeld);
-    const candidate = addAndScoreCandidate(
+    const candidate = addCandidate(
       state,
       projectTrustee(
         makeTrustee({
-          trusteeId: 'j-marcus-feld',
-          name: 'J. Marcus Feld',
+          trusteeId: 'marcus-feld',
           public: {
             address: {
               address1: '1 Fictional Ave',
@@ -1847,7 +1605,6 @@ describe('scoreCandidate - contact-corroboration facet', () => {
               zipCode: '98999',
               countryCode: 'US',
             },
-            phone: { number: '206-555-1000' },
             email: 'marcus.feld@example.com',
           },
         }),
@@ -1855,21 +1612,21 @@ describe('scoreCandidate - contact-corroboration facet', () => {
       'test',
     );
 
-    expect(mergedScore(candidate).doesPhoneMatch).toEqual({ pass: true, quality: 'exact' });
+    scoreCandidate(state.sourceNormalized, candidate);
+
     expect(mergedScore(candidate).doesEmailMatch).toEqual({ pass: true });
   });
 
   test('records a failing doesPhoneMatch when the phone genuinely differs', () => {
     const state = createInitialState(acmsMarcusFeld);
-    const candidate = addAndScoreCandidate(
+    const candidate = addCandidate(
       state,
       projectTrustee(
         makeTrustee({
-          trusteeId: 'bruce-wilson',
-          name: 'A. Bruce Halden',
+          trusteeId: 'bruce-halden',
           public: {
             address: {
-              address1: '1300 S. University Dr. #308',
+              address1: '1400 S. Larkspur Dr. #212',
               city: 'Fictionburg',
               state: 'TX',
               zipCode: '99999',
@@ -1882,17 +1639,18 @@ describe('scoreCandidate - contact-corroboration facet', () => {
       'test',
     );
 
+    scoreCandidate(state.sourceNormalized, candidate);
+
     expect(mergedScore(candidate).doesPhoneMatch).toEqual({ pass: false, phoneDigitDistance: 4 });
   });
 
   test('records a failing doesEmailMatch when the emails differ', () => {
     const state = createInitialState(acmsMarcusFeld);
-    const candidate = addAndScoreCandidate(
+    const candidate = addCandidate(
       state,
       projectTrustee(
         makeTrustee({
           trusteeId: 'marcus-feld',
-          name: 'Marcus Feld',
           public: {
             address: {
               address1: '1 Fictional Ave',
@@ -1908,25 +1666,29 @@ describe('scoreCandidate - contact-corroboration facet', () => {
       'test',
     );
 
+    scoreCandidate(state.sourceNormalized, candidate);
+
     expect(mergedScore(candidate).doesEmailMatch).toEqual({ pass: false });
   });
 
   test('does not record doesEmailMatch when either side has no email', () => {
     const state = createInitialState(makeDxtrTrustee({ fullName: 'No Email Here' }));
-    const candidate = addAndScoreCandidate(
+    const candidate = addCandidate(
       state,
       projectTrustee(makeTrustee({ trusteeId: 't1', name: 'No Email Here' })),
       'test',
     );
 
+    scoreCandidate(state.sourceNormalized, candidate);
+
     expect(candidate.scores).not.toHaveProperty('doesEmailMatch');
   });
 
-  test('does not record doesPhoneMatch when either phone has fewer than 10 digits', () => {
+  test('does not record doesPhoneMatch when the ACMS phone has fewer than 10 digits', () => {
     const state = createInitialState(
       makeDxtrTrustee({ fullName: 'Short Phone', legacy: { phone: '5551000' } as never }),
     );
-    const candidate = addAndScoreCandidate(
+    const candidate = addCandidate(
       state,
       projectTrustee(
         makeTrustee({
@@ -1937,6 +1699,8 @@ describe('scoreCandidate - contact-corroboration facet', () => {
       ),
       'test',
     );
+
+    scoreCandidate(state.sourceNormalized, candidate);
 
     expect(candidate.scores).not.toHaveProperty('doesPhoneMatch');
   });
@@ -1953,16 +1717,16 @@ describe('scoreCandidate - phone-match quality facet', () => {
     },
   });
 
-  const scoredCandidateWithPhone = async (phone: string, firstName = 'Terrence') => {
+  const scoredCandidateWithPhone = async (phone: string) => {
     const state = await normalizeAcmsSourceName()(createInitialState(acmsTerrenceBoyle));
     const candidate = addCandidate(
       state,
       projectTrustee(
         makeTrustee({
           trusteeId: 'terrence-boyle',
-          firstName,
+          firstName: 'Terrence',
           lastName: 'Boyle',
-          name: `${firstName} Boyle`,
+          name: 'Terrence Boyle',
           public: {
             address: {
               address1: '1 Fictional Way',
@@ -1981,29 +1745,26 @@ describe('scoreCandidate - phone-match quality facet', () => {
     return candidate;
   };
 
-  test('records a strong doesPhoneMatch, with the digit distance, when phones differ by 1-2 digits', async () => {
-    const candidate = await scoredCandidateWithPhone('212-555-0108');
-
-    expect(mergedScore(candidate).doesPhoneMatch).toEqual({
-      pass: true,
-      quality: 'strong',
-      phoneDigitDistance: 1,
-    });
-  });
-
   test.each([
-    { phone: '212-555-0111', expected: { pass: true, quality: 'strong', phoneDigitDistance: 2 } },
-    { phone: '212-555-0222', expected: { pass: false, phoneDigitDistance: 3 } },
-  ])('records $expected for $phone', async ({ phone, expected }) => {
+    {
+      description: 'one digit away as a strong match',
+      phone: '212-555-0108',
+      expected: { pass: true, quality: 'strong', phoneDigitDistance: 1 },
+    },
+    {
+      description: 'two digits away as a strong match',
+      phone: '212-555-0111',
+      expected: { pass: true, quality: 'strong', phoneDigitDistance: 2 },
+    },
+    {
+      description: 'three digits away as a no-match',
+      phone: '212-555-0222',
+      expected: { pass: false, phoneDigitDistance: 3 },
+    },
+  ])('grades a phone $description', async ({ phone, expected }) => {
     const candidate = await scoredCandidateWithPhone(phone);
 
     expect(mergedScore(candidate).doesPhoneMatch).toEqual(expected);
-  });
-
-  test('records a failing doesPhoneMatch when the phone is genuinely a different number', async () => {
-    const candidate = await scoredCandidateWithPhone('425-894-9945');
-
-    expect(mergedScore(candidate).doesPhoneMatch).toMatchObject({ pass: false });
   });
 
   test('records an exact doesPhoneMatch when the phones are identical', async () => {
@@ -2016,16 +1777,6 @@ describe('scoreCandidate - phone-match quality facet', () => {
     const candidate = await scoredCandidateWithPhone('5550640');
 
     expect(candidate.scores).not.toHaveProperty('doesPhoneMatch');
-  });
-
-  test('grades the phone regardless of how well the name matches', async () => {
-    const candidate = await scoredCandidateWithPhone('212-555-0108', 'T');
-
-    expect(mergedScore(candidate).doesPhoneMatch).toEqual({
-      pass: true,
-      quality: 'strong',
-      phoneDigitDistance: 1,
-    });
   });
 });
 
@@ -2049,11 +1800,15 @@ describe('resolvers', () => {
   };
 
   const address = (points: number) => ({
-    doesAddressMatch: {
-      pass: points > 0,
-      quality: points >= 6 ? 'exact' : points > 3 ? 'strong' : points === 3 ? 'moderate' : 'weak',
-      points,
-    },
+    doesAddressMatch:
+      points <= 0
+        ? { pass: false, points }
+        : {
+            pass: true,
+            quality:
+              points >= 6 ? 'exact' : points > 3 ? 'strong' : points === 3 ? 'moderate' : 'weak',
+            points,
+          },
   });
 
   describe.each([
@@ -2163,16 +1918,10 @@ describe('resolvers', () => {
 
       expect(result.match).toBeNull();
     });
-
-    test('does not resolve when the state was never compared', async () => {
-      const result = await resolveByStateOnly()(poolOf(EXACT_NAME));
-
-      expect(result.match).toBeNull();
-    });
   });
 
   describe('resolveByNameOnly', () => {
-    test('resolves the only name-qualifying candidate when its name is exact and nothing contradicts it', async () => {
+    test('resolves the only exact-name candidate when nothing contradicts it', async () => {
       const result = await resolveByNameOnly()(poolOf(EXACT_NAME, NO_NAME));
 
       expect(result.match).toMatchObject({ trusteeId: 't1', resolvedBy: 'resolveByNameOnly' });

@@ -1164,7 +1164,7 @@ function shouldEvictFromDiscovery(candidate: PipelineCandidate): boolean {
  * shouldEvictFromDiscovery says so. A scoring failure lands on state.error, halting the pipeline.
  * Always returns the candidate, even if evicted, so callers need no null check.
  */
-export function addAndScoreCandidate(
+function addAndScoreCandidate(
   state: PipelineState,
   camsRaw: ProjectedTrustee,
   origin: string,
