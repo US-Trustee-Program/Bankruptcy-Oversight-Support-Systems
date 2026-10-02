@@ -582,7 +582,15 @@ jobs:
           restore-keys: |
             ${{ env.ORPHAN_CACHE_PREFIX }}
       - name: Warn on missing debounce state
-        if: steps.restore-cache.outputs.cache-hit != 'true'
+        # cache-hit is true only on an exact PRIMARY key match -- but the primary key here
+        # embeds github.run_id, which is unique per run, so no earlier run could ever have
+        # saved under this exact key. cache-hit is therefore always false for this cache,
+        # regardless of whether restore-keys' prefix fallback actually found and restored a
+        # previous run's state; gating on it would fire this warning on every run, not just
+        # on genuine absence. cache-matched-key reflects whichever key (primary or a
+        # restore-keys fallback) actually restored something, and is empty only when nothing
+        # did -- eviction, quota, or a true first run.
+        if: steps.restore-cache.outputs.cache-matched-key == ''
         run: |
           echo "::warning::No prior unresolved-orphan cache found (eviction, quota, or first run) -- this run's debounce state starts empty, so any genuinely leaked hash checked this run will need one additional confirming run before it's reported."
       - name: Re-check each target hash and apply debounce
