@@ -537,7 +537,9 @@ jobs:
   assert-clean-state:
     runs-on: ubuntu-latest
     needs: [check, relay, clean-up]
-    if: always() && needs.check.outputs.executeCleanup == 'true'
+    if:
+      always() && needs.check.result == 'success' && needs.relay.result == 'success' &&
+      needs.check.outputs.executeCleanup == 'true'
     environment: 'remove-branch'
     permissions:
       contents: read
