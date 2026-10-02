@@ -40,31 +40,30 @@ const eslintUiConfig = tsEslint.config(
     },
   },
   {
-    // DOMPurify's hook API and IN_PLACE mode are the two preconditions of the
-    // XSS class described by GHSA-p98j-92pf-mc4p / SNYK-JS-DOMPURIFY-20361471:
-    // a node-removing afterSanitize* hook detaches a subtree whose event
-    // handlers the post-walk neutralization pass never disarms, because that
-    // pass only covers DOMPurify.removed. Neither feature is needed anywhere in
-    // CAMS — every call site passes a string to sanitize() and gets a string
-    // back — so banning them keeps that whole class of advisory unreachable
-    // rather than merely unused, which is what lets us treat the finding as
-    // mitigated by design. Lifting a rule here re-arms the class; pair any
-    // removal with a fresh read of the current DOMPurify advisories.
+    // GHSA-p98j-92pf-mc4p / SNYK-JS-DOMPURIFY-20361471 needs two preconditions
+    // together: sanitize() with IN_PLACE on a live node, plus a node-removing
+    // afterSanitize* hook. CAMS uses neither, and banning both is what lets the
+    // .snyk entry claim mitigated-by-design rather than incidentally unused.
+    // Lifting either rule re-arms the class — re-read the advisory first.
     //
-    // Scope note: this config is also imported by eslint-ui-test.config.mjs, so
-    // the ban reaches UI tests and test/bdd as well as UI source. That is
-    // intended — a hook registered from a test would be just as live.
-    // dev-tools/eslint-rule-manifest.json pins that blast radius.
+    // The selectors match syntax, not values: dotted and string-literal keys both
+    // error, but an alias (const { addHook } = DOMPurify) or a key built at runtime
+    // escapes. This is a tripwire against intent, not a boundary against evasion.
+    //
+    // eslint-ui-test.config.mjs imports this config, so the ban covers UI tests and
+    // test/bdd as well — intended, since a hook registered from a test is just as
+    // live. dev-tools/eslint-rule-manifest.json pins which files the rules reach.
     rules: {
       'no-restricted-syntax': [
         'error',
         {
-          selector: "CallExpression[callee.property.name='addHook']",
+          selector:
+            "CallExpression[callee.property.name='addHook'], CallExpression[callee.property.value='addHook']",
           message:
             'DOMPurify.addHook() is banned: node-removing hooks are a precondition of the GHSA-p98j-92pf-mc4p XSS class. Sanitize with a config object instead.',
         },
         {
-          selector: "Property[key.name='IN_PLACE']",
+          selector: "Property[key.name='IN_PLACE'], Property[key.value='IN_PLACE']",
           message:
             'DOMPurify IN_PLACE mode is banned: in-place sanitization of a live node is a precondition of the GHSA-p98j-92pf-mc4p XSS class. Pass a string to sanitize() and use the returned string.',
         },
