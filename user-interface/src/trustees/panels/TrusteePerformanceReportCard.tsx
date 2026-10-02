@@ -51,20 +51,21 @@ export default function TrusteePerformanceReportCard(
     {
       key: 'tprReviewPeriod',
       header: 'TPR Review Period',
-      headerLabel: 'TPR Review Period',
       testId: `${variant}-tpr-review-period-row`,
     },
     {
       key: 'tprFrequency',
       header: 'TPR Review Period Frequency',
-      headerLabel: 'TPR Review Period Frequency',
       testId: `${variant}-tpr-review-period-frequency-row`,
     },
-    { key: 'tprDue', header: 'TPR Due', headerLabel: 'TPR Due', testId: `${variant}-tpr-due-row` },
+    {
+      key: 'tprDue',
+      header: 'TPR Due',
+      testId: `${variant}-tpr-due-row`,
+    },
     {
       key: 'lastTprSubmitted',
       header: 'Last TPR Submitted',
-      headerLabel: 'Last TPR Submitted',
       testId: `${variant}-last-tpr-submitted-row`,
     },
   ];

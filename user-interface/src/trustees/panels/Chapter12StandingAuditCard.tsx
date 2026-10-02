@@ -57,19 +57,16 @@ export default function Chapter12StandingAuditCard(
         {
           key: 'auditReqBy',
           header: 'Audit Recommended by',
-          headerLabel: 'Audit Recommended by',
           testId: 'chapter12-standing-audit-req-by-row',
         },
         {
           key: 'lastAuditReport',
           header: 'Last Audit Report Date',
-          headerLabel: 'Last Audit Report Date',
           testId: 'chapter12-standing-past-audit-row',
         },
         {
           key: 'lastAuditFiscalYear',
           header: "Last Audit's Fiscal Year",
-          headerLabel: "Last Audit's Fiscal Year",
           testId: 'chapter12-standing-past-last-audit-fiscal-year-row',
         },
       ]}

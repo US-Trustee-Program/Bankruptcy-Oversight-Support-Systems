@@ -1,6 +1,5 @@
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import EditableTableCard from '@/lib/components/cams/EditableTableCard/EditableTableCard';
-import Abbreviation from '@/lib/components/Abbreviation';
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import useCanManageTrustees from '@/lib/hooks/UseCanManageTrustees';
 import { useOpenEditKeyDates } from './useOpenEditKeyDates';
@@ -53,44 +52,28 @@ export default function Chapter7PanelTrusteeInterimReportCard(
       columns={[
         {
           key: 'tirReviewPeriod',
-          header: (
-            <>
-              <Abbreviation>TIR</Abbreviation> Review Period
-            </>
-          ),
-          headerLabel: 'TIR Review Period',
+          header: 'TIR Review Period',
+          headerAriaLabel: 'T I R Review Period',
           testId: 'tir-review-period-row',
         },
         {
           key: 'tirSubmission',
-          header: (
-            <>
-              <Abbreviation>TIR</Abbreviation> Submission
-            </>
-          ),
-          headerLabel: 'TIR Submission',
+          header: 'TIR Submission',
+          headerAriaLabel: 'T I R Submission',
           testId: 'tir-submission-row',
         },
         // Column key/testId is 'tirDue'/'tir-review-row' because the underlying data field is
-        // tirReview, but the domain calls this date "TIR Due" -- the header label is intentional.
+        // tirReview, but the domain calls this date "TIR Due".
         {
           key: 'tirDue',
-          header: (
-            <>
-              <Abbreviation>TIR</Abbreviation> Due
-            </>
-          ),
-          headerLabel: 'TIR Due',
+          header: 'TIR Due',
+          headerAriaLabel: 'T I R Due',
           testId: 'tir-review-row',
         },
         {
           key: 'tirLetter',
-          header: (
-            <>
-              Last <Abbreviation>TIR</Abbreviation> Letter
-            </>
-          ),
-          headerLabel: 'Last TIR Letter',
+          header: 'Last TIR Letter',
+          headerAriaLabel: 'Last T I R Letter',
           testId: 'last-tir-letter-row',
         },
       ]}

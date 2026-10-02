@@ -54,13 +54,11 @@ export default function Chapter13StandingAuditCard(
         {
           key: 'annualAuditPeriod',
           header: 'Annual Audit Period',
-          headerLabel: 'Annual Audit Period',
           testId: 'annual-audit-period-row',
         },
         {
           key: 'lastAuditReport',
           header: 'Last Audit Report',
-          headerLabel: 'Last Audit Report',
           testId: 'past-audit-row',
         },
       ]}

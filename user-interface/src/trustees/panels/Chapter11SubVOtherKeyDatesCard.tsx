@@ -43,7 +43,6 @@ export default function Chapter11SubVOtherKeyDatesCard(
         {
           key: 'lastMonthlyReportReceived',
           header: 'Last Monthly Report Received',
-          headerLabel: 'Last Monthly Report Received',
           testId: 'past-last-monthly-report-received-row',
         },
       ]}

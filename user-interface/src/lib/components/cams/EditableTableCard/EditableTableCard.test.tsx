@@ -5,8 +5,8 @@ import EditableTableCard from './EditableTableCard';
 
 describe('EditableTableCard', () => {
   const columns = [
-    { key: 'renewal', header: 'Renewal', headerLabel: 'Renewal', testId: 'renewal-value' },
-    { key: 'issued', header: 'Issued', headerLabel: 'Issued', testId: 'issued-value' },
+    { key: 'renewal', header: 'Renewal', testId: 'renewal-value' },
+    { key: 'issued', header: 'Issued', testId: 'issued-value' },
   ];
   const values = {
     renewal: '06/01/2026',
@@ -170,5 +170,60 @@ describe('EditableTableCard', () => {
     expect(card).toHaveClass('usa-card');
     expect(card).toHaveClass('editable-table-card');
     expect(card).toHaveClass('my-card-class');
+  });
+
+  test('columnheader with headerAriaLabel renders aria-label with spaced-out text', () => {
+    const columnsWithAriaLabel = [
+      {
+        key: 'tir',
+        header: 'TIR Due',
+        headerAriaLabel: 'T I R Due',
+        testId: 'tir-value',
+      },
+    ];
+    const valuesWithTir = { tir: '12/31/2026' };
+
+    render(
+      <EditableTableCard
+        id="edit-thing"
+        title="TIR"
+        tableAriaLabel="TIR key dates"
+        columns={columnsWithAriaLabel}
+        values={valuesWithTir}
+      />,
+    );
+
+    // The columnheader must have the spaced-out aria-label
+    const header = screen.getByRole('columnheader', { name: 'T I R Due' });
+    expect(header).toBeInTheDocument();
+
+    // The visible text in the header should be exactly "TIR Due" with no spacing
+    expect(header).toHaveTextContent('TIR Due');
+
+    // No extra span elements inside the header (no .usa-sr-only or aria-hidden)
+    const srOnlySpan = header.querySelector('.usa-sr-only');
+    expect(srOnlySpan).not.toBeInTheDocument();
+
+    const hiddenSpan = header.querySelector('[aria-hidden="true"]');
+    expect(hiddenSpan).not.toBeInTheDocument();
+
+    // data-cell should render the header text, not the column key
+    expect(screen.getByTestId('tir-value')).toHaveAttribute('data-cell', 'TIR Due');
+  });
+
+  test('columnheader without headerAriaLabel does not render aria-label', () => {
+    render(
+      <EditableTableCard
+        id="edit-thing"
+        title="Bond"
+        tableAriaLabel="Bond key dates"
+        columns={columns}
+        values={values}
+      />,
+    );
+
+    // The header should not have aria-label when headerAriaLabel is not provided
+    const header = screen.getByRole('columnheader', { name: 'Renewal' });
+    expect(header).not.toHaveAttribute('aria-label');
   });
 });

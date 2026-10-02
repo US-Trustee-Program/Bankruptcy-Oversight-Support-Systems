@@ -62,8 +62,7 @@ describe('Chapter7PanelTrusteeInterimReportCard', () => {
 
     expect(screen.getByText('Trustee Interim Report')).toBeInTheDocument();
     // Query columnheader elements to verify headers render with correct text content.
-    // Headers use Abbreviation component which renders both visible "TIR" and screen-reader "T I R"
-    // in separate spans, so the combined textContent includes both.
+    // TIR headers have aria-label with spaced-out text for screen readers, but visible text stays "TIR"
     const headers = screen.getAllByRole('columnheader');
     expect(headers[0].textContent).toContain('Review Period');
     expect(headers[1].textContent).toContain('Submission');

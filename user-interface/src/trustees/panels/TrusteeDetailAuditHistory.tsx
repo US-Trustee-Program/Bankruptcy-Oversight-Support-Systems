@@ -1,7 +1,6 @@
 import './TrusteeDetailAuditHistory.scss';
 import { formatDate, sortByDateReverse } from '@/lib/utils/datetime';
 import LoadingIndicator from '@/lib/components/LoadingIndicator';
-import Abbreviation from '@/lib/components/Abbreviation';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { useEffect, useState } from 'react';
 import Api2 from '@/lib/models/api2';
@@ -471,31 +470,19 @@ const REPORT_DATE_FIELD_CONFIG: ReportDateFieldConfig[] = [
   },
   {
     key: 'tirReviewPeriodStart',
-    label: (
-      <>
-        <Abbreviation>TIR</Abbreviation> Review Period
-      </>
-    ),
+    label: 'TIR Review Period',
     labelKey: 'tirReviewPeriod',
     format: (d) => formatOptionalDateRange(d.tirReviewPeriodStart, d.tirReviewPeriodEnd),
   },
   {
     key: 'tirSubmission',
-    label: (
-      <>
-        <Abbreviation>TIR</Abbreviation> Submission
-      </>
-    ),
+    label: 'TIR Submission',
     labelKey: 'tirSubmission',
     format: (d) => (d.tirSubmission ? isoToMMDD(d.tirSubmission) : '(none)'),
   },
   {
     key: 'tirReview',
-    label: (
-      <>
-        <Abbreviation>TIR</Abbreviation> Review
-      </>
-    ),
+    label: 'TIR Review',
     labelKey: 'tirReview',
     format: (d) => (d.tirReview ? isoToMMDD(d.tirReview) : '(none)'),
   },

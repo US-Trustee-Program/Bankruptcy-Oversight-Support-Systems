@@ -169,7 +169,9 @@ describe('TrusteeDetailAuditHistory — AUDIT_UPCOMING_REPORT_DATES', () => {
       expect(screen.getByTestId('previous-upcoming-key-dates-0')).toBeInTheDocument();
     });
 
-    // Abbreviation component renders both visible "TIR" and screen-reader "T I R"
+    // Note: TIR labels in this component use plain strings. The <dt> elements
+    // have an implicit ARIA role of "term", which does not support aria-label,
+    // so the TIR abbreviation pronunciation is not fixed here (known gap).
     const prevElement = screen.getByTestId('previous-upcoming-key-dates-0');
     expect(prevElement.textContent).toContain('Review Period:');
     expect(prevElement.textContent).toContain('06/01 - 05/31');
@@ -191,7 +193,9 @@ describe('TrusteeDetailAuditHistory — AUDIT_UPCOMING_REPORT_DATES', () => {
       expect(screen.getByTestId('previous-upcoming-key-dates-0')).toBeInTheDocument();
     });
 
-    // Abbreviation component renders both visible "TIR" and screen-reader "T I R"
+    // Note: TIR labels in this component use plain strings. The <dt> elements
+    // have an implicit ARIA role of "term", which does not support aria-label,
+    // so the TIR abbreviation pronunciation is not fixed here (known gap).
     const prevElement = screen.getByTestId('previous-upcoming-key-dates-0');
     expect(prevElement.textContent).toContain('Submission:');
     expect(prevElement.textContent).toContain('10/15');

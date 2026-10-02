@@ -15,8 +15,8 @@ import {
 
 interface EditableTableCardColumn {
   key: string;
-  header: ReactNode;
-  headerLabel: string;
+  header: string;
+  headerAriaLabel?: string;
   testId?: string;
 }
 
@@ -103,7 +103,12 @@ function EditableTableCard(props: Readonly<EditableTableCardProps>) {
         >
           <CamsTableHeader>
             {columns.map((column) => (
-              <CamsTableHeaderCell key={column.key}>{column.header}</CamsTableHeaderCell>
+              <CamsTableHeaderCell
+                key={column.key}
+                {...(column.headerAriaLabel && { 'aria-label': column.headerAriaLabel })}
+              >
+                {column.header}
+              </CamsTableHeaderCell>
             ))}
           </CamsTableHeader>
           <CamsTableBody>
@@ -111,7 +116,7 @@ function EditableTableCard(props: Readonly<EditableTableCardProps>) {
               {columns.map((column) => (
                 <CamsTableCell
                   key={column.key}
-                  data-cell={column.headerLabel}
+                  data-cell={column.header}
                   data-testid={column.testId}
                 >
                   {values[column.key]}

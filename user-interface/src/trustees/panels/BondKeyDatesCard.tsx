@@ -41,13 +41,11 @@ export default function BondKeyDatesCard(props: Readonly<BondKeyDatesCardProps>)
         {
           key: 'bondRenewalDate',
           header: 'Bond Renewal',
-          headerLabel: 'Bond Renewal',
           testId: 'bond-renewal-date',
         },
         {
           key: 'bondIssuedDate',
           header: 'Bond Issued',
-          headerLabel: 'Bond Issued',
           testId: 'bond-issued-date',
         },
       ]}
