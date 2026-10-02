@@ -76,11 +76,6 @@ describe('deriveDisposition', () => {
     expect(deriveDisposition(state)).toBe('no-match');
   });
 
-  // 'ambiguous' means a genuine CHOICE between 2+ real, competing identities - structurally
-  // impossible when only one candidate in the pool actually qualifies. A pool with exactly one
-  // genuinely-qualifying candidate (here, the second one - the first fails doesNameMatch outright)
-  // is 'no-match': real evidence, just not enough of it to auto-link, not a choice between
-  // multiple plausible answers.
   test('returns no-match when only one candidate cleared doesNameMatch, even with a second candidate present', () => {
     const state = makeState({
       candidates: [
@@ -105,12 +100,7 @@ describe('deriveDisposition', () => {
     expect(deriveDisposition(state)).toBe('ambiguous');
   });
 
-  // cams-yzqkt follow-up (SP-02360): an 85-scored name match (an initial, a crossed middle name,
-  // a nickname - never an exact 100) is name-shape coincidence, not real evidence, when the ACMS
-  // source has no address/phone at all for corroboration to ever run against. A whole surname
-  // pool worth of unrelated real trustees can each qualify this way - "ambiguous" should mean
-  // genuinely competing evidence, not "the ACMS record happened to share initials with several
-  // people in a big pool."
+  // A strong, non-exact name is not evidence without ACMS contact data to compare against.
   test('returns no-match when every 85-scored candidate has no ACMS contact data to corroborate against', () => {
     const weakMatch = {
       doesNameMatch: { pass: true, quality: 'strong' },
@@ -122,16 +112,6 @@ describe('deriveDisposition', () => {
     expect(deriveDisposition(state)).toBe('no-match');
   });
 
-  // 'ambiguous' requires 2+ genuinely-qualifying candidates (a real CHOICE between competing
-  // identities) - a lone candidate, however strong its own evidence, is 'no-match': real evidence,
-  // just not enough of it to auto-link, never a choice between multiple plausible answers. This is
-  // the exact real regression this rule fixes (a real shape, name synthesized): ACMS "Jordan Roe"
-  // in one state exact-name-matched a sole CAMS candidate "Jordan A. Roe" in a different state, with
-  // a real, disagreeing state and near-zero address/phone corroboration - isGenuineAmbiguousEvidence's
-  // exact-name-match branch alone used to be enough to call this 'ambiguous', even though there was
-  // no second candidate to be ambiguous WITH. Confirmed via pipeline-replay-backtest.ts against the
-  // 2026-09-25 export: 56 of 72 previously-'ambiguous' records had 0 or 1 genuinely-qualifying
-  // candidates: this exact shape.
   test('returns no-match, not ambiguous, when only one candidate has an exact (100) name match with no ACMS contact data', () => {
     const state = makeState({
       candidates: [
