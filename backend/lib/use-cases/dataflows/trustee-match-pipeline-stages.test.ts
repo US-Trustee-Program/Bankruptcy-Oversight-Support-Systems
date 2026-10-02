@@ -1569,10 +1569,19 @@ describe('scoreCandidate - address-match facet', () => {
     expect(scores.doesAddressMatch).toMatchObject({ pass: true, quality: 'weak', points: 1 });
   });
 
-  test('grades a different city in the same state as a no-match', async () => {
+  test('grades the state match as weak even when the city and zip differ', async () => {
     const scores = await scoresFor(
       { address1: '707 Harlow Trust Bldg', cityStateZipCountry: 'SAN ANGELO TX 76903' },
       camsAddress('3200 Pellam Bank Tower', 'Dallas', 'TX', '75202'),
+    );
+
+    expect(scores.doesAddressMatch).toMatchObject({ pass: true, quality: 'weak', points: 1 });
+  });
+
+  test('grades a no-match when nothing comparable agrees', async () => {
+    const scores = await scoresFor(
+      { address1: '707 Harlow Trust Bldg', cityStateZipCountry: 'SAN ANGELO TX 76903' },
+      camsAddress('3200 Pellam Bank Tower', 'Tulsa', 'OK', '74103'),
     );
 
     expect(scores.doesAddressMatch).toMatchObject({ pass: false, points: 0 });

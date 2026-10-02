@@ -1031,9 +1031,8 @@ function geoPoints(scores: ScoreByScorer): number | null {
   if (city === undefined && state === undefined && zip === undefined) return null;
 
   const dominant = (city === true && state === true) || zip === true;
-  const signed = (match: boolean | undefined) => (match === undefined ? 0 : match ? 1 : -1);
-  const components = signed(city) + signed(state) + (zip === true ? 1 : 0);
-  return Math.max(0, Math.min(GEO_POINTS, dominant ? GEO_POINTS : components));
+  const matches = [city, state, zip].filter((match) => match === true).length;
+  return dominant ? GEO_POINTS : matches;
 }
 
 type AddressMatchQuality = 'exact' | 'strong' | 'moderate' | 'weak';
@@ -1052,9 +1051,9 @@ function gradeAddress(points: number): AddressMatchQuality | undefined {
 
 /**
  * Grades the address like doesNameMatch grades the name. Geography scores up to 3: city and state
- * agreeing, or the zip agreeing, is worth 3 on its own; otherwise city and state each add 1 or
- * subtract 1 and a zip match adds 1. The street line adds its closeness times 3. Nothing is
- * recorded when no part of the address was comparable.
+ * agreeing, or the zip agreeing, is worth 3 on its own; otherwise each of city, state and zip that
+ * agrees adds 1. A mismatch adds nothing - it is a missing signal, not evidence against. The street
+ * line adds its closeness times 3. Nothing is recorded when no part of the address was comparable.
  */
 function scoreAddressMatch(
   sourceNormalized: NormalizedTrustee,
