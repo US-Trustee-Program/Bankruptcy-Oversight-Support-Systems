@@ -314,13 +314,8 @@ async function main(): Promise<void> {
     }
   }
 
-  // Same three checks skipAdministrativePlaceholder itself runs (trustee-match-pipeline-stages.ts)
-  // - a skipped record never reaches candidate discovery, so pipeline-replay-backtest.ts never
-  // writes it to the JSONL at all, and this population has to be re-derived directly from the
-  // fixture instead of read out of it. All three, not a subset: an earlier version of this script
-  // only checked shouldSkipAsNotAPerson/isRecordDisavowed and silently missed every
-  // shouldSkipAsUstStaff-only record (e.g. "JUDY ROBBINS (UST)"), which then wrongly fell through
-  // to the no-match bucket instead - the exact class of bug this parity pass was meant to catch.
+  // The same three checks skipAdministrativePlaceholder runs. A skipped record is never written to
+  // the JSONL, so this population is re-derived from the fixture.
   const replayable = records.filter((r) => r.evidence?.sourceRaw);
   const skippedRows: CandidateCsvRow[] = [];
   for (const record of replayable) {

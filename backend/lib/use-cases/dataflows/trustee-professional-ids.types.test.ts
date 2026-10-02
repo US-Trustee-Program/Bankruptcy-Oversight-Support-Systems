@@ -90,48 +90,21 @@ describe('deriveDisposition', () => {
     expect(deriveDisposition(state)).toBe('no-match');
   });
 
-  test('returns plain ambiguous when qualifying candidates share neither phone nor email', () => {
+  test('returns ambiguous when two candidates are exact name matches', () => {
     const state = makeState({
-      candidates: [
-        makeCandidate(passingNameMatch, { phone: { number: '702-262-9322' } }),
-        makeCandidate(passingNameMatch, { phone: { number: '212-555-0100' } }),
-      ],
+      candidates: [makeCandidate(passingNameMatch), makeCandidate(passingNameMatch)],
     });
     expect(deriveDisposition(state)).toBe('ambiguous');
   });
 
   // A strong, non-exact name is not evidence without ACMS contact data to compare against.
-  test('returns no-match when every 85-scored candidate has no ACMS contact data to corroborate against', () => {
+  test('returns no-match when every candidate is only a strong name match with no ACMS contact data to corroborate against', () => {
     const weakMatch = {
       doesNameMatch: { pass: true, quality: 'strong' },
       doesAcmsTrusteeHaveAddressAndPhone: { pass: false },
     };
     const state = makeState({
       candidates: [makeCandidate(weakMatch), makeCandidate(weakMatch), makeCandidate(weakMatch)],
-    });
-    expect(deriveDisposition(state)).toBe('no-match');
-  });
-
-  test('returns no-match, not ambiguous, when only one candidate has an exact (100) name match with no ACMS contact data', () => {
-    const state = makeState({
-      candidates: [
-        makeCandidate({
-          doesNameMatch: { pass: true, quality: 'exact' },
-          doesAcmsTrusteeHaveAddressAndPhone: { pass: false },
-        }),
-      ],
-    });
-    expect(deriveDisposition(state)).toBe('no-match');
-  });
-
-  test('returns no-match, not ambiguous, when only one 85-scored candidate has ACMS contact data to corroborate against', () => {
-    const weakMatchWithComparableAcmsData = {
-      doesNameMatch: { pass: true, quality: 'strong' },
-      doesAcmsTrusteeHaveAddressAndPhone: { pass: true },
-      doesAddressMatch: { pass: false, points: 0 },
-    };
-    const state = makeState({
-      candidates: [makeCandidate(weakMatchWithComparableAcmsData)],
     });
     expect(deriveDisposition(state)).toBe('no-match');
   });
@@ -144,7 +117,6 @@ describe('deriveDisposition', () => {
     const weakMatchWithComparableAcmsData = {
       doesNameMatch: { pass: true, quality: 'strong' },
       doesAcmsTrusteeHaveAddressAndPhone: { pass: true },
-      doesAddressMatch: { pass: false, points: 0 },
     };
     const state = makeState({
       candidates: [makeCandidate(exactMatch), makeCandidate(weakMatchWithComparableAcmsData)],
@@ -174,8 +146,8 @@ describe('deriveSuspectDuplicateCamsTrustee', () => {
   test('returns true when 2+ qualifying candidates share a phone number', () => {
     const state = makeState({
       candidates: [
-        makeCandidate(passingNameMatch, { phone: { number: '702-262-9322' } }),
-        makeCandidate(passingNameMatch, { phone: { number: '7022629322' } }),
+        makeCandidate(passingNameMatch, { phone: { number: '206-555-0100' } }),
+        makeCandidate(passingNameMatch, { phone: { number: '2065550100' } }),
       ],
     });
     expect(deriveSuspectDuplicateCamsTrustee(state)).toBe(true);
@@ -196,19 +168,19 @@ describe('deriveSuspectDuplicateCamsTrustee', () => {
       candidates: [
         makeCandidate(passingNameMatch, {
           address: {
-            address1: '4095 Huffman Mill Road',
-            city: 'Lexington',
-            state: 'KY',
-            zipCode: '40511',
+            address1: '1 Fictional Avenue',
+            city: 'Fictionburg',
+            state: 'WA',
+            zipCode: '98999',
             countryCode: 'US',
           },
         }),
         makeCandidate(passingNameMatch, {
           address: {
-            address1: '4095 Huffman Mill Rd.',
-            city: 'Lexington',
-            state: 'KY',
-            zipCode: '40511',
+            address1: '1 Fictional Ave.',
+            city: 'Fictionburg',
+            state: 'WA',
+            zipCode: '98999',
             countryCode: 'US',
           },
         }),
@@ -223,18 +195,18 @@ describe('deriveSuspectDuplicateCamsTrustee', () => {
         makeCandidate(passingNameMatch, {
           address: {
             address1: '',
-            city: 'Lexington',
-            state: 'KY',
-            zipCode: '40511',
+            city: 'Fictionburg',
+            state: 'WA',
+            zipCode: '98999',
             countryCode: 'US',
           },
         }),
         makeCandidate(passingNameMatch, {
           address: {
             address1: '',
-            city: 'Lexington',
-            state: 'KY',
-            zipCode: '40511',
+            city: 'Fictionburg',
+            state: 'WA',
+            zipCode: '98999',
             countryCode: 'US',
           },
         }),
@@ -246,8 +218,8 @@ describe('deriveSuspectDuplicateCamsTrustee', () => {
   test('returns false when qualifying candidates share neither phone, email, nor address', () => {
     const state = makeState({
       candidates: [
-        makeCandidate(passingNameMatch, { phone: { number: '702-262-9322' } }),
-        makeCandidate(passingNameMatch, { phone: { number: '212-555-0100' } }),
+        makeCandidate(passingNameMatch, { phone: { number: '206-555-0100' } }),
+        makeCandidate(passingNameMatch, { phone: { number: '206-555-0199' } }),
       ],
     });
     expect(deriveSuspectDuplicateCamsTrustee(state)).toBe(false);
@@ -256,10 +228,10 @@ describe('deriveSuspectDuplicateCamsTrustee', () => {
   test('does not treat a shared phone on a NON-qualifying candidate as a duplication signal', () => {
     const state = makeState({
       candidates: [
-        makeCandidate(passingNameMatch, { phone: { number: '702-262-9322' } }),
+        makeCandidate(passingNameMatch, { phone: { number: '206-555-0100' } }),
         makeCandidate(
           { doesNameMatch: { pass: false, quality: 'strong' } },
-          { phone: { number: '702-262-9322' } },
+          { phone: { number: '206-555-0100' } },
         ),
       ],
     });

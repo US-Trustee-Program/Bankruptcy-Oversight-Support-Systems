@@ -43,46 +43,45 @@ describe('stripAdministrativeMarkers', () => {
     expect(stripAdministrativeMarkers(input)).toBe(expected);
   });
 
-  test('still strips a spaced chapter marker (existing coverage, must not regress)', () => {
+  test('strips a spaced chapter marker', () => {
     expect(stripAdministrativeMarkers('Jordan W Roe Chapter 12')).toBe('Jordan W Roe');
   });
 
-  test('does not strip a real surname that merely contains "ch" as a substring', () => {
-    expect(stripAdministrativeMarkers('Church')).toBe('Church');
-  });
-
-  test('does not strip a real surname ending in a number-free "ch"-containing word', () => {
-    expect(stripAdministrativeMarkers('Finch')).toBe('Finch');
-  });
+  test.each([['Church'], ['Finch']])(
+    'leaves a surname containing "ch" with no chapter number untouched: "%s"',
+    (surname) => {
+      expect(stripAdministrativeMarkers(surname)).toBe(surname);
+    },
+  );
 });
 
 describe('recoverLastFirstRoleSwap', () => {
   test('swaps LAST, FIRST out of lastName when firstName is pure role-phrase noise', () => {
-    expect(recoverLastFirstRoleSwap('LIQUIDATING TRUSTEE', 'PELLETIER, DEVIN')).toEqual({
-      firstName: 'DEVIN',
-      lastName: 'PELLETIER',
+    expect(recoverLastFirstRoleSwap('LIQUIDATING TRUSTEE', 'ROE, JORDAN')).toEqual({
+      firstName: 'JORDAN',
+      lastName: 'ROE',
     });
   });
 
   test('leaves the record untouched when firstName is a real name, even with a comma in lastName', () => {
     // A comma alone is not a swap; here it precedes a generational suffix.
-    expect(recoverLastFirstRoleSwap('Devin', 'Pelletier, Jr.')).toEqual({
-      firstName: 'Devin',
-      lastName: 'Pelletier, Jr.',
+    expect(recoverLastFirstRoleSwap('Jordan', 'Roe, Jr.')).toEqual({
+      firstName: 'Jordan',
+      lastName: 'Roe, Jr.',
     });
   });
 
   test('leaves the record untouched when lastName has no comma at all', () => {
-    expect(recoverLastFirstRoleSwap('LIQUIDATING TRUSTEE', 'Pelletier')).toEqual({
+    expect(recoverLastFirstRoleSwap('LIQUIDATING TRUSTEE', 'Roe')).toEqual({
       firstName: 'LIQUIDATING TRUSTEE',
-      lastName: 'Pelletier',
+      lastName: 'Roe',
     });
   });
 
-  test('leaves the record untouched when firstName is empty (recoverSoloPracticeName territory, not this)', () => {
-    expect(recoverLastFirstRoleSwap('', 'Pelletier, Devin')).toEqual({
+  test('leaves the record untouched when firstName is empty', () => {
+    expect(recoverLastFirstRoleSwap('', 'Roe, Jordan')).toEqual({
       firstName: '',
-      lastName: 'Pelletier, Devin',
+      lastName: 'Roe, Jordan',
     });
   });
 });
