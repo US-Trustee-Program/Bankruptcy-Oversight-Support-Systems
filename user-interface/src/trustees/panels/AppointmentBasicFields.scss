@@ -3,7 +3,14 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 1.5rem;
-  padding-bottom: 1.5rem;
+
+  // Only needed as a gap before key-dates cards that follow in the same accordion
+  // body (Chapter 7 Panel/Elected, Standing, 12/13 CBC). When this is the entire
+  // body (Chapter 11 CBC, Chapter 7 Converted), there's nothing after it to
+  // separate from, so the padding would just be trailing whitespace.
+  &:not(:last-child) {
+    padding-bottom: 1.5rem;
+  }
 
   .appointment-body-label {
     font-weight: 600;

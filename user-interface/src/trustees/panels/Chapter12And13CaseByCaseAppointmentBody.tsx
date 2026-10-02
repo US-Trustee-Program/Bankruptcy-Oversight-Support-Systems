@@ -1,4 +1,3 @@
-import './Chapter12And13CaseByCaseAppointmentBody.scss';
 import AppointmentBasicFields from './AppointmentBasicFields';
 import AnnualReportKeyDatesCard from './AnnualReportKeyDatesCard';
 import TrusteePerformanceReportCard from './TrusteePerformanceReportCard';

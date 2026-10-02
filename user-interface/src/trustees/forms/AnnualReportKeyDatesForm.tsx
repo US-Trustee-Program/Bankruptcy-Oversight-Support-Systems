@@ -52,10 +52,6 @@ export default function AnnualReportKeyDatesForm() {
       onSave={shell.handleSave}
       onCancel={shell.handleCancel}
     >
-      <p>
-        Annual Report Submission and Annual Report Due to OO are fixed for Chapter 12 and 13 Case by
-        Case appointments and cannot be edited.
-      </p>
       <CompletionStatusFields
         idPrefix="annual-report-completion"
         legend="Annual Report Completion"

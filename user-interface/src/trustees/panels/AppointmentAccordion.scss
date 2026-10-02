@@ -3,6 +3,17 @@
 
   .usa-accordion__content {
     padding-top: 1rem;
+    padding-bottom: 1rem;
+  }
+
+  .usa-accordion__content > *:last-child,
+  .usa-accordion__content > *:first-child {
+    margin-bottom: 0;
+
+    .editable-table-card:last-of-type,
+    .appointment-basic-fields:last-of-type {
+      margin-bottom: 0;
+    }
   }
 }
 
