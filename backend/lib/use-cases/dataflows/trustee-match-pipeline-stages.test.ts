@@ -42,9 +42,7 @@ const makeDxtrTrustee = (overrides: Partial<DxtrTrusteeParty> = {}): DxtrTrustee
 const makeTrustee = (overrides: Partial<Trustee> = {}): Trustee =>
   MockData.getTrustee({ firstName: 'John', lastName: 'Doe', ...overrides });
 
-/** Shared "Someone Moon" candidate fixture used across the doesStateMatch/doesCityMatch/
- * doesZipCodeMatch describe blocks - a generic, deliberately-unrelated-to-the-ACMS-record surname
- * collision, not a specific name under test. */
+/** Adds a generic same-surname candidate whose name is not under test. */
 const addSomeoneMoon = (state: PipelineState, overrides: Partial<Trustee> = {}) =>
   addCandidate(
     state,
@@ -54,28 +52,15 @@ const addSomeoneMoon = (state: PipelineState, overrides: Partial<Trustee> = {}) 
     'test',
   );
 
-/**
- * Every multi-word name below is INVENTED - none is a real ACMS/CAMS record. Each pair stands in
- * for a real pattern that WAS once observed in a staging backtest (a score collision, a
- * false-positive risk, a discovery-tier edge case), but the specific people named in that backtest
- * are never reproduced here. Named per the CONDITION each pair models, not the people it replaces,
- * so a reader sees why the pair exists from the declaration alone.
- */
+/** Every multi-word name below is invented. */
 
-/** Generic ACMS-side filler paired with the "Someone Moon" candidate fixture above - an arbitrary
- * name with no distinguishing relationship to its candidate, used where the test only cares that
- * SOME ACMS record exists. */
 const GENERIC_ACMS_FULL_NAME = 'Aldric A Moon';
 
-/** ACMS record with a real, comparable, MISMATCHED phone number differing by exactly one digit
- * from an otherwise exact-name CAMS candidate - the digit-hamming-distance typo-tolerance shape. */
 const PHONE_TYPO_ONE_DIGIT_PAIR = {
   acmsFullName: 'D. Wheeler Cray',
   camsName: 'Desmond Wheeler Cray',
 } as const;
 
-/** ACMS record with no comparable phone/address data on file, recoverable only via anchored
- * Levenshtein against a spelling-variant CAMS candidate. */
 const NO_CONTACT_DATA_SPELLING_VARIANT_PAIR = {
   acmsFullName: 'Norburt Falk',
   acmsFirstName: 'Norburt',
@@ -90,15 +75,8 @@ describe('skipAdministrativePlaceholder', () => {
     vi.restoreAllMocks();
   });
 
-  // Runs directly against createInitialState, NOT after normalizeAcmsSourceName - this stage now
-  // runs FIRST in the real pipeline (see its own doc comment: it reads state.sourceRaw.fullName,
-  // the raw ACMS name exactly as composed by toAcmsTrusteeProfessional, before any
-  // recovery/reduction has a chance to redistribute a signal across fields). fullName must be
-  // passed explicitly on every case below - makeDxtrTrustee's own default ('John Doe') is fixed,
-  // not derived from firstName/lastName overrides.
+  // This stage reads the raw ACMS fullName, so every case passes fullName explicitly.
 
-  // Real shape from a staging backtest - an ACMS record naming no real person at all, only
-  // administrative placeholder text.
   test('sets state.skip when the record trips shouldSkipAsNotAPerson', async () => {
     const state = createInitialState(makeDxtrTrustee({ fullName: 'NOT ASSIGNED' }));
 
@@ -107,12 +85,7 @@ describe('skipAdministrativePlaceholder', () => {
     expect(result.skip).toBe(true);
   });
 
-  // Real shapes from a staging backtest survey of the no-match population: every one of these
-  // names no real person at all (a role/office name, a case-status label, or a well-known
-  // synthetic test record ACMS put in the name field), and none of them previously tripped
-  // shouldSkipAsNotAPerson - see ADMINISTRATIVE_MARKER_PHRASES/NON_PERSON_ONLY_WORDS/
-  // FAKE_IDENTITY_PATTERN's own doc comments in sync-acms-professional-ids.ts for the full
-  // backtest-verified word list/pattern and why each is safe to include.
+  // Models names that are a role, office, case-status label, or synthetic test record.
   test.each([
     'US TRUSTEE',
     'U.S. TRUSTEE',
@@ -138,14 +111,7 @@ describe('skipAdministrativePlaceholder', () => {
     expect(result.skip).toBe(true);
   });
 
-  // Brian's correction (2026-09-29), reversing a previous, now-known-wrong assumption: a UST (U.S.
-  // Trustee office staff, appointed by the USTP program, leadership over the "private" trustees) is
-  // a real person but is NEVER a CAMS trustee record - not in CAMS at all, even though they
-  // sometimes step in and work cases directly. A "- U S TRUSTEE"/"(UST)" annotation is therefore an
-  // early, unconditional skip signal, not a strip-then-recover-a-real-name shape like "(CHAPTER 12)"
-  // or "(TR)" - there is structurally nothing in CAMS to ever match it to, no matter how real the
-  // accompanying name looks. This test previously asserted skip===false for this exact shape; see
-  // shouldSkipAsUstStaff's own doc comment for the dedicated UST-keywords list this now runs through.
+  // U.S. Trustee staff are never CAMS trustees, so a UST annotation skips even with a real name.
   test.each(['JORDAN R DOE - U S TRUSTEE', 'JUDY ROBBINS (UST)', 'JOHN R STONITSCH - U S TRUSTEE'])(
     'sets state.skip for a UST-annotated name "%s"',
     async (fullName) => {
@@ -157,13 +123,7 @@ describe('skipAdministrativePlaceholder', () => {
     },
   );
 
-  // Real shapes from a staging backtest: ACMS explicitly disavowing a specific professional-code
-  // RECORD ("DO NOT USE", "DUPLICATE", "CANCELLED", "DELETE") is skip-worthy even when a real
-  // person's name is also present - see isRecordDisavowed's own doc comment for why this is a
-  // separate, unconditional check from shouldSkipAsNotAPerson's name-decomposition logic. A real
-  // record surfaced this: its sole CAMS candidate even barely cleared doesNameMatch's threshold,
-  // yet ACMS is explicitly saying this specific record is a stale duplicate that should never be
-  // matched against at all.
+  // An ACMS disavowal phrase skips the record even when a real name is present.
   test.each([
     'JORDAN (EC) ROE (DO NOT USE)',
     'TAYLOR DOE/DO NOT USE',
@@ -178,12 +138,7 @@ describe('skipAdministrativePlaceholder', () => {
     expect(result.skip).toBe(true);
   });
 
-  // Real bug, confirmed via pipeline-replay-backtest.ts against the 2026-09-25 export:
-  // isRecordDisavowed used to check fullName only. A real record (a real shape, name synthesized:
-  // ACMS "Jordan Roe" - a genuine person's name, no disavowal phrase in it at all) had "DO NOT USE"
-  // placed in legacy.address1 instead of the name field, and auto-linked anyway - a real disavowal
-  // signal this check was structurally blind to. Now also checks the concatenated legacy address
-  // fields (address1/address2/cityStateZipCountry), independent of the fullName check.
+  // The disavowal check reads the legacy address fields as well as the name.
   test('sets state.skip for a disavowed record when "DO NOT USE" is in the address instead of the name', async () => {
     const state = createInitialState(
       makeDxtrTrustee({
@@ -214,10 +169,7 @@ describe('skipAdministrativePlaceholder', () => {
     expect(result.skip).toBe(false);
   });
 
-  // "inactive" and "deceased" are deliberately NOT disavowal signals (see
-  // DISAVOWED_RECORD_PHRASES's own doc comment): an inactive trustee can still have open cases
-  // that must stay correctly attributed until reassignment, and a deceased trustee's past cases
-  // likewise need their real identity resolved first - both must still reach matching.
+  // Inactive and deceased trustees still have cases to attribute, so they are not disavowals.
   test.each(['JORDAN R DOE INACTIVE', 'HUGH W DECEASED - ROE, JR.'])(
     'leaves state unchanged for an inactive/deceased trustee "%s"',
     async (fullName) => {
@@ -229,11 +181,7 @@ describe('skipAdministrativePlaceholder', () => {
     },
   );
 
-  // Guards against exactly the regression NON_PERSON_ONLY_WORDS/FAKE_IDENTITY_PATTERN's own doc
-  // comments describe (sync-acms-professional-ids.ts): a real trustee's genuine single-letter
-  // initial, or a real surname that happens to be a word/pattern this stage also uses for
-  // placeholder detection, must never be treated as not-a-person. "Fake" in particular is a real
-  // surname - the "I. M. FAKE" cases above must never generalize to "any Fake surname skips."
+  // Real initials and real surnames such as "Fake" are not placeholders.
   test.each(['R. SMITH', 'J DOE', 'ISAAC FAKE', 'FAKE', 'MARY FAKE', 'U.S. AGGREGATES'])(
     'leaves state unchanged for a real name "%s"',
     async (fullName) => {
@@ -245,8 +193,6 @@ describe('skipAdministrativePlaceholder', () => {
     },
   );
 
-  // Real shapes found while spot-checking the no-match partition of a staging backtest report:
-  // case-status placeholders naming no real person at all.
   test.each([
     'INVOLUNTARY PETITION TRUSTEE UNASSIGNED',
     'TRANSFER CASE',
@@ -268,10 +214,8 @@ describe('skipAdministrativePlaceholder', () => {
     expect(result.skip).toBe(true);
   });
 
-  // Same backtest spot-check: a real trustee's name with an appended chapter/role parenthetical
-  // is NOT skip-worthy - the marker strips away, and a real name remains underneath. "(UST)" is
-  // deliberately NOT in this group - see the UST-annotation test above for why that shape skips
-  // unconditionally instead, unlike a chapter/acting-trustee-role suffix.
+  // The chapter/role marker strips away and a real name remains. "(UST)" is excluded because it
+  // always skips.
   test.each([
     "JORDAN W O'DOE (CHAPTER 12)",
     'TAYLOR Z ROE (CH 11)',
@@ -284,10 +228,6 @@ describe('skipAdministrativePlaceholder', () => {
     expect(result.skip).toBe(false);
   });
 
-  // From prompt-cams-876-matching-fixes.md, Problem 3: real ACMS shapes with no CAMS counterpart
-  // (correctly no-match) that must still normalize cleanly - not skipped, not crashing, not
-  // corrupted into some other wrong identity, even though there is no real link to find for them.
-  // Names synthesized from the real staging-export shapes.
   test.each([
     'TIMOTHY ASHFORD (ACTING CH. 13 TRUSTEE)',
     'CLAUDIA Z MERIWETHER (CH 11)',
@@ -306,12 +246,7 @@ describe('skipAdministrativePlaceholder', () => {
 });
 
 describe('normalizeAcmsSourceName', () => {
-  // Real shape (2026-09-25 staging export, name synthesized): a parenthetical ACMS office/region
-  // code landing mid-firstName, not part of the name. Before this fix, stripAdministrativeMarkers
-  // only stripped the PARENTHESES themselves ([-/*.,():_]+), leaving the code's text as a bare
-  // surviving word - "WINONA (BALT) SPENCER" reduced to "WINONA BALT SPENCER" (3 words), which
-  // splitCompoundFirstName then wrongly split into firstName="Winona", middleName="Balt Spencer"
-  // instead of the correct middleName="Spencer" alone.
+  // Models an office/region code in parentheses inside firstName, which is not part of the name.
   test('strips a parenthetical office/region code from firstName, recovering the real compound given name', async () => {
     const state = await normalizeAcmsSourceName()(
       createInitialState(
@@ -338,10 +273,7 @@ describe('normalizeAcmsSourceName', () => {
     expect(state.sourceNormalized.middleName).toBe('t');
   });
 
-  // Real shape (2026-09-25 staging export, name synthesized): firstName "LIQUIDATING TRUSTEE",
-  // lastName "PELLETIER, DEVIN" - the whole real identity landed in lastName, LAST, FIRST order,
-  // because firstName carries only role-phrase noise. Must run BEFORE stripAdministrativeMarkers'
-  // own comma-stripping, which would otherwise destroy the comma this recovery depends on.
+  // The recovery reads the pre-strip lastName, since stripping removes the comma it depends on.
   test('recovers a LAST, FIRST identity out of lastName when firstName is pure role-phrase noise', async () => {
     const state = await normalizeAcmsSourceName()(
       createInitialState(
@@ -366,9 +298,7 @@ describe('recallBySurnameExact', () => {
     context = await createMockApplicationContext();
   });
 
-  // Runs normalizeAcmsSourceName first, matching real pipeline stage ordering -
-  // recallBySurnameExact reads state.sourceNormalized directly (already lowercase/
-  // firstLastNameToken-reduced), not state.sourceRaw's original casing.
+  // Runs normalizeAcmsSourceName first because this stage reads state.sourceNormalized.
   test('adds every surname-exact candidate found to the pipeline state', async () => {
     const jordanVoss = makeTrustee({
       trusteeId: 't1',
@@ -554,8 +484,6 @@ describe('recallByTokenIntersection', () => {
     expect(result.candidates.has('t1')).toBe(true);
   });
 
-  // Real evidence, not discarded: a candidate surviving intersection matched EVERY ACMS token
-  // searched, which this stage records at the moment of discovery.
   test('records the number of ACMS tokens intersected as a SCORE on every candidate found', async () => {
     const cray = makeTrustee({ trusteeId: 't1', name: PHONE_TYPO_ONE_DIGIT_PAIR.camsName });
     vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName').mockImplementation(
@@ -609,9 +537,7 @@ describe('recallByAnchoredLevenshtein', () => {
     context = await createMockApplicationContext();
   });
 
-  // Runs normalizeAcmsSourceName first, matching real pipeline stage ordering -
-  // recallByAnchoredLevenshtein reads state.sourceNormalized directly (already
-  // firstLastNameToken/normalizeNamePart-reduced), not state.sourceRaw.
+  // Runs normalizeAcmsSourceName first because this stage reads state.sourceNormalized.
   test('adds every anchored-Levenshtein candidate found to the pipeline state', async () => {
     const falk = makeTrustee({
       trusteeId: 't1',
@@ -638,8 +564,7 @@ describe('recallByAnchoredLevenshtein', () => {
     expect(result.candidates.has('t1')).toBe(true);
   });
 
-  // Real evidence, not discarded: the edit distance IS the signal (a distance of 1 is stronger
-  // evidence than 2), recorded at the moment of discovery.
+  // A smaller edit distance is stronger evidence.
   test('records the actual edit distance as a SCORE on every candidate found', async () => {
     const falk = makeTrustee({
       trusteeId: 't1',
@@ -948,12 +873,8 @@ describe('scoreCandidate - name-match facet', () => {
     });
   });
 
-  // The two sides split a compound given name on different rules, and each stops splitting once
-  // its own side already carries a middle name - so the same "C. David Butler" arrives as
-  // first="cdavid" middle="l" from one and first="c" middle="david" from the other.
+  // Models the same given name on both sides where only the source also has a middle initial.
   test('matches the same given name divided differently between first and middle', async () => {
-    // Source keeps "C. Dabney" whole because it already has a middle initial; CAMS has no middle
-    // name, so it splits the same text into first="c" middle="dabney".
     const state = await normalizeAcmsSourceName()(
       createInitialState(
         makeDxtrTrustee({ firstName: 'C. Dabney', middleName: 'L', lastName: 'Vandermoor' }),
@@ -1077,13 +998,7 @@ describe('scoreCandidate - name-match facet', () => {
     });
   });
 
-  // Real shape (2026-09-25 staging export, names synthesized): CAMS trustee stored as
-  // firstName="G. Theo" (a single un-split field, no middleName) - the leading "G." is an
-  // initial, "Theo" the real given name. Before this fix, normalizeCandidateNameFields ran
-  // normalizeNamePart directly on the raw "G. Theo" string, which strips ALL non-alphanumeric
-  // characters INCLUDING the space between tokens, gluing them into "gtheo" - unrecognizable as
-  // either "gerald" or "theodore" against any ACMS variant, so doesNameMatch scored 0 for several
-  // real ACMS records that are clearly the same person (same office address/phone across them).
+  // Models a CAMS firstName holding a bare initial and a given name in one field.
   test('splits a CAMS firstName with a leading bare initial before scoring (full ACMS first name, no ACMS middle)', async () => {
     const state = await normalizeAcmsSourceName()(
       createInitialState(
@@ -1141,17 +1056,7 @@ describe('scoreCandidate - name-match facet', () => {
     });
   });
 
-  // Real CAMS records with NO bare-initial token anywhere in a multi-token firstName must NEVER
-  // be split - several real trustees carry a compound GIVEN name shape like "Lee Ann"/"Mary Jo"
-  // (one person's whole first name), not an initial-plus-given-name shape. Splitting a name like
-  // "Lee Ann" into firstName="Lee"/middleName="Ann" would silently corrupt a real trustee's name.
-  // Uses makeDxtrTrustee's already-split firstName/middleName fields directly (bypassing
-  // normalizeAcmsSourceName's OWN, separate splitCompoundFirstName call on the ACMS side, which is
-  // not under test here) so this test isolates ONLY the CAMS-side splitting decision: an ACMS
-  // record already carrying firstName="Robin", middleName="Ann" must still match a CAMS
-  // firstName="Robin Ann" left correctly whole, not corrupted into some other split.
-  // A real compound given name divides the same way on both sides, so it still matches itself -
-  // exactly, since neither side is relaxed to get there.
+  // A compound given name divides the same way on both sides, so it still matches itself exactly.
   test('matches a compound given name however the two sides divided it', async () => {
     const state = await normalizeAcmsSourceName()(
       createInitialState(
@@ -1173,9 +1078,7 @@ describe('scoreCandidate - name-match facet', () => {
     });
   });
 
-  // A non-person role placeholder (real CAMS records are literally stored as "Chapter 13" with
-  // lastName "Standing Trustee") divides identically on both sides too, so it neither matches
-  // something it shouldn't nor stops matching itself.
+  // A role placeholder divides the same way on both sides, so it still matches itself.
   test('matches a two-token role placeholder however the two sides divided it', async () => {
     const state = await normalizeAcmsSourceName()(
       createInitialState(
@@ -1259,12 +1162,7 @@ describe('scoreCandidate - state/city/zip/contact-presence facets', () => {
     legacy: { cityStateZipCountry: 'Tacoma, WA 98402' },
   });
 
-  // Real bug, confirmed via pipeline-replay-backtest.ts against the 2026-09-25 export: an ACMS
-  // address with no zip token at all never parsed, so a genuine, comparable city+state pair
-  // scored ZERO city/state evidence - 71 real records share this shape (a real shape, name
-  // synthesized: ACMS "Jordan Roe", "San Diego CA" with no zip ever recorded, matched a real CAMS
-  // candidate also in San Diego, CA). parseAcmsCityStateZip recovers it ACMS-side only; the
-  // shared parser the DXTR paths use is unchanged.
+  // Models an ACMS address with a city and state but no zip.
   test('scores city and state from an ACMS address carrying no zip at all', async () => {
     const state = createInitialState(
       makeDxtrTrustee({
@@ -2045,9 +1943,6 @@ describe('scoreCandidate - contact-corroboration facet', () => {
 });
 
 describe('scoreCandidate - phone-match quality facet', () => {
-  // A backtest of 245 sole, exact-name candidates with a comparable but mismatched phone found
-  // numbers 1-2 digits apart were essentially always a typo for the same person, while numbers
-  // 8-10 digits apart were genuinely different numbers.
   const acmsTerrenceBoyle = makeDxtrTrustee({
     fullName: 'Terrence Boyle',
     firstName: 'Terrence',

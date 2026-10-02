@@ -6,10 +6,6 @@ import {
 } from './acms-name-normalization.helpers';
 
 describe('shouldSkipAsNotAPerson', () => {
-  // These mirror the placeholder shapes formerly excluded by acms.gateway.ts's own
-  // PROF_LAST_NAME NOT LIKE clauses - moved here so the gateway is left as a plain data-access
-  // layer, per James' PR #3045 review reply that gateway-level business filtering "should have
-  // never been implemented in the gateway to begin with."
   test.each([
     ['NO TRUSTEE'],
     ['NO TRUSTEE ASSIGNED'],
@@ -38,10 +34,7 @@ describe('shouldSkipAsNotAPerson', () => {
 });
 
 describe('stripAdministrativeMarkers', () => {
-  // Real shape (2026-09-25 staging export, names synthesized): a chapter-number marker glued
-  // directly onto a surname or fullName token, with no separating space/punctuation for
-  // ADMINISTRATIVE_MARKER_PATTERN's \b word-boundary anchor to find - the glued token reads as one
-  // continuous alphanumeric run, so the existing chapter\s*\d+/ch\.?\s*\d+ phrases never matched.
+  // Models a chapter marker glued onto a word, leaving no word boundary before the marker.
   test.each([
     ['DOYLECH13', 'DOYLE'],
     ['TACOMACH13', 'TACOMA'],
@@ -64,9 +57,6 @@ describe('stripAdministrativeMarkers', () => {
 });
 
 describe('recoverLastFirstRoleSwap', () => {
-  // Real shape (2026-09-25 staging export, name synthesized): firstName "LIQUIDATING TRUSTEE",
-  // lastName "PELLETIER, DEVIN" - the real name is entirely in lastName, in LAST, FIRST order,
-  // because firstName carries only a role phrase with no real name content at all.
   test('swaps LAST, FIRST out of lastName when firstName is pure role-phrase noise', () => {
     expect(recoverLastFirstRoleSwap('LIQUIDATING TRUSTEE', 'PELLETIER, DEVIN')).toEqual({
       firstName: 'DEVIN',
@@ -75,9 +65,7 @@ describe('recoverLastFirstRoleSwap', () => {
   });
 
   test('leaves the record untouched when firstName is a real name, even with a comma in lastName', () => {
-    // A comma in lastName isn't proof of a LAST, FIRST swap on its own - only firstName being
-    // pure role-phrase noise makes it one; a populated real firstName means CMMPR recorded this
-    // normally and the comma is something else entirely (e.g. a generational suffix).
+    // A comma alone is not a swap; here it precedes a generational suffix.
     expect(recoverLastFirstRoleSwap('Devin', 'Pelletier, Jr.')).toEqual({
       firstName: 'Devin',
       lastName: 'Pelletier, Jr.',

@@ -407,13 +407,8 @@ describe('SyncAcmsProfessionalIds', () => {
       );
     });
 
-    // Real-world pattern: some ACMS professional-id records carry no real person at all - pure
-    // administrative/placeholder text like "NOT ASSIGNED", "DUPLICATE TRUSTEE", or "UNITED STATES
-    // TRUSTEE'S OFFICE" (an office, not a person). The pipeline's own
-    // skipAdministrativePlaceholder stage (trustee-match-pipeline-stages.ts) detects this - not a
-    // separate upfront check here - so the fingerprint lookup still runs first (cheap, and a
-    // fingerprint hit is meaningful regardless of name shape), and the skip is persisted through
-    // the same active-appointment gate every other outcome uses.
+    // Models ACMS records whose name is placeholder text rather than a person; the pipeline's
+    // skipAdministrativePlaceholder stage detects them.
     test.each([
       ['', 'NOT ASSIGNED'],
       ['', 'DUPLICATE TRUSTEE'],
@@ -542,15 +537,6 @@ describe('SyncAcmsProfessionalIds', () => {
       expect(pipelineSpy).toHaveBeenCalled();
     });
 
-    // TrusteeVariation write-back is gated off by default (WRITE_ACMS_TRUSTEE_VARIATIONS) -
-    // an adversarial review of this PR found two real correctness problems with writing it
-    // unconditionally: (1) many ACMS professional IDs share an identical demographic variant
-    // (the same trustee filed under multiple group/office codes), so a second ID in the same
-    // sync run would short-circuit on the variation the first just wrote and lose its own
-    // evidence; (2) purgeAll never clears ACMS-written variations, so a later full re-run after
-    // a matching-logic fix would short-circuit on stale variations instead of re-evaluating them.
-    // Gated off (not reverted) since the write-back itself is still wanted once those two
-    // problems are fixed - see WRITE_ACMS_TRUSTEE_VARIATIONS's own doc comment.
     test('should NOT record a TrusteeVariation while WRITE_ACMS_TRUSTEE_VARIATIONS is disabled', async () => {
       vi.spyOn(deps.variationRepo, 'findByFingerprint').mockResolvedValue([]);
       const matchedPipelineState = {
@@ -735,9 +721,8 @@ describe('SyncAcmsProfessionalIds', () => {
         updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
       };
       vi.spyOn(deps.variationRepo, 'findByFingerprint').mockResolvedValue([matchingVariant]);
-      // findByAcmsProfessionalId only ever returns auto-linked, non-conflicting records (see the
-      // repository's own isRealLink filter) - a prior no-match/ambiguous/conflict record for this
-      // ACMS id is invisible here, so it never counts as a conflict.
+      // findByAcmsProfessionalId returns only auto-linked records, so an unlinked record for this
+      // ACMS id never counts as a conflict.
       vi.spyOn(deps.professionalIdsRepo, 'findByAcmsProfessionalId').mockResolvedValue([]);
       const upsertSpy = vi
         .spyOn(deps.professionalIdsRepo, 'upsertProfessionalId')
