@@ -1,17 +1,17 @@
 /**
  * Backtest (NOT a harness, not committed anywhere as a regression gate): replays EVERY record
- * (including already auto-linked ones) from a staging trustee-professional-ids export through the
+ * (including already linked ones) from a staging trustee-professional-ids export through the
  * ACTUAL, unmodified current-branch matching pipeline (runTrusteeMatchPipeline,
  * trustee-match-pipeline-orchestrator.ts), so a fresh staging export can be diffed against what
  * current code would now produce for the same population - both new resolutions among the
  * previously-unresolved population, AND false-positive detection among what staging already
- * trusted: an auto-linked record current code would now resolve to a DIFFERENT trusteeId, or not
+ * trusted: an linked record current code would now resolve to a DIFFERENT trusteeId, or not
  * auto-link at all, is written to data/replay-backtest-divergences-detail.csv alongside every other
  * staging-vs-current disagreement, one row per (diverged ACMS record, candidate) pair. Each row
  * carries the ACMS source's own address/phone, staging's trustee's address/phone (looked up from
  * the trustees fixture independently of whether that trustee is even a candidate in the current
  * record's pool), the current pipeline's trustee's address/phone (when disposition is
- * 'auto-linked' - blank for 'ambiguous'/'no-match', which have no single winning trustee), and
+ * 'linked' - blank for 'ambiguous'/'no-match', which have no single winning trustee), and
  * that candidate's own scores - so a reviewer can see WHY a transition happened, and what the
  * record was choosing BETWEEN, without opening replay-backtest-report.jsonl for every row.
  *
@@ -132,11 +132,11 @@ type CandidateOutcome =
 /**
  * A record whose CURRENT-pipeline disposition/camsTrusteeId disagrees with what staging actually
  * persisted - the false-positive-detection surface. Two shapes matter most:
- *  - staging said 'auto-linked' but current code no longer reaches the SAME trusteeId (either a
+ *  - staging said 'linked' but current code no longer reaches the SAME trusteeId (either a
  *    different trusteeId, which is the actual false-positive risk worth manual review, or a
  *    downgrade to ambiguous/no-match/skipped/conflict, which is a REGRESSION worth investigating -
  *    something that used to resolve confidently no longer does).
- *  - staging said something else but current code now resolves to auto-linked - an IMPROVEMENT,
+ *  - staging said something else but current code now resolves to linked - an IMPROVEMENT,
  *    not a risk, but still worth surfacing since it's new behavior relative to what's deployed.
  */
 type Divergence = {
@@ -336,7 +336,7 @@ async function run() {
   const trusteeById = new Map(trustees.map((t) => [t.trusteeId, t]));
   const trusteeNameById = new Map(trustees.map((t) => [t.trusteeId, t.name]));
   const errored = records.filter((r) => r.evidence?.sourceRaw);
-  console.log(`${errored.length} records to replay (all dispositions, including auto-linked).\n`);
+  console.log(`${errored.length} records to replay (all dispositions, including linked).\n`);
 
   await seedTrustees(uri, dbName, trustees);
 
@@ -377,7 +377,7 @@ async function run() {
     if (i % 250 === 0) console.log(`  ...${i}/${errored.length}`);
 
     const acmsTrusteeProfessional = record.evidence.sourceRaw;
-    const stagingTrusteeId = record.disposition === 'auto-linked' ? record.camsTrusteeId : null;
+    const stagingTrusteeId = record.disposition === 'linked' ? record.camsTrusteeId : null;
 
     if (
       shouldSkipAsNotAPerson(acmsTrusteeProfessional.fullName) ||
@@ -417,7 +417,7 @@ async function run() {
     // this script's reported counts match what sync-acms-professional-ids.ts would actually persist.
     const disposition = deriveDisposition(serialized);
     const finalOutcome: 'resolved' | 'ambiguous' | 'no-match' =
-      disposition === 'auto-linked'
+      disposition === 'linked'
         ? 'resolved'
         : disposition === 'ambiguous'
           ? 'ambiguous'
@@ -428,7 +428,7 @@ async function run() {
     }
 
     // False-positive detection: staging vs. current disagree on either the disposition or, for a
-    // record BOTH sides call auto-linked, which trusteeId it resolved to. Every other combination
+    // record BOTH sides call linked, which trusteeId it resolved to. Every other combination
     // (disposition unchanged, or an intentional improvement/regression already visible in
     // outcomeCounts) is normal drift, not flagged here - this is specifically for "staging trusts
     // this link and current code contradicts it," or vice versa. A staging export written before
@@ -438,12 +438,11 @@ async function run() {
     // perspective, just an older persisted shape.
     const normalizedStagingDisposition =
       record.disposition === 'ambiguous-duplication' ? 'ambiguous' : record.disposition;
-    const currentTrusteeId =
-      disposition === 'auto-linked' ? (state.match?.trusteeId ?? null) : null;
+    const currentTrusteeId = disposition === 'linked' ? (state.match?.trusteeId ?? null) : null;
     const dispositionsDiffer = disposition !== normalizedStagingDisposition;
     const sameDispositionDifferentTrustee =
-      disposition === 'auto-linked' &&
-      normalizedStagingDisposition === 'auto-linked' &&
+      disposition === 'linked' &&
+      normalizedStagingDisposition === 'linked' &&
       currentTrusteeId !== stagingTrusteeId;
     if (dispositionsDiffer || sameDispositionDifferentTrustee) {
       const resolvedBy = state.match?.resolvedBy;
@@ -509,16 +508,16 @@ async function run() {
     console.log(`  ${k.padEnd(28)} ${v}`);
   }
 
-  const falsePositiveCandidates = divergences.filter((d) => d.stagingDisposition === 'auto-linked');
+  const falsePositiveCandidates = divergences.filter((d) => d.stagingDisposition === 'linked');
   console.log(
     `\n=== Divergences: staging vs. current pipeline (${divergences.length} of ${errored.length}) ===\n`,
   );
   console.log(
-    `  Staging said auto-linked, current code disagrees: ${falsePositiveCandidates.length} ` +
+    `  Staging said linked, current code disagrees: ${falsePositiveCandidates.length} ` +
       '(false-positive risk - staging trusted a link current code no longer reaches the same way)',
   );
   console.log(
-    `  All other direction changes (improvement/regression away from a non-auto-linked staging ` +
+    `  All other direction changes (improvement/regression away from a non-linked staging ` +
       `disposition): ${divergences.length - falsePositiveCandidates.length}`,
   );
 

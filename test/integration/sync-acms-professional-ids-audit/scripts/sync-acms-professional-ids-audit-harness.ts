@@ -7,14 +7,14 @@
  * trustee-professional-ids collection) carries a top-level `disposition`
  * (TrusteeProfessionalIdDisposition — see trustee-professional-ids.types.ts) and an `evidence`
  * object (the pipeline's serialized state — sourceRaw, candidates, match, skip, error). When
- * disposition is not 'auto-linked', `camsTrusteeId` is set to the ACMS variant's fingerprint
+ * disposition is not 'linked', `camsTrusteeId` is set to the ACMS variant's fingerprint
  * instead of a real trustee. This harness scores each record's `evidence.sourceRaw` (already a
  * CanonicalTrusteeSource/DxtrTrusteeParty — no decoding needed) against CAMS trustees using the
  * SAME scoring functions production matching uses (calculateNameScore, calculateAddressScore,
  * calculatePhoneScore, calculateEmailScore from trustee-match.helpers.ts) — not a new,
  * separately-tuned comparison. Two passes:
  *
- *   1. Linked records (disposition === 'auto-linked'): score sourceRaw against the trustee it was
+ *   1. Linked records (disposition === 'linked'): score sourceRaw against the trustee it was
  *      actually linked to, to surface a past auto-link that looks like a poor match (false
  *      positive) — same approach as trustee-variation-audit, applied to the professional-id fast
  *      path instead of the trustee-variation fast path.
@@ -251,8 +251,8 @@ function run() {
   const trustees = loadTrustees();
   const trusteesById = new Map(trustees.map((t) => [t.trusteeId, t]));
 
-  const linked = records.filter((r) => r.disposition === 'auto-linked');
-  const nonLinked = records.filter((r) => r.disposition !== 'auto-linked');
+  const linked = records.filter((r) => r.disposition === 'linked');
+  const nonLinked = records.filter((r) => r.disposition !== 'linked');
 
   console.log(
     `Loaded ${records.length} professional-id records (${linked.length} linked, ` +
@@ -285,7 +285,7 @@ function run() {
   }
 
   console.log(
-    `\nDetail — name-mismatch (nameScore < ${NAME_MISMATCH_THRESHOLD} on a record production auto-linked):`,
+    `\nDetail — name-mismatch (nameScore < ${NAME_MISMATCH_THRESHOLD} on a record production linked):`,
   );
   for (const r of linkedResults.filter((r) => r.concern === 'name-mismatch')) {
     console.log(

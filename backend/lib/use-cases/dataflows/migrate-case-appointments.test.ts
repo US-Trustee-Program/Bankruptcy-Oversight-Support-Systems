@@ -60,7 +60,8 @@ function makeProfessionalId(override: Partial<TrusteeProfessionalId> = {}): Trus
     documentType: 'TRUSTEE_PROFESSIONAL_ID',
     camsTrusteeId: 'trustee-001',
     acmsProfessionalId: 'NY-00063',
-    disposition: 'auto-linked',
+    disposition: 'linked',
+    linkMethod: 'auto',
     nameMatchCount: 0,
     evidence: {
       sourceRaw: { fullName: 'John Doe' },

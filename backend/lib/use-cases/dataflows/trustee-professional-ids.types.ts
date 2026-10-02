@@ -6,12 +6,16 @@ import { normalizeAddressLine } from './trustee-match.helpers';
 
 /** Derived once from a TrusteeSerializedState's match/skip/error at write time and stored
  * alongside it, so a query can filter/index on outcome without inspecting the nested pipeline
- * state. 'conflict' overrides an otherwise auto-linked disposition - see
+ * state. 'conflict' overrides an otherwise linked disposition - see
  * TrusteeProfessionalId.evidence.conflictingTrusteeId. Whether the ambiguous candidates look like
  * duplicate CAMS records of one person is a separate signal - see
  * TrusteeProfessionalId.suspectDuplicateCamsTrustee. */
 export type TrusteeProfessionalIdDisposition =
-  'auto-linked' | 'no-match' | 'ambiguous' | 'skipped' | 'error' | 'conflict';
+  'linked' | 'no-match' | 'ambiguous' | 'skipped' | 'error' | 'conflict';
+
+/** How a 'linked' record was linked: by the matching pipeline or fingerprint ('auto'), or by a
+ * person ('manual'). */
+type TrusteeProfessionalIdLinkMethod = 'auto' | 'manual';
 
 /**
  * A persisted trustee<->ACMS professional-id link. The pipeline's own serialized evidence graph
@@ -32,13 +36,15 @@ export type TrusteeProfessionalId = Auditable &
     camsTrusteeId: string;
     acmsProfessionalId: string;
     disposition: TrusteeProfessionalIdDisposition;
+    /** Set only when disposition is 'linked'. */
+    linkMethod?: TrusteeProfessionalIdLinkMethod;
     /** Set when disposition is 'ambiguous' and 2+ of the genuinely-qualifying candidates share a
      * phone, email, or street address with EACH OTHER - evidence CAMS holds duplicate records for
      * one person rather than the ACMS record genuinely matching several distinct trustees. A CAMS
      * data-quality signal, independent of disposition - see hasSuspectDuplicateCamsTrustee. */
     suspectDuplicateCamsTrustee?: boolean;
     /** How many candidates matched on name at any grade - the indexed hint for surfacing
-     * unlinked records worth manual review (disposition other than 'auto-linked', count > 0). */
+     * unlinked records worth manual review (disposition other than 'linked', count > 0). */
     nameMatchCount: number;
     evidence: TrusteeSerializedState & {
       variant?: string;
@@ -149,7 +155,7 @@ export function deriveDisposition(
 ): Exclude<TrusteeProfessionalIdDisposition, 'conflict'> {
   if (state.error) return 'error';
   if (state.skip) return 'skipped';
-  if (state.match) return 'auto-linked';
+  if (state.match) return 'linked';
   const genuinelyQualifyingCount = state.candidates.filter(
     (c) => c.scores.doesNameMatch?.pass && isGenuineAmbiguousEvidence(c),
   ).length;

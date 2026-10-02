@@ -27,11 +27,11 @@ export type TrusteeProfessionalIdDocument = TrusteeProfessionalId & {
 // return type) for every ordinary read - see TrusteeProfessionalIdsRepository's own doc comment.
 const SUMMARY_PROJECTION = omit<TrusteeProfessionalIdDocument>('evidence');
 
-// Only an auto-linked, non-conflicting disposition is a real trustee<->ACMS link - everything
+// Only a linked, non-conflicting disposition is a real trustee<->ACMS link - everything
 // else is a placeholder record keyed by fingerprint, and must stay invisible to callers
 // resolving real links. See TrusteeProfessionalIdsRepository's JSDoc.
 function isRealLink<T extends { disposition?: unknown }>(doc: ReturnType<typeof using<T>>) {
-  return doc('disposition').equals('auto-linked');
+  return doc('disposition').equals('linked');
 }
 
 export class TrusteeProfessionalIdsMongoRepository
