@@ -630,10 +630,41 @@ describe('SyncAcmsProfessionalIds', () => {
       const outcome = await SyncAcmsProfessionalIds.processOneRecord(deps, record);
 
       expect(upsertSpy).toHaveBeenCalledWith(
-        expect.objectContaining({ disposition: 'ambiguous' }),
+        expect.objectContaining({ disposition: 'ambiguous', suspectDuplicateCamsTrustee: false }),
         expect.objectContaining({ id: 'ACMS' }),
       );
       expect(outcome).toEqual({ kind: 'ambiguous', gated: 'written' });
+    });
+
+    test('should flag a suspected duplicate CAMS trustee when ambiguous candidates share a phone', async () => {
+      const candidate = (trusteeId: string) => ({
+        camsRaw: { trusteeId, phone: { number: '206-555-0100' } },
+        camsNormalized: {},
+        memo: new Map(),
+        scores: { doesNameMatch: { pass: true, quality: 'exact' } },
+        origin: 'test',
+      });
+      vi.spyOn(deps.variationRepo, 'findByFingerprint').mockResolvedValue([]);
+      vi.spyOn(trusteeMatchPipelineOrchestrator, 'runTrusteeMatchPipeline').mockResolvedValue({
+        ...noMatchPipelineState,
+        candidates: new Map([
+          ['t1', candidate('t1')],
+          ['t2', candidate('t2')],
+        ]),
+      } as never);
+      vi.spyOn(deps.acmsGateway, 'getActiveAppointmentsForProfessional').mockResolvedValue([
+        { division: '081', chapter: '7' },
+      ]);
+      const upsertSpy = vi
+        .spyOn(deps.professionalIdsRepo, 'upsertProfessionalId')
+        .mockResolvedValue(linkedProfessionalId({ disposition: 'ambiguous' }));
+
+      await SyncAcmsProfessionalIds.processOneRecord(deps, record);
+
+      expect(upsertSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ disposition: 'ambiguous', suspectDuplicateCamsTrustee: true }),
+        expect.anything(),
+      );
     });
 
     test('should parse groupDesignator from the acmsProfessionalId when checking active appointments', async () => {

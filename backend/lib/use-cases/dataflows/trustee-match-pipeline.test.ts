@@ -4,6 +4,7 @@ import { Trustee } from '@common/cams/trustees';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { CamsError } from '../../common-errors/cams-error';
 import {
+  foldKleene,
   addCandidate,
   addScore,
   createTrusteeInitialState as createInitialState,
@@ -449,5 +450,22 @@ describe('serializeState', () => {
     const serialized = serializeState(state);
 
     expect(serialized.candidates).toEqual([]);
+  });
+});
+
+describe('foldKleene', () => {
+  test.each([
+    { value: null, expected: 'neutral' },
+    { value: true, expected: 'agreement' },
+    { value: false, expected: 'conflict' },
+  ])('runs only the $expected branch for $value', ({ value, expected }) => {
+    expect(
+      foldKleene(
+        value,
+        () => 'neutral',
+        () => 'agreement',
+        () => 'conflict',
+      ),
+    ).toBe(expected);
   });
 });

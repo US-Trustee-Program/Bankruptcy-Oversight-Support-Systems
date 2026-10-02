@@ -276,4 +276,46 @@ describe('runTrusteeMatchPipeline', () => {
     });
     expect(result.match).toBeNull();
   });
+
+  test('skips an administrative placeholder without searching for candidates', async () => {
+    const searchSpy = vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName');
+    const matchSpy = vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName');
+
+    const result = await runTrusteeMatchPipeline(
+      context,
+      makeDxtrTrustee({ fullName: 'NOT ASSIGNED', firstName: 'NOT', lastName: 'ASSIGNED' }),
+    );
+
+    expect(result.skip).toBe(true);
+    expect(searchSpy).not.toHaveBeenCalled();
+    expect(matchSpy).not.toHaveBeenCalled();
+  });
+
+  test('stops with the error when the recallByName tier fails', async () => {
+    vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockRejectedValue(
+      new Error('Mongo timeout'),
+    );
+
+    const result = await runTrusteeMatchPipeline(context, makeDxtrTrustee());
+
+    expect(result.error).toMatchObject({ camsStack: [{ message: 'recallByName failed' }] });
+    expect(result.match).toBeNull();
+  });
+
+  test('stops with the error when a later tier fails', async () => {
+    vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({ kind: 'no-match' });
+    vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName').mockImplementation(
+      async (token: string) => {
+        if (token === 'john') throw new Error('Mongo timeout');
+        return [];
+      },
+    );
+
+    const result = await runTrusteeMatchPipeline(context, makeDxtrTrustee());
+
+    expect(result.error).toMatchObject({
+      camsStack: [{ message: 'recallByTokenIntersection failed' }],
+    });
+    expect(result.match).toBeNull();
+  });
 });

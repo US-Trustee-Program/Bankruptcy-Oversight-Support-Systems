@@ -287,6 +287,47 @@ describe('recallBySurnameExact', () => {
     expect(result.candidates.get('t1')!.camsRaw.name).toBe('Jordan P. Voss');
   });
 
+  test('evicts a candidate only when its state contradicts and its name does not match', async () => {
+    const voss = (trusteeId: string, firstName: string, state: string) =>
+      makeTrustee({
+        trusteeId,
+        firstName,
+        lastName: 'Voss',
+        name: `${firstName} Voss`,
+        public: {
+          address: {
+            address1: '1 Fictional Ave',
+            city: 'Fictionburg',
+            state,
+            zipCode: '98999',
+            countryCode: 'US',
+          },
+        },
+      });
+    vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName').mockResolvedValue([
+      voss('wrong-name-wrong-state', 'Jordan', 'TX'),
+      voss('right-name-wrong-state', 'Aldric', 'TX'),
+      voss('wrong-name-right-state', 'Jordan', 'WA'),
+    ]);
+    const state = await normalizeAcmsSourceName()(
+      createInitialState(
+        makeDxtrTrustee({
+          fullName: 'Aldric T Voss',
+          firstName: 'Aldric',
+          lastName: 'Voss',
+          legacy: { cityStateZipCountry: 'FICTIONBURG WA 98999' } as never,
+        }),
+      ),
+    );
+
+    const result = await recallBySurnameExact(context)(state);
+
+    expect([...result.candidates.keys()].sort()).toEqual([
+      'right-name-wrong-state',
+      'wrong-name-right-state',
+    ]);
+  });
+
   test('records a gateway failure on state.error as a CamsError with a stack trace, rather than throwing', async () => {
     vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName').mockRejectedValue(
       new Error('Mongo timeout'),
@@ -1860,6 +1901,19 @@ describe('resolvers', () => {
 
     test('never resolves a candidate whose name does not match', async () => {
       const result = await resolver()(poolOf({ ...NO_NAME, ...signal }));
+
+      expect(result.match).toBeNull();
+    });
+  });
+
+  describe('resolveByPhone', () => {
+    test('does not resolve on a strong (typo) phone match', async () => {
+      const result = await resolveByPhone()(
+        poolOf({
+          ...EXACT_NAME,
+          doesPhoneMatch: { pass: true, quality: 'strong', phoneDigitDistance: 1 },
+        }),
+      );
 
       expect(result.match).toBeNull();
     });
