@@ -66,6 +66,20 @@ export function isChapter7Panel(
   return chapter === '7' && appointmentType === 'panel';
 }
 
+export function isChapter7OffPanel(
+  chapter: AppointmentChapterType,
+  appointmentType: AppointmentType,
+): boolean {
+  return chapter === '7' && appointmentType === 'off-panel';
+}
+
+export function isChapter7Converted(
+  chapter: AppointmentChapterType,
+  appointmentType: AppointmentType,
+): boolean {
+  return chapter === '7' && appointmentType === 'converted-case';
+}
+
 export function isChapter11SubchapterV(
   chapter: AppointmentChapterType,
   appointmentType: AppointmentType,

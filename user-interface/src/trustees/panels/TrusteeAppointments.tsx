@@ -6,7 +6,9 @@ import {
   TrusteeAppointment,
   isChapter11CaseByCase,
   isChapter11SubchapterV,
+  isChapter7Converted,
   isChapter7Elected,
+  isChapter7OffPanel,
   isChapter7Panel,
   isChapter12Or13CaseByCase,
   isChapter12Standing,
@@ -18,6 +20,7 @@ import AppointmentCard from './AppointmentCard';
 import { AccordionGroup } from '@/lib/components/uswds/Accordion';
 import AppointmentAccordion from './AppointmentAccordion';
 import Chapter11CaseByCaseAppointmentBody from './Chapter11CaseByCaseAppointmentBody';
+import Chapter7ConvertedAppointmentBody from './Chapter7ConvertedAppointmentBody';
 import Chapter7ElectedAppointmentBody from './Chapter7ElectedAppointmentBody';
 import Chapter7PanelAppointmentBody from './Chapter7PanelAppointmentBody';
 import Chapter11SubchapterVAppointmentBody from './Chapter11SubchapterVAppointmentBody';
@@ -40,8 +43,14 @@ function resolveAccordionBody(appointment: TrusteeAppointment): ReactNode | unde
   if (isChapter7Elected(appointment.chapter, appointment.appointmentType)) {
     return <Chapter7ElectedAppointmentBody appointment={appointment} />;
   }
-  if (isChapter7Panel(appointment.chapter, appointment.appointmentType)) {
+  if (
+    isChapter7Panel(appointment.chapter, appointment.appointmentType) ||
+    isChapter7OffPanel(appointment.chapter, appointment.appointmentType)
+  ) {
     return <Chapter7PanelAppointmentBody appointment={appointment} />;
+  }
+  if (isChapter7Converted(appointment.chapter, appointment.appointmentType)) {
+    return <Chapter7ConvertedAppointmentBody appointment={appointment} />;
   }
   if (isChapter11SubchapterV(appointment.chapter, appointment.appointmentType)) {
     return <Chapter11SubchapterVAppointmentBody appointment={appointment} />;

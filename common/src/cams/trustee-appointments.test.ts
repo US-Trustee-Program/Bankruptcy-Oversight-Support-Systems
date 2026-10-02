@@ -11,6 +11,8 @@ import {
   isChapter11SubchapterV,
   isChapter12Or13CaseByCase,
   isChapter7Panel,
+  isChapter7OffPanel,
+  isChapter7Converted,
 } from './trustee-appointments';
 import { AppointmentChapterType, AppointmentType, AppointmentStatus } from './trustees';
 import { validateObject } from './validation';
@@ -544,6 +546,40 @@ describe('trustee-appointments', () => {
       ['7', ''],
     ])('returns false for chapter %s / %s', (chapter, type) => {
       expect(isChapter7Panel(chapter as AppointmentChapterType, type as AppointmentType)).toBe(
+        false,
+      );
+    });
+  });
+
+  describe('isChapter7OffPanel', () => {
+    test('returns true for chapter 7 off-panel', () => {
+      expect(isChapter7OffPanel('7', 'off-panel')).toBe(true);
+    });
+
+    test.each([
+      ['7', 'panel'],
+      ['7', 'converted-case'],
+      ['12', 'off-panel'],
+      ['7', ''],
+    ])('returns false for chapter %s / %s', (chapter, type) => {
+      expect(isChapter7OffPanel(chapter as AppointmentChapterType, type as AppointmentType)).toBe(
+        false,
+      );
+    });
+  });
+
+  describe('isChapter7Converted', () => {
+    test('returns true for chapter 7 converted-case', () => {
+      expect(isChapter7Converted('7', 'converted-case')).toBe(true);
+    });
+
+    test.each([
+      ['7', 'panel'],
+      ['7', 'off-panel'],
+      ['12', 'converted-case'],
+      ['7', ''],
+    ])('returns false for chapter %s / %s', (chapter, type) => {
+      expect(isChapter7Converted(chapter as AppointmentChapterType, type as AppointmentType)).toBe(
         false,
       );
     });

@@ -23,10 +23,6 @@ vi.mock('react-router-dom', async () => {
 // Test Utilities: Appointment Factory
 // ============================================================================
 
-// Chapter 7 Off Panel is used as the "generic, still-flat AppointmentCard" fixture
-// throughout this file because it has no dedicated accordion body (unlike Chapter 7
-// Panel/Elected, Chapter 11 Case-by-Case/SubV, and Chapter 12/13 Standing and
-// Case-by-Case, each covered by their own accordion describe block below).
 const baseAppointment: Omit<TrusteeAppointment, 'id'> = {
   trusteeId: 'trustee-123',
   chapter: '7',
@@ -282,12 +278,21 @@ describe('TrusteeAppointments', () => {
       renderComponent('trustee-123');
 
       await waitFor(() => {
-        expect(getAppointmentCards()).toHaveLength(2);
+        expect(
+          screen.getByTestId(`appointment-accordion-header-${eastern.id}`),
+        ).toBeInTheDocument();
       });
+      expect(screen.getByTestId(`appointment-accordion-header-${southern.id}`)).toBeInTheDocument();
 
-      const cards = getAppointmentCards();
-      expect(cards[0]).toHaveAttribute('data-testid', `appointment-card-${eastern.id}`);
-      expect(cards[1]).toHaveAttribute('data-testid', `appointment-card-${southern.id}`);
+      const headers = document.querySelectorAll('.appointment-accordion-header');
+      expect(headers[0]).toHaveAttribute(
+        'data-testid',
+        `appointment-accordion-header-${eastern.id}`,
+      );
+      expect(headers[1]).toHaveAttribute(
+        'data-testid',
+        `appointment-accordion-header-${southern.id}`,
+      );
     });
   });
 
@@ -298,7 +303,11 @@ describe('TrusteeAppointments', () => {
       status: 'active',
       courtName: 'Southern District of New York',
     });
-    const otherType = makeAppointment('other-type', {
+    // Every real (chapter, appointmentType) combination now has a dedicated accordion
+    // body, so this uses a type absent from chapterAppointmentTypeMap entirely to
+    // exercise the legacy AppointmentCard fallback (e.g. malformed/future data).
+    const unmappedType = makeAppointment('unmapped-type', {
+      appointmentType: 'unmapped' as TrusteeAppointment['appointmentType'],
       status: 'active',
       courtName: 'Southern District of New York',
     });
@@ -307,9 +316,9 @@ describe('TrusteeAppointments', () => {
       vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
     });
 
-    test('renders Chapter 11 Case by Case appointments via the accordion and other types via AppointmentCard', async () => {
+    test('renders Chapter 11 Case by Case appointments via the accordion and unmapped types via AppointmentCard', async () => {
       vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({
-        data: [ch11Active, otherType],
+        data: [ch11Active, unmappedType],
       });
 
       renderComponent('trustee-123');
@@ -390,6 +399,63 @@ describe('TrusteeAppointments', () => {
     // Default-expansion (collapsed for both active and inactive) and toggle mechanics are generic AppointmentAccordion/
     // useAppointmentExpansion behavior, not specific to Chapter 7 Panel -- already covered
     // by AppointmentAccordion.test.tsx and useAppointmentExpansion.test.ts.
+  });
+
+  describe('Chapter 7 Off Panel accordion', () => {
+    const ch7OffPanelActive = makeAppointment('ch7-off-panel-active', {
+      chapter: '7',
+      appointmentType: 'off-panel',
+      status: 'deceased',
+      courtName: 'Southern District of New York',
+    });
+    beforeEach(() => {
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
+    });
+
+    test('renders Chapter 7 Off Panel via the accordion, reusing the Chapter 7 Panel body', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch7OffPanelActive] });
+
+      renderComponent('trustee-123');
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId(`appointment-accordion-header-${ch7OffPanelActive.id}`),
+        ).toBeInTheDocument();
+      });
+      expect(
+        screen.getByTestId(`appointment-accordion-body-${ch7OffPanelActive.id}`),
+      ).toBeInTheDocument();
+      expect(getAppointmentCards()).toHaveLength(0);
+    });
+  });
+
+  describe('Chapter 7 Converted accordion', () => {
+    const ch7ConvertedActive = makeAppointment('ch7-converted-active', {
+      chapter: '7',
+      appointmentType: 'converted-case',
+      status: 'active',
+      courtName: 'Southern District of New York',
+    });
+    beforeEach(() => {
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
+    });
+
+    test('renders Chapter 7 Converted via the accordion', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [ch7ConvertedActive] });
+
+      renderComponent('trustee-123');
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId(`appointment-accordion-header-${ch7ConvertedActive.id}`),
+        ).toBeInTheDocument();
+      });
+      expect(
+        screen.getByTestId(`appointment-accordion-body-${ch7ConvertedActive.id}`),
+      ).toBeInTheDocument();
+      expect(getAppointmentCards()).toHaveLength(0);
+    });
   });
 
   describe('Chapter 11 Subchapter V accordion', () => {
