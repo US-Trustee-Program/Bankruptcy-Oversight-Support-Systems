@@ -346,18 +346,24 @@ export class TrusteeAppointmentsUseCase {
 
       const userReference = getCamsUserReference(context.session.user);
 
-      const existingAppointment = await this.trusteeAppointmentsRepository.read(
-        trusteeId,
-        appointmentId,
-      );
+      // A single getTrusteeAppointments call serves both the before/after diff (existing
+      // appointment) and the merge-target search (every other appointment) below -- these
+      // used to be two separate repository round trips (a .read() plus this list), even
+      // though the list always already contains the one record .read() was fetching.
+      const allAppointments =
+        await this.trusteeAppointmentsRepository.getTrusteeAppointments(trusteeId);
+      const existingAppointment = allAppointments.find((appt) => appt.id === appointmentId);
+      if (!existingAppointment) {
+        throw new NotFoundError(MODULE_NAME, {
+          message: `Trustee appointment with ID ${appointmentId} not found.`,
+        });
+      }
 
       // Server-side backstop for duplicate active appointments at the same
       // court+chapter+appointmentType -- the frontend's own merge UX only runs on create,
       // never on update, so this is the only enforcement point for edits. Exclude the
       // appointment being updated from the search, or it would trivially match itself.
-      const otherAppointments = (
-        await this.trusteeAppointmentsRepository.getTrusteeAppointments(trusteeId)
-      ).filter((appt) => appt.id !== appointmentId);
+      const otherAppointments = allAppointments.filter((appt) => appt.id !== appointmentId);
       const mergeTarget = findMergeTarget(
         normalizedData.courtId,
         normalizedData.chapter,

@@ -315,7 +315,9 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         ...appointmentUpdate,
       });
 
-      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockExistingAppointment);
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([
+        mockExistingAppointment,
+      ]);
       vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(
         mockUpdatedAppointment,
       );
@@ -344,13 +346,16 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       );
     });
 
-    test('should wrap a repository error raised while reading the existing appointment', async () => {
-      // updateAppointment reads the existing appointment (for the before/after diff) before
-      // it ever reaches repo.updateAppointment -- this exercises that earlier failure path,
-      // distinct from the case below where the read succeeds but the write fails.
-      const repositoryError = new Error('Trustee appointment not found');
+    test('should wrap a repository error raised while fetching trustee appointments', async () => {
+      // updateAppointment fetches the trustee's appointments (for the before/after diff and
+      // merge-target search) before it ever reaches repo.updateAppointment -- this exercises
+      // that earlier failure path, distinct from the case below where the fetch succeeds but
+      // the write fails.
+      const repositoryError = new Error('Database error');
 
-      vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(repositoryError);
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockRejectedValue(
+        repositoryError,
+      );
 
       const actualError = await getTheThrownError(() =>
         trusteeAppointmentsUseCase.updateAppointment(
@@ -370,6 +375,27 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       ]);
     });
 
+    test("should throw NotFoundError when the appointment is not among the trustee's appointments", async () => {
+      // existingAppointment is now derived from the getTrusteeAppointments list rather than a
+      // separate repository.read(trusteeId, appointmentId) call, so this use case owns the
+      // not-found check itself.
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([]);
+
+      const actualError = await getTheThrownError(() =>
+        trusteeAppointmentsUseCase.updateAppointment(
+          context,
+          trusteeId,
+          appointmentId,
+          appointmentUpdate,
+        ),
+      );
+
+      expect(actualError.isCamsError).toBe(true);
+      expect(actualError.message).toContain(
+        `Trustee appointment with ID ${appointmentId} not found.`,
+      );
+    });
+
     test('should wrap a repository error raised while writing the update', async () => {
       const mockExistingAppointment = MockData.getTrusteeAppointment({
         id: appointmentId,
@@ -377,7 +403,9 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       });
       const repositoryError = new Error('Database error');
 
-      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockExistingAppointment);
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([
+        mockExistingAppointment,
+      ]);
       vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockRejectedValue(
         repositoryError,
       );
@@ -405,7 +433,9 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       });
       const logSpy = vi.spyOn(context.logger, 'info');
 
-      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockExistingAppointment);
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([
+        mockExistingAppointment,
+      ]);
       vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(
         mockUpdatedAppointment,
       );
@@ -480,7 +510,9 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         .spyOn(MockMongoRepository.prototype, 'createTrusteeHistory')
         .mockResolvedValue();
 
-      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockExistingAppointment);
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([
+        mockExistingAppointment,
+      ]);
       vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(
         mockUpdatedAppointment,
       );
@@ -526,7 +558,9 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         .spyOn(MockMongoRepository.prototype, 'createTrusteeHistory')
         .mockResolvedValue();
 
-      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(unchangedAppointment);
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([
+        unchangedAppointment,
+      ]);
       vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(
         unchangedAppointment,
       );
@@ -822,7 +856,6 @@ describe('TrusteeAppointmentsUseCase tests', () => {
           divisionCode: '001',
         };
 
-        vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(original);
         vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([
           original,
           otherActive,
@@ -873,7 +906,6 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         });
         const updated = { ...original, divisionCodes: ['002'], divisionCode: '002' };
 
-        vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(original);
         vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([
           original,
         ]);
@@ -916,7 +948,6 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         });
         const updated = { ...original, divisionCodes: ['002'], divisionCode: '002' };
 
-        vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(original);
         vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([
           original,
           unrelated,
@@ -964,7 +995,6 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         };
         const updated = { ...original, ...suspendedPayload };
 
-        vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(original);
         vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([
           original,
           otherActive,
@@ -1097,7 +1127,9 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       const historyCreateSpy = vi
         .spyOn(MockMongoRepository.prototype, 'createTrusteeHistory')
         .mockResolvedValue();
-      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockExisting);
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([
+        mockExisting,
+      ]);
       vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(mockUpdated);
       vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([]);
 
@@ -1146,7 +1178,9 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       const historyCreateSpy = vi
         .spyOn(MockMongoRepository.prototype, 'createTrusteeHistory')
         .mockResolvedValue();
-      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockExisting);
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([
+        mockExisting,
+      ]);
       vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(mockUpdated);
       vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([]);
 
@@ -1195,7 +1229,9 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       const historyCreateSpy = vi
         .spyOn(MockMongoRepository.prototype, 'createTrusteeHistory')
         .mockResolvedValue();
-      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockExisting);
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([
+        mockExisting,
+      ]);
       vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(mockUpdated);
       vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([]);
 
@@ -1247,7 +1283,9 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       const historyCreateSpy = vi
         .spyOn(MockMongoRepository.prototype, 'createTrusteeHistory')
         .mockResolvedValue();
-      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockExisting);
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([
+        mockExisting,
+      ]);
       vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(mockUpdated);
       vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([]);
 
@@ -1296,7 +1334,9 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       const historyCreateSpy = vi
         .spyOn(MockMongoRepository.prototype, 'createTrusteeHistory')
         .mockResolvedValue();
-      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockExisting);
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([
+        mockExisting,
+      ]);
       vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(mockUpdated);
       vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([]);
 
@@ -1520,18 +1560,6 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       queueTrusteeChangeNotificationSpy = await setupNotificationMocks();
     });
 
-    // factory.ts backs both TrusteesRepository and TrusteeAppointmentsRepository with the same
-    // MockMongoRepository class, so spying on the shared prototype's `read` can't distinguish
-    // "which repository called this" by identity. Branches on arity instead of call order:
-    // trusteeAppointmentsRepository.read(trusteeId, appointmentId) always takes 2 args,
-    // trusteesRepository.read(trusteeId) always takes 1 -- a real, stable difference in the two
-    // repositories' own interfaces, not an incidental detail of which happens to run first.
-    function mockRepositoryReads(existingAppointment: unknown, trustee: unknown): void {
-      vi.spyOn(MockMongoRepository.prototype, 'read').mockImplementation(async (...args) =>
-        args.length === 2 ? existingAppointment : trustee,
-      );
-    }
-
     test('does not enqueue when feature flag is disabled', async () => {
       context.featureFlags['trustee-change-notification-enabled'] = false;
 
@@ -1551,7 +1579,9 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         status: 'voluntarily-suspended' as const,
       };
 
-      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValueOnce(existingAppointment);
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([
+        existingAppointment,
+      ]);
       vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(
         updatedAppointment,
       );
@@ -1587,7 +1617,10 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         status: 'voluntarily-suspended' as const,
       };
 
-      mockRepositoryReads(existingAppointment, mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([
+        existingAppointment,
+      ]);
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
       vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(
         updatedAppointment,
       );
@@ -1628,7 +1661,10 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         status: 'voluntarily-suspended' as const,
       };
 
-      mockRepositoryReads(existingAppointment, mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([
+        existingAppointment,
+      ]);
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
       vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(
         updatedAppointment,
       );
@@ -1671,7 +1707,9 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         effectiveDate: '2024-01-15',
       });
 
-      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(existingAppointment);
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([
+        existingAppointment,
+      ]);
       vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(
         existingAppointment,
       );
@@ -1708,7 +1746,10 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         appointmentType: 'pool' as const,
       };
 
-      mockRepositoryReads(existingAppointment, mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([
+        existingAppointment,
+      ]);
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
       vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(
         updatedAppointment,
       );
@@ -1757,7 +1798,10 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         status: 'voluntarily-suspended' as const,
       };
 
-      mockRepositoryReads(existingAppointment, mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([
+        existingAppointment,
+      ]);
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
       vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(
         updatedAppointment,
       );
@@ -1829,7 +1873,10 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         divisionCodes: ['071'],
       };
 
-      mockRepositoryReads(existingAppointment, mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([
+        existingAppointment,
+      ]);
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
       vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(
         updatedAppointment,
       );
