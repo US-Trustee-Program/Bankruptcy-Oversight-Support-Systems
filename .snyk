@@ -61,11 +61,30 @@ ignore:
         reason: >-
           Cross-site Scripting (XSS) in dompurify, affecting versions
           3.4.13-3.4.15 (current pin: 3.4.13, forced via root package.json
-          overrides). Fix is 3.4.16, published 2026-09-23, but it's inside
+          overrides). Not reachable in CAMS: GHSA-p98j-92pf-mc4p requires
+          BOTH sanitize() called with IN_PLACE on a live DOM node AND a
+          registered node-removing hook (afterSanitizeElements /
+          afterSanitizeAttributes) — the detached subtree's event handlers
+          survive because the post-walk neutralization pass only covers
+          entries in DOMPurify.removed. CAMS uses neither feature; all four
+          call sites (sanitize-text.ts, PrerenderedHtml.tsx,
+          NoteFormModal.tsx, CaseNoteFormModal.tsx) pass a string to
+          sanitize() and use the returned string, and dompurify has no
+          other consumer in the lockfile. That absence is now enforced, not
+          incidental: no-restricted-syntax in
+          user-interface/eslint-ui.config.mjs bans .addHook() calls and
+          IN_PLACE properties across UI source, UI tests, and test/bdd,
+          with the scope pinned by dev-tools/eslint-rule-manifest.json and
+          checked in CI by `npm run lint:validate`. The sibling mXSS
+          re-contextualization advisory is separately blocked by
+          DOMPURIFY_CONFIG, which allow-lists a fixed tag set and forbids
+          the script/xmp/iframe/noembed/noframes/noscript wrappers that
+          mutation needs. Fix is 3.4.16, published 2026-09-23, inside
           CAMS's 14-day minimum release age window (.npmrc
-          min-release-age=14) until 2026-10-07. Will bump the root
-          overrides entry and user-interface/package.json to 3.4.16 once
-          it clears the window.
+          min-release-age=14) until 2026-10-07; the root overrides entry
+          and user-interface/package.json (which still declares 3.4.15, a
+          skew the override masks) both move to 3.4.16 then, which drops
+          this entry entirely.
         expires: 2026-10-08T00:00:00.000Z
   SNYK-JS-REACTROUTER-18313151:
     - '*':

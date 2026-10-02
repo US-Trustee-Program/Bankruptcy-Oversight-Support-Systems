@@ -12,7 +12,8 @@
       "react/rules-of-hooks": null,
       "react/jsx-no-target-blank": null,
       "testing-library/await-async-queries": null,
-      "jsonc/sort-keys": null
+      "jsonc/sort-keys": null,
+      "no-restricted-syntax": 2
     }
   },
   {
@@ -31,7 +32,8 @@
       "no-unused-vars": 0,
       "react/rules-of-hooks": null,
       "react/jsx-no-target-blank": null,
-      "jsonc/sort-keys": null
+      "jsonc/sort-keys": null,
+      "no-restricted-syntax": 2
     }
   },
   {
@@ -47,7 +49,8 @@
       "react/rules-of-hooks": null,
       "react/jsx-no-target-blank": null,
       "testing-library/await-async-queries": null,
-      "jsonc/sort-keys": null
+      "jsonc/sort-keys": null,
+      "no-restricted-syntax": 2
     }
   },
   {
@@ -61,7 +64,8 @@
       "react-hooks/exhaustive-deps": null,
       "react-hooks/rules-of-hooks": null,
       "testing-library/await-async-queries": null,
-      "jsonc/sort-keys": null
+      "jsonc/sort-keys": null,
+      "no-restricted-syntax": null
     }
   },
   {
@@ -75,7 +79,8 @@
       "react-hooks/exhaustive-deps": null,
       "react-hooks/rules-of-hooks": null,
       "testing-library/await-async-queries": null,
-      "jsonc/sort-keys": null
+      "jsonc/sort-keys": null,
+      "no-restricted-syntax": null
     }
   },
   {
@@ -90,7 +95,8 @@
       "react-hooks/exhaustive-deps": null,
       "react-hooks/rules-of-hooks": null,
       "testing-library/await-async-queries": null,
-      "jsonc/sort-keys": null
+      "jsonc/sort-keys": null,
+      "no-restricted-syntax": null
     }
   },
   {
@@ -104,7 +110,8 @@
       "react-hooks/exhaustive-deps": null,
       "react-hooks/rules-of-hooks": null,
       "testing-library/await-async-queries": null,
-      "jsonc/sort-keys": null
+      "jsonc/sort-keys": null,
+      "no-restricted-syntax": null
     }
   },
   {
@@ -119,7 +126,8 @@
       "react-hooks/rules-of-hooks": null,
       "testing-library/await-async-queries": null,
       "vitest/valid-title": null,
-      "jsonc/sort-keys": null
+      "jsonc/sort-keys": null,
+      "no-restricted-syntax": null
     }
   },
   {
@@ -133,7 +141,8 @@
       "react-hooks/exhaustive-deps": null,
       "react-hooks/rules-of-hooks": null,
       "testing-library/await-async-queries": null,
-      "vitest/valid-title": null
+      "vitest/valid-title": null,
+      "no-restricted-syntax": null
     }
   },
   {
@@ -150,7 +159,8 @@
       "testing-library/no-node-access": 0,
       "no-unused-vars": 0,
       "vitest/valid-title": null,
-      "jsonc/sort-keys": null
+      "jsonc/sort-keys": null,
+      "no-restricted-syntax": 2
     }
   },
   {
@@ -167,7 +177,8 @@
       "testing-library/no-node-access": 0,
       "no-unused-vars": 0,
       "vitest/valid-title": null,
-      "jsonc/sort-keys": null
+      "jsonc/sort-keys": null,
+      "no-restricted-syntax": 2
     }
   },
   {
@@ -182,7 +193,8 @@
       "react-hooks/rules-of-hooks": null,
       "testing-library/await-async-queries": null,
       "vitest/valid-title": null,
-      "jsonc/sort-keys": null
+      "jsonc/sort-keys": null,
+      "no-restricted-syntax": null
     }
   },
   {
@@ -197,7 +209,8 @@
       "react-hooks/exhaustive-deps": null,
       "react-hooks/rules-of-hooks": null,
       "testing-library/await-async-queries": null,
-      "jsonc/sort-keys": null
+      "jsonc/sort-keys": null,
+      "no-restricted-syntax": null
     }
   },
   {
@@ -212,7 +225,8 @@
       "react-hooks/rules-of-hooks": null,
       "testing-library/await-async-queries": null,
       "vitest/valid-title": null,
-      "jsonc/sort-keys": null
+      "jsonc/sort-keys": null,
+      "no-restricted-syntax": null
     }
   },
   {
@@ -227,7 +241,8 @@
       "react-hooks/exhaustive-deps": null,
       "react-hooks/rules-of-hooks": null,
       "testing-library/await-async-queries": null,
-      "jsonc/sort-keys": null
+      "jsonc/sort-keys": null,
+      "no-restricted-syntax": null
     }
   },
   {
@@ -242,7 +257,8 @@
       "react-hooks/rules-of-hooks": null,
       "testing-library/await-async-queries": null,
       "vitest/valid-title": null,
-      "jsonc/sort-keys": null
+      "jsonc/sort-keys": null,
+      "no-restricted-syntax": null
     }
   },
   {
@@ -257,7 +273,8 @@
       "react-hooks/rules-of-hooks": null,
       "testing-library/await-async-queries": null,
       "vitest/valid-title": null,
-      "jsonc/sort-keys": null
+      "jsonc/sort-keys": null,
+      "no-restricted-syntax": null
     }
   }
 ]
