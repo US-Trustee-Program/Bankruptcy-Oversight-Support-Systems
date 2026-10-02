@@ -2283,6 +2283,12 @@ describe('resolvers', () => {
       expect(result.match).toMatchObject({ trusteeId: 't1', resolvedBy: 'resolveByNameOnly' });
     });
 
+    test('resolves the only exact name even when weaker names also match', async () => {
+      const result = await resolveByNameOnly()(poolOf(STRONG_NAME, EXACT_NAME, WEAK_NAME));
+
+      expect(result.match).toMatchObject({ trusteeId: 't2', resolvedBy: 'resolveByNameOnly' });
+    });
+
     test.each([
       {
         description: 'the phone',
@@ -2300,7 +2306,7 @@ describe('resolvers', () => {
     );
 
     test.each([
-      { description: 'a second candidate also matches on name', pool: [EXACT_NAME, WEAK_NAME] },
+      { description: 'a second candidate also has an exact name', pool: [EXACT_NAME, EXACT_NAME] },
       { description: 'the name is not exact', pool: [STRONG_NAME] },
       {
         description: 'the state contradicts',
