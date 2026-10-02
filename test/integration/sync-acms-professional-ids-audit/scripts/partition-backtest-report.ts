@@ -276,11 +276,10 @@ async function main(): Promise<void> {
   const trusteeById = new Map(loadTrustees().map((t) => [t.trusteeId, t]));
   const stagingByAcmsId = new Map(
     records.map((r) => {
-      const trustee =
-        r.disposition === 'auto-linked' ? trusteeById.get(r.camsTrusteeId) : undefined;
+      const trustee = r.disposition === 'linked' ? trusteeById.get(r.camsTrusteeId) : undefined;
       const staging: StagingInfo = {
         disposition: r.disposition,
-        trusteeId: r.disposition === 'auto-linked' ? r.camsTrusteeId : null,
+        trusteeId: r.disposition === 'linked' ? r.camsTrusteeId : null,
         trusteeName: trustee?.name ?? '',
         trusteeAddress: addressString(trustee?.public?.address),
         trusteePhone: trustee?.public?.phone?.number ?? '',

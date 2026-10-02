@@ -376,7 +376,8 @@ describe('SyncAcmsProfessionalIds', () => {
       documentType: 'TRUSTEE_PROFESSIONAL_ID',
       camsTrusteeId: 'trustee-1',
       acmsProfessionalId: 'NY-00063',
-      disposition: 'auto-linked',
+      disposition: 'linked',
+      linkMethod: 'auto',
       nameMatchCount: 0,
       evidence: {
         sourceRaw: { fullName: 'John Smith' },
@@ -487,7 +488,8 @@ describe('SyncAcmsProfessionalIds', () => {
         expect.objectContaining({
           camsTrusteeId: 'trustee-1',
           acmsProfessionalId: 'NY-00063',
-          disposition: 'auto-linked',
+          disposition: 'linked',
+          linkMethod: 'auto',
         }),
         expect.objectContaining({ id: 'ACMS' }),
       );
@@ -638,6 +640,7 @@ describe('SyncAcmsProfessionalIds', () => {
         }),
         expect.objectContaining({ id: 'ACMS' }),
       );
+      expect(upsertSpy.mock.calls[0][0].linkMethod).toBeUndefined();
       expect(outcome).toEqual({ kind: 'ambiguous', gated: 'written' });
     });
 

@@ -48,11 +48,11 @@ describe('deriveDisposition', () => {
     expect(deriveDisposition(state)).toBe('skipped');
   });
 
-  test('returns auto-linked when state.match is set', () => {
+  test('returns linked when state.match is set', () => {
     const state = makeState({
       match: { trusteeId: 't1', score: {}, resolvedBy: 'test' },
     });
-    expect(deriveDisposition(state)).toBe('auto-linked');
+    expect(deriveDisposition(state)).toBe('linked');
   });
 
   test('returns no-match when there are no candidates', () => {
