@@ -586,7 +586,7 @@ export function calculateChapterScore(
  * characters (e.g. "L." -> "l", "O'Brien" -> "obrien"). Distinct from `normalizeName`, which
  * only collapses whitespace for full-name lookup matching.
  */
-export function normalizeNamePart(namePart?: string): string {
+function normalizeNamePart(namePart?: string): string {
   return (namePart ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 

@@ -10,7 +10,6 @@ import {
   addScore,
   ScoreRecord,
   createTrusteeInitialState as createInitialState,
-  mergedScore,
   TrusteePipelineState as PipelineState,
   projectTrustee,
 } from './trustee-match-pipeline';
@@ -434,7 +433,7 @@ describe('recallByTokenIntersection', () => {
 
     const result = await recallByTokenIntersection(context)(state);
 
-    expect(mergedScore(result.candidates.get('t1')!)).toMatchObject({
+    expect(result.candidates.get('t1')!.scores).toMatchObject({
       recallByTokenIntersection: { value: 2, threshold: 2, pass: true },
     });
   });
@@ -499,7 +498,7 @@ describe('recallByAnchoredLevenshtein', () => {
 
     const result = await recallByAnchoredLevenshtein(context)(state);
 
-    expect(mergedScore(result.candidates.get('t1')!)).toMatchObject({
+    expect(result.candidates.get('t1')!.scores).toMatchObject({
       recallByAnchoredLevenshtein: { value: 1, threshold: 2, pass: true },
     });
   });
@@ -548,8 +547,8 @@ describe('scoreCandidate - name-match facet', () => {
     scoreCandidate(state.sourceNormalized, t1);
     scoreCandidate(state.sourceNormalized, t2);
 
-    expect(mergedScore(t1)).toMatchObject({ doesNameMatch: { pass: true, quality: 'exact' } });
-    expect(mergedScore(t2)).toMatchObject({ doesNameMatch: { pass: false } });
+    expect(t1.scores).toMatchObject({ doesNameMatch: { pass: true, quality: 'exact' } });
+    expect(t2.scores).toMatchObject({ doesNameMatch: { pass: false } });
   });
 
   // A CAMS middle name of more than one token glues into a single token, so a source middle
@@ -576,7 +575,7 @@ describe('scoreCandidate - name-match facet', () => {
     scoreCandidate(state.sourceNormalized, candidate);
 
     expect(candidate.camsNormalized.middleNameAlternates).toEqual(['l', 'prue']);
-    expect(mergedScore(candidate)).toMatchObject({
+    expect(candidate.scores).toMatchObject({
       doesNameMatch: { pass: true, quality: 'strong' },
     });
   });
@@ -605,7 +604,7 @@ describe('scoreCandidate - name-match facet', () => {
 
     scoreCandidate(state.sourceNormalized, candidate);
 
-    expect(mergedScore(candidate)).toMatchObject({
+    expect(candidate.scores).toMatchObject({
       doesNameMatch: { pass: true, quality: 'strong' },
     });
   });
@@ -631,7 +630,7 @@ describe('scoreCandidate - name-match facet', () => {
 
     scoreCandidate(state.sourceNormalized, candidate);
 
-    expect(mergedScore(candidate)).toMatchObject({
+    expect(candidate.scores).toMatchObject({
       doesNameMatch: { pass: false },
     });
   });
@@ -657,7 +656,7 @@ describe('scoreCandidate - name-match facet', () => {
 
     scoreCandidate(state.sourceNormalized, candidate);
 
-    expect(mergedScore(candidate)).toMatchObject({
+    expect(candidate.scores).toMatchObject({
       doesNameMatch: { pass: true, quality: 'exact' },
     });
   });
@@ -683,7 +682,7 @@ describe('scoreCandidate - name-match facet', () => {
 
     scoreCandidate(state.sourceNormalized, candidate);
 
-    expect(mergedScore(candidate)).toMatchObject({
+    expect(candidate.scores).toMatchObject({
       doesNameMatch: { pass: true, quality: 'strong' },
     });
   });
@@ -711,7 +710,7 @@ describe('scoreCandidate - name-match facet', () => {
 
     scoreCandidate(state.sourceNormalized, candidate);
 
-    expect(mergedScore(candidate)).toMatchObject({
+    expect(candidate.scores).toMatchObject({
       doesNameMatch: { pass: false },
     });
   });
@@ -737,7 +736,7 @@ describe('scoreCandidate - name-match facet', () => {
 
     scoreCandidate(state.sourceNormalized, candidate);
 
-    expect(mergedScore(candidate)).toMatchObject({
+    expect(candidate.scores).toMatchObject({
       doesNameMatch: { pass: true, quality: 'strong' },
     });
   });
@@ -758,7 +757,7 @@ describe('scoreCandidate - name-match facet', () => {
 
     scoreCandidate(state.sourceNormalized, candidate);
 
-    expect(mergedScore(candidate)).toMatchObject({
+    expect(candidate.scores).toMatchObject({
       doesNameMatch: { pass: true, quality: 'strong' },
     });
   });
@@ -784,7 +783,7 @@ describe('scoreCandidate - name-match facet', () => {
 
     scoreCandidate(state.sourceNormalized, candidate);
 
-    expect(mergedScore(candidate)).toMatchObject({
+    expect(candidate.scores).toMatchObject({
       doesNameMatch: { pass: true, quality: 'strong' },
     });
   });
@@ -801,7 +800,7 @@ describe('scoreCandidate - name-match facet', () => {
 
     scoreCandidate(state.sourceNormalized, candidate);
 
-    expect(mergedScore(candidate)).toMatchObject({
+    expect(candidate.scores).toMatchObject({
       doesNameMatch: { pass: true, quality: 'strong' },
     });
   });
@@ -820,7 +819,7 @@ describe('scoreCandidate - name-match facet', () => {
 
     scoreCandidate(state.sourceNormalized, candidate);
 
-    expect(mergedScore(candidate)).toMatchObject({
+    expect(candidate.scores).toMatchObject({
       doesNameMatch: { pass: false },
     });
   });
@@ -848,7 +847,7 @@ describe('scoreCandidate - name-match facet', () => {
 
     // Joining the fields exposes "JR." where a per-field split kept it hidden; without the
     // suffix filter it would become a middle token and conflict with "f".
-    expect(mergedScore(candidate)).toMatchObject({
+    expect(candidate.scores).toMatchObject({
       doesNameMatch: { pass: true, quality: 'exact' },
     });
   });
@@ -865,7 +864,7 @@ describe('scoreCandidate - name-match facet', () => {
 
     scoreCandidate(state.sourceNormalized, candidate);
 
-    expect(mergedScore(candidate)).toMatchObject({
+    expect(candidate.scores).toMatchObject({
       doesNameMatch: { pass: true, quality: 'weak' },
     });
   });
@@ -882,7 +881,7 @@ describe('scoreCandidate - name-match facet', () => {
 
     scoreCandidate(state.sourceNormalized, candidate);
 
-    expect(mergedScore(candidate)).toMatchObject({
+    expect(candidate.scores).toMatchObject({
       doesNameMatch: { pass: false },
     });
   });
@@ -902,7 +901,7 @@ describe('scoreCandidate - name-match facet', () => {
 
     scoreCandidate(state.sourceNormalized, candidate);
 
-    expect(mergedScore(candidate)).toMatchObject({
+    expect(candidate.scores).toMatchObject({
       doesNameMatch: { pass: true, quality: 'strong' },
     });
   });
@@ -921,7 +920,7 @@ describe('scoreCandidate - name-match facet', () => {
 
     scoreCandidate(state.sourceNormalized, candidate);
 
-    expect(mergedScore(candidate)).toMatchObject({
+    expect(candidate.scores).toMatchObject({
       doesNameMatch: { pass: true, quality: 'strong' },
     });
   });
@@ -940,7 +939,7 @@ describe('scoreCandidate - name-match facet', () => {
 
     scoreCandidate(state.sourceNormalized, candidate);
 
-    expect(mergedScore(candidate)).toMatchObject({
+    expect(candidate.scores).toMatchObject({
       doesNameMatch: { pass: true, quality: 'strong' },
     });
   });
@@ -961,7 +960,7 @@ describe('scoreCandidate - name-match facet', () => {
 
     scoreCandidate(state.sourceNormalized, candidate);
 
-    expect(mergedScore(candidate)).toMatchObject({
+    expect(candidate.scores).toMatchObject({
       doesNameMatch: { pass: true, quality: 'exact' },
     });
   });
@@ -1026,7 +1025,7 @@ describe('scoreCandidate - state/city/zip/contact-presence facets', () => {
 
     scoreCandidate(state.sourceNormalized, candidate);
 
-    expect(mergedScore(candidate)).toMatchObject({
+    expect(candidate.scores).toMatchObject({
       doesCityMatch: { pass: true },
       doesStateMatch: { pass: true },
     });
@@ -1056,8 +1055,8 @@ describe('scoreCandidate - state/city/zip/contact-presence facets', () => {
 
     scoreCandidate(state.sourceNormalized, candidate);
 
-    expect(mergedScore(candidate).doesStateMatch).toBeUndefined();
-    expect(mergedScore(candidate).doesCityMatch).toBeUndefined();
+    expect(candidate.scores.doesStateMatch).toBeUndefined();
+    expect(candidate.scores.doesCityMatch).toBeUndefined();
   });
 
   test('fails doesCamsTrusteeHaveAddressAndPhone for a candidate with NO address1, city, state, zip, or phone at all', async () => {
@@ -1071,7 +1070,7 @@ describe('scoreCandidate - state/city/zip/contact-presence facets', () => {
 
     scoreCandidate(state.sourceNormalized, candidate);
 
-    expect(mergedScore(candidate)).toMatchObject({
+    expect(candidate.scores).toMatchObject({
       doesCamsTrusteeHaveAddressAndPhone: { pass: false },
     });
   });
@@ -1119,7 +1118,7 @@ describe('scoreCandidate - state/city/zip/contact-presence facets', () => {
 
       scoreCandidate(state.sourceNormalized, candidate);
 
-      expect(mergedScore(candidate)).toMatchObject({
+      expect(candidate.scores).toMatchObject({
         doesCamsTrusteeHaveAddressAndPhone: { pass: true },
       });
     },
@@ -1137,7 +1136,7 @@ describe('scoreCandidate - state/city/zip/contact-presence facets', () => {
 
     scoreCandidate(state.sourceNormalized, candidate);
 
-    expect(mergedScore(candidate)).toMatchObject({
+    expect(candidate.scores).toMatchObject({
       doesCamsTrusteeHaveAddressAndPhone: { pass: true },
     });
   });
@@ -1150,7 +1149,7 @@ describe('scoreCandidate - state/city/zip/contact-presence facets', () => {
 
     scoreCandidate(state.sourceNormalized, candidate);
 
-    expect(mergedScore(candidate)).toMatchObject({
+    expect(candidate.scores).toMatchObject({
       doesAcmsTrusteeHaveAddressAndPhone: { pass: false },
     });
   });
@@ -1176,7 +1175,7 @@ describe('scoreCandidate - state/city/zip/contact-presence facets', () => {
 
       scoreCandidate(state.sourceNormalized, candidate);
 
-      expect(mergedScore(candidate)).toMatchObject({
+      expect(candidate.scores).toMatchObject({
         doesAcmsTrusteeHaveAddressAndPhone: { pass: true },
       });
     },
@@ -1204,7 +1203,7 @@ describe('scoreCandidate - state/city/zip/contact-presence facets', () => {
 
     scoreCandidate(state.sourceNormalized, candidate);
 
-    expect(mergedScore(candidate)).toMatchObject({
+    expect(candidate.scores).toMatchObject({
       doesStateMatch: { pass: true },
     });
   });
@@ -1231,7 +1230,7 @@ describe('scoreCandidate - state/city/zip/contact-presence facets', () => {
 
     scoreCandidate(state.sourceNormalized, candidate);
 
-    expect(mergedScore(candidate)).toMatchObject({
+    expect(candidate.scores).toMatchObject({
       doesStateMatch: { pass: false },
     });
   });
@@ -1303,7 +1302,7 @@ describe('scoreCandidate - state/city/zip/contact-presence facets', () => {
 
     scoreCandidate(state.sourceNormalized, candidate);
 
-    expect(mergedScore(candidate)).toMatchObject({
+    expect(candidate.scores).toMatchObject({
       doesCityMatch: { pass: true },
     });
   });
@@ -1330,7 +1329,7 @@ describe('scoreCandidate - state/city/zip/contact-presence facets', () => {
 
     scoreCandidate(state.sourceNormalized, candidate);
 
-    expect(mergedScore(candidate)).toMatchObject({
+    expect(candidate.scores).toMatchObject({
       doesCityMatch: { pass: false },
     });
   });
@@ -1396,7 +1395,7 @@ describe('scoreCandidate - state/city/zip/contact-presence facets', () => {
 
     scoreCandidate(state.sourceNormalized, candidate);
 
-    expect(mergedScore(candidate)).toMatchObject({
+    expect(candidate.scores).toMatchObject({
       doesZipCodeMatch: { pass: true },
     });
   });
@@ -1423,7 +1422,7 @@ describe('scoreCandidate - state/city/zip/contact-presence facets', () => {
 
     scoreCandidate(state.sourceNormalized, candidate);
 
-    expect(mergedScore(candidate)).toMatchObject({
+    expect(candidate.scores).toMatchObject({
       doesZipCodeMatch: { pass: false },
     });
   });
@@ -1476,7 +1475,7 @@ describe('scoreCandidate - address-match facet', () => {
       'test',
     );
     scoreCandidate(state.sourceNormalized, candidate);
-    return mergedScore(candidate);
+    return candidate.scores;
   };
 
   test('grades identical street, city, state and zip as exact', async () => {
@@ -1614,7 +1613,7 @@ describe('scoreCandidate - contact-corroboration facet', () => {
 
     scoreCandidate(state.sourceNormalized, candidate);
 
-    expect(mergedScore(candidate).doesEmailMatch).toEqual({ pass: true });
+    expect(candidate.scores.doesEmailMatch).toEqual({ pass: true });
   });
 
   test('records a failing doesPhoneMatch when the phone genuinely differs', () => {
@@ -1641,7 +1640,7 @@ describe('scoreCandidate - contact-corroboration facet', () => {
 
     scoreCandidate(state.sourceNormalized, candidate);
 
-    expect(mergedScore(candidate).doesPhoneMatch).toEqual({ pass: false, phoneDigitDistance: 4 });
+    expect(candidate.scores.doesPhoneMatch).toEqual({ pass: false, phoneDigitDistance: 4 });
   });
 
   test('records a failing doesEmailMatch when the emails differ', () => {
@@ -1668,7 +1667,7 @@ describe('scoreCandidate - contact-corroboration facet', () => {
 
     scoreCandidate(state.sourceNormalized, candidate);
 
-    expect(mergedScore(candidate).doesEmailMatch).toEqual({ pass: false });
+    expect(candidate.scores.doesEmailMatch).toEqual({ pass: false });
   });
 
   test('does not record doesEmailMatch when either side has no email', () => {
@@ -1764,13 +1763,13 @@ describe('scoreCandidate - phone-match quality facet', () => {
   ])('grades a phone $description', async ({ phone, expected }) => {
     const candidate = await scoredCandidateWithPhone(phone);
 
-    expect(mergedScore(candidate).doesPhoneMatch).toEqual(expected);
+    expect(candidate.scores.doesPhoneMatch).toEqual(expected);
   });
 
   test('records an exact doesPhoneMatch when the phones are identical', async () => {
     const candidate = await scoredCandidateWithPhone('212-555-0100');
 
-    expect(mergedScore(candidate).doesPhoneMatch).toEqual({ pass: true, quality: 'exact' });
+    expect(candidate.scores.doesPhoneMatch).toEqual({ pass: true, quality: 'exact' });
   });
 
   test('does not record doesPhoneMatch when the candidate phone has fewer than 10 digits', async () => {
