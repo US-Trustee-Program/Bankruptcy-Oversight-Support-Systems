@@ -682,13 +682,19 @@ async function seedCosmos() {
           disposition: 'linked',
           linkMethod: 'auto',
           nameMatchCount: 1,
-          sourceRaw: { fullName: 'Norman N Namematch' },
-          sourceNormalized: {},
-          memo: {},
-          candidates: [],
-          match: { trusteeId: CONFLICT_EXISTING_TRUSTEE_ID, score: {} },
-          skip: false,
-          error: null,
+          evidence: {
+            sourceRaw: { fullName: 'Norman N Namematch' },
+            sourceNormalized: {},
+            memo: {},
+            candidates: [],
+            match: {
+              trusteeId: CONFLICT_EXISTING_TRUSTEE_ID,
+              score: {},
+              resolvedBy: 'resolveByPhone',
+            },
+            skip: false,
+            error: null,
+          },
           updatedOn: now,
           updatedBy: { id: 'HARNESS', name: 'HARNESS' },
         },
@@ -819,7 +825,10 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
     .findOne({ acmsProfessionalId: ACTIVE_NO_MATCH_ACMS_ID });
   if (activeErrored?.disposition === 'no-match') {
     pass(`Active no-match: no-match professional-id record written for ${ACTIVE_NO_MATCH_ACMS_ID}`);
-    if (typeof activeErrored.variant === 'string' && activeErrored.variant.length > 0) {
+    if (
+      typeof activeErrored.evidence?.variant === 'string' &&
+      activeErrored.evidence.variant.length > 0
+    ) {
       pass('Active no-match: variant populated on the record');
     } else {
       fail('Active no-match: variant missing/empty on the record');
@@ -829,7 +838,7 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
     } else {
       fail(`Active no-match: unexpected camsTrusteeId ${activeErrored.camsTrusteeId}`);
     }
-    if (activeErrored.sourceRaw && activeErrored.candidates) {
+    if (activeErrored.evidence?.sourceRaw && activeErrored.evidence?.candidates) {
       pass('Active no-match: full pipeline evidence (sourceRaw/candidates) persisted');
     } else {
       fail('Active no-match: expected sourceRaw/candidates pipeline evidence on the record');
@@ -873,7 +882,7 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
     .findOne({ acmsProfessionalId: AMBIGUOUS_ACMS_ID });
   if (ambiguousRecord?.disposition === 'ambiguous') {
     pass(`Ambiguous: ${AMBIGUOUS_ACMS_ID} written with disposition=ambiguous`);
-    const candidateTrusteeIds = (ambiguousRecord.candidates ?? []).map(
+    const candidateTrusteeIds = (ambiguousRecord.evidence?.candidates ?? []).map(
       (c: { camsRaw?: { trusteeId?: string } }) => c.camsRaw?.trusteeId,
     );
     if (
@@ -912,7 +921,7 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
   const conflictRecord = await db
     .collection('trustee-professional-ids')
     .findOne({ acmsProfessionalId: CONFLICT_ACMS_ID, disposition: 'conflict' });
-  if (conflictRecord?.conflictingTrusteeId === CONFLICT_EXISTING_TRUSTEE_ID) {
+  if (conflictRecord?.evidence?.conflictingTrusteeId === CONFLICT_EXISTING_TRUSTEE_ID) {
     pass(
       `Conflict: ${CONFLICT_ACMS_ID} written with disposition=conflict, conflictingTrusteeId=${CONFLICT_EXISTING_TRUSTEE_ID}`,
     );
@@ -1130,15 +1139,18 @@ async function runRetryIdempotency() {
     documentType: 'TRUSTEE_PROFESSIONAL_ID' as const,
     camsTrusteeId: fingerprint,
     acmsProfessionalId,
-    variant,
     disposition: 'no-match' as const,
-    sourceRaw: { fullName: 'Retry Test' },
-    sourceNormalized: {},
-    memo: {},
-    candidates: [],
-    match: null,
-    skip: false,
-    error: null,
+    nameMatchCount: 0,
+    evidence: {
+      variant,
+      sourceRaw: { fullName: 'Retry Test' },
+      sourceNormalized: {},
+      memo: {},
+      candidates: [],
+      match: null,
+      skip: false,
+      error: null,
+    },
   };
 
   // This harness's plain MongoDB container has no indexes applied (unlike real Cosmos, whose
