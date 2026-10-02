@@ -30,6 +30,36 @@ describe('TrusteeAppointmentsUseCase tests', () => {
     trusteeAppointmentsUseCase = new TrusteeAppointmentsUseCase(context);
   }
 
+  // Shared by the two notification-dispatch describes below (updateAppointment and
+  // createAppointment), which were previously copy-pasted identically.
+  async function setupNotificationMocks(): Promise<
+    Mock<(event: TrusteeChangeNotificationEvent) => Promise<void>>
+  > {
+    vi.restoreAllMocks();
+    context = await createMockApplicationContext();
+    context.featureFlags['trustee-change-notification-enabled'] = true;
+
+    const queueTrusteeChangeNotificationSpy = vi.fn().mockResolvedValue(undefined);
+    vi.spyOn(factory, 'getApiToDataflowsGateway').mockReturnValue({
+      queueTrusteeChangeNotification: queueTrusteeChangeNotificationSpy,
+      queueCaseAssignmentEvent: vi.fn(),
+      queueTrusteeAppointmentEvent: vi.fn(),
+      queueCaseReload: vi.fn(),
+      queueTrusteeVerificationRemap: vi.fn(),
+    });
+
+    trusteeAppointmentsUseCase = new TrusteeAppointmentsUseCase(context);
+
+    vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
+    vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([]);
+    // No other existing appointments by default, so findMergeTarget/merge-detection
+    // doesn't interfere with the notification-dispatch behavior under test here; tests
+    // that need real appointment fixtures override this directly.
+    vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([]);
+
+    return queueTrusteeChangeNotificationSpy;
+  }
+
   describe('getTrusteeAppointments', () => {
     beforeEach(resetMocksWithDefaultAppointments);
 
@@ -1376,6 +1406,54 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       );
     });
 
+    test('should fall back to the legacy divisionCode when divisionCodes is an explicit empty array', async () => {
+      // normalizeAppointmentData's first branch is guarded by divisionCodes.length > 0, so an
+      // explicit [] (distinct from divisionCodes being absent entirely) must still fall through
+      // to the legacy divisionCode branch rather than being treated as "new format provided".
+      const trusteeId = 'trustee-123';
+      const mockTrustee = MockData.getTrustee({ trusteeId });
+
+      const appointmentInput: TrusteeAppointmentInput = {
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '081',
+        divisionCodes: [],
+        divisionCode: '9',
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-15',
+      };
+
+      const mockCreatedAppointment = MockData.getTrusteeAppointment({
+        trusteeId,
+        ...appointmentInput,
+        divisionCode: '9',
+        divisionCodes: ['9'],
+      });
+
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'createAppointment').mockResolvedValue(
+        mockCreatedAppointment,
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue(undefined);
+
+      const result = await trusteeAppointmentsUseCase.createAppointment(
+        context,
+        trusteeId,
+        appointmentInput,
+      );
+
+      expect(result).toEqual(mockCreatedAppointment);
+      expect(MockMongoRepository.prototype.createAppointment).toHaveBeenCalledWith(
+        trusteeId,
+        expect.objectContaining({
+          divisionCode: '9',
+          divisionCodes: ['9'],
+        }),
+        expect.any(Object),
+      );
+    });
+
     test('should reject appointment with no divisions specified', async () => {
       const trusteeId = 'trustee-123';
       const mockTrustee = MockData.getTrustee({ trusteeId });
@@ -1439,28 +1517,20 @@ describe('TrusteeAppointmentsUseCase tests', () => {
     });
 
     beforeEach(async () => {
-      vi.restoreAllMocks();
-      context = await createMockApplicationContext();
-      context.featureFlags['trustee-change-notification-enabled'] = true;
-
-      queueTrusteeChangeNotificationSpy = vi.fn().mockResolvedValue(undefined);
-      vi.spyOn(factory, 'getApiToDataflowsGateway').mockReturnValue({
-        queueTrusteeChangeNotification: queueTrusteeChangeNotificationSpy,
-        queueCaseAssignmentEvent: vi.fn(),
-        queueTrusteeAppointmentEvent: vi.fn(),
-        queueCaseReload: vi.fn(),
-        queueTrusteeVerificationRemap: vi.fn(),
-      });
-
-      trusteeAppointmentsUseCase = new TrusteeAppointmentsUseCase(context);
-
-      vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
-      vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([]);
-      // No other existing appointments by default, so findMergeTarget/merge-detection
-      // doesn't interfere with the notification-dispatch behavior under test here; tests
-      // that need real appointment fixtures override this directly.
-      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([]);
+      queueTrusteeChangeNotificationSpy = await setupNotificationMocks();
     });
+
+    // factory.ts backs both TrusteesRepository and TrusteeAppointmentsRepository with the same
+    // MockMongoRepository class, so spying on the shared prototype's `read` can't distinguish
+    // "which repository called this" by identity. Branches on arity instead of call order:
+    // trusteeAppointmentsRepository.read(trusteeId, appointmentId) always takes 2 args,
+    // trusteesRepository.read(trusteeId) always takes 1 -- a real, stable difference in the two
+    // repositories' own interfaces, not an incidental detail of which happens to run first.
+    function mockRepositoryReads(existingAppointment: unknown, trustee: unknown): void {
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockImplementation(async (...args) =>
+        args.length === 2 ? existingAppointment : trustee,
+      );
+    }
 
     test('does not enqueue when feature flag is disabled', async () => {
       context.featureFlags['trustee-change-notification-enabled'] = false;
@@ -1517,8 +1587,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         status: 'voluntarily-suspended' as const,
       };
 
-      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValueOnce(existingAppointment);
-      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValueOnce(mockTrustee);
+      mockRepositoryReads(existingAppointment, mockTrustee);
       vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(
         updatedAppointment,
       );
@@ -1559,8 +1628,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         status: 'voluntarily-suspended' as const,
       };
 
-      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValueOnce(existingAppointment);
-      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValueOnce(mockTrustee);
+      mockRepositoryReads(existingAppointment, mockTrustee);
       vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(
         updatedAppointment,
       );
@@ -1640,8 +1708,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         appointmentType: 'pool' as const,
       };
 
-      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValueOnce(existingAppointment);
-      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValueOnce(mockTrustee);
+      mockRepositoryReads(existingAppointment, mockTrustee);
       vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(
         updatedAppointment,
       );
@@ -1690,8 +1757,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         status: 'voluntarily-suspended' as const,
       };
 
-      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValueOnce(existingAppointment);
-      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValueOnce(mockTrustee);
+      mockRepositoryReads(existingAppointment, mockTrustee);
       vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(
         updatedAppointment,
       );
@@ -1763,8 +1829,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         divisionCodes: ['071'],
       };
 
-      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValueOnce(existingAppointment);
-      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValueOnce(mockTrustee);
+      mockRepositoryReads(existingAppointment, mockTrustee);
       vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(
         updatedAppointment,
       );
@@ -1795,27 +1860,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
     >;
 
     beforeEach(async () => {
-      vi.restoreAllMocks();
-      context = await createMockApplicationContext();
-      context.featureFlags['trustee-change-notification-enabled'] = true;
-
-      queueTrusteeChangeNotificationSpy = vi.fn().mockResolvedValue(undefined);
-      vi.spyOn(factory, 'getApiToDataflowsGateway').mockReturnValue({
-        queueTrusteeChangeNotification: queueTrusteeChangeNotificationSpy,
-        queueCaseAssignmentEvent: vi.fn(),
-        queueTrusteeAppointmentEvent: vi.fn(),
-        queueCaseReload: vi.fn(),
-        queueTrusteeVerificationRemap: vi.fn(),
-      });
-
-      trusteeAppointmentsUseCase = new TrusteeAppointmentsUseCase(context);
-
-      vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
-      vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([]);
-      // No other existing appointments by default, so findMergeTarget/merge-detection
-      // doesn't interfere with the notification-dispatch behavior under test here; tests
-      // that need real appointment fixtures override this directly.
-      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([]);
+      queueTrusteeChangeNotificationSpy = await setupNotificationMocks();
     });
 
     test('does not enqueue when feature flag is disabled', async () => {

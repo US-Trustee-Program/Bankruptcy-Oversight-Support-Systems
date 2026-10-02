@@ -13,6 +13,7 @@ import {
 } from '@common/cams/dataflow-events';
 import CaseManagement from '../cases/case-management';
 import { CaseSummary } from '@common/cams/cases';
+import * as syncTrusteeCaseAppointments from './sync-trustee-case-appointments';
 
 const makeMessage = (
   overrides: Partial<TrusteeVerificationRemapMessage> = {},
@@ -221,21 +222,24 @@ describe('TrusteeVerificationRemapUseCase', () => {
     const surrogate = makeSurrogate();
     mockGetSurrogatesByFingerprint.mockResolvedValue([surrogate]);
     context.featureFlags['downstream-trustee-appointments-enabled'] = true;
-    vi.spyOn(factory, 'getOfficesGateway').mockReturnValue({
-      getOffices: vi.fn().mockResolvedValue([]),
-      getOfficeName: vi.fn(),
-    });
-    vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue(
-      Object.assign(new MockMongoRepository(), {
-        findByCamsTrusteeId: vi.fn().mockResolvedValue([]),
-      }),
+    // Spying directly on resolveGroupMatchedProfessionalId (rather than mocking its two
+    // gateway dependencies) keeps this file focused on what TrusteeVerificationRemapUseCase
+    // does with the result, not how that helper computes it -- its own group-designator
+    // matching/sentinel-fallback logic is exhaustively tested in
+    // sync-trustee-case-appointments.test.ts.
+    vi.spyOn(syncTrusteeCaseAppointments, 'resolveGroupMatchedProfessionalId').mockResolvedValue(
+      'PROF-123',
     );
     useCase = new TrusteeVerificationRemapUseCase(context);
 
     await useCase.remapPage(makeMessage(), 25);
 
     expect(mockQueueTrusteeAppointmentEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ caseId: surrogate.caseId, trusteeId: 'trustee-new' }),
+      expect.objectContaining({
+        caseId: surrogate.caseId,
+        trusteeId: 'trustee-new',
+        acmsProfessionalId: 'PROF-123',
+      }),
     );
   });
 
@@ -254,14 +258,8 @@ describe('TrusteeVerificationRemapUseCase', () => {
     const surrogate = makeSurrogate();
     mockGetSurrogatesByFingerprint.mockResolvedValue([surrogate]);
     context.featureFlags['downstream-trustee-appointments-enabled'] = true;
-    vi.spyOn(factory, 'getOfficesGateway').mockReturnValue({
-      getOffices: vi.fn().mockResolvedValue([]),
-      getOfficeName: vi.fn(),
-    });
-    vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue(
-      Object.assign(new MockMongoRepository(), {
-        findByCamsTrusteeId: vi.fn().mockResolvedValue([]),
-      }),
+    vi.spyOn(syncTrusteeCaseAppointments, 'resolveGroupMatchedProfessionalId').mockResolvedValue(
+      'PROF-123',
     );
     mockQueueTrusteeAppointmentEvent.mockRejectedValueOnce(new Error('queue unavailable'));
     useCase = new TrusteeVerificationRemapUseCase(context);

@@ -6,14 +6,9 @@ import { StorageQueueHumbleObject } from '../../lib/humble-objects/storage-queue
 import ApplicationContextCreator from '../azure/application-context-creator';
 import { createMockApplicationContext } from '../../lib/testing/testing-utilities';
 import factory from '../../lib/factory';
-import { CaseAppointment } from '@common/cams/trustee-appointments';
-import {
-  TrusteeAppointmentDownstreamEvent,
-  TrusteeVerificationRemapMessage,
-} from '@common/cams/dataflow-events';
+import TrusteeVerificationRemapUseCase from '../../lib/use-cases/dataflows/trustee-verification-remap';
+import { TrusteeVerificationRemapMessage } from '@common/cams/dataflow-events';
 import { MockMongoRepository } from '../../lib/testing/mock-gateways/mock-mongo.repository';
-import CaseManagement from '../../lib/use-cases/cases/case-management';
-import { CaseSummary } from '@common/cams/cases';
 
 const makeInvocationContext = (): InvocationContext =>
   ({
@@ -33,113 +28,61 @@ const makeMessage = (
   ...overrides,
 });
 
-const makeSurrogate = (overrides: Partial<CaseAppointment> = {}): CaseAppointment =>
-  ({
-    id: `surrogate-${overrides.caseId ?? '001'}`,
-    caseId: '081-25-00001',
-    trusteeId: 'fp-abc123',
-    assignedOn: '2025-01-01T00:00:00.000Z',
-    appointedDate: '2025-01-01',
-    dateFiled: '2024-06-01',
-    chapter: '7',
-    courtDivisionCode: '081',
-    isSurrogate: true,
-    variant: '{"firstName":"john","lastName":"doe"}',
-    ...overrides,
-  }) as CaseAppointment;
+type RemapPageResult = Awaited<ReturnType<TrusteeVerificationRemapUseCase['remapPage']>>;
 
+const makeRemapPageResult = (overrides: Partial<RemapPageResult> = {}): RemapPageResult => ({
+  documentsWritten: 1,
+  documentsFailed: 0,
+  downstreamNotificationFailedCount: 0,
+  totalCandidates: 1,
+  pageSize: 1,
+  remainingCount: 0,
+  ...overrides,
+});
+
+/**
+ * This file covers only handleRemap's own responsibilities -- queue-trigger mechanics
+ * (env var guard, pagination continuation requeue, rate-limit/DLQ routing, telemetry, and
+ * writing the verification document's remap status) -- by mocking its one real collaborator,
+ * TrusteeVerificationRemapUseCase.remapPage, directly. The remap business rules themselves
+ * (soft-close-before-upsert ordering, per-surrogate division re-validation, downstream-event
+ * payload shape, etc.) are exhaustively covered in
+ * backend/lib/use-cases/dataflows/trustee-verification-remap.test.ts against the use case
+ * directly; duplicating them here against the same collaborator through an extra layer of
+ * mocked repositories only doubles the maintenance surface without adding signal.
+ */
 describe('trustee-verification-remap handleRemap', () => {
-  let mockGetSurrogatesByFingerprint: ReturnType<typeof vi.fn>;
-  let mockGetActiveByCaseId: ReturnType<typeof vi.fn>;
-  let mockUpdateCaseAppointment: ReturnType<typeof vi.fn>;
-  let mockUpsert: ReturnType<typeof vi.fn>;
-  let mockDelete: ReturnType<typeof vi.fn>;
-  let mockQueueTrusteeAppointmentEvent: Mock<
-    (event: TrusteeAppointmentDownstreamEvent) => Promise<void>
-  >;
   let mockUpdateVerification: ReturnType<typeof vi.fn>;
-  let mockGetTrusteeAppointments: ReturnType<typeof vi.fn>;
+  let mockSendMessage: ReturnType<typeof vi.fn>;
+  let remapPageSpy: Mock<TrusteeVerificationRemapUseCase['remapPage']>;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.restoreAllMocks();
     process.env.AzureWebJobsDataflowsStorage = 'DefaultEndpointsProtocol=https://test';
 
-    mockGetSurrogatesByFingerprint = vi.fn().mockResolvedValue([]);
-    mockGetActiveByCaseId = vi.fn().mockResolvedValue(null);
-    mockUpdateCaseAppointment = vi.fn().mockResolvedValue({});
-    mockUpsert = vi.fn().mockResolvedValue({});
-    mockDelete = vi.fn().mockResolvedValue(undefined);
-    mockQueueTrusteeAppointmentEvent = vi.fn().mockResolvedValue(undefined);
     mockUpdateVerification = vi.fn().mockResolvedValue({});
-    // Matches makeSurrogate's defaults (courtDivisionCode/chapter '081'/'7') so every
-    // pre-existing test -- which doesn't care about the division re-validation guard --
-    // continues to pass it by default.
-    mockGetTrusteeAppointments = vi
-      .fn()
-      .mockResolvedValue([
-        { status: 'active', courtId: '081', chapter: '7', divisionCodes: ['081'] },
-      ]);
+    mockSendMessage = vi.fn().mockResolvedValue(undefined);
 
-    vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository').mockReturnValue(
-      Object.assign(new MockMongoRepository(), {
-        getSurrogatesByFingerprint: mockGetSurrogatesByFingerprint,
-        getActiveByCaseId: mockGetActiveByCaseId,
-        updateCaseAppointment: mockUpdateCaseAppointment,
-        upsert: mockUpsert,
-        delete: mockDelete,
-      }),
-    );
-    vi.spyOn(factory, 'getTrusteeAppointmentsRepository').mockReturnValue(
-      Object.assign(new MockMongoRepository(), {
-        getTrusteeAppointments: mockGetTrusteeAppointments,
-      }),
-    );
-    vi.spyOn(CaseManagement.prototype, 'getCaseSummary').mockImplementation(
-      async (_context, caseId) =>
-        ({ caseId, courtId: '081', courtDivisionCode: '081', chapter: '7' }) as CaseSummary,
-    );
     vi.spyOn(factory, 'getTrusteeMatchVerificationRepository').mockReturnValue(
       Object.assign(new MockMongoRepository(), {
         update: mockUpdateVerification,
       }),
     );
-    vi.spyOn(factory, 'getApiToDataflowsGateway').mockReturnValue({
-      queueTrusteeAppointmentEvent: mockQueueTrusteeAppointmentEvent,
-      queueCaseAssignmentEvent: vi.fn(),
-      queueCaseReload: vi.fn(),
-      queueTrusteeVerificationRemap: vi.fn(),
-      queueTrusteeChangeNotification: vi.fn(),
-    });
-  });
-
-  test('remaps a single surrogate case (N=1): upserts canonical appointment then deletes surrogate', async () => {
-    const { handleRemap } = await import('./trustee-verification-remap');
-    const surrogate = makeSurrogate();
-    mockGetSurrogatesByFingerprint.mockResolvedValue([surrogate]);
+    vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
+      sendMessage: mockSendMessage,
+    } as unknown as StorageQueueHumbleObject);
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
       await createMockApplicationContext(),
     );
+    remapPageSpy = vi.spyOn(TrusteeVerificationRemapUseCase.prototype, 'remapPage');
+  });
+
+  test('writes "complete" status and success telemetry when the use case reports a fully successful page', async () => {
+    const { handleRemap } = await import('./trustee-verification-remap');
+    remapPageSpy.mockResolvedValue(makeRemapPageResult());
     const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
 
     await handleRemap(makeMessage(), makeInvocationContext());
-
-    expect(mockUpsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        caseId: surrogate.caseId,
-        trusteeId: 'trustee-new',
-        assignedOn: surrogate.assignedOn,
-        appointedDate: surrogate.appointedDate,
-        dateFiled: surrogate.dateFiled,
-        chapter: surrogate.chapter,
-        courtDivisionCode: surrogate.courtDivisionCode,
-      }),
-    );
-    expect(mockUpsert.mock.calls[0][0]).not.toHaveProperty('isSurrogate');
-    expect(mockUpsert.mock.calls[0][0]).not.toHaveProperty('variant');
-    expect(mockDelete).toHaveBeenCalledWith(surrogate.id);
-    const upsertOrder = mockUpsert.mock.invocationCallOrder[0];
-    const deleteOrder = mockDelete.mock.invocationCallOrder[0];
-    expect(upsertOrder).toBeLessThan(deleteOrder);
 
     expect(telemetrySpy).toHaveBeenCalledWith(
       expect.anything(),
@@ -154,96 +97,16 @@ describe('trustee-verification-remap handleRemap', () => {
     });
   });
 
-  test('remaps every surrogate case sharing the fingerprint (N>1)', async () => {
+  test('writes "error" status and failure telemetry when the use case reports per-case failures', async () => {
     const { handleRemap } = await import('./trustee-verification-remap');
-    const surrogateA = makeSurrogate({ id: 'surrogate-a', caseId: '081-25-00001' });
-    const surrogateB = makeSurrogate({ id: 'surrogate-b', caseId: '081-25-00002' });
-    mockGetSurrogatesByFingerprint.mockResolvedValue([surrogateA, surrogateB]);
-    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
-      await createMockApplicationContext(),
-    );
-    const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
-
-    await handleRemap(makeMessage(), makeInvocationContext());
-
-    expect(mockUpsert).toHaveBeenCalledTimes(2);
-    expect(mockDelete).toHaveBeenCalledWith('surrogate-a');
-    expect(mockDelete).toHaveBeenCalledWith('surrogate-b');
-    expect(telemetrySpy).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.anything(),
-      'TRUSTEE-MATCH-VERIFICATION-REMAP',
-      'handleRemap',
-      expect.anything(),
-      expect.objectContaining({ success: true, documentsWritten: 2, documentsFailed: 0 }),
-    );
-  });
-
-  test('soft-closes a different-trustee real appointment before upserting the canonical row', async () => {
-    const { handleRemap } = await import('./trustee-verification-remap');
-    const surrogate = makeSurrogate();
-    const existingReal = {
-      id: 'real-appt-1',
-      caseId: surrogate.caseId,
-      trusteeId: 'trustee-old',
-      assignedOn: '2024-01-01T00:00:00.000Z',
-    };
-    mockGetSurrogatesByFingerprint.mockResolvedValue([surrogate]);
-    mockGetActiveByCaseId.mockResolvedValue(existingReal);
-    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
-      await createMockApplicationContext(),
-    );
-
-    await handleRemap(makeMessage(), makeInvocationContext());
-
-    expect(mockUpdateCaseAppointment).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'real-appt-1', unassignedOn: expect.any(String) }),
-    );
-    expect(mockUpsert).toHaveBeenCalledWith(
-      expect.objectContaining({ caseId: surrogate.caseId, trusteeId: 'trustee-new' }),
-    );
-    const softCloseOrder = mockUpdateCaseAppointment.mock.invocationCallOrder[0];
-    const upsertOrder = mockUpsert.mock.invocationCallOrder[0];
-    expect(softCloseOrder).toBeLessThan(upsertOrder);
-  });
-
-  test('skips soft-close and upsert when the existing real appointment is already the resolved trustee, but still deletes the surrogate', async () => {
-    const { handleRemap } = await import('./trustee-verification-remap');
-    const surrogate = makeSurrogate();
-    mockGetSurrogatesByFingerprint.mockResolvedValue([surrogate]);
-    mockGetActiveByCaseId.mockResolvedValue({
-      id: 'real-appt-1',
-      caseId: surrogate.caseId,
-      trusteeId: 'trustee-new',
-      assignedOn: '2024-01-01T00:00:00.000Z',
-    });
-    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
-      await createMockApplicationContext(),
-    );
-
-    await handleRemap(makeMessage(), makeInvocationContext());
-
-    expect(mockUpdateCaseAppointment).not.toHaveBeenCalled();
-    expect(mockUpsert).not.toHaveBeenCalled();
-    expect(mockDelete).toHaveBeenCalledWith(surrogate.id);
-  });
-
-  test('a failed canonical upsert leaves the surrogate untouched and counts as a failure without aborting the batch', async () => {
-    const { handleRemap } = await import('./trustee-verification-remap');
-    const surrogateA = makeSurrogate({ id: 'surrogate-a', caseId: '081-25-00001' });
-    const surrogateB = makeSurrogate({ id: 'surrogate-b', caseId: '081-25-00002' });
-    mockGetSurrogatesByFingerprint.mockResolvedValue([surrogateA, surrogateB]);
-    mockUpsert.mockRejectedValueOnce(new Error('upsert failed')).mockResolvedValue({});
-    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
-      await createMockApplicationContext(),
+    remapPageSpy.mockResolvedValue(
+      makeRemapPageResult({ documentsWritten: 1, documentsFailed: 1, pageSize: 2 }),
     );
     const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
 
     const message = makeMessage();
     await handleRemap(message, makeInvocationContext());
 
-    expect(mockDelete).not.toHaveBeenCalledWith('surrogate-a');
-    expect(mockDelete).toHaveBeenCalledWith('surrogate-b');
     expect(telemetrySpy).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
@@ -264,129 +127,15 @@ describe('trustee-verification-remap handleRemap', () => {
     });
   });
 
-  test('a rate-limit error mid-batch propagates to the outer retry handler instead of being counted as a per-case failure', async () => {
-    const { handleRemap } = await import('./trustee-verification-remap');
-    const surrogateA = makeSurrogate({ id: 'surrogate-a', caseId: '081-25-00001' });
-    const surrogateB = makeSurrogate({ id: 'surrogate-b', caseId: '081-25-00002' });
-    mockGetSurrogatesByFingerprint.mockResolvedValue([surrogateA, surrogateB]);
-    const tooManyError = new TooManyRequestsError('TRUSTEE-MATCH-VERIFICATION-REMAP');
-    mockUpsert.mockRejectedValueOnce(tooManyError).mockResolvedValue({});
-    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
-      await createMockApplicationContext(),
-    );
-
-    const mockSendMessage = vi.fn().mockResolvedValue(undefined);
-    vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
-      sendMessage: mockSendMessage,
-    } as unknown as StorageQueueHumbleObject);
-
-    const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
-
-    await handleRemap(makeMessage({ retryCount: 0 }), makeInvocationContext());
-
-    // The batch stops at the rate-limited case — surrogate-b is never attempted, and
-    // surrogate-a's own failure is not counted as a per-case documentsFailed.
-    expect(mockUpsert).toHaveBeenCalledTimes(1);
-    expect(mockDelete).not.toHaveBeenCalled();
-    expect(mockSendMessage).toHaveBeenCalled();
-    expect(telemetrySpy).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.anything(),
-      'TRUSTEE-MATCH-VERIFICATION-REMAP',
-      'handleRemap',
-      expect.anything(),
-      expect.objectContaining({ success: false, error: 'rate-limited-requeued' }),
-    );
-  });
-
-  test('a failed surrogate delete after a successful upsert counts as a failure without aborting the batch (idempotent on retry)', async () => {
-    const { handleRemap } = await import('./trustee-verification-remap');
-    const surrogateA = makeSurrogate({ id: 'surrogate-a', caseId: '081-25-00001' });
-    const surrogateB = makeSurrogate({ id: 'surrogate-b', caseId: '081-25-00002' });
-    mockGetSurrogatesByFingerprint.mockResolvedValue([surrogateA, surrogateB]);
-    mockDelete.mockImplementation((id: string) => {
-      if (id === 'surrogate-a') return Promise.reject(new Error('delete failed'));
-      return Promise.resolve(undefined);
-    });
-    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
-      await createMockApplicationContext(),
-    );
-    const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
-
-    await handleRemap(makeMessage(), makeInvocationContext());
-
-    expect(mockUpsert).toHaveBeenCalledTimes(2);
-    expect(telemetrySpy).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.anything(),
-      'TRUSTEE-MATCH-VERIFICATION-REMAP',
-      'handleRemap',
-      expect.anything(),
-      expect.objectContaining({ success: false, documentsWritten: 1, documentsFailed: 1 }),
-    );
-  });
-
-  test('queues a downstream event per remapped case when the feature flag is on', async () => {
-    const { handleRemap } = await import('./trustee-verification-remap');
-    const surrogate = makeSurrogate();
-    mockGetSurrogatesByFingerprint.mockResolvedValue([surrogate]);
-    const mockContext = await createMockApplicationContext();
-    mockContext.featureFlags['downstream-trustee-appointments-enabled'] = true;
-    vi.spyOn(factory, 'getOfficesGateway').mockReturnValue({
-      getOffices: vi.fn().mockResolvedValue([]),
-      getOfficeName: vi.fn(),
-    });
-    vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue(
-      Object.assign(new MockMongoRepository(), {
-        findByCamsTrusteeId: vi.fn().mockResolvedValue([]),
-      }),
-    );
-    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
-
-    await handleRemap(makeMessage(), makeInvocationContext());
-
-    expect(mockQueueTrusteeAppointmentEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ caseId: surrogate.caseId, trusteeId: 'trustee-new' }),
-    );
-  });
-
-  test('does not queue a downstream event when the feature flag is off', async () => {
-    const { handleRemap } = await import('./trustee-verification-remap');
-    const surrogate = makeSurrogate();
-    mockGetSurrogatesByFingerprint.mockResolvedValue([surrogate]);
-    const mockContext = await createMockApplicationContext();
-    mockContext.featureFlags['downstream-trustee-appointments-enabled'] = false;
-    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
-
-    await handleRemap(makeMessage(), makeInvocationContext());
-
-    expect(mockQueueTrusteeAppointmentEvent).not.toHaveBeenCalled();
-  });
-
   test('counts a failed downstream notification separately without treating the remap as failed', async () => {
     const { handleRemap } = await import('./trustee-verification-remap');
-    const surrogate = makeSurrogate();
-    mockGetSurrogatesByFingerprint.mockResolvedValue([surrogate]);
-    const mockContext = await createMockApplicationContext();
-    mockContext.featureFlags['downstream-trustee-appointments-enabled'] = true;
-    vi.spyOn(factory, 'getOfficesGateway').mockReturnValue({
-      getOffices: vi.fn().mockResolvedValue([]),
-      getOfficeName: vi.fn(),
-    });
-    vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue(
-      Object.assign(new MockMongoRepository(), {
-        findByCamsTrusteeId: vi.fn().mockResolvedValue([]),
-      }),
+    remapPageSpy.mockResolvedValue(
+      makeRemapPageResult({ documentsWritten: 1, downstreamNotificationFailedCount: 1 }),
     );
-    mockQueueTrusteeAppointmentEvent.mockRejectedValueOnce(new Error('queue unavailable'));
-    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
     const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
 
     await handleRemap(makeMessage(), makeInvocationContext());
 
-    // The Cosmos remap (upsert + delete) still happened -- only the downstream notification failed.
-    expect(mockUpsert).toHaveBeenCalledTimes(1);
-    expect(mockDelete).toHaveBeenCalledTimes(1);
     expect(telemetrySpy).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
@@ -407,16 +156,14 @@ describe('trustee-verification-remap handleRemap', () => {
 
   test('a batch with no remaining surrogates (already fully remapped) is a no-op success', async () => {
     const { handleRemap } = await import('./trustee-verification-remap');
-    mockGetSurrogatesByFingerprint.mockResolvedValue([]);
-    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
-      await createMockApplicationContext(),
+    remapPageSpy.mockResolvedValue(
+      makeRemapPageResult({ documentsWritten: 0, totalCandidates: 0, pageSize: 0 }),
     );
     const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
 
     await handleRemap(makeMessage(), makeInvocationContext());
 
-    expect(mockUpsert).not.toHaveBeenCalled();
-    expect(mockDelete).not.toHaveBeenCalled();
+    expect(mockSendMessage).not.toHaveBeenCalled();
     expect(telemetrySpy).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
@@ -430,19 +177,10 @@ describe('trustee-verification-remap handleRemap', () => {
     });
   });
 
-  test('should re-enqueue with backoff and emit rate-limited-requeued telemetry on 429 error', async () => {
+  test('a rate-limit error from the use case requeues with backoff and emits rate-limited-requeued telemetry, leaving verification status untouched', async () => {
     const { handleRemap } = await import('./trustee-verification-remap');
     const tooManyError = new TooManyRequestsError('TRUSTEE-MATCH-VERIFICATION-REMAP');
-    mockGetSurrogatesByFingerprint.mockRejectedValue(tooManyError);
-    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
-      await createMockApplicationContext(),
-    );
-
-    const mockSendMessage = vi.fn().mockResolvedValue(undefined);
-    vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
-      sendMessage: mockSendMessage,
-    } as unknown as StorageQueueHumbleObject);
-
+    remapPageSpy.mockRejectedValue(tooManyError);
     const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
 
     await handleRemap(makeMessage({ retryCount: 0 }), makeInvocationContext());
@@ -461,14 +199,13 @@ describe('trustee-verification-remap handleRemap', () => {
     expect(mockUpdateVerification).not.toHaveBeenCalled();
   });
 
-  test('should route to DLQ and emit telemetry when retry limit exhausted', async () => {
+  test('routes to DLQ and emits telemetry when the retry limit is exhausted', async () => {
     const { handleRemap } = await import('./trustee-verification-remap');
     const tooManyError = new TooManyRequestsError('TRUSTEE-MATCH-VERIFICATION-REMAP');
-    mockGetSurrogatesByFingerprint.mockRejectedValue(tooManyError);
+    remapPageSpy.mockRejectedValue(tooManyError);
     const mockContext = await createMockApplicationContext();
     const extraOutputsSetSpy = vi.spyOn(mockContext.extraOutputs, 'set');
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
-
     const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
 
     await handleRemap(makeMessage({ retryCount: 10 }), makeInvocationContext());
@@ -501,10 +238,7 @@ describe('trustee-verification-remap handleRemap', () => {
 
   test('rethrows non-rate-limit errors', async () => {
     const { handleRemap } = await import('./trustee-verification-remap');
-    mockGetSurrogatesByFingerprint.mockRejectedValue(new Error('boom'));
-    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
-      await createMockApplicationContext(),
-    );
+    remapPageSpy.mockRejectedValue(new Error('boom'));
 
     const message = makeMessage();
     await expect(handleRemap(message, makeInvocationContext())).rejects.toThrow('boom');
@@ -530,28 +264,21 @@ describe('trustee-verification-remap handleRemap', () => {
   });
 
   describe('batch pagination', () => {
-    const REMAP_PAGE_SIZE = 25;
-
     test('processes only one page and requeues a continuation when surrogates exceed the page size', async () => {
       const { handleRemap } = await import('./trustee-verification-remap');
-      const surrogates = Array.from({ length: REMAP_PAGE_SIZE + 5 }, (_, i) =>
-        makeSurrogate({ id: `surrogate-${i}`, caseId: `081-25-${String(i).padStart(5, '0')}` }),
+      remapPageSpy.mockResolvedValue(
+        makeRemapPageResult({
+          documentsWritten: 25,
+          totalCandidates: 30,
+          pageSize: 25,
+          remainingCount: 5,
+        }),
       );
-      mockGetSurrogatesByFingerprint.mockResolvedValue(surrogates);
-      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
-        await createMockApplicationContext(),
-      );
-      const mockSendMessage = vi.fn().mockResolvedValue(undefined);
-      vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
-        sendMessage: mockSendMessage,
-      } as unknown as StorageQueueHumbleObject);
       const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
 
       const message = makeMessage();
       await handleRemap(message, makeInvocationContext());
 
-      expect(mockUpsert).toHaveBeenCalledTimes(REMAP_PAGE_SIZE);
-      expect(mockDelete).toHaveBeenCalledTimes(REMAP_PAGE_SIZE);
       expect(mockSendMessage).toHaveBeenCalledWith(JSON.stringify(message));
       expect(telemetrySpy).toHaveBeenCalledWith(
         expect.anything(),
@@ -561,10 +288,10 @@ describe('trustee-verification-remap handleRemap', () => {
         expect.anything(),
         expect.objectContaining({
           success: true,
-          documentsWritten: REMAP_PAGE_SIZE,
+          documentsWritten: 25,
           details: expect.objectContaining({
-            totalCandidates: String(REMAP_PAGE_SIZE + 5),
-            pageSize: String(REMAP_PAGE_SIZE),
+            totalCandidates: '30',
+            pageSize: '25',
             continuationQueued: 'true',
           }),
         }),
@@ -577,22 +304,13 @@ describe('trustee-verification-remap handleRemap', () => {
 
     test('does not requeue a continuation when surrogates fit within one page', async () => {
       const { handleRemap } = await import('./trustee-verification-remap');
-      const surrogates = Array.from({ length: 3 }, (_, i) =>
-        makeSurrogate({ id: `surrogate-${i}`, caseId: `081-25-${String(i).padStart(5, '0')}` }),
+      remapPageSpy.mockResolvedValue(
+        makeRemapPageResult({ documentsWritten: 3, totalCandidates: 3, pageSize: 3 }),
       );
-      mockGetSurrogatesByFingerprint.mockResolvedValue(surrogates);
-      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
-        await createMockApplicationContext(),
-      );
-      const mockSendMessage = vi.fn().mockResolvedValue(undefined);
-      vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
-        sendMessage: mockSendMessage,
-      } as unknown as StorageQueueHumbleObject);
       const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
 
       await handleRemap(makeMessage(), makeInvocationContext());
 
-      expect(mockUpsert).toHaveBeenCalledTimes(3);
       expect(mockSendMessage).not.toHaveBeenCalled();
       expect(telemetrySpy).toHaveBeenCalledWith(
         expect.anything(),

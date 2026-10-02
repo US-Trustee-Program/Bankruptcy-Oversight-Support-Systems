@@ -10,6 +10,7 @@ import {
   isChapter7Elected,
   findMergeTarget,
   buildMergePayload,
+  getDivisionCodes,
 } from './trustee-appointments';
 import { AppointmentChapterType, AppointmentType, AppointmentStatus } from './trustees';
 import { validateObject } from './validation';
@@ -551,6 +552,24 @@ describe('trustee-appointments', () => {
       expect(isChapter7Elected(chapter as AppointmentChapterType, type as AppointmentType)).toBe(
         false,
       );
+    });
+  });
+
+  describe('getDivisionCodes', () => {
+    test('returns divisionCodes when present', () => {
+      expect(getDivisionCodes({ divisionCodes: ['301', '303'] })).toEqual(['301', '303']);
+    });
+
+    test('falls back to the legacy divisionCode when divisionCodes is absent', () => {
+      expect(getDivisionCodes({ divisionCode: '301' })).toEqual(['301']);
+    });
+
+    test('returns an empty array when both divisionCodes and divisionCode are absent', () => {
+      expect(getDivisionCodes({})).toEqual([]);
+    });
+
+    test('does not fall back to divisionCode when divisionCodes is an explicit empty array', () => {
+      expect(getDivisionCodes({ divisionCodes: [], divisionCode: '301' })).toEqual([]);
     });
   });
 

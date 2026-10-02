@@ -906,7 +906,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
             <p className="resolved-statement" data-testid="resolved-statement">
               <span>
                 Trustee {getResolvedTrusteeDisplayName()} was appointed to{' '}
-                {isLoadingDetail ? '' : affectedCaseCount > 1 ? '' : 'case: '}
+                {affectedCaseCount > 1 ? '' : 'case: '}
               </span>
               {caseLink}
             </p>

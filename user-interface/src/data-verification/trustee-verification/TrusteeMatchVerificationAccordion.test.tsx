@@ -179,6 +179,29 @@ describe('TrusteeMatchVerificationAccordion', () => {
     expect(heading.textContent).toContain('Southern District of New York');
   });
 
+  test('order.courtName takes precedence over the courts-prop lookup when both are present', () => {
+    renderWithProps({
+      order: { ...sampleOrder, courtName: 'Direct Court Name' },
+      courts: [
+        {
+          courtId: '0881',
+          courtName: 'Southern District of New York',
+          officeName: '',
+          officeCode: '',
+          courtDivisionCode: '081',
+          courtDivisionName: 'Manhattan',
+          groupDesignator: '',
+          regionId: '',
+          regionName: '',
+        },
+      ],
+    });
+
+    const heading = screen.getByTestId(`accordion-heading-${sampleOrder.id}`);
+    expect(heading.textContent).toContain('Direct Court Name');
+    expect(heading.textContent).not.toContain('Southern District of New York');
+  });
+
   test('should render case link, trustee name, and no-match message in content', () => {
     renderWithProps();
 
