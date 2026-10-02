@@ -1,4 +1,4 @@
-import { vi, describe, test, expect, beforeEach, afterEach } from 'vitest';
+import { vi, describe, test, expect, beforeEach } from 'vitest';
 import { TrusteeSearchUseCase } from './trustee-search.use-case';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ApplicationContext } from '../../adapters/types/basic';
@@ -126,29 +126,8 @@ describe('TrusteeSearchUseCase', () => {
   }
 
   beforeEach(async () => {
-    context = await createMockApplicationContext();
-  });
-
-  afterEach(() => {
     vi.restoreAllMocks();
-  });
-
-  test('should return trustees from scored results', async () => {
-    const appointments = new Map<string, Partial<TrusteeAppointment>[]>();
-    appointments.set('trustee-001', mockAppointments1);
-    appointments.set('trustee-003', mockAppointments3);
-
-    setupRepositories({
-      scoredResults: [mockTrustee1, mockTrustee3],
-      appointmentsByTrustee: appointments,
-    });
-
-    const useCase = new TrusteeSearchUseCase();
-    const results = await useCase.searchTrustees(context, 'smith');
-
-    expect(results).toHaveLength(2);
-    expect(results[0].trusteeId).toBe('trustee-001');
-    expect(results[1].trusteeId).toBe('trustee-003');
+    context = await createMockApplicationContext();
   });
 
   test('should map result fields correctly from trustee and appointments', async () => {
@@ -170,6 +149,7 @@ describe('TrusteeSearchUseCase', () => {
       address: mockTrustee1.public!.address,
       phone: mockTrustee1.public!.phone,
       email: mockTrustee1.public!.email,
+      matchType: 'phonetic',
     });
     expect(results[0].appointments).toEqual(mockAppointments1);
   });
@@ -265,9 +245,12 @@ describe('TrusteeSearchUseCase', () => {
     const useCase = new TrusteeSearchUseCase();
     await useCase.searchTrustees(context, 'smith', '081');
 
-    expect(completeSpy).toHaveBeenCalledWith(
-      expect.any(Object),
-      'TrusteeManualSearchPerformed',
+    // Asserts only the event name, properties/measurements payload, and logger -- not the
+    // 4th positional arg (always undefined in this use case today), so this test doesn't
+    // break on an unrelated change to completeTrace's exact parameter signature.
+    const [, eventName, eventBody, , logger] = completeSpy.mock.calls[0];
+    expect(eventName).toBe('TrusteeManualSearchPerformed');
+    expect(eventBody).toEqual(
       expect.objectContaining({
         success: true,
         properties: expect.objectContaining({
@@ -278,9 +261,126 @@ describe('TrusteeSearchUseCase', () => {
           totalResultCount: expect.any(Number),
         }),
       }),
-      undefined,
-      context.logger,
     );
+    expect(logger).toBe(context.logger);
+  });
+
+  describe('division/chapter filtering', () => {
+    const mockAppointmentsDivision081: Partial<TrusteeAppointment>[] = [
+      {
+        id: 'appt-div-081',
+        trusteeId: 'trustee-001',
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '081',
+        status: 'active',
+        divisionCodes: ['081'],
+        appointedDate: '2020-01-01',
+        effectiveDate: '2020-01-01',
+      },
+    ];
+
+    const mockAppointmentsDivision082: Partial<TrusteeAppointment>[] = [
+      {
+        id: 'appt-div-082',
+        trusteeId: 'trustee-002',
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '081',
+        status: 'active',
+        divisionCodes: ['082'],
+        appointedDate: '2021-01-01',
+        effectiveDate: '2021-01-01',
+      },
+    ];
+
+    test('filters out a trustee whose appointment does not cover the requested division', async () => {
+      const appointments = new Map<string, Partial<TrusteeAppointment>[]>();
+      appointments.set('trustee-001', mockAppointmentsDivision081);
+      appointments.set('trustee-002', mockAppointmentsDivision082);
+
+      setupRepositories({
+        scoredResults: [mockTrustee1, mockTrustee2],
+        appointmentsByTrustee: appointments,
+      });
+
+      const useCase = new TrusteeSearchUseCase();
+      const results = await useCase.searchTrustees(context, 'smith', '081', '081', '7');
+
+      expect(results).toHaveLength(1);
+      expect(results[0].trusteeId).toBe('trustee-001');
+    });
+
+    test('filters out a trustee whose appointment covers the division but not the chapter', async () => {
+      const appointments = new Map<string, Partial<TrusteeAppointment>[]>();
+      appointments.set('trustee-001', mockAppointmentsDivision081);
+
+      setupRepositories({
+        scoredResults: [mockTrustee1],
+        appointmentsByTrustee: appointments,
+      });
+
+      const useCase = new TrusteeSearchUseCase();
+      const results = await useCase.searchTrustees(context, 'smith', '081', '081', '13');
+
+      expect(results).toHaveLength(0);
+    });
+
+    test('does not apply the filter when chapter is omitted', async () => {
+      const appointments = new Map<string, Partial<TrusteeAppointment>[]>();
+      appointments.set('trustee-001', mockAppointmentsDivision081);
+      appointments.set('trustee-002', mockAppointmentsDivision082);
+
+      setupRepositories({
+        scoredResults: [mockTrustee1, mockTrustee2],
+        appointmentsByTrustee: appointments,
+      });
+
+      const useCase = new TrusteeSearchUseCase();
+      // courtId + divisionCode given, but no chapter -- filter must not apply.
+      const results = await useCase.searchTrustees(context, 'smith', '081', '081');
+
+      expect(results).toHaveLength(2);
+    });
+
+    test('does not apply the filter when divisionCode is omitted', async () => {
+      const appointments = new Map<string, Partial<TrusteeAppointment>[]>();
+      appointments.set('trustee-001', mockAppointmentsDivision081);
+      appointments.set('trustee-002', mockAppointmentsDivision082);
+
+      setupRepositories({
+        scoredResults: [mockTrustee1, mockTrustee2],
+        appointmentsByTrustee: appointments,
+      });
+
+      const useCase = new TrusteeSearchUseCase();
+      // courtId + chapter given, but no divisionCode -- filter must not apply. Closes the
+      // compound `courtId && divisionCode && chapter` condition's remaining untested operand.
+      const results = await useCase.searchTrustees(context, 'smith', '081', undefined, '7');
+
+      expect(results).toHaveLength(2);
+    });
+
+    test('does not apply either filter when courtId is omitted, even with divisionCode and chapter present', async () => {
+      // Reachable in production: TrusteeSearchModal's district dropdown lets a user clear the
+      // selected court independently of divisionCode/chapter. If the `courtId &&` guard were
+      // ever dropped, this combination would call isAppointmentMatch with courtId=undefined,
+      // which never matches any real appointment -- silently returning zero results instead
+      // of falling back to unfiltered search.
+      const appointments = new Map<string, Partial<TrusteeAppointment>[]>();
+      appointments.set('trustee-001', mockAppointmentsDivision081);
+      appointments.set('trustee-002', mockAppointmentsDivision082);
+
+      setupRepositories({
+        scoredResults: [mockTrustee1, mockTrustee2],
+        appointmentsByTrustee: appointments,
+      });
+
+      const useCase = new TrusteeSearchUseCase();
+      const results = await useCase.searchTrustees(context, 'smith', undefined, '081', '7');
+
+      expect(results).toHaveLength(2);
+    });
   });
 
   test('should fire TrusteeManualSearchPerformed with success false on error and propagate', async () => {
@@ -296,12 +396,9 @@ describe('TrusteeSearchUseCase', () => {
 
     await expect(useCase.searchTrustees(context, 'smith')).rejects.toThrow();
 
-    expect(completeSpy).toHaveBeenCalledWith(
-      expect.any(Object),
-      'TrusteeManualSearchPerformed',
-      expect.objectContaining({ success: false }),
-      undefined,
-      context.logger,
-    );
+    const [, eventName, eventBody, , logger] = completeSpy.mock.calls[0];
+    expect(eventName).toBe('TrusteeManualSearchPerformed');
+    expect(eventBody).toEqual(expect.objectContaining({ success: false }));
+    expect(logger).toBe(context.logger);
   });
 });

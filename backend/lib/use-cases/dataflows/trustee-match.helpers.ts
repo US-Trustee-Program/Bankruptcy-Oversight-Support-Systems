@@ -9,7 +9,7 @@ import {
 import factory from '../../factory';
 import { LegacyAddress } from '@common/cams/parties';
 import { Address, PhoneNumber } from '@common/cams/contact';
-import { TrusteeAppointment } from '@common/cams/trustee-appointments';
+import { TrusteeAppointment, getDivisionCodes } from '@common/cams/trustee-appointments';
 import { Trustee } from '@common/cams/trustees';
 import { usStates } from '@common/cams/us-states';
 import { isTransientInfraError } from '../../common-errors/transient-infra-error';
@@ -444,7 +444,7 @@ export function normalizeChapter(chapter: string): string {
 function appointmentCoversDivision(appointment: TrusteeAppointment, divisionCode: string): boolean {
   return (
     appointment.divisionCode === divisionCode ||
-    (appointment.divisionCodes?.includes(divisionCode) ?? false)
+    getDivisionCodes(appointment).includes(divisionCode)
   );
 }
 

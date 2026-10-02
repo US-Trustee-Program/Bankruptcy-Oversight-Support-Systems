@@ -179,6 +179,29 @@ describe('TrusteeMatchVerificationAccordion', () => {
     expect(heading.textContent).toContain('Southern District of New York');
   });
 
+  test('order.courtName takes precedence over the courts-prop lookup when both are present', () => {
+    renderWithProps({
+      order: { ...sampleOrder, courtName: 'Direct Court Name' },
+      courts: [
+        {
+          courtId: '0881',
+          courtName: 'Southern District of New York',
+          officeName: '',
+          officeCode: '',
+          courtDivisionCode: '081',
+          courtDivisionName: 'Manhattan',
+          groupDesignator: '',
+          regionId: '',
+          regionName: '',
+        },
+      ],
+    });
+
+    const heading = screen.getByTestId(`accordion-heading-${sampleOrder.id}`);
+    expect(heading.textContent).toContain('Direct Court Name');
+    expect(heading.textContent).not.toContain('Southern District of New York');
+  });
+
   test('should render case link, trustee name, and no-match message in content', () => {
     renderWithProps();
 
@@ -659,6 +682,26 @@ describe('TrusteeMatchVerificationAccordion', () => {
       expect(detailSpy).not.toHaveBeenCalled();
     });
 
+    test('does not fetch the case summary on mount for a resolved order', async () => {
+      // The accordion group keeps every row mounted (toggling visibility, not conditional
+      // rendering), so an ungated fetch here would fire once per approved row on every list
+      // render -- this order's search modal can never be reached, so there is no display
+      // benefit to the fetch, only an unconditional per-row network call.
+      const caseSummarySpy = vi.spyOn(Api2, 'getCaseSummary');
+      const resolvedOrder: TrusteeMatchVerificationListItem = {
+        ...sampleOrderWithCandidates,
+        status: 'approved',
+        resolvedTrusteeId: 'trustee-1',
+        resolvedTrusteeName: 'Jane Smith',
+      };
+
+      renderWithProps({ order: resolvedOrder });
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(caseSummarySpy).not.toHaveBeenCalled();
+    });
+
     test('does not fetch detail when a resolved order is manually expanded', async () => {
       const detailSpy = vi.spyOn(Api2, 'getTrusteeMatchVerificationDetail');
       const resolvedOrder: TrusteeMatchVerificationListItem = {
@@ -698,7 +741,12 @@ describe('TrusteeMatchVerificationAccordion', () => {
     });
   });
 
-  test('keeps the confirmation modal open with a spinner while approval is in flight', async () => {
+  test('threads isProcessing=true into the confirmation modal while approval is in flight', async () => {
+    // Scoped to wiring only: does the Accordion set isProcessing=true on the modal while its
+    // own approveTrustee call is pending? The modal's own rendering in response to
+    // isProcessing (spinner text, is-visible/is-hidden CSS classes) is already covered in
+    // isolation by TrusteeMatchConfirmationModal.test.tsx and isn't re-asserted here, so this
+    // test doesn't break on a refactor to that component's internals.
     let resolveApproval: () => void = () => {};
     vi.spyOn(Api2, 'patchTrusteeVerificationOrderApproval').mockImplementation(
       () => new Promise<void>((resolve) => (resolveApproval = () => resolve())),
@@ -712,21 +760,14 @@ describe('TrusteeMatchVerificationAccordion', () => {
     );
     fireEvent.click(modalSubmit!);
 
-    const wrapper = document.getElementById(
-      `trustee-confirmation-modal-${sampleOrderWithCandidates.id}-wrapper`,
-    );
     await waitFor(() => {
-      expect(wrapper).toHaveClass('is-visible');
-      expect(
-        within(wrapper as HTMLElement).getByText('Confirming appointment...'),
-      ).toBeInTheDocument();
       expect(modalSubmit).toBeDisabled();
     });
 
     resolveApproval();
 
     await waitFor(() => {
-      expect(wrapper).toHaveClass('is-hidden');
+      expect(modalSubmit).not.toBeDisabled();
     });
   });
 
@@ -778,10 +819,32 @@ describe('TrusteeMatchVerificationAccordion', () => {
     });
   });
 
-  test('calls onOrderUpdate with error alert on approve failure', async () => {
+  test('calls onOrderUpdate with the specific error message on approve failure', async () => {
+    // Surfacing the caught error's own message (rather than a generic fallback) is what lets a
+    // division-mismatch rejection from the backend show the user something actionable.
     vi.spyOn(Api2, 'patchTrusteeVerificationOrderApproval').mockRejectedValue(
       new Error('Network error'),
     );
+    const onOrderUpdate = vi.fn();
+    renderWithProps({ order: sampleOrderWithCandidates, onOrderUpdate });
+    await mockDetailAndExpand(sampleOrderWithCandidatesDetail);
+
+    fireEvent.click(screen.getByTestId('approve-candidate-trustee-1'));
+    const modalSubmit = document.getElementById(
+      `trustee-confirmation-modal-${sampleOrderWithCandidates.id}-submit-button`,
+    );
+    fireEvent.click(modalSubmit!);
+
+    await waitFor(() => {
+      expect(onOrderUpdate).toHaveBeenCalledWith(
+        { message: 'Network error', type: UswdsAlertStyle.Error, timeOut: 8 },
+        sampleOrderWithCandidates,
+      );
+    });
+  });
+
+  test('falls back to a generic message when the caught rejection is not an Error instance', async () => {
+    vi.spyOn(Api2, 'patchTrusteeVerificationOrderApproval').mockRejectedValue('not an Error');
     const onOrderUpdate = vi.fn();
     renderWithProps({ order: sampleOrderWithCandidates, onOrderUpdate });
     await mockDetailAndExpand(sampleOrderWithCandidatesDetail);
@@ -1321,7 +1384,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
     });
 
     // Integration test: exercises full search-to-approval error flow
-    test('manual search approval failure calls onOrderUpdate with error', async () => {
+    test('manual search approval failure calls onOrderUpdate with the specific error message', async () => {
       vi.spyOn(Api2, 'patchTrusteeVerificationOrderApproval').mockRejectedValue(
         new Error('Network error'),
       );
@@ -1333,10 +1396,61 @@ describe('TrusteeMatchVerificationAccordion', () => {
 
       await waitFor(() => {
         expect(onOrderUpdate).toHaveBeenCalledWith(
-          expect.objectContaining({ type: UswdsAlertStyle.Error }),
+          expect.objectContaining({ type: UswdsAlertStyle.Error, message: 'Network error' }),
           sampleOrder,
         );
       });
+    });
+
+    // Mirrors handleConfirm's identical non-Error-rejection fallback test above --
+    // handleManualMatch has the same `error instanceof Error ? error.message : '...'` ternary
+    // but previously only had Error-instance coverage here.
+    test('falls back to a generic message when the manual-match rejection is not an Error instance', async () => {
+      vi.spyOn(Api2, 'patchTrusteeVerificationOrderApproval').mockRejectedValue('not an Error');
+      setupSearchMocks();
+      const onOrderUpdate = vi.fn();
+      renderWithProps({ onOrderUpdate });
+
+      await searchAndSelectTrustee();
+
+      await waitFor(() => {
+        expect(onOrderUpdate).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: UswdsAlertStyle.Error,
+            message: 'Failed to confirm trustee match.',
+          }),
+          sampleOrder,
+        );
+      });
+    });
+
+    test('threads the resolved case chapter into the search call for division-aware filtering', async () => {
+      vi.spyOn(Api2, 'getCaseSummary').mockResolvedValue({
+        data: MockData.getCaseSummary({ override: { chapter: '7' } }),
+      });
+      const searchSpy = vi
+        .spyOn(Api2, 'searchTrustees')
+        .mockResolvedValue({ data: manualSearchMockData });
+      renderWithProps();
+
+      await searchAndSelectTrustee();
+
+      const [, , divisionCode, chapter] = searchSpy.mock.calls[0];
+      expect(divisionCode).toBe('081');
+      expect(chapter).toBe('7');
+    });
+
+    test('falls back to district-only filtering (chapter stays undefined) when the case-summary fetch fails', async () => {
+      vi.spyOn(Api2, 'getCaseSummary').mockRejectedValue(new Error('not found'));
+      const searchSpy = vi
+        .spyOn(Api2, 'searchTrustees')
+        .mockResolvedValue({ data: manualSearchMockData });
+      renderWithProps();
+
+      await searchAndSelectTrustee();
+
+      const [, , , chapter] = searchSpy.mock.calls[0];
+      expect(chapter).toBeUndefined();
     });
   });
 

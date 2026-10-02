@@ -1,6 +1,8 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { NotFoundError } from '../../common-errors/not-found-error';
+import { BadRequestError } from '../../common-errors/bad-request';
+import { CamsError } from '../../common-errors/cams-error';
 import factory from '../../factory';
 import { getCamsUserReference } from '@common/cams/session';
 import {
@@ -15,11 +17,13 @@ import {
 } from '@common/cams/dataflow-events';
 import { OrderStatus } from '@common/cams/orders';
 import { CourtsUseCase } from '../courts/courts';
-import { getCaseIdParts } from '@common/cams/cases';
+import CaseManagement from '../cases/case-management';
+import { getCaseIdParts, CaseSummary } from '@common/cams/cases';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { createAuditRecord } from '@common/cams/auditable';
 import { Creatable } from '@common/cams/creatable';
 import { TRUSTEE_VARIATION_DOCUMENT_TYPE, TrusteeVariation } from '@common/cams/trustee-variation';
+import { isAppointmentMatch } from '../dataflows/trustee-match.helpers';
 
 const MODULE_NAME = 'TRUSTEE-MATCH-VERIFICATION-USE-CASE';
 const VALID_STATUSES: OrderStatus[] = ['pending', 'approved'];
@@ -207,7 +211,65 @@ export class TrusteeMatchVerificationUseCase {
       const now = new Date().toISOString();
       const userRef = getCamsUserReference(context.session.user);
 
-      // 2. Record the resolved fingerprint/variant mapping so future auto-matching
+      // 2. Snapshot affected case IDs while surrogates are still live — the remap job
+      // enqueued later deletes them, and this is the only remaining chance to read them.
+      // Computed before any write below so the division check that follows can reject the
+      // whole approval before anything is persisted.
+      const affectedCaseIdsByFingerprint = await this.getAffectedCaseIdsByFingerprint(context, [
+        verification.fingerprint,
+      ]);
+      const affectedCaseIds = affectedCaseIdsByFingerprint.get(verification.fingerprint) ?? [];
+
+      // 3. Reject the whole approval if the resolved trustee's configured divisions don't
+      // cover every affected case's court+chapter+division — the same match rule the
+      // auto-match pipeline already trusts (isAppointmentMatch). A single fingerprint can
+      // affect multiple cases, potentially spanning different divisions within the same
+      // court, so this must check every affected case, not just verification.caseId. This
+      // is necessarily all-or-nothing: approval is one atomic status flip for the whole
+      // verification, so there's no partial-approval option if only some cases match.
+      if (affectedCaseIds.length > 0) {
+        const trusteeAppointments = await factory
+          .getTrusteeAppointmentsRepository(context)
+          .getTrusteeAppointments(resolvedTrusteeId);
+        const caseManagement = new CaseManagement(context);
+        // allSettled rather than all: a lookup failure for one case (stale/closed case,
+        // transient gateway timeout) is a different failure mode than a real division
+        // mismatch -- this method's all-or-nothing behavior is specifically about division
+        // coverage, not about case-lookup reliability, so the two must surface as distinct,
+        // non-conflatable errors rather than both failing identically.
+        const caseSummaryResults: PromiseSettledResult<CaseSummary>[] = await Promise.allSettled(
+          affectedCaseIds.map((caseId) => caseManagement.getCaseSummary(context, caseId)),
+        );
+        const failedCaseIds = affectedCaseIds.filter(
+          (_caseId, index) => caseSummaryResults[index].status === 'rejected',
+        );
+        if (failedCaseIds.length > 0) {
+          throw new CamsError(MODULE_NAME, {
+            message: `Unable to verify division coverage for case(s): ${failedCaseIds.join(', ')}. Approval was not processed; retry once the lookup succeeds.`,
+          });
+        }
+        const caseSummaries = caseSummaryResults.map(
+          (result) => (result as PromiseFulfilledResult<CaseSummary>).value,
+        );
+        const uncoveredCaseIds = caseSummaries
+          .filter(
+            (summary) =>
+              !isAppointmentMatch(
+                trusteeAppointments,
+                summary.courtId,
+                summary.courtDivisionCode,
+                summary.chapter,
+              ),
+          )
+          .map((summary) => summary.caseId);
+        if (uncoveredCaseIds.length > 0) {
+          throw new BadRequestError(MODULE_NAME, {
+            message: `Resolved trustee ${resolvedTrusteeId} is not assigned to the division(s) for case(s): ${uncoveredCaseIds.join(', ')}.`,
+          });
+        }
+      }
+
+      // 4. Record the resolved fingerprint/variant mapping so future auto-matching
       // short-circuits on it — mirrors autoLinkTrustee's TRUSTEE_VARIATION write on the
       // sync path. Bucket+verify: fetch the fingerprint's bucket, compare variant exactly.
       const variationRepo = factory.getTrusteeVariationRepository(context);
@@ -227,14 +289,7 @@ export class TrusteeMatchVerificationUseCase {
         );
       }
 
-      // 3. Snapshot affected case IDs while surrogates are still live — the remap job
-      // enqueued next deletes them, and this is the only remaining chance to read them.
-      const affectedCaseIdsByFingerprint = await this.getAffectedCaseIdsByFingerprint(context, [
-        verification.fingerprint,
-      ]);
-      const affectedCaseIds = affectedCaseIdsByFingerprint.get(verification.fingerprint) ?? [];
-
-      // 4. Persist the approval and its affectedCaseIds snapshot BEFORE enqueueing the
+      // 5. Persist the approval and its affectedCaseIds snapshot BEFORE enqueueing the
       // remap. The snapshot is the durable record we most need to protect: if this write
       // throws, the verification stays 'pending' and retryable, and no remap message has
       // gone out yet, so nothing downstream has acted on stale data.
@@ -248,7 +303,7 @@ export class TrusteeMatchVerificationUseCase {
         updatedOn: now,
       });
 
-      // 5. Enqueue the async batch remap now that the approval is durably recorded. Every
+      // 6. Enqueue the async batch remap now that the approval is durably recorded. Every
       // surrogate CaseAppointment sharing this fingerprint (not just verification.caseId)
       // gets remapped to resolvedTrusteeId by the queue-triggered trustee-verification-remap
       // handler. handleRemap is idempotent, so a redelivered or duplicate message just finds

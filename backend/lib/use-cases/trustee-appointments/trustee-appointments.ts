@@ -10,6 +10,9 @@ import {
   TrusteeAppointment,
   TrusteeAppointmentInput,
   TRUSTEE_APPOINTMENTS_INTERNAL_SPEC,
+  findMergeTarget,
+  buildMergePayload,
+  getDivisionCodes,
 } from '@common/cams/trustee-appointments';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { CourtsUseCase } from '../courts/courts';
@@ -124,8 +127,8 @@ export class TrusteeAppointmentsUseCase {
   }
 
   private divisionsChanged(before: TrusteeAppointment, after: TrusteeAppointment): boolean {
-    const beforeSet = new Set(before.divisionCodes ?? [before.divisionCode].filter(Boolean));
-    const afterSet = new Set(after.divisionCodes ?? [after.divisionCode].filter(Boolean));
+    const beforeSet = new Set(getDivisionCodes(before));
+    const afterSet = new Set(getDivisionCodes(after));
     if (beforeSet.size !== afterSet.size) return true;
     for (const code of beforeSet) {
       if (!afterSet.has(code)) return true;
@@ -249,6 +252,38 @@ export class TrusteeAppointmentsUseCase {
 
       const userReference = getCamsUserReference(context.session.user);
 
+      // Server-side backstop for duplicate active appointments at the same
+      // court+chapter+appointmentType -- mirrors the frontend form's own pre-merge UX
+      // (appointmentMergeHelpers.ts) via the same shared common helpers, so a direct API
+      // caller can't bypass it. If a merge target exists, the requested data never gets a
+      // new identity of its own -- it's merged into the existing appointment instead of a
+      // new record being created.
+      const existingAppointments =
+        await this.trusteeAppointmentsRepository.getTrusteeAppointments(trusteeId);
+      const mergeTarget = findMergeTarget(
+        normalizedData.courtId,
+        normalizedData.chapter,
+        normalizedData.appointmentType,
+        normalizedData.status,
+        existingAppointments,
+      );
+
+      if (mergeTarget) {
+        const merged = buildMergePayload(mergeTarget, normalizedData);
+        context.logger.info(
+          MODULE_NAME,
+          `Create for trustee ${trusteeId} merged into existing appointment ${mergeTarget.id} instead of creating a new record.`,
+        );
+        return await this.performUpdate(
+          context,
+          trusteeId,
+          mergeTarget.id,
+          merged.payload,
+          userReference,
+          mergeTarget,
+        );
+      }
+
       const createdAppointment = await this.trusteeAppointmentsRepository.createAppointment(
         trusteeId,
         normalizedData,
@@ -311,49 +346,64 @@ export class TrusteeAppointmentsUseCase {
 
       const userReference = getCamsUserReference(context.session.user);
 
-      const existingAppointment = await this.trusteeAppointmentsRepository.read(
-        trusteeId,
-        appointmentId,
+      // A single getTrusteeAppointments call serves both the before/after diff (existing
+      // appointment) and the merge-target search (every other appointment) below -- these
+      // used to be two separate repository round trips (a .read() plus this list), even
+      // though the list always already contains the one record .read() was fetching.
+      const allAppointments =
+        await this.trusteeAppointmentsRepository.getTrusteeAppointments(trusteeId);
+      const existingAppointment = allAppointments.find((appt) => appt.id === appointmentId);
+      if (!existingAppointment) {
+        throw new NotFoundError(MODULE_NAME, {
+          message: `Trustee appointment with ID ${appointmentId} not found.`,
+        });
+      }
+
+      // Server-side backstop for duplicate active appointments at the same
+      // court+chapter+appointmentType -- the frontend's own merge UX only runs on create,
+      // never on update, so this is the only enforcement point for edits. Exclude the
+      // appointment being updated from the search, or it would trivially match itself.
+      const otherAppointments = allAppointments.filter((appt) => appt.id !== appointmentId);
+      const mergeTarget = findMergeTarget(
+        normalizedData.courtId,
+        normalizedData.chapter,
+        normalizedData.appointmentType,
+        normalizedData.status,
+        otherAppointments,
       );
 
-      const updatedAppointment = await this.trusteeAppointmentsRepository.updateAppointment(
+      if (mergeTarget) {
+        // The requested update would make this appointment duplicate a DIFFERENT existing
+        // active appointment. Redirect entirely: merge the requested divisions into the
+        // other appointment and leave appointmentId's own record completely untouched,
+        // rather than updating it to values that would create a second active record at the
+        // same court+chapter+type (the exact bug this check exists to prevent). This mirrors
+        // createAppointment's merge case -- the requested data never gets a separate
+        // identity when one already exists. See this slice's implementation notes for why
+        // this contract was chosen over deleting or otherwise mutating the original record.
+        const merged = buildMergePayload(mergeTarget, normalizedData);
+        context.logger.info(
+          MODULE_NAME,
+          `Update to appointment ${appointmentId} for trustee ${trusteeId} redirected: merged into existing appointment ${mergeTarget.id} instead.`,
+        );
+        return await this.performUpdate(
+          context,
+          trusteeId,
+          mergeTarget.id,
+          merged.payload,
+          userReference,
+          mergeTarget,
+        );
+      }
+
+      return await this.performUpdate(
+        context,
         trusteeId,
         appointmentId,
         normalizedData,
         userReference,
+        existingAppointment,
       );
-
-      if (this.hasAppointmentChanged(existingAppointment, updatedAppointment)) {
-        const courts = await this.courtsUseCase.getCourts(context);
-
-        const beforeSnapshot = snapshotFrom(existingAppointment);
-        const afterSnapshot = snapshotFrom(updatedAppointment);
-
-        const history = await this.buildAppointmentHistory(
-          context,
-          trusteeId,
-          appointmentId,
-          userReference,
-          beforeSnapshot,
-          afterSnapshot,
-          courts,
-        );
-
-        await this.trusteesRepository.createTrusteeHistory(history as Creatable<TrusteeHistory>);
-
-        if (context.featureFlags['trustee-change-notification-enabled']) {
-          await this.dispatchAppointmentNotification(context, {
-            trusteeId,
-            before: beforeSnapshot,
-            after: afterSnapshot,
-            courts,
-          });
-        }
-      }
-
-      context.logger.info(MODULE_NAME, `Updated appointment ${appointmentId}`);
-
-      return updatedAppointment;
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         camsStackInfo: {
@@ -362,6 +412,63 @@ export class TrusteeAppointmentsUseCase {
         },
       });
     }
+  }
+
+  /**
+   * The actual mechanics of writing an appointment update plus its audit history and
+   * notification -- deliberately factored out of updateAppointment (rather than having
+   * createAppointment/updateAppointment's merge cases call the public updateAppointment
+   * method again) so merge redirection can never recurse. A recursive call here risks an
+   * infinite loop: two distinct pre-existing duplicate appointments could each look like the
+   * other's merge target once their payloads are normalized, bouncing back and forth forever.
+   * This helper performs the write exactly once, with no further merge-detection.
+   */
+  private async performUpdate(
+    context: ApplicationContext,
+    trusteeId: string,
+    appointmentId: string,
+    normalizedData: TrusteeAppointmentInput,
+    userReference: CamsUserReference,
+    existingAppointment: TrusteeAppointment,
+  ): Promise<TrusteeAppointment> {
+    const updatedAppointment = await this.trusteeAppointmentsRepository.updateAppointment(
+      trusteeId,
+      appointmentId,
+      normalizedData,
+      userReference,
+    );
+
+    if (this.hasAppointmentChanged(existingAppointment, updatedAppointment)) {
+      const courts = await this.courtsUseCase.getCourts(context);
+
+      const beforeSnapshot = snapshotFrom(existingAppointment);
+      const afterSnapshot = snapshotFrom(updatedAppointment);
+
+      const history = await this.buildAppointmentHistory(
+        context,
+        trusteeId,
+        appointmentId,
+        userReference,
+        beforeSnapshot,
+        afterSnapshot,
+        courts,
+      );
+
+      await this.trusteesRepository.createTrusteeHistory(history as Creatable<TrusteeHistory>);
+
+      if (context.featureFlags['trustee-change-notification-enabled']) {
+        await this.dispatchAppointmentNotification(context, {
+          trusteeId,
+          before: beforeSnapshot,
+          after: afterSnapshot,
+          courts,
+        });
+      }
+    }
+
+    context.logger.info(MODULE_NAME, `Updated appointment ${appointmentId}`);
+
+    return updatedAppointment;
   }
 
   private async dispatchAppointmentNotification(
