@@ -377,6 +377,7 @@ describe('SyncAcmsProfessionalIds', () => {
       camsTrusteeId: 'trustee-1',
       acmsProfessionalId: 'NY-00063',
       disposition: 'auto-linked',
+      nameMatchCount: 0,
       evidence: {
         sourceRaw: { fullName: 'John Smith' },
         sourceNormalized: {},
@@ -630,7 +631,11 @@ describe('SyncAcmsProfessionalIds', () => {
       const outcome = await SyncAcmsProfessionalIds.processOneRecord(deps, record);
 
       expect(upsertSpy).toHaveBeenCalledWith(
-        expect.objectContaining({ disposition: 'ambiguous', suspectDuplicateCamsTrustee: false }),
+        expect.objectContaining({
+          disposition: 'ambiguous',
+          suspectDuplicateCamsTrustee: false,
+          nameMatchCount: 2,
+        }),
         expect.objectContaining({ id: 'ACMS' }),
       );
       expect(outcome).toEqual({ kind: 'ambiguous', gated: 'written' });

@@ -1,5 +1,6 @@
 import {
   deriveDisposition,
+  deriveNameMatchCount,
   deriveSuspectDuplicateCamsTrustee,
 } from './trustee-professional-ids.types';
 import { TrusteeSerializedState, ProjectedTrustee } from './trustee-match-pipeline';
@@ -139,6 +140,24 @@ describe('deriveDisposition', () => {
       match: { trusteeId: 't1', score: {}, resolvedBy: 'test' },
     });
     expect(deriveDisposition(state)).toBe('skipped');
+  });
+});
+
+describe('deriveNameMatchCount', () => {
+  test('counts the candidates whose name matches, at any grade', () => {
+    const state = makeState({
+      candidates: [
+        makeCandidate(passingNameMatch),
+        makeCandidate({ doesNameMatch: { pass: true, quality: 'weak' } }),
+        makeCandidate({ doesNameMatch: { pass: false } }),
+      ],
+    });
+
+    expect(deriveNameMatchCount(state)).toBe(2);
+  });
+
+  test('returns 0 when there are no candidates', () => {
+    expect(deriveNameMatchCount(makeState({}))).toBe(0);
   });
 });
 

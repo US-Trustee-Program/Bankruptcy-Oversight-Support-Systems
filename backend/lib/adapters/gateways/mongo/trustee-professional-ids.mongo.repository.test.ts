@@ -25,6 +25,7 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
     acmsProfessionalId: 'NY-00063',
     documentType: 'TRUSTEE_PROFESSIONAL_ID',
     disposition: 'auto-linked',
+    nameMatchCount: 0,
     evidence: {
       sourceRaw: { fullName: 'John Doe' },
       sourceNormalized: {},

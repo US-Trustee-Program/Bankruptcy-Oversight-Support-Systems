@@ -37,6 +37,9 @@ export type TrusteeProfessionalId = Auditable &
      * one person rather than the ACMS record genuinely matching several distinct trustees. A CAMS
      * data-quality signal, independent of disposition - see hasSuspectDuplicateCamsTrustee. */
     suspectDuplicateCamsTrustee?: boolean;
+    /** How many candidates matched on name at any grade - the indexed hint for surfacing
+     * unlinked records worth manual review (disposition other than 'auto-linked', count > 0). */
+    nameMatchCount: number;
     evidence: TrusteeSerializedState & {
       variant?: string;
       /** Set only when disposition is 'conflict': the trusteeId this acmsProfessionalId was
@@ -160,6 +163,11 @@ export function deriveSuspectDuplicateCamsTrustee(
   state: Pick<TrusteeSerializedState, 'candidates'>,
 ): boolean {
   return hasSuspectDuplicateCamsTrustee(state.candidates);
+}
+
+/** See TrusteeProfessionalId.nameMatchCount. */
+export function deriveNameMatchCount(state: Pick<TrusteeSerializedState, 'candidates'>): number {
+  return state.candidates.filter((c) => c.scores.doesNameMatch?.pass === true).length;
 }
 
 /** A resolved-with-no-pipeline-evidence state, for a trusteeId link established outside
