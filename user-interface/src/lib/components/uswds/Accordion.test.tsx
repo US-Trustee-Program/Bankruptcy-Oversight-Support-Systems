@@ -244,4 +244,56 @@ describe('Accordion tests', () => {
 
     expect(screen.getByTestId('accordion-content-a1')).not.toBeVisible();
   });
+
+  test('Accordion with no headerLabel renders button with no aria-label and children not aria-hidden (regression guard)', () => {
+    const accordionId = 'accordion1';
+    render(
+      <React.StrictMode>
+        <Accordion id={accordionId}>
+          <span>Title of accordion</span>
+          <span>Content of accordion</span>
+        </Accordion>
+      </React.StrictMode>,
+    );
+
+    const button = screen.getByTestId(`accordion-button-${accordionId}`);
+    const header = screen.getByTestId(`accordion-${accordionId}`);
+
+    expect(button).not.toHaveAttribute('aria-label');
+    expect(header.querySelector('[aria-hidden="true"]')).not.toBeInTheDocument();
+  });
+
+  test('Accordion with headerLabel sets it as button aria-label', () => {
+    const accordionId = 'accordion1';
+    const headerLabel = 'Custom accessible label';
+    render(
+      <React.StrictMode>
+        <Accordion id={accordionId} headerLabel={headerLabel}>
+          <span>Visual title of accordion</span>
+          <span>Content of accordion</span>
+        </Accordion>
+      </React.StrictMode>,
+    );
+
+    const button = screen.getByTestId(`accordion-button-${accordionId}`);
+    expect(button).toHaveAttribute('aria-label', headerLabel);
+  });
+
+  test('Accordion with headerLabel marks visual header content aria-hidden', () => {
+    const accordionId = 'accordion1';
+    const headerLabel = 'Custom accessible label';
+    render(
+      <React.StrictMode>
+        <Accordion id={accordionId} headerLabel={headerLabel}>
+          <span>Visual title of accordion</span>
+          <span>Content of accordion</span>
+        </Accordion>
+      </React.StrictMode>,
+    );
+
+    const header = screen.getByTestId(`accordion-${accordionId}`);
+    const hiddenElement = header.querySelector('[aria-hidden="true"]');
+    expect(hiddenElement).toBeInTheDocument();
+    expect(hiddenElement).toHaveTextContent('Visual title of accordion');
+  });
 });

@@ -134,4 +134,35 @@ describe('AppointmentAccordion', () => {
 
     expect(onToggle).toHaveBeenCalledWith(mockAppointment.id);
   });
+
+  test('accordion button accessible name includes district, divisions, chapter details, AND status text', () => {
+    renderAccordion();
+
+    const button = screen.getByTestId(`accordion-button-${mockAppointment.id}`);
+    expect(button).toHaveAttribute('aria-label');
+
+    const accessibleName = button.getAttribute('aria-label');
+    expect(accessibleName).toContain('Southern District of New York');
+    expect(accessibleName).toContain('Manhattan');
+    expect(accessibleName).toContain('Chapter 11');
+    expect(accessibleName).toContain('Case by Case');
+    expect(accessibleName).toContain('Active');
+  });
+
+  test('button accessible name must contain the exact visible header text (drift guard)', () => {
+    renderAccordion();
+
+    const button = screen.getByTestId(`accordion-button-${mockAppointment.id}`);
+    const headerSpan = screen
+      .getByTestId(`appointment-accordion-header-${mockAppointment.id}`)
+      .querySelector('.appointment-accordion-heading-text');
+
+    expect(headerSpan).toBeInTheDocument();
+    const visibleHeaderText = headerSpan?.textContent || '';
+    const accessibleName = button.getAttribute('aria-label') || '';
+
+    // The accessible name must contain the visible header text exactly
+    // If they drift, this test fails to catch WCAG 2.5.3 Label in Name violations
+    expect(accessibleName).toContain(visibleHeaderText);
+  });
 });

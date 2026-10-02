@@ -27,6 +27,16 @@ export default function AppointmentAccordion(props: Readonly<AppointmentAccordio
   const divisionsDisplay = buildDivisionsDisplay(appointment, allCourts);
   const isActive = isActiveAppointment(appointment.status);
 
+  const appointmentDetails = getAppointmentDetails(
+    appointment.chapter,
+    appointment.appointmentType,
+  );
+  const statusText = formatAppointmentStatus(appointment.status);
+
+  // Visible header text is bound once; both accessible name and tag text derive from it
+  const visibleHeaderText = `${districtDisplay} (${divisionsDisplay}): Chapter ${appointmentDetails}`;
+  const headerLabel = `${visibleHeaderText}, ${statusText}`;
+
   return (
     <div className="appointment-accordion">
       <Accordion
@@ -37,20 +47,18 @@ export default function AppointmentAccordion(props: Readonly<AppointmentAccordio
         expandedId={expanded ? appointment.id : ''}
         onExpand={() => onToggle(appointment.id)}
         onCollapse={() => onToggle(appointment.id)}
+        headerLabel={headerLabel}
       >
         <div
           className="appointment-accordion-header"
           data-testid={`appointment-accordion-header-${appointment.id}`}
         >
-          <span className="appointment-accordion-heading-text">
-            {districtDisplay} ({divisionsDisplay}): Chapter{' '}
-            {getAppointmentDetails(appointment.chapter, appointment.appointmentType)}
-          </span>
+          <span className="appointment-accordion-heading-text">{visibleHeaderText}</span>
           <Tag
             uswdsStyle={isActive ? UswdsTagStyle.Success : UswdsTagStyle.InactiveGray}
             id={`appointment-status-tag-${appointment.id}`}
           >
-            {formatAppointmentStatus(appointment.status)}
+            {statusText}
           </Tag>
         </div>
         <div data-testid={`appointment-accordion-body-${appointment.id}`}>{children}</div>

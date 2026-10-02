@@ -70,10 +70,11 @@ interface AccordionProps extends PropsWithChildren {
   onExpand?: (id: string) => void;
   onCollapse?: (id: string) => void;
   hidden?: boolean;
+  headerLabel?: string;
 }
 
 export const Accordion: FunctionComponent<AccordionProps> = (props) => {
-  const { hidden, id, expandedId, onExpand, onCollapse } = props;
+  const { hidden, id, expandedId, onExpand, onCollapse, headerLabel } = props;
   // Controlled when a parent supplies expandedId at all; expanded is then
   // derived directly from it each render instead of mirrored into local
   // state, so there is exactly one source of truth for the expand state.
@@ -108,8 +109,9 @@ export const Accordion: FunctionComponent<AccordionProps> = (props) => {
           aria-controls={`accordion-${id}`}
           data-testid={`accordion-button-${id}`}
           onClick={toggle}
+          aria-label={headerLabel}
         >
-          {props.children[0]}
+          {headerLabel ? <span aria-hidden="true">{props.children[0]}</span> : props.children[0]}
         </button>
       </h4>
       <div
