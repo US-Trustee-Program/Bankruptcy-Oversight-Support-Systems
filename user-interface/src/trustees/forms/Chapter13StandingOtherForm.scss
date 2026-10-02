@@ -3,8 +3,14 @@
     max-width: 20rem;
   }
 
+  #id-expiration-error,
+  #past-background-question-error,
+  #lease-expiration-error {
+    padding: 0.5rem 0 0;
+  }
+
   .month-year-selector {
-    margin-top: 2rem;
+    margin-top: 1.5rem;
   }
 
   .usa-button-group {
