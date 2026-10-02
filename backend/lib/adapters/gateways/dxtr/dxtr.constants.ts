@@ -175,7 +175,7 @@ export const USTP_OFFICE_NAME_MAP = new Map<string, string>([
   ['492', 'Chattanooga'],
   ['493', 'Knoxville'],
   ['494', 'Winchester'],
-  ['495', 'Johnson City'],
+  ['495', 'Knoxville'],
   ['501', 'Nashville'],
   ['502', 'Nashville'],
   ['503', 'Nashville'],
