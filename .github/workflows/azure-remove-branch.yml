@@ -646,6 +646,7 @@ jobs:
         # (a red teardown run going unactioned), so this reuses `notify`'s
         # Slack-webhook pattern for a higher-urgency, ops-facing message
         # rather than leaving detection as the only signal.
+        id: alert-confirmed-leak
         if: steps.check-state.outputs.confirmedLeaks != '[]'
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
@@ -657,3 +658,26 @@ jobs:
             || echo "::warning::Failed to send Slack alert for confirmed leak(s); falling through to the error annotation below regardless."
           echo "::error::Branch cleanup left resources behind for 2 consecutive runs: ${{ steps.check-state.outputs.confirmedLeaks }}"
           exit 1
+      - name: Alert on verification failure (leak status unknown)
+        # Without a status-check function, this step's if: would carry the same implicit
+        # success() gate as every plain if: above it, so a failure anywhere upstream (an
+        # exhausted az retry budget or a jq error aborting check-state under set -euo
+        # pipefail, before confirmedLeaks is ever written) would skip this alert entirely --
+        # sending the run red with no Slack signal at all, the exact "red run nobody acted
+        # on" shape this job exists to prevent, just from a different root cause than a
+        # confirmed leak. failure() opts back into running after an upstream failure.
+        #
+        # Deliberately a separate step rather than adding always() to the step above: on a
+        # failed check-state, confirmedLeaks is unset and '' != '[]' is true, so reusing
+        # that condition would post a false "leak confirmed" with an empty hash list.
+        # Excludes alert-confirmed-leak's own deliberate `exit 1` so a real confirmed-leak
+        # run gets exactly one Slack message, not this one immediately after it.
+        if: failure() && steps.alert-confirmed-leak.outcome != 'failure'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          set -euo pipefail
+          curl -X POST -H 'Content-type: application/json' \
+            --data "$(jq -n --arg text "⚠️ Azure branch-cleanup verification did not complete -- leak status unknown, review job logs." '{text: $text}')" \
+            "${SLACK_WEBHOOK_URL}" \
+            || echo "::warning::Failed to send Slack alert for incomplete verification."
