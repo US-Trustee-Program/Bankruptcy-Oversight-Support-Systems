@@ -291,7 +291,7 @@ describe('SyncAcmsProfessionalIds', () => {
         sourceNormalized: {},
         memo: new Map(),
         candidates: new Map(),
-        match: { trusteeId: 'trustee-1', score: {} },
+        match: { trusteeId: 'trustee-1', score: {}, resolvedBy: 'resolveByPhone' },
         skip: false,
         error: null,
       };
@@ -305,7 +305,11 @@ describe('SyncAcmsProfessionalIds', () => {
         deps.context,
         expect.objectContaining({ firstName: 'John', lastName: 'Smith' }),
       );
-      expect(result.match).toEqual({ trusteeId: 'trustee-1', score: {} });
+      expect(result.match).toEqual({
+        trusteeId: 'trustee-1',
+        score: {},
+        resolvedBy: 'resolveByPhone',
+      });
     });
 
     test('should rethrow a transient pipeline error rather than returning it as state', async () => {
@@ -372,13 +376,15 @@ describe('SyncAcmsProfessionalIds', () => {
       documentType: 'TRUSTEE_PROFESSIONAL_ID',
       camsTrusteeId: 'trustee-1',
       acmsProfessionalId: 'NY-00063',
-      disposition: 'auto-linked',
+      disposition: 'linked',
+      linkMethod: 'auto',
+      nameMatchCount: 0,
       evidence: {
         sourceRaw: { fullName: 'John Smith' },
         sourceNormalized: {},
         memo: {},
         candidates: [],
-        match: { trusteeId: 'trustee-1', score: {} },
+        match: { trusteeId: 'trustee-1', score: {}, resolvedBy: 'test' },
         skip: false,
         error: null,
       },
@@ -407,13 +413,8 @@ describe('SyncAcmsProfessionalIds', () => {
       );
     });
 
-    // Real-world pattern: some ACMS professional-id records carry no real person at all - pure
-    // administrative/placeholder text like "NOT ASSIGNED", "DUPLICATE TRUSTEE", or "UNITED STATES
-    // TRUSTEE'S OFFICE" (an office, not a person). The pipeline's own
-    // skipAdministrativePlaceholder stage (trustee-match-pipeline-stages.ts) detects this - not a
-    // separate upfront check here - so the fingerprint lookup still runs first (cheap, and a
-    // fingerprint hit is meaningful regardless of name shape), and the skip is persisted through
-    // the same active-appointment gate every other outcome uses.
+    // Models ACMS records whose name is placeholder text rather than a person; the pipeline's
+    // skipAdministrativePlaceholder stage detects them.
     test.each([
       ['', 'NOT ASSIGNED'],
       ['', 'DUPLICATE TRUSTEE'],
@@ -487,7 +488,8 @@ describe('SyncAcmsProfessionalIds', () => {
         expect.objectContaining({
           camsTrusteeId: 'trustee-1',
           acmsProfessionalId: 'NY-00063',
-          disposition: 'auto-linked',
+          disposition: 'linked',
+          linkMethod: 'auto',
         }),
         expect.objectContaining({ id: 'ACMS' }),
       );
@@ -530,16 +532,21 @@ describe('SyncAcmsProfessionalIds', () => {
       expect(outcome).toEqual({ kind: 'conflict', via: 'fingerprint' });
     });
 
-    test('should fall through to name matching on a fingerprint miss', async () => {
+    test('should NOT record a TrusteeVariation while WRITE_ACMS_TRUSTEE_VARIATIONS is disabled', async () => {
       vi.spyOn(deps.variationRepo, 'findByFingerprint').mockResolvedValue([]);
-      const pipelineSpy = vi
-        .spyOn(trusteeMatchPipelineOrchestrator, 'runTrusteeMatchPipeline')
-        .mockResolvedValue(noMatchPipelineState as never);
-      vi.spyOn(deps.acmsGateway, 'getActiveAppointmentsForProfessional').mockResolvedValue([]);
+      const matchedPipelineState = {
+        ...noMatchPipelineState,
+        match: { trusteeId: 'trustee-1', score: {}, resolvedBy: 'resolveByNameOnly' },
+      };
+      vi.spyOn(trusteeMatchPipelineOrchestrator, 'runTrusteeMatchPipeline').mockResolvedValue(
+        matchedPipelineState as never,
+      );
+      const createVariationSpy = vi.spyOn(deps.variationRepo, 'createVariation');
 
-      await SyncAcmsProfessionalIds.processOneRecord(deps, record);
+      const outcome = await SyncAcmsProfessionalIds.processOneRecord(deps, record);
 
-      expect(pipelineSpy).toHaveBeenCalled();
+      expect(createVariationSpy).not.toHaveBeenCalled();
+      expect(outcome).toEqual({ kind: 'auto-linked', via: 'name' });
     });
 
     test('should apply the active-appointment gate and skip writing when both fingerprint and name matching fail with zero active appointments', async () => {
@@ -581,7 +588,7 @@ describe('SyncAcmsProfessionalIds', () => {
       expect(outcome).toEqual({ kind: 'no-match', gated: 'written' });
     });
 
-    test('should write an ambiguous record when candidates were found but none resolved', async () => {
+    test('should write an ambiguous record when two genuinely-qualifying candidates remain unresolved', async () => {
       const activeAppointments: AcmsActiveAppointment[] = [{ division: '081', chapter: '7' }];
       const ambiguousPipelineState = {
         ...noMatchPipelineState,
@@ -592,8 +599,9 @@ describe('SyncAcmsProfessionalIds', () => {
               camsRaw: { trusteeId: 't1' },
               camsNormalized: {},
               memo: new Map(),
-              scores: { doesNameMatch: { value: 100, threshold: 85, pass: true } },
-              disqualifiers: [],
+              scores: {
+                doesNameMatch: { pass: true, quality: 'exact' },
+              },
               origin: 'test',
             },
           ],
@@ -603,8 +611,9 @@ describe('SyncAcmsProfessionalIds', () => {
               camsRaw: { trusteeId: 't2' },
               camsNormalized: {},
               memo: new Map(),
-              scores: { doesNameMatch: { value: 100, threshold: 85, pass: true } },
-              disqualifiers: [],
+              scores: {
+                doesNameMatch: { pass: true, quality: 'exact' },
+              },
               origin: 'test',
             },
           ],
@@ -624,10 +633,46 @@ describe('SyncAcmsProfessionalIds', () => {
       const outcome = await SyncAcmsProfessionalIds.processOneRecord(deps, record);
 
       expect(upsertSpy).toHaveBeenCalledWith(
-        expect.objectContaining({ disposition: 'ambiguous' }),
+        expect.objectContaining({
+          disposition: 'ambiguous',
+          suspectDuplicateCamsTrustee: false,
+          nameMatchCount: 2,
+        }),
         expect.objectContaining({ id: 'ACMS' }),
       );
+      expect(upsertSpy.mock.calls[0][0].linkMethod).toBeUndefined();
       expect(outcome).toEqual({ kind: 'ambiguous', gated: 'written' });
+    });
+
+    test('should flag a suspected duplicate CAMS trustee when ambiguous candidates share a phone', async () => {
+      const candidate = (trusteeId: string) => ({
+        camsRaw: { trusteeId, phone: { number: '206-555-0100' } },
+        camsNormalized: {},
+        memo: new Map(),
+        scores: { doesNameMatch: { pass: true, quality: 'exact' } },
+        origin: 'test',
+      });
+      vi.spyOn(deps.variationRepo, 'findByFingerprint').mockResolvedValue([]);
+      vi.spyOn(trusteeMatchPipelineOrchestrator, 'runTrusteeMatchPipeline').mockResolvedValue({
+        ...noMatchPipelineState,
+        candidates: new Map([
+          ['t1', candidate('t1')],
+          ['t2', candidate('t2')],
+        ]),
+      } as never);
+      vi.spyOn(deps.acmsGateway, 'getActiveAppointmentsForProfessional').mockResolvedValue([
+        { division: '081', chapter: '7' },
+      ]);
+      const upsertSpy = vi
+        .spyOn(deps.professionalIdsRepo, 'upsertProfessionalId')
+        .mockResolvedValue(linkedProfessionalId({ disposition: 'ambiguous' }));
+
+      await SyncAcmsProfessionalIds.processOneRecord(deps, record);
+
+      expect(upsertSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ disposition: 'ambiguous', suspectDuplicateCamsTrustee: true }),
+        expect.anything(),
+      );
     });
 
     test('should parse groupDesignator from the acmsProfessionalId when checking active appointments', async () => {
@@ -651,7 +696,7 @@ describe('SyncAcmsProfessionalIds', () => {
       vi.spyOn(deps.variationRepo, 'findByFingerprint').mockResolvedValue([]);
       vi.spyOn(trusteeMatchPipelineOrchestrator, 'runTrusteeMatchPipeline').mockResolvedValue({
         ...noMatchPipelineState,
-        match: { trusteeId: 'trustee-1', score: {} },
+        match: { trusteeId: 'trustee-1', score: {}, resolvedBy: 'resolveByPhone' },
       } as never);
       vi.spyOn(deps.professionalIdsRepo, 'findByAcmsProfessionalId').mockResolvedValue([
         linkedProfessionalId({ camsTrusteeId: 'trustee-existing' }),
@@ -672,40 +717,6 @@ describe('SyncAcmsProfessionalIds', () => {
         expect.objectContaining({ id: 'ACMS' }),
       );
       expect(outcome).toEqual({ kind: 'conflict', via: 'name' });
-    });
-
-    test('should ignore an existing non-auto-linked record for this ACMS ID when checking for a conflict', async () => {
-      const matchingVariant: TrusteeVariation = {
-        id: 'v1',
-        documentType: 'TRUSTEE_VARIATION',
-        fingerprint: 'irrelevant',
-        variant: buildAcmsVariant(record),
-        trusteeId: 'trustee-1',
-        createdOn: '2025-01-01T00:00:00.000Z',
-        createdBy: { id: 'SYSTEM', name: 'SYSTEM' },
-        updatedOn: '2025-01-01T00:00:00.000Z',
-        updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
-      };
-      vi.spyOn(deps.variationRepo, 'findByFingerprint').mockResolvedValue([matchingVariant]);
-      // findByAcmsProfessionalId only ever returns auto-linked, non-conflicting records (see the
-      // repository's own isRealLink filter) - a prior no-match/ambiguous/conflict record for this
-      // ACMS id is invisible here, so it never counts as a conflict.
-      vi.spyOn(deps.professionalIdsRepo, 'findByAcmsProfessionalId').mockResolvedValue([]);
-      const upsertSpy = vi
-        .spyOn(deps.professionalIdsRepo, 'upsertProfessionalId')
-        .mockResolvedValue(linkedProfessionalId());
-
-      const outcome = await SyncAcmsProfessionalIds.processOneRecord(deps, record);
-
-      expect(upsertSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          camsTrusteeId: 'trustee-1',
-          acmsProfessionalId: 'NY-00063',
-          disposition: 'auto-linked',
-        }),
-        expect.objectContaining({ id: 'ACMS' }),
-      );
-      expect(outcome).toEqual({ kind: 'auto-linked', via: 'fingerprint' });
     });
 
     test('should rethrow a transient pipeline error so handlePage retries the whole page', async () => {

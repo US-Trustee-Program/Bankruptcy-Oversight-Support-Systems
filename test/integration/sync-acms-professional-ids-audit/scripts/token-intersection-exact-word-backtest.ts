@@ -17,9 +17,7 @@
  */
 import * as fs from 'fs';
 import * as path from 'path';
-import {
-  calculateNameScore,
-} from '../../../../backend/lib/use-cases/dataflows/trustee-match.helpers';
+import { calculateNameScore } from '../../../../backend/lib/use-cases/dataflows/trustee-match.helpers';
 import { DxtrTrusteeParty } from '../../../../common/src/cams/dataflow-events';
 import { Trustee } from '../../../../common/src/cams/trustees';
 import { TrusteeProfessionalId } from '../../../../backend/lib/use-cases/dataflows/trustee-professional-ids.types';
@@ -29,7 +27,18 @@ const NAME_THRESHOLD = 85;
 const MIN_TOKEN_LENGTH = 2;
 
 const STOPWORDS = new Set([
-  'jr', 'sr', 'ii', 'iii', 'iv', 'tr', 'trustee', 'inc', 'esq', 'not', 'use', 'do',
+  'jr',
+  'sr',
+  'ii',
+  'iii',
+  'iv',
+  'tr',
+  'trustee',
+  'inc',
+  'esq',
+  'not',
+  'use',
+  'do',
 ]);
 
 type DecodedVariant = {
@@ -135,7 +144,9 @@ function run() {
     }
   }
 
-  console.log(`no-name-candidate population (excluding placeholders): ${noNameCandidateRecords.length}\n`);
+  console.log(
+    `no-name-candidate population (excluding placeholders): ${noNameCandidateRecords.length}\n`,
+  );
 
   type Result = {
     acmsFullName: string;

@@ -304,8 +304,8 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
     context: ApplicationContext,
   ): Promise<AcmsTrusteeProfessionalRecord[]> {
     // Pull the full set of ACMS trustee professional records from CMMPR,
-    // independent of ATS. Keyed on the compound (GROUP_DESIGNATOR, PROF_CODE)
-    // professional ID — never PROF_CODE alone, since one CAMS trustee can hold
+    // independent of ATS. Keyed on the compound (GROUP_DESIGNATOR, UST_PROF_CODE)
+    // professional ID — never UST_PROF_CODE alone, since one CAMS trustee can hold
     // multiple ACMS professional IDs across groups. Filtered by PROF_TYPE = 'TR'.
     const query = `
       SELECT
@@ -344,15 +344,8 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
     // Keyset-paginated by UST_PROF_CODE, scoped to a single GROUP_DESIGNATOR — the
     // code is only monotonically increasing within a group, never globally.
     //
-    // No PROF_LAST_NAME placeholder filtering happens here (e.g. "NO TRUSTEE", "DECEASED - ROE,
-    // JR.", "I M FAKE", "PRO SE") - this gateway is a plain data-access layer, not a business-rule
-    // boundary. shouldSkipAsNotAPerson (sync-acms-professional-ids.ts) is the single source of
-    // truth for which ACMS records name no real trustee, so every excludable shape is recognized
-    // in exactly one place instead of being partially re-implemented as a parallel SQL LIKE clause
-    // that can drift from it (a divergence James' PR #3045 review caught: this gateway's own
-    // former `PROF_LAST_NAME NOT LIKE '%FAKE%'` clause was broader than shouldSkipAsNotAPerson's
-    // deliberately-anchored "I M FAKE" check, and would have silently dropped a real trustee
-    // surnamed Fake at the source, with no count/log/DLQ entry to reveal it).
+    // No placeholder filtering here; skipAdministrativePlaceholder (trustee-match-pipeline-stages.ts)
+    // is the single place that decides which records to skip.
     //
     // UST_PROF_CODE < 98000 excludes ACMS's reserved sentinel/dummy trustee code range (known
     // values include 99999 and 98000). These rows must never reach the keyset cursor: since

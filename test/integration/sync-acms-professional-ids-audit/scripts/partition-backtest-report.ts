@@ -5,22 +5,38 @@
  * data/ambiguous-duplication-acms-trustees.csv (a filtered view of the ambiguous rows whose own
  * suspectDuplicateCamsTrustee flag is true), data/skipped-acms-trustees.csv.
  *
- * no-match/skipped rows are one row per ACMS record (no candidates - either there's nothing
- * qualifying, or the record never reached the pipeline). ambiguous rows are a cartesian product -
- * one row per (ACMS record, CAMS candidate) pair, same shape ai-candidate-review.ts's own CSV
- * output uses - since the whole point of a human review pass here is comparing the ACMS source
- * against EVERY competing candidate side by side, not just the winner.
+ * All four files share ONE column layout (CANDIDATE_CSV_COLUMNS) - every row is a cartesian
+ * product, one row per (ACMS record, candidate) pair, same shape ai-candidate-review.ts's own CSV
+ * output uses. skipped rows (never reach the pipeline at all - see below) and any record with zero
+ * candidates still produce exactly one row, with every candidate-specific column blank - a record
+ * with only ONE real candidate still produces exactly one ambiguous row, since deriveDisposition's
+ * 'ambiguous' verdict does not require 2+ candidates (see its own doc comment). no-match records
+ * genuinely can, and often do, have real REJECTED candidates (a name-score failure, or a lone
+ * qualifying candidate that failed corroboration) - these are shown here too, not just the bare
+ * ACMS source fields, so a reviewer can see exactly why nothing resolved.
  *
- * skipped records never reach the pipeline (pipeline-replay-backtest.ts skips them before
- * calling runTrusteeMatchPipeline and does not write them to the JSONL), so this script
- * re-derives that population directly from the professional-ids fixture's own
- * evidence.sourceRaw and the same skip functions, rather than reading it out of the JSONL.
+ * Every row carries stagingDisposition/stagingTrusteeId/stagingTrusteeName/stagingTrusteeAddress/
+ * stagingTrusteePhone (what the trustee-professional-ids fixture actually persisted for this ACMS
+ * record BEFORE this replay, looked up independently from the trustees fixture rather than copied
+ * from any candidate row - staging's trustee is often not even a candidate in the current record's
+ * pool) and currentDisposition (which of these four files this row belongs to, restated as a column
+ * so a reviewer filtering/sorting a single exported CSV doesn't lose that context) - so the
+ * staging-vs-current picture is visible without opening another file.
+ *
+ * skipped records never reach the pipeline (skipAdministrativePlaceholder short-circuits before any
+ * candidate discovery runs, and pipeline-replay-backtest.ts does not write them to the JSONL at
+ * all), so this script re-derives that population directly from the professional-ids fixture's own
+ * evidence.sourceRaw and the same three skip checks skipAdministrativePlaceholder itself runs
+ * (shouldSkipAsNotAPerson, isRecordDisavowed, shouldSkipAsUstStaff) - all three, not a subset, so a
+ * UST-annotated record is never miscounted as no-match here the way it would be if this script's
+ * own skip check silently drifted from the real gate's.
  *
  * Usage (from test/integration/):
  *   npx tsx --tsconfig ../../backend/tsconfig.json sync-acms-professional-ids-audit/scripts/partition-backtest-report.ts
  */
 import * as fs from 'fs';
 import * as path from 'path';
+import { Trustee } from '../../../../common/src/cams/trustees';
 import { TrusteeProfessionalId } from '../../../../backend/lib/use-cases/dataflows/trustee-professional-ids.types';
 import {
   ProjectedTrustee,
@@ -59,6 +75,16 @@ function loadProfessionalIds(): TrusteeProfessionalId[] {
   return raw.map(stripMongoId);
 }
 
+function loadTrustees(): Trustee[] {
+  const file = resolveFixtureFile('TRUSTEES_FIXTURE', 'trustees');
+  const raw: (Record<string, unknown> & { _id?: MongoExtendedId })[] = JSON.parse(
+    fs.readFileSync(file, 'utf-8'),
+  );
+  return raw
+    .filter((doc) => doc.documentType === 'TRUSTEE')
+    .map((doc) => stripMongoId(doc) as Trustee);
+}
+
 const CSV_COLUMNS = [
   'acmsProfessionalId',
   'firstName',
@@ -79,15 +105,6 @@ function csvEscape(value: string | number | undefined): string {
   return s;
 }
 
-function writeCsv(filePath: string, rows: Record<(typeof CSV_COLUMNS)[number], string>[]): void {
-  const lines = [CSV_COLUMNS.join(',')];
-  for (const row of rows) {
-    lines.push(CSV_COLUMNS.map((col) => csvEscape(row[col])).join(','));
-  }
-  fs.writeFileSync(filePath, lines.join('\n') + '\n', 'utf-8');
-  console.log(`Wrote ${rows.length} rows to ${filePath}`);
-}
-
 function csvRowFromSourceRaw(
   acmsProfessionalId: string,
   sourceRaw: SerializedState['sourceRaw'],
@@ -105,13 +122,32 @@ function csvRowFromSourceRaw(
   };
 }
 
-/** Cartesian-product columns for ambiguous records: every ACMS source field alongside one
- * competing CAMS candidate's own fields, same scores ai-candidate-review.ts displays
- * (nameScore/addressScore/phoneScore/stateMatch/introductionStage), plus whether this record's
- * own candidate pool looks like a CAMS-side duplicate (see suspectDuplicateCamsTrustee on
- * TrusteeProfessionalId). */
+/** Shared cartesian-product columns across all four output files (no-match, ambiguous,
+ * ambiguous-duplication, skipped): every ACMS source field, the staging before-picture, this row's
+ * currentDisposition, and - for a row with a real candidate - that candidate's own fields and the
+ * same scores ai-candidate-review.ts displays (nameScore/addressMatch/phoneMatch/stateMatch/
+ * introductionStage). A record with zero candidates (skipped, or a no-match/ambiguous record with
+ * an empty pool) still produces exactly one row, with every candidate-specific column (camsTrusteeId
+ * onward) blank - see candidateCsvRows's own doc comment.
+ *
+ * stagingDisposition/stagingTrusteeId/stagingTrusteeName/stagingTrusteeAddress/stagingTrusteePhone
+ * carry what staging actually persisted for this ACMS record BEFORE this replay - repeated
+ * identically on every candidate row for the same acmsProfessionalId. Looked up independently from
+ * the trustees fixture by stagingTrusteeId, NOT copied from camsAddress/camsPhone below - staging's
+ * trustee is often not even a candidate in the current record's pool (a divergence can mean the
+ * current pipeline no longer discovers that trustee as a candidate at all, not just that it declined
+ * to link to one still present), so those two fields would silently read empty for exactly the rows
+ * this is meant to explain. currentDisposition is which of the four output files this row belongs
+ * to, restated as a column so a reviewer filtering/sorting a single exported CSV doesn't lose that
+ * context once rows from multiple files are combined. */
 const CANDIDATE_CSV_COLUMNS = [
   ...CSV_COLUMNS,
+  'stagingDisposition',
+  'stagingTrusteeId',
+  'stagingTrusteeName',
+  'stagingTrusteeAddress',
+  'stagingTrusteePhone',
+  'currentDisposition',
   'suspectDuplicateCamsTrustee',
   'camsTrusteeId',
   'camsName',
@@ -119,8 +155,8 @@ const CANDIDATE_CSV_COLUMNS = [
   'camsPhone',
   'introductionStage',
   'nameScore',
-  'addressScore',
-  'phoneScore',
+  'addressMatch',
+  'phoneMatch',
   'stateMatch',
 ] as const;
 
@@ -135,10 +171,15 @@ function writeCandidateCsv(filePath: string, rows: CandidateCsvRow[]): void {
   console.log(`Wrote ${rows.length} rows to ${filePath}`);
 }
 
-function camsAddressString(candidate: ProjectedTrustee): string {
-  const a = candidate.address;
-  if (!a) return '';
-  return [a.address1, [a.city, a.state, a.zipCode].filter(Boolean).join(' ')]
+/** Shared by both the current candidate pool (ProjectedTrustee) and the staging trustee lookup
+ * (a raw Trustee's public.address) - both use the exact same Address shape (common/src/cams/
+ * contact.ts), so one formatter covers either source without a ProjectedTrustee conversion step. */
+function addressString(address: ProjectedTrustee['address']): string {
+  if (!address) return '';
+  return [
+    address.address1,
+    [address.city, address.state, address.zipCode].filter(Boolean).join(' '),
+  ]
     .filter(Boolean)
     .join(', ');
 }
@@ -150,27 +191,72 @@ function introductionStageOf(scores: ScoreByScorer): string {
   return names[names.length - 1] ?? 'unknown';
 }
 
+type StagingInfo = {
+  disposition: string;
+  trusteeId: string | null;
+  trusteeName: string;
+  trusteeAddress: string;
+  trusteePhone: string;
+};
+
+/** Builds one CSV row per candidate in rec.candidates, or - when rec.candidates is empty (a
+ * skipped record, which never reaches candidate discovery at all, or a no-match/ambiguous record
+ * whose own pool happens to be empty) - exactly ONE row with every candidate-specific column
+ * blank. Every row this returns always carries the ACMS source fields, the staging before-picture,
+ * and currentDisposition, regardless of candidate count - the one-row-per-record guarantee is what
+ * lets all four output files share this same function and column layout. */
 function candidateCsvRows(
-  rec: { acmsProfessionalId: string } & SerializedState,
+  rec: { acmsProfessionalId: string } & Pick<SerializedState, 'sourceRaw' | 'candidates' | 'match'>,
+  currentDisposition: string,
   suspectDuplicateCamsTrustee: boolean,
+  staging: StagingInfo | undefined,
 ): CandidateCsvRow[] {
   const acmsRow = csvRowFromSourceRaw(rec.acmsProfessionalId, rec.sourceRaw);
+  const stagingColumns = {
+    stagingDisposition: staging?.disposition ?? '',
+    stagingTrusteeId: staging?.trusteeId ?? '',
+    stagingTrusteeName: staging?.trusteeName ?? '',
+    stagingTrusteeAddress: staging?.trusteeAddress ?? '',
+    stagingTrusteePhone: staging?.trusteePhone ?? '',
+    currentDisposition,
+  };
+  if (rec.candidates.length === 0) {
+    return [
+      {
+        ...acmsRow,
+        ...stagingColumns,
+        suspectDuplicateCamsTrustee: String(suspectDuplicateCamsTrustee),
+        camsTrusteeId: '',
+        camsName: '',
+        camsAddress: '',
+        camsPhone: '',
+        introductionStage: '',
+        nameScore: '',
+        addressMatch: '',
+        phoneMatch: '',
+        stateMatch: '',
+      },
+    ];
+  }
   return rec.candidates.map((candidate) => {
     const isWinner = candidate.camsRaw.trusteeId === rec.match?.trusteeId;
     const winnerScores = isWinner ? (rec.match?.score as ScoreByScorer | undefined) : undefined;
     const merged: ScoreByScorer = { ...candidate.scores, ...winnerScores };
     return {
       ...acmsRow,
+      ...stagingColumns,
       suspectDuplicateCamsTrustee: String(suspectDuplicateCamsTrustee),
       camsTrusteeId: candidate.camsRaw.trusteeId,
       camsName: candidate.camsRaw.name ?? '',
-      camsAddress: camsAddressString(candidate.camsRaw),
+      camsAddress: addressString(candidate.camsRaw.address),
       camsPhone: candidate.camsRaw.phone?.number ?? '',
       introductionStage: introductionStageOf(candidate.scores),
-      nameScore: String(merged.doesNameMatch?.value ?? 0),
-      addressScore: String(merged.contactCorroborationAddress?.value ?? ''),
-      phoneScore: String(merged.contactCorroborationPhone?.value ?? ''),
-      stateMatch: String(merged.isStateNotConflicting?.pass ?? true),
+      nameQuality: String(merged.doesNameMatch?.quality ?? ''),
+      addressMatch: merged.doesAddressMatch
+        ? `${merged.doesAddressMatch.quality ?? 'no-match'} ${merged.doesAddressMatch.points}`
+        : '',
+      phoneMatch: merged.doesPhoneMatch ? String(merged.doesPhoneMatch.quality ?? 'no-match') : '',
+      stateMatch: String(merged.doesStateMatch?.pass ?? true),
     };
   });
 }
@@ -183,10 +269,26 @@ async function main(): Promise<void> {
 
   const { deriveDisposition, deriveSuspectDuplicateCamsTrustee } =
     await import('../../../../backend/lib/use-cases/dataflows/trustee-professional-ids.types');
-  const { shouldSkipAsNotAPerson, isRecordDisavowed } =
+  const { shouldSkipAsNotAPerson, isRecordDisavowed, shouldSkipAsUstStaff } =
     await import('../../../../backend/lib/use-cases/dataflows/acms-name-normalization.helpers');
 
-  const noMatchRows: Record<(typeof CSV_COLUMNS)[number], string>[] = [];
+  const records = loadProfessionalIds();
+  const trusteeById = new Map(loadTrustees().map((t) => [t.trusteeId, t]));
+  const stagingByAcmsId = new Map(
+    records.map((r) => {
+      const trustee = r.disposition === 'linked' ? trusteeById.get(r.camsTrusteeId) : undefined;
+      const staging: StagingInfo = {
+        disposition: r.disposition,
+        trusteeId: r.disposition === 'linked' ? r.camsTrusteeId : null,
+        trusteeName: trustee?.name ?? '',
+        trusteeAddress: addressString(trustee?.public?.address),
+        trusteePhone: trustee?.public?.phone?.number ?? '',
+      };
+      return [r.acmsProfessionalId, staging];
+    }),
+  );
+
+  const noMatchRows: CandidateCsvRow[] = [];
   const ambiguousRows: CandidateCsvRow[] = [];
   const ambiguousDuplicationRows: CandidateCsvRow[] = [];
 
@@ -198,37 +300,54 @@ async function main(): Promise<void> {
   for (const line of lines) {
     const rec: { acmsProfessionalId: string } & SerializedState = JSON.parse(line);
     const disposition = deriveDisposition(rec);
+    const staging = stagingByAcmsId.get(rec.acmsProfessionalId);
     if (disposition === 'no-match') {
-      noMatchRows.push(csvRowFromSourceRaw(rec.acmsProfessionalId, rec.sourceRaw));
+      noMatchRows.push(...candidateCsvRows(rec, disposition, false, staging));
     } else if (disposition === 'ambiguous') {
       const suspectDuplicate = deriveSuspectDuplicateCamsTrustee(rec);
-      ambiguousRows.push(...candidateCsvRows(rec, suspectDuplicate));
+      const rows = candidateCsvRows(rec, disposition, suspectDuplicate, staging);
+      ambiguousRows.push(...rows);
       if (suspectDuplicate) {
-        ambiguousDuplicationRows.push(...candidateCsvRows(rec, suspectDuplicate));
+        ambiguousDuplicationRows.push(...rows);
       }
     }
   }
 
-  const records = loadProfessionalIds();
+  // The same three checks skipAdministrativePlaceholder runs. A skipped record is never written to
+  // the JSONL, so this population is re-derived from the fixture.
   const replayable = records.filter((r) => r.evidence?.sourceRaw);
-  const skippedRows: Record<(typeof CSV_COLUMNS)[number], string>[] = [];
+  const skippedRows: CandidateCsvRow[] = [];
   for (const record of replayable) {
     const acmsTrusteeProfessional = record.evidence.sourceRaw;
     if (
       shouldSkipAsNotAPerson(acmsTrusteeProfessional.fullName) ||
-      isRecordDisavowed(acmsTrusteeProfessional.fullName)
+      isRecordDisavowed(acmsTrusteeProfessional) ||
+      shouldSkipAsUstStaff(acmsTrusteeProfessional.fullName)
     ) {
-      skippedRows.push(csvRowFromSourceRaw(record.acmsProfessionalId, acmsTrusteeProfessional));
+      const staging = stagingByAcmsId.get(record.acmsProfessionalId);
+      skippedRows.push(
+        ...candidateCsvRows(
+          {
+            acmsProfessionalId: record.acmsProfessionalId,
+            sourceRaw: acmsTrusteeProfessional,
+            candidates: [],
+            match: null,
+          },
+          'skipped',
+          false,
+          staging,
+        ),
+      );
     }
   }
 
-  writeCsv(path.join(DATA_DIR, 'no-match-acms-trustees.csv'), noMatchRows);
+  writeCandidateCsv(path.join(DATA_DIR, 'no-match-acms-trustees.csv'), noMatchRows);
   writeCandidateCsv(path.join(DATA_DIR, 'ambiguous-acms-trustees.csv'), ambiguousRows);
   writeCandidateCsv(
     path.join(DATA_DIR, 'ambiguous-duplication-acms-trustees.csv'),
     ambiguousDuplicationRows,
   );
-  writeCsv(path.join(DATA_DIR, 'skipped-acms-trustees.csv'), skippedRows);
+  writeCandidateCsv(path.join(DATA_DIR, 'skipped-acms-trustees.csv'), skippedRows);
 }
 
 main().catch((error) => {

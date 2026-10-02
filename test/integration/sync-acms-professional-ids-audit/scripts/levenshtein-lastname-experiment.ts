@@ -179,7 +179,9 @@ function run() {
   }
 
   console.log(`Records skipped (lastName token too short, <4 chars): ${noVariantOrToken}`);
-  console.log(`Records with at least one lastName-token near-miss (edit distance 1-2): ${nearMisses.length}\n`);
+  console.log(
+    `Records with at least one lastName-token near-miss (edit distance 1-2): ${nearMisses.length}\n`,
+  );
 
   const byDistance = { 1: 0, 2: 0 };
   const strong: NearMiss[] = [];
@@ -187,7 +189,12 @@ function run() {
     byDistance[nm.editDistance as 1 | 2]++;
     const phoneOk = nm.phoneScore === null || nm.phoneScore >= 80;
     const emailOk = nm.emailScore === null || nm.emailScore >= 80;
-    if (nm.addressScore >= 80 && phoneOk && emailOk && (nm.phoneScore !== null || nm.emailScore !== null || nm.addressScore >= 80)) {
+    if (
+      nm.addressScore >= 80 &&
+      phoneOk &&
+      emailOk &&
+      (nm.phoneScore !== null || nm.emailScore !== null || nm.addressScore >= 80)
+    ) {
       strong.push(nm);
     }
   }
@@ -196,7 +203,9 @@ function run() {
   console.log(`  distance=1: ${byDistance[1]}`);
   console.log(`  distance=2: ${byDistance[2]}\n`);
 
-  console.log(`Strong corroboration (address>=80, phone/email not contradicting): ${strong.length}\n`);
+  console.log(
+    `Strong corroboration (address>=80, phone/email not contradicting): ${strong.length}\n`,
+  );
 
   console.log('--- Strong corroboration detail ---');
   for (const nm of strong) {

@@ -149,8 +149,24 @@ export function normalizeNameForMatching(name: string): string {
  * record's city/zip evidence entirely.
  * Symmetrically, some ACMS records omit the city entirely (e.g. "TX 79417-0000") - city: '' is
  * returned rather than discarding the whole parse, so a real state+zip match still corroborates.
- * Returns null only when no zip-like token exists at all, or when neither a city nor a state
- * precedes it - a bare zip alone, with nothing else to anchor it, is too weak to trust.
+ *
+ * Real bug, confirmed via pipeline-replay-backtest.ts against the 2026-09-25 export: a record with
+ * NO zip token at all (e.g. "SAN DIEGO CA" - no zip ever recorded for this ACMS professional) used
+ * to return null unconditionally the instant no zip-like token was found (the OLD first check
+ * below), discarding a genuine, comparable city+state pair sitting right there in the string. 71
+ * real records share this exact shape - a real city+state match this genuine, with the ACMS side
+ * carrying no other comparable data (no street address, "0" phone sentinel), previously produced
+ * ZERO city/state/zip/address evidence anywhere in the pipeline, even though a human reviewer can
+ * see the match immediately (a real shape, name synthesized: ACMS "Jordan Roe", "San Diego CA" - no
+ * zip - vs. the sole CAMS candidate "Jordan A. Roe" whose own address is also San Diego, CA).
+ * zipIndex === -1 now falls back to treating the trailing token as a potential state (same
+ * STATE_TOKEN/VALID_STATE_CODES check the zip-anchored path already uses) and everything before it
+ * as the city, with zipCode: '' (never null - every real caller already treats a
+ * shorter-than-5-digit zip as "not comparable," so an empty string flows through safely to the same
+ * "no record when data unavailable" outcome the zip-comparison scorers already produce for a
+ * genuinely absent zip - see scoreZipCodeMatch's own zip5 comparison). Only when
+ * NEITHER a zip token NOR a recognizable trailing state token exists does this return null - the
+ * same "too weak to trust" bar the zip-anchored path already enforces below.
  */
 const STATE_TOKEN = /^[A-Za-z]{2}$/;
 const ZIP_TOKEN = /^\d{5}(?:-\d{4})?$/;
@@ -174,13 +190,14 @@ export function parseCityStateZip(cityStateZipCountry?: string): {
       break;
     }
   }
+
   if (zipIndex === -1) return null;
 
   // A literal "-0000" +4 suffix is a placeholder, not a real ZIP+4 extension - the vast majority
   // of ACMS addresses carry it, far too common to be genuine +4 data for that many distinct
   // addresses. Stripped here so the persisted evidence graph reports what ACMS actually knows (a
   // plain 5-digit zip), rather than a reviewer reading "-0000" as real +4 precision it never had.
-  // Zip-matching itself already truncates to 5 digits (see scoreZipCodeMatch/pipelineAddressScore's
+  // Zip-matching itself already truncates to 5 digits (see scoreZipCodeMatch's
   // own zip5 helpers), so this is a persisted-evidence clarity fix, not a scoring behavior change.
   const zipCode = tokens[zipIndex].replace(/-0000$/, '');
   const precedingToken = tokens[zipIndex - 1];
@@ -569,7 +586,7 @@ export function calculateChapterScore(
  * characters (e.g. "L." -> "l", "O'Brien" -> "obrien"). Distinct from `normalizeName`, which
  * only collapses whitespace for full-name lookup matching.
  */
-export function normalizeNamePart(namePart?: string): string {
+function normalizeNamePart(namePart?: string): string {
   return (namePart ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
@@ -843,9 +860,12 @@ export function lastNameSurnameCandidates(namePart?: string): string[] {
  *
  * dxtrLast/camsLast are expected to already be firstLastNameToken results (this function's two
  * historical callers both pass that), so the particle-split check above still runs first and
- * unchanged. lastNameSurnameCandidates' RAW-field fallback tokens are checked only afterward, and
- * only when the caller supplies the corresponding raw field (sourceRawLastName/
- * candidateRawLastName) - both optional so every existing call site keeps working unchanged.
+ * unchanged. The fallback candidate lists are checked only afterward, and only when the caller
+ * supplies at least one (sourceCandidates/candidateCandidates) - both optional so every existing
+ * call site keeps working unchanged. Each list is expected to already be a
+ * lastNameSurnameCandidates result (primary token first, any alternates after) - see
+ * NormalizedTrustee.lastNameAlternates, which a NORMALIZE stage populates once so this comparison
+ * never has to re-derive candidates from a raw string itself.
  *
  * The fallback additionally requires ONE side to be a bare, single-token surname (exactly one
  * candidate token - no prepended/hyphenated compound of its own) before trusting a shared token
@@ -860,8 +880,8 @@ export function lastNameSurnameCandidates(namePart?: string): string[] {
 export function lastNameTokensMatch(
   dxtrLast: string,
   camsLast: string,
-  sourceRawLastName?: string,
-  candidateRawLastName?: string,
+  sourceCandidates?: string[],
+  candidateCandidates?: string[],
 ): boolean {
   if (!dxtrLast || !camsLast) return false;
   if (dxtrLast === camsLast) return true;
@@ -872,15 +892,13 @@ export function lastNameTokensMatch(
   const camsSplit = particleSplitVariant(camsLast);
   if (camsSplit === dxtrLast) return true;
 
-  if (sourceRawLastName === undefined && candidateRawLastName === undefined) return false;
+  if (sourceCandidates === undefined && candidateCandidates === undefined) return false;
 
-  const sourceCandidates = lastNameSurnameCandidates(sourceRawLastName);
-  const candidateCandidates = lastNameSurnameCandidates(candidateRawLastName);
   const eitherSideIsBareSingleToken =
-    sourceCandidates.length === 1 || candidateCandidates.length === 1;
+    (sourceCandidates?.length ?? 0) === 1 || (candidateCandidates?.length ?? 0) === 1;
   if (!eitherSideIsBareSingleToken) return false;
 
-  return sourceCandidates.some((token) => candidateCandidates.includes(token));
+  return (sourceCandidates ?? []).some((token) => (candidateCandidates ?? []).includes(token));
 }
 
 const isInitialOf = (initial: string, full: string): boolean =>
@@ -924,7 +942,7 @@ export function isKnownNicknamePair(a: string, b: string): boolean {
  */
 const FIRST_NAME_NICKNAME_JARO_WINKLER_THRESHOLD = 0.8;
 
-function isPlausibleNicknameByDistance(a: string, b: string): boolean {
+export function isPlausibleNicknameByDistance(a: string, b: string): boolean {
   return natural.JaroWinklerDistance(a, b) >= FIRST_NAME_NICKNAME_JARO_WINKLER_THRESHOLD;
 }
 
@@ -976,24 +994,46 @@ export function scoreMiddleNamePart(a: string, b: string): number {
 }
 
 /**
- * Minimum score scoreFirstNamePart must reach for the swapped pairing (dxtr first vs cams
- * middle, dxtr middle vs cams first) to be trusted as a genuine first/middle swap rather than
- * coincidental overlap. Both crossed comparisons must clear this - a person who goes by their
- * middle name has it recorded first on one side and second on the other, so a real swap agrees
- * in BOTH directions (not just one), unlike a same-first-name coincidence between two different
- * people who happen to share a common first name.
+ * Minimum scoreFirstNamePart a crossed pairing (dxtr first vs cams middle, dxtr middle vs cams
+ * first) must reach to be PLAUSIBLE at all - see isFirstMiddleSwap's own doc comment for how this
+ * combines with isCrossedNamePartMatch's stricter "at least one genuine" requirement.
  */
 const NAME_SWAP_MIN_PART_SCORE = 85;
+
+/**
+ * Requires an EXACT match OR a genuine nickname/formal-name pair (isKnownNicknamePair) OR a
+ * close-by-distance spelling variant (isPlausibleNicknameByDistance) on a crossed name-part pair -
+ * deliberately NOT isInitialOf, unlike scoreFirstNamePart's other two callers. A bare-initial
+ * relationship is exactly the collision this check must refuse (see isOneSidedMiddleNameMatch and
+ * isFirstMiddleSwap's own doc comments).
+ *
+ * Both operands must be longer than a single character before either relaxation is tried: a short
+ * name is highly Jaro-Winkler-similar to its own leading letter by construction (e.g. "al" vs "a"
+ * scores 0.85), so isPlausibleNicknameByDistance would otherwise readmit the exact bare-initial
+ * relationship this function exists to refuse.
+ */
+function isCrossedNamePartMatch(a: string, b: string): boolean {
+  if (!a || !b) return false;
+  if (a === b) return true;
+  if (a.length === 1 || b.length === 1) return false;
+  return isKnownNicknamePair(a, b) || isPlausibleNicknameByDistance(a, b);
+}
 
 /**
  * Detects a first/middle name swap: a trustee who goes by their middle name may have it recorded
  * first on one side (e.g. CAMS "M. Douglas Flahaut") while the other side keeps the legal
  * first/middle order (ACMS PROF_FIRST_NAME "Douglas", PROF_MI "M"). Positional-only comparison
- * (scoreFirstNamePart alone) sees this as two unrelated first names. Requires BOTH crossed pairs
- * (dxtr first vs cams middle, dxtr middle vs cams first) to independently clear
- * NAME_SWAP_MIN_PART_SCORE, so a real swap - not a coincidental partial overlap - is what's being
- * credited. Capped at 85 (never 100) since a swap is still a real discrepancy in field placement,
- * the same treatment an initial-vs-full relationship gets in scoreFirstNamePart/scoreMiddleNamePart.
+ * (scoreFirstNamePart alone) sees this as two unrelated first names.
+ *
+ * Requires both crossed pairs (dxtr-first/cams-middle, dxtr-middle/cams-first) to be plausible
+ * (isCrossedNamePartMatch or a bare-initial relationship), AND at least one crossed pair to be a
+ * genuine match (exact or nickname, never merely initial-of). Two bare initials that each happen to
+ * match the other record's unrelated first name's leading letter is coincidence, not a swap (e.g.
+ * ACMS "Michael P" vs CAMS "Philip M." - both crossed pairs are initial-of only, no real
+ * relationship between "Michael" and "Philip"); a genuine swap carries the same name token spelled
+ * out on one side (e.g. ACMS "Francis J" vs CAMS "J. Francis" - "francis" vs "francis" is exact).
+ *
+ * Capped at 85 (never 100), the same treatment an initial-vs-full relationship gets elsewhere.
  */
 export function isFirstMiddleSwap(
   dxtrFirst: string,
@@ -1002,26 +1042,14 @@ export function isFirstMiddleSwap(
   camsMiddle: string,
 ): boolean {
   if (!dxtrMiddle || !camsMiddle) return false;
-  const crossedFirst = scoreFirstNamePart(dxtrFirst, camsMiddle);
-  const crossedMiddle = scoreFirstNamePart(dxtrMiddle, camsFirst);
-  return crossedFirst >= NAME_SWAP_MIN_PART_SCORE && crossedMiddle >= NAME_SWAP_MIN_PART_SCORE;
-}
-
-/**
- * Requires an EXACT match OR a genuine nickname/formal-name pair (isKnownNicknamePair) OR a
- * close-by-distance spelling variant (isPlausibleNicknameByDistance) on the crossed pair used by
- * isOneSidedMiddleNameMatch - deliberately NOT isInitialOf, unlike scoreFirstNamePart's other two
- * callers. A bare-initial relationship is exactly the collision this check must still refuse (see
- * isOneSidedMiddleNameMatch's own doc comment on the real "JORDAN VOSSEY" vs "Aldric J. Vossey"
- * regression that motivated excluding it) - JaroWinklerDistance against a 1-character string and
- * a real nickname-dictionary lookup both already require far more character overlap than a bare
- * initial has, so neither relaxation reopens that risk; they only add tolerance for a genuine
- * nickname pair (e.g. "Steve"/"Stephen") that an exact-string check alone would miss.
- */
-function isOneSidedCrossedNamePartMatch(a: string, b: string): boolean {
-  if (!a || !b) return false;
-  if (a === b) return true;
-  return isKnownNicknamePair(a, b) || isPlausibleNicknameByDistance(a, b);
+  const crossedFirstPlausible =
+    scoreFirstNamePart(dxtrFirst, camsMiddle) >= NAME_SWAP_MIN_PART_SCORE;
+  const crossedMiddlePlausible =
+    scoreFirstNamePart(dxtrMiddle, camsFirst) >= NAME_SWAP_MIN_PART_SCORE;
+  if (!crossedFirstPlausible || !crossedMiddlePlausible) return false;
+  return (
+    isCrossedNamePartMatch(dxtrFirst, camsMiddle) || isCrossedNamePartMatch(dxtrMiddle, camsFirst)
+  );
 }
 
 /**
@@ -1029,7 +1057,7 @@ function isOneSidedCrossedNamePartMatch(a: string, b: string): boolean {
  * name, just in the "wrong" field), this covers a trustee who goes by their middle name where one
  * source never recorded a middle name at all - ACMS "Marlowe Vossey" (PROF_MI genuinely empty, not
  * just omitted from this comparison) vs CAMS "T. Marlowe Vossey" (firstName="T.", middleName=
- * "Marlowe"). The crossed pair is compared via isOneSidedCrossedNamePartMatch (exact, nickname, or
+ * "Marlowe"). The crossed pair is compared via isCrossedNamePartMatch (exact, nickname, or
  * close-distance - never a bare initial - see that function's own doc comment for why): unlike
  * isFirstMiddleSwap, there is no second, independent direction to cross-check an initial against
  * here (the "empty" side's middle slot has nothing in it to compare against), so a bare initial
@@ -1051,8 +1079,8 @@ export function isOneSidedMiddleNameMatch(
   camsMiddle: string,
 ): boolean {
   if (dxtrMiddle && camsMiddle) return false; // both populated - isFirstMiddleSwap's job
-  if (!dxtrMiddle && camsMiddle) return isOneSidedCrossedNamePartMatch(dxtrFirst, camsMiddle);
-  if (dxtrMiddle && !camsMiddle) return isOneSidedCrossedNamePartMatch(dxtrMiddle, camsFirst);
+  if (!dxtrMiddle && camsMiddle) return isCrossedNamePartMatch(dxtrFirst, camsMiddle);
+  if (dxtrMiddle && !camsMiddle) return isCrossedNamePartMatch(dxtrMiddle, camsFirst);
   return false;
 }
 
@@ -1369,23 +1397,6 @@ export async function resolveNameCollisionByScoring(
 }
 
 /**
- * Minimum nameScore (see calculateNameScore) for a candidate to qualify as name-corroborated in
- * the ACMS pipeline's contact-corroboration stage (trustee-match-pipeline-stages.ts). Below this,
- * a name difference is too weak a starting point for contact-field corroboration to rescue,
- * regardless of how well address/phone/email line up. Tuned via
- * test/integration/sync-acms-professional-ids-audit/scripts/auto-link-threshold-backtest.ts.
- */
-export const CONTACT_CORROBORATION_NAME_THRESHOLD = 85;
-
-/**
- * Minimum addressScore for address alone to count as strong corroboration in the ACMS pipeline's
- * contact-corroboration stage. Phone/email instead use their scale's max (100, an exact match)
- * since both are short, structured values where a partial match isn't meaningfully distinguishable
- * from coincidence the way a fuzzy address bigram score is.
- */
-export const CONTACT_CORROBORATION_ADDRESS_THRESHOLD = 80;
-
-/**
  * ACMS's sentinel for "no real value recorded" on the legacy phone/fax/email fields is the STRING
  * "0", not an empty string - a raw truthiness check (!value) never catches it, since a non-empty
  * string is always truthy in JS. This exact gap let an earlier no-contradiction fallback silently
@@ -1407,7 +1418,7 @@ export function isBlankAcmsValue(value: string | undefined): boolean {
  *    exactly one scored candidate. Both tiers share this label - neither is a more distinct
  *    category than the pipeline's other normalization steps, none of which get their own label.
  */
-export type NameMatchQuality = 'exact' | 'fuzzy';
+type NameMatchQuality = 'exact' | 'fuzzy';
 
 /**
  * Outcome of a name-lookup attempt (see matchTrusteeByName):
@@ -1669,17 +1680,3 @@ export function tokenizeNameForIntersection(fullName: string): string[] {
     (t) => t.length >= TOKEN_INTERSECTION_MIN_TOKEN_LENGTH && !TOKEN_INTERSECTION_STOPWORDS.has(t),
   );
 }
-
-/**
- * Minimum calculateNameScore a state-mismatched candidate needs to survive this filter anyway -
- * the same "initial/nickname/swap" ceiling calculateNameScore itself uses throughout (see
- * NAME_SWAP_MIN_PART_SCORE), reused here rather than inventing a new threshold.
- *
- * Equal to CONTACT_CORROBORATION_NAME_THRESHOLD by construction: scoreStateNotConflicting and
- * scoreNameMatch both call pipelineNameScore with identical arguments, so
- * isStateNotConflicting?.pass === false strictly implies doesNameMatch?.pass === false - this is
- * why the resolvers that gate on doesNameMatch don't ALSO need an explicit state check; the check
- * would be redundant there. Changing either constant independently breaks that implication and
- * opens a gap in any stage that gates on doesNameMatch.value === 0 without its own state check.
- */
-export const STATE_OVERRIDE_MIN_NAME_SCORE = 85;
