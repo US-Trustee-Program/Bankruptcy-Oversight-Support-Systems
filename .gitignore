@@ -134,6 +134,7 @@ vitest.config.js.map
 .beads/
 .dolt/
 .beads-credential-key
+*.gate.lock*
 
 # Beads / Dolt files (added by bd init)
 *.db
