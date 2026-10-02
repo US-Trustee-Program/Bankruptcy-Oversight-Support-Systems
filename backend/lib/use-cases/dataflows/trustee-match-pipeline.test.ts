@@ -143,10 +143,8 @@ describe('addCandidate', () => {
 });
 
 describe('promoteCandidate', () => {
-  // Models the nested-pipeline pattern (see
-  // docs/architecture/decision-records/TrusteeMatchingPipeline.md): a stage runs its own scoped
-  // discovery-then-filter pipeline internally, then promotes only the survivors into the outer
-  // state - carrying the inner pipeline's own score history forward rather than discarding it.
+  // Models a stage that runs its own nested pipeline, then promotes only the survivors into the
+  // outer state.
   test('merges a candidate built by a nested pipeline run into the outer state, preserving its score history', () => {
     const innerState = createInitialState(makeDxtrTrustee());
     const innerCandidate = addCandidate(
@@ -330,9 +328,7 @@ describe('runPipeline', () => {
     expect(result).toBe(state);
   });
 
-  // runPipeline is the SOLE place that checks for a terminal outcome (see its own doc comment) -
-  // no individual stage performs this check itself, so a stage can be written as a plain, pure
-  // state -> state function with zero control-flow responsibility of its own.
+  // runPipeline is the only place that checks for a terminal outcome; stages never do.
   test('stops iterating and returns immediately once a stage sets match, never calling any later stage', async () => {
     const state = createInitialState(makeDxtrTrustee());
     const matchingStage: Stage = async (s) => ({

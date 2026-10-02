@@ -64,10 +64,6 @@ describe('runTrusteeMatchPipeline', () => {
   test('tries matchTrusteeByName and later tiers when surnameExact finds candidates but none resolve', async () => {
     const johnMoon = makeTrustee({ trusteeId: 't1', firstName: 'John', lastName: 'Moon' });
     const fredMoon = makeTrustee({ trusteeId: 't2', firstName: 'Fred', lastName: 'Moon' });
-    // recallByTokenIntersection/recallByAnchoredLevenshtein now query searchTrusteesByName
-    // directly (see cams-6djma) rather than the removed findTokenIntersectionCandidates/
-    // findAnchoredLevenshteinCandidates helper calls - both tiers run to completion and find
-    // nothing beyond surnameExact's own "moon" query, same as this test originally intended.
     const searchSpy = vi
       .spyOn(MockMongoRepository.prototype, 'searchTrusteesByName')
       .mockImplementation(async (token: string) => (token === 'moon' ? [johnMoon, fredMoon] : []));
@@ -80,14 +76,11 @@ describe('runTrusteeMatchPipeline', () => {
       makeDxtrTrustee({ fullName: 'Someone Moon', firstName: 'Someone', lastName: 'Moon' }),
     );
 
-    // Neither surname-exact candidate resolved on its own, so every later discovery tier is still
-    // tried (see runTrusteeMatchPipeline's doc comment) - a same-surname, non-corroborating
-    // candidate is not allowed to block the search.
+    // Candidates that are found but do not resolve never block a later tier.
     expect(matchSpy).toHaveBeenCalled();
     expect(searchSpy).toHaveBeenCalled();
     expect(result.match).toBeNull();
-    // Both surname-exact candidates are still carried forward into the combined pool rather than
-    // discarded, since they were real, cheap work already done.
+    // Every tier's candidates stay in the outer pool.
     expect(result.candidates.size).toBe(2);
   });
 
@@ -161,9 +154,6 @@ describe('runTrusteeMatchPipeline', () => {
     vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByIds').mockResolvedValue([
       makeTrustee({ trusteeId: 't1', public: { phone: { number: '206-555-1000' } } as never }),
     ]);
-    // recallBySurnameExact queries searchTrusteesByName directly too (anchored on the ACMS
-    // record's own lastName, "doe" - see makeDxtrTrustee's default) - the beforeEach's own
-    // default mockResolvedValue([]) covers that single expected call, finding nothing.
     const searchSpy = vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName');
 
     const result = await runTrusteeMatchPipeline(
@@ -171,10 +161,8 @@ describe('runTrusteeMatchPipeline', () => {
       makeDxtrTrustee({ legacy: { phone: '2065551000' } as never }),
     );
 
-    // matchTrusteeByName's ambiguous candidate resolved directly via corroboration, so
-    // runTrusteeMatchPipeline never reaches recallByTokenIntersection/recallByAnchoredLevenshtein
-    // (both now query searchTrusteesByName directly too) - only recallBySurnameExact's own single
-    // "doe" query happens, never a second one from either later tier.
+    // recallByName resolves, so the later tiers never search; only recallBySurnameExact's "doe"
+    // search runs.
     expect(searchSpy).toHaveBeenCalledTimes(1);
     expect(searchSpy).toHaveBeenCalledWith('doe');
     expect(result.match?.trusteeId).toBe('t1');
@@ -188,14 +176,8 @@ describe('runTrusteeMatchPipeline', () => {
     vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByIds').mockResolvedValue([
       makeTrustee({ trusteeId: 't1', firstName: 'Someone', lastName: 'Else' }),
     ]);
-    // recallByAnchoredLevenshtein now queries searchTrusteesByName directly, anchored on the
-    // ACMS record's lastName ("doe") - see makeDxtrTrustee's default. Returns a trustee whose
-    // lastName exactly matches the anchor and whose firstName is a close (edit distance 1) fuzzy
-    // match, mirroring the same shape findAnchoredLevenshteinCandidates itself requires. t1
-    // (matchTrusteeByName's ambiguous candidate, unrelated name, no phone) and t2 (anchoredLevenshtein's
-    // candidate, real matching phone) are scored together in ONE combined pool (see
-    // runTrusteeMatchPipeline's doc comment) rather than two isolated attempts - only t2 has
-    // corroborating evidence, so it resolves.
+    // t1 has an unrelated name and no phone; t2 shares the ACMS surname and phone, with a first
+    // name one edit away.
     const levenshteinCandidate = makeTrustee({
       trusteeId: 't2',
       firstName: 'Jon',
@@ -217,9 +199,7 @@ describe('runTrusteeMatchPipeline', () => {
 
   test('tries tokenIntersection then anchoredLevenshtein when matchTrusteeByName returns no-match', async () => {
     vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({ kind: 'no-match' });
-    // recallByTokenIntersection now queries searchTrusteesByName directly (see cams-6djma),
-    // once per ACMS token ("john", "doe" - see makeDxtrTrustee's default fullName). A candidate
-    // must be returned by EVERY token's query to survive intersection.
+    // Returns the candidate for every ACMS name token, as token intersection requires.
     const tokenCandidate = makeTrustee({
       trusteeId: 't1',
       firstName: 'John',
@@ -278,8 +258,6 @@ describe('runTrusteeMatchPipeline', () => {
 
   test('returns no match when every tier is exhausted', async () => {
     vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({ kind: 'no-match' });
-    // beforeEach's default searchTrusteesByName mock ([]) covers recallByTokenIntersection/
-    // recallByAnchoredLevenshtein finding nothing, same as this test originally intended.
 
     const result = await runTrusteeMatchPipeline(context, makeDxtrTrustee());
 
@@ -294,10 +272,7 @@ describe('runTrusteeMatchPipeline', () => {
 
     const result = await runTrusteeMatchPipeline(context, makeDxtrTrustee());
 
-    // ONE camsStack entry, from recallBySurnameExact's own try/catch: this function reads
-    // surnameExactResult.error explicitly and copies it through (see runTrusteeMatchPipeline),
-    // rather than relying on an exception unwinding into its own outer catch - no second entry is
-    // appended, since nothing here ever threw.
+    // The orchestrator copies the nested tier's error through, so only one camsStack entry exists.
     expect(result.error).toMatchObject({
       isCamsError: true,
       camsStack: [{ message: 'recallBySurnameExact failed' }],
