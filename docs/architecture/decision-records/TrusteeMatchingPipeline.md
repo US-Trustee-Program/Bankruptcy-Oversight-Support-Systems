@@ -2,18 +2,15 @@
 
 ## Context
 
-Trustee identity matching — deciding which CAMS trustee record, if any, corresponds to a trustee
-record from a legacy source system (ACMS professional records, DXTR case-appointment parties) —
-started as a small set of sequential checks and grew, improvement by improvement, into a deeply
-nested branching function. Each new matching signal — a stricter candidate filter, a data-quality
-normalization, a new fallback tier — was added as another conditional branch, another argument
-threaded through existing calls, or another layer of nesting.
+This pipeline decides which CAMS trustee record, if any, corresponds to an ACMS professional record
+(CMMPR). DXTR case-appointment matching does not use it: `sync-trustee-case-appointments.ts` scores
+candidates with the `calculate*Score` functions in `trustee-match.helpers.ts`.
 
-This growth pattern had two costs. First, testing a single branch in isolation required mocking most
-of the surrounding call graph, since a branch was only reachable by first satisfying every branch
-that preceded it. Second, reasoning about the function as a whole required holding the entire branch
-tree in mind, since a new signal's correct placement depended on which existing branches it had to
-run before, after, or in place of.
+Matching implemented as one nested branching function, where each new signal is another conditional
+branch or threaded argument, has two costs. Testing one branch in isolation requires mocking most of
+the surrounding call graph, since a branch is reachable only by satisfying every branch before it.
+Placing a new signal requires holding the whole branch tree in mind, since its correct position
+depends on which existing branches it must run before, after, or in place of.
 
 Three properties of the problem shaped the decision beyond "reduce branching":
 
@@ -47,17 +44,16 @@ preserving the full sequence of evaluations a candidate accumulated.
 
 ### A uniform functional shape
 
-Every pool-level stage shares exactly one signature: `(state) => state`, with no exceptions. This is
-a deliberate, Lisp-style design choice, not an incidental convention — a fixed input/output shape is
-what lets stages compose as a plain ordered list, be written and tested in isolation, and be
-reordered or added to without touching any other stage's code. A stage is a pure computation over
-its input state: deterministic, free of I/O, and free of mutation of the source or candidate records
-it was handed as raw input. The one sanctioned exception is a RECALL stage's own repository call,
-whose failure lands on the state's error slot rather than throwing (see "Processing failure" below)
-— RECALL is the sole boundary anywhere in the pipeline where non-determinism or I/O is permitted to
-enter at all. This is a pragmatic relaxation of strict purity, not an oversight: forbidding RECALL's
-own repository call would make retrieval impossible, so the rule is "no I/O or non-determinism
-outside RECALL," not "no I/O anywhere."
+Every pool-level stage shares exactly one signature: `(state) => state`, with no exceptions. A fixed
+input/output shape is what lets stages compose as a plain ordered list, be written and tested in
+isolation, and be reordered or added to without touching any other stage's code. A stage is a pure
+computation over its input state: deterministic, free of I/O, and free of mutation of the source or
+candidate records it was handed as raw input. The one sanctioned exception is a RECALL stage's own
+repository call, whose failure lands on the state's error slot rather than throwing (see "Processing
+failure" below) — RECALL is the sole boundary anywhere in the pipeline where non-determinism or I/O
+is permitted to enter at all. This is a pragmatic relaxation of strict purity, not an oversight:
+forbidding RECALL's own repository call would make retrieval impossible, so the rule is "no I/O or
+non-determinism outside RECALL," not "no I/O anywhere."
 
 SCORE, when it runs against a single already-discovered candidate rather than the whole pool, uses
 its own distinct, narrower, equally uniform signature: `(sourceNormalized, candidate) => candidate`.
@@ -74,11 +70,12 @@ scorers the same way pool-level stages do — as a plain ordered list, reduced l
 scorer's returned candidate feeding the next — mirroring the pool-level runner's own shape one level
 down, but without a terminal-outcome guard: no per-candidate scorer ever short-circuits the
 remaining scorers, because a candidate's scores are data recorded on it, not a control-flow signal
-the way the pipeline state's `match`/`skip`/`error` is at the pool level. Every candidate runs
-through the full per-candidate scorer sequence exactly once, at the moment it is discovered — not
-through a separate, later pool-wide SCORE pass — so by the time a candidate is visible to any
-pool-level stage, it is already fully scored, and RESOLVE stages are pure readers of that history
-rather than triggers for new computation.
+the way the pipeline state's `match`/`skip`/`error` is at the pool level. A candidate runs through
+the full per-candidate scorer sequence each time a retrieval discovers it — rediscovery re-scores it
+idempotently, each scorer overwriting its own key with the same result — and there is no separate
+pool-wide SCORE pass. By the time a candidate is visible to any pool-level stage, it is already
+fully scored, and RESOLVE stages are pure readers of that history rather than triggers for new
+computation.
 
 Purity here means no I/O, no randomness, and no dependence on anything outside the function's own
 arguments — not the stricter sense of never mutating anything reachable from those arguments. A
@@ -143,11 +140,11 @@ A stage's name states its role(s) as a leading verb, so the name and the role ar
 to hold in mind at once: a RECALL name leads with retrieval, a SCORE name leads with comparison (an
 annotation that never gates a terminal outcome is named as a recording, distinguishing a diagnostic
 from a real SCORE), a RESOLVE name leads with the resolution. A stage that straddles roles (see
-"These roles are semantic, not a rigid structure" above) states both leading verbs, in the order
+"These roles are semantic, not a rigid structure" below) states both leading verbs, in the order
 they occur. A score's key follows the same rule at the field level — a boolean comparison is keyed
 as a predicate so the recorded evidence reads the same way the stage that produced it does.
 
-A RESOLVE reaches exactly one of four outcomes:
+Matching reaches exactly one of four outcomes:
 
 - **INCOMPARABLE** — the source record carries no identity to match at all: an administrative
   placeholder, or a record the source system has disavowed. Candidate quality cannot be assessed
@@ -198,7 +195,8 @@ rather than a disposition lets a caller filter on either axis independently.
 A `linked` record also carries `linkMethod` — `auto` when the pipeline or a fingerprint made the
 link, `manual` when a person did. Every record carries `nameMatchCount`, the number of candidates
 that matched on name at any grade: an unlinked record with a nonzero count is a candidate for manual
-recovery, and the two fields together are indexed for that query.
+recovery, and `disposition` and `nameMatchCount` are indexed together (with `documentType`) for that
+query.
 
 When more than one outcome slot is set, the disposition resolves in the order error → skip → match →
 ambiguity. An evaluation that failed is never reported as a resolution, even if an earlier stage had
@@ -335,16 +333,15 @@ corroborated candidate for it. In the combined pool every candidate from every t
 equal footing under the same resolving stages. Early-tier survivors are carried in as well, rather
 than re-retrieved.
 
-The asymmetry is behavioral and validated against retrieval evidence, not a performance detail.
-Collapsing the tiers into one uniform sequence that short-circuits on any tier's resolution
-reintroduces the suppression.
+The asymmetry is behavioral, not a performance detail. Collapsing the tiers into one uniform
+sequence that short-circuits on any tier's resolution reintroduces the suppression.
 
 ### Reusable, re-runnable stages
 
-A stage is a reusable function and may run more than once — for example, re-scoring the growing
-candidate set each time a retrieval adds candidates. Re-runs are idempotent: adding a candidate that
-is already present is a no-op, and re-recording a signal overwrites that signal's own prior entry
-rather than accumulating duplicates.
+A stage is a reusable function and may run more than once — for example, a later retrieval
+rediscovering a candidate an earlier one already added, which re-scores that one candidate. Re-runs
+are idempotent: adding a candidate that is already present returns the existing entry, and
+re-recording a signal overwrites that signal's own prior entry rather than accumulating duplicates.
 
 ### Evidence completeness
 
@@ -379,7 +376,7 @@ runner applies the same guard at both levels, so inlining a composed stage into 
 preserves behavior. The grouping is organizational, chosen for legibility.
 
 **Tier boundaries are threaded explicitly, outside any stage list.** The top-level flow is not a
-stage list — see "Discovery tiers and the combined pool" below. Each tier boundary inspects the
+stage list — see "Discovery tiers and the combined pool" above. Each tier boundary inspects the
 outcome slots directly, the same explicit-inspection discipline this document prescribes for a call
 site reading the error slot. No _stage_ is ever written to wonder whether it should run.
 
@@ -455,8 +452,8 @@ guarantee that each stage performs exactly one role.
 
 The shared state shape and stage machinery (the candidate collection, the terminal-outcome slot, the
 terminal-outcome guard, the pipeline runner) are parameterized on the source-record type and
-candidate type, rather than hard-coded to trustee matching specifically. Trustee matching is, today,
-the only concrete instantiation of this graph — the parameterization exists so a second
+candidate type, rather than hard-coded to trustee matching specifically. Trustee matching is the
+only concrete instantiation of this graph — the parameterization exists so a second
 legacy-source-to-CAMS matching problem could reuse the same machinery without first proving out the
 abstraction against a use case that doesn't yet exist, not as a commitment that one will arrive.
 Every concept in this document (RECALL/NORMALIZE/SCORE/MEMOIZATION/RESOLVE, processing failure) is
