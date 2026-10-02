@@ -78,7 +78,7 @@ describe('runTrusteeMatchPipeline', () => {
 
     // Candidates that are found but do not resolve never block a later tier.
     expect(matchSpy).toHaveBeenCalled();
-    expect(searchSpy).toHaveBeenCalled();
+    expect(searchSpy).toHaveBeenCalledWith('someone');
     expect(result.match).toBeNull();
     // Every tier's candidates stay in the outer pool.
     expect(result.candidates.size).toBe(2);
@@ -126,7 +126,7 @@ describe('runTrusteeMatchPipeline', () => {
       expect(result.candidates.has('t1')).toBe(true);
     });
 
-    test('resolves through a resolve stage when contact data corroborates it', async () => {
+    test('resolves via resolveByPhone when the phone corroborates the sole exact-name match', async () => {
       vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByIds').mockResolvedValue([
         makeTrustee({
           trusteeId: 't1',
@@ -146,7 +146,7 @@ describe('runTrusteeMatchPipeline', () => {
     });
   });
 
-  test('resolves via matchTrusteeByName ambiguous -> corroboration, and does NOT try tokenIntersection', async () => {
+  test('resolves in the recallByName tier via resolveByPhone and never reaches the later tiers', async () => {
     vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({
       kind: 'ambiguous',
       matchCandidates: [{ trusteeId: 't1' } as never],
@@ -166,6 +166,7 @@ describe('runTrusteeMatchPipeline', () => {
     expect(searchSpy).toHaveBeenCalledTimes(1);
     expect(searchSpy).toHaveBeenCalledWith('doe');
     expect(result.match?.trusteeId).toBe('t1');
+    expect(result.match?.resolvedBy).toBe('resolveByPhone');
   });
 
   test('resolves via anchoredLevenshtein candidate pooled alongside a non-corroborating matchTrusteeByName candidate', async () => {
@@ -176,17 +177,15 @@ describe('runTrusteeMatchPipeline', () => {
     vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByIds').mockResolvedValue([
       makeTrustee({ trusteeId: 't1', firstName: 'Someone', lastName: 'Else' }),
     ]);
-    // t1 has an unrelated name and no phone; t2 shares the ACMS surname and phone, with a first
-    // name one edit away.
     const levenshteinCandidate = makeTrustee({
       trusteeId: 't2',
-      firstName: 'Jon',
-      lastName: 'Doe',
-      name: 'Jon Doe',
+      firstName: 'John',
+      lastName: 'Dow',
+      name: 'John Dow',
       public: { phone: { number: '206-555-1000' } } as never,
     });
     vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName').mockImplementation(
-      async (token: string) => (token === 'doe' ? [levenshteinCandidate] : []),
+      async (token: string) => (token === 'john' ? [levenshteinCandidate] : []),
     );
 
     const result = await runTrusteeMatchPipeline(
@@ -194,7 +193,10 @@ describe('runTrusteeMatchPipeline', () => {
       makeDxtrTrustee({ legacy: { phone: '2065551000' } as never }),
     );
 
+    expect(result.candidates.get('t2')?.origin).toBe('recallByAnchoredLevenshtein');
+    expect(result.candidates.has('t1')).toBe(true);
     expect(result.match?.trusteeId).toBe('t2');
+    expect(result.match?.resolvedBy).toBe('resolveByPhone');
   });
 
   test('tries tokenIntersection then anchoredLevenshtein when matchTrusteeByName returns no-match', async () => {
@@ -203,7 +205,8 @@ describe('runTrusteeMatchPipeline', () => {
     const tokenCandidate = makeTrustee({
       trusteeId: 't1',
       firstName: 'John',
-      lastName: 'Doe',
+      lastName: 'Dow',
+      name: 'John Dow',
       public: { phone: { number: '206-555-1000' } } as never,
     });
     vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName').mockImplementation(
@@ -215,10 +218,12 @@ describe('runTrusteeMatchPipeline', () => {
       makeDxtrTrustee({ legacy: { phone: '2065551000' } as never }),
     );
 
+    expect(result.candidates.get('t1')?.origin).toBe('recallByTokenIntersection');
     expect(result.match?.trusteeId).toBe('t1');
+    expect(result.match?.resolvedBy).toBe('resolveByPhone');
   });
 
-  test('scores nameScore for matchTrusteeByName ambiguous candidates, enabling resolveByPhoneWithTypo', async () => {
+  test('resolves a recallByName candidate with an exact name and a one-digit phone typo via resolveByPhoneWithTypo', async () => {
     vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue({
       kind: 'ambiguous',
       matchCandidates: [{ trusteeId: 't1' } as never],
@@ -229,16 +234,7 @@ describe('runTrusteeMatchPipeline', () => {
       middleName: 'R.',
       lastName: 'Testerson',
       name: 'Sample R. Testerson',
-      public: {
-        address: {
-          address1: '606 Baltimore Ave., Suite 202',
-          city: 'Baltimore',
-          state: 'MD',
-          zipCode: '21204-4026',
-          countryCode: 'US',
-        },
-        phone: { number: '410-321-7908' },
-      },
+      public: { phone: { number: '410-555-1008' } } as never,
     });
     vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByIds').mockResolvedValue([candidate]);
 
@@ -249,11 +245,12 @@ describe('runTrusteeMatchPipeline', () => {
         firstName: 'Sample',
         middleName: 'R',
         lastName: 'Testerson',
-        legacy: { phone: '4103217900' } as never,
+        legacy: { phone: '4105551000' } as never,
       }),
     );
 
     expect(result.match?.trusteeId).toBe('t1');
+    expect(result.match?.resolvedBy).toBe('resolveByPhoneWithTypo');
   });
 
   test('returns no match when every tier is exhausted', async () => {

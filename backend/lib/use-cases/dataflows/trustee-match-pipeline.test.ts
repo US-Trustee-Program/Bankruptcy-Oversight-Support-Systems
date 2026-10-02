@@ -7,7 +7,6 @@ import {
   addCandidate,
   addScore,
   createTrusteeInitialState as createInitialState,
-  mergedScore,
   normalize,
   NormalizedMemo,
   TrusteePipelineState as PipelineState,
@@ -66,7 +65,7 @@ describe('createInitialState', () => {
     expect(state.error).toBeNull();
   });
 
-  test("starts as a clone of sourceRaw's scalar name fields, excluding address/name (reshaped, not passthrough, fields)", () => {
+  test("seeds sourceNormalized with sourceRaw's passthrough fields, leaving address and name to be computed later", () => {
     const sourceRaw = makeDxtrTrustee({ middleName: 'Q' });
     const state = createInitialState(sourceRaw);
 
@@ -207,48 +206,29 @@ describe('promoteCandidate', () => {
   });
 });
 
-describe('mergedScore', () => {
-  test('returns an empty object for a candidate with no scores yet', () => {
-    const state = createInitialState(makeDxtrTrustee());
-    const candidate = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })), 'test');
-
-    expect(mergedScore(candidate)).toEqual({});
-  });
-
-  test('a later write to the SAME scorer overwrites its prior slot', () => {
+describe('addScore', () => {
+  test('overwrites an earlier result recorded under the same scorer name', () => {
     const state = createInitialState(makeDxtrTrustee());
     const candidate = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })), 'test');
 
     addScore(candidate, 'doesNameMatch', { pass: false, quality: 'strong' });
     addScore(candidate, 'doesNameMatch', { pass: true, quality: 'exact' });
 
-    expect(mergedScore(candidate)).toEqual({
+    expect(candidate.scores).toEqual({
       doesNameMatch: { pass: true, quality: 'exact' },
     });
   });
 
-  test('a key set by one scorer survives when a different scorer contributes a different key', () => {
+  test('keeps results recorded under different scorer names side by side', () => {
     const state = createInitialState(makeDxtrTrustee());
     const candidate = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })), 'test');
 
     addScore(candidate, 'doesNameMatch', { pass: true, quality: 'exact' });
     addScore(candidate, 'doesStateMatch', { pass: false });
 
-    expect(mergedScore(candidate)).toEqual({
-      doesNameMatch: { pass: true, quality: 'exact' },
-      doesStateMatch: { pass: false },
-    });
-  });
-
-  test('does not mutate the underlying scores map', () => {
-    const state = createInitialState(makeDxtrTrustee());
-    const candidate = addCandidate(state, projectTrustee(makeTrustee({ trusteeId: 't1' })), 'test');
-    addScore(candidate, 'doesNameMatch', { pass: true, quality: 'exact' });
-
-    mergedScore(candidate);
-
     expect(candidate.scores).toEqual({
       doesNameMatch: { pass: true, quality: 'exact' },
+      doesStateMatch: { pass: false },
     });
   });
 });
@@ -450,7 +430,7 @@ describe('serializeState', () => {
       match: {
         trusteeId: 't1',
         score: { doesNameMatch: { pass: true, quality: 'exact' } },
-        resolvedBy: 'resolveBySoleExactNameInState',
+        resolvedBy: 'resolveByNameOnly',
       },
     };
 
@@ -459,7 +439,7 @@ describe('serializeState', () => {
     expect(serialized.match).toEqual({
       trusteeId: 't1',
       score: { doesNameMatch: { pass: true, quality: 'exact' } },
-      resolvedBy: 'resolveBySoleExactNameInState',
+      resolvedBy: 'resolveByNameOnly',
     });
   });
 
