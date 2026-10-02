@@ -1025,11 +1025,11 @@ export interface UserGroupsRepository extends Releasable {
 
 export interface TrusteeProfessionalIdsRepository extends Releasable {
   /**
-   * Writes a TrusteeProfessionalId for any pipeline outcome (auto-linked, no-match, ambiguous,
-   * skipped, error, or conflict) - camsTrusteeId is the resolved trusteeId on an auto-linked
+   * Writes a TrusteeProfessionalId for any pipeline outcome (linked, no-match, ambiguous,
+   * skipped, error, or conflict) - camsTrusteeId is the resolved trusteeId on a linked
    * disposition, or the ACMS variant's fingerprint otherwise, so every outcome lands in this
    * collection keyed for lookup/healing. Does not enforce uniqueness on (camsTrusteeId,
-   * acmsProfessionalId): the same ACMS id can accumulate multiple non-auto-linked records across
+   * acmsProfessionalId): the same ACMS id can accumulate multiple non-linked records across
    * sync runs as its fingerprint or disposition changes.
    */
   upsertProfessionalId(
@@ -1037,7 +1037,7 @@ export interface TrusteeProfessionalIdsRepository extends Releasable {
     user: CamsUserReference,
   ): Promise<TrusteeProfessionalId>;
   /**
-   * The following finders only return an auto-linked, non-conflicting disposition - callers
+   * The following finders only return a linked, non-conflicting disposition - callers
    * resolving real trustee<->ACMS links should never see a placeholder record keyed by
    * fingerprint. See hasConflictByAcmsProfessionalId for the one caller that specifically needs to
    * know about a 'conflict'-disposition record instead.
@@ -1054,7 +1054,7 @@ export interface TrusteeProfessionalIdsRepository extends Releasable {
   findByAcmsProfessionalId(acmsProfessionalId: string): Promise<TrusteeProfessionalIdSummary[]>;
   /**
    * Whether this ACMS professional ID has a 'conflict'-disposition record - the one exception to
-   * the "auto-linked, non-conflicting only" rule above, for a caller (heal-sentinel-case-
+   * the "linked, non-conflicting only" rule above, for a caller (heal-sentinel-case-
    * appointments.ts) that needs to distinguish "never linked" from "flagged as a data-integrity
    * conflict" rather than treating both as the same "left in place for the next attempt" outcome.
    */

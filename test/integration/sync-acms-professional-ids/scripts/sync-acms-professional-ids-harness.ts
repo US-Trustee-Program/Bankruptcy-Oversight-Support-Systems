@@ -669,13 +669,19 @@ async function seedCosmos() {
       { upsert: true },
     );
     await db.collection('trustee-professional-ids').updateOne(
-      { documentType: 'TRUSTEE_PROFESSIONAL_ID', camsTrusteeId: CONFLICT_EXISTING_TRUSTEE_ID, acmsProfessionalId: CONFLICT_ACMS_ID },
+      {
+        documentType: 'TRUSTEE_PROFESSIONAL_ID',
+        camsTrusteeId: CONFLICT_EXISTING_TRUSTEE_ID,
+        acmsProfessionalId: CONFLICT_ACMS_ID,
+      },
       {
         $set: {
           documentType: 'TRUSTEE_PROFESSIONAL_ID',
           camsTrusteeId: CONFLICT_EXISTING_TRUSTEE_ID,
           acmsProfessionalId: CONFLICT_ACMS_ID,
-          disposition: 'auto-linked',
+          disposition: 'linked',
+          linkMethod: 'auto',
+          nameMatchCount: 1,
           sourceRaw: { fullName: 'Norman N Namematch' },
           sourceNormalized: {},
           memo: {},
@@ -1006,7 +1012,9 @@ async function run() {
     // before asserting, same as the active-no-match record above.
     const newScenariosVerified = await pollUntil(async () => {
       const [ambiguousDoc, skippedDoc, conflictDoc] = await Promise.all([
-        db.collection('trustee-professional-ids').findOne({ acmsProfessionalId: AMBIGUOUS_ACMS_ID }),
+        db
+          .collection('trustee-professional-ids')
+          .findOne({ acmsProfessionalId: AMBIGUOUS_ACMS_ID }),
         db.collection('trustee-professional-ids').findOne({ acmsProfessionalId: SKIPPED_ACMS_ID }),
         db
           .collection('trustee-professional-ids')

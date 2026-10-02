@@ -723,7 +723,7 @@ export class MockMongoRepository
   findByCamsTrusteeId(camsTrusteeId: string): Promise<TrusteeProfessionalId[]> {
     return Promise.resolve(
       Array.from(this.professionalIds.values()).filter(
-        (m) => m.camsTrusteeId === camsTrusteeId && m.disposition === 'auto-linked',
+        (m) => m.camsTrusteeId === camsTrusteeId && m.disposition === 'linked',
       ),
     );
   }
@@ -731,7 +731,7 @@ export class MockMongoRepository
   findByAcmsProfessionalId(acmsProfessionalId: string): Promise<TrusteeProfessionalId[]> {
     return Promise.resolve(
       Array.from(this.professionalIds.values()).filter(
-        (m) => m.acmsProfessionalId === acmsProfessionalId && m.disposition === 'auto-linked',
+        (m) => m.acmsProfessionalId === acmsProfessionalId && m.disposition === 'linked',
       ),
     );
   }

@@ -179,14 +179,14 @@ The four RESOLVE outcomes are the pipeline's internal vocabulary. What is persis
 record is a _disposition_ — six of them — and the two do not map one-to-one: two dispositions
 describe states the pipeline never resolved at all.
 
-| Outcome                         | Disposition   | Notes                                                                                                          |
-| ------------------------------- | ------------- | -------------------------------------------------------------------------------------------------------------- |
-| MATCH                           | `auto-linked` |                                                                                                                |
-| NO MATCH                        | `no-match`    | Also covers a pool where no candidate cleared name matching — zero real evidence, not competing evidence       |
-| AMBIGUOUS                       | `ambiguous`   | Competing candidates                                                                                           |
-| INCOMPARABLE                    | `skipped`     |                                                                                                                |
-| _(none — processing failure)_   | `error`       | Orthogonal to resolution in kind, but dominant in precedence; see below                                        |
-| _(none — write-time collision)_ | `conflict`    | The professional ID was already linked to a different trustee; detected at persistence, not by a RESOLVE stage |
+| Outcome                         | Disposition | Notes                                                                                                          |
+| ------------------------------- | ----------- | -------------------------------------------------------------------------------------------------------------- |
+| MATCH                           | `linked`    |                                                                                                                |
+| NO MATCH                        | `no-match`  | Also covers a pool where no candidate cleared name matching — zero real evidence, not competing evidence       |
+| AMBIGUOUS                       | `ambiguous` | Competing candidates                                                                                           |
+| INCOMPARABLE                    | `skipped`   |                                                                                                                |
+| _(none — processing failure)_   | `error`     | Orthogonal to resolution in kind, but dominant in precedence; see below                                        |
+| _(none — write-time collision)_ | `conflict`  | The professional ID was already linked to a different trustee; detected at persistence, not by a RESOLVE stage |
 
 Whether an `ambiguous` record's candidates look like duplicate CAMS records of one person, rather
 than two different people, is a **separate boolean field** (`suspectDuplicateCamsTrustee`), not a
@@ -194,6 +194,11 @@ disposition — set when two or more name-qualifying candidates share a phone, a
 address with _each other_. Address is the load-bearing signal: a trustee entered twice commonly
 shares an address even when phone and email differ or are missing on one side. Keeping it a field
 rather than a disposition lets a caller filter on either axis independently.
+
+A `linked` record also carries `linkMethod` — `auto` when the pipeline or a fingerprint made the
+link, `manual` when a person did. Every record carries `nameMatchCount`, the number of candidates
+that matched on name at any grade: an unlinked record with a nonzero count is a candidate for manual
+recovery, and the two fields together are indexed for that query.
 
 When more than one outcome slot is set, the disposition resolves in the order error → skip → match →
 ambiguity. An evaluation that failed is never reported as a resolution, even if an earlier stage had

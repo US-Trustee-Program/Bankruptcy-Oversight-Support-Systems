@@ -155,7 +155,7 @@ function findByVariant<T extends { variant: string }>(bucket: T[], variant: stri
  * A genuine conflict is a different CAMS trustee already holding this ACMS professional ID -
  * looked up directly against prior writes rather than inferred from a unique-index violation,
  * since acmsProfessionalId -> camsTrusteeId is not enforced as globally unique at the database
- * layer. Only a prior auto-linked (non-conflicting) record counts.
+ * layer. Only a prior linked (non-conflicting) record counts.
  */
 async function findExistingConflict(
   deps: SyncAcmsProfessionalIdsDeps,
@@ -292,7 +292,7 @@ async function hasActiveAppointments(
 
 /**
  * Writes one TrusteeProfessionalId, composed directly from a TrusteeSerializedState, keyed by
- * camsTrusteeId - the resolved trusteeId on an auto-linked disposition, or the ACMS variant's
+ * camsTrusteeId - the resolved trusteeId on a linked disposition, or the ACMS variant's
  * fingerprint otherwise. conflictingTrusteeId/disposition override, when set, replace the
  * state-derived disposition (see findExistingConflict's caller): a match that collides with an
  * existing, differently-owned link is a data-integrity problem, not a clean auto-link.
@@ -316,6 +316,7 @@ async function writeProfessionalId(
       camsTrusteeId,
       acmsProfessionalId: record.acmsProfessionalId,
       disposition,
+      linkMethod: disposition === 'linked' ? 'auto' : undefined,
       suspectDuplicateCamsTrustee:
         disposition === 'ambiguous' ? deriveSuspectDuplicateCamsTrustee(state) : undefined,
       nameMatchCount: deriveNameMatchCount(state),
