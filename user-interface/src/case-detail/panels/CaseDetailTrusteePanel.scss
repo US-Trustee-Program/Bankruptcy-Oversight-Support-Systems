@@ -75,10 +75,6 @@
 
         .cams-table__cell {
           padding: 0.25rem 0;
-
-          &[data-cell='Name']::before {
-            padding-right: 1px;
-          }
         }
       }
     }
