@@ -244,66 +244,78 @@ function validateDateFields(): ValidatorFunction {
   };
 }
 
+const PAIR_DEFS = [
+  [
+    'tprReviewPeriodStart',
+    'tprReviewPeriodEnd',
+    'TPR Review Period Start',
+    'TPR Review Period End',
+  ],
+  [
+    'tirReviewPeriodStart',
+    'tirReviewPeriodEnd',
+    'TIR Review Period Start',
+    'TIR Review Period End',
+  ],
+  [
+    'tirSemiAnnualReviewPeriodStart',
+    'tirSemiAnnualReviewPeriodEnd',
+    'TIR Review Period 2 Start',
+    'TIR Review Period 2 End',
+  ],
+  ['tprDue', 'tprDueYearType', 'TPR Due', 'TPR Due Year Type'],
+  [
+    'auditCompletionYear',
+    'auditCompletionStatus',
+    'Field Exam/Audit Completion Status Year',
+    'Field Exam/Audit Completion Status',
+  ],
+  [
+    'tprCompletionYear',
+    'tprCompletionStatus',
+    'Trustee Performance Review Completion Status Year',
+    'Trustee Performance Review Completion Status',
+  ],
+  [
+    'tirCompletionYear',
+    'tirCompletionStatus',
+    'Trustee Interim Report Completion Status Year',
+    'Trustee Interim Report Completion Status',
+  ],
+  [
+    'ch13AuditCompletionYear',
+    'ch13AuditCompletionStatus',
+    'Audit Completion Year',
+    'Audit Completion Status',
+  ],
+  [
+    'annualReportCompletionYear',
+    'annualReportCompletionStatus',
+    'Annual Report Completion Status Year',
+    'Annual Report Completion Status',
+  ],
+] as const satisfies Array<
+  [keyof TrusteeUpcomingKeyDatesInput, keyof TrusteeUpcomingKeyDatesInput, string, string]
+>;
+
 const trusteeUpcomingKeyDatesSpec: ValidationSpec<TrusteeUpcomingKeyDatesInput> = {
   $: [
     validateDateFields(),
-    requirePair(
-      'tprReviewPeriodStart',
-      'tprReviewPeriodEnd',
-      'TPR Review Period Start',
-      'TPR Review Period End',
-    ),
+    ...PAIR_DEFS.map(([f, s, fl, sl]) => requirePair(f, s, fl, sl)),
     requireChronologicalOrder(
       'tprReviewPeriodStart',
       'tprReviewPeriodEnd',
       'TPR Review Period Start',
       'TPR Review Period End',
     ),
-    requirePair(
-      'tirReviewPeriodStart',
-      'tirReviewPeriodEnd',
-      'TIR Review Period Start',
-      'TIR Review Period End',
-    ),
-    requirePair(
-      'tirSemiAnnualReviewPeriodStart',
-      'tirSemiAnnualReviewPeriodEnd',
-      'TIR Review Period 2 Start',
-      'TIR Review Period 2 End',
-    ),
-    requirePair('tprDue', 'tprDueYearType', 'TPR Due', 'TPR Due Year Type'),
-    requirePair(
-      'auditCompletionYear',
-      'auditCompletionStatus',
-      'Field Exam/Audit Completion Status Year',
-      'Field Exam/Audit Completion Status',
-    ),
     requireValidCompletionYear('auditCompletionYear', 'Field Exam/Audit Completion Status Year'),
-    requirePair(
-      'tprCompletionYear',
-      'tprCompletionStatus',
-      'Trustee Performance Review Completion Status Year',
-      'Trustee Performance Review Completion Status',
-    ),
     requireValidCompletionYear(
       'tprCompletionYear',
       'Trustee Performance Review Completion Status Year',
     ),
-    requirePair(
-      'tirCompletionYear',
-      'tirCompletionStatus',
-      'Trustee Interim Report Completion Status Year',
-      'Trustee Interim Report Completion Status',
-    ),
     requireValidCompletionYear(
       'tirCompletionYear',
       'Trustee Interim Report Completion Status Year',
-    ),
-    requirePair(
-      'ch13AuditCompletionYear',
-      'ch13AuditCompletionStatus',
-      'Audit Completion Year',
-      'Audit Completion Status',
     ),
     requireValidCompletionYear('ch13AuditCompletionYear', 'Audit Completion Year'),
     requireValidEnum(
@@ -320,12 +332,6 @@ const trusteeUpcomingKeyDatesSpec: ValidationSpec<TrusteeUpcomingKeyDatesInput> 
       'tirCompletionStatus',
       ['COMPLETE', 'INCOMPLETE'],
       'Trustee Interim Report Completion Status',
-    ),
-    requirePair(
-      'annualReportCompletionYear',
-      'annualReportCompletionStatus',
-      'Annual Report Completion Status Year',
-      'Annual Report Completion Status',
     ),
     requireValidCompletionYear(
       'annualReportCompletionYear',
@@ -350,22 +356,9 @@ export function validateTrusteeUpcomingKeyDates(
   return validateObject(trusteeUpcomingKeyDatesSpec, input);
 }
 
-// Every requirePair() pair declared in trusteeUpcomingKeyDatesSpec above, kept
-// in sync manually -- used only to forgive a pre-existing stale mismatch on a
-// pair a save isn't touching (see validateTrusteeUpcomingKeyDatesForSave).
-const SAVE_PAIR_FIELDS: Array<
-  [keyof TrusteeUpcomingKeyDatesInput, keyof TrusteeUpcomingKeyDatesInput]
-> = [
-  ['tprReviewPeriodStart', 'tprReviewPeriodEnd'],
-  ['tirReviewPeriodStart', 'tirReviewPeriodEnd'],
-  ['tirSemiAnnualReviewPeriodStart', 'tirSemiAnnualReviewPeriodEnd'],
-  ['tprDue', 'tprDueYearType'],
-  ['auditCompletionYear', 'auditCompletionStatus'],
-  ['tprCompletionYear', 'tprCompletionStatus'],
-  ['tirCompletionYear', 'tirCompletionStatus'],
-  ['ch13AuditCompletionYear', 'ch13AuditCompletionStatus'],
-  ['annualReportCompletionYear', 'annualReportCompletionStatus'],
-];
+// Derived from PAIR_DEFS -- used only to forgive a pre-existing stale mismatch
+// on a pair a save isn't touching (see validateTrusteeUpcomingKeyDatesForSave).
+const SAVE_PAIR_FIELDS = PAIR_DEFS.map(([f, s]) => [f, s] as const);
 
 /**
  * Validates a save against the whole document, then forgives any error whose
