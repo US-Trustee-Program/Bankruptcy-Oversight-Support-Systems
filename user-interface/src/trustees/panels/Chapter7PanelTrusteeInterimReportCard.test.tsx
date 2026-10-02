@@ -61,10 +61,15 @@ describe('Chapter7PanelTrusteeInterimReportCard', () => {
     renderCard();
 
     expect(screen.getByText('Trustee Interim Report')).toBeInTheDocument();
-    expect(screen.getByText('TIR Review Period')).toBeInTheDocument();
-    expect(screen.getByText('TIR Submission')).toBeInTheDocument();
-    expect(screen.getByText('TIR Due')).toBeInTheDocument();
-    expect(screen.getByText('Last TIR Letter')).toBeInTheDocument();
+    // Query columnheader elements to verify headers render with correct text content.
+    // Headers use Abbreviation component which renders both visible "TIR" and screen-reader "T I R"
+    // in separate spans, so the combined textContent includes both.
+    const headers = screen.getAllByRole('columnheader');
+    expect(headers[0].textContent).toContain('Review Period');
+    expect(headers[1].textContent).toContain('Submission');
+    expect(headers[2].textContent).toContain('Due');
+    expect(headers[3].textContent).toContain('Last');
+    expect(headers[3].textContent).toContain('Letter');
     expect(screen.getByTestId('tir-review-period-row')).toHaveTextContent('01/01 - 03/31');
     expect(screen.getByTestId('tir-submission-row')).toHaveTextContent('01/30');
     expect(screen.getByTestId('tir-review-row')).toHaveTextContent('03/30');

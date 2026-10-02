@@ -47,15 +47,27 @@ export default function Chapter12StandingOtherKeyDatesCard(
         {
           key: 'annualReportDueToOO',
           header: 'Annual Report Due to OO',
+          headerLabel: 'Annual Report Due to OO',
           testId: 'annual-report-due-row',
         },
-        { key: 'leaseExpiration', header: 'Lease Expiration', testId: 'lease-expiration-row' },
+        {
+          key: 'leaseExpiration',
+          header: 'Lease Expiration',
+          headerLabel: 'Lease Expiration',
+          testId: 'lease-expiration-row',
+        },
         {
           key: 'lastBackgroundQuestionnaire',
           header: 'Last Update to Background Questionnaire',
+          headerLabel: 'Last Update to Background Questionnaire',
           testId: 'past-background-question-row',
         },
-        { key: 'idExpiration', header: 'ID Expiration', testId: 'id-expiration-row' },
+        {
+          key: 'idExpiration',
+          header: 'ID Expiration',
+          headerLabel: 'ID Expiration',
+          testId: 'id-expiration-row',
+        },
       ]}
       values={{
         annualReportDueToOO: '09/30 (Due non-audit years)',

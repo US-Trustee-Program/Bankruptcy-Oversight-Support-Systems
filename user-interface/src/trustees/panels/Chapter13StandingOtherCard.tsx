@@ -44,16 +44,28 @@ export default function Chapter13StandingOtherCard(
       editAriaLabel="Edit Other key dates"
       editTitle="Edit Other key dates"
       columns={[
-        { key: 'leaseExpiration', header: 'Lease Expiration', testId: 'lease-expiration-row' },
+        {
+          key: 'leaseExpiration',
+          header: 'Lease Expiration',
+          headerLabel: 'Lease Expiration',
+          testId: 'lease-expiration-row',
+        },
         {
           key: 'lastBackgroundQuestionnaire',
           header: 'Last Update to Background Questionnaire',
+          headerLabel: 'Last Update to Background Questionnaire',
           testId: 'past-background-question-row',
         },
-        { key: 'idExpiration', header: 'ID Expiration', testId: 'id-expiration-row' },
+        {
+          key: 'idExpiration',
+          header: 'ID Expiration',
+          headerLabel: 'ID Expiration',
+          testId: 'id-expiration-row',
+        },
         {
           key: 'lastCompensationStudy',
           header: 'Last Compensation Study',
+          headerLabel: 'Last Compensation Study',
           testId: 'last-compensation-study-row',
         },
       ]}

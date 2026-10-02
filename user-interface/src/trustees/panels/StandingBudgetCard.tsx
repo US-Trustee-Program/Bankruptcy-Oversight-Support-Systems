@@ -39,11 +39,13 @@ export default function StandingBudgetCard(props: Readonly<StandingBudgetCardPro
         {
           key: 'budgetSubmissionDue',
           header: 'Budget Submission Due',
+          headerLabel: 'Budget Submission Due',
           testId: 'budget-submission-due-row',
         },
         {
           key: 'budgetReviewToOO',
           header: 'Budget Due to OO',
+          headerLabel: 'Budget Due to OO',
           testId: 'budget-review-to-oo-row',
         },
       ]}

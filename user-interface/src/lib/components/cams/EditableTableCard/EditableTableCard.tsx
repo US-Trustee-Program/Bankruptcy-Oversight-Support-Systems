@@ -15,7 +15,8 @@ import {
 
 interface EditableTableCardColumn {
   key: string;
-  header: string;
+  header: ReactNode;
+  headerLabel: string;
   testId?: string;
 }
 
@@ -110,7 +111,7 @@ function EditableTableCard(props: Readonly<EditableTableCardProps>) {
               {columns.map((column) => (
                 <CamsTableCell
                   key={column.key}
-                  data-cell={column.header}
+                  data-cell={column.headerLabel}
                   data-testid={column.testId}
                 >
                   {values[column.key]}

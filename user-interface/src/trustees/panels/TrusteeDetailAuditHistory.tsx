@@ -1,6 +1,7 @@
 import './TrusteeDetailAuditHistory.scss';
 import { formatDate, sortByDateReverse } from '@/lib/utils/datetime';
 import LoadingIndicator from '@/lib/components/LoadingIndicator';
+import Abbreviation from '@/lib/components/Abbreviation';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { useEffect, useState } from 'react';
 import Api2 from '@/lib/models/api2';
@@ -426,7 +427,8 @@ function ShowTrusteeStaffHistory(props: ShowTrusteeStaffHistoryProps) {
 
 type ReportDateFieldConfig = {
   key: keyof TrusteeUpcomingKeyDates;
-  label: string;
+  label: React.ReactNode;
+  labelKey: string;
   format: (data: Partial<TrusteeUpcomingKeyDates>) => string;
 };
 
@@ -446,36 +448,55 @@ const REPORT_DATE_FIELD_CONFIG: ReportDateFieldConfig[] = [
   {
     key: 'pastFieldExam',
     label: 'Field Exam',
+    labelKey: 'pastFieldExam',
     format: (d) => formatOptionalMMDDYYYY(d.pastFieldExam),
   },
   {
     key: 'pastAudit',
     label: 'Audit',
+    labelKey: 'pastAudit',
     format: (d) => formatOptionalMMYYYY(d.pastAudit),
   },
   {
     key: 'tprReviewPeriodStart',
     label: 'TPR Review Period',
+    labelKey: 'tprReviewPeriod',
     format: (d) => formatOptionalDateRange(d.tprReviewPeriodStart, d.tprReviewPeriodEnd),
   },
   {
     key: 'tprDue',
     label: 'TPR Due',
+    labelKey: 'tprDue',
     format: (d) => formatOptionalMMYYYY(d.tprDue),
   },
   {
     key: 'tirReviewPeriodStart',
-    label: 'TIR Review Period',
+    label: (
+      <>
+        <Abbreviation>TIR</Abbreviation> Review Period
+      </>
+    ),
+    labelKey: 'tirReviewPeriod',
     format: (d) => formatOptionalDateRange(d.tirReviewPeriodStart, d.tirReviewPeriodEnd),
   },
   {
     key: 'tirSubmission',
-    label: 'TIR Submission',
+    label: (
+      <>
+        <Abbreviation>TIR</Abbreviation> Submission
+      </>
+    ),
+    labelKey: 'tirSubmission',
     format: (d) => (d.tirSubmission ? isoToMMDD(d.tirSubmission) : '(none)'),
   },
   {
     key: 'tirReview',
-    label: 'TIR Review',
+    label: (
+      <>
+        <Abbreviation>TIR</Abbreviation> Review
+      </>
+    ),
+    labelKey: 'tirReview',
     format: (d) => (d.tirReview ? isoToMMDD(d.tirReview) : '(none)'),
   },
 ];
@@ -486,15 +507,15 @@ function UpcomingKeyDateFields({
   if (!data) return <>(none)</>;
 
   const fields = REPORT_DATE_FIELD_CONFIG.filter(({ key }) => key in data).map(
-    ({ label, format }) => ({ label, value: format(data) }),
+    ({ label, labelKey, format }) => ({ label, labelKey, value: format(data) }),
   );
 
   if (fields.length === 0) return <>(none)</>;
 
   return (
     <dl>
-      {fields.map(({ label, value }) => (
-        <React.Fragment key={label}>
+      {fields.map(({ label, labelKey, value }) => (
+        <React.Fragment key={labelKey}>
           <dt>{label}:</dt>
           <dd>{value}</dd>
         </React.Fragment>

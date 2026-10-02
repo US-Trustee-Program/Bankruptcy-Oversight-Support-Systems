@@ -38,8 +38,18 @@ export default function BondKeyDatesCard(props: Readonly<BondKeyDatesCardProps>)
       editAriaLabel="Edit bond key dates"
       editTitle="Edit bond key dates"
       columns={[
-        { key: 'bondRenewalDate', header: 'Bond Renewal', testId: 'bond-renewal-date' },
-        { key: 'bondIssuedDate', header: 'Bond Issued', testId: 'bond-issued-date' },
+        {
+          key: 'bondRenewalDate',
+          header: 'Bond Renewal',
+          headerLabel: 'Bond Renewal',
+          testId: 'bond-renewal-date',
+        },
+        {
+          key: 'bondIssuedDate',
+          header: 'Bond Issued',
+          headerLabel: 'Bond Issued',
+          testId: 'bond-issued-date',
+        },
       ]}
       values={{
         bondRenewalDate: formatDateOrDefault(data?.bondRenewalDate),

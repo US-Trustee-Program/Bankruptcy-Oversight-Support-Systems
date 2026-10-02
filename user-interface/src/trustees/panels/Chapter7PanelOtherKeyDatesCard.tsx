@@ -39,6 +39,7 @@ export default function Chapter7PanelOtherKeyDatesCard(
         {
           key: 'lastBackgroundQuestionnaire',
           header: 'Last Update to Background Questionnaire',
+          headerLabel: 'Last Update to Background Questionnaire',
           testId: 'past-background-question-row',
         },
       ]}

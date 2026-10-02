@@ -5,8 +5,8 @@ import EditableTableCard from './EditableTableCard';
 
 describe('EditableTableCard', () => {
   const columns = [
-    { key: 'renewal', header: 'Renewal', testId: 'renewal-value' },
-    { key: 'issued', header: 'Issued', testId: 'issued-value' },
+    { key: 'renewal', header: 'Renewal', headerLabel: 'Renewal', testId: 'renewal-value' },
+    { key: 'issued', header: 'Issued', headerLabel: 'Issued', testId: 'issued-value' },
   ];
   const values = {
     renewal: '06/01/2026',

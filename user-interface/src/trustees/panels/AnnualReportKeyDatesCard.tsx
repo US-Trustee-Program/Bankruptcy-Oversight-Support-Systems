@@ -48,11 +48,13 @@ export default function AnnualReportKeyDatesCard(props: Readonly<AnnualReportKey
         {
           key: 'annualReportSubmission',
           header: 'Annual Report Submission',
+          headerLabel: 'Annual Report Submission',
           testId: 'annual-report-submission',
         },
         {
           key: 'annualReportDueToOO',
           header: 'Annual Report Due to OO',
+          headerLabel: 'Annual Report Due to OO',
           testId: 'annual-report-due-oo',
         },
       ]}
