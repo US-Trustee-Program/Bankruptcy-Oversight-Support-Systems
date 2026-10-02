@@ -1680,16 +1680,15 @@ export function resolveByStateOnly(): Stage {
 }
 
 /**
- * The only resolver that requires a single candidate: being the only name match is the signal.
- * Runs last.
+ * The only resolver that requires a single candidate: being the only exact name match is the
+ * signal. Weaker name matches are not rivals. Runs last.
  */
 export function resolveByNameOnly(): Stage {
   return async (state: PipelineState): Promise<PipelineState> => {
-    const nameMatches = candidatePool(state).filter(nameQualifies);
-    if (nameMatches.length !== 1) return state;
+    const exactNames = candidatePool(state).filter(isExactNameMatch);
+    if (exactNames.length !== 1) return state;
 
-    const [candidate] = nameMatches;
-    if (!isExactNameMatch(candidate)) return state;
+    const [candidate] = exactNames;
     if (mergedScore(candidate).doesStateMatch?.pass === false) return state;
     if (mergedScore(candidate).doesCamsTrusteeHaveAddressAndPhone?.pass === false) return state;
 
