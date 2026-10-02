@@ -18,6 +18,7 @@ import { serializeState, TrusteeSerializedState } from './trustee-match-pipeline
 import {
   createLinkedStateWithoutEvidence,
   deriveDisposition,
+  deriveNameMatchCount,
   deriveSuspectDuplicateCamsTrustee,
   TrusteeProfessionalId,
 } from './trustee-professional-ids.types';
@@ -317,6 +318,7 @@ async function writeProfessionalId(
       disposition,
       suspectDuplicateCamsTrustee:
         disposition === 'ambiguous' ? deriveSuspectDuplicateCamsTrustee(state) : undefined,
+      nameMatchCount: deriveNameMatchCount(state),
       evidence: { ...state, variant, conflictingTrusteeId },
     },
     ACMS_SYSTEM_USER_REFERENCE,
