@@ -596,6 +596,16 @@ describe('trustee-appointments', () => {
         ).toBeUndefined();
       },
     );
+
+    test('returns undefined when chapter differs, even with matching court and appointmentType', () => {
+      const appt = makeAppointment({ chapter: '11', appointmentType: 'panel' });
+      expect(findMergeTarget(BASE_COURT_ID, '7', 'panel', 'active', [appt])).toBeUndefined();
+    });
+
+    test('returns undefined when appointmentType differs, even with matching court and chapter', () => {
+      const appt = makeAppointment({ chapter: '7', appointmentType: 'off-panel' });
+      expect(findMergeTarget(BASE_COURT_ID, '7', 'panel', 'active', [appt])).toBeUndefined();
+    });
   });
 
   describe('buildMergePayload', () => {
@@ -636,6 +646,19 @@ describe('trustee-appointments', () => {
       expect(result.payload.divisionCodes).toEqual(expect.arrayContaining(['301', '303']));
     });
 
+    test('tolerates a payload with no divisionCodes at all, merging in nothing new', () => {
+      // A legacy caller could in principle omit divisionCodes entirely (the type permits it,
+      // even though both current callers normalize it in first) -- this proves that path
+      // doesn't throw and simply contributes no new divisions, rather than exercising only
+      // the common case where payload.divisionCodes is always set.
+      const target = makeAppointment({ divisionCodes: ['301'] });
+      const payload = makePayload({ divisionCodes: undefined, divisionCode: undefined });
+      const result = buildMergePayload(target, payload);
+      if (result.type !== 'merged') throw new Error('expected merged');
+      expect(result.payload.divisionCodes).toEqual(['301']);
+      expect(result.addedDivisionCodes).toEqual([]);
+    });
+
     test('includes the target id', () => {
       const target = makeAppointment({ id: 'my-target-id' });
       const result = buildMergePayload(target, makePayload());
@@ -643,17 +666,44 @@ describe('trustee-appointments', () => {
       expect(result.targetId).toBe('my-target-id');
     });
 
-    test('spreads all other payload fields into the merged payload', () => {
-      const target = makeAppointment({ divisionCodes: ['301'] });
+    test("preserves the merge target's own appointedDate/status/effectiveDate rather than the incoming payload's", () => {
+      // Only division codes are meant to be unioned -- every other field belongs to the
+      // pre-existing target record and must survive the merge untouched, even though the
+      // incoming payload (the record being redirected away from) carries different values.
+      const target = makeAppointment({
+        divisionCodes: ['301'],
+        appointedDate: '2020-01-01',
+        status: 'active',
+        effectiveDate: '2020-01-01',
+      });
       const payload = makePayload({
         divisionCodes: ['303'],
         appointedDate: '2022-06-15',
+        status: 'active',
         effectiveDate: '2022-07-01',
       });
       const result = buildMergePayload(target, payload);
       if (result.type !== 'merged') throw new Error('expected merged');
-      expect(result.payload.appointedDate).toBe('2022-06-15');
-      expect(result.payload.effectiveDate).toBe('2022-07-01');
+      expect(result.payload.appointedDate).toBe('2020-01-01');
+      expect(result.payload.status).toBe('active');
+      expect(result.payload.effectiveDate).toBe('2020-01-01');
+    });
+
+    test("preserves the merge target's own courtName/courtDivisionName", () => {
+      const target = makeAppointment({
+        divisionCodes: ['301'],
+        courtName: 'Target District',
+        courtDivisionName: 'Target Division',
+      });
+      const payload = makePayload({
+        divisionCodes: ['303'],
+        courtName: 'Incoming District',
+        courtDivisionName: 'Incoming Division',
+      });
+      const result = buildMergePayload(target, payload);
+      if (result.type !== 'merged') throw new Error('expected merged');
+      expect(result.payload.courtName).toBe('Target District');
+      expect(result.payload.courtDivisionName).toBe('Target Division');
     });
   });
 });

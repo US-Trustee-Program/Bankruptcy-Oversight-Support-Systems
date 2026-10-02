@@ -3,12 +3,14 @@ import factory from '../../factory';
 import { isTooManyRequestsError } from '../../common-errors/too-many-requests-error';
 import { isGatewayTimeoutError } from '../../common-errors/gateway-timeout';
 import { resolveGroupMatchedProfessionalId } from './sync-trustee-case-appointments';
-import { CaseAppointment } from '@common/cams/trustee-appointments';
+import { isAppointmentMatch } from './trustee-match.helpers';
+import { CaseAppointment, TrusteeAppointment } from '@common/cams/trustee-appointments';
 import {
   TrusteeAppointmentDownstreamEvent,
   TrusteeVerificationRemapMessage,
 } from '@common/cams/dataflow-events';
 import { TrusteeCaseAppointmentsRepository } from '../gateways.types';
+import CaseManagement from '../cases/case-management';
 
 const MODULE_NAME = 'TRUSTEE-VERIFICATION-REMAP-USE-CASE';
 
@@ -47,11 +49,35 @@ class TrusteeVerificationRemapUseCase {
    * failure back to the caller lets remapPage tally it separately from documentsWritten, so a
    * batch with successful remaps but failed notifications is visibly partial in telemetry instead
    * of reading as a full, unqualified success.
+   *
+   * Re-validates isAppointmentMatch against a freshly-fetched case summary before remapping —
+   * defense in depth against the race window in TrusteeMatchVerificationUseCase.approveVerification
+   * between its own division-check snapshot and the TRUSTEE_VARIATION write that stops new
+   * surrogates from joining this fingerprint's bucket. A surrogate admitted into the bucket
+   * during that window would otherwise never have passed any division check at all. A mismatch
+   * here throws, which remapPage's caller already treats as a per-case failure: the surrogate is
+   * left in place rather than silently remapped to a division the trustee isn't assigned to.
    */
   private async remapSurrogateAppointment(
     surrogate: CaseAppointment,
     message: TrusteeVerificationRemapMessage,
+    trusteeAppointments: TrusteeAppointment[],
   ): Promise<{ downstreamNotificationFailed: boolean }> {
+    const caseManagement = new CaseManagement(this.context);
+    const caseSummary = await caseManagement.getCaseSummary(this.context, surrogate.caseId);
+    if (
+      !isAppointmentMatch(
+        trusteeAppointments,
+        caseSummary.courtId,
+        caseSummary.courtDivisionCode,
+        caseSummary.chapter,
+      )
+    ) {
+      throw new Error(
+        `Resolved trustee ${message.resolvedTrusteeId} is not assigned to the division for case ${surrogate.caseId} -- skipping remap.`,
+      );
+    }
+
     const existingReal = await this.appointmentsRepo.getActiveByCaseId(surrogate.caseId);
 
     if (existingReal && existingReal.trusteeId !== message.resolvedTrusteeId) {
@@ -129,6 +155,12 @@ class TrusteeVerificationRemapUseCase {
     const page = surrogates.slice(0, pageSize);
     const remainingCount = surrogates.length - page.length;
 
+    // Fetched once per page, not per surrogate -- resolvedTrusteeId is fixed for the whole
+    // message, so every surrogate in this page re-validates against the same appointment set.
+    const trusteeAppointments = await factory
+      .getTrusteeAppointmentsRepository(this.context)
+      .getTrusteeAppointments(message.resolvedTrusteeId);
+
     let documentsWritten = 0;
     let documentsFailed = 0;
     let downstreamNotificationFailedCount = 0;
@@ -138,6 +170,7 @@ class TrusteeVerificationRemapUseCase {
         const { downstreamNotificationFailed } = await this.remapSurrogateAppointment(
           surrogate,
           message,
+          trusteeAppointments,
         );
         documentsWritten++;
         if (downstreamNotificationFailed) {

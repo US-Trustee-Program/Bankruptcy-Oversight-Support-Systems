@@ -15,24 +15,23 @@ describe('TrusteeAppointmentsUseCase tests', () => {
   let context: ApplicationContext;
   let trusteeAppointmentsUseCase: TrusteeAppointmentsUseCase;
 
-  beforeEach(() => {
+  // Every nested describe below needs its own beforeEach to reset the use case and its mocks,
+  // so none of them can rely on a single shared top-level beforeEach -- vi.restoreAllMocks()
+  // in a child describe's own beforeEach always runs after any parent's, wiping whatever the
+  // parent just set up. Centralizing the repeated reset here instead of copy-pasting it.
+  async function resetMocksWithDefaultAppointments(): Promise<void> {
+    vi.restoreAllMocks();
     // Default for the merge-detection createAppointment/updateAppointment now perform: no
     // other existing appointments, so findMergeTarget finds nothing and every test below that
     // doesn't care about merging is unaffected. Tests exercising the merge path override this
     // directly with real appointment fixtures.
     vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([]);
-  });
+    context = await createMockApplicationContext();
+    trusteeAppointmentsUseCase = new TrusteeAppointmentsUseCase(context);
+  }
 
   describe('getTrusteeAppointments', () => {
-    beforeEach(async () => {
-      vi.restoreAllMocks();
-      // Re-established here because this describe's own vi.restoreAllMocks() above wipes
-      // the outer default (see the top-level beforeEach) before this describe's own
-      // beforeEach finishes running.
-      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([]);
-      context = await createMockApplicationContext();
-      trusteeAppointmentsUseCase = new TrusteeAppointmentsUseCase(context);
-    });
+    beforeEach(resetMocksWithDefaultAppointments);
 
     test('should return list of appointments for a trustee', async () => {
       const trusteeId = 'trustee-123';
@@ -115,15 +114,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       effectiveDate: '2024-01-15T00:00:00.000Z',
     };
 
-    beforeEach(async () => {
-      vi.restoreAllMocks();
-      // Re-established here because this describe's own vi.restoreAllMocks() above wipes
-      // the outer default (see the top-level beforeEach) before this describe's own
-      // beforeEach finishes running.
-      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([]);
-      context = await createMockApplicationContext();
-      trusteeAppointmentsUseCase = new TrusteeAppointmentsUseCase(context);
-    });
+    beforeEach(resetMocksWithDefaultAppointments);
 
     test('should create a new appointment for a trustee', async () => {
       const trusteeId = 'trustee-123';
@@ -282,15 +273,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       effectiveDate: '2024-02-15T00:00:00.000Z',
     };
 
-    beforeEach(async () => {
-      vi.restoreAllMocks();
-      // Re-established here because this describe's own vi.restoreAllMocks() above wipes
-      // the outer default (see the top-level beforeEach) before this describe's own
-      // beforeEach finishes running.
-      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([]);
-      context = await createMockApplicationContext();
-      trusteeAppointmentsUseCase = new TrusteeAppointmentsUseCase(context);
-    });
+    beforeEach(resetMocksWithDefaultAppointments);
 
     test('should update an appointment successfully', async () => {
       const mockExistingAppointment = MockData.getTrusteeAppointment({
@@ -841,20 +824,24 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         expect(result).toEqual(mergedAppointment);
       });
 
-      test('does not spuriously merge with its own pre-update state', async () => {
-        // The appointment being updated already happens to match updatePayload's
-        // court+chapter+type (e.g. only its status is changing) -- excluding it from its own
-        // candidate search must prevent this from looking like a self-duplicate.
+      test('excludes itself from merge-target candidates, so removing a division is not re-unioned back in', async () => {
+        // The appointment being updated already matches updatePayload's court+chapter+type+
+        // active-status -- without excluding it from its own candidate search, it would look
+        // like a match for itself. Proving that matters (not just that *some* update call
+        // happens) requires the payload to actually differ from the original: here the update
+        // removes division '001', and asserts the submitted set stays ['002'] rather than
+        // being silently re-unioned back to ['001', '002'] by a spurious self-merge -- which
+        // would make division removal impossible.
         const original = MockData.getTrusteeAppointment({
           id: appointmentId,
           trusteeId,
           chapter: '7',
           appointmentType: 'panel',
           courtId: '081',
-          divisionCodes: ['002'],
+          divisionCodes: ['001', '002'],
           status: 'active',
         });
-        const updated = { ...original, status: 'voluntarily-suspended' as const };
+        const updated = { ...original, divisionCodes: ['002'], divisionCode: '002' };
 
         vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(original);
         vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([
@@ -866,16 +853,13 @@ describe('TrusteeAppointmentsUseCase tests', () => {
           context,
           trusteeId,
           appointmentId,
-          {
-            ...updatePayload,
-            status: 'voluntarily-suspended',
-          },
+          updatePayload,
         );
 
         expect(MockMongoRepository.prototype.updateAppointment).toHaveBeenCalledWith(
           trusteeId,
           appointmentId,
-          expect.anything(),
+          expect.objectContaining({ divisionCodes: ['002'] }),
           expect.any(Object),
         );
         expect(result).toEqual(updated);
@@ -995,15 +979,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       effectiveDate: '2024-01-15T00:00:00.000Z',
     };
 
-    beforeEach(async () => {
-      vi.restoreAllMocks();
-      // Re-established here because this describe's own vi.restoreAllMocks() above wipes
-      // the outer default (see the top-level beforeEach) before this describe's own
-      // beforeEach finishes running.
-      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([]);
-      context = await createMockApplicationContext();
-      trusteeAppointmentsUseCase = new TrusteeAppointmentsUseCase(context);
-    });
+    beforeEach(resetMocksWithDefaultAppointments);
 
     test('should create audit history when appointment is created', async () => {
       const trusteeId = 'trustee-123';
@@ -1058,15 +1034,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
   });
 
   describe('hasAppointmentChanged with divisionCodes', () => {
-    beforeEach(async () => {
-      vi.restoreAllMocks();
-      // Re-established here because this describe's own vi.restoreAllMocks() above wipes
-      // the outer default (see the top-level beforeEach) before this describe's own
-      // beforeEach finishes running.
-      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([]);
-      context = await createMockApplicationContext();
-      trusteeAppointmentsUseCase = new TrusteeAppointmentsUseCase(context);
-    });
+    beforeEach(resetMocksWithDefaultAppointments);
 
     test('should detect division addition as change', async () => {
       const appointmentId = 'appointment-123';
@@ -1318,15 +1286,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
   });
 
   describe('multi-division support', () => {
-    beforeEach(async () => {
-      vi.restoreAllMocks();
-      // Re-established here because this describe's own vi.restoreAllMocks() above wipes
-      // the outer default (see the top-level beforeEach) before this describe's own
-      // beforeEach finishes running.
-      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([]);
-      context = await createMockApplicationContext();
-      trusteeAppointmentsUseCase = new TrusteeAppointmentsUseCase(context);
-    });
+    beforeEach(resetMocksWithDefaultAppointments);
 
     test('should accept divisionCodes array and normalize to both formats', async () => {
       const trusteeId = 'trustee-123';
@@ -1496,8 +1456,9 @@ describe('TrusteeAppointmentsUseCase tests', () => {
 
       vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
       vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([]);
-      // Re-established here because this describe's own vi.restoreAllMocks() above wipes the
-      // outer default (see the top-level beforeEach) before these tests run.
+      // No other existing appointments by default, so findMergeTarget/merge-detection
+      // doesn't interfere with the notification-dispatch behavior under test here; tests
+      // that need real appointment fixtures override this directly.
       vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([]);
     });
 
@@ -1851,8 +1812,9 @@ describe('TrusteeAppointmentsUseCase tests', () => {
 
       vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
       vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([]);
-      // Re-established here because this describe's own vi.restoreAllMocks() above wipes the
-      // outer default (see the top-level beforeEach) before these tests run.
+      // No other existing appointments by default, so findMergeTarget/merge-detection
+      // doesn't interfere with the notification-dispatch behavior under test here; tests
+      // that need real appointment fixtures override this directly.
       vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([]);
     });
 

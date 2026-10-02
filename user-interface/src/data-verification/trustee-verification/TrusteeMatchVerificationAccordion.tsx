@@ -509,7 +509,13 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   // check remains the authoritative gate across every affected case regardless. If this
   // fetch fails, chapter stays undefined and the search modal falls back to its original
   // district-only filtering rather than blocking search entirely.
+  //
+  // Skipped for already-approved orders, matching handleExpand's existing guard above: an
+  // approved order's search modal can never be reached, so there is no accordion-group row
+  // render for which this fetch has any display benefit, only an unconditional per-row
+  // network call.
   useEffect(() => {
+    if (order.status === 'approved') return;
     let cancelled = false;
     Api2.getCaseSummary(order.caseId)
       .then((response) => {
@@ -521,7 +527,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     return () => {
       cancelled = true;
     };
-  }, [order.caseId]);
+  }, [order.caseId, order.status]);
 
   async function approveTrustee({
     trusteeId,

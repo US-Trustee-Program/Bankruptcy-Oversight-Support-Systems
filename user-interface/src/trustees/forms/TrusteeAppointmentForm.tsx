@@ -373,9 +373,9 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
       } else {
         const mergeTarget = findMergeTarget(
           courtId,
-          formData.chapter,
-          formData.appointmentType,
-          formData.status,
+          formData.chapter as AppointmentChapterType,
+          formData.appointmentType as AppointmentType,
+          formData.status as AppointmentStatus,
           existingAppointments,
         );
         const mergeResult = buildMergeResult(mergeTarget, payload, allCourts);

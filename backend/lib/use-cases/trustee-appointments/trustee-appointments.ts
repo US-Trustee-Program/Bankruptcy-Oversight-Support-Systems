@@ -12,6 +12,7 @@ import {
   TRUSTEE_APPOINTMENTS_INTERNAL_SPEC,
   findMergeTarget,
   buildMergePayload,
+  getDivisionCodes,
 } from '@common/cams/trustee-appointments';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { CourtsUseCase } from '../courts/courts';
@@ -126,8 +127,8 @@ export class TrusteeAppointmentsUseCase {
   }
 
   private divisionsChanged(before: TrusteeAppointment, after: TrusteeAppointment): boolean {
-    const beforeSet = new Set(before.divisionCodes ?? [before.divisionCode].filter(Boolean));
-    const afterSet = new Set(after.divisionCodes ?? [after.divisionCode].filter(Boolean));
+    const beforeSet = new Set(getDivisionCodes(before));
+    const afterSet = new Set(getDivisionCodes(after));
     if (beforeSet.size !== afterSet.size) return true;
     for (const code of beforeSet) {
       if (!afterSet.has(code)) return true;

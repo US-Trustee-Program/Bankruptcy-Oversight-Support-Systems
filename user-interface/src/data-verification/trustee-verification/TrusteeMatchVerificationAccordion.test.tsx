@@ -659,6 +659,26 @@ describe('TrusteeMatchVerificationAccordion', () => {
       expect(detailSpy).not.toHaveBeenCalled();
     });
 
+    test('does not fetch the case summary on mount for a resolved order', async () => {
+      // The accordion group keeps every row mounted (toggling visibility, not conditional
+      // rendering), so an ungated fetch here would fire once per approved row on every list
+      // render -- this order's search modal can never be reached, so there is no display
+      // benefit to the fetch, only an unconditional per-row network call.
+      const caseSummarySpy = vi.spyOn(Api2, 'getCaseSummary');
+      const resolvedOrder: TrusteeMatchVerificationListItem = {
+        ...sampleOrderWithCandidates,
+        status: 'approved',
+        resolvedTrusteeId: 'trustee-1',
+        resolvedTrusteeName: 'Jane Smith',
+      };
+
+      renderWithProps({ order: resolvedOrder });
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(caseSummarySpy).not.toHaveBeenCalled();
+    });
+
     test('does not fetch detail when a resolved order is manually expanded', async () => {
       const detailSpy = vi.spyOn(Api2, 'getTrusteeMatchVerificationDetail');
       const resolvedOrder: TrusteeMatchVerificationListItem = {
@@ -1354,6 +1374,28 @@ describe('TrusteeMatchVerificationAccordion', () => {
       await waitFor(() => {
         expect(onOrderUpdate).toHaveBeenCalledWith(
           expect.objectContaining({ type: UswdsAlertStyle.Error, message: 'Network error' }),
+          sampleOrder,
+        );
+      });
+    });
+
+    // Mirrors handleConfirm's identical non-Error-rejection fallback test above --
+    // handleManualMatch has the same `error instanceof Error ? error.message : '...'` ternary
+    // but previously only had Error-instance coverage here.
+    test('falls back to a generic message when the manual-match rejection is not an Error instance', async () => {
+      vi.spyOn(Api2, 'patchTrusteeVerificationOrderApproval').mockRejectedValue('not an Error');
+      setupSearchMocks();
+      const onOrderUpdate = vi.fn();
+      renderWithProps({ onOrderUpdate });
+
+      await searchAndSelectTrustee();
+
+      await waitFor(() => {
+        expect(onOrderUpdate).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: UswdsAlertStyle.Error,
+            message: 'Failed to confirm trustee match.',
+          }),
           sampleOrder,
         );
       });

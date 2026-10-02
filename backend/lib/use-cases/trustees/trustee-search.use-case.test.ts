@@ -360,6 +360,27 @@ describe('TrusteeSearchUseCase', () => {
 
       expect(results).toHaveLength(2);
     });
+
+    test('does not apply either filter when courtId is omitted, even with divisionCode and chapter present', async () => {
+      // Reachable in production: TrusteeSearchModal's district dropdown lets a user clear the
+      // selected court independently of divisionCode/chapter. If the `courtId &&` guard were
+      // ever dropped, this combination would call isAppointmentMatch with courtId=undefined,
+      // which never matches any real appointment -- silently returning zero results instead
+      // of falling back to unfiltered search.
+      const appointments = new Map<string, Partial<TrusteeAppointment>[]>();
+      appointments.set('trustee-001', mockAppointmentsDivision081);
+      appointments.set('trustee-002', mockAppointmentsDivision082);
+
+      setupRepositories({
+        scoredResults: [mockTrustee1, mockTrustee2],
+        appointmentsByTrustee: appointments,
+      });
+
+      const useCase = new TrusteeSearchUseCase();
+      const results = await useCase.searchTrustees(context, 'smith', undefined, '081', '7');
+
+      expect(results).toHaveLength(2);
+    });
   });
 
   test('should fire TrusteeManualSearchPerformed with success false on error and propagate', async () => {

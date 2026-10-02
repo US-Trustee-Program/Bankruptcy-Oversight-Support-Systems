@@ -211,6 +211,19 @@ export const TRUSTEE_APPOINTMENTS_INTERNAL_SPEC: Readonly<ValidationSpec<Trustee
   };
 
 /**
+ * Resolves an appointment's division codes, falling back from the current `divisionCodes`
+ * array to the deprecated singular `divisionCode` only when `divisionCodes` itself is absent
+ * -- not merely empty, so an explicit empty array is never silently replaced by the legacy
+ * field. Centralizes a fallback that was previously reimplemented inline at each call site.
+ */
+export function getDivisionCodes(appointment: {
+  divisionCode?: string;
+  divisionCodes?: string[];
+}): string[] {
+  return (appointment.divisionCodes ?? [appointment.divisionCode]).filter(Boolean) as string[];
+}
+
+/**
  * Find a merge target among a trustee's existing appointments. A merge target is an active
  * appointment with the same courtId, chapter, and appointmentType -- "duplicate" here means
  * same court+chapter+type, not requiring division overlap; merging is what reconciles
@@ -228,9 +241,9 @@ export const TRUSTEE_APPOINTMENTS_INTERNAL_SPEC: Readonly<ValidationSpec<Trustee
  */
 export function findMergeTarget(
   courtId: string,
-  chapter: AppointmentChapterType | string,
-  appointmentType: AppointmentType | string,
-  incomingStatus: AppointmentStatus | string,
+  chapter: AppointmentChapterType,
+  appointmentType: AppointmentType,
+  incomingStatus: AppointmentStatus,
   existingAppointments: TrusteeAppointment[],
 ): TrusteeAppointment | undefined {
   if (incomingStatus !== 'active') {
@@ -256,7 +269,10 @@ export type MergePayloadResult = MergedPayloadResult | { type: 'created' };
 
 /**
  * Computes the merged payload for a duplicate appointment (union of division codes), or
- * signals that no merge applies. Deliberately returns division *codes* only, not
+ * signals that no merge applies. Only the division fields are computed from `payload`;
+ * every other field in the returned payload is mergeTarget's own, so the redirected
+ * submission's appointedDate/status/effectiveDate/courtName/courtDivisionName can never
+ * overwrite the pre-existing target record. Deliberately returns division *codes* only, not
  * human-readable division *names* -- name resolution needs a district's full division list
  * (getDivisionsForDistrict), which is a frontend-only concern with no equivalent need on the
  * backend. Frontend callers wrap this to add display names on top; see
@@ -283,9 +299,7 @@ export function buildMergePayload(
     return { type: 'created' };
   }
 
-  const existingDivisions = (mergeTarget.divisionCodes ?? [mergeTarget.divisionCode]).filter(
-    Boolean,
-  ) as string[];
+  const existingDivisions = getDivisionCodes(mergeTarget);
   const mergedDivisions = [...new Set([...existingDivisions, ...(payload.divisionCodes ?? [])])];
   const addedDivisionCodes = (payload.divisionCodes ?? []).filter(
     (code) => !existingDivisions.includes(code),
@@ -294,8 +308,19 @@ export function buildMergePayload(
   return {
     type: 'merged',
     targetId: mergeTarget.id,
+    // Only the division fields are computed from the incoming payload (that's the whole
+    // point of a merge); every other field comes from mergeTarget itself, not `payload`,
+    // so a duplicate-merge can never clobber the target's own appointedDate/status/
+    // effectiveDate/courtName/courtDivisionName with the redirected submission's values.
     payload: {
-      ...payload,
+      chapter: mergeTarget.chapter,
+      appointmentType: mergeTarget.appointmentType,
+      courtId: mergeTarget.courtId,
+      courtName: mergeTarget.courtName,
+      courtDivisionName: mergeTarget.courtDivisionName,
+      appointedDate: mergeTarget.appointedDate,
+      status: mergeTarget.status,
+      effectiveDate: mergeTarget.effectiveDate,
       divisionCodes: mergedDivisions,
       divisionCode: mergedDivisions[0],
     },

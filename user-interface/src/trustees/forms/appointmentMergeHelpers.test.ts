@@ -202,8 +202,13 @@ describe('buildMergeResult', () => {
       expect(result.addedNames).toEqual([]);
     });
 
-    test('spreads all other payload fields into the merged payload', () => {
-      const target = makeAppointment({ divisionCodes: ['301'] });
+    test("preserves the merge target's own appointedDate/effectiveDate/status rather than the incoming payload's", () => {
+      const target = makeAppointment({
+        divisionCodes: ['301'],
+        appointedDate: '2020-01-01',
+        effectiveDate: '2020-01-01',
+        status: 'active',
+      });
       const payload = makePayload({
         divisionCodes: ['303'],
         appointedDate: '2022-06-15',
@@ -212,8 +217,8 @@ describe('buildMergeResult', () => {
       });
       const result = buildMergeResult(target, payload, COURTS);
       if (result.type !== 'merged') throw new Error('expected merged');
-      expect(result.payload.appointedDate).toBe('2022-06-15');
-      expect(result.payload.effectiveDate).toBe('2022-07-01');
+      expect(result.payload.appointedDate).toBe('2020-01-01');
+      expect(result.payload.effectiveDate).toBe('2020-01-01');
       expect(result.payload.status).toBe('active');
     });
 

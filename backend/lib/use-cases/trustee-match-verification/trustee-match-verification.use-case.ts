@@ -2,6 +2,7 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { BadRequestError } from '../../common-errors/bad-request';
+import { CamsError } from '../../common-errors/cams-error';
 import factory from '../../factory';
 import { getCamsUserReference } from '@common/cams/session';
 import {
@@ -17,7 +18,7 @@ import {
 import { OrderStatus } from '@common/cams/orders';
 import { CourtsUseCase } from '../courts/courts';
 import CaseManagement from '../cases/case-management';
-import { getCaseIdParts } from '@common/cams/cases';
+import { getCaseIdParts, CaseSummary } from '@common/cams/cases';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { createAuditRecord } from '@common/cams/auditable';
 import { Creatable } from '@common/cams/creatable';
@@ -231,8 +232,24 @@ export class TrusteeMatchVerificationUseCase {
           .getTrusteeAppointmentsRepository(context)
           .getTrusteeAppointments(resolvedTrusteeId);
         const caseManagement = new CaseManagement(context);
-        const caseSummaries = await Promise.all(
+        // allSettled rather than all: a lookup failure for one case (stale/closed case,
+        // transient gateway timeout) is a different failure mode than a real division
+        // mismatch -- this method's all-or-nothing behavior is specifically about division
+        // coverage, not about case-lookup reliability, so the two must surface as distinct,
+        // non-conflatable errors rather than both failing identically.
+        const caseSummaryResults: PromiseSettledResult<CaseSummary>[] = await Promise.allSettled(
           affectedCaseIds.map((caseId) => caseManagement.getCaseSummary(context, caseId)),
+        );
+        const failedCaseIds = affectedCaseIds.filter(
+          (_caseId, index) => caseSummaryResults[index].status === 'rejected',
+        );
+        if (failedCaseIds.length > 0) {
+          throw new CamsError(MODULE_NAME, {
+            message: `Unable to verify division coverage for case(s): ${failedCaseIds.join(', ')}. Approval was not processed; retry once the lookup succeeds.`,
+          });
+        }
+        const caseSummaries = caseSummaryResults.map(
+          (result) => (result as PromiseFulfilledResult<CaseSummary>).value,
         );
         const uncoveredCaseIds = caseSummaries
           .filter(

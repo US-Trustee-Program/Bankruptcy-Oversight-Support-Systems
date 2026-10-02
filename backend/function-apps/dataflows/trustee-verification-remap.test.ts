@@ -12,6 +12,8 @@ import {
   TrusteeVerificationRemapMessage,
 } from '@common/cams/dataflow-events';
 import { MockMongoRepository } from '../../lib/testing/mock-gateways/mock-mongo.repository';
+import CaseManagement from '../../lib/use-cases/cases/case-management';
+import { CaseSummary } from '@common/cams/cases';
 
 const makeInvocationContext = (): InvocationContext =>
   ({
@@ -56,6 +58,7 @@ describe('trustee-verification-remap handleRemap', () => {
     (event: TrusteeAppointmentDownstreamEvent) => Promise<void>
   >;
   let mockUpdateVerification: ReturnType<typeof vi.fn>;
+  let mockGetTrusteeAppointments: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -68,6 +71,14 @@ describe('trustee-verification-remap handleRemap', () => {
     mockDelete = vi.fn().mockResolvedValue(undefined);
     mockQueueTrusteeAppointmentEvent = vi.fn().mockResolvedValue(undefined);
     mockUpdateVerification = vi.fn().mockResolvedValue({});
+    // Matches makeSurrogate's defaults (courtDivisionCode/chapter '081'/'7') so every
+    // pre-existing test -- which doesn't care about the division re-validation guard --
+    // continues to pass it by default.
+    mockGetTrusteeAppointments = vi
+      .fn()
+      .mockResolvedValue([
+        { status: 'active', courtId: '081', chapter: '7', divisionCodes: ['081'] },
+      ]);
 
     vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository').mockReturnValue(
       Object.assign(new MockMongoRepository(), {
@@ -77,6 +88,15 @@ describe('trustee-verification-remap handleRemap', () => {
         upsert: mockUpsert,
         delete: mockDelete,
       }),
+    );
+    vi.spyOn(factory, 'getTrusteeAppointmentsRepository').mockReturnValue(
+      Object.assign(new MockMongoRepository(), {
+        getTrusteeAppointments: mockGetTrusteeAppointments,
+      }),
+    );
+    vi.spyOn(CaseManagement.prototype, 'getCaseSummary').mockImplementation(
+      async (_context, caseId) =>
+        ({ caseId, courtId: '081', courtDivisionCode: '081', chapter: '7' }) as CaseSummary,
     );
     vi.spyOn(factory, 'getTrusteeMatchVerificationRepository').mockReturnValue(
       Object.assign(new MockMongoRepository(), {

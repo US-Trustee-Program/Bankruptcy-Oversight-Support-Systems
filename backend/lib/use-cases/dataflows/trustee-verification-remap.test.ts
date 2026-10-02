@@ -11,6 +11,8 @@ import {
   TrusteeAppointmentDownstreamEvent,
   TrusteeVerificationRemapMessage,
 } from '@common/cams/dataflow-events';
+import CaseManagement from '../cases/case-management';
+import { CaseSummary } from '@common/cams/cases';
 
 const makeMessage = (
   overrides: Partial<TrusteeVerificationRemapMessage> = {},
@@ -48,6 +50,7 @@ describe('TrusteeVerificationRemapUseCase', () => {
   let mockQueueTrusteeAppointmentEvent: Mock<
     (event: TrusteeAppointmentDownstreamEvent) => Promise<void>
   >;
+  let mockGetTrusteeAppointments: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
     vi.restoreAllMocks();
@@ -59,6 +62,14 @@ describe('TrusteeVerificationRemapUseCase', () => {
     mockUpsert = vi.fn().mockResolvedValue({});
     mockDelete = vi.fn().mockResolvedValue(undefined);
     mockQueueTrusteeAppointmentEvent = vi.fn().mockResolvedValue(undefined);
+    // Matches makeSurrogate's defaults (courtDivisionCode/chapter '081'/'7') so every
+    // pre-existing test -- which doesn't care about the division re-validation guard --
+    // continues to pass it by default. Tests exercising the guard itself override this.
+    mockGetTrusteeAppointments = vi
+      .fn()
+      .mockResolvedValue([
+        { status: 'active', courtId: '081', chapter: '7', divisionCodes: ['081'] },
+      ]);
 
     vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository').mockReturnValue(
       Object.assign(new MockMongoRepository(), {
@@ -68,6 +79,15 @@ describe('TrusteeVerificationRemapUseCase', () => {
         upsert: mockUpsert,
         delete: mockDelete,
       }),
+    );
+    vi.spyOn(factory, 'getTrusteeAppointmentsRepository').mockReturnValue(
+      Object.assign(new MockMongoRepository(), {
+        getTrusteeAppointments: mockGetTrusteeAppointments,
+      }),
+    );
+    vi.spyOn(CaseManagement.prototype, 'getCaseSummary').mockImplementation(
+      async (_context, caseId) =>
+        ({ caseId, courtId: '081', courtDivisionCode: '081', chapter: '7' }) as CaseSummary,
     );
     vi.spyOn(factory, 'getApiToDataflowsGateway').mockReturnValue({
       queueTrusteeAppointmentEvent: mockQueueTrusteeAppointmentEvent,
@@ -288,5 +308,29 @@ describe('TrusteeVerificationRemapUseCase', () => {
       pageSize: 0,
       remainingCount: 0,
     });
+  });
+
+  test('skips remapping a surrogate whose fresh case summary no longer matches the resolved trustee division -- defense in depth against the approval race window', async () => {
+    // A surrogate could be admitted into this fingerprint's bucket after
+    // approveVerification's own division-check snapshot but before its TRUSTEE_VARIATION
+    // write closes the window (see that use case's step 2-4 comments) -- such a surrogate
+    // would never have passed any division check at all. This re-validates against a fresh
+    // case summary rather than trusting the surrogate's own stale courtDivisionCode/chapter.
+    const surrogate = makeSurrogate({ courtDivisionCode: '099', chapter: '13' });
+    mockGetSurrogatesByFingerprint.mockResolvedValue([surrogate]);
+    vi.spyOn(CaseManagement.prototype, 'getCaseSummary').mockResolvedValue({
+      caseId: surrogate.caseId,
+      courtId: '099',
+      courtDivisionCode: '099',
+      chapter: '13',
+    } as CaseSummary);
+    // Resolved trustee is only assigned to '081'/'7' (the default appointment), not '099'/'13'.
+
+    const result = await useCase.remapPage(makeMessage(), 25);
+
+    expect(mockUpsert).not.toHaveBeenCalled();
+    expect(mockDelete).not.toHaveBeenCalled();
+    expect(result.documentsWritten).toBe(0);
+    expect(result.documentsFailed).toBe(1);
   });
 });

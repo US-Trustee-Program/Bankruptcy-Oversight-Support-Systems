@@ -1,6 +1,6 @@
 import { vi, describe, test, expect, beforeEach, Mock } from 'vitest';
 import { ApplicationContext } from '../../adapters/types/basic';
-import { createMockApplicationContext } from '../../testing/testing-utilities';
+import { createMockApplicationContext, getTheThrownError } from '../../testing/testing-utilities';
 import { TrusteeMatchVerificationUseCase } from './trustee-match-verification.use-case';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
@@ -823,6 +823,32 @@ describe('TrusteeMatchVerificationUseCase', () => {
         await expect(
           useCase.approveVerification(context, 'verification-1', 'trustee-new'),
         ).rejects.toThrow(BadRequestError);
+      });
+
+      test('rejects with a distinct error (not BadRequestError) when a case lookup fails, rather than conflating it with a real division mismatch', async () => {
+        mockGetSurrogatesByFingerprints.mockResolvedValue(twoAffectedCases);
+        mockGetTrusteeAppointments.mockResolvedValue([
+          { status: 'active', courtId: '081', chapter: '7', divisionCodes: ['081', '082'] },
+        ]);
+        vi.spyOn(CaseManagement.prototype, 'getCaseSummary').mockImplementation(
+          async (_context, caseId) => {
+            if (caseId === 'case-002') throw new Error('gateway timeout');
+            return {
+              caseId,
+              courtId: '081',
+              courtDivisionCode: '081',
+              chapter: '7',
+            } as CaseSummary;
+          },
+        );
+
+        const error = await getTheThrownError(() =>
+          useCase.approveVerification(context, 'verification-1', 'trustee-new'),
+        );
+
+        expect(error).not.toBeInstanceOf(BadRequestError);
+        expect((error as Error).message).toContain('case-002');
+        expect(mockUpdate).not.toHaveBeenCalled();
       });
 
       test('skips the division check entirely (and never fetches trustee appointments) when there are no affected cases', async () => {
