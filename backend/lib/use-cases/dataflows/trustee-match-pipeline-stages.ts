@@ -36,7 +36,6 @@ import {
   foldKleene,
   KleeneBoolean,
   candidatePool,
-  mergedScore,
   normalize,
   NormalizedMemo,
   NormalizedTrustee,
@@ -663,7 +662,7 @@ type NameMatchScore = (ScoreRecord & { pass: true; quality: NameMatchQuality }) 
  * state.error, which halts the pipeline first.
  */
 function nameMatch(candidate: PipelineCandidate): NameMatchScore {
-  return mergedScore(candidate).doesNameMatch as NameMatchScore;
+  return candidate.scores.doesNameMatch as NameMatchScore;
 }
 
 /** Every compared name part matched literally. */
@@ -678,7 +677,7 @@ type PhoneMatchScore =
   | { pass: false; phoneDigitDistance: number };
 
 function isExactPhoneMatch(candidate: PipelineCandidate): boolean {
-  const score = mergedScore(candidate).doesPhoneMatch as PhoneMatchScore | undefined;
+  const score = candidate.scores.doesPhoneMatch as PhoneMatchScore | undefined;
   return score?.pass === true && score.quality === 'exact';
 }
 
@@ -1061,7 +1060,7 @@ function scoreAddressMatch(
   sourceNormalized: NormalizedTrustee,
   candidate: PipelineCandidate,
 ): PipelineCandidate {
-  const geo = geoPoints(mergedScore(candidate));
+  const geo = geoPoints(candidate.scores);
   const closeness = streetCloseness(
     streetTokens([sourceNormalized.legacy?.address1, sourceNormalized.legacy?.address2]),
     streetTokens([candidate.camsRaw.address?.address1, candidate.camsRaw.address?.address2]),
@@ -1081,7 +1080,7 @@ function scoreAddressMatch(
 }
 
 function addressMatch(candidate: PipelineCandidate): AddressMatchScore | undefined {
-  return mergedScore(candidate).doesAddressMatch as AddressMatchScore | undefined;
+  return candidate.scores.doesAddressMatch as AddressMatchScore | undefined;
 }
 
 /**
@@ -1236,7 +1235,7 @@ export function resolveByPhone(): Stage {
 export function resolveByEmailAddress(): Stage {
   return async (state: PipelineState): Promise<PipelineState> => {
     const survivors = candidatePool(state).filter(
-      (c) => nameQualifies(c) && mergedScore(c).doesEmailMatch?.pass === true,
+      (c) => nameQualifies(c) && c.scores.doesEmailMatch?.pass === true,
     );
     return resolveOnCandidate(state, uniqueBest(survivors, byNameQuality), 'resolveByEmailAddress');
   };
@@ -1246,7 +1245,7 @@ export function resolveByEmailAddress(): Stage {
 export function resolveByPhoneWithTypo(): Stage {
   return async (state: PipelineState): Promise<PipelineState> => {
     const survivors = candidatePool(state).filter(
-      (c) => isExactNameMatch(c) && mergedScore(c).doesPhoneMatch?.quality === 'strong',
+      (c) => isExactNameMatch(c) && c.scores.doesPhoneMatch?.quality === 'strong',
     );
     return resolveOnCandidate(
       state,
@@ -1274,7 +1273,7 @@ export function resolveByAddress(): Stage {
 export function resolveByStateOnly(): Stage {
   return async (state: PipelineState): Promise<PipelineState> => {
     const survivors = candidatePool(state).filter(
-      (c) => hasExactSurnameMatch(c) && mergedScore(c).doesStateMatch?.pass === true,
+      (c) => hasExactSurnameMatch(c) && c.scores.doesStateMatch?.pass === true,
     );
     return resolveOnCandidate(state, uniqueBest(survivors, byNameQuality), 'resolveByStateOnly');
   };
@@ -1290,8 +1289,8 @@ export function resolveByNameOnly(): Stage {
     if (exactNames.length !== 1) return state;
 
     const [candidate] = exactNames;
-    if (mergedScore(candidate).doesStateMatch?.pass === false) return state;
-    if (mergedScore(candidate).doesCamsTrusteeHaveAddressAndPhone?.pass === false) return state;
+    if (candidate.scores.doesStateMatch?.pass === false) return state;
+    if (candidate.scores.doesCamsTrusteeHaveAddressAndPhone?.pass === false) return state;
 
     return resolveOnCandidate(state, candidate, 'resolveByNameOnly');
   };

@@ -106,11 +106,6 @@ export type PipelineCandidate<TCandidate> = {
   origin: string;
 };
 
-/** A candidate's score history. */
-export function mergedScore<TCandidate>(candidate: PipelineCandidate<TCandidate>): ScoreByScorer {
-  return candidate.scores;
-}
-
 /** The candidate pool as a list; state.candidates is a Map keyed by trusteeId for deduplication. */
 export function candidatePool<TSource, TCandidate>(
   state: PipelineState<TSource, TCandidate>,

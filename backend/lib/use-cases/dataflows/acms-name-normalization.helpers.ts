@@ -14,27 +14,6 @@
 import { CanonicalTrusteeSource } from '@common/cams/dataflow-events';
 
 /**
- * Splits a compound PROF_FIRST_NAME (e.g. "CAROLINE RENEE") into its first token and the
- * remainder, but ONLY when PROF_MI is empty — CMMPR sometimes carries a middle name inside
- * PROF_FIRST_NAME instead of using PROF_MI, and calculateNameScore's exact-match-or-initial
- * firstName comparison has no tolerance for an unsplit compound value, so this normalizes it to
- * the same firstName/middleName split DXTR already produces before it ever reaches the shared
- * matcher. Left untouched whenever PROF_MI is already populated, since a compound firstName
- * alongside a real middle initial is a different (and much rarer) shape not addressed here.
- */
-export function splitCompoundFirstName(
-  firstName: string | undefined,
-  middleInitial: string | undefined,
-): { firstName: string | undefined; middleName: string | undefined } {
-  if (middleInitial || !firstName) return { firstName, middleName: middleInitial };
-
-  const tokens = firstName.trim().split(/\s+/);
-  if (tokens.length < 2) return { firstName, middleName: middleInitial };
-
-  return { firstName: tokens[0], middleName: tokens.slice(1).join(' ') };
-}
-
-/**
  * A digit anywhere in PROF_FIRST_NAME is a reliable ACMS corruption signal - no real first name
  * contains one. This covers two distinct real shapes, handled differently:
  *
@@ -62,9 +41,7 @@ export function recoverCorruptedFirstName(
   const lastNameTokens = lastName.trim().split(/\s+/).filter(Boolean);
   if (lastNameTokens.length >= 2) {
     return {
-      // Everything but the real surname (the final token) becomes the new firstName - still
-      // possibly compound (e.g. "K. MICHAEL"), left for splitCompoundFirstName below to divide
-      // into firstName/middleName exactly as it already does for a normal compound PROF_FIRST_NAME.
+      // Everything but the real surname becomes the new firstName, possibly compound ("K. MICHAEL").
       firstName: lastNameTokens.slice(0, -1).join(' '),
       lastName: lastNameTokens[lastNameTokens.length - 1],
     };
@@ -222,13 +199,8 @@ const GLUED_CHAPTER_MARKER_PATTERN = /(chapter|ch)\d+\b/gi;
  * trigger a skip on its own, only when the full "I [M] FAKE" shape is present together. Checking
  * the raw, pre-atomized fullName - rather than firstName/lastName separately, or a reduced form
  * from later in the pipeline - is what makes a single literal pattern sufficient regardless of
- * which ACMS field the marker landed in: firstLastNameToken/normalizeNamePart/
- * splitCompoundFirstName all reshape and redistribute name parts in ways that make a signal split
- * across fields, or embedded mid-field, unpredictable to find again downstream (confirmed by
- * tracing: "I. M."/"FAKE" splits into separate firstName "i"/middleName "m" via
- * splitCompoundFirstName, and "I. M. FAKE" alone reduces its lastName to primary token "i" with
- * "fake" demoted to lastNameAlternates via lastNameSurnameCandidates - neither reduced shape is
- * checkable as one string anymore). Checking the untouched raw fullName up front, before any of
+ * which ACMS field the marker landed in: normalization reshapes and
+ * redistributes name parts, so a signal split across fields is unpredictable to find downstream. Checking the untouched raw fullName up front, before any of
  * that reduction runs, sidesteps the whole problem.
  */
 const FAKE_IDENTITY_PATTERN = /^i\.?\s*m\.?\s*fake$/i;
