@@ -300,7 +300,6 @@ export function normalizeAcmsSourceName(): Stage {
         firstNameAlternates,
         lastName,
         lastNameAlternates,
-        lastNameUnreduced: soloPracticeRecovered.lastName,
       },
     };
   };

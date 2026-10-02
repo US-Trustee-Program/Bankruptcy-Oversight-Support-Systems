@@ -72,14 +72,12 @@ export type ScoreByScorer = Record<string, ScoreRecord>;
  *   harmless; it never matches anything on the other side.
  * - middleNameAlternates: the individual tokens of a multi-token middle name, which `middleName`
  *   stores glued together ("L. Pry" -> "lpry"). Empty unless there is more than one token.
- * - lastNameUnreduced: the source surname after name recovery but before token reduction.
  */
 type NormalizedTrusteeFields = Partial<Omit<ProjectedTrustee, 'trusteeId' | 'address'>> & {
   address?: Partial<NonNullable<ProjectedTrustee['address']>>;
   firstNameAlternates?: string[];
   middleNameAlternates?: string[];
   lastNameAlternates?: string[];
-  lastNameUnreduced?: string;
 };
 
 /**
