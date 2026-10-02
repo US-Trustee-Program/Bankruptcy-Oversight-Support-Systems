@@ -10,34 +10,22 @@ import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow
 import { handleRateLimitRetry } from '../dataflows-rate-limit';
 
 const MODULE_NAME = 'SYNC-ACMS-PROFESSIONAL-IDS';
-// host.json's queues.visibilityTimeout (60s) is shared by every dataflow in this
-// function app, so it can't be raised just for this one — and the storage-queue
-// trigger binding used here doesn't expose the pop receipt needed to renew the
-// lease mid-invocation. Keeping PAGE_SIZE small (matching migrate-trustees.ts's
-// PAGE_SIZE) instead gives per-page processing time (each record does several
-// Cosmos round-trips: fingerprint lookup, name match, conflict check, write)
-// enough headroom to reliably finish well under the visibility timeout, so the
-// same PageMessage can't become visible again and be redelivered to a second,
-// concurrent invocation while the first is still processing it.
+// Kept small so one page finishes well inside host.json's shared 60s queue visibilityTimeout
+// (the trigger can't renew the lease), preventing redelivery to a concurrent invocation.
 const PAGE_SIZE = 50;
 
 type SyncAcmsProfessionalIdsStartMessage = StartMessage & {
-  // Purges all existing trustee-professional-ids mappings and resets every group's sync
-  // bookmark to zero before backfilling — a full, from-scratch reload from ACMS.
+  // Deletes all professional-id records and the sync bookmark, then syncs every group from zero.
   purge?: boolean;
 };
 
 type PageMessage = {
   groupDesignator: string;
   lastUstProfCode: number;
-  // Groups still to be synced after this one, processed one at a time via
-  // self-requeue — see handlePage's continuation logic below.
+  // Groups to sync after this one, chained one at a time by handlePage.
   remainingGroups: string[];
-  // Carried forward from the original start message so EVERY group's bookmark gets reset, not
-  // just the first one handleStart resolves directly — see handlePage's own resolveSyncState
-  // call below. Without this, a purge only ever reset firstGroup; every later group in
-  // remainingGroups read its still-persisted (stale) bookmark from a prior real sync, silently
-  // returning zero new records instead of backfilling.
+  // Forces a zero bookmark per group even if another run re-persists the bookmark document after
+  // purgeAll deletes it.
   purge?: boolean;
   retryCount?: number;
   firstAttemptAt?: string;
@@ -93,12 +81,8 @@ async function handleStart(
 
     const groupDesignators = await SyncAcmsProfessionalIds.getGroupDesignators(deps);
 
-    // Only the first group is queued here — handlePage requeues itself for each
-    // subsequent group in `remainingGroups` once the current one is exhausted, so
-    // exactly one group's ACMS queries are ever in flight for this dataflow (see
-    // handlePage's continuation logic). This avoids fanning out one PageMessage
-    // per group, which let every group's queries hit ACMS concurrently and
-    // overwhelmed it (ACMS_TIMEOUT DLQ entries in staging).
+    // Queues only the first group; handlePage chains through remainingGroups so only one ACMS
+    // query for this dataflow is ever in flight.
     const [firstGroup, ...remainingGroups] = groupDesignators;
 
     if (firstGroup) {
@@ -142,10 +126,6 @@ async function handlePage(message: PageMessage, invocationContext: InvocationCon
     throw new Error('Missing required environment variable: AzureWebJobsDataflowsStorage');
   }
 
-  // Defaults to [] so a PageMessage enqueued by the pre-continuation deploy
-  // (no remainingGroups field) degrades safely to "no more groups" instead of
-  // throwing when destructured below, rather than requiring the deploy to
-  // drain the queue first.
   const { groupDesignator, remainingGroups = [] } = message;
   const appContext = await ContextCreator.getApplicationContext({ invocationContext });
   const trace = appContext.observability.startTrace(invocationContext.invocationId);
@@ -156,10 +136,7 @@ async function handlePage(message: PageMessage, invocationContext: InvocationCon
     let processedCount = 0;
     const outcomeCounts: Record<string, number> = {};
 
-    // Only one page is fetched per invocation — the continuation below requeues
-    // for the next page (same group) or the next group in remainingGroups, so
-    // exactly one PageMessage for this dataflow is ever in flight, and ACMS is
-    // never queried by more than one invocation at a time.
+    // One page per invocation; the continuation below requeues the next page or the next group.
     const page = await deps.acmsGateway.getTrusteeProfessionalRecordsPage(
       appContext,
       groupDesignator,
@@ -225,12 +202,8 @@ async function handlePage(message: PageMessage, invocationContext: InvocationCon
       },
     );
   } catch (error) {
-    // On a transient error, retry from the ORIGINAL starting bookmark (message.lastUstProfCode),
-    // not any locally-advanced progress — some records processed this invocation may be
-    // reprocessed, but linking/matching is idempotent (createProfessionalId's conflict
-    // detection and the fingerprint/name-match bucket lookups either no-op or reconfirm the
-    // same outcome), so this trades a little duplicate work for zero risk of skipping a record
-    // due to an uncommitted partial bookmark advance.
+    // Retries from message.lastUstProfCode; reprocessing is safe because upsertProfessionalId
+    // overwrites by key and the bookmark is stored only after the full page.
     const rateLimitRetryStatus = await handleRateLimitRetry({
       error,
       message,
@@ -318,8 +291,7 @@ function setup() {
   });
 
   app.timer(TIMER_TRIGGER, {
-    // Daily, after the ACMS replica refresh completes — acms-cams-transition's daily sync runs
-    // at 02:00 UTC for the same reason; this follows 30 minutes after it.
+    // Daily, 30 minutes after acms-cams-transition's 02:00 UTC schedule.
     schedule: '0 30 2 * * *',
     extraOutputs: [START],
     handler: timerTrigger,
