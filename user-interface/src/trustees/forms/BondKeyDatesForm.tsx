@@ -59,7 +59,7 @@ export default function BondKeyDatesForm() {
       isLoading={shell.isLoading}
       canManage={shell.canManage}
       isSaving={shell.isSaving}
-      isSaveDisabled={hasAnyDateError}
+      isSaveDisabled={shell.loadFailed || hasAnyDateError}
       onSave={shell.handleSave}
       onCancel={shell.handleCancel}
     >
