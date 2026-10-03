@@ -62,7 +62,7 @@
     "@tiptap/pm": "3.31.3",
     "@tiptap/react": "3.31.3",
     "@types/jsdom": "30.0.0",
-    "@types/node": "24.13.5",
+    "@types/node": "24.13.6",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "@uswds/uswds": "3.14.0",
@@ -75,7 +75,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",
-    "@eslint-react/eslint-plugin": "5.19.1",
+    "@eslint-react/eslint-plugin": "5.20.0",
     "@eslint/js": "10.0.0",
     "@playwright/test": "1.63.0",
     "@rolldown/plugin-babel": "0.2.4",
