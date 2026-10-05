@@ -308,6 +308,36 @@ describe('TrusteeMeetingOfCreditorsInfoForm', () => {
         { timeout: 2000 },
       );
     });
+
+    test('submits payload assembled from user-entered field values', async () => {
+      const trustee = MockData.getTrustee({
+        trusteeId: TEST_TRUSTEE_ID,
+        zoomInfo: undefined,
+      });
+
+      patchTrusteeSpy.mockResolvedValue({ data: trustee });
+
+      render(<TrusteeMeetingOfCreditorsInfoForm trustee={trustee} />);
+
+      await userEvent.type(screen.getByTestId('trustee-zoom-link'), VALID_ZOOM_INFO.link);
+      await userEvent.type(screen.getByTestId('trustee-zoom-phone'), VALID_ZOOM_INFO.phone);
+      await userEvent.type(
+        screen.getByTestId('trustee-zoom-meeting-id'),
+        VALID_ZOOM_INFO.meetingId,
+      );
+      await userEvent.type(screen.getByTestId('trustee-zoom-passcode'), VALID_ZOOM_INFO.passcode);
+
+      const saveButton = screen.getByTestId('button-button-trustee-zoom-info-form-submit');
+      await waitFor(() => expect(saveButton).toBeEnabled(), { timeout: 2000 });
+
+      await userEvent.click(saveButton);
+
+      await waitFor(() => {
+        expect(patchTrusteeSpy).toHaveBeenCalledWith(TEST_TRUSTEE_ID, {
+          zoomInfo: VALID_ZOOM_INFO,
+        });
+      });
+    });
   });
 
   describe('cancel functionality', () => {
