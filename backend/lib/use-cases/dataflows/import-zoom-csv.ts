@@ -3,6 +3,8 @@ import { getCamsError } from '../../common-errors/error-utilities';
 import factory from '../../factory';
 import { ZoomInfo, Trustee } from '@common/cams/trustees';
 import { CamsUserReference } from '@common/cams/users';
+import { zoomInfoSpec } from '@common/cams/trustees-validators';
+import { validateObject } from '@common/cams/validation';
 import { normalizeName } from './trustee-match.helpers';
 import { generateSearchTokens } from '../../adapters/utils/phonetic-helper';
 import ModuleNames from '../../../function-apps/dataflows/module-names';
@@ -393,6 +395,15 @@ export async function processZoomMatchedRow(
       passcode: row.passcode,
       accountEmail: row.zoomEmail || undefined,
     };
+
+    const validationResult = validateObject(zoomInfoSpec, zoomInfo);
+    if (!validationResult.valid) {
+      context.logger.error(
+        MODULE_NAME,
+        `Invalid zoom info for "${row.zoomName}": ${JSON.stringify(validationResult.reasonMap ?? validationResult.reasons)}`,
+      );
+      return { outcome: 'error' };
+    }
 
     // Update the trustee with zoom info
     await repo.updateTrustee(targetTrustee.trusteeId, { ...targetTrustee, zoomInfo }, SYSTEM_USER);
