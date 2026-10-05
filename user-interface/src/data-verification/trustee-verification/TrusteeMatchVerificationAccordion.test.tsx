@@ -682,26 +682,6 @@ describe('TrusteeMatchVerificationAccordion', () => {
       expect(detailSpy).not.toHaveBeenCalled();
     });
 
-    test('does not fetch the case summary on mount for a resolved order', async () => {
-      // The accordion group keeps every row mounted (toggling visibility, not conditional
-      // rendering), so an ungated fetch here would fire once per approved row on every list
-      // render -- this order's search modal can never be reached, so there is no display
-      // benefit to the fetch, only an unconditional per-row network call.
-      const caseSummarySpy = vi.spyOn(Api2, 'getCaseSummary');
-      const resolvedOrder: TrusteeMatchVerificationListItem = {
-        ...sampleOrderWithCandidates,
-        status: 'approved',
-        resolvedTrusteeId: 'trustee-1',
-        resolvedTrusteeName: 'Jane Smith',
-      };
-
-      renderWithProps({ order: resolvedOrder });
-
-      await new Promise((resolve) => setTimeout(resolve, 0));
-
-      expect(caseSummarySpy).not.toHaveBeenCalled();
-    });
-
     test('does not fetch detail when a resolved order is manually expanded', async () => {
       const detailSpy = vi.spyOn(Api2, 'getTrusteeMatchVerificationDetail');
       const resolvedOrder: TrusteeMatchVerificationListItem = {
@@ -1424,10 +1404,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
       });
     });
 
-    test('threads the resolved case chapter into the search call for division-aware filtering', async () => {
-      vi.spyOn(Api2, 'getCaseSummary').mockResolvedValue({
-        data: MockData.getCaseSummary({ override: { chapter: '7' } }),
-      });
+    test('threads the resolved case division into the search call for division-aware filtering', async () => {
       const searchSpy = vi
         .spyOn(Api2, 'searchTrustees')
         .mockResolvedValue({ data: manualSearchMockData });
@@ -1435,22 +1412,8 @@ describe('TrusteeMatchVerificationAccordion', () => {
 
       await searchAndSelectTrustee();
 
-      const [, , divisionCode, chapter] = searchSpy.mock.calls[0];
+      const [, , divisionCode] = searchSpy.mock.calls[0];
       expect(divisionCode).toBe('081');
-      expect(chapter).toBe('7');
-    });
-
-    test('falls back to district-only filtering (chapter stays undefined) when the case-summary fetch fails', async () => {
-      vi.spyOn(Api2, 'getCaseSummary').mockRejectedValue(new Error('not found'));
-      const searchSpy = vi
-        .spyOn(Api2, 'searchTrustees')
-        .mockResolvedValue({ data: manualSearchMockData });
-      renderWithProps();
-
-      await searchAndSelectTrustee();
-
-      const [, , , chapter] = searchSpy.mock.calls[0];
-      expect(chapter).toBeUndefined();
     });
   });
 

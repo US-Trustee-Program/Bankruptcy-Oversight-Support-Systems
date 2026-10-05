@@ -23,7 +23,7 @@ import { CourtDivisionDetails } from '@common/cams/courts';
 import { createAuditRecord } from '@common/cams/auditable';
 import { Creatable } from '@common/cams/creatable';
 import { TRUSTEE_VARIATION_DOCUMENT_TYPE, TrusteeVariation } from '@common/cams/trustee-variation';
-import { isAppointmentMatch } from '../dataflows/trustee-match.helpers';
+import { isDivisionMatch } from '../dataflows/trustee-match.helpers';
 
 const MODULE_NAME = 'TRUSTEE-MATCH-VERIFICATION-USE-CASE';
 const VALID_STATUSES: OrderStatus[] = ['pending', 'approved'];
@@ -221,11 +221,13 @@ export class TrusteeMatchVerificationUseCase {
       const affectedCaseIds = affectedCaseIdsByFingerprint.get(verification.fingerprint) ?? [];
 
       // 3. Reject the whole approval if the resolved trustee's configured divisions don't
-      // cover every affected case's court+chapter+division — the same match rule the
-      // auto-match pipeline already trusts (isAppointmentMatch). A single fingerprint can
-      // affect multiple cases, potentially spanning different divisions within the same
-      // court, so this must check every affected case, not just verification.caseId. This
-      // is necessarily all-or-nothing: approval is one atomic status flip for the whole
+      // cover every affected case's court+division -- the CAMS-905 user story/AC's "configured
+      // divisions" rule, which is division-only (not isAppointmentMatch's court+chapter+division
+      // rule -- that extra chapter dimension exists for a different purpose, auto-link's
+      // appointment-identity gate, and isn't part of what this issue asked for). A single
+      // fingerprint can affect multiple cases, potentially spanning different divisions within
+      // the same court, so this must check every affected case, not just verification.caseId.
+      // This is necessarily all-or-nothing: approval is one atomic status flip for the whole
       // verification, so there's no partial-approval option if only some cases match.
       if (affectedCaseIds.length > 0) {
         const trusteeAppointments = await factory
@@ -254,12 +256,7 @@ export class TrusteeMatchVerificationUseCase {
         const uncoveredCaseIds = caseSummaries
           .filter(
             (summary) =>
-              !isAppointmentMatch(
-                trusteeAppointments,
-                summary.courtId,
-                summary.courtDivisionCode,
-                summary.chapter,
-              ),
+              !isDivisionMatch(trusteeAppointments, summary.courtId, summary.courtDivisionCode),
           )
           .map((summary) => summary.caseId);
         if (uncoveredCaseIds.length > 0) {

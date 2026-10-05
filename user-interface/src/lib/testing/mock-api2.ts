@@ -2446,7 +2446,6 @@ async function searchTrustees(
   _name: string,
   _courtId?: string,
   _divisionCode?: string,
-  _chapter?: string,
 ): Promise<ResponseBody<TrusteeSearchResult[]>> {
   return { data: [] };
 }

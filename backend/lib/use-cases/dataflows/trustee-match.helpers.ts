@@ -472,6 +472,24 @@ export function isAppointmentMatch(
 }
 
 /**
+ * Determines whether a trustee has any active appointment covering a court + division,
+ * independent of chapter. Enforces CAMS-905's "configured divisions" business rule, which
+ * (per the originating user story/AC) is a division-only check -- deliberately narrower than
+ * isAppointmentMatch's court+chapter+division rule, which exists for a different purpose
+ * (auto-link's appointment-identity gate) and is not part of this rule.
+ */
+export function isDivisionMatch(
+  appointments: TrusteeAppointment[],
+  courtId: string,
+  divisionCode: string,
+): boolean {
+  return appointments.some(
+    (a) =>
+      a.status === 'active' && a.courtId === courtId && appointmentCoversDivision(a, divisionCode),
+  );
+}
+
+/**
  * Finds a deterministic inactive appointment matching court + division + chapter.
  * Where the status is NOT 'active'. Used to detect the "perfect match
  * but inactive status" scenario. If multiple inactive appointments match,

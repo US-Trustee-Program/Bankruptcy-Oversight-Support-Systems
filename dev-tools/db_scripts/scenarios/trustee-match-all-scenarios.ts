@@ -299,6 +299,32 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       ],
     },
 
+    // Active appointment backing the multi-case trustee's division/chapter coverage, so the
+    // search modal and approval's isAppointmentMatch check can actually find her (without this,
+    // she has zero on-file appointments and fails every court/division/chapter filter).
+    {
+      db: 'cams',
+      collectionOrTable: 'trustee-appointments',
+      data: [
+        {
+          id: 'seed-appointment-multicase',
+          documentType: 'TRUSTEE_APPOINTMENT',
+          trusteeId: 'seed-trustee-match-multicase',
+          chapter: '11',
+          appointmentType: 'panel',
+          courtId: '0209',
+          divisionCodes: ['091'],
+          appointedDate: '2020-01-01',
+          status: 'active',
+          effectiveDate: '2020-01-01',
+          courtName: 'U.S. Bankruptcy Court Western District of New York',
+          courtDivisionName: 'Buffalo',
+          updatedOn: '2025-03-01T00:00:00.000Z',
+          updatedBy: SEEDER,
+        },
+      ],
+    },
+
     // ── Cosmos: Appointments for status scenarios ────────────────────────────
 
     // Active appointment for inactive trustee
@@ -1037,7 +1063,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           documentType: 'TRUSTEE_MATCH_VERIFICATION',
           taskType: 'trustee-match',
           caseId: CASE_MULTI_A,
-          courtId: '0208',
+          courtId: '0209', // Western District of New York (Buffalo) - CASE_MULTI_A is a 091 case
           status: 'pending',
           taskDate: '2018-01-01T00:00:00.000Z',
           mismatchReason: 'IMPERFECT_MATCH',

@@ -265,7 +265,7 @@ describe('TrusteeSearchUseCase', () => {
     expect(logger).toBe(context.logger);
   });
 
-  describe('division/chapter filtering', () => {
+  describe('division filtering', () => {
     const mockAppointmentsDivision081: Partial<TrusteeAppointment>[] = [
       {
         id: 'appt-div-081',
@@ -284,8 +284,8 @@ describe('TrusteeSearchUseCase', () => {
       {
         id: 'appt-div-082',
         trusteeId: 'trustee-002',
-        chapter: '7',
-        appointmentType: 'panel',
+        chapter: '13',
+        appointmentType: 'standing',
         courtId: '081',
         status: 'active',
         divisionCodes: ['082'],
@@ -305,15 +305,21 @@ describe('TrusteeSearchUseCase', () => {
       });
 
       const useCase = new TrusteeSearchUseCase();
-      const results = await useCase.searchTrustees(context, 'smith', '081', '081', '7');
+      const results = await useCase.searchTrustees(context, 'smith', '081', '081');
 
       expect(results).toHaveLength(1);
       expect(results[0].trusteeId).toBe('trustee-001');
     });
 
-    test('filters out a trustee whose appointment covers the division but not the chapter', async () => {
+    // CAMS-905's "configured divisions" rule (per the originating user story/AC) is
+    // division-only -- a trustee's chapter portfolio has no bearing on whether they cover a
+    // division. Deliberately narrower than isAppointmentMatch's court+chapter+division rule,
+    // which exists for a different purpose (auto-link's appointment-identity gate).
+    test('includes a trustee covering the division even when their appointment chapter differs', async () => {
       const appointments = new Map<string, Partial<TrusteeAppointment>[]>();
-      appointments.set('trustee-001', mockAppointmentsDivision081);
+      appointments.set('trustee-001', [
+        { ...mockAppointmentsDivision081[0], divisionCodes: ['081'], chapter: '13' },
+      ]);
 
       setupRepositories({
         scoredResults: [mockTrustee1],
@@ -321,26 +327,9 @@ describe('TrusteeSearchUseCase', () => {
       });
 
       const useCase = new TrusteeSearchUseCase();
-      const results = await useCase.searchTrustees(context, 'smith', '081', '081', '13');
-
-      expect(results).toHaveLength(0);
-    });
-
-    test('does not apply the filter when chapter is omitted', async () => {
-      const appointments = new Map<string, Partial<TrusteeAppointment>[]>();
-      appointments.set('trustee-001', mockAppointmentsDivision081);
-      appointments.set('trustee-002', mockAppointmentsDivision082);
-
-      setupRepositories({
-        scoredResults: [mockTrustee1, mockTrustee2],
-        appointmentsByTrustee: appointments,
-      });
-
-      const useCase = new TrusteeSearchUseCase();
-      // courtId + divisionCode given, but no chapter -- filter must not apply.
       const results = await useCase.searchTrustees(context, 'smith', '081', '081');
 
-      expect(results).toHaveLength(2);
+      expect(results).toHaveLength(1);
     });
 
     test('does not apply the filter when divisionCode is omitted', async () => {
@@ -354,19 +343,18 @@ describe('TrusteeSearchUseCase', () => {
       });
 
       const useCase = new TrusteeSearchUseCase();
-      // courtId + chapter given, but no divisionCode -- filter must not apply. Closes the
-      // compound `courtId && divisionCode && chapter` condition's remaining untested operand.
-      const results = await useCase.searchTrustees(context, 'smith', '081', undefined, '7');
+      // courtId given, but no divisionCode -- filter must not apply.
+      const results = await useCase.searchTrustees(context, 'smith', '081');
 
       expect(results).toHaveLength(2);
     });
 
-    test('does not apply either filter when courtId is omitted, even with divisionCode and chapter present', async () => {
+    test('does not apply the division filter when courtId is omitted, even with divisionCode present', async () => {
       // Reachable in production: TrusteeSearchModal's district dropdown lets a user clear the
-      // selected court independently of divisionCode/chapter. If the `courtId &&` guard were
-      // ever dropped, this combination would call isAppointmentMatch with courtId=undefined,
-      // which never matches any real appointment -- silently returning zero results instead
-      // of falling back to unfiltered search.
+      // selected court independently of divisionCode. If the `courtId &&` guard were ever
+      // dropped, this combination would call isDivisionMatch with courtId=undefined, which
+      // never matches any real appointment -- silently returning zero results instead of
+      // falling back to unfiltered search.
       const appointments = new Map<string, Partial<TrusteeAppointment>[]>();
       appointments.set('trustee-001', mockAppointmentsDivision081);
       appointments.set('trustee-002', mockAppointmentsDivision082);
@@ -377,7 +365,7 @@ describe('TrusteeSearchUseCase', () => {
       });
 
       const useCase = new TrusteeSearchUseCase();
-      const results = await useCase.searchTrustees(context, 'smith', undefined, '081', '7');
+      const results = await useCase.searchTrustees(context, 'smith', undefined, '081');
 
       expect(results).toHaveLength(2);
     });

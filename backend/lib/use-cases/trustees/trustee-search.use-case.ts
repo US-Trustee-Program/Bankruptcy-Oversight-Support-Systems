@@ -2,7 +2,7 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { TrusteeSearchResult } from '@common/cams/trustee-search';
 import factory from '../../factory';
 import { getCamsError } from '../../common-errors/error-utilities';
-import { isAppointmentMatch } from '../dataflows/trustee-match.helpers';
+import { isDivisionMatch } from '../dataflows/trustee-match.helpers';
 
 const MODULE_NAME = 'TRUSTEE-SEARCH-USE-CASE';
 
@@ -12,7 +12,6 @@ export class TrusteeSearchUseCase {
     name: string,
     courtId?: string,
     divisionCode?: string,
-    chapter?: string,
   ): Promise<TrusteeSearchResult[]> {
     const trace = context.observability.startTrace(context.invocationId);
 
@@ -39,16 +38,11 @@ export class TrusteeSearchUseCase {
           continue;
         }
         // When both are provided, filter to trustees actually eligible for this case (the
-        // same court+chapter+division rule isAppointmentMatch already enforces on
-        // verification approval) -- so a user can't pick a trustee the backend would reject
-        // anyway. Omitting either preserves district-only filtering for callers with no
-        // case context to provide (e.g. courtId is still applied above on its own).
-        if (
-          courtId &&
-          divisionCode &&
-          chapter &&
-          !isAppointmentMatch(appointments, courtId, divisionCode, chapter)
-        ) {
+        // same court+division rule isDivisionMatch already enforces on verification approval)
+        // -- so a user can't pick a trustee the backend would reject anyway. Omitting either
+        // preserves district-only filtering for callers with no case context to provide (e.g.
+        // courtId is still applied above on its own).
+        if (courtId && divisionCode && !isDivisionMatch(appointments, courtId, divisionCode)) {
           continue;
         }
         results.push({

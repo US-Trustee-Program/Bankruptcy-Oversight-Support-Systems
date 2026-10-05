@@ -19,6 +19,7 @@ import {
   tokenizeNameForIntersection,
   parseCityStateZip,
   isAppointmentMatch,
+  isDivisionMatch,
   findInactivePerfectMatch,
   stripParentheticalAnnotations,
   stripTrusteeRoleSuffix,
@@ -2998,6 +2999,68 @@ describe('isAppointmentMatch', () => {
       }),
     ];
     expect(isAppointmentMatch(appointments, '081', '237', '7')).toBe(false);
+  });
+});
+
+describe('isDivisionMatch', () => {
+  test('should return true when active appointment matches court and division', () => {
+    const appointments = [
+      makeAppointment({ courtId: '081', divisionCode: '1', chapter: '7', status: 'active' }),
+    ];
+    expect(isDivisionMatch(appointments, '081', '1')).toBe(true);
+  });
+
+  test('should return false when appointments array is empty', () => {
+    expect(isDivisionMatch([], '081', '1')).toBe(false);
+  });
+
+  test('should return false when matching appointment has status inactive', () => {
+    const appointments = [
+      makeAppointment({ courtId: '081', divisionCode: '1', chapter: '7', status: 'inactive' }),
+    ];
+    expect(isDivisionMatch(appointments, '081', '1')).toBe(false);
+  });
+
+  test('should return false when division matches but court does not', () => {
+    const appointments = [
+      makeAppointment({ courtId: '082', divisionCode: '1', chapter: '7', status: 'active' }),
+    ];
+    expect(isDivisionMatch(appointments, '081', '1')).toBe(false);
+  });
+
+  // CAMS-905's "configured divisions" rule is division-only -- unlike isAppointmentMatch,
+  // chapter is irrelevant here regardless of what the trustee's appointment chapter is.
+  test('should return true when court and division match even though chapter differs', () => {
+    const appointments = [
+      makeAppointment({ courtId: '081', divisionCode: '1', chapter: '13', status: 'active' }),
+    ];
+    expect(isDivisionMatch(appointments, '081', '1')).toBe(true);
+  });
+
+  test('should return true when case division is included in a multi-division divisionCodes array', () => {
+    const appointments = [
+      makeAppointment({
+        courtId: '081',
+        divisionCode: undefined,
+        divisionCodes: ['235', '236', '237'],
+        chapter: '7',
+        status: 'active',
+      }),
+    ];
+    expect(isDivisionMatch(appointments, '081', '237')).toBe(true);
+  });
+
+  test('should return false when case division is not in the divisionCodes array', () => {
+    const appointments = [
+      makeAppointment({
+        courtId: '081',
+        divisionCode: undefined,
+        divisionCodes: ['235', '236'],
+        chapter: '7',
+        status: 'active',
+      }),
+    ];
+    expect(isDivisionMatch(appointments, '081', '237')).toBe(false);
   });
 });
 

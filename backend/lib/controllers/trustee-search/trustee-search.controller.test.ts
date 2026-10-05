@@ -41,17 +41,17 @@ describe('TrusteeSearchController', () => {
     {
       name: 'no filters',
       query: { name: 'smith' },
-      expectedArgs: ['smith', undefined, undefined, undefined],
+      expectedArgs: ['smith', undefined, undefined],
     },
     {
       name: 'courtId only',
       query: { name: 'smith', courtId: '081' },
-      expectedArgs: ['smith', '081', undefined, undefined],
+      expectedArgs: ['smith', '081', undefined],
     },
     {
-      name: 'courtId, divisionCode, and chapter',
-      query: { name: 'smith', courtId: '081', divisionCode: '081', chapter: '7' },
-      expectedArgs: ['smith', '081', '081', '7'],
+      name: 'courtId and divisionCode',
+      query: { name: 'smith', courtId: '081', divisionCode: '081' },
+      expectedArgs: ['smith', '081', '081'],
     },
   ])('passes $name through to searchTrustees', async ({ query, expectedArgs }) => {
     context.request.query = query;

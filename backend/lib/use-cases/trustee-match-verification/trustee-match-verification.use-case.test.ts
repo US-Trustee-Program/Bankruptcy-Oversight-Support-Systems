@@ -745,7 +745,7 @@ describe('TrusteeMatchVerificationUseCase', () => {
         );
       }
 
-      test('approves when the resolved trustee covers every affected case court+chapter+division', async () => {
+      test('approves when the resolved trustee covers every affected case court+division', async () => {
         mockGetSurrogatesByFingerprints.mockResolvedValue(twoAffectedCases);
         mockGetTrusteeAppointments.mockResolvedValue([
           { status: 'active', courtId: '081', chapter: '7', divisionCodes: ['081', '082'] },
@@ -811,7 +811,12 @@ describe('TrusteeMatchVerificationUseCase', () => {
         expect(mockUpdate).not.toHaveBeenCalled();
       });
 
-      test('rejects when the division matches but the chapter does not', async () => {
+      // CAMS-905's "configured divisions" rule (per the originating user story/AC) is
+      // division-only -- a trustee's chapter portfolio is irrelevant to whether they're
+      // assigned to a case's division. This is deliberately narrower than isAppointmentMatch's
+      // court+chapter+division rule, which exists for a different purpose (auto-link's
+      // appointment-identity gate) and was never part of what this issue asked for.
+      test('approves when the division matches even though the chapter does not', async () => {
         mockGetSurrogatesByFingerprints.mockResolvedValue(oneAffectedCase);
         mockGetTrusteeAppointments.mockResolvedValue([
           { status: 'active', courtId: '081', chapter: '11', divisionCodes: ['081'] },
@@ -820,9 +825,12 @@ describe('TrusteeMatchVerificationUseCase', () => {
           'case-001': { courtId: '081', courtDivisionCode: '081', chapter: '7' },
         });
 
-        await expect(
-          useCase.approveVerification(context, 'verification-1', 'trustee-new'),
-        ).rejects.toThrow(BadRequestError);
+        await useCase.approveVerification(context, 'verification-1', 'trustee-new');
+
+        expect(mockUpdate).toHaveBeenCalledWith(
+          'verification-1',
+          expect.objectContaining({ status: 'approved' }),
+        );
       });
 
       test('rejects with a distinct error (not BadRequestError) when a case lookup fails, rather than conflating it with a real division mismatch', async () => {

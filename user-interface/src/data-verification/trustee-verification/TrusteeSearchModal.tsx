@@ -22,13 +22,12 @@ interface TrusteeSearchModalProps {
   dxtrTrusteePhone?: string;
   dxtrTrusteeEmail?: string;
   courtId?: string;
-  // When both are provided, search results are filtered server-side to trustees with an
-  // active appointment covering this court+chapter+division (isAppointmentMatch's rule) --
-  // so a user can't pick a trustee the backend would reject on approval anyway. Omitting
-  // either preserves the original district-only filtering, for any other caller of this
-  // same modal that doesn't have case context to provide.
+  // When provided (alongside courtId), search results are filtered server-side to trustees
+  // with an active appointment covering this court+division (isDivisionMatch's rule) -- so a
+  // user can't pick a trustee the backend would reject on approval anyway. Omitting it
+  // preserves the original district-only filtering, for any other caller of this same modal
+  // that doesn't have case context to provide.
   divisionCode?: string;
-  chapter?: string;
   onConfirm: (result: TrusteeSearchResult) => void;
   onCancel?: () => void;
   isProcessing?: boolean;
@@ -55,7 +54,6 @@ function TrusteeSearchModal_(
     dxtrTrusteeEmail,
     courtId,
     divisionCode,
-    chapter,
     onConfirm,
     onCancel,
     isProcessing,
@@ -110,13 +108,13 @@ function TrusteeSearchModal_(
       setSearchResults([]);
       return;
     }
-    // divisionCode/chapter describe the case that opened this modal, which is only a valid
-    // filter while the search is still scoped to that case's own court. If the user has
-    // switched the "Trustee District" dropdown away from the court this modal was opened
-    // with, divisionCode belongs to a different court than the one now being searched --
-    // applying it would filter search results against the wrong court's divisions. Falling
-    // back to district-only filtering here is safe: it can only ever show MORE candidates,
-    // never admit one the backend's own approval check would reject.
+    // divisionCode describes the case that opened this modal, which is only a valid filter
+    // while the search is still scoped to that case's own court. If the user has switched the
+    // "Trustee District" dropdown away from the court this modal was opened with, divisionCode
+    // belongs to a different court than the one now being searched -- applying it would filter
+    // search results against the wrong court's divisions. Falling back to district-only
+    // filtering here is safe: it can only ever show MORE candidates, never admit one the
+    // backend's own approval check would reject.
     const isOriginatingCourt = selectedCourtId === courtId;
     debounce(async () => {
       try {
@@ -124,7 +122,6 @@ function TrusteeSearchModal_(
           value,
           selectedCourtEntry?.courtId,
           isOriginatingCourt ? divisionCode : undefined,
-          isOriginatingCourt ? chapter : undefined,
         );
         setSearchResults(response.data);
       } catch {
