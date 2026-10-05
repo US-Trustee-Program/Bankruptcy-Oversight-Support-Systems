@@ -117,7 +117,6 @@ function TrusteeZoomInfoForm(props: Readonly<TrusteeZoomInfoFormProps>) {
               name="zoom-link"
               value={formState.link}
               onChange={createChangeHandler('link')}
-              data-testid="trustee-zoom-link-input"
               required={true}
               className="margin-top-0"
               ariaDescription={[
@@ -132,7 +131,6 @@ function TrusteeZoomInfoForm(props: Readonly<TrusteeZoomInfoFormProps>) {
               name="zoom-phone"
               value={formState.phone}
               onChange={createChangeHandler('phone')}
-              data-testid="trustee-zoom-phone-input"
               required={true}
               errorMessage={fieldErrors.phone}
             />
@@ -142,7 +140,6 @@ function TrusteeZoomInfoForm(props: Readonly<TrusteeZoomInfoFormProps>) {
               name="zoom-meeting-id"
               value={formState.meetingId}
               onChange={createChangeHandler('meetingId')}
-              data-testid="trustee-zoom-meeting-id-input"
               required={true}
               errorMessage={fieldErrors.meetingId}
             />
@@ -152,7 +149,6 @@ function TrusteeZoomInfoForm(props: Readonly<TrusteeZoomInfoFormProps>) {
               name="zoom-passcode"
               value={formState.passcode}
               onChange={createChangeHandler('passcode')}
-              data-testid="trustee-zoom-passcode-input"
               required={true}
               errorMessage={fieldErrors.passcode}
             />

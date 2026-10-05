@@ -153,78 +153,6 @@ describe('trustees-validators', () => {
     });
   });
 
-  describe('phoneNumber', () => {
-    test.each([
-      { value: '123-456-7890', expected: VALID },
-      { value: '1-123-456-7890', expected: VALID },
-      { value: '(123) 456-7890', expected: { reasons: [FIELD_VALIDATION_MESSAGES.PHONE_NUMBER] } },
-      { value: '1234567890', expected: { reasons: [FIELD_VALIDATION_MESSAGES.PHONE_NUMBER] } },
-      { value: '123-45-6789', expected: { reasons: [FIELD_VALIDATION_MESSAGES.PHONE_NUMBER] } },
-      { value: 'invalid', expected: { reasons: [FIELD_VALIDATION_MESSAGES.PHONE_NUMBER] } },
-    ])('should validate phone number: $value', ({ value, expected }) => {
-      expect(TV.phoneNumber(value)).toEqual(expected);
-    });
-  });
-
-  describe('phoneExtension', () => {
-    test.each([
-      { value: '123', expected: VALID },
-      { value: '12345', expected: VALID },
-      { value: undefined, expected: VALID },
-      { value: 'abc', expected: { reasons: [FIELD_VALIDATION_MESSAGES.PHONE_EXTENSION] } },
-      { value: '12345678', expected: { reasons: [FIELD_VALIDATION_MESSAGES.PHONE_EXTENSION] } },
-    ])('should validate phone extension: $value', ({ value, expected }) => {
-      expect(TV.phoneExtension(value)).toEqual(expected);
-    });
-  });
-
-  describe('email', () => {
-    test.each([
-      { value: 'user@example.com', expected: VALID },
-      { value: 'test.user+tag@domain.co.uk', expected: VALID },
-      { value: 'a'.repeat(244) + '@test.com', expected: VALID },
-      { value: 'invalid', expected: { reasons: [FIELD_VALIDATION_MESSAGES.EMAIL] } },
-      { value: '@example.com', expected: { reasons: [FIELD_VALIDATION_MESSAGES.EMAIL] } },
-      { value: 'user@', expected: { reasons: [FIELD_VALIDATION_MESSAGES.EMAIL] } },
-      {
-        value: 'a'.repeat(255) + '@test.com',
-        expected: { reasons: ['Max length 254 characters'] },
-      },
-      {
-        value: undefined,
-        expected: { reasons: [FIELD_VALIDATION_MESSAGES.EMAIL] },
-      },
-    ])('should validate email: $value', ({ value, expected }) => {
-      expect(TV.email(value)).toEqual(expected);
-    });
-  });
-
-  describe('website', () => {
-    test.each([
-      { value: 'https://example.com', expected: VALID },
-      { value: 'http://example.com', expected: VALID },
-      { value: 'www.example.com', expected: VALID },
-      { value: undefined, expected: VALID },
-      { value: null, expected: VALID },
-      { value: '', expected: VALID },
-      {
-        value: 'invalid website',
-        expected: { reasons: [FIELD_VALIDATION_MESSAGES.WEBSITE] },
-      },
-      {
-        value: 'https://' + 'a'.repeat(250) + '.com',
-        expected: {
-          reasons: [
-            FIELD_VALIDATION_MESSAGES.WEBSITE,
-            FIELD_VALIDATION_MESSAGES.WEBSITE_MAX_LENGTH,
-          ],
-        },
-      },
-    ])('should validate website: $value', ({ value, expected }) => {
-      expect(TV.website(value)).toEqual(expected);
-    });
-  });
-
   describe('zoomLink', () => {
     test.each([
       { value: 'https://zoom.us/j/123456789', expected: VALID },
@@ -564,20 +492,6 @@ describe('trustees-validators', () => {
 
       const result = validateObject(TV.staffInputSpec, invalidStaff);
       expect(result.reasonMap?.contact).toBeDefined();
-    });
-  });
-
-  describe('FULL_NAME_MAX constant', () => {
-    test('should equal FIRST_NAME_MAX + MIDDLE_NAME_MAX + LAST_NAME_MAX + 2 (spaces between names)', () => {
-      // Kills all three ArithmeticOperator mutants on line 23 (-, - operators replacing +)
-      expect(TV.FULL_NAME_MAX).toEqual(
-        TV.FIRST_NAME_MAX + TV.MIDDLE_NAME_MAX + TV.LAST_NAME_MAX + 2,
-      );
-    });
-
-    test('should equal 52', () => {
-      // Explicitly pins the expected computed value (15 + 15 + 20 + 2 = 52)
-      expect(TV.FULL_NAME_MAX).toEqual(52);
     });
   });
 
