@@ -48,11 +48,17 @@ jobs:
           kv_to_env SNYK_OAUTH_CLIENT_ID kv-ustp-cams SNYK-OAUTH-CLIENT-ID
           kv_to_env SNYK_OAUTH_CLIENT_SECRET kv-ustp-cams SNYK-OAUTH-CLIENT-SECRET
 
+      # Pinned pending CAMS-939. Snyk CLI 1.1307.3 and later route `snyk test` through
+      # the Unified Test API (POST /rest/orgs/<org>/tests), which fails on the FedRAMP
+      # instance with "Enrichment of Test Failed" — exit 2, no SARIF. 1.1307.2 and
+      # earlier use the legacy /v1/test-dep-graph path, which works. Restore `latest`
+      # once Snyk enables opt-out-unified-test-api-cli-rollout for org ustp-default or
+      # fixes the Unified Test API on api.snykgov.io.
       - name: Setup Snyk CLI
         if: ${{ ! inputs.skip }}
         uses: snyk/actions/setup@9adf32b1121593767fc3c057af55b55db032dc04 # v1.0.0
         with:
-          snyk-version: latest
+          snyk-version: 1.1307.2
 
       - name: Authenticate with Snyk
         if: ${{ ! inputs.skip }}
