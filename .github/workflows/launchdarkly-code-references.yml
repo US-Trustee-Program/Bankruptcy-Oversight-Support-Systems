@@ -21,4 +21,4 @@ jobs:
           accessToken: ${{ secrets.LD_ACCESS_TOKEN }}
           projKey: "cams"        # confirm with Mike Waite
           envKey: ${{ vars.AZURE_ENVIRONMENT }}     # optional; remove if not needed
-          baseUri: "https://app.launchdarkly.us"  # default; include only if self-hosted
+          baseUri: "https://app.launchdarkly.us"  # default; include only if self-hosted 
