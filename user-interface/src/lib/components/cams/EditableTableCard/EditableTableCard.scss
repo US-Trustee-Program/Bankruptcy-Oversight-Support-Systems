@@ -66,7 +66,15 @@
   @media screen and (min-width: #{device-screens.$tablet-screen-small + 1}) {
     [role='table'] {
       display: table;
-      width: 100%;
+      // fit-content, not 100%: this rule applies to every EditableTableCard, including
+      // the single-column "Other" key-dates cards (Chapter11SubVOtherKeyDatesCard,
+      // Chapter7PanelOtherKeyDatesCard), which 100% stretched to the full accordion-body
+      // width instead of the compact ~19.25rem the .editable-table-card block above
+      // intends. table-layout: fixed still needs a non-auto width to run its
+      // equal-column algorithm; fit-content -- min(max-content, available space) --
+      // supplies one for the wide, multi-column cards (Audit/Field Exam, TPR, TIR)
+      // without forcing the narrow ones full-bleed.
+      width: fit-content;
       table-layout: fixed;
     }
 
@@ -92,7 +100,9 @@
       // shrink, so a wide table like Chapter 7 Panel's Audit/Field Exam card just
       // overflowed the viewport between full-width and the mobile breakpoint instead
       // of reflowing. Letting cells wrap lets the browser's table auto-layout
-      // compress columns fluidly as width decreases.
+      // compress columns fluidly as width decreases. Above desktop-screen-small there
+      // is room to lay the headers out on one line, so the query below opts back into
+      // nowrap for that range only.
       display: table-cell;
     }
 
@@ -103,6 +113,27 @@
     // Apply the header/data divider to the header cells directly instead.
     .cams-table__header-row .cams-table__cell {
       border-bottom: 1px solid colors.$ink;
+    }
+  }
+
+  // Above desktop-screen-small the accordion body is wide enough that the columns no
+  // longer need to be squeezed, so the two constraints the tablet-range query above
+  // imposes to make narrow widths work are both lifted here.
+  @media screen and (min-width: #{device-screens.$desktop-screen-small + 1}) {
+    [role='table'] {
+      // auto rather than fit-content -- the query above still matches at these widths,
+      // so this is how "no explicit width" is expressed; auto is width's initial value.
+      // Without a specified width, table-layout: fixed falls back to auto layout and
+      // sizes each column from its content, which is what these cards want once there
+      // is space for it.
+      width: auto;
+    }
+
+    .cams-table__cell {
+      // Enough room here for multi-word headers on a single line, so stop them
+      // wrapping; the tablet-range comment above covers why wrapping is still
+      // required below this breakpoint.
+      white-space: nowrap;
     }
   }
 }
