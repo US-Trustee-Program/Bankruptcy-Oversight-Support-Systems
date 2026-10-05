@@ -2,7 +2,6 @@ import { describe, test, expect } from 'vitest';
 import { validateObject, VALID } from './validation';
 import * as TV from './trustees-validators';
 import { FIELD_VALIDATION_MESSAGES } from './validation-messages';
-import MockData from './test-utilities/mock-data';
 import { MAX_PHONE_NUMBERS } from './trustees';
 
 describe('trustees-validators', () => {
@@ -287,10 +286,22 @@ describe('trustees-validators', () => {
 
   describe('zoomPasscode', () => {
     test.each([
-      { value: '123456', expected: VALID },
-      { value: 'abc123', expected: VALID },
-      { value: 'x', expected: VALID },
+      { value: '1234567890', expected: VALID },
+      { value: '0123456789', expected: VALID },
       { value: '', expected: { reasons: [FIELD_VALIDATION_MESSAGES.PASSCODE_REQUIRED] } },
+      { value: '123456', expected: { reasons: [FIELD_VALIDATION_MESSAGES.ZOOM_PASSCODE] } },
+      {
+        value: '12345678901',
+        expected: { reasons: [FIELD_VALIDATION_MESSAGES.ZOOM_PASSCODE] },
+      },
+      {
+        value: 'abc1234567', // pragma: allowlist secret
+        expected: { reasons: [FIELD_VALIDATION_MESSAGES.ZOOM_PASSCODE] },
+      },
+      {
+        value: '123 456-78',
+        expected: { reasons: [FIELD_VALIDATION_MESSAGES.ZOOM_PASSCODE] },
+      },
     ])('should validate zoom passcode: $value', ({ value, expected }) => {
       expect(TV.zoomPasscode(value)).toEqual(expected);
     });
@@ -576,7 +587,7 @@ describe('trustees-validators', () => {
         link: 'https://zoom.us/j/123456789',
         phone: '123-456-7890',
         meetingId: '123456789',
-        passcode: MockData.randomAlphaNumeric(6),
+        passcode: '1234567890',
       };
 
       const result = validateObject(TV.zoomInfoSpec, validZoom);
@@ -588,7 +599,7 @@ describe('trustees-validators', () => {
         link: 'https://zoom.us/j/123456789',
         phone: '123-456-7890',
         meetingId: '123456789',
-        passcode: MockData.randomAlphaNumeric(6),
+        passcode: '1234567890',
         accountEmail: 'trustee@example.com',
       };
 
@@ -601,7 +612,7 @@ describe('trustees-validators', () => {
         link: 'https://zoom.us/j/123456789',
         phone: '123-456-7890',
         meetingId: '123456789',
-        passcode: MockData.randomAlphaNumeric(6),
+        passcode: '1234567890',
         accountEmail: 'not-an-email',
       };
 
@@ -615,7 +626,7 @@ describe('trustees-validators', () => {
         link: 'invalid link',
         phone: '123-456-7890',
         meetingId: '123456789',
-        passcode: MockData.randomAlphaNumeric(6),
+        passcode: '1234567890',
       };
 
       const result = validateObject(TV.zoomInfoSpec, invalidZoom);
@@ -628,7 +639,7 @@ describe('trustees-validators', () => {
         link: 'https://zoom.us/j/123456789',
         phone: '123-456-7890',
         meetingId: 'invalid',
-        passcode: MockData.randomAlphaNumeric(6),
+        passcode: '1234567890',
       };
 
       const result = validateObject(TV.zoomInfoSpec, invalidZoom);
@@ -653,13 +664,42 @@ describe('trustees-validators', () => {
       );
     });
 
+    test('should reject zoom info with a malformed passcode', () => {
+      const invalidZoom = {
+        link: 'https://zoom.us/j/123456789',
+        phone: '123-456-7890',
+        meetingId: '123456789',
+        passcode: 'abc123',
+      };
+
+      const result = validateObject(TV.zoomInfoSpec, invalidZoom);
+      expect(result.reasonMap?.passcode).toBeDefined();
+      expect(result.reasonMap?.passcode?.reasons).toContain(
+        FIELD_VALIDATION_MESSAGES.ZOOM_PASSCODE,
+      );
+    });
+
+    test('should validate zoom info with a passcode that preserves leading zeros', () => {
+      const validZoom = {
+        link: 'https://zoom.us/j/123456789',
+        phone: '123-456-7890',
+        meetingId: '123456789',
+        passcode: '0123456789',
+      };
+
+      const result = validateObject(TV.zoomInfoSpec, validZoom);
+      expect(result).toEqual(VALID);
+      expect(typeof validZoom.passcode).toBe('string');
+      expect(validZoom.passcode).toBe('0123456789');
+    });
+
     test('should reject zoom info with invalid phone number format', () => {
       // Kills ArrayDeclaration mutant: phone: [] (line 92) — empty array skips phone validation
       const invalidZoom = {
         link: 'https://zoom.us/j/123456789',
         phone: 'not-a-phone',
         meetingId: '123456789',
-        passcode: MockData.randomAlphaNumeric(6),
+        passcode: '1234567890',
       };
 
       const result = validateObject(TV.zoomInfoSpec, invalidZoom);

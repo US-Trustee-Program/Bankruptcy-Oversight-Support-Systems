@@ -16,7 +16,7 @@ describe('TrusteeMeetingOfCreditorsInfoForm', () => {
     link: 'https://zoom.us/j/1234567890',
     phone: '555-123-4567',
     meetingId: '1234567890',
-    passcode: 'test123', // pragma: allowlist secret
+    passcode: '1234567890', // pragma: allowlist secret
   };
 
   const mockGlobalAlert = {
@@ -159,6 +159,43 @@ describe('TrusteeMeetingOfCreditorsInfoForm', () => {
 
       await waitFor(() => {
         expect(screen.getByText(/must be 9 to 11 digits/i)).toBeInTheDocument();
+      });
+    });
+
+    test('validates passcode field on change', async () => {
+      const trustee = MockData.getTrustee({ trusteeId: TEST_TRUSTEE_ID });
+
+      render(<TrusteeMeetingOfCreditorsInfoForm trustee={trustee} />);
+
+      const passcodeInput = screen.getByTestId('trustee-zoom-passcode');
+      await userEvent.clear(passcodeInput);
+      await userEvent.type(passcodeInput, '12345abcde'); // pragma: allowlist secret
+
+      await waitFor(() => {
+        expect(screen.getByText('Zoom Passcode must be 10 digits.')).toBeInTheDocument();
+      });
+    });
+
+    test('accepts a passcode with leading zeros and clears the error', async () => {
+      const trustee = MockData.getTrustee({ trusteeId: TEST_TRUSTEE_ID });
+
+      render(<TrusteeMeetingOfCreditorsInfoForm trustee={trustee} />);
+
+      const passcodeInput = screen.getByTestId('trustee-zoom-passcode');
+
+      await userEvent.clear(passcodeInput);
+      await userEvent.type(passcodeInput, '12345');
+
+      await waitFor(() => {
+        expect(screen.getByText('Zoom Passcode must be 10 digits.')).toBeInTheDocument();
+      });
+
+      await userEvent.clear(passcodeInput);
+      await userEvent.type(passcodeInput, '0123456789');
+
+      await waitFor(() => {
+        expect(screen.queryByText('Zoom Passcode must be 10 digits.')).not.toBeInTheDocument();
+        expect(passcodeInput).toHaveValue('0123456789');
       });
     });
 

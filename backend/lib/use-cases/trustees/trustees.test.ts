@@ -1395,7 +1395,7 @@ describe('TrusteesUseCase tests', () => {
           link: 'https://us02web.zoom.us/j/1234567890',
           phone: '123-456-7890',
           meetingId: '1234567890',
-          passcode: MockData.randomAlphaNumeric(10),
+          passcode: '1234567890',
         };
         const updateData = { zoomInfo: newZoomInfo };
         const updatedTrustee = { ...existingTrustee, zoomInfo: newZoomInfo };
@@ -1423,7 +1423,7 @@ describe('TrusteesUseCase tests', () => {
           link: 'https://us02web.zoom.us/j/1234567890',
           phone: '12345',
           meetingId: '1234567890',
-          passcode: MockData.randomAlphaNumeric(10),
+          passcode: '1234567890',
         };
         const updateData = { zoomInfo: invalidZoomInfo };
 
@@ -1439,7 +1439,7 @@ describe('TrusteesUseCase tests', () => {
           link: 'not-a-valid-url',
           phone: '123-456-7890',
           meetingId: '1234567890',
-          passcode: MockData.randomAlphaNumeric(10),
+          passcode: '1234567890',
         };
         const updateData = { zoomInfo: invalidZoomInfo };
 
@@ -1461,7 +1461,7 @@ describe('TrusteesUseCase tests', () => {
             link: 'https://us02web.zoom.us/j/1234567890',
             phone: '123-456-7890',
             meetingId,
-            passcode: MockData.randomAlphaNumeric(10),
+            passcode: '1234567890',
           };
           const updateData = { zoomInfo: invalidZoomInfo };
 
@@ -1473,12 +1473,35 @@ describe('TrusteesUseCase tests', () => {
         },
       );
 
+      test.each([
+        ['too short', '123456789'],
+        ['too long', '12345678901'],
+        ['non-numeric', 'ABCDEFGHIJ'],
+      ])(
+        'should throw BadRequestError for zoomInfo with invalid passcode (%s)',
+        async (_label, passcode) => {
+          const invalidZoomInfo = {
+            link: 'https://us02web.zoom.us/j/1234567890',
+            phone: '123-456-7890',
+            meetingId: '1234567890',
+            passcode,
+          };
+          const updateData = { zoomInfo: invalidZoomInfo };
+
+          const error = await getTheThrownError(() =>
+            trusteesUseCase.updateTrustee(context, trusteeId, updateData),
+          );
+          expect(error.isCamsError).toBe(true);
+          expect(error.message).toContain(FIELD_VALIDATION_MESSAGES.ZOOM_PASSCODE);
+        },
+      );
+
       test('should throw BadRequestError for zoomInfo with link exceeding max length', async () => {
         const invalidZoomInfo = {
           link: 'https://us02web.zoom.us/j/' + 'a'.repeat(300),
           phone: '123-456-7890',
           meetingId: '1234567890',
-          passcode: MockData.randomAlphaNumeric(10),
+          passcode: '1234567890',
         };
         const updateData = { zoomInfo: invalidZoomInfo };
 
@@ -1494,7 +1517,7 @@ describe('TrusteesUseCase tests', () => {
           link: '',
           phone: '123-456-7890',
           meetingId: '1234567890',
-          passcode: MockData.randomAlphaNumeric(10),
+          passcode: '1234567890',
         };
         const updateData = { zoomInfo: invalidZoomInfo };
 
@@ -1582,14 +1605,14 @@ describe('TrusteesUseCase tests', () => {
           link: 'https://zoom.us/j/1234567890',
           phone: '555-555-0000',
           meetingId: '123456789',
-          passcode: 'oldpass',
+          passcode: '1111111111',
         },
       });
       const newZoom = {
         link: 'https://zoom.us/j/9876543210',
         phone: '555-555-1111',
         meetingId: '987654321',
-        passcode: 'newpass',
+        passcode: '2222222222',
       };
       const after = { ...before, zoomInfo: newZoom };
 
@@ -1612,7 +1635,7 @@ describe('TrusteesUseCase tests', () => {
           link: 'https://zoom.us/j/1234567890',
           phone: '555-555-0000',
           meetingId: '123456789',
-          passcode: 'oldpass',
+          passcode: '1111111111',
           accountEmail: 'old@zoom.test',
         },
       });
@@ -1620,7 +1643,7 @@ describe('TrusteesUseCase tests', () => {
         link: 'https://zoom.us/j/9876543210',
         phone: '555-555-1111',
         meetingId: '987654321',
-        passcode: 'newpass',
+        passcode: '2222222222',
         accountEmail: 'new@zoom.test',
       };
       const after = { ...before, zoomInfo: newZoom };
@@ -1648,7 +1671,7 @@ describe('TrusteesUseCase tests', () => {
         link: 'https://zoom.us/j/9876543210',
         phone: '555-555-1111',
         meetingId: '987654321',
-        passcode: 'newpass',
+        passcode: '2222222222',
       };
       const after = { ...before, zoomInfo: newZoom };
 
@@ -1668,14 +1691,14 @@ describe('TrusteesUseCase tests', () => {
           link: '',
           phone: '555-555-0000',
           meetingId: '123456789',
-          passcode: 'pass',
+          passcode: '1111111111',
         },
       });
       const newZoom = {
         link: 'https://zoom.us/j/9876543210',
         phone: '555-555-1111',
         meetingId: '987654321',
-        passcode: 'newpass',
+        passcode: '2222222222',
       };
       const after = { ...before, zoomInfo: newZoom };
 

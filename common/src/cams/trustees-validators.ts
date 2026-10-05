@@ -1,5 +1,11 @@
 import V from './validators';
-import { PHONE_REGEX, WEBSITE_RELAXED_REGEX, ZIP_REGEX, ZOOM_MEETING_ID_REGEX } from './regex';
+import {
+  PHONE_REGEX,
+  WEBSITE_RELAXED_REGEX,
+  ZIP_REGEX,
+  ZOOM_MEETING_ID_REGEX,
+  ZOOM_PASSCODE_REGEX,
+} from './regex';
 import { FIELD_VALIDATION_MESSAGES } from './validation-messages';
 import { ValidationSpec } from './validation';
 import { ZoomInfo, TrusteeContact } from './trustees';
@@ -77,7 +83,9 @@ export const zoomMeetingId = V.matches(
   FIELD_VALIDATION_MESSAGES.ZOOM_MEETING_ID,
 );
 
-export const zoomPasscode = V.minLength(1, FIELD_VALIDATION_MESSAGES.PASSCODE_REQUIRED);
+export const zoomPasscode = V.checkFirst(
+  V.minLength(1, FIELD_VALIDATION_MESSAGES.PASSCODE_REQUIRED),
+).then(V.matches(ZOOM_PASSCODE_REGEX, FIELD_VALIDATION_MESSAGES.ZOOM_PASSCODE));
 
 export const staffName = V.minLength(1);
 
