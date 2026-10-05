@@ -2,7 +2,6 @@ name: LaunchDarkly Code References
 
 on:
   push:
-    branches: [ main ]   # update if your default branch has a different name
   pull_request:
 
 jobs:
@@ -19,6 +18,5 @@ jobs:
         uses: launchdarkly/find-code-references@v3
         with:
           accessToken: ${{ secrets.LD_ACCESS_TOKEN }}
-          projKey: "cams"        # confirm with Mike Waite
-          envKey: ${{ vars.AZURE_ENVIRONMENT }}     # optional; remove if not needed
+          projKey: "cams"        
           baseUri: "https://app.launchdarkly.us"  # default; include only if self-hosted 
