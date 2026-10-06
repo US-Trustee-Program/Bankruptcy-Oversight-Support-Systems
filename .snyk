@@ -86,6 +86,43 @@ ignore:
           skew the override masks) both move to 3.4.16 then, which drops
           this entry entirely.
         expires: 2026-10-08T00:00:00.000Z
+  SNYK-JS-DOMPURIFY-20536984:
+    - '*':
+        reason: >-
+          Cross-site Scripting (XSS) in dompurify (GHSA-6688-9rhm-gjv2),
+          "insufficient sanitization in the HTML purification logic,"
+          affecting versions < 3.4.16 (current pin: 3.4.13, forced via
+          root package.json overrides). Unlike SNYK-JS-DOMPURIFY-20361471,
+          this advisory has no documented reachability precondition to
+          evaluate — it is fixed by the identical version bump already
+          tracked by that entry. Fix is 3.4.16, published 2026-09-23,
+          inside CAMS's 14-day minimum release age window (.npmrc
+          min-release-age=14) until 2026-10-07; the root overrides entry
+          and user-interface/package.json (still at 3.4.15) both move to
+          3.4.16 then, which drops this entry entirely alongside
+          SNYK-JS-DOMPURIFY-20361471.
+        expires: 2026-10-08T00:00:00.000Z
+  SNYK-JS-SPRINTFJS-20532016:
+    - '*':
+        reason: >-
+          Improper Validation of Specified Quantity in Input in sprintf-js
+          (CVE-2026-97058): an attacker-controlled precision specifier in
+          the format string (e.g. '%.999999f') is passed unvalidated to
+          toFixed/toExponential/toPrecision, triggering an uncaught
+          RangeError (DoS). No fixed version exists upstream; tracked by
+          sprintf.js#237 (opened 2026-09-16, still open, low activity).
+          Not reachable in CAMS: sprintf-js is not a direct dependency —
+          its only consumer in the lockfile is mssql@12.7.2 >
+          tedious@20.0.0. tedious's two call sites
+          (lib/metadata-parser.js) both pass hardcoded literal format
+          strings with no precision specifier ('Unrecognised data type
+          0x%02X', 'Unrecognised type %s'); only the substituted value
+          (a byte/name parsed off the TDS wire) varies, never the format
+          string itself. The vulnerable code path — attacker control of
+          the precision specifier — is unreachable through this usage.
+          Re-check in 30 days for upstream progress on #237 or a fixed
+          release.
+        expires: 2026-11-05T00:00:00.000Z
   SNYK-JS-REACTROUTER-18313151:
     - '*':
         reason: >-
