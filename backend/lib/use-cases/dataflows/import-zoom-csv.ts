@@ -3,8 +3,7 @@ import { getCamsError } from '../../common-errors/error-utilities';
 import factory from '../../factory';
 import { ZoomInfo, Trustee } from '@common/cams/trustees';
 import { CamsUserReference } from '@common/cams/users';
-import { zoomInfoSpec } from '@common/cams/trustees-validators';
-import { validateObject } from '@common/cams/validation';
+import { TrusteesUseCase } from '../trustees/trustees';
 import { normalizeName } from './trustee-match.helpers';
 import { generateSearchTokens } from '../../adapters/utils/phonetic-helper';
 import ModuleNames from '../../../function-apps/dataflows/module-names';
@@ -293,6 +292,7 @@ export async function processZoomMatchedRow(
 ): Promise<ProcessResult> {
   try {
     const repo = factory.getTrusteesRepository(context);
+    const trusteesUseCase = new TrusteesUseCase(context);
 
     // Parse the comma-delimited ATS TRU_IDs
     const atsTruIds = row.atsTruIds
@@ -396,17 +396,20 @@ export async function processZoomMatchedRow(
       accountEmail: row.zoomEmail || undefined,
     };
 
-    const validationResult = validateObject(zoomInfoSpec, zoomInfo);
-    if (!validationResult.valid) {
+    try {
+      await trusteesUseCase.updateTrustee(
+        context,
+        targetTrustee.trusteeId,
+        { zoomInfo },
+        SYSTEM_USER,
+      );
+    } catch (validationError) {
       context.logger.error(
         MODULE_NAME,
-        `Invalid zoom info for "${row.zoomName}": ${JSON.stringify(validationResult.reasonMap ?? validationResult.reasons)}`,
+        `Invalid zoom info for "${row.zoomName}": ${(validationError as Error).message}`,
       );
       return { outcome: 'error' };
     }
-
-    // Update the trustee with zoom info
-    await repo.updateTrustee(targetTrustee.trusteeId, { ...targetTrustee, zoomInfo }, SYSTEM_USER);
 
     context.logger.info(
       MODULE_NAME,

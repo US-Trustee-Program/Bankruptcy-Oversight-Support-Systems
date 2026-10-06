@@ -1559,6 +1559,47 @@ describe('TrusteesUseCase tests', () => {
         );
       });
     });
+
+    test('should use the provided actingUser instead of context.session.user when given', async () => {
+      const systemUser = { id: 'SYSTEM', name: 'Zoom Info Import' };
+      const zoomInfo = {
+        link: 'https://us02web.zoom.us/j/1234567890',
+        phone: '123-456-7890',
+        meetingId: '1234567890',
+        passcode: '1234567890',
+      };
+      const updateData = { zoomInfo };
+      const updatedTrustee = { ...existingTrustee, zoomInfo };
+
+      const updateTrusteeSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'updateTrustee')
+        .mockResolvedValue(updatedTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
+
+      await trusteesUseCase.updateTrustee(context, trusteeId, updateData, systemUser);
+
+      expect(updateTrusteeSpy).toHaveBeenCalledWith(trusteeId, updatedTrustee, systemUser);
+    });
+
+    test('should not require context.session when actingUser is provided', async () => {
+      const systemUser = { id: 'SYSTEM', name: 'Zoom Info Import' };
+      const zoomInfo = {
+        link: 'https://us02web.zoom.us/j/1234567890',
+        phone: '123-456-7890',
+        meetingId: '1234567890',
+        passcode: '1234567890',
+      };
+      const updateData = { zoomInfo };
+      const updatedTrustee = { ...existingTrustee, zoomInfo };
+      const contextWithoutSession = { ...context, session: undefined };
+
+      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
+
+      await expect(
+        trusteesUseCase.updateTrustee(contextWithoutSession, trusteeId, updateData, systemUser),
+      ).resolves.toEqual(updatedTrustee);
+    });
   });
 
   describe('change set emission', () => {

@@ -32,6 +32,7 @@ describe('import-zoom-csv', () => {
   beforeEach(async () => {
     vi.restoreAllMocks();
     context = await createMockApplicationContext();
+    vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue(undefined);
   });
 
   describe('parseZoomMatchedTsvFile', () => {
@@ -119,6 +120,7 @@ describe('import-zoom-csv', () => {
       vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByLegacyTruId').mockResolvedValue(
         MOCK_TRUSTEE,
       );
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(MOCK_TRUSTEE);
       const updateSpy = vi
         .spyOn(MockMongoRepository.prototype, 'updateTrustee')
         .mockResolvedValue(MOCK_TRUSTEE);
@@ -148,6 +150,7 @@ describe('import-zoom-csv', () => {
       vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByLegacyTruId').mockResolvedValue(
         MOCK_TRUSTEE,
       );
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(MOCK_TRUSTEE);
       const updateSpy = vi
         .spyOn(MockMongoRepository.prototype, 'updateTrustee')
         .mockResolvedValue(MOCK_TRUSTEE);
@@ -168,6 +171,7 @@ describe('import-zoom-csv', () => {
       vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([
         MOCK_TRUSTEE,
       ]);
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(MOCK_TRUSTEE);
       const updateSpy = vi
         .spyOn(MockMongoRepository.prototype, 'updateTrustee')
         .mockResolvedValue(MOCK_TRUSTEE);
@@ -259,9 +263,13 @@ describe('import-zoom-csv', () => {
 
     test('should process matched report and generate import report', async () => {
       vi.mocked(mockObjectStorage.readObject).mockResolvedValue(SAMPLE_MATCHED_TSV);
+      const secondTrustee = { ...MOCK_TRUSTEE, trusteeId: 'trustee-789', name: 'Jane Smith' };
       vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByLegacyTruId')
         .mockResolvedValueOnce(MOCK_TRUSTEE)
-        .mockResolvedValueOnce({ ...MOCK_TRUSTEE, trusteeId: 'trustee-789', name: 'Jane Smith' });
+        .mockResolvedValueOnce(secondTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockImplementation(async (trusteeId) =>
+        trusteeId === secondTrustee.trusteeId ? secondTrustee : MOCK_TRUSTEE,
+      );
       vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(MOCK_TRUSTEE);
 
       const result = await importZoomCsv(context);
@@ -280,6 +288,7 @@ describe('import-zoom-csv', () => {
       vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByLegacyTruId').mockResolvedValue(
         MOCK_TRUSTEE,
       );
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(MOCK_TRUSTEE);
       vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(MOCK_TRUSTEE);
 
       await importZoomCsv(context);
@@ -302,6 +311,7 @@ describe('import-zoom-csv', () => {
       vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByLegacyTruId').mockResolvedValue(
         MOCK_TRUSTEE,
       );
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(MOCK_TRUSTEE);
       vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(MOCK_TRUSTEE);
 
       const result = await importZoomCsv(context);
@@ -318,6 +328,7 @@ describe('import-zoom-csv', () => {
       vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByLegacyTruId').mockResolvedValue(
         MOCK_TRUSTEE,
       );
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(MOCK_TRUSTEE);
       vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(MOCK_TRUSTEE);
 
       await importZoomCsv(context);
@@ -338,6 +349,7 @@ describe('import-zoom-csv', () => {
       vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByLegacyTruId').mockResolvedValue(
         MOCK_TRUSTEE,
       );
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(MOCK_TRUSTEE);
       vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(MOCK_TRUSTEE);
 
       const result = await importZoomCsv(context);
@@ -373,6 +385,7 @@ describe('import-zoom-csv', () => {
       vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByPhoneticTokens').mockResolvedValue(
         [],
       );
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee1);
       vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(MOCK_TRUSTEE);
 
       const result = await importZoomCsv(context);
@@ -395,6 +408,7 @@ describe('import-zoom-csv', () => {
       vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByLegacyTruId').mockResolvedValue(
         MOCK_TRUSTEE,
       );
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(MOCK_TRUSTEE);
       vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(MOCK_TRUSTEE);
       const debugSpy = vi.spyOn(context.logger, 'debug');
 
@@ -417,6 +431,7 @@ describe('import-zoom-csv', () => {
       vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByLegacyTruId')
         .mockResolvedValueOnce(MOCK_TRUSTEE)
         .mockResolvedValueOnce(null);
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(MOCK_TRUSTEE);
       vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(MOCK_TRUSTEE);
       const infoSpy = vi.spyOn(context.logger, 'info');
 
@@ -441,6 +456,7 @@ describe('import-zoom-csv', () => {
       vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByLegacyTruId').mockResolvedValue(
         MOCK_TRUSTEE,
       );
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(MOCK_TRUSTEE);
       vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(MOCK_TRUSTEE);
 
       const result = await processZoomMatchedRow(context, {

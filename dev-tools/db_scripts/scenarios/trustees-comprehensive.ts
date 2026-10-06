@@ -330,7 +330,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
         link: 'https://zoom.us/j/9876543210',
         phone: '646-558-8656',
         meetingId: '987 6543 2100',
-        passcode: 'patricia456',
+        passcode: '9876543210',
         accountEmail: 'patricia.manhattan@example.com',
       },
     }),
