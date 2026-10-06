@@ -377,7 +377,11 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
-  findSentinelAppointments(..._ignore): Promise<any[]> {
+  findSentinelAppointmentsByAcmsProfessionalId(..._ignore): Promise<any[]> {
+    throw new Error('Method not implemented.');
+  }
+
+  deleteSentinel(..._ignore): Promise<void> {
     throw new Error('Method not implemented.');
   }
 
@@ -736,12 +740,27 @@ export class MockMongoRepository
     );
   }
 
-  hasConflictByAcmsProfessionalId(acmsProfessionalId: string): Promise<boolean> {
+  findLinkedPendingSentinelHeal(
+    lastId: string | null,
+    limit: number,
+  ): Promise<Array<TrusteeProfessionalId & { _id: string }>> {
     return Promise.resolve(
-      Array.from(this.professionalIds.values()).some(
-        (m) => m.acmsProfessionalId === acmsProfessionalId && m.disposition === 'conflict',
-      ),
+      Array.from(this.professionalIds.values())
+        .map((m) => ({ ...m, _id: m.id }))
+        .filter((m) => m.disposition === 'linked' && !m.sentinelsHealedOn)
+        .filter((m) => !lastId || m._id > lastId)
+        .sort((a, b) => a._id.localeCompare(b._id))
+        .slice(0, limit),
     );
+  }
+
+  markSentinelsHealed(camsTrusteeId: string, acmsProfessionalId: string): Promise<void> {
+    const key = `${camsTrusteeId}:${acmsProfessionalId}`;
+    const existing = this.professionalIds.get(key);
+    if (existing) {
+      this.professionalIds.set(key, { ...existing, sentinelsHealedOn: new Date().toISOString() });
+    }
+    return Promise.resolve();
   }
 
   deleteByCamsTrusteeId(camsTrusteeId: string): Promise<number> {

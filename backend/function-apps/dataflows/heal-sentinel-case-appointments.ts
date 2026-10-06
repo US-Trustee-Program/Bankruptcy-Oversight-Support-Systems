@@ -18,11 +18,9 @@ const HANDLE_HEAL = buildFunctionName(MODULE_NAME, 'handleHeal');
 const HEAL = HEAL_SENTINEL_CASE_APPOINTMENTS_QUEUE;
 const DLQ = HEAL_SENTINEL_CASE_APPOINTMENTS_DLQ;
 
-// Bounds how many sentinel appointments a single invocation heals serially, so an unexpectedly
-// large sentinel population can't run past the function timeout. The cursor advances every page
-// regardless of how many rows resolve, so an unresolvable run of sentinels can never stall
-// progress through the rest of the collection (see HealSentinelCaseAppointmentsUseCase.healPage's
-// doc comment).
+// Bounds how many sentinel appointments a single invocation heals serially, so one professional
+// ID with a large sentinel population spans several invocations instead of running past the
+// function timeout.
 const HEAL_PAGE_SIZE = 25;
 
 /**
@@ -31,7 +29,7 @@ const HEAL_PAGE_SIZE = 25;
  * Queue-trigger mechanics only (dequeue, paginate-and-requeue, rate-limit retry, telemetry) —
  * mirrors trustee-verification-remap.ts's split, which keeps this layer free of the actual
  * healing business rules (resolution lookup, upsert-then-delete ordering, idempotency
- * invariants). Those live in HealSentinelCaseAppointmentsUseCase.healPage.
+ * invariants). Those live in HealSentinelCaseAppointmentsUseCase.healNext.
  *
  * Started manually by sending an initial message to the HEAL queue (same on-demand convention as
  * trustee-verification-remap and migrate-case-appointments) — there is no timer trigger. Re-run
@@ -51,25 +49,25 @@ async function handleHeal(
 
   try {
     const useCase = new HealSentinelCaseAppointmentsUseCase(context);
-    const { documentsWritten, documentsFailed, pageSize, nextLastId } = await useCase.healPage(
-      message.lastId ?? null,
+    const { documentsWritten, documentsFailed, pageSize, next } = await useCase.healNext(
+      {
+        lastProfessionalIdDocId: message.lastProfessionalIdDocId ?? null,
+        current: message.current ?? null,
+      },
       HEAL_PAGE_SIZE,
     );
 
-    if (nextLastId !== null) {
-      // The page was non-empty — more sentinel rows may exist beyond this page's cursor
-      // position, whether or not this page's rows resolved. Re-send with the advanced cursor so
-      // the next invocation always makes forward progress through the collection, regardless of
-      // how many of this page's sentinels were actually healed. Terminates once a page comes
-      // back empty (nextLastId stays null).
+    if (next !== null) {
       const queueClient = StorageQueueHumbleObject.fromConnectionString(
         connectionString,
         HEAL.queueName,
       );
-      await queueClient.sendMessage(JSON.stringify({ ...message, lastId: nextLastId }));
+      // Only the cursor is carried forward: retryCount/firstAttemptAt describe this page's
+      // rate-limit retries, and carrying them would let 429s accumulate across the whole run.
+      await queueClient.sendMessage(JSON.stringify(next));
       context.logger.info(
         MODULE_NAME,
-        `Healed ${documentsWritten} of ${pageSize} sentinel appointment(s) in this page; requeued to check for more.`,
+        `Healed ${documentsWritten} of ${pageSize} sentinel appointment(s) in this page; requeued to continue.`,
       );
     }
 
@@ -79,7 +77,7 @@ async function handleHeal(
       success: true,
       details: {
         pageSize: String(pageSize),
-        continuationQueued: String(nextLastId !== null),
+        continuationQueued: String(next !== null),
       },
     });
   } catch (error) {

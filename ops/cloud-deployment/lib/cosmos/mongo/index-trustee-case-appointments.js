@@ -11,27 +11,29 @@
 // ascending/descending composite index, which cannot be expressed in Bicep
 // at all, the `indexes` property is omitted ENTIRELY from
 // trusteeCaseAppointmentsCollection in cosmos-collections.bicep so ARM never
-// reconciles indexes on this collection. This script owns all of that
-// collection's non-default indexes instead. `_id` and the `trusteeId` shard
-// key are auto-indexed by Cosmos and are not managed here.
+// reconciles indexes on this collection. TARGET_INDEXES below is the complete
+// list of that collection's non-default indexes. `_id` and the `trusteeId`
+// shard key are auto-indexed by Cosmos and are not managed here.
+//
+// CI DOES NOT RUN THIS SCRIPT. az-cosmos-deploy.sh still contains the call, but
+// its applyTrusteeCaseAppointmentsIndex guard is hardcoded false: the CI
+// managed identity cannot read the Mongo connection string secret. Indexes on
+// this collection reach each environment through a manual mongosh run of a
+// script in ops/migrations/; a new entry here needs a matching migration
+// script.
 //
 // This was verified empirically to be a true no-op -- zero rebuild, zero RU
 // cost, confirmed via Cosmos's own createIndexes response ("note": "all
 // indexes already exist") -- on every run after the first, for every index
-// including the sort index itself. Safe to run unconditionally on every
-// deploy.
+// including the sort index itself.
 //
 // USAGE:
 //   MONGO_CONNECTION_STRING="<mongo-connection-string>" node index-trustee-case-appointments.js <databaseName>
 //
 // The connection string must be supplied via the MONGO_CONNECTION_STRING
 // environment variable, never as a CLI argument -- a CLI argument is visible
-// in shell history and `ps` output for the life of the process. This is how
-// az-cosmos-deploy.sh invokes it.
-//
-// Run via ops/scripts/pipeline/az-cosmos-deploy.sh as part of every Cosmos
-// deploy, immediately after the Bicep deployment that creates/updates the
-// collection, for BOTH the main database and the e2e database.
+// in shell history and `ps` output for the life of the process. Run it for
+// BOTH the main database and the e2e database.
 
 const { MongoClient } = require('mongodb');
 
@@ -79,6 +81,14 @@ const TARGET_INDEXES = [
   {
     name: 'caseId_1',
     key: { caseId: 1 },
+  },
+  // Supports findSentinelAppointmentsByAcmsProfessionalId (see
+  // trustee-case-appointments.mongo.repository.ts). Every sentinel row shares one trusteeId, so
+  // the shard key alone routes to a single logical partition holding the entire sentinel
+  // population; without this index each per-professional-ID lookup scans all of it.
+  {
+    name: 'acmsProfessionalId_1',
+    key: { acmsProfessionalId: 1 },
   },
 ];
 

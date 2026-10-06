@@ -453,57 +453,107 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
     });
   });
 
-  describe('hasConflictByAcmsProfessionalId', () => {
-    const acmsProfessionalId = 'AK-01414';
-    const expectedQuery = {
-      conjunction: 'AND',
-      values: [
-        {
-          condition: 'EQUALS',
-          leftOperand: { name: 'acmsProfessionalId' },
-          rightOperand: acmsProfessionalId,
-        },
-        {
-          condition: 'EQUALS',
-          leftOperand: { name: 'disposition' },
-          rightOperand: 'conflict',
-        },
-      ],
+  describe('findLinkedPendingSentinelHeal', () => {
+    const linkedPendingConditions = [
+      {
+        condition: 'EQUALS',
+        leftOperand: { name: 'documentType' },
+        rightOperand: 'TRUSTEE_PROFESSIONAL_ID',
+      },
+      isRealLinkCondition,
+      {
+        condition: 'EXISTS',
+        leftOperand: { name: 'sentinelsHealedOn' },
+        rightOperand: false,
+      },
+    ];
+    const ascendingById = {
+      fields: [{ field: { name: '_id' }, direction: 'ASCENDING' }],
     };
 
-    test('should return true when a conflict record exists for this ACMS ID', async () => {
-      const findSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([
-        {
-          ...sampleProfessionalId,
-          id: 'prof-id-1',
-          acmsProfessionalId,
-          disposition: 'conflict',
-        },
-      ]);
+    test('should return linked records not yet sentinel-healed, ordered by _id', async () => {
+      const pending = { ...sampleProfessionalId, _id: 'mongo-1' };
+      const findSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockResolvedValue([pending]);
 
-      const result = await repository.hasConflictByAcmsProfessionalId(acmsProfessionalId);
+      const result = await repository.findLinkedPendingSentinelHeal(null, 1);
 
-      expect(findSpy).toHaveBeenCalledWith(expectedQuery, undefined, undefined, {
-        fields: ['evidence'],
-        mode: 'EXCLUDE',
-      });
-      expect(result).toBe(true);
+      expect(findSpy).toHaveBeenCalledWith(
+        { conjunction: 'AND', values: linkedPendingConditions },
+        ascendingById,
+        1,
+        { fields: ['evidence'], mode: 'EXCLUDE' },
+      );
+      expect(result).toEqual([pending]);
     });
 
-    test('should return false when no conflict record exists for this ACMS ID', async () => {
-      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+    test('should resume after lastId when provided', async () => {
+      const findSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
 
-      const result = await repository.hasConflictByAcmsProfessionalId(acmsProfessionalId);
+      await repository.findLinkedPendingSentinelHeal('mongo-1', 1);
 
-      expect(result).toBe(false);
+      expect(findSpy).toHaveBeenCalledWith(
+        {
+          conjunction: 'AND',
+          values: [
+            ...linkedPendingConditions,
+            { condition: 'GREATER_THAN', leftOperand: { name: '_id' }, rightOperand: 'mongo-1' },
+          ],
+        },
+        ascendingById,
+        1,
+        { fields: ['evidence'], mode: 'EXCLUDE' },
+      );
     });
 
     test('should handle database errors', async () => {
-      const error = new Error('Database connection failed');
-      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(error);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(new Error('boom'));
 
-      await expect(repository.hasConflictByAcmsProfessionalId(acmsProfessionalId)).rejects.toThrow(
-        `Failed to check for a conflict record with ACMS professional ID ${acmsProfessionalId}.`,
+      await expect(repository.findLinkedPendingSentinelHeal(null, 1)).rejects.toThrow(
+        'Failed to find linked professional IDs pending sentinel healing.',
+      );
+    });
+  });
+
+  describe('markSentinelsHealed', () => {
+    test('should set sentinelsHealedOn on the one record keyed by its shard key and ACMS ID', async () => {
+      const updateSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'updateOne')
+        .mockResolvedValue({ matchedCount: 1, modifiedCount: 1 });
+
+      await repository.markSentinelsHealed('trustee-1', 'NY-00063');
+
+      expect(updateSpy).toHaveBeenCalledWith(
+        {
+          conjunction: 'AND',
+          values: [
+            {
+              condition: 'EQUALS',
+              leftOperand: { name: 'documentType' },
+              rightOperand: 'TRUSTEE_PROFESSIONAL_ID',
+            },
+            {
+              condition: 'EQUALS',
+              leftOperand: { name: 'camsTrusteeId' },
+              rightOperand: 'trustee-1',
+            },
+            {
+              condition: 'EQUALS',
+              leftOperand: { name: 'acmsProfessionalId' },
+              rightOperand: 'NY-00063',
+            },
+          ],
+        },
+        { sentinelsHealedOn: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/) },
+      );
+    });
+
+    test('should handle database errors', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'updateOne').mockRejectedValue(new Error('boom'));
+
+      await expect(repository.markSentinelsHealed('trustee-1', 'NY-00063')).rejects.toThrow(
+        'Failed to mark sentinels healed for trustee trustee-1 and ACMS ID NY-00063.',
       );
     });
   });
