@@ -32,6 +32,9 @@ export type TrusteeProfessionalId = Auditable &
     /** How many candidates matched on name at any grade - the indexed hint for surfacing
      * unlinked records worth manual review (disposition other than 'linked', count > 0). */
     nameMatchCount: number;
+    /** Set only when disposition is 'linked': when heal-sentinel-case-appointments found no
+     * sentinel appointments left for this acmsProfessionalId. */
+    sentinelsHealedOn?: string;
     evidence: TrusteeSerializedState & {
       variant?: string;
       /** Set only when disposition is 'conflict': the trusteeId this acmsProfessionalId is already

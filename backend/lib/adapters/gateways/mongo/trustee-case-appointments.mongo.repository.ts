@@ -559,33 +559,56 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
     });
   }
 
-  /**
-   * Returns sentinel rows (trusteeId === SENTINEL_TRUSTEE_ID) for heal-sentinel-case-appointments.
-   * Cursor-paginated on _id, same shape as findClosedAppointments/getAllCaseAppointments — NOT a
-   * shrinking-set no-cursor query like getSurrogatesByFingerprint/TrusteeVerificationRemapUseCase.
-   * A sentinel with no resolvable trustee-professional-ids mapping is left in place by the healing
-   * use case rather than deleted, so without a cursor a page of permanently-unresolvable sentinels
-   * would keep being re-fetched forever, starving any resolvable sentinels behind them in the
-   * collection. The cursor guarantees forward progress through the whole population every run
-   * regardless of how many rows any single page manages to resolve.
-   */
-  async findSentinelAppointments(
+  async findSentinelAppointmentsByAcmsProfessionalId(
+    acmsProfessionalId: string,
     lastId: string | null,
     limit: number,
   ): Promise<Array<CaseAppointment & { _id: string }>> {
-    type CaseAppointmentQueryable = CaseAppointmentDocument & { _id: string };
-    const doc = using<CaseAppointmentQueryable>();
+    type SentinelQueryable = CaseAppointmentDocument & { _id: string; acmsProfessionalId: string };
+    const doc = using<SentinelQueryable>();
     const conditions = [
       doc('documentType').equals('CASE_APPOINTMENT'),
       doc('trusteeId').equals(SENTINEL_TRUSTEE_ID),
+      doc('acmsProfessionalId').equals(acmsProfessionalId),
     ];
     if (lastId) conditions.push(doc('_id').greaterThan(lastId));
-    const query = and(...conditions);
-    return this.findByCursor<CaseAppointmentQueryable>(query, {
+    return this.findByCursor<SentinelQueryable>(and(...conditions), {
       limit,
       sortField: '_id',
       sortDirection: 'ASCENDING',
     });
+  }
+
+  /**
+   * Deletes a sentinel's two partition copies by id, scoping each delete to that partition's
+   * shard key. delete(id) carries no shard key, so on the trustee partition it fans out across
+   * every physical partition looking for an unindexed id.
+   */
+  async deleteSentinel(caseId: string, id: string): Promise<void> {
+    const doc = using<CaseAppointmentDocument>();
+    try {
+      await this.casePartition
+        .adapter<CaseAppointmentDocument>()
+        .deleteOne(and(doc('caseId').equals(caseId), doc('id').equals(id)));
+    } catch (originalError) {
+      if (!isNotFoundError(originalError)) {
+        throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+          message: `Failed to delete sentinel appointment ${id} from the case partition.`,
+        });
+      }
+    }
+
+    try {
+      await this.trusteePartition
+        .adapter<CaseAppointmentDocument>()
+        .deleteOne(and(doc('trusteeId').equals(SENTINEL_TRUSTEE_ID), doc('id').equals(id)));
+    } catch (originalError) {
+      if (!isNotFoundError(originalError)) {
+        throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+          message: `Failed to delete sentinel appointment ${id} from the trustee partition.`,
+        });
+      }
+    }
   }
 
   async getAllCaseAppointments(

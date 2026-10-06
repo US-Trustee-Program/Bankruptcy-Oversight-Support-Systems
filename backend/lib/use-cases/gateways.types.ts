@@ -683,10 +683,12 @@ export interface TrusteeCaseAppointmentsRepository extends Releasable {
     lastId: string | null,
     limit: number,
   ): Promise<Array<CaseAppointment & { _id: string }>>;
-  findSentinelAppointments(
+  findSentinelAppointmentsByAcmsProfessionalId(
+    acmsProfessionalId: string,
     lastId: string | null,
     limit: number,
   ): Promise<Array<CaseAppointment & { _id: string }>>;
+  deleteSentinel(caseId: string, id: string): Promise<void>;
   getAllCaseAppointments(
     lastId: string | null,
     limit: number,
@@ -1028,19 +1030,19 @@ export interface TrusteeProfessionalIdsRepository extends Releasable {
     user: CamsUserReference,
   ): Promise<TrusteeProfessionalId>;
   /**
-   * The following finders only return disposition 'linked'. See hasConflictByAcmsProfessionalId
-   * for the one caller that needs to know about a 'conflict'-disposition record instead.
+   * The following finders only return disposition 'linked'.
    *
    * All three return TrusteeProfessionalIdSummary: `evidence` is excluded at the query level.
    */
   findAll(): Promise<TrusteeProfessionalIdSummary[]>;
   findByCamsTrusteeId(camsTrusteeId: string): Promise<TrusteeProfessionalIdSummary[]>;
   findByAcmsProfessionalId(acmsProfessionalId: string): Promise<TrusteeProfessionalIdSummary[]>;
-  /**
-   * Whether this ACMS professional ID has a 'conflict'-disposition record, for a caller
-   * (heal-sentinel-case-appointments.ts) that distinguishes "never linked" from "conflict".
-   */
-  hasConflictByAcmsProfessionalId(acmsProfessionalId: string): Promise<boolean>;
+  /** Linked records without sentinelsHealedOn, cursor-paginated on _id. */
+  findLinkedPendingSentinelHeal(
+    lastId: string | null,
+    limit: number,
+  ): Promise<Array<TrusteeProfessionalIdSummary & { _id: string }>>;
+  markSentinelsHealed(camsTrusteeId: string, acmsProfessionalId: string): Promise<void>;
   deleteByCamsTrusteeId(camsTrusteeId: string): Promise<number>;
   deleteAll(): Promise<number>;
 }

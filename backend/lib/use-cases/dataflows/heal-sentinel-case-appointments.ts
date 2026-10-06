@@ -3,6 +3,7 @@ import factory from '../../factory';
 import { isTooManyRequestsError } from '../../common-errors/too-many-requests-error';
 import { isGatewayTimeoutError } from '../../common-errors/gateway-timeout';
 import { CaseAppointment } from '@common/cams/trustee-appointments';
+import { HealSentinelProfessionalId } from '@common/cams/dataflow-events';
 import {
   TrusteeCaseAppointmentsRepository,
   TrusteeProfessionalIdsRepository,
@@ -10,11 +11,16 @@ import {
 
 const MODULE_NAME = 'HEAL-SENTINEL-CASE-APPOINTMENTS-USE-CASE';
 
-type HealPageResult = {
+type HealCursor = {
+  lastProfessionalIdDocId: string | null;
+  current: HealSentinelProfessionalId | null;
+};
+
+type HealStepResult = {
   documentsWritten: number;
   documentsFailed: number;
   pageSize: number;
-  nextLastId: string | null;
+  next: HealCursor | null;
 };
 
 // _id (cursor bookkeeping) and reason/acmsProfessionalId (sentinel-only markers written by
@@ -26,6 +32,12 @@ type SentinelAppointment = CaseAppointment & {
   acmsProfessionalId?: string;
 };
 
+/**
+ * Heals sentinel appointments (trusteeId === SENTINEL_TRUSTEE_ID) one linked trustee-professional-ids
+ * record at a time, rather than paging the whole sentinel population: only sentinels whose ACMS ID
+ * is linked can heal, and a record is flagged sentinelsHealedOn once none remain for it, so each
+ * linked ID is worked once and later runs only visit newly linked IDs.
+ */
 class HealSentinelCaseAppointmentsUseCase {
   private readonly context: ApplicationContext;
   private readonly appointmentsRepo: TrusteeCaseAppointmentsRepository;
@@ -38,65 +50,21 @@ class HealSentinelCaseAppointmentsUseCase {
   }
 
   /**
-   * Resolves a single sentinel appointment (trusteeId === SENTINEL_TRUSTEE_ID) to its real
-   * trustee via trustee-professional-ids, upserts the resolved appointment, then deletes the
-   * sentinel. Order is upsert -> delete: a failed upsert leaves the sentinel untouched and
-   * self-healing on retry, whereas deleting first would risk losing the case's only appointment
-   * record if the upsert then failed. upsert()'s natural key (caseId, trusteeId, assignedOn) is
-   * always used rather than an in-place update — trusteeId is the trustee partition's shard key,
-   * so healing a sentinel (whose trusteeId is the shared SENTINEL_TRUSTEE_ID) into its resolved
-   * trusteeId is a genuinely new partition key and cannot be an in-place update. The same upsert
-   * call handles both "no appointment exists yet for this case" and "already healed via another
-   * path" (e.g. a live DXTR sync) identically — the natural-key replace is a no-op in the latter
-   * case, so no separate skip-write branch is needed.
+   * Upserts the sentinel under camsTrusteeId, then deletes the sentinel. Order is upsert ->
+   * delete: a failed upsert leaves the sentinel in place to retry, whereas deleting first could
+   * lose the case's only appointment record. trusteeId is the trustee partition's shard key, so
+   * this is a new document rather than an in-place update; upsert()'s natural key (caseId,
+   * trusteeId, assignedOn) makes re-healing an already-healed case a no-op replace.
    *
-   * The upsert payload spreads the full sentinel rather than naming an allow-list of fields.
-   * migrate-case-appointments populates unassignedOn/closedDate/reopenedDate straight off ACMS's
-   * own historical record, uncorrelated with why a row became a sentinel in the first place (that
-   * only depends on whether the professional ID resolved) — so a sentinel can genuinely represent
-   * an already-closed or -reopened case. upsert() is a full replaceOne with no merge against the
-   * existing document, so naming only some fields would silently discard whichever of those the
-   * sentinel actually carried, and — since caseStatus is derived from closedDate inside upsert()
-   * — would misreport a closed case as 'OPEN' after healing. Only the sentinel-only markers
-   * (_id, reason, acmsProfessionalId) and the field actually being resolved (trusteeId) are
-   * excluded/overridden; everything else survives unchanged.
-   *
-   * Returns false when no CAMS trustee mapping exists yet for this sentinel's acmsProfessionalId
-   * — the sentinel is left in place for a future run once trustee-professional-ids improves.
-   *
-   * findByAcmsProfessionalId only ever returns a linked, non-conflicting disposition (see
-   * isRealLink) - a 'conflict'-disposition record for this ACMS ID is invisible to it, so
-   * matches.length !== 1 alone cannot distinguish "never linked" from "flagged as a data-integrity
-   * conflict." Both currently leave the sentinel in place either way, but the conflict case is
-   * logged distinctly (via hasConflictByAcmsProfessionalId) so an operator scanning logs can tell
-   * a genuinely stuck case (needs manual conflict resolution, will never self-heal) from an
-   * ordinary not-yet-linked one (will self-heal once trustee-professional-ids catches up).
+   * The payload spreads the full sentinel rather than an allow-list. A sentinel can carry a
+   * closed or reopened case's unassignedOn/closedDate/reopenedDate, and upsert() is a full
+   * replaceOne that derives caseStatus from closedDate, so an allow-list that missed any of them
+   * would discard ACMS history and misreport a closed case as OPEN.
    */
   private async healSentinelAppointment(
     sentinel: SentinelAppointment,
-  ): Promise<{ healed: boolean }> {
-    if (!sentinel.acmsProfessionalId) {
-      return { healed: false };
-    }
-
-    const matches = await this.professionalIdsRepo.findByAcmsProfessionalId(
-      sentinel.acmsProfessionalId,
-    );
-    if (matches.length !== 1) {
-      if (matches.length === 0) {
-        const hasConflict = await this.professionalIdsRepo.hasConflictByAcmsProfessionalId(
-          sentinel.acmsProfessionalId,
-        );
-        if (hasConflict) {
-          this.context.logger.warn(
-            MODULE_NAME,
-            `Sentinel appointment for case ${sentinel.caseId} left in place: ACMS professional ID ${sentinel.acmsProfessionalId} is flagged as a data-integrity conflict and will not self-heal without manual resolution.`,
-          );
-        }
-      }
-      return { healed: false };
-    }
-
+    camsTrusteeId: string,
+  ): Promise<void> {
     const {
       _id: _mongoId,
       id: _id,
@@ -104,36 +72,91 @@ class HealSentinelCaseAppointmentsUseCase {
       acmsProfessionalId: _acmsId,
       ...rest
     } = sentinel;
-    await this.appointmentsRepo.upsert({ ...rest, trusteeId: matches[0].camsTrusteeId });
-
-    await this.appointmentsRepo.delete(sentinel.id);
-
-    return { healed: true };
+    await this.appointmentsRepo.upsert({ ...rest, trusteeId: camsTrusteeId });
+    await this.appointmentsRepo.deleteSentinel(sentinel.caseId, sentinel.id);
   }
 
   /**
-   * Heals up to pageSize sentinel appointments starting after lastId. Cursor-paged (unlike
-   * TrusteeVerificationRemapUseCase.remapPage's no-cursor re-query): a sentinel that can't be
-   * resolved this run (no mapping, ambiguous mapping, missing acmsProfessionalId, or a permanent
-   * per-record failure) is left in place rather than deleted, so a no-cursor query would keep
-   * re-fetching the same unresolvable leading page forever and never reach resolvable sentinels
-   * further back in the collection. The cursor guarantees forward progress through the whole
-   * population every run regardless of how many rows any single page manages to heal.
-   * nextLastId is the greatest _id seen this page, or null if the page was empty (the caller's
-   * termination signal) — advances past both healed and left-in-place rows alike.
+   * An ACMS ID linked to more than one trustee leaves it unknown which trustee its sentinels
+   * belong to, so its sentinels are left in place and the record unflagged for manual resolution.
    */
-  async healPage(lastId: string | null, pageSize: number): Promise<HealPageResult> {
-    const page = await this.appointmentsRepo.findSentinelAppointments(lastId, pageSize);
+  private async hasSingleLink(acmsProfessionalId: string): Promise<boolean> {
+    const links = await this.professionalIdsRepo.findByAcmsProfessionalId(acmsProfessionalId);
+    if (links.length === 1) return true;
+    this.context.logger.warn(
+      MODULE_NAME,
+      `ACMS professional ID ${acmsProfessionalId} is linked to ${links.length} trustees; its sentinel appointments are left in place.`,
+    );
+    return false;
+  }
+
+  /**
+   * Flags the record healed if no sentinels remain for it. A sentinel that failed to heal stays
+   * behind, so the record stays unflagged and is retried on the next run.
+   */
+  private async finishProfessionalId(current: HealSentinelProfessionalId): Promise<void> {
+    const remaining = await this.appointmentsRepo.findSentinelAppointmentsByAcmsProfessionalId(
+      current.acmsProfessionalId,
+      null,
+      1,
+    );
+    if (remaining.length === 0) {
+      await this.professionalIdsRepo.markSentinelsHealed(
+        current.camsTrusteeId,
+        current.acmsProfessionalId,
+      );
+      return;
+    }
+    this.context.logger.warn(
+      MODULE_NAME,
+      `Sentinel appointments remain for ACMS professional ID ${current.acmsProfessionalId} after a failed heal; it is left unflagged for the next run.`,
+    );
+  }
+
+  /**
+   * Heals up to pageSize sentinels for one linked record and returns the cursor for the next
+   * invocation, or next: null when no linked record is pending. A record stays current while
+   * full pages come back; a short page means its sentinels are exhausted, so it is finished and
+   * the cursor moves past it whether or not it was flagged.
+   */
+  async healNext(cursor: HealCursor, pageSize: number): Promise<HealStepResult> {
+    let current = cursor.current;
+    if (!current) {
+      const [link] = await this.professionalIdsRepo.findLinkedPendingSentinelHeal(
+        cursor.lastProfessionalIdDocId,
+        1,
+      );
+      if (!link) {
+        return { documentsWritten: 0, documentsFailed: 0, pageSize: 0, next: null };
+      }
+      if (!(await this.hasSingleLink(link.acmsProfessionalId))) {
+        return {
+          documentsWritten: 0,
+          documentsFailed: 0,
+          pageSize: 0,
+          next: { lastProfessionalIdDocId: link._id, current: null },
+        };
+      }
+      current = {
+        professionalIdDocId: link._id,
+        camsTrusteeId: link.camsTrusteeId,
+        acmsProfessionalId: link.acmsProfessionalId,
+        lastAppointmentId: null,
+      };
+    }
+
+    const page = await this.appointmentsRepo.findSentinelAppointmentsByAcmsProfessionalId(
+      current.acmsProfessionalId,
+      current.lastAppointmentId,
+      pageSize,
+    );
 
     let documentsWritten = 0;
     let documentsFailed = 0;
-
     for (const sentinel of page) {
       try {
-        const { healed } = await this.healSentinelAppointment(sentinel as SentinelAppointment);
-        if (healed) {
-          documentsWritten++;
-        }
+        await this.healSentinelAppointment(sentinel as SentinelAppointment, current.camsTrusteeId);
+        documentsWritten++;
       } catch (perRecordError) {
         if (isTooManyRequestsError(perRecordError) || isGatewayTimeoutError(perRecordError)) {
           throw perRecordError;
@@ -141,19 +164,27 @@ class HealSentinelCaseAppointmentsUseCase {
         documentsFailed++;
         this.context.logger.error(
           MODULE_NAME,
-          `Failed to heal sentinel appointment for case ${sentinel.caseId} — its sentinel row is left in place for the next attempt to rediscover.`,
+          `Failed to heal sentinel appointment for case ${sentinel.caseId} — its sentinel row is left in place.`,
           perRecordError,
         );
       }
     }
 
-    const nextLastId = page.length > 0 ? page[page.length - 1]._id : null;
+    const counts = { documentsWritten, documentsFailed, pageSize: page.length };
+    if (page.length === pageSize) {
+      return {
+        ...counts,
+        next: {
+          lastProfessionalIdDocId: cursor.lastProfessionalIdDocId,
+          current: { ...current, lastAppointmentId: page[page.length - 1]._id },
+        },
+      };
+    }
 
+    await this.finishProfessionalId(current);
     return {
-      documentsWritten,
-      documentsFailed,
-      pageSize: page.length,
-      nextLastId,
+      ...counts,
+      next: { lastProfessionalIdDocId: current.professionalIdDocId, current: null },
     };
   }
 }

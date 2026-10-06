@@ -285,15 +285,28 @@ export type TrusteeAppointmentSyncError = TrusteeAppointmentSyncEvent & {
 };
 
 /**
- * Enqueued manually to start (or continue) heal-sentinel-case-appointments. Carries lastId, the
- * greatest _id seen in the previous page — a sentinel left unresolved this run (no mapping,
- * ambiguous mapping, missing acmsProfessionalId, or a permanent per-record failure) is left in
- * place rather than deleted, so a no-cursor re-query (unlike TrusteeVerificationRemapMessage's)
- * would keep re-fetching the same unresolvable leading page forever and never reach resolvable
- * sentinels further back in the collection. omit/null lastId starts from the beginning.
+ * The trustee-professional-ids record whose sentinel appointments a heal-sentinel-case-appointments
+ * invocation is working through. lastAppointmentId is the greatest sentinel _id already processed
+ * for this record; null means none yet.
+ */
+export type HealSentinelProfessionalId = {
+  professionalIdDocId: string;
+  camsTrusteeId: string;
+  acmsProfessionalId: string;
+  lastAppointmentId: string | null;
+};
+
+/**
+ * Enqueued manually to start (or continue) heal-sentinel-case-appointments. A run walks linked
+ * trustee-professional-ids records without sentinelsHealedOn in _id order. lastProfessionalIdDocId
+ * is the _id of the last record finished, so a record left unflagged (a sentinel that failed to
+ * heal, or an ACMS ID linked to more than one trustee) is passed over until the next run. current
+ * is the record in progress when its sentinels span more than one invocation. An empty message
+ * starts a run.
  */
 export type HealSentinelCaseAppointmentsMessage = {
-  lastId?: string | null;
+  lastProfessionalIdDocId?: string | null;
+  current?: HealSentinelProfessionalId | null;
   retryCount?: number;
   firstAttemptAt?: string;
 };

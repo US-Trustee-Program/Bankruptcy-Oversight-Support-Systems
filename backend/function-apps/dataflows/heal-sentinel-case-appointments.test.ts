@@ -5,12 +5,11 @@ import { TooManyRequestsError } from '../../lib/common-errors/too-many-requests-
 import { StorageQueueHumbleObject } from '../../lib/humble-objects/storage-queue-humble';
 import ApplicationContextCreator from '../azure/application-context-creator';
 import { createMockApplicationContext } from '../../lib/testing/testing-utilities';
-import factory from '../../lib/factory';
-import { CaseAppointment } from '@common/cams/trustee-appointments';
-import { TrusteeProfessionalId } from '../../lib/use-cases/dataflows/trustee-professional-ids.types';
-import { HealSentinelCaseAppointmentsMessage } from '@common/cams/dataflow-events';
-import { MockMongoRepository } from '../../lib/testing/mock-gateways/mock-mongo.repository';
-import { SENTINEL_TRUSTEE_ID } from '../../lib/use-cases/dataflows/migrate-case-appointments-constants';
+import HealSentinelCaseAppointmentsUseCase from '../../lib/use-cases/dataflows/heal-sentinel-case-appointments';
+import {
+  HealSentinelCaseAppointmentsMessage,
+  HealSentinelProfessionalId,
+} from '@common/cams/dataflow-events';
 
 const makeInvocationContext = (): InvocationContext =>
   ({
@@ -20,159 +19,83 @@ const makeInvocationContext = (): InvocationContext =>
     log: vi.fn(),
   }) as unknown as InvocationContext;
 
-const makeMessage = (
-  overrides: Partial<HealSentinelCaseAppointmentsMessage> = {},
-): HealSentinelCaseAppointmentsMessage => ({
-  ...overrides,
-});
-
-type SentinelAppointment = CaseAppointment & {
-  _id: string;
-  reason?: string;
-  acmsProfessionalId?: string;
+const inProgress: HealSentinelProfessionalId = {
+  professionalIdDocId: 'prof-mongo-1',
+  camsTrusteeId: 'trustee-resolved',
+  acmsProfessionalId: 'NY-00063',
+  lastAppointmentId: 'appt-mongo-9',
 };
 
-const makeSentinel = (overrides: Partial<SentinelAppointment> = {}): SentinelAppointment =>
-  ({
-    id: `sentinel-${overrides.caseId ?? '001'}`,
-    _id: 'mongo-1',
-    caseId: '081-25-00001',
-    trusteeId: SENTINEL_TRUSTEE_ID,
-    assignedOn: '2025-01-01T00:00:00.000Z',
-    appointedDate: '2025-01-01',
-    dateFiled: '2024-06-01',
-    chapter: '7',
-    courtDivisionCode: '081',
-    reason: 'trustee-not-found',
-    acmsProfessionalId: 'NY-00063',
-    ...overrides,
-  }) as SentinelAppointment;
-
-const makeProfessionalId = (
-  overrides: Partial<TrusteeProfessionalId> = {},
-): TrusteeProfessionalId =>
-  ({
-    id: 'prof-id-1',
-    documentType: 'TRUSTEE_PROFESSIONAL_ID',
-    camsTrusteeId: 'trustee-resolved',
-    acmsProfessionalId: 'NY-00063',
-    createdOn: '2025-01-01T00:00:00.000Z',
-    updatedOn: '2025-01-01T00:00:00.000Z',
-    ...overrides,
-  }) as TrusteeProfessionalId;
-
 describe('heal-sentinel-case-appointments handleHeal', () => {
-  let mockFindSentinelAppointments: ReturnType<typeof vi.fn>;
-  let mockFindByAcmsProfessionalId: ReturnType<typeof vi.fn>;
-  let mockUpsert: ReturnType<typeof vi.fn>;
-  let mockDelete: ReturnType<typeof vi.fn>;
+  let mockHealNext: ReturnType<typeof vi.spyOn>;
+  let mockSendMessage: ReturnType<typeof vi.fn>;
+  let telemetrySpy: ReturnType<typeof vi.spyOn>;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.restoreAllMocks();
     process.env.AzureWebJobsDataflowsStorage = 'DefaultEndpointsProtocol=https://test';
 
-    mockFindSentinelAppointments = vi.fn().mockResolvedValue([]);
-    mockFindByAcmsProfessionalId = vi.fn().mockResolvedValue([]);
-    mockUpsert = vi.fn().mockResolvedValue({});
-    mockDelete = vi.fn().mockResolvedValue(undefined);
-
-    vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository').mockReturnValue(
-      Object.assign(new MockMongoRepository(), {
-        findSentinelAppointments: mockFindSentinelAppointments,
-        upsert: mockUpsert,
-        delete: mockDelete,
-      }),
-    );
-    vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue(
-      Object.assign(new MockMongoRepository(), {
-        findByAcmsProfessionalId: mockFindByAcmsProfessionalId,
-      }),
-    );
-  });
-
-  test('heals a matched sentinel: upserts the resolved appointment then deletes the sentinel', async () => {
-    const { handleHeal } = await import('./heal-sentinel-case-appointments');
-    const sentinel = makeSentinel();
-    mockFindSentinelAppointments.mockResolvedValue([sentinel]);
-    mockFindByAcmsProfessionalId.mockResolvedValue([makeProfessionalId()]);
+    mockHealNext = vi
+      .spyOn(HealSentinelCaseAppointmentsUseCase.prototype, 'healNext')
+      .mockResolvedValue({ documentsWritten: 0, documentsFailed: 0, pageSize: 0, next: null });
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
       await createMockApplicationContext(),
     );
-    const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
-    const mockSendMessage = vi.fn().mockResolvedValue(undefined);
+    mockSendMessage = vi.fn().mockResolvedValue(undefined);
     vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
       sendMessage: mockSendMessage,
     } as unknown as StorageQueueHumbleObject);
+    telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+  });
 
-    await handleHeal(makeMessage(), makeInvocationContext());
+  test('starts a run from an empty message', async () => {
+    const { handleHeal } = await import('./heal-sentinel-case-appointments');
 
-    expect(mockUpsert).toHaveBeenCalledWith(
-      expect.objectContaining({ caseId: sentinel.caseId, trusteeId: 'trustee-resolved' }),
+    await handleHeal({}, makeInvocationContext());
+
+    expect(mockHealNext).toHaveBeenCalledWith(
+      { lastProfessionalIdDocId: null, current: null },
+      expect.any(Number),
     );
-    expect(mockDelete).toHaveBeenCalledWith(sentinel.id);
+  });
+
+  test('requeues only the returned cursor, dropping rate-limit retry state from the incoming message', async () => {
+    const { handleHeal } = await import('./heal-sentinel-case-appointments');
+    const next = { lastProfessionalIdDocId: 'prof-mongo-0', current: inProgress };
+    mockHealNext.mockResolvedValue({ documentsWritten: 3, documentsFailed: 1, pageSize: 4, next });
+    const message: HealSentinelCaseAppointmentsMessage = {
+      lastProfessionalIdDocId: 'prof-mongo-0',
+      current: { ...inProgress, lastAppointmentId: 'appt-mongo-5' },
+      retryCount: 2,
+      firstAttemptAt: '2026-10-06T00:00:00.000Z',
+    };
+
+    await handleHeal(message, makeInvocationContext());
+
+    expect(mockHealNext).toHaveBeenCalledWith(
+      { lastProfessionalIdDocId: 'prof-mongo-0', current: message.current },
+      expect.any(Number),
+    );
+    expect(mockSendMessage).toHaveBeenCalledWith(JSON.stringify(next));
     expect(telemetrySpy).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
       'HEAL-SENTINEL-CASE-APPOINTMENTS',
       'handleHeal',
       expect.anything(),
-      expect.objectContaining({ success: true, documentsWritten: 1, documentsFailed: 0 }),
+      expect.objectContaining({
+        success: true,
+        documentsWritten: 3,
+        documentsFailed: 1,
+        details: { pageSize: '4', continuationQueued: 'true' },
+      }),
     );
   });
 
-  test('requeues a continuation when the page returned any sentinel rows (more may remain)', async () => {
+  test('does not requeue when the run is finished', async () => {
     const { handleHeal } = await import('./heal-sentinel-case-appointments');
-    const sentinel = makeSentinel();
-    mockFindSentinelAppointments.mockResolvedValue([sentinel]);
-    mockFindByAcmsProfessionalId.mockResolvedValue([makeProfessionalId()]);
-    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
-      await createMockApplicationContext(),
-    );
-    const mockSendMessage = vi.fn().mockResolvedValue(undefined);
-    vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
-      sendMessage: mockSendMessage,
-    } as unknown as StorageQueueHumbleObject);
 
-    const message = makeMessage();
-    await handleHeal(message, makeInvocationContext());
-
-    expect(mockSendMessage).toHaveBeenCalledWith(
-      JSON.stringify({ ...message, lastId: sentinel._id }),
-    );
-  });
-
-  test('advances the cursor on requeue so an unresolvable sentinel does not stall the run', async () => {
-    const { handleHeal } = await import('./heal-sentinel-case-appointments');
-    const sentinel = makeSentinel({ _id: 'mongo-unresolvable' });
-    mockFindSentinelAppointments.mockResolvedValue([sentinel]);
-    mockFindByAcmsProfessionalId.mockResolvedValue([]);
-    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
-      await createMockApplicationContext(),
-    );
-    const mockSendMessage = vi.fn().mockResolvedValue(undefined);
-    vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
-      sendMessage: mockSendMessage,
-    } as unknown as StorageQueueHumbleObject);
-
-    await handleHeal(makeMessage(), makeInvocationContext());
-
-    expect(mockUpsert).not.toHaveBeenCalled();
-    expect(mockSendMessage).toHaveBeenCalledWith(JSON.stringify({ lastId: 'mongo-unresolvable' }));
-  });
-
-  test('does not requeue when the page is empty (no sentinels left)', async () => {
-    const { handleHeal } = await import('./heal-sentinel-case-appointments');
-    mockFindSentinelAppointments.mockResolvedValue([]);
-    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
-      await createMockApplicationContext(),
-    );
-    const mockSendMessage = vi.fn().mockResolvedValue(undefined);
-    vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
-      sendMessage: mockSendMessage,
-    } as unknown as StorageQueueHumbleObject);
-    const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
-
-    await handleHeal(makeMessage(), makeInvocationContext());
+    await handleHeal({}, makeInvocationContext());
 
     expect(mockSendMessage).not.toHaveBeenCalled();
     expect(telemetrySpy).toHaveBeenCalledWith(
@@ -181,24 +104,18 @@ describe('heal-sentinel-case-appointments handleHeal', () => {
       'HEAL-SENTINEL-CASE-APPOINTMENTS',
       'handleHeal',
       expect.anything(),
-      expect.objectContaining({ success: true, documentsWritten: 0, documentsFailed: 0 }),
+      expect.objectContaining({
+        success: true,
+        details: { pageSize: '0', continuationQueued: 'false' },
+      }),
     );
   });
 
   test('should re-enqueue with backoff and emit rate-limited-requeued telemetry on 429 error', async () => {
     const { handleHeal } = await import('./heal-sentinel-case-appointments');
-    const tooManyError = new TooManyRequestsError('HEAL-SENTINEL-CASE-APPOINTMENTS');
-    mockFindSentinelAppointments.mockRejectedValue(tooManyError);
-    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
-      await createMockApplicationContext(),
-    );
-    const mockSendMessage = vi.fn().mockResolvedValue(undefined);
-    vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
-      sendMessage: mockSendMessage,
-    } as unknown as StorageQueueHumbleObject);
-    const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+    mockHealNext.mockRejectedValue(new TooManyRequestsError('HEAL-SENTINEL-CASE-APPOINTMENTS'));
 
-    await handleHeal(makeMessage({ retryCount: 0 }), makeInvocationContext());
+    await handleHeal({ retryCount: 0 }, makeInvocationContext());
 
     expect(mockSendMessage).toHaveBeenCalled();
     expect(telemetrySpy).toHaveBeenCalledWith(
@@ -213,14 +130,12 @@ describe('heal-sentinel-case-appointments handleHeal', () => {
 
   test('should route to DLQ and emit telemetry when retry limit exhausted', async () => {
     const { handleHeal } = await import('./heal-sentinel-case-appointments');
-    const tooManyError = new TooManyRequestsError('HEAL-SENTINEL-CASE-APPOINTMENTS');
-    mockFindSentinelAppointments.mockRejectedValue(tooManyError);
+    mockHealNext.mockRejectedValue(new TooManyRequestsError('HEAL-SENTINEL-CASE-APPOINTMENTS'));
     const mockContext = await createMockApplicationContext();
     const extraOutputsSetSpy = vi.spyOn(mockContext.extraOutputs, 'set');
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
-    const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
 
-    await handleHeal(makeMessage({ retryCount: 10 }), makeInvocationContext());
+    await handleHeal({ retryCount: 10 }, makeInvocationContext());
 
     expect(extraOutputsSetSpy).toHaveBeenCalledWith(
       expect.objectContaining({ queueName: expect.stringContaining('dlq') }),
@@ -242,19 +157,16 @@ describe('heal-sentinel-case-appointments handleHeal', () => {
 
   test('rethrows non-rate-limit errors', async () => {
     const { handleHeal } = await import('./heal-sentinel-case-appointments');
-    mockFindSentinelAppointments.mockRejectedValue(new Error('boom'));
-    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
-      await createMockApplicationContext(),
-    );
+    mockHealNext.mockRejectedValue(new Error('boom'));
 
-    await expect(handleHeal(makeMessage(), makeInvocationContext())).rejects.toThrow('boom');
+    await expect(handleHeal({}, makeInvocationContext())).rejects.toThrow('boom');
   });
 
   test('throws when AzureWebJobsDataflowsStorage is not configured', async () => {
     delete process.env.AzureWebJobsDataflowsStorage;
     const { handleHeal } = await import('./heal-sentinel-case-appointments');
 
-    await expect(handleHeal(makeMessage(), makeInvocationContext())).rejects.toThrow(
+    await expect(handleHeal({}, makeInvocationContext())).rejects.toThrow(
       'Missing required environment variable: AzureWebJobsDataflowsStorage',
     );
   });

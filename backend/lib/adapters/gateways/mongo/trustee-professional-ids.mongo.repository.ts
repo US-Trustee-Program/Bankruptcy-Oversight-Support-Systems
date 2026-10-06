@@ -17,7 +17,7 @@ import { UnknownError } from '../../../common-errors/unknown-error';
 const MODULE_NAME = 'TRUSTEE-PROFESSIONAL-IDS-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'trustee-professional-ids';
 
-const { and, using, omit } = QueryBuilder;
+const { and, using, omit, orderBy } = QueryBuilder;
 
 /** Stored shape of a TrusteeProfessionalId in the trustee-professional-ids collection. */
 export type TrusteeProfessionalIdDocument = TrusteeProfessionalId & {
@@ -162,24 +162,46 @@ export class TrusteeProfessionalIdsMongoRepository
     }
   }
 
-  /** Whether this ACMS professional ID has a 'conflict' record (excluded by isRealLink). */
-  async hasConflictByAcmsProfessionalId(acmsProfessionalId: string): Promise<boolean> {
+  async findLinkedPendingSentinelHeal(
+    lastId: string | null,
+    limit: number,
+  ): Promise<Array<TrusteeProfessionalIdSummary & { _id: string }>> {
+    type Queryable = TrusteeProfessionalIdDocument & { _id: string };
+    try {
+      const doc = using<Queryable>();
+      const conditions = [
+        doc('documentType').equals('TRUSTEE_PROFESSIONAL_ID'),
+        isRealLink(doc),
+        doc('sentinelsHealedOn').notExists(),
+      ];
+      if (lastId) conditions.push(doc('_id').greaterThan(lastId));
+      return await this.getAdapter<Queryable>().find(
+        and(...conditions),
+        orderBy<Queryable>(['_id', 'ASCENDING']),
+        limit,
+        omit<Queryable>('evidence'),
+      );
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: 'Failed to find linked professional IDs pending sentinel healing.',
+      });
+    }
+  }
+
+  async markSentinelsHealed(camsTrusteeId: string, acmsProfessionalId: string): Promise<void> {
     try {
       const doc = using<TrusteeProfessionalIdDocument>();
       const query = and(
+        doc('documentType').equals('TRUSTEE_PROFESSIONAL_ID'),
+        doc('camsTrusteeId').equals(camsTrusteeId),
         doc('acmsProfessionalId').equals(acmsProfessionalId),
-        doc('disposition').equals('conflict'),
       );
-      const matches = await this.getAdapter<TrusteeProfessionalIdDocument>().find(
-        query,
-        undefined,
-        undefined,
-        SUMMARY_PROJECTION,
-      );
-      return matches.length > 0;
+      await this.getAdapter<TrusteeProfessionalIdDocument>().updateOne(query, {
+        sentinelsHealedOn: new Date().toISOString(),
+      });
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        message: `Failed to check for a conflict record with ACMS professional ID ${acmsProfessionalId}.`,
+        message: `Failed to mark sentinels healed for trustee ${camsTrusteeId} and ACMS ID ${acmsProfessionalId}.`,
       });
     }
   }

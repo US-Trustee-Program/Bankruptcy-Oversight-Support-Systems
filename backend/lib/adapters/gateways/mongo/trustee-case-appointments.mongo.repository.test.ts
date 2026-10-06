@@ -926,75 +926,65 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
     });
   });
 
-  describe('findSentinelAppointments', () => {
-    test('should return sentinel appointments when lastId is null', async () => {
-      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([
-        { ...baseAppointment, _id: 'mongo-1', trusteeId: SENTINEL_TRUSTEE_ID },
-      ]);
-      const context = await createMockApplicationContext();
-      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+  describe('findSentinelAppointmentsByAcmsProfessionalId', () => {
+    const sentinelConditions = [
+      {
+        condition: 'EQUALS',
+        leftOperand: { name: 'documentType' },
+        rightOperand: 'CASE_APPOINTMENT',
+      },
+      {
+        condition: 'EQUALS',
+        leftOperand: { name: 'trusteeId' },
+        rightOperand: SENTINEL_TRUSTEE_ID,
+      },
+      {
+        condition: 'EQUALS',
+        leftOperand: { name: 'acmsProfessionalId' },
+        rightOperand: 'NY-00063',
+      },
+    ];
+    const ascendingById = {
+      fields: [{ field: { name: '_id' }, direction: 'ASCENDING' }],
+    };
 
-      const result = await repo.findSentinelAppointments(null, 100);
-
-      expect(result).toHaveLength(1);
-      repo.release();
-    });
-
-    test('should query for trusteeId equal to SENTINEL_TRUSTEE_ID', async () => {
+    test('should return sentinels for one ACMS professional ID, ordered by _id', async () => {
+      const sentinel = { ...baseAppointment, _id: 'mongo-1', trusteeId: SENTINEL_TRUSTEE_ID };
       const findSpy = vi
         .spyOn(MongoCollectionAdapter.prototype, 'find')
-        .mockResolvedValue([
-          { ...baseAppointment, _id: 'mongo-1', trusteeId: SENTINEL_TRUSTEE_ID },
-        ]);
+        .mockResolvedValue([sentinel]);
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
 
-      await repo.findSentinelAppointments(null, 50);
-
-      const query = findSpy.mock.calls[0][0];
-      const queryValues = (query as Record<string, unknown>).values as Record<string, unknown>[];
-
-      const trusteeIdCondition = queryValues.find(
-        (v) => (v.leftOperand as { name: string })?.name === 'trusteeId',
-      );
-      expect(trusteeIdCondition).toEqual(
-        expect.objectContaining({ condition: 'EQUALS', rightOperand: SENTINEL_TRUSTEE_ID }),
-      );
-
-      repo.release();
-    });
-
-    test('should filter by _id > lastId when provided', async () => {
-      const findSpy = vi
-        .spyOn(MongoCollectionAdapter.prototype, 'find')
-        .mockResolvedValue([
-          { ...baseAppointment, _id: 'mongo-2', trusteeId: SENTINEL_TRUSTEE_ID },
-        ]);
-      const context = await createMockApplicationContext();
-      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
-
-      await repo.findSentinelAppointments('mongo-1', 50);
+      const result = await repo.findSentinelAppointmentsByAcmsProfessionalId('NY-00063', null, 25);
 
       expect(findSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          values: expect.arrayContaining([
-            expect.objectContaining({ condition: 'GREATER_THAN', rightOperand: 'mongo-1' }),
-          ]),
-        }),
-        expect.any(Object),
-        50,
+        { conjunction: 'AND', values: sentinelConditions },
+        ascendingById,
+        25,
       );
+      expect(result).toEqual([sentinel]);
       repo.release();
     });
 
-    test('should return an empty array when no sentinel appointments remain', async () => {
-      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+    test('should resume after lastId when provided', async () => {
+      const findSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
 
-      const result = await repo.findSentinelAppointments(null, 50);
+      await repo.findSentinelAppointmentsByAcmsProfessionalId('NY-00063', 'mongo-1', 25);
 
-      expect(result).toEqual([]);
+      expect(findSpy).toHaveBeenCalledWith(
+        {
+          conjunction: 'AND',
+          values: [
+            ...sentinelConditions,
+            { condition: 'GREATER_THAN', leftOperand: { name: '_id' }, rightOperand: 'mongo-1' },
+          ],
+        },
+        ascendingById,
+        25,
+      );
       repo.release();
     });
 
@@ -1003,8 +993,89 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
 
-      await expect(repo.findSentinelAppointments(null, 50)).rejects.toThrow(
-        'Failed to retrieve case appointments by cursor.',
+      await expect(
+        repo.findSentinelAppointmentsByAcmsProfessionalId('NY-00063', null, 25),
+      ).rejects.toThrow('Failed to retrieve case appointments by cursor.');
+      repo.release();
+    });
+  });
+
+  describe('deleteSentinel', () => {
+    const idCondition = {
+      condition: 'EQUALS',
+      leftOperand: { name: 'id' },
+      rightOperand: 'appt-001',
+    };
+
+    test('should scope each partition delete to that partition’s shard key', async () => {
+      const deleteOneSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'deleteOne')
+        .mockResolvedValue(undefined);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await repo.deleteSentinel('081-25-00001', 'appt-001');
+
+      expect(deleteOneSpy).toHaveBeenNthCalledWith(1, {
+        conjunction: 'AND',
+        values: [
+          { condition: 'EQUALS', leftOperand: { name: 'caseId' }, rightOperand: '081-25-00001' },
+          idCondition,
+        ],
+      });
+      expect(deleteOneSpy).toHaveBeenNthCalledWith(2, {
+        conjunction: 'AND',
+        values: [
+          {
+            condition: 'EQUALS',
+            leftOperand: { name: 'trusteeId' },
+            rightOperand: SENTINEL_TRUSTEE_ID,
+          },
+          idCondition,
+        ],
+      });
+      repo.release();
+    });
+
+    test('should tolerate a 404 on either partition', async () => {
+      const notFound = new NotFoundError('MONGO-ADAPTER', {
+        message: 'Matched and deleted 0 items.',
+      });
+      const deleteOneSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'deleteOne')
+        .mockRejectedValueOnce(notFound)
+        .mockRejectedValueOnce(notFound);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(repo.deleteSentinel('081-25-00001', 'appt-001')).resolves.toBeUndefined();
+
+      expect(deleteOneSpy).toHaveBeenCalledTimes(2);
+      repo.release();
+    });
+
+    test('should throw when the case-partition delete fails', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'deleteOne').mockRejectedValueOnce(
+        new Error('case partition delete failed'),
+      );
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(repo.deleteSentinel('081-25-00001', 'appt-001')).rejects.toThrow(
+        'Failed to delete sentinel appointment appt-001 from the case partition.',
+      );
+      repo.release();
+    });
+
+    test('should throw when the trustee-partition delete fails', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'deleteOne')
+        .mockResolvedValueOnce(undefined)
+        .mockRejectedValueOnce(new Error('trustee partition delete failed'));
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(repo.deleteSentinel('081-25-00001', 'appt-001')).rejects.toThrow(
+        'Failed to delete sentinel appointment appt-001 from the trustee partition.',
       );
       repo.release();
     });
