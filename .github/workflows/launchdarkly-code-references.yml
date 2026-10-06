@@ -18,5 +18,5 @@ jobs:
         uses: launchdarkly/find-code-references@v2
         with:
           accessToken: ${{ secrets.LD_ACCESS_TOKEN }}
-          projKey: "cams"        
-          baseUri: "https://app.launchdarkly.us"  # default; include only if self-hosted 
+          projKey: "cams"
+          baseUri: "https://app.launchdarkly.us"  # default; include only if self-hosted
